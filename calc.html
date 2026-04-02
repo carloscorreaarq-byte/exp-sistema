@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EXP · Calculadora de Honorários</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --preto:#111110;--off:#F7F6F3;--cinza:#D0CFC9;--cinza2:#ECEAE4;
+  --verde:#1D6A4A;--verde-l:#2D9E6B;--verde-bg:#EAF5EE;
+  --az:#1D4FA0;--az-bg:#EAF0FB;
+  --am:#C4831A;--am-bg:#FBF3E8;
+  --tc:#B84C3A;--tc-bg:#FBF0EE;
+  --roxo:#6B4FA0;--roxo-bg:#F3EFFE;
+  --f:'Raleway',sans-serif;--fm:'DM Mono',monospace;
+}
+body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13px;line-height:1.5;font-weight:300}
+
+/* NAV */
+.nav{display:flex;align-items:center;background:#fff;border-bottom:1px solid var(--cinza);padding:0 16px;position:sticky;top:0;z-index:100;height:46px;gap:0}
+.nav-brand{font-size:14px;font-weight:700;letter-spacing:5px;margin-right:16px}
+.nav-sep{width:1px;height:14px;background:var(--cinza);margin-right:16px}
+.nav-lbl{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-right:20px}
+.nav-tabs{display:flex;height:100%;gap:0}
+.ntab{padding:0 11px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#999;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;white-space:nowrap;transition:all .15s}
+.ntab:hover{color:var(--preto)}
+.ntab.active{color:var(--preto);border-bottom-color:var(--preto)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.cub-pill{background:var(--am-bg);border:1px solid #E8C07A;padding:3px 10px;display:flex;align-items:center;gap:7px}
+.cub-pill-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--am)}
+.cub-pill-val{font-size:13px;font-weight:700;color:var(--am);font-family:var(--fm)}
+
+/* LAYOUT */
+.main{padding:16px;max-width:1400px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.cols{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+
+/* CARD */
+.card{background:#fff;border:1px solid var(--cinza);margin-bottom:10px;position:relative}
+.card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.card.verde::before{background:var(--verde)}
+.card.az::before{background:var(--az)}
+.card.am::before{background:var(--am)}
+.card.tc::before{background:var(--tc)}
+.card.roxo::before{background:var(--roxo)}
+.card.neutro::before{background:var(--cinza)}
+.card-hdr{padding:9px 14px 9px 17px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card-title{font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;flex:1}
+.card-body{padding:13px 14px 13px 17px}
+
+/* SEC */
+.sec{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
+
+/* FORM */
+.fg{display:grid;gap:7px}.fg2{grid-template-columns:1fr 1fr}.fg3{grid-template-columns:1fr 1fr 1fr}.fg4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.fgroup{display:flex;flex-direction:column;gap:3px;position:relative}
+.fgroup label{font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:#888}
+.fgroup input,.fgroup select,.fgroup textarea{font-family:var(--f);font-size:12px;border:1px solid var(--cinza);padding:6px 9px;background:#fff;color:var(--preto);width:100%;outline:none;transition:border-color .12s}
+.fgroup input:focus,.fgroup select:focus{border-color:var(--preto)}
+.fgroup textarea{resize:vertical;min-height:48px}
+.inp-readonly{background:var(--cinza2)!important;color:#888!important;cursor:default}
+
+/* AUTOCOMPLETE */
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--preto);border-top:none;z-index:50;max-height:180px;overflow-y:auto;display:none}
+.autocomplete-list.open{display:block}
+.ac-item{padding:7px 9px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--cinza2)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:var(--cinza2)}
+.ac-item mark{background:transparent;color:var(--verde);font-weight:700}
+.ac-new{color:#888;font-style:italic}
+
+/* STEPPER */
+.stepper{display:flex}
+.stepper input{text-align:center;border-left:none;border-right:none;flex:1;min-width:0}
+.sbt{background:#fff;border:1px solid var(--cinza);color:#666;padding:0 10px;cursor:pointer;font-size:15px;display:flex;align-items:center;font-weight:300;transition:all .12s;white-space:nowrap}
+.sbt:hover{background:var(--preto);color:#fff;border-color:var(--preto)}
+
+/* BOTÕES */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border:1px solid var(--preto);font-family:var(--f);font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--preto);background:#fff;cursor:pointer;transition:all .12s}
+.btn:hover{background:var(--preto);color:#fff}
+.btn.sm{padding:3px 8px;font-size:8px}
+.btn.xs{padding:2px 5px;font-size:8px}
+.btn.ghost{border-color:var(--cinza);color:#888}
+.btn.ghost:hover{border-color:var(--preto);color:var(--preto);background:#fff}
+.btn.verde{background:var(--verde);color:#fff;border-color:var(--verde)}
+.btn.verde:hover{background:var(--verde-l)}
+.btn.am{background:var(--am);color:#fff;border-color:var(--am)}
+.btn.tc{background:var(--tc);color:#fff;border-color:var(--tc)}
+.btn.danger{border-color:var(--cinza);color:var(--tc)}
+.btn.danger:hover{background:var(--tc-bg);border-color:var(--tc)}
+.btn-add{display:flex;align-items:center;gap:5px;padding:6px 10px;font-size:11px;border:1px dashed var(--cinza);background:transparent;color:#888;cursor:pointer;width:100%;margin-top:6px;transition:all .12s}
+.btn-add:hover{border-color:var(--preto);color:var(--preto)}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap}
+.b-vd{background:var(--verde-bg);color:#0A4A2E}
+.b-az{background:var(--az-bg);color:#0D3070}
+.b-am{background:var(--am-bg);color:#7A4D10}
+.b-tc{background:var(--tc-bg);color:#7A2A1C}
+.b-roxo{background:var(--roxo-bg);color:#3D2060}
+.b-gr{background:var(--cinza2);color:#666}
+
+/* HINT */
+.hint{background:var(--cinza2);border-left:3px solid var(--cinza);padding:7px 10px;font-size:11px;color:#666;line-height:1.5;margin-bottom:8px}
+.hint.verde{border-left-color:var(--verde);background:var(--verde-bg)}
+.hint.az{border-left-color:var(--az);background:var(--az-bg)}
+
+/* RESUMO */
+.rg{margin-bottom:8px}
+.rg-head{padding:7px 11px;display:flex;align-items:center;gap:7px;border:1px solid var(--cinza);background:#FAFAF8}
+.rg-stripe{width:3px;height:10px;flex-shrink:0}
+.rg-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;flex:1}
+.rg-sub{font-size:11px;font-weight:700;margin-left:auto}
+.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr 22px;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:#fff;font-size:11px;font-weight:300}
+.rg-item:hover{background:#FAFAF8}
+.rg-val{font-weight:700;text-align:right}
+.rg-val.edited{color:var(--verde)}
+
+/* TOTAL */
+.total-bar{background:var(--preto);color:#fff;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+.total-lbl{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6}
+.total-val{font-size:22px;font-weight:700;letter-spacing:-.5px;font-family:var(--fm)}
+.desc-bar{background:var(--tc-bg);border:1px solid #E8A89A;border-top:none;padding:6px 13px;display:flex;justify-content:space-between;font-size:11px}
+
+/* BLOCO DESPESA */
+.bloco{border:1px solid var(--cinza);border-left:3px solid var(--cinza);margin-bottom:7px;padding:11px 12px}
+.bloco-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.bloco-lbl{font-size:10px;font-weight:600;color:var(--preto)}
+.bloco-sub{font-size:11px;font-weight:700;color:#888}
+.bloco-acts{display:flex;align-items:center;gap:5px}
+
+/* HIST */
+table{width:100%;border-collapse:collapse}
+th{padding:6px 9px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;text-align:left;background:#FAFAF8;border-bottom:1px solid var(--cinza);white-space:nowrap}
+td{padding:7px 9px;border-top:1px solid var(--cinza2);font-size:11px;font-weight:300;vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:#FAFAF8}
+.empty{color:#999;font-size:11px;text-align:center;padding:18px}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;width:520px;max-width:97vw;max-height:92vh;overflow-y:auto;border:1px solid var(--cinza)}
+.modal-hd{padding:11px 15px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:5}
+.modal-title{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.modal-x{font-size:20px;cursor:pointer;color:#999;font-weight:300;line-height:1;padding:0 3px}
+.modal-x:hover{color:var(--preto)}
+.modal-body{padding:15px}
+.modal-ft{padding:10px 15px;border-top:1px solid var(--cinza);display:flex;gap:5px;justify-content:flex-end;position:sticky;bottom:0;background:#fff}
+
+/* PARAMS */
+.pr-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 22px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--cinza2)}
+.pr-row:last-child{border-bottom:none}
+
+/* TOAST */
+.toast{position:fixed;bottom:14px;right:14px;background:var(--preto);color:#fff;padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.3px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999}
+.toast.show{opacity:1}
+.blocked{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--tc);color:#fff;padding:8px 18px;font-size:10px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;white-space:nowrap}
+.blocked.show{opacity:1}
+
+/* PILLS NUCLEO */
+.nucleo-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.npill{padding:5px 13px;border:1px solid var(--cinza);font-size:11px;cursor:pointer;background:#fff;color:#888;transition:all .12s}
+.npill.sel{font-weight:600}
+.npill.sel.pais{background:var(--verde-bg);border-color:#5DCAA5;color:#0A4A2E}
+.npill.sel.urb{background:var(--az-bg);border-color:#7AADE8;color:#0D3070}
+.npill.sel.consul{background:var(--tc-bg);border-color:#E8A89A;color:#7A2A1C}
+.npill.sel.esp{background:var(--am-bg);border-color:#E8C07A;color:#7A4D10}
+
+/* ETAPAS EDITOR */
+.etapa-row{display:grid;grid-template-columns:2fr 1fr 1fr 80px 22px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2)}
+.etapa-row:last-child{border-bottom:none}
+
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mb8{margin-bottom:8px}
+select option[disabled]{color:#bbb}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-brand">EXP</div>
+  <div class="nav-sep"></div>
+  <div class="nav-lbl">Calculadora</div>
+  <div class="nav-tabs">
+    <div class="ntab active" onclick="goTab('calc')">Calcular proposta</div>
+    <div class="ntab" onclick="goTab('hist')">Histórico</div>
+    <div class="ntab" onclick="goTab('params')">Parâmetros</div>
+  </div>
+  <div class="nav-right">
+    <div class="cub-pill">
+      <div class="cub-pill-lbl">CUB/SC</div>
+      <div class="cub-pill-val" id="nav-cub">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════════════════════════════════════
+     ABA CALCULAR
+════════════════════════════════════════════════════ -->
+<div class="page active" id="tab-calc">
+<div class="cols">
+
+<!-- COLUNA ESQUERDA -->
+<div>
+
+  <!-- CUB -->
+  <div class="card am">
+    <div class="card-hdr">
+      <div class="card-title">CUB/SC RM Vigente</div>
+      <button class="btn sm ghost" onclick="toggleCubEdit()">✎ Atualizar</button>
+    </div>
+    <div class="card-body" id="cub-body">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <div style="font-size:24px;font-weight:700;color:var(--am);font-family:var(--fm)" id="cub-val">—</div>
+        <div style="font-size:11px;color:#888" id="cub-mes">—</div>
+      </div>
+    </div>
+    <div id="cub-edit" style="display:none;padding:0 14px 13px 17px">
+      <div class="fg fg3">
+        <div class="fgroup"><label>Novo valor (R$)</label><input type="number" id="cub-inp" step="0.01" placeholder="Ex: 3028.45"></div>
+        <div class="fgroup"><label>Mês de referência</label><input type="month" id="cub-mes-inp"></div>
+        <div class="fgroup"><label style="opacity:0">.</label><button class="btn verde" onclick="salvarCUB()">💾 Salvar CUB</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IDENTIFICAÇÃO -->
+  <div class="card neutro">
+    <div class="card-hdr"><div class="card-title">Identificação da proposta</div></div>
+    <div class="card-body">
+      <div class="fg fg2 mb8">
+        <div class="fgroup">
+          <label>Cliente / empresa</label>
+          <input type="text" id="f-cliente" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="buscarCliente(this.value)">
+          <div class="autocomplete-list" id="ac-list"></div>
+        </div>
+        <div class="fgroup"><label>Nome do projeto</label><input type="text" id="f-projeto" placeholder="Ex: Bairro Arvoredo"></div>
+      </div>
+      <div class="fg fg4 mb8">
+        <div class="fgroup"><label>Responsável</label>
+          <select id="f-resp">
+            <option value="CC">Carlos Corrêa</option>
+            <option value="GB">Gabriela Budel</option>
+            <option value="TC">Thayssa Christensen</option>
+            <option value="LA">Laís de Andrade</option>
+          </select>
+        </div>
+        <div class="fgroup"><label>Data</label><input type="date" id="f-data"></div>
+        <div class="fgroup"><label>Cidade</label><input type="text" id="f-cidade" placeholder="Cidade"></div>
+        <div class="fgroup"><label>UF</label>
+          <select id="f-uf">
+            <option value="">—</option>
+            <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
+            <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+            <option>GO</option><option>MA</option><option>MG</option><option>MS</option>
+            <option>MT</option><option>PA</option><option>PB</option><option>PE</option>
+            <option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+            <option>RO</option><option>RR</option><option>RS</option><option>SC</option>
+            <option>SE</option><option>SP</option><option>TO</option>
+            <option value="-">Exterior</option>
+          </select>
+        </div>
+      </div>
+      <div class="fgroup"><label>Observações</label><textarea id="f-obs" placeholder="Observações gerais da proposta..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- ADICIONAR ITEM -->
+  <div class="card neutro">
+    <div class="card-hdr"><div class="card-title">Adicionar serviço</div></div>
+    <div class="card-body">
+
+      <!-- PILLS NUCLEO -->
+      <div class="nucleo-pills">
+        <div class="npill sel pais" id="pill-PAIS" onclick="selNucleo('PAIS')">Paisagismo</div>
+        <div class="npill" id="pill-URB" onclick="selNucleo('URB')">Urbanismo</div>
+        <div class="npill" id="pill-CONSUL" onclick="selNucleo('CONSUL')">Consultoria</div>
+        <div class="npill" id="pill-ESP" onclick="selNucleo('ESP')">Proj. Especial</div>
+      </div>
+
+      <!-- SUBTIPO -->
+      <div class="fg fg2 mb8">
+        <div class="fgroup" id="grupo-subtipo1">
+          <label id="lbl-subtipo1">Tipo</label>
+          <select id="i-sub1" onchange="updateSub2()"></select>
+        </div>
+        <div class="fgroup" id="grupo-subtipo2" style="display:none">
+          <label id="lbl-subtipo2">Subtipo</label>
+          <select id="i-sub2" onchange="updateItemForm()"></select>
+        </div>
+      </div>
+
+      <!-- HINT -->
+      <div id="i-hint" class="hint" style="display:none"></div>
+
+      <!-- FORM CALC (PAIS normal / URB) -->
+      <div id="f-calc" style="display:none">
+        <div class="fg fg3 mb8">
+          <div class="fgroup">
+            <label id="lbl-area">Área (m²)</label>
+            <input type="number" id="i-area" min="0" step="1" oninput="calcPrev()">
+          </div>
+          <div class="fgroup" id="grupo-coef">
+            <label id="lbl-coef">Coef. complexidade</label>
+            <div class="stepper">
+              <button class="sbt" onclick="stepCoef(-1)">−</button>
+              <input type="number" id="i-coef" min="0" max="10" step="0.05" value="1.00" oninput="calcPrev()">
+              <button class="sbt" onclick="stepCoef(1)">+</button>
+            </div>
+          </div>
+          <div class="fgroup">
+            <label>Preview</label>
+            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--fm);color:var(--verde)" id="i-prev">—</div>
+          </div>
+        </div>
+        <div class="fgroup"><label>Descrição / observação</label><input type="text" id="i-desc" placeholder="Ex: Torre A, área comum..."></div>
+      </div>
+
+      <!-- FORM FLOREIRA -->
+      <div id="f-floreira" style="display:none">
+        <div class="fg fg3 mb8">
+          <div class="fgroup">
+            <label>Quantidade de CUB</label>
+            <div class="stepper">
+              <button class="sbt" onclick="stepCubQty(-1)">−</button>
+              <input type="number" id="i-cub-qty" min="2" max="20" step="0.25" value="2.00" oninput="calcPrev()">
+              <button class="sbt" onclick="stepCubQty(1)">+</button>
+            </div>
+          </div>
+          <div class="fgroup">
+            <label>Preview</label>
+            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--fm);color:var(--verde)" id="i-prev-fl">—</div>
+          </div>
+        </div>
+        <div class="fgroup"><label>Descrição</label><input type="text" id="i-desc-fl" placeholder="Ex: Fachada torre A, 18 andares"></div>
+      </div>
+
+      <!-- FORM ESP -->
+      <div id="f-esp" style="display:none">
+        <div class="fg fg2 mb8">
+          <div class="fgroup"><label>Identificador / serviço</label><input type="text" id="i-esp-id" placeholder="Ex: Plano de Mobilidade Urbana"></div>
+          <div class="fgroup"><label>Valor proposto (R$)</label><input type="number" id="i-esp-val" min="0" step="100"></div>
+        </div>
+      </div>
+
+      <!-- FORM CONSUL -->
+      <div id="f-consul" style="display:none">
+        <div class="fg fg3 mb8">
+          <div class="fgroup"><label>Identificador</label><input type="text" id="i-consul-id" placeholder="Ex: Consultoria mobilidade"></div>
+          <div class="fgroup"><label>Tipo de cobrança</label>
+            <select id="i-consul-tipo">
+              <option value="total">Valor total único</option>
+              <option value="mensal">Valor mensal (retainer)</option>
+            </select>
+          </div>
+          <div class="fgroup"><label>Estimativa de horas</label><input type="number" id="i-consul-horas" min="1" step="1" placeholder="Ex: 40"></div>
+        </div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup"><label>Valor por hora (R$)</label><input type="number" id="i-consul-hora-val" min="0" step="50" oninput="calcConsulPrev()"></div>
+          <div class="fgroup"><label>Preview</label>
+            <div style="font-size:16px;font-weight:700;padding:7px 0;font-family:var(--fm);color:var(--tc)" id="i-prev-consul">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORM LIVRE (URB_IMG / URB_CHARRETE) -->
+      <div id="f-livre" style="display:none">
+        <div class="fg fg2 mb8">
+          <div class="fgroup"><label>Identificador / descrição</label><input type="text" id="i-livre-id" placeholder="Ex: Charrete Design"></div>
+          <div class="fgroup"><label>Valor proposto (R$)</label><input type="number" id="i-livre-val" min="0" step="100"></div>
+        </div>
+      </div>
+
+      <button class="btn verde mt8" onclick="addItem()" style="width:100%">+ Adicionar à proposta</button>
+    </div>
+  </div>
+
+  <!-- REPASSE COMERCIAL -->
+  <div class="card am">
+    <div class="card-hdr"><div class="card-title">Repasse comercial</div>
+      <button class="btn sm ghost" onclick="toggleRepasse()">+ Adicionar</button>
+    </div>
+    <div id="repasse-form" style="display:none">
+      <div class="card-body">
+        <div class="fg fg3">
+          <div class="fgroup"><label>Nome do repasse</label><input type="text" id="rep-nome" placeholder="Ex: Comissão parceiro"></div>
+          <div class="fgroup"><label>Tipo</label>
+            <select id="rep-tipo" onchange="onRepTipoChange()">
+              <option value="pct">Percentual (%)</option>
+              <option value="val">Valor fixo (R$)</option>
+            </select>
+          </div>
+          <div class="fgroup"><label id="rep-val-lbl">Percentual (%)</label>
+            <input type="number" id="rep-val" min="0" step="0.5" placeholder="Ex: 5" oninput="calcResumo()">
+          </div>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:6px" id="rep-info">Incide sobre o valor dos serviços, não sobre despesas ou subcontratações.</div>
+      </div>
+    </div>
+    <div id="repasse-preview" style="display:none">
+      <div class="card-body" style="padding-top:8px;padding-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;font-weight:600" id="rep-preview-nome"></div>
+            <div style="font-size:10px;color:#888" id="rep-preview-desc"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:14px;font-weight:700;color:var(--am);font-family:var(--fm)" id="rep-preview-val"></div>
+            <button class="btn xs danger" onclick="remRepasse()">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBCONTRATAÇÕES -->
+  <div class="card tc">
+    <div class="card-hdr"><div class="card-title">Subcontratações</div></div>
+    <div class="card-body">
+      <div id="sub-list"></div>
+      <div style="border:1px solid var(--cinza2);padding:10px;background:#FAFAF8;margin-top:6px">
+        <div class="sec mb8">Nova subcontratação</div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup"><label>Serviço</label><input type="text" id="sc-serv" placeholder="Ex: Levantamento topográfico"></div>
+          <div class="fgroup"><label>Empresa cotada</label><input type="text" id="sc-emp" placeholder="Ex: GeoSul Topografia"></div>
+        </div>
+        <div class="fg fg4 mb8" style="grid-template-columns:1fr 90px 90px 90px">
+          <div class="fgroup"><label>Data da cotação</label><input type="date" id="sc-data"></div>
+          <div class="fgroup"><label>Valor (R$)</label><input type="number" id="sc-val" min="0" step="100"></div>
+          <div class="fgroup"><label>Bitributação (%)</label><input type="number" id="sc-bit" min="0" max="50" step="0.5" value="15"></div>
+          <div class="fgroup"><label>Retenção EXP (%)</label><input type="number" id="sc-ret" min="0" max="100" step="1" value="50"></div>
+        </div>
+        <button class="btn verde" onclick="addSubcontr()" style="width:100%;font-size:11px">+ Adicionar subcontratação</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESPESAS INDIRETAS -->
+  <div class="card neutro">
+    <div class="card-hdr">
+      <div class="card-title">Despesas indiretas</div>
+      <div style="display:flex;gap:5px">
+        <button class="btn sm ghost" onclick="addDesp('alim')">+ Alimentação</button>
+        <button class="btn sm ghost" onclick="addDesp('carro')">+ Carro</button>
+        <button class="btn sm ghost" onclick="addDesp('translado')">+ Translado</button>
+        <button class="btn sm ghost" onclick="addDesp('passagem')">+ Passagem</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="desp-list"></div>
+      <div style="border-top:1px solid var(--cinza2);margin-top:10px;padding-top:10px">
+        <div class="fg fg3">
+          <div class="fgroup">
+            <label>Índice de bitributação sobre despesas (%)</label>
+            <input type="number" id="desp-bit" min="0" max="50" step="0.5" value="15" oninput="calcResumo()">
+          </div>
+          <div class="fgroup">
+            <label style="opacity:0">.</label>
+            <div style="font-size:11px;color:#888;padding:6px 0">Multiplica o total de despesas por (1 + %/100)</div>
+          </div>
+          <div class="fgroup">
+            <label>Total despesas (com bitrib.)</label>
+            <div style="font-size:16px;font-weight:700;padding:6px 0;font-family:var(--fm)" id="desp-total-display">R$ 0,00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /col esq -->
+
+<!-- COLUNA DIREITA — RESUMO -->
+<div>
+  <div style="position:sticky;top:58px">
+    <div class="card-hdr" style="background:#fff;border:1px solid var(--cinza);margin-bottom:0">
+      <div class="card-title" id="resumo-title">Resumo da proposta</div>
+      <div style="font-size:9px;color:#999" id="i-count">0 itens</div>
+    </div>
+    <div id="resumo-body" style="background:#fff;border:1px solid var(--cinza);border-top:none;padding:12px">
+      <div class="empty">Adicione serviços para ver o resumo</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="btn verde" style="flex:1" onclick="salvarProposta()">💾 Salvar proposta</button>
+      <button class="btn ghost" onclick="limpar()">Nova</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /cols -->
+</div><!-- /tab-calc -->
+
+<!-- ═══════════════════════════════════════════════════
+     ABA HISTÓRICO
+════════════════════════════════════════════════════ -->
+<div class="page" id="tab-hist">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:17px;font-weight:700">Propostas geradas</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <select id="hf-nucleo" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f)">
+        <option value="todos">Todos os núcleos</option>
+        <option value="PAIS">Paisagismo</option>
+        <option value="URB">Urbanismo</option>
+        <option value="CONSUL">Consultoria</option>
+        <option value="ESP">Especial</option>
+      </select>
+      <select id="hf-resp" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f)">
+        <option value="todos">Todos responsáveis</option>
+        <option value="CC">Carlos Corrêa</option>
+        <option value="GB">Gabriela Budel</option>
+        <option value="TC">Thayssa Christensen</option>
+        <option value="LA">Laís de Andrade</option>
+      </select>
+      <input id="hf-search" placeholder="Buscar..." oninput="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f);width:160px">
+    </div>
+  </div>
+  <div class="card neutro">
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Nº</th><th>Cliente</th><th>Projeto</th><th>Núcleo</th><th>Resp.</th>
+          <th>Cidade/UF</th><th>Data</th><th>Total</th>
+        </tr></thead>
+        <tbody id="hist-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ABA PARÂMETROS
+════════════════════════════════════════════════════ -->
+<div class="page" id="tab-params">
+  <div style="font-size:17px;font-weight:700;margin-bottom:14px">Parâmetros de cálculo</div>
+
+  <!-- CUB HISTORICO -->
+  <div class="card am">
+    <div class="card-hdr"><div class="card-title">Histórico do CUB</div></div>
+    <div class="card-body" id="cub-hist-list"><div class="empty">Nenhum registro.</div></div>
+  </div>
+
+  <!-- FAIXAS PAIS -->
+  <div class="card verde">
+    <div class="card-hdr"><div class="card-title">Faixas — Paisagismo (m² × multiplicador × CUB × coef)</div></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;padding:3px 0;border-bottom:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#999">
+        <div>De (m²)</div><div>Até (m²)</div><div>Descrição</div><div>Multiplicador</div><div></div>
+      </div>
+      <div id="faixas-pais"></div>
+      <button class="btn-add" onclick="addFaixa('P')">+ Nova faixa</button>
+    </div>
+  </div>
+
+  <!-- FAIXAS URB -->
+  <div class="card az">
+    <div class="card-hdr"><div class="card-title">Faixas — Urbanismo (ha × multiplicador × CUB × coef)</div></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;padding:3px 0;border-bottom:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#999">
+        <div>De (ha)</div><div>Até (ha)</div><div>Descrição</div><div>Multiplicador</div><div></div>
+      </div>
+      <div id="faixas-urb"></div>
+      <button class="btn-add" onclick="addFaixa('U')">+ Nova faixa</button>
+    </div>
+  </div>
+
+  <!-- MÍNIMOS -->
+  <div class="card neutro">
+    <div class="card-hdr"><div class="card-title">Cobranças mínimas por subtipo</div></div>
+    <div class="card-body" id="mins-list"></div>
+  </div>
+
+  <!-- DESPESAS REF -->
+  <div class="card neutro">
+    <div class="card-hdr"><div class="card-title">Valores de referência — Despesas indiretas</div></div>
+    <div class="card-body">
+      <div class="fg fg3">
+        <div class="fgroup"><label>Diária técnica (R$)</label><input type="number" id="p-diaria" value="680" oninput="saveParams()"></div>
+        <div class="fgroup"><label>Gasolina (R$/litro)</label><input type="number" id="p-gas" step="0.05" value="6.20" oninput="saveParams()"></div>
+        <div class="fgroup"><label>Aluguel de carro (R$/dia)</label><input type="number" id="p-car" value="180" oninput="saveParams()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ETAPAS POR TIPO -->
+  <div class="card neutro">
+    <div class="card-hdr">
+      <div class="card-title">Etapas e distribuição por tipo de projeto</div>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px" id="etapa-nucleo-tabs">
+        <button class="btn sm filled" onclick="selEtapaNucleo('PAIS',this)">Paisagismo</button>
+        <button class="btn sm ghost" onclick="selEtapaNucleo('URB',this)">Urbanismo</button>
+        <button class="btn sm ghost" onclick="selEtapaNucleo('CONSUL',this)">Consultoria</button>
+        <button class="btn sm ghost" onclick="selEtapaNucleo('ESP',this)">Especial</button>
+      </div>
+      <div style="margin-bottom:10px">
+        <div class="fg fg3">
+          <div class="fgroup"><label>Núcleo</label><div id="etapa-nucleo-lbl" style="font-size:12px;padding:6px 0;font-weight:600">Paisagismo</div></div>
+          <div class="fgroup" id="etapa-tipo-grp">
+            <label>Tipo</label>
+            <select id="etapa-tipo-sel" onchange="updateEtapaSubtipo()"></select>
+          </div>
+          <div class="fgroup" id="etapa-sub-grp" style="display:none">
+            <label>Subtipo</label>
+            <select id="etapa-sub-sel" onchange="renderEtapasEditor()"></select>
+          </div>
+        </div>
+      </div>
+      <div id="etapas-editor"></div>
+      <button class="btn-add" onclick="addEtapa()">+ Nova etapa</button>
+      <button class="btn verde sm mt8" onclick="saveParams()">💾 Salvar parâmetros</button>
+    </div>
+  </div>
+
+</div><!-- /tab-params -->
+
+</div><!-- /main -->
+
+<!-- MODAL EDITAR VALOR -->
+<div class="modal-bg" id="modal-edit">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Editar valor do item</div><span class="modal-x" onclick="closeM('modal-edit')">×</span></div>
+    <div class="modal-body">
+      <div style="background:var(--am-bg);border:1px solid #E8C07A;padding:8px 11px;font-size:11px;color:var(--am);margin-bottom:12px">
+        A alteração substitui o cálculo automático e fica registrada no histórico da proposta.
+      </div>
+      <div class="fg fg2 mb8">
+        <div class="fgroup"><label>Valor calculado</label><input type="text" id="ev-calc" class="inp-readonly" readonly></div>
+        <div class="fgroup"><label>Novo valor (R$)</label><input type="number" id="ev-novo" min="0" step="100"></div>
+      </div>
+      <div class="fgroup"><label>Justificativa <span style="color:var(--tc)">*</span></label><textarea id="ev-just" placeholder="Motivo da alteração de valor..."></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn ghost" onclick="closeM('modal-edit')">Cancelar</button>
+      <button class="btn am" onclick="confirmEdit()">Aplicar alteração</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="blocked" id="blocked"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// SUBTIPOS COMPLETOS
+// ════════════════════════════════════════════════════════
+const SUBS = {
+  PAIS: {
+    'Paisagismo de incorporação': {
+      'Térreo / Passeios':        { k:'PAIS_TERREO',  mode:'calc', coefBase:0.85, hint:'Coef. 0,8 a 1,0 conforme possibilidade de repetição, complexidade e desníveis. Mínimo R$ 17.280. Cálculo sobre m².' },
+      'Pavimento condominial / Ático': { k:'PAIS_CONDO', mode:'calc', coefBase:1.0, hint:'Coef. 0,9 a 1,3 conforme programa de necessidades, piscina e classe do empreendimento. Mínimo R$ 24.000. Cálculo sobre m².' },
+      'Floreiras em fachadas':    { k:'PAIS_FLOREIRA', mode:'floreira', coefBase:null, hint:'Cobrado em múltiplos de CUB (mín. 2 CUB). Selecione a quantidade de 0,25 em 0,25.' },
+    },
+    'Paisagismo urbano': {
+      'Arborização viária':       { k:'PAIS_ARB',     mode:'calc', coefBase:0.085, hint:'Multiplicador fixo de 0,085 sobre a Superfície de Viário (SV). Mínimo R$ 17.280. Informe a área de SV em m². O coeficiente não é aplicado.' },
+      'Streetscape':              { k:'PAIS_STREET',  mode:'calc', coefBase:0.2, hint:'Coef. 0,2 como base. Mínimo R$ 17.280. Cálculo sobre m².' },
+      'Espaço público — Parque / Praça': { k:'PAIS_PARQUE', mode:'calc', coefBase:0.5, hint:'Coef. 0,4 a 0,6 conforme complexidade. Mínimo R$ 24.000. Cálculo sobre m².' },
+      'Espaço público — Parque baixo impacto': { k:'PAIS_PARQUE_BAIXO', mode:'calc', coefBase:0.25, hint:'Coef. 0,25 (base). Mínimo R$ 24.000. Parques de baixa intervenção. Cálculo sobre m².' },
+    },
+    'Paisagismo residencial': {
+      'Térreo / Passeios':        { k:'PAIS_RES_TERREO', mode:'calc', coefBase:0.9, hint:'Coef. 0,8 a 1,2. Mínimo R$ 17.280. Cálculo sobre m².' },
+      'Espaço sobre laje':        { k:'PAIS_RES_LAJE',   mode:'calc', coefBase:1.0, hint:'Coef. 0,9 a 1,3 conforme complexidade. Mínimo R$ 17.280. Cálculo sobre m².' },
+    },
+  },
+  URB: {
+    'Conceituação':               { k:'URB_CONCEITO', mode:'calc',    coefBase:3, hint:'Cobrado em múltiplos de CUB: de 2 a 5 CUB. Informe no campo Coef. o número de CUBs. Não vinculado a área.' },
+    'Estudo de Viabilidade':      { k:'URB_VIAB',     mode:'calc',    coefBase:0.30, hint:'Coef. 0,25 a 0,40. Mínimo R$ 15.000. Cálculo sobre ha.' },
+    'Masterplan':                 { k:'URB_MASTER',   mode:'calc',    coefBase:1.0, hint:'Coef. 0,8 a 1,2. Bairro agrega valor. Mínimo R$ 20.000. Cálculo sobre ha.' },
+    'Projeto Urbanístico':        { k:'URB_PROJETO',  mode:'calc',    coefBase:0.7, hint:'Coef. 0,5 a 0,9. Bairro agrega valor. Mínimo R$ 15.000. Cálculo sobre ha.' },
+    'Desmembramento / Unificação':{ k:'URB_DESM',     mode:'calc',    coefBase:0.10, hint:'Coef. 0,10. Mínimo R$ 12.000. Cálculo sobre ha.' },
+    'Imagens Renderizadas':       { k:'URB_IMG',      mode:'livre',   coefBase:null, hint:'Valor aberto — insira o valor final acordado. Mínimo R$ 10.000.' },
+    'Charrete Design':            { k:'URB_CHARRETE', mode:'livre',   coefBase:null, hint:'Valor fixo: R$ 30.000 a R$ 100.000. Insira o valor final acordado.' },
+  },
+  CONSUL: {
+    'Por hora técnica':           { k:'CONSUL_HORA',   mode:'consul', coefBase:null },
+    'Retainer mensal':            { k:'CONSUL_MENSAL', mode:'consul', coefBase:null },
+  },
+  ESP: {
+    'Projeto especial':           { k:'ESP_LIVRE', mode:'esp', coefBase:null },
+  },
+};
+
+const NC  = { PAIS:'Paisagismo', URB:'Urbanismo', CONSUL:'Consultoria', ESP:'Proj. Especial' };
+const NBADGE = { PAIS:'b-vd', URB:'b-az', CONSUL:'b-tc', ESP:'b-am' };
+const NCOR  = { PAIS:'var(--verde)', URB:'var(--az)', CONSUL:'var(--tc)', ESP:'var(--am)' };
+
+// ════════════════════════════════════════════════════════
+// ESTADO
+// ════════════════════════════════════════════════════════
+let S = {
+  cub: 3028.45, cubMes: '2026-03',
+  cubHist: [{ val: 3028.45, mes: '2026-03', by: 'Sistema', at: '2026-03-20' }],
+  fP: [
+    { max:300,   mult:.03,   label:'A — até 300 m²' },
+    { max:800,   mult:.01,   label:'B — 301 a 800 m²' },
+    { max:5000,  mult:.004,  label:'C — 801 a 5.000 m²' },
+    { max:10000, mult:.003,  label:'D — 5.001 a 10.000 m²' },
+    { max:null,  mult:.0025, label:'E — acima de 10.000 m²' },
+  ],
+  fU: [
+    { max:5,    mult:.00015, label:'A — até 5 ha' },
+    { max:20,   mult:.00013, label:'B — 5 a 20 ha' },
+    { max:50,   mult:.00009, label:'C — 20 a 50 ha' },
+    { max:100,  mult:.00006, label:'D — 50 a 100 ha' },
+    { max:250,  mult:.00004, label:'E — 100 a 250 ha' },
+    { max:null, mult:.00001, label:'F — acima de 250 ha' },
+  ],
+  mins: {
+    PAIS_TERREO:17280, PAIS_CONDO:24000, PAIS_FLOREIRA:0,
+    PAIS_ARB:17280, PAIS_STREET:17280, PAIS_PARQUE:24000, PAIS_PARQUE_BAIXO:24000,
+    PAIS_RES_TERREO:17280, PAIS_RES_LAJE:17280,
+    URB_CONCEITO:0, URB_VIAB:15000, URB_MASTER:20000,
+    URB_PROJETO:15000, URB_DESM:12000, URB_IMG:10000, URB_CHARRETE:30000,
+    CONSUL_HORA:0, CONSUL_MENSAL:0,
+  },
+  params: { diaria:680, gas:6.20, car:180 },
+  etapas: {
+    PAIS: { default: ['Briefing','Estudo Conceitual','Estudo Preliminar','Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'] },
+    URB:  { default: ['Briefing','Estudo Conceitual','Estudo Preliminar','Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'] },
+    CONSUL: { default: ['Briefing','Análise técnica','Entrega'] },
+    ESP:    { default: ['Briefing','Diagnóstico','Diretrizes','Relatório final'] },
+  },
+  distEtapas: {
+    PAIS: { default: [5,15,20,15,20,20,5] },
+    URB:  { default: [5,15,20,15,20,20,5] },
+    CONSUL: { default: [10,50,40] },
+    ESP:    { default: [10,30,40,20] },
+  },
+  proposals: [],
+  clientes: [],
+};
+
+let cItems = [], cDesps = [], cSubs = [], cRepasse = null;
+let currentNucleo = 'PAIS';
+let evItemId = null;
+let editEtapaNucleo = 'PAIS', editEtapaChave = 'default';
+let dSeq = 1;
+
+// ════════════════════════════════════════════════════════
+// STORAGE
+// ════════════════════════════════════════════════════════
+function save() { try { localStorage.setItem('exp_calc_v3', JSON.stringify({ S, cItems, cDesps, cSubs, cRepasse })); } catch(e){} }
+function load() {
+  try {
+    const r = localStorage.getItem('exp_calc_v3');
+    if (!r) return;
+    const d = JSON.parse(r);
+    if (d.S) { S = { ...S, ...d.S }; }
+    if (d.cItems) cItems = d.cItems;
+    if (d.cDesps) cDesps = d.cDesps;
+    if (d.cSubs)  cSubs  = d.cSubs;
+    if (d.cRepasse !== undefined) cRepasse = d.cRepasse;
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════
+const fmt = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtM = ym => { if(!ym)return'—'; const[y,m]=ym.split('-'); const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return`${ms[+m-1]}/${y}`; };
+const fmtD = d => d ? d.split('-').reverse().join('/') : '—';
+function showToast(m) { const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500); }
+function showBlocked(m) { const t=document.getElementById('blocked');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500); }
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+function openM(id)  { document.getElementById(id).classList.add('open'); }
+
+// ════════════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ════════════════════════════════════════════════════════
+function goTab(t) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.querySelectorAll('.ntab').forEach(b=>{
+    const map={calc:'Calcular',hist:'Histórico',params:'Parâmetros'};
+    if(Object.entries(map).some(([k,v])=>k===t&&b.textContent.startsWith(v)))b.classList.add('active');
+  });
+  if(t==='hist')renderHist();
+  if(t==='params')renderParams();
+}
+
+// ════════════════════════════════════════════════════════
+// CUB
+// ════════════════════════════════════════════════════════
+function updateCubDisplay() {
+  const v = S.cub ? fmt(S.cub) : '—';
+  document.getElementById('cub-val').textContent = v;
+  document.getElementById('cub-mes').textContent = S.cub ? fmtM(S.cubMes) : 'Não cadastrado';
+  document.getElementById('nav-cub').textContent = S.cub ? fmt(S.cub) : '—';
+}
+function toggleCubEdit() {
+  const e = document.getElementById('cub-edit');
+  e.style.display = e.style.display==='none' ? 'block' : 'none';
+}
+function salvarCUB() {
+  const v = parseFloat(document.getElementById('cub-inp').value);
+  const m = document.getElementById('cub-mes-inp').value;
+  if(!v||!m){ showBlocked('Informe valor e mês'); return; }
+  S.cub = v; S.cubMes = m;
+  S.cubHist.unshift({ val:v, mes:m, by:'Usuário', at:new Date().toISOString().slice(0,10) });
+  updateCubDisplay();
+  document.getElementById('cub-edit').style.display = 'none';
+  cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc = calcIV(it); });
+  calcResumo(); save(); showToast('CUB atualizado — proposta recalibrada');
+}
+
+// ════════════════════════════════════════════════════════
+// AUTOCOMPLETE CLIENTE
+// ════════════════════════════════════════════════════════
+function buscarCliente(q) {
+  const list = document.getElementById('ac-list');
+  if (!q || q.length < 2) { list.classList.remove('open'); return; }
+  const ql = q.toLowerCase();
+  const matches = S.clientes.filter(c => c.toLowerCase().includes(ql)).slice(0,8);
+  const hasExact = S.clientes.some(c => c.toLowerCase() === ql);
+  let html = matches.map(c => {
+    const hi = c.replace(new RegExp(`(${q})`, 'gi'), '<mark>$1</mark>');
+    return `<div class="ac-item" onclick="selecionarCliente('${c.replace(/'/g,"\\'")}')">🏢 ${hi}</div>`;
+  }).join('');
+  if (!hasExact) html += `<div class="ac-item ac-new" onclick="novoCliente('${q.replace(/'/g,"\\'")}')">+ Criar "${q}"</div>`;
+  list.innerHTML = html;
+  list.classList.add('open');
+}
+function selecionarCliente(nome) {
+  document.getElementById('f-cliente').value = nome;
+  document.getElementById('ac-list').classList.remove('open');
+}
+function novoCliente(nome) {
+  if (!S.clientes.includes(nome)) { S.clientes.push(nome); S.clientes.sort(); }
+  selecionarCliente(nome);
+  showToast(`Cliente "${nome}" criado`);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.fgroup')) document.getElementById('ac-list').classList.remove('open');
+});
+
+// ════════════════════════════════════════════════════════
+// NÚCLEO E SUBTIPOS
+// ════════════════════════════════════════════════════════
+function selNucleo(n) {
+  currentNucleo = n;
+  ['PAIS','URB','CONSUL','ESP'].forEach(x => {
+    const p = document.getElementById('pill-'+x);
+    p.className = 'npill' + (x===n ? ` sel ${x.toLowerCase()}` : '');
+  });
+  buildSubSelects();
+}
+
+function buildSubSelects() {
+  const n = currentNucleo;
+  const data = SUBS[n];
+  const s1 = document.getElementById('i-sub1');
+  const s2 = document.getElementById('i-sub2');
+  const g2 = document.getElementById('grupo-subtipo2');
+  const l1 = document.getElementById('lbl-subtipo1');
+
+  if (n === 'URB' || n === 'CONSUL' || n === 'ESP') {
+    // Nível único
+    l1.textContent = 'Subtipo';
+    s1.innerHTML = Object.keys(data).map(k=>`<option value="${k}">${k}</option>`).join('');
+    g2.style.display = 'none';
+    updateItemForm();
+  } else {
+    // PAIS: dois níveis
+    l1.textContent = 'Tipo';
+    s1.innerHTML = Object.keys(data).map(k=>`<option value="${k}">${k}</option>`).join('');
+    g2.style.display = '';
+    updateSub2();
+  }
+}
+
+function updateSub2() {
+  const n = currentNucleo;
+  if (n !== 'PAIS') return;
+  const tipo = document.getElementById('i-sub1').value;
+  const subs = SUBS.PAIS[tipo] || {};
+  const s2 = document.getElementById('i-sub2');
+  s2.innerHTML = Object.keys(subs).map(k=>`<option value="${k}">${k}</option>`).join('');
+  updateItemForm();
+}
+
+function getSubInfo() {
+  const n = currentNucleo;
+  if (n === 'PAIS') {
+    const tipo = document.getElementById('i-sub1').value;
+    const sub  = document.getElementById('i-sub2').value;
+    return SUBS.PAIS[tipo]?.[sub] || null;
+  } else {
+    const sub = document.getElementById('i-sub1').value;
+    return SUBS[n]?.[sub] || null;
+  }
+}
+
+function updateItemForm() {
+  const si = getSubInfo();
+  const mode = si?.mode || 'calc';
+
+  // hint
+  const hEl = document.getElementById('i-hint');
+  if (si?.hint) { hEl.textContent = si.hint; hEl.style.display = 'block'; }
+  else hEl.style.display = 'none';
+
+  // esconde tudo
+  ['f-calc','f-floreira','f-esp','f-consul','f-livre'].forEach(id=>document.getElementById(id).style.display='none');
+
+  if (mode === 'calc') {
+    document.getElementById('f-calc').style.display = 'block';
+    const n = currentNucleo;
+    const isConceito = si?.k === 'URB_CONCEITO';
+    const isArb = si?.k === 'PAIS_ARB';
+    document.getElementById('lbl-area').textContent = n==='URB' ? 'Área (ha)' : 'Área (m²)';
+    document.getElementById('grupo-coef').style.display = isArb ? 'none' : '';
+    const coefEl = document.getElementById('i-coef');
+    if (isConceito) {
+      document.getElementById('lbl-coef').textContent = 'Qtd. CUB (2 a 10)';
+      coefEl.min='2'; coefEl.max='10'; coefEl.step='0.5';
+    } else {
+      document.getElementById('lbl-coef').textContent = 'Coef. complexidade';
+      coefEl.min='0'; coefEl.max='2'; coefEl.step='0.05';
+    }
+    // aplica coefBase
+    if (si?.coefBase !== null && si?.coefBase !== undefined) coefEl.value = si.coefBase.toFixed(2);
+    calcPrev();
+  } else if (mode === 'floreira') {
+    document.getElementById('f-floreira').style.display = 'block';
+    calcPrev();
+  } else if (mode === 'esp') {
+    document.getElementById('f-esp').style.display = 'block';
+  } else if (mode === 'consul') {
+    document.getElementById('f-consul').style.display = 'block';
+    calcConsulPrev();
+  } else if (mode === 'livre') {
+    document.getElementById('f-livre').style.display = 'block';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// ENGINE DE CÁLCULO
+// ════════════════════════════════════════════════════════
+function calcBase(area, faixas) {
+  let rem=area, tot=0, prev=0;
+  for (const f of faixas) {
+    const top = f.max===null ? Infinity : f.max;
+    const chunk = Math.max(0, Math.min(rem, top-prev));
+    tot += chunk * f.mult * S.cub;
+    rem -= chunk; prev = top;
+    if (rem <= 0) break;
+  }
+  return tot;
+}
+
+function calcIV(it) {
+  if (!S.cub) return 0;
+  const k=it.subK, area=+it.area||0, coef=+it.coef||0;
+  let base=0;
+  if (k==='PAIS_FLOREIRA') base = area * S.cub;
+  else if (k==='PAIS_ARB') base = area * 0.085 * S.cub;
+  else if (k==='URB_CONCEITO') base = coef * S.cub;
+  else if (it.mode==='livre'||it.mode==='esp') base = +it.vFix||0;
+  else if (it.mode==='consul') base = (+it.horaVal||0)*(+it.horas||0);
+  else if (k.startsWith('PAIS')) base = calcBase(area, S.fP) * coef;
+  else if (k.startsWith('URB'))  base = calcBase(area, S.fU) * coef;
+  else base = +it.vFix||0;
+  return Math.max(base, S.mins[k]||0);
+}
+
+function calcPrev() {
+  const si = getSubInfo();
+  if (!si||!S.cub) { ['i-prev','i-prev-fl'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';}); return; }
+  const mode = si.mode;
+  let v = 0;
+  if (mode==='calc') {
+    const a=+document.getElementById('i-area').value||0;
+    const c=+document.getElementById('i-coef').value||0;
+    v = calcIV({subK:si.k,area:a,coef:c,mode});
+    document.getElementById('i-prev').textContent = v>0?fmt(v):'—';
+  } else if (mode==='floreira') {
+    const qty=+document.getElementById('i-cub-qty').value||0;
+    v = calcIV({subK:si.k,area:qty,coef:0,mode});
+    document.getElementById('i-prev-fl').textContent = v>0?fmt(v):'—';
+  }
+}
+
+function calcConsulPrev() {
+  const hv = +document.getElementById('i-consul-hora-val').value||0;
+  const h  = +document.getElementById('i-consul-horas').value||0;
+  document.getElementById('i-prev-consul').textContent = hv&&h ? fmt(hv*h) : '—';
+}
+
+function stepCoef(d) {
+  const el=document.getElementById('i-coef');
+  const step=+el.step||0.05;
+  let v=Math.round((+el.value+d*step)*1000)/1000;
+  v=Math.max(+el.min,Math.min(+el.max,v));
+  el.value=v.toFixed(2); calcPrev();
+}
+function stepCubQty(d) {
+  const el=document.getElementById('i-cub-qty');
+  let v=Math.round((+el.value+d*.25)*100)/100;
+  v=Math.max(2,Math.min(20,v));
+  el.value=v.toFixed(2); calcPrev();
+}
+
+// ════════════════════════════════════════════════════════
+// ADICIONAR ITEM
+// ════════════════════════════════════════════════════════
+function addItem() {
+  if (!S.cub) { showBlocked('Cadastre o CUB antes de calcular'); return; }
+  const si = getSubInfo();
+  if (!si) return;
+  const n    = currentNucleo;
+  const mode = si.mode;
+
+  // Labels para exibição
+  let subLabel = '';
+  if (n==='PAIS') {
+    subLabel = document.getElementById('i-sub1').value + ' · ' + document.getElementById('i-sub2').value;
+  } else {
+    subLabel = document.getElementById('i-sub1').value;
+  }
+
+  let area=0, coef=0, vFix=0, desc='', horaVal=0, horas=0, tipoCobranca='total', id='';
+
+  if (mode==='calc') {
+    area = +document.getElementById('i-area').value||0;
+    coef = +document.getElementById('i-coef').value||0;
+    desc = document.getElementById('i-desc').value.trim();
+  } else if (mode==='floreira') {
+    area = +document.getElementById('i-cub-qty').value||0;
+    desc = document.getElementById('i-desc-fl').value.trim();
+  } else if (mode==='esp') {
+    id   = document.getElementById('i-esp-id').value.trim();
+    vFix = +document.getElementById('i-esp-val').value||0;
+    if (!vFix) { showBlocked('Informe o valor'); return; }
+  } else if (mode==='consul') {
+    id          = document.getElementById('i-consul-id').value.trim();
+    tipoCobranca= document.getElementById('i-consul-tipo').value;
+    horas       = +document.getElementById('i-consul-horas').value||0;
+    horaVal     = +document.getElementById('i-consul-hora-val').value||0;
+    if (!horaVal) { showBlocked('Informe o valor por hora'); return; }
+    vFix = horaVal * horas;
+  } else if (mode==='livre') {
+    id   = document.getElementById('i-livre-id').value.trim();
+    vFix = +document.getElementById('i-livre-val').value||0;
+    if (!vFix) { showBlocked('Informe o valor'); return; }
+  }
+
+  const valorCalc = calcIV({ subK:si.k, area, coef, vFix, mode, horaVal, horas });
+
+  cItems.push({
+    itemId:   Date.now(),
+    nucleo:   n,
+    subK:     si.k,
+    subLabel,
+    mode,
+    desc, id, area, coef, vFix, horaVal, horas, tipoCobranca,
+    valorCalc,
+    valorProposto: null,
+    editJust:null, editBy:null, editAt:null,
+    cubSnap:  S.cub, cubMes: S.cubMes,
+  });
+
+  // Reset campos
+  ['i-area','i-desc','i-desc-fl','i-esp-id','i-esp-val','i-livre-id','i-livre-val',
+   'i-consul-id','i-consul-horas','i-consul-hora-val'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
+  document.getElementById('i-cub-qty').value='2.00';
+  calcPrev(); calcResumo(); save();
+  showToast('Item adicionado');
+}
+
+function remItem(id) { cItems=cItems.filter(i=>i.itemId!==id); calcResumo(); save(); }
+
+// ════════════════════════════════════════════════════════
+// EDITAR VALOR
+// ════════════════════════════════════════════════════════
+function openEdit(id) {
+  const it = cItems.find(i=>i.itemId===id); if(!it)return;
+  evItemId = id;
+  const base = (it.mode==='livre'||it.mode==='esp') ? (it.vFix||0) : it.valorCalc;
+  document.getElementById('ev-calc').value = fmt(base);
+  document.getElementById('ev-novo').value = it.valorProposto!==null ? it.valorProposto : base;
+  document.getElementById('ev-just').value = '';
+  openM('modal-edit');
+}
+function confirmEdit() {
+  const novo = +document.getElementById('ev-novo').value;
+  const just = document.getElementById('ev-just').value.trim();
+  if (!just) { showBlocked('Justificativa obrigatória'); return; }
+  if (novo<0) { showBlocked('Valor inválido'); return; }
+  const it = cItems.find(i=>i.itemId===evItemId); if(!it)return;
+  it.valorProposto = novo;
+  it.editJust = just;
+  it.editAt   = new Date().toLocaleDateString('pt-BR');
+  closeM('modal-edit'); calcResumo(); save();
+  showToast('Valor alterado');
+}
+
+// ════════════════════════════════════════════════════════
+// REPASSE
+// ════════════════════════════════════════════════════════
+function toggleRepasse() {
+  const f = document.getElementById('repasse-form');
+  f.style.display = f.style.display==='none' ? 'block' : 'none';
+}
+function onRepTipoChange() {
+  const t = document.getElementById('rep-tipo').value;
+  document.getElementById('rep-val-lbl').textContent = t==='pct' ? 'Percentual (%)' : 'Valor (R$)';
+  document.getElementById('rep-info').textContent = t==='pct'
+    ? 'Incide sobre o valor dos serviços, não sobre despesas ou subcontratações.'
+    : 'Valor fixo somado à proposta.';
+  calcResumo();
+}
+function getRepasseCalc(totServicos) {
+  const nome = document.getElementById('rep-nome').value.trim();
+  const tipo = document.getElementById('rep-tipo').value;
+  const val  = +document.getElementById('rep-val').value||0;
+  if (!nome||!val) return null;
+  const valorRep = tipo==='pct' ? totServicos*val/100 : val;
+  return { nome, tipo, val, valorRep };
+}
+function remRepasse() {
+  document.getElementById('rep-nome').value='';
+  document.getElementById('rep-val').value='';
+  document.getElementById('repasse-preview').style.display='none';
+  document.getElementById('repasse-form').style.display='none';
+  calcResumo();
+}
+
+// ════════════════════════════════════════════════════════
+// SUBCONTRATAÇÕES
+// ════════════════════════════════════════════════════════
+function addSubcontr() {
+  const serv = document.getElementById('sc-serv').value.trim();
+  const emp  = document.getElementById('sc-emp').value.trim();
+  if (!serv) { showBlocked('Informe o serviço'); return; }
+  const val  = +document.getElementById('sc-val').value||0;
+  const bit  = +document.getElementById('sc-bit').value||0;
+  const ret  = +document.getElementById('sc-ret').value||0;
+  const data = document.getElementById('sc-data').value;
+  const valComBit = val*(1+bit/100);
+  const ganhoEXP  = val*ret/100;
+  cSubs.push({ id:Date.now(), serv, emp, data, val, bit, ret, valComBit, ganhoEXP });
+  ['sc-serv','sc-emp','sc-val','sc-data'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
+  document.getElementById('sc-bit').value='15';
+  document.getElementById('sc-ret').value='50';
+  calcResumo(); save(); showToast('Subcontratação adicionada');
+}
+function remSub(id) { cSubs=cSubs.filter(s=>s.id!==id); calcResumo(); save(); }
+
+// ════════════════════════════════════════════════════════
+// DESPESAS INDIRETAS
+// ════════════════════════════════════════════════════════
+const DESP_CORES = { alim:'#1D9E75', carro:'#378ADD', translado:'#BA7517', passagem:'#D4537E' };
+const DESP_LABELS = { alim:'Alimentação', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem' };
+
+function calcDesp(d) {
+  const p = S.params;
+  if (d.tipo==='alim')     return (+d.diarias||0)*(+d.pessoas||1)*(+d.valorDiario||0);
+  if (d.tipo==='carro')    return (+d.diarias||0)*(+d.valorDiaria||0)+(+d.km||0)/Math.max(+d.kml||10,.1)*(+d.vl||0);
+  if (d.tipo==='translado') return +d.vt||0;
+  if (d.tipo==='passagem')  return +d.val||0;
+  return 0;
+}
+function getTotDesp() {
+  const raw = cDesps.reduce((s,d)=>s+calcDesp(d),0);
+  const bit = (+document.getElementById('desp-bit').value||0)/100;
+  return raw*(1+bit);
+}
+
+function addDesp(tipo) {
+  const id = dSeq++;
+  const base = { id, tipo };
+  if (tipo==='alim')     Object.assign(base,{diarias:1,pessoas:1,valorDiario:80,desc:''});
+  if (tipo==='carro')    Object.assign(base,{diarias:1,valorDiaria:180,km:0,kml:10,vl:6.20,desc:''});
+  if (tipo==='translado') Object.assign(base,{vt:0,desc:''});
+  if (tipo==='passagem')  Object.assign(base,{orig:'',dest:'',meio:'aviao',val:0,desc:''});
+  cDesps.push(base);
+  renderDesps(); calcResumo(); save();
+}
+function dupDesp(id) {
+  const orig = cDesps.find(d=>d.id===id); if(!orig)return;
+  const copia = { ...orig, id:dSeq++ };
+  const idx = cDesps.findIndex(d=>d.id===id);
+  cDesps.splice(idx+1,0,copia);
+  renderDesps(); calcResumo(); save();
+}
+function remDesp(id) { cDesps=cDesps.filter(d=>d.id!==id); renderDesps(); calcResumo(); save(); }
+function setDesp(id,field,val) {
+  const d=cDesps.find(d=>d.id===id); if(d){ d[field]=val; calcResumo(); save(); }
+}
+
+function renderDesps() {
+  const el = document.getElementById('desp-list');
+  if (!cDesps.length) { el.innerHTML=''; return; }
+
+  let html = '';
+  cDesps.forEach((d,i)=>{
+    const cor = DESP_CORES[d.tipo];
+    const lbl = DESP_LABELS[d.tipo];
+    const sub = fmt(calcDesp(d));
+    let body = '';
+
+    if (d.tipo==='alim') {
+      const hint = `${d.diarias||1} dia(s) × ${d.pessoas||1} pessoa(s) × R$ ${(d.valorDiario||80).toLocaleString('pt-BR')}`;
+      body=`<div class="fg fg3" style="margin-bottom:7px">
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}" oninput="setDesp(${d.id},'diarias',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Pessoas por diária</label><input type="number" min="1" value="${d.pessoas||1}" oninput="setDesp(${d.id},'pessoas',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Valor diário/pessoa (R$)</label><input type="number" min="0" step="5" value="${d.valorDiario||80}" oninput="setDesp(${d.id},'valorDiario',+this.value);renderDesps()"><div style="font-size:10px;color:#888;margin-top:2px">${hint}</div></div>
+      </div>
+      <div class="fgroup"><label>Descrição</label><input type="text" value="${d.desc||''}" placeholder="Ex: Missão Pelotas — 3 pessoas, 2 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+    }
+    if (d.tipo==='carro') {
+      const di=(+d.diarias||0)*(+d.valorDiaria||0);
+      const co=(+d.km||0)/Math.max(+d.kml||10,.1)*(+d.vl||0);
+      body=`<div class="fg fg3" style="margin-bottom:7px">
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}" oninput="setDesp(${d.id},'diarias',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Valor diária c/ seguro (R$)</label><input type="number" min="0" step="10" value="${d.valorDiaria||180}" oninput="setDesp(${d.id},'valorDiaria',+this.value);renderDesps()"><div style="font-size:10px;color:#888;margin-top:2px">Sub-total: ${fmt(di)}</div></div>
+        <div class="fgroup"><label>Km rodados</label><input type="number" min="0" value="${d.km||0}" oninput="setDesp(${d.id},'km',+this.value);renderDesps()"></div>
+      </div>
+      <div class="fg fg3 mb8">
+        <div class="fgroup"><label>Consumo (km/l)</label><input type="number" min=".1" step=".5" value="${d.kml||10}" oninput="setDesp(${d.id},'kml',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Valor/litro (R$)</label><input type="number" min="0" step=".05" value="${d.vl||6.20}" oninput="setDesp(${d.id},'vl',+this.value);renderDesps()"><div style="font-size:10px;color:#888;margin-top:2px">Sub-total: ${fmt(co)}</div></div>
+        <div class="fgroup"><label>Trecho</label><input type="text" value="${d.desc||''}" placeholder="Ex: Floripa → Pelotas" oninput="setDesp(${d.id},'desc',this.value)"></div>
+      </div>`;
+    }
+    if (d.tipo==='translado') {
+      body=`<div class="fg fg2">
+        <div class="fgroup"><label>Valor total estimado (R$)</label><input type="number" min="0" step="10" value="${d.vt||0}" oninput="setDesp(${d.id},'vt',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Descrição / trecho</label><input type="text" value="${d.desc||''}" placeholder="Ex: Ubers — São Raimundo Nonato, 4 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>
+      </div>`;
+    }
+    if (d.tipo==='passagem') {
+      body=`<div class="fg fg4 mb8">
+        <div class="fgroup"><label>Origem</label><input type="text" value="${d.orig||''}" placeholder="Ex: Florianópolis" oninput="setDesp(${d.id},'orig',this.value)"></div>
+        <div class="fgroup"><label>Destino</label><input type="text" value="${d.dest||''}" placeholder="Ex: Teresina" oninput="setDesp(${d.id},'dest',this.value)"></div>
+        <div class="fgroup"><label>Meio</label>
+          <select onchange="setDesp(${d.id},'meio',this.value)">
+            <option value="aviao" ${d.meio==='aviao'?'selected':''}>Avião</option>
+            <option value="onibus" ${d.meio==='onibus'?'selected':''}>Ônibus</option>
+            <option value="trem" ${d.meio==='trem'?'selected':''}>Trem</option>
+            <option value="outro" ${d.meio==='outro'?'selected':''}>Outro</option>
+          </select>
+        </div>
+        <div class="fgroup"><label>Valor (R$)</label><input type="number" min="0" step="10" value="${d.val||0}" oninput="setDesp(${d.id},'val',+this.value);renderDesps()"></div>
+      </div>
+      <div class="fgroup"><label>Observação</label><input type="text" value="${d.desc||''}" placeholder="Ex: Ida e volta · 2 pessoas" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+    }
+
+    html+=`<div class="bloco" style="border-left-color:${cor}">
+      <div class="bloco-head">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></div>
+          <span class="bloco-lbl">${lbl}</span>
+        </div>
+        <div class="bloco-acts">
+          <span class="bloco-sub">${sub}</span>
+          <button class="btn xs ghost" onclick="dupDesp(${d.id})">+ Duplicar</button>
+          <button class="btn xs danger" onclick="remDesp(${d.id})">✕</button>
+        </div>
+      </div>
+      ${body}
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════
+// RESUMO GERAL
+// ════════════════════════════════════════════════════════
+function calcResumo() {
+  // Recalcula itens CUB-dependentes
+  cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc=calcIV(it); });
+
+  const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+  const totICalc = cItems.reduce((s,i)=>s+i.valorCalc,0);
+
+  // Repasse sobre serviços
+  const rep = getRepasseCalc(totI);
+  const totRep = rep ? rep.valorRep : 0;
+
+  // Preview repasse
+  if (rep) {
+    document.getElementById('repasse-preview').style.display='block';
+    document.getElementById('repasse-form').style.display='none';
+    document.getElementById('rep-preview-nome').textContent = rep.nome;
+    document.getElementById('rep-preview-desc').textContent = rep.tipo==='pct'
+      ? `${rep.val}% sobre serviços`
+      : 'Valor fixo';
+    document.getElementById('rep-preview-val').textContent = fmt(rep.valorRep);
+  } else {
+    document.getElementById('repasse-preview').style.display='none';
+  }
+
+  // Subcontratações
+  const totSub = cSubs.reduce((s,c)=>s+c.valComBit,0);
+
+  // Despesas com bitributação
+  const totDesp = getTotDesp();
+  document.getElementById('desp-total-display').textContent = fmt(totDesp);
+
+  const total = totI + totRep + totSub + totDesp;
+  const desconto = Math.max(0, totICalc-totI);
+
+  // Conta itens
+  document.getElementById('i-count').textContent = cItems.length+' item'+(cItems.length!==1?'s':'');
+
+  const body = document.getElementById('resumo-body');
+  if (!cItems.length && !cSubs.length && !totDesp && !totRep) {
+    body.innerHTML = '<div class="empty">Adicione serviços para ver o resumo</div>';
+    return;
+  }
+
+  let html = '';
+
+  // GRUPOS POR NÚCLEO
+  ['PAIS','URB','CONSUL','ESP'].forEach(nuc=>{
+    const its = cItems.filter(i=>i.nucleo===nuc);
+    if (!its.length) return;
+    const stot = its.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+    const cor  = NCOR[nuc];
+    html+=`<div class="rg">
+      <div class="rg-head">
+        <div class="rg-stripe" style="background:${cor}"></div>
+        <span class="rg-label">${NC[nuc]}</span>
+        <span class="rg-sub" style="color:${cor}">${fmt(stot)}</span>
+      </div>
+      ${its.map(it=>{
+        const disp = it.valorProposto!==null?it.valorProposto:it.valorCalc;
+        const isEd = it.valorProposto!==null;
+        let detail='—';
+        if(it.mode==='calc'){
+          if(it.subK==='PAIS_ARB') detail=`${(+it.area).toLocaleString('pt-BR')} m² SV`;
+          else if(it.subK==='URB_CONCEITO') detail=`${(+it.coef).toFixed(2)} CUB`;
+          else if(it.nucleo==='URB') detail=`${(+it.area).toLocaleString('pt-BR',{maximumFractionDigits:2})} ha · coef. ${(+it.coef).toFixed(2)}`;
+          else detail=`${(+it.area).toLocaleString('pt-BR')} m² · coef. ${(+it.coef).toFixed(2)}`;
+        } else if(it.mode==='floreira') detail=`${(+it.area).toFixed(2)} CUB`;
+        else if(it.mode==='consul') detail=`${it.horas||0}h · ${it.tipoCobranca==='mensal'?'mensal':'total'}`;
+        else detail='valor livre';
+        return`<div class="rg-item">
+          <div>
+            <span class="badge ${NBADGE[nuc]}" style="font-size:8px">${it.subLabel}</span>
+            ${it.id?`<span style="font-size:10px;color:#888;margin-left:4px">${it.id}</span>`:''}
+            ${it.desc?`<span style="font-size:10px;color:#888;margin-left:4px">${it.desc}</span>`:''}
+            ${isEd?`<span style="font-size:9px;color:var(--verde);margin-left:4px">✓ editado</span>`:''}
+          </div>
+          <div style="font-size:10px;color:#888">${detail}</div>
+          <div style="font-size:9px;color:#aaa">CUB ${it.cubSnap?fmt(it.cubSnap):''}</div>
+          <div>
+            ${isEd?`<div style="font-size:9px;text-decoration:line-through;color:#bbb">${fmt(it.valorCalc)}</div>`:''}
+            <div class="rg-val${isEd?' edited':''}">${fmt(disp)}</div>
+          </div>
+          <div style="display:flex;gap:3px">
+            <button class="btn xs ghost" onclick="openEdit(${it.itemId})">✎</button>
+            <button class="btn xs danger" onclick="remItem(${it.itemId})">✕</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  // REPASSE
+  if (rep) {
+    html+=`<div class="rg">
+      <div class="rg-head">
+        <div class="rg-stripe" style="background:var(--am)"></div>
+        <span class="rg-label">Repasse comercial</span>
+        <span class="rg-sub" style="color:var(--am)">${fmt(totRep)}</span>
+      </div>
+      <div class="rg-item" style="grid-template-columns:2fr 1fr 22px">
+        <div>${rep.nome}</div>
+        <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% s/ serviços`:'Valor fixo'}</div>
+        <div class="rg-val" style="color:var(--am)">${fmt(rep.valorRep)}</div>
+      </div>
+    </div>`;
+  }
+
+  // SUBCONTRATAÇÕES
+  if (cSubs.length) {
+    const ganhoTotal = cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
+    html+=`<div class="rg">
+      <div class="rg-head">
+        <div class="rg-stripe" style="background:var(--tc)"></div>
+        <span class="rg-label">Subcontratações</span>
+        <span style="font-size:10px;color:#888;margin-left:6px">(ganho EXP: ${fmt(ganhoTotal)})</span>
+        <span class="rg-sub" style="color:var(--tc)">${fmt(totSub)}</span>
+      </div>
+      ${cSubs.map(sc=>`<div class="rg-item" style="grid-template-columns:2fr 1fr 1fr 1fr 22px">
+        <div>${sc.serv}<br><span style="font-size:10px;color:#888">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}</span></div>
+        <div style="font-size:10px;color:#888">${fmt(sc.val)}</div>
+        <div style="font-size:10px;color:#888">Bit.${sc.bit}% / Ret.${sc.ret}%</div>
+        <div class="rg-val" style="color:var(--tc)">${fmt(sc.valComBit)}</div>
+        <button class="btn xs danger" onclick="remSub(${sc.id})">✕</button>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // DESPESAS
+  if (totDesp>0) {
+    const rawDesp = cDesps.reduce((s,d)=>s+calcDesp(d),0);
+    const bit = +document.getElementById('desp-bit').value||0;
+    html+=`<div class="rg">
+      <div class="rg-head">
+        <div class="rg-stripe" style="background:#888"></div>
+        <span class="rg-label">Despesas indiretas</span>
+        ${bit>0?`<span style="font-size:9px;color:#888;margin-left:4px">${fmt(rawDesp)} × ${(1+bit/100).toFixed(2)}</span>`:''}
+        <span class="rg-sub">${fmt(totDesp)}</span>
+      </div>
+    </div>`;
+  }
+
+  // TOTAL
+  html+=`<div class="total-bar">
+    <div class="total-lbl">Valor total da proposta</div>
+    <div class="total-val">${fmt(total)}</div>
+  </div>`;
+
+  if (desconto>0.01) {
+    html+=`<div class="desc-bar">
+      <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--tc)">⬇ Desconto aplicado</span>
+      <span style="font-weight:700;color:var(--tc)">${fmt(desconto)}</span>
+    </div>`;
+  }
+
+  // DISTRIBUIÇÃO POR ETAPA
+  if (cItems.length && totI>0) {
+    const nMain = cItems[0].nucleo;
+    const ets   = S.etapas[nMain]?.default || [];
+    const dists = S.distEtapas[nMain]?.default || [];
+    if (ets.length) {
+      html+=`<div style="margin-top:12px;border-top:1px solid var(--cinza2);padding-top:10px">
+        <div class="sec">Distribuição por etapa</div>
+        ${ets.map((e,i)=>{
+          const pct=dists[i]||0;
+          const val=total*pct/100;
+          return`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+            <div style="width:16px;height:16px;border-radius:50%;background:var(--cinza2);display:flex;align-items:center;justify-content:center;font-size:9px;color:#888;flex-shrink:0">${i+1}</div>
+            <span style="flex:1">${e}</span>
+            <span style="color:#888">${pct}%</span>
+            <span style="font-weight:700;min-width:85px;text-align:right;font-family:var(--fm)">${fmt(val)}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+  }
+
+  // LOG DE EDIÇÕES
+  const editados = cItems.filter(i=>i.editJust);
+  if (editados.length) {
+    html+=`<div style="margin-top:10px;background:#FAFAF8;border:1px solid var(--cinza);padding:10px">
+      <div class="sec">Registro de alterações de valor</div>
+      ${editados.map(it=>`<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
+        <div><strong>${it.subLabel}</strong>${it.id?' — '+it.id:''}<br><span style="color:#888;font-size:9px">${it.editJust}</span></div>
+        <div style="text-align:right;text-decoration:line-through;color:#bbb">${fmt(it.valorCalc)}</div>
+        <div style="text-align:right;color:var(--verde);font-weight:700">${fmt(it.valorProposto)}</div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════
+// SALVAR / LIMPAR
+// ════════════════════════════════════════════════════════
+function salvarProposta() {
+  const proj = document.getElementById('f-projeto').value.trim();
+  if (!proj) { showBlocked('Informe o nome do projeto'); return; }
+  if (!cItems.length) { showBlocked('Adicione ao menos um serviço'); return; }
+  const totI  = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+  const rep   = getRepasseCalc(totI);
+  const total = totI+(rep?rep.valorRep:0)+cSubs.reduce((s,c)=>s+c.valComBit,0)+getTotDesp();
+  const nucs  = [...new Set(cItems.map(i=>i.nucleo))];
+  const p = {
+    id:          Date.now(),
+    cliente:     document.getElementById('f-cliente').value.trim(),
+    projeto:     proj,
+    resp:        document.getElementById('f-resp').value,
+    cidade:      document.getElementById('f-cidade').value.trim(),
+    uf:          document.getElementById('f-uf').value,
+    obs:         document.getElementById('f-obs').value.trim(),
+    data:        document.getElementById('f-data').value,
+    mainNucleo:  nucs.length>1?'MISTO':nucs[0],
+    items:       [...cItems],
+    subs:        [...cSubs],
+    desps:       [...cDesps],
+    repasse:     rep,
+    total,
+    createdAt:   new Date().toISOString(),
+  };
+  S.proposals.unshift(p);
+  if (p.cliente && !S.clientes.includes(p.cliente)) S.clientes.push(p.cliente);
+  save(); showToast('Proposta salva com sucesso');
+}
+
+function limpar() {
+  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null;
+  ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
+    const e=document.getElementById(id);if(e)e.value='';
+  });
+  document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('repasse-form').style.display='none';
+  document.getElementById('repasse-preview').style.display='none';
+  document.getElementById('rep-nome').value='';
+  document.getElementById('rep-val').value='';
+  renderDesps(); calcResumo(); showToast('Calculadora limpa');
+}
+
+// ════════════════════════════════════════════════════════
+// HISTÓRICO
+// ════════════════════════════════════════════════════════
+function renderHist() {
+  const nucFil  = document.getElementById('hf-nucleo').value;
+  const respFil = document.getElementById('hf-resp').value;
+  const q       = (document.getElementById('hf-search').value||'').toLowerCase();
+  const fps = S.proposals.filter(p=>{
+    if(nucFil!=='todos'&&p.mainNucleo!==nucFil&&p.mainNucleo!=='MISTO')return false;
+    if(respFil!=='todos'&&p.resp!==respFil)return false;
+    if(q&&!p.projeto.toLowerCase().includes(q)&&!(p.cliente||'').toLowerCase().includes(q))return false;
+    return true;
+  });
+  const RESP_LABEL={CC:'Carlos',GB:'Gabriela',TC:'Thayssa',LA:'Laís'};
+  document.getElementById('hist-body').innerHTML = fps.length
+    ? fps.map(p=>`<tr class="click">
+        <td style="font-weight:600;font-family:var(--fm);font-size:10px">${p.id}</td>
+        <td style="font-weight:500">${p.cliente||'—'}</td>
+        <td>${p.projeto}</td>
+        <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${NC[p.mainNucleo]||p.mainNucleo}</span></td>
+        <td>${RESP_LABEL[p.resp]||p.resp||'—'}</td>
+        <td style="font-size:10px">${p.cidade||''}${p.uf?' ('+p.uf+')':''}</td>
+        <td style="font-size:10px">${fmtD(p.data)}</td>
+        <td style="font-weight:700;font-family:var(--fm)">${fmt(p.total)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="8" class="empty">Nenhuma proposta encontrada</td></tr>';
+}
+
+// ════════════════════════════════════════════════════════
+// PARÂMETROS
+// ════════════════════════════════════════════════════════
+function renderParams() {
+  // CUB hist
+  document.getElementById('cub-hist-list').innerHTML = S.cubHist.map(h=>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+      <span style="color:#888">${fmtM(h.mes)}</span>
+      <span style="font-family:var(--fm);font-weight:700;color:var(--am)">${fmt(h.val)}</span>
+      <span style="color:#bbb;font-size:10px">${h.by} · ${h.at?.slice(0,10)||''}</span>
+    </div>`
+  ).join('') || '<div class="empty">Nenhum registro</div>';
+
+  // Faixas PAIS
+  const fRow=(f,tipo,i)=>`<div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--cinza2)">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="number" value="${f.max===null?'':f.max||0}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value)">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);opacity:.5" type="text" value="${S['f'+tipo][i+1]?S['f'+tipo][i+1].max||0:''}" placeholder="—" readonly>
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="text" value="${f.label}" onchange="S.f${tipo}[${i}].label=this.value">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--fm)" type="number" step="0.00001" value="${f.mult}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
+    <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">✕</button>
+  </div>`;
+  document.getElementById('faixas-pais').innerHTML = S.fP.map((f,i)=>fRow(f,'P',i)).join('');
+  document.getElementById('faixas-urb').innerHTML  = S.fU.map((f,i)=>fRow(f,'U',i)).join('');
+
+  // Mínimos
+  const allSubs = [];
+  Object.entries(SUBS).forEach(([nuc,tipos])=>{
+    if(nuc==='PAIS'){
+      Object.entries(tipos).forEach(([tipo,subs])=>{
+        Object.entries(subs).forEach(([sub,si])=>{ allSubs.push({nuc,tipo,sub,si}); });
+      });
+    } else {
+      Object.entries(tipos).forEach(([sub,si])=>{ allSubs.push({nuc,tipo:null,sub,si}); });
+    }
+  });
+  document.getElementById('mins-list').innerHTML = allSubs
+    .filter(x=>x.si.mode==='calc'||x.si.mode==='floreira')
+    .map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+      <div>
+        <span class="badge ${NBADGE[x.nuc]}">${x.nuc}</span>
+        ${x.tipo?`<span style="font-size:10px;color:#888;margin-left:5px">${x.tipo} ·</span>`:''}
+        <span style="font-size:11px;margin-left:4px">${x.sub}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--fm);text-align:right" type="number" value="${S.mins[x.si.k]||0}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
+        <span style="font-size:10px;color:#888">mín.</span>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('p-diaria').value=S.params.diaria;
+  document.getElementById('p-gas').value=S.params.gas;
+  document.getElementById('p-car').value=S.params.car;
+
+  renderEtapaNucleoTabs();
+}
+
+function addFaixa(tipo) {
+  if(tipo==='P')S.fP.push({max:null,mult:0.001,label:'Nova faixa'});
+  else S.fU.push({max:null,mult:0.00001,label:'Nova faixa'});
+  renderParams();
+}
+
+function saveParams() {
+  S.params.diaria=+document.getElementById('p-diaria').value||680;
+  S.params.gas   =+document.getElementById('p-gas').value||6.20;
+  S.params.car   =+document.getElementById('p-car').value||180;
+  save(); showToast('Parâmetros salvos');
+}
+
+// ── ETAPAS POR TIPO ──────────────────────────────────────
+function renderEtapaNucleoTabs() {
+  selEtapaNucleo(editEtapaNucleo,
+    document.querySelector('#etapa-nucleo-tabs button'));
+}
+
+function selEtapaNucleo(n, el) {
+  editEtapaNucleo = n;
+  document.querySelectorAll('#etapa-nucleo-tabs button').forEach(b=>{
+    b.className='btn sm ghost';
+  });
+  if(el) el.className='btn sm filled';
+  document.getElementById('etapa-nucleo-lbl').textContent = NC[n];
+
+  const tipoGrp = document.getElementById('etapa-tipo-grp');
+  const subGrp  = document.getElementById('etapa-sub-grp');
+  const tipoSel = document.getElementById('etapa-tipo-sel');
+  const subSel  = document.getElementById('etapa-sub-sel');
+
+  if (n==='PAIS') {
+    tipoGrp.style.display='';
+    const tipos = Object.keys(SUBS.PAIS);
+    tipoSel.innerHTML = tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
+    updateEtapaSubtipo();
+  } else {
+    tipoGrp.style.display='none';
+    subGrp.style.display='none';
+    editEtapaChave = 'default';
+    renderEtapasEditor();
+  }
+}
+
+function updateEtapaSubtipo() {
+  const n = editEtapaNucleo;
+  if (n!=='PAIS') return;
+  const tipo = document.getElementById('etapa-tipo-sel').value;
+  const subs  = Object.keys(SUBS.PAIS[tipo]||{});
+  const subGrp = document.getElementById('etapa-sub-grp');
+  const subSel  = document.getElementById('etapa-sub-sel');
+  if (subs.length>1) {
+    subGrp.style.display='';
+    subSel.innerHTML = ['(Todos os subtipos)',...subs].map((s,i)=>`<option value="${i===0?'default':s}">${s}</option>`).join('');
+  } else {
+    subGrp.style.display='none';
+    editEtapaChave='default';
+  }
+  renderEtapasEditor();
+}
+
+function renderEtapasEditor() {
+  const n   = editEtapaNucleo;
+  const chave = editEtapaChave||'default';
+  const ets   = S.etapas[n]?.[chave] || S.etapas[n]?.default || [];
+  const dists = S.distEtapas[n]?.[chave] || S.distEtapas[n]?.default || [];
+  const soma  = dists.reduce((s,d)=>s+d,0);
+
+  let html = ets.map((e,i)=>`<div class="etapa-row">
+    <input style="font-size:12px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);width:100%" value="${e}" onchange="S.etapas['${n}']['${chave}'][${i}]=this.value">
+    <div style="font-size:10px;color:#888;padding:4px 0">${NC[n]} / ${editEtapaChave!=='default'?editEtapaChave:'Geral'}</div>
+    <div style="font-size:10px;color:#888;padding:4px 0">etapa ${i+1}</div>
+    <div style="display:flex;align-items:center;gap:3px"><input style="width:50px;font-size:11px;border:1px solid var(--cinza);padding:4px 5px;font-family:var(--fm);text-align:center" type="number" value="${dists[i]||0}" onchange="if(!S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}']=[...S.distEtapas['${n}'].default];S.distEtapas['${n}']['${chave}'][${i}]=parseInt(this.value)||0;renderEtapasEditor()"><span style="font-size:11px;color:#888">%</span></div>
+    <button class="btn xs danger" onclick="S.etapas['${n}']['${chave}'].splice(${i},1);if(S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}'].splice(${i},1);renderEtapasEditor()">✕</button>
+  </div>`).join('');
+
+  html+=`<div style="font-size:11px;color:${soma===100?'var(--verde)':'var(--tc)'};margin-top:6px;font-weight:500">Total: ${soma}% ${soma===100?'✓':'← deve somar 100%'}</div>`;
+  document.getElementById('etapas-editor').innerHTML=html;
+}
+
+function addEtapa() {
+  const n=editEtapaNucleo, c=editEtapaChave||'default';
+  if(!S.etapas[n][c]) S.etapas[n][c]=[...S.etapas[n].default];
+  if(!S.distEtapas[n][c]) S.distEtapas[n][c]=[...S.distEtapas[n].default];
+  S.etapas[n][c].push('Nova etapa');
+  S.distEtapas[n][c].push(0);
+  renderEtapasEditor();
+}
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+load();
+updateCubDisplay();
+selNucleo('PAIS');
+document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
+calcResumo();
+renderDesps();
+</script>
+</body>
+</html>

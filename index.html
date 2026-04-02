@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP · Acesso</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --preto: #111110;
+  --off: #F7F6F3;
+  --cinza: #C8C7C2;
+  --cinza2: #E8E7E3;
+  --verde: #1D6A4A;
+  --verde-l: #2D9E6B;
+  --am: #C4831A;
+  --tc: #B84C3A;
+  --f: 'Raleway', sans-serif;
+  --fm: 'DM Mono', monospace;
+}
+
+body {
+  font-family: var(--f);
+  background: var(--off);
+  color: var(--preto);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grid de fundo */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--cinza2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cinza2) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: .6;
+  pointer-events: none;
+}
+
+/* Mancha de cor */
+body::after {
+  content: '';
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(29,106,74,.08) 0%, transparent 70%);
+  top: -100px;
+  right: -100px;
+  pointer-events: none;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Marca */
+.marca {
+  margin-bottom: 40px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.marca-exp {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: var(--preto);
+  line-height: 1;
+}
+
+.marca-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--cinza);
+}
+
+.marca-sub {
+  font-family: var(--fm);
+  font-size: 10px;
+  font-weight: 300;
+  color: #999;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Card */
+.card {
+  background: #fff;
+  border: 1px solid var(--cinza);
+  padding: 36px;
+  position: relative;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--verde);
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--preto);
+  margin-bottom: 4px;
+}
+
+.card-sub {
+  font-size: 12px;
+  font-weight: 300;
+  color: #888;
+  margin-bottom: 28px;
+}
+
+/* Campos */
+.fgroup {
+  margin-bottom: 16px;
+}
+
+.fgroup label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.fgroup input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--cinza);
+  background: var(--off);
+  font-family: var(--f);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--preto);
+  outline: none;
+  transition: border-color .15s;
+  -webkit-appearance: none;
+}
+
+.fgroup input:focus {
+  border-color: var(--preto);
+  background: #fff;
+}
+
+.fgroup input::placeholder {
+  color: #bbb;
+  font-weight: 300;
+}
+
+/* Botão */
+.btn-login {
+  width: 100%;
+  padding: 12px;
+  background: var(--preto);
+  color: #fff;
+  border: none;
+  font-family: var(--f);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s;
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-login:hover:not(:disabled) {
+  background: #333;
+}
+
+.btn-login:disabled {
+  background: #999;
+  cursor: default;
+}
+
+.btn-login .spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 0 auto;
+}
+
+.btn-login.loading .btn-txt { display: none; }
+.btn-login.loading .spinner { display: block; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Erro */
+.erro {
+  display: none;
+  background: #FEF2F1;
+  border: 1px solid #F5C4C0;
+  border-left: 3px solid var(--tc);
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--tc);
+  font-weight: 500;
+  margin-top: 12px;
+}
+
+.erro.show { display: block; }
+
+/* Usuário logado */
+.logado {
+  display: none;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.logado-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 auto 14px;
+  letter-spacing: 1px;
+}
+
+.logado-nome {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.logado-cargo {
+  font-family: var(--fm);
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.logado-viewer {
+  display: inline-block;
+  background: #FEF9ED;
+  border: 1px solid #F0D08A;
+  color: var(--am);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  margin-bottom: 20px;
+}
+
+.btn-entrar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: var(--verde);
+  color: #fff;
+  border: none;
+  font-family: var(--f);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.btn-entrar:hover { background: var(--verde-l); }
+
+.btn-sair {
+  display: block;
+  margin: 10px auto 0;
+  background: none;
+  border: none;
+  font-family: var(--f);
+  font-size: 10px;
+  color: #bbb;
+  cursor: pointer;
+  letter-spacing: .3px;
+}
+
+.btn-sair:hover { color: var(--tc); }
+
+/* Cores por usuário */
+.cor-cc { background: #2563EB; }
+.cor-gb { background: #1D9E75; }
+.cor-tc { background: #D4537E; }
+.cor-la { background: #BA7517; }
+
+/* Rodapé */
+.rodape {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rodape-info {
+  font-family: var(--fm);
+  font-size: 9px;
+  color: #bbb;
+  letter-spacing: .5px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cinza);
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.status-dot.ok { background: var(--verde-l); }
+
+/* Entrada animada */
+.wrap {
+  animation: fadeUp .4s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="marca">
+    <div class="marca-exp">EXP</div>
+    <div class="marca-sep"></div>
+    <div class="marca-sub">Sistema de gestão</div>
+  </div>
+
+  <div class="card">
+
+    <!-- FORMULÁRIO DE LOGIN -->
+    <div id="form-login">
+      <div class="card-title">Acesso</div>
+      <div class="card-sub">Entre com seu e-mail institucional</div>
+
+      <div class="fgroup">
+        <label>E-mail</label>
+        <input type="email" id="inp-email" placeholder="seu@somosexp.com" autocomplete="email">
+      </div>
+
+      <div class="fgroup">
+        <label>Senha</label>
+        <input type="password" id="inp-senha" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn-login" id="btn-login" onclick="fazerLogin()">
+        <span class="btn-txt">Entrar</span>
+        <div class="spinner"></div>
+      </button>
+
+      <div class="erro" id="erro">E-mail ou senha incorretos.</div>
+    </div>
+
+    <!-- USUÁRIO LOGADO -->
+    <div class="logado" id="painel-logado">
+      <div class="logado-avatar" id="logado-avatar"></div>
+      <div class="logado-nome" id="logado-nome"></div>
+      <div class="logado-cargo" id="logado-cargo"></div>
+      <div class="logado-viewer" id="logado-viewer" style="display:none">Acesso visualização</div>
+      <br>
+      <button class="btn-entrar" onclick="irParaApp()">
+        ▶ &nbsp;Acessar o sistema
+      </button>
+      <button class="btn-sair" onclick="sair()">Sair desta conta</button>
+    </div>
+
+  </div>
+
+  <div class="rodape">
+    <div class="rodape-info">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-txt">Verificando conexão...</span>
+    </div>
+    <div class="rodape-info">v2.0 · 2026</div>
+  </div>
+</div>
+
+<script>
+// ── CONFIGURAÇÃO ─────────────────────────────────────────
+const SUPABASE_URL = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── CORES POR INICIAIS ────────────────────────────────────
+const CORES = { CC: 'cor-cc', GB: 'cor-gb', TC: 'cor-tc', LA: 'cor-la' };
+const ROLES = { socio: 'Sócio', coordenador: 'Coordenador', colaborador: 'Colaborador' };
+
+// ── INIT ──────────────────────────────────────────────────
+async function init() {
+  // Verifica conexão
+  try {
+    const { error } = await sb.from('usuarios').select('id').limit(1);
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-txt');
+    if (!error) {
+      dot.classList.add('ok');
+      txt.textContent = 'Conectado ao banco de dados';
+    } else {
+      txt.textContent = 'Erro de conexão';
+    }
+  } catch {
+    document.getElementById('status-txt').textContent = 'Sem conexão';
+  }
+
+  // Verifica se já tem sessão ativa
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await mostrarLogado(session.user);
+  }
+
+  // Enter para logar
+  document.getElementById('inp-senha').addEventListener('keydown', e => {
+    if (e.key === 'Enter') fazerLogin();
+  });
+  document.getElementById('inp-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('inp-senha').focus();
+  });
+}
+
+// ── LOGIN ─────────────────────────────────────────────────
+async function fazerLogin() {
+  const email = document.getElementById('inp-email').value.trim();
+  const senha = document.getElementById('inp-senha').value;
+  const btn   = document.getElementById('btn-login');
+  const erro  = document.getElementById('erro');
+
+  if (!email || !senha) {
+    erro.textContent = 'Preencha e-mail e senha.';
+    erro.classList.add('show');
+    return;
+  }
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+  erro.classList.remove('show');
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+
+  btn.classList.remove('loading');
+  btn.disabled = false;
+
+  if (error) {
+    erro.textContent = 'E-mail ou senha incorretos.';
+    erro.classList.add('show');
+    document.getElementById('inp-senha').value = '';
+    return;
+  }
+
+  await mostrarLogado(data.user);
+}
+
+// ── MOSTRAR USUÁRIO LOGADO ────────────────────────────────
+async function mostrarLogado(authUser) {
+  // Busca dados do usuário na tabela
+  const { data: usuario } = await sb
+    .from('usuarios')
+    .select('nome, iniciais, role, viewer_only')
+    .eq('auth_id', authUser.id)
+    .single();
+
+  if (!usuario) return;
+
+  // Preenche o painel
+  const avatar = document.getElementById('logado-avatar');
+  avatar.textContent = usuario.iniciais;
+  avatar.className = 'logado-avatar ' + (CORES[usuario.iniciais] || 'cor-cc');
+
+  document.getElementById('logado-nome').textContent = usuario.nome;
+  document.getElementById('logado-cargo').textContent = ROLES[usuario.role] || usuario.role;
+
+  if (usuario.viewer_only) {
+    document.getElementById('logado-viewer').style.display = 'inline-block';
+  }
+
+  // Troca formulário pelo painel
+  document.getElementById('form-login').style.display = 'none';
+  document.getElementById('painel-logado').style.display = 'block';
+
+  // Salva dados no sessionStorage para usar no app
+  sessionStorage.setItem('exp_usuario', JSON.stringify({
+    id: authUser.id,
+    ...usuario
+  }));
+}
+
+// ── SAIR ──────────────────────────────────────────────────
+async function sair() {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('exp_usuario');
+  document.getElementById('painel-logado').style.display = 'none';
+  document.getElementById('form-login').style.display = 'block';
+  document.getElementById('inp-email').value = '';
+  document.getElementById('inp-senha').value = '';
+  document.getElementById('inp-email').focus();
+}
+
+// ── IR PARA O APP ─────────────────────────────────────────
+function irParaApp() {
+  window.location.href = 'app.html';
+}
+
+init();
+</script>
+</body>
+</html>
