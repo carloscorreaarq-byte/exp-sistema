@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>EXP · Calculadora de Honorários</title>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -28,14 +30,37 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .ntab:hover{color:var(--preto)}
 .ntab.active{color:var(--preto);border-bottom-color:var(--preto)}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.cub-pill{background:var(--am-bg);border:1px solid #E8C07A;padding:3px 10px;display:flex;align-items:center;gap:7px}
-.cub-pill-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--am)}
-.cub-pill-val{font-size:13px;font-weight:700;color:var(--am);font-family:var(--fm)}
+.nav-brand{text-decoration:none;color:inherit}
+.nav-brand:hover{opacity:.7}
+.nav-mod-wrap{position:relative;margin-right:20px}
+.nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
+.nav-lbl-btn:hover{color:var(--preto)}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.nav-dropdown.open{display:block}
+.nav-dropdown a{display:block;padding:7px 14px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
+.nav-dropdown a:hover{background:var(--off)}
+.nav-dropdown a.nd-active{font-weight:700;pointer-events:none;color:var(--verde)}
+.nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
+.nd-sep{height:1px;background:var(--cinza);margin:4px 0}
+.nd-lbl{padding:6px 14px 2px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
+.user-pill-wrap{position:relative}
+.user-pill{display:flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid var(--cinza);background:#fff;cursor:pointer}
+.user-pill:hover{border-color:var(--preto)}
+.avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;background:#E0E0D8;color:#555}
+.user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.user-dropdown.open{display:block}
+.user-dropdown button{display:block;width:100%;padding:9px 14px;background:none;border:none;font-family:var(--f);font-size:11px;font-weight:500;color:var(--tc);text-align:left;cursor:pointer}
+.user-dropdown button:hover{background:var(--off)}
+.del-col{display:none}
+body.can-delete .del-col{display:table-cell}
+.del-prop-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
+.del-prop-btn:hover{color:var(--tc)}
 
 /* LAYOUT */
-.main{padding:16px;max-width:1400px;margin:0 auto}
+.main{padding:16px;max-width:1600px;margin:0 auto}
 .page{display:none}.page.active{display:block}
-.cols{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+/* Layout principal: formulário 2/3, resumo 1/3 */
+.cols{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
 
 /* CARD */
 .card{background:#fff;border:1px solid var(--cinza);margin-bottom:10px;position:relative}
@@ -88,8 +113,13 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .btn.verde:hover{background:var(--verde-l)}
 .btn.am{background:var(--am);color:#fff;border-color:var(--am)}
 .btn.tc{background:var(--tc);color:#fff;border-color:var(--tc)}
+.btn.az{background:var(--az);color:#fff;border-color:var(--az)}
 .btn.danger{border-color:var(--cinza);color:var(--tc)}
 .btn.danger:hover{background:var(--tc-bg);border-color:var(--tc)}
+/* Botão principal de adicionar item à proposta */
+.btn-add-item{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;font-family:var(--f);font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;background:var(--verde);color:#fff;border:none;cursor:pointer;width:100%;margin-top:8px;transition:all .15s}
+.btn-add-item:hover{background:var(--verde-l)}
+/* Botão dashed genérico para adicionar blocos */
 .btn-add{display:flex;align-items:center;gap:5px;padding:6px 10px;font-size:11px;border:1px dashed var(--cinza);background:transparent;color:#888;cursor:pointer;width:100%;margin-top:6px;transition:all .12s}
 .btn-add:hover{border-color:var(--preto);color:var(--preto)}
 
@@ -101,6 +131,8 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .b-tc{background:var(--tc-bg);color:#7A2A1C}
 .b-roxo{background:var(--roxo-bg);color:#3D2060}
 .b-gr{background:var(--cinza2);color:#666}
+.badge-revisada{background:#FBF0EE;color:#7A2A1C;border:1px solid #E8A89A;font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap}
+.badge-bloqueada{background:var(--cinza2);color:#999;border:1px solid var(--cinza);font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap}
 
 /* HINT */
 .hint{background:var(--cinza2);border-left:3px solid var(--cinza);padding:7px 10px;font-size:11px;color:#666;line-height:1.5;margin-bottom:8px}
@@ -113,7 +145,8 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .rg-stripe{width:3px;height:10px;flex-shrink:0}
 .rg-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;flex:1}
 .rg-sub{font-size:11px;font-weight:700;margin-left:auto}
-.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr 22px;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:#fff;font-size:11px;font-weight:300}
+.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr 22px;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:#fff;font-size:11px;font-weight:300;min-width:0}
+.rg-item>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rg-item:hover{background:#FAFAF8}
 .rg-val{font-weight:700;text-align:right}
 .rg-val.edited{color:var(--verde)}
@@ -121,7 +154,7 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 /* TOTAL */
 .total-bar{background:var(--preto);color:#fff;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;margin-top:4px}
 .total-lbl{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6}
-.total-val{font-size:22px;font-weight:700;letter-spacing:-.5px;font-family:var(--fm)}
+.total-val{font-size:20px;font-weight:700;letter-spacing:-.5px;font-family:var(--fm)}
 .desc-bar{background:var(--tc-bg);border:1px solid #E8A89A;border-top:none;padding:6px 13px;display:flex;justify-content:space-between;font-size:11px}
 
 /* BLOCO DESPESA */
@@ -131,11 +164,19 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .bloco-sub{font-size:11px;font-weight:700;color:#888}
 .bloco-acts{display:flex;align-items:center;gap:5px}
 
+/* DESPESAS MINIMIZADO */
+.desp-minimized{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.desp-minimized-msg{font-size:11px;color:#999}
+
+/* SUB MINIMIZADO */
+.sub-collapsed{padding:10px 0;color:#999;font-size:11px}
+
 /* HIST */
 table{width:100%;border-collapse:collapse}
 th{padding:6px 9px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;text-align:left;background:#FAFAF8;border-bottom:1px solid var(--cinza);white-space:nowrap}
 td{padding:7px 9px;border-top:1px solid var(--cinza2);font-size:11px;font-weight:300;vertical-align:middle}
 tr.click{cursor:pointer}tr.click:hover td{background:#FAFAF8}
+tr.blocked-row td{color:#aaa;background:#FAFAF8}
 .empty{color:#999;font-size:11px;text-align:center;padding:18px}
 
 /* MODAL */
@@ -148,6 +189,9 @@ tr.click{cursor:pointer}tr.click:hover td{background:#FAFAF8}
 .modal-x:hover{color:var(--preto)}
 .modal-body{padding:15px}
 .modal-ft{padding:10px 15px;border-top:1px solid var(--cinza);display:flex;gap:5px;justify-content:flex-end;position:sticky;bottom:0;background:#fff}
+
+/* MODAL HIST DETALHE */
+.modal.wide{width:760px}
 
 /* PARAMS */
 .pr-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 22px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--cinza2)}
@@ -174,23 +218,59 @@ tr.click{cursor:pointer}tr.click:hover td{background:#FAFAF8}
 
 .mt8{margin-top:8px}.mt12{margin-top:12px}.mb8{margin-bottom:8px}
 select option[disabled]{color:#bbb}
+
+/* SUPABASE STATUS */
+.sync-indicator{display:flex;align-items:center;gap:4px;font-size:9px;color:#aaa}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#aaa}
+.sync-dot.ok{background:var(--verde)}
+.sync-dot.err{background:var(--tc)}
+.sync-dot.sync{background:var(--am);animation:blink .8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* SEÇÃO MINIMIZÁVEL */
+.collapsible-trigger{display:flex;align-items:center;cursor:pointer;user-select:none;gap:6px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888}
+.collapsible-trigger:hover{color:var(--preto)}
+.collapse-arrow{font-size:10px;transition:transform .2s;display:inline-block}
+.collapse-arrow.open{transform:rotate(90deg)}
 </style>
 </head>
 <body>
 
 <div class="nav">
-  <div class="nav-brand">EXP</div>
+  <a href="app.html" class="nav-brand">EXP</a>
   <div class="nav-sep"></div>
-  <div class="nav-lbl">Calculadora</div>
+  <div class="nav-mod-wrap" id="nav-mod-wrap">
+    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.calc <span>▾</span></button>
+    <div class="nav-dropdown" id="nav-dropdown">
+      <div class="nd-lbl">Abertos</div>
+      <a href="gestao.html">EXP.projetos</a>
+      <a href="apoio.html">EXP.conhecimento</a>
+      <div class="nd-sep nd-soc" style="display:none"></div>
+      <div class="nd-lbl nd-soc" style="display:none">Societários</div>
+      <a href="calc.html" class="nd-active nd-soc" style="display:none">EXP.calc</a>
+      <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
+      <a href="#" class="nd-disabled nd-soc" style="display:none">EXP.financeiro</a>
+    </div>
+  </div>
   <div class="nav-tabs">
     <div class="ntab active" onclick="goTab('calc')">Calcular proposta</div>
     <div class="ntab" onclick="goTab('hist')">Histórico</div>
+    <div class="ntab" onclick="goTab('base')">Base de cálculo</div>
     <div class="ntab" onclick="goTab('params')">Parâmetros</div>
   </div>
   <div class="nav-right">
-    <div class="cub-pill">
-      <div class="cub-pill-lbl">CUB/SC</div>
-      <div class="cub-pill-val" id="nav-cub">—</div>
+    <div class="sync-indicator" id="sync-indicator">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-lbl">local</span>
+    </div>
+    <div class="user-pill-wrap" id="user-pill-wrap">
+      <div class="user-pill" id="user-pill" onclick="toggleUserMenu()">
+        <div class="avatar" id="user-av">—</div>
+        <span style="font-size:8px;color:#bbb;margin-left:2px">▾</span>
+      </div>
+      <div class="user-dropdown" id="user-dropdown">
+        <button onclick="sair()">Sair do sistema</button>
+      </div>
     </div>
   </div>
 </div>
@@ -228,16 +308,16 @@ select option[disabled]{color:#bbb}
   </div>
 
   <!-- IDENTIFICAÇÃO -->
-  <div class="card neutro">
+  <div class="card neutro" id="card-id">
     <div class="card-hdr"><div class="card-title">Identificação da proposta</div></div>
     <div class="card-body">
       <div class="fg fg2 mb8">
         <div class="fgroup">
           <label>Cliente / empresa</label>
-          <input type="text" id="f-cliente" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="buscarCliente(this.value)">
+          <input type="text" id="f-cliente" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="buscarCliente(this.value);updateCardBars()">
           <div class="autocomplete-list" id="ac-list"></div>
         </div>
-        <div class="fgroup"><label>Nome do projeto</label><input type="text" id="f-projeto" placeholder="Ex: Bairro Arvoredo"></div>
+        <div class="fgroup"><label>Nome do projeto</label><input type="text" id="f-projeto" placeholder="Ex: Bairro Arvoredo" oninput="updateCardBars()"></div>
       </div>
       <div class="fg fg4 mb8">
         <div class="fgroup"><label>Responsável</label>
@@ -269,7 +349,7 @@ select option[disabled]{color:#bbb}
   </div>
 
   <!-- ADICIONAR ITEM -->
-  <div class="card neutro">
+  <div class="card neutro" id="card-servicos">
     <div class="card-hdr"><div class="card-title">Adicionar serviço</div></div>
     <div class="card-body">
 
@@ -374,14 +454,50 @@ select option[disabled]{color:#bbb}
         </div>
       </div>
 
-      <button class="btn verde mt8" onclick="addItem()" style="width:100%">+ Adicionar à proposta</button>
+      <button class="btn-add-item" onclick="addItem()">+ Adicionar à proposta</button>
+    </div>
+  </div>
+
+  <!-- SUBCONTRATAÇÕES -->
+  <div class="card neutro" id="card-subs">
+    <div class="card-hdr">
+      <div class="card-title">Subcontratações</div>
+      <button class="btn sm ghost" id="btn-sub-toggle" onclick="toggleSubForm()">+ Adicionar</button>
+    </div>
+    <!-- Lista de subs já adicionadas (sempre visível) -->
+    <div id="sub-list-wrap" style="display:none">
+      <div class="card-body" style="padding-bottom:6px">
+        <div id="sub-list"></div>
+      </div>
+    </div>
+    <!-- Formulário de nova sub (colapsado) -->
+    <div id="sub-form" style="display:none">
+      <div class="card-body">
+        <div class="sec mb8">Nova subcontratação</div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup"><label>Serviço</label><input type="text" id="sc-serv" placeholder="Ex: Levantamento topográfico"></div>
+          <div class="fgroup"><label>Empresa cotada</label><input type="text" id="sc-emp" placeholder="Ex: GeoSul Topografia"></div>
+        </div>
+        <div class="fg mb8" style="grid-template-columns:1.5fr 130px 90px 90px">
+          <div class="fgroup"><label>Data da cotação</label><input type="date" id="sc-data"></div>
+          <div class="fgroup"><label>Valor (R$)</label><input type="number" id="sc-val" min="0" step="100" style="font-size:13px;font-weight:600"></div>
+          <div class="fgroup"><label>Bitributação (%)</label><input type="number" id="sc-bit" min="0" max="50" step="0.5" value="15"></div>
+          <div class="fgroup"><label>Ganho EXP (%)</label><input type="number" id="sc-ret" min="0" max="100" step="1" value="20"></div>
+        </div>
+        <button class="btn-add-item" style="background:var(--tc);margin-top:0" onclick="addSubcontr()">+ Confirmar subcontratação</button>
+      </div>
+    </div>
+    <!-- Estado vazio (padrão) -->
+    <div id="sub-empty" class="card-body" style="padding-top:8px;padding-bottom:8px">
+      <div style="font-size:11px;color:#aaa">Nenhuma subcontratação nesta proposta. Clique em "+ Adicionar" se necessário.</div>
     </div>
   </div>
 
   <!-- REPASSE COMERCIAL -->
-  <div class="card am">
-    <div class="card-hdr"><div class="card-title">Repasse comercial</div>
-      <button class="btn sm ghost" onclick="toggleRepasse()">+ Adicionar</button>
+  <div class="card neutro" id="card-repasse">
+    <div class="card-hdr">
+      <div class="card-title">Repasse comercial</div>
+      <button class="btn sm ghost" id="btn-repasse" onclick="toggleRepasse()">+ Adicionar</button>
     </div>
     <div id="repasse-form" style="display:none">
       <div class="card-body">
@@ -394,10 +510,11 @@ select option[disabled]{color:#bbb}
             </select>
           </div>
           <div class="fgroup"><label id="rep-val-lbl">Percentual (%)</label>
-            <input type="number" id="rep-val" min="0" step="0.5" placeholder="Ex: 5" oninput="calcResumo()">
+            <input type="number" id="rep-val" min="0" step="0.5" placeholder="Ex: 5">
           </div>
         </div>
         <div style="font-size:11px;color:#888;margin-top:6px" id="rep-info">Incide sobre o valor dos serviços, não sobre despesas ou subcontratações.</div>
+        <button class="btn-add-item" style="background:var(--am);margin-top:8px" onclick="confirmarRepasse()">+ Adicionar repasse</button>
       </div>
     </div>
     <div id="repasse-preview" style="display:none">
@@ -409,53 +526,44 @@ select option[disabled]{color:#bbb}
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <div style="font-size:14px;font-weight:700;color:var(--am);font-family:var(--fm)" id="rep-preview-val"></div>
+            <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
             <button class="btn xs danger" onclick="remRepasse()">✕</button>
           </div>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- SUBCONTRATAÇÕES -->
-  <div class="card tc">
-    <div class="card-hdr"><div class="card-title">Subcontratações</div></div>
-    <div class="card-body">
-      <div id="sub-list"></div>
-      <div style="border:1px solid var(--cinza2);padding:10px;background:#FAFAF8;margin-top:6px">
-        <div class="sec mb8">Nova subcontratação</div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup"><label>Serviço</label><input type="text" id="sc-serv" placeholder="Ex: Levantamento topográfico"></div>
-          <div class="fgroup"><label>Empresa cotada</label><input type="text" id="sc-emp" placeholder="Ex: GeoSul Topografia"></div>
-        </div>
-        <div class="fg fg4 mb8" style="grid-template-columns:1fr 90px 90px 90px">
-          <div class="fgroup"><label>Data da cotação</label><input type="date" id="sc-data"></div>
-          <div class="fgroup"><label>Valor (R$)</label><input type="number" id="sc-val" min="0" step="100"></div>
-          <div class="fgroup"><label>Bitributação (%)</label><input type="number" id="sc-bit" min="0" max="50" step="0.5" value="15"></div>
-          <div class="fgroup"><label>Retenção EXP (%)</label><input type="number" id="sc-ret" min="0" max="100" step="1" value="50"></div>
-        </div>
-        <button class="btn verde" onclick="addSubcontr()" style="width:100%;font-size:11px">+ Adicionar subcontratação</button>
-      </div>
+    <!-- Estado vazio -->
+    <div id="repasse-empty" class="card-body" style="padding-top:8px;padding-bottom:8px">
+      <div style="font-size:11px;color:#aaa">Nenhum repasse comercial nesta proposta. Clique em "+ Adicionar" se necessário.</div>
     </div>
   </div>
 
   <!-- DESPESAS INDIRETAS -->
-  <div class="card neutro">
+  <div class="card neutro" id="card-desps">
     <div class="card-hdr">
       <div class="card-title">Despesas indiretas</div>
-      <div style="display:flex;gap:5px">
-        <button class="btn sm ghost" onclick="addDesp('alim')">+ Alimentação</button>
-        <button class="btn sm ghost" onclick="addDesp('carro')">+ Carro</button>
-        <button class="btn sm ghost" onclick="addDesp('translado')">+ Translado</button>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
         <button class="btn sm ghost" onclick="addDesp('passagem')">+ Passagem</button>
+        <button class="btn sm ghost" onclick="addDesp('translado')">+ Translado</button>
+        <button class="btn sm ghost" onclick="addDesp('carro')">+ Carro</button>
+        <button class="btn sm ghost" onclick="addDesp('hotel')">+ Hotel</button>
+        <button class="btn sm ghost" onclick="addDesp('alim')">+ Alimentação</button>
+        <button class="btn sm ghost" onclick="addDesp('horasTec')" style="border-color:var(--verde);color:var(--verde)">+ Horas técnicas</button>
       </div>
     </div>
-    <div class="card-body">
-      <div id="desp-list"></div>
-      <div style="border-top:1px solid var(--cinza2);margin-top:10px;padding-top:10px">
+    <!-- Despesas adicionadas -->
+    <div id="desp-list-wrap" style="display:none">
+      <div class="card-body" style="padding-bottom:6px">
+        <div id="desp-list"></div>
+      </div>
+    </div>
+    <!-- Bitributação — aparece só quando há despesas -->
+    <div id="desp-bit-wrap" style="display:none">
+      <div class="card-body" style="border-top:1px solid var(--cinza2);padding-top:10px">
         <div class="fg fg3">
           <div class="fgroup">
             <label>Índice de bitributação sobre despesas (%)</label>
-            <input type="number" id="desp-bit" min="0" max="50" step="0.5" value="15" oninput="calcResumo()">
+            <input type="number" id="desp-bit" min="0" max="50" step="0.5" value="15" onchange="calcResumo()">
           </div>
           <div class="fgroup">
             <label style="opacity:0">.</label>
@@ -468,6 +576,10 @@ select option[disabled]{color:#bbb}
         </div>
       </div>
     </div>
+    <!-- Estado vazio (padrão) -->
+    <div id="desp-empty" class="card-body" style="padding-top:8px;padding-bottom:8px">
+      <div style="font-size:11px;color:#aaa">Nenhuma despesa indireta cadastrada. Use os botões acima para adicionar.</div>
+    </div>
   </div>
 
 </div><!-- /col esq -->
@@ -479,13 +591,15 @@ select option[disabled]{color:#bbb}
       <div class="card-title" id="resumo-title">Resumo da proposta</div>
       <div style="font-size:9px;color:#999" id="i-count">0 itens</div>
     </div>
-    <div id="resumo-body" style="background:#fff;border:1px solid var(--cinza);border-top:none;padding:12px">
+    <div id="resumo-body" style="background:#fff;border:1px solid var(--cinza);border-top:none;padding:12px;max-height:calc(100vh - 200px);overflow-y:auto">
       <div class="empty">Adicione serviços para ver o resumo</div>
     </div>
-    <div style="display:flex;gap:6px;margin-top:10px">
-      <button class="btn verde" style="flex:1" onclick="salvarProposta()">💾 Salvar proposta</button>
-      <button class="btn ghost" onclick="limpar()">Nova</button>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn verde" style="flex:1;font-size:9px" onclick="salvarProposta()">💾 Salvar</button>
+      <button class="btn az" style="flex:1;font-size:9px" onclick="exportarPDF()">📄 PDF</button>
+      <button class="btn ghost" style="font-size:9px" onclick="limpar()">Nova</button>
     </div>
+    <div id="sync-status-bar" style="margin-top:6px;font-size:9px;color:#aaa;text-align:center;min-height:14px"></div>
   </div>
 </div>
 
@@ -497,8 +611,17 @@ select option[disabled]{color:#bbb}
 ════════════════════════════════════════════════════ -->
 <div class="page" id="tab-hist">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <div style="font-size:17px;font-weight:700">Propostas geradas</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <div style="font-size:17px;font-weight:700">Quadro global de propostas</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button id="hf-btn-ativas" class="btn sm" onclick="toggleFiltroAtivas()" style="font-size:9px">Apenas ativas</button>
+      <select id="hf-periodo" onchange="atualizarFiltroPeriodo()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f)">
+        <option value="todos">Todo o período</option>
+        <option value="ano">Ano</option>
+        <option value="semestre">Semestre</option>
+        <option value="trimestre">Trimestre</option>
+        <option value="mes">Mês</option>
+      </select>
+      <select id="hf-periodo-val" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f);display:none"></select>
       <select id="hf-nucleo" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f)">
         <option value="todos">Todos os núcleos</option>
         <option value="PAIS">Paisagismo</option>
@@ -520,12 +643,127 @@ select option[disabled]{color:#bbb}
     <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th>Nº</th><th>Cliente</th><th>Projeto</th><th>Núcleo</th><th>Resp.</th>
-          <th>Cidade/UF</th><th>Data</th><th>Total</th>
+          <th>Nº</th><th>Versão</th><th>Cliente</th><th>Projeto</th><th>Núcleo</th><th>Resp.</th>
+          <th>Cidade/UF</th><th>Data</th><th>Total proposta</th><th>Efetivo EXP</th><th>Status</th><th class="del-col"></th>
         </tr></thead>
         <tbody id="hist-body"></tbody>
+        <tfoot id="hist-foot"></tfoot>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ABA BASE DE CÁLCULO
+════════════════════════════════════════════════════ -->
+<div class="page" id="tab-base">
+  <div style="font-size:17px;font-weight:700;margin-bottom:14px">Base de cálculo</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+
+    <!-- COLUNA ESQUERDA -->
+    <div>
+      <!-- METODOLOGIA -->
+      <div class="card verde">
+        <div class="card-hdr"><div class="card-title">Metodologia geral</div></div>
+        <div class="card-body">
+          <p style="font-size:11px;color:#555;line-height:1.7;margin-bottom:10px">
+            Os honorários EXP são calculados com base no <strong>CUB/m²</strong> vigente (índice de custo da construção civil), aplicado sobre a área do projeto com multiplicadores por faixa de área e coeficiente de complexidade.
+          </p>
+          <div style="background:var(--verde-bg);border:1px solid #8FD0B0;padding:10px 13px;font-size:11px">
+            <div style="font-weight:700;color:var(--verde);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Fórmula geral — Paisagismo e Urbanismo</div>
+            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = Σ (faixa_i × mult_i × CUB) × coef</div>
+            <div style="margin-top:6px;font-size:10px;color:#666">Onde cada faixa aplica um multiplicador decrescente à medida que a área aumenta.</div>
+          </div>
+          <div style="margin-top:10px;background:var(--az-bg);border:1px solid #7AADE8;padding:10px 13px;font-size:11px">
+            <div style="font-weight:700;color:var(--az);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Fórmula — Consultoria</div>
+            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = Valor/hora × Nº de horas</div>
+          </div>
+          <div style="margin-top:10px;background:var(--am-bg);border:1px solid #E8C07A;padding:10px 13px;font-size:11px">
+            <div style="font-weight:700;color:var(--am);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Floreiras (PAIS)</div>
+            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = N° CUB × CUB atual</div>
+            <div style="margin-top:4px;font-size:10px;color:#666">Área informada em unidades de CUB (ex: 3,5 CUB = 3,5 × valor do CUB).</div>
+          </div>
+          <div style="margin-top:10px;background:var(--am-bg);border:1px solid #E8C07A;padding:10px 13px;font-size:11px">
+            <div style="font-weight:700;color:var(--am);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Urbanismo — Estudo de Conceito</div>
+            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = coef × CUB</div>
+            <div style="margin-top:4px;font-size:10px;color:#666">Coeficiente representa o número de CUBs a cobrar pelo conceito.</div>
+          </div>
+          <div style="margin-top:10px;background:var(--tc-bg);border:1px solid #E8A89E;padding:10px 13px;font-size:11px">
+            <div style="font-weight:700;color:var(--tc);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Arbitrado (PAIS)</div>
+            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = área (m²) × 0,085 × CUB</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBCONTRATAÇÕES -->
+      <div class="card tc">
+        <div class="card-hdr"><div class="card-title">Fórmula — Subcontratações</div></div>
+        <div class="card-body">
+          <p style="font-size:11px;color:#555;line-height:1.7;margin-bottom:10px">
+            Quando a EXP subcontrata serviços de terceiros, o total cobrado ao cliente inclui o custo direto, a bitributação estimada (encargos sobre o repasse) e o ganho EXP como margem adicional.
+          </p>
+          <div style="background:var(--tc-bg);border:1px solid #E8A89E;padding:10px 13px">
+            <div style="font-weight:700;color:var(--tc);margin-bottom:8px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Composição do valor ao cliente</div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:11px;font-family:var(--fm)">
+              <span style="color:#555">Custo cotado (X)</span><span style="font-weight:600">X</span>
+              <span style="color:var(--tc)">+ Bitributação (%)</span><span style="color:var(--tc)">+ X × bit%</span>
+              <span style="color:var(--verde)">+ Ganho EXP (%)</span><span style="color:var(--verde)">+ X × ganho%</span>
+              <span style="font-weight:700;border-top:1px solid #E8A89E;padding-top:4px">= Total ao cliente</span>
+              <span style="font-weight:700;border-top:1px solid #E8A89E;padding-top:4px">X × (1 + bit% + ganho%)</span>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:10px;color:#888;line-height:1.6">
+            O <strong>Ganho EXP</strong> é receita adicional da EXP sobre o serviço subcontratado — não é repassado ao contratado. O <strong>Pago ao contratado</strong> = X + X×bit%.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA -->
+    <div>
+      <!-- CUB ATUAL -->
+      <div class="card am">
+        <div class="card-hdr"><div class="card-title">CUB vigente</div></div>
+        <div class="card-body">
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+            <span style="font-size:28px;font-weight:700;font-family:var(--fm);color:var(--am)" id="base-cub-val">—</span>
+            <span style="font-size:11px;color:#888">/m²</span>
+          </div>
+          <div style="font-size:10px;color:#aaa" id="base-cub-mes">Nenhum CUB cadastrado</div>
+          <div style="margin-top:8px;font-size:10px;color:#666;line-height:1.6">
+            O CUB (Custo Unitário Básico) é o índice de referência da construção civil, publicado mensalmente pelo SINDUSCON. Todos os honorários calculados pela ferramenta são indexados a este valor — atualize-o mensalmente nos <strong>Parâmetros</strong>.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAIXAS VIGENTES -->
+      <div class="card verde">
+        <div class="card-hdr"><div class="card-title">Faixas vigentes — Paisagismo</div></div>
+        <div class="card-body" id="base-faixas-pais"><div class="empty">—</div></div>
+      </div>
+      <div class="card az">
+        <div class="card-hdr"><div class="card-title">Faixas vigentes — Urbanismo</div></div>
+        <div class="card-body" id="base-faixas-urb"><div class="empty">—</div></div>
+      </div>
+
+      <!-- COMISSÃO COMERCIAL -->
+      <div class="card neutro">
+        <div class="card-hdr"><div class="card-title">Comissão comercial — Repasse</div></div>
+        <div class="card-body">
+          <p style="font-size:11px;color:#555;line-height:1.7">
+            Quando um projeto é indicado por um parceiro comercial (ex: arquiteto, corretor), aplica-se uma comissão sobre o valor total dos serviços EXP. O valor do repasse é somado ao total da proposta e cobrado do cliente.
+          </p>
+          <div style="margin-top:8px;background:var(--cinza2);padding:8px 11px;font-family:var(--fm);font-size:11px" id="base-repasse-info">—</div>
+        </div>
+      </div>
+
+      <!-- MÍNIMOS -->
+      <div class="card neutro">
+        <div class="card-hdr"><div class="card-title">Cobranças mínimas por subtipo</div></div>
+        <div class="card-body" id="base-mins"><div class="empty">—</div></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -534,6 +772,27 @@ select option[disabled]{color:#bbb}
 ════════════════════════════════════════════════════ -->
 <div class="page" id="tab-params">
   <div style="font-size:17px;font-weight:700;margin-bottom:14px">Parâmetros de cálculo</div>
+
+  <!-- SUPABASE CONFIG — colapsado por padrão -->
+  <div class="card az">
+    <div class="card-hdr" style="cursor:pointer" onclick="toggleSBConfig()">
+      <div class="card-title">Configurações técnicas</div>
+      <span style="font-size:9px;color:#aaa;font-weight:600;letter-spacing:.3px" id="sb-toggle-lbl">▶ Expandir</span>
+    </div>
+    <div id="sb-config-body" style="display:none">
+      <div class="card-body">
+        <div class="hint az mb8">Os dados são armazenados localmente e sincronizados com o Supabase quando configurado. Configure abaixo para compartilhamento entre logins da equipe.</div>
+        <div class="fg fg3 mb8">
+          <div class="fgroup"><label>Supabase URL</label><input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" oninput="saveSBConfig()"></div>
+          <div class="fgroup"><label>Anon Key</label><input type="text" id="sb-key" placeholder="eyJhbGci..." oninput="saveSBConfig()"></div>
+          <div class="fgroup"><label style="opacity:0">.</label>
+            <button class="btn az" onclick="testSupabase()">🔗 Testar conexão</button>
+          </div>
+        </div>
+        <div id="sb-status" style="font-size:11px;color:#888"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- CUB HISTORICO -->
   <div class="card am">
@@ -604,7 +863,7 @@ select option[disabled]{color:#bbb}
           </div>
           <div class="fgroup" id="etapa-sub-grp" style="display:none">
             <label>Subtipo</label>
-            <select id="etapa-sub-sel" onchange="renderEtapasEditor()"></select>
+            <select id="etapa-sub-sel" onchange="editEtapaChave=this.value;renderEtapasEditor()"></select>
           </div>
         </div>
       </div>
@@ -636,6 +895,18 @@ select option[disabled]{color:#bbb}
       <button class="btn ghost" onclick="closeM('modal-edit')">Cancelar</button>
       <button class="btn am" onclick="confirmEdit()">Aplicar alteração</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE PROPOSTA (HISTÓRICO) -->
+<div class="modal-bg" id="modal-hist-detail">
+  <div class="modal wide">
+    <div class="modal-hd">
+      <div class="modal-title" id="mhd-title">Proposta</div>
+      <span class="modal-x" onclick="closeM('modal-hist-detail')">×</span>
+    </div>
+    <div class="modal-body" id="mhd-body"></div>
+    <div class="modal-ft" id="mhd-footer"></div>
   </div>
 </div>
 
@@ -730,6 +1001,11 @@ let S = {
   },
   proposals: [],
   clientes: [],
+  calcParamsId: null,
+  sbUrl: '',
+  sbKey: '',
+  propCodeSeq: 0,
+  histSoAativas: false,
 };
 
 let cItems = [], cDesps = [], cSubs = [], cRepasse = null;
@@ -737,22 +1013,215 @@ let currentNucleo = 'PAIS';
 let evItemId = null;
 let editEtapaNucleo = 'PAIS', editEtapaChave = 'default';
 let dSeq = 1;
+// ID da proposta sendo editada (revisão)
+let editingProposalId = null;
+// C12/K4 — link CRM
+let linkedOppInfo  = null;   // { id, projeto, prods: [{nucleo, subtipo, status}] }
+let lockedNucleos  = new Set(); // nucleos travados (prod fechado/negado)
 
 // ════════════════════════════════════════════════════════
-// STORAGE
+// STORAGE LOCAL
 // ════════════════════════════════════════════════════════
-function save() { try { localStorage.setItem('exp_calc_v3', JSON.stringify({ S, cItems, cDesps, cSubs, cRepasse })); } catch(e){} }
+function save() {
+  try { localStorage.setItem('exp_calc_v4', JSON.stringify({ S, cItems, cDesps, cSubs, cRepasse, editingProposalId })); } catch(e){}
+}
 function load() {
   try {
-    const r = localStorage.getItem('exp_calc_v3');
+    const r = localStorage.getItem('exp_calc_v4');
     if (!r) return;
     const d = JSON.parse(r);
-    if (d.S) { S = { ...S, ...d.S }; }
+    if (d.S) {
+      // CALC-3+4: merge profundo — preserva nucleos URB/CONSUL/ESP ausentes em dados antigos
+      const defEtapas = S.etapas;
+      const defDist   = S.distEtapas;
+      S = { ...S, ...d.S };
+      S.etapas     = { ...defEtapas,    ...(d.S.etapas     || {}) };
+      S.distEtapas = { ...defDist,      ...(d.S.distEtapas || {}) };
+    }
     if (d.cItems) cItems = d.cItems;
     if (d.cDesps) cDesps = d.cDesps;
     if (d.cSubs)  cSubs  = d.cSubs;
     if (d.cRepasse !== undefined) cRepasse = d.cRepasse;
+    if (d.editingProposalId !== undefined) editingProposalId = d.editingProposalId;
   } catch(e) {}
+}
+
+// ════════════════════════════════════════════════════════
+// SUPABASE
+// ════════════════════════════════════════════════════════
+function getSBHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': S.sbKey,
+    'Authorization': 'Bearer ' + S.sbKey,
+    'Prefer': 'return=minimal'
+  };
+}
+
+function saveSBConfig() {
+  S.sbUrl = document.getElementById('sb-url').value.trim();
+  S.sbKey = document.getElementById('sb-key').value.trim();
+  save();
+}
+
+async function testSupabase() {
+  const el = document.getElementById('sb-status');
+  if (!S.sbUrl || !S.sbKey) { el.innerHTML='<span style="color:var(--tc)">Preencha URL e Key antes de testar.</span>'; return; }
+  el.textContent = 'Testando...';
+  try {
+    const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?limit=1', { headers: getSBHeaders() });
+    if (r.ok || r.status===200) {
+      el.innerHTML = '<span style="color:var(--verde)">✓ Conexão OK</span>';
+      setSyncStatus('ok');
+    } else {
+      const txt = await r.text();
+      el.innerHTML = `<span style="color:var(--tc)">Erro ${r.status}: ${txt.slice(0,120)}</span>`;
+      setSyncStatus('err');
+    }
+  } catch(e) {
+    el.innerHTML = `<span style="color:var(--tc)">Falha de rede: ${e.message}</span>`;
+    setSyncStatus('err');
+  }
+}
+
+function setSyncStatus(st, msg) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-lbl');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + (st||'');
+  lbl.textContent = msg || (st==='ok'?'nuvem':st==='err'?'erro sync':st==='sync'?'sincronizando':'local');
+}
+
+async function syncProposalToSupabase(proposal) {
+  if (!S.sbUrl || !S.sbKey) return false;
+  setSyncStatus('sync', 'salvando...');
+  try {
+    const payload = {
+      proposal_id: String(proposal.id),
+      version: proposal.version || 1,
+      parent_id: proposal.parentId ? String(proposal.parentId) : null,
+      status: proposal.status || 'ativa',
+      cliente: proposal.cliente || '',
+      projeto: proposal.projeto || '',
+      resp: proposal.resp || '',
+      cidade: proposal.cidade || '',
+      uf: proposal.uf || '',
+      obs: proposal.obs || '',
+      data_proposta: proposal.data || null,
+      main_nucleo: proposal.mainNucleo || '',
+      total: proposal.total || 0,
+      data_json: JSON.stringify(proposal),
+      items: proposal.items || [],
+      desps: proposal.desps || [],
+      subs: proposal.subs || [],
+      created_at: proposal.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals', {
+      method: 'POST',
+      headers: { ...getSBHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal', 'on_conflict': 'proposal_id' },
+      body: JSON.stringify(payload)
+    });
+    if (r.ok || r.status===201 || r.status===200 || r.status===204) {
+      setSyncStatus('ok', 'nuvem');
+      return true;
+    } else {
+      const txt = await r.text();
+      console.warn('Supabase sync error:', r.status, txt);
+      setSyncStatus('err', 'erro sync');
+      return false;
+    }
+  } catch(e) {
+    console.warn('Supabase sync exception:', e);
+    setSyncStatus('err', 'sem rede');
+    return false;
+  }
+}
+
+async function loadProposalsFromSupabase() {
+  if (!S.sbUrl || !S.sbKey) return;
+  setSyncStatus('sync', 'buscando...');
+  try {
+    const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?order=created_at.desc&limit=500', { headers: getSBHeaders() });
+    if (!r.ok) { setSyncStatus('err','erro sync'); return; }
+    const rows = await r.json();
+    // Merge: banco é fonte primária — atualiza existentes e adiciona novos
+    const localMap = new Map(S.proposals.map(p=>[String(p.id), p]));
+    let changed = 0;
+    rows.forEach(row => {
+      try {
+        // Usa colunas jsonb estruturadas se disponíveis (K6), senão parse data_json
+        let p = JSON.parse(row.data_json);
+        if (row.items) p.items = row.items;
+        if (row.desps) p.desps = row.desps;
+        if (row.subs)  p.subs  = row.subs;
+        const existing = localMap.get(row.proposal_id);
+        if (!existing) {
+          S.proposals.push(p);
+          localMap.set(row.proposal_id, p);
+          changed++;
+        } else if ((row.updated_at || '') > (existing._sbUpdatedAt || '')) {
+          // Atualiza campos essenciais da proposta existente com dados do banco
+          existing.items  = p.items;
+          existing.desps  = p.desps;
+          existing.subs   = p.subs;
+          existing.status = p.status;
+          existing._sbUpdatedAt = row.updated_at;
+          changed++;
+        }
+      } catch(e){}
+    });
+    if (changed > 0) {
+      S.proposals.sort((a,b)=>b.id-a.id);
+      save();
+    }
+    setSyncStatus('ok','nuvem');
+    if (document.getElementById('tab-hist').classList.contains('active')) renderHist();
+  } catch(e) {
+    setSyncStatus('err','sem rede');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// C12/K4 — STATUS DO CRM PARA PROPOSTA VINCULADA
+// ════════════════════════════════════════════════════════
+async function checkCRMLinkStatus(proposalId) {
+  linkedOppInfo = null;
+  lockedNucleos = new Set();
+  if (!S.sbUrl || !S.sbKey || !proposalId) return;
+  try {
+    // Busca oportunidade vinculada a esta proposta
+    const rOpp = await fetch(
+      S.sbUrl + '/rest/v1/oportunidades?proposta_calc_id=eq.' + proposalId + '&limit=1',
+      { headers: getSBHeaders() }
+    );
+    if (!rOpp.ok) return;
+    const opps = await rOpp.json();
+    if (!opps.length) return;
+    const opp = opps[0];
+    // Busca produtos desta oportunidade
+    const rProd = await fetch(
+      S.sbUrl + '/rest/v1/produtos?oportunidade_id=eq.' + opp.id + '&select=id,nucleo,subtipo,status',
+      { headers: getSBHeaders() }
+    );
+    if (!rProd.ok) return;
+    const prods = await rProd.json();
+    linkedOppInfo = { id: opp.id, projeto: opp.projeto || '—', prods };
+    // Trava núcleos cujos produtos estão em status final (fechado ou negado)
+    prods.forEach(p => {
+      const st = (p.status || '').toLowerCase();
+      if (st === 'fechado' || st === 'negado') lockedNucleos.add(p.nucleo);
+    });
+  } catch(e) {}
+}
+
+async function atualizarStatusCRM() {
+  if (!editingProposalId) return;
+  const btn = document.getElementById('btn-check-crm');
+  if (btn) { btn.textContent = '⟳ verificando...'; btn.disabled = true; }
+  await checkCRMLinkStatus(editingProposalId);
+  calcResumo();
+  if (btn) { btn.textContent = '↻ Atualizar status'; btn.disabled = false; }
 }
 
 // ════════════════════════════════════════════════════════
@@ -774,11 +1243,51 @@ function goTab(t) {
   document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.querySelectorAll('.ntab').forEach(b=>{
-    const map={calc:'Calcular',hist:'Histórico',params:'Parâmetros'};
+    const map={calc:'Calcular',hist:'Histórico',base:'Base',params:'Parâmetros'};
     if(Object.entries(map).some(([k,v])=>k===t&&b.textContent.startsWith(v)))b.classList.add('active');
   });
-  if(t==='hist')renderHist();
-  if(t==='params')renderParams();
+  if(t==='hist'){ renderHist(); loadProposalsFromSupabase(); }
+  if(t==='params') renderParams();
+  if(t==='base') renderBase();
+}
+
+function renderBase() {
+  // CUB
+  document.getElementById('base-cub-val').textContent = S.cub ? fmt(S.cub) : '—';
+  document.getElementById('base-cub-mes').textContent = S.cubMes ? `Referência: ${S.cubMes}` : 'Nenhum CUB cadastrado';
+
+  // Faixas Paisagismo
+  const faixaRow = (f,i,unid) => `<div style="display:grid;grid-template-columns:1fr 1fr 2fr 80px;gap:6px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px;align-items:center">
+    <span style="color:#888">${i===0?'até':f.min!=null?fmt(f.min):'—'} ${unid}</span>
+    <span style="color:#888">${f.max!=null?fmt(f.max)+' '+unid:'sem limite'}</span>
+    <span>${f.desc||''}</span>
+    <span style="font-family:var(--fm);font-weight:600;text-align:right">× ${f.mult}</span>
+  </div>`;
+  const hdrFaixa = `<div style="display:grid;grid-template-columns:1fr 1fr 2fr 80px;gap:6px;padding:3px 0;border-bottom:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#999">
+    <div>De</div><div>Até</div><div>Descrição</div><div style="text-align:right">Mult.</div>
+  </div>`;
+  document.getElementById('base-faixas-pais').innerHTML = S.fP.length
+    ? hdrFaixa + S.fP.map((f,i)=>faixaRow(f,i,'m²')).join('') + `<div style="font-size:10px;color:#888;margin-top:6px">Fórmula: Σ (faixa × mult × CUB) × coef · CUB atual: <strong>${S.cub?fmt(S.cub):'—'}</strong></div>`
+    : '<div class="empty">Nenhuma faixa cadastrada</div>';
+  document.getElementById('base-faixas-urb').innerHTML = S.fU.length
+    ? hdrFaixa + S.fU.map((f,i)=>faixaRow(f,i,'ha')).join('') + `<div style="font-size:10px;color:#888;margin-top:6px">Fórmula: Σ (faixa × mult × CUB) × coef · CUB atual: <strong>${S.cub?fmt(S.cub):'—'}</strong></div>`
+    : '<div class="empty">Nenhuma faixa cadastrada</div>';
+
+  // Repasse
+  document.getElementById('base-repasse-info').innerHTML =
+    `<span style="color:#555">Valor do repasse</span> = total_EXP × pct%<br>
+     <span style="font-size:10px;color:#888">Configurado individualmente em cada proposta. O repasse é somado ao total e cobrado do cliente — o nome do indicador fica registrado na proposta.</span>`;
+
+  // Mínimos
+  const NC2 = { PAIS_PLEN:'PAIS Pleno', PAIS_EXEC:'PAIS Exec.', PAIS_ARB:'PAIS Arb.', PAIS_FLOREIRA:'PAIS Floreira',
+                 URB_PLEN:'URB Pleno', URB_EXEC:'URB Exec.', URB_CONCEITO:'URB Conceito' };
+  const mins = Object.entries(S.mins||{}).filter(([,v])=>v>0);
+  document.getElementById('base-mins').innerHTML = mins.length
+    ? mins.map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+        <span style="color:#555">${NC2[k]||k}</span>
+        <span style="font-family:var(--fm);font-weight:600">${fmt(v)}</span>
+      </div>`).join('')
+    : '<div class="empty">Nenhum mínimo cadastrado</div>';
 }
 
 // ════════════════════════════════════════════════════════
@@ -788,7 +1297,7 @@ function updateCubDisplay() {
   const v = S.cub ? fmt(S.cub) : '—';
   document.getElementById('cub-val').textContent = v;
   document.getElementById('cub-mes').textContent = S.cub ? fmtM(S.cubMes) : 'Não cadastrado';
-  document.getElementById('nav-cub').textContent = S.cub ? fmt(S.cub) : '—';
+  // nav-cub removido (Sprint B)
 }
 function toggleCubEdit() {
   const e = document.getElementById('cub-edit');
@@ -803,7 +1312,7 @@ function salvarCUB() {
   updateCubDisplay();
   document.getElementById('cub-edit').style.display = 'none';
   cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc = calcIV(it); });
-  calcResumo(); save(); showToast('CUB atualizado — proposta recalibrada');
+  calcResumo(); save(); saveParamsToSupabase(); showToast('CUB atualizado — proposta recalibrada');
 }
 
 // ════════════════════════════════════════════════════════
@@ -857,13 +1366,11 @@ function buildSubSelects() {
   const l1 = document.getElementById('lbl-subtipo1');
 
   if (n === 'URB' || n === 'CONSUL' || n === 'ESP') {
-    // Nível único
     l1.textContent = 'Subtipo';
     s1.innerHTML = Object.keys(data).map(k=>`<option value="${k}">${k}</option>`).join('');
     g2.style.display = 'none';
     updateItemForm();
   } else {
-    // PAIS: dois níveis
     l1.textContent = 'Tipo';
     s1.innerHTML = Object.keys(data).map(k=>`<option value="${k}">${k}</option>`).join('');
     g2.style.display = '';
@@ -897,12 +1404,10 @@ function updateItemForm() {
   const si = getSubInfo();
   const mode = si?.mode || 'calc';
 
-  // hint
   const hEl = document.getElementById('i-hint');
   if (si?.hint) { hEl.textContent = si.hint; hEl.style.display = 'block'; }
   else hEl.style.display = 'none';
 
-  // esconde tudo
   ['f-calc','f-floreira','f-esp','f-consul','f-livre'].forEach(id=>document.getElementById(id).style.display='none');
 
   if (mode === 'calc') {
@@ -920,7 +1425,6 @@ function updateItemForm() {
       document.getElementById('lbl-coef').textContent = 'Coef. complexidade';
       coefEl.min='0'; coefEl.max='2'; coefEl.step='0.05';
     }
-    // aplica coefBase
     if (si?.coefBase !== null && si?.coefBase !== undefined) coefEl.value = si.coefBase.toFixed(2);
     calcPrev();
   } else if (mode === 'floreira') {
@@ -1013,7 +1517,6 @@ function addItem() {
   const n    = currentNucleo;
   const mode = si.mode;
 
-  // Labels para exibição
   let subLabel = '';
   if (n==='PAIS') {
     subLabel = document.getElementById('i-sub1').value + ' · ' + document.getElementById('i-sub2').value;
@@ -1062,17 +1565,16 @@ function addItem() {
     cubSnap:  S.cub, cubMes: S.cubMes,
   });
 
-  // Reset campos
   ['i-area','i-desc','i-desc-fl','i-esp-id','i-esp-val','i-livre-id','i-livre-val',
    'i-consul-id','i-consul-horas','i-consul-hora-val'].forEach(id=>{
     const e=document.getElementById(id); if(e) e.value='';
   });
   document.getElementById('i-cub-qty').value='2.00';
-  calcPrev(); calcResumo(); save();
+  calcPrev(); calcResumo(); updateCardBars(); save();
   showToast('Item adicionado');
 }
 
-function remItem(id) { cItems=cItems.filter(i=>i.itemId!==id); calcResumo(); save(); }
+function remItem(id) { cItems=cItems.filter(i=>i.itemId!==id); calcResumo(); updateCardBars(); save(); }
 
 // ════════════════════════════════════════════════════════
 // EDITAR VALOR
@@ -1103,8 +1605,12 @@ function confirmEdit() {
 // REPASSE
 // ════════════════════════════════════════════════════════
 function toggleRepasse() {
-  const f = document.getElementById('repasse-form');
-  f.style.display = f.style.display==='none' ? 'block' : 'none';
+  const f     = document.getElementById('repasse-form');
+  const empty = document.getElementById('repasse-empty');
+  const isOpen = f.style.display !== 'none';
+  f.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) empty.style.display = 'none';
+  else if (!cRepasse) empty.style.display = 'block';
 }
 function onRepTipoChange() {
   const t = document.getElementById('rep-tipo').value;
@@ -1112,27 +1618,115 @@ function onRepTipoChange() {
   document.getElementById('rep-info').textContent = t==='pct'
     ? 'Incide sobre o valor dos serviços, não sobre despesas ou subcontratações.'
     : 'Valor fixo somado à proposta.';
-  calcResumo();
 }
-function getRepasseCalc(totServicos) {
+function confirmarRepasse() {
   const nome = document.getElementById('rep-nome').value.trim();
   const tipo = document.getElementById('rep-tipo').value;
-  const val  = +document.getElementById('rep-val').value||0;
-  if (!nome||!val) return null;
-  const valorRep = tipo==='pct' ? totServicos*val/100 : val;
-  return { nome, tipo, val, valorRep };
+  const val  = +document.getElementById('rep-val').value || 0;
+  if (!nome) { showBlocked('Informe o nome do repasse'); return; }
+  if (!val)  { showBlocked('Informe o valor do repasse'); return; }
+  const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc), 0);
+  const valorRep = tipo==='pct' ? totI*val/100 : val;
+  cRepasse = { nome, tipo, val, valorRep };
+  document.getElementById('repasse-form').style.display = 'none';
+  document.getElementById('repasse-empty').style.display = 'none';
+  document.getElementById('repasse-preview').style.display = 'block';
+  document.getElementById('rep-preview-nome').textContent = nome;
+  document.getElementById('rep-preview-desc').textContent = tipo==='pct' ? `${val}% sobre serviços` : 'Valor fixo';
+  document.getElementById('rep-preview-val').textContent = fmt(valorRep);
+  updateCardBars(); calcResumo(); save();
+  showToast('Repasse adicionado');
+}
+function editarRepasse() {
+  if (!cRepasse) return;
+  document.getElementById('rep-nome').value = cRepasse.nome;
+  document.getElementById('rep-tipo').value = cRepasse.tipo;
+  document.getElementById('rep-val').value  = cRepasse.val;
+  onRepTipoChange();
+  document.getElementById('repasse-preview').style.display = 'none';
+  document.getElementById('repasse-empty').style.display   = 'none';
+  document.getElementById('repasse-form').style.display    = 'block';
+  cRepasse = null;
+  updateCardBars(); calcResumo(); save();
+  document.getElementById('card-repasse').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function getRepasseCalc(totServicos) {
+  if (!cRepasse) return null;
+  const valorRep = cRepasse.tipo==='pct' ? totServicos*cRepasse.val/100 : cRepasse.val;
+  return { ...cRepasse, valorRep };
 }
 function remRepasse() {
-  document.getElementById('rep-nome').value='';
-  document.getElementById('rep-val').value='';
-  document.getElementById('repasse-preview').style.display='none';
-  document.getElementById('repasse-form').style.display='none';
-  calcResumo();
+  cRepasse = null;
+  document.getElementById('rep-nome').value = '';
+  document.getElementById('rep-val').value  = '';
+  document.getElementById('repasse-preview').style.display = 'none';
+  document.getElementById('repasse-form').style.display    = 'none';
+  document.getElementById('repasse-empty').style.display   = 'block';
+  updateCardBars(); calcResumo(); save();
+}
+
+// ════════════════════════════════════════════════════════
+// BARRAS LATERAIS DINÂMICAS
+// ════════════════════════════════════════════════════════
+function setCardBar(id, colorClass) {
+  const el = document.getElementById(id);
+  if (el) el.className = 'card ' + colorClass;
+}
+function updateCardBars() {
+  const clienteFilled = (document.getElementById('f-cliente').value||'').trim().length > 0;
+  const projetoFilled = (document.getElementById('f-projeto').value||'').trim().length > 0;
+  setCardBar('card-id',       (clienteFilled && projetoFilled) ? 'verde'  : 'neutro');
+  setCardBar('card-servicos', cItems.length  > 0               ? 'verde'  : 'neutro');
+  setCardBar('card-subs',     cSubs.length   > 0               ? 'tc'     : 'neutro');
+  setCardBar('card-repasse',  cRepasse !== null                 ? 'am'     : 'neutro');
+  setCardBar('card-desps',    cDesps.some(d=>d.confirmada)      ? 'az'     : 'neutro');
+}
+
+// ════════════════════════════════════════════════════════
+// PARÂMETROS — TOGGLE SUPABASE
+// ════════════════════════════════════════════════════════
+function toggleSBConfig() {
+  const body = document.getElementById('sb-config-body');
+  const lbl  = document.getElementById('sb-toggle-lbl');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  lbl.textContent    = open ? '▶ Expandir' : '▼ Recolher';
+}
+
+// ════════════════════════════════════════════════════════
+// HISTÓRICO — FILTRO APENAS ATIVAS
+// ════════════════════════════════════════════════════════
+function toggleFiltroAtivas() {
+  S.histSoAativas = !S.histSoAativas;
+  const btn = document.getElementById('hf-btn-ativas');
+  if (S.histSoAativas) {
+    btn.style.background = 'var(--preto)'; btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--preto)';
+  } else {
+    btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
+  }
+  renderHist();
 }
 
 // ════════════════════════════════════════════════════════
 // SUBCONTRATAÇÕES
 // ════════════════════════════════════════════════════════
+function toggleSubForm() {
+  const form = document.getElementById('sub-form');
+  const empty = document.getElementById('sub-empty');
+  const isOpen = form.style.display !== 'none';
+  form.style.display = isOpen ? 'none' : 'block';
+  // se não tem subs e formulário fechado, mostra empty state
+  updateSubVisibility();
+}
+
+function updateSubVisibility() {
+  const hasSubs = cSubs.length > 0;
+  const formOpen = document.getElementById('sub-form').style.display !== 'none';
+  document.getElementById('sub-list-wrap').style.display = hasSubs ? 'block' : 'none';
+  document.getElementById('sub-empty').style.display = (!hasSubs && !formOpen) ? 'block' : 'none';
+}
+
 function addSubcontr() {
   const serv = document.getElementById('sc-serv').value.trim();
   const emp  = document.getElementById('sc-emp').value.trim();
@@ -1141,56 +1735,117 @@ function addSubcontr() {
   const bit  = +document.getElementById('sc-bit').value||0;
   const ret  = +document.getElementById('sc-ret').value||0;
   const data = document.getElementById('sc-data').value;
-  const valComBit = val*(1+bit/100);
   const ganhoEXP  = val*ret/100;
+  // valComBit = total ao cliente: X + bitributação + ganho EXP (adicional sobre X)
+  const valComBit = val*(1+bit/100+ret/100);
   cSubs.push({ id:Date.now(), serv, emp, data, val, bit, ret, valComBit, ganhoEXP });
   ['sc-serv','sc-emp','sc-val','sc-data'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
   document.getElementById('sc-bit').value='15';
   document.getElementById('sc-ret').value='50';
-  calcResumo(); save(); showToast('Subcontratação adicionada');
+  document.getElementById('sub-form').style.display = 'none';
+  renderSubList();
+  updateSubVisibility();
+  calcResumo(); updateCardBars(); save(); showToast('Subcontratação adicionada');
 }
-function remSub(id) { cSubs=cSubs.filter(s=>s.id!==id); calcResumo(); save(); }
+function remSub(id) {
+  cSubs=cSubs.filter(s=>s.id!==id);
+  renderSubList();
+  updateSubVisibility();
+  calcResumo(); updateCardBars(); save();
+}
+
+function renderSubList() {
+  const el = document.getElementById('sub-list');
+  if (!cSubs.length) { el.innerHTML=''; return; }
+  el.innerHTML = cSubs.map(sc=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--cinza2)">
+      <div>
+        <div style="font-size:12px;font-weight:600">${sc.serv}</div>
+        <div style="font-size:10px;color:#888">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}
+          <span style="margin-left:6px;color:#bbb">bit.${sc.bit}% / ganho ${sc.ret}%</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div>
+          <div style="font-size:11px;color:#888;text-decoration:line-through">${fmt(sc.val)}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--tc);font-family:var(--fm)">${fmt(sc.valComBit)}</div>
+        </div>
+        <button class="btn xs danger" onclick="remSub(${sc.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
 
 // ════════════════════════════════════════════════════════
 // DESPESAS INDIRETAS
 // ════════════════════════════════════════════════════════
-const DESP_CORES = { alim:'#1D9E75', carro:'#378ADD', translado:'#BA7517', passagem:'#D4537E' };
-const DESP_LABELS = { alim:'Alimentação', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem' };
+const DESP_CORES = { alim:'#1D9E75', carro:'#378ADD', translado:'#BA7517', passagem:'#D4537E', hotel:'#6B4FA0', horasTec:'#1D6A4A' };
+const DESP_LABELS = { alim:'Alimentação', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem', hotel:'Hospedagem', horasTec:'Horas técnicas (Ganho EXP)' };
 
 function calcDesp(d) {
-  const p = S.params;
-  if (d.tipo==='alim')     return (+d.diarias||0)*(+d.pessoas||1)*(+d.valorDiario||0);
-  if (d.tipo==='carro')    return (+d.diarias||0)*(+d.valorDiaria||0)+(+d.km||0)/Math.max(+d.kml||10,.1)*(+d.vl||0);
+  if (d.tipo==='alim')      return (+d.diarias||0)*(+d.pessoas||1)*(+d.valorDiario||0);
+  if (d.tipo==='carro')     return (+d.diarias||0)*(+d.valorDiaria||0)+(+d.km||0)/Math.max(+d.kml||10,.1)*(+d.vl||0);
   if (d.tipo==='translado') return +d.vt||0;
+  if (d.tipo==='horasTec')  return (+d.dias||0)*(+d.horasDia||0)*(+d.valorHora||0);
   if (d.tipo==='passagem')  return +d.val||0;
+  if (d.tipo==='hotel')     return (+d.diarias||0)*(+d.valorDiaria||0);
   return 0;
 }
 function getTotDesp() {
-  const raw = cDesps.reduce((s,d)=>s+calcDesp(d),0);
+  // horasTec é Ganho EXP — não entra no total repassado ao cliente
+  const raw = cDesps.filter(d=>d.confirmada&&d.tipo!=='horasTec').reduce((s,d)=>s+calcDesp(d),0);
   const bit = (+document.getElementById('desp-bit').value||0)/100;
   return raw*(1+bit);
 }
 
+function updateDespVisibility() {
+  const hasDesps = cDesps.length > 0;
+  document.getElementById('desp-list-wrap').style.display = hasDesps ? 'block' : 'none';
+  document.getElementById('desp-bit-wrap').style.display  = hasDesps ? 'block' : 'none';
+  document.getElementById('desp-empty').style.display     = hasDesps ? 'none' : 'block';
+}
+
 function addDesp(tipo) {
   const id = dSeq++;
-  const base = { id, tipo };
+  const base = { id, tipo, confirmada: false };
   if (tipo==='alim')     Object.assign(base,{diarias:1,pessoas:1,valorDiario:80,desc:''});
   if (tipo==='carro')    Object.assign(base,{diarias:1,valorDiaria:180,km:0,kml:10,vl:6.20,desc:''});
   if (tipo==='translado') Object.assign(base,{vt:0,desc:''});
   if (tipo==='passagem')  Object.assign(base,{orig:'',dest:'',meio:'aviao',val:0,desc:''});
+  if (tipo==='hotel')     Object.assign(base,{cidade:'',diarias:1,valorDiaria:180,desc:''});
+  if (tipo==='horasTec')  Object.assign(base,{dias:1,horasDia:8,valorHora:150,desc:''});
   cDesps.push(base);
-  renderDesps(); calcResumo(); save();
+  renderDesps();
+  updateDespVisibility();
+  calcResumo(); updateCardBars(); save();
+}
+function confirmarDesp(id) {
+  const d = cDesps.find(d=>d.id===id); if(!d) return;
+  d.confirmada = true;
+  save();
+  renderDesps();
+  calcResumo(); updateCardBars();
 }
 function dupDesp(id) {
   const orig = cDesps.find(d=>d.id===id); if(!orig)return;
-  const copia = { ...orig, id:dSeq++ };
+  const copia = { ...orig, id:dSeq++, confirmada: false };
   const idx = cDesps.findIndex(d=>d.id===id);
   cDesps.splice(idx+1,0,copia);
-  renderDesps(); calcResumo(); save();
+  renderDesps(); updateDespVisibility(); calcResumo(); save();
 }
-function remDesp(id) { cDesps=cDesps.filter(d=>d.id!==id); renderDesps(); calcResumo(); save(); }
+function remDesp(id) {
+  cDesps=cDesps.filter(d=>d.id!==id);
+  renderDesps(); updateDespVisibility(); calcResumo(); updateCardBars(); save();
+}
 function setDesp(id,field,val) {
-  const d=cDesps.find(d=>d.id===id); if(d){ d[field]=val; calcResumo(); save(); }
+  const d=cDesps.find(d=>d.id===id);
+  if(d){ d[field]=val; d.confirmada=false; save(); }
+}
+function updateDespSubtotal(despId) {
+  const d = cDesps.find(x=>x.id===despId); if(!d) return;
+  const sub = document.getElementById('desp-sub-'+despId);
+  if(sub) { sub.textContent = fmt(calcDesp(d)); sub.style.color = d.confirmada ? '' : '#bbb'; }
+  const tot = document.getElementById('desp-total-display');
+  if(tot) tot.textContent = fmt(getTotDesp());
 }
 
 function renderDesps() {
@@ -1205,33 +1860,60 @@ function renderDesps() {
     let body = '';
 
     if (d.tipo==='alim') {
-      const hint = `${d.diarias||1} dia(s) × ${d.pessoas||1} pessoa(s) × R$ ${(d.valorDiario||80).toLocaleString('pt-BR')}`;
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}" oninput="setDesp(${d.id},'diarias',+this.value);renderDesps()"></div>
-        <div class="fgroup"><label>Pessoas por diária</label><input type="number" min="1" value="${d.pessoas||1}" oninput="setDesp(${d.id},'pessoas',+this.value);renderDesps()"></div>
-        <div class="fgroup"><label>Valor diário/pessoa (R$)</label><input type="number" min="0" step="5" value="${d.valorDiario||80}" oninput="setDesp(${d.id},'valorDiario',+this.value);renderDesps()"><div style="font-size:10px;color:#888;margin-top:2px">${hint}</div></div>
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}"
+          oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Pessoas por diária</label><input type="number" min="1" value="${d.pessoas||1}"
+          oninput="setDesp(${d.id},'pessoas',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Valor diário/pessoa (R$)</label><input type="number" min="0" step="5" value="${d.valorDiario||80}"
+          oninput="setDesp(${d.id},'valorDiario',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
       </div>
       <div class="fgroup"><label>Descrição</label><input type="text" value="${d.desc||''}" placeholder="Ex: Missão Pelotas — 3 pessoas, 2 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='carro') {
-      const di=(+d.diarias||0)*(+d.valorDiaria||0);
-      const co=(+d.km||0)/Math.max(+d.kml||10,.1)*(+d.vl||0);
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}" oninput="setDesp(${d.id},'diarias',+this.value);renderDesps()"></div>
-        <div class="fgroup"><label>Valor diária c/ seguro (R$)</label><input type="number" min="0" step="10" value="${d.valorDiaria||180}" oninput="setDesp(${d.id},'valorDiaria',+this.value);renderDesps()"><div style="font-size:10px;color:#888;margin-top:2px">Sub-total: ${fmt(di)}</div></div>
-        <div class="fgroup"><label>Km rodados</label><input type="number" min="0" value="${d.km||0}" oninput="setDesp(${d.id},'km',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}"
+          oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Valor diária c/ seguro (R$)</label><input type="number" min="0" step="10" value="${d.valorDiaria||180}"
+          oninput="setDesp(${d.id},'valorDiaria',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Km rodados</label><input type="number" min="0" value="${d.km||0}"
+          oninput="setDesp(${d.id},'km',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
       </div>
       <div class="fg fg3 mb8">
-        <div class="fgroup"><label>Consumo (km/l)</label><input type="number" min=".1" step=".5" value="${d.kml||10}" oninput="setDesp(${d.id},'kml',+this.value);renderDesps()"></div>
-        <div class="fgroup"><label>Valor/litro (R$)</label><input type="number" min="0" step=".05" value="${d.vl||6.20}" oninput="setDesp(${d.id},'vl',+this.value);renderDesps()"><div style="font-size:10px;color:#888;margin-top:2px">Sub-total: ${fmt(co)}</div></div>
+        <div class="fgroup"><label>Consumo (km/l)</label><input type="number" min=".1" step=".5" value="${d.kml||10}"
+          oninput="setDesp(${d.id},'kml',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Valor/litro (R$)</label><input type="number" min="0" step=".05" value="${d.vl||6.20}"
+          oninput="setDesp(${d.id},'vl',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
         <div class="fgroup"><label>Trecho</label><input type="text" value="${d.desc||''}" placeholder="Ex: Floripa → Pelotas" oninput="setDesp(${d.id},'desc',this.value)"></div>
       </div>`;
     }
     if (d.tipo==='translado') {
       body=`<div class="fg fg2">
-        <div class="fgroup"><label>Valor total estimado (R$)</label><input type="number" min="0" step="10" value="${d.vt||0}" oninput="setDesp(${d.id},'vt',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Valor total estimado (R$)</label><input type="number" min="0" step="10" value="${d.vt||0}"
+          oninput="setDesp(${d.id},'vt',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
         <div class="fgroup"><label>Descrição / trecho</label><input type="text" value="${d.desc||''}" placeholder="Ex: Ubers — São Raimundo Nonato, 4 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>
       </div>`;
+    }
+    if (d.tipo==='hotel') {
+      body=`<div class="fg fg3" style="margin-bottom:7px">
+        <div class="fgroup"><label>Cidade</label><input type="text" value="${d.cidade||''}" placeholder="Ex: São Paulo" oninput="setDesp(${d.id},'cidade',this.value)"></div>
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}"
+          oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Valor/diária (R$)</label><input type="number" min="0" step="10" value="${d.valorDiaria||180}"
+          oninput="setDesp(${d.id},'valorDiaria',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+      </div>
+      <div class="fgroup"><label>Descrição</label><input type="text" value="${d.desc||''}" placeholder="Ex: Hotel Centro — 3 noites" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='passagem') {
       body=`<div class="fg fg4 mb8">
@@ -1245,19 +1927,41 @@ function renderDesps() {
             <option value="outro" ${d.meio==='outro'?'selected':''}>Outro</option>
           </select>
         </div>
-        <div class="fgroup"><label>Valor (R$)</label><input type="number" min="0" step="10" value="${d.val||0}" oninput="setDesp(${d.id},'val',+this.value);renderDesps()"></div>
+        <div class="fgroup"><label>Valor (R$)</label><input type="number" min="0" step="10" value="${d.val||0}"
+          oninput="setDesp(${d.id},'val',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
       </div>
       <div class="fgroup"><label>Observação</label><input type="text" value="${d.desc||''}" placeholder="Ex: Ida e volta · 2 pessoas" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
+    if (d.tipo==='horasTec') {
+      body=`<div style="font-size:9px;color:var(--verde);font-weight:600;margin-bottom:6px;letter-spacing:.3px">↳ Valor entra como Ganho EXP (não repassa ao cliente)</div>
+      <div class="fg fg3" style="margin-bottom:7px">
+        <div class="fgroup"><label>Dias</label><input type="number" min="1" value="${d.dias||1}"
+          oninput="setDesp(${d.id},'dias',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Horas/dia</label><input type="number" min="0.5" step="0.5" value="${d.horasDia||8}"
+          oninput="setDesp(${d.id},'horasDia',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+        <div class="fgroup"><label>Valor/hora (R$)</label><input type="number" min="0" step="10" value="${d.valorHora||150}"
+          oninput="setDesp(${d.id},'valorHora',+this.value);updateDespSubtotal(${d.id})"
+          onchange="calcResumo()"></div>
+      </div>
+      <div class="fgroup"><label>Descrição</label><input type="text" value="${d.desc||''}" placeholder="Ex: Consultoria técnica — visita ao terreno" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+    }
 
-    html+=`<div class="bloco" style="border-left-color:${cor}">
+    const subColor = d.confirmada ? '' : 'color:#bbb';
+    const okBtn = d.confirmada
+      ? `<span style="font-size:9px;font-weight:600;color:var(--verde);letter-spacing:.5px">✓ confirmada</span>`
+      : `<button class="btn xs" style="background:var(--verde);color:#fff;border-color:var(--verde)" onclick="confirmarDesp(${d.id})">✓ OK</button>`;
+    html+=`<div class="bloco" style="border-left-color:${d.confirmada?cor:'#ccc'}">
       <div class="bloco-head">
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></div>
-          <span class="bloco-lbl">${lbl}</span>
+          <div style="width:8px;height:8px;border-radius:50%;background:${d.confirmada?cor:'#ccc'};flex-shrink:0"></div>
+          <span class="bloco-lbl" style="${d.confirmada?'':'color:#aaa'}">${lbl}</span>
         </div>
         <div class="bloco-acts">
-          <span class="bloco-sub">${sub}</span>
+          <span class="bloco-sub" id="desp-sub-${d.id}" style="${subColor}">${sub}</span>
+          ${okBtn}
           <button class="btn xs ghost" onclick="dupDesp(${d.id})">+ Duplicar</button>
           <button class="btn xs danger" onclick="remDesp(${d.id})">✕</button>
         </div>
@@ -1272,41 +1976,29 @@ function renderDesps() {
 // RESUMO GERAL
 // ════════════════════════════════════════════════════════
 function calcResumo() {
-  // Recalcula itens CUB-dependentes
   cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc=calcIV(it); });
 
-  const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+  const totI     = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const totICalc = cItems.reduce((s,i)=>s+i.valorCalc,0);
+  const rep      = getRepasseCalc(totI);
+  const totRep   = rep ? rep.valorRep : 0;
 
-  // Repasse sobre serviços
-  const rep = getRepasseCalc(totI);
-  const totRep = rep ? rep.valorRep : 0;
-
-  // Preview repasse
-  if (rep) {
-    document.getElementById('repasse-preview').style.display='block';
-    document.getElementById('repasse-form').style.display='none';
-    document.getElementById('rep-preview-nome').textContent = rep.nome;
-    document.getElementById('rep-preview-desc').textContent = rep.tipo==='pct'
-      ? `${rep.val}% sobre serviços`
-      : 'Valor fixo';
-    document.getElementById('rep-preview-val').textContent = fmt(rep.valorRep);
-  } else {
-    document.getElementById('repasse-preview').style.display='none';
+  // Atualiza preview do repasse com valor recalculado
+  if (cRepasse) {
+    document.getElementById('rep-preview-val').textContent = fmt(totRep);
   }
 
-  // Subcontratações
-  const totSub = cSubs.reduce((s,c)=>s+c.valComBit,0);
+  const totSub   = cSubs.reduce((s,c)=>s+c.valComBit,0);
+  const ganhoSubs= cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
+  const totDesp  = getTotDesp();
+  const despDisplay = document.getElementById('desp-total-display');
+  if (despDisplay) despDisplay.textContent = fmt(totDesp);
 
-  // Despesas com bitributação
-  const totDesp = getTotDesp();
-  document.getElementById('desp-total-display').textContent = fmt(totDesp);
-
-  const total = totI + totRep + totSub + totDesp;
+  const total    = totI + totRep + totSub + totDesp;
   const desconto = Math.max(0, totICalc-totI);
 
-  // Conta itens
   document.getElementById('i-count').textContent = cItems.length+' item'+(cItems.length!==1?'s':'');
+  updateCardBars();
 
   const body = document.getElementById('resumo-body');
   if (!cItems.length && !cSubs.length && !totDesp && !totRep) {
@@ -1316,16 +2008,47 @@ function calcResumo() {
 
   let html = '';
 
-  // GRUPOS POR NÚCLEO
+  // Banner de edição ativa
+  if (editingProposalId !== null) {
+    const orig = S.proposals.find(p=>p.id===editingProposalId);
+    if (orig) {
+      const cod = orig.propCode ? `EXP-${String(orig.propCode).padStart(3,'0')}` : `#${orig.id}`;
+      html += `<div style="background:var(--az-bg);border:1px solid #7AADE8;padding:8px 11px;font-size:11px;color:var(--az);margin-bottom:10px">
+        ✏️ Revisando <strong>${cod}</strong> — ${orig.projeto}. Ao salvar, será criada versão V${(orig.version||0)+1}.
+      </div>`;
+    }
+  }
+
+  // C12/K4 — banner de status CRM
+  if (linkedOppInfo) {
+    const allFinal = linkedOppInfo.prods.length > 0 &&
+      linkedOppInfo.prods.every(p=>['fechado','negado','cancelado'].includes((p.status||'').toLowerCase()));
+    const lockBadges = linkedOppInfo.prods.map(p=>{
+      const st=(p.status||'').toLowerCase();
+      const cor = st==='fechado'?'var(--verde)':st==='negado'?'var(--tc)':st==='cancelado'?'#999':'var(--az)';
+      return `<span style="font-size:9px;font-weight:600;color:${cor};background:${cor}18;padding:2px 6px">${p.nucleo} · ${p.status}</span>`;
+    }).join(' ');
+    html += `<div style="background:#FFF8EE;border:1px solid #E8C07A;padding:8px 11px;font-size:11px;color:#7A5200;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <div style="flex:1">🔗 <strong>CRM vinculado:</strong> ${linkedOppInfo.projeto}
+        ${lockBadges?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${lockBadges}</div>`:''}
+        ${allFinal?`<div style="margin-top:4px;font-weight:600;color:var(--tc)">⚠ Proposta inteiramente travada.</div>`:''}
+      </div>
+      <button id="btn-check-crm" class="btn xs ghost" onclick="atualizarStatusCRM()" style="white-space:nowrap;flex-shrink:0">↻ Atualizar</button>
+    </div>`;
+  }
+
+  // GRUPOS POR NÚCLEO (Produtos / Serviços EXP)
   ['PAIS','URB','CONSUL','ESP'].forEach(nuc=>{
     const its = cItems.filter(i=>i.nucleo===nuc);
     if (!its.length) return;
     const stot = its.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
     const cor  = NCOR[nuc];
-    html+=`<div class="rg">
+    const isLocked = lockedNucleos.has(nuc);
+    html+=`<div class="rg"${isLocked?' style="opacity:.65"':''}>
       <div class="rg-head">
         <div class="rg-stripe" style="background:${cor}"></div>
         <span class="rg-label">${NC[nuc]}</span>
+        ${isLocked?`<span style="font-size:10px;color:var(--tc);margin-left:6px">🔒 travado</span>`:''}
         <span class="rg-sub" style="color:${cor}">${fmt(stot)}</span>
       </div>
       ${its.map(it=>{
@@ -1354,13 +2077,50 @@ function calcResumo() {
             <div class="rg-val${isEd?' edited':''}">${fmt(disp)}</div>
           </div>
           <div style="display:flex;gap:3px">
-            <button class="btn xs ghost" onclick="openEdit(${it.itemId})">✎</button>
-            <button class="btn xs danger" onclick="remItem(${it.itemId})">✕</button>
+            ${isLocked
+              ? `<span style="font-size:10px;color:var(--tc);padding:2px 5px">🔒</span>`
+              : `<button class="btn xs ghost" onclick="openEdit(${it.itemId})">✎</button>
+                 <button class="btn xs danger" onclick="remItem(${it.itemId})">✕</button>`
+            }
           </div>
         </div>`;
       }).join('')}
     </div>`;
   });
+
+  // SUBCONTRATAÇÕES — com breakdown por sub
+  if (cSubs.length) {
+    html+=`<div class="rg">
+      <div class="rg-head">
+        <div class="rg-stripe" style="background:var(--tc)"></div>
+        <span class="rg-label">Subcontratações</span>
+        <span class="rg-sub" style="color:var(--tc)">${fmt(totSub)}</span>
+      </div>
+      ${cSubs.map(sc=>{
+        const bitVal = sc.val*(sc.bit/100);
+        return`<div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:11px;font-weight:600">${sc.serv}</div>
+              <div style="font-size:10px;color:#888;margin-bottom:6px">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}</div>
+              <div style="display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:10px">
+                <span style="color:#aaa">Custo cotado</span><span style="font-family:var(--fm)">${fmt(sc.val)}</span>
+                <span style="color:var(--tc)">+ Bitrib. est. ${sc.bit}%</span><span style="font-family:var(--fm);color:var(--tc)">+ ${fmt(bitVal)}</span>
+                <span style="color:#888;padding-top:2px">→ Pago ao contratado</span><span style="font-family:var(--fm);padding-top:2px">${fmt(sc.val+bitVal)}</span>
+                <span style="color:var(--verde)">+ Ganho EXP ${sc.ret}%</span><span style="font-family:var(--fm);color:var(--verde);font-weight:600">+ ${fmt(sc.ganhoEXP)}</span>
+                <span style="color:#555;font-weight:600;border-top:1px solid var(--cinza2);padding-top:3px">Total ao cliente</span><span style="font-family:var(--fm);font-weight:700;border-top:1px solid var(--cinza2);padding-top:3px">${fmt(sc.valComBit)}</span>
+              </div>
+            </div>
+            <button class="btn xs danger" onclick="remSub(${sc.id})" style="flex-shrink:0;margin-top:2px">✕</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${ganhoSubs>0?`<div style="border:1px solid var(--cinza);border-top:none;background:var(--verde-bg);padding:5px 11px;display:flex;justify-content:space-between;font-size:10px">
+        <span style="color:var(--verde);font-weight:600">Ganho EXP total s/ subcontratações</span>
+        <span style="font-weight:700;color:var(--verde);font-family:var(--fm)">${fmt(ganhoSubs)}</span>
+      </div>`:''}
+    </div>`;
+  }
 
   // REPASSE
   if (rep) {
@@ -1370,50 +2130,59 @@ function calcResumo() {
         <span class="rg-label">Repasse comercial</span>
         <span class="rg-sub" style="color:var(--am)">${fmt(totRep)}</span>
       </div>
-      <div class="rg-item" style="grid-template-columns:2fr 1fr 22px">
-        <div>${rep.nome}</div>
-        <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% s/ serviços`:'Valor fixo'}</div>
-        <div class="rg-val" style="color:var(--am)">${fmt(rep.valorRep)}</div>
+      <div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11px;font-weight:600">${rep.nome}</div>
+          <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="font-weight:700;color:var(--am);font-family:var(--fm);font-size:13px">${fmt(totRep)}</div>
+          <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
+          <button class="btn xs danger" onclick="remRepasse()">✕</button>
+        </div>
       </div>
     </div>`;
   }
 
-  // SUBCONTRATAÇÕES
-  if (cSubs.length) {
-    const ganhoTotal = cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
-    html+=`<div class="rg">
-      <div class="rg-head">
-        <div class="rg-stripe" style="background:var(--tc)"></div>
-        <span class="rg-label">Subcontratações</span>
-        <span style="font-size:10px;color:#888;margin-left:6px">(ganho EXP: ${fmt(ganhoTotal)})</span>
-        <span class="rg-sub" style="color:var(--tc)">${fmt(totSub)}</span>
-      </div>
-      ${cSubs.map(sc=>`<div class="rg-item" style="grid-template-columns:2fr 1fr 1fr 1fr 22px">
-        <div>${sc.serv}<br><span style="font-size:10px;color:#888">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}</span></div>
-        <div style="font-size:10px;color:#888">${fmt(sc.val)}</div>
-        <div style="font-size:10px;color:#888">Bit.${sc.bit}% / Ret.${sc.ret}%</div>
-        <div class="rg-val" style="color:var(--tc)">${fmt(sc.valComBit)}</div>
-        <button class="btn xs danger" onclick="remSub(${sc.id})">✕</button>
-      </div>`).join('')}
-    </div>`;
-  }
-
-  // DESPESAS
+  // DESPESAS — com cada item + bitributação total
   if (totDesp>0) {
     const rawDesp = cDesps.reduce((s,d)=>s+calcDesp(d),0);
-    const bit = +document.getElementById('desp-bit').value||0;
+    const bit     = +document.getElementById('desp-bit').value||0;
+    const bitAmt  = rawDesp*(bit/100);
+    const DLBL    = { alim:'Alimentação', carro:'Veículo', translado:'Translado', hotel:'Hospedagem', passagem:'Passagem' };
     html+=`<div class="rg">
       <div class="rg-head">
         <div class="rg-stripe" style="background:#888"></div>
         <span class="rg-label">Despesas indiretas</span>
-        ${bit>0?`<span style="font-size:9px;color:#888;margin-left:4px">${fmt(rawDesp)} × ${(1+bit/100).toFixed(2)}</span>`:''}
         <span class="rg-sub">${fmt(totDesp)}</span>
       </div>
+      ${cDesps.map(d=>{
+        const val  = calcDesp(d);
+        const lbl  = DLBL[d.tipo]||d.tipo;
+        const desc = d.desc||d.cidade||'';
+        const det  = d.tipo==='alim'?`${d.diarias||1}d × ${d.pessoas||1}p`
+          : d.tipo==='hotel'?`${d.diarias||1}d${d.cidade?' · '+d.cidade:''}`
+          : d.tipo==='passagem'&&d.orig?`${d.orig}→${d.dest||''}`:'';
+        return`<div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:6px 11px;display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <div style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <strong>${lbl}</strong>${desc?' — '+desc:''}
+            ${det?`<span style="font-size:9px;color:#bbb;margin-left:4px">${det}</span>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <span style="font-weight:700;font-family:var(--fm);font-size:11px">${fmt(val)}</span>
+            <button class="btn xs danger" onclick="remDesp(${d.id})">✕</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${bit>0?`<div style="border:1px solid var(--cinza);border-top:none;background:#fafaf8;padding:5px 11px;display:flex;justify-content:space-between;font-size:10px">
+        <span style="color:#888">Bruto ${fmt(rawDesp)} + Bitrib. ${bit}% = ${fmt(bitAmt)}</span>
+        <span style="font-weight:700;font-family:var(--fm)">${fmt(totDesp)}</span>
+      </div>`:''}
     </div>`;
   }
 
   // TOTAL
-  html+=`<div class="total-bar">
+  html+=`<div class="total-bar" style="margin-top:8px">
     <div class="total-lbl">Valor total da proposta</div>
     <div class="total-val">${fmt(total)}</div>
   </div>`;
@@ -1425,24 +2194,52 @@ function calcResumo() {
     </div>`;
   }
 
+  // GANHO EXP — box destacado
+  const ganhoTec = cDesps.filter(d=>d.tipo==='horasTec'&&d.confirmada).reduce((s,d)=>s+calcDesp(d),0);
+  const totalGanhoEXP = totI + ganhoSubs + ganhoTec;
+  html+=`<div style="margin-top:8px;background:var(--verde-bg);border:1px solid #8FD0B0;padding:10px 13px">
+    <div style="font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--verde);margin-bottom:6px">Ganho EXP</div>
+    <div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
+      <span style="color:#444">Serviços EXP (produtos)</span>
+      <span style="font-family:var(--fm);font-weight:600">${fmt(totI)}</span>
+    </div>
+    ${ganhoSubs>0?`<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
+      <span style="color:#444">Ganho s/ subcontratações</span>
+      <span style="font-family:var(--fm);font-weight:600">${fmt(ganhoSubs)}</span>
+    </div>`:''}
+    ${ganhoTec>0?`<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
+      <span style="color:#444">Horas técnicas</span>
+      <span style="font-family:var(--fm);font-weight:600">${fmt(ganhoTec)}</span>
+    </div>`:''}
+    <div style="font-size:12px;font-weight:700;display:flex;justify-content:space-between;padding:5px 0;margin-top:4px;border-top:1px solid #8FD0B0">
+      <span style="color:var(--verde)">Total ganhos EXP</span>
+      <span style="font-family:var(--fm);color:var(--verde)">${fmt(totalGanhoEXP)}</span>
+    </div>
+  </div>`;
+
   // DISTRIBUIÇÃO POR ETAPA
   if (cItems.length && totI>0) {
-    const nMain = cItems[0].nucleo;
-    const ets   = S.etapas[nMain]?.default || [];
-    const dists = S.distEtapas[nMain]?.default || [];
+    const nMain  = cItems[0].nucleo;
+    const subKey = cItems[0].subK;
+    const ets    = S.etapas[nMain]?.[subKey] || S.etapas[nMain]?.default || [];
+    const dists  = S.distEtapas[nMain]?.[subKey] || S.distEtapas[nMain]?.default || [];
     if (ets.length) {
       html+=`<div style="margin-top:12px;border-top:1px solid var(--cinza2);padding-top:10px">
-        <div class="sec">Distribuição por etapa</div>
+        <div class="sec" style="color:#aaa">Distribuição por etapa <span style="font-weight:400;font-size:9px">(serviços EXP)</span></div>
         ${ets.map((e,i)=>{
-          const pct=dists[i]||0;
-          const val=total*pct/100;
-          return`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
-            <div style="width:16px;height:16px;border-radius:50%;background:var(--cinza2);display:flex;align-items:center;justify-content:center;font-size:9px;color:#888;flex-shrink:0">${i+1}</div>
+          const pct=dists[i]||0, val=totI*pct/100;
+          return`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px;color:#888">
+            <div style="width:16px;height:16px;border-radius:50%;background:var(--cinza2);display:flex;align-items:center;justify-content:center;font-size:9px;color:#aaa;flex-shrink:0">${i+1}</div>
             <span style="flex:1">${e}</span>
-            <span style="color:#888">${pct}%</span>
-            <span style="font-weight:700;min-width:85px;text-align:right;font-family:var(--fm)">${fmt(val)}</span>
+            <span>${pct}%</span>
+            <span style="font-family:var(--fm);min-width:80px;text-align:right;color:#555">${fmt(val)}</span>
           </div>`;
         }).join('')}
+        ${ganhoSubs>0?`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px;color:var(--verde)">
+          <div style="width:16px;flex-shrink:0"></div>
+          <span style="flex:1">+ Ganho EXP s/ subcontratações</span>
+          <span style="font-family:var(--fm);color:var(--verde);font-weight:600">${fmt(ganhoSubs)}</span>
+        </div>`:''}
       </div>`;
     }
   }
@@ -1464,18 +2261,51 @@ function calcResumo() {
 }
 
 // ════════════════════════════════════════════════════════
-// SALVAR / LIMPAR
+// SALVAR / LIMPAR / PDF
 // ════════════════════════════════════════════════════════
-function salvarProposta() {
+async function salvarProposta() {
   const proj = document.getElementById('f-projeto').value.trim();
   if (!proj) { showBlocked('Informe o nome do projeto'); return; }
   if (!cItems.length) { showBlocked('Adicione ao menos um serviço'); return; }
   const totI  = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const rep   = getRepasseCalc(totI);
   const total = totI+(rep?rep.valorRep:0)+cSubs.reduce((s,c)=>s+c.valComBit,0)+getTotDesp();
+  const ganhoSubsVal = cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
+  const ganhoTecVal  = cDesps.filter(d=>d.tipo==='horasTec'&&d.confirmada).reduce((s,d)=>s+calcDesp(d),0);
+  const totalEfetivo = totI + ganhoSubsVal + ganhoTecVal;
   const nucs  = [...new Set(cItems.map(i=>i.nucleo))];
+
+  let version  = 0;
+  let propCode = null;
+  let parentId = null;
+  let status   = 'ativa';
+
+  // Se estamos revisando uma proposta existente
+  if (editingProposalId !== null) {
+    const orig = S.proposals.find(p=>p.id===editingProposalId);
+    if (orig) {
+      version  = (orig.version || 0) + 1;
+      propCode = orig.propCode || null;
+      parentId = orig.parentId || orig.id;
+      orig.status = 'revisada';
+      orig.revisadaEm = new Date().toISOString();
+      syncProposalToSupabase(orig);
+    }
+    editingProposalId = null;
+  }
+
+  // Nova proposta: gera propCode sequencial
+  if (propCode === null) {
+    S.propCodeSeq = (S.propCodeSeq||0) + 1;
+    propCode = S.propCodeSeq;
+  }
+
   const p = {
     id:          Date.now(),
+    version,
+    propCode,
+    parentId,
+    status,
     cliente:     document.getElementById('f-cliente').value.trim(),
     projeto:     proj,
     resp:        document.getElementById('f-resp').value,
@@ -1488,60 +2318,659 @@ function salvarProposta() {
     subs:        [...cSubs],
     desps:       [...cDesps],
     repasse:     rep,
+    despBit:     +(document.getElementById('desp-bit').value)||0,
     total,
+    totalEfetivo,
     createdAt:   new Date().toISOString(),
+    cubSnap:     S.cub,
+    cubMes:      S.cubMes,
   };
+
   S.proposals.unshift(p);
   if (p.cliente && !S.clientes.includes(p.cliente)) S.clientes.push(p.cliente);
-  save(); showToast('Proposta salva com sucesso');
+  save();
+
+  // Sincroniza com Supabase
+  const synced = await syncProposalToSupabase(p);
+  const syncMsg = synced ? ' · sincronizado na nuvem ✓' : '';
+  showToast('Proposta salva' + syncMsg);
+
+  document.getElementById('sync-status-bar').textContent = synced
+    ? 'Proposta registrada na nuvem — consultável por qualquer login da equipe.'
+    : (S.sbUrl ? 'Salva localmente. Configure o Supabase para sincronizar.' : 'Salva localmente.');
+
+  // Limpa formulário após salvar
+  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null; editingProposalId=null;
+  linkedOppInfo=null; lockedNucleos=new Set();
+  ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
+    const e=document.getElementById(id); if(e)e.value='';
+  });
+  document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('repasse-form').style.display='none';
+  document.getElementById('repasse-preview').style.display='none';
+  document.getElementById('repasse-empty').style.display='block';
+  document.getElementById('rep-nome').value='';
+  document.getElementById('rep-val').value='';
+  document.getElementById('sub-form').style.display='none';
+  renderDesps(); renderSubList();
+  updateDespVisibility(); updateSubVisibility();
+  calcResumo(); updateCardBars();
+  save();
 }
 
 function limpar() {
-  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null;
+  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null; editingProposalId=null;
+  linkedOppInfo=null; lockedNucleos=new Set();
   ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
     const e=document.getElementById(id);if(e)e.value='';
   });
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('repasse-form').style.display='none';
   document.getElementById('repasse-preview').style.display='none';
+  document.getElementById('repasse-empty').style.display='block';
   document.getElementById('rep-nome').value='';
   document.getElementById('rep-val').value='';
-  renderDesps(); calcResumo(); showToast('Calculadora limpa');
+  document.getElementById('sub-form').style.display='none';
+  renderDesps(); renderSubList();
+  updateDespVisibility(); updateSubVisibility();
+  calcResumo(); updateCardBars();
+  document.getElementById('sync-status-bar').textContent='';
+  save();
+  showToast('Calculadora limpa');
+}
+
+// ── EXPORTAR PDF ──────────────────────────────────────
+function sanitizeFilename(s) {
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+}
+
+function exportarPDF() {
+  if (!cItems.length && !cSubs.length) { showBlocked('Adicione serviços antes de exportar'); return; }
+
+  const proj     = document.getElementById('f-projeto').value.trim() || 'Proposta';
+  const cliente  = document.getElementById('f-cliente').value.trim() || '—';
+  const respEl   = document.getElementById('f-resp');
+  const respNome = respEl ? respEl.options[respEl.selectedIndex]?.text || respEl.value : '—';
+  const dataVal  = document.getElementById('f-data').value;
+  const data     = fmtD(dataVal);
+  const cidade   = document.getElementById('f-cidade').value.trim();
+  const uf       = document.getElementById('f-uf').value;
+  const obs      = document.getElementById('f-obs').value.trim();
+
+  // Tenta obter propCode/version da proposta em edição ou usa defaults
+  let propCode = null, version = 0;
+  if (editingProposalId !== null) {
+    const orig = S.proposals.find(p=>p.id===editingProposalId);
+    if (orig) { propCode = orig.propCode; version = (orig.version||0)+1; }
+  } else {
+    // Busca pela última proposta salva com este projeto/cliente
+    const match = S.proposals.find(p=>p.projeto===proj && p.cliente===cliente && p.status==='ativa');
+    if (match) { propCode = match.propCode; version = match.version||0; }
+  }
+  const codStr  = propCode ? `EXP-${String(propCode).padStart(3,'0')}` : 'EXP-RASCUNHO';
+  const versStr = `V${version}`;
+
+  const totI    = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+  const rep     = getRepasseCalc(totI);
+  const totRep  = rep ? rep.valorRep : 0;
+  const totSub  = cSubs.reduce((s,c)=>s+c.valComBit,0);
+  const ganhoSubs = cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
+  const totDesp = getTotDesp();
+  const rawDesp = cDesps.reduce((s,d)=>s+calcDesp(d),0);
+  const bitDesp = +document.getElementById('desp-bit').value||0;
+  const bitDespAmt = rawDesp*(bitDesp/100);
+  const total   = totI + totRep + totSub + totDesp;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W=210, M=16, TW=W-M*2;
+  let y = 0;
+
+  const CL = { black:[17,17,16], gray:[160,160,158], lgray:[210,209,204],
+               verde:[29,106,74], am:[196,131,26], tc:[184,76,58],
+               az:[29,79,160], white:[255,255,255] };
+
+  function chkPage(need=14) { if(y>285-need){doc.addPage();y=18;} }
+
+  // ── CABEÇALHO ──────────────────────────────────────
+  doc.setFillColor(...CL.black); doc.rect(0,0,W,18,'F');
+  doc.setTextColor(...CL.white);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('EXP', M, 12);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text('Proposta de Honorários', M+14, 12);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text(`${codStr}  ${versStr}`, W-M, 12, {align:'right'});
+  y = 26;
+
+  // ── NOME DO PROJETO ─────────────────────────────────
+  doc.setTextColor(...CL.black);
+  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text(proj, M, y, {maxWidth:TW-40}); y+=8;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...CL.gray);
+  const infoLine = `${cliente}   ·   ${respNome}   ·   ${cidade}${uf?' ('+uf+')':''}   ·   ${data}`;
+  doc.text(infoLine, M, y, {maxWidth:TW}); y+=5;
+
+  if (obs) {
+    doc.setFontSize(8); doc.setTextColor(...CL.gray);
+    const obsLines = doc.splitTextToSize(obs, TW);
+    doc.text(obsLines, M, y); y += obsLines.length*4+2;
+  }
+  doc.setDrawColor(...CL.lgray); doc.line(M, y, W-M, y); y+=6;
+
+  // ── PRODUTOS / SERVIÇOS EXP ─────────────────────────
+  const NCOR_PDF = { PAIS:CL.verde, URB:CL.az, CONSUL:CL.tc, ESP:CL.am };
+  ['PAIS','URB','CONSUL','ESP'].forEach(nuc=>{
+    const its = cItems.filter(i=>i.nucleo===nuc);
+    if (!its.length) return;
+    const stot = its.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+    const cor  = NCOR_PDF[nuc]||CL.black;
+    chkPage(10);
+    doc.setFillColor(...cor); doc.rect(M,y-3,TW,7,'F');
+    doc.setTextColor(...CL.white); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text(NC[nuc].toUpperCase(), M+3, y+1);
+    doc.text(fmt(stot), W-M-2, y+1, {align:'right'});
+    y+=8;
+
+    its.forEach(it=>{
+      chkPage(14);
+      const disp = it.valorProposto!==null?it.valorProposto:it.valorCalc;
+      const isEd = it.valorProposto!==null;
+      let detail='';
+      if(it.mode==='calc'){
+        if(it.subK==='PAIS_ARB') detail=`${(+it.area).toLocaleString('pt-BR')} m² SV`;
+        else if(it.nucleo==='URB') detail=`${(+it.area).toLocaleString('pt-BR',{maximumFractionDigits:2})} ha · coef. ${(+it.coef).toFixed(2)}`;
+        else detail=`${(+it.area).toLocaleString('pt-BR')} m² · coef. ${(+it.coef).toFixed(2)}`;
+      } else if(it.mode==='floreira') detail=`${(+it.area).toFixed(2)} CUB`;
+      else if(it.mode==='consul') detail=`${it.horas||0}h`;
+
+      doc.setTextColor(...CL.black); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+      const itemLabel = it.subLabel+(it.desc?' — '+it.desc:'')+(it.id?' / '+it.id:'');
+      doc.text(itemLabel, M+3, y, {maxWidth:TW-30});
+      doc.text(fmt(disp), W-M-2, y, {align:'right'});
+      if (detail) {
+        doc.setFont('helvetica','normal'); doc.setTextColor(...CL.gray); doc.setFontSize(7);
+        doc.text(detail, M+3, y+4);
+      }
+      if (isEd && it.editJust) {
+        doc.setFont('helvetica','italic'); doc.setTextColor(...CL.gray); doc.setFontSize(7);
+        const justLines = doc.splitTextToSize(`Justif.: ${it.editJust} (calc. ${fmt(it.valorCalc)})`, TW-30);
+        doc.text(justLines, M+3, y+(detail?8:4));
+        y += justLines.length*3.5;
+      }
+      doc.setDrawColor(...CL.lgray); doc.line(M,y+(detail?8:5),W-M,y+(detail?8:5));
+      y += detail ? 11 : 7;
+    });
+    y+=3;
+  });
+
+  // S5-01 — REPASSE (movido para antes de Subcontratações)
+  if (rep) {
+    chkPage(10);
+    doc.setFillColor(251,243,232); doc.rect(M,y-3,TW,7,'F');
+    doc.setTextColor(...CL.am); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text('REPASSE COMERCIAL', M+3, y+1);
+    doc.text(fmt(totRep), W-M-2, y+1, {align:'right'}); y+=9;
+    doc.setTextColor(...CL.black); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text(`${rep.nome}  ·  ${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}`, M+3, y);
+    doc.setFont('helvetica','bold'); doc.text(fmt(totRep), W-M-2, y, {align:'right'});
+    doc.setDrawColor(...CL.lgray); doc.line(M,y+4,W-M,y+4); y+=8;
+  }
+
+  // S5-01+S5-02 — SUBCONTRATAÇÕES (layout corrigido: 2 linhas por item, sem overflow)
+  if (cSubs.length) {
+    chkPage(12);
+    doc.setFillColor(251,240,238); doc.rect(M,y-3,TW,7,'F');
+    doc.setTextColor(...CL.tc); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text('SUBCONTRATAÇÕES', M+3, y+1);
+    doc.text(fmt(totSub), W-M-2, y+1, {align:'right'}); y+=9;
+
+    cSubs.forEach(sc=>{
+      chkPage(18);
+      // Linha 1: serviço + total alinhado à direita
+      doc.setTextColor(...CL.black); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+      doc.text(sc.serv, M+3, y, {maxWidth: TW-35});
+      doc.text(fmt(sc.valComBit), W-M-2, y, {align:'right'});
+      // Linha 2: empresa · data
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
+      const infoSub = [sc.emp, sc.data ? fmtD(sc.data) : ''].filter(Boolean).join(' · ');
+      if (infoSub) { doc.text(infoSub, M+3, y+4.5); }
+      // Linha 3: breakdown custo + bitrib + ganho EXP
+      doc.setFontSize(7);
+      const breakdownParts = [`Custo: ${fmt(sc.val)}`];
+      if (sc.bit > 0) breakdownParts.push(`+ Bitrib. ${sc.bit}%: ${fmt(sc.val * sc.bit / 100)}`);
+      if (sc.ganhoEXP > 0) breakdownParts.push(`· Ganho EXP (${sc.ret}%): ${fmt(sc.ganhoEXP)}`);
+      doc.setTextColor(...CL.gray);
+      doc.text(breakdownParts.join('   '), M+3, y+9, {maxWidth: TW-6});
+      doc.setDrawColor(...CL.lgray); doc.line(M, y+13, W-M, y+13); y+=16;
+    });
+    if (ganhoSubs>0) {
+      doc.setTextColor(...CL.verde); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+      doc.text(`Ganho EXP total s/ subcontratações: ${fmt(ganhoSubs)}`, M+3, y); y+=6;
+    }
+  }
+
+  // S5-01+S5-03 — DESPESAS INDIRETAS (breakdown por item com fórmula de cálculo)
+  if (cDesps.length) {
+    chkPage(12);
+    doc.setFillColor(245,245,243); doc.rect(M,y-3,TW,7,'F');
+    doc.setTextColor(...CL.gray); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text('DESPESAS INDIRETAS', M+3, y+1);
+    doc.text(fmt(totDesp), W-M-2, y+1, {align:'right'}); y+=9;
+
+    const DLBL = { alim:'Alimentação', carro:'Veículo', translado:'Translado', hotel:'Hospedagem', passagem:'Passagem', horasTec:'Horas técnicas (interno)' };
+    cDesps.filter(d=>d.confirmada).forEach(d=>{
+      chkPage(12);
+      const val = calcDesp(d);
+      const lbl = DLBL[d.tipo] || d.tipo;
+      const det = d.desc || d.cidade || '';
+      // Fórmula de cálculo por tipo
+      let formula = '';
+      if (d.tipo==='alim' && (+d.diarias||0)>0)
+        formula = `${d.diarias} diárias × ${d.pessoas||1} pessoa(s) × ${fmt(d.valorDiario||0)}`;
+      else if (d.tipo==='carro')
+        formula = `${d.diarias||0}d × ${fmt(d.valorDiaria||0)}${+d.km>0?' + '+d.km+'km':''}`;
+      else if (d.tipo==='hotel' && (+d.diarias||0)>0)
+        formula = `${d.diarias} diárias × ${fmt(d.valorDiaria||0)}`;
+      else if (d.tipo==='horasTec' && (+d.dias||0)>0)
+        formula = `${d.dias}d × ${d.horasDia||0}h × ${fmt(d.valorHora||0)}/h`;
+
+      doc.setTextColor(...CL.black); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(lbl+(det?' — '+det:''), M+3, y, {maxWidth: TW-30});
+      if (d.tipo !== 'horasTec') {
+        doc.setFont('helvetica','bold');
+        doc.text(fmt(val), W-M-2, y, {align:'right'});
+      }
+      if (formula) {
+        doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
+        doc.text(formula, M+3, y+4.5);
+      }
+      doc.setDrawColor(...CL.lgray); doc.line(M, y+(formula?8:4), W-M, y+(formula?8:4));
+      y += formula ? 11 : 7;
+    });
+    if (bitDesp>0) {
+      doc.setTextColor(...CL.gray); doc.setFontSize(7);
+      doc.text(`Bruto: ${fmt(rawDesp)}  +  Bitributação ${bitDesp}%: ${fmt(bitDespAmt)}  =  Total: ${fmt(totDesp)}`, M+3, y); y+=5;
+    }
+    y+=2;
+  }
+
+  // ── TOTAL ─────────────────────────────────────────
+  chkPage(16);
+  y+=2;
+  doc.setFillColor(...CL.black); doc.rect(M,y,TW,14,'F');
+  doc.setTextColor(...CL.white); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('VALOR TOTAL DA PROPOSTA', M+4, y+8);
+  doc.setFontSize(14); doc.text(fmt(total), W-M-4, y+9, {align:'right'});
+  y+=18;
+
+  // S5-01 — DISTRIBUIÇÃO POR ETAPA (movida para antes do Ganho EXP)
+  if (cItems.length && totI>0) {
+    const nMain  = cItems[0].nucleo;
+    const subKey = cItems[0].subK;
+    const ets    = S.etapas[nMain]?.[subKey] || S.etapas[nMain]?.default || [];
+    const dists  = S.distEtapas[nMain]?.[subKey] || S.distEtapas[nMain]?.default || [];
+    if (ets.length) {
+      chkPage(10+ets.length*6);
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
+      doc.text('DISTRIBUIÇÃO POR ETAPA  ·  serviços EXP', M+2, y); y+=5;
+      doc.setDrawColor(...CL.lgray); doc.line(M,y,W-M,y); y+=3;
+      ets.forEach((e,i)=>{
+        const pct=dists[i]||0, val=totI*pct/100;
+        doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
+        doc.text(`${i+1}. ${e}`, M+2, y);
+        doc.text(`${pct}%`, M+90, y, {align:'right'});
+        doc.text(fmt(val), W-M-2, y, {align:'right'});
+        doc.setDrawColor(...CL.lgray); doc.line(M,y+2.5,W-M,y+2.5); y+=5;
+      });
+      y+=4;
+    }
+  }
+
+  // ── GANHO EXP (interno — sempre ao final) ────────
+  chkPage(18);
+  doc.setFillColor(234,245,238); doc.rect(M,y,TW,ganhoSubs>0?16:11,'F');
+  doc.setTextColor(...CL.verde); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+  doc.text('GANHO EXP', M+3, y+5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(`Serviços EXP: ${fmt(totI)}`, M+3, y+10);
+  if (ganhoSubs>0) {
+    doc.text(`Ganho s/ subcontratações: ${fmt(ganhoSubs)}`, M+3, y+14);
+    doc.setFont('helvetica','bold');
+    doc.text(`Total ganhos EXP: ${fmt(totI+ganhoSubs)}`, W-M-2, y+14, {align:'right'});
+    y+=18;
+  } else {
+    doc.setFont('helvetica','bold'); doc.text(`Total ganhos EXP: ${fmt(totI)}`, W-M-2, y+10, {align:'right'});
+    y+=14;
+  }
+  y+=6;
+
+  // ── RODAPÉ ────────────────────────────────────────
+  const dateStr   = new Date().toLocaleDateString('pt-BR');
+  const yyyymmdd  = dataVal ? dataVal.replace(/-/g,'') : new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const pagesCount= doc.internal.getNumberOfPages();
+  for (let i=1;i<=pagesCount;i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
+    doc.text(`EXP Arquitetura  ·  ${codStr}  ${versStr}  ·  Gerado em ${dateStr}`, M, 292);
+    doc.text(`${i}/${pagesCount}`, W-M, 292, {align:'right'});
+  }
+
+  const fn = `EXP_${sanitizeFilename(cliente)}_${sanitizeFilename(proj)}_${codStr.replace('-','')}_${versStr}_${yyyymmdd}.pdf`;
+  doc.save(fn);
+  showToast('PDF exportado: ' + fn);
 }
 
 // ════════════════════════════════════════════════════════
 // HISTÓRICO
 // ════════════════════════════════════════════════════════
+function atualizarFiltroPeriodo() {
+  const tipo = document.getElementById('hf-periodo').value;
+  const sel  = document.getElementById('hf-periodo-val');
+  sel.innerHTML = '';
+  if (tipo === 'todos') { sel.style.display='none'; renderHist(); return; }
+  sel.style.display = '';
+  const hoje = new Date();
+  const ano  = hoje.getFullYear();
+  if (tipo === 'ano') {
+    const anos = [...new Set(S.proposals.map(p=>(p.data||'').slice(0,4)).filter(Boolean))].sort().reverse();
+    if (!anos.includes(String(ano))) anos.unshift(String(ano));
+    anos.forEach(a=>{ const o=document.createElement('option'); o.value=a; o.textContent=a; sel.appendChild(o); });
+  } else if (tipo === 'semestre') {
+    for (let a=ano; a>=ano-2; a--) {
+      [2,1].forEach(s=>{ const o=document.createElement('option'); o.value=`${a}-S${s}`; o.textContent=`${a} — ${s}º semestre`; sel.appendChild(o); });
+    }
+    sel.value = `${ano}-S${hoje.getMonth()<6?1:2}`;
+  } else if (tipo === 'trimestre') {
+    for (let a=ano; a>=ano-1; a--) {
+      [4,3,2,1].forEach(t=>{ const o=document.createElement('option'); o.value=`${a}-T${t}`; o.textContent=`${a} — ${t}º tri`; sel.appendChild(o); });
+    }
+    sel.value = `${ano}-T${Math.ceil((hoje.getMonth()+1)/3)}`;
+  } else if (tipo === 'mes') {
+    const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    for (let a=ano; a>=ano-1; a--) {
+      for (let m=11; m>=0; m--) {
+        const o=document.createElement('option'); o.value=`${a}-${String(m+1).padStart(2,'0')}`; o.textContent=`${meses[m]} ${a}`; sel.appendChild(o);
+      }
+    }
+    sel.value = `${ano}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  }
+  renderHist();
+}
+
 function renderHist() {
-  const nucFil  = document.getElementById('hf-nucleo').value;
-  const respFil = document.getElementById('hf-resp').value;
-  const q       = (document.getElementById('hf-search').value||'').toLowerCase();
+  const nucFil    = document.getElementById('hf-nucleo').value;
+  const respFil   = document.getElementById('hf-resp').value;
+  const q         = (document.getElementById('hf-search').value||'').toLowerCase();
+  const tipo      = document.getElementById('hf-periodo').value;
+  const periodoV  = document.getElementById('hf-periodo-val').value;
+
   const fps = S.proposals.filter(p=>{
+    if(S.histSoAativas && p.status!=='ativa') return false;
     if(nucFil!=='todos'&&p.mainNucleo!==nucFil&&p.mainNucleo!=='MISTO')return false;
     if(respFil!=='todos'&&p.resp!==respFil)return false;
     if(q&&!p.projeto.toLowerCase().includes(q)&&!(p.cliente||'').toLowerCase().includes(q))return false;
+    if(tipo!=='todos' && periodoV) {
+      const data = p.data||'';
+      if(tipo==='ano' && data.slice(0,4)!==periodoV) return false;
+      if(tipo==='semestre') {
+        const [a,s]=periodoV.split('-S'); const m=parseInt(data.slice(5,7));
+        if(data.slice(0,4)!==a) return false;
+        if(s==='1'&&m>6) return false;
+        if(s==='2'&&m<7) return false;
+      }
+      if(tipo==='trimestre') {
+        const [a,t]=periodoV.split('-T'); const m=parseInt(data.slice(5,7));
+        if(data.slice(0,4)!==a) return false;
+        const tri=Math.ceil(m/3);
+        if(String(tri)!==t) return false;
+      }
+      if(tipo==='mes' && data.slice(0,7)!==periodoV) return false;
+    }
     return true;
   });
   const RESP_LABEL={CC:'Carlos',GB:'Gabriela',TC:'Thayssa',LA:'Laís'};
+
   document.getElementById('hist-body').innerHTML = fps.length
-    ? fps.map(p=>`<tr class="click">
-        <td style="font-weight:600;font-family:var(--fm);font-size:10px">${p.id}</td>
-        <td style="font-weight:500">${p.cliente||'—'}</td>
-        <td>${p.projeto}</td>
-        <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${NC[p.mainNucleo]||p.mainNucleo}</span></td>
-        <td>${RESP_LABEL[p.resp]||p.resp||'—'}</td>
-        <td style="font-size:10px">${p.cidade||''}${p.uf?' ('+p.uf+')':''}</td>
-        <td style="font-size:10px">${fmtD(p.data)}</td>
-        <td style="font-weight:700;font-family:var(--fm)">${fmt(p.total)}</td>
-      </tr>`).join('')
-    : '<tr><td colspan="8" class="empty">Nenhuma proposta encontrada</td></tr>';
+    ? fps.map(p=>{
+        const isRevisada   = p.status==='revisada';
+        const isFinalizada = p.status==='finalizada';
+        const rowClass     = (isRevisada||isFinalizada) ? 'click blocked-row' : 'click';
+        const statusBadge  = isRevisada
+          ? `<span class="badge-revisada">Revisada</span>`
+          : isFinalizada
+            ? `<span class="badge-bloqueada">Finalizada</span>`
+            : `<span class="badge b-vd">Ativa</span>`;
+        const cod = p.propCode
+          ? `<span style="font-size:10px;font-family:var(--fm);font-weight:600">EXP-${String(p.propCode).padStart(3,'0')}</span>`
+          : `<span style="font-size:9px;color:#aaa">#${p.id}</span>`;
+        const versBadge = `<span style="font-size:9px;color:var(--az);font-weight:700">V${p.version||0}</span>`;
+        const efetivo = p.totalEfetivo != null ? fmt(p.totalEfetivo) : `<span style="color:#bbb">—</span>`;
+        return `<tr class="${rowClass}" onclick="abrirProposta(${p.id})">
+          <td>${cod}</td>
+          <td>${versBadge}</td>
+          <td style="font-weight:500">${p.cliente||'—'}</td>
+          <td>${p.projeto}</td>
+          <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${NC[p.mainNucleo]||p.mainNucleo}</span></td>
+          <td>${RESP_LABEL[p.resp]||p.resp||'—'}</td>
+          <td style="font-size:10px">${p.cidade||''}${p.uf?' ('+p.uf+')':''}</td>
+          <td style="font-size:10px">${fmtD(p.data)}</td>
+          <td style="font-weight:700;font-family:var(--fm)">${fmt(p.total)}</td>
+          <td style="font-weight:700;font-family:var(--fm);color:var(--verde)">${efetivo}</td>
+          <td>${statusBadge}</td>
+          <td class="del-col"><button class="del-prop-btn" onclick="event.stopPropagation();excluirProposta(${p.id})" title="Excluir proposta">×</button></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="11" class="empty">Nenhuma proposta encontrada</td></tr>';
+
+  // tfoot com totais
+  const sumTotal    = fps.reduce((s,p)=>s+(p.total||0),0);
+  const sumEfetivo  = fps.filter(p=>p.totalEfetivo!=null).reduce((s,p)=>s+(p.totalEfetivo||0),0);
+  const hasEfetivo  = fps.some(p=>p.totalEfetivo!=null);
+  document.getElementById('hist-foot').innerHTML = fps.length
+    ? `<tr style="border-top:2px solid var(--cinza)">
+        <td colspan="8" style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;padding:6px 8px">${fps.length} proposta${fps.length!==1?'s':''}</td>
+        <td style="font-weight:700;font-family:var(--fm);font-size:12px">${fmt(sumTotal)}</td>
+        <td style="font-weight:700;font-family:var(--fm);font-size:12px;color:var(--verde)">${hasEfetivo?fmt(sumEfetivo):'—'}</td>
+        <td></td>
+        <td class="del-col"></td>
+      </tr>`
+    : '';
+}
+
+function abrirProposta(id) {
+  const p = S.proposals.find(x=>x.id===id);
+  if (!p) return;
+
+  // Encontra versões relacionadas
+  const familyId = p.parentId || p.id;
+  const family = S.proposals.filter(x=>(x.parentId===familyId||x.id===familyId)).sort((a,b)=>a.id-b.id);
+
+  // Modal de detalhe
+  const codDisp = p.propCode ? `EXP-${String(p.propCode).padStart(3,'0')}` : `#${p.id}`;
+  document.getElementById('mhd-title').textContent = `${codDisp}  V${p.version||0} — ${p.projeto}`;
+
+  const body = document.getElementById('mhd-body');
+  let html = '';
+
+  // Info
+  html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cliente</div><div style="font-weight:600">${p.cliente||'—'}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Responsável</div><div>${p.resp||'—'}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Data</div><div>${fmtD(p.data)}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cidade</div><div>${p.cidade||'—'}${p.uf?' ('+p.uf+')':''}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Total</div><div style="font-size:16px;font-weight:700;font-family:var(--fm)">${fmt(p.total)}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Status</div><div>${p.status==='revisada'?'<span class="badge-revisada">Revisada</span>':'<span class="badge b-vd">Ativa</span>'}</div></div>
+  </div>`;
+
+  if (p.obs) {
+    html += `<div style="background:var(--cinza2);padding:8px 11px;font-size:11px;color:#666;margin-bottom:12px">${p.obs}</div>`;
+  }
+
+  // Itens
+  html += `<div class="sec">Serviços</div>`;
+  (p.items||[]).forEach(it=>{
+    const disp = it.valorProposto!==null?it.valorProposto:it.valorCalc;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+      <div>
+        <span class="badge ${NBADGE[it.nucleo]}">${it.subLabel}</span>
+        ${it.desc?`<span style="color:#888;margin-left:5px">${it.desc}</span>`:''}
+        ${it.id?`<span style="color:#888;margin-left:5px">${it.id}</span>`:''}
+      </div>
+      <div style="font-weight:700;font-family:var(--fm)">${fmt(disp)}</div>
+    </div>`;
+  });
+
+  // Subcontratações
+  if ((p.subs||[]).length) {
+    html += `<div class="sec" style="margin-top:10px">Subcontratações</div>`;
+    p.subs.forEach(sc=>{
+      html += `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+        <div>${sc.serv} <span style="color:#888">· ${sc.emp}</span></div>
+        <div style="font-weight:700;color:var(--tc)">${fmt(sc.valComBit)}</div>
+      </div>`;
+    });
+  }
+
+  // Total
+  html += `<div style="background:var(--preto);color:#fff;padding:10px 13px;display:flex;justify-content:space-between;margin-top:12px">
+    <span style="font-size:9px;font-weight:700;letter-spacing:1px;opacity:.6">VALOR TOTAL</span>
+    <span style="font-size:16px;font-weight:700;font-family:var(--fm)">${fmt(p.total)}</span>
+  </div>`;
+
+  // Histórico de versões da família
+  if (family.length > 1) {
+    html += `<div style="margin-top:14px"><div class="sec">Versões desta proposta</div>`;
+    family.forEach(v=>{
+      const vc = v.propCode ? `EXP-${String(v.propCode).padStart(3,'0')}` : `#${v.id}`;
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+        <span style="font-family:var(--fm);font-size:10px;color:#aaa">${vc}</span>
+        <span style="font-weight:700;color:var(--az)">V${v.version||0}</span>
+        <span style="color:#888">${fmtD(v.data)}</span>
+        <span style="flex:1"></span>
+        <span style="font-family:var(--fm)">${fmt(v.total)}</span>
+        <span>${v.status==='revisada'?'<span class="badge-revisada">Revisada</span>':v.status==='finalizada'?'<span class="badge-bloqueada">Finalizada</span>':'<span class="badge b-vd">Ativa</span>'}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  body.innerHTML = html;
+
+  // Footer do modal
+  const footer = document.getElementById('mhd-footer');
+  footer.innerHTML = '';
+
+  const btnFechar = document.createElement('button');
+  btnFechar.className = 'btn ghost';
+  btnFechar.textContent = 'Fechar';
+  btnFechar.onclick = ()=>closeM('modal-hist-detail');
+  footer.appendChild(btnFechar);
+
+  // PDF da proposta histórica
+  const btnPdf = document.createElement('button');
+  btnPdf.className = 'btn az sm';
+  btnPdf.textContent = '📄 PDF';
+  btnPdf.onclick = ()=>exportarPDFFromProposal(p);
+  footer.appendChild(btnPdf);
+
+  // Só permite revisar propostas ativas
+  if (p.status !== 'revisada') {
+    const btnRev = document.createElement('button');
+    btnRev.className = 'btn am sm';
+    btnRev.textContent = '✏️ Criar revisão';
+    btnRev.onclick = ()=>{
+      closeM('modal-hist-detail');
+      carregarPropostaParaRevisao(p);
+    };
+    footer.appendChild(btnRev);
+  }
+
+  openM('modal-hist-detail');
+}
+
+function carregarPropostaParaRevisao(p) {
+  // Carrega os dados da proposta no formulário de cálculo
+  cItems  = JSON.parse(JSON.stringify(p.items||[]));
+  cSubs   = JSON.parse(JSON.stringify(p.subs||[]));
+  cDesps  = JSON.parse(JSON.stringify(p.desps||[])).map(d=>({confirmada:true,...d}));
+  editingProposalId = p.id;
+
+  document.getElementById('f-cliente').value = p.cliente||'';
+  document.getElementById('f-projeto').value = p.projeto||'';
+  document.getElementById('f-resp').value    = p.resp||'CC';
+  document.getElementById('f-data').value    = p.data||new Date().toISOString().slice(0,10);
+  document.getElementById('f-cidade').value  = p.cidade||'';
+  document.getElementById('f-uf').value      = p.uf||'';
+  document.getElementById('f-obs').value     = p.obs||'';
+
+  if (p.repasse) {
+    cRepasse = { ...p.repasse };
+    const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+    const valorRep = cRepasse.tipo==='pct' ? totI*cRepasse.val/100 : cRepasse.val;
+    document.getElementById('rep-preview-nome').textContent = cRepasse.nome;
+    document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviços` : 'Valor fixo';
+    document.getElementById('rep-preview-val').textContent  = fmt(valorRep);
+    document.getElementById('repasse-preview').style.display = 'block';
+    document.getElementById('repasse-empty').style.display   = 'none';
+    document.getElementById('repasse-form').style.display    = 'none';
+  } else {
+    cRepasse = null;
+    document.getElementById('repasse-preview').style.display = 'none';
+    document.getElementById('repasse-empty').style.display   = 'block';
+  }
+  if (p.despBit !== undefined) {
+    document.getElementById('desp-bit').value = p.despBit;
+  }
+
+  // Reconstrói lista de subs e desps
+  renderSubList(); updateSubVisibility();
+  renderDesps(); updateDespVisibility();
+  calcResumo(); updateCardBars(); save();
+
+  // C12/K4: verifica status CRM (async, atualiza resumo quando pronto)
+  checkCRMLinkStatus(p.id).then(() => calcResumo());
+
+  // Vai para aba calc
+  goTab('calc');
+  showToast('Proposta carregada para revisão — nova versão ao salvar');
+}
+
+function exportarPDFFromProposal(p) {
+  const origItems   = cItems, origSubs = cSubs, origDesps = cDesps, origRepasse = cRepasse;
+  const origEditing = editingProposalId;
+  const origFields  = ['f-cliente','f-projeto','f-resp','f-data','f-cidade','f-uf','f-obs'].map(id=>
+    ({id, val:document.getElementById(id).value})
+  );
+  const origBit = document.getElementById('desp-bit').value;
+
+  cItems = JSON.parse(JSON.stringify(p.items||[]));
+  cSubs  = JSON.parse(JSON.stringify(p.subs||[]));
+  cDesps = JSON.parse(JSON.stringify(p.desps||[])).map(d=>({confirmada:true,...d}));
+  cRepasse = p.repasse ? { ...p.repasse } : null;
+  editingProposalId = p.id; // para que exportarPDF use o propCode/version corretos
+  document.getElementById('f-cliente').value = p.cliente||'';
+  document.getElementById('f-projeto').value = p.projeto||'';
+  document.getElementById('f-resp').value    = p.resp||'CC';
+  document.getElementById('f-data').value    = p.data||'';
+  document.getElementById('f-cidade').value  = p.cidade||'';
+  document.getElementById('f-uf').value      = p.uf||'';
+  document.getElementById('f-obs').value     = p.obs||'';
+  if (p.despBit!==undefined) document.getElementById('desp-bit').value = p.despBit;
+
+  exportarPDF();
+
+  cItems = origItems; cSubs = origSubs; cDesps = origDesps; cRepasse = origRepasse;
+  editingProposalId = origEditing;
+  origFields.forEach(f=>{ document.getElementById(f.id).value = f.val; });
+  document.getElementById('desp-bit').value = origBit;
 }
 
 // ════════════════════════════════════════════════════════
 // PARÂMETROS
 // ════════════════════════════════════════════════════════
 function renderParams() {
-  // CUB hist
   document.getElementById('cub-hist-list').innerHTML = S.cubHist.map(h=>
     `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
       <span style="color:#888">${fmtM(h.mes)}</span>
@@ -1550,10 +2979,10 @@ function renderParams() {
     </div>`
   ).join('') || '<div class="empty">Nenhum registro</div>';
 
-  // Faixas PAIS
+  // CALC-1+2: coluna "De" agora é readonly (derivada da anterior), "Até" agora é editável
   const fRow=(f,tipo,i)=>`<div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--cinza2)">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="number" value="${f.max===null?'':f.max||0}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value)">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);opacity:.5" type="text" value="${S['f'+tipo][i+1]?S['f'+tipo][i+1].max||0:''}" placeholder="—" readonly>
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);background:#f5f5f5;color:#888" type="text" value="${i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':S['f'+tipo][i-1]?.max??0)}" placeholder="0" readonly tabindex="-1">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="number" value="${f.max===null?'':f.max||0}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
     <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="text" value="${f.label}" onchange="S.f${tipo}[${i}].label=this.value">
     <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--fm)" type="number" step="0.00001" value="${f.mult}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
     <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">✕</button>
@@ -1561,7 +2990,6 @@ function renderParams() {
   document.getElementById('faixas-pais').innerHTML = S.fP.map((f,i)=>fRow(f,'P',i)).join('');
   document.getElementById('faixas-urb').innerHTML  = S.fU.map((f,i)=>fRow(f,'U',i)).join('');
 
-  // Mínimos
   const allSubs = [];
   Object.entries(SUBS).forEach(([nuc,tipos])=>{
     if(nuc==='PAIS'){
@@ -1590,12 +3018,25 @@ function renderParams() {
   document.getElementById('p-gas').value=S.params.gas;
   document.getElementById('p-car').value=S.params.car;
 
+  // Carrega config Supabase
+  if (S.sbUrl) document.getElementById('sb-url').value = S.sbUrl;
+  if (S.sbKey) document.getElementById('sb-key').value = S.sbKey;
+
   renderEtapaNucleoTabs();
 }
 
 function addFaixa(tipo) {
-  if(tipo==='P')S.fP.push({max:null,mult:0.001,label:'Nova faixa'});
-  else S.fU.push({max:null,mult:0.00001,label:'Nova faixa'});
+  // CALC-2: inserir antes da última faixa infinita, com "de" preenchido da anterior
+  const arr = tipo==='P' ? S.fP : S.fU;
+  const lastInfIdx = arr.findIndex(f => f.max === null);
+  const insertIdx  = lastInfIdx >= 0 ? lastInfIdx : arr.length;
+  const prevMax    = insertIdx > 0 ? (arr[insertIdx-1]?.max ?? 0) : 0;
+  const novoMax    = prevMax > 0 ? Math.round(prevMax * 2) : 1000;
+  arr.splice(insertIdx, 0, {
+    max:  novoMax,
+    mult: arr[insertIdx]?.mult || (tipo==='P' ? 0.001 : 0.00001),
+    label: 'Nova faixa'
+  });
   renderParams();
 }
 
@@ -1603,7 +3044,66 @@ function saveParams() {
   S.params.diaria=+document.getElementById('p-diaria').value||680;
   S.params.gas   =+document.getElementById('p-gas').value||6.20;
   S.params.car   =+document.getElementById('p-car').value||180;
-  save(); showToast('Parâmetros salvos');
+  save(); saveParamsToSupabase(); showToast('Parâmetros salvos');
+}
+
+async function saveParamsToSupabase() {
+  if (!S.sbUrl || !S.sbKey) return;
+  setSyncStatus('sync', 'salvando...');
+  const payload = {
+    updated_at: new Date().toISOString(),
+    cub: S.cub, cub_mes: S.cubMes, cub_hist: S.cubHist,
+    fp: S.fP, fu: S.fU, mins: S.mins,
+    etapas: S.etapas, dist_etapas: S.distEtapas, params: S.params,
+  };
+  try {
+    const hdrs = { ...getSBHeaders() };
+    if (S.calcParamsId) {
+      const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?id=eq.${S.calcParamsId}`, {
+        method: 'PATCH', headers: hdrs, body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error(await r.text());
+    } else {
+      hdrs['Prefer'] = 'return=representation';
+      const r = await fetch(`${S.sbUrl}/rest/v1/calc_params`, {
+        method: 'POST', headers: hdrs, body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const d = await r.json();
+      if (d?.[0]?.id) { S.calcParamsId = d[0].id; save(); }
+    }
+    setSyncStatus('ok');
+  } catch(e) {
+    setSyncStatus('err', 'erro params');
+    console.warn('saveParamsToSupabase:', e.message);
+  }
+}
+
+async function loadParamsFromSupabase() {
+  if (!S.sbUrl || !S.sbKey) return;
+  try {
+    const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?limit=1`, { headers: getSBHeaders() });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d?.length) return;
+    const row = d[0];
+    S.calcParamsId = row.id;
+    if (row.cub)         S.cub         = row.cub;
+    if (row.cub_mes)     S.cubMes      = row.cub_mes;
+    if (row.cub_hist)    S.cubHist     = row.cub_hist;
+    if (row.fp)          S.fP          = row.fp;
+    if (row.fu)          S.fU          = row.fu;
+    if (row.mins)        S.mins        = row.mins;
+    // CALC-3+4: merge profundo — preserva nucleos ausentes no registro do Supabase
+    if (row.etapas)      S.etapas     = { ...S.etapas,     ...row.etapas };
+    if (row.dist_etapas) S.distEtapas = { ...S.distEtapas, ...row.dist_etapas };
+    if (row.params)      S.params      = row.params;
+    save();
+    updateCubDisplay();
+    renderParams();
+  } catch(e) {
+    console.warn('loadParamsFromSupabase:', e.message);
+  }
 }
 
 // ── ETAPAS POR TIPO ──────────────────────────────────────
@@ -1632,8 +3132,15 @@ function selEtapaNucleo(n, el) {
     updateEtapaSubtipo();
   } else {
     tipoGrp.style.display='none';
-    subGrp.style.display='none';
-    editEtapaChave = 'default';
+    const subs = Object.keys(SUBS[n]||{});
+    if (subs.length > 1) {
+      subGrp.style.display='';
+      subSel.innerHTML = ['(Geral)',...subs].map((s,i)=>`<option value="${i===0?'default':SUBS[n][s].k}">${s}</option>`).join('');
+      editEtapaChave = subSel.value;
+    } else {
+      subGrp.style.display='none';
+      editEtapaChave = 'default';
+    }
     renderEtapasEditor();
   }
 }
@@ -1684,14 +3191,113 @@ function addEtapa() {
 }
 
 // ════════════════════════════════════════════════════════
+// NAV — Sprint B
+// ════════════════════════════════════════════════════════
+const SUPABASE_URL_NAV     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPABASE_ANON_KEY_NAV = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+const sbNav = supabase.createClient(SUPABASE_URL_NAV, SUPABASE_ANON_KEY_NAV);
+
+function toggleNavDropdown() {
+  document.getElementById('nav-dropdown').classList.toggle('open');
+}
+function toggleUserMenu() {
+  document.getElementById('user-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('nav-mod-wrap')?.contains(e.target))
+    document.getElementById('nav-dropdown')?.classList.remove('open');
+  if (!document.getElementById('user-pill-wrap')?.contains(e.target))
+    document.getElementById('user-dropdown')?.classList.remove('open');
+});
+function initNavDropdown(role) {
+  if (role === 'socio') document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+}
+async function sair() {
+  await sbNav.auth.signOut();
+  sessionStorage.removeItem('exp_usuario');
+  window.location.href = 'index.html';
+}
+function initNavUserFromSession() {
+  try {
+    const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
+    const av = document.getElementById('user-av');
+    if (u.iniciais && av) {
+      av.textContent = u.iniciais;
+      av.style.cssText = `background:${u.cor||'#888'}22;color:${u.cor||'#888'}`;
+    }
+    if (u.iniciais === 'CC') document.body.classList.add('can-delete');
+    initNavDropdown(u.role);
+  } catch(e) {}
+}
+
+async function excluirProposta(id) {
+  if (!confirm('Excluir esta proposta permanentemente? Esta ação não pode ser desfeita.')) return;
+  try {
+    if (S.sbUrl && S.sbKey) {
+      const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?proposal_id=eq.' + encodeURIComponent(String(id)), {
+        method: 'DELETE',
+        headers: getSBHeaders()
+      });
+      if (!r.ok && r.status !== 204) throw new Error('HTTP ' + r.status);
+    }
+    S.proposals = S.proposals.filter(p => p.id !== id);
+    save();
+    renderHist();
+  } catch(e) {
+    alert('Erro ao excluir: ' + e.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════
 load();
+initNavUserFromSession();
 updateCubDisplay();
 selNucleo('PAIS');
 document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
+renderSubList(); updateSubVisibility();
+renderDesps(); updateDespVisibility();
+
+// Restaura visibilidade do repasse
+if (cRepasse) {
+  const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
+  const valorRep = cRepasse.tipo==='pct' ? totI*cRepasse.val/100 : cRepasse.val;
+  document.getElementById('rep-preview-nome').textContent = cRepasse.nome;
+  document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviços` : 'Valor fixo';
+  document.getElementById('rep-preview-val').textContent  = fmt(valorRep);
+  document.getElementById('repasse-preview').style.display = 'block';
+  document.getElementById('repasse-empty').style.display   = 'none';
+} else {
+  document.getElementById('repasse-preview').style.display = 'none';
+  document.getElementById('repasse-empty').style.display   = 'block';
+}
+
 calcResumo();
-renderDesps();
+updateCardBars();
+
+// Tenta sincronizar ao carregar se Supabase configurado
+if (S.sbUrl && S.sbKey) {
+  setSyncStatus('sync','conectando...');
+  Promise.all([loadParamsFromSupabase(), loadProposalsFromSupabase()]);
+} else {
+  setSyncStatus('', 'local');
+}
+
+// Restaura estado de edição ativa no banner
+if (editingProposalId !== null) {
+  calcResumo();
+}
+
+// Infra — polling de status CRM a cada 2 min quando revisando proposta vinculada
+setInterval(async () => {
+  if (editingProposalId !== null && S.sbUrl && S.sbKey) {
+    const sizeBefore = lockedNucleos.size;
+    await checkCRMLinkStatus(editingProposalId);
+    // Só re-renderiza se algo mudou (evita piscar a tela)
+    if (lockedNucleos.size !== sizeBefore || linkedOppInfo) calcResumo();
+  }
+}, 120000);
 </script>
 </body>
 </html>

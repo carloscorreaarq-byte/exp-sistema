@@ -66,15 +66,14 @@ body::before {
   gap: 0;
 }
 .nav-brand { font-size: 15px; font-weight: 700; letter-spacing: 5px; }
-.nav-sep { width: 1px; height: 16px; background: var(--cinza); margin: 0 16px; }
-.nav-sub { font-size: 10px; font-weight: 400; color: #999; letter-spacing: 1px; }
 .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.user-pill-wrap { position: relative; }
 .user-chip {
   display: flex; align-items: center; gap: 8px;
   padding: 4px 10px 4px 4px;
   border: 1px solid var(--cinza);
   background: #fff;
-  cursor: pointer;
+  cursor: pointer; user-select: none;
 }
 .user-chip:hover { border-color: var(--preto); }
 .user-av {
@@ -84,17 +83,21 @@ body::before {
 }
 .user-nome { font-size: 11px; font-weight: 500; }
 .user-cargo { font-size: 9px; color: #888; }
-.btn-sair {
-  padding: 5px 12px;
-  border: 1px solid var(--cinza);
-  background: #fff;
-  font-family: var(--f);
-  font-size: 9px; font-weight: 700;
-  letter-spacing: .6px; text-transform: uppercase;
-  cursor: pointer; color: #888;
-  transition: all .12s;
+.user-chip-arrow { font-size: 9px; color: #bbb; margin-left: 4px; }
+.user-dropdown {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0;
+  background: #fff; border: 1px solid var(--cinza);
+  min-width: 160px; z-index: 200;
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
 }
-.btn-sair:hover { border-color: var(--tc); color: var(--tc); }
+.user-dropdown.open { display: block; }
+.user-dropdown button {
+  display: block; width: 100%; padding: 9px 14px;
+  background: none; border: none; font-family: var(--f);
+  font-size: 11px; font-weight: 500; color: var(--tc);
+  text-align: left; cursor: pointer;
+}
+.user-dropdown button:hover { background: var(--off); }
 
 /* CONTEÚDO */
 .main { padding: 32px 24px; max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }
@@ -142,10 +145,11 @@ body::before {
 .mod-card:hover { border-color: var(--preto); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.06); }
 .mod-card.disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
 
-.mod-card.calc::before { background: var(--verde); }
-.mod-card.crm::before  { background: var(--az); }
-.mod-card.gestao::before { background: var(--am); }
-.mod-card.pessoas::before { background: var(--tc); }
+.mod-card.calc::before       { background: var(--verde); }
+.mod-card.crm::before        { background: var(--az); }
+.mod-card.gestao::before     { background: var(--am); }
+.mod-card.apoio::before      { background: var(--tc); }
+.mod-card.financeiro::before { background: #6B4FA0; }
 
 .mod-icone {
   width: 36px; height: 36px;
@@ -153,10 +157,11 @@ body::before {
   font-size: 18px; margin-bottom: 12px;
   border-radius: 2px;
 }
-.mod-card.calc .mod-icone   { background: var(--verde-bg); }
-.mod-card.crm .mod-icone    { background: var(--az-bg); }
-.mod-card.gestao .mod-icone { background: var(--am-bg); }
-.mod-card.pessoas .mod-icone{ background: var(--tc-bg); }
+.mod-card.calc .mod-icone       { background: var(--verde-bg); }
+.mod-card.crm .mod-icone        { background: var(--az-bg); }
+.mod-card.gestao .mod-icone     { background: var(--am-bg); }
+.mod-card.apoio .mod-icone      { background: var(--tc-bg); }
+.mod-card.financeiro .mod-icone { background: #F3EFFE; }
 
 .mod-nome { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
 .mod-desc { font-size: 11px; font-weight: 300; color: #777; line-height: 1.5; margin-bottom: 12px; }
@@ -165,10 +170,11 @@ body::before {
   font-size: 9px; font-weight: 700; letter-spacing: .4px;
   text-transform: uppercase;
 }
-.mod-card.calc .mod-tag   { color: var(--verde); }
-.mod-card.crm .mod-tag    { color: var(--az); }
-.mod-card.gestao .mod-tag { color: var(--am); }
-.mod-card.pessoas .mod-tag{ color: var(--tc); }
+.mod-card.calc .mod-tag       { color: var(--verde); }
+.mod-card.crm .mod-tag        { color: var(--az); }
+.mod-card.gestao .mod-tag     { color: var(--am); }
+.mod-card.apoio .mod-tag      { color: var(--tc); }
+.mod-card.financeiro .mod-tag { color: #6B4FA0; }
 .mod-em-breve {
   font-size: 8px; font-weight: 700; letter-spacing: .5px;
   text-transform: uppercase; color: #bbb;
@@ -176,21 +182,6 @@ body::before {
   display: inline-block;
 }
 
-/* STATS RÁPIDAS */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 32px;
-}
-.stat-card {
-  background: #fff;
-  border: 1px solid var(--cinza);
-  padding: 14px 16px;
-}
-.stat-lbl { font-size: 8px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #999; margin-bottom: 6px; }
-.stat-val { font-size: 22px; font-weight: 700; font-family: var(--fm); line-height: 1; }
-.stat-sub { font-size: 10px; color: #999; margin-top: 3px; }
 
 /* VIEWER AVISO */
 .viewer-aviso {
@@ -221,18 +212,21 @@ body::before {
 <div id="conteudo" style="display:none">
 
 <nav class="nav">
-  <div class="nav-brand">EXP</div>
-  <div class="nav-sep"></div>
-  <div class="nav-sub">Sistema de gestão</div>
+  <div class="nav-brand">EXP Sistema</div>
   <div class="nav-right">
-    <div class="user-chip" id="user-chip">
-      <div class="user-av" id="user-av"></div>
-      <div>
-        <div class="user-nome" id="user-nome">—</div>
-        <div class="user-cargo" id="user-cargo">—</div>
+    <div class="user-pill-wrap">
+      <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
+        <div class="user-av" id="user-av"></div>
+        <div>
+          <div class="user-nome" id="user-nome">—</div>
+          <div class="user-cargo" id="user-cargo">—</div>
+        </div>
+        <span class="user-chip-arrow">▾</span>
+      </div>
+      <div class="user-dropdown" id="user-dropdown">
+        <button onclick="sair()">Sair do sistema</button>
       </div>
     </div>
-    <button class="btn-sair" onclick="sair()">Sair</button>
   </div>
 </nav>
 
@@ -250,33 +244,36 @@ body::before {
     <div class="bv-sub">Selecione um módulo para começar.</div>
   </div>
 
-  <!-- STATS -->
-  <div class="stats-row" id="stats-row">
-    <div class="stat-card">
-      <div class="stat-lbl">Propostas salvas</div>
-      <div class="stat-val" id="st-props">—</div>
-      <div class="stat-sub">na calculadora</div>
+  <!-- MÓDULOS ABERTOS -->
+  <div class="modulos-titulo">Módulos abertos</div>
+  <div class="modulos-grid">
+
+    <a href="gestao.html" class="mod-card gestao">
+      <div class="mod-icone">📐</div>
+      <div class="mod-nome">EXP.projetos</div>
+      <div class="mod-desc">Gestão de projetos com etapas, pranchas, revisões técnicas e controle de horas por colaborador.</div>
+      <div class="mod-tag">▶ Acessar módulo</div>
+    </a>
+
+    <a href="apoio.html" class="mod-card apoio">
+      <div class="mod-icone">📚</div>
+      <div class="mod-nome">EXP.conhecimento</div>
+      <div class="mod-desc">Base de conhecimento institucional — tipos de projeto, etapas, entregáveis e checklists de conferência.</div>
+      <div class="mod-tag">▶ Acessar módulo</div>
+    </a>
+
+    <div class="mod-card disabled">
+      <div class="mod-icone">👤</div>
+      <div class="mod-nome">EXP.contatos</div>
+      <div class="mod-desc">Cadastro e gestão de clientes, contatos e fornecedores.</div>
+      <div class="mod-em-breve">Em desenvolvimento</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-lbl">Oportunidades</div>
-      <div class="stat-val" id="st-opps">—</div>
-      <div class="stat-sub">no CRM</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-lbl">Projetos ativos</div>
-      <div class="stat-val" id="st-proj">—</div>
-      <div class="stat-sub">em gestão</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-lbl">CUB/SC vigente</div>
-      <div class="stat-val" id="st-cub" style="font-size:14px">—</div>
-      <div class="stat-sub" id="st-cub-mes">—</div>
-    </div>
+
   </div>
 
-  <!-- MÓDULOS ATIVOS -->
-  <div class="modulos-titulo">Módulos disponíveis</div>
-  <div class="modulos-grid">
+  <!-- MÓDULOS SOCIETÁRIOS -->
+  <div class="modulos-titulo" id="soc-titulo" style="display:none">Módulos societários</div>
+  <div class="modulos-grid" id="soc-grid" style="display:none">
 
     <a href="calc.html" class="mod-card calc">
       <div class="mod-icone">🧮</div>
@@ -285,24 +282,17 @@ body::before {
       <div class="mod-tag">▶ Acessar módulo</div>
     </a>
 
-    <div class="mod-card crm disabled">
+    <a href="crm.html" class="mod-card crm">
       <div class="mod-icone">📋</div>
-      <div class="mod-nome">EXP.crm</div>
+      <div class="mod-nome">EXP.comercial</div>
       <div class="mod-desc">Pipeline comercial por produto, oportunidades, follow-ups, revisões de proposta e relatórios de captação.</div>
-      <div class="mod-em-breve">Em desenvolvimento</div>
-    </div>
+      <div class="mod-tag">▶ Acessar módulo</div>
+    </a>
 
-    <div class="mod-card gestao disabled">
-      <div class="mod-icone">📐</div>
-      <div class="mod-nome">EXP.gestão</div>
-      <div class="mod-desc">Gestão de projetos com etapas, pranchas, revisões técnicas e controle de horas por colaborador.</div>
-      <div class="mod-em-breve">Em desenvolvimento</div>
-    </div>
-
-    <div class="mod-card pessoas disabled">
-      <div class="mod-icone">👥</div>
-      <div class="mod-nome">EXP.pessoas</div>
-      <div class="mod-desc">Carga por colaborador, performance, custo-hora e distribuição de projetos entre o time.</div>
+    <div class="mod-card financeiro disabled">
+      <div class="mod-icone">💰</div>
+      <div class="mod-nome">EXP.financeiro</div>
+      <div class="mod-desc">Acompanhamento financeiro, faturamento, fluxo de caixa e rentabilidade por projeto.</div>
       <div class="mod-em-breve">Em desenvolvimento</div>
     </div>
 
@@ -327,16 +317,15 @@ function saudacao() {
   return 'Boa noite';
 }
 
-function fmtCUB(v) {
-  if (!v) return '—';
-  return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function toggleUserMenu() {
+  document.getElementById('user-dropdown').classList.toggle('open');
 }
-function fmtMes(ym) {
-  if (!ym) return '—';
-  const [y,m] = ym.split('-');
-  const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  return `${ms[+m-1]}/${y}`;
-}
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.user-pill-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('user-dropdown')?.classList.remove('open');
+  }
+});
 
 async function init() {
   // Verifica sessão
@@ -378,21 +367,10 @@ async function init() {
   // Salva no session storage
   sessionStorage.setItem('exp_usuario', JSON.stringify({ ...usuario, auth_id: session.user.id }));
 
-  // Stats do banco
-  carregarStats();
-
-  // Stats da calculadora (localStorage)
-  try {
-    const calc = JSON.parse(localStorage.getItem('exp_calc_v3') || '{}');
-    const props = calc?.S?.proposals?.length || 0;
-    document.getElementById('st-props').textContent = props;
-
-    const cub = calc?.S?.cub;
-    const cubMes = calc?.S?.cubMes;
-    document.getElementById('st-cub').textContent = fmtCUB(cub);
-    document.getElementById('st-cub-mes').textContent = cubMes ? fmtMes(cubMes) : '—';
-  } catch(e) {
-    document.getElementById('st-props').textContent = '0';
+  // Módulos societários (visíveis apenas para sócios)
+  if (usuario.role === 'socio') {
+    document.getElementById('soc-titulo').style.display = 'flex';
+    document.getElementById('soc-grid').style.display = 'grid';
   }
 
   // Mostra conteúdo
@@ -400,24 +378,6 @@ async function init() {
   document.getElementById('conteudo').style.display = 'block';
 }
 
-async function carregarStats() {
-  try {
-    const { count: opps } = await sb
-      .from('oportunidades')
-      .select('*', { count:'exact', head:true });
-    document.getElementById('st-opps').textContent = opps ?? '—';
-  } catch(e) {}
-
-  try {
-    const { count: proj } = await sb
-      .from('projetos')
-      .select('*', { count:'exact', head:true })
-      .eq('status', 'ativo');
-    document.getElementById('st-proj').textContent = proj ?? '—';
-  } catch(e) {
-    document.getElementById('st-proj').textContent = '—';
-  }
-}
 
 async function sair() {
   await sb.auth.signOut();

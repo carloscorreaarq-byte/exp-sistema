@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EXP · Base de Conhecimento</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --preto:#111110;--off:#F7F6F3;--cinza:#D0CFC9;--cinza2:#ECEAE4;--branco:#fff;
+  --verde:#1D6A4A;--verde-l:#2D9E6B;--verde-bg:#EAF5EE;
+  --az:#1D4FA0;--az-bg:#EAF0FB;
+  --am:#C4831A;--am-bg:#FBF3E8;
+  --tc:#B84C3A;--tc-bg:#FBF0EE;
+  --roxo:#6B4FA0;
+  --urb:#5280CA;--urb-bg:#ECF1FA;
+  --pai-inc:#2A5239;--pai-hor:#45865D;--pai-res:#6AA87D;--pai-urb:#9CC4A8;
+  --pai-bg:#EAF5EE;
+  --consul:#C36247;--consul-bg:#FAF0EE;
+  --esp:#D19931;--esp-bg:#FAF4E8;
+  --f:'Raleway',sans-serif;--fm:'DM Mono',monospace;
+}
+body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13px;line-height:1.5;font-weight:300}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--off);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+.loading-brand{font-size:22px;font-weight:700;letter-spacing:6px}
+.loading-dot{display:flex;gap:6px}
+.loading-dot span{width:6px;height:6px;border-radius:50%;background:var(--cinza);animation:pulse 1.2s ease-in-out infinite}
+.loading-dot span:nth-child(2){animation-delay:.2s}
+.loading-dot span:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--cinza2) 1px,transparent 1px),linear-gradient(90deg,var(--cinza2) 1px,transparent 1px);background-size:48px 48px;opacity:.5;pointer-events:none}
+
+/* NAV */
+.nav{display:flex;align-items:center;background:#fff;border-bottom:1px solid var(--cinza);padding:0 16px;position:sticky;top:0;z-index:100;height:46px;gap:0}
+.nav-brand{font-size:14px;font-weight:700;letter-spacing:5px;margin-right:16px}
+.nav-sep{width:1px;height:14px;background:var(--cinza);margin-right:16px}
+.nav-lbl{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nav-brand{text-decoration:none;color:inherit}
+.nav-brand:hover{opacity:.7}
+.nav-mod-wrap{position:relative;margin-right:20px}
+.nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
+.nav-lbl-btn:hover{color:var(--preto)}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.nav-dropdown.open{display:block}
+.nav-dropdown a{display:block;padding:7px 14px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
+.nav-dropdown a:hover{background:var(--off)}
+.nav-dropdown a.nd-active{font-weight:700;pointer-events:none;color:var(--tc)}
+.nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
+.nd-sep{height:1px;background:var(--cinza);margin:4px 0}
+.nd-lbl{padding:6px 14px 2px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s}
+.conn-dot.online{background:#22c55e}
+.conn-dot.offline{background:var(--tc)}
+.exp-room-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--verde);background:var(--verde-bg);color:var(--verde);text-decoration:none;transition:all .12s;flex-shrink:0}
+.exp-room-btn:hover{background:var(--verde)}
+.exp-room-dot{width:7px;height:7px;border-radius:50%;background:var(--verde);animation:pulse-dot 2s ease-in-out infinite}
+.exp-room-btn:hover .exp-room-dot{background:#fff}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+.user-pill-wrap{position:relative}
+.user-pill{display:flex;align-items:center;gap:7px;padding:4px 10px;border:1px solid var(--cinza);background:#fff;font-size:11px;font-weight:500;cursor:pointer}
+.user-pill:hover{border-color:var(--preto)}
+.avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.user-dropdown.open{display:block}
+.user-dropdown button{display:block;width:100%;padding:9px 14px;background:none;border:none;font-family:var(--f);font-size:11px;font-weight:500;color:var(--tc);text-align:left;cursor:pointer}
+.user-dropdown button:hover{background:var(--off)}
+
+/* LAYOUT */
+.apoio-layout{display:flex;height:calc(100vh - 46px);overflow:hidden}
+
+/* SIDEBAR */
+.apoio-sidebar{width:220px;flex-shrink:0;background:#fff;border-right:1px solid var(--cinza);display:flex;flex-direction:column;overflow:hidden}
+.sb-search{padding:10px 12px;border-bottom:1px solid var(--cinza)}
+.sb-search input{width:100%;padding:6px 10px;border:1px solid var(--cinza);background:var(--off);font-family:var(--f);font-size:11px;font-weight:300;color:var(--preto);outline:none}
+.sb-search input:focus{border-color:var(--preto)}
+.sb-search input::placeholder{color:#bbb}
+.sb-section-lbl{padding:10px 12px 4px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
+.sb-theme-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:400;color:#666;transition:all .12s;border-left:3px solid transparent;user-select:none}
+.sb-theme-item:hover{background:var(--off);color:var(--preto)}
+.sb-theme-item.active{background:var(--off);color:var(--preto);font-weight:600;border-left-color:var(--verde)}
+.sb-icon{font-size:10px;flex-shrink:0;opacity:.7}
+
+/* CONTENT */
+.apoio-content{flex:1;overflow-y:auto;padding:20px 24px;position:relative}
+
+/* AREA TABS */
+.area-tabs{display:flex;gap:0;border-bottom:1px solid var(--cinza);margin-bottom:18px}
+.area-tab{padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;white-space:nowrap;user-select:none}
+.area-tab:hover{color:var(--preto)}
+.area-tab.active{color:var(--preto)}
+.area-tab.active[data-area="paisagismo"]{border-bottom-color:var(--pai-hor)}
+.area-tab.active[data-area="urbanismo"]{border-bottom-color:var(--urb)}
+.area-tab.active[data-area="consultorias"]{border-bottom-color:var(--consul)}
+.area-tab.active[data-area="especiais"]{border-bottom-color:var(--esp)}
+
+/* CONTENT HEADER */
+.content-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px}
+.content-hdr-left{}
+.content-title{font-size:14px;font-weight:700;letter-spacing:-.2px;margin-bottom:2px}
+.content-sub{font-size:11px;color:#999}
+.content-hdr-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+
+/* TIPO GRID */
+.tipos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+
+/* TIPO CARD */
+.tipo-card{background:#fff;border:1px solid var(--cinza);position:relative}
+.tipo-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--pai-hor)}
+.tipo-card-hdr{padding:10px 14px 10px 17px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;transition:background .12s}
+.tipo-card-hdr:hover{background:var(--off)}
+.tipo-card-nome{font-size:11px;font-weight:700;flex:1;letter-spacing:.1px}
+.tipo-card-chevron{font-size:10px;color:#bbb;transition:transform .2s;flex-shrink:0}
+.tipo-card.expanded .tipo-card-chevron{transform:rotate(90deg)}
+
+/* TIPO BODY */
+.tipo-body{display:none;border-top:1px solid var(--cinza2)}
+.tipo-card.expanded .tipo-body{display:block}
+
+/* TIPO DESCRICAO */
+.tipo-descricao-wrap{padding:12px 14px 12px 17px;border-bottom:1px solid var(--cinza2);position:relative}
+.tipo-descricao-wrap:hover .edit-trigger{opacity:1}
+.tipo-descricao-txt{font-size:12px;line-height:1.65;color:#555}
+.edit-trigger{position:absolute;top:8px;right:10px;opacity:0;transition:opacity .12s}
+.edit-btn{background:#fff;border:1px solid var(--cinza);padding:3px 7px;cursor:pointer;font-size:10px;color:#888;font-family:var(--f);transition:all .1s;display:inline-flex;align-items:center;gap:3px}
+.edit-btn:hover{border-color:var(--preto);color:var(--preto)}
+
+/* ETAPAS LISTA */
+.etapas-lista{padding:10px 14px 14px 17px;display:flex;flex-direction:column;gap:4px}
+.etapas-lista-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.etapas-lista-label{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#bbb}
+.recolher-btn{font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#ccc;background:none;border:none;cursor:pointer;padding:0;transition:color .1s;font-family:var(--f)}
+.recolher-btn:hover{color:#888}
+
+/* ETAPA ROW */
+.etapa-row{border:1px solid var(--cinza2);background:var(--off)}
+.etapa-hdr{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;user-select:none;transition:background .1s}
+.etapa-hdr:hover{background:#ece9e3}
+.etapa-num{font-family:var(--fm);font-size:9px;color:#bbb;width:14px;flex-shrink:0;text-align:right}
+.etapa-nome{font-size:11px;font-weight:600;flex:1}
+.etapa-prazo{font-family:var(--fm);font-size:9px;color:#bbb;white-space:nowrap}
+.etapa-chevron{font-size:9px;color:#ccc;transition:transform .2s;flex-shrink:0;margin-left:2px}
+.etapa-row.expanded .etapa-chevron{transform:rotate(90deg)}
+.etapa-body{display:none;border-top:1px solid var(--cinza2);padding:10px 10px 12px 32px}
+.etapa-row.expanded .etapa-body{display:block}
+
+/* ETAPA DESCRICAO */
+.etapa-descricao-wrap{position:relative;margin-bottom:10px}
+.etapa-descricao-wrap:hover .edit-trigger{opacity:1}
+.etapa-descricao-txt{font-size:11px;line-height:1.65;color:#555}
+
+/* ENTREGAVEIS */
+.entregaveis-label{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#ccc;margin-bottom:5px}
+.entregaveis-lista{display:flex;flex-direction:column;gap:3px}
+
+/* ENTREGAVEL ROW */
+.entregavel-row{border-left:2px solid var(--cinza2)}
+.entregavel-hdr{display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;user-select:none;transition:background .1s}
+.entregavel-hdr:hover{background:#ece9e3}
+.entregavel-nome{font-size:11px;font-weight:500;flex:1}
+.entregavel-chevron{font-size:9px;color:#ccc;transition:transform .2s;flex-shrink:0}
+.entregavel-row.expanded .entregavel-chevron{transform:rotate(90deg)}
+.entregavel-body{display:none;padding:6px 8px 10px 18px}
+.entregavel-row.expanded .entregavel-body{display:block}
+
+/* ENTREGAVEL DESCRICAO */
+.entregavel-descricao-wrap{position:relative;margin-bottom:8px}
+.entregavel-descricao-wrap:hover .edit-trigger{opacity:1}
+.entregavel-descricao-txt{font-size:11px;line-height:1.65;color:#555}
+
+/* CHECKLIST */
+.checklist-label{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#ccc;margin-bottom:5px}
+.checklist-lista{display:flex;flex-direction:column;gap:3px}
+.checklist-item{display:flex;align-items:flex-start;gap:6px;font-size:11px;line-height:1.5;color:#555}
+.checklist-dot{width:4px;height:4px;border-radius:50%;background:var(--cinza);margin-top:6px;flex-shrink:0}
+.checklist-vazio{font-size:10px;color:#bbb;font-style:italic}
+
+/* INLINE EDIT */
+.editando-area{margin-top:4px}
+.editando-textarea{width:100%;padding:8px;border:1px solid var(--am);background:#fff;font-family:var(--f);font-size:11px;line-height:1.6;color:var(--preto);font-weight:300;resize:vertical;outline:none;min-height:80px}
+.editando-actions{display:flex;gap:6px;margin-top:6px;align-items:center}
+.editando-hint{font-size:9px;color:#bbb;margin-left:auto}
+
+/* PRAZO EDITAR */
+.prazo-edit-wrap{display:inline-flex;align-items:center;gap:4px;margin-left:4px}
+.prazo-input{width:38px;padding:1px 5px;border:1px solid var(--cinza);font-family:var(--fm);font-size:9px;text-align:center;outline:none;background:#fff}
+.prazo-input:focus{border-color:var(--am)}
+.prazo-tipo-select{padding:1px 4px;border:1px solid var(--cinza);font-family:var(--f);font-size:9px;outline:none;background:#fff}
+
+/* BTN */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-family:var(--f);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--cinza);background:#fff;color:#888;cursor:pointer;transition:all .12s;white-space:nowrap}
+.btn:hover{border-color:var(--preto);color:var(--preto)}
+.btn.verde{background:var(--verde);border-color:var(--verde);color:#fff}
+.btn.verde:hover{background:var(--verde-l);border-color:var(--verde-l)}
+.btn.sm{padding:3px 8px;font-size:8px}
+.btn.tc{background:var(--tc);border-color:var(--tc);color:#fff}
+.btn.am{background:var(--am);border-color:var(--am);color:#fff}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.b-pai{background:var(--pai-bg);color:var(--pai-inc)}
+.b-urb{background:var(--urb-bg);color:var(--urb)}
+.b-consul{background:var(--consul-bg);color:var(--consul)}
+.b-esp{background:var(--esp-bg);color:var(--esp)}
+.b-gr{background:var(--cinza2);color:#777}
+
+/* PLACEHOLDER TEMA */
+.tema-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;text-align:center;gap:10px}
+.tema-placeholder-icon{font-size:28px;opacity:.25}
+.tema-placeholder-title{font-size:13px;font-weight:600;color:#bbb}
+.tema-placeholder-sub{font-size:11px;color:#ccc;max-width:300px;line-height:1.6}
+.tema-placeholder-badge{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 10px;background:var(--cinza2);color:#aaa;margin-top:4px}
+
+/* SETUP NOTICE */
+.setup-notice{background:#fff;border:1px solid var(--am);padding:20px 24px;margin-bottom:16px;position:relative}
+.setup-notice::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--am)}
+.setup-notice-title{font-size:11px;font-weight:700;color:var(--am);margin-bottom:8px;letter-spacing:.3px;padding-left:10px}
+.setup-notice-text{font-size:11px;color:#666;line-height:1.7;margin-bottom:12px;padding-left:10px}
+.setup-sql{background:var(--off);border:1px solid var(--cinza2);padding:10px 14px;font-family:var(--fm);font-size:10px;line-height:1.8;color:#555;margin-bottom:12px;overflow-x:auto;white-space:pre;margin-left:10px}
+.setup-actions{display:flex;gap:8px;align-items:center;padding-left:10px}
+.seed-spinner{width:14px;height:14px;border:2px solid var(--verde-bg);border-top-color:var(--verde);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SEARCH RESULTS */
+.search-results-wrap{background:#fff;border:1px solid var(--cinza)}
+.search-results-hdr{padding:8px 14px;border-bottom:1px solid var(--cinza2);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999}
+.search-result-item{padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--cinza2);transition:background .1s}
+.search-result-item:last-child{border-bottom:none}
+.search-result-item:hover{background:var(--off)}
+.sr-path{font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#bbb;margin-bottom:2px}
+.sr-titulo{font-size:11px;font-weight:600;margin-bottom:2px}
+.sr-snippet{font-size:10px;color:#888;line-height:1.4}
+.search-empty{padding:24px;text-align:center;font-size:11px;color:#bbb}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal-box{background:#fff;border:1px solid var(--cinza);width:520px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column}
+.modal-hdr{padding:12px 16px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:8px}
+.modal-title{font-size:11px;font-weight:700;letter-spacing:.3px;flex:1}
+.modal-close{background:none;border:none;cursor:pointer;font-size:16px;color:#999;padding:0;line-height:1;transition:color .1s}
+.modal-close:hover{color:var(--preto)}
+.modal-body{padding:16px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.modal-field label{display:block;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:5px}
+.modal-field textarea,.modal-field input[type=text],.modal-field input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--cinza);font-family:var(--f);font-size:12px;font-weight:300;color:var(--preto);outline:none;background:#fff}
+.modal-field textarea:focus,.modal-field input:focus{border-color:var(--preto)}
+.modal-field textarea{resize:vertical;min-height:100px}
+.modal-checklist-lista{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.modal-checklist-item{display:flex;align-items:center;gap:6px}
+.modal-checklist-item input[type=text]{flex:1}
+.modal-checklist-item .btn-remove{background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;padding:0 2px;transition:color .1s;line-height:1}
+.modal-checklist-item .btn-remove:hover{color:var(--tc)}
+.modal-hint{font-size:10px;color:#bbb;line-height:1.5}
+.modal-footer{padding:10px 16px;border-top:1px solid var(--cinza);display:flex;gap:6px;justify-content:flex-end}
+
+/* BREADCRUMB */
+.breadcrumb{font-size:10px;color:#bbb;margin-bottom:14px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.breadcrumb .bc-sep{color:#ddd}
+.breadcrumb .bc-active{color:#888}
+
+/* LOADING INLINE */
+.loading-inline{display:flex;align-items:center;justify-content:center;padding:40px;gap:10px;color:#bbb;font-size:11px}
+.loading-inline-spinner{width:16px;height:16px;border:2px solid var(--cinza2);border-top-color:var(--cinza);border-radius:50%;animation:spin .6s linear infinite}
+
+/* PROJETOS TWO-PANEL */
+.proj-body{display:flex;gap:0;border-top:1px solid var(--cinza2)}
+.tipo-menu{width:190px;flex-shrink:0;border-right:1px solid var(--cinza2);padding:6px 0}
+.tipo-menu-item{padding:8px 14px;font-size:11px;font-weight:400;cursor:pointer;border-left:3px solid transparent;color:#666;transition:all .12s;user-select:none;line-height:1.4}
+.tipo-menu-item:hover{background:var(--off);color:var(--preto)}
+.tipo-menu-item.active{border-left-color:var(--pai-hor);color:var(--preto);font-weight:600;background:var(--off)}
+.tipo-menu-item.active[data-area="urbanismo"]{border-left-color:var(--urb)}
+.tipo-menu-item.active[data-area="consultorias"]{border-left-color:var(--consul)}
+.tipo-menu-item.active[data-area="especiais"]{border-left-color:var(--esp)}
+.tipo-detail{flex:1;padding:16px 20px 24px;overflow:auto}
+.tipo-detail-vazio{display:flex;align-items:center;justify-content:center;min-height:200px;color:#ccc;font-size:11px}
+.tipo-detail-nome{font-size:14px;font-weight:700;letter-spacing:-.2px;margin-bottom:8px}
+.tipo-detail-desc{font-size:12px;line-height:1.7;color:#555;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)}
+.tipo-detail-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;position:relative}
+.tipo-detail-edit{position:absolute;top:-2px;right:0}
+
+/* STATIC CONTENT */
+.apoio-section{margin-bottom:28px}
+.apoio-section-title{font-size:12px;font-weight:700;letter-spacing:.1px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cinza2);color:var(--preto)}
+.apoio-section-intro{font-size:12px;line-height:1.8;color:#555;margin-bottom:14px}
+.apoio-card{background:#fff;border:1px solid var(--cinza);padding:14px 14px 14px 20px;margin-bottom:8px;position:relative}
+.apoio-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.apoio-card.verde::before{background:var(--verde)}
+.apoio-card.az::before{background:var(--az)}
+.apoio-card.am::before{background:var(--am)}
+.apoio-card.tc::before{background:var(--tc)}
+.apoio-card.roxo::before{background:var(--roxo)}
+.apoio-card.cinza::before{background:var(--cinza)}
+.apoio-card-title{font-size:11px;font-weight:700;letter-spacing:.2px;color:var(--preto);margin-bottom:5px}
+.apoio-card-text{font-size:12px;line-height:1.75;color:#555}
+.apoio-ul{list-style:none;padding:0;margin:6px 0 0}
+.apoio-ul li{font-size:12px;line-height:1.7;color:#555;padding:2px 0 2px 16px;position:relative}
+.apoio-ul li::before{content:'—';position:absolute;left:0;color:#ccc}
+.apoio-kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:14px}
+.apoio-kv-item{background:#fff;border:1px solid var(--cinza2);padding:12px 14px}
+.apoio-kv-label{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#bbb;margin-bottom:5px}
+.apoio-kv-value{font-size:12px;line-height:1.6;color:var(--preto);font-weight:400}
+.apoio-highlight{font-size:13px;line-height:1.65;color:var(--preto);font-weight:300;padding:14px 18px;border-left:3px solid var(--verde);background:#fff;margin-bottom:14px}
+.apoio-content-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+
+/* SUBTEMA NAV */
+.subtema-nav{display:flex;gap:0;border-bottom:1px solid var(--cinza);margin-bottom:20px}
+.subtema-tab{padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;user-select:none}
+.subtema-tab:hover{color:var(--preto)}
+.subtema-tab.active{color:var(--preto);border-bottom-color:var(--verde)}
+
+/* CAREER PLAN */
+.career-track{display:flex;align-items:center;gap:0;padding:16px 0 20px;overflow-x:auto;margin-bottom:24px}
+.career-node{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.career-level{padding:7px 11px;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;border:1px solid transparent}
+.career-level.estag{background:var(--cinza2);color:#777;border-color:#ddd}
+.career-level.junior{background:var(--verde-bg);color:var(--verde);border-color:#c0e8d0}
+.career-level.pleno{background:var(--az-bg);color:var(--az);border-color:#bdd4f5}
+.career-level.senior{background:var(--am-bg);color:var(--am);border-color:#f0d8b0}
+.career-level.diretor{background:var(--tc-bg);color:var(--tc);border-color:#f0c8c0}
+.career-connector{width:14px;height:2px;background:var(--cinza);flex-shrink:0}
+.career-class-separator{width:6px;height:2px;background:transparent;flex-shrink:0}
+.career-class-label{font-size:8px;color:#bbb;font-weight:600;letter-spacing:.4px;text-transform:uppercase;text-align:center;margin-top:5px;white-space:nowrap}
+
+/* NUCLEOS DIAGRAM */
+.nucleos-outer{display:grid;grid-template-columns:1fr auto;gap:14px;margin-bottom:16px}
+.nucleo-block{background:#fff;border:1px solid var(--cinza);padding:14px}
+.nucleo-block-title{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb;margin-bottom:10px}
+.nucleo-inner-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nucleo-col{}
+.nucleo-col-title{font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:4px 10px;margin-bottom:6px;display:inline-block}
+.nucleo-col-title.urb{background:var(--urb-bg);color:var(--urb)}
+.nucleo-col-title.pai{background:var(--pai-bg);color:var(--pai-inc)}
+.nucleo-setor{padding:5px 10px;font-size:11px;background:var(--off);border:1px solid var(--cinza2);margin-bottom:4px;color:#555;font-weight:400}
+.nucleo-consul-list{display:flex;flex-direction:column;gap:5px;min-width:148px}
+.nucleo-consul-item{padding:5px 10px;font-size:11px;background:var(--consul-bg);border:1px solid #f0d8d3;color:var(--consul)}
+.nucleo-consul-item.especial{background:var(--esp-bg);border-color:#e8dcc0;color:var(--esp)}
+
+/* VEG PROMPT */
+.prompt-box{background:var(--off);border:1px solid var(--cinza2);padding:14px 16px;font-family:var(--fm);font-size:10px;line-height:1.85;color:#555;white-space:pre-wrap;position:relative;margin-top:10px}
+.prompt-copy-btn{position:absolute;top:8px;right:8px;background:#fff;border:1px solid var(--cinza);padding:3px 10px;font-family:var(--f);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#888;cursor:pointer;transition:all .1s}
+.prompt-copy-btn:hover{border-color:var(--preto);color:var(--preto)}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loading-brand">EXP</div>
+  <div class="loading-dot"><span></span><span></span><span></span></div>
+</div>
+
+<nav class="nav">
+  <a href="app.html" class="nav-brand">EXP</a>
+  <span class="nav-sep"></span>
+  <div class="nav-mod-wrap" id="nav-mod-wrap">
+    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.conhecimento <span>▾</span></button>
+    <div class="nav-dropdown" id="nav-dropdown">
+      <div class="nd-lbl">Abertos</div>
+      <a href="gestao.html">EXP.projetos</a>
+      <a href="apoio.html" class="nd-active">EXP.conhecimento</a>
+      <div class="nd-sep nd-soc" style="display:none"></div>
+      <div class="nd-lbl nd-soc" style="display:none">Societários</div>
+      <a href="calc.html" class="nd-soc" style="display:none">EXP.calc</a>
+      <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
+      <a href="#" class="nd-disabled nd-soc" style="display:none">EXP.financeiro</a>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="conn-dot" id="conn-dot"></div>
+    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" title="EXP Room">
+      <span class="exp-room-dot"></span>
+    </a>
+    <div class="user-pill-wrap" id="user-pill-wrap">
+      <div class="user-pill" onclick="toggleUserMenu()">
+        <div class="avatar" id="user-av">?</div>
+        <span id="user-nome">—</span>
+        <span style="font-size:8px;color:#bbb;margin-left:2px">▾</span>
+      </div>
+      <div class="user-dropdown" id="user-dropdown">
+        <button onclick="sair()">Sair do sistema</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="apoio-layout">
+  <aside class="apoio-sidebar">
+    <div class="sb-search">
+      <input type="text" id="sb-search-input" placeholder="Buscar no conhecimento..." oninput="buscarDebounce(this.value)">
+    </div>
+    <div class="sb-section-lbl">Temas</div>
+    <div id="sb-temas">
+      <div class="sb-theme-item active" data-tema="projetos" onclick="setTema('projetos')">
+        <span class="sb-icon">◆</span>
+        <span>Projetos</span>
+      </div>
+      <div class="sb-theme-item" data-tema="organizacao" onclick="setTema('organizacao')">
+        <span class="sb-icon">◈</span>
+        <span>Organização Interna</span>
+      </div>
+      <div class="sb-theme-item" data-tema="cultura" onclick="setTema('cultura')">
+        <span class="sb-icon">◉</span>
+        <span>Cultura</span>
+      </div>
+      <div class="sb-theme-item" data-tema="vegetacao" onclick="setTema('vegetacao')">
+        <span class="sb-icon">◌</span>
+        <span>Vegetação</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="apoio-content" id="apoio-content">
+    <div class="loading-inline"><div class="loading-inline-spinner"></div> Carregando...</div>
+  </main>
+</div>
+
+<!-- MODAL DE EDIÇÃO -->
+<div class="modal-overlay" id="modal-edit" style="display:none" onclick="if(event.target===this)fecharModal()">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-edit-title">Editar</span>
+      <button class="modal-close" onclick="fecharModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-edit-body"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="fecharModal()">Cancelar</button>
+      <button class="btn verde" id="modal-salvar-btn" onclick="salvarModal()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+const SUPABASE_URL = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── STATE ───────────────────────────────────────────────────
+let G = {
+  usuario: null,
+  temaAtivo: 'projetos',
+  areaAtiva: 'paisagismo',
+  tipos: [],
+  etapas: [],
+  entregaveis: [],
+  checklists: [],
+  expandedTipos: new Set(),
+  expandedEtapas: new Set(),
+  expandedEntregaveis: new Set(),
+  tablesOk: false,
+  modalCtx: null,
+  buscarTimer: null,
+  tipoAtivoId: null,
+  subtemaOrg: 'historia',
+};
+const isSocio = () => ['socio'].includes(G.usuario?.role);
+
+// ── SQL DE CONFIGURAÇÃO ─────────────────────────────────────
+const SETUP_SQL = `-- Executar no Supabase SQL Editor
+CREATE TABLE IF NOT EXISTS base_tipo_projeto (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome text NOT NULL,
+  area text NOT NULL,
+  descricao text DEFAULT '',
+  ordem int DEFAULT 0,
+  criado_em timestamptz DEFAULT now(),
+  atualizado_em timestamptz DEFAULT now(),
+  atualizado_por uuid REFERENCES usuarios(id)
+);
+
+CREATE TABLE IF NOT EXISTS base_etapa (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  tipo_id uuid REFERENCES base_tipo_projeto(id) ON DELETE CASCADE,
+  nome text NOT NULL,
+  descricao text DEFAULT '',
+  ordem int DEFAULT 1,
+  prazo_dias int DEFAULT 7,
+  prazo_tipo text DEFAULT 'uteis',
+  atualizado_em timestamptz DEFAULT now(),
+  atualizado_por uuid REFERENCES usuarios(id)
+);
+
+CREATE TABLE IF NOT EXISTS base_entregavel (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  etapa_id uuid REFERENCES base_etapa(id) ON DELETE CASCADE,
+  nome text NOT NULL,
+  descricao text DEFAULT '',
+  ordem int DEFAULT 1,
+  atualizado_em timestamptz DEFAULT now(),
+  atualizado_por uuid REFERENCES usuarios(id)
+);
+
+CREATE TABLE IF NOT EXISTS base_checklist_item (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  entregavel_id uuid REFERENCES base_entregavel(id) ON DELETE CASCADE,
+  texto text NOT NULL,
+  ordem int DEFAULT 1
+);
+
+ALTER TABLE base_tipo_projeto ENABLE ROW LEVEL SECURITY;
+ALTER TABLE base_etapa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE base_entregavel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE base_checklist_item ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "auth_all" ON base_tipo_projeto FOR ALL USING (auth.role()='authenticated');
+CREATE POLICY "auth_all" ON base_etapa FOR ALL USING (auth.role()='authenticated');
+CREATE POLICY "auth_all" ON base_entregavel FOR ALL USING (auth.role()='authenticated');
+CREATE POLICY "auth_all" ON base_checklist_item FOR ALL USING (auth.role()='authenticated');`;
+
+// ── SEED DATA — PAISAGISMO ─────────────────────────────────
+// 8 tipologias × 7 etapas. Residencial/PF tem entregáveis e checklists completos.
+const SEED_PAISAGISMO = [
+{
+  nome:'Residencial / PF', area:'paisagismo', ordem:1,
+  descricao:'Projeto de paisagismo para residências unifamiliares — jardins privados, piscinas, varandas e áreas de lazer. Cliente pessoa física, com alto grau de personalização. Equilíbrio entre estética, manutenção e convívio familiar.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Reunião com o cliente para levantamento completo do programa de necessidades. Visita ao terreno com documentação fotográfica, análise de orientação solar, ventos predominantes, topografia e infraestrutura existente. Define expectativas de uso, frequência de manutenção aceita e referências estéticas.',
+      entregaveis:[
+        { nome:'Relatório de Briefing', ordem:1,
+          descricao:'Documento consolidando todas as informações coletadas: programa de necessidades, preferências estéticas, condicionantes do terreno, infraestrutura disponível e restrições identificadas.',
+          checklist:['Levantamento fotográfico do terreno realizado','Orientação solar e ventos predominantes registrados','Programa de necessidades validado com o cliente','Referências estéticas documentadas','Infraestrutura hidráulica e elétrica mapeada','Condicionantes legais verificados (recuos, gabarito)','Cronograma e budget preliminar alinhados']},
+        { nome:'Planta de Levantamento', ordem:2,
+          descricao:'Planta baixa do terreno com cotas, níveis, vegetação existente, edificações e acessos. Base técnica para desenvolvimento do projeto.',
+          checklist:['Medidas do terreno conferidas in loco','Níveis e topografia representados','Vegetação existente catalogada (manter / remover)','Edificações e acessos cotados','Escala e norte identificados']}
+      ]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Definição do partido paisagístico e conceito do projeto. Apresenta referências visuais, moodboard, paleta cromática e vocabulário formal que guiará o desenvolvimento. Etapa de alinhamento criativo antes do investimento em pranchas técnicas.',
+      entregaveis:[
+        { nome:'Moodboard e Partido Paisagístico', ordem:1,
+          descricao:'Apresentação visual com referências de projetos, texturas, materiais, espécies e atmosfera desejada. Define o conceito norteador e a identidade visual do projeto.',
+          checklist:['Conceito claramente articulado em texto','Referências visuais selecionadas e organizadas por tema','Paleta cromática definida','Vocabulário formal do projeto descrito','Aprovação pelo cliente registrada']}
+      ]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:12, prazo_tipo:'uteis',
+      descricao:'Primeira proposta espacial em planta, com zoneamento, percursos, espécies propostas e materiais de piso. Permite ao cliente visualizar a organização do espaço e solicitar ajustes antes do detalhamento técnico.',
+      entregaveis:[
+        { nome:'Planta de Layout', ordem:1,
+          descricao:'Planta baixa com disposição de jardins, caminhos, deck, piscina e demais elementos. Proporções reais sem cotas detalhadas.',
+          checklist:['Setores do programa atendidos','Circulações e acessos definidos','Proporções em escala adequada','Vegetação com indicação de espécies por código','Materiais de piso indicados por hachura']},
+        { nome:'Paleta de Espécies', ordem:2,
+          descricao:'Lista das espécies propostas com nome popular, nome científico, porte, função no projeto e imagem de referência.',
+          checklist:['Espécies adequadas ao clima e região','Porte compatível com o espaço disponível','Mix de floração, textura e permanência contemplado','Manutenção compatível com o perfil do cliente','Nenhuma espécie invasora incluída']},
+        { nome:'Memorial de Materiais', ordem:3,
+          descricao:'Descrição e imagens de referência dos materiais de piso, revestimentos, pergolados e elementos de apoio propostos.',
+          checklist:['Materiais dentro do budget estimado','Amostras ou referências apresentadas ao cliente','Compatibilidade com o conceito verificada','Durabilidade e manutenção avaliadas']}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Revisão do Estudo Preliminar incorporando todas as alterações solicitadas pelo cliente. Consolida o programa definitivo e a proposta espacial aprovada, que serve de base para o Anteprojeto.',
+      entregaveis:[
+        { nome:'Planta de Layout Revisada', ordem:1,
+          descricao:'Versão atualizada incorporando os ajustes solicitados. Deve ser aprovada formalmente antes do início do Anteprojeto.',
+          checklist:['Todas as alterações do cliente incorporadas','Nenhum elemento removido sem registro formal','Aprovação do cliente registrada (e-mail ou ata)','Planta na mesma escala do Estudo Preliminar']}
+      ]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento técnico com início das especificações. Inclui planta cotada, planta de espécies com legenda completa, cortes esquemáticos e detalhes de elementos principais. Base para estimativa de custo de implantação.',
+      entregaveis:[
+        { nome:'Planta de Implantação Cotada', ordem:1,
+          descricao:'Planta baixa com todas as cotas de layout, divisas, construções e jardins. Referência para execução.',
+          checklist:['Todas as cotas necessárias para implantação presentes','Referências de nível indicadas','Legenda completa e atualizada','Carimbos com dados do projeto']},
+        { nome:'Planta de Espécies', ordem:2,
+          descricao:'Planta com indicação de todas as espécies por símbolo + legenda com nome, porte, quantidade e espaçamento.',
+          checklist:['Quantidade de cada espécie conferida com a planta','Espaçamentos adequados ao porte adulto','Legenda sem divergência com a planta','Planilha de quantitativos gerada']},
+        { nome:'Cortes Esquemáticos', ordem:3,
+          descricao:'Seções longitudinais e transversais dos setores principais, mostrando alturas de vegetação, pergolados e planos.',
+          checklist:['Pelo menos 2 cortes representativos','Escala indicada','Cotas de altura presentes','Vegetação representada com porte adequado']}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:20, prazo_tipo:'uteis',
+      descricao:'Conjunto completo de pranchas técnicas para execução da obra. Inclui todos os detalhes construtivos, especificações de materiais, caderno de encargos e planilha de quantitativos. Documento base para contratação e execução da implantação.',
+      entregaveis:[
+        { nome:'Pranchas Técnicas Completas', ordem:1,
+          descricao:'Conjunto de pranchas: planta de implantação, planta de espécies, planta de terraplanagem (se necessário), detalhes construtivos de todos os elementos.',
+          checklist:['Folha de rosto com índice de pranchas','Todas as pranchas com carimbo e assinatura do RT','Escala gráfica e numérica em todas as pranchas','Norma ABNT atendida nos desenhos','Arquivos em PDF e DWG entregues']},
+        { nome:'Caderno de Especificações', ordem:2,
+          descricao:'Documento descritivo de todos os materiais, serviços e critérios de execução.',
+          checklist:['Todas as espécies com nome científico confirmado','Substrato e adubação de plantio especificados','Sistema de irrigação descrito (tipo, cobertura)','Materiais com norma técnica referenciada','Critérios de recebimento da obra definidos']},
+        { nome:'Planilha de Quantitativos', ordem:3,
+          descricao:'Planilha com todos os itens de serviço, materiais e plantas com quantidades e unidades.',
+          checklist:['Quantidades conferidas com as pranchas','Unidades corretas por item (m², m³, un, kg)','Versão datada e identificada','Compatível com o caderno de especificações']}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:3, prazo_tipo:'uteis',
+      descricao:'Emissão oficial do conjunto de documentos para implantação. Revisão final de todas as pranchas, assinatura do responsável técnico e entrega ao cliente e/ou empreiteiro. Formaliza a conclusão do projeto e o início da fase de obra.',
+      entregaveis:[
+        { nome:'Conjunto Final Emitido', ordem:1,
+          descricao:'Todos os arquivos do projeto em versão final, com carimbo "Liberado para Obra", data de emissão e assinatura do RT.',
+          checklist:['Todos os arquivos na versão correta e datada','Carimbo "Liberado para Obra" em todas as pranchas','Assinatura do responsável técnico','ART/RRT emitida quando exigido','Entrega ao cliente e ao empreiteiro confirmada','Cópia arquivada no sistema do escritório']}
+      ]}
+  ]
+},
+{
+  nome:'Condominial / Ático', area:'paisagismo', ordem:2,
+  descricao:'Projeto para áreas comuns de condomínios — jardins, piscinas, deck — e coberturas tipo ático. Considera restrições técnicas de cargas em laje, impermeabilização existente, acesso para manutenção e perfil de uso compartilhado pelos moradores.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Levantamento das condições técnicas da laje: capacidade de carga, tipo e condição da impermeabilização, pontos de drenagem, instalações embutidas. Reunião com incorporadora ou síndico para definição do programa de uso, padrão de acabamento e orçamento disponível.',
+      entregaveis:[
+        { nome:'Relatório de Briefing', ordem:1, descricao:'Documento com programa de necessidades, condicionantes técnicas da laje (carga, impermeabilização, drenagem) e diretrizes do projeto.', checklist:[]},
+        { nome:'Ficha Técnica da Laje', ordem:2, descricao:'Informações coletadas com o engenheiro estrutural: capacidade de carga por m², tipo de manta/impermeabilização, espessura disponível e pontos de drenagem existentes.', checklist:[]}
+      ]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Definição do conceito considerando o perfil dos moradores, vista disponível, orientação solar e restrições de carga. Apresentação de referências de projetos em situações similares de cobertura ou área condominial.',
+      entregaveis:[{ nome:'Moodboard Conceitual', ordem:1, descricao:'Referências visuais, paleta de materiais e espécies adaptadas ao microclima de laje (vento, insolação intensa, substrato limitado).', checklist:[]}]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:12, prazo_tipo:'uteis',
+      descricao:'Proposta de layout com zoneamento (lounge, verde, deck, circulação), paleta de espécies adaptadas ao ático e materiais compatíveis com a carga da laje. Estimativa de espessura do sistema de camadas e carga resultante.',
+      entregaveis:[
+        { nome:'Planta de Layout', ordem:1, descricao:'Layout com zoneamento, circulações e proposta de vegetação. Compatível com as cargas da laje.', checklist:[]},
+        { nome:'Corte Esquemático das Camadas', ordem:2, descricao:'Representação do sistema: impermeabilização, drenagem, manta filtrante e substrato. Espessuras e cargas estimadas.', checklist:[]}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Revisão incorporando feedbacks do contratante e adequações à capacidade de carga confirmada pelo estrutural. Validação de espécies e substrato leve com o viveirista.',
+      entregaveis:[{ nome:'Layout Revisado', ordem:1, descricao:'Planta atualizada com ajustes de programa e compatibilização com carga da laje.', checklist:[]}]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento técnico com planta cotada, cortes mostrando espessura do substrato e camadas técnicas. Especificação do sistema de irrigação adaptado para situação de cobertura.',
+      entregaveis:[
+        { nome:'Planta de Implantação Cotada', ordem:1, descricao:'Implantação com cotas, indicação de espécies e elementos.', checklist:[]},
+        { nome:'Cortes Técnicos', ordem:2, descricao:'Cortes detalhando o sistema de camadas, alturas de canteiros e volumes de vegetação.', checklist:[]}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:20, prazo_tipo:'uteis',
+      descricao:'Pranchas completas incluindo detalhe do sistema de camadas (impermeabilização, drenagem, separador, substrato leve), detalhe de borda de canteiro, planta de irrigação e especificação de substrato. Compatibilizado com projetos de impermeabilização e elétrico.',
+      entregaveis:[
+        { nome:'Pranchas Técnicas', ordem:1, descricao:'Conjunto para execução, incluindo detalhe explodido do sistema de camadas e detalhes de borda de canteiro.', checklist:[]},
+        { nome:'Especificação de Substrato e Drenagem', ordem:2, descricao:'Especificação de substrato leve (peso, granulometria, pH, fertilidade) e sistema de drenagem pontual ou linear.', checklist:[]},
+        { nome:'Planta de Irrigação', ordem:3, descricao:'Sistema de irrigação por gotejamento ou microaspersor adaptado à situação de laje, com setorização e automação.', checklist:[]}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:3, prazo_tipo:'uteis',
+      descricao:'Emissão do conjunto final. Orientação ao empreiteiro sobre a sequência correta de execução das camadas e verificação da impermeabilização antes do início do plantio.',
+      entregaveis:[{ nome:'Conjunto Final Emitido', ordem:1, descricao:'Arquivos finais com carimbo "Liberado para Obra", assinatura do RT e orientações de sequenciamento.', checklist:[]}]}
+  ]
+},
+{
+  nome:'Térreo / Passeios', area:'paisagismo', ordem:3,
+  descricao:'Projeto de paisagismo para áreas térreo de edificações e calçadas — jardins de entrada, canteiros integrados ao passeio público e áreas de circulação. Prioriza escala pedestre, acessibilidade universal e conexão com o entorno urbano.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Levantamento das condicionantes do projeto: dimensionamento das áreas, pavimentação existente, declividade do passeio, guias, árvores tombadas e infraestrutura enterrada. Reunião com incorporadora ou proprietário para definição do programa e padrão de acabamento.',
+      entregaveis:[
+        { nome:'Relatório de Briefing', ordem:1, descricao:'Programa de necessidades, condicionantes do passeio público e diretrizes municipais aplicáveis.', checklist:[]},
+        { nome:'Levantamento de Campo', ordem:2, descricao:'Documentação fotográfica e dimensional da calçada, guias, rampas, canteiros existentes e infraestrutura enterrada mapeada.', checklist:[]}
+      ]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Definição do partido paisagístico considerando o contexto urbano da edificação: recuos, fachada, movimentação de pedestres e relação com os térreos vizinhos. Apresentação de referências e materiais compatíveis com a escala do projeto.',
+      entregaveis:[{ nome:'Conceito e Referências', ordem:1, descricao:'Painel com partido paisagístico, referências de projetos similares e diretrizes de materialidade e vegetação.', checklist:[]}]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:10, prazo_tipo:'uteis',
+      descricao:'Proposta de layout com delimitação de canteiros, pavimentação, mobiliário e vegetação. Considera a compatibilização com a fachada, o acesso de veículos e as exigências de acessibilidade universal (ABNT NBR 9050).',
+      entregaveis:[
+        { nome:'Planta de Layout', ordem:1, descricao:'Layout do passeio e do térreo com canteiros, percursos, rampas e vegetação proposta.', checklist:[]},
+        { nome:'Paleta de Espécies', ordem:2, descricao:'Espécies adequadas ao contexto urbano, sombreamento desejado e largura disponível.', checklist:[]}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Revisão do layout incorporando feedbacks da incorporadora ou construtora. Adequações às exigências de aprovação municipal e validação de espécies com o cliente.',
+      entregaveis:[{ nome:'Layout Revisado', ordem:1, descricao:'Planta atualizada com ajustes de programa e conformidade municipal.', checklist:[]}]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:12, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento técnico com planta cotada, espécies definidas, especificação de pavimentação e compatibilização com os projetos complementares.',
+      entregaveis:[
+        { nome:'Planta Cotada', ordem:1, descricao:'Implantação com cotas, raios de curva e espécies indicadas.', checklist:[]},
+        { nome:'Compatibilização', ordem:2, descricao:'Verificação de interferências com estrutura, hidráulico e elétrico da fachada.', checklist:[]}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Conjunto completo para execução: implantação cotada, planta de espécies, detalhes de canteiros e raízes, especificação de substratos, drenagem e irrigação. Compatibilizado com estrutural e hidráulico.',
+      entregaveis:[
+        { nome:'Pranchas Técnicas', ordem:1, descricao:'Conjunto de pranchas para execução do passeio e do térreo.', checklist:[]},
+        { nome:'Caderno de Especificações', ordem:2, descricao:'Especificação de pavimentação, espécies, substratos e acessibilidade.', checklist:[]}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:3, prazo_tipo:'uteis',
+      descricao:'Emissão do conjunto final para início da implantação. Validação das pranchas pela construtora e coordenador da obra. Cronograma de plantio e responsabilidades de manutenção inicial.',
+      entregaveis:[{ nome:'Conjunto Final Emitido', ordem:1, descricao:'Arquivos finais com carimbo "Liberado para Obra" e assinatura do RT.', checklist:[]}]}
+  ]
+},
+{
+  nome:'Floreiras', area:'paisagismo', ordem:4,
+  descricao:'Projeto de floreiras e jardins em recipientes de média e pequena escala — vasos de grande porte, canteiros suspensos, balcões e coberturas com restrição de substrato. Foco em soluções compactas, de alto impacto visual e manutenção viável.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:3, prazo_tipo:'uteis',
+      descricao:'Levantamento do espaço disponível, capacidade estrutural (quando em laje ou balcão), exposição solar, proteção do vento e acesso para manutenção. Definição do programa visual: sazonalidade, intensidade cromática, estilo e frequência de manutenção aceita.',
+      entregaveis:[{ nome:'Relatório de Briefing', ordem:1, descricao:'Programa de necessidades, condicionantes físicos e diretrizes de manutenção.', checklist:[]}]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Definição do conceito volumétrico e cromático das floreiras — relação com a arquitetura, escala, materialidade dos recipientes e paleta de espécies. Apresentação de referências e opções de recipientes disponíveis no mercado.',
+      entregaveis:[{ nome:'Moodboard e Referências de Recipientes', ordem:1, descricao:'Conceito, paleta cromática, espécies de referência e opções de recipientes com indicação de fornecedores.', checklist:[]}]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Proposta de layout das floreiras com indicação de espécies por grupo (porte, cor, textura), dimensionamento dos recipientes e estimativa de substrato necessário. Memorial de materiais incluindo recipientes, substrato e sistema de drenagem.',
+      entregaveis:[
+        { nome:'Layout das Floreiras', ordem:1, descricao:'Planta de localização com dimensões dos recipientes e indicação de espécies.', checklist:[]},
+        { nome:'Paleta de Espécies', ordem:2, descricao:'Espécies por recipiente com porte, floração e frequência de troca (sazonais × perenes).', checklist:[]}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:4, prazo_tipo:'uteis',
+      descricao:'Ajustes na paleta de espécies e disposição conforme feedbacks. Confirmação do fornecedor de recipientes e disponibilidade das espécies no mercado regional.',
+      entregaveis:[{ nome:'Layout Revisado', ordem:1, descricao:'Proposta ajustada com confirmação de fornecedores e espécies.', checklist:[]}]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Especificação completa das espécies, substrato, adubação de base e sistema de irrigação (quando aplicável). Layout cotado com dimensionamento dos recipientes.',
+      entregaveis:[
+        { nome:'Planta Cotada', ordem:1, descricao:'Localização cotada de cada floreira com dimensões e espécies.', checklist:[]},
+        { nome:'Especificação de Substrato', ordem:2, descricao:'Tipo de substrato, adubação de base, drenagem de fundo e protocolo de reposição de nutrientes.', checklist:[]}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Detalhamento completo: ficha técnica de cada floreira, especificação de substrato e adubação, planta de localização, indicação de espécies por recipiente e protocolo de manutenção básica.',
+      entregaveis:[
+        { nome:'Fichas Técnicas das Floreiras', ordem:1, descricao:'Uma ficha por floreira: dimensões, carga, espécies, substrato, drenagem, irrigação.', checklist:[]},
+        { nome:'Manual de Manutenção', ordem:2, descricao:'Protocolo de rega, adubação, troca de espécies sazonais e controle fitossanitário.', checklist:[]}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:2, prazo_tipo:'uteis',
+      descricao:'Emissão do conjunto final. Lista de compras com quantitativos e orientações de plantio entregues ao responsável pela manutenção.',
+      entregaveis:[{ nome:'Conjunto Final e Lista de Compras', ordem:1, descricao:'Arquivos finais, quantitativos e protocolo de rega/adubação para implantação e manutenção inicial.', checklist:[]}]}
+  ]
+},
+{
+  nome:'Streetscape', area:'paisagismo', ordem:5,
+  descricao:'Projeto de paisagismo integrado ao desenho urbano de frentes de quadra — espaços entre edifício e via pública, qualificação do passeio e interfaces público-privadas. Dialoga com o projeto arquitetônico da fachada e com as normas municipais de uso do espaço público.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Levantamento do trecho da via: perfil transversal, largura de calçada, arborização e mobiliário urbano existentes, redes subterrâneas e restrições municipais. Reunião com o cliente (incorporadora ou proprietário) para definição do programa e grau de intervenção desejado.',
+      entregaveis:[
+        { nome:'Relatório de Briefing', ordem:1, descricao:'Programa de necessidades e condicionantes legais e físicas do passeio.', checklist:[]},
+        { nome:'Diagnóstico do Trecho', ordem:2, descricao:'Documentação fotográfica e mapeamento de arborização existente, mobiliário, declividades e interferências.', checklist:[]}
+      ]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Definição do conceito de qualificação urbana para o trecho — relação com a fachada, escala pedestre, materialidade e vegetação. Análise de referências de streetscape em contexto similar ao do projeto.',
+      entregaveis:[{ nome:'Conceito de Streetscape', ordem:1, descricao:'Painel com partido, referências nacionais e internacionais, paleta de materiais e vegetação.', checklist:[]}]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:12, prazo_tipo:'uteis',
+      descricao:'Proposta do perfil do passeio com zoneamento de faixas (vegetação, mobiliário, circulação, acessibilidade), paleta de espécies e materiais. Compatibilização com o projeto de fachada e o afastamento obrigatório.',
+      entregaveis:[
+        { nome:'Planta do Perfil Proposto', ordem:1, descricao:'Perfil transversal e planta baixa do trecho com todas as intervenções propostas.', checklist:[]},
+        { nome:'Paleta de Espécies e Materiais', ordem:2, descricao:'Espécies e materiais adequados ao contexto urbano e às restrições municipais.', checklist:[]}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Revisão incorporando feedbacks do cliente e adequações às exigências da prefeitura. Validação com o arquiteto da edificação sobre a interface fachada/passeio.',
+      entregaveis:[{ nome:'Perfil Revisado', ordem:1, descricao:'Versão ajustada com aprovação do arquiteto e do cliente.', checklist:[]}]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:12, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento técnico do perfil cotado, detalhes de canteiros, especificação de pavimentação e mobiliário. Verificação de compatibilidade com redes subterrâneas.',
+      entregaveis:[
+        { nome:'Perfil Cotado', ordem:1, descricao:'Perfil transversal com cotas, pendentes e especificação de materiais.', checklist:[]},
+        { nome:'Detalhes de Canteiros', ordem:2, descricao:'Detalhes de bordas, covas de arborização, guias e transições de pavimento.', checklist:[]}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Pranchas completas: planta de implantação, perfil cotado, detalhes de canteiros, especificação de pavimentação e mobiliário, plano de manutenção. Documentação para aprovação municipal quando necessário.',
+      entregaveis:[
+        { nome:'Pranchas Técnicas', ordem:1, descricao:'Conjunto de pranchas para execução do streetscape.', checklist:[]},
+        { nome:'Documentação Municipal', ordem:2, descricao:'Memorial descritivo e plantas para aprovação de uso de espaço público, quando exigido.', checklist:[]}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:3, prazo_tipo:'uteis',
+      descricao:'Emissão do conjunto final e submissão à prefeitura para aprovação de uso do espaço público, quando exigido. Briefing ao empreiteiro sobre sequência de execução e convivência com fluxo de pedestres.',
+      entregaveis:[{ nome:'Conjunto Final Emitido', ordem:1, descricao:'Arquivos finais com carimbo "Liberado para Obra", assinatura do RT e protocolo de submissão à prefeitura.', checklist:[]}]}
+  ]
+},
+{
+  nome:'Arborização Viária', area:'paisagismo', ordem:6,
+  descricao:'Projeto de arborização de logradouros públicos — implantação de árvores em calçadas, canteiros centrais e áreas lindeiras. Considera espécies adequadas ao clima, às dimensões do passeio, à infraestrutura urbana subterrânea e aérea e ao crescimento de longo prazo.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Levantamento da via: perfil transversal, largura de calçada, redes aéreas e subterrâneas, guias, rebaixamentos e arborização existente. Identificação das restrições municipais e do plano diretor de arborização da cidade. Reunião com o contratante para definição do programa.',
+      entregaveis:[
+        { nome:'Relatório de Briefing', ordem:1, descricao:'Programa, condicionantes legais e físicas da via.', checklist:[]},
+        { nome:'Inventário da Arborização Existente', ordem:2, descricao:'Levantamento das árvores existentes com identificação de espécie, porte, condição fitossanitária e decisão de manutenção ou remoção.', checklist:[]}
+      ]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Definição do partido de arborização — espécies candidatas, espaçamento, alinhamento e compatibilidade com as condições da via. Análise de referências de arborização bem-sucedida em cidades com contexto similar.',
+      entregaveis:[{ nome:'Partido de Arborização', ordem:1, descricao:'Espécies candidatas, critérios de seleção, espaçamento proposto e referências de via arborizada similar.', checklist:[]}]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:12, prazo_tipo:'uteis',
+      descricao:'Proposta de arborização com indicação de espécies por trecho, espaçamento entre árvores, dimensionamento de covas de plantio e soluções para conflitos com infraestrutura. Estimativa de quantidade de mudas por espécie.',
+      entregaveis:[
+        { nome:'Planta de Arborização Proposta', ordem:1, descricao:'Planta baixa da via com locação das árvores, espécies por trecho e identificação de conflitos com infraestrutura.', checklist:[]},
+        { nome:'Quantitativo de Mudas', ordem:2, descricao:'Tabela com espécies, quantidade, porte mínimo de plantio e fornecedores sugeridos.', checklist:[]}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Revisão incorporando feedbacks e ajuste de espécies conforme disponibilidade de mudas. Adequação às exigências técnicas da concessionária de energia ou órgão gestor da via.',
+      entregaveis:[{ nome:'Planta Revisada', ordem:1, descricao:'Versão ajustada com confirmação de disponibilidade de mudas e compatibilização com concessionárias.', checklist:[]}]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:12, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento técnico com planta de locação das árvores (referenciada ao meio-fio), especificação das espécies, dimensionamento das covas, substrato, adubação de plantio e detalhes de proteção de caule.',
+      entregaveis:[
+        { nome:'Planta de Locação Cotada', ordem:1, descricao:'Locação das árvores referenciada ao meio-fio com cotas.', checklist:[]},
+        { nome:'Ficha Técnica de Plantio', ordem:2, descricao:'Dimensionamento de covas, especificação de substrato, adubação de base e sistema de tutoragem.', checklist:[]}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Conjunto completo: planta de implantação, detalhes de cova de plantio (com piso permeável e proteção), especificação de substrato e tutoragem. Caderno de encargos com critérios de plantio, garantia de pega e protocolo de rega.',
+      entregaveis:[
+        { nome:'Pranchas Técnicas', ordem:1, descricao:'Planta de implantação e detalhes construtivos de cova, proteção e grade de cobertura.', checklist:[]},
+        { nome:'Caderno de Encargos', ordem:2, descricao:'Critérios de plantio, porte mínimo de muda, garantia de pega e cronograma de manutenção pós-plantio.', checklist:[]}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:3, prazo_tipo:'uteis',
+      descricao:'Emissão do conjunto para o contratante. Instrução técnica ao plantador sobre profundidade de cova, posicionamento do colo da muda e protocolo de rega pós-plantio. Ficha de plantio por árvore para controle de garantia.',
+      entregaveis:[{ nome:'Conjunto Final e Fichas de Plantio', ordem:1, descricao:'Arquivos finais, fichas individuais de plantio e protocolo de rega e garantia.', checklist:[]}]}
+  ]
+},
+{
+  nome:'Parque / Espaço Público', area:'paisagismo', ordem:7,
+  descricao:'Projeto de paisagismo para parques urbanos e espaços públicos de lazer — praças, parques de bairro e áreas de convivência. Abrange desde a concepção do programa de uso até o detalhamento técnico para implantação. Prioriza acessibilidade universal, resistência ao uso intenso e viabilidade de manutenção pública.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:10, prazo_tipo:'uteis',
+      descricao:'Levantamento técnico e de contexto: visita ao local, topografia, vegetação existente, infraestrutura disponível, entorno imediato e condicionantes legais (parâmetros urbanísticos, plano diretor). Pesquisa de uso e demanda com a comunidade quando aplicável. Reunião com o contratante para definição do programa e escopo.',
+      entregaveis:[
+        { nome:'Relatório de Briefing', ordem:1, descricao:'Programa de necessidades, condicionantes legais e físicas, e síntese da pesquisa com usuários.', checklist:[]},
+        { nome:'Diagnóstico do Espaço', ordem:2, descricao:'Análise de uso atual, vegetação existente, infraestrutura disponível e potencial de transformação.', checklist:[]}
+      ]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:10, prazo_tipo:'uteis',
+      descricao:'Definição do conceito e identidade do espaço — partido paisagístico, programa de atividades, setorização, identidade visual e referências. Análise de projetos similares em contexto urbano brasileiro.',
+      entregaveis:[{ nome:'Conceito e Partido', ordem:1, descricao:'Painel com partido paisagístico, programa, setorização preliminar e referências.', checklist:[]}]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Proposta de masterplan com setorização (ativo/passivo/esportivo/contemplativo), percursos, espécies e materiais. Estudo de acessibilidade universal e compatibilização com a topografia. Estimativa de custo de implantação.',
+      entregaveis:[
+        { nome:'Masterplan do Espaço', ordem:1, descricao:'Planta baixa com setorização, percursos, vegetação proposta e estimativa de áreas.', checklist:[]},
+        { nome:'Estimativa de Custo', ordem:2, descricao:'Estimativa paramétrica de implantação por setor do programa.', checklist:[]}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:10, prazo_tipo:'uteis',
+      descricao:'Revisão incorporando feedbacks do contratante e, quando aplicável, consulta pública. Ajustes no programa, materialidade e vegetação conforme budget disponível.',
+      entregaveis:[{ nome:'Masterplan Revisado', ordem:1, descricao:'Versão ajustada com validação do contratante e adequação ao orçamento.', checklist:[]}]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:20, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento técnico: planta cotada, cortes do terreno, detalhes de elementos estruturantes (playground, quadras, pergolados, iluminação). Compatibilização com projetos de pavimentação, drenagem e elétrico.',
+      entregaveis:[
+        { nome:'Planta Cotada', ordem:1, descricao:'Implantação com cotas, acessibilidade e indicação de espécies.', checklist:[]},
+        { nome:'Cortes Gerais', ordem:2, descricao:'Cortes longitudinais e transversais mostrando topografia, vegetação e elementos construídos.', checklist:[]},
+        { nome:'Detalhes Esquemáticos', ordem:3, descricao:'Detalhes de elementos de apoio: playground, bancos, pergolados, lixeiras.', checklist:[]}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:30, prazo_tipo:'uteis',
+      descricao:'Conjunto completo para licitação ou execução direta: planta de implantação, terraplanagem, espécies, detalhes construtivos, especificações técnicas e planilha orçamentária. Conforme normas ABNT de acessibilidade.',
+      entregaveis:[
+        { nome:'Pranchas Técnicas Completas', ordem:1, descricao:'Conjunto completo de pranchas para licitação pública ou contratação direta.', checklist:[]},
+        { nome:'Planilha Orçamentária', ordem:2, descricao:'Planilha de quantitativos e preços unitários para todos os serviços e materiais.', checklist:[]},
+        { nome:'Caderno de Especificações Técnicas', ordem:3, descricao:'Especificações de execução, materiais, normas e critérios de recebimento da obra.', checklist:[]}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Emissão do conjunto final para licitação ou contratação direta. Elaboração do caderno de encargos específico para implantação de espaços públicos, com critérios de recebimento da obra.',
+      entregaveis:[{ nome:'Conjunto Final para Licitação', ordem:1, descricao:'Conjunto completo de documentos, assinado e carimbado, para publicação de edital ou contratação direta.', checklist:[]}]}
+  ]
+},
+{
+  nome:'Parque Baixo Impacto', area:'paisagismo', ordem:8,
+  descricao:'Projeto de espaços verdes baseados em princípios de infraestrutura verde e baixo impacto ambiental — drenagem natural, superfícies permeáveis, espécies nativas, biovaletas, jardins de chuva e estímulo à biodiversidade. Aplicado em parques, praças ou áreas privadas com foco em sustentabilidade.',
+  etapas:[
+    { nome:'Briefing', ordem:1, prazo_dias:10, prazo_tipo:'uteis',
+      descricao:'Levantamento hidrológico e ambiental: bacia de contribuição, coeficientes de escoamento, vegetação nativa remanescente, solo, topografia e microclima. Identificação das condicionantes ambientais legais (APP, vegetação protegida). Definição de metas de performance ambiental com o contratante.',
+      entregaveis:[
+        { nome:'Relatório de Briefing', ordem:1, descricao:'Programa, metas ambientais, condicionantes legais e síntese do levantamento hidrológico.', checklist:[]},
+        { nome:'Diagnóstico Ambiental', ordem:2, descricao:'Análise de solo, vegetação nativa, dinâmica hídrica e potencial de biodiversidade do local.', checklist:[]}
+      ]},
+    { nome:'Estudo Conceitual', ordem:2, prazo_dias:10, prazo_tipo:'uteis',
+      descricao:'Definição do conceito de infraestrutura verde — tipo de técnicas a aplicar (jardim de chuva, biovaleta, wetland, biorretenção, piso permeável), sequência hidrológica do espaço e biomas de referência para a paleta de espécies nativas.',
+      entregaveis:[{ nome:'Conceito de Infraestrutura Verde', ordem:1, descricao:'Painel com tipo de técnicas de baixo impacto propostas, biomas de referência e espécies nativas candidatas.', checklist:[]}]},
+    { nome:'Estudo Preliminar', ordem:3, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Proposta de layout com zoneamento das técnicas de baixo impacto, percursos, áreas de permanência e paleta de espécies nativas e adaptadas. Cálculo preliminar de área permeável e volume de retenção estimado.',
+      entregaveis:[
+        { nome:'Planta de Layout', ordem:1, descricao:'Layout com zoneamento das técnicas LID, percursos e paleta de espécies nativas.', checklist:[]},
+        { nome:'Balanço Hídrico Preliminar', ordem:2, descricao:'Estimativa de volume de retenção, área permeável resultante e impacto na drenagem.', checklist:[]}
+      ]},
+    { nome:'Estudo Ajustado', ordem:4, prazo_dias:7, prazo_tipo:'uteis',
+      descricao:'Revisão com ajuste das técnicas conforme feedback do contratante e validação com especialista em drenagem urbana quando necessário. Confirmação de disponibilidade das espécies nativas no mercado regional.',
+      entregaveis:[{ nome:'Layout Revisado', ordem:1, descricao:'Versão ajustada com validação de espécies nativas disponíveis e ajuste das técnicas LID.', checklist:[]}]},
+    { nome:'Anteprojeto', ordem:5, prazo_dias:20, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento técnico das técnicas de infraestrutura verde: dimensionamento dos jardins de chuva, seção transversal de biovaletas, especificação das camadas de substrato e sistemas de transbordamento. Planta de espécies com ênfase em funções ecológicas.',
+      entregaveis:[
+        { nome:'Dimensionamento das Técnicas LID', ordem:1, descricao:'Memorial de cálculo para jardins de chuva, biovaletas e wetlands: área, volume, vazão de entrada e transbordamento.', checklist:[]},
+        { nome:'Seções Técnicas', ordem:2, descricao:'Seções transversais detalhadas de cada técnica de infraestrutura verde com camadas e materiais.', checklist:[]},
+        { nome:'Planta de Espécies', ordem:3, descricao:'Espécies nativas por técnica LID, com função ecológica descrita (fixação, filtração, atração de fauna, etc.).', checklist:[]}
+      ]},
+    { nome:'Projeto Executivo', ordem:6, prazo_dias:25, prazo_tipo:'uteis',
+      descricao:'Pranchas completas: implantação, cortes das técnicas de drenagem, detalhes de substrato e camadas filtrantes, especificação de espécies com função ecológica, plano de manutenção com cronograma anual.',
+      entregaveis:[
+        { nome:'Pranchas Técnicas', ordem:1, descricao:'Conjunto completo de pranchas de execução das técnicas de baixo impacto.', checklist:[]},
+        { nome:'Plano de Manutenção Ecológica', ordem:2, descricao:'Cronograma anual de manutenção por técnica LID, incluindo limpeza de sedimentos, manejo da vegetação e controle de invasoras.', checklist:[]}
+      ]},
+    { nome:'Liberado para Obra', ordem:7, prazo_dias:5, prazo_tipo:'uteis',
+      descricao:'Emissão do conjunto final com protocolo de implantação específico para espécies nativas (período ideal de plantio, rega de estabelecimento, controle de invasoras). Manual de manutenção ecológica entregue ao contratante.',
+      entregaveis:[{ nome:'Conjunto Final e Manual Ecológico', ordem:1, descricao:'Arquivos finais, protocolo de implantação de espécies nativas e manual de manutenção ecológica.', checklist:[]}]}
+  ]
+}
+];
+
+// ── SEED DATA — URBANISMO ──────────────────────────────────
+const SEED_URBANISMO = [
+{
+  nome:'Masterplan Conceitual', area:'urbanismo', ordem:1,
+  descricao:'Desenho e desenvolvimento de um plano de ocupação através de projeto urbano que integra programa, implantação, conectividade e paisagem. Objetiva criar uma proposta de urbanização que setoriza hierarquicamente o espaço e delimita as principais áreas de atração e permanência. O projeto parte do entendimento das macroestruturas — infraestrutura verde, sistema de espaços públicos e possíveis centralidades — e orienta a integração do empreendimento com o entorno.',
+  etapas:[
+    { nome:'Etapa 01 — Plano de Ocupação', ordem:1, prazo_dias:20, prazo_tipo:'uteis',
+      descricao:'Elaboração de um plano de ocupação que estabeleça as principais diretrizes viárias, defina as áreas de preservação ambiental, aponte as áreas de lazer, indique as áreas institucionais e caracterize os possíveis usos e seu arranjo, com base nas informações fornecidas pela contratante.\n\nApresentação preliminar contendo: mapas de inserção regional e local da gleba, restrições físicas e ambientais, condicionantes e potencialidades, principais equipamentos e serviços do entorno, acessos, detalhamento do processo de conceituação teórica do produto e imagens referenciais.\n\nQuadro de áreas públicas e privadas com indicação do percentual destinado para cada uso e estimativa do número de lotes por segmento.',
+      entregaveis:[
+        { nome:'Apresentação Preliminar', ordem:1, descricao:'Conjunto de pranchas com mapas de inserção, condicionantes, potencialidades, conceituação teórica e imagens referenciais.', checklist:['Inserção regional e local da gleba representada','Restrições físicas e ambientais mapeadas','Principais equipamentos e serviços do entorno identificados','Principais acessos indicados','Processo de conceituação descrito','Imagens referenciais incluídas']},
+        { nome:'Quadro de Áreas', ordem:2, descricao:'Tabela com percentual de áreas públicas e privadas e estimativa de lotes por segmento.', checklist:['Área total da gleba indicada','Percentuais por uso (viário, verde, institucional, privado)','Estimativa de número de lotes por segmento']}
+      ]},
+    { nome:'Etapa 02 — Plano Urbanístico Preliminar', ordem:2, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Desenvolvimento do plano urbanístico preliminar com a especificação das áreas loteadas. Atualização da apresentação com inserção do plano preliminar e quadro de áreas atualizado. Arquivo KMZ com o projeto georreferenciado.',
+      entregaveis:[
+        { nome:'Apresentação Atualizada + Plano Preliminar', ordem:1, descricao:'Pranchas atualizadas com o plano urbanístico preliminar inserido e quadro de áreas revisado.', checklist:['Plano urbanístico preliminar desenhado','Quadro de áreas atualizado com o plano','Aprovação da Etapa 01 registrada']},
+        { nome:'Arquivo KMZ Georreferenciado', ordem:2, descricao:'Projeto inserido em arquivo KMZ para visualização e navegação georreferenciada.', checklist:['Projeto corretamente georreferenciado','Arquivo KMZ testado e funcional']}
+      ]},
+    { nome:'Etapa 03 — Imagens', ordem:3, prazo_dias:25, prazo_tipo:'uteis',
+      descricao:'Atualização da apresentação com o plano urbanístico consolidado. Elaboração de perspectivas eletrônicas humanizadas (10 unidades) e inserção da modelagem 3D em arquivo KMZ para navegação.',
+      entregaveis:[
+        { nome:'Perspectivas Humanizadas', ordem:1, descricao:'10 perspectivas eletrônicas humanizadas representando o empreendimento implantado, com vegetação, pessoas e contexto urbano.', checklist:['10 perspectivas entregues','Humanização com pessoas, vegetação e iluminação','Pontos de vista validados com o cliente','Identidade visual do empreendimento representada']},
+        { nome:'Modelo 3D em KMZ', ordem:2, descricao:'Modelagem 3D do empreendimento inserida em arquivo KMZ para navegação e apresentação ao mercado.', checklist:['Modelagem compatível com o plano aprovado','Arquivo KMZ testado e navegável','Entregue junto com apresentação final']}
+      ]}
+  ]
+},
+{
+  nome:'Projeto Urbanístico', area:'urbanismo', ordem:2,
+  descricao:'Planejamento da segregação de um terreno em porções de menor dimensão — bairro planejado, loteamento ou condomínio. Segue as diretrizes urbanísticas federais, os parâmetros legais locais e se adequa às condicionantes ambientais do terreno. Abrange desde o primeiro plano de ocupação até a liberação para desenvolvimento dos projetos complementares e, por fim, a aprovação legal junto à municipalidade.',
+  etapas:[
+    { nome:'Emissão R00', ordem:1, prazo_dias:20, prazo_tipo:'uteis',
+      descricao:'Elaboração do primeiro plano urbanístico com base nos arquivos recebidos do contratante. Condicionantes obrigatórios: levantamento planialtimétrico cadastral em CAD (polígono da gleba, curvas de nível metro a metro), matrícula do terreno, delimitação das APPs em CAD compatibilizado com o levantamento, e informações de mercado (mix de produtos, proporção, tamanho de lotes e áreas de lazer).',
+      entregaveis:[
+        { nome:'Prancha do Plano Urbanístico R00', ordem:1, descricao:'Prancha única com o primeiro plano urbanístico, indicando levantamento planialtimétrico, APPs, sistema viário, áreas públicas e privadas (sem divisão de lotes) e quadro de áreas completo.', checklist:['Levantamento planialtimétrico representado','APPs delimitadas conforme mapa ambiental','Faixas de domínio (alta tensão, rodovias, ferrovias) indicadas','Sistema viário hierarquizado desenhado','Áreas públicas delimitadas (viário, verde, institucional)','Áreas privadas delimitadas (sem divisão de lotes)','Quadro de áreas completo com quantitativo estimado de lotes','Georreferenciamento verificado','Normas técnicas utilizadas indicadas em prancha']}
+      ]},
+    { nome:'Emissão R01', ordem:2, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Revisão do projeto levando em consideração os ajustes necessários apontados pela municipalidade através das Diretrizes Urbanísticas emitidas. Até 01 revisão prevista.',
+      entregaveis:[
+        { nome:'Prancha do Plano Urbanístico R01', ordem:1, descricao:'Versão revisada do plano incorporando as diretrizes urbanísticas municipais. Mesmos itens da R00 atualizados.', checklist:['Todos os ajustes das Diretrizes Urbanísticas incorporados','Quadro de áreas atualizado','Normas técnicas referenciadas']}
+      ]},
+    { nome:'Emissão R02', ordem:3, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Liberação do Plano Urbanístico para desenvolvimento dos projetos de terraplanagem e drenagem. Revisões a partir de comentários dos projetistas dessas disciplinas, contratados pela contratante.',
+      entregaveis:[
+        { nome:'Prancha do Plano Urbanístico R02', ordem:1, descricao:'Versão do plano liberada para compatibilização com terraplanagem e drenagem, com ajustes resultantes desta interface.', checklist:['Ajustes de terraplanagem e drenagem incorporados','Plano liberado com carimbo de emissão R02','Projetistas de terraplanagem e drenagem notificados']}
+      ]},
+    { nome:'Emissão R03', ordem:4, prazo_dias:15, prazo_tipo:'uteis',
+      descricao:'Liberação do Plano Urbanístico para desenvolvimento dos projetos de água e esgoto. Inserção das áreas reservadas pelos projetistas para equipamentos urbanos (caixas d\'água, boosters, ETAs, ETEs, estações elevatórias de esgoto). Após esta emissão, o projeto está liberado para avançar ao Projeto Legal.',
+      entregaveis:[
+        { nome:'Prancha do Plano Urbanístico R03', ordem:1, descricao:'Versão final do plano com áreas de equipamentos urbanos inseridas, liberada para desenvolvimento do Projeto Legal.', checklist:['Áreas de equipamentos urbanos reservadas e indicadas','Ajustes de água e esgoto incorporados','Plano aprovado internamente para avanço ao Projeto Legal']}
+      ]},
+    { nome:'Projeto Legal', ordem:5, prazo_dias:25, prazo_tipo:'uteis',
+      descricao:'Conjunto de entregáveis para aprovação legal do empreendimento junto à municipalidade e demais órgãos. Todas as informações concebidas até então são agrupadas em material de caráter legal, detalhado e orientado para efeito de registro.\n\nO prazo é de 25 dias úteis para Planta Baixa + Memorial Justificativo, e 15 dias úteis adicionais para o Memorial Descritivo. Prevista até 01 revisão com base em parecer municipal.',
+      entregaveis:[
+        { nome:'Planta Baixa Legal', ordem:1, descricao:'Planta baixa com todas as informações legais: levantamento, APPs, áreas públicas cotadas (viário, verde, institucional), lotes identificados e dimensionados, faixas non aedificandi, raios de curvatura nos cruzamentos e seção tipo transversal das vias.', checklist:['Levantamento planialtimétrico representado','APPs delimitadas','Áreas públicas identificadas e dimensionadas com cotas','Lotes identificados e dimensionados','Faixas non aedificandi indicadas nos lotes','Raios de curvatura nos cruzamentos indicados','Seção tipo transversal das vias representada','Quadro de áreas completo','Escala, norte e carimbo legal presentes']},
+        { nome:'Memorial Descritivo', ordem:2, descricao:'Cálculo analítico com relação total de lotes e quadras (área e dimensões de cada um), memorial descritivo das áreas públicas e privadas para registro, e memorial descritivo e justificativo do empreendimento.', checklist:['Cálculo analítico com todos os lotes e quadras','Memorial das áreas públicas completo','Memorial das áreas privadas completo','Memorial justificativo do empreendimento redigido','Compatível com a planta baixa legal']}
+      ]}
+  ]
+}
+];
+
+function toggleNavDropdown() {
+  document.getElementById('nav-dropdown').classList.toggle('open');
+}
+function toggleUserMenu() {
+  document.getElementById('user-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('nav-mod-wrap')?.contains(e.target))
+    document.getElementById('nav-dropdown')?.classList.remove('open');
+  if (!document.getElementById('user-pill-wrap')?.contains(e.target))
+    document.getElementById('user-dropdown')?.classList.remove('open');
+});
+function initConnDot() {
+  const dot = document.getElementById('conn-dot');
+  if (!dot) return;
+  const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexão'; };
+  update(); window.addEventListener('online',update); window.addEventListener('offline',update);
+}
+function initNavDropdown(role) {
+  if (role === 'socio') document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+  initConnDot();
+}
+async function sair() {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('exp_usuario');
+  window.location.href = 'index.html';
+}
+
+// ── INIT ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+
+  const {data:u} = await sb.from('usuarios').select('*').eq('auth_id',session.user.id).single();
+  G.usuario = u || {nome:'Usuário',iniciais:'?',cor:'#888',role:'colaborador'};
+
+  const ini = G.usuario.iniciais||'?';
+  document.getElementById('user-av').style.cssText = `background:${G.usuario.cor}22;color:${G.usuario.cor}`;
+  document.getElementById('user-av').textContent = ini;
+  document.getElementById('user-nome').textContent = G.usuario.nome?.split(' ')[0]||'Usuário';
+  initNavDropdown(G.usuario.role);
+
+  await carregarDados();
+  document.getElementById('loading').style.display = 'none';
+  renderTema();
+});
+
+// ── CARREGAR DADOS ──────────────────────────────────────────
+async function carregarDados() {
+  // Tenta carregar da tabela base_tipo_projeto
+  const {data, error} = await sb.from('base_tipo_projeto').select('*').order('area').order('ordem');
+  if(error && error.code === '42P01') {
+    // Tabelas não existem
+    G.tablesOk = false;
+    G.tipos = [];
+    return;
+  }
+  G.tablesOk = true;
+
+  if(!data || data.length === 0) {
+    // Tabelas existem mas vazias — seed automático
+    if(isSocio()) await seedDados();
+    else {
+      G.tipos = [];
+      return;
+    }
+  } else {
+    G.tipos = data;
+  }
+
+  // Carrega etapas, entregáveis e checklists
+  const [resE, resEnt, resCk] = await Promise.all([
+    sb.from('base_etapa').select('*').order('tipo_id').order('ordem'),
+    sb.from('base_entregavel').select('*').order('etapa_id').order('ordem'),
+    sb.from('base_checklist_item').select('*').order('entregavel_id').order('ordem'),
+  ]);
+  G.etapas = resE.data || [];
+  G.entregaveis = resEnt.data || [];
+  G.checklists = resCk.data || [];
+}
+
+// ── SEED ────────────────────────────────────────────────────
+async function seedDados(mostrarFeedback=false) {
+  if(mostrarFeedback){
+    document.getElementById('apoio-content').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:40px;font-size:12px;color:var(--verde)">
+        <div class="seed-spinner"></div>
+        Carregando dados iniciais de Paisagismo...
+      </div>`;
+  }
+
+  for(const tipo of [...SEED_PAISAGISMO, ...SEED_URBANISMO]) {
+    const {data:t, error:te} = await sb.from('base_tipo_projeto').insert({
+      nome:tipo.nome, area:tipo.area, descricao:tipo.descricao, ordem:tipo.ordem
+    }).select().single();
+    if(te || !t) continue;
+
+    for(const etapa of tipo.etapas) {
+      const {data:e, error:ee} = await sb.from('base_etapa').insert({
+        tipo_id:t.id, nome:etapa.nome, descricao:etapa.descricao,
+        ordem:etapa.ordem, prazo_dias:etapa.prazo_dias, prazo_tipo:etapa.prazo_tipo
+      }).select().single();
+      if(ee || !e) continue;
+
+      for(const entregavel of etapa.entregaveis) {
+        const {data:ent, error:ente} = await sb.from('base_entregavel').insert({
+          etapa_id:e.id, nome:entregavel.nome, descricao:entregavel.descricao, ordem:entregavel.ordem
+        }).select().single();
+        if(ente || !ent) continue;
+
+        if(entregavel.checklist && entregavel.checklist.length > 0) {
+          const ckItems = entregavel.checklist.map((texto,i) => ({
+            entregavel_id:ent.id, texto, ordem:i+1
+          }));
+          await sb.from('base_checklist_item').insert(ckItems);
+        }
+      }
+    }
+  }
+
+  await carregarDados();
+}
+
+// ── RENDER TEMA ─────────────────────────────────────────────
+function setTema(tema) {
+  G.temaAtivo = tema;
+  document.querySelectorAll('.sb-theme-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tema === tema);
+  });
+  renderTema();
+}
+
+function renderTema() {
+  const el = document.getElementById('apoio-content');
+  if(G.temaAtivo === 'projetos') renderProjetos(el);
+  else if(G.temaAtivo === 'organizacao') renderOrganizacao(el);
+  else if(G.temaAtivo === 'cultura') renderCultura(el);
+  else if(G.temaAtivo === 'vegetacao') renderVegetacao(el);
+}
+
+function renderPlaceholder(el, titulo, icon, sub) {
+  el.innerHTML = `
+    <div class="tema-placeholder">
+      <div class="tema-placeholder-icon">${icon}</div>
+      <div class="tema-placeholder-title">${titulo}</div>
+      <div class="tema-placeholder-sub">${sub}</div>
+      ${isSocio() ? `<button class="btn verde sm" style="margin-top:8px" onclick="alert('Editor de seções em breve.')">+ Adicionar conteúdo</button>` : `<span class="tema-placeholder-badge">Em construção</span>`}
+    </div>`;
+}
+
+// ── RENDER PROJETOS ─────────────────────────────────────────
+function renderProjetos(el) {
+  if(!G.tablesOk) {
+    el.innerHTML = renderSetupNotice();
+    return;
+  }
+
+  const areas = [
+    {key:'paisagismo',   label:'Paisagismo'},
+    {key:'urbanismo',    label:'Urbanismo'},
+    {key:'consultorias', label:'Consultorias'},
+    {key:'especiais',    label:'Proj. Especiais'},
+  ];
+
+  const tiposArea = G.tipos.filter(t => t.area === G.areaAtiva);
+
+  // Auto-select first if none active or active not in area
+  if(!G.tipoAtivoId || !tiposArea.find(t => t.id === G.tipoAtivoId)) {
+    G.tipoAtivoId = tiposArea.length > 0 ? tiposArea[0].id : null;
+  }
+
+  const tipoAtivo = tiposArea.find(t => t.id === G.tipoAtivoId);
+
+  const menuHtml = tiposArea.length === 0
+    ? `<div style="padding:16px 12px;font-size:11px;color:#ccc">Nenhum tipo cadastrado.${isSocio()?`<br><button class="btn sm verde" style="margin-top:8px" onclick="seedManual()">Carregar dados iniciais</button>`:''}</div>`
+    : tiposArea.map(t => `<div class="tipo-menu-item${t.id===G.tipoAtivoId?' active':''}" data-tipo-id="${t.id}" data-area="${t.area}" onclick="setTipoAtivo('${t.id}')">${escHtml(t.nome)}</div>`).join('');
+
+  const detailHtml = !tipoAtivo
+    ? `<div class="tipo-detail-vazio">Selecione um tipo de projeto ao lado</div>`
+    : renderTipoDetalhe(tipoAtivo);
+
+  el.innerHTML = `
+    <div class="content-hdr">
+      <div class="content-hdr-left">
+        <div class="content-title">Base Projetual</div>
+        <div class="content-sub">Tipos de projeto · etapas · entregáveis · checklists de conferência</div>
+      </div>
+    </div>
+    <div class="area-tabs">
+      ${areas.map(a => `<div class="area-tab${G.areaAtiva===a.key?' active':''}" data-area="${a.key}" onclick="setArea('${a.key}')">${a.label}</div>`).join('')}
+    </div>
+    <div class="proj-body">
+      <div class="tipo-menu">${menuHtml}</div>
+      <div class="tipo-detail" id="tipo-detail-panel">${detailHtml}</div>
+    </div>`;
+}
+
+function setArea(area) {
+  G.areaAtiva = area;
+  G.tipoAtivoId = null;
+  G.expandedTipos = new Set();
+  G.expandedEtapas = new Set();
+  G.expandedEntregaveis = new Set();
+  renderTema();
+}
+
+function setTipoAtivo(id) {
+  G.tipoAtivoId = id;
+  G.expandedEtapas = new Set();
+  G.expandedEntregaveis = new Set();
+  document.querySelectorAll('.tipo-menu-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tipoId === id);
+  });
+  const panel = document.getElementById('tipo-detail-panel');
+  if(panel) {
+    const tipo = G.tipos.find(t => t.id === id);
+    if(tipo) panel.innerHTML = renderTipoDetalhe(tipo);
+  }
+}
+
+function renderTipoDetalhe(tipo) {
+  const etapas = G.etapas.filter(e => e.tipo_id === tipo.id);
+  const editBtn = isSocio()
+    ? `<div class="tipo-detail-edit"><button class="edit-btn" onclick="abrirEditTipo('${tipo.id}')">✎ editar</button></div>` : '';
+  const etapasHtml = etapas.length === 0
+    ? `<div class="checklist-vazio">Nenhuma etapa cadastrada.</div>`
+    : `<div class="etapas-lista-hdr">
+        <span class="etapas-lista-label">Etapas (${etapas.length})</span>
+        <button class="recolher-btn" onclick="recolherTudo('${tipo.id}')">Recolher tudo</button>
+       </div>
+       <div class="etapas-lista">${etapas.map(e => renderEtapaRow(e)).join('')}</div>`;
+  return `
+    <div class="tipo-detail-hdr">${editBtn}</div>
+    <div class="tipo-detail-nome">${escHtml(tipo.nome)}</div>
+    <div class="tipo-detail-desc" id="tipo-desc-${tipo.id}">${escHtml(tipo.descricao||'')}</div>
+    ${etapasHtml}`;
+}
+
+function renderTipoCard(tipo) {
+  const expanded = G.expandedTipos.has(tipo.id);
+  const etapas = G.etapas.filter(e => e.tipo_id === tipo.id);
+
+  const editTipoBtn = isSocio()
+    ? `<div class="edit-trigger"><button class="edit-btn" onclick="event.stopPropagation();abrirEditTipo('${tipo.id}')">✎ editar</button></div>`
+    : '';
+
+  const descricaoHtml = `
+    <div class="tipo-descricao-wrap">
+      ${editTipoBtn}
+      <div class="tipo-descricao-txt" id="tipo-desc-${tipo.id}">${escHtml(tipo.descricao||'')}</div>
+    </div>`;
+
+  const etapasHtml = etapas.length === 0
+    ? `<div class="checklist-vazio">Nenhuma etapa cadastrada.</div>`
+    : `<div class="etapas-lista-hdr">
+        <span class="etapas-lista-label">Etapas (${etapas.length})</span>
+        <button class="recolher-btn" onclick="event.stopPropagation();recolherTudo('${tipo.id}')">Recolher tudo</button>
+       </div>
+       ${etapas.map(e => renderEtapaRow(e)).join('')}`;
+
+  return `
+    <div class="tipo-card${expanded?' expanded':''}" id="tipo-${tipo.id}">
+      <div class="tipo-card-hdr" onclick="toggleTipo('${tipo.id}')">
+        <span class="tipo-card-nome">${escHtml(tipo.nome)}</span>
+        <span class="badge b-pai">${labelArea(tipo.area)}</span>
+        <span class="tipo-card-chevron">▶</span>
+      </div>
+      <div class="tipo-body">
+        ${descricaoHtml}
+        <div class="etapas-lista">
+          ${etapasHtml}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderEtapaRow(etapa) {
+  const expanded = G.expandedEtapas.has(etapa.id);
+  const entregaveis = G.entregaveis.filter(e => e.etapa_id === etapa.id);
+  const prazoLabel = etapa.prazo_dias ? `${etapa.prazo_dias}d ${etapa.prazo_tipo==='corridos'?'corridos':'úteis'}` : '';
+
+  const editEtapaBtn = isSocio()
+    ? `<div class="edit-trigger"><button class="edit-btn" onclick="event.stopPropagation();abrirEditEtapa('${etapa.id}')">✎ editar</button></div>`
+    : '';
+
+  const entregaveisHtml = entregaveis.length === 0
+    ? `<span class="checklist-vazio">Nenhum entregável cadastrado.${isSocio()?` <button class="btn sm" onclick="abrirAddEntregavel('${etapa.id}')">+ Adicionar</button>`:''}</span>`
+    : `<div class="entregaveis-label">Entregáveis</div>
+       <div class="entregaveis-lista">${entregaveis.map(e => renderEntregavelRow(e)).join('')}</div>
+       ${isSocio()?`<button class="btn sm" style="margin-top:6px" onclick="event.stopPropagation();abrirAddEntregavel('${etapa.id}')">+ Adicionar entregável</button>`:''}`;
+
+  return `
+    <div class="etapa-row${expanded?' expanded':''}" id="etapa-${etapa.id}">
+      <div class="etapa-hdr" onclick="toggleEtapa('${etapa.id}')">
+        <span class="etapa-num">${etapa.ordem}</span>
+        <span class="etapa-nome">${escHtml(etapa.nome)}</span>
+        ${prazoLabel ? `<span class="etapa-prazo">${prazoLabel}</span>` : ''}
+        <span class="etapa-chevron">▶</span>
+      </div>
+      <div class="etapa-body">
+        <div class="etapa-descricao-wrap">
+          ${editEtapaBtn}
+          <div class="etapa-descricao-txt" id="etapa-desc-${etapa.id}">${escHtml(etapa.descricao||'')}</div>
+        </div>
+        ${entregaveisHtml}
+      </div>
+    </div>`;
+}
+
+function renderEntregavelRow(entregavel) {
+  const expanded = G.expandedEntregaveis.has(entregavel.id);
+  const ckItems = G.checklists.filter(c => c.entregavel_id === entregavel.id);
+
+  const editBtn = isSocio()
+    ? `<div class="edit-trigger"><button class="edit-btn" onclick="event.stopPropagation();abrirEditEntregavel('${entregavel.id}')">✎ editar</button></div>`
+    : '';
+
+  const ckHtml = ckItems.length === 0
+    ? `<span class="checklist-vazio">Checklist vazio.${isSocio()?` <button class="btn sm" onclick="event.stopPropagation();abrirEditChecklist('${entregavel.id}')">+ Adicionar itens</button>`:''}</span>`
+    : `<div class="checklist-label">Checklist de conferência</div>
+       <div class="checklist-lista">
+         ${ckItems.map(c => `<div class="checklist-item"><span class="checklist-dot"></span><span>${escHtml(c.texto)}</span></div>`).join('')}
+       </div>
+       ${isSocio()?`<button class="btn sm" style="margin-top:6px" onclick="event.stopPropagation();abrirEditChecklist('${entregavel.id}')">✎ Editar checklist</button>`:''}`;
+
+  return `
+    <div class="entregavel-row${expanded?' expanded':''}" id="entregavel-${entregavel.id}">
+      <div class="entregavel-hdr" onclick="toggleEntregavel('${entregavel.id}')">
+        <span class="entregavel-nome">${escHtml(entregavel.nome)}</span>
+        <span class="entregavel-chevron">▶</span>
+      </div>
+      <div class="entregavel-body">
+        <div class="entregavel-descricao-wrap">
+          ${editBtn}
+          <div class="entregavel-descricao-txt" id="entregavel-desc-${entregavel.id}">${escHtml(entregavel.descricao||'')}</div>
+        </div>
+        ${ckHtml}
+      </div>
+    </div>`;
+}
+
+// ── ACCORDIONS ──────────────────────────────────────────────
+function toggleTipo(id) {
+  const card = document.getElementById('tipo-'+id);
+  if(!card) return;
+  if(G.expandedTipos.has(id)){G.expandedTipos.delete(id);card.classList.remove('expanded');}
+  else{G.expandedTipos.add(id);card.classList.add('expanded');}
+}
+
+function toggleEtapa(id) {
+  const row = document.getElementById('etapa-'+id);
+  if(!row) return;
+  if(G.expandedEtapas.has(id)){G.expandedEtapas.delete(id);row.classList.remove('expanded');}
+  else{G.expandedEtapas.add(id);row.classList.add('expanded');}
+}
+
+function toggleEntregavel(id) {
+  const row = document.getElementById('entregavel-'+id);
+  if(!row) return;
+  if(G.expandedEntregaveis.has(id)){G.expandedEntregaveis.delete(id);row.classList.remove('expanded');}
+  else{G.expandedEntregaveis.add(id);row.classList.add('expanded');}
+}
+
+function recolherTudo(tipoId) {
+  const etapas = G.etapas.filter(e => e.tipo_id === tipoId);
+  etapas.forEach(e => {
+    G.expandedEtapas.delete(e.id);
+    const row = document.getElementById('etapa-'+e.id);
+    if(row) row.classList.remove('expanded');
+    const entregaveis = G.entregaveis.filter(ent => ent.etapa_id === e.id);
+    entregaveis.forEach(ent => {
+      G.expandedEntregaveis.delete(ent.id);
+      const eRow = document.getElementById('entregavel-'+ent.id);
+      if(eRow) eRow.classList.remove('expanded');
+    });
+  });
+}
+
+// ── MODAL DE EDIÇÃO ─────────────────────────────────────────
+function abrirModal(titulo, bodyHtml, ctx) {
+  G.modalCtx = ctx;
+  document.getElementById('modal-edit-title').textContent = titulo;
+  document.getElementById('modal-edit-body').innerHTML = bodyHtml;
+  document.getElementById('modal-edit').style.display = 'flex';
+}
+
+function fecharModal() {
+  document.getElementById('modal-edit').style.display = 'none';
+  G.modalCtx = null;
+}
+
+// Editar descrição do Tipo
+function abrirEditTipo(tipoId) {
+  const tipo = G.tipos.find(t => t.id === tipoId);
+  if(!tipo) return;
+  abrirModal('Editar tipo: ' + tipo.nome, `
+    <div class="modal-field">
+      <label>Descrição</label>
+      <textarea id="me-descricao" rows="5">${escAttr(tipo.descricao||'')}</textarea>
+    </div>`, {tipo:'tipo', id:tipoId});
+}
+
+// Editar descrição + prazo da Etapa
+function abrirEditEtapa(etapaId) {
+  const etapa = G.etapas.find(e => e.id === etapaId);
+  if(!etapa) return;
+  abrirModal('Editar etapa: ' + etapa.nome, `
+    <div class="modal-field">
+      <label>Descrição</label>
+      <textarea id="me-descricao" rows="6">${escAttr(etapa.descricao||'')}</textarea>
+    </div>
+    <div class="modal-field" style="display:flex;gap:12px">
+      <div style="flex:1">
+        <label>Prazo padrão (dias)</label>
+        <input type="number" id="me-prazo-dias" value="${etapa.prazo_dias||7}" min="1" max="365">
+      </div>
+      <div style="flex:1">
+        <label>Tipo de prazo</label>
+        <select id="me-prazo-tipo" style="width:100%;padding:8px 10px;border:1px solid var(--cinza);font-family:var(--f);font-size:12px;outline:none">
+          <option value="uteis"${etapa.prazo_tipo==='uteis'?' selected':''}>Dias úteis</option>
+          <option value="corridos"${etapa.prazo_tipo==='corridos'?' selected':''}>Dias corridos</option>
+        </select>
+      </div>
+    </div>`, {tipo:'etapa', id:etapaId});
+}
+
+// Editar descrição do Entregável
+function abrirEditEntregavel(entregavelId) {
+  const ent = G.entregaveis.find(e => e.id === entregavelId);
+  if(!ent) return;
+  abrirModal('Editar entregável: ' + ent.nome, `
+    <div class="modal-field">
+      <label>Nome</label>
+      <input type="text" id="me-nome" value="${escAttr(ent.nome||'')}">
+    </div>
+    <div class="modal-field">
+      <label>Descrição</label>
+      <textarea id="me-descricao" rows="5">${escAttr(ent.descricao||'')}</textarea>
+    </div>`, {tipo:'entregavel', id:entregavelId});
+}
+
+// Adicionar entregável
+function abrirAddEntregavel(etapaId) {
+  abrirModal('Novo entregável', `
+    <div class="modal-field">
+      <label>Nome do entregável</label>
+      <input type="text" id="me-nome" placeholder="Ex: Planta de Implantação Cotada">
+    </div>
+    <div class="modal-field">
+      <label>Descrição</label>
+      <textarea id="me-descricao" rows="4" placeholder="Descreva o que este entregável contém..."></textarea>
+    </div>`, {tipo:'add-entregavel', etapaId});
+}
+
+// Editar checklist
+function abrirEditChecklist(entregavelId) {
+  const ent = G.entregaveis.find(e => e.id === entregavelId);
+  const ckItems = G.checklists.filter(c => c.entregavel_id === entregavelId);
+  const itensHtml = ckItems.map((c,i) => `
+    <div class="modal-checklist-item" data-ck-id="${c.id}">
+      <input type="text" value="${escAttr(c.texto)}" placeholder="Item de conferência">
+      <button class="btn-remove" onclick="removerCkItem(this)" title="Remover">×</button>
+    </div>`).join('');
+
+  abrirModal(`Checklist: ${ent?.nome||''}`, `
+    <div class="modal-hint">Itens de conferência — lidos, não marcados. Sem caixas, sem estado salvo.</div>
+    <div class="modal-checklist-lista" id="ck-lista">
+      ${itensHtml}
+    </div>
+    <button class="btn sm" style="margin-top:8px" onclick="addCkItem()">+ Adicionar item</button>`,
+    {tipo:'checklist', entregavelId});
+}
+
+function removerCkItem(btn) {
+  btn.closest('.modal-checklist-item').remove();
+}
+
+function addCkItem() {
+  const lista = document.getElementById('ck-lista');
+  const div = document.createElement('div');
+  div.className = 'modal-checklist-item';
+  div.dataset.ckId = 'new';
+  div.innerHTML = `<input type="text" placeholder="Item de conferência"><button class="btn-remove" onclick="removerCkItem(this)" title="Remover">×</button>`;
+  lista.appendChild(div);
+  div.querySelector('input').focus();
+}
+
+// ── SALVAR MODAL ────────────────────────────────────────────
+async function salvarModal() {
+  const ctx = G.modalCtx;
+  if(!ctx) return;
+
+  const btn = document.getElementById('modal-salvar-btn');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  try {
+    if(ctx.tipo === 'tipo') {
+      const descricao = document.getElementById('me-descricao').value;
+      const {error} = await sb.from('base_tipo_projeto').update({
+        descricao, atualizado_em:new Date().toISOString(), atualizado_por:G.usuario.id
+      }).eq('id', ctx.id);
+      if(error) throw error;
+      const t = G.tipos.find(t => t.id === ctx.id);
+      if(t) t.descricao = descricao;
+      const el = document.getElementById('tipo-desc-'+ctx.id);
+      if(el) el.textContent = descricao;
+    }
+    else if(ctx.tipo === 'etapa') {
+      const descricao = document.getElementById('me-descricao').value;
+      const prazo_dias = parseInt(document.getElementById('me-prazo-dias').value)||7;
+      const prazo_tipo = document.getElementById('me-prazo-tipo').value;
+      const {error} = await sb.from('base_etapa').update({
+        descricao, prazo_dias, prazo_tipo, atualizado_em:new Date().toISOString(), atualizado_por:G.usuario.id
+      }).eq('id', ctx.id);
+      if(error) throw error;
+      const e = G.etapas.find(e => e.id === ctx.id);
+      if(e){e.descricao=descricao;e.prazo_dias=prazo_dias;e.prazo_tipo=prazo_tipo;}
+      const el = document.getElementById('etapa-desc-'+ctx.id);
+      if(el) el.textContent = descricao;
+      // Atualiza prazo no header
+      const row = document.getElementById('etapa-'+ctx.id);
+      if(row){
+        const prazoEl = row.querySelector('.etapa-prazo');
+        if(prazoEl) prazoEl.textContent = prazo_dias ? `${prazo_dias}d ${prazo_tipo==='corridos'?'corridos':'úteis'}` : '';
+      }
+    }
+    else if(ctx.tipo === 'entregavel') {
+      const nome = document.getElementById('me-nome').value;
+      const descricao = document.getElementById('me-descricao').value;
+      const {error} = await sb.from('base_entregavel').update({
+        nome, descricao, atualizado_em:new Date().toISOString(), atualizado_por:G.usuario.id
+      }).eq('id', ctx.id);
+      if(error) throw error;
+      const e = G.entregaveis.find(e => e.id === ctx.id);
+      if(e){e.nome=nome;e.descricao=descricao;}
+      const el = document.getElementById('entregavel-desc-'+ctx.id);
+      if(el) el.textContent = descricao;
+      const row = document.getElementById('entregavel-'+ctx.id);
+      if(row){const n=row.querySelector('.entregavel-nome');if(n)n.textContent=nome;}
+    }
+    else if(ctx.tipo === 'add-entregavel') {
+      const nome = document.getElementById('me-nome').value.trim();
+      const descricao = document.getElementById('me-descricao').value;
+      if(!nome){alert('Informe o nome do entregável.');btn.disabled=false;btn.textContent='Salvar';return;}
+      const ordemMax = Math.max(0,...G.entregaveis.filter(e=>e.etapa_id===ctx.etapaId).map(e=>e.ordem));
+      const {data, error} = await sb.from('base_entregavel').insert({
+        etapa_id:ctx.etapaId, nome, descricao, ordem:ordemMax+1
+      }).select().single();
+      if(error) throw error;
+      G.entregaveis.push(data);
+      // Re-render etapa body
+      const etapa = G.etapas.find(e => e.id === ctx.etapaId);
+      if(etapa) {
+        const row = document.getElementById('etapa-'+ctx.etapaId);
+        if(row){
+          const body = row.querySelector('.etapa-body');
+          if(body) body.innerHTML = buildEtapaBodyHtml(etapa);
+        }
+      }
+    }
+    else if(ctx.tipo === 'checklist') {
+      // Deleta todos os itens existentes e re-insere
+      await sb.from('base_checklist_item').delete().eq('entregavel_id', ctx.entregavelId);
+      const inputs = document.querySelectorAll('#ck-lista .modal-checklist-item input');
+      const novos = Array.from(inputs).map((inp,i) => inp.value.trim()).filter(Boolean).map((texto,i) => ({
+        entregavel_id:ctx.entregavelId, texto, ordem:i+1
+      }));
+      if(novos.length > 0) {
+        const {data, error} = await sb.from('base_checklist_item').insert(novos).select();
+        if(error) throw error;
+        G.checklists = G.checklists.filter(c => c.entregavel_id !== ctx.entregavelId);
+        G.checklists.push(...(data||[]));
+      } else {
+        G.checklists = G.checklists.filter(c => c.entregavel_id !== ctx.entregavelId);
+      }
+      // Re-render entregavel body
+      const entregavel = G.entregaveis.find(e => e.id === ctx.entregavelId);
+      if(entregavel){
+        const row = document.getElementById('entregavel-'+ctx.entregavelId);
+        if(row){
+          const body = row.querySelector('.entregavel-body');
+          if(body) body.innerHTML = buildEntregavelBodyHtml(entregavel);
+        }
+      }
+    }
+
+    fecharModal();
+  } catch(err) {
+    alert('Erro ao salvar: ' + (err.message||JSON.stringify(err)));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar';
+  }
+}
+
+function buildEtapaBodyHtml(etapa) {
+  const entregaveis = G.entregaveis.filter(e => e.etapa_id === etapa.id);
+  const editBtn = isSocio()
+    ? `<div class="edit-trigger"><button class="edit-btn" onclick="event.stopPropagation();abrirEditEtapa('${etapa.id}')">✎ editar</button></div>` : '';
+  const entHtml = entregaveis.length === 0
+    ? `<span class="checklist-vazio">Nenhum entregável.${isSocio()?`<button class="btn sm" onclick="abrirAddEntregavel('${etapa.id}')"> + Adicionar</button>`:''}</span>`
+    : `<div class="entregaveis-label">Entregáveis</div><div class="entregaveis-lista">${entregaveis.map(e=>renderEntregavelRow(e)).join('')}</div>${isSocio()?`<button class="btn sm" style="margin-top:6px" onclick="event.stopPropagation();abrirAddEntregavel('${etapa.id}')">+ Adicionar entregável</button>`:''}`;
+  return `<div class="etapa-descricao-wrap">${editBtn}<div class="etapa-descricao-txt" id="etapa-desc-${etapa.id}">${escHtml(etapa.descricao||'')}</div></div>${entHtml}`;
+}
+
+function buildEntregavelBodyHtml(entregavel) {
+  const ckItems = G.checklists.filter(c => c.entregavel_id === entregavel.id);
+  const editBtn = isSocio()
+    ? `<div class="edit-trigger"><button class="edit-btn" onclick="event.stopPropagation();abrirEditEntregavel('${entregavel.id}')">✎ editar</button></div>` : '';
+  const ckHtml = ckItems.length === 0
+    ? `<span class="checklist-vazio">Checklist vazio.${isSocio()?`<button class="btn sm" onclick="event.stopPropagation();abrirEditChecklist('${entregavel.id}')">+ Adicionar itens</button>`:''}</span>`
+    : `<div class="checklist-label">Checklist de conferência</div><div class="checklist-lista">${ckItems.map(c=>`<div class="checklist-item"><span class="checklist-dot"></span><span>${escHtml(c.texto)}</span></div>`).join('')}</div>${isSocio()?`<button class="btn sm" style="margin-top:6px" onclick="event.stopPropagation();abrirEditChecklist('${entregavel.id}')">✎ Editar checklist</button>`:''}`;
+  return `<div class="entregavel-descricao-wrap">${editBtn}<div class="entregavel-descricao-txt" id="entregavel-desc-${entregavel.id}">${escHtml(entregavel.descricao||'')}</div></div>${ckHtml}`;
+}
+
+// ── SETUP NOTICE ────────────────────────────────────────────
+function renderSetupNotice() {
+  return `
+    <div class="setup-notice">
+      <div class="setup-notice-title">⚠ Banco de dados não configurado</div>
+      <div class="setup-notice-text">
+        As tabelas da base projetual ainda não existem no Supabase.<br>
+        Execute o SQL abaixo no <strong>SQL Editor</strong> do painel Supabase e recarregue a página.
+      </div>
+      <pre class="setup-sql">${escHtml(SETUP_SQL)}</pre>
+      <div class="setup-actions">
+        <button class="btn" onclick="window.location.reload()">↺ Recarregar</button>
+      </div>
+    </div>`;
+}
+
+async function seedManual() {
+  if(!confirm('Isso vai carregar os dados iniciais de Paisagismo no banco. Continuar?')) return;
+  await seedDados(true);
+  renderTema();
+}
+
+// ── BUSCA ───────────────────────────────────────────────────
+let _buscarTimer = null;
+function buscarDebounce(query) {
+  clearTimeout(_buscarTimer);
+  _buscarTimer = setTimeout(() => buscar(query), 220);
+}
+
+function buscar(query) {
+  const el = document.getElementById('apoio-content');
+  if(!query || query.trim().length < 2) {
+    renderTema();
+    return;
+  }
+  const q = query.toLowerCase();
+  const resultados = [];
+
+  // Busca em tipos
+  G.tipos.forEach(t => {
+    if(t.nome.toLowerCase().includes(q) || (t.descricao||'').toLowerCase().includes(q)) {
+      resultados.push({path:`Projetos · ${labelArea(t.area)}`, titulo:t.nome, snippet:snip(t.descricao,q), action:`setTema('projetos');setArea('${t.area}')`});
+    }
+  });
+
+  // Busca em etapas
+  G.etapas.forEach(e => {
+    const tipo = G.tipos.find(t => t.id === e.tipo_id);
+    if(e.nome.toLowerCase().includes(q) || (e.descricao||'').toLowerCase().includes(q)) {
+      resultados.push({path:`${tipo?.nome||''}`, titulo:e.nome, snippet:snip(e.descricao,q), action:`setTema('projetos');setArea('${tipo?.area||'paisagismo'}');setTimeout(()=>{if(!G.expandedTipos.has('${e.tipo_id}')){toggleTipo('${e.tipo_id}');}},100)`});
+    }
+  });
+
+  // Busca em entregáveis
+  G.entregaveis.forEach(ent => {
+    const etapa = G.etapas.find(e => e.id === ent.etapa_id);
+    const tipo = G.tipos.find(t => t.id === etapa?.tipo_id);
+    if(ent.nome.toLowerCase().includes(q) || (ent.descricao||'').toLowerCase().includes(q)) {
+      resultados.push({path:`${tipo?.nome||''} · ${etapa?.nome||''}`, titulo:ent.nome, snippet:snip(ent.descricao,q), action:`setTema('projetos');setArea('${tipo?.area||'paisagismo'}');setTimeout(()=>{if(!G.expandedTipos.has('${etapa?.tipo_id}')){toggleTipo('${etapa?.tipo_id}');}if(!G.expandedEtapas.has('${ent.etapa_id}')){toggleEtapa('${ent.etapa_id}');}},100)`});
+    }
+  });
+
+  // Busca em checklist
+  G.checklists.forEach(c => {
+    if(c.texto.toLowerCase().includes(q)) {
+      const ent = G.entregaveis.find(e => e.id === c.entregavel_id);
+      const etapa = G.etapas.find(e => e.id === ent?.etapa_id);
+      const tipo = G.tipos.find(t => t.id === etapa?.tipo_id);
+      resultados.push({path:`${tipo?.nome||''} · ${etapa?.nome||''} · ${ent?.nome||''}`, titulo:c.texto, snippet:'', action:`setTema('projetos');setArea('${tipo?.area||'paisagismo'}')`});
+    }
+  });
+
+  if(resultados.length === 0) {
+    el.innerHTML = `<div class="search-empty">Nenhum resultado para "${escHtml(query)}".</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="content-hdr">
+      <div class="content-hdr-left">
+        <div class="content-title">Resultados para "${escHtml(query)}"</div>
+        <div class="content-sub">${resultados.length} resultado${resultados.length!==1?'s':''}</div>
+      </div>
+      <div class="content-hdr-actions">
+        <button class="btn sm" onclick="document.getElementById('sb-search-input').value='';renderTema()">Limpar</button>
+      </div>
+    </div>
+    <div class="search-results-wrap">
+      <div class="search-results-hdr">${resultados.length} ocorrência${resultados.length!==1?'s':''}</div>
+      ${resultados.map(r => `
+        <div class="search-result-item" onclick="${r.action}">
+          <div class="sr-path">${escHtml(r.path)}</div>
+          <div class="sr-titulo">${escHtml(r.titulo)}</div>
+          ${r.snippet ? `<div class="sr-snippet">${r.snippet}</div>` : ''}
+        </div>`).join('')}
+    </div>`;
+}
+
+function snip(texto, q) {
+  if(!texto) return '';
+  const idx = texto.toLowerCase().indexOf(q);
+  if(idx === -1) return texto.substring(0,80)+'…';
+  const start = Math.max(0, idx-30);
+  const end = Math.min(texto.length, idx+q.length+50);
+  return (start>0?'…':'')+escHtml(texto.substring(start,end))+(end<texto.length?'…':'');
+}
+
+// ── RENDER CULTURA ──────────────────────────────────────────
+function renderCultura(el) {
+  el.innerHTML = `
+    <div class="content-hdr">
+      <div class="content-hdr-left">
+        <div class="content-title">Cultura</div>
+        <div class="content-sub">Valores, identidade e forma de trabalhar da EXP</div>
+      </div>
+    </div>
+
+    <div class="apoio-section">
+      <div class="apoio-section-title">Norteadores Estratégicos</div>
+      <div class="apoio-section-intro">Os norteadores são a base de qualquer decisão da EXP. Definem quem somos, para onde vamos e como nos comportamos no caminho.</div>
+      <div class="apoio-kv">
+        <div class="apoio-kv-item">
+          <div class="apoio-kv-label">Propósito</div>
+          <div class="apoio-kv-value">Conectar lugares com pessoas através de experiências</div>
+        </div>
+        <div class="apoio-kv-item">
+          <div class="apoio-kv-label">Missão</div>
+          <div class="apoio-kv-value">Conceber projetos que geram identidade por meio da experiência nos espaços coletivos do ecossistema imobiliário</div>
+        </div>
+        <div class="apoio-kv-item">
+          <div class="apoio-kv-label">Visão</div>
+          <div class="apoio-kv-value">Ser referência em paisagismo e urbanismo no cenário nacional</div>
+        </div>
+      </div>
+      <div class="apoio-card verde">
+        <div class="apoio-card-title">Responsabilidade</div>
+        <div class="apoio-card-text">Nos importamos genuinamente com os resultados, com as pessoas e com o impacto de cada decisão. Assumimos nossos compromissos, cumprimos o que prometemos e entendemos que cada atitude importa — no cuidado com o cliente, no respeito com a equipe e no zelo pelos processos.</div>
+      </div>
+      <div class="apoio-card az">
+        <div class="apoio-card-title">Curiosidade</div>
+        <div class="apoio-card-text">Somos movidos por uma inquietação que nos impulsiona a aprender todos os dias. Buscamos constantemente fazer melhor, evoluir como profissionais e como empresa, questionar processos e propor melhorias. A acomodação não é uma opção — a melhoria contínua é um compromisso de cada pessoa.</div>
+      </div>
+      <div class="apoio-card am">
+        <div class="apoio-card-title">Senso Coletivo</div>
+        <div class="apoio-card-text">O crescimento aqui é construído juntos. Valorizamos o trabalho em equipe e a colaboração como base do nosso dia a dia. Temos vontade genuína de contribuir para o resultado coletivo — o que fortalece um, fortalece todos.</div>
+      </div>
+      <div class="apoio-card roxo">
+        <div class="apoio-card-title">Transparência</div>
+        <div class="apoio-card-text">Acreditamos em relações claras, no diálogo aberto e no respeito. Comunicamos de forma direta, honesta e responsável — com clientes, fornecedores e dentro da equipe. Ser transparente é ter coragem para conversar, alinhar, corrigir e evoluir juntos.</div>
+      </div>
+    </div>
+
+    <div class="apoio-section">
+      <div class="apoio-section-title">Tom de Voz</div>
+      <div class="apoio-section-intro">A EXP fala com <strong>clareza técnica e calor humano</strong>. Somos diretos sem ser frios, precisos sem ser rígidos.</div>
+      <ul class="apoio-ul">
+        <li>Usamos "nós" — falamos como equipe, não como "a empresa"</li>
+        <li>Evitamos jargão corporativo vazio ou linguagem inflada</li>
+        <li>Em apresentações para clientes: linguagem acessível, sem abrir mão da profundidade técnica</li>
+        <li>Em textos internos: objetivos, com contexto suficiente para a decisão ser tomada</li>
+        <li>Nos feedbacks: claros, construtivos e orientados à melhoria</li>
+        <li>Por escrito: frases curtas, parágrafos diretos, sem enrolação</li>
+      </ul>
+    </div>
+
+    <div class="apoio-section">
+      <div class="apoio-section-title">Trabalho Remoto</div>
+      <div class="apoio-section-intro">A EXP é um escritório distribuído. Nossa equipe está em diferentes cidades do Brasil — e isso não é uma limitação, é uma característica que abraçamos e que nos permite acessar talentos independente de onde estejam.</div>
+      <div class="apoio-card cinza">
+        <div class="apoio-card-title">Cada pessoa é responsável por</div>
+        <div class="apoio-card-text">
+          <ul class="apoio-ul" style="padding-left:0;margin-top:4px">
+            <li>Seu ambiente de trabalho — espaço organizado, silencioso e com boa iluminação para reuniões</li>
+            <li>Suas entregas e prazos — autonomia vem com responsabilidade</li>
+            <li>Sua disponibilidade — estar presente nas janelas de colaboração combinadas com a equipe</li>
+            <li>Sua conexão com a equipe — trabalho remoto não é trabalho isolado</li>
+          </ul>
+        </div>
+      </div>
+      <div class="apoio-section-intro" style="margin-top:10px;margin-bottom:0">Estamos construindo continuamente os processos e ferramentas que tornam esse modelo cada vez mais eficiente e satisfatório para todos.</div>
+    </div>
+
+    <div class="apoio-section">
+      <div class="apoio-section-title">Comunicação</div>
+      <div class="apoio-card verde">
+        <div class="apoio-card-title">Comunicação Interna</div>
+        <div class="apoio-card-text">A comunicação interna é a base do trabalho colaborativo. Quanto mais rápida e clara, melhor para todos.
+          <ul class="apoio-ul" style="margin-top:8px">
+            <li><strong>Não tenha receio de perguntar.</strong> Dúvidas não resolvidas custam mais do que o tempo de tirar uma dúvida.</li>
+            <li><strong>Acione as pessoas certas.</strong> Identifique com quem falar e fale diretamente — cada núcleo tem suas referências.</li>
+            <li><strong>Compartilhe o que aprende.</strong> Uma referência boa, um processo que funcionou, um erro que ensinou — tudo isso fortalece a equipe.</li>
+            <li><strong>Seja proativo sobre dificuldades.</strong> Se algo não está caminhando, informe antes que vire problema.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="apoio-card az">
+        <div class="apoio-card-title">Comunicação Profissional com Clientes</div>
+        <div class="apoio-card-text">Em qualquer ponto de contato com o cliente, representamos a EXP — não apenas entregamos um projeto.
+          <ul class="apoio-ul" style="margin-top:8px">
+            <li>Responda com agilidade. O silêncio cria insegurança.</li>
+            <li>Seja claro nas expectativas — de prazo, escopo e próximos passos.</li>
+            <li>Documente alinhamentos importantes por escrito (e-mail ou ata).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="apoio-card am">
+        <div class="apoio-card-title">Comunicação em Reunião</div>
+        <div class="apoio-card-text">Em reuniões externas — com clientes, parceiros ou apresentações — cada colaborador representa a identidade do escritório.
+          <ul class="apoio-ul" style="margin-top:8px">
+            <li>Cuide do seu ambiente: câmera ligada, fundo limpo, boa iluminação.</li>
+            <li>Posicione-se com profissionalismo: aparência adequada, postura atenta.</li>
+            <li>Esteja preparado: conheça o projeto, o cliente e a pauta antes de entrar.</li>
+            <li>Diante de dúvidas: "Vou confirmar e retorno em breve" é sempre melhor do que uma resposta imprecisa.</li>
+          </ul>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── RENDER ORGANIZAÇÃO ──────────────────────────────────────
+function setSubtemaOrg(sub) {
+  G.subtemaOrg = sub;
+  document.querySelectorAll('.subtema-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.sub === sub);
+  });
+  document.getElementById('subtema-content').innerHTML = renderSubtemaOrg(sub);
+}
+
+function renderOrganizacao(el) {
+  el.innerHTML = `
+    <div class="content-hdr">
+      <div class="content-hdr-left">
+        <div class="content-title">Organização Interna</div>
+        <div class="content-sub">História, estrutura de núcleos e plano de carreira</div>
+      </div>
+    </div>
+    <div class="subtema-nav">
+      <div class="subtema-tab${G.subtemaOrg==='historia'?' active':''}" data-sub="historia" onclick="setSubtemaOrg('historia')">História</div>
+      <div class="subtema-tab${G.subtemaOrg==='nucleos'?' active':''}" data-sub="nucleos" onclick="setSubtemaOrg('nucleos')">Núcleos</div>
+      <div class="subtema-tab${G.subtemaOrg==='carreira'?' active':''}" data-sub="carreira" onclick="setSubtemaOrg('carreira')">Plano de Carreira</div>
+    </div>
+    <div id="subtema-content">${renderSubtemaOrg(G.subtemaOrg)}</div>`;
+}
+
+function renderSubtemaOrg(sub) {
+  if(sub === 'historia') return `
+    <div class="apoio-section">
+      <div class="apoio-section-title">Como chegamos até aqui</div>
+      <div class="apoio-highlight">A EXP nasceu com um propósito claro: criar projetos de qualidade em um ambiente de trabalho que valorize as pessoas tanto quanto os resultados.</div>
+      <div class="apoio-card verde">
+        <div class="apoio-card-title">2021 — Fundação</div>
+        <div class="apoio-card-text">Em maio de 2021, Carlos e Thay fundaram a EXP em Florianópolis. O escritório nasceu intencionalmente focado em paisagismo e urbanismo para o ecossistema imobiliário — com atenção ao detalhe e comprometimento com a singularidade de cada projeto.</div>
+      </div>
+      <div class="apoio-card az">
+        <div class="apoio-card-title">2023 — Crescimento e Santa Casa</div>
+        <div class="apoio-card-text">Laís e Gabriela passaram a integrar a equipe, trazendo novas referências e ampliando a capacidade do escritório. Neste ano, o projeto da Santa Casa se tornou um marco — consolidando a maturidade técnica da equipe e a qualidade das entregas.</div>
+      </div>
+      <div class="apoio-card am">
+        <div class="apoio-card-title">2024 — Escala e Parque Una SJC</div>
+        <div class="apoio-card-text">A EXP ampliou sua atuação com o Parque Una SJC, reforçando sua presença em projetos de paisagismo de maior escala e impacto urbano.</div>
+      </div>
+      <div class="apoio-card cinza">
+        <div class="apoio-card-title">Hoje</div>
+        <div class="apoio-card-text">Somos 8 pessoas trabalhando em diferentes cidades do Brasil. O trabalho remoto é parte da nossa identidade — e construir um ambiente que torne isso cada vez mais eficiente e satisfatório é um compromisso contínuo da empresa.</div>
+      </div>
+    </div>`;
+
+  if(sub === 'nucleos') return `
+    <div class="apoio-section">
+      <div class="apoio-section-title">Como o escritório está organizado</div>
+      <div class="apoio-section-intro">A EXP está estruturada em dois grandes blocos: <strong>Projetos</strong> e <strong>Consultorias</strong>. Dentro de Projetos, dois núcleos organizam a operação.</div>
+      <div class="nucleos-outer">
+        <div class="nucleo-block">
+          <div class="nucleo-block-title">Projetos</div>
+          <div class="nucleo-inner-grid">
+            <div class="nucleo-col">
+              <div class="nucleo-col-title urb">Urbanismo</div>
+              <div class="nucleo-setor">Projetos<br><span style="font-size:9px;color:#aaa">Masterplan · Proj. Urbanístico</span></div>
+              <div class="nucleo-setor">Charretes<br><span style="font-size:9px;color:#aaa">Planejamento</span></div>
+            </div>
+            <div class="nucleo-col">
+              <div class="nucleo-col-title pai">Paisagismo</div>
+              <div class="nucleo-setor">Verticais<br><span style="font-size:9px;color:#aaa">Incorporação</span></div>
+              <div class="nucleo-setor">Horizontais<br><span style="font-size:9px;color:#aaa">Loteamentos</span></div>
+              <div class="nucleo-setor">Residenciais</div>
+              <div class="nucleo-setor">Execução</div>
+            </div>
+          </div>
+        </div>
+        <div class="nucleo-block">
+          <div class="nucleo-block-title">Consultorias</div>
+          <div class="nucleo-consul-list">
+            <div class="nucleo-consul-item">Urbanismo</div>
+            <div class="nucleo-consul-item">Paisagismo</div>
+            <div class="nucleo-consul-item">Sustentabilidade</div>
+            <div class="nucleo-consul-item especial">Projetos Especiais</div>
+          </div>
+        </div>
+      </div>
+      <div class="apoio-section-intro" style="margin-top:4px">Projetos Especiais abrangem demandas diferenciadas — arquitetura, produtos específicos e outros desdobramentos conforme a necessidade do cliente.</div>
+    </div>`;
+
+  if(sub === 'carreira') return `
+    <div class="apoio-section">
+      <div class="apoio-section-title">Curva de progressão de carreira</div>
+      <div class="apoio-section-intro">A progressão é baseada em <strong>responsabilidades assumidas e capacidade executiva</strong> — não em tempo de casa. O crescimento dentro da mesma classe é de 18–20%; os saltos entre classes são maiores (~30%), refletindo mudança real de responsabilidade.</div>
+      <div class="career-track">
+        <div class="career-node"><div class="career-level estag">Estágio I</div><div class="career-class-label">Estágio</div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level estag">Estágio II</div><div class="career-class-label"></div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level junior">Júnior I</div><div class="career-class-label">Júnior</div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level junior">Júnior II</div><div class="career-class-label"></div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level junior">Júnior III</div><div class="career-class-label"></div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level pleno">Pleno I</div><div class="career-class-label">Pleno</div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level pleno">Pleno II</div><div class="career-class-label"></div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level pleno">Pleno III</div><div class="career-class-label"></div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level senior">Sênior I</div><div class="career-class-label">Sênior</div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level senior">Sênior II</div><div class="career-class-label"></div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level senior">Sênior III</div><div class="career-class-label"></div></div>
+        <div class="career-connector"></div>
+        <div class="career-node"><div class="career-level diretor">Diretor</div><div class="career-class-label">Direção</div></div>
+      </div>
+      <div class="apoio-card cinza">
+        <div class="apoio-card-title">Estágio (I–II)</div>
+        <div class="apoio-card-text">Introdução ao ambiente de projeto profissional. Aprendizado das ferramentas, processos e métodos do escritório sob supervisão direta. Foco em desenvolvimento técnico e integração com a equipe.</div>
+      </div>
+      <div class="apoio-card verde">
+        <div class="apoio-card-title">Júnior (I–III)</div>
+        <div class="apoio-card-text">Desenvolvimento técnico e execução supervisionada. Responsabilidade crescente por partes do projeto com apoio da equipe. Foco em qualidade das entregas, cumprimento de prazos e integração ao fluxo de trabalho.<br><span style="font-size:10px;color:#aaa;margin-top:4px;display:block">Transição: Execução → Autonomia técnica</span></div>
+      </div>
+      <div class="apoio-card az">
+        <div class="apoio-card-title">Pleno (I–III)</div>
+        <div class="apoio-card-text">Autonomia técnica. Desenvolvimento completo de etapas de projeto, interlocução com consultores externos e resolução de problemas com independência. Início de coordenação de equipes e projetos menores.<br><span style="font-size:10px;color:#aaa;margin-top:4px;display:block">Transição: Autonomia técnica → Liderança técnica</span></div>
+      </div>
+      <div class="apoio-card am">
+        <div class="apoio-card-title">Sênior (I–III)</div>
+        <div class="apoio-card-text">Liderança técnica e estratégica. Condução de projetos completos e multidisciplinares, coordenação de equipes, interface direta com clientes e tomada de decisões estratégicas. Desenvolvimento técnico dos colaboradores mais juniores.<br><span style="font-size:10px;color:#aaa;margin-top:4px;display:block">Transição: Liderança técnica → Liderança estratégica</span></div>
+      </div>
+      <div class="apoio-card tc">
+        <div class="apoio-card-title">Diretor</div>
+        <div class="apoio-card-text">Liderança estratégica da área. Visão de negócio integrada à excelência técnica. Responsabilidade sobre a direção e desenvolvimento da área de atuação.</div>
+      </div>
+    </div>`;
+
+  return '';
+}
+
+// ── RENDER VEGETAÇÃO ────────────────────────────────────────
+function renderVegetacao(el) {
+  const PROMPT = `Você é um paisagista especialista em seleção de espécies vegetais para projetos no Brasil.
+
+Preciso de sugestões de espécies para um projeto com as seguintes características:
+- Cidade / região: [informar]
+- Condição de plantio: [solo natural / laje com substrato / floreira / vaso]
+- Disponibilidade de irrigação: [sim — automatizado / sim — manual / não]
+- Bioma local: [Mata Atlântica / Cerrado / Caatinga / Pampa / Pantanal / Amazônia]
+- Insolação do local: [pleno sol / meia sombra / sombra]
+- Características visuais desejadas: [ex: floração colorida, folhagem densa, porte compacto, efeito de movimento, textura fina]
+- Preferência por nativas: [apenas nativas / mistura de nativas e exóticas / sem preferência]
+- Há condições especiais? [geada / vento forte / encharcamento / restrição de porte]
+
+Para cada espécie sugerida, informe:
+1. Nome popular e nome científico
+2. Porte adulto (altura × diâmetro)
+3. Por que se adapta ao contexto descrito
+4. Necessidade de manutenção (baixa / média / alta)
+5. Época de floração ou destaque visual (se aplicável)
+
+Organize as sugestões em: árvores/palmeiras, arbustos, herbáceas e cobertura do solo.`;
+
+  el.innerHTML = `
+    <div class="content-hdr">
+      <div class="content-hdr-left">
+        <div class="content-title">Vegetação</div>
+        <div class="content-sub">Critérios de seleção, guia por condição e prompt de IA</div>
+      </div>
+    </div>
+
+    <div class="apoio-section">
+      <div class="apoio-section-title">Vegetação como Elemento Vivo</div>
+      <div class="apoio-highlight">A vegetação não é apenas estética — é o elemento mais vivo e dinâmico de qualquer projeto. Ela cresce, muda com as estações, reage ao clima e ao cuidado que recebe.</div>
+      <div class="apoio-section-intro">Um projeto bom na prancha pode fracassar na implantação se a seleção de espécies não considerar as condições reais do local. Entender o espaço — sua insolação, o tipo de solo, a exposição ao vento, a disponibilidade de água — é o ponto de partida para qualquer paleta.</div>
+    </div>
+
+    <div class="apoio-section">
+      <div class="apoio-section-title">Critérios de Seleção</div>
+      <div class="apoio-card verde">
+        <div class="apoio-card-title">Condição de Plantio</div>
+        <div class="apoio-card-text">
+          <ul class="apoio-ul" style="margin-top:4px">
+            <li><strong>Solo natural</strong> — maior disponibilidade de volume, nutrientes e umidade. Permite espécies de maior porte.</li>
+            <li><strong>Laje / substrato confinado</strong> — limitação de peso e volume. Exige espécies com raízes menos agressivas, substrato leve e boa drenagem.</li>
+            <li><strong>Floreiras e vasos</strong> — restrição máxima. Espécies de menor porte, com alta taxa de troca quando sazonais.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="apoio-card az">
+        <div class="apoio-card-title">Clima e Bioma</div>
+        <div class="apoio-card-text">
+          <ul class="apoio-ul" style="margin-top:4px">
+            <li>Espécies nativas da região tendem a ser mais resilientes e precisam de menos manutenção.</li>
+            <li>Em regiões com geada: evitar espécies tropicais sensíveis ao frio.</li>
+            <li>Em regiões ventosas: preferir espécies com estrutura compacta ou flexível.</li>
+            <li>Em solos encharcados ou mal drenados: buscar espécies tolerantes ao excesso de umidade.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="apoio-card am">
+        <div class="apoio-card-title">Insolação</div>
+        <div class="apoio-card-text">
+          <ul class="apoio-ul" style="margin-top:4px">
+            <li><strong>Pleno sol</strong> (mais de 6h de sol direto) — espécies que suportam alta incidência solar.</li>
+            <li><strong>Meia sombra</strong> (3–6h) — espécies adaptáveis ou que preferem luz difusa.</li>
+            <li><strong>Sombra</strong> (menos de 3h) — espécies de sub-bosque, geralmente com folhagem mais rica e densa.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="apoio-card roxo">
+        <div class="apoio-card-title">Características Estéticas</div>
+        <div class="apoio-card-text">
+          <ul class="apoio-ul" style="margin-top:4px">
+            <li><strong>Floração</strong> — época, duração, cor e aroma.</li>
+            <li><strong>Forma</strong> — vertical (marcos), compacta (bordadura), pendente (muros, taludes), rasteira (cobertura).</li>
+            <li><strong>Textura da folhagem</strong> — fino-etérea, grosso-robusta, rendada.</li>
+            <li><strong>Ritmo e permanência</strong> — espécies de impacto permanente vs. sazonais de complemento.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="apoio-card cinza">
+        <div class="apoio-card-title">Nativa vs. Exótica — não é uma escolha binária</div>
+        <div class="apoio-card-text">Espécies nativas fortalecem a identidade regional e contribuem para a biodiversidade local. Espécies exóticas bem escolhidas podem complementar com características estéticas específicas. O critério final é a adequação ao contexto: climática, estética e de manutenção.</div>
+      </div>
+    </div>
+
+    <div class="apoio-section">
+      <div class="apoio-section-title">Prompt de Seleção Botânica — IA</div>
+      <div class="apoio-section-intro">Use o prompt abaixo em qualquer ferramenta de IA (ChatGPT, Claude, Gemini). Preencha os campos entre colchetes com as informações do projeto antes de enviar.</div>
+      <div style="position:relative">
+        <div class="prompt-box" id="prompt-veg">${escHtml(PROMPT)}</div>
+        <button class="prompt-copy-btn" onclick="copiarPrompt()">Copiar</button>
+      </div>
+    </div>`;
+}
+
+function copiarPrompt() {
+  const el = document.getElementById('prompt-veg');
+  if(!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = document.querySelector('.prompt-copy-btn');
+    if(btn){btn.textContent='Copiado!';setTimeout(()=>btn.textContent='Copiar',1800);}
+  });
+}
+
+// ── UTILS ───────────────────────────────────────────────────
+function labelArea(area) {
+  return {paisagismo:'Paisagismo',urbanismo:'Urbanismo',consultorias:'Consultorias',especiais:'Especiais'}[area]||area;
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s) {
+  return String(s||'').replace(/"/g,'&quot;').replace(/\n/g,'&#10;');
+}
+</script>
+</body>
+</html>
