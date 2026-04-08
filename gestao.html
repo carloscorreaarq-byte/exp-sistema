@@ -114,9 +114,17 @@
     prancha_id uuid REFERENCES pranchas(id) ON DELETE CASCADE,
     comentario text NOT NULL,
     criado_por uuid REFERENCES usuarios(id),
-    resposta text,
-    respondido_por uuid REFERENCES usuarios(id),
-    respondido_em timestamptz,
+    created_at timestamptz DEFAULT now()
+  );
+
+  -- 9.1 MENSAGENS DA THREAD DE COMENTÁRIOS
+  CREATE TABLE prancha_comentario_mensagens (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    comentario_id uuid REFERENCES prancha_comentarios(id) ON DELETE CASCADE,
+    revisao_id uuid REFERENCES revisoes(id) ON DELETE CASCADE,
+    prancha_id uuid REFERENCES pranchas(id) ON DELETE CASCADE,
+    mensagem text NOT NULL,
+    criado_por uuid REFERENCES usuarios(id),
     created_at timestamptz DEFAULT now()
   );
 
@@ -206,6 +214,7 @@
   ALTER TABLE pranchas ENABLE ROW LEVEL SECURITY;
   ALTER TABLE tarefas_revisao ENABLE ROW LEVEL SECURITY;
   ALTER TABLE prancha_comentarios ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE prancha_comentario_mensagens ENABLE ROW LEVEL SECURITY;
   ALTER TABLE tarefas_livres ENABLE ROW LEVEL SECURITY;
   ALTER TABLE semanas ENABLE ROW LEVEL SECURITY;
   ALTER TABLE espelho_financeiro ENABLE ROW LEVEL SECURITY;
@@ -219,6 +228,7 @@
   CREATE POLICY "autenticados" ON pranchas FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON tarefas_revisao FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON prancha_comentarios FOR ALL USING (auth.role() = 'authenticated');
+  CREATE POLICY "autenticados" ON prancha_comentario_mensagens FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON tarefas_livres FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON semanas FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON espelho_financeiro FOR ALL USING (auth.role() = 'authenticated');
@@ -1051,11 +1061,15 @@ body::before {
 .prancha-actions { display:flex; align-items:center; gap:6px; }
 .prancha-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--cinza2); }
 .prancha-comments-title { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #999; margin-bottom: 8px; }
-.prancha-comment { padding: 8px 10px; border: 1px solid var(--cinza2); background: #fafaf8; margin-bottom: 8px; }
+.prancha-comment { padding: 9px 10px; border: 1px solid var(--cinza2); background: #fafaf8; margin-bottom: 8px; }
 .prancha-comment:last-child { margin-bottom: 0; }
 .prancha-comment-meta { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-.prancha-comment-text { font-size: 11px; line-height: 1.45; color: var(--preto); }
-.prancha-reply { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ddd; }
+.prancha-comment-text { font-size: 11px; line-height: 1.45; color: var(--preto); white-space: pre-wrap; }
+.prancha-thread-actions { display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.prancha-thread-list { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.prancha-thread-msg { margin-left:18px; padding:8px 10px; border-left:2px solid var(--cinza2); background:#fff; }
+.prancha-thread-msg-meta { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.prancha-thread-msg.legacy { border-left-style:dashed; background:#fcfcfb; }
 .prancha-reply-label { font-size: 9px; font-weight: 700; color: #888; margin-bottom: 4px; }
 .tarefa-item {
   display: flex; align-items: flex-start; gap: 8px;
@@ -2493,6 +2507,8 @@ let G = {
   _revisaoInputAction: null,
   _revisaoInputTargetId: null,
   _comentariosRevisao: [],
+  _mensagensComentario: [],
+  _revisaoAbertaPor: null,
   hasBillingAccess: false,
   entregasOffset: 0,
 };
@@ -4272,23 +4288,39 @@ async function selecionarRevisao(id) {
   const rev = G._revisoes?.find(r => r.id === id);
   if (!rev) return;
 
-  const [respPranchas, respComentarios] = await Promise.all([
+  const [respPranchas, respComentarios, respMensagens] = await Promise.all([
     sb.from('pranchas')
       .select('*, tarefas_revisao(*)')
       .eq('revisao_id', id).order('ordem'),
     sb.from('prancha_comentarios')
       .select('*, criado_por_usuario:criado_por(id,nome,iniciais,cor), respondido_por_usuario:respondido_por(id,nome,iniciais,cor)')
       .eq('revisao_id', id)
+      .order('created_at', { ascending: true }),
+    sb.from('prancha_comentario_mensagens')
+      .select('*, criado_por_usuario:criado_por(id,nome,iniciais,cor)')
+      .eq('revisao_id', id)
       .order('created_at', { ascending: true })
   ]);
 
   const pranchas = respPranchas.data || [];
   const comentarios = respComentarios.error ? [] : (respComentarios.data || []);
+  const mensagens = respMensagens.error ? [] : (respMensagens.data || []);
   G._comentariosRevisao = comentarios;
+  G._mensagensComentario = mensagens;
+  G._revisaoAbertaPor = rev.aberta_por || null;
   const comentariosPorPrancha = {};
   comentarios.forEach(c => {
     if (!comentariosPorPrancha[c.prancha_id]) comentariosPorPrancha[c.prancha_id] = [];
-    comentariosPorPrancha[c.prancha_id].push(c);
+    const mensagensThread = mensagens.filter(m => m.comentario_id === c.id);
+    const legado = c.resposta ? [{
+      id: `legacy-${c.id}`,
+      comentario_id: c.id,
+      mensagem: c.resposta,
+      created_at: c.respondido_em || c.created_at,
+      criado_por_usuario: c.respondido_por_usuario || null,
+      legacy: true
+    }] : [];
+    comentariosPorPrancha[c.prancha_id].push({ ...c, mensagens: [...mensagensThread, ...legado] });
   });
 
   const etapa = rev.etapas;
@@ -4322,6 +4354,7 @@ function renderPrancha(pr, isSocioOrCoord) {
   const total = pr.tarefas_revisao?.length || 0;
   const conc = pr.tarefas_revisao?.filter(t => t.concluida).length || 0;
   const concluida100 = total > 0 && conc === total;
+  const podeExcluirTopico = G.usuario.role === 'socio' || G._revisaoAbertaPor === G.usuario.id;
 
   return `<div class="prancha-card" id="prancha-${pr.id}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''}">
@@ -4344,22 +4377,36 @@ function renderPrancha(pr, isSocioOrCoord) {
         ${!pr.tarefas_revisao?.length ? '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem tarefas nesta prancha.</div>' : ''}
         <div class="prancha-comments">
           <div class="prancha-comments-title">Comentários</div>
-          ${(pr.comentarios || []).length ? (pr.comentarios || []).map(c => `
-            <div class="prancha-comment">
-              <div class="prancha-comment-meta">
-                ${c.criado_por_usuario ? `<div class="task-de-chip" style="background:${c.criado_por_usuario.cor||'#888'}">${c.criado_por_usuario.iniciais}</div>` : ''}
-                <span style="font-size:10px;color:#888">${c.criado_por_usuario?.nome || 'Equipe'} · ${fmtDate(c.created_at?.split('T')[0])}</span>
-              </div>
-              <div class="prancha-comment-text">${c.comentario}</div>
-              ${c.resposta ? `<div class="prancha-reply">
-                <div class="prancha-reply-label">Resposta ${c.respondido_por_usuario?.nome ? '· ' + c.respondido_por_usuario.nome.split(' ')[0] : ''}</div>
-                <div class="prancha-comment-text">${c.resposta}</div>
-              </div>` : `<div style="margin-top:8px"><button class="btn sm" onclick="responderComentarioPrancha('${c.id}')">Responder</button></div>`}
-            </div>
-          `).join('') : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem comentários nesta prancha.</div>'}
+          ${(pr.comentarios || []).length ? (pr.comentarios || []).map(c => renderTopicoComentario(c, podeExcluirTopico)).join('') : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem comentários nesta prancha.</div>'}
         </div>
       </div>
     </div>`;
+}
+
+function renderMensagemThread(msg) {
+  return `<div class="prancha-thread-msg ${msg.legacy ? 'legacy' : ''}">
+    <div class="prancha-thread-msg-meta">
+      ${msg.criado_por_usuario ? `<div class="task-de-chip" style="background:${msg.criado_por_usuario.cor||'#888'}">${msg.criado_por_usuario.iniciais}</div>` : ''}
+      <span style="font-size:10px;color:#888">${msg.criado_por_usuario?.nome || 'Equipe'} · ${fmtDate((msg.created_at || '').split('T')[0] || '')}${msg.legacy ? ' · resposta anterior' : ''}</span>
+    </div>
+    <div class="prancha-comment-text">${msg.mensagem}</div>
+  </div>`;
+}
+
+function renderTopicoComentario(c, podeExcluirTopico) {
+  const mensagens = (c.mensagens || []).slice().sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  return `<div class="prancha-comment">
+    <div class="prancha-comment-meta">
+      ${c.criado_por_usuario ? `<div class="task-de-chip" style="background:${c.criado_por_usuario.cor||'#888'}">${c.criado_por_usuario.iniciais}</div>` : ''}
+      <span style="font-size:10px;color:#888">${c.criado_por_usuario?.nome || 'Equipe'} · ${fmtDate(c.created_at?.split('T')[0])}</span>
+    </div>
+    <div class="prancha-comment-text">${c.comentario}</div>
+    ${mensagens.length ? `<div class="prancha-thread-list">${mensagens.map(renderMensagemThread).join('')}</div>` : ''}
+    <div class="prancha-thread-actions">
+      <button class="btn sm" onclick="responderComentarioPrancha('${c.id}')">Responder</button>
+      ${podeExcluirTopico ? `<button class="btn sm tc" onclick="excluirTopicoComentario('${c.id}')">Excluir tópico</button>` : ''}
+    </div>
+  </div>`;
 }
 
 async function toggleTarefaRevisao(id, atual, pranchaId) {
@@ -4389,7 +4436,9 @@ function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLab
   G._revisaoInputTargetId = targetId || null;
 
   document.getElementById('ri-titulo').textContent = title;
-  document.getElementById('ri-btn-salvar').textContent = buttonLabel;
+  const btnSalvar = document.getElementById('ri-btn-salvar');
+  btnSalvar.textContent = buttonLabel;
+  btnSalvar.className = action === 'excluir_topico' ? 'btn tc' : 'btn verde';
 
   const modalCard = document.getElementById('ri-modal-card');
   const contexto = document.getElementById('ri-contexto');
@@ -4401,12 +4450,14 @@ function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLab
   input.value = '';
   textarea.value = '';
 
-  inputWrap.style.display = multiline ? 'none' : 'block';
-  textareaWrap.style.display = multiline ? 'block' : 'none';
+  inputWrap.style.display = action === 'excluir_topico' ? 'none' : (multiline ? 'none' : 'block');
+  textareaWrap.style.display = action === 'excluir_topico' ? 'none' : (multiline ? 'block' : 'none');
   contexto.style.display = 'none';
   contexto.textContent = '';
 
-  if (action === 'prancha') {
+  if (action === 'excluir_topico') {
+    modalCard.style.maxWidth = '440px';
+  } else if (action === 'prancha') {
     modalCard.style.maxWidth = '420px';
     textarea.style.minHeight = '100px';
   } else if (action === 'comentario' || action === 'resposta') {
@@ -4433,8 +4484,17 @@ function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLab
     }
   }
 
+  if (action === 'excluir_topico') {
+    const comentario = (G._comentariosRevisao || []).find(c => c.id === targetId);
+    contexto.style.display = 'block';
+    contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Excluir tópico inteiro</div>Este tópico e todas as respostas serão removidos da prancha.<div style="margin-top:8px;color:#111">${comentario?.comentario || ''}</div>`;
+  }
+
   document.getElementById('modal-revisao-input').style.display = 'flex';
-  setTimeout(() => (multiline ? textarea : input).focus(), 30);
+  setTimeout(() => {
+    if (action === 'excluir_topico') btnSalvar.focus();
+    else (multiline ? textarea : input).focus();
+  }, 30);
 }
 
 function fecharModalRevisaoInput() {
@@ -4471,6 +4531,16 @@ function responderComentarioPrancha(comentarioId) {
   });
 }
 
+function excluirTopicoComentario(comentarioId) {
+  abrirModalRevisaoInput({
+    action: 'excluir_topico',
+    targetId: comentarioId,
+    title: 'Excluir tópico',
+    buttonLabel: 'Excluir tópico',
+    multiline: false
+  });
+}
+
 function addTarefaPrancha(pranchaId) {
   abrirModalRevisaoInput({
     action: 'tarefa',
@@ -4502,7 +4572,7 @@ async function confirmarModalRevisaoInput() {
     ? document.getElementById('ri-input').value.trim()
     : document.getElementById('ri-textarea').value.trim();
 
-  if (!valor) {
+  if (action !== 'excluir_topico' && !valor) {
     toast('Preencha o campo antes de salvar');
     return;
   }
@@ -4520,11 +4590,14 @@ async function confirmarModalRevisaoInput() {
   }
 
   if (action === 'resposta') {
-    ({ error } = await sb.from('prancha_comentarios').update({
-      resposta: valor,
-      respondido_por: G.usuario.id,
-      respondido_em: new Date().toISOString()
-    }).eq('id', targetId));
+    const comentarioBase = (G._comentariosRevisao || []).find(c => c.id === targetId);
+    ({ error } = await sb.from('prancha_comentario_mensagens').insert({
+      comentario_id: targetId,
+      revisao_id: G._revisaoAtiva,
+      prancha_id: comentarioBase?.prancha_id || null,
+      mensagem: valor,
+      criado_por: G.usuario.id
+    }));
     if (!error) toast('Resposta registrada');
   }
 
@@ -4550,8 +4623,17 @@ async function confirmarModalRevisaoInput() {
     if (!error) toast('Prancha adicionada');
   }
 
+  if (action === 'excluir_topico') {
+    ({ error } = await sb.from('prancha_comentarios').delete().eq('id', targetId));
+    if (!error) toast('Tópico removido');
+  }
+
   if (error) {
-    toast('Erro ao salvar: ' + error.message);
+    if ((error.message || '').includes('prancha_comentario_mensagens')) {
+      toast('Erro ao salvar: falta aplicar o SQL da thread de comentários no Supabase');
+    } else {
+      toast('Erro ao salvar: ' + error.message);
+    }
     return;
   }
 
