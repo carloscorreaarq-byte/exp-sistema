@@ -6250,11 +6250,27 @@ async function salvarEdicaoProduto() {
       updProd.contrato_data_assinatura = document.getElementById('ep-contrato-assinatura').value || null;
     }
 
-    const { data: prodSalvo, error: eProd } = await sb.from('produtos')
+    let { data: prodSalvo, error: eProd } = await sb.from('produtos')
       .update(updProd)
       .eq('id', prod.id)
       .select('id')
       .maybeSingle();
+
+    if (eProd && /contrato_/i.test(eProd.message || '')) {
+      delete updProd.contrato_status;
+      delete updProd.contrato_elaborado_por;
+      delete updProd.contrato_data_assinatura;
+
+      ({ data: prodSalvo, error: eProd } = await sb.from('produtos')
+        .update(updProd)
+        .eq('id', prod.id)
+        .select('id')
+        .maybeSingle());
+
+      if (!eProd) {
+        toast('Projeto salvo. Campos de contrato foram ignorados porque ainda não existem no banco.');
+      }
+    }
 
     if (eProd) { toast('Erro ao salvar produto: ' + eProd.message); return; }
     if (!prodSalvo) { toast('O produto não foi atualizado. Verifique as permissões no Supabase.'); return; }
