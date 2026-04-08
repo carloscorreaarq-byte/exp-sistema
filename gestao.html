@@ -111,10 +111,13 @@
   CREATE TABLE tarefas_livres (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id uuid REFERENCES usuarios(id),
+    criado_por uuid REFERENCES usuarios(id),
+    atribuido_para uuid REFERENCES usuarios(id),
     descricao text NOT NULL,
     tipo text DEFAULT 'projeto',  -- projeto | organizacao | sociedade
     produto_id uuid REFERENCES produtos(id),
     etapa_id uuid REFERENCES etapas(id),
+    data_limite date,
     concluida boolean DEFAULT false,
     concluida_em timestamptz,
     google_task_id text,
@@ -691,6 +694,13 @@ body::before {
 .task-prazo.vencida { color: var(--tc); font-weight: 700; }
 .task-prazo.hoje { color: var(--am); font-weight: 700; }
 .task-de-chip { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.task-status-chip {
+  font-size: 8px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+  padding: 1px 5px; background: var(--cinza2); color: #777;
+}
+.task-status-chip.ok { background: rgba(69,134,93,.12); color: var(--verde); }
+.task-status-chip.pend { background: rgba(209,153,49,.12); color: #8f650d; }
+.task-status-chip.info { background: rgba(82,128,202,.12); color: var(--az); }
 .task-tipo-chip {
   font-size: 8px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
   padding: 1px 5px; background: var(--cinza2); color: #777;
@@ -968,6 +978,8 @@ body::before {
 .lanc-dur { font-family: var(--fm); font-size: 10px; font-weight: 700; color: #555; }
 .lanc-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; transition: color .12s; }
 .lanc-del:hover { color: var(--tc); }
+.lanc-del.disabled,
+.lanc-del.disabled:hover { color: #e1e1e1; cursor: not-allowed; }
 
 /* Banner semana travada */
 .semana-travada {
@@ -1454,9 +1466,13 @@ body::before {
           <span class="badge b-gr" style="margin-left:auto;font-size:7px">Google Calendar</span>
         </div>
         <div class="card-body" id="agenda-body">
-          <div style="padding:12px 0; text-align:center; color:#bbb; font-size:11px">
-            🔗 Integração Google Calendar<br>
-            <span style="font-size:10px">Disponível em breve</span>
+          <div style="padding:12px 0; text-align:center; color:#999; font-size:11px">
+            <div style="margin-bottom:8px">Teste de integração com Google Calendar</div>
+            <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+              <a href="https://calendar.google.com/calendar/u/0/r/week" target="_blank" class="btn sm">Abrir Calendar</a>
+              <a href="#" target="_blank" class="btn sm verde" id="agenda-room-link">EXP Room</a>
+            </div>
+            <div style="font-size:10px;color:#bbb;margin-top:8px">A sincronização automática ainda está em fase de teste.</div>
           </div>
         </div>
       </div>
@@ -2360,6 +2376,7 @@ let G = {
   socioSemanaOffset: 0,
   _prodsGestao: [],
   _lancAtivos: [],
+  _semanaTravada: false,
   hasBillingAccess: false,
   entregasOffset: 0,
 };
@@ -2445,6 +2462,7 @@ async function init() {
   document.getElementById('nav-nome').textContent = usr.nome.split(' ')[0];
   document.getElementById('nav-role').textContent = ROLES_LABEL[usr.role] || usr.role;
   document.getElementById('exp-room-link').href = EXP_ROOM_URL;
+  document.getElementById('agenda-room-link').href = EXP_ROOM_URL;
   initNavDropdown(usr.role);
 
   // Aba sócios
@@ -3056,36 +3074,50 @@ function renderDashCoord(prods) {
 // ══════════════════════════════════════════════════════════
 async function carregarTarefas() {
   const uid = G.usuario.id;
-  // Tarefas próprias (sem atribuição a outros) + tarefas recebidas
-  const [{ data: proprias }, { data: recebidas }] = await Promise.all([
+  const [{ data: proprias }, { data: recebidas }, { data: delegadas }] = await Promise.all([
     sb.from('tarefas_livres').select('*').eq('usuario_id', uid).is('atribuido_para', null).eq('concluida', false),
-    sb.from('tarefas_livres').select('*').eq('atribuido_para', uid).eq('concluida', false)
+    sb.from('tarefas_livres').select('*').eq('atribuido_para', uid).eq('concluida', false),
+    sb.from('tarefas_livres').select('*').eq('criado_por', uid).not('atribuido_para', 'is', null)
   ]);
-  const todas = [...(proprias || []), ...(recebidas || [])];
-  // Ordena: com prazo primeiro (mais próximo), depois sem prazo
-  todas.sort((a, b) => {
+
+  const ordenar = (a, b) => {
+    if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
     if (a.data_limite && b.data_limite) return a.data_limite.localeCompare(b.data_limite);
     if (a.data_limite) return -1;
     if (b.data_limite) return 1;
-    return 0;
-  });
-  renderTarefas(todas);
+    return (b.created_at || '').localeCompare(a.created_at || '');
+  };
+
+  const pendentes = [...(proprias || []), ...(recebidas || [])].sort(ordenar);
+  const acompanhando = (delegadas || [])
+    .filter(t => t.atribuido_para && t.atribuido_para !== uid)
+    .sort(ordenar);
+
+  renderTarefas({ pendentes, acompanhando });
 }
 
-function renderTarefas(tasks) {
+function renderTarefas({ pendentes = [], acompanhando = [] }) {
   const wrap = document.getElementById('tasks-lista');
   const TIPO_LABEL = { projeto:'Proj.', organizacao:'Org.', sociedade:'Soc.' };
-  if (!tasks.length) {
+  const totalPendentes = pendentes.length + acompanhando.filter(t => !t.concluida).length;
+  document.getElementById('st-tasks').textContent = totalPendentes;
+
+  if (!pendentes.length && !acompanhando.length) {
     wrap.innerHTML = '<div style="padding:8px 0;color:#aaa;font-size:11px">Sem tarefas pendentes.</div>';
-    document.getElementById('st-tasks').textContent = '0';
     return;
   }
+
   const hoje = new Date().toISOString().split('T')[0];
-  wrap.innerHTML = tasks.map(t => {
+  const renderRows = (tasks, modo = 'acao') => tasks.map(t => {
     const vencida = t.data_limite && t.data_limite < hoje;
     const ehHoje  = t.data_limite === hoje;
     const criador = t.criado_por && t.criado_por !== G.usuario.id
       ? G.todosUsuarios.find(u => u.id === t.criado_por) : null;
+    const destino = t.atribuido_para
+      ? G.todosUsuarios.find(u => u.id === t.atribuido_para)
+      : null;
+    const acompanhada = modo === 'acompanhando';
+    const podeConcluir = !acompanhada;
     const prazoHtml = t.data_limite
       ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
       : '';
@@ -3093,19 +3125,42 @@ function renderTarefas(tasks) {
       ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribuída por ${criador.nome}">${criador.iniciais}</div>`
       : '';
     const deLabel = criador ? `<span style="font-size:9px;color:#bbb">de ${criador.nome.split(' ')[0]}</span>` : '';
+    const paraHtml = destino
+      ? `<div class="task-de-chip" style="background:${destino.cor||'#888'}" title="Atribuída para ${destino.nome}">${destino.iniciais}</div>
+         <span style="font-size:9px;color:#bbb">para ${destino.nome.split(' ')[0]}</span>`
+      : '';
+    const statusDelegada = acompanhada
+      ? `<span class="task-status-chip ${t.concluida ? 'ok' : 'pend'}">${t.concluida ? 'Concluída' : 'Pendente'}</span>`
+      : '';
     return `<div class="task-item">
-      <div class="task-check ${t.concluida?'done':''}" onclick="toggleTarefa('${t.id}',${t.concluida})"></div>
+      <div class="task-check ${t.concluida?'done':''}" style="${podeConcluir ? '' : 'opacity:.4;cursor:default'}" onclick="${podeConcluir ? `toggleTarefa('${t.id}',${t.concluida})` : 'event.stopPropagation()'}"></div>
       <div style="flex:1;min-width:0">
         <div class="task-desc ${t.concluida?'done':''}">${t.descricao}</div>
         <div class="task-meta">
           <span class="task-tipo-chip">${TIPO_LABEL[t.tipo]||t.tipo}</span>
           ${prazoHtml}
           ${deHtml}${deLabel}
+          ${paraHtml}
+          ${statusDelegada}
         </div>
       </div>
     </div>`;
   }).join('');
-  document.getElementById('st-tasks').textContent = tasks.length;
+
+  const secoes = [];
+  if (pendentes.length) {
+    secoes.push(`
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:6px">Pendentes para você</div>
+      ${renderRows(pendentes, 'acao')}
+    `);
+  }
+  if (acompanhando.length) {
+    secoes.push(`
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin:${pendentes.length ? '10px' : '0'} 0 6px">Atribuídas por você</div>
+      ${renderRows(acompanhando, 'acompanhando')}
+    `);
+  }
+  wrap.innerHTML = secoes.join('');
 }
 
 async function adicionarTarefa() {
@@ -3149,6 +3204,7 @@ async function confirmarAtribuirTarefa() {
   fecharModal('modal-atribuir-tarefa');
   document.getElementById('task-nova-desc').value = '';
   document.getElementById('task-nova-data').value = '';
+  carregarTarefas();
   const dest = G.todosUsuarios.find(u => u.id === para);
   toast('Tarefa atribuída para ' + (dest?.nome.split(' ')[0] || 'destinatário'));
 }
@@ -3207,12 +3263,15 @@ function renderEntregasSemana() {
 
   wrap.innerHTML = etapas.map(e => {
     const prod = G.todosProdutos.find(p => p.id === e.produto_id);
+    const opp = prod?.oportunidades;
+    const cli = opp?.clientes;
     const isMeu = (G.etapaDevs[e.id] || []).includes(uid) || e.coordenador_id === uid;
     const concluida = e.status === 'concluida';
     const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--cinza2);${concluida ? 'opacity:.5' : ''}">
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;font-weight:${isMeu ? '600' : '400'};color:${isMeu ? 'var(--preto)' : '#555'};${concluida ? 'text-decoration:line-through' : ''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.nome}">${e.nome}</div>
+        <div style="font-size:9px;color:#888;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${opp?.projeto || 'Sem oportunidade'} · ${cli?.nome || 'Sem cliente'}">${opp?.projeto || 'Sem oportunidade'} · ${cli?.nome || 'Sem cliente'}</div>
         <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prod?.nome || '—'}</div>
       </div>
       <div style="flex-shrink:0;text-align:right">
@@ -3505,9 +3564,11 @@ async function renderSemana() {
     .select('*').eq('usuario_id', G.usuario.id).eq('data_inicio', ini).maybeSingle();
 
   const travada = semDb?.finalizada;
+  G._semanaTravada = !!travada;
   const travBanner = document.getElementById('semana-travada-banner');
   const lancForm   = document.getElementById('lanc-form-wrap');
   const finWrap    = document.getElementById('finalizar-wrap');
+  const btnDesbloquearWrap = document.getElementById('btn-desbloquear-wrap');
 
   if (travada) {
     travBanner.style.display = 'flex';
@@ -3515,13 +3576,14 @@ async function renderSemana() {
     document.getElementById('semana-travada-comentario').textContent = semDb.comentario || '';
     if (lancForm) lancForm.style.display = 'none';
     if (finWrap)  finWrap.style.display  = 'none';
-    if (G.usuario.role === 'socio') {
-      document.getElementById('btn-desbloquear-wrap').style.display = 'inline';
+    if (btnDesbloquearWrap) {
+      btnDesbloquearWrap.style.display = G.usuario.role === 'socio' ? 'inline' : 'none';
     }
   } else {
     travBanner.style.display = 'none';
     if (lancForm) lancForm.style.display = 'block';
     if (finWrap)  finWrap.style.display  = 'block';
+    if (btnDesbloquearWrap) btnDesbloquearWrap.style.display = 'none';
   }
 
   const { data: lancamentos } = await sb.from('horas_lancadas')
@@ -3610,10 +3672,11 @@ function renderCalendarioSemana(lancs) {
         const topOff = ((lm % 30) / 30) * SLOT_H;
         const cls = COR_CLS[l.tipo] || 'cb-projeto';
         const desc = l.tipo === 'projeto' ? (l.produtos?.nome || l.subtipo || '?') : (l.subtipo || l.tipo);
+        const acao = G._semanaTravada ? '' : `onclick="event.stopPropagation();deletarLancamento('${l.id}')"`;
         blocoHtml += `<div class="cal-bloco ${cls}"
           style="top:${topOff}px;height:${height}px"
-          title="${desc} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})"
-          onclick="event.stopPropagation();deletarLancamento('${l.id}')">
+          title="${desc} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' · Semana bloqueada' : ''}"
+          ${acao}>
           ${desc}
         </div>`;
       });
@@ -3690,7 +3753,7 @@ function renderLancamentos(lancs) {
         <div class="lanc-hora">${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)}</div>
         <div class="lanc-desc">${desc}${l.descricao ? ' · '+l.descricao : ''}</div>
         <div class="lanc-dur">${fmtH(dur)}</div>
-        <button class="lanc-del" onclick="deletarLancamento('${l.id}')">×</button>
+        <button class="lanc-del ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `deletarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>×</button>
       </div>`;
     });
   });
@@ -3720,6 +3783,8 @@ async function lancarHoras() {
   if (!ini || !fim) { toast('Preencha os horários'); return; }
   if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
   if (G.diaSelecionado == null) { toast('Selecione o dia'); return; }
+  if (tipo === 'projeto' && !prodId) { toast('Selecione o produto'); return; }
+  if (tipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
 
   const dias = getDiasSemana(G.semanaOffset);
   const dataObj = dias[G.diaSelecionado];
@@ -3791,6 +3856,10 @@ async function lancarHoras() {
 }
 
 async function deletarLancamento(id) {
+  if (G._semanaTravada) {
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    return;
+  }
   await sb.from('horas_lancadas').delete().eq('id', id);
   renderSemana();
   toast('Lançamento removido');
@@ -3802,75 +3871,57 @@ function abrirFinalizarSemana() {
 
 async function confirmarFinalizarSemana() {
   const comentario = document.getElementById('fin-comentario').value.trim();
-  const { ini: semIni } = semanaRangeOffset(G.semanaOffset);
-  
-const { ini: si, fim: sf } = semanaRangeOffset(G.semanaOffset);
+  const { ini: si, fim: sf } = semanaRangeOffset(G.semanaOffset);
+  const ano = new Date(si + 'T12:00:00').getFullYear();
+  const semana = isoWeek(new Date(si + 'T12:00:00'));
 
-// 🔥 BUSCAR semana existente primeiro
-const { data: semDb } = await sb.from('semanas')
-  .select('id')
-  .eq('usuario_id', G.usuario.id)
-  .eq('ano', new Date(si).getFullYear())
-.eq('semana', isoWeek(new Date(si)))
-  .maybeSingle();
+  const { data: semDb } = await sb.from('semanas')
+    .select('id')
+    .eq('usuario_id', G.usuario.id)
+    .eq('ano', ano)
+    .eq('semana', semana)
+    .maybeSingle();
 
-const payload = {
-  id: semDb?.id || undefined, // 👈 ESSENCIAL
-  usuario_id: G.usuario.id,
-  ano: new Date(si).getFullYear(),
-  semana: isoWeek(new Date(si)),
-  data_inicio: si,
-  data_fim: sf,
-  finalizada: true,
-  finalizada_em: new Date().toISOString(),
-  comentario
-};
+  let semanaId = semDb?.id;
+  if (!semanaId) {
+    const { data: nova, error: eNova } = await sb
+      .from('semanas')
+      .insert({
+        usuario_id: G.usuario.id,
+        ano,
+        semana,
+        data_inicio: si,
+        data_fim: sf,
+        finalizada: false
+      })
+      .select('id')
+      .single();
 
-let semanaId = semDb?.id;
+    if (eNova) {
+      toast('Erro ao criar semana: ' + eNova.message);
+      return;
+    }
+    semanaId = nova.id;
+  }
 
-if (!semanaId) {
-  const { data: nova, error: e2 } = await sb
+  const { error } = await sb
     .from('semanas')
-    .insert({
-      usuario_id: G.usuario.id,
-      ano: new Date(si).getFullYear(),
-      semana: isoWeek(new Date(si)),
-      data_inicio: si,
-      data_fim: sf,
-      finalizada: false
+    .update({
+      finalizada: true,
+      finalizada_em: new Date().toISOString(),
+      comentario
     })
-    .select()
-    .single();
+    .eq('id', semanaId);
 
-  if (e2) {
-    toast('Erro ao criar semana: ' + e2.message);
+  if (error) {
+    toast('Erro ao finalizar semana: ' + error.message);
     return;
   }
 
-  semanaId = nova.id;
-}
-
-const { error } = await sb
-  .from('semanas')
-  .update({
-    finalizada: true,
-    finalizada_em: new Date().toISOString(),
-    comentario
-  })
-  .eq('id', semDb.id);
-
-if (error) {
-  toast('Erro ao finalizar semana: ' + error.message);
-  return;
-}
-
-// 🔥 AQUI
-fecharModal('modal-finalizar');
-
-toast('Semana finalizada');
-
-renderSemana();
-carregarSubmissao();
+  fecharModal('modal-finalizar');
+  toast('Semana finalizada');
+  renderSemana();
+  carregarSubmissao();
 }
 
 async function desbloquearSemana() {
