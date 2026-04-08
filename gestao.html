@@ -2252,6 +2252,31 @@ body::before {
   </div>
 </div>
 
+<!-- Modal: Revisão input -->
+<div class="modal-bg" id="modal-revisao-input" style="display:none">
+  <div class="modal" id="ri-modal-card" style="max-width:460px">
+    <div class="modal-hd">
+      <div class="modal-hd-title" id="ri-titulo">Revisão</div>
+      <button class="modal-close" onclick="fecharModalRevisaoInput()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="ri-contexto" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--off);border:1px solid var(--cinza2);font-size:11px;color:#666;line-height:1.5"></div>
+      <div class="fgroup mb8" id="ri-input-wrap" style="display:none">
+        <label id="ri-input-label">Título</label>
+        <input type="text" id="ri-input" placeholder="">
+      </div>
+      <div class="fgroup" id="ri-textarea-wrap" style="display:none">
+        <label id="ri-textarea-label">Descrição</label>
+        <textarea id="ri-textarea" placeholder="" style="min-height:120px"></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="fecharModalRevisaoInput()">Cancelar</button>
+      <button class="btn verde" id="ri-btn-salvar" onclick="confirmarModalRevisaoInput()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Pausar Produto -->
 <div class="modal-bg" id="modal-pausar" style="display:none">
   <div class="modal">
@@ -2465,6 +2490,9 @@ let G = {
   _lancAtivos: [],
   _semanaTravada: false,
   _editLancamentoId: null,
+  _revisaoInputAction: null,
+  _revisaoInputTargetId: null,
+  _comentariosRevisao: [],
   hasBillingAccess: false,
   entregasOffset: 0,
 };
@@ -4256,6 +4284,7 @@ async function selecionarRevisao(id) {
 
   const pranchas = respPranchas.data || [];
   const comentarios = respComentarios.error ? [] : (respComentarios.data || []);
+  G._comentariosRevisao = comentarios;
   const comentariosPorPrancha = {};
   comentarios.forEach(c => {
     if (!comentariosPorPrancha[c.prancha_id]) comentariosPorPrancha[c.prancha_id] = [];
@@ -4355,61 +4384,181 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
   carregarRevisoes();
 }
 
-async function addComentarioPrancha(pranchaId) {
-  const comentario = prompt('Comentário / dúvida para esta prancha:');
-  if (!comentario?.trim()) return;
+function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLabel = '', inputPlaceholder = '', textareaLabel = '', textareaPlaceholder = '', multiline = true }) {
+  G._revisaoInputAction = action;
+  G._revisaoInputTargetId = targetId || null;
 
-  const { error } = await sb.from('prancha_comentarios').insert({
-    revisao_id: G._revisaoAtiva,
-    prancha_id: pranchaId,
-    comentario: comentario.trim(),
-    criado_por: G.usuario.id
+  document.getElementById('ri-titulo').textContent = title;
+  document.getElementById('ri-btn-salvar').textContent = buttonLabel;
+
+  const modalCard = document.getElementById('ri-modal-card');
+  const contexto = document.getElementById('ri-contexto');
+  const inputWrap = document.getElementById('ri-input-wrap');
+  const textareaWrap = document.getElementById('ri-textarea-wrap');
+  const input = document.getElementById('ri-input');
+  const textarea = document.getElementById('ri-textarea');
+
+  input.value = '';
+  textarea.value = '';
+
+  inputWrap.style.display = multiline ? 'none' : 'block';
+  textareaWrap.style.display = multiline ? 'block' : 'none';
+  contexto.style.display = 'none';
+  contexto.textContent = '';
+
+  if (action === 'prancha') {
+    modalCard.style.maxWidth = '420px';
+    textarea.style.minHeight = '100px';
+  } else if (action === 'comentario' || action === 'resposta') {
+    modalCard.style.maxWidth = '560px';
+    textarea.style.minHeight = '170px';
+  } else {
+    modalCard.style.maxWidth = '500px';
+    textarea.style.minHeight = '120px';
+  }
+
+  if (multiline) {
+    document.getElementById('ri-textarea-label').textContent = textareaLabel;
+    textarea.placeholder = textareaPlaceholder;
+  } else {
+    document.getElementById('ri-input-label').textContent = inputLabel;
+    input.placeholder = inputPlaceholder;
+  }
+
+  if (action === 'resposta') {
+    const comentario = (G._comentariosRevisao || []).find(c => c.id === targetId);
+    if (comentario?.comentario) {
+      contexto.style.display = 'block';
+      contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Respondendo este comentário</div>${comentario.comentario}`;
+    }
+  }
+
+  document.getElementById('modal-revisao-input').style.display = 'flex';
+  setTimeout(() => (multiline ? textarea : input).focus(), 30);
+}
+
+function fecharModalRevisaoInput() {
+  G._revisaoInputAction = null;
+  G._revisaoInputTargetId = null;
+  document.getElementById('ri-contexto').style.display = 'none';
+  document.getElementById('ri-contexto').innerHTML = '';
+  document.getElementById('ri-input').value = '';
+  document.getElementById('ri-textarea').value = '';
+  fecharModal('modal-revisao-input');
+}
+
+function addComentarioPrancha(pranchaId) {
+  abrirModalRevisaoInput({
+    action: 'comentario',
+    targetId: pranchaId,
+    title: 'Novo comentário',
+    buttonLabel: 'Salvar comentário',
+    textareaLabel: 'Comentário / dúvida',
+    textareaPlaceholder: 'Descreva a dúvida ou observação desta prancha...',
+    multiline: true
   });
+}
 
-  if (error) {
-    toast('Erro ao salvar comentário: ' + error.message);
+function responderComentarioPrancha(comentarioId) {
+  abrirModalRevisaoInput({
+    action: 'resposta',
+    targetId: comentarioId,
+    title: 'Responder comentário',
+    buttonLabel: 'Salvar resposta',
+    textareaLabel: 'Resposta',
+    textareaPlaceholder: 'Escreva a resposta para este comentário...',
+    multiline: true
+  });
+}
+
+function addTarefaPrancha(pranchaId) {
+  abrirModalRevisaoInput({
+    action: 'tarefa',
+    targetId: pranchaId,
+    title: 'Nova tarefa da prancha',
+    buttonLabel: 'Adicionar tarefa',
+    textareaLabel: 'Descrição da tarefa',
+    textareaPlaceholder: 'Descreva o ajuste que precisa ser feito...',
+    multiline: true
+  });
+}
+
+function addPranchaRevisao(revisaoId) {
+  abrirModalRevisaoInput({
+    action: 'prancha',
+    targetId: revisaoId,
+    title: 'Nova prancha',
+    buttonLabel: 'Adicionar prancha',
+    inputLabel: 'Nome da prancha',
+    inputPlaceholder: 'Ex.: Prancha 01, Planta Baixa...',
+    multiline: false
+  });
+}
+
+async function confirmarModalRevisaoInput() {
+  const action = G._revisaoInputAction;
+  const targetId = G._revisaoInputTargetId;
+  const valor = action === 'prancha'
+    ? document.getElementById('ri-input').value.trim()
+    : document.getElementById('ri-textarea').value.trim();
+
+  if (!valor) {
+    toast('Preencha o campo antes de salvar');
     return;
   }
 
-  if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
-  toast('Comentário registrado');
-}
+  let error = null;
 
-async function responderComentarioPrancha(comentarioId) {
-  const resposta = prompt('Resposta para este comentário:');
-  if (!resposta?.trim()) return;
+  if (action === 'comentario') {
+    ({ error } = await sb.from('prancha_comentarios').insert({
+      revisao_id: G._revisaoAtiva,
+      prancha_id: targetId,
+      comentario: valor,
+      criado_por: G.usuario.id
+    }));
+    if (!error) toast('Comentário registrado');
+  }
 
-  const { error } = await sb.from('prancha_comentarios').update({
-    resposta: resposta.trim(),
-    respondido_por: G.usuario.id,
-    respondido_em: new Date().toISOString()
-  }).eq('id', comentarioId);
+  if (action === 'resposta') {
+    ({ error } = await sb.from('prancha_comentarios').update({
+      resposta: valor,
+      respondido_por: G.usuario.id,
+      respondido_em: new Date().toISOString()
+    }).eq('id', targetId));
+    if (!error) toast('Resposta registrada');
+  }
+
+  if (action === 'tarefa') {
+    ({ error } = await sb.from('tarefas_revisao').insert({
+      prancha_id: targetId,
+      descricao: valor
+    }));
+    if (!error) toast('Tarefa adicionada');
+  }
+
+  if (action === 'prancha') {
+    const { data: existentes, error: eExist } = await sb.from('pranchas').select('ordem').eq('revisao_id', targetId);
+    error = eExist || null;
+    if (!error) {
+      const maxOrdem = Math.max(0, ...(existentes || []).map(p => p.ordem || 0));
+      ({ error } = await sb.from('pranchas').insert({
+        revisao_id: targetId,
+        nome: valor,
+        ordem: maxOrdem + 1
+      }));
+    }
+    if (!error) toast('Prancha adicionada');
+  }
 
   if (error) {
-    toast('Erro ao salvar resposta: ' + error.message);
+    toast('Erro ao salvar: ' + error.message);
     return;
   }
 
-  if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
-  toast('Resposta registrada');
-}
-
-async function addTarefaPrancha(pranchaId) {
-  const desc = prompt('Descrição da tarefa:');
-  if (!desc?.trim()) return;
-  await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: desc.trim() });
-  if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
-  toast('Tarefa adicionada');
-}
-
-async function addPranchaRevisao(revisaoId) {
-  const nome = prompt('Nome da prancha (ex.: Prancha 01, Planta Baixa):');
-  if (!nome?.trim()) return;
-  const { data: existentes } = await sb.from('pranchas').select('ordem').eq('revisao_id', revisaoId);
-  const maxOrdem = Math.max(0, ...(existentes || []).map(p => p.ordem || 0));
-  await sb.from('pranchas').insert({ revisao_id: revisaoId, nome: nome.trim(), ordem: maxOrdem + 1 });
-  selecionarRevisao(revisaoId);
-  toast('Prancha adicionada');
+  const revisaoId = action === 'prancha' ? targetId : G._revisaoAtiva;
+  fecharModalRevisaoInput();
+  if (revisaoId) selecionarRevisao(revisaoId);
+  carregarRevisoes();
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -5987,6 +6136,3 @@ init();
 </script>
 </body>
 </html>
-
-
-
