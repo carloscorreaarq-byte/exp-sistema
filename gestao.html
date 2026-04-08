@@ -1553,12 +1553,18 @@ body::before {
       <button class="pvt-btn active" id="pvt-lista" onclick="setProjetosView('lista')">Lista</button>
       <button class="pvt-btn" id="pvt-gantt" onclick="setProjetosView('gantt')">Gantt</button>
     </div>
+    <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto" style="min-width:280px">
     <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
       <option value="">Todos os núcleos</option>
       <option value="urbanismo">Urbanismo</option>
       <option value="paisagismo">Paisagismo</option>
       <option value="especiais">Proj. Especiais</option>
       <option value="consultorias">Consultorias</option>
+    </select>
+    <select class="filter-select" id="fil-gestao" onchange="filtrarProjetos()">
+      <option value="visiveis">Na gestão</option>
+      <option value="todos">Todos</option>
+      <option value="ocultos">Ocultos da gestão</option>
     </select>
     <select class="filter-select" id="fil-status" onchange="filtrarProjetos()">
       <option value="">Todos os status</option>
@@ -2432,6 +2438,32 @@ body::before {
             <input type="date" id="ep-inicio">
           </div>
         </div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup">
+            <label>Cliente vinculado</label>
+            <select id="ep-cliente"></select>
+          </div>
+          <div class="fgroup">
+            <label>Nome da oportunidade</label>
+            <input type="text" id="ep-opp">
+          </div>
+        </div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup">
+            <label>Cidade da oportunidade</label>
+            <input type="text" id="ep-opp-cidade">
+          </div>
+          <div class="fgroup">
+            <label>Exibição no módulo de gestão</label>
+            <select id="ep-em-gestao">
+              <option value="true">Exibir na gestão</option>
+              <option value="false">Ocultar da gestão</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#888;margin-bottom:8px">
+          Ocultar da gestão remove o projeto desta tela sem apagar o cadastro nem alterar o CRM.
+        </div>
         <div class="fgroup socio-only" id="ep-valor-wrap" style="display:none">
           <label>Valor contratado (R$)</label>
           <input type="number" id="ep-valor" step="0.01" placeholder="0,00">
@@ -2509,6 +2541,8 @@ let G = {
   _comentariosRevisao: [],
   _mensagensComentario: [],
   _revisaoAbertaPor: null,
+  _todosProdutosGestao: [],
+  _crmVirtuais: [],
   hasBillingAccess: false,
   entregasOffset: 0,
 };
@@ -2979,7 +3013,7 @@ function normalizarNucleo(raw) {
 async function carregarProdutos() {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
   const { data: prodsGestao } = await sb.from('produtos')
-    .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, clientes(id, nome, cidade, uf))`)
+    .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, clientes(id, nome, cidade, uf))`)
     .order('created_at', { ascending: false });
 
   // 2. Propostas fechadas do CRM (fonte de visualização)
@@ -3024,6 +3058,8 @@ async function carregarProdutos() {
   // Produtos com em_gestao = FALSE vieram do CRM sem oportunidade fechada → não exibir na Gestão
   const prodsAtivos = (prodsGestao || []).filter(p => p.em_gestao !== false);
 
+  G._todosProdutosGestao = prodsGestao || [];
+  G._crmVirtuais = prodsVirtCrm;
   G.todosProdutos = [...prodsAtivos, ...prodsVirtCrm];
   G._prodsGestao = prodsAtivos;
 
@@ -3215,7 +3251,9 @@ function truncarTexto(txt, max = 28) {
 }
 
 function getProjetoHierarquia(prodId, etapaId = null) {
-  const prod = G.todosProdutos.find(p => p.id === prodId) || G._prodsGestao.find(p => p.id === prodId);
+  const prod = G.todosProdutos.find(p => p.id === prodId)
+    || G._prodsGestao.find(p => p.id === prodId)
+    || G._todosProdutosGestao.find(p => p.id === prodId);
   const opp = prod?.oportunidades;
   const cli = opp?.clientes;
   const etapa = etapaId ? G.todasEtapas.find(e => e.id === etapaId) : null;
@@ -3244,6 +3282,15 @@ function getRotuloAtividadeLancamento(l) {
   if (l.tipo !== 'projeto') return l.subtipo || l.tipo || '—';
   const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
   return `${info.oportunidade} · ${info.etapa}`;
+}
+
+function normBusca(txt) {
+  return (txt || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 async function carregarTarefas() {
@@ -3463,14 +3510,35 @@ function renderEntregasSemana() {
 }
 
 function renderListaProjetos() {
+  const busca = normBusca(document.getElementById('fil-busca')?.value);
   const nucleo = document.getElementById('fil-nucleo').value;
+  const gestaoFiltro = document.getElementById('fil-gestao').value;
   const status = document.getElementById('fil-status').value;
   const coordId = document.getElementById('fil-coord').value;
 
-  let prods = G.todosProdutos.filter(p => {
+  const baseLista = gestaoFiltro === 'ocultos'
+    ? G._todosProdutosGestao.filter(p => p.em_gestao === false)
+    : gestaoFiltro === 'todos'
+      ? [...G._todosProdutosGestao, ...G._crmVirtuais]
+      : G.todosProdutos;
+
+  let prods = baseLista.filter(p => {
     if (nucleo && p.nucleo !== nucleo) return false;
     if (status && p.status !== status) return false;
     if (coordId && p.coordenador_id !== coordId) return false;
+    if (busca) {
+      const opp = p.oportunidades;
+      const cli = opp?.clientes;
+      const haystack = normBusca([
+        p.nome,
+        opp?.projeto,
+        cli?.nome,
+        cli?.cidade,
+        cli?.uf,
+        opp?.cidade
+      ].filter(Boolean).join(' '));
+      if (!haystack.includes(busca)) return false;
+    }
     return true;
   });
 
@@ -3515,6 +3583,7 @@ function renderListaProjetos() {
               <div class="prod-row-nome">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM — não importado)</span>' : ''}</div>
               <span class="badge ${nc.cls}">${nc.label}</span>
               <span class="badge ${stProd.cls}">${stProd.label}</span>
+              ${p.em_gestao === false ? `<span class="badge b-gr">Oculto</span>` : ''}
               <div class="prod-row-etapa">${etapaAtiva ? etapaAtiva.nome : '—'}</div>
               <div class="prod-row-coord">
                 ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coord.nome}">${coord.iniciais}</div>` : '—'}
@@ -4648,7 +4717,7 @@ async function confirmarModalRevisaoInput() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function abrirProduto(id) {
   G.produtoAtivo = id;
-  const prod = G.todosProdutos.find(p => p.id === id);
+  const prod = G.todosProdutos.find(p => p.id === id) || G._todosProdutosGestao.find(p => p.id === id);
   if (!prod) return;
 
   const opp = prod.oportunidades;
@@ -6077,18 +6146,32 @@ function _renderEtapaEdicaoRow(e, devIds) {
 }
 
 async function abrirEditarProduto() {
-  const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo);
+  const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo)
+    || G._todosProdutosGestao.find(p => p.id === G.produtoAtivo);
   if (!prod || prod._crm) return;
+
+  const { data: clientes } = await sb.from('clientes').select('id, nome, cidade, uf').order('nome');
 
   // Preenche campos do produto
   document.getElementById('ep-nome').value    = prod.nome || '';
   document.getElementById('ep-nucleo').value  = prod.nucleo || 'urbanismo';
   document.getElementById('ep-status').value  = prod.status || 'ativo';
   document.getElementById('ep-inicio').value  = prod.data_inicio || '';
+  document.getElementById('ep-opp').value     = prod.oportunidades?.projeto || '';
+  document.getElementById('ep-opp-cidade').value = prod.oportunidades?.cidade || '';
+  document.getElementById('ep-em-gestao').value = prod.em_gestao === false ? 'false' : 'true';
 
   const coordSel = document.getElementById('ep-coord');
   coordSel.innerHTML = '<option value="">—</option>' +
     G.todosUsuarios.map(u => `<option value="${u.id}" ${u.id === prod.coordenador_id ? 'selected' : ''}>${u.nome}</option>`).join('');
+
+  const clienteSel = document.getElementById('ep-cliente');
+  clienteSel.innerHTML = '<option value="">Selecionar cliente...</option>' +
+    (clientes || []).map(c => {
+      const suffix = [c.cidade, c.uf].filter(Boolean).join('/');
+      const label = `${c.nome}${suffix ? ' — ' + suffix : ''} · ${String(c.id).slice(0, 8)}`;
+      return `<option value="${c.id}" ${c.id === prod.oportunidades?.cliente_id ? 'selected' : ''}>${label}</option>`;
+    }).join('');
 
   const isSocio = G.usuario.role === 'socio';
   document.getElementById('ep-valor-wrap').style.display = isSocio ? 'block' : 'none';
@@ -6129,7 +6212,8 @@ async function salvarEdicaoProduto() {
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
   try {
-    const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo);
+    const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo)
+      || G._todosProdutosGestao.find(p => p.id === G.produtoAtivo);
     if (!prod) return;
 
     const nome       = document.getElementById('ep-nome').value.trim();
@@ -6137,13 +6221,27 @@ async function salvarEdicaoProduto() {
     const status     = document.getElementById('ep-status').value;
     const coordId    = document.getElementById('ep-coord').value || null;
     const dataInicio = document.getElementById('ep-inicio').value || null;
+    const clienteId  = document.getElementById('ep-cliente').value || null;
+    const oppNome    = document.getElementById('ep-opp').value.trim();
+    const oppCidade  = document.getElementById('ep-opp-cidade').value.trim() || null;
+    const emGestao   = document.getElementById('ep-em-gestao').value !== 'false';
     const isSocio    = G.usuario.role === 'socio';
     const valor      = isSocio ? (parseFloat(document.getElementById('ep-valor').value) || null) : undefined;
 
     if (!nome) { toast('Informe o nome do produto'); return; }
+    if (!clienteId) { toast('Selecione o cliente vinculado'); return; }
+    if (!oppNome) { toast('Informe o nome da oportunidade'); return; }
 
     // Atualiza produto
-    const updProd = { nome, nucleo, status, coordenador_id: coordId, data_inicio: dataInicio, updated_at: new Date().toISOString() };
+    const updProd = {
+      nome,
+      nucleo,
+      status,
+      coordenador_id: coordId,
+      data_inicio: dataInicio,
+      em_gestao: emGestao,
+      updated_at: new Date().toISOString()
+    };
     if (isSocio && valor !== undefined) updProd.valor_contratado = valor;
     // PROJ-10: salva campos de contrato (sócios)
     if (isSocio) {
@@ -6151,7 +6249,30 @@ async function salvarEdicaoProduto() {
       updProd.contrato_elaborado_por   = document.getElementById('ep-contrato-elaborado').value.trim() || null;
       updProd.contrato_data_assinatura = document.getElementById('ep-contrato-assinatura').value || null;
     }
-    await sb.from('produtos').update(updProd).eq('id', prod.id);
+
+    const { data: prodSalvo, error: eProd } = await sb.from('produtos')
+      .update(updProd)
+      .eq('id', prod.id)
+      .select('id')
+      .maybeSingle();
+
+    if (eProd) { toast('Erro ao salvar produto: ' + eProd.message); return; }
+    if (!prodSalvo) { toast('O produto não foi atualizado. Verifique as permissões no Supabase.'); return; }
+
+    if (prod.oportunidade_id) {
+      const { data: oppSalva, error: eOpp } = await sb.from('oportunidades')
+        .update({
+          cliente_id: clienteId,
+          projeto: oppNome,
+          cidade: oppCidade
+        })
+        .eq('id', prod.oportunidade_id)
+        .select('id')
+        .maybeSingle();
+
+      if (eOpp) { toast('Erro ao salvar oportunidade: ' + eOpp.message); return; }
+      if (!oppSalva) { toast('A oportunidade não foi atualizada. Verifique as permissões no Supabase.'); return; }
+    }
 
     // Salva etapas
     const rows = document.querySelectorAll('#ep-etapas-lista .etapa-edit-row');
@@ -6162,33 +6283,53 @@ async function salvarEdicaoProduto() {
       const eStatus  = row.querySelector('.ee-status').value;
       const eLib     = row.querySelector('.ee-lib').value || null;
       const eEst     = row.querySelector('.ee-est').value || null;
+      const ePrazo   = parseInt(row.querySelector('.ee-prazo').value, 10) || null;
+      const ePTipo   = row.querySelector('.ee-ptipo').value || 'corridos';
       const eDev1    = row.querySelector('.ee-dev1').value || null;
       const eDev2    = row.querySelector('.ee-dev2').value || null;
       if (!eNome) continue;
 
       if (etapaId) {
         // Atualiza etapa existente
-        const { error: eEtapa } = await sb.from('etapas').update({
-          nome: eNome, status: eStatus,
-          data_liberacao: eLib, data_estimada: eEst,
-          coordenador_id: coordId, updated_at: new Date().toISOString()
-        }).eq('id', etapaId);
+        const { data: etapaSalva, error: eEtapa } = await sb.from('etapas').update({
+          nome: eNome,
+          status: eStatus,
+          ordem: i,
+          prazo_dias: ePrazo,
+          prazo_tipo: ePTipo,
+          data_liberacao: eLib,
+          data_estimada: eEst,
+          coordenador_id: coordId,
+          updated_at: new Date().toISOString()
+        }).eq('id', etapaId).select('id').maybeSingle();
         if (eEtapa) { toast('Erro ao salvar etapa "' + eNome + '": ' + eEtapa.message); return; }
+        if (!etapaSalva) { toast('A etapa "' + eNome + '" não foi atualizada.'); return; }
 
         // Recria devs
-        await sb.from('etapa_desenvolvedores').delete().eq('etapa_id', etapaId);
+        const { error: eDelDevs } = await sb.from('etapa_desenvolvedores').delete().eq('etapa_id', etapaId);
+        if (eDelDevs) { toast('Erro ao atualizar responsáveis da etapa "' + eNome + '": ' + eDelDevs.message); return; }
         for (const uid of [eDev1, eDev2].filter(Boolean)) {
-          await sb.from('etapa_desenvolvedores').insert({ etapa_id: etapaId, usuario_id: uid });
+          const { error: eDev } = await sb.from('etapa_desenvolvedores').insert({ etapa_id: etapaId, usuario_id: uid });
+          if (eDev) { toast('Erro ao salvar responsáveis da etapa "' + eNome + '": ' + eDev.message); return; }
         }
       } else {
         // Nova etapa
-        const { data: novaEtapa } = await sb.from('etapas').insert({
-          produto_id: prod.id, nome: eNome, status: eStatus, ordem: i,
-          coordenador_id: coordId, data_liberacao: eLib, data_estimada: eEst
+        const { data: novaEtapa, error: eNovaEtapa } = await sb.from('etapas').insert({
+          produto_id: prod.id,
+          nome: eNome,
+          status: eStatus,
+          ordem: i,
+          prazo_dias: ePrazo,
+          prazo_tipo: ePTipo,
+          coordenador_id: coordId,
+          data_liberacao: eLib,
+          data_estimada: eEst
         }).select().single();
+        if (eNovaEtapa) { toast('Erro ao criar etapa "' + eNome + '": ' + eNovaEtapa.message); return; }
         if (novaEtapa) {
           for (const uid of [eDev1, eDev2].filter(Boolean)) {
-            await sb.from('etapa_desenvolvedores').insert({ etapa_id: novaEtapa.id, usuario_id: uid });
+            const { error: eDev } = await sb.from('etapa_desenvolvedores').insert({ etapa_id: novaEtapa.id, usuario_id: uid });
+            if (eDev) { toast('Erro ao salvar responsáveis da nova etapa "' + eNome + '": ' + eDev.message); return; }
           }
         }
       }
