@@ -976,6 +976,14 @@ body::before {
 .lanc-hora { font-family: var(--fm); font-size: 10px; color: #888; min-width: 80px; }
 .lanc-desc { font-size: 12px; flex: 1; }
 .lanc-dur { font-family: var(--fm); font-size: 10px; font-weight: 700; color: #555; }
+.lanc-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.lanc-edit {
+  background:none; border:none; color:#888; cursor:pointer; font-size:10px;
+  text-transform:uppercase; letter-spacing:.4px; font-weight:700; transition:color .12s;
+}
+.lanc-edit:hover { color: var(--az); }
+.lanc-edit.disabled,
+.lanc-edit.disabled:hover { color:#d9d9d9; cursor:not-allowed; }
 .lanc-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; transition: color .12s; }
 .lanc-del:hover { color: var(--tc); }
 .lanc-del.disabled,
@@ -1076,14 +1084,18 @@ body::before {
 .cs-ok { background: var(--verde-bg); color: var(--verde); }
 .cs-pend { background: var(--tc-bg); color: var(--tc); }
 .cs-none { background: var(--cinza2); color: #888; }
+.carga-horas.over { color: var(--tc); font-weight: 800; }
+.carga-pct.over { color: var(--tc); font-weight: 800; }
 .subm-item { padding: 12px 14px; border-bottom: 1px solid var(--cinza2); }
 .subm-item:last-child { border-bottom: none; }
 .subm-top { display: flex; align-items: center; gap: 10px; }
+.subm-user { display:flex; align-items:center; gap:8px; flex:1; min-width:0; flex-wrap:wrap; }
 .subm-status { margin-left: auto; border-radius: 999px; white-space: nowrap; }
 .subm-comment {
   font-size: 10px; color: #888; margin-top: 6px; padding-left: 34px;
   line-height: 1.45; max-width: calc(100% - 34px);
 }
+.subm-overload { font-size: 10px; font-weight: 700; color: var(--tc); }
 
 /* ── PRIORIDADES (dashboard) ─────────────────────────── */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#fff; border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; }
@@ -1249,6 +1261,7 @@ body::before {
   border-top:1px solid var(--cinza); background:#fff;
 }
 .cal-total-semana { font-family:var(--fm); font-size:20px; font-weight:700; }
+.cal-total-semana.over { color: var(--tc); font-weight: 800; }
 .cal-meta-bar-wrap { height:5px; background:var(--cinza2); width:100%; }
 .cal-meta-bar { height:100%; background:var(--verde); transition:width .3s; }
 .cal-meta-bar.am { background:var(--am); }
@@ -2174,6 +2187,45 @@ body::before {
   </div>
 </div>
 
+<!-- Modal: Editar lançamento -->
+<div class="modal-bg" id="modal-editar-lancamento" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd">
+      <div class="modal-hd-title">Editar lançamento</div>
+      <button class="modal-close" onclick="fecharModal('modal-editar-lancamento')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11px;color:#888;margin-bottom:12px" id="el-contexto">—</div>
+      <div class="fgroup mb8">
+        <label>Dia da semana</label>
+        <select id="el-dia"></select>
+      </div>
+      <div class="fg fg2 mb8">
+        <div class="fgroup">
+          <label>Hora início</label>
+          <input type="time" id="el-inicio">
+        </div>
+        <div class="fgroup">
+          <label>Hora fim</label>
+          <input type="time" id="el-fim">
+        </div>
+      </div>
+      <div class="fgroup mb8" id="el-etapa-wrap" style="display:none">
+        <label>Etapa</label>
+        <select id="el-etapa"></select>
+      </div>
+      <div class="fgroup">
+        <label>Descrição</label>
+        <input type="text" id="el-desc" placeholder="O que foi feito...">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="fecharModal('modal-editar-lancamento')">Cancelar</button>
+      <button class="btn verde" onclick="salvarEdicaoLancamento()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Pausar Produto -->
 <div class="modal-bg" id="modal-pausar" style="display:none">
   <div class="modal">
@@ -2386,6 +2438,7 @@ let G = {
   _prodsGestao: [],
   _lancAtivos: [],
   _semanaTravada: false,
+  _editLancamentoId: null,
   hasBillingAccess: false,
   entregasOffset: 0,
 };
@@ -2641,11 +2694,13 @@ window.lfFiltrarEtapas = function () {
 
   if (!prodId) return;
 
-  const etapas = G.etapas?.filter(e => e.produto_id === prodId) || [];
+  const etapas = G.todasEtapas?.filter(e => e.produto_id === prodId) || [];
 
   selEtapa.innerHTML =
     '<option value="">Selecionar etapa...</option>' +
-    etapas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+    etapas
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+      .map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
 
   etapaWrap.style.display = 'block';
 };
@@ -3606,7 +3661,11 @@ async function renderSemana() {
   renderDiaSelector(G._lancAtivos);
   renderLancamentos(G._lancAtivos);
 
-  document.getElementById('fin-total-horas').textContent = fmtH(calcTotalHoras(G._lancAtivos));
+  const totalHoras = calcTotalHoras(G._lancAtivos);
+  const finTotal = document.getElementById('fin-total-horas');
+  finTotal.textContent = fmtH(totalHoras);
+  finTotal.style.color = totalHoras > 40 ? 'var(--tc)' : 'var(--preto)';
+  finTotal.style.fontWeight = totalHoras > 40 ? '800' : '700';
 }
 
 function renderCalendarioSemana(lancs) {
@@ -3707,7 +3766,7 @@ function renderCalendarioSemana(lancs) {
   html += `<div class="cal-resumo">
     <div style="flex-shrink:0">
       <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:2px">Semana</div>
-      <div class="cal-total-semana" style="color:${totalSemana>40?'var(--tc)':totalSemana>32?'var(--am)':'var(--preto)'}">${fmtH(totalSemana)}</div>
+      <div class="cal-total-semana ${totalSemana > 40 ? 'over' : ''}" style="color:${totalSemana>40?'var(--tc)':totalSemana>32?'var(--am)':'var(--preto)'}">${fmtH(totalSemana)}</div>
     </div>
     <div style="flex:1">
       <div class="cal-meta-bar-wrap">
@@ -3756,13 +3815,18 @@ function renderLancamentos(lancs) {
     dayL.forEach(l => {
       const dur = diffHoras(l.hora_inicio, l.hora_fim);
       const cor = COR_TIPO[l.tipo] || '#888';
-      const desc = l.tipo === 'projeto' ? (l.produtos?.nome || '?') : (l.subtipo || l.tipo);
+      const etapa = l.etapa_id ? G.todasEtapas.find(e => e.id === l.etapa_id) : null;
+      const descBase = l.tipo === 'projeto' ? (l.produtos?.nome || '?') : (l.subtipo || l.tipo);
+      const desc = etapa ? `${descBase} · ${etapa.nome}` : descBase;
       html += `<div class="lanc-item">
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
         <div class="lanc-hora">${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)}</div>
         <div class="lanc-desc">${desc}${l.descricao ? ' · '+l.descricao : ''}</div>
         <div class="lanc-dur">${fmtH(dur)}</div>
-        <button class="lanc-del ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `deletarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>×</button>
+        <div class="lanc-actions">
+          <button class="lanc-edit ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `abrirEditarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>Editar</button>
+          <button class="lanc-del ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `deletarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>×</button>
+        </div>
       </div>`;
     });
   });
@@ -3872,6 +3936,116 @@ async function deletarLancamento(id) {
   await sb.from('horas_lancadas').delete().eq('id', id);
   renderSemana();
   toast('Lançamento removido');
+}
+
+function popularDiasEdicaoLancamento(selectedDia = 1) {
+  const sel = document.getElementById('el-dia');
+  if (!sel) return;
+  const dias = getDiasSemana(G.semanaOffset);
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  sel.innerHTML = dias.map((d, idx) => {
+    const diaNum = idx + 1;
+    const label = `${NOMES[idx]} · ${d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })}`;
+    return `<option value="${diaNum}" ${diaNum === selectedDia ? 'selected' : ''}>${label}</option>`;
+  }).join('');
+}
+
+function popularEtapasEdicaoLancamento(prodId, etapaId = null) {
+  const wrap = document.getElementById('el-etapa-wrap');
+  const sel = document.getElementById('el-etapa');
+  if (!wrap || !sel) return;
+
+  if (!prodId) {
+    wrap.style.display = 'none';
+    sel.innerHTML = '<option value="">Selecionar...</option>';
+    return;
+  }
+
+  const etapas = (G.todasEtapas || [])
+    .filter(e => e.produto_id === prodId)
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+  sel.innerHTML = '<option value="">Selecionar etapa...</option>' +
+    etapas.map(e => `<option value="${e.id}" ${e.id === etapaId ? 'selected' : ''}>${e.nome}</option>`).join('');
+  wrap.style.display = 'block';
+}
+
+function abrirEditarLancamento(id) {
+  if (G._semanaTravada) {
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    return;
+  }
+
+  const lanc = (G._lancAtivos || []).find(l => l.id === id);
+  if (!lanc) {
+    toast('Lançamento não encontrado');
+    return;
+  }
+
+  G._editLancamentoId = id;
+  const contexto = document.getElementById('el-contexto');
+  const prod = lanc.produto_id ? G.todosProdutos.find(p => p.id === lanc.produto_id) : null;
+  const etapa = lanc.etapa_id ? G.todasEtapas.find(e => e.id === lanc.etapa_id) : null;
+  const contextoTxt = lanc.tipo === 'projeto'
+    ? `${prod?.nome || 'Projeto'}${etapa ? ' · ' + etapa.nome : ''}`
+    : `${lanc.subtipo || lanc.tipo}`;
+
+  if (contexto) contexto.textContent = contextoTxt;
+  popularDiasEdicaoLancamento(parseInt(lanc.dia_semana) || 1);
+  document.getElementById('el-inicio').value = lanc.hora_inicio?.slice(0,5) || '';
+  document.getElementById('el-fim').value = lanc.hora_fim?.slice(0,5) || '';
+  document.getElementById('el-desc').value = lanc.descricao || '';
+  popularEtapasEdicaoLancamento(lanc.tipo === 'projeto' ? lanc.produto_id : null, lanc.etapa_id || null);
+  document.getElementById('modal-editar-lancamento').style.display = 'flex';
+}
+
+async function salvarEdicaoLancamento() {
+  if (G._semanaTravada) {
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    return;
+  }
+
+  const id = G._editLancamentoId;
+  const lanc = (G._lancAtivos || []).find(l => l.id === id);
+  if (!id || !lanc) {
+    toast('Lançamento não encontrado');
+    return;
+  }
+
+  const diaNum = parseInt(document.getElementById('el-dia').value, 10);
+  const ini = document.getElementById('el-inicio').value;
+  const fim = document.getElementById('el-fim').value;
+  const desc = document.getElementById('el-desc').value.trim();
+  const etapaId = lanc.tipo === 'projeto'
+    ? (document.getElementById('el-etapa').value || null)
+    : null;
+
+  if (!ini || !fim) { toast('Preencha os horários'); return; }
+  if (ini >= fim) { toast('Hora fim deve ser maior que início'); return; }
+  if (lanc.tipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
+
+  const dias = getDiasSemana(G.semanaOffset);
+  const dataObj = dias[(diaNum || 1) - 1];
+  const dataISO = dataObj.toISOString().split('T')[0];
+
+  const { error } = await sb.from('horas_lancadas').update({
+    dia_semana: diaNum,
+    data_lancamento: dataISO,
+    hora_inicio: ini,
+    hora_fim: fim,
+    etapa_id: etapaId,
+    descricao: desc || null
+  }).eq('id', id);
+
+  if (error) {
+    toast('Erro ao salvar edição: ' + error.message);
+    return;
+  }
+
+  fecharModal('modal-editar-lancamento');
+  G._editLancamentoId = null;
+  toast('Lançamento atualizado');
+  renderSemana();
 }
 
 function abrirFinalizarSemana() {
@@ -4578,6 +4752,7 @@ function _cargaDonut(totais) {
 function _cargaUserCard({ u, porTipo }) {
   const total = porTipo.projeto + porTipo.organizacao + porTipo.sociedade;
   const pct = Math.round(total / 40 * 100);
+  const pctVisual = Math.min(pct, 100);
   const pProj = total > 0 ? porTipo.projeto / total * 100 : 0;
   const pInt  = total > 0 ? porTipo.organizacao / total * 100 : 0;
   const pSoc  = total > 0 ? porTipo.sociedade / total * 100 : 0;
@@ -4586,13 +4761,13 @@ function _cargaUserCard({ u, porTipo }) {
     <div class="carga-top">
       <div class="carga-av" style="background:${u.cor||'#888'}">${u.iniciais}</div>
       <div class="carga-nome">${u.nome}</div>
-      <div class="carga-horas">${fmtH(total)} / 40h</div>
-      <div class="carga-pct" style="color:${cor}">${pct}%</div>
+      <div class="carga-horas ${total > 40 ? 'over' : ''}">${fmtH(total)} / 40h</div>
+      <div class="carga-pct ${pct > 100 ? 'over' : ''}" style="color:${cor}">${pct}%</div>
     </div>
     <div class="carga-bar-wrap">
-      <div class="carga-seg cb-proj" style="width:${Math.min(pProj * pct/100, 100)}%"></div>
-      <div class="carga-seg cb-int" style="width:${Math.min(pInt * pct/100, 100)}%"></div>
-      <div class="carga-seg cb-soc" style="width:${Math.min(pSoc * pct/100, 100)}%"></div>
+      <div class="carga-seg cb-proj" style="width:${Math.min(pProj * pctVisual/100, 100)}%"></div>
+      <div class="carga-seg cb-int" style="width:${Math.min(pInt * pctVisual/100, 100)}%"></div>
+      <div class="carga-seg cb-soc" style="width:${Math.min(pSoc * pctVisual/100, 100)}%"></div>
     </div>
   </div>`;
 }
@@ -4673,7 +4848,7 @@ async function carregarSubmissao() {
         .eq('data_inicio', ini),
       sb
         .from('horas_lancadas')
-        .select('usuario_id, data_lancamento')
+        .select('usuario_id, hora_inicio, hora_fim, data_lancamento')
         .gte('data_lancamento', ini)
         .lte('data_lancamento', fim),
       sb
@@ -4707,6 +4882,12 @@ async function carregarSubmissao() {
     });
 
     const usuariosComHoras = new Set(horas.map(h => h.usuario_id).filter(Boolean));
+    const horasPorUsuario = {};
+    horas.forEach(h => {
+      if (!h.usuario_id) return;
+      if (!horasPorUsuario[h.usuario_id]) horasPorUsuario[h.usuario_id] = 0;
+      horasPorUsuario[h.usuario_id] += diffHoras(h.hora_inicio, h.hora_fim);
+    });
 
     wrap.innerHTML = '';
 
@@ -4714,6 +4895,8 @@ async function carregarSubmissao() {
       const sem = mapaSemanas[u.id];
       const fin = sem?.finalizada === true;
       const temHoras = usuariosComHoras.has(u.id);
+      const totalHoras = horasPorUsuario[u.id] || 0;
+      const sobrecarga = totalHoras > 40 ? totalHoras - 40 : 0;
 
       let status = 'Sem envio';
       let classe = 'cs-none';
@@ -4732,8 +4915,11 @@ async function carregarSubmissao() {
       <div class="carga-av" style="background:${u.cor || '#888'}">
         ${u.iniciais || ''}
       </div>
-      <div class="carga-nome">
-        ${u.nome || ''}
+      <div class="subm-user">
+        <div class="carga-nome">
+          ${u.nome || ''}
+        </div>
+        ${sobrecarga > 0 ? `<div class="subm-overload">Sobrecarga de trabalho - ${fmtHLong(sobrecarga)}</div>` : ''}
       </div>
       <span class="carga-status subm-status ${classe}">
         ${status}
@@ -5235,6 +5421,14 @@ function fmtH(h) {
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
   return mm > 0 ? `${hh}h${mm.toString().padStart(2,'0')}` : `${hh}h`;
+}
+
+function fmtHLong(h) {
+  if (!h && h !== 0) return '0h 00min';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return `${hh}h ${mm.toString().padStart(2,'0')}min`;
 }
 
 function diffHoras(ini, fim) {
