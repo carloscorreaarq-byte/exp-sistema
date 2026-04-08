@@ -1,31 +1,31 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP · Gestão</title>
+<title>EXP Â· GestÃ£o</title>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!--
-══════════════════════════════════════════════════════════════
-  EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES
-  Versão 1.0 · Abril 2026
-══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  EXP Â· MÃ“DULO 3 Â· GESTÃƒO DE PROJETOS E ATIVIDADES
+  VersÃ£o 1.0 Â· Abril 2026
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-  SETUP SQL — rodar UMA VEZ no Supabase SQL Editor:
+  SETUP SQL â€” rodar UMA VEZ no Supabase SQL Editor:
 
-  -- 1. PRODUTOS (unidade executável)
+  -- 1. PRODUTOS (unidade executÃ¡vel)
   CREATE TABLE produtos (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     oportunidade_id uuid REFERENCES oportunidades(id),
-    proposta_origem_id text,           -- para integração futura com exp_proposals
+    proposta_origem_id text,           -- para integraÃ§Ã£o futura com exp_proposals
     nome text NOT NULL,
     nucleo text,                        -- urbanismo | paisagismo | especiais | consultorias
     coordenador_id uuid REFERENCES usuarios(id),
     status text DEFAULT 'inativo',     -- ativo | inativo | pausado | encerrado
     data_inicio date,
-    valor_contratado numeric,          -- visível apenas para sócios
+    valor_contratado numeric,          -- visÃ­vel apenas para sÃ³cios
     obs text,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
@@ -75,7 +75,7 @@
     PRIMARY KEY (produto_id, usuario_id)
   );
 
-  -- 6. REVISÕES
+  -- 6. REVISÃ•ES
   CREATE TABLE revisoes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     etapa_id uuid REFERENCES etapas(id),
@@ -95,7 +95,7 @@
     created_at timestamptz DEFAULT now()
   );
 
-  -- 8. TAREFAS DE REVISÃO
+  -- 8. TAREFAS DE REVISÃƒO
   CREATE TABLE tarefas_revisao (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     prancha_id uuid REFERENCES pranchas(id) ON DELETE CASCADE,
@@ -107,7 +107,20 @@
     created_at timestamptz DEFAULT now()
   );
 
-  -- 9. TAREFAS LIVRES
+  -- 9. COMENTÃRIOS DE PRANCHA
+  CREATE TABLE prancha_comentarios (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    revisao_id uuid REFERENCES revisoes(id) ON DELETE CASCADE,
+    prancha_id uuid REFERENCES pranchas(id) ON DELETE CASCADE,
+    comentario text NOT NULL,
+    criado_por uuid REFERENCES usuarios(id),
+    resposta text,
+    respondido_por uuid REFERENCES usuarios(id),
+    respondido_em timestamptz,
+    created_at timestamptz DEFAULT now()
+  );
+
+  -- 10. TAREFAS LIVRES
   CREATE TABLE tarefas_livres (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id uuid REFERENCES usuarios(id),
@@ -124,7 +137,7 @@
     created_at timestamptz DEFAULT now()
   );
 
-  -- 10. SEMANAS (controle de finalização)
+  -- 11. SEMANAS (controle de finalizaÃ§Ã£o)
   CREATE TABLE semanas (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id uuid REFERENCES usuarios(id),
@@ -139,7 +152,7 @@
     UNIQUE(usuario_id, ano, semana)
   );
 
-  -- 11. HORAS LANÇADAS
+  -- 12. HORAS LANÃ‡ADAS
   CREATE TABLE horas_lancadas (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id uuid REFERENCES usuarios(id),
@@ -156,7 +169,7 @@
     created_at timestamptz DEFAULT now()
   );
 
-  -- 12. HISTÓRICO DE VALOR/HORA
+  -- 13. HISTÃ“RICO DE VALOR/HORA
   CREATE TABLE historico_valor_hora (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id uuid REFERENCES usuarios(id),
@@ -166,7 +179,7 @@
     created_at timestamptz DEFAULT now()
   );
 
-  -- 13. ESPELHO FINANCEIRO (etapas concluídas para faturamento)
+  -- 14. ESPELHO FINANCEIRO (etapas concluÃ­das para faturamento)
   CREATE TABLE espelho_financeiro (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     etapa_id uuid REFERENCES etapas(id),
@@ -185,25 +198,27 @@
     updated_at timestamptz DEFAULT now()
   );
 
-  -- RLS básico (ajustar conforme política de segurança)
+  -- RLS bÃ¡sico (ajustar conforme polÃ­tica de seguranÃ§a)
   ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
   ALTER TABLE etapas ENABLE ROW LEVEL SECURITY;
   ALTER TABLE horas_lancadas ENABLE ROW LEVEL SECURITY;
   ALTER TABLE revisoes ENABLE ROW LEVEL SECURITY;
   ALTER TABLE pranchas ENABLE ROW LEVEL SECURITY;
   ALTER TABLE tarefas_revisao ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE prancha_comentarios ENABLE ROW LEVEL SECURITY;
   ALTER TABLE tarefas_livres ENABLE ROW LEVEL SECURITY;
   ALTER TABLE semanas ENABLE ROW LEVEL SECURITY;
   ALTER TABLE espelho_financeiro ENABLE ROW LEVEL SECURITY;
   ALTER TABLE historico_valor_hora ENABLE ROW LEVEL SECURITY;
 
-  -- Políticas permissivas temporárias (refinar depois)
+  -- PolÃ­ticas permissivas temporÃ¡rias (refinar depois)
   CREATE POLICY "autenticados" ON produtos FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON etapas FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON horas_lancadas FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON revisoes FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON pranchas FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON tarefas_revisao FOR ALL USING (auth.role() = 'authenticated');
+  CREATE POLICY "autenticados" ON prancha_comentarios FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON tarefas_livres FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON semanas FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON espelho_financeiro FOR ALL USING (auth.role() = 'authenticated');
@@ -212,11 +227,11 @@
   CREATE POLICY "autenticados" ON etapa_desenvolvedores FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON produto_observadores FOR ALL USING (auth.role() = 'authenticated');
 
-══════════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -->
 
 <style>
-/* ── RESET & ROOT ─────────────────────────────────────────── */
+/* â”€â”€ RESET & ROOT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -235,7 +250,7 @@
   --tc: #B84C3A;
   --tc-bg: #FBF0EE;
   --roxo: #6B4FA0;
-  /* núcleos */
+  /* nÃºcleos */
   --urb: #5280CA;
   --urb-bg: #ECF1FA;
   --pai: #45865D;
@@ -270,7 +285,7 @@ body::before {
   z-index: 0;
 }
 
-/* ── LOADING ─────────────────────────────────────────────── */
+/* â”€â”€ LOADING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #loading {
   position: fixed; inset: 0;
   background: var(--off);
@@ -290,7 +305,7 @@ body::before {
 .ld-dots span:nth-child(3) { animation-delay: .4s; }
 @keyframes ldpulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
 
-/* ── NAV ─────────────────────────────────────────────────── */
+/* â”€â”€ NAV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .nav {
   display: flex; align-items: center;
   background: rgba(255,255,255,.95);
@@ -358,7 +373,7 @@ body::before {
 .user-dropdown.open{display:block}
 .user-dropdown button{display:block;width:100%;padding:9px 14px;background:none;border:none;font-family:var(--f);font-size:11px;font-weight:500;color:var(--tc);text-align:left;cursor:pointer}
 .user-dropdown button:hover{background:var(--off)}
-/* NAV-5: EXP Room — botão de ação (câmera), distinto do conn-dot (status de rede) */
+/* NAV-5: EXP Room â€” botÃ£o de aÃ§Ã£o (cÃ¢mera), distinto do conn-dot (status de rede) */
 .exp-room-btn {
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
@@ -370,17 +385,17 @@ body::before {
 /* conn-dot permanece como indicador de status de rede (sem hover, sem cursor pointer) */
 .conn-dot { cursor: default; pointer-events: none; }
 
-/* ── MAIN ────────────────────────────────────────────────── */
+/* â”€â”€ MAIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .main {
   padding: 16px; max-width: 1400px; margin: 0 auto;
   position: relative; z-index: 1;
 }
 
-/* ── PÁGINAS ─────────────────────────────────────────────── */
+/* â”€â”€ PÃGINAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .page { display: none; }
 .page.active { display: block; }
 
-/* ── BOTÕES ──────────────────────────────────────────────── */
+/* â”€â”€ BOTÃ•ES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 12px; font-family: var(--f); font-size: 9px;
@@ -400,7 +415,7 @@ body::before {
 .btn.ghost:hover { border-color: var(--cinza); color: var(--preto); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 
-/* ── BADGES ──────────────────────────────────────────────── */
+/* â”€â”€ BADGES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .badge {
   display: inline-flex; align-items: center;
   padding: 2px 7px; font-size: 8px; font-weight: 700;
@@ -416,7 +431,7 @@ body::before {
 .b-consul { background: var(--consul-bg); color: var(--consul); }
 .b-esp { background: var(--esp-bg); color: var(--esp); }
 
-/* ── CARDS ───────────────────────────────────────────────── */
+/* â”€â”€ CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .card {
   background: #fff; border: 1px solid var(--cinza);
   position: relative; overflow: hidden;
@@ -441,7 +456,7 @@ body::before {
 .card-title { font-size: 9px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
 .card-body { padding: 12px 14px 12px 17px; }
 
-/* ── STATS ───────────────────────────────────────────────── */
+/* â”€â”€ STATS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .stat-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 10px; margin-bottom: 14px; }
 .stat {
   background: #fff; border: 1px solid var(--cinza);
@@ -460,7 +475,7 @@ body::before {
 .stat-val { font-size: 22px; font-weight: 700; font-family: var(--fm); letter-spacing: -1px; line-height: 1; }
 .stat-sub { font-size: 10px; color: #888; margin-top: 2px; }
 
-/* ── SEÇÃO TÍTULOS ───────────────────────────────────────── */
+/* â”€â”€ SEÃ‡ÃƒO TÃTULOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sec-title {
   font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
   text-transform: uppercase; color: #999;
@@ -468,7 +483,7 @@ body::before {
 }
 .sec-title::after { content: ''; flex: 1; height: 1px; background: var(--cinza); }
 
-/* ── INPUTS / FORMS ──────────────────────────────────────── */
+/* â”€â”€ INPUTS / FORMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .fgroup { display: flex; flex-direction: column; gap: 4px; }
 .fgroup label { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #999; }
 .fgroup input, .fgroup select, .fgroup textarea {
@@ -490,7 +505,7 @@ body::before {
 .mb14 { margin-bottom: 14px; }
 .mb20 { margin-bottom: 20px; }
 
-/* ── TABELAS ─────────────────────────────────────────────── */
+/* â”€â”€ TABELAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .tbl { width: 100%; border-collapse: collapse; }
 .tbl th {
   padding: 6px 10px; font-size: 8px; font-weight: 700; letter-spacing: .6px;
@@ -507,7 +522,7 @@ body::before {
 .dtag { font-size: 10px; color: #888; font-family: var(--fm); }
 .num-tag { font-size: 10px; font-weight: 700; font-family: var(--fm); color: #555; }
 
-/* ── MODAIS ──────────────────────────────────────────────── */
+/* â”€â”€ MODAIS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .modal-bg {
   position: fixed; inset: 0; background: rgba(0,0,0,.45);
   z-index: 200; display: flex; align-items: center; justify-content: center;
@@ -551,7 +566,7 @@ body::before {
 .mtab-panel { display: none; }
 .mtab-panel.active { display: block; }
 
-/* ── SEÇÃO INTERNA MODAL ─────────────────────────────────── */
+/* â”€â”€ SEÃ‡ÃƒO INTERNA MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ms { margin-bottom: 16px; }
 .ms-title {
   font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
@@ -562,7 +577,7 @@ body::before {
 .dk { font-size: 10px; color: #888; padding: 6px 10px; min-width: 140px; background: var(--off); border-right: 1px solid var(--cinza2); }
 .dv { font-size: 12px; padding: 6px 10px; flex: 1; }
 
-/* ── TIMELINE ────────────────────────────────────────────── */
+/* â”€â”€ TIMELINE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .timeline { position: relative; padding-left: 20px; }
 .timeline::before {
   content: ''; position: absolute; left: 6px; top: 0; bottom: 0;
@@ -583,7 +598,7 @@ body::before {
 .tl-text { font-size: 12px; }
 .tl-date { font-size: 9px; font-family: var(--fm); color: #aaa; margin-top: 1px; }
 
-/* ── TOAST ───────────────────────────────────────────────── */
+/* â”€â”€ TOAST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .toast {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
   background: var(--preto); color: #fff; padding: 10px 20px;
@@ -592,11 +607,11 @@ body::before {
 }
 .toast.show { opacity: 1; }
 
-/* ── EMPTY / LOADING STATES ──────────────────────────────── */
+/* â”€â”€ EMPTY / LOADING STATES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .empty-note { padding: 32px; text-align: center; color: #aaa; font-size: 11px; }
 .loading-state { padding: 40px; text-align: center; color: #aaa; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; }
 
-/* ── SKELETON ────────────────────────────────────────────── */
+/* â”€â”€ SKELETON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .skel {
   background: linear-gradient(90deg, var(--cinza2) 25%, #f0efeb 50%, var(--cinza2) 75%);
   background-size: 200% 100%;
@@ -606,9 +621,9 @@ body::before {
 .skel-line { height: 12px; margin-bottom: 8px; }
 .skel-card { height: 80px; margin-bottom: 10px; }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    DASHBOARD
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .dash-grid {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -659,7 +674,7 @@ body::before {
 .data-chip.atrasado { border-color: var(--tc); color: var(--tc); background: var(--tc-bg); }
 .proj-card-acoes { display: flex; gap: 5px; }
 
-/* Área de coord */
+/* Ãrea de coord */
 .coord-strip {
   background: #fff; border: 1px solid var(--cinza);
   border-left: 3px solid var(--az);
@@ -686,7 +701,7 @@ body::before {
 }
 .task-check:hover { border-color: var(--verde); }
 .task-check.done { background: var(--verde); border-color: var(--verde); }
-.task-check.done::after { content: '✓'; font-size: 9px; color: #fff; font-weight: 700; }
+.task-check.done::after { content: 'âœ“'; font-size: 9px; color: #fff; font-weight: 700; }
 .task-desc { font-size: 12px; line-height: 1.4; }
 .task-desc.done { text-decoration: line-through; color: #aaa; }
 .task-meta { display: flex; align-items: center; gap: 5px; margin-top: 3px; flex-wrap: wrap; }
@@ -726,9 +741,9 @@ body::before {
 .agenda-hora { font-family: var(--fm); font-size: 9px; color: #888; margin-bottom: 2px; }
 .agenda-titulo { font-size: 12px; font-weight: 500; }
 
-/* ══════════════════════════════════════════════════════════
-   PROJETOS — LISTA
-══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   PROJETOS â€” LISTA
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .proj-toolbar {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 14px; flex-wrap: wrap;
@@ -780,9 +795,9 @@ body::before {
   flex-shrink: 0;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    GANTT
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .gantt-wrap {
   border: 1px solid var(--cinza);
   background: #fff;
@@ -865,7 +880,7 @@ body::before {
 .gb-concluida { background: var(--verde); }
 .gb-nao-iniciada { background: var(--cinza); }
 .gb-pausada { background: var(--tc); }
-/* por núcleo */
+/* por nÃºcleo */
 .gb-urb { background: var(--urb); }
 .gb-pai { background: var(--pai); }
 .gb-esp { background: var(--esp); }
@@ -892,9 +907,9 @@ body::before {
 .gantt-leg-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #888; }
 .gantt-leg-cor { width: 16px; height: 8px; }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    HORAS
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .horas-layout { display: grid; grid-template-columns: 1fr 280px; gap: 14px; align-items: start; }
 .semana-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .semana-label { font-family: var(--fm); font-size: 13px; font-weight: 500; flex: 1; text-align: center; }
@@ -960,11 +975,11 @@ body::before {
 .prog-info { display: flex; justify-content: space-between; font-size: 10px; color: #888; }
 .prog-total { font-family: var(--fm); font-size: 16px; font-weight: 700; }
 
-/* Form lançamento */
+/* Form lanÃ§amento */
 .lanc-form { background: #fff; border: 1px solid var(--cinza); padding: 14px; }
 .lanc-form-title { font-size: 9px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: #999; margin-bottom: 12px; }
 
-/* Lista de lançamentos */
+/* Lista de lanÃ§amentos */
 .lanc-lista { }
 .lanc-item {
   display: flex; align-items: center; gap: 8px;
@@ -974,7 +989,7 @@ body::before {
 .lanc-item:last-child { border-bottom: none; }
 .lanc-tipo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .lanc-hora { font-family: var(--fm); font-size: 10px; color: #888; min-width: 80px; }
-.lanc-desc { font-size: 12px; flex: 1; }
+.lanc-desc { font-size: 12px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lanc-dur { font-family: var(--fm); font-size: 10px; font-weight: 700; color: #555; }
 .lanc-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .lanc-edit {
@@ -996,9 +1011,9 @@ body::before {
   display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
 }
 
-/* ══════════════════════════════════════════════════════════
-   REVISÕES
-══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   REVISÃ•ES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .rev-layout { display: grid; grid-template-columns: 280px 1fr; gap: 14px; align-items: start; }
 .rev-lista-item {
   padding: 9px 12px; border: 1px solid var(--cinza); background: #fff;
@@ -1015,6 +1030,7 @@ body::before {
 .rev-lista-item.selected { border-color: var(--preto); }
 .rev-proj-nome { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
 .rev-etapa-nome { font-size: 10px; color: #888; margin-bottom: 5px; }
+.rev-extra { font-size: 9px; color: #aaa; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rev-prog { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; }
 .rev-prog-bar { flex: 1; height: 3px; background: var(--cinza2); }
 .rev-prog-fill { height: 100%; background: var(--verde); transition: width .3s; }
@@ -1032,6 +1048,15 @@ body::before {
 .prancha-nome { font-size: 11px; font-weight: 700; }
 .prancha-prog { font-family: var(--fm); font-size: 10px; color: #888; }
 .prancha-body { padding: 10px 14px; }
+.prancha-actions { display:flex; align-items:center; gap:6px; }
+.prancha-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--cinza2); }
+.prancha-comments-title { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #999; margin-bottom: 8px; }
+.prancha-comment { padding: 8px 10px; border: 1px solid var(--cinza2); background: #fafaf8; margin-bottom: 8px; }
+.prancha-comment:last-child { margin-bottom: 0; }
+.prancha-comment-meta { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.prancha-comment-text { font-size: 11px; line-height: 1.45; color: var(--preto); }
+.prancha-reply { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ddd; }
+.prancha-reply-label { font-size: 9px; font-weight: 700; color: #888; margin-bottom: 4px; }
 .tarefa-item {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 6px 0; border-bottom: 1px solid var(--cinza2);
@@ -1045,13 +1070,13 @@ body::before {
 }
 .tarefa-check:hover { border-color: var(--verde); }
 .tarefa-check.done { background: var(--verde); border-color: var(--verde); }
-.tarefa-check.done::after { content: '✓'; font-size: 10px; color: #fff; font-weight: 700; }
+.tarefa-check.done::after { content: 'âœ“'; font-size: 10px; color: #fff; font-weight: 700; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
 
-/* ══════════════════════════════════════════════════════════
-   VISÃO SÓCIOS
-══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   VISÃƒO SÃ“CIOS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .socio-tabs { display: flex; border-bottom: 1px solid var(--cinza); margin-bottom: 14px; }
 .socio-tab {
   padding: 8px 14px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
@@ -1097,7 +1122,7 @@ body::before {
 }
 .subm-overload { font-size: 10px; font-weight: 700; color: var(--tc); }
 
-/* ── PRIORIDADES (dashboard) ─────────────────────────── */
+/* â”€â”€ PRIORIDADES (dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#fff; border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; }
 .prio-card:hover { border-color:#aaa; box-shadow:0 2px 8px rgba(0,0,0,.05); }
 .prio-card.concluida { opacity:.38; }
@@ -1111,18 +1136,19 @@ body::before {
 .prio-check { width:16px; height:16px; border:1.5px solid var(--cinza); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; transition:all .12s; margin-top:2px; }
 .prio-check:hover { border-color:var(--verde); }
 .prio-check.done { background:var(--verde); border-color:var(--verde); color:#fff; }
-/* ── FLUXO DE TRABALHO (painel sócios) ──────────────── */
-.fluxo-user-card { background:#fff; border:1px solid var(--cinza); padding:10px 12px; }
-.fluxo-user-hd { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-.fluxo-slots { display:flex; flex-direction:column; gap:6px; }
-.fluxo-slot { display:flex; align-items:center; gap:6px; }
+/* â”€â”€ FLUXO DE TRABALHO (painel sÃ³cios) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.fluxo-user-card { background:#fff; border:1px solid var(--cinza); padding:7px 9px; }
+.fluxo-user-hd { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.fluxo-slots { display:flex; flex-direction:column; gap:4px; }
+.fluxo-slot { display:flex; align-items:center; gap:5px; min-width:0; }
 .fluxo-slot-num { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; flex-shrink:0; }
 .fluxo-slot-num.s1 { background:var(--am); }
 .fluxo-slot-num.s2 { background:var(--az); }
 .fluxo-slot-num.s3 { background:var(--verde); }
-.fluxo-conc { font-size:8px; font-weight:700; letter-spacing:.3px; padding:1px 6px; cursor:pointer; flex-shrink:0; border:1px solid transparent; }
+.fluxo-conc { width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; cursor:pointer; flex-shrink:0; border:1px solid var(--cinza); padding:0; color:#bbb; background:#fff; }
+.fluxo-conc.done { color:var(--verde); border-color:rgba(29,106,74,.24); background:var(--verde-bg); }
 
-/* Usuários / cores */
+/* UsuÃ¡rios / cores */
 .usu-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--cinza2); }
 .usu-swatches { display:flex; gap:4px; }
 .usu-swatch { width:20px; height:20px; border-radius:3px; cursor:pointer; border:2px solid transparent; transition:border-color .15s, transform .1s; flex-shrink:0; }
@@ -1144,9 +1170,9 @@ body::before {
 /* Espelho financeiro */
 .ef-filtros { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MODAL PROJETO
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .etapa-linha {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; border: 1px solid var(--cinza2);
@@ -1163,9 +1189,9 @@ body::before {
 .drag-handle { cursor: grab; color: #ccc; font-size: 14px; padding: 0 2px; }
 .drag-handle:hover { color: #999; }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MODAL CADASTRO PROJETO
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .step-indicator { display: flex; gap: 0; margin-bottom: 20px; }
 .step-item {
   flex: 1; padding: 8px 12px; text-align: center;
@@ -1191,14 +1217,14 @@ body::before {
 .ep-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 0 2px; transition: color .12s; }
 .ep-del:hover { color: var(--tc); }
 
-/* ── AVATARES (cor dinâmica) ─────────────────────────────── */
+/* â”€â”€ AVATARES (cor dinÃ¢mica) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* Definidas via JS com .style */
 .av-cc { background: #1D4FA0; }
 .av-gb { background: #C4831A; }
 .av-tc-usr { background: #B84C3A; }
 .av-la { background: #1D6A4A; }
 
-/* ── RESPONSIVO ──────────────────────────────────────────── */
+/* â”€â”€ RESPONSIVO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media(max-width: 900px) {
   .dash-grid { grid-template-columns: 1fr; }
   .horas-layout { grid-template-columns: 1fr; }
@@ -1211,11 +1237,11 @@ body::before {
   .gantt-th-info { min-width: 160px; width: 160px; }
 }
 
-/* ── ENTRADA ANIMADA ─────────────────────────────────────── */
+/* â”€â”€ ENTRADA ANIMADA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .page.active { animation: pageIn .3s ease both; }
 @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
-/* ── CALENDÁRIO SEMANAL DE HORAS ─────────────────────────── */
+/* â”€â”€ CALENDÃRIO SEMANAL DE HORAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .cal-semana { background:#fff; border:1px solid var(--cinza); overflow:hidden; }
 .cal-grid { display:grid; grid-template-columns:44px repeat(7,1fr); }
 .cal-dia-header {
@@ -1272,7 +1298,7 @@ body::before {
 .cal-bd-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 .cal-header-vazio { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza); }
 
-/* ── SELETOR DE DIA ──────────────────────────────────────── */
+/* â”€â”€ SELETOR DE DIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .dia-selector { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top:2px; }
 .dia-btn {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -1292,7 +1318,7 @@ body::before {
 .dia-btn-hrs { font-family:var(--fm); font-size:8px; color:var(--verde); font-weight:700; }
 .dia-btn.selected .dia-btn-hrs { color:rgba(255,255,255,.8); }
 
-/* ── GANTT AVATARES ──────────────────────────────────────── */
+/* â”€â”€ GANTT AVATARES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .gantt-avs { display:flex; flex-direction:column; gap:2px; align-items:flex-end; flex-shrink:0; }
 .gantt-av {
   width:18px; height:18px; border-radius:50%; display:flex; align-items:center;
@@ -1305,7 +1331,7 @@ body::before {
 <!-- LOADING -->
 <div id="loading">
   <div class="ld-brand">EXP</div>
-  <div class="ld-sub">Gestão de Projetos</div>
+  <div class="ld-sub">GestÃ£o de Projetos</div>
   <div class="ld-dots"><span></span><span></span><span></span></div>
 </div>
 
@@ -1325,13 +1351,13 @@ body::before {
   <a href="app.html" class="nav-brand">EXP</a>
   <div class="nav-sep"></div>
   <div class="nav-mod-wrap" id="nav-mod-wrap">
-    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.projetos <span>▾</span></button>
+    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.projetos <span>â–¾</span></button>
     <div class="nav-dropdown" id="nav-dropdown">
       <div class="nd-lbl">Abertos</div>
       <a href="gestao.html" class="nd-active">EXP.projetos</a>
       <a href="apoio.html">EXP.conhecimento</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
-      <div class="nd-lbl nd-soc" style="display:none">Societários</div>
+      <div class="nd-lbl nd-soc" style="display:none">SocietÃ¡rios</div>
       <a href="calc.html" class="nd-soc" style="display:none">EXP.calc</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
       <a href="#" class="nd-disabled nd-soc" style="display:none">EXP.financeiro</a>
@@ -1341,20 +1367,20 @@ body::before {
     <button class="ntab active" data-tab="dashboard">Dashboard</button>
     <button class="ntab" data-tab="projetos">Projetos</button>
     <button class="ntab" data-tab="horas">Horas</button>
-    <button class="ntab" data-tab="revisoes">Revisões</button>
-    <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">Sócios</button>
+    <button class="ntab" data-tab="revisoes">RevisÃµes</button>
+    <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">SÃ³cios</button>
   </div>
   <div class="nav-right">
     <div class="conn-dot" id="conn-dot"></div>
-    <a href="#" target="_blank" class="exp-room-btn" id="exp-room-link" title="EXP Room — Reunião online">
-      <span>📹</span>
+    <a href="#" target="_blank" class="exp-room-btn" id="exp-room-link" title="EXP Room â€” ReuniÃ£o online">
+      <span>ðŸ“¹</span>
     </a>
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-chip" onclick="toggleUserMenu()">
         <div class="uav" id="nav-av"></div>
         <div>
-          <div class="u-nome" id="nav-nome">—</div>
-          <div class="u-role" id="nav-role">—</div>
+          <div class="u-nome" id="nav-nome">â€”</div>
+          <div class="u-role" id="nav-role">â€”</div>
         </div>
       </div>
       <div class="user-dropdown" id="user-dropdown">
@@ -1366,51 +1392,51 @@ body::before {
 
 <div class="main">
 
-<!-- ════════════════════════════════════════════════════
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      DASHBOARD
-════════════════════════════════════════════════════ -->
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="page active" id="page-dashboard">
 
   <div class="bv">
-    <div class="bv-hora" id="bv-hora">—</div>
-    <div class="bv-titulo" id="bv-titulo">Olá —</div>
+    <div class="bv-hora" id="bv-hora">â€”</div>
+    <div class="bv-titulo" id="bv-titulo">OlÃ¡ â€”</div>
     <div class="bv-sub" id="bv-sub">Carregando seus projetos...</div>
   </div>
 
   <div class="stat-row" id="dash-stats">
     <div class="stat s-gr">
       <div class="stat-lbl">Total de projetos</div>
-      <div class="stat-val" id="st-total">—</div>
-      <div class="stat-sub">no escritório</div>
+      <div class="stat-val" id="st-total">â€”</div>
+      <div class="stat-sub">no escritÃ³rio</div>
     </div>
     <div class="stat s-vd">
       <div class="stat-lbl">Ativos</div>
-      <div class="stat-val" id="st-ativos">—</div>
+      <div class="stat-val" id="st-ativos">â€”</div>
       <div class="stat-sub">em andamento</div>
     </div>
     <div class="stat s-am">
       <div class="stat-lbl">Pausados</div>
-      <div class="stat-val" id="st-pausados">—</div>
+      <div class="stat-val" id="st-pausados">â€”</div>
       <div class="stat-sub">em espera</div>
     </div>
     <div class="stat s-tc">
       <div class="stat-lbl">Encerrados</div>
-      <div class="stat-val" id="st-encerrados">—</div>
+      <div class="stat-val" id="st-encerrados">â€”</div>
       <div class="stat-sub">finalizados</div>
     </div>
     <div class="stat s-az">
-      <div class="stat-lbl">Em revisão</div>
-      <div class="stat-val" id="st-rev">—</div>
+      <div class="stat-lbl">Em revisÃ£o</div>
+      <div class="stat-val" id="st-rev">â€”</div>
       <div class="stat-sub">etapas aguardando</div>
     </div>
     <div class="stat s-gr">
       <div class="stat-lbl">Tarefas pendentes</div>
-      <div class="stat-val" id="st-tasks">—</div>
+      <div class="stat-val" id="st-tasks">â€”</div>
       <div class="stat-sub">suas tarefas</div>
     </div>
     <div class="stat s-gr">
       <div class="stat-lbl">Horas semana</div>
-      <div class="stat-val" id="st-horas">—</div>
+      <div class="stat-val" id="st-horas">â€”</div>
       <div class="stat-sub" id="st-horas-sub">de 40h</div>
     </div>
   </div>
@@ -1432,9 +1458,9 @@ body::before {
         </div>
       </div>
 
-      <!-- Coordenação -->
+      <!-- CoordenaÃ§Ã£o -->
       <div id="bloco-coord" style="display:none">
-        <div class="sec-title">Projetos em coordenação</div>
+        <div class="sec-title">Projetos em coordenaÃ§Ã£o</div>
         <div id="dash-coord">
           <div class="loading-state">Carregando...</div>
         </div>
@@ -1464,7 +1490,7 @@ body::before {
             </div>
             <div class="task-row3">
               <button class="btn sm verde" onclick="adicionarTarefa()">Salvar</button>
-              <button class="btn sm" onclick="abrirAtribuirTarefa()">Atribuir →</button>
+              <button class="btn sm" onclick="abrirAtribuirTarefa()">Atribuir â†’</button>
             </div>
           </div>
         </div>
@@ -1489,12 +1515,12 @@ body::before {
         </div>
         <div class="card-body" id="agenda-body">
           <div style="padding:12px 0; text-align:center; color:#999; font-size:11px">
-            <div style="margin-bottom:8px">Teste de integração com Google Calendar</div>
+            <div style="margin-bottom:8px">Teste de integraÃ§Ã£o com Google Calendar</div>
             <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
               <a href="https://calendar.google.com/calendar/u/0/r/week" target="_blank" class="btn sm">Abrir Calendar</a>
               <a href="#" target="_blank" class="btn sm verde" id="agenda-room-link">EXP Room</a>
             </div>
-            <div style="font-size:10px;color:#bbb;margin-top:8px">A sincronização automática ainda está em fase de teste.</div>
+            <div style="font-size:10px;color:#bbb;margin-top:8px">A sincronizaÃ§Ã£o automÃ¡tica ainda estÃ¡ em fase de teste.</div>
           </div>
         </div>
       </div>
@@ -1503,9 +1529,9 @@ body::before {
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      PROJETOS
-════════════════════════════════════════════════════ -->
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="page" id="page-projetos">
 
   <div class="proj-toolbar">
@@ -1514,7 +1540,7 @@ body::before {
       <button class="pvt-btn" id="pvt-gantt" onclick="setProjetosView('gantt')">Gantt</button>
     </div>
     <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
-      <option value="">Todos os núcleos</option>
+      <option value="">Todos os nÃºcleos</option>
       <option value="urbanismo">Urbanismo</option>
       <option value="paisagismo">Paisagismo</option>
       <option value="especiais">Proj. Especiais</option>
@@ -1547,13 +1573,13 @@ body::before {
     <div class="gantt-wrap">
       <div class="gantt-toolbar">
         <div class="gantt-nav">
-          <button class="gantt-nav-btn" onclick="ganttNavegar(-1)">‹</button>
-          <div class="gantt-periodo" id="gantt-periodo">—</div>
-          <button class="gantt-nav-btn" onclick="ganttNavegar(1)">›</button>
+          <button class="gantt-nav-btn" onclick="ganttNavegar(-1)">â€¹</button>
+          <div class="gantt-periodo" id="gantt-periodo">â€”</div>
+          <button class="gantt-nav-btn" onclick="ganttNavegar(1)">â€º</button>
           <button class="gantt-hoje-btn" onclick="ganttHoje()">Hoje</button>
         </div>
         <select class="filter-select" id="gantt-fil-nucleo" onchange="renderGantt()">
-          <option value="">Todos os núcleos</option>
+          <option value="">Todos os nÃºcleos</option>
           <option value="urbanismo">Urbanismo</option>
           <option value="paisagismo">Paisagismo</option>
           <option value="especiais">Proj. Especiais</option>
@@ -1567,9 +1593,9 @@ body::before {
         <div style="margin-left:auto">
           <div class="gantt-legenda" style="border:none;padding:0">
             <div class="gantt-leg-item"><div class="gantt-leg-cor gb-andamento"></div> Em andamento</div>
-            <div class="gantt-leg-item"><div class="gantt-leg-cor gb-revisao"></div> Em revisão</div>
-            <div class="gantt-leg-item"><div class="gantt-leg-cor gb-concluida"></div> Concluída</div>
-            <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--cinza)"></div> Não iniciada</div>
+            <div class="gantt-leg-item"><div class="gantt-leg-cor gb-revisao"></div> Em revisÃ£o</div>
+            <div class="gantt-leg-item"><div class="gantt-leg-cor gb-concluida"></div> ConcluÃ­da</div>
+            <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--cinza)"></div> NÃ£o iniciada</div>
           </div>
         </div>
       </div>
@@ -1587,45 +1613,45 @@ body::before {
 </div>
 
 
-<!-- ════════════════════════════════════════════════════
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      HORAS
-════════════════════════════════════════════════════ -->
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="page" id="page-horas">
 
   <div class="semana-nav">
-    <button class="semana-nav-btn" onclick="navegarSemana(-1)">‹</button>
-    <div class="semana-label" id="semana-label">—</div>
-    <button class="semana-nav-btn" onclick="navegarSemana(1)">›</button>
+    <button class="semana-nav-btn" onclick="navegarSemana(-1)">â€¹</button>
+    <div class="semana-label" id="semana-label">â€”</div>
+    <button class="semana-nav-btn" onclick="navegarSemana(1)">â€º</button>
     <button class="btn sm" onclick="semanaHoje()">Esta semana</button>
   </div>
 
   <div id="semana-travada-banner" class="semana-travada" style="display:none">
-    🔒 Semana finalizada em <span id="semana-travada-data">—</span> — <em id="semana-travada-comentario"></em>
+    ðŸ”’ Semana finalizada em <span id="semana-travada-data">â€”</span> â€” <em id="semana-travada-comentario"></em>
     <span class="socio-only" id="btn-desbloquear-wrap" style="display:none;margin-left:auto">
       <button class="btn sm tc" onclick="desbloquearSemana()">Desbloquear</button>
     </span>
   </div>
 
   <div class="horas-layout">
-    <!-- Col 1: calendário + lançamentos empilhados -->
+    <!-- Col 1: calendÃ¡rio + lanÃ§amentos empilhados -->
     <div>
       <div class="cal-semana" id="cal-semana-wrap">
-        <div class="loading-state">Carregando calendário...</div>
+        <div class="loading-state">Carregando calendÃ¡rio...</div>
       </div>
       <div style="margin-top:14px">
-        <div class="sec-title">Lançamentos da semana</div>
+        <div class="sec-title">LanÃ§amentos da semana</div>
         <div id="lanc-lista-wrap">
-          <div class="loading-state">Carregando lançamentos...</div>
+          <div class="loading-state">Carregando lanÃ§amentos...</div>
         </div>
       </div>
     </div>
 
-    <!-- Col 2: formulário -->
+    <!-- Col 2: formulÃ¡rio -->
     <div>
 
-      <!-- Formulário -->
+      <!-- FormulÃ¡rio -->
       <div id="lanc-form-wrap" class="lanc-form">
-        <div class="lanc-form-title">Lançar horas</div>
+        <div class="lanc-form-title">LanÃ§ar horas</div>
 
         <!-- Seletor de dia derivado da semana -->
         <div class="fgroup mb8">
@@ -1635,7 +1661,7 @@ body::before {
 
         <div class="fg fg2 mb8">
           <div class="fgroup">
-            <label>Hora início</label>
+            <label>Hora inÃ­cio</label>
             <input type="time" id="lf-inicio" value="09:00">
           </div>
           <div class="fgroup">
@@ -1682,7 +1708,7 @@ body::before {
         </div>
 
         <div class="fgroup mb14">
-          <label>Descrição (opcional)</label>
+          <label>DescriÃ§Ã£o (opcional)</label>
           <input type="text" id="lf-desc" placeholder="O que foi feito...">
         </div>
 
@@ -1697,55 +1723,55 @@ body::before {
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════
-     REVISÕES
-════════════════════════════════════════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     REVISÃ•ES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="page" id="page-revisoes">
 
   <div class="rev-layout">
     <div>
-      <div class="sec-title">Revisões ativas</div>
+      <div class="sec-title">RevisÃµes ativas</div>
       <div id="rev-lista">
         <div class="loading-state">Carregando...</div>
       </div>
     </div>
     <div>
       <div id="rev-detalhe">
-        <div class="empty-note">Selecione uma revisão para ver os detalhes</div>
+        <div class="empty-note">Selecione uma revisÃ£o para ver os detalhes</div>
       </div>
     </div>
   </div>
 
 </div>
 
-<!-- ════════════════════════════════════════════════════
-     VISÃO SÓCIOS
-════════════════════════════════════════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     VISÃƒO SÃ“CIOS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="page" id="page-socios">
 
   <div class="socio-tabs">
-    <button class="socio-tab active" data-panel="submissao">Submissão</button>
+    <button class="socio-tab active" data-panel="submissao">SubmissÃ£o</button>
     <button class="socio-tab" data-panel="carga">Carga da equipe</button>
     <button class="socio-tab" data-panel="valorhora">Valor / hora</button>
     <button class="socio-tab" data-panel="fluxo">Fluxo de trabalho</button>
     <button class="socio-tab" data-panel="entregas">Entregas</button>
     <button class="socio-tab billing-only" data-panel="espelho" id="socio-tab-espelho" style="display:none">Faturamento</button>
-    <button class="socio-tab" data-panel="usuarios">Usuários</button>
+    <button class="socio-tab" data-panel="usuarios">UsuÃ¡rios</button>
   </div>
 
   <!-- CARGA -->
   <div class="socio-panel" id="sp-carga">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Ocupação semanal</div>
+      <div class="sec-title" style="margin-bottom:0;flex:1">OcupaÃ§Ã£o semanal</div>
       <div class="semana-nav" style="margin-bottom:0">
-        <button class="semana-nav-btn" onclick="socioNavSemana(-1)" style="width:24px;height:24px">‹</button>
-        <div style="font-family:var(--fm);font-size:11px;min-width:140px;text-align:center" id="socio-semana-label">—</div>
-        <button class="semana-nav-btn" onclick="socioNavSemana(1)" style="width:24px;height:24px">›</button>
+        <button class="semana-nav-btn" onclick="socioNavSemana(-1)" style="width:24px;height:24px">â€¹</button>
+        <div style="font-family:var(--fm);font-size:11px;min-width:140px;text-align:center" id="socio-semana-label">â€”</div>
+        <button class="semana-nav-btn" onclick="socioNavSemana(1)" style="width:24px;height:24px">â€º</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
       <div>
-        <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Sócios</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">SÃ³cios</div>
         <div id="carga-donut-socios" style="display:flex;align-items:center;gap:12px;margin-bottom:12px"></div>
         <div id="carga-lista-socios" style="display:flex;flex-direction:column;gap:8px"><div class="loading-state">Carregando...</div></div>
       </div>
@@ -1761,14 +1787,14 @@ body::before {
     </div>
   </div>
 
-  <!-- SUBMISSÃO -->
+  <!-- SUBMISSÃƒO -->
   <div class="socio-panel active" id="sp-submissao">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Status de submissão semanal</div>
+      <div class="sec-title" style="margin-bottom:0;flex:1">Status de submissÃ£o semanal</div>
       <div class="semana-nav" style="margin-bottom:0">
-        <button class="semana-nav-btn" onclick="socioNavSemana(-1)" style="width:24px;height:24px">‹</button>
-        <div style="font-family:var(--fm);font-size:11px;min-width:140px;text-align:center" id="submissao-semana-label">—</div>
-        <button class="semana-nav-btn" onclick="socioNavSemana(1)" style="width:24px;height:24px">›</button>
+        <button class="semana-nav-btn" onclick="socioNavSemana(-1)" style="width:24px;height:24px">â€¹</button>
+        <div style="font-family:var(--fm);font-size:11px;min-width:140px;text-align:center" id="submissao-semana-label">â€”</div>
+        <button class="semana-nav-btn" onclick="socioNavSemana(1)" style="width:24px;height:24px">â€º</button>
       </div>
     </div>
     <div style="background:#fff;border:1px solid var(--cinza)" id="submissao-lista">
@@ -1780,14 +1806,14 @@ body::before {
   <div class="socio-panel" id="sp-espelho">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div class="sec-title" style="margin-bottom:0;flex:1">Espelho financeiro</div>
-      <button class="btn sm" onclick="exportarEspelho()">⬇ Exportar</button>
+      <button class="btn sm" onclick="exportarEspelho()">â¬‡ Exportar</button>
     </div>
     <!-- Abas: Por etapa / Por projeto -->
     <div style="display:flex;gap:2px;margin-bottom:10px;border-bottom:1px solid var(--cinza);padding-bottom:0">
       <button id="ef-tab-etapa" class="ntab active" style="font-size:11px;padding:6px 14px" onclick="setEspelhoTab('etapa')">Por etapa</button>
       <button id="ef-tab-projeto" class="ntab" style="font-size:11px;padding:6px 14px" onclick="setEspelhoTab('projeto')">Por projeto</button>
     </div>
-    <!-- Filtros (só visíveis na aba Por etapa) -->
+    <!-- Filtros (sÃ³ visÃ­veis na aba Por etapa) -->
     <div class="ef-filtros" id="ef-filtros-wrap">
       <select class="filter-select" id="ef-fil-status" onchange="carregarEspelho()">
         <option value="">Todos os status</option>
@@ -1799,7 +1825,7 @@ body::before {
         <option value="">Todos os clientes</option>
       </select>
       <input type="date" id="ef-fil-de" class="filter-select" onchange="carregarEspelho()" placeholder="De">
-      <input type="date" id="ef-fil-ate" class="filter-select" onchange="carregarEspelho()" placeholder="Até">
+      <input type="date" id="ef-fil-ate" class="filter-select" onchange="carregarEspelho()" placeholder="AtÃ©">
     </div>
     <div id="espelho-wrap">
       <div class="loading-state">Carregando...</div>
@@ -1809,27 +1835,27 @@ body::before {
 
   <!-- VALOR / HORA -->
   <div class="socio-panel" id="sp-valorhora">
-    <div class="sec-title">Configurações de equipe — Valor / hora</div>
+    <div class="sec-title">ConfiguraÃ§Ãµes de equipe â€” Valor / hora</div>
     <div style="background:#fff;border:1px solid var(--cinza)" id="vh-lista">
       <div class="loading-state">Carregando...</div>
     </div>
   </div>
 
-  <!-- ENTREGAS DA SEMANA — EQUIPE (G-S1/G-S4) -->
+  <!-- ENTREGAS DA SEMANA â€” EQUIPE (G-S1/G-S4) -->
   <div class="socio-panel" id="sp-entregas">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <div class="sec-title" style="margin-bottom:0;flex:1">Acompanhamento semanal de entregas</div>
       <div class="semana-nav" style="margin-bottom:0">
-        <button class="semana-nav-btn" onclick="entregasNavSemana(-1)" style="width:24px;height:24px">‹</button>
-        <div style="font-family:var(--fm);font-size:11px;min-width:160px;text-align:center" id="entregas-semana-nav-label">—</div>
-        <button class="semana-nav-btn" onclick="entregasNavSemana(1)" style="width:24px;height:24px">›</button>
+        <button class="semana-nav-btn" onclick="entregasNavSemana(-1)" style="width:24px;height:24px">â€¹</button>
+        <div style="font-family:var(--fm);font-size:11px;min-width:160px;text-align:center" id="entregas-semana-nav-label">â€”</div>
+        <button class="semana-nav-btn" onclick="entregasNavSemana(1)" style="width:24px;height:24px">â€º</button>
         <button class="semana-nav-btn" onclick="entregasNavHoje()" style="font-size:9px;width:auto;padding:0 8px">Hoje</button>
       </div>
     </div>
-    <!-- Filtro de núcleo -->
+    <!-- Filtro de nÃºcleo -->
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <select class="filter-select" id="entregas-fil-nucleo" onchange="carregarEntregasEquipe()" style="width:auto">
-        <option value="">Todos os núcleos</option>
+        <option value="">Todos os nÃºcleos</option>
         <option value="urbanismo">Urbanismo</option>
         <option value="paisagismo">Paisagismo</option>
         <option value="especiais">Proj. Especiais</option>
@@ -1837,10 +1863,10 @@ body::before {
       </select>
       <select class="filter-select" id="entregas-fil-status" onchange="carregarEntregasEquipe()" style="width:auto">
         <option value="">Todos os status</option>
-        <option value="nao_iniciada">Não iniciada</option>
+        <option value="nao_iniciada">NÃ£o iniciada</option>
         <option value="em_andamento">Em andamento</option>
-        <option value="em_revisao">Em revisão</option>
-        <option value="concluida">Concluída</option>
+        <option value="em_revisao">Em revisÃ£o</option>
+        <option value="concluida">ConcluÃ­da</option>
         <option value="pausada">Pausada</option>
       </select>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;cursor:pointer">
@@ -1849,7 +1875,7 @@ body::before {
       </label>
     </div>
     <!-- Grid de cards por pessoa -->
-    <div id="entregas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+    <div id="entregas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px">
       <div class="loading-state">Carregando...</div>
     </div>
   </div>
@@ -1858,20 +1884,20 @@ body::before {
   <div class="socio-panel" id="sp-fluxo">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <div class="sec-title" style="margin-bottom:0;flex:1">Fluxo de trabalho da equipe</div>
-      <span style="font-size:9px;color:#aaa">Defina até 3 prioridades por pessoa. Os projetos aparecem no dashboard de cada um.</span>
+      <span style="font-size:9px;color:#aaa">Defina atÃ© 3 prioridades por pessoa. Os projetos aparecem no dashboard de cada um.</span>
     </div>
     <div id="fluxo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
       <div class="loading-state">Carregando...</div>
     </div>
   </div>
 
-  <!-- USUÁRIOS -->
+  <!-- USUÃRIOS -->
   <div class="socio-panel" id="sp-usuarios">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Configurações de equipe — Cores</div>
-      <button class="btn sm" onclick="aplicarPaletaPadrao()">Aplicar paleta padrão</button>
+      <div class="sec-title" style="margin-bottom:0;flex:1">ConfiguraÃ§Ãµes de equipe â€” Cores</div>
+      <button class="btn sm" onclick="aplicarPaletaPadrao()">Aplicar paleta padrÃ£o</button>
     </div>
-    <div style="font-size:10px;color:#888;margin-bottom:14px">Sócios recebem as cores da identidade visual · Colaboradores e coordenadores recebem as cores do sistema. Clique em qualquer cor para alterar individualmente.</div>
+    <div style="font-size:10px;color:#888;margin-bottom:14px">SÃ³cios recebem as cores da identidade visual Â· Colaboradores e coordenadores recebem as cores do sistema. Clique em qualquer cor para alterar individualmente.</div>
     <div style="margin-bottom:14px">
       <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Legenda da paleta</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -1882,7 +1908,7 @@ body::before {
             <div style="width:14px;height:14px;border-radius:2px;background:#D19931"></div>
             <div style="width:14px;height:14px;border-radius:2px;background:#C36247"></div>
           </div>
-          Identidade visual (sócios)
+          Identidade visual (sÃ³cios)
         </div>
         <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#555">
           <div style="display:flex;gap:3px">
@@ -1905,43 +1931,43 @@ body::before {
 </div><!-- /main -->
 </div><!-- /app -->
 
-<!-- ════════════════════════════════════════════════
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      MODAIS
-════════════════════════════════════════════════════ -->
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 
 <!-- Modal: Detalhe do Produto -->
 <div class="modal-bg" id="modal-produto" style="display:none">
   <div class="modal xl">
     <div class="modal-hd">
       <div class="modal-hd-title" id="mp-titulo">Projeto</div>
-      <button class="modal-close" onclick="fecharModal('modal-produto')">×</button>
+      <button class="modal-close" onclick="fecharModal('modal-produto')">Ã—</button>
     </div>
     <div class="modal-body" style="padding:0">
       <div class="modal-tabs" style="padding:0 16px;margin-bottom:0">
-        <button class="modal-tab active" data-modal="modal-produto" data-panel="mp-visao">Visão Geral</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-revisoes">Revisões</button>
+        <button class="modal-tab active" data-modal="modal-produto" data-panel="mp-visao">VisÃ£o Geral</button>
+        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-revisoes">RevisÃµes</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos">Custos</button>
         <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas">Horas</button>
       </div>
       <div style="padding:16px">
-        <!-- Visão Geral -->
+        <!-- VisÃ£o Geral -->
         <div class="mtab-panel active" id="mp-visao">
           <div class="fg fg2 mb14">
             <div class="ms">
               <div class="ms-title">Dados do produto</div>
-              <div class="dr"><div class="dk">Cliente</div><div class="dv" id="mp-cliente">—</div></div>
-              <div class="dr"><div class="dk">Oportunidade</div><div class="dv" id="mp-opp">—</div></div>
-              <div class="dr"><div class="dk">Núcleo</div><div class="dv" id="mp-nucleo">—</div></div>
-              <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">—</div></div>
-              <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">—</div></div>
-              <div class="dr"><div class="dk">Início</div><div class="dv" id="mp-inicio">—</div></div>
+              <div class="dr"><div class="dk">Cliente</div><div class="dv" id="mp-cliente">â€”</div></div>
+              <div class="dr"><div class="dk">Oportunidade</div><div class="dv" id="mp-opp">â€”</div></div>
+              <div class="dr"><div class="dk">NÃºcleo</div><div class="dv" id="mp-nucleo">â€”</div></div>
+              <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">â€”</div></div>
+              <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">â€”</div></div>
+              <div class="dr"><div class="dk">InÃ­cio</div><div class="dv" id="mp-inicio">â€”</div></div>
             </div>
             <div class="ms socio-only" id="mp-financeiro-wrap">
               <div class="ms-title">Dados financeiros</div>
-              <div class="dr"><div class="dk">Valor contratado</div><div class="dv" id="mp-valor">—</div></div>
-              <div class="dr"><div class="dk">Horas totais</div><div class="dv" id="mp-horas-total">—</div></div>
-              <div class="dr"><div class="dk">Custo execução</div><div class="dv" id="mp-custo">—</div></div>
-              <div class="dr"><div class="dk">Margem</div><div class="dv" id="mp-margem">—</div></div>
+              <div class="dr"><div class="dk">Valor contratado</div><div class="dv" id="mp-valor">â€”</div></div>
+              <div class="dr"><div class="dk">Horas totais</div><div class="dv" id="mp-horas-total">â€”</div></div>
+              <div class="dr"><div class="dk">Custo execuÃ§Ã£o</div><div class="dv" id="mp-custo">â€”</div></div>
+              <div class="dr"><div class="dk">Margem</div><div class="dv" id="mp-margem">â€”</div></div>
             </div>
           </div>
           <div class="ms">
@@ -1952,15 +1978,15 @@ body::before {
             <div class="timeline" id="mp-etapas-timeline"></div>
           </div>
           <div class="ms" id="mp-pausas-wrap" style="display:none">
-            <div class="ms-title">Histórico de pausas</div>
+            <div class="ms-title">HistÃ³rico de pausas</div>
             <div id="mp-pausas-lista"></div>
           </div>
         </div>
-        <!-- Revisões do produto -->
+        <!-- RevisÃµes do produto -->
         <div class="mtab-panel" id="mp-revisoes">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="font-size:11px;color:#888">Revisões abertas neste produto</div>
-            <button class="btn sm verde" onclick="abrirNovaRevisao()">+ Nova revisão</button>
+            <div style="font-size:11px;color:#888">RevisÃµes abertas neste produto</div>
+            <button class="btn sm verde" onclick="abrirNovaRevisao()">+ Nova revisÃ£o</button>
           </div>
           <div id="mp-revisoes-lista"></div>
         </div>
@@ -1972,7 +1998,7 @@ body::before {
           <div id="mp-custos-lista" style="margin-bottom:14px">
             <div class="loading-state">Carregando custos...</div>
           </div>
-          <!-- Formulário novo custo -->
+          <!-- FormulÃ¡rio novo custo -->
           <div class="ms">
             <div class="ms-title">Registrar custo / reembolso</div>
             <div class="fg fg2 mb8">
@@ -1982,14 +2008,14 @@ body::before {
                   <option value="deslocamento">Deslocamento</option>
                   <option value="hospedagem">Hospedagem</option>
                   <option value="reembolso">Reembolso (geral)</option>
-                  <option value="subcontratacao">Subcontratação</option>
+                  <option value="subcontratacao">SubcontrataÃ§Ã£o</option>
                   <option value="material">Material</option>
                   <option value="outro">Outro</option>
                 </select>
               </div>
               <div class="fgroup">
-                <label>Descrição</label>
-                <input type="text" id="nc-descricao" placeholder="Ex: Passagem aérea para SP">
+                <label>DescriÃ§Ã£o</label>
+                <input type="text" id="nc-descricao" placeholder="Ex: Passagem aÃ©rea para SP">
               </div>
             </div>
             <div class="fg fg3 mb8">
@@ -2002,19 +2028,19 @@ body::before {
                 <input type="number" id="nc-valor-neg" step="0.01" placeholder="0,00">
               </div>
               <div class="fgroup">
-                <label>Referência / nota</label>
+                <label>ReferÃªncia / nota</label>
                 <input type="text" id="nc-ref" placeholder="NF, recibo...">
               </div>
             </div>
             <div class="fgroup mb8">
-              <label>Observação</label>
+              <label>ObservaÃ§Ã£o</label>
               <input type="text" id="nc-obs" placeholder="Opcional">
             </div>
             <button class="btn sm verde" onclick="adicionarCusto()">+ Registrar</button>
           </div>
         </div>
 
-        <!-- Horas (sócios) -->
+        <!-- Horas (sÃ³cios) -->
         <div class="mtab-panel" id="mp-horas">
           <div id="mp-horas-wrap"></div>
         </div>
@@ -2033,12 +2059,12 @@ body::before {
   <div class="modal lg">
     <div class="modal-hd">
       <div class="modal-hd-title">Novo projeto</div>
-      <button class="modal-close" onclick="fecharModal('modal-cadastro')">×</button>
+      <button class="modal-close" onclick="fecharModal('modal-cadastro')">Ã—</button>
     </div>
     <div class="modal-body">
       <div class="step-indicator mb20">
-        <div class="step-item active" id="step-ind-1">1 · Cliente / Oportunidade / Produto</div>
-        <div class="step-item" id="step-ind-2">2 · Etapas</div>
+        <div class="step-item active" id="step-ind-1">1 Â· Cliente / Oportunidade / Produto</div>
+        <div class="step-item" id="step-ind-2">2 Â· Etapas</div>
       </div>
 
       <!-- Step 1 -->
@@ -2094,10 +2120,10 @@ body::before {
           <div class="fg fg2 mb8">
             <div class="fgroup">
               <label>Nome do produto</label>
-              <input type="text" id="cad-prod-nome" placeholder="Ex.: Projeto Urbanístico, Paisagismo...">
+              <input type="text" id="cad-prod-nome" placeholder="Ex.: Projeto UrbanÃ­stico, Paisagismo...">
             </div>
             <div class="fgroup">
-              <label>Núcleo</label>
+              <label>NÃºcleo</label>
               <select id="cad-prod-nucleo">
                 <option value="urbanismo">Urbanismo</option>
                 <option value="paisagismo">Paisagismo</option>
@@ -2114,7 +2140,7 @@ body::before {
               </select>
             </div>
             <div class="fgroup">
-              <label>Data de início</label>
+              <label>Data de inÃ­cio</label>
               <input type="date" id="cad-prod-inicio">
             </div>
             <div class="fgroup socio-only">
@@ -2133,17 +2159,17 @@ body::before {
             <button class="btn sm" onclick="adicionarEtapaPreset()">+ Etapa</button>
           </div>
           <div style="font-size:10px;color:#888;margin-bottom:10px">
-            Etapas padrão pré-carregadas. Ajuste prazos, responsáveis e remova as que não se aplicam.
+            Etapas padrÃ£o prÃ©-carregadas. Ajuste prazos, responsÃ¡veis e remova as que nÃ£o se aplicam.
           </div>
           <div id="etapas-preset-lista"></div>
         </div>
         <div class="ms">
           <div class="ms-title">Datas estimadas</div>
           <div style="font-size:11px;color:#888;margin-bottom:8px">
-            Preencha a data de liberação da primeira etapa para calcular as demais automaticamente.
+            Preencha a data de liberaÃ§Ã£o da primeira etapa para calcular as demais automaticamente.
           </div>
           <div class="fgroup mb8">
-            <label>Data de liberação — Etapa 1</label>
+            <label>Data de liberaÃ§Ã£o â€” Etapa 1</label>
             <input type="date" id="cad-data-lib-1" onchange="calcularDatasEstimadas()">
           </div>
           <div id="datas-estimadas-preview"></div>
@@ -2152,9 +2178,9 @@ body::before {
 
     </div>
     <div class="modal-ft">
-      <button class="btn" id="cad-btn-back" style="display:none" onclick="cadStep(1)">← Voltar</button>
+      <button class="btn" id="cad-btn-back" style="display:none" onclick="cadStep(1)">â† Voltar</button>
       <button class="btn" onclick="fecharModal('modal-cadastro')">Cancelar</button>
-      <button class="btn filled" id="cad-btn-next" onclick="cadStep(2)">Próximo →</button>
+      <button class="btn filled" id="cad-btn-next" onclick="cadStep(2)">PrÃ³ximo â†’</button>
       <button class="btn verde" id="cad-btn-salvar" style="display:none" onclick="salvarProjeto()">Criar projeto</button>
     </div>
   </div>
@@ -2165,7 +2191,7 @@ body::before {
   <div class="modal">
     <div class="modal-hd">
       <div class="modal-hd-title">Finalizar semana</div>
-      <button class="modal-close" onclick="fecharModal('modal-finalizar')">×</button>
+      <button class="modal-close" onclick="fecharModal('modal-finalizar')">Ã—</button>
     </div>
     <div class="modal-body">
       <div style="margin-bottom:14px">
@@ -2173,11 +2199,11 @@ body::before {
         <div style="font-size:11px;color:#888">horas registradas nesta semana</div>
       </div>
       <div class="fgroup">
-        <label>Comentário da semana</label>
-        <textarea id="fin-comentario" placeholder="Como foi a semana? Principais entregas, bloqueios, observações..." style="min-height:100px"></textarea>
+        <label>ComentÃ¡rio da semana</label>
+        <textarea id="fin-comentario" placeholder="Como foi a semana? Principais entregas, bloqueios, observaÃ§Ãµes..." style="min-height:100px"></textarea>
       </div>
       <div style="font-size:11px;color:var(--am);margin-top:10px">
-        ⚠ Ação irreversível. A semana será travada e não poderá mais ser editada por você.
+        âš  AÃ§Ã£o irreversÃ­vel. A semana serÃ¡ travada e nÃ£o poderÃ¡ mais ser editada por vocÃª.
       </div>
     </div>
     <div class="modal-ft">
@@ -2187,22 +2213,22 @@ body::before {
   </div>
 </div>
 
-<!-- Modal: Editar lançamento -->
+<!-- Modal: Editar lanÃ§amento -->
 <div class="modal-bg" id="modal-editar-lancamento" style="display:none">
   <div class="modal" style="max-width:420px">
     <div class="modal-hd">
-      <div class="modal-hd-title">Editar lançamento</div>
-      <button class="modal-close" onclick="fecharModal('modal-editar-lancamento')">×</button>
+      <div class="modal-hd-title">Editar lanÃ§amento</div>
+      <button class="modal-close" onclick="fecharModal('modal-editar-lancamento')">Ã—</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:11px;color:#888;margin-bottom:12px" id="el-contexto">—</div>
+      <div style="font-size:11px;color:#888;margin-bottom:12px" id="el-contexto">â€”</div>
       <div class="fgroup mb8">
         <label>Dia da semana</label>
         <select id="el-dia"></select>
       </div>
       <div class="fg fg2 mb8">
         <div class="fgroup">
-          <label>Hora início</label>
+          <label>Hora inÃ­cio</label>
           <input type="time" id="el-inicio">
         </div>
         <div class="fgroup">
@@ -2215,13 +2241,13 @@ body::before {
         <select id="el-etapa"></select>
       </div>
       <div class="fgroup">
-        <label>Descrição</label>
+        <label>DescriÃ§Ã£o</label>
         <input type="text" id="el-desc" placeholder="O que foi feito...">
       </div>
     </div>
     <div class="modal-ft">
       <button class="btn" onclick="fecharModal('modal-editar-lancamento')">Cancelar</button>
-      <button class="btn verde" onclick="salvarEdicaoLancamento()">Salvar alterações</button>
+      <button class="btn verde" onclick="salvarEdicaoLancamento()">Salvar alteraÃ§Ãµes</button>
     </div>
   </div>
 </div>
@@ -2231,12 +2257,12 @@ body::before {
   <div class="modal">
     <div class="modal-hd">
       <div class="modal-hd-title">Pausar produto</div>
-      <button class="modal-close" onclick="fecharModal('modal-pausar')">×</button>
+      <button class="modal-close" onclick="fecharModal('modal-pausar')">Ã—</button>
     </div>
     <div class="modal-body">
       <div class="fg fg2 mb14">
         <div class="fgroup">
-          <label>Data de início da pausa</label>
+          <label>Data de inÃ­cio da pausa</label>
           <input type="date" id="pausa-data-inicio">
         </div>
       </div>
@@ -2257,12 +2283,12 @@ body::before {
   <div class="modal" style="max-width:400px">
     <div class="modal-hd">
       <div class="modal-hd-title">Atribuir tarefa</div>
-      <button class="modal-close" onclick="fecharModal('modal-atribuir-tarefa')">×</button>
+      <button class="modal-close" onclick="fecharModal('modal-atribuir-tarefa')">Ã—</button>
     </div>
     <div class="modal-body">
       <div class="fgroup mb8">
-        <label>Descrição</label>
-        <input type="text" id="at-desc" placeholder="Descrição da tarefa...">
+        <label>DescriÃ§Ã£o</label>
+        <input type="text" id="at-desc" placeholder="DescriÃ§Ã£o da tarefa...">
       </div>
       <div class="fg fg2 mb8">
         <div class="fgroup">
@@ -2292,12 +2318,12 @@ body::before {
   </div>
 </div>
 
-<!-- Modal: Nova Revisão -->
+<!-- Modal: Nova RevisÃ£o -->
 <div class="modal-bg" id="modal-nova-revisao" style="display:none">
   <div class="modal">
     <div class="modal-hd">
-      <div class="modal-hd-title">Nova revisão</div>
-      <button class="modal-close" onclick="fecharModal('modal-nova-revisao')">×</button>
+      <div class="modal-hd-title">Nova revisÃ£o</div>
+      <button class="modal-close" onclick="fecharModal('modal-nova-revisao')">Ã—</button>
     </div>
     <div class="modal-body">
       <div class="fgroup mb14">
@@ -2316,7 +2342,7 @@ body::before {
     </div>
     <div class="modal-ft">
       <button class="btn" onclick="fecharModal('modal-nova-revisao')">Cancelar</button>
-      <button class="btn verde" onclick="salvarNovaRevisao()">Criar revisão</button>
+      <button class="btn verde" onclick="salvarNovaRevisao()">Criar revisÃ£o</button>
     </div>
   </div>
 </div>
@@ -2326,7 +2352,7 @@ body::before {
   <div class="modal xl">
     <div class="modal-hd">
       <div class="modal-hd-title">Editar projeto</div>
-      <button class="modal-close" onclick="fecharModal('modal-editar-produto')">×</button>
+      <button class="modal-close" onclick="fecharModal('modal-editar-produto')">Ã—</button>
     </div>
     <div class="modal-body">
 
@@ -2345,7 +2371,7 @@ body::before {
         </div>
         <div class="fg fg3 mb8">
           <div class="fgroup">
-            <label>Núcleo</label>
+            <label>NÃºcleo</label>
             <select id="ep-nucleo">
               <option value="urbanismo">Urbanismo</option>
               <option value="paisagismo">Paisagismo</option>
@@ -2363,7 +2389,7 @@ body::before {
             </select>
           </div>
           <div class="fgroup">
-            <label>Data início</label>
+            <label>Data inÃ­cio</label>
             <input type="date" id="ep-inicio">
           </div>
         </div>
@@ -2373,22 +2399,22 @@ body::before {
         </div>
       </div>
 
-      <!-- Contrato (apenas sócios) -->
+      <!-- Contrato (apenas sÃ³cios) -->
       <div class="ms mb14 socio-only" id="ep-contrato-wrap" style="display:none">
         <div class="ms-title">Contrato</div>
         <div class="fg fg3 mb8">
           <div class="fgroup">
             <label>Status do contrato</label>
             <select id="ep-contrato-status">
-              <option value="">—</option>
+              <option value="">â€”</option>
               <option value="pendente">Pendente</option>
-              <option value="em_elaboracao">Em elaboração</option>
+              <option value="em_elaboracao">Em elaboraÃ§Ã£o</option>
               <option value="assinado">Assinado</option>
             </select>
           </div>
           <div class="fgroup">
             <label>Elaborado por</label>
-            <input type="text" id="ep-contrato-elaborado" placeholder="Nome do responsável">
+            <input type="text" id="ep-contrato-elaborado" placeholder="Nome do responsÃ¡vel">
           </div>
           <div class="fgroup">
             <label>Data de assinatura</label>
@@ -2409,20 +2435,20 @@ body::before {
     </div>
     <div class="modal-ft">
       <button class="btn" onclick="fecharModal('modal-editar-produto')">Cancelar</button>
-      <button class="btn filled" onclick="salvarEdicaoProduto()">Salvar alterações</button>
+      <button class="btn filled" onclick="salvarEdicaoProduto()">Salvar alteraÃ§Ãµes</button>
     </div>
   </div>
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════
-//   CONFIGURAÇÃO SUPABASE
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   CONFIGURAÃ‡ÃƒO SUPABASE
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ── Estado global ──────────────────────────────────────────
+// â”€â”€ Estado global â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let G = {
   usuario: null,
   todosProdutos: [],
@@ -2443,7 +2469,7 @@ let G = {
   entregasOffset: 0,
 };
 
-// ── Configurações ───────────────────────────────────────────
+// â”€â”€ ConfiguraÃ§Ãµes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
 
 function toggleNavDropdown() {
@@ -2461,7 +2487,7 @@ document.addEventListener('click', e => {
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
   if (!dot) return;
-  const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexão'; };
+  const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexÃ£o'; };
   update(); window.addEventListener('online',update); window.addEventListener('offline',update);
 }
 function initNavDropdown(role) {
@@ -2474,7 +2500,7 @@ async function sair() {
   window.location.href = 'index.html';
 }
 
-// ── Constantes ─────────────────────────────────────────────
+// â”€â”€ Constantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const NUCLEO_COR = {
   urbanismo:   { cls: 'b-urb',    bar: 'gb-urb',    dot: '#5280CA', label: 'Urbanismo' },
   paisagismo:  { cls: 'b-pai',    bar: 'gb-pai',     dot: '#45865D', label: 'Paisagismo' },
@@ -2482,10 +2508,10 @@ const NUCLEO_COR = {
   consultorias:{ cls: 'b-consul', bar: 'gb-consul',  dot: '#C36247', label: 'Consultorias' },
 };
 const STATUS_ETAPA = {
-  nao_iniciada: { cls: 'b-gr',  dot: 'd-gr',  label: 'Não iniciada' },
+  nao_iniciada: { cls: 'b-gr',  dot: 'd-gr',  label: 'NÃ£o iniciada' },
   em_andamento: { cls: 'b-az',  dot: 'd-az',  label: 'Em andamento' },
-  em_revisao:   { cls: 'b-am',  dot: 'd-am',  label: 'Em revisão'   },
-  concluida:    { cls: 'b-vd',  dot: 'd-vd',  label: 'Concluída'    },
+  em_revisao:   { cls: 'b-am',  dot: 'd-am',  label: 'Em revisÃ£o'   },
+  concluida:    { cls: 'b-vd',  dot: 'd-vd',  label: 'ConcluÃ­da'    },
   pausada:      { cls: 'b-tc',  dot: 'd-tc',  label: 'Pausada'      },
 };
 const STATUS_PROD = {
@@ -2499,19 +2525,19 @@ const ETAPAS_PRESET = [
   'Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'
 ];
 const SUBTIPOS = {
-  organizacao: ['Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
-  sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
+  organizacao: ['CapacitaÃ§Ã£o','ReuniÃ£o Semanal','Feedback','ReuniÃ£o Interna'],
+  sociedade:   ['Marketing','ProspecÃ§Ã£o','Administrativo','JurÃ­dico','ReuniÃ£o SocietÃ¡ria','Consultoria','RH e Pessoas','GestÃ£o','Outros'],
 };
-const ROLES_LABEL = { socio:'Sócio', coordenador:'Coordenador', colaborador:'Colaborador' };
+const ROLES_LABEL = { socio:'SÃ³cio', coordenador:'Coordenador', colaborador:'Colaborador' };
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   INIT
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { window.location.href = 'index.html'; return; }
 
-  // Busca usuário
+  // Busca usuÃ¡rio
   const { data: usr } = await sb.from('usuarios')
     .select('*').eq('auth_id', session.user.id).single();
   if (!usr) { window.location.href = 'index.html'; return; }
@@ -2527,18 +2553,18 @@ async function init() {
   document.getElementById('agenda-room-link').href = EXP_ROOM_URL;
   initNavDropdown(usr.role);
 
-  // Aba sócios
+  // Aba sÃ³cios
   if (usr.role === 'socio') {
     document.querySelectorAll('.socio-only').forEach(el => el.style.display = '');
   }
 
-  // Permissão billing (Thayssa + Carlos)
+  // PermissÃ£o billing (Thayssa + Carlos)
   const nomeMin = (usr.nome || '').toLowerCase();
   G.hasBillingAccess = usr.role === 'socio' || nomeMin.includes('thayssa') || nomeMin.includes('carlos');
   if (G.hasBillingAccess) {
     document.querySelectorAll('.billing-only').forEach(el => el.style.display = '');
     document.getElementById('ntab-socios').style.display = '';
-    // Billing sem role sócio: oculta sub-abas irrelevantes e ativa Faturamento
+    // Billing sem role sÃ³cio: oculta sub-abas irrelevantes e ativa Faturamento
     if (usr.role !== 'socio') {
       document.querySelectorAll('.socio-tab:not([data-panel="espelho"])').forEach(el => el.style.display = 'none');
       document.querySelectorAll('.socio-tab').forEach(b => b.classList.remove('active'));
@@ -2554,7 +2580,7 @@ async function init() {
   const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
   document.getElementById('bv-hora').textContent =
     agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }) +
-    ' · ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    ' Â· ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('bv-titulo').textContent = `${saudacao}, ${usr.nome.split(' ')[0]}.`;
 
   // Carrega dados base
@@ -2571,7 +2597,7 @@ async function init() {
   G.semanaAtual = getSemanaAtual();
   renderSemana();
 
-  // Navegação
+  // NavegaÃ§Ã£o
   document.querySelectorAll('.ntab').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
@@ -2614,8 +2640,8 @@ async function init() {
     if (e.key === 'Enter') adicionarTarefa();
   });
 
-  // Cascata: Cliente → Oportunidade → Produto → Etapa
- // CLIENTE → OPORTUNIDADES
+  // Cascata: Cliente â†’ Oportunidade â†’ Produto â†’ Etapa
+ // CLIENTE â†’ OPORTUNIDADES
 window.lfFiltrarOpps = function () {
   const cliId = document.getElementById('lf-cliente').value;
 
@@ -2659,7 +2685,7 @@ window.lfFiltrarOpps = function () {
 };
 
 
-// OPORTUNIDADE → PRODUTOS
+// OPORTUNIDADE â†’ PRODUTOS
 window.lfFiltrarProdutos = function () {
   const oppId = document.getElementById('lf-oportunidade').value;
 
@@ -2683,7 +2709,7 @@ window.lfFiltrarProdutos = function () {
 };
 
 
-// PRODUTO → ETAPAS
+// PRODUTO â†’ ETAPAS
 window.lfFiltrarEtapas = function () {
   const prodId = document.getElementById('lf-produto').value;
 
@@ -2705,9 +2731,9 @@ window.lfFiltrarEtapas = function () {
   etapaWrap.style.display = 'block';
 };
 
-  // Formulário lançamento — init
+  // FormulÃ¡rio lanÃ§amento â€” init
   atualizarFormLancamento();
-  G.diaSelecionado = null;  // será definido ao renderizar semana
+  G.diaSelecionado = null;  // serÃ¡ definido ao renderizar semana
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -2731,9 +2757,9 @@ function onSocioPanel(panel) {
   if (panel === 'entregas') carregarEntregasEquipe();
 }
 
-// ══════════════════════════════════════════════════════════
-//   ENTREGAS DA SEMANA — EQUIPE (G-S1/G-S4)
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   ENTREGAS DA SEMANA â€” EQUIPE (G-S1/G-S4)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function entregasNavSemana(d) { G.entregasOffset = (G.entregasOffset || 0) + d; carregarEntregasEquipe(); }
 function entregasNavHoje()    { G.entregasOffset = 0; carregarEntregasEquipe(); }
 
@@ -2744,7 +2770,7 @@ async function carregarEntregasEquipe() {
   const fimD = new Date(fim + 'T23:59:59');
 
   const label = document.getElementById('entregas-semana-nav-label');
-  if (label) label.textContent = `${fmtDate(ini)} – ${fmtDate(fim)}`;
+  if (label) label.textContent = `${fmtDate(ini)} â€“ ${fmtDate(fim)}`;
 
   const filNucleo  = document.getElementById('entregas-fil-nucleo')?.value  || '';
   const filStatus  = document.getElementById('entregas-fil-status')?.value  || '';
@@ -2775,15 +2801,15 @@ async function carregarEntregasEquipe() {
     return;
   }
 
-  // Monta mapa: usuário → etapas (como dev ou coord)
-  const userEtapas = {}; // userId → [{etapa, papel}]
+  // Monta mapa: usuÃ¡rio â†’ etapas (como dev ou coord)
+  const userEtapas = {}; // userId â†’ [{etapa, papel}]
   etapas.forEach(e => {
     const devs = G.etapaDevs[e.id] || [];
     const resp = [...new Set([...devs, e.coordenador_id].filter(Boolean))];
     if (resp.length === 0) {
-      // sem responsável → coloca em bucket "Sem responsável"
+      // sem responsÃ¡vel â†’ coloca em bucket "Sem responsÃ¡vel"
       if (!userEtapas['__none']) userEtapas['__none'] = [];
-      userEtapas['__none'].push({ e, papel: '—' });
+      userEtapas['__none'].push({ e, papel: 'â€”' });
     } else {
       resp.forEach(uid => {
         if (!userEtapas[uid]) userEtapas[uid] = [];
@@ -2794,7 +2820,7 @@ async function carregarEntregasEquipe() {
     }
   });
 
-  // Ordena: sócios primeiro, depois por nome
+  // Ordena: sÃ³cios primeiro, depois por nome
   const ordenados = G.todosUsuarios
     .filter(u => userEtapas[u.id])
     .sort((a, b) => {
@@ -2823,29 +2849,31 @@ async function carregarEntregasEquipe() {
         const prod = G.todosProdutos.find(p => p.id === e.produto_id);
         const nc = NUCLEO_COR[prod?.nucleo] || NUCLEO_COR.urbanismo;
         const atrasada = e.status !== 'concluida' && new Date((e.data_estimada||'') + 'T12:00:00') < hoje;
-        return `<div style="display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--cinza2);${e.status==='concluida'?'opacity:.45':''}">
+        const info = getProjetoHierarquia(e.produto_id, e.id);
+        return `<div style="display:flex;align-items:flex-start;gap:7px;padding:6px 0;border-bottom:1px solid var(--cinza2);${e.status==='concluida'?'opacity:.45':''}">
           <div style="flex:1;min-width:0">
-            <div style="font-size:11px;${e.status==='concluida'?'text-decoration:line-through;':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.nome}">${e.nome}</div>
+            <div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.cliente}">${info.cliente}</div>
+            <div style="font-size:10px;color:#666;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.oportunidade}">${info.oportunidade}</div>
             <div style="font-size:9px;color:#aaa;margin-top:1px;display:flex;gap:5px;align-items:center">
               <span class="badge ${nc.cls}" style="font-size:7px">${nc.label}</span>
-              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${prod?.nome||'—'}</span>
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px" title="${info.etapa}">${info.etapa}</span>
             </div>
           </div>
           <div style="flex-shrink:0;text-align:right">
-            <div style="font-size:9px;color:${atrasada?'var(--tc)':'#888'};font-weight:${atrasada?'600':'400'}">${fmtDate(e.data_estimada)}${atrasada?' ⚠':''}</div>
+            <div style="font-size:9px;color:${atrasada?'var(--tc)':'#888'};font-weight:${atrasada?'600':'400'}">${fmtDate(e.data_estimada)}${atrasada?' âš ':''}</div>
             <span class="badge ${st.cls}" style="font-size:7px">${st.label}</span>
           </div>
         </div>`;
       }).join('');
 
-    return `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:12px">
+    return `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px;min-height:240px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <div class="carga-av" style="background:${u.cor||'#888'}">${u.iniciais}</div>
         <div style="flex:1">
           <div style="font-size:12px;font-weight:600">${u.nome}</div>
-          <div style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||u.role} · ${concluidas}/${total} entregue${total!==1?'s':''}</div>
+          <div style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||u.role} Â· ${concluidas}/${total} entregue${total!==1?'s':''}</div>
         </div>
-        ${atrasadas > 0 ? `<span class="badge b-tc" style="font-size:8px">⚠ ${atrasadas} atrasada${atrasadas>1?'s':''}</span>` : ''}
+        ${atrasadas > 0 ? `<span class="badge b-tc" style="font-size:8px">âš  ${atrasadas} atrasada${atrasadas>1?'s':''}</span>` : ''}
       </div>
       <div style="height:4px;background:var(--cinza2);border-radius:2px;margin-bottom:10px">
         <div style="height:4px;width:${pct}%;background:${corBarra};border-radius:2px;transition:width .3s"></div>
@@ -2855,16 +2883,17 @@ async function carregarEntregasEquipe() {
   });
 
   if (semResponsavel.length) {
-    const rows = semResponsavel.map(({ e }) => {
-      const prod = G.todosProdutos.find(p => p.id === e.produto_id);
-      const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2)">
-        <span style="font-size:11px">${e.nome} <span style="font-size:9px;color:#aaa">${prod?.nome||'—'}</span></span>
+      const rows = semResponsavel.map(({ e }) => {
+        const prod = G.todosProdutos.find(p => p.id === e.produto_id);
+        const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
+        const info = getProjetoHierarquia(e.produto_id, e.id);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+        <span style="font-size:11px">${info.cliente} Â· ${info.oportunidade} <span style="font-size:9px;color:#aaa">${truncarTexto(info.etapa, 26)}</span></span>
         <span class="badge ${st.cls}" style="font-size:7px">${st.label}</span>
       </div>`;
     }).join('');
     cards.push(`<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:12px">
-      <div style="font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px">Sem responsável atribuído</div>
+      <div style="font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px">Sem responsÃ¡vel atribuÃ­do</div>
       ${rows}
     </div>`);
   }
@@ -2875,9 +2904,9 @@ async function carregarEntregasEquipe() {
 
 
 
-// ══════════════════════════════════════════════════════════
-//   DADOS BASE — CORRIGIDO
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   DADOS BASE â€” CORRIGIDO
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function carregarUsuarios() {
   const { data } = await sb.from('usuarios').select('*').eq('ativo', true).order('nome');
   G.todosUsuarios = data || [];
@@ -2904,12 +2933,12 @@ function normalizarNucleo(raw) {
 }
 
 async function carregarProdutos() {
-  // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
+  // 1. Produtos jÃ¡ cadastrados no mÃ³dulo de gestÃ£o (com opp vinculada)
   const { data: prodsGestao } = await sb.from('produtos')
     .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, clientes(id, nome, cidade, uf))`)
     .order('created_at', { ascending: false });
 
-  // 2. Propostas fechadas do CRM (fonte de visualização)
+  // 2. Propostas fechadas do CRM (fonte de visualizaÃ§Ã£o)
   const STAGES_FECHADOS = [
     'fechado_ganho','Fechado/Ganho','fechado','Fechado',
     'ganho','Ganho','won','closed_won','Fechado/ganho'
@@ -2918,19 +2947,19 @@ async function carregarProdutos() {
     .select('proposal_id, parent_id, version, projeto, cliente, cidade, uf, main_nucleo, total, status')
     .in('status', STAGES_FECHADOS);
 
-  // 3. Para propostas CRM, mantém só versão mais recente de cada parent
+  // 3. Para propostas CRM, mantÃ©m sÃ³ versÃ£o mais recente de cada parent
   const byParent = {};
   (proposals || []).forEach(p => {
     const key = p.parent_id || p.proposal_id;
     if (!byParent[key] || (p.version || 0) > (byParent[key].version || 0)) byParent[key] = p;
   });
 
-  // 4. IDs de propostas já importadas para gestão
+  // 4. IDs de propostas jÃ¡ importadas para gestÃ£o
   const importados = new Set(
     (prodsGestao || []).map(p => p.proposta_origem_id).filter(Boolean)
   );
 
-  // 5. Propostas CRM ainda não importadas → aparecem como "pendente importação"
+  // 5. Propostas CRM ainda nÃ£o importadas â†’ aparecem como "pendente importaÃ§Ã£o"
   const prodsVirtCrm = Object.values(byParent)
     .filter(p => !importados.has(p.parent_id || p.proposal_id))
     .map(p => ({
@@ -2947,8 +2976,8 @@ async function carregarProdutos() {
       }
     }));
 
-  // 6. Filtra produtos gerenciados: em_gestao = TRUE (ou null, antes da migração SQL)
-  // Produtos com em_gestao = FALSE vieram do CRM sem oportunidade fechada → não exibir na Gestão
+  // 6. Filtra produtos gerenciados: em_gestao = TRUE (ou null, antes da migraÃ§Ã£o SQL)
+  // Produtos com em_gestao = FALSE vieram do CRM sem oportunidade fechada â†’ nÃ£o exibir na GestÃ£o
   const prodsAtivos = (prodsGestao || []).filter(p => p.em_gestao !== false);
 
   G.todosProdutos = [...prodsAtivos, ...prodsVirtCrm];
@@ -2966,7 +2995,7 @@ async function carregarProdutos() {
     G.etapaDevs[d.etapa_id].push(d.usuario_id);
   });
 
-  // 9. Preenche select de cliente no form de horas (cascata: cliente → opp → produto)
+  // 9. Preenche select de cliente no form de horas (cascata: cliente â†’ opp â†’ produto)
   const selCli = document.getElementById('lf-cliente');
   if (selCli) {
     const ativos = Array.isArray(G._prodsGestao)
@@ -2988,9 +3017,9 @@ async function carregarProdutos() {
   }
 }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   DASHBOARD
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function carregarDashboard() {
   const uid = G.usuario.id;
   const role = G.usuario.role;
@@ -3000,14 +3029,14 @@ async function carregarDashboard() {
     const { data: devs } = await sb.from('etapa_desenvolvedores')
       .select('etapas(produto_id)').eq('usuario_id', uid);
     const pids = [...new Set((devs || []).map(d => d.etapas?.produto_id).filter(Boolean))];
-    // Inclui produtos onde o usuário é desenvolvedor OU coordenador
+    // Inclui produtos onde o usuÃ¡rio Ã© desenvolvedor OU coordenador
     meusProdutos = G._prodsGestao.filter(p =>
       (pids.includes(p.id) || p.coordenador_id === uid) && p.status === 'ativo');
   } else {
     meusProdutos = G._prodsGestao.filter(p => p.status === 'ativo');
   }
 
-  // Stats de projetos do escritório (todos)
+  // Stats de projetos do escritÃ³rio (todos)
   const todos = G._prodsGestao;
   document.getElementById('st-total').textContent     = todos.length;
   document.getElementById('st-ativos').textContent    = todos.filter(p => p.status === 'ativo').length;
@@ -3025,7 +3054,7 @@ async function carregarDashboard() {
     .gte('data_lancamento', ini).lte('data_lancamento', fim);
   document.getElementById('st-horas').textContent = fmtH(calcTotalHoras(horas || []));
 
-  // S4-04: horas realizadas por produto (todos os lançamentos de todos os usuários)
+  // S4-04: horas realizadas por produto (todos os lanÃ§amentos de todos os usuÃ¡rios)
   const pidsAtivos = meusProdutos.map(p => p.id);
   let horasPorProd = {};
   if (pidsAtivos.length) {
@@ -3057,7 +3086,7 @@ async function carregarDashboard() {
 function renderDashProjetos(prods, horasPorProd = {}) {
   const wrap = document.getElementById('dash-projetos');
   if (!prods.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhum projeto ativo atribuído a você.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhum projeto ativo atribuÃ­do a vocÃª.</div>';
     return;
   }
   const ordenados = prods.slice().sort((a, b) => {
@@ -3087,7 +3116,7 @@ function renderDashProjetos(prods, horasPorProd = {}) {
       <div class="proj-card-top">
         <div>
           <div class="proj-card-nome">${opp?.projeto || p.nome}</div>
-          <div class="proj-card-cliente">${p.nome} · ${cli?.nome || '—'}</div>
+          <div class="proj-card-cliente">${p.nome} Â· ${cli?.nome || 'â€”'}</div>
         </div>
         <span class="badge ${nc.cls}">${nc.label}</span>
       </div>
@@ -3104,13 +3133,13 @@ function renderDashProjetos(prods, horasPorProd = {}) {
           ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coord.nome}">${coord.iniciais}</div>` : ''}
         </div>
         <div class="proj-card-acoes" onclick="event.stopPropagation()">
-          ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao('${etapaAtiva.id}')">Solicitar revisão</button>` : ''}
+          ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao('${etapaAtiva.id}')">Solicitar revisÃ£o</button>` : ''}
           ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm verde" onclick="concluirEtapa('${etapaAtiva.id}')">Concluir etapa</button>` : ''}
         </div>
       </div>
     </div>`;
   }).join('');
-  document.getElementById('st-tasks').textContent = '—';
+  document.getElementById('st-tasks').textContent = 'â€”';
 }
 
 function renderDashCoord(prods) {
@@ -3123,19 +3152,56 @@ function renderDashCoord(prods) {
     return `<div class="coord-strip" onclick="abrirProduto('${p.id}')">
       <div>
         <div class="coord-strip-nome">${p.oportunidades?.projeto || p.nome}</div>
-        <div class="coord-strip-info">${p.nome} · ${cli?.nome || '—'}</div>
+        <div class="coord-strip-info">${p.nome} Â· ${cli?.nome || 'â€”'}</div>
       </div>
       <div class="coord-strip-badge">
         <span class="badge ${nc.cls}">${nc.label}</span>
-        ${emRevisao ? `<span class="badge b-am">${emRevisao} em revisão</span>` : ''}
+        ${emRevisao ? `<span class="badge b-am">${emRevisao} em revisÃ£o</span>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   TAREFAS LIVRES
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function truncarTexto(txt, max = 28) {
+  if (!txt) return 'â€”';
+  return txt.length > max ? txt.slice(0, Math.max(0, max - 1)).trimEnd() + 'â€¦' : txt;
+}
+
+function getProjetoHierarquia(prodId, etapaId = null) {
+  const prod = G.todosProdutos.find(p => p.id === prodId) || G._prodsGestao.find(p => p.id === prodId);
+  const opp = prod?.oportunidades;
+  const cli = opp?.clientes;
+  const etapa = etapaId ? G.todasEtapas.find(e => e.id === etapaId) : null;
+  return {
+    cliente: cli?.nome || 'Sem cliente',
+    oportunidade: opp?.projeto || prod?.nome || 'Sem oportunidade',
+    produto: prod?.nome || 'â€”',
+    etapa: etapa?.nome || 'Sem etapa',
+    prod,
+    opp,
+    cli,
+    etapaObj: etapa,
+  };
+}
+
+function getProjetoHierarquiaLinha(prodId, etapaId = null, maxEtapa = 28) {
+  const info = getProjetoHierarquia(prodId, etapaId);
+  return {
+    ...info,
+    principal: `${info.cliente} Â· ${info.oportunidade} Â· ${truncarTexto(info.etapa, maxEtapa)}`,
+    completa: `${info.cliente} Â· ${info.oportunidade} Â· ${info.etapa}`,
+  };
+}
+
+function getRotuloAtividadeLancamento(l) {
+  if (l.tipo !== 'projeto') return l.subtipo || l.tipo || 'â€”';
+  const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
+  return `${info.oportunidade} Â· ${info.etapa}`;
+}
+
 async function carregarTarefas() {
   const uid = G.usuario.id;
   const [{ data: proprias }, { data: recebidas }, { data: delegadas }] = await Promise.all([
@@ -3152,9 +3218,17 @@ async function carregarTarefas() {
     return (b.created_at || '').localeCompare(a.created_at || '');
   };
 
+  const limiteDelegadas = new Date();
+  limiteDelegadas.setDate(limiteDelegadas.getDate() - 7);
+  const limiteDelegadasISO = limiteDelegadas.toISOString();
+
   const pendentes = [...(proprias || []), ...(recebidas || [])].sort(ordenar);
   const acompanhando = (delegadas || [])
-    .filter(t => t.atribuido_para && t.atribuido_para !== uid)
+    .filter(t => {
+      if (!t.atribuido_para || t.atribuido_para === uid) return false;
+      if (!t.concluida) return true;
+      return (t.created_at || '') >= limiteDelegadasISO;
+    })
     .sort(ordenar);
 
   renderTarefas({ pendentes, acompanhando });
@@ -3183,18 +3257,18 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
     const acompanhada = modo === 'acompanhando';
     const podeConcluir = !acompanhada;
     const prazoHtml = t.data_limite
-      ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
+      ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' âš ':''}</span>`
       : '';
     const deHtml = criador
-      ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribuída por ${criador.nome}">${criador.iniciais}</div>`
+      ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="AtribuÃ­da por ${criador.nome}">${criador.iniciais}</div>`
       : '';
     const deLabel = criador ? `<span style="font-size:9px;color:#bbb">de ${criador.nome.split(' ')[0]}</span>` : '';
     const paraHtml = destino
-      ? `<div class="task-de-chip" style="background:${destino.cor||'#888'}" title="Atribuída para ${destino.nome}">${destino.iniciais}</div>
+      ? `<div class="task-de-chip" style="background:${destino.cor||'#888'}" title="AtribuÃ­da para ${destino.nome}">${destino.iniciais}</div>
          <span style="font-size:9px;color:#bbb">para ${destino.nome.split(' ')[0]}</span>`
       : '';
     const statusDelegada = acompanhada
-      ? `<span class="task-status-chip ${t.concluida ? 'ok' : 'pend'}">${t.concluida ? 'Concluída' : 'Pendente'}</span>`
+      ? `<span class="task-status-chip ${t.concluida ? 'ok' : 'pend'}">${t.concluida ? 'ConcluÃ­da' : 'Pendente'}</span>`
       : '';
     return `<div class="task-item">
       <div class="task-check ${t.concluida?'done':''}" style="${podeConcluir ? '' : 'opacity:.4;cursor:default'}" onclick="${podeConcluir ? `toggleTarefa('${t.id}',${t.concluida})` : 'event.stopPropagation()'}"></div>
@@ -3214,13 +3288,13 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
   const secoes = [];
   if (pendentes.length) {
     secoes.push(`
-      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:6px">Pendentes para você</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:6px">Pendentes para vocÃª</div>
       ${renderRows(pendentes, 'acao')}
     `);
   }
   if (acompanhando.length) {
     secoes.push(`
-      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin:${pendentes.length ? '10px' : '0'} 0 6px">Atribuídas por você</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin:${pendentes.length ? '10px' : '0'} 0 6px">AtribuÃ­das por vocÃª</div>
       ${renderRows(acompanhando, 'acompanhando')}
     `);
   }
@@ -3258,7 +3332,7 @@ async function confirmarAtribuirTarefa() {
   const para = document.getElementById('at-para').value;
   const tipo = document.getElementById('at-tipo').value;
   const data_limite = document.getElementById('at-data').value || null;
-  if (!desc) { toast('Informe a descrição'); return; }
+  if (!desc) { toast('Informe a descriÃ§Ã£o'); return; }
   if (!para) { toast('Selecione a pessoa'); return; }
   const { error } = await sb.from('tarefas_livres').insert({
     usuario_id: para, atribuido_para: para, criado_por: G.usuario.id,
@@ -3270,7 +3344,7 @@ async function confirmarAtribuirTarefa() {
   document.getElementById('task-nova-data').value = '';
   carregarTarefas();
   const dest = G.todosUsuarios.find(u => u.id === para);
-  toast('Tarefa atribuída para ' + (dest?.nome.split(' ')[0] || 'destinatário'));
+  toast('Tarefa atribuÃ­da para ' + (dest?.nome.split(' ')[0] || 'destinatÃ¡rio'));
 }
 
 async function toggleTarefa(id, atual) {
@@ -3280,9 +3354,9 @@ async function toggleTarefa(id, atual) {
   carregarTarefas();
 }
 
-// ══════════════════════════════════════════════════════════
-//   PROJETOS — LISTA
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   PROJETOS â€” LISTA
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function setProjetosView(v) {
   document.getElementById('pvt-lista').classList.toggle('active', v === 'lista');
   document.getElementById('pvt-gantt').classList.toggle('active', v === 'gantt');
@@ -3300,7 +3374,7 @@ function renderEntregasSemana() {
   const iniD = new Date(ini + 'T00:00:00');
   const fimD = new Date(fim + 'T23:59:59');
 
-  // Etapas com data_estimada na semana atual (não encerradas)
+  // Etapas com data_estimada na semana atual (nÃ£o encerradas)
   const prodAtivos = new Set(G._prodsGestao.filter(p => p.status !== 'encerrado').map(p => p.id));
   const etapas = G.todasEtapas.filter(e => {
     if (!e.data_estimada || !prodAtivos.has(e.produto_id)) return false;
@@ -3310,14 +3384,14 @@ function renderEntregasSemana() {
 
   const wrap = document.getElementById('entregas-semana-lista');
   const label = document.getElementById('entregas-semana-label');
-  if (label) label.textContent = ini === fim ? ini : `${fmtDate(ini)} – ${fmtDate(fim)}`;
+  if (label) label.textContent = ini === fim ? ini : `${fmtDate(ini)} â€“ ${fmtDate(fim)}`;
 
   if (!etapas.length) {
     wrap.innerHTML = '<div style="padding:10px 0;color:#bbb;font-size:11px;text-align:center">Nenhuma entrega prevista esta semana</div>';
     return;
   }
 
-  // Ordenar: primeiro as do usuário atual, depois por data
+  // Ordenar: primeiro as do usuÃ¡rio atual, depois por data
   etapas.sort((a, b) => {
     const aMeu = (G.etapaDevs[a.id] || []).includes(uid) || a.coordenador_id === uid ? 0 : 1;
     const bMeu = (G.etapaDevs[b.id] || []).includes(uid) || b.coordenador_id === uid ? 0 : 1;
@@ -3326,17 +3400,15 @@ function renderEntregasSemana() {
   });
 
   wrap.innerHTML = etapas.map(e => {
-    const prod = G.todosProdutos.find(p => p.id === e.produto_id);
-    const opp = prod?.oportunidades;
-    const cli = opp?.clientes;
+    const info = getProjetoHierarquia(e.produto_id, e.id);
     const isMeu = (G.etapaDevs[e.id] || []).includes(uid) || e.coordenador_id === uid;
     const concluida = e.status === 'concluida';
     const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--cinza2);${concluida ? 'opacity:.5' : ''}">
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:${isMeu ? '600' : '400'};color:${isMeu ? 'var(--preto)' : '#555'};${concluida ? 'text-decoration:line-through' : ''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.nome}">${e.nome}</div>
-        <div style="font-size:9px;color:#888;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${opp?.projeto || 'Sem oportunidade'} · ${cli?.nome || 'Sem cliente'}">${opp?.projeto || 'Sem oportunidade'} · ${cli?.nome || 'Sem cliente'}</div>
-        <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prod?.nome || '—'}</div>
+        <div style="font-size:11px;font-weight:${isMeu ? '600' : '400'};color:${isMeu ? 'var(--preto)' : '#555'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.cliente}">${info.cliente}</div>
+        <div style="font-size:10px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.oportunidade}">${info.oportunidade}</div>
+        <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.etapa}">${info.etapa}</div>
       </div>
       <div style="flex-shrink:0;text-align:right">
         <div style="font-size:9px;color:#888">${fmtDate(e.data_estimada)}</div>
@@ -3396,15 +3468,15 @@ function renderListaProjetos() {
               || G.todasEtapas.find(e => e.produto_id === p.id && e.status !== 'concluida');
             return `<div class="prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto('${p.id}')`}">
               <div class="prod-bullet" style="background:${nc.dot || '#888'}"></div>
-              <div class="prod-row-nome">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM — não importado)</span>' : ''}</div>
+              <div class="prod-row-nome">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM â€” nÃ£o importado)</span>' : ''}</div>
               <span class="badge ${nc.cls}">${nc.label}</span>
               <span class="badge ${stProd.cls}">${stProd.label}</span>
-              <div class="prod-row-etapa">${etapaAtiva ? etapaAtiva.nome : '—'}</div>
+              <div class="prod-row-etapa">${etapaAtiva ? etapaAtiva.nome : 'â€”'}</div>
               <div class="prod-row-coord">
-                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coord.nome}">${coord.iniciais}</div>` : '—'}
+                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coord.nome}">${coord.iniciais}</div>` : 'â€”'}
               </div>
               <div class="prod-row-datas">
-                ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '—'}
+                ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : 'â€”'}
               </div>
             </div>`;
           }).join('')}
@@ -3414,9 +3486,9 @@ function renderListaProjetos() {
   `).join('');
 }
 
-// ══════════════════════════════════════════════════════════
-//   GANTT — CORRIGIDO (com avatares coord+devs)
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   GANTT â€” CORRIGIDO (com avatares coord+devs)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const SEMANAS_VIS = 10;
 
 function ganttNavegar(d) { G.ganttOffset += d; renderGantt(); }
@@ -3445,7 +3517,7 @@ function renderGantt() {
   }
 
   document.getElementById('gantt-periodo').textContent =
-    fmtDate(semanas[0].ini) + ' — ' + fmtDate(semanas[semanas.length-1].fim);
+    fmtDate(semanas[0].ini) + ' â€” ' + fmtDate(semanas[semanas.length-1].fim);
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   document.getElementById('gantt-thead').innerHTML = `<tr>
@@ -3474,7 +3546,7 @@ function renderGantt() {
   let rows = '';
   Object.values(grupos).forEach(({ cli, opp, prods: ps }) => {
     rows += `<tr class="gantt-grupo-row">
-      <td colspan="${SEMANAS_VIS + 1}">${cli?.nome || 'Sem cliente'} · ${opp?.projeto || 'Sem projeto'}</td>
+      <td colspan="${SEMANAS_VIS + 1}">${cli?.nome || 'Sem cliente'} Â· ${opp?.projeto || 'Sem projeto'}</td>
     </tr>`;
 
     ps.forEach(p => {
@@ -3484,7 +3556,7 @@ function renderGantt() {
       const nc = NUCLEO_COR[nucleo] || { cls:'b-gr', bar:'gb-andamento', label: nucleo };
       const pausado = p.status === 'pausado';
 
-      // Devs únicos de todas as etapas deste produto
+      // Devs Ãºnicos de todas as etapas deste produto
       const devIds = new Set();
       etapas.forEach(e => (G.etapaDevs[e.id] || []).forEach(id => devIds.add(id)));
       const devs = [...devIds]
@@ -3492,7 +3564,7 @@ function renderGantt() {
         .filter(Boolean)
         .filter(u => u.id !== coord?.id);
 
-      // Bolinhas: coord primeiro, depois devs (máx 4 total)
+      // Bolinhas: coord primeiro, depois devs (mÃ¡x 4 total)
       const todos = [coord, ...devs].filter(Boolean).slice(0, 4);
       const avsHtml = todos.map(u =>
         `<div class="gantt-av" style="background:${u.cor||'#888'}" title="${u.nome} (${u.iniciais === coord?.iniciais ? 'coord' : 'dev'})">${u.iniciais}</div>`
@@ -3549,10 +3621,10 @@ function renderGantt() {
 
 function showGanttTooltip(event, prod, etapa, status, data, dias) {
   const tt = document.getElementById('gantt-tooltip');
-  document.getElementById('gt-nome').textContent = prod + ' · ' + etapa;
+  document.getElementById('gt-nome').textContent = prod + ' Â· ' + etapa;
   const diasN = parseInt(dias);
   const diasTxt = isNaN(diasN) ? '' : diasN < 0
-    ? `⚠ ${Math.abs(diasN)} dias em atraso`
+    ? `âš  ${Math.abs(diasN)} dias em atraso`
     : diasN === 0 ? 'Entrega hoje'
     : `${diasN} dias restantes`;
   document.getElementById('gt-info').innerHTML = `Status: ${status}<br>Estimado: ${data}<br>${diasTxt}`;
@@ -3564,14 +3636,14 @@ function hideGanttTooltip() {
   document.getElementById('gantt-tooltip').classList.remove('show');
 }
 
-// ══════════════════════════════════════════════════════════
-//   HORAS — CORRIGIDO
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   HORAS â€” CORRIGIDO
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function getSemanaAtual() { return { offset: 0 }; }
 function navegarSemana(d) { G.semanaOffset += d; G.diaSelecionado = null; renderSemana(); }
 function semanaHoje()     { G.semanaOffset = 0;  G.diaSelecionado = null; renderSemana(); }
 
-// Retorna array de 7 Date (seg→dom) para o offset dado
+// Retorna array de 7 Date (segâ†’dom) para o offset dado
 function getDiasSemana(offset) {
   const { ini } = semanaRangeOffset(offset);
   const d0 = new Date(ini + 'T12:00:00');
@@ -3584,17 +3656,17 @@ function renderDiaSelector(lancs) {
   const wrap = document.getElementById('dia-selector');
   if (!wrap) return;
   const dias = getDiasSemana(G.semanaOffset);
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','SÃ¡b','Dom'];
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-  // Horas por dia para mostrar no botão
+  // Horas por dia para mostrar no botÃ£o
   const hPorDia = Array(7).fill(0);
   (lancs || []).forEach(l => {
     const idx = (parseInt(l.dia_semana) || 1) - 1;
     if (idx >= 0 && idx < 7) hPorDia[idx] += diffHoras(l.hora_inicio, l.hora_fim);
   });
 
-  // Auto-seleciona hoje se não houver seleção
+  // Auto-seleciona hoje se nÃ£o houver seleÃ§Ã£o
   if (G.diaSelecionado === null || G.diaSelecionado === undefined) {
     const todayISO = hoje.toISOString().split('T')[0];
     const idx = dias.findIndex(d => d.toISOString().split('T')[0] === todayISO);
@@ -3673,10 +3745,10 @@ function renderCalendarioSemana(lancs) {
   if (!wrap) return;
   const dias = getDiasSemana(G.semanaOffset);
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','SÃ¡b','Dom'];
   const COR_CLS = { projeto:'cb-projeto', organizacao:'cb-organizacao', sociedade:'cb-sociedade' };
 
-  // Horas e lançamentos por dia
+  // Horas e lanÃ§amentos por dia
   const hPorDia = Array(7).fill(0);
   const lancPorDia = Array.from({length:7}, () => []);
   lancs.forEach(l => {
@@ -3692,13 +3764,13 @@ function renderCalendarioSemana(lancs) {
   const porTipo = {projeto:0, organizacao:0, sociedade:0};
   lancs.forEach(l => { const d = diffHoras(l.hora_inicio,l.hora_fim); if (l.tipo in porTipo) porTipo[l.tipo] += d; });
 
-  // Faixa horária: 6h–22h, slots de 30min (8–18h visíveis por padrão, rolável)
-  const HORA_INI = 6, HORA_FIM = 22, SLOT_H = 26;
+  // Faixa horÃ¡ria: 6hâ€“22h, slots de 30min (8â€“18h visÃ­veis por padrÃ£o, rolÃ¡vel)
+  const HORA_INI = 0, HORA_FIM = 24, SLOT_H = 26;
   const SLOTS = (HORA_FIM - HORA_INI) * 2;
 
   let html = '';
 
-  // ── Scroll container: header sticky + corpo ─────────────
+  // â”€â”€ Scroll container: header sticky + corpo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   html += `<div id="cal-scroll-wrap" style="max-height:430px;overflow-y:scroll">
     <div class="cal-grid" style="position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--cinza2)">
       <div class="cal-header-vazio" style="background:#fff"></div>
@@ -3709,7 +3781,7 @@ function renderCalendarioSemana(lancs) {
           onclick="selecionarDia(${i})">
           <div class="cal-dia-nome">${NOMES[i]}</div>
           <div class="cal-dia-num">${d.getDate()}</div>
-          <div class="cal-dia-total">${hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·'}</div>
+          <div class="cal-dia-total">${hPorDia[i] > 0 ? fmtH(hPorDia[i]) : 'Â·'}</div>
         </div>`;
       }).join('')}
     </div>
@@ -3723,7 +3795,7 @@ function renderCalendarioSemana(lancs) {
     for (let i = 0; i < 7; i++) {
       const fds = i >= 5;
       const isHoje = dias[i].toISOString().split('T')[0] === hoje.toISOString().split('T')[0];
-      // Blocos que começam neste slot
+      // Blocos que comeÃ§am neste slot
       const blocos = lancPorDia[i].filter(l => {
         const [lh, lm] = (l.hora_inicio || '00:00').split(':').map(Number);
         const slotH = HORA_INI + Math.floor(s / 2);
@@ -3739,11 +3811,12 @@ function renderCalendarioSemana(lancs) {
         const height = Math.max(16, durMin / 30 * SLOT_H - 2);
         const topOff = ((lm % 30) / 30) * SLOT_H;
         const cls = COR_CLS[l.tipo] || 'cb-projeto';
-        const desc = l.tipo === 'projeto' ? (l.produtos?.nome || l.subtipo || '?') : (l.subtipo || l.tipo);
+        const projetoInfo = l.tipo === 'projeto' ? getProjetoHierarquiaLinha(l.produto_id, l.etapa_id, 16) : null;
+        const desc = l.tipo === 'projeto' ? projetoInfo.principal : (l.subtipo || l.tipo);
         const acao = G._semanaTravada ? '' : `onclick="event.stopPropagation();deletarLancamento('${l.id}')"`;
         blocoHtml += `<div class="cal-bloco ${cls}"
           style="top:${topOff}px;height:${height}px"
-          title="${desc} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' · Semana bloqueada' : ''}"
+          title="${l.tipo === 'projeto' ? projetoInfo.completa : desc} ${l.hora_inicio?.slice(0,5)}â€“${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' Â· Semana bloqueada' : ''}"
           ${acao}>
           ${desc}
         </div>`;
@@ -3754,12 +3827,12 @@ function renderCalendarioSemana(lancs) {
   }
   html += `</div></div>`;
 
-  // ── Rodapé: totais por dia + semana ─────────────────────
+  // â”€â”€ RodapÃ©: totais por dia + semana â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   html += `<div class="cal-totais-row">
     <div class="cal-total-label">Total</div>
     ${hPorDia.map((h, i) => {
       const fds = i >= 5;
-      return `<div class="cal-total-dia ${h===0?'zero':''} ${fds?'fim-semana':''}">${h>0?fmtH(h):'—'}</div>`;
+      return `<div class="cal-total-dia ${h===0?'zero':''} ${fds?'fim-semana':''}">${h>0?fmtH(h):'â€”'}</div>`;
     }).join('')}
   </div>`;
 
@@ -3793,10 +3866,10 @@ function renderCalendarioSemana(lancs) {
 function renderLancamentos(lancs) {
   const wrap = document.getElementById('lanc-lista-wrap');
   if (!lancs.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhum lançamento nesta semana.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhum lanÃ§amento nesta semana.</div>';
     return;
   }
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','SÃ¡b','Dom'];
   const COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
   const dias = getDiasSemana(G.semanaOffset);
 
@@ -3815,17 +3888,16 @@ function renderLancamentos(lancs) {
     dayL.forEach(l => {
       const dur = diffHoras(l.hora_inicio, l.hora_fim);
       const cor = COR_TIPO[l.tipo] || '#888';
-      const etapa = l.etapa_id ? G.todasEtapas.find(e => e.id === l.etapa_id) : null;
-      const descBase = l.tipo === 'projeto' ? (l.produtos?.nome || '?') : (l.subtipo || l.tipo);
-      const desc = etapa ? `${descBase} · ${etapa.nome}` : descBase;
+      const projetoInfo = l.tipo === 'projeto' ? getProjetoHierarquiaLinha(l.produto_id, l.etapa_id, 22) : null;
+      const desc = l.tipo === 'projeto' ? projetoInfo.principal : (l.subtipo || l.tipo);
       html += `<div class="lanc-item">
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
-        <div class="lanc-hora">${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)}</div>
-        <div class="lanc-desc">${desc}${l.descricao ? ' · '+l.descricao : ''}</div>
+        <div class="lanc-hora">${l.hora_inicio?.slice(0,5)}â€“${l.hora_fim?.slice(0,5)}</div>
+        <div class="lanc-desc" title="${l.tipo === 'projeto' ? projetoInfo.completa : desc}">${desc}${l.descricao ? ' Â· '+l.descricao : ''}</div>
         <div class="lanc-dur">${fmtH(dur)}</div>
         <div class="lanc-actions">
           <button class="lanc-edit ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `abrirEditarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>Editar</button>
-          <button class="lanc-del ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `deletarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>×</button>
+          <button class="lanc-del ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `deletarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>Ã—</button>
         </div>
       </div>`;
     });
@@ -3853,8 +3925,8 @@ async function lancarHoras() {
   const fim     = document.getElementById('lf-fim').value;
   const desc    = document.getElementById('lf-desc').value.trim();
 
-  if (!ini || !fim) { toast('Preencha os horários'); return; }
-  if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
+  if (!ini || !fim) { toast('Preencha os horÃ¡rios'); return; }
+  if (ini >= fim)   { toast('Hora fim deve ser maior que inÃ­cio'); return; }
   if (G.diaSelecionado == null) { toast('Selecione o dia'); return; }
   if (tipo === 'projeto' && !prodId) { toast('Selecione o produto'); return; }
   if (tipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
@@ -3873,11 +3945,11 @@ async function lancarHoras() {
     .maybeSingle();
 
   if (semDb?.finalizada) {
-    toast('Semana já finalizada');
+    toast('Semana jÃ¡ finalizada');
     return;
   }
 
-  // cria semana se não existir
+  // cria semana se nÃ£o existir
   if (!semDb) {
     const payloadSemana = {
       usuario_id: G.usuario.id,
@@ -3930,22 +4002,22 @@ async function lancarHoras() {
 
 async function deletarLancamento(id) {
   if (G._semanaTravada) {
-    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lanÃ§amentos.');
     return;
   }
   await sb.from('horas_lancadas').delete().eq('id', id);
   renderSemana();
-  toast('Lançamento removido');
+  toast('LanÃ§amento removido');
 }
 
 function popularDiasEdicaoLancamento(selectedDia = 1) {
   const sel = document.getElementById('el-dia');
   if (!sel) return;
   const dias = getDiasSemana(G.semanaOffset);
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','SÃ¡b','Dom'];
   sel.innerHTML = dias.map((d, idx) => {
     const diaNum = idx + 1;
-    const label = `${NOMES[idx]} · ${d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })}`;
+    const label = `${NOMES[idx]} Â· ${d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })}`;
     return `<option value="${diaNum}" ${diaNum === selectedDia ? 'selected' : ''}>${label}</option>`;
   }).join('');
 }
@@ -3972,22 +4044,20 @@ function popularEtapasEdicaoLancamento(prodId, etapaId = null) {
 
 function abrirEditarLancamento(id) {
   if (G._semanaTravada) {
-    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lanÃ§amentos.');
     return;
   }
 
   const lanc = (G._lancAtivos || []).find(l => l.id === id);
   if (!lanc) {
-    toast('Lançamento não encontrado');
+    toast('LanÃ§amento nÃ£o encontrado');
     return;
   }
 
   G._editLancamentoId = id;
   const contexto = document.getElementById('el-contexto');
-  const prod = lanc.produto_id ? G.todosProdutos.find(p => p.id === lanc.produto_id) : null;
-  const etapa = lanc.etapa_id ? G.todasEtapas.find(e => e.id === lanc.etapa_id) : null;
   const contextoTxt = lanc.tipo === 'projeto'
-    ? `${prod?.nome || 'Projeto'}${etapa ? ' · ' + etapa.nome : ''}`
+    ? getProjetoHierarquiaLinha(lanc.produto_id, lanc.etapa_id, 40).completa
     : `${lanc.subtipo || lanc.tipo}`;
 
   if (contexto) contexto.textContent = contextoTxt;
@@ -4001,14 +4071,14 @@ function abrirEditarLancamento(id) {
 
 async function salvarEdicaoLancamento() {
   if (G._semanaTravada) {
-    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lanÃ§amentos.');
     return;
   }
 
   const id = G._editLancamentoId;
   const lanc = (G._lancAtivos || []).find(l => l.id === id);
   if (!id || !lanc) {
-    toast('Lançamento não encontrado');
+    toast('LanÃ§amento nÃ£o encontrado');
     return;
   }
 
@@ -4020,8 +4090,8 @@ async function salvarEdicaoLancamento() {
     ? (document.getElementById('el-etapa').value || null)
     : null;
 
-  if (!ini || !fim) { toast('Preencha os horários'); return; }
-  if (ini >= fim) { toast('Hora fim deve ser maior que início'); return; }
+  if (!ini || !fim) { toast('Preencha os horÃ¡rios'); return; }
+  if (ini >= fim) { toast('Hora fim deve ser maior que inÃ­cio'); return; }
   if (lanc.tipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
 
   const dias = getDiasSemana(G.semanaOffset);
@@ -4038,13 +4108,13 @@ async function salvarEdicaoLancamento() {
   }).eq('id', id);
 
   if (error) {
-    toast('Erro ao salvar edição: ' + error.message);
+    toast('Erro ao salvar ediÃ§Ã£o: ' + error.message);
     return;
   }
 
   fecharModal('modal-editar-lancamento');
   G._editLancamentoId = null;
-  toast('Lançamento atualizado');
+  toast('LanÃ§amento atualizado');
   renderSemana();
 }
 
@@ -4119,9 +4189,9 @@ async function desbloquearSemana() {
   renderSemana();
 }
 
-// ══════════════════════════════════════════════════════════
-//   REVISÕES
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   REVISÃ•ES
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function carregarRevisoes() {
   const { data: revs } = await sb.from('revisoes')
     .select(`*, etapas(id, nome, produto_id, produtos(id, nome, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, tarefas_revisao(id, concluida))`)
@@ -4129,7 +4199,7 @@ async function carregarRevisoes() {
 
   const lista = document.getElementById('rev-lista');
   if (!revs?.length) {
-    lista.innerHTML = '<div class="empty-note">Nenhuma revisão encontrada.</div>';
+    lista.innerHTML = '<div class="empty-note">Nenhuma revisÃ£o encontrada.</div>';
     return;
   }
 
@@ -4137,6 +4207,7 @@ async function carregarRevisoes() {
     const etapa = r.etapas;
     const prod = etapa?.produtos;
     const cli = prod?.oportunidades?.clientes;
+    const opp = prod?.oportunidades;
     const total = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
     const conc = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
     const pct = total > 0 ? Math.round(conc / total * 100) : 0;
@@ -4145,15 +4216,16 @@ async function carregarRevisoes() {
     const isMeu   = r.aberta_por === G.usuario.id;
     const revisorChip = revisor
       ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:8px"
-              title="${isMeu ? 'Você abriu esta revisão' : 'Aberta por '+revisor.nome}">${revisor.iniciais}</div>` : '';
+              title="${isMeu ? 'VocÃª abriu esta revisÃ£o' : 'Aberta por '+revisor.nome}">${revisor.iniciais}</div>` : '';
     const revisorLabel = revisor
-      ? `<span style="font-size:9px;color:#aaa">${isMeu ? 'por você' : revisor.nome.split(' ')[0]}</span>` : '';
+      ? `<span style="font-size:9px;color:#aaa">${isMeu ? 'por vocÃª' : revisor.nome.split(' ')[0]}</span>` : '';
     return `<div class="rev-lista-item ${r.status}" onclick="selecionarRevisao('${r.id}')">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-        <div class="rev-proj-nome" style="margin-bottom:0">${prod?.nome || '—'}</div>
+        <div class="rev-proj-nome" style="margin-bottom:0">${cli?.nome || 'â€”'}</div>
         <div style="display:flex;align-items:center;gap:4px">${revisorChip}${revisorLabel}</div>
       </div>
-      <div class="rev-etapa-nome">${cli?.nome || '—'} · ${etapa?.nome || '—'}</div>
+      <div class="rev-etapa-nome">${opp?.projeto || prod?.nome || 'â€”'}</div>
+      <div style="font-size:10px;color:#aaa;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${etapa?.nome || 'â€”'}</div>
       <div class="rev-prog">
         <span>${conc}/${total} tarefas</span>
         <div class="rev-prog-bar"><div class="rev-prog-fill" style="width:${pct}%"></div></div>
@@ -4172,12 +4244,28 @@ async function selecionarRevisao(id) {
   const rev = G._revisoes?.find(r => r.id === id);
   if (!rev) return;
 
-  const { data: pranchas } = await sb.from('pranchas')
-    .select('*, tarefas_revisao(*)')
-    .eq('revisao_id', id).order('ordem');
+  const [respPranchas, respComentarios] = await Promise.all([
+    sb.from('pranchas')
+      .select('*, tarefas_revisao(*)')
+      .eq('revisao_id', id).order('ordem'),
+    sb.from('prancha_comentarios')
+      .select('*, criado_por_usuario:criado_por(id,nome,iniciais,cor), respondido_por_usuario:respondido_por(id,nome,iniciais,cor)')
+      .eq('revisao_id', id)
+      .order('created_at', { ascending: true })
+  ]);
+
+  const pranchas = respPranchas.data || [];
+  const comentarios = respComentarios.error ? [] : (respComentarios.data || []);
+  const comentariosPorPrancha = {};
+  comentarios.forEach(c => {
+    if (!comentariosPorPrancha[c.prancha_id]) comentariosPorPrancha[c.prancha_id] = [];
+    comentariosPorPrancha[c.prancha_id].push(c);
+  });
 
   const etapa = rev.etapas;
   const prod = etapa?.produtos;
+  const opp = prod?.oportunidades;
+  const cli = opp?.clientes;
 
   const isSocioOrCoord = G.usuario.role === 'socio' || G.usuario.role === 'coordenador';
 
@@ -4185,16 +4273,17 @@ async function selecionarRevisao(id) {
   detalhe.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:2px">${prod?.nome || '—'}</div>
-        <div style="font-size:11px;color:#888">${etapa?.nome || '—'} · Revisão #${rev.numero}</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:2px">${cli?.nome || 'â€”'}</div>
+        <div style="font-size:11px;color:#666">${opp?.projeto || prod?.nome || 'â€”'}</div>
+        <div style="font-size:10px;color:#999">${etapa?.nome || 'â€”'} Â· RevisÃ£o #${rev.numero}</div>
       </div>
       <div style="display:flex;gap:6px">
         ${isSocioOrCoord ? `<button class="btn sm verde" onclick="addPranchaRevisao('${id}')">+ Prancha</button>` : ''}
       </div>
     </div>
     <div id="pranchas-wrap">
-      ${(pranchas || []).map(pr => renderPrancha(pr, isSocioOrCoord)).join('')}
-      ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
+      ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, isSocioOrCoord)).join('')}
+      ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisÃ£o.</div>' : ''}
     </div>
   `;
   G._revisaoAtiva = id;
@@ -4208,23 +4297,40 @@ function renderPrancha(pr, isSocioOrCoord) {
   return `<div class="prancha-card" id="prancha-${pr.id}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''}">
       <div>
-        <div class="prancha-nome">${pr.nome} ${concluida100 ? '✓' : ''}</div>
+        <div class="prancha-nome">${pr.nome} ${concluida100 ? 'âœ“' : ''}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span class="prancha-prog">${conc}/${total}</span>
-        ${isSocioOrCoord ? `<button class="btn sm" onclick="addTarefaPrancha('${pr.id}')">+ Tarefa</button>` : ''}
-      </div>
-    </div>
-    <div class="prancha-body">
-      ${(pr.tarefas_revisao || []).map(t => `
-        <div class="tarefa-item">
-          <div class="tarefa-check ${t.concluida ? 'done' : ''}" onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${pr.id}')"></div>
-          <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
+        <div class="prancha-actions">
+          <span class="prancha-prog">${conc}/${total}</span>
+          <button class="btn sm" onclick="addComentarioPrancha('${pr.id}')">+ ComentÃ¡rio</button>
+          ${isSocioOrCoord ? `<button class="btn sm" onclick="addTarefaPrancha('${pr.id}')">+ Tarefa</button>` : ''}
         </div>
-      `).join('')}
-      ${!pr.tarefas_revisao?.length ? '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem tarefas nesta prancha.</div>' : ''}
-    </div>
-  </div>`;
+      </div>
+      <div class="prancha-body">
+        ${(pr.tarefas_revisao || []).map(t => `
+          <div class="tarefa-item">
+            <div class="tarefa-check ${t.concluida ? 'done' : ''}" onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${pr.id}')"></div>
+            <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
+          </div>
+        `).join('')}
+        ${!pr.tarefas_revisao?.length ? '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem tarefas nesta prancha.</div>' : ''}
+        <div class="prancha-comments">
+          <div class="prancha-comments-title">ComentÃ¡rios</div>
+          ${(pr.comentarios || []).length ? (pr.comentarios || []).map(c => `
+            <div class="prancha-comment">
+              <div class="prancha-comment-meta">
+                ${c.criado_por_usuario ? `<div class="task-de-chip" style="background:${c.criado_por_usuario.cor||'#888'}">${c.criado_por_usuario.iniciais}</div>` : ''}
+                <span style="font-size:10px;color:#888">${c.criado_por_usuario?.nome || 'Equipe'} Â· ${fmtDate(c.created_at?.split('T')[0])}</span>
+              </div>
+              <div class="prancha-comment-text">${c.comentario}</div>
+              ${c.resposta ? `<div class="prancha-reply">
+                <div class="prancha-reply-label">Resposta ${c.respondido_por_usuario?.nome ? 'Â· ' + c.respondido_por_usuario.nome.split(' ')[0] : ''}</div>
+                <div class="prancha-comment-text">${c.resposta}</div>
+              </div>` : `<div style="margin-top:8px"><button class="btn sm" onclick="responderComentarioPrancha('${c.id}')">Responder</button></div>`}
+            </div>
+          `).join('') : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem comentÃ¡rios nesta prancha.</div>'}
+        </div>
+      </div>
+    </div>`;
 }
 
 async function toggleTarefaRevisao(id, atual, pranchaId) {
@@ -4241,7 +4347,7 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
     const conc = pr?.tarefas_revisao?.filter(t => t.concluida).length || 0;
     if (total > 0 && conc === total) {
       // Slack placeholder
-      console.log('[SLACK] Prancha concluída:', pr?.nome);
+      console.log('[SLACK] Prancha concluÃ­da:', pr?.nome);
     }
   }
 
@@ -4249,8 +4355,47 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
   carregarRevisoes();
 }
 
+async function addComentarioPrancha(pranchaId) {
+  const comentario = prompt('ComentÃ¡rio / dÃºvida para esta prancha:');
+  if (!comentario?.trim()) return;
+
+  const { error } = await sb.from('prancha_comentarios').insert({
+    revisao_id: G._revisaoAtiva,
+    prancha_id: pranchaId,
+    comentario: comentario.trim(),
+    criado_por: G.usuario.id
+  });
+
+  if (error) {
+    toast('Erro ao salvar comentÃ¡rio: ' + error.message);
+    return;
+  }
+
+  if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
+  toast('ComentÃ¡rio registrado');
+}
+
+async function responderComentarioPrancha(comentarioId) {
+  const resposta = prompt('Resposta para este comentÃ¡rio:');
+  if (!resposta?.trim()) return;
+
+  const { error } = await sb.from('prancha_comentarios').update({
+    resposta: resposta.trim(),
+    respondido_por: G.usuario.id,
+    respondido_em: new Date().toISOString()
+  }).eq('id', comentarioId);
+
+  if (error) {
+    toast('Erro ao salvar resposta: ' + error.message);
+    return;
+  }
+
+  if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
+  toast('Resposta registrada');
+}
+
 async function addTarefaPrancha(pranchaId) {
-  const desc = prompt('Descrição da tarefa:');
+  const desc = prompt('DescriÃ§Ã£o da tarefa:');
   if (!desc?.trim()) return;
   await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: desc.trim() });
   if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
@@ -4267,9 +4412,9 @@ async function addPranchaRevisao(revisaoId) {
   toast('Prancha adicionada');
 }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   MODAL PRODUTO
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function abrirProduto(id) {
   G.produtoAtivo = id;
   const prod = G.todosProdutos.find(p => p.id === id);
@@ -4283,25 +4428,25 @@ async function abrirProduto(id) {
   const isSocio = G.usuario.role === 'socio';
 
   document.getElementById('mp-titulo').textContent = prod.nome;
-  document.getElementById('mp-cliente').textContent = cli?.nome || '—';
-  document.getElementById('mp-opp').textContent = opp?.projeto || '—';
+  document.getElementById('mp-cliente').textContent = cli?.nome || 'â€”';
+  document.getElementById('mp-opp').textContent = opp?.projeto || 'â€”';
   document.getElementById('mp-nucleo').innerHTML = `<span class="badge ${nc.cls}">${nc.label}</span>`;
   document.getElementById('mp-status').innerHTML = `<span class="badge ${stProd.cls}">${stProd.label}</span>`;
   document.getElementById('mp-coord').innerHTML = coord
     ? `<div style="display:flex;align-items:center;gap:6px"><div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px">${coord.iniciais}</div>${coord.nome}</div>`
-    : '—';
-  document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
+    : 'â€”';
+  document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : 'â€”';
 
-  // Financeiro (só sócios)
+  // Financeiro (sÃ³ sÃ³cios)
   if (isSocio) {
     document.getElementById('mp-financeiro-wrap').style.display = 'block';
     document.getElementById('mp-tab-horas').style.display = '';
     document.getElementById('mp-valor').textContent = prod.valor_contratado
-      ? 'R$ ' + fmtNum(prod.valor_contratado) : '—';
+      ? 'R$ ' + fmtNum(prod.valor_contratado) : 'â€”';
     // Horas e custo calculados na aba
   }
 
-  // Botão pausar
+  // BotÃ£o pausar
   document.getElementById('mp-btn-pausar').style.display = isSocio && prod.status === 'ativo' ? '' : 'none';
 
   // Etapas timeline
@@ -4324,7 +4469,7 @@ async function abrirProduto(id) {
         <div style="text-align:right;flex-shrink:0">
           ${e.data_liberacao ? `<div class="tl-date">Lib: ${fmtDate(e.data_liberacao)}</div>` : ''}
           ${e.data_estimada ? `<div class="tl-date">Est: ${fmtDate(e.data_estimada)}</div>` : ''}
-          ${e.data_conclusao ? `<div class="tl-date" style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</div>` : ''}
+          ${e.data_conclusao ? `<div class="tl-date" style="color:var(--verde)">âœ“ ${fmtDate(e.data_conclusao)}</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -4347,7 +4492,7 @@ function pausarProduto() {
 async function confirmarPausa() {
   const dataInicio = document.getElementById('pausa-data-inicio').value;
   const motivo = document.getElementById('pausa-motivo').value.trim();
-  if (!dataInicio) { toast('Informe a data de início da pausa'); return; }
+  if (!dataInicio) { toast('Informe a data de inÃ­cio da pausa'); return; }
   await sb.from('pausas_produto').insert({
     produto_id: G.produtoAtivo, data_inicio: dataInicio,
     motivo, registrado_por: G.usuario.id
@@ -4361,19 +4506,19 @@ async function confirmarPausa() {
 }
 
 async function concluirEtapa(etapaId) {
-  if (!confirm('Marcar esta etapa como concluída?')) return;
+  if (!confirm('Marcar esta etapa como concluÃ­da?')) return;
   const etapa = G.todasEtapas.find(e => e.id === etapaId);
   const hoje = new Date().toISOString().split('T')[0];
   await sb.from('etapas').update({ status: 'concluida', data_conclusao: hoje }).eq('id', etapaId);
 
-  // Espelho financeiro — sócios e coordenadores
+  // Espelho financeiro â€” sÃ³cios e coordenadores
   if (etapa && (G.usuario.role === 'socio' || G.usuario.role === 'coordenador')) {
     const prod = G.todosProdutos.find(p => p.id === etapa.produto_id);
     const opp = prod?.oportunidades;
     const cli = opp?.clientes;
     const coord = G.todosUsuarios.find(u => u.id === etapa.coordenador_id);
 
-    // S4-05: buscar lançamentos da etapa para calcular horas_totais e custo_execucao
+    // S4-05: buscar lanÃ§amentos da etapa para calcular horas_totais e custo_execucao
     const { data: lancsEtapa } = await sb.from('horas_lancadas')
       .select('usuario_id, hora_inicio, hora_fim')
       .eq('etapa_id', etapaId);
@@ -4382,7 +4527,7 @@ async function concluirEtapa(etapaId) {
     let custoExecucao = 0;
 
     if (lancsEtapa && lancsEtapa.length) {
-      // Agrupa horas por usuário
+      // Agrupa horas por usuÃ¡rio
       const horasPorUser = {};
       lancsEtapa.forEach(l => {
         if (!horasPorUser[l.usuario_id]) horasPorUser[l.usuario_id] = 0;
@@ -4390,7 +4535,7 @@ async function concluirEtapa(etapaId) {
       });
       horasTotais = Object.values(horasPorUser).reduce((s, h) => s + h, 0);
 
-      // Busca valor/hora vigente de cada usuário na data de conclusão
+      // Busca valor/hora vigente de cada usuÃ¡rio na data de conclusÃ£o
       const uids = Object.keys(horasPorUser);
       const { data: vhs } = await sb.from('historico_valor_hora')
         .select('usuario_id, valor_hora, data_vigencia')
@@ -4398,7 +4543,7 @@ async function concluirEtapa(etapaId) {
         .lte('data_vigencia', hoje)
         .order('data_vigencia', { ascending: false });
 
-      // Pega o valor/hora mais recente por usuário
+      // Pega o valor/hora mais recente por usuÃ¡rio
       const vhPorUser = {};
       (vhs || []).forEach(vh => {
         if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
@@ -4422,7 +4567,7 @@ async function concluirEtapa(etapaId) {
     });
   }
 
-  toast('Etapa concluída');
+  toast('Etapa concluÃ­da');
   await carregarProdutos();
   fecharModal('modal-produto');
 }
@@ -4430,8 +4575,8 @@ async function concluirEtapa(etapaId) {
 async function solicitarRevisao(etapaId) {
   await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
   // Slack placeholder
-  console.log('[SLACK] Revisão solicitada para etapa', etapaId);
-  toast('Revisão solicitada — coordenador notificado');
+  console.log('[SLACK] RevisÃ£o solicitada para etapa', etapaId);
+  toast('RevisÃ£o solicitada â€” coordenador notificado');
   await carregarProdutos();
   carregarDashboard();
 }
@@ -4454,7 +4599,7 @@ function addPranchaForm() {
   div.innerHTML = `<input type="text" placeholder="Nome (ex.: Prancha 0${idx})"
     style="flex:1;padding:5px 9px;border:1px solid var(--cinza);font-family:var(--f);font-size:12px;outline:none"
     class="nr-prancha-nome">
-    <button class="btn sm tc" onclick="this.parentElement.remove()">×</button>`;
+    <button class="btn sm tc" onclick="this.parentElement.remove()">Ã—</button>`;
   wrap.appendChild(div);
 }
 
@@ -4462,7 +4607,7 @@ async function salvarNovaRevisao() {
   const etapaId = document.getElementById('nr-etapa').value;
   if (!etapaId) { toast('Selecione uma etapa'); return; }
 
-  // Número da revisão
+  // NÃºmero da revisÃ£o
   const { count } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
   const { data: rev } = await sb.from('revisoes').insert({
     etapa_id: etapaId, numero: (count || 0) + 1,
@@ -4476,21 +4621,21 @@ async function salvarNovaRevisao() {
   }
 
   fecharModal('modal-nova-revisao');
-  toast('Revisão criada');
+  toast('RevisÃ£o criada');
   carregarRevisoes();
 }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   CADASTRO PROJETO
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function abrirModalCadastroProjeto() {
   // Carrega clientes
   const { data: clientes } = await sb.from('clientes').select('*').order('nome');
   const selCli = document.getElementById('cad-cliente-sel');
   selCli.innerHTML = '<option value="">Novo cliente...</option>' +
-    (clientes || []).map(c => `<option value="${c.id}">${c.nome} — ${c.cidade}/${c.uf}</option>`).join('');
+    (clientes || []).map(c => `<option value="${c.id}">${c.nome} â€” ${c.cidade}/${c.uf}</option>`).join('');
 
-  // PROJ-2: inicializar estado do form (exibe campos "novo cliente" pois select começa vazio)
+  // PROJ-2: inicializar estado do form (exibe campos "novo cliente" pois select comeÃ§a vazio)
   onClienteChange();
 
   // Preset etapas
@@ -4508,12 +4653,12 @@ function renderEtapasPreset() {
   const wrap = document.getElementById('etapas-preset-lista');
   wrap.innerHTML = ETAPAS_PRESET.map((nome, i) => `
     <div class="etapa-preset-item" data-idx="${i}">
-      <span class="drag-handle">⠿</span>
+      <span class="drag-handle">â ¿</span>
       <input type="text" class="ep-nome" value="${nome}" style="flex:1;padding:4px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:12px;outline:none">
       <input type="number" class="ep-input ep-prazo" value="15" min="1" placeholder="Dias">
       <select class="ep-select ep-tipo">
         <option value="corridos">Corridos</option>
-        <option value="uteis">Úteis</option>
+        <option value="uteis">Ãšteis</option>
       </select>
       <select class="ep-select ep-dev" style="width:120px" title="Dev 1">
         <option value="">Dev 1...</option>
@@ -4523,7 +4668,7 @@ function renderEtapasPreset() {
         <option value="">Dev 2...</option>
         ${_epDevsHtml()}
       </select>
-      <button class="ep-del" onclick="this.parentElement.remove();calcularDatasEstimadas()">×</button>
+      <button class="ep-del" onclick="this.parentElement.remove();calcularDatasEstimadas()">Ã—</button>
     </div>
   `).join('');
 }
@@ -4533,12 +4678,12 @@ function adicionarEtapaPreset() {
   const div = document.createElement('div');
   div.className = 'etapa-preset-item';
   div.innerHTML = `
-    <span class="drag-handle">⠿</span>
+    <span class="drag-handle">â ¿</span>
     <input type="text" class="ep-nome" placeholder="Nome da etapa" style="flex:1;padding:4px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:12px;outline:none">
     <input type="number" class="ep-input ep-prazo" value="15" min="1" placeholder="Dias">
     <select class="ep-select ep-tipo">
       <option value="corridos">Corridos</option>
-      <option value="uteis">Úteis</option>
+      <option value="uteis">Ãšteis</option>
     </select>
     <select class="ep-select ep-dev" style="width:120px" title="Dev 1">
       <option value="">Dev 1...</option>
@@ -4548,7 +4693,7 @@ function adicionarEtapaPreset() {
       <option value="">Dev 2...</option>
       ${_epDevsHtml()}
     </select>
-    <button class="ep-del" onclick="this.parentElement.remove()">×</button>`;
+    <button class="ep-del" onclick="this.parentElement.remove()">Ã—</button>`;
   wrap.appendChild(div);
 }
 
@@ -4567,7 +4712,7 @@ function calcularDatasEstimadas() {
     const dataEst = addDias(dataAtual, prazo, tipo);
     html += `<div class="dr">
       <div class="dk">${nome}</div>
-      <div class="dv"><span class="dtag">${fmtDate(dataLib1)} → ${fmtDate(dataEst.toISOString().split('T')[0])}</span></div>
+      <div class="dv"><span class="dtag">${fmtDate(dataLib1)} â†’ ${fmtDate(dataEst.toISOString().split('T')[0])}</span></div>
     </div>`;
     dataAtual = new Date(dataEst);
   });
@@ -4631,7 +4776,7 @@ async function salvarProjeto() {
 
     if (!prodNome) { toast('Informe o nome do produto'); return; }
 
-    // ── Cliente ──────────────────────────────────────────
+    // â”€â”€ Cliente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let cliId = cliSel || null;
     if (!cliId) {
       const nome = document.getElementById('cad-cli-nome').value.trim();
@@ -4645,7 +4790,7 @@ async function salvarProjeto() {
       cliId = cli.id;
     }
 
-    // ── Oportunidade ─────────────────────────────────────
+    // â”€â”€ Oportunidade â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let oppId = oppSel || null;
     if (!oppId) {
       const oppNome = document.getElementById('cad-opp-nome').value.trim();
@@ -4662,7 +4807,7 @@ async function salvarProjeto() {
       oppId = opp.id;
     }
 
-    // ── Produto ──────────────────────────────────────────
+    // â”€â”€ Produto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const { data: prod, error: eProd } = await sb.from('produtos').insert({
       oportunidade_id: oppId,
       nome: prodNome,
@@ -4676,7 +4821,7 @@ async function salvarProjeto() {
 
     if (eProd) { toast('Erro ao criar produto: ' + eProd.message); return; }
 
-    // ── Etapas ───────────────────────────────────────────
+    // â”€â”€ Etapas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const items    = document.querySelectorAll('.etapa-preset-item');
     const dataLib1 = document.getElementById('cad-data-lib-1').value;
     let dataAtual  = dataLib1 ? new Date(dataLib1 + 'T12:00:00') : null;
@@ -4722,9 +4867,9 @@ async function salvarProjeto() {
     if (btn) { btn.disabled = false; btn.textContent = 'Criar projeto'; }
   }
 }
-// ══════════════════════════════════════════════════════════
-//   VISÃO SÓCIOS
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   VISÃƒO SÃ“CIOS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function socioNavSemana(d) {
   G.socioSemanaOffset += d;
   carregarCarga();
@@ -4781,12 +4926,12 @@ async function carregarCarga() {
     .gte('data_lancamento', ini).lte('data_lancamento', fim);
 
   if (!G.todosUsuarios.length) {
-    document.getElementById('carga-lista-socios').innerHTML = '<div class="empty-note">Sem usuários.</div>';
+    document.getElementById('carga-lista-socios').innerHTML = '<div class="empty-note">Sem usuÃ¡rios.</div>';
     document.getElementById('carga-lista-colab').innerHTML = '';
     return;
   }
 
-  // Agrupa por usuário
+  // Agrupa por usuÃ¡rio
   const porUser = {};
   G.todosUsuarios.forEach(u => { porUser[u.id] = { u, porTipo: { projeto:0, organizacao:0, sociedade:0 } }; });
   // Agrupa por produto/atividade para ranking
@@ -4797,8 +4942,8 @@ async function carregarCarga() {
       const t = l.tipo in porUser[l.usuario_id].porTipo ? l.tipo : 'projeto';
       porUser[l.usuario_id].porTipo[t] += dur;
     }
-    const key = l.descricao || l.tipo || '—';
-    porAtiv[key] = (porAtiv[key] || 0) + diffHoras(l.hora_inicio, l.hora_fim);
+    const key = getRotuloAtividadeLancamento(l);
+    porAtiv[key] = (porAtiv[key] || 0) + dur;
   });
 
   const socios = G.todosUsuarios.filter(u => u.role === 'socio');
@@ -4816,10 +4961,10 @@ async function carregarCarga() {
   document.getElementById('carga-donut-colab').innerHTML  = _cargaDonut(groupTotals(colabs));
   document.getElementById('carga-lista-socios').innerHTML = socios.length
     ? socios.map(u => _cargaUserCard(porUser[u.id])).join('')
-    : '<div class="empty-note">—</div>';
+    : '<div class="empty-note">â€”</div>';
   document.getElementById('carga-lista-colab').innerHTML = colabs.length
     ? colabs.map(u => _cargaUserCard(porUser[u.id])).join('')
-    : '<div class="empty-note">—</div>';
+    : '<div class="empty-note">â€”</div>';
 
   // Ranking de atividades por volume
   const maxAtiv = Math.max(...Object.values(porAtiv), 1);
@@ -4831,7 +4976,7 @@ async function carregarCarga() {
         <div style="height:100%;width:${Math.round(v/maxAtiv*100)}%;background:var(--az);border-radius:3px"></div>
       </div>
       <div style="font-size:10px;font-family:var(--fm);color:#888;min-width:32px;text-align:right">${fmtH(v)}</div>
-    </div>`).join('') || '<div class="empty-note">Sem lançamentos na semana.</div>';
+    </div>`).join('') || '<div class="empty-note">Sem lanÃ§amentos na semana.</div>';
 }
 
 async function carregarSubmissao() {
@@ -4938,7 +5083,7 @@ async function carregarSubmissao() {
   } catch (err) {
     console.error('Erro em carregarSubmissao:', err);
     const wrap = document.getElementById('submissao-lista');
-    if (wrap) wrap.innerHTML = `<div class="empty-note">Erro ao carregar submissões: ${err.message || err}</div>`;
+    if (wrap) wrap.innerHTML = `<div class="empty-note">Erro ao carregar submissÃµes: ${err.message || err}</div>`;
   }
 }
 
@@ -4973,7 +5118,7 @@ async function carregarEspelhoPorProjeto() {
     .select('*').order('data_conclusao', { ascending: false });
 
   if (!data?.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa concluída registrada.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa concluÃ­da registrada.</div>';
     return;
   }
 
@@ -4992,7 +5137,7 @@ async function carregarEspelhoPorProjeto() {
     g.etapas.push(ef.etapa_nome);
     g.horas += ef.horas_totais || 0;
     g.custo += ef.custo_execucao || 0;
-    // valor_contratado é por produto, pega o mais recente
+    // valor_contratado Ã© por produto, pega o mais recente
     g.contratado = ef.valor_contratado || g.contratado;
     if (ef.status_faturamento === 'pago') g.pago += ef.custo_execucao || 0;
     else if (ef.status_faturamento === 'faturado') g.faturado += ef.custo_execucao || 0;
@@ -5011,15 +5156,15 @@ async function carregarEspelhoPorProjeto() {
     return `<div style="background:#fff;border:1px solid var(--cinza);padding:12px 14px;margin-bottom:8px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
         <div>
-          <div style="font-size:12px;font-weight:600">${p.oportunidade_nome || p.produto_nome || '—'}</div>
-          <div style="font-size:10px;color:#888">${p.produto_nome || ''} · ${p.cliente_nome || '—'}</div>
+          <div style="font-size:12px;font-weight:600">${p.oportunidade_nome || p.produto_nome || 'â€”'}</div>
+          <div style="font-size:10px;color:#888">${p.produto_nome || ''} Â· ${p.cliente_nome || 'â€”'}</div>
         </div>
         ${margem !== null ? `<div style="font-size:13px;font-weight:700;font-family:var(--fm);${margemCls}">${margem}% margem</div>` : ''}
       </div>
       <!-- Barra custo/contratado -->
       <div style="margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:#888;margin-bottom:3px">
-          <span>Custo execução: <strong style="color:var(--preto);font-family:var(--fm)">R$ ${fmtNum(p.custo)}</strong></span>
+          <span>Custo execuÃ§Ã£o: <strong style="color:var(--preto);font-family:var(--fm)">R$ ${fmtNum(p.custo)}</strong></span>
           <span>Contratado: <strong style="font-family:var(--fm)">R$ ${fmtNum(p.contratado)}</strong></span>
         </div>
         <div style="height:6px;background:var(--cinza2);border-radius:3px">
@@ -5029,7 +5174,7 @@ async function carregarEspelhoPorProjeto() {
       <!-- Stats: horas + etapas + status faturamento -->
       <div style="display:flex;gap:16px;font-size:10px;color:#888">
         <span>${fmtH(p.horas)} registradas</span>
-        <span>${p.etapas.length} etapa(s) concluída(s)</span>
+        <span>${p.etapas.length} etapa(s) concluÃ­da(s)</span>
         ${p.pago > 0 ? `<span style="color:var(--verde)">Pago: R$ ${fmtNum(p.pago)}</span>` : ''}
         ${p.faturado > 0 ? `<span style="color:var(--az)">Faturado: R$ ${fmtNum(p.faturado)}</span>` : ''}
         ${p.pendente > 0 ? `<span style="color:var(--am)">Pendente: R$ ${fmtNum(p.pendente)}</span>` : ''}
@@ -5054,7 +5199,7 @@ async function carregarEspelho() {
   const wrap = document.getElementById('espelho-wrap');
 
   if (!data?.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa concluída encontrada.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa concluÃ­da encontrada.</div>';
     return;
   }
 
@@ -5068,7 +5213,7 @@ async function carregarEspelho() {
     <thead>
       <tr>
         <th>Cliente</th><th>Produto</th><th>Etapa</th>
-        <th>Conclusão</th><th>Coord.</th><th>Horas</th>
+        <th>ConclusÃ£o</th><th>Coord.</th><th>Horas</th>
         <th>Custo</th><th>Valor contrat.</th><th>Status fat.</th><th>Atualizado</th><th></th>
       </tr>
     </thead>
@@ -5076,16 +5221,16 @@ async function carregarEspelho() {
       ${data.map(ef => {
         const st = STATUS_EF[ef.status_faturamento] || STATUS_EF.pendente;
         return `<tr>
-          <td>${ef.cliente_nome || '—'}<br><span class="dtag">${ef.oportunidade_nome || ''}</span></td>
-          <td>${ef.produto_nome || '—'}</td>
-          <td>${ef.etapa_nome || '—'}</td>
-          <td><span class="dtag">${ef.data_conclusao ? fmtDate(ef.data_conclusao) : '—'}</span></td>
-          <td>${ef.coordenador_nome || '—'}</td>
+          <td>${ef.cliente_nome || 'â€”'}<br><span class="dtag">${ef.oportunidade_nome || ''}</span></td>
+          <td>${ef.produto_nome || 'â€”'}</td>
+          <td>${ef.etapa_nome || 'â€”'}</td>
+          <td><span class="dtag">${ef.data_conclusao ? fmtDate(ef.data_conclusao) : 'â€”'}</span></td>
+          <td>${ef.coordenador_nome || 'â€”'}</td>
           <td><span class="num-tag">${fmtH(ef.horas_totais || 0)}</span></td>
           <td><span class="num-tag">R$ ${fmtNum(ef.custo_execucao || 0)}</span></td>
           <td><span class="num-tag">R$ ${fmtNum(ef.valor_contratado || 0)}</span></td>
           <td><span class="badge ${st.cls}">${st.label}</span></td>
-          <td style="font-size:9px;color:#888;white-space:nowrap">${ef.updated_at ? new Date(ef.updated_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+          <td style="font-size:9px;color:#888;white-space:nowrap">${ef.updated_at ? new Date(ef.updated_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'â€”'}</td>
           <td>
             <select class="filter-select" style="font-size:9px;padding:2px 5px" onchange="atualizarStatusFat('${ef.id}', this.value)">
               <option value="pendente" ${ef.status_faturamento === 'pendente' ? 'selected' : ''}>Pendente</option>
@@ -5105,17 +5250,17 @@ async function atualizarStatusFat(id, status) {
 }
 
 function exportarEspelho() {
-  toast('Exportação disponível em breve');
+  toast('ExportaÃ§Ã£o disponÃ­vel em breve');
 }
 
 async function carregarValorHora() {
   const wrap = document.getElementById('vh-lista');
-  // Busca todo o histórico — S5-05: exibe linha do tempo por usuário
+  // Busca todo o histÃ³rico â€” S5-05: exibe linha do tempo por usuÃ¡rio
   const { data: hist } = await sb.from('historico_valor_hora')
     .select('*, registrado_por_usuario:registrado_por(nome)')
     .order('data_vigencia', { ascending: false });
 
-  // Agrupa por usuário
+  // Agrupa por usuÃ¡rio
   const porUser = {};
   (hist || []).forEach(h => {
     if (!porUser[h.usuario_id]) porUser[h.usuario_id] = [];
@@ -5130,7 +5275,7 @@ async function carregarValorHora() {
           `<div style="display:flex;justify-content:space-between;font-size:9px;color:#aaa;padding:2px 0;border-bottom:1px solid var(--cinza2)">
             <span>${fmtDate(h.data_vigencia)}</span>
             <span style="font-family:var(--fm)">R$ ${fmtNum(h.valor_hora)}</span>
-            <span>${h.registrado_por_usuario?.nome?.split(' ')[0] || '—'}</span>
+            <span>${h.registrado_por_usuario?.nome?.split(' ')[0] || 'â€”'}</span>
           </div>`
         ).join('')
       : '';
@@ -5141,9 +5286,9 @@ async function carregarValorHora() {
         <div style="flex:1">
           <div class="vh-nome" style="margin-bottom:1px">${u.nome} <span style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||''}</span></div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="vh-valor" style="font-size:13px">${atual ? 'R$ '+fmtNum(atual.valor_hora) : '—'}</span>
-            ${atual ? `<span class="vh-vigencia">desde ${fmtDate(atual.data_vigencia)}</span>` : '<span style="font-size:10px;color:#aaa">Não cadastrado</span>'}
-            ${registros.length > 1 ? `<button class="btn xs ghost" style="font-size:9px" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent==='+ histórico'?'– histórico':'+ histórico'">+ histórico</button>
+            <span class="vh-valor" style="font-size:13px">${atual ? 'R$ '+fmtNum(atual.valor_hora) : 'â€”'}</span>
+            ${atual ? `<span class="vh-vigencia">desde ${fmtDate(atual.data_vigencia)}</span>` : '<span style="font-size:10px;color:#aaa">NÃ£o cadastrado</span>'}
+            ${registros.length > 1 ? `<button class="btn xs ghost" style="font-size:9px" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent==='+ histÃ³rico'?'â€“ histÃ³rico':'+ histÃ³rico'">+ histÃ³rico</button>
             <div style="display:none;width:100%;margin-top:4px">${histHtml}</div>` : ''}
           </div>
         </div>
@@ -5156,9 +5301,9 @@ async function carregarValorHora() {
   }).join('');
 }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   PRIORIDADES (G3/G4/G11)
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function carregarPrioridades() {
   const uid = G.usuario.id;
   const { data } = await sb.from('prioridades_usuario')
@@ -5187,8 +5332,8 @@ async function carregarPrioridades() {
       <div class="prio-num ${NUM_CLS[pr.ordem]}">${pr.ordem}</div>
       <div class="prio-info">
         <div class="prio-nome">${opp?.projeto || prod.nome}</div>
-	<div class="prio-sub">${cli?.nome||'—'}</div>
-        <div style="font-size:10px;color:#555;margin-top:2px">${prod.nome}${etapa?` · <em style="font-style:normal;color:#aaa">${etapa.nome}</em>`:''}</div>
+	<div class="prio-sub">${cli?.nome||'â€”'}</div>
+        <div style="font-size:10px;color:#555;margin-top:2px">${prod.nome}${etapa?` Â· <em style="font-style:normal;color:#aaa">${etapa.nome}</em>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap">
           ${dateHtml}
           <div style="display:flex;gap:3px">${coordChip}${devChips}</div>
@@ -5196,7 +5341,7 @@ async function carregarPrioridades() {
       </div>
       <div class="prio-check ${pr.concluida?'done':''}"
            onclick="event.stopPropagation();togglePrioridade('${pr.id}',${pr.concluida})"
-           title="${pr.concluida?'Marcar pendente':'Marcar concluída'}">${pr.concluida?'✓':''}</div>
+           title="${pr.concluida?'Marcar pendente':'Marcar concluÃ­da'}">${pr.concluida?'âœ“':''}</div>
     </div>`;
   }).filter(Boolean).join('');
 }
@@ -5219,7 +5364,7 @@ async function carregarFluxo() {
     byUser[p.usuario_id][p.ordem] = p;
   });
   const produtos = G._prodsGestao.filter(p => p.status === 'ativo');
-  const baseProdOpts = '<option value="">— sem prioridade —</option>' +
+  const baseProdOpts = '<option value="">â€” sem prioridade â€”</option>' +
     produtos.map(p => {
   const opp = p.oportunidades;
   const cli = opp?.clientes;
@@ -5227,9 +5372,9 @@ async function carregarFluxo() {
   const label = [
     cli?.nome,
     opp?.projeto
-  ].filter(Boolean).join(' • ');
+  ].filter(Boolean).join(' â€¢ ');
 
-  return `<option value="${p.id}">${label}</option>`;
+  return `<option value="${p.id}">${truncarTexto(label, 34)}</option>`;
 }).join('');
   const NUM_CLS = ['','s1','s2','s3'];
   wrap.innerHTML = G.todosUsuarios.map(u => {
@@ -5239,12 +5384,12 @@ async function carregarFluxo() {
       const conc = pr?.concluida || false;
       const opts = baseProdOpts.replace(`value="${val}"`, `value="${val}" selected`);
       const concBtn = pr
-        ? `<span class="fluxo-conc badge ${conc?'b-vd':'b-gr'}"
-               onclick="toggleFluxoPrio('${u.id}',${ord})">${conc?'✓ Concluída':'Pendente'}</span>`
+        ? `<span class="fluxo-conc ${conc?'done':''}" title="${conc ? 'ConcluÃ­da' : 'Marcar como concluÃ­da'}"
+               onclick="toggleFluxoPrio('${u.id}',${ord})">${conc?'âœ“':''}</span>`
         : '';
       return `<div class="fluxo-slot">
         <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
-        <select class="filter-select" style="flex:1;font-size:11px"
+        <select class="filter-select" style="flex:1;font-size:10px"
                 onchange="salvarFluxoPrio('${u.id}',${ord},this.value)">${opts}</select>
         ${concBtn}
       </div>`;
@@ -5286,9 +5431,9 @@ async function toggleFluxoPrio(userId, ordem) {
   carregarFluxo();
 }
 
-// ══════════════════════════════════════════════════════════
-//   USUÁRIOS — CORES
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   USUÃRIOS â€” CORES
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const PALETA_EXP    = ['#45865D','#5280CA','#D19931','#C36247','#1D6A4A','#1D4FA0','#B84C3A','#6B4FA0','#3D7A5C','#7A5C8A'];
 const PALETA_SOCIO  = ['#45865D','#5280CA','#D19931','#C36247'];
 const PALETA_COLAB  = ['#1D6A4A','#1D4FA0','#B84C3A','#6B4FA0'];
@@ -5296,7 +5441,7 @@ const PALETA_COLAB  = ['#1D6A4A','#1D4FA0','#B84C3A','#6B4FA0'];
 function carregarUsuariosAdmin() {
   const wrap = document.getElementById('usu-lista');
   const usuarios = G.todosUsuarios;
-  if (!usuarios.length) { wrap.innerHTML = '<div class="loading-state">Nenhum usuário encontrado</div>'; return; }
+  if (!usuarios.length) { wrap.innerHTML = '<div class="loading-state">Nenhum usuÃ¡rio encontrado</div>'; return; }
 
   wrap.innerHTML = usuarios.map(u => {
     const cor = (u.cor || '#888').toLowerCase();
@@ -5309,7 +5454,7 @@ function carregarUsuariosAdmin() {
       <div class="vh-av" id="usu-av-${u.id}" style="background:${u.cor||'#888'}">${u.iniciais}</div>
       <div class="vh-nome" style="min-width:140px">${u.nome}</div>
       <select class="filter-select" style="font-size:9px;padding:2px 6px;min-width:110px" onchange="salvarRoleUsuario('${u.id}',this.value)">
-        <option value="socio" ${u.role==='socio'?'selected':''}>Sócio</option>
+        <option value="socio" ${u.role==='socio'?'selected':''}>SÃ³cio</option>
         <option value="coordenador" ${u.role==='coordenador'?'selected':''}>Coordenador</option>
         <option value="colaborador" ${u.role==='colaborador'?'selected':''}>Colaborador</option>
       </select>
@@ -5320,11 +5465,11 @@ function carregarUsuariosAdmin() {
 
 async function salvarRoleUsuario(uid, role) {
   const { error } = await sb.from('usuarios').update({ role }).eq('id', uid);
-  if (error) { toast('Erro ao salvar função: ' + error.message); return; }
+  if (error) { toast('Erro ao salvar funÃ§Ã£o: ' + error.message); return; }
   const u = G.todosUsuarios.find(u => u.id === uid);
   if (u) u.role = role;
   if (uid === G.usuario.id) G.usuario.role = role;
-  toast('Função atualizada');
+  toast('FunÃ§Ã£o atualizada');
 }
 
 async function salvarCorUsuario(uid, cor, el) {
@@ -5332,7 +5477,7 @@ async function salvarCorUsuario(uid, cor, el) {
   const { data, error } = await sb.from('usuarios').update({ cor }).eq('id', uid).select('id');
   if (error) { toast('Erro ao salvar cor: ' + error.message); return; }
   if (!data || data.length === 0) {
-    toast('Sem permissão para alterar esta cor. Execute o SQL de permissões no Supabase (ver DIRECIONAMENTO_TECNICO.md).');
+    toast('Sem permissÃ£o para alterar esta cor. Execute o SQL de permissÃµes no Supabase (ver DIRECIONAMENTO_TECNICO.md).');
     return;
   }
   const row = document.getElementById('usu-row-' + uid);
@@ -5367,20 +5512,20 @@ async function aplicarPaletaPadrao() {
     }
   }
   if (bloqueados > 0) {
-    toast(`${bloqueados} cor(es) não foram salvas por falta de permissão. Execute o SQL de RLS no Supabase (ver DIRECIONAMENTO_TECNICO.md).`);
+    toast(`${bloqueados} cor(es) nÃ£o foram salvas por falta de permissÃ£o. Execute o SQL de RLS no Supabase (ver DIRECIONAMENTO_TECNICO.md).`);
   } else {
     if (G.usuario) {
       const me = updates.find(x => x.id === G.usuario.id);
       if (me) { document.getElementById('nav-av').style.background = me.cor; G.usuario.cor = me.cor; }
     }
-    toast('Paleta padrão aplicada');
+    toast('Paleta padrÃ£o aplicada');
   }
   carregarUsuariosAdmin();
 }
 
 async function salvarValorHora(uid) {
   const val = parseFloat(document.getElementById('vh-input-'+uid)?.value);
-  if (!val || val <= 0) { toast('Informe um valor válido'); return; }
+  if (!val || val <= 0) { toast('Informe um valor vÃ¡lido'); return; }
   const { error: eVH } = await sb.from('historico_valor_hora').insert({
     usuario_id: uid, valor_hora: val,
     data_vigencia: new Date().toISOString().split('T')[0],
@@ -5391,9 +5536,9 @@ async function salvarValorHora(uid) {
   carregarValorHora();
 }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   HELPERS
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function fecharModal(id) {
   document.getElementById(id).style.display = 'none';
 }
@@ -5406,7 +5551,7 @@ function toast(msg, dur = 2500) {
 }
 
 function fmtDate(d, curto = false) {
-  if (!d) return '—';
+  if (!d) return 'â€”';
   const dt = typeof d === 'string' ? new Date(d + (d.length === 10 ? 'T12:00:00' : '')) : d;
   if (curto) return dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
   return dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
@@ -5417,7 +5562,7 @@ function fmtNum(n) {
 }
 
 function fmtH(h) {
-  if (!h && h !== 0) return '—';
+  if (!h && h !== 0) return 'â€”';
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
   return mm > 0 ? `${hh}h${mm.toString().padStart(2,'0')}` : `${hh}h`;
@@ -5466,7 +5611,7 @@ function semanaRangeOffset(offset = 0) {
   const d1 = new Date(ini + 'T12:00:00');
   const d2 = new Date(fim + 'T12:00:00');
   const ms = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const label = `${d1.getDate()} ${ms[d1.getMonth()]} — ${d2.getDate()} ${ms[d2.getMonth()]} de ${d2.getFullYear()}`;
+  const label = `${d1.getDate()} ${ms[d1.getMonth()]} â€” ${d2.getDate()} ${ms[d2.getMonth()]} de ${d2.getFullYear()}`;
   return { ini, fim, label };
 }
 
@@ -5482,7 +5627,7 @@ function addDias(dataBase, n, tipo = 'corridos') {
     d.setDate(d.getDate() + n);
     return d;
   }
-  // Dias úteis
+  // Dias Ãºteis
   let count = 0;
   while (count < n) {
     d.setDate(d.getDate() + 1);
@@ -5497,22 +5642,22 @@ function dataChip(data) {
   const d = new Date(data + 'T12:00:00');
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const dias = Math.round((d - hoje) / (1000*3600*24));
-  if (dias < 0) return `<span class="data-chip atrasado">⚠ ${Math.abs(dias)}d atrasado</span>`;
-  if (dias <= 7) return `<span class="data-chip urgente">⏱ ${dias}d restantes</span>`;
+  if (dias < 0) return `<span class="data-chip atrasado">âš  ${Math.abs(dias)}d atrasado</span>`;
+  if (dias <= 7) return `<span class="data-chip urgente">â± ${dias}d restantes</span>`;
   return `<span class="data-chip">${fmtDate(data)}</span>`;
 }
 
 function editarEtapas() { abrirEditarProduto(); }
 function editarProduto() { abrirEditarProduto(); }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   CUSTOS E REEMBOLSOS (G-P4)
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const CUSTO_TIPO_LABEL = {
   deslocamento:   'Deslocamento',
   hospedagem:     'Hospedagem',
   reembolso:      'Reembolso',
-  subcontratacao: 'Subcontratação',
+  subcontratacao: 'SubcontrataÃ§Ã£o',
   material:       'Material',
   outro:          'Outro',
 };
@@ -5530,7 +5675,7 @@ async function carregarCustosProduto(prodId) {
   lista.innerHTML = '<div class="loading-state">Carregando...</div>';
 
   // Busca custos do produto + custos da oportunidade sem produto vinculado
-  // (ex: subcontratações e despesas importadas da calc são gravadas com produto_id = null)
+  // (ex: subcontrataÃ§Ãµes e despesas importadas da calc sÃ£o gravadas com produto_id = null)
   const prod = G.todosProdutos.find(p => p.id === prodId);
   const oppId = prod?.oportunidade_id || null;
 
@@ -5567,19 +5712,19 @@ async function carregarCustosProduto(prodId) {
 
   lista.innerHTML = `<table class="tbl">
     <thead><tr>
-      <th>Tipo</th><th>Descrição</th><th>Vlr. calc.</th><th>Vlr. neg.</th>
+      <th>Tipo</th><th>DescriÃ§Ã£o</th><th>Vlr. calc.</th><th>Vlr. neg.</th>
       <th>Ref.</th><th>Status</th>${isSocio ? '<th></th>' : ''}
     </tr></thead>
     <tbody>
       ${custos.map(c => {
         const st = CUSTO_STATUS[c.status] || CUSTO_STATUS.pendente;
-        const tipoLabel = CUSTO_TIPO_LABEL[c.tipo] || c.tipo || '—';
+        const tipoLabel = CUSTO_TIPO_LABEL[c.tipo] || c.tipo || 'â€”';
         return `<tr>
           <td><span class="dtag">${tipoLabel}</span></td>
-          <td>${c.descricao || '—'}${c.obs ? `<br><span style="font-size:9px;color:#aaa">${c.obs}</span>` : ''}</td>
+          <td>${c.descricao || 'â€”'}${c.obs ? `<br><span style="font-size:9px;color:#aaa">${c.obs}</span>` : ''}</td>
           <td><span class="num-tag">R$ ${fmtNum(c.valor_calculado || 0)}</span></td>
           <td><span class="num-tag">R$ ${fmtNum(c.valor_negociado || 0)}</span></td>
-          <td style="font-size:10px;color:#888">${c.calc_ref || '—'}</td>
+          <td style="font-size:10px;color:#888">${c.calc_ref || 'â€”'}</td>
           <td>
             ${isSocio
               ? `<select class="filter-select" style="font-size:9px;padding:2px 5px" onchange="atualizarStatusCusto('${c.id}', this.value)">
@@ -5590,7 +5735,7 @@ async function carregarCustosProduto(prodId) {
               : `<span class="badge ${st.cls}">${st.label}</span>`
             }
           </td>
-          ${isSocio ? `<td><button class="btn sm tc" style="font-size:9px;padding:2px 8px" onclick="excluirCusto('${c.id}')">×</button></td>` : ''}
+          ${isSocio ? `<td><button class="btn sm tc" style="font-size:9px;padding:2px 8px" onclick="excluirCusto('${c.id}')">Ã—</button></td>` : ''}
         </tr>`;
       }).join('')}
     </tbody>
@@ -5608,7 +5753,7 @@ async function adicionarCusto() {
   const ref       = document.getElementById('nc-ref').value.trim() || null;
   const obs       = document.getElementById('nc-obs').value.trim() || null;
 
-  if (!descricao) { toast('Informe a descrição do custo'); return; }
+  if (!descricao) { toast('Informe a descriÃ§Ã£o do custo'); return; }
 
   const { error } = await sb.from('opp_custos').insert({
     produto_id:      prod.id,
@@ -5647,7 +5792,7 @@ async function excluirCusto(id) {
 }
 
 function _epUserOpts(selectedId) {
-  return '<option value="">—</option>' +
+  return '<option value="">â€”</option>' +
     G.todosUsuarios.map(u =>
       `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.nome}</option>`
     ).join('');
@@ -5661,16 +5806,16 @@ function _renderEtapaEdicaoRow(e, devIds) {
     <div style="display:flex;gap:8px;align-items:center">
       <input type="text" class="ee-nome" value="${e.nome || ''}" placeholder="Nome da etapa" style="flex:1;padding:4px 8px;border:1px solid var(--cinza);font-family:var(--f);font-size:12px;outline:none;${!isNova ? 'font-weight:500' : ''}">
       <select class="ee-status" style="padding:4px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none;background:#fff">
-        <option value="nao_iniciada" ${e.status==='nao_iniciada'?'selected':''}>Não iniciada</option>
+        <option value="nao_iniciada" ${e.status==='nao_iniciada'?'selected':''}>NÃ£o iniciada</option>
         <option value="em_andamento" ${e.status==='em_andamento'?'selected':''}>Em andamento</option>
-        <option value="em_revisao"   ${e.status==='em_revisao'  ?'selected':''}>Em revisão</option>
-        <option value="concluida"    ${e.status==='concluida'   ?'selected':''}>Concluída</option>
+        <option value="em_revisao"   ${e.status==='em_revisao'  ?'selected':''}>Em revisÃ£o</option>
+        <option value="concluida"    ${e.status==='concluida'   ?'selected':''}>ConcluÃ­da</option>
         <option value="pausada"      ${e.status==='pausada'     ?'selected':''}>Pausada</option>
       </select>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div style="display:flex;flex-direction:column;gap:2px">
-        <label style="font-size:9px;color:#888">Liberação</label>
+        <label style="font-size:9px;color:#888">LiberaÃ§Ã£o</label>
         <input type="date" class="ee-lib" value="${e.data_liberacao||''}" style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none">
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
@@ -5679,13 +5824,13 @@ function _renderEtapaEdicaoRow(e, devIds) {
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
         <label style="font-size:9px;color:#888">Prazo (dias)</label>
-        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="—" min="1" style="width:70px;padding:3px 7px;border:1px solid var(--cinza);font-family:var(--fm);font-size:11px;outline:none">
+        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="â€”" min="1" style="width:70px;padding:3px 7px;border:1px solid var(--cinza);font-family:var(--fm);font-size:11px;outline:none">
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
         <label style="font-size:9px;color:#888">Tipo prazo</label>
         <select class="ee-ptipo" style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none;background:#fff">
           <option value="corridos" ${(e.prazo_tipo||'corridos')==='corridos'?'selected':''}>Corridos</option>
-          <option value="uteis"    ${e.prazo_tipo==='uteis'?'selected':''}>Úteis</option>
+          <option value="uteis"    ${e.prazo_tipo==='uteis'?'selected':''}>Ãšteis</option>
         </select>
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
@@ -5711,14 +5856,14 @@ async function abrirEditarProduto() {
   document.getElementById('ep-inicio').value  = prod.data_inicio || '';
 
   const coordSel = document.getElementById('ep-coord');
-  coordSel.innerHTML = '<option value="">—</option>' +
+  coordSel.innerHTML = '<option value="">â€”</option>' +
     G.todosUsuarios.map(u => `<option value="${u.id}" ${u.id === prod.coordenador_id ? 'selected' : ''}>${u.nome}</option>`).join('');
 
   const isSocio = G.usuario.role === 'socio';
   document.getElementById('ep-valor-wrap').style.display = isSocio ? 'block' : 'none';
   if (isSocio) document.getElementById('ep-valor').value = prod.valor_contratado || '';
 
-  // PROJ-10: campos de contrato (apenas sócios)
+  // PROJ-10: campos de contrato (apenas sÃ³cios)
   const contratoWrap = document.getElementById('ep-contrato-wrap');
   if (isSocio) {
     contratoWrap.style.display = 'block';
@@ -5769,7 +5914,7 @@ async function salvarEdicaoProduto() {
     // Atualiza produto
     const updProd = { nome, nucleo, status, coordenador_id: coordId, data_inicio: dataInicio, updated_at: new Date().toISOString() };
     if (isSocio && valor !== undefined) updProd.valor_contratado = valor;
-    // PROJ-10: salva campos de contrato (sócios)
+    // PROJ-10: salva campos de contrato (sÃ³cios)
     if (isSocio) {
       updProd.contrato_status          = document.getElementById('ep-contrato-status').value || null;
       updProd.contrato_elaborado_por   = document.getElementById('ep-contrato-elaborado').value.trim() || null;
@@ -5826,7 +5971,7 @@ async function salvarEdicaoProduto() {
     carregarDashboard();
 
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Salvar alterações'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar alteraÃ§Ãµes'; }
   }
 }
 
@@ -5837,8 +5982,11 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
   });
 });
 
-// ── START ──────────────────────────────────────────────────
+// â”€â”€ START â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 init();
 </script>
 </body>
 </html>
+
+
+
