@@ -1075,6 +1075,15 @@ body::before {
 .carga-status { font-size: 9px; font-weight: 700; letter-spacing: .3px; padding: 1px 6px; }
 .cs-ok { background: var(--verde-bg); color: var(--verde); }
 .cs-pend { background: var(--tc-bg); color: var(--tc); }
+.cs-none { background: var(--cinza2); color: #888; }
+.subm-item { padding: 12px 14px; border-bottom: 1px solid var(--cinza2); }
+.subm-item:last-child { border-bottom: none; }
+.subm-top { display: flex; align-items: center; gap: 10px; }
+.subm-status { margin-left: auto; border-radius: 999px; white-space: nowrap; }
+.subm-comment {
+  font-size: 10px; color: #888; margin-top: 6px; padding-left: 34px;
+  line-height: 1.45; max-width: calc(100% - 34px);
+}
 
 /* ── PRIORIDADES (dashboard) ─────────────────────────── */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#fff; border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; }
@@ -3808,8 +3817,8 @@ async function lancarHoras() {
   if (!semDb) {
     const payloadSemana = {
       usuario_id: G.usuario.id,
-      ano: new Date(semIni).getFullYear(),
-      semana: isoWeek(new Date(semIni)),
+      ano: new Date(semIni + 'T12:00:00').getFullYear(),
+      semana: isoWeek(new Date(semIni + 'T12:00:00')),
       data_inicio: semIni,
       data_fim: semFim,
       finalizada: false
@@ -4657,66 +4666,82 @@ async function carregarSubmissao() {
     const lbl = document.getElementById('submissao-semana-label');
     if (lbl) lbl.textContent = label;
 
-    const respSemanas = await sb
-      .from('semanas')
-      .select('*, usuarios(nome,iniciais,cor)')
-      .gte('data_inicio', ini)
-      .lte('data_inicio', fim);
+    const [respSemanas, respHoras, respUsuarios] = await Promise.all([
+      sb
+        .from('semanas')
+        .select('id, usuario_id, data_inicio, finalizada, finalizada_em, comentario')
+        .eq('data_inicio', ini),
+      sb
+        .from('horas_lancadas')
+        .select('usuario_id, data_lancamento')
+        .gte('data_lancamento', ini)
+        .lte('data_lancamento', fim),
+      sb
+        .from('usuarios')
+        .select('id, nome, iniciais, cor')
+        .order('nome')
+    ]);
+
+    if (respSemanas.error) throw respSemanas.error;
+    if (respHoras.error) throw respHoras.error;
+    if (respUsuarios.error) throw respUsuarios.error;
 
     const semanas = respSemanas.data || [];
+    const horas = respHoras.data || [];
+    const usuarios = respUsuarios.data || [];
 
     const wrap = document.getElementById('submissao-lista');
     if (!wrap) return;
 
-    const mapa = {};
+    const mapaSemanas = {};
+    semanas.forEach(s => {
+      const atual = mapaSemanas[s.usuario_id];
+      if (!atual) {
+        mapaSemanas[s.usuario_id] = s;
+        return;
+      }
 
-(semanas || []).forEach(s => {
-  const atual = mapa[s.usuario_id];
+      const atualScore = (atual.finalizada ? 10 : 0) + (atual.finalizada_em ? 1 : 0) + (atual.comentario ? 1 : 0);
+      const novoScore = (s.finalizada ? 10 : 0) + (s.finalizada_em ? 1 : 0) + (s.comentario ? 1 : 0);
+      if (novoScore > atualScore) mapaSemanas[s.usuario_id] = s;
+    });
 
-  if (!atual || new Date(s.data_inicio) > new Date(atual.data_inicio)) {
-    mapa[s.usuario_id] = s;
-  }
-});
-
-    const respUsuarios = await sb
-      .from('usuarios')
-      .select('id, nome, iniciais, cor')
-      .order('nome');
-
-    const usuarios = respUsuarios.data || [];
+    const usuariosComHoras = new Set(horas.map(h => h.usuario_id).filter(Boolean));
 
     wrap.innerHTML = '';
 
     usuarios.forEach(u => {
-      const sem = mapa[u.id];
+      const sem = mapaSemanas[u.id];
       const fin = sem?.finalizada === true;
+      const temHoras = usuariosComHoras.has(u.id);
 
-const status = sem
-  ? (fin ? 'Finalizado' : 'Pendente')
-  : 'Sem envio';
+      let status = 'Sem envio';
+      let classe = 'cs-none';
 
-      const classe = fin ? 'cs-ok' : 'cs-pend';
+      if (fin) {
+        status = 'Finalizado';
+        classe = 'cs-ok';
+      } else if (sem || temHoras) {
+        status = 'Em preenchimento';
+        classe = 'cs-pend';
+      }
 
-     wrap.innerHTML += `
-  <div class="carga-item">
-    <div class="carga-top">
-      
+      wrap.innerHTML += `
+  <div class="subm-item">
+    <div class="subm-top">
       <div class="carga-av" style="background:${u.cor || '#888'}">
         ${u.iniciais || ''}
       </div>
-
       <div class="carga-nome">
         ${u.nome || ''}
       </div>
-
-      <span class="carga-status ${fin ? 'cs-ok' : (sem ? 'cs-pend' : 'cs-none')}">
+      <span class="carga-status subm-status ${classe}">
         ${status}
       </span>
-
     </div>
 
     ${sem?.comentario ? `
-      <div style="font-size:10px;color:#888;margin-top:6px;padding-left:42px">
+      <div class="subm-comment">
         "${sem.comentario}"
       </div>
     ` : ''}
@@ -4726,6 +4751,8 @@ const status = sem
 
   } catch (err) {
     console.error('Erro em carregarSubmissao:', err);
+    const wrap = document.getElementById('submissao-lista');
+    if (wrap) wrap.innerHTML = `<div class="empty-note">Erro ao carregar submissões: ${err.message || err}</div>`;
   }
 }
 
