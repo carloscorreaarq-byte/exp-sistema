@@ -220,6 +220,23 @@
   ALTER TABLE espelho_financeiro ENABLE ROW LEVEL SECURITY;
   ALTER TABLE historico_valor_hora ENABLE ROW LEVEL SECURITY;
 
+  -- Lançamentos de custo operacional (vinculado à semana, como horas_lancadas)
+  CREATE TABLE lancamentos_custo (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id uuid REFERENCES usuarios(id),
+    semana_id uuid REFERENCES semanas(id),
+    data_lancamento date NOT NULL,
+    valor numeric(10,2) NOT NULL,
+    tipo text NOT NULL CHECK (tipo IN ('projeto','organizacao','sociedade')),
+    subtipo text,
+    produto_id uuid REFERENCES produtos(id),
+    etapa_id uuid REFERENCES etapas(id),
+    descricao text,
+    created_at timestamptz DEFAULT now()
+  );
+  ALTER TABLE lancamentos_custo ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "autenticados" ON lancamentos_custo FOR ALL USING (auth.role() = 'authenticated');
+
   -- Políticas permissivas temporárias (refinar depois)
   CREATE POLICY "autenticados" ON produtos FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON etapas FOR ALL USING (auth.role() = 'authenticated');
@@ -1664,6 +1681,13 @@ body::before {
           <div class="loading-state">Carregando lançamentos...</div>
         </div>
       </div>
+
+      <div style="margin-top:14px" id="custo-lista-section">
+        <div class="sec-title">Custos da semana</div>
+        <div id="custo-lista-wrap">
+          <div class="loading-state">Carregando...</div>
+        </div>
+      </div>
     </div>
 
     <!-- Col 2: formulário -->
@@ -1739,6 +1763,81 @@ body::before {
         <button class="btn filled" style="width:100%" onclick="abrirFinalizarSemana()">Finalizar semana</button>
       </div>
 
+      <!-- Formulário de custos -->
+      <div style="margin-top:14px" id="custo-form-wrap" class="lanc-form">
+        <div class="lanc-form-title">Lançar custo</div>
+
+        <div class="fg fg2 mb8">
+          <div class="fgroup">
+            <label>Valor (R$)</label>
+            <input type="number" id="cf-valor" step="0.01" min="0" placeholder="0,00">
+          </div>
+          <div class="fgroup">
+            <label>Vinculado a</label>
+            <select id="cf-tipo" onchange="atualizarFormCusto()">
+              <option value="projeto">Projeto</option>
+              <option value="organizacao">Org. Interna</option>
+              <option value="sociedade">Sociedade</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Subcategoria (org / sociedade) -->
+        <div class="fg mb8" id="cf-subtipo-wrap" style="display:none">
+          <div class="fgroup">
+            <label>Categoria</label>
+            <select id="cf-subtipo"></select>
+          </div>
+        </div>
+
+        <!-- Cascata projeto -->
+        <div id="cf-projeto-wrap">
+          <div class="fg mb8">
+            <div class="fgroup">
+              <label>Cliente</label>
+              <select id="cf-cliente" onchange="cfFiltrarOpps()"><option value="">Selecionar cliente...</option></select>
+            </div>
+            <div class="fgroup" id="cf-opp-wrap" style="display:none">
+              <label>Oportunidade</label>
+              <select id="cf-oportunidade" onchange="cfFiltrarProdutos()"><option value="">Selecionar...</option></select>
+            </div>
+          </div>
+          <div class="fg mb8">
+            <div class="fgroup" id="cf-prod-wrap" style="display:none">
+              <label>Produto</label>
+              <select id="cf-produto" onchange="cfFiltrarEtapas()"><option value="">Selecionar...</option></select>
+            </div>
+            <div class="fgroup" id="cf-etapa-wrap" style="display:none">
+              <label>Etapa (opcional)</label>
+              <select id="cf-etapa"><option value="">—</option></select>
+            </div>
+          </div>
+          <div class="fg mb8">
+            <div class="fgroup">
+              <label>Categoria</label>
+              <select id="cf-tipo-projeto">
+                <option value="Alimentação">Alimentação</option>
+                <option value="Hospedagem">Hospedagem</option>
+                <option value="Translado">Translado</option>
+                <option value="Passagem">Passagem</option>
+                <option value="Transporte">Transporte</option>
+                <option value="Aluguel de carro">Aluguel de carro</option>
+                <option value="Gasolina">Gasolina</option>
+                <option value="Impressão">Impressão</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="fgroup mb14">
+          <label>Descrição (opcional)</label>
+          <input type="text" id="cf-desc" placeholder="Detalhe do custo...">
+        </div>
+
+        <button class="btn verde" style="width:100%" onclick="lancarCusto()">Registrar custo</button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1804,6 +1903,10 @@ body::before {
     <div style="border-top:1px solid var(--cinza2);padding-top:14px">
       <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Horas por atividade</div>
       <div id="carga-atividades"></div>
+    </div>
+    <div style="border-top:1px solid var(--cinza2);padding-top:14px;margin-top:14px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Custos da semana</div>
+      <div id="carga-custos"><div class="loading-state">—</div></div>
     </div>
   </div>
 
@@ -2005,10 +2108,16 @@ body::before {
         <!-- Revisões do produto -->
         <div class="mtab-panel" id="mp-revisoes">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="font-size:11px;color:#888">Revisões abertas neste produto</div>
-            <button class="btn sm verde" onclick="abrirNovaRevisao()">+ Nova revisão</button>
+            <div style="font-size:11px;color:#888">Revisões deste produto</div>
+            <button class="btn sm verde socio-only" onclick="abrirNovaRevisao()">+ Nova revisão</button>
           </div>
-          <div id="mp-revisoes-lista"></div>
+          <!-- Revisão ativa -->
+          <div id="mp-revisao-ativa-wrap" style="margin-bottom:16px"></div>
+          <!-- Histórico -->
+          <div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Histórico de revisões</div>
+            <div id="mp-revisoes-lista"></div>
+          </div>
         </div>
         <!-- Custos e Reembolsos -->
         <div class="mtab-panel" id="mp-custos">
@@ -2606,6 +2715,11 @@ const SUBTIPOS = {
   organizacao: ['Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
   sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
 };
+const SUBTIPOS_CUSTO = {
+  projeto:     ['Alimentação','Hospedagem','Translado','Passagem','Transporte','Aluguel de carro','Gasolina','Impressão','Outro'],
+  organizacao: ['HH','Encontro presencial','Deslocamento','Outro'],
+  sociedade:   ['Instagram','Programas','Educação','Outro'],
+};
 const ROLES_LABEL = { socio:'Sócio', coordenador:'Coordenador', colaborador:'Colaborador' };
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -2710,6 +2824,7 @@ async function init() {
       modal.querySelectorAll('.mtab-panel').forEach(p => p.classList.remove('active'));
       document.getElementById(panelId).classList.add('active');
       if (panelId === 'mp-custos') carregarCustosProduto(G.produtoAtivo);
+      if (panelId === 'mp-revisoes') carregarRevisoesProduto(G.produtoAtivo);
     });
   });
 
@@ -3075,25 +3190,33 @@ async function carregarProdutos() {
     G.etapaDevs[d.etapa_id].push(d.usuario_id);
   });
 
-  // 9. Preenche select de cliente no form de horas (cascata: cliente → opp → produto)
+  // 9. Preenche selects de cliente nos forms de horas e custos (cascata: cliente → opp → produto)
+  const ativos = Array.isArray(G._prodsGestao)
+    ? G._prodsGestao.filter(p => p.status === 'ativo' && p.em_gestao !== false)
+    : [];
+  const clientesMap = new Map();
+  ativos.forEach(p => {
+    const cli = p.oportunidades?.clientes;
+    if (cli?.id) clientesMap.set(cli.id, cli.nome || cli.id);
+  });
+  const clientesOptsHtml = '<option value="">Selecionar cliente...</option>' +
+    [...clientesMap.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+      .map(([id, nome]) => `<option value="${id}">${nome}</option>`).join('');
+
   const selCli = document.getElementById('lf-cliente');
   if (selCli) {
-    const ativos = Array.isArray(G._prodsGestao)
-  ? G._prodsGestao.filter(p => p.status === 'ativo' && p.em_gestao !== false)
-  : [];
-    const clientesMap = new Map();
-    ativos.forEach(p => {
-      const cli = p.oportunidades?.clientes;
-      if (cli?.id) clientesMap.set(cli.id, cli.nome || cli.id);
-    });
-    selCli.innerHTML = '<option value="">Selecionar cliente...</option>' +
-      [...clientesMap.entries()]
-        .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
-        .map(([id, nome]) => `<option value="${id}">${nome}</option>`).join('');
-    // Reseta os selects dependentes
+    selCli.innerHTML = clientesOptsHtml;
     document.getElementById('lf-opp-wrap').style.display = 'none';
     document.getElementById('lf-prod-wrap').style.display = 'none';
     document.getElementById('lf-etapa-wrap').style.display = 'none';
+  }
+  const selCliCusto = document.getElementById('cf-cliente');
+  if (selCliCusto) {
+    selCliCusto.innerHTML = clientesOptsHtml;
+    document.getElementById('cf-opp-wrap').style.display = 'none';
+    document.getElementById('cf-prod-wrap').style.display = 'none';
+    document.getElementById('cf-etapa-wrap').style.display = 'none';
   }
 }
 
@@ -3816,6 +3939,7 @@ async function renderSemana() {
   G._semanaTravada = !!travada;
   const travBanner = document.getElementById('semana-travada-banner');
   const lancForm   = document.getElementById('lanc-form-wrap');
+  const custoForm  = document.getElementById('custo-form-wrap');
   const finWrap    = document.getElementById('finalizar-wrap');
   const btnDesbloquearWrap = document.getElementById('btn-desbloquear-wrap');
 
@@ -3823,15 +3947,17 @@ async function renderSemana() {
     travBanner.style.display = 'flex';
     document.getElementById('semana-travada-data').textContent = fmtDate(semDb.finalizada_em?.split('T')[0]);
     document.getElementById('semana-travada-comentario').textContent = semDb.comentario || '';
-    if (lancForm) lancForm.style.display = 'none';
-    if (finWrap)  finWrap.style.display  = 'none';
+    if (lancForm)  lancForm.style.display  = 'none';
+    if (custoForm) custoForm.style.display = 'none';
+    if (finWrap)   finWrap.style.display   = 'none';
     if (btnDesbloquearWrap) {
       btnDesbloquearWrap.style.display = G.usuario.role === 'socio' ? 'inline' : 'none';
     }
   } else {
     travBanner.style.display = 'none';
-    if (lancForm) lancForm.style.display = 'block';
-    if (finWrap)  finWrap.style.display  = 'block';
+    if (lancForm)  lancForm.style.display  = 'block';
+    if (custoForm) custoForm.style.display = 'block';
+    if (finWrap)   finWrap.style.display   = 'block';
     if (btnDesbloquearWrap) btnDesbloquearWrap.style.display = 'none';
   }
 
@@ -3845,6 +3971,7 @@ async function renderSemana() {
   renderCalendarioSemana(G._lancAtivos);
   renderDiaSelector(G._lancAtivos);
   renderLancamentos(G._lancAtivos);
+  renderCustosLancados();
 
   const totalHoras = calcTotalHoras(G._lancAtivos);
   const finTotal = document.getElementById('fin-total-horas');
@@ -4123,6 +4250,171 @@ async function deletarLancamento(id) {
   toast('Lançamento removido');
 }
 
+// ══════════════════════════════════════════════════════════════
+//   LANÇAMENTOS DE CUSTO
+// ══════════════════════════════════════════════════════════════
+
+function atualizarFormCusto() {
+  const tipo = document.getElementById('cf-tipo').value;
+  document.getElementById('cf-subtipo-wrap').style.display = tipo !== 'projeto' ? 'block' : 'none';
+  document.getElementById('cf-projeto-wrap').style.display = tipo === 'projeto' ? 'block' : 'none';
+  if (tipo !== 'projeto') {
+    document.getElementById('cf-subtipo').innerHTML =
+      SUBTIPOS_CUSTO[tipo].map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+}
+
+window.cfFiltrarOpps = function() {
+  const cliId = document.getElementById('cf-cliente').value;
+  const oppWrap  = document.getElementById('cf-opp-wrap');
+  const prodWrap = document.getElementById('cf-prod-wrap');
+  const etapaWrap = document.getElementById('cf-etapa-wrap');
+  oppWrap.style.display = 'none';
+  prodWrap.style.display = 'none';
+  etapaWrap.style.display = 'none';
+  if (!cliId) return;
+  const ativos = (G._prodsGestao || []).filter(p => p.status === 'ativo' && p.oportunidades?.clientes?.id === cliId);
+  const oppsMap = new Map();
+  ativos.forEach(p => {
+    const o = p.oportunidades;
+    if (o?.id) oppsMap.set(o.id, o.projeto || o.id);
+  });
+  document.getElementById('cf-oportunidade').innerHTML =
+    '<option value="">Selecionar oportunidade...</option>' +
+    [...oppsMap.entries()].map(([id, nome]) => `<option value="${id}">${nome}</option>`).join('');
+  oppWrap.style.display = 'block';
+};
+
+window.cfFiltrarProdutos = function() {
+  const oppId = document.getElementById('cf-oportunidade').value;
+  const prodWrap  = document.getElementById('cf-prod-wrap');
+  const etapaWrap = document.getElementById('cf-etapa-wrap');
+  prodWrap.style.display = 'none';
+  etapaWrap.style.display = 'none';
+  if (!oppId) return;
+  const prods = (G._prodsGestao || []).filter(p => p.oportunidade_id === oppId || p.oportunidades?.id === oppId);
+  document.getElementById('cf-produto').innerHTML =
+    '<option value="">Selecionar produto...</option>' +
+    prods.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+  prodWrap.style.display = 'block';
+};
+
+window.cfFiltrarEtapas = function() {
+  const prodId = document.getElementById('cf-produto').value;
+  const etapaWrap = document.getElementById('cf-etapa-wrap');
+  etapaWrap.style.display = 'none';
+  if (!prodId) return;
+  const etapas = G.todasEtapas.filter(e => e.produto_id === prodId).sort((a,b) => a.ordem - b.ordem);
+  document.getElementById('cf-etapa').innerHTML =
+    '<option value="">—</option>' +
+    etapas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+  etapaWrap.style.display = 'block';
+};
+
+async function lancarCusto() {
+  const tipo  = document.getElementById('cf-tipo').value;
+  const valor = parseFloat(document.getElementById('cf-valor').value) || 0;
+  const desc  = document.getElementById('cf-desc').value.trim();
+
+  if (!valor || valor <= 0) { toast('Informe o valor do custo'); return; }
+
+  let subtipo = null;
+  let prodId  = null;
+  let etapaId = null;
+
+  if (tipo === 'projeto') {
+    subtipo  = document.getElementById('cf-tipo-projeto').value;
+    prodId   = document.getElementById('cf-produto').value || null;
+    etapaId  = document.getElementById('cf-etapa').value   || null;
+    if (!prodId) { toast('Selecione o produto para o custo de projeto'); return; }
+  } else {
+    subtipo = document.getElementById('cf-subtipo').value || null;
+  }
+
+  const { ini: semIni, fim: semFim } = semanaRangeOffset(G.semanaOffset);
+  const dataISO = G.diaSelecionado != null
+    ? getDiasSemana(G.semanaOffset)[G.diaSelecionado].toISOString().split('T')[0]
+    : semIni;
+
+  let { data: semDb } = await sb.from('semanas')
+    .select('id,finalizada').eq('usuario_id', G.usuario.id).eq('data_inicio', semIni).maybeSingle();
+
+  if (semDb?.finalizada) { toast('Semana já finalizada'); return; }
+
+  if (!semDb) {
+    const { data: nova, error: eSem } = await sb.from('semanas')
+      .upsert({
+        usuario_id: G.usuario.id,
+        ano: new Date(semIni + 'T12:00:00').getFullYear(),
+        semana: isoWeek(new Date(semIni + 'T12:00:00')),
+        data_inicio: semIni, data_fim: semFim, finalizada: false
+      }, { onConflict: 'usuario_id,ano,semana' }).select().single();
+    if (eSem) { toast('Erro ao criar semana: ' + eSem.message); return; }
+    semDb = nova;
+  }
+
+  const { error } = await sb.from('lancamentos_custo').insert({
+    usuario_id: G.usuario.id,
+    semana_id: semDb.id,
+    data_lancamento: dataISO,
+    valor, tipo, subtipo,
+    produto_id: prodId,
+    etapa_id: etapaId,
+    descricao: desc || null
+  });
+
+  if (error) { toast('Erro ao registrar: ' + error.message); return; }
+
+  document.getElementById('cf-valor').value = '';
+  document.getElementById('cf-desc').value  = '';
+  toast('Custo registrado');
+  renderCustosLancados();
+}
+
+async function renderCustosLancados() {
+  const wrap = document.getElementById('custo-lista-wrap');
+  if (!wrap) return;
+  const { ini, fim } = semanaRangeOffset(G.semanaOffset);
+
+  const { data: custos } = await sb.from('lancamentos_custo')
+    .select('*, produtos(nome)')
+    .eq('usuario_id', G.usuario.id)
+    .gte('data_lancamento', ini).lte('data_lancamento', fim)
+    .order('created_at', { ascending: false });
+
+  if (!custos?.length) {
+    wrap.innerHTML = '<div class="empty-note">Nenhum custo registrado esta semana.</div>';
+    return;
+  }
+
+  const total = custos.reduce((s, c) => s + (c.valor || 0), 0);
+  wrap.innerHTML = `
+    <div style="font-size:10px;color:#888;margin-bottom:8px">Total: <strong style="font-family:var(--fm)">R$ ${fmtNum(total)}</strong></div>
+    ${custos.map(c => `
+      <div class="lanc-item" style="margin-bottom:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="min-width:0">
+            <span class="dtag">${c.tipo}</span>
+            ${c.subtipo ? `<span class="dtag" style="margin-left:4px;background:var(--cinza2)">${c.subtipo}</span>` : ''}
+            ${c.produtos ? `<span style="font-size:10px;color:#666;margin-left:4px">${c.produtos.nome}</span>` : ''}
+            ${c.descricao ? `<div style="font-size:10px;color:#888;margin-top:2px">${c.descricao}</div>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <span style="font-family:var(--fm);font-size:12px;font-weight:600">R$ ${fmtNum(c.valor)}</span>
+            <button class="btn sm tc" style="font-size:9px;padding:1px 6px" onclick="excluirCustoLancado('${c.id}')">×</button>
+          </div>
+        </div>
+      </div>`).join('')}`;
+}
+
+async function excluirCustoLancado(id) {
+  if (G._semanaTravada) { toast('Semana bloqueada'); return; }
+  if (!confirm('Excluir este custo?')) return;
+  await sb.from('lancamentos_custo').delete().eq('id', id);
+  toast('Custo removido');
+  renderCustosLancados();
+}
+
 function popularDiasEdicaoLancamento(selectedDia = 1) {
   const sel = document.getElementById('el-dia');
   if (!sel) return;
@@ -4305,6 +4597,75 @@ async function desbloquearSemana() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   REVISÕES
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+async function carregarRevisoesProduto(prodId) {
+  if (!prodId) return;
+  const ativaWrap = document.getElementById('mp-revisao-ativa-wrap');
+  const lista     = document.getElementById('mp-revisoes-lista');
+  if (ativaWrap) ativaWrap.innerHTML = '<div class="loading-state">Carregando...</div>';
+  if (lista)     lista.innerHTML = '';
+
+  const etapaIds = G.todasEtapas.filter(e => e.produto_id === prodId).map(e => e.id);
+  if (!etapaIds.length) {
+    if (ativaWrap) ativaWrap.innerHTML = '<div class="empty-note">Nenhuma etapa cadastrada neste produto.</div>';
+    return;
+  }
+
+  const { data: revs } = await sb.from('revisoes')
+    .select(`*, etapas(id, nome), pranchas(id, nome, tarefas_revisao(id, concluida))`)
+    .in('etapa_id', etapaIds)
+    .order('created_at', { ascending: false });
+
+  if (!revs?.length) {
+    if (ativaWrap) ativaWrap.innerHTML = '<div class="empty-note">Nenhuma revisão encontrada para este produto.</div>';
+    return;
+  }
+
+  G._revisoes = (G._revisoes || []).filter(r => !etapaIds.includes(r.etapa_id));
+  G._revisoes = [...revs, ...G._revisoes];
+
+  function _revCard(r, destacar) {
+    const etapa = r.etapas;
+    const total = r.pranchas?.reduce((s,p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
+    const conc  = r.pranchas?.reduce((s,p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
+    const pct   = total > 0 ? Math.round(conc / total * 100) : 0;
+    const revisor = G.todosUsuarios.find(u => u.id === r.aberta_por);
+    const chip = revisor
+      ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:8px" title="${revisor.nome}">${revisor.iniciais}</div>` : '';
+    return `<div class="rev-lista-item ${r.status}${destacar?' selected':''}" onclick="selecionarRevisao('${r.id}');fecharModal('modal-produto')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+        <div style="font-size:11px;font-weight:600">${etapa?.nome || '—'} · Revisão #${r.numero}</div>
+        <div style="display:flex;align-items:center;gap:4px">${chip}
+          <span class="badge ${r.status === 'aberta' ? 'b-az' : 'b-vd'}">${r.status === 'aberta' ? 'Ativa' : 'Concluída'}</span>
+        </div>
+      </div>
+      <div class="rev-prog" style="margin-top:4px">
+        <span>${conc}/${total} tarefas</span>
+        <div class="rev-prog-bar"><div class="rev-prog-fill" style="width:${pct}%"></div></div>
+        <span>${pct}%</span>
+      </div>
+    </div>`;
+  }
+
+  const abertas    = revs.filter(r => r.status === 'aberta');
+  const concluidas = revs.filter(r => r.status !== 'aberta');
+
+  if (ativaWrap) {
+    if (abertas.length) {
+      ativaWrap.innerHTML = `
+        <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Revisão ativa</div>
+        ${abertas.map(r => _revCard(r, true)).join('')}`;
+    } else {
+      ativaWrap.innerHTML = '<div class="empty-note" style="margin-bottom:0">Nenhuma revisão ativa no momento.</div>';
+    }
+  }
+
+  if (lista) {
+    lista.innerHTML = concluidas.length
+      ? concluidas.map(r => _revCard(r, false)).join('')
+      : '<div class="empty-note">Nenhuma revisão finalizada.</div>';
+  }
+}
+
 async function carregarRevisoes() {
   const { data: revs } = await sb.from('revisoes')
     .select(`*, etapas(id, nome, produto_id, produtos(id, nome, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, tarefas_revisao(id, concluida))`)
@@ -5277,6 +5638,48 @@ async function carregarCarga() {
       </div>
       <div style="font-size:10px;font-family:var(--fm);color:#888;min-width:32px;text-align:right">${fmtH(v)}</div>
     </div>`).join('') || '<div class="empty-note">Sem lançamentos na semana.</div>';
+
+  // Custos da semana (equipe)
+  const custosEl = document.getElementById('carga-custos');
+  if (custosEl) {
+    const { data: custosSemana } = await sb.from('lancamentos_custo')
+      .select('*, usuarios(id,nome,iniciais,cor,role), produtos(nome)')
+      .gte('data_lancamento', ini).lte('data_lancamento', fim);
+
+    if (!custosSemana?.length) {
+      custosEl.innerHTML = '<div class="empty-note">Sem custos registrados na semana.</div>';
+    } else {
+      const totalGeral = custosSemana.reduce((s,c) => s + (c.valor||0), 0);
+      const porTipoCusto = {};
+      custosSemana.forEach(c => {
+        const key = c.subtipo || c.tipo;
+        porTipoCusto[key] = (porTipoCusto[key] || 0) + (c.valor || 0);
+      });
+      const porUserCusto = {};
+      custosSemana.forEach(c => {
+        const u = c.usuarios;
+        if (!u) return;
+        if (!porUserCusto[u.id]) porUserCusto[u.id] = { u, total: 0 };
+        porUserCusto[u.id].total += c.valor || 0;
+      });
+      custosEl.innerHTML = `
+        <div style="font-size:12px;font-weight:700;font-family:var(--fm);margin-bottom:8px">Total: R$ ${fmtNum(totalGeral)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          ${Object.entries(porTipoCusto).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+            <div style="background:#fff;border:1px solid var(--cinza);border-radius:4px;padding:4px 10px">
+              <div style="font-size:9px;color:#888">${k}</div>
+              <div style="font-size:11px;font-family:var(--fm);font-weight:600">R$ ${fmtNum(v)}</div>
+            </div>`).join('')}
+        </div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Por pessoa</div>
+        ${Object.values(porUserCusto).sort((a,b)=>b.total-a.total).map(({u,total})=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div class="carga-av" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:8px">${u.iniciais}</div>
+            <div style="font-size:11px;flex:1">${u.nome}</div>
+            <div style="font-size:11px;font-family:var(--fm);font-weight:600">R$ ${fmtNum(total)}</div>
+          </div>`).join('')}`;
+    }
+  }
 }
 
 async function carregarSubmissao() {
@@ -5979,15 +6382,20 @@ async function carregarCustosProduto(prodId) {
   const prod = G.todosProdutos.find(p => p.id === prodId);
   const oppId = prod?.oportunidade_id || null;
 
-  const [{ data: custosProd, error }, { data: custosOpp }] = await Promise.all([
+  const [{ data: custosProd, error }, { data: custosOpp }, { data: custosLanc }] = await Promise.all([
     sb.from('opp_custos').select('*').eq('produto_id', prodId).order('created_at', { ascending: false }),
     oppId
       ? sb.from('opp_custos').select('*').eq('oportunidade_id', oppId).is('produto_id', null).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
+    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor)').eq('produto_id', prodId).order('created_at', { ascending: false }),
   ]);
   const custos = [...(custosProd || []), ...(custosOpp || [])];
 
   if (error) { lista.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
+
+  // Custos lançados via form de horas (lancamentos_custo)
+  const custosOp = custosLanc || [];
+  const totalOp  = custosOp.reduce((s,c) => s + (c.valor || 0), 0);
 
   const isSocio = G.usuario.role === 'socio';
 
@@ -6000,17 +6408,18 @@ async function carregarCustosProduto(prodId) {
     { label: 'Pendente',  val: totPend,  cls: 'b-am' },
     { label: 'Aprovado',  val: totAprov, cls: 'b-az' },
     { label: 'Pago',      val: totPago,  cls: 'b-vd' },
+    ...(totalOp > 0 ? [{ label: 'Operacional', val: totalOp, cls: 'b-roxo' }] : []),
   ].map(t => `<div style="background:#fff;border:1px solid var(--cinza);border-radius:6px;padding:8px 14px;min-width:120px">
     <div style="font-size:9px;color:#888;margin-bottom:2px">${t.label}</div>
     <div style="font-size:15px;font-weight:600;font-family:var(--fm)">R$ ${fmtNum(t.val)}</div>
   </div>`).join('');
 
-  if (!custos?.length) {
-    lista.innerHTML = '<div class="empty-note">Nenhum custo registrado para este produto.</div>';
-    return;
-  }
+  let html = '';
 
-  lista.innerHTML = `<table class="tbl">
+  if (!custos?.length) {
+    html += '<div class="empty-note">Nenhum custo de proposta registrado para este produto.</div>';
+  } else {
+    html += `<table class="tbl">
     <thead><tr>
       <th>Tipo</th><th>Descrição</th><th>Vlr. calc.</th><th>Vlr. neg.</th>
       <th>Ref.</th><th>Status</th>${isSocio ? '<th></th>' : ''}
@@ -6040,6 +6449,47 @@ async function carregarCustosProduto(prodId) {
       }).join('')}
     </tbody>
   </table>`;
+  }
+
+  // Custos operacionais lançados via registro de horas (lancamentos_custo)
+  if (custosOp.length) {
+    html += `<div style="margin-top:18px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.07em;color:#888;text-transform:uppercase;margin-bottom:8px">
+        Custos operacionais lançados
+      </div>
+      <table class="tbl">
+        <thead><tr>
+          <th>Categoria</th><th>Descrição</th><th>Valor</th><th>Pessoa</th><th>Data</th>${isSocio ? '<th></th>' : ''}
+        </tr></thead>
+        <tbody>
+          ${custosOp.map(c => {
+            const u = c.usuarios || {};
+            const avatar = u.iniciais
+              ? `<span class="avatar" style="background:${u.cor||'#ccc'};width:20px;height:20px;font-size:8px">${u.iniciais}</span>`
+              : '—';
+            const dataFmt = c.data_lancamento ? c.data_lancamento.slice(0,10).split('-').reverse().join('/') : '—';
+            const catLabel = c.subtipo || c.tipo || '—';
+            return `<tr>
+              <td><span class="dtag">${catLabel}</span></td>
+              <td>${c.descricao || '—'}</td>
+              <td><span class="num-tag">R$ ${fmtNum(c.valor || 0)}</span></td>
+              <td style="text-align:center">${avatar}</td>
+              <td style="font-size:10px;color:#888">${dataFmt}</td>
+              ${isSocio ? `<td><button class="btn sm tc" style="font-size:9px;padding:2px 8px" onclick="excluirCustoLancado('${c.id}')">×</button></td>` : ''}
+            </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="${isSocio ? 5 : 4}" style="font-size:10px;font-weight:600;text-align:right;color:#555;padding:6px 8px">Total operacional:</td>
+            <td><span class="num-tag" style="font-weight:700">R$ ${fmtNum(totalOp)}</span></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
+  }
+
+  lista.innerHTML = html || '<div class="empty-note">Nenhum custo registrado para este produto.</div>';
 }
 
 async function adicionarCusto() {
