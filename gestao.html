@@ -1767,10 +1767,14 @@ body::before {
       <div style="margin-top:14px" id="custo-form-wrap" class="lanc-form">
         <div class="lanc-form-title">Lançar custo</div>
 
-        <div class="fg fg2 mb8">
+        <div class="fg fg3 mb8">
           <div class="fgroup">
             <label>Valor (R$)</label>
             <input type="number" id="cf-valor" step="0.01" min="0" placeholder="0,00">
+          </div>
+          <div class="fgroup">
+            <label>Data</label>
+            <input type="date" id="cf-data">
           </div>
           <div class="fgroup">
             <label>Vinculado a</label>
@@ -3959,6 +3963,11 @@ async function renderSemana() {
     if (custoForm) custoForm.style.display = 'block';
     if (finWrap)   finWrap.style.display   = 'block';
     if (btnDesbloquearWrap) btnDesbloquearWrap.style.display = 'none';
+    // Pré-preenche data do custo com hoje
+    const cfDataEl = document.getElementById('cf-data');
+    if (cfDataEl && !cfDataEl.value) {
+      cfDataEl.value = new Date().toISOString().split('T')[0];
+    }
   }
 
   const { data: lancamentos } = await sb.from('horas_lancadas')
@@ -4331,10 +4340,14 @@ async function lancarCusto() {
     subtipo = document.getElementById('cf-subtipo').value || null;
   }
 
+  // Data: usa o campo cf-data ou, como fallback, o dia selecionado / início da semana
+  const cfDataEl = document.getElementById('cf-data');
+  const dataISO = cfDataEl?.value ||
+    (G.diaSelecionado != null
+      ? getDiasSemana(G.semanaOffset)[G.diaSelecionado].toISOString().split('T')[0]
+      : semanaRangeOffset(G.semanaOffset).ini);
+
   const { ini: semIni, fim: semFim } = semanaRangeOffset(G.semanaOffset);
-  const dataISO = G.diaSelecionado != null
-    ? getDiasSemana(G.semanaOffset)[G.diaSelecionado].toISOString().split('T')[0]
-    : semIni;
 
   let { data: semDb } = await sb.from('semanas')
     .select('id,finalizada').eq('usuario_id', G.usuario.id).eq('data_inicio', semIni).maybeSingle();
@@ -4390,13 +4403,18 @@ async function renderCustosLancados() {
   const total = custos.reduce((s, c) => s + (c.valor || 0), 0);
   wrap.innerHTML = `
     <div style="font-size:10px;color:#888;margin-bottom:8px">Total: <strong style="font-family:var(--fm)">R$ ${fmtNum(total)}</strong></div>
-    ${custos.map(c => `
+    ${custos.map(c => {
+      const dataFmt = c.data_lancamento ? c.data_lancamento.slice(0,10).split('-').reverse().join('/') : '';
+      return `
       <div class="lanc-item" style="margin-bottom:6px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <div style="min-width:0">
-            <span class="dtag">${c.tipo}</span>
-            ${c.subtipo ? `<span class="dtag" style="margin-left:4px;background:var(--cinza2)">${c.subtipo}</span>` : ''}
-            ${c.produtos ? `<span style="font-size:10px;color:#666;margin-left:4px">${c.produtos.nome}</span>` : ''}
+            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+              <span class="dtag">${c.tipo}</span>
+              ${c.subtipo ? `<span class="dtag" style="background:var(--cinza2)">${c.subtipo}</span>` : ''}
+              ${c.produtos ? `<span style="font-size:10px;color:#666">${c.produtos.nome}</span>` : ''}
+              ${dataFmt ? `<span style="font-size:9px;color:#aaa">${dataFmt}</span>` : ''}
+            </div>
             ${c.descricao ? `<div style="font-size:10px;color:#888;margin-top:2px">${c.descricao}</div>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
@@ -4404,7 +4422,8 @@ async function renderCustosLancados() {
             <button class="btn sm tc" style="font-size:9px;padding:1px 6px" onclick="excluirCustoLancado('${c.id}')">×</button>
           </div>
         </div>
-      </div>`).join('')}`;
+      </div>`;
+    }).join('')}`;
 }
 
 async function excluirCustoLancado(id) {
