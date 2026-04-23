@@ -441,6 +441,8 @@ body::before {
 .btn.ghost { background: transparent; border-color: transparent; color: #999; }
 .btn.ghost:hover { border-color: var(--cinza); color: var(--preto); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.concluir { background: #fff; color: #999; border-color: var(--cinza2); }
+.btn.concluir:hover { background: var(--verde); color: #fff; border-color: var(--verde); }
 
 /* ── BADGES ──────────────────────────────────────────────── */
 .badge {
@@ -875,11 +877,11 @@ body::before {
   font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
   color: #777; border-bottom: 1px solid var(--cinza);
 }
-.gantt-prod-row td { border-bottom: 1px solid var(--cinza2); vertical-align: middle; }
+.gantt-prod-row td { border-bottom: 1px solid var(--cinza2); vertical-align: middle; height: 44px; max-height: 44px; }
 .gantt-prod-row:hover td { background: #fafaf8; }
 .gantt-prod-row td.info-cell {
-  padding: 8px 10px; border-right: 1px solid var(--cinza);
-  min-width: 260px; width: 260px;
+  padding: 6px 10px; border-right: 1px solid var(--cinza);
+  min-width: 260px; width: 260px; overflow: hidden;
 }
 .gantt-prod-nome { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
 .gantt-prod-coord { font-size: 10px; color: #888; }
@@ -1350,7 +1352,7 @@ body::before {
 .dia-btn.selected .dia-btn-hrs { color:rgba(255,255,255,.8); }
 
 /* ── GANTT AVATARES ──────────────────────────────────────── */
-.gantt-avs { display:flex; flex-direction:column; gap:2px; align-items:flex-end; flex-shrink:0; }
+.gantt-avs { display:flex; flex-direction:row; gap:2px; align-items:center; justify-content:flex-end; flex-shrink:0; }
 .gantt-av {
   width:18px; height:18px; border-radius:50%; display:flex; align-items:center;
   justify-content:center; font-size:7px; font-weight:700; color:#fff;
@@ -1431,7 +1433,7 @@ body::before {
   <div class="bv">
     <div class="bv-hora" id="bv-hora">—</div>
     <div class="bv-titulo" id="bv-titulo">Olá —</div>
-    <div class="bv-sub" id="bv-sub">Carregando seus projetos...</div>
+    <div class="bv-sub" id="bv-sub">Crie com propósito.</div>
   </div>
 
   <div class="stat-row" id="dash-stats">
@@ -1461,11 +1463,6 @@ body::before {
       <div class="stat-sub">etapas aguardando</div>
     </div>
     <div class="stat s-gr">
-      <div class="stat-lbl">Tarefas pendentes</div>
-      <div class="stat-val" id="st-tasks">—</div>
-      <div class="stat-sub">suas tarefas</div>
-    </div>
-    <div class="stat s-gr">
       <div class="stat-lbl">Horas semana</div>
       <div class="stat-val" id="st-horas">—</div>
       <div class="stat-sub" id="st-horas-sub">de 40h</div>
@@ -1477,7 +1474,7 @@ body::before {
 
       <!-- Prioridades da equipe (G3) -->
       <div id="bloco-prioridades" style="display:none">
-        <div class="sec-title">Prioridades da equipe</div>
+        <div class="sec-title">Minhas prioridades</div>
         <div id="dash-prioridades"></div>
       </div>
 
@@ -1504,6 +1501,7 @@ body::before {
       <div class="card c-vd">
         <div class="card-hd">
           <div class="card-title">Lista de tarefas</div>
+          <div id="st-tasks" style="font-size:10px;color:#bbb;font-weight:500;letter-spacing:.02em">—</div>
         </div>
         <div class="card-body">
           <div id="tasks-lista">
@@ -1570,29 +1568,31 @@ body::before {
       <button class="pvt-btn active" id="pvt-lista" onclick="setProjetosView('lista')">Lista</button>
       <button class="pvt-btn" id="pvt-gantt" onclick="setProjetosView('gantt')">Gantt</button>
     </div>
-    <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto" style="min-width:280px">
-    <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
-      <option value="">Todos os núcleos</option>
-      <option value="urbanismo">Urbanismo</option>
-      <option value="paisagismo">Paisagismo</option>
-      <option value="especiais">Proj. Especiais</option>
-      <option value="consultorias">Consultorias</option>
-    </select>
-    <select class="filter-select" id="fil-gestao" onchange="filtrarProjetos()">
-      <option value="visiveis">Na gestão</option>
-      <option value="todos">Todos</option>
-      <option value="ocultos">Ocultos da gestão</option>
-    </select>
-    <select class="filter-select" id="fil-status" onchange="filtrarProjetos()">
-      <option value="">Todos os status</option>
-      <option value="ativo">Ativos</option>
-      <option value="inativo">Inativos</option>
-      <option value="pausado">Pausados</option>
-      <option value="encerrado">Encerrados</option>
-    </select>
-    <select class="filter-select" id="fil-coord" onchange="filtrarProjetos()">
-      <option value="">Todos os coordenadores</option>
-    </select>
+    <div id="lista-filters" style="display:contents">
+      <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto" style="min-width:280px">
+      <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
+        <option value="">Todos os núcleos</option>
+        <option value="urbanismo">Urbanismo</option>
+        <option value="paisagismo">Paisagismo</option>
+        <option value="especiais">Proj. Especiais</option>
+        <option value="consultorias">Consultorias</option>
+      </select>
+      <select class="filter-select" id="fil-gestao" onchange="filtrarProjetos()">
+        <option value="visiveis">Na gestão</option>
+        <option value="todos">Todos</option>
+        <option value="ocultos">Ocultos da gestão</option>
+      </select>
+      <select class="filter-select" id="fil-status" onchange="filtrarProjetos()">
+        <option value="">Todos os status</option>
+        <option value="ativo">Ativos</option>
+        <option value="inativo">Inativos</option>
+        <option value="pausado">Pausados</option>
+        <option value="encerrado">Encerrados</option>
+      </select>
+      <select class="filter-select" id="fil-coord" onchange="filtrarProjetos()">
+        <option value="">Todos os coordenadores</option>
+      </select>
+    </div>
     <div style="margin-left:auto">
       <button class="btn filled socio-only" id="btn-novo-proj" style="display:none" onclick="abrirModalCadastroProjeto()">+ Novo projeto</button>
     </div>
@@ -2643,7 +2643,7 @@ let G = {
   diaSelecionado: null,
   semanaAtual: null,
   produtoAtivo: null,
-  ganttOffset: 0,
+  ganttOffset: -2,
   socioSemanaOffset: 0,
   _prodsGestao: [],
   _lancAtivos: [],
@@ -2827,8 +2827,9 @@ async function init() {
       btn.classList.add('active');
       modal.querySelectorAll('.mtab-panel').forEach(p => p.classList.remove('active'));
       document.getElementById(panelId).classList.add('active');
-      if (panelId === 'mp-custos') carregarCustosProduto(G.produtoAtivo);
+      if (panelId === 'mp-custos')   carregarCustosProduto(G.produtoAtivo);
       if (panelId === 'mp-revisoes') carregarRevisoesProduto(G.produtoAtivo);
+      if (panelId === 'mp-horas')    carregarHorasProduto(G.produtoAtivo);
     });
   });
 
@@ -3341,12 +3342,12 @@ function renderDashProjetos(prods, horasPorProd = {}) {
         </div>
         <div class="proj-card-acoes" onclick="event.stopPropagation()">
           ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao('${etapaAtiva.id}')">Solicitar revisão</button>` : ''}
-          ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm verde" onclick="concluirEtapa('${etapaAtiva.id}')">Concluir etapa</button>` : ''}
+          ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa('${etapaAtiva.id}')">Concluir etapa</button>` : ''}
         </div>
       </div>
     </div>`;
   }).join('');
-  document.getElementById('st-tasks').textContent = '—';
+  // contador é atualizado em renderTarefas
 }
 
 function renderDashCoord(prods) {
@@ -3456,7 +3457,10 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
   const wrap = document.getElementById('tasks-lista');
   const TIPO_LABEL = { projeto:'Proj.', organizacao:'Org.', sociedade:'Soc.' };
   const totalPendentes = pendentes.length + acompanhando.filter(t => !t.concluida).length;
-  document.getElementById('st-tasks').textContent = totalPendentes;
+  const stEl = document.getElementById('st-tasks');
+  if (stEl) stEl.textContent = totalPendentes > 0
+    ? String(totalPendentes).padStart(2,'0') + (totalPendentes === 1 ? ' tarefa pendente!' : ' tarefas pendentes!')
+    : '';
 
   if (!pendentes.length && !acompanhando.length) {
     wrap.innerHTML = '<div style="padding:8px 0;color:#aaa;font-size:11px">Sem tarefas pendentes.</div>';
@@ -3580,6 +3584,9 @@ function setProjetosView(v) {
   document.getElementById('pvt-gantt').classList.toggle('active', v === 'gantt');
   document.getElementById('view-lista').style.display = v === 'lista' ? 'block' : 'none';
   document.getElementById('view-gantt').style.display = v === 'gantt' ? 'block' : 'none';
+  // Mostrar filtros corretos por modo
+  const listaFilters = document.getElementById('lista-filters');
+  if (listaFilters) listaFilters.style.display = v === 'gantt' ? 'none' : 'contents';
   if (v === 'gantt') renderGantt();
   else renderListaProjetos();
 }
@@ -3729,10 +3736,10 @@ function renderListaProjetos() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   GANTT — CORRIGIDO (com avatares coord+devs)
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const SEMANAS_VIS = 10;
+const SEMANAS_VIS = 6;
 
 function ganttNavegar(d) { G.ganttOffset += d; renderGantt(); }
-function ganttHoje() { G.ganttOffset = 0; renderGantt(); }
+function ganttHoje() { G.ganttOffset = -2; renderGantt(); }
 
 function renderGantt() {
   const nucleoFil = document.getElementById('gantt-fil-nucleo').value;
@@ -3804,10 +3811,10 @@ function renderGantt() {
         .filter(Boolean)
         .filter(u => u.id !== coord?.id);
 
-      // Bolinhas: coord primeiro, depois devs (máx 4 total)
-      const todos = [coord, ...devs].filter(Boolean).slice(0, 4);
+      // Bolinhas: devs primeiro, coord à direita (máx 4 total). Coord fica mais à direita.
+      const todos = [...devs.slice(0, 3), coord].filter(Boolean);
       const avsHtml = todos.map(u =>
-        `<div class="gantt-av" style="background:${u.cor||'#888'}" title="${u.nome} (${u.iniciais === coord?.iniciais ? 'coord' : 'dev'})">${u.iniciais}</div>`
+        `<div class="gantt-av" style="background:${u.cor||'#888'};${u.id===coord?.id?'border-color:#aaa':''}" title="${u.nome} (${u.id===coord?.id?'coord':'dev'})">${u.iniciais}</div>`
       ).join('');
 
       rows += `<tr class="gantt-prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto('${p.id}')`}">
@@ -3838,7 +3845,7 @@ function renderGantt() {
               : e.status === 'em_revisao' ? 'gb-revisao'
               : e.status === 'concluida' ? 'gb-concluida'
               : e.status === 'pausada' ? 'gb-pausada'
-              : nc.bar || 'gb-nao-iniciada';
+              : 'gb-nao-iniciada';
             const atrasado = e.status !== 'concluida' && dEst < hoje ? 'atrasado' : '';
             const stE = STATUS_ETAPA[e.status];
             const dias = Math.round((dEst - hoje) / (1000*3600*24));
@@ -6343,6 +6350,24 @@ function isoWeek(d) {
   return Math.ceil((d - startWeek1) / (7 * 24 * 3600 * 1000)) + 1;
 }
 
+// Recalcula "data estimada" a partir de liberação + prazo + tipo de prazo
+function recalcEstimada(el) {
+  const row = el.closest('.etapa-edit-row');
+  if (!row) return;
+  const lib   = row.querySelector('.ee-lib')?.value;
+  const prazo = parseInt(row.querySelector('.ee-prazo')?.value, 10);
+  const tipo  = row.querySelector('.ee-ptipo')?.value || 'corridos';
+  const estEl = row.querySelector('.ee-est');
+  if (!estEl) return;
+  if (lib && prazo > 0) {
+    const base = new Date(lib + 'T12:00:00');
+    const result = addDias(base, prazo, tipo);
+    estEl.value = result.toISOString().split('T')[0];
+  } else {
+    estEl.value = '';
+  }
+}
+
 function addDias(dataBase, n, tipo = 'corridos') {
   const d = new Date(dataBase);
   if (tipo === 'corridos') {
@@ -6511,6 +6536,127 @@ async function carregarCustosProduto(prodId) {
   lista.innerHTML = html || '<div class="empty-note">Nenhum custo registrado para este produto.</div>';
 }
 
+// ── ABA HORAS DO PRODUTO ──────────────────────────────────────────────────────
+async function carregarHorasProduto(prodId) {
+  if (!prodId) return;
+  const wrap = document.getElementById('mp-horas-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading-state">Carregando horas...</div>';
+
+  const isSocio = G.usuario.role === 'socio';
+
+  // 1. Lançamentos de horas vinculados ao produto
+  const { data: lancs, error } = await sb.from('horas_lancadas')
+    .select('usuario_id, etapa_id, hora_inicio, hora_fim')
+    .eq('produto_id', prodId);
+
+  if (error) { wrap.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
+  if (!lancs?.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lançada neste produto.</div>'; return; }
+
+  // 2. Para sócios: busca valor/hora vigente de cada usuário
+  let vhPorUser = {};
+  if (isSocio) {
+    const uids = [...new Set(lancs.map(l => l.usuario_id))];
+    const hoje = new Date().toISOString().split('T')[0];
+    const { data: vhs } = await sb.from('historico_valor_hora')
+      .select('usuario_id, valor_hora, data_vigencia')
+      .in('usuario_id', uids)
+      .lte('data_vigencia', hoje)
+      .order('data_vigencia', { ascending: false });
+    (vhs || []).forEach(vh => {
+      if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
+    });
+  }
+
+  // 3. Agrupa por etapa → por usuário
+  const etapaMap = {}; // { etapaId: { userId: horas } }
+  let totalGeral = 0;
+
+  lancs.forEach(l => {
+    const h = diffHoras(l.hora_inicio, l.hora_fim);
+    totalGeral += h;
+    const eid = l.etapa_id || '__sem_etapa__';
+    if (!etapaMap[eid]) etapaMap[eid] = {};
+    if (!etapaMap[eid][l.usuario_id]) etapaMap[eid][l.usuario_id] = 0;
+    etapaMap[eid][l.usuario_id] += h;
+  });
+
+  // Total por usuário (geral)
+  const totalPorUser = {};
+  lancs.forEach(l => {
+    const h = diffHoras(l.hora_inicio, l.hora_fim);
+    if (!totalPorUser[l.usuario_id]) totalPorUser[l.usuario_id] = 0;
+    totalPorUser[l.usuario_id] += h;
+  });
+
+  // 4. Renderiza
+  let html = `<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="background:#f5f5f3;border-radius:8px;padding:10px 16px">
+      <div style="font-size:9px;color:#888;margin-bottom:2px">Total de horas</div>
+      <div style="font-size:18px;font-weight:700;font-family:var(--fm)">${fmtH(totalGeral)}</div>
+    </div>
+    ${isSocio ? `<div style="background:#f5f5f3;border-radius:8px;padding:10px 16px">
+      <div style="font-size:9px;color:#888;margin-bottom:2px">Custo estimado</div>
+      <div style="font-size:18px;font-weight:700;font-family:var(--fm)">R$ ${fmtNum(
+        Object.entries(totalPorUser).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0)
+      )}</div>
+    </div>` : ''}
+  </div>`;
+
+  // Por etapa
+  const etapasOrdem = Object.keys(etapaMap).sort((a,b) => {
+    if (a === '__sem_etapa__') return 1;
+    if (b === '__sem_etapa__') return -1;
+    const ea = G.todasEtapas.find(e=>e.id===a);
+    const eb = G.todasEtapas.find(e=>e.id===b);
+    return (ea?.nome||'').localeCompare(eb?.nome||'');
+  });
+
+  etapasOrdem.forEach(eid => {
+    const etapa = G.todasEtapas.find(e => e.id === eid);
+    const nomeEtapa = etapa?.nome || '(sem etapa)';
+    const userMap = etapaMap[eid];
+    const totalEtapa = Object.values(userMap).reduce((s,h) => s+h, 0);
+    const custoEtapa = isSocio
+      ? Object.entries(userMap).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0)
+      : 0;
+
+    html += `<div style="margin-bottom:14px;border:1px solid var(--cinza2);border-radius:8px;overflow:hidden">
+      <div style="background:var(--cinza2);padding:7px 12px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;font-weight:600">${nomeEtapa}</div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:10px;color:#555;font-family:var(--fm)">${fmtH(totalEtapa)}</span>
+          ${isSocio ? `<span style="font-size:10px;color:#555;font-family:var(--fm)">R$ ${fmtNum(custoEtapa)}</span>` : ''}
+        </div>
+      </div>
+      <table class="tbl" style="margin:0;border:none">
+        <thead><tr>
+          <th>Pessoa</th><th>Horas</th>${isSocio ? '<th>Vlr/h</th><th>Custo est.</th>' : ''}
+        </tr></thead>
+        <tbody>
+          ${Object.entries(userMap).sort((a,b) => b[1]-a[1]).map(([uid,h]) => {
+            const u = G.todosUsuarios.find(x=>x.id===uid);
+            const vh = vhPorUser[uid] || 0;
+            return `<tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="avatar" style="background:${u?.cor||'#ccc'};width:22px;height:22px;font-size:8px">${u?.iniciais||'?'}</span>
+                  <span style="font-size:11px">${u?.nome||uid}</span>
+                </div>
+              </td>
+              <td><span class="num-tag">${fmtH(h)}</span></td>
+              ${isSocio ? `<td style="font-size:10px;color:#888">R$ ${fmtNum(vh)}/h</td>
+              <td><span class="num-tag">R$ ${fmtNum(h*vh)}</span></td>` : ''}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  });
+
+  wrap.innerHTML = html;
+}
+
 async function adicionarCusto() {
   const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo);
   if (!prod) return;
@@ -6585,22 +6731,22 @@ function _renderEtapaEdicaoRow(e, devIds) {
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div style="display:flex;flex-direction:column;gap:2px">
         <label style="font-size:9px;color:#888">Liberação</label>
-        <input type="date" class="ee-lib" value="${e.data_liberacao||''}" style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <label style="font-size:9px;color:#888">Estimada</label>
-        <input type="date" class="ee-est" value="${e.data_estimada||''}" style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none">
+        <input type="date" class="ee-lib" value="${e.data_liberacao||''}" oninput="recalcEstimada(this)" style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none">
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
         <label style="font-size:9px;color:#888">Prazo (dias)</label>
-        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="—" min="1" style="width:70px;padding:3px 7px;border:1px solid var(--cinza);font-family:var(--fm);font-size:11px;outline:none">
+        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="—" min="1" oninput="recalcEstimada(this)" style="width:70px;padding:3px 7px;border:1px solid var(--cinza);font-family:var(--fm);font-size:11px;outline:none">
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
         <label style="font-size:9px;color:#888">Tipo prazo</label>
-        <select class="ee-ptipo" style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none;background:#fff">
+        <select class="ee-ptipo" onchange="recalcEstimada(this)" style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none;background:#fff">
           <option value="corridos" ${(e.prazo_tipo||'corridos')==='corridos'?'selected':''}>Corridos</option>
           <option value="uteis"    ${e.prazo_tipo==='uteis'?'selected':''}>Úteis</option>
         </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <label style="font-size:9px;color:#888">Estimada (auto)</label>
+        <input type="date" class="ee-est" value="${e.data_estimada||''}" readonly style="padding:3px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none;background:#f9f9f7;color:#888;cursor:default">
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
         <label style="font-size:9px;color:#888">Dev 1</label>
