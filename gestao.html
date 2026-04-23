@@ -503,6 +503,22 @@ body::before {
 .stat-lbl { font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #999; margin-bottom: 6px; }
 .stat-val { font-size: 22px; font-weight: 700; font-family: var(--fm); letter-spacing: -1px; line-height: 1; }
 .stat-sub { font-size: 10px; color: #888; margin-top: 2px; }
+/* Stat compacto para dash integrado */
+.stat-mini {
+  background: #fff; border: 1px solid var(--cinza);
+  padding: 10px 13px 10px 16px; position: relative; flex: 1;
+}
+.stat-mini::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+}
+.stat-mini.s-vd::before { background: var(--verde); }
+.stat-mini.s-az::before { background: var(--az); }
+.stat-mini.s-am::before { background: var(--am); }
+.stat-mini.s-tc::before { background: var(--tc); }
+.stat-mini.s-gr::before { background: var(--cinza); }
+.stat-mini-val { font-size: 18px; font-weight: 700; font-family: var(--fm); letter-spacing: -1px; line-height: 1.1; }
+.stat-mini-lbl { font-size: 8px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: #999; margin-top: 4px; }
 
 /* â”€â”€ SEÃ‡ÃƒO TÃTULOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sec-title {
@@ -906,7 +922,7 @@ body::before {
 /* Cores de barra por status de etapa */
 .gb-andamento { background: var(--az); }
 .gb-revisao { background: var(--am); }
-.gb-concluida { background: var(--verde); }
+.gb-concluida { background: var(--verde); opacity: 0.45; }
 .gb-nao-iniciada { background: var(--cinza); }
 .gb-pausada { background: var(--tc); }
 /* por núcleo */
@@ -1436,41 +1452,28 @@ body::before {
     <div class="bv-sub" id="bv-sub">Crie com propósito.</div>
   </div>
 
-  <div class="stat-row" id="dash-stats">
-    <div class="stat s-gr">
-      <div class="stat-lbl">Total de projetos</div>
-      <div class="stat-val" id="st-total">—</div>
-      <div class="stat-sub">no escritório</div>
-    </div>
-    <div class="stat s-vd">
-      <div class="stat-lbl">Ativos</div>
-      <div class="stat-val" id="st-ativos">—</div>
-      <div class="stat-sub">em andamento</div>
-    </div>
-    <div class="stat s-am">
-      <div class="stat-lbl">Pausados</div>
-      <div class="stat-val" id="st-pausados">—</div>
-      <div class="stat-sub">em espera</div>
-    </div>
-    <div class="stat s-tc">
-      <div class="stat-lbl">Encerrados</div>
-      <div class="stat-val" id="st-encerrados">—</div>
-      <div class="stat-sub">finalizados</div>
-    </div>
-    <div class="stat s-az">
-      <div class="stat-lbl">Em revisão</div>
-      <div class="stat-val" id="st-rev">—</div>
-      <div class="stat-sub">etapas aguardando</div>
-    </div>
-    <div class="stat s-gr">
-      <div class="stat-lbl">Horas semana</div>
-      <div class="stat-val" id="st-horas">—</div>
-      <div class="stat-sub" id="st-horas-sub">de 40h</div>
-    </div>
+  <!-- Stats integrados ao grid: projetos no dash-left, horas no dash-right -->
+  <div id="dash-stats" style="display:none">
+    <div class="stat-val" id="st-total">—</div>
+    <div class="stat-val" id="st-ativos">—</div>
+    <div class="stat-val" id="st-pausados">—</div>
+    <div class="stat-val" id="st-encerrados">—</div>
+    <div class="stat-val" id="st-rev">—</div>
+    <div class="stat-val" id="st-horas">—</div>
+    <div id="st-horas-sub"></div>
   </div>
 
   <div class="dash-grid">
     <div class="dash-left">
+
+      <!-- Stats de projetos -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:2px" id="dash-stats-proj">
+        <div class="stat-mini s-gr"><div class="stat-mini-val" id="st-total-v">—</div><div class="stat-mini-lbl">Total</div></div>
+        <div class="stat-mini s-vd"><div class="stat-mini-val" id="st-ativos-v">—</div><div class="stat-mini-lbl">Ativos</div></div>
+        <div class="stat-mini s-am"><div class="stat-mini-val" id="st-pausados-v">—</div><div class="stat-mini-lbl">Pausados</div></div>
+        <div class="stat-mini s-tc"><div class="stat-mini-val" id="st-encerrados-v">—</div><div class="stat-mini-lbl">Encerrados</div></div>
+        <div class="stat-mini s-az"><div class="stat-mini-val" id="st-rev-v">—</div><div class="stat-mini-lbl">Em revisão</div></div>
+      </div>
 
       <!-- Prioridades da equipe (G3) -->
       <div id="bloco-prioridades" style="display:none">
@@ -1497,11 +1500,20 @@ body::before {
     </div>
     <div class="dash-right">
 
+      <!-- Horas da semana — alinhado horizontalmente com tasks -->
+      <div class="stat-mini s-gr" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <div class="stat-mini-val" id="st-horas-v" style="font-size:20px">—</div>
+          <div class="stat-mini-lbl" id="st-horas-sub-v" style="font-size:10px;color:#aaa">de 40h</div>
+        </div>
+        <div class="stat-mini-lbl">Horas esta semana</div>
+      </div>
+
       <!-- Tarefas livres -->
       <div class="card c-vd">
         <div class="card-hd">
           <div class="card-title">Lista de tarefas</div>
-          <div id="st-tasks" style="font-size:10px;color:#bbb;font-weight:500;letter-spacing:.02em">—</div>
+          <div id="st-tasks" style="font-size:10px;color:#bbb;font-weight:500;letter-spacing:.02em;margin-left:auto">—</div>
         </div>
         <div class="card-body">
           <div id="tasks-lista">
@@ -1759,15 +1771,12 @@ body::before {
         <button class="btn verde" style="width:100%" onclick="lancarHoras()">Registrar horas</button>
       </div>
 
-      <div style="margin-top:10px" id="finalizar-wrap">
-        <button class="btn filled" style="width:100%" onclick="abrirFinalizarSemana()">Finalizar semana</button>
-      </div>
-
       <!-- Formulário de custos -->
       <div style="margin-top:14px" id="custo-form-wrap" class="lanc-form">
         <div class="lanc-form-title">Lançar custo</div>
 
-        <div class="fg fg3 mb8">
+        <!-- Linha 1: Valor + Data -->
+        <div class="fg fg2 mb8">
           <div class="fgroup">
             <label>Valor (R$)</label>
             <input type="number" id="cf-valor" step="0.01" min="0" placeholder="0,00">
@@ -1776,37 +1785,35 @@ body::before {
             <label>Data</label>
             <input type="date" id="cf-data">
           </div>
-          <div class="fgroup">
-            <label>Vinculado a</label>
-            <select id="cf-tipo" onchange="atualizarFormCusto()">
-              <option value="projeto">Projeto</option>
-              <option value="organizacao">Org. Interna</option>
-              <option value="sociedade">Sociedade</option>
-            </select>
-          </div>
+        </div>
+
+        <!-- Linha 2: Vínculo -->
+        <div class="fgroup mb8">
+          <label>Vinculado a</label>
+          <select id="cf-tipo" onchange="atualizarFormCusto()">
+            <option value="projeto">Projeto</option>
+            <option value="organizacao">Org. Interna</option>
+            <option value="sociedade">Sociedade</option>
+          </select>
         </div>
 
         <!-- Subcategoria (org / sociedade) -->
-        <div class="fg mb8" id="cf-subtipo-wrap" style="display:none">
-          <div class="fgroup">
-            <label>Categoria</label>
-            <select id="cf-subtipo"></select>
-          </div>
+        <div class="fgroup mb8" id="cf-subtipo-wrap" style="display:none">
+          <label>Categoria</label>
+          <select id="cf-subtipo"></select>
         </div>
 
-        <!-- Cascata projeto -->
+        <!-- Cascata projeto: cliente → opp → produto → categoria -->
         <div id="cf-projeto-wrap">
-          <div class="fg mb8">
-            <div class="fgroup">
-              <label>Cliente</label>
-              <select id="cf-cliente" onchange="cfFiltrarOpps()"><option value="">Selecionar cliente...</option></select>
-            </div>
-            <div class="fgroup" id="cf-opp-wrap" style="display:none">
-              <label>Oportunidade</label>
-              <select id="cf-oportunidade" onchange="cfFiltrarProdutos()"><option value="">Selecionar...</option></select>
-            </div>
+          <div class="fgroup mb8">
+            <label>Cliente</label>
+            <select id="cf-cliente" onchange="cfFiltrarOpps()"><option value="">Selecionar cliente...</option></select>
           </div>
-          <div class="fg mb8">
+          <div class="fgroup mb8" id="cf-opp-wrap" style="display:none">
+            <label>Projeto</label>
+            <select id="cf-oportunidade" onchange="cfFiltrarProdutos()"><option value="">Selecionar...</option></select>
+          </div>
+          <div class="fg fg2 mb8">
             <div class="fgroup" id="cf-prod-wrap" style="display:none">
               <label>Produto</label>
               <select id="cf-produto" onchange="cfFiltrarEtapas()"><option value="">Selecionar...</option></select>
@@ -1816,21 +1823,19 @@ body::before {
               <select id="cf-etapa"><option value="">—</option></select>
             </div>
           </div>
-          <div class="fg mb8">
-            <div class="fgroup">
-              <label>Categoria</label>
-              <select id="cf-tipo-projeto">
-                <option value="Alimentação">Alimentação</option>
-                <option value="Hospedagem">Hospedagem</option>
-                <option value="Translado">Translado</option>
-                <option value="Passagem">Passagem</option>
-                <option value="Transporte">Transporte</option>
-                <option value="Aluguel de carro">Aluguel de carro</option>
-                <option value="Gasolina">Gasolina</option>
-                <option value="Impressão">Impressão</option>
-                <option value="Outro">Outro</option>
-              </select>
-            </div>
+          <div class="fgroup mb8">
+            <label>Categoria</label>
+            <select id="cf-tipo-projeto">
+              <option value="Alimentação">Alimentação</option>
+              <option value="Hospedagem">Hospedagem</option>
+              <option value="Translado">Translado</option>
+              <option value="Passagem">Passagem</option>
+              <option value="Transporte">Transporte</option>
+              <option value="Aluguel de carro">Aluguel de carro</option>
+              <option value="Gasolina">Gasolina</option>
+              <option value="Impressão">Impressão</option>
+              <option value="Outro">Outro</option>
+            </select>
           </div>
         </div>
 
@@ -1840,6 +1845,11 @@ body::before {
         </div>
 
         <button class="btn verde" style="width:100%" onclick="lancarCusto()">Registrar custo</button>
+      </div>
+
+      <!-- Finalizar semana — aparece após os custos -->
+      <div style="margin-top:10px" id="finalizar-wrap">
+        <button class="btn filled" style="width:100%" onclick="abrirFinalizarSemana()">Finalizar semana</button>
       </div>
 
     </div>
@@ -1874,12 +1884,27 @@ body::before {
 
   <div class="socio-tabs">
     <button class="socio-tab active" data-panel="submissao">Submissão</button>
+    <button class="socio-tab" data-panel="carga-mensal">Carga mensal</button>
     <button class="socio-tab" data-panel="carga">Carga da equipe</button>
     <button class="socio-tab" data-panel="valorhora">Valor / hora</button>
     <button class="socio-tab" data-panel="fluxo">Fluxo de trabalho</button>
     <button class="socio-tab" data-panel="entregas">Entregas</button>
     <button class="socio-tab billing-only" data-panel="espelho" id="socio-tab-espelho" style="display:none">Faturamento</button>
     <button class="socio-tab" data-panel="usuarios">Usuários</button>
+  </div>
+
+  <!-- CARGA MENSAL -->
+  <div class="socio-panel" id="sp-carga-mensal">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="sec-title" style="margin-bottom:0;flex:1">Carga mensal por colaborador</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:10px;color:#888">Mês:</label>
+        <input type="month" id="cm-mes" class="filter-select" style="font-size:11px" onchange="carregarCargaMensal()">
+      </div>
+    </div>
+    <div id="cm-lista">
+      <div class="loading-state">Selecione um mês para carregar.</div>
+    </div>
   </div>
 
   <!-- CARGA -->
@@ -2066,7 +2091,10 @@ body::before {
 <div class="modal-bg" id="modal-produto" style="display:none">
   <div class="modal xl">
     <div class="modal-hd">
-      <div class="modal-hd-title" id="mp-titulo">Projeto</div>
+      <div>
+        <div class="modal-hd-title" id="mp-titulo">Projeto</div>
+        <div id="mp-subtipo-hd" style="font-size:10px;color:#aaa;margin-top:1px"></div>
+      </div>
       <button class="modal-close" onclick="fecharModal('modal-produto')">×</button>
     </div>
     <div class="modal-body" style="padding:0">
@@ -2947,6 +2975,15 @@ function onTabChange(tab) {
 }
 function onSocioPanel(panel) {
   if (panel === 'carga') carregarCarga();
+  if (panel === 'carga-mensal') {
+    // Pré-seleciona o mês atual se ainda não tiver
+    const el = document.getElementById('cm-mes');
+    if (el && !el.value) {
+      const now = new Date();
+      el.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    }
+    carregarCargaMensal();
+  }
   if (panel === 'submissao') carregarSubmissao();
   if (panel === 'espelho') carregarEspelho();
   if (panel === 'valorhora') carregarValorHora();
@@ -3178,10 +3215,37 @@ async function carregarProdutos() {
   // Produtos com em_gestao = FALSE vieram do CRM sem oportunidade fechada → não exibir na Gestão
   const prodsAtivos = (prodsGestao || []).filter(p => p.em_gestao !== false);
 
-  G._todosProdutosGestao = prodsGestao || [];
-  G._crmVirtuais = prodsVirtCrm;
-  G.todosProdutos = [...prodsAtivos, ...prodsVirtCrm];
-  G._prodsGestao = prodsAtivos;
+  // Corrige mojibake em cidades/nomes vindos do banco
+  const fm = s => !s ? s : s
+    .replace(/Ã§/g,'ç').replace(/Ã£/g,'ã').replace(/Ã©/g,'é').replace(/Ã³/g,'ó')
+    .replace(/Ã´/g,'ô').replace(/Ãµ/g,'õ').replace(/Ã¢/g,'â').replace(/Ã­/g,'í')
+    .replace(/Ãº/g,'ú').replace(/Ã /g,'à').replace(/Ã¡/g,'á').replace(/Ãª/g,'ê')
+    .replace(/Ã±/g,'ñ').replace(/Ã¼/g,'ü').replace(/Ã\u00a3/g,'ã');
+  const fixProd = arr => (arr||[]).map(p => {
+    if (p.oportunidades) {
+      p.oportunidades.projeto = fm(p.oportunidades.projeto);
+      p.oportunidades.cidade  = fm(p.oportunidades.cidade);
+      if (p.oportunidades.clientes) {
+        p.oportunidades.clientes.nome   = fm(p.oportunidades.clientes.nome);
+        p.oportunidades.clientes.cidade = fm(p.oportunidades.clientes.cidade);
+      }
+    }
+    return p;
+  });
+  const prodsAtivosFixed = fixProd(prodsAtivos);
+  const prodsVirtFixed   = prodsVirtCrm.map(p => {
+    p.oportunidades.projeto = fm(p.oportunidades.projeto);
+    if (p.oportunidades.clientes) {
+      p.oportunidades.clientes.nome   = fm(p.oportunidades.clientes.nome);
+      p.oportunidades.clientes.cidade = fm(p.oportunidades.clientes.cidade);
+    }
+    return p;
+  });
+
+  G._todosProdutosGestao = fixProd(prodsGestao || []);
+  G._crmVirtuais = prodsVirtFixed;
+  G.todosProdutos = [...prodsAtivosFixed, ...prodsVirtFixed];
+  G._prodsGestao = prodsAtivosFixed;
 
   // 7. Etapas
   const { data: etapas } = await sb.from('etapas').select('*').order('ordem');
@@ -3246,21 +3310,27 @@ async function carregarDashboard() {
 
   // Stats de projetos do escritório (todos)
   const todos = G._prodsGestao;
-  document.getElementById('st-total').textContent     = todos.length;
-  document.getElementById('st-ativos').textContent    = todos.filter(p => p.status === 'ativo').length;
-  document.getElementById('st-pausados').textContent  = todos.filter(p => p.status === 'pausado').length;
-  document.getElementById('st-encerrados').textContent= todos.filter(p => p.status === 'encerrado').length;
+  const setStatV = (base, val) => {
+    const el = document.getElementById(base); if (el) el.textContent = val;
+    const elV = document.getElementById(base + '-v'); if (elV) elV.textContent = val;
+  };
+  setStatV('st-total',     todos.length);
+  setStatV('st-ativos',    todos.filter(p => p.status === 'ativo').length);
+  setStatV('st-pausados',  todos.filter(p => p.status === 'pausado').length);
+  setStatV('st-encerrados',todos.filter(p => p.status === 'encerrado').length);
 
   const emRevisao = G.todasEtapas.filter(e =>
     e.status === 'em_revisao' && meusProdutos.some(p => p.id === e.produto_id)
   ).length;
-  document.getElementById('st-rev').textContent = emRevisao;
+  setStatV('st-rev', emRevisao);
 
   const { ini, fim } = semanaRange(0);
   const { data: horas } = await sb.from('horas_lancadas')
     .select('hora_inicio, hora_fim').eq('usuario_id', uid)
     .gte('data_lancamento', ini).lte('data_lancamento', fim);
-  document.getElementById('st-horas').textContent = fmtH(calcTotalHoras(horas || []));
+  const horasH = fmtH(calcTotalHoras(horas || []));
+  setStatV('st-horas', horasH);
+  const subV = document.getElementById('st-horas-sub-v'); if (subV) subV.textContent = 'de 40h';
 
   // S4-04: horas realizadas por produto (todos os lançamentos de todos os usuários)
   const pidsAtivos = meusProdutos.map(p => p.id);
@@ -4395,12 +4465,13 @@ async function renderCustosLancados() {
   const wrap = document.getElementById('custo-lista-wrap');
   if (!wrap) return;
   const { ini, fim } = semanaRangeOffset(G.semanaOffset);
+  const COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
 
   const { data: custos } = await sb.from('lancamentos_custo')
     .select('*, produtos(nome)')
     .eq('usuario_id', G.usuario.id)
     .gte('data_lancamento', ini).lte('data_lancamento', fim)
-    .order('created_at', { ascending: false });
+    .order('data_lancamento', { ascending: false });
 
   if (!custos?.length) {
     wrap.innerHTML = '<div class="empty-note">Nenhum custo registrado esta semana.</div>';
@@ -4408,29 +4479,63 @@ async function renderCustosLancados() {
   }
 
   const total = custos.reduce((s, c) => s + (c.valor || 0), 0);
-  wrap.innerHTML = `
-    <div style="font-size:10px;color:#888;margin-bottom:8px">Total: <strong style="font-family:var(--fm)">R$ ${fmtNum(total)}</strong></div>
-    ${custos.map(c => {
-      const dataFmt = c.data_lancamento ? c.data_lancamento.slice(0,10).split('-').reverse().join('/') : '';
-      return `
-      <div class="lanc-item" style="margin-bottom:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div style="min-width:0">
-            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-              <span class="dtag">${c.tipo}</span>
-              ${c.subtipo ? `<span class="dtag" style="background:var(--cinza2)">${c.subtipo}</span>` : ''}
-              ${c.produtos ? `<span style="font-size:10px;color:#666">${c.produtos.nome}</span>` : ''}
-              ${dataFmt ? `<span style="font-size:9px;color:#aaa">${dataFmt}</span>` : ''}
-            </div>
-            ${c.descricao ? `<div style="font-size:10px;color:#888;margin-top:2px">${c.descricao}</div>` : ''}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-            <span style="font-family:var(--fm);font-size:12px;font-weight:600">R$ ${fmtNum(c.valor)}</span>
-            <button class="btn sm tc" style="font-size:9px;padding:1px 6px" onclick="excluirCustoLancado('${c.id}')">×</button>
-          </div>
+  let html = `<div style="background:#fff;border:1px solid var(--cinza)">`;
+
+  // Agrupa por data
+  const porData = {};
+  custos.forEach(c => {
+    const d = c.data_lancamento?.slice(0,10) || ini;
+    if (!porData[d]) porData[d] = [];
+    porData[d].push(c);
+  });
+
+  Object.keys(porData).sort((a,b)=>a.localeCompare(b)).forEach(d => {
+    const dFmt = d.split('-').reverse().join('/');
+    const dow = new Date(d + 'T12:00:00').getDay();
+    const NOMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const fds = dow === 0 || dow === 6;
+    html += `<div style="padding:4px 10px 2px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;background:${fds?'var(--cinza2)':'var(--off)'}">${NOMES[dow]} ${dFmt}</div>`;
+    porData[d].forEach(c => {
+      const cor = COR_TIPO[c.tipo] || '#888';
+      const catLabel = c.subtipo || (c.tipo === 'projeto' ? 'Projeto' : c.tipo);
+      const projLabel = c.produtos?.nome ? ` · ${c.produtos.nome}` : '';
+      const travada = G._semanaTravada;
+      html += `<div class="lanc-item">
+        <div class="lanc-tipo-dot" style="background:${cor}"></div>
+        <div class="lanc-hora" style="min-width:52px;font-family:var(--fm);font-size:10px;font-weight:600">R$ ${fmtNum(c.valor)}</div>
+        <div class="lanc-desc">${catLabel}${projLabel}${c.descricao ? ' · ' + c.descricao : ''}</div>
+        <div class="lanc-dur"></div>
+        <div class="lanc-actions">
+          <button class="lanc-edit ${travada?'disabled':''}" onclick="${travada?'':'editarCustoLancado(\''+c.id+'\')'}">Editar</button>
+          <button class="lanc-del ${travada?'disabled':''}" onclick="${travada?'':'excluirCustoLancado(\''+c.id+'\')'}">×</button>
         </div>
       </div>`;
-    }).join('')}`;
+    });
+  });
+
+  html += `</div>
+  <div style="font-size:10px;color:#555;text-align:right;margin-top:6px;font-family:var(--fm);font-weight:600">Total: R$ ${fmtNum(total)}</div>`;
+  wrap.innerHTML = html;
+}
+
+async function editarCustoLancado(id) {
+  if (G._semanaTravada) { toast('Semana bloqueada'); return; }
+  const { ini, fim } = semanaRangeOffset(G.semanaOffset);
+  const { data: custos } = await sb.from('lancamentos_custo').select('*').eq('usuario_id', G.usuario.id)
+    .gte('data_lancamento', ini).lte('data_lancamento', fim);
+  const c = (custos||[]).find(x => x.id === id);
+  if (!c) return;
+  const novoValor = prompt('Novo valor (R$):', c.valor);
+  if (novoValor === null) return;
+  const novaDesc = prompt('Descrição (deixe em branco para manter):', c.descricao || '');
+  if (novaDesc === null) return;
+  const { error } = await sb.from('lancamentos_custo').update({
+    valor: parseFloat(novoValor) || c.valor,
+    descricao: novaDesc || null
+  }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('Custo atualizado');
+  renderCustosLancados();
 }
 
 async function excluirCustoLancado(id) {
@@ -5114,7 +5219,8 @@ async function abrirProduto(id) {
   const stProd = STATUS_PROD[prod.status] || STATUS_PROD.inativo;
   const isSocio = G.usuario.role === 'socio';
 
-  document.getElementById('mp-titulo').textContent = prod.nome;
+  document.getElementById('mp-titulo').textContent = (cli?.nome || '—') + ' | ' + (opp?.projeto || prod.nome);
+  document.getElementById('mp-subtipo-hd').innerHTML = `<span class="badge ${nc.cls}" style="font-size:8px">${nc.label}</span> <span style="color:#bbb">${prod.nome}</span>`;
   document.getElementById('mp-cliente').textContent = cli?.nome || '—';
   document.getElementById('mp-opp').textContent = opp?.projeto || '—';
   document.getElementById('mp-nucleo').innerHTML = `<span class="badge ${nc.cls}">${nc.label}</span>`;
@@ -5722,7 +5828,7 @@ async function carregarSubmissao() {
         .eq('data_inicio', ini),
       sb
         .from('horas_lancadas')
-        .select('usuario_id, hora_inicio, hora_fim, data_lancamento')
+        .select('usuario_id, hora_inicio, hora_fim, data_lancamento, tipo, subtipo, produto_id')
         .gte('data_lancamento', ini)
         .lte('data_lancamento', fim),
       sb
@@ -5757,11 +5863,16 @@ async function carregarSubmissao() {
 
     const usuariosComHoras = new Set(horas.map(h => h.usuario_id).filter(Boolean));
     const horasPorUsuario = {};
+    const horasPorTipo = {}; // { uid: { projeto:0, organizacao:0, sociedade:0 } }
     horas.forEach(h => {
       if (!h.usuario_id) return;
+      const dh = diffHoras(h.hora_inicio, h.hora_fim);
       if (!horasPorUsuario[h.usuario_id]) horasPorUsuario[h.usuario_id] = 0;
-      horasPorUsuario[h.usuario_id] += diffHoras(h.hora_inicio, h.hora_fim);
+      horasPorUsuario[h.usuario_id] += dh;
+      if (!horasPorTipo[h.usuario_id]) horasPorTipo[h.usuario_id] = { projeto:0, organizacao:0, sociedade:0 };
+      horasPorTipo[h.usuario_id][h.tipo || 'projeto'] = (horasPorTipo[h.usuario_id][h.tipo || 'projeto'] || 0) + dh;
     });
+    G._submissaoHorasPorTipo = horasPorTipo;
 
     wrap.innerHTML = '';
 
@@ -5790,7 +5901,7 @@ async function carregarSubmissao() {
         ${u.iniciais || ''}
       </div>
       <div class="subm-user">
-        <div class="carga-nome">
+        <div class="carga-nome" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" onclick="mostrarResumoMembro('${u.id}','${(u.nome||'').replace(/'/g,"\\'")}')">
           ${u.nome || ''}
         </div>
         ${sobrecarga > 0 ? `<div class="subm-overload">Sobrecarga de trabalho - ${fmtHLong(sobrecarga)}</div>` : ''}
@@ -5816,6 +5927,137 @@ async function carregarSubmissao() {
   }
 }
 
+
+function mostrarResumoMembro(uid, nome) {
+  const hpT = G._submissaoHorasPorTipo?.[uid] || {};
+  const total = Object.values(hpT).reduce((s,h)=>s+h,0);
+  const rows = [
+    { label:'Projetos',       h: hpT.projeto     || 0, cor:'#1D4FA0' },
+    { label:'Org. Interna',   h: hpT.organizacao  || 0, cor:'#1D6A4A' },
+    { label:'Sociedade',      h: hpT.sociedade    || 0, cor:'#C4831A' },
+  ].filter(r => r.h > 0);
+
+  const conteudo = rows.length
+    ? rows.map(r => {
+        const pct = total > 0 ? Math.round(r.h / total * 100) : 0;
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:11px;color:${r.cor};font-weight:600">${r.label}</span>
+            <span style="font-size:11px;font-family:var(--fm)">${fmtH(r.h)} (${pct}%)</span>
+          </div>
+          <div style="height:5px;background:var(--cinza2);border-radius:3px">
+            <div style="height:5px;width:${pct}%;background:${r.cor};border-radius:3px;transition:width .3s"></div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="empty-note">Sem horas lançadas nesta semana.</div>';
+
+  // Mini overlay
+  let ov = document.getElementById('resumo-membro-ov');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'resumo-membro-ov';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)';
+    ov.innerHTML = `<div id="resumo-membro-box" style="background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:20px;min-width:300px;max-width:380px;position:relative">
+      <button onclick="document.getElementById('resumo-membro-ov').remove()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
+      <div id="resumo-membro-titulo" style="font-size:13px;font-weight:700;margin-bottom:4px"></div>
+      <div id="resumo-membro-total" style="font-size:10px;color:#888;margin-bottom:14px"></div>
+      <div id="resumo-membro-rows"></div>
+    </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+  document.getElementById('resumo-membro-titulo').textContent = nome;
+  document.getElementById('resumo-membro-total').textContent = `Total: ${fmtH(total)}`;
+  document.getElementById('resumo-membro-rows').innerHTML = conteudo;
+  ov.style.display = 'flex';
+}
+
+// ── CARGA MENSAL ─────────────────────────────────────────────────────────────
+async function carregarCargaMensal() {
+  const wrap = document.getElementById('cm-lista');
+  if (!wrap) return;
+  const mesEl = document.getElementById('cm-mes');
+  const mes = mesEl?.value; // YYYY-MM
+  if (!mes) { wrap.innerHTML = '<div class="empty-note">Selecione um mês.</div>'; return; }
+  wrap.innerHTML = '<div class="loading-state">Carregando...</div>';
+
+  const [ano, m] = mes.split('-').map(Number);
+  const ini = `${ano}-${String(m).padStart(2,'0')}-01`;
+  const ultimoDia = new Date(ano, m, 0).getDate();
+  const fim = `${ano}-${String(m).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
+
+  const [{ data: horas }, { data: usuarios }] = await Promise.all([
+    sb.from('horas_lancadas').select('usuario_id, hora_inicio, hora_fim, tipo, produto_id')
+      .gte('data_lancamento', ini).lte('data_lancamento', fim),
+    sb.from('usuarios').select('id, nome, iniciais, cor').order('nome')
+  ]);
+
+  if (!horas || !usuarios) { wrap.innerHTML = '<div class="empty-note">Erro ao carregar.</div>'; return; }
+
+  // Agrupa horas por usuário e por tipo
+  const porUser = {};
+  horas.forEach(h => {
+    const dh = diffHoras(h.hora_inicio, h.hora_fim);
+    if (!porUser[h.usuario_id]) porUser[h.usuario_id] = { total:0, projeto:0, organizacao:0, sociedade:0, prods:{} };
+    const u = porUser[h.usuario_id];
+    u.total += dh;
+    u[h.tipo || 'projeto'] = (u[h.tipo || 'projeto'] || 0) + dh;
+    if (h.produto_id) u.prods[h.produto_id] = (u.prods[h.produto_id] || 0) + dh;
+  });
+
+  const semNome = new Intl.DateTimeFormat('pt-BR', {month:'long',year:'numeric'}).format(new Date(ano,m-1,1));
+
+  let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
+
+  usuarios.filter(u => porUser[u.id]?.total > 0).forEach(u => {
+    const d = porUser[u.id];
+    const tops = Object.entries(d.prods).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topsHtml = tops.map(([pid, h]) => {
+      const prod = G.todosProdutos.find(p => p.id === pid);
+      const nome = prod?.oportunidades?.projeto || prod?.nome || pid;
+      const pct = d.total > 0 ? Math.round(h/d.total*100) : 0;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10px;margin-bottom:4px">
+        <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#555">${nome}</span>
+        <span style="font-family:var(--fm);font-weight:600;flex-shrink:0">${fmtH(h)} <span style="color:#aaa;font-weight:400">${pct}%</span></span>
+      </div>`;
+    }).join('');
+
+    const tipos = [
+      { k:'projeto',     label:'Projetos',     cor:'#1D4FA0' },
+      { k:'organizacao', label:'Org. Interna',  cor:'#1D6A4A' },
+      { k:'sociedade',   label:'Sociedade',     cor:'#C4831A' },
+    ].filter(t => (d[t.k]||0) > 0);
+
+    html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div class="carga-av" style="background:${u.cor||'#888'};width:32px;height:32px;font-size:11px">${u.iniciais}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${u.nome}</div>
+          <div style="font-size:10px;color:#888">${semNome} · <strong style="font-family:var(--fm)">${fmtH(d.total)}</strong> totais</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        ${tipos.map(t => `<div style="flex:1;background:var(--cinza2);border-radius:6px;padding:6px 10px;min-width:80px">
+          <div style="font-size:8px;font-weight:700;color:${t.cor};text-transform:uppercase;letter-spacing:.5px">${t.label}</div>
+          <div style="font-size:14px;font-weight:700;font-family:var(--fm);color:${t.cor}">${fmtH(d[t.k]||0)}</div>
+          <div style="font-size:9px;color:#aaa">${d.total>0?Math.round((d[t.k]||0)/d.total*100):0}%</div>
+        </div>`).join('')}
+      </div>
+      ${tops.length ? `<div style="border-top:1px solid var(--cinza2);padding-top:10px">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:8px">Top projetos</div>
+        ${topsHtml}
+      </div>` : ''}
+    </div>`;
+  });
+
+  if (!Object.keys(porUser).length) {
+    html += '<div class="empty-note">Nenhuma hora lançada neste mês.</div>';
+  }
+
+  html += '</div>';
+  wrap.innerHTML = html;
+}
 
 let _espelhoTab = 'etapa';
 function setEspelhoTab(tab) {
@@ -6351,6 +6593,43 @@ function isoWeek(d) {
 }
 
 // Recalcula "data estimada" a partir de liberação + prazo + tipo de prazo
+// ── Etapa edit: excluir e reordenar ─────────────────────────────────────────
+function deletarEtapaRow(btn) {
+  const row = btn.closest('.etapa-edit-row');
+  const etapaId = row.dataset.etapaId;
+  if (etapaId && !confirm('Remover esta etapa permanentemente?')) return;
+  if (etapaId) {
+    if (!G._etapasParaDeletar) G._etapasParaDeletar = [];
+    G._etapasParaDeletar.push(etapaId);
+  }
+  row.remove();
+}
+
+let _eeDragSrc = null;
+function eeDragStart(e) {
+  _eeDragSrc = e.currentTarget;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => { if (_eeDragSrc) _eeDragSrc.style.opacity = '0.4'; }, 0);
+}
+function eeDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const target = e.currentTarget;
+  if (target !== _eeDragSrc) {
+    const lista = target.parentNode;
+    const rows = [...lista.querySelectorAll('.etapa-edit-row')];
+    const srcIdx = rows.indexOf(_eeDragSrc);
+    const tgtIdx = rows.indexOf(target);
+    if (srcIdx < tgtIdx) lista.insertBefore(_eeDragSrc, target.nextSibling);
+    else lista.insertBefore(_eeDragSrc, target);
+  }
+}
+function eeDrop(e) { e.preventDefault(); }
+function eeDragEnd() {
+  if (_eeDragSrc) _eeDragSrc.style.opacity = '';
+  _eeDragSrc = null;
+}
+
 function recalcEstimada(el) {
   const row = el.closest('.etapa-edit-row');
   if (!row) return;
@@ -6717,8 +6996,11 @@ function _renderEtapaEdicaoRow(e, devIds) {
   const dev1 = devIds[0] || null;
   const dev2 = devIds[1] || null;
   const isNova = !e.id;
-  return `<div class="etapa-edit-row" data-etapa-id="${e.id || ''}" style="background:#f9f9f7;border:1px solid var(--cinza2);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:7px">
+  return `<div class="etapa-edit-row" data-etapa-id="${e.id || ''}" draggable="true"
+    ondragstart="eeDragStart(event)" ondragover="eeDragOver(event)" ondrop="eeDrop(event)" ondragend="eeDragEnd()"
+    style="background:#f9f9f7;border:1px solid var(--cinza2);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:7px;cursor:default">
     <div style="display:flex;gap:8px;align-items:center">
+      <span style="cursor:grab;font-size:14px;color:#ccc;flex-shrink:0;user-select:none" title="Arrastar para reordenar">⠿</span>
       <input type="text" class="ee-nome" value="${e.nome || ''}" placeholder="Nome da etapa" style="flex:1;padding:4px 8px;border:1px solid var(--cinza);font-family:var(--f);font-size:12px;outline:none;${!isNova ? 'font-weight:500' : ''}">
       <select class="ee-status" style="padding:4px 7px;border:1px solid var(--cinza);font-family:var(--f);font-size:11px;outline:none;background:#fff">
         <option value="nao_iniciada" ${e.status==='nao_iniciada'?'selected':''}>Não iniciada</option>
@@ -6727,6 +7009,7 @@ function _renderEtapaEdicaoRow(e, devIds) {
         <option value="concluida"    ${e.status==='concluida'   ?'selected':''}>Concluída</option>
         <option value="pausada"      ${e.status==='pausada'     ?'selected':''}>Pausada</option>
       </select>
+      <button onclick="deletarEtapaRow(this)" title="Remover etapa" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--tc)'" onmouseout="this.style.color='#ccc'">×</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div style="display:flex;flex-direction:column;gap:2px">
@@ -6964,6 +7247,15 @@ async function salvarEdicaoProduto() {
           }
         }
       }
+    }
+
+    // Deleta etapas marcadas para remoção
+    if (G._etapasParaDeletar?.length) {
+      for (const eid of G._etapasParaDeletar) {
+        await sb.from('etapa_desenvolvedores').delete().eq('etapa_id', eid);
+        await sb.from('etapas').delete().eq('id', eid);
+      }
+      G._etapasParaDeletar = [];
     }
 
     fecharModal('modal-editar-produto');
