@@ -1179,6 +1179,9 @@ body::before {
 .prio-num.p1 { background:var(--am); }
 .prio-num.p2 { background:var(--az); }
 .prio-num.p3 { background:var(--verde); }
+.prio-num.p4 { background:#6B4FA0; }
+.prio-num.p5 { background:#B84C3A; }
+.prio-num.p6 { background:#3D7A5C; }
 .prio-info { flex:1; min-width:0; }
 .prio-nome { font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prio-sub { font-size:10px; color:#888; margin-top:1px; }
@@ -1194,8 +1197,15 @@ body::before {
 .fluxo-slot-num.s1 { background:var(--am); }
 .fluxo-slot-num.s2 { background:var(--az); }
 .fluxo-slot-num.s3 { background:var(--verde); }
+.fluxo-slot-num.s4 { background:#6B4FA0; }
+.fluxo-slot-num.s5 { background:#B84C3A; }
+.fluxo-slot-num.s6 { background:#3D7A5C; }
 .fluxo-conc { width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; cursor:pointer; flex-shrink:0; border:1px solid var(--cinza); padding:0; color:#bbb; background:#fff; }
 .fluxo-conc.done { color:var(--verde); border-color:rgba(29,106,74,.24); background:var(--verde-bg); }
+.fluxo-slot-extra { display:flex; gap:4px; padding-left:25px; margin-top:2px; }
+.fluxo-extra-input { flex:1; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:2px 5px; background:#fafafa; color:#444; outline:none; min-width:0; }
+.fluxo-extra-input::placeholder { color:#ccc; }
+.fluxo-extra-input:focus { border-color:var(--azul); background:#fff; }
 
 /* Usuários / cores */
 .usu-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--cinza2); }
@@ -2065,7 +2075,7 @@ body::before {
   <div class="socio-panel" id="sp-fluxo">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <div class="sec-title" style="margin-bottom:0;flex:1">Fluxo de trabalho da equipe</div>
-      <span style="font-size:9px;color:#aaa">Defina até 3 prioridades por pessoa. Os projetos aparecem no dashboard de cada um.</span>
+      <span style="font-size:9px;color:#aaa">Defina até 6 projetos por pessoa. Previsão e comentário aparecem no dashboard do colaborador atribuído.</span>
     </div>
     <div id="fluxo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
       <div class="loading-state">Carregando...</div>
@@ -6562,7 +6572,7 @@ async function carregarPrioridades() {
   const wrap  = document.getElementById('dash-prioridades');
   if (!data?.length) { bloco.style.display = 'none'; return; }
   bloco.style.display = 'block';
-  const NUM_CLS = ['','p1','p2','p3'];
+  const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
   wrap.innerHTML = data.map(pr => {
     const prod = G.todosProdutos.find(p => p.id === pr.produto_id);
     if (!prod) return '';
@@ -6578,16 +6588,23 @@ async function carregarPrioridades() {
     const devChips = devs.map(u =>
       `<div class="proj-card-av" style="background:${u.cor||'#888'}" title="${u.nome}">${u.iniciais}</div>`).join('');
     const dateHtml = etapa?.data_estimada ? dataChip(etapa.data_estimada) : '';
+    const prazoChip = pr.prazo_texto
+      ? `<span style="font-size:9px;background:#FFF8E7;border:1px solid #F0D080;color:#997020;border-radius:4px;padding:1px 6px;font-weight:600">📅 ${pr.prazo_texto}</span>`
+      : '';
+    const comentHtml = pr.comentario
+      ? `<div style="margin-top:5px;background:#F0F4FF;border-left:2px solid var(--azul);border-radius:0 4px 4px 0;padding:4px 8px;font-size:10px;color:#3356A0;font-style:italic">${pr.comentario}</div>`
+      : '';
     return `<div class="prio-card ${pr.concluida?'concluida':''}" onclick="abrirProduto('${prod.id}')">
       <div class="prio-num ${NUM_CLS[pr.ordem]}">${pr.ordem}</div>
       <div class="prio-info">
         <div class="prio-nome">${opp?.projeto || prod.nome}</div>
-	<div class="prio-sub">${cli?.nome||'—'}</div>
+        <div class="prio-sub">${cli?.nome||'—'}</div>
         <div style="font-size:10px;color:#555;margin-top:2px">${prod.nome}${etapa?` · <em style="font-style:normal;color:#aaa">${etapa.nome}</em>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap">
-          ${dateHtml}
+          ${prazoChip}${dateHtml}
           <div style="display:flex;gap:3px">${coordChip}${devChips}</div>
         </div>
+        ${comentHtml}
       </div>
       <div class="prio-check ${pr.concluida?'done':''}"
            onclick="event.stopPropagation();togglePrioridade('${pr.id}',${pr.concluida})"
@@ -6614,36 +6631,51 @@ async function carregarFluxo() {
     byUser[p.usuario_id][p.ordem] = p;
   });
   const produtos = G._prodsGestao.filter(p => p.status === 'ativo');
-  const baseProdOpts = '<option value="">— sem prioridade —</option>' +
+  const baseProdOpts = '<option value="">— sem projeto —</option>' +
     produtos.map(p => {
-  const opp = p.oportunidades;
-  const cli = opp?.clientes;
+      const opp = p.oportunidades;
+      const cli = opp?.clientes;
+      const label = [cli?.nome, opp?.projeto].filter(Boolean).join(' • ');
+      return `<option value="${p.id}">${truncarTexto(label, 36)}</option>`;
+    }).join('');
 
-  const label = [
-    cli?.nome,
-    opp?.projeto
-  ].filter(Boolean).join(' • ');
+  const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
 
-  return `<option value="${p.id}">${truncarTexto(label, 34)}</option>`;
-}).join('');
-  const NUM_CLS = ['','s1','s2','s3'];
   wrap.innerHTML = G.todosUsuarios.map(u => {
-    const slots = [1,2,3].map(ord => {
-      const pr  = byUser[u.id]?.[ord];
-      const val = pr?.produto_id || '';
+    const slots = [1,2,3,4,5,6].map(ord => {
+      const pr   = byUser[u.id]?.[ord];
+      const val  = pr?.produto_id || '';
       const conc = pr?.concluida || false;
+      const prazo = pr?.prazo_texto || '';
+      const coment = pr?.comentario || '';
       const opts = baseProdOpts.replace(`value="${val}"`, `value="${val}" selected`);
       const concBtn = pr
         ? `<span class="fluxo-conc ${conc?'done':''}" title="${conc ? 'Concluída' : 'Marcar como concluída'}"
                onclick="toggleFluxoPrio('${u.id}',${ord})">${conc?'✓':''}</span>`
-        : '';
-      return `<div class="fluxo-slot">
-        <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
-        <select class="filter-select" style="flex:1;font-size:10px"
-                onchange="salvarFluxoPrio('${u.id}',${ord},this.value)">${opts}</select>
-        ${concBtn}
+        : `<span class="fluxo-conc" style="visibility:hidden"></span>`;
+
+      const extraRow = pr ? `
+        <div class="fluxo-slot-extra">
+          <input class="fluxo-extra-input" type="text" placeholder="Previsão (ex: 12/05)" maxlength="20"
+            value="${prazo.replace(/"/g,'&quot;')}"
+            oninput="debFluxo('${u.id}',${ord},'prazo',this.value)"
+            title="Data de previsão de finalização">
+          <input class="fluxo-extra-input" type="text" placeholder="Comentário para o colaborador..." maxlength="120"
+            value="${coment.replace(/"/g,'&quot;')}"
+            oninput="debFluxo('${u.id}',${ord},'comentario',this.value)"
+            title="Este texto aparece no dashboard do colaborador">
+        </div>` : '';
+
+      return `<div>
+        <div class="fluxo-slot">
+          <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
+          <select class="filter-select" style="flex:1;font-size:10px"
+                  onchange="salvarFluxoPrio('${u.id}',${ord},this.value)">${opts}</select>
+          ${concBtn}
+        </div>${extraRow}
       </div>`;
     }).join('');
+
     return `<div class="fluxo-user-card">
       <div class="fluxo-user-hd">
         <div class="vh-av" style="background:${u.cor||'#888'}">${u.iniciais}</div>
@@ -6657,6 +6689,22 @@ async function carregarFluxo() {
   }).join('');
 }
 
+// Debounce map para salvar prazo/comentario sem flood de requests
+const _fluxoDebTimers = {};
+function debFluxo(userId, ordem, campo, valor) {
+  const key = `${userId}_${ordem}_${campo}`;
+  clearTimeout(_fluxoDebTimers[key]);
+  _fluxoDebTimers[key] = setTimeout(() => salvarFluxoCampo(userId, ordem, campo, valor), 700);
+}
+
+async function salvarFluxoCampo(userId, ordem, campo, valor) {
+  const { data: existing } = await sb.from('prioridades_usuario').select('id')
+    .eq('usuario_id', userId).eq('ordem', ordem).maybeSingle();
+  if (!existing) return; // só salva se já existir o registro (precisa ter projeto)
+  await sb.from('prioridades_usuario').update({ [campo === 'prazo' ? 'prazo_texto' : 'comentario']: valor || null })
+    .eq('id', existing.id);
+}
+
 async function salvarFluxoPrio(userId, ordem, produtoId) {
   const prodId = produtoId || null;
   if (prodId) {
@@ -6668,6 +6716,8 @@ async function salvarFluxoPrio(userId, ordem, produtoId) {
     await sb.from('prioridades_usuario').delete()
       .eq('usuario_id', userId).eq('ordem', ordem);
   }
+  // Recarrega para mostrar/esconder os campos de prazo/comentário
+  carregarFluxo();
 }
 
 async function toggleFluxoPrio(userId, ordem) {
