@@ -6732,11 +6732,11 @@ async function carregarFluxo() {
   });
   const baseProdOpts = '<option value="">— sem projeto —</option>' +
     [...cliMap.entries()]
-      .sort((a,b) => a[1].nome.localeCompare(b[1].nome,'pt-BR'))
+      .sort((a,b) => (a[1].nome||'').localeCompare(b[1].nome||'','pt-BR'))
       .map(([, {nome: cliNome, prods: ps}]) => {
         const sorted = ps.slice().sort((a,b) =>
           (a.oportunidades?.projeto||'').localeCompare(b.oportunidades?.projeto||'','pt-BR') ||
-          a.nome.localeCompare(b.nome,'pt-BR'));
+          (a.nome||'').localeCompare(b.nome||'','pt-BR'));
         return `<optgroup label="${cliNome.replace(/"/g,'&quot;')}">${
           sorted.map(p => {
             const op = p.oportunidades?.projeto || 'Sem oportunidade';
