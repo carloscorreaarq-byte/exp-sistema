@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1189,14 +1189,14 @@ body::before {
 .prio-check:hover { border-color:var(--verde); }
 .prio-check.done { background:var(--verde); border-color:var(--verde); color:#fff; }
 /* ── FLUXO DE TRABALHO (painel sócios) ──────────────── */
-.fluxo-user-card { background:#fff; border:1px solid var(--cinza); padding:7px 9px; }
-.fluxo-user-hd { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-.fluxo-slots { display:flex; flex-direction:column; gap:4px; }
-.fluxo-slot-wrap { border-radius:5px; padding:2px 0; transition:background .1s; }
-.fluxo-slot-wrap.drag-over { background:var(--cinza2); outline:2px dashed var(--azul); outline-offset:-2px; }
-.fluxo-slot-wrap.dragging { opacity:.4; }
-.fluxo-slot { display:flex; align-items:center; gap:5px; min-width:0; }
-.fluxo-drag-handle { font-size:13px; color:#ccc; cursor:grab; flex-shrink:0; line-height:1; padding:0 2px; user-select:none; }
+.fluxo-user-card { background:#fff; border:1px solid var(--cinza); border-radius:8px; padding:10px 14px; margin-bottom:10px; }
+.fluxo-user-hd { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.fluxo-cols { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; }
+.fluxo-col-wrap { min-width:185px; width:185px; flex-shrink:0; border:1px solid var(--cinza); border-radius:6px; padding:8px 9px; background:#fafafa; display:flex; flex-direction:column; gap:6px; }
+.fluxo-col-wrap.drag-over { border-color:var(--azul); background:#EEF4FF; }
+.fluxo-col-wrap.dragging { opacity:.35; }
+.fluxo-col-num-row { display:flex; align-items:center; gap:5px; }
+.fluxo-drag-handle { font-size:13px; color:#ccc; cursor:grab; user-select:none; line-height:1; }
 .fluxo-drag-handle:hover { color:#888; }
 .fluxo-slot-num { width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; flex-shrink:0; }
 .fluxo-slot-num.s1 { background:var(--am); }
@@ -1205,14 +1205,16 @@ body::before {
 .fluxo-slot-num.s4 { background:#6B4FA0; }
 .fluxo-slot-num.s5 { background:#B84C3A; }
 .fluxo-slot-num.s6 { background:#3D7A5C; }
-.fluxo-conc { width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; cursor:pointer; flex-shrink:0; border:1px solid var(--cinza); padding:0; color:#bbb; background:#fff; border-radius:3px; }
-.fluxo-conc.done { color:var(--verde); border-color:rgba(29,106,74,.24); background:var(--verde-bg); }
-.fluxo-slot-extra { display:flex; gap:4px; padding-left:24px; margin-top:3px; }
-.fluxo-extra-input { font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:2px 5px; background:#fafafa; color:#444; outline:none; min-width:0; }
-.fluxo-extra-input::placeholder { color:#ccc; }
-.fluxo-extra-input:focus { border-color:var(--azul); background:#fff; }
-.fluxo-extra-date { width:110px; flex-shrink:0; }
-.fluxo-extra-coment { flex:1; }
+.fluxo-col-select { width:100%; font-size:10px; border:1px solid var(--cinza); border-radius:4px; padding:3px 4px; background:#fff; color:#333; outline:none; }
+.fluxo-col-select:focus { border-color:var(--azul); }
+.fluxo-col-date-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.fluxo-col-date { flex:1; min-width:0; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:2px 4px; background:#fff; outline:none; color:#444; }
+.fluxo-col-date:focus { border-color:var(--azul); }
+.fluxo-conc-tag { font-size:9px; font-weight:700; cursor:pointer; padding:2px 7px; border-radius:12px; border:1px solid var(--cinza); background:#fff; color:#bbb; white-space:nowrap; flex-shrink:0; }
+.fluxo-conc-tag.done { color:var(--verde); border-color:rgba(29,106,74,.3); background:var(--verde-bg); }
+.fluxo-col-textarea { width:100%; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:4px 6px; background:#fff; color:#444; resize:vertical; outline:none; font-family:inherit; line-height:1.5; box-sizing:border-box; }
+.fluxo-col-textarea::placeholder { color:#ccc; }
+.fluxo-col-textarea:focus { border-color:var(--azul); }
 
 /* Usuários / cores */
 .usu-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--cinza2); }
@@ -1817,7 +1819,19 @@ body::before {
         <!-- Subcategoria (org / sociedade) -->
         <div class="fgroup mb8" id="cf-subtipo-wrap" style="display:none">
           <label>Categoria</label>
-          <select id="cf-subtipo"></select>
+          <select id="cf-subtipo" onchange="cfFiltrarEventosSociedade()"></select>
+        </div>
+        <!-- Evento de org/sociedade -->
+        <div class="fgroup mb8" id="cf-evento-soc-wrap" style="display:none">
+          <label>Evento / tipo</label>
+          <select id="cf-evento-soc" onchange="cfOnEventoSoc()">
+            <option value="">— sem evento —</option>
+            <option value="__novo__">+ Criar novo evento...</option>
+          </select>
+        </div>
+        <div class="fgroup mb8" id="cf-evento-soc-novo-wrap" style="display:none">
+          <label>Nome do novo evento</label>
+          <input type="text" id="cf-evento-soc-novo" placeholder="Ex: Campanha de lançamento">
         </div>
 
         <!-- Cascata projeto: cliente → opp → produto → categoria -->
@@ -2084,7 +2098,7 @@ body::before {
       <div class="sec-title" style="margin-bottom:0;flex:1">Fluxo de trabalho da equipe</div>
       <span style="font-size:9px;color:#aaa">Defina até 6 projetos por pessoa. Previsão e comentário aparecem no dashboard do colaborador atribuído.</span>
     </div>
-    <div id="fluxo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+    <div id="fluxo-grid" style="display:flex;flex-direction:column;gap:0">
       <div class="loading-state">Carregando...</div>
     </div>
   </div>
@@ -2796,7 +2810,7 @@ const SUBTIPOS = {
 const SUBTIPOS_CUSTO = {
   projeto:     ['Alimentação','Hospedagem','Translado','Passagem','Transporte','Aluguel de carro','Gasolina','Impressão','Outro'],
   organizacao: ['HH','Encontro presencial','Deslocamento','Outro'],
-  sociedade:   ['Instagram','Programas','Educação','Outro'],
+  sociedade:   ['Operações','Marketing','Estratégia','Endomarketing','Financeiro','Jurídico','Outro'],
 };
 const ROLES_LABEL = { socio:'Sócio', coordenador:'Coordenador', colaborador:'Colaborador' };
 
@@ -3817,13 +3831,17 @@ function renderListaProjetos() {
     return;
   }
 
-  wrap.innerHTML = Object.values(grupos).map(({ cli, opps }) => `
+  wrap.innerHTML = Object.values(grupos)
+    .sort((a,b) => (a.cli?.nome||'').localeCompare(b.cli?.nome||'','pt-BR'))
+    .map(({ cli, opps }) => `
     <div class="cliente-grupo">
       <div class="cliente-header">
         <div class="cliente-nome">${cli?.nome || 'Sem cliente'}</div>
         <div class="cliente-cidade">${cli?.cidade || ''} ${cli?.uf ? '/ '+cli.uf : ''}</div>
       </div>
-      ${Object.values(opps).map(({ opp, prods: ps }) => `
+      ${Object.values(opps)
+        .sort((a,b) => (a.opp?.projeto||'').localeCompare(b.opp?.projeto||'','pt-BR'))
+        .map(({ opp, prods: ps }) => `
         <div class="opp-grupo">
           <div class="opp-header">
             <div class="opp-nome">${opp?.projeto || 'Sem oportunidade'}</div>
@@ -4398,6 +4416,10 @@ function atualizarFormCusto() {
   const tipo = document.getElementById('cf-tipo').value;
   document.getElementById('cf-subtipo-wrap').style.display = tipo !== 'projeto' ? 'block' : 'none';
   document.getElementById('cf-projeto-wrap').style.display = tipo === 'projeto' ? 'block' : 'none';
+  const evSocWrap    = document.getElementById('cf-evento-soc-wrap');
+  const evSocNovWrap = document.getElementById('cf-evento-soc-novo-wrap');
+  if (evSocWrap)    evSocWrap.style.display    = 'none';
+  if (evSocNovWrap) evSocNovWrap.style.display = 'none';
   if (tipo !== 'projeto') {
     document.getElementById('cf-subtipo').innerHTML =
       SUBTIPOS_CUSTO[tipo].map(s => `<option value="${s}">${s}</option>`).join('');
@@ -4472,6 +4494,31 @@ window.cfOnEvento = function() {
   document.getElementById('cf-evento-novo-wrap').style.display = v === '__novo__' ? 'block' : 'none';
 };
 
+window.cfFiltrarEventosSociedade = async function() {
+  const tipo = document.getElementById('cf-tipo').value;
+  const cat  = document.getElementById('cf-subtipo')?.value;
+  const wrap = document.getElementById('cf-evento-soc-wrap');
+  const novWrap = document.getElementById('cf-evento-soc-novo-wrap');
+  if (!wrap) return;
+  wrap.style.display = 'none';
+  if (novWrap) novWrap.style.display = 'none';
+  if (tipo === 'projeto' || !cat) return;
+  const { data: evts } = await sb.from('eventos_sociedade')
+    .select('id,nome').eq('tipo', tipo).eq('categoria', cat).order('nome');
+  const sel = document.getElementById('cf-evento-soc');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— sem evento —</option>' +
+    (evts||[]).map(e => `<option value="${e.id}">${e.nome}</option>`).join('') +
+    '<option value="__novo__">+ Criar novo evento...</option>';
+  wrap.style.display = 'block';
+};
+
+window.cfOnEventoSoc = function() {
+  const v = document.getElementById('cf-evento-soc')?.value;
+  const novWrap = document.getElementById('cf-evento-soc-novo-wrap');
+  if (novWrap) novWrap.style.display = v === '__novo__' ? 'block' : 'none';
+};
+
 async function lancarCusto() {
   const tipo  = document.getElementById('cf-tipo').value;
   const valor = parseFloat(document.getElementById('cf-valor').value) || 0;
@@ -4504,6 +4551,19 @@ async function lancarCusto() {
     }
   } else {
     subtipo = document.getElementById('cf-subtipo').value || null;
+    const evSocSel = document.getElementById('cf-evento-soc')?.value;
+    if (evSocSel === '__novo__') {
+      const novoNome = document.getElementById('cf-evento-soc-novo')?.value?.trim();
+      if (novoNome) {
+        const { data: evNew, error: evErr } = await sb.from('eventos_sociedade').insert({
+          tipo, categoria: subtipo, nome: novoNome, criado_por: G.usuario.id
+        }).select().single();
+        if (evErr) { toast('Erro ao criar evento: ' + evErr.message); return; }
+        eventoId = evNew.id;
+      }
+    } else if (evSocSel) {
+      eventoId = evSocSel;
+    }
   }
 
   // Data: usa o campo cf-data ou, como fallback, o dia selecionado / início da semana
@@ -4549,8 +4609,11 @@ async function lancarCusto() {
   document.getElementById('cf-desc').value  = '';
   const evNovoEl = document.getElementById('cf-evento-novo');
   if (evNovoEl) evNovoEl.value = '';
-  // Refresh evento list for the same product
+  const evSocNovoEl = document.getElementById('cf-evento-soc-novo');
+  if (evSocNovoEl) evSocNovoEl.value = '';
+  // Refresh evento lists
   if (prodId) cfFiltrarEventos(prodId);
+  else cfFiltrarEventosSociedade();
   toast('Custo registrado');
   renderCustosLancados();
 }
@@ -5882,41 +5945,44 @@ async function carregarCarga() {
   const custosEl = document.getElementById('carga-custos');
   if (custosEl) {
     const { data: custosSemana } = await sb.from('lancamentos_custo')
-      .select('*, usuarios(id,nome,iniciais,cor,role), produtos(nome)')
+      .select('*, usuarios(id,nome,iniciais,cor,role), produtos(nome), eventos_custo(nome)')
       .gte('data_lancamento', ini).lte('data_lancamento', fim);
 
     if (!custosSemana?.length) {
       custosEl.innerHTML = '<div class="empty-note">Sem custos registrados na semana.</div>';
     } else {
       const totalGeral = custosSemana.reduce((s,c) => s + (c.valor||0), 0);
-      const porTipoCusto = {};
+      // Agrupa por evento
+      const porEvento = {};
       custosSemana.forEach(c => {
-        const key = c.subtipo || c.tipo;
-        porTipoCusto[key] = (porTipoCusto[key] || 0) + (c.valor || 0);
+        const evKey  = c.evento_id || '__sem';
+        const evNome = c.eventos_custo?.nome || 'Sem evento';
+        if (!porEvento[evKey]) porEvento[evKey] = { nome: evNome, itens: [], total: 0 };
+        porEvento[evKey].itens.push(c);
+        porEvento[evKey].total += c.valor || 0;
       });
-      const porUserCusto = {};
-      custosSemana.forEach(c => {
-        const u = c.usuarios;
-        if (!u) return;
-        if (!porUserCusto[u.id]) porUserCusto[u.id] = { u, total: 0 };
-        porUserCusto[u.id].total += c.valor || 0;
-      });
+      const eventosHtml = Object.entries(porEvento)
+        .sort((a,b) => b[1].total - a[1].total)
+        .map(([, grp]) => {
+          const linhas = grp.itens.map(c => {
+            const u = c.usuarios;
+            const av = u ? `<span class="carga-av" style="background:${u.cor||'#ccc'};width:18px;height:18px;font-size:7px;flex-shrink:0">${u.iniciais}</span>` : '';
+            return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
+              ${av}
+              <span style="flex:1;color:#555">${c.subtipo||c.tipo||'—'}${c.descricao?' · '+c.descricao:''}</span>
+              <span style="font-family:var(--fm);font-weight:600;flex-shrink:0">R$ ${fmtNum(c.valor||0)}</span>
+            </div>`;
+          }).join('');
+          return `<div style="border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <span style="font-size:10px;font-weight:700;color:var(--azul)">${grp.nome}</span>
+              <span style="font-size:11px;font-family:var(--fm);font-weight:700">R$ ${fmtNum(grp.total)}</span>
+            </div>${linhas}
+          </div>`;
+        }).join('');
       custosEl.innerHTML = `
-        <div style="font-size:12px;font-weight:700;font-family:var(--fm);margin-bottom:8px">Total: R$ ${fmtNum(totalGeral)}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-          ${Object.entries(porTipoCusto).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
-            <div style="background:#fff;border:1px solid var(--cinza);border-radius:4px;padding:4px 10px">
-              <div style="font-size:9px;color:#888">${k}</div>
-              <div style="font-size:11px;font-family:var(--fm);font-weight:600">R$ ${fmtNum(v)}</div>
-            </div>`).join('')}
-        </div>
-        <div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Por pessoa</div>
-        ${Object.values(porUserCusto).sort((a,b)=>b.total-a.total).map(({u,total})=>`
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <div class="carga-av" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:8px">${u.iniciais}</div>
-            <div style="font-size:11px;flex:1">${u.nome}</div>
-            <div style="font-size:11px;font-family:var(--fm);font-weight:600">R$ ${fmtNum(total)}</div>
-          </div>`).join('')}`;
+        <div style="font-size:13px;font-weight:700;font-family:var(--fm);margin-bottom:10px">Custos da semana: R$ ${fmtNum(totalGeral)}</div>
+        ${eventosHtml}`;
     }
   }
 }
@@ -6649,80 +6715,77 @@ async function carregarFluxo() {
   const wrap = document.getElementById('fluxo-grid');
   wrap.innerHTML = '<div class="loading-state">Carregando...</div>';
   const { data: prios } = await sb.from('prioridades_usuario').select('*').order('ordem');
-  // byUser[uid][ordem] = record
   const byUser = {};
   (prios||[]).forEach(p => {
     if (!byUser[p.usuario_id]) byUser[p.usuario_id] = {};
     byUser[p.usuario_id][p.ordem] = p;
   });
+
+  // Opções agrupadas: cliente (optgroup) → oportunidade · tipo
   const produtos = G._prodsGestao.filter(p => p.status === 'ativo');
+  const cliMap = new Map();
+  produtos.forEach(p => {
+    const cli = p.oportunidades?.clientes;
+    const key = cli?.id || '__sem';
+    if (!cliMap.has(key)) cliMap.set(key, { nome: cli?.nome || 'Sem cliente', prods: [] });
+    cliMap.get(key).prods.push(p);
+  });
   const baseProdOpts = '<option value="">— sem projeto —</option>' +
-    produtos.map(p => {
-      const opp = p.oportunidades;
-      const cli = opp?.clientes;
-      const label = [cli?.nome, opp?.projeto].filter(Boolean).join(' • ');
-      return `<option value="${p.id}">${truncarTexto(label, 38)}</option>`;
-    }).join('');
+    [...cliMap.entries()]
+      .sort((a,b) => a[1].nome.localeCompare(b[1].nome,'pt-BR'))
+      .map(([, {nome: cliNome, prods: ps}]) => {
+        const sorted = ps.slice().sort((a,b) =>
+          (a.oportunidades?.projeto||'').localeCompare(b.oportunidades?.projeto||'','pt-BR') ||
+          a.nome.localeCompare(b.nome,'pt-BR'));
+        return `<optgroup label="${cliNome.replace(/"/g,'&quot;')}">${
+          sorted.map(p => {
+            const op = p.oportunidades?.projeto || 'Sem oportunidade';
+            const tp = p.nome ? ` · ${truncarTexto(p.nome,22)}` : '';
+            return `<option value="${p.id}">${op}${tp}</option>`;
+          }).join('')}</optgroup>`;
+      }).join('');
 
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
 
   wrap.innerHTML = G.todosUsuarios.map(u => {
-    // Collect existing records sorted by current ordem, then fill remaining empty slots
-    const existentes = Object.values(byUser[u.id] || {}).sort((a,b) => a.ordem - b.ordem);
-    const slotsData = [];
-    for (let i = 0; i < 6; i++) {
-      slotsData.push(existentes[i] || null);
-    }
+    const existentes = Object.values(byUser[u.id]||{}).sort((a,b)=>a.ordem-b.ordem);
+    const slotsData = Array.from({length:6}, (_,i) => existentes[i]||null);
 
-    const slots = slotsData.map((pr, idx) => {
-      const displayOrd = idx + 1;
+    const cols = slotsData.map((pr, idx) => {
+      const ord    = idx + 1;
       const val    = pr?.produto_id || '';
       const conc   = pr?.concluida || false;
       const prazo  = pr?.prazo_texto || '';
-      const coment = (pr?.comentario || '').replace(/"/g, '&quot;');
+      const coment = (pr?.comentario||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const dataId = pr?.id || '';
       const opts   = baseProdOpts.replace(`value="${val}"`, `value="${val}" selected`);
 
-      const concBtn = pr
-        ? `<span class="fluxo-conc ${conc?'done':''}" title="${conc?'Concluída':'Marcar como concluída'}"
-               onclick="toggleFluxoPrio('${u.id}','${pr.id}')">${conc?'✓':''}</span>`
-        : `<span class="fluxo-conc" style="visibility:hidden"></span>`;
-
-      const extraRow = pr ? `
-        <div class="fluxo-slot-extra">
-          <input class="fluxo-extra-input fluxo-extra-date" type="date"
-            value="${prazo}"
-            onchange="debFluxo('${pr.id}','prazo',this.value)"
-            title="Data de previsão de finalização">
-          <input class="fluxo-extra-input fluxo-extra-coment" type="text" placeholder="Comentário para o colaborador..." maxlength="140"
-            value="${coment}"
-            oninput="debFluxo('${pr.id}','comentario',this.value)"
-            title="Este texto aparece no dashboard do colaborador">
+      const concTag = pr
+        ? `<span class="fluxo-conc-tag ${conc?'done':''}" onclick="toggleFluxoPrio('${u.id}','${pr.id}')">${conc?'✓ Concluída':'Pendente'}</span>`
+        : '';
+      const dateRow = pr ? `<div class="fluxo-col-date-row">
+          <input class="fluxo-col-date" type="date" value="${prazo}" onchange="debFluxo('${pr.id}','prazo',this.value)">
+          ${concTag}
         </div>` : '';
+      const cmtArea = pr ? `<textarea class="fluxo-col-textarea" rows="3"
+          placeholder="Comentário para o colaborador..."
+          onfocus="this._v=this.value"
+          onblur="if(this.value!==this._v)debFluxo('${pr.id}','comentario',this.value)"
+          >${coment}</textarea>` : '';
 
-      // data-* used for drag-and-drop reorder persistence
-      const dataProd  = val;
-      const dataPrazo = prazo;
-      const dataComt  = (pr?.comentario||'').replace(/'/g,"\\'");
-      const dataConc  = conc;
-      const dataId    = pr?.id || '';
-
-      return `<div class="fluxo-slot-wrap"
-          draggable="true"
-          data-uid="${u.id}" data-id="${dataId}"
-          data-prodid="${dataProd}" data-prazo="${dataPrazo}"
-          data-coment="${dataComt.replace(/"/g,'&quot;')}"
-          data-conc="${dataConc}"
-          ondragstart="fluxoDragStart(event)"
-          ondragover="fluxoDragOver(event)"
-          ondrop="fluxoDrop(event)"
-          ondragend="fluxoDragEnd(event)">
-        <div class="fluxo-slot">
-          <span class="fluxo-drag-handle" title="Arrastar para reorganizar">⠿</span>
-          <div class="fluxo-slot-num ${NUM_CLS[displayOrd]}">${displayOrd}</div>
-          <select class="filter-select" style="flex:1;font-size:10px"
-                  onchange="salvarFluxoPrio('${u.id}',this.value,this.closest('.fluxo-slot-wrap'))">${opts}</select>
-          ${concBtn}
-        </div>${extraRow}
+      return `<div class="fluxo-col-wrap"
+          draggable="true" data-uid="${u.id}" data-id="${dataId}"
+          data-prodid="${val}" data-prazo="${prazo}"
+          data-coment="${(pr?.comentario||'').replace(/"/g,'&quot;')}" data-conc="${conc}"
+          ondragstart="fluxoDragStart(event)" ondragover="fluxoDragOver(event)"
+          ondrop="fluxoDrop(event)" ondragend="fluxoDragEnd(event)">
+        <div class="fluxo-col-num-row">
+          <span class="fluxo-drag-handle">⠿</span>
+          <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
+        </div>
+        <select class="fluxo-col-select"
+          onchange="salvarFluxoPrio('${u.id}',this.value,this.closest('.fluxo-col-wrap'))">${opts}</select>
+        ${dateRow}${cmtArea}
       </div>`;
     }).join('');
 
@@ -6730,11 +6793,11 @@ async function carregarFluxo() {
       <div class="fluxo-user-hd">
         <div class="vh-av" style="background:${u.cor||'#888'}">${u.iniciais}</div>
         <div>
-          <div style="font-size:12px;font-weight:600">${u.nome}</div>
+          <div style="font-size:13px;font-weight:700">${u.nome}</div>
           <div style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||''}</div>
         </div>
       </div>
-      <div class="fluxo-slots" data-uid="${u.id}">${slots}</div>
+      <div class="fluxo-cols" data-uid="${u.id}">${cols}</div>
     </div>`;
   }).join('');
 }
@@ -6751,17 +6814,15 @@ function debFluxo(pioId, campo, valor) {
 }
 
 // ── Salvar seleção de projeto ─────────────────────────────────────────────────
-async function salvarFluxoPrio(userId, produtoId, slotEl) {
+async function salvarFluxoPrio(userId, produtoId, colEl) {
   const prodId = produtoId || null;
-  const container = slotEl?.closest('[data-uid]')?.parentNode; // .fluxo-slots
+  const colWrap = colEl?.closest('.fluxo-col-wrap');
+  const container = colWrap?.closest('.fluxo-cols');
 
   if (prodId) {
-    // Descobre a posição atual do slot no container (1-based)
-    const allSlots = container ? [...container.querySelectorAll('.fluxo-slot-wrap')] : [];
-    const idx = allSlots.indexOf(slotEl?.closest('.fluxo-slot-wrap'));
-    const ordem = idx >= 0 ? idx + 1 : 9; // fallback
-
-    // Delete existing at this ordem then insert fresh (evita conflito de constraint)
+    const allCols = container ? [...container.querySelectorAll('.fluxo-col-wrap')] : [];
+    const idx = allCols.indexOf(colWrap);
+    const ordem = idx >= 0 ? idx + 1 : 9;
     await sb.from('prioridades_usuario').delete()
       .eq('usuario_id', userId).eq('ordem', ordem);
     const { error } = await sb.from('prioridades_usuario').insert({
@@ -6770,9 +6831,7 @@ async function salvarFluxoPrio(userId, produtoId, slotEl) {
     });
     if (error) { toast('Erro ao salvar: ' + error.message); }
   } else {
-    // Remoção: precisa do ID do registro atual
-    const slotWrap = slotEl?.closest('.fluxo-slot-wrap');
-    const recId = slotWrap?.dataset?.id;
+    const recId = colWrap?.dataset?.id;
     if (recId) {
       await sb.from('prioridades_usuario').delete().eq('id', recId);
     }
@@ -6805,11 +6864,11 @@ function fluxoDragOver(e) {
   e.dataTransfer.dropEffect = 'move';
   const target = e.currentTarget;
   if (!_fluxoDragSrc || target === _fluxoDragSrc) return;
-  if (target.dataset.uid !== _fluxoDragSrc.dataset.uid) return; // só mesmo usuário
-  // Reordena no DOM em tempo real
+  if (target.dataset.uid !== _fluxoDragSrc.dataset.uid) return;
   const parent = target.parentNode;
   const bounding = target.getBoundingClientRect();
-  if (e.clientY < bounding.top + bounding.height / 2) {
+  // Horizontal comparison (columns side by side)
+  if (e.clientX < bounding.left + bounding.width / 2) {
     parent.insertBefore(_fluxoDragSrc, target);
   } else {
     parent.insertBefore(_fluxoDragSrc, target.nextSibling);
@@ -6821,21 +6880,19 @@ function fluxoDrop(e) {
   e.stopPropagation();
   if (!_fluxoDragSrc) return;
   const userId = _fluxoDragSrc.dataset.uid;
-  const container = _fluxoDragSrc.closest('.fluxo-slots');
+  const container = _fluxoDragSrc.closest('.fluxo-cols');
   if (!container) return;
-  const allSlots = [...container.querySelectorAll(`:scope > .fluxo-slot-wrap`)];
-  // Reconstrói lista na nova ordem (apenas slots com projeto)
-  const comProjeto = allSlots.filter(el => el.dataset.prodid);
+  const allCols = [...container.querySelectorAll(':scope > .fluxo-col-wrap')];
+  const comProjeto = allCols.filter(el => el.dataset.prodid);
   fluxoSalvarReorder(userId, comProjeto);
 }
 
 function fluxoDragEnd(e) {
   e.currentTarget.classList.remove('dragging');
   _fluxoDragSrc = null;
-  // Atualiza visualmente os números de ordem
-  document.querySelectorAll('.fluxo-slots').forEach(cont => {
+  document.querySelectorAll('.fluxo-cols').forEach(cont => {
     const NUM_CLS = ['s1','s2','s3','s4','s5','s6'];
-    cont.querySelectorAll(':scope > .fluxo-slot-wrap').forEach((el, i) => {
+    cont.querySelectorAll(':scope > .fluxo-col-wrap').forEach((el, i) => {
       const numEl = el.querySelector('.fluxo-slot-num');
       if (numEl) { numEl.textContent = i+1; numEl.className = `fluxo-slot-num ${NUM_CLS[i]||''}`; }
     });
