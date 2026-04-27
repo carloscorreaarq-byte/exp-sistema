@@ -1823,6 +1823,17 @@ body::before {
               <select id="cf-etapa"><option value="">—</option></select>
             </div>
           </div>
+          <div class="fgroup mb8" id="cf-evento-wrap" style="display:none">
+            <label>Evento</label>
+            <select id="cf-evento" onchange="cfOnEvento()">
+              <option value="">— sem evento —</option>
+              <option value="__novo__">+ Criar novo evento...</option>
+            </select>
+          </div>
+          <div class="fgroup mb8" id="cf-evento-novo-wrap" style="display:none">
+            <label>Nome do novo evento</label>
+            <input type="text" id="cf-evento-novo" placeholder="Ex: Visita ao canteiro 01">
+          </div>
           <div class="fgroup mb8">
             <label>Categoria</label>
             <select id="cf-tipo-projeto">
@@ -1884,8 +1895,9 @@ body::before {
 
   <div class="socio-tabs">
     <button class="socio-tab active" data-panel="submissao">Submissão</button>
-    <button class="socio-tab" data-panel="carga-mensal">Carga mensal</button>
     <button class="socio-tab" data-panel="carga">Carga da equipe</button>
+    <button class="socio-tab" data-panel="carga-mensal">Carga mensal</button>
+    <button class="socio-tab" data-panel="reembolso">Reembolso</button>
     <button class="socio-tab" data-panel="valorhora">Valor / hora</button>
     <button class="socio-tab" data-panel="fluxo">Fluxo de trabalho</button>
     <button class="socio-tab" data-panel="entregas">Entregas</button>
@@ -1905,6 +1917,23 @@ body::before {
     <div id="cm-lista">
       <div class="loading-state">Selecione um mês para carregar.</div>
     </div>
+  </div>
+
+  <!-- REEMBOLSO -->
+  <div class="socio-panel" id="sp-reembolso">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="sec-title" style="margin-bottom:0;flex:1">Reembolso de custos</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:10px;color:#888">Mês:</label>
+        <input type="month" id="rb-mes" class="filter-select" style="font-size:11px" onchange="carregarReembolso()">
+        <button class="btn-sec" style="font-size:10px;padding:4px 10px" onclick="exportarReembolsoExcel()">↓ Excel</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--cinza)">
+      <button id="rb-tab-membro" onclick="setReembolsoView('membro')" style="font-size:11px;font-weight:600;padding:6px 14px;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--azul);color:var(--azul)">Por membro</button>
+      <button id="rb-tab-vinculo" onclick="setReembolsoView('vinculo')" style="font-size:11px;font-weight:600;padding:6px 14px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888">Por vínculo</button>
+    </div>
+    <div id="rb-lista"><div class="loading-state">Selecione um mês para carregar.</div></div>
   </div>
 
   <!-- CARGA -->
@@ -2339,7 +2368,7 @@ body::before {
 
     </div>
     <div class="modal-ft">
-      <button class="btn" id="cad-btn-back" style="display:none" onclick="cadStep(1)">â† Voltar</button>
+      <button class="btn" id="cad-btn-back" style="display:none" onclick="cadStep(1)">â�← Voltar</button>
       <button class="btn" onclick="fecharModal('modal-cadastro')">Cancelar</button>
       <button class="btn filled" id="cad-btn-next" onclick="cadStep(2)">Próximo →</button>
       <button class="btn verde" id="cad-btn-salvar" style="display:none" onclick="salvarProjeto()">Criar projeto</button>
@@ -2990,6 +3019,14 @@ function onSocioPanel(panel) {
   if (panel === 'usuarios') carregarUsuariosAdmin();
   if (panel === 'fluxo') carregarFluxo();
   if (panel === 'entregas') carregarEntregasEquipe();
+  if (panel === 'reembolso') {
+    const el = document.getElementById('rb-mes');
+    if (el && !el.value) {
+      const now = new Date();
+      el.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    }
+    carregarReembolso();
+  }
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -4387,14 +4424,35 @@ window.cfFiltrarProdutos = function() {
 
 window.cfFiltrarEtapas = function() {
   const prodId = document.getElementById('cf-produto').value;
-  const etapaWrap = document.getElementById('cf-etapa-wrap');
-  etapaWrap.style.display = 'none';
+  const etapaWrap  = document.getElementById('cf-etapa-wrap');
+  const eventoWrap = document.getElementById('cf-evento-wrap');
+  etapaWrap.style.display  = 'none';
+  eventoWrap.style.display = 'none';
+  document.getElementById('cf-evento-novo-wrap').style.display = 'none';
   if (!prodId) return;
   const etapas = G.todasEtapas.filter(e => e.produto_id === prodId).sort((a,b) => a.ordem - b.ordem);
   document.getElementById('cf-etapa').innerHTML =
     '<option value="">—</option>' +
     etapas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
   etapaWrap.style.display = 'block';
+  cfFiltrarEventos(prodId);
+};
+
+window.cfFiltrarEventos = async function(prodId) {
+  const eventoWrap = document.getElementById('cf-evento-wrap');
+  eventoWrap.style.display = 'none';
+  if (!prodId) return;
+  const { data: evts } = await sb.from('eventos_custo').select('id,nome').eq('produto_id', prodId).order('nome');
+  const sel = document.getElementById('cf-evento');
+  sel.innerHTML = '<option value="">— sem evento —</option>' +
+    (evts || []).map(e => `<option value="${e.id}">${e.nome}</option>`).join('') +
+    '<option value="__novo__">+ Criar novo evento...</option>';
+  eventoWrap.style.display = 'block';
+};
+
+window.cfOnEvento = function() {
+  const v = document.getElementById('cf-evento').value;
+  document.getElementById('cf-evento-novo-wrap').style.display = v === '__novo__' ? 'block' : 'none';
 };
 
 async function lancarCusto() {
@@ -4408,11 +4466,25 @@ async function lancarCusto() {
   let prodId  = null;
   let etapaId = null;
 
+  let eventoId = null;
   if (tipo === 'projeto') {
     subtipo  = document.getElementById('cf-tipo-projeto').value;
     prodId   = document.getElementById('cf-produto').value || null;
     etapaId  = document.getElementById('cf-etapa').value   || null;
     if (!prodId) { toast('Selecione o produto para o custo de projeto'); return; }
+
+    const evSel = document.getElementById('cf-evento')?.value;
+    if (evSel === '__novo__') {
+      const novoNome = document.getElementById('cf-evento-novo')?.value?.trim();
+      if (!novoNome) { toast('Informe o nome do novo evento'); return; }
+      const { data: evNew, error: evErr } = await sb.from('eventos_custo').insert({
+        produto_id: prodId, nome: novoNome, criado_por: G.usuario.id
+      }).select().single();
+      if (evErr) { toast('Erro ao criar evento: ' + evErr.message); return; }
+      eventoId = evNew.id;
+    } else if (evSel) {
+      eventoId = evSel;
+    }
   } else {
     subtipo = document.getElementById('cf-subtipo').value || null;
   }
@@ -4450,6 +4522,7 @@ async function lancarCusto() {
     valor, tipo, subtipo,
     produto_id: prodId,
     etapa_id: etapaId,
+    evento_id: eventoId,
     descricao: desc || null
   });
 
@@ -4457,6 +4530,10 @@ async function lancarCusto() {
 
   document.getElementById('cf-valor').value = '';
   document.getElementById('cf-desc').value  = '';
+  const evNovoEl = document.getElementById('cf-evento-novo');
+  if (evNovoEl) evNovoEl.value = '';
+  // Refresh evento list for the same product
+  if (prodId) cfFiltrarEventos(prodId);
   toast('Custo registrado');
   renderCustosLancados();
 }
@@ -4468,7 +4545,7 @@ async function renderCustosLancados() {
   const COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
 
   const { data: custos } = await sb.from('lancamentos_custo')
-    .select('*, produtos(nome)')
+    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome), eventos_custo(nome)')
     .eq('usuario_id', G.usuario.id)
     .gte('data_lancamento', ini).lte('data_lancamento', fim)
     .order('data_lancamento', { ascending: false });
@@ -4497,13 +4574,26 @@ async function renderCustosLancados() {
     html += `<div style="padding:4px 10px 2px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;background:${fds?'var(--cinza2)':'var(--off)'}">${NOMES[dow]} ${dFmt}</div>`;
     porData[d].forEach(c => {
       const cor = COR_TIPO[c.tipo] || '#888';
-      const catLabel = c.subtipo || (c.tipo === 'projeto' ? 'Projeto' : c.tipo);
-      const projLabel = c.produtos?.nome ? ` · ${c.produtos.nome}` : '';
+      const cli  = c.produtos?.oportunidades?.clientes?.nome || '';
+      const op   = c.produtos?.oportunidades?.projeto || '';
+      const evt  = c.eventos_custo?.nome || '';
+      const cat  = c.subtipo || (c.tipo === 'organizacao' ? 'Org. Interna' : c.tipo === 'sociedade' ? 'Sociedade' : '');
+
+      // Build "Cliente | Oportunidade | Evento" bold header
+      let cabecalho = '';
+      if (cli || op || evt) {
+        const partes = [cli, op, evt].filter(Boolean);
+        cabecalho = `<span style="font-weight:700">${partes.join(' | ')}</span>`;
+      }
+      // Then "categoria · descrição" thin
+      const detalhe = [cat, c.descricao].filter(Boolean).join(' · ');
+      const descFull = [cabecalho, `<span style="font-weight:400;color:#888">${detalhe}</span>`].filter(Boolean).join(' <span style="color:#ccc">·</span> ');
+
       const travada = G._semanaTravada;
       html += `<div class="lanc-item">
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
         <div class="lanc-hora" style="min-width:52px;font-family:var(--fm);font-size:10px;font-weight:600">R$ ${fmtNum(c.valor)}</div>
-        <div class="lanc-desc">${catLabel}${projLabel}${c.descricao ? ' · ' + c.descricao : ''}</div>
+        <div class="lanc-desc" style="font-size:10px;line-height:1.4">${descFull || cat || '—'}</div>
         <div class="lanc-dur"></div>
         <div class="lanc-actions">
           <button class="lanc-edit ${travada?'disabled':''}" onclick="${travada?'':'editarCustoLancado(\''+c.id+'\')'}">Editar</button>
@@ -6037,12 +6127,19 @@ async function carregarCargaMensal() {
           <div style="font-size:10px;color:#888">${semNome} · <strong style="font-family:var(--fm)">${fmtH(d.total)}</strong> totais</div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-        ${tipos.map(t => `<div style="flex:1;background:var(--cinza2);border-radius:6px;padding:6px 10px;min-width:80px">
-          <div style="font-size:8px;font-weight:700;color:${t.cor};text-transform:uppercase;letter-spacing:.5px">${t.label}</div>
-          <div style="font-size:14px;font-weight:700;font-family:var(--fm);color:${t.cor}">${fmtH(d[t.k]||0)}</div>
-          <div style="font-size:9px;color:#aaa">${d.total>0?Math.round((d[t.k]||0)/d.total*100):0}%</div>
-        </div>`).join('')}
+      <div style="margin-bottom:12px;display:flex;flex-direction:column;gap:7px">
+        ${tipos.map(t => {
+          const pct = d.total > 0 ? Math.round((d[t.k]||0)/d.total*100) : 0;
+          return `<div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${t.cor}">${t.label}</span>
+              <span style="font-size:10px;font-family:var(--fm);font-weight:600;color:#444">${fmtH(d[t.k]||0)} <span style="color:#bbb;font-weight:400">${pct}%</span></span>
+            </div>
+            <div style="height:5px;background:var(--cinza2);border-radius:3px;overflow:hidden">
+              <div style="height:5px;width:${pct}%;background:${t.cor};border-radius:3px;transition:width .4s"></div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>
       ${tops.length ? `<div style="border-top:1px solid var(--cinza2);padding-top:10px">
         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:8px">Top projetos</div>
@@ -6057,6 +6154,188 @@ async function carregarCargaMensal() {
 
   html += '</div>';
   wrap.innerHTML = html;
+}
+
+// ── REEMBOLSO ─────────────────────────────────────────────────────────────────
+let _rbView = 'membro';
+let _rbData = null; // cache for export
+
+function setReembolsoView(v) {
+  _rbView = v;
+  ['membro','vinculo'].forEach(t => {
+    const btn = document.getElementById('rb-tab-'+t);
+    if (!btn) return;
+    btn.style.borderBottomColor = t === v ? 'var(--azul)' : 'transparent';
+    btn.style.color = t === v ? 'var(--azul)' : '#888';
+  });
+  if (_rbData) renderReembolso(_rbData);
+}
+
+async function carregarReembolso() {
+  const wrap = document.getElementById('rb-lista');
+  if (!wrap) return;
+  const mesEl = document.getElementById('rb-mes');
+  const mes = mesEl?.value;
+  if (!mes) { wrap.innerHTML = '<div class="empty-note">Selecione um mês.</div>'; return; }
+  wrap.innerHTML = '<div class="loading-state">Carregando...</div>';
+
+  const [ano, m] = mes.split('-').map(Number);
+  const ini = `${ano}-${String(m).padStart(2,'0')}-01`;
+  const ultimoDia = new Date(ano, m, 0).getDate();
+  const fim = `${ano}-${String(m).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
+
+  const [{ data: custos }, { data: usuarios }] = await Promise.all([
+    sb.from('lancamentos_custo')
+      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .gte('data_lancamento', ini).lte('data_lancamento', fim),
+    sb.from('usuarios').select('id, nome, iniciais, cor').order('nome')
+  ]);
+
+  if (!custos || !usuarios) { wrap.innerHTML = '<div class="empty-note">Erro ao carregar.</div>'; return; }
+
+  _rbData = { custos, usuarios, mes };
+  renderReembolso(_rbData);
+}
+
+function renderReembolso({ custos, usuarios, mes }) {
+  const wrap = document.getElementById('rb-lista');
+  if (!wrap) return;
+  const fmtR = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
+
+  if (_rbView === 'membro') {
+    // Agrupa por usuário
+    const porUser = {};
+    custos.forEach(c => {
+      if (!porUser[c.usuario_id]) porUser[c.usuario_id] = { total:0, itens:[] };
+      porUser[c.usuario_id].total += Number(c.valor||0);
+      porUser[c.usuario_id].itens.push(c);
+    });
+
+    let html = '<div style="display:flex;flex-direction:column;gap:10px">';
+    let alguem = false;
+    usuarios.filter(u => porUser[u.id]).forEach(u => {
+      alguem = true;
+      const d = porUser[u.id];
+      // Agrupa itens por projeto
+      const porProjeto = {};
+      d.itens.forEach(c => {
+        const cli = c.produtos?.oportunidades?.clientes?.nome || '';
+        const op = c.produtos?.oportunidades?.projeto || '';
+        const chave = cli && op ? `${cli} | ${op}` : (c.subtipo || c.tipo || 'Sem vínculo');
+        if (!porProjeto[chave]) porProjeto[chave] = [];
+        porProjeto[chave].push(c);
+      });
+
+      const gruposHtml = Object.entries(porProjeto).map(([chave, itens]) => {
+        const subtotal = itens.reduce((s,c)=>s+Number(c.valor||0),0);
+        const linhas = itens.map(c => `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2)">
+            <div style="flex:1;min-width:0">
+              <span style="font-size:10px;color:#555">${c.subtipo||'—'}</span>
+              ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
+            </div>
+            <div style="font-size:10px;color:#888;flex-shrink:0">${fmtDate(c.data_lancamento)}</div>
+            <div style="font-size:11px;font-family:var(--fm);font-weight:600;flex-shrink:0">${fmtR(c.valor)}</div>
+          </div>`).join('');
+        return `<div style="margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--azul);margin-bottom:4px">${chave}</div>
+          ${linhas}
+          <div style="text-align:right;font-size:10px;color:#888;margin-top:3px">Subtotal: <strong style="font-family:var(--fm)">${fmtR(subtotal)}</strong></div>
+        </div>`;
+      }).join('');
+
+      html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div class="carga-av" style="background:${u.cor||'#888'};width:32px;height:32px;font-size:11px">${u.iniciais}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${u.nome}</div>
+            <div style="font-size:10px;color:#888">Total: <strong style="font-family:var(--fm)">${fmtR(d.total)}</strong></div>
+          </div>
+        </div>
+        ${gruposHtml}
+      </div>`;
+    });
+
+    if (!alguem) html += '<div class="empty-note">Nenhum custo lançado neste mês.</div>';
+    html += '</div>';
+    wrap.innerHTML = html;
+
+  } else {
+    // Agrupa por vínculo (projeto/oportunidade)
+    const porVinculo = {};
+    custos.forEach(c => {
+      const cli = c.produtos?.oportunidades?.clientes?.nome || '';
+      const op = c.produtos?.oportunidades?.projeto || '';
+      const chave = cli && op ? `${cli} | ${op}` : (c.subtipo || c.tipo || 'Sem vínculo');
+      if (!porVinculo[chave]) porVinculo[chave] = { total:0, itens:[] };
+      porVinculo[chave].total += Number(c.valor||0);
+      porVinculo[chave].itens.push(c);
+    });
+
+    let html = '<div style="display:flex;flex-direction:column;gap:10px">';
+    let algum = false;
+    Object.entries(porVinculo).sort((a,b) => b[1].total - a[1].total).forEach(([chave, grp]) => {
+      algum = true;
+      const u = (uid) => usuarios.find(u=>u.id===uid);
+      const linhas = grp.itens.map(c => {
+        const uu = u(c.usuario_id);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+          ${uu ? `<div class="carga-av" style="background:${uu.cor||'#888'};width:22px;height:22px;font-size:9px;flex-shrink:0">${uu.iniciais}</div>` : ''}
+          <div style="flex:1;min-width:0">
+            <span style="font-size:10px;color:#555">${c.subtipo||'—'}</span>
+            ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
+            ${uu ? `<span style="font-size:9px;color:#bbb"> — ${uu.nome}</span>` : ''}
+          </div>
+          <div style="font-size:10px;color:#888;flex-shrink:0">${fmtDate(c.data_lancamento)}</div>
+          <div style="font-size:11px;font-family:var(--fm);font-weight:600;flex-shrink:0">${fmtR(c.valor)}</div>
+        </div>`;
+      }).join('');
+
+      html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--azul)">${chave}</div>
+          <div style="font-size:12px;font-family:var(--fm);font-weight:700">${fmtR(grp.total)}</div>
+        </div>
+        ${linhas}
+      </div>`;
+    });
+
+    if (!algum) html += '<div class="empty-note">Nenhum custo lançado neste mês.</div>';
+    html += '</div>';
+    wrap.innerHTML = html;
+  }
+}
+
+function exportarReembolsoExcel() {
+  if (!_rbData) { alert('Carregue um mês primeiro.'); return; }
+  const { custos, usuarios, mes } = _rbData;
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '';
+
+  const linhas = [
+    ['Membro','Cliente','Oportunidade','Tipo','Categoria','Descrição','Data','Valor']
+  ];
+  custos.forEach(c => {
+    const u = usuarios.find(u=>u.id===c.usuario_id);
+    linhas.push([
+      u?.nome || c.usuario_id,
+      c.produtos?.oportunidades?.clientes?.nome || '',
+      c.produtos?.oportunidades?.projeto || '',
+      c.tipo || '',
+      c.subtipo || '',
+      c.descricao || '',
+      fmtDate(c.data_lancamento),
+      Number(c.valor||0).toFixed(2).replace('.',',')
+    ]);
+  });
+
+  const csv = linhas.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom+csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `reembolso_${mes}.csv`;
+  a.click();
 }
 
 let _espelhoTab = 'etapa';
@@ -6710,7 +6989,7 @@ async function carregarCustosProduto(prodId) {
     oppId
       ? sb.from('opp_custos').select('*').eq('oportunidade_id', oppId).is('produto_id', null).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
-    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor)').eq('produto_id', prodId).order('created_at', { ascending: false }),
+    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor), eventos_custo(nome)').eq('produto_id', prodId).order('data_lancamento', { ascending: false }),
   ]);
   const custos = [...(custosProd || []), ...(custosOpp || [])];
 
@@ -6774,41 +7053,55 @@ async function carregarCustosProduto(prodId) {
   </table>`;
   }
 
-  // Custos operacionais lançados via registro de horas (lancamentos_custo)
+  // Custos operacionais lançados via registro de horas (lancamentos_custo) — agrupados por evento
   if (custosOp.length) {
+    // Agrupa por evento_id (ou 'sem_evento' se null)
+    const porEvento = {};
+    custosOp.forEach(c => {
+      const chave = c.evento_id || '__sem_evento__';
+      if (!porEvento[chave]) porEvento[chave] = { nome: c.eventos_custo?.nome || null, itens: [], subtotal: 0 };
+      porEvento[chave].itens.push(c);
+      porEvento[chave].subtotal += Number(c.valor || 0);
+    });
+
+    let opHtml = '';
+    Object.entries(porEvento).forEach(([chave, grp]) => {
+      const titulo = grp.nome || 'Sem evento';
+      const linhas = grp.itens.map(c => {
+        const u = c.usuarios || {};
+        const avatar = u.iniciais
+          ? `<span class="carga-av" style="background:${u.cor||'#ccc'};width:22px;height:22px;font-size:9px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;flex-shrink:0">${u.iniciais}</span>`
+          : '';
+        const dataFmt = c.data_lancamento ? c.data_lancamento.slice(0,10).split('-').reverse().join('/') : '—';
+        const catLabel = c.subtipo || c.tipo || '—';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+          ${avatar}
+          <div style="flex:1;min-width:0">
+            <span style="font-size:10px;font-weight:600;color:#333">${catLabel}</span>
+            ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
+            <span style="font-size:9px;color:#bbb"> — ${u.nome || '?'}</span>
+          </div>
+          <span style="font-size:9px;color:#bbb;flex-shrink:0">${dataFmt}</span>
+          <span style="font-size:11px;font-family:var(--fm);font-weight:600;flex-shrink:0">R$ ${fmtNum(c.valor||0)}</span>
+          ${isSocio ? `<button class="btn sm tc" style="font-size:9px;padding:2px 6px;flex-shrink:0" onclick="excluirCustoLancado('${c.id}')">×</button>` : ''}
+        </div>`;
+      }).join('');
+
+      opHtml += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--azul)">${titulo}</div>
+          <div style="font-size:11px;font-family:var(--fm);font-weight:700">R$ ${fmtNum(grp.subtotal)}</div>
+        </div>
+        ${linhas}
+      </div>`;
+    });
+
     html += `<div style="margin-top:18px">
-      <div style="font-size:9px;font-weight:700;letter-spacing:.07em;color:#888;text-transform:uppercase;margin-bottom:8px">
-        Custos operacionais lançados
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.07em;color:#888;text-transform:uppercase">Custos operacionais lançados</div>
+        <div style="font-size:10px;font-family:var(--fm);font-weight:600;color:#555">Total: R$ ${fmtNum(totalOp)}</div>
       </div>
-      <table class="tbl">
-        <thead><tr>
-          <th>Categoria</th><th>Descrição</th><th>Valor</th><th>Pessoa</th><th>Data</th>${isSocio ? '<th></th>' : ''}
-        </tr></thead>
-        <tbody>
-          ${custosOp.map(c => {
-            const u = c.usuarios || {};
-            const avatar = u.iniciais
-              ? `<span class="avatar" style="background:${u.cor||'#ccc'};width:20px;height:20px;font-size:8px">${u.iniciais}</span>`
-              : '—';
-            const dataFmt = c.data_lancamento ? c.data_lancamento.slice(0,10).split('-').reverse().join('/') : '—';
-            const catLabel = c.subtipo || c.tipo || '—';
-            return `<tr>
-              <td><span class="dtag">${catLabel}</span></td>
-              <td>${c.descricao || '—'}</td>
-              <td><span class="num-tag">R$ ${fmtNum(c.valor || 0)}</span></td>
-              <td style="text-align:center">${avatar}</td>
-              <td style="font-size:10px;color:#888">${dataFmt}</td>
-              ${isSocio ? `<td><button class="btn sm tc" style="font-size:9px;padding:2px 8px" onclick="excluirCustoLancado('${c.id}')">×</button></td>` : ''}
-            </tr>`;
-          }).join('')}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="${isSocio ? 5 : 4}" style="font-size:10px;font-weight:600;text-align:right;color:#555;padding:6px 8px">Total operacional:</td>
-            <td><span class="num-tag" style="font-weight:700">R$ ${fmtNum(totalOp)}</span></td>
-          </tr>
-        </tfoot>
-      </table>
+      ${opHtml}
     </div>`;
   }
 
