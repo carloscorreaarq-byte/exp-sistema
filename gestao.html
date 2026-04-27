@@ -4659,7 +4659,7 @@ async function renderCustosLancados() {
   const COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
 
   const { data: custos } = await sb.from('lancamentos_custo')
-    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome), eventos_custo:evento_id(nome), eventos_sociedade:evento_soc_id(nome)')
+    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)')
     .eq('usuario_id', G.usuario.id)
     .gte('data_lancamento', ini).lte('data_lancamento', fim)
     .order('data_lancamento', { ascending: false });
@@ -4731,7 +4731,7 @@ async function renderCustosLancados() {
 async function editarCustoLancado(id) {
   if (G._semanaTravada) { toast('Semana bloqueada'); return; }
   const { data: c } = await sb.from('lancamentos_custo')
-    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome), eventos_custo:evento_id(nome), eventos_sociedade:evento_soc_id(nome)')
+    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)')
     .eq('id', id).single();
   if (!c) return;
 
@@ -6065,7 +6065,7 @@ async function carregarCarga() {
   const custosEl = document.getElementById('carga-custos');
   if (custosEl) {
     const { data: custosSemana } = await sb.from('lancamentos_custo')
-      .select('*, usuarios(id,nome,iniciais,cor,role), produtos(nome), eventos_custo:evento_id(nome), eventos_sociedade:evento_soc_id(nome)')
+      .select('*, usuarios(id,nome,iniciais,cor,role), produtos(nome), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)')
       .gte('data_lancamento', ini).lte('data_lancamento', fim);
 
     if (!custosSemana?.length) {
@@ -6075,7 +6075,7 @@ async function carregarCarga() {
       // Agrupa por evento
       const porEvento = {};
       custosSemana.forEach(c => {
-        const evKey  = c.evento_id || '__sem';
+        const evKey  = c.evento_id || c.evento_soc_id || '__sem';
         const evNome = c.eventos_custo?.nome || c.eventos_sociedade?.nome || 'Sem evento';
         if (!porEvento[evKey]) porEvento[evKey] = { nome: evNome, itens: [], total: 0 };
         porEvento[evKey].itens.push(c);
@@ -7344,7 +7344,7 @@ async function carregarCustosProduto(prodId) {
     oppId
       ? sb.from('opp_custos').select('*').eq('oportunidade_id', oppId).is('produto_id', null).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
-    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor), eventos_custo:evento_id(nome), eventos_sociedade:evento_soc_id(nome)').eq('produto_id', prodId).order('data_lancamento', { ascending: false }),
+    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)').eq('produto_id', prodId).order('data_lancamento', { ascending: false }),
   ]);
   if (error) { lista.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
 
@@ -7451,7 +7451,7 @@ async function carregarHorasProduto(prodId) {
   // 1. Lançamentos de horas + custos operacionais vinculados ao produto
   const [{ data: lancs, error }, { data: custosOp }] = await Promise.all([
     sb.from('horas_lancadas').select('usuario_id, etapa_id, hora_inicio, hora_fim').eq('produto_id', prodId),
-    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor), eventos_custo:evento_id(nome), eventos_sociedade:evento_soc_id(nome)').eq('produto_id', prodId).order('data_lancamento'),
+    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)').eq('produto_id', prodId).order('data_lancamento'),
   ]);
 
   if (error) { wrap.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
