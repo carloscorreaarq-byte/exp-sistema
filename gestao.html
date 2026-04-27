@@ -4658,15 +4658,30 @@ async function renderCustosLancados() {
   const { ini, fim } = semanaRangeOffset(G.semanaOffset);
   const COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
 
-  const { data: custos } = await sb.from('lancamentos_custo')
-    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)')
+  // Busca custos sem joins de evento (evita falha por FK ausente)
+  const { data: custos, error: errCustos } = await sb.from('lancamentos_custo')
+    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
     .eq('usuario_id', G.usuario.id)
     .gte('data_lancamento', ini).lte('data_lancamento', fim)
     .order('data_lancamento', { ascending: false });
 
+  if (errCustos) { wrap.innerHTML = `<div class="empty-note">Erro: ${errCustos.message}</div>`; return; }
   if (!custos?.length) {
     wrap.innerHTML = '<div class="empty-note">Nenhum custo registrado esta semana.</div>';
     return;
+  }
+
+  // Busca nomes dos eventos separadamente (robusto, sem depender de FK no PostgREST)
+  const evIds    = [...new Set(custos.map(c => c.evento_id).filter(Boolean))];
+  const evSocIds = [...new Set(custos.map(c => c.evento_soc_id).filter(Boolean))];
+  const evNomes  = {};
+  if (evIds.length) {
+    const { data: evs } = await sb.from('eventos_custo').select('id,nome').in('id', evIds);
+    (evs||[]).forEach(e => { evNomes[e.id] = e.nome; });
+  }
+  if (evSocIds.length) {
+    const { data: evs } = await sb.from('eventos_sociedade').select('id,nome').in('id', evSocIds);
+    (evs||[]).forEach(e => { evNomes[e.id] = e.nome; });
   }
 
   const total = custos.reduce((s, c) => s + (c.valor || 0), 0);
@@ -4690,7 +4705,7 @@ async function renderCustosLancados() {
       const cor = COR_TIPO[c.tipo] || '#888';
       const cli  = c.produtos?.oportunidades?.clientes?.nome || '';
       const op   = c.produtos?.oportunidades?.projeto || '';
-      const evt  = c.eventos_custo?.nome || c.eventos_sociedade?.nome || '';
+      const evt  = evNomes[c.evento_id] || evNomes[c.evento_soc_id] || '';
       const TIPO_PT = { organizacao: 'Organização', sociedade: 'Sociedade', gestao: 'Gestão' };
 
       // Build bold header (similar structure for all types)
@@ -4731,9 +4746,19 @@ async function renderCustosLancados() {
 async function editarCustoLancado(id) {
   if (G._semanaTravada) { toast('Semana bloqueada'); return; }
   const { data: c } = await sb.from('lancamentos_custo')
-    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)')
+    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
     .eq('id', id).single();
   if (!c) return;
+
+  // Busca nome do evento separadamente
+  let evtNome = '';
+  if (c.evento_id) {
+    const { data: ev } = await sb.from('eventos_custo').select('nome').eq('id', c.evento_id).maybeSingle();
+    evtNome = ev?.nome || '';
+  } else if (c.evento_soc_id) {
+    const { data: ev } = await sb.from('eventos_sociedade').select('nome').eq('id', c.evento_soc_id).maybeSingle();
+    evtNome = ev?.nome || '';
+  }
 
   const TIPO_PT = { projeto: 'Projeto', organizacao: 'Organização', sociedade: 'Sociedade', gestao: 'Gestão' };
   const tipoLabel = TIPO_PT[c.tipo] || c.tipo;
@@ -4745,11 +4770,9 @@ async function editarCustoLancado(id) {
     const cli = c.produtos?.oportunidades?.clientes?.nome || '';
     const op  = c.produtos?.oportunidades?.projeto || c.produtos?.nome || '';
     const eta = c.etapas?.nome || '';
-    const evt = c.eventos_custo?.nome || '';
-    vinculoHtml = [cli, op, eta, evt].filter(Boolean).join(' · ');
+    vinculoHtml = [cli, op, eta, evtNome].filter(Boolean).join(' · ');
   } else {
-    const evt = c.eventos_sociedade?.nome || c.eventos_custo?.nome || '';
-    vinculoHtml = [tipoLabel, evt].filter(Boolean).join(' · ');
+    vinculoHtml = [tipoLabel, evtNome].filter(Boolean).join(' · ');
   }
 
   // Date formatted for input[type=date]
@@ -6065,18 +6088,31 @@ async function carregarCarga() {
   const custosEl = document.getElementById('carga-custos');
   if (custosEl) {
     const { data: custosSemana } = await sb.from('lancamentos_custo')
-      .select('*, usuarios(id,nome,iniciais,cor,role), produtos(nome), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)')
+      .select('*, usuarios(id,nome,iniciais,cor,role), produtos(nome)')
       .gte('data_lancamento', ini).lte('data_lancamento', fim);
 
     if (!custosSemana?.length) {
       custosEl.innerHTML = '<div class="empty-note">Sem custos registrados na semana.</div>';
     } else {
+      // Busca nomes de eventos separadamente
+      const csEvIds    = [...new Set(custosSemana.map(c=>c.evento_id).filter(Boolean))];
+      const csEvSocIds = [...new Set(custosSemana.map(c=>c.evento_soc_id).filter(Boolean))];
+      const csEvNomes  = {};
+      if (csEvIds.length) {
+        const { data: evs } = await sb.from('eventos_custo').select('id,nome').in('id', csEvIds);
+        (evs||[]).forEach(e => { csEvNomes[e.id] = e.nome; });
+      }
+      if (csEvSocIds.length) {
+        const { data: evs } = await sb.from('eventos_sociedade').select('id,nome').in('id', csEvSocIds);
+        (evs||[]).forEach(e => { csEvNomes[e.id] = e.nome; });
+      }
+
       const totalGeral = custosSemana.reduce((s,c) => s + (c.valor||0), 0);
       // Agrupa por evento
       const porEvento = {};
       custosSemana.forEach(c => {
         const evKey  = c.evento_id || c.evento_soc_id || '__sem';
-        const evNome = c.eventos_custo?.nome || c.eventos_sociedade?.nome || 'Sem evento';
+        const evNome = csEvNomes[c.evento_id] || csEvNomes[c.evento_soc_id] || 'Sem evento';
         if (!porEvento[evKey]) porEvento[evKey] = { nome: evNome, itens: [], total: 0 };
         porEvento[evKey].itens.push(c);
         porEvento[evKey].total += c.valor || 0;
@@ -7344,12 +7380,25 @@ async function carregarCustosProduto(prodId) {
     oppId
       ? sb.from('opp_custos').select('*').eq('oportunidade_id', oppId).is('produto_id', null).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
-    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)').eq('produto_id', prodId).order('data_lancamento', { ascending: false }),
+    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor)').eq('produto_id', prodId).order('data_lancamento', { ascending: false }),
   ]);
   if (error) { lista.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
 
   const custosPrevAll = [...(custosPrev || []), ...(custosOppPrev || [])];
   const custosOp = custosLanc || [];
+
+  // Busca nomes dos eventos separadamente (evita falha silenciosa no join PostgREST)
+  const opEvIds    = [...new Set(custosOp.map(c => c.evento_id).filter(Boolean))];
+  const opEvSocIds = [...new Set(custosOp.map(c => c.evento_soc_id).filter(Boolean))];
+  const opEvNomes  = {};
+  if (opEvIds.length) {
+    const { data: evs } = await sb.from('eventos_custo').select('id,nome').in('id', opEvIds);
+    (evs||[]).forEach(e => { opEvNomes[e.id] = e.nome; });
+  }
+  if (opEvSocIds.length) {
+    const { data: evs } = await sb.from('eventos_sociedade').select('id,nome').in('id', opEvSocIds);
+    (evs||[]).forEach(e => { opEvNomes[e.id] = e.nome; });
+  }
 
   let html = '';
 
@@ -7390,8 +7439,8 @@ async function carregarCustosProduto(prodId) {
     const totalOp = custosOp.reduce((s,c) => s + (c.valor || 0), 0);
     const porEvento = {};
     custosOp.forEach(c => {
-      const chave = c.evento_id || '__sem__';
-      if (!porEvento[chave]) porEvento[chave] = { nome: c.eventos_custo?.nome || c.eventos_sociedade?.nome || null, itens: [], subtotal: 0 };
+      const chave = c.evento_id || c.evento_soc_id || '__sem__';
+      if (!porEvento[chave]) porEvento[chave] = { nome: opEvNomes[c.evento_id] || opEvNomes[c.evento_soc_id] || null, itens: [], subtotal: 0 };
       porEvento[chave].itens.push(c);
       porEvento[chave].subtotal += Number(c.valor || 0);
     });
@@ -7451,7 +7500,7 @@ async function carregarHorasProduto(prodId) {
   // 1. Lançamentos de horas + custos operacionais vinculados ao produto
   const [{ data: lancs, error }, { data: custosOp }] = await Promise.all([
     sb.from('horas_lancadas').select('usuario_id, etapa_id, hora_inicio, hora_fim').eq('produto_id', prodId),
-    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor), eventos_custo!evento_id(nome), eventos_sociedade!evento_soc_id(nome)').eq('produto_id', prodId).order('data_lancamento'),
+    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor)').eq('produto_id', prodId).order('data_lancamento'),
   ]);
 
   if (error) { wrap.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
