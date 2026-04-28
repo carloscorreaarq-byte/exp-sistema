@@ -384,9 +384,9 @@ body::before {
 .nav-mod-wrap{position:relative;margin-right:20px}
 .nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
 .nav-lbl-btn:hover{color:var(--preto)}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 10px);left:0;background:#fff;border:1px solid var(--cinza);min-width:170px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
 .nav-dropdown.open{display:block}
-.nav-dropdown a{display:block;padding:7px 14px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
+.nav-dropdown a{display:block;padding:7px 12px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
 .nav-dropdown a:hover{background:var(--off)}
 .nav-dropdown a.nd-active{font-weight:700;pointer-events:none;color:var(--am)}
 .nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
@@ -407,7 +407,7 @@ body::before {
   display: flex; align-items: center; justify-content: center;
   border: 1px solid var(--verde); background: var(--verde-bg);
   color: var(--verde); text-decoration: none; font-size: 13px;
-  transition: all .12s; flex-shrink: 0;
+  transition: all .12s; flex-shrink: 0; border-radius: 6px;
 }
 .exp-room-btn:hover { background: var(--verde); color: #fff; }
 /* conn-dot permanece como indicador de status de rede (sem hover, sem cursor pointer) */
@@ -1162,8 +1162,10 @@ body::before {
 .carga-nome { font-size: 12px; font-weight: 500; flex: 1; }
 .carga-pct { font-family: var(--fm); font-size: 11px; font-weight: 700; }
 .carga-horas { font-size: 10px; color: #888; }
-.carga-bar-wrap { height: 8px; background: var(--cinza2); display: flex; overflow: hidden; }
+.carga-bar-wrap { height: 8px; background: var(--cinza2); display: flex; overflow: hidden; border-radius: 4px; }
 .carga-seg { height: 100%; transition: width .3s; }
+.carga-seg:first-child { border-radius: 4px 0 0 4px; }
+.carga-seg:last-child  { border-radius: 0 4px 4px 0; }
 .cb-proj { background: var(--az); }
 .cb-int { background: var(--verde); }
 .cb-soc { background: var(--am); }
@@ -1439,11 +1441,9 @@ body::before {
   <div class="nav-mod-wrap" id="nav-mod-wrap">
     <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.projetos <span>▾</span></button>
     <div class="nav-dropdown" id="nav-dropdown">
-      <div class="nd-lbl">Abertos</div>
       <a href="gestao.html" class="nd-active">EXP.projetos</a>
       <a href="apoio.html">EXP.conhecimento</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
-      <div class="nd-lbl nd-soc" style="display:none">Societários</div>
       <a href="calc.html" class="nd-soc" style="display:none">EXP.calc</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
       <a href="#" class="nd-disabled nd-soc" style="display:none">EXP.financeiro</a>
@@ -1961,9 +1961,15 @@ body::before {
 
   <!-- CARGA MENSAL -->
   <div class="socio-panel" id="sp-carga-mensal">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="sec-title" style="margin-bottom:0;flex:1">Carga mensal por colaborador</div>
-      <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;gap:0;border:1px solid var(--cinza);border-radius:6px;overflow:hidden">
+          <button id="cm-btn-individual" onclick="setCmView('individual')"
+            style="font-size:10px;font-weight:600;padding:4px 12px;border:none;background:var(--preto);color:#fff;cursor:pointer;font-family:var(--f)">Individual</button>
+          <button id="cm-btn-coletivo" onclick="setCmView('coletivo')"
+            style="font-size:10px;font-weight:600;padding:4px 12px;border:none;background:none;color:#888;cursor:pointer;font-family:var(--f)">Coletivo</button>
+        </div>
         <label style="font-size:10px;color:#888">Mês:</label>
         <input type="month" id="cm-mes" class="filter-select" style="font-size:11px" onchange="carregarCargaMensal()">
       </div>
@@ -1985,7 +1991,7 @@ body::before {
     </div>
     <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--cinza)">
       <button id="rb-tab-membro" onclick="setReembolsoView('membro')" style="font-size:11px;font-weight:600;padding:6px 14px;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--azul);color:var(--azul)">Por membro</button>
-      <button id="rb-tab-vinculo" onclick="setReembolsoView('vinculo')" style="font-size:11px;font-weight:600;padding:6px 14px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888">Por vínculo</button>
+      <button id="rb-tab-evento" onclick="setReembolsoView('evento')" style="font-size:11px;font-weight:600;padding:6px 14px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888">Por evento</button>
     </div>
     <div id="rb-lista"><div class="loading-state">Selecione um mês para carregar.</div></div>
   </div>
@@ -4754,10 +4760,15 @@ async function renderCustosLancados() {
         : cabecalho;
 
       const travada = G._semanaTravada;
-      html += `<div class="lanc-item">
+      const semEvento = !c.evento_id && !c.evento_soc_id;
+      const alertaEvt = semEvento
+        ? `<span title="Sem evento associado — clique em Editar para corrigir" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`
+        : '';
+      html += `<div class="lanc-item" style="${semEvento ? 'border-left:2px solid #C4831A' : ''}">
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
         <div class="lanc-hora" style="min-width:75px;font-family:var(--f);font-size:10px;font-weight:400;color:#555">R$ ${fmtNum(c.valor)}</div>
         <div class="lanc-desc" style="font-size:10px;line-height:1.4">${descFull || cat || '—'}</div>
+        ${alertaEvt}
         <div class="lanc-dur"></div>
         <div class="lanc-actions">
           <button class="lanc-edit ${travada?'disabled':''}" onclick="${travada?'':'editarCustoLancado(\''+c.id+'\')'}">Editar</button>
@@ -6265,7 +6276,7 @@ function _cargaDonut(totais) {
   const grad  = `conic-gradient(var(--az) 0% ${pProj}%, var(--verde) ${pProj}% ${pProj+pOrg}%, var(--am) ${pProj+pOrg}% 100%)`;
   return `<div style="position:relative;width:64px;height:64px;flex-shrink:0">
     <div style="width:64px;height:64px;border-radius:50%;background:${grad}"></div>
-    <div style="position:absolute;inset:12px;border-radius:50%;background:#fff"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;background:var(--off)"></div>
   </div>
   <div style="font-size:10px;line-height:1.7">
     <div><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--az);margin-right:4px"></span>Projeto: ${fmtH(totais.projeto)}</div>
@@ -6577,6 +6588,18 @@ function mostrarResumoMembro(uid, nome) {
 }
 
 // ── CARGA MENSAL ─────────────────────────────────────────────────────────────
+let _cmView = 'individual';
+let _cmData = null;
+
+function setCmView(v) {
+  _cmView = v;
+  const btnInd = document.getElementById('cm-btn-individual');
+  const btnCol = document.getElementById('cm-btn-coletivo');
+  if (btnInd) { btnInd.style.background = v === 'individual' ? 'var(--preto)' : 'none'; btnInd.style.color = v === 'individual' ? '#fff' : '#888'; }
+  if (btnCol) { btnCol.style.background = v === 'coletivo' ? 'var(--preto)' : 'none'; btnCol.style.color = v === 'coletivo' ? '#fff' : '#888'; }
+  if (_cmData) renderCargaMensal(_cmData);
+}
+
 async function carregarCargaMensal() {
   const wrap = document.getElementById('cm-lista');
   if (!wrap) return;
@@ -6610,63 +6633,112 @@ async function carregarCargaMensal() {
   });
 
   const semNome = new Intl.DateTimeFormat('pt-BR', {month:'long',year:'numeric'}).format(new Date(ano,m-1,1));
+  _cmData = { porUser, usuarios, semNome };
+  renderCargaMensal(_cmData);
+}
 
-  let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
+function renderCargaMensal({ porUser, usuarios, semNome }) {
+  const wrap = document.getElementById('cm-lista');
+  if (!wrap) return;
+  const ativos = usuarios.filter(u => porUser[u.id]?.total > 0);
 
-  usuarios.filter(u => porUser[u.id]?.total > 0).forEach(u => {
-    const d = porUser[u.id];
-    const tops = Object.entries(d.prods).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const topsHtml = tops.map(([pid, h]) => {
-      const prod = G.todosProdutos.find(p => p.id === pid);
-      const nome = prod?.oportunidades?.projeto || prod?.nome || pid;
-      const pct = d.total > 0 ? Math.round(h/d.total*100) : 0;
-      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10px;margin-bottom:4px">
-        <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#555">${nome}</span>
-        <span style="font-family:var(--fm);font-weight:600;flex-shrink:0">${fmtH(h)} <span style="color:#aaa;font-weight:400">${pct}%</span></span>
-      </div>`;
-    }).join('');
+  if (_cmView === 'coletivo') {
+    // ── VISÃO COLETIVA: gráfico de barras horizontal por colaborador ──
+    if (!ativos.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lançada neste mês.</div>'; return; }
 
-    const tipos = [
-      { k:'projeto',     label:'Projetos',     cor:'#1D4FA0' },
-      { k:'organizacao', label:'Org. Interna',  cor:'#1D6A4A' },
-      { k:'sociedade',   label:'Sociedade',     cor:'#C4831A' },
-    ].filter(t => (d[t.k]||0) > 0);
+    const maxHoras = Math.max(...ativos.map(u => porUser[u.id].total));
+    const TIPOS = [
+      { k:'projeto',     cor:'var(--az)',    label:'Projetos' },
+      { k:'organizacao', cor:'var(--verde)', label:'Org. Interna' },
+      { k:'sociedade',   cor:'var(--am)',    label:'Sociedade' },
+    ];
 
-    html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <div class="carga-av" style="background:${u.cor||'#888'};width:32px;height:32px;font-size:11px">${u.iniciais}</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600">${u.nome}</div>
-          <div style="font-size:10px;color:#888">${semNome} · <strong style="font-family:var(--fm)">${fmtH(d.total)}</strong> totais</div>
+    let html = `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:16px 20px">
+      <div style="display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+        ${TIPOS.map(t => `<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#666">
+          <div style="width:10px;height:10px;border-radius:2px;background:${t.cor}"></div>${t.label}
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">`;
+
+    ativos.sort((a,b) => porUser[b.id].total - porUser[a.id].total).forEach(u => {
+      const d = porUser[u.id];
+      const pProj = maxHoras > 0 ? d.projeto / maxHoras * 100 : 0;
+      const pOrg  = maxHoras > 0 ? d.organizacao / maxHoras * 100 : 0;
+      const pSoc  = maxHoras > 0 ? d.sociedade / maxHoras * 100 : 0;
+      html += `<div style="display:grid;grid-template-columns:120px 1fr 60px;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:7px;min-width:0">
+          <div class="carga-av" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:9px;flex-shrink:0">${u.iniciais}</div>
+          <div style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome.split(' ')[0]}</div>
         </div>
-      </div>
-      <div style="margin-bottom:12px;display:flex;flex-direction:column;gap:7px">
-        ${tipos.map(t => {
-          const pct = d.total > 0 ? Math.round((d[t.k]||0)/d.total*100) : 0;
-          return `<div>
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
-              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${t.cor}">${t.label}</span>
-              <span style="font-size:10px;font-family:var(--fm);font-weight:600;color:#444">${fmtH(d[t.k]||0)} <span style="color:#bbb;font-weight:400">${pct}%</span></span>
-            </div>
-            <div style="height:5px;background:var(--cinza2);border-radius:3px;overflow:hidden">
-              <div style="height:5px;width:${pct}%;background:${t.cor};border-radius:3px;transition:width .4s"></div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-      ${tops.length ? `<div style="border-top:1px solid var(--cinza2);padding-top:10px">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:8px">Top projetos</div>
-        ${topsHtml}
-      </div>` : ''}
-    </div>`;
-  });
+        <div style="height:14px;background:var(--cinza2);border-radius:4px;overflow:hidden;display:flex">
+          <div style="height:100%;width:${pProj}%;background:var(--az);transition:width .4s"></div>
+          <div style="height:100%;width:${pOrg}%;background:var(--verde);transition:width .4s"></div>
+          <div style="height:100%;width:${pSoc}%;background:var(--am);transition:width .4s"></div>
+        </div>
+        <div style="font-size:11px;font-family:var(--fm);font-weight:700;color:#444;text-align:right">${fmtH(d.total)}</div>
+      </div>`;
+    });
 
-  if (!Object.keys(porUser).length) {
-    html += '<div class="empty-note">Nenhuma hora lançada neste mês.</div>';
+    html += '</div></div>';
+    wrap.innerHTML = html;
+
+  } else {
+    // ── VISÃO INDIVIDUAL: cards por pessoa (original) ──
+    let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
+
+    ativos.forEach(u => {
+      const d = porUser[u.id];
+      const tops = Object.entries(d.prods).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const topsHtml = tops.map(([pid, h]) => {
+        const prod = G.todosProdutos.find(p => p.id === pid);
+        const nome = prod?.oportunidades?.projeto || prod?.nome || pid;
+        const pct = d.total > 0 ? Math.round(h/d.total*100) : 0;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10px;margin-bottom:4px">
+          <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#555">${nome}</span>
+          <span style="font-family:var(--fm);font-weight:600;flex-shrink:0">${fmtH(h)} <span style="color:#aaa;font-weight:400">${pct}%</span></span>
+        </div>`;
+      }).join('');
+
+      const tipos = [
+        { k:'projeto',     label:'Projetos',    cor:'var(--az)' },
+        { k:'organizacao', label:'Org. Interna', cor:'var(--verde)' },
+        { k:'sociedade',   label:'Sociedade',    cor:'var(--am)' },
+      ].filter(t => (d[t.k]||0) > 0);
+
+      html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div class="carga-av" style="background:${u.cor||'#888'};width:32px;height:32px;font-size:11px">${u.iniciais}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${u.nome}</div>
+            <div style="font-size:10px;color:#888">${semNome} · <strong style="font-family:var(--fm)">${fmtH(d.total)}</strong> totais</div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;display:flex;flex-direction:column;gap:7px">
+          ${tipos.map(t => {
+            const pct = d.total > 0 ? Math.round((d[t.k]||0)/d.total*100) : 0;
+            return `<div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+                <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${t.cor}">${t.label}</span>
+                <span style="font-size:10px;font-family:var(--fm);font-weight:600;color:#444">${fmtH(d[t.k]||0)} <span style="color:#bbb;font-weight:400">${pct}%</span></span>
+              </div>
+              <div style="height:5px;background:var(--cinza2);border-radius:3px;overflow:hidden">
+                <div style="height:5px;width:${pct}%;background:${t.cor};border-radius:3px;transition:width .4s"></div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        ${tops.length ? `<div style="border-top:1px solid var(--cinza2);padding-top:10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:8px">Top projetos</div>
+          ${topsHtml}
+        </div>` : ''}
+      </div>`;
+    });
+
+    if (!ativos.length) html += '<div class="empty-note">Nenhuma hora lançada neste mês.</div>';
+    html += '</div>';
+    wrap.innerHTML = html;
   }
-
-  html += '</div>';
-  wrap.innerHTML = html;
 }
 
 // ── REEMBOLSO ─────────────────────────────────────────────────────────────────
@@ -6675,7 +6747,7 @@ let _rbData = null; // cache for export
 
 function setReembolsoView(v) {
   _rbView = v;
-  ['membro','vinculo'].forEach(t => {
+  ['membro','evento'].forEach(t => {
     const btn = document.getElementById('rb-tab-'+t);
     if (!btn) return;
     btn.style.borderBottomColor = t === v ? 'var(--azul)' : 'transparent';
@@ -6706,11 +6778,24 @@ async function carregarReembolso() {
 
   if (!custos || !usuarios) { wrap.innerHTML = '<div class="empty-note">Erro ao carregar.</div>'; return; }
 
-  _rbData = { custos, usuarios, mes };
+  // Busca nomes dos eventos separadamente
+  const rbEvIds    = [...new Set(custos.map(c => c.evento_id).filter(Boolean))];
+  const rbEvSocIds = [...new Set(custos.map(c => c.evento_soc_id).filter(Boolean))];
+  const rbEvNomes  = {};
+  if (rbEvIds.length) {
+    const { data: evs } = await sb.from('eventos_custo').select('id,nome').in('id', rbEvIds);
+    (evs||[]).forEach(e => { rbEvNomes[e.id] = e.nome; });
+  }
+  if (rbEvSocIds.length) {
+    const { data: evs } = await sb.from('eventos_sociedade').select('id,nome').in('id', rbEvSocIds);
+    (evs||[]).forEach(e => { rbEvNomes[e.id] = e.nome; });
+  }
+
+  _rbData = { custos, usuarios, mes, evNomes: rbEvNomes };
   renderReembolso(_rbData);
 }
 
-function renderReembolso({ custos, usuarios, mes }) {
+function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
   const wrap = document.getElementById('rb-lista');
   if (!wrap) return;
   const fmtR = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
@@ -6775,28 +6860,36 @@ function renderReembolso({ custos, usuarios, mes }) {
     wrap.innerHTML = html;
 
   } else {
-    // Agrupa por vínculo (projeto/oportunidade)
-    const porVinculo = {};
+    // Agrupa por evento
+    const porEvento = {};
     custos.forEach(c => {
-      const cli = c.produtos?.oportunidades?.clientes?.nome || '';
-      const op = c.produtos?.oportunidades?.projeto || '';
-      const chave = cli && op ? `${cli} | ${op}` : (c.subtipo || c.tipo || 'Sem vínculo');
-      if (!porVinculo[chave]) porVinculo[chave] = { total:0, itens:[] };
-      porVinculo[chave].total += Number(c.valor||0);
-      porVinculo[chave].itens.push(c);
+      const evNome = evNomes[c.evento_id] || evNomes[c.evento_soc_id] || null;
+      const chave  = evNome || '— Sem evento —';
+      if (!porEvento[chave]) porEvento[chave] = { total:0, itens:[], semEvento: !evNome };
+      porEvento[chave].total += Number(c.valor||0);
+      porEvento[chave].itens.push(c);
     });
 
     let html = '<div style="display:flex;flex-direction:column;gap:10px">';
     let algum = false;
-    Object.entries(porVinculo).sort((a,b) => b[1].total - a[1].total).forEach(([chave, grp]) => {
+    // Ordenar: com evento primeiro (por total desc), sem evento por último
+    const entries = Object.entries(porEvento).sort((a,b) => {
+      if (a[1].semEvento !== b[1].semEvento) return a[1].semEvento ? 1 : -1;
+      return b[1].total - a[1].total;
+    });
+    entries.forEach(([chave, grp]) => {
       algum = true;
-      const u = (uid) => usuarios.find(u=>u.id===uid);
+      const uFind = (uid) => usuarios.find(u=>u.id===uid);
       const linhas = grp.itens.map(c => {
-        const uu = u(c.usuario_id);
+        const uu = uFind(c.usuario_id);
+        const cli = c.produtos?.oportunidades?.clientes?.nome || '';
+        const op  = c.produtos?.oportunidades?.projeto || '';
+        const vinculo = [cli, op].filter(Boolean).join(' · ') || (c.subtipo || c.tipo || '');
         return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
           ${uu ? `<div class="carga-av" style="background:${uu.cor||'#888'};width:22px;height:22px;font-size:9px;flex-shrink:0">${uu.iniciais}</div>` : ''}
           <div style="flex:1;min-width:0">
-            <span style="font-size:10px;color:#555">${c.subtipo||'—'}</span>
+            ${vinculo ? `<span style="font-size:10px;font-weight:600;color:#444">${vinculo}</span>` : ''}
+            ${c.subtipo ? `<span style="font-size:10px;color:#777"> · ${c.subtipo}</span>` : ''}
             ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
             ${uu ? `<span style="font-size:9px;color:#bbb"> — ${uu.nome}</span>` : ''}
           </div>
@@ -6805,12 +6898,14 @@ function renderReembolso({ custos, usuarios, mes }) {
         </div>`;
       }).join('');
 
-      html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-size:12px;font-weight:700;color:var(--azul)">${chave}</div>
+      const headerCor = grp.semEvento ? '#aaa' : 'var(--preto)';
+      const headerBg  = grp.semEvento ? 'var(--cinza2)' : '';
+      html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:${headerBg}">
+          <div style="font-size:12px;font-weight:700;color:${headerCor}">${chave}</div>
           <div style="font-size:12px;font-family:var(--fm);font-weight:700">${fmtR(grp.total)}</div>
         </div>
-        ${linhas}
+        <div style="padding:0 14px 10px">${linhas}</div>
       </div>`;
     });
 
