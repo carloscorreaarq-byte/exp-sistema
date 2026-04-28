@@ -820,8 +820,8 @@ body::before {
 .cliente-header {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; background: var(--cinza2);
-  border: 1px solid var(--cinza); margin-bottom: 1px;
-  cursor: pointer;
+  border: 1px solid var(--cinza); margin-bottom: 4px;
+  cursor: pointer; border-radius: 8px;
 }
 .cliente-nome { font-size: 11px; font-weight: 700; }
 .cliente-cidade { font-size: 10px; color: #888; }
@@ -1223,14 +1223,14 @@ body::before {
 .fluxo-slot-num.s4 { background:#6B4FA0; }
 .fluxo-slot-num.s5 { background:#B84C3A; }
 .fluxo-slot-num.s6 { background:#3D7A5C; }
-.fluxo-col-select { width:100%; font-size:10px; border:1px solid var(--cinza); border-radius:4px; padding:3px 4px; background:#fff; color:#333; outline:none; }
+.fluxo-col-select { width:100%; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:3px 4px; background:#fff; color:#333; outline:none; font-family:var(--f); }
 .fluxo-col-select:focus { border-color:var(--azul); }
 .fluxo-col-date-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
-.fluxo-col-date { flex:1; min-width:0; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:2px 4px; background:#fff; outline:none; color:#444; }
+.fluxo-col-date { flex:1; min-width:0; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:2px 4px; background:#fff; outline:none; color:#666; font-family:var(--f); }
 .fluxo-col-date:focus { border-color:var(--azul); }
-.fluxo-conc-tag { font-size:9px; font-weight:700; cursor:pointer; padding:2px 7px; border-radius:12px; border:1px solid var(--cinza); background:#fff; color:#bbb; white-space:nowrap; flex-shrink:0; }
+.fluxo-conc-tag { font-size:9px; font-weight:600; cursor:pointer; padding:2px 7px; border-radius:12px; border:1px solid var(--cinza); background:#fff; color:#bbb; white-space:nowrap; flex-shrink:0; font-family:var(--f); }
 .fluxo-conc-tag.done { color:var(--verde); border-color:rgba(29,106,74,.3); background:var(--verde-bg); }
-.fluxo-col-textarea { width:100%; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:4px 6px; background:#fff; color:#444; resize:vertical; outline:none; font-family:inherit; line-height:1.5; box-sizing:border-box; }
+.fluxo-col-textarea { width:100%; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:4px 6px; background:#fff; color:#555; resize:vertical; outline:none; font-family:var(--f); line-height:1.5; box-sizing:border-box; }
 .fluxo-col-textarea::placeholder { color:#ccc; }
 .fluxo-col-textarea:focus { border-color:var(--azul); }
 
@@ -1250,7 +1250,7 @@ body::before {
 .vh-nome { font-size: 12px; flex: 1; }
 .vh-valor { font-family: var(--fm); font-size: 12px; font-weight: 700; color: var(--verde); min-width: 80px; }
 .vh-vigencia { font-size: 10px; color: #888; font-family: var(--fm); min-width: 80px; }
-.vh-input { width: 100px; padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--fm); font-size: 12px; outline: none; }
+.vh-input { width: 100px; padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--fm); font-size: 12px; outline: none; border-radius: 6px; }
 .vh-input:focus { border-color: var(--preto); }
 
 /* Espelho financeiro */
@@ -1921,9 +1921,13 @@ body::before {
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="page" id="page-revisoes">
 
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div class="sec-title" style="margin-bottom:0;flex:1">Revisões ativas</div>
+    <button class="btn sm verde socio-only" onclick="abrirNovaRevisaoGlobal()">+ Nova revisão</button>
+  </div>
+
   <div class="rev-layout">
     <div>
-      <div class="sec-title">Revisões ativas</div>
       <div id="rev-lista">
         <div class="loading-state">Carregando...</div>
       </div>
@@ -2417,7 +2421,6 @@ body::before {
       <button class="modal-close" onclick="fecharModal('modal-editar-lancamento')">×</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:11px;color:#888;margin-bottom:12px" id="el-contexto">—</div>
       <div class="fgroup mb8">
         <label>Dia da semana</label>
         <select id="el-dia"></select>
@@ -2431,6 +2434,10 @@ body::before {
           <label>Hora fim</label>
           <input type="time" id="el-fim">
         </div>
+      </div>
+      <div class="fgroup mb8" id="el-produto-wrap" style="display:none">
+        <label>Produto</label>
+        <select id="el-produto" onchange="elOnProdutoChange()"></select>
       </div>
       <div class="fgroup mb8" id="el-etapa-wrap" style="display:none">
         <label>Etapa</label>
@@ -3311,12 +3318,15 @@ async function carregarProdutos() {
   const clientesMap = new Map();
   ativos.forEach(p => {
     const cli = p.oportunidades?.clientes;
-    if (cli?.id) clientesMap.set(cli.id, cli.nome || cli.id);
+    if (cli?.id) clientesMap.set(cli.id, { nome: cli.nome || cli.id, cidade: cli.cidade || '', uf: cli.uf || '' });
   });
   const clientesOptsHtml = '<option value="">Selecionar cliente...</option>' +
     [...clientesMap.entries()]
-      .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
-      .map(([id, nome]) => `<option value="${id}">${nome}</option>`).join('');
+      .sort((a, b) => a[1].nome.localeCompare(b[1].nome, 'pt-BR'))
+      .map(([id, cd]) => {
+        const loc = cd.cidade ? ` — ${cd.cidade}${cd.uf ? `/${cd.uf}` : ''}` : '';
+        return `<option value="${id}">${cd.nome}${loc}</option>`;
+      }).join('');
 
   const selCli = document.getElementById('lf-cliente');
   if (selCli) {
@@ -3991,8 +4001,9 @@ function renderGantt() {
         <td class="info-cell">
           <div style="display:flex;align-items:flex-start;gap:6px">
             <div style="flex:1;min-width:0">
-              <div class="gantt-prod-nome">${opp?.clientes?.nome ? `${opp.clientes.nome}` : ''} ${opp?.projeto ? `<span style="color:#aaa;font-weight:400">· ${opp.projeto}</span>` : ''}</div>
-              <div style="font-size:10px;color:#999;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>
+              <div style="font-size:9px;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px">${opp?.clientes?.nome || ''}</div>
+              <div class="gantt-prod-nome" style="margin-bottom:1px">${opp?.projeto || p.nome}</div>
+              ${opp?.projeto ? `<div style="font-size:10px;color:#999;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>` : ''}
               <div style="display:flex;align-items:center;gap:4px">
                 <span class="badge ${nc.cls}" style="font-size:7px">${nc.label}</span>
                 ${p._crm ? '<span class="badge b-gr" style="font-size:7px">CRM</span>' : ''}
@@ -4732,7 +4743,7 @@ async function renderCustosLancados() {
       const travada = G._semanaTravada;
       html += `<div class="lanc-item">
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
-        <div class="lanc-hora" style="min-width:52px;font-family:var(--f);font-size:10px;font-weight:400;color:#555">R$ ${fmtNum(c.valor)}</div>
+        <div class="lanc-hora" style="min-width:75px;font-family:var(--f);font-size:10px;font-weight:400;color:#555">R$ ${fmtNum(c.valor)}</div>
         <div class="lanc-desc" style="font-size:10px;line-height:1.4">${descFull || cat || '—'}</div>
         <div class="lanc-dur"></div>
         <div class="lanc-actions">
@@ -4786,21 +4797,55 @@ async function editarCustoLancado(id) {
   const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box;color:var(--preto)';
   const lblStyle = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
 
+  // Prepara listas para cascata de projeto
+  const todosProds = G._prodsGestao || G.todosProdutos || [];
+  const clientesMap2 = new Map();
+  todosProds.forEach(p => {
+    const cli = p.oportunidades?.clientes;
+    if (cli?.id) clientesMap2.set(cli.id, { nome: cli.nome, cidade: cli.cidade, uf: cli.uf });
+  });
+  const cliOptsHtml = '<option value="">Selecionar cliente...</option>' +
+    [...clientesMap2.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR'))
+      .map(([cid, cd]) => `<option value="${cid}" ${cid===c.produtos?.oportunidades?.cliente_id?'selected':''}>${cd.nome}${cd.cidade?` — ${cd.cidade}`:''}${cd.uf?`/${cd.uf}`:''}</option>`).join('');
+
+  // Opp e produto a partir do custo atual
+  const curProd = todosProds.find(p => p.id === c.produto_id);
+  const curCli  = curProd?.oportunidades?.clientes;
+  const curCliId = curCli?.id || '';
+  const oppsForCli = curCliId
+    ? [...new Map(todosProds.filter(p=>p.oportunidades?.clientes?.id===curCliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()]
+    : [];
+  const oppOptsHtml = '<option value="">Selecionar oportunidade...</option>' +
+    oppsForCli.map(([oid, o]) => `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}</option>`).join('');
+  const prodsForOpp = curProd?.oportunidade_id
+    ? todosProds.filter(p=>p.oportunidade_id===curProd.oportunidade_id)
+    : [];
+  const prodOptsHtml = '<option value="">Selecionar produto...</option>' +
+    prodsForOpp.map(p => `<option value="${p.id}" ${p.id===c.produto_id?'selected':''}>${p.nome}</option>`).join('');
+  const etapasForProd = c.produto_id
+    ? (G.todasEtapas||[]).filter(e=>e.produto_id===c.produto_id).sort((a,b)=>(a.ordem||0)-(b.ordem||0))
+    : [];
+  const etapaOptsHtml = '<option value="">—</option>' +
+    etapasForProd.map(e=>`<option value="${e.id}" ${e.id===c.etapa_id?'selected':''}>${e.nome}</option>`).join('');
+
+  // Eventos
+  const todosEventosCusto = G._eventosCusto || [];
+  const evtsHtml = '<option value="">— sem evento —</option>' +
+    todosEventosCusto.filter(e=>e.produto_id===c.produto_id||!e.produto_id).map(e=>`<option value="${e.id}" ${e.id===c.evento_id?'selected':''}>${e.nome}</option>`).join('');
+
   let popup = document.getElementById('popup-edit-custo');
   if (popup) popup.remove();
   popup = document.createElement('div');
   popup.id = 'popup-edit-custo';
   popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
   popup.innerHTML = `
-    <div style="background:#fff;border-radius:12px;padding:24px 26px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999">Editar custo</div>
-          <div style="font-size:13px;font-weight:600;margin-top:2px">${vinculoHtml}</div>
-        </div>
-        <span style="margin-left:auto;padding:2px 8px;background:rgba(0,0,0,.06);border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">${tipoLabel}</span>
+    <div style="background:#fff;border-radius:12px;padding:24px 26px;max-width:480px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700">Editar custo</div>
+        <button onclick="document.getElementById('popup-edit-custo').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;line-height:1">×</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <!-- Data + Valor -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
             <label style="${lblStyle}">Data</label>
@@ -4808,20 +4853,60 @@ async function editarCustoLancado(id) {
           </div>
           <div>
             <label style="${lblStyle}">Valor (R$)</label>
-            <input id="ec-valor" type="number" step="0.01" value="${c.valor||''}" style="${fldStyle};font-size:14px;font-weight:600">
+            <input id="ec-valor" type="number" step="0.01" value="${c.valor||''}" style="${fldStyle}">
           </div>
         </div>
-        ${subtipos.length ? `<div>
+        <!-- Tipo vinculado -->
+        <div>
+          <label style="${lblStyle}">Vinculado a</label>
+          <select id="ec-tipo" style="${fldStyle}" onchange="ecOnTipoChange()">
+            <option value="projeto" ${c.tipo==='projeto'?'selected':''}>Projeto</option>
+            <option value="organizacao" ${c.tipo==='organizacao'?'selected':''}>Org. Interna</option>
+            <option value="sociedade" ${c.tipo==='sociedade'?'selected':''}>Sociedade</option>
+          </select>
+        </div>
+        <!-- Projeto cascade -->
+        <div id="ec-proj-wrap" style="${c.tipo!=='projeto'?'display:none':''}">
+          <div style="margin-bottom:10px">
+            <label style="${lblStyle}">Cliente</label>
+            <select id="ec-cliente" style="${fldStyle}" onchange="ecOnClienteChange()">${cliOptsHtml}</select>
+          </div>
+          <div id="ec-opp-wrap" style="${curCliId?'':'display:none'};margin-bottom:10px">
+            <label style="${lblStyle}">Oportunidade</label>
+            <select id="ec-opp" style="${fldStyle}" onchange="ecOnOppChange()">${oppOptsHtml}</select>
+          </div>
+          <div id="ec-prod-wrap" style="${prodsForOpp.length?'':'display:none'};margin-bottom:10px">
+            <label style="${lblStyle}">Produto</label>
+            <select id="ec-prod" style="${fldStyle}" onchange="ecOnProdChange()">${prodOptsHtml}</select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0">
+            <div id="ec-etapa-wrap" style="${etapasForProd.length?'':'display:none'}">
+              <label style="${lblStyle}">Etapa (opcional)</label>
+              <select id="ec-etapa" style="${fldStyle}">${etapaOptsHtml}</select>
+            </div>
+            <div id="ec-evt-wrap" style="${todosEventosCusto.length?'':'display:none'}">
+              <label style="${lblStyle}">Evento</label>
+              <select id="ec-evt" style="${fldStyle}">${evtsHtml}</select>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <label style="${lblStyle}">Categoria</label>
+            <select id="ec-subtipo-proj" style="${fldStyle}">
+              ${['Alimentação','Hospedagem','Translado','Passagem','Transporte','Aluguel de carro','Gasolina','Impressão','Outro'].map(s=>`<option value="${s}" ${c.subtipo===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <!-- Org/Soc -->
+        <div id="ec-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
           <label style="${lblStyle}">Categoria</label>
           <select id="ec-subtipo" style="${fldStyle}">
-            ${subtipos.map(s => `<option value="${s}" ${c.subtipo===s?'selected':''}>${s}</option>`).join('')}
+            ${subtipos.map(s=>`<option value="${s}" ${c.subtipo===s?'selected':''}>${s}</option>`).join('')}
           </select>
-        </div>` : ''}
+        </div>
+        <!-- Observação -->
         <div>
           <label style="${lblStyle}">Observação</label>
-          <input id="ec-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}"
-            placeholder="Opcional"
-            style="${fldStyle}">
+          <input id="ec-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}" placeholder="Opcional" style="${fldStyle}">
         </div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:22px">
@@ -4833,15 +4918,59 @@ async function editarCustoLancado(id) {
     </div>`;
   document.body.appendChild(popup);
 
+  // Helpers de cascata no popup
+  window.ecOnTipoChange = () => {
+    const t = document.getElementById('ec-tipo').value;
+    document.getElementById('ec-proj-wrap').style.display   = t === 'projeto' ? '' : 'none';
+    document.getElementById('ec-orgsoc-wrap').style.display = t !== 'projeto' ? '' : 'none';
+  };
+  window.ecOnClienteChange = () => {
+    const cliId = document.getElementById('ec-cliente').value;
+    const todosP = G._prodsGestao || G.todosProdutos || [];
+    const opps = [...new Map(todosP.filter(p=>p.oportunidades?.clientes?.id===cliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()];
+    const sel = document.getElementById('ec-opp');
+    sel.innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>`<option value="${oid}">${o?.projeto||oid}</option>`).join('');
+    document.getElementById('ec-opp-wrap').style.display  = cliId ? '' : 'none';
+    document.getElementById('ec-prod-wrap').style.display = 'none';
+    document.getElementById('ec-etapa-wrap').style.display = 'none';
+  };
+  window.ecOnOppChange = () => {
+    const oppId = document.getElementById('ec-opp').value;
+    const todosP = G._prodsGestao || G.todosProdutos || [];
+    const ps = todosP.filter(p=>p.oportunidade_id===oppId);
+    const sel = document.getElementById('ec-prod');
+    sel.innerHTML = '<option value="">Selecionar produto...</option>' + ps.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+    document.getElementById('ec-prod-wrap').style.display = oppId ? '' : 'none';
+    document.getElementById('ec-etapa-wrap').style.display = 'none';
+  };
+  window.ecOnProdChange = () => {
+    const prodId = document.getElementById('ec-prod').value;
+    const etapas = (G.todasEtapas||[]).filter(e=>e.produto_id===prodId).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+    const sel = document.getElementById('ec-etapa');
+    sel.innerHTML = '<option value="">—</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+    document.getElementById('ec-etapa-wrap').style.display = prodId ? '' : 'none';
+  };
+
   document.getElementById('ec-salvar-btn').onclick = async () => {
     const novoValor = parseFloat(document.getElementById('ec-valor').value);
-    const novaDesc  = document.getElementById('ec-desc').value.trim() || null;
-    const novoSub   = document.getElementById('ec-subtipo')?.value || c.subtipo;
     const novaData  = document.getElementById('ec-data').value || c.data_lancamento;
+    const novoTipo  = document.getElementById('ec-tipo').value;
+    const novaDesc  = document.getElementById('ec-desc').value.trim() || null;
     if (isNaN(novoValor) || novoValor <= 0) { toast('Valor inválido'); return; }
-    const { error } = await sb.from('lancamentos_custo').update({
-      valor: novoValor, descricao: novaDesc, subtipo: novoSub, data_lancamento: novaData
-    }).eq('id', id);
+
+    const upd = { valor: novoValor, descricao: novaDesc, data_lancamento: novaData, tipo: novoTipo };
+    if (novoTipo === 'projeto') {
+      upd.produto_id = document.getElementById('ec-prod').value || c.produto_id || null;
+      upd.etapa_id   = document.getElementById('ec-etapa')?.value || null;
+      upd.evento_id  = document.getElementById('ec-evt')?.value || null;
+      upd.subtipo    = document.getElementById('ec-subtipo-proj')?.value || null;
+      upd.evento_soc_id = null;
+    } else {
+      upd.subtipo       = document.getElementById('ec-subtipo')?.value || c.subtipo;
+      upd.produto_id    = null; upd.etapa_id = null; upd.evento_id = null;
+    }
+
+    const { error } = await sb.from('lancamentos_custo').update(upd).eq('id', id);
     if (error) { toast('Erro: ' + error.message); return; }
     popup.remove();
     toast('Custo atualizado');
@@ -4903,24 +5032,43 @@ function abrirEditarLancamento(id) {
   }
 
   const lanc = (G._lancAtivos || []).find(l => l.id === id);
-  if (!lanc) {
-    toast('Lançamento não encontrado');
-    return;
-  }
+  if (!lanc) { toast('Lançamento não encontrado'); return; }
 
   G._editLancamentoId = id;
-  const contexto = document.getElementById('el-contexto');
-  const contextoTxt = lanc.tipo === 'projeto'
-    ? getProjetoHierarquiaLinha(lanc.produto_id, lanc.etapa_id, 40).completa
-    : `${lanc.subtipo || lanc.tipo}`;
+  G._editLancamentoTipo = lanc.tipo;
 
-  if (contexto) contexto.textContent = contextoTxt;
   popularDiasEdicaoLancamento(parseInt(lanc.dia_semana) || 1);
   document.getElementById('el-inicio').value = lanc.hora_inicio?.slice(0,5) || '';
-  document.getElementById('el-fim').value = lanc.hora_fim?.slice(0,5) || '';
-  document.getElementById('el-desc').value = lanc.descricao || '';
-  popularEtapasEdicaoLancamento(lanc.tipo === 'projeto' ? lanc.produto_id : null, lanc.etapa_id || null);
+  document.getElementById('el-fim').value   = lanc.hora_fim?.slice(0,5)    || '';
+  document.getElementById('el-desc').value  = lanc.descricao || '';
+
+  const prodWrap  = document.getElementById('el-produto-wrap');
+  const etapaWrap = document.getElementById('el-etapa-wrap');
+  const selProd   = document.getElementById('el-produto');
+
+  if (lanc.tipo === 'projeto') {
+    // Popula select de produto com todos os produtos activos
+    const prods = (G._prodsGestao || G.todosProdutos || []).filter(p => p.status === 'ativo');
+    selProd.innerHTML = '<option value="">Selecionar produto...</option>' +
+      prods.map(p => {
+        const cli = p.oportunidades?.clientes?.nome || '';
+        const opp = p.oportunidades?.projeto || '';
+        const label = [cli, opp, p.nome].filter(Boolean).join(' · ');
+        return `<option value="${p.id}" ${p.id === lanc.produto_id ? 'selected' : ''}>${label}</option>`;
+      }).join('');
+    prodWrap.style.display = 'block';
+    popularEtapasEdicaoLancamento(lanc.produto_id, lanc.etapa_id || null);
+  } else {
+    prodWrap.style.display  = 'none';
+    etapaWrap.style.display = 'none';
+  }
+
   document.getElementById('modal-editar-lancamento').style.display = 'flex';
+}
+
+function elOnProdutoChange() {
+  const prodId = document.getElementById('el-produto').value || null;
+  popularEtapasEdicaoLancamento(prodId, null);
 }
 
 async function salvarEdicaoLancamento() {
@@ -4936,19 +5084,18 @@ async function salvarEdicaoLancamento() {
     return;
   }
 
-  const diaNum = parseInt(document.getElementById('el-dia').value, 10);
-  const ini = document.getElementById('el-inicio').value;
-  const fim = document.getElementById('el-fim').value;
-  const desc = document.getElementById('el-desc').value.trim();
-  const etapaId = lanc.tipo === 'projeto'
-    ? (document.getElementById('el-etapa').value || null)
-    : null;
+  const diaNum  = parseInt(document.getElementById('el-dia').value, 10);
+  const ini     = document.getElementById('el-inicio').value;
+  const fim     = document.getElementById('el-fim').value;
+  const desc    = document.getElementById('el-desc').value.trim();
+  const prodId  = lanc.tipo === 'projeto' ? (document.getElementById('el-produto').value || lanc.produto_id) : null;
+  const etapaId = lanc.tipo === 'projeto' ? (document.getElementById('el-etapa').value || null) : null;
 
   if (!ini || !fim) { toast('Preencha os horários'); return; }
-  if (ini >= fim) { toast('Hora fim deve ser maior que início'); return; }
+  if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
   if (lanc.tipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
 
-  const dias = getDiasSemana(G.semanaOffset);
+  const dias    = getDiasSemana(G.semanaOffset);
   const dataObj = dias[(diaNum || 1) - 1];
   const dataISO = dataObj.toISOString().split('T')[0];
 
@@ -4957,6 +5104,7 @@ async function salvarEdicaoLancamento() {
     data_lancamento: dataISO,
     hora_inicio: ini,
     hora_fim: fim,
+    produto_id: prodId,
     etapa_id: etapaId,
     descricao: desc || null
   }).eq('id', id);
@@ -5760,6 +5908,93 @@ async function salvarNovaRevisao() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   CADASTRO PROJETO
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ── Nova revisão global (aba Revisões) ───────────────────────────────────────
+function abrirNovaRevisaoGlobal() {
+  const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const lblStyle = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+  const todosProds = (G._prodsGestao || G.todosProdutos || []).filter(p => p.status === 'ativo');
+  const cliMap = new Map();
+  todosProds.forEach(p => { const c = p.oportunidades?.clientes; if (c?.id) cliMap.set(c.id, c); });
+  const cliOpts = '<option value="">Selecionar cliente...</option>' +
+    [...cliMap.values()].sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'))
+      .map(c => `<option value="${c.id}">${c.nome}${c.cidade?' — '+c.cidade:''}${c.uf?'/'+c.uf:''}</option>`).join('');
+
+  let pop = document.getElementById('popup-nova-rev-global');
+  if (pop) pop.remove();
+  pop = document.createElement('div');
+  pop.id = 'popup-nova-rev-global';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  pop.innerHTML = `<div style="background:#fff;border-radius:12px;padding:24px 26px;max-width:440px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700">Nova revisão</div>
+      <button onclick="document.getElementById('popup-nova-rev-global').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="${lblStyle}">Cliente</label><select id="nrg-cli" style="${fldStyle}" onchange="nrgOnCli()">${cliOpts}</select></div>
+      <div id="nrg-opp-wrap" style="display:none"><label style="${lblStyle}">Oportunidade</label><select id="nrg-opp" style="${fldStyle}" onchange="nrgOnOpp()"><option value="">Selecionar...</option></select></div>
+      <div id="nrg-prod-wrap" style="display:none"><label style="${lblStyle}">Produto</label><select id="nrg-prod" style="${fldStyle}" onchange="nrgOnProd()"><option value="">Selecionar...</option></select></div>
+      <div id="nrg-etapa-wrap" style="display:none"><label style="${lblStyle}">Etapa</label><select id="nrg-etapa" style="${fldStyle}"><option value="">Selecionar...</option></select></div>
+      <div id="nrg-pranchas-wrap" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label style="${lblStyle};margin-bottom:0">Pranchas</label>
+          <button onclick="nrgAddPrancha()" style="font-size:10px;padding:2px 8px;border:1px solid var(--cinza);border-radius:4px;cursor:pointer;background:#fff;font-family:var(--f)">+ Adicionar</button>
+        </div>
+        <div id="nrg-pranchas-lista"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:22px">
+      <button onclick="document.getElementById('popup-nova-rev-global').remove()" style="padding:8px 18px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;font-family:var(--f)">Cancelar</button>
+      <button id="nrg-salvar-btn" style="padding:8px 18px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:var(--verde);color:#fff;font-family:var(--f);font-weight:700">Criar revisão</button>
+    </div>
+  </div>`;
+  document.body.appendChild(pop);
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  window.nrgOnCli = () => {
+    const cliId = document.getElementById('nrg-cli').value;
+    const opps = [...new Map(todosProds.filter(p => p.oportunidades?.clientes?.id === cliId).map(p => [p.oportunidade_id, p.oportunidades])).entries()];
+    document.getElementById('nrg-opp').innerHTML = '<option value="">Selecionar...</option>' + opps.map(([oid,o]) => `<option value="${oid}">${o?.projeto||oid}</option>`).join('');
+    document.getElementById('nrg-opp-wrap').style.display = cliId ? '' : 'none';
+    ['nrg-prod-wrap','nrg-etapa-wrap','nrg-pranchas-wrap'].forEach(id => document.getElementById(id).style.display = 'none');
+  };
+  window.nrgOnOpp = () => {
+    const oppId = document.getElementById('nrg-opp').value;
+    const ps = todosProds.filter(p => p.oportunidade_id === oppId);
+    document.getElementById('nrg-prod').innerHTML = '<option value="">Selecionar...</option>' + ps.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+    document.getElementById('nrg-prod-wrap').style.display = oppId ? '' : 'none';
+    ['nrg-etapa-wrap','nrg-pranchas-wrap'].forEach(id => document.getElementById(id).style.display = 'none');
+  };
+  window.nrgOnProd = () => {
+    const prodId = document.getElementById('nrg-prod').value;
+    const etapas = (G.todasEtapas||[]).filter(e => e.produto_id === prodId).sort((a,b) => (a.ordem||0)-(b.ordem||0));
+    document.getElementById('nrg-etapa').innerHTML = '<option value="">Selecionar etapa...</option>' + etapas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+    document.getElementById('nrg-etapa-wrap').style.display = prodId ? '' : 'none';
+    document.getElementById('nrg-pranchas-wrap').style.display = prodId ? '' : 'none';
+  };
+  window.nrgAddPrancha = () => {
+    const lista = document.getElementById('nrg-pranchas-lista');
+    const idx = lista.children.length + 1;
+    const div = document.createElement('div'); div.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
+    div.innerHTML = `<input type="text" placeholder="Prancha 0${idx}" class="nrg-prancha-nome" style="${fldStyle}">
+      <button onclick="this.parentElement.remove()" style="padding:4px 8px;border:1px solid var(--cinza);border-radius:6px;cursor:pointer;background:#fff">×</button>`;
+    lista.appendChild(div);
+  };
+  document.getElementById('nrg-salvar-btn').onclick = async () => {
+    const etapaId = document.getElementById('nrg-etapa').value;
+    if (!etapaId) { toast('Selecione a etapa'); return; }
+    const btn = document.getElementById('nrg-salvar-btn');
+    btn.disabled = true; btn.textContent = 'Criando...';
+    try {
+      const { count } = await sb.from('revisoes').select('*',{count:'exact',head:true}).eq('etapa_id',etapaId);
+      const { data: rev, error: errRev } = await sb.from('revisoes').insert({ etapa_id: etapaId, numero: (count||0)+1, aberta_por: G.usuario.id, status: 'aberta' }).select().single();
+      if (errRev || !rev) { toast('Erro: '+(errRev?.message||'falha')); return; }
+      const nomes = [...document.querySelectorAll('.nrg-prancha-nome')].map(i => i.value.trim()).filter(Boolean);
+      for (let i = 0; i < nomes.length; i++) await sb.from('pranchas').insert({ revisao_id: rev.id, nome: nomes[i], ordem: i });
+      pop.remove(); toast('Revisão criada'); carregarRevisoes();
+    } catch(e) { toast('Erro: '+e.message); }
+    finally { btn.disabled = false; btn.textContent = 'Criar revisão'; }
+  };
+}
+
 async function abrirModalCadastroProjeto() {
   // Carrega clientes
   const { data: clientes } = await sb.from('clientes').select('*').order('nome');
