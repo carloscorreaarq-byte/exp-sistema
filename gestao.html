@@ -1452,7 +1452,7 @@ body::before {
   <div class="nav-tabs">
     <button class="ntab active" data-tab="dashboard">Dashboard</button>
     <button class="ntab" data-tab="projetos">Projetos</button>
-    <button class="ntab" data-tab="horas">Horas</button>
+    <button class="ntab" data-tab="horas">Horas/Custos</button>
     <button class="ntab" data-tab="revisoes">Revisões</button>
     <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">Sócios</button>
   </div>
@@ -2420,6 +2420,8 @@ body::before {
         <label>Comentário da semana</label>
         <textarea id="fin-comentario" placeholder="Como foi a semana? Principais entregas, bloqueios, observações..." style="min-height:100px"></textarea>
       </div>
+      <!-- Alertas de pendências -->
+      <div id="fin-alert" style="display:none;background:var(--am-bg);border:1px solid #E8C07A;border-left:3px solid var(--am);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#8a5a00;line-height:1.7"></div>
       <div style="font-size:11px;color:var(--am);margin-top:10px">
         ⚠ Ação irreversível. A semana será travada e não poderá mais ser editada por você.
       </div>
@@ -3992,7 +3994,7 @@ function renderGantt() {
   let rows = '';
   Object.values(grupos).forEach(({ cli, opp, prods: ps }) => {
     rows += `<tr class="gantt-grupo-row">
-      <td colspan="${SEMANAS_VIS + 1}">${cli?.nome || 'Sem cliente'} · ${opp?.projeto || 'Sem projeto'}</td>
+      <td colspan="${SEMANAS_VIS + 1}">${cli?.nome || 'Sem cliente'}</td>
     </tr>`;
 
     ps.forEach(p => {
@@ -4355,10 +4357,16 @@ function renderLancamentos(lancs) {
         descMain = l.subtipo || TIPO_PT[l.tipo] || l.tipo;
         descSub = l.descricao || '';
       }
-      html += `<div class="lanc-item">
+      // Sinaliza lançamentos incompletos
+      const incompleto = l.tipo === 'projeto' && (!l.produto_id || !l.etapa_id);
+      const alertaHora = incompleto
+        ? `<span title="${!l.produto_id ? 'Produto não definido' : 'Etapa não definida'} — clique em Editar para corrigir" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`
+        : '';
+      html += `<div class="lanc-item" style="${incompleto ? 'border-left:2px solid #C4831A' : ''}">
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
         <div class="lanc-hora">${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)}</div>
         <div class="lanc-desc"><span class="lanc-desc-main">${descMain}</span>${descSub ? `<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">${descSub}</span>` : ''}</div>
+        ${alertaHora}
         <div class="lanc-dur">${fmtH(dur)}</div>
         <div class="lanc-actions">
           <button class="lanc-edit ${G._semanaTravada ? 'disabled' : ''}" onclick="${G._semanaTravada ? 'event.preventDefault()' : `abrirEditarLancamento('${l.id}')`}" ${G._semanaTravada ? 'title="Semana bloqueada"' : ''}>Editar</button>
@@ -4852,10 +4860,19 @@ async function editarCustoLancado(id) {
   const etapaOptsHtml = '<option value="">—</option>' +
     etapasForProd.map(e=>`<option value="${e.id}" ${e.id===c.etapa_id?'selected':''}>${e.nome}</option>`).join('');
 
-  // Eventos
-  const todosEventosCusto = G._eventosCusto || [];
+  // Busca eventos direto do banco para garantir lista atualizada
+  const [{ data: _evCusto }, { data: _evSoc }] = await Promise.all([
+    sb.from('eventos_custo').select('id,nome,produto_id').order('nome'),
+    sb.from('eventos_sociedade').select('id,nome').order('nome')
+  ]);
+  const todosEventosCusto = _evCusto || [];
+  const todosEventosSoc   = _evSoc   || [];
+  // Eventos para o select de projeto/organizacao (eventos_custo)
   const evtsHtml = '<option value="">— sem evento —</option>' +
-    todosEventosCusto.filter(e=>e.produto_id===c.produto_id||!e.produto_id).map(e=>`<option value="${e.id}" ${e.id===c.evento_id?'selected':''}>${e.nome}</option>`).join('');
+    todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${e.id}" ${e.id===c.evento_id?'selected':''}>${e.nome}</option>`).join('');
+  // Eventos para o select de sociedade (eventos_sociedade)
+  const evtsSocHtml = '<option value="">— sem evento —</option>' +
+    todosEventosSoc.map(e=>`<option value="${e.id}" ${e.id===c.evento_soc_id?'selected':''}>${e.nome}</option>`).join('');
 
   let popup = document.getElementById('popup-edit-custo');
   if (popup) popup.remove();
@@ -4908,7 +4925,7 @@ async function editarCustoLancado(id) {
               <label style="${lblStyle}">Etapa (opcional)</label>
               <select id="ec-etapa" style="${fldStyle}">${etapaOptsHtml}</select>
             </div>
-            <div id="ec-evt-wrap" style="${todosEventosCusto.length?'':'display:none'}">
+            <div id="ec-evt-wrap">
               <label style="${lblStyle}">Evento</label>
               <select id="ec-evt" style="${fldStyle}">${evtsHtml}</select>
             </div>
@@ -4922,10 +4939,18 @@ async function editarCustoLancado(id) {
         </div>
         <!-- Org/Soc -->
         <div id="ec-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
-          <label style="${lblStyle}">Categoria</label>
-          <select id="ec-subtipo" style="${fldStyle}">
-            ${subtipos.map(s=>`<option value="${s}" ${c.subtipo===s?'selected':''}>${s}</option>`).join('')}
-          </select>
+          <div style="margin-bottom:10px">
+            <label style="${lblStyle}">Categoria</label>
+            <select id="ec-subtipo" style="${fldStyle}">
+              ${subtipos.map(s=>`<option value="${s}" ${c.subtipo===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div id="ec-evt-orgsoc-wrap">
+            <label style="${lblStyle}">Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(obrigatório)</span></label>
+            <select id="ec-evt-soc" style="${fldStyle}">
+              ${c.tipo==='sociedade' ? evtsSocHtml : evtsHtml}
+            </select>
+          </div>
         </div>
         <!-- Observação -->
         <div>
@@ -4947,6 +4972,21 @@ async function editarCustoLancado(id) {
     const t = document.getElementById('ec-tipo').value;
     document.getElementById('ec-proj-wrap').style.display   = t === 'projeto' ? '' : 'none';
     document.getElementById('ec-orgsoc-wrap').style.display = t !== 'projeto' ? '' : 'none';
+    // Atualiza lista de eventos para o tipo selecionado
+    const selOrgsoc = document.getElementById('ec-evt-soc');
+    if (selOrgsoc) {
+      if (t === 'sociedade') {
+        selOrgsoc.innerHTML = '<option value="">— sem evento —</option>' +
+          todosEventosSoc.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+      } else {
+        selOrgsoc.innerHTML = '<option value="">— sem evento —</option>' +
+          todosEventosCusto.filter(e=>!e.produto_id).map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+      }
+    }
+    // Atualiza subtipo options
+    const subOpts = SUBTIPOS_CUSTO[t] || [];
+    const selSub = document.getElementById('ec-subtipo');
+    if (selSub) selSub.innerHTML = subOpts.map(s=>`<option value="${s}">${s}</option>`).join('');
   };
   window.ecOnClienteChange = () => {
     const cliId = document.getElementById('ec-cliente').value;
@@ -4970,9 +5010,16 @@ async function editarCustoLancado(id) {
   window.ecOnProdChange = () => {
     const prodId = document.getElementById('ec-prod').value;
     const etapas = (G.todasEtapas||[]).filter(e=>e.produto_id===prodId).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
-    const sel = document.getElementById('ec-etapa');
-    sel.innerHTML = '<option value="">—</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+    const selEtapa = document.getElementById('ec-etapa');
+    selEtapa.innerHTML = '<option value="">—</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
     document.getElementById('ec-etapa-wrap').style.display = prodId ? '' : 'none';
+    // Filtra eventos pelo produto selecionado
+    const selEvt = document.getElementById('ec-evt');
+    if (selEvt) {
+      selEvt.innerHTML = '<option value="">— sem evento —</option>' +
+        todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===prodId).map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+      document.getElementById('ec-evt-wrap').style.display = '';
+    }
   };
 
   document.getElementById('ec-salvar-btn').onclick = async () => {
@@ -4984,14 +5031,21 @@ async function editarCustoLancado(id) {
 
     const upd = { valor: novoValor, descricao: novaDesc, data_lancamento: novaData, tipo: novoTipo };
     if (novoTipo === 'projeto') {
-      upd.produto_id = document.getElementById('ec-prod').value || c.produto_id || null;
-      upd.etapa_id   = document.getElementById('ec-etapa')?.value || null;
-      upd.evento_id  = document.getElementById('ec-evt')?.value || null;
-      upd.subtipo    = document.getElementById('ec-subtipo-proj')?.value || null;
+      upd.produto_id    = document.getElementById('ec-prod').value || c.produto_id || null;
+      upd.etapa_id      = document.getElementById('ec-etapa')?.value || null;
+      upd.evento_id     = document.getElementById('ec-evt')?.value || null;
       upd.evento_soc_id = null;
+      upd.subtipo       = document.getElementById('ec-subtipo-proj')?.value || null;
+    } else if (novoTipo === 'sociedade') {
+      upd.subtipo       = document.getElementById('ec-subtipo')?.value || c.subtipo;
+      upd.evento_soc_id = document.getElementById('ec-evt-soc')?.value || null;
+      upd.evento_id     = null;
+      upd.produto_id    = null; upd.etapa_id = null;
     } else {
       upd.subtipo       = document.getElementById('ec-subtipo')?.value || c.subtipo;
-      upd.produto_id    = null; upd.etapa_id = null; upd.evento_id = null;
+      upd.evento_id     = document.getElementById('ec-evt-soc')?.value || null;
+      upd.evento_soc_id = null;
+      upd.produto_id    = null; upd.etapa_id = null;
     }
 
     const { error } = await sb.from('lancamentos_custo').update(upd).eq('id', id);
@@ -5144,7 +5198,36 @@ async function salvarEdicaoLancamento() {
   renderSemana();
 }
 
-function abrirFinalizarSemana() {
+async function abrirFinalizarSemana() {
+  // Calcula total de horas da semana
+  const lancs = G._lancAtivos || [];
+  const totalH = lancs.reduce((s, l) => s + diffHoras(l.hora_inicio, l.hora_fim), 0);
+  const elTotal = document.getElementById('fin-total-horas');
+  if (elTotal) elTotal.textContent = fmtH(totalH);
+
+  // Verifica pendências
+  const horasInc = lancs.filter(l => l.tipo === 'projeto' && (!l.produto_id || !l.etapa_id));
+
+  const { ini, fim } = semanaRangeOffset(G.semanaOffset);
+  const { data: custosCheck } = await sb.from('lancamentos_custo')
+    .select('id, evento_id, evento_soc_id')
+    .eq('usuario_id', G.usuario.id)
+    .gte('data_lancamento', ini).lte('data_lancamento', fim);
+  const custosInc = (custosCheck || []).filter(c => !c.evento_id && !c.evento_soc_id);
+
+  const alertEl = document.getElementById('fin-alert');
+  if (alertEl) {
+    let msgs = [];
+    if (horasInc.length) msgs.push(`<div>⚠ <strong>${horasInc.length}</strong> lançamento(s) de horas sem produto ou etapa definidos</div>`);
+    if (custosInc.length) msgs.push(`<div>⚠ <strong>${custosInc.length}</strong> custo(s) lançado(s) sem evento associado</div>`);
+    if (msgs.length) {
+      alertEl.innerHTML = `<div style="font-weight:700;margin-bottom:4px">Pendências encontradas:</div>${msgs.join('')}<div style="margin-top:6px;font-size:10px;color:#a07000">Corrija antes de finalizar ou confirme assim mesmo.</div>`;
+      alertEl.style.display = 'block';
+    } else {
+      alertEl.style.display = 'none';
+    }
+  }
+
   document.getElementById('modal-finalizar').style.display = 'flex';
 }
 
