@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP · Sistema</title>
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,7 +31,7 @@ body {
   z-index: 999;
   flex-direction: column; gap: 12px;
 }
-.loading-brand { font-size: 22px; font-weight: 700; letter-spacing: 6px; }
+.loading-brand { font-size: 22px; font-weight: 700; letter-spacing: 6px; font-family: var(--f); }
 .loading-dot { display: flex; gap: 6px; }
 .loading-dot span {
   width: 6px; height: 6px; border-radius: 50%;
@@ -54,41 +54,54 @@ body::before {
   pointer-events: none;
 }
 
-/* NAV */
+/* NAV — idêntica ao gestão */
 .nav {
   display: flex; align-items: center;
-  background: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--cinza);
-  padding: 0 24px;
-  height: 52px;
-  position: sticky; top: 0; z-index: 50;
+  padding: 0 16px;
+  height: 46px;
+  position: sticky; top: 0; z-index: 100;
   gap: 0;
 }
-.nav-brand { font-size: 15px; font-weight: 700; letter-spacing: 5px; }
-.nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.nav-brand {
+  font-size: 14px; font-weight: 700; letter-spacing: 5px;
+  margin-right: 16px; text-decoration: none; color: inherit;
+}
+.nav-brand:hover { opacity: .7; }
+.nav-sep { width: 1px; height: 14px; background: var(--cinza); margin-right: 16px; }
+.nav-mod { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #999; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+/* User chip — pill idêntico ao gestão */
 .user-pill-wrap { position: relative; }
 .user-chip {
-  display: flex; align-items: center; gap: 8px;
-  padding: 4px 10px 4px 4px;
-  border: 1px solid var(--cinza);
-  background: #fff;
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 9px 3px 3px;
+  border: 1px solid var(--cinza); background: #fff;
   cursor: pointer; user-select: none;
+  border-radius: 20px;
+  transition: border-color .12s;
 }
 .user-chip:hover { border-color: var(--preto); }
 .user-av {
-  width: 28px; height: 28px; border-radius: 50%;
+  width: 26px; height: 26px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: #fff;
+  font-size: 9px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
 }
-.user-nome { font-size: 11px; font-weight: 500; }
-.user-cargo { font-size: 9px; color: #888; }
-.user-chip-arrow { font-size: 9px; color: #bbb; margin-left: 4px; }
+.u-nome { font-size: 10px; font-weight: 500; font-family: var(--f); }
+.u-role { font-size: 8px; color: #888; font-family: var(--f); }
+.user-chip-arrow { font-size: 9px; color: #bbb; }
+
+/* Dropdown — idêntico ao gestão */
 .user-dropdown {
   display: none; position: absolute; top: calc(100% + 6px); right: 0;
   background: #fff; border: 1px solid var(--cinza);
-  min-width: 160px; z-index: 200;
+  min-width: 150px; z-index: 200;
   box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  border-radius: 8px; overflow: hidden;
 }
 .user-dropdown.open { display: block; }
 .user-dropdown button {
@@ -99,14 +112,23 @@ body::before {
 }
 .user-dropdown button:hover { background: var(--off); }
 
+/* Indicador de conexão */
+.conn-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ccc; flex-shrink: 0; transition: background .3s;
+  cursor: default; pointer-events: none;
+}
+.conn-dot.online { background: #22c55e; }
+.conn-dot.offline { background: var(--tc); }
+
 /* CONTEÚDO */
 .main { padding: 32px 24px; max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }
 
 /* BOAS VINDAS */
 .bv { margin-bottom: 36px; }
 .bv-hora { font-family: var(--fm); font-size: 10px; color: #999; letter-spacing: 1px; margin-bottom: 6px; }
-.bv-titulo { font-size: 28px; font-weight: 700; letter-spacing: -.5px; line-height: 1.1; margin-bottom: 6px; }
-.bv-sub { font-size: 13px; font-weight: 300; color: #777; }
+.bv-titulo { font-size: 28px; font-weight: 700; letter-spacing: -.5px; line-height: 1.1; margin-bottom: 6px; font-family: var(--f); }
+.bv-sub { font-size: 13px; font-weight: 300; color: #777; font-family: var(--f); }
 
 /* GRID MÓDULOS */
 .modulos-titulo {
@@ -114,6 +136,7 @@ body::before {
   text-transform: uppercase; color: #999;
   margin-bottom: 14px;
   display: flex; align-items: center; gap: 10px;
+  font-family: var(--f);
 }
 .modulos-titulo::after {
   content: ''; flex: 1; height: 1px; background: var(--cinza);
@@ -129,6 +152,7 @@ body::before {
 .mod-card {
   background: #fff;
   border: 1px solid var(--cinza);
+  border-radius: 8px;
   padding: 20px 20px 16px;
   cursor: pointer;
   transition: all .15s;
@@ -141,6 +165,7 @@ body::before {
 .mod-card::before {
   content: ''; position: absolute;
   top: 0; left: 0; width: 3px; height: 100%;
+  border-radius: 8px 0 0 8px;
 }
 .mod-card:hover { border-color: var(--preto); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.06); }
 .mod-card.disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
@@ -155,7 +180,7 @@ body::before {
   width: 36px; height: 36px;
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; margin-bottom: 12px;
-  border-radius: 2px;
+  border-radius: 6px;
 }
 .mod-card.calc .mod-icone       { background: var(--verde-bg); }
 .mod-card.crm .mod-icone        { background: var(--az-bg); }
@@ -163,12 +188,12 @@ body::before {
 .mod-card.apoio .mod-icone      { background: var(--tc-bg); }
 .mod-card.financeiro .mod-icone { background: #F3EFFE; }
 
-.mod-nome { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-.mod-desc { font-size: 11px; font-weight: 300; color: #777; line-height: 1.5; margin-bottom: 12px; }
+.mod-nome { font-size: 13px; font-weight: 700; margin-bottom: 4px; font-family: var(--f); }
+.mod-desc { font-size: 11px; font-weight: 300; color: #777; line-height: 1.5; margin-bottom: 12px; font-family: var(--f); }
 .mod-tag {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 9px; font-weight: 700; letter-spacing: .4px;
-  text-transform: uppercase;
+  text-transform: uppercase; font-family: var(--f);
 }
 .mod-card.calc .mod-tag       { color: var(--verde); }
 .mod-card.crm .mod-tag        { color: var(--az); }
@@ -179,23 +204,25 @@ body::before {
   font-size: 8px; font-weight: 700; letter-spacing: .5px;
   text-transform: uppercase; color: #bbb;
   border: 1px solid var(--cinza2); padding: 2px 7px;
-  display: inline-block;
+  display: inline-block; border-radius: 4px;
+  font-family: var(--f);
 }
 
-
-/* VIEWER AVISO */
+/* AVISO VIEWER */
 .viewer-aviso {
   background: var(--am-bg);
   border: 1px solid #E8C07A;
   border-left: 3px solid var(--am);
+  border-radius: 6px;
   padding: 10px 14px;
   font-size: 11px;
   color: var(--am);
   margin-bottom: 16px;
   display: none;
+  font-family: var(--f);
 }
 
-/* ANIMAÇÃO ENTRADA */
+/* ANIMAÇÃO */
 .main { animation: fadeIn .4s ease both; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 </style>
@@ -212,14 +239,17 @@ body::before {
 <div id="conteudo" style="display:none">
 
 <nav class="nav">
-  <div class="nav-brand">EXP Sistema</div>
+  <a href="app.html" class="nav-brand">EXP</a>
+  <div class="nav-sep"></div>
+  <span class="nav-mod">Sistema</span>
   <div class="nav-right">
+    <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
     <div class="user-pill-wrap">
       <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
         <div class="user-av" id="user-av"></div>
         <div>
-          <div class="user-nome" id="user-nome">—</div>
-          <div class="user-cargo" id="user-cargo">—</div>
+          <div class="u-nome" id="user-nome">—</div>
+          <div class="u-role" id="user-cargo">—</div>
         </div>
         <span class="user-chip-arrow">▾</span>
       </div>
@@ -302,12 +332,11 @@ body::before {
 </div><!-- /conteudo -->
 
 <script>
-const SUPABASE_URL     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const CORES = { CC:'#2563EB', GB:'#1D9E75', TC:'#D4537E', LA:'#BA7517' };
 const ROLES = { socio:'Sócio', coordenador:'Coordenador', colaborador:'Colaborador' };
 
 function saudacao() {
@@ -330,15 +359,12 @@ document.addEventListener('click', e => {
 async function init() {
   // Verifica sessão
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    window.location.href = 'index.html';
-    return;
-  }
+  if (!session) { window.location.href = 'index.html'; return; }
 
   // Busca dados do usuário
   const { data: usuario } = await sb
     .from('usuarios')
-    .select('nome, iniciais, role, viewer_only')
+    .select('nome, iniciais, role, cor, viewer_only')
     .eq('auth_id', session.user.id)
     .single();
 
@@ -347,7 +373,7 @@ async function init() {
   // Preenche nav
   const av = document.getElementById('user-av');
   av.textContent = usuario.iniciais;
-  av.style.background = CORES[usuario.iniciais] || '#888';
+  av.style.background = usuario.cor || '#888';
   document.getElementById('user-nome').textContent = usuario.nome;
   document.getElementById('user-cargo').textContent = ROLES[usuario.role] || usuario.role;
 
@@ -367,17 +393,24 @@ async function init() {
   // Salva no session storage
   sessionStorage.setItem('exp_usuario', JSON.stringify({ ...usuario, auth_id: session.user.id }));
 
-  // Módulos societários (visíveis apenas para sócios)
+  // Módulos societários
   if (usuario.role === 'socio') {
     document.getElementById('soc-titulo').style.display = 'flex';
     document.getElementById('soc-grid').style.display = 'grid';
   }
 
+  // Status de conexão
+  try {
+    const { error } = await sb.from('usuarios').select('id').limit(1);
+    const dot = document.getElementById('conn-dot');
+    if (!error) dot.classList.add('online');
+    else dot.classList.add('offline');
+  } catch { document.getElementById('conn-dot').classList.add('offline'); }
+
   // Mostra conteúdo
   document.getElementById('loading').style.display = 'none';
   document.getElementById('conteudo').style.display = 'block';
 }
-
 
 async function sair() {
   await sb.auth.signOut();

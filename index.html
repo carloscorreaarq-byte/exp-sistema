@@ -4,22 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP · Acesso</title>
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --preto: #111110;
-  --off: #F7F6F3;
-  --cinza: #C8C7C2;
-  --cinza2: #E8E7E3;
+  --off:   #F7F6F3;
+  --cinza: #D0CFC9;
+  --cinza2:#ECEAE4;
   --verde: #1D6A4A;
-  --verde-l: #2D9E6B;
-  --am: #C4831A;
-  --tc: #B84C3A;
-  --f: 'Raleway', sans-serif;
-  --fm: 'DM Mono', monospace;
+  --verde-l:#2D9E6B;
+  --verde-bg:#EAF5EE;
+  --am:   #C4831A;
+  --am-bg:#FBF3E8;
+  --tc:   #B84C3A;
+  --tc-bg:#FBF0EE;
+  --f:    'Raleway', sans-serif;
+  --fm:   'DM Mono', monospace;
 }
 
 body {
@@ -38,8 +41,7 @@ body {
 /* Grid de fundo */
 body::before {
   content: '';
-  position: fixed;
-  inset: 0;
+  position: fixed; inset: 0;
   background-image:
     linear-gradient(var(--cinza2) 1px, transparent 1px),
     linear-gradient(90deg, var(--cinza2) 1px, transparent 1px);
@@ -48,305 +50,19 @@ body::before {
   pointer-events: none;
 }
 
-/* Mancha de cor */
+/* Mancha verde sutil */
 body::after {
   content: '';
   position: fixed;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(29,106,74,.08) 0%, transparent 70%);
-  top: -100px;
-  right: -100px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(29,106,74,.07) 0%, transparent 70%);
+  top: -100px; right: -100px;
   pointer-events: none;
 }
 
 .wrap {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 400px;
-}
-
-/* Marca */
-.marca {
-  margin-bottom: 40px;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.marca-exp {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 6px;
-  color: var(--preto);
-  line-height: 1;
-}
-
-.marca-sep {
-  width: 1px;
-  height: 18px;
-  background: var(--cinza);
-}
-
-.marca-sub {
-  font-family: var(--fm);
-  font-size: 10px;
-  font-weight: 300;
-  color: #999;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-/* Card */
-.card {
-  background: #fff;
-  border: 1px solid var(--cinza);
-  padding: 36px;
-  position: relative;
-}
-
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 3px;
-  height: 100%;
-  background: var(--verde);
-}
-
-.card-title {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-  color: var(--preto);
-  margin-bottom: 4px;
-}
-
-.card-sub {
-  font-size: 12px;
-  font-weight: 300;
-  color: #888;
-  margin-bottom: 28px;
-}
-
-/* Campos */
-.fgroup {
-  margin-bottom: 16px;
-}
-
-.fgroup label {
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #888;
-  margin-bottom: 6px;
-}
-
-.fgroup input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--cinza);
-  background: var(--off);
-  font-family: var(--f);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--preto);
-  outline: none;
-  transition: border-color .15s;
-  -webkit-appearance: none;
-}
-
-.fgroup input:focus {
-  border-color: var(--preto);
-  background: #fff;
-}
-
-.fgroup input::placeholder {
-  color: #bbb;
-  font-weight: 300;
-}
-
-/* Botão */
-.btn-login {
-  width: 100%;
-  padding: 12px;
-  background: var(--preto);
-  color: #fff;
-  border: none;
-  font-family: var(--f);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background .15s;
-  margin-top: 8px;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-login:hover:not(:disabled) {
-  background: #333;
-}
-
-.btn-login:disabled {
-  background: #999;
-  cursor: default;
-}
-
-.btn-login .spinner {
-  display: none;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255,255,255,.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  margin: 0 auto;
-}
-
-.btn-login.loading .btn-txt { display: none; }
-.btn-login.loading .spinner { display: block; }
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Erro */
-.erro {
-  display: none;
-  background: #FEF2F1;
-  border: 1px solid #F5C4C0;
-  border-left: 3px solid var(--tc);
-  padding: 10px 12px;
-  font-size: 11px;
-  color: var(--tc);
-  font-weight: 500;
-  margin-top: 12px;
-}
-
-.erro.show { display: block; }
-
-/* Usuário logado */
-.logado {
-  display: none;
-  text-align: center;
-  padding: 20px 0;
-}
-
-.logado-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0 auto 14px;
-  letter-spacing: 1px;
-}
-
-.logado-nome {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.logado-cargo {
-  font-family: var(--fm);
-  font-size: 10px;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 6px;
-}
-
-.logado-viewer {
-  display: inline-block;
-  background: #FEF9ED;
-  border: 1px solid #F0D08A;
-  color: var(--am);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  margin-bottom: 20px;
-}
-
-.btn-entrar {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 24px;
-  background: var(--verde);
-  color: #fff;
-  border: none;
-  font-family: var(--f);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background .15s;
-}
-
-.btn-entrar:hover { background: var(--verde-l); }
-
-.btn-sair {
-  display: block;
-  margin: 10px auto 0;
-  background: none;
-  border: none;
-  font-family: var(--f);
-  font-size: 10px;
-  color: #bbb;
-  cursor: pointer;
-  letter-spacing: .3px;
-}
-
-.btn-sair:hover { color: var(--tc); }
-
-/* Cores por usuário */
-.cor-cc { background: #2563EB; }
-.cor-gb { background: #1D9E75; }
-.cor-tc { background: #D4537E; }
-.cor-la { background: #BA7517; }
-
-/* Rodapé */
-.rodape {
-  margin-top: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.rodape-info {
-  font-family: var(--fm);
-  font-size: 9px;
-  color: #bbb;
-  letter-spacing: .5px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--cinza);
-  display: inline-block;
-  margin-right: 5px;
-}
-
-.status-dot.ok { background: var(--verde-l); }
-
-/* Entrada animada */
-.wrap {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 400px;
   animation: fadeUp .4s ease both;
 }
 
@@ -354,11 +70,223 @@ body::after {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Marca */
+.marca {
+  margin-bottom: 32px;
+  display: flex; align-items: baseline; gap: 10px;
+}
+.marca-exp {
+  font-size: 26px; font-weight: 700; letter-spacing: 6px;
+  color: var(--preto); line-height: 1; font-family: var(--f);
+}
+.marca-sep { width: 1px; height: 18px; background: var(--cinza); }
+.marca-sub {
+  font-family: var(--fm);
+  font-size: 9px; font-weight: 300; color: #aaa;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+/* Card principal */
+.card {
+  background: #fff;
+  border: 1px solid var(--cinza);
+  border-radius: 12px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--verde);
+  border-radius: 12px 0 0 12px;
+}
+
+.card-title {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .8px; text-transform: uppercase;
+  color: var(--preto); margin-bottom: 4px;
+  font-family: var(--f);
+}
+.card-sub {
+  font-size: 12px; font-weight: 300; color: #888;
+  margin-bottom: 24px; font-family: var(--f);
+}
+
+/* Campos */
+.fgroup { margin-bottom: 14px; }
+.fgroup label {
+  display: block;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .8px; text-transform: uppercase;
+  color: #888; margin-bottom: 6px; font-family: var(--f);
+}
+.fgroup input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--cinza);
+  border-radius: 6px;
+  background: var(--off);
+  font-family: var(--f); font-size: 13px;
+  font-weight: 400; color: var(--preto);
+  outline: none; transition: border-color .15s;
+  -webkit-appearance: none;
+}
+.fgroup input:focus { border-color: var(--preto); background: #fff; }
+.fgroup input::placeholder { color: #bbb; font-weight: 300; }
+
+/* Botão principal */
+.btn-login {
+  width: 100%; padding: 11px;
+  background: var(--preto); color: #fff;
+  border: none; border-radius: 6px;
+  font-family: var(--f); font-size: 10px;
+  font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer; transition: background .15s;
+  margin-top: 6px; position: relative; overflow: hidden;
+}
+.btn-login:hover:not(:disabled) { background: #333; }
+.btn-login:disabled { background: #bbb; cursor: default; }
+.btn-login .spinner {
+  display: none; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin .7s linear infinite; margin: 0 auto;
+}
+.btn-login.loading .btn-txt { display: none; }
+.btn-login.loading .spinner { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Link esqueceu a senha */
+.link-esqueceu {
+  display: block; margin-top: 12px;
+  font-size: 10px; color: #aaa;
+  font-family: var(--f); text-align: center;
+  background: none; border: none; cursor: pointer;
+  font-weight: 500; letter-spacing: .2px;
+  transition: color .15s;
+}
+.link-esqueceu:hover { color: var(--verde); }
+
+/* Mensagem de erro */
+.msg-erro {
+  display: none;
+  background: var(--tc-bg);
+  border: 1px solid #F5C4C0;
+  border-left: 3px solid var(--tc);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 11px; color: var(--tc);
+  font-weight: 500; margin-top: 10px;
+  font-family: var(--f);
+}
+.msg-erro.show { display: block; }
+
+/* Mensagem de sucesso */
+.msg-ok {
+  display: none;
+  background: var(--verde-bg);
+  border: 1px solid #A8D8BC;
+  border-left: 3px solid var(--verde);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 11px; color: var(--verde);
+  font-weight: 500; margin-top: 10px;
+  font-family: var(--f);
+}
+.msg-ok.show { display: block; }
+
+/* Separador de seção */
+.sec-sep {
+  display: flex; align-items: center; gap: 10px;
+  margin: 20px 0 16px;
+}
+.sec-sep::before,.sec-sep::after {
+  content: ''; flex: 1; height: 1px; background: var(--cinza2);
+}
+.sec-sep span {
+  font-size: 9px; font-weight: 700; letter-spacing: .7px;
+  text-transform: uppercase; color: #bbb; font-family: var(--f);
+}
+
+/* Painel de usuário já logado */
+.logado {
+  display: none;
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.logado-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: #fff;
+  margin: 0 auto 14px; letter-spacing: 1px;
+  font-family: var(--f);
+}
+.logado-nome { font-size: 16px; font-weight: 600; margin-bottom: 4px; font-family: var(--f); }
+.logado-cargo {
+  font-family: var(--fm);
+  font-size: 9px; color: #888;
+  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;
+}
+.logado-viewer {
+  display: inline-block;
+  background: var(--am-bg); border: 1px solid #E8C07A;
+  color: var(--am); border-radius: 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; padding: 2px 8px; margin-bottom: 20px;
+  font-family: var(--f);
+}
+
+.btn-entrar {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 24px;
+  background: var(--verde); color: #fff;
+  border: none; border-radius: 6px;
+  font-family: var(--f); font-size: 10px;
+  font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; cursor: pointer;
+  transition: background .15s;
+}
+.btn-entrar:hover { background: var(--verde-l); }
+
+.btn-trocar-conta {
+  display: block; margin: 10px auto 0;
+  background: none; border: none; font-family: var(--f);
+  font-size: 10px; color: #bbb; cursor: pointer;
+  letter-spacing: .3px; transition: color .15s;
+}
+.btn-trocar-conta:hover { color: var(--tc); }
+
+/* Painel recuperação de senha */
+.rec-panel { display: none; }
+
+/* Painel nova senha (pós-recovery link) */
+.nova-senha-panel { display: none; }
+
+/* Rodapé */
+.rodape {
+  margin-top: 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.rodape-info {
+  font-family: var(--fm);
+  font-size: 9px; color: #bbb; letter-spacing: .5px;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cinza); display: inline-block; margin-right: 5px;
+}
+.status-dot.ok { background: var(--verde-l); }
 </style>
 </head>
 <body>
 
 <div class="wrap">
+
+  <!-- Marca -->
   <div class="marca">
     <div class="marca-exp">EXP</div>
     <div class="marca-sep"></div>
@@ -367,7 +295,7 @@ body::after {
 
   <div class="card">
 
-    <!-- FORMULÁRIO DE LOGIN -->
+    <!-- ══ FORMULÁRIO DE LOGIN ══ -->
     <div id="form-login">
       <div class="card-title">Acesso</div>
       <div class="card-sub">Entre com seu e-mail institucional</div>
@@ -376,7 +304,6 @@ body::after {
         <label>E-mail</label>
         <input type="email" id="inp-email" placeholder="seu@somosexp.com" autocomplete="email">
       </div>
-
       <div class="fgroup">
         <label>Senha</label>
         <input type="password" id="inp-senha" placeholder="••••••••" autocomplete="current-password">
@@ -387,24 +314,69 @@ body::after {
         <div class="spinner"></div>
       </button>
 
-      <div class="erro" id="erro">E-mail ou senha incorretos.</div>
+      <button class="link-esqueceu" onclick="mostrarRecuperacao()">Esqueceu a senha?</button>
+
+      <div class="msg-erro" id="erro-login"></div>
     </div>
 
-    <!-- USUÁRIO LOGADO -->
+    <!-- ══ RECUPERAÇÃO DE SENHA ══ -->
+    <div class="rec-panel" id="rec-panel">
+      <div class="card-title">Recuperar senha</div>
+      <div class="card-sub">Informe seu e-mail — enviaremos um link para criar uma nova senha.</div>
+
+      <div class="fgroup">
+        <label>E-mail cadastrado</label>
+        <input type="email" id="rec-email" placeholder="seu@somosexp.com" autocomplete="email">
+      </div>
+
+      <button class="btn-login" id="btn-rec" onclick="enviarRecuperacao()">
+        <span class="btn-txt">Enviar link de recuperação</span>
+        <div class="spinner"></div>
+      </button>
+
+      <button class="link-esqueceu" onclick="voltarLogin()">← Voltar ao login</button>
+
+      <div class="msg-erro" id="erro-rec"></div>
+      <div class="msg-ok"  id="ok-rec"></div>
+    </div>
+
+    <!-- ══ NOVA SENHA (pós-link de recuperação) ══ -->
+    <div class="nova-senha-panel" id="nova-senha-panel">
+      <div class="card-title">Criar nova senha</div>
+      <div class="card-sub">Escolha uma senha segura para sua conta.</div>
+
+      <div class="fgroup">
+        <label>Nova senha</label>
+        <input type="password" id="ns-senha" placeholder="mínimo 6 caracteres" autocomplete="new-password">
+      </div>
+      <div class="fgroup">
+        <label>Confirmar nova senha</label>
+        <input type="password" id="ns-confirma" placeholder="repita a senha" autocomplete="new-password">
+      </div>
+
+      <button class="btn-login" id="btn-ns" onclick="salvarNovaSenha()">
+        <span class="btn-txt">Salvar nova senha</span>
+        <div class="spinner"></div>
+      </button>
+
+      <div class="msg-erro" id="erro-ns"></div>
+      <div class="msg-ok"  id="ok-ns"></div>
+    </div>
+
+    <!-- ══ USUÁRIO JÁ LOGADO ══ -->
     <div class="logado" id="painel-logado">
       <div class="logado-avatar" id="logado-avatar"></div>
       <div class="logado-nome" id="logado-nome"></div>
       <div class="logado-cargo" id="logado-cargo"></div>
       <div class="logado-viewer" id="logado-viewer" style="display:none">Acesso visualização</div>
       <br>
-      <button class="btn-entrar" onclick="irParaApp()">
-        ▶ &nbsp;Acessar o sistema
-      </button>
-      <button class="btn-sair" onclick="sair()">Sair desta conta</button>
+      <button class="btn-entrar" onclick="irParaApp()">▶ &nbsp;Acessar o sistema</button>
+      <button class="btn-trocar-conta" onclick="sair()">Trocar de conta</button>
     </div>
 
-  </div>
+  </div><!-- /card -->
 
+  <!-- Rodapé -->
   <div class="rodape">
     <div class="rodape-info">
       <span class="status-dot" id="status-dot"></span>
@@ -412,18 +384,57 @@ body::after {
     </div>
     <div class="rodape-info">v2.0 · 2026</div>
   </div>
-</div>
+
+</div><!-- /wrap -->
 
 <script>
-// ── CONFIGURAÇÃO ─────────────────────────────────────────
-const SUPABASE_URL = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+// ── CONFIGURAÇÃO ──────────────────────────────────────────
+const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ── CORES POR INICIAIS ────────────────────────────────────
-const CORES = { CC: 'cor-cc', GB: 'cor-gb', TC: 'cor-tc', LA: 'cor-la' };
 const ROLES = { socio: 'Sócio', coordenador: 'Coordenador', colaborador: 'Colaborador' };
+
+// ── HELPERS UI ────────────────────────────────────────────
+function showPanel(id) {
+  ['form-login','rec-panel','nova-senha-panel','painel-logado'].forEach(p => {
+    document.getElementById(p).style.display = p === id ? (id === 'painel-logado' ? 'block' : 'block') : 'none';
+  });
+}
+function setLoading(btnId, on) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (on) { btn.classList.add('loading'); btn.disabled = true; }
+  else    { btn.classList.remove('loading'); btn.disabled = false; }
+}
+function showErro(elId, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg; el.className = 'msg-erro show';
+}
+function showOk(elId, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg; el.className = 'msg-ok show';
+}
+function hideMsg(elId) {
+  const el = document.getElementById(elId);
+  if (el) el.className = el.className.replace(' show','').replace('msg-ok','msg-erro').replace(' show','');
+}
+
+// ── NAVEGAÇÃO ENTRE PAINÉIS ───────────────────────────────
+function mostrarRecuperacao() {
+  document.getElementById('form-login').style.display  = 'none';
+  document.getElementById('rec-panel').style.display   = 'block';
+  document.getElementById('nova-senha-panel').style.display = 'none';
+  document.getElementById('painel-logado').style.display    = 'none';
+  setTimeout(() => document.getElementById('rec-email')?.focus(), 50);
+}
+function voltarLogin() {
+  document.getElementById('rec-panel').style.display   = 'none';
+  document.getElementById('form-login').style.display  = 'block';
+  setTimeout(() => document.getElementById('inp-email')?.focus(), 50);
+}
 
 // ── INIT ──────────────────────────────────────────────────
 async function init() {
@@ -432,28 +443,41 @@ async function init() {
     const { error } = await sb.from('usuarios').select('id').limit(1);
     const dot = document.getElementById('status-dot');
     const txt = document.getElementById('status-txt');
-    if (!error) {
-      dot.classList.add('ok');
-      txt.textContent = 'Conectado ao banco de dados';
-    } else {
-      txt.textContent = 'Erro de conexão';
+    if (!error) { dot.classList.add('ok'); txt.textContent = 'Conectado ao banco de dados'; }
+    else { txt.textContent = 'Erro de conexão'; }
+  } catch { document.getElementById('status-txt').textContent = 'Sem conexão'; }
+
+  // Detecta link de recuperação de senha (Supabase envia #type=recovery na URL)
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      // Oculta tudo e mostra painel de nova senha
+      document.getElementById('form-login').style.display       = 'none';
+      document.getElementById('rec-panel').style.display        = 'none';
+      document.getElementById('painel-logado').style.display    = 'none';
+      document.getElementById('nova-senha-panel').style.display = 'block';
+      return;
     }
-  } catch {
-    document.getElementById('status-txt').textContent = 'Sem conexão';
-  }
+  });
 
-  // Verifica se já tem sessão ativa
+  // Verifica sessão ativa normal
   const { data: { session } } = await sb.auth.getSession();
-  if (session) {
+  if (session && !window.location.hash.includes('type=recovery')) {
     await mostrarLogado(session.user);
+    return;
   }
 
-  // Enter para logar
+  // Enter → login
   document.getElementById('inp-senha').addEventListener('keydown', e => {
     if (e.key === 'Enter') fazerLogin();
   });
   document.getElementById('inp-email').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('inp-senha').focus();
+  });
+  document.getElementById('rec-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') enviarRecuperacao();
+  });
+  document.getElementById('ns-confirma').addEventListener('keydown', e => {
+    if (e.key === 'Enter') salvarNovaSenha();
   });
 }
 
@@ -461,27 +485,21 @@ async function init() {
 async function fazerLogin() {
   const email = document.getElementById('inp-email').value.trim();
   const senha = document.getElementById('inp-senha').value;
-  const btn   = document.getElementById('btn-login');
-  const erro  = document.getElementById('erro');
+  const erroEl = document.getElementById('erro-login');
+  erroEl.className = 'msg-erro';
 
   if (!email || !senha) {
-    erro.textContent = 'Preencha e-mail e senha.';
-    erro.classList.add('show');
-    return;
+    erroEl.textContent = 'Preencha e-mail e senha.';
+    erroEl.className = 'msg-erro show'; return;
   }
 
-  btn.classList.add('loading');
-  btn.disabled = true;
-  erro.classList.remove('show');
-
+  setLoading('btn-login', true);
   const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
-
-  btn.classList.remove('loading');
-  btn.disabled = false;
+  setLoading('btn-login', false);
 
   if (error) {
-    erro.textContent = 'E-mail ou senha incorretos.';
-    erro.classList.add('show');
+    erroEl.textContent = 'E-mail ou senha incorretos.';
+    erroEl.className = 'msg-erro show';
     document.getElementById('inp-senha').value = '';
     return;
   }
@@ -491,36 +509,108 @@ async function fazerLogin() {
 
 // ── MOSTRAR USUÁRIO LOGADO ────────────────────────────────
 async function mostrarLogado(authUser) {
-  // Busca dados do usuário na tabela
   const { data: usuario } = await sb
     .from('usuarios')
-    .select('nome, iniciais, role, viewer_only')
+    .select('nome, iniciais, role, cor, viewer_only')
     .eq('auth_id', authUser.id)
     .single();
 
   if (!usuario) return;
 
-  // Preenche o painel
   const avatar = document.getElementById('logado-avatar');
   avatar.textContent = usuario.iniciais;
-  avatar.className = 'logado-avatar ' + (CORES[usuario.iniciais] || 'cor-cc');
+  avatar.style.background = usuario.cor || '#888';
 
-  document.getElementById('logado-nome').textContent = usuario.nome;
+  document.getElementById('logado-nome').textContent  = usuario.nome;
   document.getElementById('logado-cargo').textContent = ROLES[usuario.role] || usuario.role;
 
   if (usuario.viewer_only) {
     document.getElementById('logado-viewer').style.display = 'inline-block';
   }
 
-  // Troca formulário pelo painel
-  document.getElementById('form-login').style.display = 'none';
-  document.getElementById('painel-logado').style.display = 'block';
+  document.getElementById('form-login').style.display       = 'none';
+  document.getElementById('rec-panel').style.display        = 'none';
+  document.getElementById('nova-senha-panel').style.display = 'none';
+  document.getElementById('painel-logado').style.display    = 'block';
 
-  // Salva dados no sessionStorage para usar no app
-  sessionStorage.setItem('exp_usuario', JSON.stringify({
-    id: authUser.id,
-    ...usuario
-  }));
+  sessionStorage.setItem('exp_usuario', JSON.stringify({ id: authUser.id, ...usuario }));
+}
+
+// ── RECUPERAÇÃO DE SENHA ──────────────────────────────────
+async function enviarRecuperacao() {
+  const email = document.getElementById('rec-email').value.trim();
+  const erroEl = document.getElementById('erro-rec');
+  const okEl   = document.getElementById('ok-rec');
+  erroEl.className = 'msg-erro';
+  okEl.className   = 'msg-ok';
+
+  if (!email) {
+    erroEl.textContent = 'Informe seu e-mail.';
+    erroEl.className = 'msg-erro show'; return;
+  }
+
+  setLoading('btn-rec', true);
+
+  // Verifica se o e-mail existe antes de enviar (boa UX)
+  const { data: usuario } = await sb
+    .from('usuarios')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  // Envia o link independente (Supabase não expõe se o email existe por segurança)
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+
+  setLoading('btn-rec', false);
+
+  if (error) {
+    erroEl.textContent = 'Erro ao enviar: ' + error.message;
+    erroEl.className = 'msg-erro show';
+    return;
+  }
+
+  okEl.textContent = 'Link enviado! Verifique sua caixa de entrada (e spam). O link expira em 24h.';
+  okEl.className = 'msg-ok show';
+  document.getElementById('btn-rec').disabled = true;
+}
+
+// ── SALVAR NOVA SENHA ─────────────────────────────────────
+async function salvarNovaSenha() {
+  const senha    = document.getElementById('ns-senha').value;
+  const confirma = document.getElementById('ns-confirma').value;
+  const erroEl   = document.getElementById('erro-ns');
+  const okEl     = document.getElementById('ok-ns');
+  erroEl.className = 'msg-erro';
+  okEl.className   = 'msg-ok';
+
+  if (senha.length < 6) {
+    erroEl.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+    erroEl.className = 'msg-erro show'; return;
+  }
+  if (senha !== confirma) {
+    erroEl.textContent = 'As senhas não coincidem.';
+    erroEl.className = 'msg-erro show'; return;
+  }
+
+  setLoading('btn-ns', true);
+  const { error } = await sb.auth.updateUser({ password: senha });
+  setLoading('btn-ns', false);
+
+  if (error) {
+    erroEl.textContent = 'Erro ao salvar: ' + error.message;
+    erroEl.className = 'msg-erro show';
+    return;
+  }
+
+  okEl.textContent = 'Senha atualizada com sucesso! Redirecionando...';
+  okEl.className = 'msg-ok show';
+
+  // Limpa o hash da URL e redireciona para o app
+  setTimeout(() => {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    window.location.href = 'app.html';
+  }, 1800);
 }
 
 // ── SAIR ──────────────────────────────────────────────────
@@ -528,7 +618,7 @@ async function sair() {
   await sb.auth.signOut();
   sessionStorage.removeItem('exp_usuario');
   document.getElementById('painel-logado').style.display = 'none';
-  document.getElementById('form-login').style.display = 'block';
+  document.getElementById('form-login').style.display    = 'block';
   document.getElementById('inp-email').value = '';
   document.getElementById('inp-senha').value = '';
   document.getElementById('inp-email').focus();
