@@ -1956,6 +1956,7 @@ body::before {
     <button class="socio-tab" data-panel="entregas">Entregas</button>
     <button class="socio-tab billing-only" data-panel="espelho" id="socio-tab-espelho" style="display:none">Faturamento</button>
     <button class="socio-tab" data-panel="usuarios">Usuários</button>
+    <button class="socio-tab" data-panel="clientes">Clientes</button>
   </div>
 
   <!-- CARGA MENSAL -->
@@ -2156,6 +2157,17 @@ body::before {
       </div>
     </div>
     <div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden" id="usu-lista">
+      <div class="loading-state">Carregando...</div>
+    </div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div class="socio-panel" id="sp-clientes">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div class="sec-title" style="margin-bottom:0;flex:1">Cadastro de clientes</div>
+      <span style="font-size:10px;color:#aaa">Edite nome, cidade e UF. Alterações refletem em todos os projetos.</span>
+    </div>
+    <div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden" id="cli-admin-lista">
       <div class="loading-state">Carregando...</div>
     </div>
   </div>
@@ -3042,6 +3054,7 @@ function onSocioPanel(panel) {
     }
     carregarReembolso();
   }
+  if (panel === 'clientes') carregarClientesAdmin();
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -7425,6 +7438,70 @@ async function aplicarPaletaPadrao() {
     toast('Paleta padrão aplicada');
   }
   carregarUsuariosAdmin();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//   ADMIN CLIENTES
+// ──────────────────────────────────────────────────────────────────────────────
+async function carregarClientesAdmin() {
+  const wrap = document.getElementById('cli-admin-lista');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading-state">Carregando...</div>';
+  const { data: clientes, error } = await sb.from('clientes').select('id,nome,cidade,uf').order('nome');
+  if (error) { wrap.innerHTML = `<div class="loading-state">Erro: ${error.message}</div>`; return; }
+  if (!clientes?.length) { wrap.innerHTML = '<div class="loading-state">Nenhum cliente cadastrado</div>'; return; }
+
+  const iStyle = 'border:1px solid var(--cinza);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--f);outline:none;box-sizing:border-box;width:100%';
+  wrap.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 160px 72px 64px;gap:0;border-bottom:1px solid var(--cinza)">
+      <div style="padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa">Nome</div>
+      <div style="padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa">Cidade</div>
+      <div style="padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa">UF</div>
+      <div></div>
+    </div>
+    ${clientes.map(c => `
+    <div class="cli-admin-row" id="cli-row-${c.id}" style="display:grid;grid-template-columns:1fr 160px 72px 64px;gap:0;align-items:center;border-bottom:1px solid var(--cinza)">
+      <div style="padding:6px 14px"><input id="cli-nome-${c.id}" value="${(c.nome||'').replace(/"/g,'&quot;')}" style="${iStyle}" placeholder="Nome do cliente"></div>
+      <div style="padding:6px 14px"><input id="cli-cidade-${c.id}" value="${(c.cidade||'').replace(/"/g,'&quot;')}" style="${iStyle}" placeholder="Cidade"></div>
+      <div style="padding:6px 14px"><input id="cli-uf-${c.id}" value="${(c.uf||'').replace(/"/g,'&quot;')}" style="${iStyle};text-transform:uppercase" maxlength="2" placeholder="UF"></div>
+      <div style="padding:6px 10px;text-align:center">
+        <button class="btn sm verde" id="cli-btn-${c.id}" onclick="salvarEdicaoClienteAdmin('${c.id}')">Salvar</button>
+      </div>
+    </div>`).join('')}`;
+
+  // Salvar ao pressionar Enter em qualquer campo da linha
+  clientes.forEach(c => {
+    ['nome','cidade','uf'].forEach(campo => {
+      const el = document.getElementById(`cli-${campo}-${c.id}`);
+      if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') salvarEdicaoClienteAdmin(c.id); });
+    });
+    // UF uppercase automático
+    const elUf = document.getElementById(`cli-uf-${c.id}`);
+    if (elUf) elUf.addEventListener('input', () => { elUf.value = elUf.value.toUpperCase(); });
+  });
+}
+
+async function salvarEdicaoClienteAdmin(id) {
+  const nome   = document.getElementById(`cli-nome-${id}`)?.value.trim();
+  const cidade = document.getElementById(`cli-cidade-${id}`)?.value.trim();
+  const uf     = document.getElementById(`cli-uf-${id}`)?.value.trim().toUpperCase();
+  const btn    = document.getElementById(`cli-btn-${id}`);
+  if (!nome) { toast('Nome não pode ser vazio'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const { error } = await sb.from('clientes').update({ nome, cidade: cidade||null, uf: uf||null }).eq('id', id);
+  if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+  if (error) { toast('Erro ao salvar: ' + error.message); return; }
+  // Atualiza cache local (G._prodsGestao e G.todosProdutos)
+  const atualizar = arr => (arr||[]).forEach(p => {
+    if (p.oportunidades?.clientes?.id === id) {
+      p.oportunidades.clientes.nome = nome;
+      p.oportunidades.clientes.cidade = cidade || null;
+      p.oportunidades.clientes.uf = uf || null;
+    }
+  });
+  atualizar(G._prodsGestao);
+  atualizar(G.todosProdutos);
+  toast('Cliente atualizado');
 }
 
 async function salvarValorHora(uid) {
