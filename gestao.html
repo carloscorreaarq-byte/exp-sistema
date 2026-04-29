@@ -465,6 +465,14 @@ body::before {
 .mencao-it{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-size:11px;font-family:var(--f)}
 .mencao-it:hover,.mencao-it.sel{background:var(--off)}
 .mencao-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0}
+/* Chips de menção confirmada abaixo dos inputs */
+.mencao-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;min-height:0}
+.mencao-chip{display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border:1px solid #b3caea;border-radius:10px;padding:2px 8px 2px 4px;font-size:10px;color:var(--az);font-weight:600;line-height:1.4}
+.mencao-chip-av{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:#fff;flex-shrink:0}
+.mencao-chip-del{background:none;border:none;cursor:pointer;font-size:11px;color:#93b4d6;padding:0 0 0 2px;line-height:1;font-family:inherit}
+.mencao-chip-del:hover{color:var(--tc)}
+/* @mention destacado no texto exibido */
+.mencao-hl{color:var(--az);font-weight:600;background:#e8f0fc;border-radius:3px;padding:1px 3px}
 
 /* ── MAIN ────────────────────────────────────────────────── */
 .main {
@@ -8659,6 +8667,13 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
 function _regEsc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function _regAttr(s) { return String(s||'').replace(/"/g,'&quot;'); }
 function _sqReg(s)   { return "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'"; }
+// Escapa e destaca @menções no texto exibido
+function _hlMencao(s) {
+  return _regEsc(s).replace(
+    /@([\w\u00C0-\u024F]+(?:\s[\w\u00C0-\u024F]+)?)/g,
+    '<span class="mencao-hl">@$1</span>'
+  );
+}
 
 async function carregarRegistrosProduto(prodId) {
   if(!prodId) return;
@@ -8709,7 +8724,7 @@ function _renderEntrada(r) {
     </div>
     ${r.titulo?`<div class="reg-titulo">${_regEsc(r.titulo)}</div>`:''}
     ${r.participantes?`<div class="reg-participantes">Participantes: ${_regEsc(r.participantes)}</div>`:''}
-    ${r.corpo?`<div class="reg-corpo">${_regEsc(r.corpo)}</div>`:''}
+    ${r.corpo?`<div class="reg-corpo">${_hlMencao(r.corpo)}</div>`:''}
     <div class="reg-footer">
       <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'check')" id="rt-check-${r.id}">
         <span>Encaminhamentos</span>
@@ -8788,6 +8803,9 @@ async function toggleRegPanel(entradaId, tipo) {
         <button class="btn sm verde" onclick="postarComentario(${_sqReg(entradaId)},null)" style="flex-shrink:0">Enviar</button>
       </div>`;
     await carregarComentariosReg(entradaId);
+    // Ativa @mention no campo principal de comentários
+    const mainInp = document.getElementById(`rc-inp-${entradaId}`);
+    if(mainInp) ativarMencao(mainInp);
   }
 }
 
@@ -8815,7 +8833,7 @@ function _renderComent(c, allRepls) {
     <div class="reg-coment-av" style="background:${_regAttr(c.autor_cor||'#888')}">${_regEsc(c.autor_iniciais||'?')}</div>
     <div class="reg-coment-bubble">
       <div class="reg-coment-meta">${_regEsc(c.autor_nome||'—')} <span>${dtStr}</span></div>
-      <div class="reg-coment-txt">${_regEsc(c.texto)}</div>
+      <div class="reg-coment-txt">${_hlMencao(c.texto)}</div>
       <span class="reg-coment-responder" onclick="toggleReplyFormReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">↩ responder</span>
       ${repls.length?`<div class="reg-replies">${repls.map(r=>_renderComent(r,allRepls)).join('')}</div>`:''}
       <div id="rc-reply-${c.id}" style="display:none;margin-top:6px">
@@ -8834,7 +8852,10 @@ function toggleReplyFormReg(comentId, entradaId) {
   if(!el) return;
   const open = el.style.display !== 'none';
   el.style.display = open ? 'none' : 'block';
-  if(!open) document.getElementById(`rr-inp-${comentId}`)?.focus();
+  if(!open) {
+    const inp = document.getElementById(`rr-inp-${comentId}`);
+    if(inp) { ativarMencao(inp); inp.focus(); }
+  }
 }
 
 async function postarComentario(entradaId, parentId) {
@@ -9323,7 +9344,18 @@ let _mencaoPos  = -1;    // posição do @ no texto
 function ativarMencao(ta) {
   if(!ta || ta._mencaoOk) return;
   ta._mencaoOk  = true;
-  ta._mencaoSet = new Set(); // UUIDs das menções confirmadas via autocomplete
+  ta._mencaoSet = new Set();
+  // Insere o container de chips logo após o bloco pai (.reg-coment-add ou o próprio ta)
+  const anchor = ta.closest('.reg-coment-add') || ta.closest('.reg-form-field') || ta.parentNode;
+  let chips = anchor._mencaoChips;
+  if(!chips) {
+    chips = document.createElement('div');
+    chips.className = 'mencao-chips';
+    chips._mencaoTa = ta;
+    anchor.parentNode.insertBefore(chips, anchor.nextSibling);
+    anchor._mencaoChips = chips;
+  }
+  ta._mencaoChips = chips;
   ta.addEventListener('input',   _mencaoInput);
   ta.addEventListener('keydown', _mencaoKeydown);
   ta.addEventListener('blur',    () => setTimeout(_fecharMencaoDD, 180));
@@ -9392,7 +9424,32 @@ function _selecionarMencao(uid, nome) {
   ta.focus();
   if(!ta._mencaoSet) ta._mencaoSet = new Set();
   ta._mencaoSet.add(uid);
+  _atualizarMencaoChips(ta);
   _fecharMencaoDD();
+}
+
+function _atualizarMencaoChips(ta) {
+  const chips = ta._mencaoChips;
+  if(!chips) return;
+  const uids = [...(ta._mencaoSet || new Set())];
+  if(!uids.length) { chips.innerHTML = ''; return; }
+  chips.innerHTML = uids.map(uid => {
+    const u = (G.todosUsuarios || []).find(x => x.id === uid);
+    if(!u) return '';
+    return `<span class="mencao-chip" data-uid="${uid}">
+      <span class="mencao-chip-av" style="background:${u.cor||'#888'}">${u.iniciais||'?'}</span>
+      @${_escN(u.nome.split(' ')[0])}
+      <button class="mencao-chip-del" title="Remover menção"
+        onclick="_removerMencaoChip(this.closest('.mencao-chip'))">×</button>
+    </span>`;
+  }).join('');
+}
+
+function _removerMencaoChip(chip) {
+  const uid   = chip?.dataset?.uid;
+  const chips = chip?.closest('.mencao-chips');
+  if(chips?._mencaoTa?._mencaoSet && uid) chips._mencaoTa._mencaoSet.delete(uid);
+  chip?.remove();
 }
 
 function _fecharMencaoDD() {
@@ -9418,7 +9475,10 @@ async function notificarMencoes(texto, ta, link) {
       link
     );
   }
-  if(ta) ta._mencaoSet = new Set(); // limpa para próxima vez
+  if(ta) {
+    ta._mencaoSet = new Set();
+    if(ta._mencaoChips) ta._mencaoChips.innerHTML = '';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
