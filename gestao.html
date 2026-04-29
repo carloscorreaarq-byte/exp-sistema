@@ -5922,6 +5922,11 @@ async function abrirProduto(id) {
   document.querySelector('#modal-produto .modal-tab[data-panel="mp-visao"]').classList.add('active');
   document.getElementById('mp-visao').classList.add('active');
 
+  // Limpa lista de registros para forçar reload na próxima vez que a aba for aberta
+  G._registros = [];
+  const regLista = document.getElementById('reg-lista');
+  if(regLista) regLista.innerHTML = '';
+
   document.getElementById('modal-produto').style.display = 'flex';
 }
 
@@ -9022,11 +9027,19 @@ function deletarEntradaReg(id) {
         // Deleta filhos primeiro (evita violação de FK)
         await sb.from('reg_comentario').delete().eq('entrada_id', id);
         await sb.from('reg_encaminhamento').delete().eq('entrada_id', id);
-        // Tarefas automáticas vinculadas (coluna opcional — ignora erro se não existir)
-        try { await sb.from('tarefas_livres').delete().eq('reg_entrada_id', id); } catch(_){}
-        const { error } = await sb.from('reg_entrada').delete().eq('id', id);
+        // Tarefas automáticas (coluna opcional)
+        await sb.from('tarefas_livres').delete().eq('reg_entrada_id', id);
+        const { error, count } = await sb.from('reg_entrada').delete()
+          .eq('id', id).select('id');
         if(error) { toast('Erro ao excluir: ' + error.message); return; }
-        await carregarRegistrosProduto(G.produtoAtivo);
+        // Remove card do DOM imediatamente
+        const card = document.getElementById(`re-${id}`);
+        if(card) card.remove();
+        // Atualiza estado local
+        G._registros = (G._registros || []).filter(r => r.id !== id);
+        const wrap = document.getElementById('reg-lista');
+        if(wrap && !G._registros.length)
+          wrap.innerHTML = '<div class="empty-note">Nenhum registro ainda. Crie a primeira entrada usando o botão acima.</div>';
         toast('Registro excluído.');
       } catch(err) { toast('Erro ao excluir: ' + (err.message||err)); }
     }
