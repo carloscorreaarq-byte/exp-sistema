@@ -1523,23 +1523,161 @@ function renderTema() {
 }
 
 function renderPlanoPessoas(el) {
+  const tiers = [
+    {
+      label: 'Júnior',
+      color: '#4d8a6e',
+      bg: '#eef4f1',
+      border: '#b8d9c9',
+      levels: [
+        { num: 'I',   focus: 'Entrada',       desc: 'Atua com acompanhamento próximo em tarefas mais direcionadas, desenvolvendo base técnica e entendimento dos processos da EXP.' },
+        { num: 'II',  focus: 'Consolidação',   desc: 'Maior segurança na execução, melhor compreensão dos fluxos de trabalho e entregas com mais constância e menor dependência.' },
+        { num: 'III', focus: 'Consistência',   desc: 'Domínio da rotina, qualidade crescente nas entregas e capacidade de conduzir partes de projetos com autonomia progressiva.' },
+      ]
+    },
+    {
+      label: 'Pleno',
+      color: '#3a6fb5',
+      bg: '#edf2fa',
+      border: '#b3caea',
+      levels: [
+        { num: 'I',   focus: 'Autonomia',      desc: 'Conduz atividades e etapas de projeto com menor supervisão, sustentando responsabilidades mais amplas dentro da rotina da equipe.' },
+        { num: 'II',  focus: 'Coordenação',    desc: 'Organiza fluxos, acompanha demandas com visão de conjunto e pode coordenar projetos e equipes em determinados contextos.' },
+        { num: 'III', focus: 'Maturidade',     desc: 'Alta consistência, boa leitura de prioridades, papel importante na sustentação da qualidade e dos processos da equipe.' },
+      ]
+    },
+    {
+      label: 'Sênior',
+      color: '#7a5c2e',
+      bg: '#f6f1ea',
+      border: '#d9c9ae',
+      levels: [
+        { num: 'I',   focus: 'Referência',     desc: 'Domínio técnico amplo, resolve situações complexas e exerce função de referência em projetos, decisões e direcionamentos.' },
+        { num: 'II',  focus: 'Liderança',      desc: 'Conduz contextos mais complexos com maior capacidade de articulação entre projetos, pessoas e processos.' },
+        { num: 'III', focus: 'Estratégia',     desc: 'Nível mais alto da trilha. Alta maturidade, capaz de sustentar contextos complexos simultaneamente e assumir posições de direção de núcleo.' },
+      ]
+    },
+  ];
+
+  const trackHtml = tiers.map((tier, ti) => `
+    ${ti > 0 ? `<div style="display:flex;align-items:center;padding:0 4px;margin-top:-12px"><div style="width:20px;height:2px;background:#ccc"></div><div style="font-size:8px;color:#bbb;margin:-1px 0 0 -1px">▶</div></div>` : ''}
+    <div style="flex:1;background:${tier.bg};border:1px solid ${tier.border};border-radius:8px;padding:14px 10px 12px">
+      <div style="font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${tier.color};text-align:center;margin-bottom:12px">${tier.label}</div>
+      <div style="display:flex;align-items:flex-start;gap:0">
+        ${tier.levels.map((lvl, li) => `
+          ${li > 0 ? `<div style="flex:1;height:1px;background:${tier.color}50;margin-top:15px"></div>` : ''}
+          <div style="text-align:center;flex-shrink:0">
+            <div style="width:30px;height:30px;border-radius:50%;background:${tier.color};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 5px">${lvl.num}</div>
+            <div style="font-size:8px;font-weight:600;color:${tier.color};white-space:nowrap;letter-spacing:.2px">${lvl.focus}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  const cardsHtml = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px">
+    ${tiers.map(tier => `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${tier.levels.map(lvl => `
+          <div style="background:#fff;border:1px solid ${tier.border};border-left:3px solid ${tier.color};border-radius:6px;padding:10px 12px">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+              <div style="width:18px;height:18px;border-radius:50%;background:${tier.color};color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${lvl.num}</div>
+              <div style="font-size:10px;font-weight:700;color:#222">${tier.label} ${lvl.num} <span style="font-weight:400;color:${tier.color}">· ${lvl.focus}</span></div>
+            </div>
+            <div style="font-size:10px;color:#666;line-height:1.55">${lvl.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('')}
+  </div>`;
+
+  const criteriosHtml = [
+    ['Qualidade técnica',        'A excelência das entregas é o principal indicador de maturidade profissional.'],
+    ['Consistência',             'Entregas regulares e confiáveis ao longo do tempo, não apenas momentos isolados.'],
+    ['Autonomia',                'Capacidade crescente de conduzir atividades sem necessidade de supervisão constante.'],
+    ['Responsabilidade',         'Assumir e honrar compromissos com o projeto, a equipe e os processos.'],
+    ['Organização',              'Gestão eficiente do próprio trabalho, prazos e prioridades.'],
+    ['Comunicação',              'Clareza e objetividade na troca de informações com a equipe e a liderança.'],
+    ['Contribuição para processos', 'Identificar melhorias e contribuir para que o trabalho funcione melhor para todos.'],
+    ['Aderência à cultura EXP',  'Incorporar os valores, a intenção e o modo de fazer da EXP em cada entrega.'],
+  ].map(([t, d]) => `
+    <div style="background:#f8f8f6;border:1px solid var(--cinza);border-radius:6px;padding:10px 12px">
+      <div style="font-size:10px;font-weight:700;color:#333;margin-bottom:3px">${t}</div>
+      <div style="font-size:10px;color:#666;line-height:1.5">${d}</div>
+    </div>
+  `).join('');
+
   el.innerHTML = `
     <div class="content-hdr">
       <div class="content-hdr-left">
         <div class="content-title">Plano de Gente</div>
-        <div class="content-sub">Desenvolvimento, carreira e gestão de pessoas na EXP</div>
+        <div class="content-sub">Estrutura de crescimento profissional na EXP</div>
       </div>
     </div>
-    <div class="knowledge-callout">
-      <div class="knowledge-callout-title">Em construção</div>
-      <div class="knowledge-callout-text">Esta seção será preenchida com conteúdo sobre desenvolvimento de equipe, avaliação de desempenho, onboarding e planos individuais de crescimento.</div>
+
+    <div class="knowledge-callout" style="border-color:#e8c97a;background:#fffcf0">
+      <div class="knowledge-callout-title" style="color:#9a7a1a">Versão em construção</div>
+      <div class="knowledge-callout-text">Este documento representa a estrutura base do Plano de Gente da EXP. Está em desenvolvimento ativo — novos conteúdos serão incorporados ao longo do tempo.</div>
     </div>
-    <div class="tema-placeholder" style="min-height:220px">
-      <div class="tema-placeholder-icon">◎</div>
-      <div class="tema-placeholder-title">Plano de Gente</div>
-      <div class="tema-placeholder-sub">Conteúdo a ser desenvolvido com a equipe de liderança da EXP.</div>
-      <span class="tema-placeholder-badge">Em construção</span>
-    </div>`;
+
+    <div class="secao-shell">
+      <div class="secao-shell-header">
+        <div>
+          <div class="secao-shell-title">Sobre o Plano de Gente</div>
+        </div>
+      </div>
+      <div class="rich-body">
+        <p>O crescimento de cada pessoa na EXP não é medido pelo tempo de empresa, mas pela qualidade das entregas, pela autonomia conquistada e pela capacidade de contribuir de forma consistente para o trabalho, para os processos e para a equipe.</p>
+        <p>A estrutura de níveis existe para dar clareza sobre onde cada colaborador está hoje, o que caracteriza seu nível atual e o que representa o próximo passo. A progressão não é automática — ela acontece quando há demonstração real de amadurecimento técnico, aumento de responsabilidade e contribuição mais consistente para o funcionamento da EXP.</p>
+      </div>
+    </div>
+
+    <div class="secao-shell">
+      <div class="secao-shell-header">
+        <div>
+          <div class="secao-shell-title">Núcleos de atuação</div>
+          <div class="secao-shell-sub">Os colaboradores atuam em um dos dois núcleos de projeto da EXP</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:#f3f8f5;border:1px solid #c0d9c8;border-radius:8px;padding:16px 18px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--verde);margin-bottom:7px">◉ Paisagismo</div>
+          <div style="font-size:11px;color:#555;line-height:1.65">Projetos de paisagem, jardins, praças e espaços livres. Abrange desde residências até grandes empreendimentos e espaços públicos.</div>
+        </div>
+        <div style="background:#f3f8f5;border:1px solid #c0d9c8;border-radius:8px;padding:16px 18px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--verde);margin-bottom:7px">◈ Urbanismo</div>
+          <div style="font-size:11px;color:#555;line-height:1.65">Projetos urbanos, loteamentos, masterplans e intervenções em escala de cidade. Requer leitura de contexto territorial e visão de conjunto.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="secao-shell">
+      <div class="secao-shell-header">
+        <div>
+          <div class="secao-shell-title">Estrutura de progressão</div>
+          <div class="secao-shell-sub">Trilha de 9 níveis — da entrada à referência estratégica e operacional</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <div style="display:flex;align-items:center;min-width:560px">
+          ${trackHtml}
+        </div>
+      </div>
+      ${cardsHtml}
+    </div>
+
+    <div class="secao-shell">
+      <div class="secao-shell-header">
+        <div>
+          <div class="secao-shell-title">O que se considera na evolução</div>
+          <div class="secao-shell-sub">A progressão considera de forma combinada os seguintes aspectos</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${criteriosHtml}
+      </div>
+    </div>
+  `;
 }
 
 function renderPlaceholder(el, titulo, icon, sub) {
