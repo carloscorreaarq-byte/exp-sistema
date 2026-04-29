@@ -4546,11 +4546,16 @@ async function deletarLancamento(id) {
     toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
     return;
   }
-  if (!confirm('Excluir este lançamento de horas?')) return;
-  fecharModal('modal-editar-lancamento');
-  await sb.from('horas_lancadas').delete().eq('id', id);
-  renderSemana();
-  toast('Lançamento removido');
+  abrirPopupConfirm(
+    'Excluir lançamento?',
+    'Este lançamento de horas será removido permanentemente.',
+    async () => {
+      fecharModal('modal-editar-lancamento');
+      await sb.from('horas_lancadas').delete().eq('id', id);
+      renderSemana();
+      toast('Lançamento removido');
+    }
+  );
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -8614,7 +8619,8 @@ function _renderEntrada(r) {
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         ${etapa?`<span class="reg-etapa-tag">${_regEsc(etapa.nome)}</span>`:''}
-        ${isAutor?`<button class="btn sm" onclick="editarEntradaReg(${_sqReg(r.id)})">✎ editar</button>`:''}
+        ${isAutor||G.usuario.role==='socio'?`<button class="btn sm" onclick="editarEntradaReg(${_sqReg(r.id)})">✎</button>`:''}
+        ${isAutor||G.usuario.role==='socio'?`<button class="btn sm tc" onclick="deletarEntradaReg(${_sqReg(r.id)})">✕</button>`:''}
       </div>
     </div>
     ${r.titulo?`<div class="reg-titulo">${_regEsc(r.titulo)}</div>`:''}
@@ -8637,6 +8643,14 @@ function _renderEntrada(r) {
   </div>`;
 }
 
+function _regAtribAvatar(enc) {
+  if(!enc.atribuido_para && !enc.atrib_id) return '';
+  const cor = enc.atribuido_cor || enc.atrib_cor || '#888';
+  const ini = enc.atribuido_iniciais || enc.atrib_iniciais || '?';
+  const nome = enc.atribuido_nome || enc.atrib_nome || '';
+  return `<span title="${_regAttr(nome)}" style="width:18px;height:18px;border-radius:50%;background:${_regAttr(cor)};color:#fff;font-size:7px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px">${_regEsc(ini)}</span>`;
+}
+
 function _renderEncsPanel(r) {
   const encs = r.reg_encaminhamento || [];
   if(!encs.length) return '<div style="font-size:11px;color:#ccc">Nenhum encaminhamento.</div>';
@@ -8648,7 +8662,7 @@ function _renderEncsPanel(r) {
       <div class="reg-check-item">
         <input type="checkbox" class="reg-check-cb" ${checked?'checked':''} onchange="toggleEncaminhamento(${_sqReg(enc.id)},this.checked,${_sqReg(r.id)})">
         <div style="flex:1">
-          <div class="reg-check-txt${checked?' done':''}">${_regEsc(enc.texto)}</div>
+          <div style="display:flex;align-items:center">${_regAtribAvatar(enc)}<span class="reg-check-txt${checked?' done':''}">${_regEsc(enc.texto)}</span></div>
           ${who}
         </div>
       </div>`;
@@ -8856,8 +8870,13 @@ function _renderFormRegistro(entrada) {
         <label>Encaminhamentos</label>
         <div class="reg-encs-list" id="rf-encs-lista">${encsHtml}</div>
         <div class="reg-check-add" style="margin-top:6px">
-          <input type="text" id="rf-enc-nova" placeholder="Adicionar encaminhamento…"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarEncForm()}">
+          <input type="text" id="rf-enc-nova" placeholder="Encaminhamento…"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarEncForm()}"
+            style="flex:2">
+          <select id="rf-enc-user" style="flex:1;font-size:10px;border:1px solid var(--cinza);border-radius:4px;padding:3px 4px;font-family:var(--f);min-width:0;color:#555">
+            <option value="">— atribuir —</option>
+            ${G.todosUsuarios.map(u=>`<option value="${_regAttr(u.id)}" data-nome="${_regAttr(u.nome)}" data-ini="${_regAttr(u.iniciais||'?')}" data-cor="${_regAttr(u.cor||'#888')}">${_regEsc(u.nome.split(' ')[0])}</option>`).join('')}
+          </select>
           <button class="btn sm" onclick="adicionarEncForm()">+ Add</button>
         </div>
       </div>
@@ -8871,19 +8890,36 @@ function _renderFormRegistro(entrada) {
 
 function _syncEncsLista() {
   const lista = document.getElementById('rf-encs-lista');
-  if(lista) lista.innerHTML = G._regEncsForms.map((enc,i)=>`
+  if(!lista) return;
+  lista.innerHTML = G._regEncsForms.map((enc,i) => {
+    const av = enc.atrib_id
+      ? `<span title="${_regAttr(enc.atrib_nome)}" style="width:16px;height:16px;border-radius:50%;background:${_regAttr(enc.atrib_cor)};color:#fff;font-size:7px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${_regEsc(enc.atrib_iniciais)}</span>`
+      : '';
+    return `
     <div class="reg-enc-pill">
+      ${av}
       <span style="flex:1">${_regEsc(enc.texto)}</span>
       <button class="reg-enc-del" onclick="removerEncForm(${i})">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function adicionarEncForm() {
   const inp = document.getElementById('rf-enc-nova');
   const txt = (inp?.value||'').trim();
   if(!txt) return;
-  G._regEncsForms.push({id:null,texto:txt});
+  const sel  = document.getElementById('rf-enc-user');
+  const opt  = sel?.options[sel.selectedIndex];
+  const atribId = sel?.value || null;
+  G._regEncsForms.push({
+    id: null, texto: txt,
+    atrib_id:       atribId || null,
+    atrib_nome:     atribId ? (opt?.dataset?.nome || '') : '',
+    atrib_iniciais: atribId ? (opt?.dataset?.ini  || '?') : '',
+    atrib_cor:      atribId ? (opt?.dataset?.cor  || '#888') : '',
+  });
   inp.value = '';
+  if(sel) sel.value = '';
   _syncEncsLista();
   inp.focus();
 }
@@ -8937,16 +8973,59 @@ async function salvarEntradaReg() {
     if(G._regEncsForms.length > 0) {
       const { error } = await sb.from('reg_encaminhamento').insert(
         G._regEncsForms.map((enc,i) => ({
-          entrada_id: entradaId, texto: enc.texto,
-          ordem: i, concluido: false, criado_em: now,
+          entrada_id:          entradaId,
+          texto:               enc.texto,
+          ordem:               i,
+          concluido:           false,
+          criado_em:           now,
+          atribuido_para:      enc.atrib_id   || null,
+          atribuido_nome:      enc.atrib_nome || null,
+          atribuido_iniciais:  enc.atrib_iniciais || null,
+          atribuido_cor:       enc.atrib_cor  || null,
         }))
       );
       if(error) throw error;
     }
+    // Cria tarefas automáticas para usuários atribuídos (1 tarefa por pessoa por entrada)
+    const atribUsers = [...new Map(
+      G._regEncsForms.filter(e=>e.atrib_id).map(e=>[e.atrib_id,e])
+    ).values()];
+    if(atribUsers.length > 0) {
+      const prod = G.todosProdutos.find(p=>p.id===G.produtoAtivo);
+      const descTarefa = `Encaminhamentos: "${titulo||'Registro'}" — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`;
+      // Remove tarefas antigas desta entrada para esses usuários (evita duplicatas em re-edição)
+      await sb.from('tarefas_livres').delete().eq('reg_entrada_id', entradaId);
+      const tarefas = atribUsers.map(e=>({
+        usuario_id:     e.atrib_id,
+        criado_por:     u.id,
+        descricao:      descTarefa,
+        tipo:           'projeto',
+        produto_id:     G.produtoAtivo,
+        reg_entrada_id: entradaId,
+        created_at:     now,
+      }));
+      await sb.from('tarefas_livres').insert(tarefas);
+    }
+    const foiEdicao = !!G._regEditId;
     cancelarFormRegistro();
     await carregarRegistrosProduto(G.produtoAtivo);
-    toast(G._regEditId ? 'Registro atualizado.' : 'Registro salvo.');
+    toast(foiEdicao ? 'Registro atualizado.' : 'Registro salvo.');
   } catch(err) { toast('Erro ao salvar: ' + (err.message||err)); }
+}
+
+function deletarEntradaReg(id) {
+  abrirPopupConfirm(
+    'Excluir registro?',
+    'Esta entrada, seus encaminhamentos e comentários serão removidos permanentemente.',
+    async () => {
+      const { error } = await sb.from('reg_entrada').delete().eq('id', id);
+      if(error) { toast('Erro ao excluir: ' + error.message); return; }
+      // Remove tarefas automáticas vinculadas
+      await sb.from('tarefas_livres').delete().eq('reg_entrada_id', id);
+      await carregarRegistrosProduto(G.produtoAtivo);
+      toast('Registro excluído.');
+    }
+  );
 }
 
 // ── START ──────────────────────────────────────────────────
