@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EXP · Contatos</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --preto:#111110;--off:#F7F6F3;--cinza:#D0CFC9;--cinza2:#ECEAE4;
+  --verde:#1D6A4A;--verde-l:#2D9E6B;--verde-bg:#EAF5EE;
+  --az:#1D4FA0;--az-bg:#EAF0FB;
+  --am:#C4831A;--am-bg:#FBF3E8;
+  --tc:#B84C3A;--tc-bg:#FBF0EE;
+  --roxo:#6B4FA0;--roxo-bg:#F3EFFE;
+  --f:'Raleway',sans-serif;--fm:'DM Mono',monospace;
+}
+body{font-family:var(--f);background:var(--off);color:var(--preto);min-height:100vh}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(var(--cinza2) 1px,transparent 1px),linear-gradient(90deg,var(--cinza2) 1px,transparent 1px);
+  background-size:48px 48px;opacity:.5;pointer-events:none;z-index:0;
+}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--off);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+.loading-brand{font-size:22px;font-weight:700;letter-spacing:6px}
+.loading-dot{display:flex;gap:6px}
+.loading-dot span{width:6px;height:6px;border-radius:50%;background:var(--cinza);animation:blink 1.2s ease-in-out infinite}
+.loading-dot span:nth-child(2){animation-delay:.2s}
+.loading-dot span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* NAV */
+.nav{
+  display:flex;align-items:center;
+  background:rgba(255,255,255,.95);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--cinza);padding:0 20px;height:46px;
+  position:sticky;top:0;z-index:100;gap:0;
+}
+.nav-brand{font-size:14px;font-weight:700;letter-spacing:5px;margin-right:16px;text-decoration:none;color:inherit}
+.nav-brand:hover{opacity:.7}
+.nav-sep{width:1px;height:14px;background:var(--cinza);margin-right:16px;flex-shrink:0}
+.nav-mod-wrap{position:relative}
+.nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:11px;font-weight:600;letter-spacing:.3px;cursor:pointer;color:#666;padding:0}
+.nav-lbl-btn:hover{color:var(--preto)}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 10px);left:0;background:#fff;border:1px solid var(--cinza);min-width:180px;box-shadow:0 4px 16px rgba(0,0,0,.08);z-index:200;border-radius:8px;overflow:hidden}
+.nav-dropdown.open{display:block}
+.nav-dropdown a{display:block;padding:9px 14px;font-size:11px;font-weight:500;color:#555;text-decoration:none}
+.nav-dropdown a:hover{background:var(--off);color:var(--preto)}
+.nav-dropdown a.nd-active{color:var(--az);font-weight:700}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0}
+.conn-dot.online{background:#22c55e}
+.conn-dot.offline{background:var(--tc)}
+.exp-room-btn{width:26px;height:26px;border-radius:6px;background:var(--off);border:1px solid var(--cinza);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;transition:all .12s;flex-shrink:0}
+.exp-room-btn:hover{border-color:var(--preto)}
+.exp-room-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:blink 2s ease-in-out infinite}
+.user-pill-wrap{position:relative}
+.user-pill{display:flex;align-items:center;gap:7px;padding:3px 10px 3px 3px;border:1px solid var(--cinza);background:#fff;cursor:pointer;border-radius:20px;transition:border-color .12s}
+.user-pill:hover{border-color:var(--preto)}
+.avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+#user-nome{font-size:10px;font-weight:500}
+.user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
+.user-dropdown.open{display:block}
+.user-dropdown button{display:block;width:100%;padding:9px 14px;background:none;border:none;font-family:var(--f);font-size:11px;font-weight:500;color:var(--tc);text-align:left;cursor:pointer}
+.user-dropdown button:hover{background:var(--off)}
+
+/* MAIN */
+#conteudo{display:none;animation:fadeUp .3s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.main{max-width:980px;margin:0 auto;padding:28px 24px;position:relative;z-index:1}
+
+/* HEADER */
+.ct-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.ct-header-left{flex:1}
+.ct-title{font-size:20px;font-weight:700;letter-spacing:-.3px}
+.ct-count{font-size:11px;color:#999;margin-top:2px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;font-family:var(--f);font-size:11px;font-weight:600;border:1px solid transparent;cursor:pointer;border-radius:6px;transition:all .12s;letter-spacing:.2px;white-space:nowrap;text-decoration:none}
+.btn.verde{background:var(--verde);color:#fff;border-color:var(--verde)}
+.btn.verde:hover{background:#155a3b}
+.btn.outline{background:#fff;color:#555;border-color:var(--cinza)}
+.btn.outline:hover{border-color:var(--preto);color:var(--preto)}
+.btn.sm{padding:4px 10px;font-size:10px}
+.btn.xs{padding:2px 8px;font-size:9px;border-radius:4px}
+
+/* SEARCH */
+.ct-search-wrap{position:relative;margin-bottom:6px}
+.ct-search-wrap input{
+  width:100%;padding:11px 16px 11px 42px;
+  background:#fff;border:1px solid var(--cinza);border-radius:8px;
+  font-family:var(--f);font-size:13px;color:var(--preto);
+  transition:border-color .15s,box-shadow .15s;outline:none;
+}
+.ct-search-wrap input:focus{border-color:var(--preto);box-shadow:0 0 0 3px rgba(17,17,16,.06)}
+.ct-search-wrap input::placeholder{color:#bbb}
+.ct-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:#ccc;pointer-events:none;line-height:1}
+.ct-search-hint{font-size:10px;color:#bbb;font-family:var(--fm);margin-bottom:18px}
+
+/* SECTION HEADERS */
+.results-hdr{
+  font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb;
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;margin-top:18px;
+}
+.results-hdr:first-child{margin-top:0}
+.results-hdr::after{content:'';flex:1;height:1px;background:var(--cinza2)}
+.results-hdr span{color:#555;font-size:10px;font-weight:700;letter-spacing:0;text-transform:none}
+
+/* CONTACT CARD */
+.ct-card{
+  background:#fff;border:1px solid var(--cinza);border-radius:8px;
+  padding:12px 16px 10px;margin-bottom:8px;
+  transition:border-color .12s,box-shadow .12s;
+}
+.ct-card:hover{border-color:#bbb;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.ct-card.secundario{opacity:.75;border-style:dashed}
+.ct-card.desativado-card{background:#f8f8f6;opacity:.7}
+
+.ct-card-row1{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap}
+.ct-nome{font-size:13px;font-weight:700;letter-spacing:-.1px;flex-shrink:0}
+.ct-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1}
+
+.tipo-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+.valid-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.sem-validacao{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:#bbb;background:var(--off);border:1px solid var(--cinza2);padding:2px 7px;border-radius:4px;white-space:nowrap}
+.desativ-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:var(--tc);background:var(--tc-bg);border:1px solid #f0c8c0;padding:2px 7px;border-radius:4px}
+
+.ct-actions{display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:auto}
+.btn-validar{background:var(--verde-bg);color:var(--verde);border-color:#b8d9c8;font-size:9px;padding:2px 8px;border-radius:4px;border-style:solid;border-width:1px;cursor:pointer;font-family:var(--f);font-weight:600;transition:all .12s;white-space:nowrap}
+.btn-validar:hover{background:#d0eedd;border-color:var(--verde)}
+.btn-editar{background:#fff;color:#555;border:1px solid var(--cinza);font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:var(--f);font-weight:600;transition:all .12s;white-space:nowrap}
+.btn-editar:hover{border-color:var(--preto);color:var(--preto)}
+.btn-desativar{background:var(--tc-bg);color:var(--tc);border:1px solid #f0c8c0;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:var(--f);font-weight:600;transition:all .12s;white-space:nowrap}
+.btn-desativar:hover{background:#f8ddd9}
+.btn-reativar{background:var(--az-bg);color:var(--az);border:1px solid #b3caea;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:var(--f);font-weight:600;transition:all .12s;white-space:nowrap}
+.btn-reativar:hover{background:#d0dffa}
+
+.ct-card-row2{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:#555;margin-bottom:6px}
+.ct-info-item{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.ct-info-item a{color:var(--verde);text-decoration:none}
+.ct-info-item a:hover{text-decoration:underline}
+.ct-info-icon{font-size:10px;color:#ccc}
+
+.ct-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}
+.ct-tag{padding:2px 8px;background:var(--cinza2);border-radius:20px;font-size:10px;color:#666;font-weight:500}
+.ct-tag.match{background:var(--verde-bg);color:var(--verde);font-weight:700}
+
+.ct-obs{font-size:10px;color:#999;font-style:italic;line-height:1.5;border-top:1px solid var(--cinza2);padding-top:6px;margin-top:2px}
+
+/* EMPTY STATE */
+.ct-empty{text-align:center;padding:60px 20px}
+.ct-empty-icon{font-size:36px;margin-bottom:10px;opacity:.4}
+.ct-empty-title{font-size:13px;font-weight:600;color:#999;margin-bottom:4px}
+.ct-empty-sub{font-size:11px;color:#bbb}
+
+/* PENDENTES BANNER */
+.pendentes-banner{
+  background:var(--am-bg);border:1px solid #e8c07a;border-left:3px solid var(--am);
+  border-radius:8px;padding:14px 16px;margin-bottom:20px;
+}
+.pendentes-title{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--am);margin-bottom:10px}
+.pendente-card{background:#fff;border:1px solid #e8c07a;border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.pendente-card:last-child{margin-bottom:0}
+.pendente-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.pendente-nome{font-size:11px;font-weight:700;flex:1}
+.pendente-meta{font-size:9px;color:#bbb}
+.pendente-btns{display:flex;gap:5px}
+.pendente-mudancas{display:flex;flex-direction:column;gap:4px}
+.pendente-row{display:flex;gap:6px;align-items:baseline;font-size:10px;flex-wrap:wrap}
+.pendente-label{font-size:9px;font-weight:700;color:#bbb;letter-spacing:.3px;text-transform:uppercase;width:76px;flex-shrink:0}
+.pendente-old{text-decoration:line-through;color:#ccc}
+.pendente-arrow{color:#ddd;flex-shrink:0}
+.pendente-new{color:var(--verde);font-weight:600}
+
+/* DESATIVADOS */
+.desativados-toggle{
+  display:flex;align-items:center;gap:6px;padding:10px 0;
+  font-size:10px;font-weight:600;color:#ccc;cursor:pointer;user-select:none;
+  border-top:1px solid var(--cinza2);margin-top:24px;
+}
+.desativados-toggle:hover{color:#888}
+#desativados-section{display:none;margin-top:10px;padding:12px;background:var(--off);border:1px solid var(--cinza2);border-radius:8px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:8px;overflow:hidden;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.15)}
+.modal-hdr{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--cinza);gap:10px;flex-shrink:0}
+.modal-title{font-size:13px;font-weight:700;flex:1}
+.modal-close{background:none;border:none;font-size:16px;cursor:pointer;color:#bbb;padding:0 4px;line-height:1;font-family:var(--f)}
+.modal-close:hover{color:var(--preto)}
+.modal-body{padding:18px;overflow-y:auto;flex:1}
+.modal-notice{background:var(--am-bg);border:1px solid #e8c07a;border-left:3px solid var(--am);border-radius:6px;padding:9px 12px;font-size:11px;color:var(--am);margin-bottom:14px;line-height:1.5}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-grid .full{grid-column:1/-1}
+.modal-field{display:flex;flex-direction:column;gap:4px}
+.modal-field label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888}
+.modal-field input,.modal-field select,.modal-field textarea{
+  padding:7px 10px;border:1px solid var(--cinza);border-radius:6px;
+  font-family:var(--f);font-size:12px;color:var(--preto);background:#fff;
+  transition:border-color .15s;outline:none;
+}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--preto)}
+.modal-field textarea{resize:vertical;min-height:70px;line-height:1.5}
+.modal-ftr{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--cinza);background:#fafaf8;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loading-brand">EXP</div>
+  <div class="loading-dot"><span></span><span></span><span></span></div>
+</div>
+
+<div id="conteudo">
+
+<nav class="nav">
+  <a href="app.html" class="nav-brand">EXP</a>
+  <span class="nav-sep"></span>
+  <div class="nav-mod-wrap" id="nav-mod-wrap">
+    <button class="nav-lbl-btn" onclick="toggleNav()">EXP.contatos <span>▾</span></button>
+    <div class="nav-dropdown" id="nav-dropdown">
+      <a href="gestao.html">EXP.projetos</a>
+      <a href="apoio.html">EXP.conhecimento</a>
+      <a href="contatos.html" class="nd-active">EXP.contatos</a>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="conn-dot" id="conn-dot"></div>
+    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" title="EXP Room">
+      <span class="exp-room-dot"></span>
+    </a>
+    <div class="user-pill-wrap">
+      <div class="user-pill" onclick="toggleUserMenu()">
+        <div class="avatar" id="user-av">?</div>
+        <span id="user-nome">—</span>
+        <span style="font-size:8px;color:#bbb;margin-left:2px">▾</span>
+      </div>
+      <div class="user-dropdown" id="user-dropdown">
+        <button onclick="sair()">Sair do sistema</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="main">
+
+  <!-- PENDENTES — só sócios -->
+  <div id="pendentes-wrap" style="display:none"></div>
+
+  <!-- HEADER -->
+  <div class="ct-header">
+    <div class="ct-header-left">
+      <div class="ct-title">EXP.contatos</div>
+      <div class="ct-count" id="ct-count">carregando…</div>
+    </div>
+    <button class="btn verde" onclick="abrirModal(null)">+ Novo contato</button>
+  </div>
+
+  <!-- BUSCA -->
+  <div class="ct-search-wrap">
+    <span class="ct-search-icon">⊙</span>
+    <input type="text" id="ct-search"
+      placeholder="Buscar por nome, empresa, produto, tipo, cidade, estado…"
+      oninput="buscarDebounce(this.value)"
+      autocomplete="off">
+  </div>
+  <div class="ct-search-hint">Separe termos com vírgula para filtrar por múltiplos critérios — ex: &ldquo;Tidelli, SP&rdquo;</div>
+
+  <!-- RESULTADOS -->
+  <div id="ct-results"></div>
+
+  <!-- DESATIVADOS — só sócios -->
+  <div id="desativados-wrap" style="display:none">
+    <div class="desativados-toggle" onclick="toggleDesativados()">
+      <span id="desativ-chevron">▶</span>
+      <span id="desativ-lbl">Ver contatos desativados</span>
+    </div>
+    <div id="desativados-section"></div>
+  </div>
+
+</div>
+</div>
+
+<!-- MODAL ADD/EDIT -->
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModalOverlay(event)">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-title">Novo contato</div>
+      <button class="modal-close" onclick="fecharModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-notice" class="modal-notice" style="display:none">
+        ✎ Suas alterações serão encaminhadas para aprovação de um sócio antes de serem aplicadas.
+      </div>
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label>Nome completo *</label>
+          <input type="text" id="f-nome" placeholder="Nome Sobrenome">
+        </div>
+        <div class="modal-field">
+          <label>Empresa</label>
+          <input type="text" id="f-empresa" placeholder="Nome da empresa">
+        </div>
+        <div class="modal-field full">
+          <label>Tipo de produto / serviço</label>
+          <input type="text" id="f-tipo-produto" placeholder="mobiliário, luminárias, tapetes  (separar com vírgula cria tags individuais de busca)">
+        </div>
+        <div class="modal-field">
+          <label>Cidade</label>
+          <input type="text" id="f-cidade" placeholder="Cidade">
+        </div>
+        <div class="modal-field">
+          <label>Estado (UF)</label>
+          <select id="f-estado">
+            <option value="">— selecionar —</option>
+            <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
+            <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+            <option>GO</option><option>MA</option><option>MG</option><option>MS</option>
+            <option>MT</option><option>PA</option><option>PB</option><option>PE</option>
+            <option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+            <option>RO</option><option>RR</option><option>RS</option><option>SC</option>
+            <option>SE</option><option>SP</option><option>TO</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>Telefone</label>
+          <input type="text" id="f-telefone" placeholder="(11) 99999-9999">
+        </div>
+        <div class="modal-field">
+          <label>E-mail</label>
+          <input type="email" id="f-email" placeholder="contato@empresa.com.br">
+        </div>
+        <div class="modal-field">
+          <label>Site</label>
+          <input type="text" id="f-site" placeholder="https://empresa.com.br">
+        </div>
+        <div class="modal-field">
+          <label>Tipo de contato *</label>
+          <select id="f-tipo">
+            <option value="">— selecionar —</option>
+            <option value="fornecedor">Fornecedor</option>
+            <option value="cliente">Cliente</option>
+            <option value="parceiro">Parceiro</option>
+            <option value="arquiteto">Arquiteto</option>
+            <option value="projetista">Projetista</option>
+            <option value="consultor">Consultor</option>
+          </select>
+        </div>
+        <div class="modal-field full">
+          <label>Observação</label>
+          <textarea id="f-observacao" placeholder="Anotações livres sobre este contato…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn outline" onclick="fecharModal()">Cancelar</button>
+      <button class="btn verde" id="modal-save-btn" onclick="salvarContato()">Salvar contato</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── SUPABASE SETUP ─────────────────────────────────────────────────────────
+   Tabelas necessárias — rodar no Supabase SQL Editor:
+
+   CREATE TABLE exp_contatos (
+     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     nome         text NOT NULL,
+     empresa      text,
+     tipo_produto text,
+     cidade       text,
+     estado       text,
+     telefone     text,
+     email        text,
+     site         text,
+     tipo         text,
+     observacao   text,
+     validado_em  timestamptz,
+     desativado   boolean DEFAULT false,
+     desativado_em timestamptz,
+     criado_em    timestamptz DEFAULT now(),
+     criado_por   uuid
+   );
+
+   CREATE TABLE exp_contatos_pendentes (
+     id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     contato_id       uuid REFERENCES exp_contatos(id) ON DELETE CASCADE,
+     dados_novos      jsonb NOT NULL,
+     editado_por      uuid,
+     editado_por_nome text,
+     editado_em       timestamptz DEFAULT now(),
+     status           text DEFAULT 'pendente'
+   );
+──────────────────────────────────────────────────────────────────────────── */
+
+const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const TIPO_INFO = {
+  fornecedor: { label:'Fornecedor', bg:'#eaf5ee', color:'#1D6A4A' },
+  cliente:    { label:'Cliente',    bg:'#eaf0fb', color:'#1D4FA0' },
+  parceiro:   { label:'Parceiro',   bg:'#f3effe', color:'#6B4FA0' },
+  arquiteto:  { label:'Arquiteto',  bg:'#fbf3e8', color:'#C4831A' },
+  projetista: { label:'Projetista', bg:'#fbf0ee', color:'#B84C3A' },
+  consultor:  { label:'Consultor',  bg:'#f2f2f0', color:'#666'    },
+};
+
+const CAMPO_LABELS = {
+  nome:'Nome', empresa:'Empresa', tipo_produto:'Produto/Serviço',
+  cidade:'Cidade', estado:'Estado', telefone:'Telefone',
+  email:'E-mail', site:'Site', tipo:'Tipo', observacao:'Observação',
+};
+const CAMPOS = Object.keys(CAMPO_LABELS);
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let G = {
+  usuario:    null,
+  contatos:   [],
+  pendentes:  [],
+  desativados:[],
+  busca:      '',
+};
+const isSocio = () => G.usuario?.role === 'socio';
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtData(iso) {
+  if(!iso) return '';
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+function isAtivo(c) {
+  if(!c.validado_em) return false;
+  const limite = new Date(); limite.setDate(limite.getDate() - 90);
+  return new Date(c.validado_em) > limite;
+}
+function getTags(c) {
+  return (c.tipo_produto||'').split(',').map(t=>t.trim()).filter(Boolean);
+}
+function singleQuote(s) {
+  return "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+}
+
+// ─── SEARCH ──────────────────────────────────────────────────────────────────
+let _buscarTimer = null;
+function buscarDebounce(v) {
+  G.busca = v;
+  clearTimeout(_buscarTimer);
+  _buscarTimer = setTimeout(() => buscar(v), 140);
+}
+
+function parseTermos(query) {
+  return query.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+}
+
+function tokensContato(c) {
+  return [c.nome, c.empresa, c.cidade, c.estado, c.telefone, c.email, c.site, c.tipo, c.observacao, ...getTags(c)]
+    .filter(Boolean).map(t=>t.toLowerCase());
+}
+
+function matchTerm(c, term) {
+  return tokensContato(c).some(tok => tok.includes(term));
+}
+
+function buscar(query) {
+  const termos = parseTermos(query);
+  const el = document.getElementById('ct-results');
+
+  if(termos.length === 0) {
+    renderResultados(G.contatos, [], [], el);
+    return;
+  }
+  const primarios   = G.contatos.filter(c => termos.every(t => matchTerm(c, t)));
+  const primIds     = new Set(primarios.map(c=>c.id));
+  const secundarios = G.contatos.filter(c => !primIds.has(c.id) && termos.some(t => matchTerm(c, t))).slice(0, 10);
+  renderResultados(primarios, secundarios, termos, el);
+}
+
+// ─── RENDER RESULTADOS ───────────────────────────────────────────────────────
+function renderResultados(primarios, secundarios, termos, el) {
+  if(!el) return;
+
+  if(primarios.length === 0 && secundarios.length === 0) {
+    el.innerHTML = termos.length > 0
+      ? `<div class="ct-empty"><div class="ct-empty-icon">⊙</div><div class="ct-empty-title">Nenhum contato encontrado</div><div class="ct-empty-sub">Tente outros termos ou adicione um novo contato.</div></div>`
+      : `<div class="ct-empty"><div class="ct-empty-icon">⊙</div><div class="ct-empty-title">Nenhum contato cadastrado</div><div class="ct-empty-sub">Clique em "Novo contato" para começar.</div></div>`;
+    return;
+  }
+
+  let html = '';
+
+  if(primarios.length > 0) {
+    const lbl = termos.length > 0
+      ? `<span>${primarios.length} resultado${primarios.length>1?'s':''}</span> para "${esc(termos.join(', '))}"`
+      : `<span>${primarios.length} contato${primarios.length>1?'s ativos':' ativo'}</span>`;
+    html += `<div class="results-hdr">${lbl}</div>`;
+    html += primarios.map(c => renderCard(c, false, termos)).join('');
+  }
+
+  if(secundarios.length > 0) {
+    html += `<div class="results-hdr" style="margin-top:${primarios.length>0?'18px':'0'}">Outros resultados relacionados <span>${secundarios.length}</span></div>`;
+    html += secundarios.map(c => renderCard(c, true, termos)).join('');
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── RENDER CARD ─────────────────────────────────────────────────────────────
+function renderCard(c, secundario, termos) {
+  const ti     = TIPO_INFO[c.tipo] || { label: c.tipo||'—', bg:'#f2f2f0', color:'#666' };
+  const ativo  = isAtivo(c);
+  const tags   = getTags(c);
+  const id     = singleQuote(c.id);
+
+  const tipoBadge = c.tipo
+    ? `<span class="tipo-badge" style="background:${ti.bg};color:${ti.color}">${esc(ti.label)}</span>`
+    : '';
+
+  const statusBadge = ativo
+    ? `<span class="valid-badge">✓ validado</span>`
+    : `<span class="sem-validacao">○ não validado</span>`;
+
+  const btnValidar  = `<button class="btn-validar" onclick="validarContato(${id})">✓ validar</button>`;
+  const btnEditar   = `<button class="btn-editar"  onclick="abrirModal(${id})">✎ editar</button>`;
+  const btnDesativ  = isSocio()
+    ? `<button class="btn-desativar" onclick="desativarContato(${id})">✕ desativar</button>`
+    : '';
+
+  // Info row
+  const infos = [];
+  if(c.empresa) infos.push(`<span class="ct-info-item"><span class="ct-info-icon">🏢</span>${esc(c.empresa)}</span>`);
+  if(c.cidade||c.estado) infos.push(`<span class="ct-info-item"><span class="ct-info-icon">📍</span>${esc([c.cidade,c.estado].filter(Boolean).join(', '))}</span>`);
+  if(c.telefone) infos.push(`<span class="ct-info-item"><span class="ct-info-icon">📞</span>${esc(c.telefone)}</span>`);
+  if(c.email) infos.push(`<span class="ct-info-item"><span class="ct-info-icon">✉</span><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></span>`);
+  if(c.site) {
+    const url = c.site.startsWith('http') ? c.site : 'https://' + c.site;
+    infos.push(`<span class="ct-info-item"><span class="ct-info-icon">🔗</span><a href="${esc(url)}" target="_blank" rel="noopener">${esc(c.site)}</a></span>`);
+  }
+
+  // Tags
+  const tagsHtml = tags.length > 0
+    ? `<div class="ct-tags">${tags.map(t => {
+        const isMatch = termos.some(term => t.toLowerCase().includes(term));
+        return `<span class="ct-tag${isMatch?' match':''}">${esc(t)}</span>`;
+      }).join('')}</div>`
+    : '';
+
+  // Observação
+  const obsHtml = c.observacao
+    ? `<div class="ct-obs">${esc(c.observacao)}</div>`
+    : '';
+
+  return `
+  <div class="ct-card${secundario?' secundario':''}">
+    <div class="ct-card-row1">
+      <div class="ct-nome">${esc(c.nome)}</div>
+      <div class="ct-badges">${tipoBadge}${statusBadge}</div>
+      <div class="ct-actions">${btnValidar}${btnEditar}${btnDesativ}</div>
+    </div>
+    ${infos.length > 0 ? `<div class="ct-card-row2">${infos.join('')}</div>` : ''}
+    ${tagsHtml}
+    ${obsHtml}
+  </div>`;
+}
+
+// ─── DESATIVADOS (sócios) ────────────────────────────────────────────────────
+function toggleDesativados() {
+  const sec  = document.getElementById('desativados-section');
+  const chev = document.getElementById('desativ-chevron');
+  const lbl  = document.getElementById('desativ-lbl');
+  const open = sec.style.display === 'block';
+  if(open) {
+    sec.style.display = 'none';
+    chev.textContent = '▶';
+    lbl.textContent  = `Ver contatos desativados (${G.desativados.length})`;
+  } else {
+    sec.style.display = 'block';
+    chev.textContent = '▼';
+    lbl.textContent  = 'Ocultar contatos desativados';
+    renderDesativados();
+  }
+}
+
+function renderDesativados() {
+  const el = document.getElementById('desativados-section');
+  if(G.desativados.length === 0) {
+    el.innerHTML = `<div style="font-size:11px;color:#bbb;padding:4px 0">Nenhum contato desativado.</div>`;
+    return;
+  }
+  el.innerHTML = G.desativados.map(c => {
+    const ti = TIPO_INFO[c.tipo] || { label:c.tipo||'—', bg:'#f2f2f0', color:'#666' };
+    const id = singleQuote(c.id);
+    return `
+    <div class="ct-card desativado-card">
+      <div class="ct-card-row1">
+        <div class="ct-nome" style="opacity:.7">${esc(c.nome)}</div>
+        <div class="ct-badges">
+          ${c.tipo ? `<span class="tipo-badge" style="background:${ti.bg};color:${ti.color}">${esc(ti.label)}</span>` : ''}
+          <span class="desativ-badge">✕ desativado</span>
+        </div>
+        <div class="ct-actions">
+          <button class="btn-reativar" onclick="reativarContato(${id})">↩ reativar</button>
+          <button class="btn-editar"   onclick="abrirModal(${id})">✎ editar</button>
+        </div>
+      </div>
+      <div class="ct-card-row2">
+        ${c.empresa ? `<span class="ct-info-item"><span class="ct-info-icon">🏢</span>${esc(c.empresa)}</span>` : ''}
+        ${c.cidade||c.estado ? `<span class="ct-info-item"><span class="ct-info-icon">📍</span>${esc([c.cidade,c.estado].filter(Boolean).join(', '))}</span>` : ''}
+        ${c.desativado_em ? `<span class="ct-info-item" style="color:#ccc">desativado em ${fmtData(c.desativado_em)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── PENDENTES (sócios) ──────────────────────────────────────────────────────
+function renderPendentes() {
+  const wrap = document.getElementById('pendentes-wrap');
+  if(!isSocio() || G.pendentes.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const cards = G.pendentes.map(p => {
+    const c       = G.contatos.find(x=>x.id===p.contato_id) || G.desativados.find(x=>x.id===p.contato_id) || {};
+    const pid     = singleQuote(p.id);
+    const mudancas = CAMPOS.filter(f => p.dados_novos[f] !== undefined && String(p.dados_novos[f]||'') !== String(c[f]||''));
+    const rowsHtml = mudancas.map(f => `
+      <div class="pendente-row">
+        <span class="pendente-label">${CAMPO_LABELS[f]}</span>
+        <span class="pendente-old">${esc(c[f]||'—')}</span>
+        <span class="pendente-arrow">→</span>
+        <span class="pendente-new">${esc(p.dados_novos[f]||'—')}</span>
+      </div>`).join('');
+    return `
+    <div class="pendente-card">
+      <div class="pendente-head">
+        <span class="pendente-nome">${esc(c.nome||'Contato desconhecido')}</span>
+        <span class="pendente-meta">por ${esc(p.editado_por_nome||'—')} · ${fmtData(p.editado_em)}</span>
+        <div class="pendente-btns">
+          <button class="btn verde xs" onclick="aprovarEdicao(${pid})">✓ Aprovar</button>
+          <button class="btn outline xs" onclick="rejeitarEdicao(${pid})">✕ Rejeitar</button>
+        </div>
+      </div>
+      <div class="pendente-mudancas">${rowsHtml || '<span style="font-size:10px;color:#bbb">Sem alterações detectadas.</span>'}</div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="pendentes-banner">
+      <div class="pendentes-title">✎ Edições pendentes · ${G.pendentes.length}</div>
+      ${cards}
+    </div>`;
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+let _edicaoId = null;
+
+function abrirModal(id) {
+  _edicaoId = id;
+  const isNovo = !id;
+  const c = id
+    ? (G.contatos.find(x=>x.id===id) || G.desativados.find(x=>x.id===id) || {})
+    : {};
+
+  document.getElementById('modal-title').textContent = isNovo ? 'Novo contato' : 'Editar contato';
+  document.getElementById('f-nome').value        = c.nome         || '';
+  document.getElementById('f-empresa').value     = c.empresa      || '';
+  document.getElementById('f-tipo-produto').value= c.tipo_produto || '';
+  document.getElementById('f-cidade').value      = c.cidade       || '';
+  document.getElementById('f-estado').value      = c.estado       || '';
+  document.getElementById('f-telefone').value    = c.telefone     || '';
+  document.getElementById('f-email').value       = c.email        || '';
+  document.getElementById('f-site').value        = c.site         || '';
+  document.getElementById('f-tipo').value        = c.tipo         || '';
+  document.getElementById('f-observacao').value  = c.observacao   || '';
+
+  const notice = document.getElementById('modal-notice');
+  notice.style.display = (!isNovo && !isSocio()) ? 'block' : 'none';
+
+  const saveBtn = document.getElementById('modal-save-btn');
+  if(isNovo)       saveBtn.textContent = 'Salvar contato';
+  else if(isSocio()) saveBtn.textContent = 'Salvar alterações';
+  else             saveBtn.textContent = 'Enviar para aprovação';
+
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-nome').focus(), 80);
+}
+
+function fecharModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  _edicaoId = null;
+}
+
+function fecharModalOverlay(e) {
+  if(e.target === document.getElementById('modal-overlay')) fecharModal();
+}
+
+async function salvarContato() {
+  const nome = document.getElementById('f-nome').value.trim();
+  const tipo = document.getElementById('f-tipo').value;
+  if(!nome) { alert('O nome é obrigatório.'); document.getElementById('f-nome').focus(); return; }
+
+  const dados = {
+    nome,
+    empresa:      document.getElementById('f-empresa').value.trim(),
+    tipo_produto: document.getElementById('f-tipo-produto').value.trim(),
+    cidade:       document.getElementById('f-cidade').value.trim(),
+    estado:       document.getElementById('f-estado').value,
+    telefone:     document.getElementById('f-telefone').value.trim(),
+    email:        document.getElementById('f-email').value.trim(),
+    site:         document.getElementById('f-site').value.trim(),
+    tipo,
+    observacao:   document.getElementById('f-observacao').value.trim(),
+  };
+
+  const btn = document.getElementById('modal-save-btn');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+
+  try {
+    if(!_edicaoId) {
+      // Novo contato — qualquer usuário pode criar diretamente
+      const { error } = await sb.from('exp_contatos').insert({
+        ...dados, criado_por: G.usuario.id, criado_em: new Date().toISOString(),
+      });
+      if(error) throw error;
+    } else if(isSocio()) {
+      // Edição direta — sócios aplicam imediatamente
+      const { error } = await sb.from('exp_contatos').update(dados).eq('id', _edicaoId);
+      if(error) throw error;
+    } else {
+      // Edição pendente — não-sócios aguardam aprovação
+      const { error } = await sb.from('exp_contatos_pendentes').insert({
+        contato_id:       _edicaoId,
+        dados_novos:      dados,
+        editado_por:      G.usuario.id,
+        editado_por_nome: G.usuario.nome,
+        editado_em:       new Date().toISOString(),
+        status:           'pendente',
+      });
+      if(error) throw error;
+      fecharModal();
+      alert('Suas alterações foram enviadas para aprovação.');
+      return;
+    }
+    fecharModal();
+    await carregarContatos();
+    buscar(G.busca);
+  } catch(err) {
+    alert('Erro ao salvar: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── AÇÕES DB ────────────────────────────────────────────────────────────────
+async function validarContato(id) {
+  const now = new Date().toISOString();
+  const { error } = await sb.from('exp_contatos').update({ validado_em: now }).eq('id', id);
+  if(error) { alert('Erro ao validar: ' + error.message); return; }
+  const c = G.contatos.find(x=>x.id===id);
+  if(c) c.validado_em = now;
+  buscar(G.busca);
+}
+
+async function desativarContato(id) {
+  if(!isSocio()) return;
+  if(!confirm('Desativar este contato? Ele ficará visível apenas para sócios.')) return;
+  const { error } = await sb.from('exp_contatos').update({
+    desativado: true, desativado_em: new Date().toISOString(),
+  }).eq('id', id);
+  if(error) { alert('Erro: ' + error.message); return; }
+  await carregarContatos();
+  buscar(G.busca);
+}
+
+async function reativarContato(id) {
+  if(!isSocio()) return;
+  const { error } = await sb.from('exp_contatos').update({ desativado: false, desativado_em: null }).eq('id', id);
+  if(error) { alert('Erro: ' + error.message); return; }
+  await carregarContatos();
+  buscar(G.busca);
+}
+
+async function aprovarEdicao(pendenteId) {
+  const p = G.pendentes.find(x=>x.id===pendenteId);
+  if(!p) return;
+  const { error: e1 } = await sb.from('exp_contatos').update(p.dados_novos).eq('id', p.contato_id);
+  if(e1) { alert('Erro ao aplicar edição: ' + e1.message); return; }
+  await sb.from('exp_contatos_pendentes').update({ status:'aprovado' }).eq('id', pendenteId);
+  await carregarContatos();
+  buscar(G.busca);
+}
+
+async function rejeitarEdicao(pendenteId) {
+  await sb.from('exp_contatos_pendentes').update({ status:'rejeitado' }).eq('id', pendenteId);
+  G.pendentes = G.pendentes.filter(p => p.id !== pendenteId);
+  renderPendentes();
+}
+
+// ─── CARREGAR DADOS ───────────────────────────────────────────────────────────
+async function carregarContatos() {
+  const { data: ativos } = await sb
+    .from('exp_contatos').select('*').eq('desativado', false).order('nome');
+  G.contatos = ativos || [];
+
+  if(isSocio()) {
+    const { data: inativos } = await sb
+      .from('exp_contatos').select('*').eq('desativado', true).order('nome');
+    G.desativados = inativos || [];
+
+    const { data: pends } = await sb
+      .from('exp_contatos_pendentes').select('*').eq('status','pendente').order('editado_em');
+    G.pendentes = pends || [];
+
+    if(G.desativados.length > 0) {
+      document.getElementById('desativados-wrap').style.display = 'block';
+      document.getElementById('desativ-lbl').textContent = `Ver contatos desativados (${G.desativados.length})`;
+    }
+  }
+
+  const n = G.contatos.length;
+  document.getElementById('ct-count').textContent = `${n} contato${n!==1?'s ativos':' ativo'}`;
+  renderPendentes();
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function toggleNav() {
+  document.getElementById('nav-dropdown').classList.toggle('open');
+}
+function toggleUserMenu() {
+  document.getElementById('user-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const nw = document.getElementById('nav-mod-wrap');
+  if(nw && !nw.contains(e.target)) document.getElementById('nav-dropdown')?.classList.remove('open');
+  const uw = document.querySelector('.user-pill-wrap');
+  if(uw && !uw.contains(e.target)) document.getElementById('user-dropdown')?.classList.remove('open');
+});
+document.addEventListener('keydown', e => { if(e.key==='Escape') fecharModal(); });
+
+// ─── AUTH & INIT ──────────────────────────────────────────────────────────────
+async function sair() {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('exp_usuario');
+  window.location.href = 'index.html';
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session) { window.location.href = 'index.html'; return; }
+
+  const { data: u } = await sb.from('usuarios').select('*').eq('auth_id', session.user.id).single();
+  if(!u) { window.location.href = 'index.html'; return; }
+  G.usuario = u;
+  sessionStorage.setItem('exp_usuario', JSON.stringify({ ...u, auth_id: session.user.id }));
+
+  const av = document.getElementById('user-av');
+  av.textContent    = u.iniciais || '?';
+  av.style.background = u.cor || '#888';
+  document.getElementById('user-nome').textContent = (u.nome||'').split(' ')[0] || '—';
+
+  try {
+    const { error } = await sb.from('usuarios').select('id').limit(1);
+    document.getElementById('conn-dot').classList.add(error ? 'offline' : 'online');
+  } catch { document.getElementById('conn-dot').classList.add('offline'); }
+
+  await carregarContatos();
+  buscar('');
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('conteudo').style.display = 'block';
+});
+</script>
+</body>
+</html>
