@@ -15,6 +15,30 @@
 
   SETUP SQL — rodar UMA VEZ no Supabase SQL Editor:
 
+  -- ── TABELA DE NOTIFICAÇÕES (adicionar se não existir) ──────
+  CREATE TABLE IF NOT EXISTS notificacoes (
+    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id      uuid REFERENCES usuarios(id) ON DELETE CASCADE,
+    tipo            text NOT NULL,  -- mencao | tarefa | revisao | prancha | lembrete
+    titulo          text NOT NULL,
+    corpo           text,
+    link_tipo       text,           -- registro | revisao | tarefa | lembrete
+    link_produto_id uuid,
+    link_etapa_id   uuid,
+    link_entrada_id uuid,
+    link_revisao_id uuid,
+    criado_por      uuid REFERENCES usuarios(id),
+    criado_por_nome text,
+    lido_em         timestamptz,    -- null = não lida (aparece colorida)
+    encerrado_em    timestamptz,    -- null = visível; preenchido = arquivada
+    created_at      timestamptz DEFAULT now()
+  );
+  ALTER TABLE notificacoes ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "autenticados" ON notificacoes FOR ALL USING (auth.role() = 'authenticated');
+  -- Realtime: habilitar para que o sino atualize automaticamente
+  ALTER PUBLICATION supabase_realtime ADD TABLE notificacoes;
+  -- ────────────────────────────────────────────────────────────
+
   -- 1. PRODUTOS (unidade executável)
   CREATE TABLE produtos (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -412,6 +436,35 @@ body::before {
 .exp-room-btn:hover { background: var(--verde); color: #fff; }
 /* conn-dot permanece como indicador de status de rede (sem hover, sem cursor pointer) */
 .conn-dot { cursor: default; pointer-events: none; }
+/* ── NOTIFICAÇÕES ─────────────────────────────────────────── */
+.notif-wrap{position:relative;display:flex;align-items:center;gap:4px}
+.notif-bell{width:28px;height:28px;border:1px solid var(--cinza);background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;position:relative;flex-shrink:0;font-family:inherit;transition:border-color .12s}
+.notif-bell:hover{border-color:var(--preto)}
+.notif-badge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:var(--tc);color:#fff;font-size:8px;font-weight:700;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--off);pointer-events:none}
+.notif-plus{width:22px;height:22px;border:1px solid var(--cinza);background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;font-weight:300;color:#888;font-family:inherit;transition:all .12s}
+.notif-plus:hover{border-color:var(--am);color:var(--am)}
+.notif-panel{position:absolute;top:calc(100% + 8px);right:0;width:320px;background:#fff;border:1px solid var(--cinza);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:500;overflow:hidden}
+.notif-panel-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--cinza2)}
+.notif-panel-hd-t{font-size:11px;font-weight:700;letter-spacing:.3px}
+.notif-panel-clr{font-size:10px;color:#999;background:none;border:none;cursor:pointer;font-family:var(--f);padding:0}
+.notif-panel-clr:hover{color:var(--tc)}
+.notif-item{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
+.notif-item:last-child{border-bottom:none}
+.notif-item.nova{background:#eef3fb}
+.notif-item:hover{background:var(--off)}
+.notif-item.nova:hover{background:#e1ecff}
+.notif-item-row{display:flex;align-items:flex-start;gap:8px}
+.notif-icon{font-size:13px;flex-shrink:0;margin-top:1px}
+.notif-titulo{font-size:11px;font-weight:600;flex:1;line-height:1.4}
+.notif-check-btn{width:20px;height:20px;border:1px solid var(--cinza);border-radius:50%;background:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#888;font-family:inherit;padding:0;line-height:1}
+.notif-check-btn:hover{border-color:var(--verde);color:var(--verde)}
+.notif-corpo{font-size:10px;color:#666;line-height:1.4;padding-left:21px;white-space:pre-wrap;word-break:break-word}
+.notif-ts{font-size:9px;color:#bbb;padding-left:21px}
+/* @ Mention autocomplete */
+.mencao-dd{position:fixed;background:#fff;border:1px solid var(--cinza);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.13);z-index:9000;max-height:180px;overflow-y:auto;min-width:190px}
+.mencao-it{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-size:11px;font-family:var(--f)}
+.mencao-it:hover,.mencao-it.sel{background:var(--off)}
+.mencao-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0}
 
 /* ── MAIN ────────────────────────────────────────────────── */
 .main {
@@ -1513,6 +1566,20 @@ body::before {
     <a href="#" target="_blank" class="exp-room-btn" id="exp-room-link" title="EXP Room — Reunião online">
       <span>📹</span>
     </a>
+    <!-- Notificações -->
+    <div class="notif-wrap" id="notif-wrap">
+      <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notificações">
+        🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
+      </button>
+      <button class="notif-plus socio-only" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe" style="display:none">＋</button>
+      <div class="notif-panel" id="notif-panel" style="display:none">
+        <div class="notif-panel-hd">
+          <span class="notif-panel-hd-t">Notificações</span>
+          <button class="notif-panel-clr" onclick="encerrarTodasNotif()">Encerrar todas ✓</button>
+        </div>
+        <div id="notif-lista"><div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Carregando…</div></div>
+      </div>
+    </div>
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-chip" onclick="toggleUserMenu()">
         <div class="uav" id="nav-av"></div>
@@ -2835,6 +2902,10 @@ document.addEventListener('click', e => {
     document.getElementById('nav-dropdown')?.classList.remove('open');
   if (!document.getElementById('user-pill-wrap')?.contains(e.target))
     document.getElementById('user-dropdown')?.classList.remove('open');
+  if (!document.getElementById('notif-wrap')?.contains(e.target)) {
+    const p = document.getElementById('notif-panel');
+    if (p) p.style.display = 'none';
+  }
 });
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
@@ -2945,6 +3016,9 @@ async function init() {
     carregarUsuarios(),
     carregarProdutos(),
   ]);
+
+  // Notificações
+  iniciarNotificacoes();
 
   // Dashboard
   carregarDashboard();
@@ -3798,6 +3872,10 @@ async function confirmarAtribuirTarefa() {
   carregarTarefas();
   const dest = G.todosUsuarios.find(u => u.id === para);
   toast('Tarefa atribuída para ' + (dest?.nome.split(' ')[0] || 'destinatário'));
+  // Notifica o destinatário
+  criarNotificacao(para, 'tarefa',
+    `${G.usuario.nome.split(' ')[0]} atribuiu uma tarefa para você`,
+    desc, { tipo: 'tarefa' });
 }
 
 async function toggleTarefa(id, atual) {
@@ -5549,6 +5627,7 @@ async function selecionarRevisao(id) {
       </div>
       <div style="display:flex;gap:6px">
         ${isSocioOrCoord ? `<button class="btn sm verde" onclick="addPranchaRevisao('${id}')">+ Prancha</button>` : ''}
+        <button class="btn sm" onclick="notificarRevisao('${id}')" title="Notificar coordenador que revisão está pronta">📢 Notificar</button>
       </div>
     </div>
     <div id="pranchas-wrap">
@@ -8775,6 +8854,8 @@ async function postarComentario(entradaId, parentId) {
     criado_em:      new Date().toISOString(),
   });
   if(error) { toast('Erro ao postar comentário.'); return; }
+  // Notifica @menções antes de limpar o campo
+  if(inp) notificarMencoes(text, inp, { tipo:'registro', produto_id: G.produtoAtivo, entrada_id: entradaId });
   if(inp) inp.value = '';
   if(parentId) { const f = document.getElementById(`rc-reply-${parentId}`); if(f) f.style.display='none'; }
   // Atualiza contador local
@@ -8891,6 +8972,9 @@ function _renderFormRegistro(entrada) {
       <button class="btn sm verde" onclick="salvarEntradaReg()">${entrada?'Salvar alterações':'Salvar registro'}</button>
     </div>
   </div>`;
+  // Ativa @mention no campo de corpo
+  const corpoEl = document.getElementById('rf-corpo');
+  if(corpoEl) ativarMencao(corpoEl);
 }
 
 function _syncEncsLista() {
@@ -9010,6 +9094,21 @@ async function salvarEntradaReg() {
         created_at:     now,
       }));
       await sb.from('tarefas_livres').insert(tarefas);
+      // Notifica cada usuário atribuído
+      for(const e of atribUsers) {
+        criarNotificacao(e.atrib_id, 'tarefa',
+          `${u.nome.split(' ')[0]} atribuiu encaminhamentos para você`,
+          descTarefa,
+          { tipo:'registro', produto_id: G.produtoAtivo, entrada_id: entradaId }
+        );
+      }
+    }
+    // Notifica @menções no corpo do registro
+    const corpoEl = document.getElementById('rf-corpo');
+    if(corpoEl && corpo) {
+      notificarMencoes(corpo, corpoEl,
+        { tipo:'registro', produto_id: G.produtoAtivo, entrada_id: entradaId }
+      );
     }
     const foiEdicao = !!G._regEditId;
     cancelarFormRegistro();
@@ -9044,6 +9143,371 @@ function deletarEntradaReg(id) {
       } catch(err) { toast('Erro ao excluir: ' + (err.message||err)); }
     }
   );
+}
+
+// ══════════════════════════════════════════════════════════════
+//   NOTIFICAÇÕES + @ MENTION
+// ══════════════════════════════════════════════════════════════
+
+// Helpers de escape (independentes dos de registro)
+const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+
+// ── Estado ────────────────────────────────────────────────────
+G._notifs = [];
+
+// ── Criar notificação no DB (não notifica a si mesmo) ─────────
+async function criarNotificacao(usuarioId, tipo, titulo, corpo, link = {}) {
+  if(!usuarioId || usuarioId === G.usuario.id) return;
+  try {
+    await sb.from('notificacoes').insert({
+      usuario_id:      usuarioId,
+      tipo,
+      titulo:          titulo  || '',
+      corpo:           corpo   || null,
+      link_tipo:       link.tipo        || null,
+      link_produto_id: link.produto_id  || null,
+      link_etapa_id:   link.etapa_id    || null,
+      link_entrada_id: link.entrada_id  || null,
+      link_revisao_id: link.revisao_id  || null,
+      criado_por:      G.usuario.id,
+      criado_por_nome: G.usuario.nome,
+      created_at:      new Date().toISOString(),
+    });
+  } catch(e) { console.warn('criarNotificacao:', e.message); }
+}
+
+// ── Inicia: carrega + assina realtime ─────────────────────────
+async function iniciarNotificacoes() {
+  await carregarNotificacoes();
+  // Realtime: novas notificações chegam em tempo real
+  try {
+    sb.channel('notif-' + G.usuario.id)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notificacoes',
+        filter: `usuario_id=eq.${G.usuario.id}`
+      }, payload => {
+        G._notifs.unshift(payload.new);
+        if(G._notifs.length > 10) G._notifs = G._notifs.slice(0, 10);
+        _renderNotifBadge();
+        // Re-renderiza o painel se estiver aberto
+        const p = document.getElementById('notif-panel');
+        if(p && p.style.display !== 'none') renderNotifPanel();
+      })
+      .subscribe();
+  } catch(e) { /* realtime opcional */ }
+}
+
+// ── Carrega últimas 10 notificações não encerradas ────────────
+async function carregarNotificacoes() {
+  const { data } = await sb.from('notificacoes')
+    .select('*')
+    .eq('usuario_id', G.usuario.id)
+    .is('encerrado_em', null)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  G._notifs = data || [];
+  _renderNotifBadge();
+}
+
+function _renderNotifBadge() {
+  const novas = G._notifs.filter(n => !n.lido_em).length;
+  const badge = document.getElementById('notif-badge');
+  if(!badge) return;
+  badge.textContent = novas;
+  badge.style.display = novas > 0 ? 'flex' : 'none';
+}
+
+// ── Abre/fecha painel ─────────────────────────────────────────
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  if(!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if(!open) renderNotifPanel();
+}
+
+// ── Renderiza lista de notificações ──────────────────────────
+function renderNotifPanel() {
+  const lista = document.getElementById('notif-lista');
+  if(!lista) return;
+  if(!G._notifs.length) {
+    lista.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Nenhuma notificação</div>';
+    return;
+  }
+  const icons = { mencao:'@', tarefa:'✔', revisao:'📋', prancha:'🖼', lembrete:'📢' };
+  lista.innerHTML = G._notifs.map(n => {
+    const nova  = !n.lido_em;
+    const dt    = new Date(n.created_at);
+    const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const icon  = icons[n.tipo] || '🔔';
+    return `<div class="notif-item${nova?' nova':''}" onclick="abrirNotif(${_sqN(n.id)})">
+      <div class="notif-item-row">
+        <span class="notif-icon">${icon}</span>
+        <span class="notif-titulo">${_escN(n.titulo)}</span>
+        <button class="notif-check-btn" title="Encerrar" onclick="event.stopPropagation();encerrarNotif(${_sqN(n.id)})">✓</button>
+      </div>
+      ${n.corpo?`<div class="notif-corpo">${_escN(n.corpo)}</div>`:''}
+      <div class="notif-ts">${dtStr}${n.criado_por_nome?' · '+_escN(n.criado_por_nome):''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Abre notificação: marca como lida + navega ────────────────
+async function abrirNotif(id) {
+  const n = G._notifs.find(x => x.id === id);
+  if(!n) return;
+  // Marca como lida
+  if(!n.lido_em) {
+    n.lido_em = new Date().toISOString();
+    sb.from('notificacoes').update({ lido_em: n.lido_em }).eq('id', id);
+    _renderNotifBadge();
+    renderNotifPanel();
+  }
+  // Fecha painel e navega
+  const panel = document.getElementById('notif-panel');
+  if(panel) panel.style.display = 'none';
+
+  if(n.link_tipo === 'registro' && n.link_produto_id) {
+    await abrirProduto(n.link_produto_id);
+    setTimeout(() => {
+      const tabBtn = document.querySelector('#modal-produto .modal-tab[data-panel="mp-registros"]');
+      if(tabBtn) tabBtn.click();
+      if(n.link_entrada_id) setTimeout(() => {
+        const card = document.getElementById('re-' + n.link_entrada_id);
+        if(card) {
+          card.style.outline = '2px solid var(--az)';
+          card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+          setTimeout(() => card.style.outline = '', 2500);
+        }
+      }, 700);
+    }, 300);
+  } else if(n.link_tipo === 'revisao' && n.link_revisao_id) {
+    document.querySelector('.ntab[data-tab="revisoes"]')?.click();
+    setTimeout(() => selecionarRevisao(n.link_revisao_id), 500);
+  } else if(n.link_tipo === 'tarefa') {
+    document.querySelector('.ntab[data-tab="dashboard"]')?.click();
+    setTimeout(() => {
+      document.querySelector('[id^="tarefa-"]')?.scrollIntoView({ behavior:'smooth' });
+    }, 300);
+  }
+}
+
+// ── Encerra (check ✓) ─────────────────────────────────────────
+async function encerrarNotif(id) {
+  await sb.from('notificacoes').update({ encerrado_em: new Date().toISOString() }).eq('id', id);
+  G._notifs = G._notifs.filter(n => n.id !== id);
+  _renderNotifBadge();
+  renderNotifPanel();
+}
+
+async function encerrarTodasNotif() {
+  await sb.from('notificacoes')
+    .update({ encerrado_em: new Date().toISOString() })
+    .eq('usuario_id', G.usuario.id)
+    .is('encerrado_em', null);
+  G._notifs = [];
+  _renderNotifBadge();
+  renderNotifPanel();
+}
+
+// ══════════════════════════════════════════════════════════════
+//   @ MENTION AUTOCOMPLETE
+// ══════════════════════════════════════════════════════════════
+
+let _mencaoDD   = null;  // dropdown DOM element
+let _mencaoTa   = null;  // textarea alvo
+let _mencaoPos  = -1;    // posição do @ no texto
+
+// Ativa @mention em um textarea
+function ativarMencao(ta) {
+  if(!ta || ta._mencaoOk) return;
+  ta._mencaoOk  = true;
+  ta._mencaoSet = new Set(); // UUIDs das menções confirmadas via autocomplete
+  ta.addEventListener('input',   _mencaoInput);
+  ta.addEventListener('keydown', _mencaoKeydown);
+  ta.addEventListener('blur',    () => setTimeout(_fecharMencaoDD, 180));
+}
+
+function _mencaoInput(e) {
+  const ta  = e.target;
+  const pos = ta.selectionStart;
+  const val = ta.value;
+  let atPos = -1;
+  for(let i = pos - 1; i >= 0; i--) {
+    if(val[i] === '@') { atPos = i; break; }
+    if(val[i] === ' ' || val[i] === '\n') break;
+  }
+  if(atPos < 0) { _fecharMencaoDD(); return; }
+  const q = val.slice(atPos + 1, pos).toLowerCase();
+  _mencaoTa  = ta;
+  _mencaoPos = atPos;
+  const hits = (G.todosUsuarios || [])
+    .filter(u => u.nome.toLowerCase().includes(q))
+    .slice(0, 6);
+  if(!hits.length) { _fecharMencaoDD(); return; }
+  _abrirMencaoDD(ta, hits);
+}
+
+function _mencaoKeydown(e) {
+  if(!_mencaoDD) return;
+  const items = [..._mencaoDD.querySelectorAll('.mencao-it')];
+  let sel = items.findIndex(i => i.classList.contains('sel'));
+  if(e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel+1, items.length-1); }
+  else if(e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel-1, 0); }
+  else if(e.key === 'Enter' && sel >= 0) { e.preventDefault(); items[sel].click(); return; }
+  else if(e.key === 'Escape') { _fecharMencaoDD(); return; }
+  else return;
+  items.forEach((it, i) => it.classList.toggle('sel', i === sel));
+}
+
+function _abrirMencaoDD(ta, users) {
+  _fecharMencaoDD();
+  const rect = ta.getBoundingClientRect();
+  _mencaoDD = document.createElement('div');
+  _mencaoDD.className = 'mencao-dd';
+  _mencaoDD.style.cssText = `left:${rect.left}px;top:${Math.min(rect.bottom + 4, window.innerHeight - 200)}px`;
+  _mencaoDD.innerHTML = users.map(u =>
+    `<div class="mencao-it" data-uid="${u.id}" data-nome="${u.nome.replace(/"/g,'&quot;')}">
+      <div class="mencao-av" style="background:${u.cor||'#888'}">${u.iniciais||'?'}</div>
+      ${_escN(u.nome)}
+    </div>`
+  ).join('');
+  _mencaoDD.querySelectorAll('.mencao-it').forEach(item =>
+    item.addEventListener('mousedown', e => {
+      e.preventDefault();
+      _selecionarMencao(item.dataset.uid, item.dataset.nome);
+    })
+  );
+  document.body.appendChild(_mencaoDD);
+}
+
+function _selecionarMencao(uid, nome) {
+  if(!_mencaoTa) return;
+  const ta   = _mencaoTa;
+  const pos  = ta.selectionStart;
+  const val  = ta.value;
+  ta.value = val.slice(0, _mencaoPos) + '@' + nome + ' ' + val.slice(pos);
+  ta.selectionStart = ta.selectionEnd = _mencaoPos + nome.length + 2;
+  ta.focus();
+  if(!ta._mencaoSet) ta._mencaoSet = new Set();
+  ta._mencaoSet.add(uid);
+  _fecharMencaoDD();
+}
+
+function _fecharMencaoDD() {
+  if(_mencaoDD) { _mencaoDD.remove(); _mencaoDD = null; }
+}
+
+// Notifica todos os usuários mencionados no texto
+async function notificarMencoes(texto, ta, link) {
+  const uids = ta?._mencaoSet ? [...ta._mencaoSet] : [];
+  // Fallback: parse @Nome no texto
+  if(!uids.length) {
+    (texto.match(/@([\w\u00C0-\u024F]+(?:\s[\w\u00C0-\u024F]+)?)/g) || []).forEach(m => {
+      const q = m.slice(1).toLowerCase();
+      const u = (G.todosUsuarios||[]).find(x => x.nome.toLowerCase().startsWith(q));
+      if(u) uids.push(u.id);
+    });
+  }
+  const unique = [...new Set(uids)];
+  for(const uid of unique) {
+    await criarNotificacao(uid, 'mencao',
+      `${G.usuario.nome.split(' ')[0]} mencionou você`,
+      texto.slice(0, 100) + (texto.length > 100 ? '…' : ''),
+      link
+    );
+  }
+  if(ta) ta._mencaoSet = new Set(); // limpa para próxima vez
+}
+
+// ══════════════════════════════════════════════════════════════
+//   LEMBRETE (sócios) — popup de envio manual
+// ══════════════════════════════════════════════════════════════
+
+function abrirLembretePopup() {
+  let pop = document.getElementById('popup-lembrete');
+  if(pop) { pop.remove(); return; }
+  const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+  const _fs = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const _bs = 'padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;font-family:var(--f)';
+  const opts = (G.todosUsuarios||[]).map(u =>
+    `<option value="${u.id}">${_escN(u.nome)}</option>`
+  ).join('');
+  pop = document.createElement('div');
+  pop.id = 'popup-lembrete';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
+      <label style="${_ls}">Para</label>
+      <select id="lemb-para" style="${_fs};margin-bottom:10px">
+        <option value="todos">Toda a equipe</option>
+        ${opts}
+      </select>
+      <label style="${_ls}">Mensagem</label>
+      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira."
+        style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
+        <button onclick="enviarLembrete()" style="${_bs};background:var(--am);color:#fff;border-color:var(--am);font-weight:600">Enviar lembrete</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if(e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+}
+
+async function enviarLembrete() {
+  const msg  = document.getElementById('lemb-msg')?.value.trim();
+  const para = document.getElementById('lemb-para')?.value;
+  if(!msg) { toast('Escreva a mensagem do lembrete'); return; }
+  const btn = document.querySelector('#popup-lembrete button:last-child');
+  if(btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  const targets = para === 'todos'
+    ? (G.todosUsuarios||[]).filter(u => u.id !== G.usuario.id)
+    : [(G.todosUsuarios||[]).find(u => u.id === para)].filter(Boolean);
+  for(const u of targets) {
+    await criarNotificacao(u.id, 'lembrete',
+      `Lembrete de ${G.usuario.nome.split(' ')[0]}`,
+      msg,
+      { tipo: 'lembrete' }
+    );
+  }
+  document.getElementById('popup-lembrete')?.remove();
+  toast(`Lembrete enviado para ${targets.length === 1 ? targets[0].nome.split(' ')[0] : 'toda a equipe'}`);
+}
+
+// ══════════════════════════════════════════════════════════════
+//   NOTIFICAR REVISÃO (botão na revisão)
+// ══════════════════════════════════════════════════════════════
+
+async function notificarRevisao(revisaoId) {
+  const rev = G._revisoes?.find(r => r.id === revisaoId);
+  if(!rev) { toast('Revisão não encontrada'); return; }
+  const etapa = G.todasEtapas.find(e => e.id === rev.etapa_id);
+  const prod  = etapa ? G.todosProdutos.find(p => p.id === etapa.produto_id) : null;
+  const coord = prod?.coordenador_id;
+  const opp   = prod?.oportunidades;
+  const nomeProjeto = opp?.projeto || prod?.nome || 'Projeto';
+  // Coleta pranchas disponíveis (já carregadas via selecionarRevisao)
+  const pranchasEl = document.querySelectorAll('#pranchas-wrap .prancha-card');
+  const nPranchas  = pranchasEl.length;
+  const corpo = nPranchas > 1
+    ? `Novas pranchas cadastradas no projeto ${nomeProjeto}, etapa ${etapa?.nome||'—'}.`
+    : `Revisão #${rev.numero} do projeto ${nomeProjeto} está pronta para análise.`;
+  const destinos = new Set();
+  if(coord) destinos.add(coord);
+  // Notifica também o coordenador da etapa se existir
+  if(etapa?.coordenador_id) destinos.add(etapa.coordenador_id);
+  if(destinos.size === 0) { toast('Nenhum coordenador definido no projeto ou etapa'); return; }
+  for(const uid of destinos) {
+    await criarNotificacao(uid, 'revisao',
+      `Revisão #${rev.numero} pronta — ${nomeProjeto}`,
+      corpo,
+      { tipo:'revisao', produto_id: prod?.id, etapa_id: etapa?.id, revisao_id: revisaoId }
+    );
+  }
+  toast(`Notificação enviada para ${destinos.size > 1 ? 'coordenadores' : 'coordenador'}`);
 }
 
 // ── START ──────────────────────────────────────────────────
