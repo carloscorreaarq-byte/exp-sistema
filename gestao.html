@@ -9018,12 +9018,17 @@ function deletarEntradaReg(id) {
     'Excluir registro?',
     'Esta entrada, seus encaminhamentos e comentários serão removidos permanentemente.',
     async () => {
-      const { error } = await sb.from('reg_entrada').delete().eq('id', id);
-      if(error) { toast('Erro ao excluir: ' + error.message); return; }
-      // Remove tarefas automáticas vinculadas
-      await sb.from('tarefas_livres').delete().eq('reg_entrada_id', id);
-      await carregarRegistrosProduto(G.produtoAtivo);
-      toast('Registro excluído.');
+      try {
+        // Deleta filhos primeiro (evita violação de FK)
+        await sb.from('reg_comentario').delete().eq('entrada_id', id);
+        await sb.from('reg_encaminhamento').delete().eq('entrada_id', id);
+        // Tarefas automáticas vinculadas (coluna opcional — ignora erro se não existir)
+        try { await sb.from('tarefas_livres').delete().eq('reg_entrada_id', id); } catch(_){}
+        const { error } = await sb.from('reg_entrada').delete().eq('id', id);
+        if(error) { toast('Erro ao excluir: ' + error.message); return; }
+        await carregarRegistrosProduto(G.produtoAtivo);
+        toast('Registro excluído.');
+      } catch(err) { toast('Erro ao excluir: ' + (err.message||err)); }
     }
   );
 }
