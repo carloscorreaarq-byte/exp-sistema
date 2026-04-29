@@ -16,6 +16,84 @@
   SETUP SQL — rodar UMA VEZ no Supabase SQL Editor:
 
   -- ── TABELA DE NOTIFICAÇÕES (adicionar se não existir) ──────
+  -- ── CHECKLIST ────────────────────────────────────────────────
+  -- Preset de checklist de etapa (gerenciado pelos sócios)
+  CREATE TABLE checklist_etapa_preset (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome       text NOT NULL,
+    nucleo     text,
+    criado_por uuid REFERENCES usuarios(id),
+    created_at timestamptz DEFAULT now()
+  );
+  CREATE TABLE checklist_etapa_preset_item (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    preset_id  uuid REFERENCES checklist_etapa_preset(id) ON DELETE CASCADE,
+    secao      text,
+    texto      text NOT NULL,
+    ordem      int  DEFAULT 0
+  );
+  -- Checklist de entrega de etapa (instanciado por etapa de produto)
+  CREATE TABLE checklist_etapa_exec (
+    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    produto_id      uuid REFERENCES produtos(id)  ON DELETE CASCADE,
+    etapa_id        uuid REFERENCES etapas(id)    ON DELETE CASCADE,
+    preset_id       uuid REFERENCES checklist_etapa_preset(id),
+    atribuido_para  uuid REFERENCES usuarios(id),
+    atribuido_nome  text,
+    atribuido_iniciais text,
+    atribuido_cor   text,
+    created_at      timestamptz DEFAULT now()
+  );
+  CREATE TABLE checklist_etapa_exec_item (
+    id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    checklist_id        uuid REFERENCES checklist_etapa_exec(id) ON DELETE CASCADE,
+    secao               text,
+    texto               text NOT NULL,
+    ordem               int  DEFAULT 0,
+    concluido           bool DEFAULT false,
+    concluido_por       uuid REFERENCES usuarios(id),
+    concluido_por_nome  text,
+    concluido_em        timestamptz
+  );
+  -- Checklist de tarefas (aberto por sócios, vinculado a colaborador)
+  CREATE TABLE checklist_tarefa (
+    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    produto_id      uuid REFERENCES produtos(id)  ON DELETE CASCADE,
+    titulo          text NOT NULL,
+    atribuido_para  uuid REFERENCES usuarios(id),
+    atribuido_nome  text,
+    atribuido_iniciais text,
+    atribuido_cor   text,
+    status          text DEFAULT 'aberto',  -- aberto | fechado
+    criado_por      uuid REFERENCES usuarios(id),
+    criado_por_nome text,
+    created_at      timestamptz DEFAULT now()
+  );
+  CREATE TABLE checklist_tarefa_item (
+    id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    checklist_id        uuid REFERENCES checklist_tarefa(id) ON DELETE CASCADE,
+    secao               text,
+    texto               text NOT NULL,
+    ordem               int  DEFAULT 0,
+    concluido           bool DEFAULT false,
+    concluido_por       uuid REFERENCES usuarios(id),
+    concluido_por_nome  text,
+    concluido_em        timestamptz
+  );
+  -- RLS
+  ALTER TABLE checklist_etapa_preset      ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE checklist_etapa_preset_item ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE checklist_etapa_exec        ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE checklist_etapa_exec_item   ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE checklist_tarefa            ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE checklist_tarefa_item       ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "autenticados" ON checklist_etapa_preset      FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON checklist_etapa_preset_item FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON checklist_etapa_exec        FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON checklist_etapa_exec_item   FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON checklist_tarefa            FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON checklist_tarefa_item       FOR ALL USING (auth.role()='authenticated');
+  -- ────────────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS notificacoes (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id      uuid REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -473,6 +551,41 @@ body::before {
 .mencao-chip-del:hover{color:var(--tc)}
 /* @mention destacado no texto exibido */
 .mencao-hl{color:var(--az);font-weight:600;background:#e8f0fc;border-radius:3px;padding:1px 3px}
+/* Deletar comentário */
+.btn-coment-del{background:none;border:none;cursor:pointer;font-size:11px;color:#ccc;padding:0 0 0 6px;font-family:inherit;line-height:1}
+.btn-coment-del:hover{color:var(--tc)}
+/* ── CHECKLIST ───────────────────────────────────────────────── */
+.ck-section{margin-bottom:18px}
+.ck-section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--cinza2)}
+.ck-section-title{font-size:11px;font-weight:700;letter-spacing:.4px}
+.ck-card{background:#fff;border:1px solid var(--cinza);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.ck-card-hd{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
+.ck-card-hd:hover{background:var(--off)}
+.ck-card-title{font-size:12px;font-weight:600;flex:1}
+.ck-card-meta{font-size:10px;color:#888;flex-shrink:0}
+.ck-card-body{display:none;border-top:1px solid var(--cinza2);padding:10px 12px}
+.ck-card-body.open{display:block}
+.ck-prog{font-size:10px;font-weight:700;color:var(--verde);flex-shrink:0}
+.ck-prog.parcial{color:var(--am)}
+.ck-prog.zero{color:#bbb}
+.ck-secao{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin:10px 0 4px}
+.ck-item{display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2)}
+.ck-item:last-child{border-bottom:none}
+.ck-cb{width:15px;height:15px;border:1.5px solid var(--cinza);border-radius:3px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:var(--verde)}
+.ck-cb:disabled{cursor:default;opacity:.5}
+.ck-item-txt{font-size:11px;flex:1;line-height:1.4}
+.ck-item-txt.done{text-decoration:line-through;color:#bbb}
+.ck-item-who{font-size:9px;color:#aaa;flex-shrink:0}
+.ck-empty{font-size:11px;color:#ccc;padding:8px 0}
+.ck-atrib{display:flex;align-items:center;gap:5px;font-size:10px;color:#666;padding:4px 12px;background:var(--off);border-top:1px solid var(--cinza2)}
+.ck-av{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0}
+.ck-tag-fechado{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:#f0ede8;color:#999;border-radius:4px;padding:2px 7px}
+/* Preset admin (sócios) */
+.preset-card{background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:12px 14px;margin-bottom:8px}
+.preset-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.preset-card-title{font-size:12px;font-weight:600;flex:1}
+.preset-item-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:#555}
+.preset-secao-badge{font-size:9px;background:var(--cinza2);border-radius:3px;padding:1px 5px;color:#888}
 
 /* ── MAIN ────────────────────────────────────────────────── */
 .main {
@@ -2084,6 +2197,7 @@ body::before {
     <button class="socio-tab billing-only" data-panel="espelho" id="socio-tab-espelho" style="display:none">Faturamento</button>
     <button class="socio-tab" data-panel="usuarios">Usuários</button>
     <button class="socio-tab" data-panel="clientes">Clientes</button>
+    <button class="socio-tab" data-panel="presets">Presets Checklist</button>
   </div>
 
   <!-- CARGA MENSAL -->
@@ -2305,6 +2419,16 @@ body::before {
     </div>
   </div>
 
+  <!-- PRESETS CHECKLIST (sócios) -->
+  <div class="socio-panel" id="sp-presets">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div class="sec-title" style="margin-bottom:0;flex:1">Presets de Checklist — Entrega de Etapa</div>
+      <button class="btn sm verde" onclick="abrirFormPreset(null)">+ Novo preset</button>
+    </div>
+    <div style="font-size:10px;color:#888;margin-bottom:12px">Defina os itens de verificação que aparecem em cada etapa de entrega dos projetos. Cada preset pode ser vinculado a um núcleo específico ou ser genérico.</div>
+    <div id="presets-lista"><div class="loading-state">Carregando…</div></div>
+  </div>
+
 </div>
 
 </div><!-- /main -->
@@ -2328,8 +2452,9 @@ body::before {
       <div class="modal-tabs" style="padding:0 16px;margin-bottom:0">
         <button class="modal-tab active" data-modal="modal-produto" data-panel="mp-visao">Visão Geral</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-registros">Registros</button>
+        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-checklist">Checklist</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-revisoes">Revisões</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos">Custos</button>
+        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos" style="display:none">Custos</button>
         <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas">Horas</button>
       </div>
       <div style="padding:16px">
@@ -2399,6 +2524,25 @@ body::before {
           </div>
           <div id="reg-form-wrap" style="display:none"></div>
           <div id="reg-lista"></div>
+        </div>
+
+        <!-- Checklist -->
+        <div class="mtab-panel" id="mp-checklist">
+          <!-- Entrega de Etapa -->
+          <div class="ck-section">
+            <div class="ck-section-hd">
+              <span class="ck-section-title">Entrega de Etapa</span>
+            </div>
+            <div id="ck-etapa-lista"><div class="empty-note">Carregando…</div></div>
+          </div>
+          <!-- Checklists de Tarefas -->
+          <div class="ck-section">
+            <div class="ck-section-hd">
+              <span class="ck-section-title">Checklists de Tarefas</span>
+              <button class="btn sm verde socio-only" id="btn-novo-ck-tarefa" onclick="novoChecklistTarefa()" style="display:none">+ Novo</button>
+            </div>
+            <div id="ck-tarefas-lista"><div class="empty-note">Carregando…</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -3074,6 +3218,7 @@ async function init() {
       if (panelId === 'mp-revisoes')   carregarRevisoesProduto(G.produtoAtivo);
       if (panelId === 'mp-horas')      carregarHorasProduto(G.produtoAtivo);
       if (panelId === 'mp-registros')  carregarRegistrosProduto(G.produtoAtivo);
+      if (panelId === 'mp-checklist')  carregarChecklist(G.produtoAtivo);
     });
   });
 
@@ -3206,6 +3351,7 @@ function onSocioPanel(panel) {
   if (panel === 'usuarios') carregarUsuariosAdmin();
   if (panel === 'fluxo') carregarFluxo();
   if (panel === 'entregas') carregarEntregasEquipe();
+  if (panel === 'presets')  carregarPresetsAdmin();
   if (panel === 'reembolso') {
     const el = document.getElementById('rb-mes');
     if (el && !el.value) {
@@ -5964,6 +6110,13 @@ async function abrirProduto(id) {
     ? `<div style="display:flex;align-items:center;gap:6px"><div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px">${coord.iniciais}</div>${coord.nome}</div>`
     : '—';
   document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
+
+  // Custos: visível para sócios e coordenadores
+  const isSocioOrCoord = isSocio || G.usuario.role === 'coordenador';
+  document.getElementById('mp-tab-custos').style.display = isSocioOrCoord ? '' : 'none';
+  // Botão novo checklist tarefa: só sócios
+  const btnNovoCk = document.getElementById('btn-novo-ck-tarefa');
+  if(btnNovoCk) btnNovoCk.style.display = isSocio ? '' : 'none';
 
   // Financeiro (só sócios)
   if (isSocio) {
@@ -8832,7 +8985,7 @@ function _renderComent(c, allRepls) {
   <div class="reg-coment-item">
     <div class="reg-coment-av" style="background:${_regAttr(c.autor_cor||'#888')}">${_regEsc(c.autor_iniciais||'?')}</div>
     <div class="reg-coment-bubble">
-      <div class="reg-coment-meta">${_regEsc(c.autor_nome||'—')} <span>${dtStr}</span></div>
+      <div class="reg-coment-meta">${_regEsc(c.autor_nome||'—')} <span>${dtStr}</span>${(c.autor_id===G.usuario.id||G.usuario.role==='socio')?`<button class="btn-coment-del" onclick="deletarComentarioReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">×</button>`:''}</div>
       <div class="reg-coment-txt">${_hlMencao(c.texto)}</div>
       <span class="reg-coment-responder" onclick="toggleReplyFormReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">↩ responder</span>
       ${repls.length?`<div class="reg-replies">${repls.map(r=>_renderComent(r,allRepls)).join('')}</div>`:''}
@@ -9164,6 +9317,587 @@ function deletarEntradaReg(id) {
       } catch(err) { toast('Erro ao excluir: ' + (err.message||err)); }
     }
   );
+}
+
+// ══════════════════════════════════════════════════════════════
+//   CHECKLIST
+// ══════════════════════════════════════════════════════════════
+
+// ── Helpers ───────────────────────────────────────────────────
+const _ckE  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const _ckA  = s => String(s||'').replace(/"/g,'&quot;');
+const _sqCk = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+const isSocioUser = () => G.usuario.role === 'socio';
+
+// ── Estado ────────────────────────────────────────────────────
+G._ckEtapas   = [];
+G._ckTarefas  = [];
+G._ckPresets  = [];
+
+// ═════════════════════════════════════════════════════════════
+// CARREGAR / RENDERIZAR CHECKLIST DO PRODUTO
+// ═════════════════════════════════════════════════════════════
+
+async function carregarChecklist(prodId) {
+  if(!prodId) return;
+  document.getElementById('ck-etapa-lista').innerHTML  = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('ck-tarefas-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
+
+  const etapaIds = G.todasEtapas.filter(e => e.produto_id === prodId).map(e => e.id);
+
+  // Checklists de etapa exec
+  const { data: execs } = await sb.from('checklist_etapa_exec')
+    .select('*, checklist_etapa_exec_item(*)')
+    .eq('produto_id', prodId);
+  G._ckEtapas = execs || [];
+
+  // Checklists de tarefa
+  const { data: tars } = await sb.from('checklist_tarefa')
+    .select('*, checklist_tarefa_item(*)')
+    .eq('produto_id', prodId)
+    .order('created_at', { ascending: false });
+  G._ckTarefas = tars || [];
+
+  _renderCkEtapas(prodId);
+  _renderCkTarefas();
+}
+
+function _renderCkEtapas(prodId) {
+  const el = document.getElementById('ck-etapa-lista');
+  if(!el) return;
+  const etapas = G.todasEtapas
+    .filter(e => e.produto_id === prodId)
+    .sort((a,b) => (a.ordem||0)-(b.ordem||0));
+
+  if(!etapas.length) { el.innerHTML = '<div class="ck-empty">Nenhuma etapa cadastrada neste projeto.</div>'; return; }
+
+  const ORDER = { em_andamento:0, em_revisao:1, nao_iniciada:2, pausada:3, concluida:4 };
+  const sorted = [...etapas].sort((a,b) => (ORDER[a.status]||99) - (ORDER[b.status]||99));
+
+  el.innerHTML = sorted.map(etapa => {
+    const exec   = G._ckEtapas.find(x => x.etapa_id === etapa.id);
+    const isFim  = etapa.status === 'concluida';
+    const isTrav = isFim || etapa.status === 'nao_iniciada' || etapa.status === 'pausada';
+    const stBadge = (STATUS_ETAPA[etapa.status] || STATUS_ETAPA.nao_iniciada);
+    const items  = exec ? (exec.checklist_etapa_exec_item||[]).sort((a,b)=>a.ordem-b.ordem) : [];
+    const nDone  = items.filter(i=>i.concluido).length;
+    const nTotal = items.length;
+    const prog   = nTotal ? `${nDone}/${nTotal}` : '—';
+    const progCls = nTotal===0?'zero':nDone===nTotal?'ck-prog':nDone>0?'ck-prog parcial':'ck-prog zero';
+    const atrib  = exec?.atribuido_nome
+      ? `<div class="ck-atrib"><div class="ck-av" style="background:${_ckA(exec.atribuido_cor||'#888')}">${_ckE(exec.atribuido_iniciais||'?')}</div>Atribuído a ${_ckE(exec.atribuido_nome)}</div>`
+      : '';
+
+    const bodyItems = items.length
+      ? _ckRenderItems(items, isTrav)
+      : '<div class="ck-empty">Sem itens no checklist.</div>';
+
+    const config = isSocioUser()
+      ? `<button class="btn sm" style="flex-shrink:0" onclick="configurarCkEtapa(${_sqCk(etapa.id)})">${exec?'Reconfigurar':'Configurar'}</button>`
+      : (!exec ? '<span style="font-size:10px;color:#bbb">Aguardando configuração</span>' : '');
+
+    return `<div class="ck-card">
+      <div class="ck-card-hd" onclick="toggleCkCard('ck-e-${etapa.id}')">
+        <span class="badge ${stBadge.cls}" style="font-size:8px">${stBadge.label}</span>
+        <span class="ck-card-title">${_ckE(etapa.nome)}</span>
+        <span class="${progCls}" id="ck-prog-e-${etapa.id}">${prog}</span>
+        ${config}
+      </div>
+      <div class="ck-card-body" id="ck-e-${etapa.id}">
+        ${bodyItems}
+        ${atrib}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _ckRenderItems(items, readonly) {
+  let html = '';
+  let lastSecao = '__NONE__';
+  for(const it of items) {
+    if((it.secao||'') !== lastSecao) {
+      lastSecao = it.secao || '';
+      if(lastSecao) html += `<div class="ck-secao">${_ckE(lastSecao)}</div>`;
+    }
+    const who = it.concluido && it.concluido_por_nome ? `<span class="ck-item-who">${_ckE(it.concluido_por_nome)}</span>` : '';
+    html += `<div class="ck-item">
+      <input type="checkbox" class="ck-cb" ${it.concluido?'checked':''} ${readonly?'disabled':''}
+        onchange="toggleCkItem('etapa',${_sqCk(it.id)},this.checked,${_sqCk(it.checklist_id)})">
+      <span class="ck-item-txt${it.concluido?' done':''}">${_ckE(it.texto)}</span>
+      ${who}
+    </div>`;
+  }
+  return html;
+}
+
+function _renderCkTarefas() {
+  const el = document.getElementById('ck-tarefas-lista');
+  if(!el) return;
+  if(!G._ckTarefas.length) { el.innerHTML = '<div class="ck-empty">Nenhum checklist de tarefa criado ainda.</div>'; return; }
+  el.innerHTML = G._ckTarefas.map(cl => {
+    const items  = (cl.checklist_tarefa_item||[]).sort((a,b)=>a.ordem-b.ordem);
+    const nDone  = items.filter(i=>i.concluido).length;
+    const nTotal = items.length;
+    const prog   = nTotal ? `${nDone}/${nTotal}` : '—';
+    const fechado = cl.status === 'fechado';
+    const progCls = nTotal===0?'zero':nDone===nTotal?'ck-prog':nDone>0?'ck-prog parcial':'ck-prog zero';
+    const atrib  = cl.atribuido_nome
+      ? `<div class="ck-atrib"><div class="ck-av" style="background:${_ckA(cl.atribuido_cor||'#888')}">${_ckE(cl.atribuido_iniciais||'?')}</div>Atribuído a ${_ckE(cl.atribuido_nome)}</div>`
+      : '';
+    const socioAcoes = isSocioUser()
+      ? `<button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();toggleStatusCkTarefa(${_sqCk(cl.id)})">${fechado?'Reabrir':'Fechar'}</button>`
+      : '';
+    const tagFechado = fechado ? '<span class="ck-tag-fechado">Fechado</span>' : '';
+
+    return `<div class="ck-card">
+      <div class="ck-card-hd" onclick="toggleCkCard('ck-t-${cl.id}')">
+        ${tagFechado}
+        <span class="ck-card-title">${_ckE(cl.titulo)}</span>
+        <span class="${progCls}">${prog}</span>
+        ${socioAcoes}
+      </div>
+      <div class="ck-card-body" id="ck-t-${cl.id}">
+        ${items.length ? _ckRenderItems(items, fechado) : '<div class="ck-empty">Sem itens.</div>'}
+        ${atrib}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCkCard(bodyId) {
+  const el = document.getElementById(bodyId);
+  if(el) el.classList.toggle('open');
+}
+
+// ── Toggle item (etapa ou tarefa) ─────────────────────────────
+async function toggleCkItem(tipo, itemId, checked, ckId) {
+  const u   = G.usuario;
+  const now = new Date().toISOString();
+  const tbl = tipo === 'etapa' ? 'checklist_etapa_exec_item' : 'checklist_tarefa_item';
+  await sb.from(tbl).update({
+    concluido:          checked,
+    concluido_por:      checked ? u.id   : null,
+    concluido_por_nome: checked ? u.nome : null,
+    concluido_em:       checked ? now    : null,
+  }).eq('id', itemId);
+
+  // Atualiza estado local
+  const arr = tipo === 'etapa' ? G._ckEtapas : G._ckTarefas;
+  const ck  = arr.find(x => x.id === ckId);
+  if(ck) {
+    const items = tipo === 'etapa' ? ck.checklist_etapa_exec_item : ck.checklist_tarefa_item;
+    const it = (items||[]).find(i => i.id === itemId);
+    if(it) { it.concluido = checked; it.concluido_por_nome = checked ? u.nome : null; it.concluido_em = checked ? now : null; }
+    // Atualiza badge de progresso
+    const total = (items||[]).length;
+    const done  = (items||[]).filter(i=>i.concluido).length;
+    const progEl = tipo === 'etapa'
+      ? document.getElementById(`ck-prog-e-${ck.etapa_id}`)
+      : null; // tarefas: procura pelo id do checklist
+    if(progEl) {
+      progEl.textContent = `${done}/${total}`;
+      progEl.className   = total===0?'zero':done===total?'ck-prog':done>0?'ck-prog parcial':'ck-prog zero';
+    }
+  }
+}
+
+// ── Toggle status checklist tarefa (sócios) ───────────────────
+async function toggleStatusCkTarefa(id) {
+  const cl = G._ckTarefas.find(x => x.id === id);
+  if(!cl) return;
+  const novoStatus = cl.status === 'fechado' ? 'aberto' : 'fechado';
+  await sb.from('checklist_tarefa').update({ status: novoStatus }).eq('id', id);
+  cl.status = novoStatus;
+  _renderCkTarefas();
+}
+
+// ── Configurar checklist de etapa (sócios) ────────────────────
+async function configurarCkEtapa(etapaId) {
+  if(!isSocioUser()) return;
+  // Carrega presets
+  const { data: presets } = await sb.from('checklist_etapa_preset').select('id,nome,nucleo').order('nome');
+  const etapa = G.todasEtapas.find(e => e.id === etapaId);
+  const exec  = G._ckEtapas.find(x => x.etapa_id === etapaId);
+  const prod  = G.todosProdutos.find(p => p.id === G.produtoAtivo);
+
+  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const _l = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+  const _b = 'padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;font-family:var(--f)';
+
+  let pop = document.getElementById('popup-ck-etapa');
+  if(pop) pop.remove();
+  pop = document.createElement('div');
+  pop.id = 'popup-ck-etapa';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:24px 28px;max-width:400px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Configurar checklist</div>
+      <div style="font-size:11px;color:#888;margin-bottom:16px">${_ckE(etapa?.nome||'—')}</div>
+      <label style="${_l}">Preset</label>
+      <select id="pop-ck-preset" style="${_f};margin-bottom:12px">
+        <option value="">— nenhum (sem checklist) —</option>
+        ${(presets||[]).map(p=>`<option value="${p.id}" ${exec?.preset_id===p.id?'selected':''}>${_ckE(p.nome)}${p.nucleo?' ('+p.nucleo+')':''}</option>`).join('')}
+      </select>
+      <label style="${_l}">Atribuir a</label>
+      <select id="pop-ck-user" style="${_f};margin-bottom:20px">
+        <option value="">— sem atribuição —</option>
+        ${G.todosUsuarios.map(u=>`<option value="${u.id}" ${exec?.atribuido_para===u.id?'selected':''}>${_ckE(u.nome)}</option>`).join('')}
+      </select>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('popup-ck-etapa').remove()" style="${_b}">Cancelar</button>
+        <button onclick="salvarCkEtapa(${_sqCk(etapaId)})" style="${_b};background:var(--verde);color:#fff;border-color:var(--verde);font-weight:600">Salvar</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if(e.target===pop) pop.remove(); });
+  document.body.appendChild(pop);
+}
+
+async function salvarCkEtapa(etapaId) {
+  const presetId = document.getElementById('pop-ck-preset')?.value || null;
+  const userId   = document.getElementById('pop-ck-user')?.value   || null;
+  const user     = userId ? G.todosUsuarios.find(u => u.id === userId) : null;
+  const now      = new Date().toISOString();
+  document.getElementById('popup-ck-etapa')?.remove();
+
+  // Apaga exec existente
+  const old = G._ckEtapas.find(x => x.etapa_id === etapaId);
+  if(old) {
+    await sb.from('checklist_etapa_exec_item').delete().eq('checklist_id', old.id);
+    await sb.from('checklist_etapa_exec').delete().eq('id', old.id);
+  }
+
+  if(!presetId) { await carregarChecklist(G.produtoAtivo); return; }
+
+  // Cria novo exec
+  const { data: exec, error: e1 } = await sb.from('checklist_etapa_exec').insert({
+    produto_id:          G.produtoAtivo,
+    etapa_id:            etapaId,
+    preset_id:           presetId,
+    atribuido_para:      userId,
+    atribuido_nome:      user?.nome      || null,
+    atribuido_iniciais:  user?.iniciais  || null,
+    atribuido_cor:       user?.cor       || null,
+    created_at:          now,
+  }).select().single();
+  if(e1) { toast('Erro: '+e1.message); return; }
+
+  // Copia itens do preset
+  const { data: presetItems } = await sb.from('checklist_etapa_preset_item')
+    .select('*').eq('preset_id', presetId).order('ordem');
+  if(presetItems?.length) {
+    await sb.from('checklist_etapa_exec_item').insert(
+      presetItems.map(it => ({
+        checklist_id: exec.id,
+        secao:        it.secao   || null,
+        texto:        it.texto,
+        ordem:        it.ordem,
+        concluido:    false,
+      }))
+    );
+  }
+
+  // Notifica usuário atribuído
+  if(userId) {
+    const etapa = G.todasEtapas.find(e => e.id === etapaId);
+    const prod  = G.todosProdutos.find(p => p.id === G.produtoAtivo);
+    criarNotificacao(userId, 'tarefa',
+      `${G.usuario.nome.split(' ')[0]} atribuiu uma entrega de etapa para você`,
+      `Etapa: ${etapa?.nome||'—'} — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
+      { tipo:'registro', produto_id: G.produtoAtivo }
+    );
+  }
+  await carregarChecklist(G.produtoAtivo);
+  toast('Checklist de etapa configurado.');
+}
+
+// ── Novo checklist de tarefas (sócios) ────────────────────────
+function novoChecklistTarefa() {
+  if(!isSocioUser()) return;
+  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const _l = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+  const _b = 'padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;font-family:var(--f)';
+  let pop = document.getElementById('popup-ck-tarefa');
+  if(pop) { pop.remove(); return; }
+  pop = document.createElement('div');
+  pop.id = 'popup-ck-tarefa';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:24px 28px;max-width:460px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;margin-bottom:16px">Novo checklist de tarefas</div>
+      <label style="${_l}">Título do checklist</label>
+      <input id="ckt-titulo" type="text" style="${_f};margin-bottom:12px" placeholder="Ex: Entregáveis do anteprojeto">
+      <label style="${_l}">Atribuir a</label>
+      <select id="ckt-user" style="${_f};margin-bottom:12px">
+        <option value="">— sem atribuição —</option>
+        ${G.todosUsuarios.map(u=>`<option value="${u.id}">${_ckE(u.nome)}</option>`).join('')}
+      </select>
+      <label style="${_l}">Itens</label>
+      <div id="ckt-items-lista" style="margin-bottom:6px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:16px">
+        <input id="ckt-item-txt"  type="text" style="${_f};flex:3" placeholder="Texto do item…">
+        <input id="ckt-item-sec"  type="text" style="${_f};flex:2" placeholder="Seção (opcional)">
+        <button onclick="_addCktItem()" style="${_b};flex-shrink:0">+ Add</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('popup-ck-tarefa').remove()" style="${_b}">Cancelar</button>
+        <button onclick="salvarChecklistTarefa()" style="${_b};background:var(--verde);color:#fff;border-color:var(--verde);font-weight:600">Criar checklist</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if(e.target===pop) pop.remove(); });
+  pop._items = [];
+  document.body.appendChild(pop);
+  document.getElementById('ckt-item-txt')?.addEventListener('keydown', e => {
+    if(e.key==='Enter') { e.preventDefault(); _addCktItem(); }
+  });
+}
+
+function _addCktItem() {
+  const txt = document.getElementById('ckt-item-txt')?.value.trim();
+  const sec = document.getElementById('ckt-item-sec')?.value.trim() || null;
+  if(!txt) return;
+  const pop = document.getElementById('popup-ck-tarefa');
+  if(!pop) return;
+  pop._items = pop._items || [];
+  pop._items.push({ texto: txt, secao: sec });
+  document.getElementById('ckt-item-txt').value = '';
+  // re-render list
+  const lista = document.getElementById('ckt-items-lista');
+  if(lista) lista.innerHTML = pop._items.map((it,i)=>
+    `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px">
+      <span style="flex:1">${it.secao?`<span class="preset-secao-badge">${_ckE(it.secao)}</span> `:''}${_ckE(it.texto)}</span>
+      <button onclick="_remCktItem(${i})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px">×</button>
+    </div>`
+  ).join('');
+}
+function _remCktItem(i) {
+  const pop = document.getElementById('popup-ck-tarefa');
+  if(!pop?._items) return;
+  pop._items.splice(i, 1);
+  const lista = document.getElementById('ckt-items-lista');
+  if(lista) lista.innerHTML = (pop._items||[]).map((it,j)=>
+    `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px">
+      <span style="flex:1">${it.secao?`<span class="preset-secao-badge">${_ckE(it.secao)}</span> `:''}${_ckE(it.texto)}</span>
+      <button onclick="_remCktItem(${j})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px">×</button>
+    </div>`
+  ).join('');
+}
+
+async function salvarChecklistTarefa() {
+  const titulo  = document.getElementById('ckt-titulo')?.value.trim();
+  const userId  = document.getElementById('ckt-user')?.value || null;
+  const pop     = document.getElementById('popup-ck-tarefa');
+  const items   = pop?._items || [];
+  if(!titulo) { toast('Informe o título do checklist'); return; }
+  const user    = userId ? G.todosUsuarios.find(u => u.id === userId) : null;
+  const u       = G.usuario;
+  const { data: cl, error } = await sb.from('checklist_tarefa').insert({
+    produto_id:         G.produtoAtivo,
+    titulo,
+    atribuido_para:     userId,
+    atribuido_nome:     user?.nome     || null,
+    atribuido_iniciais: user?.iniciais || null,
+    atribuido_cor:      user?.cor      || null,
+    status:             'aberto',
+    criado_por:         u.id,
+    criado_por_nome:    u.nome,
+    created_at:         new Date().toISOString(),
+  }).select().single();
+  if(error) { toast('Erro: '+error.message); return; }
+  if(items.length) {
+    await sb.from('checklist_tarefa_item').insert(
+      items.map((it,i) => ({
+        checklist_id: cl.id,
+        texto:  it.texto,
+        secao:  it.secao || null,
+        ordem:  i,
+        concluido: false,
+      }))
+    );
+  }
+  // Notifica atribuído
+  if(userId) {
+    const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo);
+    criarNotificacao(userId, 'tarefa',
+      `${u.nome.split(' ')[0]} atribuiu um checklist de tarefas para você`,
+      `"${titulo}" — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
+      { tipo:'registro', produto_id: G.produtoAtivo }
+    );
+  }
+  pop?.remove();
+  await carregarChecklist(G.produtoAtivo);
+  toast('Checklist criado.');
+}
+
+// ═════════════════════════════════════════════════════════════
+// PRESETS (painel sócios)
+// ═════════════════════════════════════════════════════════════
+
+async function carregarPresetsAdmin() {
+  const { data } = await sb.from('checklist_etapa_preset')
+    .select('*, checklist_etapa_preset_item(*)')
+    .order('nome');
+  G._ckPresets = data || [];
+  _renderPresetsAdmin();
+}
+
+function _renderPresetsAdmin() {
+  const el = document.getElementById('presets-lista');
+  if(!el) return;
+  if(!G._ckPresets.length) {
+    el.innerHTML = '<div class="empty-note">Nenhum preset ainda. Crie o primeiro preset acima.</div>';
+    return;
+  }
+  el.innerHTML = G._ckPresets.map(p => {
+    const items = (p.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem);
+    return `<div class="preset-card">
+      <div class="preset-card-hd">
+        <span class="preset-card-title">${_ckE(p.nome)}</span>
+        ${p.nucleo?`<span class="badge b-gr" style="font-size:8px">${_ckE(p.nucleo)}</span>`:''}
+        <span style="flex:1"></span>
+        <button class="btn sm" onclick="abrirFormPreset(${_sqCk(p.id)})">Editar</button>
+        <button class="btn sm tc" onclick="deletarPreset(${_sqCk(p.id)})">×</button>
+      </div>
+      <div>
+        ${items.length
+          ? items.map(it=>`<div class="preset-item-row">
+              ${it.secao?`<span class="preset-secao-badge">${_ckE(it.secao)}</span>`:'<span style="width:4px;height:4px;border-radius:50%;background:#ccc;display:inline-block"></span>'}
+              ${_ckE(it.texto)}
+            </div>`).join('')
+          : '<div style="font-size:10px;color:#bbb">Sem itens.</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirFormPreset(id) {
+  const preset = id ? G._ckPresets.find(p => p.id === id) : null;
+  const items  = preset ? (preset.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem) : [];
+  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const _l = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+  const _b = 'padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;font-family:var(--f)';
+  let pop = document.getElementById('popup-preset');
+  if(pop) pop.remove();
+  pop = document.createElement('div');
+  pop.id = 'popup-preset';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:24px 28px;max-width:460px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;margin-bottom:16px">${preset?'Editar preset':'Novo preset'}</div>
+      <label style="${_l}">Nome do preset</label>
+      <input id="pre-nome" type="text" style="${_f};margin-bottom:10px" value="${_ckA(preset?.nome||'')}" placeholder="Ex: Entrega Urbana Padrão">
+      <label style="${_l}">Núcleo (opcional)</label>
+      <select id="pre-nucleo" style="${_f};margin-bottom:14px">
+        <option value="">Genérico (todos)</option>
+        <option value="urbanismo"    ${preset?.nucleo==='urbanismo'?'selected':''}>Urbanismo</option>
+        <option value="paisagismo"   ${preset?.nucleo==='paisagismo'?'selected':''}>Paisagismo</option>
+        <option value="especiais"    ${preset?.nucleo==='especiais'?'selected':''}>Especiais</option>
+        <option value="consultorias" ${preset?.nucleo==='consultorias'?'selected':''}>Consultorias</option>
+      </select>
+      <label style="${_l}">Itens do checklist</label>
+      <div id="pre-items-lista" style="margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:18px">
+        <input id="pre-item-txt" type="text" style="${_f};flex:3" placeholder="Descrição do item…">
+        <input id="pre-item-sec" type="text" style="${_f};flex:2" placeholder="Seção (opcional)">
+        <button onclick="_addPreItem()" style="${_b};flex-shrink:0">+ Add</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('popup-preset').remove()" style="${_b}">Cancelar</button>
+        <button onclick="salvarPreset(${_sqCk(id||'')})" style="${_b};background:var(--verde);color:#fff;border-color:var(--verde);font-weight:600">Salvar preset</button>
+      </div>
+    </div>`;
+  pop._items = items.map(it=>({ texto:it.texto, secao:it.secao||null }));
+  pop.addEventListener('click', e => { if(e.target===pop) pop.remove(); });
+  document.body.appendChild(pop);
+  document.getElementById('pre-item-txt')?.addEventListener('keydown', e => {
+    if(e.key==='Enter') { e.preventDefault(); _addPreItem(); }
+  });
+  _renderPreItems();
+}
+
+function _addPreItem() {
+  const txt = document.getElementById('pre-item-txt')?.value.trim();
+  const sec = document.getElementById('pre-item-sec')?.value.trim() || null;
+  if(!txt) return;
+  const pop = document.getElementById('popup-preset');
+  if(!pop) return;
+  pop._items.push({ texto:txt, secao:sec });
+  document.getElementById('pre-item-txt').value = '';
+  _renderPreItems();
+}
+function _remPreItem(i) {
+  const pop = document.getElementById('popup-preset');
+  if(!pop?._items) return;
+  pop._items.splice(i,1);
+  _renderPreItems();
+}
+function _renderPreItems() {
+  const pop   = document.getElementById('popup-preset');
+  const lista = document.getElementById('pre-items-lista');
+  if(!lista || !pop) return;
+  lista.innerHTML = (pop._items||[]).map((it,i)=>
+    `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px">
+      <span style="flex:1">${it.secao?`<span class="preset-secao-badge">${_ckE(it.secao)}</span> `:''}${_ckE(it.texto)}</span>
+      <button onclick="_remPreItem(${i})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px">×</button>
+    </div>`
+  ).join('') || '<div style="color:#ccc;font-size:11px">Nenhum item ainda.</div>';
+}
+
+async function salvarPreset(id) {
+  const nome   = document.getElementById('pre-nome')?.value.trim();
+  const nucleo = document.getElementById('pre-nucleo')?.value || null;
+  const pop    = document.getElementById('popup-preset');
+  const items  = pop?._items || [];
+  if(!nome) { toast('Informe o nome do preset'); return; }
+  let presetId = id || null;
+  if(presetId) {
+    await sb.from('checklist_etapa_preset').update({ nome, nucleo: nucleo||null }).eq('id', presetId);
+    await sb.from('checklist_etapa_preset_item').delete().eq('preset_id', presetId);
+  } else {
+    const { data, error } = await sb.from('checklist_etapa_preset')
+      .insert({ nome, nucleo: nucleo||null, criado_por: G.usuario.id, created_at: new Date().toISOString() })
+      .select().single();
+    if(error) { toast('Erro: '+error.message); return; }
+    presetId = data.id;
+  }
+  if(items.length) {
+    await sb.from('checklist_etapa_preset_item').insert(
+      items.map((it,i) => ({ preset_id: presetId, texto:it.texto, secao:it.secao||null, ordem:i }))
+    );
+  }
+  pop?.remove();
+  await carregarPresetsAdmin();
+  toast('Preset salvo.');
+}
+
+async function deletarPreset(id) {
+  abrirPopupConfirm('Excluir preset?', 'O preset será removido. Checklists já instanciados não são afetados.', async () => {
+    await sb.from('checklist_etapa_preset_item').delete().eq('preset_id', id);
+    await sb.from('checklist_etapa_preset').delete().eq('id', id);
+    await carregarPresetsAdmin();
+    toast('Preset excluído.');
+  });
+}
+
+// ═════════════════════════════════════════════════════════════
+// DELETE COMENTÁRIO REGISTRO
+// ═════════════════════════════════════════════════════════════
+
+function deletarComentarioReg(id, entradaId) {
+  abrirPopupConfirm('Excluir comentário?', 'Este comentário será removido permanentemente.', async () => {
+    // Apaga respostas primeiro
+    await sb.from('reg_comentario').delete().eq('parent_id', id);
+    const { error } = await sb.from('reg_comentario').delete().eq('id', id);
+    if(error) { toast('Erro: '+error.message); return; }
+    // Atualiza contador
+    const r = G._registros.find(x => x.id === entradaId);
+    if(r && r.reg_comentario) {
+      r.reg_comentario = r.reg_comentario.filter(c => c.id !== id && c.id !== '_tmp');
+      const el = document.getElementById(`rn-count-${entradaId}`);
+      if(el) el.textContent = String(r.reg_comentario.length);
+    }
+    await carregarComentariosReg(entradaId);
+    toast('Comentário removido.');
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
