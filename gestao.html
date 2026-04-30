@@ -365,6 +365,8 @@
     subtipo text,
     produto_id uuid REFERENCES produtos(id),
     etapa_id uuid REFERENCES etapas(id),
+    evento_id uuid REFERENCES eventos_custo(id) ON DELETE SET NULL,
+    evento_soc_id uuid REFERENCES eventos_sociedade(id) ON DELETE SET NULL,
     descricao text,
     created_at timestamptz DEFAULT now()
   );
@@ -3785,7 +3787,7 @@ async function carregarDashboard() {
 
   if (coordProds.length) {
     document.getElementById('bloco-coord').style.display = 'block';
-    renderDashCoord(coordProds, horasPorProd);
+    renderDashCoord(coordProds, G._horasPorProd || {});
   } else {
     document.getElementById('bloco-coord').style.display = 'none';
   }
@@ -7251,7 +7253,10 @@ function setReembolsoView(v) {
   if (_rbData) renderReembolso(_rbData);
 }
 
-async function editarNomeEvento(evId, tipo, nomeAtual) {
+async function editarNomeEvento(evId, tipo) {
+  const tabela = tipo === 'soc' ? 'eventos_sociedade' : 'eventos_custo';
+  const { data: evAtual } = await sb.from(tabela).select('nome').eq('id', evId).maybeSingle();
+  const nomeAtual = evAtual?.nome || '';
   const novoNome = await new Promise(resolve => {
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -7274,7 +7279,6 @@ async function editarNomeEvento(evId, tipo, nomeAtual) {
     setTimeout(() => document.getElementById('_ev-nome-inp')?.focus(), 50);
   });
   if (!novoNome) return;
-  const tabela = tipo === 'soc' ? 'eventos_sociedade' : 'eventos_custo';
   const { error } = await sb.from(tabela).update({ nome: novoNome }).eq('id', evId);
   if (error) { toast('Erro ao salvar: ' + error.message); return; }
   toast('Evento renomeado');
@@ -7471,7 +7475,7 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
       const headerCor = grp.semEvento ? '#aaa' : 'var(--preto)';
       const headerBg  = grp.semEvento ? 'var(--cinza2)' : '';
       const editBtn   = !grp.semEvento && grp.evId
-        ? `<button style="${_bs}" onclick="event.stopPropagation();editarNomeEvento('${grp.evId}','${grp.evTipo}',${JSON.stringify(chave)})">✏ Renomear</button>`
+        ? `<button style="${_bs}" onclick="event.stopPropagation();editarNomeEvento('${grp.evId}','${grp.evTipo}')">✏ Renomear</button>`
         : '';
       html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;background:${headerBg}">
