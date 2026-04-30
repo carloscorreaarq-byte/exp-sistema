@@ -595,19 +595,19 @@ body::before {
 .ck-card-hd:hover{background:var(--off)}
 .ck-card-title{font-size:12px;font-weight:600;flex:1}
 .ck-card-meta{font-size:10px;color:#888;flex-shrink:0}
-.ck-card-body{display:none;border-top:1px solid var(--cinza2);padding:10px 12px}
+.ck-card-body{display:none;border-top:1px solid var(--cinza2);padding:14px 14px}
 .ck-card-body.open{display:block}
 .ck-prog{font-size:10px;font-weight:700;color:var(--verde);flex-shrink:0}
 .ck-prog.parcial{color:var(--am)}
 .ck-prog.zero{color:#bbb}
-.ck-secao-blk{margin:10px 0 4px;border-left:3px solid var(--az);padding-left:10px}
-.ck-secao{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--az);margin:0 0 4px}
-.ck-secao-intro{font-size:11px;color:#777;line-height:1.5;margin-bottom:7px;font-style:italic;white-space:pre-wrap}
-.ck-item{display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2)}
+.ck-secao-blk{margin:14px -14px 8px;padding:0 14px}
+.ck-secao{font-size:11px;font-weight:700;color:var(--az);background:var(--az-bg);border-radius:5px;padding:6px 12px;display:block;margin-bottom:8px}
+.ck-secao-intro{font-size:11px;color:#777;line-height:1.5;margin-bottom:8px;font-style:italic;white-space:pre-wrap;padding-left:2px}
+.ck-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2)}
 .ck-item:last-child{border-bottom:none}
 .ck-cb{width:15px;height:15px;border:1.5px solid var(--cinza);border-radius:3px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:var(--verde)}
 .ck-cb:disabled{cursor:default;opacity:.5}
-.ck-item-txt{font-size:11px;flex:1;line-height:1.4}
+.ck-item-txt{font-size:12px;flex:1;line-height:1.5}
 .ck-item-txt.done{text-decoration:line-through;color:#bbb}
 .ck-item-who{font-size:9px;color:#aaa;flex-shrink:0}
 .ck-empty{font-size:11px;color:#ccc;padding:8px 0}
@@ -1049,17 +1049,18 @@ body::before {
 }
 .opp-nome { font-size: 11px; font-weight: 600; }
 .prod-row {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 0;
   padding: 9px 14px 9px 28px;
-  border-bottom: 1px solid var(--cinza2);
+  border: 1px solid var(--cinza2); border-radius: 6px;
+  margin-bottom: 3px;
   cursor: pointer; transition: background .12s;
   background: #fff;
 }
 .prod-row:hover { background: var(--off); }
-.prod-row:last-child { border-bottom: none; }
-.prod-row-nome { font-size: 12px; font-weight: 500; flex: 0 0 auto; min-width: 100px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prod-row-tags { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex: 1; }
-.prod-row-etapa { font-size: 11px; color: #888; min-width: 130px; flex-shrink: 0; }
+.prod-row-nome { font-size: 12px; font-weight: 500; flex: 0 0 auto; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
+.prod-row-tipo   { width: 110px; flex-shrink: 0; padding: 0 10px; }
+.prod-row-status { width: 100px; flex-shrink: 0; padding: 0 10px; }
+.prod-row-etapa  { font-size: 11px; color: #888; flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
 .prod-row-coord { min-width: 54px; flex-shrink: 0; }
 .prod-row-datas { min-width: 76px; text-align: right; flex-shrink: 0; }
 .prod-row-horas { font-size: 10px; color: #aaa; min-width: 60px; text-align: right; white-space: nowrap; flex-shrink: 0; }
@@ -4303,11 +4304,8 @@ function renderListaProjetos() {
             return `<div class="prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto('${p.id}')`}">
               <div class="prod-bullet" style="background:${nc.dot || '#888'}"></div>
               <div class="prod-row-nome" title="${p.nome}">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM)</span>' : ''}</div>
-              <div class="prod-row-tags">
-                <span class="badge ${nc.cls}">${nc.label}</span>
-                <span class="badge ${stProd.cls}">${stProd.label}</span>
-                ${p.em_gestao === false ? `<span class="badge b-gr">Oculto</span>` : ''}
-              </div>
+              <div class="prod-row-tipo"><span class="badge ${nc.cls}">${nc.label}</span>${p.em_gestao === false ? ` <span class="badge b-gr">Oculto</span>` : ''}</div>
+              <div class="prod-row-status"><span class="badge ${stProd.cls}">${stProd.label}</span></div>
               <div class="prod-row-etapa">${etapaAtiva ? etapaAtiva.nome : '—'}</div>
               <div class="prod-row-coord">
                 ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coord.nome}">${coord.iniciais}</div>` : '—'}
@@ -8475,55 +8473,104 @@ async function carregarCustosProduto(prodId) {
   }
   html += '</div>';
 
-  // ── Seção: Custos operacionais por evento ───────────────
+  // ── Seção: Custos operacionais por etapa > evento ───────
   if (custosOp.length) {
     const totalOp = custosOp.reduce((s,c) => s + (c.valor || 0), 0);
-    const porEvento = {};
+
+    // Group by etapa
+    const porEtapa = {};
     custosOp.forEach(c => {
-      const chave = c.evento_id || c.evento_soc_id || '__sem__';
-      if (!porEvento[chave]) porEvento[chave] = { nome: opEvNomes[c.evento_id] || opEvNomes[c.evento_soc_id] || null, itens: [], subtotal: 0 };
-      porEvento[chave].itens.push(c);
-      porEvento[chave].subtotal += Number(c.valor || 0);
+      const eid = c.etapa_id || '__sem_etapa__';
+      if (!porEtapa[eid]) porEtapa[eid] = { itens: [], total: 0 };
+      porEtapa[eid].itens.push(c);
+      porEtapa[eid].total += Number(c.valor || 0);
+    });
+
+    const etapaIds = Object.keys(porEtapa).sort((a,b) => {
+      if (a === '__sem_etapa__') return 1;
+      if (b === '__sem_etapa__') return -1;
+      const ea = G.todasEtapas.find(e => e.id === a);
+      const eb = G.todasEtapas.find(e => e.id === b);
+      return (ea?.ordem ?? 99) - (eb?.ordem ?? 99);
     });
 
     html += `<div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
         <div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#999">Custos operacionais</div>
-        ${isSocio ? `<div style="font-size:11px;font-weight:700;color:#555">Total R$ ${fmtNum(totalOp)}</div>` : ''}
+        ${isSocio ? `<div style="font-size:11px;font-weight:700;color:#555">R$ ${fmtNum(totalOp)}</div>` : ''}
       </div>`;
 
-    Object.entries(porEvento).forEach(([, grp]) => {
-      const titulo = grp.nome || 'Sem evento';
-      const linhas = grp.itens.map(c => {
-        const u = c.usuarios || {};
-        const av = u.iniciais
-          ? `<span style="width:20px;height:20px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:8px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${u.iniciais}</span>`
-          : '';
-        const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
-        const cat = c.subtipo || c.tipo || '—';
-        return `<div style="display:flex;align-items:center;gap:7px;padding:5px 10px;border-bottom:1px solid var(--cinza2)">
-          ${av}
-          <div style="flex:1;min-width:0">
-            <span style="font-size:10px;color:#888">${cat}</span>
-            ${c.descricao ? `<span style="font-size:10px;color:#bbb"> · ${c.descricao}</span>` : ''}
-            <span style="font-size:9px;color:#ccc"> · ${u.nome?.split(' ')[0] || '?'}</span>
+    etapaIds.forEach((eid, etIdx) => {
+      const etapa   = G.todasEtapas.find(e => e.id === eid);
+      const nomeEtapa = etapa?.nome || 'Sem etapa';
+      const etapaGrp  = porEtapa[eid];
+      const etBodyId  = `co-et-${etIdx}`;
+
+      // Group by evento within etapa
+      const porEvento = {};
+      etapaGrp.itens.forEach(c => {
+        const evKey  = c.evento_id || c.evento_soc_id || '__sem__';
+        const evNome = opEvNomes[c.evento_id] || opEvNomes[c.evento_soc_id] || null;
+        if (!porEvento[evKey]) porEvento[evKey] = { nome: evNome, itens: [], subtotal: 0 };
+        porEvento[evKey].itens.push(c);
+        porEvento[evKey].subtotal += Number(c.valor || 0);
+      });
+
+      const eventosHtml = Object.entries(porEvento).map(([, grp], evIdx) => {
+        const titulo   = grp.nome || '— Sem evento —';
+        const evBodyId = `co-ev-${etIdx}-${evIdx}`;
+        const linhas   = grp.itens.map(c => {
+          const u  = c.usuarios || {};
+          const av = u.iniciais
+            ? `<span style="width:18px;height:18px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:7px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${u.iniciais}</span>`
+            : '';
+          const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
+          const cat = c.subtipo || c.tipo || '—';
+          return `<div style="display:flex;align-items:center;gap:7px;padding:5px 12px 5px 28px;border-bottom:1px solid var(--cinza2)">
+            ${av}
+            <div style="flex:1;min-width:0">
+              <span style="font-size:10px;color:#888">${cat}</span>
+              ${c.descricao ? `<span style="font-size:10px;color:#bbb"> · ${c.descricao}</span>` : ''}
+              ${u.nome ? `<span style="font-size:9px;color:#ccc"> · ${u.nome.split(' ')[0]}</span>` : ''}
+            </div>
+            <span style="font-size:9px;color:#bbb;flex-shrink:0">${dataFmt}</span>
+            <span style="font-size:10px;font-weight:700;flex-shrink:0;min-width:55px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
+          </div>`;
+        }).join('');
+        return `<div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;background:#fafafa" onclick="toggleEl('${evBodyId}')">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;color:#bbb" id="${evBodyId}-arr">▸</span>
+              <span style="font-size:11px;font-weight:600">${titulo}</span>
+              <span style="font-size:9px;color:#bbb">(${grp.itens.length})</span>
+            </div>
+            <span style="font-size:11px;font-weight:700">R$ ${fmtNum(grp.subtotal)}</span>
           </div>
-          <span style="font-size:9px;color:#bbb;flex-shrink:0">${dataFmt}</span>
-          <span style="font-size:11px;font-weight:700;flex-shrink:0;min-width:60px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
+          <div id="${evBodyId}" style="display:none">${linhas}</div>
         </div>`;
       }).join('');
 
       html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--cinza2)">
-          <div style="font-size:12px;font-weight:700">${titulo}</div>
-          <div style="font-size:14px;font-weight:700;color:var(--preto)">R$ ${fmtNum(grp.subtotal)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;background:var(--off)" onclick="toggleEl('${etBodyId}')">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">▸</span>
+            <span style="font-size:12px;font-weight:700">${nomeEtapa}</span>
+          </div>
+          <span style="font-size:13px;font-weight:700">R$ ${fmtNum(etapaGrp.total)}</span>
         </div>
-        ${linhas}
+        <div id="${etBodyId}" style="display:none">${eventosHtml}</div>
       </div>`;
     });
+
     html += '</div>';
-  } else if (!isSocio) {
-    // non-socio, no op costs
+
+    if (isSocio && totPrev > 0 && totalOp > 0) {
+      const totalGeral = totPrev + totalOp;
+      html += `<div style="margin-top:12px;padding:12px 16px;background:var(--off);border:1px solid var(--cinza);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#999">Total de custos do projeto</div>
+        <div style="font-size:16px;font-weight:700">R$ ${fmtNum(totalGeral)}</div>
+      </div>`;
+    }
   }
 
   lista.innerHTML = html || '<div class="empty-note">Nenhum custo registrado para este produto.</div>';
@@ -8602,16 +8649,47 @@ async function carregarHorasProduto(prodId) {
     </div>` : ''}
   </div>`;
 
-  // 5. Cards por etapa
+  // 5. Distribuição % por etapa
   const etapasOrdem = Object.keys(etapaMap).sort((a,b) => {
     if (a === '__sem_etapa__') return 1;
     if (b === '__sem_etapa__') return -1;
     const ea = G.todasEtapas.find(e=>e.id===a);
     const eb = G.todasEtapas.find(e=>e.id===b);
-    return (ea?.nome||'').localeCompare(eb?.nome||'','pt-BR');
+    return (ea?.ordem ?? 99) - (eb?.ordem ?? 99);
   });
 
-  etapasOrdem.forEach(eid => {
+  if (etapasOrdem.length > 1) {
+    let distHtml = `<div style="margin-bottom:16px;background:#fff;border:1px solid var(--cinza);border-radius:8px;padding:14px 16px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#999;margin-bottom:12px">Distribuição por etapa</div>`;
+    etapasOrdem.forEach(eid => {
+      const etapa = G.todasEtapas.find(e => e.id === eid);
+      const nomeEt = etapa?.nome || '(sem etapa)';
+      const totalEt = Object.values(etapaMap[eid]).reduce((s,h) => s+h, 0);
+      const pctH = totalGeral > 0 ? (totalEt / totalGeral * 100) : 0;
+      const custoEt = isSocio ? Object.entries(etapaMap[eid]).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0) : 0;
+      const pctC = isSocio && custoEstimadoTotal > 0 ? (custoEt / custoEstimadoTotal * 100) : 0;
+      distHtml += `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+          <span style="font-size:11px;font-weight:500">${nomeEt}</span>
+          <span style="font-size:10px;color:#888">${fmtH(totalEt)} · ${pctH.toFixed(1)}%${isSocio ? ` · R$ ${fmtNum(custoEt)}` : ''}</span>
+        </div>
+        <div style="background:var(--cinza2);border-radius:3px;height:5px;overflow:hidden">
+          <div style="background:var(--az);height:5px;border-radius:3px;width:${pctH.toFixed(1)}%"></div>
+        </div>
+        ${isSocio && custoEstimadoTotal > 0 ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+          <div style="background:var(--cinza2);border-radius:3px;height:3px;overflow:hidden;flex:1">
+            <div style="background:#a0b8d8;height:3px;border-radius:3px;width:${pctC.toFixed(1)}%"></div>
+          </div>
+          <span style="font-size:8px;color:#bbb;flex-shrink:0">${pctC.toFixed(1)}% custo</span>
+        </div>` : ''}
+      </div>`;
+    });
+    distHtml += '</div>';
+    html += distHtml;
+  }
+
+  // 6. Cards colapsáveis por etapa
+  etapasOrdem.forEach((eid, etIdx) => {
     const etapa = G.todasEtapas.find(e => e.id === eid);
     const nomeEtapa = etapa?.nome || '(sem etapa)';
     const userMap = etapaMap[eid];
@@ -8619,6 +8697,7 @@ async function carregarHorasProduto(prodId) {
     const custoEtapa = isSocio
       ? Object.entries(userMap).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0)
       : 0;
+    const etBodyId = `hp-et-${etIdx}`;
 
     // Linhas por pessoa
     const pessoaLinhas = Object.entries(userMap).sort((a,b) => b[1]-a[1]).map(([uid,h]) => {
@@ -8659,21 +8738,24 @@ async function carregarHorasProduto(prodId) {
       custosEtapaHtml = `<div style="background:var(--cinza2);padding:6px 14px;display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999">Custos operacionais</div>
         <div style="font-size:10px;font-weight:700">R$ ${fmtNum(totalCustosEt)}</div>
-      </div>
-      ${linhasCustos}`;
+      </div>${linhasCustos}`;
     }
 
-    html += `<div style="margin-bottom:12px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:#fff">
-      <!-- Header da etapa -->
-      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--cinza2);background:var(--off)">
-        <div style="font-size:12px;font-weight:700">${nomeEtapa}</div>
+    html += `<div style="margin-bottom:10px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:#fff">
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--off)" onclick="toggleEl('${etBodyId}')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">▸</span>
+          <span style="font-size:12px;font-weight:700">${nomeEtapa}</span>
+        </div>
         <div style="display:flex;gap:14px;align-items:baseline">
           <span style="font-size:15px;font-weight:700">${fmtH(totalEtapa)}</span>
           ${isSocio ? `<span style="font-size:12px;font-weight:600;color:#555">R$ ${fmtNum(custoEtapa)}</span>` : ''}
         </div>
       </div>
-      ${pessoaLinhas}
-      ${custosEtapaHtml}
+      <div id="${etBodyId}" style="display:none">
+        ${pessoaLinhas}
+        ${custosEtapaHtml}
+      </div>
     </div>`;
   });
 
@@ -9614,8 +9696,19 @@ function _renderCkEtapas(prodId) {
   if(ativa) {
     html += _ckEtapaCard(ativa, true);
   } else {
-    // Sem etapa ativa — mostra todas abertas
-    el.innerHTML = sorted.map(e => _ckEtapaCard(e, false)).join('');
+    // Sem etapa ativa — mostra a primeira aberta, oculta o resto
+    const first = sorted[0];
+    const rest  = sorted.slice(1);
+    let h = _ckEtapaCard(first, true);
+    if (rest.length) {
+      h += `<div class="ck-outros-toggle">
+        <button class="btn sm" id="btn-ck-outros" onclick="toggleCkOutras()">+ ${rest.length} etapa${rest.length>1?'s':''}</button>
+      </div>
+      <div class="ck-outros-wrap" id="ck-outros-wrap" style="display:none">
+        ${rest.map(e => _ckEtapaCard(e, false)).join('')}
+      </div>`;
+    }
+    el.innerHTML = h;
     return;
   }
 
@@ -9720,6 +9813,15 @@ function _renderCkTarefas() {
 function toggleCkCard(bodyId) {
   const el = document.getElementById(bodyId);
   if(el) el.classList.toggle('open');
+}
+
+function toggleEl(id) {
+  const el  = document.getElementById(id);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  const arr = document.getElementById(id + '-arr');
+  if (arr) arr.textContent = open ? '▸' : '▾';
 }
 
 // ── Toggle item (etapa ou tarefa) ─────────────────────────────
