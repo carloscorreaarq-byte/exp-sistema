@@ -939,7 +939,7 @@ body::before {
 }
 .data-chip {
   font-family: var(--fm); font-size: 9px; font-weight: 500;
-  padding: 2px 6px; border: 1px solid var(--cinza);
+  padding: 2px 7px; border: 1px solid var(--cinza); border-radius: 5px;
 }
 .data-chip.urgente { border-color: var(--am); color: var(--am); background: var(--am-bg); }
 .data-chip.atrasado { border-color: var(--tc); color: var(--tc); background: var(--tc-bg); }
@@ -1057,11 +1057,12 @@ body::before {
 }
 .prod-row:hover { background: var(--off); }
 .prod-row:last-child { border-bottom: none; }
-.prod-row-nome { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; }
-.prod-row-etapa { font-size: 11px; color: #888; min-width: 140px; }
-.prod-row-coord { min-width: 60px; }
-.prod-row-datas { min-width: 80px; text-align: right; }
-.prod-row-horas { font-size: 10px; color: #aaa; min-width: 64px; text-align: right; white-space: nowrap; }
+.prod-row-nome { font-size: 12px; font-weight: 500; flex: 0 0 auto; min-width: 100px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-row-tags { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex: 1; }
+.prod-row-etapa { font-size: 11px; color: #888; min-width: 130px; flex-shrink: 0; }
+.prod-row-coord { min-width: 54px; flex-shrink: 0; }
+.prod-row-datas { min-width: 76px; text-align: right; flex-shrink: 0; }
+.prod-row-horas { font-size: 10px; color: #aaa; min-width: 60px; text-align: right; white-space: nowrap; flex-shrink: 0; }
 .prod-bullet {
   width: 6px; height: 6px; border-radius: 50%;
   flex-shrink: 0;
@@ -1410,7 +1411,10 @@ body::before {
 /* ── PRIORIDADES (dashboard) ─────────────────────────── */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#fff; border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; border-radius:8px; }
 .prio-card:hover { border-color:#aaa; box-shadow:0 2px 8px rgba(0,0,0,.05); }
-.prio-card.concluida { background:var(--verde-bg); border-color:rgba(29,106,74,.3); opacity:.72; }
+.prio-card.concluida { background:#fff; border-color:#eee; }
+.prio-card.concluida .prio-num { background:#eee !important; color:#eee !important; }
+.prio-card.concluida .prio-info * { color:#ececec !important; background:transparent !important; border-color:transparent !important; }
+.prio-card.concluida .prio-check.done { background:var(--verde) !important; border-color:var(--verde) !important; color:#fff !important; }
 .prio-card.hoje { background:var(--am-bg); border-color:var(--am); border-width:1.5px; }
 .prio-card.atrasada { background:var(--tc-bg); border-color:var(--tc); border-width:1.5px; }
 .prio-num { width:22px; height:22px; border-radius:50%; background:var(--preto); color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:var(--fm); flex-shrink:0; margin-top:1px; }
@@ -4298,10 +4302,12 @@ function renderListaProjetos() {
             const hProd = G._horasPorProd?.[p.id] || 0;
             return `<div class="prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto('${p.id}')`}">
               <div class="prod-bullet" style="background:${nc.dot || '#888'}"></div>
-              <div class="prod-row-nome">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM — não importado)</span>' : ''}</div>
-              <span class="badge ${nc.cls}">${nc.label}</span>
-              <span class="badge ${stProd.cls}">${stProd.label}</span>
-              ${p.em_gestao === false ? `<span class="badge b-gr">Oculto</span>` : ''}
+              <div class="prod-row-nome" title="${p.nome}">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM)</span>' : ''}</div>
+              <div class="prod-row-tags">
+                <span class="badge ${nc.cls}">${nc.label}</span>
+                <span class="badge ${stProd.cls}">${stProd.label}</span>
+                ${p.em_gestao === false ? `<span class="badge b-gr">Oculto</span>` : ''}
+              </div>
               <div class="prod-row-etapa">${etapaAtiva ? etapaAtiva.nome : '—'}</div>
               <div class="prod-row-coord">
                 ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coord.nome}">${coord.iniciais}</div>` : '—'}
@@ -7247,6 +7253,77 @@ function setReembolsoView(v) {
   if (_rbData) renderReembolso(_rbData);
 }
 
+async function editarNomeEvento(evId, tipo, nomeAtual) {
+  const novoNome = await new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:28px 24px;width:400px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+        <div style="font-size:14px;font-weight:700;margin-bottom:16px">Renomear Evento</div>
+        <input id="_ev-nome-inp" type="text" value="${(nomeAtual||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;box-sizing:border-box;font-family:var(--fm)" placeholder="Nome do evento">
+        <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:#fff;cursor:pointer;font-family:var(--fm);font-size:12px">Cancelar</button>
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-family:var(--fm);font-size:12px;font-weight:600">Salvar</button>
+        </div>
+      </div>`;
+    ov.addEventListener('_cancel', () => { document.body.removeChild(ov); resolve(null); });
+    ov.addEventListener('_ok', () => {
+      const v = document.getElementById('_ev-nome-inp')?.value?.trim();
+      document.body.removeChild(ov);
+      resolve(v || null);
+    });
+    document.body.appendChild(ov);
+    setTimeout(() => document.getElementById('_ev-nome-inp')?.focus(), 50);
+  });
+  if (!novoNome) return;
+  const tabela = tipo === 'soc' ? 'eventos_sociedade' : 'eventos_custo';
+  const { error } = await sb.from(tabela).update({ nome: novoNome }).eq('id', evId);
+  if (error) { toast('Erro ao salvar: ' + error.message); return; }
+  toast('Evento renomeado');
+  carregarReembolso();
+}
+
+async function atribuirEventoACusto(custoId) {
+  const [{ data: evCusto }, { data: evSoc }] = await Promise.all([
+    sb.from('eventos_custo').select('id,nome').order('nome'),
+    sb.from('eventos_sociedade').select('id,nome').order('nome')
+  ]);
+  const opts = [
+    ...(evCusto||[]).map(e => `<option value="custo|${e.id}">${e.nome}</option>`),
+    ...(evSoc||[]).map(e => `<option value="soc|${e.id}">${e.nome}</option>`)
+  ].join('');
+  const sel = await new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:28px 24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+        <div style="font-size:14px;font-weight:700;margin-bottom:16px">Atribuir Evento</div>
+        <select id="_ev-sel" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--fm)">
+          <option value="">— Selecione um evento —</option>
+          ${opts}
+        </select>
+        <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:#fff;cursor:pointer;font-family:var(--fm);font-size:12px">Cancelar</button>
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-family:var(--fm);font-size:12px;font-weight:600">Atribuir</button>
+        </div>
+      </div>`;
+    ov.addEventListener('_cancel', () => { document.body.removeChild(ov); resolve(null); });
+    ov.addEventListener('_ok', () => {
+      const v = document.getElementById('_ev-sel')?.value;
+      document.body.removeChild(ov);
+      resolve(v || null);
+    });
+    document.body.appendChild(ov);
+  });
+  if (!sel) return;
+  const [tipo, evId] = sel.split('|');
+  const campo = tipo === 'soc' ? 'evento_soc_id' : 'evento_id';
+  const { error } = await sb.from('lancamentos_custo').update({ [campo]: evId }).eq('id', custoId);
+  if (error) { toast('Erro ao atribuir: ' + error.message); return; }
+  toast('Evento atribuído');
+  carregarReembolso();
+}
+
 async function carregarReembolso() {
   const wrap = document.getElementById('rb-lista');
   if (!wrap) return;
@@ -7354,20 +7431,22 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
     // Agrupa por evento
     const porEvento = {};
     custos.forEach(c => {
-      const evNome = evNomes[c.evento_id] || evNomes[c.evento_soc_id] || null;
+      const evId   = c.evento_id || c.evento_soc_id || null;
+      const evTipo = c.evento_id ? 'custo' : (c.evento_soc_id ? 'soc' : null);
+      const evNome = evNomes[evId] || null;
       const chave  = evNome || '— Sem evento —';
-      if (!porEvento[chave]) porEvento[chave] = { total:0, itens:[], semEvento: !evNome };
+      if (!porEvento[chave]) porEvento[chave] = { total:0, itens:[], semEvento: !evNome, evId, evTipo };
       porEvento[chave].total += Number(c.valor||0);
       porEvento[chave].itens.push(c);
     });
 
     let html = '<div style="display:flex;flex-direction:column;gap:10px">';
     let algum = false;
-    // Ordenar: com evento primeiro (por total desc), sem evento por último
     const entries = Object.entries(porEvento).sort((a,b) => {
       if (a[1].semEvento !== b[1].semEvento) return a[1].semEvento ? 1 : -1;
       return b[1].total - a[1].total;
     });
+    const _bs = 'padding:4px 10px;border:1px solid var(--cinza);border-radius:5px;font-size:10px;cursor:pointer;background:#fff;font-family:var(--f)';
     entries.forEach(([chave, grp]) => {
       algum = true;
       const uFind = (uid) => usuarios.find(u=>u.id===uid);
@@ -7376,6 +7455,7 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
         const cli = c.produtos?.oportunidades?.clientes?.nome || '';
         const op  = c.produtos?.oportunidades?.projeto || '';
         const vinculo = [cli, op].filter(Boolean).join(' · ') || (c.subtipo || c.tipo || '');
+        const sqId = "'" + c.id + "'";
         return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
           ${uu ? `<div class="carga-av" style="background:${uu.cor||'#888'};width:22px;height:22px;font-size:9px;flex-shrink:0">${uu.iniciais}</div>` : ''}
           <div style="flex:1;min-width:0">
@@ -7386,14 +7466,19 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
           </div>
           <div style="font-size:10px;color:#888;flex-shrink:0">${fmtDate(c.data_lancamento)}</div>
           <div style="font-size:11px;font-family:var(--fm);font-weight:600;flex-shrink:0">${fmtR(c.valor)}</div>
+          ${grp.semEvento ? `<button style="${_bs}" onclick="event.stopPropagation();atribuirEventoACusto(${sqId})">+ Evento</button>` : ''}
         </div>`;
       }).join('');
 
       const headerCor = grp.semEvento ? '#aaa' : 'var(--preto)';
       const headerBg  = grp.semEvento ? 'var(--cinza2)' : '';
+      const editBtn   = !grp.semEvento && grp.evId
+        ? `<button style="${_bs}" onclick="event.stopPropagation();editarNomeEvento('${grp.evId}','${grp.evTipo}',${JSON.stringify(chave)})">✏ Renomear</button>`
+        : '';
       html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:${headerBg}">
-          <div style="font-size:12px;font-weight:700;color:${headerCor}">${chave}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;background:${headerBg}">
+          <div style="font-size:12px;font-weight:700;color:${headerCor};flex:1">${chave}</div>
+          ${editBtn}
           <div style="font-size:12px;font-family:var(--fm);font-weight:700">${fmtR(grp.total)}</div>
         </div>
         <div style="padding:0 14px 10px">${linhas}</div>
@@ -7677,10 +7762,26 @@ async function carregarPrioridades() {
     const etapaNome = etapa?.nome || '';
     const tipoProd = prod.nome || '';
 
+    // Estado do card (calcular antes do prazoChip para usá-lo na cor)
+    const _hoje = new Date(); _hoje.setHours(0,0,0,0);
+    let estadoCard = '';
+    if (pr.concluida) {
+      estadoCard = 'concluida';
+    } else if (pr.prazo_texto) {
+      const _prazoD = new Date(pr.prazo_texto + 'T12:00:00'); _prazoD.setHours(0,0,0,0);
+      if (_prazoD < _hoje)           estadoCard = 'atrasada';
+      else if (+_prazoD === +_hoje)  estadoCard = 'hoje';
+    }
+
     // Previsão formatada com dia da semana
     const prazoFmt = pr.prazo_texto ? formatPrazoFluxo(pr.prazo_texto) : '';
+    const prazoChipStyle = estadoCard === 'atrasada'
+      ? 'background:var(--tc-bg);border:1px solid var(--tc);color:var(--tc)'
+      : estadoCard === 'hoje'
+        ? 'background:var(--am-bg);border:1px solid var(--am);color:var(--am)'
+        : 'background:#FFF8E7;border:1px solid #F0D080;color:#8A6010';
     const prazoChip = prazoFmt
-      ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;background:#FFF8E7;border:1px solid #F0D080;color:#8A6010;border-radius:4px;padding:1px 7px;font-weight:600">📅 ${prazoFmt}</span>`
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;${prazoChipStyle};border-radius:4px;padding:1px 7px;font-weight:600">📅 ${prazoFmt}</span>`
       : '';
 
     const comentHtml = pr.comentario
@@ -7690,15 +7791,6 @@ async function carregarPrioridades() {
     // Número de ordem real (posição no array retornado, 1-based)
     const ord = pr.ordem || (idx + 1);
     const numCls = NUM_CLS[ord] || 'p6';
-    const _hoje = new Date(); _hoje.setHours(0,0,0,0);
-    let estadoCard = '';
-    if (pr.concluida) {
-      estadoCard = 'concluida';
-    } else if (pr.prazo_texto) {
-      const prazoD = new Date(pr.prazo_texto + 'T12:00:00'); prazoD.setHours(0,0,0,0);
-      if (prazoD < _hoje)          estadoCard = 'atrasada';
-      else if (+prazoD === +_hoje) estadoCard = 'hoje';
-    }
 
     return `<div class="prio-card ${estadoCard}" onclick="abrirProduto('${prod.id}')">
       <div class="prio-num ${numCls}">${ord}</div>
