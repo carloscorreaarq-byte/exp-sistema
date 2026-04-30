@@ -728,8 +728,8 @@ body::before {
 /* Stat compacto para dash integrado */
 .stat-mini {
   background: #fff; border: 1px solid var(--cinza);
-  padding: 10px 13px 10px 16px; position: relative; flex: 1;
-  border-radius: 8px; overflow: hidden;
+  padding: 10px 16px 10px 19px; position: relative; flex: 1;
+  border-radius: 8px; overflow: hidden; min-width: 80px;
 }
 .stat-mini::before {
   content: ''; position: absolute; top: 0; left: 0;
@@ -1049,8 +1049,8 @@ body::before {
 }
 .opp-nome { font-size: 11px; font-weight: 600; }
 .prod-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 14px 8px 28px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 9px 14px 9px 28px;
   border-bottom: 1px solid var(--cinza2);
   cursor: pointer; transition: background .12s;
   background: #fff;
@@ -1060,7 +1060,8 @@ body::before {
 .prod-row-nome { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; }
 .prod-row-etapa { font-size: 11px; color: #888; min-width: 140px; }
 .prod-row-coord { min-width: 60px; }
-.prod-row-datas { min-width: 120px; text-align: right; }
+.prod-row-datas { min-width: 80px; text-align: right; }
+.prod-row-horas { font-size: 10px; color: #aaa; min-width: 64px; text-align: right; white-space: nowrap; }
 .prod-bullet {
   width: 6px; height: 6px; border-radius: 50%;
   flex-shrink: 0;
@@ -1409,7 +1410,9 @@ body::before {
 /* ── PRIORIDADES (dashboard) ─────────────────────────── */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#fff; border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; border-radius:8px; }
 .prio-card:hover { border-color:#aaa; box-shadow:0 2px 8px rgba(0,0,0,.05); }
-.prio-card.concluida { opacity:.38; }
+.prio-card.concluida { background:var(--verde-bg); border-color:rgba(29,106,74,.3); opacity:.72; }
+.prio-card.hoje { background:var(--am-bg); border-color:var(--am); border-width:1.5px; }
+.prio-card.atrasada { background:var(--tc-bg); border-color:var(--tc); border-width:1.5px; }
 .prio-num { width:22px; height:22px; border-radius:50%; background:var(--preto); color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:var(--fm); flex-shrink:0; margin-top:1px; }
 .prio-num.p1 { background:var(--am); }
 .prio-num.p2 { background:var(--az); }
@@ -3212,6 +3215,7 @@ async function init() {
   await Promise.all([
     carregarUsuarios(),
     carregarProdutos(),
+    carregarHorasGlobal(),
   ]);
 
   // Notificações
@@ -3583,6 +3587,16 @@ function normalizarNucleo(raw) {
   return null;
 }
 
+async function carregarHorasGlobal() {
+  const { data } = await sb.from('horas_lancadas').select('produto_id, hora_inicio, hora_fim');
+  G._horasPorProd = {};
+  (data || []).forEach(l => {
+    if (!l.produto_id) return;
+    if (!G._horasPorProd[l.produto_id]) G._horasPorProd[l.produto_id] = 0;
+    G._horasPorProd[l.produto_id] += diffHoras(l.hora_inicio, l.hora_fim);
+  });
+}
+
 async function carregarProdutos() {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
   const { data: prodsGestao } = await sb.from('produtos')
@@ -3715,17 +3729,14 @@ async function carregarDashboard() {
   const uid = G.usuario.id;
   const role = G.usuario.role;
 
-  let meusProdutos = [];
-  if (role !== 'socio') {
-    const { data: devs } = await sb.from('etapa_desenvolvedores')
-      .select('etapas(produto_id)').eq('usuario_id', uid);
-    const pids = [...new Set((devs || []).map(d => d.etapas?.produto_id).filter(Boolean))];
-    // Inclui produtos onde o usuário é desenvolvedor OU coordenador
-    meusProdutos = G._prodsGestao.filter(p =>
-      (pids.includes(p.id) || p.coordenador_id === uid) && p.status === 'ativo');
-  } else {
-    meusProdutos = G._prodsGestao.filter(p => p.status === 'ativo');
-  }
+  // "Em desenvolvimento" = etapas onde é membro (etapa_desenvolvedores)
+  const { data: devs } = await sb.from('etapa_desenvolvedores')
+    .select('etapas(produto_id)').eq('usuario_id', uid);
+  const devPids = [...new Set((devs || []).map(d => d.etapas?.produto_id).filter(Boolean))];
+  const meusProdutos = G._prodsGestao.filter(p => devPids.includes(p.id) && p.status === 'ativo');
+
+  // "Em coordenação" = produtos onde é coordenador_id
+  const coordProds = G._prodsGestao.filter(p => p.coordenador_id === uid && p.status === 'ativo');
 
   // Stats de projetos do escritório (todos)
   const todos = G._prodsGestao;
@@ -3767,14 +3778,11 @@ async function carregarDashboard() {
   renderDashProjetos(meusProdutos, horasPorProd);
   renderEntregasSemana();
 
-  if (role === 'socio' || role === 'coordenador') {
-    const coordProds = role === 'socio'
-      ? G._prodsGestao.filter(p => p.status === 'ativo')
-      : G._prodsGestao.filter(p => p.coordenador_id === uid && p.status === 'ativo');
-    if (coordProds.length) {
-      document.getElementById('bloco-coord').style.display = 'block';
-      renderDashCoord(coordProds);
-    }
+  if (coordProds.length) {
+    document.getElementById('bloco-coord').style.display = 'block';
+    renderDashCoord(coordProds, horasPorProd);
+  } else {
+    document.getElementById('bloco-coord').style.display = 'none';
   }
 
   carregarPrioridades();
@@ -3839,21 +3847,48 @@ function renderDashProjetos(prods, horasPorProd = {}) {
   // contador é atualizado em renderTarefas
 }
 
-function renderDashCoord(prods) {
+function renderDashCoord(prods, horasPorProd = {}) {
   const wrap = document.getElementById('dash-coord');
-  wrap.innerHTML = prods.map(p => {
-    const cli = p.oportunidades?.clientes;
-    const emRevisao = G.todasEtapas.filter(e => e.produto_id === p.id && e.status === 'em_revisao').length;
+  const ordenados = prods.slice().sort((a, b) => {
+    const ea = G.todasEtapas.find(e => e.produto_id === a.id && e.status === 'em_andamento');
+    const eb = G.todasEtapas.find(e => e.produto_id === b.id && e.status === 'em_andamento');
+    const da = ea?.data_estimada ? new Date(ea.data_estimada) : new Date('9999-01-01');
+    const db = eb?.data_estimada ? new Date(eb.data_estimada) : new Date('9999-01-01');
+    return da - db;
+  });
+  wrap.innerHTML = ordenados.map(p => {
+    const opp = p.oportunidades;
+    const cli = opp?.clientes;
     const nucleo = p.nucleo || 'urbanismo';
     const nc = NUCLEO_COR[nucleo] || { cls:'b-gr', label: nucleo };
-    return `<div class="coord-strip" onclick="abrirProduto('${p.id}')">
-      <div>
-        <div class="coord-strip-nome">${p.oportunidades?.projeto || p.nome}</div>
-        <div class="coord-strip-info">${p.nome} · ${cli?.nome || '—'}</div>
-      </div>
-      <div class="coord-strip-badge">
+    const etapaAtiva = G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_andamento')
+      || G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_revisao');
+    const st = etapaAtiva ? STATUS_ETAPA[etapaAtiva.status] : null;
+    const emRevisao = G.todasEtapas.filter(e => e.produto_id === p.id && e.status === 'em_revisao').length;
+    const hReal = horasPorProd[p.id] || 0;
+    const hStr = hReal > 0 ? fmtH(hReal) : null;
+    return `<div class="proj-card n-${nucleo}" onclick="abrirProduto('${p.id}')">
+      <div class="proj-card-top">
+        <div>
+          <div class="proj-card-nome">${opp?.projeto || p.nome}</div>
+          <div class="proj-card-cliente">${p.nome} · ${cli?.nome || '—'}</div>
+        </div>
         <span class="badge ${nc.cls}">${nc.label}</span>
+      </div>
+      <div class="proj-card-mid">
+        ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaAtiva.nome}</span>` : ''}
         ${emRevisao ? `<span class="badge b-am">${emRevisao} em revisão</span>` : ''}
+        ${dataChip(etapaAtiva?.data_estimada)}
+      </div>
+      ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 2px;font-size:10px;color:#888">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>${hStr} registradas</span>
+      </div>` : ''}
+      <div class="proj-card-bot">
+        <div class="proj-card-avs"></div>
+        <div class="proj-card-acoes" onclick="event.stopPropagation()">
+          ${etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa('${etapaAtiva.id}')">Concluir etapa</button>` : ''}
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -4260,6 +4295,7 @@ function renderListaProjetos() {
             const coord = G.todosUsuarios.find(u => u.id === p.coordenador_id);
             const etapaAtiva = G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_andamento')
               || G.todasEtapas.find(e => e.produto_id === p.id && e.status !== 'concluida');
+            const hProd = G._horasPorProd?.[p.id] || 0;
             return `<div class="prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto('${p.id}')`}">
               <div class="prod-bullet" style="background:${nc.dot || '#888'}"></div>
               <div class="prod-row-nome">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM — não importado)</span>' : ''}</div>
@@ -4273,6 +4309,7 @@ function renderListaProjetos() {
               <div class="prod-row-datas">
                 ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '—'}
               </div>
+              <div class="prod-row-horas">${hProd > 0 ? fmtH(hProd) : '—'}</div>
             </div>`;
           }).join('')}
         </div>
@@ -7653,8 +7690,17 @@ async function carregarPrioridades() {
     // Número de ordem real (posição no array retornado, 1-based)
     const ord = pr.ordem || (idx + 1);
     const numCls = NUM_CLS[ord] || 'p6';
+    const _hoje = new Date(); _hoje.setHours(0,0,0,0);
+    let estadoCard = '';
+    if (pr.concluida) {
+      estadoCard = 'concluida';
+    } else if (pr.prazo_texto) {
+      const prazoD = new Date(pr.prazo_texto + 'T12:00:00'); prazoD.setHours(0,0,0,0);
+      if (prazoD < _hoje)          estadoCard = 'atrasada';
+      else if (+prazoD === +_hoje) estadoCard = 'hoje';
+    }
 
-    return `<div class="prio-card ${pr.concluida?'concluida':''}" onclick="abrirProduto('${prod.id}')">
+    return `<div class="prio-card ${estadoCard}" onclick="abrirProduto('${prod.id}')">
       <div class="prio-num ${numCls}">${ord}</div>
       <div class="prio-info" style="flex:1;min-width:0">
         <div class="prio-nome" style="font-size:13px;font-weight:700">${titulo}</div>
