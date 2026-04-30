@@ -1068,7 +1068,7 @@ body::before {
 .prod-row-horas { font-size: 10px; color: #aaa; min-width: 60px; text-align: right; white-space: nowrap; flex-shrink: 0; }
 .prod-bullet {
   width: 6px; height: 6px; border-radius: 50%;
-  flex-shrink: 0;
+  flex-shrink: 0; margin-right: 10px;
 }
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -4412,7 +4412,6 @@ function renderGantt() {
         <td class="info-cell">
           <div style="display:flex;align-items:flex-start;gap:6px">
             <div style="flex:1;min-width:0">
-              <div style="font-size:9px;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px">${opp?.clientes?.nome || ''}</div>
               <div class="gantt-prod-nome" style="margin-bottom:1px">${opp?.projeto || p.nome}</div>
               ${opp?.projeto ? `<div style="font-size:10px;color:#999;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>` : ''}
               <div style="display:flex;align-items:center;gap:4px">
@@ -6773,7 +6772,7 @@ function _cargaDonut(totais) {
   const grad  = `conic-gradient(var(--az) 0% ${pProj}%, var(--verde) ${pProj}% ${pProj+pOrg}%, var(--am) ${pProj+pOrg}% 100%)`;
   return `<div style="position:relative;width:64px;height:64px;flex-shrink:0">
     <div style="width:64px;height:64px;border-radius:50%;background:${grad}"></div>
-    <div style="position:absolute;inset:12px;border-radius:50%;background:var(--off)"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;background:#fff"></div>
   </div>
   <div style="font-size:10px;line-height:1.7">
     <div><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--az);margin-right:4px"></span>Projeto: ${fmtH(totais.projeto)}</div>
@@ -7285,6 +7284,55 @@ async function editarNomeEvento(evId, tipo) {
   carregarReembolso();
 }
 
+async function reatribuirEvento(evId, tipo) {
+  const [{ data: evCusto }, { data: evSoc }] = await Promise.all([
+    sb.from('eventos_custo').select('id,nome').order('nome'),
+    sb.from('eventos_sociedade').select('id,nome').order('nome')
+  ]);
+  const opts = [
+    ...(evCusto||[]).filter(e => !(e.id===evId && tipo==='custo')).map(e => `<option value="custo|${e.id}">${e.nome} (custo)</option>`),
+    ...(evSoc||[]).filter(e => !(e.id===evId && tipo==='soc')).map(e => `<option value="soc|${e.id}">${e.nome} (soc)</option>`)
+  ].join('');
+
+  const sel = await new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:28px 24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">Reatribuir Evento</div>
+        <div style="font-size:11px;color:#888;margin-bottom:16px">Todos os lançamentos deste evento serão movidos para o evento selecionado abaixo.</div>
+        <select id="_reattr-sel" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--fm)">
+          <option value="">— Selecione o evento destino —</option>
+          ${opts}
+        </select>
+        <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:#fff;cursor:pointer;font-family:var(--fm);font-size:12px">Cancelar</button>
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--az);color:#fff;cursor:pointer;font-family:var(--fm);font-size:12px;font-weight:600">Mover lançamentos</button>
+        </div>
+      </div>`;
+    ov.addEventListener('_cancel', () => { document.body.removeChild(ov); resolve(null); });
+    ov.addEventListener('_ok', () => {
+      const v = document.getElementById('_reattr-sel')?.value;
+      document.body.removeChild(ov);
+      resolve(v || null);
+    });
+    document.body.appendChild(ov);
+  });
+
+  if (!sel) return;
+  const [tipoAlvo, evIdAlvo] = sel.split('|');
+  const campoOrigem = tipo === 'soc' ? 'evento_soc_id' : 'evento_id';
+  const campoAlvo   = tipoAlvo === 'soc' ? 'evento_soc_id' : 'evento_id';
+
+  // Move lancamentos: atualiza campo destino e limpa campo origem (se diferente)
+  const upd = { [campoAlvo]: evIdAlvo };
+  if (campoAlvo !== campoOrigem) upd[campoOrigem] = null;
+  const { error } = await sb.from('lancamentos_custo').update(upd).eq(campoOrigem, evId);
+  if (error) { toast('Erro ao reatribuir: ' + error.message); return; }
+  toast('Lançamentos movidos para o novo evento');
+  carregarReembolso();
+}
+
 async function atribuirEventoACusto(custoId) {
   const [{ data: evCusto }, { data: evSoc }] = await Promise.all([
     sb.from('eventos_custo').select('id,nome').order('nome'),
@@ -7474,13 +7522,14 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
 
       const headerCor = grp.semEvento ? '#aaa' : 'var(--preto)';
       const headerBg  = grp.semEvento ? 'var(--cinza2)' : '';
-      const editBtn   = !grp.semEvento && grp.evId
-        ? `<button style="${_bs}" onclick="event.stopPropagation();editarNomeEvento('${grp.evId}','${grp.evTipo}')">✏ Renomear</button>`
+      const acaoBtns = !grp.semEvento && grp.evId
+        ? `<button style="${_bs}" onclick="event.stopPropagation();editarNomeEvento('${grp.evId}','${grp.evTipo}')">✏ Renomear</button>
+           <button style="${_bs}" onclick="event.stopPropagation();reatribuirEvento('${grp.evId}','${grp.evTipo}')">↔ Reatribuir</button>`
         : '';
       html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;background:${headerBg}">
           <div style="font-size:12px;font-weight:700;color:${headerCor};flex:1">${chave}</div>
-          ${editBtn}
+          ${acaoBtns}
           <div style="font-size:12px;font-family:var(--fm);font-weight:700">${fmtR(grp.total)}</div>
         </div>
         <div style="padding:0 14px 10px">${linhas}</div>
@@ -9139,10 +9188,10 @@ async function carregarRegistrosProduto(prodId) {
     ...r,
     reg_encaminhamento: (r.reg_encaminhamento||[]).sort((a,b)=>a.ordem-b.ordem),
   }));
-  wrap.innerHTML = G._registros.map(r => _renderEntrada(r)).join('');
+  wrap.innerHTML = G._registros.map((r, i) => _renderEntrada(r, i > 0)).join('');
 }
 
-function _renderEntrada(r) {
+function _renderEntrada(r, collapsed) {
   const etapa   = r.etapa_id ? G.todasEtapas.find(e => e.id === r.etapa_id) : null;
   const isAutor = r.criado_por === G.usuario.id;
   const encs    = r.reg_encaminhamento || [];
@@ -9151,6 +9200,43 @@ function _renderEntrada(r) {
   const nComts  = r.reg_comentario?.length || 0;
   const dt      = new Date(r.criado_em);
   const dtStr   = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  const bodyHtml = `
+    ${r.participantes?`<div class="reg-participantes">Participantes: ${_regEsc(r.participantes)}</div>`:''}
+    ${r.corpo?`<div class="reg-corpo">${_hlMencao(r.corpo)}</div>`:''}`;
+
+  if (collapsed) {
+    return `
+    <div class="reg-entrada reg-entrada-col" id="re-${r.id}">
+      <div class="reg-entrada-head" style="cursor:pointer" onclick="expandirEntrada(${_sqReg(r.id)})">
+        <div class="reg-av" style="background:${_regAttr(r.criado_por_cor||'#888')}">${_regEsc(r.criado_por_iniciais||'?')}</div>
+        <div style="flex:1;min-width:0">
+          <div class="reg-meta-nome">${_regEsc(r.criado_por_nome||'—')}</div>
+          <div class="reg-meta-ts">${dtStr}${r.atualizado_em?' · editado':''}</div>
+          ${r.titulo?`<div style="font-size:12px;font-weight:600;color:var(--preto);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_regEsc(r.titulo)}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          ${etapa?`<span class="reg-etapa-tag">${_regEsc(etapa.nome)}</span>`:''}
+          <span style="font-size:11px;color:#bbb">▸</span>
+        </div>
+      </div>
+      <div id="re-body-${r.id}" style="display:none">${bodyHtml}</div>
+      <div class="reg-footer">
+        <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'check')" id="rt-check-${r.id}">
+          <span>Encaminhamentos</span>
+          <span class="reg-toggle-count${nDone===nEncs&&nEncs>0?' done':''}" id="rc-count-${r.id}">${nDone}/${nEncs}</span>
+          <span style="font-size:9px;color:#ccc;margin-left:auto" id="rc-chev-${r.id}">▼</span>
+        </button>
+        <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'coment')" id="rt-coment-${r.id}">
+          <span>Comentários</span>
+          <span class="reg-toggle-count" id="rn-count-${r.id}">${nComts}</span>
+          <span style="font-size:9px;color:#ccc;margin-left:auto" id="rn-chev-${r.id}">▼</span>
+        </button>
+      </div>
+      <div class="reg-expand-panel" id="rp-check-${r.id}"></div>
+      <div class="reg-expand-panel" id="rp-coment-${r.id}"></div>
+    </div>`;
+  }
 
   return `
   <div class="reg-entrada" id="re-${r.id}">
@@ -9167,8 +9253,7 @@ function _renderEntrada(r) {
       </div>
     </div>
     ${r.titulo?`<div class="reg-titulo">${_regEsc(r.titulo)}</div>`:''}
-    ${r.participantes?`<div class="reg-participantes">Participantes: ${_regEsc(r.participantes)}</div>`:''}
-    ${r.corpo?`<div class="reg-corpo">${_hlMencao(r.corpo)}</div>`:''}
+    ${bodyHtml}
     <div class="reg-footer">
       <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'check')" id="rt-check-${r.id}">
         <span>Encaminhamentos</span>
@@ -9210,6 +9295,16 @@ function _renderEncsPanel(r) {
         </div>
       </div>`;
   }).join('');
+}
+
+function expandirEntrada(id) {
+  const card = document.getElementById('re-' + id);
+  const body = document.getElementById('re-body-' + id);
+  if (!card || !body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  const arr = card.querySelector('.reg-entrada-head span[style*="color:#bbb"]');
+  if (arr) arr.textContent = open ? '▸' : '▾';
 }
 
 async function toggleRegPanel(entradaId, tipo) {
@@ -9903,16 +9998,28 @@ async function configurarCkEtapa(etapaId) {
   pop.id = 'popup-ck-etapa';
   pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
   pop.innerHTML = `
-    <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:560px;width:95%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto">
+    <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:600px;width:95%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto">
       <div style="font-size:15px;font-weight:700;margin-bottom:4px">Configurar checklist de etapa</div>
-      <div style="font-size:12px;color:#888;margin-bottom:22px">Etapa: <strong>${_ckE(etapa?.nome||'—')}</strong> · ${_ckE(prod?.nome||'')}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:18px">Etapa: <strong>${_ckE(etapa?.nome||'—')}</strong> · ${_ckE(prod?.nome||'')}</div>
 
-      <label style="${_l}">Preset de checklist</label>
-      <select id="pop-ck-preset" style="${_f};margin-bottom:6px" onchange="_atualizarPreviewPreset(this.value)">
-        <option value="">— sem checklist —</option>
-        ${optsHtml}
-      </select>
-      <div id="pop-ck-preview" style="margin-bottom:18px;font-size:11px;color:#888"></div>
+      <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--cinza)">
+        <button id="ck-mode-preset" onclick="_ckModeSwitch('preset')" style="font-size:11px;font-weight:600;padding:6px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--az);color:var(--az)">Usar preset</button>
+        <button id="ck-mode-zero" onclick="_ckModeSwitch('zero')" style="font-size:11px;font-weight:600;padding:6px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888">Criar do zero</button>
+      </div>
+
+      <div id="ck-pane-preset">
+        <label style="${_l}">Preset de checklist</label>
+        <select id="pop-ck-preset" style="${_f};margin-bottom:6px" onchange="_atualizarPreviewPreset(this.value)">
+          <option value="">— sem checklist —</option>
+          ${optsHtml}
+        </select>
+        <div id="pop-ck-preview" style="margin-bottom:18px;font-size:11px;color:#888"></div>
+      </div>
+
+      <div id="ck-pane-zero" style="display:none;margin-bottom:18px">
+        <div id="ck-manual-form"></div>
+        <button onclick="_ckAddSecao()" style="margin-top:8px;${_b};font-size:11px;width:100%">+ Adicionar seção</button>
+      </div>
 
       <label style="${_l}">Atribuir a</label>
       <select id="pop-ck-user" style="${_f};margin-bottom:26px">
@@ -9926,8 +10033,11 @@ async function configurarCkEtapa(etapaId) {
       </div>
     </div>`;
   pop._presets = presets || [];
+  pop._mode = 'preset';
+  pop._manualSecoes = [{ titulo: '', intro: '', items: [''] }];
   pop.addEventListener('click', e => { if(e.target===pop) pop.remove(); });
   document.body.appendChild(pop);
+  _ckRenderManualForm();
   // Dispara preview do preset já selecionado
   const sel = document.getElementById('pop-ck-preset');
   if(sel?.value) _atualizarPreviewPreset(sel.value);
@@ -9958,12 +10068,84 @@ function _atualizarPreviewPreset(presetId) {
   el.innerHTML = html;
 }
 
+function _ckModeSwitch(mode) {
+  const pop = document.getElementById('popup-ck-etapa');
+  if (!pop) return;
+  pop._mode = mode;
+  document.getElementById('ck-pane-preset').style.display = mode === 'preset' ? '' : 'none';
+  document.getElementById('ck-pane-zero').style.display   = mode === 'zero'   ? '' : 'none';
+  const bPre = document.getElementById('ck-mode-preset');
+  const bZer = document.getElementById('ck-mode-zero');
+  if (bPre) { bPre.style.borderBottomColor = mode==='preset'?'var(--az)':'transparent'; bPre.style.color = mode==='preset'?'var(--az)':'#888'; }
+  if (bZer) { bZer.style.borderBottomColor = mode==='zero'?'var(--az)':'transparent';   bZer.style.color = mode==='zero'?'var(--az)':'#888'; }
+}
+
+function _ckRenderManualForm() {
+  const pop = document.getElementById('popup-ck-etapa');
+  const wrap = document.getElementById('ck-manual-form');
+  if (!pop || !wrap) return;
+  const _b2 = 'padding:4px 10px;border:1px solid var(--cinza);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;font-family:var(--f)';
+  wrap.innerHTML = (pop._manualSecoes || []).map((sec, si) => `
+    <div style="border:1px solid var(--cinza);border-radius:8px;padding:14px 16px;margin-bottom:10px;background:#fafafa">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="ck-secao" style="width:10px;height:10px;padding:0;margin:0;display:inline-block"></span>
+        <input value="${_ckE(sec.titulo)}" placeholder="Título da seção…" oninput="_ckSecaoTitulo(${si},this.value)"
+          style="flex:1;border:none;border-bottom:1px solid var(--cinza);font-size:12px;font-weight:700;color:var(--az);background:transparent;padding:2px 4px;font-family:var(--f);outline:none">
+        <button onclick="_ckRemoveSecao(${si})" style="${_b2};color:var(--tc);border-color:var(--tc)">× Remover</button>
+      </div>
+      <input value="${_ckE(sec.intro)}" placeholder="Instrução / intro (opcional)…" oninput="_ckSecaoIntro(${si},this.value)"
+        style="width:100%;border:1px solid var(--cinza2);border-radius:6px;font-size:11px;font-style:italic;color:#777;padding:5px 8px;margin-bottom:10px;font-family:var(--f);box-sizing:border-box;outline:none;background:#fff">
+      ${sec.items.map((txt, ii) => `
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="color:#bbb;font-size:10px">·</span>
+          <input value="${_ckE(txt)}" placeholder="Texto do item…" oninput="_ckItemTxt(${si},${ii},this.value)"
+            style="flex:1;border:none;border-bottom:1px solid var(--cinza2);font-size:11px;padding:3px 4px;font-family:var(--f);outline:none;background:transparent">
+          <button onclick="_ckRemoveItem(${si},${ii})" style="border:none;background:none;color:#bbb;cursor:pointer;font-size:13px;line-height:1;padding:0 2px">✕</button>
+        </div>`).join('')}
+      <button onclick="_ckAddItem(${si})" style="margin-top:6px;${_b2};font-size:10px">+ Item</button>
+    </div>`).join('');
+}
+
+function _ckSecaoTitulo(si, v) { const p=document.getElementById('popup-ck-etapa'); if(p&&p._manualSecoes[si]) p._manualSecoes[si].titulo=v; }
+function _ckSecaoIntro(si, v)  { const p=document.getElementById('popup-ck-etapa'); if(p&&p._manualSecoes[si]) p._manualSecoes[si].intro=v; }
+function _ckItemTxt(si, ii, v) { const p=document.getElementById('popup-ck-etapa'); if(p&&p._manualSecoes[si]) p._manualSecoes[si].items[ii]=v; }
+
+function _ckAddSecao() {
+  const pop = document.getElementById('popup-ck-etapa');
+  if (!pop) return;
+  pop._manualSecoes.push({ titulo: '', intro: '', items: [''] });
+  _ckRenderManualForm();
+}
+function _ckAddItem(si) {
+  const pop = document.getElementById('popup-ck-etapa');
+  if (!pop) return;
+  pop._manualSecoes[si].items.push('');
+  _ckRenderManualForm();
+}
+function _ckRemoveItem(si, ii) {
+  const pop = document.getElementById('popup-ck-etapa');
+  if (!pop) return;
+  pop._manualSecoes[si].items.splice(ii, 1);
+  if (!pop._manualSecoes[si].items.length) pop._manualSecoes[si].items = [''];
+  _ckRenderManualForm();
+}
+function _ckRemoveSecao(si) {
+  const pop = document.getElementById('popup-ck-etapa');
+  if (!pop) return;
+  pop._manualSecoes.splice(si, 1);
+  if (!pop._manualSecoes.length) pop._manualSecoes = [{ titulo: '', intro: '', items: [''] }];
+  _ckRenderManualForm();
+}
+
 async function salvarCkEtapa(etapaId) {
+  const pop      = document.getElementById('popup-ck-etapa');
+  const mode     = pop?._mode || 'preset';
   const presetId = document.getElementById('pop-ck-preset')?.value || null;
   const userId   = document.getElementById('pop-ck-user')?.value   || null;
   const user     = userId ? G.todosUsuarios.find(u => u.id === userId) : null;
+  const manualSecoes = pop?._manualSecoes || [];
   const now      = new Date().toISOString();
-  document.getElementById('popup-ck-etapa')?.remove();
+  pop?.remove();
 
   // Apaga exec existente (seções e itens cascadeiam)
   const old = G._ckEtapas.find(x => x.etapa_id === etapaId);
@@ -9971,6 +10153,46 @@ async function salvarCkEtapa(etapaId) {
     await sb.from('checklist_etapa_exec_item').delete().eq('checklist_id', old.id);
     await sb.from('checklist_etapa_exec_secao').delete().eq('checklist_id', old.id);
     await sb.from('checklist_etapa_exec').delete().eq('id', old.id);
+  }
+
+  // Modo manual (criar do zero)
+  if(mode === 'zero') {
+    const secoesFiltradas = manualSecoes.filter(s => s.titulo.trim() || s.items.some(t => t.trim()));
+    if(!secoesFiltradas.length) { await carregarChecklist(G.produtoAtivo); return; }
+    const { data: exec, error: e0 } = await sb.from('checklist_etapa_exec').insert({
+      produto_id: G.produtoAtivo, etapa_id: etapaId, preset_id: null,
+      atribuido_para: userId, atribuido_nome: user?.nome||null,
+      atribuido_iniciais: user?.iniciais||null, atribuido_cor: user?.cor||null, created_at: now,
+    }).select().single();
+    if(e0) { toast('Erro: '+e0.message); return; }
+    let ordem = 0;
+    for(const sec of secoesFiltradas) {
+      let secaoId = null;
+      if(sec.titulo.trim()) {
+        const { data: s } = await sb.from('checklist_etapa_exec_secao').insert({
+          checklist_id: exec.id, titulo: sec.titulo.trim(), intro: sec.intro.trim()||null, ordem: ordem++,
+        }).select().single();
+        secaoId = s?.id || null;
+      }
+      const itensFiltrados = sec.items.filter(t => t.trim());
+      if(itensFiltrados.length) {
+        await sb.from('checklist_etapa_exec_item').insert(
+          itensFiltrados.map((txt, ii) => ({ checklist_id: exec.id, secao_id: secaoId, texto: txt.trim(), ordem: ii, concluido: false }))
+        );
+      }
+    }
+    if(userId) {
+      const etapa = G.todasEtapas.find(e => e.id === etapaId);
+      const prod  = G.todosProdutos.find(p => p.id === G.produtoAtivo);
+      criarNotificacao(userId, 'tarefa',
+        `${G.usuario.nome.split(' ')[0]} atribuiu uma entrega de etapa para você`,
+        `Etapa: ${etapa?.nome||'—'} — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
+        { tipo:'registro', produto_id: G.produtoAtivo }
+      );
+    }
+    await carregarChecklist(G.produtoAtivo);
+    toast('Checklist de etapa configurado.');
+    return;
   }
 
   if(!presetId) { await carregarChecklist(G.produtoAtivo); return; }
