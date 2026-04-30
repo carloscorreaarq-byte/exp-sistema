@@ -145,6 +145,10 @@
   ALTER PUBLICATION supabase_realtime ADD TABLE notificacoes;
   -- ────────────────────────────────────────────────────────────
 
+  -- ANIVERSÁRIO
+  ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS data_aniversario date;
+  -- ────────────────────────────────────────────────────────────
+
   -- 1. PRODUTOS (unidade executável)
   CREATE TABLE produtos (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1560,6 +1564,8 @@ body::before {
 .cal-dia-header.hoje .cal-dia-num { color:var(--az); }
 .cal-dia-header.fim-semana .cal-dia-num { color:#bbb; }
 .cal-dia-total { font-family:var(--f); font-size:9px; color:var(--verde); font-weight:700; margin-top:1px; min-height:12px; }
+.cal-aniv-wrap { display:flex; flex-direction:column; gap:2px; margin-top:3px; }
+.cal-aniv { display:inline-flex; align-items:center; gap:2px; font-size:8px; font-weight:700; background:#fff0f5; color:#c0396a; border-radius:4px; padding:1px 4px; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
 .cal-hora-label { font-family:var(--f); font-size:8px; color:#ddd; text-align:right; padding:0 4px 0 0; line-height:1; height:28px; display:flex; align-items:flex-start; justify-content:flex-end; padding-top:2px; border-right:1px solid var(--cinza2); }
 .cal-celula { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza2); height:28px; position:relative; }
 .cal-celula.fim-semana { background:#fafaf8; }
@@ -4577,11 +4583,17 @@ function renderCalendarioSemana(lancs) {
       ${dias.map((d,i) => {
         const fds = i >= 5;
         const isHoje = d.toISOString().split('T')[0] === hoje.toISOString().split('T')[0];
+        const mesdia = `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const anivs  = (G.todosUsuarios||[]).filter(u => u.data_aniversario && u.data_aniversario.slice(5,10) === mesdia);
+        const anivHtml = anivs.length
+          ? `<div class="cal-aniv-wrap">${anivs.map(u=>`<div class="cal-aniv">🎂 ${u.nome.split(' ')[0]}</div>`).join('')}</div>`
+          : '';
         return `<div class="cal-dia-header ${fds?'fim-semana':''} ${isHoje?'hoje':''} ${hPorDia[i]>0?'tem-horas':''}"
           onclick="selecionarDia(${i})">
           <div class="cal-dia-nome">${NOMES[i]}</div>
           <div class="cal-dia-num">${d.getDate()}</div>
           <div class="cal-dia-total">${hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·'}</div>
+          ${anivHtml}
         </div>`;
       }).join('')}
     </div>
@@ -7904,7 +7916,8 @@ function carregarUsuariosAdmin() {
             style="background:${c}" title="${c}"
             onclick="salvarCorUsuario('${u.id}','${c}',this)"></div>`
     ).join('');
-    return `<div class="usu-row" id="usu-row-${u.id}">
+    const anivVal = u.data_aniversario ? u.data_aniversario.slice(0,10) : '';
+    return `<div class="usu-row" id="usu-row-${u.id}" style="flex-wrap:wrap">
       <div class="vh-av" id="usu-av-${u.id}" style="background:${u.cor||'#888'}">${u.iniciais}</div>
       <div class="vh-nome" style="min-width:140px">${u.nome}</div>
       <select class="filter-select" style="font-size:9px;padding:2px 6px;min-width:110px" onchange="salvarRoleUsuario('${u.id}',this.value)">
@@ -7913,8 +7926,23 @@ function carregarUsuariosAdmin() {
         <option value="colaborador" ${u.role==='colaborador'?'selected':''}>Colaborador</option>
       </select>
       <div class="usu-swatches">${swatches}</div>
+      <div style="display:flex;align-items:center;gap:5px;margin-left:auto">
+        <span style="font-size:10px;color:#bbb" title="Aniversário">🎂</span>
+        <input type="date" value="${anivVal}"
+          style="border:1px solid var(--cinza);border-radius:5px;padding:3px 6px;font-size:10px;font-family:var(--f);outline:none;color:#555;cursor:pointer"
+          title="Data de aniversário"
+          onchange="salvarAniversarioUsuario('${u.id}',this.value)">
+      </div>
     </div>`;
   }).join('');
+}
+
+async function salvarAniversarioUsuario(uid, val) {
+  const data_aniversario = val || null;
+  await sb.from('usuarios').update({ data_aniversario }).eq('id', uid);
+  const u = G.todosUsuarios.find(u => u.id === uid);
+  if(u) u.data_aniversario = data_aniversario;
+  toast(data_aniversario ? '🎂 Aniversário salvo' : 'Aniversário removido');
 }
 
 async function salvarRoleUsuario(uid, role) {
