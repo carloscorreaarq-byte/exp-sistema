@@ -5637,25 +5637,26 @@ async function confirmarFinalizarSemana() {
   const ano = new Date(si + 'T12:00:00').getFullYear();
   const semana = isoWeek(new Date(si + 'T12:00:00'));
 
+  // Busca por data_inicio (mesma chave que renderSemana usa) para garantir
+  // que ambas as funções operam na mesma row, independente do valor de semana.
   const { data: semDb } = await sb.from('semanas')
     .select('id')
     .eq('usuario_id', G.usuario.id)
-    .eq('ano', ano)
-    .eq('semana', semana)
+    .eq('data_inicio', si)
     .maybeSingle();
 
   let semanaId = semDb?.id;
   if (!semanaId) {
     const { data: nova, error: eNova } = await sb
       .from('semanas')
-      .insert({
+      .upsert({
         usuario_id: G.usuario.id,
         ano,
         semana,
         data_inicio: si,
         data_fim: sf,
         finalizada: false
-      })
+      }, { onConflict: 'usuario_id,ano,semana' })
       .select('id')
       .single();
 
