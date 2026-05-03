@@ -35,9 +35,9 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .nav-mod-wrap{position:relative;margin-right:20px}
 .nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
 .nav-lbl-btn:hover{color:var(--preto)}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
 .nav-dropdown.open{display:block}
-.nav-dropdown a{display:block;padding:7px 14px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
+.nav-dropdown a{display:block;padding:7px 14px 7px 0;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
 .nav-dropdown a:hover{background:var(--off)}
 .nav-dropdown a.nd-active{font-weight:700;pointer-events:none;color:var(--verde)}
 .nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
@@ -231,6 +231,8 @@ select option[disabled]{color:#bbb}
 .conn-dot.offline{background:var(--tc)}
 .exp-room-btn{width:28px;height:28px;border-radius:6px;background:var(--verde-bg);border:1px solid var(--verde);color:var(--verde);display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .12s;flex-shrink:0;font-size:13px}
 .exp-room-btn:hover{background:var(--verde);color:#fff}
+.exp-room-btn.active{background:var(--verde);color:#fff;animation:exp-pulse 1.5s ease-in-out infinite}
+@keyframes exp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(29,106,74,.4)}50%{box-shadow:0 0 0 6px rgba(29,106,74,0)}}
 #user-nome{font-size:10px;font-weight:500}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
@@ -249,12 +251,10 @@ select option[disabled]{color:#bbb}
   <div class="nav-mod-wrap" id="nav-mod-wrap">
     <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.calc <span>▾</span></button>
     <div class="nav-dropdown" id="nav-dropdown">
-      <div class="nd-lbl">Abertos</div>
       <a href="gestao.html">EXP.projetos</a>
       <a href="apoio.html">EXP.conhecimento</a>
       <a href="contatos.html">EXP.contatos</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
-      <div class="nd-lbl nd-soc" style="display:none">Societários</div>
       <a href="calc.html" class="nd-active nd-soc" style="display:none">EXP.calc</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
       <a href="#" class="nd-disabled nd-soc" style="display:none">EXP.financeiro</a>
@@ -268,8 +268,8 @@ select option[disabled]{color:#bbb}
   </div>
   <div class="nav-right">
     <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
-    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" title="EXP Room — Reunião online">📹</a>
-    <div class="sync-indicator" id="sync-indicator">
+    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
+    <div class="sync-indicator" id="sync-indicator" style="display:none">
       <div class="sync-dot" id="sync-dot"></div>
       <span id="sync-lbl">local</span>
     </div>
@@ -1113,6 +1113,7 @@ async function syncProposalToSupabase(proposal) {
       proposal_id: String(proposal.id),
       version: proposal.version || 1,
       parent_id: proposal.parentId ? String(proposal.parentId) : null,
+      prop_code: proposal.propCode || null,
       status: proposal.status || 'ativa',
       cliente: proposal.cliente || '',
       projeto: proposal.projeto || '',
@@ -1136,6 +1137,7 @@ async function syncProposalToSupabase(proposal) {
       body: JSON.stringify(payload)
     });
     if (r.ok || r.status===201 || r.status===200 || r.status===204) {
+      proposal._sbUpdatedAt = payload.updated_at;
       setSyncStatus('ok', 'nuvem');
       return true;
     } else {
@@ -3353,7 +3355,38 @@ function initNavUserFromSession() {
     if(nomeEl && u.nome) nomeEl.textContent = (u.nome||'—').split(' ')[0];
     if (u.iniciais === 'CC') document.body.classList.add('can-delete');
     initNavDropdown(u.role);
+    initExpRoom(u.id || u.auth_id);
   } catch(e) {}
+}
+// ── EXP ROOM PRESENCE ───────────────────────────────────────
+// Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
+const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
+async function checkExpRoomStatus() {
+  try {
+    const { data } = await sbNav.from('exp_config').select('updated_at').eq('key','exp_room_active').maybeSingle();
+    const btn = document.getElementById('exp-room-btn');
+    if (!btn) return;
+    if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  } catch(e) {}
+}
+async function registrarExpRoomClick(userId) {
+  try {
+    await sbNav.from('exp_config').upsert({ key:'exp_room_active', value:'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
+  } catch(e) {}
+}
+function initExpRoom(userId) {
+  const btn = document.getElementById('exp-room-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    registrarExpRoomClick(userId);
+    btn.classList.add('active');
+  });
+  checkExpRoomStatus();
+  setInterval(checkExpRoomStatus, 60000);
 }
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
@@ -3434,10 +3467,23 @@ if (cRepasse) {
 calcResumo();
 updateCardBars();
 
+// Auto-configura Supabase com credenciais do sistema se não configurado
+if (!S.sbUrl) {
+  S.sbUrl = SUPABASE_URL_NAV;
+  S.sbKey = SUPABASE_ANON_KEY_NAV;
+  save();
+}
+
 // Tenta sincronizar ao carregar se Supabase configurado
 if (S.sbUrl && S.sbKey) {
   setSyncStatus('sync','conectando...');
-  Promise.all([loadParamsFromSupabase(), loadProposalsFromSupabase()]);
+  // Sobe propostas locais ainda não sincronizadas, depois carrega do banco
+  Promise.all([loadParamsFromSupabase(), loadProposalsFromSupabase()]).then(async () => {
+    // Push backlog: propostas locais que nunca foram para o Supabase
+    const pendentes = S.proposals.filter(p => !p._sbUpdatedAt);
+    for (const p of pendentes) await syncProposalToSupabase(p);
+    if (pendentes.length > 0) { save(); renderHist(); }
+  });
 } else {
   setSyncStatus('', 'local');
 }
