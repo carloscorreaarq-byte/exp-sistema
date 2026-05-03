@@ -1586,6 +1586,8 @@ async function loadCustomSubs(){
 }
 
 function buildLancamentoFromGasto(gasto,legacyId){
+  // Retorna um único lancamento — usado para edições/updates.
+  // Para inserções com parcelamento use buildLancamentosFromGasto.
   return {
     user_id:gasto.user_id,
     tipo:'saida',
@@ -1601,6 +1603,45 @@ function buildLancamentoFromGasto(gasto,legacyId){
     banco_referencia:gasto.banco,
     observacoes:`Origem app: gastos; legado_id=${legacyId}; tipo_pagamento=${gasto.tipo_pagamento}`,
   };
+}
+
+// Retorna um array de lancamentos: 1 item para à vista, N itens para parcelamentos.
+// Cada parcela tem valor/N e data_evento deslocada em (i) meses.
+function buildLancamentosFromGasto(gasto,legacyId){
+  const n=(gasto.tipo_pagamento && gasto.tipo_pagamento!=='a_vista')
+    ? (parseInt(gasto.tipo_pagamento)||1)
+    : 1;
+  const base={
+    user_id:gasto.user_id,
+    tipo:'saida',
+    proprietario_economico:gasto.dono==='mae'?'mae':'eu',
+    contexto:gasto.dono==='mae'?'mae':(gasto.categoria==='Moradia'?'casa_atual':'pessoal'),
+    descricao:gasto.subcategoria || gasto.categoria || (gasto.dono==='mae'?'Gasto Mae':'Gasto'),
+    categoria:gasto.categoria,
+    subcategoria:gasto.subcategoria,
+    necessidade:gasto.necessidade,
+    forma_pagamento:gasto.forma_pagamento,
+    banco_referencia:gasto.banco,
+  };
+  if(n<=1){
+    return [{
+      ...base,
+      valor:gasto.valor,
+      data_evento:gasto.data,
+      observacoes:`Origem app: gastos; legado_id=${legacyId}; tipo_pagamento=${gasto.tipo_pagamento}`,
+    }];
+  }
+  const valorParcela=Math.round((gasto.valor/n)*100)/100;
+  return Array.from({length:n},(_,i)=>{
+    const dt=new Date(gasto.data);
+    dt.setMonth(dt.getMonth()+i);
+    return {
+      ...base,
+      valor:valorParcela,
+      data_evento:dt.toISOString(),
+      observacoes:`Origem app: gastos; legado_id=${legacyId}; tipo_pagamento=${gasto.tipo_pagamento}; parcela=${i+1}/${n}`,
+    };
+  });
 }
 
 function buildLancamentoFromEntrada(entrada,legacyId){
@@ -3158,7 +3199,8 @@ async function flushOfflineQueue(){
         const {tabela,dados}=item;
         const d={...dados,user_id:dados.user_id||S.user.id};
         if(tabela==='gastos'){
-          await insertLancamento(buildLancamentoFromGasto(d,d.id));
+          const parcelas=buildLancamentosFromGasto(d,d.id);
+          for(const p of parcelas) await insertLancamento(p);
           await insertLegacyGastoBestEffort(d);
         }else if(tabela==='entradas'){
           await insertLancamento(buildLancamentoFromEntrada(d,d.id));

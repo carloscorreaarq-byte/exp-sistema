@@ -1,5 +1,5 @@
 ﻿// Service Worker — Finanças Pessoais
-const CACHE = 'financas-v26';
+const CACHE = 'financas-v27';
 const APP_SHELL = [
   './index.html',
   './financas-manifest.json',
