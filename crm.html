@@ -39,7 +39,8 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .sineta-btn{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--cinza);background:#fff;transition:all .12s;border-radius:6px}
 .sineta-btn:hover{border-color:var(--preto)}
 .sineta-badge{position:absolute;top:4px;right:4px;width:14px;height:14px;background:var(--tc);color:#fff;font-size:8px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fm)}
-.user-pill{display:flex;align-items:center;gap:7px;padding:4px 10px;border:1px solid var(--cinza);background:#fff;cursor:pointer;font-size:11px;font-weight:500;border-radius:20px}
+.user-pill{display:flex;align-items:center;gap:7px;padding:3px 10px 3px 3px;border:1px solid var(--cinza);background:#fff;cursor:pointer;border-radius:20px;transition:border-color .12s}
+#user-nome{font-size:10px;font-weight:500}
 .avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:.3px;flex-shrink:0}
 .nav-brand{text-decoration:none;color:inherit}
 .nav-brand:hover{opacity:.7}
@@ -54,9 +55,11 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
 .nd-sep{height:1px;background:var(--cinza);margin:4px 0}
 .nd-lbl{padding:6px 14px 2px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
-.conn-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s;cursor:default;pointer-events:none}
 .conn-dot.online{background:#22c55e}
 .conn-dot.offline{background:var(--tc)}
+.exp-room-btn{width:28px;height:28px;border-radius:6px;background:var(--verde-bg);border:1px solid var(--verde);color:var(--verde);display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .12s;flex-shrink:0;font-size:13px}
+.exp-room-btn:hover{background:var(--verde);color:#fff}
 .user-pill-wrap{position:relative}
 .user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
 .user-dropdown.open{display:block}
@@ -313,16 +316,17 @@ textarea{resize:vertical;min-height:60px}
     <div class="ntab" onclick="goTab('contatos',this)">Contatos</div>
   </div>
   <div class="nav-right">
-    <button class="btn verde" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none">+ Nova oportunidade</button>
-    <div class="sineta-btn" onclick="toggleAlertas()" title="Alertas">
+    <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none">+ Nova oportunidade</button>
+    <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
+    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" title="EXP Room — Reunião online">📹</a>
+    <div class="sineta-btn nd-soc" id="sineta-btn-wrap" onclick="toggleAlertas()" title="Alertas" style="display:none">
       🔔
       <div class="sineta-badge" id="sineta-cnt" style="display:none">0</div>
     </div>
-    <div class="conn-dot" id="conn-dot"></div>
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-pill" id="user-pill" onclick="toggleUserMenu()">
-        <div class="avatar" id="user-av" style="background:#EAF0FB;color:#1D4FA0">—</div>
-        <span id="user-nome">...</span>
+        <div class="avatar" id="user-av">—</div>
+        <span id="user-nome">—</span>
         <span style="font-size:8px;color:#bbb;margin-left:2px">▾</span>
       </div>
       <div class="user-dropdown" id="user-dropdown">
@@ -1244,7 +1248,7 @@ window.addEventListener('DOMContentLoaded', async()=>{
   currentUser = u||{nome:'Usuário',iniciais:'?',cor:'#888',viewer_only:true};
 
   const ini=currentUser.iniciais||'?';
-  document.getElementById('user-av').style.cssText=`background:${currentUser.cor}22;color:${currentUser.cor}`;
+  document.getElementById('user-av').style.cssText=`background:${currentUser.cor||'#888'};color:#fff`;
   document.getElementById('user-av').textContent=ini;
   document.getElementById('user-nome').textContent=currentUser.nome?.split(' ')[0]||'Usuário';
   initNavDropdown(currentUser.role);

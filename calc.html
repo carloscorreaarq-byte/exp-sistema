@@ -44,7 +44,7 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .nd-sep{height:1px;background:var(--cinza);margin:4px 0}
 .nd-lbl{padding:6px 14px 2px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
 .user-pill-wrap{position:relative}
-.user-pill{display:flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid var(--cinza);background:#fff;cursor:pointer;border-radius:20px}
+.user-pill{display:flex;align-items:center;gap:7px;padding:3px 10px 3px 3px;border:1px solid var(--cinza);background:#fff;cursor:pointer;border-radius:20px;transition:border-color .12s}
 .user-pill:hover{border-color:var(--preto)}
 .avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;background:#E0E0D8;color:#555}
 .user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
@@ -225,6 +225,13 @@ select option[disabled]{color:#bbb}
 .sync-dot.ok{background:var(--verde)}
 .sync-dot.err{background:var(--tc)}
 .sync-dot.sync{background:var(--am);animation:blink .8s infinite}
+/* CONN + EXP ROOM */
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s;cursor:default;pointer-events:none}
+.conn-dot.online{background:#22c55e}
+.conn-dot.offline{background:var(--tc)}
+.exp-room-btn{width:28px;height:28px;border-radius:6px;background:var(--verde-bg);border:1px solid var(--verde);color:var(--verde);display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .12s;flex-shrink:0;font-size:13px}
+.exp-room-btn:hover{background:var(--verde);color:#fff}
+#user-nome{font-size:10px;font-weight:500}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* SEÇÃO MINIMIZÁVEL */
@@ -260,6 +267,8 @@ select option[disabled]{color:#bbb}
     <div class="ntab" data-tab="params" onclick="goTab('params')">Parâmetros</div>
   </div>
   <div class="nav-right">
+    <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
+    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" title="EXP Room — Reunião online">📹</a>
     <div class="sync-indicator" id="sync-indicator">
       <div class="sync-dot" id="sync-dot"></div>
       <span id="sync-lbl">local</span>
@@ -267,6 +276,7 @@ select option[disabled]{color:#bbb}
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-pill" id="user-pill" onclick="toggleUserMenu()">
         <div class="avatar" id="user-av">—</div>
+        <span id="user-nome">—</span>
         <span style="font-size:8px;color:#bbb;margin-left:2px">▾</span>
       </div>
       <div class="user-dropdown" id="user-dropdown">
@@ -3337,11 +3347,24 @@ function initNavUserFromSession() {
     const av = document.getElementById('user-av');
     if (u.iniciais && av) {
       av.textContent = u.iniciais;
-      av.style.cssText = `background:${u.cor||'#888'}22;color:${u.cor||'#888'}`;
+      av.style.cssText = `background:${u.cor||'#888'};color:#fff`;
     }
+    const nomeEl = document.getElementById('user-nome');
+    if(nomeEl && u.nome) nomeEl.textContent = (u.nome||'—').split(' ')[0];
     if (u.iniciais === 'CC') document.body.classList.add('can-delete');
     initNavDropdown(u.role);
   } catch(e) {}
+}
+function initConnDot() {
+  const dot = document.getElementById('conn-dot');
+  if(!dot) return;
+  const update = () => {
+    dot.className = 'conn-dot ' + (navigator.onLine ? 'online' : 'offline');
+    dot.title = navigator.onLine ? 'Conectado' : 'Sem conexão';
+  };
+  update();
+  window.addEventListener('online',  update);
+  window.addEventListener('offline', update);
 }
 
 async function excluirProposta(id) {
@@ -3387,6 +3410,7 @@ document.body.style.visibility = 'hidden';
 
 function _initCalc() {
 initNavUserFromSession();
+initConnDot();
 updateCubDisplay();
 selNucleo('PAIS');
 document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
