@@ -46,9 +46,9 @@ body::before{
 .nav-mod-wrap{position:relative}
 .nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;color:#999;padding:0;display:flex;align-items:center;gap:4px}
 .nav-lbl-btn:hover{color:var(--preto)}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;box-shadow:0 4px 16px rgba(0,0,0,.08);z-index:200}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;box-shadow:0 4px 16px rgba(0,0,0,.08);z-index:200;border-radius:8px;overflow:hidden}
 .nav-dropdown.open{display:block}
-.nav-dropdown a{display:block;padding:7px 14px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
+.nav-dropdown a{display:block;padding:7px 14px 7px 0;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
 .nav-dropdown a:hover{background:var(--off)}
 .nav-dropdown a.nd-active{font-weight:700;pointer-events:none;color:var(--az)}
 .nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
@@ -60,6 +60,11 @@ body::before{
 .conn-dot.offline{background:var(--tc)}
 .exp-room-btn{width:28px;height:28px;border-radius:6px;background:var(--verde-bg);border:1px solid var(--verde);color:var(--verde);display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .12s;flex-shrink:0;font-size:13px}
 .exp-room-btn:hover{background:var(--verde);color:#fff}
+.exp-room-btn.active{background:var(--verde);color:#fff;animation:exp-pulse 1.5s ease-in-out infinite}
+@keyframes exp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(29,106,74,.4)}50%{box-shadow:0 0 0 6px rgba(29,106,74,0)}}
+.exp-room-btn{position:relative}
+.exp-room-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);right:0;background:#1a1a1a;color:#fff;font-size:10px;font-weight:500;white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:600;font-family:var(--f,sans-serif);letter-spacing:.1px}
+.exp-room-btn[data-tooltip]:hover::after{opacity:1}
 .sineta-wrap{position:relative;display:flex;align-items:center}
 .sineta-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--cinza);background:#fff;transition:all .12s;border-radius:6px;font-size:13px;padding:0;font-family:inherit;position:relative}
 .sineta-btn:hover{border-color:var(--preto)}
@@ -240,12 +245,10 @@ body::before{
   <div class="nav-mod-wrap" id="nav-mod-wrap">
     <button class="nav-lbl-btn" onclick="toggleNav()">EXP.contatos <span>▾</span></button>
     <div class="nav-dropdown" id="nav-dropdown">
-      <div class="nd-lbl">Abertos</div>
       <a href="gestao.html">EXP.projetos</a>
       <a href="apoio.html">EXP.conhecimento</a>
       <a href="contatos.html" class="nd-active">EXP.contatos</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
-      <div class="nd-lbl nd-soc" style="display:none">Societários</div>
       <a href="calc.html" class="nd-soc" style="display:none">EXP.calc</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
       <a href="#" class="nd-disabled nd-soc" style="display:none">EXP.financeiro</a>
@@ -253,7 +256,7 @@ body::before{
   </div>
   <div class="nav-right">
     <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
-    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" title="EXP Room — Reunião online">📹</a>
+    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
     <div class="sineta-wrap nd-soc" id="sineta-wrap" style="display:none">
       <button class="sineta-btn" onclick="scrollToPendentes()" title="Validações pendentes">🔔<span class="sineta-badge" id="sineta-cnt" style="display:none">0</span></button>
     </div>
@@ -902,6 +905,42 @@ function scrollToPendentes() {
   }
 }
 
+// ── EXP ROOM PRESENCE ───────────────────────────────────────
+// Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
+const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
+async function checkExpRoomStatus() {
+  try {
+    const { data } = await sb.from('exp_config').select('updated_at,value').eq('key','exp_room_active').maybeSingle();
+    const btn = document.getElementById('exp-room-btn');
+    if (!btn) return;
+    if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
+      btn.classList.add('active');
+      const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
+      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
+      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
+    } else {
+      btn.classList.remove('active');
+      btn.removeAttribute('data-tooltip');
+    }
+  } catch(e) {}
+}
+async function registrarExpRoomClick(userId, userName) {
+  try {
+    await sb.from('exp_config').upsert({ key:'exp_room_active', value: userName||'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
+  } catch(e) {}
+}
+function initExpRoom(userId, userName) {
+  const btn = document.getElementById('exp-room-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    registrarExpRoomClick(userId, userName);
+    btn.classList.add('active');
+    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
+  });
+  checkExpRoomStatus();
+  setInterval(checkExpRoomStatus, 60000);
+}
+
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 function toggleNav() {
   document.getElementById('nav-dropdown').classList.toggle('open');
@@ -942,6 +981,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   av.textContent    = u.iniciais || '?';
   av.style.background = u.cor || '#888';
   document.getElementById('user-nome').textContent = (u.nome||'').split(' ')[0] || '—';
+  initExpRoom(u.id, (u.nome||'').split(' ')[0]);
 
   try {
     const { error } = await sb.from('usuarios').select('id').limit(1);

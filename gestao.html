@@ -507,7 +507,7 @@ body::before {
   font-size: 9px; font-weight: 700; color: #fff;
 }
 .u-nome { font-size: 10px; font-weight: 500; }
-.u-role { font-size: 8px; color: #888; }
+.u-role { font-size: 8px; color: #888; display: none; }
 .btn-back {
   padding: 4px 10px; border: 1px solid var(--cinza); background: #fff;
   font-family: var(--f); font-size: 8px; font-weight: 700; letter-spacing: .5px;
@@ -520,9 +520,9 @@ body::before {
 .nav-mod-wrap{position:relative;margin-right:20px}
 .nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
 .nav-lbl-btn:hover{color:var(--preto)}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
 .nav-dropdown.open{display:block}
-.nav-dropdown a{display:block;padding:7px 14px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
+.nav-dropdown a{display:block;padding:7px 14px 7px 0;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
 .nav-dropdown a:hover{background:var(--off)}
 .nav-dropdown a.nd-active{font-weight:700;pointer-events:none;color:var(--am)}
 .nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
@@ -546,6 +546,11 @@ body::before {
   transition: all .12s; flex-shrink: 0; border-radius: 6px;
 }
 .exp-room-btn:hover { background: var(--verde); color: #fff; }
+.exp-room-btn.active{background:var(--verde);color:#fff;animation:exp-pulse 1.5s ease-in-out infinite}
+@keyframes exp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(29,106,74,.4)}50%{box-shadow:0 0 0 6px rgba(29,106,74,0)}}
+.exp-room-btn{position:relative}
+.exp-room-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);right:0;background:#1a1a1a;color:#fff;font-size:10px;font-weight:500;white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:600;font-family:var(--f,sans-serif);letter-spacing:.1px}
+.exp-room-btn[data-tooltip]:hover::after{opacity:1}
 /* conn-dot permanece como indicador de status de rede (sem hover, sem cursor pointer) */
 .conn-dot { cursor: default; pointer-events: none; }
 /* ── NOTIFICAÇÕES ─────────────────────────────────────────── */
@@ -1722,12 +1727,10 @@ body::before {
   <div class="nav-mod-wrap" id="nav-mod-wrap">
     <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.projetos <span>▾</span></button>
     <div class="nav-dropdown" id="nav-dropdown">
-      <div class="nd-lbl">Abertos</div>
       <a href="gestao.html" class="nd-active">EXP.projetos</a>
       <a href="apoio.html">EXP.conhecimento</a>
       <a href="contatos.html">EXP.contatos</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
-      <div class="nd-lbl nd-soc" style="display:none">Societários</div>
       <a href="calc.html" class="nd-soc" style="display:none">EXP.calc</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
       <a href="#" class="nd-disabled nd-soc" style="display:none">EXP.financeiro</a>
@@ -1762,10 +1765,9 @@ body::before {
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-chip" onclick="toggleUserMenu()">
         <div class="uav" id="nav-av"></div>
-        <div>
-          <div class="u-nome" id="nav-nome">—</div>
-          <div class="u-role" id="nav-role">—</div>
-        </div>
+        <span class="u-nome" id="nav-nome">—</span>
+        <span style="font-size:8px;color:#bbb;margin-left:2px">▾</span>
+        <div class="u-role" id="nav-role" style="display:none"></div>
       </div>
       <div class="user-dropdown" id="user-dropdown">
         <button onclick="sair()">Sair do sistema</button>
@@ -2220,7 +2222,7 @@ body::before {
 <div class="page" id="page-revisoes">
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div class="sec-title" style="margin-bottom:0;flex:1">Revisões ativas</div>
+    <div class="sec-title" style="margin-bottom:0;flex:1">Revisões</div>
     <button class="btn sm verde socio-only" onclick="abrirNovaRevisaoGlobal()">+ Nova revisão</button>
   </div>
 
@@ -2937,6 +2939,45 @@ body::before {
 </div>
 
 <!-- Modal: Editar Produto -->
+<!-- Modal: editar prazo de prioridade -->
+<div class="modal-bg" id="modal-editar-prazo" style="display:none">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-hd">
+      <div class="modal-hd-title">Alterar prazo</div>
+      <button class="modal-close" onclick="fecharModal('modal-editar-prazo')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:#888;margin-bottom:12px">Selecione a nova data de prazo para esta prioridade:</p>
+      <input type="date" id="ep-nova-data" style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-family:var(--f);font-size:12px">
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn sm" onclick="fecharModal('modal-editar-prazo')">Cancelar</button>
+        <button class="btn sm verde" onclick="confirmarAlteracaoData()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: validar data com coordenação / aceitar-recusar solicitação -->
+<div class="modal-bg" id="modal-validar-data" style="display:none">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd">
+      <div class="modal-hd-title" id="vd-titulo">Alinhar com coordenação</div>
+      <button class="modal-close" onclick="fecharModal('modal-validar-data')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:#555;margin-bottom:18px;line-height:1.6" id="vd-msg"></p>
+      <div style="display:flex;gap:8px;justify-content:flex-end" id="vd-btns">
+        <button class="btn sm" onclick="solicitarDataCoord(false)">Cancelar</button>
+        <button class="btn sm verde" onclick="solicitarDataCoord(true)">Sim, enviar</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;display:none" id="vd-btns-resp">
+        <button class="btn sm tc" onclick="responderSolicitacaoData(false)">Recusar</button>
+        <button class="btn sm verde" onclick="responderSolicitacaoData(true)">Aceitar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-editar-produto" style="display:none">
   <div class="modal xl">
     <div class="modal-hd">
@@ -3117,6 +3158,40 @@ document.addEventListener('click', e => {
     if (p) p.style.display = 'none';
   }
 });
+// ── EXP ROOM PRESENCE ───────────────────────────────────────
+// Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
+async function checkExpRoomStatus() {
+  try {
+    const { data } = await sb.from('exp_config').select('updated_at,value').eq('key','exp_room_active').maybeSingle();
+    const btn = document.getElementById('exp-room-link');
+    if (!btn) return;
+    if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
+      btn.classList.add('active');
+      const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
+      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
+      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
+    } else {
+      btn.classList.remove('active');
+      btn.removeAttribute('data-tooltip');
+    }
+  } catch(e) {}
+}
+async function registrarExpRoomClick(userId, userName) {
+  try {
+    await sb.from('exp_config').upsert({ key:'exp_room_active', value: userName||'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
+  } catch(e) {}
+}
+function initExpRoom(userId, userName) {
+  const btn = document.getElementById('exp-room-link');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    registrarExpRoomClick(userId, userName);
+    btn.classList.add('active');
+    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
+  });
+  checkExpRoomStatus();
+  setInterval(checkExpRoomStatus, 60000);
+}
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
   if (!dot) return;
@@ -3190,6 +3265,7 @@ async function init() {
   document.getElementById('exp-room-link').href = EXP_ROOM_URL;
   document.getElementById('agenda-room-link').href = EXP_ROOM_URL;
   initNavDropdown(usr.role);
+  initExpRoom(usr.id, (usr.nome||'').split(' ')[0]);
 
   // Aba sócios
   if (usr.role === 'socio') {
@@ -5776,7 +5852,7 @@ async function carregarRevisoesProduto(prodId) {
 
 async function carregarRevisoes() {
   const { data: revs } = await sb.from('revisoes')
-    .select(`*, etapas(id, nome, produto_id, produtos(id, nome, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, tarefas_revisao(id, concluida))`)
+    .select(`*, etapas(id, nome, produto_id, produtos(id, nome, coordenador_id, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, tarefas_revisao(id, concluida))`)
     .order('created_at', { ascending: false });
 
   const lista = document.getElementById('rev-lista');
@@ -5785,7 +5861,9 @@ async function carregarRevisoes() {
     return;
   }
 
-  lista.innerHTML = revs.map(r => {
+  const uid = G.usuario.id;
+
+  function _revCard(r) {
     const etapa = r.etapas;
     const prod = etapa?.produtos;
     const cli = prod?.oportunidades?.clientes;
@@ -5793,9 +5871,8 @@ async function carregarRevisoes() {
     const total = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
     const conc = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
     const pct = total > 0 ? Math.round(conc / total * 100) : 0;
-
     const revisor = G.todosUsuarios.find(u => u.id === r.aberta_por);
-    const isMeu   = r.aberta_por === G.usuario.id;
+    const isMeu   = r.aberta_por === uid;
     const revisorChip = revisor
       ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:8px"
               title="${isMeu ? 'Você abriu esta revisão' : 'Aberta por '+revisor.nome}">${revisor.iniciais}</div>` : '';
@@ -5814,8 +5891,37 @@ async function carregarRevisoes() {
         <span>${pct}%</span>
       </div>
     </div>`;
-  }).join('');
+  }
 
+  function _isMinhaRev(r) {
+    const prod = r.etapas?.produtos;
+    return r.aberta_por === uid
+      || prod?.coordenador_id === uid
+      || (G.etapaDevs[r.etapas?.id] || []).includes(uid);
+  }
+  function _isCompleta(r) {
+    const total = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
+    const conc  = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
+    return r.status === 'concluida' || (total > 0 && conc === total);
+  }
+
+  const grpLabel = (txt, n) =>
+    `<div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb;padding:8px 4px 4px">${txt} <span style="color:#ccc">(${n})</span></div>`;
+
+  const minhasAtivas   = revs.filter(r => !_isCompleta(r) &&  _isMinhaRev(r));
+  const outrasAtivas   = revs.filter(r => !_isCompleta(r) && !_isMinhaRev(r));
+  const finalizadas    = revs.filter(r =>  _isCompleta(r));
+
+  let html = '';
+  if (minhasAtivas.length)
+    html += grpLabel('Minhas revisões ativas', minhasAtivas.length) + minhasAtivas.map(_revCard).join('');
+  if (outrasAtivas.length)
+    html += grpLabel('Revisões ativas', outrasAtivas.length) + outrasAtivas.map(_revCard).join('');
+  if (finalizadas.length)
+    html += grpLabel('Revisões finalizadas', finalizadas.length) + finalizadas.map(_revCard).join('');
+  if (!html) html = '<div class="empty-note">Nenhuma revisão encontrada.</div>';
+
+  lista.innerHTML = html;
   G._revisoes = revs;
 }
 
@@ -5866,7 +5972,10 @@ async function selecionarRevisao(id) {
   const opp = prod?.oportunidades;
   const cli = opp?.clientes;
 
-  const isSocioOrCoord = G.usuario.role === 'socio' || G.usuario.role === 'coordenador';
+  // Pode preencher: sócio, coordenador do produto, ou desenvolvedor da etapa
+  const podePreencher = G.usuario.role === 'socio'
+    || prod?.coordenador_id === G.usuario.id
+    || (G.etapaDevs[etapa?.id] || []).includes(G.usuario.id);
 
   const detalhe = document.getElementById('rev-detalhe');
   detalhe.innerHTML = `
@@ -5877,12 +5986,12 @@ async function selecionarRevisao(id) {
         <div style="font-size:10px;color:#999">${etapa?.nome || '—'} · Revisão #${rev.numero}</div>
       </div>
       <div style="display:flex;gap:6px">
-        ${isSocioOrCoord ? `<button class="btn sm verde" onclick="addPranchaRevisao('${id}')">+ Prancha</button>` : ''}
+        ${podePreencher ? `<button class="btn sm verde" onclick="addPranchaRevisao('${id}')">+ Prancha</button>` : ''}
         <button class="btn sm" onclick="notificarRevisao('${id}')" title="Notificar coordenador que revisão está pronta">📢 Notificar</button>
       </div>
     </div>
     <div id="pranchas-wrap">
-      ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, isSocioOrCoord)).join('')}
+      ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
       ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
     </div>
   `;
@@ -5909,7 +6018,9 @@ function renderPrancha(pr, isSocioOrCoord) {
       <div class="prancha-body">
         ${(pr.tarefas_revisao || []).map(t => `
           <div class="tarefa-item">
-            <div class="tarefa-check ${t.concluida ? 'done' : ''}" onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${pr.id}')"></div>
+            <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
+                 ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${pr.id}')"` : 'title="Apenas o coordenador ou desenvolvedor do projeto pode marcar"'}
+                 style="${isSocioOrCoord ? '' : 'cursor:default;opacity:.6'}"></div>
             <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
           </div>
         `).join('')}
@@ -7802,7 +7913,9 @@ async function carregarPrioridades() {
   if (!data?.length) { bloco.style.display = 'none'; return; }
   bloco.style.display = 'block';
   const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
-  wrap.innerHTML = data.map((pr, idx) => {
+  // Pendentes primeiro, concluídas no fim (mantendo ordem interna de cada grupo)
+  const sorted = [...data].sort((a,b) => (a.concluida?1:0) - (b.concluida?1:0));
+  wrap.innerHTML = sorted.map((pr, idx) => {
     const prod = G.todosProdutos.find(p => p.id === pr.produto_id);
     if (!prod) return '';
     const etapa = G.todasEtapas.find(e => e.produto_id === prod.id && e.status === 'em_andamento')
@@ -7835,8 +7948,10 @@ async function carregarPrioridades() {
       : estadoCard === 'hoje'
         ? 'background:var(--am-bg);border:1px solid var(--am);color:var(--am)'
         : 'background:#FFF8E7;border:1px solid #F0D080;color:#8A6010';
+    const coordId = prod?.coordenador_id || '';
     const prazoChip = prazoFmt
-      ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;${prazoChipStyle};border-radius:4px;padding:1px 7px;font-weight:600">📅 ${prazoFmt}</span>`
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;${prazoChipStyle};border-radius:4px;padding:1px 7px;font-weight:600;cursor:pointer"
+           onclick="event.stopPropagation();editarPrazoPrioridade('${pr.id}','${pr.prazo_texto||''}','${prod.id}','${coordId}')">📅 ${prazoFmt}</span>`
       : '';
 
     const comentHtml = pr.comentario
@@ -10826,6 +10941,21 @@ async function abrirNotif(id) {
   const panel = document.getElementById('notif-panel');
   if(panel) panel.style.display = 'none';
 
+  if(n.link_tipo === 'solicitacao_data') {
+    try {
+      const d = JSON.parse(n.corpo);
+      _prazoEdit._pendingRequest = d;
+      _prazoEdit._pendingNotifId = id;
+      document.getElementById('vd-titulo').textContent = 'Solicitação de alteração de prazo';
+      document.getElementById('vd-msg').textContent =
+        `${d.solicitanteNome?.split(' ')[0] || 'Colaborador'} solicitou alteração de prazo: ` +
+        `de ${d.dataAntiga ? fmtDate(d.dataAntiga) : '(sem data)'} para ${fmtDate(d.novaData)}.`;
+      document.getElementById('vd-btns').style.display = 'none';
+      document.getElementById('vd-btns-resp').style.display = 'flex';
+      document.getElementById('modal-validar-data').style.display = 'flex';
+    } catch(e) { toast('Erro ao abrir solicitação.'); }
+    return;
+  }
   if(n.link_tipo === 'registro' && n.link_produto_id) {
     await abrirProduto(n.link_produto_id);
     setTimeout(() => {
@@ -11105,6 +11235,80 @@ async function notificarRevisao(revisaoId) {
     );
   }
   toast(`Notificação enviada para ${destinos.size > 1 ? 'coordenadores' : 'coordenador'}`);
+}
+
+// ── PRAZO PRIORIDADE ──────────────────────────────────────────
+let _prazoEdit = {}; // {prioId, prodId, coordId, dataAntiga}
+
+function editarPrazoPrioridade(prioId, prazoAtual, prodId, coordId) {
+  _prazoEdit = { prioId, prodId, coordId, dataAntiga: prazoAtual };
+  const inp = document.getElementById('ep-nova-data');
+  if (inp) inp.value = prazoAtual || '';
+  document.getElementById('modal-editar-prazo').style.display = 'flex';
+}
+
+async function confirmarAlteracaoData() {
+  const novadata = document.getElementById('ep-nova-data').value;
+  if (!novadata) return;
+  fecharModal('modal-editar-prazo');
+
+  const { prioId, prodId, coordId, dataAntiga } = _prazoEdit;
+  const euSouCoord = coordId === G.usuario.id || G.usuario.role === 'socio';
+
+  if (euSouCoord) {
+    // Coordenador/sócio: altera diretamente
+    await sb.from('prioridades_usuario').update({ prazo_texto: novadata }).eq('id', prioId);
+    carregarPrioridades();
+    toast('Prazo atualizado.');
+  } else {
+    // Colaborador: pergunta se quer alinhar com coordenação
+    _prazoEdit.novaData = novadata;
+    document.getElementById('vd-msg').textContent =
+      `Você deseja alinhar a nova data (${fmtDate(novadata)}) com a coordenação do projeto?`;
+    document.getElementById('modal-validar-data').style.display = 'flex';
+  }
+}
+
+async function solicitarDataCoord(alinhar) {
+  fecharModal('modal-validar-data');
+  const { prioId, prodId, coordId, dataAntiga, novaData } = _prazoEdit;
+  if (!alinhar) { toast('Data não alterada.'); return; }
+  if (!coordId) { toast('Coordenador não identificado para este projeto.'); return; }
+
+  const dataAntigaFmt = dataAntiga ? fmtDate(dataAntiga) : '(sem data)';
+  const novaFmt = fmtDate(novaData);
+  await criarNotificacao(coordId, 'solicitacao_data',
+    `${G.usuario.nome.split(' ')[0]} solicitou alteração de prazo`,
+    `De ${dataAntigaFmt} para ${novaFmt}`,
+    JSON.stringify({ prioId, prodId, dataAntiga, novaData,
+      solicitanteId: G.usuario.id, solicitanteNome: G.usuario.nome }),
+    'solicitacao_data', prodId);
+  toast('Solicitação enviada para o coordenador.');
+}
+
+async function responderSolicitacaoData(aceitar) {
+  fecharModal('modal-validar-data');
+  const d = _prazoEdit._pendingRequest;
+  if (!d) return;
+  const { prioId, dataAntiga, novaData, solicitanteId, solicitanteNome } = d;
+
+  if (aceitar) {
+    await sb.from('prioridades_usuario').update({ prazo_texto: novaData }).eq('id', prioId);
+    await criarNotificacao(solicitanteId, 'lembrete',
+      'Alteração de prazo aceita ✓',
+      `${G.usuario.nome.split(' ')[0]} aceitou sua solicitação. Novo prazo: ${fmtDate(novaData)}.`,
+      null, null, null);
+    toast('Data atualizada e colaborador notificado.');
+    carregarPrioridades();
+  } else {
+    await criarNotificacao(solicitanteId, 'lembrete',
+      'Alteração de prazo recusada',
+      `${G.usuario.nome.split(' ')[0]} recusou a alteração. Prazo mantido: ${dataAntiga ? fmtDate(dataAntiga) : '(sem data)'}.`,
+      null, null, null);
+    toast('Solicitação recusada. Colaborador notificado.');
+  }
+  // Encerra a notificação original
+  if (_prazoEdit._pendingNotifId) encerrarNotif(_prazoEdit._pendingNotifId);
 }
 
 // ── START ──────────────────────────────────────────────────

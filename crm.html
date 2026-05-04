@@ -62,6 +62,9 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13p
 .exp-room-btn:hover{background:var(--verde);color:#fff}
 .exp-room-btn.active{background:var(--verde);color:#fff;animation:exp-pulse 1.5s ease-in-out infinite}
 @keyframes exp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(29,106,74,.4)}50%{box-shadow:0 0 0 6px rgba(29,106,74,0)}}
+.exp-room-btn{position:relative}
+.exp-room-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);right:0;background:#1a1a1a;color:#fff;font-size:10px;font-weight:500;white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:600;font-family:var(--f,sans-serif);letter-spacing:.1px}
+.exp-room-btn[data-tooltip]:hover::after{opacity:1}
 .user-pill-wrap{position:relative}
 .user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
 .user-dropdown.open{display:block}
@@ -1252,7 +1255,7 @@ window.addEventListener('DOMContentLoaded', async()=>{
   document.getElementById('user-av').textContent=ini;
   document.getElementById('user-nome').textContent=currentUser.nome?.split(' ')[0]||'Usuário';
   initNavDropdown(currentUser.role);
-  initExpRoom(currentUser.id);
+  initExpRoom(currentUser.id, (currentUser.nome||'').split(' ')[0]);
 
   await carregarDados();
   renderDash();
@@ -1317,27 +1320,32 @@ document.addEventListener('click', e => {
 const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
 async function checkExpRoomStatus() {
   try {
-    const { data } = await sb.from('exp_config').select('updated_at').eq('key','exp_room_active').maybeSingle();
+    const { data } = await sb.from('exp_config').select('updated_at,value').eq('key','exp_room_active').maybeSingle();
     const btn = document.getElementById('exp-room-btn');
     if (!btn) return;
     if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
       btn.classList.add('active');
+      const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
+      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
+      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
     } else {
       btn.classList.remove('active');
+      btn.removeAttribute('data-tooltip');
     }
   } catch(e) {}
 }
-async function registrarExpRoomClick(userId) {
+async function registrarExpRoomClick(userId, userName) {
   try {
-    await sb.from('exp_config').upsert({ key:'exp_room_active', value:'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
+    await sb.from('exp_config').upsert({ key:'exp_room_active', value: userName||'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
   } catch(e) {}
 }
-function initExpRoom(userId) {
+function initExpRoom(userId, userName) {
   const btn = document.getElementById('exp-room-btn');
   if (!btn) return;
   btn.addEventListener('click', () => {
-    registrarExpRoomClick(userId);
+    registrarExpRoomClick(userId, userName);
     btn.classList.add('active');
+    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
   });
   checkExpRoomStatus();
   setInterval(checkExpRoomStatus, 60000);
