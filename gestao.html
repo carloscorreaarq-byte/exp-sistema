@@ -8093,6 +8093,13 @@ async function carregarFluxo() {
           onblur="if(this.value!==this._v)debFluxo('${pr.id}','comentario',this.value)"
           >${coment}</textarea>` : '';
 
+      const clearBtn = pr
+        ? `<button onclick="event.stopPropagation();limparFluxoPrio('${pr.id}')"
+             title="Limpar cartão"
+             style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:13px;color:#bbb;line-height:1;padding:0 2px;border-radius:3px"
+             onmouseover="this.style.color='var(--tc)'" onmouseout="this.style.color='#bbb'">×</button>`
+        : '';
+
       return `<div class="fluxo-col-wrap"
           draggable="true" data-uid="${u.id}" data-id="${dataId}"
           data-prodid="${val}" data-prazo="${prazo}"
@@ -8103,6 +8110,7 @@ async function carregarFluxo() {
         <div class="fluxo-col-num-row">
           <span class="fluxo-drag-handle">⠿</span>
           <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
+          ${clearBtn}
         </div>
         <select class="fluxo-col-select"
           onchange="salvarFluxoPrio('${u.id}',this.value,this.closest('.fluxo-col-wrap'))">${opts}</select>
@@ -8167,6 +8175,12 @@ async function toggleFluxoPrio(userId, recId) {
     concluida: !data.concluida,
     concluida_em: data.concluida ? null : new Date().toISOString()
   }).eq('id', recId);
+  carregarFluxo();
+}
+
+async function limparFluxoPrio(recId) {
+  if (!recId) return;
+  await sb.from('prioridades_usuario').delete().eq('id', recId);
   carregarFluxo();
 }
 
