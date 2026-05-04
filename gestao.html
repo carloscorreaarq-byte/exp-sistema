@@ -2247,16 +2247,16 @@ body::before {
 <div class="page" id="page-socios">
 
   <div class="socio-tabs">
-    <button class="socio-tab active" data-panel="submissao">Submissão</button>
+    <button class="socio-tab active" data-panel="fluxo">Fluxo de trabalho</button>
+    <button class="socio-tab" data-panel="submissao">Submissão</button>
     <button class="socio-tab" data-panel="carga">Carga da equipe</button>
     <button class="socio-tab" data-panel="carga-mensal">Carga mensal</button>
-    <button class="socio-tab" data-panel="reembolso">Reembolso</button>
     <button class="socio-tab" data-panel="valorhora">Valor / hora</button>
-    <button class="socio-tab" data-panel="fluxo">Fluxo de trabalho</button>
+    <button class="socio-tab" data-panel="reembolso">Reembolso</button>
     <button class="socio-tab" data-panel="entregas">Entregas</button>
     <button class="socio-tab billing-only" data-panel="espelho" id="socio-tab-espelho" style="display:none">Faturamento</button>
-    <button class="socio-tab" data-panel="usuarios">Usuários</button>
     <button class="socio-tab" data-panel="clientes">Clientes</button>
+    <button class="socio-tab" data-panel="usuarios">Usuários</button>
     <button class="socio-tab" data-panel="presets">Presets Checklist</button>
   </div>
 
@@ -2330,7 +2330,7 @@ body::before {
   </div>
 
   <!-- SUBMISSÃO -->
-  <div class="socio-panel active" id="sp-submissao">
+  <div class="socio-panel" id="sp-submissao">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <div class="sec-title" style="margin-bottom:0;flex:1">Status de submissão semanal</div>
       <div class="semana-nav" style="margin-bottom:0">
@@ -2423,7 +2423,7 @@ body::before {
   </div>
 
   <!-- FLUXO DE TRABALHO (G11) -->
-  <div class="socio-panel" id="sp-fluxo">
+  <div class="socio-panel active" id="sp-fluxo">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <div class="sec-title" style="margin-bottom:0;flex:1">Fluxo de trabalho da equipe</div>
       <span style="font-size:9px;color:#aaa">Defina até 6 projetos por pessoa. Previsão e comentário aparecem no dashboard do colaborador atribuído.</span>
@@ -3466,7 +3466,7 @@ function onTabChange(tab) {
   if (tab === 'revisoes') { carregarRevisoes(); }
   if (tab === 'socios') {
     if (G.hasBillingAccess && G.usuario.role !== 'socio') carregarEspelho();
-    else carregarSubmissao();
+    else carregarFluxo();
   }
 }
 function onSocioPanel(panel) {
@@ -6887,7 +6887,7 @@ function _cargaDonut(totais) {
   const grad  = `conic-gradient(var(--az) 0% ${pProj}%, var(--verde) ${pProj}% ${pProj+pOrg}%, var(--am) ${pProj+pOrg}% 100%)`;
   return `<div style="position:relative;width:64px;height:64px;flex-shrink:0">
     <div style="width:64px;height:64px;border-radius:50%;background:${grad}"></div>
-    <div style="position:absolute;inset:12px;border-radius:50%;background:#fff"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;background:var(--off)"></div>
   </div>
   <div style="font-size:10px;line-height:1.7">
     <div><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--az);margin-right:4px"></span>Projeto: ${fmtH(totais.projeto)}</div>
@@ -6974,7 +6974,7 @@ async function carregarCarga() {
     .sort((a,b) => b[1]-a[1]).slice(0,10)
     .map(([k,v]) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
       <div style="font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${k}</div>
-      <div style="width:120px;height:5px;background:var(--cinza2);border-radius:3px;flex-shrink:0">
+      <div style="width:120px;height:8px;background:var(--cinza2);border-radius:3px;flex-shrink:0">
         <div style="height:100%;width:${Math.round(v/maxAtiv*100)}%;background:var(--az);border-radius:3px"></div>
       </div>
       <div style="font-size:10px;font-family:var(--fm);color:#888;min-width:32px;text-align:right">${fmtH(v)}</div>
@@ -7088,7 +7088,8 @@ async function carregarSubmissao() {
 
     const usuariosComHoras = new Set(horas.map(h => h.usuario_id).filter(Boolean));
     const horasPorUsuario = {};
-    const horasPorTipo = {}; // { uid: { projeto:0, organizacao:0, sociedade:0 } }
+    const horasPorTipo = {};    // { uid: { projeto:0, organizacao:0, sociedade:0 } }
+    const horasPorProd = {};    // { uid: { produto_id: horas } }
     horas.forEach(h => {
       if (!h.usuario_id) return;
       const dh = diffHoras(h.hora_inicio, h.hora_fim);
@@ -7096,8 +7097,14 @@ async function carregarSubmissao() {
       horasPorUsuario[h.usuario_id] += dh;
       if (!horasPorTipo[h.usuario_id]) horasPorTipo[h.usuario_id] = { projeto:0, organizacao:0, sociedade:0 };
       horasPorTipo[h.usuario_id][h.tipo || 'projeto'] = (horasPorTipo[h.usuario_id][h.tipo || 'projeto'] || 0) + dh;
+      // per-project
+      if (h.produto_id) {
+        if (!horasPorProd[h.usuario_id]) horasPorProd[h.usuario_id] = {};
+        horasPorProd[h.usuario_id][h.produto_id] = (horasPorProd[h.usuario_id][h.produto_id] || 0) + dh;
+      }
     });
     G._submissaoHorasPorTipo = horasPorTipo;
+    G._submissaoHorasPorProd = horasPorProd;
 
     wrap.innerHTML = '';
 
@@ -7129,7 +7136,7 @@ async function carregarSubmissao() {
         <div class="carga-nome" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" onclick="mostrarResumoMembro('${u.id}','${(u.nome||'').replace(/'/g,"\\'")}')">
           ${u.nome || ''}
         </div>
-        ${sobrecarga > 0 ? `<div class="subm-overload">Sobrecarga de trabalho - ${fmtHLong(sobrecarga)}</div>` : ''}
+        ${sobrecarga > 0 ? `<div class="subm-overload">Sobrecarga ${fmtHLong(sobrecarga)}</div>` : ''}
       </div>
       <span class="carga-status subm-status ${classe}">
         ${status}
@@ -7154,16 +7161,19 @@ async function carregarSubmissao() {
 
 
 function mostrarResumoMembro(uid, nome) {
-  const hpT = G._submissaoHorasPorTipo?.[uid] || {};
+  const hpT   = G._submissaoHorasPorTipo?.[uid] || {};
+  const hpP   = G._submissaoHorasPorProd?.[uid] || {};
   const total = Object.values(hpT).reduce((s,h)=>s+h,0);
-  const rows = [
-    { label:'Projetos',       h: hpT.projeto     || 0, cor:'#1D4FA0' },
-    { label:'Org. Interna',   h: hpT.organizacao  || 0, cor:'#1D6A4A' },
-    { label:'Sociedade',      h: hpT.sociedade    || 0, cor:'#C4831A' },
+
+  // ── Horas por tipo ──
+  const tipoRows = [
+    { label:'Projetos',     h: hpT.projeto    || 0, cor:'var(--az)'    },
+    { label:'Org. Interna', h: hpT.organizacao|| 0, cor:'var(--verde)'  },
+    { label:'Sociedade',    h: hpT.sociedade  || 0, cor:'var(--am)'     },
   ].filter(r => r.h > 0);
 
-  const conteudo = rows.length
-    ? rows.map(r => {
+  const tipoHtml = tipoRows.length
+    ? tipoRows.map(r => {
         const pct = total > 0 ? Math.round(r.h / total * 100) : 0;
         return `<div style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
@@ -7177,13 +7187,33 @@ function mostrarResumoMembro(uid, nome) {
       }).join('')
     : '<div class="empty-note">Sem horas lançadas nesta semana.</div>';
 
+  // ── Horas por projeto ──
+  const prodEntries = Object.entries(hpP).sort((a,b)=>b[1]-a[1]);
+  const prodHtml = prodEntries.length
+    ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--cinza)">
+        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Por projeto</div>
+        ${prodEntries.map(([pid, h]) => {
+          const prod = (G._prodsGestao || G.todosProdutos || []).find(p => p.id === pid);
+          const projNome = prod?.oportunidades?.projeto || prod?.nome || pid;
+          const etapaNome = prod?.nome && prod?.oportunidades?.projeto ? ` · ${truncarTexto(prod.nome,20)}` : '';
+          const pct = total > 0 ? Math.round(h / total * 100) : 0;
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${projNome}${etapaNome}">${projNome}${etapaNome}</div>
+            <span style="font-size:11px;font-family:var(--fm);color:#555;white-space:nowrap">${fmtH(h)}</span>
+          </div>`;
+        }).join('')}
+      </div>`
+    : '';
+
+  const conteudo = tipoHtml + prodHtml;
+
   // Mini overlay
   let ov = document.getElementById('resumo-membro-ov');
   if (!ov) {
     ov = document.createElement('div');
     ov.id = 'resumo-membro-ov';
     ov.style.cssText = 'position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)';
-    ov.innerHTML = `<div id="resumo-membro-box" style="background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:20px;min-width:300px;max-width:380px;position:relative">
+    ov.innerHTML = `<div id="resumo-membro-box" style="background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:20px;min-width:300px;max-width:400px;max-height:80vh;overflow-y:auto;position:relative">
       <button onclick="document.getElementById('resumo-membro-ov').remove()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
       <div id="resumo-membro-titulo" style="font-size:13px;font-weight:700;margin-bottom:4px"></div>
       <div id="resumo-membro-total" style="font-size:10px;color:#888;margin-bottom:14px"></div>
@@ -8035,7 +8065,10 @@ async function carregarFluxo() {
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
 
   wrap.innerHTML = G.todosUsuarios.map(u => {
-    const existentes = Object.values(byUser[u.id]||{}).sort((a,b)=>a.ordem-b.ordem);
+    const existentes = Object.values(byUser[u.id]||{}).sort((a,b) => {
+      if ((a.concluida?1:0) !== (b.concluida?1:0)) return (a.concluida?1:0) - (b.concluida?1:0);
+      return a.ordem - b.ordem;
+    });
     const slotsData = Array.from({length:6}, (_,i) => existentes[i]||null);
 
     const cols = slotsData.map((pr, idx) => {
