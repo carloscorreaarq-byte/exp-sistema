@@ -3559,12 +3559,26 @@ async function importarProdutosFromProposta(oppId, calcId) {
     return;
   }
 
-  // Busca items, subs, desps, repasse e despBit da proposta
+  // Busca a proposta completa — inclui data_json como fallback garantido
   const { data, error } = await sb.from('exp_proposals')
-    .select('items, subs, desps, repasse, despBit')
+    .select('items, subs, desps, repasse, despBit, data_json')
     .eq('proposal_id', calcId)
     .maybeSingle();
-  if (error || !data?.items?.length) { toast('Sem itens para importar nesta proposta.'); return; }
+  if (error || !data) { toast('Proposta não encontrada no banco. Abra a calculadora para sincronizar.'); return; }
+
+  // Extrai campos do data_json quando as colunas individuais estiverem vazias
+  // (data_json sempre tem o objeto completo; colunas JSONB podem não existir no schema)
+  let _dj = null;
+  if (data.data_json) {
+    try { _dj = typeof data.data_json === 'string' ? JSON.parse(data.data_json) : data.data_json; } catch(e) {}
+  }
+  const items   = (data.items?.length   ? data.items   : _dj?.items)   || [];
+  const subs    = (data.subs?.length    ? data.subs    : _dj?.subs)    || [];
+  const desps   = (data.desps?.length   ? data.desps   : _dj?.desps)   || [];
+  const repasse = data.repasse  ?? _dj?.repasse  ?? null;
+  const despBit = data.despBit  ?? _dj?.despBit  ?? _dj?.despBit ?? 0;
+
+  if (!items.length) { toast('Sem itens para importar nesta proposta. Verifique se a proposta foi salva com serviços na calculadora.'); return; }
 
   // ── Helper: calcula valor bruto de uma despesa (replica calcDesp() da calc.html) ──
   function _calcDespVal(d) {
@@ -3578,7 +3592,7 @@ async function importarProdutosFromProposta(oppId, calcId) {
   }
 
   // ── 1. Importa serviços (items) → tabela produtos ──
-  const novos = data.items.map(it => ({
+  const novos = items.map(it => ({
     oportunidade_id: oppId,
     nucleo:          it.nucleo || 'PAIS',
     subtipo:         it.subK || null,
@@ -3598,7 +3612,7 @@ async function importarProdutosFromProposta(oppId, calcId) {
 
   // ── 2. Subcontratações → opp_custos ──
   // Formula correta: val*(1 + bit/100 + ret/100)  [aditiva, igual à calc.html]
-  (data.subs || []).forEach(s => {
+  subs.forEach(s => {
     const valComBit = s.valComBit != null
       ? s.valComBit                                         // campo já computado e salvo na calc
       : (s.val || 0) * (1 + (s.bit || 0) / 100 + (s.ret || 0) / 100);
@@ -3621,8 +3635,8 @@ async function importarProdutosFromProposta(oppId, calcId) {
   // ── 3. Despesas → opp_custos ──
   // Exclui horasTec (é ganho EXP interno, não custo para o cliente)
   // Inclui apenas despesas confirmadas
-  const despBitPct = (data.despBit || 0) / 100;
-  (data.desps || []).filter(d => d.confirmada && d.tipo !== 'horasTec').forEach(d => {
+  const despBitPct = (despBit || 0) / 100;
+  desps.filter(d => d.confirmada && d.tipo !== 'horasTec').forEach(d => {
     const valBruto = _calcDespVal(d);
     const valFinal = valBruto * (1 + despBitPct);  // aplica overhead de despesas
     if (valFinal <= 0) return;
@@ -3634,18 +3648,18 @@ async function importarProdutosFromProposta(oppId, calcId) {
       valor_calculado: valFinal,
       valor_negociado: null,
       calc_ref:        calcId,
-      obs:             despBitPct > 0 ? `Overhead: ${data.despBit}%` : null,
+      obs:             despBitPct > 0 ? `Overhead: ${despBit}%` : null,
       status:          'pendente',
     });
   });
 
   // ── 4. Repasse → opp_custos ──
-  if (data.repasse) {
-    const rep = data.repasse;
+  if (repasse) {
+    const rep = repasse;
     // valorRep pode estar pré-calculado ou precisa ser computado
     let valorRep = rep.valorRep;
     if (valorRep == null) {
-      const totI = data.items.reduce((s, it) =>
+      const totI = items.reduce((s, it) =>
         s + (it.valorProposto != null ? it.valorProposto : (it.valorCalc || 0)), 0);
       valorRep = rep.tipo === 'pct' ? totI * (rep.val || 0) / 100 : (rep.val || 0);
     }
@@ -3672,9 +3686,9 @@ async function importarProdutosFromProposta(oppId, calcId) {
   await carregarDados();
   renderPipe(); renderOrc();
   abrirDetail(oppId);
-  const nSubs  = (data.subs||[]).length;
-  const nDesps = (data.desps||[]).filter(d=>d.confirmada&&d.tipo!=='horasTec').length;
-  const nRep   = data.repasse ? 1 : 0;
+  const nSubs  = subs.length;
+  const nDesps = desps.filter(d=>d.confirmada&&d.tipo!=='horasTec').length;
+  const nRep   = repasse ? 1 : 0;
   toast(`${novos.length} serviço(s)${custos.length ? ` + ${nSubs} sub(s) + ${nDesps} desp(s)${nRep?' + repasse':''}` : ''} importado(s) da calculadora!`);
 }
 
@@ -3684,7 +3698,7 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
   if (!el) return;
   try {
     const {data, error} = await sb.from('exp_proposals')
-      .select('proposal_id, projeto, total, status, version, parent_id, subs, desps, repasse')
+      .select('proposal_id, projeto, total, status, version, parent_id, subs, desps, repasse, data_json')
       .eq('proposal_id', calcId)
       .maybeSingle();
     if (error || !data) { el.textContent = '(proposta não encontrada)'; if(elFull)elFull.innerHTML=''; return; }
@@ -3705,9 +3719,13 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
 
     // COM-4: renderizar subs / desps / repasse no painel de custos
     if (!elFull) return;
-    const subs  = data.subs   || [];
-    const desps = data.desps  || [];
-    const rep   = data.repasse || null;
+    let _djInfo = null;
+    if (data.data_json) {
+      try { _djInfo = typeof data.data_json === 'string' ? JSON.parse(data.data_json) : data.data_json; } catch(e) {}
+    }
+    const subs  = (data.subs?.length  ? data.subs  : _djInfo?.subs)  || [];
+    const desps = (data.desps?.length ? data.desps : _djInfo?.desps) || [];
+    const rep   = data.repasse ?? _djInfo?.repasse ?? null;
     if (!subs.length && !desps.length && !rep) { elFull.innerHTML = ''; return; }
 
     let fhtml = `<div class="ms"><div class="ms-title">Custos da proposta (EXP.calc)</div>`;
