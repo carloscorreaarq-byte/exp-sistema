@@ -172,23 +172,25 @@ textarea{resize:vertical;min-height:60px}
 .mb14{margin-bottom:14px}
 
 /* KANBAN */
-.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:8px;overflow:hidden}
-.kcol{border-right:1px solid var(--cinza)}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;height:calc(100vh - 138px)}
+.kcol{border-right:1px solid var(--cinza);display:flex;flex-direction:column;overflow:hidden;height:100%}
 .kcol:last-child{border-right:none}
-.kcol-hd{padding:8px 10px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:6px;background:#fff;position:sticky;top:46px;z-index:5}
-.kcol-stripe{width:3px;height:12px;flex-shrink:0}
+.kcol-hd{padding:8px 10px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:6px;background:#fff;position:sticky;top:0;z-index:5;flex-shrink:0}
+.kcol-stripe{width:3px;height:14px;border-radius:2px;flex-shrink:0}
 .kcol-title{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;flex:1}
 .kcol-cnt{font-size:9px;font-family:var(--fm);color:#888}
-.kcol-sum{font-size:10px;font-family:var(--fm);color:#888;margin-top:1px}
-.kitems{padding:8px;display:flex;flex-direction:column;gap:6px;min-height:120px}
-.pcard{background:#fff;border:1px solid var(--cinza);padding:10px 12px;cursor:pointer;transition:border-color .12s;position:relative;border-radius:6px}
-.pcard:hover{border-color:#999}
-.pcard-num{font-size:9px;font-family:var(--fm);color:#888;margin-bottom:3px}
-.pcard-client{font-size:12px;font-weight:600;margin-bottom:2px}
-.pcard-proj{font-size:10px;color:#888;margin-bottom:6px}
-.pcard-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.pcard-val{font-size:11px;font-weight:700;font-family:var(--fm);margin-left:auto}
-.pcard-dias{font-size:9px;color:#888;font-family:var(--fm)}
+.kcol-sum{font-size:10px;font-family:var(--fm);font-weight:600;color:#555}
+.kitems{padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1}
+/* CARD */
+.pcard{background:#fff;border:1px solid var(--cinza);padding:9px 11px;cursor:pointer;transition:border-color .12s,box-shadow .12s;position:relative;border-radius:8px}
+.pcard:hover{border-color:#aaa;box-shadow:0 2px 6px rgba(0,0,0,.07)}
+.pcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.pcard-code{font-size:9px;font-family:var(--fm);color:#aaa}
+.pcard-client{font-size:12px;font-weight:700;margin-bottom:1px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-proj{font-size:10px;color:#666;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-loc{font-size:9px;color:#aaa;margin-bottom:6px}
+.pcard-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pcard-val{font-size:11px;font-weight:700;font-family:var(--fm);margin-left:auto;color:var(--preto)}
 .pcard-exp{border-left:3px solid var(--tc)}
 
 /* LINHA DO TEMPO */
@@ -1744,8 +1746,8 @@ function renderPipe(){
   const negoc   = ops.filter(o=>['negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase()));
   const fech    = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||o.updated_at)&&new Date(oppDataFechamento(o)||o.updated_at)>=cut45);
 
-  const vOrc=orcAtiv.reduce((s,o)=>s+oppValorProposto(o),0);
-  const vNeg=negoc.reduce((s,o)=>s+oppValorProposto(o),0);
+  const vOrc=orcAtiv.reduce((s,o)=>s+oppValorEfetivo(o),0);
+  const vNeg=negoc.reduce((s,o)=>s+oppValorEfetivo(o),0);
   const vFech=fech.reduce((s,o)=>s+oppValorFechado(o),0);
 
   document.getElementById('k-cnt-p').textContent=prosp.length;
@@ -1758,21 +1760,29 @@ function renderPipe(){
   document.getElementById('pipe-total').textContent=`Pipeline: ${fmt(vOrc+vNeg)}`;
 
   function card(op){
-    const vProp=oppValorProposto(op);
+    const vEff=oppValorEfetivo(op);
     const vFch=oppValorFechado(op);
     const tc=tempClass(op._followups);
     const exp=isExpiredOp(op);
     const nucleos=[...new Set(op._produtos.map(p=>p.nucleo))];
+    const prop=op._proposal;
+    const code=prop?.prop_code
+      ? `EXP-${String(prop.prop_code).padStart(3,'0')}`
+      : (op.num_legado||'—');
+    const locStr=[op.cidade,op.uf].filter(Boolean).join('/');
     return`<div class="pcard${exp?' pcard-exp':''}" onclick="abrirDetail('${op.id}')">
-      <div class="pcard-num">${op.num_legado||'—'}</div>
+      <div class="pcard-top">
+        <span class="pcard-code">${code}</span>
+        <div class="temp ${tc}"></div>
+      </div>
       <div class="pcard-client">${op._cliente?.nome||'—'}</div>
-      <div class="pcard-proj">${op.projeto||op.cidade||''}</div>
+      ${op.projeto?`<div class="pcard-proj">${op.projeto}</div>`:''}
+      ${locStr?`<div class="pcard-loc">${locStr}</div>`:''}
       <div class="pcard-meta">
         ${nucleos.map(n=>tipoBadgeProd(n)).join('')}
         ${respBadge(op.resp_id)}
-        <div class="temp ${tc}"></div>
         ${exp?'<span class="badge b-exp" style="font-size:7px">EXP</span>':''}
-        <span class="pcard-val">${fmt(vFch||vProp)}</span>
+        <span class="pcard-val">${fmt(vFch||vEff)}</span>
       </div>
     </div>`;
   }
