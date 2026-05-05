@@ -2609,7 +2609,7 @@ body::before {
     <div class="modal-ft">
       <button class="btn tc socio-only" id="mp-btn-pausar" onclick="pausarProduto()" style="margin-right:auto">Pausar produto</button>
       <button class="btn" onclick="fecharModal('modal-produto')">Fechar</button>
-      <button class="btn filled socio-only" onclick="editarProduto()">Editar</button>
+      <button class="btn filled socio-only" id="mp-btn-editar" onclick="editarProduto()">Editar</button>
     </div>
   </div>
 </div>
@@ -6319,24 +6319,28 @@ async function abrirProduto(id) {
     : '—';
   document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
 
-  // Custos: visível para sócios e coordenadores
+  // Controle de acesso do modal por role
   const isSocioOrCoord = isSocio || G.usuario.role === 'coordenador';
-  document.getElementById('mp-tab-custos').style.display = isSocioOrCoord ? '' : 'none';
-  // Botão novo checklist tarefa: só sócios
-  const btnNovoCk = document.getElementById('btn-novo-ck-tarefa');
-  if(btnNovoCk) btnNovoCk.style.display = isSocio ? '' : 'none';
 
-  // Financeiro (só sócios)
+  // Sócios e coordenadores: edição de etapas e dados gerais
+  document.getElementById('btn-edit-etapas').style.display  = isSocioOrCoord ? '' : 'none';
+  document.getElementById('mp-btn-editar').style.display    = isSocioOrCoord ? '' : 'none';
+
+  // Sócios e coordenadores: custos
+  document.getElementById('mp-tab-custos').style.display = isSocioOrCoord ? '' : 'none';
+
+  // Sócios apenas: financeiro, horas, pausar
+  document.getElementById('mp-financeiro-wrap').style.display = isSocio ? 'block' : 'none';
+  document.getElementById('mp-tab-horas').style.display       = isSocio ? '' : 'none';
+  document.getElementById('mp-btn-pausar').style.display      = (isSocio && prod.status === 'ativo') ? '' : 'none';
   if (isSocio) {
-    document.getElementById('mp-financeiro-wrap').style.display = 'block';
-    document.getElementById('mp-tab-horas').style.display = '';
     document.getElementById('mp-valor').textContent = prod.valor_contratado
       ? 'R$ ' + fmtNum(prod.valor_contratado) : '—';
-    // Horas e custo calculados na aba
   }
 
-  // Botão pausar
-  document.getElementById('mp-btn-pausar').style.display = isSocio && prod.status === 'ativo' ? '' : 'none';
+  // Novo checklist de tarefa: só sócios
+  const btnNovoCk = document.getElementById('btn-novo-ck-tarefa');
+  if (btnNovoCk) btnNovoCk.style.display = isSocio ? '' : 'none';
 
   // Etapas timeline
   const etapas = G.todasEtapas.filter(e => e.produto_id === id).sort((a,b) => a.ordem - b.ordem);
@@ -9089,6 +9093,7 @@ function _renderEtapaEdicaoRow(e, devIds) {
 }
 
 async function abrirEditarProduto() {
+  if (G.usuario.role === 'colaborador') return; // colaboradores não editam
   const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo)
     || G._todosProdutosGestao.find(p => p.id === G.produtoAtivo);
   if (!prod || prod._crm) return;
