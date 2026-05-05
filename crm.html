@@ -3458,34 +3458,33 @@ function populateCalcDropdown(selectedId) {
   const opts = ['<option value="">— Nenhuma proposta vinculada —</option>'];
 
   families.forEach(fam => {
-    const latest = fam[0];
-    const froot  = latest.parent_id || latest.proposal_id;
+    const latest  = fam[0];
+    const froot   = latest.parent_id || latest.proposal_id;
     const ocupada = linkedFamilyRoots.has(froot);
     const codStr  = latest.prop_code
       ? `EXP-${String(latest.prop_code).padStart(3,'0')}`
       : `#${latest.proposal_id}`;
     const famLbl  = [latest.projeto||'Sem título', latest.cliente||''].filter(Boolean).join(' · ');
+    const ocupTag = ocupada ? ' · já vinculada' : '';
 
     if (fam.length === 1) {
-      // Família sem revisões — opção simples
-      const p = fam[0];
+      // Proposta sem revisões
+      const p      = fam[0];
       const verLbl = _verLabel(p.version||0);
-      const lbl = `${codStr} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]`
-                + (ocupada ? ' · já vinculada' : '');
-      const isSel = p.proposal_id === selectedId ? ' selected' : '';
+      const lbl    = `${codStr} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]${ocupTag}`;
+      const isSel  = p.proposal_id === selectedId ? ' selected' : '';
       opts.push(`<option value="${p.proposal_id}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
     } else {
-      // Família com múltiplas revisões — usa optgroup
-      const grpLabel = `${codStr} · ${famLbl}${ocupada ? ' · [já vinculada]' : ''}`;
-      opts.push(`<optgroup label="${grpLabel}">`);
+      // Família com revisões — sem optgroup (evita negrito automático do browser)
+      // Primeira opção = cabeçalho desabilitado identificando a família
+      opts.push(`<option disabled style="color:#aaa;font-size:10px">— ${codStr} · ${famLbl}${ocupTag}</option>`);
       fam.forEach((p, i) => {
-        const verLbl  = _verLabel(p.version||0);
-        const isSel   = p.proposal_id === selectedId ? ' selected' : '';
-        const isMais  = i === 0 ? ' ★' : '';
-        const lbl = `  ${verLbl} — ${fmt(+p.total)}${isMais}`;
+        const verLbl = _verLabel(p.version||0);
+        const isSel  = p.proposal_id === selectedId ? ' selected' : '';
+        const star   = i === 0 ? ' ★' : '';
+        const lbl    = `    ${verLbl} — ${fmt(+p.total)}${star}`;
         opts.push(`<option value="${p.proposal_id}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
       });
-      opts.push('</optgroup>');
     }
   });
 
@@ -3564,7 +3563,7 @@ async function importarProdutosFromProposta(oppId, calcId) {
     .select('items, subs, desps, repasse, despBit, data_json')
     .eq('proposal_id', calcId)
     .maybeSingle();
-  if (error || !data) { toast('Proposta não encontrada no banco. Abra a calculadora para sincronizar.'); return; }
+  if (error || !data) { toast('Proposta não encontrada no banco. Abra a EXP.calc para sincronizar as propostas e tente novamente.'); return; }
 
   // Extrai campos do data_json quando as colunas individuais estiverem vazias
   // (data_json sempre tem o objeto completo; colunas JSONB podem não existir no schema)
@@ -3701,7 +3700,20 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
       .select('proposal_id, projeto, total, status, version, parent_id, subs, desps, repasse, data_json')
       .eq('proposal_id', calcId)
       .maybeSingle();
-    if (error || !data) { el.textContent = '(proposta não encontrada)'; if(elFull)elFull.innerHTML=''; return; }
+    if (error || !data) {
+      // Fallback: usa dados que já estão em memória (proposta ainda não sincronizada ao Supabase)
+      const mem = allProposals.find(p => p.proposal_id === calcId);
+      if (mem) {
+        el.textContent = `${mem.projeto || '—'} · ${fmt(mem.total)} · ${_verLabel(mem.version||0)}`;
+        el.style.color = 'var(--am)';
+        el.title = 'Dados básicos apenas — abra a calculadora para sincronizar a proposta completa';
+      } else {
+        el.textContent = '(proposta não sincronizada — abra a calculadora)';
+        el.style.color = '#aaa';
+      }
+      if (elFull) elFull.innerHTML = '';
+      return;
+    }
     const verLbl = _verLabel(data.version||0);
     el.textContent = `${data.projeto || '—'} · ${fmt(data.total)} · ${verLbl}`;
     el.style.color = 'var(--verde)';
