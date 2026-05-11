@@ -3431,6 +3431,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     document.querySelectorAll('.knowledge-subtab').forEach(el => {
       el.classList.toggle('active', el.dataset.sub === sub);
     });
+    if(sub === 'carga-terra') setTimeout(() => window.calcCargaTerra?.(), 50);
     if(sub === 'cadastros-senhas' && isSocio()) setTimeout(iniciarCadastrosSenhas, 30);
   };
 
@@ -3662,91 +3663,78 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
             Copiar nota
           </button>
         </div>
-      </section>
-
-      <script>
-      (function() {
-        function fmt(n) { return Number(n).toLocaleString('pt-BR', {maximumFractionDigits:1}); }
-
-        window.calcCargaTerra = function() {
-          const pe  = parseFloat(document.getElementById('ct-peso-esp')?.value) || 0;
-          const alt = parseFloat(document.getElementById('ct-altura')?.value)   || 0;
-          const altM = alt / 100;
-          const res = pe * altM;
-
-          const resEl = document.getElementById('ct-resultado');
-          const subEl = document.getElementById('ct-resultado-sub');
-          if (resEl) resEl.innerHTML = fmt(res) + ' <span style="font-size:12px;font-weight:400;color:#666">kg/m²</span>';
-          if (subEl) subEl.textContent = fmt(pe) + ' × ' + altM.toFixed(2).replace('.',',') + ' m';
-
-          atualizarNota();
-        };
-
-        window.calcCargaVaso = function() {
-          const vaso   = parseFloat(document.getElementById('ct-vaso-peso')?.value)   || 0;
-          const terra  = parseFloat(document.getElementById('ct-vaso-terra')?.value)  || 0;
-          const planta = parseFloat(document.getElementById('ct-vaso-planta')?.value) || 0;
-          const total  = vaso + terra + planta;
-
-          const el = document.getElementById('ct-vaso-resultado');
-          if (el) el.innerHTML = fmt(total) + ' <span style="font-size:12px;font-weight:400;color:#666">kg</span>';
-          atualizarNota();
-        };
-
-        function atualizarNota() {
-          const pe     = parseFloat(document.getElementById('ct-peso-esp')?.value) || 0;
-          const alt    = parseFloat(document.getElementById('ct-altura')?.value)   || 0;
-          const altM   = alt / 100;
-          const cargaM2 = pe * altM;
-
-          const vaso   = parseFloat(document.getElementById('ct-vaso-peso')?.value)   || 0;
-          const terra  = parseFloat(document.getElementById('ct-vaso-terra')?.value)  || 0;
-          const planta = parseFloat(document.getElementById('ct-vaso-planta')?.value) || 0;
-          const totalVaso = vaso + terra + planta;
-
-          let nota = 'CARGA DE TERRA — REGISTRO TÉCNICO\n';
-          nota += '─────────────────────────────────\n';
-          nota += 'Carga distribuída (jardim sobre laje):\n';
-          nota += '  Peso específico utilizado: ' + fmt(pe) + ' kg/m³ (terra saturada — pior cenário)\n';
-          nota += '  Altura da terra: ' + fmt(alt) + ' cm (' + altM.toFixed(2).replace('.',',') + ' m)\n';
-          nota += '  Peso total: ' + fmt(cargaM2) + ' kg/m²\n';
-
-          if (totalVaso > 0) {
-            nota += '\nCarga pontual (vaso individual):\n';
-            if (vaso > 0)   nota += '  Peso do vaso:   ' + fmt(vaso)   + ' kg\n';
-            if (terra > 0)  nota += '  Terra no vaso:  ' + fmt(terra)  + ' kg\n';
-            if (planta > 0) nota += '  Peso da planta: ' + fmt(planta) + ' kg\n';
-            nota += '  Carga pontual total: ' + fmt(totalVaso) + ' kg por ponto\n';
-          }
-
-          nota += '\nRef.: peso específico da terra molhada = 2.000 kg/m³ (máximo — NBR e prática estrutural).';
-
-          const el = document.getElementById('ct-nota');
-          if (el) el.textContent = nota;
-        }
-
-        window.copiarNotaCargaTerra = function() {
-          const el = document.getElementById('ct-nota');
-          if (!el) return;
-          navigator.clipboard.writeText(el.textContent).then(() => {
-            const btn = event.currentTarget || event.target;
-            const orig = btn.textContent;
-            btn.textContent = 'Copiado ✓';
-            setTimeout(() => { btn.textContent = orig; }, 1800);
-          }).catch(() => {
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            document.execCommand('copy');
-          });
-        };
-
-        // Inicializa a nota ao carregar
-        setTimeout(() => { window.calcCargaTerra && window.calcCargaTerra(); }, 50);
-      })();
-      </script>`;
+      </section>`;
   }
+
+  // ── Funções da calculadora de carga de terra (escopo global) ─
+  function _ctFmt(n) { return Number(n).toLocaleString('pt-BR', {maximumFractionDigits:1}); }
+
+  function _ctAtualizarNota() {
+    const pe      = parseFloat(document.getElementById('ct-peso-esp')?.value) || 0;
+    const alt     = parseFloat(document.getElementById('ct-altura')?.value)   || 0;
+    const altM    = alt / 100;
+    const cargaM2 = pe * altM;
+    const vaso    = parseFloat(document.getElementById('ct-vaso-peso')?.value)   || 0;
+    const terra   = parseFloat(document.getElementById('ct-vaso-terra')?.value)  || 0;
+    const planta  = parseFloat(document.getElementById('ct-vaso-planta')?.value) || 0;
+    const totalVaso = vaso + terra + planta;
+    let nota = 'CARGA DE TERRA — REGISTRO TÉCNICO\n';
+    nota += '─────────────────────────────────\n';
+    nota += 'Carga distribuída (jardim sobre laje):\n';
+    nota += '  Peso específico utilizado: ' + _ctFmt(pe) + ' kg/m³ (terra saturada — pior cenário)\n';
+    nota += '  Altura da terra: ' + _ctFmt(alt) + ' cm (' + altM.toFixed(2).replace('.',',') + ' m)\n';
+    nota += '  Peso total: ' + _ctFmt(cargaM2) + ' kg/m²\n';
+    if (totalVaso > 0) {
+      nota += '\nCarga pontual (vaso individual):\n';
+      if (vaso > 0)   nota += '  Peso do vaso:   ' + _ctFmt(vaso)   + ' kg\n';
+      if (terra > 0)  nota += '  Terra no vaso:  ' + _ctFmt(terra)  + ' kg\n';
+      if (planta > 0) nota += '  Peso da planta: ' + _ctFmt(planta) + ' kg\n';
+      nota += '  Carga pontual total: ' + _ctFmt(totalVaso) + ' kg por ponto\n';
+    }
+    nota += '\nRef.: peso específico da terra molhada = 2.000 kg/m³ (máximo — NBR e prática estrutural).';
+    const el = document.getElementById('ct-nota');
+    if (el) el.textContent = nota;
+  }
+
+  window.calcCargaTerra = function() {
+    const pe  = parseFloat(document.getElementById('ct-peso-esp')?.value) || 0;
+    const alt = parseFloat(document.getElementById('ct-altura')?.value)   || 0;
+    const altM = alt / 100;
+    const res  = pe * altM;
+    const resEl = document.getElementById('ct-resultado');
+    const subEl = document.getElementById('ct-resultado-sub');
+    if (resEl) resEl.innerHTML = _ctFmt(res) + ' <span style="font-size:12px;font-weight:400;color:#666">kg/m²</span>';
+    if (subEl) subEl.textContent = _ctFmt(pe) + ' × ' + altM.toFixed(2).replace('.',',') + ' m';
+    _ctAtualizarNota();
+  };
+
+  window.calcCargaVaso = function() {
+    const vaso   = parseFloat(document.getElementById('ct-vaso-peso')?.value)   || 0;
+    const terra  = parseFloat(document.getElementById('ct-vaso-terra')?.value)  || 0;
+    const planta = parseFloat(document.getElementById('ct-vaso-planta')?.value) || 0;
+    const total  = vaso + terra + planta;
+    const el = document.getElementById('ct-vaso-resultado');
+    if (el) el.innerHTML = _ctFmt(total) + ' <span style="font-size:12px;font-weight:400;color:#666">kg</span>';
+    _ctAtualizarNota();
+  };
+
+  window.copiarNotaCargaTerra = function() {
+    const el = document.getElementById('ct-nota');
+    if (!el) return;
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      const btn = document.querySelector('[onclick="copiarNotaCargaTerra()"]');
+      if (!btn) return;
+      const orig = btn.textContent;
+      btn.textContent = 'Copiado ✓';
+      setTimeout(() => { btn.textContent = orig; }, 1800);
+    }).catch(() => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      document.execCommand('copy');
+    });
+  };
 
   renderConhecimento = function(el) {
     el.innerHTML = `
@@ -3758,6 +3746,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
           </div>`).join('')}
       </div>
       <div id="subtema-content">${renderConhecimentoSubtema()}</div>`;
+    if(G.subtemaConhecimento === 'carga-terra') setTimeout(() => window.calcCargaTerra?.(), 50);
     if(G.subtemaConhecimento === 'cadastros-senhas' && isSocio()) setTimeout(iniciarCadastrosSenhas, 30);
   };
 
