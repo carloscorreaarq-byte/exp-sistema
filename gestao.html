@@ -4202,6 +4202,19 @@ async function toggleTarefa(id, atual) {
   await sb.from('tarefas_livres').update({
     concluida: !atual, concluida_em: atual ? null : new Date().toISOString()
   }).eq('id', id);
+  // Atualiza badge do sino sincronizando tarefas ativas
+  if (!atual) {
+    // Tarefa sendo concluída: remove do cache do sino
+    G._tarefasParaSino = (G._tarefasParaSino || []).filter(t => t.id !== id);
+  } else {
+    // Tarefa sendo reaberta: recarrega do banco
+    const { data } = await sb.from('tarefas_livres')
+      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .or(`atribuido_para.eq.${G.usuario.id},and(usuario_id.eq.${G.usuario.id},atribuido_para.is.null)`)
+      .eq('concluida', false).order('created_at', { ascending: false });
+    G._tarefasParaSino = data || [];
+  }
+  _renderNotifBadge();
   carregarTarefas();
 }
 
@@ -7405,28 +7418,41 @@ async function editarNomeEvento(evId, tipo) {
   const tabela = tipo === 'soc' ? 'eventos_sociedade' : 'eventos_custo';
   const { data: evAtual } = await sb.from(tabela).select('nome').eq('id', evId).maybeSingle();
   const nomeAtual = evAtual?.nome || '';
-  const novoNome = await new Promise(resolve => {
-    const ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-    ov.innerHTML = `
-      <div style="background:#fff;border-radius:12px;padding:28px 24px;width:400px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-        <div style="font-size:14px;font-weight:700;margin-bottom:16px">Renomear Evento</div>
-        <input id="_ev-nome-inp" type="text" value="${(nomeAtual||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;box-sizing:border-box;font-family:var(--fm)" placeholder="Nome do evento">
-        <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:#fff;cursor:pointer;font-family:var(--fm);font-size:12px">Cancelar</button>
-          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-family:var(--fm);font-size:12px;font-weight:600">Salvar</button>
-        </div>
-      </div>`;
-    ov.addEventListener('_cancel', () => { document.body.removeChild(ov); resolve(null); });
-    ov.addEventListener('_ok', () => {
-      const v = document.getElementById('_ev-nome-inp')?.value?.trim();
-      document.body.removeChild(ov);
-      resolve(v || null);
-    });
-    document.body.appendChild(ov);
-    setTimeout(() => document.getElementById('_ev-nome-inp')?.focus(), 50);
+
+  // Remove modal anterior se existir
+  document.getElementById('_ev-rename-modal')?.remove();
+
+  const ov = document.createElement('div');
+  ov.id = '_ev-rename-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:28px 24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Renomear Evento</div>
+      <input id="_ev-nome-inp" type="text" value="" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;box-sizing:border-box;font-family:var(--fm)" placeholder="Nome do evento">
+      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+        <button onclick="document.getElementById('_ev-rename-modal').remove()"
+          style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:#fff;cursor:pointer;font-family:var(--fm);font-size:12px">Cancelar</button>
+        <button onclick="salvarNomeEvento('${evId}','${tabela}')"
+          style="padding:8px 18px;border-radius:6px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-family:var(--fm);font-size:12px;font-weight:600">Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+
+  // Seta valor e foca depois do append (evita problema de escape de aspas no HTML)
+  const inp = document.getElementById('_ev-nome-inp');
+  if (inp) { inp.value = nomeAtual; inp.focus(); inp.select(); }
+
+  // Enter confirma, Escape cancela
+  inp?.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  salvarNomeEvento(evId, tabela);
+    if (e.key === 'Escape') document.getElementById('_ev-rename-modal')?.remove();
   });
-  if (!novoNome) return;
+}
+
+async function salvarNomeEvento(evId, tabela) {
+  const novoNome = document.getElementById('_ev-nome-inp')?.value?.trim();
+  if (!novoNome) { toast('Digite um nome para o evento.'); return; }
+  document.getElementById('_ev-rename-modal')?.remove();
   const { error } = await sb.from(tabela).update({ nome: novoNome }).eq('id', evId);
   if (error) { toast('Erro ao salvar: ' + error.message); return; }
   toast('Evento renomeado');
@@ -7594,15 +7620,26 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
 
       const gruposHtml = Object.entries(porProjeto).map(([chave, itens]) => {
         const subtotal = itens.reduce((s,c)=>s+Number(c.valor||0),0);
-        const linhas = itens.map(c => `
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2)">
+        const linhas = itens.map(c => {
+          const evId   = c.evento_id || c.evento_soc_id || null;
+          const evNome = evId ? (evNomes[evId] || null) : null;
+          const semEvento = !evId;
+          const evTag = evNome
+            ? `<span style="font-size:9px;background:var(--cinza2);border-radius:3px;padding:1px 5px;color:#555;margin-left:4px">${evNome}</span>`
+            : `<span title="Este lançamento não está vinculado a nenhum evento" style="font-size:9px;background:#fff3cd;border:1px solid #ffc107;border-radius:3px;padding:1px 5px;color:#856404;margin-left:4px">⚠ sem evento</span>`;
+          return `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
             <div style="flex:1;min-width:0">
-              <span style="font-size:10px;color:#555">${c.subtipo||'—'}</span>
-              ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
+                <span style="font-size:10px;color:#555">${c.subtipo||'—'}</span>
+                ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
+                ${evTag}
+              </div>
             </div>
             <div style="font-size:10px;color:#888;flex-shrink:0">${fmtDate(c.data_lancamento)}</div>
             <div style="font-size:11px;font-family:var(--fm);font-weight:600;flex-shrink:0">${fmtR(c.valor)}</div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
         return `<div style="margin-bottom:10px">
           <div style="font-size:10px;font-weight:700;color:var(--azul);margin-bottom:4px">${chave}</div>
           ${linhas}
@@ -10914,7 +10951,13 @@ async function iniciarNotificacoes() {
       }, payload => {
         G._notifs.unshift(payload.new);
         if(G._notifs.length > 10) G._notifs = G._notifs.slice(0, 10);
-        _renderNotifBadge();
+        // Recarrega tarefas para manter o badge sincronizado
+        sb.from('tarefas_livres')
+          .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+          .or(`atribuido_para.eq.${G.usuario.id},and(usuario_id.eq.${G.usuario.id},atribuido_para.is.null)`)
+          .eq('concluida', false)
+          .order('created_at', { ascending: false })
+          .then(({ data }) => { G._tarefasParaSino = data || []; _renderNotifBadge(); });
         // Re-renderiza o painel se estiver aberto
         const p = document.getElementById('notif-panel');
         if(p && p.style.display !== 'none') renderNotifPanel();
@@ -10923,24 +10966,35 @@ async function iniciarNotificacoes() {
   } catch(e) { /* realtime opcional */ }
 }
 
-// ── Carrega últimas 10 notificações não encerradas ────────────
+// ── Carrega notificações não encerradas + tarefas ativas ──────
 async function carregarNotificacoes() {
-  const { data } = await sb.from('notificacoes')
-    .select('*')
-    .eq('usuario_id', G.usuario.id)
-    .is('encerrado_em', null)
-    .order('created_at', { ascending: false })
-    .limit(10);
-  G._notifs = data || [];
+  const uid = G.usuario.id;
+  const [{ data: notifs }, { data: tarefas }] = await Promise.all([
+    sb.from('notificacoes')
+      .select('*')
+      .eq('usuario_id', uid)
+      .is('encerrado_em', null)
+      .order('created_at', { ascending: false })
+      .limit(10),
+    sb.from('tarefas_livres')
+      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .or(`atribuido_para.eq.${uid},and(usuario_id.eq.${uid},atribuido_para.is.null)`)
+      .eq('concluida', false)
+      .order('created_at', { ascending: false })
+  ]);
+  G._notifs           = notifs  || [];
+  G._tarefasParaSino  = tarefas || [];
   _renderNotifBadge();
 }
 
 function _renderNotifBadge() {
-  const novas = G._notifs.filter(n => !n.lido_em).length;
-  const badge = document.getElementById('notif-badge');
-  if(!badge) return;
-  badge.textContent = novas;
-  badge.style.display = novas > 0 ? 'flex' : 'none';
+  const novas  = G._notifs.filter(n => !n.lido_em).length;
+  const ativas = (G._tarefasParaSino || []).length;
+  const total  = novas + ativas;
+  const badge  = document.getElementById('notif-badge');
+  if (!badge) return;
+  badge.textContent  = total > 9 ? '9+' : total;
+  badge.style.display = total > 0 ? 'flex' : 'none';
 }
 
 // ── Abre/fecha painel ─────────────────────────────────────────
@@ -10955,27 +11009,101 @@ function toggleNotifPanel() {
 // ── Renderiza lista de notificações ──────────────────────────
 function renderNotifPanel() {
   const lista = document.getElementById('notif-lista');
-  if(!lista) return;
-  if(!G._notifs.length) {
-    lista.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Nenhuma notificação</div>';
+  if (!lista) return;
+
+  const notifs  = G._notifs        || [];
+  const tarefas = G._tarefasParaSino || [];
+  const hoje    = new Date().toISOString().split('T')[0];
+
+  if (!notifs.length && !tarefas.length) {
+    lista.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Nenhuma notificação ou tarefa pendente</div>';
     return;
   }
-  const icons = { mencao:'@', tarefa:'✔', revisao:'📋', prancha:'🖼', lembrete:'📢' };
-  lista.innerHTML = G._notifs.map(n => {
-    const nova  = !n.lido_em;
-    const dt    = new Date(n.created_at);
-    const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const icon  = icons[n.tipo] || '🔔';
-    return `<div class="notif-item${nova?' nova':''}" onclick="abrirNotif(${_sqN(n.id)})">
-      <div class="notif-item-row">
-        <span class="notif-icon">${icon}</span>
-        <span class="notif-titulo">${_escN(n.titulo)}</span>
-        <button class="notif-check-btn" title="Encerrar" onclick="event.stopPropagation();encerrarNotif(${_sqN(n.id)})">✓</button>
-      </div>
-      ${n.corpo?`<div class="notif-corpo">${_escN(n.corpo)}</div>`:''}
-      <div class="notif-ts">${dtStr}${n.criado_por_nome?' · '+_escN(n.criado_por_nome):''}</div>
-    </div>`;
-  }).join('');
+
+  const _sec = (label) =>
+    `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;padding:7px 14px 4px;border-top:1px solid var(--cinza2);background:var(--off)">${label}</div>`;
+
+  let html = '';
+
+  // ── Seção 1: Notificações ──────────────────────────────────
+  if (notifs.length) {
+    const icons = { mencao:'@', tarefa:'✔', revisao:'📋', prancha:'🖼', lembrete:'📢' };
+    html += _sec(`Notificações (${notifs.length})`);
+    html += notifs.map(n => {
+      const nova  = !n.lido_em;
+      const dt    = new Date(n.created_at);
+      const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const icon  = icons[n.tipo] || '🔔';
+      return `<div class="notif-item${nova?' nova':''}" onclick="abrirNotif(${_sqN(n.id)})">
+        <div class="notif-item-row">
+          <span class="notif-icon">${icon}</span>
+          <span class="notif-titulo">${_escN(n.titulo)}</span>
+          <button class="notif-check-btn" title="Encerrar" onclick="event.stopPropagation();encerrarNotif(${_sqN(n.id)})">✓</button>
+        </div>
+        ${n.corpo?`<div class="notif-corpo">${_escN(n.corpo)}</div>`:''}
+        <div class="notif-ts">${dtStr}${n.criado_por_nome?' · '+_escN(n.criado_por_nome):''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Seção 2: Tarefas ativas ────────────────────────────────
+  if (tarefas.length) {
+    html += _sec(`Tarefas ativas (${tarefas.length})`);
+    html += tarefas.map(t => {
+      // Contexto: projeto / etapa
+      const cli    = t.produtos?.oportunidades?.clientes?.nome || '';
+      const proj   = t.produtos?.oportunidades?.projeto || '';
+      const prod   = t.produtos?.nome || '';
+      const etapa  = t.etapas?.nome || '';
+      const partes = [
+        cli && proj ? `${cli} · ${proj}` : (proj || cli),
+        prod,
+        etapa
+      ].filter(Boolean);
+      const ctx = partes.join(' › ');
+
+      const vencida = t.data_limite && t.data_limite < hoje;
+      const ehHoje  = t.data_limite === hoje;
+      const prazoStr = t.data_limite
+        ? ` · <span style="color:${vencida?'var(--tc)':ehHoje?'var(--am)':'#aaa'}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
+        : '';
+
+      const criador = t.criado_por && t.criado_por !== G.usuario.id
+        ? G.todosUsuarios?.find(u => u.id === t.criado_por) : null;
+      const deStr = criador ? ` · de ${criador.nome.split(' ')[0]}` : '';
+
+      return `<div class="notif-item" onclick="irParaTarefas()">
+        <div class="notif-item-row">
+          <span class="notif-icon">☑</span>
+          <span class="notif-titulo">${_escN(t.descricao)}</span>
+          <button class="notif-check-btn" title="Concluir tarefa" onclick="event.stopPropagation();concluirTarefaSino('${t.id}')">✓</button>
+        </div>
+        ${ctx || prazoStr || deStr
+          ? `<div class="notif-corpo">${ctx ? _escN(ctx) : ''}${prazoStr}${deStr ? _escN(deStr) : ''}</div>`
+          : ''}
+      </div>`;
+    }).join('');
+  }
+
+  lista.innerHTML = html;
+}
+
+// ── Conclui tarefa direto do painel do sino ────────────────────
+async function concluirTarefaSino(id) {
+  await sb.from('tarefas_livres').update({
+    concluida: true, concluida_em: new Date().toISOString()
+  }).eq('id', id);
+  G._tarefasParaSino = (G._tarefasParaSino || []).filter(t => t.id !== id);
+  _renderNotifBadge();
+  renderNotifPanel();
+  carregarTarefas(); // atualiza dashboard
+}
+
+// ── Navega para aba de tarefas ─────────────────────────────────
+function irParaTarefas() {
+  const panel = document.getElementById('notif-panel');
+  if (panel) panel.style.display = 'none';
+  document.querySelector('.ntab[data-tab="dashboard"]')?.click();
 }
 
 // ── Abre notificação: marca como lida + navega ────────────────
