@@ -8125,13 +8125,14 @@ async function carregarFluxo() {
         ? `<span class="fluxo-conc-tag ${conc?'done':''}" onclick="toggleFluxoPrio('${u.id}','${pr.id}')">${conc?'✓ Concluída':'Pendente'}</span>`
         : '';
       const dateRow = pr ? `<div class="fluxo-col-date-row">
-          <input class="fluxo-col-date" type="date" value="${prazo}" onchange="debFluxo('${pr.id}','prazo',this.value)">
+          <input class="fluxo-col-date" type="date" value="${prazo}"
+            onchange="debFluxo('${pr.id}','prazo',this.value);marcarFluxoDirty('${u.id}')">
           ${concTag}
         </div>` : '';
       const cmtArea = pr ? `<textarea class="fluxo-col-textarea" rows="3"
           placeholder="Comentário para o colaborador..."
-          onfocus="this._v=this.value"
-          onblur="if(this.value!==this._v)debFluxo('${pr.id}','comentario',this.value)"
+          oninput="marcarFluxoDirty('${u.id}')"
+          onblur="debFluxo('${pr.id}','comentario',this.value)"
           >${coment}</textarea>` : '';
 
       const clearBtn = pr
@@ -8162,10 +8163,13 @@ async function carregarFluxo() {
     return `<div class="fluxo-user-card">
       <div class="fluxo-user-hd">
         <div class="vh-av" style="background:${u.cor||'#888'}">${u.iniciais}</div>
-        <div>
+        <div style="flex:1">
           <div style="font-size:13px;font-weight:700">${u.nome}</div>
           <div style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||''}</div>
         </div>
+        <button id="btn-sf-${u.id}" onclick="salvarFluxoUsuario('${u.id}')"
+          style="font-size:10px;padding:4px 14px;border:1px solid var(--cinza);border-radius:6px;background:#fff;color:#aaa;cursor:pointer;font-family:var(--f);transition:all .15s;white-space:nowrap"
+          title="Salvar todas as alterações deste colaborador">Salvar</button>
       </div>
       <div class="fluxo-cols" data-uid="${u.id}">${cols}</div>
     </div>`;
@@ -8185,28 +8189,44 @@ function debFluxo(pioId, campo, valor) {
 
 // ── Salvar seleção de projeto ─────────────────────────────────────────────────
 async function salvarFluxoPrio(userId, produtoId, colEl) {
-  const prodId = produtoId || null;
+  const prodId  = produtoId || null;
   const colWrap = colEl?.closest('.fluxo-col-wrap');
   const container = colWrap?.closest('.fluxo-cols');
 
   if (prodId) {
     const allCols = container ? [...container.querySelectorAll('.fluxo-col-wrap')] : [];
-    const idx = allCols.indexOf(colWrap);
+    const idx  = allCols.indexOf(colWrap);
     const ordem = idx >= 0 ? idx + 1 : 9;
+    // Deleta registro antigo nessa posição
     await sb.from('prioridades_usuario').delete()
       .eq('usuario_id', userId).eq('ordem', ordem);
-    const { error } = await sb.from('prioridades_usuario').insert({
+    const { data: novo, error } = await sb.from('prioridades_usuario').insert({
       usuario_id: userId, produto_id: prodId, ordem,
       concluida: false, definida_por: G.usuario.id
-    });
-    if (error) { toast('Erro ao salvar: ' + error.message); }
+    }).select().single();
+    if (error) { toast('Erro ao salvar: ' + error.message); return; }
+    // Atualiza data-attrs do card no DOM (sem reload)
+    if (colWrap) {
+      colWrap.dataset.id     = novo?.id || '';
+      colWrap.dataset.prodid = prodId;
+      colWrap.dataset.conc   = 'false';
+      colWrap.dataset.empty  = 'false';
+    }
+    // Marca botão Salvar como pendente (para prazo/comentário do novo card)
+    marcarFluxoDirty(userId);
   } else {
     const recId = colWrap?.dataset?.id;
     if (recId) {
       await sb.from('prioridades_usuario').delete().eq('id', recId);
     }
+    if (colWrap) {
+      colWrap.dataset.id     = '';
+      colWrap.dataset.prodid = '';
+      colWrap.dataset.conc   = 'false';
+      colWrap.dataset.empty  = 'true';
+    }
   }
-  carregarFluxo();
+  // Não recarrega o DOM todo — usuário continua editando sem perder dados
 }
 
 async function toggleFluxoPrio(userId, recId) {
@@ -8222,6 +8242,49 @@ async function toggleFluxoPrio(userId, recId) {
 async function limparFluxoPrio(recId) {
   if (!recId) return;
   await sb.from('prioridades_usuario').delete().eq('id', recId);
+  carregarFluxo();
+}
+
+// ── Dirty state: destaca botão Salvar quando há alterações ───────────────────
+function marcarFluxoDirty(userId) {
+  const btn = document.getElementById('btn-sf-' + userId);
+  if (!btn) return;
+  btn.style.background   = 'var(--am)';
+  btn.style.color        = '#fff';
+  btn.style.borderColor  = 'var(--am)';
+  btn.textContent        = '● Salvar';
+}
+
+// ── Salva tudo de um usuário de uma vez ──────────────────────────────────────
+async function salvarFluxoUsuario(userId) {
+  // Cancela debounces pendentes — capturamos ao vivo
+  Object.keys(_fluxoDebTimers).forEach(k => clearTimeout(_fluxoDebTimers[k]));
+
+  const container = document.querySelector(`.fluxo-cols[data-uid="${userId}"]`);
+  if (!container) return;
+  const allCols    = [...container.querySelectorAll(':scope > .fluxo-col-wrap')];
+  const comProjeto = allCols.filter(el => el.dataset.prodid);
+
+  await sb.from('prioridades_usuario').delete().eq('usuario_id', userId);
+
+  if (comProjeto.length) {
+    const rows = comProjeto.map((el, i) => ({
+      usuario_id:  userId,
+      produto_id:  el.dataset.prodid,
+      ordem:       i + 1,
+      prazo_texto: el.querySelector('.fluxo-col-date')?.value     || null,
+      comentario:  el.querySelector('.fluxo-col-textarea')?.value || null,
+      concluida:   el.dataset.conc === 'true',
+      definida_por: G.usuario.id
+    }));
+    const { error } = await sb.from('prioridades_usuario').insert(rows);
+    if (error) { toast('Erro ao salvar: ' + error.message); return; }
+  }
+
+  const nome = G.todosUsuarios.find(u => u.id === userId)?.nome?.split(' ')[0] || 'colaborador';
+  toast(`Fluxo de ${nome} salvo ✓`);
+
+  // Reseta botão e recarrega para sincronizar IDs novos
   carregarFluxo();
 }
 
@@ -8277,20 +8340,23 @@ function fluxoDragEnd(e) {
 
 async function fluxoSalvarReorder(userId, slots) {
   if (!slots.length) return;
-  // Deleta todos do usuário e reinserere em nova ordem
+  // Cancela debounces pendentes e captura valores ao vivo do DOM
+  Object.keys(_fluxoDebTimers).forEach(k => clearTimeout(_fluxoDebTimers[k]));
   await sb.from('prioridades_usuario').delete().eq('usuario_id', userId);
   const rows = slots.map((el, i) => ({
-    usuario_id: userId,
-    produto_id: el.dataset.prodid,
-    ordem: i + 1,
-    prazo_texto: el.dataset.prazo || null,
-    comentario: el.dataset.coment || null,
-    concluida: el.dataset.conc === 'true',
+    usuario_id:  userId,
+    produto_id:  el.dataset.prodid,
+    ordem:       i + 1,
+    prazo_texto: el.querySelector('.fluxo-col-date')?.value     || null,
+    comentario:  el.querySelector('.fluxo-col-textarea')?.value || null,
+    concluida:   el.dataset.conc === 'true',
     definida_por: G.usuario.id
   }));
   const { error } = await sb.from('prioridades_usuario').insert(rows);
   if (error) toast('Erro ao salvar ordem: ' + error.message);
-  // Não recarrega aqui — o DOM já está na nova ordem visualmente
+  // Não recarrega — DOM já está na nova ordem; reseta o botão Salvar
+  const btn = document.getElementById('btn-sf-' + userId);
+  if (btn) { btn.style.background=''; btn.style.color='#aaa'; btn.style.borderColor=''; btn.textContent='Salvar'; }
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
