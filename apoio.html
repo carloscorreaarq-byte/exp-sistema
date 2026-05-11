@@ -817,9 +817,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="sb-submenu" id="sb-sub-conhecimento">
         <div class="sb-sub-item" data-tema="conhecimento" data-sub="vegetacao" onclick="setSubtema('conhecimento','vegetacao')">Banco Vegetal</div>
         <div class="sb-sub-item" data-tema="conhecimento" data-sub="jardim-vertical" onclick="setSubtema('conhecimento','jardim-vertical')">Jardim Vertical</div>
+        <div class="sb-sub-item" data-tema="conhecimento" data-sub="carga-terra" onclick="setSubtema('conhecimento','carga-terra')">Carga de Terra</div>
         <div class="sb-sub-item" data-tema="conhecimento" data-sub="teoria-urbana" onclick="setSubtema('conhecimento','teoria-urbana')">Teoria Urbana</div>
         <div class="sb-sub-item" data-tema="conhecimento" data-sub="normas-tecnicas" onclick="setSubtema('conhecimento','normas-tecnicas')">Normas Técnicas</div>
         <div class="sb-sub-item" data-tema="conhecimento" data-sub="indicacoes-conteudo" onclick="setSubtema('conhecimento','indicacoes-conteudo')">Indicações</div>
+        <div class="sb-sub-item sb-socio-only" id="sb-cadastros-senhas" data-tema="conhecimento" data-sub="cadastros-senhas" onclick="setSubtema('conhecimento','cadastros-senhas')" style="display:none">🔑 Cadastros e Senhas</div>
       </div>
     </div>
   </aside>
@@ -920,7 +922,21 @@ ALTER TABLE base_checklist_item ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "auth_all" ON base_tipo_projeto FOR ALL USING (auth.role()='authenticated');
 CREATE POLICY "auth_all" ON base_etapa FOR ALL USING (auth.role()='authenticated');
 CREATE POLICY "auth_all" ON base_entregavel FOR ALL USING (auth.role()='authenticated');
-CREATE POLICY "auth_all" ON base_checklist_item FOR ALL USING (auth.role()='authenticated');`;
+CREATE POLICY "auth_all" ON base_checklist_item FOR ALL USING (auth.role()='authenticated');
+
+-- Cadastros e senhas de plataformas (acesso restrito a sócios via aplicação)
+CREATE TABLE IF NOT EXISTS cadastros_plataformas (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  numero     integer NOT NULL DEFAULT 1,
+  nome       text NOT NULL,
+  login      text,
+  senha      text,
+  uso        text,
+  clientes   text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE cadastros_plataformas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "auth_all" ON cadastros_plataformas FOR ALL USING (auth.role()='authenticated');`;
 
 // ── SEED DATA — PAISAGISMO ─────────────────────────────────
 // 8 tipologias × 7 etapas. Residencial/PF tem entregáveis e checklists completos.
@@ -1414,6 +1430,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('user-nome').textContent = G.usuario.nome?.split(' ')[0]||'Usuário';
   initNavDropdown(G.usuario.role);
   initExpRoom(G.usuario.id, (G.usuario.nome||'').split(' ')[0]);
+  if(isSocio()) document.getElementById('sb-cadastros-senhas')?.style && (document.getElementById('sb-cadastros-senhas').style.display = '');
 
   await carregarDados();
   document.getElementById('loading').style.display = 'none';
@@ -3147,11 +3164,13 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   ];
 
   const CONHECIMENTO_SUBTEMAS = [
-    { key: 'vegetacao', label: 'Banco Vegetal' },
-    { key: 'jardim-vertical', label: 'Jardim Vertical' },
-    { key: 'teoria-urbana', label: 'Teoria Urbana' },
-    { key: 'normas-tecnicas', label: 'Normas Técnicas' },
-    { key: 'indicacoes-conteudo', label: 'Indicações de Conteúdo' }
+    { key: 'vegetacao',          label: 'Banco Vegetal' },
+    { key: 'jardim-vertical',    label: 'Jardim Vertical' },
+    { key: 'carga-terra',        label: 'Carga de Terra' },
+    { key: 'teoria-urbana',      label: 'Teoria Urbana' },
+    { key: 'normas-tecnicas',    label: 'Normas Técnicas' },
+    { key: 'indicacoes-conteudo',label: 'Indicações de Conteúdo' },
+    ...(isSocio() ? [{ key: 'cadastros-senhas', label: '🔑 Cadastros e Senhas' }] : [])
   ];
 
   const NORMA_SUBTEMAS = [
@@ -3412,6 +3431,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     document.querySelectorAll('.knowledge-subtab').forEach(el => {
       el.classList.toggle('active', el.dataset.sub === sub);
     });
+    if(sub === 'cadastros-senhas' && isSocio()) setTimeout(iniciarCadastrosSenhas, 30);
   };
 
   window.setSubtemaNorma = function(sub) {
@@ -3426,6 +3446,8 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   function renderConhecimentoSubtema() {
     if(G.subtemaConhecimento === 'vegetacao') return renderVegetacaoDb();
     if(G.subtemaConhecimento === 'jardim-vertical') return renderJardimVertical();
+    if(G.subtemaConhecimento === 'carga-terra') return renderCargaTerra();
+    if(G.subtemaConhecimento === 'cadastros-senhas') return isSocio() ? '<div id="cadastros-senhas-root">Carregando...</div>' : '<div class="knowledge-empty">Acesso restrito a sócios.</div>';
     if(G.subtemaConhecimento === 'teoria-urbana') return renderStaticSection('conhecimento-teoria-urbana');
     if(G.subtemaConhecimento === 'indicacoes-conteudo') return renderStaticSection('conhecimento-indicacoes-conteudo');
     return `
@@ -3495,6 +3517,237 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       </section>`;
   }
 
+  // ── CARGA DE TERRA ─────────────────────────────────────────────────────────
+  function renderCargaTerra() {
+    return `
+      <section class="secao-shell">
+        <div class="secao-shell-header">
+          <div>
+            <div class="secao-shell-title">Carga de Terra em Jardins sobre Laje</div>
+            <div class="secao-shell-sub">Critério de cálculo para comunicação técnica entre paisagismo e estrutura</div>
+          </div>
+        </div>
+
+        <div class="rich-body">
+          <h3>Critério de cálculo</h3>
+          <p>O peso de um jardim deve ser calculado no <strong>pior cenário possível</strong>: terra completamente saturada de água, como ocorre durante uma chuva torrencial. O <strong>peso específico da terra molhada</strong> utilizado é de <strong>2.000 kg/m³</strong>.</p>
+          <p>A fórmula básica é simples:</p>
+        </div>
+
+        <div style="background:#f5f3ee;border:1px solid #e0dbd0;border-radius:8px;padding:16px 20px;margin-bottom:16px;font-family:var(--fm)">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;margin-bottom:10px">Fórmula</div>
+          <div style="font-size:15px;color:var(--preto);font-weight:600;letter-spacing:-.2px">
+            Peso (kg/m²) = Peso específico (kg/m³) × Altura da terra (m)
+          </div>
+          <div style="margin-top:12px;display:flex;gap:20px;flex-wrap:wrap">
+            <div style="font-size:11px;color:#555">
+              <span style="display:inline-block;background:#fff;border:1px solid #ddd;border-radius:4px;padding:3px 10px;font-family:var(--fm);margin-right:4px">50 cm</span>
+              2.000 × 0,5 = <strong>1.000 kg/m²</strong>
+            </div>
+            <div style="font-size:11px;color:#555">
+              <span style="display:inline-block;background:#fff;border:1px solid #ddd;border-radius:4px;padding:3px 10px;font-family:var(--fm);margin-right:4px">30 cm</span>
+              2.000 × 0,3 = <strong>600 kg/m²</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="rich-body">
+          <h3>Cargas adicionais — Vasos</h3>
+          <p>Quando há vasos no projeto, a carga deve ser calculada separadamente, pois geram <strong>carga pontual</strong> (não distribuída):</p>
+          <ul>
+            <li>Peso do jardim sobre a laje (conforme cálculo acima)</li>
+            <li><strong>Carga pontual dos vasos</strong> = peso do vaso + peso da terra dentro do vaso + peso estimado da planta na sua formação final</li>
+          </ul>
+          <p>Esses valores devem ser informados ao estrutural para avaliação das cargas pontuais na laje.</p>
+
+          <h3>Cargas adicionais — Árvores plantadas diretamente</h3>
+          <p>Para árvores plantadas diretamente na terra (sem vasos), deve-se pontuar cargas adicionais estimando:</p>
+          <ul>
+            <li>Volume adicional do morrote de terra ao redor do torrão</li>
+            <li>Peso estimado da árvore na formação final</li>
+          </ul>
+
+          <h3>Aplicação em projetos de incorporação</h3>
+          <p>Este cálculo é essencial na <strong>comunicação entre paisagismo e estrutura</strong>. O registro técnico entregue ao final do projeto deve conter o volume da terra molhada e seu peso total, somado ao peso das plantas — especialmente quando vasos de grande porte ou árvores estão presentes.</p>
+        </div>
+      </section>
+
+      <!-- CALCULADORA -->
+      <section class="secao-shell">
+        <div class="secao-shell-header">
+          <div>
+            <div class="secao-shell-title">Calculadora de Carga de Terra</div>
+            <div class="secao-shell-sub">Calcule o peso por m² para informar ao estrutural</div>
+          </div>
+        </div>
+
+        <!-- Carga distribuída -->
+        <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:12px">Carga distribuída — jardim sobre laje</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">
+
+          <div>
+            <label style="display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:6px">Peso específico (kg/m³)</label>
+            <input id="ct-peso-esp" type="number" value="2000" min="500" max="2500" step="50"
+              oninput="calcCargaTerra()"
+              style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--fm);font-size:13px;outline:none;box-sizing:border-box;color:var(--preto)">
+            <div style="font-size:9px;color:#aaa;margin-top:4px">Padrão: 2.000 kg/m³ (terra saturada)</div>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:6px">Altura da terra (cm)</label>
+            <input id="ct-altura" type="number" value="30" min="1" max="200" step="1"
+              oninput="calcCargaTerra()"
+              style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--fm);font-size:13px;outline:none;box-sizing:border-box;color:var(--preto)">
+            <div style="font-size:9px;color:#aaa;margin-top:4px">Ex: 30 cm = substrato raso</div>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:6px">Resultado</label>
+            <div id="ct-resultado"
+              style="padding:10px 14px;border:2px solid var(--verde);border-radius:6px;background:#f0faf4;font-family:var(--fm);font-size:20px;font-weight:700;color:var(--verde);line-height:1.2">
+              600 <span style="font-size:12px;font-weight:400;color:#666">kg/m²</span>
+            </div>
+            <div id="ct-resultado-sub" style="font-size:9px;color:#888;margin-top:4px">2.000 × 0,30 m</div>
+          </div>
+        </div>
+
+        <!-- Carga de vaso -->
+        <div style="border-top:1px solid var(--cinza2);padding-top:16px;margin-top:4px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:12px">Carga pontual — vaso individual</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:16px">
+
+            <div>
+              <label style="display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:6px">Peso do vaso (kg)</label>
+              <input id="ct-vaso-peso" type="number" value="0" min="0" step="0.5"
+                oninput="calcCargaVaso()"
+                style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--fm);font-size:13px;outline:none;box-sizing:border-box;color:var(--preto)">
+            </div>
+
+            <div>
+              <label style="display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:6px">Terra no vaso (kg)</label>
+              <input id="ct-vaso-terra" type="number" value="0" min="0" step="0.5"
+                oninput="calcCargaVaso()"
+                style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--fm);font-size:13px;outline:none;box-sizing:border-box;color:var(--preto)">
+              <div style="font-size:9px;color:#aaa;margin-top:4px">Volume (m³) × 2.000</div>
+            </div>
+
+            <div>
+              <label style="display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:6px">Peso da planta (kg)</label>
+              <input id="ct-vaso-planta" type="number" value="0" min="0" step="0.5"
+                oninput="calcCargaVaso()"
+                style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--fm);font-size:13px;outline:none;box-sizing:border-box;color:var(--preto)">
+              <div style="font-size:9px;color:#aaa;margin-top:4px">Estimativa na formação final</div>
+            </div>
+
+            <div>
+              <label style="display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:6px">Carga pontual total</label>
+              <div id="ct-vaso-resultado"
+                style="padding:10px 14px;border:2px solid var(--azul);border-radius:6px;background:#eef3fb;font-family:var(--fm);font-size:20px;font-weight:700;color:var(--azul);line-height:1.2">
+                0 <span style="font-size:12px;font-weight:400;color:#666">kg</span>
+              </div>
+              <div style="font-size:9px;color:#888;margin-top:4px">por ponto de carga</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nota técnica gerada -->
+        <div style="border-top:1px solid var(--cinza2);padding-top:16px;margin-top:4px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:10px">Nota técnica para registro</div>
+          <div id="ct-nota"
+            style="background:#f9f8f5;border:1px solid var(--cinza);border-radius:6px;padding:14px 16px;font-size:11px;color:#555;line-height:1.8;white-space:pre-wrap;font-family:var(--f)">—</div>
+          <button onclick="copiarNotaCargaTerra()"
+            style="margin-top:10px;font-size:10px;padding:6px 14px;border:1px solid var(--cinza);border-radius:6px;background:#fff;cursor:pointer;font-family:var(--f);color:#666;transition:all .12s"
+            onmouseover="this.style.borderColor='var(--preto)';this.style.color='var(--preto)'"
+            onmouseout="this.style.borderColor='var(--cinza)';this.style.color='#666'">
+            Copiar nota
+          </button>
+        </div>
+      </section>
+
+      <script>
+      (function() {
+        function fmt(n) { return Number(n).toLocaleString('pt-BR', {maximumFractionDigits:1}); }
+
+        window.calcCargaTerra = function() {
+          const pe  = parseFloat(document.getElementById('ct-peso-esp')?.value) || 0;
+          const alt = parseFloat(document.getElementById('ct-altura')?.value)   || 0;
+          const altM = alt / 100;
+          const res = pe * altM;
+
+          const resEl = document.getElementById('ct-resultado');
+          const subEl = document.getElementById('ct-resultado-sub');
+          if (resEl) resEl.innerHTML = fmt(res) + ' <span style="font-size:12px;font-weight:400;color:#666">kg/m²</span>';
+          if (subEl) subEl.textContent = fmt(pe) + ' × ' + altM.toFixed(2).replace('.',',') + ' m';
+
+          atualizarNota();
+        };
+
+        window.calcCargaVaso = function() {
+          const vaso   = parseFloat(document.getElementById('ct-vaso-peso')?.value)   || 0;
+          const terra  = parseFloat(document.getElementById('ct-vaso-terra')?.value)  || 0;
+          const planta = parseFloat(document.getElementById('ct-vaso-planta')?.value) || 0;
+          const total  = vaso + terra + planta;
+
+          const el = document.getElementById('ct-vaso-resultado');
+          if (el) el.innerHTML = fmt(total) + ' <span style="font-size:12px;font-weight:400;color:#666">kg</span>';
+          atualizarNota();
+        };
+
+        function atualizarNota() {
+          const pe     = parseFloat(document.getElementById('ct-peso-esp')?.value) || 0;
+          const alt    = parseFloat(document.getElementById('ct-altura')?.value)   || 0;
+          const altM   = alt / 100;
+          const cargaM2 = pe * altM;
+
+          const vaso   = parseFloat(document.getElementById('ct-vaso-peso')?.value)   || 0;
+          const terra  = parseFloat(document.getElementById('ct-vaso-terra')?.value)  || 0;
+          const planta = parseFloat(document.getElementById('ct-vaso-planta')?.value) || 0;
+          const totalVaso = vaso + terra + planta;
+
+          let nota = 'CARGA DE TERRA — REGISTRO TÉCNICO\n';
+          nota += '─────────────────────────────────\n';
+          nota += 'Carga distribuída (jardim sobre laje):\n';
+          nota += '  Peso específico utilizado: ' + fmt(pe) + ' kg/m³ (terra saturada — pior cenário)\n';
+          nota += '  Altura da terra: ' + fmt(alt) + ' cm (' + altM.toFixed(2).replace('.',',') + ' m)\n';
+          nota += '  Peso total: ' + fmt(cargaM2) + ' kg/m²\n';
+
+          if (totalVaso > 0) {
+            nota += '\nCarga pontual (vaso individual):\n';
+            if (vaso > 0)   nota += '  Peso do vaso:   ' + fmt(vaso)   + ' kg\n';
+            if (terra > 0)  nota += '  Terra no vaso:  ' + fmt(terra)  + ' kg\n';
+            if (planta > 0) nota += '  Peso da planta: ' + fmt(planta) + ' kg\n';
+            nota += '  Carga pontual total: ' + fmt(totalVaso) + ' kg por ponto\n';
+          }
+
+          nota += '\nRef.: peso específico da terra molhada = 2.000 kg/m³ (máximo — NBR e prática estrutural).';
+
+          const el = document.getElementById('ct-nota');
+          if (el) el.textContent = nota;
+        }
+
+        window.copiarNotaCargaTerra = function() {
+          const el = document.getElementById('ct-nota');
+          if (!el) return;
+          navigator.clipboard.writeText(el.textContent).then(() => {
+            const btn = event.currentTarget || event.target;
+            const orig = btn.textContent;
+            btn.textContent = 'Copiado ✓';
+            setTimeout(() => { btn.textContent = orig; }, 1800);
+          }).catch(() => {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+          });
+        };
+
+        // Inicializa a nota ao carregar
+        setTimeout(() => { window.calcCargaTerra && window.calcCargaTerra(); }, 50);
+      })();
+      </script>`;
+  }
+
   renderConhecimento = function(el) {
     el.innerHTML = `
       ${renderContentHeader('Conhecimento', 'Referências técnicas, banco vegetal e curadoria viva da equipe')}
@@ -3505,7 +3758,225 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
           </div>`).join('')}
       </div>
       <div id="subtema-content">${renderConhecimentoSubtema()}</div>`;
+    if(G.subtemaConhecimento === 'cadastros-senhas' && isSocio()) setTimeout(iniciarCadastrosSenhas, 30);
   };
+
+  // ── CADASTROS E SENHAS (só sócios) ──────────────────────────
+  const CS_SEED = [
+    { numero:1, nome:'Construmanager', login:'carlos.expurbanismo',      senha:'@C766641412c!', uso:'Registro de projetos',                                              clientes:'Idealiza Verticais e Embralot' },
+    { numero:2, nome:'Autodoc',        login:'lais@expurbanismo.com',    senha:'EXPsucesso12',  uso:'Registro de projetos',                                              clientes:'Engeco' },
+    { numero:3, nome:'Construflow',    login:'lais@expurbanismo.com',    senha:'EXPsucesso8!',  uso:'Comunicação entre disciplinas e coordenação de projeto',             clientes:'Engeco e Embralot' },
+    { numero:4, nome:'Figma',          login:'exp.urbanismo@gmail.com',  senha:'experimental',  uso:'Diagramação de apresentação, memoriais e portfólio. Uso interno.',  clientes:'' }
+  ];
+
+  async function iniciarCadastrosSenhas() {
+    const root = document.getElementById('cadastros-senhas-root');
+    if(!root) return;
+    root.innerHTML = '<div class="loading-state">Carregando...</div>';
+
+    let { data: plats, error } = await sb.from('cadastros_plataformas')
+      .select('*').order('numero');
+
+    // Seed automático se vazio
+    if(!error && (!plats || plats.length === 0)) {
+      const { data: seeded } = await sb.from('cadastros_plataformas').insert(CS_SEED).select();
+      plats = seeded || CS_SEED.map((s,i) => ({ ...s, id: 'local-'+i }));
+    }
+
+    renderCadastrosSenhasRoot(root, plats || []);
+  }
+
+  function renderCadastrosSenhasRoot(root, plats) {
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    const cardsHtml = plats.map(p => {
+      const num = String(p.numero||'').padStart(2,'0');
+      return `
+        <div class="cs-card" id="cs-card-${esc(p.id)}">
+          <div class="cs-card-num">${esc(num)}</div>
+          <div class="cs-card-body">
+            <div class="cs-card-nome">${esc(p.nome)}</div>
+            <div class="cs-field-row">
+              <span class="cs-label">login</span>
+              <span class="cs-value cs-selectable">${esc(p.login||'—')}</span>
+            </div>
+            <div class="cs-field-row">
+              <span class="cs-label">senha</span>
+              <span class="cs-value cs-senha-val" data-senha="${esc(p.senha||'')}">••••••••</span>
+              <button class="cs-eye-btn" onclick="csTogleSenha(this)" title="Revelar senha">👁</button>
+              <button class="cs-copy-btn" onclick="csCopiar('${esc(p.senha||'')}',this)" title="Copiar senha">⎘</button>
+            </div>
+            ${p.uso ? `<div class="cs-uso">${esc(p.uso)}</div>` : ''}
+            ${p.clientes ? `<div class="cs-clientes">Clientes que usam esta plataforma: ${esc(p.clientes)}</div>` : ''}
+            <div class="cs-actions">
+              <button class="cs-btn-edit" onclick="csEditar('${esc(p.id)}')">Editar</button>
+              <button class="cs-btn-del"  onclick="csDeletar('${esc(p.id)}','${esc(p.nome)}')">Excluir</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    root.innerHTML = `
+      <style>
+        .cs-card{display:flex;gap:0;border-bottom:1px solid var(--cinza2);padding:28px 0;align-items:flex-start}
+        .cs-card:first-child{padding-top:0}
+        .cs-card:last-child{border-bottom:none}
+        .cs-card-num{font-size:48px;font-weight:800;color:var(--preto);line-height:1;min-width:80px;padding-right:20px;border-right:2px solid var(--preto);margin-right:24px;font-family:var(--f);flex-shrink:0}
+        .cs-card-body{flex:1;min-width:0}
+        .cs-card-nome{font-size:22px;font-weight:700;margin-bottom:10px;line-height:1.2}
+        .cs-field-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+        .cs-label{font-size:11px;font-weight:700;color:var(--preto);min-width:40px}
+        .cs-value{font-size:11px;color:#444}
+        .cs-selectable{user-select:all;cursor:text}
+        .cs-senha-val{font-family:var(--fm);font-size:11px;color:#444;letter-spacing:1px}
+        .cs-eye-btn,.cs-copy-btn{border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px;color:#bbb;line-height:1;transition:color .12s}
+        .cs-eye-btn:hover,.cs-copy-btn:hover{color:var(--preto)}
+        .cs-uso{font-size:11px;color:#666;margin-top:6px;line-height:1.5}
+        .cs-clientes{font-size:11px;color:#888;margin-top:2px;line-height:1.5}
+        .cs-actions{display:flex;gap:8px;margin-top:12px}
+        .cs-btn-edit,.cs-btn-del{font-size:10px;padding:4px 12px;border-radius:5px;cursor:pointer;font-family:var(--f);transition:all .12s}
+        .cs-btn-edit{border:1px solid var(--cinza);background:#fff;color:#666}
+        .cs-btn-edit:hover{border-color:var(--preto);color:var(--preto)}
+        .cs-btn-del{border:1px solid var(--cinza);background:#fff;color:#bbb}
+        .cs-btn-del:hover{border-color:var(--tc);color:var(--tc)}
+        .cs-form{background:#fafaf8;border:1px solid var(--cinza);border-radius:8px;padding:20px;margin-bottom:20px}
+        .cs-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+        .cs-form-grid .full{grid-column:1/-1}
+        .cs-form-grid label{display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:5px}
+        .cs-form-grid input,.cs-form-grid textarea{width:100%;padding:9px 10px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--f);font-size:11px;outline:none;box-sizing:border-box;color:var(--preto)}
+        .cs-form-grid input:focus,.cs-form-grid textarea:focus{border-color:var(--preto)}
+        .cs-form-btns{display:flex;gap:8px;justify-content:flex-end}
+      </style>
+
+      <section class="secao-shell">
+        <div class="secao-shell-header">
+          <div>
+            <div class="secao-shell-title">🔑 Cadastros e Senhas</div>
+            <div class="secao-shell-sub">Acesso restrito — visível apenas para sócios</div>
+          </div>
+          <button class="btn verde sm" onclick="csAbrirFormNova()">+ Nova plataforma</button>
+        </div>
+
+        <div id="cs-form-wrap" style="display:none">
+          <div class="cs-form">
+            <div style="font-size:11px;font-weight:700;margin-bottom:14px" id="cs-form-titulo">Nova plataforma</div>
+            <input type="hidden" id="cs-edit-id">
+            <div class="cs-form-grid">
+              <div>
+                <label>Nome da plataforma</label>
+                <input id="cs-f-nome" type="text" placeholder="Ex: Construmanager">
+              </div>
+              <div>
+                <label>Número (ordem)</label>
+                <input id="cs-f-numero" type="number" min="1" placeholder="Ex: 5">
+              </div>
+              <div>
+                <label>Login / e-mail</label>
+                <input id="cs-f-login" type="text" placeholder="Ex: lais@expurbanismo.com">
+              </div>
+              <div>
+                <label>Senha</label>
+                <input id="cs-f-senha" type="text" placeholder="Ex: EXPsucesso12">
+              </div>
+              <div class="full">
+                <label>Uso / descrição</label>
+                <input id="cs-f-uso" type="text" placeholder="Ex: Registro de projetos">
+              </div>
+              <div class="full">
+                <label>Clientes que usam esta plataforma</label>
+                <input id="cs-f-clientes" type="text" placeholder="Ex: Engeco e Embralot">
+              </div>
+            </div>
+            <div class="cs-form-btns">
+              <button class="btn" onclick="csFecharForm()">Cancelar</button>
+              <button class="btn verde" onclick="csSalvar()">Salvar</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="cs-lista">${cardsHtml || '<div class="knowledge-empty">Nenhuma plataforma cadastrada.</div>'}</div>
+      </section>`;
+
+    // Funções do módulo (escopo global temporário)
+    window.csTogleSenha = function(btn) {
+      const row = btn.closest('.cs-field-row');
+      const el  = row?.querySelector('.cs-senha-val');
+      if(!el) return;
+      const visivel = el.dataset.visivel === '1';
+      el.textContent = visivel ? '••••••••' : el.dataset.senha;
+      el.dataset.visivel = visivel ? '0' : '1';
+      btn.textContent = visivel ? '👁' : '🙈';
+    };
+
+    window.csCopiar = function(valor, btn) {
+      navigator.clipboard.writeText(valor).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      });
+    };
+
+    window.csAbrirFormNova = function() {
+      document.getElementById('cs-edit-id').value = '';
+      document.getElementById('cs-f-nome').value = '';
+      document.getElementById('cs-f-numero').value = (plats.length + 1);
+      document.getElementById('cs-f-login').value = '';
+      document.getElementById('cs-f-senha').value = '';
+      document.getElementById('cs-f-uso').value = '';
+      document.getElementById('cs-f-clientes').value = '';
+      document.getElementById('cs-form-titulo').textContent = 'Nova plataforma';
+      document.getElementById('cs-form-wrap').style.display = '';
+      document.getElementById('cs-f-nome').focus();
+    };
+
+    window.csEditar = function(id) {
+      const p = plats.find(x => x.id === id);
+      if(!p) return;
+      document.getElementById('cs-edit-id').value = id;
+      document.getElementById('cs-f-nome').value    = p.nome    || '';
+      document.getElementById('cs-f-numero').value  = p.numero  || '';
+      document.getElementById('cs-f-login').value   = p.login   || '';
+      document.getElementById('cs-f-senha').value   = p.senha   || '';
+      document.getElementById('cs-f-uso').value     = p.uso     || '';
+      document.getElementById('cs-f-clientes').value= p.clientes|| '';
+      document.getElementById('cs-form-titulo').textContent = 'Editar — ' + (p.nome||'');
+      document.getElementById('cs-form-wrap').style.display = '';
+      document.getElementById('cs-f-nome').focus();
+      document.getElementById('cs-form-wrap').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    };
+
+    window.csFecharForm = function() {
+      document.getElementById('cs-form-wrap').style.display = 'none';
+    };
+
+    window.csSalvar = async function() {
+      const id      = document.getElementById('cs-edit-id').value;
+      const payload = {
+        nome:     document.getElementById('cs-f-nome').value.trim(),
+        numero:   parseInt(document.getElementById('cs-f-numero').value) || plats.length + 1,
+        login:    document.getElementById('cs-f-login').value.trim(),
+        senha:    document.getElementById('cs-f-senha').value.trim(),
+        uso:      document.getElementById('cs-f-uso').value.trim(),
+        clientes: document.getElementById('cs-f-clientes').value.trim()
+      };
+      if(!payload.nome) { alert('Informe o nome da plataforma.'); return; }
+
+      if(id) {
+        const { error } = await sb.from('cadastros_plataformas').update(payload).eq('id', id);
+        if(error) { alert('Erro ao salvar: ' + error.message); return; }
+      } else {
+        const { error } = await sb.from('cadastros_plataformas').insert(payload);
+        if(error) { alert('Erro ao salvar: ' + error.message); return; }
+      }
+      iniciarCadastrosSenhas();
+    };
+
+    window.csDeletar = async function(id, nome) {
+      if(!confirm('Excluir a plataforma "' + nome + '"?')) return;
+      await sb.from('cadastros_plataformas').delete().eq('id', id);
+      iniciarCadastrosSenhas();
+    };
+  }
 
   function normalizeText(text) {
     return String(text || '')
