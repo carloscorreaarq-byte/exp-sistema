@@ -359,6 +359,39 @@
   display:flex;
   gap:6px;
   justify-content:flex-end;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.veg-validado-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+  color:#2d8a4e;
+  background:#edfbf0;
+  border:1px solid #b2dfcc;
+  border-radius:4px;
+  padding:2px 7px;
+  white-space:nowrap;
+}
+
+.veg-validado-nome{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:9px;
+  font-weight:700;
+  color:#2d8a4e;
+  background:#edfbf0;
+  border:1px solid #b2dfcc;
+  border-radius:4px;
+  padding:1px 6px;
+  margin-left:6px;
+  vertical-align:middle;
 }
 
 .veg-note{
@@ -4158,7 +4191,10 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
             ${especies.length ? especies.map(row => `
               <tr>
                 <td>
-                  <span class="veg-main-name">${escHtml(row.nome_popular || 'Sem nome')}</span>
+                  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+                    <span class="veg-main-name">${escHtml(row.nome_popular || 'Sem nome')}</span>
+                    ${row.validado ? `<span class="veg-validado-nome">✓ Validado</span>` : ''}
+                  </div>
                   ${row.nome_cientifico ? `<span class="veg-sci-name">${escHtml(row.nome_cientifico)}</span>` : ''}
                 </td>
                 <td>
@@ -4173,7 +4209,15 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
                 <td>${escHtml([row.bioma, row.origem].filter(Boolean).join(' · ') || '—')}</td>
                 <td>${escHtml(row.atratividade || row.fauna || '—')}</td>
                 <td>${row.url_imagem ? `<a href="${escAttr(row.url_imagem)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--verde);text-decoration:none;font-weight:600;white-space:nowrap">↗ ver foto</a>` : `<span style="color:#ccc;font-size:11px">—</span>`}</td>
-                <td><div class="veg-actions"><button class="btn sm" onclick="editarEspecie(${jsStr(row.id)})">Editar</button></div></td>
+                <td>
+                  <div class="veg-actions">
+                    ${canValidarVegetacao() ? (row.validado
+                      ? `<button class="btn sm" style="color:#2d8a4e;border-color:#b2dfcc" onclick="validarEspecie(${jsStr(row.id)},false)" title="Remover validação">✓ Validado</button>`
+                      : `<button class="btn sm verde" onclick="validarEspecie(${jsStr(row.id)},true)">Validar</button>`
+                    ) : ''}
+                    <button class="btn sm" onclick="editarEspecie(${jsStr(row.id)})">Editar</button>
+                  </div>
+                </td>
               </tr>`).join('') : `
               <tr>
                 <td colspan="9"><div class="knowledge-empty">Nenhuma espécie encontrada com os filtros atuais.</div></td>
@@ -4367,6 +4411,24 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     abrirModalSized(`Editar seção · ${secao.titulo}`, buildSectionForm(secao), { tipo: 'apoio-secao', slug }, 'medium');
   };
 
+  // Validação de espécie — restrita a Carlos e Thayssa
+  function canValidarVegetacao() {
+    const nome = (G.usuario?.nome || '').trim().toLowerCase();
+    return nome.startsWith('carlos') || nome.startsWith('thayssa');
+  }
+
+  window.validarEspecie = async function(id, validar) {
+    const payload = validar
+      ? { validado: true,  validado_por: G.usuario.id, validado_em: new Date().toISOString() }
+      : { validado: false, validado_por: null,          validado_em: null };
+    const { error } = await sb.from('apoio_vegetacao_especie').update(payload).eq('id', id);
+    if(error) { alert('Erro ao validar: ' + error.message); return; }
+    // Atualiza cache local
+    const idx = G.vegetacaoSpecies.findIndex(s => s.id === id);
+    if(idx !== -1) Object.assign(G.vegetacaoSpecies[idx], payload);
+    renderTema();
+  };
+
   window.abrirNovaEspecie = function() {
     abrirModalSized('Nova espécie', buildSpeciesForm({ grupo: 'arbustivas' }), { tipo: 'apoio-especie', id: null }, 'wide');
   };
@@ -4430,7 +4492,11 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       url_imagem: document.getElementById('veg-url-imagem')?.value.trim() || '',
       updated_at: new Date().toISOString(),
       atualizado_por: G.usuario?.id || null,
-      criado_por: G.usuario?.id || null
+      criado_por: G.usuario?.id || null,
+      // Qualquer edição remove a validação — deve ser re-validada manualmente
+      validado: false,
+      validado_por: null,
+      validado_em: null
     };
   }
 
