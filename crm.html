@@ -3459,15 +3459,24 @@ function populateCalcDropdown(selectedId) {
     if (!familyMap[fid]) familyMap[fid] = [];
     familyMap[fid].push(p);
   });
-  // Ordena cada família: versão mais alta primeiro; famílias por data de criação desc
+  // Ordena cada família: versão mais alta primeiro
   const families = Object.values(familyMap).map(fam => {
     fam.sort((a,b) => (b.version||0) - (a.version||0));
     return fam;
-  }).sort((a,b) => (b[0].proposal_id > a[0].proposal_id ? 1 : -1));
+  }).sort((a,b) => {
+    // Finalizadas primeiro, depois por proposal_id desc
+    const aFin = a[0].status === 'finalizada' ? 0 : 1;
+    const bFin = b[0].status === 'finalizada' ? 0 : 1;
+    if (aFin !== bFin) return aFin - bFin;
+    return b[0].proposal_id > a[0].proposal_id ? 1 : -1;
+  });
+
+  const famFinalizadas = families.filter(f => f[0].status === 'finalizada');
+  const famOutras      = families.filter(f => f[0].status !== 'finalizada');
 
   const opts = ['<option value="">— Nenhuma proposta vinculada —</option>'];
 
-  families.forEach(fam => {
+  const _renderFamily = fam => {
     const latest  = fam[0];
     const froot   = latest.parent_id || latest.proposal_id;
     const ocupada = linkedFamilyRoots.has(froot);
@@ -3476,18 +3485,16 @@ function populateCalcDropdown(selectedId) {
       : `#${latest.proposal_id}`;
     const famLbl  = [latest.projeto||'Sem título', latest.cliente||''].filter(Boolean).join(' · ');
     const ocupTag = ocupada ? ' · já vinculada' : '';
+    const finTag  = latest.status === 'finalizada' ? ' ✓' : '';
 
     if (fam.length === 1) {
-      // Proposta sem revisões
       const p      = fam[0];
       const verLbl = _verLabel(p.version||0);
-      const lbl    = `${codStr} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]${ocupTag}`;
+      const lbl    = `${codStr}${finTag} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]${ocupTag}`;
       const isSel  = p.proposal_id === selectedId ? ' selected' : '';
       opts.push(`<option value="${p.proposal_id}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
     } else {
-      // Família com revisões — sem optgroup (evita negrito automático do browser)
-      // Primeira opção = cabeçalho desabilitado identificando a família
-      opts.push(`<option disabled style="color:#aaa;font-size:10px">— ${codStr} · ${famLbl}${ocupTag}</option>`);
+      opts.push(`<option disabled style="color:#aaa;font-size:10px">— ${codStr}${finTag} · ${famLbl}${ocupTag}</option>`);
       fam.forEach((p, i) => {
         const verLbl = _verLabel(p.version||0);
         const isSel  = p.proposal_id === selectedId ? ' selected' : '';
@@ -3496,7 +3503,16 @@ function populateCalcDropdown(selectedId) {
         opts.push(`<option value="${p.proposal_id}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
       });
     }
-  });
+  };
+
+  if (famFinalizadas.length) {
+    opts.push(`<option disabled style="font-size:10px;color:#2d8a4e;font-weight:700">── Propostas finalizadas ──────────────</option>`);
+    famFinalizadas.forEach(_renderFamily);
+  }
+  if (famOutras.length) {
+    opts.push(`<option disabled style="font-size:10px;color:#aaa">── Em andamento ───────────────────────</option>`);
+    famOutras.forEach(_renderFamily);
+  }
 
   sel.innerHTML = opts.join('');
 

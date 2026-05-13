@@ -2885,9 +2885,9 @@ function renderHist() {
           ? `<span style="font-size:9px;color:var(--az);font-weight:700">${_verLabel(p.version||0)}</span>`
           : `<span style="font-size:9px;color:#aaa;font-weight:600">${_verLabel(p.version||0)}</span>`;
         const efetivo = p.totalEfetivo != null ? fmt(p.totalEfetivo) : `<span style="color:#bbb">—</span>`;
-        // Status: finalizada tem badge próprio; ativa = nenhum badge (novo modelo)
+        // Status: finalizada = badge verde (pronta para CRM); revisada = badge laranja; ativa = sem badge
         const statusBadge = isFinalizada
-          ? `<span class="badge-bloqueada">Finalizada</span>`
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:#edfbf0;color:#2d8a4e;border:1px solid #b2dfcc;border-radius:4px;padding:2px 7px">✓ Finalizada</span>`
           : (p.status==='revisada' ? `<span class="badge-revisada">Revisada</span>` : '');
         // Indicador de família com múltiplas versões (apenas na latest)
         const famIndicator = (famSize > 1 && isLatest)
@@ -3023,8 +3023,34 @@ function abrirProposta(id) {
   btnPdf.onclick = ()=>exportarPDFFromProposal(p);
   footer.appendChild(btnPdf);
 
-  // Só permite revisar propostas ativas
-  if (p.status !== 'revisada') {
+  // Botão Finalizar / Reabrir proposta
+  const _isFinalizada = p.status === 'finalizada';
+  const btnFin = document.createElement('button');
+  btnFin.className = _isFinalizada ? 'btn ghost sm' : 'btn verde sm';
+  btnFin.style.cssText = _isFinalizada ? '' : 'font-weight:700';
+  btnFin.textContent = _isFinalizada ? '↩ Reabrir proposta' : '✓ Finalizar proposta';
+  btnFin.title = _isFinalizada
+    ? 'Reabrir como ativa (remove da lista de finalizadas no CRM)'
+    : 'Marcar como finalizada — ficará disponível para vincular a uma oportunidade no CRM';
+  btnFin.onclick = async () => {
+    const novoStatus = _isFinalizada ? 'ativa' : 'finalizada';
+    const msg = _isFinalizada
+      ? 'Reabrir esta proposta como ativa?'
+      : 'Finalizar esta proposta?\n\nEla ficará marcada como "Finalizada" e poderá ser vinculada a uma oportunidade no CRM.';
+    if (!confirm(msg)) return;
+    const idx = S.proposals.findIndex(x => x.id === p.id);
+    if (idx !== -1) {
+      S.proposals[idx].status = novoStatus;
+      save();
+      syncProposalToSupabase(S.proposals[idx]);
+    }
+    closeM('modal-hist-detail');
+    renderHist();
+  };
+  footer.appendChild(btnFin);
+
+  // Só permite revisar propostas não-finalizadas
+  if (p.status !== 'revisada' && p.status !== 'finalizada') {
     const btnRev = document.createElement('button');
     btnRev.className = 'btn am sm';
     btnRev.textContent = '✏️ Criar revisão';
