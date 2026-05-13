@@ -390,6 +390,55 @@
   CREATE POLICY "autenticados" ON etapa_desenvolvedores FOR ALL USING (auth.role() = 'authenticated');
   CREATE POLICY "autenticados" ON produto_observadores FOR ALL USING (auth.role() = 'authenticated');
 
+  -- ── PROCESSOS ────────────────────────────────────────────────
+  CREATE TABLE processos_checklist (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome       text NOT NULL,
+    descricao  text,
+    status     text DEFAULT 'ativo',   -- ativo | arquivado
+    criado_por uuid REFERENCES usuarios(id),
+    created_at timestamptz DEFAULT now()
+  );
+  CREATE TABLE processos_tema (
+    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    checklist_id uuid REFERENCES processos_checklist(id) ON DELETE CASCADE,
+    nome         text NOT NULL,
+    ordem        int  DEFAULT 0,
+    created_at   timestamptz DEFAULT now()
+  );
+  CREATE TABLE processos_tarefa (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    tema_id    uuid REFERENCES processos_tema(id) ON DELETE CASCADE,
+    descricao  text NOT NULL,
+    subtema    text,
+    ordem      int  DEFAULT 0,
+    created_at timestamptz DEFAULT now()
+  );
+  CREATE TABLE processos_atribuicao (
+    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    checklist_id uuid REFERENCES processos_checklist(id) ON DELETE CASCADE,
+    usuario_id   uuid REFERENCES usuarios(id) ON DELETE CASCADE,
+    UNIQUE(checklist_id, usuario_id)
+  );
+  CREATE TABLE processos_tarefa_status (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    tarefa_id   uuid REFERENCES processos_tarefa(id) ON DELETE CASCADE,
+    usuario_id  uuid REFERENCES usuarios(id) ON DELETE CASCADE,
+    concluida   bool DEFAULT false,
+    concluida_em timestamptz,
+    UNIQUE(tarefa_id, usuario_id)
+  );
+  ALTER TABLE processos_checklist    ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE processos_tema         ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE processos_tarefa       ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE processos_atribuicao   ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE processos_tarefa_status ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "autenticados" ON processos_checklist     FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON processos_tema          FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON processos_tarefa        FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON processos_atribuicao    FOR ALL USING (auth.role()='authenticated');
+  CREATE POLICY "autenticados" ON processos_tarefa_status FOR ALL USING (auth.role()='authenticated');
+
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -->
 
@@ -1322,6 +1371,26 @@ body::before {
 .rev-prog-bar { flex: 1; height: 3px; background: var(--cinza2); }
 .rev-prog-fill { height: 100%; background: var(--verde); transition: width .3s; }
 
+/* Processos */
+.proc-layout { display: grid; grid-template-columns: 280px 1fr; gap: 14px; align-items: start; }
+.proc-lista-item {
+  padding: 10px 12px; border: 1px solid var(--cinza); background: #fff;
+  cursor: pointer; margin-bottom: 6px; transition: all .12s;
+  position: relative; overflow: hidden; border-radius: 8px;
+}
+.proc-lista-item::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%; background: var(--azul);
+}
+.proc-lista-item.proc-done::before { background: var(--verde); }
+.proc-lista-item:hover { border-color: #999; }
+.proc-lista-item.selected { border-color: var(--preto); }
+.proc-nome { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.proc-prog { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; }
+.proc-prog-bar { flex: 1; height: 3px; background: var(--cinza2); border-radius: 2px; }
+.proc-prog-fill { height: 100%; background: var(--azul); border-radius: 2px; transition: width .3s; }
+.proc-prog-fill.done { background: var(--verde); }
+
 /* Prancha */
 .prancha-card {
   background: #fff; border: 1px solid var(--cinza); margin-bottom: 10px;
@@ -1549,6 +1618,7 @@ body::before {
   .dash-grid { grid-template-columns: 1fr; }
   .horas-layout { grid-template-columns: 1fr; }
   .rev-layout { grid-template-columns: 1fr; }
+  .proc-layout { grid-template-columns: 1fr; }
   .stat-row { grid-template-columns: repeat(4, 1fr); }
 }
 @media(max-width: 600px) {
@@ -1741,6 +1811,7 @@ body::before {
     <button class="ntab" data-tab="projetos">Projetos</button>
     <button class="ntab" data-tab="horas">Horas/Custos</button>
     <button class="ntab" data-tab="revisoes">Revisões</button>
+    <button class="ntab" data-tab="processos">Processos</button>
     <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">Sócios</button>
   </div>
   <div class="nav-right">
@@ -2244,6 +2315,27 @@ body::before {
 <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      VISÃO SÓCIOS
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- ══════════════════════════════════════════════════════════════
+     PROCESSOS
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-processos">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div class="sec-title" style="margin-bottom:0;flex:1">Processos</div>
+    <button class="btn sm verde socio-only" id="btn-novo-proc" onclick="abrirNovoChecklist()" style="display:none">+ Novo checklist</button>
+  </div>
+
+  <div class="proc-layout">
+    <div id="proc-lista">
+      <div class="loading-state">Carregando...</div>
+    </div>
+    <div id="proc-detalhe">
+      <div class="empty-note">Selecione um checklist para ver os detalhes</div>
+    </div>
+  </div>
+
+</div>
+
 <div class="page" id="page-socios">
 
   <div class="socio-tabs">
@@ -3463,7 +3555,8 @@ window.lfFiltrarEtapas = function () {
 
 function onTabChange(tab) {
   if (tab === 'projetos') { renderListaProjetos(); }
-  if (tab === 'revisoes') { carregarRevisoes(); }
+  if (tab === 'revisoes')  { carregarRevisoes(); }
+  if (tab === 'processos') { carregarProcessos(); }
   if (tab === 'socios') {
     if (G.hasBillingAccess && G.usuario.role !== 'socio') carregarEspelho();
     else carregarFluxo();
@@ -11555,6 +11648,456 @@ async function responderSolicitacaoData(aceitar) {
   }
   // Encerra a notificação original
   if (_prazoEdit._pendingNotifId) encerrarNotif(_prazoEdit._pendingNotifId);
+}
+
+// ══════════════════════════════════════════════════════════════
+//   PROCESSOS — CHECKLISTS DE PROCESSO
+// ══════════════════════════════════════════════════════════════
+
+G._processos      = [];
+G._procStatus     = {};   // { tarefa_id: { usuario_id: bool } }
+G._procSelecionado = null;
+
+async function carregarProcessos() {
+  const { data: checklists, error } = await sb
+    .from('processos_checklist')
+    .select(`
+      *,
+      processos_atribuicao(usuario_id),
+      processos_tema(
+        id, nome, ordem,
+        processos_tarefa(id, descricao, subtema, ordem)
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error(error); toast('Erro ao carregar processos'); return; }
+
+  (checklists || []).forEach(c => {
+    c.processos_tema?.sort((a, b) => a.ordem - b.ordem);
+    c.processos_tema?.forEach(t => t.processos_tarefa?.sort((a, b) => a.ordem - b.ordem));
+  });
+  G._processos = checklists || [];
+
+  // Load task statuses for every task
+  const allIds = G._processos.flatMap(c =>
+    (c.processos_tema || []).flatMap(t => (t.processos_tarefa || []).map(tr => tr.id))
+  );
+  if (allIds.length) {
+    const { data: statuses } = await sb.from('processos_tarefa_status').select('*').in('tarefa_id', allIds);
+    G._procStatus = {};
+    (statuses || []).forEach(s => {
+      if (!G._procStatus[s.tarefa_id]) G._procStatus[s.tarefa_id] = {};
+      G._procStatus[s.tarefa_id][s.usuario_id] = s.concluida;
+    });
+  } else {
+    G._procStatus = {};
+  }
+
+  renderProcLista();
+  if (G._procSelecionado) {
+    const still = G._processos.find(c => c.id === G._procSelecionado);
+    if (still) renderProcDetalhe(G._procSelecionado);
+    else {
+      document.getElementById('proc-detalhe').innerHTML = '<div class="empty-note">Selecione um checklist para ver os detalhes</div>';
+      G._procSelecionado = null;
+    }
+  }
+}
+
+function _procTotalConc(checklist) {
+  let total = 0, conc = 0;
+  const atrib = checklist.processos_atribuicao?.map(a => a.usuario_id) || [];
+  (checklist.processos_tema || []).forEach(t => {
+    (t.processos_tarefa || []).forEach(tr => {
+      total++;
+      const statusMap = G._procStatus[tr.id] || {};
+      const done = atrib.length
+        ? atrib.some(uid => statusMap[uid])
+        : Object.values(statusMap).some(Boolean);
+      if (done) conc++;
+    });
+  });
+  return { total, conc };
+}
+
+function renderProcLista() {
+  const lista = document.getElementById('proc-lista');
+  if (!lista) return;
+
+  if (!G._processos.length) {
+    lista.innerHTML = '<div class="empty-note">Nenhum checklist criado ainda.</div>';
+    return;
+  }
+
+  function _card(c) {
+    const { total, conc } = _procTotalConc(c);
+    const pct  = total > 0 ? Math.round(conc / total * 100) : 0;
+    const done = total > 0 && conc === total;
+    const atrib = c.processos_atribuicao?.map(a => a.usuario_id) || [];
+    const chips = atrib.slice(0, 4).map(aid => {
+      const u = (G.todosUsuarios || []).find(u => u.id === aid);
+      return u ? `<div class="task-de-chip" style="background:${u.cor||'#888'};width:18px;height:18px;font-size:7px" title="${u.nome}">${u.iniciais}</div>` : '';
+    }).join('');
+    const moreChips = atrib.length > 4
+      ? `<div class="task-de-chip" style="background:#bbb;width:18px;height:18px;font-size:7px">+${atrib.length-4}</div>` : '';
+    const selected = G._procSelecionado === c.id ? ' selected' : '';
+    return `<div class="proc-lista-item${done?' proc-done':''}${selected}" onclick="selecionarChecklist('${c.id}')">
+      <div class="proc-nome">${_escN(c.nome)}</div>
+      ${c.descricao ? `<div style="font-size:10px;color:#888;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escN(c.descricao)}</div>` : ''}
+      <div style="display:flex;align-items:center;gap:3px;margin-bottom:6px;flex-wrap:wrap">
+        ${chips}${moreChips}
+        ${!atrib.length ? '<span style="font-size:9px;color:#ccc;font-style:italic">Sem responsável</span>' : ''}
+      </div>
+      <div class="proc-prog">
+        <span>${conc}/${total}</span>
+        <div class="proc-prog-bar"><div class="proc-prog-fill${done?' done':''}" style="width:${pct}%"></div></div>
+        <span>${pct}%</span>
+      </div>
+    </div>`;
+  }
+
+  const grpLbl = (txt, n) =>
+    `<div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb;padding:8px 4px 4px">${txt} <span style="color:#ccc">(${n})</span></div>`;
+
+  const ativos = G._processos.filter(c => c.status !== 'arquivado');
+  const arqs   = G._processos.filter(c => c.status === 'arquivado');
+
+  let html = ativos.map(_card).join('');
+  if (arqs.length) html += grpLbl('Arquivados', arqs.length) + arqs.map(_card).join('');
+  if (!html) html = '<div class="empty-note">Nenhum checklist encontrado.</div>';
+  lista.innerHTML = html;
+}
+
+async function selecionarChecklist(id) {
+  G._procSelecionado = id;
+  renderProcLista();   // refresh selected state
+  renderProcDetalhe(id);
+}
+
+function renderProcDetalhe(id) {
+  const detalhe = document.getElementById('proc-detalhe');
+  const c = G._processos.find(c => c.id === id);
+  if (!c) { detalhe.innerHTML = '<div class="empty-note">Checklist não encontrado</div>'; return; }
+
+  const uid      = G.usuario.id;
+  const isSoc    = isSocio();
+  const atrib    = c.processos_atribuicao?.map(a => a.usuario_id) || [];
+  const canCheck = isSoc || atrib.includes(uid);
+
+  const { total, conc } = _procTotalConc(c);
+  const pct  = total > 0 ? Math.round(conc / total * 100) : 0;
+  const done = total > 0 && conc === total;
+
+  const chips = atrib.map(aid => {
+    const u = G.todosUsuarios?.find(u => u.id === aid);
+    return u ? `<div class="task-de-chip" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:9px" title="${u.nome}">${u.iniciais}</div>` : '';
+  }).join('');
+
+  // Build temas HTML
+  const temasHtml = (c.processos_tema || []).map(tema => {
+    const tarefas = tema.processos_tarefa || [];
+    const subtemas = [...new Set(tarefas.map(t => t.subtema || ''))];
+
+    const tarefasHtml = subtemas.map(sub => {
+      const grupo = tarefas.filter(t => (t.subtema || '') === sub);
+      const subHead = sub
+        ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;margin:8px 0 4px">${_escN(sub)}</div>`
+        : '';
+
+      const rows = grupo.map(tr => {
+        const statusMap = G._procStatus[tr.id] || {};
+        const myDone = statusMap[uid] === true;
+        const doneBy = atrib.length
+          ? atrib.filter(aid => statusMap[aid]).map(aid => { const u = G.todosUsuarios?.find(u => u.id === aid); return u ? u.iniciais : '?'; })
+          : Object.keys(statusMap).filter(k => statusMap[k]).map(k => { const u = G.todosUsuarios?.find(u => u.id === k); return u ? u.iniciais : '?'; });
+        const doneByStr = doneBy.join(', ');
+
+        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+          <input type="checkbox" ${myDone?'checked':''} ${!canCheck?'disabled':''}
+            onchange="toggleTarefaProcesso('${tr.id}','${id}',this.checked)"
+            style="margin-top:2px;cursor:${canCheck?'pointer':'default'};accent-color:var(--azul);flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;color:${myDone?'#bbb':'#333'};${myDone?'text-decoration:line-through':''}">${_escN(tr.descricao)}</div>
+            ${doneByStr ? `<div style="font-size:9px;color:#bbb;margin-top:1px">✓ ${doneByStr}</div>` : ''}
+          </div>
+          ${isSoc ? `<button onclick="procExcluirTarefa('${tr.id}','${id}')" title="Excluir tarefa" style="font-size:10px;border:none;background:none;color:#ddd;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1">✕</button>` : ''}
+        </div>`;
+      }).join('');
+
+      return `${subHead}${rows}`;
+    }).join('');
+
+    return `<div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px solid var(--cinza2);margin-bottom:4px">
+        <div style="font-size:12px;font-weight:700;flex:1">${_escN(tema.nome)}</div>
+        ${isSoc ? `
+          <button onclick="procAdicionarTarefa('${tema.id}','${id}')" style="font-size:10px;border:1px solid var(--cinza);border-radius:5px;background:#fff;color:#666;cursor:pointer;padding:2px 8px;font-family:var(--f)">+ Tarefa</button>
+          <button onclick="procExcluirTema('${tema.id}','${id}')" title="Excluir tema" style="font-size:10px;border:none;background:none;color:#ccc;cursor:pointer;padding:2px 4px">✕</button>
+        ` : ''}
+      </div>
+      ${tarefasHtml || '<div style="font-size:10px;color:#ccc;padding:6px 0;font-style:italic">Nenhuma tarefa neste tema.</div>'}
+    </div>`;
+  }).join('');
+
+  const criador = G.todosUsuarios?.find(u => u.id === c.criado_por);
+  const arquivado = c.status === 'arquivado';
+
+  detalhe.innerHTML = `
+    <div style="background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:20px 24px">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:700;margin-bottom:2px">${_escN(c.nome)}</div>
+          ${c.descricao ? `<div style="font-size:11px;color:#888;margin-bottom:2px">${_escN(c.descricao)}</div>` : ''}
+          ${criador ? `<div style="font-size:10px;color:#bbb">Criado por ${criador.nome.split(' ')[0]}</div>` : ''}
+        </div>
+        ${isSoc ? `
+          <button onclick="abrirAtribuirChecklist('${id}')" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:#fff;color:#555;cursor:pointer;padding:5px 12px;font-family:var(--f);white-space:nowrap">Atribuir ▾</button>
+          <button onclick="procArquivar('${id}')" title="${arquivado?'Restaurar checklist':'Arquivar checklist'}" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:#fff;color:#555;cursor:pointer;padding:5px 10px;font-family:var(--f)">${arquivado?'↺ Restaurar':'🗄 Arquivar'}</button>
+        ` : ''}
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb">Responsáveis:</span>
+        ${chips || '<span style="font-size:10px;color:#ccc;font-style:italic">Nenhum atribuído</span>'}
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="font-size:11px;font-weight:600;color:${done?'var(--verde)':'#555'}">${done?'✓ Concluído':'Em andamento'}</span>
+          <span style="font-size:10px;color:#aaa;margin-left:auto">${conc}/${total} tarefas · ${pct}%</span>
+        </div>
+        <div style="height:5px;background:var(--cinza2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${done?'var(--verde)':'var(--azul)'};transition:width .3s;border-radius:3px"></div>
+        </div>
+      </div>
+
+      <div id="proc-temas-wrap">
+        ${temasHtml || '<div class="empty-note" style="margin:0">Nenhum tema adicionado ainda.</div>'}
+      </div>
+
+      ${isSoc ? `
+        <button onclick="procAdicionarTema('${id}')"
+          style="margin-top:16px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:#fafafa;color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--f)">
+          + Adicionar tema
+        </button>
+      ` : ''}
+    </div>`;
+}
+
+async function toggleTarefaProcesso(tarefaId, checklistId, concluida) {
+  const uid = G.usuario.id;
+  const { error } = await sb.from('processos_tarefa_status').upsert(
+    { tarefa_id: tarefaId, usuario_id: uid, concluida, concluida_em: concluida ? new Date().toISOString() : null },
+    { onConflict: 'tarefa_id,usuario_id' }
+  );
+  if (error) { toast('Erro ao atualizar status'); return; }
+  if (!G._procStatus[tarefaId]) G._procStatus[tarefaId] = {};
+  G._procStatus[tarefaId][uid] = concluida;
+  renderProcLista();
+  renderProcDetalhe(checklistId);
+}
+
+function abrirNovoChecklist() {
+  const _fs = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const _bs = 'padding:7px 18px;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--f)';
+  const pop = document.createElement('div');
+  pop.id = '_proc-novo-pop';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:28px 24px;max-width:420px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:15px;font-weight:700;margin-bottom:18px">Novo Checklist de Processo</div>
+      <label style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px">Nome</label>
+      <input id="_proc-nome" type="text" placeholder="Ex: Processo de aprovação prefeitura" style="${_fs};margin-bottom:10px">
+      <label style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px">Descrição (opcional)</label>
+      <input id="_proc-desc" type="text" placeholder="Breve descrição do processo" style="${_fs};margin-bottom:20px">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('_proc-novo-pop').remove()" style="${_bs};border:1px solid var(--cinza);background:#fff">Cancelar</button>
+        <button onclick="confirmarNovoChecklist()" style="${_bs};background:var(--preto);color:#fff;border:none;font-weight:600">Criar</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+  const inp = document.getElementById('_proc-nome');
+  if (inp) {
+    inp.focus();
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') confirmarNovoChecklist();
+      if (e.key === 'Escape') pop.remove();
+    });
+  }
+}
+
+async function confirmarNovoChecklist() {
+  const nome = document.getElementById('_proc-nome')?.value?.trim();
+  const desc = document.getElementById('_proc-desc')?.value?.trim();
+  if (!nome) { toast('Digite um nome para o checklist'); return; }
+  document.getElementById('_proc-novo-pop')?.remove();
+  const { data, error } = await sb.from('processos_checklist')
+    .insert({ nome, descricao: desc || null, criado_por: G.usuario.id, status: 'ativo' })
+    .select().single();
+  if (error) { toast('Erro ao criar: ' + error.message); return; }
+  toast('Checklist criado!');
+  await carregarProcessos();
+  selecionarChecklist(data.id);
+}
+
+function abrirAtribuirChecklist(id) {
+  const c = G._processos.find(c => c.id === id);
+  if (!c) return;
+  const atrib = c.processos_atribuicao?.map(a => a.usuario_id) || [];
+  const _bs = 'padding:7px 18px;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--f)';
+  const pop = document.createElement('div');
+  pop.id = '_proc-atrib-pop';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+
+  const opts = (G.todosUsuarios || []).map(u => {
+    const checked = atrib.includes(u.id);
+    return `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;border-bottom:1px solid var(--cinza2)">
+      <input type="checkbox" value="${u.id}" ${checked?'checked':''} style="accent-color:var(--azul);width:14px;height:14px;cursor:pointer">
+      <div class="task-de-chip" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:9px;flex-shrink:0">${u.iniciais}</div>
+      <span style="font-size:12px">${_escN(u.nome)}</span>
+    </label>`;
+  }).join('');
+
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:24px;max-width:360px;width:95%;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">Atribuir Responsáveis</div>
+      <div style="overflow-y:auto;flex:1;margin-bottom:14px">${opts}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('_proc-atrib-pop').remove()" style="${_bs};border:1px solid var(--cinza);background:#fff">Cancelar</button>
+        <button onclick="confirmarAtribuicaoChecklist('${id}')" style="${_bs};background:var(--preto);color:#fff;border:none;font-weight:600">Salvar</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+}
+
+async function confirmarAtribuicaoChecklist(id) {
+  const checkboxes = document.querySelectorAll('#_proc-atrib-pop input[type=checkbox]');
+  const selecionados = [...checkboxes].filter(cb => cb.checked).map(cb => cb.value);
+  document.getElementById('_proc-atrib-pop')?.remove();
+  await sb.from('processos_atribuicao').delete().eq('checklist_id', id);
+  if (selecionados.length) {
+    const { error } = await sb.from('processos_atribuicao').insert(selecionados.map(uid => ({ checklist_id: id, usuario_id: uid })));
+    if (error) { toast('Erro ao atribuir: ' + error.message); return; }
+  }
+  toast('Responsáveis atualizados');
+  await carregarProcessos();
+  selecionarChecklist(id);
+}
+
+function procAdicionarTema(checklistId) {
+  const _fs = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const _bs = 'padding:7px 18px;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--f)';
+  const pop = document.createElement('div');
+  pop.id = '_proc-tema-pop';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:24px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">Novo Tema</div>
+      <input id="_proc-tema-nome" type="text" placeholder="Ex: Documentação técnica" style="${_fs};margin-bottom:16px">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('_proc-tema-pop').remove()" style="${_bs};border:1px solid var(--cinza);background:#fff">Cancelar</button>
+        <button onclick="confirmarNovoTema('${checklistId}')" style="${_bs};background:var(--preto);color:#fff;border:none;font-weight:600">Criar</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+  const inp = document.getElementById('_proc-tema-nome');
+  if (inp) {
+    inp.focus();
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') confirmarNovoTema(checklistId);
+      if (e.key === 'Escape') pop.remove();
+    });
+  }
+}
+
+async function confirmarNovoTema(checklistId) {
+  const nome = document.getElementById('_proc-tema-nome')?.value?.trim();
+  if (!nome) { toast('Digite o nome do tema'); return; }
+  document.getElementById('_proc-tema-pop')?.remove();
+  const c = G._processos.find(c => c.id === checklistId);
+  const ordem = (c?.processos_tema?.length || 0) + 1;
+  const { error } = await sb.from('processos_tema').insert({ checklist_id: checklistId, nome, ordem });
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('Tema adicionado');
+  await carregarProcessos();
+  selecionarChecklist(checklistId);
+}
+
+async function procExcluirTema(temaId, checklistId) {
+  if (!confirm('Excluir este tema e todas as suas tarefas?')) return;
+  const { error } = await sb.from('processos_tema').delete().eq('id', temaId);
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('Tema excluído');
+  await carregarProcessos();
+  selecionarChecklist(checklistId);
+}
+
+function procAdicionarTarefa(temaId, checklistId) {
+  const _fs = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--f);outline:none;box-sizing:border-box';
+  const _bs = 'padding:7px 18px;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--f)';
+  const pop = document.createElement('div');
+  pop.id = '_proc-tar-pop';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:#fff;border-radius:10px;padding:24px;max-width:420px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">Nova Tarefa</div>
+      <label style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px">Descrição</label>
+      <textarea id="_proc-tar-desc" rows="2" placeholder="Descreva a tarefa" style="${_fs};resize:none;margin-bottom:10px"></textarea>
+      <label style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px">Subtema (opcional)</label>
+      <input id="_proc-tar-sub" type="text" placeholder="Ex: Plantas, Aprovações..." style="${_fs};margin-bottom:16px">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('_proc-tar-pop').remove()" style="${_bs};border:1px solid var(--cinza);background:#fff">Cancelar</button>
+        <button onclick="confirmarNovaTarefa('${temaId}','${checklistId}')" style="${_bs};background:var(--preto);color:#fff;border:none;font-weight:600">Criar</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+  const inp = document.getElementById('_proc-tar-desc');
+  if (inp) inp.focus();
+}
+
+async function confirmarNovaTarefa(temaId, checklistId) {
+  const desc = document.getElementById('_proc-tar-desc')?.value?.trim();
+  const sub  = document.getElementById('_proc-tar-sub')?.value?.trim();
+  if (!desc) { toast('Descreva a tarefa'); return; }
+  document.getElementById('_proc-tar-pop')?.remove();
+  const tema  = G._processos.flatMap(c => c.processos_tema || []).find(t => t.id === temaId);
+  const ordem = (tema?.processos_tarefa?.length || 0) + 1;
+  const { error } = await sb.from('processos_tarefa').insert({ tema_id: temaId, descricao: desc, subtema: sub || null, ordem });
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('Tarefa adicionada');
+  await carregarProcessos();
+  selecionarChecklist(checklistId);
+}
+
+async function procExcluirTarefa(tarefaId, checklistId) {
+  if (!confirm('Excluir esta tarefa?')) return;
+  const { error } = await sb.from('processos_tarefa').delete().eq('id', tarefaId);
+  if (error) { toast('Erro: ' + error.message); return; }
+  delete G._procStatus[tarefaId];
+  toast('Tarefa excluída');
+  await carregarProcessos();
+  selecionarChecklist(checklistId);
+}
+
+async function procArquivar(id) {
+  const c = G._processos.find(c => c.id === id);
+  if (!c) return;
+  const novoStatus = c.status === 'arquivado' ? 'ativo' : 'arquivado';
+  const { error } = await sb.from('processos_checklist').update({ status: novoStatus }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast(novoStatus === 'arquivado' ? 'Checklist arquivado' : 'Checklist restaurado');
+  await carregarProcessos();
+  if (novoStatus === 'ativo') {
+    selecionarChecklist(id);
+  } else {
+    document.getElementById('proc-detalhe').innerHTML = '<div class="empty-note">Selecione um checklist para ver os detalhes</div>';
+    G._procSelecionado = null;
+  }
 }
 
 // ── START ──────────────────────────────────────────────────
