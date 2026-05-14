@@ -666,6 +666,10 @@ body::before {
 .ck-item-txt{font-size:12px;flex:1;line-height:1.5}
 .ck-item-txt.done{text-decoration:line-through;color:#bbb}
 .ck-item-who{font-size:9px;color:#aaa;flex-shrink:0}
+.ck-item-act{background:none;border:none;cursor:pointer;font-size:11px;color:#bbb;padding:0 2px;line-height:1;flex-shrink:0;opacity:0;transition:opacity .15s}
+.ck-item:hover .ck-item-act{opacity:1}
+.ck-item-act.tc{color:#e05}
+.ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--az);outline:none;padding:0;background:transparent;font-family:var(--f);color:inherit;line-height:1.5}
 .ck-empty{font-size:11px;color:#ccc;padding:8px 0}
 .ck-atrib{display:flex;align-items:center;gap:5px;font-size:10px;color:#666;padding:4px 12px;background:var(--off);border-top:1px solid var(--cinza2)}
 .ck-av{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0}
@@ -1434,6 +1438,10 @@ body::before {
 .tarefa-check.done::after { content: '✓'; font-size: 10px; color: #fff; font-weight: 700; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
+.tarefa-inline-form { padding: 6px 0 4px; }
+.tarefa-inline-ta { width: 100%; box-sizing: border-box; border: 1px solid var(--cinza); border-radius: 6px; padding: 7px 10px; font-size: 12px; font-family: var(--f); resize: none; outline: none; line-height: 1.5; }
+.tarefa-inline-ta:focus { border-color: var(--az); }
+.tarefa-inline-actions { display: flex; gap: 6px; margin-top: 6px; }
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    VISÃO SÓCIOS
@@ -6131,6 +6139,7 @@ function renderPrancha(pr, isSocioOrCoord) {
           </div>
         `).join('')}
         ${!pr.tarefas_revisao?.length ? '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem tarefas nesta prancha.</div>' : ''}
+        <div id="tarefa-inline-${pr.id}"></div>
         <div class="prancha-comments">
           <div class="prancha-comments-title">Comentários</div>
           ${(pr.comentarios || []).length ? (pr.comentarios || []).map(c => renderTopicoComentario(c, podeExcluirTopico)).join('') : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem comentários nesta prancha.</div>'}
@@ -6298,15 +6307,34 @@ function excluirTopicoComentario(comentarioId) {
 }
 
 function addTarefaPrancha(pranchaId) {
-  abrirModalRevisaoInput({
-    action: 'tarefa',
-    targetId: pranchaId,
-    title: 'Nova tarefa da prancha',
-    buttonLabel: 'Adicionar tarefa',
-    textareaLabel: 'Descrição da tarefa',
-    textareaPlaceholder: 'Descreva o ajuste que precisa ser feito...',
-    multiline: true
-  });
+  const wrap = document.getElementById(`tarefa-inline-${pranchaId}`);
+  if(!wrap || wrap.querySelector('.tarefa-inline-form')) return;
+  wrap.innerHTML = `<div class="tarefa-inline-form">
+    <textarea id="ti-${pranchaId}" class="tarefa-inline-ta" rows="2"
+      placeholder="Descreva o ajuste que precisa ser feito..."
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();salvarTarefaInline('${pranchaId}');}if(event.key==='Escape')cancelarTarefaInline('${pranchaId}');"></textarea>
+    <div class="tarefa-inline-actions">
+      <button class="btn sm verde" onclick="salvarTarefaInline('${pranchaId}')">Adicionar</button>
+      <button class="btn sm" onclick="cancelarTarefaInline('${pranchaId}')">Cancelar</button>
+    </div>
+  </div>`;
+  document.getElementById(`ti-${pranchaId}`)?.focus();
+}
+
+function cancelarTarefaInline(pranchaId) {
+  const wrap = document.getElementById(`tarefa-inline-${pranchaId}`);
+  if(wrap) wrap.innerHTML = '';
+}
+
+async function salvarTarefaInline(pranchaId) {
+  const ta = document.getElementById(`ti-${pranchaId}`);
+  const valor = ta?.value.trim();
+  if(!valor) { toast('Preencha a descrição da tarefa'); return; }
+  const { error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor });
+  if(error) { toast('Erro ao adicionar tarefa'); return; }
+  cancelarTarefaInline(pranchaId);
+  await selecionarRevisao(G._revisaoAtiva);
+  toast('Tarefa adicionada');
 }
 
 function addPranchaRevisao(revisaoId) {
@@ -10198,26 +10226,31 @@ function toggleCkOutras() {
   if(btn) btn.textContent = open ? `+ ${wrap.children.length} etapa${wrap.children.length>1?'s':''}` : '− Recolher';
 }
 
-function _ckItemHtml(it, readonly, tipo) {
+function _ckItemHtml(it, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   const who = it.concluido && it.concluido_por_nome ? `<span class="ck-item-who">${_ckE(it.concluido_por_nome)}</span>` : '';
+  const editBtns = canEdit ? `
+    <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)},${_sqCk(it.texto)})" title="Editar">✏</button>
+    <button class="ck-item-act tc" onclick="excluirCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Excluir">✕</button>
+  ` : '';
   return `<div class="ck-item">
     <input type="checkbox" class="ck-cb" ${it.concluido?'checked':''} ${readonly?'disabled':''}
       onchange="toggleCkItem('${tipo}',${_sqCk(it.id)},this.checked,${_sqCk(it.checklist_id)})">
-    <span class="ck-item-txt${it.concluido?' done':''}">${_ckE(it.texto)}</span>
+    <span class="ck-item-txt${it.concluido?' done':''}" id="ck-txt-${it.id}">${_ckE(it.texto)}</span>
     ${who}
+    ${editBtns}
   </div>`;
 }
 
 // secoes = array de {id, titulo, intro, ordem} — se vazio usa fallback por texto
-function _ckRenderItems(items, secoes, readonly, tipo) {
+function _ckRenderItems(items, secoes, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   let html = '';
 
   if(secoes && secoes.length) {
     // Itens sem seção (secao_id nulo)
     const sem = items.filter(it => !it.secao_id).sort((a,b)=>a.ordem-b.ordem);
-    sem.forEach(it => { html += _ckItemHtml(it, readonly, tipo); });
+    sem.forEach(it => { html += _ckItemHtml(it, readonly, tipo, canEdit); });
 
     // Itens agrupados por seção
     secoes.sort((a,b)=>a.ordem-b.ordem).forEach(s => {
@@ -10225,7 +10258,7 @@ function _ckRenderItems(items, secoes, readonly, tipo) {
       html += `<div class="ck-secao-blk">
         <div class="ck-secao">${_ckE(s.titulo)}</div>
         ${s.intro ? `<div class="ck-secao-intro">${_ckE(s.intro)}</div>` : ''}
-        ${sit.map(it => _ckItemHtml(it, readonly, tipo)).join('')}
+        ${sit.map(it => _ckItemHtml(it, readonly, tipo, canEdit)).join('')}
       </div>`;
     });
   } else {
@@ -10236,7 +10269,7 @@ function _ckRenderItems(items, secoes, readonly, tipo) {
         lastSecao = it.secao || '';
         if(lastSecao) html += `<div class="ck-secao-blk"><div class="ck-secao">${_ckE(lastSecao)}</div>`;
       }
-      html += _ckItemHtml(it, readonly, tipo);
+      html += _ckItemHtml(it, readonly, tipo, canEdit);
     });
   }
   return html || '<div class="ck-empty">Sem itens.</div>';
@@ -10269,7 +10302,7 @@ function _renderCkTarefas() {
         ${socioAcoes}
       </div>
       <div class="ck-card-body" id="ck-t-${cl.id}">
-        ${items.length ? _ckRenderItems(items, null, fechado, 'tarefa') : '<div class="ck-empty">Sem itens.</div>'}
+        ${items.length ? _ckRenderItems(items, null, fechado, 'tarefa', isSocioUser() || cl.criado_por === G.usuario.id) : '<div class="ck-empty">Sem itens.</div>'}
         ${atrib}
       </div>
     </div>`;
@@ -10330,6 +10363,54 @@ async function toggleStatusCkTarefa(id) {
   await sb.from('checklist_tarefa').update({ status: novoStatus }).eq('id', id);
   cl.status = novoStatus;
   _renderCkTarefas();
+}
+
+// ── Excluir item do checklist (criador ou sócio) ───────────────
+async function excluirCkItem(tipo, itemId, ckId) {
+  if(!confirm('Excluir este item do checklist?')) return;
+  const tbl = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+  const { error } = await sb.from(tbl).delete().eq('id', itemId);
+  if(error) { toast('Erro ao excluir item'); return; }
+  const arr = tipo === 'tarefa' ? G._ckTarefas : G._ckEtapas;
+  const ck  = arr.find(x => x.id === ckId);
+  if(ck) {
+    const field = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    const items = ck[field] || [];
+    const idx   = items.findIndex(i => i.id === itemId);
+    if(idx > -1) items.splice(idx, 1);
+  }
+  tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.();
+  toast('Item excluído');
+}
+
+// ── Editar item do checklist inline (criador ou sócio) ─────────
+function editarCkItem(tipo, itemId, ckId, textoAtual) {
+  const span = document.getElementById(`ck-txt-${itemId}`);
+  if(!span) return;
+  span.outerHTML = `<input id="ck-edit-${itemId}" class="ck-edit-input"
+    value="${_ckE(textoAtual)}"
+    onblur="confirmarEditCkItem('${tipo}','${itemId}','${ckId}',this.value)"
+    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
+  const inp = document.getElementById(`ck-edit-${itemId}`);
+  inp?.focus();
+  inp?.select();
+}
+
+async function confirmarEditCkItem(tipo, itemId, ckId, novoTexto) {
+  const inp = document.getElementById(`ck-edit-${itemId}`);
+  if(inp?.dataset.cancel === '1') { tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.(); return; }
+  novoTexto = (novoTexto || '').trim();
+  if(!novoTexto) { tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.(); return; }
+  const tbl = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+  const { error } = await sb.from(tbl).update({ texto: novoTexto }).eq('id', itemId);
+  if(error) { toast('Erro ao salvar'); return; }
+  const arr = tipo === 'tarefa' ? G._ckTarefas : G._ckEtapas;
+  for(const ck of arr) {
+    const field = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    const it = (ck[field] || []).find(i => i.id === itemId);
+    if(it) { it.texto = novoTexto; break; }
+  }
+  tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.();
 }
 
 // ── Configurar checklist de etapa (sócios) ────────────────────
@@ -11565,7 +11646,9 @@ async function notificarRevisao(revisaoId) {
   if(coord) destinos.add(coord);
   // Notifica também o coordenador da etapa se existir
   if(etapa?.coordenador_id) destinos.add(etapa.coordenador_id);
-  if(destinos.size === 0) { toast('Nenhum coordenador definido no projeto ou etapa'); return; }
+  // Notifica todos os desenvolvedores da etapa
+  (G.etapaDevs[etapa?.id] || []).forEach(id => destinos.add(id));
+  if(destinos.size === 0) { toast('Nenhum coordenador ou desenvolvedor definido na etapa'); return; }
   for(const uid of destinos) {
     await criarNotificacao(uid, 'revisao',
       `Revisão #${rev.numero} pronta — ${nomeProjeto}`,
@@ -11573,7 +11656,7 @@ async function notificarRevisao(revisaoId) {
       { tipo:'revisao', produto_id: prod?.id, etapa_id: etapa?.id, revisao_id: revisaoId }
     );
   }
-  toast(`Notificação enviada para ${destinos.size > 1 ? 'coordenadores' : 'coordenador'}`);
+  toast(`Notificação enviada para ${destinos.size} ${destinos.size === 1 ? 'pessoa' : 'pessoas'}`);
 }
 
 // ── PRAZO PRIORIDADE ──────────────────────────────────────────
