@@ -142,9 +142,9 @@ td{padding:7px 10px;font-size:12px;border-bottom:1px solid var(--cinza2);vertica
 tr.click{cursor:pointer}
 tr.click:hover td{background:var(--off)}
 tr.expired td{background:#FFF8F8}
-tr.orc-neg td{background:#fffcf3;border-left:3px solid #D19931}
-tr.orc-dest td{background:#fffcf3;border-left:3px solid #D19931}
-tr.orc-fech td{background:#f3fcf5;border-left:3px solid var(--verde)}
+tr.orc-neg td{background:#fffcf3}
+tr.orc-dest td{background:#fffcf3}
+tr.orc-fech td{background:#f3fcf5}
 .dtag{font-size:10px;color:#888;font-family:var(--fm)}
 .num-tag{font-size:10px;font-weight:700;font-family:var(--fm);color:#555}
 /* Tabela de orçamentos — layout compacto */
@@ -1116,7 +1116,9 @@ const STAGE_GROUP = {
   'cancelada':'Cancelado','cancelado':'Cancelado',
   'perdida':'Negado/Cancelado',
 };
-const NUCLEO_LABEL = {PAIS:'Paisagismo',URB:'Urbanismo',CONSUL:'Consultoria',ESP:'Proj. Especial'};
+const NUCLEO_LABEL = {PAIS:'PAIS',URB:'URB',CONSUL:'CONS',ESP:'ESP'};
+const NEG_CATEGORIAS_PADRAO = ['Preço','Prazo','Escopo','Concorrência','Orçamento interno','Projeto cancelado','Sem resposta'];
+function normNegCat(cat){ return cat && NEG_CATEGORIAS_PADRAO.includes(cat) ? cat : 'Outros'; }
 const NUCLEO_GRUPO = {PAIS:'Paisagismo',URB:'Urbanismo',CONSUL:'Consultorias',ESP:'Projetos Especiais'};
 const SUBTIPO_LABEL = {
   PAIS_TERREO:'Térreo / Passeios',PAIS_CONDO:'Condominial / Ático',
@@ -1446,9 +1448,13 @@ function oppValorProposto(op){
   return op._produtos.reduce((s,p)=>s+(+p.valor_proposto||0),0);
 }
 function oppValorFechado(op){
-  if(op._proposal?.items?.length)
-    return isFechada(op) ? oppValorProposto(op) : 0;
-  return op._produtos.reduce((s,p)=>s+(+p.valor_fechado||0),0);
+  // Produtos DB com valor_fechado têm prioridade absoluta
+  const prodFech=op._produtos.filter(p=>+p.valor_fechado>0);
+  if(prodFech.length) return prodFech.reduce((s,p)=>s+(+p.valor_fechado),0);
+  // Opp calc-vinculada fechada: usa valor_fechado salvo na opp, senão total da proposta
+  if(op._proposal?.items?.length && isFechada(op))
+    return +op.valor_fechado||oppValorProposto(op);
+  return 0;
 }
 // Valor efetivo EXP = valor que compete à EXP (exclui repasses, subcontratações e despesas)
 // Se a opp tem proposta vinculada: usa `total` da proposta calculadora (já é o valor EXP líquido)
@@ -1862,9 +1868,15 @@ function setupPipelineDrag(){
       e.preventDefault();
       col.classList.remove('drag-over');
       if(!dragId||colId===srcCol)return;
+      const id=dragId; dragId=null; srcCol=null;
       const newStage=STAGE_MAP[colId];
-      await sb.from('oportunidades').update({pipeline_stage:newStage,updated_at:new Date().toISOString()}).eq('id',dragId);
-      dragId=null; srcCol=null;
+      if(newStage==='fechada'){
+        // Abre modal de fechamento; carregarDados reseta posição visual do card
+        await carregarDados(); renderPipe();
+        abrirFechamento(id);
+        return;
+      }
+      await sb.from('oportunidades').update({pipeline_stage:newStage,updated_at:new Date().toISOString()}).eq('id',id);
       await carregarDados();
       renderPipe(); renderOrc();
     });
@@ -2534,7 +2546,7 @@ let _acaoTipo=null,_acaoOppId=null,_acaoProdId=null;
 function abrirAcaoOpp(tipo){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
   _acaoTipo=tipo;_acaoOppId=detailOppId;_acaoProdId=null;
-  const titles={enviada:'Marcar como Enviada',negociacao:'Mover para Negociação',negada:'Registrar Negativa'};
+  const titles={prospeccao:'← Voltar para Prospecção',enviada:'Marcar como Orçamento ativo',negociacao:'Mover para Negociação',negada:'Registrar Negativa'};
   document.getElementById('acao-title').textContent=titles[tipo]||'Confirmar';
   let html='';
   if(tipo==='negada'){
@@ -2777,7 +2789,14 @@ function _renderFechItens(op) {
         <span style="font-size:11px;color:#888">Proposta: <strong>${fmt(val)}</strong></span>
       </div>`;
     });
-    html += `<div style="text-align:right;font-size:12px;font-weight:700;padding:6px 0;border-top:1px solid var(--cinza2);margin-top:4px">Total: ${fmt(totalProp)}</div>`;
+    html += `<div style="border-top:1px solid var(--cinza2);margin-top:8px;padding-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:12px;color:#888">Total proposta: <strong>${fmt(totalProp)}</strong></span>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;white-space:nowrap">Valor fechado (R$)</label>
+        <input type="number" id="fch-vf-total" value="${totalProp}" min="0" step="100"
+          style="font-size:12px;font-family:var(--fm);border:1px solid var(--az);padding:4px 8px;width:140px;border-radius:4px;font-weight:700">
+      </div>
+    </div>`;
   }
 
   // ── Serviços (produtos DB) ──
@@ -2931,11 +2950,13 @@ async function confirmarFechamento() {
 
   if (erros.length) { toast(erros[0]); return; }
 
-  // Opp calc-vinculada sem produtos DB → atualiza estágio diretamente
+  // Opp calc-vinculada sem produtos DB → salva valor e atualiza estágio
   if (op._proposal?.items?.length && !op._produtos.length) {
+    const vfTotal = parseFloat(document.getElementById('fch-vf-total')?.value) || oppValorProposto(op);
     await sb.from('oportunidades').update({
       pipeline_stage: 'fechada',
-      updated_at: new Date().toISOString(),
+      valor_fechado:  vfTotal,
+      updated_at:     new Date().toISOString(),
     }).eq('id', _fechOppId);
     algumFechado = true;
   } else {
@@ -3017,17 +3038,21 @@ function abrirDetail(oppId){
 
   let html='';
 
-  // C10 / Fase5 — barra de ações contextuais por estágio
+  // Barra de ações: mostra todos os 4 estágios exceto o atual
   if(canEdit && isOpen){
-    html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">`;
-    if(['prospecção','prospeccao'].includes(stage)){
-      html+=`<button class="btn sm" onclick="abrirAcaoOpp('enviada')">📤 Marcar como orçamento ativo</button>`;
-    }
-    // Botão de fechamento unificado aparece a partir do estágio "enviada" em diante
-    const podeFechar = !['prospecção','prospeccao','fechada','fechado','negada','negado','cancelada','cancelado'].includes(stage);
-    if(podeFechar && (op._produtos.length > 0 || op._proposal?.items?.length > 0)){
+    const _pipeStages=[
+      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Prospecção'},
+      {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo'},
+      {key:'negociacao',vals:['negociacao','negociação'],label:'Em Negociação'},
+    ];
+    html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
+      <span style="font-size:9px;color:#bbb;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Mover para:</span>`;
+    _pipeStages.forEach(s=>{
+      if(s.vals.includes(stage))return;
+      html+=`<button class="btn sm" onclick="abrirAcaoOpp('${s.key}')">${s.label}</button>`;
+    });
+    if(op._produtos.length>0||op._proposal?.items?.length>0)
       html+=`<button class="btn sm verde" onclick="abrirFechamento('${oppId}')">✓ Fechar oportunidade</button>`;
-    }
     html+=`</div>`;
   }
 
@@ -3107,7 +3132,7 @@ function abrirDetail(oppId){
           ${!_useCalc&&p.data_fechamento?`<span>Fech.: ${fmtD(p.data_fechamento)}</span>`:''}
           ${!_useCalc&&p.prob?`<span>${probDots(p.prob)}</span>`:''}
         </div>
-        ${!_useCalc&&p.motivo_categoria?`<div style="margin-top:4px"><span class="badge b-tc">${p.motivo_categoria}</span></div>`:''}
+        ${!_useCalc&&p.motivo_categoria?`<div style="margin-top:4px"><span class="badge b-tc">${normNegCat(p.motivo_categoria)}</span></div>`:''}
         ${!_useCalc&&p.motivo_negativa?`<div style="font-size:10px;color:#888;margin-top:2px">${p.motivo_negativa}</div>`:''}
         ${acaoBtns?`<div style="display:flex;gap:5px;margin-top:6px">${acaoBtns}</div>`:''}
       </div>`;
@@ -3313,7 +3338,8 @@ function renderNegativas(){
   // categoria mais frequente
   const catMap = {};
   ops.forEach(o=>o._produtos.filter(p=>isNegada(o)&&p.motivo_categoria).forEach(p=>{
-    catMap[p.motivo_categoria]=(catMap[p.motivo_categoria]||0)+1;
+    const _cat=normNegCat(p.motivo_categoria);
+    catMap[_cat]=(catMap[_cat]||0)+1;
   }));
   const catSorted = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   const topCat = catSorted[0];
@@ -3371,7 +3397,7 @@ function renderNegativas(){
           <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
           <td>${respBadge(o.resp_id)}</td>
           <td class="dtag">${fmtD(o.updated_at)}</td>
-          <td>${p?.motivo_categoria?`<span class="badge b-tc">${p.motivo_categoria}</span>`:'<span style="color:#aaa;font-size:10px">—</span>'}</td>
+          <td>${p?.motivo_categoria?`<span class="badge b-tc">${normNegCat(p.motivo_categoria)}</span>`:'<span style="color:#aaa;font-size:10px">—</span>'}</td>
           <td style="font-size:10px;color:#888;max-width:180px;white-space:normal">${p?.motivo_negativa||'—'}</td>
           <td>${p?.prob_retorno?`<span class="badge ${p.prob_retorno==='Alta'?'b-vd':p.prob_retorno==='Média'?'b-am':'b-gr'}">${p.prob_retorno}</span>`:'—'}</td>
           <td style="font-family:var(--fm);color:var(--tc)">${fmt(oppValorEfetivo(o,false))}</td>
