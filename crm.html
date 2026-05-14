@@ -1426,12 +1426,12 @@ async function carregarDados(){
 
 // Helpers para trabalhar com oportunidades + produtos
 function oppValorProposto(op){
-  if(op._proposal?.items?.length && !op._produtos.length)
+  if(op._proposal?.items?.length)
     return op._proposal.items.reduce((s,it)=>s+(it.valorProposto!=null?+it.valorProposto:(+it.valorCalc||0)),0);
   return op._produtos.reduce((s,p)=>s+(+p.valor_proposto||0),0);
 }
 function oppValorFechado(op){
-  if(op._proposal?.items?.length && !op._produtos.length)
+  if(op._proposal?.items?.length)
     return isFechada(op) ? oppValorProposto(op) : 0;
   return op._produtos.reduce((s,p)=>s+(+p.valor_fechado||0),0);
 }
@@ -2958,22 +2958,38 @@ function abrirDetail(oppId){
     ${op.origem?`<div class="dr"><div class="dk">Origem</div><div class="dv"><strong>${op.origem}</strong>${op.indicou?' — '+op.indicou:''}</div></div>`:''}
   </div>`;
 
-  // C9 / COM-3: importação única — botão aparece só se ainda não há produtos vinculados
-  const jaImportado = op._produtos.length > 0 && op.proposta_calc_id;
-  const importCalcBtn = canEdit && op.proposta_calc_id
-    ? (jaImportado
-        ? `<span style="margin-left:4px;font-size:8px;padding:2px 8px;color:var(--verde);font-weight:600;white-space:nowrap">✓ calc vinculada</span>`
-        : `<button class="btn sm" style="margin-left:4px;font-size:8px;padding:2px 8px;color:var(--az);border-color:var(--az)" onclick="importarProdutosFromProposta('${oppId}','${op.proposta_calc_id}')" title="Importar itens da proposta EXP.calc como produtos">↓ Importar da Calc</button>`)
+  // Produtos / Serviços — vínculo direto com exp_proposals (sem copiar para tabela produtos)
+  const _lp = op._proposal;
+  const _calcItens = _lp?.items?.length ? _lp.items.map((it,idx)=>({
+    _virtual: true,
+    id: `calc-${op.proposta_calc_id}-${idx}`,
+    nucleo: it.nucleo || 'PAIS',
+    subtipo: it.subK || null,
+    subLabel: it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Serviço',
+    valor_calculado: +it.valorCalc || 0,
+    valor_proposto: it.valorProposto != null ? +it.valorProposto : (+it.valorCalc || 0),
+  })) : null;
+  const _useCalc = !!_calcItens;
+  const _prodItems = _calcItens || op._produtos;
+
+  const _calcUpdAt = _lp?.updated_at ? new Date(_lp.updated_at) : null;
+  const _oppUpdAt  = op.updated_at   ? new Date(op.updated_at)  : null;
+  const _calcNovo  = _calcUpdAt && _oppUpdAt && _calcUpdAt > _oppUpdAt;
+  const _calcBadge = _useCalc
+    ? `<span style="margin-left:4px;font-size:8px;padding:2px 6px;color:var(--verde);font-weight:600;white-space:nowrap" title="Atualizada ${_lp.updated_at?fmtD(_lp.updated_at):''}">⟳ calc vinculada${_calcNovo?` · <span style="color:var(--am)">atualizada</span>`:''}</span>`
+    : (op.proposta_calc_id ? `<span style="margin-left:4px;font-size:8px;color:#aaa">calc vinculada</span>` : '');
+  const _resetBtn = canEdit && op.proposta_calc_id
+    ? `<button class="btn sm" style="margin-left:auto;font-size:8px;padding:2px 8px;color:#888;border-color:#ddd" onclick="resetVinculoCalc('${oppId}')" title="Limpa produtos importados e reconecta com a calculadora">↺ Atualizar vínculo</button>`
     : '';
-  const prodSecHdr=`<div class="ms-title" style="display:flex;align-items:center">Produtos / Serviços${canEdit?`<button class="btn sm" style="margin-left:auto;font-size:8px;padding:2px 8px" onclick="abrirNovoProd('${oppId}')">+ Produto</button>`:''} ${importCalcBtn}</div>`;
-  if(op._produtos.length){
+  const prodSecHdr=`<div class="ms-title" style="display:flex;align-items:center">Produtos / Serviços ${_calcBadge}${_resetBtn}</div>`;
+
+  if(_prodItems.length){
     html+=`<div class="ms">${prodSecHdr}`;
-    op._produtos.forEach(p=>{
-      const subLabel=SUBTIPO_LABEL[p.subtipo]||p.subtipo||'—';
+    _prodItems.forEach(p=>{
+      const subLabel=_useCalc?(p.subLabel||'—'):(SUBTIPO_LABEL[p.subtipo]||p.subtipo||'—');
       const pSt=(p.status||'').toLowerCase();
-      // C4: botões de ação por fluxo de status
       let acaoBtns='';
-      if(canEdit){
+      if(canEdit && !_useCalc){
         if(pSt==='ativo')
           acaoBtns=`<button class="btn sm" onclick="abrirAcaoProd('${p.id}','negociacao')">→ Negociação</button><button class="btn sm tc" onclick="abrirAcaoProd('${p.id}','negado')">✗ Negar</button>`;
         else if(pSt==='negociacao'||pSt==='negociação')
@@ -2985,33 +3001,78 @@ function abrirDetail(oppId){
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           ${tipoBadgeProd(p.nucleo)}
           <span style="font-size:12px;font-weight:500">${subLabel}</span>
-          <span style="margin-left:auto;display:flex;gap:5px;align-items:center">
+          ${!_useCalc?`<span style="margin-left:auto;display:flex;gap:5px;align-items:center">
             ${estagBadgeProd(p.status)}
             ${canEdit?`<button class="btn sm ghost" onclick="editarProd('${p.id}')" style="padding:1px 6px" title="Editar">✎</button>`:''}
-          </span>
+          </span>`:''}
         </div>
         <div style="display:flex;gap:16px;font-size:11px;color:#888;flex-wrap:wrap">
           ${p.valor_proposto?`<span>Proposta: <strong style="color:var(--preto)">${fmt(p.valor_proposto)}</strong></span>`:''}
-          ${p.valor_fechado?`<span>Fechado: <strong style="color:var(--verde)">${fmt(p.valor_fechado)}</strong></span>`:''}
-          ${p.data_fechamento?`<span>Fech.: ${fmtD(p.data_fechamento)}</span>`:''}
-          ${p.prob?`<span>${probDots(p.prob)}</span>`:''}
+          ${!_useCalc&&p.valor_fechado?`<span>Fechado: <strong style="color:var(--verde)">${fmt(p.valor_fechado)}</strong></span>`:''}
+          ${!_useCalc&&p.data_fechamento?`<span>Fech.: ${fmtD(p.data_fechamento)}</span>`:''}
+          ${!_useCalc&&p.prob?`<span>${probDots(p.prob)}</span>`:''}
         </div>
-        ${p.motivo_categoria?`<div style="margin-top:4px"><span class="badge b-tc">${p.motivo_categoria}</span></div>`:''}
-        ${p.motivo_negativa?`<div style="font-size:10px;color:#888;margin-top:2px">${p.motivo_negativa}</div>`:''}
+        ${!_useCalc&&p.motivo_categoria?`<div style="margin-top:4px"><span class="badge b-tc">${p.motivo_categoria}</span></div>`:''}
+        ${!_useCalc&&p.motivo_negativa?`<div style="font-size:10px;color:#888;margin-top:2px">${p.motivo_negativa}</div>`:''}
         ${acaoBtns?`<div style="display:flex;gap:5px;margin-top:6px">${acaoBtns}</div>`:''}
       </div>`;
     });
-    html+=`<div class="dr" style="margin-top:4px"><div class="dk">Total proposta</div><div class="dv" style="font-weight:700;font-family:var(--fm)">${fmt(vProp)}</div></div>`;
-    if(vFch)html+=`<div class="dr"><div class="dk">Total fechado</div><div class="dv" style="font-weight:700;font-family:var(--fm);color:var(--verde)">${fmt(vFch)}</div></div>`;
+    const _totalProp=_useCalc?_calcItens.reduce((s,p)=>s+(+p.valor_proposto||0),0):vProp;
+    html+=`<div class="dr" style="margin-top:4px"><div class="dk">Total proposta</div><div class="dv" style="font-weight:700;font-family:var(--fm)">${fmt(_totalProp)}</div></div>`;
+    if(!_useCalc&&vFch)html+=`<div class="dr"><div class="dk">Total fechado</div><div class="dv" style="font-weight:700;font-family:var(--fm);color:var(--verde)">${fmt(vFch)}</div></div>`;
     html+=`</div>`;
+    // Custos vinculados (subs/desps/repasse) — inline, sem async
+    if(_useCalc){
+      const _subs=_lp.subs||[], _desps=_lp.desps||[], _rep=_lp.repasse||null;
+      if(_subs.length||_desps.length||(_rep&&(_rep.nome||_rep.valorRep))){
+        let ch=`<div class="ms"><div class="ms-title">Custos da proposta (EXP.calc)</div>`;
+        if(_subs.length){
+          ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Subcontratações</div>`;
+          _subs.forEach(s=>{
+            const tot=(s.val||0)*(1+(s.bit||0)/100)*(1+(s.ret||0)/100);
+            const aprov=s.status_aprov||'pendente';
+            const apCor=aprov==='aprovada'?'var(--verde)':aprov==='negada'?'var(--tc)':'var(--am)';
+            ch+=`<div style="border:1px solid var(--cinza2);padding:6px 10px;margin-bottom:4px;font-size:11px">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                <span style="font-weight:600">${s.serv||'—'}</span>
+                ${s.emp?`<span style="color:#888">${s.emp}</span>`:''}
+                <span style="margin-left:auto;font-size:9px;font-weight:700;color:${apCor};text-transform:uppercase">${aprov}</span>
+              </div>
+              <div style="display:flex;gap:12px;color:#888;flex-wrap:wrap">
+                <span>Custo: <strong style="color:var(--preto)">${fmt(s.val||0)}</strong></span>
+                ${s.bit?`<span>Bitrib.: ${s.bit}%</span>`:''}
+                ${s.ret?`<span>Ganho EXP: ${s.ret}%</span>`:''}
+                <span style="margin-left:auto">Total: <strong style="color:var(--preto)">${fmt(tot)}</strong></span>
+              </div>
+            </div>`;
+          });
+        }
+        if(_desps.length){
+          ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Despesas Indiretas</div>`;
+          _desps.forEach(d=>{
+            ch+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+              <span style="flex:1">${d.desc||'—'}</span>
+              ${d.bit?`<span style="color:#888">Bit.: ${d.bit}%</span>`:''}
+              <span style="font-family:var(--fm);font-weight:600">${fmt(d.valComBit||d.val||0)}</span>
+            </div>`;
+          });
+        }
+        if(_rep&&(_rep.nome||_rep.valorRep)){
+          ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Repasse Comercial</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11px">
+              <span style="flex:1"><strong>${_rep.nome||'—'}</strong>${_rep.tipo==='pct'?` · ${_rep.val}% sobre serviços`:' · valor fixo'}</span>
+              <span style="font-family:var(--fm);font-weight:600">${fmt(_rep.valorRep||0)}</span>
+            </div>`;
+        }
+        ch+=`</div>`;
+        html+=ch;
+      }
+    }
   } else {
     html+=`<div class="ms">${prodSecHdr}
       <div style="font-size:11px;color:#aaa;padding:6px 0">Nenhum produto cadastrado.</div>
     </div>`;
   }
-
-  // COM-4: placeholder para custos da proposta (subs/desps/repasse) — preenchido async
-  if (op.proposta_calc_id) html += `<div id="det-calc-full-${oppId}"><div style="font-size:10px;color:#bbb;padding:6px 0">Carregando custos da proposta...</div></div>`;
 
   // linha do tempo
   const eventos=[];
@@ -3566,193 +3627,51 @@ function autofillFromProposta() {
   toast(`Dados da proposta aplicados! (${verLblAf})`);
 }
 
+// importarProdutosFromProposta removida — vinculação agora é direta (sem cópia para tabela produtos)
 async function importarProdutosFromProposta(oppId, calcId) {
-  if (!calcId) return;
-  if (currentUser?.viewer_only) { toast('Sem permissão.'); return; }
+  toast('Vinculação direta ativa — os itens da calculadora aparecem automaticamente.');
+}
 
-  const op = allOps.find(o => o.id === oppId);
-  // Bloqueia reimportação da mesma revisão que já foi importada
-  if (op?.proposta_calc_id === calcId && op._produtos?.length > 0) {
-    toast('Os itens desta revisão já foram importados. Para usar outra revisão, vincule-a no modal de edição.');
-    return;
-  }
-  // Bloqueia se OUTRA oportunidade (diferente) usa qualquer revisão desta mesma família
-  const calcProp = allProposals.find(p => p.proposal_id === calcId);
-  const calcFroot = calcProp ? (calcProp.parent_id || calcProp.proposal_id) : calcId;
-  const outraOpp = allOps.find(o => {
-    if (o.id === oppId) return false;
-    if (!o.proposta_calc_id) return false;
-    const oProp  = allProposals.find(p => p.proposal_id === o.proposta_calc_id);
-    const oFroot = oProp ? (oProp.parent_id || oProp.proposal_id) : o.proposta_calc_id;
-    return oFroot === calcFroot;
-  });
-  if (outraOpp) {
-    toast(`Uma revisão desta proposta já está vinculada à oportunidade "${outraOpp.projeto || outraOpp.id}".`);
-    return;
-  }
-
-  // Busca a proposta completa — inclui data_json como fallback garantido
-  const { data, error } = await sb.from('exp_proposals')
-    .select('items, subs, desps, repasse, despbit, data_json')
-    .eq('proposal_id', calcId)
-    .maybeSingle();
-  if (error || !data) { toast('Proposta não encontrada no banco. Abra a EXP.calc para sincronizar as propostas e tente novamente.'); return; }
-
-  // Extrai campos do data_json quando as colunas individuais estiverem vazias
-  // (data_json sempre tem o objeto completo; colunas JSONB podem não existir no schema)
-  let _dj = null;
-  if (data.data_json) {
-    try { _dj = typeof data.data_json === 'string' ? JSON.parse(data.data_json) : data.data_json; } catch(e) {}
-  }
-  const items   = (data.items?.length   ? data.items   : _dj?.items)   || [];
-  const subs    = (data.subs?.length    ? data.subs    : _dj?.subs)    || [];
-  const desps   = (data.desps?.length   ? data.desps   : _dj?.desps)   || [];
-  const repasse = data.repasse  ?? _dj?.repasse  ?? null;
-  const despBit = data.despbit  ?? _dj?.despBit  ?? 0;
-
-  if (!items.length) { toast('Sem itens para importar nesta proposta. Verifique se a proposta foi salva com serviços na calculadora.'); return; }
-
-  // ── Helper: calcula valor bruto de uma despesa (replica calcDesp() da calc.html) ──
-  function _calcDespVal(d) {
-    if (d.tipo==='alim')      return (+d.diarias||0)*(+d.pessoas||1)*(+d.valorDiario||0);
-    if (d.tipo==='carro')     return (+d.diarias||0)*(+d.valorDiaria||0)+(+d.km||0)/Math.max(+d.kml||10,.1)*(+d.vl||0);
-    if (d.tipo==='translado') return +d.vt||0;
-    if (d.tipo==='horasTec')  return (+d.dias||0)*(+d.horasDia||0)*(+d.valorHora||0);
-    if (d.tipo==='passagem')  return +d.val||0;
-    if (d.tipo==='hotel')     return (+d.diarias||0)*(+d.valorDiaria||0);
-    return 0;
-  }
-
-  // ── 1. Importa serviços (items) → tabela produtos ──
-  const novos = items.map(it => ({
-    oportunidade_id: oppId,
-    nome:            it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Serviço',
-    nucleo:          it.nucleo || 'PAIS',
-    subtipo:         it.subK || null,
-    area:            it.area || null,
-    valor_calculado: it.valorCalc || null,
-    // valor_proposto = ajuste manual feito na calc; fallback para valor calculado
-    valor_proposto:  it.valorProposto != null ? it.valorProposto : (it.valorCalc || null),
-    status:          'ativo',
-    prob:            3,
-    created_at:      new Date().toISOString(),
-    updated_at:      new Date().toISOString(),
-  }));
-  const { error: errIns } = await sb.from('produtos').insert(novos);
-  if (errIns) { toast('Erro ao importar produtos: ' + errIns.message); return; }
-
-  const custos = [];
-
-  // ── 2. Subcontratações → opp_custos ──
-  // Formula correta: val*(1 + bit/100 + ret/100)  [aditiva, igual à calc.html]
-  subs.forEach(s => {
-    const valComBit = s.valComBit != null
-      ? s.valComBit                                         // campo já computado e salvo na calc
-      : (s.val || 0) * (1 + (s.bit || 0) / 100 + (s.ret || 0) / 100);
-    custos.push({
-      oportunidade_id: oppId,
-      produto_id:      null,
-      tipo:            'subcontratacao',
-      descricao:       [s.serv, s.emp].filter(Boolean).join(' — ') || 'Subcontratação',
-      valor_calculado: valComBit,
-      valor_negociado: null,
-      calc_ref:        calcId,
-      obs: [
-        s.bit  ? `Bitrib.: ${s.bit}%`   : null,
-        s.ret  ? `Ganho EXP: ${s.ret}%` : null,
-      ].filter(Boolean).join(' | ') || null,
-      status: 'pendente',
-    });
-  });
-
-  // ── 3. Despesas → opp_custos ──
-  // Exclui horasTec (é ganho EXP interno, não custo para o cliente)
-  // Inclui apenas despesas confirmadas
-  const despBitPct = (despBit || 0) / 100;
-  desps.filter(d => d.confirmada && d.tipo !== 'horasTec').forEach(d => {
-    const valBruto = _calcDespVal(d);
-    const valFinal = valBruto * (1 + despBitPct);  // aplica overhead de despesas
-    if (valFinal <= 0) return;
-    custos.push({
-      oportunidade_id: oppId,
-      produto_id:      null,
-      tipo:            'despesa_indireta',
-      descricao:       d.desc || `Despesa — ${d.tipo}`,
-      valor_calculado: valFinal,
-      valor_negociado: null,
-      calc_ref:        calcId,
-      obs:             despBitPct > 0 ? `Overhead: ${despBit}%` : null,
-      status:          'pendente',
-    });
-  });
-
-  // ── 4. Repasse → opp_custos ──
-  if (repasse) {
-    const rep = repasse;
-    // valorRep pode estar pré-calculado ou precisa ser computado
-    let valorRep = rep.valorRep;
-    if (valorRep == null) {
-      const totI = items.reduce((s, it) =>
-        s + (it.valorProposto != null ? it.valorProposto : (it.valorCalc || 0)), 0);
-      valorRep = rep.tipo === 'pct' ? totI * (rep.val || 0) / 100 : (rep.val || 0);
-    }
-    if (valorRep > 0) {
-      custos.push({
-        oportunidade_id: oppId,
-        produto_id:      null,
-        tipo:            'repasse',
-        descricao:       rep.nome || 'Repasse',
-        valor_calculado: valorRep,
-        valor_negociado: null,
-        calc_ref:        calcId,
-        obs:             rep.tipo === 'pct' ? `${rep.val}% sobre serviços` : 'Valor fixo',
-        status:          'pendente',
-      });
-    }
-  }
-
-  if (custos.length) {
-    const { error: errCustos } = await sb.from('opp_custos').insert(custos);
-    if (errCustos) console.warn('Erro ao importar custos:', errCustos.message);
-  }
-
+async function resetVinculoCalc(oppId) {
+  if (!confirm('Isso vai remover os produtos importados anteriormente e recarregar os dados direto da calculadora. Continuar?')) return;
+  // Remove produtos e custos antigos que vieram de importação manual
+  const [delProd, delCusto] = await Promise.all([
+    sb.from('produtos').delete().eq('oportunidade_id', oppId),
+    sb.from('opp_custos').delete().eq('oportunidade_id', oppId).not('calc_ref', 'is', null),
+  ]);
+  if (delProd.error) { toast('Erro ao limpar produtos: ' + delProd.error.message); return; }
+  // Recarrega propostas e dados para ter os items frescos
+  await recarregarProposals();
   await carregarDados();
   renderPipe(); renderOrc();
   abrirDetail(oppId);
-  const nSubs  = subs.length;
-  const nDesps = desps.filter(d=>d.confirmada&&d.tipo!=='horasTec').length;
-  const nRep   = repasse ? 1 : 0;
-  toast(`${novos.length} serviço(s)${custos.length ? ` + ${nSubs} sub(s) + ${nDesps} desp(s)${nRep?' + repasse':''}` : ''} importado(s) da calculadora!`);
+  toast('Vínculo atualizado — itens agora vêm direto da calculadora.');
 }
+
 
 async function carregarInfoPropostaCalc(calcId, oppId) {
   const el = document.getElementById('det-calc-info-' + oppId);
-  const elFull = document.getElementById('det-calc-full-' + oppId);
   if (!el) return;
   try {
     const {data, error} = await sb.from('exp_proposals')
-      .select('proposal_id, projeto, total, status, version, parent_id, subs, desps, repasse, data_json')
+      .select('proposal_id, projeto, total, status, version, parent_id, updated_at')
       .eq('proposal_id', calcId)
       .maybeSingle();
     if (error || !data) {
-      // Fallback: usa dados que já estão em memória (proposta ainda não sincronizada ao Supabase)
       const mem = allProposals.find(p => p.proposal_id === calcId);
       if (mem) {
         el.textContent = `${mem.projeto || '—'} · ${fmt(mem.total)} · ${_verLabel(mem.version||0)}`;
         el.style.color = 'var(--am)';
-        el.title = 'Dados básicos apenas — abra a calculadora para sincronizar a proposta completa';
+        el.title = 'Abra a calculadora para sincronizar';
       } else {
         el.textContent = '(proposta não sincronizada — abra a calculadora)';
         el.style.color = '#aaa';
       }
-      if (elFull) elFull.innerHTML = '';
       return;
     }
-    const verLbl = _verLabel(data.version||0);
-    el.textContent = `${data.projeto || '—'} · ${fmt(data.total)} · ${verLbl}`;
+    el.textContent = `${data.projeto || '—'} · ${fmt(data.total)} · ${_verLabel(data.version||0)}`;
     el.style.color = 'var(--verde)';
-
-    // Verifica se existe revisão mais recente na mesma família
+    // Avisa se existe revisão mais nova na família
     if (allProposals.length) {
       const froot = data.parent_id || data.proposal_id;
       const maisRecente = allProposals
@@ -3762,63 +3681,6 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
         el.innerHTML += ` <span style="font-size:9px;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:700">↑ ${_verLabel(maisRecente.version)} disponível</span>`;
       }
     }
-
-    // COM-4: renderizar subs / desps / repasse no painel de custos
-    if (!elFull) return;
-    let _djInfo = null;
-    if (data.data_json) {
-      try { _djInfo = typeof data.data_json === 'string' ? JSON.parse(data.data_json) : data.data_json; } catch(e) {}
-    }
-    const subs  = (data.subs?.length  ? data.subs  : _djInfo?.subs)  || [];
-    const desps = (data.desps?.length ? data.desps : _djInfo?.desps) || [];
-    const rep   = data.repasse ?? _djInfo?.repasse ?? null;
-    if (!subs.length && !desps.length && !rep) { elFull.innerHTML = ''; return; }
-
-    let fhtml = `<div class="ms"><div class="ms-title">Custos da proposta (EXP.calc)</div>`;
-
-    if (subs.length) {
-      fhtml += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Subcontratações</div>`;
-      subs.forEach(s => {
-        const total = (s.val||0) * (1+(s.bit||0)/100) * (1+(s.ret||0)/100);
-        const aprov = s.status_aprov || 'pendente';
-        const apCor = aprov==='aprovada'?'var(--verde)':aprov==='negada'?'var(--tc)':'var(--am)';
-        fhtml += `<div style="border:1px solid var(--cinza2);padding:6px 10px;margin-bottom:4px;font-size:11px">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-            <span style="font-weight:600">${s.serv||'—'}</span>
-            ${s.emp?`<span style="color:#888">${s.emp}</span>`:''}
-            <span style="margin-left:auto;font-size:9px;font-weight:700;color:${apCor};text-transform:uppercase">${aprov}</span>
-          </div>
-          <div style="display:flex;gap:12px;color:#888;flex-wrap:wrap">
-            <span>Custo: <strong style="color:var(--preto)">${fmt(s.val||0)}</strong></span>
-            ${s.bit?`<span>Bitrib.: ${s.bit}%</span>`:''}
-            ${s.ret?`<span>Ganho EXP: ${s.ret}%</span>`:''}
-            <span style="margin-left:auto">Total: <strong style="color:var(--preto)">${fmt(total)}</strong></span>
-          </div>
-        </div>`;
-      });
-    }
-
-    if (desps.length) {
-      fhtml += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Despesas Indiretas</div>`;
-      desps.forEach(d => {
-        fhtml += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
-          <span style="flex:1">${d.desc||'—'}</span>
-          ${d.bit?`<span style="color:#888">Bit.: ${d.bit}%</span>`:''}
-          <span style="font-family:var(--fm);font-weight:600">${fmt(d.valComBit||d.val||0)}</span>
-        </div>`;
-      });
-    }
-
-    if (rep && (rep.nome || rep.valorRep)) {
-      fhtml += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Repasse Comercial</div>
-        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11px">
-          <span style="flex:1"><strong>${rep.nome||'—'}</strong>${rep.tipo==='pct'?` · ${rep.val}% sobre serviços`:' · valor fixo'}</span>
-          <span style="font-family:var(--fm);font-weight:600">${fmt(rep.valorRep||0)}</span>
-        </div>`;
-    }
-
-    fhtml += `</div>`;
-    elFull.innerHTML = fhtml;
   } catch(e) { el.textContent = '(erro ao carregar)'; }
 }
 
