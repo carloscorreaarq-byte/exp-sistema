@@ -3586,7 +3586,7 @@ async function importarProdutosFromProposta(oppId, calcId) {
 
   // Busca a proposta completa — inclui data_json como fallback garantido
   const { data, error } = await sb.from('exp_proposals')
-    .select('items, subs, desps, repasse, despBit, data_json')
+    .select('items, subs, desps, repasse, despbit, data_json')
     .eq('proposal_id', calcId)
     .maybeSingle();
   if (error || !data) { toast('Proposta não encontrada no banco. Abra a EXP.calc para sincronizar as propostas e tente novamente.'); return; }
@@ -3601,7 +3601,7 @@ async function importarProdutosFromProposta(oppId, calcId) {
   const subs    = (data.subs?.length    ? data.subs    : _dj?.subs)    || [];
   const desps   = (data.desps?.length   ? data.desps   : _dj?.desps)   || [];
   const repasse = data.repasse  ?? _dj?.repasse  ?? null;
-  const despBit = data.despBit  ?? _dj?.despBit  ?? _dj?.despBit ?? 0;
+  const despBit = data.despbit  ?? _dj?.despBit  ?? 0;
 
   if (!items.length) { toast('Sem itens para importar nesta proposta. Verifique se a proposta foi salva com serviços na calculadora.'); return; }
 
@@ -3619,6 +3619,7 @@ async function importarProdutosFromProposta(oppId, calcId) {
   // ── 1. Importa serviços (items) → tabela produtos ──
   const novos = items.map(it => ({
     oportunidade_id: oppId,
+    nome:            it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Serviço',
     nucleo:          it.nucleo || 'PAIS',
     subtipo:         it.subK || null,
     area:            it.area || null,
