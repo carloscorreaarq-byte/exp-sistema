@@ -144,6 +144,12 @@ tr.click:hover td{background:var(--off)}
 tr.expired td{background:#FFF8F8}
 .dtag{font-size:10px;color:#888;font-family:var(--fm)}
 .num-tag{font-size:10px;font-weight:700;font-family:var(--fm);color:#555}
+/* Tabela de orçamentos — layout compacto */
+#orc-table td{padding:5px 8px;font-size:11px}
+#orc-table th{padding:5px 8px}
+#orc-table td:nth-child(3),#orc-table td:nth-child(4),#orc-table td:nth-child(11),#orc-table td:nth-child(12),#orc-table td:nth-child(14){white-space:nowrap}
+#orc-table td:nth-child(2){max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#orc-table td:nth-child(5){max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
 
 /* BTN */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-family:var(--f);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--cinza);background:#fff;color:#888;cursor:pointer;transition:all .12s;white-space:nowrap;border-radius:6px}
@@ -191,7 +197,10 @@ textarea{resize:vertical;min-height:60px}
 .pcard-loc{font-size:9px;color:#aaa;margin-bottom:6px}
 .pcard-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .pcard-val{font-size:11px;font-weight:700;font-family:var(--fm);margin-left:auto;color:var(--preto)}
-.pcard-exp{border-left:3px solid var(--tc)}
+.pcard-exp{border-left:5px solid var(--tc);background:#fff8f7}
+.pcard-dest{border-left:5px solid #D19931;background:#fffcf3}
+.pcard.dragging{opacity:.35;pointer-events:none}
+.kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--az);outline-offset:-4px;border-radius:6px}
 
 /* LINHA DO TEMPO */
 .timeline{position:relative;padding-left:20px}
@@ -283,7 +292,7 @@ textarea{resize:vertical;min-height:60px}
 
 /* DESTAQUE */
 .destaque-card{background:#fff;border:1px solid #D19931;padding:12px 14px 12px 17px;position:relative;cursor:pointer;transition:border-color .12s;border-radius:8px;overflow:hidden}
-.destaque-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:#D19931}
+.destaque-card::before{content:'';position:absolute;top:0;left:0;width:5px;height:100%;background:#D19931}
 .destaque-card:hover{border-color:var(--preto)}
 .destaque-card-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#C4831A;margin-bottom:5px}
 .destaque-card-cliente{font-weight:600;font-size:12px;margin-bottom:2px}
@@ -444,6 +453,7 @@ textarea{resize:vertical;min-height:60px}
     <select id="pf-ordem" onchange="renderPipe()" style="font-size:10px;padding:5px 9px;border:1px solid var(--cinza)">
       <option value="recentes">Mais recentes</option>
       <option value="valor">Maior valor</option>
+      <option value="contato">Último contato</option>
     </select>
     <div style="margin-left:auto;font-size:10px;color:#888" id="pipe-total"></div>
   </div>
@@ -1738,7 +1748,13 @@ function renderPipe(){
 
   // 3B — função de ordenação aplicada a todos os grupos de cards
   function sortCards(arr){
-    if(ordemFil==='valor')return arr.slice().sort((a,b)=>oppValorProposto(b)-oppValorProposto(a));
+    if(ordemFil==='valor')
+      return arr.slice().sort((a,b)=>oppValorProposto(b)-oppValorProposto(a));
+    if(ordemFil==='contato')
+      return arr.slice().sort((a,b)=>{
+        const last=op=>op._followups?.reduce((mx,f)=>f.data_contato>mx?f.data_contato:mx,op.data_entrada||'')||'';
+        return last(b).localeCompare(last(a));
+      });
     return arr.slice().sort((a,b)=>(b.data_entrada||'').localeCompare(a.data_entrada||''));
   }
 
@@ -1771,16 +1787,21 @@ function renderPipe(){
     const vFch=oppValorFechado(op);
     const tc=tempClass(op._followups);
     const exp=isExpiredOp(op);
-    const nucleos=[...new Set(op._produtos.map(p=>p.nucleo))];
+    const dest=op.destaque&&!exp;
+    const nucleos=[...new Set((op._proposal?.items?.length?op._proposal.items.map(i=>i.nucleo):op._produtos.map(p=>p.nucleo)))];
     const prop=op._proposal;
     const code=prop?.prop_code
       ? `EXP-${String(prop.prop_code).padStart(3,'0')}`
       : (op.num_legado||'—');
     const locStr=[op.cidade,op.uf].filter(Boolean).join('/');
-    return`<div class="pcard${exp?' pcard-exp':''}" onclick="abrirDetail('${op.id}')">
+    const cls=`pcard${exp?' pcard-exp':dest?' pcard-dest':''}`;
+    return`<div class="${cls}" draggable="true" data-id="${op.id}" onclick="abrirDetail('${op.id}')">
       <div class="pcard-top">
         <span class="pcard-code">${code}</span>
-        <div class="temp ${tc}"></div>
+        <div style="display:flex;align-items:center;gap:4px">
+          ${dest?'<span style="font-size:8px;color:#C4831A;font-weight:700">★</span>':''}
+          <div class="temp ${tc}"></div>
+        </div>
       </div>
       <div class="pcard-client">${op._cliente?.nome||'—'}</div>
       ${op.projeto?`<div class="pcard-proj">${op.projeto}</div>`:''}
@@ -1799,6 +1820,48 @@ function renderPipe(){
   document.getElementById('k-orc').innerHTML=sortCards(orcAtiv).map(card).join('')||empty;
   document.getElementById('k-negoc').innerHTML=sortCards(negoc).map(card).join('')||empty;
   document.getElementById('k-fech').innerHTML=sortCards(fech).map(card).join('')||empty;
+  setupPipelineDrag();
+}
+
+function setupPipelineDrag(){
+  const STAGE_MAP={'k-prosp':'prospecção','k-orc':'enviada','k-negoc':'negociacao','k-fech':'fechada'};
+  let dragId=null, srcCol=null;
+
+  document.querySelectorAll('.pcard[data-id]').forEach(el=>{
+    el.addEventListener('dragstart',e=>{
+      dragId=el.dataset.id;
+      srcCol=el.closest('.kitems')?.id;
+      e.dataTransfer.effectAllowed='move';
+      setTimeout(()=>el.classList.add('dragging'),0);
+    });
+    el.addEventListener('dragend',()=>{
+      el.classList.remove('dragging');
+      document.querySelectorAll('.kitems').forEach(c=>c.classList.remove('drag-over'));
+    });
+  });
+
+  Object.keys(STAGE_MAP).forEach(colId=>{
+    const col=document.getElementById(colId);
+    if(!col)return;
+    col.addEventListener('dragover',e=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect='move';
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave',e=>{
+      if(!col.contains(e.relatedTarget))col.classList.remove('drag-over');
+    });
+    col.addEventListener('drop',async e=>{
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if(!dragId||colId===srcCol)return;
+      const newStage=STAGE_MAP[colId];
+      await sb.from('oportunidades').update({pipeline_stage:newStage,updated_at:new Date().toISOString()}).eq('id',dragId);
+      dragId=null; srcCol=null;
+      await carregarDados();
+      renderPipe(); renderOrc();
+    });
+  });
 }
 
 // ═══ ORÇAMENTOS ═════════════════════════════════════
@@ -1863,7 +1926,7 @@ function renderOrc(){
       <td style="font-weight:600;font-family:var(--fm)">${fmt(vProp)}</td>
       <td style="font-family:var(--fm);color:var(--az);font-size:10px" title="Valor efetivo EXP (exclui repasses/subs)">${fmt(oppValorEfetivo(o,false))}</td>
       <td style="font-weight:600;font-family:var(--fm);color:${vFch?'var(--verde)':'inherit'}">${vFch?fmt(vFch):'—'}</td>
-      <td>${probDots(prodPrincipal?.prob)}</td>
+      <td style="white-space:nowrap">${probDots(prodPrincipal?.prob)}</td>
       <td class="dtag">${diasEnvio!==null?diasEnvio+' d':'—'}</td>
       <td>${estagBadge(o.pipeline_stage)}</td>
       <td title="${tempTooltip}"><div class="temp ${tc}" style="cursor:help"></div></td>
