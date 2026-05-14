@@ -1112,53 +1112,65 @@ async function syncProposalToSupabase(proposal) {
   if (!S.sbUrl || !S.sbKey) return false;
   setSyncStatus('sync', 'salvando...');
   try {
-    const basePayload = {
+    // Payload mínimo — colunas que existem desde a criação da tabela
+    const corePayload = {
       proposal_id: String(proposal.id),
-      version: proposal.version || 1,
-      parent_id: proposal.parentId ? String(proposal.parentId) : null,
-      status: proposal.status || 'ativa',
-      cliente: proposal.cliente || '',
-      projeto: proposal.projeto || '',
-      resp: proposal.resp || '',
-      cidade: proposal.cidade || '',
-      uf: proposal.uf || '',
-      obs: proposal.obs || '',
-      data_proposta: proposal.data || null,
-      main_nucleo: proposal.mainNucleo || '',
-      total: proposal.total || 0,
-      data_json: JSON.stringify(proposal),
-      items:   proposal.items   || [],
-      desps:   proposal.desps   || [],
-      subs:    proposal.subs    || [],
-      repasse: proposal.repasse || null,
-      despBit: proposal.despBit ?? 0,
-      created_at: proposal.createdAt || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      version:     proposal.version || 1,
+      parent_id:   proposal.parentId ? String(proposal.parentId) : null,
+      status:      proposal.status || 'ativa',
+      cliente:     proposal.cliente || '',
+      projeto:     proposal.projeto || '',
+      cidade:      proposal.cidade || '',
+      uf:          proposal.uf || '',
+      total:       proposal.total || 0,
+      data_json:   JSON.stringify(proposal),
+      created_at:  proposal.createdAt || new Date().toISOString(),
+      updated_at:  new Date().toISOString(),
+    };
+
+    // Payload estendido — inclui colunas adicionadas via migration
+    // Atenção: despbit em minúsculo para corresponder ao nome PostgreSQL (unquoted → lowercase)
+    const extPayload = {
+      ...corePayload,
+      resp:          proposal.resp        || '',
+      obs:           proposal.obs         || '',
+      data_proposta: proposal.data        || null,
+      main_nucleo:   proposal.mainNucleo  || '',
+      items:         proposal.items       || [],
+      desps:         proposal.desps       || [],
+      subs:          proposal.subs        || [],
+      repasse:       proposal.repasse     || null,
+      despbit:       proposal.despBit     ?? 0,
+      prop_code:     proposal.propCode    || null,
     };
 
     const upsertUrl = S.sbUrl + '/rest/v1/exp_proposals?on_conflict=proposal_id';
     const upsertHeaders = { ...getSBHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' };
 
-    // Tenta com prop_code; se a coluna não existir (400/422), reenvia sem ela
     const trySync = async (payload) => {
-      const r = await fetch(upsertUrl, {
-        method: 'POST',
-        headers: upsertHeaders,
-        body: JSON.stringify(payload),
-      });
+      const r = await fetch(upsertUrl, { method: 'POST', headers: upsertHeaders, body: JSON.stringify(payload) });
       return r;
     };
 
-    let payload = { ...basePayload, prop_code: proposal.propCode || null };
+    // Tentativa 1: payload completo
+    let payload = extPayload;
     let r = await trySync(payload);
 
-    // Coluna prop_code pode não existir no banco ainda → tenta sem ela
+    // Tentativa 2: se 400, loga o erro real e tenta sem prop_code
     if (!r.ok && (r.status === 400 || r.status === 422)) {
       const errText = await r.text();
-      if (errText.includes('prop_code')) {
-        payload = { ...basePayload };
-        r = await trySync(payload);
-      }
+      console.warn('Supabase sync 400 detalhe:', errText);
+      const { prop_code, ...semPropCode } = payload;
+      payload = semPropCode;
+      r = await trySync(payload);
+    }
+
+    // Tentativa 3: fallback para payload mínimo (apenas colunas originais)
+    if (!r.ok && (r.status === 400 || r.status === 422)) {
+      const errText2 = r.bodyUsed ? '' : await r.text();
+      if (errText2) console.warn('Supabase sync 400 fallback detalhe:', errText2);
+      payload = corePayload;
+      r = await trySync(payload);
     }
 
     if (r.ok || r.status === 201 || r.status === 200 || r.status === 204) {
@@ -1166,8 +1178,8 @@ async function syncProposalToSupabase(proposal) {
       setSyncStatus('ok', 'nuvem');
       return true;
     } else {
-      const txt = r.bodyUsed ? '(lido)' : await r.text();
-      console.warn('Supabase sync error:', r.status, txt);
+      const txt = r.bodyUsed ? '(sem detalhe)' : await r.text();
+      console.warn('Supabase sync erro final:', r.status, txt);
       setSyncStatus('err', 'erro sync');
       return false;
     }
