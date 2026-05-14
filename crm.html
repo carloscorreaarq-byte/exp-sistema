@@ -1376,7 +1376,7 @@ async function carregarDados(){
     sb.from('usuarios').select('*'),
     sb.from('contatos').select('*'),
     sb.from('followups_produto').select('*'),
-    sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code').order('created_at',{ascending:false}).then(r => r.error ? sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id').order('created_at',{ascending:false}) : r),
+    sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at').order('created_at',{ascending:false}).then(r => r.error ? sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at').order('created_at',{ascending:false}) : r),
   ]);
   const _erros = [['oportunidades',opsRes],['produtos',prodsRes],['clientes',clientesRes],['usuarios',usersRes],['contatos',contatosRes],['followups_produto',fusRes],['exp_proposals',proposalsRes]];
   _erros.forEach(([nome,res])=>{ if(res.error) console.error(`carregarDados [${nome}]:`, res.error.message); });
@@ -1426,9 +1426,13 @@ async function carregarDados(){
 
 // Helpers para trabalhar com oportunidades + produtos
 function oppValorProposto(op){
+  if(op._proposal?.items?.length && !op._produtos.length)
+    return op._proposal.items.reduce((s,it)=>s+(it.valorProposto!=null?+it.valorProposto:(+it.valorCalc||0)),0);
   return op._produtos.reduce((s,p)=>s+(+p.valor_proposto||0),0);
 }
 function oppValorFechado(op){
+  if(op._proposal?.items?.length && !op._produtos.length)
+    return isFechada(op) ? oppValorProposto(op) : 0;
   return op._produtos.reduce((s,p)=>s+(+p.valor_fechado||0),0);
 }
 // Valor efetivo EXP = valor que compete à EXP (exclui repasses, subcontratações e despesas)
@@ -1447,7 +1451,10 @@ function oppValorEfetivo(op, fechado=false){
   return oppValorProposto(op);
 }
 function oppTipo(op){
-  // tipo principal = nucleo do produto com maior valor
+  if(op._proposal?.items?.length && !op._produtos.length){
+    const top=op._proposal.items.slice().sort((a,b)=>(b.valorProposto||b.valorCalc||0)-(a.valorProposto||a.valorCalc||0))[0];
+    return top?NUCLEO_GRUPO[top.nucleo]:null;
+  }
   if(!op._produtos.length)return null;
   const p=op._produtos.slice().sort((a,b)=>(b.valor_proposto||0)-(a.valor_proposto||0))[0];
   return p?NUCLEO_GRUPO[p.nucleo]:null;
@@ -2923,7 +2930,7 @@ function abrirDetail(oppId){
     }
     // Botão de fechamento unificado aparece a partir do estágio "enviada" em diante
     const podeFechar = !['prospecção','prospeccao','fechada','fechado','negada','negado','cancelada','cancelado'].includes(stage);
-    if(podeFechar && op._produtos.length > 0){
+    if(podeFechar && (op._produtos.length > 0 || op._proposal?.items?.length > 0)){
       html+=`<button class="btn sm verde" onclick="abrirFechamento('${oppId}')">✓ Fechar oportunidade</button>`;
     }
     html+=`</div>`;
@@ -3433,8 +3440,8 @@ function renderRelatorios(){
 // ═══ INTEGRAÇÃO CALC ═════════════════════════════════
 async function recarregarProposals() {
   try {
-    let r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code').order('created_at',{ascending:false});
-    if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id').order('created_at',{ascending:false});
+    let r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at').order('created_at',{ascending:false});
+    if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at').order('created_at',{ascending:false});
     if (!r.error && r.data) allProposals = r.data;
   } catch(e) {}
 }
