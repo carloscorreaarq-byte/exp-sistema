@@ -142,6 +142,9 @@ td{padding:7px 10px;font-size:12px;border-bottom:1px solid var(--cinza2);vertica
 tr.click{cursor:pointer}
 tr.click:hover td{background:var(--off)}
 tr.expired td{background:#FFF8F8}
+tr.orc-neg td{background:#fffcf3;border-left:3px solid #D19931}
+tr.orc-dest td{background:#fffcf3;border-left:3px solid #D19931}
+tr.orc-fech td{background:#f3fcf5;border-left:3px solid var(--verde)}
 .dtag{font-size:10px;color:#888;font-family:var(--fm)}
 .num-tag{font-size:10px;font-weight:700;font-family:var(--fm);color:#555}
 /* Tabela de orçamentos — layout compacto */
@@ -199,6 +202,8 @@ textarea{resize:vertical;min-height:60px}
 .pcard-val{font-size:11px;font-weight:700;font-family:var(--fm);margin-left:auto;color:var(--preto)}
 .pcard-exp{border-left:5px solid var(--tc);background:#fff8f7}
 .pcard-dest{border-left:5px solid #D19931;background:#fffcf3}
+.pcard-neg{border-left:5px solid #D19931;background:#fffcf3}
+.pcard-fech{border-left:5px solid var(--verde);background:#f3fcf5}
 .pcard.dragging{opacity:.35;pointer-events:none}
 .kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--az);outline-offset:-4px;border-radius:6px}
 
@@ -1794,7 +1799,9 @@ function renderPipe(){
       ? `EXP-${String(prop.prop_code).padStart(3,'0')}`
       : (op.num_legado||'—');
     const locStr=[op.cidade,op.uf].filter(Boolean).join('/');
-    const cls=`pcard${exp?' pcard-exp':dest?' pcard-dest':''}`;
+    const neg=['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase());
+    const fech=isFechada(op);
+    const cls=`pcard${exp?' pcard-exp':fech?' pcard-fech':neg?' pcard-neg':dest?' pcard-dest':''}`;
     return`<div class="${cls}" draggable="true" data-id="${op.id}" onclick="abrirDetail('${op.id}')">
       <div class="pcard-top">
         <span class="pcard-code">${code}</span>
@@ -1915,7 +1922,10 @@ function renderOrc(){
     const dataEnvio=prodPrincipal?.data_envio||null;
     const diasEnvio=dataEnvio?diasDesde(dataEnvio):null;
     const tempTooltip='Hot: contato <30d · Warm: 30-60d · Cold: >60d';
-    return`<tr class="click${exp?' expired':''}" onclick="abrirDetail('${o.id}')">
+    const _orcNeg=['negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase());
+    const _orcFech=isFechada(o);
+    const _orcCls=exp?' expired':_orcFech?' orc-fech':(_orcNeg||o.destaque)?' orc-neg':'';
+    return`<tr class="click${_orcCls}" onclick="abrirDetail('${o.id}')">
       <td class="num-tag">${o.num_legado||'—'}</td>
       <td><strong>${o._cliente?.nome||'—'}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${o.projeto}</span>`:''}</td>
       <td>${nucleos.map(n=>tipoBadgeProd(n)).join(' ')}</td>
@@ -2752,7 +2762,25 @@ function _renderFechItens(op) {
   if (!wrap) return;
   let html = '';
 
-  // ── Serviços (produtos) ──
+  // ── Serviços via vínculo direto calc (sem produtos no DB) ──
+  const _calcFechItens = !op._produtos.length && op._proposal?.items?.length
+    ? op._proposal.items : null;
+  if (_calcFechItens) {
+    const totalProp = _calcFechItens.reduce((s,it)=>s+(it.valorProposto!=null?+it.valorProposto:(+it.valorCalc||0)),0);
+    html += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:8px">Serviços (EXP.calc)</div>`;
+    _calcFechItens.forEach(it => {
+      const label = it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Serviço';
+      const val = it.valorProposto != null ? +it.valorProposto : (+it.valorCalc || 0);
+      html += `<div style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;display:flex;align-items:center;gap:8px">
+        ${tipoBadgeProd(it.nucleo || 'PAIS')}
+        <span style="font-size:12px;font-weight:500;flex:1">${label}</span>
+        <span style="font-size:11px;color:#888">Proposta: <strong>${fmt(val)}</strong></span>
+      </div>`;
+    });
+    html += `<div style="text-align:right;font-size:12px;font-weight:700;padding:6px 0;border-top:1px solid var(--cinza2);margin-top:4px">Total: ${fmt(totalProp)}</div>`;
+  }
+
+  // ── Serviços (produtos DB) ──
   if (op._produtos.length) {
     html += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:8px">Serviços</div>`;
     op._produtos.forEach(p => {
@@ -2760,7 +2788,7 @@ function _renderFechItens(op) {
       const valRef = p.valor_proposto || p.valor_calculado || 0;
       const isFech = p.status === 'fechado';
       const valFch = p.valor_fechado || valRef;
-      const incl   = p.incluso_fechamento !== false; // default true
+      const incl   = p.incluso_fechamento !== false;
       html += `<div class="fech-row" id="frow-p-${p.id}" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" id="fch-incl-p-${p.id}" ${incl?'checked':''} onchange="_fechToggleRow('p','${p.id}',this.checked)"
@@ -2778,7 +2806,7 @@ function _renderFechItens(op) {
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
             <label style="font-size:9px">Observação (opcional)</label>
-            <input type="text" id="fch-obs-p-${p.id}" value="${p.obs_fechamento||''}"
+            <input type="text" id="fch-obs-p-${p.id}" value="${p.obs||''}"
               placeholder="Ex: desconto negociado, parcela 1..."
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%">
           </div>
@@ -2863,23 +2891,19 @@ async function confirmarFechamento() {
     if (incluso) {
       if (!vf) { erros.push(`Informe o valor fechado para "${SUBTIPO_LABEL[p.subtipo]||p.subtipo||'produto'}".`); continue; }
       const { error } = await sb.from('produtos').update({
-        status:              'fechado',
-        valor_fechado:       vf,
-        data_fechamento:     dataFech,
-        incluso_fechamento:  true,
-        obs_fechamento:      obs,
-        updated_at:          new Date().toISOString(),
+        status:          'fechado',
+        valor_fechado:   vf,
+        data_fechamento: dataFech,
+        obs:             obs || null,
+        updated_at:      new Date().toISOString(),
       }).eq('id', p.id);
       if (error) erros.push('Erro ao salvar produto: ' + error.message);
       else algumFechado = true;
     } else {
-      // Item excluído do fechamento → marca como negado
       const { error } = await sb.from('produtos').update({
-        status:             'negado',
-        incluso_fechamento: false,
-        obs_fechamento:     obs,
-        motivo_negativa:    obs || 'Excluído do fechamento',
-        updated_at:         new Date().toISOString(),
+        status:          'negado',
+        motivo_negativa: obs || 'Excluído do fechamento',
+        updated_at:      new Date().toISOString(),
       }).eq('id', p.id);
       if (error) erros.push('Erro ao salvar produto: ' + error.message);
     }
@@ -2907,8 +2931,16 @@ async function confirmarFechamento() {
 
   if (erros.length) { toast(erros[0]); return; }
 
-  // Atualiza estágio da opp
-  await autoUpdateOppStage(_fechOppId);
+  // Opp calc-vinculada sem produtos DB → atualiza estágio diretamente
+  if (op._proposal?.items?.length && !op._produtos.length) {
+    await sb.from('oportunidades').update({
+      pipeline_stage: 'fechada',
+      updated_at: new Date().toISOString(),
+    }).eq('id', _fechOppId);
+    algumFechado = true;
+  } else {
+    await autoUpdateOppStage(_fechOppId);
+  }
 
   closeM('modal-fechar-opp');
   await carregarDados();
