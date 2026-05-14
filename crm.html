@@ -300,9 +300,7 @@ textarea{resize:vertical;min-height:60px}
 .alc-side{display:flex;flex-direction:column;overflow:hidden}
 .alc-map-wrap{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;padding:4px}
 #alc-svg{width:100%;height:auto;max-height:calc(100vh - 100px);display:block}
-.alc-toggle-wrap{display:flex;gap:0;margin-bottom:12px;border:1px solid var(--cinza);border-radius:7px;overflow:hidden;background:#fff}
-.alc-tgl{flex:1;border:none;background:none;padding:7px 12px;font-size:10px;font-weight:600;letter-spacing:.3px;cursor:pointer;font-family:var(--f);color:#888;transition:all .15s}
-.alc-tgl.active{background:var(--preto);color:#fff}
+#alc-svg{background:var(--off);border-radius:8px}
 .alc-city-card{background:#fff;border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color .12s}
 .alc-city-card:hover{border-color:var(--az)}
 .alc-city-opp{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-top:1px solid var(--cinza2);margin-top:3px;cursor:pointer}
@@ -651,9 +649,12 @@ textarea{resize:vertical;min-height:60px}
   <div class="alc-layout">
     <!-- sidebar -->
     <div class="alc-side">
-      <div class="alc-toggle-wrap">
-        <button class="alc-tgl active" id="alc-tgl-op" onclick="alcMode='op';renderAlcance()">Oportunidades</button>
-        <button class="alc-tgl" id="alc-tgl-fech" onclick="alcMode='fech';renderAlcance()">Fechamentos</button>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <select id="alc-modo" onchange="alcMode=this.value;renderAlcance()" style="flex:1;font-size:11px;font-weight:600;padding:7px 10px;border:1px solid var(--cinza);background:#fff;border-radius:6px;cursor:pointer">
+          <option value="todos">Todas as oportunidades</option>
+          <option value="op">Oportunidades ativas</option>
+          <option value="fech">Fechamentos</option>
+        </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <select id="alc-resp" onchange="renderAlcance()" style="flex:1;font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:#fff;border-radius:5px">
@@ -684,7 +685,7 @@ textarea{resize:vertical;min-height:60px}
         </defs>
         <polygon id="alc-br"
           points="161,0 166,19 260,18 280,48 287,68 305,87 348,100 415,115 454,142 460,159 459,171 450,192 433,207 415,234 410,278 396,327 361,361 349,363 325,375 299,394 299,420 293,433 267,452 242,499 205,457 198,449 228,394 226,397 194,357 190,312 191,274 158,241 123,197 105,206 70,209 1,194 9,164 47,123 47,48 76,41 117,16"
-          fill="#dce9f5" stroke="#a8c0dc" stroke-width="1.5" filter="url(#alc-sh)"/>
+          fill="#e2e1db" stroke="#c4c2ba" stroke-width="1" stroke-linejoin="round" filter="url(#alc-sh)"/>
       </svg>
     </div>
   </div>
@@ -3521,14 +3522,52 @@ function _latlngToSvg(lat, lng) {
   ];
 }
 
+function _initBrazilPath(){
+  const el=document.getElementById('alc-br');
+  if(!el||el.tagName.toLowerCase()==='path') return; // já convertido
+  const pts=[
+    [161,0],[166,19],[260,18],[280,48],[287,68],[305,87],[348,100],
+    [415,115],[454,142],[460,159],[459,171],[450,192],[433,207],
+    [415,234],[410,278],[396,327],[361,361],[349,363],[325,375],
+    [299,394],[299,420],[293,433],[267,452],[242,499],[205,457],
+    [198,449],[228,394],[226,397],[194,357],[190,312],[191,274],
+    [158,241],[123,197],[105,206],[70,209],[1,194],[9,164],
+    [47,123],[47,48],[76,41],[117,16]
+  ];
+  const N=pts.length, t=0.32;
+  let d=`M${pts[0][0]},${pts[0][1]}`;
+  for(let i=0;i<N;i++){
+    const p0=pts[(i-1+N)%N], p1=pts[i], p2=pts[(i+1)%N], p3=pts[(i+2)%N];
+    const c1x=(p1[0]+(p2[0]-p0[0])*t).toFixed(1);
+    const c1y=(p1[1]+(p2[1]-p0[1])*t).toFixed(1);
+    const c2x=(p2[0]-(p3[0]-p1[0])*t).toFixed(1);
+    const c2y=(p2[1]-(p3[1]-p1[1])*t).toFixed(1);
+    d+=` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+  }
+  d+='Z';
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('id','alc-br');
+  path.setAttribute('d',d);
+  path.setAttribute('fill','#e2e1db');
+  path.setAttribute('stroke','#c4c2ba');
+  path.setAttribute('stroke-width','2');
+  path.setAttribute('stroke-linejoin','round');
+  path.setAttribute('stroke-linecap','round');
+  path.setAttribute('filter','url(#alc-sh)');
+  el.parentNode.replaceChild(path,el);
+}
+
 function renderAlcance(){
-  // toggle state
-  document.getElementById('alc-tgl-op').classList.toggle('active', alcMode==='op');
-  document.getElementById('alc-tgl-fech').classList.toggle('active', alcMode==='fech');
+  // sync dropdown with alcMode global
+  const modoEl=document.getElementById('alc-modo');
+  if(modoEl && modoEl.value!==alcMode) modoEl.value=alcMode;
   document.getElementById('alc-list-back').style.display='none';
 
+  // init smooth map path once
+  _initBrazilPath();
+
   // populate resp select
-  const rs = document.getElementById('alc-resp');
+  const rs=document.getElementById('alc-resp');
   if(rs){
     const cur=rs.value;
     rs.innerHTML='<option value="todos">Todos resp.</option>'+
@@ -3541,25 +3580,30 @@ function renderAlcance(){
   let ops=[...allOps];
   if(alcMode==='op'){
     ops=ops.filter(o=>isAtiva(o));
-  } else {
+  } else if(alcMode==='fech'){
     ops=ops.filter(o=>isFechada(o));
     if(anoFil!=='todos') ops=ops.filter(o=>(oppDataFechamento(o)||'').startsWith(anoFil));
+  } else {
+    // todos: ativas + fechadas
+    ops=ops.filter(o=>isAtiva(o)||isFechada(o));
+    if(anoFil!=='todos') ops=ops.filter(o=>
+      (o.data_entrada||'').startsWith(anoFil)||(oppDataFechamento(o)||'').startsWith(anoFil));
   }
   if(respFil!=='todos') ops=ops.filter(o=>o.resp_id===respFil);
 
-  const totalVal = alcMode==='op'
-    ? ops.reduce((s,o)=>s+oppValorProposto(o),0)
-    : ops.reduce((s,o)=>s+oppValorFechado(o),0);
-  const valLabel = alcMode==='op' ? 'pipeline ativo' : 'valor fechado';
+  const ativas=ops.filter(o=>isAtiva(o));
+  const fechadas=ops.filter(o=>isFechada(o));
+  const pipeVal=ativas.reduce((s,o)=>s+oppValorProposto(o),0);
+  const fechVal=fechadas.reduce((s,o)=>s+oppValorFechado(o),0);
   document.getElementById('alc-stats').innerHTML=`
-    <div style="display:flex;gap:8px;margin-bottom:2px">
-      <div style="flex:1;text-align:center;padding:8px 4px;background:#fff;border:1px solid var(--cinza);border-radius:6px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:2px">
+      <div style="text-align:center;padding:8px 4px;background:#fff;border:1px solid var(--cinza);border-radius:6px">
         <div style="font-size:20px;font-weight:700;font-family:var(--fm)">${ops.length}</div>
         <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">oportunidades</div>
       </div>
-      <div style="flex:1;text-align:center;padding:8px 4px;background:#fff;border:1px solid var(--cinza);border-radius:6px">
-        <div style="font-size:13px;font-weight:700;font-family:var(--fm)">${fmt(totalVal)}</div>
-        <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${valLabel}</div>
+      <div style="text-align:center;padding:8px 4px;background:#fff;border:1px solid var(--cinza);border-radius:6px">
+        <div style="font-size:12px;font-weight:700;font-family:var(--fm)">${fmt(alcMode==='fech'?fechVal:pipeVal)}</div>
+        <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${alcMode==='fech'?'valor fechado':'pipeline'}</div>
       </div>
     </div>`;
 
@@ -3571,14 +3615,14 @@ function renderAlcance(){
     groups[key].ops.push(o);
   });
 
-  _renderAlcanceMap(Object.values(groups), groups);
-  _renderAlcanceList(Object.values(groups).sort((a,b)=>b.ops.length-a.ops.length));
+  _renderAlcanceMap(Object.values(groups));
+  _renderAlcanceList(Object.values(groups).sort((a,b)=>
+    (a.cidade||'').localeCompare(b.cidade||'','pt-BR')));
 }
 
 function _renderAlcanceMap(groupArr){
   const svg=document.getElementById('alc-svg');
   svg.querySelectorAll('.alc-dot').forEach(e=>e.remove());
-  const color=alcMode==='op'?'#1D4FA0':'#1D6A4A';
   const tip=document.getElementById('alc-tip');
 
   groupArr.forEach(g=>{
@@ -3586,24 +3630,33 @@ function _renderAlcanceMap(groupArr){
     if(!coords) return;
     const [x,y]=_latlngToSvg(coords[0],coords[1]);
     const cnt=g.ops.length;
-    const r=Math.max(5, Math.min(5+cnt*2.5,20));
+    const r=Math.max(5,Math.min(5+cnt*2.5,20));
 
-    // glow
-    const glow=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    // cor: no modo todos, azul se maioria ativa, verde se maioria fechada
+    let color;
+    if(alcMode==='op') color='#1D4FA0';
+    else if(alcMode==='fech') color='#1D6A4A';
+    else {
+      const nFech=g.ops.filter(o=>isFechada(o)).length;
+      const nAtiv=g.ops.filter(o=>isAtiva(o)).length;
+      color=nFech>nAtiv?'#1D6A4A':nAtiv>nFech?'#1D4FA0':'#555';
+    }
+
+    const ns='http://www.w3.org/2000/svg';
+    const glow=document.createElementNS(ns,'circle');
     glow.setAttribute('cx',x); glow.setAttribute('cy',y);
-    glow.setAttribute('r',r+4); glow.setAttribute('fill',color);
-    glow.setAttribute('fill-opacity','0.12'); glow.setAttribute('class','alc-dot');
+    glow.setAttribute('r',r+5); glow.setAttribute('fill',color);
+    glow.setAttribute('fill-opacity','0.10'); glow.setAttribute('class','alc-dot');
     svg.appendChild(glow);
 
-    // dot
-    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    const dot=document.createElementNS(ns,'circle');
     dot.setAttribute('cx',x); dot.setAttribute('cy',y);
     dot.setAttribute('r',r); dot.setAttribute('fill',color);
-    dot.setAttribute('fill-opacity','0.82');
+    dot.setAttribute('fill-opacity','0.85');
     dot.setAttribute('stroke','#fff'); dot.setAttribute('stroke-width','1.5');
     dot.setAttribute('class','alc-dot'); dot.style.cursor='pointer';
 
-    dot.addEventListener('mouseenter',e=>{
+    dot.addEventListener('mouseenter',()=>{
       tip.style.display='block';
       tip.innerHTML=`<strong>${g.cidade}${g.uf?', '+g.uf:''}</strong><br>${cnt} oportunidade${cnt!==1?'s':''}`;
     });
@@ -3614,9 +3667,8 @@ function _renderAlcanceMap(groupArr){
     dot.addEventListener('click',()=>_alcanceDrillCity(g));
     svg.appendChild(dot);
 
-    // label de contagem
     if(cnt>1){
-      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      const txt=document.createElementNS(ns,'text');
       txt.setAttribute('x',x); txt.setAttribute('y',y);
       txt.setAttribute('text-anchor','middle'); txt.setAttribute('dominant-baseline','central');
       txt.setAttribute('font-size',r<10?'7':'8'); txt.setAttribute('font-weight','700');
@@ -3983,5 +4035,8 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
 }
 
 </script>
+
+<!-- EXP · Chat Widget -->
+<script src="chat.js"></script>
 </body>
 </html>
