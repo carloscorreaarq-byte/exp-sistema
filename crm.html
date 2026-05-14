@@ -295,6 +295,21 @@ textarea{resize:vertical;min-height:60px}
 /* LOADING */
 .loading{padding:40px;text-align:center;color:#aaa;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
 
+/* ALCANCE MAP */
+.alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 92px)}
+.alc-side{display:flex;flex-direction:column;overflow:hidden}
+.alc-map-wrap{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;padding:4px}
+#alc-svg{width:100%;height:auto;max-height:calc(100vh - 100px);display:block}
+.alc-toggle-wrap{display:flex;gap:0;margin-bottom:12px;border:1px solid var(--cinza);border-radius:7px;overflow:hidden;background:#fff}
+.alc-tgl{flex:1;border:none;background:none;padding:7px 12px;font-size:10px;font-weight:600;letter-spacing:.3px;cursor:pointer;font-family:var(--f);color:#888;transition:all .15s}
+.alc-tgl.active{background:var(--preto);color:#fff}
+.alc-city-card{background:#fff;border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color .12s}
+.alc-city-card:hover{border-color:var(--az)}
+.alc-city-opp{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-top:1px solid var(--cinza2);margin-top:3px;cursor:pointer}
+.alc-city-opp:hover span:first-child{text-decoration:underline}
+.alc-dot{transition:opacity .12s}
+.alc-dot:hover{opacity:.85}
+
 /* DESTAQUE */
 .destaque-card{background:#fff;border:1px solid #D19931;padding:12px 14px 12px 17px;position:relative;cursor:pointer;transition:border-color .12s;border-radius:8px;overflow:hidden}
 .destaque-card::before{content:'';position:absolute;top:0;left:0;width:5px;height:100%;background:#D19931}
@@ -633,33 +648,47 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ ALCANCE ════════════════════════════════════════════════ -->
 <div class="page" id="tab-alcance">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card az">
-      <div class="card-hdr" style="gap:6px">
-        <div class="card-title" style="flex:1">Por estado (UF)</div>
-        <select id="af-status" onchange="renderAlcance()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
+  <div class="alc-layout">
+    <!-- sidebar -->
+    <div class="alc-side">
+      <div class="alc-toggle-wrap">
+        <button class="alc-tgl active" id="alc-tgl-op" onclick="alcMode='op';renderAlcance()">Oportunidades</button>
+        <button class="alc-tgl" id="alc-tgl-fech" onclick="alcMode='fech';renderAlcance()">Fechamentos</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <select id="alc-resp" onchange="renderAlcance()" style="flex:1;font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:#fff;border-radius:5px">
+          <option value="todos">Todos resp.</option>
+        </select>
+        <select id="alc-ano" onchange="renderAlcance()" style="font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:#fff;border-radius:5px;width:80px">
           <option value="todos">Todos</option>
-          <option value="ativas">Ativas</option>
-          <option value="fechadas">Fechadas</option>
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
         </select>
       </div>
-      <div class="card-body" style="padding:10px 14px" id="alc-por-uf"></div>
+      <div id="alc-stats" style="margin-bottom:12px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999" id="alc-list-hdr">Por cidade</div>
+        <button id="alc-list-back" onclick="renderAlcance()" style="display:none;font-size:9px;background:none;border:none;color:var(--az);cursor:pointer;padding:0;text-decoration:underline">← todas</button>
+      </div>
+      <div id="alc-list" style="overflow-y:auto;flex:1"></div>
     </div>
-    <div class="card urb">
-      <div class="card-hdr"><div class="card-title">Por cidade (agrupado por estado)</div></div>
-      <div class="card-body" style="padding:10px 14px" id="alc-por-cidade"></div>
+    <!-- mapa -->
+    <div class="alc-map-wrap">
+      <svg id="alc-svg" viewBox="0 0 460 500" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="alc-sh" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="3" stdDeviation="6" flood-opacity="0.10"/>
+          </filter>
+        </defs>
+        <polygon id="alc-br"
+          points="161,0 166,19 260,18 280,48 287,68 305,87 348,100 415,115 454,142 460,159 459,171 450,192 433,207 415,234 410,278 396,327 361,361 349,363 325,375 299,394 299,420 293,433 267,452 242,499 205,457 198,449 228,394 226,397 194,357 190,312 191,274 158,241 123,197 105,206 70,209 1,194 9,164 47,123 47,48 76,41 117,16"
+          fill="#dce9f5" stroke="#a8c0dc" stroke-width="1.5" filter="url(#alc-sh)"/>
+      </svg>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-    <div class="card pai">
-      <div class="card-hdr"><div class="card-title">Por tipo de cliente</div></div>
-      <div class="card-body" style="padding:10px 14px" id="alc-por-tipo-cli"></div>
-    </div>
-    <div class="card esp">
-      <div class="card-hdr"><div class="card-title">Por origem do lead</div></div>
-      <div class="card-body" style="padding:10px 14px" id="alc-por-origem"></div>
-    </div>
-  </div>
+  <div id="alc-tip" style="position:fixed;background:rgba(17,17,16,.82);color:#fff;font-size:10px;padding:5px 10px;border-radius:5px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;line-height:1.5"></div>
 </div>
 
 <!-- ═══ RELATÓRIOS ═══════════════════════════════════════════════ -->
@@ -1094,6 +1123,7 @@ let allProposals=[];
 let detailOppId = null;
 let orcSortKey  = 'data_entrada';
 let orcSortDir  = -1;
+let alcMode     = 'op';
 let origMode    = 'resumido';
 
 // Mapa de pipeline_stage → label amigável
@@ -3407,78 +3437,225 @@ function renderNegativas(){
 }
 
 // ═══ ALCANCE ══════════════════════════════════════════
+// ── coordenadas lat/lng de cidades brasileiras ───────────────────────
+const CITY_COORDS = {
+  'São Paulo':[-23.55,-46.63],'Campinas':[-22.90,-47.06],'Santos':[-23.96,-46.33],
+  'São José dos Campos':[-23.22,-45.90],'Ribeirão Preto':[-21.17,-47.81],
+  'Sorocaba':[-23.50,-47.45],'Bauru':[-22.32,-49.07],'Jundiaí':[-23.19,-46.89],
+  'Piracicaba':[-22.73,-47.65],'Limeira':[-22.56,-47.40],'São Carlos':[-21.99,-47.89],
+  'Franca':[-20.54,-47.40],'Marília':[-22.22,-49.95],'Araraquara':[-21.79,-48.17],
+  'Presidente Prudente':[-22.12,-51.39],'São Bernardo do Campo':[-23.69,-46.56],
+  'Guarulhos':[-23.46,-46.53],'Osasco':[-23.53,-46.79],'Santo André':[-23.66,-46.54],
+  'Rio de Janeiro':[-22.91,-43.17],'Niterói':[-22.89,-43.10],'Nova Iguaçu':[-22.76,-43.45],
+  'Petrópolis':[-22.51,-43.18],'Volta Redonda':[-22.52,-44.10],
+  'Campos dos Goytacazes':[-21.76,-41.33],'Macaé':[-22.37,-41.79],
+  'Angra dos Reis':[-23.01,-44.32],'Cabo Frio':[-22.89,-42.02],'Resende':[-22.47,-44.45],
+  'Belo Horizonte':[-19.92,-43.94],'Uberlândia':[-18.92,-48.28],
+  'Juiz de Fora':[-21.76,-43.35],'Montes Claros':[-16.73,-43.87],
+  'Governador Valadares':[-18.85,-41.95],'Ipatinga':[-19.47,-42.54],
+  'Contagem':[-19.93,-44.05],'Uberaba':[-19.75,-47.93],'Betim':[-19.97,-44.20],
+  'Divinópolis':[-20.14,-44.89],'Sete Lagoas':[-19.46,-44.25],
+  'Curitiba':[-25.43,-49.27],'Londrina':[-23.31,-51.16],'Maringá':[-23.42,-51.94],
+  'Cascavel':[-24.96,-53.46],'Foz do Iguaçu':[-25.52,-54.58],'Ponta Grossa':[-25.10,-50.16],
+  'São José dos Pinhais':[-25.54,-49.21],'Colombo':[-25.29,-49.22],
+  'Florianópolis':[-27.59,-48.55],'Joinville':[-26.30,-48.85],'Blumenau':[-26.92,-49.07],
+  'Chapecó':[-27.10,-52.62],'Criciúma':[-28.68,-49.37],'Itajaí':[-26.91,-48.67],
+  'Balneário Camboriú':[-26.99,-48.63],'Jaraguá do Sul':[-26.49,-49.07],
+  'Porto Alegre':[-30.03,-51.23],'Caxias do Sul':[-29.17,-51.17],
+  'Pelotas':[-31.77,-52.34],'Santa Maria':[-29.69,-53.81],'Novo Hamburgo':[-29.69,-51.13],
+  'Canoas':[-29.92,-51.18],'Gravataí':[-29.94,-50.99],'Viamão':[-30.08,-51.02],
+  'Brasília':[-15.78,-47.93],
+  'Goiânia':[-16.69,-49.26],'Aparecida de Goiânia':[-16.82,-49.24],'Anápolis':[-16.33,-48.95],
+  'Campo Grande':[-20.44,-54.65],'Dourados':[-22.22,-54.81],'Três Lagoas':[-20.75,-51.69],
+  'Cuiabá':[-15.60,-56.10],'Várzea Grande':[-15.65,-56.13],'Sinop':[-11.86,-55.51],
+  'Rondonópolis':[-16.47,-54.64],
+  'Salvador':[-12.97,-38.51],'Feira de Santana':[-12.27,-38.97],
+  'Vitória da Conquista':[-14.87,-40.84],'Ilhéus':[-14.79,-39.04],
+  'Porto Seguro':[-16.43,-39.08],'Camaçari':[-12.70,-38.33],'Lauro de Freitas':[-12.90,-38.33],
+  'Aracaju':[-10.91,-37.07],'Maceió':[-9.67,-35.74],
+  'Recife':[-8.05,-34.88],'Caruaru':[-8.28,-35.97],'Petrolina':[-9.39,-40.50],
+  'Olinda':[-8.01,-34.85],'Jaboatão dos Guararapes':[-8.11,-35.01],'Caruaru':[-8.28,-35.97],
+  'João Pessoa':[-7.12,-34.86],'Campina Grande':[-7.22,-35.88],
+  'Natal':[-5.79,-35.21],'Mossoró':[-5.19,-37.34],
+  'Fortaleza':[-3.72,-38.54],'Sobral':[-3.69,-40.35],'Juazeiro do Norte':[-7.21,-39.31],
+  'Crato':[-7.23,-39.41],'Caucaia':[-3.74,-38.65],'Maracanaú':[-3.88,-38.63],
+  'Teresina':[-5.09,-42.80],'Parnaíba':[-2.91,-41.77],
+  'São Luís':[-2.53,-44.30],'Imperatriz':[-5.52,-47.49],
+  'Belém':[-1.45,-48.50],'Santarém':[-2.44,-54.71],'Marabá':[-5.37,-49.12],
+  'Castanhal':[-1.29,-47.93],'Ananindeua':[-1.37,-48.37],
+  'Macapá':[0.03,-51.07],
+  'Manaus':[-3.10,-60.03],'Parintins':[-2.63,-56.74],
+  'Boa Vista':[2.82,-60.67],
+  'Porto Velho':[-8.76,-63.90],'Ji-Paraná':[-10.88,-61.94],
+  'Rio Branco':[-9.97,-67.81],
+  'Palmas':[-10.24,-48.36],'Araguaína':[-7.19,-48.20],
+  'Vitória':[-20.32,-40.34],'Vila Velha':[-20.34,-40.29],'Serra':[-20.13,-40.31],
+  'Cariacica':[-20.26,-40.41],'Cachoeiro de Itapemirim':[-20.85,-41.11],
+};
+const UF_CENTROIDS = {
+  'SP':[-22.0,-48.5],'RJ':[-22.5,-43.2],'MG':[-18.5,-44.5],'ES':[-19.6,-40.7],
+  'PR':[-24.5,-51.5],'SC':[-27.3,-50.0],'RS':[-30.0,-53.0],
+  'DF':[-15.78,-47.93],'GO':[-16.0,-49.5],'MS':[-20.5,-54.5],'MT':[-14.0,-56.0],
+  'BA':[-12.5,-41.7],'SE':[-10.9,-37.4],'AL':[-9.7,-36.6],'PE':[-8.4,-37.8],
+  'PB':[-7.2,-36.8],'RN':[-5.8,-36.5],'CE':[-5.2,-39.5],'PI':[-7.7,-42.7],
+  'MA':[-5.0,-44.0],'PA':[-4.0,-52.0],'AP':[1.4,-51.8],'AM':[-4.5,-62.5],
+  'RR':[2.0,-61.4],'RO':[-11.0,-63.0],'AC':[-9.0,-70.0],'TO':[-10.2,-48.3],
+};
+
+function _cityCoords(cidade, uf) {
+  if (!cidade) return UF_CENTROIDS[uf] || null;
+  const exact = CITY_COORDS[cidade];
+  if (exact) return exact;
+  const low = cidade.toLowerCase();
+  const k = Object.keys(CITY_COORDS).find(c => c.toLowerCase() === low);
+  if (k) return CITY_COORDS[k];
+  return UF_CENTROIDS[uf] || null;
+}
+
+function _latlngToSvg(lat, lng) {
+  const SVG_W=460, SVG_H=500;
+  const LAT_MAX=5.27, LAT_MIN=-33.75, LNG_MIN=-73.98, LNG_MAX=-34.79;
+  return [
+    Math.round((lng - LNG_MIN) / (LNG_MAX - LNG_MIN) * SVG_W),
+    Math.round((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * SVG_H),
+  ];
+}
+
 function renderAlcance(){
-  const sfil = document.getElementById('af-status')?.value||'todos';
-  let ops = allOps;
-  if(sfil==='ativas') ops = ops.filter(o=>isAtiva(o));
-  else if(sfil==='fechadas') ops = ops.filter(o=>isFechada(o));
+  // toggle state
+  document.getElementById('alc-tgl-op').classList.toggle('active', alcMode==='op');
+  document.getElementById('alc-tgl-fech').classList.toggle('active', alcMode==='fech');
+  document.getElementById('alc-list-back').style.display='none';
 
-  // Por UF
-  const ufMap={};
-  ops.forEach(o=>{ if(o.uf){ ufMap[o.uf]=(ufMap[o.uf]||0)+1; } });
-  const ufSorted = Object.entries(ufMap).sort((a,b)=>b[1]-a[1]);
-  const maxUF = ufSorted[0]?.[1]||1;
-  document.getElementById('alc-por-uf').innerHTML = ufSorted.length
-    ? ufSorted.map(([uf,n])=>`
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <div style="font-size:11px;font-weight:700;min-width:30px">${uf}</div>
-        <div style="flex:1;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(n/maxUF*100)}%;background:var(--az)"></div></div>
-        <div style="font-size:11px;font-family:var(--fm);font-weight:700;min-width:20px;text-align:right">${n}</div>
-      </div>`).join('')
-    : '<div class="empty-note">Sem dados de UF.</div>';
+  // populate resp select
+  const rs = document.getElementById('alc-resp');
+  if(rs){
+    const cur=rs.value;
+    rs.innerHTML='<option value="todos">Todos resp.</option>'+
+      Object.values(allUsers).filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+        .map(u=>`<option value="${u.id}"${u.id===cur?' selected':''}>${u.nome.split(' ')[0]}</option>`).join('');
+  }
+  const respFil=rs?.value||'todos';
+  const anoFil=document.getElementById('alc-ano')?.value||'todos';
 
-  // COM-8: Por cidade agrupada por estado
-  const porEstado={};
+  let ops=[...allOps];
+  if(alcMode==='op'){
+    ops=ops.filter(o=>isAtiva(o));
+  } else {
+    ops=ops.filter(o=>isFechada(o));
+    if(anoFil!=='todos') ops=ops.filter(o=>(oppDataFechamento(o)||'').startsWith(anoFil));
+  }
+  if(respFil!=='todos') ops=ops.filter(o=>o.resp_id===respFil);
+
+  const totalVal = alcMode==='op'
+    ? ops.reduce((s,o)=>s+oppValorProposto(o),0)
+    : ops.reduce((s,o)=>s+oppValorFechado(o),0);
+  const valLabel = alcMode==='op' ? 'pipeline ativo' : 'valor fechado';
+  document.getElementById('alc-stats').innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:2px">
+      <div style="flex:1;text-align:center;padding:8px 4px;background:#fff;border:1px solid var(--cinza);border-radius:6px">
+        <div style="font-size:20px;font-weight:700;font-family:var(--fm)">${ops.length}</div>
+        <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">oportunidades</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:8px 4px;background:#fff;border:1px solid var(--cinza);border-radius:6px">
+        <div style="font-size:13px;font-weight:700;font-family:var(--fm)">${fmt(totalVal)}</div>
+        <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${valLabel}</div>
+      </div>
+    </div>`;
+
+  // agrupar por cidade
+  const groups={};
   ops.forEach(o=>{
-    if(!o.cidade) return;
-    const uf=o.uf||'—';
-    if(!porEstado[uf]) porEstado[uf]={};
-    porEstado[uf][o.cidade]=(porEstado[uf][o.cidade]||0)+1;
+    const key=(o.cidade||'').trim().toLowerCase()+'/'+(o.uf||'').toLowerCase();
+    if(!groups[key]) groups[key]={cidade:o.cidade||'—',uf:o.uf||'',ops:[]};
+    groups[key].ops.push(o);
   });
-  const estadosSorted=Object.entries(porEstado)
-    .map(([uf,cids])=>({uf,total:Object.values(cids).reduce((s,n)=>s+n,0),cidades:Object.entries(cids).sort((a,b)=>b[1]-a[1])}))
-    .sort((a,b)=>b.total-a.total);
-  const maxEstTotal=estadosSorted[0]?.total||1;
-  document.getElementById('alc-por-cidade').innerHTML = estadosSorted.length
-    ? estadosSorted.map(({uf,total,cidades})=>`
-      <div style="margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <div style="font-size:11px;font-weight:700;min-width:30px">${uf}</div>
-          <div style="flex:1;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(total/maxEstTotal*100)}%;background:var(--urb)"></div></div>
-          <div style="font-size:11px;font-family:var(--fm);font-weight:700;min-width:20px;text-align:right">${total}</div>
+
+  _renderAlcanceMap(Object.values(groups), groups);
+  _renderAlcanceList(Object.values(groups).sort((a,b)=>b.ops.length-a.ops.length));
+}
+
+function _renderAlcanceMap(groupArr){
+  const svg=document.getElementById('alc-svg');
+  svg.querySelectorAll('.alc-dot').forEach(e=>e.remove());
+  const color=alcMode==='op'?'#1D4FA0':'#1D6A4A';
+  const tip=document.getElementById('alc-tip');
+
+  groupArr.forEach(g=>{
+    const coords=_cityCoords(g.cidade,g.uf);
+    if(!coords) return;
+    const [x,y]=_latlngToSvg(coords[0],coords[1]);
+    const cnt=g.ops.length;
+    const r=Math.max(5, Math.min(5+cnt*2.5,20));
+
+    // glow
+    const glow=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    glow.setAttribute('cx',x); glow.setAttribute('cy',y);
+    glow.setAttribute('r',r+4); glow.setAttribute('fill',color);
+    glow.setAttribute('fill-opacity','0.12'); glow.setAttribute('class','alc-dot');
+    svg.appendChild(glow);
+
+    // dot
+    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx',x); dot.setAttribute('cy',y);
+    dot.setAttribute('r',r); dot.setAttribute('fill',color);
+    dot.setAttribute('fill-opacity','0.82');
+    dot.setAttribute('stroke','#fff'); dot.setAttribute('stroke-width','1.5');
+    dot.setAttribute('class','alc-dot'); dot.style.cursor='pointer';
+
+    dot.addEventListener('mouseenter',e=>{
+      tip.style.display='block';
+      tip.innerHTML=`<strong>${g.cidade}${g.uf?', '+g.uf:''}</strong><br>${cnt} oportunidade${cnt!==1?'s':''}`;
+    });
+    dot.addEventListener('mousemove',e=>{
+      tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
+    });
+    dot.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
+    dot.addEventListener('click',()=>_alcanceDrillCity(g));
+    svg.appendChild(dot);
+
+    // label de contagem
+    if(cnt>1){
+      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',x); txt.setAttribute('y',y);
+      txt.setAttribute('text-anchor','middle'); txt.setAttribute('dominant-baseline','central');
+      txt.setAttribute('font-size',r<10?'7':'8'); txt.setAttribute('font-weight','700');
+      txt.setAttribute('fill','#fff'); txt.setAttribute('class','alc-dot');
+      txt.setAttribute('pointer-events','none'); txt.textContent=cnt;
+      svg.appendChild(txt);
+    }
+  });
+}
+
+let _alcGroups = [];
+
+function _renderAlcanceList(sorted){
+  _alcGroups = sorted;
+  document.getElementById('alc-list-hdr').textContent='Por cidade';
+  document.getElementById('alc-list-back').style.display='none';
+  document.getElementById('alc-list').innerHTML=sorted.length
+    ? sorted.map((g,i)=>`
+      <div class="alc-city-card" onclick="_alcanceDrillCity(_alcGroups[${i}])">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font-weight:600;font-size:11px">${g.cidade}${g.uf?' <span style="color:#aaa;font-weight:400">· '+g.uf+'</span>':''}</div>
+          <div style="font-size:10px;font-family:var(--fm);color:#888">${g.ops.length}</div>
         </div>
-        ${cidades.map(([cid,n])=>`
-          <div style="display:flex;align-items:center;gap:8px;padding-left:14px;margin-bottom:3px">
-            <div style="font-size:10px;color:#888;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ ${cid}</div>
-            <div style="font-size:10px;font-family:var(--fm);color:#aaa;min-width:20px;text-align:right">${n}</div>
-          </div>`).join('')}
       </div>`).join('')
-    : '<div class="empty-note">Sem dados de cidade.</div>';
+    : '<div class="empty-note">Sem dados com cidade cadastrada.</div>';
+}
 
-  // Por tipo de cliente
-  const tipoCli={};
-  ops.forEach(o=>{ const t=o._cliente?.tipo||'Outro'; tipoCli[t]=(tipoCli[t]||0)+1; });
-  const tipoCliSorted = Object.entries(tipoCli).sort((a,b)=>b[1]-a[1]);
-  const maxTC = tipoCliSorted[0]?.[1]||1;
-  const tipoLabels={'construtora':'Construtora','incorporadora':'Incorporadora','pessoa_fisica':'Pessoa Física','outro':'Outro'};
-  document.getElementById('alc-por-tipo-cli').innerHTML = tipoCliSorted.map(([t,n])=>`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <div style="font-size:11px;flex:1">${tipoLabels[t]||t}</div>
-      <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(n/maxTC*100)}%;background:var(--verde)"></div></div>
-      <div style="font-size:11px;font-family:var(--fm);font-weight:700;min-width:20px;text-align:right">${n}</div>
-    </div>`).join('') || '<div class="empty-note">—</div>';
-
-  // Por origem do lead
-  const origMap={};
-  ops.forEach(o=>{ if(o.origem){ origMap[o.origem]=(origMap[o.origem]||0)+1; } });
-  const origSorted = Object.entries(origMap).sort((a,b)=>b[1]-a[1]);
-  const maxOrig = origSorted[0]?.[1]||1;
-  document.getElementById('alc-por-origem').innerHTML = origSorted.map(([orig,n])=>`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <div style="font-size:11px;flex:1">${orig}</div>
-      <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(n/maxOrig*100)}%;background:var(--am)"></div></div>
-      <div style="font-size:11px;font-family:var(--fm);font-weight:700;min-width:20px;text-align:right">${n}</div>
-    </div>`).join('') || '<div class="empty-note">—</div>';
+function _alcanceDrillCity(g){
+  document.getElementById('alc-list-hdr').textContent=g.cidade+(g.uf?' · '+g.uf:'');
+  document.getElementById('alc-list-back').style.display='block';
+  document.getElementById('alc-list').innerHTML=g.ops.map(o=>`
+    <div class="alc-city-card" onclick="abrirDetail('${o.id}')">
+      <div style="font-weight:600;font-size:11px;margin-bottom:2px">${o._cliente?.nome||'—'}</div>
+      <div style="font-size:10px;color:#888">${o.projeto||'—'}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        ${estagBadge(o.pipeline_stage)}
+        <span style="font-family:var(--fm);font-size:11px;font-weight:600">${fmt(alcMode==='fech'?oppValorFechado(o):oppValorProposto(o))}</span>
+      </div>
+    </div>`).join('');
 }
 
 // ═══ RELATÓRIOS ═══════════════════════════════════════
