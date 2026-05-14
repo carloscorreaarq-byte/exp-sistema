@@ -666,8 +666,9 @@ body::before {
 .ck-item-txt{font-size:12px;flex:1;line-height:1.5}
 .ck-item-txt.done{text-decoration:line-through;color:#bbb}
 .ck-item-who{font-size:9px;color:#aaa;flex-shrink:0}
-.ck-item-act{background:none;border:none;cursor:pointer;font-size:11px;color:#bbb;padding:0 2px;line-height:1;flex-shrink:0;opacity:0;transition:opacity .15s}
-.ck-item:hover .ck-item-act{opacity:1}
+.ck-item-act{background:none;border:none;cursor:pointer;font-size:11px;color:#ccc;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s}
+.ck-item-act:hover{color:#666}
+.ck-item-act.tc:hover{color:#e05}
 .ck-item-act.tc{color:#e05}
 .ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--az);outline:none;padding:0;background:transparent;font-family:var(--f);color:inherit;line-height:1.5}
 .ck-empty{font-size:11px;color:#ccc;padding:8px 0}
@@ -6091,6 +6092,24 @@ async function selecionarRevisao(id) {
     || prod?.coordenador_id === G.usuario.id
     || (G.etapaDevs[etapa?.id] || []).includes(G.usuario.id);
 
+  // Avatares dos envolvidos na revisão
+  const _envIds = new Set();
+  if(prod?.coordenador_id) _envIds.add(prod.coordenador_id);
+  if(etapa?.coordenador_id) _envIds.add(etapa.coordenador_id);
+  (G.etapaDevs[etapa?.id] || []).forEach(uid => _envIds.add(uid));
+  const _envolvidos = [..._envIds]
+    .map(uid => (G.todosUsuarios || []).find(u => u.id === uid))
+    .filter(Boolean);
+  const envolvidosHtml = _envolvidos.length ? `
+    <div style="display:flex;align-items:center;gap:3px;margin-top:7px">
+      ${_envolvidos.map(u => {
+        const role = u.id === prod?.coordenador_id ? 'Coord. projeto'
+                   : u.id === etapa?.coordenador_id ? 'Coord. etapa'
+                   : 'Desenvolvedor';
+        return `<div class="task-de-chip" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:8px" title="${u.nome} · ${role}">${u.iniciais}</div>`;
+      }).join('')}
+    </div>` : '';
+
   const detalhe = document.getElementById('rev-detalhe');
   detalhe.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -6098,6 +6117,7 @@ async function selecionarRevisao(id) {
         <div style="font-size:14px;font-weight:700;margin-bottom:2px">${cli?.nome || '—'}</div>
         <div style="font-size:11px;color:#666">${opp?.projeto || prod?.nome || '—'}</div>
         <div style="font-size:10px;color:#999">${etapa?.nome || '—'} · Revisão #${rev.numero}</div>
+        ${envolvidosHtml}
       </div>
       <div style="display:flex;gap:6px">
         ${podePreencher ? `<button class="btn sm verde" onclick="addPranchaRevisao('${id}')">+ Prancha</button>` : ''}
@@ -10230,7 +10250,7 @@ function _ckItemHtml(it, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   const who = it.concluido && it.concluido_por_nome ? `<span class="ck-item-who">${_ckE(it.concluido_por_nome)}</span>` : '';
   const editBtns = canEdit ? `
-    <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)},${_sqCk(it.texto)})" title="Editar">✏</button>
+    <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Editar">✏</button>
     <button class="ck-item-act tc" onclick="excluirCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Excluir">✕</button>
   ` : '';
   return `<div class="ck-item">
@@ -10384,21 +10404,29 @@ async function excluirCkItem(tipo, itemId, ckId) {
 }
 
 // ── Editar item do checklist inline (criador ou sócio) ─────────
-function editarCkItem(tipo, itemId, ckId, textoAtual) {
+function editarCkItem(tipo, itemId, ckId) {
   const span = document.getElementById(`ck-txt-${itemId}`);
   if(!span) return;
-  span.outerHTML = `<input id="ck-edit-${itemId}" class="ck-edit-input"
-    value="${_ckE(textoAtual)}"
-    onblur="confirmarEditCkItem('${tipo}','${itemId}','${ckId}',this.value)"
-    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}">`;
-  const inp = document.getElementById(`ck-edit-${itemId}`);
-  inp?.focus();
-  inp?.select();
+  const textoAtual = span.textContent || '';
+  let cancelado = false;
+  const inp = document.createElement('input');
+  inp.id = `ck-edit-${itemId}`;
+  inp.className = 'ck-edit-input';
+  inp.value = textoAtual;
+  inp.addEventListener('keydown', e => {
+    if(e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if(e.key === 'Escape') { cancelado = true; inp.blur(); }
+  });
+  inp.addEventListener('blur', () => {
+    if(cancelado) { tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.(); return; }
+    confirmarEditCkItem(tipo, itemId, ckId, inp.value);
+  });
+  span.replaceWith(inp);
+  inp.focus();
+  inp.select();
 }
 
 async function confirmarEditCkItem(tipo, itemId, ckId, novoTexto) {
-  const inp = document.getElementById(`ck-edit-${itemId}`);
-  if(inp?.dataset.cancel === '1') { tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.(); return; }
   novoTexto = (novoTexto || '').trim();
   if(!novoTexto) { tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.(); return; }
   const tbl = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
