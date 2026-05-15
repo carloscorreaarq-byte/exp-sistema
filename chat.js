@@ -1,273 +1,565 @@
 /* ═══════════════════════════════════════════════════════════════════
-   EXP · CHAT WIDGET — chat.js
-   Fase 1: canal #geral · status via Presence · reactions · badge
+   EXP · CHAT WIDGET — chat.js  v2.0
+   Fase 2: #geral · DMs · status redesign · som · links
    ─────────────────────────────────────────────────────────────────
-   Uso: incluir <script src="chat.js"></script> antes de </body>
-        em todos os módulos do sistema.
-   Requer: @supabase/supabase-js@2 já carregado na página,
-           sessionStorage.exp_usuario preenchido (usuário logado).
+   Incluir <script src="chat.js"></script> antes de </body>
+   em todos os módulos. Requer @supabase/supabase-js@2 já carregado.
    ═══════════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  /* ── Configuração ─────────────────────────────────────────────── */
-  var SB_URL  = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
-  var SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
-  var CHANNEL = 'general';
-  var STATUS_KEY = 'exp_chat_status'; // localStorage
+  /* ── Config ─────────────────────────────────────────────────────── */
+  var SB_URL     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+  var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+  var STATUS_KEY = 'exp_chat_status';
+  var SOUND_KEY  = 'exp_chat_sound';
 
-  var STATUS_LABELS = {
-    online:  'Online',
-    foco:    'Foco',
-    ocupado: 'Ocupado',
-    ausente:  'Ausente'
+  var STATUS_COLORS = {
+    online:  '#1D6A4A',
+    foco:    '#1D4FA0',
+    ocupado: '#B84C3A',
+    ausente: '#C4831A'
   };
 
-  /* ── Estado interno ───────────────────────────────────────────── */
-  var sb             = null;   // Supabase client (escopo isolado)
-  var user           = null;   // { id, auth_id, nome, iniciais, cor, ... }
-  var presenceCh     = null;   // Canal de Presence
-  var msgCh          = null;   // Canal de mensagens (postgres_changes)
-  var messages       = [];     // Array de mensagens carregadas
-  var isOpen         = false;  // Painel aberto?
-  var isLoading      = false;  // Carregando mensagens?
-  var unreadCount    = 0;      // Mensagens não lidas
+  /* ── CSS embutido ────────────────────────────────────────────────── */
+  var CSS_TEXT = [
+    '#exp-chat-widget{position:fixed;bottom:24px;right:24px;z-index:10000;font-family:"Raleway",sans-serif}',
+    /* ── Controls bar ── */
+    '.chat-controls{display:flex;align-items:flex-end;gap:8px;justify-content:flex-end}',
+    /* ── FAB toggle ── */
+    '.chat-toggle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .3s,box-shadow .3s,transform .15s;user-select:none;flex-shrink:0}',
+    '.chat-toggle:hover{transform:scale(1.07)}.chat-toggle:active{transform:scale(.96)}',
+    '.chat-badge{position:absolute;top:-5px;right:-5px;background:#B84C3A;color:#fff;font-size:9px;font-weight:700;font-family:"DM Mono",monospace;min-width:17px;height:17px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--off,#F7F6F3)}',
+    /* ── Person button (aparece quando aberto) ── */
+    '.chat-person-btn{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid #1D6A4A;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .3s,color .3s,box-shadow .15s;color:#1D6A4A;flex-shrink:0}',
+    '.chat-person-btn:hover{box-shadow:0 2px 10px rgba(0,0,0,.14)}',
+    /* ── Status indicator (aparece quando fechado) ── */
+    '.chat-status-ind{display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px 7px;background:rgba(255,255,255,.95);border-radius:14px;box-shadow:0 1px 8px rgba(0,0,0,.13);transition:box-shadow .15s;user-select:none;margin-bottom:5px;align-self:flex-end}',
+    '.chat-status-ind:hover{box-shadow:0 2px 12px rgba(0,0,0,.2)}',
+    '.chat-status-ind-dot{width:7px;height:7px;border-radius:50%;transition:background .3s}',
+    '.chat-status-ind-dot.online{background:#2D9E6B}.chat-status-ind-dot.foco{background:#1D4FA0}',
+    '.chat-status-ind-dot.ocupado{background:#B84C3A}.chat-status-ind-dot.ausente{background:#C4831A}',
+    /* ── Status popover ── */
+    '.chat-status-pop{position:absolute;bottom:60px;right:58px;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.15);padding:6px;flex-direction:column;gap:2px;min-width:148px;z-index:10002}',
+    '.chat-status-pop-hdr{font-size:10px;font-weight:600;color:var(--cinza,#D0CFC9);padding:4px 10px 6px;text-transform:uppercase;letter-spacing:.7px}',
+    '.chat-sopt{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:none;background:none;cursor:pointer;font-family:"Raleway",sans-serif;font-size:12px;font-weight:500;width:100%;text-align:left;transition:background .12s}',
+    '.chat-sopt:hover{background:var(--off,#F7F6F3)}.chat-sopt.active{background:var(--verde-bg,#EAF5EE);font-weight:700}',
+    /* ── Panel ── */
+    '.chat-panel{position:absolute;bottom:58px;right:0;width:320px;height:490px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.14);display:none;flex-direction:column;overflow:hidden;animation:chatOpen .18s ease-out;border:1px solid var(--cinza2,#ECEAE4)}',
+    '@keyframes chatOpen{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}',
+    /* ── Views ── */
+    '.chat-view{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}',
+    /* ── Header ── */
+    '.chat-header{padding:11px 13px;background:var(--verde,#1D6A4A);color:#fff;display:flex;align-items:center;gap:8px;flex-shrink:0}',
+    '.chat-header-info{flex:1;min-width:0}',
+    '.chat-header-title{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chat-header-sub{font-family:"DM Mono",monospace;font-size:9px;opacity:.65;margin-top:1px}',
+    '.chat-header-acts{display:flex;align-items:center;gap:3px}',
+    '.chat-icon-btn{background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background .12s}',
+    '.chat-icon-btn:hover{background:rgba(255,255,255,.22)}',
+    '.chat-close{background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .12s}',
+    '.chat-close:hover{background:rgba(255,255,255,.22)}',
+    '.chat-back-btn{background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0}',
+    '.chat-back-btn:hover{background:rgba(255,255,255,.22)}',
+    /* ── Conv list / member list ── */
+    '.chat-conv-list,.chat-member-list{flex:1;overflow-y:auto;padding:6px}',
+    '.chat-conv-list::-webkit-scrollbar,.chat-member-list::-webkit-scrollbar{width:3px}',
+    '.chat-conv-list::-webkit-scrollbar-thumb,.chat-member-list::-webkit-scrollbar-thumb{background:var(--cinza,#D0CFC9);border-radius:2px}',
+    '.chat-conv-item,.chat-member-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;transition:background .1s}',
+    '.chat-conv-item:hover,.chat-member-item:hover{background:var(--off,#F7F6F3)}',
+    '.chat-conv-av-hash{width:28px;height:28px;border-radius:50%;background:var(--verde-bg,#EAF5EE);color:var(--verde,#1D6A4A);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
+    '.chat-conv-info{flex:1;min-width:0}',
+    '.chat-conv-name{font-size:12px;font-weight:600;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chat-conv-preview{font-size:10px;color:var(--cinza,#D0CFC9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}',
+    '.chat-conv-badge{background:#B84C3A;color:#fff;font-size:9px;font-weight:700;font-family:"DM Mono",monospace;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
+    /* ── Messages ── */
+    '.chat-messages{flex:1;overflow-y:auto;padding:10px 10px 4px;display:flex;flex-direction:column;gap:0;scroll-behavior:smooth}',
+    '.chat-messages::-webkit-scrollbar{width:3px}',
+    '.chat-messages::-webkit-scrollbar-thumb{background:var(--cinza,#D0CFC9);border-radius:2px}',
+    /* ── Empty / loading ── */
+    '.chat-empty{text-align:center;color:var(--cinza,#D0CFC9);font-size:11px;line-height:1.7;margin:auto;padding:20px}',
+    '.chat-empty-icon{font-size:22px;margin-bottom:6px;opacity:.5}',
+    '.chat-loading{display:flex;align-items:center;justify-content:center;gap:5px;margin:auto;padding:20px}',
+    '.chat-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--cinza,#D0CFC9);animation:chatPulse 1.2s ease-in-out infinite}',
+    '.chat-loading-dot:nth-child(2){animation-delay:.2s}.chat-loading-dot:nth-child(3){animation-delay:.4s}',
+    '@keyframes chatPulse{0%,80%,100%{opacity:.2}40%{opacity:1}}',
+    /* ── Date separator ── */
+    '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:"DM Mono",monospace;letter-spacing:.5px}',
+    '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
+    /* ── Message bubble ── */
+    '.chat-msg{display:flex;flex-direction:column;padding:2px 5px;border-radius:6px;transition:background .1s}',
+    '.chat-msg:hover{background:var(--off,#F7F6F3)}',
+    '.chat-msg-meta{display:flex;align-items:center;gap:6px;margin-top:6px}',
+    '.chat-av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0;font-family:"DM Mono",monospace;letter-spacing:0}',
+    '.chat-msg-name{font-weight:600;font-size:11px;color:var(--preto,#111110)}',
+    '.chat-msg.own .chat-msg-name{color:var(--verde,#1D6A4A)}',
+    '.chat-msg-time{font-family:"DM Mono",monospace;font-size:9px;color:var(--cinza,#D0CFC9)}',
+    '.chat-msg-text{font-size:12px;color:var(--preto,#111110);line-height:1.5;word-break:break-word;padding:0 2px}',
+    '.chat-msg-text.grouped,.chat-msg-reactions.grouped{margin-left:26px}',
+    '.chat-link{color:var(--verde,#1D6A4A);text-decoration:underline;word-break:break-all}',
+    '.chat-link:hover{color:var(--verde-l,#2D9E6B)}',
+    /* ── Reactions ── */
+    '.chat-msg-reactions{display:flex;gap:4px;margin-top:2px;opacity:0;transition:opacity .12s}',
+    '.chat-msg:hover .chat-msg-reactions,.chat-msg-reactions.has-reactions{opacity:1}',
+    '.chat-rbtn{background:var(--off,#F7F6F3);border:1px solid var(--cinza2,#ECEAE4);border-radius:10px;padding:1px 6px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .1s,transform .08s;font-family:"Raleway",sans-serif;line-height:1.4}',
+    '.chat-rbtn:hover{background:var(--verde-bg,#EAF5EE);border-color:var(--verde-l,#2D9E6B);transform:scale(1.05)}',
+    '.chat-rbtn.active{background:var(--verde-bg,#EAF5EE);border-color:var(--verde,#1D6A4A)}',
+    '.chat-rbtn-count{font-size:9px;font-family:"DM Mono",monospace;color:var(--verde,#1D6A4A)}',
+    /* ── Input ── */
+    '.chat-input-area{padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0}',
+    '.chat-input{flex:1;border:1px solid var(--cinza2,#ECEAE4);border-radius:9px;padding:7px 11px;font-family:"Raleway",sans-serif;font-size:12px;resize:none;outline:none;max-height:80px;min-height:33px;color:var(--preto,#111110);background:var(--off,#F7F6F3);line-height:1.45;transition:border-color .15s,background .15s;overflow-y:auto}',
+    '.chat-input::placeholder{color:var(--cinza,#D0CFC9)}',
+    '.chat-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
+    '.chat-send{width:33px;height:33px;background:var(--verde,#1D6A4A);border:none;border-radius:9px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,transform .08s}',
+    '.chat-send:hover{background:var(--verde-l,#2D9E6B)}.chat-send:active{transform:scale(.93)}',
+    /* ── Toast ── */
+    '.chat-new-msg-toast{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:var(--verde,#1D6A4A);color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 10px rgba(29,106,74,.3);animation:chatToastIn .2s ease-out;z-index:10003}',
+    '@keyframes chatToastIn{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}'
+  ].join('\n');
+
+  /* ══════════════════════════════════════════════════════════════════
+     ESTADO
+  ══════════════════════════════════════════════════════════════════ */
+  var sb, user;
+  var presenceCh = null, msgCh = null;
+  var messages      = [];
+  var isOpen        = false;
+  var isLoading     = false;
+  var scrolledToEnd = true;
+  var statusPopOpen = false;
+  var currentView    = 'home';      // 'home' | 'channel' | 'members'
+  var currentChannel = 'general';
+  var currentLabel   = '# geral';
+  var teamMembers    = [];
+  var channelUnread  = {};          // { channel: count }
   var userStatus     = localStorage.getItem(STATUS_KEY) || 'online';
-  var scrolledToEnd  = true;   // Usuário está no fim do scroll?
-  var lastMsgDate    = null;   // Para separadores de data
+  var soundEnabled   = localStorage.getItem(SOUND_KEY) !== 'false';
 
-  /* ── Refs DOM ─────────────────────────────────────────────────── */
-  var $panel, $msgs, $input, $badge, $dot, $select;
+  /* ── DOM refs ─────────────────────────────────────────────────── */
+  var $panel, $msgs, $input, $badge, $toggle;
+  var $viewHome, $viewChan, $viewMembers;
+  var $chanTitle, $personBtn, $statusInd, $statusPop;
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
      INIT
-  ══════════════════════════════════════════════════════════════ */
+  ══════════════════════════════════════════════════════════════════ */
   function init() {
-    // Só roda se há usuário logado (ignora página de login)
     var raw = sessionStorage.getItem('exp_usuario');
     if (!raw) return;
-
     try { user = JSON.parse(raw); } catch (e) { return; }
     if (!user || !user.nome) return;
-
-    // Garantir auth_id (fallback para id se necessário)
     if (!user.auth_id) user.auth_id = user.id;
 
-    // Cliente Supabase isolado (não conflita com `sb` das páginas)
-    sb = supabase.createClient(SB_URL, SB_KEY);
+    sb = (typeof window.sb !== 'undefined' && window.sb)
+      ? window.sb
+      : supabase.createClient(SB_URL, SB_KEY);
 
-    // Verificar sessão ativa antes de montar o widget
-    sb.auth.getSession().then(function (result) {
-      if (!result.data || !result.data.session) return;
+    sb.auth.getSession().then(function (r) {
+      if (!r.data || !r.data.session) return;
       mountWidget();
     });
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     MONTAGEM DO WIDGET
-  ══════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     MOUNT
+  ══════════════════════════════════════════════════════════════════ */
   function mountWidget() {
     if (document.getElementById('exp-chat-widget')) return;
-
-    // Carregar CSS externo
     injectCSS();
-
-    // Injetar HTML do widget
     injectHTML();
-
-    // Cachear refs DOM
-    $panel  = document.getElementById('exp-chat-panel');
-    $msgs   = document.getElementById('exp-chat-msgs');
-    $input  = document.getElementById('exp-chat-input');
-    $badge  = document.getElementById('exp-chat-badge');
-    $dot    = document.getElementById('exp-chat-dot');
-    $select = document.getElementById('exp-chat-select');
-
-    // Aplicar status salvo
+    cacheRefs();
     applyStatus(userStatus, false);
-
-    // Monitorar scroll (para o toast "nova mensagem")
-    $msgs.addEventListener('scroll', function () {
-      var atBottom = $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 40;
-      scrolledToEnd = atBottom;
-    });
-
-    // Inicializar Presence + contagem de não lidas
     setupPresence();
-    fetchUnreadCount();
-    subscribeMessages();
+    fetchAllUnread();
+    subscribeIncoming();
 
-    // Descadastrar Presence ao sair/navegar
     window.addEventListener('beforeunload', function () {
       if (presenceCh) presenceCh.untrack();
     });
+
+    // Fechar popover ao clicar fora
+    document.addEventListener('click', function (e) {
+      if (!statusPopOpen) return;
+      var pop    = document.getElementById('exp-chat-status-pop');
+      var ind    = document.getElementById('exp-chat-status-ind');
+      var person = document.getElementById('exp-chat-person-btn');
+      if (!pop) return;
+      if (pop.contains(e.target)) return;
+      if (ind && ind.contains(e.target)) return;
+      if (person && person.contains(e.target)) return;
+      closeStatusPop();
+    });
   }
 
-  /* ── CSS embutido (sem dependência de arquivo externo) ───────── */
+  function cacheRefs() {
+    $panel      = document.getElementById('exp-chat-panel');
+    $msgs       = document.getElementById('exp-chat-msgs');
+    $input      = document.getElementById('exp-chat-input');
+    $badge      = document.getElementById('exp-chat-badge');
+    $toggle     = document.getElementById('exp-chat-toggle');
+    $viewHome   = document.getElementById('exp-chat-home');
+    $viewChan   = document.getElementById('exp-chat-chan');
+    $viewMembers= document.getElementById('exp-chat-members');
+    $chanTitle  = document.getElementById('exp-chat-chan-title');
+    $personBtn  = document.getElementById('exp-chat-person-btn');
+    $statusInd  = document.getElementById('exp-chat-status-ind');
+    $statusPop  = document.getElementById('exp-chat-status-pop');
+
+    if ($msgs) {
+      $msgs.addEventListener('scroll', function () {
+        scrolledToEnd = $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 40;
+      });
+    }
+  }
+
+  /* ── CSS ──────────────────────────────────────────────────────── */
   function injectCSS() {
     if (document.getElementById('exp-chat-css')) return;
-    var style = document.createElement('style');
-    style.id = 'exp-chat-css';
-    style.textContent = [
-      '#exp-chat-widget{position:fixed;bottom:24px;right:24px;z-index:10000;font-family:"Raleway",sans-serif;font-size:14px;color:#111110}',
-      '.chat-toggle{width:48px;height:48px;background:var(--verde,#1D6A4A);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(29,106,74,.35);position:relative;transition:transform .15s ease,box-shadow .15s ease;user-select:none}',
-      '.chat-toggle:hover{transform:scale(1.07);box-shadow:0 6px 24px rgba(29,106,74,.45)}',
-      '.chat-toggle:active{transform:scale(.96)}',
-      '.chat-badge{position:absolute;top:-5px;right:-5px;background:var(--tc,#B84C3A);color:#fff;font-size:10px;font-weight:700;font-family:"DM Mono",monospace;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--off,#F7F6F3);line-height:1}',
-      '.chat-panel{position:absolute;bottom:60px;right:0;width:320px;height:480px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.14),0 2px 8px rgba(0,0,0,.06);display:none;flex-direction:column;overflow:hidden;animation:chatOpen .18s ease-out;border:1px solid var(--cinza2,#ECEAE4)}',
-      '@keyframes chatOpen{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}',
-      '.chat-header{padding:14px 16px 12px;background:var(--verde,#1D6A4A);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}',
-      '.chat-header-info{display:flex;flex-direction:column;gap:2px}',
-      '.chat-header-title{font-weight:700;font-size:13px;letter-spacing:.2px}',
-      '.chat-header-channel{font-family:"DM Mono",monospace;font-size:10px;opacity:.65;letter-spacing:.3px}',
-      '.chat-close{background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .12s;flex-shrink:0}',
-      '.chat-close:hover{background:rgba(255,255,255,.22)}',
-      '.chat-status-bar{padding:9px 14px;border-bottom:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;gap:8px;background:#fff;flex-shrink:0}',
-      '.chat-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .2s}',
-      '.chat-status-dot.online{background:var(--verde-l,#2D9E6B)}',
-      '.chat-status-dot.foco{background:var(--az,#1D4FA0)}',
-      '.chat-status-dot.ocupado{background:var(--tc,#B84C3A)}',
-      '.chat-status-dot.ausente{background:var(--am,#C4831A)}',
-      '.chat-status-nome{font-weight:600;font-size:12px;color:var(--preto,#111110);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '.chat-status-select{border:1px solid var(--cinza2,#ECEAE4);background:var(--off,#F7F6F3);font-family:"Raleway",sans-serif;font-size:11px;font-weight:500;color:var(--preto,#111110);cursor:pointer;padding:3px 6px;border-radius:6px;outline:none;transition:border-color .12s}',
-      '.chat-status-select:hover,.chat-status-select:focus{border-color:var(--verde-l,#2D9E6B)}',
-      '.chat-messages{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}',
-      '.chat-messages::-webkit-scrollbar{width:4px}',
-      '.chat-messages::-webkit-scrollbar-track{background:transparent}',
-      '.chat-messages::-webkit-scrollbar-thumb{background:var(--cinza,#D0CFC9);border-radius:2px}',
-      '.chat-empty{text-align:center;color:var(--cinza,#D0CFC9);font-size:12px;line-height:1.7;margin:auto;padding:24px 16px}',
-      '.chat-empty-icon{font-size:28px;margin-bottom:8px;opacity:.6}',
-      '.chat-loading{display:flex;align-items:center;justify-content:center;gap:6px;margin:auto;color:var(--cinza,#D0CFC9);font-size:12px}',
-      '.chat-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--cinza,#D0CFC9);animation:chatPulse 1.2s ease-in-out infinite}',
-      '.chat-loading-dot:nth-child(2){animation-delay:.2s}',
-      '.chat-loading-dot:nth-child(3){animation-delay:.4s}',
-      '@keyframes chatPulse{0%,80%,100%{opacity:.2}40%{opacity:1}}',
-      '.chat-date-sep{display:flex;align-items:center;gap:8px;margin:10px 0 6px;color:var(--cinza,#D0CFC9);font-size:10px;font-family:"DM Mono",monospace;letter-spacing:.4px}',
-      '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
-      '.chat-msg{display:flex;flex-direction:column;gap:2px;padding:3px 6px;border-radius:8px;transition:background .1s}',
-      '.chat-msg:hover{background:var(--off,#F7F6F3)}',
-      '.chat-msg-meta{display:flex;align-items:center;gap:7px;margin-top:8px}',
-      '.chat-av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;font-family:"DM Mono",monospace}',
-      '.chat-msg-name{font-weight:600;font-size:12px;color:var(--preto,#111110)}',
-      '.chat-msg.own .chat-msg-name{color:var(--verde,#1D6A4A)}',
-      '.chat-msg-time{font-family:"DM Mono",monospace;font-size:9px;color:var(--cinza,#D0CFC9);margin-left:2px}',
-      '.chat-msg-text{font-size:13px;color:var(--preto,#111110);line-height:1.55;word-break:break-word;padding:0 2px}',
-      '.chat-msg-text.grouped,.chat-msg-reactions.grouped{margin-left:31px}',
-      '.chat-msg-reactions{display:flex;gap:5px;margin-top:2px;opacity:0;transition:opacity .12s}',
-      '.chat-msg:hover .chat-msg-reactions,.chat-msg-reactions.has-reactions{opacity:1}',
-      '.chat-rbtn{background:var(--off,#F7F6F3);border:1px solid var(--cinza2,#ECEAE4);border-radius:12px;padding:2px 8px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .1s,border-color .1s,transform .08s;color:var(--preto,#111110);font-family:"Raleway",sans-serif;line-height:1}',
-      '.chat-rbtn:hover{background:var(--verde-bg,#EAF5EE);border-color:var(--verde-l,#2D9E6B);transform:scale(1.05)}',
-      '.chat-rbtn.active{background:var(--verde-bg,#EAF5EE);border-color:var(--verde,#1D6A4A);font-weight:600}',
-      '.chat-rbtn-count{font-size:10px;font-family:"DM Mono",monospace;font-weight:500;color:var(--verde,#1D6A4A);min-width:8px}',
-      '.chat-input-area{padding:10px 12px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;gap:8px;align-items:flex-end;background:#fff;flex-shrink:0}',
-      '.chat-input{flex:1;border:1px solid var(--cinza2,#ECEAE4);border-radius:10px;padding:8px 12px;font-family:"Raleway",sans-serif;font-size:13px;resize:none;outline:none;max-height:80px;min-height:36px;color:var(--preto,#111110);background:var(--off,#F7F6F3);line-height:1.45;transition:border-color .15s,background .15s;overflow-y:auto}',
-      '.chat-input::placeholder{color:var(--cinza,#D0CFC9)}',
-      '.chat-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
-      '.chat-send{width:36px;height:36px;background:var(--verde,#1D6A4A);border:none;border-radius:10px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,transform .08s}',
-      '.chat-send:hover{background:var(--verde-l,#2D9E6B)}',
-      '.chat-send:active{transform:scale(.93)}',
-      '.chat-send:disabled{background:var(--cinza2,#ECEAE4);cursor:not-allowed;transform:none}',
-      '.chat-new-msg-toast{position:absolute;bottom:130px;left:50%;transform:translateX(-50%);background:var(--verde,#1D6A4A);color:#fff;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 10px rgba(29,106,74,.3);animation:chatToastIn .2s ease-out;z-index:10001}',
-      '@keyframes chatToastIn{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}'
-    ].join('\n');
-    document.head.appendChild(style);
+    var s = document.createElement('style');
+    s.id = 'exp-chat-css';
+    s.textContent = CSS_TEXT;
+    document.head.appendChild(s);
   }
 
-  /* ── HTML ─────────────────────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════════════
+     HTML
+  ══════════════════════════════════════════════════════════════════ */
   function injectHTML() {
     var wrap = document.createElement('div');
     wrap.id = 'exp-chat-widget';
-
-    var firstName = user.nome.split(' ')[0];
-
-    wrap.innerHTML = [
-      /* ── Painel expandido ── */
-      '<div class="chat-panel" id="exp-chat-panel" style="display:none">',
-
-        /* Cabeçalho */
-        '<div class="chat-header">',
-          '<div class="chat-header-info">',
-            '<div class="chat-header-title">Chat da equipe</div>',
-            '<div class="chat-header-channel"># geral</div>',
-          '</div>',
-          '<button class="chat-close" onclick="expChat.close()" title="Fechar">✕</button>',
-        '</div>',
-
-        /* Barra de status */
-        '<div class="chat-status-bar">',
-          '<div class="chat-status-dot online" id="exp-chat-dot"></div>',
-          '<span class="chat-status-nome">' + escHtml(firstName) + '</span>',
-          '<select class="chat-status-select" id="exp-chat-select"',
-            ' onchange="expChat.setStatus(this.value)"',
-            ' title="Alterar status">',
-            '<option value="online">Online</option>',
-            '<option value="foco">Foco</option>',
-            '<option value="ocupado">Ocupado</option>',
-            '<option value="ausente">Ausente</option>',
-          '</select>',
-        '</div>',
-
-        /* Mensagens */
-        '<div class="chat-messages" id="exp-chat-msgs">',
-          renderLoading(),
-        '</div>',
-
-        /* Input */
-        '<div class="chat-input-area">',
-          '<textarea class="chat-input" id="exp-chat-input"',
-            ' placeholder="Mensagem para #geral…" rows="1"',
-            ' onkeydown="expChat.handleKey(event)"',
-            ' oninput="expChat.autoResize(this)"></textarea>',
-          '<button class="chat-send" id="exp-chat-send"',
-            ' onclick="expChat.send()" title="Enviar (Enter)">',
-            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"',
-              ' stroke="currentColor" stroke-width="2.5"',
-              ' stroke-linecap="round" stroke-linejoin="round">',
-              '<line x1="22" y1="2" x2="11" y2="13"/>',
-              '<polygon points="22 2 15 22 11 13 2 9 22 2"/>',
-            '</svg>',
-          '</button>',
-        '</div>',
-
-      '</div>',
-
-      /* ── Botão flutuante ── */
-      '<div class="chat-toggle" id="exp-chat-toggle"',
-        ' onclick="expChat.toggle()" title="Chat da equipe">',
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"',
-          ' stroke="white" stroke-width="2" stroke-linecap="round"',
-          ' stroke-linejoin="round">',
-          '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-        '</svg>',
-        '<div class="chat-badge" id="exp-chat-badge"></div>',
-      '</div>'
-    ].join('');
-
+    wrap.innerHTML = buildHTML();
     document.body.appendChild(wrap);
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     STATUS (Presence)
-  ══════════════════════════════════════════════════════════════ */
+  function buildHTML() {
+    var fn = firstName(user.nome);
+    return (
+      /* ── Painel ── */
+      '<div class="chat-panel" id="exp-chat-panel" style="display:none">' +
+
+        /* View: Home (lista de conversas) */
+        '<div class="chat-view" id="exp-chat-home">' +
+          '<div class="chat-header">' +
+            '<div class="chat-header-info"><div class="chat-header-title">Chat da equipe</div></div>' +
+            '<div class="chat-header-acts">' +
+              '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSound()" title="Som de notificação">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
+              '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
+              '<button class="chat-close" onclick="expChat.close()">✕</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="chat-conv-list" id="exp-chat-convlist"><div class="chat-loading">' + ldots() + '</div></div>' +
+        '</div>' +
+
+        /* View: Channel / DM */
+        '<div class="chat-view" id="exp-chat-chan" style="display:none">' +
+          '<div class="chat-header">' +
+            '<button class="chat-back-btn" onclick="expChat.goHome()">' + icoBack() + '</button>' +
+            '<div class="chat-header-info"><div class="chat-header-title" id="exp-chat-chan-title"># geral</div></div>' +
+            '<button class="chat-close" onclick="expChat.close()">✕</button>' +
+          '</div>' +
+          '<div class="chat-messages" id="exp-chat-msgs"><div class="chat-loading">' + ldots() + '</div></div>' +
+          '<div class="chat-input-area">' +
+            '<textarea class="chat-input" id="exp-chat-input" placeholder="Mensagem…" rows="1"' +
+              ' onkeydown="expChat.handleKey(event)" oninput="expChat.autoResize(this)"></textarea>' +
+            '<button class="chat-send" onclick="expChat.send()" title="Enviar (Enter)">' + icoSend() + '</button>' +
+          '</div>' +
+        '</div>' +
+
+        /* View: Seletor de membro (novo DM) */
+        '<div class="chat-view" id="exp-chat-members" style="display:none">' +
+          '<div class="chat-header">' +
+            '<button class="chat-back-btn" onclick="expChat.goHome()">' + icoBack() + '</button>' +
+            '<div class="chat-header-info"><div class="chat-header-title">Nova mensagem</div></div>' +
+            '<button class="chat-close" onclick="expChat.close()">✕</button>' +
+          '</div>' +
+          '<div class="chat-member-list" id="exp-chat-memberlist"><div class="chat-loading">' + ldots() + '</div></div>' +
+        '</div>' +
+
+      '</div>' + /* fim .chat-panel */
+
+      /* ── Status popover ── */
+      '<div class="chat-status-pop" id="exp-chat-status-pop" style="display:none">' +
+        '<div class="chat-status-pop-hdr">' + escHtml(fn) + '</div>' +
+        sopt('online',  '🟢', 'Online') +
+        sopt('foco',    '🔵', 'Foco') +
+        sopt('ocupado', '🔴', 'Ocupado') +
+        sopt('ausente', '🟡', 'Ausente') +
+      '</div>' +
+
+      /* ── Controls (person btn + status ind + toggle) ── */
+      '<div class="chat-controls">' +
+        '<button class="chat-person-btn" id="exp-chat-person-btn" onclick="expChat.toggleStatusPop()" title="Meu status" style="display:none">' +
+          icoPerson() +
+        '</button>' +
+        '<div class="chat-status-ind" id="exp-chat-status-ind" onclick="expChat.toggleStatusPop()" title="Status">' +
+          '<div class="chat-status-ind-dot" id="exp-chat-ind-dot"></div>' +
+          icoChevron() +
+        '</div>' +
+        '<div class="chat-toggle" id="exp-chat-toggle" onclick="expChat.toggle()">' +
+          icoChat() +
+          '<div class="chat-badge" id="exp-chat-badge"></div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  /* ── Helpers de markup ────────────────────────────────────────── */
+  function sopt(val, emoji, label) {
+    return '<button class="chat-sopt" data-status="' + val + '" onclick="expChat.setStatus(\'' + val + '\')">' +
+      '<span style="font-size:13px">' + emoji + '</span><span>' + label + '</span></button>';
+  }
+  function ldots() {
+    return '<div class="chat-loading-dot"></div><div class="chat-loading-dot"></div><div class="chat-loading-dot"></div>';
+  }
+
+  /* ── SVG icons ────────────────────────────────────────────────── */
+  function icoChat()    { return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'; }
+  function icoSend()    { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'; }
+  function icoBack()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'; }
+  function icoPerson()  { return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'; }
+  function icoChevron() { return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'; }
+  function icoPencil()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'; }
+  function icoSound()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'; }
+  function icoSoundOff(){ return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'; }
+
+  /* ══════════════════════════════════════════════════════════════════
+     STATUS
+  ══════════════════════════════════════════════════════════════════ */
   function applyStatus(status, broadcast) {
     if (typeof broadcast === 'undefined') broadcast = true;
-
     userStatus = status;
     localStorage.setItem(STATUS_KEY, status);
 
-    // Atualizar dot e select no DOM
-    if ($dot) {
-      $dot.className = 'chat-status-dot ' + status;
+    var color = STATUS_COLORS[status] || STATUS_COLORS.online;
+    var rgb   = hexRgb(color);
+
+    /* FAB: cor + shadow */
+    if ($toggle) {
+      $toggle.style.background  = color;
+      $toggle.style.boxShadow   = '0 4px 20px rgba(' + rgb + ',.38)';
     }
-    if ($select) {
-      $select.value = status;
+    /* Dot no indicador de status */
+    var dot = document.getElementById('exp-chat-ind-dot');
+    if (dot) dot.className = 'chat-status-ind-dot ' + status;
+
+    /* Person button: cor da borda */
+    if ($personBtn) {
+      $personBtn.style.borderColor = color;
+      $personBtn.style.color       = color;
     }
 
-    // Broadcast via Presence
-    if (broadcast && presenceCh) {
-      presenceCh.track(presencePayload(status));
+    /* Popover: marcar opção ativa */
+    if ($statusPop) {
+      var opts = $statusPop.querySelectorAll('.chat-sopt');
+      for (var i = 0; i < opts.length; i++) {
+        opts[i].classList.toggle('active', opts[i].getAttribute('data-status') === status);
+      }
     }
+
+    if (broadcast && presenceCh) presenceCh.track(presencePayload(status));
+  }
+
+  function toggleStatusPop() { statusPopOpen ? closeStatusPop() : openStatusPop(); }
+
+  function openStatusPop() {
+    if (!$statusPop) return;
+    statusPopOpen = true;
+    $statusPop.style.display = 'flex';
+    var opts = $statusPop.querySelectorAll('.chat-sopt');
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].classList.toggle('active', opts[i].getAttribute('data-status') === userStatus);
+    }
+  }
+
+  function closeStatusPop() {
+    if (!$statusPop) return;
+    statusPopOpen = false;
+    $statusPop.style.display = 'none';
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     ABRIR / FECHAR
+  ══════════════════════════════════════════════════════════════════ */
+  function toggle() { isOpen ? close() : open(); }
+
+  function open() {
+    if (!$panel) return;
+    isOpen = true;
+    $panel.style.display    = 'flex';
+    if ($personBtn) $personBtn.style.display = 'flex';
+    if ($statusInd) $statusInd.style.display = 'none';
+    closeStatusPop();
+    showView('home');
+  }
+
+  function close() {
+    if (!$panel) return;
+    isOpen = false;
+    $panel.style.display    = 'none';
+    if ($personBtn) $personBtn.style.display = 'none';
+    if ($statusInd) $statusInd.style.display = 'flex';
+    closeStatusPop();
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     VIEWS
+  ══════════════════════════════════════════════════════════════════ */
+  function showView(view) {
+    currentView = view;
+    var map = { home: $viewHome, channel: $viewChan, members: $viewMembers };
+    Object.keys(map).forEach(function (k) {
+      if (map[k]) map[k].style.display = k === view ? 'flex' : 'none';
+    });
+    if (view === 'home')    renderHome();
+    if (view === 'members') renderMemberList();
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     HOME — lista de conversas
+  ══════════════════════════════════════════════════════════════════ */
+  function renderHome() {
+    var $list = document.getElementById('exp-chat-convlist');
+    if (!$list) return;
+
+    var uid   = user.auth_id;
+    var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+
+    sb.from('chat_messages')
+      .select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id')
+      .like('channel', 'dm:%')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .then(function (r) {
+        var msgs = r.data || [];
+
+        /* Agrupar por canal, manter a mensagem mais recente */
+        var seen = {};
+        var dmList = [];
+        msgs.forEach(function (m) {
+          if (m.channel.indexOf(uid) === -1) return;
+          if (!seen[m.channel]) { seen[m.channel] = true; dmList.push(m); }
+        });
+
+        var html = '';
+
+        /* Linha #geral */
+        var genU = channelUnread['general'] || 0;
+        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
+          '<div class="chat-conv-av-hash">#</div>' +
+          '<div class="chat-conv-info"><div class="chat-conv-name">geral</div></div>' +
+          (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
+          '</div>';
+
+        /* Linhas de DMs */
+        dmList.forEach(function (dm) {
+          var isOwn = dm.sender_id === uid;
+          var parts = dm.channel.replace('dm:', '').split(':');
+          var otherUid = parts.find(function (p) { return p !== uid; }) || '';
+          var member = teamMembers.find(function (m) { return m.auth_id === otherUid; });
+
+          var name, iniciais, cor;
+          if (!isOwn) {
+            name = dm.sender_name; iniciais = dm.sender_iniciais || dm.sender_name.substring(0, 2).toUpperCase(); cor = dm.sender_cor || '#1D6A4A';
+          } else if (member) {
+            name = member.nome; iniciais = member.iniciais || member.nome.substring(0, 2).toUpperCase(); cor = member.cor || '#1D6A4A';
+          } else {
+            name = 'Colega'; iniciais = '??'; cor = '#1D6A4A';
+          }
+
+          var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + '…' : dm.content;
+          var dmU      = channelUnread[dm.channel] || 0;
+          var chanJson = dm.channel.replace(/'/g, "\\'");
+          var nameEsc  = escHtml(firstName(name));
+
+          html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
+            '<div class="chat-av" style="background:' + cor + ';width:28px;height:28px;font-size:10px;flex-shrink:0">' + escHtml(iniciais) + '</div>' +
+            '<div class="chat-conv-info">' +
+              '<div class="chat-conv-name">' + nameEsc + '</div>' +
+              '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
+            '</div>' +
+            (dmU > 0 ? '<div class="chat-conv-badge">' + dmU + '</div>' : '') +
+            '</div>';
+        });
+
+        $list.innerHTML = html;
+      });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     ABRIR CANAL / DM
+  ══════════════════════════════════════════════════════════════════ */
+  function openChannel(channel, displayName) {
+    currentChannel = channel;
+    currentLabel   = displayName;
+    if ($chanTitle) $chanTitle.textContent = displayName;
+    messages = [];
+    showView('channel');
+    loadMessages();
+    markRead();
+    setTimeout(function () { if ($input) $input.focus(); }, 120);
+  }
+
+  function goHome() { showView('home'); }
+
+  /* ══════════════════════════════════════════════════════════════════
+     NOVO DM — seletor de membros
+  ══════════════════════════════════════════════════════════════════ */
+  function startDM() {
+    showView('members');
+    loadTeamMembers();
+  }
+
+  function loadTeamMembers() {
+    sb.from('usuarios')
+      .select('id,auth_id,nome,iniciais,cor,role')
+      .order('nome')
+      .then(function (r) {
+        teamMembers = (r.data || []).filter(function (m) {
+          return m.auth_id !== user.auth_id && m.id !== user.id;
+        });
+        renderMemberList();
+      });
+  }
+
+  function renderMemberList() {
+    var $list = document.getElementById('exp-chat-memberlist');
+    if (!$list) return;
+    if (!teamMembers.length) {
+      $list.innerHTML = '<div class="chat-empty">Carregando equipe…</div>';
+      return;
+    }
+    var roleLabel = { socio: 'Sócio', coordenador: 'Coordenador', colaborador: 'Colaborador' };
+    var html = '';
+    teamMembers.forEach(function (m) {
+      var cor  = m.cor || '#1D6A4A';
+      var ch   = dmChannel(user.auth_id, m.auth_id);
+      var fn   = firstName(m.nome);
+      html += '<div class="chat-member-item" onclick="expChat.openChannel(\'' + ch + '\',\'' + escHtml(fn) + '\')">' +
+        '<div class="chat-av" style="background:' + cor + ';width:28px;height:28px;font-size:10px;flex-shrink:0">' + escHtml(m.iniciais || m.nome.substring(0, 2).toUpperCase()) + '</div>' +
+        '<div class="chat-conv-info">' +
+          '<div class="chat-conv-name">' + escHtml(m.nome) + '</div>' +
+          '<div class="chat-conv-preview">' + (roleLabel[m.role] || '') + '</div>' +
+        '</div>' +
+        '</div>';
+    });
+    $list.innerHTML = html;
+  }
+
+  function dmChannel(uid1, uid2) {
+    return 'dm:' + [uid1, uid2].sort().join(':');
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     PRESENCE
+  ══════════════════════════════════════════════════════════════════ */
+  function setupPresence() {
+    presenceCh = sb.channel('exp:chat:presence');
+    presenceCh
+      .on('presence', { event: 'sync' }, function () {})
+      .subscribe(function (s) {
+        if (s === 'SUBSCRIBED') presenceCh.track(presencePayload(userStatus));
+      });
   }
 
   function presencePayload(status) {
@@ -280,456 +572,333 @@
     };
   }
 
-  function setupPresence() {
-    presenceCh = sb.channel('exp:chat:presence');
+  /* ══════════════════════════════════════════════════════════════════
+     REALTIME — receber mensagens
+  ══════════════════════════════════════════════════════════════════ */
+  function subscribeIncoming() {
+    if (msgCh) { sb.removeChannel(msgCh); msgCh = null; }
 
-    presenceCh
-      .on('presence', { event: 'sync' }, function () {
-        // Presença sincronizada — poderíamos mostrar quem está online
-        // no futuro (Fase 2: lista de membros online)
-      })
-      .subscribe(function (status) {
-        if (status === 'SUBSCRIBED') {
-          presenceCh.track(presencePayload(userStatus));
-        }
-      });
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     REALTIME — MENSAGENS
-  ══════════════════════════════════════════════════════════════ */
-  function subscribeMessages() {
-    msgCh = sb.channel('exp:chat:messages')
-      .on('postgres_changes', {
-        event:  'INSERT',
-        schema: 'public',
-        table:  'chat_messages',
-        filter: 'channel=eq.' + CHANNEL
-      }, function (payload) {
+    msgCh = sb.channel('exp:chat:incoming')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, function (payload) {
         var msg = payload.new;
-        messages.push(msg);
+        var ch  = msg.channel;
+        var uid = user.auth_id;
 
-        if (isOpen) {
-          // Painel aberto: renderizar e rolar (ou mostrar toast)
+        /* Ignorar canais que não envolvem o usuário */
+        if (ch !== 'general' && ch.indexOf(uid) === -1) return;
+
+        var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
+        var isOwn    = msg.sender_id === uid;
+
+        if (isActive) {
+          messages.push(msg);
           renderMessages();
-          if (scrolledToEnd) {
-            scrollBottom();
-          } else if (msg.sender_id !== user.auth_id) {
-            showNewMsgToast();
-          }
-          // Marcar como lido somente se é de outro usuário
-          if (msg.sender_id !== user.auth_id) markRead();
-        } else {
-          // Painel fechado: só incrementar badge se não é minha mensagem
-          if (msg.sender_id !== user.auth_id) {
-            unreadCount++;
-            updateBadge();
-          }
+          if (scrolledToEnd) scrollBottom();
+          else if (!isOwn) showNewMsgToast();
+          if (!isOwn) markRead();
+        } else if (!isOwn) {
+          channelUnread[ch] = (channelUnread[ch] || 0) + 1;
+          updateBadge();
+          if (isOpen && currentView === 'home') renderHome();
+          playNotificationSound();
         }
       })
-      .on('postgres_changes', {
-        event:  'UPDATE',
-        schema: 'public',
-        table:  'chat_messages',
-        filter: 'channel=eq.' + CHANNEL
-      }, function (payload) {
-        var updated = payload.new;
-        var idx = messages.findIndex(function (m) { return m.id === updated.id; });
-        if (idx !== -1) {
-          messages[idx] = updated;
-          if (isOpen) renderMessages();
-        }
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, function (payload) {
+        var up = payload.new;
+        if (up.channel !== currentChannel) return;
+        var idx = messages.findIndex(function (m) { return m.id === up.id; });
+        if (idx !== -1) { messages[idx] = up; if (isOpen && currentView === 'channel') renderMessages(); }
       })
       .subscribe();
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     CARREGAR MENSAGENS (últimas 72h)
-  ══════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     CARREGAR MENSAGENS
+  ══════════════════════════════════════════════════════════════════ */
   function loadMessages() {
     if (isLoading) return;
     isLoading = true;
-
     showLoading();
-
     var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-
     sb.from('chat_messages')
       .select('*')
-      .eq('channel', CHANNEL)
+      .eq('channel', currentChannel)
       .gte('created_at', since)
       .order('created_at', { ascending: true })
-      .then(function (result) {
+      .then(function (r) {
         isLoading = false;
-        if (result.error) {
-          showError();
-          return;
-        }
-        messages = result.data || [];
+        if (r.error) { showError(); return; }
+        messages = r.data || [];
         renderMessages();
         scrollBottom();
       });
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     CONTAGEM DE NÃO LIDAS
-  ══════════════════════════════════════════════════════════════ */
-  function fetchUnreadCount() {
+  /* ══════════════════════════════════════════════════════════════════
+     NÃO LIDAS
+  ══════════════════════════════════════════════════════════════════ */
+  function fetchAllUnread() {
     var uid   = user.auth_id;
     var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
-    // Buscar last_read_at do usuário
-    sb.from('chat_read_status')
-      .select('last_read_at')
-      .eq('user_id', uid)
-      .eq('channel', CHANNEL)
-      .maybeSingle()
-      .then(function (result) {
-        var lastRead = (result.data && result.data.last_read_at) ? result.data.last_read_at : since;
+    sb.from('chat_read_status').select('channel,last_read_at').eq('user_id', uid)
+      .then(function (r) {
+        var readMap = {};
+        (r.data || []).forEach(function (row) { readMap[row.channel] = row.last_read_at; });
 
-        // Contar mensagens mais novas que last_read (excluindo as próprias)
+        /* Contar não lidas no geral */
+        var lastRead = readMap['general'] || since;
         sb.from('chat_messages')
           .select('*', { count: 'exact', head: true })
-          .eq('channel', CHANNEL)
+          .eq('channel', 'general')
           .gt('created_at', lastRead)
           .neq('sender_id', uid)
-          .then(function (countResult) {
-            unreadCount = countResult.count || 0;
+          .then(function (r2) {
+            if (r2.count) channelUnread['general'] = r2.count;
             updateBadge();
           });
       });
   }
 
   function markRead() {
-    sb.from('chat_read_status')
-      .upsert({
-        user_id:      user.auth_id,
-        channel:      CHANNEL,
-        last_read_at: new Date().toISOString()
-      })
-      .then(function () {
-        unreadCount = 0;
-        updateBadge();
-      });
+    sb.from('chat_read_status').upsert({
+      user_id: user.auth_id, channel: currentChannel, last_read_at: new Date().toISOString()
+    }).then(function () {
+      channelUnread[currentChannel] = 0;
+      updateBadge();
+    });
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     ENVIAR MENSAGEM
-  ══════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     ENVIAR
+  ══════════════════════════════════════════════════════════════════ */
   function send() {
     if (!$input) return;
     var content = $input.value.trim();
     if (!content) return;
-
-    // Limpar input imediatamente (UX responsiva)
     $input.value = '';
     $input.style.height = 'auto';
 
-    sb.from('chat_messages')
-      .insert({
-        channel:        CHANNEL,
-        sender_id:      user.auth_id,
-        sender_name:    user.nome,
-        sender_iniciais: user.iniciais || user.nome.substring(0, 2).toUpperCase(),
-        sender_cor:     user.cor || '#1D6A4A',
-        content:        content
-      })
-      .then(function (result) {
-        if (result.error) {
-          // Recolocar texto no input se falhar
-          $input.value = content;
-          console.warn('[EXP Chat] Erro ao enviar:', result.error.message);
-        }
-      });
+    sb.from('chat_messages').insert({
+      channel:         currentChannel,
+      sender_id:       user.auth_id,
+      sender_name:     user.nome,
+      sender_iniciais: user.iniciais || user.nome.substring(0, 2).toUpperCase(),
+      sender_cor:      user.cor || '#1D6A4A',
+      content:         content
+    }).then(function (r) {
+      if (r.error) {
+        $input.value = content;
+        console.warn('[EXP Chat] Erro ao enviar:', r.error.message);
+      }
+    });
   }
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
      REACTIONS
-  ══════════════════════════════════════════════════════════════ */
+  ══════════════════════════════════════════════════════════════════ */
   function toggleReaction(msgId, type) {
     var msg = messages.find(function (m) { return m.id === msgId; });
     if (!msg) return;
-
     var uid = user.auth_id;
-    var reactions = msg.reactions || { like: [], love: [] };
-    var arr = (reactions[type] || []).slice(); // cópia
-
+    var rx  = msg.reactions || { like: [], love: [] };
+    var arr = (rx[type] || []).slice();
     var idx = arr.indexOf(uid);
-    if (idx === -1) arr.push(uid);
-    else arr.splice(idx, 1);
-
-    var updated = Object.assign({}, reactions);
-    updated[type] = arr;
-
-    // Atualizar otimisticamente no estado local
-    msg.reactions = updated;
+    if (idx === -1) arr.push(uid); else arr.splice(idx, 1);
+    var upd = Object.assign({}, rx);
+    upd[type] = arr;
+    msg.reactions = upd;
     renderMessages();
-
-    // Persistir no banco
-    sb.from('chat_messages')
-      .update({ reactions: updated })
-      .eq('id', msgId)
-      .then(function (result) {
-        if (result.error) {
-          // Reverter em caso de erro
-          msg.reactions = reactions;
-          renderMessages();
-        }
-      });
+    sb.from('chat_messages').update({ reactions: upd }).eq('id', msgId)
+      .then(function (r) { if (r.error) { msg.reactions = rx; renderMessages(); } });
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     RENDER
-  ══════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     RENDER MENSAGENS
+  ══════════════════════════════════════════════════════════════════ */
   function renderMessages() {
     if (!$msgs) return;
-
-    if (messages.length === 0) {
-      $msgs.innerHTML = [
-        '<div class="chat-empty">',
-          '<div class="chat-empty-icon">💬</div>',
-          'Nenhuma mensagem ainda.<br>Diga olá à equipe!',
-        '</div>'
-      ].join('');
+    if (!messages.length) {
+      $msgs.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">💬</div>Nenhuma mensagem ainda.</div>';
       return;
     }
-
-    var uid  = user.auth_id;
+    var uid = user.auth_id;
     var html = '';
-    var prevSenderId = null;
-    var prevTime     = null;
-    lastMsgDate      = null;
+    var prevSender = null, prevTime = null, lastDate = null;
 
     messages.forEach(function (msg) {
       var isOwn   = msg.sender_id === uid;
-      var msgDate = new Date(msg.created_at);
-      var dateStr = msgDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+      var dt      = new Date(msg.created_at);
+      var dateStr = dt.toDateString();
 
-      /* Separador de data */
-      if (dateStr !== lastMsgDate) {
-        lastMsgDate = dateStr;
-        html += '<div class="chat-date-sep">' + formatDateSep(msgDate) + '</div>';
-        prevSenderId = null; // Forçar novo header após separador
+      if (dateStr !== lastDate) {
+        lastDate = dateStr;
+        html += '<div class="chat-date-sep">' + fmtDateSep(dt) + '</div>';
+        prevSender = null;
       }
 
-      /* Agrupamento: mesmo remetente E dentro de 5 minutos */
-      var gap = prevTime ? (msgDate - prevTime) : Infinity;
-      var grouped = (msg.sender_id === prevSenderId) && (gap < 5 * 60 * 1000);
+      var gap     = prevTime ? (dt - prevTime) : Infinity;
+      var grouped = msg.sender_id === prevSender && gap < 5 * 60 * 1000;
+      var iniciais= msg.sender_iniciais || msg.sender_name.substring(0, 2).toUpperCase();
+      var cor     = msg.sender_cor || '#1D6A4A';
+      var fn      = firstName(msg.sender_name);
 
-      var timeStr = msgDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      var iniciais = msg.sender_iniciais || msg.sender_name.substring(0, 2).toUpperCase();
-      var cor      = msg.sender_cor || '#1D6A4A';
-
-      var reactions  = msg.reactions || { like: [], love: [] };
-      var likesArr   = reactions.like  || [];
-      var lovesArr   = reactions.love  || [];
-      var userLiked  = likesArr.indexOf(uid)  !== -1;
-      var userLoved  = lovesArr.indexOf(uid) !== -1;
-      var likeCount  = likesArr.length;
-      var loveCount  = lovesArr.length;
-      var hasReact   = likeCount > 0 || loveCount > 0;
+      var rx      = msg.reactions || { like: [], love: [] };
+      var likeArr = rx.like  || [];
+      var loveArr = rx.love  || [];
+      var liked   = likeArr.indexOf(uid) !== -1;
+      var loved   = loveArr.indexOf(uid) !== -1;
+      var likeN   = likeArr.length;
+      var loveN   = loveArr.length;
+      var hasRxn  = likeN > 0 || loveN > 0;
 
       html += '<div class="chat-msg' + (isOwn ? ' own' : '') + '" data-id="' + msg.id + '">';
 
-      /* Header (avatar + nome + hora) */
       if (!grouped) {
-        html += '<div class="chat-msg-meta">';
-        html += '<div class="chat-av" style="background:' + cor + '">' + escHtml(iniciais) + '</div>';
-        html += '<span class="chat-msg-name">' + escHtml(msg.sender_name) + '</span>';
-        html += '<span class="chat-msg-time">' + timeStr + '</span>';
-        html += '</div>';
+        html += '<div class="chat-msg-meta">' +
+          '<div class="chat-av" style="background:' + cor + '">' + escHtml(iniciais) + '</div>' +
+          '<span class="chat-msg-name">' + escHtml(fn) + '</span>' +
+          '<span class="chat-msg-time">' + fmtTime(dt) + '</span>' +
+          '</div>';
       }
 
-      /* Texto */
-      html += '<div class="chat-msg-text' + (grouped ? ' grouped' : '') + '">';
-      html += escHtml(msg.content).replace(/\n/g, '<br>');
+      html += '<div class="chat-msg-text' + (grouped ? ' grouped' : '') + '">' +
+        linkify(escHtml(msg.content).replace(/\n/g, '<br>')) +
+        '</div>';
+
+      html += '<div class="chat-msg-reactions' + (grouped ? ' grouped' : '') + (hasRxn ? ' has-reactions' : '') + '">' +
+        '<button class="chat-rbtn' + (liked ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'like\')" data-count="' + likeN + '">👍' + (likeN > 0 ? '<span class="chat-rbtn-count">' + likeN + '</span>' : '') + '</button>' +
+        '<button class="chat-rbtn' + (loved ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'love\')" data-count="' + loveN + '">❤️' + (loveN > 0 ? '<span class="chat-rbtn-count">' + loveN + '</span>' : '') + '</button>' +
+        '</div>';
+
       html += '</div>';
-
-      /* Reactions */
-      html += '<div class="chat-msg-reactions' + (grouped ? ' grouped' : '') + (hasReact ? ' has-reactions' : '') + '">';
-
-      html += '<button class="chat-rbtn' + (userLiked ? ' active' : '') + '"';
-      html += ' onclick="expChat.react(\'' + msg.id + '\',\'like\')"';
-      html += ' data-count="' + likeCount + '"';
-      html += ' title="Curtir">';
-      html += '👍';
-      if (likeCount > 0) html += '<span class="chat-rbtn-count">' + likeCount + '</span>';
-      html += '</button>';
-
-      html += '<button class="chat-rbtn' + (userLoved ? ' active' : '') + '"';
-      html += ' onclick="expChat.react(\'' + msg.id + '\',\'love\')"';
-      html += ' data-count="' + loveCount + '"';
-      html += ' title="Amar">';
-      html += '❤️';
-      if (loveCount > 0) html += '<span class="chat-rbtn-count">' + loveCount + '</span>';
-      html += '</button>';
-
-      html += '</div>'; // .chat-msg-reactions
-      html += '</div>'; // .chat-msg
-
-      prevSenderId = msg.sender_id;
-      prevTime     = msgDate;
+      prevSender = msg.sender_id;
+      prevTime   = dt;
     });
 
     $msgs.innerHTML = html;
   }
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
+     LINKIFY — URLs viram hiperlinks
+  ══════════════════════════════════════════════════════════════════ */
+  function linkify(html) {
+    return html.replace(/(https?:\/\/[^\s&"<>]+)/g, function (url) {
+      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="chat-link">' + url + '</a>';
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     SOM DE NOTIFICAÇÃO (Web Audio API — sem arquivo externo)
+  ══════════════════════════════════════════════════════════════════ */
+  function playNotificationSound() {
+    if (!soundEnabled) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      /* Dois tons suaves: C6 (1047 Hz) → E6 (1319 Hz) */
+      [{ f: 1046.5, t: 0, d: 0.18 }, { f: 1318.5, t: 0.13, d: 0.22 }].forEach(function (n) {
+        var osc  = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = n.f;
+        gain.gain.setValueAtTime(0, ctx.currentTime + n.t);
+        gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + n.t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.t + n.d);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + n.t);
+        osc.stop(ctx.currentTime + n.t + n.d + 0.02);
+      });
+    } catch (e) {}
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem(SOUND_KEY, soundEnabled ? 'true' : 'false');
+    var btn = document.getElementById('exp-chat-sound-btn');
+    if (btn) btn.innerHTML = soundEnabled ? icoSound() : icoSoundOff();
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
      UI HELPERS
-  ══════════════════════════════════════════════════════════════ */
+  ══════════════════════════════════════════════════════════════════ */
   function updateBadge() {
+    var total = Object.values ? Object.values(channelUnread).reduce(function (a, b) { return a + b; }, 0) :
+      Object.keys(channelUnread).reduce(function (a, k) { return a + channelUnread[k]; }, 0);
     if (!$badge) return;
-    if (unreadCount > 0) {
-      $badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
-      $badge.style.display = 'flex';
-    } else {
-      $badge.style.display = 'none';
-    }
+    if (total > 0) { $badge.textContent = total > 99 ? '99+' : String(total); $badge.style.display = 'flex'; }
+    else $badge.style.display = 'none';
   }
 
-  function scrollBottom() {
-    if ($msgs) {
-      $msgs.scrollTop = $msgs.scrollHeight;
-      scrolledToEnd = true;
-    }
-  }
+  function scrollBottom() { if ($msgs) { $msgs.scrollTop = $msgs.scrollHeight; scrolledToEnd = true; } }
 
-  function showLoading() {
-    if (!$msgs) return;
-    $msgs.innerHTML = renderLoading();
-  }
-
-  function renderLoading() {
-    return [
-      '<div class="chat-loading">',
-        '<div class="chat-loading-dot"></div>',
-        '<div class="chat-loading-dot"></div>',
-        '<div class="chat-loading-dot"></div>',
-      '</div>'
-    ].join('');
-  }
-
-  function showError() {
-    if (!$msgs) return;
-    $msgs.innerHTML = '<div class="chat-empty">Erro ao carregar mensagens.<br>Tente novamente.</div>';
-  }
+  function showLoading() { if ($msgs) $msgs.innerHTML = '<div class="chat-loading">' + ldots() + '</div>'; }
+  function showError()   { if ($msgs) $msgs.innerHTML = '<div class="chat-empty">Erro ao carregar.<br>Tente novamente.</div>'; }
 
   function showNewMsgToast() {
-    // Remover toast anterior se existir
     var old = document.getElementById('exp-chat-toast');
     if (old) old.remove();
-
-    var toast = document.createElement('div');
-    toast.id = 'exp-chat-toast';
-    toast.className = 'chat-new-msg-toast';
-    toast.textContent = '↓ Nova mensagem';
-    toast.onclick = function () {
-      scrollBottom();
-      toast.remove();
-    };
-    $panel.appendChild(toast);
-
-    // Auto-remover após 4s
-    setTimeout(function () {
-      if (toast.parentNode) toast.remove();
-    }, 4000);
+    var t = document.createElement('div');
+    t.id = 'exp-chat-toast'; t.className = 'chat-new-msg-toast'; t.textContent = '↓ Nova mensagem';
+    t.onclick = function () { scrollBottom(); t.remove(); };
+    $panel.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.remove(); }, 4000);
   }
 
-  /* ── Formatação de data para separadores ─────────────────────── */
-  function formatDateSep(date) {
-    var today     = new Date();
-    var yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    var isToday     = date.toDateString() === today.toDateString();
-    var isYesterday = date.toDateString() === yesterday.toDateString();
-
-    if (isToday)     return 'Hoje';
-    if (isYesterday) return 'Ontem';
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
+  function fmtDateSep(d) {
+    var today = new Date(), yest = new Date(today);
+    yest.setDate(yest.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'Hoje';
+    if (d.toDateString() === yest.toDateString())  return 'Ontem';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
   }
 
-  /* ── HTML escape (segurança) ──────────────────────────────────── */
-  function escHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+  function fmtTime(d) { return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+  function firstName(name) { return name ? name.split(' ')[0] : ''; }
+
+  function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
-  /* ── Auto-resize do textarea ──────────────────────────────────── */
-  function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  function hexRgb(hex) {
+    var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return r + ',' + g + ',' + b;
   }
 
-  /* ── Tecla Enter (enviar) / Shift+Enter (quebra de linha) ─────── */
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  }
+  function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 80) + 'px'; }
+  function handleKey(e)   { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
 
-  /* ══════════════════════════════════════════════════════════════
-     ABRIR / FECHAR
-  ══════════════════════════════════════════════════════════════ */
-  function toggle() {
-    if (isOpen) close();
-    else open();
-  }
-
-  function open() {
-    if (!$panel) return;
-    isOpen = true;
-    $panel.style.display = 'flex';
-    loadMessages();  // carrega/recarrega ao abrir
-    markRead();
-    // Focar input após breve delay (aguardar animação CSS)
-    setTimeout(function () { if ($input) $input.focus(); }, 150);
-  }
-
-  function close() {
-    if (!$panel) return;
-    isOpen = false;
-    $panel.style.display = 'none';
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     API PÚBLICA — expChat.*
-     (referenciada pelos onclick inline do HTML)
-  ══════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     API PÚBLICA
+  ══════════════════════════════════════════════════════════════════ */
   window.expChat = {
-    toggle:     toggle,
-    open:       open,
-    close:      close,
-    send:       send,
-    setStatus:  function (s) { applyStatus(s, true); },
-    react:      toggleReaction,
-    handleKey:  handleKey,
-    autoResize: autoResize
+    toggle:          toggle,
+    open:            open,
+    close:           close,
+    send:            send,
+    handleKey:       handleKey,
+    autoResize:      autoResize,
+    setStatus:       function (s) { applyStatus(s, true); closeStatusPop(); },
+    toggleStatusPop: toggleStatusPop,
+    react:           toggleReaction,
+    openChannel:     openChannel,
+    goHome:          goHome,
+    startDM:         startDM,
+    toggleSound:     toggleSound
   };
 
-  /* ══════════════════════════════════════════════════════════════
-     BOOT — aguarda Supabase SDK carregar na página
-  ══════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     BOOT
+  ══════════════════════════════════════════════════════════════════ */
   function boot() {
-    if (typeof supabase === 'undefined') {
-      // SDK ainda não carregou — tentar em breve
-      setTimeout(boot, 200);
-      return;
-    }
+    if (typeof supabase === 'undefined') { setTimeout(boot, 200); return; }
     init();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    // Pequeno delay para garantir que o init() da página rodou primeiro
-    setTimeout(boot, 50);
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else setTimeout(boot, 50);
 
 })();
