@@ -98,7 +98,7 @@
     '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:"DM Mono",monospace;letter-spacing:.5px}',
     '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
     /* ── Message bubble ── */
-    '.chat-msg{display:flex;flex-direction:column;padding:0 6px;border-radius:6px;transition:background .1s}',
+    '.chat-msg{display:flex;flex-direction:column;padding:2px 6px;border-radius:6px;transition:background .1s}',
     '.chat-msg:hover{background:var(--off,#F7F6F3)}',
     /* Alinhamento: recebidas à esq, enviadas à dir */
     '.chat-msg.own{align-items:flex-end}',
