@@ -962,30 +962,84 @@ CREATE POLICY "auth_all" ON base_etapa FOR ALL USING (auth.role()='authenticated
 CREATE POLICY "auth_all" ON base_entregavel FOR ALL USING (auth.role()='authenticated');
 CREATE POLICY "auth_all" ON base_checklist_item FOR ALL USING (auth.role()='authenticated');
 
--- Cadastros e senhas de plataformas (acesso restrito a sócios via aplicação)
-CREATE TABLE IF NOT EXISTS cadastros_plataformas (
-  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  numero     integer NOT NULL DEFAULT 1,
-  nome       text NOT NULL,
-  login      text,
-  senha      text,
-  uso        text,
-  clientes   text,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE cadastros_plataformas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth_all" ON cadastros_plataformas FOR ALL USING (auth.role()='authenticated');`;
+-- Cadastros e senhas usam setup seguro dedicado com Vault.
+-- O SQL dessa área deve ser executado separadamente.`;
 
-const CADASTROS_SENHAS_SETUP_SQL = `create table if not exists public.cadastros_plataformas (
+const CADASTROS_SENHAS_SETUP_SQL = `begin;
+
+create extension if not exists supabase_vault with schema vault;
+
+create table if not exists public.cadastros_plataformas (
   id uuid default gen_random_uuid() primary key,
   numero integer not null default 1,
   nome text not null,
-  login text,
-  senha text,
   uso text,
   clientes text,
-  created_at timestamptz default now()
+  vault_secret_id uuid,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
+
+alter table public.cadastros_plataformas
+  add column if not exists vault_secret_id uuid,
+  add column if not exists updated_at timestamptz default now();
+
+do $$
+declare
+  rec record;
+  v_secret_id uuid;
+  v_payload text;
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'cadastros_plataformas'
+      and column_name = 'login'
+  ) then
+    for rec in
+      select id, nome, coalesce(login, '') as login, coalesce(senha, '') as senha, vault_secret_id
+      from public.cadastros_plataformas
+    loop
+      v_payload := jsonb_build_object('login', rec.login, 'senha', rec.senha)::text;
+
+      if rec.vault_secret_id is null then
+        v_secret_id := vault.create_secret(
+          v_payload,
+          'apoio-plataforma-' || rec.id::text,
+          'Credencial da plataforma ' || coalesce(rec.nome, 'sem nome')
+        );
+      else
+        v_secret_id := rec.vault_secret_id;
+        perform vault.update_secret(
+          v_secret_id,
+          v_payload,
+          'apoio-plataforma-' || rec.id::text,
+          'Credencial da plataforma ' || coalesce(rec.nome, 'sem nome')
+        );
+      end if;
+
+      update public.cadastros_plataformas
+      set vault_secret_id = v_secret_id,
+          updated_at = now()
+      where id = rec.id;
+    end loop;
+
+    update public.cadastros_plataformas
+    set login = null,
+        senha = null
+    where login is not null or senha is not null;
+  end if;
+end $$;
+
+alter table public.cadastros_plataformas
+  drop column if exists login,
+  drop column if exists senha;
+
+revoke all on schema vault from public, anon, authenticated;
+revoke all on all tables in schema vault from public, anon, authenticated;
+revoke all on all sequences in schema vault from public, anon, authenticated;
+revoke all on all functions in schema vault from public, anon, authenticated;
 
 alter table public.cadastros_plataformas enable row level security;
 
@@ -1018,7 +1072,211 @@ create policy cadastros_plataformas_delete
 on public.cadastros_plataformas
 for delete
 to authenticated
-using (private.can_edit_apoio());`;
+using (private.can_edit_apoio());
+
+create or replace function public.apoio_listar_plataformas_secretas()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_result jsonb;
+begin
+  if not private.can_read_apoio_secret() then
+    raise exception 'Acesso negado';
+  end if;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', id,
+        'numero', numero,
+        'nome', nome,
+        'uso', uso,
+        'clientes', clientes,
+        'created_at', created_at,
+        'updated_at', updated_at,
+        'has_secret', vault_secret_id is not null
+      )
+      order by numero, nome
+    ),
+    '[]'::jsonb
+  )
+  into v_result
+  from public.cadastros_plataformas;
+
+  return v_result;
+end;
+$$;
+
+create or replace function public.apoio_obter_acesso_plataforma(_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_secret_text text;
+begin
+  if not private.can_read_apoio_secret() then
+    raise exception 'Acesso negado';
+  end if;
+
+  select ds.decrypted_secret
+  into v_secret_text
+  from public.cadastros_plataformas p
+  left join vault.decrypted_secrets ds on ds.id = p.vault_secret_id
+  where p.id = _id;
+
+  return coalesce(v_secret_text, '{"login":"","senha":""}')::jsonb;
+end;
+$$;
+
+create or replace function public.apoio_salvar_plataforma_secreta(
+  _id uuid default null,
+  _numero integer default 1,
+  _nome text default null,
+  _login text default null,
+  _senha text default null,
+  _uso text default null,
+  _clientes text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_secret_id uuid;
+  v_payload text;
+begin
+  if not private.can_edit_apoio() then
+    raise exception 'Acesso negado';
+  end if;
+
+  if coalesce(trim(_nome), '') = '' then
+    raise exception 'Informe o nome da plataforma.';
+  end if;
+
+  v_payload := jsonb_build_object(
+    'login', coalesce(_login, ''),
+    'senha', coalesce(_senha, '')
+  )::text;
+
+  if _id is null then
+    v_id := gen_random_uuid();
+
+    insert into public.cadastros_plataformas (
+      id, numero, nome, uso, clientes, created_at, updated_at
+    ) values (
+      v_id,
+      coalesce(_numero, 1),
+      trim(_nome),
+      nullif(trim(coalesce(_uso, '')), ''),
+      nullif(trim(coalesce(_clientes, '')), ''),
+      now(),
+      now()
+    );
+
+    v_secret_id := vault.create_secret(
+      v_payload,
+      'apoio-plataforma-' || v_id::text,
+      'Credencial da plataforma ' || trim(_nome)
+    );
+
+    update public.cadastros_plataformas
+    set vault_secret_id = v_secret_id,
+        updated_at = now()
+    where id = v_id;
+  else
+    v_id := _id;
+
+    select vault_secret_id
+    into v_secret_id
+    from public.cadastros_plataformas
+    where id = v_id
+    for update;
+
+    if not found then
+      raise exception 'Plataforma não encontrada.';
+    end if;
+
+    if v_secret_id is null then
+      v_secret_id := vault.create_secret(
+        v_payload,
+        'apoio-plataforma-' || v_id::text,
+        'Credencial da plataforma ' || trim(_nome)
+      );
+    else
+      perform vault.update_secret(
+        v_secret_id,
+        v_payload,
+        'apoio-plataforma-' || v_id::text,
+        'Credencial da plataforma ' || trim(_nome)
+      );
+    end if;
+
+    update public.cadastros_plataformas
+    set numero = coalesce(_numero, numero),
+        nome = trim(_nome),
+        uso = nullif(trim(coalesce(_uso, '')), ''),
+        clientes = nullif(trim(coalesce(_clientes, '')), ''),
+        vault_secret_id = v_secret_id,
+        updated_at = now()
+    where id = v_id;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+create or replace function public.apoio_excluir_plataforma_secreta(_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_secret_id uuid;
+begin
+  if not private.can_edit_apoio() then
+    raise exception 'Acesso negado';
+  end if;
+
+  select vault_secret_id
+  into v_secret_id
+  from public.cadastros_plataformas
+  where id = _id
+  for update;
+
+  if not found then
+    return false;
+  end if;
+
+  delete from public.cadastros_plataformas
+  where id = _id;
+
+  if v_secret_id is not null then
+    delete from vault.secrets where id = v_secret_id;
+  end if;
+
+  return true;
+end;
+$$;
+
+revoke all on function public.apoio_listar_plataformas_secretas() from public;
+revoke all on function public.apoio_obter_acesso_plataforma(uuid) from public;
+revoke all on function public.apoio_salvar_plataforma_secreta(uuid, integer, text, text, text, text, text) from public;
+revoke all on function public.apoio_excluir_plataforma_secreta(uuid) from public;
+
+grant execute on function public.apoio_listar_plataformas_secretas() to authenticated;
+grant execute on function public.apoio_obter_acesso_plataforma(uuid) to authenticated;
+grant execute on function public.apoio_salvar_plataforma_secreta(uuid, integer, text, text, text, text, text) to authenticated;
+grant execute on function public.apoio_excluir_plataforma_secreta(uuid) to authenticated;
+
+commit;`;
 
 // ── SEED DATA — PAISAGISMO ─────────────────────────────────
 // 8 tipologias × 7 etapas. Residencial/PF tem entregáveis e checklists completos.
@@ -3878,13 +4136,13 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <div class="secao-shell-header">
           <div>
             <div class="secao-shell-title">Cadastros e Senhas ainda não configurado</div>
-            <div class="secao-shell-sub">A tabela <code>cadastros_plataformas</code> ainda não existe neste ambiente.</div>
+            <div class="secao-shell-sub">A estrutura segura desta área ainda não existe neste ambiente.</div>
           </div>
           <button class="btn verde sm" onclick="copyCadastrosSenhasSetupSQL()">Copiar SQL</button>
         </div>
         <div class="knowledge-callout">
           <div class="knowledge-callout-title">Como ativar</div>
-          <div class="knowledge-callout-text">Rode o SQL abaixo no Supabase SQL Editor e depois recarregue esta aba.</div>
+          <div class="knowledge-callout-text">Rode o SQL abaixo no Supabase SQL Editor para migrar esta área para Vault e depois recarregue a aba.</div>
         </div>
         <pre style="white-space:pre-wrap;background:#faf9f6;border:1px solid var(--cinza);border-radius:8px;padding:14px;font-size:10px;line-height:1.6;color:#555;overflow:auto">${esc(CADASTROS_SENHAS_SETUP_SQL)}</pre>
       </section>`;
@@ -3907,12 +4165,11 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     }
     root.innerHTML = '<div class="loading-state">Carregando...</div>';
 
-    let { data: plats, error } = await sb.from('cadastros_plataformas')
-      .select('*').order('numero');
+    let { data: plats, error } = await sb.rpc('apoio_listar_plataformas_secretas');
 
     if(error) {
       const msg = String(error.message || '');
-      if(error.code === 'PGRST205' || msg.includes('schema cache') || msg.includes('Could not find the table')) {
+      if(error.code === 'PGRST202' || error.code === 'PGRST205' || msg.includes('schema cache') || msg.includes('Could not find the table') || msg.includes('apio_listar_plataformas_secretas') || msg.includes('apoio_listar_plataformas_secretas')) {
         renderCadastrosSenhasSetupNotice(root);
         return;
       }
@@ -3920,7 +4177,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       return;
     }
 
-    renderCadastrosSenhasRoot(root, plats || []);
+    renderCadastrosSenhasRoot(root, Array.isArray(plats) ? plats : []);
   }
 
   function renderCadastrosSenhasRoot(root, plats) {

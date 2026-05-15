@@ -1136,6 +1136,11 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
         </div>
       </div>
 
+      <!-- Banner CRM (aparece quando ativo veio do CRM) -->
+      <div id="fin-crm-banner" style="display:none;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:11px;color:#3730A3">
+        ⚡ <strong>Dados importados do CRM.</strong> As subcontratações e repasses já foram copiados automaticamente. Defina as etapas e parcelas para ativar.
+      </div>
+
       <!-- Seção 1: Modalidade de cobrança -->
       <div class="divider"></div>
       <div style="margin-bottom:16px">
@@ -1601,19 +1606,22 @@ async function carregarFila() {
     </div>`;
     return;
   }
-  el.innerHTML = data.map(a => `
-    <div class="ativo-card" onclick="abrirAtivo('${a.id}')">
+  el.innerHTML = data.map(a => {
+    const viaCRM = a.criado_por === 'crm';
+    return `<div class="ativo-card" onclick="abrirAtivo('${a.id}')">
       <div class="ativo-card-hd">
         ${nucleoBadge(a.nucleo)}
         <span class="ativo-card-title">${a.cliente_nome}</span>
         <span class="badge b-am">Rascunho</span>
-        <button class="btn btn-pri btn-sm" onclick="event.stopPropagation();finalizarRascunho('${a.id}')">Finalizar cadastro →</button>
+        ${viaCRM ? `<span class="badge" style="background:#EEF2FF;color:#4338CA;border:1px solid #C7D2FE;font-size:8px">↑ CRM</span>` : ''}
+        <button class="btn btn-pri btn-sm" onclick="event.stopPropagation();finalizarRascunho('${a.id}')" style="margin-left:auto">Finalizar →</button>
       </div>
+      ${a.descricao ? `<div style="font-size:11px;color:#666;padding:4px 0 2px">${a.descricao}</div>` : ''}
       <div class="ativo-card-meta">
         ${a.num_legado ? `<span>📁 ${a.num_legado}</span>` : ''}
         ${a.prop_code  ? `<span>🧮 ${a.prop_code}</span>`  : ''}
-        <span>📅 ${fmtData(a.data_contrato)}</span>
-        <span>📋 ${a.modalidade_cobranca === 'mensal' ? 'Mensal' : 'Por etapas'}</span>
+        ${a.data_contrato ? `<span>📅 ${fmtData(a.data_contrato)}</span>` : ''}
+        ${viaCRM ? `<span title="Criado automaticamente pelo fechamento no CRM">⚡ Fechado no CRM</span>` : ''}
       </div>
       <div class="ativo-card-footer">
         <div>
@@ -1625,7 +1633,8 @@ async function carregarFila() {
           <div class="ativo-valor-sub">efetivo EXP</div>
         </div>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1683,8 +1692,7 @@ function ativoCardHTML(a, sit) {
   </div>`;
 }
 
-function abrirAtivo(id) { /* TODO: modal de detalhes do ativo */ toast('Detalhes do ativo em breve…'); }
-function finalizarRascunho(id) { /* TODO: modal de finalização */ toast('Tela de finalização em breve…'); }
+function abrirAtivo(id) { toast('Detalhes do ativo em breve…'); }
 function abrirModalNovoAtivo() { toast('Cadastro manual em breve…'); }
 
 // ══════════════════════════════════════════════════════════
@@ -2063,16 +2071,16 @@ async function finalizarRascunho(id) {
 
   const { data: etapas } = await sb.from('fin_etapas')
     .select('*, fin_parcelas(*)').eq('ativo_id', id).order('ordem');
-  const { data: repasses } = await sb.from('fin_repasses').eq('ativo_id', id);
+  const { data: repasses } = await sb.from('fin_repasses').select('*').eq('ativo_id', id);
 
   G_ativoEdit = { ...ativo, etapas: etapas || [], repasses: repasses || [] };
 
   // Preencher header
   document.getElementById('fin-titulo').textContent = `Finalizar: ${ativo.cliente_nome}`;
-  document.getElementById('fin-subtitulo').textContent =
-    `${ativo.num_legado || ''} ${ativo.prop_code ? '· ' + ativo.prop_code : ''}`.trim();
+  const subtit = [ativo.num_legado, ativo.prop_code].filter(Boolean).join(' · ');
+  document.getElementById('fin-subtitulo').textContent = subtit || ativo.descricao || 'Revise e confirme os dados antes de ativar';
   document.getElementById('fin-cliente').textContent = ativo.cliente_nome;
-  document.getElementById('fin-num-legado').textContent = ativo.num_legado || ativo.prop_code || '—';
+  document.getElementById('fin-num-legado').textContent = ativo.descricao || ativo.num_legado || ativo.prop_code || '—';
   document.getElementById('fin-nucleo-badge').innerHTML = nucleoBadge(ativo.nucleo);
   document.getElementById('fin-valor-total').textContent = moeda(ativo.valor_total);
   document.getElementById('fin-valor-efetivo').textContent = moeda(ativo.valor_efetivo_exp);
@@ -2107,6 +2115,10 @@ async function finalizarRascunho(id) {
   // Renderizar etapas
   renderEtapasFinalizacao();
   renderRepassesFinalizacao();
+
+  // Banner CRM
+  const crmBanner = document.getElementById('fin-crm-banner');
+  if (crmBanner) crmBanner.style.display = ativo.criado_por === 'crm' ? '' : 'none';
 
   document.getElementById('fin-validacao').style.display = 'none';
   abrirModal('modal-finalizar');
@@ -2369,9 +2381,11 @@ async function confirmarAtivo() {
     }
   }
 
-  toast('Ativo ativado com sucesso! ✓', 'ok');
+  toast('Projeto ativado com sucesso! ✓', 'ok');
   fecharModal('modal-finalizar');
   carregarFila();
+  carregarAtivos();
+  carregarDashboard();
 }
 
 async function excluirRascunho() {
