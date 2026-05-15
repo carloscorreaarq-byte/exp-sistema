@@ -971,12 +971,25 @@ async function salvarContato() {
 // ─── AÇÕES DB ────────────────────────────────────────────────────────────────
 async function validarContato(id) {
   const now = new Date().toISOString();
-  const { error } = await sb.from('exp_contatos').update({
+  let error = null;
+
+  const tentativaCompleta = await sb.from('exp_contatos').update({
     validado_em: now,
     validado_por: G.usuario.id,
     validado_por_nome: G.usuario.nome,
   }).eq('id', id);
+
+  error = tentativaCompleta.error || null;
+
+  if(error && /validado_por|validado_por_nome/i.test(String(error.message || ''))) {
+    const tentativaCompat = await sb.from('exp_contatos').update({
+      validado_em: now,
+    }).eq('id', id);
+    error = tentativaCompat.error || null;
+  }
+
   if(error) { showIssueBar('Falha ao validar contato: ' + error.message); return; }
+
   const c = G.contatos.find(x=>x.id===id);
   if(c) {
     c.validado_em = now;
