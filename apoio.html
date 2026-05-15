@@ -845,7 +845,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
       <div class="sb-theme-item" data-tema="apoio" onclick="toggleSbGroup('apoio')">
         <span class="sb-icon">◌</span>
-        <span>Apoio</span>
+        <span>Conhecimento</span>
         <span class="sb-chevron">▶</span>
       </div>
       <div class="sb-submenu" id="sb-sub-apoio">
@@ -975,6 +975,50 @@ CREATE TABLE IF NOT EXISTS cadastros_plataformas (
 );
 ALTER TABLE cadastros_plataformas ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "auth_all" ON cadastros_plataformas FOR ALL USING (auth.role()='authenticated');`;
+
+const CADASTROS_SENHAS_SETUP_SQL = `create table if not exists public.cadastros_plataformas (
+  id uuid default gen_random_uuid() primary key,
+  numero integer not null default 1,
+  nome text not null,
+  login text,
+  senha text,
+  uso text,
+  clientes text,
+  created_at timestamptz default now()
+);
+
+alter table public.cadastros_plataformas enable row level security;
+
+drop policy if exists cadastros_plataformas_select on public.cadastros_plataformas;
+drop policy if exists cadastros_plataformas_insert on public.cadastros_plataformas;
+drop policy if exists cadastros_plataformas_update on public.cadastros_plataformas;
+drop policy if exists cadastros_plataformas_delete on public.cadastros_plataformas;
+drop policy if exists auth_all on public.cadastros_plataformas;
+
+create policy cadastros_plataformas_select
+on public.cadastros_plataformas
+for select
+to authenticated
+using (private.can_read_apoio_secret());
+
+create policy cadastros_plataformas_insert
+on public.cadastros_plataformas
+for insert
+to authenticated
+with check (private.can_edit_apoio());
+
+create policy cadastros_plataformas_update
+on public.cadastros_plataformas
+for update
+to authenticated
+using (private.can_edit_apoio())
+with check (private.can_edit_apoio());
+
+create policy cadastros_plataformas_delete
+on public.cadastros_plataformas
+for delete
+to authenticated
+using (private.can_edit_apoio());`;
 
 // ── SEED DATA — PAISAGISMO ─────────────────────────────────
 // 8 tipologias × 7 etapas. Residencial/PF tem entregáveis e checklists completos.
@@ -1557,6 +1601,12 @@ function toggleSbGroup(tema) {
   const item = document.querySelector('.sb-theme-item[data-tema="' + tema + '"]');
   if(!submenu) { setTema(tema); return; }
   const isOpen = submenu.classList.contains('open');
+  document.querySelectorAll('.sb-submenu').forEach(el => {
+    if(el.id !== 'sb-sub-' + tema) el.classList.remove('open');
+  });
+  document.querySelectorAll('.sb-theme-item').forEach(el => {
+    if(el.dataset.tema !== tema) el.classList.remove('open');
+  });
   if(isOpen) {
     submenu.classList.remove('open');
     if(item) item.classList.remove('open');
@@ -1569,6 +1619,12 @@ function toggleSbGroup(tema) {
 
 function setSubtema(tema, sub) {
   G.temaAtivo = tema;
+  document.querySelectorAll('.sb-submenu').forEach(el => {
+    el.classList.toggle('open', el.id === 'sb-sub-' + tema);
+  });
+  document.querySelectorAll('.sb-theme-item').forEach(el => {
+    if(el.dataset.tema) el.classList.toggle('open', el.dataset.tema === tema);
+  });
   const submenu = document.getElementById('sb-sub-' + tema);
   const item = document.querySelector('.sb-theme-item[data-tema="' + tema + '"]');
   if(submenu && !submenu.classList.contains('open')) {
@@ -1602,6 +1658,12 @@ function syncSidebarFull() {
 
 function setTema(tema) {
   G.temaAtivo = tema;
+  document.querySelectorAll('.sb-submenu').forEach(el => {
+    el.classList.remove('open');
+  });
+  document.querySelectorAll('.sb-theme-item').forEach(el => {
+    el.classList.remove('open');
+  });
   syncSidebarFull();
   renderTema();
 }
@@ -3246,15 +3308,14 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
 
   function syncSidebar() {
     syncSidebarFull();
-    // Also open the active group's submenu
-    ['organizacao','projetos','apoio'].forEach(tema => {
-      const submenu = document.getElementById('sb-sub-' + tema);
-      const item = document.querySelector('.sb-theme-item[data-tema="' + tema + '"]');
-      if(submenu && G.temaAtivo === tema) {
-        submenu.classList.add('open');
-        if(item) item.classList.add('open');
-      }
+    document.querySelectorAll('.sb-submenu').forEach(el => {
+      el.classList.remove('open');
     });
+    document.querySelectorAll('.sb-theme-item').forEach(el => {
+      el.classList.toggle('open', el.dataset.tema === G.temaAtivo && !!document.getElementById('sb-sub-' + el.dataset.tema));
+    });
+    const submenu = document.getElementById('sb-sub-' + G.temaAtivo);
+    if(submenu) submenu.classList.add('open');
   }
 
   function jsStr(value) {
@@ -3797,7 +3858,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
 
   renderConhecimento = function(el) {
     el.innerHTML = `
-      ${renderContentHeader('Apoio', 'Referências técnicas, banco vegetal e curadoria viva da equipe')}
+      ${renderContentHeader('Conhecimento', 'Referências técnicas, banco vegetal e curadoria viva da equipe')}
       <div class="knowledge-subtabs">
         ${APOIO_SUBTEMAS.map(sub => `
           <div class="knowledge-subtab${G.subtemaConhecimento === sub.key ? ' active' : ''}" data-sub="${sub.key}" onclick="setSubtemaConhecimento('${sub.key}')">
@@ -3810,6 +3871,33 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   /*
   Bloco antigo de seed removido por seguranca.
   */
+  function renderCadastrosSenhasSetupNotice(root) {
+    const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    root.innerHTML = `
+      <section class="secao-shell">
+        <div class="secao-shell-header">
+          <div>
+            <div class="secao-shell-title">Cadastros e Senhas ainda não configurado</div>
+            <div class="secao-shell-sub">A tabela <code>cadastros_plataformas</code> ainda não existe neste ambiente.</div>
+          </div>
+          <button class="btn verde sm" onclick="copyCadastrosSenhasSetupSQL()">Copiar SQL</button>
+        </div>
+        <div class="knowledge-callout">
+          <div class="knowledge-callout-title">Como ativar</div>
+          <div class="knowledge-callout-text">Rode o SQL abaixo no Supabase SQL Editor e depois recarregue esta aba.</div>
+        </div>
+        <pre style="white-space:pre-wrap;background:#faf9f6;border:1px solid var(--cinza);border-radius:8px;padding:14px;font-size:10px;line-height:1.6;color:#555;overflow:auto">${esc(CADASTROS_SENHAS_SETUP_SQL)}</pre>
+      </section>`;
+  }
+
+  window.copyCadastrosSenhasSetupSQL = function() {
+    navigator.clipboard.writeText(CADASTROS_SENHAS_SETUP_SQL).then(() => {
+      alert('SQL de configuração copiado.');
+    }).catch(() => {
+      alert('Não foi possível copiar o SQL automaticamente.');
+    });
+  };
+
   async function iniciarCadastrosSenhas() {
     const root = document.getElementById('cadastros-senhas-root');
     if(!root) return;
@@ -3823,6 +3911,11 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       .select('*').order('numero');
 
     if(error) {
+      const msg = String(error.message || '');
+      if(error.code === 'PGRST205' || msg.includes('schema cache') || msg.includes('Could not find the table')) {
+        renderCadastrosSenhasSetupNotice(root);
+        return;
+      }
       root.innerHTML = `<div class="knowledge-empty">Erro ao carregar plataformas: ${String(error.message || 'falha desconhecida')}.</div>`;
       return;
     }
@@ -4693,7 +4786,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         if(merged.subgrupo === 'vegetacao') action = `abrirSubtemaConhecimento('vegetacao')`;
         else if(merged.subgrupo && merged.subgrupo.startsWith('normas-')) action = `abrirSubtemaConhecimento('normas-tecnicas','${merged.subgrupo.replace('normas-', '')}')`;
         else action = `abrirSubtemaConhecimento('${merged.subgrupo}')`;
-        path = 'Apoio';
+        path = 'Conhecimento';
       }
       resultados.push({ path, titulo: merged.titulo, snippet: snip(merged.corpo, q), action });
     });
@@ -4704,7 +4797,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       const source = normalizeText([item.nome_popular, item.nome_cientifico, item.tipo_vegetacao, item.familia, item.bioma, item.insolacao].join(' '));
       if(!source.includes(q)) return;
       resultados.push({
-        path: 'Apoio · Vegetação',
+        path: 'Conhecimento · Vegetação',
         titulo: item.nome_popular || 'Espécie',
         snippet: [item.nome_cientifico, item.insolacao, item.bioma].filter(Boolean).join(' · '),
         action: `abrirBuscaVegetacao(${jsStr(item.nome_popular || item.nome_cientifico || '')})`
