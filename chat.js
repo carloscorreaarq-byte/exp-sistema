@@ -108,30 +108,32 @@
     '.chat-msg-name{font-weight:600;font-size:10px;color:var(--preto,#111110)}',
     '.chat-msg.own .chat-msg-name{color:var(--verde,#1D6A4A)}',
     '.chat-msg-time{font-family:"DM Mono",monospace;font-size:8px;color:var(--cinza,#D0CFC9)}',
-    /* Bolhas: recv = off-white esq; sent = cinza2 dir — todas com mesma margem lateral */
+    /* Bolhas: recv = off-white esq; sent = cinza2 dir */
     '.chat-msg-text{font-size:11px;line-height:1.45;word-break:break-word;padding:4px 8px;border-radius:10px;max-width:80%}',
-    '.chat-msg-text.recv{background:var(--off,#F7F6F3);color:var(--preto,#111110);border-radius:2px 10px 10px 10px;align-self:flex-start;margin-left:22px}',
-    '.chat-msg-text.sent{background:var(--cinza2,#ECEAE4);color:var(--preto,#111110);border-radius:10px 2px 10px 10px;align-self:flex-end;margin-right:22px}',
-    /* Agrupadas: mesma margem da primeira — sem desalinhamento */
-    '.chat-msg-text.grouped.recv{margin-left:22px}',
-    '.chat-msg-text.grouped.sent{margin-right:22px}',
-    '.chat-msg-reactions.recv{margin-left:22px}',
-    '.chat-msg-reactions.sent{margin-right:22px}',
+    '.chat-msg-text.recv{background:var(--off,#F7F6F3);color:var(--preto,#111110);border-radius:2px 10px 10px 10px}',
+    '.chat-msg-text.sent{background:var(--cinza2,#ECEAE4);color:var(--preto,#111110);border-radius:10px 2px 10px 10px}',
     '.chat-link{color:var(--verde,#1D6A4A);text-decoration:underline;word-break:break-all}',
     '.chat-link:hover{color:var(--verde-l,#2D9E6B)}',
-    /* ── Reactions ── */
-    '.chat-msg-reactions{display:flex;gap:4px;margin-top:2px;opacity:0;transition:opacity .12s}',
-    '.chat-msg.own .chat-msg-reactions{justify-content:flex-end}',
-    '.chat-msg:hover .chat-msg-reactions,.chat-msg-reactions.has-reactions{opacity:1}',
+    /* ── Bubble row: bolha + botões de reação lado a lado ── */
+    '.chat-msg-bubble-row{display:flex;align-items:flex-end;gap:4px;margin-left:22px}',
+    '.chat-msg.own .chat-msg-bubble-row{flex-direction:row-reverse;margin-left:0;margin-right:22px}',
+    '.chat-msg-bubble-row.has-rxn{margin-bottom:10px}',
+    '.chat-msg-bubble-wrap{position:relative}',
+    /* ── Botões de reação ao lado (aparecem no hover) ── */
+    '.chat-msg-react-btns{display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0}',
+    '.chat-msg:hover .chat-msg-react-btns{opacity:1}',
+    /* ── Badge de reação na quina da bolha ── */
+    '.chat-msg-rxn-badge{position:absolute;bottom:-8px;right:-6px;background:#fff;border-radius:10px;padding:1px 4px;font-size:10px;box-shadow:0 1px 5px rgba(0,0,0,.15);border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;gap:1px;line-height:1.4;white-space:nowrap}',
+    '.chat-msg.own .chat-msg-rxn-badge{right:auto;left:-6px}',
+    '.chat-msg-rxn-count{font-size:8px;font-family:"DM Mono",monospace;color:var(--cinza,#D0CFC9);margin-left:1px}',
     /* ── Status dot inline (presence) ── */
     '.chat-presence-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}',
     '.chat-presence-dot.online{background:#2D9E6B}.chat-presence-dot.foco{background:#1D4FA0}',
     '.chat-presence-dot.ocupado{background:#B84C3A}.chat-presence-dot.ausente{background:#C4831A}',
     '.chat-presence-dot.offline{background:var(--cinza,#D0CFC9)}',
-    '.chat-rbtn{background:var(--off,#F7F6F3);border:1px solid var(--cinza2,#ECEAE4);border-radius:10px;padding:1px 6px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .1s,transform .08s;font-family:"Raleway",sans-serif;line-height:1.4}',
-    '.chat-rbtn:hover{background:var(--verde-bg,#EAF5EE);border-color:var(--verde-l,#2D9E6B);transform:scale(1.05)}',
-    '.chat-rbtn.active{background:var(--verde-bg,#EAF5EE);border-color:var(--verde,#1D6A4A)}',
-    '.chat-rbtn-count{font-size:9px;font-family:"DM Mono",monospace;color:var(--verde,#1D6A4A)}',
+    '.chat-rbtn{width:21px;height:21px;border-radius:50%;background:#fff;border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:transform .1s,background .1s;padding:0;line-height:1;flex-shrink:0}',
+    '.chat-rbtn:hover{transform:scale(1.15)}',
+    '.chat-rbtn.active{border-color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE)}',
     /* ── Input ── */
     '.chat-input-area{padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0}',
     '.chat-input{flex:1;border:1px solid var(--cinza2,#ECEAE4);border-radius:9px;padding:7px 11px;font-family:"Raleway",sans-serif;font-size:12px;resize:none;outline:none;max-height:80px;min-height:33px;color:var(--preto,#111110);background:var(--off,#F7F6F3);line-height:1.45;transition:border-color .15s,background .15s;overflow-y:auto}',
@@ -905,14 +907,29 @@
       }
 
       var side = isOwn ? 'sent' : 'recv';
-      html += '<div class="chat-msg-text ' + side + (grouped ? ' grouped' : '') + '">' +
-        linkify(escHtml(msg.content).replace(/\n/g, '<br>')) +
-        '</div>';
 
-      html += '<div class="chat-msg-reactions ' + side + (grouped ? ' grouped' : '') + (hasRxn ? ' has-reactions' : '') + '">' +
-        '<button class="chat-rbtn' + (liked ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'like\')" data-count="' + likeN + '">👍' + (likeN > 0 ? '<span class="chat-rbtn-count">' + likeN + '</span>' : '') + '</button>' +
-        '<button class="chat-rbtn' + (loved ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'love\')" data-count="' + loveN + '">❤️' + (loveN > 0 ? '<span class="chat-rbtn-count">' + loveN + '</span>' : '') + '</button>' +
-        '</div>';
+      /* Badge na quina da bolha (quando há reações) */
+      var badgeHtml = '';
+      if (hasRxn) {
+        badgeHtml = '<div class="chat-msg-rxn-badge">';
+        if (likeN > 0) badgeHtml += '👍' + (likeN > 1 ? '<span class="chat-msg-rxn-count">' + likeN + '</span>' : '');
+        if (loveN > 0) badgeHtml += '❤️' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '');
+        badgeHtml += '</div>';
+      }
+
+      /* Bolha + botões de reação lado a lado */
+      html += '<div class="chat-msg-bubble-row' + (hasRxn ? ' has-rxn' : '') + '">' +
+        '<div class="chat-msg-bubble-wrap">' +
+          '<div class="chat-msg-text ' + side + '">' +
+            linkify(escHtml(msg.content).replace(/\n/g, '<br>')) +
+          '</div>' +
+          badgeHtml +
+        '</div>' +
+        '<div class="chat-msg-react-btns">' +
+          '<button class="chat-rbtn' + (liked ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'like\')">👍</button>' +
+          '<button class="chat-rbtn' + (loved ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'love\')">❤️</button>' +
+        '</div>' +
+      '</div>';
 
       html += '</div>';
       prevSender = msg.sender_id;
