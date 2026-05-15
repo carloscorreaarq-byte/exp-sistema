@@ -116,6 +116,14 @@ body::before{
 .ct-search-wrap input::placeholder{color:#bbb}
 .ct-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:#ccc;pointer-events:none;line-height:1}
 .ct-search-hint{font-size:10px;color:#bbb;font-family:var(--fm);margin-bottom:18px}
+.ct-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.ct-filter{display:flex;flex-direction:column;gap:5px;min-width:180px}
+.ct-filter label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888}
+.ct-filter select{
+  padding:8px 10px;border:1px solid var(--cinza);border-radius:6px;
+  font-family:var(--f);font-size:11px;color:var(--preto);background:#fff;outline:none;
+}
+.ct-filter select:focus{border-color:var(--preto)}
 
 /* SECTION HEADERS */
 .results-hdr{
@@ -225,10 +233,33 @@ body::before{
 .modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--preto)}
 .modal-field textarea{resize:vertical;min-height:70px;line-height:1.5}
 .modal-ftr{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--cinza);background:#fafaf8;flex-shrink:0}
+.tag-suggestions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag-suggestion{
+  padding:4px 9px;border:1px solid #b8d9c8;background:var(--verde-bg);color:var(--verde);
+  border-radius:999px;font-size:10px;font-weight:700;cursor:pointer;transition:all .12s;
+}
+.tag-suggestion:hover{background:#d0eedd;border-color:var(--verde)}
 
 /* DUPLICATA AVISO */
 .dup-warn{background:var(--am-bg);border:1px solid #e8c07a;border-left:3px solid var(--am);border-radius:4px;padding:7px 10px;font-size:10px;color:#7a5810;margin-top:5px;line-height:1.5}
 .dup-warn strong{font-weight:700}
+.issue-bar{
+  position:fixed;left:18px;right:18px;bottom:18px;z-index:900;
+  background:#111110;color:#fff;border-radius:8px;border:1px solid #2d2d2a;
+  padding:12px 16px;display:none;align-items:center;gap:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.28)
+}
+.issue-bar.open{display:flex}
+.issue-bar-text{flex:1;font-size:11px;line-height:1.5}
+.issue-bar-close{
+  background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;
+  padding:0 2px;font-family:var(--f)
+}
+@media (max-width:700px){
+  .ct-filters{flex-direction:column}
+  .ct-filter{min-width:0}
+  .issue-bar{left:10px;right:10px;bottom:10px}
+}
 </style>
 </head>
 <body>
@@ -298,6 +329,20 @@ body::before{
   </div>
   <div class="ct-search-hint">Separe termos com vírgula para filtrar por múltiplos critérios — ex: &ldquo;Tidelli, SP&rdquo;</div>
 
+  <div class="ct-filters">
+    <div class="ct-filter">
+      <label>Regiao do pais</label>
+      <select id="ct-regiao" onchange="atualizarBuscaFiltros()">
+        <option value="">Todas as regioes</option>
+        <option value="norte">Norte</option>
+        <option value="nordeste">Nordeste</option>
+        <option value="centro-oeste">Centro-Oeste</option>
+        <option value="sudeste">Sudeste</option>
+        <option value="sul">Sul</option>
+      </select>
+    </div>
+  </div>
+
   <!-- RESULTADOS -->
   <div id="ct-results"></div>
 
@@ -322,7 +367,7 @@ body::before{
     </div>
     <div class="modal-body">
       <div id="modal-notice" class="modal-notice" style="display:none">
-        ✎ Suas alterações serão encaminhadas para aprovação de um sócio antes de serem aplicadas.
+        Edições neste módulo são aplicadas diretamente e ficam disponíveis para toda a equipe.
       </div>
       <div class="modal-grid">
         <div class="modal-field">
@@ -336,7 +381,8 @@ body::before{
         </div>
         <div class="modal-field full">
           <label>Tipo de produto / serviço</label>
-          <input type="text" id="f-tipo-produto" placeholder="mobiliário, luminárias, tapetes  (separar com vírgula cria tags individuais de busca)">
+          <input type="text" id="f-tipo-produto" placeholder="mobiliário, luminárias, tapetes  (separar com vírgula cria tags individuais de busca)" oninput="renderTagSuggestions(this.value)" autocomplete="off">
+          <div id="tag-suggestions" class="tag-suggestions" style="display:none"></div>
         </div>
         <div class="modal-field">
           <label>Cidade</label>
@@ -392,6 +438,11 @@ body::before{
   </div>
 </div>
 
+<div class="issue-bar" id="issue-bar" role="status" aria-live="polite">
+  <div class="issue-bar-text" id="issue-bar-text"></div>
+  <button class="issue-bar-close" onclick="hideIssueBar()" aria-label="Fechar aviso">×</button>
+</div>
+
 <script>
 /* ─── SUPABASE SETUP ─────────────────────────────────────────────────────────
    Tabelas necessárias — rodar no Supabase SQL Editor:
@@ -409,6 +460,8 @@ body::before{
      tipo         text,
      observacao   text,
      validado_em  timestamptz,
+     validado_por uuid,
+     validado_por_nome text,
      desativado   boolean DEFAULT false,
      desativado_em timestamptz,
      criado_em    timestamptz DEFAULT now(),
@@ -446,6 +499,17 @@ const CAMPO_LABELS = {
   email:'E-mail', site:'Site', tipo:'Tipo', observacao:'Observação',
 };
 const CAMPOS = Object.keys(CAMPO_LABELS);
+const REGIOES = {
+  norte: ['AC','AM','AP','PA','RO','RR','TO'],
+  nordeste: ['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+  'centro-oeste': ['DF','GO','MS','MT'],
+  sudeste: ['ES','MG','RJ','SP'],
+  sul: ['PR','RS','SC'],
+};
+const UF_TO_REGIAO = Object.entries(REGIOES).reduce((acc, [regiao, ufs]) => {
+  ufs.forEach(uf => { acc[uf] = regiao; });
+  return acc;
+}, {});
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let G = {
@@ -454,6 +518,8 @@ let G = {
   pendentes:  [],
   desativados:[],
   busca:      '',
+  regiao:     '',
+  issueTimer: null,
 };
 const isSocio = () => G.usuario?.role === 'socio';
 
@@ -464,6 +530,16 @@ function esc(s) {
 function fmtData(iso) {
   if(!iso) return '';
   return new Date(iso).toLocaleDateString('pt-BR');
+}
+function fmtMesAno(iso) {
+  if(!iso) return '';
+  const dt = new Date(iso);
+  const mes = String(dt.getMonth() + 1).padStart(2, '0');
+  const ano = String(dt.getFullYear()).slice(-2);
+  return `${mes}.${ano}`;
+}
+function nomeCurto(nome) {
+  return String(nome || '').trim().split(' ')[0] || 'Equipe';
 }
 function isAtivo(c) {
   if(!c.validado_em) return false;
@@ -476,6 +552,21 @@ function getTags(c) {
 function singleQuote(s) {
   return "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
 }
+function showIssueBar(message) {
+  const bar = document.getElementById('issue-bar');
+  const text = document.getElementById('issue-bar-text');
+  if(!bar || !text) return;
+  text.textContent = message;
+  bar.classList.add('open');
+  clearTimeout(G.issueTimer);
+  G.issueTimer = setTimeout(() => hideIssueBar(), 9000);
+}
+function hideIssueBar() {
+  const bar = document.getElementById('issue-bar');
+  if(bar) bar.classList.remove('open');
+  clearTimeout(G.issueTimer);
+  G.issueTimer = null;
+}
 
 // ─── DUPLICATE CHECK ─────────────────────────────────────────────────────────
 function _norm(s) {
@@ -487,12 +578,11 @@ function _words(s) {
 function checkDuplicateNome(val) {
   const el = document.getElementById('dup-warn');
   if(!el) return;
-  // Only check on new contacts
-  if(_edicaoId) { el.style.display='none'; return; }
   const norm = _norm(val);
   if(norm.length < 3) { el.style.display='none'; return; }
   const inputWords = _words(val);
-  const matches = (G.contatos||[]).filter(c => {
+  const source = [...(G.contatos || []), ...(G.desativados || [])].filter(c => !_edicaoId || c.id !== _edicaoId);
+  const matches = source.filter(c => {
     const cn = _norm(c.nome);
     if(cn === norm) return true;                                      // exact
     if(cn.includes(norm) || norm.includes(cn)) return true;          // substring
@@ -515,29 +605,94 @@ function buscarDebounce(v) {
 }
 
 function parseTermos(query) {
-  return query.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+  return query.split(',').map(t=>_norm(t)).filter(Boolean);
 }
 
 function tokensContato(c) {
   return [c.nome, c.empresa, c.cidade, c.estado, c.telefone, c.email, c.site, c.tipo, c.observacao, ...getTags(c)]
-    .filter(Boolean).map(t=>t.toLowerCase());
+    .filter(Boolean).map(t=>_norm(t));
 }
 
 function matchTerm(c, term) {
   return tokensContato(c).some(tok => tok.includes(term));
 }
 
+function contatoNaRegiao(c) {
+  if(!G.regiao) return true;
+  const uf = String(c.estado || '').toUpperCase();
+  return UF_TO_REGIAO[uf] === G.regiao;
+}
+
+function filtrarContatosAtivos() {
+  return (G.contatos || []).filter(contatoNaRegiao);
+}
+
+function atualizarBuscaFiltros() {
+  G.regiao = document.getElementById('ct-regiao')?.value || '';
+  buscar(G.busca);
+}
+
+function getTagCatalog() {
+  const catalog = new Map();
+  [...(G.contatos || []), ...(G.desativados || [])].forEach(c => {
+    getTags(c).forEach(tag => {
+      const clean = tag.trim();
+      if(!clean) return;
+      const key = _norm(clean);
+      if(!key || catalog.has(key)) return;
+      catalog.set(key, clean);
+    });
+  });
+  return [...catalog.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function renderTagSuggestions(value) {
+  const wrap = document.getElementById('tag-suggestions');
+  if(!wrap) return;
+  const raw = String(value || '');
+  const parts = raw.split(',');
+  const current = parts[parts.length - 1].trim();
+  const usados = new Set(parts.slice(0, -1).map(item => _norm(item)).filter(Boolean));
+  const catalog = getTagCatalog().filter(tag => {
+    const key = _norm(tag);
+    if(usados.has(key)) return false;
+    if(!current) return true;
+    return key.includes(_norm(current));
+  }).slice(0, 8);
+
+  if(catalog.length === 0) {
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.innerHTML = catalog.map(tag => `<button type="button" class="tag-suggestion" onclick="applyTagSuggestion(${singleQuote(tag)})">${esc(tag)}</button>`).join('');
+  wrap.style.display = '';
+}
+
+function applyTagSuggestion(tag) {
+  const input = document.getElementById('f-tipo-produto');
+  if(!input) return;
+  const parts = String(input.value || '').split(',');
+  parts[parts.length - 1] = ' ' + tag;
+  const value = parts.join(',').replace(/^ /, '').replace(/\s+,/g, ',').trim();
+  input.value = value.endsWith(',') ? value : value + ', ';
+  renderTagSuggestions(input.value);
+  input.focus();
+}
+
 function buscar(query) {
   const termos = parseTermos(query);
   const el = document.getElementById('ct-results');
+  const base = filtrarContatosAtivos();
 
   if(termos.length === 0) {
-    renderResultados(G.contatos, [], [], el);
+    renderResultados(base, [], [], el);
     return;
   }
-  const primarios   = G.contatos.filter(c => termos.every(t => matchTerm(c, t)));
+  const primarios   = base.filter(c => termos.every(t => matchTerm(c, t)));
   const primIds     = new Set(primarios.map(c=>c.id));
-  const secundarios = G.contatos.filter(c => !primIds.has(c.id) && termos.some(t => matchTerm(c, t))).slice(0, 10);
+  const secundarios = base.filter(c => !primIds.has(c.id) && termos.some(t => matchTerm(c, t))).slice(0, 10);
   renderResultados(primarios, secundarios, termos, el);
 }
 
@@ -581,9 +736,14 @@ function renderCard(c, secundario, termos) {
     ? `<span class="tipo-badge" style="background:${ti.bg};color:${ti.color}">${esc(ti.label)}</span>`
     : '';
 
-  const statusBadge = ativo
-    ? `<span class="valid-badge">✓ validado</span>`
-    : `<span class="sem-validacao">○ não validado</span>`;
+  let statusBadge = `<span class="sem-validacao">○ não validado</span>`;
+  if(c.validado_em) {
+    const quem = nomeCurto(c.validado_por_nome);
+    const quando = fmtMesAno(c.validado_em);
+    statusBadge = ativo
+      ? `<span class="valid-badge">✓ validado por ${esc(quem)} em ${esc(quando)}</span>`
+      : `<span class="sem-validacao">última validação por ${esc(quem)} em ${esc(quando)}</span>`;
+  }
 
   const btnValidar  = !ativo ? `<button class="btn-validar" onclick="validarContato(${id})">✓ Validar</button>` : '';
   const btnEditar   = `<button class="btn-icon" title="Editar contato" onclick="abrirModal(${id})">✎</button>`;
@@ -609,7 +769,7 @@ function renderCard(c, secundario, termos) {
   // Tags
   const tagsHtml = tags.length > 0
     ? `<div class="ct-tags">${tags.map(t => {
-        const isMatch = termos.some(term => t.toLowerCase().includes(term));
+        const isMatch = termos.some(term => _norm(t).includes(term));
         return `<span class="ct-tag${isMatch?' match':''}">${esc(t)}</span>`;
       }).join('')}</div>`
     : '';
@@ -743,15 +903,15 @@ function abrirModal(id) {
   document.getElementById('f-observacao').value  = c.observacao   || '';
 
   const notice = document.getElementById('modal-notice');
-  notice.style.display = (!isNovo && !isSocio()) ? 'block' : 'none';
+  notice.style.display = 'block';
 
   const saveBtn = document.getElementById('modal-save-btn');
   if(isNovo)       saveBtn.textContent = 'Salvar contato';
-  else if(isSocio()) saveBtn.textContent = 'Salvar alterações';
-  else             saveBtn.textContent = 'Enviar para aprovação';
+  else             saveBtn.textContent = 'Salvar alterações';
 
   const dw = document.getElementById('dup-warn');
   if(dw) dw.style.display = 'none';
+  renderTagSuggestions(document.getElementById('f-tipo-produto').value);
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(() => document.getElementById('f-nome').focus(), 80);
 }
@@ -768,7 +928,7 @@ function fecharModalOverlay(e) {
 async function salvarContato() {
   const nome = document.getElementById('f-nome').value.trim();
   const tipo = document.getElementById('f-tipo').value;
-  if(!nome) { alert('O nome é obrigatório.'); document.getElementById('f-nome').focus(); return; }
+  if(!nome) { showIssueBar('Falha ao salvar contato: o nome é obrigatório.'); document.getElementById('f-nome').focus(); return; }
 
   const dados = {
     nome,
@@ -784,51 +944,45 @@ async function salvarContato() {
   };
 
   const btn = document.getElementById('modal-save-btn');
+  const originalLabel = btn.textContent;
   btn.disabled = true; btn.textContent = 'Salvando…';
 
   try {
     if(!_edicaoId) {
-      // Novo contato — qualquer usuário pode criar diretamente
       const { error } = await sb.from('exp_contatos').insert({
         ...dados, criado_por: G.usuario.id, criado_em: new Date().toISOString(),
       });
       if(error) throw error;
-    } else if(isSocio()) {
-      // Edição direta — sócios aplicam imediatamente
+    } else {
       const { error } = await sb.from('exp_contatos').update(dados).eq('id', _edicaoId);
       if(error) throw error;
-    } else {
-      // Edição pendente — não-sócios aguardam aprovação
-      const { error } = await sb.from('exp_contatos_pendentes').insert({
-        contato_id:       _edicaoId,
-        dados_novos:      dados,
-        editado_por:      G.usuario.id,
-        editado_por_nome: G.usuario.nome,
-        editado_em:       new Date().toISOString(),
-        status:           'pendente',
-      });
-      if(error) throw error;
-      fecharModal();
-      alert('Suas alterações foram enviadas para aprovação.');
-      return;
     }
     fecharModal();
     await carregarContatos();
     buscar(G.busca);
   } catch(err) {
-    alert('Erro ao salvar: ' + (err.message || err));
+    showIssueBar('Falha ao salvar contato: ' + (err.message || err));
   } finally {
     btn.disabled = false;
+    btn.textContent = originalLabel;
   }
 }
 
 // ─── AÇÕES DB ────────────────────────────────────────────────────────────────
 async function validarContato(id) {
   const now = new Date().toISOString();
-  const { error } = await sb.from('exp_contatos').update({ validado_em: now }).eq('id', id);
-  if(error) { alert('Erro ao validar: ' + error.message); return; }
+  const { error } = await sb.from('exp_contatos').update({
+    validado_em: now,
+    validado_por: G.usuario.id,
+    validado_por_nome: G.usuario.nome,
+  }).eq('id', id);
+  if(error) { showIssueBar('Falha ao validar contato: ' + error.message); return; }
   const c = G.contatos.find(x=>x.id===id);
-  if(c) c.validado_em = now;
+  if(c) {
+    c.validado_em = now;
+    c.validado_por = G.usuario.id;
+    c.validado_por_nome = G.usuario.nome;
+  }
   buscar(G.busca);
 }
 
@@ -838,7 +992,7 @@ async function desativarContato(id) {
   const { error } = await sb.from('exp_contatos').update({
     desativado: true, desativado_em: new Date().toISOString(),
   }).eq('id', id);
-  if(error) { alert('Erro: ' + error.message); return; }
+  if(error) { showIssueBar('Falha ao desativar contato: ' + error.message); return; }
   await carregarContatos();
   buscar(G.busca);
 }
@@ -846,7 +1000,7 @@ async function desativarContato(id) {
 async function reativarContato(id) {
   if(!isSocio()) return;
   const { error } = await sb.from('exp_contatos').update({ desativado: false, desativado_em: null }).eq('id', id);
-  if(error) { alert('Erro: ' + error.message); return; }
+  if(error) { showIssueBar('Falha ao reativar contato: ' + error.message); return; }
   await carregarContatos();
   buscar(G.busca);
 }
@@ -855,7 +1009,7 @@ async function aprovarEdicao(pendenteId) {
   const p = G.pendentes.find(x=>x.id===pendenteId);
   if(!p) return;
   const { error: e1 } = await sb.from('exp_contatos').update(p.dados_novos).eq('id', p.contato_id);
-  if(e1) { alert('Erro ao aplicar edição: ' + e1.message); return; }
+  if(e1) { showIssueBar('Falha ao aplicar edição pendente: ' + e1.message); return; }
   await sb.from('exp_contatos_pendentes').update({ status:'aprovado' }).eq('id', pendenteId);
   await carregarContatos();
   buscar(G.busca);
@@ -869,28 +1023,39 @@ async function rejeitarEdicao(pendenteId) {
 
 // ─── CARREGAR DADOS ───────────────────────────────────────────────────────────
 async function carregarContatos() {
-  const { data: ativos } = await sb
+  const { data: ativos, error: ativosError } = await sb
     .from('exp_contatos').select('*').eq('desativado', false).order('nome');
+  if(ativosError) {
+    G.contatos = [];
+    showIssueBar('Falha ao carregar contatos ativos: ' + ativosError.message);
+    return;
+  }
   G.contatos = ativos || [];
+  G.pendentes = [];
 
   if(isSocio()) {
-    const { data: inativos } = await sb
+    const { data: inativos, error: inativosError } = await sb
       .from('exp_contatos').select('*').eq('desativado', true).order('nome');
-    G.desativados = inativos || [];
-
-    const { data: pends } = await sb
-      .from('exp_contatos_pendentes').select('*').eq('status','pendente').order('editado_em');
-    G.pendentes = pends || [];
+    if(inativosError) {
+      G.desativados = [];
+      showIssueBar('Falha ao carregar contatos desativados: ' + inativosError.message);
+    } else {
+      G.desativados = inativos || [];
+    }
 
     if(G.desativados.length > 0) {
       document.getElementById('desativados-wrap').style.display = 'block';
       document.getElementById('desativ-lbl').textContent = `Ver contatos desativados (${G.desativados.length})`;
+    } else {
+      document.getElementById('desativados-wrap').style.display = 'none';
     }
+  } else {
+    G.desativados = [];
+    document.getElementById('desativados-wrap').style.display = 'none';
   }
 
-  const n = G.contatos.length;
+  const n = filtrarContatosAtivos().length;
   document.getElementById('ct-count').textContent = `${n} contato${n!==1?'s ativos':' ativo'}`;
-  renderPendentes();
 }
 
 // ─── SINETA ──────────────────────────────────────────────────────────────────
@@ -974,8 +1139,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   sessionStorage.setItem('exp_usuario', JSON.stringify({ ...u, auth_id: session.user.id }));
   if (u.role === 'socio') {
     document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
-    const sw = document.getElementById('sineta-wrap');
-    if(sw) sw.style.display = 'flex';
   }
 
   const av = document.getElementById('user-av');
