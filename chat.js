@@ -98,33 +98,37 @@
     '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:"DM Mono",monospace;letter-spacing:.5px}',
     '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
     /* ── Message bubble ── */
-    '.chat-msg{display:flex;flex-direction:column;padding:1px 6px;border-radius:6px;transition:background .1s}',
+    '.chat-msg{display:flex;flex-direction:column;padding:0 6px;border-radius:6px;transition:background .1s}',
     '.chat-msg:hover{background:var(--off,#F7F6F3)}',
     /* Alinhamento: recebidas à esq, enviadas à dir */
     '.chat-msg.own{align-items:flex-end}',
-    '.chat-msg-meta{display:flex;align-items:center;gap:5px;margin-top:5px;margin-bottom:4px}',
+    '.chat-msg-meta{display:flex;align-items:center;gap:5px;margin-top:4px;margin-bottom:3px}',
     '.chat-msg.own .chat-msg-meta{flex-direction:row-reverse}',
     '.chat-av{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0;font-family:"DM Mono",monospace;letter-spacing:0}',
     '.chat-msg-name{font-weight:600;font-size:10px;color:var(--preto,#111110)}',
     '.chat-msg.own .chat-msg-name{color:var(--verde,#1D6A4A)}',
     '.chat-msg-time{font-family:"DM Mono",monospace;font-size:8px;color:var(--cinza,#D0CFC9)}',
     /* Bolhas: recv = off-white esq; sent = cinza2 dir */
-    '.chat-msg-text{font-size:11px;line-height:1.45;word-break:break-word;padding:4px 8px;border-radius:10px;max-width:100%}',
-    '.chat-msg-text.recv{background:var(--off,#F7F6F3);color:var(--preto,#111110);border-radius:2px 10px 10px 10px;align-self:flex-start}',
-    '.chat-msg-text.sent{background:var(--cinza2,#ECEAE4);color:var(--preto,#111110);border-radius:10px 2px 10px 10px;align-self:flex-end}',
+    '.chat-msg-text{font-size:11px;line-height:1.45;word-break:break-word;padding:4px 8px;border-radius:10px;max-width:218px;display:inline-block}',
+    '.chat-msg-text.recv{background:var(--off,#F7F6F3);color:var(--preto,#111110);border-radius:2px 10px 10px 10px}',
+    '.chat-msg-text.sent{background:var(--cinza2,#ECEAE4);color:var(--preto,#111110);border-radius:10px 2px 10px 10px}',
     '.chat-link{color:var(--verde,#1D6A4A);text-decoration:underline;word-break:break-all}',
     '.chat-link:hover{color:var(--verde-l,#2D9E6B)}',
     /* ── Bubble row: bolha + botões de reação lado a lado ── */
     '.chat-msg-bubble-row{display:flex;align-items:flex-end;gap:4px;margin-left:22px}',
     '.chat-msg.own .chat-msg-bubble-row{flex-direction:row-reverse;margin-left:0;margin-right:22px}',
     '.chat-msg-bubble-row.has-rxn{margin-bottom:10px}',
-    '.chat-msg-bubble-wrap{position:relative;flex:1;min-width:0}',
-    /* ── Botões de reação ao lado (aparecem no hover) ── */
-    '.chat-msg-react-btns{display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0}',
+    '.chat-msg-bubble-wrap{position:relative}',
+    /* ── Botões de reação: dois círculos LADO A LADO (aparecem no hover) ── */
+    '.chat-msg-react-btns{display:flex;flex-direction:row;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0;align-items:center}',
     '.chat-msg:hover .chat-msg-react-btns{opacity:1}',
+    '.chat-rbtn{width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:transform .1s,background .1s,border-color .1s;padding:0;flex-shrink:0;color:var(--cinza,#D0CFC9)}',
+    '.chat-rbtn:hover{transform:scale(1.15)}',
+    '.chat-rbtn.like.active{color:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE)}',
+    '.chat-rbtn.heart.active{color:#B84C3A;border-color:#B84C3A;background:#FDF0EE}',
     /* ── Badge de reação na quina da bolha ── */
-    '.chat-msg-rxn-badge{position:absolute;bottom:-8px;right:-6px;background:#fff;border-radius:10px;padding:1px 4px;font-size:10px;box-shadow:0 1px 5px rgba(0,0,0,.15);border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;gap:1px;line-height:1.4;white-space:nowrap}',
-    '.chat-msg.own .chat-msg-rxn-badge{right:auto;left:-6px}',
+    '.chat-msg-rxn-badge{position:absolute;bottom:-9px;right:-4px;background:#fff;border-radius:10px;padding:1px 5px;font-size:10px;box-shadow:0 1px 5px rgba(0,0,0,.15);border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;gap:2px;line-height:1.5;white-space:nowrap}',
+    '.chat-msg.own .chat-msg-rxn-badge{right:auto;left:-4px}',
     '.chat-msg-rxn-count{font-size:8px;font-family:"DM Mono",monospace;color:var(--cinza,#D0CFC9);margin-left:1px}',
     /* ── Status dot inline (presence) ── */
     '.chat-presence-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}',
@@ -359,6 +363,8 @@
   function icoPencil()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'; }
   function icoSound()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'; }
   function icoSoundOff(){ return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'; }
+  function icoLike()    { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>'; }
+  function icoHeart()   { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'; }
 
   /* ══════════════════════════════════════════════════════════════════
      STATUS
@@ -926,8 +932,8 @@
           badgeHtml +
         '</div>' +
         '<div class="chat-msg-react-btns">' +
-          '<button class="chat-rbtn' + (liked ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'like\')">👍</button>' +
-          '<button class="chat-rbtn' + (loved ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'love\')">❤️</button>' +
+          '<button class="chat-rbtn like' + (liked ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'like\')" title="Curtir">' + icoLike() + '</button>' +
+          '<button class="chat-rbtn heart' + (loved ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'love\')" title="Amei">' + icoHeart() + '</button>' +
         '</div>' +
       '</div>';
 
