@@ -2860,6 +2860,20 @@ async function confirmarAtivo() {
   const mod = document.querySelector('input[name="fin-modalidade"]:checked')?.value || 'etapas';
   const temStart = document.getElementById('fin-tem-start').checked;
 
+  // Mapear plano_contas de receita pelo núcleo do ativo
+  const pcReceita = G.planoContas.find(pc =>
+    pc.grupo === 'RECEITA_BRUTA' && pc.nucleo_crm === G_ativoEdit.nucleo
+  ) || G.planoContas.find(pc => pc.grupo === 'RECEITA_BRUTA');
+  const pcReceitaId = pcReceita?.id || null;
+
+  // Mapear plano_contas de custos para subcontratações e repasses
+  const pcSub = G.planoContas.find(pc =>
+    pc.grupo === 'CUSTO_DE_VENDA' && pc.subconta?.toLowerCase().includes('subcontrat')
+  );
+  const pcRep = G.planoContas.find(pc =>
+    pc.grupo === 'CUSTO_DE_VENDA' && pc.subconta?.toLowerCase().includes('repasse')
+  );
+
   // Validar soma (modalidade etapas)
   if (mod === 'etapas') {
     let soma = temStart ? parseFloat(document.getElementById('fin-start-pct')?.value || 0) : 0;
@@ -2924,6 +2938,7 @@ async function confirmarAtivo() {
           valor: (parcela.percentual / 100) * (G_ativoEdit.valor_total || 0),
           data_prevista_cobranca: parcela.data_prevista_cobranca || null,
           situacao: 'previsto', ordem: pi,
+          plano_contas_id: pcReceitaId,
         });
       }
     }
@@ -2940,6 +2955,7 @@ async function confirmarAtivo() {
         valor: parseFloat(document.getElementById('fin-start-valor').value) || 0,
         data_prevista_cobranca: document.getElementById('fin-start-data').value || null,
         situacao: 'previsto', ordem: 0,
+        plano_contas_id: pcReceitaId,
       });
     }
   }
@@ -2966,9 +2982,60 @@ async function confirmarAtivo() {
           valor: vMensal, percentual: null,
           data_prevista_cobranca: dtCob,
           situacao: 'previsto', ordem: ordem++,
+          plano_contas_id: pcReceitaId,
         });
         dt = new Date(ano, mes + 1, 1);
       }
+    }
+  }
+
+  // Criar fin_lancamentos para subcontratações e repasses (custos do projeto)
+  const hoje = new Date().toISOString().split('T')[0];
+  const [{ data: subs }, { data: repsAtivo }] = await Promise.all([
+    sb.from('fin_subcontratacoes').select('*').eq('ativo_id', G_ativoEdit.id),
+    sb.from('fin_repasses').select('*').eq('ativo_id', G_ativoEdit.id),
+  ]);
+
+  if (subs?.length && pcSub) {
+    for (const sub of subs) {
+      if (!sub.custo_cotado) continue;
+      const { data: exist } = await sb.from('fin_lancamentos').select('id')
+        .eq('subcontratacao_id', sub.id).limit(1);
+      if (exist?.length) continue;
+      await sb.from('fin_lancamentos').insert({
+        data_competencia: hoje,
+        observacao: `Subcontratação: ${sub.servico || sub.empresa || 'Serviço ext.'}`,
+        fornecedor_cliente: sub.empresa || null,
+        valor: sub.custo_cotado,
+        tipo: 'despesa',
+        situacao: 'previsto',
+        origem: 'crm',
+        ativo_id: G_ativoEdit.id,
+        subcontratacao_id: sub.id,
+        plano_contas_id: pcSub.id,
+        criado_por_id: G.usuario?.id || null,
+      });
+    }
+  }
+
+  if (repsAtivo?.length && pcRep) {
+    for (const rep of repsAtivo) {
+      if (!rep.valor) continue;
+      const { data: exist } = await sb.from('fin_lancamentos').select('id')
+        .eq('repasse_id', rep.id).limit(1);
+      if (exist?.length) continue;
+      await sb.from('fin_lancamentos').insert({
+        data_competencia: hoje,
+        observacao: `Repasse: ${rep.obs || 'Parceiro/Indicador'}`,
+        valor: rep.valor,
+        tipo: 'despesa',
+        situacao: 'previsto',
+        origem: 'crm',
+        ativo_id: G_ativoEdit.id,
+        repasse_id: rep.id,
+        plano_contas_id: pcRep.id,
+        criado_por_id: G.usuario?.id || null,
+      });
     }
   }
 
