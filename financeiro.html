@@ -1977,6 +1977,7 @@ const G = {
   parcelas: [],
   fechamentos: [],
   _mesesFechados: new Set(),
+  _gerandoPrevisoes: false,
 };
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -4862,8 +4863,11 @@ async function carregarPlanejamento() {
 }
 
 async function gerarLancamentosPrevistos() {
+  if (G._gerandoPrevisoes) return; // previne execução concorrente
+  G._gerandoPrevisoes = true;
+  try {
   const { data: recs } = await sb.from('fin_lancamentos_recorrentes').select('*').eq('ativo', true);
-  if (!recs || !recs.length) return;
+  if (!recs || !recs.length) { G._gerandoPrevisoes = false; return; }
 
   const hoje = new Date();
   const mesAtual = hoje.getMonth() + 1;
@@ -4924,6 +4928,9 @@ async function gerarLancamentosPrevistos() {
         rec.parcelas_geradas = pg;
       }
     }
+  }
+  } finally {
+    G._gerandoPrevisoes = false;
   }
 }
 
