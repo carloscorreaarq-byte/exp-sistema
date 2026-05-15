@@ -4182,6 +4182,19 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
 
   function renderCadastrosSenhasRoot(root, plats) {
     const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const segredoCache = new Map();
+
+    async function carregarSegredo(id) {
+      if(segredoCache.has(id)) return segredoCache.get(id);
+      const { data, error } = await sb.rpc('apoio_obter_acesso_plataforma', { _id: id });
+      if(error) throw error;
+      const segredo = {
+        login: data?.login || '',
+        senha: data?.senha || ''
+      };
+      segredoCache.set(id, segredo);
+      return segredo;
+    }
 
     const cardsHtml = plats.map(p => {
       const num = String(p.numero||'').padStart(2,'0');
@@ -4192,13 +4205,13 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
             <div class="cs-card-nome">${esc(p.nome)}</div>
             <div class="cs-field-row">
               <span class="cs-label">login</span>
-              <span class="cs-value cs-selectable">${esc(p.login||'—')}</span>
+              <span class="cs-value cs-selectable cs-login-val" data-empty="${!p.has_secret ? '1' : '0'}">${p.has_secret ? 'protegido' : '—'}</span>
             </div>
             <div class="cs-field-row">
               <span class="cs-label">senha</span>
-              <span class="cs-value cs-senha-val" data-senha="${esc(p.senha||'')}">••••••••</span>
-              <button class="cs-eye-btn" onclick="csTogleSenha(this)" title="Revelar senha">👁</button>
-              <button class="cs-copy-btn" onclick="csCopiar('${esc(p.senha||'')}',this)" title="Copiar senha">⎘</button>
+              <span class="cs-value cs-senha-val" data-empty="${!p.has_secret ? '1' : '0'}">${p.has_secret ? '••••••••' : '—'}</span>
+              <button class="cs-eye-btn" onclick="csTogleSenha('${esc(p.id)}', this)" title="Revelar senha"${p.has_secret ? '' : ' disabled'}>👁</button>
+              <button class="cs-copy-btn" onclick="csCopiar('${esc(p.id)}', this)" title="Copiar senha"${p.has_secret ? '' : ' disabled'}>⎘</button>
             </div>
             ${p.uso ? `<div class="cs-uso">${esc(p.uso)}</div>` : ''}
             ${p.clientes ? `<div class="cs-clientes">Clientes que usam esta plataforma: ${esc(p.clientes)}</div>` : ''}
@@ -4225,6 +4238,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         .cs-senha-val{font-family:var(--fm);font-size:11px;color:#444;letter-spacing:1px}
         .cs-eye-btn,.cs-copy-btn{border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px;color:#bbb;line-height:1;transition:color .12s}
         .cs-eye-btn:hover,.cs-copy-btn:hover{color:var(--preto)}
+        .cs-eye-btn[disabled],.cs-copy-btn[disabled]{opacity:.35;cursor:not-allowed}
         .cs-uso{font-size:11px;color:#666;margin-top:6px;line-height:1.5}
         .cs-clientes{font-size:11px;color:#888;margin-top:2px;line-height:1.5}
         .cs-actions{display:flex;gap:8px;margin-top:12px}
@@ -4246,7 +4260,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <div class="secao-shell-header">
           <div>
             <div class="secao-shell-title">🔑 Cadastros e Senhas</div>
-            <div class="secao-shell-sub">Acesso restrito — visível apenas para sócios</div>
+            <div class="secao-shell-sub">Acesso restrito — segredos protegidos no Vault e visíveis apenas para sócios</div>
           </div>
           <button class="btn verde sm" onclick="csAbrirFormNova()">+ Nova plataforma</button>
         </div>
@@ -4291,31 +4305,53 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <div id="cs-lista">${cardsHtml || '<div class="knowledge-empty">Nenhuma plataforma cadastrada.</div>'}</div>
       </section>`;
 
+    function setCredencialVisual(card, segredo, visivel) {
+      const loginEl = card?.querySelector('.cs-login-val');
+      const senhaEl = card?.querySelector('.cs-senha-val');
+      if(!loginEl || !senhaEl) return;
+      if(visivel) {
+        loginEl.textContent = segredo.login || '—';
+        senhaEl.textContent = segredo.senha || '—';
+      } else {
+        loginEl.textContent = segredo.login ? 'protegido' : '—';
+        senhaEl.textContent = segredo.senha ? '••••••••' : '—';
+      }
+    }
+
     // Funções do módulo (escopo global temporário)
-    window.csTogleSenha = function(btn) {
+    window.csTogleSenha = async function(id, btn) {
       if(!isSocio()) {
-        alert('Apenas sócios podem visualizar senhas.');
+        alert('Apenas sócios podem visualizar credenciais.');
         return;
       }
-      const row = btn.closest('.cs-field-row');
-      const el  = row?.querySelector('.cs-senha-val');
-      if(!el) return;
-      const visivel = el.dataset.visivel === '1';
-      el.textContent = visivel ? '••••••••' : el.dataset.senha;
-      el.dataset.visivel = visivel ? '0' : '1';
-      btn.textContent = visivel ? '👁' : '🙈';
+      const card = btn.closest('.cs-card');
+      if(!card) return;
+      const senhaEl = card.querySelector('.cs-senha-val');
+      const visivel = senhaEl?.dataset.visivel === '1';
+      try {
+        const segredo = await carregarSegredo(id);
+        setCredencialVisual(card, segredo, !visivel);
+        if(senhaEl) senhaEl.dataset.visivel = visivel ? '0' : '1';
+        btn.textContent = visivel ? '👁' : '🙈';
+      } catch(err) {
+        alert('Erro ao carregar credenciais: ' + (err.message || JSON.stringify(err)));
+      }
     };
 
-    window.csCopiar = function(valor, btn) {
+    window.csCopiar = async function(id, btn) {
       if(!isSocio()) {
         alert('Apenas sócios podem copiar senhas.');
         return;
       }
-      navigator.clipboard.writeText(valor).then(() => {
+      try {
+        const segredo = await carregarSegredo(id);
+        await navigator.clipboard.writeText(segredo.senha || '');
         const orig = btn.textContent;
         btn.textContent = '✓';
         setTimeout(() => { btn.textContent = orig; }, 1500);
-      });
+      } catch(err) {
+        alert('Erro ao copiar senha: ' + (err.message || JSON.stringify(err)));
+      }
     };
 
     window.csAbrirFormNova = function() {
@@ -4335,18 +4371,25 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       document.getElementById('cs-f-nome').focus();
     };
 
-    window.csEditar = function(id) {
+    window.csEditar = async function(id) {
       if(!isSocio()) {
         alert('Apenas sócios podem editar cadastros e senhas.');
         return;
       }
       const p = plats.find(x => x.id === id);
       if(!p) return;
+      let segredo = { login: '', senha: '' };
+      try {
+        segredo = await carregarSegredo(id);
+      } catch(err) {
+        alert('Erro ao carregar credenciais: ' + (err.message || JSON.stringify(err)));
+        return;
+      }
       document.getElementById('cs-edit-id').value = id;
       document.getElementById('cs-f-nome').value    = p.nome    || '';
       document.getElementById('cs-f-numero').value  = p.numero  || '';
-      document.getElementById('cs-f-login').value   = p.login   || '';
-      document.getElementById('cs-f-senha').value   = p.senha   || '';
+      document.getElementById('cs-f-login').value   = segredo.login || '';
+      document.getElementById('cs-f-senha').value   = segredo.senha || '';
       document.getElementById('cs-f-uso').value     = p.uso     || '';
       document.getElementById('cs-f-clientes').value= p.clientes|| '';
       document.getElementById('cs-form-titulo').textContent = 'Editar — ' + (p.nome||'');
@@ -4375,13 +4418,16 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       };
       if(!payload.nome) { alert('Informe o nome da plataforma.'); return; }
 
-      if(id) {
-        const { error } = await sb.from('cadastros_plataformas').update(payload).eq('id', id);
-        if(error) { alert('Erro ao salvar: ' + error.message); return; }
-      } else {
-        const { error } = await sb.from('cadastros_plataformas').insert(payload);
-        if(error) { alert('Erro ao salvar: ' + error.message); return; }
-      }
+      const { error } = await sb.rpc('apoio_salvar_plataforma_secreta', {
+        _id: id || null,
+        _numero: payload.numero,
+        _nome: payload.nome,
+        _login: payload.login,
+        _senha: payload.senha,
+        _uso: payload.uso || null,
+        _clientes: payload.clientes || null
+      });
+      if(error) { alert('Erro ao salvar: ' + error.message); return; }
       iniciarCadastrosSenhas();
     };
 
@@ -4391,7 +4437,8 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         return;
       }
       if(!confirm('Excluir a plataforma "' + nome + '"?')) return;
-      await sb.from('cadastros_plataformas').delete().eq('id', id);
+      const { error } = await sb.rpc('apoio_excluir_plataforma_secreta', { _id: id });
+      if(error) { alert('Erro ao excluir: ' + error.message); return; }
       iniciarCadastrosSenhas();
     };
   }
