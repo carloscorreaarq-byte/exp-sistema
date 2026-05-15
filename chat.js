@@ -141,8 +141,9 @@
   var currentView    = 'home';      // 'home' | 'channel' | 'members'
   var currentChannel = 'general';
   var currentLabel   = '# geral';
-  var teamMembers    = [];
-  var channelUnread  = {};          // { channel: count }
+  var teamMembers      = [];
+  var selectedMembers  = [];        // membros selecionados no seletor de grupo
+  var channelUnread    = {};        // { channel: count }
   var userStatus     = localStorage.getItem(STATUS_KEY) || 'online';
   var soundEnabled   = localStorage.getItem(SOUND_KEY) !== 'false';
 
@@ -284,6 +285,10 @@
             '<button class="chat-close" onclick="expChat.close()">✕</button>' +
           '</div>' +
           '<div class="chat-member-list" id="exp-chat-memberlist"><div class="chat-loading">' + ldots() + '</div></div>' +
+          '<div class="chat-group-bar" id="exp-chat-group-bar" style="display:none">' +
+            '<span class="chat-group-info" id="exp-chat-group-info"></span>' +
+            '<button class="chat-group-confirm" onclick="expChat.confirmGroup()">Abrir →</button>' +
+          '</div>' +
         '</div>' +
 
       '</div>' + /* fim .chat-panel */
@@ -291,10 +296,10 @@
       /* ── Status popover ── */
       '<div class="chat-status-pop" id="exp-chat-status-pop" style="display:none">' +
         '<div class="chat-status-pop-hdr">' + escHtml(fn) + '</div>' +
-        sopt('online',  '🟢', 'Online') +
-        sopt('foco',    '🔵', 'Foco') +
-        sopt('ocupado', '🔴', 'Ocupado') +
-        sopt('ausente', '🟡', 'Ausente') +
+        sopt('online',  'Online') +
+        sopt('foco',    'Foco') +
+        sopt('ocupado', 'Ocupado') +
+        sopt('ausente', 'Ausente') +
       '</div>' +
 
       /* ── Controls (person btn + status ind + toggle) ── */
@@ -315,9 +320,11 @@
   }
 
   /* ── Helpers de markup ────────────────────────────────────────── */
-  function sopt(val, emoji, label) {
+  var SOPT_COLORS = { online:'#2D9E6B', foco:'#1D4FA0', ocupado:'#B84C3A', ausente:'#C4831A' };
+  function sopt(val, label) {
     return '<button class="chat-sopt" data-status="' + val + '" onclick="expChat.setStatus(\'' + val + '\')">' +
-      '<span style="font-size:13px">' + emoji + '</span><span>' + label + '</span></button>';
+      '<span class="chat-sopt-dot" style="background:' + SOPT_COLORS[val] + '"></span>' +
+      '<span>' + label + '</span></button>';
   }
   function ldots() {
     return '<div class="chat-loading-dot"></div><div class="chat-loading-dot"></div><div class="chat-loading-dot"></div>';
@@ -342,12 +349,10 @@
     localStorage.setItem(STATUS_KEY, status);
 
     var color = STATUS_COLORS[status] || STATUS_COLORS.online;
-    var rgb   = hexRgb(color);
 
-    /* FAB: cor + shadow */
+    /* FAB: só cor chapada — sem shadow colorido */
     if ($toggle) {
-      $toggle.style.background  = color;
-      $toggle.style.boxShadow   = '0 4px 20px rgba(' + rgb + ',.38)';
+      $toggle.style.background = color;
     }
     /* Dot no indicador de status */
     var dot = document.getElementById('exp-chat-ind-dot');
@@ -457,9 +462,19 @@
         var genU = channelUnread['general'] || 0;
         html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
           '<div class="chat-conv-av-hash">#</div>' +
-          '<div class="chat-conv-info"><div class="chat-conv-name">geral</div></div>' +
+          '<div class="chat-conv-info"><div class="chat-conv-name">geral</div><div class="chat-conv-preview">Toda a equipe</div></div>' +
           (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
           '</div>';
+
+        /* Linha #sócios (apenas para role socio) */
+        if (user.role === 'socio') {
+          var socU = channelUnread['socios'] || 0;
+          html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sócios\')">' +
+            '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
+            '<div class="chat-conv-info"><div class="chat-conv-name">sócios</div><div class="chat-conv-preview">Canal privado</div></div>' +
+            (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
+            '</div>';
+        }
 
         /* Linhas de DMs */
         dmList.forEach(function (dm) {
@@ -510,7 +525,7 @@
     setTimeout(function () { if ($input) $input.focus(); }, 120);
   }
 
-  function goHome() { showView('home'); }
+  function goHome() { selectedMembers = []; showView('home'); }
 
   /* ══════════════════════════════════════════════════════════════════
      NOVO DM — seletor de membros
@@ -542,10 +557,10 @@
     var roleLabel = { socio: 'Sócio', coordenador: 'Coordenador', colaborador: 'Colaborador' };
     var html = '';
     teamMembers.forEach(function (m) {
-      var cor  = m.cor || '#1D6A4A';
-      var ch   = dmChannel(user.auth_id, m.auth_id);
-      var fn   = firstName(m.nome);
-      html += '<div class="chat-member-item" onclick="expChat.openChannel(\'' + ch + '\',\'' + escHtml(fn) + '\')">' +
+      var cor = m.cor || '#1D6A4A';
+      var sel = selectedMembers.findIndex(function (s) { return s.auth_id === m.auth_id; }) !== -1;
+      html += '<div class="chat-member-item" onclick="expChat.toggleMember(\'' + m.auth_id + '\')">' +
+        '<div class="chat-member-check' + (sel ? ' sel' : '') + '"></div>' +
         '<div class="chat-av" style="background:' + cor + ';width:28px;height:28px;font-size:10px;flex-shrink:0">' + escHtml(m.iniciais || m.nome.substring(0, 2).toUpperCase()) + '</div>' +
         '<div class="chat-conv-info">' +
           '<div class="chat-conv-name">' + escHtml(m.nome) + '</div>' +
@@ -554,6 +569,47 @@
         '</div>';
     });
     $list.innerHTML = html;
+
+    /* Barra de confirmação */
+    var $bar  = document.getElementById('exp-chat-group-bar');
+    var $info = document.getElementById('exp-chat-group-info');
+    var n = selectedMembers.length;
+    if ($bar) $bar.style.display = n > 0 ? 'flex' : 'none';
+    if ($info) {
+      if (n === 1) $info.textContent = '1 pessoa selecionada';
+      else if (n > 1) $info.textContent = n + ' pessoas selecionadas';
+    }
+    var $btn = document.querySelector('.chat-group-confirm');
+    if ($btn) $btn.textContent = n === 1 ? 'Mensagem direta →' : 'Criar grupo →';
+  }
+
+  function toggleMember(authId) {
+    var idx = selectedMembers.findIndex(function (m) { return m.auth_id === authId; });
+    if (idx === -1) {
+      var member = teamMembers.find(function (m) { return m.auth_id === authId; });
+      if (member) selectedMembers.push(member);
+    } else {
+      selectedMembers.splice(idx, 1);
+    }
+    renderMemberList();
+  }
+
+  function confirmGroup() {
+    if (!selectedMembers.length) return;
+    var ch, label;
+    if (selectedMembers.length === 1) {
+      /* DM 1:1 */
+      var m = selectedMembers[0];
+      ch    = dmChannel(user.auth_id, m.auth_id);
+      label = firstName(m.nome);
+    } else {
+      /* Grupo: canal com todos os UIDs ordenados */
+      var allUids = [user.auth_id].concat(selectedMembers.map(function (m) { return m.auth_id; })).sort();
+      ch    = 'group:' + allUids.join(':');
+      label = selectedMembers.map(function (m) { return firstName(m.nome); }).join(', ');
+    }
+    selectedMembers = [];
+    openChannel(ch, label);
   }
 
   function dmChannel(uid1, uid2) {
@@ -595,7 +651,8 @@
         var uid = user.auth_id;
 
         /* Ignorar canais que não envolvem o usuário */
-        if (ch !== 'general' && ch.indexOf(uid) === -1) return;
+        var isSocios = ch === 'socios' && user.role === 'socio';
+        if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
 
         var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
         var isOwn    = msg.sender_id === uid;
@@ -656,17 +713,22 @@
         var readMap = {};
         (r.data || []).forEach(function (row) { readMap[row.channel] = row.last_read_at; });
 
-        /* Contar não lidas no geral */
-        var lastRead = readMap['general'] || since;
-        sb.from('chat_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('channel', 'general')
-          .gt('created_at', lastRead)
-          .neq('sender_id', uid)
-          .then(function (r2) {
-            if (r2.count) channelUnread['general'] = r2.count;
-            updateBadge();
-          });
+        /* Contar não lidas por canal fixo */
+        var fixedChannels = ['general'];
+        if (user.role === 'socio') fixedChannels.push('socios');
+
+        fixedChannels.forEach(function (ch) {
+          var lastRead = readMap[ch] || since;
+          sb.from('chat_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('channel', ch)
+            .gt('created_at', lastRead)
+            .neq('sender_id', uid)
+            .then(function (r2) {
+              if (r2.count) channelUnread[ch] = r2.count;
+              updateBadge();
+            });
+        });
       });
   }
 
@@ -897,6 +959,8 @@
     openChannel:     openChannel,
     goHome:          goHome,
     startDM:         startDM,
+    toggleMember:    toggleMember,
+    confirmGroup:    confirmGroup,
     toggleSound:     toggleSound
   };
 
