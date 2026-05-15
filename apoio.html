@@ -408,6 +408,10 @@
   width:min(1040px,94vw);
 }
 
+#modal-edit[data-size="xwide"] .modal-box{
+  width:min(1320px,96vw);
+}
+
 @media (max-width: 900px){
   .knowledge-form-grid{
     grid-template-columns:1fr;
@@ -906,6 +910,9 @@ let G = {
   buscarTimer: null,
   tipoAtivoId: null,
   subtemaOrg: 'historia',
+  matrizPlanoSecaoAtiva: 'habilidades',
+  matrizPlanoHoverColuna: '',
+  matrizPlanoFocoColuna: '',
 };
 const isSocio = () => ['socio'].includes(G.usuario?.role);
 const isColaborador = () => Boolean(G.usuario?.id);
@@ -915,7 +922,181 @@ const isAdministrador = () => {
   return ['carlos', 'thayssa'].includes(primeiroNome);
 };
 
+const PLANO_GENTE_SENIORIDADES = [
+  { key: 'E1', label: 'Estagiário 1' },
+  { key: 'E2', label: 'Estagiário 2' },
+  { key: 'J1', label: 'Júnior 1' },
+  { key: 'J2', label: 'Júnior 2' },
+  { key: 'J3', label: 'Júnior 3' },
+  { key: 'P1', label: 'Pleno 1' },
+  { key: 'P2', label: 'Pleno 2' },
+  { key: 'P3', label: 'Pleno 3' },
+  { key: 'S1', label: 'Sênior 1' },
+  { key: 'S2', label: 'Sênior 2' },
+  { key: 'S3', label: 'Sênior 3' }
+];
+
+const MATRIZ_PLANO_GENTE = {
+  secoes: [
+    {
+      key: 'habilidades',
+      titulo: 'Habilidades',
+      intro: 'Esta seção mostra a evolução esperada das capacidades técnicas, da leitura de projeto e da maturidade de análise ao longo da trilha.',
+      itens: [
+        'Desenvolvimento técnico e execução supervisionada',
+        'Autonomia técnica e responsabilidade por partes do projeto',
+        'Liderança técnica e estratégica de projetos e equipes',
+        'Compreensão de soluções projetuais básicas',
+        'Propor soluções viáveis',
+        'Capacidade de identificar problemas',
+        'Compreensão avançada das etapas projetuais de forma global e por produto',
+        'Compreensão da integração entre diferentes disciplinas',
+        'Conhecimento de softwares de projeto (CAD, SketchUp, Revit, Lumion)',
+        'Compreensão das normas técnicas e legislações aplicáveis ao paisagismo e urbanismo',
+        'Atenção aos detalhes construtivos, vegetação e materiais, com capacidade de sugerir alternativas dentro dos parâmetros técnicos da EXP',
+        'Capacidade de aprender com supervisão e aplicar feedback, contribuindo para a qualidade e consistência do projeto',
+        'Noções de sustentabilidade, drenagem, cobertura vegetal e soluções ambientais aplicáveis a projetos',
+        'Capacidade de acompanhar especificações técnicas e sugerir alternativas dentro de parâmetros técnicos'
+      ]
+    },
+    {
+      key: 'execucao',
+      titulo: 'Execução',
+      intro: 'Esta seção organiza o nível de envolvimento esperado nas rotinas, entregas, decisões práticas e responsabilidades operacionais do dia a dia de projeto.',
+      itens: [
+        'Execução de desenhos e documentação técnica',
+        'Apoio na elaboração de estudos e projetos',
+        'Entendimento de ferramentas e métodos do escritório',
+        'Execução de tarefas sob supervisão direta',
+        'Desenvolvimento completo de etapas de projeto',
+        'Coordenação de pequenas equipes ou projetos menores',
+        'Interlocução técnica com consultores externos',
+        'Resolução de problemas técnicos com independência',
+        'Liderança de projetos completos e multidisciplinares',
+        'Coordenação de equipes e interface com clientes',
+        'Tomada de decisões técnicas e estratégicas de projeto',
+        'Desenvolvimento técnico dos membros da equipe',
+        'Documentação de entregas e modelagem BIM',
+        'Detalhamentos técnicos de projeto de paisagismo e urbanismo',
+        'Acompanhamento e elaboração de memoriais técnicos, orçamentários e apresentações',
+        'Participar de reuniões e registrar atas de projeto',
+        'Capacidade de acompanhar prazos de projeto e demandas pontuais',
+        'Desenvolver e padronizar templates',
+        'Comparecer a visitas técnicas custeadas pela empresa',
+        'Apoio na comunicação com fornecedores e verificação de especificações técnicas'
+      ]
+    },
+    {
+      key: 'valores',
+      titulo: 'Valores',
+      intro: 'Esta seção traduz comportamentos esperados na cultura da EXP, mostrando como responsabilidade, colaboração e postura profissional evoluem com a senioridade.',
+      itens: [
+        'Senso de responsabilidade e capacidade de questionar o que está sendo feito',
+        'Vontade constante de aprender e curiosidade técnica e estética',
+        'Trabalho em equipe: colaborar e contribuir para o resultado coletivo',
+        'Gestão de tempo e autopercepção: cumprir prazos e priorizar tarefas',
+        'Ética e cuidado com clientes e projetos',
+        'Proatividade em solicitar novas responsabilidades e tarefas',
+        'Comunicação assertiva para esclarecer dúvidas ou fazer questionamentos'
+      ]
+    },
+    {
+      key: 'lideranca',
+      titulo: 'Liderança',
+      intro: 'Esta seção apresenta responsabilidades de direcionamento, decisão, estruturação de time e sustentação da empresa, que aparecem com mais força nas faixas mais altas.',
+      itens: [
+        'Definição de prioridades e direcionamento da empresa',
+        'Tomada de decisão estratégica (negócio, posicionamento, clientes)',
+        'Responsabilidade por resultado (financeiro, entrega, qualidade)',
+        'Estruturação e organização do time',
+        'Desenvolvimento da empresa (novos serviços, crescimento)',
+        'Definição de processos e padrões da empresa'
+      ]
+    }
+  ]
+};
+
 // ── SQL DE CONFIGURAÇÃO ─────────────────────────────────────
+const MATRIZ_PLANO_GENTE_DADOS = {
+  secoes: [
+    {
+      key: 'habilidades',
+      titulo: 'Habilidades',
+      intro: 'Esta seção mostra a evolução esperada das capacidades técnicas, da leitura de projeto e da maturidade de análise ao longo da trilha.',
+      itens: [
+        { texto: 'Desenvolvimento técnico e execução supervisionada', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:3, P2:3, P3:3, S1:0, S2:0, S3:0 } },
+        { texto: 'Autonomia técnica e responsabilidade por partes do projeto', valores: { E1:0, E2:0, J1:0, J2:1, J3:1, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Liderança técnica e estratégica de projetos e equipes', valores: { E1:0, E2:0, J1:1, J2:1, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Compreensão de soluções projetuais básicas', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:3, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Propor soluções viáveis', valores: { E1:1, E2:2, J1:2, J2:2, J3:2, P1:3, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Capacidade de identificar problemas', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Compreensão avançada das etapas projetuais de forma global e por produto', valores: { E1:0, E2:1, J1:1, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Compreensão da integração entre diferentes disciplinas', valores: { E1:0, E2:1, J1:1, J2:2, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Conhecimento de softwares de projeto (CAD, SketchUp, Revit, Lumion)', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Compreensão das normas técnicas e legislações aplicáveis ao paisagismo e urbanismo', valores: { E1:0, E2:1, J1:1, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Atenção aos detalhes construtivos, vegetação e materiais, com capacidade de sugerir alternativas dentro dos parâmetros técnicos da EXP', valores: { E1:1, E2:1, J1:1, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Capacidade de aprender com supervisão e aplicar feedback, contribuindo para a qualidade e consistência do projeto', valores: { E1:2, E2:2, J1:2, J2:2, J3:2, P1:3, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Noções de sustentabilidade, drenagem, cobertura vegetal e soluções ambientais aplicáveis a projetos', valores: { E1:0, E2:0, J1:1, J2:1, J3:1, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Capacidade de acompanhar especificações técnicas e sugerir alternativas dentro de parâmetros técnicos', valores: { E1:0, E2:1, J1:1, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } }
+      ]
+    },
+    {
+      key: 'execucao',
+      titulo: 'Execução',
+      intro: 'Esta seção organiza o nível de envolvimento esperado nas rotinas, entregas, decisões práticas e responsabilidades operacionais do dia a dia de projeto.',
+      itens: [
+        { texto: 'Execução de desenhos e documentação técnica', valores: { E1:1, E2:1, J1:1, J2:1, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Apoio na elaboração de estudos e projetos', valores: { E1:1, E2:1, J1:1, J2:1, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Entendimento de ferramentas e métodos do escritório', valores: { E1:1, E2:1, J1:1, J2:1, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Execução de tarefas sob supervisão direta', valores: { E1:1, E2:1, J1:1, J2:1, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Desenvolvimento completo de etapas de projeto', valores: { E1:0, E2:0, J1:1, J2:1, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Coordenação de pequenas equipes ou projetos menores', valores: { E1:0, E2:0, J1:1, J2:1, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Interlocução técnica com consultores externos', valores: { E1:0, E2:0, J1:1, J2:1, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Resolução de problemas técnicos com independência', valores: { E1:0, E2:0, J1:1, J2:1, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Liderança de projetos completos e multidisciplinares', valores: { E1:0, E2:0, J1:0, J2:0, J3:1, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Coordenação de equipes e interface com clientes', valores: { E1:0, E2:0, J1:0, J2:0, J3:1, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Tomada de decisões técnicas e estratégicas de projeto', valores: { E1:0, E2:0, J1:0, J2:0, J3:1, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Desenvolvimento técnico dos membros da equipe', valores: { E1:0, E2:0, J1:0, J2:0, J3:1, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Documentação de entregas e modelagem BIM', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Detalhamentos técnicos de projeto de paisagismo e urbanismo', valores: { E1:1, E2:1, J1:1, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Acompanhamento e elaboração de memoriais técnicos, orçamentários e apresentações', valores: { E1:0, E2:1, J1:1, J2:1, J3:2, P1:2, P2:2, P3:2, S1:3, S2:3, S3:3 } },
+        { texto: 'Participar de reuniões e registrar atas de projeto', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Capacidade de acompanhar prazos de projeto e demandas pontuais', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Desenvolver e padronizar templates', valores: { E1:0, E2:0, J1:1, J2:1, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Comparecer a visitas técnicas custeadas pela empresa', valores: { E1:0, E2:1, J1:1, J2:2, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Apoio na comunicação com fornecedores e verificação de especificações técnicas', valores: { E1:0, E2:1, J1:1, J2:1, J3:2, P1:2, P2:2, P3:3, S1:3, S2:3, S3:3 } }
+      ]
+    },
+    {
+      key: 'valores',
+      titulo: 'Valores',
+      intro: 'Esta seção traduz comportamentos esperados na cultura da EXP, mostrando como responsabilidade, colaboração e postura profissional evoluem com a senioridade.',
+      itens: [
+        { texto: 'Senso de responsabilidade e capacidade de questionar o que está sendo feito', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Vontade constante de aprender e curiosidade técnica e estética', valores: { E1:2, E2:2, J1:2, J2:2, J3:2, P1:3, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Trabalho em equipe: colaborar e contribuir para o resultado coletivo', valores: { E1:2, E2:2, J1:2, J2:2, J3:2, P1:3, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Gestão de tempo e autopercepção: cumprir prazos e priorizar tarefas', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Ética e cuidado com clientes e projetos', valores: { E1:1, E2:2, J1:2, J2:2, J3:2, P1:3, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Proatividade em solicitar novas responsabilidades e tarefas', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } },
+        { texto: 'Comunicação assertiva para esclarecer dúvidas ou fazer questionamentos', valores: { E1:1, E2:1, J1:2, J2:2, J3:2, P1:2, P2:3, P3:3, S1:3, S2:3, S3:3 } }
+      ]
+    },
+    {
+      key: 'lideranca',
+      titulo: 'Liderança',
+      intro: 'Esta seção apresenta responsabilidades de direcionamento, decisão, estruturação de time e sustentação da empresa, que aparecem com mais força nas faixas mais altas.',
+      itens: [
+        { texto: 'Definição de prioridades e direcionamento da empresa', valores: { E1:0, E2:0, J1:0, J2:0, J3:0, P1:0, P2:0, P3:1, S1:2, S2:3, S3:3 } },
+        { texto: 'Tomada de decisão estratégica (negócio, posicionamento, clientes)', valores: { E1:0, E2:0, J1:0, J2:0, J3:0, P1:0, P2:0, P3:1, S1:2, S2:3, S3:3 } },
+        { texto: 'Responsabilidade por resultado (financeiro, entrega, qualidade)', valores: { E1:0, E2:0, J1:0, J2:0, J3:0, P1:0, P2:1, P3:1, S1:2, S2:3, S3:3 } },
+        { texto: 'Estruturação e organização do time', valores: { E1:0, E2:0, J1:0, J2:0, J3:0, P1:0, P2:1, P3:1, S1:2, S2:3, S3:3 } },
+        { texto: 'Desenvolvimento da empresa (novos serviços, crescimento)', valores: { E1:0, E2:0, J1:0, J2:0, J3:0, P1:0, P2:0, P3:1, S1:2, S2:3, S3:3 } },
+        { texto: 'Definição de processos e padrões da empresa', valores: { E1:0, E2:0, J1:0, J2:0, J3:1, P1:1, P2:1, P3:2, S1:2, S2:3, S3:3 } }
+      ]
+    }
+  ]
+};
+
 const SETUP_SQL = `-- Executar no Supabase SQL Editor
 CREATE TABLE IF NOT EXISTS base_tipo_projeto (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -2051,8 +2232,369 @@ function renderPlanoPessoas(el) {
         ${criteriosHtml}
       </div>
     </div>
+
+    <div class="secao-shell">
+      <div class="secao-shell-header">
+        <div>
+          <div class="secao-shell-title">Matriz de Responsabilidades</div>
+          <div class="secao-shell-sub">Leitura das responsabilidades esperadas por senioridade</div>
+        </div>
+        <button class="btn verde sm" onclick="abrirMatrizPlanoGente()">Abrir matriz</button>
+      </div>
+      <div class="rich-body">
+        <p>A matriz organiza o nível de envolvimento esperado em habilidades, execução, valores e liderança ao longo da trilha da EXP.</p>
+        <p>Ela será apresentada em um modal de estudo dentro desta mesma área, permitindo navegar pelas seções e entender melhor o que caracteriza cada faixa e qual é o próximo passo de desenvolvimento.</p>
+      </div>
+    </div>
   `;
 }
+
+function getMatrizPlanoSecao(secaoKey) {
+  return MATRIZ_PLANO_GENTE_DADOS.secoes.find(secao => secao.key === secaoKey) || MATRIZ_PLANO_GENTE_DADOS.secoes[0];
+}
+
+function getSenioridadeLabel(colunaKey) {
+  const labels = {
+    E1: 'Estagiario 1',
+    E2: 'Estagiario 2',
+    J1: 'Junior 1',
+    J2: 'Junior 2',
+    J3: 'Junior 3',
+    P1: 'Pleno 1',
+    P2: 'Pleno 2',
+    P3: 'Pleno 3',
+    S1: 'Senior 1',
+    S2: 'Senior 2',
+    S3: 'Senior 3'
+  };
+  return labels[colunaKey] || colunaKey;
+}
+
+function getMatrizProximoPasso(colunaKey) {
+  const idx = PLANO_GENTE_SENIORIDADES.findIndex(item => item.key === colunaKey);
+  if(idx === -1 || idx === PLANO_GENTE_SENIORIDADES.length - 1) return null;
+  return PLANO_GENTE_SENIORIDADES[idx + 1];
+}
+
+function getMatrizColumnState(colunaKey) {
+  const focus = G.matrizPlanoFocoColuna;
+  const hover = G.matrizPlanoHoverColuna;
+  if(focus) {
+    if(colunaKey === focus) return 'focus';
+    if(getMatrizProximoPasso(focus)?.key === colunaKey) return 'next';
+    return 'dim';
+  }
+  if(hover && hover === colunaKey) return 'hover';
+  return 'default';
+}
+
+function renderMatrizStatusTexto() {
+  const focus = G.matrizPlanoFocoColuna;
+  const hover = G.matrizPlanoHoverColuna;
+  if(focus) {
+    const next = getMatrizProximoPasso(focus);
+    if(next) {
+      return `Foco atual: ${focus} · ${getSenioridadeLabel(focus)} | Próximo passo: ${next.key} · ${next.label}`;
+    }
+    return `Foco atual: ${focus} · ${getSenioridadeLabel(focus)} | Última faixa da trilha`;
+  }
+  if(hover) {
+    return `Faixa em leitura: ${hover} · ${getSenioridadeLabel(hover)}`;
+  }
+  return 'Passe o mouse sobre uma faixa para ver a senioridade correspondente.';
+}
+
+function renderMatrizStatusTextoV2() {
+  const focus = G.matrizPlanoFocoColuna;
+  const hover = G.matrizPlanoHoverColuna;
+  if(focus) {
+    const next = getMatrizProximoPasso(focus);
+    if(next) {
+      return `Foco atual: ${focus} - ${getSenioridadeLabel(focus)} | Proximo passo: ${next.key} - ${getSenioridadeLabel(next.key)}`;
+    }
+    return `Foco atual: ${focus} - ${getSenioridadeLabel(focus)} | Ultima faixa da trilha`;
+  }
+  if(hover) {
+    return `Faixa em leitura: ${hover} - ${getSenioridadeLabel(hover)}`;
+  }
+  return 'Passe o mouse sobre uma faixa para ver a senioridade correspondente.';
+}
+
+function renderMatrizTabs() {
+  return MATRIZ_PLANO_GENTE_DADOS.secoes.map(secao => `
+    <button
+      class="matriz-tab${G.matrizPlanoSecaoAtiva === secao.key ? ' active' : ''}"
+      onclick="setMatrizPlanoSecao('${secao.key}')">
+      ${secao.titulo}
+    </button>
+  `).join('');
+}
+
+function getMatrizValorClass(valor) {
+  return `n${Number(valor) || 0}`;
+}
+
+function renderMatrizTabela(secao) {
+  return `
+    <div class="matriz-grid-wrap">
+      <table class="matriz-grid">
+        <thead>
+          <tr>
+            <th class="matriz-grid-label-head">Responsabilidade</th>
+            ${PLANO_GENTE_SENIORIDADES.map(item => {
+              const state = getMatrizColumnState(item.key);
+              return `
+                <th class="matriz-grid-head ${state}">
+                  <button
+                    class="matriz-grid-head-btn"
+                    title="${item.key} · ${item.label}"
+                    onmouseenter="setMatrizHover('${item.key}')"
+                    onmouseleave="clearMatrizHover()"
+                    onclick="toggleMatrizFoco('${item.key}')">
+                    ${item.key}
+                  </button>
+                </th>
+              `;
+            }).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${secao.itens.map(item => `
+            <tr>
+              <td class="matriz-grid-label">${item.texto}</td>
+              ${PLANO_GENTE_SENIORIDADES.map(senioridade => {
+                const state = getMatrizColumnState(senioridade.key);
+                const valor = Number(item.valores?.[senioridade.key] ?? 0);
+                return `
+                  <td
+                    class="matriz-grid-cell ${getMatrizValorClass(valor)} ${state}"
+                    title="${senioridade.key} · ${getSenioridadeLabel(senioridade.key)} · nível ${valor}"
+                    onmouseenter="setMatrizHover('${senioridade.key}')"
+                    onmouseleave="clearMatrizHover()"
+                    onclick="toggleMatrizFoco('${senioridade.key}')">
+                    ${valor}
+                  </td>
+                `;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderMatrizSenioridadesStrip() {
+  return PLANO_GENTE_SENIORIDADES.map(item => {
+    const state = getMatrizColumnState(item.key);
+    return `
+      <button
+        class="matriz-col-chip ${state}"
+        title="${item.key} · ${item.label}"
+        onmouseenter="setMatrizHover('${item.key}')"
+        onmouseleave="clearMatrizHover()"
+        onclick="toggleMatrizFoco('${item.key}')">
+        ${item.key}
+      </button>
+    `;
+  }).join('');
+}
+
+function renderMatrizPlanoGenteModal() {
+  const secao = getMatrizPlanoSecao(G.matrizPlanoSecaoAtiva);
+  return `
+    <style>
+      .matriz-modal{display:flex;flex-direction:column;gap:18px}
+      .matriz-intro{background:#fafaf8;border:1px solid var(--cinza);border-radius:10px;padding:16px 18px}
+      .matriz-intro p{font-size:11px;color:#555;line-height:1.7}
+      .matriz-tabs{display:flex;gap:8px;flex-wrap:wrap}
+      .matriz-tab{padding:8px 12px;border:1px solid var(--cinza);border-radius:999px;background:#fff;font-family:var(--f);font-size:10px;font-weight:700;letter-spacing:.4px;cursor:pointer;color:#666}
+      .matriz-tab:hover{border-color:var(--preto);color:var(--preto)}
+      .matriz-tab.active{background:var(--verde);border-color:var(--verde);color:#fff}
+      .matriz-status{font-size:11px;color:#666;line-height:1.6;padding:0 2px}
+      .matriz-strip-wrap{display:flex;flex-wrap:wrap;gap:8px}
+      .matriz-col-chip{min-width:52px;padding:10px 12px;border-radius:10px;border:1px solid var(--cinza);background:#fff;font-family:var(--fm);font-size:12px;font-weight:700;color:#333;cursor:pointer;transition:all .14s}
+      .matriz-col-chip.hover{border-color:#b3caea;background:#edf2fa;color:#3a6fb5}
+      .matriz-col-chip.focus{border-color:#1d6a4a;background:#eaf5ee;color:#1d6a4a;opacity:1}
+      .matriz-col-chip.next{border-color:#c0d9c8;background:#f3f8f5;color:#45865d;opacity:.88}
+      .matriz-col-chip.dim{opacity:.28}
+      .matriz-sec{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}
+      .matriz-sec-main{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:18px}
+      .matriz-sec-title{font-size:18px;font-weight:700;letter-spacing:-.2px;color:var(--preto);margin-bottom:6px}
+      .matriz-sec-sub{font-size:11px;color:#666;line-height:1.7;margin-bottom:14px}
+      .matriz-item-list{display:grid;grid-template-columns:1fr;gap:8px}
+      .matriz-item{background:#fafaf8;border:1px solid var(--cinza2);border-radius:8px;padding:11px 12px;font-size:11px;color:#444;line-height:1.6}
+      .matriz-side{display:flex;flex-direction:column;gap:12px}
+      .matriz-note,.matriz-legend{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:16px}
+      .matriz-note-title,.matriz-legend-title{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px}
+      .matriz-note p,.matriz-legend p{font-size:11px;color:#666;line-height:1.7}
+      .matriz-legend-rows{display:grid;gap:8px}
+      .matriz-legend-row{display:flex;align-items:center;gap:8px}
+      .matriz-legend-chip{min-width:32px;padding:5px 0;border-radius:999px;text-align:center;font-size:10px;font-weight:700}
+      .matriz-legend-chip.n0{background:#f0f0ec;color:#777}
+      .matriz-legend-chip.n1{background:#fff1b8;color:#b27b00}
+      .matriz-legend-chip.n2{background:#dff0d8;color:#2d7b46}
+      .matriz-legend-chip.n3{background:#8ccd66;color:#1f5d30}
+      @media (max-width:980px){
+        .matriz-sec{grid-template-columns:1fr}
+      }
+    </style>
+    <div class="matriz-modal">
+      <div class="matriz-intro">
+        <p>Esta matriz organiza o nível de envolvimento esperado em habilidades, execução, valores e liderança ao longo da trilha de desenvolvimento da equipe. Ela não serve para engessar trajetórias, mas para dar clareza sobre maturidade, autonomia e próximos passos.</p>
+      </div>
+      <div class="matriz-tabs">${renderMatrizTabs()}</div>
+      <div class="matriz-status">${renderMatrizStatusTextoV2()}</div>
+      <div class="matriz-strip-wrap">${renderMatrizSenioridadesStrip()}</div>
+      <div class="matriz-sec">
+        <div class="matriz-sec-main">
+          <div class="matriz-sec-title">${secao.titulo}</div>
+          <div class="matriz-sec-sub">${secao.intro}</div>
+          <div class="matriz-item-list">
+            ${secao.itens.map(item => `<div class="matriz-item">${item}</div>`).join('')}
+          </div>
+        </div>
+        <div class="matriz-side">
+          <div class="matriz-note">
+            <div class="matriz-note-title">Estrutura da próxima etapa</div>
+            <p>O modal já está preparado para receber a transcrição completa dos valores numéricos da matriz. Na próxima fase, cada item desta seção será renderizado com a grade E1–S3 e com o comportamento visual de foco por senioridade.</p>
+          </div>
+          <div class="matriz-legend">
+            <div class="matriz-legend-title">Legenda</div>
+            <div class="matriz-legend-rows">
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n1">1</span><span>participa · em aprendizado</span></div>
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n2">2</span><span>executa · entrega</span></div>
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n3">3</span><span>lidera/apresenta · plenamente entregue</span></div>
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n0">0</span><span>não se envolve</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMatrizPlanoGenteModalV2() {
+  const secao = getMatrizPlanoSecao(G.matrizPlanoSecaoAtiva);
+  return `
+    <style>
+      .matriz-modal{display:flex;flex-direction:column;gap:18px}
+      .matriz-intro{background:#fafaf8;border:1px solid var(--cinza);border-radius:10px;padding:16px 18px}
+      .matriz-intro p{font-size:11px;color:#555;line-height:1.7}
+      .matriz-tabs{display:flex;gap:8px;flex-wrap:wrap}
+      .matriz-tab{padding:8px 12px;border:1px solid var(--cinza);border-radius:999px;background:#fff;font-family:var(--f);font-size:10px;font-weight:700;letter-spacing:.4px;cursor:pointer;color:#666}
+      .matriz-tab:hover{border-color:var(--preto);color:var(--preto)}
+      .matriz-tab.active{background:var(--verde);border-color:var(--verde);color:#fff}
+      .matriz-status{font-size:11px;color:#666;line-height:1.6;padding:0 2px}
+      .matriz-strip-wrap{display:flex;flex-wrap:wrap;gap:8px}
+      .matriz-col-chip{min-width:52px;padding:10px 12px;border-radius:10px;border:1px solid var(--cinza);background:#fff;font-family:var(--fm);font-size:12px;font-weight:700;color:#333;cursor:pointer;transition:all .14s}
+      .matriz-col-chip.hover{border-color:#b3caea;background:#edf2fa;color:#3a6fb5}
+      .matriz-col-chip.focus{border-color:#1d6a4a;background:#eaf5ee;color:#1d6a4a;opacity:1}
+      .matriz-col-chip.next{border-color:#c0d9c8;background:#f3f8f5;color:#45865d;opacity:.88}
+      .matriz-col-chip.dim{opacity:.28}
+      .matriz-sec{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
+      .matriz-sec-main{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:18px}
+      .matriz-sec-title{font-size:18px;font-weight:700;letter-spacing:-.2px;color:var(--preto);margin-bottom:6px}
+      .matriz-sec-sub{font-size:11px;color:#666;line-height:1.7;margin-bottom:14px}
+      .matriz-grid-wrap{border:1px solid var(--cinza2);border-radius:12px;overflow:auto;background:#fff}
+      .matriz-grid{width:100%;min-width:980px;border-collapse:separate;border-spacing:0}
+      .matriz-grid thead th{position:sticky;top:0;z-index:1;background:#fff}
+      .matriz-grid-label-head{min-width:420px;padding:12px 14px;text-align:left;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#8b8b8b;border-bottom:1px solid var(--cinza2)}
+      .matriz-grid-head{width:56px;min-width:56px;padding:8px 6px;border-bottom:1px solid var(--cinza2);text-align:center;transition:opacity .16s ease, background .16s ease}
+      .matriz-grid-head-btn{width:100%;padding:9px 0;border:1px solid #cfcfc8;border-radius:10px;background:#fff;font-family:var(--fm);font-size:12px;font-weight:700;color:#333;cursor:pointer;transition:all .14s}
+      .matriz-grid-head.hover .matriz-grid-head-btn{border-color:#b3caea;background:#edf2fa;color:#3a6fb5}
+      .matriz-grid-head.focus .matriz-grid-head-btn{border-color:#1d6a4a;background:#eaf5ee;color:#1d6a4a}
+      .matriz-grid-head.next .matriz-grid-head-btn{border-color:#c0d9c8;background:#f3f8f5;color:#45865d}
+      .matriz-grid-head.dim{opacity:.22}
+      .matriz-grid-label{padding:11px 14px;font-size:11px;line-height:1.55;color:#3d3d3d;background:#fafaf8;border-bottom:1px solid #ecece6}
+      .matriz-grid-cell{width:56px;min-width:56px;padding:10px 0;text-align:center;font-family:var(--fm);font-size:12px;font-weight:700;border-bottom:1px solid #ecece6;cursor:pointer;transition:opacity .16s ease, transform .16s ease}
+      .matriz-grid-cell.hover{transform:translateY(-1px)}
+      .matriz-grid-cell.dim{opacity:.18}
+      .matriz-grid-cell.next{opacity:.7}
+      .matriz-grid-cell.focus{opacity:1}
+      .matriz-grid-cell.n0{background:#f0f0ec;color:#777}
+      .matriz-grid-cell.n1{background:#fff1b8;color:#b27b00}
+      .matriz-grid-cell.n2{background:#dff0d8;color:#2d7b46}
+      .matriz-grid-cell.n3{background:#8ccd66;color:#1f5d30}
+      .matriz-side{display:flex;flex-direction:column;gap:12px}
+      .matriz-note,.matriz-legend{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:16px}
+      .matriz-note-title,.matriz-legend-title{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px}
+      .matriz-note p,.matriz-legend p{font-size:11px;color:#666;line-height:1.7}
+      .matriz-legend-rows{display:grid;gap:8px}
+      .matriz-legend-row{display:flex;align-items:center;gap:8px}
+      .matriz-legend-chip{min-width:32px;padding:5px 0;border-radius:999px;text-align:center;font-size:10px;font-weight:700}
+      .matriz-legend-chip.n0{background:#f0f0ec;color:#777}
+      .matriz-legend-chip.n1{background:#fff1b8;color:#b27b00}
+      .matriz-legend-chip.n2{background:#dff0d8;color:#2d7b46}
+      .matriz-legend-chip.n3{background:#8ccd66;color:#1f5d30}
+      @media (max-width:980px){
+        .matriz-sec{grid-template-columns:1fr}
+      }
+    </style>
+    <div class="matriz-modal">
+      <div class="matriz-intro">
+        <p>Esta matriz organiza o nível de envolvimento esperado em habilidades, execução, valores e liderança ao longo da trilha de desenvolvimento da equipe. Ela não serve para engessar trajetórias, mas para dar clareza sobre maturidade, autonomia e próximos passos.</p>
+      </div>
+      <div class="matriz-tabs">${renderMatrizTabs()}</div>
+      <div class="matriz-status">${renderMatrizStatusTextoV2()}</div>
+      <div class="matriz-strip-wrap">${renderMatrizSenioridadesStrip()}</div>
+      <div class="matriz-sec">
+        <div class="matriz-sec-main">
+          <div class="matriz-sec-title">${secao.titulo}</div>
+          <div class="matriz-sec-sub">${secao.intro}</div>
+          ${renderMatrizTabela(secao)}
+        </div>
+        <div class="matriz-side">
+          <div class="matriz-note">
+            <div class="matriz-note-title">Como ler</div>
+            <p>Passe o mouse sobre uma faixa para ver a senioridade completa. Ao clicar, a coluna selecionada vira o foco principal e a faixa seguinte aparece como próximo passo esperado dentro da trilha.</p>
+          </div>
+          <div class="matriz-legend">
+            <div class="matriz-legend-title">Legenda</div>
+            <div class="matriz-legend-rows">
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n1">1</span><span>participa · em aprendizado</span></div>
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n2">2</span><span>executa · entrega</span></div>
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n3">3</span><span>lidera/apresenta · plenamente entregue</span></div>
+              <div class="matriz-legend-row"><span class="matriz-legend-chip n0">0</span><span>não se envolve</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function refreshMatrizPlanoGenteModal() {
+  if(G.modalCtx?.tipo !== 'plano-gente-matriz') return;
+  document.getElementById('modal-edit-body').innerHTML = renderMatrizPlanoGenteModalV2();
+}
+
+window.abrirMatrizPlanoGente = function() {
+  G.matrizPlanoSecaoAtiva = 'habilidades';
+  G.matrizPlanoHoverColuna = '';
+  G.matrizPlanoFocoColuna = '';
+  abrirModalSized('Matriz de Responsabilidades', renderMatrizPlanoGenteModalV2(), { tipo: 'plano-gente-matriz', hideFooter: true }, 'xwide');
+};
+
+window.setMatrizPlanoSecao = function(secaoKey) {
+  G.matrizPlanoSecaoAtiva = secaoKey;
+  refreshMatrizPlanoGenteModal();
+};
+
+window.setMatrizHover = function(colunaKey) {
+  G.matrizPlanoHoverColuna = colunaKey;
+  refreshMatrizPlanoGenteModal();
+};
+
+window.clearMatrizHover = function() {
+  G.matrizPlanoHoverColuna = '';
+  refreshMatrizPlanoGenteModal();
+};
+
+window.toggleMatrizFoco = function(colunaKey) {
+  G.matrizPlanoFocoColuna = G.matrizPlanoFocoColuna === colunaKey ? '' : colunaKey;
+  refreshMatrizPlanoGenteModal();
+};
 
 function renderPlaceholder(el, titulo, icon, sub) {
   el.innerHTML = `
@@ -2297,11 +2839,25 @@ function abrirModal(titulo, bodyHtml, ctx) {
   G.modalCtx = ctx;
   document.getElementById('modal-edit-title').textContent = titulo;
   document.getElementById('modal-edit-body').innerHTML = bodyHtml;
+  const footer = document.querySelector('#modal-edit .modal-footer');
+  const saveBtn = document.getElementById('modal-salvar-btn');
+  if(footer) footer.style.display = ctx?.hideFooter ? 'none' : '';
+  if(saveBtn) {
+    saveBtn.textContent = ctx?.saveLabel || 'Salvar';
+    saveBtn.disabled = false;
+  }
   document.getElementById('modal-edit').style.display = 'flex';
 }
 
 function fecharModal() {
   document.getElementById('modal-edit').style.display = 'none';
+  const footer = document.querySelector('#modal-edit .modal-footer');
+  const saveBtn = document.getElementById('modal-salvar-btn');
+  if(footer) footer.style.display = '';
+  if(saveBtn) {
+    saveBtn.textContent = 'Salvar';
+    saveBtn.disabled = false;
+  }
   G.modalCtx = null;
 }
 
