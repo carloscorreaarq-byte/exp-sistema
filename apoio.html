@@ -909,6 +909,11 @@ let G = {
 };
 const isSocio = () => ['socio'].includes(G.usuario?.role);
 const isColaborador = () => Boolean(G.usuario?.id);
+const isAdministrador = () => {
+  const nome = String(G.usuario?.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const primeiroNome = nome.split(' ')[0] || '';
+  return ['carlos', 'thayssa'].includes(primeiroNome);
+};
 
 // ── SQL DE CONFIGURAÇÃO ─────────────────────────────────────
 const SETUP_SQL = `-- Executar no Supabase SQL Editor
@@ -962,10 +967,10 @@ CREATE POLICY "auth_all" ON base_etapa FOR ALL USING (auth.role()='authenticated
 CREATE POLICY "auth_all" ON base_entregavel FOR ALL USING (auth.role()='authenticated');
 CREATE POLICY "auth_all" ON base_checklist_item FOR ALL USING (auth.role()='authenticated');
 
--- Cadastros e senhas usam setup seguro dedicado com Vault.
+-- Cadastros e senhas usam setup dedicado com metadado + segredos em tabela separada.
 -- O SQL dessa área deve ser executado separadamente.`;
 
-const CADASTROS_SENHAS_SETUP_SQL = `begin;
+const CADASTROS_SENHAS_SETUP_SQL_LEGACY = `begin;
 
 create table if not exists public.cadastros_plataformas (
   id uuid default gen_random_uuid() primary key,
@@ -1022,6 +1027,195 @@ on public.cadastros_plataformas
 for delete
 to authenticated
 using (private.can_edit_apoio());
+
+commit;`;
+
+const CADASTROS_SENHAS_SETUP_SQL = `begin;
+
+create table if not exists public.cadastros_plataformas (
+  id uuid default gen_random_uuid() primary key,
+  numero integer not null default 1,
+  nome text not null,
+  nivel_acesso text not null default 'socio',
+  uso text,
+  clientes text,
+  observacoes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.cadastros_plataformas
+  add column if not exists nivel_acesso text not null default 'socio',
+  add column if not exists uso text,
+  add column if not exists clientes text,
+  add column if not exists observacoes text,
+  add column if not exists updated_at timestamptz default now();
+
+alter table public.cadastros_plataformas
+  drop column if exists cofre_nome,
+  drop column if exists cofre_referencia,
+  drop column if exists cofre_link;
+
+create table if not exists public.cadastros_plataformas_secret (
+  plataforma_id uuid primary key references public.cadastros_plataformas(id) on delete cascade,
+  login text,
+  senha text,
+  updated_at timestamptz default now()
+);
+
+create or replace function private.current_exp_user_name()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select u.nome
+  from public.usuarios u
+  where u.auth_id = auth.uid()
+  limit 1
+$$;
+
+create or replace function private.is_apoio_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select lower(split_part(coalesce(private.current_exp_user_name(), ''), ' ', 1)) in ('carlos', 'thayssa');
+$$;
+
+create or replace function private.cadastro_access_rank(p_nivel text)
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case coalesce(lower(p_nivel), 'socio')
+    when 'colaborador' then 1
+    when 'socio' then 2
+    when 'administrador' then 3
+    else 99
+  end;
+$$;
+
+create or replace function private.current_cadastro_access_rank()
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+    when private.is_apoio_admin() then 3
+    when private.is_socio() then 2
+    when private.is_authenticated_user() then 1
+    else 0
+  end;
+$$;
+
+create or replace function private.can_view_cadastro_plataforma(p_nivel text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select private.current_cadastro_access_rank() >= private.cadastro_access_rank(p_nivel);
+$$;
+
+create or replace function public.cs_reveal_credential(p_plataforma_id uuid)
+returns table(login text, senha text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_nivel text;
+begin
+  select nivel_acesso
+    into v_nivel
+  from public.cadastros_plataformas
+  where id = p_plataforma_id;
+
+  if v_nivel is null then
+    raise exception 'Plataforma nao encontrada.';
+  end if;
+
+  if not private.can_view_cadastro_plataforma(v_nivel) then
+    raise exception 'Voce nao tem permissao para visualizar esta credencial.';
+  end if;
+
+  return query
+  select s.login, s.senha
+  from public.cadastros_plataformas_secret s
+  where s.plataforma_id = p_plataforma_id;
+end;
+$$;
+
+alter table public.cadastros_plataformas enable row level security;
+alter table public.cadastros_plataformas_secret enable row level security;
+
+drop policy if exists cadastros_plataformas_select on public.cadastros_plataformas;
+drop policy if exists cadastros_plataformas_insert on public.cadastros_plataformas;
+drop policy if exists cadastros_plataformas_update on public.cadastros_plataformas;
+drop policy if exists cadastros_plataformas_delete on public.cadastros_plataformas;
+drop policy if exists auth_all on public.cadastros_plataformas;
+drop policy if exists cadastros_plataformas_secret_insert on public.cadastros_plataformas_secret;
+drop policy if exists cadastros_plataformas_secret_update on public.cadastros_plataformas_secret;
+drop policy if exists cadastros_plataformas_secret_delete on public.cadastros_plataformas_secret;
+drop policy if exists cadastros_plataformas_secret_select on public.cadastros_plataformas_secret;
+
+create policy cadastros_plataformas_select
+on public.cadastros_plataformas
+for select
+to authenticated
+using (private.can_view_cadastro_plataforma(nivel_acesso));
+
+create policy cadastros_plataformas_insert
+on public.cadastros_plataformas
+for insert
+to authenticated
+with check (private.can_edit_apoio());
+
+create policy cadastros_plataformas_update
+on public.cadastros_plataformas
+for update
+to authenticated
+using (private.can_edit_apoio())
+with check (private.can_edit_apoio());
+
+create policy cadastros_plataformas_delete
+on public.cadastros_plataformas
+for delete
+to authenticated
+using (private.can_edit_apoio());
+
+create policy cadastros_plataformas_secret_insert
+on public.cadastros_plataformas_secret
+for insert
+to authenticated
+with check (private.can_edit_apoio());
+
+create policy cadastros_plataformas_secret_update
+on public.cadastros_plataformas_secret
+for update
+to authenticated
+using (private.can_edit_apoio())
+with check (private.can_edit_apoio());
+
+create policy cadastros_plataformas_secret_delete
+on public.cadastros_plataformas_secret
+for delete
+to authenticated
+using (private.can_edit_apoio());
+
+revoke all on function private.current_exp_user_name() from public;
+grant execute on function private.current_exp_user_name() to authenticated;
+revoke all on function public.cs_reveal_credential(uuid) from public;
+grant execute on function public.cs_reveal_credential(uuid) to authenticated;
 
 commit;`;
 
@@ -1517,7 +1711,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('user-nome').textContent = G.usuario.nome?.split(' ')[0]||'Usuário';
   initNavDropdown(G.usuario.role);
   initExpRoom(G.usuario.id, (G.usuario.nome||'').split(' ')[0]);
-  if(isSocio()) document.getElementById('sb-cadastros-senhas')?.style && (document.getElementById('sb-cadastros-senhas').style.display = '');
+  if(isColaborador()) document.getElementById('sb-cadastros-senhas')?.style && (document.getElementById('sb-cadastros-senhas').style.display = '');
 
   await carregarDados();
   document.getElementById('loading').style.display = 'none';
@@ -3576,12 +3770,12 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   }
 
   function renderCadastrosSenhasTema(el) {
-    if(!isSocio()) {
-      el.innerHTML = `${renderContentHeader('Cadastros e Senhas', 'Área restrita para acessos institucionais')}<div class="knowledge-empty">Acesso restrito a sócios.</div>`;
+    if(!isColaborador()) {
+      el.innerHTML = `${renderContentHeader('Cadastros e Senhas', 'Área restrita para acessos institucionais')}<div class="knowledge-empty">Faça login para acessar esta área.</div>`;
       return;
     }
     el.innerHTML = `
-      ${renderContentHeader('Cadastros e Senhas', 'Área restrita para acessos institucionais e logins de plataforma')}
+      ${renderContentHeader('Cadastros e Senhas', 'Credenciais de plataforma com visibilidade por nível de acesso')}
       <div id="cadastros-senhas-root">Carregando...</div>`;
     setTimeout(iniciarCadastrosSenhas, 30);
   }
@@ -3883,13 +4077,13 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <div class="secao-shell-header">
           <div>
             <div class="secao-shell-title">Cadastros e Senhas ainda não configurado</div>
-            <div class="secao-shell-sub">A estrutura segura desta área ainda não existe neste ambiente.</div>
+            <div class="secao-shell-sub">A estrutura desta área ainda não existe neste ambiente.</div>
           </div>
           <button class="btn verde sm" onclick="copyCadastrosSenhasSetupSQL()">Copiar SQL</button>
         </div>
         <div class="knowledge-callout">
           <div class="knowledge-callout-title">Como ativar</div>
-          <div class="knowledge-callout-text">Rode o SQL abaixo no Supabase SQL Editor para migrar esta área para Vault e depois recarregue a aba.</div>
+          <div class="knowledge-callout-text">Rode o SQL abaixo no Supabase SQL Editor para criar a estrutura desta área e depois recarregue a aba.</div>
         </div>
         <pre style="white-space:pre-wrap;background:#faf9f6;border:1px solid var(--cinza);border-radius:8px;padding:14px;font-size:10px;line-height:1.6;color:#555;overflow:auto">${esc(CADASTROS_SENHAS_SETUP_SQL)}</pre>
       </section>`;
@@ -3906,8 +4100,8 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   async function iniciarCadastrosSenhas() {
     const root = document.getElementById('cadastros-senhas-root');
     if(!root) return;
-    if(!isSocio()) {
-      root.innerHTML = '<div class="knowledge-empty">Acesso restrito a s&oacute;cios.</div>';
+    if(!isColaborador()) {
+      root.innerHTML = '<div class="knowledge-empty">Fa&ccedil;a login para acessar esta &aacute;rea.</div>';
       return;
     }
     root.innerHTML = '<div class="loading-state">Carregando...</div>';
@@ -4148,6 +4342,323 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       if(!confirm('Excluir a plataforma "' + nome + '"?')) return;
       const { error } = await sb.from('cadastros_plataformas').delete().eq('id', id);
       if(error) { alert('Erro ao excluir: ' + error.message); return; }
+      iniciarCadastrosSenhas();
+    };
+  }
+
+  function renderCadastrosSenhasRoot(root, plats) {
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const nivelInfo = {
+      colaborador: { label: 'Colaborador', bg: '#eef4f1', color: '#1d6a4a', border: '#b8d9c8' },
+      socio: { label: 'Sócio', bg: '#f6f1ea', color: '#7a5c2e', border: '#d9c9ae' },
+      administrador: { label: 'Administrador', bg: '#edf2fa', color: '#3a6fb5', border: '#b3caea' }
+    };
+    window.__csSecretsCache = window.__csSecretsCache || {};
+
+    const cardsHtml = (plats || []).map(p => {
+      const nivel = nivelInfo[p.nivel_acesso] || nivelInfo.socio;
+      return `
+        <article class="cs-item" id="cs-card-${esc(p.id)}">
+          <div class="cs-item-top">
+            <div>
+              <div class="cs-item-title">${esc(p.nome)}</div>
+              ${p.uso ? `<div class="cs-item-sub">${esc(p.uso)}</div>` : ''}
+            </div>
+            <span class="cs-badge" style="background:${nivel.bg};color:${nivel.color};border-color:${nivel.border}">${esc(nivel.label)}</span>
+          </div>
+          <div class="cs-meta-grid">
+            <div class="cs-meta-box">
+              <div class="cs-meta-label">Login</div>
+              <div class="cs-secret-row">
+                <span class="cs-secret-value" id="cs-login-${esc(p.id)}">---------</span>
+                <button class="cs-icon-btn" onclick="csToggleReveal('${esc(p.id)}')" title="Visualizar credencial">👁</button>
+              </div>
+            </div>
+            <div class="cs-meta-box">
+              <div class="cs-meta-label">Senha</div>
+              <div class="cs-secret-row">
+                <span class="cs-secret-value" id="cs-senha-${esc(p.id)}">---------</span>
+                <button class="cs-icon-btn" onclick="csToggleReveal('${esc(p.id)}')" title="Visualizar credencial">👁</button>
+              </div>
+            </div>
+          </div>
+          ${p.clientes ? `<div class="cs-copy">Clientes: ${esc(p.clientes)}</div>` : ''}
+          ${p.observacoes ? `<div class="cs-copy">Observações: ${esc(p.observacoes)}</div>` : ''}
+          <div class="cs-actions">
+            <button class="cs-btn" onclick="csToggleReveal('${esc(p.id)}')" id="cs-reveal-btn-${esc(p.id)}">Ver credencial</button>
+            ${isSocio() ? `<button class="cs-btn" onclick="csEditar('${esc(p.id)}')">Editar</button>` : ''}
+            ${isSocio() ? `<button class="cs-btn danger" onclick="csDeletar('${esc(p.id)}','${esc(p.nome)}')">Excluir</button>` : ''}
+          </div>
+        </article>`;
+    }).join('');
+
+    root.innerHTML = `
+      <style>
+        .cs-shell{display:flex;flex-direction:column;gap:16px}
+        .cs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+        .cs-item{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:16px}
+        .cs-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
+        .cs-item-title{font-size:15px;font-weight:700;line-height:1.2;color:var(--preto)}
+        .cs-item-sub{font-size:11px;color:#777;margin-top:4px;line-height:1.5}
+        .cs-badge{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+        .cs-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+        .cs-meta-box{background:#fafaf8;border:1px solid var(--cinza2);border-radius:8px;padding:10px}
+        .cs-meta-label{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:6px}
+        .cs-secret-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .cs-secret-value{font-size:11px;color:var(--preto);font-family:var(--fm);word-break:break-all}
+        .cs-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--cinza);background:#fff;cursor:pointer;font-size:12px}
+        .cs-icon-btn:hover{border-color:var(--preto)}
+        .cs-copy{font-size:11px;color:#666;line-height:1.5;margin-top:4px}
+        .cs-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+        .cs-btn{font-size:10px;padding:6px 10px;border-radius:6px;border:1px solid var(--cinza);background:#fff;color:#555;cursor:pointer;font-family:var(--f);transition:all .12s}
+        .cs-btn:hover{border-color:var(--preto);color:var(--preto)}
+        .cs-btn.danger{color:#b84c3a}
+        .cs-btn.danger:hover{border-color:#b84c3a;background:#fbf0ee}
+        .cs-form{background:#fafaf8;border:1px solid var(--cinza);border-radius:10px;padding:20px}
+        .cs-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+        .cs-form-grid .full{grid-column:1/-1}
+        .cs-form-grid label{display:block;font-size:8px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#999;margin-bottom:5px}
+        .cs-form-grid input,.cs-form-grid textarea,.cs-form-grid select{width:100%;padding:9px 10px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--f);font-size:11px;outline:none;box-sizing:border-box;color:var(--preto);background:#fff}
+        .cs-form-grid input:focus,.cs-form-grid textarea:focus,.cs-form-grid select:focus{border-color:var(--preto)}
+        .cs-form-btns{display:flex;gap:8px;justify-content:flex-end}
+        .cs-form-help{font-size:10px;color:#888;line-height:1.5;margin-top:-4px;margin-bottom:8px}
+        @media (max-width:720px){
+          .cs-meta-grid,.cs-form-grid{grid-template-columns:1fr}
+        }
+      </style>
+
+      <section class="secao-shell">
+        <div class="secao-shell-header">
+          <div>
+            <div class="secao-shell-title">Cadastros e Senhas</div>
+            <div class="secao-shell-sub">Credenciais com máscara na interface e revelação sob demanda por nível de acesso.</div>
+          </div>
+          ${isSocio() ? `<button class="btn verde sm" onclick="csAbrirFormNova()">+ Nova plataforma</button>` : ''}
+        </div>
+
+        ${isSocio() ? `
+        <div id="cs-form-wrap" style="display:none">
+          <div class="cs-form">
+            <div style="font-size:11px;font-weight:700;margin-bottom:14px" id="cs-form-titulo">Nova plataforma</div>
+            <input type="hidden" id="cs-edit-id">
+            <div class="cs-form-grid">
+              <div>
+                <label>Nome da plataforma</label>
+                <input id="cs-f-nome" type="text" placeholder="Ex: Construmanager">
+              </div>
+              <div>
+                <label>Número (ordem)</label>
+                <input id="cs-f-numero" type="number" min="1" placeholder="Ex: 5">
+              </div>
+              <div>
+                <label>Nível de acesso</label>
+                <select id="cs-f-nivel-acesso">
+                  <option value="colaborador">Colaborador</option>
+                  <option value="socio">Sócio</option>
+                  <option value="administrador">Administrador</option>
+                </select>
+              </div>
+              <div>
+                <label>Uso / descrição</label>
+                <input id="cs-f-uso" type="text" placeholder="Ex: Registro de projetos">
+              </div>
+              <div class="full">
+                <label>Login</label>
+                <input id="cs-f-login" type="text" placeholder="Ex: contato@empresa.com">
+              </div>
+              <div class="full">
+                <label>Senha</label>
+                <input id="cs-f-senha" type="text" placeholder="Digite a senha ou deixe em branco para manter a atual">
+              </div>
+              <div class="full">
+                <div class="cs-form-help">Ao editar uma plataforma existente, deixar login e senha em branco mantém a credencial atual.</div>
+              </div>
+              <div class="full">
+                <label>Clientes que usam esta plataforma</label>
+                <input id="cs-f-clientes" type="text" placeholder="Ex: Engeco e Embralot">
+              </div>
+              <div class="full">
+                <label>Observações</label>
+                <textarea id="cs-f-observacoes" rows="3" placeholder="Ex: usar MFA sempre que disponível"></textarea>
+              </div>
+            </div>
+            <div class="cs-form-btns">
+              <button class="btn" onclick="csFecharForm()">Cancelar</button>
+              <button class="btn verde" onclick="csSalvar()">Salvar</button>
+            </div>
+          </div>
+        </div>` : ''}
+
+        <div class="cs-shell">
+          <div class="cs-grid">${cardsHtml || '<div class="knowledge-empty">Nenhuma credencial disponível para o seu nível de acesso.</div>'}</div>
+        </div>
+      </section>`;
+
+    window.csAbrirFormNova = function() {
+      if(!isSocio()) {
+        alert('Apenas sócios podem editar cadastros e senhas.');
+        return;
+      }
+      document.getElementById('cs-edit-id').value = '';
+      document.getElementById('cs-f-nome').value = '';
+      document.getElementById('cs-f-numero').value = (plats.length + 1);
+      document.getElementById('cs-f-nivel-acesso').value = 'socio';
+      document.getElementById('cs-f-login').value = '';
+      document.getElementById('cs-f-senha').value = '';
+      document.getElementById('cs-f-uso').value = '';
+      document.getElementById('cs-f-clientes').value = '';
+      document.getElementById('cs-f-observacoes').value = '';
+      document.getElementById('cs-form-titulo').textContent = 'Nova plataforma';
+      document.getElementById('cs-form-wrap').style.display = '';
+      document.getElementById('cs-f-nome').focus();
+    };
+
+    window.csEditar = async function(id) {
+      if(!isSocio()) {
+        alert('Apenas sócios podem editar cadastros e senhas.');
+        return;
+      }
+      const p = plats.find(x => x.id === id);
+      if(!p) return;
+      document.getElementById('cs-edit-id').value = id;
+      document.getElementById('cs-f-nome').value = p.nome || '';
+      document.getElementById('cs-f-numero').value = p.numero || '';
+      document.getElementById('cs-f-nivel-acesso').value = p.nivel_acesso || 'socio';
+      document.getElementById('cs-f-login').value = '';
+      document.getElementById('cs-f-senha').value = '';
+      document.getElementById('cs-f-uso').value = p.uso || '';
+      document.getElementById('cs-f-clientes').value = p.clientes || '';
+      document.getElementById('cs-f-observacoes').value = p.observacoes || '';
+      document.getElementById('cs-form-titulo').textContent = 'Editar — ' + (p.nome || '');
+      document.getElementById('cs-form-wrap').style.display = '';
+      document.getElementById('cs-f-nome').focus();
+      document.getElementById('cs-form-wrap').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    };
+
+    window.csFecharForm = function() {
+      document.getElementById('cs-form-wrap').style.display = 'none';
+    };
+
+    window.csToggleReveal = async function(id) {
+      const loginEl = document.getElementById(`cs-login-${id}`);
+      const senhaEl = document.getElementById(`cs-senha-${id}`);
+      const btnEl = document.getElementById(`cs-reveal-btn-${id}`);
+      if(!loginEl || !senhaEl) return;
+      const cache = window.__csSecretsCache[id];
+      const aberto = loginEl.dataset.revealed === 'true';
+      if(aberto) {
+        loginEl.textContent = '---------';
+        senhaEl.textContent = '---------';
+        loginEl.dataset.revealed = 'false';
+        senhaEl.dataset.revealed = 'false';
+        if(btnEl) btnEl.textContent = 'Ver credencial';
+        return;
+      }
+      if(cache) {
+        loginEl.textContent = cache.login || '—';
+        senhaEl.textContent = cache.senha || '—';
+        loginEl.dataset.revealed = 'true';
+        senhaEl.dataset.revealed = 'true';
+        if(btnEl) btnEl.textContent = 'Ocultar';
+        return;
+      }
+      if(btnEl) btnEl.textContent = 'Carregando...';
+      const { data, error } = await sb.rpc('cs_reveal_credential', { p_plataforma_id: id });
+      if(error) {
+        alert('Erro ao revelar credencial: ' + error.message);
+        if(btnEl) btnEl.textContent = 'Ver credencial';
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      window.__csSecretsCache[id] = {
+        login: row?.login || '—',
+        senha: row?.senha || '—'
+      };
+      loginEl.textContent = window.__csSecretsCache[id].login;
+      senhaEl.textContent = window.__csSecretsCache[id].senha;
+      loginEl.dataset.revealed = 'true';
+      senhaEl.dataset.revealed = 'true';
+      if(btnEl) btnEl.textContent = 'Ocultar';
+    };
+
+    window.csSalvar = async function() {
+      if(!isSocio()) {
+        alert('Apenas sócios podem editar cadastros e senhas.');
+        return;
+      }
+      const id = document.getElementById('cs-edit-id').value;
+      const payload = {
+        nome: document.getElementById('cs-f-nome').value.trim(),
+        numero: parseInt(document.getElementById('cs-f-numero').value) || plats.length + 1,
+        nivel_acesso: document.getElementById('cs-f-nivel-acesso').value || 'socio',
+        uso: document.getElementById('cs-f-uso').value.trim(),
+        clientes: document.getElementById('cs-f-clientes').value.trim(),
+        observacoes: document.getElementById('cs-f-observacoes').value.trim()
+      };
+      const credencial = {
+        login: document.getElementById('cs-f-login').value.trim(),
+        senha: document.getElementById('cs-f-senha').value.trim()
+      };
+      if(!payload.nome) {
+        alert('Informe o nome da plataforma.');
+        return;
+      }
+      let error;
+      let plataformaId = id;
+      if(id) {
+        ({ error } = await sb.from('cadastros_plataformas').update({
+          numero: payload.numero,
+          nome: payload.nome,
+          nivel_acesso: payload.nivel_acesso,
+          uso: payload.uso || null,
+          clientes: payload.clientes || null,
+          observacoes: payload.observacoes || null,
+          updated_at: new Date().toISOString()
+        }).eq('id', id));
+      } else {
+        const { data, error: insertError } = await sb.from('cadastros_plataformas').insert({
+          numero: payload.numero,
+          nome: payload.nome,
+          nivel_acesso: payload.nivel_acesso,
+          uso: payload.uso || null,
+          clientes: payload.clientes || null,
+          observacoes: payload.observacoes || null
+        }).select('id').single();
+        error = insertError;
+        plataformaId = data?.id || '';
+      }
+      if(error) {
+        alert('Erro ao salvar plataforma: ' + error.message);
+        return;
+      }
+      if(credencial.login || credencial.senha) {
+        const { error: secretError } = await sb.from('cadastros_plataformas_secret').upsert({
+          plataforma_id: plataformaId,
+          login: credencial.login || null,
+          senha: credencial.senha || null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'plataforma_id' });
+        if(secretError) {
+          alert('Erro ao salvar credencial: ' + secretError.message);
+          return;
+        }
+      }
+      delete window.__csSecretsCache[plataformaId];
+      iniciarCadastrosSenhas();
+    };
+
+    window.csDeletar = async function(id, nome) {
+      if(!isSocio()) {
+        alert('Apenas sócios podem editar cadastros e senhas.');
+        return;
+      }
+      if(!confirm('Excluir a plataforma "' + nome + '"?')) return;
+      const { error } = await sb.from('cadastros_plataformas').delete().eq('id', id);
+      if(error) {
+        alert('Erro ao excluir: ' + error.message);
+        return;
+      }
+      delete window.__csSecretsCache[id];
       iniciarCadastrosSenhas();
     };
   }
