@@ -383,6 +383,18 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 .dre-positivo { color: var(--verde); }
 .dre-negativo { color: var(--tc); }
 .dre-proj { opacity: .6; font-size: 10px; }
+/* DRE Drill-down */
+.dre-label-click { cursor: pointer; transition: color .12s; }
+.dre-label-click:hover { color: var(--fin) !important; }
+.dre-cell-click  { cursor: pointer; }
+.dre-cell-click:hover { background: var(--fin-bg) !important; }
+.dre-dd-hint { font-size: 9px; color: var(--fin-l); margin-left: 5px; opacity: 0; transition: opacity .15s; }
+.dre-label-click:hover .dre-dd-hint { opacity: 1; }
+.dre-dd-tbl { width: 100%; border-collapse: collapse; }
+.dre-dd-tbl th { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #999; padding: 8px 16px; border-bottom: 1px solid var(--cinza2); text-align: left; position: sticky; top: 0; background: #fff; z-index: 1; }
+.dre-dd-tbl td { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid var(--cinza2); vertical-align: top; }
+.dre-dd-tbl tr:hover td { background: var(--fin-bg); }
+.dre-dd-tbl .dd-total td { font-weight: 700; background: var(--fin-bg) !important; border-top: 2px solid var(--cinza); border-bottom: none; }
 /* Controles DRE */
 .dre-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
 .dre-toggle { display: flex; border: 1px solid var(--cinza); border-radius: 6px; overflow: hidden; }
@@ -1212,6 +1224,22 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 <!-- ══════════════════════════════════════════════════════════
      MODAIS
 ══════════════════════════════════════════════════════════ -->
+
+<!-- Modal: DRE Drill-down -->
+<div class="modal-bg" id="modal-dre-drill">
+  <div class="modal" style="max-width:820px;height:72vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--cinza2);flex-shrink:0">
+      <div>
+        <div style="font-size:13px;font-weight:700" id="drd-titulo">Detalhamento</div>
+        <div style="font-size:10px;color:#888;margin-top:2px" id="drd-sub"></div>
+      </div>
+      <button class="modal-close" onclick="fecharModal('modal-dre-drill')">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1">
+      <table class="dre-dd-tbl" id="drd-tabela"></table>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: Fechar Mês -->
 <div class="modal-bg" id="modal-fechar-mes">
@@ -3561,6 +3589,86 @@ function calcSubtotaisDRE(porGrupo, periodos) {
   return result;
 }
 
+// Tabela de lookup para drill-down: cada row/cell do DRE empurra um item aqui
+let G_dreItems = [];
+
+function dreDD(idx) {
+  const item = G_dreItems[idx];
+  if (!item || !G_dre.dados) return;
+
+  const modo    = G_dre.modo;
+  const ano     = G_dre.ano;
+  const periodo = item.periodo ?? null;
+
+  // Rótulo do período
+  let periodoLabel = `${ano} · Ano todo`;
+  if (periodo !== null) {
+    if (modo === 'anual') periodoLabel = MESES_FULL[periodo - 1] + ' · ' + ano;
+    else periodoLabel = `Q${periodo} · ${QUAD[periodo - 1]?.label} · ${ano}`;
+  }
+
+  // Filtrar lançamentos
+  const dados = (G_dre.dados || []).filter(l => {
+    const pc = l.fin_plano_contas;
+    if (!pc || !pc.aparece_dre) return false;
+    if (item.tipo === 'grupo'    && pc.grupo !== item.key) return false;
+    if (item.tipo === 'subconta' && (pc.grupo !== item.grupoKey || pc.subconta !== item.key)) return false;
+    if (periodo !== null) {
+      const mes = new Date(l.data_competencia + 'T12:00:00').getMonth() + 1;
+      if (modo === 'anual' && mes !== periodo) return false;
+      if (modo === 'quad'  && !QUAD[periodo - 1]?.meses.includes(mes)) return false;
+    }
+    return true;
+  }).sort((a, b) => b.data_competencia.localeCompare(a.data_competencia));
+
+  // Título
+  const estrutItem = DRE_ESTRUTURA.find(d => d.t === 'grupo' && d.key === (item.grupoKey || item.key));
+  const tituloBase = item.tipo === 'subconta'
+    ? item.key
+    : (estrutItem?.label?.replace(/^\(−\) /, '') || item.key);
+
+  document.getElementById('drd-titulo').textContent = tituloBase;
+  document.getElementById('drd-sub').textContent    = `${periodoLabel} · ${dados.length} lançamento${dados.length !== 1 ? 's' : ''}`;
+
+  const total = dados.reduce((s, l) => s + (parseFloat(l.valor) || 0), 0) * item.sinal;
+
+  const tbRows = dados.length
+    ? dados.map(l => {
+        const v = parseFloat(l.valor) * item.sinal;
+        return `<tr>
+          <td style="color:#888;font-size:11px;white-space:nowrap">${fmtData(l.data_competencia)}</td>
+          <td>
+            <div style="font-weight:500">${l.fornecedor_cliente || l.observacao || '—'}</div>
+            ${l.observacao && l.fornecedor_cliente ? `<div style="font-size:10px;color:#aaa">${l.observacao}</div>` : ''}
+          </td>
+          <td style="font-size:10px;color:#888">${l.subconta || l.grupo || '—'}</td>
+          <td>${sitBadge(l.situacao)}</td>
+          <td style="font-size:10px;color:#aaa">${l.nf || '—'}</td>
+          <td style="text-align:right;font-weight:600;white-space:nowrap;color:${v >= 0 ? 'var(--verde)' : 'var(--tc)'}">${moeda(v)}</td>
+        </tr>`;
+      }).join('') + `
+      <tr class="dd-total">
+        <td colspan="5">Total (${dados.length} lançamento${dados.length !== 1 ? 's' : ''})</td>
+        <td style="text-align:right;color:${total >= 0 ? 'var(--verde)' : 'var(--tc)'}">${moeda(total)}</td>
+      </tr>`
+    : '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:28px 0">Nenhum lançamento no período</td></tr>';
+
+  document.getElementById('drd-tabela').innerHTML = `
+    <thead>
+      <tr>
+        <th style="min-width:90px">Data</th>
+        <th>Descrição / Cliente</th>
+        <th>Subconta</th>
+        <th>Situação</th>
+        <th>NF</th>
+        <th style="text-align:right;min-width:110px">Valor</th>
+      </tr>
+    </thead>
+    <tbody>${tbRows}</tbody>`;
+
+  abrirModal('modal-dre-drill');
+}
+
 function renderDRE() {
   const container = document.getElementById('dre-container');
   if (!container) return;
@@ -3631,6 +3739,7 @@ function renderDRE() {
   ).join('') + '<th class="col-total">Total</th>';
 
   let rows = '';
+  G_dreItems = []; // reset do lookup para drill-down
 
   for (const item of DRE_ESTRUTURA) {
     if (item.t === 'secao') {
@@ -3639,40 +3748,52 @@ function renderDRE() {
     }
 
     if (item.t === 'grupo') {
-      // Verificar se tem dados
-      const gData = porGrupo[item.key];
-      const gTot  = grupoTotal[item.key];
+      const gData   = porGrupo[item.key];
+      const gTot    = grupoTotal[item.key];
       const hasData = gTot && (gTot.real > 0 || gTot.proj > 0);
 
-      // Linha de grupo
+      // Registra item de drill (ano inteiro) para o label e coluna total
+      const ddIdx = G_dreItems.length;
+      G_dreItems.push({ tipo: 'grupo', key: item.key, sinal: item.sinal });
+
+      // Células por período — cada uma tem seu próprio item de drill
       const tdCols = colunas.map(c => {
-        const d = gData?.[c.key];
+        const ddColIdx = G_dreItems.length;
+        G_dreItems.push({ tipo: 'grupo', key: item.key, sinal: item.sinal, periodo: c.key });
+        const d   = gData?.[c.key];
         const val = d ? { real: d.real * item.sinal, proj: d.proj * item.sinal } : null;
-        return `<td>${dreCell(val)}</td>`;
+        return `<td class="dre-cell-click" onclick="dreDD(${ddColIdx})">${dreCell(val)}</td>`;
       }).join('');
+
       const totVal = gTot ? { real: gTot.real * item.sinal, proj: gTot.proj * item.sinal } : null;
       rows += `<tr${!hasData ? ' style="opacity:.4"' : ''}>
-        <td style="padding-left:20px">${item.label}</td>
+        <td class="dre-label-click" style="padding-left:20px" onclick="dreDD(${ddIdx})">${item.label}<span class="dre-dd-hint">↗</span></td>
         ${tdCols}
-        <td class="col-total">${dreCell(totVal)}</td>
+        <td class="col-total dre-cell-click" onclick="dreDD(${ddIdx})">${dreCell(totVal)}</td>
       </tr>`;
 
       // Subcontas (se detalhar)
       if (detalhar && hasData) {
         const subs = Object.values(porSubconta).filter(s => s.grupo === item.key);
         for (const sub of subs) {
+          const ddSubIdx = G_dreItems.length;
+          G_dreItems.push({ tipo: 'subconta', key: sub.subconta, grupoKey: item.key, sinal: item.sinal });
+
           const subTdCols = colunas.map(c => {
-            const d = sub[c.key];
+            const ddSubColIdx = G_dreItems.length;
+            G_dreItems.push({ tipo: 'subconta', key: sub.subconta, grupoKey: item.key, sinal: item.sinal, periodo: c.key });
+            const d   = sub[c.key];
             const val = d ? { real: d.real * item.sinal, proj: d.proj * item.sinal } : null;
-            return `<td>${dreCell(val)}</td>`;
+            return `<td class="dre-cell-click" onclick="dreDD(${ddSubColIdx})">${dreCell(val)}</td>`;
           }).join('');
+
           let subTotReal = 0, subTotProj = 0;
           for (const p of periodos) { subTotReal += sub[p]?.real || 0; subTotProj += sub[p]?.proj || 0; }
           const subTot = { real: subTotReal * item.sinal, proj: subTotProj * item.sinal };
           rows += `<tr style="font-size:10px;color:#666">
-            <td style="padding-left:36px">${sub.subconta}</td>
+            <td class="dre-label-click" style="padding-left:36px" onclick="dreDD(${ddSubIdx})">${sub.subconta}<span class="dre-dd-hint">↗</span></td>
             ${subTdCols}
-            <td class="col-total">${dreCell(subTot)}</td>
+            <td class="col-total dre-cell-click" onclick="dreDD(${ddSubIdx})">${dreCell(subTot)}</td>
           </tr>`;
         }
       }

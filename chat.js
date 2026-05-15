@@ -84,7 +84,7 @@
     '.chat-conv-preview{font-size:10px;color:var(--cinza,#D0CFC9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}',
     '.chat-conv-badge{background:#B84C3A;color:#fff;font-size:9px;font-weight:700;font-family:"DM Mono",monospace;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
     /* ── Messages ── */
-    '.chat-messages{flex:1;overflow-y:auto;padding:10px 10px 4px;display:flex;flex-direction:column;gap:0;scroll-behavior:smooth}',
+    '.chat-messages{flex:1;overflow-y:auto;padding:8px 8px 4px;display:flex;flex-direction:column;gap:0;scroll-behavior:smooth}',
     '.chat-messages::-webkit-scrollbar{width:3px}',
     '.chat-messages::-webkit-scrollbar-thumb{background:var(--cinza,#D0CFC9);border-radius:2px}',
     /* ── Empty / loading ── */
@@ -98,25 +98,25 @@
     '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:"DM Mono",monospace;letter-spacing:.5px}',
     '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
     /* ── Message bubble ── */
-    '.chat-msg{display:flex;flex-direction:column;padding:2px 6px;border-radius:6px;transition:background .1s}',
+    '.chat-msg{display:flex;flex-direction:column;padding:1px 6px;border-radius:6px;transition:background .1s}',
     '.chat-msg:hover{background:var(--off,#F7F6F3)}',
     /* Alinhamento: recebidas à esq, enviadas à dir */
     '.chat-msg.own{align-items:flex-end}',
-    '.chat-msg-meta{display:flex;align-items:center;gap:5px;margin-top:6px;margin-bottom:3px}',
+    '.chat-msg-meta{display:flex;align-items:center;gap:5px;margin-top:5px;margin-bottom:4px}',
     '.chat-msg.own .chat-msg-meta{flex-direction:row-reverse}',
     '.chat-av{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0;font-family:"DM Mono",monospace;letter-spacing:0}',
     '.chat-msg-name{font-weight:600;font-size:10px;color:var(--preto,#111110)}',
     '.chat-msg.own .chat-msg-name{color:var(--verde,#1D6A4A)}',
     '.chat-msg-time{font-family:"DM Mono",monospace;font-size:8px;color:var(--cinza,#D0CFC9)}',
-    /* Bolhas: recv = off-white esq; sent = cinza2 dir */
-    '.chat-msg-text{font-size:12px;line-height:1.5;word-break:break-word;padding:5px 9px;border-radius:10px;max-width:86%}',
-    '.chat-msg-text.recv{background:var(--off,#F7F6F3);color:var(--preto,#111110);border-radius:2px 10px 10px 10px;align-self:flex-start}',
-    '.chat-msg-text.sent{background:var(--cinza2,#ECEAE4);color:var(--preto,#111110);border-radius:10px 2px 10px 10px;align-self:flex-end}',
-    /* Agrupadas: sem meta, recuadas */
+    /* Bolhas: recv = off-white esq; sent = cinza2 dir — todas com mesma margem lateral */
+    '.chat-msg-text{font-size:11px;line-height:1.45;word-break:break-word;padding:4px 8px;border-radius:10px;max-width:80%}',
+    '.chat-msg-text.recv{background:var(--off,#F7F6F3);color:var(--preto,#111110);border-radius:2px 10px 10px 10px;align-self:flex-start;margin-left:22px}',
+    '.chat-msg-text.sent{background:var(--cinza2,#ECEAE4);color:var(--preto,#111110);border-radius:10px 2px 10px 10px;align-self:flex-end;margin-right:22px}',
+    /* Agrupadas: mesma margem da primeira — sem desalinhamento */
     '.chat-msg-text.grouped.recv{margin-left:22px}',
     '.chat-msg-text.grouped.sent{margin-right:22px}',
-    '.chat-msg-reactions.grouped.recv{margin-left:22px}',
-    '.chat-msg-reactions.grouped.sent{margin-right:22px}',
+    '.chat-msg-reactions.recv{margin-left:22px}',
+    '.chat-msg-reactions.sent{margin-right:22px}',
     '.chat-link{color:var(--verde,#1D6A4A);text-decoration:underline;word-break:break-all}',
     '.chat-link:hover{color:var(--verde-l,#2D9E6B)}',
     /* ── Reactions ── */
@@ -201,6 +201,7 @@
     setupPresence();
     fetchAllUnread();
     subscribeIncoming();
+    loadTeamMembers();
 
     window.addEventListener('beforeunload', function () {
       if (presenceCh) presenceCh.untrack();
@@ -590,7 +591,10 @@
         teamMembers = (r.data || []).filter(function (m) {
           return m.auth_id !== user.auth_id && m.id !== user.id;
         });
-        renderMemberList();
+        /* Só re-renderiza a lista se a view de membros estiver ativa */
+        if (currentView === 'members') renderMemberList();
+        /* Se a home estiver aberta, atualiza os nomes nos DMs */
+        else if (isOpen && currentView === 'home') renderHome();
       });
   }
 
