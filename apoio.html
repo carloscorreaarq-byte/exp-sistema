@@ -2445,7 +2445,6 @@ function renderMatrizPlanoGenteModal() {
       </div>
       <div class="matriz-tabs">${renderMatrizTabs()}</div>
       <div class="matriz-status">${renderMatrizStatusTextoV2()}</div>
-      <div class="matriz-strip-wrap">${renderMatrizSenioridadesStrip()}</div>
       <div class="matriz-sec">
         <div class="matriz-sec-main">
           <div class="matriz-sec-title">${secao.titulo}</div>
@@ -2478,51 +2477,45 @@ function renderMatrizPlanoGenteModalV2() {
   const secao = getMatrizPlanoSecao(G.matrizPlanoSecaoAtiva);
   return `
     <style>
-      .matriz-modal{display:flex;flex-direction:column;gap:18px}
-      .matriz-intro{background:#fafaf8;border:1px solid var(--cinza);border-radius:10px;padding:16px 18px}
-      .matriz-intro p{font-size:11px;color:#555;line-height:1.7}
+      .matriz-modal{display:flex;flex-direction:column;gap:14px}
+      .matriz-intro{background:#fafaf8;border:1px solid var(--cinza);border-radius:10px;padding:12px 14px}
+      .matriz-intro p{font-size:10px;color:#555;line-height:1.65}
       .matriz-tabs{display:flex;gap:8px;flex-wrap:wrap}
-      .matriz-tab{padding:8px 12px;border:1px solid var(--cinza);border-radius:999px;background:#fff;font-family:var(--f);font-size:10px;font-weight:700;letter-spacing:.4px;cursor:pointer;color:#666}
+      .matriz-tab{padding:7px 11px;border:1px solid var(--cinza);border-radius:999px;background:#fff;font-family:var(--f);font-size:9px;font-weight:700;letter-spacing:.35px;cursor:pointer;color:#666}
       .matriz-tab:hover{border-color:var(--preto);color:var(--preto)}
       .matriz-tab.active{background:var(--verde);border-color:var(--verde);color:#fff}
-      .matriz-status{font-size:11px;color:#666;line-height:1.6;padding:0 2px}
-      .matriz-strip-wrap{display:flex;flex-wrap:wrap;gap:8px}
-      .matriz-col-chip{min-width:52px;padding:10px 12px;border-radius:10px;border:1px solid var(--cinza);background:#fff;font-family:var(--fm);font-size:12px;font-weight:700;color:#333;cursor:pointer;transition:all .14s}
-      .matriz-col-chip.hover{border-color:#b3caea;background:#edf2fa;color:#3a6fb5}
-      .matriz-col-chip.focus{border-color:#1d6a4a;background:#eaf5ee;color:#1d6a4a;opacity:1}
-      .matriz-col-chip.next{border-color:#c0d9c8;background:#f3f8f5;color:#45865d;opacity:.88}
-      .matriz-col-chip.dim{opacity:.28}
-      .matriz-sec{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
-      .matriz-sec-main{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:18px}
-      .matriz-sec-title{font-size:18px;font-weight:700;letter-spacing:-.2px;color:var(--preto);margin-bottom:6px}
-      .matriz-sec-sub{font-size:11px;color:#666;line-height:1.7;margin-bottom:14px}
+      .matriz-status{font-size:10px;color:#666;line-height:1.5;padding:0 2px}
+      .matriz-sec{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:12px}
+      .matriz-sec-main{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:14px}
+      .matriz-sec-title{font-size:16px;font-weight:700;letter-spacing:-.2px;color:var(--preto);margin-bottom:4px}
+      .matriz-sec-sub{font-size:10px;color:#666;line-height:1.6;margin-bottom:10px}
       .matriz-grid-wrap{border:1px solid var(--cinza2);border-radius:12px;overflow:auto;background:#fff}
-      .matriz-grid{width:100%;min-width:980px;border-collapse:separate;border-spacing:0}
+      .matriz-grid{width:100%;min-width:760px;border-collapse:separate;border-spacing:0}
       .matriz-grid thead th{position:sticky;top:0;z-index:1;background:#fff}
-      .matriz-grid-label-head{min-width:420px;padding:12px 14px;text-align:left;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#8b8b8b;border-bottom:1px solid var(--cinza2)}
-      .matriz-grid-head{width:56px;min-width:56px;padding:8px 6px;border-bottom:1px solid var(--cinza2);text-align:center;transition:opacity .16s ease, background .16s ease}
-      .matriz-grid-head-btn{width:100%;padding:9px 0;border:1px solid #cfcfc8;border-radius:10px;background:#fff;font-family:var(--fm);font-size:12px;font-weight:700;color:#333;cursor:pointer;transition:all .14s}
+      .matriz-grid-label-head{min-width:300px;padding:10px 12px;text-align:left;font-size:9px;letter-spacing:.45px;text-transform:uppercase;color:#8b8b8b;border-bottom:1px solid var(--cinza2)}
+      .matriz-grid-head{width:42px;min-width:42px;padding:6px 3px;border-bottom:1px solid var(--cinza2);text-align:center;transition:opacity .16s ease, background .16s ease, box-shadow .16s ease}
+      .matriz-grid-head-btn{width:100%;padding:7px 0;border:1px solid #cfcfc8;border-radius:9px;background:#fff;font-family:var(--fm);font-size:10px;font-weight:700;color:#333;cursor:pointer;transition:all .14s}
       .matriz-grid-head.hover .matriz-grid-head-btn{border-color:#b3caea;background:#edf2fa;color:#3a6fb5}
-      .matriz-grid-head.focus .matriz-grid-head-btn{border-color:#1d6a4a;background:#eaf5ee;color:#1d6a4a}
+      .matriz-grid-head.focus .matriz-grid-head-btn{border-color:#1d6a4a;background:#eaf5ee;color:#1d6a4a;box-shadow:0 0 0 2px rgba(29,106,74,.10)}
       .matriz-grid-head.next .matriz-grid-head-btn{border-color:#c0d9c8;background:#f3f8f5;color:#45865d}
-      .matriz-grid-head.dim{opacity:.22}
-      .matriz-grid-label{padding:11px 14px;font-size:11px;line-height:1.55;color:#3d3d3d;background:#fafaf8;border-bottom:1px solid #ecece6}
-      .matriz-grid-cell{width:56px;min-width:56px;padding:10px 0;text-align:center;font-family:var(--fm);font-size:12px;font-weight:700;border-bottom:1px solid #ecece6;cursor:pointer;transition:opacity .16s ease, transform .16s ease}
+      .matriz-grid-head.dim{opacity:.15}
+      .matriz-grid-label{padding:9px 10px;font-size:10px;line-height:1.45;color:#3d3d3d;background:#fafaf8;border-bottom:1px solid #ecece6}
+      .matriz-grid-cell{width:42px;min-width:42px;padding:8px 0;text-align:center;font-family:var(--fm);font-size:10px;font-weight:700;border-bottom:1px solid #ecece6;cursor:pointer;transition:opacity .16s ease, transform .16s ease, box-shadow .16s ease}
       .matriz-grid-cell.hover{transform:translateY(-1px)}
-      .matriz-grid-cell.dim{opacity:.18}
-      .matriz-grid-cell.next{opacity:.7}
-      .matriz-grid-cell.focus{opacity:1}
+      .matriz-grid-cell.dim{opacity:.12}
+      .matriz-grid-cell.next{opacity:.55}
+      .matriz-grid-cell.focus{opacity:1;box-shadow:inset 0 0 0 2px rgba(29,106,74,.18)}
       .matriz-grid-cell.n0{background:#f0f0ec;color:#777}
       .matriz-grid-cell.n1{background:#fff1b8;color:#b27b00}
       .matriz-grid-cell.n2{background:#dff0d8;color:#2d7b46}
       .matriz-grid-cell.n3{background:#8ccd66;color:#1f5d30}
       .matriz-side{display:flex;flex-direction:column;gap:12px}
-      .matriz-note,.matriz-legend{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:16px}
+      .matriz-note,.matriz-legend{background:#fff;border:1px solid var(--cinza);border-radius:10px;padding:12px}
       .matriz-note-title,.matriz-legend-title{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px}
-      .matriz-note p,.matriz-legend p{font-size:11px;color:#666;line-height:1.7}
-      .matriz-legend-rows{display:grid;gap:8px}
-      .matriz-legend-row{display:flex;align-items:center;gap:8px}
-      .matriz-legend-chip{min-width:32px;padding:5px 0;border-radius:999px;text-align:center;font-size:10px;font-weight:700}
+      .matriz-note p,.matriz-legend p{font-size:10px;color:#666;line-height:1.6}
+      .matriz-legend-rows{display:grid;gap:6px}
+      .matriz-legend-row{display:flex;align-items:center;gap:6px}
+      .matriz-legend-chip{min-width:26px;padding:4px 0;border-radius:999px;text-align:center;font-size:9px;font-weight:700}
       .matriz-legend-chip.n0{background:#f0f0ec;color:#777}
       .matriz-legend-chip.n1{background:#fff1b8;color:#b27b00}
       .matriz-legend-chip.n2{background:#dff0d8;color:#2d7b46}

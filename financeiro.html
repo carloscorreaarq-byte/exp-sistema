@@ -554,6 +554,41 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 .rec-tipo.sazonal { background: var(--am-bg); color: var(--am); }
 .rec-tipo.parcel  { background: var(--roxo-bg); color: var(--roxo); }
 .rec-valor { font-size: 16px; font-weight: 700; }
+/* ── FECHAMENTO MENSAL ───────────────────────────────────── */
+.fech-lista { display: flex; flex-direction: column; gap: 6px; }
+.fech-row {
+  background: #fff;
+  border: 1px solid var(--cinza);
+  border-left: 3px solid var(--cinza);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.fech-row.fechado { border-left-color: var(--fin); }
+.fech-row.atual   { border-left-color: var(--az); }
+.fech-lock { font-size: 15px; flex-shrink: 0; }
+.fech-mes  { font-weight: 600; font-size: 13px; min-width: 110px; display: flex; align-items: center; gap: 6px; }
+.fech-snap { display: flex; gap: 28px; flex: 1; }
+.fech-snap-item { text-align: right; }
+.fech-snap-lbl  { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+.fech-snap-val  { font-size: 12px; font-weight: 700; }
+.fech-meta { font-size: 10px; color: #aaa; min-width: 160px; text-align: right; }
+.fech-actions { flex-shrink: 0; }
+.fech-preview {
+  background: var(--fin-bg);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 24px;
+  margin: 16px 0;
+}
+.fech-preview-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.fech-preview-row.total { font-weight: 700; border-top: 1px solid var(--cinza); padding-top: 8px; margin-top: 2px; font-size: 13px; }
+.fech-preview-lbl { font-size: 10px; color: #777; }
+.fech-preview-val { font-size: 12px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -1103,6 +1138,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
   <div style="display:flex;gap:0;border-bottom:1px solid var(--cinza);margin-bottom:18px">
     <button class="ntab active" data-ctab="plano" onclick="setConfigTab('plano')" style="border-bottom-color:var(--fin)">Plano de Contas</button>
     <button class="ntab" data-ctab="contas" onclick="setConfigTab('contas')">Contas Bancárias</button>
+    <button class="ntab" data-ctab="fechamento" onclick="setConfigTab('fechamento')">Fechamento Mensal</button>
   </div>
 
   <!-- Plano de Contas -->
@@ -1149,6 +1185,25 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
       </div>
     </div>
   </div>
+
+  <!-- Fechamento Mensal -->
+  <div id="ctab-fechamento" style="display:none">
+    <div class="page-hd" style="margin-bottom:6px">
+      <div>
+        <div style="font-size:13px;font-weight:700">Fechamento Mensal</div>
+        <div style="font-size:10px;color:#888">Bloqueia meses concluídos e registra snapshot do DRE</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#aaa;margin-bottom:16px;padding:10px 14px;background:#fff;border-radius:8px;border:1px solid var(--cinza)">
+      🔒 Meses fechados ficam bloqueados para edição. O snapshot captura receita bruta, líquida, lucro bruto, resultado operacional e resultado líquido no momento do fechamento.
+    </div>
+    <div id="fech-lista" class="fech-lista">
+      <div class="empty-state">
+        <div class="empty-state-icon">📅</div>
+        <div class="empty-state-title">Carregando…</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 </div><!-- /main -->
@@ -1157,6 +1212,31 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 <!-- ══════════════════════════════════════════════════════════
      MODAIS
 ══════════════════════════════════════════════════════════ -->
+
+<!-- Modal: Fechar Mês -->
+<div class="modal-bg" id="modal-fechar-mes">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-hd">
+      <span class="modal-titulo" id="fech-modal-titulo">Fechar Mês</span>
+      <button class="modal-close" onclick="fecharModal('modal-fechar-mes')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:#555;margin-bottom:16px" id="fech-modal-desc">
+        Ao fechar o mês, todos os lançamentos desse período ficam bloqueados para edição.
+        Um snapshot do resultado é salvo para histórico.
+      </div>
+      <div class="fech-preview" id="fech-preview-dre"></div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Notas (opcional)</label>
+        <input type="text" id="fech-notas" placeholder="Ex: Fechamento revisado por Carlos">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-fechar-mes')">Cancelar</button>
+      <button class="btn btn-pri" id="fech-btn-confirmar" onclick="confirmarFecharMes()">🔒 Fechar Mês</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: Novo Lançamento -->
 <div class="modal-bg" id="modal-lancamento">
@@ -1638,6 +1718,8 @@ const G = {
   ativos: [],
   lancamentos: [],
   parcelas: [],
+  fechamentos: [],
+  _mesesFechados: new Set(),
 };
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2010,12 +2092,13 @@ function setProjTab(tab) {
 function setConfigTab(tab) {
   document.querySelectorAll('[data-ctab]').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-ctab="${tab}"]`)?.classList.add('active');
-  ['plano','contas'].forEach(t => {
+  ['plano','contas','fechamento'].forEach(t => {
     const el = document.getElementById('ctab-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
-  if (tab === 'plano') renderPlano();
-  if (tab === 'contas') renderContas();
+  if (tab === 'plano')     renderPlano();
+  if (tab === 'contas')    renderContas();
+  if (tab === 'fechamento') renderFechamentos();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2468,9 +2551,12 @@ function filtrarLancamentos() {
     tbody.innerHTML = '<tr><td colspan="9" class="tbl-empty">Nenhum lançamento encontrado</td></tr>';
     return;
   }
-  tbody.innerHTML = lista.map(l => `
-    <tr>
-      <td>${fmtMesAno(l.data_competencia)}</td>
+  tbody.innerHTML = lista.map(l => {
+    const mesAno = l.mes_ano_competencia || '';
+    const bloq   = G._mesesFechados.has(mesAno);
+    return `
+    <tr${bloq ? ' style="opacity:.75"' : ''}>
+      <td>${fmtMesAno(l.data_competencia)}${bloq ? ' <span title="Mês fechado" style="font-size:10px">🔒</span>' : ''}</td>
       <td>${fmtData(l.data_prevista) || fmtData(l.data_pagamento)}</td>
       <td>
         <div style="font-weight:500">${l.fornecedor_cliente||l.observacao||'—'}</div>
@@ -2481,8 +2567,12 @@ function filtrarLancamentos() {
       <td style="font-size:10px">${l.nf||'—'}</td>
       <td style="text-align:right;font-weight:600;color:var(--verde)">${l.entrada ? moeda(l.entrada,true) : ''}</td>
       <td style="text-align:right;font-weight:600;color:var(--tc)">${l.saida ? moeda(l.saida,true) : ''}</td>
-      <td><button class="btn btn-ghost btn-xs" onclick="editarLancamento('${l.id}')">✏</button></td>
-    </tr>`).join('');
+      <td>${bloq
+        ? '<span title="Mês fechado — edição bloqueada" style="font-size:14px;cursor:default">🔒</span>'
+        : `<button class="btn btn-ghost btn-xs" onclick="editarLancamento('${l.id}')">✏</button>`
+      }</td>
+    </tr>`;
+  }).join('');
 }
 
 function abrirModalLancamento(id) {
@@ -2498,6 +2588,12 @@ async function salvarLancamento() {
   const plano       = document.getElementById('lanc-plano').value;
   if (!competencia || !descricao || isNaN(valor) || !plano) {
     toast('Preencha os campos obrigatórios', 'erro'); return;
+  }
+  // Bloquear mês fechado
+  const [y, m] = competencia.split('-');
+  const mesAnoKey = m + y;
+  if (G._mesesFechados.has(mesAnoKey)) {
+    toast('Este mês está fechado. Reabra-o antes de editar.', 'erro'); return;
   }
   const payload = {
     data_competencia:   competencia,
@@ -2526,6 +2622,227 @@ async function salvarLancamento() {
 // ══════════════════════════════════════════════════════════
 function abrirImportExtrato() { toast('Importação de extrato em breve…'); }
 function carregarConciliacao() { /* TODO */ }
+
+// ══════════════════════════════════════════════════════════
+//   FECHAMENTO MENSAL
+// ══════════════════════════════════════════════════════════
+
+async function carregarFechamentos() {
+  const { data } = await sb.from('fin_fechamentos')
+    .select('*').order('ano', { ascending: false }).order('mes', { ascending: false });
+  G.fechamentos = data || [];
+  G._mesesFechados = new Set(G.fechamentos.map(f => f.mes_ano));
+}
+
+function renderFechamentos() {
+  const el = document.getElementById('fech-lista');
+  if (!el) return;
+
+  // Gerar lista de meses desde Jan/2026 até mês atual
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth() + 1;
+  const meses = [];
+  for (let ano = 2026; ano <= anoAtual; ano++) {
+    const fim = (ano === anoAtual) ? mesAtual : 12;
+    for (let mes = 1; mes <= fim; mes++) {
+      meses.push({ ano, mes });
+    }
+  }
+  meses.reverse(); // mais recente primeiro
+
+  if (!meses.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Nenhum mês disponível</div></div>';
+    return;
+  }
+
+  el.innerHTML = meses.map(({ ano, mes }) => {
+    const key  = String(mes).padStart(2,'0') + ano;
+    const fech = G.fechamentos.find(f => f.mes_ano === key);
+    const isAtual = (ano === anoAtual && mes === mesAtual);
+    const nomeMes = MESES_FULL[mes - 1] + ' ' + ano;
+
+    if (fech) {
+      const snapItens = [
+        { lbl: 'Rec. Bruta',   val: fech.snap_receita_bruta },
+        { lbl: 'Rec. Líquida', val: fech.snap_receita_liq },
+        { lbl: 'Lucro Bruto',  val: fech.snap_lucro_bruto },
+        { lbl: 'Res. Op.',     val: fech.snap_resultado_op },
+        { lbl: 'Res. Líquido', val: fech.snap_resultado_liq },
+        { lbl: 'Margem Líq.',  val: fech.snap_margem_liq, pct: true },
+      ].map(s => `
+        <div class="fech-snap-item">
+          <div class="fech-snap-lbl">${s.lbl}</div>
+          <div class="fech-snap-val" style="color:${s.pct ? (s.val>=0?'var(--verde)':'var(--tc)') : (s.val>=0?'var(--preto)':'var(--tc)')}">${
+            s.pct ? (s.val != null ? s.val.toFixed(1)+'%' : '—') : moeda(s.val, true)
+          }</div>
+        </div>`).join('');
+
+      const fechadoPor = fech.fechado_por_nome ? ` · por ${fech.fechado_por_nome}` : '';
+      const fechadoEm  = fech.created_at ? ' · ' + fmtData(fech.created_at.slice(0,10)) : '';
+
+      return `
+      <div class="fech-row fechado">
+        <span class="fech-lock">🔒</span>
+        <div class="fech-mes">${nomeMes}</div>
+        <div class="fech-snap">${snapItens}</div>
+        <div class="fech-meta">Fechado${fechadoPor}${fechadoEm}${fech.notas ? '<br><em>' + fech.notas + '</em>' : ''}</div>
+        <div class="fech-actions">
+          ${G.isSocio ? `<button class="btn btn-ghost btn-xs" onclick="reabrirMes('${fech.id}','${nomeMes}')">Reabrir</button>` : ''}
+        </div>
+      </div>`;
+    } else {
+      return `
+      <div class="fech-row${isAtual ? ' atual' : ''}">
+        <span class="fech-lock" style="opacity:.3">🔓</span>
+        <div class="fech-mes">${nomeMes}${isAtual ? ' <span style="font-size:9px;color:var(--az);font-weight:400">atual</span>' : ''}</div>
+        <div class="fech-snap" style="color:#aaa;font-size:11px;align-items:center">Mês em aberto</div>
+        <div class="fech-meta"></div>
+        <div class="fech-actions">
+          ${G.isSocio ? `<button class="btn btn-pri btn-sm" onclick="abrirFecharMes(${ano},${mes})">Fechar mês</button>` : ''}
+        </div>
+      </div>`;
+    }
+  }).join('');
+}
+
+// Calcula snapshot DRE para um mês específico (retorna objeto snap)
+async function calcSnapMes(ano, mes) {
+  const inicio = `${ano}-${String(mes).padStart(2,'0')}-01`;
+  const fim    = new Date(ano, mes, 0); // último dia do mês
+  const fimStr = `${ano}-${String(mes).padStart(2,'0')}-${String(fim.getDate()).padStart(2,'0')}`;
+
+  const { data } = await sb.from('fin_lancamentos')
+    .select('valor, situacao, tipo, grupo, fin_plano_contas(grupo, subconta, tipo, aparece_dre)')
+    .gte('data_competencia', inicio)
+    .lte('data_competencia', fimStr)
+    .neq('situacao', 'cancelado')
+    .not('plano_contas_id', 'is', null);
+
+  const lancs = data || [];
+  // Agregar por grupo (apenas aparece_dre)
+  const porGrupo = {};
+  for (const l of lancs) {
+    const pc = l.fin_plano_contas;
+    if (!pc || !pc.aparece_dre) continue;
+    const g = pc.grupo;
+    if (!porGrupo[g]) porGrupo[g] = 0;
+    porGrupo[g] += parseFloat(l.valor) || 0;
+  }
+  const get = (...grps) => grps.reduce((s, g) => s + (porGrupo[g] || 0), 0);
+
+  const recBruta  = get('Receita Bruta', 'Receita Financeira');
+  const deducoes  = get('Deduções');
+  const recLiq    = recBruta - deducoes;
+  const custos    = get('Custos Diretos', 'Custo de Venda');
+  const lucroBruto = recLiq - custos;
+  const despOp    = get('Despesas com Pessoal','Despesas Administrativas','Despesas com Operação','Despesas com Marketing','Outras Despesas');
+  const resOp     = lucroBruto - despOp;
+  const despFin   = get('Investimentos','Despesa Financeira','Depreciação','CAPEX');
+  const resLiq    = resOp - despFin;
+  const margemLiq = recLiq > 0 ? (resLiq / recLiq * 100) : 0;
+
+  const totalEntradas = lancs.filter(l => l.tipo === 'receita').reduce((s, l) => s + (parseFloat(l.valor)||0), 0);
+  const totalDespesas = lancs.filter(l => l.tipo === 'despesa').reduce((s, l) => s + (parseFloat(l.valor)||0), 0);
+
+  return {
+    snap_receita_bruta:  Math.round(recBruta  * 100) / 100,
+    snap_receita_liq:    Math.round(recLiq    * 100) / 100,
+    snap_lucro_bruto:    Math.round(lucroBruto* 100) / 100,
+    snap_resultado_op:   Math.round(resOp     * 100) / 100,
+    snap_resultado_liq:  Math.round(resLiq    * 100) / 100,
+    snap_margem_liq:     Math.round(margemLiq * 100) / 100,
+    snap_total_entradas: Math.round(totalEntradas * 100) / 100,
+    snap_total_despesas: Math.round(totalDespesas * 100) / 100,
+  };
+}
+
+let G_fechMes = null; // contexto do mês sendo fechado
+
+async function abrirFecharMes(ano, mes) {
+  if (!G.isSocio) return;
+  const nomeMes = MESES_FULL[mes - 1] + ' ' + ano;
+  document.getElementById('fech-modal-titulo').textContent = `Fechar ${nomeMes}`;
+  document.getElementById('fech-modal-desc').textContent = `Calculando resultado de ${nomeMes}…`;
+  document.getElementById('fech-preview-dre').innerHTML = '<div style="text-align:center;color:#aaa;padding:20px">Carregando…</div>';
+  document.getElementById('fech-notas').value = '';
+  document.getElementById('fech-btn-confirmar').disabled = true;
+  abrirModal('modal-fechar-mes');
+
+  const snap = await calcSnapMes(ano, mes);
+  G_fechMes = { ano, mes, snap, nomeMes };
+
+  document.getElementById('fech-modal-desc').textContent =
+    `Ao fechar ${nomeMes}, todos os lançamentos do período ficam bloqueados. O snapshot abaixo é salvo para histórico.`;
+
+  const linhas = [
+    ['Receita Bruta',         snap.snap_receita_bruta,  false],
+    ['Receita Líquida',       snap.snap_receita_liq,    false],
+    ['Lucro Bruto',           snap.snap_lucro_bruto,    false],
+    ['Resultado Operacional', snap.snap_resultado_op,   false],
+    ['Resultado Líquido',     snap.snap_resultado_liq,  false],
+    ['Margem Líquida',        snap.snap_margem_liq,     true ],
+    ['Total Entradas',        snap.snap_total_entradas, false],
+    ['Total Despesas',        snap.snap_total_despesas, false],
+  ];
+
+  document.getElementById('fech-preview-dre').innerHTML = linhas.map(([lbl, val, pct], i) => `
+    <div class="fech-preview-row${i >= linhas.length - 3 ? ' total' : ''}">
+      <span class="fech-preview-lbl">${lbl}</span>
+      <span class="fech-preview-val" style="color:${val >= 0 ? 'var(--verde)' : 'var(--tc)'}">
+        ${pct ? val.toFixed(1) + '%' : moeda(val, true)}
+      </span>
+    </div>`).join('');
+
+  document.getElementById('fech-btn-confirmar').disabled = false;
+}
+
+async function confirmarFecharMes() {
+  if (!G_fechMes || !G.isSocio) return;
+  const { ano, mes, snap, nomeMes } = G_fechMes;
+  const notas = document.getElementById('fech-notas').value.trim() || null;
+  const key   = String(mes).padStart(2,'0') + ano;
+
+  const payload = {
+    ano,
+    mes,
+    mes_ano: key,
+    fechado_por_id:   G.usuario.id,
+    fechado_por_nome: G.usuario.nome,
+    notas,
+    ...snap,
+  };
+
+  const btn = document.getElementById('fech-btn-confirmar');
+  btn.disabled = true;
+  btn.textContent = 'Fechando…';
+
+  const { error } = await sb.from('fin_fechamentos').insert(payload);
+  if (error) {
+    toast('Erro ao fechar: ' + error.message, 'erro');
+    btn.disabled = false;
+    btn.textContent = '🔒 Fechar Mês';
+    return;
+  }
+
+  toast(`${nomeMes} fechado ✓`, 'ok');
+  fecharModal('modal-fechar-mes');
+  await carregarFechamentos();
+  renderFechamentos();
+  G_fechMes = null;
+}
+
+async function reabrirMes(id, nomeMes) {
+  if (!G.isSocio) return;
+  if (!confirm(`Reabrir ${nomeMes}?\n\nO mês voltará a ser editável e o snapshot será removido.`)) return;
+
+  const { error } = await sb.from('fin_fechamentos').delete().eq('id', id);
+  if (error) { toast('Erro ao reabrir: ' + error.message, 'erro'); return; }
+
+  toast(`${nomeMes} reaberto ✓`, 'ok');
+  await carregarFechamentos();
+  renderFechamentos();
+}
 
 // ══════════════════════════════════════════════════════════
 //   CONFIG — PLANO DE CONTAS
@@ -3929,7 +4246,7 @@ async function init() {
   }
 
   // Carregar dados base
-  await Promise.all([carregarPlanoContas(), carregarContasBancarias()]);
+  await Promise.all([carregarPlanoContas(), carregarContasBancarias(), carregarFechamentos()]);
 
   // Init dashboard selects
   initDashSelects();
