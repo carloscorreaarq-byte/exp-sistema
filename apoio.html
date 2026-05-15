@@ -2278,13 +2278,11 @@ function getMatrizProximoPasso(colunaKey) {
 
 function getMatrizColumnState(colunaKey) {
   const focus = G.matrizPlanoFocoColuna;
-  const hover = G.matrizPlanoHoverColuna;
   if(focus) {
     if(colunaKey === focus) return 'focus';
     if(getMatrizProximoPasso(focus)?.key === colunaKey) return 'next';
     return 'dim';
   }
-  if(hover && hover === colunaKey) return 'hover';
   return 'default';
 }
 
@@ -2306,7 +2304,6 @@ function renderMatrizStatusTexto() {
 
 function renderMatrizStatusTextoV2() {
   const focus = G.matrizPlanoFocoColuna;
-  const hover = G.matrizPlanoHoverColuna;
   if(focus) {
     const next = getMatrizProximoPasso(focus);
     if(next) {
@@ -2314,10 +2311,7 @@ function renderMatrizStatusTextoV2() {
     }
     return `Foco atual: ${focus} - ${getSenioridadeLabel(focus)} | Ultima faixa da trilha`;
   }
-  if(hover) {
-    return `Faixa em leitura: ${hover} - ${getSenioridadeLabel(hover)}`;
-  }
-  return 'Passe o mouse sobre uma faixa para ver a senioridade correspondente.';
+  return 'Clique no topo de uma coluna para focar a senioridade e visualizar o proximo passo.';
 }
 
 function renderMatrizTabs() {
@@ -2348,8 +2342,7 @@ function renderMatrizTabela(secao) {
                   <button
                     class="matriz-grid-head-btn"
                     title="${item.key} · ${item.label}"
-                    onmouseenter="setMatrizHover('${item.key}')"
-                    onmouseleave="clearMatrizHover()"
+                    type="button"
                     onclick="toggleMatrizFoco('${item.key}')">
                     ${item.key}
                   </button>
@@ -2369,8 +2362,6 @@ function renderMatrizTabela(secao) {
                   <td
                     class="matriz-grid-cell ${getMatrizValorClass(valor)} ${state}"
                     title="${senioridade.key} · ${getSenioridadeLabel(senioridade.key)} · nível ${valor}"
-                    onmouseenter="setMatrizHover('${senioridade.key}')"
-                    onmouseleave="clearMatrizHover()"
                     onclick="toggleMatrizFoco('${senioridade.key}')">
                     ${valor}
                   </td>
@@ -2530,7 +2521,6 @@ function renderMatrizPlanoGenteModalV2() {
       </div>
       <div class="matriz-tabs">${renderMatrizTabs()}</div>
       <div class="matriz-status">${renderMatrizStatusTextoV2()}</div>
-      <div class="matriz-strip-wrap">${renderMatrizSenioridadesStrip()}</div>
       <div class="matriz-sec">
         <div class="matriz-sec-main">
           <div class="matriz-sec-title">${secao.titulo}</div>
@@ -2578,12 +2568,10 @@ window.setMatrizPlanoSecao = function(secaoKey) {
 
 window.setMatrizHover = function(colunaKey) {
   G.matrizPlanoHoverColuna = colunaKey;
-  refreshMatrizPlanoGenteModal();
 };
 
 window.clearMatrizHover = function() {
   G.matrizPlanoHoverColuna = '';
-  refreshMatrizPlanoGenteModal();
 };
 
 window.toggleMatrizFoco = function(colunaKey) {
