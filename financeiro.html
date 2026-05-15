@@ -2748,12 +2748,13 @@ async function gerarLancamentosPrevistos() {
 
       // Verificar se já existe lançamento previsto deste template neste mês
       const mesStr = String(m).padStart(2, '0');
-      const { data: exist } = await sb.from('fin_lancamentos')
+      const { data: exist, error: existErr } = await sb.from('fin_lancamentos')
         .select('id')
         .eq('recorrente_id', rec.id)
-        .gte('data_vencimento', `${a}-${mesStr}-01`)
-        .lte('data_vencimento', `${a}-${mesStr}-31`)
+        .gte('data_competencia', `${a}-${mesStr}-01`)
+        .lte('data_competencia', `${a}-${mesStr}-31`)
         .limit(1);
+      if (existErr) console.warn('check exist recorrente:', existErr.message);
       if (exist && exist.length > 0) continue;
 
       const dia = Math.min(rec.dia_vencimento || 10, 28);
@@ -2762,18 +2763,20 @@ async function gerarLancamentosPrevistos() {
         ? ` (${(rec.parcelas_geradas || 0) + 1}/${rec.total_parcelas})`
         : '';
 
-      await sb.from('fin_lancamentos').insert({
-        descricao: rec.descricao + nParcela,
+      const { error: insErr } = await sb.from('fin_lancamentos').insert({
+        observacao: rec.descricao + nParcela,
         valor: rec.valor,
-        tipo: 'saida',
+        tipo: 'despesa',
         situacao: 'previsto',
         origem: 'recorrente',
         recorrente_id: rec.id,
+        data_competencia: dataVenc,
         data_vencimento: dataVenc,
         plano_contas_id: rec.plano_contas_id || null,
         conta_bancaria_id: rec.conta_bancaria_id || null,
         criado_por_id: G.usuario?.id || null,
       });
+      if (insErr) console.error('gerarLancamentosPrevistos insert:', insErr.message);
 
       if (rec.tipo_recorrencia === 'parcelado') {
         const pg = (rec.parcelas_geradas || 0) + 1;
@@ -2793,16 +2796,17 @@ function agregarPorMes(lancamentos) {
     const d = new Date(l.data_vencimento + 'T12:00:00');
     const m = d.getMonth() + 1;
     if (!result[m]) continue;
-    const pago = l.situacao === 'pago' || l.situacao === 'recebido';
+    const pago = l.situacao === 'pago';
     const val = parseFloat(l.valor) || 0;
-    const grupo = l.fin_plano_contas?.grupo || 'Outros';
+    const grupo = l.fin_plano_contas?.grupo || l.grupo || 'Outros';
 
     if (!result[m].categorias[grupo]) result[m].categorias[grupo] = { real: 0, prev: 0 };
 
-    if (l.tipo === 'entrada') {
+    if (l.tipo === 'receita') {
       if (pago) result[m].receita_real += val;
       else result[m].receita_prev += val;
     } else {
+      // despesa ou neutro
       if (pago) { result[m].despesa_real += val; result[m].categorias[grupo].real += val; }
       else       { result[m].despesa_prev += val; result[m].categorias[grupo].prev += val; }
     }
