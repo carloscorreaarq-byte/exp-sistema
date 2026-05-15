@@ -967,79 +967,28 @@ CREATE POLICY "auth_all" ON base_checklist_item FOR ALL USING (auth.role()='auth
 
 const CADASTROS_SENHAS_SETUP_SQL = `begin;
 
-create extension if not exists supabase_vault with schema vault;
-
 create table if not exists public.cadastros_plataformas (
   id uuid default gen_random_uuid() primary key,
   numero integer not null default 1,
   nome text not null,
   uso text,
   clientes text,
-  vault_secret_id uuid,
+  cofre_nome text,
+  cofre_referencia text,
+  cofre_link text,
+  observacoes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
 alter table public.cadastros_plataformas
-  add column if not exists vault_secret_id uuid,
+  add column if not exists uso text,
+  add column if not exists clientes text,
+  add column if not exists cofre_nome text,
+  add column if not exists cofre_referencia text,
+  add column if not exists cofre_link text,
+  add column if not exists observacoes text,
   add column if not exists updated_at timestamptz default now();
-
-do $$
-declare
-  rec record;
-  v_secret_id uuid;
-  v_payload text;
-begin
-  if exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'cadastros_plataformas'
-      and column_name = 'login'
-  ) then
-    for rec in
-      select id, nome, coalesce(login, '') as login, coalesce(senha, '') as senha, vault_secret_id
-      from public.cadastros_plataformas
-    loop
-      v_payload := jsonb_build_object('login', rec.login, 'senha', rec.senha)::text;
-
-      if rec.vault_secret_id is null then
-        v_secret_id := vault.create_secret(
-          v_payload,
-          'apoio-plataforma-' || rec.id::text,
-          'Credencial da plataforma ' || coalesce(rec.nome, 'sem nome')
-        );
-      else
-        v_secret_id := rec.vault_secret_id;
-        perform vault.update_secret(
-          v_secret_id,
-          v_payload,
-          'apoio-plataforma-' || rec.id::text,
-          'Credencial da plataforma ' || coalesce(rec.nome, 'sem nome')
-        );
-      end if;
-
-      update public.cadastros_plataformas
-      set vault_secret_id = v_secret_id,
-          updated_at = now()
-      where id = rec.id;
-    end loop;
-
-    update public.cadastros_plataformas
-    set login = null,
-        senha = null
-    where login is not null or senha is not null;
-  end if;
-end $$;
-
-alter table public.cadastros_plataformas
-  drop column if exists login,
-  drop column if exists senha;
-
-revoke all on schema vault from public, anon, authenticated;
-revoke all on all tables in schema vault from public, anon, authenticated;
-revoke all on all sequences in schema vault from public, anon, authenticated;
-revoke all on all functions in schema vault from public, anon, authenticated;
 
 alter table public.cadastros_plataformas enable row level security;
 
@@ -1073,208 +1022,6 @@ on public.cadastros_plataformas
 for delete
 to authenticated
 using (private.can_edit_apoio());
-
-create or replace function public.apoio_listar_plataformas_secretas()
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_result jsonb;
-begin
-  if not private.can_read_apoio_secret() then
-    raise exception 'Acesso negado';
-  end if;
-
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', id,
-        'numero', numero,
-        'nome', nome,
-        'uso', uso,
-        'clientes', clientes,
-        'created_at', created_at,
-        'updated_at', updated_at,
-        'has_secret', vault_secret_id is not null
-      )
-      order by numero, nome
-    ),
-    '[]'::jsonb
-  )
-  into v_result
-  from public.cadastros_plataformas;
-
-  return v_result;
-end;
-$$;
-
-create or replace function public.apoio_obter_acesso_plataforma(_id uuid)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_secret_text text;
-begin
-  if not private.can_read_apoio_secret() then
-    raise exception 'Acesso negado';
-  end if;
-
-  select ds.decrypted_secret
-  into v_secret_text
-  from public.cadastros_plataformas p
-  left join vault.decrypted_secrets ds on ds.id = p.vault_secret_id
-  where p.id = _id;
-
-  return coalesce(v_secret_text, '{"login":"","senha":""}')::jsonb;
-end;
-$$;
-
-create or replace function public.apoio_salvar_plataforma_secreta(
-  _id uuid default null,
-  _numero integer default 1,
-  _nome text default null,
-  _login text default null,
-  _senha text default null,
-  _uso text default null,
-  _clientes text default null
-)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_id uuid;
-  v_secret_id uuid;
-  v_payload text;
-begin
-  if not private.can_edit_apoio() then
-    raise exception 'Acesso negado';
-  end if;
-
-  if coalesce(trim(_nome), '') = '' then
-    raise exception 'Informe o nome da plataforma.';
-  end if;
-
-  v_payload := jsonb_build_object(
-    'login', coalesce(_login, ''),
-    'senha', coalesce(_senha, '')
-  )::text;
-
-  if _id is null then
-    v_id := gen_random_uuid();
-
-    insert into public.cadastros_plataformas (
-      id, numero, nome, uso, clientes, created_at, updated_at
-    ) values (
-      v_id,
-      coalesce(_numero, 1),
-      trim(_nome),
-      nullif(trim(coalesce(_uso, '')), ''),
-      nullif(trim(coalesce(_clientes, '')), ''),
-      now(),
-      now()
-    );
-
-    v_secret_id := vault.create_secret(
-      v_payload,
-      'apoio-plataforma-' || v_id::text,
-      'Credencial da plataforma ' || trim(_nome)
-    );
-
-    update public.cadastros_plataformas
-    set vault_secret_id = v_secret_id,
-        updated_at = now()
-    where id = v_id;
-  else
-    v_id := _id;
-
-    select vault_secret_id
-    into v_secret_id
-    from public.cadastros_plataformas
-    where id = v_id
-    for update;
-
-    if not found then
-      raise exception 'Plataforma não encontrada.';
-    end if;
-
-    if v_secret_id is null then
-      v_secret_id := vault.create_secret(
-        v_payload,
-        'apoio-plataforma-' || v_id::text,
-        'Credencial da plataforma ' || trim(_nome)
-      );
-    else
-      perform vault.update_secret(
-        v_secret_id,
-        v_payload,
-        'apoio-plataforma-' || v_id::text,
-        'Credencial da plataforma ' || trim(_nome)
-      );
-    end if;
-
-    update public.cadastros_plataformas
-    set numero = coalesce(_numero, numero),
-        nome = trim(_nome),
-        uso = nullif(trim(coalesce(_uso, '')), ''),
-        clientes = nullif(trim(coalesce(_clientes, '')), ''),
-        vault_secret_id = v_secret_id,
-        updated_at = now()
-    where id = v_id;
-  end if;
-
-  return v_id;
-end;
-$$;
-
-create or replace function public.apoio_excluir_plataforma_secreta(_id uuid)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_secret_id uuid;
-begin
-  if not private.can_edit_apoio() then
-    raise exception 'Acesso negado';
-  end if;
-
-  select vault_secret_id
-  into v_secret_id
-  from public.cadastros_plataformas
-  where id = _id
-  for update;
-
-  if not found then
-    return false;
-  end if;
-
-  delete from public.cadastros_plataformas
-  where id = _id;
-
-  if v_secret_id is not null then
-    delete from vault.secrets where id = v_secret_id;
-  end if;
-
-  return true;
-end;
-$$;
-
-revoke all on function public.apoio_listar_plataformas_secretas() from public;
-revoke all on function public.apoio_obter_acesso_plataforma(uuid) from public;
-revoke all on function public.apoio_salvar_plataforma_secreta(uuid, integer, text, text, text, text, text) from public;
-revoke all on function public.apoio_excluir_plataforma_secreta(uuid) from public;
-
-grant execute on function public.apoio_listar_plataformas_secretas() to authenticated;
-grant execute on function public.apoio_obter_acesso_plataforma(uuid) to authenticated;
-grant execute on function public.apoio_salvar_plataforma_secreta(uuid, integer, text, text, text, text, text) to authenticated;
-grant execute on function public.apoio_excluir_plataforma_secreta(uuid) to authenticated;
 
 commit;`;
 
@@ -4165,11 +3912,11 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     }
     root.innerHTML = '<div class="loading-state">Carregando...</div>';
 
-    let { data: plats, error } = await sb.rpc('apoio_listar_plataformas_secretas');
+    let { data: plats, error } = await sb.from('cadastros_plataformas').select('*').order('numero').order('nome');
 
     if(error) {
       const msg = String(error.message || '');
-      if(error.code === 'PGRST202' || error.code === 'PGRST205' || msg.includes('schema cache') || msg.includes('Could not find the table') || msg.includes('apio_listar_plataformas_secretas') || msg.includes('apoio_listar_plataformas_secretas')) {
+      if(error.code === 'PGRST205' || msg.includes('schema cache') || msg.includes('Could not find the table')) {
         renderCadastrosSenhasSetupNotice(root);
         return;
       }
@@ -4177,24 +3924,11 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       return;
     }
 
-    renderCadastrosSenhasRoot(root, Array.isArray(plats) ? plats : []);
+    renderCadastrosSenhasRoot(root, plats || []);
   }
 
   function renderCadastrosSenhasRoot(root, plats) {
     const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const segredoCache = new Map();
-
-    async function carregarSegredo(id) {
-      if(segredoCache.has(id)) return segredoCache.get(id);
-      const { data, error } = await sb.rpc('apoio_obter_acesso_plataforma', { _id: id });
-      if(error) throw error;
-      const segredo = {
-        login: data?.login || '',
-        senha: data?.senha || ''
-      };
-      segredoCache.set(id, segredo);
-      return segredo;
-    }
 
     const cardsHtml = plats.map(p => {
       const num = String(p.numero||'').padStart(2,'0');
@@ -4204,18 +3938,18 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
           <div class="cs-card-body">
             <div class="cs-card-nome">${esc(p.nome)}</div>
             <div class="cs-field-row">
-              <span class="cs-label">login</span>
-              <span class="cs-value cs-selectable cs-login-val" data-empty="${!p.has_secret ? '1' : '0'}">${p.has_secret ? 'protegido' : '—'}</span>
+              <span class="cs-label">cofre</span>
+              <span class="cs-value">${esc(p.cofre_nome || '—')}</span>
             </div>
             <div class="cs-field-row">
-              <span class="cs-label">senha</span>
-              <span class="cs-value cs-senha-val" data-empty="${!p.has_secret ? '1' : '0'}">${p.has_secret ? '••••••••' : '—'}</span>
-              <button class="cs-eye-btn" onclick="csTogleSenha('${esc(p.id)}', this)" title="Revelar senha"${p.has_secret ? '' : ' disabled'}>👁</button>
-              <button class="cs-copy-btn" onclick="csCopiar('${esc(p.id)}', this)" title="Copiar senha"${p.has_secret ? '' : ' disabled'}>⎘</button>
+              <span class="cs-label">referência</span>
+              <span class="cs-value cs-selectable">${esc(p.cofre_referencia || '—')}</span>
             </div>
             ${p.uso ? `<div class="cs-uso">${esc(p.uso)}</div>` : ''}
             ${p.clientes ? `<div class="cs-clientes">Clientes que usam esta plataforma: ${esc(p.clientes)}</div>` : ''}
+            ${p.observacoes ? `<div class="cs-clientes">Observações: ${esc(p.observacoes)}</div>` : ''}
             <div class="cs-actions">
+              ${p.cofre_link ? `<button class="cs-btn-edit" onclick="csAbrirCofre('${esc(p.cofre_link)}')">Abrir cofre</button>` : ''}
               <button class="cs-btn-edit" onclick="csEditar('${esc(p.id)}')">Editar</button>
               <button class="cs-btn-del"  onclick="csDeletar('${esc(p.id)}','${esc(p.nome)}')">Excluir</button>
             </div>
@@ -4235,10 +3969,6 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         .cs-label{font-size:11px;font-weight:700;color:var(--preto);min-width:40px}
         .cs-value{font-size:11px;color:#444}
         .cs-selectable{user-select:all;cursor:text}
-        .cs-senha-val{font-family:var(--fm);font-size:11px;color:#444;letter-spacing:1px}
-        .cs-eye-btn,.cs-copy-btn{border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px;color:#bbb;line-height:1;transition:color .12s}
-        .cs-eye-btn:hover,.cs-copy-btn:hover{color:var(--preto)}
-        .cs-eye-btn[disabled],.cs-copy-btn[disabled]{opacity:.35;cursor:not-allowed}
         .cs-uso{font-size:11px;color:#666;margin-top:6px;line-height:1.5}
         .cs-clientes{font-size:11px;color:#888;margin-top:2px;line-height:1.5}
         .cs-actions{display:flex;gap:8px;margin-top:12px}
@@ -4260,7 +3990,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <div class="secao-shell-header">
           <div>
             <div class="secao-shell-title">🔑 Cadastros e Senhas</div>
-            <div class="secao-shell-sub">Acesso restrito — segredos protegidos no Vault e visíveis apenas para sócios</div>
+            <div class="secao-shell-sub">Acesso restrito — referência segura para credenciais guardadas em cofre externo</div>
           </div>
           <button class="btn verde sm" onclick="csAbrirFormNova()">+ Nova plataforma</button>
         </div>
@@ -4279,12 +4009,16 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
                 <input id="cs-f-numero" type="number" min="1" placeholder="Ex: 5">
               </div>
               <div>
-                <label>Login / e-mail</label>
-                <input id="cs-f-login" type="text" placeholder="Ex: login@plataforma.com">
+                <label>Nome do cofre</label>
+                <input id="cs-f-cofre-nome" type="text" placeholder="Ex: 1Password / Bitwarden">
               </div>
               <div>
-                <label>Senha</label>
-                <input id="cs-f-senha" type="text" placeholder="Ex: senha da plataforma">
+                <label>Referência do item</label>
+                <input id="cs-f-cofre-referencia" type="text" placeholder="Ex: Pasta Equipe > Plataformas > Construmanager">
+              </div>
+              <div class="full">
+                <label>Link do item no cofre</label>
+                <input id="cs-f-cofre-link" type="text" placeholder="https://...">
               </div>
               <div class="full">
                 <label>Uso / descrição</label>
@@ -4293,6 +4027,10 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
               <div class="full">
                 <label>Clientes que usam esta plataforma</label>
                 <input id="cs-f-clientes" type="text" placeholder="Ex: Engeco e Embralot">
+              </div>
+              <div class="full">
+                <label>Observações</label>
+                <textarea id="cs-f-observacoes" rows="3" placeholder="Ex: acesso só com MFA do time societário"></textarea>
               </div>
             </div>
             <div class="cs-form-btns">
@@ -4305,53 +4043,10 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <div id="cs-lista">${cardsHtml || '<div class="knowledge-empty">Nenhuma plataforma cadastrada.</div>'}</div>
       </section>`;
 
-    function setCredencialVisual(card, segredo, visivel) {
-      const loginEl = card?.querySelector('.cs-login-val');
-      const senhaEl = card?.querySelector('.cs-senha-val');
-      if(!loginEl || !senhaEl) return;
-      if(visivel) {
-        loginEl.textContent = segredo.login || '—';
-        senhaEl.textContent = segredo.senha || '—';
-      } else {
-        loginEl.textContent = segredo.login ? 'protegido' : '—';
-        senhaEl.textContent = segredo.senha ? '••••••••' : '—';
-      }
-    }
-
     // Funções do módulo (escopo global temporário)
-    window.csTogleSenha = async function(id, btn) {
-      if(!isSocio()) {
-        alert('Apenas sócios podem visualizar credenciais.');
-        return;
-      }
-      const card = btn.closest('.cs-card');
-      if(!card) return;
-      const senhaEl = card.querySelector('.cs-senha-val');
-      const visivel = senhaEl?.dataset.visivel === '1';
-      try {
-        const segredo = await carregarSegredo(id);
-        setCredencialVisual(card, segredo, !visivel);
-        if(senhaEl) senhaEl.dataset.visivel = visivel ? '0' : '1';
-        btn.textContent = visivel ? '👁' : '🙈';
-      } catch(err) {
-        alert('Erro ao carregar credenciais: ' + (err.message || JSON.stringify(err)));
-      }
-    };
-
-    window.csCopiar = async function(id, btn) {
-      if(!isSocio()) {
-        alert('Apenas sócios podem copiar senhas.');
-        return;
-      }
-      try {
-        const segredo = await carregarSegredo(id);
-        await navigator.clipboard.writeText(segredo.senha || '');
-        const orig = btn.textContent;
-        btn.textContent = '✓';
-        setTimeout(() => { btn.textContent = orig; }, 1500);
-      } catch(err) {
-        alert('Erro ao copiar senha: ' + (err.message || JSON.stringify(err)));
-      }
+    window.csAbrirCofre = function(link) {
+      if(!link) return;
+      window.open(link, '_blank', 'noopener,noreferrer');
     };
 
     window.csAbrirFormNova = function() {
@@ -4362,10 +4057,12 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       document.getElementById('cs-edit-id').value = '';
       document.getElementById('cs-f-nome').value = '';
       document.getElementById('cs-f-numero').value = (plats.length + 1);
-      document.getElementById('cs-f-login').value = '';
-      document.getElementById('cs-f-senha').value = '';
+      document.getElementById('cs-f-cofre-nome').value = '';
+      document.getElementById('cs-f-cofre-referencia').value = '';
+      document.getElementById('cs-f-cofre-link').value = '';
       document.getElementById('cs-f-uso').value = '';
       document.getElementById('cs-f-clientes').value = '';
+      document.getElementById('cs-f-observacoes').value = '';
       document.getElementById('cs-form-titulo').textContent = 'Nova plataforma';
       document.getElementById('cs-form-wrap').style.display = '';
       document.getElementById('cs-f-nome').focus();
@@ -4378,20 +4075,15 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       }
       const p = plats.find(x => x.id === id);
       if(!p) return;
-      let segredo = { login: '', senha: '' };
-      try {
-        segredo = await carregarSegredo(id);
-      } catch(err) {
-        alert('Erro ao carregar credenciais: ' + (err.message || JSON.stringify(err)));
-        return;
-      }
       document.getElementById('cs-edit-id').value = id;
       document.getElementById('cs-f-nome').value    = p.nome    || '';
       document.getElementById('cs-f-numero').value  = p.numero  || '';
-      document.getElementById('cs-f-login').value   = segredo.login || '';
-      document.getElementById('cs-f-senha').value   = segredo.senha || '';
+      document.getElementById('cs-f-cofre-nome').value   = p.cofre_nome || '';
+      document.getElementById('cs-f-cofre-referencia').value   = p.cofre_referencia || '';
+      document.getElementById('cs-f-cofre-link').value   = p.cofre_link || '';
       document.getElementById('cs-f-uso').value     = p.uso     || '';
       document.getElementById('cs-f-clientes').value= p.clientes|| '';
+      document.getElementById('cs-f-observacoes').value= p.observacoes|| '';
       document.getElementById('cs-form-titulo').textContent = 'Editar — ' + (p.nome||'');
       document.getElementById('cs-form-wrap').style.display = '';
       document.getElementById('cs-f-nome').focus();
@@ -4411,22 +4103,39 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       const payload = {
         nome:     document.getElementById('cs-f-nome').value.trim(),
         numero:   parseInt(document.getElementById('cs-f-numero').value) || plats.length + 1,
-        login:    document.getElementById('cs-f-login').value.trim(),
-        senha:    document.getElementById('cs-f-senha').value.trim(),
+        cofre_nome:    document.getElementById('cs-f-cofre-nome').value.trim(),
+        cofre_referencia:    document.getElementById('cs-f-cofre-referencia').value.trim(),
+        cofre_link:    document.getElementById('cs-f-cofre-link').value.trim(),
         uso:      document.getElementById('cs-f-uso').value.trim(),
-        clientes: document.getElementById('cs-f-clientes').value.trim()
+        clientes: document.getElementById('cs-f-clientes').value.trim(),
+        observacoes: document.getElementById('cs-f-observacoes').value.trim()
       };
       if(!payload.nome) { alert('Informe o nome da plataforma.'); return; }
-
-      const { error } = await sb.rpc('apoio_salvar_plataforma_secreta', {
-        _id: id || null,
-        _numero: payload.numero,
-        _nome: payload.nome,
-        _login: payload.login,
-        _senha: payload.senha,
-        _uso: payload.uso || null,
-        _clientes: payload.clientes || null
-      });
+      let error;
+      if(id) {
+        ({ error } = await sb.from('cadastros_plataformas').update({
+          numero: payload.numero,
+          nome: payload.nome,
+          cofre_nome: payload.cofre_nome || null,
+          cofre_referencia: payload.cofre_referencia || null,
+          cofre_link: payload.cofre_link || null,
+          uso: payload.uso || null,
+          clientes: payload.clientes || null,
+          observacoes: payload.observacoes || null,
+          updated_at: new Date().toISOString()
+        }).eq('id', id));
+      } else {
+        ({ error } = await sb.from('cadastros_plataformas').insert({
+          numero: payload.numero,
+          nome: payload.nome,
+          cofre_nome: payload.cofre_nome || null,
+          cofre_referencia: payload.cofre_referencia || null,
+          cofre_link: payload.cofre_link || null,
+          uso: payload.uso || null,
+          clientes: payload.clientes || null,
+          observacoes: payload.observacoes || null
+        }));
+      }
       if(error) { alert('Erro ao salvar: ' + error.message); return; }
       iniciarCadastrosSenhas();
     };
@@ -4437,7 +4146,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         return;
       }
       if(!confirm('Excluir a plataforma "' + nome + '"?')) return;
-      const { error } = await sb.rpc('apoio_excluir_plataforma_secreta', { _id: id });
+      const { error } = await sb.from('cadastros_plataformas').delete().eq('id', id);
       if(error) { alert('Erro ao excluir: ' + error.message); return; }
       iniciarCadastrosSenhas();
     };
