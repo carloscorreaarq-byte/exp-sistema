@@ -1155,6 +1155,41 @@ begin
 end;
 $$;
 
+create or replace function public.cs_upsert_credential(
+  p_plataforma_id uuid,
+  p_login text,
+  p_senha text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not private.can_edit_apoio() then
+    raise exception 'Voce nao tem permissao para salvar esta credencial.';
+  end if;
+
+  insert into public.cadastros_plataformas_secret (
+    plataforma_id,
+    login,
+    senha,
+    updated_at
+  )
+  values (
+    p_plataforma_id,
+    nullif(trim(coalesce(p_login, '')), ''),
+    nullif(trim(coalesce(p_senha, '')), ''),
+    now()
+  )
+  on conflict (plataforma_id) do update
+  set
+    login = excluded.login,
+    senha = excluded.senha,
+    updated_at = now();
+end;
+$$;
+
 alter table public.cadastros_plataformas enable row level security;
 alter table public.cadastros_plataformas_secret enable row level security;
 
@@ -1193,29 +1228,12 @@ for delete
 to authenticated
 using (private.can_edit_apoio());
 
-create policy cadastros_plataformas_secret_insert
-on public.cadastros_plataformas_secret
-for insert
-to authenticated
-with check (private.can_edit_apoio());
-
-create policy cadastros_plataformas_secret_update
-on public.cadastros_plataformas_secret
-for update
-to authenticated
-using (private.can_edit_apoio())
-with check (private.can_edit_apoio());
-
-create policy cadastros_plataformas_secret_delete
-on public.cadastros_plataformas_secret
-for delete
-to authenticated
-using (private.can_edit_apoio());
-
 revoke all on function private.current_exp_user_name() from public;
 grant execute on function private.current_exp_user_name() to authenticated;
 revoke all on function public.cs_reveal_credential(uuid) from public;
 grant execute on function public.cs_reveal_credential(uuid) to authenticated;
+revoke all on function public.cs_upsert_credential(uuid, text, text) from public;
+grant execute on function public.cs_upsert_credential(uuid, text, text) to authenticated;
 
 commit;`;
 
@@ -4632,12 +4650,11 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         return;
       }
       if(credencial.login || credencial.senha) {
-        const { error: secretError } = await sb.from('cadastros_plataformas_secret').upsert({
-          plataforma_id: plataformaId,
-          login: credencial.login || null,
-          senha: credencial.senha || null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'plataforma_id' });
+        const { error: secretError } = await sb.rpc('cs_upsert_credential', {
+          p_plataforma_id: plataformaId,
+          p_login: credencial.login || null,
+          p_senha: credencial.senha || null
+        });
         if(secretError) {
           alert('Erro ao salvar credencial: ' + secretError.message);
           return;

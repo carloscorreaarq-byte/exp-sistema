@@ -2215,10 +2215,15 @@ body::before {
           </select>
         </div>
 
-        <!-- Subcategoria (org / sociedade) -->
-        <div class="fgroup mb8" id="cf-subtipo-wrap" style="display:none">
-          <label>Categoria</label>
-          <select id="cf-subtipo" onchange="cfFiltrarEventosSociedade()"></select>
+        <!-- Área do plano de contas (sempre visível) -->
+        <div class="fgroup mb8" id="cf-area-wrap">
+          <label>Área</label>
+          <select id="cf-area-reembolso" onchange="onAreaReembolsoChange('cf')"></select>
+        </div>
+        <!-- Detalhe (muda conforme área) -->
+        <div class="fgroup mb8" id="cf-detalhe-wrap">
+          <label>Detalhe</label>
+          <select id="cf-detalhe-reembolso"></select>
         </div>
         <!-- Evento de org/sociedade -->
         <div class="fgroup mb8" id="cf-evento-soc-wrap" style="display:none">
@@ -2263,20 +2268,6 @@ body::before {
           <div class="fgroup mb8" id="cf-evento-novo-wrap" style="display:none">
             <label>Nome do novo evento</label>
             <input type="text" id="cf-evento-novo" placeholder="Ex: Visita ao canteiro 01">
-          </div>
-          <div class="fgroup mb8">
-            <label>Categoria</label>
-            <select id="cf-tipo-projeto">
-              <option value="Alimentação">Alimentação</option>
-              <option value="Hospedagem">Hospedagem</option>
-              <option value="Translado">Translado</option>
-              <option value="Passagem">Passagem</option>
-              <option value="Transporte">Transporte</option>
-              <option value="Aluguel de carro">Aluguel de carro</option>
-              <option value="Gasolina">Gasolina</option>
-              <option value="Impressão">Impressão</option>
-              <option value="Outro">Outro</option>
-            </select>
           </div>
         </div>
 
@@ -3343,6 +3334,25 @@ const SUBTIPOS_CUSTO = {
   organizacao: ['HH','Encontro presencial','Deslocamento','Outro'],
   sociedade:   ['Operações','Marketing','Estratégia','Endomarketing','Financeiro','Jurídico','Outro'],
 };
+// Detalhe por área do plano de contas (subconta → opções granulares)
+const REEMBOLSO_DETALHES = {
+  'Visitas Técnicas (passagem, hospedagem, combustível, Uber)':
+    ['Alimentação','Hospedagem','Passagem','Translado','Transporte','Aluguel de carro','Gasolina','Deslocamento','Outro'],
+  'Plotagem':
+    ['Impressão','Cópia','Outro'],
+  'Treinamentos e Capacitação':
+    ['Inscrição','Material','Alimentação','Hospedagem','Deslocamento','Passagem','Outro'],
+  'Cultura (Happy Hour, Integrações e Presentes)':
+    ['Happy Hour','Integração','Presente','Alimentação','Outro'],
+  'Trabalho Presencial (Coworking, Café)':
+    ['Coworking','Café','Alimentação','Deslocamento','Outro'],
+  'Manutenções à TI':
+    ['Hardware','Periférico','Reparo','Software','Outro'],
+  'Congressos e Eventos':
+    ['Inscrição','Alimentação','Hospedagem','Passagem','Deslocamento','Outro'],
+  'Relacionamento, Revista Própria e Brindes':
+    ['Brindes','Jantar / Almoço','Revista','Outro'],
+};
 const ROLES_LABEL = { socio:'Sócio', coordenador:'Coordenador', colaborador:'Colaborador' };
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -3404,6 +3414,7 @@ async function init() {
     carregarUsuarios(),
     carregarProdutos(),
     carregarHorasGlobal(),
+    carregarReembolsoAreas(),
   ]);
 
   // Notificações
@@ -5082,18 +5093,41 @@ async function deletarLancamento(id) {
 //   LANÇAMENTOS DE CUSTO
 // ══════════════════════════════════════════════════════════════
 
+async function carregarReembolsoAreas() {
+  const { data } = await sb.from('fin_plano_contas')
+    .select('id,subconta')
+    .eq('origem_modulo','reembolso')
+    .eq('ativo', true)
+    .order('ordem');
+  G._reembolsoAreas = data || [];
+  const opts = G._reembolsoAreas.map(pc => `<option value="${pc.id}">${pc.subconta}</option>`).join('');
+  const sel = document.getElementById('cf-area-reembolso');
+  if (sel) { sel.innerHTML = opts; onAreaReembolsoChange('cf'); }
+}
+
+function onAreaReembolsoChange(prefix) {
+  const selArea    = document.getElementById(`${prefix}-area-reembolso`);
+  const selDetalhe = document.getElementById(`${prefix}-detalhe-reembolso`);
+  if (!selArea || !selDetalhe) return;
+  const pc = (G._reembolsoAreas||[]).find(a => a.id === selArea.value);
+  const detalhes = pc ? (REEMBOLSO_DETALHES[pc.subconta] || ['Outro']) : ['Outro'];
+  const prevVal = selDetalhe.value;
+  selDetalhe.innerHTML = detalhes.map(d => `<option value="${d}">${d}</option>`).join('');
+  if (prevVal && detalhes.includes(prevVal)) selDetalhe.value = prevVal;
+  if (prefix === 'cf') {
+    const tipo = document.getElementById('cf-tipo')?.value;
+    if (tipo && tipo !== 'projeto') cfFiltrarEventosSociedade();
+  }
+}
+
 function atualizarFormCusto() {
   const tipo = document.getElementById('cf-tipo').value;
-  document.getElementById('cf-subtipo-wrap').style.display = tipo !== 'projeto' ? 'block' : 'none';
   document.getElementById('cf-projeto-wrap').style.display = tipo === 'projeto' ? 'block' : 'none';
   const evSocWrap    = document.getElementById('cf-evento-soc-wrap');
   const evSocNovWrap = document.getElementById('cf-evento-soc-novo-wrap');
   if (evSocWrap)    evSocWrap.style.display    = 'none';
   if (evSocNovWrap) evSocNovWrap.style.display = 'none';
-  if (tipo !== 'projeto') {
-    document.getElementById('cf-subtipo').innerHTML =
-      SUBTIPOS_CUSTO[tipo].map(s => `<option value="${s}">${s}</option>`).join('');
-  }
+  if (tipo !== 'projeto') cfFiltrarEventosSociedade();
 }
 
 window.cfFiltrarOpps = function() {
@@ -5166,15 +5200,12 @@ window.cfOnEvento = function() {
 
 window.cfFiltrarEventosSociedade = async function() {
   const tipo = document.getElementById('cf-tipo').value;
-  const cat  = document.getElementById('cf-subtipo')?.value;
   const wrap = document.getElementById('cf-evento-soc-wrap');
   const novWrap = document.getElementById('cf-evento-soc-novo-wrap');
-  if (!wrap) return;
-  wrap.style.display = 'none';
+  if (!wrap || tipo === 'projeto') { if (wrap) wrap.style.display = 'none'; return; }
   if (novWrap) novWrap.style.display = 'none';
-  if (tipo === 'projeto' || !cat) return;
   const { data: evts } = await sb.from('eventos_sociedade')
-    .select('id,nome').eq('tipo', tipo).eq('categoria', cat).order('nome');
+    .select('id,nome').eq('tipo', tipo).order('nome');
   const sel = document.getElementById('cf-evento-soc');
   if (!sel) return;
   sel.innerHTML = '<option value="">— sem evento —</option>' +
@@ -5190,24 +5221,24 @@ window.cfOnEventoSoc = function() {
 };
 
 async function lancarCusto() {
-  const tipo  = document.getElementById('cf-tipo').value;
-  const valor = parseFloat(document.getElementById('cf-valor').value) || 0;
-  const desc  = document.getElementById('cf-desc').value.trim();
+  const tipo    = document.getElementById('cf-tipo').value;
+  const valor   = parseFloat(document.getElementById('cf-valor').value) || 0;
+  const desc    = document.getElementById('cf-desc').value.trim();
+  const pcId    = document.getElementById('cf-area-reembolso').value;
+  const subtipo = document.getElementById('cf-detalhe-reembolso').value || null;
 
   if (!valor || valor <= 0) { toast('Informe o valor do custo'); return; }
+  if (!pcId) { toast('Selecione a área do custo'); return; }
 
-  let subtipo = null;
-  let prodId  = null;
-  let etapaId = null;
+  let prodId      = null;
+  let etapaId     = null;
+  let eventoId    = null; // → eventos_custo (projeto)
+  let eventoSocId = null; // → eventos_sociedade (org/soc)
 
-  let eventoId    = null; // → eventos_custo (apenas tipo=projeto)
-  let eventoSocId = null; // → eventos_sociedade (org/sociedade)
   if (tipo === 'projeto') {
-    subtipo  = document.getElementById('cf-tipo-projeto').value;
     prodId   = document.getElementById('cf-produto').value || null;
     etapaId  = document.getElementById('cf-etapa').value   || null;
     if (!prodId) { toast('Selecione o produto para o custo de projeto'); return; }
-
     const evSel = document.getElementById('cf-evento')?.value;
     if (evSel === '__novo__') {
       const novoNome = document.getElementById('cf-evento-novo')?.value?.trim();
@@ -5221,13 +5252,13 @@ async function lancarCusto() {
       eventoId = evSel;
     }
   } else {
-    subtipo = document.getElementById('cf-subtipo').value || null;
+    const areaLabel = (G._reembolsoAreas||[]).find(a => a.id === pcId)?.subconta || '';
     const evSocSel = document.getElementById('cf-evento-soc')?.value;
     if (evSocSel === '__novo__') {
       const novoNome = document.getElementById('cf-evento-soc-novo')?.value?.trim();
       if (novoNome) {
         const { data: evNew, error: evErr } = await sb.from('eventos_sociedade').insert({
-          tipo, categoria: subtipo, nome: novoNome, criado_por: G.usuario.id
+          tipo, categoria: areaLabel, nome: novoNome, criado_por: G.usuario.id
         }).select().single();
         if (evErr) { toast('Erro ao criar evento: ' + evErr.message); return; }
         eventoSocId = evNew.id;
@@ -5245,12 +5276,9 @@ async function lancarCusto() {
       : semanaRangeOffset(G.semanaOffset).ini);
 
   const { ini: semIni, fim: semFim } = semanaRangeOffset(G.semanaOffset);
-
   let { data: semDb } = await sb.from('semanas')
     .select('id,finalizada').eq('usuario_id', G.usuario.id).eq('data_inicio', semIni).maybeSingle();
-
   if (semDb?.finalizada) { toast('Semana já finalizada'); return; }
-
   if (!semDb) {
     const { data: nova, error: eSem } = await sb.from('semanas')
       .upsert({
@@ -5263,19 +5291,36 @@ async function lancarCusto() {
     semDb = nova;
   }
 
-  const { error } = await sb.from('lancamentos_custo').insert({
+  const { data: inserted, error } = await sb.from('lancamentos_custo').insert({
     usuario_id: G.usuario.id,
     semana_id: semDb.id,
     data_lancamento: dataISO,
     valor, tipo, subtipo,
+    plano_contas_id: pcId,
     produto_id: prodId,
     etapa_id: etapaId,
-    evento_id:     eventoId    || null,  // FK → eventos_custo (projeto)
-    evento_soc_id: eventoSocId || null,  // FK → eventos_sociedade (org/soc)
+    evento_id:     eventoId    || null,
+    evento_soc_id: eventoSocId || null,
     descricao: desc || null
-  });
+  }).select('id').single();
 
   if (error) { toast('Erro ao registrar: ' + error.message); return; }
+
+  // Sincroniza com fin_lancamentos para aparecer no DRE
+  if (inserted?.id && pcId) {
+    const area = (G._reembolsoAreas||[]).find(a => a.id === pcId);
+    await sb.from('fin_lancamentos').insert({
+      plano_contas_id: pcId,
+      valor: Math.abs(valor),
+      tipo: 'despesa',
+      situacao: 'realizado',
+      data_competencia: dataISO,
+      data_vencimento: dataISO,
+      observacao: [subtipo, desc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso',
+      origem: 'reembolso',
+      origem_id: inserted.id,
+    });
+  }
 
   document.getElementById('cf-valor').value = '';
   document.getElementById('cf-desc').value  = '';
@@ -5283,7 +5328,6 @@ async function lancarCusto() {
   if (evNovoEl) evNovoEl.value = '';
   const evSocNovoEl = document.getElementById('cf-evento-soc-novo');
   if (evSocNovoEl) evSocNovoEl.value = '';
-  // Refresh evento lists
   if (prodId) cfFiltrarEventos(prodId);
   else cfFiltrarEventosSociedade();
   toast('Custo registrado');
@@ -5355,19 +5399,20 @@ async function renderCustosLancados() {
         const tipoLabel = TIPO_PT[c.tipo] || c.tipo;
         cabecalho = `<span style="font-weight:700">${tipoLabel}</span>`;
       }
-      // Secondary: categoria · descrição (thin, muted)
-      const cat = c.subtipo || '';
+      // Secondary: área · detalhe · descrição (thin, muted)
+      const areaLabel = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id)?.subconta || '';
+      const cat = [areaLabel, c.subtipo].filter(Boolean).join(' › ');
       const detalhe = [cat, c.descricao].filter(Boolean).join(' · ');
       const descFull = detalhe
         ? `${cabecalho}<span style="color:#ddd;margin:0 4px">·</span><span style="font-weight:300;color:#aaa">${detalhe}</span>`
         : cabecalho;
 
       const travada = G._semanaTravada;
-      const semEvento = !c.evento_id && !c.evento_soc_id;
-      const alertaEvt = semEvento
-        ? `<span title="Sem evento associado — clique em Editar para corrigir" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`
+      const semArea = !c.plano_contas_id;
+      const alertaEvt = semArea
+        ? `<span title="Sem área financeira — clique em Editar para classificar" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`
         : '';
-      html += `<div class="lanc-item" style="${semEvento ? 'border-left:2px solid #C4831A' : ''}">
+      html += `<div class="lanc-item" style="${semArea ? 'border-left:2px solid #C4831A' : ''}">
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
         <div class="lanc-hora" style="min-width:75px;font-family:var(--f);font-size:10px;font-weight:400;color:#555">R$ ${fmtNum(c.valor)}</div>
         <div class="lanc-desc" style="font-size:10px;line-height:1.4">${descFull || cat || '—'}</div>
@@ -5405,7 +5450,12 @@ async function editarCustoLancado(id) {
 
   const TIPO_PT = { projeto: 'Projeto', organizacao: 'Organização', sociedade: 'Sociedade', gestao: 'Gestão' };
   const tipoLabel = TIPO_PT[c.tipo] || c.tipo;
-  const subtipos  = SUBTIPOS_CUSTO[c.tipo] || [];
+  // Area/detalhe para o modal de edição
+  const areaOpts = (G._reembolsoAreas||[]).map(pc =>
+    `<option value="${pc.id}" ${pc.id===c.plano_contas_id?'selected':''}>${pc.subconta}</option>`).join('');
+  const curArea = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id);
+  const curDetalhes = curArea ? (REEMBOLSO_DETALHES[curArea.subconta]||['Outro']) : ['Outro'];
+  const detalheOpts = curDetalhes.map(d => `<option value="${d}" ${d===c.subtipo?'selected':''}>${d}</option>`).join('');
 
   // Build vinculo info string
   let vinculoHtml = '';
@@ -5501,6 +5551,15 @@ async function editarCustoLancado(id) {
             <option value="sociedade" ${c.tipo==='sociedade'?'selected':''}>Sociedade</option>
           </select>
         </div>
+        <!-- Área e detalhe -->
+        <div>
+          <label style="${lblStyle}">Área</label>
+          <select id="ec-area-reembolso" style="${fldStyle}" onchange="onAreaReembolsoChange('ec')">${areaOpts}</select>
+        </div>
+        <div>
+          <label style="${lblStyle}">Detalhe</label>
+          <select id="ec-detalhe-reembolso" style="${fldStyle}">${detalheOpts}</select>
+        </div>
         <!-- Projeto cascade -->
         <div id="ec-proj-wrap" style="${c.tipo!=='projeto'?'display:none':''}">
           <div style="margin-bottom:10px">
@@ -5525,21 +5584,9 @@ async function editarCustoLancado(id) {
               <select id="ec-evt" style="${fldStyle}">${evtsHtml}</select>
             </div>
           </div>
-          <div style="margin-top:10px">
-            <label style="${lblStyle}">Categoria</label>
-            <select id="ec-subtipo-proj" style="${fldStyle}">
-              ${['Alimentação','Hospedagem','Translado','Passagem','Transporte','Aluguel de carro','Gasolina','Impressão','Outro'].map(s=>`<option value="${s}" ${c.subtipo===s?'selected':''}>${s}</option>`).join('')}
-            </select>
-          </div>
         </div>
         <!-- Org/Soc -->
         <div id="ec-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
-          <div style="margin-bottom:10px">
-            <label style="${lblStyle}">Categoria</label>
-            <select id="ec-subtipo" style="${fldStyle}">
-              ${subtipos.map(s=>`<option value="${s}" ${c.subtipo===s?'selected':''}>${s}</option>`).join('')}
-            </select>
-          </div>
           <div id="ec-evt-orgsoc-wrap">
             <label style="${lblStyle}">Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(obrigatório)</span></label>
             <select id="ec-evt-soc" style="${fldStyle}">
@@ -5578,10 +5625,7 @@ async function editarCustoLancado(id) {
           todosEventosCusto.filter(e=>!e.produto_id).map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
       }
     }
-    // Atualiza subtipo options
-    const subOpts = SUBTIPOS_CUSTO[t] || [];
-    const selSub = document.getElementById('ec-subtipo');
-    if (selSub) selSub.innerHTML = subOpts.map(s=>`<option value="${s}">${s}</option>`).join('');
+    onAreaReembolsoChange('ec');
   };
   window.ecOnClienteChange = () => {
     const cliId = document.getElementById('ec-cliente').value;
@@ -5624,20 +5668,20 @@ async function editarCustoLancado(id) {
     const novaDesc  = document.getElementById('ec-desc').value.trim() || null;
     if (isNaN(novoValor) || novoValor <= 0) { toast('Valor inválido'); return; }
 
-    const upd = { valor: novoValor, descricao: novaDesc, data_lancamento: novaData, tipo: novoTipo };
+    const novoPcId  = document.getElementById('ec-area-reembolso')?.value || c.plano_contas_id || null;
+    const novoSubtipo = document.getElementById('ec-detalhe-reembolso')?.value || null;
+    const upd = { valor: novoValor, descricao: novaDesc, data_lancamento: novaData, tipo: novoTipo,
+                  plano_contas_id: novoPcId, subtipo: novoSubtipo };
     if (novoTipo === 'projeto') {
       upd.produto_id    = document.getElementById('ec-prod').value || c.produto_id || null;
       upd.etapa_id      = document.getElementById('ec-etapa')?.value || null;
       upd.evento_id     = document.getElementById('ec-evt')?.value || null;
       upd.evento_soc_id = null;
-      upd.subtipo       = document.getElementById('ec-subtipo-proj')?.value || null;
     } else if (novoTipo === 'sociedade') {
-      upd.subtipo       = document.getElementById('ec-subtipo')?.value || c.subtipo;
       upd.evento_soc_id = document.getElementById('ec-evt-soc')?.value || null;
       upd.evento_id     = null;
       upd.produto_id    = null; upd.etapa_id = null;
     } else {
-      upd.subtipo       = document.getElementById('ec-subtipo')?.value || c.subtipo;
       upd.evento_id     = document.getElementById('ec-evt-soc')?.value || null;
       upd.evento_soc_id = null;
       upd.produto_id    = null; upd.etapa_id = null;
@@ -5645,6 +5689,36 @@ async function editarCustoLancado(id) {
 
     const { error } = await sb.from('lancamentos_custo').update(upd).eq('id', id);
     if (error) { toast('Erro: ' + error.message); return; }
+
+    // Sincroniza fin_lancamentos
+    if (novoPcId) {
+      const area = (G._reembolsoAreas||[]).find(a => a.id === novoPcId);
+      const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso';
+      const { data: existFin } = await sb.from('fin_lancamentos')
+        .select('id').eq('origem','reembolso').eq('origem_id', id).maybeSingle();
+      if (existFin?.id) {
+        await sb.from('fin_lancamentos').update({
+          plano_contas_id: novoPcId,
+          valor: Math.abs(novoValor),
+          data_competencia: novaData,
+          data_vencimento: novaData,
+          observacao: finObs,
+        }).eq('id', existFin.id);
+      } else {
+        await sb.from('fin_lancamentos').insert({
+          plano_contas_id: novoPcId,
+          valor: Math.abs(novoValor),
+          tipo: 'despesa',
+          situacao: 'realizado',
+          data_competencia: novaData,
+          data_vencimento: novaData,
+          observacao: finObs,
+          origem: 'reembolso',
+          origem_id: id,
+        });
+      }
+    }
+
     popup.remove();
     toast('Custo atualizado');
     renderCustosLancados();
@@ -5659,6 +5733,7 @@ async function excluirCustoLancado(id) {
     'Excluir custo?',
     'Este lançamento de custo será removido permanentemente.',
     async () => {
+      await sb.from('fin_lancamentos').delete().eq('origem','reembolso').eq('origem_id', id);
       await sb.from('lancamentos_custo').delete().eq('id', id);
       toast('Custo removido');
       renderCustosLancados();
