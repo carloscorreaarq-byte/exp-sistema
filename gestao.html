@@ -4221,23 +4221,26 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
       ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
       : '';
     const deHtml = criador
-      ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribuída por ${criador.nome}">${criador.iniciais}</div>`
+      ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribuída por ${_escN(criador.nome||'')}">${_escN(criador.iniciais||'')}</div>`
       : '';
-    const deLabel = criador ? `<span style="font-size:9px;color:#bbb">de ${criador.nome.split(' ')[0]}</span>` : '';
+    const deLabel = criador ? `<span style="font-size:9px;color:#bbb">de ${_escN((criador.nome||'').split(' ')[0]||'')}</span>` : '';
+    const taskIdJs = _sqN(t.id);
+    const descDisp = _escN(t.descricao || '');
+    const tipoDisp = _escN(TIPO_LABEL[t.tipo]||t.tipo||'');
 
     if (acompanhada) {
       const paraHtml = destino
-        ? `<div class="task-de-chip" style="background:${destino.cor||'#888'};width:18px;height:18px;font-size:8px" title="${destino.nome}">${destino.iniciais}</div>
-           <span style="font-size:9px;color:#888">para ${destino.nome.split(' ')[0]}</span>`
+        ? `<div class="task-de-chip" style="background:${destino.cor||'#888'};width:18px;height:18px;font-size:8px" title="${_escN(destino.nome||'')}">${_escN(destino.iniciais||'')}</div>
+           <span style="font-size:9px;color:#888">para ${_escN((destino.nome||'').split(' ')[0]||'')}</span>`
         : '';
       const statusChip = `<span class="task-status-chip ${t.concluida ? 'ok' : 'pend'}">${t.concluida ? 'Concluída' : 'Pendente'}</span>`;
       return `<div class="task-item">
-        <div class="task-check" style="border-color:#ddd;color:#ccc;font-size:10px;cursor:pointer" onclick="confirmarExcluirTarefa('${t.id}')" title="Excluir tarefa">✕</div>
+        <div class="task-check" style="border-color:#ddd;color:#ccc;font-size:10px;cursor:pointer" onclick="confirmarExcluirTarefa(${taskIdJs})" title="Excluir tarefa">✕</div>
         <div style="flex:1;min-width:0">
-          <div class="task-desc ${t.concluida?'done':''}">${t.descricao}</div>
+          <div class="task-desc ${t.concluida?'done':''}">${descDisp}</div>
           <div class="task-meta" style="justify-content:space-between;flex-wrap:nowrap">
             <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
-              <span class="task-tipo-chip">${TIPO_LABEL[t.tipo]||t.tipo}</span>
+              <span class="task-tipo-chip">${tipoDisp}</span>
               ${prazoHtml}
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto">
@@ -4250,11 +4253,11 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
     }
 
     return `<div class="task-item">
-      <div class="task-check ${t.concluida?'done':''}" onclick="toggleTarefa('${t.id}',${t.concluida})"></div>
+      <div class="task-check ${t.concluida?'done':''}" onclick="toggleTarefa(${taskIdJs},${t.concluida})"></div>
       <div style="flex:1;min-width:0">
-        <div class="task-desc ${t.concluida?'done':''}">${t.descricao}</div>
+        <div class="task-desc ${t.concluida?'done':''}">${descDisp}</div>
         <div class="task-meta">
-          <span class="task-tipo-chip">${TIPO_LABEL[t.tipo]||t.tipo}</span>
+          <span class="task-tipo-chip">${tipoDisp}</span>
           ${prazoHtml}
           ${deHtml}${deLabel}
         </div>
@@ -4437,11 +4440,14 @@ function renderEntregasSemana() {
     const isMeu = (G.etapaDevs[e.id] || []).includes(uid) || e.coordenador_id === uid;
     const concluida = e.status === 'concluida';
     const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
+    const clienteDisp = _escN(info.cliente || '');
+    const oppDisp = _escN(info.oportunidade || '');
+    const etapaDisp = _escN(info.etapa || '');
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--cinza2);${concluida ? 'opacity:.5' : ''}">
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:${isMeu ? '600' : '400'};color:${isMeu ? 'var(--preto)' : '#555'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.cliente}">${info.cliente}</div>
-        <div style="font-size:10px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.oportunidade}">${info.oportunidade}</div>
-        <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${info.etapa}">${info.etapa}</div>
+        <div style="font-size:11px;font-weight:${isMeu ? '600' : '400'};color:${isMeu ? 'var(--preto)' : '#555'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${clienteDisp}">${clienteDisp}</div>
+        <div style="font-size:10px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${oppDisp}">${oppDisp}</div>
+        <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${etapaDisp}">${etapaDisp}</div>
       </div>
       <div style="flex-shrink:0;text-align:right">
         <div style="font-size:9px;color:#888">${fmtDate(e.data_estimada)}</div>
@@ -4503,18 +4509,22 @@ function renderListaProjetos() {
 
   wrap.innerHTML = Object.values(grupos)
     .sort((a,b) => (a.cli?.nome||'').localeCompare(b.cli?.nome||'','pt-BR'))
-    .map(({ cli, opps }) => `
+    .map(({ cli, opps }) => {
+      const clienteNomeDisp = _escN(cli?.nome || 'Sem cliente');
+      const clienteCidadeDisp = _escN(cli?.cidade || '');
+      const clienteUfDisp = _escN(cli?.uf || '');
+      return `
     <div class="cliente-grupo">
       <div class="cliente-header">
-        <div class="cliente-nome">${cli?.nome || 'Sem cliente'}</div>
-        <div class="cliente-cidade">${cli?.cidade || ''} ${cli?.uf ? '/ '+cli.uf : ''}</div>
+        <div class="cliente-nome">${clienteNomeDisp}</div>
+        <div class="cliente-cidade">${clienteCidadeDisp} ${cli?.uf ? '/ '+clienteUfDisp : ''}</div>
       </div>
       ${Object.values(opps)
         .sort((a,b) => (a.opp?.projeto||'').localeCompare(b.opp?.projeto||'','pt-BR'))
         .map(({ opp, prods: ps }) => `
         <div class="opp-grupo">
           <div class="opp-header">
-            <div class="opp-nome">${opp?.projeto || 'Sem oportunidade'}</div>
+            <div class="opp-nome">${_escN(opp?.projeto || 'Sem oportunidade')}</div>
             <span style="font-size:10px;color:#aaa">${ps.length} produto${ps.length > 1 ? 's' : ''}</span>
           </div>
           ${ps.map(p => {
@@ -4525,14 +4535,20 @@ function renderListaProjetos() {
             const etapaAtiva = G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_andamento')
               || G.todasEtapas.find(e => e.produto_id === p.id && e.status !== 'concluida');
             const hProd = G._horasPorProd?.[p.id] || 0;
-            return `<div class="prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto('${p.id}')`}">
+            const onClickJs = p._crm ? 'void(0)' : `abrirProduto(${_sqN(p.id)})`;
+            const nomeProdDisp = _escN(p.nome || '');
+            const etapaNomeDisp = _escN(etapaAtiva?.nome || '');
+            const coordNomeDisp = _escN(coord?.nome || '');
+            const coordIniciaisDisp = _escN(coord?.iniciais || '');
+            const nucleoLabelDisp = _escN(nc.label);
+            return `<div class="prod-row" onclick="${onClickJs}">
               <div class="prod-bullet" style="background:${nc.dot || '#888'}"></div>
-              <div class="prod-row-nome" title="${p.nome}">${p.nome}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM)</span>' : ''}</div>
-              <div class="prod-row-tipo"><span class="badge ${nc.cls}">${nc.label}</span>${p.em_gestao === false ? ` <span class="badge b-gr">Oculto</span>` : ''}</div>
+              <div class="prod-row-nome" title="${nomeProdDisp}">${nomeProdDisp}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM)</span>' : ''}</div>
+              <div class="prod-row-tipo"><span class="badge ${nc.cls}">${nucleoLabelDisp}</span>${p.em_gestao === false ? ` <span class="badge b-gr">Oculto</span>` : ''}</div>
               <div class="prod-row-status"><span class="badge ${stProd.cls}">${stProd.label}</span></div>
-              <div class="prod-row-etapa">${etapaAtiva ? etapaAtiva.nome : '—'}</div>
+              <div class="prod-row-etapa">${etapaAtiva ? etapaNomeDisp : '—'}</div>
               <div class="prod-row-coord">
-                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coord.nome}">${coord.iniciais}</div>` : '—'}
+                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : '—'}
               </div>
               <div class="prod-row-datas">
                 ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '—'}
@@ -4543,7 +4559,8 @@ function renderListaProjetos() {
         </div>
       `).join('')}
     </div>
-  `).join('');
+  `;
+    }).join('');
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -9013,20 +9030,23 @@ async function carregarCustosProduto(prodId) {
   } else {
     custosPrevAll.forEach(c => {
       const st = CUSTO_STATUS[c.status] || CUSTO_STATUS.pendente;
-      const tipoLabel = CUSTO_TIPO_LABEL[c.tipo] || c.tipo || '—';
+      const tipoLabel = _escN(CUSTO_TIPO_LABEL[c.tipo] || c.tipo || '—');
       const valExib = c.valor_negociado || c.valor_calculado || 0;
+      const descDisp = _escN(c.descricao || '');
+      const obsDisp = _escN(c.obs || '');
+      const custoIdJs = _sqN(c.id);
       html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--cinza2);background:#fff">
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:600;color:var(--preto)">${tipoLabel}${c.descricao ? ` · ${c.descricao}` : ''}</div>
-          ${c.obs ? `<div style="font-size:9px;color:#aaa">${c.obs}</div>` : ''}
+          <div style="font-size:11px;font-weight:600;color:var(--preto)">${tipoLabel}${c.descricao ? ` · ${descDisp}` : ''}</div>
+          ${c.obs ? `<div style="font-size:9px;color:#aaa">${obsDisp}</div>` : ''}
         </div>
         ${isSocio
-          ? `<select class="filter-select" style="font-size:9px;padding:2px 5px" onchange="atualizarStatusCusto('${c.id}', this.value)">
+          ? `<select class="filter-select" style="font-size:9px;padding:2px 5px" onchange="atualizarStatusCusto(${custoIdJs}, this.value)">
               ${Object.entries(CUSTO_STATUS).map(([k,v]) => `<option value="${k}" ${c.status===k?'selected':''}>${v.label}</option>`).join('')}
              </select>`
           : `<span class="badge ${st.cls}">${st.label}</span>`}
         ${isSocio ? `<div style="font-size:11px;font-weight:700;min-width:70px;text-align:right">R$ ${fmtNum(valExib)}</div>` : ''}
-        ${isSocio ? `<button class="btn sm tc" style="font-size:9px;padding:2px 6px;flex-shrink:0" onclick="excluirCusto('${c.id}')">×</button>` : ''}
+        ${isSocio ? `<button class="btn sm tc" style="font-size:9px;padding:2px 6px;flex-shrink:0" onclick="excluirCusto(${custoIdJs})">×</button>` : ''}
       </div>`;
     });
   }
@@ -9061,7 +9081,7 @@ async function carregarCustosProduto(prodId) {
 
     etapaIds.forEach((eid, etIdx) => {
       const etapa   = G.todasEtapas.find(e => e.id === eid);
-      const nomeEtapa = etapa?.nome || 'Sem etapa';
+      const nomeEtapa = _escN(etapa?.nome || 'Sem etapa');
       const etapaGrp  = porEtapa[eid];
       const etBodyId  = `co-et-${etIdx}`;
 
@@ -9076,28 +9096,30 @@ async function carregarCustosProduto(prodId) {
       });
 
       const eventosHtml = Object.entries(porEvento).map(([, grp], evIdx) => {
-        const titulo   = grp.nome || '— Sem evento —';
+        const titulo   = _escN(grp.nome || '— Sem evento —');
         const evBodyId = `co-ev-${etIdx}-${evIdx}`;
         const linhas   = grp.itens.map(c => {
           const u  = c.usuarios || {};
           const av = u.iniciais
-            ? `<span style="width:18px;height:18px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:7px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${u.iniciais}</span>`
+            ? `<span style="width:18px;height:18px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:7px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais || '?')}</span>`
             : '';
           const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
-          const cat = c.subtipo || c.tipo || '—';
+          const cat = _escN(c.subtipo || c.tipo || '—');
+          const descDisp = _escN(c.descricao || '');
+          const userDisp = _escN((u.nome || '').split(' ')[0] || '?');
           return `<div style="display:flex;align-items:center;gap:7px;padding:5px 12px 5px 28px;border-bottom:1px solid var(--cinza2)">
             ${av}
             <div style="flex:1;min-width:0">
               <span style="font-size:10px;color:#888">${cat}</span>
-              ${c.descricao ? `<span style="font-size:10px;color:#bbb"> · ${c.descricao}</span>` : ''}
-              ${u.nome ? `<span style="font-size:9px;color:#ccc"> · ${u.nome.split(' ')[0]}</span>` : ''}
+              ${c.descricao ? `<span style="font-size:10px;color:#bbb"> · ${descDisp}</span>` : ''}
+              ${u.nome ? `<span style="font-size:9px;color:#ccc"> · ${userDisp}</span>` : ''}
             </div>
             <span style="font-size:9px;color:#bbb;flex-shrink:0">${dataFmt}</span>
             <span style="font-size:10px;font-weight:700;flex-shrink:0;min-width:55px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
           </div>`;
         }).join('');
         return `<div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;background:#fafafa" onclick="toggleEl('${evBodyId}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;background:#fafafa" onclick="toggleEl(${_sqN(evBodyId)})">
             <div style="display:flex;align-items:center;gap:6px">
               <span style="font-size:11px;color:#bbb" id="${evBodyId}-arr">▸</span>
               <span style="font-size:11px;font-weight:600">${titulo}</span>
@@ -9110,7 +9132,7 @@ async function carregarCustosProduto(prodId) {
       }).join('');
 
       html += `<div style="background:#fff;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;background:var(--off)" onclick="toggleEl('${etBodyId}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(etBodyId)})">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">▸</span>
             <span style="font-size:12px;font-weight:700">${nomeEtapa}</span>
@@ -9250,7 +9272,7 @@ async function carregarHorasProduto(prodId) {
   // 6. Cards colapsáveis por etapa
   etapasOrdem.forEach((eid, etIdx) => {
     const etapa = G.todasEtapas.find(e => e.id === eid);
-    const nomeEtapa = etapa?.nome || '(sem etapa)';
+    const nomeEtapa = _escN(etapa?.nome || '(sem etapa)');
     const userMap = etapaMap[eid];
     const totalEtapa = Object.values(userMap).reduce((s,h) => s+h, 0);
     const custoEtapa = isSocio
@@ -9262,10 +9284,12 @@ async function carregarHorasProduto(prodId) {
     const pessoaLinhas = Object.entries(userMap).sort((a,b) => b[1]-a[1]).map(([uid,h]) => {
       const u = G.todosUsuarios.find(x=>x.id===uid);
       const vh = vhPorUser[uid] || 0;
+      const iniciaisDisp = _escN(u?.iniciais || '?');
+      const nomeUserDisp = _escN(u?.nome || uid);
       return `<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--cinza2)">
-        <span style="width:26px;height:26px;border-radius:50%;background:${u?.cor||'#ccc'};color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${u?.iniciais||'?'}</span>
+        <span style="width:26px;height:26px;border-radius:50%;background:${u?.cor||'#ccc'};color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${iniciaisDisp}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:500">${u?.nome||uid}</div>
+          <div style="font-size:11px;font-weight:500">${nomeUserDisp}</div>
           ${isSocio ? `<div style="font-size:9px;color:#aaa">R$ ${fmtNum(vh)}/h</div>` : ''}
         </div>
         <div style="text-align:right">
@@ -9283,13 +9307,15 @@ async function carregarHorasProduto(prodId) {
       const linhasCustos = custosEtapaList.map(c => {
         const u = c.usuarios || {};
         const av = u.iniciais
-          ? `<span style="width:20px;height:20px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${u.iniciais}</span>`
+          ? `<span style="width:20px;height:20px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais || '?')}</span>`
           : '';
-        const cat = c.subtipo || c.tipo || '—';
+        const cat = _escN(c.subtipo || c.tipo || '—');
         const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
+        const descDisp = _escN(c.descricao || '');
+        const userDisp = _escN((u.nome || '').split(' ')[0] || '?');
         return `<div style="display:flex;align-items:center;gap:7px;padding:5px 14px;border-bottom:1px solid var(--cinza2)">
           ${av}
-          <div style="flex:1;min-width:0;font-size:10px;color:#888">${cat}${c.descricao ? ` · ${c.descricao}` : ''}<span style="color:#ccc"> · ${u.nome?.split(' ')[0]||'?'}</span></div>
+          <div style="flex:1;min-width:0;font-size:10px;color:#888">${cat}${c.descricao ? ` · ${descDisp}` : ''}<span style="color:#ccc"> · ${userDisp}</span></div>
           <span style="font-size:9px;color:#bbb">${dataFmt}</span>
           <span style="font-size:10px;font-weight:700;min-width:55px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
         </div>`;
@@ -9301,7 +9327,7 @@ async function carregarHorasProduto(prodId) {
     }
 
     html += `<div style="margin-bottom:10px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:#fff">
-      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--off)" onclick="toggleEl('${etBodyId}')">
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(etBodyId)})">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">▸</span>
           <span style="font-size:12px;font-weight:700">${nomeEtapa}</span>
@@ -9701,6 +9727,7 @@ async function carregarRegistrosProduto(prodId) {
 function _renderEntrada(r, collapsed) {
   const etapa   = r.etapa_id ? G.todasEtapas.find(e => e.id === r.etapa_id) : null;
   const isAutor = r.criado_por === G.usuario.id;
+  const canModerate = isSocioRole(G.usuario.role);
   const encs    = r.reg_encaminhamento || [];
   const nEncs   = encs.length;
   const nDone   = encs.filter(e => e.concluido).length;
@@ -9755,8 +9782,8 @@ function _renderEntrada(r, collapsed) {
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         ${etapa?`<span class="reg-etapa-tag">${_regEsc(etapa.nome)}</span>`:''}
-        ${isAutor||G.usuario.role==='socio'?`<button class="btn sm" onclick="editarEntradaReg(${_sqReg(r.id)})">✎</button>`:''}
-        ${isAutor||G.usuario.role==='socio'?`<button class="btn sm tc" onclick="deletarEntradaReg(${_sqReg(r.id)})">✕</button>`:''}
+        ${isAutor||canModerate?`<button class="btn sm" onclick="editarEntradaReg(${_sqReg(r.id)})">✎</button>`:''}
+        ${isAutor||canModerate?`<button class="btn sm tc" onclick="deletarEntradaReg(${_sqReg(r.id)})">✕</button>`:''}
       </div>
     </div>
     ${r.titulo?`<div class="reg-titulo">${_regEsc(r.titulo)}</div>`:''}
@@ -9874,11 +9901,12 @@ function _renderComent(c, allRepls) {
   const dt    = new Date(c.criado_em);
   const dtStr = fmtDate(c.criado_em, true) + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const repls = allRepls.filter(r => r.parent_id === c.id);
+  const canModerate = isSocioRole(G.usuario.role);
   return `
   <div class="reg-coment-item">
     <div class="reg-coment-av" style="background:${_regAttr(c.autor_cor||'#888')}">${_regEsc(c.autor_iniciais||'?')}</div>
     <div class="reg-coment-bubble">
-      <div class="reg-coment-meta">${_regEsc(c.autor_nome||'—')} <span>${dtStr}</span>${(c.autor_id===G.usuario.id||G.usuario.role==='socio')?`<button class="btn-coment-del" onclick="deletarComentarioReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">×</button>`:''}</div>
+      <div class="reg-coment-meta">${_regEsc(c.autor_nome||'—')} <span>${dtStr}</span>${(c.autor_id===G.usuario.id||canModerate)?`<button class="btn-coment-del" onclick="deletarComentarioReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">×</button>`:''}</div>
       <div class="reg-coment-txt">${_hlMencao(c.texto)}</div>
       <span class="reg-coment-responder" onclick="toggleReplyFormReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">↩ responder</span>
       ${repls.length?`<div class="reg-replies">${repls.map(r=>_renderComent(r,allRepls)).join('')}</div>`:''}
@@ -11944,7 +11972,7 @@ function renderProcLista() {
     const moreChips = atrib.length > 4
       ? `<div class="task-de-chip" style="background:#bbb;width:18px;height:18px;font-size:7px">+${atrib.length-4}</div>` : '';
     const selected = G._procSelecionado === c.id ? ' selected' : '';
-    return `<div class="proc-lista-item${done?' proc-done':''}${selected}" onclick="selecionarChecklist('${c.id}')">
+    return `<div class="proc-lista-item${done?' proc-done':''}${selected}" onclick="selecionarChecklist(${_sqN(c.id)})">
       <div class="proc-nome">${_escN(c.nome)}</div>
       ${c.descricao ? `<div style="font-size:10px;color:#888;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escN(c.descricao)}</div>` : ''}
       <div style="display:flex;align-items:center;gap:3px;margin-bottom:6px;flex-wrap:wrap">
@@ -12012,17 +12040,20 @@ function renderProcDetalhe(id) {
         const doneBy    = atrib.length
           ? atrib.filter(aid => statusMap[aid]).map(aid => { const u = G.todosUsuarios?.find(u => u.id === aid); return u ? u.iniciais : '?'; })
           : Object.keys(statusMap).filter(k => statusMap[k]).map(k => { const u = G.todosUsuarios?.find(u => u.id === k); return u ? u.iniciais : '?'; });
-        const doneByStr = doneBy.join(', ');
+        const doneByStr = _escN(doneBy.join(', '));
+        const tarefaIdJs = _sqN(tr.id);
+        const checklistIdJs = _sqN(id);
+        const temaIdJs = _sqN(tema.id);
 
         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
           <input type="checkbox" ${myDone?'checked':''} ${!canCheck?'disabled':''}
-            onchange="toggleTarefaProcesso('${tr.id}','${id}',this.checked)"
+            onchange="toggleTarefaProcesso(${tarefaIdJs},${checklistIdJs},this.checked)"
             style="margin-top:2px;cursor:${canCheck?'pointer':'default'};accent-color:var(--azul);flex-shrink:0">
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;color:${myDone?'#bbb':'#333'};${myDone?'text-decoration:line-through':''}">${_escN(tr.descricao)}</div>
             ${doneByStr ? `<div style="font-size:9px;color:#bbb;margin-top:1px">✓ ${doneByStr}</div>` : ''}
           </div>
-          ${isSoc ? `<button onclick="procExcluirTarefa('${tr.id}','${id}')" title="Excluir tarefa" style="font-size:11px;border:none;background:none;color:#ddd;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1">✕</button>` : ''}
+          ${isSoc ? `<button onclick="procExcluirTarefa(${tarefaIdJs},${checklistIdJs})" title="Excluir tarefa" style="font-size:11px;border:none;background:none;color:#ddd;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1">✕</button>` : ''}
         </div>`;
       }).join('');
 
@@ -12033,8 +12064,8 @@ function renderProcDetalhe(id) {
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px solid var(--cinza2);margin-bottom:4px">
         <div style="font-size:12px;font-weight:700;flex:1">${_escN(tema.nome)}</div>
         ${isSoc ? `
-          <button onclick="procAdicionarTarefa('${tema.id}','${id}')" style="font-size:10px;border:1px solid var(--cinza);border-radius:5px;background:#fff;color:#666;cursor:pointer;padding:3px 9px;font-family:var(--f)">+ Tarefa</button>
-          <button onclick="procExcluirTema('${tema.id}','${id}')" title="Excluir tema" style="font-size:11px;border:none;background:none;color:#ccc;cursor:pointer;padding:2px 4px">✕</button>
+          <button onclick="procAdicionarTarefa(${temaIdJs},${checklistIdJs})" style="font-size:10px;border:1px solid var(--cinza);border-radius:5px;background:#fff;color:#666;cursor:pointer;padding:3px 9px;font-family:var(--f)">+ Tarefa</button>
+          <button onclick="procExcluirTema(${temaIdJs},${checklistIdJs})" title="Excluir tema" style="font-size:11px;border:none;background:none;color:#ccc;cursor:pointer;padding:2px 4px">✕</button>
         ` : ''}
       </div>
       ${tarefasHtml || '<div style="font-size:10px;color:#ccc;padding:6px 0;font-style:italic">Nenhuma tarefa neste tema.</div>'}
@@ -12053,8 +12084,8 @@ function renderProcDetalhe(id) {
           ${criador ? `<div style="font-size:10px;color:#bbb">Criado por ${_escN(criador.nome.split(' ')[0])}</div>` : ''}
         </div>
         ${isSoc ? `
-          <button onclick="abrirAtribuirChecklist('${id}')" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:#fff;color:#555;cursor:pointer;padding:5px 12px;font-family:var(--f);white-space:nowrap">Atribuir ▾</button>
-          <button onclick="procArquivar('${id}')" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:#fff;color:#555;cursor:pointer;padding:5px 10px;font-family:var(--f)">${arquivado?'↺ Restaurar':'🗄 Arquivar'}</button>
+          <button onclick="abrirAtribuirChecklist(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:#fff;color:#555;cursor:pointer;padding:5px 12px;font-family:var(--f);white-space:nowrap">Atribuir ▾</button>
+          <button onclick="procArquivar(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:#fff;color:#555;cursor:pointer;padding:5px 10px;font-family:var(--f)">${arquivado?'↺ Restaurar':'🗄 Arquivar'}</button>
         ` : ''}
       </div>
 

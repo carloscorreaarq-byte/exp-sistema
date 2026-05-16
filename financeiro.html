@@ -2060,13 +2060,15 @@ function navTab(tab) {
 }
 function nucleoBadge(n) {
   const m = NUCLEO_MAP[n];
-  if (!m) return `<span class="badge b-gr">${n||'—'}</span>`;
-  return `<span class="badge ${m.cls}">${m.label}</span>`;
+  if (!m) return `<span class="badge b-gr">${_finEsc(n||'—')}</span>`;
+  return `<span class="badge ${m.cls}">${_finEsc(m.label)}</span>`;
 }
+const _finEsc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const _finSq  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
 function sitBadge(s) {
   const m = SIT_LANC[s];
-  if (!m) return `<span class="badge b-gr">${s||'—'}</span>`;
-  return `<span class="badge ${m.cls}">${m.label}</span>`;
+  if (!m) return `<span class="badge b-gr">${_finEsc(s||'—')}</span>`;
+  return `<span class="badge ${m.cls}">${_finEsc(m.label)}</span>`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2900,9 +2902,9 @@ async function carregarAlertas() {
       <span style="font-size:14px">${i.icon}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-          ${i.cliente || '—'} <span style="font-size:10px;color:#888;font-weight:400">${i.num || ''}</span>
+          ${_finEsc(i.cliente || '—')} <span style="font-size:10px;color:#888;font-weight:400">${_finEsc(i.num || '')}</span>
         </div>
-        <div style="font-size:10px;color:#888">${i.desc}</div>
+        <div style="font-size:10px;color:#888">${_finEsc(i.desc)}</div>
       </div>
       <div style="font-size:13px;font-weight:700;color:${i.cor};flex-shrink:0">${moeda(i.valor)}</div>
       <button class="btn btn-sec btn-xs" onclick="navTab('cobranca')">${i.acao === 'pgto' ? 'Confirmar' : 'Emitir'}</button>
@@ -2923,8 +2925,8 @@ async function carregarEtapasRecentes() {
   el.innerHTML = data.map(e => `
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--cinza2)">
       <div style="flex:1">
-        <div style="font-size:12px;font-weight:600">${e.fin_ativos?.cliente_nome||'—'}</div>
-        <div style="font-size:10px;color:#888">${e.descricao} · concluída ${fmtData(e.data_entrega_realizada)}</div>
+        <div style="font-size:12px;font-weight:600">${_finEsc(e.fin_ativos?.cliente_nome||'—')}</div>
+        <div style="font-size:10px;color:#888">${_finEsc(e.descricao || '')} · concluída ${fmtData(e.data_entrega_realizada)}</div>
       </div>
       <span class="badge b-am">Alerta</span>
     </div>`).join('');
@@ -2950,18 +2952,23 @@ async function carregarFila() {
   }
   el.innerHTML = data.map(a => {
     const viaCRM = a.criado_por === 'crm';
-    return `<div class="ativo-card" onclick="abrirAtivo('${a.id}')">
+    const ativoIdJs = _finSq(a.id);
+    const clienteDisp = _finEsc(a.cliente_nome || '');
+    const descDisp = _finEsc(a.descricao || '');
+    const legadoDisp = _finEsc(a.num_legado || '');
+    const propCodeDisp = _finEsc(a.prop_code || '');
+    return `<div class="ativo-card" onclick="abrirAtivo(${ativoIdJs})">
       <div class="ativo-card-hd">
         ${nucleoBadge(a.nucleo)}
-        <span class="ativo-card-title">${a.cliente_nome}</span>
+        <span class="ativo-card-title">${clienteDisp}</span>
         <span class="badge b-am">Rascunho</span>
         ${viaCRM ? `<span class="badge" style="background:#EEF2FF;color:#4338CA;border:1px solid #C7D2FE;font-size:8px">↑ CRM</span>` : ''}
-        <button class="btn btn-pri btn-sm" onclick="event.stopPropagation();finalizarRascunho('${a.id}')" style="margin-left:auto">Finalizar →</button>
+        <button class="btn btn-pri btn-sm" onclick="event.stopPropagation();finalizarRascunho(${ativoIdJs})" style="margin-left:auto">Finalizar →</button>
       </div>
-      ${a.descricao ? `<div style="font-size:11px;color:#666;padding:4px 0 2px">${a.descricao}</div>` : ''}
+      ${a.descricao ? `<div style="font-size:11px;color:#666;padding:4px 0 2px">${descDisp}</div>` : ''}
       <div class="ativo-card-meta">
-        ${a.num_legado ? `<span>📁 ${a.num_legado}</span>` : ''}
-        ${a.prop_code  ? `<span>🧮 ${a.prop_code}</span>`  : ''}
+        ${a.num_legado ? `<span>📁 ${legadoDisp}</span>` : ''}
+        ${a.prop_code  ? `<span>🧮 ${propCodeDisp}</span>`  : ''}
         ${a.data_contrato ? `<span>📅 ${fmtData(a.data_contrato)}</span>` : ''}
         ${viaCRM ? `<span title="Criado automaticamente pelo fechamento no CRM">⚡ Fechado no CRM</span>` : ''}
       </div>
@@ -3015,16 +3022,20 @@ function filtrarConcluidos() { /* TODO: filtro local */ }
 function ativoCardHTML(a, sit) {
   const sitMap = { ativo:'b-vd', concluido:'b-az', rascunho:'b-am', cancelado:'b-tc' };
   const sitLabel = { ativo:'Ativo', concluido:'Concluído', rascunho:'Rascunho', cancelado:'Cancelado' };
-  return `<div class="ativo-card" onclick="abrirAtivo('${a.id}')">
+  const ativoIdJs = _finSq(a.id);
+  const clienteDisp = _finEsc(a.cliente_nome || '');
+  const legadoDisp = _finEsc(a.num_legado || '');
+  const propCodeDisp = _finEsc(a.prop_code || '');
+  return `<div class="ativo-card" onclick="abrirAtivo(${ativoIdJs})">
     <div class="ativo-card-hd">
       ${nucleoBadge(a.nucleo)}
-      <span class="ativo-card-title">${a.cliente_nome}</span>
+      <span class="ativo-card-title">${clienteDisp}</span>
       <span class="badge ${sitMap[sit]||'b-gr'}">${sitLabel[sit]||sit}</span>
       ${a.modalidade_cobranca === 'mensal' ? '<span class="badge b-roxo">Mensal</span>' : ''}
     </div>
     <div class="ativo-card-meta">
-      ${a.num_legado ? `<span>📁 ${a.num_legado}</span>` : ''}
-      ${a.prop_code  ? `<span>🧮 ${a.prop_code}</span>`  : ''}
+      ${a.num_legado ? `<span>📁 ${legadoDisp}</span>` : ''}
+      ${a.prop_code  ? `<span>🧮 ${propCodeDisp}</span>`  : ''}
       <span>📅 ${fmtData(a.data_contrato)}</span>
     </div>
     <div class="ativo-card-footer">
@@ -3108,22 +3119,28 @@ function renderAging() {
     const nc  = NUCLEO_MAP[p.fin_ativos?.nucleo] || {};
     const tp  = TIPO_PARCELA_MAP[p.tipo] || { label: p.tipo };
     const cls = p.diff <= 30 ? 'd30' : p.diff <= 60 ? 'd60' : p.diff <= 90 ? 'd90' : 'dmax';
+    const parcelaIdJs = _finSq(p.id);
+    const clienteDisp = _finEsc(p.fin_ativos?.cliente_nome || '—');
+    const nucleoLabelDisp = _finEsc(nc.label || '');
+    const legadoDisp = _finEsc(p.fin_ativos?.num_legado || '');
+    const tipoDisp = _finEsc(tp.label || '');
+    const descDisp = _finEsc(p.descricao || '');
     return `
     <div class="aging-row">
       <div class="aging-row-dias ${cls}">${p.diff}d atraso</div>
       <div class="aging-row-info">
-        <div class="aging-row-cliente">${p.fin_ativos?.cliente_nome || '—'}
-          ${nc.cls ? `<span class="badge ${nc.cls}" style="font-size:8px;margin-left:4px">${nc.label}</span>` : ''}
+        <div class="aging-row-cliente">${clienteDisp}
+          ${nc.cls ? `<span class="badge ${nc.cls}" style="font-size:8px;margin-left:4px">${nucleoLabelDisp}</span>` : ''}
         </div>
         <div class="aging-row-detalhe">
-          ${p.fin_ativos?.num_legado || ''} · ${tp.label}
-          ${p.descricao ? ' · ' + p.descricao : ''}
+          ${legadoDisp} · ${tipoDisp}
+          ${p.descricao ? ' · ' + descDisp : ''}
           · Venceu ${fmtData(p.data_vencimento)}
         </div>
       </div>
       <div class="aging-row-val">${moeda(p.valor)}</div>
       <div class="aging-row-btn">
-        <button class="btn btn-pri btn-xs" onclick="confirmarPagamento('${p.id}')">Confirmar pgto</button>
+        <button class="btn btn-pri btn-xs" onclick="confirmarPagamento(${parcelaIdJs})">Confirmar pgto</button>
       </div>
     </div>`;
   }).join('') + `
@@ -3182,22 +3199,28 @@ function kanbanCard(p, colTipo) {
   const nc  = NUCLEO_MAP[p.fin_ativos?.nucleo] || {};
   const dias = diasDesde(p.data_prevista_cobranca);
   const vencido = dias > 0 && colTipo !== 'pago';
+  const parcelaIdJs = _finSq(p.id);
+  const tipoDisp = _finEsc(tp.label || p.tipo || '');
+  const nucleoLabelDisp = _finEsc(nc.label || '');
+  const clienteDisp = _finEsc(p.fin_ativos?.cliente_nome || '—');
+  const legadoDisp = _finEsc(p.fin_ativos?.num_legado || '');
+  const descDisp = _finEsc(p.descricao || '');
 
   let footerBtn = '';
   if (colTipo === 'emitir') {
-    footerBtn = `<button class="btn btn-pri btn-xs" onclick="event.stopPropagation();emitirParcela('${p.id}')">Emitir NF</button>`;
+    footerBtn = `<button class="btn btn-pri btn-xs" onclick="event.stopPropagation();emitirParcela(${parcelaIdJs})">Emitir NF</button>`;
   } else if (colTipo === 'aguardando') {
-    footerBtn = `<button class="btn btn-sec btn-xs" onclick="event.stopPropagation();confirmarPagamento('${p.id}')">Confirmar pgto</button>`;
+    footerBtn = `<button class="btn btn-sec btn-xs" onclick="event.stopPropagation();confirmarPagamento(${parcelaIdJs})">Confirmar pgto</button>`;
   }
 
-  return `<div class="kanban-card" onclick="abrirParcelaModal('${p.id}')">
+  return `<div class="kanban-card" onclick="abrirParcelaModal(${parcelaIdJs})">
     <div class="kc-tipo">
       <span class="tipo-dot ${tp.cls}" style="background:${tp.cor}"></span>
-      ${tp.label}
-      ${nc.cls ? `· <span class="badge ${nc.cls}" style="padding:1px 5px">${nc.label}</span>` : ''}
+      ${tipoDisp}
+      ${nc.cls ? `· <span class="badge ${nc.cls}" style="padding:1px 5px">${nucleoLabelDisp}</span>` : ''}
     </div>
-    <div class="kc-cliente">${p.fin_ativos?.cliente_nome||'—'}</div>
-    <div class="kc-projeto">${p.fin_ativos?.num_legado||''} ${p.descricao ? '· ' + p.descricao : ''}</div>
+    <div class="kc-cliente">${clienteDisp}</div>
+    <div class="kc-projeto">${legadoDisp} ${p.descricao ? '· ' + descDisp : ''}</div>
     <div class="kc-valor">${moeda(p.valor)}</div>
     <div class="kc-meta">
       ${colTipo === 'emitir' ? `Previsto: ${fmtData(p.data_prevista_cobranca)}` : ''}
@@ -3308,13 +3331,18 @@ function abrirParcelaModal(id) {
   const p = G.parcelas.find(x => x.id === id);
   if (!p) return;
   const tp = TIPO_PARCELA_MAP[p.tipo] || {};
+  const parcelaIdJs = _finSq(p.id);
+  const tituloDisp = _finEsc(tp.label || p.tipo || '');
+  const clienteDisp = _finEsc(p.fin_ativos?.cliente_nome || '—');
+  const legadoDisp = _finEsc(p.fin_ativos?.num_legado || '—');
+  const descDisp = _finEsc(p.descricao || '');
   document.getElementById('modal-parcela-titulo').textContent =
     `${tp.label || p.tipo} · ${p.fin_ativos?.cliente_nome || '—'}`;
   document.getElementById('modal-parcela-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div><div style="font-size:9px;font-weight:700;color:#888">CLIENTE</div><div style="font-size:13px;font-weight:600">${p.fin_ativos?.cliente_nome||'—'}</div></div>
-      <div><div style="font-size:9px;font-weight:700;color:#888">PROJETO</div><div>${p.fin_ativos?.num_legado||'—'}</div></div>
-      <div><div style="font-size:9px;font-weight:700;color:#888">TIPO</div><div>${tp.label||p.tipo}</div></div>
+      <div><div style="font-size:9px;font-weight:700;color:#888">CLIENTE</div><div style="font-size:13px;font-weight:600">${clienteDisp}</div></div>
+      <div><div style="font-size:9px;font-weight:700;color:#888">PROJETO</div><div>${legadoDisp}</div></div>
+      <div><div style="font-size:9px;font-weight:700;color:#888">TIPO</div><div>${tituloDisp}</div></div>
       <div><div style="font-size:9px;font-weight:700;color:#888">SITUAÇÃO</div><div>${sitBadge(p.situacao)}</div></div>
       <div><div style="font-size:9px;font-weight:700;color:#888">VALOR</div><div style="font-size:18px;font-weight:700">${moeda(p.valor)}</div></div>
       <div><div style="font-size:9px;font-weight:700;color:#888">%</div><div>${p.percentual ? p.percentual + '%' : '—'}</div></div>
@@ -3327,9 +3355,9 @@ function abrirParcelaModal(id) {
   `;
   let btns = `<button class="btn btn-sec" onclick="fecharModal('modal-parcela')">Fechar</button>`;
   if (p.situacao === 'entregue' || p.situacao === 'a_emitir')
-    btns += `<button class="btn btn-pri" onclick="fecharModal('modal-parcela');emitirParcela('${p.id}')">Emitir NF</button>`;
+    btns += `<button class="btn btn-pri" onclick="fecharModal('modal-parcela');emitirParcela(${parcelaIdJs})">Emitir NF</button>`;
   if (p.situacao === 'aguardando_pagamento')
-    btns += `<button class="btn btn-pri" style="background:var(--verde)" onclick="fecharModal('modal-parcela');confirmarPagamento('${p.id}')">Confirmar pagamento</button>`;
+    btns += `<button class="btn btn-pri" style="background:var(--verde)" onclick="fecharModal('modal-parcela');confirmarPagamento(${parcelaIdJs})">Confirmar pagamento</button>`;
   document.getElementById('modal-parcela-footer').innerHTML = btns;
   abrirModal('modal-parcela');
 }
@@ -3388,22 +3416,27 @@ function filtrarLancamentos() {
   tbody.innerHTML = lista.map(l => {
     const mesAno = l.mes_ano_competencia || '';
     const bloq   = G._mesesFechados.has(mesAno);
+    const lancIdJs = _finSq(l.id);
+    const principalDisp = _finEsc(l.fornecedor_cliente||l.observacao||'—');
+    const obsDisp = _finEsc(l.observacao||'');
+    const subcontaDisp = _finEsc(l.subconta||l.grupo||'—');
+    const nfDisp = _finEsc(l.nf||'—');
     return `
     <tr${bloq ? ' style="opacity:.75"' : ''}>
       <td>${fmtMesAno(l.data_competencia)}${bloq ? ' <span title="Mês fechado" style="font-size:10px">🔒</span>' : ''}</td>
       <td>${fmtData(l.data_prevista) || fmtData(l.data_pagamento)}</td>
       <td>
-        <div style="font-weight:500">${l.fornecedor_cliente||l.observacao||'—'}</div>
-        ${l.observacao && l.fornecedor_cliente ? `<div style="font-size:10px;color:#888">${l.observacao}</div>` : ''}
+        <div style="font-weight:500">${principalDisp}</div>
+        ${l.observacao && l.fornecedor_cliente ? `<div style="font-size:10px;color:#888">${obsDisp}</div>` : ''}
       </td>
-      <td style="font-size:10px;color:#888">${l.subconta||l.grupo||'—'}</td>
+      <td style="font-size:10px;color:#888">${subcontaDisp}</td>
       <td>${sitBadge(l.situacao)}</td>
-      <td style="font-size:10px">${l.nf||'—'}</td>
+      <td style="font-size:10px">${nfDisp}</td>
       <td style="text-align:right;font-weight:600;color:var(--verde)">${l.entrada ? moeda(l.entrada,true) : ''}</td>
       <td style="text-align:right;font-weight:600;color:var(--tc)">${l.saida ? moeda(l.saida,true) : ''}</td>
       <td>${bloq
         ? '<span title="Mês fechado — edição bloqueada" style="font-size:14px;cursor:default">🔒</span>'
-        : `<button class="btn btn-ghost btn-xs" onclick="editarLancamento('${l.id}')">✏</button>`
+        : `<button class="btn btn-ghost btn-xs" onclick="editarLancamento(${lancIdJs})">✏</button>`
       }</td>
     </tr>`;
   }).join('');
@@ -3533,6 +3566,7 @@ function renderFechamentos() {
     const fech = G.fechamentos.find(f => f.mes_ano === key);
     const isAtual = (ano === anoAtual && mes === mesAtual);
     const nomeMes = MESES_FULL[mes - 1] + ' ' + ano;
+    const nomeMesDisp = _finEsc(nomeMes);
 
     if (fech) {
       const snapItens = [
@@ -3550,24 +3584,25 @@ function renderFechamentos() {
           }</div>
         </div>`).join('');
 
-      const fechadoPor = fech.fechado_por_nome ? ` · por ${fech.fechado_por_nome}` : '';
+      const fechadoPor = fech.fechado_por_nome ? ` · por ${_finEsc(fech.fechado_por_nome)}` : '';
       const fechadoEm  = fech.created_at ? ' · ' + fmtData(fech.created_at.slice(0,10)) : '';
+      const notasDisp = _finEsc(fech.notas || '');
 
       return `
       <div class="fech-row fechado">
         <span class="fech-lock">🔒</span>
-        <div class="fech-mes">${nomeMes}</div>
+        <div class="fech-mes">${nomeMesDisp}</div>
         <div class="fech-snap">${snapItens}</div>
-        <div class="fech-meta">Fechado${fechadoPor}${fechadoEm}${fech.notas ? '<br><em>' + fech.notas + '</em>' : ''}</div>
+        <div class="fech-meta">Fechado${fechadoPor}${fechadoEm}${fech.notas ? '<br><em>' + notasDisp + '</em>' : ''}</div>
         <div class="fech-actions">
-          ${G.isSocio ? `<button class="btn btn-ghost btn-xs" onclick="reabrirMes('${fech.id}','${nomeMes}')">Reabrir</button>` : ''}
+          ${G.isSocio ? `<button class="btn btn-ghost btn-xs" onclick="reabrirMes(${_finSq(fech.id)},${_finSq(nomeMes)})">Reabrir</button>` : ''}
         </div>
       </div>`;
     } else {
       return `
       <div class="fech-row${isAtual ? ' atual' : ''}">
         <span class="fech-lock" style="opacity:.3">🔓</span>
-        <div class="fech-mes">${nomeMes}${isAtual ? ' <span style="font-size:9px;color:var(--az);font-weight:400">atual</span>' : ''}</div>
+        <div class="fech-mes">${nomeMesDisp}${isAtual ? ' <span style="font-size:9px;color:var(--az);font-weight:400">atual</span>' : ''}</div>
         <div class="fech-snap" style="color:#aaa;font-size:11px;align-items:center">Mês em aberto</div>
         <div class="fech-meta"></div>
         <div class="fech-actions">
@@ -3739,18 +3774,18 @@ function renderPlano() {
   }
   el.innerHTML = Object.entries(grupos).map(([grp, items]) => `
     <div class="pc-grupo">
-      <div class="pc-grupo-hd" onclick="toggleGrupo('${grp}')">
-        <span class="pc-grupo-label">${grp.replace(/_/g,' ')}</span>
+      <div class="pc-grupo-hd" onclick="toggleGrupo(${_finSq(grp)})">
+        <span class="pc-grupo-label">${_finEsc(grp.replace(/_/g,' '))}</span>
         <span class="pc-grupo-count">${items.length} subconta${items.length>1?'s':''}</span>
         <span style="color:#888;font-size:10px">▾</span>
       </div>
       <div class="pc-grupo-body open" id="grp-${grp.replace(/[^a-z0-9]/gi,'-')}">
         ${items.map(p => `
           <div class="pc-item">
-            <span class="pc-item-nome">${p.subconta}</span>
-            <span class="badge ${p.tipo==='receita'?'b-vd':p.tipo==='despesa'?'b-tc':'b-gr'}">${p.tipo}</span>
-            ${p.nucleo_crm ? `<span class="badge b-az" style="font-size:8px">${p.nucleo_crm}</span>` : ''}
-            ${G.isSocio ? `<button class="btn btn-ghost btn-xs" onclick="editarSubconta('${p.id}')">✏</button>` : ''}
+            <span class="pc-item-nome">${_finEsc(p.subconta)}</span>
+            <span class="badge ${p.tipo==='receita'?'b-vd':p.tipo==='despesa'?'b-tc':'b-gr'}">${_finEsc(p.tipo)}</span>
+            ${p.nucleo_crm ? `<span class="badge b-az" style="font-size:8px">${_finEsc(p.nucleo_crm)}</span>` : ''}
+            ${G.isSocio ? `<button class="btn btn-ghost btn-xs" onclick="editarSubconta(${_finSq(p.id)})">✏</button>` : ''}
           </div>`).join('')}
       </div>
     </div>`).join('');
@@ -3832,14 +3867,14 @@ function renderContas() {
     <div class="conta-card">
       <div class="conta-icon">${ICON[c.tipo]||'🏦'}</div>
       <div class="conta-info">
-        <div class="conta-nome">${c.nome}</div>
-        <div class="conta-meta">${c.banco||''} · ${c.tipo}</div>
+        <div class="conta-nome">${_finEsc(c.nome)}</div>
+        <div class="conta-meta">${_finEsc(c.banco||'')} · ${_finEsc(c.tipo)}</div>
       </div>
       <div class="conta-saldo">
         <div class="conta-saldo-val">${moeda(c.saldo_inicial, true)}</div>
         <div class="conta-saldo-lbl">saldo inicial</div>
       </div>
-      ${G.isSocio ? `<button class="btn btn-ghost btn-sm" onclick="editarConta('${c.id}')">✏</button>` : ''}
+      ${G.isSocio ? `<button class="btn btn-ghost btn-sm" onclick="editarConta(${_finSq(c.id)})">✏</button>` : ''}
     </div>`).join('');
 }
 
@@ -4006,10 +4041,11 @@ function renderEtapasFinalizacao() {
 
   el.innerHTML = etapas.map((e, ei) => {
     const parcelas = e.fin_parcelas || [];
+    const etapaDescDisp = _finEsc(e.descricao || '');
     return `<div style="border:1px solid var(--cinza);border-radius:8px;margin-bottom:10px;overflow:hidden" id="etapa-blk-${ei}">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--off)">
         <div style="flex:1">
-          <input type="text" value="${e.descricao}" style="font-weight:700;font-size:12px;border:none;background:none;padding:0;outline:none;width:100%"
+          <input type="text" value="${etapaDescDisp}" style="font-weight:700;font-size:12px;border:none;background:none;padding:0;outline:none;width:100%"
             onchange="G_ativoEdit.etapas[${ei}].descricao=this.value">
         </div>
         <div style="display:flex;align-items:center;gap:6px">
@@ -4032,12 +4068,13 @@ function renderEtapasFinalizacao() {
 
 function parcelaFormHTML(ei, pi, p) {
   const tipos = ['conclusao','liberacao','entrega_parcial','avulso'];
-  const tipoOpts = tipos.map(t => `<option value="${t}" ${p.tipo===t?'selected':''}>${TIPO_PARCELA_MAP[t]?.label||t}</option>`).join('');
+  const tipoOpts = tipos.map(t => `<option value="${t}" ${p.tipo===t?'selected':''}>${_finEsc(TIPO_PARCELA_MAP[t]?.label||t)}</option>`).join('');
+  const descDisp = _finEsc(p.descricao||'');
   return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2)" id="parcela-row-${ei}-${pi}">
     <select onchange="G_ativoEdit.etapas[${ei}].fin_parcelas[${pi}].tipo=this.value" style="font-size:11px;padding:4px 6px;border:1px solid var(--cinza);border-radius:4px">
       ${tipoOpts}
     </select>
-    <input type="text" value="${p.descricao||''}" placeholder="Descrição (opcional)"
+    <input type="text" value="${descDisp}" placeholder="Descrição (opcional)"
       style="flex:1;font-size:11px" onchange="G_ativoEdit.etapas[${ei}].fin_parcelas[${pi}].descricao=this.value">
     <input type="number" value="${p.percentual||''}" step="0.01" placeholder="%" style="width:60px;font-size:11px"
       onchange="G_ativoEdit.etapas[${ei}].fin_parcelas[${pi}].percentual=parseFloat(this.value);atualizarSomaCheck()">
@@ -4095,7 +4132,7 @@ function renderRepassesFinalizacao() {
   if (!rep.length) { el.innerHTML = '<div style="font-size:11px;color:#bbb;padding:4px 0">Nenhum repasse</div>'; return; }
   el.innerHTML = rep.map((r, ri) => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--cinza2)">
-      <div style="flex:1;font-size:12px;font-weight:600">${r.beneficiario_nome}</div>
+      <div style="flex:1;font-size:12px;font-weight:600">${_finEsc(r.beneficiario_nome || '')}</div>
       <div style="font-size:12px">${r.tipo === 'percentual' ? r.percentual + '%' : moeda(r.valor)}</div>
       <div style="font-size:12px;font-weight:700;color:var(--tc)">${moeda(r.valor)}</div>
       <span class="badge b-am">Pendente</span>
@@ -4545,15 +4582,19 @@ function dreDD(idx) {
   const tbRows = dados.length
     ? dados.map(l => {
         const v = parseFloat(l.valor) * item.sinal;
+        const principalDisp = _finEsc(l.fornecedor_cliente || l.observacao || '—');
+        const obsDisp = _finEsc(l.observacao || '');
+        const subcontaDisp = _finEsc(l.subconta || l.grupo || '—');
+        const nfDisp = _finEsc(l.nf || '—');
         return `<tr>
           <td style="color:#888;font-size:11px;white-space:nowrap">${fmtData(l.data_competencia)}</td>
           <td>
-            <div style="font-weight:500">${l.fornecedor_cliente || l.observacao || '—'}</div>
-            ${l.observacao && l.fornecedor_cliente ? `<div style="font-size:10px;color:#aaa">${l.observacao}</div>` : ''}
+            <div style="font-weight:500">${principalDisp}</div>
+            ${l.observacao && l.fornecedor_cliente ? `<div style="font-size:10px;color:#aaa">${obsDisp}</div>` : ''}
           </td>
-          <td style="font-size:10px;color:#888">${l.subconta || l.grupo || '—'}</td>
+          <td style="font-size:10px;color:#888">${subcontaDisp}</td>
           <td>${sitBadge(l.situacao)}</td>
-          <td style="font-size:10px;color:#aaa">${l.nf || '—'}</td>
+          <td style="font-size:10px;color:#aaa">${nfDisp}</td>
           <td style="text-align:right;font-weight:600;white-space:nowrap;color:${v >= 0 ? 'var(--verde)' : 'var(--tc)'}">${moeda(v)}</td>
         </tr>`;
       }).join('') + `
