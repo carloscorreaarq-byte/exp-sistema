@@ -914,13 +914,9 @@ let G = {
   matrizPlanoHoverColuna: '',
   matrizPlanoFocoColuna: '',
 };
-const isSocio = () => ['socio'].includes(G.usuario?.role);
+const isSocio = () => ['socio', 'socio_admin'].includes((G.usuario?.role || '').toLowerCase());
 const isColaborador = () => Boolean(G.usuario?.id);
-const isAdministrador = () => {
-  const nome = String(G.usuario?.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const primeiroNome = nome.split(' ')[0] || '';
-  return ['carlos', 'thayssa'].includes(primeiroNome);
-};
+const isAdministrador = () => ['socio_admin'].includes((G.usuario?.role || '').toLowerCase()) || Boolean(G.usuario?.is_platform_manager);
 
 const PLANO_GENTE_SENIORIDADES = [
   { key: 'E1', label: 'Estagiário 1' },
@@ -1264,7 +1260,12 @@ stable
 security definer
 set search_path = public
 as $$
-  select lower(split_part(coalesce(private.current_exp_user_name(), ''), ' ', 1)) in ('carlos', 'thayssa');
+  select exists (
+    select 1
+    from public.usuarios u
+    where u.auth_id = auth.uid()
+      and coalesce(lower(u.role), '') = 'socio_admin'
+  );
 $$;
 
 create or replace function private.cadastro_access_rank(p_nivel text)

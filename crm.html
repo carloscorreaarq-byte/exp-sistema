@@ -271,7 +271,9 @@ textarea{resize:vertical;min-height:60px}
 .pessoa-row:last-child{border-bottom:none}
 
 /* TOAST */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--preto);color:#fff;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.3px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;border-radius:6px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--preto);color:#fff;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.3px;z-index:999;opacity:0;transition:opacity .2s;border-radius:6px}
+.toast.show{pointer-events:auto}
+.toast a{color:#A78BFA;text-decoration:underline}
 .toast.show{opacity:1}
 
 /* EMPTY */
@@ -1191,7 +1193,9 @@ function fmtD(d){if(!d)return'—';try{const[y,m,dd]=(d.slice(0,10)).split('-');
 // Label legível de versão: 0 → 'Original', 1 → 'R1', 2 → 'R2' ...
 function _verLabel(v){ return (v===0||v==null)?'Original':'R'+v; }
 function diasDesde(d){if(!d)return null;return Math.floor((new Date()-new Date(d))/86400000);}
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function escHtml(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function escJsStr(v){return String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n');}
+function toast(m,dur=2800){const t=document.getElementById('toast');t.textContent=String(m??'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function closeM(id){document.getElementById(id).classList.remove('open');}
 function openM(id){document.getElementById(id).classList.add('open');}
 
@@ -2022,6 +2026,13 @@ function renderContatos(){
     const contatos=allContatos.filter(x=>x.cliente_id===c.id);
     const opsC=allOps.filter(o=>o.cliente_id===c.id);
     const canEdit=!currentUser?.viewer_only;
+    const contatosHtml=contatos.length?contatos.map(p=>`
+      <div class="pessoa-row">
+        <div style="flex:1"><div style="font-weight:500">${escHtml(p.nome||'â€”')}</div><div style="font-size:10px;color:#888">${escHtml(p.cargo||'')}</div></div>
+        <div style="font-size:10px;color:#888;text-align:right">
+          ${p.email?`<div>${escHtml(p.email)}</div>`:''}${p.telefone?`<div>${escHtml(p.telefone)}</div>`:''}
+        </div>
+      </div>`).join(''):'<div style="font-size:11px;color:#aaa;padding:8px 0">Nenhum contato cadastrado.</div>';
 
     if(isPF){
       // um card por oportunidade
@@ -2029,7 +2040,7 @@ function renderContatos(){
       opsList.forEach((o,oi)=>{
         const cardId='ce-'+c.id.replace(/-/g,'')+'-'+oi;
         const proj=o?(o.projeto||o.cidade||o.num_legado||'Sem título'):'Sem proposta';
-        const nomeExib=`<span style="font-size:9px;font-weight:700;color:#888;margin-right:4px;letter-spacing:.4px">PFI |</span>${c.nome}`;
+        const nomeExib=`<span style="font-size:9px;font-weight:700;color:#888;margin-right:4px;letter-spacing:.4px">PFI |</span>${escHtml(c.nome)}`;
         const stDot=o?estagBadge(o.pipeline_stage):'';
         cards.push(`<div class="cont-empresa">
           <div class="cont-hd" onclick="toggleContato('${cardId}')">
@@ -2044,16 +2055,10 @@ function renderContatos(){
           </div>
           <div class="cont-body" id="${cardId}">
             ${canEdit?`<div style="padding:8px 0 6px;border-bottom:1px solid var(--cinza2)">
-              <button class="btn sm" onclick="abrirNovoContato('${c.id}')">+ Adicionar contato</button>
+              <button class="btn sm" onclick="abrirNovoContato('${escJsStr(c.id)}')">+ Adicionar contato</button>
             </div>`:''}
-            ${contatos.length?contatos.map(p=>`
-              <div class="pessoa-row">
-                <div style="flex:1"><div style="font-weight:500">${p.nome}</div><div style="font-size:10px;color:#888">${p.cargo||''}</div></div>
-                <div style="font-size:10px;color:#888;text-align:right">
-                  ${p.email?`<div>${p.email}</div>`:''}${p.telefone?`<div>${p.telefone}</div>`:''}
-                </div>
-              </div>`).join(''):'<div style="font-size:11px;color:#aaa;padding:8px 0">Nenhum contato cadastrado.</div>'}
-            ${o?`<div style="margin-top:8px;border-top:1px solid var(--cinza2);padding-top:8px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:8px" onclick="abrirDetail('${o.id}')">
+            ${contatosHtml}
+            ${o?`<div style="margin-top:8px;border-top:1px solid var(--cinza2);padding-top:8px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:8px" onclick="abrirDetail('${escJsStr(o.id)}')">
               <span class="num-tag">${o.num_legado||'—'}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
               <span style="flex:1;color:#888">${o.projeto||o.cidade||'—'}</span>
               <span style="font-family:var(--fm)">${fmt(oppValorProposto(o))}</span>${estagBadge(o.pipeline_stage)}
@@ -2067,7 +2072,7 @@ function renderContatos(){
       cards.push(`<div class="cont-empresa">
         <div class="cont-hd" onclick="toggleContato('${id}')">
           <div>
-            <div class="cont-nome">${c.nome}</div>
+            <div class="cont-nome">${escHtml(c.nome)}</div>
             <div style="font-size:10px;color:#888;margin-top:2px">${c.cidade||''}${c.uf?', '+c.uf:''} · ${opsC.length} proposta${opsC.length!==1?'s':''}</div>
           </div>
           <div class="cont-status">
@@ -2077,18 +2082,12 @@ function renderContatos(){
         </div>
         <div class="cont-body" id="${id}">
           ${canEdit?`<div style="padding:8px 0 6px;border-bottom:1px solid var(--cinza2)">
-            <button class="btn sm" onclick="abrirNovoContato('${c.id}')">+ Adicionar contato</button>
+            <button class="btn sm" onclick="abrirNovoContato('${escJsStr(c.id)}')">+ Adicionar contato</button>
           </div>`:''}
-          ${contatos.length?contatos.map(p=>`
-            <div class="pessoa-row">
-              <div style="flex:1"><div style="font-weight:500">${p.nome}</div><div style="font-size:10px;color:#888">${p.cargo||''}</div></div>
-              <div style="font-size:10px;color:#888;text-align:right">
-                ${p.email?`<div>${p.email}</div>`:''}${p.telefone?`<div>${p.telefone}</div>`:''}
-              </div>
-            </div>`).join(''):'<div style="font-size:11px;color:#aaa;padding:8px 0">Nenhum contato cadastrado.</div>'}
+          ${contatosHtml}
           ${opsC.length?`<div style="margin-top:8px;border-top:1px solid var(--cinza2);padding-top:8px">
             <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:6px">Propostas</div>
-            ${opsC.slice(0,5).map(o=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:11px" onclick="abrirDetail('${o.id}')">
+            ${opsC.slice(0,5).map(o=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:11px" onclick="abrirDetail('${escJsStr(o.id)}')">
               <span class="num-tag">${o.num_legado||'—'}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
               <span style="flex:1;color:#888">${o.projeto||o.cidade||'—'}</span>
               <span style="font-family:var(--fm)">${fmt(oppValorProposto(o))}</span>${estagBadge(o.pipeline_stage)}
@@ -2333,7 +2332,7 @@ function filtrarClientes(){
     dd.innerHTML=`<div style="padding:8px 10px;font-size:11px;color:#aaa">Nenhum cliente encontrado.</div>
       <div style="padding:6px 10px;border-top:1px solid var(--cinza2);cursor:pointer;font-size:11px;color:var(--verde);font-weight:600" onmousedown="mostrarFormNovoCliente()">+ Criar novo cliente</div>`;
   } else {
-    dd.innerHTML=matches.map(c=>`<div style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--cinza2)" onmousedown="selecionarCliente('${c.id}','${c.nome.replace(/'/g,"\\'")}')">${c.nome}</div>`).join('')+
+    dd.innerHTML=matches.map(c=>`<div style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--cinza2)" onmousedown="selecionarCliente('${escJsStr(c.id)}','${escJsStr(c.nome)}')">${escHtml(c.nome)}</div>`).join('')+
       `<div style="padding:6px 10px;border-top:1px solid var(--cinza2);cursor:pointer;font-size:11px;color:var(--verde);font-weight:600" onmousedown="mostrarFormNovoCliente()">+ Criar novo cliente</div>`;
   }
   dd.style.display='block';
@@ -2927,6 +2926,7 @@ async function confirmarFechamento() {
   const dataFech = document.getElementById('fech-data').value || new Date().toISOString().slice(0, 10);
   const erros = [];
   let algumFechado = false;
+  const _produtosFechados = []; // coleta para integração financeira
 
   // ── Salva produtos ──
   for (const p of op._produtos) {
@@ -2949,7 +2949,7 @@ async function confirmarFechamento() {
         updated_at:      new Date().toISOString(),
       }).eq('id', p.id);
       if (error) erros.push('Erro ao salvar produto: ' + error.message);
-      else algumFechado = true;
+      else { algumFechado = true; _produtosFechados.push({...p, valor_fechado: vf}); }
     } else {
       const { error } = await sb.from('produtos').update({
         status:          'negado',
@@ -2995,14 +2995,143 @@ async function confirmarFechamento() {
     await autoUpdateOppStage(_fechOppId);
   }
 
+  // ── Integração com Financeiro ──
+  let _finRascunhoCriado = false;
+  if (algumFechado) {
+    _finRascunhoCriado = await criarRascunhoFinanceiro(op, _produtosFechados, dataFech);
+  }
+
   closeM('modal-fechar-opp');
   await carregarDados();
   renderDash(); renderPipe(); renderOrc(); calcAlertas();
   abrirDetail(_fechOppId);
 
-  toast(algumFechado
-    ? `✓ Fechamento registrado em ${fmtD(dataFech)}!`
-    : 'Itens marcados como negados. Nenhum serviço fechado.');
+  if (algumFechado) {
+    const finMsg = _finRascunhoCriado
+      ? ` · Rascunho criado em <a href="financeiro.html" style="color:#A78BFA">EXP.financeiro ↗</a>`
+      : '';
+    toast(`✓ Fechamento registrado em ${fmtD(dataFech)}!${finMsg}`, _finRascunhoCriado ? 5000 : 2800);
+  } else {
+    toast('Itens marcados como negados. Nenhum serviço fechado.');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CRM → FINANCEIRO: cria rascunho ao fechar
+// ═══════════════════════════════════════════════════
+async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
+  try {
+    const clienteNome = op._cliente?.nome
+      || allClients.find(c => c.id === op.cliente_id)?.nome
+      || 'Cliente';
+    const _lp = op._proposal;
+    const ativosIds = []; // {id, lp}
+
+    // ── CASO 1: Proposta Calc vinculada (sem produtos individuais no DB) ──
+    if (_lp?.items?.length && !op._produtos.length) {
+      const vfTotal = parseFloat(document.getElementById('fch-vf-total')?.value) || +(_lp.total) || 0;
+      // Núcleo principal = item de maior valor
+      const primaryItem = _lp.items.slice().sort(
+        (a, b) => (b.valorProposto || b.valorCalc || 0) - (a.valorProposto || a.valorCalc || 0)
+      )[0];
+      const propCode = _lp.prop_code ? `EXP-${String(_lp.prop_code).padStart(3, '0')}` : null;
+
+      // Valor efetivo EXP = total cliente − repasse comercial − custo bruto de subcontratações
+      const _repVal  = +(_lp.repasse?.valorRep) || 0;
+      const _subsVal = (_lp.subs||[]).reduce((s,x) => s + (+(x.val)||0), 0);
+      const _efetivo = (+(_lp.total)||0) - _repVal - _subsVal;
+
+      const payload = {
+        oportunidade_id:   op.id,
+        cliente_id:        op.cliente_id || null,
+        cliente_nome:      clienteNome,
+        proposta_calc_id:  op.proposta_calc_id || null,
+        prop_code:         propCode,
+        nucleo:            primaryItem?.nucleo || null,
+        descricao:         _lp.projeto || op.projeto || null,
+        valor_total:       +(_lp.total) || vfTotal,
+        valor_efetivo_exp: _efetivo > 0 ? _efetivo : null,
+        valor_fechado_crm: vfTotal,
+        data_contrato:     dataFech,
+        situacao_financeira: 'rascunho',
+        criado_por:        'crm',
+        criado_por_id:     currentUser?.id || null,
+      };
+      const { data: ad, error: ae } = await sb.from('fin_ativos').insert(payload).select('id').single();
+      if (ae) throw new Error(ae.message);
+      ativosIds.push({ id: ad.id, lp: _lp });
+
+    // ── CASO 2: Produtos individuais fechados ──
+    } else if (produtosFechados.length) {
+      for (const p of produtosFechados) {
+        const descr = (SUBTIPO_LABEL?.[p.subtipo] || p.subtipo || 'Serviço')
+          + (op.projeto ? ` — ${op.projeto}` : '');
+        const payload = {
+          produto_id:        p.id,
+          oportunidade_id:   op.id,
+          cliente_id:        op.cliente_id || null,
+          cliente_nome:      clienteNome,
+          proposta_calc_id:  op.proposta_calc_id || null,
+          nucleo:            p.nucleo || null,
+          descricao:         descr,
+          valor_total:       p.valor_fechado,
+          valor_fechado_crm: p.valor_fechado,
+          data_contrato:     dataFech,
+          situacao_financeira: 'rascunho',
+          criado_por:        'crm',
+          criado_por_id:     currentUser?.id || null,
+        };
+        const { data: ad, error: ae } = await sb.from('fin_ativos').insert(payload).select('id').single();
+        if (ae) throw new Error(ae.message);
+        ativosIds.push({ id: ad.id, lp: null });
+      }
+    }
+
+    if (!ativosIds.length) return false;
+
+    // ── Subcontratações e Repasse (apenas para ativos com proposta Calc) ──
+    for (const { id: ativoId, lp } of ativosIds) {
+      if (!lp) continue;
+
+      // Subcontratações
+      if (lp.subs?.length) {
+        const subsPayload = lp.subs.map(s => {
+          const valComBit = (+(s.val)||0) * (1 + (+(s.bit)||0) / 100);
+          const ganhoExp  = valComBit * ((+(s.ret)||0) / 100);
+          return {
+            ativo_id:              ativoId,
+            servico:               s.serv || 'Serviço',
+            empresa:               s.emp  || null,
+            custo_cotado:          +(s.val) || 0,
+            bitributacao_pct:      +(s.bit) || 0,
+            valor_cobrado_cliente: valComBit,
+            retorno_exp_pct:       +(s.ret) || 0,
+            ganho_exp:             ganhoExp,
+          };
+        });
+        await sb.from('fin_subcontratacoes').insert(subsPayload);
+      }
+
+      // Repasse comercial
+      const rep = lp.repasse;
+      if (rep && (rep.nome || rep.valorRep)) {
+        await sb.from('fin_repasses').insert({
+          ativo_id:          ativoId,
+          beneficiario_nome: rep.nome || 'Repasse',
+          tipo:              rep.tipo === 'pct' ? 'percentual' : 'fixo',
+          percentual:        rep.tipo === 'pct' ? +(rep.val) : null,
+          valor:             +(rep.valorRep) || null,
+          origem:            'calc',
+          prop_code:         lp.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : null,
+        });
+      }
+    }
+
+    return true;
+  } catch (e) {
+    console.error('[EXP.fin] criarRascunhoFinanceiro:', e);
+    return false;
+  }
 }
 
 // ═══════════════════════════════════════════════════
