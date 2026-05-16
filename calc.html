@@ -1397,6 +1397,7 @@ function buscarCliente(q) {
   const rx = new RegExp(`(${escRegex(q)})`, 'gi');
   let html = matches.map(c => {
     const hi = escHtml(c).replace(rx, '<mark>$1</mark>');
+    return `<div class="ac-item" onclick="selecionarCliente('${escJsStr(c)}')">${hi}</div>`;
     return `<div class="ac-item" onclick="selecionarCliente('${escJsStr(c)}')">🏢 ${hi}</div>`;
     return `<div class="ac-item" onclick="selecionarCliente('${c.replace(/'/g,"\\'")}')">🏢 ${hi}</div>`;
   }).join('');
@@ -2942,6 +2943,7 @@ function renderHist() {
         const famIndicator = (famSize > 1 && isLatest)
           ? `<span style="font-size:8px;background:#e8f0fb;color:var(--az);padding:1px 5px;border-radius:3px;font-weight:700">${famSize}v</span>`
           : '';
+        p = {...p, cliente: escHtml(p.cliente||'â€”'), resp: escHtml(RESP_LABEL[p.resp]||p.resp||'â€”')};
         return `<tr class="click" style="${rowStyle}" onclick="abrirProposta(${p.id})">
           <td>${cod} ${famIndicator}</td>
           <td>${versBadge}</td>
@@ -3197,7 +3199,8 @@ function exportarPDFFromProposal(p) {
 // PARÂMETROS
 // ════════════════════════════════════════════════════════
 function renderParams() {
-  document.getElementById('cub-hist-list').innerHTML = S.cubHist.map(h=>
+  const cubHistSafe = S.cubHist.map(h=>({ ...h, by:escHtml(h.by||''), at:escHtml(h.at?.slice(0,10)||'') }));
+  document.getElementById('cub-hist-list').innerHTML = cubHistSafe.map(h=>
     `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
       <span style="color:#888">${fmtM(h.mes)}</span>
       <span style="font-family:var(--fm);font-weight:700;color:var(--am)">${fmt(h.val)}</span>
@@ -3226,11 +3229,12 @@ function renderParams() {
       Object.entries(tipos).forEach(([sub,si])=>{ allSubs.push({nuc,tipo:null,sub,si}); });
     }
   });
-  document.getElementById('mins-list').innerHTML = allSubs
+  const allSubsSafe = allSubs.map(x=>({ ...x, tipo: x.tipo ? escHtml(x.tipo) : null, sub: escHtml(x.sub), nucDisp: escHtml(x.nuc) }));
+  document.getElementById('mins-list').innerHTML = allSubsSafe
     .filter(x=>x.si.mode==='calc'||x.si.mode==='floreira')
     .map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2)">
       <div>
-        <span class="badge ${NBADGE[x.nuc]}">${x.nuc}</span>
+        <span class="badge ${NBADGE[x.nuc]}">${x.nucDisp}</span>
         ${x.tipo?`<span style="font-size:10px;color:#888;margin-left:5px">${x.tipo} ·</span>`:''}
         <span style="font-size:11px;margin-left:4px">${x.sub}</span>
       </div>
