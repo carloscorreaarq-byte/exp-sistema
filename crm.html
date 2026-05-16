@@ -1446,19 +1446,30 @@ async function carregarDados(){
   const proposalsAll = proposalsRes.data||[];
   allProposals = proposalsAll;
 
-  // Mapeia followups por oportunidade_id
-  const fusMap={};
-  (fusRes.data||[]).forEach(f=>{
-    if(!fusMap[f.oportunidade_id])fusMap[f.oportunidade_id]=[];
-    fusMap[f.oportunidade_id].push(f);
-  });
-
   // Mapeia produtos por oportunidade_id
   const prodsMap={};
+  const prodOppMap={};
   allProds.forEach(p=>{
     if(!prodsMap[p.oportunidade_id])prodsMap[p.oportunidade_id]=[];
     prodsMap[p.oportunidade_id].push(p);
+    prodOppMap[p.id]=p.oportunidade_id;
   });
+
+  // followups_produto e produto-cêntrica; normaliza para a UI por oportunidade
+  const fusMap={};
+  (fusRes.data||[]).forEach(f=>{
+    const oppId=prodOppMap[f.produto_id];
+    if(!oppId)return;
+    if(!fusMap[oppId])fusMap[oppId]=[];
+    fusMap[oppId].push({
+      ...f,
+      oportunidade_id: oppId,
+      data_contato: f.data||null,
+      observacao: f.obs||'',
+      proximo_contato: f.next_date||null,
+    });
+  });
+  Object.values(fusMap).forEach(arr=>arr.sort((a,b)=>(a.data_contato||a.created_at||'').localeCompare(b.data_contato||b.created_at||'')));
 
   // Mapeia clientes por id
   const clientMap={};
@@ -2124,13 +2135,17 @@ function openFollowUpModal(){
 
 async function salvarFU(){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  const op=allOps.find(o=>o.id===detailOppId);
+  const prodId=op?._produtos?.[0]?.id||null;
   const obs=document.getElementById('fu-obs').value.trim();
   if(!obs){toast('Informe a observação.');return;}
+  if(!prodId){toast('Esta oportunidade ainda não possui produto vinculado para registrar follow-up.');return;}
   const {error}=await sb.from('followups_produto').insert({
-    oportunidade_id:detailOppId,
-    data_contato:document.getElementById('fu-data').value,
-    proximo_contato:document.getElementById('fu-next').value||null,
-    observacao:obs,
+    produto_id: prodId,
+    data: document.getElementById('fu-data').value||null,
+    next_date: document.getElementById('fu-next').value||null,
+    obs: obs,
+    criado_por: currentUser?.id||null,
   });
   if(error){toast('Erro ao salvar: '+error.message);return;}
   toast('Follow-up registrado!');
