@@ -1083,10 +1083,22 @@ function saveSBConfig() {
 
 async function testSupabase() {
   const el = document.getElementById('sb-status');
-  if (!S.sbUrl || !S.sbKey) { el.innerHTML='<span style="color:var(--tc)">Preencha URL e Key antes de testar.</span>'; return; }
+  if (!S.sbUrl || !S.sbKey) { el.textContent='Preencha URL e Key antes de testar.'; el.style.color='var(--tc)'; return; }
   el.textContent = 'Testando...';
+  el.style.color = '';
   try {
     const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?limit=1', { headers: getSBHeaders() });
+    if (r.ok || r.status===200) {
+      el.textContent = 'Conexão OK';
+      el.style.color = 'var(--verde)';
+      setSyncStatus('ok');
+      return;
+    }
+    const txt = await r.text();
+    el.textContent = `Erro ${r.status}: ${txt.slice(0,120)}`;
+    el.style.color = 'var(--tc)';
+    setSyncStatus('err');
+    return;
     if (r.ok || r.status===200) {
       el.innerHTML = '<span style="color:var(--verde)">✓ Conexão OK</span>';
       setSyncStatus('ok');
@@ -1096,6 +1108,10 @@ async function testSupabase() {
       setSyncStatus('err');
     }
   } catch(e) {
+    el.textContent = `Falha de rede: ${e.message}`;
+    el.style.color = 'var(--tc)';
+    setSyncStatus('err');
+    return;
     el.innerHTML = `<span style="color:var(--tc)">Falha de rede: ${e.message}</span>`;
     setSyncStatus('err');
   }
@@ -1283,6 +1299,9 @@ async function atualizarStatusCRM() {
 const fmt = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtM = ym => { if(!ym)return'—'; const[y,m]=ym.split('-'); const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return`${ms[+m-1]}/${y}`; };
 const fmtD = d => d ? d.split('-').reverse().join('/') : '—';
+const escHtml = v => String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const escJsStr = v => String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n');
+const escRegex = v => String(v??'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 function showToast(m) { const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500); }
 function showBlocked(m) { const t=document.getElementById('blocked');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500); }
 function closeM(id) { document.getElementById(id).classList.remove('open'); }
@@ -1375,11 +1394,13 @@ function buscarCliente(q) {
   const ql = q.toLowerCase();
   const matches = S.clientes.filter(c => c.toLowerCase().includes(ql)).slice(0,8);
   const hasExact = S.clientes.some(c => c.toLowerCase() === ql);
+  const rx = new RegExp(`(${escRegex(q)})`, 'gi');
   let html = matches.map(c => {
-    const hi = c.replace(new RegExp(`(${q})`, 'gi'), '<mark>$1</mark>');
+    const hi = escHtml(c).replace(rx, '<mark>$1</mark>');
+    return `<div class="ac-item" onclick="selecionarCliente('${escJsStr(c)}')">🏢 ${hi}</div>`;
     return `<div class="ac-item" onclick="selecionarCliente('${c.replace(/'/g,"\\'")}')">🏢 ${hi}</div>`;
   }).join('');
-  if (!hasExact) html += `<div class="ac-item ac-new" onclick="novoCliente('${q.replace(/'/g,"\\'")}')">+ Criar "${q}"</div>`;
+  if (!hasExact) html += `<div class="ac-item ac-new" onclick="novoCliente('${escJsStr(q)}')">+ Criar "${escHtml(q)}"</div>`;
   list.innerHTML = html;
   list.classList.add('open');
 }
@@ -1418,12 +1439,12 @@ function buildSubSelects() {
 
   if (n === 'URB' || n === 'CONSUL' || n === 'ESP') {
     l1.textContent = 'Subtipo';
-    s1.innerHTML = Object.keys(data).map(k=>`<option value="${k}">${k}</option>`).join('');
+    s1.innerHTML = Object.keys(data).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
     g2.style.display = 'none';
     updateItemForm();
   } else {
     l1.textContent = 'Tipo';
-    s1.innerHTML = Object.keys(data).map(k=>`<option value="${k}">${k}</option>`).join('');
+    s1.innerHTML = Object.keys(data).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
     g2.style.display = '';
     updateSub2();
   }
@@ -1435,7 +1456,7 @@ function updateSub2() {
   const tipo = document.getElementById('i-sub1').value;
   const subs = SUBS.PAIS[tipo] || {};
   const s2 = document.getElementById('i-sub2');
-  s2.innerHTML = Object.keys(subs).map(k=>`<option value="${k}">${k}</option>`).join('');
+  s2.innerHTML = Object.keys(subs).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
   updateItemForm();
 }
 
