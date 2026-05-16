@@ -224,41 +224,47 @@ body::after {
 
 /* Painel de usuário já logado */
 .logado {
-  display: none;
   text-align: center;
-  padding: 8px 0 4px;
+  padding: 4px 0 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
 }
 .logado-avatar {
-  width: 52px; height: 52px; border-radius: 50%;
+  width: 54px; height: 54px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700; color: #fff;
-  margin: 0 auto 14px; letter-spacing: 1px;
+  font-size: 17px; font-weight: 700; color: #fff;
+  margin-bottom: 14px; letter-spacing: 1px;
   font-family: var(--f);
 }
-.logado-nome { font-size: 16px; font-weight: 600; margin-bottom: 4px; font-family: var(--f); }
+.logado-nome {
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -.2px; margin-bottom: 5px;
+  font-family: var(--f); color: var(--preto);
+}
 .logado-cargo {
-  font-family: var(--fm);
-  font-size: 9px; color: #888;
-  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;
+  font-family: var(--f);
+  font-size: 11px; color: #999; font-weight: 400;
+  margin-bottom: 14px;
 }
 .logado-viewer {
-  display: inline-block;
+  display: none;
   background: var(--am-bg); border: 1px solid #E8C07A;
   color: var(--am); border-radius: 4px;
   font-size: 9px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; padding: 2px 8px; margin-bottom: 20px;
+  text-transform: uppercase; padding: 3px 9px; margin-bottom: 16px;
   font-family: var(--f);
 }
 
 .btn-entrar {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 10px 24px;
+  padding: 11px 28px;
   background: var(--verde); color: #fff;
   border: none; border-radius: 6px;
   font-family: var(--f); font-size: 10px;
   font-weight: 700; letter-spacing: 1px;
   text-transform: uppercase; cursor: pointer;
-  transition: background .15s;
+  transition: background .15s; margin-top: 2px;
 }
 .btn-entrar:hover { background: var(--verde-l); }
 
@@ -330,7 +336,8 @@ body::after {
 [data-theme="dark"] .btn-trocar-conta:hover{color:var(--critico)}
 [data-theme="dark"] .sec-sep::before,[data-theme="dark"] .sec-sep::after{background:var(--cinza)}
 [data-theme="dark"] .sec-sep span{color:#555}
-[data-theme="dark"] .logado-cargo{color:#666}
+[data-theme="dark"] .logado-cargo{color:#888}
+[data-theme="dark"] .logado-nome{color:var(--grafite)}
 [data-theme="dark"] .rodape-info{color:#555}
 [data-theme="dark"] .status-dot{background:#3A3A38}
 /* autofill dark */
@@ -426,12 +433,11 @@ body::after {
     </div>
 
     <!-- ══ USUÁRIO JÁ LOGADO ══ -->
-    <div class="logado" id="painel-logado">
+    <div class="logado" id="painel-logado" style="display:none">
       <div class="logado-avatar" id="logado-avatar"></div>
       <div class="logado-nome" id="logado-nome"></div>
       <div class="logado-cargo" id="logado-cargo"></div>
-      <div class="logado-viewer" id="logado-viewer" style="display:none">Acesso visualização</div>
-      <br>
+      <div class="logado-viewer" id="logado-viewer">Acesso visualização</div>
       <button class="btn-entrar" onclick="irParaApp()">▶ &nbsp;Acessar o sistema</button>
       <button class="btn-trocar-conta" onclick="sair()">Trocar de conta</button>
     </div>
@@ -460,12 +466,19 @@ const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const ROLES = { socio: 'Sócio', coordenador: 'Coordenador', colaborador: 'Colaborador' };
+const ROLES = {
+  socio:       'Sócio',
+  socio_adm:   'Sócio',
+  socio_admin: 'Sócio',
+  coordenador: 'Coordenador',
+  colaborador: 'Colaborador',
+  admin:       'Administrador',
+};
 
 // ── HELPERS UI ────────────────────────────────────────────
 function showPanel(id) {
   ['form-login','rec-panel','nova-senha-panel','painel-logado'].forEach(p => {
-    document.getElementById(p).style.display = p === id ? (id === 'painel-logado' ? 'block' : 'block') : 'none';
+    document.getElementById(p).style.display = p === id ? (p === 'painel-logado' ? 'flex' : 'block') : 'none';
   });
 }
 function setLoading(btnId, on) {
@@ -598,7 +611,7 @@ async function mostrarLogado(authUser) {
   document.getElementById('form-login').style.display       = 'none';
   document.getElementById('rec-panel').style.display        = 'none';
   document.getElementById('nova-senha-panel').style.display = 'none';
-  document.getElementById('painel-logado').style.display    = 'block';
+  document.getElementById('painel-logado').style.display    = 'flex';
 
   sessionStorage.setItem('exp_usuario', JSON.stringify({ id: authUser.id, ...usuario }));
 }
