@@ -175,9 +175,9 @@ body::before{
 .ct-info-item a{color:var(--verde);text-decoration:none}
 .ct-info-item a:hover{text-decoration:underline}
 .ct-info-icon{font-size:10px;color:#ccc}
-.ct-info-muted{color:#b7b7b0}
+.ct-info-muted{color:#b7b7b0;margin-left:auto;font-size:10px;white-space:nowrap}
 
-.ct-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}
+.ct-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;margin-bottom:5px}
 .ct-tag{padding:2px 8px;background:var(--cinza2);border-radius:20px;font-size:10px;color:#666;font-weight:500}
 .ct-tag.match{background:var(--verde-bg);color:var(--verde);font-weight:700}
 
@@ -221,7 +221,7 @@ body::before{
 .modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--preto);box-shadow:0 0 0 3px rgba(20,20,20,.05)}
 .modal-field textarea{resize:vertical;min-height:70px;line-height:1.5}
 .modal-ftr{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--cinza);background:#fafaf8;flex-shrink:0}
-.tag-suggestions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag-suggestions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:64px;overflow:hidden}
 .tag-suggestion{
   padding:4px 9px;border:1px solid #b8d9c8;background:var(--verde-bg);color:var(--verde);
   border-radius:999px;font-size:10px;font-weight:700;cursor:pointer;transition:all .12s;
@@ -626,17 +626,23 @@ function atualizarBuscaFiltros() {
 }
 
 function getTagCatalog() {
-  const catalog = new Map();
-  [...(G.contatos || []), ...(G.desativados || [])].forEach(c => {
+  // conta frequência de cada tag para ordenar as mais usadas primeiro
+  const freq = new Map();
+  const label = new Map();
+  const all = [...(G.contatos || []), ...(G.desativados || [])];
+  all.forEach(c => {
     getTags(c).forEach(tag => {
       const clean = tag.trim();
       if(!clean) return;
       const key = _norm(clean);
-      if(!key || catalog.has(key)) return;
-      catalog.set(key, clean);
+      if(!key) return;
+      freq.set(key, (freq.get(key) || 0) + 1);
+      if(!label.has(key)) label.set(key, clean);
     });
   });
-  return [...catalog.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  return [...freq.entries()]
+    .sort((a, b) => b[1] - a[1])   // mais frequentes primeiro
+    .map(([key]) => label.get(key));
 }
 
 function renderTagSuggestions(value) {
@@ -732,7 +738,7 @@ function renderCard(c, secundario, termos) {
   let statusBadge = `<span class="sem-validacao">não validado</span>`;
   if(c.validado_em) {
     statusBadge = ativo
-      ? `<span class="valid-badge">ativo</span>`
+      ? ''
       : `<span class="sem-validacao">validado antes</span>`;
   }
 
