@@ -2004,7 +2004,14 @@ function renderDesps() {
   if (!cDesps.length) { el.innerHTML=''; return; }
 
   let html = '';
-  cDesps.forEach((d,i)=>{
+  cDesps.forEach((_d,i)=>{
+    const d = {
+      ..._d,
+      desc: escHtml(_d.desc||''),
+      cidade: escHtml(_d.cidade||''),
+      orig: escHtml(_d.orig||''),
+      dest: escHtml(_d.dest||''),
+    };
     const cor = DESP_CORES[d.tipo];
     const lbl = DESP_LABELS[d.tipo];
     const sub = fmt(calcDesp(d));
@@ -2309,9 +2316,10 @@ function calcResumo() {
         <span class="rg-label">Despesas indiretas</span>
         <span class="rg-sub">${fmt(totDesp)}</span>
       </div>
-      ${cDesps.map(d=>{
+      ${cDesps.map(_d=>{
+        const d = {..._d, desc:escHtml(_d.desc||''), cidade:escHtml(_d.cidade||''), orig:escHtml(_d.orig||''), dest:escHtml(_d.dest||'')};
         const val  = calcDesp(d);
-        const lbl  = DLBL[d.tipo]||d.tipo;
+        const lbl  = escHtml(DLBL[d.tipo]||d.tipo);
         const desc = d.desc||d.cidade||'';
         const det  = d.tipo==='alim'?`${d.diarias||1}d × ${d.pessoas||1}p`
           : d.tipo==='hotel'?`${d.diarias||1}d${d.cidade?' · '+d.cidade:''}`
@@ -2938,10 +2946,10 @@ function renderHist() {
           <td>${cod} ${famIndicator}</td>
           <td>${versBadge}</td>
           <td style="font-weight:500">${p.cliente||'—'}</td>
-          <td>${p.projeto}</td>
-          <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${NC[p.mainNucleo]||p.mainNucleo}</span></td>
+          <td>${escHtml(p.projeto||'')}</td>
+          <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${escHtml(NC[p.mainNucleo]||p.mainNucleo||'')}</span></td>
           <td>${RESP_LABEL[p.resp]||p.resp||'—'}</td>
-          <td style="font-size:10px">${p.cidade||''}${p.uf?' ('+p.uf+')':''}</td>
+          <td style="font-size:10px">${escHtml(p.cidade||'')}${p.uf?' ('+escHtml(p.uf)+')':''}</td>
           <td style="font-size:10px">${fmtD(p.data)}</td>
           <td style="font-weight:700;font-family:var(--fm)">${fmt(p.total)}</td>
           <td style="font-weight:700;font-family:var(--fm);color:var(--verde)">${efetivo}</td>
