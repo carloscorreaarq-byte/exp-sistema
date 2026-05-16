@@ -2117,9 +2117,13 @@ function toggleContato(id){const el=document.getElementById(id);if(el)el.classLi
 // ═══ DETALHE DA PROPOSTA — definido abaixo com botões de ação ════════
 
 // ═══ FOLLOW-UP ══════════════════════════════════════
-function openFollowUpModal(){
-  const op=allOps.find(o=>o.id===detailOppId);
+async function openFollowUpModal(){
+  let op=allOps.find(o=>o.id===detailOppId);
   if(!op)return;
+  if(!op._produtos.length && op._proposal?.items?.length){
+    op = await garantirProdutosCalcMaterializados(op.id, 'follow-up');
+    if(!op)return;
+  }
   const fus=op._followups||[];
   if(fus.length>=5){toast('Limite de 5 follow-ups atingido.');return;}
   document.getElementById('fu-title').textContent=`Follow-up — ${op._cliente?.nome||''} (${op.num_legado||''})`;
@@ -2133,9 +2137,41 @@ function openFollowUpModal(){
   openM('modal-fu');
 }
 
+async function garantirProdutosCalcMaterializados(oppId, contexto='operação'){
+  let op=allOps.find(o=>o.id===oppId);
+  if(!op)return null;
+  if(op._produtos.length || !op._proposal?.items?.length)return op;
+
+  const payload=(op._proposal.items||[]).map((it, idx)=>({
+    oportunidade_id: oppId,
+    nucleo: it.nucleo || 'PAIS',
+    subtipo: it.subK || null,
+    area: it.area != null ? (+it.area || null) : null,
+    valor_calculado: +it.valorCalc || 0,
+    valor_proposto: it.valorProposto != null ? +it.valorProposto : (+it.valorCalc || 0),
+    status: 'ativo',
+    prob: ['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase()) ? 4 : 3,
+    calc_id: op.proposta_calc_id || null,
+    obs: [it.subLabel, it.desc, it.id ? `ref ${it.id}` : '', `calc item ${idx+1}`].filter(Boolean).join(' · ') || null,
+    updated_at: new Date().toISOString(),
+  }));
+
+  const {error}=await sb.from('produtos').insert(payload);
+  if(error){toast(`Erro ao preparar ${contexto}: ${error.message}`);return null;}
+
+  await carregarDados();
+  op=allOps.find(o=>o.id===oppId)||null;
+  if(op) toast('Itens da proposta da calculadora sincronizados no CRM para continuar a operação.');
+  return op;
+}
+
 async function salvarFU(){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
-  const op=allOps.find(o=>o.id===detailOppId);
+  let op=allOps.find(o=>o.id===detailOppId);
+  if(op && !op._produtos.length && op._proposal?.items?.length){
+    op = await garantirProdutosCalcMaterializados(op.id, 'follow-up');
+    if(!op)return;
+  }
   const prodId=op?._produtos?.[0]?.id||null;
   const obs=document.getElementById('fu-obs').value.trim();
   if(!obs){toast('Informe a observação.');return;}
@@ -2795,8 +2831,12 @@ let _fechCustos = [];           // opp_custos carregados para o fechamento
 
 async function abrirFechamento(oppId) {
   if (currentUser?.viewer_only) { toast('Sem permissão.'); return; }
-  const op = allOps.find(o => o.id === oppId);
+  let op = allOps.find(o => o.id === oppId);
   if (!op) return;
+  if (!op._produtos.length && op._proposal?.items?.length) {
+    op = await garantirProdutosCalcMaterializados(oppId, 'fechamento');
+    if (!op) return;
+  }
   _fechOppId = oppId;
 
   document.getElementById('fech-opp-title').textContent =
@@ -2855,7 +2895,7 @@ function _renderFechItens(op) {
       const isFech = p.status === 'fechado';
       const valFch = p.valor_fechado || valRef;
       const incl   = p.incluso_fechamento !== false;
-      html += `<div class="fech-row" id="frow-p-${p.id}" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px">
+      html += `<div class="fech-row" id="frow-p-${p.id}" onclick="_fechToggleCheckbox('p','${escJsStr(p.id)}',event)" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" id="fch-incl-p-${p.id}" ${incl?'checked':''} onchange="_fechToggleRow('p','${escJsStr(p.id)}',this.checked)"
             style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
@@ -2890,7 +2930,7 @@ function _renderFechItens(op) {
       const valRef  = c.valor_calculado || 0;
       const valFch  = c.valor_fechado || valRef;
       const incl    = c.incluso_fechamento !== false;
-      html += `<div class="fech-row" id="frow-c-${c.id}" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;border-left:3px solid #ddd">
+      html += `<div class="fech-row" id="frow-c-${c.id}" onclick="_fechToggleCheckbox('c','${escJsStr(c.id)}',event)" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;border-left:3px solid #ddd;cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" id="fch-incl-c-${c.id}" ${incl?'checked':''} onchange="_fechToggleRow('c','${escJsStr(c.id)}',this.checked)"
             style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
@@ -2931,6 +2971,15 @@ function _fechToggleRow(tipo, id, checked) {
   const row    = document.getElementById(`frow-${tipo}-${id}`);
   if (fields) fields.style.opacity = checked ? '1' : '0.35';
   if (row)    row.style.borderColor = checked ? 'var(--cinza2)' : '#f0b8b8';
+}
+
+function _fechToggleCheckbox(tipo, id, ev) {
+  const tg = ev?.target;
+  if (tg && ['INPUT','TEXTAREA','SELECT','BUTTON','LABEL','A'].includes(tg.tagName)) return;
+  const cb = document.getElementById(`fch-incl-${tipo}-${id}`);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  _fechToggleRow(tipo, id, cb.checked);
 }
 
 async function confirmarFechamento() {
