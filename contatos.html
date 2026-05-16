@@ -8,6 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="exp-design-system.css">
+<script>
+  /* init imediato — antes de qualquer render para evitar flash */
+  (function(){
+    var saved = localStorage.getItem('exp-theme');
+    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(saved === 'dark' || (!saved && sys))
+      document.documentElement.setAttribute('data-theme','dark');
+  })();
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -62,7 +71,7 @@ body::before{
 .nav-mod-wrap{position:relative}
 .nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;color:#999;padding:0;display:flex;align-items:center;gap:4px}
 .nav-lbl-btn:hover{color:var(--preto)}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;box-shadow:0 4px 16px rgba(0,0,0,.08);z-index:200;border-radius:8px;overflow:hidden}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 10px);left:-12px;background:#fff;border:1px solid var(--cinza);min-width:190px;box-shadow:0 4px 16px rgba(0,0,0,.08);z-index:200;border-radius:8px;overflow:hidden}
 .nav-dropdown.open{display:block}
 .nav-dropdown a{display:block;padding:7px 14px 7px 12px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
 .nav-dropdown a:hover{background:var(--off)}
@@ -248,6 +257,94 @@ body::before{
   .ct-region-select{min-width:0}
   .issue-bar{left:10px;right:10px;bottom:10px}
 }
+
+/* ── THEME TOGGLE ───────────────────────────────────────────── */
+.theme-toggle{
+  display:inline-flex;align-items:center;gap:5px;
+  background:none;border:none;cursor:pointer;padding:3px;
+  border-radius:20px;flex-shrink:0;
+}
+.ttg-icon{
+  font-size:9px;opacity:0;
+  transition:opacity var(--transition-fast);
+  user-select:none;line-height:1;
+}
+.theme-toggle:hover .ttg-icon{opacity:.6}
+.ttg-track{
+  width:30px;height:16px;border-radius:8px;
+  background:var(--cinza);position:relative;
+  transition:background var(--transition-normal);flex-shrink:0;
+}
+.ttg-knob{
+  position:absolute;top:2px;left:2px;
+  width:12px;height:12px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);
+  transition:transform var(--transition-normal);
+}
+[data-theme="dark"] .ttg-track{background:var(--verde)}
+[data-theme="dark"] .ttg-knob{transform:translateX(14px);background:#f0efec}
+
+/* ── DARK MODE — variáveis locais do módulo ─────────────────── */
+[data-theme="dark"]{
+  --cinza2:   #2A2A28;
+  --verde-bg: #1A2B22;
+  --verde-l:  #52A676;
+  --az-bg:    #1A2232;
+  --am-bg:    #2A2212;
+  --tc-bg:    #2A1A14;
+  --roxo-bg:  #221A32;
+}
+
+/* ── DARK MODE — componentes do módulo ──────────────────────── */
+[data-theme="dark"] body::before{opacity:.08}
+[data-theme="dark"] #loading{background:var(--off)}
+[data-theme="dark"] .nav{background:rgba(20,20,18,.96);border-bottom-color:var(--cinza)}
+[data-theme="dark"] .nav-brand{color:var(--grafite)}
+[data-theme="dark"] .nav-dropdown{background:#1e1e1c;border-color:var(--cinza)}
+[data-theme="dark"] .nav-dropdown a{color:var(--grafite)}
+[data-theme="dark"] .nav-dropdown a:hover{background:#252523}
+[data-theme="dark"] .user-dropdown{background:#1e1e1c;border-color:var(--cinza)}
+[data-theme="dark"] .user-pill{background:#1e1e1c;border-color:var(--cinza)}
+[data-theme="dark"] #user-nome{color:var(--grafite)}
+[data-theme="dark"] .ct-search-wrap input{background:#1e1e1c;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .ct-search-wrap input::placeholder{color:#555}
+[data-theme="dark"] .ct-search-wrap input:focus{border-color:#666;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+[data-theme="dark"] .ct-region-select{background:#1e1e1c;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .ct-card{background:#1e1e1c;border-color:var(--cinza)}
+[data-theme="dark"] .ct-card:hover{border-color:#555;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+[data-theme="dark"] .ct-card.validado{background:#192A20;border-color:#2D4D38}
+[data-theme="dark"] .ct-card.validado:hover{border-color:var(--verde)}
+[data-theme="dark"] .ct-card.desativado-card{background:#1a1a18}
+[data-theme="dark"] .ct-card-row2{color:#999}
+[data-theme="dark"] .ct-obs{border-top-color:var(--cinza);color:#666}
+[data-theme="dark"] .ct-tag{background:#2a2a28;color:#888}
+[data-theme="dark"] .ct-tag.match{background:#1A2B22;color:var(--verde)}
+[data-theme="dark"] .sem-validacao{background:#252523;border-color:#3a3a38;color:#666}
+[data-theme="dark"] .results-hdr{color:#555}
+[data-theme="dark"] .results-hdr::after{background:var(--cinza)}
+[data-theme="dark"] .results-hdr span{color:#888}
+[data-theme="dark"] .desativados-toggle{color:#555;border-top-color:var(--cinza)}
+[data-theme="dark"] .desativados-toggle:hover{color:#888}
+[data-theme="dark"] #desativados-section{background:#1a1a18;border-color:var(--cinza)}
+[data-theme="dark"] .modal-box{background:#1e1e1c}
+[data-theme="dark"] .modal-hdr{border-bottom-color:var(--cinza)}
+[data-theme="dark"] .modal-title{color:var(--grafite)}
+[data-theme="dark"] .modal-close{color:#555}
+[data-theme="dark"] .modal-close:hover{color:var(--grafite)}
+[data-theme="dark"] .modal-field label{color:#666}
+[data-theme="dark"] .modal-field input,
+[data-theme="dark"] .modal-field select,
+[data-theme="dark"] .modal-field textarea{background:#252523;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .modal-field input:hover,
+[data-theme="dark"] .modal-field select:hover,
+[data-theme="dark"] .modal-field textarea:hover{border-color:#555}
+[data-theme="dark"] .modal-ftr{background:#181816;border-top-color:var(--cinza)}
+[data-theme="dark"] .btn.outline{background:#252523;color:#aaa;border-color:var(--cinza)}
+[data-theme="dark"] .btn.outline:hover{border-color:#888;color:var(--grafite)}
+[data-theme="dark"] .btn-icon{background:#252523;border-color:var(--cinza);color:#777}
+[data-theme="dark"] .btn-icon:hover{border-color:#888;color:var(--grafite)}
+[data-theme="dark"] .tag-suggestion{background:#1A2B22;border-color:#2D4D38;color:var(--verde)}
+[data-theme="dark"] .tag-suggestion:hover{background:#223A2A;border-color:var(--verde)}
 </style>
 </head>
 <body>
@@ -275,6 +372,11 @@ body::before{
     </div>
   </div>
   <div class="nav-right">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
+      <span class="ttg-icon ttg-sun">☀</span>
+      <span class="ttg-track"><span class="ttg-knob"></span></span>
+      <span class="ttg-icon ttg-moon">🌙</span>
+    </button>
     <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
     <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
     <div class="user-pill-wrap">
@@ -1096,6 +1198,14 @@ function initExpRoom(userId, userName) {
   });
   checkExpRoomStatus();
   setInterval(checkExpRoomStatus, 60000);
+}
+
+// ─── THEME ───────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next   = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('exp-theme', next);
 }
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
