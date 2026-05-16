@@ -343,6 +343,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const ROLES = { socio:'Sócio', coordenador:'Coordenador', colaborador:'Colaborador' };
 
+const isSocioRole = (role) => ['socio', 'socio_admin'].includes((role || '').toLowerCase());
+
 function saudacao() {
   const h = new Date().getHours();
   if (h < 12) return 'Bom dia';
@@ -379,7 +381,7 @@ async function init() {
   av.textContent = usuario.iniciais;
   av.style.background = usuario.cor || '#888';
   document.getElementById('user-nome').textContent = usuario.nome;
-  document.getElementById('user-cargo').textContent = ROLES[usuario.role] || usuario.role;
+  document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'Sócio administrador' : (ROLES[usuario.role] || usuario.role);
 
   // Boas vindas
   const primeiroNome = usuario.nome.split(' ')[0];
@@ -398,7 +400,7 @@ async function init() {
   sessionStorage.setItem('exp_usuario', JSON.stringify({ ...usuario, auth_id: session.user.id }));
 
   // Módulos societários
-  if (usuario.role === 'socio') {
+  if (isSocioRole(usuario.role)) {
     document.getElementById('soc-titulo').style.display = 'flex';
     document.getElementById('soc-grid').style.display = 'grid';
   }

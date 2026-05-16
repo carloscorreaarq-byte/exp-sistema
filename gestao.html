@@ -3291,8 +3291,9 @@ function initConnDot() {
   const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexão'; };
   update(); window.addEventListener('online',update); window.addEventListener('offline',update);
 }
+const isSocioRole = (role) => ['socio', 'socio_admin'].includes((role || '').toLowerCase());
 function initNavDropdown(role) {
-  if (role === 'socio') document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+  if (isSocioRole(role)) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   initConnDot();
 }
 async function sair() {
@@ -3380,18 +3381,17 @@ async function init() {
   initExpRoom(usr.id, (usr.nome||'').split(' ')[0]);
 
   // Aba sócios
-  if (usr.role === 'socio') {
+  if (isSocioRole(usr.role)) {
     document.querySelectorAll('.socio-only').forEach(el => el.style.display = '');
   }
 
-  // Permissão billing (Thayssa + Carlos)
-  const nomeMin = (usr.nome || '').toLowerCase();
-  G.hasBillingAccess = usr.role === 'socio' || nomeMin.includes('thayssa') || nomeMin.includes('carlos');
+  // Billing segue role formal; atalhos por nome deixam de conceder acesso.
+  G.hasBillingAccess = isSocioRole(usr.role);
   if (G.hasBillingAccess) {
     document.querySelectorAll('.billing-only').forEach(el => el.style.display = '');
     document.getElementById('ntab-socios').style.display = '';
     // Billing sem role sócio: oculta sub-abas irrelevantes e ativa Faturamento
-    if (usr.role !== 'socio') {
+    if (!isSocioRole(usr.role)) {
       document.querySelectorAll('.socio-tab:not([data-panel="espelho"])').forEach(el => el.style.display = 'none');
       document.querySelectorAll('.socio-tab').forEach(b => b.classList.remove('active'));
       document.getElementById('socio-tab-espelho').classList.add('active');
@@ -3579,7 +3579,7 @@ function onTabChange(tab) {
   if (tab === 'revisoes')  { carregarRevisoes(); }
   if (tab === 'processos') { carregarProcessos(); }
   if (tab === 'socios') {
-    if (G.hasBillingAccess && G.usuario.role !== 'socio') carregarEspelho();
+    if (G.hasBillingAccess && !isSocioRole(G.usuario.role)) carregarEspelho();
     else carregarFluxo();
   }
 }
@@ -3679,8 +3679,8 @@ async function carregarEntregasEquipe() {
   const ordenados = G.todosUsuarios
     .filter(u => userEtapas[u.id])
     .sort((a, b) => {
-      if (a.role === 'socio' && b.role !== 'socio') return -1;
-      if (b.role === 'socio' && a.role !== 'socio') return 1;
+      if (isSocioRole(a.role) && !isSocioRole(b.role)) return -1;
+      if (isSocioRole(b.role) && !isSocioRole(a.role)) return 1;
       return a.nome.localeCompare(b.nome);
     });
 
@@ -4012,7 +4012,7 @@ function renderDashProjetos(prods, horasPorProd = {}) {
     const st = etapaAtiva ? STATUS_ETAPA[etapaAtiva.status] : null;
     const coord = G.todosUsuarios.find(u => u.id === p.coordenador_id);
     const role = G.usuario.role;
-    const isSocioOrCoord = role === 'socio' || role === 'coordenador';
+    const isSocioOrCoord = isSocioRole(role) || role === 'coordenador';
 
     const hReal = horasPorProd[p.id] || 0;
     const hStr = hReal > 0 ? fmtH(hReal) : null;
@@ -4760,7 +4760,7 @@ async function renderSemana() {
     if (custoForm) custoForm.style.display = 'none';
     if (finWrap)   finWrap.style.display   = 'none';
     if (btnDesbloquearWrap) {
-      btnDesbloquearWrap.style.display = G.usuario.role === 'socio' ? 'inline' : 'none';
+      btnDesbloquearWrap.style.display = isSocioRole(G.usuario.role) ? 'inline' : 'none';
     }
   } else {
     travBanner.style.display = 'none';
@@ -6164,7 +6164,7 @@ async function selecionarRevisao(id) {
   const cli = opp?.clientes;
 
   // Pode preencher: sócio, coordenador do produto, ou desenvolvedor da etapa
-  const podePreencher = G.usuario.role === 'socio'
+  const podePreencher = isSocioRole(G.usuario.role)
     || prod?.coordenador_id === G.usuario.id
     || (G.etapaDevs[etapa?.id] || []).includes(G.usuario.id);
 
@@ -6212,7 +6212,7 @@ function renderPrancha(pr, isSocioOrCoord) {
   const total = pr.tarefas_revisao?.length || 0;
   const conc = pr.tarefas_revisao?.filter(t => t.concluida).length || 0;
   const concluida100 = total > 0 && conc === total;
-  const podeExcluirTopico = G.usuario.role === 'socio' || G._revisaoAbertaPor === G.usuario.id;
+  const podeExcluirTopico = isSocioRole(G.usuario.role) || G._revisaoAbertaPor === G.usuario.id;
 
   return `<div class="prancha-card" id="prancha-${pr.id}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''}">
@@ -6536,7 +6536,7 @@ async function abrirProduto(id) {
   const coord = G.todosUsuarios.find(u => u.id === prod.coordenador_id);
   const nc = NUCLEO_COR[prod.nucleo] || NUCLEO_COR.urbanismo;
   const stProd = STATUS_PROD[prod.status] || STATUS_PROD.inativo;
-  const isSocio = G.usuario.role === 'socio';
+  const isSocio = isSocioRole(G.usuario.role);
 
   document.getElementById('mp-titulo').textContent = (cli?.nome || '—') + ' | ' + (opp?.projeto || prod.nome);
   document.getElementById('mp-subtipo-hd').innerHTML = `<span class="badge ${nc.cls}" style="font-size:8px">${nc.label}</span> <span style="color:#bbb">${prod.nome}</span>`;
@@ -6640,7 +6640,7 @@ async function concluirEtapa(etapaId) {
   await sb.from('etapas').update({ status: 'concluida', data_conclusao: hoje }).eq('id', etapaId);
 
   // Espelho financeiro — sócios e coordenadores
-  if (etapa && (G.usuario.role === 'socio' || G.usuario.role === 'coordenador')) {
+  if (etapa && (isSocioRole(G.usuario.role) || G.usuario.role === 'coordenador')) {
     const prod = G.todosProdutos.find(p => p.id === etapa.produto_id);
     const opp = prod?.oportunidades;
     const cli = opp?.clientes;
@@ -7182,8 +7182,8 @@ async function carregarCarga() {
     porAtiv[key] = (porAtiv[key] || 0) + dur;
   });
 
-  const socios = G.todosUsuarios.filter(u => u.role === 'socio');
-  const colabs = G.todosUsuarios.filter(u => u.role !== 'socio');
+  const socios = G.todosUsuarios.filter(u => isSocioRole(u.role));
+  const colabs = G.todosUsuarios.filter(u => !isSocioRole(u.role));
 
   function groupTotals(users) {
     return users.reduce((acc, u) => {
@@ -8656,8 +8656,8 @@ async function salvarCorUsuario(uid, cor, el) {
 }
 
 async function aplicarPaletaPadrao() {
-  const socios = G.todosUsuarios.filter(u => u.role === 'socio');
-  const outros  = G.todosUsuarios.filter(u => u.role !== 'socio');
+  const socios = G.todosUsuarios.filter(u => isSocioRole(u.role));
+  const outros  = G.todosUsuarios.filter(u => !isSocioRole(u.role));
   const updates = [];
   socios.forEach((u, i) => updates.push({ id: u.id, cor: PALETA_SOCIO[i % PALETA_SOCIO.length] }));
   outros.forEach((u, i)  => updates.push({ id: u.id, cor: PALETA_COLAB[i % PALETA_COLAB.length] }));
@@ -8955,7 +8955,7 @@ async function carregarCustosProduto(prodId) {
 
   const prod = G.todosProdutos.find(p => p.id === prodId);
   const oppId = prod?.oportunidade_id || null;
-  const isSocio = G.usuario.role === 'socio';
+  const isSocio = isSocioRole(G.usuario.role);
 
   const [{ data: custosPrev, error }, { data: custosOppPrev }, { data: custosLanc }] = await Promise.all([
     sb.from('opp_custos').select('*').eq('produto_id', prodId).order('created_at', { ascending: false }),
@@ -9126,7 +9126,7 @@ async function carregarHorasProduto(prodId) {
   if (!wrap) return;
   wrap.innerHTML = '<div class="loading-state">Carregando horas...</div>';
 
-  const isSocio = G.usuario.role === 'socio';
+  const isSocio = isSocioRole(G.usuario.role);
 
   // 1. Lançamentos de horas + custos operacionais vinculados ao produto
   const [{ data: lancs, error }, { data: custosOp }] = await Promise.all([
@@ -9441,7 +9441,7 @@ async function abrirEditarProduto() {
       return `<option value="${c.id}" ${c.id === prod.oportunidades?.cliente_id ? 'selected' : ''}>${label}</option>`;
     }).join('');
 
-  const isSocio = G.usuario.role === 'socio';
+  const isSocio = isSocioRole(G.usuario.role);
   document.getElementById('ep-valor-wrap').style.display = isSocio ? 'block' : 'none';
   if (isSocio) document.getElementById('ep-valor').value = prod.valor_contratado || '';
 
@@ -9493,7 +9493,7 @@ async function salvarEdicaoProduto() {
     const oppNome    = document.getElementById('ep-opp').value.trim();
     const oppCidade  = document.getElementById('ep-opp-cidade').value.trim() || null;
     const emGestao   = document.getElementById('ep-em-gestao').value !== 'false';
-    const isSocio    = G.usuario.role === 'socio';
+    const isSocio    = isSocioRole(G.usuario.role);
     const valor      = isSocio ? (parseFloat(document.getElementById('ep-valor').value) || null) : undefined;
 
     if (!nome) { toast('Informe o nome do produto'); return; }
@@ -10204,7 +10204,7 @@ function deletarEntradaReg(id) {
 const _ckE  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const _ckA  = s => String(s||'').replace(/"/g,'&quot;');
 const _sqCk = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
-const isSocioUser = () => G.usuario.role === 'socio';
+const isSocioUser = () => isSocioRole(G.usuario.role);
 
 // ── Estado ────────────────────────────────────────────────────
 G._ckEtapas   = [];
@@ -11779,7 +11779,7 @@ async function confirmarAlteracaoData() {
   fecharModal('modal-editar-prazo');
 
   const { prioId, prodId, coordId, dataAntiga } = _prazoEdit;
-  const euSouCoord = coordId === G.usuario.id || G.usuario.role === 'socio';
+  const euSouCoord = coordId === G.usuario.id || isSocioRole(G.usuario.role);
 
   if (euSouCoord) {
     // Coordenador/sócio: altera diretamente
