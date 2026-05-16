@@ -1902,10 +1902,12 @@ function remSub(id) {
 function renderSubList() {
   const el = document.getElementById('sub-list');
   if (!cSubs.length) { el.innerHTML=''; return; }
-  el.innerHTML = cSubs.map(sc=>`
+  el.innerHTML = cSubs.map(_sc=>{
+    const sc={..._sc, serv:escHtml(_sc.serv), emp:escHtml(_sc.emp||'')};
+    return `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--cinza2)">
       <div>
-        <div style="font-size:12px;font-weight:600">${sc.serv}</div>
+        <div style="font-size:12px;font-weight:600">${escHtml(sc.serv)}</div>
         <div style="font-size:10px;color:#888">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}
           <span style="margin-left:6px;color:#bbb">bit.${sc.bit}% / ganho ${sc.ret}%</span>
         </div>
@@ -1917,7 +1919,8 @@ function renderSubList() {
         </div>
         <button class="btn xs danger" onclick="remSub(${sc.id})">✕</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════════════════
@@ -2245,7 +2248,8 @@ function calcResumo() {
         <span class="rg-label">Subcontratações</span>
         <span class="rg-sub" style="color:var(--tc)">${fmt(totSub)}</span>
       </div>
-      ${cSubs.map(sc=>{
+      ${cSubs.map(_sc=>{
+        const sc={..._sc, serv:escHtml(_sc.serv), emp:escHtml(_sc.emp||'')};
         const bitVal = sc.val*(sc.bit/100);
         return`<div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
