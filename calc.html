@@ -326,7 +326,7 @@ select option[disabled]{color:#bbb}
   <div class="card neutro" id="card-id">
     <div class="card-hdr"><div class="card-title">Identificação da proposta</div></div>
     <div class="card-body">
-      <div class="fg fg2 mb8">
+      <div class="fg fg2 mb8" id="grupo-subtipos">
         <div class="fgroup">
           <label>Cliente / empresa</label>
           <input type="text" id="f-cliente" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="buscarCliente(this.value);updateCardBars()">
@@ -377,7 +377,7 @@ select option[disabled]{color:#bbb}
       </div>
 
       <!-- SUBTIPO -->
-      <div class="fg fg2 mb8">
+      <div class="fg fg2 mb8" id="grupo-subtipos">
         <div class="fgroup" id="grupo-subtipo1">
           <label id="lbl-subtipo1">Tipo</label>
           <select id="i-sub1" onchange="updateSub2()"></select>
@@ -1436,23 +1436,26 @@ function buildSubSelects() {
   const s2 = document.getElementById('i-sub2');
   const g2 = document.getElementById('grupo-subtipo2');
   const l1 = document.getElementById('lbl-subtipo1');
+  const gs = document.getElementById('grupo-subtipos');
 
   if (n === 'URB' || n === 'CONSUL' || n === 'ESP') {
     l1.textContent = 'Subtipo';
     s1.innerHTML = Object.keys(data).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
     g2.style.display = 'none';
+    if (gs) gs.style.gridTemplateColumns = '1fr';
     updateItemForm();
   } else {
     l1.textContent = 'Tipo';
     s1.innerHTML = Object.keys(data).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
     g2.style.display = '';
+    if (gs) gs.style.gridTemplateColumns = '1fr 1fr';
     updateSub2();
   }
 }
 
 function updateSub2() {
   const n = currentNucleo;
-  if (n !== 'PAIS') return;
+  if (n !== 'PAIS') { updateItemForm(); return; }
   const tipo = document.getElementById('i-sub1').value;
   const subs = SUBS.PAIS[tipo] || {};
   const s2 = document.getElementById('i-sub2');
