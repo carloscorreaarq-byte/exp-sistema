@@ -6,23 +6,33 @@
 <title>EXP · Acesso</title>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="exp-design-system.css">
+<script>
+  (function(){
+    var saved = localStorage.getItem('exp-theme');
+    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(saved === 'dark' || (!saved && sys))
+      document.documentElement.setAttribute('data-theme','dark');
+  })();
+</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --preto: #111110;
-  --off:   #F7F6F3;
-  --cinza: #D0CFC9;
-  --cinza2:#ECEAE4;
-  --verde: #1D6A4A;
-  --verde-l:#2D9E6B;
-  --verde-bg:#EAF5EE;
-  --am:   #C4831A;
-  --am-bg:#FBF3E8;
-  --tc:   #B84C3A;
-  --tc-bg:#FBF0EE;
-  --f:    'Raleway', sans-serif;
-  --fm:   'DM Mono', monospace;
+  /* ── aliases → design system ── */
+  --preto:  var(--grafite);
+  --am:     var(--ouro);
+  --tc:     var(--terracota);
+  --f:      var(--font-ui);
+  --fm:     var(--font-mono);
+  /* --verde, --cinza, --off → herdados do design system */
+
+  /* ── variáveis locais ── */
+  --cinza2:   #ECEAE4;
+  --verde-l:  #2D9E6B;
+  --verde-bg: #EAF5EE;
+  --am-bg:    #FBF3E8;
+  --tc-bg:    #FBF0EE;
 }
 
 body {
@@ -280,6 +290,49 @@ body::after {
   background: var(--cinza); display: inline-block; margin-right: 5px;
 }
 .status-dot.ok { background: var(--verde-l); }
+
+/* ── THEME TOGGLE ─────────────────────────────────────────── */
+.theme-toggle{display:inline-flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:3px;border-radius:20px;flex-shrink:0}
+.ttg-icon{font-size:9px;opacity:0;transition:opacity var(--transition-fast);user-select:none;line-height:1}
+.theme-toggle:hover .ttg-icon{opacity:.6}
+.ttg-track{width:30px;height:16px;border-radius:8px;background:var(--cinza);position:relative;transition:background var(--transition-normal);flex-shrink:0}
+.ttg-knob{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform var(--transition-normal)}
+[data-theme="dark"] .ttg-track{background:var(--verde)}
+[data-theme="dark"] .ttg-knob{transform:translateX(14px);background:#f0efec}
+
+/* ── DARK MODE — variáveis locais ─────────────────────────── */
+[data-theme="dark"]{
+  --cinza2:   #2A2A28;
+  --verde-l:  #52A676;
+  --verde-bg: #1A2B22;
+  --am-bg:    #2A2212;
+  --tc-bg:    #2A1A14;
+}
+
+/* ── DARK MODE — componentes ──────────────────────────────── */
+[data-theme="dark"] body::before{opacity:.10}
+[data-theme="dark"] body::after{opacity:.35}
+[data-theme="dark"] .card{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .fgroup label{color:#AAA}
+[data-theme="dark"] .fgroup input{background:#252523;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .fgroup input:focus{background:#2A2A28;border-color:#666}
+[data-theme="dark"] .fgroup input::placeholder{color:#4A4A48}
+[data-theme="dark"] .btn-login{background:#E8E7E4;color:#141412}
+[data-theme="dark"] .btn-login:hover:not(:disabled){background:#D0CFC9}
+[data-theme="dark"] .btn-login:disabled{background:#3A3A38;color:#555}
+[data-theme="dark"] .btn-entrar{background:var(--verde);color:#fff}
+[data-theme="dark"] .btn-entrar:hover{background:var(--verde-l)}
+[data-theme="dark"] .card-sub{color:#777}
+[data-theme="dark"] .marca-sub{color:#666}
+[data-theme="dark"] .link-esqueceu{color:#666}
+[data-theme="dark"] .link-esqueceu:hover{color:var(--verde)}
+[data-theme="dark"] .btn-trocar-conta{color:#555}
+[data-theme="dark"] .btn-trocar-conta:hover{color:var(--critico)}
+[data-theme="dark"] .sec-sep::before,[data-theme="dark"] .sec-sep::after{background:var(--cinza)}
+[data-theme="dark"] .sec-sep span{color:#555}
+[data-theme="dark"] .logado-cargo{color:#666}
+[data-theme="dark"] .rodape-info{color:#555}
+[data-theme="dark"] .status-dot{background:#3A3A38}
 </style>
 </head>
 <body>
@@ -382,6 +435,11 @@ body::after {
       <span class="status-dot" id="status-dot"></span>
       <span id="status-txt">Verificando conexão...</span>
     </div>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
+      <span class="ttg-icon">☀</span>
+      <span class="ttg-track"><span class="ttg-knob"></span></span>
+      <span class="ttg-icon">🌙</span>
+    </button>
     <div class="rodape-info" style="font-family:var(--fm)">v2.0 · 2026</div>
   </div>
 
@@ -627,6 +685,12 @@ async function sair() {
 // ── IR PARA O APP ─────────────────────────────────────────
 function irParaApp() {
   window.location.href = 'app.html';
+}
+
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('exp-theme', next);
 }
 
 init();
