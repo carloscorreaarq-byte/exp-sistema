@@ -498,7 +498,7 @@ let G = {
   regiao:     '',
   issueTimer: null,
 };
-const isSocio = () => G.usuario?.role === 'socio';
+const isSocio = () => ['socio', 'socio_admin'].includes((G.usuario?.role || '').toLowerCase());
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function esc(s) {
@@ -1106,7 +1106,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if(!u) { window.location.href = 'index.html'; return; }
   G.usuario = u;
   sessionStorage.setItem('exp_usuario', JSON.stringify({ ...u, auth_id: session.user.id }));
-  if (u.role === 'socio') {
+  if (['socio', 'socio_admin'].includes((u.role || '').toLowerCase())) {
     document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   }
 

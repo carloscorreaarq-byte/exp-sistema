@@ -2332,7 +2332,7 @@ function initConnDot() {
   upd(); window.addEventListener('online', upd); window.addEventListener('offline', upd);
 }
 function initNavDropdown(role) {
-  if (role === 'socio') document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+  if (['socio', 'socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   initConnDot();
 }
 async function sair() {
@@ -5394,7 +5394,7 @@ async function init() {
     .select('*').eq('auth_id', session.user.id).single();
   if (!usr) { window.location.href = 'index.html'; return; }
   G.usuario = usr;
-  G.isSocio = usr.role === 'socio';
+  G.isSocio = ['socio', 'socio_admin'].includes((usr.role || '').toLowerCase());
 
   // Nav
   const av = document.getElementById('nav-av');

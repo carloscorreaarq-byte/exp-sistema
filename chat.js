@@ -493,7 +493,7 @@
           '</div>';
 
         /* Linha #sócios (apenas para role socio) */
-        if (user.role === 'socio') {
+        if (['socio', 'socio_admin'].includes((user.role || '').toLowerCase())) {
           var socU = channelUnread['socios'] || 0;
           html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sócios\')">' +
             '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
@@ -729,7 +729,7 @@
         var uid = user.auth_id;
 
         /* Ignorar canais que não envolvem o usuário */
-        var isSocios = ch === 'socios' && user.role === 'socio';
+        var isSocios = ch === 'socios' && ['socio', 'socio_admin'].includes((user.role || '').toLowerCase());
         if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
 
         var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
@@ -793,7 +793,7 @@
 
         /* Contar não lidas por canal fixo */
         var fixedChannels = ['general'];
-        if (user.role === 'socio') fixedChannels.push('socios');
+        if (['socio', 'socio_admin'].includes((user.role || '').toLowerCase())) fixedChannels.push('socios');
 
         fixedChannels.forEach(function (ch) {
           var lastRead = readMap[ch] || since;
