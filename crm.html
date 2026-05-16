@@ -2842,10 +2842,10 @@ function _renderFechItens(op) {
       const incl   = p.incluso_fechamento !== false;
       html += `<div class="fech-row" id="frow-p-${p.id}" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <input type="checkbox" id="fch-incl-p-${p.id}" ${incl?'checked':''} onchange="_fechToggleRow('p','${p.id}',this.checked)"
+          <input type="checkbox" id="fch-incl-p-${p.id}" ${incl?'checked':''} onchange="_fechToggleRow('p','${escJsStr(p.id)}',this.checked)"
             style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
           ${tipoBadgeProd(p.nucleo)}
-          <span style="font-size:12px;font-weight:500;flex:1">${label}</span>
+          <span style="font-size:12px;font-weight:500;flex:1">${escHtml(label)}</span>
           ${isFech ? `<span class="badge b-vd" style="font-size:9px">já fechado</span>` : ''}
           <span style="font-size:11px;color:#888">Proposta: <strong>${fmt(valRef)}</strong></span>
         </div>
@@ -2857,7 +2857,7 @@ function _renderFechItens(op) {
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
             <label style="font-size:9px">Observação (opcional)</label>
-            <input type="text" id="fch-obs-p-${p.id}" value="${p.obs||''}"
+            <input type="text" id="fch-obs-p-${p.id}" value="${escAttr(p.obs||'')}"
               placeholder="Ex: desconto negociado, parcela 1..."
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%">
           </div>
@@ -2877,10 +2877,10 @@ function _renderFechItens(op) {
       const incl    = c.incluso_fechamento !== false;
       html += `<div class="fech-row" id="frow-c-${c.id}" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;border-left:3px solid #ddd">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <input type="checkbox" id="fch-incl-c-${c.id}" ${incl?'checked':''} onchange="_fechToggleRow('c','${c.id}',this.checked)"
+          <input type="checkbox" id="fch-incl-c-${c.id}" ${incl?'checked':''} onchange="_fechToggleRow('c','${escJsStr(c.id)}',this.checked)"
             style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
-          <span style="font-size:9px;background:#f0f0f0;padding:1px 6px;border-radius:3px;color:#666;font-weight:600">${tipoLabel}</span>
-          <span style="font-size:12px;font-weight:500;flex:1">${c.descricao||'—'}</span>
+          <span style="font-size:9px;background:#f0f0f0;padding:1px 6px;border-radius:3px;color:#666;font-weight:600">${escHtml(tipoLabel)}</span>
+          <span style="font-size:12px;font-weight:500;flex:1">${escHtml(c.descricao||'—')}</span>
           <span style="font-size:11px;color:#888">Calculado: <strong>${fmt(valRef)}</strong></span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="frow-c-${c.id}-fields">
@@ -2891,7 +2891,7 @@ function _renderFechItens(op) {
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
             <label style="font-size:9px">Observação (opcional)</label>
-            <input type="text" id="fch-obs-c-${c.id}" value="${c.obs_fechamento||''}"
+            <input type="text" id="fch-obs-c-${c.id}" value="${escAttr(c.obs_fechamento||'')}"
               placeholder="Ex: absorvida pelo cliente, cortada..."
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%">
           </div>
@@ -3227,7 +3227,7 @@ function abrirDetail(oppId){
       const codDisp = lp?.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : `#${op.proposta_calc_id}`;
       const verDisp = lp ? _verLabel(lp.version||0) : '';
       return `<div class="dr"><div class="dk">Proposta calc</div><div class="dv" style="font-family:var(--fm);font-size:11px">
-        <span style="font-weight:700">${codDisp}</span>${verDisp?` <span style="color:var(--az);font-weight:700">${verDisp}</span>`:''}
+        <span style="font-weight:700">${escHtml(codDisp)}</span>${verDisp?` <span style="color:var(--az);font-weight:700">${escHtml(verDisp)}</span>`:''}
         <span id="det-calc-info-${oppId}" style="color:#aaa;font-size:10px;margin-left:6px">carregando...</span>
       </div></div>`;
     })():''}
@@ -3236,8 +3236,8 @@ function abrirDetail(oppId){
   html+=`<div class="ms"><div class="ms-title">Cliente e projeto</div>
     <div class="dr"><div class="dk">Cliente</div><div class="dv"><strong>${escHtml(op._cliente?.nome||'—')}</strong></div></div>
     ${op.projeto?`<div class="dr"><div class="dk">Projeto</div><div class="dv">${escHtml(op.projeto)}</div></div>`:''}
-    <div class="dr"><div class="dk">Cidade</div><div class="dv">${op.cidade||'—'}${op.uf?' / '+op.uf:''}</div></div>
-    ${op.origem?`<div class="dr"><div class="dk">Origem</div><div class="dv"><strong>${op.origem}</strong>${op.indicou?' — '+op.indicou:''}</div></div>`:''}
+    <div class="dr"><div class="dk">Cidade</div><div class="dv">${escHtml(op.cidade||'—')}${op.uf?' / '+escHtml(op.uf):''}</div></div>
+    ${op.origem?`<div class="dr"><div class="dk">Origem</div><div class="dv"><strong>${escHtml(op.origem)}</strong>${op.indicou?' — '+escHtml(op.indicou):''}</div></div>`:''}
   </div>`;
 
   // Produtos / Serviços — vínculo direto com exp_proposals (sem copiar para tabela produtos)
@@ -3273,11 +3273,11 @@ function abrirDetail(oppId){
       let acaoBtns='';
       if(canEdit && !_useCalc){
         if(pSt==='ativo')
-          acaoBtns=`<button class="btn sm" onclick="abrirAcaoProd('${p.id}','negociacao')">→ Negociação</button><button class="btn sm tc" onclick="abrirAcaoProd('${p.id}','negado')">✗ Negar</button>`;
+          acaoBtns=`<button class="btn sm" onclick="abrirAcaoProd('${escJsStr(p.id)}','negociacao')">→ Negociação</button><button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','negado')">✗ Negar</button>`;
         else if(pSt==='negociacao'||pSt==='negociação')
-          acaoBtns=`<button class="btn sm verde" onclick="abrirAcaoProd('${p.id}','fechado')">✓ Fechar</button><button class="btn sm tc" onclick="abrirAcaoProd('${p.id}','negado')">✗ Negar</button>`;
+          acaoBtns=`<button class="btn sm verde" onclick="abrirAcaoProd('${escJsStr(p.id)}','fechado')">✓ Fechar</button><button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','negado')">✗ Negar</button>`;
         else if(pSt==='fechado')
-          acaoBtns=`<button class="btn sm tc" onclick="abrirAcaoProd('${p.id}','cancelado')">⊗ Cancelar</button>`;
+          acaoBtns=`<button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','cancelado')">⊗ Cancelar</button>`;
       }
       html+=`<div style="border:1px solid var(--cinza2);padding:8px 12px;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
