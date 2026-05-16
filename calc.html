@@ -1099,21 +1099,11 @@ async function testSupabase() {
     el.style.color = 'var(--tc)';
     setSyncStatus('err');
     return;
-    if (r.ok || r.status===200) {
-      el.innerHTML = '<span style="color:var(--verde)">✓ Conexão OK</span>';
-      setSyncStatus('ok');
-    } else {
-      const txt = await r.text();
-      el.innerHTML = `<span style="color:var(--tc)">Erro ${r.status}: ${txt.slice(0,120)}</span>`;
-      setSyncStatus('err');
-    }
   } catch(e) {
     el.textContent = `Falha de rede: ${e.message}`;
     el.style.color = 'var(--tc)';
     setSyncStatus('err');
     return;
-    el.innerHTML = `<span style="color:var(--tc)">Falha de rede: ${e.message}</span>`;
-    setSyncStatus('err');
   }
 }
 
@@ -1398,8 +1388,6 @@ function buscarCliente(q) {
   let html = matches.map(c => {
     const hi = escHtml(c).replace(rx, '<mark>$1</mark>');
     return `<div class="ac-item" onclick="selecionarCliente('${escJsStr(c)}')">${hi}</div>`;
-    return `<div class="ac-item" onclick="selecionarCliente('${escJsStr(c)}')">🏢 ${hi}</div>`;
-    return `<div class="ac-item" onclick="selecionarCliente('${c.replace(/'/g,"\\'")}')">🏢 ${hi}</div>`;
   }).join('');
   if (!hasExact) html += `<div class="ac-item ac-new" onclick="novoCliente('${escJsStr(q)}')">+ Criar "${escHtml(q)}"</div>`;
   list.innerHTML = html;
@@ -2172,8 +2160,9 @@ function calcResumo() {
     const orig = S.proposals.find(p=>p.id===editingProposalId);
     if (orig) {
       const cod = orig.propCode ? `EXP-${String(orig.propCode).padStart(3,'0')}` : `#${orig.id}`;
+      const projetoOrig = escHtml(orig.projeto||'');
       html += `<div style="background:var(--az-bg);border:1px solid #7AADE8;padding:8px 11px;font-size:11px;color:var(--az);margin-bottom:10px">
-        ✏️ Revisando <strong>${cod}</strong> — ${orig.projeto}. Ao salvar, será criada versão <strong>${_verLabel((orig.version||0)+1)}</strong>.
+        ✏️ Revisando <strong>${cod}</strong> — ${projetoOrig}. Ao salvar, será criada versão <strong>${_verLabel((orig.version||0)+1)}</strong>.
       </div>`;
     }
   }
@@ -2182,13 +2171,14 @@ function calcResumo() {
   if (linkedOppInfo) {
     const allFinal = linkedOppInfo.prods.length > 0 &&
       linkedOppInfo.prods.every(p=>['fechado','negado','cancelado'].includes((p.status||'').toLowerCase()));
+    const projetoVinculado = escHtml(linkedOppInfo.projeto||'');
     const lockBadges = linkedOppInfo.prods.map(p=>{
       const st=(p.status||'').toLowerCase();
       const cor = st==='fechado'?'var(--verde)':st==='negado'?'var(--tc)':st==='cancelado'?'#999':'var(--az)';
-      return `<span style="font-size:9px;font-weight:600;color:${cor};background:${cor}18;padding:2px 6px">${p.nucleo} · ${p.status}</span>`;
+      return `<span style="font-size:9px;font-weight:600;color:${cor};background:${cor}18;padding:2px 6px">${escHtml(p.nucleo||'')} · ${escHtml(p.status||'')}</span>`;
     }).join(' ');
     html += `<div style="background:#FFF8EE;border:1px solid #E8C07A;padding:8px 11px;font-size:11px;color:#7A5200;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap">
-      <div style="flex:1">🔗 <strong>CRM vinculado:</strong> ${linkedOppInfo.projeto}
+      <div style="flex:1">🔗 <strong>CRM vinculado:</strong> ${projetoVinculado}
         ${lockBadges?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${lockBadges}</div>`:''}
         ${allFinal?`<div style="margin-top:4px;font-weight:600;color:var(--tc)">⚠ Proposta inteiramente travada.</div>`:''}
       </div>
@@ -2213,6 +2203,9 @@ function calcResumo() {
       ${its.map(it=>{
         const disp = it.valorProposto!==null?it.valorProposto:it.valorCalc;
         const isEd = it.valorProposto!==null;
+        const subLabelDisp = escHtml(it.subLabel||'');
+        const itemIdDisp = escHtml(it.id||'');
+        const itemDescDisp = escHtml(it.desc||'');
         let detail='—';
         if(it.mode==='calc'){
           if(it.subK==='PAIS_ARB') detail=`${(+it.area).toLocaleString('pt-BR')} m² SV`;
@@ -2224,9 +2217,9 @@ function calcResumo() {
         else detail='valor livre';
         return`<div class="rg-item">
           <div>
-            <span class="badge ${NBADGE[nuc]}" style="font-size:8px">${it.subLabel}</span>
-            ${it.id?`<span style="font-size:10px;color:#888;margin-left:4px">${it.id}</span>`:''}
-            ${it.desc?`<span style="font-size:10px;color:#888;margin-left:4px">${it.desc}</span>`:''}
+            <span class="badge ${NBADGE[nuc]}" style="font-size:8px">${subLabelDisp}</span>
+            ${it.id?`<span style="font-size:10px;color:#888;margin-left:4px">${itemIdDisp}</span>`:''}
+            ${it.desc?`<span style="font-size:10px;color:#888;margin-left:4px">${itemDescDisp}</span>`:''}
             ${isEd?`<span style="font-size:9px;color:var(--verde);margin-left:4px">✓ editado</span>`:''}
           </div>
           <div style="font-size:10px;color:#888">${detail}</div>
@@ -2285,6 +2278,7 @@ function calcResumo() {
 
   // REPASSE
   if (rep) {
+    const repNome = escHtml(rep.nome||'');
     html+=`<div class="rg">
       <div class="rg-head">
         <div class="rg-stripe" style="background:var(--am)"></div>
@@ -2293,7 +2287,7 @@ function calcResumo() {
       </div>
       <div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px;display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:11px;font-weight:600">${rep.nome}</div>
+          <div style="font-size:11px;font-weight:600">${repNome}</div>
           <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
@@ -2943,14 +2937,15 @@ function renderHist() {
         const famIndicator = (famSize > 1 && isLatest)
           ? `<span style="font-size:8px;background:#e8f0fb;color:var(--az);padding:1px 5px;border-radius:3px;font-weight:700">${famSize}v</span>`
           : '';
-        p = {...p, cliente: escHtml(p.cliente||'â€”'), resp: escHtml(RESP_LABEL[p.resp]||p.resp||'â€”')};
+        const clienteDisp = escHtml(p.cliente||'');
+        const respDisp = escHtml(RESP_LABEL[p.resp]||p.resp||'');
         return `<tr class="click" style="${rowStyle}" onclick="abrirProposta(${p.id})">
           <td>${cod} ${famIndicator}</td>
           <td>${versBadge}</td>
-          <td style="font-weight:500">${p.cliente||'—'}</td>
+          <td style="font-weight:500">${clienteDisp||'—'}</td>
           <td>${escHtml(p.projeto||'')}</td>
           <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${escHtml(NC[p.mainNucleo]||p.mainNucleo||'')}</span></td>
-          <td>${RESP_LABEL[p.resp]||p.resp||'—'}</td>
+          <td>${respDisp||'—'}</td>
           <td style="font-size:10px">${escHtml(p.cidade||'')}${p.uf?' ('+escHtml(p.uf)+')':''}</td>
           <td style="font-size:10px">${fmtD(p.data)}</td>
           <td style="font-weight:700;font-family:var(--fm)">${fmt(p.total)}</td>
@@ -2994,28 +2989,35 @@ function abrirProposta(id) {
   let html = '';
 
   // Info
+  const clienteDetail = escHtml(p.cliente||'');
+  const respDetail = escHtml(RESP_LABEL[p.resp]||p.resp||'');
+  const cidadeDetail = escHtml(p.cidade||'');
+  const ufDetail = escHtml(p.uf||'');
   html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cliente</div><div style="font-weight:600">${p.cliente||'—'}</div></div>
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Responsável</div><div>${p.resp||'—'}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cliente</div><div style="font-weight:600">${clienteDetail||'—'}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Responsável</div><div>${respDetail||'—'}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Data</div><div>${fmtD(p.data)}</div></div>
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cidade</div><div>${p.cidade||'—'}${p.uf?' ('+p.uf+')':''}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cidade</div><div>${cidadeDetail||'—'}${p.uf?' ('+ufDetail+')':''}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Total</div><div style="font-size:16px;font-weight:700;font-family:var(--fm)">${fmt(p.total)}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Versão</div><div><span style="font-weight:700;color:var(--az)">${_verLabel(p.version||0)}</span></div></div>
   </div>`;
 
   if (p.obs) {
-    html += `<div style="background:var(--cinza2);padding:8px 11px;font-size:11px;color:#666;margin-bottom:12px">${p.obs}</div>`;
+    html += `<div style="background:var(--cinza2);padding:8px 11px;font-size:11px;color:#666;margin-bottom:12px">${escHtml(p.obs)}</div>`;
   }
 
   // Itens
   html += `<div class="sec">Serviços</div>`;
   (p.items||[]).forEach(it=>{
     const disp = it.valorProposto!==null?it.valorProposto:it.valorCalc;
+    const subLabelDisp = escHtml(it.subLabel||'');
+    const itemDescDisp = escHtml(it.desc||'');
+    const itemIdDisp = escHtml(it.id||'');
     html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
       <div>
-        <span class="badge ${NBADGE[it.nucleo]}">${it.subLabel}</span>
-        ${it.desc?`<span style="color:#888;margin-left:5px">${it.desc}</span>`:''}
-        ${it.id?`<span style="color:#888;margin-left:5px">${it.id}</span>`:''}
+        <span class="badge ${NBADGE[it.nucleo]}">${subLabelDisp}</span>
+        ${it.desc?`<span style="color:#888;margin-left:5px">${itemDescDisp}</span>`:''}
+        ${it.id?`<span style="color:#888;margin-left:5px">${itemIdDisp}</span>`:''}
       </div>
       <div style="font-weight:700;font-family:var(--fm)">${fmt(disp)}</div>
     </div>`;
@@ -3025,8 +3027,10 @@ function abrirProposta(id) {
   if ((p.subs||[]).length) {
     html += `<div class="sec" style="margin-top:10px">Subcontratações</div>`;
     p.subs.forEach(sc=>{
+      const servDisp = escHtml(sc.serv||'');
+      const empDisp = escHtml(sc.emp||'');
       html += `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
-        <div>${sc.serv} <span style="color:#888">· ${sc.emp}</span></div>
+        <div>${servDisp} <span style="color:#888">· ${empDisp}</span></div>
         <div style="font-weight:700;color:var(--tc)">${fmt(sc.valComBit)}</div>
       </div>`;
     });
@@ -3204,7 +3208,7 @@ function renderParams() {
     `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
       <span style="color:#888">${fmtM(h.mes)}</span>
       <span style="font-family:var(--fm);font-weight:700;color:var(--am)">${fmt(h.val)}</span>
-      <span style="color:#bbb;font-size:10px">${h.by} · ${h.at?.slice(0,10)||''}</span>
+      <span style="color:#bbb;font-size:10px">${h.by} · ${h.at||''}</span>
     </div>`
   ).join('') || '<div class="empty">Nenhum registro</div>';
 
@@ -3212,7 +3216,7 @@ function renderParams() {
   const fRow=(f,tipo,i)=>`<div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--cinza2)">
     <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);background:#f5f5f5;color:#888" type="text" value="${i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':S['f'+tipo][i-1]?.max??0)}" placeholder="0" readonly tabindex="-1">
     <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="number" value="${f.max===null?'':f.max||0}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="text" value="${f.label}" onchange="S.f${tipo}[${i}].label=this.value">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="text" value="${escHtml(f.label)}" onchange="S.f${tipo}[${i}].label=this.value">
     <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--fm)" type="number" step="0.00001" value="${f.mult}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
     <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">✕</button>
   </div>`;

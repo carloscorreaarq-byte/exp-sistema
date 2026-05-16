@@ -4016,17 +4016,26 @@ function renderDashProjetos(prods, horasPorProd = {}) {
 
     const hReal = horasPorProd[p.id] || 0;
     const hStr = hReal > 0 ? fmtH(hReal) : null;
+    const produtoIdJs = _sqN(p.id);
+    const etapaIdJs = etapaAtiva ? _sqN(etapaAtiva.id) : null;
+    const projetoDisp = _escN(opp?.projeto || p.nome);
+    const clienteDisp = _escN(cli?.nome || '—');
+    const produtoDisp = _escN(p.nome || '');
+    const coordNomeDisp = _escN(coord?.nome || '');
+    const coordIniciaisDisp = _escN(coord?.iniciais || '');
+    const etapaNomeDisp = _escN(etapaAtiva?.nome || '');
+    const nucleoLabelDisp = _escN(nc.label);
 
-    return `<div class="proj-card n-${nucleo}" onclick="abrirProduto('${p.id}')">
+    return `<div class="proj-card n-${nucleo}" onclick="abrirProduto(${produtoIdJs})">
       <div class="proj-card-top">
         <div>
-          <div class="proj-card-nome">${opp?.projeto || p.nome}</div>
-          <div class="proj-card-cliente">${p.nome} · ${cli?.nome || '—'}</div>
+          <div class="proj-card-nome">${projetoDisp}</div>
+          <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
         </div>
-        <span class="badge ${nc.cls}">${nc.label}</span>
+        <span class="badge ${nc.cls}">${nucleoLabelDisp}</span>
       </div>
       <div class="proj-card-mid">
-        ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaAtiva.nome}</span>` : ''}
+        ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
         ${dataChip(etapaAtiva?.data_estimada)}
       </div>
       ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 2px;font-size:10px;color:#888">
@@ -4035,11 +4044,11 @@ function renderDashProjetos(prods, horasPorProd = {}) {
       </div>` : ''}
       <div class="proj-card-bot">
         <div class="proj-card-avs">
-          ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coord.nome}">${coord.iniciais}</div>` : ''}
+          ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : ''}
         </div>
         <div class="proj-card-acoes" onclick="event.stopPropagation()">
-          ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao('${etapaAtiva.id}')">Solicitar revisão</button>` : ''}
-          ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa('${etapaAtiva.id}')">Concluir etapa</button>` : ''}
+          ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao(${etapaIdJs})">Solicitar revisão</button>` : ''}
+          ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -4067,16 +4076,23 @@ function renderDashCoord(prods, horasPorProd = {}) {
     const emRevisao = G.todasEtapas.filter(e => e.produto_id === p.id && e.status === 'em_revisao').length;
     const hReal = horasPorProd[p.id] || 0;
     const hStr = hReal > 0 ? fmtH(hReal) : null;
-    return `<div class="proj-card n-${nucleo}" onclick="abrirProduto('${p.id}')">
+    const produtoIdJs = _sqN(p.id);
+    const etapaIdJs = etapaAtiva ? _sqN(etapaAtiva.id) : null;
+    const projetoDisp = _escN(opp?.projeto || p.nome);
+    const clienteDisp = _escN(cli?.nome || '—');
+    const produtoDisp = _escN(p.nome || '');
+    const etapaNomeDisp = _escN(etapaAtiva?.nome || '');
+    const nucleoLabelDisp = _escN(nc.label);
+    return `<div class="proj-card n-${nucleo}" onclick="abrirProduto(${produtoIdJs})">
       <div class="proj-card-top">
         <div>
-          <div class="proj-card-nome">${opp?.projeto || p.nome}</div>
-          <div class="proj-card-cliente">${p.nome} · ${cli?.nome || '—'}</div>
+          <div class="proj-card-nome">${projetoDisp}</div>
+          <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
         </div>
-        <span class="badge ${nc.cls}">${nc.label}</span>
+        <span class="badge ${nc.cls}">${nucleoLabelDisp}</span>
       </div>
       <div class="proj-card-mid">
-        ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaAtiva.nome}</span>` : ''}
+        ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
         ${emRevisao ? `<span class="badge b-am">${emRevisao} em revisão</span>` : ''}
         ${dataChip(etapaAtiva?.data_estimada)}
       </div>
@@ -4087,7 +4103,7 @@ function renderDashCoord(prods, horasPorProd = {}) {
       <div class="proj-card-bot">
         <div class="proj-card-avs"></div>
         <div class="proj-card-acoes" onclick="event.stopPropagation()">
-          ${etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa('${etapaAtiva.id}')">Concluir etapa</button>` : ''}
+          ${etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
         </div>
       </div>
     </div>`;
