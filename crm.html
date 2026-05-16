@@ -3503,7 +3503,7 @@ function renderFechamentos(){
     ? tiposSorted.map(([t,{v,n}])=>`
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-          <span style="font-weight:500">${t}</span>
+          <span style="font-weight:500">${escHtml(t)}</span>
           <span style="font-family:var(--fm);font-size:10px">${fmt(v)} <span style="color:#aaa">(${Math.round(v/totalEf*100)}% · ${n} proj.)</span></span>
         </div>
         <div style="height:5px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(v/totalEf*100)}%;background:${CHART_CORES[t]||'var(--verde)'}"></div></div>
@@ -3520,7 +3520,7 @@ function renderFechamentos(){
   document.getElementById('fech-por-nucleo').innerHTML = Object.entries(nucMap).sort((a,b)=>b[1]-a[1])
     .map(([n,c])=>`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <div style="font-size:11px;flex:1">${n}</div>
+        <div style="font-size:11px;flex:1">${escHtml(n)}</div>
         <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(c/maxN*100)}%;background:${CHART_CORES[n]||'var(--verde)'}"></div></div>
         <div style="font-size:11px;font-weight:700;font-family:var(--fm);min-width:20px;text-align:right">${c}</div>
       </div>`).join('') || '<div class="empty-note">—</div>';
@@ -3589,7 +3589,7 @@ function renderNegativas(){
     ? catSorted.map(([cat,n],i)=>`
       <div style="margin-bottom:9px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-          <span>${cat}</span><span style="font-family:var(--fm);font-size:10px;font-weight:700">${n}</span>
+          <span>${escHtml(cat)}</span><span style="font-family:var(--fm);font-size:10px;font-weight:700">${n}</span>
         </div>
         <div style="height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(n/maxCat*100)}%;background:${catCores[i%catCores.length]}"></div></div>
       </div>`).join('')
@@ -3605,7 +3605,7 @@ function renderNegativas(){
   document.getElementById('neg-por-nucleo').innerHTML = Object.entries(nucNeg).sort((a,b)=>b[1]-a[1])
     .map(([n,c])=>`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <div style="font-size:11px;flex:1">${n}</div>
+        <div style="font-size:11px;flex:1">${escHtml(n)}</div>
         <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(c/maxNuc*100)}%;background:var(--tc)"></div></div>
         <div style="font-size:11px;font-weight:700;font-family:var(--fm);min-width:20px;text-align:right">${c}</div>
       </div>`).join('') || '<div class="empty-note">—</div>';
@@ -3623,9 +3623,9 @@ function renderNegativas(){
           <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
           <td>${respBadge(o.resp_id)}</td>
           <td class="dtag">${fmtD(o.updated_at)}</td>
-          <td>${p?.motivo_categoria?`<span class="badge b-tc">${normNegCat(p.motivo_categoria)}</span>`:'<span style="color:#aaa;font-size:10px">—</span>'}</td>
+          <td>${p?.motivo_categoria?`<span class="badge b-tc">${escHtml(normNegCat(p.motivo_categoria))}</span>`:'<span style="color:#aaa;font-size:10px">—</span>'}</td>
           <td style="font-size:10px;color:#888;max-width:180px;white-space:normal">${escHtml(p?.motivo_negativa||'—')}</td>
-          <td>${p?.prob_retorno?`<span class="badge ${p.prob_retorno==='Alta'?'b-vd':p.prob_retorno==='Média'?'b-am':'b-gr'}">${p.prob_retorno}</span>`:'—'}</td>
+          <td>${p?.prob_retorno?`<span class="badge ${p.prob_retorno==='Alta'?'b-vd':p.prob_retorno==='Média'?'b-am':'b-gr'}">${escHtml(p.prob_retorno)}</span>`:'—'}</td>
           <td style="font-family:var(--fm);color:var(--tc)">${fmt(oppValorEfetivo(o,false))}</td>
         </tr>`;
       }).join('')
@@ -3853,7 +3853,7 @@ function _renderAlcanceMap(groupArr){
 
     dot.addEventListener('mouseenter',()=>{
       tip.style.display='block';
-      tip.innerHTML=`<strong>${g.cidade}${g.uf?', '+g.uf:''}</strong><br>${cnt} oportunidade${cnt!==1?'s':''}`;
+      tip.innerHTML=`<strong>${escHtml(g.cidade)}${g.uf?', '+escHtml(g.uf):''}</strong><br>${cnt} oportunidade${cnt!==1?'s':''}`;
     });
     dot.addEventListener('mousemove',e=>{
       tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
@@ -3884,7 +3884,7 @@ function _renderAlcanceList(sorted){
     ? sorted.map((g,i)=>`
       <div class="alc-city-card" onclick="_alcanceDrillCity(_alcGroups[${i}])">
         <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <div style="font-weight:600;font-size:11px">${g.cidade}${g.uf?' <span style="color:#aaa;font-weight:400">· '+g.uf+'</span>':''}</div>
+          <div style="font-weight:600;font-size:11px">${escHtml(g.cidade)}${g.uf?` <span style="color:#aaa;font-weight:400">· ${escHtml(g.uf)}</span>`:''}</div>
           <div style="font-size:10px;font-family:var(--fm);color:#888">${g.ops.length}</div>
         </div>
       </div>`).join('')
@@ -3969,7 +3969,7 @@ function renderRelatorios(){
         const u=allUsers[uid]||{};
         return`<div style="margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-            <span style="display:flex;align-items:center;gap:6px">${respAvatar(uid,18)}<strong>${u.nome?.split(' ')[0]||'?'}</strong> <span style="color:#aaa">${n} proj.</span></span>
+            <span style="display:flex;align-items:center;gap:6px">${respAvatar(uid,18)}<strong>${escHtml(u.nome?.split(' ')[0]||'?')}</strong> <span style="color:#aaa">${n} proj.</span></span>
             <span style="font-family:var(--fm);font-size:10px;color:var(--az)">${fmt(efetivo)}</span>
           </div>
           <div style="height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(efetivo/maxResp*100)}%;background:${u.cor||'var(--verde)'}"></div></div>
