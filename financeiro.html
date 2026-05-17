@@ -2645,7 +2645,7 @@ async function carregarPlanoContas() {
   // popular selects
   const selects = ['lanc-plano', 'sub-grupo'];
   const planOpt = G.planoContas.map(pc =>
-    `<option value="${pc.id}">${pc.grupo} · ${pc.subconta}</option>`
+    `<option value="${_finAttr(pc.id)}">${_finEsc(pc.grupo)} · ${_finEsc(pc.subconta)}</option>`
   ).join('');
   ['lanc-plano','rec-plano'].forEach(sid => {
     const el = document.getElementById(sid);
@@ -2655,14 +2655,14 @@ async function carregarPlanoContas() {
   const gps = [...new Set(G.planoContas.map(p => p.grupo))];
   const gpSel = document.getElementById('lanc-grupo');
   if (gpSel) gpSel.innerHTML = '<option value="">Todos os grupos</option>' +
-    gps.map(g => `<option value="${g}">${g.replace(/_/g,' ')}</option>`).join('');
+    gps.map(g => `<option value="${_finAttr(g)}">${_finEsc((g || '').replace(/_/g,' '))}</option>`).join('');
 }
 
 async function carregarContasBancarias() {
   const { data } = await sb.from('fin_contas_bancarias')
     .select('*').eq('ativo', true).order('ordem');
   G.contasBancarias = data || [];
-  const opts = G.contasBancarias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  const opts = G.contasBancarias.map(c => `<option value="${_finAttr(c.id)}">${_finEsc(c.nome)}</option>`).join('');
   const blank = '<option value="">Selecione…</option>';
   ['lanc-conta-bancaria','concil-conta','rec-conta'].forEach(id => {
     const el = document.getElementById(id);
@@ -2679,7 +2679,7 @@ function initDashSelects() {
   const mes = document.getElementById('dash-mes');
   const ano = document.getElementById('dash-ano');
   if (!mes) return;
-  mes.innerHTML = MESES_FULL.map((m, i) => `<option value="${i+1}">${m}</option>`).join('');
+  mes.innerHTML = MESES_FULL.map((m, i) => `<option value="${_finAttr(i+1)}">${_finEsc(m)}</option>`).join('');
   const now = new Date();
   mes.value = now.getMonth() + 1;
   for (let y = now.getFullYear(); y >= 2024; y--) {
@@ -3264,7 +3264,7 @@ function confirmarPagamento(id) {
   const sel = document.getElementById('pgto-conta');
   sel.innerHTML = '<option value="">Sem vínculo de conta</option>' +
     (G.contasBancarias || []).map(c =>
-      `<option value="${c.id}">${c.nome}</option>`
+      `<option value="${_finAttr(c.id)}">${_finEsc(c.nome)}</option>`
     ).join('');
 
   abrirModal('modal-confirmar-pgto');
@@ -3374,7 +3374,7 @@ async function carregarLancamentos() {
   const meses = [...new Set(G.lancamentos.map(l => l.mes_ano_competencia).filter(Boolean))].sort().reverse();
   const sel = document.getElementById('lanc-mes');
   if (sel) sel.innerHTML = '<option value="">Todos os meses</option>' +
-    meses.map(m => `<option value="${m}">${m.slice(0,2)}/${m.slice(2)}</option>`).join('');
+    meses.map(m => `<option value="${_finAttr(m)}">${_finEsc(m.slice(0,2) + '/' + m.slice(2))}</option>`).join('');
   filtrarLancamentos();
 }
 
@@ -4777,7 +4777,7 @@ function renderDRE() {
             ? `<td class="col-total" style="text-align:right">${dreV(subTot.proj)}</td><td class="col-desvio" style="text-align:right">${dreDesvio(subTot.real, subTot.proj, 1)}</td>`
             : '';
           rows += `<tr style="font-size:10px;color:#666">
-            <td class="dre-label-click" style="padding-left:36px" onclick="dreDD(${ddSubIdx})">${sub.subconta}<span class="dre-dd-hint">↗</span></td>
+            <td class="dre-label-click" style="padding-left:36px" onclick="dreDD(${ddSubIdx})">${_finEsc(sub.subconta)}<span class="dre-dd-hint">↗</span></td>
             ${subTdCols}
             <td class="col-total dre-cell-click" onclick="dreDD(${ddSubIdx})">${dreV(subTot.real)}</td>
             ${subDesvio}

@@ -1430,13 +1430,13 @@ function buildSubSelects() {
 
   if (n === 'URB' || n === 'CONSUL' || n === 'ESP') {
     l1.textContent = 'Subtipo';
-    s1.innerHTML = Object.keys(data).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
+    s1.innerHTML = Object.keys(data).map(k=>`<option value="${escAttr(k)}">${escHtml(k)}</option>`).join('');
     g2.style.display = 'none';
     if (gs) gs.style.gridTemplateColumns = '1fr';
     updateItemForm();
   } else {
     l1.textContent = 'Tipo';
-    s1.innerHTML = Object.keys(data).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
+    s1.innerHTML = Object.keys(data).map(k=>`<option value="${escAttr(k)}">${escHtml(k)}</option>`).join('');
     g2.style.display = '';
     if (gs) gs.style.gridTemplateColumns = '1fr 1fr';
     updateSub2();
@@ -1449,7 +1449,7 @@ function updateSub2() {
   const tipo = document.getElementById('i-sub1').value;
   const subs = SUBS.PAIS[tipo] || {};
   const s2 = document.getElementById('i-sub2');
-  s2.innerHTML = Object.keys(subs).map(k=>`<option value="${escHtml(k)}">${escHtml(k)}</option>`).join('');
+  s2.innerHTML = Object.keys(subs).map(k=>`<option value="${escAttr(k)}">${escHtml(k)}</option>`).join('');
   updateItemForm();
 }
 
@@ -2009,13 +2009,13 @@ function renderDesps() {
 
     if (d.tipo==='alim') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}"
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
           oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Pessoas por diária</label><input type="number" min="1" value="${d.pessoas||1}"
+        <div class="fgroup"><label>Pessoas por diária</label><input type="number" min="1" value="${escAttr(d.pessoas||1)}"
           oninput="setDesp(${d.id},'pessoas',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor diário/pessoa (R$)</label><input type="number" min="0" step="5" value="${d.valorDiario||80}"
+        <div class="fgroup"><label>Valor diário/pessoa (R$)</label><input type="number" min="0" step="5" value="${escAttr(d.valorDiario||80)}"
           oninput="setDesp(${d.id},'valorDiario',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
@@ -2023,21 +2023,21 @@ function renderDesps() {
     }
     if (d.tipo==='carro') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}"
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
           oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor diária c/ seguro (R$)</label><input type="number" min="0" step="10" value="${d.valorDiaria||180}"
+        <div class="fgroup"><label>Valor diária c/ seguro (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.valorDiaria||180)}"
           oninput="setDesp(${d.id},'valorDiaria',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Km rodados</label><input type="number" min="0" value="${d.km||0}"
+        <div class="fgroup"><label>Km rodados</label><input type="number" min="0" value="${escAttr(d.km||0)}"
           oninput="setDesp(${d.id},'km',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
       <div class="fg fg3 mb8">
-        <div class="fgroup"><label>Consumo (km/l)</label><input type="number" min=".1" step=".5" value="${d.kml||10}"
+        <div class="fgroup"><label>Consumo (km/l)</label><input type="number" min=".1" step=".5" value="${escAttr(d.kml||10)}"
           oninput="setDesp(${d.id},'kml',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor/litro (R$)</label><input type="number" min="0" step=".05" value="${d.vl||6.20}"
+        <div class="fgroup"><label>Valor/litro (R$)</label><input type="number" min="0" step=".05" value="${escAttr(d.vl||6.20)}"
           oninput="setDesp(${d.id},'vl',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
         <div class="fgroup"><label>Trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Floripa → Pelotas" oninput="setDesp(${d.id},'desc',this.value)"></div>
@@ -2045,7 +2045,7 @@ function renderDesps() {
     }
     if (d.tipo==='translado') {
       body=`<div class="fg fg2">
-        <div class="fgroup"><label>Valor total estimado (R$)</label><input type="number" min="0" step="10" value="${d.vt||0}"
+        <div class="fgroup"><label>Valor total estimado (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.vt||0)}"
           oninput="setDesp(${d.id},'vt',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
         <div class="fgroup"><label>Descrição / trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Ubers — São Raimundo Nonato, 4 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>
@@ -2054,10 +2054,10 @@ function renderDesps() {
     if (d.tipo==='hotel') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
         <div class="fgroup"><label>Cidade</label><input type="text" value="${escAttr(d.cidade||'')}" placeholder="Ex: São Paulo" oninput="setDesp(${d.id},'cidade',this.value)"></div>
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}"
+        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
           oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor/diária (R$)</label><input type="number" min="0" step="10" value="${d.valorDiaria||180}"
+        <div class="fgroup"><label>Valor/diária (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.valorDiaria||180)}"
           oninput="setDesp(${d.id},'valorDiaria',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
@@ -2075,7 +2075,7 @@ function renderDesps() {
             <option value="${escAttr('outro')}" ${d.meio==='outro'?'selected':''}>Outro</option>
           </select>
         </div>
-        <div class="fgroup"><label>Valor (R$)</label><input type="number" min="0" step="10" value="${d.val||0}"
+        <div class="fgroup"><label>Valor (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.val||0)}"
           oninput="setDesp(${d.id},'val',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
@@ -2084,13 +2084,13 @@ function renderDesps() {
     if (d.tipo==='horasTec') {
       body=`<div style="font-size:9px;color:var(--verde);font-weight:600;margin-bottom:6px;letter-spacing:.3px">↳ Valor entra como Ganho EXP (não repassa ao cliente)</div>
       <div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Dias</label><input type="number" min="1" value="${d.dias||1}"
+        <div class="fgroup"><label>Dias</label><input type="number" min="1" value="${escAttr(d.dias||1)}"
           oninput="setDesp(${d.id},'dias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Horas/dia</label><input type="number" min="0.5" step="0.5" value="${d.horasDia||8}"
+        <div class="fgroup"><label>Horas/dia</label><input type="number" min="0.5" step="0.5" value="${escAttr(d.horasDia||8)}"
           oninput="setDesp(${d.id},'horasDia',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor/hora (R$)</label><input type="number" min="0" step="10" value="${d.valorHora||150}"
+        <div class="fgroup"><label>Valor/hora (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.valorHora||150)}"
           oninput="setDesp(${d.id},'valorHora',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
