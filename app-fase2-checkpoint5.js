@@ -13,6 +13,7 @@
   ];
 
   let platformUsersCache = [];
+  let platformTermosCache = {};
   let pendingAvatarUserId = null;
   let meusDadosDirty = false;
   let plataformaDirty = false;
@@ -498,6 +499,17 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     return role || 'sem role';
   }
 
+  function termStatusLabel(termo) {
+    const status = String(termo?.status_termo || 'pending').toLowerCase();
+    if (status === 'signed') {
+      return termo?.expira_em
+        ? 'Assinado · validade ate ' + (formatPtDate(termo.expira_em) || '-')
+        : 'Assinado';
+    }
+    if (status === 'expired') return 'Vencido';
+    return 'Pendente';
+  }
+
   const baseFetchCurrentUsuario = window.fetchCurrentUsuario;
   if (typeof baseFetchCurrentUsuario === 'function') {
     window.fetchCurrentUsuario = async function fetchCurrentUsuarioWithTerm(authId) {
@@ -763,6 +775,28 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       : (user.iniciais || initialsFromNome(user.nome));
   }
 
+  async function carregarTermosUsuariosPlataforma(userIds) {
+    platformTermosCache = {};
+    if (!userIds || !userIds.length) return;
+    let data = null;
+    let error = null;
+    try {
+      ({ data, error } = await window.sb
+        .from('usuarios_termos_compromisso')
+        .select('id, usuario_id, versao_termo, status_termo, assinado_em, expira_em, created_at')
+        .in('usuario_id', userIds)
+        .order('created_at', { ascending: false }));
+    } catch (caughtError) {
+      error = caughtError;
+    }
+    if (error || !data) return;
+    data.forEach((row) => {
+      if (!platformTermosCache[row.usuario_id]) {
+        platformTermosCache[row.usuario_id] = normalizeTermoStatus(row);
+      }
+    });
+  }
+
   function renderPlatformUsersList(users) {
     const wrap = document.getElementById('platform-users-list');
     if (!wrap) return;
@@ -772,10 +806,11 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     }
     wrap.innerHTML = users.map((user) => {
       const current = currentSessionUsuario()?.app_user_id === user.id;
+      const termo = platformTermosCache[user.id] || null;
       return '<div class="platform-user-row">'
         + '<div class="platform-user-avatar" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
         + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' · ' + roleLabel(user.role) + '</span></div>'
-        + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'nao') + '</div>'
+        + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'nao') + '</div>'
         + '<div class="platform-inline">'
         + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
         + '<option value="colaborador"' + (user.role === 'colaborador' ? ' selected' : '') + '>Colaborador</option>'
@@ -788,6 +823,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
         + '</select></div>'
         + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label><button type="button" class="shell-btn" onclick="subirAvatarPlataforma(\'' + user.id + '\')">Avatar</button>' + (current ? '<span class="platform-user-meta">usuário atual</span>' : '') + '</div>'
+        + '<div class="platform-inline"><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
         + '</div>';
     }).join('');
   }
@@ -805,6 +841,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       return;
     }
     platformUsersCache = data || [];
+    await carregarTermosUsuariosPlataforma(platformUsersCache.map((user) => user.id));
     renderPlatformUsersList(platformUsersCache);
     setPlataformaStatus('Lista de usuarios carregada.');
   }
@@ -949,6 +986,39 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     renderTermText();
     setPlataformaDirty(false);
     setPlataformaStatus('Definicao do termo atualizada.');
+  };
+
+  window.resetarTermoPlataforma = async function resetarTermoPlataforma(userId) {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
+      return;
+    }
+    setPlataformaStatus('Resetando ciclo do termo...');
+    const termoAtual = await fetchLatestTermo(userId);
+    const payload = {
+      usuario_id: userId,
+      versao_termo: currentTermDefinition.versao_termo,
+      status_termo: 'pending',
+      assinado_em: null,
+      expira_em: null,
+      resetado_em: isoNow(),
+      resetado_por: sessionUser.app_user_id || null,
+      motivo_reset: 'Reset administrativo pela Gestao de plataforma'
+    };
+    const { error } = termoAtual?.id
+      ? await window.sb.from('usuarios_termos_compromisso').update(payload).eq('id', termoAtual.id)
+      : await window.sb.from('usuarios_termos_compromisso').insert(payload);
+    if (error) {
+      setPlataformaStatus('Nao foi possivel resetar o termo deste usuario.');
+      return;
+    }
+    await registrarAuditoriaPlataforma('termo.resetado', userId, { versao_termo: currentTermDefinition.versao_termo });
+    if (String(currentSessionUsuario()?.app_user_id || '') === String(userId)) {
+      await syncCurrentTermState();
+    }
+    await carregarUsuariosPlataforma();
+    setPlataformaStatus('Ciclo do termo resetado com sucesso.');
   };
 
   window.fecharGestaoPlataforma = function fecharGestaoPlataforma(event) {
