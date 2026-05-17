@@ -557,6 +557,11 @@ async function init() {
 
   // Detecta link de recuperação de senha (Supabase envia #type=recovery na URL)
   sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT') {
+      sessionStorage.removeItem('exp_usuario');
+      showPanel('form-login');
+      return;
+    }
     if (event === 'PASSWORD_RECOVERY') {
       // Oculta tudo e mostra painel de nova senha
       document.getElementById('form-login').style.display       = 'none';

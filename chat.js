@@ -180,7 +180,10 @@
   ══════════════════════════════════════════════════════════════════ */
   function init() {
     var raw = sessionStorage.getItem('exp_usuario');
-    if (!raw) return;
+    if (!raw) {
+      window.addEventListener('exp:session-ready', onSessionReady, { once: true });
+      return;
+    }
     try { user = JSON.parse(raw); } catch (e) { return; }
     if (!user || !user.nome) return;
     if (!user.auth_id) user.auth_id = user.id || null;
@@ -195,6 +198,14 @@
       if (!r.data || !r.data.session) return;
       mountWidget();
     });
+  }
+
+  function onSessionReady(ev) {
+    if (ev && ev.detail) {
+      user = ev.detail;
+      if (!user.apelido) user.apelido = (user.nome || '').split(' ')[0] || '';
+    }
+    init();
   }
 
   /* ══════════════════════════════════════════════════════════════════

@@ -536,3 +536,544 @@ input[type="checkbox"].exp-cb-sm::after {
 [data-theme="dark"] .exp-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%233E3E3C' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
+
+
+/* ═══════════════════════════════════════════
+   COMPONENTE — NAV
+   Barra de navegação principal, sticky, 46px.
+   Elementos opcionais marcados abaixo.
+
+   HTML canônico:
+   ┌──────────────────────────────────────────┐
+   │<nav class="nav">                         │
+   │  <a href="app.html" class="nav-brand">   │
+   │    <img src="exp.png" style="height:20px;width:auto;display:block"> │
+   │  </a>                                    │
+   │  <div class="nav-sep"></div>             │
+   │                                          │
+   │  <!-- Seletor de módulo -->              │
+   │  <div class="nav-mod-wrap" id="nav-mod-wrap"> │
+   │    <button class="nav-lbl-btn" onclick="toggleNavDropdown()"> │
+   │      EXP.modulo <span>▾</span>          │
+   │    </button>                             │
+   │    <div class="nav-dropdown" id="nav-dropdown"> │
+   │      <a href="gestao.html">EXP.projetos</a> │
+   │      <a href="apoio.html">EXP.apoio</a> │
+   │      <a href="contatos.html">EXP.contatos</a> │
+   │      <div class="nd-sep nd-soc" style="display:none"></div> │
+   │      <a href="calc.html"       class="nd-soc" style="display:none">EXP.calc</a> │
+   │      <a href="crm.html"        class="nd-soc" style="display:none">EXP.comercial</a> │
+   │      <a href="financeiro.html" class="nd-soc nd-active" style="display:none">EXP.financeiro</a> │
+   │    </div>                                │
+   │  </div>                                  │
+   │                                          │
+   │  <!-- Tabs (omitir se módulo usa sidebar) --> │
+   │  <div class="nav-tabs">                  │
+   │    <button class="ntab active" data-tab="x">Tab</button> │
+   │  </div>                                  │
+   │                                          │
+   │  <div class="nav-right">                 │
+   │    <div class="conn-dot" id="conn-dot"></div> │
+   │                                          │
+   │    <!-- EXP Room (opcional) -->          │
+   │    <a href="https://..." target="_blank" class="exp-room-btn" title="EXP Room">📹</a> │
+   │                                          │
+   │    <!-- Notificações (opcional) -->      │
+   │    <div class="notif-wrap" id="notif-wrap"> │
+   │      <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()"> │
+   │        🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span> │
+   │      </button>                           │
+   │      <!-- Lembrete — socio-only (opcional) --> │
+   │      <button class="notif-plus nd-soc" onclick="abrirLembretePopup()" style="display:none">＋</button> │
+   │      <div class="notif-panel" id="notif-panel" style="display:none"> │
+   │        <div class="notif-panel-hd">     │
+   │          <span class="notif-panel-hd-t">Notificações</span> │
+   │          <button class="notif-panel-clr" onclick="...">Encerrar todas ✓</button> │
+   │        </div>                            │
+   │        <div id="notif-lista">…</div>    │
+   │      </div>                              │
+   │    </div>                                │
+   │                                          │
+   │    <button class="theme-toggle" onclick="toggleTheme()"> │
+   │      <span class="ttg-icon">☀</span>   │
+   │      <span class="ttg-track"><span class="ttg-knob"></span></span> │
+   │      <span class="ttg-icon">🌙</span>  │
+   │    </button>                             │
+   │                                          │
+   │    <!-- Chip de usuário -->              │
+   │    <div class="user-pill-wrap" id="user-pill-wrap"> │
+   │      <div class="user-chip" onclick="toggleUserMenu()"> │
+   │        <div class="uav" id="nav-av"></div> │
+   │        <div class="u-text">             │
+   │          <span class="u-nome" id="nav-nome">—</span> │
+   │          <span class="u-role" id="nav-role"></span> │
+   │        </div>                            │
+   │        <span class="u-caret">▾</span>  │
+   │      </div>                              │
+   │      <div class="user-dropdown" id="user-dropdown"> │
+   │        <div class="ud-coming">Meus dados</div> │
+   │        <div class="ud-sep nd-soc" style="display:none"></div> │
+   │        <div class="ud-coming nd-soc" style="display:none">Gestão da plataforma</div> │
+   │        <div class="ud-sep"></div>        │
+   │        <button onclick="sair()">Sair do sistema</button> │
+   │      </div>                              │
+   │    </div>                                │
+   │  </div>                                  │
+   │</nav>                                    │
+   └──────────────────────────────────────────┘
+═══════════════════════════════════════════ */
+
+/* ── Estrutura principal ── */
+.nav {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--cinza);
+  padding: 0 16px;
+  height: var(--nav-height);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 0;
+}
+
+[data-theme="dark"] .nav {
+  background: rgba(28, 28, 26, 0.95);
+}
+
+/* ── Marca / logo ── */
+.nav-brand {
+  display: flex;
+  align-items: center;
+  margin-right: 16px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 5px;
+  flex-shrink: 0;
+}
+.nav-brand:hover { opacity: 0.7; }
+
+/* ── Separador vertical ── */
+.nav-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--cinza);
+  margin-right: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Seletor de módulo ── */
+.nav-mod-wrap {
+  position: relative;
+  margin-right: 20px;
+  flex-shrink: 0;
+}
+
+.nav-lbl-btn {
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-lbl-btn:hover { color: var(--grafite); }
+
+.nav-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  min-width: 190px;
+  z-index: 200;
+  box-shadow: var(--shadow-modal);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.nav-dropdown.open { display: block; }
+
+.nav-dropdown a {
+  display: block;
+  padding: 7px 14px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--grafite);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-dropdown a:hover { background: var(--off); }
+.nav-dropdown a.nd-active {
+  font-weight: 700;
+  pointer-events: none;
+  color: var(--azul);
+}
+
+.nd-sep {
+  height: 1px;
+  background: var(--cinza2);
+  margin: 3px 0;
+}
+
+/* ── Tabs ── */
+.nav-tabs {
+  display: flex;
+  height: 100%;
+  gap: 0;
+}
+
+.ntab {
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #999;
+  border-bottom: 2px solid transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+.ntab:hover { color: var(--grafite); }
+.ntab.active {
+  color: var(--grafite);
+  border-bottom-color: var(--grafite);
+}
+
+/* ── Área direita ── */
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Indicador de conexão ── */
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ccc;
+  flex-shrink: 0;
+  cursor: default;
+  pointer-events: none;
+  transition: background var(--transition-normal);
+}
+.conn-dot.online  { background: #22c55e; }
+.conn-dot.offline { background: var(--terracota); }
+
+/* ── EXP Room (opcional) ── */
+.exp-room-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--verde);
+  background: var(--verde-bg);
+  color: var(--verde);
+  border-radius: var(--radius-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.exp-room-btn:hover { background: var(--verde); color: #fff; }
+.exp-room-btn.active {
+  background: var(--verde);
+  color: #fff;
+  animation: exp-room-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes exp-room-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(62, 120, 88, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(62, 120, 88, 0); }
+}
+[data-theme="dark"] .exp-room-btn.active {
+  animation-name: exp-room-pulse-dark;
+}
+@keyframes exp-room-pulse-dark {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(82, 166, 118, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(82, 166, 118, 0); }
+}
+
+/* ── Notificações (opcional) ── */
+.notif-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notif-bell {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--cinza);
+  background: var(--branco);
+  border-radius: var(--radius-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  position: relative;
+  flex-shrink: 0;
+  transition: border-color var(--transition-fast);
+}
+.notif-bell:hover { border-color: var(--grafite); }
+
+.notif-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  background: var(--terracota);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 2px solid var(--off);
+  pointer-events: none;
+}
+
+/* Botão + lembrete — socio-only (opcional) */
+.notif-plus {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--cinza);
+  background: var(--branco);
+  border-radius: var(--radius-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 300;
+  color: #888;
+  font-family: inherit;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.notif-plus:hover { border-color: var(--ouro); color: var(--ouro); }
+
+/* Painel de notificações */
+.notif-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+  min-width: 340px;
+  max-height: 520px;
+  overflow-y: auto;
+  z-index: 200;
+}
+.notif-panel.open { display: block; }
+
+.notif-panel-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px 11px;
+  border-bottom: 1px solid var(--cinza2);
+  position: sticky;
+  top: 0;
+  background: var(--branco);
+  z-index: 1;
+}
+
+.notif-panel-hd-t {
+  font-family: var(--font-ui);
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
+  letter-spacing: var(--label-spacing);
+  text-transform: uppercase;
+  color: var(--grafite);
+}
+
+.notif-panel-clr {
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--cinza);
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+.notif-panel-clr:hover { color: var(--grafite); }
+
+/* ── Chip de usuário ── */
+.user-pill-wrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 120px;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px 3px 3px;
+  border: 1px solid var(--cinza);
+  background: var(--branco);
+  cursor: pointer;
+  border-radius: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+}
+.user-chip:hover { border-color: var(--grafite); }
+
+.uav {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.u-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.u-nome {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--grafite);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.u-role {
+  font-family: var(--font-ui);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cinza);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.u-caret {
+  font-size: 8px;
+  color: #bbb;
+  flex-shrink: 0;
+}
+
+/* ── Dropdown de usuário ── */
+.user-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  z-index: 200;
+  box-shadow: var(--shadow-modal);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.user-dropdown.open { display: block; }
+
+.user-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 9px 14px;
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--terracota);
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.user-dropdown button:hover { background: var(--off); }
+
+/* Separador interno do dropdown */
+.ud-sep {
+  height: 1px;
+  background: var(--cinza2);
+  margin: 3px 0;
+}
+
+/* Item "em breve" — placeholder visual */
+.ud-coming {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 14px;
+  box-sizing: border-box;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cinza);
+  cursor: default;
+}
+.ud-coming::after {
+  content: 'em breve';
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ouro);
+  opacity: 0.8;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* ── Dark mode — nav ── */
+[data-theme="dark"] .nav-dropdown,
+[data-theme="dark"] .user-dropdown,
+[data-theme="dark"] .notif-panel { box-shadow: var(--shadow-modal); }
+
+[data-theme="dark"] .notif-badge { border-color: var(--off); }
