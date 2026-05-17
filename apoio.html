@@ -440,6 +440,34 @@
   color:#888;
 }
 
+
+/* ── Memorial de plantas ─────────────────────────────────────────── */
+.veg-sel-bar{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--grafite);color:#fff;border-radius:30px;padding:10px 20px;
+  display:flex;align-items:center;gap:14px;font-size:12px;font-family:var(--f);
+  box-shadow:0 4px 24px rgba(0,0,0,.28);z-index:300;white-space:nowrap;
+}
+.veg-sel-bar-count{font-weight:700;font-family:var(--font-mono,monospace);}
+.veg-sel-bar .btn{background:#fff;color:var(--grafite);border:none;}
+.veg-sel-bar-cancel{
+  background:transparent;color:#bbb;border:1px solid #555;font-size:11px;
+  padding:5px 12px;border-radius:20px;cursor:pointer;font-family:var(--f);
+}
+.veg-sel-bar-cancel:hover{color:#fff;border-color:#fff;}
+.veg-check-cell{width:36px;text-align:center;vertical-align:middle !important;padding:6px 4px !important;}
+.veg-check-cell input[type="checkbox"]{width:14px;height:14px;cursor:pointer;accent-color:var(--grafite);}
+tr.veg-row-selected td{background:rgba(45,74,45,.06);}
+.mem-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.mem-item-list{display:flex;flex-direction:column;gap:7px;max-height:320px;overflow-y:auto;margin-top:8px;padding-right:4px;}
+.mem-item-row{display:grid;grid-template-columns:170px 1fr 1fr 1fr;gap:8px;align-items:center;padding:9px 10px;background:var(--off);border-radius:6px;border:1px solid var(--cinza);}
+.mem-item-name{font-size:11px;display:flex;align-items:center;gap:7px;}
+.mem-item-name b{display:block;font-weight:700;color:var(--preto);}
+.mem-item-name i{display:block;font-size:10px;color:#888;font-style:italic;}
+.mem-input{width:100%;padding:6px 8px;border:1px solid var(--cinza);border-radius:5px;font-size:11px;font-family:var(--f);background:#fff;color:var(--preto);}
+.mem-input:focus{border-color:var(--preto);outline:none;}
+.mem-section-lbl{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#bbb;margin:14px 0 6px;font-family:var(--f);}
+
 #modal-edit[data-size="medium"] .modal-box{
   width:min(720px,90vw);
 }
@@ -4250,7 +4278,9 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     apoioSecoes: [],
     apoioTables: { conteudo: false, vegetacao: false },
     vegetacaoSpecies: [],
-    vegFilters: { busca: '', grupo: '', tipo: '', insolacao: '', porte: '', altura: '' }
+    vegFilters: { busca: '', grupo: '', tipo: '', insolacao: '', porte: '', altura: '' },
+    vegSelectionMode: false,
+    vegSelecionadas: new Set()
   });
 
   function canEditApoio() {
@@ -5629,6 +5659,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <div class="veg-toolbar-main">
           <button class="btn sm" onclick="limparVegFiltros()">Limpar filtros</button>
           ${canEditVegetacao() ? '<button class="btn verde sm" onclick="abrirNovaEspecie()">+ Nova espécie</button>' : ''}
+          <button class="btn sm" id="btn-memorial" onclick="toggleVegSelectionMode()">${G.vegSelectionMode ? '✖ Cancelar' : '+ Memorial'}</button>
         </div>
       </div>
 
@@ -5681,7 +5712,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         <table class="veg-table">
           <thead>
             <tr>
-              <th>Espécie</th>
+              ${G.vegSelectionMode ? '<th class="veg-check-cell"></th>' : ''}<th>Espécie</th>
               <th>Grupo</th>
               <th>Tipo / família</th>
               <th>Porte final</th>
@@ -5694,7 +5725,8 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
           </thead>
           <tbody>
             ${especies.length ? especies.map(row => `
-              <tr>
+              <tr class="${vegRowClass(row.id)}">
+                ${vegCheckboxHtml(row.id)}
                 <td>
                   <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
                     <span class="veg-main-name">${escHtml(row.nome_popular || 'Sem nome')}</span>
@@ -5725,11 +5757,16 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
                 </td>
               </tr>`).join('') : `
               <tr>
-                <td colspan="9"><div class="knowledge-empty">Nenhuma espécie encontrada com os filtros atuais.</div></td>
+                <td colspan="${G.vegSelectionMode ? 10 : 9}"><div class="knowledge-empty">Nenhuma espécie encontrada com os filtros atuais.</div></td>
               </tr>`}
           </tbody>
         </table>
-      </div>`;
+      </div>
+      ${G.vegSelectionMode ? `<div class="veg-sel-bar" id="veg-sel-bar">
+        <span class="veg-sel-bar-count">${G.vegSelecionadas.size} espécie${G.vegSelecionadas.size !== 1 ? 's' : ''} selecionada${G.vegSelecionadas.size !== 1 ? 's' : ''}</span>
+        <button class="btn sm verde" onclick="abrirModalMemorial()">Montar memorial →</button>
+        <button class="veg-sel-bar-cancel" onclick="toggleVegSelectionMode()">✖ Cancelar</button>
+      </div>` : ''}`;
   }
 
   window.updateVegFilter = function(key, value) {
@@ -6030,7 +6067,8 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   salvarModal = async function() {
     const ctx = G.modalCtx;
     if(!ctx) return;
-    if(ctx.tipo !== 'apoio-secao' && ctx.tipo !== 'apoio-especie') return oldSalvarModal();
+    if(ctx.tipo !== 'apoio-secao' && ctx.tipo !== 'apoio-especie' && ctx.tipo !== 'memorial-vegetal') return oldSalvarModal();
+    if(ctx.tipo === 'memorial-vegetal') { salvarMemorialVegetal(); return; }
     if(ctx.tipo === 'apoio-secao' && !canEditApoio()) {
       alert('Apenas sócios podem editar o apoio.');
       return;
@@ -6101,6 +6139,242 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     G.vegFilters.busca = term;
     renderTema();
   };
+
+  // ── Helpers de linha da tabela ───────────────────────────────────
+  function vegRowClass(id) {
+    return G.vegSelectionMode && G.vegSelecionadas.has(id) ? 'veg-row-selected' : '';
+  }
+  function vegCheckboxHtml(id) {
+    if (!G.vegSelectionMode) return '';
+    const chk = G.vegSelecionadas.has(id) ? 'checked' : '';
+    return `<td class="veg-check-cell"><input type="checkbox" class="veg-row-check" data-id="${id}" ${chk} onchange="toggleVegEspecie('${id}')"></td>`;
+  }
+
+  // ── Memorial de plantas ──────────────────────────────────────
+  window.toggleVegSelectionMode = function() {
+    G.vegSelectionMode = !G.vegSelectionMode;
+    if (!G.vegSelectionMode) G.vegSelecionadas = new Set();
+    renderTema();
+  };
+
+  window.toggleVegEspecie = function(id) {
+    if (G.vegSelecionadas.has(id)) {
+      G.vegSelecionadas.delete(id);
+    } else {
+      G.vegSelecionadas.add(id);
+    }
+    // Atualiza checkboxes e classes sem re-render completo
+    document.querySelectorAll('.veg-row-check').forEach(cb => {
+      const row = cb.closest('tr');
+      cb.checked = G.vegSelecionadas.has(cb.dataset.id);
+      if (row) row.classList.toggle('veg-row-selected', G.vegSelecionadas.has(cb.dataset.id));
+    });
+    // Atualiza contador na barra
+    const cnt = G.vegSelecionadas.size;
+    const bar = document.getElementById('veg-sel-bar');
+    if (bar) {
+      const countEl = bar.querySelector('.veg-sel-bar-count');
+      if (countEl) countEl.textContent = cnt + ' espécie' + (cnt !== 1 ? 's' : '') + ' selecionada' + (cnt !== 1 ? 's' : '');
+    }
+  };
+
+  window.abrirModalMemorial = async function() {
+    if (G.vegSelecionadas.size === 0) { toast('Selecione ao menos uma espécie'); return; }
+    const especies = [...G.vegSelecionadas]
+      .map(id => G.vegetacaoSpecies.find(s => s.id === id))
+      .filter(Boolean);
+
+    // Busca projetos ativos
+    const { data: prods } = await sb.from('produtos')
+      .select('id, nome, status, oportunidades(projeto, clientes(nome))')
+      .in('status', ['ativo', 'pausado']).order('nome');
+
+    const optsProjeto = '<option value="">— sem projeto vinculado —</option>' +
+      (prods || []).map(p => {
+        const cli  = p.oportunidades?.clientes?.nome || '';
+        const proj = p.oportunidades?.projeto || p.nome;
+        const lbl  = cli ? cli + ' — ' + proj : proj;
+        return `<option value="${p.id}">${escHtml(lbl)}</option>`;
+      }).join('');
+
+    const itensHtml = especies.map(e => `
+      <div class="mem-item-row">
+        <div class="mem-item-name">
+          ${e.url_imagem
+            ? `<img src="${escAttr(e.url_imagem)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;flex-shrink:0">`
+            : '<div style="width:32px;height:32px;background:var(--cinza);border-radius:4px;flex-shrink:0"></div>'}
+          <div>
+            <b>${escHtml(e.nome_popular || '')}</b>
+            <i>${escHtml(e.nome_cientifico || '')}</i>
+          </div>
+        </div>
+        <input class="mem-input" placeholder="Qtd (ex: 3 un)" data-field="qtd" data-id="${e.id}">
+        <input class="mem-input" placeholder="Local / área" data-field="area" data-id="${e.id}">
+        <input class="mem-input" placeholder="Obs. específica" data-field="obs" data-id="${e.id}">
+      </div>`).join('');
+
+    const cnt = especies.length;
+    const body = `
+      <div style="padding:0 2px">
+        <div class="mem-form-grid">
+          <div>
+            <div class="mem-section-lbl">Projeto</div>
+            <select id="mem-produto" class="filter-select" style="width:100%;padding:7px 9px;font-size:11px">${optsProjeto}</select>
+          </div>
+          <div>
+            <div class="mem-section-lbl">Título do memorial</div>
+            <input id="mem-titulo" class="mem-input" value="Memorial Descritivo de Vegetação" style="width:100%">
+          </div>
+        </div>
+        <div>
+          <div class="mem-section-lbl">Introdução (opcional)</div>
+          <textarea id="mem-descricao" class="mem-input" rows="2" placeholder="Parágrafo de abertura para o cliente..." style="width:100%;resize:vertical"></textarea>
+        </div>
+        <div class="mem-section-lbl">${cnt} espécie${cnt !== 1 ? 's' : ''} selecionada${cnt !== 1 ? 's' : ''} — quantidade · local / área · observação</div>
+        <div class="mem-item-list">${itensHtml}</div>
+      </div>`;
+
+    abrirModalSized('Montar memorial de vegetação', body, { tipo: 'memorial-vegetal' }, 'wide');
+  };
+
+  async function salvarMemorialVegetal() {
+    const btn = document.getElementById('modal-salvar-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+    try {
+      const produtoId  = document.getElementById('mem-produto')?.value || null;
+      const titulo     = document.getElementById('mem-titulo')?.value.trim() || 'Memorial Descritivo de Vegetação';
+      const descricao  = document.getElementById('mem-descricao')?.value.trim() || null;
+
+      const { data: mem, error } = await sb.from('memorial_vegetal')
+        .insert({ produto_id: produtoId || null, titulo, descricao, criado_por: G.usuario?.id || null })
+        .select().single();
+      if (error) throw error;
+
+      const especies = [...G.vegSelecionadas]
+        .map(id => G.vegetacaoSpecies.find(s => s.id === id))
+        .filter(Boolean);
+
+      const itens = especies.map((e, i) => ({
+        memorial_id:    mem.id,
+        especie_id:     e.id,
+        quantidade:     document.querySelector(`.mem-input[data-field="qtd"][data-id="${e.id}"]`)?.value.trim()  || null,
+        area_aplicacao: document.querySelector(`.mem-input[data-field="area"][data-id="${e.id}"]`)?.value.trim() || null,
+        observacao:     document.querySelector(`.mem-input[data-field="obs"][data-id="${e.id}"]`)?.value.trim()  || null,
+        ordem: i
+      }));
+
+      if (itens.length) {
+        const { error: errItens } = await sb.from('memorial_vegetal_item').insert(itens);
+        if (errItens) throw errItens;
+      }
+
+      toast('Memorial salvo com sucesso');
+      fecharModal();
+      G.vegSelectionMode = false;
+      G.vegSelecionadas  = new Set();
+      renderTema();
+    } catch(err) {
+      toast('Erro: ' + (err.message || err));
+      if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+    }
+  }
+
+  window.exportarMemorialPDF = async function(memorialId) {
+    toast('Gerando PDF...');
+    const { data: mem, error } = await sb.from('memorial_vegetal')
+      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), memorial_vegetal_item(*, apoio_vegetacao_especie(*))')
+      .eq('id', memorialId).single();
+    if (error || !mem) { toast('Erro ao carregar memorial'); return; }
+
+    const proj = mem.produtos?.oportunidades?.projeto || mem.produtos?.nome || '';
+    const cli  = mem.produtos?.oportunidades?.clientes?.nome || '';
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    const esc  = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    const cards = (mem.memorial_vegetal_item || [])
+      .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+      .map(item => {
+        const e = item.apoio_vegetacao_especie;
+        if (!e) return '';
+        const specs = [
+          e.insolacao    ? `<div><b>Insolação</b> ${esc(e.insolacao)}</div>` : '',
+          e.porte_final  ? `<div><b>Porte adulto</b> ${esc(e.porte_final)}</div>` : '',
+          e.espacamento  ? `<div><b>Espaçamento</b> ${esc(e.espacamento)}</div>` : '',
+          e.mudas_m2     ? `<div><b>Mudas/m²</b> ${esc(e.mudas_m2)}</div>` : '',
+          (e.floracao_cor || e.epoca) ? `<div><b>Floração</b> ${esc([e.floracao_cor, e.epoca].filter(Boolean).join(' · '))}</div>` : '',
+          e.irrigacao    ? `<div><b>Irrigação</b> ${esc(e.irrigacao)}</div>` : '',
+          (e.origem || e.bioma) ? `<div><b>Origem</b> ${esc([e.origem, e.bioma].filter(Boolean).join(' · '))}</div>` : '',
+          item.quantidade     ? `<div><b>Quantidade</b> ${esc(item.quantidade)}</div>` : '',
+          item.area_aplicacao ? `<div><b>Local / área</b> ${esc(item.area_aplicacao)}</div>` : '',
+        ].filter(Boolean).join('');
+        const tags = [e.grupo, e.tipo_vegetacao].filter(Boolean)
+          .map(t => `<span class="tag">${esc(t)}</span>`).join('');
+        const obs = item.observacao || e.observacoes;
+        return `
+          <div class="plant-card">
+            <div class="plant-photo">
+              ${e.url_imagem
+                ? `<img src="${esc(e.url_imagem)}" alt="${esc(e.nome_popular)}">`
+                : `<div class="plant-no-photo">${esc(e.grupo || '—')}</div>`}
+            </div>
+            <div class="plant-info">
+              <div class="plant-name">${esc(e.nome_popular || 'Espécie')}</div>
+              ${e.nome_cientifico ? `<div class="plant-sci">${esc(e.nome_cientifico)}</div>` : ''}
+              ${tags ? `<div class="plant-tags">${tags}</div>` : ''}
+              <div class="plant-specs">${specs}</div>
+              ${obs ? `<div class="plant-obs">${esc(obs)}</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+      <title>${esc(mem.titulo)}</title>
+      <style>
+        @page { size:A4; margin:18mm 16mm; }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;background:#fff;}
+        .cover{border-bottom:2px solid #2d4a2d;padding-bottom:18px;margin-bottom:28px;}
+        .cover-title{font-size:22px;font-weight:700;color:#2d4a2d;margin-bottom:5px;}
+        .cover-client{font-size:14px;color:#555;margin-bottom:3px;}
+        .cover-meta{font-size:11px;color:#aaa;font-family:Arial,sans-serif;}
+        .intro{font-size:12px;line-height:1.75;color:#444;margin-bottom:28px;font-style:italic;}
+        .plant-card{display:grid;grid-template-columns:130px 1fr;gap:18px;
+          border:1px solid #e0ddd6;border-radius:8px;padding:16px;
+          margin-bottom:14px;page-break-inside:avoid;background:#faf9f6;}
+        .plant-photo img{width:130px;height:130px;object-fit:cover;border-radius:6px;display:block;}
+        .plant-no-photo{width:130px;height:130px;background:#e8e4dc;border-radius:6px;
+          display:flex;align-items:center;justify-content:center;
+          font-size:10px;color:#aaa;text-align:center;font-family:Arial,sans-serif;}
+        .plant-name{font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:3px;}
+        .plant-sci{font-size:12px;font-style:italic;color:#777;margin-bottom:9px;}
+        .plant-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+        .tag{background:#2d4a2d;color:#fff;font-size:9px;padding:2px 8px;
+          border-radius:10px;font-family:Arial,sans-serif;letter-spacing:.3px;}
+        .plant-specs{font-size:11px;line-height:2;font-family:Arial,sans-serif;color:#333;}
+        .plant-specs b{color:#555;font-weight:600;margin-right:5px;}
+        .plant-obs{margin-top:10px;font-size:11px;font-style:italic;color:#666;
+          border-left:3px solid #2d4a2d;padding-left:10px;
+          font-family:Arial,sans-serif;line-height:1.6;}
+        .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e8e4dc;
+          font-size:10px;color:#bbb;font-family:Arial,sans-serif;text-align:right;}
+      </style></head><body>
+      <div class="cover">
+        <div class="cover-title">${esc(mem.titulo)}</div>
+        ${cli || proj ? `<div class="cover-client">${esc(cli)}${cli && proj ? ' — ' : ''}${esc(proj)}</div>` : ''}
+        <div class="cover-meta">Elaborado em ${hoje} · EXP Arquitetura e Paisagismo</div>
+      </div>
+      ${mem.descricao ? `<div class="intro">${esc(mem.descricao)}</div>` : ''}
+      ${cards || '<p style="color:#aaa;font-family:Arial,sans-serif;font-size:12px">Nenhuma espécie encontrada.</p>'}
+      <div class="footer">EXP · Memorial gerado a partir do Banco Vegetal · ${hoje}</div>
+    </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { toast('Permita pop-ups para gerar o PDF'); return; }
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.focus(); win.print(); }, 600);
+  };
+
 
   let _buscarTimerPatch = null;
   buscarDebounce = function(query) {
