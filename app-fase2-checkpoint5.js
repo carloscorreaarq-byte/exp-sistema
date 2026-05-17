@@ -16,6 +16,14 @@
   let pendingAvatarUserId = null;
   let meusDadosDirty = false;
   let plataformaDirty = false;
+  const TERM_VERSION = '2026.01';
+  const TERM_VALIDITY_DAYS = 365;
+  const TERM_TEXT = [
+    'Termo de compromisso institucional da plataforma EXP.',
+    'Ao utilizar a plataforma, o usuario declara ciencia sobre o uso adequado de dados institucionais, dados pessoais, informacoes de projetos, contatos e registros internos.',
+    'O acesso e pessoal, intransferivel e condicionado ao cumprimento das regras de confidencialidade, seguranca da informacao e boas praticas operacionais da EXP.',
+    'O uso indevido, o compartilhamento de credenciais ou a manipulacao inadequada de dados pode gerar bloqueio de acesso e revisao administrativa.'
+  ];
 
   function currentSessionUsuario() {
     try {
@@ -45,6 +53,23 @@
     if (el) el.textContent = message;
   }
 
+  function formatPtDate(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString('pt-BR');
+  }
+
+  function isoNow() {
+    return new Date().toISOString();
+  }
+
+  function plusDaysIso(days) {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toISOString();
+  }
+
   function setMeusDadosDirty(value) {
     meusDadosDirty = !!value;
   }
@@ -68,6 +93,173 @@
       if (target.id && target.id.startsWith('md-')) setMeusDadosDirty(true);
       if (target.id && target.id.startsWith('gp-')) setPlataformaDirty(true);
     });
+  }
+
+  async function registrarAuditoriaPlataforma(acao, usuarioAlvo, payloadResumido) {
+    const current = currentSessionUsuario();
+    if (!current?.app_user_id) return;
+    await window.sb.from('usuarios_auditoria').insert({
+      usuario_alvo: usuarioAlvo || null,
+      acao,
+      executado_por: current.app_user_id,
+      payload_resumido: payloadResumido || null
+    });
+  }
+
+  async function fetchLatestTermo(usuarioId) {
+    if (!usuarioId) return null;
+    const { data, error } = await window.sb
+      .from('usuarios_termos_compromisso')
+      .select('*')
+      .eq('usuario_id', usuarioId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return null;
+    return data || null;
+  }
+
+  function normalizeTermoStatus(termo) {
+    if (!termo) return {
+      versao_termo: TERM_VERSION,
+      status_termo: 'pending',
+      assinado_em: null,
+      expira_em: null
+    };
+    const now = Date.now();
+    const expira = termo.expira_em ? new Date(termo.expira_em).getTime() : null;
+    if (termo.status_termo === 'signed' && expira && expira < now) {
+      return { ...termo, status_termo: 'expired' };
+    }
+    return termo;
+  }
+
+  async function ensureTermoRegistro(usuarioId) {
+    if (!usuarioId) return normalizeTermoStatus(null);
+    const existing = normalizeTermoStatus(await fetchLatestTermo(usuarioId));
+    if (existing && existing.id) return existing;
+    const payload = {
+      usuario_id: usuarioId,
+      versao_termo: TERM_VERSION,
+      status_termo: 'pending',
+      assinado_em: null,
+      expira_em: null,
+      created_at: isoNow()
+    };
+    const { error } = await window.sb.from('usuarios_termos_compromisso').insert(payload);
+    if (error) return normalizeTermoStatus(null);
+    return normalizeTermoStatus(await fetchLatestTermo(usuarioId));
+  }
+
+  function attachTermToUsuario(usuario, termo) {
+    const normalized = normalizeTermoStatus(termo);
+    return {
+      ...usuario,
+      termo_status: normalized.status_termo || null,
+      termo_assinado_em: normalized.assinado_em || null,
+      termo_expira_em: normalized.expira_em || null,
+      termo_versao: normalized.versao_termo || TERM_VERSION
+    };
+  }
+
+  function syncSessionPayload(usuario) {
+    if (!usuario?.auth_id) return;
+    const payload = window.buildExpUsuarioPayload(usuario.auth_id, usuario);
+    sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
+    window.renderShellIdentity(usuario);
+    window.publishSessionReady(payload);
+  }
+
+  function ensureTermModal() {
+    if (document.getElementById('termo-overlay')) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = ''
+      + '<div class="shell-modal-overlay" id="termo-overlay">'
+      + '  <div class="shell-modal" role="dialog" aria-modal="true" aria-labelledby="termo-title">'
+      + '    <div class="shell-modal-header">'
+      + '      <div class="shell-modal-title">'
+      + '        <strong id="termo-title">Termo de compromisso</strong>'
+      + '        <span id="termo-subtitle">Leitura, aceite e validade do termo institucional.</span>'
+      + '      </div>'
+      + '      <button type="button" class="shell-modal-close" id="termo-close-top">&times;</button>'
+      + '    </div>'
+      + '    <div class="shell-modal-body">'
+      + '      <div class="meus-dados-section">'
+      + '        <div class="meus-dados-section-title">'
+      + '          <strong>Status atual</strong>'
+      + '          <span id="termo-status-copy">Carregando...</span>'
+      + '        </div>'
+      + '      </div>'
+      + '      <div class="meus-dados-section">'
+      + '        <div class="meus-dados-section-title">'
+      + '          <strong>Texto do termo</strong>'
+      + '          <span>O conteudo pode crescer sem quebrar a estrutura do shell.</span>'
+      + '        </div>'
+      + '        <div id="termo-texto" style="display:grid;gap:10px;font-size:12px;line-height:1.7;color:#555"></div>'
+      + '      </div>'
+      + '    </div>'
+      + '    <div class="shell-modal-footer">'
+      + '      <div class="shell-status-text" id="termo-modal-status">Estrutura do termo ativa no shell.</div>'
+      + '      <div class="shell-actions">'
+      + '        <button type="button" class="shell-btn" id="termo-close-bottom">Fechar</button>'
+      + '        <button type="button" class="shell-btn primary" id="termo-sign-btn">Estou ciente e concordo com os termos acima</button>'
+      + '      </div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+    document.body.appendChild(wrap.firstChild);
+    document.getElementById('termo-overlay')?.addEventListener('click', (event) => {
+      if (event.target.id === 'termo-overlay') return;
+    });
+    document.getElementById('termo-close-top')?.addEventListener('click', () => window.fecharTermoCompromisso());
+    document.getElementById('termo-close-bottom')?.addEventListener('click', () => window.fecharTermoCompromisso());
+    document.getElementById('termo-sign-btn')?.addEventListener('click', () => window.assinarTermoCompromisso());
+  }
+
+  function renderTermText() {
+    const wrap = document.getElementById('termo-texto');
+    if (!wrap) return;
+    wrap.innerHTML = TERM_TEXT.map((paragraph) => '<p>' + paragraph + '</p>').join('');
+  }
+
+  function renderTermStatusCopy(termo) {
+    const statusCopy = document.getElementById('termo-status-copy');
+    const modalStatus = document.getElementById('termo-modal-status');
+    const signBtn = document.getElementById('termo-sign-btn');
+    if (!statusCopy || !modalStatus || !signBtn) return;
+    const status = (termo?.status_termo || 'pending').toLowerCase();
+    const assinadoEm = formatPtDate(termo?.assinado_em);
+    const expiraEm = formatPtDate(termo?.expira_em);
+    if (status === 'signed') {
+      statusCopy.textContent = assinadoEm
+        ? 'Termo assinado em ' + assinadoEm + (expiraEm ? ' · validade até ' + expiraEm : '.')
+        : 'Termo registrado como assinado.';
+      modalStatus.textContent = 'O termo esta vigente no momento.';
+      signBtn.disabled = true;
+      signBtn.textContent = 'Termo ja assinado';
+      return;
+    }
+    if (status === 'expired') {
+      statusCopy.textContent = expiraEm
+        ? 'O termo venceu em ' + expiraEm + ' e precisa ser assinado novamente.'
+        : 'O termo venceu e precisa ser assinado novamente.';
+      modalStatus.textContent = 'A revalidacao anual do termo ja esta habilitada.';
+      signBtn.disabled = false;
+      signBtn.textContent = 'Estou ciente e concordo com os termos acima';
+      return;
+    }
+    statusCopy.textContent = 'O termo ainda nao foi assinado para esta conta.';
+    modalStatus.textContent = 'Assine o termo para registrar o aceite atual.';
+    signBtn.disabled = false;
+    signBtn.textContent = 'Estou ciente e concordo com os termos acima';
+  }
+
+  async function syncCurrentTermState() {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.app_user_id || !sessionUser?.auth_id || !window.fetchCurrentUsuario) return;
+    const usuario = await window.fetchCurrentUsuario(sessionUser.auth_id);
+    if (!usuario) return;
+    syncSessionPayload(usuario);
   }
 
   function toggleEmpresaFields() {
@@ -109,6 +301,16 @@
     if (role === 'socio') return 'Sócio';
     if (role === 'colaborador') return 'Colaborador';
     return role || 'sem role';
+  }
+
+  const baseFetchCurrentUsuario = window.fetchCurrentUsuario;
+  if (typeof baseFetchCurrentUsuario === 'function') {
+    window.fetchCurrentUsuario = async function fetchCurrentUsuarioWithTerm(authId) {
+      const usuario = await baseFetchCurrentUsuario(authId);
+      if (!usuario) return usuario;
+      const termo = await ensureTermoRegistro(usuario.id);
+      return attachTermToUsuario(usuario, termo);
+    };
   }
 
   function fillMeusDadosForm(usuario, dados, profissionais, empresariais, bancarios) {
@@ -332,10 +534,7 @@
 
     const usuarioAtualizado = await window.fetchCurrentUsuario(sessionUser.auth_id);
     if (usuarioAtualizado) {
-      const payload = window.buildExpUsuarioPayload(sessionUser.auth_id, usuarioAtualizado);
-      sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
-      window.renderShellIdentity(usuarioAtualizado);
-      window.publishSessionReady(payload);
+      syncSessionPayload(usuarioAtualizado);
       fillMeusDadosForm(usuarioAtualizado, dadosPessoaisPayload, dadosProfissionaisPayload, dadosEmpresariaisPayload, dadosBancariosPayload);
     }
 
@@ -465,19 +664,24 @@
     if (role !== 'socio_admin') payload.is_platform_manager = false;
     const { error } = await window.sb.from('usuarios').update(payload).eq('id', userId);
     if (error) { setPlataformaStatus('Nao foi possivel atualizar o role.'); return; }
+    await registrarAuditoriaPlataforma('usuario.role_atualizado', userId, { role });
     await carregarUsuariosPlataforma();
     setPlataformaStatus('Role atualizada.');
   };
 
   window.salvarStatusPlatform = async function salvarStatusPlatform(userId, status) {
+    const current = currentSessionUsuario();
     const patch = {
       status_acesso: status,
       ativo: status === 'ativo',
-      inativado_em: status === 'inativo' ? new Date().toISOString() : null,
-      bloqueado_em: status === 'bloqueado' ? new Date().toISOString() : null
+      inativado_em: status === 'inativo' ? isoNow() : null,
+      inativado_por: status === 'inativo' ? current?.app_user_id || null : null,
+      bloqueado_em: status === 'bloqueado' ? isoNow() : null,
+      bloqueado_por: status === 'bloqueado' ? current?.app_user_id || null : null
     };
     const { error } = await window.sb.from('usuarios').update(patch).eq('id', userId);
     if (error) { setPlataformaStatus('Nao foi possivel atualizar o status.'); return; }
+    await registrarAuditoriaPlataforma('usuario.status_atualizado', userId, { status });
     await carregarUsuariosPlataforma();
     setPlataformaStatus('Status atualizado.');
   };
@@ -492,6 +696,7 @@
     }
     const { error } = await window.sb.from('usuarios').update({ is_platform_manager: !!checked }).eq('id', userId);
     if (error) { setPlataformaStatus('Nao foi possivel atualizar a capability de plataforma.'); return; }
+    await registrarAuditoriaPlataforma('usuario.platform_manager_atualizado', userId, { is_platform_manager: !!checked });
     await carregarUsuariosPlataforma();
     setPlataformaStatus('Capability de plataforma atualizada.');
   };
@@ -566,10 +771,12 @@
       email_login: emailLogin,
       is_platform_manager: role === 'socio_admin' ? isPlatformManager : false,
       status_acesso: 'ativo',
-      ativo: true
+      ativo: true,
+      criado_por: sessionUser.app_user_id || null
     };
 
     const { data: existingUser } = await window.sb.from('usuarios').select('id').eq('auth_id', authId).maybeSingle();
+    let targetUsuarioId = existingUser?.id || null;
     if (existingUser?.id) {
       const { error: updateError } = await window.sb.from('usuarios').update(upsertPayload).eq('id', existingUser.id);
       if (updateError) {
@@ -577,11 +784,12 @@
         return;
       }
     } else {
-      const { error: insertError } = await window.sb.from('usuarios').insert(upsertPayload);
+      const { data: insertedRows, error: insertError } = await window.sb.from('usuarios').insert(upsertPayload).select('id');
       if (insertError) {
         setPlataformaStatus('Usuário Auth criado, mas nao foi possivel criar a linha institucional em usuarios.');
         return;
       }
+      targetUsuarioId = insertedRows && insertedRows[0] ? insertedRows[0].id : null;
     }
 
     document.getElementById('gp-nome').value = '';
@@ -590,12 +798,70 @@
     document.getElementById('gp-role').value = 'colaborador';
     document.getElementById('gp-platform-manager').checked = false;
     window.selectPlatformColor(platformColors[0]);
+    await registrarAuditoriaPlataforma('usuario.criado', targetUsuarioId, { nome, email_login: emailLogin, role, is_platform_manager: upsertPayload.is_platform_manager });
     setPlataformaDirty(false);
     await carregarUsuariosPlataforma();
     setPlataformaStatus('Novo usuario criado com sucesso.');
   };
 
+  window.abrirTermoCompromisso = async function abrirTermoCompromisso() {
+    ensureTermModal();
+    renderTermText();
+    const overlay = document.getElementById('termo-overlay');
+    if (!overlay) return;
+    overlay.classList.add('open');
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.app_user_id) {
+      renderTermStatusCopy(null);
+      return;
+    }
+    const termo = normalizeTermoStatus(await ensureTermoRegistro(sessionUser.app_user_id));
+    renderTermStatusCopy(termo);
+  };
+
+  window.fecharTermoCompromisso = function fecharTermoCompromisso() {
+    document.getElementById('termo-overlay')?.classList.remove('open');
+  };
+
+  window.assinarTermoCompromisso = async function assinarTermoCompromisso() {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.app_user_id) return;
+    const termoAtual = await ensureTermoRegistro(sessionUser.app_user_id);
+    const payload = {
+      usuario_id: sessionUser.app_user_id,
+      versao_termo: TERM_VERSION,
+      status_termo: 'signed',
+      assinado_em: isoNow(),
+      expira_em: plusDaysIso(TERM_VALIDITY_DAYS),
+      resetado_em: null,
+      resetado_por: null,
+      motivo_reset: null
+    };
+    const { error } = termoAtual?.id
+      ? await window.sb.from('usuarios_termos_compromisso').update(payload).eq('id', termoAtual.id)
+      : await window.sb.from('usuarios_termos_compromisso').insert(payload);
+    if (error) {
+      document.getElementById('termo-modal-status').textContent = 'Nao foi possivel registrar a assinatura do termo.';
+      return;
+    }
+    const termo = normalizeTermoStatus(await ensureTermoRegistro(sessionUser.app_user_id));
+    renderTermStatusCopy(termo);
+    await syncCurrentTermState();
+  };
+
   document.addEventListener('change', (event) => {
     if (event.target && event.target.id === 'md-vinculo-exp') toggleEmpresaFields();
   });
+
+  document.getElementById('user-term-state')?.addEventListener('click', () => window.abrirTermoCompromisso());
+  document.getElementById('term-chip')?.addEventListener('click', () => window.abrirTermoCompromisso());
+  document.getElementById('user-term-state')?.setAttribute('title', 'Visualizar termo de compromisso');
+  document.getElementById('term-chip')?.setAttribute('title', 'Visualizar termo de compromisso');
+
+  const usuariosTab = document.querySelector('.socio-tab[data-panel="usuarios"]');
+  if (usuariosTab) {
+    usuariosTab.style.display = 'none';
+  }
+
+  syncCurrentTermState();
 })();
