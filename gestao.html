@@ -2087,6 +2087,9 @@ body::before {
       <select class="filter-select" id="fil-coord" onchange="filtrarProjetos()">
         <option value="">Todos os coordenadores</option>
       </select>
+      <select class="filter-select" id="fil-participante" onchange="filtrarProjetos()">
+        <option value="">Todos os participantes</option>
+      </select>
     </div>
     <div style="margin-left:auto">
       <button class="btn filled socio-only" id="btn-novo-proj" style="display:none" onclick="abrirModalCadastroProjeto()">+ Novo projeto</button>
@@ -3827,6 +3830,13 @@ async function carregarUsuarios() {
   });
   const fc = document.getElementById('fil-coord');
   if (fc) fc.innerHTML = '<option value="">Todos os coordenadores</option>' + opts;
+
+  const fp = document.getElementById('fil-participante');
+  if (fp) fp.innerHTML =
+    '<option value="">Todos os participantes</option>' +
+    `<option value="${G.usuario.id}">⬤ Meus projetos</option>` +
+    G.todosUsuarios.filter(u => u.id !== G.usuario.id)
+      .map(u => `<option value="${u.id}">${u.nome} (${u.iniciais})</option>`).join('');
 }
 
 // Normaliza main_nucleo do CRM para chave interna
@@ -4525,7 +4535,8 @@ function renderListaProjetos() {
   const nucleo = document.getElementById('fil-nucleo').value;
   const gestaoFiltro = document.getElementById('fil-gestao').value;
   const status = document.getElementById('fil-status').value;
-  const coordId = document.getElementById('fil-coord').value;
+  const coordId       = document.getElementById('fil-coord').value;
+  const participanteId = document.getElementById('fil-participante').value;
 
   const baseLista = gestaoFiltro === 'ocultos'
     ? G._todosProdutosGestao.filter(p => p.em_gestao === false)
@@ -4537,6 +4548,16 @@ function renderListaProjetos() {
     if (nucleo && p.nucleo !== nucleo) return false;
     if (status && p.status !== status) return false;
     if (coordId && p.coordenador_id !== coordId) return false;
+    if (participanteId) {
+      const etapasDoUsuario = new Set(
+        Object.entries(G.etapaDevs)
+          .filter(([, uids]) => uids.includes(participanteId))
+          .map(([etapaId]) => etapaId)
+      );
+      const participaEmAlgumaEtapa = G.todasEtapas
+        .some(e => e.produto_id === p.id && etapasDoUsuario.has(e.id));
+      if (!participaEmAlgumaEtapa) return false;
+    }
     if (busca) {
       const opp = p.oportunidades;
       const cli = opp?.clientes;
