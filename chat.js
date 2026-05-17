@@ -164,6 +164,7 @@
   var currentChannel = 'general';
   var currentLabel   = '# geral';
   var teamMembers      = [];
+  var allMembers       = [];        // todos os usuários incluindo o próprio — para lookup de avatares
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var channelUnread    = {};        // { channel: count }
   var onlinePresence   = {};        // { auth_id: { status, nome, ... } }
@@ -522,10 +523,10 @@
           var isOwn = dm.sender_id === uid;
           var parts = dm.channel.replace('dm:', '').split(':');
           var otherUid = parts.find(function (p) { return p !== uid; }) || '';
-          var member = teamMembers.find(function (m) { return m.auth_id === otherUid; });
+          var member = allMembers.find(function (m) { return m.auth_id === otherUid; });
 
           var name, iniciais, cor, avatarUrl;
-          var dmMember = teamMembers.find(function (m) { return m.auth_id === dm.sender_id; });
+          var dmMember = allMembers.find(function (m) { return m.auth_id === dm.sender_id; });
           if (!isOwn) {
             name = dm.sender_name; iniciais = dm.sender_iniciais || dm.sender_name.substring(0, 2).toUpperCase(); cor = dm.sender_cor || '#1D6A4A';
             avatarUrl = dmMember ? dmMember.avatar_url : null;
@@ -614,13 +615,16 @@
       .select('id,auth_id,nome,iniciais,cor,role,avatar_url')
       .order('nome')
       .then(function (r) {
-        teamMembers = (r.data || []).filter(function (m) {
+        var all = r.data || [];
+        /* allMembers inclui o próprio usuário — usado para lookup de avatares */
+        allMembers = all;
+        /* teamMembers exclui o próprio usuário — usado no seletor de novo DM */
+        teamMembers = all.filter(function (m) {
           return m.auth_id !== user.auth_id && m.id !== user.id;
         });
-        /* Só re-renderiza a lista se a view de membros estiver ativa */
         if (currentView === 'members') renderMemberList();
-        /* Se a home estiver aberta, atualiza os nomes nos DMs */
         else if (isOpen && currentView === 'home') renderHome();
+        else if (isOpen && currentView === 'channel') renderMessages();
       });
   }
 
@@ -910,8 +914,8 @@
       var iniciais= msg.sender_iniciais || msg.sender_name.substring(0, 2).toUpperCase();
       var cor     = msg.sender_cor || '#1D6A4A';
       var fn      = firstName(msg.sender_name);
-      var msgMember = teamMembers.find(function (m) { return m.auth_id === msg.sender_id; });
-      var msgAvatar = msgMember ? msgMember.avatar_url : (isOwn ? (user.avatar_url || null) : null);
+      var msgMember = allMembers.find(function (m) { return m.auth_id === msg.sender_id; });
+      var msgAvatar = msgMember ? msgMember.avatar_url : null;
 
       var rx      = msg.reactions || { like: [], love: [] };
       var likeArr = rx.like  || [];
