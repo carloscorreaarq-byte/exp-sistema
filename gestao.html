@@ -275,6 +275,7 @@
     tipo text DEFAULT 'projeto',  -- projeto | organizacao | sociedade
     produto_id uuid REFERENCES produtos(id),
     etapa_id uuid REFERENCES etapas(id),
+    data_inicio date,
     data_limite date,
     concluida boolean DEFAULT false,
     concluida_em timestamptz,
@@ -943,6 +944,7 @@ body::before {
 .task-prazo { font-size: 9px; font-family: var(--font-mono); color: #aaa; }
 .task-prazo.vencida { color: var(--terracota); font-weight: 700; }
 .task-prazo.hoje { color: var(--ouro); font-weight: 700; }
+.task-inicio { font-size: 9px; color: #c0c0c0; font-style: italic; }
 .task-de-chip { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; color: #fff; flex-shrink: 0; }
 .task-status-chip {
   font-size: 8px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
@@ -2007,6 +2009,7 @@ body::before {
                 <option value="organizacao">Org. Interna</option>
                 <option value="sociedade">Sociedade</option>
               </select>
+              <input type="date" id="task-nova-inicio" class="filter-select" title="Liberação / início (opcional)">
               <input type="date" id="task-nova-data" class="filter-select" title="Data limite (opcional)">
             </div>
             <div class="task-row3">
@@ -3029,9 +3032,15 @@ body::before {
           </select>
         </div>
       </div>
-      <div class="fgroup mb8">
-        <label>Data limite (opcional)</label>
-        <input type="date" id="at-data">
+      <div class="fg fg2 mb8">
+        <div class="fgroup">
+          <label>Liberação / início (opcional)</label>
+          <input type="date" id="at-inicio">
+        </div>
+        <div class="fgroup">
+          <label>Data limite (opcional)</label>
+          <input type="date" id="at-data">
+        </div>
       </div>
     </div>
     <div class="modal-ft">
@@ -4264,6 +4273,9 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
     const prazoHtml = t.data_limite
       ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
       : '';
+    const inicioHtml = t.data_inicio
+      ? `<span class="task-inicio">${fmtDataInicio(t.data_inicio)}</span>`
+      : '';
     const deHtml = criador
       ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribuída por ${_escN(criador.nome||'')}">${_escN(criador.iniciais||'')}</div>`
       : '';
@@ -4286,6 +4298,7 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
             <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
               <span class="task-tipo-chip">${tipoDisp}</span>
               ${prazoHtml}
+              ${inicioHtml}
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto">
               ${paraHtml}
@@ -4303,6 +4316,7 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
         <div class="task-meta">
           <span class="task-tipo-chip">${tipoDisp}</span>
           ${prazoHtml}
+          ${inicioHtml}
           ${deHtml}${deLabel}
         </div>
       </div>
@@ -4328,13 +4342,15 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
 async function adicionarTarefa() {
   const desc = document.getElementById('task-nova-desc').value.trim();
   const tipo = document.getElementById('task-nova-tipo').value;
+  const data_inicio = document.getElementById('task-nova-inicio').value || null;
   const data_limite = document.getElementById('task-nova-data').value || null;
   if (!desc) return;
   const { error } = await sb.from('tarefas_livres').insert({
-    usuario_id: G.usuario.id, criado_por: G.usuario.id, descricao: desc, tipo, data_limite
+    usuario_id: G.usuario.id, criado_por: G.usuario.id, descricao: desc, tipo, data_inicio, data_limite
   });
   if (!error) {
     document.getElementById('task-nova-desc').value = '';
+    document.getElementById('task-nova-inicio').value = '';
     document.getElementById('task-nova-data').value = '';
     carregarTarefas();
     toast('Tarefa adicionada');
@@ -4347,6 +4363,7 @@ function abrirAtribuirTarefa() {
     '<option value="">Selecionar pessoa...</option>' +
     outros.map(u => `<option value="${_escAttrN(u.id)}">${_escN(u.nome)}</option>`).join('');
   document.getElementById('at-desc').value = document.getElementById('task-nova-desc').value;
+  document.getElementById('at-inicio').value = document.getElementById('task-nova-inicio').value || '';
   document.getElementById('at-data').value = document.getElementById('task-nova-data').value || '';
   document.getElementById('modal-atribuir-tarefa').style.display = 'flex';
 }
@@ -4355,16 +4372,18 @@ async function confirmarAtribuirTarefa() {
   const desc = document.getElementById('at-desc').value.trim();
   const para = document.getElementById('at-para').value;
   const tipo = document.getElementById('at-tipo').value;
+  const data_inicio = document.getElementById('at-inicio').value || null;
   const data_limite = document.getElementById('at-data').value || null;
   if (!desc) { toast('Informe a descrição'); return; }
   if (!para) { toast('Selecione a pessoa'); return; }
   const { error } = await sb.from('tarefas_livres').insert({
     usuario_id: para, atribuido_para: para, criado_por: G.usuario.id,
-    descricao: desc, tipo, data_limite
+    descricao: desc, tipo, data_inicio, data_limite
   });
   if (error) { toast('Erro: ' + error.message); return; }
   fecharModal('modal-atribuir-tarefa');
   document.getElementById('task-nova-desc').value = '';
+  document.getElementById('task-nova-inicio').value = '';
   document.getElementById('task-nova-data').value = '';
   carregarTarefas();
   const dest = G.todosUsuarios.find(u => u.id === para);
@@ -8339,6 +8358,7 @@ async function carregarPrioridades() {
         ${etapaNome ? `<div style="font-size:10px;color:#888;margin-top:2px">↳ ${etapaNome}</div>` : ''}
         ${tipoProd ? `<div style="font-size:9px;color:#aaa;margin-top:1px;text-transform:uppercase;letter-spacing:.4px">${tipoProd}</div>` : ''}
         ${prazoChip ? `<div style="margin-top:5px">${prazoChip}</div>` : ''}
+        ${pr.data_inicio ? `<div style="margin-top:4px"><span class="task-inicio">${fmtDataInicio(pr.data_inicio)}</span></div>` : ''}
         ${comentHtml}
       </div>
       <div class="prio-check ${pr.concluida?'done':''}"
@@ -8415,6 +8435,7 @@ async function carregarFluxo() {
       const val    = pr?.produto_id || '';
       const conc   = pr?.concluida || false;
       const prazo  = pr?.prazo_texto || '';
+      const inicio = pr?.data_inicio || '';
       const coment = (pr?.comentario||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const dataId = pr?.id || '';
       const opts   = baseProdOpts.replace(`value="${val}"`, `value="${val}" selected`);
@@ -8422,6 +8443,11 @@ async function carregarFluxo() {
       const concTag = pr
         ? `<span class="fluxo-conc-tag ${conc?'done':''}" onclick="toggleFluxoPrio('${u.id}','${pr.id}')">${conc?'✓ Concluída':'Pendente'}</span>`
         : '';
+      const inicioRow = pr ? `<div class="fluxo-col-date-row" style="gap:5px">
+          <span style="font-size:8px;color:#bbb;white-space:nowrap;line-height:1">Liberação</span>
+          <input class="fluxo-col-date-inicio" type="date" value="${inicio}" style="flex:1"
+            onchange="debFluxo('${pr.id}','inicio',this.value);marcarFluxoDirty('${u.id}')">
+        </div>` : '';
       const dateRow = pr ? `<div class="fluxo-col-date-row">
           <input class="fluxo-col-date" type="date" value="${prazo}"
             onchange="debFluxo('${pr.id}','prazo',this.value);marcarFluxoDirty('${u.id}')">
@@ -8454,7 +8480,7 @@ async function carregarFluxo() {
         </div>
         <select class="fluxo-col-select"
           onchange="salvarFluxoPrio('${u.id}',this.value,this.closest('.fluxo-col-wrap'))">${opts}</select>
-        ${dateRow}${cmtArea}
+        ${inicioRow}${dateRow}${cmtArea}
       </div>`;
     }).join('');
 
@@ -8480,7 +8506,7 @@ function debFluxo(pioId, campo, valor) {
   const key = `${pioId}_${campo}`;
   clearTimeout(_fluxoDebTimers[key]);
   _fluxoDebTimers[key] = setTimeout(async () => {
-    const col = campo === 'prazo' ? 'prazo_texto' : 'comentario';
+    const col = campo === 'prazo' ? 'prazo_texto' : campo === 'inicio' ? 'data_inicio' : 'comentario';
     await sb.from('prioridades_usuario').update({ [col]: valor || null }).eq('id', pioId);
   }, 600);
 }
@@ -8570,8 +8596,9 @@ async function salvarFluxoUsuario(userId) {
       usuario_id:  userId,
       produto_id:  el.dataset.prodid,
       ordem:       i + 1,
-      prazo_texto: el.querySelector('.fluxo-col-date')?.value     || null,
-      comentario:  el.querySelector('.fluxo-col-textarea')?.value || null,
+      data_inicio: el.querySelector('.fluxo-col-date-inicio')?.value || null,
+      prazo_texto: el.querySelector('.fluxo-col-date')?.value       || null,
+      comentario:  el.querySelector('.fluxo-col-textarea')?.value   || null,
       concluida:   el.dataset.conc === 'true',
       definida_por: G.usuario.id
     }));
@@ -8940,6 +8967,14 @@ function fmtDate(d, curto = false) {
   const dt = typeof d === 'string' ? new Date(d + (d.length === 10 ? 'T12:00:00' : '')) : d;
   if (curto) return dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
   return dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function fmtDataInicio(d) {
+  if (!d) return '';
+  const DIAS = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const dt = new Date(d + 'T12:00:00');
+  const data = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  return `material liberado em ${data} - ${DIAS[dt.getDay()]}`;
 }
 
 function fmtNum(n) {
