@@ -1038,6 +1038,27 @@ body::before {
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    GANTT
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ─── KANBAN PROJETOS ───────────────────────────────────── */
+.proj-kanban { display:flex; gap:0; border:1px solid var(--cinza); border-radius:8px; overflow:hidden; height:calc(100vh - 165px); }
+.pk-col { flex:1; min-width:0; border-right:1px solid var(--cinza); display:flex; flex-direction:column; overflow:hidden; }
+.pk-col:last-child { border-right:none; }
+.pk-col-hd { padding:8px 12px; border-bottom:1px solid var(--cinza); background:var(--branco); flex-shrink:0; display:flex; align-items:center; gap:7px; }
+.pk-col-stripe { width:3px; height:14px; border-radius:2px; flex-shrink:0; }
+.pk-col-title { font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; flex:1; color:var(--grafite); }
+.pk-col-cnt { font-size:10px; font-family:var(--font-mono); color:#aaa; }
+.pk-items { padding:8px; display:flex; flex-direction:column; gap:6px; overflow-y:auto; flex:1; }
+.pk-card { background:var(--branco); border:1px solid var(--cinza); border-left-width:4px; border-radius:7px; padding:9px 11px; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
+.pk-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.pk-card-client { font-size:11px; font-weight:700; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; }
+.pk-card-proj { font-size:10px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; }
+.pk-card-prod { font-size:9px; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:5px; }
+.pk-card-etapa { font-size:9px; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px; }
+.pk-card-meta { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.pk-empty { color:#bbb; font-size:11px; text-align:center; padding:20px 8px; }
+[data-theme="dark"] .pk-col { border-color:var(--cinza); }
+[data-theme="dark"] .pk-col-hd { background:var(--branco); border-color:var(--cinza); }
+[data-theme="dark"] .pk-card { background:var(--branco); border-color:var(--cinza); }
+
 .gantt-wrap {
   border: 1px solid var(--cinza);
   background: var(--branco);
@@ -1445,6 +1466,12 @@ body::before {
 .fluxo-col-date-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
 .fluxo-col-date { flex:1; min-width:0; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:2px 4px; background:var(--branco); outline:none; color:#666; font-family:var(--font-ui); }
 .fluxo-col-date:focus { border-color:var(--azul); }
+.fluxo-dates-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.fluxo-date-label { font-size:8px; color:#bbb; margin-bottom:2px; font-family:var(--font-ui); }
+.fluxo-date-wrap { position:relative; cursor:pointer; }
+.fluxo-date-wrap input[type="date"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; box-sizing:border-box; }
+.fluxo-date-display { display:block; font-size:10px; color:#666; border:1px solid var(--cinza); border-radius:4px; padding:2px 6px; min-height:19px; line-height:15px; background:var(--branco); font-family:var(--font-ui); }
+.fluxo-date-wrap:hover .fluxo-date-display { border-color:#999; }
 .fluxo-conc-tag { font-size:9px; font-weight:600; cursor:pointer; padding:2px 7px; border-radius:12px; border:1px solid var(--cinza); background:var(--branco); color:#bbb; white-space:nowrap; flex-shrink:0; font-family:var(--font-ui); }
 .fluxo-conc-tag.done { color:var(--verde); border-color:rgba(29,106,74,.3); background:var(--verde-bg); }
 .fluxo-col-textarea { width:100%; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:4px 6px; background:var(--branco); color:#555; resize:vertical; outline:none; font-family:var(--font-ui); line-height:1.5; box-sizing:border-box; }
@@ -2061,6 +2088,7 @@ body::before {
     <div class="proj-view-toggle">
       <button class="pvt-btn active" id="pvt-lista" onclick="setProjetosView('lista')">Lista</button>
       <button class="pvt-btn" id="pvt-gantt" onclick="setProjetosView('gantt')">Gantt</button>
+      <button class="pvt-btn" id="pvt-kanban" onclick="setProjetosView('kanban')">Kanban</button>
     </div>
     <div id="lista-filters" style="display:contents">
       <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto" style="min-width:280px">
@@ -2099,6 +2127,13 @@ body::before {
   <div id="view-lista">
     <div id="lista-projetos-wrap">
       <div class="loading-state">Carregando projetos...</div>
+    </div>
+  </div>
+
+  <!-- KANBAN -->
+  <div id="view-kanban" style="display:none">
+    <div class="proj-kanban" id="proj-kanban-board">
+      <div class="loading-state">Carregando...</div>
     </div>
   </div>
 
@@ -3630,7 +3665,11 @@ window.lfFiltrarEtapas = function () {
 }
 
 function onTabChange(tab) {
-  if (tab === 'projetos') { renderListaProjetos(); }
+  if (tab === 'projetos') {
+    if (document.getElementById('pvt-kanban')?.classList.contains('active')) renderKanbanProjetos();
+    else if (document.getElementById('pvt-gantt')?.classList.contains('active')) renderGantt();
+    else renderListaProjetos();
+  }
   if (tab === 'revisoes')  { carregarRevisoes(); }
   if (tab === 'processos') { carregarProcessos(); }
   if (tab === 'socios') {
@@ -4457,16 +4496,172 @@ function abrirPopupConfirm(titulo, mensagem, onConfirm) {
 function setProjetosView(v) {
   document.getElementById('pvt-lista').classList.toggle('active', v === 'lista');
   document.getElementById('pvt-gantt').classList.toggle('active', v === 'gantt');
-  document.getElementById('view-lista').style.display = v === 'lista' ? 'block' : 'none';
-  document.getElementById('view-gantt').style.display = v === 'gantt' ? 'block' : 'none';
-  // Mostrar filtros corretos por modo
+  document.getElementById('pvt-kanban').classList.toggle('active', v === 'kanban');
+  document.getElementById('view-lista').style.display   = v === 'lista'   ? 'block' : 'none';
+  document.getElementById('view-gantt').style.display   = v === 'gantt'   ? 'block' : 'none';
+  document.getElementById('view-kanban').style.display  = v === 'kanban'  ? 'block' : 'none';
+  // Filtros compartilhados — ocultar só no Gantt (que tem toolbar própria)
   const listaFilters = document.getElementById('lista-filters');
   if (listaFilters) listaFilters.style.display = v === 'gantt' ? 'none' : 'contents';
   if (v === 'gantt') renderGantt();
+  else if (v === 'kanban') renderKanbanProjetos();
   else renderListaProjetos();
 }
 
-function filtrarProjetos() { renderListaProjetos(); }
+function filtrarProjetos() {
+  const v = document.getElementById('pvt-kanban')?.classList.contains('active') ? 'kanban' : 'lista';
+  if (v === 'kanban') renderKanbanProjetos();
+  else renderListaProjetos();
+}
+
+// ── Tint de fundo por núcleo para cards "envolvido" ────────────────────────────
+const PK_NUCLEO_TINT = {
+  urbanismo:    'rgba(82,128,202,.09)',
+  paisagismo:   'rgba(69,134,93,.09)',
+  especiais:    'rgba(209,153,49,.09)',
+  consultorias: 'rgba(195,98,71,.09)',
+};
+
+function pkFiltrarProds() {
+  const busca         = normBusca(document.getElementById('fil-busca')?.value);
+  const nucleo        = document.getElementById('fil-nucleo').value;
+  const gestaoFiltro  = document.getElementById('fil-gestao').value;
+  const status        = document.getElementById('fil-status').value;
+  const coordId       = document.getElementById('fil-coord').value;
+  const participanteId = document.getElementById('fil-participante').value;
+
+  const baseLista = gestaoFiltro === 'ocultos'
+    ? G._todosProdutosGestao.filter(p => p.em_gestao === false)
+    : gestaoFiltro === 'todos'
+      ? [...G._todosProdutosGestao, ...G._crmVirtuais]
+      : G.todosProdutos;
+
+  return baseLista.filter(p => {
+    if (nucleo && p.nucleo !== nucleo) return false;
+    if (status && p.status !== status) return false;
+    if (coordId && p.coordenador_id !== coordId) return false;
+    if (participanteId) {
+      const etapasDoUsr = new Set(
+        Object.entries(G.etapaDevs)
+          .filter(([, uids]) => uids.includes(participanteId))
+          .map(([eid]) => eid)
+      );
+      if (!G.todasEtapas.some(e => e.produto_id === p.id && etapasDoUsr.has(e.id))) return false;
+    }
+    if (busca) {
+      const opp = p.oportunidades, cli = opp?.clientes;
+      const hay = normBusca([p.nome, opp?.projeto, cli?.nome, cli?.cidade, cli?.uf, opp?.cidade].filter(Boolean).join(' '));
+      if (!hay.includes(busca)) return false;
+    }
+    return true;
+  });
+}
+
+function pkEuEnvolvido(prod) {
+  if (prod.coordenador_id === G.usuario.id) return true;
+  const minhasEtapas = new Set(
+    Object.entries(G.etapaDevs)
+      .filter(([, uids]) => uids.includes(G.usuario.id))
+      .map(([eid]) => eid)
+  );
+  return G.todasEtapas.some(e => e.produto_id === prod.id && minhasEtapas.has(e.id));
+}
+
+function pkColunaProd(prod) {
+  const etapas = G.todasEtapas.filter(e => e.produto_id === prod.id);
+  if (prod.status === 'encerrado') return 'encerrado';
+  const temAndamento = etapas.some(e => e.status === 'em_andamento');
+  if (temAndamento) return 'andamento';
+  const temRevisao = etapas.some(e => e.status === 'em_revisao');
+  if (temRevisao) return 'revisao';
+  return 'fila';
+}
+
+function renderKanbanProjetos() {
+  const board = document.getElementById('proj-kanban-board');
+  if (!board) return;
+
+  const prods = pkFiltrarProds();
+
+  const cols = {
+    fila:      { title: 'Fila',         cor: '#aaa',         items: [] },
+    andamento: { title: 'Em andamento', cor: '#4A90D9',       items: [] },
+    revisao:   { title: 'Em revisão',   cor: '#D19931',       items: [] },
+    encerrado: { title: 'Encerrado',    cor: 'var(--verde)',  items: [] },
+  };
+
+  prods.forEach(p => {
+    const col = pkColunaProd(p);
+    const envolvido = pkEuEnvolvido(p);
+    cols[col].items.push({ prod: p, envolvido });
+  });
+
+  // Envolvidos primeiro dentro de cada coluna
+  Object.values(cols).forEach(c => {
+    c.items.sort((a, b) => (b.envolvido ? 1 : 0) - (a.envolvido ? 1 : 0));
+  });
+
+  board.innerHTML = Object.entries(cols).map(([key, col]) => {
+    const items = col.items.map(({ prod: p, envolvido }) => {
+      const opp   = p.oportunidades;
+      const cli   = opp?.clientes;
+      const nucleo = p.nucleo || 'urbanismo';
+      const nc    = NUCLEO_COR[nucleo] || { dot: '#888', cls: 'b-gr', label: nucleo };
+      const stProd = STATUS_PROD[p.status] || STATUS_PROD.inativo;
+      const coord = G.todosUsuarios.find(u => u.id === p.coordenador_id);
+      const etapaAtiva = G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_andamento')
+        || G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_revisao')
+        || G.todasEtapas.find(e => e.produto_id === p.id && e.status !== 'concluida');
+      const stEtapa = etapaAtiva ? (STATUS_ETAPA[etapaAtiva.status] || null) : null;
+
+      const borderColor = nc.dot;
+      const bgStyle = envolvido
+        ? `background:${PK_NUCLEO_TINT[nucleo] || 'rgba(80,80,80,.07)'};`
+        : '';
+      const hoverBorder = envolvido ? nc.dot : '#aaa';
+
+      const onClickJs = p._crm ? 'void(0)' : `abrirProduto(${_sqN(p.id)})`;
+
+      const coordHtml = coord
+        ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:18px;height:18px;font-size:7px;border-radius:50%;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:700" title="${_escN(coord.nome||'')}">${_escN(coord.iniciais||'')}</div>`
+        : '';
+      const prazoHtml = etapaAtiva?.data_estimada
+        ? `<span style="font-size:9px;font-family:var(--font-mono);color:#888;margin-left:auto">${fmtDate(etapaAtiva.data_estimada)}</span>`
+        : '';
+      const statusBadge = p.status !== 'ativo'
+        ? `<span class="badge ${stProd.cls}" style="font-size:7px">${stProd.label}</span>`
+        : '';
+
+      return `<div class="pk-card" onclick="${onClickJs}"
+          style="border-left-color:${borderColor};${bgStyle}"
+          onmouseover="this.style.borderColor='${hoverBorder}'"
+          onmouseout="this.style.borderColor='var(--cinza)';this.style.borderLeftColor='${borderColor}'">
+        <div class="pk-card-client">${_escN(cli?.nome || 'Sem cliente')}</div>
+        ${opp?.projeto ? `<div class="pk-card-proj">${_escN(opp.projeto)}</div>` : ''}
+        ${p.nome ? `<div class="pk-card-prod">${_escN(p.nome)}</div>` : ''}
+        ${etapaAtiva ? `<div class="pk-card-etapa">${_escN(etapaAtiva.nome || '')}</div>` : ''}
+        <div class="pk-card-meta">
+          <span class="badge ${nc.cls}" style="font-size:7px">${_escN(nc.label)}</span>
+          ${statusBadge}
+          ${stEtapa ? `<span class="badge ${stEtapa.cls}" style="font-size:7px">${stEtapa.label}</span>` : ''}
+          ${coordHtml}
+          ${prazoHtml}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="pk-col">
+      <div class="pk-col-hd">
+        <div class="pk-col-stripe" style="background:${col.cor}"></div>
+        <div class="pk-col-title">${col.title}</div>
+        <div class="pk-col-cnt">${col.items.length}</div>
+      </div>
+      <div class="pk-items">
+        ${items || `<div class="pk-empty">—</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function renderEntregasSemana() {
   const uid = G.usuario.id;
@@ -8455,15 +8650,24 @@ async function carregarFluxo() {
       const concTag = pr
         ? `<span class="fluxo-conc-tag ${conc?'done':''}" onclick="toggleFluxoPrio('${u.id}','${pr.id}')">${conc?'✓ Concluída':'Pendente'}</span>`
         : '';
-      const inicioRow = pr ? `<div class="fluxo-col-date-row" style="gap:5px">
-          <span style="font-size:8px;color:#bbb;white-space:nowrap;line-height:1">Liberação</span>
-          <input class="fluxo-col-date-inicio" type="date" value="${inicio}" style="flex:1"
-            onchange="debFluxo('${pr.id}','inicio',this.value);marcarFluxoDirty('${u.id}')">
-        </div>` : '';
-      const dateRow = pr ? `<div class="fluxo-col-date-row">
-          <input class="fluxo-col-date" type="date" value="${prazo}"
-            onchange="debFluxo('${pr.id}','prazo',this.value);marcarFluxoDirty('${u.id}')">
-          ${concTag}
+      const datesSection = pr ? `<div class="fluxo-dates-grid">
+          <div>
+            <div class="fluxo-date-label">Liberação</div>
+            <div class="fluxo-date-wrap">
+              <span class="fluxo-date-display">${inicio ? fmtFluxoDate(inicio) : '—'}</span>
+              <input class="fluxo-col-date-inicio" type="date" value="${inicio}"
+                onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'—';debFluxo('${pr.id}','inicio',this.value);marcarFluxoDirty('${u.id}')">
+            </div>
+          </div>
+          <div>
+            <div class="fluxo-date-label">Conclusão</div>
+            <div class="fluxo-date-wrap">
+              <span class="fluxo-date-display">${prazo ? fmtFluxoDate(prazo) : '—'}</span>
+              <input class="fluxo-col-date" type="date" value="${prazo}"
+                onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'—';debFluxo('${pr.id}','prazo',this.value);marcarFluxoDirty('${u.id}')">
+            </div>
+            ${concTag}
+          </div>
         </div>` : '';
       const cmtArea = pr ? `<textarea class="fluxo-col-textarea" rows="3"
           placeholder="Comentário para o colaborador..."
@@ -8492,7 +8696,7 @@ async function carregarFluxo() {
         </div>
         <select class="fluxo-col-select"
           onchange="salvarFluxoPrio('${u.id}',this.value,this.closest('.fluxo-col-wrap'))">${opts}</select>
-        ${inicioRow}${dateRow}${cmtArea}
+        ${datesSection}${cmtArea}
       </div>`;
     }).join('');
 
@@ -8510,6 +8714,12 @@ async function carregarFluxo() {
       <div class="fluxo-cols" data-uid="${u.id}">${cols}</div>
     </div>`;
   }).join('');
+}
+
+function fmtFluxoDate(iso) {
+  if (!iso) return '—';
+  const p = iso.split('-');
+  return p.length < 3 ? iso : p[2] + '.' + p[1];
 }
 
 // ── Debounce por ID do registro (não por userId+ordem) ────────────────────────

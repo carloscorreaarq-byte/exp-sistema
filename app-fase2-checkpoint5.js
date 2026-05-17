@@ -414,15 +414,9 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   }
 
   function toggleEmpresaFields() {
-    const disabled = !!document.getElementById('md-vinculo-exp')?.checked;
-    [
-      'md-razao-social','md-nome-fantasia','md-cnpj','md-data-inscricao','md-regime-tributario',
-      'md-emp-logradouro','md-emp-numero','md-emp-complemento','md-emp-cep','md-emp-bairro',
-      'md-emp-municipio','md-emp-uf','md-email-empresarial','md-telefone-empresarial'
-    ].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.disabled = disabled;
-    });
+    const hasVinculo = !!document.getElementById('md-vinculo-exp')?.checked;
+    const wrap = document.getElementById('md-empresa-campos');
+    if (wrap) wrap.classList.toggle('disabled', !hasVinculo);
   }
 
   function renderPlatformPalette() {
@@ -554,6 +548,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     document.getElementById('md-instituicao-formacao').value = profissionais.instituicao_formacao || '';
     document.getElementById('md-mes-ano-formacao').value = profissionais.mes_ano_formacao || '';
     document.getElementById('md-vinculo-exp').checked = !!empresariais.vinculo_exp;
+    toggleEmpresaFields();
     document.getElementById('md-razao-social').value = empresariais.razao_social || '';
     document.getElementById('md-nome-fantasia').value = empresariais.nome_fantasia || '';
     document.getElementById('md-cnpj').value = empresariais.cnpj || '';

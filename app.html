@@ -558,6 +558,65 @@ body::before {
 
 .shell-check input { accent-color: var(--grafite); }
 
+/* ── VÍNCULO EXP — checkbox customizado ────────────────── */
+.vinculo-exp-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #555;
+  padding: 8px 12px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--cinza2);
+  transition: background .12s, border-color .12s;
+  user-select: none;
+}
+.vinculo-exp-label:hover { background: var(--off); border-color: var(--cinza); }
+.vinculo-exp-box {
+  position: relative;
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+}
+.vinculo-exp-box input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 100%; height: 100%;
+  cursor: pointer;
+  margin: 0;
+}
+.vinculo-exp-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid var(--cinza);
+  font-size: 10px;
+  color: transparent;
+  background: var(--branco);
+  transition: all .15s;
+  pointer-events: none;
+}
+.vinculo-exp-label:hover .vinculo-exp-check { border-color: #999; color: #ccc; }
+.vinculo-exp-box input:checked ~ .vinculo-exp-check {
+  background: var(--grafite);
+  border-color: var(--grafite);
+  color: #fff;
+}
+
+/* ── CAMPOS EMPRESA DESABILITADOS ───────────────────────── */
+#md-empresa-campos {
+  display: contents;
+  transition: opacity .2s;
+}
+#md-empresa-campos.disabled {
+  display: block;
+  opacity: .28;
+  pointer-events: none;
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 960px) {
   .platform-shell-grid {
     grid-template-columns: 1fr;
@@ -792,7 +851,7 @@ body::before {
       <div class="meus-dados-section">
         <div class="meus-dados-section-title">
           <strong>Identidade e contato</strong>
-          <span>Primeiro bloco funcional da Fase 2. Dados profissionais, empresariais e bancarios entram nos proximos checkpoints.</span>
+          <span>Dados pessoais, de contato e localização.</span>
         </div>
         <div class="meus-dados-grid">
           <div class="shell-field full">
@@ -821,7 +880,16 @@ body::before {
           </div>
           <div class="shell-field">
             <label for="md-uf-nascimento">UF de nascimento</label>
-            <input id="md-uf-nascimento" type="text" maxlength="2">
+            <select id="md-uf-nascimento">
+              <option value="">—</option>
+              <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
+              <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+              <option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+              <option>MG</option><option>PA</option><option>PB</option><option>PR</option>
+              <option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
+              <option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+              <option>SP</option><option>SE</option><option>TO</option>
+            </select>
           </div>
           <div class="shell-field">
             <label for="md-celular">Telefone celular</label>
@@ -870,7 +938,16 @@ body::before {
           </div>
           <div class="shell-field">
             <label for="md-uf">UF</label>
-            <input id="md-uf" type="text" maxlength="2">
+            <select id="md-uf">
+              <option value="">—</option>
+              <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
+              <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+              <option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+              <option>MG</option><option>PA</option><option>PB</option><option>PR</option>
+              <option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
+              <option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+              <option>SP</option><option>SE</option><option>TO</option>
+            </select>
           </div>
           <div class="shell-field">
             <label for="md-emergencia-nome">Contato de emergencia</label>
@@ -889,7 +966,7 @@ body::before {
 
       <div class="meus-dados-section">
         <div class="meus-dados-section-title">
-          <strong>Profissional</strong>
+          <strong>Dados profissionais</strong>
           <span>Registro profissional e formação.</span>
         </div>
         <div class="meus-dados-grid">
@@ -910,13 +987,20 @@ body::before {
 
       <div class="meus-dados-section">
         <div class="meus-dados-section-title">
-          <strong>Empresarial</strong>
+          <strong>Dados empresariais</strong>
           <span>Cadastro PJ com logica de vinculo EXP.</span>
         </div>
         <div class="meus-dados-grid">
           <div class="shell-field full">
-            <label class="shell-check"><input id="md-vinculo-exp" type="checkbox"> Vinculo EXP</label>
+            <label class="vinculo-exp-label">
+              <span class="vinculo-exp-box">
+                <input id="md-vinculo-exp" type="checkbox" onchange="toggleEmpresaFields()">
+                <span class="vinculo-exp-check">&#10003;</span>
+              </span>
+              V&#237;nculo EXP
+            </label>
           </div>
+          <div id="md-empresa-campos">
           <div class="shell-field full">
             <label for="md-razao-social">Razao social</label>
             <input id="md-razao-social" type="text" maxlength="160">
@@ -968,7 +1052,16 @@ body::before {
           </div>
           <div class="shell-field">
             <label for="md-emp-uf">UF</label>
-            <input id="md-emp-uf" type="text" maxlength="2">
+            <select id="md-emp-uf">
+              <option value="">—</option>
+              <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
+              <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+              <option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+              <option>MG</option><option>PA</option><option>PB</option><option>PR</option>
+              <option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
+              <option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+              <option>SP</option><option>SE</option><option>TO</option>
+            </select>
           </div>
           <div class="shell-field">
             <label for="md-email-empresarial">Email empresarial</label>
@@ -978,12 +1071,13 @@ body::before {
             <label for="md-telefone-empresarial">Telefone empresarial</label>
             <input id="md-telefone-empresarial" type="text" maxlength="40">
           </div>
+          </div><!-- #md-empresa-campos -->
         </div>
       </div>
 
       <div class="meus-dados-section">
         <div class="meus-dados-section-title">
-          <strong>Bancario</strong>
+          <strong>Dados bancários</strong>
           <span>Dados de conta e Pix.</span>
         </div>
         <div class="meus-dados-grid">
@@ -1237,7 +1331,7 @@ function renderTermState(usuario) {
 
   const status   = (usuario.termo_status || '').toLowerCase();
   const signedAt = formatTermDate(usuario.termo_assinado_em);
-  const isOk     = status === 'assinado' || status === 'vigente' || status === 'ok';
+  const isOk     = status === 'assinado' || status === 'vigente' || status === 'ok' || status === 'signed';
 
   dropdown.classList.remove('pending', 'ok');
   chip.classList.remove('pending', 'ok');
@@ -1333,15 +1427,9 @@ function setPlataformaStatus(message) {
 }
 
 function toggleEmpresaFields() {
-  const disabled = !!document.getElementById('md-vinculo-exp')?.checked;
-  [
-    'md-razao-social','md-nome-fantasia','md-cnpj','md-data-inscricao','md-regime-tributario',
-    'md-emp-logradouro','md-emp-numero','md-emp-complemento','md-emp-cep','md-emp-bairro',
-    'md-emp-municipio','md-emp-uf','md-email-empresarial','md-telefone-empresarial'
-  ].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = disabled;
-  });
+  const hasVinculo = !!document.getElementById('md-vinculo-exp')?.checked;
+  const wrap = document.getElementById('md-empresa-campos');
+  if (wrap) wrap.classList.toggle('disabled', !hasVinculo);
 }
 
 function selectedPlatformColor() {
