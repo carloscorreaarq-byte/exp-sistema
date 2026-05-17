@@ -2009,7 +2009,6 @@ body::before {
                 <option value="organizacao">Org. Interna</option>
                 <option value="sociedade">Sociedade</option>
               </select>
-              <input type="date" id="task-nova-inicio" class="filter-select" title="Liberação / início (opcional)">
               <input type="date" id="task-nova-data" class="filter-select" title="Data limite (opcional)">
             </div>
             <div class="task-row3">
@@ -3834,7 +3833,7 @@ async function carregarUsuarios() {
   const fp = document.getElementById('fil-participante');
   if (fp) fp.innerHTML =
     '<option value="">Todos os participantes</option>' +
-    `<option value="${G.usuario.id}">⬤ Meus projetos</option>` +
+    `<option value="${G.usuario.id}" style="font-weight:700">Meus projetos</option>` +
     G.todosUsuarios.filter(u => u.id !== G.usuario.id)
       .map(u => `<option value="${u.id}">${u.nome} (${u.iniciais})</option>`).join('');
 }
@@ -4283,9 +4282,6 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
     const prazoHtml = t.data_limite
       ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
       : '';
-    const inicioHtml = t.data_inicio
-      ? `<span class="task-inicio">${fmtDataInicio(t.data_inicio)}</span>`
-      : '';
     const deHtml = criador
       ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribuída por ${_escN(criador.nome||'')}">${_escN(criador.iniciais||'')}</div>`
       : '';
@@ -4308,7 +4304,6 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
             <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
               <span class="task-tipo-chip">${tipoDisp}</span>
               ${prazoHtml}
-              ${inicioHtml}
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto">
               ${paraHtml}
@@ -4326,7 +4321,6 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
         <div class="task-meta">
           <span class="task-tipo-chip">${tipoDisp}</span>
           ${prazoHtml}
-          ${inicioHtml}
           ${deHtml}${deLabel}
         </div>
       </div>
@@ -4352,15 +4346,13 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
 async function adicionarTarefa() {
   const desc = document.getElementById('task-nova-desc').value.trim();
   const tipo = document.getElementById('task-nova-tipo').value;
-  const data_inicio = document.getElementById('task-nova-inicio').value || null;
   const data_limite = document.getElementById('task-nova-data').value || null;
   if (!desc) return;
   const { error } = await sb.from('tarefas_livres').insert({
-    usuario_id: G.usuario.id, criado_por: G.usuario.id, descricao: desc, tipo, data_inicio, data_limite
+    usuario_id: G.usuario.id, criado_por: G.usuario.id, descricao: desc, tipo, data_limite
   });
   if (!error) {
     document.getElementById('task-nova-desc').value = '';
-    document.getElementById('task-nova-inicio').value = '';
     document.getElementById('task-nova-data').value = '';
     carregarTarefas();
     toast('Tarefa adicionada');
@@ -4373,7 +4365,7 @@ function abrirAtribuirTarefa() {
     '<option value="">Selecionar pessoa...</option>' +
     outros.map(u => `<option value="${_escAttrN(u.id)}">${_escN(u.nome)}</option>`).join('');
   document.getElementById('at-desc').value = document.getElementById('task-nova-desc').value;
-  document.getElementById('at-inicio').value = document.getElementById('task-nova-inicio').value || '';
+  document.getElementById('at-inicio').value = '';
   document.getElementById('at-data').value = document.getElementById('task-nova-data').value || '';
   document.getElementById('modal-atribuir-tarefa').style.display = 'flex';
 }
@@ -4393,7 +4385,6 @@ async function confirmarAtribuirTarefa() {
   if (error) { toast('Erro: ' + error.message); return; }
   fecharModal('modal-atribuir-tarefa');
   document.getElementById('task-nova-desc').value = '';
-  document.getElementById('task-nova-inicio').value = '';
   document.getElementById('task-nova-data').value = '';
   carregarTarefas();
   const dest = G.todosUsuarios.find(u => u.id === para);
