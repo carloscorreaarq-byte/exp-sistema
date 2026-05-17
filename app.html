@@ -527,7 +527,7 @@ body::before {
   border-radius: var(--radius-card);
   padding: 10px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
   border-left: 3px solid rgba(74,114,181,.24);
@@ -535,8 +535,17 @@ body::before {
 }
 .platform-user-row .platform-user-copy    { flex: 1; min-width: 140px; }
 .platform-user-row .platform-user-meta    { min-width: 130px; flex-shrink: 0; font-size: var(--text-sub); color: #888; line-height: 1.6; }
-.platform-user-row .platform-inline       { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.platform-user-row .platform-inline       { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .platform-user-row .platform-user-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.platform-user-row .shell-btn,
+.platform-user-row select.shell-btn {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+.platform-user-row select.shell-btn {
+  min-width: 122px;
+}
 
 .platform-user-avatar {
   width: 42px;
@@ -550,7 +559,26 @@ body::before {
   color: #fff;
   font-size: 12px;
   font-weight: 700;
+  position: relative;
 }
+.platform-user-avatar.clickable { cursor: pointer; }
+.platform-user-avatar.clickable::after {
+  content: 'Alterar avatar';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20,20,20,.68);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+.platform-user-avatar.clickable:hover::after { opacity: 1; }
 
 .platform-user-avatar img {
   width: 100%;
@@ -581,9 +609,10 @@ body::before {
 }
 
 .platform-palette {
-  display: grid;
-  grid-template-columns: repeat(12, 16px);
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 340px;
 }
 
 .platform-swatch {
@@ -1228,7 +1257,6 @@ body::before {
             </div>
             <div class="platform-inline">
               <button type="button" class="shell-btn primary" onclick="criarNovoUsuarioPlataforma()">Criar novo usuario</button>
-              <span class="shell-inline-note">Cadastro eventual. O uso mais frequente desta area e o controle dos usuarios existentes.</span>
             </div>
           </div>
           <div class="platform-users-list" id="platform-users-list">

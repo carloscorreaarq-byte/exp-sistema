@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const signupClient = window.sbSignup || window.supabase.createClient(
     'https://pgnydwsjntaezdhkgvpu.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhb3AiLCJyZWYiOiJwZ255ZHdzam50YWV6ZGhrZ3ZwdSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzc1MDg5NzEzLCJleHAiOjIwOTA2NjU3MTN9.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo',
@@ -20,64 +20,64 @@
   const TERM_VALIDITY_DAYS = 365;
   const DEFAULT_TERM_DEFINITION = {
     slug: 'termo_uso_protecao_dados_pessoais',
-    titulo: 'TERMO DE USO E PROTEÇÃO DE DADOS PESSOAIS',
+    titulo: 'TERMO DE USO E PROTEÃ‡ÃƒO DE DADOS PESSOAIS',
     versao_termo: '2026.01',
-    compromisso_prioritario: 'O acesso à plataforma EXP é pessoal e intransferível. O usuário deve proteger suas credenciais, utilizar a plataforma apenas para fins ligados à prestação de serviços à EXP e comunicar imediatamente qualquer suspeita de acesso indevido ou incidente de segurança.',
+    compromisso_prioritario: 'O acesso Ã  plataforma EXP Ã© pessoal e intransferÃ­vel. O usuÃ¡rio deve proteger suas credenciais, utilizar a plataforma apenas para fins ligados Ã  prestaÃ§Ã£o de serviÃ§os Ã  EXP e comunicar imediatamente qualquer suspeita de acesso indevido ou incidente de seguranÃ§a.',
     conteudo_texto: `1. Das Partes
-Este Termo é firmado entre a EXP ("Empresa") e o usuário identificado no momento do aceite ("Usuário"), na condição de prestador de serviços ou sócio autorizado, conforme relação jurídica já estabelecida entre as partes em instrumento próprio.
+Este Termo Ã© firmado entre a EXP ("Empresa") e o usuÃ¡rio identificado no momento do aceite ("UsuÃ¡rio"), na condiÃ§Ã£o de prestador de serviÃ§os ou sÃ³cio autorizado, conforme relaÃ§Ã£o jurÃ­dica jÃ¡ estabelecida entre as partes em instrumento prÃ³prio.
 
-Este Termo não cria, altera ou implica qualquer vínculo empregatício entre as partes, sendo celebrado exclusivamente para fins de regulamentação do acesso e uso da plataforma.
+Este Termo nÃ£o cria, altera ou implica qualquer vÃ­nculo empregatÃ­cio entre as partes, sendo celebrado exclusivamente para fins de regulamentaÃ§Ã£o do acesso e uso da plataforma.
 
 2. Finalidade da Plataforma e do Tratamento de Dados
 A plataforma EXP destina-se a:
 
 Facilitar o acompanhamento colaborativo de processos em ambiente remoto;
-Organizar o compartilhamento e acesso a informações e fluxos de trabalho;
+Organizar o compartilhamento e acesso a informaÃ§Ãµes e fluxos de trabalho;
 Simplificar registros operacionais e administrativos;
-Apoiar a mensuração de rentabilidade projetual de forma integrada.
+Apoiar a mensuraÃ§Ã£o de rentabilidade projetual de forma integrada.
 
-O registro de histórico de edições, visualizações e interações tem finalidade operacional e colaborativa, não constituindo instrumento de controle individualizado de produção.
+O registro de histÃ³rico de ediÃ§Ãµes, visualizaÃ§Ãµes e interaÃ§Ãµes tem finalidade operacional e colaborativa, nÃ£o constituindo instrumento de controle individualizado de produÃ§Ã£o.
 
-3. Dados Tratados e Base Legal (LGPD — Lei nº 13.709/2018)
-A EXP trata dados pessoais do Usuário com base no legítimo interesse e na execução do contrato de prestação de serviços, incluindo:
+3. Dados Tratados e Base Legal (LGPD â€” Lei nÂº 13.709/2018)
+A EXP trata dados pessoais do UsuÃ¡rio com base no legÃ­timo interesse e na execuÃ§Ã£o do contrato de prestaÃ§Ã£o de serviÃ§os, incluindo:
 
-Dados de identificação (nome, e-mail, função);
-Dados de acesso (registros de login, histórico de navegação e edições na plataforma);
-Dados operacionais inseridos pelo Usuário no exercício de suas atividades.
+Dados de identificaÃ§Ã£o (nome, e-mail, funÃ§Ã£o);
+Dados de acesso (registros de login, histÃ³rico de navegaÃ§Ã£o e ediÃ§Ãµes na plataforma);
+Dados operacionais inseridos pelo UsuÃ¡rio no exercÃ­cio de suas atividades.
 
-O Usuário, ao aceitar este Termo, autoriza expressamente o registro e armazenamento dessas informações para as finalidades descritas acima.
+O UsuÃ¡rio, ao aceitar este Termo, autoriza expressamente o registro e armazenamento dessas informaÃ§Ãµes para as finalidades descritas acima.
 
-Os dados serão retidos pelo prazo necessário ao cumprimento das finalidades descritas e por obrigações legais subsequentes, sendo garantidos ao Usuário os direitos previstos no Art. 18 da LGPD (acesso, correção, eliminação e portabilidade), mediante solicitação formal à Empresa.
+Os dados serÃ£o retidos pelo prazo necessÃ¡rio ao cumprimento das finalidades descritas e por obrigaÃ§Ãµes legais subsequentes, sendo garantidos ao UsuÃ¡rio os direitos previstos no Art. 18 da LGPD (acesso, correÃ§Ã£o, eliminaÃ§Ã£o e portabilidade), mediante solicitaÃ§Ã£o formal Ã  Empresa.
 
-4. Segurança e Responsabilidades do Usuário
-O Usuário declara ciência e concorda com as seguintes obrigações:
+4. SeguranÃ§a e Responsabilidades do UsuÃ¡rio
+O UsuÃ¡rio declara ciÃªncia e concorda com as seguintes obrigaÃ§Ãµes:
 
-a) Credenciais pessoais e intransferíveis
-O login e senha de acesso são de uso exclusivamente pessoal. É vedado o compartilhamento de credenciais com terceiros, independentemente do vínculo com a Empresa.
+a) Credenciais pessoais e intransferÃ­veis
+O login e senha de acesso sÃ£o de uso exclusivamente pessoal. Ã‰ vedado o compartilhamento de credenciais com terceiros, independentemente do vÃ­nculo com a Empresa.
 
-b) Acesso em dispositivos não pessoais
-O Usuário deve exercer cautela ao acessar a plataforma em dispositivos de uso compartilhado ou público. Recomenda-se encerrar a sessão imediatamente após o uso e não salvar credenciais nesses ambientes.
+b) Acesso em dispositivos nÃ£o pessoais
+O UsuÃ¡rio deve exercer cautela ao acessar a plataforma em dispositivos de uso compartilhado ou pÃºblico. Recomenda-se encerrar a sessÃ£o imediatamente apÃ³s o uso e nÃ£o salvar credenciais nesses ambientes.
 
-c) Notificação de incidentes
-Caso o Usuário identifique ou suspeite de qualquer acesso não autorizado à sua conta ou brecha de segurança, deverá comunicar imediatamente a Empresa, colaborando para a investigação e contenção do incidente.
+c) NotificaÃ§Ã£o de incidentes
+Caso o UsuÃ¡rio identifique ou suspeite de qualquer acesso nÃ£o autorizado Ã  sua conta ou brecha de seguranÃ§a, deverÃ¡ comunicar imediatamente a Empresa, colaborando para a investigaÃ§Ã£o e contenÃ§Ã£o do incidente.
 
 d) Uso adequado
-O acesso à plataforma deve ocorrer exclusivamente para fins relacionados à prestação de serviços à EXP. Qualquer uso para finalidade diversa é vedado.
+O acesso Ã  plataforma deve ocorrer exclusivamente para fins relacionados Ã  prestaÃ§Ã£o de serviÃ§os Ã  EXP. Qualquer uso para finalidade diversa Ã© vedado.
 
-5. Vigência e Renovação
-Este Termo tem vigência de 12 (doze) meses a partir da data de aceite, renovando-se automaticamente por igual período, salvo manifestação contrária de qualquer das partes ou revogação do acesso pela Empresa.
+5. VigÃªncia e RenovaÃ§Ã£o
+Este Termo tem vigÃªncia de 12 (doze) meses a partir da data de aceite, renovando-se automaticamente por igual perÃ­odo, salvo manifestaÃ§Ã£o contrÃ¡ria de qualquer das partes ou revogaÃ§Ã£o do acesso pela Empresa.
 
-A EXP reserva-se o direito de atualizar os termos deste instrumento, notificando os usuários com antecedência mínima de 15 dias, sendo necessário novo aceite para continuidade do acesso.
+A EXP reserva-se o direito de atualizar os termos deste instrumento, notificando os usuÃ¡rios com antecedÃªncia mÃ­nima de 15 dias, sendo necessÃ¡rio novo aceite para continuidade do acesso.
 
 6. Aceite
-Ao clicar em "Li e aceito os termos", o Usuário declara:
+Ao clicar em "Li e aceito os termos", o UsuÃ¡rio declara:
 
 Ter lido e compreendido integralmente este Termo;
-Estar ciente de suas obrigações de sigilo, segurança e uso responsável;
+Estar ciente de suas obrigaÃ§Ãµes de sigilo, seguranÃ§a e uso responsÃ¡vel;
 Autorizar o tratamento de seus dados pessoais nos termos descritos;
-Reconhecer que o acesso à plataforma e seus recursos está vinculado à manutenção da relação de prestação de serviços com a EXP.
+Reconhecer que o acesso Ã  plataforma e seus recursos estÃ¡ vinculado Ã  manutenÃ§Ã£o da relaÃ§Ã£o de prestaÃ§Ã£o de serviÃ§os com a EXP.
 
-EXP · Documento gerado automaticamente pela plataforma · Registro de aceite armazenado com data, hora e identificação do usuário.`
+EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceite armazenado com data, hora e identificaÃ§Ã£o do usuÃ¡rio.`
   };
   let currentTermDefinition = { ...DEFAULT_TERM_DEFINITION };
 
@@ -336,7 +336,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       + '    <div class="shell-modal-footer">'
       + '      <div class="shell-status-text" id="termo-modal-status"></div>'
       + '      <div class="shell-actions">'
-      + '        <span id="termo-sign-text" style="font-size:11px;color:#888;display:none">Termo já assinado</span>'
+      + '        <span id="termo-sign-text" style="font-size:11px;color:#888;display:none">Termo jÃ¡ assinado</span>'
       + '        <button type="button" class="shell-btn" id="termo-close-bottom">Fechar</button>'
       + '        <button type="button" class="shell-btn primary" id="termo-sign-btn">Estou ciente e concordo com os termos acima</button>'
       + '      </div>'
@@ -359,7 +359,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     if (!wrap) return;
     if (title) title.textContent = currentTermDefinition.titulo || DEFAULT_TERM_DEFINITION.titulo;
     if (priority) {
-      priority.innerHTML = '<strong style="display:block;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:#D19931">Compromisso Prioritário</strong>'
+      priority.innerHTML = '<strong style="display:block;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:#D19931">Compromisso PrioritÃ¡rio</strong>'
         + '<div>' + escapeHtml(currentTermDefinition.compromisso_prioritario || DEFAULT_TERM_DEFINITION.compromisso_prioritario).replace(/\n/g, '<br>') + '</div>';
     }
     wrap.innerHTML = splitTermBlocks(currentTermDefinition.conteudo_texto || DEFAULT_TERM_DEFINITION.conteudo_texto)
@@ -377,7 +377,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     const expiraEm = formatPtDate(termo?.expira_em);
     if (status === 'signed') {
       statusCopy.textContent = assinadoEm
-        ? 'Termo assinado em ' + assinadoEm + (expiraEm ? ' · validade até ' + expiraEm : '.')
+        ? 'Termo assinado em ' + assinadoEm + (expiraEm ? ' Â· validade atÃ© ' + expiraEm : '.')
         : 'Termo registrado como assinado.';
       modalStatus.textContent = '';
       signBtn.style.display = 'none';
@@ -398,7 +398,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       modalStatus.textContent = '';
       return;
     }
-    statusCopy.textContent = 'O termo ainda não foi assinado para esta conta.';
+    statusCopy.textContent = 'O termo ainda nÃ£o foi assinado para esta conta.';
     modalStatus.textContent = '';
   }
 
@@ -466,7 +466,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     card.innerHTML = ''
       + '<div class="platform-card-title">'
       + '  <div>'
-      + '    <strong>Termo de uso e proteção de dados</strong>'
+      + '    <strong>Termo de uso e proteÃ§Ã£o de dados</strong>'
       + '    <span>Texto-base gerenciavel pela Gestao de plataforma.</span>'
       + '  </div>'
       + '</div>'
@@ -508,8 +508,8 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   }
 
   function roleLabel(role) {
-    if (role === 'socio_admin') return 'Sócio administrador';
-    if (role === 'socio') return 'Sócio';
+    if (role === 'socio_admin') return 'SÃ³cio administrador';
+    if (role === 'socio') return 'SÃ³cio';
     if (role === 'colaborador') return 'Colaborador';
     return role || 'sem role';
   }
@@ -518,7 +518,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     const status = String(termo?.status_termo || 'pending').toLowerCase();
     if (status === 'signed') {
       return termo?.expira_em
-        ? 'Assinado · validade ate ' + (formatPtDate(termo.expira_em) || '-')
+        ? 'Assinado Â· validade ate ' + (formatPtDate(termo.expira_em) || '-')
         : 'Assinado';
     }
     if (status === 'expired') return 'Vencido';
@@ -612,7 +612,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       avatar.textContent = usuario.iniciais || initialsFromNome(usuario.nome);
     }
     document.getElementById('meus-dados-hero-nome').textContent = dados.nome_completo || usuario.nome || '-';
-    document.getElementById('meus-dados-hero-resumo').textContent = roleLabel(usuario.role) + ' · ' + (usuario.email_login || usuario.email || 'sem email institucional registrado');
+    document.getElementById('meus-dados-hero-resumo').textContent = roleLabel(usuario.role) + ' Â· ' + (usuario.email_login || usuario.email || 'sem email institucional registrado');
   }
 
   window.abrirMeusDados = async function abrirMeusDados() {
@@ -626,13 +626,13 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
 
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.app_user_id || !sessionUser?.auth_id) {
-      setMeusDadosStatus('Sessão do usuário indisponível para carregar "Meus dados".');
+      setMeusDadosStatus('SessÃ£o do usuÃ¡rio indisponÃ­vel para carregar "Meus dados".');
       return;
     }
 
     const usuario = await window.fetchCurrentUsuario(sessionUser.auth_id);
     if (!usuario) {
-      setMeusDadosStatus('Não foi possível carregar a identidade base do usuário.');
+      setMeusDadosStatus('NÃ£o foi possÃ­vel carregar a identidade base do usuÃ¡rio.');
       return;
     }
 
@@ -644,7 +644,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     ]);
 
     if (pessoais.error) {
-      setMeusDadosStatus('Falha ao carregar os dados pessoais do usuário.');
+      setMeusDadosStatus('Falha ao carregar os dados pessoais do usuÃ¡rio.');
       fillMeusDadosForm(usuario, {}, profissionais.data || {}, empresariais.data || {}, bancarios.data || {});
       return;
     }
@@ -669,7 +669,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   window.salvarMeusDados = async function salvarMeusDados() {
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.app_user_id || !sessionUser?.auth_id) {
-      setMeusDadosStatus('Sessão inválida para salvar os dados.');
+      setMeusDadosStatus('SessÃ£o invÃ¡lida para salvar os dados.');
       return;
     }
 
@@ -816,15 +816,15 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     const wrap = document.getElementById('platform-users-list');
     if (!wrap) return;
     if (!users.length) {
-      wrap.innerHTML = '<div class="platform-empty">Nenhum usuário encontrado.</div>';
+      wrap.innerHTML = '<div class="platform-empty">Nenhum usuÃ¡rio encontrado.</div>';
       return;
     }
     wrap.innerHTML = users.map((user) => {
       const current = currentSessionUsuario()?.app_user_id === user.id;
       const termo = platformTermosCache[user.id] || null;
       return '<div class="platform-user-row">'
-        + '<div class="platform-user-avatar" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
-        + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' · ' + roleLabel(user.role) + '</span></div>'
+        + '<div class="platform-user-avatar clickable" title="Alterar avatar" onclick="subirAvatarPlataforma(\'' + user.id + '\')" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
+        + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' Â· ' + roleLabel(user.role) + '</span></div>'
         + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'nao') + '</div>'
         + '<div class="platform-inline">'
         + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
@@ -837,7 +837,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         + '<option value="inativo"' + (user.status_acesso === 'inativo' ? ' selected' : '') + '>Inativo</option>'
         + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
         + '</select></div>'
-        + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label><button type="button" class="shell-btn" onclick="subirAvatarPlataforma(\'' + user.id + '\')">Avatar</button>' + (current ? '<span class="platform-user-meta">usuário atual</span>' : '') + '</div>'
+        + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuÃ¡rio atual</span>' : '') + '</div>'
         + '<div class="platform-inline"><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
         + '</div>';
     }).join('');
@@ -1120,13 +1120,13 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     if (existingUser?.id) {
       const { error: updateError } = await window.sb.from('usuarios').update(upsertPayload).eq('id', existingUser.id);
       if (updateError) {
-        setPlataformaStatus('Usuário Auth criado, mas nao foi possivel concluir o cadastro institucional.');
+        setPlataformaStatus('UsuÃ¡rio Auth criado, mas nao foi possivel concluir o cadastro institucional.');
         return;
       }
     } else {
       const { data: insertedRows, error: insertError } = await window.sb.from('usuarios').insert(upsertPayload).select('id');
       if (insertError) {
-        setPlataformaStatus('Usuário Auth criado, mas nao foi possivel criar a linha institucional em usuarios.');
+        setPlataformaStatus('UsuÃ¡rio Auth criado, mas nao foi possivel criar a linha institucional em usuarios.');
         return;
       }
       targetUsuarioId = insertedRows && insertedRows[0] ? insertedRows[0].id : null;
@@ -1206,3 +1206,4 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
 
   syncCurrentTermState();
 })();
+
