@@ -349,7 +349,9 @@
           icoChevron() +
         '</div>' +
         '<div class="chat-toggle" id="exp-chat-toggle" onclick="expChat.toggle()">' +
-          icoChat() +
+          (user.avatar_url
+            ? '<img src="' + escHtml(user.avatar_url) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block" alt="">'
+            : icoChat()) +
           '<div class="chat-badge" id="exp-chat-badge"></div>' +
         '</div>' +
       '</div>'
@@ -389,8 +391,8 @@
 
     var color = STATUS_COLORS[status] || STATUS_COLORS.online;
 
-    /* FAB: só cor chapada — sem shadow colorido */
-    if ($toggle) {
+    /* FAB: cor de status só quando não há foto (foto preenche o círculo) */
+    if ($toggle && !user.avatar_url) {
       $toggle.style.background = color;
     }
     /* Dot no indicador de status */
@@ -522,13 +524,16 @@
           var otherUid = parts.find(function (p) { return p !== uid; }) || '';
           var member = teamMembers.find(function (m) { return m.auth_id === otherUid; });
 
-          var name, iniciais, cor;
+          var name, iniciais, cor, avatarUrl;
+          var dmMember = teamMembers.find(function (m) { return m.auth_id === dm.sender_id; });
           if (!isOwn) {
             name = dm.sender_name; iniciais = dm.sender_iniciais || dm.sender_name.substring(0, 2).toUpperCase(); cor = dm.sender_cor || '#1D6A4A';
+            avatarUrl = dmMember ? dmMember.avatar_url : null;
           } else if (member) {
             name = member.nome; iniciais = member.iniciais || member.nome.substring(0, 2).toUpperCase(); cor = member.cor || '#1D6A4A';
+            avatarUrl = member.avatar_url || null;
           } else {
-            name = 'Colega'; iniciais = '??'; cor = '#1D6A4A';
+            name = 'Colega'; iniciais = '??'; cor = '#1D6A4A'; avatarUrl = null;
           }
 
           var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + '…' : dm.content;
@@ -537,7 +542,7 @@
           var nameEsc  = escHtml(firstName(name));
 
           html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
-            '<div class="chat-av" style="background:' + cor + ';width:28px;height:28px;font-size:10px;flex-shrink:0">' + escHtml(iniciais) + '</div>' +
+            avHtml(iniciais, cor, avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
             '<div class="chat-conv-info">' +
               '<div class="chat-conv-name">' + nameEsc + '</div>' +
               '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
@@ -606,7 +611,7 @@
 
   function loadTeamMembers() {
     sb.from('usuarios')
-      .select('id,auth_id,nome,iniciais,cor,role')
+      .select('id,auth_id,nome,iniciais,cor,role,avatar_url')
       .order('nome')
       .then(function (r) {
         teamMembers = (r.data || []).filter(function (m) {
@@ -637,7 +642,7 @@
       html += '<div class="chat-member-item" onclick="expChat.toggleMember(\'' + m.auth_id + '\')">' +
         '<div class="chat-member-check' + (sel ? ' sel' : '') + '"></div>' +
         '<div style="position:relative;flex-shrink:0">' +
-          '<div class="chat-av" style="background:' + cor + ';width:28px;height:28px;font-size:10px">' + escHtml(m.iniciais || m.nome.substring(0, 2).toUpperCase()) + '</div>' +
+          avHtml(m.iniciais || m.nome.substring(0, 2).toUpperCase(), cor, m.avatar_url, 'width:28px;height:28px;font-size:10px') +
           '<span class="chat-presence-dot ' + pStatus + '" style="position:absolute;bottom:-1px;right:-1px;border:1.5px solid #fff"></span>' +
         '</div>' +
         '<div class="chat-conv-info">' +
@@ -905,6 +910,8 @@
       var iniciais= msg.sender_iniciais || msg.sender_name.substring(0, 2).toUpperCase();
       var cor     = msg.sender_cor || '#1D6A4A';
       var fn      = firstName(msg.sender_name);
+      var msgMember = teamMembers.find(function (m) { return m.auth_id === msg.sender_id; });
+      var msgAvatar = msgMember ? msgMember.avatar_url : (isOwn ? (user.avatar_url || null) : null);
 
       var rx      = msg.reactions || { like: [], love: [] };
       var likeArr = rx.like  || [];
@@ -919,7 +926,7 @@
 
       if (!grouped) {
         html += '<div class="chat-msg-meta">' +
-          '<div class="chat-av" style="background:' + cor + '">' + escHtml(iniciais) + '</div>' +
+          avHtml(iniciais, cor, msgAvatar, '') +
           '<span class="chat-msg-name">' + escHtml(fn) + '</span>' +
           '<span class="chat-msg-time">' + fmtTime(dt) + '</span>' +
           '</div>';
@@ -1036,6 +1043,14 @@
 
   function fmtTime(d) { return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
   function firstName(name) { return name ? name.split(' ')[0] : ''; }
+
+  function avHtml(iniciais, cor, avatarUrl, extraStyle) {
+    var s = extraStyle || '';
+    if (avatarUrl) {
+      return '<img class="chat-av" src="' + escHtml(avatarUrl) + '" style="object-fit:cover;' + s + '" alt="">';
+    }
+    return '<div class="chat-av" style="background:' + cor + ';' + s + '">' + escHtml(iniciais) + '</div>';
+  }
 
   function escHtml(s) {
     if (!s) return '';
