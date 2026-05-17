@@ -1731,7 +1731,7 @@ function renderDash(){
   document.getElementById('chart-tipo-legenda').innerHTML=tLabels.length?tLabels.map((l,i)=>`
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
       <div style="width:8px;height:8px;border-radius:2px;background:${tCores[i]};flex-shrink:0"></div>
-      <div style="font-size:9px;flex:1;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px" title="${l}">${l}</div>
+      <div style="font-size:9px;flex:1;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px" title="${escAttr(l)}">${l}</div>
       <div style="font-size:9px;font-family:var(--fm);color:#555;font-weight:600">${fmt(tipoMap[l])}</div>
       <div style="font-size:9px;font-family:var(--fm);color:#999;min-width:28px;text-align:right">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
     </div>`).join(''):'<div style="font-size:10px;color:#aaa;padding:4px 0">Sem fechamentos em '+anoStr+'</div>';
@@ -2541,7 +2541,7 @@ function updateSubtipos(selectedVal){
   const nucleo=document.getElementById('prod-nucleo').value;
   const sel=document.getElementById('prod-subtipo');
   const subs=SUBTIPOS_POR_NUCLEO[nucleo]||[];
-  sel.innerHTML=subs.map(s=>`<option value="${s}"${s===selectedVal?' selected':''}>${SUBTIPO_LABEL[s]||s}</option>`).join('');
+  sel.innerHTML=subs.map(s=>`<option value="${escAttr(s)}"${s===selectedVal?' selected':''}>${escHtml(SUBTIPO_LABEL[s]||s)}</option>`).join('');
 }
 
 function abrirNovoProd(oppId){
@@ -2657,7 +2657,7 @@ function abrirAcaoProd(prodId,tipo){
     document.getElementById('acao-title').textContent='Fechar — '+label;
     document.getElementById('acao-body').innerHTML=`
       <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Valor fechado (R$) *</label><input type="number" id="acao-vf" step="100" min="0" value="${p?.valor_proposto||''}"></div>
+        <div class="fgroup"><label>Valor fechado (R$) *</label><input type="number" id="acao-vf" step="100" min="0" value="${escAttr(p?.valor_proposto||'')}"></div>
         <div class="fgroup"><label>Data de fechamento *</label><input type="date" id="acao-df" value="${new Date().toISOString().slice(0,10)}"></div>
       </div>`;
     document.getElementById('acao-confirm-btn').className='btn verde';
@@ -2880,7 +2880,7 @@ function _renderFechItens(op) {
       <span style="font-size:12px;color:#888">Total proposta: <strong>${fmt(totalProp)}</strong></span>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
         <label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;white-space:nowrap">Valor fechado (R$)</label>
-        <input type="number" id="fch-vf-total" value="${totalProp}" min="0" step="100"
+        <input type="number" id="fch-vf-total" value="${escAttr(totalProp)}" min="0" step="100"
           style="font-size:12px;font-family:var(--fm);border:1px solid var(--az);padding:4px 8px;width:140px;border-radius:4px;font-weight:700">
       </div>
     </div>`;
@@ -2907,7 +2907,7 @@ function _renderFechItens(op) {
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="frow-p-${p.id}-fields">
           <div class="fgroup" style="flex:1;min-width:120px;margin:0">
             <label style="font-size:9px">Valor fechado (R$)</label>
-            <input type="number" id="fch-vf-p-${p.id}" value="${valFch}" min="0" step="100"
+            <input type="number" id="fch-vf-p-${p.id}" value="${escAttr(valFch)}" min="0" step="100"
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%;font-family:var(--fm)">
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
@@ -4105,7 +4105,7 @@ function populateCalcDropdown(selectedId) {
       const verLbl = _verLabel(p.version||0);
       const lbl    = `${codStr}${finTag} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]${ocupTag}`;
       const isSel  = p.proposal_id === selectedId ? ' selected' : '';
-      opts.push(`<option value="${p.proposal_id}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
+      opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
     } else {
       opts.push(`<option disabled style="color:#aaa;font-size:10px">— ${codStr}${finTag} · ${famLbl}${ocupTag}</option>`);
       fam.forEach((p, i) => {
@@ -4113,7 +4113,7 @@ function populateCalcDropdown(selectedId) {
         const isSel  = p.proposal_id === selectedId ? ' selected' : '';
         const star   = i === 0 ? ' ★' : '';
         const lbl    = `    ${verLbl} — ${fmt(+p.total)}${star}`;
-        opts.push(`<option value="${p.proposal_id}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
+        opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
       });
     }
   };

@@ -1290,6 +1290,7 @@ const fmt = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDig
 const fmtM = ym => { if(!ym)return'—'; const[y,m]=ym.split('-'); const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return`${ms[+m-1]}/${y}`; };
 const fmtD = d => d ? d.split('-').reverse().join('/') : '—';
 const escHtml = v => String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const escAttr = escHtml;
 const escJsStr = v => String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n');
 const escRegex = v => String(v??'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 function showToast(m) { const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500); }
@@ -2018,7 +2019,7 @@ function renderDesps() {
           oninput="setDesp(${d.id},'valorDiario',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Descrição</label><input type="text" value="${d.desc||''}" placeholder="Ex: Missão Pelotas — 3 pessoas, 2 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>Descrição</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Missão Pelotas — 3 pessoas, 2 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='carro') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
@@ -2039,7 +2040,7 @@ function renderDesps() {
         <div class="fgroup"><label>Valor/litro (R$)</label><input type="number" min="0" step=".05" value="${d.vl||6.20}"
           oninput="setDesp(${d.id},'vl',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Trecho</label><input type="text" value="${d.desc||''}" placeholder="Ex: Floripa → Pelotas" oninput="setDesp(${d.id},'desc',this.value)"></div>
+        <div class="fgroup"><label>Trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Floripa → Pelotas" oninput="setDesp(${d.id},'desc',this.value)"></div>
       </div>`;
     }
     if (d.tipo==='translado') {
@@ -2047,12 +2048,12 @@ function renderDesps() {
         <div class="fgroup"><label>Valor total estimado (R$)</label><input type="number" min="0" step="10" value="${d.vt||0}"
           oninput="setDesp(${d.id},'vt',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Descrição / trecho</label><input type="text" value="${d.desc||''}" placeholder="Ex: Ubers — São Raimundo Nonato, 4 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>
+        <div class="fgroup"><label>Descrição / trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Ubers — São Raimundo Nonato, 4 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>
       </div>`;
     }
     if (d.tipo==='hotel') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Cidade</label><input type="text" value="${d.cidade||''}" placeholder="Ex: São Paulo" oninput="setDesp(${d.id},'cidade',this.value)"></div>
+        <div class="fgroup"><label>Cidade</label><input type="text" value="${escAttr(d.cidade||'')}" placeholder="Ex: São Paulo" oninput="setDesp(${d.id},'cidade',this.value)"></div>
         <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${d.diarias||1}"
           oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
@@ -2060,25 +2061,25 @@ function renderDesps() {
           oninput="setDesp(${d.id},'valorDiaria',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Descrição</label><input type="text" value="${d.desc||''}" placeholder="Ex: Hotel Centro — 3 noites" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>Descrição</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Hotel Centro — 3 noites" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='passagem') {
       body=`<div class="fg fg4 mb8">
-        <div class="fgroup"><label>Origem</label><input type="text" value="${d.orig||''}" placeholder="Ex: Florianópolis" oninput="setDesp(${d.id},'orig',this.value)"></div>
-        <div class="fgroup"><label>Destino</label><input type="text" value="${d.dest||''}" placeholder="Ex: Teresina" oninput="setDesp(${d.id},'dest',this.value)"></div>
+        <div class="fgroup"><label>Origem</label><input type="text" value="${escAttr(d.orig||'')}" placeholder="Ex: Florianópolis" oninput="setDesp(${d.id},'orig',this.value)"></div>
+        <div class="fgroup"><label>Destino</label><input type="text" value="${escAttr(d.dest||'')}" placeholder="Ex: Teresina" oninput="setDesp(${d.id},'dest',this.value)"></div>
         <div class="fgroup"><label>Meio</label>
           <select onchange="setDesp(${d.id},'meio',this.value)">
-            <option value="aviao" ${d.meio==='aviao'?'selected':''}>Avião</option>
-            <option value="onibus" ${d.meio==='onibus'?'selected':''}>Ônibus</option>
-            <option value="trem" ${d.meio==='trem'?'selected':''}>Trem</option>
-            <option value="outro" ${d.meio==='outro'?'selected':''}>Outro</option>
+            <option value="${escAttr('aviao')}" ${d.meio==='aviao'?'selected':''}>Avião</option>
+            <option value="${escAttr('onibus')}" ${d.meio==='onibus'?'selected':''}>Ônibus</option>
+            <option value="${escAttr('trem')}" ${d.meio==='trem'?'selected':''}>Trem</option>
+            <option value="${escAttr('outro')}" ${d.meio==='outro'?'selected':''}>Outro</option>
           </select>
         </div>
         <div class="fgroup"><label>Valor (R$)</label><input type="number" min="0" step="10" value="${d.val||0}"
           oninput="setDesp(${d.id},'val',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Observação</label><input type="text" value="${d.desc||''}" placeholder="Ex: Ida e volta · 2 pessoas" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>Observação</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Ida e volta · 2 pessoas" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='horasTec') {
       body=`<div style="font-size:9px;color:var(--verde);font-weight:600;margin-bottom:6px;letter-spacing:.3px">↳ Valor entra como Ganho EXP (não repassa ao cliente)</div>
@@ -2093,7 +2094,7 @@ function renderDesps() {
           oninput="setDesp(${d.id},'valorHora',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Descrição</label><input type="text" value="${d.desc||''}" placeholder="Ex: Consultoria técnica — visita ao terreno" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>Descrição</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Consultoria técnica — visita ao terreno" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
 
     const subColor = d.confirmada ? '' : 'color:#bbb';
@@ -3214,10 +3215,10 @@ function renderParams() {
 
   // CALC-1+2: coluna "De" agora é readonly (derivada da anterior), "Até" agora é editável
   const fRow=(f,tipo,i)=>`<div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--cinza2)">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);background:#f5f5f5;color:#888" type="text" value="${i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':S['f'+tipo][i-1]?.max??0)}" placeholder="0" readonly tabindex="-1">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="number" value="${f.max===null?'':f.max||0}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="text" value="${escHtml(f.label)}" onchange="S.f${tipo}[${i}].label=this.value">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--fm)" type="number" step="0.00001" value="${f.mult}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);background:#f5f5f5;color:#888" type="text" value="${escAttr(i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':(S['f'+tipo][i-1]?.max??0)))}" placeholder="0" readonly tabindex="-1">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="number" value="${escAttr(f.max===null?'':(f.max||0))}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="text" value="${escAttr(f.label)}" onchange="S.f${tipo}[${i}].label=this.value">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--fm)" type="number" step="0.00001" value="${escAttr(f.mult)}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
     <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">✕</button>
   </div>`;
   document.getElementById('faixas-pais').innerHTML = S.fP.map((f,i)=>fRow(f,'P',i)).join('');
@@ -3243,7 +3244,7 @@ function renderParams() {
         <span style="font-size:11px;margin-left:4px">${x.sub}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--fm);text-align:right" type="number" value="${S.mins[x.si.k]||0}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
+        <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--fm);text-align:right" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
         <span style="font-size:10px;color:#888">mín.</span>
       </div>
     </div>`).join('');
@@ -3362,14 +3363,14 @@ function selEtapaNucleo(n, el) {
   if (n==='PAIS') {
     tipoGrp.style.display='';
     const tipos = Object.keys(SUBS.PAIS);
-    tipoSel.innerHTML = tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
+    tipoSel.innerHTML = tipos.map(t=>`<option value="${escAttr(t)}">${escHtml(t)}</option>`).join('');
     updateEtapaSubtipo();
   } else {
     tipoGrp.style.display='none';
     const subs = Object.keys(SUBS[n]||{});
     if (subs.length > 1) {
       subGrp.style.display='';
-      subSel.innerHTML = ['(Geral)',...subs].map((s,i)=>`<option value="${i===0?'default':SUBS[n][s].k}">${s}</option>`).join('');
+      subSel.innerHTML = ['(Geral)',...subs].map((s,i)=>`<option value="${escAttr(i===0?'default':SUBS[n][s].k)}">${escHtml(s)}</option>`).join('');
       editEtapaChave = subSel.value;
     } else {
       subGrp.style.display='none';
@@ -3388,7 +3389,7 @@ function updateEtapaSubtipo() {
   const subSel  = document.getElementById('etapa-sub-sel');
   if (subs.length>1) {
     subGrp.style.display='';
-    subSel.innerHTML = ['(Todos os subtipos)',...subs].map((s,i)=>`<option value="${i===0?'default':s}">${s}</option>`).join('');
+    subSel.innerHTML = ['(Todos os subtipos)',...subs].map((s,i)=>`<option value="${escAttr(i===0?'default':s)}">${escHtml(s)}</option>`).join('');
   } else {
     subGrp.style.display='none';
     editEtapaChave='default';
@@ -3404,10 +3405,10 @@ function renderEtapasEditor() {
   const soma  = dists.reduce((s,d)=>s+d,0);
 
   let html = ets.map((e,i)=>`<div class="etapa-row">
-    <input style="font-size:12px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);width:100%" value="${e}" onchange="if(!S.etapas['${n}']['${chave}'])S.etapas['${n}']['${chave}']=[...S.etapas['${n}'].default];S.etapas['${n}']['${chave}'][${i}]=this.value">
+    <input style="font-size:12px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);width:100%" value="${escAttr(e)}" onchange="if(!S.etapas['${n}']['${chave}'])S.etapas['${n}']['${chave}']=[...S.etapas['${n}'].default];S.etapas['${n}']['${chave}'][${i}]=this.value">
     <div style="font-size:10px;color:#888;padding:4px 0">${NC[n]} / ${editEtapaChave!=='default'?editEtapaChave:'Geral'}</div>
     <div style="font-size:10px;color:#888;padding:4px 0">etapa ${i+1}</div>
-    <div style="display:flex;align-items:center;gap:3px"><input style="width:50px;font-size:11px;border:1px solid var(--cinza);padding:4px 5px;font-family:var(--fm);text-align:center" type="number" value="${dists[i]||0}" onchange="if(!S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}']=[...S.distEtapas['${n}'].default];S.distEtapas['${n}']['${chave}'][${i}]=parseInt(this.value)||0;renderEtapasEditor()"><span style="font-size:11px;color:#888">%</span></div>
+    <div style="display:flex;align-items:center;gap:3px"><input style="width:50px;font-size:11px;border:1px solid var(--cinza);padding:4px 5px;font-family:var(--fm);text-align:center" type="number" value="${escAttr(dists[i]||0)}" onchange="if(!S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}']=[...S.distEtapas['${n}'].default];S.distEtapas['${n}']['${chave}'][${i}]=parseInt(this.value)||0;renderEtapasEditor()"><span style="font-size:11px;color:#888">%</span></div>
     <button class="btn xs danger" onclick="S.etapas['${n}']['${chave}'].splice(${i},1);if(S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}'].splice(${i},1);renderEtapasEditor()">✕</button>
   </div>`).join('');
 
