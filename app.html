@@ -550,8 +550,11 @@ function renderTermState(usuario) {
       : 'Termo de compromisso registrado.';
     dropdown.classList.add('ok');
     chip.classList.add('ok');
-    dropdownText.textContent = message;
-    chipText.textContent = message;
+    const normalizedMessage = message
+      .replace(/Â·/g, '\u00b7')
+      .replace(/\bate\b/g, 'at\u00e9');
+    dropdownText.textContent = normalizedMessage;
+    chipText.textContent = normalizedMessage;
     note.textContent = 'Clique em "Meus dados" para consultar a estrutura que sera expandida na Fase 2.';
     return;
   }
@@ -561,8 +564,11 @@ function renderTermState(usuario) {
     : 'Termo de compromisso pendente ou sem validade registrada.';
   dropdown.classList.add('pending');
   chip.classList.add('pending');
-  dropdownText.textContent = pendingMessage;
-  chipText.textContent = pendingMessage;
+  const normalizedPendingMessage = pendingMessage
+    .replace(/\brevisao\b/g, 'revis\u00e3o')
+    .replace(/\bate\b/g, 'at\u00e9');
+  dropdownText.textContent = normalizedPendingMessage;
+  chipText.textContent = normalizedPendingMessage;
   note.textContent = 'Estado do termo pronto no shell; assinatura e renovacao entram na Fase 2.';
 }
 
@@ -572,12 +578,16 @@ function renderShellIdentity(usuario) {
   av.style.background = usuario.cor || '#888';
   document.getElementById('user-nome').textContent = usuario.nome;
   document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'SÃ³cio administrador' : (ROLES[usuario.role] || usuario.role);
+  if (usuario.role === 'socio_admin') {
+    document.getElementById('user-cargo').textContent = 'S\u00f3cio administrador';
+  }
 
   const primeiroNome = usuario.nome.split(' ')[0];
   const agora = new Date();
   document.getElementById('bv-hora').textContent =
     agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }) +
     ' Â· ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('bv-hora').textContent = document.getElementById('bv-hora').textContent.replace(/Ã‚Â·|Â·/g, '\u00b7');
   document.getElementById('bv-titulo').textContent = `${saudacao()}, ${primeiroNome}.`;
 
   document.getElementById('viewer-aviso').style.display = usuario.viewer_only ? 'block' : 'none';
