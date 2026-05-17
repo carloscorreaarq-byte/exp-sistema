@@ -417,7 +417,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   function toggleEmpresaFields() {
     const hasVinculo = !!document.getElementById('md-vinculo-exp')?.checked;
     const wrap = document.getElementById('md-empresa-campos');
-    if (wrap) wrap.classList.toggle('disabled', !hasVinculo);
+    if (wrap) wrap.classList.toggle('hidden', hasVinculo);
   }
 
   function renderPlatformPalette() {
