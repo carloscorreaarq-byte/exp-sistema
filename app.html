@@ -526,17 +526,24 @@ body::before {
   border: 1px solid var(--cinza2);
   border-radius: var(--radius-card);
   padding: 10px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 42px minmax(220px, 1.15fr) minmax(190px, .9fr) auto auto auto;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
   border-left: 3px solid rgba(74,114,181,.24);
   background: var(--branco);
 }
-.platform-user-row .platform-user-copy    { flex: 1; min-width: 140px; }
-.platform-user-row .platform-user-meta    { min-width: 130px; flex-shrink: 0; font-size: var(--text-sub); color: #888; line-height: 1.6; }
-.platform-user-row .platform-inline       { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.platform-user-row .platform-user-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.platform-user-row .platform-user-copy    { min-width: 0; }
+.platform-user-row .platform-user-meta    { min-width: 0; font-size: var(--text-sub); color: #888; line-height: 1.55; }
+.platform-user-row .platform-inline       { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; }
+.platform-user-row .platform-user-actions {
+  min-width: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+}
 .platform-user-row .shell-btn,
 .platform-user-row select.shell-btn {
   height: 30px;
@@ -562,23 +569,40 @@ body::before {
   position: relative;
 }
 .platform-user-avatar.clickable { cursor: pointer; }
+.platform-user-avatar.clickable::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(20,20,20,.26);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
 .platform-user-avatar.clickable::after {
   content: 'Alterar avatar';
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(20,20,20,.68);
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cinza2);
+  background: rgba(20,20,18,.92);
   color: #fff;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .05em;
   text-transform: uppercase;
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  pointer-events: none;
+  box-shadow: var(--shadow-card);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
-.platform-user-avatar.clickable:hover::after { opacity: 1; }
+.platform-user-avatar.clickable:hover::before { opacity: 1; }
+.platform-user-avatar.clickable:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 
 .platform-user-avatar img {
   width: 100%;
@@ -603,16 +627,24 @@ body::before {
 .platform-user-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   flex-wrap: wrap;
 }
 
+.platform-user-actions .platform-user-meta {
+  font-size: 10px;
+  line-height: 1.25;
+}
+
 .platform-palette {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
-  max-width: 340px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
 }
 
 .platform-swatch {
@@ -633,6 +665,12 @@ body::before {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.platform-new-user-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
 }
 
 .platform-empty {
@@ -690,6 +728,21 @@ body::before {
 
   .platform-user-row {
     grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .platform-user-row .platform-user-meta,
+  .platform-user-row .platform-inline,
+  .platform-user-row .platform-user-actions {
+    grid-column: 2;
+  }
+
+  .platform-user-row .platform-inline {
+    flex-wrap: wrap;
+  }
+
+  .platform-palette {
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 }
 
@@ -1255,7 +1308,7 @@ body::before {
                 <div class="platform-palette" id="gp-palette"></div>
               </div>
             </div>
-            <div class="platform-inline">
+            <div class="platform-new-user-actions">
               <button type="button" class="shell-btn primary" onclick="criarNovoUsuarioPlataforma()">Criar novo usuario</button>
             </div>
           </div>
@@ -1437,7 +1490,7 @@ function renderShellIdentity(usuario) {
     av.textContent = usuario.iniciais;
   }
   document.getElementById('user-nome').textContent = usuario.nome;
-  document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'SÃ³cio administrador' : (ROLES[usuario.role] || usuario.role);
+  document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'Socio administrador' : (ROLES[usuario.role] || usuario.role);
   if (usuario.role === 'socio_admin') {
     document.getElementById('user-cargo').textContent = 'S\u00f3cio administrador';
   }
@@ -1446,8 +1499,8 @@ function renderShellIdentity(usuario) {
   const agora = new Date();
   document.getElementById('bv-hora').textContent =
     agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }) +
-    ' Â· ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-  document.getElementById('bv-hora').textContent = document.getElementById('bv-hora').textContent.replace(/Ã‚Â·|Â·/g, '\u00b7');
+    ' - ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('bv-hora').textContent = document.getElementById('bv-hora').textContent.replace(/Ã‚Â·|Â·/g, '-');
   document.getElementById('bv-titulo').textContent = `${saudacao()}, ${primeiroNome}.`;
 
   document.getElementById('viewer-aviso').style.display = usuario.viewer_only ? 'block' : 'none';

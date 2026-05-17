@@ -508,8 +508,8 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   }
 
   function roleLabel(role) {
-    if (role === 'socio_admin') return 'SÃ³cio administrador';
-    if (role === 'socio') return 'SÃ³cio';
+    if (role === 'socio_admin') return 'Socio administrador';
+    if (role === 'socio') return 'Socio';
     if (role === 'colaborador') return 'Colaborador';
     return role || 'sem role';
   }
@@ -518,7 +518,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     const status = String(termo?.status_termo || 'pending').toLowerCase();
     if (status === 'signed') {
       return termo?.expira_em
-        ? 'Assinado Â· validade ate ' + (formatPtDate(termo.expira_em) || '-')
+        ? 'Assinado - validade ate ' + (formatPtDate(termo.expira_em) || '-')
         : 'Assinado';
     }
     if (status === 'expired') return 'Vencido';
@@ -612,7 +612,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       avatar.textContent = usuario.iniciais || initialsFromNome(usuario.nome);
     }
     document.getElementById('meus-dados-hero-nome').textContent = dados.nome_completo || usuario.nome || '-';
-    document.getElementById('meus-dados-hero-resumo').textContent = roleLabel(usuario.role) + ' Â· ' + (usuario.email_login || usuario.email || 'sem email institucional registrado');
+    document.getElementById('meus-dados-hero-resumo').textContent = roleLabel(usuario.role) + ' - ' + (usuario.email_login || usuario.email || 'sem email institucional registrado');
   }
 
   window.abrirMeusDados = async function abrirMeusDados() {
@@ -816,7 +816,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     const wrap = document.getElementById('platform-users-list');
     if (!wrap) return;
     if (!users.length) {
-      wrap.innerHTML = '<div class="platform-empty">Nenhum usuÃ¡rio encontrado.</div>';
+      wrap.innerHTML = '<div class="platform-empty">Nenhum usuario encontrado.</div>';
       return;
     }
     wrap.innerHTML = users.map((user) => {
@@ -824,7 +824,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       const termo = platformTermosCache[user.id] || null;
       return '<div class="platform-user-row">'
         + '<div class="platform-user-avatar clickable" title="Alterar avatar" onclick="subirAvatarPlataforma(\'' + user.id + '\')" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
-        + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' Â· ' + roleLabel(user.role) + '</span></div>'
+        + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' &middot; ' + roleLabel(user.role) + '</span></div>'
         + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'nao') + '</div>'
         + '<div class="platform-inline">'
         + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
@@ -837,7 +837,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
         + '<option value="inativo"' + (user.status_acesso === 'inativo' ? ' selected' : '') + '>Inativo</option>'
         + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
         + '</select></div>'
-        + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuÃ¡rio atual</span>' : '') + '</div>'
+        + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuario atual</span>' : '') + '</div>'
         + '<div class="platform-inline"><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
         + '</div>';
     }).join('');
