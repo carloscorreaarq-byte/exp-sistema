@@ -18,9 +18,10 @@
   ───────────────────────────────────────── */
 
   --grafite:    #141414;   /* texto principal, fundos escuros */
-  --cinza:      #BDBDBD;   /* texto secundário, bordas, divisores */
+  --cinza:      #D0CFC9;   /* bordas, divisores principais */
+  --cinza2:     #ECEAE4;   /* divisores internos, fundos alternados, linhas de tabela */
   --branco:     #FFFFFF;   /* fundo de superfície pura */
-  --off:        #F7F6F3;   /* fundo de superfície levemente quente, hover neutro */
+  --off:        #F7F6F3;   /* fundo de página, hover neutro */
 
 
   /* ─────────────────────────────────────────
@@ -28,10 +29,11 @@
      Quatro cores da paleta oficial da marca
   ───────────────────────────────────────── */
 
-  --verde:      #3E7858;   /* natural, ativo, institucional */
-  --azul:       #4A72B5;   /* informação, navegação, neutro-frio */
-  --ouro:       #C49A27;   /* valor, destaque, atenção quente */
-  --terracota:  #B85638;   /* crítico, alerta forte, remoção */
+  --verde:       #3E7858;   /* natural, ativo, institucional */
+  --verde-hover: #2D9E6B;   /* hover/active sobre --verde */
+  --azul:        #4A72B5;   /* informação, navegação, neutro-frio */
+  --ouro:        #C49A27;   /* valor, destaque, atenção quente */
+  --terracota:   #B85638;   /* crítico, alerta forte, remoção */
 
 
   /* ─────────────────────────────────────────
@@ -59,6 +61,12 @@
   --ouro-soft:       rgba(196, 154, 39,  0.08);
   --terracota-soft:  rgba(184, 86,  56,  0.08);
 
+  /* Fundos sólidos suaves — para badges, pills, fundo de linha colorida */
+  --verde-bg:        #EAF4EE;
+  --azul-bg:         #EBF0FA;
+  --ouro-bg:         #FBF5E0;
+  --terracota-bg:    #FAF0EC;
+
 
   /* ─────────────────────────────────────────
      TIPOGRAFIA
@@ -74,9 +82,10 @@
   --text-title:   13px;   /* títulos de seção */
 
   /* Pesos */
-  --weight-label:   700;
-  --weight-body:    400;
+  --weight-label:    700;
   --weight-semibold: 600;
+  --weight-body:     400;
+  --weight-light:    300;
 
   /* Espaçamento de label */
   --label-spacing: 0.06em;
@@ -123,6 +132,8 @@
   --gap-lg:  24px;
   --gap-xl:  32px;
 
+  --nav-height: 46px;
+
 
   /* ─────────────────────────────────────────
      TRANSIÇÕES
@@ -131,6 +142,7 @@
 
   --transition-fast:   0.15s ease;
   --transition-normal: 0.22s ease;
+  --transition-slow:   0.35s ease;
 
 }
 
@@ -148,14 +160,16 @@
   /* Neutros invertidos */
   --grafite:    #F0EFEC;   /* texto principal — quase branco quente */
   --cinza:      #3E3E3C;   /* bordas e divisores */
+  --cinza2:     #2A2A28;   /* divisores internos, fundos alternados */
   --branco:     #1C1C1A;   /* superfície de card, modal, input */
   --off:        #141412;   /* fundo de página */
 
   /* Acentos — mesma identidade, levemente mais luminosos para contraste */
-  --verde:      #52A676;
-  --azul:       #6089CC;
-  --ouro:       #D4AA37;
-  --terracota:  #CC6848;
+  --verde:       #52A676;
+  --verde-hover: #3DBF80;
+  --azul:        #6089CC;
+  --ouro:        #D4AA37;
+  --terracota:   #CC6848;
 
   /* Semântica — herda dos acentos ajustados acima */
   --sucesso:    var(--verde);
@@ -168,6 +182,12 @@
   --azul-soft:       rgba(96,  137, 204, 0.13);
   --ouro-soft:       rgba(212, 170, 55,  0.13);
   --terracota-soft:  rgba(204, 104, 72,  0.13);
+
+  /* Fundos sólidos suaves — versão dark (superfícies muito escuras com leve acento) */
+  --verde-bg:        #1A2E22;
+  --azul-bg:         #1A2236;
+  --ouro-bg:         #2E2710;
+  --terracota-bg:    #2E1A14;
 
   /* Overlay mais denso — fundo já é escuro */
   --overlay-bg: rgba(0, 0, 0, 0.65);
@@ -247,3 +267,156 @@
 
 [data-theme="dark"] .ttg-track { background: var(--verde); }
 [data-theme="dark"] .ttg-knob  { transform: translateX(14px); background: #f0efec; }
+
+
+/* ═══════════════════════════════════════════
+   COMPONENTE — CHECKBOX
+   Dois padrões canônicos. Tokens de cor adaptam
+   automaticamente ao dark mode — sem override extra.
+
+   ── NATIVO (input) ──
+   Estiliza <input type="checkbox"> diretamente.
+   Usar dentro de um <label> para área de clique correta.
+
+     <label class="exp-cb-row">
+       <input type="checkbox" class="exp-cb">
+       <span class="exp-cb-label">Texto</span>
+     </label>
+
+   Variante compacta: adicionar classe exp-cb-sm ao input
+   e exp-cb-row-sm ao label.
+
+   ── CUSTOM (div, toggled via JS) ──
+   Para checkboxes controladas por JS que alternam .done.
+
+     <div class="exp-tick" onclick="..."></div>
+     <span class="exp-tick-label">Texto</span>
+
+   Variante compacta: adicionar classe exp-tick-sm ao div.
+═══════════════════════════════════════════ */
+
+/* ── Container de linha ── */
+.exp-cb-row {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--gap-xs);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  color: var(--grafite);
+  user-select: none;
+}
+.exp-cb-row-sm {
+  font-size: var(--text-sub);
+}
+
+/* ── Checkbox nativo ── */
+input[type="checkbox"].exp-cb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--cinza);
+  border-radius: var(--radius-tag);
+  background: var(--branco);
+  flex-shrink: 0;
+  cursor: pointer;
+  margin-top: 1px;
+  position: relative;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+input[type="checkbox"].exp-cb::after {
+  content: '';
+  position: absolute;
+  display: none;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"].exp-cb:checked {
+  background: var(--verde);
+  border-color: var(--verde);
+}
+input[type="checkbox"].exp-cb:checked::after { display: block; }
+
+input[type="checkbox"].exp-cb:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+input[type="checkbox"].exp-cb:focus-visible {
+  outline: 2px solid var(--azul-soft);
+  outline-offset: 2px;
+}
+
+.exp-cb-row:hover input[type="checkbox"].exp-cb:not(:checked):not(:disabled) {
+  border-color: var(--verde);
+}
+
+/* Texto riscado quando marcado */
+.exp-cb-label.done,
+input[type="checkbox"].exp-cb:checked ~ .exp-cb-label {
+  text-decoration: line-through;
+  color: var(--cinza);
+}
+
+/* Variante compacta */
+input[type="checkbox"].exp-cb-sm {
+  width: 12px;
+  height: 12px;
+}
+input[type="checkbox"].exp-cb-sm::after {
+  left: 3px;
+  top: 0;
+  width: 4px;
+  height: 7px;
+}
+
+
+/* ── Custom tick (div, JS-toggled) ── */
+.exp-tick {
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--cinza);
+  border-radius: var(--radius-tag);
+  background: var(--branco);
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: transparent;
+  margin-top: 1px;
+  user-select: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.exp-tick::after { content: '✓'; }
+
+.exp-tick:hover:not(.done) { border-color: var(--verde); }
+
+.exp-tick.done {
+  background: var(--verde);
+  border-color: var(--verde);
+  color: #fff;
+}
+
+/* Variante compacta */
+.exp-tick-sm {
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+}
+
+/* Texto companion */
+.exp-tick-label.done {
+  text-decoration: line-through;
+  color: var(--cinza);
+}

@@ -391,6 +391,25 @@ const ROLES = {
 };
 
 const isSocioRole = (role) => ['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase());
+function buildExpUsuarioPayload(authId, usuario) {
+  const nome = (usuario && usuario.nome) || '';
+  return {
+    auth_id: authId || null,
+    app_user_id: usuario && typeof usuario.id !== 'undefined' ? usuario.id : null,
+    nome,
+    apelido: (usuario && usuario.apelido) || (nome ? nome.split(' ')[0] : ''),
+    iniciais: (usuario && usuario.iniciais) || '',
+    cor: (usuario && usuario.cor) || '#888',
+    role: (usuario && usuario.role) || '',
+    viewer_only: !!(usuario && usuario.viewer_only),
+    is_platform_manager: !!(usuario && usuario.is_platform_manager),
+    can_coordinate_projects: !!(usuario && usuario.can_coordinate_projects),
+    termo_status: (usuario && usuario.termo_status) || null,
+    termo_assinado_em: (usuario && usuario.termo_assinado_em) || null,
+    termo_expira_em: (usuario && usuario.termo_expira_em) || null,
+    status_acesso: (usuario && usuario.status_acesso) || null
+  };
+}
 
 function toggleTheme() {
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -423,7 +442,7 @@ async function init() {
   // Busca dados do usuário
   const { data: usuario } = await sb
     .from('usuarios')
-    .select('nome, iniciais, role, cor, viewer_only')
+    .select('id, nome, iniciais, role, cor, viewer_only')
     .eq('auth_id', session.user.id)
     .single();
 
@@ -450,7 +469,7 @@ async function init() {
   }
 
   // Salva no session storage
-  sessionStorage.setItem('exp_usuario', JSON.stringify({ ...usuario, auth_id: session.user.id }));
+  sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, usuario)));
 
   // Módulos societários
   if (isSocioRole(usuario.role)) {
