@@ -1,5 +1,5 @@
 (function () {
-  const signupClient = window.supabase.createClient(
+  const signupClient = window.sbSignup || window.supabase.createClient(
     'https://pgnydwsjntaezdhkgvpu.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhb3AiLCJyZWYiOiJwZ255ZHdzam50YWV6ZGhrZ3ZwdSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzc1MDg5NzEzLCJleHAiOjIwOTA2NjU3MTN9.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo',
     { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
@@ -16,14 +16,69 @@
   let pendingAvatarUserId = null;
   let meusDadosDirty = false;
   let plataformaDirty = false;
-  const TERM_VERSION = '2026.01';
   const TERM_VALIDITY_DAYS = 365;
-  const TERM_TEXT = [
-    'Termo de compromisso institucional da plataforma EXP.',
-    'Ao utilizar a plataforma, o usuario declara ciencia sobre o uso adequado de dados institucionais, dados pessoais, informacoes de projetos, contatos e registros internos.',
-    'O acesso e pessoal, intransferivel e condicionado ao cumprimento das regras de confidencialidade, seguranca da informacao e boas praticas operacionais da EXP.',
-    'O uso indevido, o compartilhamento de credenciais ou a manipulacao inadequada de dados pode gerar bloqueio de acesso e revisao administrativa.'
-  ];
+  const DEFAULT_TERM_DEFINITION = {
+    slug: 'termo_uso_protecao_dados_pessoais',
+    titulo: 'TERMO DE USO E PROTEÇÃO DE DADOS PESSOAIS',
+    versao_termo: '2026.01',
+    compromisso_prioritario: 'O acesso à plataforma EXP é pessoal e intransferível. O usuário deve proteger suas credenciais, utilizar a plataforma apenas para fins ligados à prestação de serviços à EXP e comunicar imediatamente qualquer suspeita de acesso indevido ou incidente de segurança.',
+    conteudo_texto: `1. Das Partes
+Este Termo é firmado entre a EXP ("Empresa") e o usuário identificado no momento do aceite ("Usuário"), na condição de prestador de serviços ou sócio autorizado, conforme relação jurídica já estabelecida entre as partes em instrumento próprio.
+
+Este Termo não cria, altera ou implica qualquer vínculo empregatício entre as partes, sendo celebrado exclusivamente para fins de regulamentação do acesso e uso da plataforma.
+
+2. Finalidade da Plataforma e do Tratamento de Dados
+A plataforma EXP destina-se a:
+
+Facilitar o acompanhamento colaborativo de processos em ambiente remoto;
+Organizar o compartilhamento e acesso a informações e fluxos de trabalho;
+Simplificar registros operacionais e administrativos;
+Apoiar a mensuração de rentabilidade projetual de forma integrada.
+
+O registro de histórico de edições, visualizações e interações tem finalidade operacional e colaborativa, não constituindo instrumento de controle individualizado de produção.
+
+3. Dados Tratados e Base Legal (LGPD — Lei nº 13.709/2018)
+A EXP trata dados pessoais do Usuário com base no legítimo interesse e na execução do contrato de prestação de serviços, incluindo:
+
+Dados de identificação (nome, e-mail, função);
+Dados de acesso (registros de login, histórico de navegação e edições na plataforma);
+Dados operacionais inseridos pelo Usuário no exercício de suas atividades.
+
+O Usuário, ao aceitar este Termo, autoriza expressamente o registro e armazenamento dessas informações para as finalidades descritas acima.
+
+Os dados serão retidos pelo prazo necessário ao cumprimento das finalidades descritas e por obrigações legais subsequentes, sendo garantidos ao Usuário os direitos previstos no Art. 18 da LGPD (acesso, correção, eliminação e portabilidade), mediante solicitação formal à Empresa.
+
+4. Segurança e Responsabilidades do Usuário
+O Usuário declara ciência e concorda com as seguintes obrigações:
+
+a) Credenciais pessoais e intransferíveis
+O login e senha de acesso são de uso exclusivamente pessoal. É vedado o compartilhamento de credenciais com terceiros, independentemente do vínculo com a Empresa.
+
+b) Acesso em dispositivos não pessoais
+O Usuário deve exercer cautela ao acessar a plataforma em dispositivos de uso compartilhado ou público. Recomenda-se encerrar a sessão imediatamente após o uso e não salvar credenciais nesses ambientes.
+
+c) Notificação de incidentes
+Caso o Usuário identifique ou suspeite de qualquer acesso não autorizado à sua conta ou brecha de segurança, deverá comunicar imediatamente a Empresa, colaborando para a investigação e contenção do incidente.
+
+d) Uso adequado
+O acesso à plataforma deve ocorrer exclusivamente para fins relacionados à prestação de serviços à EXP. Qualquer uso para finalidade diversa é vedado.
+
+5. Vigência e Renovação
+Este Termo tem vigência de 12 (doze) meses a partir da data de aceite, renovando-se automaticamente por igual período, salvo manifestação contrária de qualquer das partes ou revogação do acesso pela Empresa.
+
+A EXP reserva-se o direito de atualizar os termos deste instrumento, notificando os usuários com antecedência mínima de 15 dias, sendo necessário novo aceite para continuidade do acesso.
+
+6. Aceite
+Ao clicar em "Li e aceito os termos", o Usuário declara:
+
+Ter lido e compreendido integralmente este Termo;
+Estar ciente de suas obrigações de sigilo, segurança e uso responsável;
+Autorizar o tratamento de seus dados pessoais nos termos descritos;
+Reconhecer que o acesso à plataforma e seus recursos está vinculado à manutenção da relação de prestação de serviços com a EXP.
+
+EXP · Documento gerado automaticamente pela plataforma · Registro de aceite armazenado com data, hora e identificação do usuário.`
+  };
+  let currentTermDefinition = { ...DEFAULT_TERM_DEFINITION };
 
   function currentSessionUsuario() {
     try {
@@ -31,6 +86,22 @@
     } catch {
       return null;
     }
+  }
+
+  function coalesceUsuarioIdentity(usuario, fallback) {
+    const base = fallback || currentSessionUsuario() || {};
+    const nome = usuario?.nome || base.nome || '';
+    const apelido = usuario?.apelido || base.apelido || (nome ? nome.split(' ')[0] : '');
+    return {
+      ...base,
+      ...(usuario || {}),
+      nome,
+      apelido,
+      iniciais: usuario?.iniciais || base.iniciais || initialsFromNome(nome || apelido),
+      cor: usuario?.cor || base.cor || '#888',
+      email_login: usuario?.email_login || base.email_login || null,
+      avatar_url: usuario?.avatar_url || base.avatar_url || null
+    };
   }
 
   function initialsFromNome(nome) {
@@ -106,22 +177,91 @@
     });
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function isTermTableMissing(error) {
+    const message = String(error?.message || '');
+    return /plataforma_termos/i.test(message) || /relation .*plataforma_termos/i.test(message);
+  }
+
+  async function fetchCurrentTermDefinition() {
+    let data = null;
+    let error = null;
+    try {
+      ({ data, error } = await window.sb
+        .from('plataforma_termos')
+        .select('*')
+        .eq('slug', DEFAULT_TERM_DEFINITION.slug)
+        .maybeSingle());
+    } catch (caughtError) {
+      error = caughtError;
+    }
+    if (error) {
+      if (!isTermTableMissing(error)) {
+        setPlataformaStatus('Nao foi possivel carregar a definicao gerenciavel do termo.');
+      }
+      currentTermDefinition = { ...DEFAULT_TERM_DEFINITION };
+      return currentTermDefinition;
+    }
+    currentTermDefinition = {
+      ...DEFAULT_TERM_DEFINITION,
+      ...(data || {})
+    };
+    return currentTermDefinition;
+  }
+
+  function splitTermBlocks(text) {
+    return String(text || '')
+      .replace(/\r/g, '')
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+  }
+
+  function renderTermBlock(block) {
+    const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) return '';
+    const titleLike = /^(?:\d+\.\s|[a-z]\)\s)/i.test(lines[0]);
+    if (titleLike && lines.length > 1) {
+      const heading = escapeHtml(lines[0]);
+      const content = lines.slice(1).map((line) => '<p style="margin:0 0 8px">' + escapeHtml(line) + '</p>').join('');
+      return '<section style="display:grid;gap:6px"><strong style="font-size:12px;color:#333">' + heading + '</strong><div>' + content + '</div></section>';
+    }
+    if (lines.length >= 2 && lines.every((line) => /;$/.test(line) || /:$/.test(lines[0]) || !/[.?!]$/.test(line))) {
+      return '<ul style="padding-left:18px;display:grid;gap:6px">' + lines.map((line) => '<li>' + escapeHtml(line) + '</li>').join('') + '</ul>';
+    }
+    return lines.map((line) => '<p style="margin:0 0 8px">' + escapeHtml(line) + '</p>').join('');
+  }
+
   async function fetchLatestTermo(usuarioId) {
     if (!usuarioId) return null;
-    const { data, error } = await window.sb
-      .from('usuarios_termos_compromisso')
-      .select('*')
-      .eq('usuario_id', usuarioId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    let data = null;
+    let error = null;
+    try {
+      ({ data, error } = await window.sb
+        .from('usuarios_termos_compromisso')
+        .select('*')
+        .eq('usuario_id', usuarioId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle());
+    } catch (caughtError) {
+      error = caughtError;
+    }
     if (error) return null;
     return data || null;
   }
 
   function normalizeTermoStatus(termo) {
     if (!termo) return {
-      versao_termo: TERM_VERSION,
+      versao_termo: currentTermDefinition.versao_termo,
       status_termo: 'pending',
       assinado_em: null,
       expira_em: null
@@ -136,11 +276,12 @@
 
   async function ensureTermoRegistro(usuarioId) {
     if (!usuarioId) return normalizeTermoStatus(null);
+    await fetchCurrentTermDefinition();
     const existing = normalizeTermoStatus(await fetchLatestTermo(usuarioId));
-    if (existing && existing.id) return existing;
+    if (existing && existing.id && existing.versao_termo === currentTermDefinition.versao_termo) return existing;
     const payload = {
       usuario_id: usuarioId,
-      versao_termo: TERM_VERSION,
+      versao_termo: currentTermDefinition.versao_termo,
       status_termo: 'pending',
       assinado_em: null,
       expira_em: null,
@@ -158,7 +299,7 @@
       termo_status: normalized.status_termo || null,
       termo_assinado_em: normalized.assinado_em || null,
       termo_expira_em: normalized.expira_em || null,
-      termo_versao: normalized.versao_termo || TERM_VERSION
+      termo_versao: normalized.versao_termo || currentTermDefinition.versao_termo
     };
   }
 
@@ -192,10 +333,17 @@
       + '      </div>'
       + '      <div class="meus-dados-section">'
       + '        <div class="meus-dados-section-title">'
-      + '          <strong>Texto do termo</strong>'
-      + '          <span>O conteudo pode crescer sem quebrar a estrutura do shell.</span>'
+      + '          <strong>Compromisso Prioritario</strong>'
+      + '          <span>Bloco de atencao exibido antes do texto formal rolavel.</span>'
       + '        </div>'
-      + '        <div id="termo-texto" style="display:grid;gap:10px;font-size:12px;line-height:1.7;color:#555"></div>'
+      + '        <div id="termo-prioritario" style="background:#232323;color:#fff;border:1px solid rgba(0,0,0,.2);border-left:4px solid #D19931;border-radius:12px;padding:16px;font-size:12px;line-height:1.7"></div>'
+      + '      </div>'
+      + '      <div class="meus-dados-section">'
+      + '        <div class="meus-dados-section-title">'
+      + '          <strong>Texto do termo</strong>'
+      + '          <span>Conteudo formal gerenciavel pela Gestao de plataforma.</span>'
+      + '        </div>'
+      + '        <div id="termo-texto" style="display:grid;gap:12px;font-size:12px;line-height:1.7;color:#555;max-height:340px;overflow:auto;padding-right:8px"></div>'
       + '      </div>'
       + '    </div>'
       + '    <div class="shell-modal-footer">'
@@ -217,9 +365,18 @@
   }
 
   function renderTermText() {
+    const priority = document.getElementById('termo-prioritario');
     const wrap = document.getElementById('termo-texto');
+    const title = document.getElementById('termo-title');
     if (!wrap) return;
-    wrap.innerHTML = TERM_TEXT.map((paragraph) => '<p>' + paragraph + '</p>').join('');
+    if (title) title.textContent = currentTermDefinition.titulo || DEFAULT_TERM_DEFINITION.titulo;
+    if (priority) {
+      priority.innerHTML = '<strong style="display:block;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:#D19931">Compromisso Prioritário</strong>'
+        + '<div>' + escapeHtml(currentTermDefinition.compromisso_prioritario || DEFAULT_TERM_DEFINITION.compromisso_prioritario).replace(/\n/g, '<br>') + '</div>';
+    }
+    wrap.innerHTML = splitTermBlocks(currentTermDefinition.conteudo_texto || DEFAULT_TERM_DEFINITION.conteudo_texto)
+      .map(renderTermBlock)
+      .join('');
   }
 
   function renderTermStatusCopy(termo) {
@@ -257,9 +414,13 @@
   async function syncCurrentTermState() {
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.app_user_id || !sessionUser?.auth_id || !window.fetchCurrentUsuario) return;
-    const usuario = await window.fetchCurrentUsuario(sessionUser.auth_id);
-    if (!usuario) return;
-    syncSessionPayload(usuario);
+    try {
+      const usuario = coalesceUsuarioIdentity(await window.fetchCurrentUsuario(sessionUser.auth_id), sessionUser);
+      if (!usuario?.auth_id && sessionUser?.auth_id) usuario.auth_id = sessionUser.auth_id;
+      syncSessionPayload(usuario);
+    } catch {
+      syncSessionPayload(coalesceUsuarioIdentity(null, sessionUser));
+    }
   }
 
   function toggleEmpresaFields() {
@@ -296,6 +457,56 @@
     return document.getElementById('gp-palette')?.getAttribute('data-selected') || platformColors[0];
   }
 
+  function ensurePlatformTermEditor() {
+    const grid = document.querySelector('#plataforma-overlay .platform-shell-grid');
+    if (!grid || document.getElementById('platform-term-card')) return;
+    const card = document.createElement('div');
+    card.className = 'platform-card';
+    card.id = 'platform-term-card';
+    card.innerHTML = ''
+      + '<div class="platform-card-title">'
+      + '  <div>'
+      + '    <strong>Termo de uso e proteção de dados</strong>'
+      + '    <span>Texto-base gerenciavel pela Gestao de plataforma.</span>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="meus-dados-grid">'
+      + '  <div class="shell-field full">'
+      + '    <label for="gp-term-title">Titulo do termo</label>'
+      + '    <input id="gp-term-title" type="text" maxlength="220">'
+      + '  </div>'
+      + '  <div class="shell-field">'
+      + '    <label for="gp-term-version">Versao do termo</label>'
+      + '    <input id="gp-term-version" type="text" maxlength="40">'
+      + '  </div>'
+      + '  <div class="shell-field full">'
+      + '    <label for="gp-term-priority">Compromisso Prioritario</label>'
+      + '    <textarea id="gp-term-priority" rows="4" style="width:100%;padding:10px;border:1px solid var(--cinza);border-radius:10px;font-family:var(--font-ui);font-size:12px;line-height:1.6;resize:vertical"></textarea>'
+      + '  </div>'
+      + '  <div class="shell-field full">'
+      + '    <label for="gp-term-content">Texto formal do termo</label>'
+      + '    <textarea id="gp-term-content" rows="18" style="width:100%;padding:10px;border:1px solid var(--cinza);border-radius:10px;font-family:var(--font-ui);font-size:12px;line-height:1.7;resize:vertical"></textarea>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="platform-inline">'
+      + '  <button type="button" class="shell-btn primary" onclick="salvarTermoPlataforma()">Salvar termo</button>'
+      + '  <span class="shell-inline-note">Sempre que a versao mudar, o novo ciclo de aceite pode ser reiniciado administrativamente.</span>'
+      + '</div>';
+    grid.appendChild(card);
+  }
+
+  function fillTermEditor() {
+    const title = document.getElementById('gp-term-title');
+    const version = document.getElementById('gp-term-version');
+    const priority = document.getElementById('gp-term-priority');
+    const content = document.getElementById('gp-term-content');
+    if (!title || !version || !priority || !content) return;
+    title.value = currentTermDefinition.titulo || DEFAULT_TERM_DEFINITION.titulo;
+    version.value = currentTermDefinition.versao_termo || DEFAULT_TERM_DEFINITION.versao_termo;
+    priority.value = currentTermDefinition.compromisso_prioritario || DEFAULT_TERM_DEFINITION.compromisso_prioritario;
+    content.value = currentTermDefinition.conteudo_texto || DEFAULT_TERM_DEFINITION.conteudo_texto;
+  }
+
   function roleLabel(role) {
     if (role === 'socio_admin') return 'Sócio administrador';
     if (role === 'socio') return 'Sócio';
@@ -306,10 +517,20 @@
   const baseFetchCurrentUsuario = window.fetchCurrentUsuario;
   if (typeof baseFetchCurrentUsuario === 'function') {
     window.fetchCurrentUsuario = async function fetchCurrentUsuarioWithTerm(authId) {
-      const usuario = await baseFetchCurrentUsuario(authId);
-      if (!usuario) return usuario;
-      const termo = await ensureTermoRegistro(usuario.id);
-      return attachTermToUsuario(usuario, termo);
+      const fallback = currentSessionUsuario();
+      try {
+        const usuario = await baseFetchCurrentUsuario(authId);
+        if (!usuario) return coalesceUsuarioIdentity(null, fallback);
+        const termo = await ensureTermoRegistro(usuario.id);
+        return coalesceUsuarioIdentity(attachTermToUsuario(usuario, termo), fallback);
+      } catch {
+        try {
+          const usuario = await baseFetchCurrentUsuario(authId);
+          return coalesceUsuarioIdentity(usuario, fallback);
+        } catch {
+          return coalesceUsuarioIdentity(null, fallback);
+        }
+      }
     };
   }
 
@@ -444,10 +665,12 @@
 
     const nomeCompleto = document.getElementById('md-nome-completo').value.trim();
     const apelido = document.getElementById('md-apelido').value.trim();
+    const nomeBase = nomeCompleto || sessionUser.nome || null;
+    const apelidoBase = apelido || sessionUser.apelido || (nomeBase ? nomeBase.split(' ')[0] : null);
     const usuarioPayload = {
-      nome: nomeCompleto || null,
-      apelido: apelido || null,
-      iniciais: initialsFromNome(nomeCompleto || apelido || sessionUser.nome || '')
+      nome: nomeBase,
+      apelido: apelidoBase,
+      iniciais: initialsFromNome(nomeBase || apelidoBase || '')
     };
 
     const dadosPessoaisPayload = {
@@ -536,11 +759,14 @@
       return;
     }
 
-    const usuarioAtualizado = await window.fetchCurrentUsuario(sessionUser.auth_id);
-    if (usuarioAtualizado) {
-      syncSessionPayload(usuarioAtualizado);
-      fillMeusDadosForm(usuarioAtualizado, dadosPessoaisPayload, dadosProfissionaisPayload, dadosEmpresariaisPayload, dadosBancariosPayload);
-    }
+    const usuarioAtualizado = coalesceUsuarioIdentity(await window.fetchCurrentUsuario(sessionUser.auth_id), {
+      ...sessionUser,
+      nome: usuarioPayload.nome,
+      apelido: usuarioPayload.apelido,
+      iniciais: usuarioPayload.iniciais
+    });
+    syncSessionPayload(usuarioAtualizado);
+    fillMeusDadosForm(usuarioAtualizado, dadosPessoaisPayload, dadosProfissionaisPayload, dadosEmpresariaisPayload, dadosBancariosPayload);
 
     setMeusDadosDirty(false);
     setMeusDadosStatus('Dados salvos com sucesso.');
@@ -705,6 +931,41 @@
     setPlataformaStatus('Capability de plataforma atualizada.');
   };
 
+  window.salvarTermoPlataforma = async function salvarTermoPlataforma() {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('A edicao do termo exige acesso administrativo de plataforma.');
+      return;
+    }
+    const titulo = document.getElementById('gp-term-title')?.value.trim() || DEFAULT_TERM_DEFINITION.titulo;
+    const versao = document.getElementById('gp-term-version')?.value.trim() || DEFAULT_TERM_DEFINITION.versao_termo;
+    const compromisso = document.getElementById('gp-term-priority')?.value.trim() || DEFAULT_TERM_DEFINITION.compromisso_prioritario;
+    const conteudo = document.getElementById('gp-term-content')?.value.trim() || DEFAULT_TERM_DEFINITION.conteudo_texto;
+    setPlataformaStatus('Salvando definicao do termo...');
+    const payload = {
+      slug: DEFAULT_TERM_DEFINITION.slug,
+      titulo,
+      versao_termo: versao,
+      compromisso_prioritario: compromisso,
+      conteudo_texto: conteudo,
+      ativo: true,
+      updated_at: isoNow(),
+      updated_by: sessionUser.app_user_id || null
+    };
+    const { error } = await window.sb
+      .from('plataforma_termos')
+      .upsert(payload, { onConflict: 'slug' });
+    if (error) {
+      setPlataformaStatus('Nao foi possivel salvar a definicao do termo. Rode o SQL da estrutura gerenciavel se necessario.');
+      return;
+    }
+    currentTermDefinition = { ...currentTermDefinition, ...payload };
+    await registrarAuditoriaPlataforma('termo.atualizado', null, { versao_termo: versao });
+    renderTermText();
+    setPlataformaDirty(false);
+    setPlataformaStatus('Definicao do termo atualizada.');
+  };
+
   window.fecharGestaoPlataforma = function fecharGestaoPlataforma(event) {
     if (event && event.target && event.target.id === 'plataforma-overlay') return;
     if (event && event.target && event.target.id !== 'plataforma-overlay') return;
@@ -724,6 +985,9 @@
     document.getElementById('plataforma-overlay')?.classList.add('open');
     setPlataformaDirty(false);
     renderPlatformPalette();
+    ensurePlatformTermEditor();
+    await fetchCurrentTermDefinition();
+    fillTermEditor();
     setPlataformaStatus('Carregando painel de usuarios...');
     await carregarUsuariosPlataforma();
   };
@@ -810,6 +1074,7 @@
 
   window.abrirTermoCompromisso = async function abrirTermoCompromisso() {
     ensureTermModal();
+    await fetchCurrentTermDefinition();
     renderTermText();
     const overlay = document.getElementById('termo-overlay');
     if (!overlay) return;
@@ -833,7 +1098,7 @@
     const termoAtual = await ensureTermoRegistro(sessionUser.app_user_id);
     const payload = {
       usuario_id: sessionUser.app_user_id,
-      versao_termo: TERM_VERSION,
+      versao_termo: currentTermDefinition.versao_termo,
       status_termo: 'signed',
       assinado_em: isoNow(),
       expira_em: plusDaysIso(TERM_VALIDITY_DAYS),
