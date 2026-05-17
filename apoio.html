@@ -3767,6 +3767,27 @@ function labelArea(area) {
   return {paisagismo:'Paisagismo',urbanismo:'Urbanismo',consultorias:'Consultorias',especiais:'Especiais'}[area]||area;
 }
 
+function toast(msg, dur) {
+  dur = dur || 3000;
+  var el = document.getElementById('apoio-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'apoio-toast';
+    el.style.cssText = [
+      'position:fixed','bottom:80px','left:50%','transform:translateX(-50%)',
+      'background:#1a1a1a','color:#fff','padding:10px 20px','border-radius:20px',
+      'font-size:12px','font-family:var(--f,sans-serif)','z-index:9999',
+      'pointer-events:none','opacity:0','transition:opacity .18s',
+      'white-space:nowrap','box-shadow:0 4px 16px rgba(0,0,0,.25)'
+    ].join(';');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(function() { el.style.opacity = '0'; }, dur);
+}
+
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
