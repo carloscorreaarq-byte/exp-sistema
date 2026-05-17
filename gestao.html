@@ -12696,6 +12696,8 @@ function renderProcDetalhe(id) {
   const temasHtml = (c.processos_tema || []).map(tema => {
     const tarefas = tema.processos_tarefa || [];
     const subtemas = [...new Set(tarefas.map(t => t.subtema || ''))];
+    const checklistIdJs = _sqN(id);
+    const temaIdJs = _sqN(tema.id);
 
     const tarefasHtml = subtemas.map(sub => {
       const grupo = tarefas.filter(t => (t.subtema || '') === sub);
@@ -12711,8 +12713,6 @@ function renderProcDetalhe(id) {
           : Object.keys(statusMap).filter(k => statusMap[k]).map(k => { const u = G.todosUsuarios?.find(u => u.id === k); return u ? u.iniciais : '?'; });
         const doneByStr = _escN(doneBy.join(', '));
         const tarefaIdJs = _sqN(tr.id);
-        const checklistIdJs = _sqN(id);
-        const temaIdJs = _sqN(tema.id);
 
         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
           <input type="checkbox" ${myDone?'checked':''} ${!canCheck?'disabled':''}
