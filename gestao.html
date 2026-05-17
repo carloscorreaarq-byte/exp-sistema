@@ -2468,6 +2468,8 @@ body::before {
         </div>
         <label style="font-size:10px;color:#888">Mês:</label>
         <input type="month" id="cm-mes" class="filter-select" style="font-size:11px" onchange="carregarCargaMensal()">
+        <button class="btn-sec" style="font-size:10px;padding:4px 10px" onclick="exportarHorasExcel()">↓ Excel</button>
+        <button class="btn-sec" style="font-size:10px;padding:4px 10px" onclick="exportarHorasPDF()">↓ PDF</button>
       </div>
     </div>
     <div id="cm-lista">
@@ -2483,6 +2485,7 @@ body::before {
         <label style="font-size:10px;color:#888">Mês:</label>
         <input type="month" id="rb-mes" class="filter-select" style="font-size:11px" onchange="carregarReembolso()">
         <button class="btn-sec" style="font-size:10px;padding:4px 10px" onclick="exportarReembolsoExcel()">↓ Excel</button>
+        <button class="btn-sec" style="font-size:10px;padding:4px 10px" onclick="exportarReembolsoPDF()">↓ PDF</button>
       </div>
     </div>
     <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--cinza)">
@@ -8254,33 +8257,274 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
 
 function exportarReembolsoExcel() {
   if (!_rbData) { alert('Carregue um mês primeiro.'); return; }
-  const { custos, usuarios, mes } = _rbData;
+  const { custos, usuarios, mes, evNomes = {} } = _rbData;
   const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '';
 
   const linhas = [
-    ['Membro','Cliente','Oportunidade','Tipo','Categoria','Descrição','Data','Valor']
+    ['Membro','Data','Tipo','Área (Plano de Contas)','Detalhe','Evento','Cliente','Oportunidade','Produto','Etapa','Descrição','Valor (R$)']
   ];
   custos.forEach(c => {
-    const u = usuarios.find(u=>u.id===c.usuario_id);
+    const u    = usuarios.find(u => u.id === c.usuario_id);
+    const evId = c.evento_id || c.evento_soc_id;
+    const area = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id)?.subconta || '';
     linhas.push([
-      u?.nome || c.usuario_id,
+      u?.nome || '',
+      fmtDate(c.data_lancamento),
+      c.tipo || '',
+      area,
+      c.subtipo || '',
+      evId ? (evNomes[evId] || '') : '',
       c.produtos?.oportunidades?.clientes?.nome || '',
       c.produtos?.oportunidades?.projeto || '',
-      c.tipo || '',
-      c.subtipo || '',
+      c.produtos?.nome || '',
+      c.etapas?.nome || '',
       c.descricao || '',
-      fmtDate(c.data_lancamento),
       Number(c.valor||0).toFixed(2).replace('.',',')
     ]);
   });
 
-  const csv = linhas.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
-  const bom = '\uFEFF';
-  const blob = new Blob([bom+csv], { type:'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `reembolso_${mes}.csv`;
-  a.click();
+  linhas.push([]);
+  linhas.push(['RESUMO','','','','','','','','','','','']);
+  linhas.push(['Membro','','','','','','','','','','Total (R$)','']);
+  const totais = {};
+  custos.forEach(c => { totais[c.usuario_id] = (totais[c.usuario_id]||0) + Number(c.valor||0); });
+  Object.entries(totais).forEach(([uid, val]) => {
+    const u = usuarios.find(u => u.id === uid);
+    linhas.push([u?.nome||uid,'','','','','','','','','',val.toFixed(2).replace('.',','),'']);
+  });
+
+  const csv  = linhas.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `reembolso_${mes}.csv`; a.click();
+}
+
+function exportarReembolsoPDF() {
+  if (!_rbData) { alert('Carregue um mês primeiro.'); return; }
+  const { custos, usuarios, mes, evNomes = {} } = _rbData;
+  const mesNome = new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date(mes+'-01T12:00:00'));
+  const fmtR    = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
+  const totalGeral = custos.reduce((s,c) => s+Number(c.valor||0), 0);
+
+  const porUser = {};
+  custos.forEach(c => {
+    if (!porUser[c.usuario_id]) porUser[c.usuario_id] = { total:0, itens:[] };
+    porUser[c.usuario_id].total += Number(c.valor||0);
+    porUser[c.usuario_id].itens.push(c);
+  });
+
+  let body = '';
+  usuarios.filter(u => porUser[u.id]).forEach(u => {
+    const d = porUser[u.id];
+    const rows = d.itens.map(c => {
+      const evId    = c.evento_id || c.evento_soc_id;
+      const area    = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id)?.subconta || '';
+      const cli     = c.produtos?.oportunidades?.clientes?.nome || '';
+      const proj    = c.produtos?.oportunidades?.projeto || '';
+      const projStr = [cli,proj].filter(Boolean).join(' · ') ||
+                      ({ projeto:'Projeto', organizacao:'Organização', sociedade:'Sociedade' }[c.tipo] || '');
+      return `<tr>
+        <td>${fmtDate(c.data_lancamento)}</td>
+        <td>${area}</td><td>${c.subtipo||''}</td>
+        <td>${evId?(evNomes[evId]||'—'):'—'}</td>
+        <td>${projStr}</td>
+        <td>${c.descricao||''}</td>
+        <td class="val">${fmtR(c.valor)}</td></tr>`;
+    }).join('');
+    body += `<div class="ms">
+      <div class="mhd"><span>${u.nome}</span><span class="mt">${fmtR(d.total)}</span></div>
+      <table><thead><tr><th>Data</th><th>Área</th><th>Detalhe</th><th>Evento</th><th>Projeto</th><th>Descrição</th><th>Valor</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  });
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>Reembolsos — ${mesNome}</title><style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}
+  h1{font-size:15px;font-weight:700;margin-bottom:3px}
+  .sub{font-size:10px;color:#888;margin-bottom:3px}
+  .tg{font-size:12px;font-weight:700;margin-bottom:18px}
+  .ms{margin-bottom:18px;page-break-inside:avoid}
+  .mhd{font-size:11px;font-weight:700;padding:5px 0 4px;border-bottom:2px solid #222;margin-bottom:5px;display:flex;justify-content:space-between}
+  .mt{font-weight:400;color:#555}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f4f4f4;text-align:left;padding:3px 6px;font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #ddd}
+  td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.val{text-align:right;font-family:monospace;white-space:nowrap}
+  @media print{body{padding:16px 20px}.ms{page-break-inside:avoid}}
+  </style></head><body>
+  <h1>Reembolso de custos — ${mesNome}</h1>
+  <div class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} · EXP Plataforma</div>
+  <div class="tg">Total do período: ${fmtR(totalGeral)}</div>
+  ${body}</body></html>`;
+
+  const win = window.open('','_blank','width=920,height=720');
+  win.document.write(html); win.document.close();
+  setTimeout(() => win.print(), 450);
+}
+
+async function exportarHorasExcel() {
+  const mes = document.getElementById('cm-mes')?.value;
+  if (!mes) { alert('Selecione um mês primeiro.'); return; }
+  const [ano, m] = mes.split('-').map(Number);
+  const ini = `${ano}-${String(m).padStart(2,'0')}-01`;
+  const fim = `${ano}-${String(m).padStart(2,'0')}-${String(new Date(ano,m,0).getDate()).padStart(2,'0')}`;
+
+  const [{ data: horas }, { data: usuarios }] = await Promise.all([
+    sb.from('horas_lancadas')
+      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .gte('data_lancamento', ini).lte('data_lancamento', fim)
+      .order('usuario_id').order('data_lancamento'),
+    sb.from('usuarios').select('id, nome').order('nome')
+  ]);
+  if (!horas) { alert('Erro ao carregar dados.'); return; }
+
+  const DIAS   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const TIPOPT = { projeto:'Projeto', organizacao:'Org. Interna', sociedade:'Sociedade' };
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '';
+  const fmtDia  = d => d ? DIAS[new Date(d+'T12:00:00').getDay()] : '';
+
+  const linhas = [
+    ['Membro','Data','Dia','Início','Fim','Horas','Tipo','Subtipo','Cliente','Oportunidade','Produto','Etapa','Descrição']
+  ];
+  horas.forEach(h => {
+    const u  = (usuarios||[]).find(u => u.id === h.usuario_id);
+    const dh = diffHoras(h.hora_inicio, h.hora_fim);
+    linhas.push([
+      u?.nome || '',
+      fmtDate(h.data_lancamento),
+      fmtDia(h.data_lancamento),
+      h.hora_inicio?.slice(0,5) || '',
+      h.hora_fim?.slice(0,5) || '',
+      dh.toFixed(2).replace('.',','),
+      TIPOPT[h.tipo] || h.tipo || '',
+      h.subtipo || '',
+      h.produtos?.oportunidades?.clientes?.nome || '',
+      h.produtos?.oportunidades?.projeto || '',
+      h.produtos?.nome || '',
+      h.etapas?.nome || '',
+      h.descricao || ''
+    ]);
+  });
+
+  linhas.push([]);
+  linhas.push(['RESUMO POR MEMBRO','','','','','Projetos','Org. Interna','Sociedade','Total','','','','']);
+  const por = {};
+  horas.forEach(h => {
+    if (!por[h.usuario_id]) por[h.usuario_id] = { proj:0, org:0, soc:0 };
+    const dh = diffHoras(h.hora_inicio, h.hora_fim);
+    if (h.tipo==='projeto') por[h.usuario_id].proj += dh;
+    else if (h.tipo==='organizacao') por[h.usuario_id].org += dh;
+    else por[h.usuario_id].soc += dh;
+  });
+  Object.entries(por).forEach(([uid, d]) => {
+    const u   = (usuarios||[]).find(u => u.id === uid);
+    const tot = d.proj + d.org + d.soc;
+    linhas.push([u?.nome||uid,'','','','',
+      d.proj.toFixed(2).replace('.',','),
+      d.org.toFixed(2).replace('.',','),
+      d.soc.toFixed(2).replace('.',','),
+      tot.toFixed(2).replace('.',','),
+      '','','','']);
+  });
+
+  const csv  = linhas.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `horas_${mes}.csv`; a.click();
+}
+
+async function exportarHorasPDF() {
+  const mes = document.getElementById('cm-mes')?.value;
+  if (!mes) { alert('Selecione um mês primeiro.'); return; }
+  const [ano, m] = mes.split('-').map(Number);
+  const ini = `${ano}-${String(m).padStart(2,'0')}-01`;
+  const fim = `${ano}-${String(m).padStart(2,'0')}-${String(new Date(ano,m,0).getDate()).padStart(2,'0')}`;
+  const mesNome = new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date(ano,m-1,1));
+
+  const [{ data: horas }, { data: usuarios }] = await Promise.all([
+    sb.from('horas_lancadas')
+      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .gte('data_lancamento', ini).lte('data_lancamento', fim)
+      .order('usuario_id').order('data_lancamento'),
+    sb.from('usuarios').select('id, nome, iniciais, cor').order('nome')
+  ]);
+  if (!horas) { alert('Erro ao carregar dados.'); return; }
+
+  const TIPOPT  = { projeto:'Projeto', organizacao:'Org. Interna', sociedade:'Sociedade' };
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
+
+  const porUser = {};
+  (horas||[]).forEach(h => {
+    if (!porUser[h.usuario_id]) porUser[h.usuario_id] = { total:0, proj:0, org:0, soc:0, itens:[] };
+    const dh = diffHoras(h.hora_inicio, h.hora_fim);
+    porUser[h.usuario_id].total += dh;
+    if (h.tipo==='projeto') porUser[h.usuario_id].proj += dh;
+    else if (h.tipo==='organizacao') porUser[h.usuario_id].org += dh;
+    else porUser[h.usuario_id].soc += dh;
+    porUser[h.usuario_id].itens.push(h);
+  });
+
+  const totalGeral = Object.values(porUser).reduce((s,d)=>s+d.total, 0);
+
+  let body = `<table class="resumo"><thead><tr>
+    <th>Membro</th><th>Projetos</th><th>Org. Interna</th><th>Sociedade</th><th>Total</th>
+  </tr></thead><tbody>`;
+  (usuarios||[]).filter(u => porUser[u.id]).forEach(u => {
+    const d = porUser[u.id];
+    body += `<tr><td>${u.nome}</td><td class="n">${fmtH(d.proj)}</td><td class="n">${fmtH(d.org)}</td><td class="n">${fmtH(d.soc)}</td><td class="n bold">${fmtH(d.total)}</td></tr>`;
+  });
+  body += `<tr class="tot"><td>Total geral</td><td></td><td></td><td></td><td class="n bold">${fmtH(totalGeral)}</td></tr></tbody></table>`;
+
+  (usuarios||[]).filter(u => porUser[u.id]).forEach(u => {
+    const d    = porUser[u.id];
+    const rows = d.itens.map(h => {
+      const dh   = diffHoras(h.hora_inicio, h.hora_fim);
+      const proj = [h.produtos?.oportunidades?.clientes?.nome, h.produtos?.nome].filter(Boolean).join(' · ');
+      return `<tr>
+        <td>${fmtDate(h.data_lancamento)}</td>
+        <td>${h.hora_inicio?.slice(0,5)||''}–${h.hora_fim?.slice(0,5)||''}</td>
+        <td class="n">${fmtH(dh)}</td>
+        <td>${TIPOPT[h.tipo]||h.tipo||''}</td>
+        <td>${[proj,h.etapas?.nome].filter(Boolean).join(' › ')}</td>
+        <td>${h.descricao||''}</td></tr>`;
+    }).join('');
+    body += `<div class="ms">
+      <div class="mhd"><span>${u.nome}</span><span class="mt">${fmtH(d.total)}</span></div>
+      <table><thead><tr><th>Data</th><th>Horário</th><th>Dur.</th><th>Tipo</th><th>Projeto / Etapa</th><th>Descrição</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  });
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>Horas — ${mesNome}</title><style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}
+  h1{font-size:15px;font-weight:700;margin-bottom:3px}
+  .sub{font-size:10px;color:#888;margin-bottom:18px}
+  table.resumo{width:100%;border-collapse:collapse;margin-bottom:24px;border:1px solid #ddd}
+  table.resumo th{background:#222;color:#fff;padding:5px 8px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-align:left}
+  table.resumo td{padding:5px 8px;border-bottom:1px solid #eee}
+  .tot td{border-top:2px solid #222;font-weight:700}
+  .ms{margin-bottom:18px;page-break-inside:avoid}
+  .mhd{font-size:11px;font-weight:700;padding:5px 0 4px;border-bottom:2px solid #222;margin-bottom:5px;display:flex;justify-content:space-between}
+  .mt{font-weight:400;color:#555}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f4f4f4;text-align:left;padding:3px 6px;font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #ddd}
+  td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .n{text-align:right;font-family:monospace;white-space:nowrap}
+  .bold{font-weight:700}
+  @media print{body{padding:16px 20px}.ms{page-break-inside:avoid}table.resumo{page-break-after:always}}
+  </style></head><body>
+  <h1>Relatório de horas — ${mesNome}</h1>
+  <div class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} · EXP Plataforma · Total: ${fmtH(totalGeral)}</div>
+  ${body}</body></html>`;
+
+  const win = window.open('','_blank','width=920,height=720');
+  win.document.write(html); win.document.close();
+  setTimeout(() => win.print(), 450);
 }
 
 let _espelhoTab = 'etapa';
