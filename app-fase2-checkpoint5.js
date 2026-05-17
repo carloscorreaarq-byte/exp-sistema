@@ -514,8 +514,12 @@
       updated_at: new Date().toISOString()
     };
 
-    const { error: userError } = await window.sb.from('usuarios').update(usuarioPayload).eq('id', sessionUser.app_user_id);
-    if (userError) {
+    const { data: userRows, error: userError } = await window.sb
+      .from('usuarios')
+      .update(usuarioPayload)
+      .eq('id', sessionUser.app_user_id)
+      .select('id, apelido, nome');
+    if (userError || !userRows || !userRows.length) {
       setMeusDadosStatus('Nao foi possivel salvar a identidade base do usuario.');
       return;
     }
@@ -712,7 +716,7 @@
   window.abrirGestaoPlataforma = async function abrirGestaoPlataforma() {
     document.getElementById('user-dropdown')?.classList.remove('open');
     const sessionUser = currentSessionUsuario();
-    if (!sessionUser?.is_platform_manager) {
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
       setPlataformaStatus('Este painel exige capability de plataforma.');
       return;
     }
@@ -730,7 +734,7 @@
 
   window.criarNovoUsuarioPlataforma = async function criarNovoUsuarioPlataforma() {
     const sessionUser = currentSessionUsuario();
-    if (!sessionUser?.is_platform_manager) {
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
       setPlataformaStatus('Este fluxo exige capability de plataforma.');
       return;
     }
