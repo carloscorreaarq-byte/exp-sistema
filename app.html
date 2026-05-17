@@ -171,6 +171,9 @@ body::before {
   background: currentColor; opacity: .8;
 }
 
+.user-av.has-avatar { overflow: hidden; padding: 0; }
+.user-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 /* ── CONN DOT ────────────────────────────────────────────── */
 .conn-dot {
   width: 7px; height: 7px; border-radius: 50%;
@@ -278,6 +281,103 @@ body::before {
   display: none;
 }
 
+.shell-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 400;
+}
+.shell-modal-overlay.open { display: flex; }
+.shell-modal {
+  width: min(860px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-modal);
+}
+.shell-modal-header,
+.shell-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+}
+.shell-modal-header { border-bottom: 1px solid var(--cinza2); }
+.shell-modal-footer { border-top: 1px solid var(--cinza2); }
+.shell-modal-title { display: flex; flex-direction: column; gap: 4px; }
+.shell-modal-title strong { font-size: 15px; font-weight: 700; }
+.shell-modal-title span,
+.shell-inline-note,
+.shell-status-text { font-size: 10px; line-height: 1.5; color: #888; }
+.shell-modal-close {
+  background: none; border: none; cursor: pointer;
+  color: #777; font-size: 18px; line-height: 1;
+}
+.shell-modal-body { padding: 20px; display: grid; gap: 20px; }
+.meus-dados-hero {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+.meus-dados-avatar {
+  width: 84px; height: 84px; border-radius: 50%;
+  border: 1px solid var(--cinza); background: var(--off);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 28px; font-weight: 700; color: #fff;
+}
+.meus-dados-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.meus-dados-hero-copy strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.meus-dados-hero-copy p { font-size: 11px; line-height: 1.5; color: #777; }
+.meus-dados-section {
+  border: 1px solid var(--cinza2);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+.meus-dados-section-title { display: flex; flex-direction: column; gap: 4px; }
+.meus-dados-section-title strong {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+}
+.meus-dados-section-title span { font-size: 10px; color: #888; line-height: 1.5; }
+.meus-dados-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+.shell-field { display: grid; gap: 6px; }
+.shell-field.full { grid-column: 1 / -1; }
+.shell-field label {
+  font-size: 8px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: #888;
+}
+.shell-field input,
+.shell-field select {
+  width: 100%; height: 36px; padding: 0 10px;
+  border: 1px solid var(--cinza); border-radius: var(--radius-input);
+  background: var(--branco); color: var(--grafite);
+  font-family: var(--font-ui); font-size: 12px;
+}
+.shell-field input[readonly] { background: var(--off); color: #777; }
+.shell-actions { display: flex; align-items: center; gap: 10px; }
+.shell-btn {
+  height: 36px; padding: 0 14px; border-radius: var(--radius-btn);
+  border: 1px solid var(--cinza); background: var(--branco);
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  cursor: pointer; color: var(--grafite);
+}
+.shell-btn.primary { background: var(--grafite); color: var(--branco); border-color: var(--grafite); }
+.shell-btn:hover { border-color: var(--grafite); }
+.shell-btn.primary:hover { opacity: .92; }
+
 /* ── ANIMAÇÃO ────────────────────────────────────────────── */
 .main { animation: fadeIn .4s ease both; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
@@ -311,6 +411,13 @@ body::before {
 [data-theme="dark"] .conn-dot.online { background: #22c55e; }
 [data-theme="dark"] .viewer-aviso { background: var(--am-bg); border-color: var(--ouro); color: var(--ouro); }
 [data-theme="dark"] .mod-em-breve { border-color: var(--cinza); color: #555; }
+[data-theme="dark"] .shell-modal { background: var(--branco); border-color: var(--cinza); box-shadow: var(--shadow-modal); }
+[data-theme="dark"] .shell-modal-header,
+[data-theme="dark"] .shell-modal-footer,
+[data-theme="dark"] .meus-dados-section { border-color: var(--cinza2); }
+[data-theme="dark"] .shell-field input,
+[data-theme="dark"] .shell-field select { background: #181816; border-color: var(--cinza); color: var(--grafite); }
+[data-theme="dark"] .shell-field input[readonly] { background: #20201d; color: #999; }
 </style>
 </head>
 <body>
@@ -345,7 +452,7 @@ body::before {
         <span class="user-chip-arrow">▾</span>
       </div>
       <div class="user-dropdown" id="user-dropdown">
-        <button type="button" onclick="abrirMeusDadosStub()">Meus dados</button>
+        <button type="button" onclick="abrirMeusDados()">Meus dados</button>
         <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataformaStub()">Gestao de plataforma</button>
         <div class="user-dropdown-sep"></div>
         <div class="user-term-state pending" id="user-term-state">
@@ -435,6 +542,133 @@ body::before {
 </div><!-- /main -->
 </div><!-- /conteudo -->
 
+<div class="shell-modal-overlay" id="meus-dados-overlay" onclick="fecharMeusDados(event)">
+  <div class="shell-modal" role="dialog" aria-modal="true" aria-labelledby="meus-dados-title" onclick="event.stopPropagation()">
+    <div class="shell-modal-header">
+      <div class="shell-modal-title">
+        <strong id="meus-dados-title">Meus dados</strong>
+        <span>Dados pessoais e de contato do usuario logado.</span>
+      </div>
+      <button type="button" class="shell-modal-close" onclick="fecharMeusDados()">&times;</button>
+    </div>
+    <div class="shell-modal-body">
+      <div class="meus-dados-hero">
+        <div class="meus-dados-avatar" id="meus-dados-avatar"></div>
+        <div class="meus-dados-hero-copy">
+          <strong id="meus-dados-hero-nome">-</strong>
+          <p id="meus-dados-hero-resumo">Identidade base do usuario logado.</p>
+          <div class="shell-inline-note">A foto de avatar e gerida pela Gestao de plataforma. Quando nao houver foto, o sistema usa as iniciais.</div>
+        </div>
+      </div>
+
+      <div class="meus-dados-section">
+        <div class="meus-dados-section-title">
+          <strong>Identidade e contato</strong>
+          <span>Primeiro bloco funcional da Fase 2. Dados profissionais, empresariais e bancarios entram nos proximos checkpoints.</span>
+        </div>
+        <div class="meus-dados-grid">
+          <div class="shell-field full">
+            <label for="md-nome-completo">Nome completo</label>
+            <input id="md-nome-completo" type="text" maxlength="160">
+          </div>
+          <div class="shell-field">
+            <label for="md-apelido">Apelido</label>
+            <input id="md-apelido" type="text" maxlength="80">
+          </div>
+          <div class="shell-field">
+            <label for="md-email-login">Email de login institucional</label>
+            <input id="md-email-login" type="email" readonly>
+          </div>
+          <div class="shell-field">
+            <label for="md-email-pessoal">Email pessoal</label>
+            <input id="md-email-pessoal" type="email" maxlength="160">
+          </div>
+          <div class="shell-field">
+            <label for="md-data-nascimento">Data de nascimento</label>
+            <input id="md-data-nascimento" type="date">
+          </div>
+          <div class="shell-field">
+            <label for="md-cidade-nascimento">Cidade de nascimento</label>
+            <input id="md-cidade-nascimento" type="text" maxlength="120">
+          </div>
+          <div class="shell-field">
+            <label for="md-uf-nascimento">UF de nascimento</label>
+            <input id="md-uf-nascimento" type="text" maxlength="2">
+          </div>
+          <div class="shell-field">
+            <label for="md-celular">Telefone celular</label>
+            <input id="md-celular" type="text" maxlength="40">
+          </div>
+          <div class="shell-field">
+            <label for="md-telefone-corporativo">Telefone corporativo</label>
+            <input id="md-telefone-corporativo" type="text" maxlength="40">
+          </div>
+          <div class="shell-field">
+            <label for="md-telefone-fixo">Telefone fixo</label>
+            <input id="md-telefone-fixo" type="text" maxlength="40">
+          </div>
+        </div>
+      </div>
+
+      <div class="meus-dados-section">
+        <div class="meus-dados-section-title">
+          <strong>Endereco e emergencia</strong>
+          <span>Base inicial do cadastro pessoal para a plataforma e para futuros usos institucionais.</span>
+        </div>
+        <div class="meus-dados-grid">
+          <div class="shell-field full">
+            <label for="md-logradouro">Logradouro</label>
+            <input id="md-logradouro" type="text" maxlength="160">
+          </div>
+          <div class="shell-field">
+            <label for="md-numero">Numero</label>
+            <input id="md-numero" type="text" maxlength="20">
+          </div>
+          <div class="shell-field">
+            <label for="md-complemento">Complemento</label>
+            <input id="md-complemento" type="text" maxlength="120">
+          </div>
+          <div class="shell-field">
+            <label for="md-cep">CEP</label>
+            <input id="md-cep" type="text" maxlength="20">
+          </div>
+          <div class="shell-field">
+            <label for="md-bairro">Bairro</label>
+            <input id="md-bairro" type="text" maxlength="120">
+          </div>
+          <div class="shell-field">
+            <label for="md-cidade">Cidade</label>
+            <input id="md-cidade" type="text" maxlength="120">
+          </div>
+          <div class="shell-field">
+            <label for="md-uf">UF</label>
+            <input id="md-uf" type="text" maxlength="2">
+          </div>
+          <div class="shell-field">
+            <label for="md-emergencia-nome">Contato de emergencia</label>
+            <input id="md-emergencia-nome" type="text" maxlength="160">
+          </div>
+          <div class="shell-field">
+            <label for="md-emergencia-relacao">Relacao</label>
+            <input id="md-emergencia-relacao" type="text" maxlength="80">
+          </div>
+          <div class="shell-field">
+            <label for="md-emergencia-telefone">Telefone de emergencia</label>
+            <input id="md-emergencia-telefone" type="text" maxlength="40">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="shell-modal-footer">
+      <div class="shell-status-text" id="meus-dados-status">Primeira etapa de "Meus dados" pronta para carregamento.</div>
+      <div class="shell-actions">
+        <button type="button" class="shell-btn" onclick="fecharMeusDados()">Fechar</button>
+        <button type="button" class="shell-btn primary" onclick="salvarMeusDados()">Salvar dados</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
@@ -461,6 +695,8 @@ function buildExpUsuarioPayload(authId, usuario) {
     apelido: (usuario && usuario.apelido) || (nome ? nome.split(' ')[0] : ''),
     iniciais: (usuario && usuario.iniciais) || '',
     cor: (usuario && usuario.cor) || '#888',
+    avatar_url: (usuario && usuario.avatar_url) || null,
+    email_login: (usuario && (usuario.email_login || usuario.email)) || null,
     role: (usuario && usuario.role) || '',
     viewer_only: !!(usuario && usuario.viewer_only),
     is_platform_manager: !!(usuario && usuario.is_platform_manager),
@@ -503,13 +739,15 @@ function redirectToLogin() {
 async function fetchCurrentUsuario(authId) {
   const { data: usuario } = await sb
     .from('usuarios')
-    .select('id, nome, iniciais, role, cor, viewer_only')
+    .select('id, nome, iniciais, role, cor, viewer_only, apelido, email, email_login, avatar_url, is_platform_manager, can_coordinate_projects, status_acesso')
     .eq('auth_id', authId)
     .single();
   if (!usuario) return null;
   return {
     ...usuario,
     apelido: usuario.apelido || null,
+    email_login: usuario.email_login || usuario.email || null,
+    avatar_url: usuario.avatar_url || null,
     is_platform_manager: !!usuario.is_platform_manager,
     can_coordinate_projects: !!usuario.can_coordinate_projects,
     termo_status: usuario.termo_status || null,
@@ -574,8 +812,17 @@ function renderTermState(usuario) {
 
 function renderShellIdentity(usuario) {
   const av = document.getElementById('user-av');
-  av.textContent = usuario.iniciais;
+  av.classList.toggle('has-avatar', !!usuario.avatar_url);
   av.style.background = usuario.cor || '#888';
+  av.innerHTML = '';
+  if (usuario.avatar_url) {
+    const img = document.createElement('img');
+    img.src = usuario.avatar_url;
+    img.alt = usuario.nome || 'Avatar';
+    av.appendChild(img);
+  } else {
+    av.textContent = usuario.iniciais;
+  }
   document.getElementById('user-nome').textContent = usuario.nome;
   document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'SÃ³cio administrador' : (ROLES[usuario.role] || usuario.role);
   if (usuario.role === 'socio_admin') {
@@ -604,9 +851,175 @@ function renderShellIdentity(usuario) {
   document.getElementById('soc-grid').style.display = isSocio ? 'grid' : 'none';
 }
 
-function abrirMeusDadosStub() {
+function currentSessionUsuario() {
+  try {
+    return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function initialsFromNome(nome) {
+  return String(nome || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase() || '')
+    .join('') || '--';
+}
+
+function setMeusDadosStatus(message) {
+  const el = document.getElementById('meus-dados-status');
+  if (el) el.textContent = message;
+}
+
+function fillMeusDadosForm(usuario, dados = {}) {
+  document.getElementById('md-nome-completo').value = dados.nome_completo || usuario.nome || '';
+  document.getElementById('md-apelido').value = usuario.apelido || (usuario.nome ? usuario.nome.split(' ')[0] : '');
+  document.getElementById('md-email-login').value = usuario.email_login || usuario.email || '';
+  document.getElementById('md-email-pessoal').value = dados.email_pessoal || '';
+  document.getElementById('md-data-nascimento').value = dados.data_nascimento || '';
+  document.getElementById('md-cidade-nascimento').value = dados.cidade_nascimento || '';
+  document.getElementById('md-uf-nascimento').value = dados.uf_nascimento || '';
+  document.getElementById('md-celular').value = dados.celular || '';
+  document.getElementById('md-telefone-corporativo').value = dados.telefone_corporativo || '';
+  document.getElementById('md-telefone-fixo').value = dados.telefone_fixo || '';
+  document.getElementById('md-logradouro').value = dados.logradouro || '';
+  document.getElementById('md-numero').value = dados.numero || '';
+  document.getElementById('md-complemento').value = dados.complemento || '';
+  document.getElementById('md-cep').value = dados.cep || '';
+  document.getElementById('md-bairro').value = dados.bairro || '';
+  document.getElementById('md-cidade').value = dados.cidade || '';
+  document.getElementById('md-uf').value = dados.uf || '';
+  document.getElementById('md-emergencia-nome').value = dados.emergencia_nome || '';
+  document.getElementById('md-emergencia-relacao').value = dados.emergencia_relacao || '';
+  document.getElementById('md-emergencia-telefone').value = dados.emergencia_telefone || '';
+
+  const avatar = document.getElementById('meus-dados-avatar');
+  avatar.style.background = usuario.cor || '#888';
+  avatar.innerHTML = '';
+  if (usuario.avatar_url) {
+    const img = document.createElement('img');
+    img.src = usuario.avatar_url;
+    img.alt = usuario.nome || 'Avatar';
+    avatar.appendChild(img);
+  } else {
+    avatar.textContent = usuario.iniciais || initialsFromNome(usuario.nome);
+  }
+  document.getElementById('meus-dados-hero-nome').textContent = dados.nome_completo || usuario.nome || '-';
+  document.getElementById('meus-dados-hero-resumo').textContent = `${usuario.role === 'socio_admin' ? 'Sócio administrador' : (ROLES[usuario.role] || usuario.role || 'Usuário')} · ${usuario.email_login || usuario.email || 'sem email institucional registrado'}`;
+}
+
+async function abrirMeusDados() {
   document.getElementById('user-dropdown')?.classList.remove('open');
-  window.alert('A area "Meus dados" sera aberta na Fase 2 com dados pessoais, profissionais, empresariais e bancarios.');
+  const overlay = document.getElementById('meus-dados-overlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  setMeusDadosStatus('Carregando dados pessoais...');
+
+  const sessionUser = currentSessionUsuario();
+  if (!sessionUser?.app_user_id || !sessionUser?.auth_id) {
+    setMeusDadosStatus('Sessão do usuário indisponível para carregar "Meus dados".');
+    return;
+  }
+
+  const usuario = await fetchCurrentUsuario(sessionUser.auth_id);
+  if (!usuario) {
+    setMeusDadosStatus('Não foi possível carregar a identidade base do usuário.');
+    return;
+  }
+
+  const { data, error } = await sb
+    .from('usuarios_dados_pessoais')
+    .select('*')
+    .eq('usuario_id', sessionUser.app_user_id)
+    .maybeSingle();
+
+  if (error) {
+    setMeusDadosStatus('Falha ao carregar os dados pessoais do usuário.');
+    fillMeusDadosForm(usuario, {});
+    return;
+  }
+
+  fillMeusDadosForm(usuario, data || {});
+  setMeusDadosStatus('Dados carregados. Esta e a primeira etapa funcional de "Meus dados".');
+}
+
+function fecharMeusDados(event) {
+  if (event && event.target && event.target.id !== 'meus-dados-overlay') return;
+  document.getElementById('meus-dados-overlay')?.classList.remove('open');
+}
+
+async function salvarMeusDados() {
+  const sessionUser = currentSessionUsuario();
+  if (!sessionUser?.app_user_id || !sessionUser?.auth_id) {
+    setMeusDadosStatus('Sessão inválida para salvar os dados.');
+    return;
+  }
+
+  setMeusDadosStatus('Salvando dados...');
+
+  const nomeCompleto = document.getElementById('md-nome-completo').value.trim();
+  const apelido = document.getElementById('md-apelido').value.trim();
+  const usuarioPayload = {
+    nome: nomeCompleto || null,
+    apelido: apelido || null,
+    iniciais: initialsFromNome(nomeCompleto || apelido || sessionUser.nome || '')
+  };
+
+  const dadosPessoaisPayload = {
+    usuario_id: sessionUser.app_user_id,
+    nome_completo: nomeCompleto || null,
+    data_nascimento: document.getElementById('md-data-nascimento').value || null,
+    cidade_nascimento: document.getElementById('md-cidade-nascimento').value.trim() || null,
+    uf_nascimento: document.getElementById('md-uf-nascimento').value.trim().toUpperCase() || null,
+    email_pessoal: document.getElementById('md-email-pessoal').value.trim() || null,
+    celular: document.getElementById('md-celular').value.trim() || null,
+    telefone_corporativo: document.getElementById('md-telefone-corporativo').value.trim() || null,
+    telefone_fixo: document.getElementById('md-telefone-fixo').value.trim() || null,
+    logradouro: document.getElementById('md-logradouro').value.trim() || null,
+    numero: document.getElementById('md-numero').value.trim() || null,
+    complemento: document.getElementById('md-complemento').value.trim() || null,
+    cep: document.getElementById('md-cep').value.trim() || null,
+    bairro: document.getElementById('md-bairro').value.trim() || null,
+    cidade: document.getElementById('md-cidade').value.trim() || null,
+    uf: document.getElementById('md-uf').value.trim().toUpperCase() || null,
+    emergencia_nome: document.getElementById('md-emergencia-nome').value.trim() || null,
+    emergencia_relacao: document.getElementById('md-emergencia-relacao').value.trim() || null,
+    emergencia_telefone: document.getElementById('md-emergencia-telefone').value.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error: userError } = await sb
+    .from('usuarios')
+    .update(usuarioPayload)
+    .eq('id', sessionUser.app_user_id);
+
+  if (userError) {
+    setMeusDadosStatus('Nao foi possivel salvar a identidade base do usuario.');
+    return;
+  }
+
+  const { error: personalError } = await sb
+    .from('usuarios_dados_pessoais')
+    .upsert(dadosPessoaisPayload, { onConflict: 'usuario_id' });
+
+  if (personalError) {
+    setMeusDadosStatus('Nao foi possivel salvar os dados pessoais.');
+    return;
+  }
+
+  const usuarioAtualizado = await fetchCurrentUsuario(sessionUser.auth_id);
+  if (usuarioAtualizado) {
+    const payload = buildExpUsuarioPayload(sessionUser.auth_id, usuarioAtualizado);
+    sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
+    renderShellIdentity(usuarioAtualizado);
+    publishSessionReady(payload);
+    fillMeusDadosForm(usuarioAtualizado, dadosPessoaisPayload);
+  }
+
+  setMeusDadosStatus('Dados salvos com sucesso.');
 }
 
 function abrirGestaoPlataformaStub() {
