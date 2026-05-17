@@ -9214,6 +9214,22 @@ async function carregarHorasProduto(prodId) {
     ? Object.entries(totalPorUser).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0)
     : 0;
 
+  const prod = G.todosProdutos.find(p => p.id === prodId) || G._todosProdutosGestao.find(p => p.id === prodId);
+  const valorContratado = prod?.valor_contratado || 0;
+  const margemAbs = isSocio && valorContratado ? (valorContratado - custoEstimadoTotal) : null;
+  const margemPct = isSocio && valorContratado > 0 ? (margemAbs / valorContratado) * 100 : null;
+
+  const horasTotalEl = document.getElementById('mp-horas-total');
+  if (horasTotalEl) horasTotalEl.textContent = fmtH(totalGeral);
+  const custoEl = document.getElementById('mp-custo');
+  if (custoEl) custoEl.textContent = isSocio ? `R$ ${fmtNum(custoEstimadoTotal)}` : '—';
+  const margemEl = document.getElementById('mp-margem');
+  if (margemEl) {
+    margemEl.textContent = isSocio && margemAbs !== null
+      ? `R$ ${fmtNum(margemAbs)}${margemPct !== null ? ` · ${margemPct.toFixed(1)}%` : ''}`
+      : '—';
+  }
+
   // Custos operacionais por etapa
   const custosOpPorEtapa = {};
   (custosOp || []).forEach(c => {
@@ -9308,26 +9324,50 @@ async function carregarHorasProduto(prodId) {
     let custosEtapaHtml = '';
     if (isSocio && custosEtapaList.length) {
       const totalCustosEt = custosEtapaList.reduce((s,c) => s+(c.valor||0), 0);
-      const linhasCustos = custosEtapaList.map(c => {
-        const u = c.usuarios || {};
-        const av = u.iniciais
-          ? `<span style="width:20px;height:20px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais || '?')}</span>`
-          : '';
-        const cat = _escN(c.subtipo || c.tipo || '—');
-        const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
-        const descDisp = _escN(c.descricao || '');
-        const userDisp = _escN((u.nome || '').split(' ')[0] || '?');
-        return `<div style="display:flex;align-items:center;gap:7px;padding:5px 14px;border-bottom:1px solid var(--cinza2)">
-          ${av}
-          <div style="flex:1;min-width:0;font-size:10px;color:#888">${cat}${c.descricao ? ` · ${descDisp}` : ''}<span style="color:#ccc"> · ${userDisp}</span></div>
-          <span style="font-size:9px;color:#bbb">${dataFmt}</span>
-          <span style="font-size:10px;font-weight:700;min-width:55px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
+      const custosGroupMap = {};
+      custosEtapaList.forEach(c => {
+        const key = c.subtipo || c.tipo || 'Outros';
+        if (!custosGroupMap[key]) custosGroupMap[key] = [];
+        custosGroupMap[key].push(c);
+      });
+      const custosBodyId = `hp-et-${etIdx}-custos`;
+      const gruposCustos = Object.entries(custosGroupMap).map(([grupo, itens], grpIdx) => {
+        const grpId = `${custosBodyId}-grp-${grpIdx}`;
+        const subtotal = itens.reduce((s, c) => s + (c.valor || 0), 0);
+        const linhas = itens.map(c => {
+          const u = c.usuarios || {};
+          const av = u.iniciais
+            ? `<span style="width:20px;height:20px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais || '?')}</span>`
+            : '';
+          const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
+          const descDisp = _escN(c.descricao || '');
+          const userDisp = _escN((u.nome || '').split(' ')[0] || '?');
+          return `<div style="display:flex;align-items:center;gap:7px;padding:5px 14px;border-bottom:1px solid var(--cinza2)">
+            ${av}
+            <div style="flex:1;min-width:0;font-size:10px;color:#888">${descDisp || 'Sem descrição'}<span style="color:#ccc"> · ${userDisp}</span></div>
+            <span style="font-size:9px;color:#bbb">${dataFmt}</span>
+            <span style="font-size:10px;font-weight:700;min-width:55px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
+          </div>`;
+        }).join('');
+        return `<div style="border-top:1px solid var(--cinza2)">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;cursor:pointer;background:#fafafa" onclick="toggleEl(${_sqN(grpId)})">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;color:#bbb" id="${grpId}-arr">▸</span>
+              <span style="font-size:10px;font-weight:600">${_escN(grupo)}</span>
+              <span style="font-size:9px;color:#bbb">(${itens.length})</span>
+            </div>
+            <span style="font-size:10px;font-weight:700">R$ ${fmtNum(subtotal)}</span>
+          </div>
+          <div id="${grpId}" style="display:none">${linhas}</div>
         </div>`;
       }).join('');
-      custosEtapaHtml = `<div style="background:var(--cinza2);padding:6px 14px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999">Custos operacionais</div>
-        <div style="font-size:10px;font-weight:700">R$ ${fmtNum(totalCustosEt)}</div>
-      </div>${linhasCustos}`;
+      custosEtapaHtml = `<div style="border-top:1px solid var(--cinza2);background:#fff">
+        <div style="background:var(--cinza2);padding:6px 14px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999">Custos operacionais</div>
+          <div style="font-size:10px;font-weight:700">R$ ${fmtNum(totalCustosEt)}</div>
+        </div>
+        ${gruposCustos}
+      </div>`;
     }
 
     html += `<div style="margin-bottom:10px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:#fff">
