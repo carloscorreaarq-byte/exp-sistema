@@ -2064,6 +2064,7 @@ function nucleoBadge(n) {
   return `<span class="badge ${m.cls}">${_finEsc(m.label)}</span>`;
 }
 const _finEsc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const _finAttr = s => _finEsc(s).replace(/'/g,'&#39;');
 const _finSq  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
 function sitBadge(s) {
   const m = SIT_LANC[s];
@@ -3962,7 +3963,9 @@ async function finalizarRascunho(id) {
 
   // Modalidade
   const mod = ativo.modalidade_cobranca || 'etapas';
-  document.querySelector(`input[name="fin-modalidade"][value="${mod}"]`).checked = true;
+  document.querySelectorAll('input[name="fin-modalidade"]').forEach(el => {
+    el.checked = el.value === mod;
+  });
   onModalidadeChange();
 
   // Start
@@ -4045,12 +4048,12 @@ function renderEtapasFinalizacao() {
     return `<div style="border:1px solid var(--cinza);border-radius:8px;margin-bottom:10px;overflow:hidden" id="etapa-blk-${ei}">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--off)">
         <div style="flex:1">
-          <input type="text" value="${etapaDescDisp}" style="font-weight:700;font-size:12px;border:none;background:none;padding:0;outline:none;width:100%"
+          <input type="text" value="${_finAttr(e.descricao || '')}" style="font-weight:700;font-size:12px;border:none;background:none;padding:0;outline:none;width:100%"
             onchange="G_ativoEdit.etapas[${ei}].descricao=this.value">
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:10px;color:#888">Total:</span>
-          <input type="number" value="${e.percentual_total||0}" step="0.01" style="width:60px;font-size:12px;font-weight:700;text-align:right;border:1px solid var(--cinza);border-radius:4px;padding:3px 6px"
+          <input type="number" value="${_finAttr(e.percentual_total ?? 0)}" step="0.01" style="width:60px;font-size:12px;font-weight:700;text-align:right;border:1px solid var(--cinza);border-radius:4px;padding:3px 6px"
             onchange="G_ativoEdit.etapas[${ei}].percentual_total=parseFloat(this.value);atualizarSomaCheck()">
           <span style="font-size:11px;color:#888">%</span>
           <span style="font-size:11px;font-weight:600" id="etapa-val-${ei}">${moeda((e.percentual_total/100)*(G_ativoEdit?.valor_total||0), true)}</span>
@@ -4068,18 +4071,18 @@ function renderEtapasFinalizacao() {
 
 function parcelaFormHTML(ei, pi, p) {
   const tipos = ['conclusao','liberacao','entrega_parcial','avulso'];
-  const tipoOpts = tipos.map(t => `<option value="${t}" ${p.tipo===t?'selected':''}>${_finEsc(TIPO_PARCELA_MAP[t]?.label||t)}</option>`).join('');
-  const descDisp = _finEsc(p.descricao||'');
+  const tipoOpts = tipos.map(t => `<option value="${_finAttr(t)}" ${p.tipo===t?'selected':''}>${_finEsc(TIPO_PARCELA_MAP[t]?.label||t)}</option>`).join('');
+  const descDisp = _finAttr(p.descricao||'');
   return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2)" id="parcela-row-${ei}-${pi}">
     <select onchange="G_ativoEdit.etapas[${ei}].fin_parcelas[${pi}].tipo=this.value" style="font-size:11px;padding:4px 6px;border:1px solid var(--cinza);border-radius:4px">
       ${tipoOpts}
     </select>
     <input type="text" value="${descDisp}" placeholder="Descrição (opcional)"
       style="flex:1;font-size:11px" onchange="G_ativoEdit.etapas[${ei}].fin_parcelas[${pi}].descricao=this.value">
-    <input type="number" value="${p.percentual||''}" step="0.01" placeholder="%" style="width:60px;font-size:11px"
+    <input type="number" value="${_finAttr(p.percentual ?? '')}" step="0.01" placeholder="%" style="width:60px;font-size:11px"
       onchange="G_ativoEdit.etapas[${ei}].fin_parcelas[${pi}].percentual=parseFloat(this.value);atualizarSomaCheck()">
     <span style="font-size:10px;color:#888">%</span>
-    <input type="date" value="${p.data_prevista_cobranca||''}" style="font-size:11px;width:130px"
+    <input type="date" value="${_finAttr(p.data_prevista_cobranca || '')}" style="font-size:11px;width:130px"
       onchange="G_ativoEdit.etapas[${ei}].fin_parcelas[${pi}].data_prevista_cobranca=this.value">
     <button class="btn btn-ghost btn-xs" style="color:var(--tc)" onclick="removerParcela(${ei},${pi})">✕</button>
   </div>`;

@@ -4301,7 +4301,7 @@ function abrirAtribuirTarefa() {
   const outros = G.todosUsuarios.filter(u => u.id !== G.usuario.id);
   document.getElementById('at-para').innerHTML =
     '<option value="">Selecionar pessoa...</option>' +
-    outros.map(u => `<option value="${u.id}">${u.nome}</option>`).join('');
+    outros.map(u => `<option value="${_escAttrN(u.id)}">${_escN(u.nome)}</option>`).join('');
   document.getElementById('at-desc').value = document.getElementById('task-nova-desc').value;
   document.getElementById('at-data').value = document.getElementById('task-nova-data').value || '';
   document.getElementById('modal-atribuir-tarefa').style.display = 'flex';
@@ -4644,17 +4644,21 @@ function renderGantt() {
       // Bolinhas: devs primeiro, coord à direita (máx 4 total). Coord fica mais à direita.
       const todos = [...devs.slice(0, 3), coord].filter(Boolean);
       const avsHtml = todos.map(u =>
-        `<div class="gantt-av" style="background:${u.cor||'#888'};${u.id===coord?.id?'border-color:#aaa':''}" title="${u.nome} (${u.id===coord?.id?'coord':'dev'})">${u.iniciais}</div>`
+        `<div class="gantt-av" style="background:${u.cor||'#888'};${u.id===coord?.id?'border-color:#aaa':''}" title="${_escAttrN(u.nome)} (${u.id===coord?.id?'coord':'dev'})">${_escN(u.iniciais)}</div>`
       ).join('');
+      const oppProjetoDisp = _escN(opp?.projeto || p.nome || '');
+      const prodNomeDisp = _escN(p.nome || '');
+      const nucleoLabelDisp = _escN(nc.label);
+      const prodIdJs = _sqN(p.id);
 
-      rows += `<tr class="gantt-prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto('${p.id}')`}">
+      rows += `<tr class="gantt-prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto(${prodIdJs})`}">
         <td class="info-cell">
           <div style="display:flex;align-items:flex-start;gap:6px">
             <div style="flex:1;min-width:0">
-              <div class="gantt-prod-nome" style="margin-bottom:1px">${opp?.projeto || p.nome}</div>
-              ${opp?.projeto ? `<div style="font-size:10px;color:#999;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>` : ''}
+              <div class="gantt-prod-nome" style="margin-bottom:1px">${oppProjetoDisp}</div>
+              ${opp?.projeto ? `<div style="font-size:10px;color:#999;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prodNomeDisp}</div>` : ''}
               <div style="display:flex;align-items:center;gap:4px">
-                <span class="badge ${nc.cls}" style="font-size:7px">${nc.label}</span>
+                <span class="badge ${nc.cls}" style="font-size:7px">${nucleoLabelDisp}</span>
                 ${p._crm ? '<span class="badge b-gr" style="font-size:7px">CRM</span>' : ''}
               </div>
             </div>
@@ -4682,10 +4686,10 @@ function renderGantt() {
             const dias = Math.round((dEst - hoje) / (1000*3600*24));
             return `<div class="gantt-bar ${barCls} ${pausado ? 'pausado' : ''} ${atrasado}"
               style="left:${left}%;width:${width}%"
-              onmouseenter="showGanttTooltip(event,'${p.nome.replace(/'/g,"\\'")}','${e.nome.replace(/'/g,"\\'")}','${stE?.label||''}','${fmtDate(e.data_estimada)}','${dias}')"
+              onmouseenter="showGanttTooltip(event,${_sqN(p.nome||'')},${_sqN(e.nome||'')},${_sqN(stE?.label||'')},${_sqN(fmtDate(e.data_estimada))},${_sqN(String(dias))})"
               onmouseleave="hideGanttTooltip()"
-              onclick="event.stopPropagation();${p._crm ? '' : `abrirProduto('${p.id}')`}">
-              <span class="gantt-bar-label">${e.nome}</span>
+              onclick="event.stopPropagation();${p._crm ? '' : `abrirProduto(${prodIdJs})`}">
+              <span class="gantt-bar-label">${_escN(e.nome)}</span>
             </div>`;
           }).join('');
           return `<td class="gantt-cell ${isHoje ? 'hoje' : ''}" style="position:relative">${barsHtml}</td>`;
@@ -11301,6 +11305,7 @@ function deletarComentarioReg(id, entradaId) {
 
 // Helpers de escape (independentes dos de registro)
 const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
 const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
 
 // ── Estado ────────────────────────────────────────────────────
@@ -12109,7 +12114,7 @@ function renderProcDetalhe(id) {
       </div>
 
       ${isSoc ? `
-        <button onclick="procAdicionarTema('${id}')"
+        <button onclick="procAdicionarTema(${_sqN(id)})"
           style="margin-top:16px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:#fafafa;color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--f)">
           + Adicionar tema
         </button>
