@@ -183,7 +183,9 @@
     if (!raw) return;
     try { user = JSON.parse(raw); } catch (e) { return; }
     if (!user || !user.nome) return;
-    if (!user.auth_id) user.auth_id = user.id;
+    if (!user.auth_id) user.auth_id = user.id || null;
+    if (!user.app_user_id && typeof user.id !== 'undefined') user.app_user_id = user.id;
+    if (!user.apelido) user.apelido = (user.nome || '').split(' ')[0] || '';
 
     sb = (typeof window.sb !== 'undefined' && window.sb)
       ? window.sb
@@ -613,7 +615,7 @@
       $list.innerHTML = '<div class="chat-empty">Carregando equipe…</div>';
       return;
     }
-    var roleLabel = { socio: 'Sócio', coordenador: 'Coordenador', colaborador: 'Colaborador' };
+    var roleLabel = { socio: 'Sócio', socio_admin: 'Sócio administrador', coordenador: 'Coordenador', colaborador: 'Colaborador' };
     var html = '';
     teamMembers.forEach(function (m) {
       var cor = m.cor || '#1D6A4A';

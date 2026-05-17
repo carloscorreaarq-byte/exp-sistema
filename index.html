@@ -512,6 +512,24 @@ function hideMsg(elId) {
   if (el) el.className = el.className.replace(' show','').replace('msg-ok','msg-erro').replace(' show','');
 }
 
+async function fetchCurrentUsuario(authId) {
+  const { data: usuario } = await sb
+    .from('usuarios')
+    .select('id, nome, iniciais, role, cor, viewer_only')
+    .eq('auth_id', authId)
+    .single();
+  return usuario || null;
+}
+
+async function handleOrphanedSession(authUser) {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('exp_usuario');
+  if (authUser) {
+    showErro('erro-login', 'Sua sessao nao possui perfil valido na plataforma. Contate um socio administrador.');
+  }
+  showPanel('form-login');
+}
+
 // ── NAVEGAÇÃO ENTRE PAINÉIS ───────────────────────────────
 function mostrarRecuperacao() {
   document.getElementById('form-login').style.display  = 'none';
@@ -552,7 +570,8 @@ async function init() {
   // Verifica sessão ativa normal
   const { data: { session } } = await sb.auth.getSession();
   if (session && !window.location.hash.includes('type=recovery')) {
-    await mostrarLogado(session.user);
+    const ok = await mostrarLogado(session.user);
+    if (!ok) return;
     return;
   }
 
@@ -599,13 +618,11 @@ async function fazerLogin() {
 
 // ── MOSTRAR USUÁRIO LOGADO ────────────────────────────────
 async function mostrarLogado(authUser) {
-  const { data: usuario } = await sb
-    .from('usuarios')
-    .select('id, nome, iniciais, role, cor, viewer_only')
-    .eq('auth_id', authUser.id)
-    .single();
-
-  if (!usuario) return;
+  const usuario = await fetchCurrentUsuario(authUser.id);
+  if (!usuario) {
+    await handleOrphanedSession(authUser);
+    return false;
+  }
 
   const avatar = document.getElementById('logado-avatar');
   avatar.textContent = usuario.iniciais;
@@ -624,6 +641,7 @@ async function mostrarLogado(authUser) {
   document.getElementById('painel-logado').style.display    = 'flex';
 
   sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(authUser.id, usuario)));
+  return true;
 }
 
 // ── RECUPERAÇÃO DE SENHA ──────────────────────────────────

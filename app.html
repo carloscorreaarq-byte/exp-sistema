@@ -434,19 +434,73 @@ document.addEventListener('click', e => {
   }
 });
 
-async function init() {
-  // Verifica sessão
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.href = 'index.html'; return; }
+function redirectToLogin() {
+  sessionStorage.removeItem('exp_usuario');
+  window.location.href = 'index.html';
+}
 
-  // Busca dados do usuário
+async function fetchCurrentUsuario(authId) {
   const { data: usuario } = await sb
     .from('usuarios')
     .select('id, nome, iniciais, role, cor, viewer_only')
-    .eq('auth_id', session.user.id)
+    .eq('auth_id', authId)
     .single();
+  return usuario || null;
+}
 
-  if (!usuario) { window.location.href = 'index.html'; return; }
+function renderShellIdentity(usuario) {
+  const av = document.getElementById('user-av');
+  av.textContent = usuario.iniciais;
+  av.style.background = usuario.cor || '#888';
+  document.getElementById('user-nome').textContent = usuario.nome;
+  document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'SÃ³cio administrador' : (ROLES[usuario.role] || usuario.role);
+
+  const primeiroNome = usuario.nome.split(' ')[0];
+  const agora = new Date();
+  document.getElementById('bv-hora').textContent =
+    agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }) +
+    ' Â· ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('bv-titulo').textContent = `${saudacao()}, ${primeiroNome}.`;
+
+  if (usuario.viewer_only) {
+    document.getElementById('viewer-aviso').style.display = 'block';
+  }
+
+  if (isSocioRole(usuario.role)) {
+    document.getElementById('soc-titulo').style.display = 'flex';
+    document.getElementById('soc-grid').style.display = 'grid';
+  }
+}
+
+async function bootstrapAuthenticatedShell() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { redirectToLogin(); return null; }
+
+  const usuario = await fetchCurrentUsuario(session.user.id);
+  if (!usuario) {
+    await sb.auth.signOut();
+    redirectToLogin();
+    return null;
+  }
+
+  sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, usuario)));
+  renderShellIdentity(usuario);
+  return { session, usuario };
+}
+
+async function init() {
+  // Verifica sessão
+  const boot = await bootstrapAuthenticatedShell();
+  if (!boot) return;
+  const { session } = boot;
+
+  // Busca dados do usuário
+  const usuario = await fetchCurrentUsuario(session.user.id);
+  if (!usuario) {
+    await sb.auth.signOut();
+    redirectToLogin();
+    return;
+  }
 
   // Preenche nav
   const av = document.getElementById('user-av');
