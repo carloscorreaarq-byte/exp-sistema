@@ -422,8 +422,8 @@ body::before {
 
 .platform-shell-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   align-items: start;
 }
 
@@ -433,9 +433,71 @@ body::before {
   padding: 12px;
   display: grid;
   gap: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,246,243,.88));
 }
 
 #platform-term-card { grid-column: 1 / -1; }
+
+.platform-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.platform-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--cinza2);
+  border-radius: 999px;
+  background: var(--off);
+}
+
+.platform-tab {
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #777;
+  font-family: var(--font-ui);
+  font-size: var(--text-sub);
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+
+.platform-tab.active {
+  background: var(--branco);
+  color: var(--grafite);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+.platform-panel { display: grid; gap: 12px; }
+.platform-panel[hidden] { display: none !important; }
+
+.platform-plus-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--cinza);
+  border-radius: 50%;
+  background: var(--branco);
+  color: var(--grafite);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.platform-plus-btn:hover {
+  border-color: var(--grafite);
+  background: var(--off);
+}
+
+.platform-collapsible { display: none; }
+.platform-collapsible.open { display: grid; }
 
 .platform-card-title {
   display: flex;
@@ -468,6 +530,8 @@ body::before {
   align-items: flex-start;
   gap: 10px;
   flex-wrap: wrap;
+  border-left: 3px solid rgba(74,114,181,.24);
+  background: var(--branco);
 }
 .platform-user-row .platform-user-copy    { flex: 1; min-width: 140px; }
 .platform-user-row .platform-user-meta    { min-width: 130px; flex-shrink: 0; font-size: var(--text-sub); color: #888; line-height: 1.6; }
@@ -552,11 +616,22 @@ body::before {
 .shell-check {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: var(--text-sub);
+  padding: 4px 6px;
+  border-radius: 999px;
+  transition: background var(--transition-fast);
 }
 
-.shell-check input { accent-color: var(--grafite); }
+.shell-check:hover { background: var(--off); }
+
+.shell-check input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--grafite);
+  cursor: pointer;
+}
 
 /* ── VÍNCULO EXP — checkbox customizado ────────────────── */
 .vinculo-exp-label {
@@ -1147,60 +1222,65 @@ body::before {
       <button type="button" class="shell-modal-close" onclick="fecharGestaoPlataforma()">&times;</button>
     </div>
     <div class="shell-modal-body">
-      <div class="platform-shell-grid">
-        <div class="platform-card">
-          <div class="platform-card-title">
-            <div>
-              <strong>Novo usuario</strong>
-              <span>Criacao minima com nome, cor, role, login e senha.</span>
-            </div>
-          </div>
-          <div class="meus-dados-grid">
-            <div class="shell-field full">
-              <label for="gp-nome">Nome completo</label>
-              <input id="gp-nome" type="text" maxlength="160">
-            </div>
-            <div class="shell-field">
-              <label for="gp-email-login">Login institucional</label>
-              <input id="gp-email-login" type="email" maxlength="160">
-            </div>
-            <div class="shell-field">
-              <label for="gp-senha">Senha inicial</label>
-              <input id="gp-senha" type="text" maxlength="120">
-            </div>
-            <div class="shell-field">
-              <label for="gp-role">Nivel de usuario</label>
-              <select id="gp-role">
-                <option value="colaborador">Colaborador</option>
-                <option value="socio">Socio</option>
-                <option value="socio_admin">Socio administrador</option>
-              </select>
-            </div>
-            <div class="shell-field">
-              <label class="shell-check"><input id="gp-platform-manager" type="checkbox"> Gestor de plataforma</label>
-            </div>
-            <div class="shell-field full">
-              <label>Cor do icone</label>
-              <div class="platform-palette" id="gp-palette"></div>
-            </div>
-          </div>
-          <div class="platform-inline">
-            <button type="button" class="shell-btn primary" onclick="criarNovoUsuarioPlataforma()">Criar novo usuario</button>
-            <span class="shell-inline-note">Se o ambiente bloquear o signup direto, o painel vai informar que o backend de criacao ainda precisa ser fechado.</span>
-          </div>
+      <div class="platform-toolbar">
+        <div class="platform-tabs" role="tablist" aria-label="Gestao de plataforma">
+          <button type="button" class="platform-tab active" id="platform-tab-usuarios" onclick="switchPlatformTab('usuarios')">Usuarios</button>
+          <button type="button" class="platform-tab" id="platform-tab-termo" onclick="switchPlatformTab('termo')">Termo de uso</button>
         </div>
+      </div>
 
+      <div class="platform-panel" id="platform-panel-usuarios">
         <div class="platform-card">
           <div class="platform-card-title">
             <div>
-              <strong>Usuarios existentes</strong>
-              <span>Ativacao, bloqueio, role, capability e avatar.</span>
+              <strong>Usuarios ativos e controles</strong>
+              <span>Area principal de operacao recorrente da plataforma.</span>
+            </div>
+            <button type="button" class="platform-plus-btn" onclick="toggleNovoUsuarioPlataforma()" aria-label="Novo usuario">+</button>
+          </div>
+          <div class="platform-collapsible" id="platform-new-user">
+            <div class="meus-dados-grid">
+              <div class="shell-field full">
+                <label for="gp-nome">Nome completo</label>
+                <input id="gp-nome" type="text" maxlength="160">
+              </div>
+              <div class="shell-field">
+                <label for="gp-email-login">Login institucional</label>
+                <input id="gp-email-login" type="email" maxlength="160">
+              </div>
+              <div class="shell-field">
+                <label for="gp-senha">Senha inicial</label>
+                <input id="gp-senha" type="text" maxlength="120">
+              </div>
+              <div class="shell-field">
+                <label for="gp-role">Nivel de usuario</label>
+                <select id="gp-role">
+                  <option value="colaborador">Colaborador</option>
+                  <option value="socio">Socio</option>
+                  <option value="socio_admin">Socio administrador</option>
+                </select>
+              </div>
+              <div class="shell-field">
+                <label class="shell-check"><input id="gp-platform-manager" type="checkbox"> Gestor de plataforma</label>
+              </div>
+              <div class="shell-field full">
+                <label>Cor do icone</label>
+                <div class="platform-palette" id="gp-palette"></div>
+              </div>
+            </div>
+            <div class="platform-inline">
+              <button type="button" class="shell-btn primary" onclick="criarNovoUsuarioPlataforma()">Criar novo usuario</button>
+              <span class="shell-inline-note">Cadastro eventual. O uso mais frequente desta area e o controle dos usuarios existentes.</span>
             </div>
           </div>
           <div class="platform-users-list" id="platform-users-list">
             <div class="platform-empty">Carregando usuarios...</div>
           </div>
         </div>
+      </div>
+
+      <div class="platform-panel" id="platform-panel-termo" hidden>
+        <div class="platform-shell-grid" id="platform-term-grid"></div>
       </div>
     </div>
     <div class="shell-modal-footer">

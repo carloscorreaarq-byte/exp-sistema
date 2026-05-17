@@ -442,8 +442,23 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     return document.getElementById('gp-palette')?.getAttribute('data-selected') || platformColors[0];
   }
 
+  window.switchPlatformTab = function switchPlatformTab(tab) {
+    const isUsuarios = tab !== 'termo';
+    document.getElementById('platform-panel-usuarios')?.toggleAttribute('hidden', !isUsuarios);
+    document.getElementById('platform-panel-termo')?.toggleAttribute('hidden', isUsuarios);
+    document.getElementById('platform-tab-usuarios')?.classList.toggle('active', isUsuarios);
+    document.getElementById('platform-tab-termo')?.classList.toggle('active', !isUsuarios);
+  };
+
+  window.toggleNovoUsuarioPlataforma = function toggleNovoUsuarioPlataforma(forceOpen) {
+    const panel = document.getElementById('platform-new-user');
+    if (!panel) return;
+    const next = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+    panel.classList.toggle('open', next);
+  };
+
   function ensurePlatformTermEditor() {
-    const grid = document.querySelector('#plataforma-overlay .platform-shell-grid');
+    const grid = document.getElementById('platform-term-grid');
     if (!grid || document.getElementById('platform-term-card')) return;
     const card = document.createElement('div');
     card.className = 'platform-card';
@@ -1039,6 +1054,8 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     bindShellDirtyGuards();
     document.getElementById('plataforma-overlay')?.classList.add('open');
     setPlataformaDirty(false);
+    window.switchPlatformTab('usuarios');
+    window.toggleNovoUsuarioPlataforma(false);
     renderPlatformPalette();
     ensurePlatformTermEditor();
     await fetchCurrentTermDefinition();
