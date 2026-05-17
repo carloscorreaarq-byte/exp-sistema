@@ -127,6 +127,49 @@ body::before {
   text-align: left; cursor: pointer;
 }
 .user-dropdown button:hover { background: var(--off); }
+.user-dropdown button[hidden] { display: none; }
+.user-dropdown-sep { height: 1px; background: var(--cinza); }
+.user-dropdown-note,
+.user-term-state {
+  padding: 10px 14px;
+  font-size: var(--text-label);
+  line-height: 1.5;
+}
+.user-dropdown-note {
+  color: #888;
+  border-top: 1px solid rgba(0,0,0,.04);
+}
+.user-term-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  background: rgba(0,0,0,.02);
+}
+.user-term-state.pending { color: var(--ouro); }
+.user-term-state.ok { color: var(--verde); }
+.user-term-state-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor; opacity: .8; flex-shrink: 0;
+}
+.term-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 5px 9px;
+  border: 1px solid var(--cinza);
+  border-radius: 999px;
+  font-size: var(--text-label);
+  color: #777;
+  background: rgba(255,255,255,.75);
+}
+.term-chip.pending { color: var(--ouro); border-color: rgba(212, 165, 0, .35); }
+.term-chip.ok { color: var(--verde); border-color: rgba(76, 139, 109, .35); }
+.term-chip-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; opacity: .8;
+}
 
 /* ── CONN DOT ────────────────────────────────────────────── */
 .conn-dot {
@@ -260,6 +303,10 @@ body::before {
 [data-theme="dark"] .u-role { color: #666; }
 [data-theme="dark"] .user-chip-arrow { color: #555; }
 [data-theme="dark"] .user-dropdown { background: var(--branco); border-color: var(--cinza); box-shadow: var(--shadow-modal); }
+[data-theme="dark"] .user-dropdown-sep { background: var(--cinza); }
+[data-theme="dark"] .user-dropdown-note,
+[data-theme="dark"] .user-term-state { color: #999; }
+[data-theme="dark"] .user-term-state { background: rgba(255,255,255,.03); }
 [data-theme="dark"] .conn-dot { background: #444; }
 [data-theme="dark"] .conn-dot.online { background: #22c55e; }
 [data-theme="dark"] .viewer-aviso { background: var(--am-bg); border-color: var(--ouro); color: var(--ouro); }
@@ -298,6 +345,15 @@ body::before {
         <span class="user-chip-arrow">▾</span>
       </div>
       <div class="user-dropdown" id="user-dropdown">
+        <button type="button" onclick="abrirMeusDadosStub()">Meus dados</button>
+        <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataformaStub()">Gestao de plataforma</button>
+        <div class="user-dropdown-sep"></div>
+        <div class="user-term-state pending" id="user-term-state">
+          <span class="user-term-state-dot"></span>
+          <span id="user-term-state-text">Termo de compromisso pendente.</span>
+        </div>
+        <div class="user-dropdown-note" id="user-dropdown-note">Estrutura base do shell preparada para a Fase 2.</div>
+        <div class="user-dropdown-sep"></div>
         <button onclick="sair()">Sair do sistema</button>
       </div>
     </div>
@@ -316,6 +372,10 @@ body::before {
     <div class="bv-hora" id="bv-hora">—</div>
     <div class="bv-titulo" id="bv-titulo">Olá —</div>
     <div class="bv-sub">Selecione um módulo para começar.</div>
+    <div class="term-chip pending" id="term-chip" hidden>
+      <span class="term-chip-dot"></span>
+      <span id="term-chip-text">Termo de compromisso pendente.</span>
+    </div>
   </div>
 
   <!-- MÓDULOS ABERTOS -->
@@ -380,6 +440,7 @@ const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.sb = sb;
 
 const ROLES = {
   socio:       'Sócio',
@@ -442,10 +503,57 @@ function redirectToLogin() {
 async function fetchCurrentUsuario(authId) {
   const { data: usuario } = await sb
     .from('usuarios')
-    .select('id, nome, iniciais, role, cor, viewer_only')
+    .select('id, nome, apelido, iniciais, role, cor, viewer_only, is_platform_manager, can_coordinate_projects, termo_status, termo_assinado_em, termo_expira_em, status_acesso')
     .eq('auth_id', authId)
     .single();
   return usuario || null;
+}
+
+function formatTermDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('pt-BR');
+}
+
+function renderTermState(usuario) {
+  const dropdown = document.getElementById('user-term-state');
+  const dropdownText = document.getElementById('user-term-state-text');
+  const chip = document.getElementById('term-chip');
+  const chipText = document.getElementById('term-chip-text');
+  const note = document.getElementById('user-dropdown-note');
+
+  if (!dropdown || !dropdownText || !chip || !chipText || !note) return;
+
+  const status = (usuario.termo_status || '').toLowerCase();
+  const signedAt = formatTermDate(usuario.termo_assinado_em);
+  const expiresAt = formatTermDate(usuario.termo_expira_em);
+  const isOk = status === 'assinado' || status === 'vigente' || status === 'ok';
+
+  dropdown.classList.remove('pending', 'ok');
+  chip.classList.remove('pending', 'ok');
+  chip.hidden = false;
+
+  if (isOk) {
+    const message = signedAt
+      ? `Termo assinado em ${signedAt}${expiresAt ? ` · validade ate ${expiresAt}` : ''}.`
+      : 'Termo de compromisso registrado.';
+    dropdown.classList.add('ok');
+    chip.classList.add('ok');
+    dropdownText.textContent = message;
+    chipText.textContent = message;
+    note.textContent = 'Clique em "Meus dados" para consultar a estrutura que sera expandida na Fase 2.';
+    return;
+  }
+
+  const pendingMessage = expiresAt
+    ? `Termo precisa de revisao ate ${expiresAt}.`
+    : 'Termo de compromisso pendente ou sem validade registrada.';
+  dropdown.classList.add('pending');
+  chip.classList.add('pending');
+  dropdownText.textContent = pendingMessage;
+  chipText.textContent = pendingMessage;
+  note.textContent = 'Estado do termo pronto no shell; assinatura e renovacao entram na Fase 2.';
 }
 
 function renderShellIdentity(usuario) {
@@ -462,14 +570,57 @@ function renderShellIdentity(usuario) {
     ' Â· ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('bv-titulo').textContent = `${saudacao()}, ${primeiroNome}.`;
 
-  if (usuario.viewer_only) {
-    document.getElementById('viewer-aviso').style.display = 'block';
+  document.getElementById('viewer-aviso').style.display = usuario.viewer_only ? 'block' : 'none';
+
+  const platformBtn = document.getElementById('user-menu-platform');
+  if (platformBtn) {
+    platformBtn.hidden = !usuario.is_platform_manager;
   }
 
-  if (isSocioRole(usuario.role)) {
-    document.getElementById('soc-titulo').style.display = 'flex';
-    document.getElementById('soc-grid').style.display = 'grid';
-  }
+  renderTermState(usuario);
+
+  const isSocio = isSocioRole(usuario.role);
+  document.getElementById('soc-titulo').style.display = isSocio ? 'flex' : 'none';
+  document.getElementById('soc-grid').style.display = isSocio ? 'grid' : 'none';
+}
+
+function abrirMeusDadosStub() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.alert('A area "Meus dados" sera aberta na Fase 2 com dados pessoais, profissionais, empresariais e bancarios.');
+}
+
+function abrirGestaoPlataformaStub() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.alert('A "Gestao de plataforma" sera estruturada na Fase 2 para usuarios com capability de plataforma.');
+}
+
+function publishSessionReady(payload) {
+  window.dispatchEvent(new CustomEvent('exp:session-ready', { detail: payload }));
+}
+
+function bindSessionLifecycle() {
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT') {
+      redirectToLogin();
+      return;
+    }
+    if (!session) {
+      redirectToLogin();
+      return;
+    }
+    if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+      const usuario = await fetchCurrentUsuario(session.user.id);
+      if (!usuario) {
+        await sb.auth.signOut();
+        redirectToLogin();
+        return;
+      }
+      const payload = buildExpUsuarioPayload(session.user.id, usuario);
+      sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
+      renderShellIdentity(usuario);
+      publishSessionReady(payload);
+    }
+  });
 }
 
 async function bootstrapAuthenticatedShell() {
@@ -483,53 +634,16 @@ async function bootstrapAuthenticatedShell() {
     return null;
   }
 
-  sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, usuario)));
+  const payload = buildExpUsuarioPayload(session.user.id, usuario);
+  sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
   renderShellIdentity(usuario);
-  return { session, usuario };
+  publishSessionReady(payload);
+  return { session, usuario, payload };
 }
 
 async function init() {
-  // Verifica sessão
   const boot = await bootstrapAuthenticatedShell();
   if (!boot) return;
-  const { session } = boot;
-
-  // Busca dados do usuário
-  const usuario = await fetchCurrentUsuario(session.user.id);
-  if (!usuario) {
-    await sb.auth.signOut();
-    redirectToLogin();
-    return;
-  }
-
-  // Preenche nav
-  const av = document.getElementById('user-av');
-  av.textContent = usuario.iniciais;
-  av.style.background = usuario.cor || '#888';
-  document.getElementById('user-nome').textContent = usuario.nome;
-  document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'Sócio administrador' : (ROLES[usuario.role] || usuario.role);
-
-  // Boas vindas
-  const primeiroNome = usuario.nome.split(' ')[0];
-  const agora = new Date();
-  document.getElementById('bv-hora').textContent =
-    agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }) +
-    ' · ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-  document.getElementById('bv-titulo').textContent = `${saudacao()}, ${primeiroNome}.`;
-
-  // Aviso viewer
-  if (usuario.viewer_only) {
-    document.getElementById('viewer-aviso').style.display = 'block';
-  }
-
-  // Salva no session storage
-  sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, usuario)));
-
-  // Módulos societários
-  if (isSocioRole(usuario.role)) {
-    document.getElementById('soc-titulo').style.display = 'flex';
-    document.getElementById('soc-grid').style.display = 'grid';
-  }
 
   // Status de conexão
   try {
@@ -550,7 +664,9 @@ async function sair() {
   window.location.href = 'index.html';
 }
 
-init();
+init().then(() => {
+  bindSessionLifecycle();
+});
 </script>
 
 <!-- EXP · Chat Widget -->
