@@ -178,3 +178,72 @@
   --shadow-hover:  0 2px 8px  rgba(0, 0, 0, 0.40);
 
 }
+
+
+/* ═══════════════════════════════════════════
+   COMPONENTE — THEME TOGGLE
+   Estilo canônico do botão de tema claro/escuro.
+   Usado em todos os módulos da plataforma.
+
+   HTML esperado:
+     <button class="theme-toggle" onclick="toggleTheme()">
+       <span class="ttg-icon">☀</span>
+       <span class="ttg-track"><span class="ttg-knob"></span></span>
+       <span class="ttg-icon">🌙</span>
+     </button>
+═══════════════════════════════════════════ */
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.ttg-icon {
+  font-size: 9px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  user-select: none;
+  line-height: 1;
+}
+
+/* Em modo claro: mostra a lua levemente (indica que vai para escuro) */
+.theme-toggle .ttg-icon:last-child  { opacity: .35; }
+
+/* Em modo escuro: mostra o sol levemente (indica que vai para claro) */
+[data-theme="dark"] .theme-toggle .ttg-icon:first-child { opacity: .55; }
+[data-theme="dark"] .theme-toggle .ttg-icon:last-child  { opacity: 0;   }
+
+/* Hover — ambos visíveis */
+.theme-toggle:hover .ttg-icon { opacity: .75; }
+
+.ttg-track {
+  width: 30px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--cinza);
+  position: relative;
+  transition: background var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.ttg-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  transition: transform var(--transition-normal);
+}
+
+[data-theme="dark"] .ttg-track { background: var(--verde); }
+[data-theme="dark"] .ttg-knob  { transform: translateX(14px); background: #f0efec; }
