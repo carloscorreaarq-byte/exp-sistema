@@ -370,6 +370,10 @@ input[type="checkbox"].exp-cb:focus-visible {
 .exp-cb-row:hover input[type="checkbox"].exp-cb:not(:checked):not(:disabled) {
   border-color: var(--verde);
 }
+.exp-cb-row:hover input[type="checkbox"].exp-cb:not(:checked):not(:disabled)::after {
+  display: block;
+  border-color: rgba(62, 120, 88, 0.28);
+}
 
 /* Texto riscado quando marcado */
 .exp-cb-label.done,
@@ -412,7 +416,10 @@ input[type="checkbox"].exp-cb-sm::after {
 }
 .exp-tick::after { content: '✓'; }
 
-.exp-tick:hover:not(.done) { border-color: var(--verde); }
+.exp-tick:hover:not(.done) {
+  border-color: var(--verde);
+  color: rgba(62, 120, 88, 0.3);
+}
 
 .exp-tick.done {
   background: var(--verde);
@@ -431,6 +438,72 @@ input[type="checkbox"].exp-cb-sm::after {
 .exp-tick-label.done {
   text-decoration: line-through;
   color: var(--cinza);
+}
+
+/* ── Variante cancel — exp-tick-x (custom) ──
+   Usar quando marcar significa cancelar, encerrar ou remover.
+   Hover: × cinza sutil. Done: × cinza sobre fundo neutro.
+   HTML: <div class="exp-tick exp-tick-x [done]" onclick="..."></div>
+─────────────────────────────────────────────────── */
+.exp-tick-x::after { content: '×'; font-size: 11px; font-weight: 400; }
+
+.exp-tick-x:hover:not(.done) {
+  border-color: var(--cinza);
+  color: rgba(0, 0, 0, 0.2);
+}
+
+.exp-tick-x.done {
+  background: var(--cinza2);
+  border-color: var(--cinza);
+  color: #888;
+}
+
+[data-theme="dark"] .exp-tick-x:hover:not(.done) {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .exp-tick-x.done {
+  background: var(--cinza2);
+  border-color: var(--cinza);
+  color: #888;
+}
+
+/* ── Variante cancel — exp-cb-x (nativo) ──
+   HTML: <input type="checkbox" class="exp-cb exp-cb-x">
+   Hover: × cinza sutil. Checked: × cinza, fundo neutro.
+─────────────────────────────────────────────────── */
+input[type="checkbox"].exp-cb.exp-cb-x::after {
+  content: '×';
+  border: none;
+  transform: translate(-50%, -50%);
+  left: 50%;
+  top: 50%;
+  width: auto;
+  height: auto;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 400;
+  color: transparent;
+  display: block;
+}
+
+.exp-cb-row:hover input[type="checkbox"].exp-cb.exp-cb-x:not(:checked):not(:disabled) {
+  border-color: var(--cinza);
+}
+.exp-cb-row:hover input[type="checkbox"].exp-cb.exp-cb-x:not(:checked):not(:disabled)::after {
+  color: rgba(0, 0, 0, 0.2);
+}
+
+input[type="checkbox"].exp-cb.exp-cb-x:checked {
+  background: var(--cinza2);
+  border-color: var(--cinza);
+}
+input[type="checkbox"].exp-cb.exp-cb-x:checked::after {
+  color: #888;
+}
+
+[data-theme="dark"] .exp-cb-row:hover input[type="checkbox"].exp-cb.exp-cb-x:not(:checked):not(:disabled)::after {
+  color: rgba(255, 255, 255, 0.2);
 }
 
 
@@ -705,10 +778,10 @@ input[type="checkbox"].exp-cb-sm::after {
   display: none;
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  left: -12px;
   background: var(--branco);
   border: 1px solid var(--cinza);
-  min-width: 190px;
+  min-width: 200px;
   z-index: 200;
   box-shadow: var(--shadow-modal);
   border-radius: var(--radius-card);
@@ -718,9 +791,12 @@ input[type="checkbox"].exp-cb-sm::after {
 
 .nav-dropdown a {
   display: block;
-  padding: 7px 14px;
-  font-size: 11px;
-  font-weight: 500;
+  padding: 7px 16px 7px 12px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
   color: var(--grafite);
   text-decoration: none;
   white-space: nowrap;
@@ -734,8 +810,8 @@ input[type="checkbox"].exp-cb-sm::after {
 
 .nd-sep {
   height: 1px;
-  background: var(--cinza2);
-  margin: 3px 0;
+  background: var(--cinza);
+  margin: 4px 0;
 }
 
 /* ── Tabs ── */
@@ -948,6 +1024,7 @@ input[type="checkbox"].exp-cb-sm::after {
   position: relative;
   display: inline-flex;
   min-width: 120px;
+  max-width: 200px;
 }
 
 .user-chip {
@@ -1004,7 +1081,8 @@ input[type="checkbox"].exp-cb-sm::after {
   font-size: 6px;
   font-weight: var(--weight-light);
   text-transform: lowercase;
-  color: var(--cinza);
+  color: var(--grafite);
+  opacity: 0.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1088,3 +1166,7 @@ input[type="checkbox"].exp-cb-sm::after {
 [data-theme="dark"] .notif-panel { box-shadow: var(--shadow-modal); }
 
 [data-theme="dark"] .notif-badge { border-color: var(--off); }
+
+[data-theme="dark"] .exp-room-btn {
+  background: var(--branco);
+}

@@ -8692,6 +8692,14 @@ function carregarUsuariosAdmin() {
   const usuarios = G.todosUsuarios;
   if (!usuarios.length) { wrap.innerHTML = '<div class="loading-state">Nenhum usuário encontrado</div>'; return; }
 
+  if (!document.getElementById('usu-foto-input')) {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.id = 'usu-foto-input'; inp.accept = 'image/*';
+    inp.style.display = 'none';
+    inp.onchange = () => processarFotoUsuario(inp);
+    document.body.appendChild(inp);
+  }
+
   wrap.innerHTML = usuarios.map(u => {
     const cor = (u.cor || '#888').toLowerCase();
     const swatches = PALETA_EXP.map(c =>
@@ -8700,8 +8708,14 @@ function carregarUsuariosAdmin() {
             onclick="salvarCorUsuario('${u.id}','${c}',this)"></div>`
     ).join('');
     const anivVal = u.data_aniversario ? u.data_aniversario.slice(0,10) : '';
+    const avEl = u.avatar_url
+      ? `<img id="usu-av-${u.id}" src="${u.avatar_url}" title="Trocar foto"
+             style="width:24px;height:24px;border-radius:50%;object-fit:cover;cursor:pointer;flex-shrink:0"
+             onclick="subirFotoUsuario('${u.id}')">`
+      : `<div class="vh-av" id="usu-av-${u.id}" style="background:${u.cor||'#888'};cursor:pointer"
+             onclick="subirFotoUsuario('${u.id}')" title="Trocar foto">${u.iniciais}</div>`;
     return `<div class="usu-row" id="usu-row-${u.id}" style="flex-wrap:wrap">
-      <div class="vh-av" id="usu-av-${u.id}" style="background:${u.cor||'#888'}">${u.iniciais}</div>
+      ${avEl}
       <div class="vh-nome" style="min-width:140px">${u.nome}</div>
       <select class="filter-select" style="font-size:9px;padding:2px 6px;min-width:110px" onchange="salvarRoleUsuario('${u.id}',this.value)">
         <option value="socio" ${u.role==='socio'?'selected':''}>Sócio</option>
@@ -8718,6 +8732,71 @@ function carregarUsuariosAdmin() {
       </div>
     </div>`;
   }).join('');
+}
+
+function subirFotoUsuario(uid) {
+  const inp = document.getElementById('usu-foto-input');
+  inp.setAttribute('data-uid', uid);
+  inp.value = '';
+  inp.click();
+}
+
+async function processarFotoUsuario(inp) {
+  const file = inp.files[0];
+  const uid = inp.getAttribute('data-uid');
+  if (!file || !uid) return;
+
+  const blob = await comprimirImagem(file, 200);
+  const path = uid + '.jpg';
+  const { error } = await sb.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+  if (error) { toast('Erro ao subir foto: ' + error.message); return; }
+
+  const { data } = sb.storage.from('avatars').getPublicUrl(path);
+  const cleanUrl = data.publicUrl;
+  const bustUrl  = cleanUrl + '?t=' + Date.now();
+
+  await sb.from('usuarios').update({ avatar_url: cleanUrl }).eq('id', uid);
+
+  const u = G.todosUsuarios.find(u => u.id === uid);
+  if (u) u.avatar_url = cleanUrl;
+
+  const el = document.getElementById('usu-av-' + uid);
+  if (el) {
+    const img = document.createElement('img');
+    img.id = 'usu-av-' + uid;
+    img.src = bustUrl;
+    img.title = 'Trocar foto';
+    img.style.cssText = 'width:24px;height:24px;border-radius:50%;object-fit:cover;cursor:pointer;flex-shrink:0';
+    img.onclick = () => subirFotoUsuario(uid);
+    el.replaceWith(img);
+  }
+
+  if (uid === G.usuario.id) {
+    G.usuario.avatar_url = cleanUrl;
+    const navAv = document.getElementById('nav-av');
+    if (navAv) { navAv.textContent = ''; navAv.style.background = 'transparent'; navAv.innerHTML = `<img src="${bustUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`; }
+    try { const raw = sessionStorage.getItem('exp_usuario'); if (raw) { const usr = JSON.parse(raw); usr.avatar_url = cleanUrl; sessionStorage.setItem('exp_usuario', JSON.stringify(usr)); } } catch(e) {}
+  }
+
+  toast('Foto atualizada');
+}
+
+function comprimirImagem(file, maxDim) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const size = Math.min(img.width, img.height);
+      const dim  = Math.min(size, maxDim);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = dim;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, dim, dim);
+      canvas.toBlob(resolve, 'image/jpeg', 0.85);
+    };
+    img.src = url;
+  });
 }
 
 async function salvarAniversarioUsuario(uid, val) {
