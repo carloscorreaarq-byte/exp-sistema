@@ -503,10 +503,20 @@ function redirectToLogin() {
 async function fetchCurrentUsuario(authId) {
   const { data: usuario } = await sb
     .from('usuarios')
-    .select('id, nome, apelido, iniciais, role, cor, viewer_only, is_platform_manager, can_coordinate_projects, termo_status, termo_assinado_em, termo_expira_em, status_acesso')
+    .select('id, nome, iniciais, role, cor, viewer_only')
     .eq('auth_id', authId)
     .single();
-  return usuario || null;
+  if (!usuario) return null;
+  return {
+    ...usuario,
+    apelido: usuario.apelido || null,
+    is_platform_manager: !!usuario.is_platform_manager,
+    can_coordinate_projects: !!usuario.can_coordinate_projects,
+    termo_status: usuario.termo_status || null,
+    termo_assinado_em: usuario.termo_assinado_em || null,
+    termo_expira_em: usuario.termo_expira_em || null,
+    status_acesso: usuario.status_acesso || null
+  };
 }
 
 function formatTermDate(value) {
