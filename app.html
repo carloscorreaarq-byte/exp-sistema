@@ -130,46 +130,53 @@ body::before {
 .user-dropdown button[hidden] { display: none; }
 .user-dropdown-sep { height: 1px; background: var(--cinza); }
 .user-dropdown-note,
-.user-term-state {
-  padding: 10px 14px;
-  font-size: var(--text-label);
-  line-height: 1.5;
-}
-.user-dropdown-note {
-  color: #888;
-  border-top: 1px solid rgba(0,0,0,.04);
-}
+/* ── ESTADO DO TERMO (dropdown) ────────────────────────── */
 .user-term-state {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #666;
-  background: rgba(0,0,0,.02);
+  padding: 10px 14px;
+  font-size: var(--text-label);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background .12s;
 }
-.user-term-state.pending { color: var(--ouro); }
-.user-term-state.ok { color: var(--verde); }
-.user-term-state-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: currentColor; opacity: .8; flex-shrink: 0;
+.user-term-state.pending {
+  color: #7A5C00;
+  background: #FFF9E6;
+  border-top: 1px solid rgba(212,165,0,.25);
+  border-bottom: 1px solid rgba(212,165,0,.25);
 }
+.user-term-state.pending:hover { background: #FFF3CC; }
+.user-term-state.ok { color: #bbb; background: none; }
+.user-term-state.ok:hover { background: var(--off); }
+.user-term-state.ok .term-state-hover { display: none; color: #777; font-style: italic; }
+.user-term-state.ok:hover .term-state-normal { display: none; }
+.user-term-state.ok:hover .term-state-hover { display: flex; align-items: center; gap: 5px; }
+.user-term-state-dot { display: none; }
+.user-dropdown-note {
+  color: #888;
+  border-top: 1px solid rgba(0,0,0,.04);
+}
+
+/* ── CHIP DE TERMO (boas-vindas) ───────────────────────── */
 .term-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin-top: 10px;
-  padding: 5px 9px;
-  border: 1px solid var(--cinza);
-  border-radius: 999px;
   font-size: var(--text-label);
-  color: #777;
-  background: rgba(255,255,255,.75);
+  cursor: pointer;
 }
-.term-chip.pending { color: var(--ouro); border-color: rgba(212, 165, 0, .35); }
-.term-chip.ok { color: var(--verde); border-color: rgba(76, 139, 109, .35); }
-.term-chip-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: currentColor; opacity: .8;
+.term-chip.pending {
+  padding: 4px 10px;
+  border: 1px solid rgba(212,165,0,.4);
+  border-radius: 999px;
+  color: #7A5C00;
+  background: #FFF9E6;
 }
+.term-chip.ok { color: #bbb; padding: 0; border: none; background: none; }
+.term-chip-dot { display: none; }
 
 .user-av.has-avatar { overflow: hidden; padding: 0; }
 .user-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -457,11 +464,15 @@ body::before {
   border: 1px solid var(--cinza2);
   border-radius: var(--radius-card);
   padding: 10px;
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1.4fr) minmax(110px, .8fr) minmax(110px, .8fr) auto;
+  display: flex;
+  align-items: flex-start;
   gap: 10px;
-  align-items: center;
+  flex-wrap: wrap;
 }
+.platform-user-row .platform-user-copy    { flex: 1; min-width: 140px; }
+.platform-user-row .platform-user-meta    { min-width: 130px; flex-shrink: 0; font-size: var(--text-sub); color: #888; line-height: 1.6; }
+.platform-user-row .platform-inline       { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.platform-user-row .platform-user-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 .platform-user-avatar {
   width: 42px;
@@ -671,9 +682,10 @@ body::before {
         <button type="button" onclick="abrirMeusDados()">Meus dados</button>
         <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataformaStub()">Gestao de plataforma</button>
         <div class="user-dropdown-sep"></div>
-        <div class="user-term-state pending" id="user-term-state">
-          <span class="user-term-state-dot"></span>
-          <span id="user-term-state-text">Termo de compromisso pendente.</span>
+        <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.()">
+          <span id="user-term-state-icon" style="font-size:12px;flex-shrink:0">⚠</span>
+          <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
+          <span class="term-state-hover">ver termo →</span>
         </div>
         <div class="user-dropdown-note" id="user-dropdown-note">Estrutura base do shell preparada para a Fase 2.</div>
         <div class="user-dropdown-sep"></div>
@@ -695,8 +707,8 @@ body::before {
     <div class="bv-hora" id="bv-hora">—</div>
     <div class="bv-titulo" id="bv-titulo">Olá —</div>
     <div class="bv-sub">Selecione um módulo para começar.</div>
-    <div class="term-chip pending" id="term-chip" hidden>
-      <span class="term-chip-dot"></span>
+    <div class="term-chip pending" id="term-chip" hidden onclick="window.abrirTermoCompromisso?.()">
+      <span id="term-chip-icon" style="font-size:11px;flex-shrink:0">⚠</span>
       <span id="term-chip-text">Termo de compromisso pendente.</span>
     </div>
   </div>
@@ -1213,49 +1225,42 @@ function formatTermDate(value) {
 }
 
 function renderTermState(usuario) {
-  const dropdown = document.getElementById('user-term-state');
+  const dropdown     = document.getElementById('user-term-state');
   const dropdownText = document.getElementById('user-term-state-text');
-  const chip = document.getElementById('term-chip');
-  const chipText = document.getElementById('term-chip-text');
-  const note = document.getElementById('user-dropdown-note');
+  const dropdownIcon = document.getElementById('user-term-state-icon');
+  const chip         = document.getElementById('term-chip');
+  const chipText     = document.getElementById('term-chip-text');
+  const chipIcon     = document.getElementById('term-chip-icon');
+  const note         = document.getElementById('user-dropdown-note');
 
-  if (!dropdown || !dropdownText || !chip || !chipText || !note) return;
+  if (!dropdown || !dropdownText || !chip || !chipText) return;
 
-  const status = (usuario.termo_status || '').toLowerCase();
+  const status   = (usuario.termo_status || '').toLowerCase();
   const signedAt = formatTermDate(usuario.termo_assinado_em);
-  const expiresAt = formatTermDate(usuario.termo_expira_em);
-  const isOk = status === 'assinado' || status === 'vigente' || status === 'ok';
+  const isOk     = status === 'assinado' || status === 'vigente' || status === 'ok';
 
   dropdown.classList.remove('pending', 'ok');
   chip.classList.remove('pending', 'ok');
   chip.hidden = false;
+  if (note) note.textContent = '';
 
   if (isOk) {
-    const message = signedAt
-      ? `Termo assinado em ${signedAt}${expiresAt ? ` · validade ate ${expiresAt}` : ''}.`
-      : 'Termo de compromisso registrado.';
+    const dateStr = signedAt || 'data não registrada';
     dropdown.classList.add('ok');
     chip.classList.add('ok');
-    const normalizedMessage = message
-      .replace(/Â·/g, '\u00b7')
-      .replace(/\bate\b/g, 'at\u00e9');
-    dropdownText.textContent = normalizedMessage;
-    chipText.textContent = normalizedMessage;
-    note.textContent = 'Clique no estado do termo para visualizar o texto completo e acompanhar a validade atual.';
+    if (dropdownIcon) dropdownIcon.textContent = '✓';
+    if (chipIcon)     chipIcon.textContent     = '✓';
+    dropdownText.textContent = 'Termo de uso e proteção de dados pessoais assinado em ' + dateStr;
+    chipText.textContent     = 'Termo de uso assinado em ' + dateStr;
     return;
   }
 
-  const pendingMessage = expiresAt
-    ? `Termo precisa de revisao ate ${expiresAt}.`
-    : 'Termo de compromisso pendente ou sem validade registrada.';
   dropdown.classList.add('pending');
   chip.classList.add('pending');
-  const normalizedPendingMessage = pendingMessage
-    .replace(/\brevisao\b/g, 'revis\u00e3o')
-    .replace(/\bate\b/g, 'at\u00e9');
-  dropdownText.textContent = normalizedPendingMessage;
-  chipText.textContent = normalizedPendingMessage;
-  note.textContent = 'Clique no estado do termo para abrir o termo completo e registrar a assinatura quando necessario.';
+  if (dropdownIcon) dropdownIcon.textContent = '⚠';
+  if (chipIcon)     chipIcon.textContent     = '⚠';
+  dropdownText.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+  chipText.textContent     = 'Termo pendente — leia e assine para continuar.';
 }
 
 function renderShellIdentity(usuario) {

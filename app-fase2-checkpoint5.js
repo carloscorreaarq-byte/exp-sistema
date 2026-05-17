@@ -325,30 +325,17 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       + '      <button type="button" class="shell-modal-close" id="termo-close-top">&times;</button>'
       + '    </div>'
       + '    <div class="shell-modal-body">'
-      + '      <div class="meus-dados-section">'
-      + '        <div class="meus-dados-section-title">'
-      + '          <strong>Status atual</strong>'
-      + '          <span id="termo-status-copy">Carregando...</span>'
-      + '        </div>'
-      + '      </div>'
-      + '      <div class="meus-dados-section">'
-      + '        <div class="meus-dados-section-title">'
-      + '          <strong>Compromisso Prioritario</strong>'
-      + '          <span>Bloco de atencao exibido antes do texto formal rolavel.</span>'
-      + '        </div>'
-      + '        <div id="termo-prioritario" style="background:#232323;color:#fff;border:1px solid rgba(0,0,0,.2);border-left:4px solid #D19931;border-radius:10px;padding:12px;font-size:11px;line-height:1.6"></div>'
-      + '      </div>'
-      + '      <div class="meus-dados-section">'
-      + '        <div class="meus-dados-section-title">'
-      + '          <strong>Texto do termo</strong>'
-      + '          <span>Conteudo formal gerenciavel pela Gestao de plataforma.</span>'
-      + '        </div>'
-      + '        <div id="termo-texto" style="display:grid;gap:10px;font-size:11px;line-height:1.65;color:#555;max-height:300px;overflow:auto;padding-right:4px"></div>'
+      + '      <div id="termo-status-copy" style="font-size:11px;color:#888;line-height:1.5">Carregando...</div>'
+      + '      <div id="termo-prioritario" style="background:#1E1E1E;color:#f0f0f0;border-left:3px solid #D19931;border-radius:8px;padding:14px 16px;font-size:11px;line-height:1.65"></div>'
+      + '      <div>'
+      + '        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:10px">Leitura completa do termo</div>'
+      + '        <div id="termo-texto" style="display:grid;gap:10px;font-size:11px;line-height:1.65;color:#555;max-height:320px;overflow:auto;padding-right:6px"></div>'
       + '      </div>'
       + '    </div>'
       + '    <div class="shell-modal-footer">'
-      + '      <div class="shell-status-text" id="termo-modal-status">Estrutura do termo ativa no shell.</div>'
+      + '      <div class="shell-status-text" id="termo-modal-status"></div>'
       + '      <div class="shell-actions">'
+      + '        <span id="termo-sign-text" style="font-size:11px;color:#888;display:none">Termo já assinado</span>'
       + '        <button type="button" class="shell-btn" id="termo-close-bottom">Fechar</button>'
       + '        <button type="button" class="shell-btn primary" id="termo-sign-btn">Estou ciente e concordo com os termos acima</button>'
       + '      </div>'
@@ -391,24 +378,27 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       statusCopy.textContent = assinadoEm
         ? 'Termo assinado em ' + assinadoEm + (expiraEm ? ' · validade até ' + expiraEm : '.')
         : 'Termo registrado como assinado.';
-      modalStatus.textContent = 'O termo esta vigente no momento.';
-      signBtn.disabled = true;
-      signBtn.textContent = 'Termo ja assinado';
+      modalStatus.textContent = '';
+      signBtn.style.display = 'none';
+      const signText = document.getElementById('termo-sign-text');
+      if (signText) signText.style.display = 'inline';
       return;
     }
+    const signText = document.getElementById('termo-sign-text');
+    if (signText) signText.style.display = 'none';
+    signBtn.style.display = '';
+    signBtn.disabled = false;
+    signBtn.textContent = 'Estou ciente e concordo com os termos acima';
+
     if (status === 'expired') {
       statusCopy.textContent = expiraEm
         ? 'O termo venceu em ' + expiraEm + ' e precisa ser assinado novamente.'
         : 'O termo venceu e precisa ser assinado novamente.';
-      modalStatus.textContent = 'A revalidacao anual do termo ja esta habilitada.';
-      signBtn.disabled = false;
-      signBtn.textContent = 'Estou ciente e concordo com os termos acima';
+      modalStatus.textContent = '';
       return;
     }
-    statusCopy.textContent = 'O termo ainda nao foi assinado para esta conta.';
-    modalStatus.textContent = 'Assine o termo para registrar o aceite atual.';
-    signBtn.disabled = false;
-    signBtn.textContent = 'Estou ciente e concordo com os termos acima';
+    statusCopy.textContent = 'O termo ainda não foi assinado para esta conta.';
+    modalStatus.textContent = '';
   }
 
   async function syncCurrentTermState() {
