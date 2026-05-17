@@ -8,188 +8,194 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="exp-design-system.css">
+<script>
+  (function(){
+    var saved = localStorage.getItem('exp-theme');
+    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(saved === 'dark' || (!saved && sys))
+      document.documentElement.setAttribute('data-theme','dark');
+  })();
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+/* ── VARS LOCAIS — apenas o que o design system não cobre ─── */
 :root{
-  --preto:#111110;--off:#F7F6F3;--cinza:#D0CFC9;--cinza2:#ECEAE4;
-  --verde:#1D6A4A;--verde-l:#2D9E6B;--verde-bg:#EAF5EE;
-  --az:#1D4FA0;--az-bg:#EAF0FB;
-  --am:#C4831A;--am-bg:#FBF3E8;
-  --tc:#B84C3A;--tc-bg:#FBF0EE;
-  --roxo:#6B4FA0;--roxo-bg:#F3EFFE;
-  --f:'Raleway',sans-serif;--fm:'DM Mono',monospace;
+  --cinza2:#ECEAE4;
+  --verde-l:#2D9E6B;
+  --verde-bg:#EAF5EE; --az-bg:#EAF0FB; --am-bg:#FBF3E8; --tc-bg:#FBF0EE;
+  --roxo:#6B4FA0; --roxo-bg:#F3EFFE;
 }
-body{font-family:var(--f);background:var(--off);color:var(--preto);font-size:13px;line-height:1.5;font-weight:300}
+body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300}
 
 /* NAV */
-.nav{display:flex;align-items:center;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--cinza);padding:0 16px;position:sticky;top:0;z-index:100;height:46px;gap:0}
-.nav-brand{font-size:14px;font-weight:700;letter-spacing:5px;margin-right:16px}
-.nav-sep{width:1px;height:14px;background:var(--cinza);margin-right:16px}
-.nav-lbl{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-right:20px}
+.nav{display:flex;align-items:center;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--cinza);padding:0 var(--gap-md);position:sticky;top:0;z-index:100;height:46px;gap:0}
+.nav-brand{font-size:14px;font-weight:var(--weight-label);letter-spacing:5px;margin-right:var(--gap-md)}
+.nav-sep{width:1px;height:14px;background:var(--cinza);margin-right:var(--gap-md)}
+.nav-lbl{font-size:var(--text-label);font-weight:var(--weight-semibold);letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-right:20px}
 .nav-tabs{display:flex;height:100%;gap:0}
-.ntab{padding:0 11px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#999;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;white-space:nowrap;transition:all .15s}
-.ntab:hover{color:var(--preto)}
-.ntab.active{color:var(--preto);border-bottom-color:var(--preto)}
+.ntab{padding:0 11px;font-size:var(--text-label);font-weight:var(--weight-semibold);letter-spacing:.5px;text-transform:uppercase;color:#999;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;white-space:nowrap;transition:color var(--transition-fast)}
+.ntab:hover{color:var(--grafite)}
+.ntab.active{color:var(--grafite);border-bottom-color:var(--grafite)}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
 .nav-brand{text-decoration:none;color:inherit}
 .nav-brand:hover{opacity:.7}
 .nav-mod-wrap{position:relative;margin-right:20px}
-.nav-lbl-btn{background:none;border:none;font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#999;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
-.nav-lbl-btn:hover{color:var(--preto)}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
+.nav-lbl-btn{background:none;border:none;font-family:var(--font-ui);font-size:var(--text-label);font-weight:var(--weight-semibold);letter-spacing:1.5px;text-transform:uppercase;color:#999;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
+.nav-lbl-btn:hover{color:var(--grafite)}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 2px);left:0;background:var(--branco);border:1px solid var(--cinza);min-width:190px;z-index:200;box-shadow:var(--shadow-modal);border-radius:var(--radius-modal);overflow:hidden}
 .nav-dropdown.open{display:block}
-.nav-dropdown a{display:block;padding:7px 14px 7px 12px;font-size:11px;font-weight:500;color:var(--preto);text-decoration:none;white-space:nowrap}
+.nav-dropdown a{display:block;padding:7px 14px 7px 12px;font-size:var(--text-sub);font-weight:500;color:var(--grafite);text-decoration:none;white-space:nowrap}
 .nav-dropdown a:hover{background:var(--off)}
-.nav-dropdown a.nd-active{font-weight:700;pointer-events:none;color:var(--verde)}
+.nav-dropdown a.nd-active{font-weight:var(--weight-label);pointer-events:none;color:var(--verde)}
 .nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
 .nd-sep{height:1px;background:var(--cinza);margin:4px 0}
-.nd-lbl{padding:6px 14px 2px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
+.nd-lbl{padding:6px 14px 2px;font-size:8px;font-weight:var(--weight-label);letter-spacing:.8px;text-transform:uppercase;color:#bbb}
 .user-pill-wrap{position:relative}
-.user-pill{display:flex;align-items:center;gap:7px;padding:3px 10px 3px 3px;border:1px solid var(--cinza);background:#fff;cursor:pointer;border-radius:20px;transition:border-color .12s}
-.user-pill:hover{border-color:var(--preto)}
-.avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;background:#E0E0D8;color:#555}
-.user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);border-radius:8px;overflow:hidden}
+.user-pill{display:flex;align-items:center;gap:7px;padding:3px 10px 3px 3px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;border-radius:20px;transition:border-color var(--transition-fast)}
+.user-pill:hover{border-color:var(--grafite)}
+.avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--text-label);font-weight:var(--weight-label);flex-shrink:0;background:#E0E0D8;color:#555}
+.user-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--branco);border:1px solid var(--cinza);min-width:150px;z-index:200;box-shadow:var(--shadow-modal);border-radius:var(--radius-modal);overflow:hidden}
 .user-dropdown.open{display:block}
-.user-dropdown button{display:block;width:100%;padding:9px 14px;background:none;border:none;font-family:var(--f);font-size:11px;font-weight:500;color:var(--tc);text-align:left;cursor:pointer}
+.user-dropdown button{display:block;width:100%;padding:9px 14px;background:none;border:none;font-family:var(--font-ui);font-size:var(--text-sub);font-weight:500;color:var(--terracota);text-align:left;cursor:pointer}
 .user-dropdown button:hover{background:var(--off)}
 .del-col{display:none}
 body.can-delete .del-col{display:table-cell}
 .del-prop-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
-.del-prop-btn:hover{color:var(--tc)}
+.del-prop-btn:hover{color:var(--terracota)}
 
 /* LAYOUT */
-.main{padding:16px;max-width:1600px;margin:0 auto}
+.main{padding:var(--gap-md);max-width:1600px;margin:0 auto}
 .page{display:none}.page.active{display:block}
-/* Layout principal: formulário 2/3, resumo 1/3 */
-.cols{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+.cols{display:grid;grid-template-columns:2fr 1fr;gap:var(--gap-md);align-items:start}
 
 /* CARD */
-.card{background:#fff;border:1px solid var(--cinza);margin-bottom:10px;position:relative;border-radius:8px;overflow:hidden}
+.card{background:var(--branco);border:1px solid var(--cinza);margin-bottom:10px;position:relative;border-radius:var(--radius-card);overflow:hidden}
 .card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
 .card.verde::before{background:var(--verde)}
-.card.az::before{background:var(--az)}
-.card.am::before{background:var(--am)}
-.card.tc::before{background:var(--tc)}
+.card.az::before{background:var(--azul)}
+.card.am::before{background:var(--ouro)}
+.card.tc::before{background:var(--terracota)}
 .card.roxo::before{background:var(--roxo)}
 .card.neutro::before{background:var(--cinza)}
-.card-hdr{padding:9px 14px 9px 17px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card-title{font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;flex:1}
+.card-hdr{padding:9px 14px 9px 17px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:var(--gap-sm);flex-wrap:wrap}
+.card-title{font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.7px;text-transform:uppercase;flex:1}
 .card-body{padding:13px 14px 13px 17px}
 
 /* SEC */
-.sec{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
+.sec{font-size:8px;font-weight:var(--weight-label);letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
 
 /* FORM */
 .fg{display:grid;gap:7px}.fg2{grid-template-columns:1fr 1fr}.fg3{grid-template-columns:1fr 1fr 1fr}.fg4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .fgroup{display:flex;flex-direction:column;gap:3px;position:relative}
-.fgroup label{font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:#888}
-.fgroup input,.fgroup select,.fgroup textarea{font-family:var(--f);font-size:12px;border:1px solid var(--cinza);padding:6px 9px;background:#fff;color:var(--preto);width:100%;outline:none;transition:border-color .12s;border-radius:6px}
-.fgroup input:focus,.fgroup select:focus{border-color:var(--preto)}
+.fgroup label{font-size:var(--text-label);font-weight:var(--weight-semibold);letter-spacing:.4px;text-transform:uppercase;color:#888}
+.fgroup input,.fgroup select,.fgroup textarea{font-family:var(--font-ui);font-size:12px;border:1px solid var(--cinza);padding:6px 9px;background:var(--branco);color:var(--grafite);width:100%;outline:none;transition:border-color var(--transition-fast);border-radius:var(--radius-btn)}
+.fgroup input:focus,.fgroup select:focus{border-color:var(--grafite)}
 .fgroup textarea{resize:vertical;min-height:48px}
 .inp-readonly{background:var(--cinza2)!important;color:#888!important;cursor:default}
 
 /* AUTOCOMPLETE */
-.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--cinza);border-top:none;z-index:50;max-height:180px;overflow-y:auto;display:none;border-radius:0 0 6px 6px}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:var(--branco);border:1px solid var(--cinza);border-top:none;z-index:50;max-height:180px;overflow-y:auto;display:none;border-radius:0 0 var(--radius-btn) var(--radius-btn)}
 .autocomplete-list.open{display:block}
 .ac-item{padding:7px 9px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--cinza2)}
 .ac-item:last-child{border-bottom:none}
 .ac-item:hover{background:var(--cinza2)}
-.ac-item mark{background:transparent;color:var(--verde);font-weight:700}
+.ac-item mark{background:transparent;color:var(--verde);font-weight:var(--weight-label)}
 .ac-new{color:#888;font-style:italic}
 
 /* STEPPER */
-.stepper{display:flex;border-radius:6px;overflow:hidden}
+.stepper{display:flex;border-radius:var(--radius-btn);overflow:hidden}
 .stepper input{text-align:center;border-left:none;border-right:none;flex:1;min-width:0;border-radius:0!important}
-.sbt{background:#fff;border:1px solid var(--cinza);color:#666;padding:0 10px;cursor:pointer;font-size:15px;display:flex;align-items:center;font-weight:300;transition:all .12s;white-space:nowrap}
-.sbt:hover{background:var(--preto);color:#fff;border-color:var(--preto)}
+.sbt{background:var(--branco);border:1px solid var(--cinza);color:#666;padding:0 10px;cursor:pointer;font-size:15px;display:flex;align-items:center;font-weight:300;transition:var(--transition-fast);white-space:nowrap}
+.sbt:hover{background:#141414;color:#fff;border-color:#141414}
 
 /* BOTÕES */
-.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border:1px solid var(--cinza);font-family:var(--f);font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#888;background:#fff;cursor:pointer;transition:all .12s;border-radius:6px}
-.btn:hover{border-color:var(--preto);color:var(--preto);background:#fff}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border:1px solid var(--cinza);font-family:var(--font-ui);font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.6px;text-transform:uppercase;color:#888;background:var(--branco);cursor:pointer;transition:var(--transition-fast);border-radius:var(--radius-btn)}
+.btn:hover{border-color:var(--grafite);color:var(--grafite);background:var(--branco)}
 .btn.sm{padding:3px 8px;font-size:8px}
 .btn.xs{padding:2px 5px;font-size:8px}
 .btn.ghost{border-color:var(--cinza);color:#888}
-.btn.ghost:hover{border-color:var(--preto);color:var(--preto);background:#fff}
+.btn.ghost:hover{border-color:var(--grafite);color:var(--grafite)}
 .btn.verde{background:var(--verde);color:#fff;border-color:var(--verde)}
 .btn.verde:hover{background:var(--verde-l)}
-.btn.am{background:var(--am);color:#fff;border-color:var(--am)}
-.btn.tc{background:var(--tc);color:#fff;border-color:var(--tc)}
-.btn.az{background:var(--az);color:#fff;border-color:var(--az)}
-.btn.danger{border-color:var(--cinza);color:var(--tc)}
-.btn.danger:hover{background:var(--tc-bg);border-color:var(--tc)}
+.btn.am{background:var(--ouro);color:#fff;border-color:var(--ouro)}
+.btn.tc{background:var(--terracota);color:#fff;border-color:var(--terracota)}
+.btn.az{background:var(--azul);color:#fff;border-color:var(--azul)}
+.btn.danger{border-color:var(--cinza);color:var(--terracota)}
+.btn.danger:hover{background:var(--tc-bg);border-color:var(--terracota)}
 /* Botão principal de adicionar item à proposta */
-.btn-add-item{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;font-family:var(--f);font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;background:var(--verde);color:#fff;border:none;cursor:pointer;width:100%;margin-top:8px;transition:all .15s;border-radius:6px}
+.btn-add-item{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;font-family:var(--font-ui);font-size:10px;font-weight:var(--weight-label);letter-spacing:.6px;text-transform:uppercase;background:var(--verde);color:#fff;border:none;cursor:pointer;width:100%;margin-top:8px;transition:var(--transition-fast);border-radius:var(--radius-btn)}
 .btn-add-item:hover{background:var(--verde-l)}
 /* Botão dashed genérico para adicionar blocos */
-.btn-add{display:flex;align-items:center;gap:5px;padding:6px 10px;font-size:11px;border:1px dashed var(--cinza);background:transparent;color:#888;cursor:pointer;width:100%;margin-top:6px;transition:all .12s;border-radius:6px}
-.btn-add:hover{border-color:var(--preto);color:var(--preto)}
+.btn-add{display:flex;align-items:center;gap:5px;padding:6px 10px;font-size:var(--text-sub);border:1px dashed var(--cinza);background:transparent;color:#888;cursor:pointer;width:100%;margin-top:6px;transition:var(--transition-fast);border-radius:var(--radius-btn)}
+.btn-add:hover{border-color:var(--grafite);color:var(--grafite)}
 
 /* BADGE */
-.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;border-radius:4px}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:var(--weight-label);letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;border-radius:var(--radius-badge)}
 .b-vd{background:var(--verde-bg);color:#0A4A2E}
 .b-az{background:var(--az-bg);color:#0D3070}
 .b-am{background:var(--am-bg);color:#7A4D10}
 .b-tc{background:var(--tc-bg);color:#7A2A1C}
 .b-roxo{background:var(--roxo-bg);color:#3D2060}
 .b-gr{background:var(--cinza2);color:#666}
-.badge-revisada{background:#FBF0EE;color:#7A2A1C;border:1px solid #E8A89A;font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap;border-radius:4px}
-.badge-bloqueada{background:var(--cinza2);color:#999;border:1px solid var(--cinza);font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap;border-radius:4px}
+.badge-revisada{background:var(--tc-bg);color:#7A2A1C;border:1px solid #E8A89A;font-size:8px;font-weight:var(--weight-label);letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap;border-radius:var(--radius-badge)}
+.badge-bloqueada{background:var(--cinza2);color:#999;border:1px solid var(--cinza);font-size:8px;font-weight:var(--weight-label);letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap;border-radius:var(--radius-badge)}
 
 /* HINT */
-.hint{background:var(--cinza2);border-left:3px solid var(--cinza);padding:7px 10px;font-size:11px;color:#666;line-height:1.5;margin-bottom:8px;border-radius:0 4px 4px 0}
+.hint{background:var(--cinza2);border-left:3px solid var(--cinza);padding:7px 10px;font-size:var(--text-sub);color:#666;line-height:1.5;margin-bottom:8px;border-radius:0 var(--radius-badge) var(--radius-badge) 0}
 .hint.verde{border-left-color:var(--verde);background:var(--verde-bg)}
-.hint.az{border-left-color:var(--az);background:var(--az-bg)}
+.hint.az{border-left-color:var(--azul);background:var(--az-bg)}
 
 /* RESUMO */
 .rg{margin-bottom:8px}
 .rg-head{padding:7px 11px;display:flex;align-items:center;gap:7px;border:1px solid var(--cinza);background:#FAFAF8}
 .rg-stripe{width:3px;height:10px;flex-shrink:0}
-.rg-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;flex:1}
-.rg-sub{font-size:11px;font-weight:700;margin-left:auto}
-.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr 22px;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:#fff;font-size:11px;font-weight:300;min-width:0}
+.rg-label{font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;flex:1}
+.rg-sub{font-size:var(--text-sub);font-weight:var(--weight-label);margin-left:auto}
+.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr 22px;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:var(--branco);font-size:var(--text-sub);font-weight:300;min-width:0}
 .rg-item>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rg-item:hover{background:#FAFAF8}
-.rg-val{font-weight:700;text-align:right}
+.rg-val{font-weight:var(--weight-label);text-align:right}
 .rg-val.edited{color:var(--verde)}
 
-/* TOTAL */
-.total-bar{background:var(--preto);color:#fff;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;margin-top:4px;border-radius:6px}
-.total-lbl{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6}
-.total-val{font-size:20px;font-weight:700;letter-spacing:-.5px;font-family:var(--fm)}
-.desc-bar{background:var(--tc-bg);border:1px solid #E8A89A;border-top:none;padding:6px 13px;display:flex;justify-content:space-between;font-size:11px}
+/* TOTAL — fundo permanentemente escuro, não inverte no dark mode */
+.total-bar{background:#141414;color:#fff;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;margin-top:4px;border-radius:var(--radius-btn)}
+.total-lbl{font-size:8px;font-weight:var(--weight-label);letter-spacing:1px;text-transform:uppercase;opacity:.6}
+.total-val{font-size:20px;font-weight:var(--weight-label);letter-spacing:-.5px;font-family:var(--font-mono)}
+.desc-bar{background:var(--tc-bg);border:1px solid #E8A89A;border-top:none;padding:6px 13px;display:flex;justify-content:space-between;font-size:var(--text-sub)}
 
 /* BLOCO DESPESA */
-.bloco{border:1px solid var(--cinza);border-left:3px solid var(--cinza);margin-bottom:7px;padding:11px 12px;border-radius:0 6px 6px 0}
+.bloco{border:1px solid var(--cinza);border-left:3px solid var(--cinza);margin-bottom:7px;padding:11px 12px;border-radius:0 var(--radius-btn) var(--radius-btn) 0}
 .bloco-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
-.bloco-lbl{font-size:10px;font-weight:600;color:var(--preto)}
-.bloco-sub{font-size:11px;font-weight:700;color:#888}
+.bloco-lbl{font-size:10px;font-weight:var(--weight-semibold);color:var(--grafite)}
+.bloco-sub{font-size:var(--text-sub);font-weight:var(--weight-label);color:#888}
 .bloco-acts{display:flex;align-items:center;gap:5px}
 
 /* DESPESAS MINIMIZADO */
 .desp-minimized{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
-.desp-minimized-msg{font-size:11px;color:#999}
+.desp-minimized-msg{font-size:var(--text-sub);color:#999}
 
 /* SUB MINIMIZADO */
-.sub-collapsed{padding:10px 0;color:#999;font-size:11px}
+.sub-collapsed{padding:10px 0;color:#999;font-size:var(--text-sub)}
 
 /* HIST */
 table{width:100%;border-collapse:collapse}
-th{padding:6px 9px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;text-align:left;background:#FAFAF8;border-bottom:1px solid var(--cinza);white-space:nowrap}
-td{padding:7px 9px;border-top:1px solid var(--cinza2);font-size:11px;font-weight:300;vertical-align:middle}
+th{padding:6px 9px;font-size:8px;font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;color:#999;text-align:left;background:#FAFAF8;border-bottom:1px solid var(--cinza);white-space:nowrap}
+td{padding:7px 9px;border-top:1px solid var(--cinza2);font-size:var(--text-sub);font-weight:300;vertical-align:middle}
 tr.click{cursor:pointer}tr.click:hover td{background:#FAFAF8}
 tr.blocked-row td{color:#aaa;background:#FAFAF8}
-.empty{color:#999;font-size:11px;text-align:center;padding:18px}
+.empty{color:#999;font-size:var(--text-sub);text-align:center;padding:18px}
 
 /* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:16px}
+.modal-bg{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:500;align-items:center;justify-content:center;padding:var(--gap-md)}
 .modal-bg.open{display:flex}
-.modal{background:#fff;width:520px;max-width:97vw;max-height:92vh;overflow-y:auto;border:1px solid var(--cinza);border-radius:10px}
-.modal-hd{padding:11px 15px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:5}
-.modal-title{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.modal{background:var(--branco);width:520px;max-width:97vw;max-height:92vh;overflow-y:auto;border:1px solid var(--cinza);border-radius:var(--radius-modal)}
+.modal-hd{padding:11px 15px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--branco);z-index:5}
+.modal-title{font-size:10px;font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase}
 .modal-x{font-size:20px;cursor:pointer;color:#999;font-weight:300;line-height:1;padding:0 3px}
-.modal-x:hover{color:var(--preto)}
+.modal-x:hover{color:var(--grafite)}
 .modal-body{padding:15px}
-.modal-ft{padding:10px 15px;border-top:1px solid var(--cinza);display:flex;gap:5px;justify-content:flex-end;position:sticky;bottom:0;background:#fff}
+.modal-ft{padding:10px 15px;border-top:1px solid var(--cinza);display:flex;gap:5px;justify-content:flex-end;position:sticky;bottom:0;background:var(--branco)}
 
 /* MODAL HIST DETALHE */
 .modal.wide{width:760px}
@@ -199,15 +205,15 @@ tr.blocked-row td{color:#aaa;background:#FAFAF8}
 .pr-row:last-child{border-bottom:none}
 
 /* TOAST */
-.toast{position:fixed;bottom:14px;right:14px;background:var(--preto);color:#fff;padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.3px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;border-radius:6px}
+.toast{position:fixed;bottom:14px;right:14px;background:#141414;color:#fff;padding:8px 14px;font-size:10px;font-weight:var(--weight-semibold);letter-spacing:.3px;opacity:0;transition:opacity var(--transition-normal);pointer-events:none;z-index:9999;border-radius:var(--radius-btn)}
 .toast.show{opacity:1}
-.blocked{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--tc);color:#fff;padding:8px 18px;font-size:10px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;white-space:nowrap;border-radius:6px}
+.blocked{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--terracota);color:#fff;padding:8px 18px;font-size:10px;font-weight:var(--weight-semibold);opacity:0;transition:opacity var(--transition-normal);pointer-events:none;z-index:9999;white-space:nowrap;border-radius:var(--radius-btn)}
 .blocked.show{opacity:1}
 
 /* PILLS NUCLEO */
 .nucleo-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
-.npill{padding:5px 13px;border:1px solid var(--cinza);font-size:11px;cursor:pointer;background:#fff;color:#888;transition:all .12s;border-radius:20px}
-.npill.sel{font-weight:600}
+.npill{padding:5px 13px;border:1px solid var(--cinza);font-size:var(--text-sub);cursor:pointer;background:var(--branco);color:#888;transition:var(--transition-fast);border-radius:20px}
+.npill.sel{font-weight:var(--weight-semibold)}
 .npill.sel.pais{background:var(--verde-bg);border-color:#5DCAA5;color:#0A4A2E}
 .npill.sel.urb{background:var(--az-bg);border-color:#7AADE8;color:#0D3070}
 .npill.sel.consul{background:var(--tc-bg);border-color:#E8A89A;color:#7A2A1C}
@@ -221,30 +227,74 @@ tr.blocked-row td{color:#aaa;background:#FAFAF8}
 select option[disabled]{color:#bbb}
 
 /* SUPABASE STATUS */
-.sync-indicator{display:flex;align-items:center;gap:4px;font-size:9px;color:#aaa}
+.sync-indicator{display:flex;align-items:center;gap:4px;font-size:var(--text-label);color:#aaa}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#aaa}
 .sync-dot.ok{background:var(--verde)}
-.sync-dot.err{background:var(--tc)}
-.sync-dot.sync{background:var(--am);animation:blink .8s infinite}
+.sync-dot.err{background:var(--terracota)}
+.sync-dot.sync{background:var(--ouro);animation:blink .8s infinite}
 /* CONN + EXP ROOM */
-.conn-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s;cursor:default;pointer-events:none}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background var(--transition-normal);cursor:default;pointer-events:none}
 .conn-dot.online{background:#22c55e}
-.conn-dot.offline{background:var(--tc)}
-.exp-room-btn{width:28px;height:28px;border-radius:6px;background:var(--verde-bg);border:1px solid var(--verde);color:var(--verde);display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .12s;flex-shrink:0;font-size:13px}
+.conn-dot.offline{background:var(--terracota)}
+.exp-room-btn{width:28px;height:28px;border-radius:var(--radius-btn);background:var(--verde-bg);border:1px solid var(--verde);color:var(--verde);display:flex;align-items:center;justify-content:center;text-decoration:none;transition:var(--transition-fast);flex-shrink:0;font-size:13px}
 .exp-room-btn:hover{background:var(--verde);color:#fff}
 .exp-room-btn.active{background:var(--verde);color:#fff;animation:exp-pulse 1.5s ease-in-out infinite}
-@keyframes exp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(29,106,74,.4)}50%{box-shadow:0 0 0 6px rgba(29,106,74,0)}}
+@keyframes exp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(62,120,88,.4)}50%{box-shadow:0 0 0 6px rgba(62,120,88,0)}}
 .exp-room-btn{position:relative}
-.exp-room-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);right:0;background:#1a1a1a;color:#fff;font-size:10px;font-weight:500;white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:600;font-family:var(--f,sans-serif);letter-spacing:.1px}
+.exp-room-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);right:0;background:#1a1a1a;color:#fff;font-size:10px;font-weight:500;white-space:nowrap;padding:5px 9px;border-radius:var(--radius-btn);pointer-events:none;opacity:0;transition:opacity var(--transition-fast);z-index:600;font-family:var(--font-ui,sans-serif);letter-spacing:.1px}
 .exp-room-btn[data-tooltip]:hover::after{opacity:1}
 #user-nome{font-size:10px;font-weight:500}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* SEÇÃO MINIMIZÁVEL */
-.collapsible-trigger{display:flex;align-items:center;cursor:pointer;user-select:none;gap:6px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888}
-.collapsible-trigger:hover{color:var(--preto)}
+.collapsible-trigger{display:flex;align-items:center;cursor:pointer;user-select:none;gap:6px;font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;color:#888}
+.collapsible-trigger:hover{color:var(--grafite)}
 .collapse-arrow{font-size:10px;transition:transform .2s;display:inline-block}
 .collapse-arrow.open{transform:rotate(90deg)}
+
+/* ── DARK MODE ──────────────────────────────────────────────── */
+[data-theme="dark"]{
+  --cinza2:#2A2A28;
+  --verde-bg:#1A2B22; --az-bg:#1A2232; --am-bg:#2A2210; --tc-bg:#2A1A14; --roxo-bg:#1E1A2A;
+}
+[data-theme="dark"] .nav{background:rgba(20,20,18,.95);border-color:var(--cinza)}
+[data-theme="dark"] .nav-dropdown{background:var(--branco);border-color:var(--cinza);box-shadow:var(--shadow-modal)}
+[data-theme="dark"] .nav-dropdown a{color:var(--grafite)}
+[data-theme="dark"] .user-pill{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .user-dropdown{background:var(--branco);border-color:var(--cinza);box-shadow:var(--shadow-modal)}
+[data-theme="dark"] .card{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .card-hdr{border-color:var(--cinza)}
+[data-theme="dark"] .fgroup input,[data-theme="dark"] .fgroup select,[data-theme="dark"] .fgroup textarea{background:#252523;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .fgroup input:focus,[data-theme="dark"] .fgroup select:focus{border-color:var(--grafite)}
+[data-theme="dark"] .inp-readonly{background:#1e1e1c!important;color:#666!important}
+[data-theme="dark"] .autocomplete-list{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .ac-item:hover{background:var(--off)}
+[data-theme="dark"] .sbt{background:#252523;border-color:var(--cinza);color:#888}
+[data-theme="dark"] .sbt:hover{background:#1a1a18;color:#fff;border-color:#1a1a18}
+[data-theme="dark"] .btn{background:var(--branco);border-color:var(--cinza);color:#888}
+[data-theme="dark"] .btn:hover{border-color:var(--grafite);color:var(--grafite)}
+[data-theme="dark"] .btn.ghost:hover{border-color:var(--grafite);color:var(--grafite)}
+[data-theme="dark"] .btn.danger{color:var(--terracota)}
+[data-theme="dark"] .btn.danger:hover{background:var(--tc-bg);border-color:var(--terracota)}
+[data-theme="dark"] .npill{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .modal{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .modal-hd{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .modal-ft{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] th{background:#1e1e1c;color:#666;border-color:var(--cinza)}
+[data-theme="dark"] td{border-color:var(--cinza)}
+[data-theme="dark"] tr.click:hover td{background:var(--off)}
+[data-theme="dark"] tr.blocked-row td{background:var(--off);color:#555}
+[data-theme="dark"] .rg-head{background:var(--off);border-color:var(--cinza)}
+[data-theme="dark"] .rg-item{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .rg-item:hover{background:var(--off)}
+[data-theme="dark"] .desc-bar{background:var(--tc-bg);border-color:var(--terracota)}
+[data-theme="dark"] .bloco{border-color:var(--cinza)}
+[data-theme="dark"] .hint{background:var(--off);border-color:var(--cinza);color:#888}
+[data-theme="dark"] .hint.verde{background:var(--verde-bg);border-color:var(--verde)}
+[data-theme="dark"] .hint.az{background:var(--az-bg);border-color:var(--azul)}
+[data-theme="dark"] .badge-revisada{background:var(--tc-bg)}
+[data-theme="dark"] .badge-bloqueada{background:var(--cinza2);border-color:var(--cinza)}
+[data-theme="dark"] .b-gr{background:var(--cinza2);color:#888}
 </style>
 </head>
 <body>
@@ -271,6 +321,11 @@ select option[disabled]{color:#bbb}
     <div class="ntab" data-tab="params" onclick="goTab('params')">Parâmetros</div>
   </div>
   <div class="nav-right">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
+      <span class="ttg-icon">☀</span>
+      <span class="ttg-track"><span class="ttg-knob"></span></span>
+      <span class="ttg-icon">🌙</span>
+    </button>
     <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
     <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
     <div class="sync-indicator" id="sync-indicator" style="display:none">
@@ -309,7 +364,7 @@ select option[disabled]{color:#bbb}
     </div>
     <div class="card-body" id="cub-body">
       <div style="display:flex;align-items:baseline;gap:10px">
-        <div style="font-size:24px;font-weight:700;color:var(--am);font-family:var(--fm)" id="cub-val">—</div>
+        <div style="font-size:24px;font-weight:700;color:var(--ouro);font-family:var(--font-mono)" id="cub-val">—</div>
         <div style="font-size:11px;color:#888" id="cub-mes">—</div>
       </div>
     </div>
@@ -408,7 +463,7 @@ select option[disabled]{color:#bbb}
           </div>
           <div class="fgroup">
             <label>Preview</label>
-            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--fm);color:var(--verde)" id="i-prev">—</div>
+            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev">—</div>
           </div>
         </div>
         <div class="fgroup"><label>Descrição / observação</label><input type="text" id="i-desc" placeholder="Ex: Torre A, área comum..."></div>
@@ -427,7 +482,7 @@ select option[disabled]{color:#bbb}
           </div>
           <div class="fgroup">
             <label>Preview</label>
-            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--fm);color:var(--verde)" id="i-prev-fl">—</div>
+            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev-fl">—</div>
           </div>
         </div>
         <div class="fgroup"><label>Descrição</label><input type="text" id="i-desc-fl" placeholder="Ex: Fachada torre A, 18 andares"></div>
@@ -456,7 +511,7 @@ select option[disabled]{color:#bbb}
         <div class="fg fg2 mb8">
           <div class="fgroup"><label>Valor por hora (R$)</label><input type="number" id="i-consul-hora-val" min="0" step="50" oninput="calcConsulPrev()"></div>
           <div class="fgroup"><label>Preview</label>
-            <div style="font-size:16px;font-weight:700;padding:7px 0;font-family:var(--fm);color:var(--tc)" id="i-prev-consul">—</div>
+            <div style="font-size:16px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--terracota)" id="i-prev-consul">—</div>
           </div>
         </div>
       </div>
@@ -499,7 +554,7 @@ select option[disabled]{color:#bbb}
           <div class="fgroup"><label>Bitributação (%)</label><input type="number" id="sc-bit" min="0" max="50" step="0.5" value="15"></div>
           <div class="fgroup"><label>Ganho EXP (%)</label><input type="number" id="sc-ret" min="0" max="100" step="1" value="20"></div>
         </div>
-        <button class="btn-add-item" style="background:var(--tc);margin-top:0" onclick="addSubcontr()">+ Confirmar subcontratação</button>
+        <button class="btn-add-item" style="background:var(--terracota);margin-top:0" onclick="addSubcontr()">+ Confirmar subcontratação</button>
       </div>
     </div>
     <!-- Estado vazio (padrão) -->
@@ -529,7 +584,7 @@ select option[disabled]{color:#bbb}
           </div>
         </div>
         <div style="font-size:11px;color:#888;margin-top:6px" id="rep-info">Incide sobre o valor dos serviços, não sobre despesas ou subcontratações.</div>
-        <button class="btn-add-item" style="background:var(--am);margin-top:8px" onclick="confirmarRepasse()">+ Adicionar repasse</button>
+        <button class="btn-add-item" style="background:var(--ouro);margin-top:8px" onclick="confirmarRepasse()">+ Adicionar repasse</button>
       </div>
     </div>
     <div id="repasse-preview" style="display:none">
@@ -540,7 +595,7 @@ select option[disabled]{color:#bbb}
             <div style="font-size:10px;color:#888" id="rep-preview-desc"></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-size:14px;font-weight:700;color:var(--am);font-family:var(--fm)" id="rep-preview-val"></div>
+            <div style="font-size:14px;font-weight:700;color:var(--ouro);font-family:var(--font-mono)" id="rep-preview-val"></div>
             <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
             <button class="btn xs danger" onclick="remRepasse()">✕</button>
           </div>
@@ -586,7 +641,7 @@ select option[disabled]{color:#bbb}
           </div>
           <div class="fgroup">
             <label>Total despesas (com bitrib.)</label>
-            <div style="font-size:16px;font-weight:700;padding:6px 0;font-family:var(--fm)" id="desp-total-display">R$ 0,00</div>
+            <div style="font-size:16px;font-weight:700;padding:6px 0;font-family:var(--font-mono)" id="desp-total-display">R$ 0,00</div>
           </div>
         </div>
       </div>
@@ -629,29 +684,29 @@ select option[disabled]{color:#bbb}
     <div style="font-size:17px;font-weight:700">Quadro global de propostas</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       <button id="hf-btn-ativas" class="btn sm" onclick="toggleFiltroAtivas()" style="font-size:9px">Última versão</button>
-      <select id="hf-periodo" onchange="atualizarFiltroPeriodo()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f)">
+      <select id="hf-periodo" onchange="atualizarFiltroPeriodo()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--font-ui)">
         <option value="todos">Todo o período</option>
         <option value="ano">Ano</option>
         <option value="semestre">Semestre</option>
         <option value="trimestre">Trimestre</option>
         <option value="mes">Mês</option>
       </select>
-      <select id="hf-periodo-val" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f);display:none"></select>
-      <select id="hf-nucleo" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f)">
+      <select id="hf-periodo-val" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--font-ui);display:none"></select>
+      <select id="hf-nucleo" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--font-ui)">
         <option value="todos">Todos os núcleos</option>
         <option value="PAIS">Paisagismo</option>
         <option value="URB">Urbanismo</option>
         <option value="CONSUL">Consultoria</option>
         <option value="ESP">Especial</option>
       </select>
-      <select id="hf-resp" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f)">
+      <select id="hf-resp" onchange="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--font-ui)">
         <option value="todos">Todos responsáveis</option>
         <option value="CC">Carlos Corrêa</option>
         <option value="GB">Gabriela Budel</option>
         <option value="TC">Thayssa Christensen</option>
         <option value="LA">Laís de Andrade</option>
       </select>
-      <input id="hf-search" placeholder="Buscar..." oninput="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--f);width:160px">
+      <input id="hf-search" placeholder="Buscar..." oninput="renderHist()" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--font-ui);width:160px">
     </div>
   </div>
   <div class="card neutro">
@@ -686,26 +741,26 @@ select option[disabled]{color:#bbb}
           </p>
           <div style="background:var(--verde-bg);border:1px solid #8FD0B0;padding:10px 13px;font-size:11px">
             <div style="font-weight:700;color:var(--verde);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Fórmula geral — Paisagismo e Urbanismo</div>
-            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = Σ (faixa_i × mult_i × CUB) × coef</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = Σ (faixa_i × mult_i × CUB) × coef</div>
             <div style="margin-top:6px;font-size:10px;color:#666">Onde cada faixa aplica um multiplicador decrescente à medida que a área aumenta.</div>
           </div>
           <div style="margin-top:10px;background:var(--az-bg);border:1px solid #7AADE8;padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--az);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Fórmula — Consultoria</div>
-            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = Valor/hora × Nº de horas</div>
+            <div style="font-weight:700;color:var(--azul);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Fórmula — Consultoria</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = Valor/hora × Nº de horas</div>
           </div>
           <div style="margin-top:10px;background:var(--am-bg);border:1px solid #E8C07A;padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--am);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Floreiras (PAIS)</div>
-            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = N° CUB × CUB atual</div>
+            <div style="font-weight:700;color:var(--ouro);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Floreiras (PAIS)</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = N° CUB × CUB atual</div>
             <div style="margin-top:4px;font-size:10px;color:#666">Área informada em unidades de CUB (ex: 3,5 CUB = 3,5 × valor do CUB).</div>
           </div>
           <div style="margin-top:10px;background:var(--am-bg);border:1px solid #E8C07A;padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--am);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Urbanismo — Estudo de Conceito</div>
-            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = coef × CUB</div>
+            <div style="font-weight:700;color:var(--ouro);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Urbanismo — Estudo de Conceito</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = coef × CUB</div>
             <div style="margin-top:4px;font-size:10px;color:#666">Coeficiente representa o número de CUBs a cobrar pelo conceito.</div>
           </div>
           <div style="margin-top:10px;background:var(--tc-bg);border:1px solid #E8A89E;padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--tc);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Arbitrado (PAIS)</div>
-            <div style="font-family:var(--fm);font-size:12px;color:#333">Honorário = área (m²) × 0,085 × CUB</div>
+            <div style="font-weight:700;color:var(--terracota);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Arbitrado (PAIS)</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = área (m²) × 0,085 × CUB</div>
           </div>
         </div>
       </div>
@@ -718,10 +773,10 @@ select option[disabled]{color:#bbb}
             Quando a EXP subcontrata serviços de terceiros, o total cobrado ao cliente inclui o custo direto, a bitributação estimada (encargos sobre o repasse) e o ganho EXP como margem adicional.
           </p>
           <div style="background:var(--tc-bg);border:1px solid #E8A89E;padding:10px 13px">
-            <div style="font-weight:700;color:var(--tc);margin-bottom:8px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Composição do valor ao cliente</div>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:11px;font-family:var(--fm)">
+            <div style="font-weight:700;color:var(--terracota);margin-bottom:8px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Composição do valor ao cliente</div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:11px;font-family:var(--font-mono)">
               <span style="color:#555">Custo cotado (X)</span><span style="font-weight:600">X</span>
-              <span style="color:var(--tc)">+ Bitributação (%)</span><span style="color:var(--tc)">+ X × bit%</span>
+              <span style="color:var(--terracota)">+ Bitributação (%)</span><span style="color:var(--terracota)">+ X × bit%</span>
               <span style="color:var(--verde)">+ Ganho EXP (%)</span><span style="color:var(--verde)">+ X × ganho%</span>
               <span style="font-weight:700;border-top:1px solid #E8A89E;padding-top:4px">= Total ao cliente</span>
               <span style="font-weight:700;border-top:1px solid #E8A89E;padding-top:4px">X × (1 + bit% + ganho%)</span>
@@ -741,7 +796,7 @@ select option[disabled]{color:#bbb}
         <div class="card-hdr"><div class="card-title">CUB vigente</div></div>
         <div class="card-body">
           <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
-            <span style="font-size:28px;font-weight:700;font-family:var(--fm);color:var(--am)" id="base-cub-val">—</span>
+            <span style="font-size:28px;font-weight:700;font-family:var(--font-mono);color:var(--ouro)" id="base-cub-val">—</span>
             <span style="font-size:11px;color:#888">/m²</span>
           </div>
           <div style="font-size:10px;color:#aaa" id="base-cub-mes">Nenhum CUB cadastrado</div>
@@ -768,7 +823,7 @@ select option[disabled]{color:#bbb}
           <p style="font-size:11px;color:#555;line-height:1.7">
             Quando um projeto é indicado por um parceiro comercial (ex: arquiteto, corretor), aplica-se uma comissão sobre o valor total dos serviços EXP. O valor do repasse é somado ao total da proposta e cobrado do cliente.
           </p>
-          <div style="margin-top:8px;background:var(--cinza2);padding:8px 11px;font-family:var(--fm);font-size:11px" id="base-repasse-info">—</div>
+          <div style="margin-top:8px;background:var(--cinza2);padding:8px 11px;font-family:var(--font-mono);font-size:11px" id="base-repasse-info">—</div>
         </div>
       </div>
 
@@ -1322,7 +1377,7 @@ function renderBase() {
     <span style="color:#888">${i===0?'até':f.min!=null?fmt(f.min):'—'} ${unid}</span>
     <span style="color:#888">${f.max!=null?fmt(f.max)+' '+unid:'sem limite'}</span>
     <span>${f.desc||''}</span>
-    <span style="font-family:var(--fm);font-weight:600;text-align:right">× ${f.mult}</span>
+    <span style="font-family:var(--font-mono);font-weight:600;text-align:right">× ${f.mult}</span>
   </div>`;
   const hdrFaixa = `<div style="display:grid;grid-template-columns:1fr 1fr 2fr 80px;gap:6px;padding:3px 0;border-bottom:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#999">
     <div>De</div><div>Até</div><div>Descrição</div><div style="text-align:right">Mult.</div>
@@ -1346,7 +1401,7 @@ function renderBase() {
   document.getElementById('base-mins').innerHTML = mins.length
     ? mins.map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
         <span style="color:#555">${NC2[k]||k}</span>
-        <span style="font-family:var(--fm);font-weight:600">${fmt(v)}</span>
+        <span style="font-family:var(--font-mono);font-weight:600">${fmt(v)}</span>
       </div>`).join('')
     : '<div class="empty">Nenhum mínimo cadastrado</div>';
 }
@@ -1680,7 +1735,7 @@ function _evRenderAtalhos(base) {
     const diff  = v - base;
     const cor   = diff < 0 ? 'var(--tc)' : 'var(--verde)';
     const sinal = diff > 0 ? '+' : '−';
-    return `<button class="btn xs ghost" style="font-family:var(--fm);font-size:10px" onclick="_evAplicar(${v})">
+    return `<button class="btn xs ghost" style="font-family:var(--font-mono);font-size:10px" onclick="_evAplicar(${v})">
       ${fmt(v)} <span style="color:${cor};font-size:9px">${sinal}${fmt(Math.abs(diff))}</span>
     </button>`;
   }).join('');
@@ -1905,7 +1960,7 @@ function renderSubList() {
       <div style="display:flex;align-items:center;gap:8px">
         <div>
           <div style="font-size:11px;color:#888;text-decoration:line-through">${fmt(sc.val)}</div>
-          <div style="font-size:13px;font-weight:700;color:var(--tc);font-family:var(--fm)">${fmt(sc.valComBit)}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--terracota);font-family:var(--font-mono)">${fmt(sc.valComBit)}</div>
         </div>
         <button class="btn xs danger" onclick="remSub(${sc.id})">✕</button>
       </div>
@@ -2181,7 +2236,7 @@ function calcResumo() {
     html += `<div style="background:#FFF8EE;border:1px solid #E8C07A;padding:8px 11px;font-size:11px;color:#7A5200;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap">
       <div style="flex:1">🔗 <strong>CRM vinculado:</strong> ${projetoVinculado}
         ${lockBadges?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${lockBadges}</div>`:''}
-        ${allFinal?`<div style="margin-top:4px;font-weight:600;color:var(--tc)">⚠ Proposta inteiramente travada.</div>`:''}
+        ${allFinal?`<div style="margin-top:4px;font-weight:600;color:var(--terracota)">⚠ Proposta inteiramente travada.</div>`:''}
       </div>
       <button id="btn-check-crm" class="btn xs ghost" onclick="atualizarStatusCRM()" style="white-space:nowrap;flex-shrink:0">↻ Atualizar</button>
     </div>`;
@@ -2198,7 +2253,7 @@ function calcResumo() {
       <div class="rg-head">
         <div class="rg-stripe" style="background:${cor}"></div>
         <span class="rg-label">${NC[nuc]}</span>
-        ${isLocked?`<span style="font-size:10px;color:var(--tc);margin-left:6px">🔒 travado</span>`:''}
+        ${isLocked?`<span style="font-size:10px;color:var(--terracota);margin-left:6px">🔒 travado</span>`:''}
         <span class="rg-sub" style="color:${cor}">${fmt(stot)}</span>
       </div>
       ${its.map(it=>{
@@ -2231,9 +2286,9 @@ function calcResumo() {
           </div>
           <div style="display:flex;gap:3px">
             ${isLocked
-              ? `<span style="font-size:10px;color:var(--tc);padding:2px 5px">🔒</span>`
+              ? `<span style="font-size:10px;color:var(--terracota);padding:2px 5px">🔒</span>`
               : `<button class="btn xs ghost" onclick="openEdit(${it.itemId})" title="Ajustar valor">✎</button>
-                 ${isEd ? `<button class="btn xs ghost" style="color:var(--tc)" onclick="event.stopPropagation();_restaurarDireto(${it.itemId})" title="Restaurar valor calculado">↺</button>` : ''}
+                 ${isEd ? `<button class="btn xs ghost" style="color:var(--terracota)" onclick="event.stopPropagation();_restaurarDireto(${it.itemId})" title="Restaurar valor calculado">↺</button>` : ''}
                  <button class="btn xs danger" onclick="remItem(${it.itemId})">✕</button>`
             }
           </div>
@@ -2246,9 +2301,9 @@ function calcResumo() {
   if (cSubs.length) {
     html+=`<div class="rg">
       <div class="rg-head">
-        <div class="rg-stripe" style="background:var(--tc)"></div>
+        <div class="rg-stripe" style="background:var(--terracota)"></div>
         <span class="rg-label">Subcontratações</span>
-        <span class="rg-sub" style="color:var(--tc)">${fmt(totSub)}</span>
+        <span class="rg-sub" style="color:var(--terracota)">${fmt(totSub)}</span>
       </div>
       ${cSubs.map(_sc=>{
         const sc={..._sc, serv:escHtml(_sc.serv), emp:escHtml(_sc.emp||'')};
@@ -2259,11 +2314,11 @@ function calcResumo() {
               <div style="font-size:11px;font-weight:600">${sc.serv}</div>
               <div style="font-size:10px;color:#888;margin-bottom:6px">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}</div>
               <div style="display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:10px">
-                <span style="color:#aaa">Custo cotado</span><span style="font-family:var(--fm)">${fmt(sc.val)}</span>
-                <span style="color:var(--tc)">+ Bitrib. est. ${sc.bit}%</span><span style="font-family:var(--fm);color:var(--tc)">+ ${fmt(bitVal)}</span>
-                <span style="color:#888;padding-top:2px">→ Pago ao contratado</span><span style="font-family:var(--fm);padding-top:2px">${fmt(sc.val+bitVal)}</span>
-                <span style="color:var(--verde)">+ Ganho EXP ${sc.ret}%</span><span style="font-family:var(--fm);color:var(--verde);font-weight:600">+ ${fmt(sc.ganhoEXP)}</span>
-                <span style="color:#555;font-weight:600;border-top:1px solid var(--cinza2);padding-top:3px">Total ao cliente</span><span style="font-family:var(--fm);font-weight:700;border-top:1px solid var(--cinza2);padding-top:3px">${fmt(sc.valComBit)}</span>
+                <span style="color:#aaa">Custo cotado</span><span style="font-family:var(--font-mono)">${fmt(sc.val)}</span>
+                <span style="color:var(--terracota)">+ Bitrib. est. ${sc.bit}%</span><span style="font-family:var(--font-mono);color:var(--terracota)">+ ${fmt(bitVal)}</span>
+                <span style="color:#888;padding-top:2px">→ Pago ao contratado</span><span style="font-family:var(--font-mono);padding-top:2px">${fmt(sc.val+bitVal)}</span>
+                <span style="color:var(--verde)">+ Ganho EXP ${sc.ret}%</span><span style="font-family:var(--font-mono);color:var(--verde);font-weight:600">+ ${fmt(sc.ganhoEXP)}</span>
+                <span style="color:#555;font-weight:600;border-top:1px solid var(--cinza2);padding-top:3px">Total ao cliente</span><span style="font-family:var(--font-mono);font-weight:700;border-top:1px solid var(--cinza2);padding-top:3px">${fmt(sc.valComBit)}</span>
               </div>
             </div>
             <button class="btn xs danger" onclick="remSub(${sc.id})" style="flex-shrink:0;margin-top:2px">✕</button>
@@ -2272,7 +2327,7 @@ function calcResumo() {
       }).join('')}
       ${ganhoSubs>0?`<div style="border:1px solid var(--cinza);border-top:none;background:var(--verde-bg);padding:5px 11px;display:flex;justify-content:space-between;font-size:10px">
         <span style="color:var(--verde);font-weight:600">Ganho EXP total s/ subcontratações</span>
-        <span style="font-weight:700;color:var(--verde);font-family:var(--fm)">${fmt(ganhoSubs)}</span>
+        <span style="font-weight:700;color:var(--verde);font-family:var(--font-mono)">${fmt(ganhoSubs)}</span>
       </div>`:''}
     </div>`;
   }
@@ -2282,9 +2337,9 @@ function calcResumo() {
     const repNome = escHtml(rep.nome||'');
     html+=`<div class="rg">
       <div class="rg-head">
-        <div class="rg-stripe" style="background:var(--am)"></div>
+        <div class="rg-stripe" style="background:var(--ouro)"></div>
         <span class="rg-label">Repasse comercial</span>
-        <span class="rg-sub" style="color:var(--am)">${fmt(totRep)}</span>
+        <span class="rg-sub" style="color:var(--ouro)">${fmt(totRep)}</span>
       </div>
       <div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px;display:flex;align-items:center;justify-content:space-between">
         <div>
@@ -2292,7 +2347,7 @@ function calcResumo() {
           <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="font-weight:700;color:var(--am);font-family:var(--fm);font-size:13px">${fmt(totRep)}</div>
+          <div style="font-weight:700;color:var(--ouro);font-family:var(--font-mono);font-size:13px">${fmt(totRep)}</div>
           <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
           <button class="btn xs danger" onclick="remRepasse()">✕</button>
         </div>
@@ -2326,14 +2381,14 @@ function calcResumo() {
             ${det?`<span style="font-size:9px;color:#bbb;margin-left:4px">${det}</span>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-            <span style="font-weight:700;font-family:var(--fm);font-size:11px">${fmt(val)}</span>
+            <span style="font-weight:700;font-family:var(--font-mono);font-size:11px">${fmt(val)}</span>
             <button class="btn xs danger" onclick="remDesp(${d.id})">✕</button>
           </div>
         </div>`;
       }).join('')}
       ${bit>0?`<div style="border:1px solid var(--cinza);border-top:none;background:#fafaf8;padding:5px 11px;display:flex;justify-content:space-between;font-size:10px">
         <span style="color:#888">Bruto ${fmt(rawDesp)} + Bitrib. ${bit}% = ${fmt(bitAmt)}</span>
-        <span style="font-weight:700;font-family:var(--fm)">${fmt(totDesp)}</span>
+        <span style="font-weight:700;font-family:var(--font-mono)">${fmt(totDesp)}</span>
       </div>`:''}
     </div>`;
   }
@@ -2346,8 +2401,8 @@ function calcResumo() {
 
   if (desconto>0.01) {
     html+=`<div class="desc-bar">
-      <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--tc)">⬇ Desconto aplicado</span>
-      <span style="font-weight:700;color:var(--tc)">${fmt(desconto)}</span>
+      <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--terracota)">⬇ Desconto aplicado</span>
+      <span style="font-weight:700;color:var(--terracota)">${fmt(desconto)}</span>
     </div>`;
   }
 
@@ -2358,19 +2413,19 @@ function calcResumo() {
     <div style="font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--verde);margin-bottom:6px">Ganho EXP</div>
     <div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
       <span style="color:#444">Serviços EXP (produtos)</span>
-      <span style="font-family:var(--fm);font-weight:600">${fmt(totI)}</span>
+      <span style="font-family:var(--font-mono);font-weight:600">${fmt(totI)}</span>
     </div>
     ${ganhoSubs>0?`<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
       <span style="color:#444">Ganho s/ subcontratações</span>
-      <span style="font-family:var(--fm);font-weight:600">${fmt(ganhoSubs)}</span>
+      <span style="font-family:var(--font-mono);font-weight:600">${fmt(ganhoSubs)}</span>
     </div>`:''}
     ${ganhoTec>0?`<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
       <span style="color:#444">Horas técnicas</span>
-      <span style="font-family:var(--fm);font-weight:600">${fmt(ganhoTec)}</span>
+      <span style="font-family:var(--font-mono);font-weight:600">${fmt(ganhoTec)}</span>
     </div>`:''}
     <div style="font-size:12px;font-weight:700;display:flex;justify-content:space-between;padding:5px 0;margin-top:4px;border-top:1px solid #8FD0B0">
       <span style="color:var(--verde)">Total ganhos EXP</span>
-      <span style="font-family:var(--fm);color:var(--verde)">${fmt(totalGanhoEXP)}</span>
+      <span style="font-family:var(--font-mono);color:var(--verde)">${fmt(totalGanhoEXP)}</span>
     </div>
   </div>`;
 
@@ -2389,13 +2444,13 @@ function calcResumo() {
             <div style="width:16px;height:16px;border-radius:50%;background:var(--cinza2);display:flex;align-items:center;justify-content:center;font-size:9px;color:#aaa;flex-shrink:0">${i+1}</div>
             <span style="flex:1">${e}</span>
             <span>${pct}%</span>
-            <span style="font-family:var(--fm);min-width:80px;text-align:right;color:#555">${fmt(val)}</span>
+            <span style="font-family:var(--font-mono);min-width:80px;text-align:right;color:#555">${fmt(val)}</span>
           </div>`;
         }).join('')}
         ${ganhoSubs>0?`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px;color:var(--verde)">
           <div style="width:16px;flex-shrink:0"></div>
           <span style="flex:1">+ Ganho EXP s/ subcontratações</span>
-          <span style="font-family:var(--fm);color:var(--verde);font-weight:600">${fmt(ganhoSubs)}</span>
+          <span style="font-family:var(--font-mono);color:var(--verde);font-weight:600">${fmt(ganhoSubs)}</span>
         </div>`:''}
       </div>`;
     }
@@ -2923,7 +2978,7 @@ function renderHist() {
         // Revisões antigas (não latest) ficam em cinza claro — ainda clicáveis
         const rowStyle = (!isLatest) ? 'opacity:.55' : '';
         const cod = p.propCode
-          ? `<span style="font-size:10px;font-family:var(--fm);font-weight:600">EXP-${String(p.propCode).padStart(3,'0')}</span>`
+          ? `<span style="font-size:10px;font-family:var(--font-mono);font-weight:600">EXP-${String(p.propCode).padStart(3,'0')}</span>`
           : `<span style="font-size:9px;color:#aaa">#${p.id}</span>`;
         // Badge de versão: versão mais nova em azul, antigas em cinza
         const versBadge = isLatest
@@ -2949,8 +3004,8 @@ function renderHist() {
           <td>${respDisp||'—'}</td>
           <td style="font-size:10px">${escHtml(p.cidade||'')}${p.uf?' ('+escHtml(p.uf)+')':''}</td>
           <td style="font-size:10px">${fmtD(p.data)}</td>
-          <td style="font-weight:700;font-family:var(--fm)">${fmt(p.total)}</td>
-          <td style="font-weight:700;font-family:var(--fm);color:var(--verde)">${efetivo}</td>
+          <td style="font-weight:700;font-family:var(--font-mono)">${fmt(p.total)}</td>
+          <td style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${efetivo}</td>
           <td>${statusBadge}</td>
           <td class="del-col"><button class="del-prop-btn" onclick="event.stopPropagation();excluirProposta(${p.id})" title="Excluir proposta">×</button></td>
         </tr>`;
@@ -2966,8 +3021,8 @@ function renderHist() {
   document.getElementById('hist-foot').innerHTML = rows.length
     ? `<tr style="border-top:2px solid var(--cinza)">
         <td colspan="8" style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;padding:6px 8px">${nFamilias} proposta${nFamilias!==1?'s':''}</td>
-        <td style="font-weight:700;font-family:var(--fm);font-size:12px">${fmt(sumTotal)}</td>
-        <td style="font-weight:700;font-family:var(--fm);font-size:12px;color:var(--verde)">${hasEfetivo?fmt(sumEfetivo):'—'}</td>
+        <td style="font-weight:700;font-family:var(--font-mono);font-size:12px">${fmt(sumTotal)}</td>
+        <td style="font-weight:700;font-family:var(--font-mono);font-size:12px;color:var(--verde)">${hasEfetivo?fmt(sumEfetivo):'—'}</td>
         <td></td>
         <td class="del-col"></td>
       </tr>`
@@ -2999,7 +3054,7 @@ function abrirProposta(id) {
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Responsável</div><div>${respDetail||'—'}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Data</div><div>${fmtD(p.data)}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cidade</div><div>${cidadeDetail||'—'}${p.uf?' ('+ufDetail+')':''}</div></div>
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Total</div><div style="font-size:16px;font-weight:700;font-family:var(--fm)">${fmt(p.total)}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Total</div><div style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${fmt(p.total)}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Versão</div><div><span style="font-weight:700;color:var(--az)">${_verLabel(p.version||0)}</span></div></div>
   </div>`;
 
@@ -3020,7 +3075,7 @@ function abrirProposta(id) {
         ${it.desc?`<span style="color:#888;margin-left:5px">${itemDescDisp}</span>`:''}
         ${it.id?`<span style="color:#888;margin-left:5px">${itemIdDisp}</span>`:''}
       </div>
-      <div style="font-weight:700;font-family:var(--fm)">${fmt(disp)}</div>
+      <div style="font-weight:700;font-family:var(--font-mono)">${fmt(disp)}</div>
     </div>`;
   });
 
@@ -3032,7 +3087,7 @@ function abrirProposta(id) {
       const empDisp = escHtml(sc.emp||'');
       html += `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
         <div>${servDisp} <span style="color:#888">· ${empDisp}</span></div>
-        <div style="font-weight:700;color:var(--tc)">${fmt(sc.valComBit)}</div>
+        <div style="font-weight:700;color:var(--terracota)">${fmt(sc.valComBit)}</div>
       </div>`;
     });
   }
@@ -3040,7 +3095,7 @@ function abrirProposta(id) {
   // Total
   html += `<div style="background:var(--preto);color:#fff;padding:10px 13px;display:flex;justify-content:space-between;margin-top:12px">
     <span style="font-size:9px;font-weight:700;letter-spacing:1px;opacity:.6">VALOR TOTAL</span>
-    <span style="font-size:16px;font-weight:700;font-family:var(--fm)">${fmt(p.total)}</span>
+    <span style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${fmt(p.total)}</span>
   </div>`;
 
   // Histórico de versões da família
@@ -3049,11 +3104,11 @@ function abrirProposta(id) {
     family.forEach(v=>{
       const vc = v.propCode ? `EXP-${String(v.propCode).padStart(3,'0')}` : `#${v.id}`;
       html += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
-        <span style="font-family:var(--fm);font-size:10px;color:#aaa">${vc}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:#aaa">${vc}</span>
         <span style="font-weight:700;color:var(--az)">${_verLabel(v.version||0)}</span>
         <span style="color:#888">${fmtD(v.data)}</span>
         <span style="flex:1"></span>
-        <span style="font-family:var(--fm)">${fmt(v.total)}</span>
+        <span style="font-family:var(--font-mono)">${fmt(v.total)}</span>
         <span>${v.status==='revisada'?'<span class="badge-revisada">Revisada</span>':v.status==='finalizada'?'<span class="badge-bloqueada">Finalizada</span>':'<span class="badge b-vd">Ativa</span>'}</span>
       </div>`;
     });
@@ -3208,17 +3263,17 @@ function renderParams() {
   document.getElementById('cub-hist-list').innerHTML = cubHistSafe.map(h=>
     `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
       <span style="color:#888">${fmtM(h.mes)}</span>
-      <span style="font-family:var(--fm);font-weight:700;color:var(--am)">${fmt(h.val)}</span>
+      <span style="font-family:var(--font-mono);font-weight:700;color:var(--ouro)">${fmt(h.val)}</span>
       <span style="color:#bbb;font-size:10px">${h.by} · ${h.at||''}</span>
     </div>`
   ).join('') || '<div class="empty">Nenhum registro</div>';
 
   // CALC-1+2: coluna "De" agora é readonly (derivada da anterior), "Até" agora é editável
   const fRow=(f,tipo,i)=>`<div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--cinza2)">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);background:#f5f5f5;color:#888" type="text" value="${escAttr(i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':(S['f'+tipo][i-1]?.max??0)))}" placeholder="0" readonly tabindex="-1">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="number" value="${escAttr(f.max===null?'':(f.max||0))}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f)" type="text" value="${escAttr(f.label)}" onchange="S.f${tipo}[${i}].label=this.value">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--fm)" type="number" step="0.00001" value="${escAttr(f.mult)}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui);background:#f5f5f5;color:#888" type="text" value="${escAttr(i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':(S['f'+tipo][i-1]?.max??0)))}" placeholder="0" readonly tabindex="-1">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui)" type="number" value="${escAttr(f.max===null?'':(f.max||0))}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui)" type="text" value="${escAttr(f.label)}" onchange="S.f${tipo}[${i}].label=this.value">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-mono)" type="number" step="0.00001" value="${escAttr(f.mult)}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
     <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">✕</button>
   </div>`;
   document.getElementById('faixas-pais').innerHTML = S.fP.map((f,i)=>fRow(f,'P',i)).join('');
@@ -3244,7 +3299,7 @@ function renderParams() {
         <span style="font-size:11px;margin-left:4px">${x.sub}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--fm);text-align:right" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
+        <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--font-mono);text-align:right" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
         <span style="font-size:10px;color:#888">mín.</span>
       </div>
     </div>`).join('');
@@ -3405,10 +3460,10 @@ function renderEtapasEditor() {
   const soma  = dists.reduce((s,d)=>s+d,0);
 
   let html = ets.map((e,i)=>`<div class="etapa-row">
-    <input style="font-size:12px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--f);width:100%" value="${escAttr(e)}" onchange="if(!S.etapas['${n}']['${chave}'])S.etapas['${n}']['${chave}']=[...S.etapas['${n}'].default];S.etapas['${n}']['${chave}'][${i}]=this.value">
+    <input style="font-size:12px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui);width:100%" value="${escAttr(e)}" onchange="if(!S.etapas['${n}']['${chave}'])S.etapas['${n}']['${chave}']=[...S.etapas['${n}'].default];S.etapas['${n}']['${chave}'][${i}]=this.value">
     <div style="font-size:10px;color:#888;padding:4px 0">${NC[n]} / ${editEtapaChave!=='default'?editEtapaChave:'Geral'}</div>
     <div style="font-size:10px;color:#888;padding:4px 0">etapa ${i+1}</div>
-    <div style="display:flex;align-items:center;gap:3px"><input style="width:50px;font-size:11px;border:1px solid var(--cinza);padding:4px 5px;font-family:var(--fm);text-align:center" type="number" value="${escAttr(dists[i]||0)}" onchange="if(!S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}']=[...S.distEtapas['${n}'].default];S.distEtapas['${n}']['${chave}'][${i}]=parseInt(this.value)||0;renderEtapasEditor()"><span style="font-size:11px;color:#888">%</span></div>
+    <div style="display:flex;align-items:center;gap:3px"><input style="width:50px;font-size:11px;border:1px solid var(--cinza);padding:4px 5px;font-family:var(--font-mono);text-align:center" type="number" value="${escAttr(dists[i]||0)}" onchange="if(!S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}']=[...S.distEtapas['${n}'].default];S.distEtapas['${n}']['${chave}'][${i}]=parseInt(this.value)||0;renderEtapasEditor()"><span style="font-size:11px;color:#888">%</span></div>
     <button class="btn xs danger" onclick="S.etapas['${n}']['${chave}'].splice(${i},1);if(S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}'].splice(${i},1);renderEtapasEditor()">✕</button>
   </div>`).join('');
 
@@ -3432,6 +3487,11 @@ const SUPABASE_URL_NAV     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY_NAV = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 const sbNav = supabase.createClient(SUPABASE_URL_NAV, SUPABASE_ANON_KEY_NAV);
 
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('exp-theme', next);
+}
 function toggleNavDropdown() {
   document.getElementById('nav-dropdown').classList.toggle('open');
 }
@@ -3445,7 +3505,7 @@ document.addEventListener('click', e => {
     document.getElementById('user-dropdown')?.classList.remove('open');
 });
 function initNavDropdown(role) {
-  if (['socio', 'socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+  if (['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
 }
 async function sair() {
   await sbNav.auth.signOut();
