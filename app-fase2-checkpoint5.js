@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const signupClient = window.sbSignup || window.supabase.createClient(
     'https://pgnydwsjntaezdhkgvpu.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhb3AiLCJyZWYiOiJwZ255ZHdzam50YWV6ZGhrZ3ZwdSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzc1MDg5NzEzLCJleHAiOjIwOTA2NjU3MTN9.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo',
@@ -1049,42 +1049,44 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       input.value = '';
       return;
     }
-    setPlataformaStatus('Enviando avatar...');
-    const blob = await comprimirImagem(file, 240);
-    if (!blob) {
-      setPlataformaStatus('Nao foi possivel preparar a imagem do avatar.');
-      pendingAvatarUserId = null;
-      return;
-    }
-    const path = uid + '.jpg';
-    const { error: uploadError } = await window.sb.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-    if (uploadError) {
-      setPlataformaStatus('Erro ao subir avatar: ' + (uploadError.message || 'falha desconhecida') + '.');
-      pendingAvatarUserId = null;
-      return;
-    }
-    const { data } = window.sb.storage.from('avatars').getPublicUrl(path);
-    const cleanUrl = data.publicUrl + '?v=' + Date.now();
-    const { error: updateError } = await window.sb.from('usuarios').update({ avatar_url: cleanUrl }).eq('id', uid);
-    if (updateError) {
-      setPlataformaStatus('Avatar enviado, mas nao foi possivel salvar a URL: ' + (updateError.message || 'falha desconhecida') + '.');
-      pendingAvatarUserId = null;
-      return;
-    }
-    const current = currentSessionUsuario();
-    if (current?.app_user_id === uid) {
-      const usuarioAtualizado = await window.fetchCurrentUsuario(current.auth_id);
-      if (usuarioAtualizado) {
-        const payload = window.buildExpUsuarioPayload(current.auth_id, usuarioAtualizado);
-        sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
-        window.renderShellIdentity(usuarioAtualizado);
-        window.publishSessionReady(payload);
+    try {
+      setPlataformaStatus('Enviando avatar...');
+      const blob = await comprimirImagem(file, 240);
+      if (!blob) {
+        setPlataformaStatus('Nao foi possivel preparar a imagem do avatar.');
+        return;
       }
+      const path = uid + '/' + Date.now() + '.jpg';
+      const { error: uploadError } = await window.sb.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg' });
+      if (uploadError) {
+        setPlataformaStatus('Erro ao subir avatar: ' + (uploadError.message || 'falha desconhecida') + '.');
+        return;
+      }
+      const { data } = window.sb.storage.from('avatars').getPublicUrl(path);
+      const cleanUrl = data.publicUrl + '?v=' + Date.now();
+      const { error: updateError } = await window.sb.from('usuarios').update({ avatar_url: cleanUrl }).eq('id', uid);
+      if (updateError) {
+        setPlataformaStatus('Avatar enviado, mas nao foi possivel salvar a URL: ' + (updateError.message || 'falha desconhecida') + '.');
+        return;
+      }
+      const current = currentSessionUsuario();
+      if (current?.app_user_id === uid) {
+        const usuarioAtualizado = await window.fetchCurrentUsuario(current.auth_id);
+        if (usuarioAtualizado) {
+          const payload = window.buildExpUsuarioPayload(current.auth_id, usuarioAtualizado);
+          sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
+          window.renderShellIdentity(usuarioAtualizado);
+          window.publishSessionReady(payload);
+        }
+      }
+      await carregarUsuariosPlataforma();
+      setPlataformaStatus('Avatar atualizado.');
+    } catch (error) {
+      setPlataformaStatus('Falha inesperada ao enviar avatar: ' + (error?.message || 'erro desconhecido') + '.');
+    } finally {
+      pendingAvatarUserId = null;
+      input.value = '';
     }
-    await carregarUsuariosPlataforma();
-    pendingAvatarUserId = null;
-    input.value = '';
-    setPlataformaStatus('Avatar atualizado.');
   };
 
   window.enviarToolFeedback = async function enviarToolFeedback() {
