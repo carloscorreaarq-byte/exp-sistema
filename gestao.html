@@ -1190,9 +1190,32 @@ body::before {
 }
 .mh-sub { font-size:11px; color:#888; margin-top:3px; }
 .mh-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.mh-overview {
+  display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(300px, .9fr);
+  gap:14px; margin-bottom:14px; align-items:stretch;
+}
+.mh-chart-card { min-height:260px; display:flex; flex-direction:column; }
+.mh-day-chart {
+  flex:1; display:flex; align-items:flex-end; gap:4px;
+  min-height:180px; padding:6px 2px 0; overflow-x:auto;
+}
+.mh-day-col {
+  min-width:18px; display:flex; flex-direction:column; align-items:center; gap:6px;
+}
+.mh-day-bar-wrap {
+  width:100%; height:150px; display:flex; align-items:flex-end;
+}
+.mh-day-bar {
+  width:100%; min-height:2px; border-radius:6px 6px 2px 2px;
+  background:linear-gradient(180deg, #5E86D4 0%, #1D4FA0 100%);
+}
+.mh-day-bar.zero { background:var(--cinza2); opacity:.65; }
+.mh-day-lbl {
+  font-size:9px; color:#999; font-family:var(--font-mono); white-space:nowrap;
+}
 .mh-stats {
-  display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:12px; margin-bottom:14px;
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
 }
 .mh-stat {
   border:1px solid var(--cinza); border-radius:10px; background:var(--branco);
@@ -1206,9 +1229,6 @@ body::before {
   color:var(--grafite); margin-top:8px;
 }
 .mh-stat-s { font-size:10px; color:#888; margin-top:4px; }
-.mh-grid {
-  display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;
-}
 .mh-card {
   border:1px solid var(--cinza); border-radius:10px; background:var(--branco);
   padding:14px;
@@ -1221,7 +1241,46 @@ body::before {
   font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#999;
 }
 .mh-card-sub { font-size:10px; color:#888; }
-.mh-summary-list { display:flex; flex-direction:column; gap:10px; }
+.mh-type-bars { display:flex; flex-direction:column; gap:14px; }
+.mh-type-row {
+  display:grid; grid-template-columns:140px minmax(0,1fr) auto;
+  gap:10px; align-items:center;
+}
+.mh-type-name {
+  font-size:10px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#888;
+}
+.mh-type-track {
+  height:18px; border-radius:999px; overflow:hidden; display:flex; background:var(--cinza2);
+}
+.mh-type-seg {
+  height:100%; min-width:1px; border-right:1px solid rgba(255,255,255,.9);
+}
+.mh-type-seg:last-child { border-right:none; }
+.mh-type-total {
+  font-size:11px; font-family:var(--font-mono); white-space:nowrap; color:var(--grafite);
+}
+.mh-summary-panels {
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;
+}
+.mh-summary-panels.colab { grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
+.mh-panel {
+  border:1px solid var(--cinza2); border-radius:10px; overflow:hidden; background:var(--off);
+  min-height:320px; display:flex; flex-direction:column;
+}
+.mh-panel.projects-wide { grid-column:span 2; }
+.mh-panel-hd {
+  padding:11px 12px; border-bottom:1px solid var(--cinza2); background:var(--branco);
+}
+.mh-panel-k {
+  font-size:9px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#999;
+}
+.mh-panel-v {
+  font-size:11px; color:#888; margin-top:3px;
+}
+.mh-panel-body {
+  padding:10px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1;
+}
+.mh-summary-list { display:flex; flex-direction:column; gap:8px; }
 .mh-summary-row {
   border:1px solid var(--cinza2); border-radius:8px; padding:10px 12px; background:var(--off);
 }
@@ -1243,30 +1302,34 @@ body::before {
   display:block; height:100%; border-radius:inherit;
   background:linear-gradient(90deg, var(--ouro), #E7BF72);
 }
-.mh-detail-list { display:flex; flex-direction:column; gap:12px; }
-.mh-detail-block {
+.mh-day-groups { display:flex; flex-direction:column; gap:12px; }
+.mh-day-block {
   border:1px solid var(--cinza2); border-radius:10px; overflow:hidden; background:var(--branco);
 }
-.mh-detail-hd {
+.mh-day-hd {
   display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
   padding:11px 12px; background:var(--off); border-bottom:1px solid var(--cinza2);
 }
-.mh-detail-title { font-size:12px; font-weight:700; color:var(--grafite); line-height:1.35; }
-.mh-detail-sub { font-size:10px; color:#888; margin-top:3px; }
-.mh-detail-total {
+.mh-day-title { font-size:12px; font-weight:700; color:var(--grafite); line-height:1.35; }
+.mh-day-sub { font-size:10px; color:#888; margin-top:3px; }
+.mh-day-total {
   font-size:11px; font-family:var(--font-mono); white-space:nowrap; color:var(--grafite);
 }
-.mh-detail-table { width:100%; border-collapse:collapse; }
-.mh-detail-table th {
-  font-size:8px; font-weight:700; letter-spacing:.6px; text-transform:uppercase;
-  color:#999; text-align:left; padding:8px 10px; border-bottom:1px solid var(--cinza2);
-  background:var(--branco);
+.mh-day-body { display:flex; flex-direction:column; }
+.mh-day-entry {
+  display:grid; grid-template-columns:94px 110px minmax(0,1fr) 120px 88px;
+  gap:10px; align-items:center; padding:9px 12px; border-bottom:1px solid var(--cinza2);
 }
-.mh-detail-table td {
-  padding:8px 10px; border-bottom:1px solid var(--cinza2); font-size:11px; vertical-align:top;
+.mh-day-entry:last-child { border-bottom:none; }
+.mh-day-time { font-size:10px; color:#777; font-family:var(--font-mono); white-space:nowrap; }
+.mh-day-main { min-width:0; }
+.mh-day-main-1 {
+  font-size:11px; font-weight:600; color:var(--grafite); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.mh-detail-table tr:last-child td { border-bottom:none; }
-.mh-detail-table .n { text-align:right; white-space:nowrap; font-family:var(--font-mono); }
+.mh-day-main-2 {
+  font-size:10px; color:#888; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mh-day-dur { text-align:right; font-size:11px; font-family:var(--font-mono); white-space:nowrap; }
 .mh-badge {
   display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px;
   font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
@@ -1660,8 +1723,13 @@ body::before {
 @media(max-width: 900px) {
   .dash-grid { grid-template-columns: 1fr; }
   .horas-layout { grid-template-columns: 1fr; }
+  .mh-overview { grid-template-columns:1fr; }
   .mh-stats { grid-template-columns:1fr 1fr; }
-  .mh-grid { grid-template-columns:1fr; }
+  .mh-summary-panels,
+  .mh-summary-panels.colab { grid-template-columns:1fr; }
+  .mh-panel.projects-wide { grid-column:auto; }
+  .mh-type-row { grid-template-columns:1fr; }
+  .mh-day-entry { grid-template-columns:1fr; }
   .rev-layout { grid-template-columns: 1fr; }
   .proc-layout { grid-template-columns: 1fr; }
   .stat-row { grid-template-columns: repeat(4, 1fr); }
@@ -2489,60 +2557,70 @@ body::before {
       <input type="month" id="mh-mes" class="filter-select" style="font-size:11px" onchange="carregarMinhasHoras()">
       <button class="semana-nav-btn" onclick="navegarMinhasHoras(1)">›</button>
       <button class="btn sm" onclick="minhasHorasMesAtual()">Este mês</button>
-      <button class="btn-sec" style="font-size:10px;padding:4px 10px" onclick="exportarMinhasHorasPDF()">↓ PDF</button>
+      <button class="btn sm" onclick="exportarMinhasHorasPDF()">Gerar PDF</button>
     </div>
   </div>
 
-  <div class="mh-stats">
-    <div class="mh-stat">
-      <div class="mh-stat-k">Total do período</div>
-      <div class="mh-stat-v" id="mh-total-geral">—</div>
-      <div class="mh-stat-s" id="mh-total-geral-sub">—</div>
-    </div>
-    <div class="mh-stat">
-      <div class="mh-stat-k">Projetos / frentes</div>
-      <div class="mh-stat-v" id="mh-total-projetos">0</div>
-      <div class="mh-stat-s">Agrupamentos com horas no mês</div>
-    </div>
-    <div class="mh-stat">
-      <div class="mh-stat-k">Dias lançados</div>
-      <div class="mh-stat-v" id="mh-total-dias">0</div>
-      <div class="mh-stat-s">Dias com pelo menos um registro</div>
-    </div>
-    <div class="mh-stat">
-      <div class="mh-stat-k">Média por dia</div>
-      <div class="mh-stat-v" id="mh-media-dia">—</div>
-      <div class="mh-stat-s">Considerando apenas dias lançados</div>
-    </div>
-  </div>
-
-  <div class="mh-grid">
-    <div class="mh-card">
+  <div class="mh-overview">
+    <div class="mh-card mh-chart-card">
       <div class="mh-card-hd">
-        <div class="mh-card-t">Resumo por projeto</div>
-        <div class="mh-card-sub" id="mh-projetos-sub">—</div>
+        <div class="mh-card-t">Volume diário no mês</div>
+        <div class="mh-card-sub" id="mh-chart-sub">—</div>
       </div>
-      <div class="mh-summary-list" id="mh-projetos-lista">
+      <div class="mh-day-chart" id="mh-day-chart">
         <div class="loading-state">Carregando…</div>
       </div>
     </div>
-    <div class="mh-card">
-      <div class="mh-card-hd">
-        <div class="mh-card-t">Resumo por descrição</div>
-        <div class="mh-card-sub">Conteúdo similar ao relatório-resumo</div>
+    <div class="mh-stats">
+      <div class="mh-stat">
+        <div class="mh-stat-k">Total do período</div>
+        <div class="mh-stat-v" id="mh-total-geral">—</div>
+        <div class="mh-stat-s" id="mh-total-geral-sub">—</div>
       </div>
-      <div class="mh-summary-list" id="mh-descricoes-lista">
-        <div class="loading-state">Carregando…</div>
+      <div class="mh-stat">
+        <div class="mh-stat-k">Projetos / frentes</div>
+        <div class="mh-stat-v" id="mh-total-projetos">0</div>
+        <div class="mh-stat-s">Agrupamentos com horas no mês</div>
+      </div>
+      <div class="mh-stat">
+        <div class="mh-stat-k">Dias lançados</div>
+        <div class="mh-stat-v" id="mh-total-dias">0</div>
+        <div class="mh-stat-s">Dias com pelo menos um registro</div>
+      </div>
+      <div class="mh-stat">
+        <div class="mh-stat-k">Média por dia</div>
+        <div class="mh-stat-v" id="mh-media-dia">—</div>
+        <div class="mh-stat-s">Considerando apenas dias lançados</div>
       </div>
     </div>
   </div>
 
   <div class="mh-card">
     <div class="mh-card-hd">
+      <div class="mh-card-t">Composição por tipo de entrada</div>
+      <div class="mh-card-sub">Fatiamento proporcional do mês por oportunidade, organização interna e sociedade.</div>
+    </div>
+    <div class="mh-type-bars" id="mh-type-bars">
+      <div class="loading-state">Carregando…</div>
+    </div>
+  </div>
+
+  <div class="mh-card" style="margin-top:14px">
+    <div class="mh-card-hd">
+      <div class="mh-card-t">Resumo de frentes por tempo</div>
+      <div class="mh-card-sub" id="mh-projetos-sub">—</div>
+    </div>
+    <div class="mh-summary-panels" id="mh-summary-panels">
+      <div class="loading-state">Carregando…</div>
+    </div>
+  </div>
+
+  <div class="mh-card" style="margin-top:14px">
+    <div class="mh-card-hd">
       <div class="mh-card-t">Detalhamento do período</div>
       <div class="mh-card-sub" id="mh-periodo-faixa">—</div>
     </div>
-    <div class="mh-detail-list" id="mh-detalhe-lista">
+    <div class="mh-day-groups" id="mh-detalhe-lista">
       <div class="loading-state">Carregando…</div>
     </div>
   </div>
@@ -6429,23 +6507,28 @@ function mhTipoLabel(tipo) {
   return ({ projeto:'Projeto', organizacao:'Org. Interna', sociedade:'Sociedade' }[tipo] || (tipo || '—'));
 }
 
-function mhProjetoLabel(l) {
-  if (l.tipo !== 'projeto') {
-    return l.tipo === 'organizacao' ? 'Organização interna EXP - EXP' : 'Sociedade EXP - EXP';
-  }
-  const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
-  return [info.produto, info.oportunidade !== info.produto ? info.oportunidade : null, info.cliente].filter(Boolean).join(' | ');
+function mhTipoColor(tipo) {
+  return ({ projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' }[tipo] || '#888');
 }
 
-function mhAtividadeLabel(l) {
-  if (l.tipo !== 'projeto') return l.subtipo || mhTipoLabel(l.tipo);
+function mhProjetoResumoLabel(l) {
   const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
-  return info.etapa || l.etapas?.nome || 'Sem etapa';
+  return [info.oportunidade, info.cliente].filter(Boolean).join(' · ') || info.produto || 'Projeto';
 }
 
-function mhDescricaoLabel(l) {
-  const desc = (l.descricao || '').trim();
-  return desc || '(Sem descrição)';
+function mhProjetoDetalhe(l) {
+  const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
+  return {
+    projeto: info.oportunidade || info.produto || 'Projeto',
+    produto: info.produto || '—',
+    etapa: info.etapa || l.etapas?.nome || 'Sem etapa',
+    cliente: info.cliente || 'Sem cliente',
+  };
+}
+
+function mhResumoLabel(l) {
+  if (l.tipo === 'projeto') return mhProjetoResumoLabel(l);
+  return l.subtipo || mhTipoLabel(l.tipo);
 }
 
 function mhPct(valor, total) {
@@ -6454,9 +6537,12 @@ function mhPct(valor, total) {
 }
 
 function resumirMinhasHoras(horas = []) {
-  const porProjeto = new Map();
-  const porDescricao = new Map();
-  const gruposProjeto = new Map();
+  const porTipo = {
+    projeto: new Map(),
+    organizacao: new Map(),
+    sociedade: new Map(),
+  };
+  const diasMap = new Map();
   const dias = new Set();
   let total = 0;
 
@@ -6466,59 +6552,80 @@ function resumirMinhasHoras(horas = []) {
     total += dur;
     if (h.data_lancamento) dias.add(h.data_lancamento);
 
-    const projeto = mhProjetoLabel(h);
-    const descricao = mhDescricaoLabel(h);
-    const atividade = mhAtividadeLabel(h);
+    const detalheProjeto = h.tipo === 'projeto' ? mhProjetoDetalhe(h) : null;
+    const resumoLabel = mhResumoLabel(h);
     const tipoLabel = mhTipoLabel(h.tipo);
-
-    porProjeto.set(projeto, (porProjeto.get(projeto) || 0) + dur);
-    porDescricao.set(descricao, (porDescricao.get(descricao) || 0) + dur);
-
-    if (!gruposProjeto.has(projeto)) gruposProjeto.set(projeto, []);
-    gruposProjeto.get(projeto).push({
+    const desc = (h.descricao || '').trim();
+    const item = {
       data: h.data_lancamento,
       inicio: h.hora_inicio,
       fim: h.hora_fim,
       dur,
       tipo: h.tipo,
       tipoLabel,
-      atividade,
-      descricao,
-    });
+      resumoLabel,
+      projeto: detalheProjeto?.projeto || mhTipoLabel(h.tipo),
+      produto: detalheProjeto?.produto || '',
+      etapa: detalheProjeto?.etapa || '',
+      cliente: detalheProjeto?.cliente || '',
+      subtipo: h.subtipo || '',
+      descricao: desc,
+    };
+
+    if (!porTipo[h.tipo]) porTipo[h.tipo] = new Map();
+    porTipo[h.tipo].set(resumoLabel, (porTipo[h.tipo].get(resumoLabel) || 0) + dur);
+
+    if (!diasMap.has(h.data_lancamento)) diasMap.set(h.data_lancamento, []);
+    diasMap.get(h.data_lancamento).push(item);
   });
 
-  const projetos = [...porProjeto.entries()]
-    .map(([label, horas]) => ({ label, horas, pct: total ? (horas / total) * 100 : 0 }))
-    .sort((a, b) => b.horas - a.horas || a.label.localeCompare(b.label, 'pt-BR'));
+  const typeBuckets = Object.fromEntries(
+    Object.entries(porTipo).map(([tipo, map]) => {
+      const items = [...map.entries()]
+        .map(([label, horas]) => ({
+          label,
+          horas,
+          pct: map.size ? (horas / [...map.values()].reduce((s, v) => s + v, 0)) * 100 : 0,
+        }))
+        .sort((a, b) => b.horas - a.horas || a.label.localeCompare(b.label, 'pt-BR'));
+      return [tipo, {
+        tipo,
+        label: mhTipoLabel(tipo),
+        color: mhTipoColor(tipo),
+        total: items.reduce((s, item) => s + item.horas, 0),
+        items,
+      }];
+    })
+  );
 
-  const descricoes = [...porDescricao.entries()]
-    .map(([label, horas]) => ({ label, horas, pct: total ? (horas / total) * 100 : 0 }))
-    .sort((a, b) => b.horas - a.horas || a.label.localeCompare(b.label, 'pt-BR'));
-
-  const grupos = [...gruposProjeto.entries()]
-    .map(([label, itens]) => ({
-      label,
-      horas: itens.reduce((s, item) => s + item.dur, 0),
+  const detalhesPorDia = [...diasMap.entries()]
+    .map(([data, itens]) => ({
+      data,
+      total: itens.reduce((s, item) => s + item.dur, 0),
       itens: itens.sort((a, b) =>
         (a.data || '').localeCompare(b.data || '') ||
         (a.inicio || '').localeCompare(b.inicio || '')
       ),
     }))
-    .sort((a, b) => b.horas - a.horas || a.label.localeCompare(b.label, 'pt-BR'));
+    .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 
   return {
     total,
     lancamentos: (horas || []).length,
     diasAtivos: dias.size,
     mediaDia: dias.size ? total / dias.size : 0,
-    projetos,
-    descricoes,
-    grupos,
+    totalFrentes:
+      (typeBuckets.projeto?.items.length || 0) +
+      (typeBuckets.organizacao?.items.length || 0) +
+      (typeBuckets.sociedade?.items.length || 0),
+    porTipo: typeBuckets,
+    detalhesPorDia,
   };
 }
 
-function renderMhResumoLista(lista, total, emptyText) {
+function renderMhResumoLista(lista, total, tipo, emptyText) {
   if (!lista.length) return `<div class="empty-note">${emptyText}</div>`;
+  const cor = mhTipoColor(tipo);
   return lista.map(item => `
     <div class="mh-summary-row">
       <div class="mh-summary-top">
@@ -6529,46 +6636,111 @@ function renderMhResumoLista(lista, total, emptyText) {
         <span>${fmtHLong(item.horas)}</span>
         <span>${mhPct(item.horas, total)}</span>
       </div>
-      <div class="mh-summary-bar"><span style="width:${Math.max(item.pct, item.horas > 0 ? 4 : 0)}%"></span></div>
+      <div class="mh-summary-bar"><span style="width:${Math.max(item.pct, item.horas > 0 ? 4 : 0)}%;background:${cor}"></span></div>
     </div>
   `).join('');
 }
 
-function renderMhDetalhe(grupos = []) {
-  if (!grupos.length) return '<div class="empty-note">Nenhum lançamento encontrado para este mês.</div>';
-  return grupos.map(grupo => `
-    <div class="mh-detail-block">
-      <div class="mh-detail-hd">
-        <div>
-          <div class="mh-detail-title">${_escN(grupo.label)}</div>
-          <div class="mh-detail-sub">${grupo.itens.length} lançamento(s) no período</div>
-        </div>
-        <div class="mh-detail-total">${fmtHClock(grupo.horas)}</div>
+function renderMhDayChart(dataset) {
+  const { ini, fim, resumo } = dataset;
+  const dias = [];
+  const diaMap = new Map((resumo.detalhesPorDia || []).map(d => [d.data, d.total]));
+  const dt = new Date(ini + 'T12:00:00');
+  const fimDt = new Date(fim + 'T12:00:00');
+  while (dt <= fimDt) {
+    const iso = dt.toISOString().split('T')[0];
+    dias.push({ iso, dia: dt.getDate(), horas: diaMap.get(iso) || 0 });
+    dt.setDate(dt.getDate() + 1);
+  }
+  const max = Math.max(...dias.map(d => d.horas), 0);
+  return dias.map(d => {
+    const pct = max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5;
+    const zeroCls = d.horas <= 0 ? 'zero' : '';
+    const title = `${fmtDate(d.iso)} · ${fmtHClock(d.horas)}`;
+    return `<div class="mh-day-col" title="${_escAttrN(title)}">
+      <div class="mh-day-bar-wrap">
+        <div class="mh-day-bar ${zeroCls}" style="height:${pct}%"></div>
       </div>
-      <table class="mh-detail-table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Horário</th>
-            <th>Duração</th>
-            <th>Tipo</th>
-            <th>Atividade</th>
-            <th>Descrição</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${grupo.itens.map(item => `
-            <tr>
-              <td>${fmtDate(item.data, true)}</td>
-              <td>${_escN((item.inicio || '').slice(0,5))}–${_escN((item.fim || '').slice(0,5))}</td>
-              <td class="n">${fmtHClock(item.dur)}</td>
-              <td><span class="mh-badge ${_escN(item.tipo)}">${_escN(item.tipoLabel)}</span></td>
-              <td>${_escN(item.atividade)}</td>
-              <td>${_escN(item.descricao)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="mh-day-lbl">${String(d.dia).padStart(2,'0')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMhTypeBars(resumo) {
+  const tipos = ['projeto', 'organizacao', 'sociedade']
+    .map(tipo => resumo.porTipo[tipo])
+    .filter(bucket => bucket && bucket.total > 0);
+  if (!tipos.length) return '<div class="empty-note">Sem horas lançadas no período.</div>';
+
+  return tipos.map(bucket => `
+    <div class="mh-type-row">
+      <div class="mh-type-name">${_escN(bucket.label)}</div>
+      <div class="mh-type-track">
+        ${bucket.items.map((item, idx) => `
+          <div class="mh-type-seg"
+            style="width:${Math.max(item.pct, item.horas > 0 ? 2 : 0)}%;background:${bucket.color};opacity:${Math.max(.45, 1 - idx * .06)}"
+            title="${_escAttrN(item.label)} · ${fmtHClock(item.horas)} · ${mhPct(item.horas, bucket.total)}"></div>
+        `).join('')}
+      </div>
+      <div class="mh-type-total">${fmtHClock(bucket.total)}</div>
+    </div>
+  `).join('');
+}
+
+function renderMhSummaryPanels(resumo) {
+  const proj = resumo.porTipo.projeto || { total:0, items:[] };
+  const org  = resumo.porTipo.organizacao || { total:0, items:[] };
+  const soc  = resumo.porTipo.sociedade || { total:0, items:[] };
+  const temSoc = soc.items.length > 0;
+
+  const panel = (titulo, bucket, tipo, extraClass = '') => `
+    <div class="mh-panel ${extraClass}">
+      <div class="mh-panel-hd">
+        <div class="mh-panel-k">${_escN(titulo)}</div>
+        <div class="mh-panel-v">${fmtHClock(bucket.total)} · ${bucket.items.length} frente(s)</div>
+      </div>
+      <div class="mh-panel-body">
+        <div class="mh-summary-list">
+          ${renderMhResumoLista(bucket.items, bucket.total, tipo, 'Sem horas neste bloco.')}
+        </div>
+      </div>
+    </div>`;
+
+  return {
+    classes: temSoc ? 'mh-summary-panels' : 'mh-summary-panels colab',
+    html: `
+      ${panel('Projetos', proj, 'projeto', temSoc ? '' : 'projects-wide')}
+      ${panel('Organização interna', org, 'organizacao')}
+      ${temSoc ? panel('Sociedade', soc, 'sociedade') : ''}
+    `
+  };
+}
+
+function renderMhDetalhe(dias = []) {
+  if (!dias.length) return '<div class="empty-note">Nenhum lançamento encontrado para este mês.</div>';
+  return dias.map(dia => `
+    <div class="mh-day-block">
+      <div class="mh-day-hd">
+        <div>
+          <div class="mh-day-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
+          <div class="mh-day-sub">${dia.itens.length} lançamento(s) no dia</div>
+        </div>
+        <div class="mh-day-total">${fmtHClock(dia.total)}</div>
+      </div>
+      <div class="mh-day-body">
+        ${dia.itens.map(item => `
+          <div class="mh-day-entry">
+            <div class="mh-day-time">${_escN((item.inicio || '').slice(0,5))} — ${_escN((item.fim || '').slice(0,5))}</div>
+            <div><span class="mh-badge ${_escN(item.tipo)}">${_escN(item.tipoLabel)}</span></div>
+            <div class="mh-day-main">
+              <div class="mh-day-main-1">${_escN(item.projeto)}</div>
+              <div class="mh-day-main-2">${item.tipo === 'projeto' ? _escN(item.cliente || item.produto) : _escN(item.descricao || '—')}</div>
+            </div>
+            <div class="mh-day-main-2">${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</div>
+            <div class="mh-day-dur">${fmtHClock(item.dur)}</div>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `).join('');
 }
@@ -6577,14 +6749,19 @@ function renderMinhasHorasResumo(dataset) {
   const { ini, fim, mesNome, resumo } = dataset;
   document.getElementById('mh-total-geral').textContent = fmtHClock(resumo.total);
   document.getElementById('mh-total-geral-sub').textContent = `${fmtHLong(resumo.total)} · ${mesNome}`;
-  document.getElementById('mh-total-projetos').textContent = String(resumo.projetos.length).padStart(2, '0');
+  document.getElementById('mh-total-projetos').textContent = String(resumo.totalFrentes).padStart(2, '0');
   document.getElementById('mh-total-dias').textContent = String(resumo.diasAtivos).padStart(2, '0');
   document.getElementById('mh-media-dia').textContent = resumo.diasAtivos ? fmtHClock(resumo.mediaDia) : '—';
   document.getElementById('mh-projetos-sub').textContent = `${resumo.lancamentos} lançamento(s) no período`;
   document.getElementById('mh-periodo-faixa').textContent = `${fmtDate(ini)} — ${fmtDate(fim)}`;
-  document.getElementById('mh-projetos-lista').innerHTML = renderMhResumoLista(resumo.projetos, resumo.total, 'Sem horas lançadas neste mês.');
-  document.getElementById('mh-descricoes-lista').innerHTML = renderMhResumoLista(resumo.descricoes, resumo.total, 'Sem descrições registradas neste mês.');
-  document.getElementById('mh-detalhe-lista').innerHTML = renderMhDetalhe(resumo.grupos);
+  document.getElementById('mh-chart-sub').textContent = `${resumo.diasAtivos} dia(s) lançados · pico diário ${fmtHClock(Math.max(...(resumo.detalhesPorDia || []).map(d => d.total), 0))}`;
+  document.getElementById('mh-day-chart').innerHTML = renderMhDayChart(dataset);
+  document.getElementById('mh-type-bars').innerHTML = renderMhTypeBars(resumo);
+  const summaryPanels = renderMhSummaryPanels(resumo);
+  const summaryWrap = document.getElementById('mh-summary-panels');
+  summaryWrap.className = summaryPanels.classes;
+  summaryWrap.innerHTML = summaryPanels.html;
+  document.getElementById('mh-detalhe-lista').innerHTML = renderMhDetalhe(resumo.detalhesPorDia);
 }
 
 async function obterMinhasHorasMes(ym) {
@@ -6610,8 +6787,9 @@ async function obterMinhasHorasMes(ym) {
 
 async function carregarMinhasHoras() {
   const ym = garantirMesMinhasHoras();
-  document.getElementById('mh-projetos-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
-  document.getElementById('mh-descricoes-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('mh-day-chart').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('mh-type-bars').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('mh-summary-panels').innerHTML = '<div class="loading-state">Carregando…</div>';
   document.getElementById('mh-detalhe-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
   try {
     const dataset = await obterMinhasHorasMes(ym);
@@ -6619,8 +6797,9 @@ async function carregarMinhasHoras() {
     renderMinhasHorasResumo(dataset);
   } catch (err) {
     const msg = 'Erro ao carregar horas: ' + (err?.message || err || 'desconhecido');
-    document.getElementById('mh-projetos-lista').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
-    document.getElementById('mh-descricoes-lista').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
+    document.getElementById('mh-day-chart').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
+    document.getElementById('mh-type-bars').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
+    document.getElementById('mh-summary-panels').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
     document.getElementById('mh-detalhe-lista').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
   }
 }
@@ -6631,49 +6810,84 @@ async function exportarMinhasHorasPDF() {
   if (!dataset || dataset.ym !== ym) dataset = await obterMinhasHorasMes(ym);
 
   const { mesNome, ini, fim, resumo } = dataset;
-  const projetoRows = resumo.projetos.length
-    ? resumo.projetos.map(item => `
-      <tr>
-        <td>${_escN(item.label)}</td>
-        <td class="n">${fmtHClock(item.horas)}</td>
-        <td class="n">${mhPct(item.horas, resumo.total)}</td>
-      </tr>
-    `).join('')
-    : '<tr><td colspan="3">Sem horas lançadas no período.</td></tr>';
+  const generatedAt = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const porDiaMap = new Map((resumo.detalhesPorDia || []).map(d => [d.data, d.total]));
+  const dayBars = (() => {
+    const dias = [];
+    const dt = new Date(ini + 'T12:00:00');
+    const fimDt = new Date(fim + 'T12:00:00');
+    while (dt <= fimDt) {
+      const iso = dt.toISOString().split('T')[0];
+      dias.push({ iso, dia: dt.getDate(), horas: porDiaMap.get(iso) || 0 });
+      dt.setDate(dt.getDate() + 1);
+    }
+    const max = Math.max(...dias.map(d => d.horas), 0);
+    return dias.map(d => `
+      <div class="day-col">
+        <div class="day-wrap"><div class="day-bar ${d.horas <= 0 ? 'zero' : ''}" style="height:${max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5}%"></div></div>
+        <div class="day-lbl">${String(d.dia).padStart(2,'0')}</div>
+      </div>
+    `).join('');
+  })();
 
-  const descricaoRows = resumo.descricoes.length
-    ? resumo.descricoes.map(item => `
-      <tr>
-        <td>${_escN(item.label)}</td>
-        <td class="n">${fmtHClock(item.horas)}</td>
-        <td class="n">${mhPct(item.horas, resumo.total)}</td>
-      </tr>
-    `).join('')
-    : '<tr><td colspan="3">Sem descrições lançadas no período.</td></tr>';
+  const tipoRows = ['projeto', 'organizacao', 'sociedade']
+    .map(tipo => resumo.porTipo[tipo])
+    .filter(bucket => bucket && bucket.total > 0)
+    .map(bucket => `
+      <div class="type-row">
+        <div class="type-name">${_escN(bucket.label)}</div>
+        <div class="type-track">
+          ${bucket.items.map((item, idx) => `
+            <div class="type-seg" style="width:${Math.max(item.pct, item.horas > 0 ? 2 : 0)}%;background:${bucket.color};opacity:${Math.max(.45, 1 - idx * .06)}"></div>
+          `).join('')}
+        </div>
+        <div class="type-total">${fmtHClock(bucket.total)}</div>
+      </div>
+    `).join('');
 
-  const blocos = resumo.grupos.length
-    ? resumo.grupos.map(grupo => `
+  const bucketTable = (titulo, bucket) => `
+    <div class="panel">
+      <div class="panel-hd">${_escN(titulo)}</div>
+      <table>
+        <thead><tr><th>Item</th><th class="n">Duração</th><th class="n">%</th></tr></thead>
+        <tbody>
+          ${bucket.items.length
+            ? bucket.items.map(item => `<tr><td>${_escN(item.label)}</td><td class="n">${fmtHClock(item.horas)}</td><td class="n">${mhPct(item.horas, bucket.total)}</td></tr>`).join('')
+            : '<tr><td colspan="3">Sem horas neste bloco.</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+
+  const proj = resumo.porTipo.projeto || { total:0, items:[] };
+  const org = resumo.porTipo.organizacao || { total:0, items:[] };
+  const soc = resumo.porTipo.sociedade || { total:0, items:[] };
+  const resumoHtml = soc.items.length
+    ? `<div class="summary-grid">${bucketTable('Projetos', proj)}${bucketTable('Organização interna', org)}${bucketTable('Sociedade', soc)}</div>`
+    : `<div class="summary-grid colab">${bucketTable('Projetos', proj)}${bucketTable('Organização interna', org)}</div>`;
+
+  const blocos = resumo.detalhesPorDia.length
+    ? resumo.detalhesPorDia.map(dia => `
       <div class="block">
         <div class="block-hd">
           <div>
-            <div class="block-title">${_escN(grupo.label)}</div>
-            <div class="block-sub">${grupo.itens.length} lançamento(s)</div>
+            <div class="block-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
+            <div class="block-sub">${dia.itens.length} lançamento(s) no dia</div>
           </div>
-          <div class="block-total">${fmtHClock(grupo.horas)}</div>
+          <div class="block-total">${fmtHClock(dia.total)}</div>
         </div>
         <table class="detail">
           <thead>
-            <tr><th>Data</th><th>Horário</th><th>Duração</th><th>Tipo</th><th>Atividade</th><th>Descrição</th></tr>
+            <tr><th>Início</th><th>Fim</th><th>Tipo</th><th>Projeto</th><th>Etapa / subtipo</th><th>Duração</th></tr>
           </thead>
           <tbody>
-            ${grupo.itens.map(item => `
+            ${dia.itens.map(item => `
               <tr>
-                <td>${fmtDate(item.data, true)}</td>
-                <td>${_escN((item.inicio || '').slice(0,5))}–${_escN((item.fim || '').slice(0,5))}</td>
-                <td class="n">${fmtHClock(item.dur)}</td>
+                <td>${_escN((item.inicio || '').slice(0,5))}</td>
+                <td>${_escN((item.fim || '').slice(0,5))}</td>
                 <td>${_escN(item.tipoLabel)}</td>
-                <td>${_escN(item.atividade)}</td>
-                <td>${_escN(item.descricao)}</td>
+                <td>${_escN(item.projeto)}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</td>
+                <td class="n">${fmtHClock(item.dur)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -6688,6 +6902,7 @@ async function exportarMinhasHorasPDF() {
   body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#262626;padding:28px 32px;background:#fff}
   .brand{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;padding-bottom:16px;border-bottom:3px solid #C4831A}
   .brand-mark{font-size:22px;font-weight:800;letter-spacing:.08em;color:#1E1E1E}
+  .collab-name{font-size:24px;font-weight:700;color:#1E1E1E;line-height:1.1;margin-top:8px}
   .brand-sub{font-size:10px;color:#888;margin-top:4px}
   .hero{display:grid;grid-template-columns:1.3fr .7fr;gap:16px;margin-bottom:18px}
   .hero-card,.hero-total{border:1px solid #ddd;border-radius:12px;padding:14px 16px}
@@ -6698,7 +6913,22 @@ async function exportarMinhasHorasPDF() {
   .mini{background:#faf8f4;border:1px solid #ece6da;border-radius:10px;padding:10px}
   .mini .k{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#999}
   .mini .v{font-size:16px;font-weight:700;font-family:Menlo,Consolas,monospace;margin-top:6px}
-  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+  .day-chart{display:flex;align-items:flex-end;gap:4px;height:180px;margin-top:14px}
+  .day-col{min-width:16px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .day-wrap{width:100%;height:145px;display:flex;align-items:flex-end}
+  .day-bar{width:100%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#5E86D4 0%, #1D4FA0 100%)}
+  .day-bar.zero{background:#ececec}
+  .day-lbl{font-size:8px;color:#999;font-family:Menlo,Consolas,monospace}
+  .type-box{border:1px solid #ddd;border-radius:12px;padding:14px 16px;margin-bottom:18px}
+  .type-row{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;margin-bottom:10px}
+  .type-row:last-child{margin-bottom:0}
+  .type-name{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888}
+  .type-track{height:16px;background:#ececec;border-radius:999px;overflow:hidden;display:flex}
+  .type-seg{height:100%;min-width:1px;border-right:1px solid rgba(255,255,255,.9)}
+  .type-seg:last-child{border-right:none}
+  .type-total{font-size:11px;font-family:Menlo,Consolas,monospace;white-space:nowrap}
+  .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+  .summary-grid.colab{grid-template-columns:2fr 1fr}
   .panel{border:1px solid #ddd;border-radius:12px;overflow:hidden}
   .panel-hd{padding:10px 14px;background:#1E1E1E;color:#fff;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
   table{width:100%;border-collapse:collapse}
@@ -6719,36 +6949,34 @@ async function exportarMinhasHorasPDF() {
   <div class="brand">
     <div>
       <div class="brand-mark">EXP</div>
-      <div class="brand-sub">Relatório mensal individual de horas · ${_escN(G.usuario?.nome || '')}</div>
+      <div class="collab-name">${_escN(G.usuario?.nome || '')}</div>
+      <div class="brand-sub">Relatório mensal individual de horas</div>
     </div>
-    <div class="brand-sub">Período: ${fmtDate(ini)} — ${fmtDate(fim)}<br>Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+    <div class="brand-sub">Período: ${fmtDate(ini)} — ${fmtDate(fim)}<br>Gerado em ${generatedAt}</div>
   </div>
   <div class="hero">
     <div class="hero-card">
-      <div class="hero-k">Resumo por projeto</div>
-      <div class="hero-s">Conteúdo espelhado do relatório-resumo de referência, com identidade visual da EXP.</div>
-      <div class="hero-grid">
-        <div class="mini"><div class="k">Projetos / frentes</div><div class="v">${String(resumo.projetos.length).padStart(2,'0')}</div></div>
-        <div class="mini"><div class="k">Dias lançados</div><div class="v">${String(resumo.diasAtivos).padStart(2,'0')}</div></div>
-        <div class="mini"><div class="k">Média por dia</div><div class="v">${resumo.diasAtivos ? fmtHClock(resumo.mediaDia) : '—'}</div></div>
-      </div>
+      <div class="hero-k">Volume diário no mês</div>
+      <div class="hero-s">${resumo.diasAtivos} dia(s) com registros · ${mesNome}</div>
+      <div class="day-chart">${dayBars}</div>
     </div>
     <div class="hero-total">
       <div class="hero-k">Total do período</div>
       <div class="hero-v">${fmtHClock(resumo.total)}</div>
-      <div class="hero-s">${fmtHLong(resumo.total)} · ${_escN(mesNome)}</div>
+      <div class="hero-s">${fmtHLong(resumo.total)} · gerado em ${generatedAt}</div>
+      <div class="hero-grid">
+        <div class="mini"><div class="k">Projetos / frentes</div><div class="v">${String(resumo.totalFrentes).padStart(2,'0')}</div></div>
+        <div class="mini"><div class="k">Dias lançados</div><div class="v">${String(resumo.diasAtivos).padStart(2,'0')}</div></div>
+        <div class="mini"><div class="k">Média por dia</div><div class="v">${resumo.diasAtivos ? fmtHClock(resumo.mediaDia) : '—'}</div></div>
+      </div>
     </div>
   </div>
-  <div class="twocol">
-    <div class="panel">
-      <div class="panel-hd">Resumo por projeto</div>
-      <table><thead><tr><th>Projeto</th><th class="n">Duração</th><th class="n">%</th></tr></thead><tbody>${projetoRows}</tbody></table>
-    </div>
-    <div class="panel">
-      <div class="panel-hd">Resumo por descrição</div>
-      <table><thead><tr><th>Descrição</th><th class="n">Duração</th><th class="n">%</th></tr></thead><tbody>${descricaoRows}</tbody></table>
-    </div>
+  <div class="type-box">
+    <div class="hero-k">Composição por tipo de entrada</div>
+    <div class="hero-s" style="margin-bottom:12px">Fatiamento proporcional por oportunidade, organização interna e sociedade.</div>
+    ${tipoRows || '<div class="empty">Sem horas lançadas no período.</div>'}
   </div>
+  ${resumoHtml}
   <div class="section-title">Detalhamento do período</div>
   ${blocos}
   </body></html>`;
