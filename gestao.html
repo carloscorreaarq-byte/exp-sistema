@@ -599,8 +599,8 @@ body::before {
 .ck-item-act:hover{color:#666}
 .ck-item-act.tc:hover{color:#e05}
 .ck-item-act.tc{color:#e05}
-.ck-item-act.tm{font-size:12px;color:var(--azul);padding:0 1px}
-.ck-item-act.tm:hover{color:var(--verde)}
+.ck-item-act.tm{font-size:13px;color:#c2c8d1;padding:0 1px}
+.ck-item-act.tm:hover{color:#9aa4b2}
 .ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--azul);outline:none;padding:0;background:transparent;font-family:var(--font-ui);color:inherit;line-height:1.5}
 .ck-empty{font-size:11px;color:#ccc;padding:8px 0}
 .ck-atrib{display:flex;align-items:center;gap:5px;font-size:10px;color:#666;padding:4px 12px;background:var(--off);border-top:1px solid var(--cinza2)}
@@ -1560,14 +1560,22 @@ body::before {
 .tarefa-check.done::after { content: '✓'; font-size: 10px; color: #fff; font-weight: 700; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
-.tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.tarefa-item-tools{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .tarefa-tool-btn{
-  width:22px;height:22px;border:1px solid var(--cinza);border-radius:6px;
-  background:var(--branco);color:var(--azul);display:flex;align-items:center;justify-content:center;
-  cursor:pointer;transition:border-color .15s,color .15s,background .15s;flex-shrink:0
+  background:none;border:none;color:#c2c8d1;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:color .15s,opacity .15s;flex-shrink:0;padding:0;font-size:14px;line-height:1;opacity:.8
 }
-.tarefa-tool-btn:hover{border-color:var(--azul);background:var(--az-bg);color:var(--verde)}
+.tarefa-tool-btn:hover{color:#9aa4b2;opacity:1}
 .tarefa-tool-btn:disabled{opacity:.5;cursor:default}
+.tm-view-link{
+  background:none;border:none;padding:0;color:var(--azul);font-size:11px;font-weight:700;
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px
+}
+.tm-view-link:hover{color:var(--verde)}
+.tm-count-badge{
+  min-width:16px;height:16px;border-radius:999px;background:var(--az-bg);color:var(--azul);
+  display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;padding:0 4px
+}
 .tarefa-inline-form { padding: 6px 0 4px; }
 .tarefa-inline-ta { width: 100%; box-sizing: border-box; border: 1px solid var(--cinza); border-radius: 6px; padding: 7px 10px; font-size: 12px; font-family: var(--font-ui); resize: none; outline: none; line-height: 1.5; }
 .tarefa-inline-ta:focus { border-color: var(--azul); }
@@ -1578,6 +1586,9 @@ body::before {
 }
 .tm-upload-status{font-size:11px;color:#666;min-height:16px}
 .tm-upload-hint{font-size:11px;color:#888;line-height:1.5}
+.tm-view-stage{min-height:320px;display:flex;align-items:center;justify-content:center;background:var(--off);border-radius:10px;border:1px solid var(--cinza2);overflow:hidden}
+.tm-view-stage img{max-width:100%;max-height:70vh;display:block}
+.tm-view-meta{font-size:11px;color:#777}
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    VISÃO SÓCIOS
@@ -3602,7 +3613,7 @@ body::before {
 <div class="modal-bg" id="modal-temp-media-upload" style="display:none">
   <div class="modal">
     <div class="modal-hd">
-      <div class="modal-hd-title">Anexar print</div>
+      <div class="modal-hd-title">Anexar imagem de apoio</div>
       <button class="modal-close" onclick="fecharTempMediaUpload()">×</button>
     </div>
     <div class="modal-body">
@@ -3618,6 +3629,30 @@ body::before {
     </div>
     <div class="modal-ft">
       <button class="btn" type="button" onclick="fecharTempMediaUpload()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-temp-media-viewer" style="display:none">
+  <div class="modal lg">
+    <div class="modal-hd">
+      <div class="modal-hd-title">Imagem de apoio</div>
+      <button class="modal-close" onclick="fecharTempMediaViewer()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;font-weight:700;margin-bottom:4px" id="tm-view-title">Anexo</div>
+      <div class="tm-view-meta" id="tm-view-meta">Carregando anexo…</div>
+      <div class="tm-view-stage" style="margin-top:12px">
+        <img id="tm-view-image" alt="Imagem de apoio" style="display:none">
+        <div id="tm-view-empty" style="font-size:11px;color:#999">Carregando imagem…</div>
+      </div>
+    </div>
+    <div class="modal-ft" style="justify-content:space-between">
+      <div style="display:flex;gap:8px">
+        <button class="btn sm" type="button" id="tm-prev-btn" onclick="moverTempMediaViewer(-1)">Anterior</button>
+        <button class="btn sm" type="button" id="tm-next-btn" onclick="moverTempMediaViewer(1)">Próxima</button>
+      </div>
+      <button class="btn" type="button" onclick="fecharTempMediaViewer()">Fechar</button>
     </div>
   </div>
 </div>
@@ -3666,6 +3701,10 @@ let G = {
   _tempMediaConfig: null,
   _tempMediaDraft: null,
   _tempMediaBusy: false,
+  _tempMediaCounts: {},
+  _tempMediaLists: {},
+  _tempMediaViewer: null,
+  _tempMediaObjectUrl: null,
 };
 
 // ── Configurações ───────────────────────────────────────────
@@ -7369,6 +7408,10 @@ async function selecionarRevisao(id) {
   ]);
 
   const pranchas = respPranchas.data || [];
+  await carregarTempMediaCounts(
+    'revisao_tarefa',
+    pranchas.flatMap(pr => (pr.tarefas_revisao || []).map(t => t.id))
+  );
   const comentarios = respComentarios.error ? [] : (respComentarios.data || []);
   const mensagens = respMensagens.error ? [] : (respMensagens.data || []);
   G._comentariosRevisao = comentarios;
@@ -7465,13 +7508,20 @@ function renderPrancha(pr, isSocioOrCoord) {
         ${(pr.tarefas_revisao || []).map(t => {
           const tarefaIdJs = _sqN(t.id);
           const tarefaTituloJs = _sqN(`Tarefa de revisão · ${t.descricao}`);
+          const mediaCount = tempMediaCount('revisao_tarefa', t.id);
+          const mediaViewBtn = mediaCount
+            ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
+            : '';
           return `
           <div class="tarefa-item">
             <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
                  ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${pr.id}')"` : 'title="Apenas o coordenador ou desenvolvedor do projeto pode marcar"'}
                  style="${isSocioOrCoord ? '' : 'cursor:default;opacity:.6'}"></div>
             <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
-            ${isSocioOrCoord ? `<div class="tarefa-item-tools"><button class="tarefa-tool-btn" type="button" title="Anexar print" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">🖼</button></div>` : ''}
+            <div class="tarefa-item-tools">
+              ${mediaViewBtn}
+              ${isSocioOrCoord ? `<button class="tarefa-tool-btn" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">📷</button>` : ''}
+            </div>
           </div>
         `;
         }).join('')}
@@ -10225,10 +10275,10 @@ function abrirTempMediaUpload(contextoTipo, contextoId, titulo) {
   G._tempMediaDraft = {
     contextoTipo,
     contextoId,
-    titulo: titulo || 'Anexo temporário',
+    titulo: titulo || 'Anexar imagem de apoio',
   };
   const modal = document.getElementById('modal-temp-media-upload');
-  document.getElementById('tm-upload-title').textContent = titulo || 'Anexo temporário';
+  document.getElementById('tm-upload-title').textContent = titulo || 'Anexar imagem de apoio';
   document.getElementById('tm-upload-context').textContent = 'Anexar ou colar print de tela para este item.';
   setTempMediaStatus('Pronto para receber imagem.');
   if (modal) modal.style.display = 'flex';
@@ -10247,6 +10297,57 @@ function fecharTempMediaUpload() {
 function setTempMediaStatus(msg) {
   const el = document.getElementById('tm-upload-status');
   if (el) el.textContent = msg;
+}
+
+function tempMediaKey(contextoTipo, contextoId) {
+  return `${String(contextoTipo || '').toLowerCase()}:${String(contextoId || '')}`;
+}
+
+function tempMediaCount(contextoTipo, contextoId) {
+  return G._tempMediaCounts[tempMediaKey(contextoTipo, contextoId)] || 0;
+}
+
+async function carregarTempMediaCounts(contextoTipo, contextoIds) {
+  const ids = [...new Set((contextoIds || []).filter(Boolean))];
+  if (!ids.length) return;
+  ids.forEach(id => { G._tempMediaCounts[tempMediaKey(contextoTipo, id)] = 0; });
+
+  const { data, error } = await sb
+    .from('gestao_anexos_temporarios')
+    .select('contexto_id')
+    .eq('contexto_tipo', contextoTipo)
+    .in('contexto_id', ids)
+    .is('removido_em', null)
+    .gt('expires_at', new Date().toISOString());
+
+  if (error || !data) return;
+  data.forEach(row => {
+    const key = tempMediaKey(contextoTipo, row.contexto_id);
+    G._tempMediaCounts[key] = (G._tempMediaCounts[key] || 0) + 1;
+  });
+}
+
+async function carregarTempMediaLista(contextoTipo, contextoId, force = false) {
+  const key = tempMediaKey(contextoTipo, contextoId);
+  if (!force && Array.isArray(G._tempMediaLists[key])) return G._tempMediaLists[key];
+
+  const { data, error } = await sb
+    .from('gestao_anexos_temporarios')
+    .select('id,storage_path,created_at,mime_type')
+    .eq('contexto_tipo', contextoTipo)
+    .eq('contexto_id', contextoId)
+    .is('removido_em', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: true });
+
+  G._tempMediaLists[key] = error ? [] : (data || []);
+  G._tempMediaCounts[key] = G._tempMediaLists[key].length;
+  return G._tempMediaLists[key];
+}
+
+function marcarTempMediaContextoAlterado(contextoTipo, contextoId) {
+  const key = tempMediaKey(contextoTipo, contextoId);
+  delete G._tempMediaLists[key];
 }
 
 function escolherArquivoTempMedia() {
@@ -10325,8 +10426,17 @@ async function subirTempMediaArquivo(file) {
       throw metaError;
     }
 
+    marcarTempMediaContextoAlterado(draft.contextoTipo, draft.contextoId);
+    G._tempMediaCounts[tempMediaKey(draft.contextoTipo, draft.contextoId)] =
+      (G._tempMediaCounts[tempMediaKey(draft.contextoTipo, draft.contextoId)] || 0) + 1;
+
     setTempMediaStatus('Imagem anexada com sucesso.');
     toast('Print anexado.');
+    if (draft.contextoTipo === 'revisao_tarefa' && G._revisaoAtiva) {
+      selecionarRevisao(G._revisaoAtiva);
+    } else if (draft.contextoTipo === 'checklist_etapa_exec_item' && G.produtoAtivo) {
+      _renderCkEtapas(G.produtoAtivo);
+    }
     fecharTempMediaUpload();
   } catch (error) {
     const msg = error?.message || 'Falha ao anexar a imagem.';
@@ -10437,6 +10547,86 @@ function rasterizarTempMedia(img, larguraMax, qualidade, mimeType) {
       });
     }, mimeType, qualidade);
   });
+}
+
+async function abrirTempMediaViewer(contextoTipo, contextoId, titulo) {
+  const items = await carregarTempMediaLista(contextoTipo, contextoId, true);
+  if (!items.length) {
+    toast('Nenhuma imagem de apoio neste item.');
+    return;
+  }
+  G._tempMediaViewer = {
+    contextoTipo,
+    contextoId,
+    titulo: titulo || 'Imagem de apoio',
+    index: 0,
+    items,
+  };
+  document.getElementById('modal-temp-media-viewer').style.display = 'flex';
+  await renderTempMediaViewer();
+}
+
+function fecharTempMediaViewer() {
+  if (G._tempMediaObjectUrl) {
+    URL.revokeObjectURL(G._tempMediaObjectUrl);
+    G._tempMediaObjectUrl = null;
+  }
+  G._tempMediaViewer = null;
+  const img = document.getElementById('tm-view-image');
+  const empty = document.getElementById('tm-view-empty');
+  if (img) {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+  }
+  if (empty) empty.textContent = 'Carregando imagem…';
+  const modal = document.getElementById('modal-temp-media-viewer');
+  if (modal) modal.style.display = 'none';
+}
+
+async function moverTempMediaViewer(delta) {
+  const viewer = G._tempMediaViewer;
+  if (!viewer) return;
+  const nextIndex = viewer.index + delta;
+  if (nextIndex < 0 || nextIndex >= viewer.items.length) return;
+  viewer.index = nextIndex;
+  await renderTempMediaViewer();
+}
+
+async function renderTempMediaViewer() {
+  const viewer = G._tempMediaViewer;
+  if (!viewer) return;
+  const item = viewer.items[viewer.index];
+  const titleEl = document.getElementById('tm-view-title');
+  const metaEl = document.getElementById('tm-view-meta');
+  const imgEl = document.getElementById('tm-view-image');
+  const emptyEl = document.getElementById('tm-view-empty');
+  const prevBtn = document.getElementById('tm-prev-btn');
+  const nextBtn = document.getElementById('tm-next-btn');
+
+  if (titleEl) titleEl.textContent = viewer.titulo;
+  if (metaEl) metaEl.textContent = `Imagem ${viewer.index + 1} de ${viewer.items.length} · enviada em ${fmtDate((item.created_at || '').split('T')[0])}`;
+  if (prevBtn) prevBtn.disabled = viewer.index === 0;
+  if (nextBtn) nextBtn.disabled = viewer.index >= viewer.items.length - 1;
+  if (emptyEl) emptyEl.textContent = 'Carregando imagem…';
+  if (imgEl) imgEl.style.display = 'none';
+
+  if (G._tempMediaObjectUrl) {
+    URL.revokeObjectURL(G._tempMediaObjectUrl);
+    G._tempMediaObjectUrl = null;
+  }
+
+  const { data, error } = await sb.storage.from('gestao-anexos-temp').download(item.storage_path);
+  if (error || !data) {
+    if (emptyEl) emptyEl.textContent = 'Não foi possível carregar esta imagem.';
+    return;
+  }
+
+  G._tempMediaObjectUrl = URL.createObjectURL(data);
+  if (imgEl) {
+    imgEl.src = G._tempMediaObjectUrl;
+    imgEl.style.display = 'block';
+  }
+  if (emptyEl) emptyEl.textContent = '';
 }
 
 async function sincronizarExpiracaoTempMedia(contextoTipo, contextoId, concluido) {
@@ -11558,6 +11748,10 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
       fecharTempMediaUpload();
       return;
     }
+    if (bg.id === 'modal-temp-media-viewer') {
+      fecharTempMediaViewer();
+      return;
+    }
     bg.style.display = 'none';
   });
 });
@@ -12142,6 +12336,10 @@ async function carregarChecklist(prodId) {
     .select('*, checklist_etapa_exec_item(*), checklist_etapa_exec_secao(*)')
     .eq('produto_id', prodId);
   G._ckEtapas = execs || [];
+  await carregarTempMediaCounts(
+    'checklist_etapa_exec_item',
+    G._ckEtapas.flatMap(exec => (exec.checklist_etapa_exec_item || []).map(item => item.id))
+  );
 
   // Checklists de tarefa
   const { data: tars } = await sb.from('checklist_tarefa')
@@ -12242,8 +12440,12 @@ function toggleCkOutras() {
 function _ckItemHtml(it, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   const who = it.concluido && it.concluido_por_nome ? `<span class="ck-item-who">${_ckE(it.concluido_por_nome)}</span>` : '';
+  const mediaCount = tipo === 'etapa' ? tempMediaCount('checklist_etapa_exec_item', it.id) : 0;
   const attachBtn = !readonly && tipo === 'etapa'
-    ? `<button class="ck-item-act tm" onclick="abrirTempMediaUpload('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar print">🖼</button>`
+    ? `<button class="ck-item-act tm" onclick="abrirTempMediaUpload('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar">📷</button>`
+    : '';
+  const viewBtn = mediaCount
+    ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
     : '';
   const editBtns = canEdit ? `
     <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Editar">✏</button>
@@ -12254,6 +12456,7 @@ function _ckItemHtml(it, readonly, tipo, canEdit) {
       onchange="toggleCkItem('${tipo}',${_sqCk(it.id)},this.checked,${_sqCk(it.checklist_id)})">
     <span class="ck-item-txt${it.concluido?' done':''}" id="ck-txt-${it.id}">${_ckE(it.texto)}</span>
     ${who}
+    ${viewBtn}
     ${attachBtn}
     ${editBtns}
   </div>`;
