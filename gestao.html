@@ -7620,34 +7620,7 @@ async function exportarMinhasHorasPDF() {
   ${resumoHtml}
   <div class="section-title">Detalhamento do período</div>
   ${blocos}
-  
-  <!-- Modal Novo Evento (Calendário) -->
-  <div class="cal-modal-overlay" id="cal-modal-novo" onclick="if(event.target===this)calFecharModalNovo()">
-    <div class="cal-modal-box">
-      <div class="cal-modal-hd">
-        <span class="cal-modal-title" id="cal-modal-novo-titulo">Novo Evento</span>
-        <button class="cal-modal-close" onclick="calFecharModalNovo()">✕</button>
-      </div>
-      <div class="cal-modal-body"></div>
-      <div class="cal-modal-ft">
-        <button class="btn sm" onclick="calFecharModalNovo()">Cancelar</button>
-        <button class="btn filled sm" onclick="calSalvar()">Salvar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Detalhe Evento (Calendário) -->
-  <div class="cal-modal-overlay" id="cal-modal-detalhe" onclick="if(event.target===this)calFecharDetalhe()">
-    <div class="cal-modal-box">
-      <div class="cal-modal-hd">
-        <span class="cal-modal-title">Detalhe do Evento</span>
-        <button class="cal-modal-close" onclick="calFecharDetalhe()">✕</button>
-      </div>
-      <div class="cal-modal-body"></div>
-    </div>
-  </div>
-
-</body></html>`;
+  body></html>`;
 
   const win = window.open('', '_blank', 'width=980,height=720');
   win.document.write(html);
@@ -15102,6 +15075,12 @@ async function procArquivar(id) {
 
 // ── START ──────────────────────────────────────────────────
 
+// Utilitario: primeiro + ultimo nome
+function primeiroUltimo(nome) {
+  const p = (nome||'').trim().split(/\s+/).filter(Boolean);
+  return p.length <= 2 ? (p.join(' ')||'--') : p[0]+' '+p[p.length-1];
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CALENDÁRIO  (namespace CAL, prefixo cal*)
@@ -15171,7 +15150,7 @@ async function calInit() {
   await calCarregarEventos();
   await calCarregarSaldo();
   calAtualizarTopbar();
-  calRender();
+  try { calRender(); } catch(e) { console.error('calRender error', e); }
 }
 
 async function calCarregarEventos() {
@@ -15277,6 +15256,7 @@ function calGetMerged() {
 
   if (G.todosUsuarios?.length) {
     G.todosUsuarios.forEach(u => {
+      try {
       if (!u.data_nascimento) return;
       const dn = new Date(u.data_nascimento + 'T12:00:00');
       evts.push({
@@ -15288,6 +15268,7 @@ function calGetMerged() {
         usuario_id: u.id, source: 'aniversario', source_id: String(u.id),
         _synthetic: true, _usuario: u,
       });
+      } catch(e) { console.warn('birthday skip', u.nome, e); }
     });
   }
 
@@ -15737,5 +15718,34 @@ init();
 <script src="chat.js"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
+
+<!-- Modal Novo Evento (Calendário) -->
+  <div class="cal-modal-overlay" id="cal-modal-novo" onclick="if(event.target===this)calFecharModalNovo()">
+    <div class="cal-modal-box">
+      <div class="cal-modal-hd">
+        <span class="cal-modal-title" id="cal-modal-novo-titulo">Novo Evento</span>
+        <button class="cal-modal-close" onclick="calFecharModalNovo()">✕</button>
+      </div>
+      <div class="cal-modal-body"></div>
+      <div class="cal-modal-ft">
+        <button class="btn sm" onclick="calFecharModalNovo()">Cancelar</button>
+        <button class="btn filled sm" onclick="calSalvar()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalhe Evento (Calendário) -->
+  <div class="cal-modal-overlay" id="cal-modal-detalhe" onclick="if(event.target===this)calFecharDetalhe()">
+    <div class="cal-modal-box">
+      <div class="cal-modal-hd">
+        <span class="cal-modal-title">Detalhe do Evento</span>
+        <button class="cal-modal-close" onclick="calFecharDetalhe()">✕</button>
+      </div>
+      <div class="cal-modal-body"></div>
+    </div>
+  </div>
+
+</
+
 </body>
 </html>
