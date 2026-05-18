@@ -2406,6 +2406,9 @@ function initNavDropdown(role) {
   if (['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   initConnDot();
 }
+function canAccessFinanceiroRole(role) {
+  return ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase());
+}
 async function sair() {
   await sb.auth.signOut();
   sessionStorage.removeItem('exp_usuario');
@@ -5505,6 +5508,11 @@ async function init() {
   const { data: usr } = await sb.from('usuarios')
     .select('*').eq('auth_id', session.user.id).single();
   if (!usr) { window.location.href = 'index.html'; return; }
+  if (!canAccessFinanceiroRole(usr.role)) {
+    alert('O módulo financeiro está disponível apenas para sócios e sócios administradores.');
+    window.location.href = 'app.html';
+    return;
+  }
   G.usuario = usr;
   G.isSocio = ['socio', 'socio_admin'].includes((usr.role || '').toLowerCase());
 

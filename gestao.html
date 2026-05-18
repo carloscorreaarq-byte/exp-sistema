@@ -11976,6 +11976,20 @@ const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 G._notifs = [];
 
 // ── Criar notificação no DB (não notifica a si mesmo) ─────────
+// ── Push ─ fire-and-forget ───────────────────────────────────────────
+function enviarPush(usuarioId, titulo, corpo, url) {
+  if (!usuarioId || usuarioId === G.usuario?.id) return;
+  sb.functions.invoke('send-push', {
+    body: {
+      usuario_id: usuarioId,
+      title: titulo || 'EXP',
+      body:  corpo  || '',
+      url:   url    || window.location.href,
+      tag:   'exp-notif',
+    }
+  }).catch(e => console.warn('[EXP Push]', e));
+}
+
 async function criarNotificacao(usuarioId, tipo, titulo, corpo, link = {}) {
   if(!usuarioId || usuarioId === G.usuario.id) return;
   try {
@@ -11993,6 +12007,7 @@ async function criarNotificacao(usuarioId, tipo, titulo, corpo, link = {}) {
       criado_por_nome: G.usuario.nome,
       created_at:      new Date().toISOString(),
     });
+    enviarPush(usuarioId, titulo, corpo);
   } catch(e) { console.warn('criarNotificacao:', e.message); }
 }
 

@@ -1353,6 +1353,11 @@ window.addEventListener('DOMContentLoaded', async()=>{
 
   const {data:u, error:uErr} = await sb.from('usuarios').select('*').eq('auth_id',session.user.id).maybeSingle();
   if(uErr) console.error('Erro ao carregar usuário:', uErr.message);
+  if(!u || !canAccessCrmRole(u.role)){
+    alert('O módulo comercial está disponível apenas para sócios e sócios administradores.');
+    window.location.href='app.html';
+    return;
+  }
   currentUser = u||{nome:'Usuário',iniciais:'?',cor:'#888',viewer_only:true};
 
   const ini=currentUser.iniciais||'?';
@@ -1469,6 +1474,9 @@ function initConnDot() {
 function initNavDropdown(role) {
   if (['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   initConnDot();
+}
+function canAccessCrmRole(role) {
+  return ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase());
 }
 async function sair() {
   await sb.auth.signOut();
@@ -4289,7 +4297,5 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
 <script src="chat.js"></script>
 </body>
 </html>
-
-
 
 

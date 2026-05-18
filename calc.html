@@ -3466,6 +3466,9 @@ document.addEventListener('click', e => {
 function initNavDropdown(role) {
   if (['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
 }
+function canAccessCalcRole(role) {
+  return ['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase());
+}
 function buildExpUsuarioPayload(authId, usuario) {
   const nome = (usuario && usuario.nome) || '';
   return {
@@ -3583,6 +3586,11 @@ document.body.style.visibility = 'hidden';
     if (!session) { window.location.href = 'index.html'; return; }
     // Atualiza sessionStorage com dados frescos da sessão
     const { data: uDb } = await sbNav.from('usuarios').select('id, nome, iniciais, role, cor, viewer_only').eq('auth_id', session.user.id).maybeSingle();
+    if (!uDb || !canAccessCalcRole(uDb.role)) {
+      alert('A calculadora está disponível apenas para sócios e sócios administradores.');
+      window.location.href = 'app.html';
+      return;
+    }
     if (uDb) sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, uDb)));
   } catch(e) {
     console.error('Erro na verificação de sessão:', e);
