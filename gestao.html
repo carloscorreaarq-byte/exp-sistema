@@ -986,6 +986,13 @@ body::before {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 14px; flex-wrap: wrap;
 }
+.proj-filters {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; flex: 1; min-width: 0;
+}
+.proj-toolbar-action {
+  margin-left: auto; display: flex; align-items: center;
+}
 .proj-view-toggle { display: flex; border: 1px solid var(--cinza); border-radius: 6px; overflow: hidden; }
 .pvt-btn {
   padding: 5px 12px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
@@ -1071,6 +1078,9 @@ body::before {
   background: var(--branco); flex-wrap: wrap;
 }
 .gantt-nav { display: flex; align-items: center; gap: 6px; }
+.gantt-toolbar-meta {
+  margin-left: auto; display: flex; align-items: center;
+}
 .gantt-nav-btn {
   width: 26px; height: 26px; border: 1px solid var(--cinza); background: var(--branco);
   cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center;
@@ -2086,7 +2096,7 @@ body::before {
       <button class="pvt-btn" id="pvt-gantt" onclick="setProjetosView('gantt')">Gantt</button>
       <button class="pvt-btn" id="pvt-kanban" onclick="setProjetosView('kanban')">Kanban</button>
     </div>
-    <div id="lista-filters" style="display:contents">
+    <div class="proj-filters" id="lista-filters">
       <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto" style="min-width:280px">
       <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
         <option value="">Todos os núcleos</option>
@@ -2114,7 +2124,7 @@ body::before {
         <option value="">Todos os participantes</option>
       </select>
     </div>
-    <div style="margin-left:auto">
+    <div class="proj-toolbar-action">
       <button class="btn filled socio-only" id="btn-novo-proj" style="display:none" onclick="abrirModalCadastroProjeto()">+ Novo projeto</button>
     </div>
   </div>
@@ -2143,19 +2153,7 @@ body::before {
           <button class="gantt-nav-btn" onclick="ganttNavegar(1)">›</button>
           <button class="gantt-hoje-btn" onclick="ganttHoje()">Hoje</button>
         </div>
-        <select class="filter-select" id="gantt-fil-nucleo" onchange="renderGantt()">
-          <option value="">Todos os núcleos</option>
-          <option value="urbanismo">Urbanismo</option>
-          <option value="paisagismo">Paisagismo</option>
-          <option value="especiais">Proj. Especiais</option>
-          <option value="consultorias">Consultorias</option>
-        </select>
-        <select class="filter-select" id="gantt-fil-status" onchange="renderGantt()">
-          <option value="">Todos</option>
-          <option value="ativo">Ativos</option>
-          <option value="pausado">Pausados</option>
-        </select>
-        <div style="margin-left:auto">
+        <div class="gantt-toolbar-meta">
           <div class="gantt-legenda" style="border:none;padding:0">
             <div class="gantt-leg-item"><div class="gantt-leg-cor gb-andamento"></div> Em andamento</div>
             <div class="gantt-leg-item"><div class="gantt-leg-cor gb-revisao"></div> Em revisão</div>
@@ -2393,7 +2391,10 @@ body::before {
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
     <div class="sec-title" style="margin-bottom:0;flex:1">Revisões</div>
-    <button class="btn sm verde socio-only" onclick="abrirNovaRevisaoGlobal()">+ Nova revisão</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn sm" id="rev-minhas-btn" onclick="toggleFiltroMinhasRevisoes()">Todas as revisões</button>
+      <button class="btn sm verde socio-only" onclick="abrirNovaRevisaoGlobal()">+ Nova revisão</button>
+    </div>
   </div>
 
   <div class="rev-layout">
@@ -3305,6 +3306,7 @@ let G = {
   _comentariosRevisao: [],
   _mensagensComentario: [],
   _revisaoAbertaPor: null,
+  _revMinhasOnly: false,
   _todosProdutosGestao: [],
   _crmVirtuais: [],
   hasBillingAccess: false,
@@ -4499,17 +4501,14 @@ function setProjetosView(v) {
   document.getElementById('view-lista').style.display   = v === 'lista'   ? 'block' : 'none';
   document.getElementById('view-gantt').style.display   = v === 'gantt'   ? 'block' : 'none';
   document.getElementById('view-kanban').style.display  = v === 'kanban'  ? 'block' : 'none';
-  // Filtros compartilhados — ocultar só no Gantt (que tem toolbar própria)
-  const listaFilters = document.getElementById('lista-filters');
-  if (listaFilters) listaFilters.style.display = v === 'gantt' ? 'none' : 'contents';
   if (v === 'gantt') renderGantt();
   else if (v === 'kanban') renderKanbanProjetos();
   else renderListaProjetos();
 }
 
 function filtrarProjetos() {
-  const v = document.getElementById('pvt-kanban')?.classList.contains('active') ? 'kanban' : 'lista';
-  if (v === 'kanban') renderKanbanProjetos();
+  if (document.getElementById('pvt-gantt')?.classList.contains('active')) renderGantt();
+  else if (document.getElementById('pvt-kanban')?.classList.contains('active')) renderKanbanProjetos();
   else renderListaProjetos();
 }
 
@@ -4716,48 +4715,7 @@ function renderEntregasSemana() {
 }
 
 function renderListaProjetos() {
-  const busca = normBusca(document.getElementById('fil-busca')?.value);
-  const nucleo = document.getElementById('fil-nucleo').value;
-  const gestaoFiltro = document.getElementById('fil-gestao').value;
-  const status = document.getElementById('fil-status').value;
-  const coordId       = document.getElementById('fil-coord').value;
-  const participanteId = document.getElementById('fil-participante').value;
-
-  const baseLista = gestaoFiltro === 'ocultos'
-    ? G._todosProdutosGestao.filter(p => p.em_gestao === false)
-    : gestaoFiltro === 'todos'
-      ? [...G._todosProdutosGestao, ...G._crmVirtuais]
-      : G.todosProdutos;
-
-  let prods = baseLista.filter(p => {
-    if (nucleo && p.nucleo !== nucleo) return false;
-    if (status && p.status !== status) return false;
-    if (coordId && p.coordenador_id !== coordId) return false;
-    if (participanteId) {
-      const etapasDoUsuario = new Set(
-        Object.entries(G.etapaDevs)
-          .filter(([, uids]) => uids.includes(participanteId))
-          .map(([etapaId]) => etapaId)
-      );
-      const participaEmAlgumaEtapa = G.todasEtapas
-        .some(e => e.produto_id === p.id && etapasDoUsuario.has(e.id));
-      if (!participaEmAlgumaEtapa) return false;
-    }
-    if (busca) {
-      const opp = p.oportunidades;
-      const cli = opp?.clientes;
-      const haystack = normBusca([
-        p.nome,
-        opp?.projeto,
-        cli?.nome,
-        cli?.cidade,
-        cli?.uf,
-        opp?.cidade
-      ].filter(Boolean).join(' '));
-      if (!haystack.includes(busca)) return false;
-    }
-    return true;
-  });
+  let prods = pkFiltrarProds();
 
   const grupos = {};
   prods.forEach(p => {
@@ -4841,16 +4799,7 @@ function ganttNavegar(d) { G.ganttOffset += d; renderGantt(); }
 function ganttHoje() { G.ganttOffset = -2; renderGantt(); }
 
 function renderGantt() {
-  const nucleoFil = document.getElementById('gantt-fil-nucleo').value;
-  const statusFil = document.getElementById('gantt-fil-status').value;
-
-  let prods = G.todosProdutos.filter(p => {
-    const n = p.nucleo || '';
-    if (nucleoFil && n !== nucleoFil) return false;
-    if (statusFil && p.status !== statusFil) return false;
-    if (p.status === 'encerrado') return false;
-    return true;
-  });
+  let prods = pkFiltrarProds().filter(p => !p._crm && p.status !== 'encerrado');
 
   const semanas = [];
   const hojeBase = new Date(); hojeBase.setHours(0,0,0,0);
@@ -6402,12 +6351,25 @@ async function carregarRevisoes() {
     return r.status === 'concluida' || (total > 0 && conc === total);
   }
 
+  function _syncRevFiltroBtn() {
+    const btn = document.getElementById('rev-minhas-btn');
+    if (!btn) return;
+    if (G._revMinhasOnly) {
+      btn.textContent = 'Minhas revisões';
+      btn.classList.add('az');
+    } else {
+      btn.textContent = 'Todas as revisões';
+      btn.classList.remove('az');
+    }
+  }
+
   const grpLabel = (txt, n) =>
     `<div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb;padding:8px 4px 4px">${txt} <span style="color:#ccc">(${n})</span></div>`;
 
-  const minhasAtivas   = revs.filter(r => !_isCompleta(r) &&  _isMinhaRev(r));
-  const outrasAtivas   = revs.filter(r => !_isCompleta(r) && !_isMinhaRev(r));
-  const finalizadas    = revs.filter(r =>  _isCompleta(r));
+  const revsVisiveis = G._revMinhasOnly ? revs.filter(_isMinhaRev) : revs;
+  const minhasAtivas = revsVisiveis.filter(r => !_isCompleta(r) && _isMinhaRev(r));
+  const outrasAtivas = revsVisiveis.filter(r => !_isCompleta(r) && !_isMinhaRev(r));
+  const finalizadas  = revsVisiveis.filter(r => _isCompleta(r));
 
   let html = '';
   if (minhasAtivas.length)
@@ -6416,10 +6378,18 @@ async function carregarRevisoes() {
     html += grpLabel('Revisões ativas', outrasAtivas.length) + outrasAtivas.map(_revCard).join('');
   if (finalizadas.length)
     html += grpLabel('Revisões finalizadas', finalizadas.length) + finalizadas.map(_revCard).join('');
-  if (!html) html = '<div class="empty-note">Nenhuma revisão encontrada.</div>';
+  if (!html) html = G._revMinhasOnly
+    ? '<div class="empty-note">Nenhuma revisão sua encontrada.</div>'
+    : '<div class="empty-note">Nenhuma revisão encontrada.</div>';
 
   lista.innerHTML = html;
   G._revisoes = revs;
+  _syncRevFiltroBtn();
+}
+
+function toggleFiltroMinhasRevisoes() {
+  G._revMinhasOnly = !G._revMinhasOnly;
+  carregarRevisoes();
 }
 
 async function selecionarRevisao(id) {
@@ -6506,6 +6476,11 @@ async function selecionarRevisao(id) {
         <button class="btn sm" onclick="notificarRevisao('${id}')" title="Notificar coordenador que revisão está pronta">📢 Notificar</button>
       </div>
     </div>
+    ${!podePreencher ? `
+      <div class="hint az" style="margin-bottom:12px">
+        Você pode acompanhar esta revisão em modo leitura, mas apenas participantes e coordenadores podem marcar as tarefas.
+      </div>` : ''
+    }
     <div id="pranchas-wrap">
       ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
       ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
