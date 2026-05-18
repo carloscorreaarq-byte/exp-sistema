@@ -76,7 +76,10 @@
     '.tmr-sel:focus{border-color:' + OURO + '}',
 
     /* Labels */
-    '.tmr-sel-lbl{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:2px}',
+    '.tmr-sel-lbl{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:2px;margin-top:4px}',
+    '#tmr-proj-block{display:flex;flex-direction:column;gap:2px}',
+    '#tmr-proj-block>div{margin-top:4px}',
+    '#tmr-proj-block>div:first-child{margin-top:0}',
     '.tmr-hdr{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#aaa}',
 
     /* Projeto / etapa display */
@@ -93,14 +96,18 @@
     '.tmr-btn-stop{background:' + GRAFITE + ';color:#fff;border-color:' + GRAFITE + '}',
     '.tmr-btn-stop:hover{opacity:.82;color:#fff}',
 
-    /* Botão iniciar — .btn.verde */
-    '.tmr-primary{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + VERDE + ';background:' + VERDE + ';color:#fff;font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:opacity .12s}',
-    '.tmr-primary:hover{opacity:.85}',
+    /* Botão iniciar — neutro/cinza (widget já é amarelo) */
+    '.tmr-primary{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + CINZA + ';background:#fff;color:' + GRAFITE + ';font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:border-color .12s,background .12s}',
+    '.tmr-primary:hover{border-color:' + GRAFITE + ';background:' + OFF + '}',
 
     /* Botão salvar — .btn.filled */
     '.tmr-dark{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + GRAFITE + ';background:' + GRAFITE + ';color:#fff;font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:opacity .12s}',
     '.tmr-dark:hover{opacity:.82}',
     '.tmr-dark:disabled{opacity:.38;cursor:not-allowed}',
+
+    /* Botões secundários do confirm (Voltar + Descartar) */
+    '.tmr-btn-cf-sec{flex:1;padding:5px 6px;border-radius:6px;border:1px solid ' + CINZA + ';background:#fff;font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;color:#888;transition:border-color .12s,color .12s}',
+    '.tmr-btn-cf-sec:hover{border-color:' + GRAFITE + ';color:' + GRAFITE + '}',
 
     /* Links */
     '.tmr-lnk{text-align:center;font-size:9px;color:#bbb;cursor:pointer;letter-spacing:.2px}',
@@ -228,9 +235,11 @@
         '<div class="tmr-sel-lbl">Descri&#231;&#227;o</div>',
         '<textarea class="tmr-textarea" id="tmr-cf-desc" placeholder="O que foi feito&#8230;"></textarea>',
       '</div>',
+      '<div class="tmr-btns">',
+        '<button class="tmr-btn-cf-sec" onclick="_tmr.backToExpanded()">&#8592; Voltar</button>',
+        '<button class="tmr-btn-cf-sec" onclick="_tmr.descartar()">Descartar</button>',
+      '</div>',
       '<button class="tmr-dark" id="tmr-save-btn" onclick="_tmr.salvar()">Salvar lan&#231;amento</button>',
-      '<div class="tmr-lnk back" onclick="_tmr.backToExpanded()">&#8592; Voltar / retomar</div>',
-      '<div class="tmr-lnk" onclick="_tmr.descartar()">Descartar timer</div>',
     '</div>',
 
     /* ── FAB ── */
@@ -783,14 +792,17 @@
       var endDate   = state.pausedAt ? new Date(state.pausedAt) : new Date();
       var startDate = state.originalStart ? new Date(state.originalStart) : new Date(endDate.getTime() - (state.pausedMs || 0));
 
-      var set = function (id, v) { var el = document.getElementById(id); if (el) el[typeof v === 'object' ? 'textContent' : 'value'] = v; };
-      set('tmr-cf-proj',  state.nomeProjeto || '—');
+      /* Textos display (divs) */
+      var cfProj  = document.getElementById('tmr-cf-proj');
       var cfEtapa = document.getElementById('tmr-cf-etapa');
-      if (cfEtapa) cfEtapa.textContent = state.nomeEtapa || (state.subtipo || '');
-      set('tmr-cf-data',  _fmtDate(startDate));
-      set('tmr-cf-ini',   _fmtTime(startDate));
-      set('tmr-cf-fim',   _fmtTime(endDate));
-      set('tmr-cf-desc',  '');
+      if (cfProj)  cfProj.textContent  = _trunc(state.nomeProjeto || '—', 42);
+      if (cfEtapa) cfEtapa.textContent = _trunc(state.nomeEtapa || state.subtipo || '', 42);
+      /* Inputs */
+      var setVal = function (id, v) { var el = document.getElementById(id); if (el) el.value = v; };
+      setVal('tmr-cf-data', _fmtDate(startDate));
+      setVal('tmr-cf-ini',  _fmtTime(startDate));
+      setVal('tmr-cf-fim',  _fmtTime(endDate));
+      setVal('tmr-cf-desc', '');
       var btn = document.getElementById('tmr-save-btn');
       if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
       _showPanel('confirm');
