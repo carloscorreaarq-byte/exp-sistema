@@ -10204,13 +10204,16 @@ function comprimirImagem(file, maxDim) {
 async function carregarTempMediaConfig() {
   if (G._tempMediaConfig) return G._tempMediaConfig;
   const fallback = {
+    dias_item_aberto: 30,
+    dias_item_concluido: 7,
+    dias_fallback: 21,
     largura_max_px: 1600,
     tamanho_max_kb: 700,
     qualidade_upload: 0.80,
   };
   const { data, error } = await sb
     .from('plataforma_midia_temporaria_config')
-    .select('largura_max_px,tamanho_max_kb,qualidade_upload')
+    .select('dias_item_aberto,dias_item_concluido,dias_fallback,largura_max_px,tamanho_max_kb,qualidade_upload')
     .eq('id', true)
     .maybeSingle();
   if (error) return fallback;
@@ -10282,6 +10285,7 @@ async function subirTempMediaArquivo(file) {
   try {
     const cfg = await carregarTempMediaConfig();
     const optimized = await otimizarTempMediaImagem(file, cfg);
+    const contextoState = await carregarEstadoTempMediaContexto(draft.contextoTipo, draft.contextoId, cfg);
     const ext = optimized.ext;
     const path = `${draft.contextoTipo}/${draft.contextoId}/${G.usuario.id}-${Date.now()}.${ext}`;
 
@@ -10309,6 +10313,9 @@ async function subirTempMediaArquivo(file) {
         width_px: optimized.width,
         height_px: optimized.height,
         criado_por: G.usuario.id,
+        expires_at: contextoState.expiresAt,
+        concluido_snapshot: contextoState.concluido,
+        concluido_em_snapshot: contextoState.concluidoEm,
       })
       .select('id')
       .single();
@@ -10328,6 +10335,42 @@ async function subirTempMediaArquivo(file) {
   } finally {
     G._tempMediaBusy = false;
   }
+}
+
+async function carregarEstadoTempMediaContexto(contextoTipo, contextoId, cfg) {
+  const fallbackDias = Number(cfg?.dias_fallback || 21);
+  let concluido = false;
+  let concluidoEm = null;
+
+  if (contextoTipo === 'revisao_tarefa') {
+    const { data } = await sb
+      .from('tarefas_revisao')
+      .select('concluida,concluida_em')
+      .eq('id', contextoId)
+      .maybeSingle();
+    concluido = !!data?.concluida;
+    concluidoEm = data?.concluida_em || null;
+  } else if (contextoTipo === 'checklist_etapa_exec_item') {
+    const { data } = await sb
+      .from('checklist_etapa_exec_item')
+      .select('concluido,concluido_em')
+      .eq('id', contextoId)
+      .maybeSingle();
+    concluido = !!data?.concluido;
+    concluidoEm = data?.concluido_em || null;
+  }
+
+  const expiresAt = tempMediaExpiresAt(concluido, cfg, fallbackDias);
+  return { concluido, concluidoEm, expiresAt };
+}
+
+function tempMediaExpiresAt(concluido, cfg, fallbackDias) {
+  const dias = concluido
+    ? Number(cfg?.dias_item_concluido || 7)
+    : Number(cfg?.dias_item_aberto || fallbackDias || 30);
+  const dt = new Date();
+  dt.setDate(dt.getDate() + (Number.isFinite(dias) ? dias : 21));
+  return dt.toISOString();
 }
 
 async function otimizarTempMediaImagem(file, cfg) {
