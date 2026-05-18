@@ -2263,7 +2263,7 @@ body::before {
 /* Modal calendário */
 .cal-modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); z-index: 8000; display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
 .cal-modal-overlay.open { display: flex; }
-.cal-modal-box { background: var(--branco); border-radius: var(--radius-modal); box-shadow: var(--shadow-modal); width: 100%; max-width: 480px; display: flex; flex-direction: column; overflow: hidden; }
+.cal-modal-box { background: var(--branco); border-radius: 10px; border: 1px solid var(--cinza); width: 100%; max-width: 480px; display: flex; flex-direction: column; overflow: hidden; animation: mIn .2s ease both; }
 .cal-modal-hd { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--cinza2); }
 .cal-modal-title { font-size: 13px; font-weight: 700; }
 .cal-modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #aaa; line-height: 1; font-family: var(--font-ui); }
@@ -2271,14 +2271,14 @@ body::before {
 .cal-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow-y: auto; }
 .cal-modal-ft { padding: 12px 18px; border-top: 1px solid var(--cinza2); display: flex; justify-content: flex-end; gap: 8px; }
 /* Tipo selector */
-.cal-tipo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.cal-tipo-btn { display: flex; flex-direction: column; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--cinza); border-radius: 7px; background: var(--branco); cursor: pointer; transition: all .12s; text-align: left; font-family: var(--font-ui); }
+.cal-tipo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.cal-tipo-btn { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid var(--cinza); border-radius: 7px; background: var(--branco); cursor: pointer; transition: border-color .12s, background .12s; text-align: left; font-family: var(--font-ui); width: 100%; }
 .cal-tipo-btn:hover { border-color: var(--grafite); }
 .cal-tipo-btn.sel { border-color: var(--azul); background: var(--az-bg); }
 .cal-tipo-btn:disabled { opacity: .35; cursor: not-allowed; }
-.cal-tipo-icon { font-size: 16px; margin-bottom: 3px; }
-.cal-tipo-name { font-size: 11px; font-weight: 700; }
-.cal-tipo-desc { font-size: 9px; color: #888; margin-top: 1px; }
+.cal-tipo-icon { font-size: 14px; flex-shrink: 0; line-height: 1; }
+.cal-tipo-name { font-size: 11px; font-weight: 600; color: var(--grafite); }
+.cal-aviso { background: var(--am-bg, #FBF3E8); border-radius: 6px; padding: 8px 12px; font-size: 11px; color: var(--ouro, #C4831A); }
 .cal-saldo-info { background: var(--az-bg); border-radius: 7px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
 .cal-saldo-info-track { flex: 1; height: 5px; background: rgba(74,114,181,.2); border-radius: 3px; }
 .cal-saldo-info-fill { height: 100%; background: var(--azul); border-radius: 3px; }
@@ -15552,34 +15552,45 @@ function calAbrirModalNovo(dataPreenchida) {
 }
 
 function calRenderModalBody(tipos, dataIni) {
+  const nucleos = [...new Set((G.todosUsuarios||[]).map(u=>u.nucleo).filter(Boolean))];
+  const outrosUsuarios = (G.todosUsuarios||[]).filter(u=>u.id!==G.usuario?.id);
   return `
-    <div class="cal-modal-tipos">
-      ${tipos.map(t => { const m = calMeta(t); return `<button class="cal-tipo-btn" id="cal-tipo-${t}" onclick="calSelTipo('${t}')">${m.icon} ${m.label}</button>`; }).join('')}
+    <div class="cal-tipo-grid">
+      ${tipos.map(t => { const m = calMeta(t); return `<button class="cal-tipo-btn" id="cal-tipo-${t}" onclick="calSelTipo('${t}')"><span class="cal-tipo-icon">${m.icon}</span><span class="cal-tipo-name">${m.label}</span></button>`; }).join('')}
     </div>
-    <div class="campo-grupo"><label>Título</label>
-      <input id="cal-inp-titulo" type="text" class="inp" placeholder="Título do evento"></div>
-    <div class="campo-grupo" style="display:flex;gap:12px">
-      <div style="flex:1"><label>Data início</label>
-        <input id="cal-inp-ini" type="date" class="inp" value="${dataIni}"></div>
-      <div style="flex:1"><label>Data fim</label>
-        <input id="cal-inp-fim" type="date" class="inp" value="${dataIni}"></div>
+    <div class="fgroup">
+      <label>Título</label>
+      <input id="cal-inp-titulo" type="text" placeholder="Título do evento">
     </div>
-    <div class="campo-grupo" id="cal-campo-nucleo" style="display:none"><label>Núcleo</label>
-      <select id="cal-inp-nucleo" class="inp">
+    <div class="fg fg2">
+      <div class="fgroup">
+        <label>Data início</label>
+        <input id="cal-inp-ini" type="date" value="${dataIni}">
+      </div>
+      <div class="fgroup">
+        <label>Data fim</label>
+        <input id="cal-inp-fim" type="date" value="${dataIni}">
+      </div>
+    </div>
+    <div class="fgroup" id="cal-campo-nucleo" style="display:none">
+      <label>Núcleo</label>
+      <select id="cal-inp-nucleo">
         <option value="todos">Todos</option>
-        ${[...new Set((G.todosUsuarios||[]).map(u=>u.nucleo).filter(Boolean))].map(n=>`<option value="${n}">${n.charAt(0).toUpperCase()+n.slice(1)}</option>`).join('')}
+        ${nucleos.map(n=>`<option value="${n}">${n.charAt(0).toUpperCase()+n.slice(1)}</option>`).join('')}
       </select>
     </div>
-    <div class="campo-grupo" id="cal-campo-usuario" style="display:none"><label>Usuário</label>
-      <select id="cal-inp-usuario" class="inp">
+    <div class="fgroup" id="cal-campo-usuario" style="display:none">
+      <label>Usuário</label>
+      <select id="cal-inp-usuario">
         <option value="${G.usuario?.id}">${G.usuario?.nome} (eu)</option>
-        ${(G.todosUsuarios||[]).filter(u=>u.id!==G.usuario?.id).map(u=>`<option value="${u.id}">${u.nome}</option>`).join('')}
+        ${outrosUsuarios.map(u=>`<option value="${u.id}">${u.nome}</option>`).join('')}
       </select>
     </div>
-    <div class="campo-grupo"><label>Descrição (opcional)</label>
-      <textarea id="cal-inp-desc" class="inp" rows="2" placeholder="Detalhes..."></textarea>
+    <div class="fgroup">
+      <label>Descrição (opcional)</label>
+      <textarea id="cal-inp-desc" rows="2" placeholder="Detalhes..."></textarea>
     </div>
-    <div id="cal-aviso-ausencia" style="display:none;background:#fff3e0;border-radius:6px;padding:8px 12px;font-size:12px;color:#e65100;margin-bottom:4px"></div>`;
+    <div id="cal-aviso-ausencia" class="cal-aviso" style="display:none"></div>`;
 }
 
 function calSelTipo(tipo) {
