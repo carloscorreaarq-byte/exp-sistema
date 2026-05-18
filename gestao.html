@@ -3721,6 +3721,12 @@ async function init() {
   // Aba sócios
   if (isSocioRole(usr.role)) {
     document.querySelectorAll('.socio-only').forEach(el => el.style.display = '');
+  } else {
+    // Colaboradores: ocultar filtros avançados de projetos
+    ['fil-nucleo', 'fil-gestao', 'fil-coord'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
   }
 
   // Billing segue role formal; atalhos por nome deixam de conceder acesso.
@@ -4119,11 +4125,19 @@ async function carregarUsuarios() {
   if (fc) fc.innerHTML = '<option value="">Todos os coordenadores</option>' + opts;
 
   const fp = document.getElementById('fil-participante');
-  if (fp) fp.innerHTML =
-    '<option value="">Todos os participantes</option>' +
-    `<option value="${G.usuario.id}" style="font-weight:700">Meus projetos</option>` +
-    G.todosUsuarios.filter(u => u.id !== G.usuario.id)
-      .map(u => `<option value="${u.id}">${u.nome} (${u.iniciais})</option>`).join('');
+  if (fp) {
+    if (isSocioRole(G.usuario.role)) {
+      fp.innerHTML =
+        '<option value="">Todos os participantes</option>' +
+        `<option value="${G.usuario.id}" style="font-weight:700">Meus projetos</option>` +
+        G.todosUsuarios.filter(u => u.id !== G.usuario.id)
+          .map(u => `<option value="${u.id}">${u.nome} (${u.iniciais})</option>`).join('');
+    } else {
+      fp.innerHTML =
+        '<option value="">Todos os projetos</option>' +
+        `<option value="${G.usuario.id}">Meus projetos</option>`;
+    }
+  }
 }
 
 // Normaliza main_nucleo do CRM para chave interna

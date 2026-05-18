@@ -380,12 +380,22 @@
   ═══════════════════════════════════════════════════════════════ */
   function _startTick() {
     clearInterval(_tickInterval);
+    var BURST_INTERVAL_MS = 20 * 60 * 1000; // a cada 20 minutos
+    var BURST_DURATION_MS = 4 * 1000;        // durante 4 segundos
     _tickInterval = setInterval(function () {
       var state = _loadState();
       if (!state.running) { clearInterval(_tickInterval); return; }
+      var ms = _elapsedMs(state);
       var el = document.getElementById('tmr-elapsed');
-      if (el) el.textContent = _fmtMs(_elapsedMs(state));
-      _playTick(_tickCount++ % 2 === 1); // alterna tic / tac
+      if (el) el.textContent = _fmtMs(ms);
+      // Toca tic-tac apenas nos primeiros 4s de cada marca de 20 min
+      if (ms > 0) {
+        var msIntoInterval = ms % BURST_INTERVAL_MS;
+        if (msIntoInterval < BURST_DURATION_MS) {
+          var beatIdx = Math.floor(msIntoInterval / 1000);
+          _playTick(beatIdx % 2 === 1); // tic, tac, tic, tac
+        }
+      }
     }, 1000);
   }
 
