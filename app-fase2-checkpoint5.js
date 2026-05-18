@@ -15,6 +15,8 @@
   let platformUsersCache = [];
   let platformTermosCache = {};
   let platformFeedbackCache = [];
+  let platformTempMediaConfigCache = null;
+  let platformTempMediaUsageCache = [];
   let pendingAvatarUserId = null;
   let meusDadosDirty = false;
   let plataformaDirty = false;
@@ -525,6 +527,121 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     }).join('');
   }
 
+  function mediaContextLabel(value) {
+    const key = String(value || '').toLowerCase();
+    if (key === 'revisao_tarefa') return 'Revisoes';
+    if (key === 'checklist_etapa_exec_item') return 'Checklist de etapa';
+    if (key === 'checklist_tarefa_item') return 'Checklist de tarefa';
+    if (key === 'processos_tarefa') return 'Processos';
+    return value || 'Outro';
+  }
+
+  function fillPlatformTempMediaConfig(config) {
+    const current = config || {};
+    const open = document.getElementById('gp-media-open-days');
+    const done = document.getElementById('gp-media-done-days');
+    const fallback = document.getElementById('gp-media-fallback-days');
+    const width = document.getElementById('gp-media-max-width');
+    const kb = document.getElementById('gp-media-max-kb');
+    const quality = document.getElementById('gp-media-quality');
+    if (open) open.value = current.dias_item_aberto ?? 30;
+    if (done) done.value = current.dias_item_concluido ?? 7;
+    if (fallback) fallback.value = current.dias_fallback ?? 21;
+    if (width) width.value = current.largura_max_px ?? 1600;
+    if (kb) kb.value = current.tamanho_max_kb ?? 700;
+    if (quality) quality.value = current.qualidade_upload ?? 0.80;
+  }
+
+  function renderPlatformTempMediaUsage(rows) {
+    const statsWrap = document.getElementById('platform-media-stats');
+    const contextsWrap = document.getElementById('platform-media-contexts');
+    const activeRows = (rows || []).filter((row) => !row.removido_em);
+    const total = activeRows.length;
+    const totalBytes = activeRows.reduce((sum, row) => sum + Number(row.size_bytes || 0), 0);
+    const avgBytes = total ? (totalBytes / total) : 0;
+    const weekAhead = Date.now() + (7 * 24 * 60 * 60 * 1000);
+    const expiringSoon = activeRows.filter((row) => {
+      const exp = row.expires_at ? new Date(row.expires_at).getTime() : null;
+      return exp && exp <= weekAhead;
+    }).length;
+
+    if (statsWrap) {
+      const cards = [
+        { label: 'Anexos ativos', value: String(total) },
+        { label: 'Volume ativo', value: (totalBytes / (1024 * 1024)).toFixed(2) + ' MB' },
+        { label: 'Media por anexo', value: (avgBytes / 1024).toFixed(1) + ' KB' },
+        { label: 'Expirando em 7 dias', value: String(expiringSoon) }
+      ];
+      statsWrap.innerHTML = cards.map((card) => ''
+        + '<div class="platform-user-card">'
+        + '  <div class="platform-user-ident">'
+        + '    <strong>' + escapeHtml(card.value) + '</strong>'
+        + '    <span>' + escapeHtml(card.label) + '</span>'
+        + '  </div>'
+        + '</div>'
+      ).join('');
+    }
+
+    if (contextsWrap) {
+      const grouped = activeRows.reduce((map, row) => {
+        const key = String(row.contexto_tipo || 'outro');
+        if (!map[key]) map[key] = { total: 0, bytes: 0 };
+        map[key].total += 1;
+        map[key].bytes += Number(row.size_bytes || 0);
+        return map;
+      }, {});
+      const entries = Object.entries(grouped).sort((a, b) => b[1].total - a[1].total);
+      if (!entries.length) {
+        contextsWrap.innerHTML = '<div class="platform-empty">Nenhum anexo temporario ativo.</div>';
+      } else {
+        contextsWrap.innerHTML = entries.map(([contexto, info]) => ''
+          + '<div class="platform-feedback-item">'
+          + '  <div class="platform-feedback-head">'
+          + '    <strong>' + escapeHtml(mediaContextLabel(contexto)) + '</strong>'
+          + '    <span>' + escapeHtml(String(info.total)) + ' anexos</span>'
+          + '  </div>'
+          + '  <div class="platform-feedback-body">Volume ativo: ' + escapeHtml((info.bytes / (1024 * 1024)).toFixed(2) + ' MB') + '</div>'
+          + '</div>'
+        ).join('');
+      }
+    }
+  }
+
+  async function carregarMidiaTemporariaPlataforma() {
+    const statsWrap = document.getElementById('platform-media-stats');
+    const contextsWrap = document.getElementById('platform-media-contexts');
+    if (statsWrap) statsWrap.innerHTML = '<div class="platform-empty">Carregando uso atual...</div>';
+    if (contextsWrap) contextsWrap.innerHTML = '<div class="platform-empty">Carregando distribuicao...</div>';
+
+    const [{ data: config, error: configError }, { data: rows, error: rowsError }] = await Promise.all([
+      window.sb
+        .from('plataforma_midia_temporaria_config')
+        .select('*')
+        .eq('id', true)
+        .maybeSingle(),
+      window.sb
+        .from('gestao_anexos_temporarios')
+        .select('id, contexto_tipo, size_bytes, expires_at, removido_em')
+        .order('created_at', { ascending: false })
+        .limit(5000)
+    ]);
+
+    if (configError || rowsError) {
+      platformTempMediaConfigCache = null;
+      platformTempMediaUsageCache = [];
+      setPlataformaStatus('Nao foi possivel carregar a midia temporaria. Rode os SQLs desta estrutura se necessario.');
+      if (statsWrap) statsWrap.innerHTML = '<div class="platform-empty">Falha ao carregar configuracao.</div>';
+      if (contextsWrap) contextsWrap.innerHTML = '<div class="platform-empty">Falha ao carregar distribuicao.</div>';
+      return;
+    }
+
+    platformTempMediaConfigCache = config || null;
+    platformTempMediaUsageCache = rows || [];
+    fillPlatformTempMediaConfig(platformTempMediaConfigCache);
+    renderPlatformTempMediaUsage(platformTempMediaUsageCache);
+    setPlataformaStatus('Painel de midia temporaria carregado.');
+  }
+
   async function carregarFeedbackPlataforma() {
     const wrap = document.getElementById('platform-feedback-list');
     if (wrap) wrap.innerHTML = '<div class="platform-empty">Carregando feedbacks...</div>';
@@ -559,14 +676,18 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   window.switchPlatformTab = function switchPlatformTab(tab) {
     const currentTab = tab || 'usuarios';
     const isUsuarios = currentTab === 'usuarios';
+    const isMidia = currentTab === 'midia';
     const isTermo = currentTab === 'termo';
     const isFeedback = currentTab === 'feedback';
     document.getElementById('platform-panel-usuarios')?.toggleAttribute('hidden', !isUsuarios);
+    document.getElementById('platform-panel-midia')?.toggleAttribute('hidden', !isMidia);
     document.getElementById('platform-panel-termo')?.toggleAttribute('hidden', !isTermo);
     document.getElementById('platform-panel-feedback')?.toggleAttribute('hidden', !isFeedback);
     document.getElementById('platform-tab-usuarios')?.classList.toggle('active', isUsuarios);
+    document.getElementById('platform-tab-midia')?.classList.toggle('active', isMidia);
     document.getElementById('platform-tab-termo')?.classList.toggle('active', isTermo);
     document.getElementById('platform-tab-feedback')?.classList.toggle('active', isFeedback);
+    if (isMidia) carregarMidiaTemporariaPlataforma();
     if (isFeedback) carregarFeedbackPlataforma();
   };
 
@@ -1222,6 +1343,41 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     renderTermText();
     setPlataformaDirty(false);
     setPlataformaStatus('Definicao do termo atualizada.');
+  };
+
+  window.salvarMidiaTemporariaPlataforma = async function salvarMidiaTemporariaPlataforma() {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('A edicao da midia temporaria exige acesso administrativo de plataforma.');
+      return;
+    }
+
+    const payload = {
+      id: true,
+      dias_item_aberto: Number(document.getElementById('gp-media-open-days')?.value || 30),
+      dias_item_concluido: Number(document.getElementById('gp-media-done-days')?.value || 7),
+      dias_fallback: Number(document.getElementById('gp-media-fallback-days')?.value || 21),
+      largura_max_px: Number(document.getElementById('gp-media-max-width')?.value || 1600),
+      tamanho_max_kb: Number(document.getElementById('gp-media-max-kb')?.value || 700),
+      qualidade_upload: Number(document.getElementById('gp-media-quality')?.value || 0.80),
+      updated_at: isoNow(),
+      updated_by: sessionUser.app_user_id || null
+    };
+
+    setPlataformaStatus('Salvando politica de midia temporaria...');
+    const { error } = await window.sb
+      .from('plataforma_midia_temporaria_config')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (error) {
+      setPlataformaStatus('Nao foi possivel salvar a politica de midia temporaria.');
+      return;
+    }
+
+    platformTempMediaConfigCache = payload;
+    setPlataformaDirty(false);
+    setPlataformaStatus('Politica de midia temporaria atualizada.');
+    await carregarMidiaTemporariaPlataforma();
   };
 
   window.resetarTermoPlataforma = async function resetarTermoPlataforma(userId) {
