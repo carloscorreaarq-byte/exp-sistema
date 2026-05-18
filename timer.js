@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   EXP · TIMER WIDGET — timer.js  v1.0
+   EXP · TIMER WIDGET — timer.js  v1.2
    Contagem de horas cross-módulo com seleção de projeto/etapa
    ─────────────────────────────────────────────────────────────────
    Incluir <script src="timer.js"></script> antes de </body>
@@ -13,100 +13,117 @@
   var SB_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
   var SB_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
   var TIMER_KEY   = 'exp_timer_state';
-  var EXPAND_SECS = 180;  // segundos antes de minimizar automaticamente
+  var EXPAND_SECS = 180;
+
+  /* Cores da plataforma */
+  var OURO        = '#C49A27';
+  var OURO_PULSE  = 'rgba(196,154,39,.55)';
+  var GRAFITE     = '#141414';
+  var CINZA       = '#D0CFC9';
+  var OFF         = '#F7F6F3';
+  var VERDE       = '#3E7858';
 
   var _sb, _tickInterval, _collapseTimer, _isHovering = false;
-  var _projCache = null, _etapaCache = {};
+  var _allProds = null, _etapaCache = {}, _cachedUser = null, _recentItems = null;
 
-  // Invalida cache local quando o G do gestao.html terminar de carregar
-  // (evita usar lista vazia se o timer abrir antes do carregarProdutos terminar)
-  function _watchG() {
-    if (window.G && window.G._prodsGestao && window.G._prodsGestao.length && _projCache && _projCache.length === 0) {
-      _projCache = null;
-      _etapaCache = {};
-    }
-    setTimeout(_watchG, 1500);
+  /* ── Subtipos (espelha SUBTIPOS do gestao.html) ─────────────────── */
+  var SUBTIPOS = {
+    organizacao: ['Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
+    sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
+  };
+
+  /* ── isSocio check ───────────────────────────────────────────────── */
+  function _isSocio() {
+    var role = '';
+    if (window.G && window.G.usuario) role = window.G.usuario.role || '';
+    else if (_cachedUser) role = _cachedUser.role || '';
+    return ['socio','socio_adm','socio_admin'].indexOf(role.toLowerCase()) >= 0;
   }
-  setTimeout(_watchG, 800);
 
   /* ═══════════════════════════════════════════════════════════════
      CSS
   ═══════════════════════════════════════════════════════════════ */
   var CSS = [
-    /* Widget container — bottom-left, acima do chat */
+    /* Widget container */
     '#exp-timer-widget{position:fixed;bottom:24px;left:24px;z-index:9999;font-family:"Raleway",sans-serif;user-select:none}',
 
     /* FAB */
-    '#exp-timer-fab{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.22);border:none;outline:none;position:relative;transition:background .25s,transform .15s;color:#555;flex-shrink:0}',
+    '#exp-timer-fab{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.22);border:none;outline:none;position:relative;transition:background .25s,transform .15s;color:#888;flex-shrink:0}',
     '#exp-timer-fab:hover{transform:scale(1.07)}',
     '#exp-timer-fab:active{transform:scale(.93)}',
 
-    /* Running state: yellow + pulse */
-    '#exp-timer-fab.running{background:#F5C518;color:#111110}',
-    '@keyframes exp-timer-pulse{0%{box-shadow:0 0 0 0 rgba(245,197,24,.65)}70%{box-shadow:0 0 0 11px rgba(245,197,24,0)}100%{box-shadow:0 0 0 0 rgba(245,197,24,0)}}',
-    '#exp-timer-fab.running{animation:exp-timer-pulse 1.6s ease-out infinite}',
-    '#exp-timer-fab.running:hover{animation:none;box-shadow:0 2px 10px rgba(0,0,0,.2)}',
+    /* FAB: rodando — amarelo + pulse */
+    '#exp-timer-fab.running{background:' + OURO + ';color:#fff}',
+    '@keyframes exp-tmr-pulse{0%{box-shadow:0 0 0 0 ' + OURO_PULSE + '}70%{box-shadow:0 0 0 11px rgba(196,154,39,0)}100%{box-shadow:0 0 0 0 rgba(196,154,39,0)}}',
+    '#exp-timer-fab.running{animation:exp-tmr-pulse 1.6s ease-out infinite}',
+    '#exp-timer-fab.running:hover{animation:none}',
 
-    /* Paused state: yellow, no pulse */
-    '#exp-timer-fab.paused{background:#F5C518;color:#111110;animation:none}',
+    /* FAB: pausado — amarelo sem pulse */
+    '#exp-timer-fab.paused{background:' + OURO + ';color:#fff;animation:none}',
 
     /* Panel base */
-    '.tmr-panel{position:absolute;bottom:50px;left:0;background:#fff;border-radius:14px;box-shadow:0 6px 28px rgba(0,0,0,.14);border:1px solid #ECEAE4;padding:14px;display:none;flex-direction:column;gap:10px;min-width:230px;animation:tmrIn .14s ease-out}',
+    '.tmr-panel{position:absolute;bottom:50px;left:0;background:#fff;border-radius:10px;box-shadow:0 6px 28px rgba(0,0,0,.13);border:1px solid ' + CINZA + ';padding:12px;display:none;flex-direction:column;gap:8px;min-width:220px;max-width:250px;animation:tmrIn .14s ease-out}',
     '.tmr-panel.open{display:flex}',
     '@keyframes tmrIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}',
 
-    /* Panel: selection */
-    '#exp-timer-select{min-width:240px}',
+    /* Panel sizes */
+    '#exp-timer-select{min-width:222px}',
+    '#exp-timer-expanded{min-width:200px}',
+    '#exp-timer-confirm{min-width:240px}',
 
-    /* Panel: expanded (active) */
-    '#exp-timer-expanded{min-width:210px}',
+    /* ── Selects — estilo fluxo-col-select ── */
+    '.tmr-sel{width:100%;font-size:9px;border:1px solid ' + CINZA + ';border-radius:4px;padding:3px 5px;background:#fff;color:#333;outline:none;font-family:"Raleway",sans-serif;transition:border-color .15s}',
+    '.tmr-sel:focus{border-color:' + OURO + '}',
 
-    /* Panel: confirm */
-    '#exp-timer-confirm{min-width:260px}',
+    /* Labels */
+    '.tmr-sel-lbl{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:2px}',
+    '.tmr-hdr{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#aaa}',
 
-    /* Headings & labels */
-    '.tmr-hdr{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#aaa;padding-bottom:2px}',
-    '.tmr-proj{font-size:11px;font-weight:700;color:#111110;line-height:1.3}',
-    '.tmr-etapa{font-size:10px;color:#888;font-weight:500}',
+    /* Projeto / etapa display */
+    '.tmr-proj{font-size:10px;font-weight:700;color:' + GRAFITE + ';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.tmr-etapa{font-size:9px;color:#888;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
 
-    /* Elapsed display */
-    '.tmr-elapsed{font-family:"DM Mono",monospace;font-size:26px;font-weight:600;color:#111110;text-align:center;letter-spacing:1px;padding:2px 0}',
+    /* Elapsed */
+    '.tmr-elapsed{font-family:"DM Mono",monospace;font-size:24px;font-weight:600;color:' + GRAFITE + ';text-align:center;letter-spacing:1px;padding:2px 0}',
 
-    /* Buttons row */
-    '.tmr-btns{display:flex;gap:6px}',
-    '.tmr-btn{flex:1;padding:7px 6px;border-radius:9px;border:none;font-family:"Raleway",sans-serif;font-size:10px;font-weight:700;cursor:pointer;transition:opacity .15s;letter-spacing:.2px}',
-    '.tmr-btn:hover{opacity:.78}',
-    '.tmr-btn-pause{background:#ECEAE4;color:#111110}',
-    '.tmr-btn-stop{background:#111110;color:#fff}',
+    /* ── Botões — estilo .btn da plataforma ── */
+    '.tmr-btns{display:flex;gap:5px}',
+    '.tmr-btn{flex:1;padding:5px 8px;border-radius:6px;border:1px solid ' + CINZA + ';font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:border-color .12s,color .12s,background .12s;background:#fff;color:#888}',
+    '.tmr-btn:hover{border-color:' + GRAFITE + ';color:' + GRAFITE + '}',
+    '.tmr-btn-stop{background:' + GRAFITE + ';color:#fff;border-color:' + GRAFITE + '}',
+    '.tmr-btn-stop:hover{opacity:.82;color:#fff}',
 
-    /* Selects */
-    '.tmr-sel{width:100%;padding:7px 9px;border:1px solid #ECEAE4;border-radius:9px;font-family:"Raleway",sans-serif;font-size:11px;background:#fff;color:#111110;outline:none;box-sizing:border-box;transition:border-color .15s}',
-    '.tmr-sel:focus{border-color:#F5C518}',
-    '.tmr-sel-lbl{font-size:9px;font-weight:600;color:#aaa;letter-spacing:.4px;text-transform:uppercase;margin-bottom:3px}',
+    /* Botão iniciar — .btn.verde */
+    '.tmr-primary{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + VERDE + ';background:' + VERDE + ';color:#fff;font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:opacity .12s}',
+    '.tmr-primary:hover{opacity:.85}',
 
-    /* Primary action */
-    '.tmr-primary{width:100%;padding:9px;border-radius:10px;border:none;background:#F5C518;color:#111110;font-family:"Raleway",sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .15s}',
-    '.tmr-primary:hover{opacity:.82}',
-
-    /* Dark action */
-    '.tmr-dark{width:100%;padding:9px;border-radius:10px;border:none;background:#111110;color:#fff;font-family:"Raleway",sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .15s}',
-    '.tmr-dark:hover{opacity:.8}',
-    '.tmr-dark:disabled{opacity:.4;cursor:not-allowed}',
+    /* Botão salvar — .btn.filled */
+    '.tmr-dark{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + GRAFITE + ';background:' + GRAFITE + ';color:#fff;font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:opacity .12s}',
+    '.tmr-dark:hover{opacity:.82}',
+    '.tmr-dark:disabled{opacity:.38;cursor:not-allowed}',
 
     /* Links */
-    '.tmr-lnk{text-align:center;font-size:10px;color:#bbb;cursor:pointer;padding-top:1px}',
+    '.tmr-lnk{text-align:center;font-size:9px;color:#bbb;cursor:pointer;letter-spacing:.2px}',
     '.tmr-lnk:hover{color:#555}',
+    '.tmr-lnk.back{color:#888}',
+    '.tmr-lnk.back:hover{color:' + GRAFITE + '}',
 
-    /* Confirm inputs */
-    '.tmr-row{display:flex;gap:8px}',
-    '.tmr-field{flex:1;display:flex;flex-direction:column;gap:3px}',
-    '.tmr-input{width:100%;padding:7px 8px;border:1px solid #ECEAE4;border-radius:8px;font-family:"DM Mono",monospace;font-size:11px;color:#111110;background:#fff;box-sizing:border-box;outline:none;transition:border-color .15s}',
-    '.tmr-input:focus{border-color:#F5C518}',
-    '.tmr-textarea{width:100%;padding:7px 8px;border:1px solid #ECEAE4;border-radius:8px;font-family:"Raleway",sans-serif;font-size:11px;color:#111110;background:#fff;resize:none;box-sizing:border-box;outline:none;height:54px;transition:border-color .15s}',
-    '.tmr-textarea:focus{border-color:#F5C518}',
+    /* ── Recentes ── */
+    '.tmr-recent-btn{width:100%;text-align:left;padding:4px 7px;border:1px solid ' + CINZA + ';border-radius:5px;background:' + OFF + ';font-family:"Raleway",sans-serif;font-size:9px;color:#555;cursor:pointer;transition:background .1s,border-color .1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;display:block}',
+    '.tmr-recent-btn:last-child{margin-bottom:0}',
+    '.tmr-recent-btn:hover{background:' + CINZA + ';border-color:#bbb;color:' + GRAFITE + '}',
+    '.tmr-divider{height:1px;background:' + CINZA + ';margin:2px 0}',
 
-    /* Toast */
-    '#exp-timer-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111110;color:#fff;padding:9px 18px;border-radius:20px;font-size:12px;font-family:"Raleway",sans-serif;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10002;white-space:nowrap}',
+    /* ── Inputs confirmação ── */
+    '.tmr-row{display:flex;gap:6px}',
+    '.tmr-field{flex:1;display:flex;flex-direction:column;gap:2px}',
+    '.tmr-input{width:100%;padding:4px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"DM Mono",monospace;font-size:10px;color:' + GRAFITE + ';background:#fff;box-sizing:border-box;outline:none;transition:border-color .15s}',
+    '.tmr-input:focus{border-color:' + OURO + '}',
+    '.tmr-textarea{width:100%;padding:5px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"Raleway",sans-serif;font-size:10px;color:' + GRAFITE + ';background:#fff;resize:none;box-sizing:border-box;outline:none;height:48px;transition:border-color .15s}',
+    '.tmr-textarea:focus{border-color:' + OURO + '}',
+
+    /* ── Toast ── */
+    '#exp-timer-toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:' + GRAFITE + ';color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-family:"Raleway",sans-serif;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10002;white-space:nowrap}',
   ].join('');
 
   /* ═══════════════════════════════════════════════════════════════
@@ -115,38 +132,81 @@
   var HTML = [
     '<div id="exp-timer-widget">',
 
-    /* ── Selection panel ── */
+    /* ── Painel de seleção ── */
     '<div id="exp-timer-select" class="tmr-panel">',
       '<div class="tmr-hdr">&#9201; Iniciar contagem</div>',
-      '<div>',
-        '<div class="tmr-sel-lbl">Projeto</div>',
-        '<select class="tmr-sel" id="tmr-sel-proj"><option value="">Carregando&#8230;</option></select>',
+
+      /* Recentes */
+      '<div id="tmr-recent-block" style="display:none">',
+        '<div class="tmr-sel-lbl">Recentes</div>',
+        '<div id="tmr-recent-list"></div>',
+        '<div class="tmr-divider"></div>',
       '</div>',
+
+      /* Tipo */
       '<div>',
-        '<div class="tmr-sel-lbl">Etapa <span style="font-weight:400">(opcional)</span></div>',
-        '<select class="tmr-sel" id="tmr-sel-etapa"><option value="">&#8212; Etapa &#8212;</option></select>',
+        '<div class="tmr-sel-lbl">Tipo</div>',
+        '<select class="tmr-sel" id="tmr-sel-tipo" onchange="_tmr.changeTipo()">',
+          '<option value="projeto">Projeto</option>',
+          '<option value="organizacao">Org. Interna</option>',
+        '</select>',
       '</div>',
+
+      /* Subcategoria (org / soc) */
+      '<div id="tmr-sub-block" style="display:none">',
+        '<div class="tmr-sel-lbl">Categoria</div>',
+        '<select class="tmr-sel" id="tmr-sel-sub"></select>',
+      '</div>',
+
+      /* Cascata: projeto */
+      '<div id="tmr-proj-block">',
+        '<div>',
+          '<div class="tmr-sel-lbl">Cliente</div>',
+          '<select class="tmr-sel" id="tmr-sel-cli" onchange="_tmr.changeCli()">',
+            '<option value="">Carregando&#8230;</option>',
+          '</select>',
+        '</div>',
+        '<div id="tmr-opp-block" style="display:none">',
+          '<div class="tmr-sel-lbl">Projeto / oportunidade</div>',
+          '<select class="tmr-sel" id="tmr-sel-opp" onchange="_tmr.changeOpp()">',
+            '<option value="">&#8212; selecionar &#8212;</option>',
+          '</select>',
+        '</div>',
+        '<div id="tmr-prod-block" style="display:none">',
+          '<div class="tmr-sel-lbl">Produto</div>',
+          '<select class="tmr-sel" id="tmr-sel-prod" onchange="_tmr.changeProd()">',
+            '<option value="">&#8212; selecionar &#8212;</option>',
+          '</select>',
+        '</div>',
+        '<div id="tmr-etapa-block" style="display:none">',
+          '<div class="tmr-sel-lbl">Etapa <span style="font-weight:400;text-transform:none">(opcional)</span></div>',
+          '<select class="tmr-sel" id="tmr-sel-etapa">',
+            '<option value="">&#8212; selecionar &#8212;</option>',
+          '</select>',
+        '</div>',
+      '</div>',
+
       '<button class="tmr-primary" onclick="_tmr.start()">&#9654; Iniciar</button>',
       '<div class="tmr-lnk" onclick="_tmr.cancelSelect()">Cancelar</div>',
     '</div>',
 
-    /* ── Expanded / active panel ── */
+    /* ── Painel expandido (ativo) ── */
     '<div id="exp-timer-expanded" class="tmr-panel">',
-      '<div>',
+      '<div style="min-width:0">',
         '<div class="tmr-proj" id="tmr-proj-name">&#8212;</div>',
         '<div class="tmr-etapa" id="tmr-etapa-name"></div>',
       '</div>',
       '<div class="tmr-elapsed" id="tmr-elapsed">00:00</div>',
       '<div class="tmr-btns">',
-        '<button class="tmr-btn tmr-btn-pause" id="tmr-pause-btn" onclick="_tmr.togglePause()">&#9646;&#9646; Pausar</button>',
+        '<button class="tmr-btn" id="tmr-pause-btn" onclick="_tmr.togglePause()">&#9646;&#9646; Pausar</button>',
         '<button class="tmr-btn tmr-btn-stop" onclick="_tmr.openConfirm()">&#9646; Encerrar</button>',
       '</div>',
     '</div>',
 
-    /* ── Confirmation panel ── */
+    /* ── Painel de confirmação ── */
     '<div id="exp-timer-confirm" class="tmr-panel">',
       '<div class="tmr-hdr">Confirmar lan&#231;amento</div>',
-      '<div>',
+      '<div style="min-width:0">',
         '<div class="tmr-proj" id="tmr-cf-proj">&#8212;</div>',
         '<div class="tmr-etapa" id="tmr-cf-etapa"></div>',
       '</div>',
@@ -169,40 +229,27 @@
         '<textarea class="tmr-textarea" id="tmr-cf-desc" placeholder="O que foi feito&#8230;"></textarea>',
       '</div>',
       '<button class="tmr-dark" id="tmr-save-btn" onclick="_tmr.salvar()">Salvar lan&#231;amento</button>',
-      '<div class="tmr-lnk" onclick="_tmr.backToExpanded()" style="color:#888">&#8592; Voltar / Retomar</div>',
+      '<div class="tmr-lnk back" onclick="_tmr.backToExpanded()">&#8592; Voltar / retomar</div>',
       '<div class="tmr-lnk" onclick="_tmr.descartar()">Descartar timer</div>',
     '</div>',
 
     /* ── FAB ── */
     '<button id="exp-timer-fab" title="Timer de horas">',
-      _svgClock(),
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
     '</button>',
 
     '</div>',
     '<div id="exp-timer-toast"></div>',
   ].join('');
 
-  function _svgClock() {
-    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
-  }
-
   /* ═══════════════════════════════════════════════════════════════
      Estado (localStorage)
+     {
+       running, originalStart, startedAt, pausedMs, pausedAt,
+       tipo, subtipo, produtoId, etapaId,
+       nomeProjeto, nomeEtapa   ← strings de exibição
+     }
   ═══════════════════════════════════════════════════════════════ */
-  /*
-    Shape:
-    {
-      running:         bool,
-      originalStart:   ISO string  — timestamp real do início (nunca muda)
-      startedAt:       ISO string|null — quando o segmento atual começou
-      pausedMs:        number — ms acumulados em pausas anteriores
-      pausedAt:        ISO string|null
-      produtoId:       uuid|null
-      etapaId:         uuid|null
-      nomeProjeto:     string
-      nomeEtapa:       string
-    }
-  */
   function _loadState() {
     try { return JSON.parse(localStorage.getItem(TIMER_KEY)) || {}; }
     catch (e) { return {}; }
@@ -215,48 +262,47 @@
   ═══════════════════════════════════════════════════════════════ */
   function _elapsedMs(state) {
     var base = state.pausedMs || 0;
-    if (state.running && state.startedAt) {
-      base += Date.now() - new Date(state.startedAt).getTime();
-    }
+    if (state.running && state.startedAt) base += Date.now() - new Date(state.startedAt).getTime();
     return base;
   }
-
   function _fmtMs(ms) {
-    var s   = Math.floor(ms / 1000);
-    var h   = Math.floor(s / 3600);
-    var m   = Math.floor((s % 3600) / 60);
-    var sec = s % 60;
-    if (h > 0) {
-      return pad(h) + ':' + pad(m) + ':' + pad(sec);
-    }
-    return pad(m) + ':' + pad(sec);
+    var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return (h > 0 ? _pad(h) + ':' : '') + _pad(m) + ':' + _pad(sec);
   }
-
-  function pad(n) { return String(n).padStart(2, '0'); }
-
-  function _fmtTime(d) {
-    return pad(d.getHours()) + ':' + pad(d.getMinutes());
-  }
-
-  function _fmtDate(d) {
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-  }
+  function _pad(n) { return String(n).padStart(2, '0'); }
+  function _fmtTime(d)  { return _pad(d.getHours()) + ':' + _pad(d.getMinutes()); }
+  function _fmtDate(d)  { return d.getFullYear() + '-' + _pad(d.getMonth() + 1) + '-' + _pad(d.getDate()); }
+  function _trunc(s, n) { n = n || 34; return s && s.length > n ? s.slice(0, n - 1) + '…' : (s || ''); }
 
   /* ═══════════════════════════════════════════════════════════════
      Supabase
   ═══════════════════════════════════════════════════════════════ */
   function _getSb() {
     if (_sb) return _sb;
-    if (window.supabase) {
-      _sb = window.supabase.createClient(SB_URL, SB_KEY);
-    }
+    if (window.supabase) _sb = window.supabase.createClient(SB_URL, SB_KEY);
     return _sb;
   }
 
-  function _getUser() {
-    // Aproveita G.usuario se disponível na página
-    if (window.G && window.G.usuario) return window.G.usuario;
-    return null;
+  /* ═══════════════════════════════════════════════════════════════
+     Usuário  (async — tenta G.usuario, depois session)
+  ═══════════════════════════════════════════════════════════════ */
+  async function _getUser() {
+    if (_cachedUser && _cachedUser.id) return _cachedUser;
+    if (window.G && window.G.usuario && window.G.usuario.id) {
+      _cachedUser = window.G.usuario;
+      return _cachedUser;
+    }
+    var client = _getSb();
+    if (!client) return null;
+    try {
+      var r = await client.auth.getSession();
+      var session = r && r.data && r.data.session;
+      if (!session) return null;
+      var q = await client.from('usuarios').select('id, nome, role, iniciais, cor, auth_id')
+        .eq('auth_id', session.user.id).maybeSingle();
+      _cachedUser = q.data;
+      return _cachedUser;
+    } catch (e) { return null; }
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -275,16 +321,15 @@
      Panels
   ═══════════════════════════════════════════════════════════════ */
   function _showPanel(name) {
-    ['select', 'expanded', 'confirm'].forEach(function (id) {
+    ['select','expanded','confirm'].forEach(function (id) {
       var el = document.getElementById('exp-timer-' + id);
       if (el) el.classList.toggle('open', id === name);
     });
   }
-
   function _hideAll() { _showPanel('__none__'); }
 
   /* ═══════════════════════════════════════════════════════════════
-     Tick (atualiza elapsed display)
+     Tick
   ═══════════════════════════════════════════════════════════════ */
   function _startTick() {
     clearInterval(_tickInterval);
@@ -297,183 +342,339 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     Auto-collapse (State 2 → State 1 após EXPAND_SECS)
+     Auto-collapse State 2 → State 1
   ═══════════════════════════════════════════════════════════════ */
   function _scheduleCollapse() {
     clearTimeout(_collapseTimer);
     _collapseTimer = setTimeout(function () {
-      if (_isHovering) {
-        // Reagendar enquanto o mouse estiver sobre o widget
-        _scheduleCollapse();
-        return;
-      }
+      if (_isHovering) { _scheduleCollapse(); return; }
       _hideAll();
     }, EXPAND_SECS * 1000);
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     Render FAB
+     FAB render
   ═══════════════════════════════════════════════════════════════ */
   function _renderFab() {
     var fab = document.getElementById('exp-timer-fab');
     if (!fab) return;
     var state = _loadState();
     fab.classList.remove('running', 'paused');
-    if (state.running) {
-      fab.classList.add('running');
-    } else if (state.pausedMs || state.originalStart) {
-      fab.classList.add('paused');
-    }
+    if (state.running) fab.classList.add('running');
+    else if (state.originalStart) fab.classList.add('paused');
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     Render expanded panel
+     Expanded panel render
   ═══════════════════════════════════════════════════════════════ */
   function _renderExpanded() {
     var state = _loadState();
     var el;
-
     el = document.getElementById('tmr-proj-name');
-    if (el) el.textContent = state.nomeProjeto || '—';
-
+    if (el) el.textContent = _trunc(state.nomeProjeto || '—', 36);
     el = document.getElementById('tmr-etapa-name');
-    if (el) el.textContent = state.nomeEtapa || '';
-
+    if (el) el.textContent = _trunc(state.nomeEtapa || '', 36);
     el = document.getElementById('tmr-elapsed');
     if (el) el.textContent = _fmtMs(_elapsedMs(state));
-
     el = document.getElementById('tmr-pause-btn');
     if (el) el.innerHTML = state.running ? '&#9646;&#9646; Pausar' : '&#9654; Retomar';
-
     _showPanel('expanded');
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     Carrega projetos e etapas
-     Prioriza G._prodsGestao / G.todasEtapas quando disponíveis
-     (gestao.html já fez a query completa com joins)
+     Data — produtos ativos
   ═══════════════════════════════════════════════════════════════ */
-
-  // Formata o label de exibição de um produto
-  // Mirrors a lógica do painel de horas: opp.projeto · prod.nome
-  function _prodLabel(p) {
-    var opp  = p.oportunidades || {};
-    var proj = opp.projeto || '';
-    var prod = p.nome || p.subtipo || '';
-    if (proj && prod && proj !== prod) return proj + ' · ' + prod;
-    return proj || prod || '(sem nome)';
-  }
-
-  async function _loadProjetos() {
-    if (_projCache) return _projCache;
-
-    // ── Caminho 1: reutiliza dados já carregados pelo gestao.html ──
+  async function _getActiveProds() {
+    /* ── reutiliza G._prodsGestao quando disponível ── */
     if (window.G && Array.isArray(window.G._prodsGestao) && window.G._prodsGestao.length) {
-      var ativos = window.G._prodsGestao.filter(function (p) {
+      return window.G._prodsGestao.filter(function (p) {
         return p.status === 'ativo' && p.em_gestao !== false;
       });
-      _projCache = ativos.map(function (p) {
-        return { id: p.id, label: _prodLabel(p) };
-      }).sort(function (a, b) { return a.label.localeCompare(b.label, 'pt'); });
-      return _projCache;
     }
-
-    // ── Caminho 2: query direta (outros módulos) ──────────────────
+    /* ── cache próprio ── */
+    if (_allProds) return _allProds;
     var client = _getSb();
     if (!client) return [];
     var res = await client
       .from('produtos')
-      .select('id, nome, subtipo, oportunidades(projeto)')
+      .select('id, nome, subtipo, oportunidade_id, oportunidades(id, projeto, clientes(id, nome, cidade, uf))')
       .eq('status', 'ativo')
-      .eq('em_gestao', true)
-      .order('nome');
-    _projCache = (res.data || []).map(function (p) {
-      return { id: p.id, label: _prodLabel(p) };
-    }).sort(function (a, b) { return a.label.localeCompare(b.label, 'pt'); });
-    return _projCache;
+      .eq('em_gestao', true);
+    _allProds = res.data || [];
+    return _allProds;
   }
 
-  async function _loadEtapas(prodId) {
+  async function _getEtapas(prodId) {
     if (_etapaCache[prodId]) return _etapaCache[prodId];
-
-    // ── Caminho 1: reutiliza G.todasEtapas ───────────────────────
+    /* ── reutiliza G.todasEtapas ── */
     if (window.G && Array.isArray(window.G.todasEtapas)) {
-      var etapas = window.G.todasEtapas
-        .filter(function (e) { return e.produto_id === prodId; })
-        .slice()
-        .sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); });
-      _etapaCache[prodId] = etapas;
-      return etapas;
+      var e = window.G.todasEtapas
+        .filter(function (et) { return et.produto_id === prodId; })
+        .slice().sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); });
+      _etapaCache[prodId] = e;
+      return e;
     }
-
-    // ── Caminho 2: query direta ───────────────────────────────────
     var client = _getSb();
     if (!client) return [];
-    var res = await client
-      .from('etapas')
-      .select('id, nome, ordem')
-      .eq('produto_id', prodId)
-      .order('ordem', { ascending: true });
+    var res = await client.from('etapas').select('id, nome, ordem')
+      .eq('produto_id', prodId).order('ordem');
     _etapaCache[prodId] = res.data || [];
     return _etapaCache[prodId];
   }
 
+  /* ── Clientes únicos ── */
+  function _getClientes(prods) {
+    var map = {};
+    prods.forEach(function (p) {
+      var cli = (p.oportunidades && p.oportunidades.clientes) || {};
+      if (cli.id && !map[cli.id]) {
+        var label = _trunc(cli.nome || '(sem nome)', 36);
+        if (cli.cidade) label += ' · ' + cli.cidade;
+        map[cli.id] = { id: cli.id, label: label };
+      }
+    });
+    return Object.values(map).sort(function (a, b) { return a.label.localeCompare(b.label, 'pt'); });
+  }
+
+  /* ── Oportunidades por cliente ── */
+  function _getOpps(prods, cliId) {
+    var map = {};
+    prods.forEach(function (p) {
+      var opp = p.oportunidades || {};
+      var cli = opp.clientes || {};
+      if (cli.id === cliId && opp.id && !map[opp.id]) {
+        map[opp.id] = { id: opp.id, label: _trunc(opp.projeto || '(sem nome)', 36) };
+      }
+    });
+    return Object.values(map);
+  }
+
+  /* ── Produtos por oportunidade ── */
+  function _getProdsByOpp(prods, oppId) {
+    return prods.filter(function (p) { return p.oportunidade_id === oppId; })
+      .map(function (p) { return { id: p.id, label: _trunc(p.nome || p.subtipo || '(sem nome)', 36) }; });
+  }
+
   /* ═══════════════════════════════════════════════════════════════
-     Ações públicas (chamadas via _tmr.xxx() nos botões)
+     Recentes — últimos 2 lançamentos distintos do usuário
+  ═══════════════════════════════════════════════════════════════ */
+  async function _loadRecent() {
+    if (_recentItems !== null) return _recentItems;
+    var user = await _getUser();
+    if (!user || !user.id) { _recentItems = []; return []; }
+    var client = _getSb();
+    if (!client) { _recentItems = []; return []; }
+    try {
+      var res = await client.from('horas_lancadas')
+        .select('tipo, subtipo, produto_id, etapa_id, produtos(nome, oportunidades(projeto)), etapas(nome)')
+        .eq('usuario_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      var seen = new Set(), result = [];
+      (res.data || []).forEach(function (r) {
+        var key = (r.tipo || '') + '|' + (r.subtipo || '') + '|' + (r.produto_id || '') + '|' + (r.etapa_id || '');
+        if (seen.has(key) || result.length >= 2) return;
+        seen.add(key);
+        /* Monta label legível */
+        var lbl = '';
+        if (r.tipo === 'projeto') {
+          var opp = r.produtos && r.produtos.oportunidades && r.produtos.oportunidades.projeto;
+          var prod = r.produtos && r.produtos.nome;
+          lbl = _trunc(opp || prod || 'Projeto', 26);
+          if (r.etapas && r.etapas.nome) lbl += ' · ' + _trunc(r.etapas.nome, 16);
+        } else if (r.tipo === 'organizacao') {
+          lbl = 'Org. Interna' + (r.subtipo ? ' · ' + _trunc(r.subtipo, 20) : '');
+        } else if (r.tipo === 'sociedade') {
+          lbl = 'Sociedade' + (r.subtipo ? ' · ' + _trunc(r.subtipo, 20) : '');
+        } else {
+          lbl = r.tipo || '—';
+        }
+        result.push({ tipo: r.tipo, subtipo: r.subtipo, produtoId: r.produto_id, etapaId: r.etapa_id, label: lbl });
+      });
+      _recentItems = result;
+    } catch (e) { _recentItems = []; }
+    return _recentItems;
+  }
+
+  /* Renderiza lista de recentes no painel */
+  async function _renderRecent() {
+    var items = await _loadRecent();
+    var block = document.getElementById('tmr-recent-block');
+    var list  = document.getElementById('tmr-recent-list');
+    if (!block || !list || !items.length) { if (block) block.style.display = 'none'; return; }
+    list.innerHTML = items.map(function (item, i) {
+      return '<button class="tmr-recent-btn" onclick="_tmr.useRecent(' + i + ')">&#128337; ' + item.label + '</button>';
+    }).join('');
+    block.style.display = '';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     Ações do widget (_tmr — chamadas via onclick no HTML)
   ═══════════════════════════════════════════════════════════════ */
   var _tmr = {
 
     /* ── Abre painel de seleção ── */
     openSelect: async function () {
       _showPanel('select');
-      var sel = document.getElementById('tmr-sel-proj');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">Carregando&#8230;</option>';
-      var projs = await _loadProjetos();
-      sel.innerHTML = '<option value="">&#8212; Selecione o projeto &#8212;</option>' +
-        projs.map(function (p) {
-          return '<option value="' + p.id + '">' + p.label + '</option>';
-        }).join('');
 
-      var selEtapa = document.getElementById('tmr-sel-etapa');
-      selEtapa.innerHTML = '<option value="">&#8212; Etapa &#8212;</option>';
-
-      sel.onchange = async function () {
-        selEtapa.innerHTML = '<option value="">Carregando&#8230;</option>';
-        if (!this.value) {
-          selEtapa.innerHTML = '<option value="">&#8212; Etapa &#8212;</option>';
-          return;
+      /* Mostra/oculta opção Sociedade conforme role */
+      await _getUser(); // garante _cachedUser preenchido
+      var tipoSel = document.getElementById('tmr-sel-tipo');
+      if (tipoSel) {
+        var hasSoc = !!tipoSel.querySelector('option[value="sociedade"]');
+        if (_isSocio() && !hasSoc) {
+          var opt = document.createElement('option');
+          opt.value = 'sociedade'; opt.textContent = 'Sociedade';
+          tipoSel.appendChild(opt);
         }
-        var etapas = await _loadEtapas(this.value);
-        selEtapa.innerHTML = '<option value="">&#8212; Etapa (opcional) &#8212;</option>' +
-          etapas.map(function (e) {
-            return '<option value="' + e.id + '">' + e.nome + '</option>';
-          }).join('');
-      };
+      }
+
+      /* Recentes */
+      _renderRecent();
+
+      /* Inicializa cascata: carrega clientes */
+      _tmr._loadClientes();
     },
 
-    /* ── Cancela seleção sem iniciar ── */
-    cancelSelect: function () { _hideAll(); },
+    /* ── Carrega clientes no select ── */
+    _loadClientes: async function () {
+      var selCli = document.getElementById('tmr-sel-cli');
+      if (!selCli) return;
+      selCli.innerHTML = '<option value="">Carregando&#8230;</option>';
+      var prods = await _getActiveProds();
+      var clis  = _getClientes(prods);
+      selCli.innerHTML = '<option value="">&#8212; selecionar cliente &#8212;</option>' +
+        clis.map(function (c) { return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
+      /* Oculta downstream */
+      ['tmr-opp-block','tmr-prod-block','tmr-etapa-block'].forEach(function (id) {
+        var el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+    },
 
-    /* ── Inicia timer ── */
-    start: function () {
-      var projSel  = document.getElementById('tmr-sel-proj');
-      var etapaSel = document.getElementById('tmr-sel-etapa');
-      if (!projSel || !projSel.value) {
-        _toast('Selecione um projeto para continuar');
-        return;
+    /* ── Tipo mudou ── */
+    changeTipo: function () {
+      var tipo = (document.getElementById('tmr-sel-tipo') || {}).value || 'projeto';
+      var subBlock  = document.getElementById('tmr-sub-block');
+      var projBlock = document.getElementById('tmr-proj-block');
+      var subSel    = document.getElementById('tmr-sel-sub');
+
+      if (tipo !== 'projeto') {
+        /* Mostra subcategoria, oculta cascata */
+        if (subBlock)  subBlock.style.display = '';
+        if (projBlock) projBlock.style.display = 'none';
+        if (subSel) {
+          var opts = (SUBTIPOS[tipo] || []);
+          subSel.innerHTML = opts.map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
+        }
+      } else {
+        if (subBlock)  subBlock.style.display = 'none';
+        if (projBlock) projBlock.style.display = '';
+        _tmr._loadClientes();
       }
+    },
+
+    /* ── Cliente mudou → carrega oportunidades ── */
+    changeCli: async function () {
+      var cliId = (document.getElementById('tmr-sel-cli') || {}).value || '';
+      var oppBlock  = document.getElementById('tmr-opp-block');
+      var prodBlock = document.getElementById('tmr-prod-block');
+      var etapaBlock= document.getElementById('tmr-etapa-block');
+      if (oppBlock)   oppBlock.style.display   = 'none';
+      if (prodBlock)  prodBlock.style.display  = 'none';
+      if (etapaBlock) etapaBlock.style.display = 'none';
+      if (!cliId) return;
+
+      var prods = await _getActiveProds();
+      var opps  = _getOpps(prods, cliId);
+      var selOpp = document.getElementById('tmr-sel-opp');
+      if (selOpp) {
+        selOpp.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+          opps.map(function (o) { return '<option value="' + o.id + '">' + o.label + '</option>'; }).join('');
+      }
+      if (oppBlock) oppBlock.style.display = '';
+    },
+
+    /* ── Oportunidade mudou → carrega produtos ── */
+    changeOpp: async function () {
+      var oppId = (document.getElementById('tmr-sel-opp') || {}).value || '';
+      var prodBlock  = document.getElementById('tmr-prod-block');
+      var etapaBlock = document.getElementById('tmr-etapa-block');
+      if (prodBlock)  prodBlock.style.display  = 'none';
+      if (etapaBlock) etapaBlock.style.display = 'none';
+      if (!oppId) return;
+
+      var prods = await _getActiveProds();
+      var ps    = _getProdsByOpp(prods, oppId);
+      var selProd = document.getElementById('tmr-sel-prod');
+      if (selProd) {
+        selProd.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+          ps.map(function (p) { return '<option value="' + p.id + '">' + p.label + '</option>'; }).join('');
+      }
+      if (prodBlock) prodBlock.style.display = '';
+
+      /* Se só 1 produto, seleciona automaticamente e carrega etapas */
+      if (ps.length === 1 && selProd) {
+        selProd.value = ps[0].id;
+        _tmr.changeProd();
+      }
+    },
+
+    /* ── Produto mudou → carrega etapas ── */
+    changeProd: async function () {
+      var prodId = (document.getElementById('tmr-sel-prod') || {}).value || '';
+      var etapaBlock = document.getElementById('tmr-etapa-block');
+      if (etapaBlock) etapaBlock.style.display = 'none';
+      if (!prodId) return;
+
+      var etapas   = await _getEtapas(prodId);
+      var selEtapa = document.getElementById('tmr-sel-etapa');
+      if (selEtapa) {
+        selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+          etapas.map(function (e) { return '<option value="' + e.id + '">' + _trunc(e.nome, 36) + '</option>'; }).join('');
+      }
+      if (etapaBlock && etapas.length) etapaBlock.style.display = '';
+    },
+
+    /* ── Clique em item recente → preenche e inicia ── */
+    useRecent: async function (idx) {
+      var items = _recentItems || [];
+      var item  = items[idx];
+      if (!item) return;
+
       var now = new Date().toISOString();
+      var nomeProjeto = item.label;
+      var nomeEtapa   = '';
+
+      /* Enriquece o label se for projeto (recente pode ter label truncado) */
+      if (item.tipo === 'projeto' && item.produtoId) {
+        var prods   = await _getActiveProds();
+        var prod    = prods.find(function (p) { return p.id === item.produtoId; });
+        var opp     = prod && prod.oportunidades;
+        nomeProjeto = (opp && opp.projeto) || (prod && (prod.nome || prod.subtipo)) || nomeProjeto;
+
+        if (item.etapaId) {
+          var ets = await _getEtapas(item.produtoId);
+          var et  = ets.find(function (e) { return e.id === item.etapaId; });
+          nomeEtapa = et ? et.nome : '';
+        }
+      } else if (item.tipo === 'organizacao') {
+        nomeProjeto = 'Org. Interna' + (item.subtipo ? ' · ' + item.subtipo : '');
+      } else if (item.tipo === 'sociedade') {
+        nomeProjeto = 'Sociedade' + (item.subtipo ? ' · ' + item.subtipo : '');
+      }
+
       var state = {
         running:       true,
         originalStart: now,
         startedAt:     now,
         pausedMs:      0,
         pausedAt:      null,
-        produtoId:     projSel.value,
-        etapaId:       (etapaSel && etapaSel.value) ? etapaSel.value : null,
-        nomeProjeto:   projSel.options[projSel.selectedIndex].text,
-        nomeEtapa:     (etapaSel && etapaSel.value) ? etapaSel.options[etapaSel.selectedIndex].text : '',
+        tipo:          item.tipo,
+        subtipo:       item.subtipo || null,
+        produtoId:     item.produtoId || null,
+        etapaId:       item.etapaId  || null,
+        nomeProjeto:   nomeProjeto,
+        nomeEtapa:     nomeEtapa,
       };
       _saveState(state);
       _hideAll();
@@ -483,21 +684,76 @@
       _scheduleCollapse();
     },
 
-    /* ── Pausa / Retoma ── */
+    /* ── Cancelar seleção ── */
+    cancelSelect: function () { _hideAll(); },
+
+    /* ── Iniciar timer ── */
+    start: function () {
+      var tipoSel  = document.getElementById('tmr-sel-tipo');
+      var tipo     = tipoSel ? tipoSel.value : 'projeto';
+      var now      = new Date().toISOString();
+      var nomeProjeto = '', nomeEtapa = '', subtipo = null, produtoId = null, etapaId = null;
+
+      if (tipo !== 'projeto') {
+        /* Org / Sociedade */
+        var subSel = document.getElementById('tmr-sel-sub');
+        subtipo    = subSel ? (subSel.value || null) : null;
+        var tipoLabel = tipo === 'organizacao' ? 'Org. Interna' : 'Sociedade';
+        nomeProjeto   = tipoLabel + (subtipo ? ' · ' + subtipo : '');
+      } else {
+        /* Projeto: precisa pelo menos produto selecionado */
+        var selProd  = document.getElementById('tmr-sel-prod');
+        var selEtapa = document.getElementById('tmr-sel-etapa');
+        var selOpp   = document.getElementById('tmr-sel-opp');
+        var selCli   = document.getElementById('tmr-sel-cli');
+
+        produtoId = selProd  ? (selProd.value  || null) : null;
+        etapaId   = selEtapa ? (selEtapa.value || null) : null;
+
+        if (!selCli || !selCli.value) { _toast('Selecione o cliente'); return; }
+        if (!selOpp || !selOpp.value) { _toast('Selecione o projeto / oportunidade'); return; }
+        if (!produtoId)               { _toast('Selecione o produto'); return; }
+
+        /* Label: opp + prod */
+        var oppLabel  = selOpp  ? selOpp.options[selOpp.selectedIndex].text   : '';
+        var prodLabel = selProd ? selProd.options[selProd.selectedIndex].text  : '';
+        nomeProjeto   = (oppLabel !== prodLabel) ? oppLabel + ' · ' + prodLabel : oppLabel;
+        nomeEtapa     = (etapaId && selEtapa) ? selEtapa.options[selEtapa.selectedIndex].text : '';
+      }
+
+      var state = {
+        running:       true,
+        originalStart: now,
+        startedAt:     now,
+        pausedMs:      0,
+        pausedAt:      null,
+        tipo:          tipo,
+        subtipo:       subtipo,
+        produtoId:     produtoId,
+        etapaId:       etapaId,
+        nomeProjeto:   nomeProjeto,
+        nomeEtapa:     nomeEtapa,
+      };
+      _saveState(state);
+      _hideAll();
+      _renderFab();
+      _renderExpanded();
+      _startTick();
+      _scheduleCollapse();
+    },
+
+    /* ── Pausar / Retomar ── */
     togglePause: function () {
       var state = _loadState();
       if (!state.originalStart) return;
-
       if (state.running) {
-        // Pausar: acumula ms
-        var elapsed = Date.now() - new Date(state.startedAt).getTime();
+        var elapsed    = Date.now() - new Date(state.startedAt).getTime();
         state.pausedMs  = (state.pausedMs || 0) + elapsed;
         state.running   = false;
         state.startedAt = null;
         state.pausedAt  = new Date().toISOString();
         clearInterval(_tickInterval);
       } else {
-        // Retomar
         state.running   = true;
         state.startedAt = new Date().toISOString();
         state.pausedAt  = null;
@@ -509,57 +765,42 @@
       _renderExpanded();
     },
 
-    /* ── Encerrar → abre confirmação ── */
+    /* ── Encerrar → Confirmação ── */
     openConfirm: function () {
       clearTimeout(_collapseTimer);
       clearInterval(_tickInterval);
-
       var state = _loadState();
-      // Congela tempo se ainda estiver rodando
+      /* Congela tempo */
       if (state.running && state.startedAt) {
         var elapsed    = Date.now() - new Date(state.startedAt).getTime();
-        state.pausedMs = (state.pausedMs || 0) + elapsed;
-        state.running  = false;
+        state.pausedMs  = (state.pausedMs || 0) + elapsed;
+        state.running   = false;
         state.startedAt = null;
         state.pausedAt  = new Date().toISOString();
         _saveState(state);
         _renderFab();
       }
-
       var endDate   = state.pausedAt ? new Date(state.pausedAt) : new Date();
       var startDate = state.originalStart ? new Date(state.originalStart) : new Date(endDate.getTime() - (state.pausedMs || 0));
 
-      var el;
-      el = document.getElementById('tmr-cf-proj');
-      if (el) el.textContent = state.nomeProjeto || '—';
-
-      el = document.getElementById('tmr-cf-etapa');
-      if (el) el.textContent = state.nomeEtapa || '—';
-
-      el = document.getElementById('tmr-cf-data');
-      if (el) el.value = _fmtDate(startDate);
-
-      el = document.getElementById('tmr-cf-ini');
-      if (el) el.value = _fmtTime(startDate);
-
-      el = document.getElementById('tmr-cf-fim');
-      if (el) el.value = _fmtTime(endDate);
-
-      el = document.getElementById('tmr-cf-desc');
-      if (el) el.value = '';
-
-      el = document.getElementById('tmr-save-btn');
-      if (el) { el.disabled = false; el.textContent = 'Salvar lançamento'; }
-
+      var set = function (id, v) { var el = document.getElementById(id); if (el) el[typeof v === 'object' ? 'textContent' : 'value'] = v; };
+      set('tmr-cf-proj',  state.nomeProjeto || '—');
+      var cfEtapa = document.getElementById('tmr-cf-etapa');
+      if (cfEtapa) cfEtapa.textContent = state.nomeEtapa || (state.subtipo || '');
+      set('tmr-cf-data',  _fmtDate(startDate));
+      set('tmr-cf-ini',   _fmtTime(startDate));
+      set('tmr-cf-fim',   _fmtTime(endDate));
+      set('tmr-cf-desc',  '');
+      var btn = document.getElementById('tmr-save-btn');
+      if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
       _showPanel('confirm');
     },
 
-    /* ── Volta ao painel expanded (retoma timer) ── */
+    /* ── Volta ao expanded e retoma ── */
     backToExpanded: function () {
       var state = _loadState();
       if (!state.originalStart) return;
       if (!state.running) {
-        // Retoma automaticamente ao voltar
         state.running   = true;
         state.startedAt = new Date().toISOString();
         state.pausedAt  = null;
@@ -571,23 +812,23 @@
       _renderExpanded();
     },
 
-    /* ── Salva lançamento ── */
+    /* ── Salvar lançamento ── */
     salvar: async function () {
       var btn = document.getElementById('tmr-save-btn');
       if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
 
-      var user = _getUser();
+      var user = await _getUser();
       if (!user || !user.id) {
-        _toast('Usuário não encontrado. Faça login novamente.');
+        _toast('Sessão expirada. Recarregue a página.');
         if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
         return;
       }
 
       var state   = _loadState();
-      var dataISO = document.getElementById('tmr-cf-data').value;
-      var ini     = document.getElementById('tmr-cf-ini').value;
-      var fim     = document.getElementById('tmr-cf-fim').value;
-      var desc    = (document.getElementById('tmr-cf-desc').value || '').trim();
+      var dataISO = (document.getElementById('tmr-cf-data') || {}).value || '';
+      var ini     = (document.getElementById('tmr-cf-ini')  || {}).value || '';
+      var fim     = (document.getElementById('tmr-cf-fim')  || {}).value || '';
+      var desc    = ((document.getElementById('tmr-cf-desc') || {}).value || '').trim();
 
       if (!dataISO || !ini || !fim) {
         _toast('Preencha data, início e fim');
@@ -602,76 +843,76 @@
         return;
       }
 
-      // ── Semana (upsert) ──────────────────────────────────────────
-      var dateObj  = new Date(dataISO + 'T12:00:00');
-      var jsDay    = dateObj.getDay();           // 0=Dom ... 6=Sab
-      var isoDia   = jsDay === 0 ? 7 : jsDay;   // 1=Seg ... 7=Dom
-
-      // Início da semana (segunda-feira)
-      var startOfWeek = new Date(dateObj);
-      startOfWeek.setDate(dateObj.getDate() - (isoDia - 1));
-      var endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-      // Número ISO da semana
-      var thursd   = new Date(dateObj);
+      /* ── Calcula semana ──────────────────────────────────────── */
+      var dateObj = new Date(dataISO + 'T12:00:00');
+      var jsDay   = dateObj.getDay();
+      var isoDia  = jsDay === 0 ? 7 : jsDay;                         // 1=Seg … 7=Dom
+      var weekMon = new Date(dateObj);
+      weekMon.setDate(dateObj.getDate() - (isoDia - 1));
+      var weekSun = new Date(weekMon);
+      weekSun.setDate(weekMon.getDate() + 6);
+      var thursd  = new Date(dateObj);
       thursd.setDate(dateObj.getDate() + (4 - isoDia));
-      var yearStart = new Date(thursd.getFullYear(), 0, 1);
-      var semNum   = Math.ceil(((thursd - yearStart) / 86400000 + 1) / 7);
+      var yrStart = new Date(thursd.getFullYear(), 0, 1);
+      var semNum  = Math.ceil(((thursd - yrStart) / 86400000 + 1) / 7);
+      var weekIni = _fmtDate(weekMon);
+      var weekFim = _fmtDate(weekSun);
 
-      var semPayload = {
-        usuario_id: user.id,
-        ano:        thursd.getFullYear(),
-        semana:     semNum,
-        ini:        _fmtDate(startOfWeek),
-        fim:        _fmtDate(endOfWeek),
-      };
+      /* ── Busca semana existente ── */
+      var sfRes = await client.from('semanas').select('id, finalizada')
+        .eq('usuario_id', user.id).eq('data_inicio', weekIni).maybeSingle();
+      var semDb = sfRes.data;
 
-      var semRes = await client
-        .from('semanas')
-        .upsert(semPayload, { onConflict: 'usuario_id,ano,semana' })
-        .select()
-        .single();
-
-      if (semRes.error) {
-        _toast('Erro na semana: ' + semRes.error.message);
+      if (semDb && semDb.finalizada) {
+        _toast('Semana já finalizada');
         if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
         return;
       }
 
-      // ── Lançamento ───────────────────────────────────────────────
-      var lancPayload = {
+      /* ── Cria semana se não existir ── */
+      if (!semDb) {
+        var scRes = await client.from('semanas')
+          .upsert({ usuario_id: user.id, ano: thursd.getFullYear(), semana: semNum, data_inicio: weekIni, data_fim: weekFim, finalizada: false }, { onConflict: 'usuario_id,ano,semana' })
+          .select().single();
+        if (scRes.error) {
+          _toast('Erro na semana: ' + scRes.error.message);
+          if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+          return;
+        }
+        semDb = scRes.data;
+      }
+
+      /* ── Insere lançamento ── */
+      var lancRes = await client.from('horas_lancadas').insert({
         usuario_id:      user.id,
-        semana_id:       semRes.data.id,
+        semana_id:       semDb.id,
         data_lancamento: dataISO,
         dia_semana:      isoDia,
         hora_inicio:     ini,
         hora_fim:        fim,
-        tipo:            'horas_projeto',
+        tipo:            state.tipo || 'projeto',
+        subtipo:         state.subtipo || null,
         produto_id:      state.produtoId || null,
         etapa_id:        state.etapaId   || null,
         descricao:       desc || null,
-      };
-
-      var lancRes = await client.from('horas_lancadas').insert(lancPayload);
+      });
 
       if (lancRes.error) {
-        _toast('Erro ao salvar: ' + lancRes.error.message);
+        _toast('Erro: ' + lancRes.error.message);
         if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
         return;
       }
 
-      // Sucesso
+      /* Sucesso */
       _clearState();
+      _recentItems = null;  // invalida cache de recentes
       _hideAll();
       _renderFab();
       _toast('Horas registradas ✓');
-
-      // Atualiza a view de horas se estivermos no gestao.html
       if (window.renderSemana) window.renderSemana();
     },
 
-    /* ── Descarta timer sem salvar ── */
+    /* ── Descartar ── */
     descartar: function () {
       clearInterval(_tickInterval);
       clearTimeout(_collapseTimer);
@@ -682,37 +923,28 @@
     },
   };
 
-  // Expõe globalmente para os onclick do HTML
   window._tmr = _tmr;
 
   /* ═══════════════════════════════════════════════════════════════
-     FAB click handler
+     FAB click
   ═══════════════════════════════════════════════════════════════ */
   function _onFabClick() {
-    var state    = _loadState();
-    var active   = !!(state.running || state.originalStart);
-
+    var state      = _loadState();
+    var active     = !!(state.running || state.originalStart);
     var expandedEl = document.getElementById('exp-timer-expanded');
     var selectEl   = document.getElementById('exp-timer-select');
     var confirmEl  = document.getElementById('exp-timer-confirm');
 
     if (active) {
-      // Timer em andamento
-      if (confirmEl && confirmEl.classList.contains('open')) {
-        // Confirmar panel aberto — não fecha pelo FAB (usuário precisa escolher)
-        return;
-      }
+      if (confirmEl && confirmEl.classList.contains('open')) return; // não fecha durante confirmação
       if (expandedEl && expandedEl.classList.contains('open')) {
-        // Fecha expanded (minimiza para State 1)
         _hideAll();
         clearTimeout(_collapseTimer);
       } else {
-        // Reabre expanded
         _renderExpanded();
         if (state.running) _scheduleCollapse();
       }
     } else {
-      // Sem timer ativo
       if (selectEl && selectEl.classList.contains('open')) {
         _hideAll();
       } else {
@@ -725,21 +957,21 @@
      Init
   ═══════════════════════════════════════════════════════════════ */
   function _init() {
-    // Injeta CSS
-    var styleEl      = document.createElement('style');
+    /* CSS */
+    var styleEl = document.createElement('style');
     styleEl.textContent = CSS;
     document.head.appendChild(styleEl);
 
-    // Injeta HTML
+    /* HTML */
     var wrap = document.createElement('div');
     wrap.innerHTML = HTML;
     while (wrap.firstChild) document.body.appendChild(wrap.firstChild);
 
-    // FAB click
+    /* FAB */
     var fab = document.getElementById('exp-timer-fab');
     if (fab) fab.addEventListener('click', _onFabClick);
 
-    // Hover: mantém expanded e reinicia collapse timer
+    /* Hover: mantém expanded + reinicia collapse */
     var widget = document.getElementById('exp-timer-widget');
     if (widget) {
       widget.addEventListener('mouseenter', function () {
@@ -749,12 +981,11 @@
         if (state.running || state.originalStart) {
           var expandedEl = document.getElementById('exp-timer-expanded');
           var confirmEl  = document.getElementById('exp-timer-confirm');
-          var isAnyOpen  = (expandedEl && expandedEl.classList.contains('open')) ||
-                           (confirmEl  && confirmEl.classList.contains('open'));
-          if (!isAnyOpen) _renderExpanded();
+          var anyOpen = (expandedEl && expandedEl.classList.contains('open')) ||
+                        (confirmEl  && confirmEl.classList.contains('open'));
+          if (!anyOpen) _renderExpanded();
         }
       });
-
       widget.addEventListener('mouseleave', function () {
         _isHovering = false;
         var state = _loadState();
@@ -762,24 +993,21 @@
       });
     }
 
-    // Click fora: fecha painel de seleção (mas não o confirm ou o expanded com timer ativo)
+    /* Click fora: fecha seleção */
     document.addEventListener('click', function (e) {
       var w = document.getElementById('exp-timer-widget');
       if (w && w.contains(e.target)) return;
       var selectEl = document.getElementById('exp-timer-select');
-      if (selectEl && selectEl.classList.contains('open')) {
-        _hideAll();
-      }
+      if (selectEl && selectEl.classList.contains('open')) _hideAll();
     });
 
-    // Render inicial
+    /* Render inicial */
     _renderFab();
 
-    // Retoma tick se estava rodando quando saiu da página
+    /* Retoma tick se estava rodando ao navegar */
     var state = _loadState();
     if (state.running && state.startedAt) {
       _startTick();
-      // Mostra expanded brevemente ao voltar para uma página
       _renderExpanded();
       _scheduleCollapse();
     }
