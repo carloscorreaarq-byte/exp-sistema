@@ -531,6 +531,30 @@ body::before {
 .notif-check-btn:hover{border-color:var(--verde);color:var(--verde)}
 .notif-corpo{font-size:10px;color:#666;line-height:1.4;padding-left:21px;white-space:pre-wrap;word-break:break-word}
 .notif-ts{font-size:9px;color:#bbb;padding-left:21px}
+.tool-feedback-wrap{position:relative}
+.tool-feedback-btn{
+  width:32px;height:32px;border-radius:50%;
+  border:1px solid var(--cinza);background:var(--branco);color:var(--grafite);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-ui);font-size:13px;font-weight:700;cursor:pointer;
+  transition:border-color .12s,background .12s,transform .12s;
+}
+.tool-feedback-btn:hover{border-color:var(--grafite);background:var(--off);transform:translateY(-1px)}
+.tool-feedback-pop{
+  position:absolute;top:calc(100% + 10px);right:0;z-index:9100;
+  width:min(340px,calc(100vw - 24px));
+  display:none;gap:9px;padding:12px;
+  background:rgba(255,255,255,.98);border:1px solid var(--cinza);border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12)
+}
+.tool-feedback-pop.open{display:grid}
+.tool-feedback-pop:before{
+  content:'';position:absolute;top:-6px;right:11px;width:12px;height:12px;transform:rotate(45deg);
+  background:var(--branco);border-top:1px solid var(--cinza);border-left:1px solid var(--cinza)
+}
+.tool-feedback-title{font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#666}
+.tool-feedback-sub,.tool-feedback-status{font-size:10px;color:#888;line-height:1.45}
+.tool-feedback-actions{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
 /* @ Mention autocomplete */
 .mencao-dd{position:fixed;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.13);z-index:9000;max-height:180px;overflow-y:auto;min-width:190px}
 .mencao-it{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-size:11px;font-family:var(--font-ui)}
@@ -2095,6 +2119,29 @@ body::before {
         <div id="notif-lista"><div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Carregando…</div></div>
       </div>
     </div>
+    <div class="tool-feedback-wrap" id="tool-feedback-wrap">
+      <button class="tool-feedback-btn" onclick="toggleToolFeedbackPop(event)" title="Problemas e sugestões">!</button>
+      <div class="tool-feedback-pop" id="tool-feedback-pop">
+        <div class="tool-feedback-title">Problema ou sugestão</div>
+        <div class="tool-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+        <div class="fgroup">
+          <label>Tipo</label>
+          <select id="tool-feedback-type">
+            <option value="problema">Problema</option>
+            <option value="sugestao">Sugestão</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Mensagem</label>
+          <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+        </div>
+        <div class="tool-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+        <div class="tool-feedback-actions">
+          <button class="btn" onclick="fecharToolFeedbackPop()">Fechar</button>
+          <button class="btn filled" onclick="enviarToolFeedback()">Enviar</button>
+        </div>
+      </div>
+    </div>
     <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
       <span class="ttg-icon">☀</span>
       <span class="ttg-track"><span class="ttg-knob"></span></span>
@@ -3579,11 +3626,59 @@ function toggleNavDropdown() {
 function toggleUserMenu() {
   document.getElementById('user-dropdown').classList.toggle('open');
 }
+function setToolFeedbackStatus(msg){
+  const el = document.getElementById('tool-feedback-status');
+  if (el) el.textContent = msg;
+}
+function toggleToolFeedbackPop(ev){
+  ev?.stopPropagation?.();
+  document.getElementById('tool-feedback-pop')?.classList.toggle('open');
+}
+function fecharToolFeedbackPop(){
+  document.getElementById('tool-feedback-pop')?.classList.remove('open');
+}
+function toolFeedbackContext(){
+  const tab = document.querySelector('.ntab.active')?.dataset?.tab || 'dashboard';
+  return {
+    origem_modulo: 'Gestao',
+    url_origem: `gestao.html#${tab}`
+  };
+}
+async function enviarToolFeedback(){
+  if (!G.usuario?.id) { toast('Sessão indisponível para registrar feedback'); return; }
+  const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
+  const mensagem = document.getElementById('tool-feedback-message')?.value.trim() || '';
+  if (!mensagem) {
+    setToolFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.');
+    return;
+  }
+  const ctx = toolFeedbackContext();
+  setToolFeedbackStatus('Enviando registro...');
+  const { error } = await sb.from('plataforma_feedback').insert({
+    usuario_id: G.usuario.id,
+    tipo,
+    mensagem,
+    status: 'novo',
+    origem_modulo: ctx.origem_modulo,
+    url_origem: ctx.url_origem,
+    criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString()
+  });
+  if (error) {
+    setToolFeedbackStatus('Não foi possível enviar. Rode o SQL da estrutura de feedback, se necessário.');
+    return;
+  }
+  document.getElementById('tool-feedback-message').value = '';
+  setToolFeedbackStatus('Registro enviado para a Gestão de plataforma.');
+  toast('Feedback enviado');
+}
 document.addEventListener('click', e => {
   if (!document.getElementById('nav-mod-wrap')?.contains(e.target))
     document.getElementById('nav-dropdown')?.classList.remove('open');
   if (!document.getElementById('user-pill-wrap')?.contains(e.target))
     document.getElementById('user-dropdown')?.classList.remove('open');
+  if (!document.getElementById('tool-feedback-wrap')?.contains(e.target))
+    document.getElementById('tool-feedback-pop')?.classList.remove('open');
   if (!document.getElementById('notif-wrap')?.contains(e.target)) {
     const p = document.getElementById('notif-panel');
     if (p) p.style.display = 'none';
