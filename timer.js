@@ -26,6 +26,9 @@
   var _sb, _tickInterval, _collapseTimer, _isHovering = false;
   var _allProds = null, _etapaCache = {}, _cachedUser = null, _recentItems = null;
   var _audioCtx = null, _tickCount = 0;
+  var _soundMuted       = localStorage.getItem('exp_tmr_sound_muted') === 'true';
+  var _pushMuted        = localStorage.getItem('exp_tmr_push_muted')  === 'true';
+  var _lastPushSentMark = 0;
 
   /* ── Subtipos (espelha SUBTIPOS do gestao.html) ─────────────────── */
   var SUBTIPOS = {
@@ -133,6 +136,14 @@
     '.tmr-textarea{width:100%;padding:5px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"Raleway",sans-serif;font-size:10px;color:' + GRAFITE + ';background:#fff;resize:none;box-sizing:border-box;outline:none;height:48px;transition:border-color .15s}',
     '.tmr-textarea:focus{border-color:' + OURO + '}',
 
+    /* ── Icon btns (som + push) ── */
+    '.tmr-panel-top{display:flex;justify-content:space-between;align-items:center;min-height:16px}',
+    '.tmr-panel-top-hdr{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#aaa}',
+    '.tmr-panel-top-btns{display:flex;gap:2px;margin-left:auto}',
+    '.tmr-icon-btn{background:none;border:none;padding:3px;cursor:pointer;color:#d0cfc9;line-height:1;border-radius:4px;transition:color .15s;display:flex;align-items:center}',
+    '.tmr-icon-btn:hover{color:#888}',
+    '.tmr-icon-btn.off{color:#c9a0a0}',
+
     /* ── Toast ── */
     '#exp-timer-toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:' + GRAFITE + ';color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-family:"Raleway",sans-serif;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10002;white-space:nowrap}',
   ].join('');
@@ -203,6 +214,16 @@
 
     /* ── Painel expandido (ativo) ── */
     '<div id="exp-timer-expanded" class="tmr-panel">',
+      '<div class="tmr-panel-top">',
+        '<div class="tmr-panel-top-btns">',
+          '<button class="tmr-icon-btn" id="exp-tmr-sb" onclick="_tmr.toggleSound()" title="Silenciar tic-tac">',
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',
+          '</button>',
+          '<button class="tmr-icon-btn" id="exp-tmr-pb" onclick="_tmr.togglePush()" title="Silenciar notificações push">',
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+          '</button>',
+        '</div>',
+      '</div>',
       '<div class="tmr-info-wrap">',
         '<div class="tmr-info-cli" id="tmr-info-cli"></div>',
         '<div class="tmr-info-opp" id="tmr-info-opp">&#8212;</div>',
@@ -218,7 +239,17 @@
 
     /* ── Painel de confirmação ── */
     '<div id="exp-timer-confirm" class="tmr-panel">',
-      '<div class="tmr-hdr">Confirmar lan&#231;amento</div>',
+      '<div class="tmr-panel-top">',
+        '<span class="tmr-panel-top-hdr">Confirmar lan&#231;amento</span>',
+        '<div class="tmr-panel-top-btns">',
+          '<button class="tmr-icon-btn" id="exp-tmr-sb-cf" onclick="_tmr.toggleSound()" title="Silenciar tic-tac">',
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',
+          '</button>',
+          '<button class="tmr-icon-btn" id="exp-tmr-pb-cf" onclick="_tmr.togglePush()" title="Silenciar notificações push">',
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+          '</button>',
+        '</div>',
+      '</div>',
       '<div class="tmr-info-wrap">',
         '<div class="tmr-info-cli" id="tmr-cf-cli"></div>',
         '<div class="tmr-info-opp" id="tmr-cf-opp">&#8212;</div>',
@@ -388,12 +419,19 @@
       var ms = _elapsedMs(state);
       var el = document.getElementById('tmr-elapsed');
       if (el) el.textContent = _fmtMs(ms);
-      // Toca tic-tac apenas nos primeiros 4s de cada marca de 20 min
+      // Tic-tac + push a cada 20 min
       if (ms > 0) {
+        var markNumber     = Math.floor(ms / BURST_INTERVAL_MS);
         var msIntoInterval = ms % BURST_INTERVAL_MS;
-        if (msIntoInterval < BURST_DURATION_MS) {
+        // Som: primeiros 4s de cada marca
+        if (msIntoInterval < BURST_DURATION_MS && !_soundMuted) {
           var beatIdx = Math.floor(msIntoInterval / 1000);
           _playTick(beatIdx % 2 === 1); // tic, tac, tic, tac
+        }
+        // Push: uma vez por marca, nos primeiros 5s
+        if (markNumber > 0 && msIntoInterval < 5000 && markNumber !== _lastPushSentMark) {
+          _lastPushSentMark = markNumber;
+          if (!_pushMuted) _sendTimerPush(state);
         }
       }
     }, 1000);
@@ -1005,7 +1043,56 @@
       _renderFab();
       _toast('Timer descartado');
     },
+
+    /* ── Toggles de alerta ── */
+    toggleSound: function () {
+      _soundMuted = !_soundMuted;
+      localStorage.setItem('exp_tmr_sound_muted', String(_soundMuted));
+      _updateAlertBtns();
+    },
+    togglePush: function () {
+      _pushMuted = !_pushMuted;
+      localStorage.setItem('exp_tmr_push_muted', String(_pushMuted));
+      _updateAlertBtns();
+    },
   };
+
+  /* ── Atualiza visual dos botões de alerta ── */
+  function _updateAlertBtns() {
+    var icoSoundOn  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+    var icoSoundOff = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+    var icoPushOn   = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+    var icoPushOff  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    [['exp-tmr-sb', true], ['exp-tmr-sb-cf', true], ['exp-tmr-pb', false], ['exp-tmr-pb-cf', false]].forEach(function (pair) {
+      var el = document.getElementById(pair[0]);
+      if (!el) return;
+      var isSound = pair[1];
+      var muted   = isSound ? _soundMuted : _pushMuted;
+      el.innerHTML = isSound ? (muted ? icoSoundOff : icoSoundOn) : (muted ? icoPushOff : icoPushOn);
+      el.classList.toggle('off', muted);
+      el.title = muted
+        ? (isSound ? 'Ativar som tic-tac' : 'Ativar notificações de lembrete')
+        : (isSound ? 'Silenciar som tic-tac' : 'Silenciar notificações de lembrete');
+    });
+  }
+
+  /* ── Envia push de lembrete a cada 20 min ── */
+  async function _sendTimerPush(state) {
+    var usr = await _getUser();
+    if (!usr || !usr.id) return;
+    var client = _getSb();
+    if (!client) return;
+    var opp = state.nomeOpp || state.nomeProjeto || 'entrada ativa';
+    client.functions.invoke('send-push', {
+      body: {
+        usuario_id: usr.id,
+        title:      '⏱ Timer ativo',
+        body:       'Você ainda está trabalhando em ' + opp + '?',
+        url:        window.location.href,
+        tag:        'exp-timer-reminder',
+      }
+    }).catch(function (e) { console.warn('[EXP Timer Push]', e); });
+  }
 
   window._tmr = _tmr;
 
@@ -1054,6 +1141,9 @@
     /* FAB */
     var fab = document.getElementById('exp-timer-fab');
     if (fab) fab.addEventListener('click', _onFabClick);
+
+    /* Aplica estado salvo dos botões de alerta */
+    _updateAlertBtns();
 
     /* Hover: mantém expanded + reinicia collapse */
     var widget = document.getElementById('exp-timer-widget');
