@@ -768,6 +768,7 @@
           updateBadge();
           if (isOpen && currentView === 'home') renderHome();
           playNotificationSound();
+          _sendChatPush(msg);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, function (payload) {
@@ -976,6 +977,48 @@
     return html.replace(/(https?:\/\/[^\s&"<>]+)/g, function (url) {
       return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="chat-link">' + url + '</a>';
     });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     PUSH NOTIFICATION — DM direto ou menção
+  ══════════════════════════════════════════════════════════════════ */
+  function _shouldPush(msg) {
+    // Foco: silêncio total
+    if (userStatus === 'foco') return false;
+
+    var ch  = msg.channel;
+    var uid = user.auth_id;
+
+    // DM 1:1 ou grupo direcionado ao usuário
+    if ((ch.startsWith('dm:') || ch.startsWith('group:')) && ch.includes(uid)) return true;
+
+    // Menção pelo nome no canal geral ou sócios
+    var fn      = (user.nome || '').split(' ')[0].toLowerCase();
+    var content = (msg.content || '').toLowerCase();
+    if (content.includes('@' + fn)) return true;
+
+    return false;
+  }
+
+  function _sendChatPush(msg) {
+    if (!_shouldPush(msg)) return;
+    var appUserId = user.app_user_id || user.id;
+    if (!appUserId) return;
+    var isDM     = msg.channel.startsWith('dm:') || msg.channel.startsWith('group:');
+    var sender   = (msg.sender_name || '').split(' ')[0];
+    var title    = isDM ? sender + ' enviou uma mensagem' : sender + ' mencionou você';
+    var body     = (msg.content || '').length > 80
+      ? msg.content.substring(0, 80) + '…'
+      : msg.content;
+    sb.functions.invoke('send-push', {
+      body: {
+        usuario_id: appUserId,
+        title:      title,
+        body:       body,
+        url:        window.location.href,
+        tag:        'exp-chat-' + msg.channel,
+      }
+    }).catch(function (e) { console.warn('[EXP Chat Push]', e); });
   }
 
   /* ══════════════════════════════════════════════════════════════════

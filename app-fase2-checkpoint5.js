@@ -14,6 +14,7 @@
 
   let platformUsersCache = [];
   let platformTermosCache = {};
+  let platformFeedbackCache = [];
   let pendingAvatarUserId = null;
   let meusDadosDirty = false;
   let plataformaDirty = false;
@@ -124,6 +125,65 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     const el = document.getElementById('plataforma-status');
     if (el) el.textContent = message;
   }
+
+  function setToolFeedbackStatus(message) {
+    const el = document.getElementById('tool-feedback-status');
+    if (el) el.textContent = message;
+  }
+
+  function feedbackTypeLabel(type) {
+    return String(type || '').toLowerCase() === 'sugestao' ? 'Sugestao' : 'Problema';
+  }
+
+  function feedbackStatusLabel(status) {
+    const key = String(status || 'novo').toLowerCase();
+    if (key === 'em_analise') return 'Em analise';
+    if (key === 'resolvido') return 'Resolvido';
+    return 'Novo';
+  }
+
+  function feedbackOriginLabel(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (!normalized || normalized === 'app.html' || normalized === 'sistema') return 'Sistema';
+    if (normalized.includes('gestao')) return 'Gestao';
+    if (normalized.includes('calc')) return 'Calculadora';
+    if (normalized.includes('crm')) return 'Comercial';
+    if (normalized.includes('financeiro')) return 'Financeiro';
+    if (normalized.includes('apoio')) return 'Apoio';
+    if (normalized.includes('contatos')) return 'Contatos';
+    return value || 'Sistema';
+  }
+
+  function currentToolFeedbackContext() {
+    const page = String(window.location.pathname.split('/').pop() || 'app.html');
+    const navModule = document.querySelector('.nav-mod')?.textContent?.trim() || '';
+    return {
+      origem_modulo: feedbackOriginLabel(navModule || page),
+      url_origem: page
+    };
+  }
+
+  function resetToolFeedbackForm() {
+    const type = document.getElementById('tool-feedback-type');
+    const message = document.getElementById('tool-feedback-message');
+    if (type) type.value = 'problema';
+    if (message) message.value = '';
+    setToolFeedbackStatus('Seu registro sera encaminhado para a Gestao de plataforma.');
+  }
+
+  window.toggleToolFeedbackPopover = function toggleToolFeedbackPopover(event) {
+    event?.stopPropagation?.();
+    const pop = document.getElementById('nav-feedback-pop');
+    if (!pop) return;
+    pop.classList.toggle('open');
+    if (pop.classList.contains('open') && !document.getElementById('tool-feedback-message')?.value) {
+      resetToolFeedbackForm();
+    }
+  };
+
+  window.fecharToolFeedbackPopover = function fecharToolFeedbackPopover() {
+    document.getElementById('nav-feedback-pop')?.classList.remove('open');
+  };
 
   function formatPtDate(value) {
     if (!value) return null;
@@ -429,6 +489,60 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     wrap.setAttribute('data-selected', platformColors[0]);
   }
 
+  function renderPlatformFeedbackList(items) {
+    const wrap = document.getElementById('platform-feedback-list');
+    if (!wrap) return;
+    if (!items.length) {
+      wrap.innerHTML = '<div class="platform-empty">Nenhum feedback registrado ate o momento.</div>';
+      return;
+    }
+    wrap.innerHTML = items.map((item) => {
+      const user = platformUsersCache.find((entry) => String(entry.id) === String(item.usuario_id)) || null;
+      const enviadoPor = user?.nome || 'Usuario nao identificado';
+      const enviadoMeta = user ? ((user.apelido || '-') + ' · ' + roleLabel(user.role)) : 'sem identidade de usuario';
+      return '<div class="platform-feedback-row">'
+        + '<div class="platform-feedback-head">'
+        + '  <div class="platform-feedback-badges">'
+        + '    <span class="platform-feedback-type ' + escapeHtml(String(item.tipo || 'problema').toLowerCase()) + '">' + feedbackTypeLabel(item.tipo) + '</span>'
+        + '    <span class="platform-feedback-state ' + escapeHtml(String(item.status || 'novo').toLowerCase()) + '">' + feedbackStatusLabel(item.status) + '</span>'
+        + '  </div>'
+        + '  <div class="platform-feedback-meta">' + escapeHtml(formatPtDate(item.criado_em) || '-') + ' · ' + escapeHtml(feedbackOriginLabel(item.origem_modulo || item.url_origem)) + '</div>'
+        + '</div>'
+        + '<div class="platform-inline">'
+        + '  <div class="platform-user-avatar" style="background:' + escapeHtml(user?.cor || '#888') + '">' + buildPlatformUserAvatar(user || { nome: enviadoPor, iniciais: initialsFromNome(enviadoPor), avatar_url: null }) + '</div>'
+        + '  <div class="platform-user-copy"><strong>' + escapeHtml(enviadoPor) + '</strong><span>' + escapeHtml(enviadoMeta) + '</span></div>'
+        + '</div>'
+        + '<div class="platform-feedback-copy">' + escapeHtml(item.mensagem).replace(/\n/g, '<br>') + '</div>'
+        + '<div class="platform-feedback-actions">'
+        + '  <div class="platform-feedback-meta">' + escapeHtml(item.url_origem || '') + '</div>'
+        + '  <select class="shell-btn" onchange="salvarStatusFeedbackPlataforma(\'' + item.id + '\', this.value)">'
+        + '    <option value="novo"' + ((item.status || 'novo') === 'novo' ? ' selected' : '') + '>Novo</option>'
+        + '    <option value="em_analise"' + (item.status === 'em_analise' ? ' selected' : '') + '>Em analise</option>'
+        + '    <option value="resolvido"' + (item.status === 'resolvido' ? ' selected' : '') + '>Resolvido</option>'
+        + '  </select>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  async function carregarFeedbackPlataforma() {
+    const wrap = document.getElementById('platform-feedback-list');
+    if (wrap) wrap.innerHTML = '<div class="platform-empty">Carregando feedbacks...</div>';
+    const { data, error } = await window.sb
+      .from('plataforma_feedback')
+      .select('id, usuario_id, tipo, mensagem, status, origem_modulo, url_origem, criado_em, atualizado_em, tratado_em, tratado_por')
+      .order('criado_em', { ascending: false });
+    if (error) {
+      platformFeedbackCache = [];
+      setPlataformaStatus('Nao foi possivel carregar os feedbacks. Rode o SQL desta estrutura se necessario.');
+      if (wrap) wrap.innerHTML = '<div class="platform-empty">Falha ao carregar feedbacks.</div>';
+      return;
+    }
+    platformFeedbackCache = data || [];
+    renderPlatformFeedbackList(platformFeedbackCache);
+    setPlataformaStatus('Feedbacks da ferramenta carregados.');
+  }
+
   window.selectPlatformColor = function selectPlatformColor(color) {
     const wrap = document.getElementById('gp-palette');
     if (!wrap) return;
@@ -443,11 +557,17 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   }
 
   window.switchPlatformTab = function switchPlatformTab(tab) {
-    const isUsuarios = tab !== 'termo';
+    const currentTab = tab || 'usuarios';
+    const isUsuarios = currentTab === 'usuarios';
+    const isTermo = currentTab === 'termo';
+    const isFeedback = currentTab === 'feedback';
     document.getElementById('platform-panel-usuarios')?.toggleAttribute('hidden', !isUsuarios);
-    document.getElementById('platform-panel-termo')?.toggleAttribute('hidden', isUsuarios);
+    document.getElementById('platform-panel-termo')?.toggleAttribute('hidden', !isTermo);
+    document.getElementById('platform-panel-feedback')?.toggleAttribute('hidden', !isFeedback);
     document.getElementById('platform-tab-usuarios')?.classList.toggle('active', isUsuarios);
-    document.getElementById('platform-tab-termo')?.classList.toggle('active', !isUsuarios);
+    document.getElementById('platform-tab-termo')?.classList.toggle('active', isTermo);
+    document.getElementById('platform-tab-feedback')?.classList.toggle('active', isFeedback);
+    if (isFeedback) carregarFeedbackPlataforma();
   };
 
   window.toggleNovoUsuarioPlataforma = function toggleNovoUsuarioPlataforma(forceOpen) {
@@ -965,6 +1085,64 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     pendingAvatarUserId = null;
     input.value = '';
     setPlataformaStatus('Avatar atualizado.');
+  };
+
+  window.enviarToolFeedback = async function enviarToolFeedback() {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.app_user_id) {
+      setToolFeedbackStatus('Sessao indisponivel para registrar o feedback.');
+      return;
+    }
+    const type = document.getElementById('tool-feedback-type')?.value || 'problema';
+    const message = document.getElementById('tool-feedback-message')?.value.trim() || '';
+    if (!message) {
+      setToolFeedbackStatus('Descreva o problema ou a sugestao antes de enviar.');
+      return;
+    }
+    const context = currentToolFeedbackContext();
+    setToolFeedbackStatus('Enviando registro...');
+    const payload = {
+      usuario_id: sessionUser.app_user_id,
+      tipo: type,
+      mensagem: message,
+      status: 'novo',
+      origem_modulo: context.origem_modulo,
+      url_origem: context.url_origem,
+      criado_em: isoNow(),
+      atualizado_em: isoNow()
+    };
+    const { error } = await window.sb.from('plataforma_feedback').insert(payload);
+    if (error) {
+      setToolFeedbackStatus('Nao foi possivel enviar o registro. Rode o SQL da estrutura de feedback se necessario.');
+      return;
+    }
+    document.getElementById('tool-feedback-message').value = '';
+    setToolFeedbackStatus('Registro enviado para a Gestao de plataforma.');
+    if (!document.getElementById('platform-panel-feedback')?.hasAttribute('hidden')) {
+      await carregarFeedbackPlataforma();
+    }
+  };
+
+  window.salvarStatusFeedbackPlataforma = async function salvarStatusFeedbackPlataforma(feedbackId, status) {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
+      return;
+    }
+    const patch = {
+      status,
+      atualizado_em: isoNow(),
+      tratado_por: status === 'novo' ? null : (sessionUser.app_user_id || null),
+      tratado_em: status === 'novo' ? null : isoNow()
+    };
+    const { error } = await window.sb.from('plataforma_feedback').update(patch).eq('id', feedbackId);
+    if (error) {
+      setPlataformaStatus('Nao foi possivel atualizar o status do feedback.');
+      return;
+    }
+    await registrarAuditoriaPlataforma('feedback.status_atualizado', null, { feedback_id: feedbackId, status });
+    await carregarFeedbackPlataforma();
+    setPlataformaStatus('Status do feedback atualizado.');
   };
 
   window.salvarRolePlatform = async function salvarRolePlatform(userId, role) {

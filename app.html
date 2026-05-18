@@ -305,6 +305,71 @@ body::before {
 .shell-btn:hover { border-color: var(--grafite); }
 .shell-btn.primary:hover { opacity: .92; }
 
+.nav-feedback-wrap { position: relative; }
+.nav-feedback-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--cinza);
+  background: var(--branco);
+  color: var(--grafite);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+.nav-feedback-btn:hover {
+  border-color: var(--grafite);
+  background: var(--off);
+  transform: translateY(-1px);
+}
+.nav-feedback-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-card);
+  background: rgba(255,255,255,.98);
+  box-shadow: var(--shadow-card);
+  display: none;
+  z-index: 8;
+  gap: 10px;
+}
+.nav-feedback-pop.open { display: grid; }
+.nav-feedback-pop::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 14px;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  background: var(--branco);
+  border-top: 1px solid var(--cinza);
+  border-left: 1px solid var(--cinza);
+}
+.nav-feedback-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.nav-feedback-sub,
+.nav-feedback-status {
+  font-size: var(--text-sub);
+  line-height: 1.45;
+  color: #888;
+}
+.nav-feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .shell-btn.warn {
   border-color: rgba(196, 154, 39, .45);
   color: var(--ouro);
@@ -570,6 +635,70 @@ body::before {
   margin-top: -6px;
 }
 
+.platform-feedback-list {
+  display: grid;
+  gap: 10px;
+}
+
+.platform-feedback-row {
+  border: 1px solid var(--cinza2);
+  border-radius: var(--radius-card);
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+  background: var(--branco);
+}
+
+.platform-feedback-head,
+.platform-feedback-meta,
+.platform-feedback-actions,
+.platform-feedback-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.platform-feedback-head,
+.platform-feedback-actions {
+  justify-content: space-between;
+}
+
+.platform-feedback-type,
+.platform-feedback-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.platform-feedback-type.problema { background: var(--tc-bg); color: var(--terracota); }
+.platform-feedback-type.sugestao { background: var(--az-bg); color: var(--azul); }
+.platform-feedback-state.novo { background: var(--am-bg); color: var(--ouro); }
+.platform-feedback-state.em_analise { background: var(--az-bg); color: var(--azul); }
+.platform-feedback-state.resolvido { background: var(--verde-bg); color: var(--verde); }
+
+.platform-feedback-copy {
+  font-size: var(--text-body);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.platform-feedback-meta {
+  font-size: 10px;
+  color: #888;
+  line-height: 1.45;
+}
+
+.platform-feedback-actions .shell-btn {
+  min-width: 122px;
+}
+
 .platform-empty {
   font-size: 11px;
   color: #888;
@@ -725,6 +854,29 @@ body::before {
   <div class="nav-sep"></div>
   <span class="nav-mod">Sistema</span>
   <div class="nav-right">
+    <div class="nav-feedback-wrap" id="nav-feedback-wrap">
+      <button type="button" class="nav-feedback-btn" id="nav-feedback-btn" onclick="toggleToolFeedbackPopover(event)" aria-label="Comunicar problema ou sugestao" title="Problemas e sugestoes">!</button>
+      <div class="nav-feedback-pop" id="nav-feedback-pop">
+        <div class="nav-feedback-title">Problema ou sugestao</div>
+        <div class="nav-feedback-sub">Envio direto para a Gestao de plataforma.</div>
+        <div class="shell-field">
+          <label for="tool-feedback-type">Tipo</label>
+          <select id="tool-feedback-type">
+            <option value="problema">Problema</option>
+            <option value="sugestao">Sugestao</option>
+          </select>
+        </div>
+        <div class="shell-field">
+          <label for="tool-feedback-message">Mensagem</label>
+          <textarea id="tool-feedback-message" rows="5" placeholder="Descreva o erro, comportamento inesperado ou a sugestao de melhoria."></textarea>
+        </div>
+        <div class="nav-feedback-status" id="tool-feedback-status">Seu registro sera encaminhado para a Gestao de plataforma.</div>
+        <div class="nav-feedback-actions">
+          <button type="button" class="shell-btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
+          <button type="button" class="shell-btn primary" onclick="enviarToolFeedback()">Enviar</button>
+        </div>
+      </div>
+    </div>
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
       <span class="ttg-icon">☀</span>
       <span class="ttg-track"><span class="ttg-knob"></span></span>
@@ -1154,6 +1306,7 @@ body::before {
         <div class="platform-tabs" role="tablist" aria-label="Gestao de plataforma">
           <button type="button" class="platform-tab active" id="platform-tab-usuarios" onclick="switchPlatformTab('usuarios')">Usuarios</button>
           <button type="button" class="platform-tab" id="platform-tab-termo" onclick="switchPlatformTab('termo')">Termo de uso</button>
+          <button type="button" class="platform-tab" id="platform-tab-feedback" onclick="switchPlatformTab('feedback')">Feedback</button>
         </div>
       </div>
 
@@ -1208,6 +1361,20 @@ body::before {
 
       <div class="platform-panel" id="platform-panel-termo" hidden>
         <div class="platform-shell-grid" id="platform-term-grid"></div>
+      </div>
+
+      <div class="platform-panel" id="platform-panel-feedback" hidden>
+        <div class="platform-card">
+          <div class="platform-card-title">
+            <div>
+              <strong>Problemas e sugestoes da ferramenta</strong>
+              <span>Registros enviados pelos usuarios diretamente do shell.</span>
+            </div>
+          </div>
+          <div class="platform-feedback-list" id="platform-feedback-list">
+            <div class="platform-empty">Carregando feedbacks...</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="shell-modal-footer">
@@ -1288,8 +1455,12 @@ function toggleUserMenu() {
 }
 document.addEventListener('click', e => {
   const wrap = document.querySelector('.user-pill-wrap');
+  const feedbackWrap = document.getElementById('nav-feedback-wrap');
   if (wrap && !wrap.contains(e.target)) {
     document.getElementById('user-dropdown')?.classList.remove('open');
+  }
+  if (feedbackWrap && !feedbackWrap.contains(e.target)) {
+    document.getElementById('nav-feedback-pop')?.classList.remove('open');
   }
 });
 
