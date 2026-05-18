@@ -25,6 +25,7 @@
 
   var _sb, _tickInterval, _collapseTimer, _isHovering = false;
   var _allProds = null, _etapaCache = {}, _cachedUser = null, _recentItems = null;
+  var _audioCtx = null, _tickCount = 0;
 
   /* ── Subtipos (espelha SUBTIPOS do gestao.html) ─────────────────── */
   var SUBTIPOS = {
@@ -82,9 +83,12 @@
     '#tmr-proj-block>div:first-child{margin-top:0}',
     '.tmr-hdr{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#aaa}',
 
-    /* Projeto / etapa display */
-    '.tmr-proj{font-size:10px;font-weight:700;color:' + GRAFITE + ';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-    '.tmr-etapa{font-size:9px;color:#888;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    /* Hierarquia de exibição (estado 2 e confirmação) */
+    '.tmr-info-wrap{display:flex;flex-direction:column;gap:2px;min-width:0}',
+    '.tmr-info-cli{font-size:8px;color:#aaa;font-weight:500;line-height:1.3;word-break:break-word}',
+    '.tmr-info-opp{font-size:11px;font-weight:700;color:' + GRAFITE + ';line-height:1.3;word-break:break-word}',
+    '.tmr-info-prd{font-size:9px;color:#666;line-height:1.3;word-break:break-word}',
+    '.tmr-info-eta{font-size:9px;color:#888;font-style:italic;line-height:1.3;word-break:break-word}',
 
     /* Elapsed */
     '.tmr-elapsed{font-family:"DM Mono",monospace;font-size:24px;font-weight:600;color:' + GRAFITE + ';text-align:center;letter-spacing:1px;padding:2px 0}',
@@ -96,9 +100,9 @@
     '.tmr-btn-stop{background:' + GRAFITE + ';color:#fff;border-color:' + GRAFITE + '}',
     '.tmr-btn-stop:hover{opacity:.82;color:#fff}',
 
-    /* Botão iniciar — neutro/cinza (widget já é amarelo) */
-    '.tmr-primary{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + CINZA + ';background:#fff;color:' + GRAFITE + ';font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:border-color .12s,background .12s}',
-    '.tmr-primary:hover{border-color:' + GRAFITE + ';background:' + OFF + '}',
+    /* Botão iniciar — neutro/cinza com hover amarelo */
+    '.tmr-primary{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + CINZA + ';background:#fff;color:' + GRAFITE + ';font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:border-color .12s,background .12s,color .12s}',
+    '.tmr-primary:hover{border-color:' + OURO + ';background:' + OURO + ';color:#fff}',
 
     /* Botão salvar — .btn.filled */
     '.tmr-dark{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + GRAFITE + ';background:' + GRAFITE + ';color:#fff;font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:opacity .12s}',
@@ -199,9 +203,11 @@
 
     /* ── Painel expandido (ativo) ── */
     '<div id="exp-timer-expanded" class="tmr-panel">',
-      '<div style="min-width:0">',
-        '<div class="tmr-proj" id="tmr-proj-name">&#8212;</div>',
-        '<div class="tmr-etapa" id="tmr-etapa-name"></div>',
+      '<div class="tmr-info-wrap">',
+        '<div class="tmr-info-cli" id="tmr-info-cli"></div>',
+        '<div class="tmr-info-opp" id="tmr-info-opp">&#8212;</div>',
+        '<div class="tmr-info-prd" id="tmr-info-prd"></div>',
+        '<div class="tmr-info-eta" id="tmr-info-eta"></div>',
       '</div>',
       '<div class="tmr-elapsed" id="tmr-elapsed">00:00</div>',
       '<div class="tmr-btns">',
@@ -213,9 +219,11 @@
     /* ── Painel de confirmação ── */
     '<div id="exp-timer-confirm" class="tmr-panel">',
       '<div class="tmr-hdr">Confirmar lan&#231;amento</div>',
-      '<div style="min-width:0">',
-        '<div class="tmr-proj" id="tmr-cf-proj">&#8212;</div>',
-        '<div class="tmr-etapa" id="tmr-cf-etapa"></div>',
+      '<div class="tmr-info-wrap">',
+        '<div class="tmr-info-cli" id="tmr-cf-cli"></div>',
+        '<div class="tmr-info-opp" id="tmr-cf-opp">&#8212;</div>',
+        '<div class="tmr-info-prd" id="tmr-cf-prd"></div>',
+        '<div class="tmr-info-eta" id="tmr-cf-eta"></div>',
       '</div>',
       '<div>',
         '<div class="tmr-sel-lbl">Data</div>',
@@ -338,7 +346,37 @@
   function _hideAll() { _showPanel('__none__'); }
 
   /* ═══════════════════════════════════════════════════════════════
-     Tick
+     Som: tic-tac sutil via Web Audio API
+  ═══════════════════════════════════════════════════════════════ */
+  function _getAudioCtx() {
+    if (!_audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+      try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    return _audioCtx;
+  }
+
+  function _playTick(isTock) {
+    var ctx = _getAudioCtx();
+    if (!ctx) return;
+    try {
+      /* Tom curto (25ms): frequências alternadas para tic / tac */
+      var osc  = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      var freq = isTock ? 680 : 820;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.6, ctx.currentTime + 0.022);
+      gain.gain.setValueAtTime(0.07, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.025);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.028);
+    } catch (e) {}
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     Tick (cronômetro + som)
   ═══════════════════════════════════════════════════════════════ */
   function _startTick() {
     clearInterval(_tickInterval);
@@ -347,6 +385,7 @@
       if (!state.running) { clearInterval(_tickInterval); return; }
       var el = document.getElementById('tmr-elapsed');
       if (el) el.textContent = _fmtMs(_elapsedMs(state));
+      _playTick(_tickCount++ % 2 === 1); // alterna tic / tac
     }, 1000);
   }
 
@@ -378,12 +417,12 @@
   ═══════════════════════════════════════════════════════════════ */
   function _renderExpanded() {
     var state = _loadState();
-    var el;
-    el = document.getElementById('tmr-proj-name');
-    if (el) el.textContent = _trunc(state.nomeProjeto || '—', 36);
-    el = document.getElementById('tmr-etapa-name');
-    if (el) el.textContent = _trunc(state.nomeEtapa || '', 36);
-    el = document.getElementById('tmr-elapsed');
+    var _txt = function (id, v) { var el = document.getElementById(id); if (el) { el.textContent = v || ''; el.style.display = v ? '' : 'none'; } };
+    _txt('tmr-info-cli', state.nomeCliente || '');
+    _txt('tmr-info-opp', state.nomeOpp || state.nomeProjeto || '—');
+    _txt('tmr-info-prd', state.nomeProduto || '');
+    _txt('tmr-info-eta', state.nomeEtapa  || '');
+    var el = document.getElementById('tmr-elapsed');
     if (el) el.textContent = _fmtMs(_elapsedMs(state));
     el = document.getElementById('tmr-pause-btn');
     if (el) el.innerHTML = state.running ? '&#9646;&#9646; Pausar' : '&#9654; Retomar';
@@ -482,7 +521,7 @@
       var seen = new Set(), result = [];
       (res.data || []).forEach(function (r) {
         var key = (r.tipo || '') + '|' + (r.subtipo || '') + '|' + (r.produto_id || '') + '|' + (r.etapa_id || '');
-        if (seen.has(key) || result.length >= 2) return;
+        if (seen.has(key) || result.length >= 3) return;
         seen.add(key);
         /* Monta label legível */
         var lbl = '';
@@ -654,12 +693,17 @@
       var nomeProjeto = item.label;
       var nomeEtapa   = '';
 
-      /* Enriquece o label se for projeto (recente pode ter label truncado) */
+      var nomeCliente = '', nomeOpp = '', nomeProduto = '';
+
       if (item.tipo === 'projeto' && item.produtoId) {
         var prods   = await _getActiveProds();
         var prod    = prods.find(function (p) { return p.id === item.produtoId; });
         var opp     = prod && prod.oportunidades;
-        nomeProjeto = (opp && opp.projeto) || (prod && (prod.nome || prod.subtipo)) || nomeProjeto;
+        var cli     = opp && opp.clientes;
+        nomeCliente = cli  ? (cli.nome  || '') : '';
+        nomeOpp     = opp  ? (opp.projeto || '') : '';
+        nomeProduto = prod ? (prod.nome || prod.subtipo || '') : '';
+        nomeProjeto = nomeOpp || nomeProduto;
 
         if (item.etapaId) {
           var ets = await _getEtapas(item.produtoId);
@@ -667,9 +711,13 @@
           nomeEtapa = et ? et.nome : '';
         }
       } else if (item.tipo === 'organizacao') {
-        nomeProjeto = 'Org. Interna' + (item.subtipo ? ' · ' + item.subtipo : '');
+        nomeOpp     = 'Org. Interna';
+        nomeProjeto = nomeOpp;
+        nomeEtapa   = item.subtipo || '';
       } else if (item.tipo === 'sociedade') {
-        nomeProjeto = 'Sociedade' + (item.subtipo ? ' · ' + item.subtipo : '');
+        nomeOpp     = 'Sociedade';
+        nomeProjeto = nomeOpp;
+        nomeEtapa   = item.subtipo || '';
       }
 
       var state = {
@@ -682,6 +730,9 @@
         subtipo:       item.subtipo || null,
         produtoId:     item.produtoId || null,
         etapaId:       item.etapaId  || null,
+        nomeCliente:   nomeCliente,
+        nomeOpp:       nomeOpp,
+        nomeProduto:   nomeProduto,
         nomeProjeto:   nomeProjeto,
         nomeEtapa:     nomeEtapa,
       };
@@ -723,11 +774,17 @@
         if (!selOpp || !selOpp.value) { _toast('Selecione o projeto / oportunidade'); return; }
         if (!produtoId)               { _toast('Selecione o produto'); return; }
 
-        /* Label: opp + prod */
-        var oppLabel  = selOpp  ? selOpp.options[selOpp.selectedIndex].text   : '';
-        var prodLabel = selProd ? selProd.options[selProd.selectedIndex].text  : '';
-        nomeProjeto   = (oppLabel !== prodLabel) ? oppLabel + ' · ' + prodLabel : oppLabel;
-        nomeEtapa     = (etapaId && selEtapa) ? selEtapa.options[selEtapa.selectedIndex].text : '';
+        /* Captura labels de cada nível */
+        var cliTxt  = selCli  ? selCli.options[selCli.selectedIndex].text   : '';
+        var oppTxt  = selOpp  ? selOpp.options[selOpp.selectedIndex].text   : '';
+        var prodTxt = selProd ? selProd.options[selProd.selectedIndex].text  : '';
+        var etaTxt  = (etapaId && selEtapa) ? selEtapa.options[selEtapa.selectedIndex].text : '';
+        /* nomeCliente: só o nome (sem a cidade que o select inclui) */
+        var nomeCliente = cliTxt.split(' · ')[0];
+        var nomeOpp     = oppTxt;
+        var nomeProduto = (prodTxt !== oppTxt) ? prodTxt : '';
+        nomeProjeto     = nomeOpp;
+        nomeEtapa       = etaTxt;
       }
 
       var state = {
@@ -740,8 +797,11 @@
         subtipo:       subtipo,
         produtoId:     produtoId,
         etapaId:       etapaId,
+        nomeCliente:   (tipo === 'projeto' ? nomeCliente : ''),
+        nomeOpp:       (tipo === 'projeto' ? nomeOpp : (tipo === 'organizacao' ? 'Org. Interna' : 'Sociedade')),
+        nomeProduto:   (tipo === 'projeto' ? nomeProduto : ''),
         nomeProjeto:   nomeProjeto,
-        nomeEtapa:     nomeEtapa,
+        nomeEtapa:     (tipo === 'projeto' ? nomeEtapa : (subtipo || '')),
       };
       _saveState(state);
       _hideAll();
@@ -761,11 +821,12 @@
         state.running   = false;
         state.startedAt = null;
         state.pausedAt  = new Date().toISOString();
-        clearInterval(_tickInterval);
+        clearInterval(_tickInterval); // para som + cronômetro
       } else {
         state.running   = true;
         state.startedAt = new Date().toISOString();
         state.pausedAt  = null;
+        _tickCount      = 0;
         _startTick();
         _scheduleCollapse();
       }
@@ -792,11 +853,12 @@
       var endDate   = state.pausedAt ? new Date(state.pausedAt) : new Date();
       var startDate = state.originalStart ? new Date(state.originalStart) : new Date(endDate.getTime() - (state.pausedMs || 0));
 
-      /* Textos display (divs) */
-      var cfProj  = document.getElementById('tmr-cf-proj');
-      var cfEtapa = document.getElementById('tmr-cf-etapa');
-      if (cfProj)  cfProj.textContent  = _trunc(state.nomeProjeto || '—', 42);
-      if (cfEtapa) cfEtapa.textContent = _trunc(state.nomeEtapa || state.subtipo || '', 42);
+      /* Textos display — hierarquia */
+      var _ctxt = function (id, v) { var el = document.getElementById(id); if (el) { el.textContent = v || ''; el.style.display = v ? '' : 'none'; } };
+      _ctxt('tmr-cf-cli', state.nomeCliente || '');
+      _ctxt('tmr-cf-opp', state.nomeOpp || state.nomeProjeto || '—');
+      _ctxt('tmr-cf-prd', state.nomeProduto || '');
+      _ctxt('tmr-cf-eta', state.nomeEtapa || state.subtipo || '');
       /* Inputs */
       var setVal = function (id, v) { var el = document.getElementById(id); if (el) el.value = v; };
       setVal('tmr-cf-data', _fmtDate(startDate));
