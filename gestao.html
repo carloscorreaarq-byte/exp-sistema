@@ -3761,8 +3761,9 @@ async function init() {
     carregarReembolsoAreas(),
   ]);
 
-  // Notificações
+  // Notificações + registro push desktop
   iniciarNotificacoes();
+  initPushDesktop();
 
   // Dashboard
   carregarDashboard();
@@ -10236,12 +10237,11 @@ function fmtHLong(h) {
 }
 
 function fmtHClock(h) {
-  if (!h && h !== 0) return '00:00:00';
-  const totalSec = Math.round(h * 3600);
-  const hh = Math.floor(totalSec / 3600);
-  const mm = Math.floor((totalSec % 3600) / 60);
-  const ss = totalSec % 60;
-  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  if (!h && h !== 0) return '00:00';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
 }
 
 function diffHoras(ini, fim) {
@@ -12756,6 +12756,40 @@ const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 
 // ── Estado ────────────────────────────────────────────────────
 G._notifs = [];
+
+// ── Push Desktop — registro do Service Worker ─────────────────────────
+const _VAPID_PUB = 'BCRHUrgL16XzJCyEPvkujum8zkDiRpoLbpd5NRUmeeC8wRJM9GvMxxiNkoCRUWokj3JJmIl6ucciYUz_y-n7UK0';
+
+function _vapidB64ToUint8(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function initPushDesktop() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!G.usuario?.id) return;
+  try {
+    const reg = await navigator.serviceWorker.register('./sw.js');
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return;
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _vapidB64ToUint8(_VAPID_PUB),
+      });
+    }
+    if (sub) {
+      await sb.from('push_subscriptions').upsert(
+        { usuario_id: G.usuario.id, endpoint: sub.endpoint, subscription: JSON.stringify(sub), plataforma: 'desktop' },
+        { onConflict: 'usuario_id,endpoint' }
+      );
+    }
+  } catch (err) {
+    console.warn('[EXP Push Desktop]', err);
+  }
+}
 
 // ── Criar notificação no DB (não notifica a si mesmo) ─────────
 // ── Push ─ fire-and-forget ───────────────────────────────────────────
