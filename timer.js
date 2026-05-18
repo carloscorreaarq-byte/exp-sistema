@@ -18,6 +18,17 @@
   var _sb, _tickInterval, _collapseTimer, _isHovering = false;
   var _projCache = null, _etapaCache = {};
 
+  // Invalida cache local quando o G do gestao.html terminar de carregar
+  // (evita usar lista vazia se o timer abrir antes do carregarProdutos terminar)
+  function _watchG() {
+    if (window.G && window.G._prodsGestao && window.G._prodsGestao.length && _projCache && _projCache.length === 0) {
+      _projCache = null;
+      _etapaCache = {};
+    }
+    setTimeout(_watchG, 1500);
+  }
+  setTimeout(_watchG, 800);
+
   /* ═══════════════════════════════════════════════════════════════
      CSS
   ═══════════════════════════════════════════════════════════════ */
@@ -339,29 +350,70 @@
 
   /* ═══════════════════════════════════════════════════════════════
      Carrega projetos e etapas
+     Prioriza G._prodsGestao / G.todasEtapas quando disponíveis
+     (gestao.html já fez a query completa com joins)
   ═══════════════════════════════════════════════════════════════ */
+
+  // Formata o label de exibição de um produto
+  // Mirrors a lógica do painel de horas: opp.projeto · prod.nome
+  function _prodLabel(p) {
+    var opp  = p.oportunidades || {};
+    var proj = opp.projeto || '';
+    var prod = p.nome || p.subtipo || '';
+    if (proj && prod && proj !== prod) return proj + ' · ' + prod;
+    return proj || prod || '(sem nome)';
+  }
+
   async function _loadProjetos() {
     if (_projCache) return _projCache;
+
+    // ── Caminho 1: reutiliza dados já carregados pelo gestao.html ──
+    if (window.G && Array.isArray(window.G._prodsGestao) && window.G._prodsGestao.length) {
+      var ativos = window.G._prodsGestao.filter(function (p) {
+        return p.status === 'ativo' && p.em_gestao !== false;
+      });
+      _projCache = ativos.map(function (p) {
+        return { id: p.id, label: _prodLabel(p) };
+      }).sort(function (a, b) { return a.label.localeCompare(b.label, 'pt'); });
+      return _projCache;
+    }
+
+    // ── Caminho 2: query direta (outros módulos) ──────────────────
     var client = _getSb();
     if (!client) return [];
     var res = await client
       .from('produtos')
-      .select('id,nome,codigo,ativo')
-      .eq('ativo', true)
+      .select('id, nome, subtipo, oportunidades(projeto)')
+      .eq('status', 'ativo')
+      .eq('em_gestao', true)
       .order('nome');
-    _projCache = res.data || [];
+    _projCache = (res.data || []).map(function (p) {
+      return { id: p.id, label: _prodLabel(p) };
+    }).sort(function (a, b) { return a.label.localeCompare(b.label, 'pt'); });
     return _projCache;
   }
 
   async function _loadEtapas(prodId) {
     if (_etapaCache[prodId]) return _etapaCache[prodId];
+
+    // ── Caminho 1: reutiliza G.todasEtapas ───────────────────────
+    if (window.G && Array.isArray(window.G.todasEtapas)) {
+      var etapas = window.G.todasEtapas
+        .filter(function (e) { return e.produto_id === prodId; })
+        .slice()
+        .sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); });
+      _etapaCache[prodId] = etapas;
+      return etapas;
+    }
+
+    // ── Caminho 2: query direta ───────────────────────────────────
     var client = _getSb();
     if (!client) return [];
     var res = await client
       .from('etapas')
-      .select('id,nome')
+      .select('id, nome, ordem')
       .eq('produto_id', prodId)
-      .order('nome');
+      .order('ordem', { ascending: true });
     _etapaCache[prodId] = res.data || [];
     return _etapaCache[prodId];
   }
@@ -380,8 +432,7 @@
       var projs = await _loadProjetos();
       sel.innerHTML = '<option value="">&#8212; Selecione o projeto &#8212;</option>' +
         projs.map(function (p) {
-          var label = (p.codigo ? p.codigo + ' · ' : '') + p.nome;
-          return '<option value="' + p.id + '">' + label + '</option>';
+          return '<option value="' + p.id + '">' + p.label + '</option>';
         }).join('');
 
       var selEtapa = document.getElementById('tmr-sel-etapa');
