@@ -7533,6 +7533,7 @@ function renderPrancha(pr, isSocioOrCoord) {
             <div class="tarefa-item-tools">
               ${mediaViewBtn}
               ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">📷</button>` : ''}
+              ${isSocioOrCoord ? `<button class="ck-item-act tc" type="button" title="Excluir tarefa" onclick="excluirTarefaRevisao('${t.id}', '${pr.id}')">✕</button>` : ''}
             </div>
           </div>
         `;
@@ -7594,6 +7595,45 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
 
   if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
   carregarRevisoes();
+}
+
+async function excluirTarefaRevisao(id, pranchaId) {
+  if (!confirm('Excluir esta tarefa de revisão?')) return;
+
+  try {
+    const anexos = await carregarTempMediaLista('revisao_tarefa', id, true);
+    if (anexos.length) {
+      const paths = anexos.map(item => item.storage_path).filter(Boolean);
+      if (paths.length) {
+        const { error: storageError } = await sb.storage.from('gestao-anexos-temp').remove(paths);
+        if (storageError) console.warn('Falha ao limpar anexos da tarefa de revisão:', storageError.message);
+      }
+      const { error: mediaError } = await sb
+        .from('gestao_anexos_temporarios')
+        .update({
+          removido_em: new Date().toISOString(),
+          remocao_motivo: 'context_deleted',
+        })
+        .eq('contexto_tipo', 'revisao_tarefa')
+        .eq('contexto_id', id)
+        .is('removido_em', null);
+      if (mediaError) console.warn('Falha ao marcar anexos removidos:', mediaError.message);
+    }
+
+    const { error } = await sb.from('tarefas_revisao').delete().eq('id', id);
+    if (error) {
+      toast('Erro ao excluir tarefa: ' + error.message);
+      return;
+    }
+
+    marcarTempMediaContextoAlterado('revisao_tarefa', id);
+    delete G._tempMediaCounts[tempMediaKey('revisao_tarefa', id)];
+    if (G._revisaoAtiva) await selecionarRevisao(G._revisaoAtiva);
+    carregarRevisoes();
+    toast('Tarefa de revisão excluída.');
+  } catch (err) {
+    toast('Erro ao excluir tarefa: ' + (err?.message || err));
+  }
 }
 
 function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLabel = '', inputPlaceholder = '', textareaLabel = '', textareaPlaceholder = '', multiline = true }) {
