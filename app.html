@@ -1549,7 +1549,8 @@ function renderShellIdentity(usuario) {
   } else {
     av.textContent = usuario.iniciais;
   }
-  document.getElementById('user-nome').textContent = usuario.nome;
+  const _nomeParts = (usuario.nome || '').trim().split(/\s+/).filter(Boolean);
+  document.getElementById('user-nome').textContent = _nomeParts.length <= 2 ? (_nomeParts.join(' ') || '—') : _nomeParts[0] + ' ' + _nomeParts[_nomeParts.length - 1];
   document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'Socio administrador' : (ROLES[usuario.role] || usuario.role);
   if (usuario.role === 'socio_admin') {
     document.getElementById('user-cargo').textContent = 'S\u00f3cio administrador';

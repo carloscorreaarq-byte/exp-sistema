@@ -1029,9 +1029,14 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <span class="u-caret">▾</span>
       </div>
       <div class="user-dropdown" id="user-dropdown">
-        <div class="ud-coming">Meus dados</div>
-        <div class="ud-sep nd-soc" style="display:none"></div>
-        <div class="ud-coming nd-soc" style="display:none">Gestão da plataforma</div>
+        <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+        <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
+        <div class="ud-sep"></div>
+        <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
+          <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
+          <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
+          <span class="term-state-hover">ver termo →</span>
+        </div>
         <div class="ud-sep"></div>
         <button onclick="sair()">Sair do sistema</button>
       </div>
@@ -2143,7 +2148,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const ini = G.usuario.iniciais||'?';
   document.getElementById('user-av').style.cssText = `background:${G.usuario.cor||'#888'};color:#fff`;
   document.getElementById('user-av').textContent = ini;
-  document.getElementById('user-nome').textContent = G.usuario.nome?.split(' ')[0]||'Usuário';
+  const _np = (G.usuario.nome||'').trim().split(/\s+/).filter(Boolean);
+  document.getElementById('user-nome').textContent = _np.length <= 2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
   initNavDropdown(G.usuario.role);
   initExpRoom(G.usuario.id, (G.usuario.nome||'').split(' ')[0]);
   if(isColaborador()) document.getElementById('sb-cadastros-senhas')?.style && (document.getElementById('sb-cadastros-senhas').style.display = '');
