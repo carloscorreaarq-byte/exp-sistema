@@ -868,7 +868,13 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     input.type = 'file';
     input.id = 'platform-avatar-input';
     input.accept = 'image/*';
-    input.style.display = 'none';
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
+    input.style.top = '0';
+    input.style.width = '1px';
+    input.style.height = '1px';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
     input.onchange = () => window.processarAvatarPlataforma(input);
     document.body.appendChild(input);
     return input;
@@ -896,22 +902,55 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     pendingAvatarUserId = userId;
     const input = ensureAvatarInput();
     input.value = '';
-    input.click();
+    setPlataformaStatus('Selecione uma imagem para o avatar.');
+    try {
+      if (typeof input.showPicker === 'function') input.showPicker();
+      else input.click();
+    } catch (_) {
+      input.click();
+    }
   };
 
   window.processarAvatarPlataforma = async function processarAvatarPlataforma(input) {
     const file = input.files && input.files[0];
     const uid = pendingAvatarUserId;
-    if (!file || !uid) return;
+    if (!uid) {
+      setPlataformaStatus('Nao foi possivel identificar o usuario do avatar.');
+      return;
+    }
+    if (!file) {
+      setPlataformaStatus('Selecao de avatar cancelada.');
+      pendingAvatarUserId = null;
+      return;
+    }
+    if (!String(file.type || '').startsWith('image/')) {
+      setPlataformaStatus('Selecione um arquivo de imagem valido.');
+      pendingAvatarUserId = null;
+      input.value = '';
+      return;
+    }
     setPlataformaStatus('Enviando avatar...');
     const blob = await comprimirImagem(file, 240);
+    if (!blob) {
+      setPlataformaStatus('Nao foi possivel preparar a imagem do avatar.');
+      pendingAvatarUserId = null;
+      return;
+    }
     const path = uid + '.jpg';
     const { error: uploadError } = await window.sb.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-    if (uploadError) { setPlataformaStatus('Erro ao subir avatar.'); return; }
+    if (uploadError) {
+      setPlataformaStatus('Erro ao subir avatar: ' + (uploadError.message || 'falha desconhecida') + '.');
+      pendingAvatarUserId = null;
+      return;
+    }
     const { data } = window.sb.storage.from('avatars').getPublicUrl(path);
-    const cleanUrl = data.publicUrl;
+    const cleanUrl = data.publicUrl + '?v=' + Date.now();
     const { error: updateError } = await window.sb.from('usuarios').update({ avatar_url: cleanUrl }).eq('id', uid);
-    if (updateError) { setPlataformaStatus('Avatar enviado, mas nao foi possivel salvar a URL.'); return; }
+    if (updateError) {
+      setPlataformaStatus('Avatar enviado, mas nao foi possivel salvar a URL: ' + (updateError.message || 'falha desconhecida') + '.');
+      pendingAvatarUserId = null;
+      return;
+    }
     const current = currentSessionUsuario();
     if (current?.app_user_id === uid) {
       const usuarioAtualizado = await window.fetchCurrentUsuario(current.auth_id);
@@ -923,6 +962,8 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       }
     }
     await carregarUsuariosPlataforma();
+    pendingAvatarUserId = null;
+    input.value = '';
     setPlataformaStatus('Avatar atualizado.');
   };
 
