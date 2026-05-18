@@ -601,6 +601,8 @@ body::before {
 .ck-item-act.tc{color:#e05}
 .ck-item-act.tm{font-size:13px;color:#c2c8d1;padding:0 1px}
 .ck-item-act.tm:hover{color:#9aa4b2}
+.ck-item-act.tm.is-empty{opacity:.22}
+.ck-item-act.tm.has-media{opacity:1;color:var(--azul)}
 .ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--azul);outline:none;padding:0;background:transparent;font-family:var(--font-ui);color:inherit;line-height:1.5}
 .ck-empty{font-size:11px;color:#ccc;padding:8px 0}
 .ck-atrib{display:flex;align-items:center;gap:5px;font-size:10px;color:#666;padding:4px 12px;background:var(--off);border-top:1px solid var(--cinza2)}
@@ -1567,6 +1569,8 @@ body::before {
 }
 .tarefa-tool-btn:hover{color:#9aa4b2;opacity:1}
 .tarefa-tool-btn:disabled{opacity:.5;cursor:default}
+.tarefa-tool-btn.is-empty{opacity:.22}
+.tarefa-tool-btn.has-media{opacity:1;color:var(--azul)}
 .tm-view-link{
   background:none;border:none;padding:0;color:var(--azul);font-size:11px;font-weight:700;
   cursor:pointer;display:inline-flex;align-items:center;gap:5px
@@ -1586,9 +1590,15 @@ body::before {
 }
 .tm-upload-status{font-size:11px;color:#666;min-height:16px}
 .tm-upload-hint{font-size:11px;color:#888;line-height:1.5}
-.tm-view-stage{min-height:320px;display:flex;align-items:center;justify-content:center;background:var(--off);border-radius:10px;border:1px solid var(--cinza2);overflow:hidden}
+.tm-view-stage{min-height:320px;display:flex;align-items:center;justify-content:center;background:var(--off);border-radius:10px;border:1px solid var(--cinza2);overflow:hidden;position:relative}
 .tm-view-stage img{max-width:100%;max-height:70vh;display:block}
 .tm-view-meta{font-size:11px;color:#777}
+.tm-view-del{
+  position:absolute;top:10px;right:10px;width:28px;height:28px;border:none;border-radius:999px;
+  background:rgba(0,0,0,.52);color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:16px;cursor:pointer;z-index:2
+}
+.tm-view-del:hover{background:rgba(0,0,0,.72)}
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    VISÃO SÓCIOS
@@ -3643,6 +3653,7 @@ body::before {
       <div style="font-size:12px;font-weight:700;margin-bottom:4px" id="tm-view-title">Anexo</div>
       <div class="tm-view-meta" id="tm-view-meta">Carregando anexo…</div>
       <div class="tm-view-stage" style="margin-top:12px">
+        <button class="tm-view-del" type="button" id="tm-view-del-btn" onclick="excluirTempMediaAtual()" title="Excluir imagem" style="display:none">×</button>
         <img id="tm-view-image" alt="Imagem de apoio" style="display:none">
         <div id="tm-view-empty" style="font-size:11px;color:#999">Carregando imagem…</div>
       </div>
@@ -7510,8 +7521,9 @@ function renderPrancha(pr, isSocioOrCoord) {
           const tarefaTituloJs = _sqN(`Tarefa de revisão · ${t.descricao}`);
           const mediaCount = tempMediaCount('revisao_tarefa', t.id);
           const mediaViewBtn = mediaCount
-            ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
+            ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs}, ${isSocioOrCoord ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
             : '';
+          const camClass = mediaCount ? 'has-media' : 'is-empty';
           return `
           <div class="tarefa-item">
             <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
@@ -7520,7 +7532,7 @@ function renderPrancha(pr, isSocioOrCoord) {
             <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
             <div class="tarefa-item-tools">
               ${mediaViewBtn}
-              ${isSocioOrCoord ? `<button class="tarefa-tool-btn" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">📷</button>` : ''}
+              ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">📷</button>` : ''}
             </div>
           </div>
         `;
@@ -10549,7 +10561,7 @@ function rasterizarTempMedia(img, larguraMax, qualidade, mimeType) {
   });
 }
 
-async function abrirTempMediaViewer(contextoTipo, contextoId, titulo) {
+async function abrirTempMediaViewer(contextoTipo, contextoId, titulo, canManage = false) {
   const items = await carregarTempMediaLista(contextoTipo, contextoId, true);
   if (!items.length) {
     toast('Nenhuma imagem de apoio neste item.');
@@ -10561,6 +10573,7 @@ async function abrirTempMediaViewer(contextoTipo, contextoId, titulo) {
     titulo: titulo || 'Imagem de apoio',
     index: 0,
     items,
+    canManage,
   };
   document.getElementById('modal-temp-media-viewer').style.display = 'flex';
   await renderTempMediaViewer();
@@ -10574,10 +10587,12 @@ function fecharTempMediaViewer() {
   G._tempMediaViewer = null;
   const img = document.getElementById('tm-view-image');
   const empty = document.getElementById('tm-view-empty');
+  const delBtn = document.getElementById('tm-view-del-btn');
   if (img) {
     img.removeAttribute('src');
     img.style.display = 'none';
   }
+  if (delBtn) delBtn.style.display = 'none';
   if (empty) empty.textContent = 'Carregando imagem…';
   const modal = document.getElementById('modal-temp-media-viewer');
   if (modal) modal.style.display = 'none';
@@ -10600,6 +10615,7 @@ async function renderTempMediaViewer() {
   const metaEl = document.getElementById('tm-view-meta');
   const imgEl = document.getElementById('tm-view-image');
   const emptyEl = document.getElementById('tm-view-empty');
+  const delBtn = document.getElementById('tm-view-del-btn');
   const prevBtn = document.getElementById('tm-prev-btn');
   const nextBtn = document.getElementById('tm-next-btn');
 
@@ -10607,6 +10623,7 @@ async function renderTempMediaViewer() {
   if (metaEl) metaEl.textContent = `Imagem ${viewer.index + 1} de ${viewer.items.length} · enviada em ${fmtDate((item.created_at || '').split('T')[0])}`;
   if (prevBtn) prevBtn.disabled = viewer.index === 0;
   if (nextBtn) nextBtn.disabled = viewer.index >= viewer.items.length - 1;
+  if (delBtn) delBtn.style.display = viewer.canManage ? 'flex' : 'none';
   if (emptyEl) emptyEl.textContent = 'Carregando imagem…';
   if (imgEl) imgEl.style.display = 'none';
 
@@ -10627,6 +10644,47 @@ async function renderTempMediaViewer() {
     imgEl.style.display = 'block';
   }
   if (emptyEl) emptyEl.textContent = '';
+}
+
+async function excluirTempMediaAtual() {
+  const viewer = G._tempMediaViewer;
+  if (!viewer?.canManage || !viewer.items?.length) return;
+  const item = viewer.items[viewer.index];
+  if (!item) return;
+  if (!confirm('Excluir esta imagem de apoio?')) return;
+
+  const removedAt = new Date().toISOString();
+  const { error: metaError } = await sb
+    .from('gestao_anexos_temporarios')
+    .update({ removido_em: removedAt, remocao_motivo: 'manual' })
+    .eq('id', item.id);
+  if (metaError) {
+    toast('Erro ao excluir imagem: ' + metaError.message);
+    return;
+  }
+
+  await sb.storage.from('gestao-anexos-temp').remove([item.storage_path]);
+  marcarTempMediaContextoAlterado(viewer.contextoTipo, viewer.contextoId);
+  G._tempMediaCounts[tempMediaKey(viewer.contextoTipo, viewer.contextoId)] = Math.max(
+    0,
+    (G._tempMediaCounts[tempMediaKey(viewer.contextoTipo, viewer.contextoId)] || 1) - 1
+  );
+
+  const items = await carregarTempMediaLista(viewer.contextoTipo, viewer.contextoId, true);
+  if (!items.length) {
+    fecharTempMediaViewer();
+  } else {
+    viewer.items = items;
+    viewer.index = Math.min(viewer.index, items.length - 1);
+    await renderTempMediaViewer();
+  }
+
+  if (viewer.contextoTipo === 'revisao_tarefa' && G._revisaoAtiva) {
+    selecionarRevisao(G._revisaoAtiva);
+  } else if (viewer.contextoTipo === 'checklist_etapa_exec_item' && G.produtoAtivo) {
+    _renderCkEtapas(G.produtoAtivo);
+  }
+  toast('Imagem excluída.');
 }
 
 async function sincronizarExpiracaoTempMedia(contextoTipo, contextoId, concluido) {
@@ -12355,6 +12413,7 @@ async function carregarChecklist(prodId) {
 function _ckEtapaCard(etapa, defaultOpen) {
   const exec    = G._ckEtapas.find(x => x.etapa_id === etapa.id);
   const isTrav  = etapa.status === 'concluida' || etapa.status === 'nao_iniciada' || etapa.status === 'pausada';
+  const canEdit = isSocioUser();
   const stBadge = STATUS_ETAPA[etapa.status] || STATUS_ETAPA.nao_iniciada;
   const items   = exec ? (exec.checklist_etapa_exec_item||[]).sort((a,b)=>a.ordem-b.ordem) : [];
   const secoes  = exec ? (exec.checklist_etapa_exec_secao||[]).sort((a,b)=>a.ordem-b.ordem) : [];
@@ -12366,7 +12425,7 @@ function _ckEtapaCard(etapa, defaultOpen) {
     ? `<div class="ck-atrib"><div class="ck-av" style="background:${_ckA(exec.atribuido_cor||'#888')}">${_ckE(exec.atribuido_iniciais||'?')}</div>Atribuído a ${_ckE(exec.atribuido_nome)}</div>`
     : '';
   const bodyItems = (items.length || secoes.length)
-    ? _ckRenderItems(items, secoes, isTrav)
+    ? _ckRenderItems(items, secoes, isTrav, 'etapa', canEdit)
     : '<div class="ck-empty">Sem itens no checklist.</div>';
   const config = isSocioUser()
     ? `<button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();configurarCkEtapa(${_sqCk(etapa.id)})">${exec?'Reconfigurar':'Configurar'}</button>`
@@ -12441,11 +12500,12 @@ function _ckItemHtml(it, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   const who = it.concluido && it.concluido_por_nome ? `<span class="ck-item-who">${_ckE(it.concluido_por_nome)}</span>` : '';
   const mediaCount = tipo === 'etapa' ? tempMediaCount('checklist_etapa_exec_item', it.id) : 0;
+  const camClass = mediaCount ? 'has-media' : 'is-empty';
   const attachBtn = !readonly && tipo === 'etapa'
-    ? `<button class="ck-item-act tm" onclick="abrirTempMediaUpload('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar">📷</button>`
+    ? `<button class="ck-item-act tm ${camClass}" onclick="abrirTempMediaUpload('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar">📷</button>`
     : '';
   const viewBtn = mediaCount
-    ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
+    ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)}, ${!readonly ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
     : '';
   const editBtns = canEdit ? `
     <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Editar">✏</button>
