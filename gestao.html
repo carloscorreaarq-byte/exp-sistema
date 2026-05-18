@@ -10488,6 +10488,8 @@ async function subirTempMediaArquivo(file) {
       selecionarRevisao(G._revisaoAtiva);
     } else if (draft.contextoTipo === 'checklist_etapa_exec_item' && G.produtoAtivo) {
       _renderCkEtapas(G.produtoAtivo);
+    } else if (draft.contextoTipo === 'checklist_tarefa_item') {
+      _renderCkTarefas();
     }
     fecharTempMediaUpload();
   } catch (error) {
@@ -10515,6 +10517,14 @@ async function carregarEstadoTempMediaContexto(contextoTipo, contextoId, cfg) {
   } else if (contextoTipo === 'checklist_etapa_exec_item') {
     const { data } = await sb
       .from('checklist_etapa_exec_item')
+      .select('concluido,concluido_em')
+      .eq('id', contextoId)
+      .maybeSingle();
+    concluido = !!data?.concluido;
+    concluidoEm = data?.concluido_em || null;
+  } else if (contextoTipo === 'checklist_tarefa_item') {
+    const { data } = await sb
+      .from('checklist_tarefa_item')
       .select('concluido,concluido_em')
       .eq('id', contextoId)
       .maybeSingle();
@@ -10723,6 +10733,8 @@ async function excluirTempMediaAtual() {
     selecionarRevisao(G._revisaoAtiva);
   } else if (viewer.contextoTipo === 'checklist_etapa_exec_item' && G.produtoAtivo) {
     _renderCkEtapas(G.produtoAtivo);
+  } else if (viewer.contextoTipo === 'checklist_tarefa_item') {
+    _renderCkTarefas();
   }
   toast('Imagem excluída.');
 }
@@ -12445,6 +12457,10 @@ async function carregarChecklist(prodId) {
     .eq('produto_id', prodId)
     .order('created_at', { ascending: false });
   G._ckTarefas = tars || [];
+  await carregarTempMediaCounts(
+    'checklist_tarefa_item',
+    G._ckTarefas.flatMap(cl => (cl.checklist_tarefa_item || []).map(item => item.id))
+  );
 
   _renderCkEtapas(prodId);
   _renderCkTarefas();
@@ -12539,13 +12555,14 @@ function toggleCkOutras() {
 function _ckItemHtml(it, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   const who = it.concluido && it.concluido_por_nome ? `<span class="ck-item-who">${_ckE(it.concluido_por_nome)}</span>` : '';
-  const mediaCount = tipo === 'etapa' ? tempMediaCount('checklist_etapa_exec_item', it.id) : 0;
+  const contextoTipo = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+  const mediaCount = tempMediaCount(contextoTipo, it.id);
   const camClass = mediaCount ? 'has-media' : 'is-empty';
-  const attachBtn = !readonly && tipo === 'etapa'
-    ? `<button class="ck-item-act tm ${camClass}" onclick="abrirTempMediaUpload('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar">📷</button>`
+  const attachBtn = !readonly && (tipo === 'etapa' || tipo === 'tarefa')
+    ? `<button class="ck-item-act tm ${camClass}" onclick="abrirTempMediaUpload('${contextoTipo}',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar">📷</button>`
     : '';
   const viewBtn = mediaCount
-    ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)}, ${!readonly ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
+    ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('${contextoTipo}',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)}, ${!readonly ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
     : '';
   const editBtns = canEdit ? `
     <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Editar">✏</button>
@@ -12654,9 +12671,8 @@ async function toggleCkItem(tipo, itemId, checked, ckId) {
     concluido_por_nome: checked ? u.nome : null,
     concluido_em:       checked ? now    : null,
   }).eq('id', itemId);
-  if (tipo === 'etapa') {
-    await sincronizarExpiracaoTempMedia('checklist_etapa_exec_item', itemId, checked);
-  }
+  const contextoTipo = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+  await sincronizarExpiracaoTempMedia(contextoTipo, itemId, checked);
 
   // Atualiza estado local
   const arr = tipo === 'etapa' ? G._ckEtapas : G._ckTarefas;
