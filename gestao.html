@@ -1219,16 +1219,16 @@ body::before {
 }
 .mh-stat {
   border:1px solid var(--cinza); border-radius:10px; background:var(--branco);
-  padding:12px 14px;
+  padding:12px 14px; min-height:122px; display:flex; flex-direction:column;
 }
 .mh-stat-k {
   font-size:9px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#999;
 }
 .mh-stat-v {
   font-size:24px; line-height:1; font-family:var(--font-mono); font-weight:700;
-  color:var(--grafite); margin-top:8px;
+  color:var(--grafite); margin-top:auto; padding-top:18px;
 }
-.mh-stat-s { font-size:10px; color:#888; margin-top:4px; }
+.mh-stat-s { font-size:10px; color:#888; margin-top:8px; }
 .mh-card {
   border:1px solid var(--cinza); border-radius:10px; background:var(--branco);
   padding:14px;
@@ -1246,8 +1246,12 @@ body::before {
   display:grid; grid-template-columns:140px minmax(0,1fr) auto;
   gap:10px; align-items:center;
 }
+.mh-type-copy { min-width:0; }
 .mh-type-name {
-  font-size:10px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#888;
+  font-size:9px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#888;
+}
+.mh-type-sub {
+  font-size:10px; color:#aaa; margin-top:2px;
 }
 .mh-type-track {
   height:18px; border-radius:999px; overflow:hidden; display:flex; background:var(--cinza2);
@@ -1317,12 +1321,12 @@ body::before {
 }
 .mh-day-body { display:flex; flex-direction:column; }
 .mh-day-entry {
-  display:grid; grid-template-columns:94px 110px minmax(0,1fr) 120px 88px;
+  display:grid; grid-template-columns:94px 110px minmax(0,1fr) minmax(0,1.1fr) 120px 88px;
   gap:10px; align-items:center; padding:9px 12px; border-bottom:1px solid var(--cinza2);
 }
 .mh-day-entry:last-child { border-bottom:none; }
 .mh-day-time { font-size:10px; color:#777; font-family:var(--font-mono); white-space:nowrap; }
-.mh-day-main { min-width:0; }
+.mh-day-col-data { min-width:0; }
 .mh-day-main-1 {
   font-size:11px; font-weight:600; color:var(--grafite); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
@@ -6653,12 +6657,13 @@ function renderMhDayChart(dataset) {
     dt.setDate(dt.getDate() + 1);
   }
   const max = Math.max(...dias.map(d => d.horas), 0);
+  const refPct = max > 0 ? Math.min((8 / max) * 100, 100) : 100;
   return dias.map(d => {
     const pct = max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5;
     const zeroCls = d.horas <= 0 ? 'zero' : '';
     const title = `${fmtDate(d.iso)} · ${fmtHClock(d.horas)}`;
     return `<div class="mh-day-col" title="${_escAttrN(title)}">
-      <div class="mh-day-bar-wrap">
+      <div class="mh-day-bar-wrap" style="background-image:linear-gradient(to top, transparent calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% + 1px), transparent calc(${refPct}% + 1px));background-repeat:no-repeat">
         <div class="mh-day-bar ${zeroCls}" style="height:${pct}%"></div>
       </div>
       <div class="mh-day-lbl">${String(d.dia).padStart(2,'0')}</div>
@@ -6674,7 +6679,10 @@ function renderMhTypeBars(resumo) {
 
   return tipos.map(bucket => `
     <div class="mh-type-row">
-      <div class="mh-type-name">${_escN(bucket.label)}</div>
+      <div class="mh-type-copy">
+        <div class="mh-type-name">${_escN(bucket.label)}</div>
+        <div class="mh-type-sub">${bucket.tipo === 'projeto' ? 'por oportunidade' : 'por subtipo'}</div>
+      </div>
       <div class="mh-type-track">
         ${bucket.items.map((item, idx) => `
           <div class="mh-type-seg"
@@ -6732,11 +6740,18 @@ function renderMhDetalhe(dias = []) {
           <div class="mh-day-entry">
             <div class="mh-day-time">${_escN((item.inicio || '').slice(0,5))} — ${_escN((item.fim || '').slice(0,5))}</div>
             <div><span class="mh-badge ${_escN(item.tipo)}">${_escN(item.tipoLabel)}</span></div>
-            <div class="mh-day-main">
-              <div class="mh-day-main-1">${_escN(item.projeto)}</div>
-              <div class="mh-day-main-2">${item.tipo === 'projeto' ? _escN(item.cliente || item.produto) : _escN(item.descricao || '—')}</div>
+            <div class="mh-day-col-data">
+              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.cliente || '—') : '—'}</div>
+              <div class="mh-day-main-2">Cliente</div>
             </div>
-            <div class="mh-day-main-2">${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</div>
+            <div class="mh-day-col-data">
+              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo))}</div>
+              <div class="mh-day-main-2">${item.tipo === 'projeto' ? 'Oportunidade' : 'Bloco / descrição'}</div>
+            </div>
+            <div class="mh-day-col-data">
+              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</div>
+              <div class="mh-day-main-2">${item.tipo === 'projeto' ? 'Etapa' : 'Subtipo'}</div>
+            </div>
             <div class="mh-day-dur">${fmtHClock(item.dur)}</div>
           </div>
         `).join('')}
@@ -6822,9 +6837,13 @@ async function exportarMinhasHorasPDF() {
       dt.setDate(dt.getDate() + 1);
     }
     const max = Math.max(...dias.map(d => d.horas), 0);
+    const refPct = max > 0 ? Math.min((8 / max) * 100, 100) : 100;
     return dias.map(d => `
       <div class="day-col">
-        <div class="day-wrap"><div class="day-bar ${d.horas <= 0 ? 'zero' : ''}" style="height:${max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5}%"></div></div>
+        <div class="day-val">${d.horas > 0 ? fmtHClock(d.horas) : '0h'}</div>
+        <div class="day-wrap" style="background-image:linear-gradient(to top, transparent calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% + 1px), transparent calc(${refPct}% + 1px));background-repeat:no-repeat">
+          <div class="day-bar ${d.horas <= 0 ? 'zero' : ''}" style="height:${max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5}%"></div>
+        </div>
         <div class="day-lbl">${String(d.dia).padStart(2,'0')}</div>
       </div>
     `).join('');
@@ -6835,7 +6854,10 @@ async function exportarMinhasHorasPDF() {
     .filter(bucket => bucket && bucket.total > 0)
     .map(bucket => `
       <div class="type-row">
-        <div class="type-name">${_escN(bucket.label)}</div>
+        <div class="type-copy">
+          <div class="type-name">${_escN(bucket.label)}</div>
+          <div class="type-sub">${bucket.tipo === 'projeto' ? 'por oportunidade' : 'por subtipo'}</div>
+        </div>
         <div class="type-track">
           ${bucket.items.map((item, idx) => `
             <div class="type-seg" style="width:${Math.max(item.pct, item.horas > 0 ? 2 : 0)}%;background:${bucket.color};opacity:${Math.max(.45, 1 - idx * .06)}"></div>
@@ -6877,7 +6899,7 @@ async function exportarMinhasHorasPDF() {
         </div>
         <table class="detail">
           <thead>
-            <tr><th>Início</th><th>Fim</th><th>Tipo</th><th>Projeto</th><th>Etapa / subtipo</th><th>Duração</th></tr>
+            <tr><th>Início</th><th>Fim</th><th>Tipo</th><th>Cliente</th><th>Oportunidade</th><th>Etapa / subtipo</th><th>Duração</th></tr>
           </thead>
           <tbody>
             ${dia.itens.map(item => `
@@ -6885,7 +6907,8 @@ async function exportarMinhasHorasPDF() {
                 <td>${_escN((item.inicio || '').slice(0,5))}</td>
                 <td>${_escN((item.fim || '').slice(0,5))}</td>
                 <td>${_escN(item.tipoLabel)}</td>
-                <td>${_escN(item.projeto)}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.cliente || '—') : '—'}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo))}</td>
                 <td>${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</td>
                 <td class="n">${fmtHClock(item.dur)}</td>
               </tr>
@@ -6913,8 +6936,9 @@ async function exportarMinhasHorasPDF() {
   .mini{background:#faf8f4;border:1px solid #ece6da;border-radius:10px;padding:10px}
   .mini .k{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#999}
   .mini .v{font-size:16px;font-weight:700;font-family:Menlo,Consolas,monospace;margin-top:6px}
-  .day-chart{display:flex;align-items:flex-end;gap:4px;height:180px;margin-top:14px}
-  .day-col{min-width:16px;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .day-chart{display:flex;align-items:flex-end;gap:4px;height:194px;margin-top:14px}
+  .day-col{min-width:24px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .day-val{font-size:7px;color:#888;font-family:Menlo,Consolas,monospace;white-space:nowrap}
   .day-wrap{width:100%;height:145px;display:flex;align-items:flex-end}
   .day-bar{width:100%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#5E86D4 0%, #1D4FA0 100%)}
   .day-bar.zero{background:#ececec}
@@ -6923,6 +6947,7 @@ async function exportarMinhasHorasPDF() {
   .type-row{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;margin-bottom:10px}
   .type-row:last-child{margin-bottom:0}
   .type-name{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888}
+  .type-sub{font-size:9px;color:#aaa;margin-top:2px}
   .type-track{height:16px;background:#ececec;border-radius:999px;overflow:hidden;display:flex}
   .type-seg{height:100%;min-width:1px;border-right:1px solid rgba(255,255,255,.9)}
   .type-seg:last-child{border-right:none}
