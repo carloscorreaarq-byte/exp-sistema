@@ -599,6 +599,8 @@ body::before {
 .ck-item-act:hover{color:#666}
 .ck-item-act.tc:hover{color:#e05}
 .ck-item-act.tc{color:#e05}
+.ck-item-act.tm{font-size:12px;color:var(--azul);padding:0 1px}
+.ck-item-act.tm:hover{color:var(--verde)}
 .ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--azul);outline:none;padding:0;background:transparent;font-family:var(--font-ui);color:inherit;line-height:1.5}
 .ck-empty{font-size:11px;color:#ccc;padding:8px 0}
 .ck-atrib{display:flex;align-items:center;gap:5px;font-size:10px;color:#666;padding:4px 12px;background:var(--off);border-top:1px solid var(--cinza2)}
@@ -1558,10 +1560,24 @@ body::before {
 .tarefa-check.done::after { content: '✓'; font-size: 10px; color: #fff; font-weight: 700; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
+.tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.tarefa-tool-btn{
+  width:22px;height:22px;border:1px solid var(--cinza);border-radius:6px;
+  background:var(--branco);color:var(--azul);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:border-color .15s,color .15s,background .15s;flex-shrink:0
+}
+.tarefa-tool-btn:hover{border-color:var(--azul);background:var(--az-bg);color:var(--verde)}
+.tarefa-tool-btn:disabled{opacity:.5;cursor:default}
 .tarefa-inline-form { padding: 6px 0 4px; }
 .tarefa-inline-ta { width: 100%; box-sizing: border-box; border: 1px solid var(--cinza); border-radius: 6px; padding: 7px 10px; font-size: 12px; font-family: var(--font-ui); resize: none; outline: none; line-height: 1.5; }
 .tarefa-inline-ta:focus { border-color: var(--azul); }
 .tarefa-inline-actions { display: flex; gap: 6px; margin-top: 6px; }
+.tm-upload-area{
+  border:1px dashed var(--cinza);border-radius:10px;background:var(--off);
+  padding:18px 16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start
+}
+.tm-upload-status{font-size:11px;color:#666;min-height:16px}
+.tm-upload-hint{font-size:11px;color:#888;line-height:1.5}
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    VISÃO SÓCIOS
@@ -2085,6 +2101,7 @@ body::before {
       <a href="gestao.html" class="nd-active">EXP.projetos</a>
       <a href="apoio.html">EXP.apoio</a>
       <a href="contatos.html">EXP.contatos</a>
+      <a href="calendario.html">EXP.agenda</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
       <a href="calc.html" class="nd-soc" style="display:none">EXP.calc</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
@@ -3574,6 +3591,37 @@ body::before {
   </div>
 </div>
 
+<input
+  type="file"
+  id="temp-media-input"
+  accept="image/png,image/jpeg,image/webp"
+  onchange="processarArquivoTempMediaInput(this)"
+  style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none"
+>
+
+<div class="modal-bg" id="modal-temp-media-upload" style="display:none">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-hd-title">Anexar print</div>
+      <button class="modal-close" onclick="fecharTempMediaUpload()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;font-weight:700;margin-bottom:4px" id="tm-upload-title">Anexo temporário</div>
+      <div style="font-size:11px;color:#777;margin-bottom:12px" id="tm-upload-context">Use Anexar ou Ctrl+V para colar um print de tela.</div>
+      <div class="tm-upload-area">
+        <button class="btn filled" type="button" onclick="escolherArquivoTempMedia()">Anexar imagem</button>
+        <div class="tm-upload-hint">
+          Prints apenas. O sistema redimensiona e comprime antes do upload para manter a gestão leve.
+        </div>
+        <div class="tm-upload-status" id="tm-upload-status">Pronto para receber imagem.</div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" type="button" onclick="fecharTempMediaUpload()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   CONFIGURAÇÃO SUPABASE
@@ -3615,6 +3663,9 @@ let G = {
   _regEditId: null,
   _regEncsForms: [],
   _regAbertos: {},
+  _tempMediaConfig: null,
+  _tempMediaDraft: null,
+  _tempMediaBusy: false,
 };
 
 // ── Configurações ───────────────────────────────────────────
@@ -7411,14 +7462,19 @@ function renderPrancha(pr, isSocioOrCoord) {
         </div>
       </div>
       <div class="prancha-body">
-        ${(pr.tarefas_revisao || []).map(t => `
+        ${(pr.tarefas_revisao || []).map(t => {
+          const tarefaIdJs = _sqN(t.id);
+          const tarefaTituloJs = _sqN(`Tarefa de revisão · ${t.descricao}`);
+          return `
           <div class="tarefa-item">
             <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
                  ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${pr.id}')"` : 'title="Apenas o coordenador ou desenvolvedor do projeto pode marcar"'}
                  style="${isSocioOrCoord ? '' : 'cursor:default;opacity:.6'}"></div>
             <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
+            ${isSocioOrCoord ? `<div class="tarefa-item-tools"><button class="tarefa-tool-btn" type="button" title="Anexar print" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">🖼</button></div>` : ''}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
         ${!pr.tarefas_revisao?.length ? '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem tarefas nesta prancha.</div>' : ''}
         <div id="tarefa-inline-${pr.id}"></div>
         <div class="prancha-comments">
@@ -7461,6 +7517,7 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
     concluida_por: !atual ? G.usuario.id : null,
     concluida_em: !atual ? new Date().toISOString() : null
   }).eq('id', id);
+  await sincronizarExpiracaoTempMedia('revisao_tarefa', id, !atual);
 
   // Verifica se prancha ficou 100% e notifica (placeholder)
   if (!atual) {
@@ -10144,6 +10201,223 @@ function comprimirImagem(file, maxDim) {
   });
 }
 
+async function carregarTempMediaConfig() {
+  if (G._tempMediaConfig) return G._tempMediaConfig;
+  const fallback = {
+    largura_max_px: 1600,
+    tamanho_max_kb: 700,
+    qualidade_upload: 0.80,
+  };
+  const { data, error } = await sb
+    .from('plataforma_midia_temporaria_config')
+    .select('largura_max_px,tamanho_max_kb,qualidade_upload')
+    .eq('id', true)
+    .maybeSingle();
+  if (error) return fallback;
+  G._tempMediaConfig = { ...fallback, ...(data || {}) };
+  return G._tempMediaConfig;
+}
+
+function abrirTempMediaUpload(contextoTipo, contextoId, titulo) {
+  G._tempMediaDraft = {
+    contextoTipo,
+    contextoId,
+    titulo: titulo || 'Anexo temporário',
+  };
+  const modal = document.getElementById('modal-temp-media-upload');
+  document.getElementById('tm-upload-title').textContent = titulo || 'Anexo temporário';
+  document.getElementById('tm-upload-context').textContent = 'Anexar ou colar print de tela para este item.';
+  setTempMediaStatus('Pronto para receber imagem.');
+  if (modal) modal.style.display = 'flex';
+}
+
+function fecharTempMediaUpload() {
+  G._tempMediaDraft = null;
+  G._tempMediaBusy = false;
+  const modal = document.getElementById('modal-temp-media-upload');
+  const input = document.getElementById('temp-media-input');
+  if (modal) modal.style.display = 'none';
+  if (input) input.value = '';
+  setTempMediaStatus('Pronto para receber imagem.');
+}
+
+function setTempMediaStatus(msg) {
+  const el = document.getElementById('tm-upload-status');
+  if (el) el.textContent = msg;
+}
+
+function escolherArquivoTempMedia() {
+  if (G._tempMediaBusy) return;
+  const input = document.getElementById('temp-media-input');
+  if (!input) return;
+  input.value = '';
+  if (typeof input.showPicker === 'function') {
+    input.showPicker();
+  } else {
+    input.click();
+  }
+}
+
+async function processarArquivoTempMediaInput(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  await subirTempMediaArquivo(file);
+}
+
+async function subirTempMediaArquivo(file) {
+  const draft = G._tempMediaDraft;
+  if (!draft?.contextoTipo || !draft?.contextoId) {
+    toast('Abra o anexo a partir de uma tarefa ou item do checklist.');
+    return;
+  }
+  if (G._tempMediaBusy) return;
+  if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) {
+    toast('Envie apenas prints em PNG, JPG ou WEBP.');
+    return;
+  }
+
+  G._tempMediaBusy = true;
+  setTempMediaStatus('Preparando imagem...');
+
+  try {
+    const cfg = await carregarTempMediaConfig();
+    const optimized = await otimizarTempMediaImagem(file, cfg);
+    const ext = optimized.ext;
+    const path = `${draft.contextoTipo}/${draft.contextoId}/${G.usuario.id}-${Date.now()}.${ext}`;
+
+    setTempMediaStatus('Enviando imagem...');
+    const { error: uploadError } = await sb
+      .storage
+      .from('gestao-anexos-temp')
+      .upload(path, optimized.blob, {
+        contentType: optimized.mimeType,
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { error: metaError } = await sb
+      .from('gestao_anexos_temporarios')
+      .insert({
+        contexto_tipo: draft.contextoTipo,
+        contexto_id: draft.contextoId,
+        bucket_name: 'gestao-anexos-temp',
+        storage_path: path,
+        mime_type: optimized.mimeType,
+        arquivo_ext: ext,
+        size_bytes: optimized.blob.size,
+        width_px: optimized.width,
+        height_px: optimized.height,
+        criado_por: G.usuario.id,
+      })
+      .select('id')
+      .single();
+
+    if (metaError) {
+      await sb.storage.from('gestao-anexos-temp').remove([path]);
+      throw metaError;
+    }
+
+    setTempMediaStatus('Imagem anexada com sucesso.');
+    toast('Print anexado.');
+    fecharTempMediaUpload();
+  } catch (error) {
+    const msg = error?.message || 'Falha ao anexar a imagem.';
+    setTempMediaStatus(msg);
+    toast(`Erro ao anexar print: ${msg}`);
+  } finally {
+    G._tempMediaBusy = false;
+  }
+}
+
+async function otimizarTempMediaImagem(file, cfg) {
+  const source = await carregarImagemTempMedia(file);
+  const qualidade = Number(cfg?.qualidade_upload || 0.80);
+  const larguraMax = Math.max(320, Number(cfg?.largura_max_px || 1600));
+  const maxBytes = Math.max(50, Number(cfg?.tamanho_max_kb || 700)) * 1024;
+
+  let result = await rasterizarTempMedia(source, larguraMax, qualidade, 'image/webp');
+  if (!result.blob) {
+    result = await rasterizarTempMedia(source, larguraMax, qualidade, 'image/jpeg');
+  }
+  if (!result.blob) throw new Error('Não foi possível preparar a imagem.');
+
+  if (result.blob.size > maxBytes) {
+    result = await rasterizarTempMedia(source, Math.min(larguraMax, 1280), Math.min(qualidade, 0.72), 'image/jpeg');
+  }
+  if (!result.blob) throw new Error('Não foi possível comprimir a imagem.');
+  if (result.blob.size > maxBytes) {
+    throw new Error(`A imagem ficou maior que ${(maxBytes / 1024).toFixed(0)} KB após compressão.`);
+  }
+
+  return {
+    blob: result.blob,
+    width: result.width,
+    height: result.height,
+    mimeType: result.mimeType,
+    ext: result.mimeType === 'image/webp' ? 'webp' : 'jpg',
+  };
+}
+
+function carregarImagemTempMedia(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Arquivo de imagem inválido.'));
+    };
+    img.src = url;
+  });
+}
+
+function rasterizarTempMedia(img, larguraMax, qualidade, mimeType) {
+  return new Promise(resolve => {
+    const ratio = img.width > larguraMax ? (larguraMax / img.width) : 1;
+    const width = Math.max(1, Math.round(img.width * ratio));
+    const height = Math.max(1, Math.round(img.height * ratio));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+    canvas.toBlob(blob => {
+      resolve({
+        blob,
+        width,
+        height,
+        mimeType: blob ? mimeType : null,
+      });
+    }, mimeType, qualidade);
+  });
+}
+
+async function sincronizarExpiracaoTempMedia(contextoTipo, contextoId, concluido) {
+  if (!contextoTipo || !contextoId) return;
+  await sb
+    .from('gestao_anexos_temporarios')
+    .update({ concluido_snapshot: !!concluido })
+    .eq('contexto_tipo', contextoTipo)
+    .eq('contexto_id', contextoId)
+    .is('removido_em', null);
+}
+
+document.addEventListener('paste', async (event) => {
+  const modalOpen = document.getElementById('modal-temp-media-upload')?.style.display === 'flex';
+  if (!modalOpen || G._tempMediaBusy || !G._tempMediaDraft) return;
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItem = items.find(item => /^image\/(png|jpeg|webp)$/i.test(item.type || ''));
+  if (!imageItem) return;
+  const file = imageItem.getAsFile();
+  if (!file) return;
+  event.preventDefault();
+  await subirTempMediaArquivo(file);
+});
+
 async function salvarAniversarioUsuario(uid, val) {
   const data_aniversario = val || null;
   await sb.from('usuarios').update({ data_aniversario }).eq('id', uid);
@@ -11236,7 +11510,12 @@ async function salvarEdicaoProduto() {
 // Fecha modal clicando fora
 document.querySelectorAll('.modal-bg').forEach(bg => {
   bg.addEventListener('click', e => {
-    if (e.target === bg) bg.style.display = 'none';
+    if (e.target !== bg) return;
+    if (bg.id === 'modal-temp-media-upload') {
+      fecharTempMediaUpload();
+      return;
+    }
+    bg.style.display = 'none';
   });
 });
 
@@ -11920,6 +12199,9 @@ function toggleCkOutras() {
 function _ckItemHtml(it, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   const who = it.concluido && it.concluido_por_nome ? `<span class="ck-item-who">${_ckE(it.concluido_por_nome)}</span>` : '';
+  const attachBtn = !readonly && tipo === 'etapa'
+    ? `<button class="ck-item-act tm" onclick="abrirTempMediaUpload('checklist_etapa_exec_item',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar print">🖼</button>`
+    : '';
   const editBtns = canEdit ? `
     <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Editar">✏</button>
     <button class="ck-item-act tc" onclick="excluirCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Excluir">✕</button>
@@ -11929,6 +12211,7 @@ function _ckItemHtml(it, readonly, tipo, canEdit) {
       onchange="toggleCkItem('${tipo}',${_sqCk(it.id)},this.checked,${_sqCk(it.checklist_id)})">
     <span class="ck-item-txt${it.concluido?' done':''}" id="ck-txt-${it.id}">${_ckE(it.texto)}</span>
     ${who}
+    ${attachBtn}
     ${editBtns}
   </div>`;
 }
@@ -12025,6 +12308,9 @@ async function toggleCkItem(tipo, itemId, checked, ckId) {
     concluido_por_nome: checked ? u.nome : null,
     concluido_em:       checked ? now    : null,
   }).eq('id', itemId);
+  if (tipo === 'etapa') {
+    await sincronizarExpiracaoTempMedia('checklist_etapa_exec_item', itemId, checked);
+  }
 
   // Atualiza estado local
   const arr = tipo === 'etapa' ? G._ckEtapas : G._ckTarefas;
