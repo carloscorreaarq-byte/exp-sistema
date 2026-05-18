@@ -15155,9 +15155,17 @@ async function calInit() {
 
 async function calCarregarEventos() {
   try {
-    const { data, error } = await sb.from('calendar_events').select('*').order('data_inicio');
+    const { data, error } = await sb.from('calendar_events').select('*').order('inicio');
     if (error) throw error;
-    CAL.eventos = data || [];
+    // Normaliza nomes de coluna do banco para os usados no JS
+    CAL.eventos = (data || []).map(e => ({
+      ...e,
+      data_inicio: e.inicio ? e.inicio.slice(0, 10) : null,
+      data_fim:    e.fim    ? e.fim.slice(0, 10)    : (e.inicio ? e.inicio.slice(0, 10) : null),
+      usuario_id:  e.user_id,
+      dia_todo:    e.dia_inteiro,
+      nucleo:      e.nucleo_id,
+    }));
   } catch(e) { console.error('calCarregarEventos', e); CAL.eventos = []; }
 }
 
@@ -15632,12 +15640,16 @@ async function calSalvar() {
 
   const ehGlobal = ['recesso','feriado','feriado_local','agenda_exp'].includes(tipo);
   const payload = {
-    tipo, titulo, data_inicio: ini, data_fim: fim, dia_todo: true,
-    descricao: desc || null,
-    scope: ehGlobal ? (nucleo === 'todos' ? 'todos' : 'nucleo') : 'usuario',
-    nucleo: ehGlobal ? (nucleo === 'todos' ? null : nucleo) : (G.usuario?.nucleo || null),
-    usuario_id: ehGlobal ? null : usuId,
-    criado_por: G.usuario?.id,
+    tipo,
+    titulo,
+    inicio:      ini + 'T12:00:00+00:00',
+    fim:         (fim || ini) + 'T12:00:00+00:00',
+    dia_inteiro: true,
+    descricao:   desc || null,
+    scope:       ehGlobal ? (nucleo === 'todos' ? 'todos' : 'nucleo') : 'usuario',
+    nucleo_id:   ehGlobal ? (nucleo === 'todos' ? null : nucleo) : (G.usuario?.nucleo || null),
+    user_id:     ehGlobal ? null : usuId,
+    criado_por:  G.usuario?.id,
   };
 
   try {
