@@ -81,6 +81,9 @@ body::before {
 /* ── CHIP DE TERMO (boas-vindas) ───────────────────────── */
 
 
+/* ── USER CHIP OVERRIDES ─────────────────────────────────── */
+.u-role { margin-top: 1px; }
+
 /* ── CONN DOT ────────────────────────────────────────────── */
 
 /* ── CONTEÚDO ────────────────────────────────────────────── */
@@ -803,6 +806,31 @@ body::before {
   }
 }
 
+/* ── TERMO DE COMPROMISSO — bloco prioritário e texto ────── */
+#termo-prioritario {
+  background: var(--am-bg, #FBF3E8);
+  color: var(--grafite);
+  border-left: 3px solid var(--ouro);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 11px;
+  line-height: 1.65;
+}
+#termo-texto {
+  display: grid;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--grafite);
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 6px;
+}
+[data-theme="dark"] #termo-prioritario {
+  background: var(--am-bg);
+  color: var(--grafite);
+}
+
 /* ── ANIMAÇÃO ────────────────────────────────────────────── */
 .main { animation: fadeIn .4s ease both; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
@@ -836,6 +864,13 @@ body::before {
 [data-theme="dark"] .shell-field input[readonly] { background: #20201d; color: #999; }
 [data-theme="dark"] .platform-card,
 [data-theme="dark"] .platform-user-row { border-color: var(--cinza2); }
+[data-theme="dark"] .platform-card { background: var(--branco); }
+[data-theme="dark"] .platform-user-row,
+[data-theme="dark"] .platform-feedback-row { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .nav-feedback-pop { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .nav-feedback-pop::before { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .platform-tab.active { background: var(--cinza2); }
+[data-theme="dark"] .platform-tabs { background: #181816; border-color: var(--cinza); }
 </style>
 </head>
 <body>
@@ -855,22 +890,22 @@ body::before {
   <span class="nav-mod">Sistema</span>
   <div class="nav-right">
     <div class="nav-feedback-wrap" id="nav-feedback-wrap">
-      <button type="button" class="nav-feedback-btn" id="nav-feedback-btn" onclick="toggleToolFeedbackPopover(event)" aria-label="Comunicar problema ou sugestao" title="Problemas e sugestoes">!</button>
+      <button type="button" class="nav-feedback-btn" id="nav-feedback-btn" onclick="toggleToolFeedbackPopover(event)" aria-label="Comunicar problema ou sugestão" title="Problemas e sugestões">!</button>
       <div class="nav-feedback-pop" id="nav-feedback-pop">
-        <div class="nav-feedback-title">Problema ou sugestao</div>
-        <div class="nav-feedback-sub">Envio direto para a Gestao de plataforma.</div>
+        <div class="nav-feedback-title">Problema ou sugestão</div>
+        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
         <div class="shell-field">
           <label for="tool-feedback-type">Tipo</label>
           <select id="tool-feedback-type">
             <option value="problema">Problema</option>
-            <option value="sugestao">Sugestao</option>
+            <option value="sugestao">Sugestão</option>
           </select>
         </div>
         <div class="shell-field">
           <label for="tool-feedback-message">Mensagem</label>
-          <textarea id="tool-feedback-message" rows="5" placeholder="Descreva o erro, comportamento inesperado ou a sugestao de melhoria."></textarea>
+          <textarea id="tool-feedback-message" rows="5" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
         </div>
-        <div class="nav-feedback-status" id="tool-feedback-status">Seu registro sera encaminhado para a Gestao de plataforma.</div>
+        <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
         <div class="nav-feedback-actions">
           <button type="button" class="shell-btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
           <button type="button" class="shell-btn primary" onclick="enviarToolFeedback()">Enviar</button>
@@ -882,7 +917,7 @@ body::before {
       <span class="ttg-track"><span class="ttg-knob"></span></span>
       <span class="ttg-icon">🌙</span>
     </button>
-    <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
+    <div class="conn-dot" id="conn-dot" title="Verificando conexão com o banco de dados..."></div>
     <div class="user-pill-wrap">
       <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
         <div class="user-av" id="user-av"></div>
@@ -894,7 +929,7 @@ body::before {
       </div>
       <div class="user-dropdown" id="user-dropdown">
         <button type="button" onclick="abrirMeusDados()">Meus dados</button>
-        <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataformaStub()">Gestao de plataforma</button>
+        <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataformaStub()">Gestão de plataforma</button>
         <div class="user-dropdown-sep"></div>
         <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.()">
           <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
@@ -989,7 +1024,7 @@ body::before {
     <div class="shell-modal-header">
       <div class="shell-modal-title">
         <strong id="meus-dados-title">Meus dados</strong>
-        <span>Dados pessoais e de contato do usuario logado.</span>
+        <span>Dados pessoais e de contato do usuário logado.</span>
       </div>
       <button type="button" class="shell-modal-close" onclick="fecharMeusDados()">&times;</button>
     </div>
@@ -998,8 +1033,8 @@ body::before {
         <div class="meus-dados-avatar" id="meus-dados-avatar"></div>
         <div class="meus-dados-hero-copy">
           <strong id="meus-dados-hero-nome">-</strong>
-          <p id="meus-dados-hero-resumo">Identidade base do usuario logado.</p>
-          <div class="shell-inline-note">A foto de avatar e gerida pela Gestao de plataforma. Quando nao houver foto, o sistema usa as iniciais.</div>
+          <p id="meus-dados-hero-resumo">Identidade base do usuário logado.</p>
+          <div class="shell-inline-note">A foto de avatar é gerida pela Gestão de plataforma. Quando não houver foto, o sistema usa as iniciais.</div>
         </div>
       </div>
 
@@ -1063,7 +1098,7 @@ body::before {
 
       <div class="meus-dados-section">
         <div class="meus-dados-section-title">
-          <strong>Endereco e emergencia</strong>
+          <strong>Endereço e emergência</strong>
           <span>Base inicial do cadastro pessoal para a plataforma e para futuros usos institucionais.</span>
         </div>
         <div class="meus-dados-grid">
@@ -1072,7 +1107,7 @@ body::before {
             <input id="md-logradouro" type="text" maxlength="160">
           </div>
           <div class="shell-field">
-            <label for="md-numero">Numero</label>
+            <label for="md-numero">Número</label>
             <input id="md-numero" type="text" maxlength="20">
           </div>
           <div class="shell-field">
@@ -1105,15 +1140,15 @@ body::before {
             </select>
           </div>
           <div class="shell-field">
-            <label for="md-emergencia-nome">Contato de emergencia</label>
+            <label for="md-emergencia-nome">Contato de emergência</label>
             <input id="md-emergencia-nome" type="text" maxlength="160">
           </div>
           <div class="shell-field">
-            <label for="md-emergencia-relacao">Relacao</label>
+            <label for="md-emergencia-relacao">Relação</label>
             <input id="md-emergencia-relacao" type="text" maxlength="80">
           </div>
           <div class="shell-field">
-            <label for="md-emergencia-telefone">Telefone de emergencia</label>
+            <label for="md-emergencia-telefone">Telefone de emergência</label>
             <input id="md-emergencia-telefone" type="text" maxlength="40">
           </div>
         </div>
@@ -1130,11 +1165,11 @@ body::before {
             <input id="md-registro-cau" type="text" maxlength="80">
           </div>
           <div class="shell-field">
-            <label for="md-instituicao-formacao">Instituicao de formacao</label>
+            <label for="md-instituicao-formacao">Instituição de formação</label>
             <input id="md-instituicao-formacao" type="text" maxlength="160">
           </div>
           <div class="shell-field">
-            <label for="md-mes-ano-formacao">Mes e ano de formacao</label>
+            <label for="md-mes-ano-formacao">Mês e ano de formação</label>
             <input id="md-mes-ano-formacao" type="text" maxlength="7" placeholder="mm.aaaa">
           </div>
         </div>
@@ -1143,7 +1178,7 @@ body::before {
       <div class="meus-dados-section">
         <div class="meus-dados-section-title">
           <strong>Dados empresariais</strong>
-          <span>Cadastro PJ com logica de vinculo EXP.</span>
+          <span>Cadastro PJ com lógica de vínculo EXP.</span>
         </div>
         <div class="meus-dados-grid">
           <div class="shell-field full">
@@ -1157,7 +1192,7 @@ body::before {
           </div>
           <div id="md-empresa-campos">
           <div class="shell-field full">
-            <label for="md-razao-social">Razao social</label>
+            <label for="md-razao-social">Razão social</label>
             <input id="md-razao-social" type="text" maxlength="160">
           </div>
           <div class="shell-field">
@@ -1169,7 +1204,7 @@ body::before {
             <input id="md-cnpj" type="text" maxlength="32">
           </div>
           <div class="shell-field">
-            <label for="md-data-inscricao">Data de inscricao</label>
+            <label for="md-data-inscricao">Data de inscrição</label>
             <input id="md-data-inscricao" type="date">
           </div>
           <div class="shell-field">
@@ -1186,7 +1221,7 @@ body::before {
             <input id="md-emp-logradouro" type="text" maxlength="160">
           </div>
           <div class="shell-field">
-            <label for="md-emp-numero">Numero</label>
+            <label for="md-emp-numero">Número</label>
             <input id="md-emp-numero" type="text" maxlength="20">
           </div>
           <div class="shell-field">
@@ -1296,16 +1331,16 @@ body::before {
   <div class="shell-modal" role="dialog" aria-modal="true" aria-labelledby="plataforma-title" onclick="event.stopPropagation()">
     <div class="shell-modal-header">
       <div class="shell-modal-title">
-        <strong id="plataforma-title">Gestao de plataforma</strong>
-        <span>Usuarios, status e identidade visual institucional.</span>
+        <strong id="plataforma-title">Gestão de plataforma</strong>
+        <span>Usuários, status e identidade visual institucional.</span>
       </div>
       <button type="button" class="shell-modal-close" onclick="fecharGestaoPlataforma()">&times;</button>
     </div>
     <div class="shell-modal-body">
       <div class="platform-toolbar">
-        <div class="platform-tabs" role="tablist" aria-label="Gestao de plataforma">
-          <button type="button" class="platform-tab active" id="platform-tab-usuarios" onclick="switchPlatformTab('usuarios')">Usuarios</button>
-          <button type="button" class="platform-tab" id="platform-tab-midia" onclick="switchPlatformTab('midia')">Midia temporaria</button>
+        <div class="platform-tabs" role="tablist" aria-label="Gestão de plataforma">
+          <button type="button" class="platform-tab active" id="platform-tab-usuarios" onclick="switchPlatformTab('usuarios')">Usuários</button>
+          <button type="button" class="platform-tab" id="platform-tab-midia" onclick="switchPlatformTab('midia')">Mídia temporária</button>
           <button type="button" class="platform-tab" id="platform-tab-termo" onclick="switchPlatformTab('termo')">Termo de uso</button>
           <button type="button" class="platform-tab" id="platform-tab-feedback" onclick="switchPlatformTab('feedback')">Feedback</button>
         </div>
@@ -1315,10 +1350,10 @@ body::before {
         <div class="platform-card">
           <div class="platform-card-title">
             <div>
-              <strong>Usuarios ativos e controles</strong>
-              <span>Area principal de operacao recorrente da plataforma.</span>
+              <strong>Usuários ativos e controles</strong>
+              <span>Área principal de operação recorrente da plataforma.</span>
             </div>
-            <button type="button" class="platform-plus-btn" onclick="toggleNovoUsuarioPlataforma()" aria-label="Novo usuario">+</button>
+            <button type="button" class="platform-plus-btn" onclick="toggleNovoUsuarioPlataforma()" aria-label="Novo usuário">+</button>
           </div>
           <div class="platform-collapsible" id="platform-new-user">
             <div class="meus-dados-grid">
@@ -1335,11 +1370,11 @@ body::before {
                 <input id="gp-senha" type="text" maxlength="120">
               </div>
               <div class="shell-field">
-                <label for="gp-role">Nivel de usuario</label>
+                <label for="gp-role">Nível de usuário</label>
                 <select id="gp-role">
                   <option value="colaborador">Colaborador</option>
-                  <option value="socio">Socio</option>
-                  <option value="socio_admin">Socio administrador</option>
+                  <option value="socio">Sócio</option>
+                  <option value="socio_admin">Sócio administrador</option>
                 </select>
               </div>
               <div class="shell-field">
@@ -1351,11 +1386,11 @@ body::before {
               </div>
             </div>
             <div class="platform-new-user-actions">
-              <button type="button" class="shell-btn primary" onclick="criarNovoUsuarioPlataforma()">Criar novo usuario</button>
+              <button type="button" class="shell-btn primary" onclick="criarNovoUsuarioPlataforma()">Criar novo usuário</button>
             </div>
           </div>
           <div class="platform-users-list" id="platform-users-list">
-            <div class="platform-empty">Carregando usuarios...</div>
+            <div class="platform-empty">Carregando usuários...</div>
           </div>
         </div>
       </div>
@@ -1369,8 +1404,8 @@ body::before {
           <div class="platform-card">
             <div class="platform-card-title">
               <div>
-                <strong>Politica de retencao e upload</strong>
-                <span>Configuracao institucional da midia temporaria em revisoes e checklists.</span>
+                <strong>Política de retenção e upload</strong>
+                <span>Configuração institucional da mídia temporária em revisões e checklists.</span>
               </div>
             </div>
             <div class="meus-dados-grid">
@@ -1379,7 +1414,7 @@ body::before {
                 <input id="gp-media-open-days" type="number" min="1" max="365">
               </div>
               <div class="shell-field">
-                <label for="gp-media-done-days">Dias para item concluido</label>
+                <label for="gp-media-done-days">Dias para item concluído</label>
                 <input id="gp-media-done-days" type="number" min="1" max="365">
               </div>
               <div class="shell-field">
@@ -1387,11 +1422,11 @@ body::before {
                 <input id="gp-media-fallback-days" type="number" min="1" max="365">
               </div>
               <div class="shell-field">
-                <label for="gp-media-max-width">Largura maxima (px)</label>
+                <label for="gp-media-max-width">Largura máxima (px)</label>
                 <input id="gp-media-max-width" type="number" min="320" max="4096">
               </div>
               <div class="shell-field">
-                <label for="gp-media-max-kb">Tamanho maximo (KB)</label>
+                <label for="gp-media-max-kb">Tamanho máximo (KB)</label>
                 <input id="gp-media-max-kb" type="number" min="50" max="10240">
               </div>
               <div class="shell-field">
@@ -1400,23 +1435,23 @@ body::before {
               </div>
             </div>
             <div class="platform-inline">
-              <button type="button" class="shell-btn primary" onclick="salvarMidiaTemporariaPlataforma()">Salvar politica</button>
-              <span class="shell-inline-note">Esta politica afeta a expiracao automatica e os limites de compressao dos prints temporarios.</span>
+              <button type="button" class="shell-btn primary" onclick="salvarMidiaTemporariaPlataforma()">Salvar política</button>
+              <span class="shell-inline-note">Esta política afeta a expiração automática e os limites de compressão dos prints temporários.</span>
             </div>
           </div>
 
           <div class="platform-card">
             <div class="platform-card-title">
               <div>
-                <strong>Uso atual da midia temporaria</strong>
-                <span>Leitura simples do volume ativo e distribuicao por contexto.</span>
+                <strong>Uso atual da mídia temporária</strong>
+                <span>Leitura simples do volume ativo e distribuição por contexto.</span>
               </div>
             </div>
             <div class="meus-dados-grid" id="platform-media-stats">
               <div class="platform-empty">Carregando uso atual...</div>
             </div>
             <div class="platform-feedback-list" id="platform-media-contexts" style="margin-top:12px">
-              <div class="platform-empty">Carregando distribuicao...</div>
+              <div class="platform-empty">Carregando distribuição...</div>
             </div>
           </div>
         </div>
@@ -1426,8 +1461,8 @@ body::before {
         <div class="platform-card">
           <div class="platform-card-title">
             <div>
-              <strong>Problemas e sugestoes da ferramenta</strong>
-              <span>Registros enviados pelos usuarios diretamente do shell.</span>
+              <strong>Problemas e sugestões da ferramenta</strong>
+              <span>Registros enviados pelos usuários diretamente do shell.</span>
             </div>
           </div>
           <div class="platform-feedback-list" id="platform-feedback-list">
@@ -1437,7 +1472,7 @@ body::before {
       </div>
     </div>
     <div class="shell-modal-footer">
-      <div class="shell-status-text" id="plataforma-status">Painel inicial de gestao de plataforma.</div>
+      <div class="shell-status-text" id="plataforma-status">Painel inicial de gestão de plataforma.</div>
       <div class="shell-actions">
         <button type="button" class="shell-btn" onclick="fecharGestaoPlataforma()">Fechar</button>
       </div>
@@ -1816,7 +1851,7 @@ async function salvarMeusDados() {
     .eq('id', sessionUser.app_user_id);
 
   if (userError) {
-    setMeusDadosStatus('Nao foi possivel salvar a identidade base do usuario.');
+    setMeusDadosStatus('Não foi possível salvar a identidade base do usuário.');
     return;
   }
 
@@ -1825,7 +1860,7 @@ async function salvarMeusDados() {
     .upsert(dadosPessoaisPayload, { onConflict: 'usuario_id' });
 
   if (personalError) {
-    setMeusDadosStatus('Nao foi possivel salvar os dados pessoais.');
+    setMeusDadosStatus('Não foi possível salvar os dados pessoais.');
     return;
   }
 
@@ -1843,7 +1878,7 @@ async function salvarMeusDados() {
 
 function abrirGestaoPlataformaStub() {
   document.getElementById('user-dropdown')?.classList.remove('open');
-  window.alert('A "Gestao de plataforma" sera estruturada na Fase 2 para usuarios com capability de plataforma.');
+  window.alert('A "Gestão de plataforma" será estruturada na Fase 2 para usuários com capability de plataforma.');
 }
 
 function publishSessionReady(payload) {
@@ -1933,9 +1968,18 @@ async function init() {
   try {
     const { error } = await sb.from('usuarios').select('id').limit(1);
     const dot = document.getElementById('conn-dot');
-    if (!error) dot.classList.add('online');
-    else dot.classList.add('offline');
-  } catch { document.getElementById('conn-dot').classList.add('offline'); }
+    if (!error) {
+      dot.classList.add('online');
+      dot.title = 'Banco de dados conectado';
+    } else {
+      dot.classList.add('offline');
+      dot.title = 'Falha na conexão com o banco de dados';
+    }
+  } catch {
+    const dot = document.getElementById('conn-dot');
+    dot.classList.add('offline');
+    dot.title = 'Falha na conexão com o banco de dados';
+  }
 
   // Mostra conteúdo
   document.getElementById('loading').style.display = 'none';

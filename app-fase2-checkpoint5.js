@@ -23,64 +23,64 @@
   const TERM_VALIDITY_DAYS = 365;
   const DEFAULT_TERM_DEFINITION = {
     slug: 'termo_uso_protecao_dados_pessoais',
-    titulo: 'TERMO DE USO E PROTEÃ‡ÃƒO DE DADOS PESSOAIS',
+    titulo: 'TERMO DE USO E PROTEÇÃO DE DADOS PESSOAIS',
     versao_termo: '2026.01',
-    compromisso_prioritario: 'O acesso Ã  plataforma EXP Ã© pessoal e intransferÃ­vel. O usuÃ¡rio deve proteger suas credenciais, utilizar a plataforma apenas para fins ligados Ã  prestaÃ§Ã£o de serviÃ§os Ã  EXP e comunicar imediatamente qualquer suspeita de acesso indevido ou incidente de seguranÃ§a.',
+    compromisso_prioritario: 'O acesso à plataforma EXP é pessoal e intransferível. O usuário deve proteger suas credenciais, utilizar a plataforma apenas para fins ligados à prestação de serviços à EXP e comunicar imediatamente qualquer suspeita de acesso indevido ou incidente de segurança.',
     conteudo_texto: `1. Das Partes
-Este Termo Ã© firmado entre a EXP ("Empresa") e o usuÃ¡rio identificado no momento do aceite ("UsuÃ¡rio"), na condiÃ§Ã£o de prestador de serviÃ§os ou sÃ³cio autorizado, conforme relaÃ§Ã£o jurÃ­dica jÃ¡ estabelecida entre as partes em instrumento prÃ³prio.
+Este Termo é firmado entre a EXP ("Empresa") e o usuário identificado no momento do aceite ("Usuário"), na condição de prestador de serviços ou sócio autorizado, conforme relação jurídica já estabelecida entre as partes em instrumento próprio.
 
-Este Termo nÃ£o cria, altera ou implica qualquer vÃ­nculo empregatÃ­cio entre as partes, sendo celebrado exclusivamente para fins de regulamentaÃ§Ã£o do acesso e uso da plataforma.
+Este Termo não cria, altera ou implica qualquer vínculo empregatício entre as partes, sendo celebrado exclusivamente para fins de regulamentação do acesso e uso da plataforma.
 
 2. Finalidade da Plataforma e do Tratamento de Dados
 A plataforma EXP destina-se a:
 
 Facilitar o acompanhamento colaborativo de processos em ambiente remoto;
-Organizar o compartilhamento e acesso a informaÃ§Ãµes e fluxos de trabalho;
+Organizar o compartilhamento e acesso a informações e fluxos de trabalho;
 Simplificar registros operacionais e administrativos;
-Apoiar a mensuraÃ§Ã£o de rentabilidade projetual de forma integrada.
+Apoiar a mensuração de rentabilidade projetual de forma integrada.
 
-O registro de histÃ³rico de ediÃ§Ãµes, visualizaÃ§Ãµes e interaÃ§Ãµes tem finalidade operacional e colaborativa, nÃ£o constituindo instrumento de controle individualizado de produÃ§Ã£o.
+O registro de histórico de edições, visualizações e interações tem finalidade operacional e colaborativa, não constituindo instrumento de controle individualizado de produção.
 
-3. Dados Tratados e Base Legal (LGPD â€” Lei nÂº 13.709/2018)
-A EXP trata dados pessoais do UsuÃ¡rio com base no legÃ­timo interesse e na execuÃ§Ã£o do contrato de prestaÃ§Ã£o de serviÃ§os, incluindo:
+3. Dados Tratados e Base Legal (LGPD — Lei nº 13.709/2018)
+A EXP trata dados pessoais do Usuário com base no legítimo interesse e na execução do contrato de prestação de serviços, incluindo:
 
-Dados de identificaÃ§Ã£o (nome, e-mail, funÃ§Ã£o);
-Dados de acesso (registros de login, histÃ³rico de navegaÃ§Ã£o e ediÃ§Ãµes na plataforma);
-Dados operacionais inseridos pelo UsuÃ¡rio no exercÃ­cio de suas atividades.
+Dados de identificação (nome, e-mail, função);
+Dados de acesso (registros de login, histórico de navegação e edições na plataforma);
+Dados operacionais inseridos pelo Usuário no exercício de suas atividades.
 
-O UsuÃ¡rio, ao aceitar este Termo, autoriza expressamente o registro e armazenamento dessas informaÃ§Ãµes para as finalidades descritas acima.
+O Usuário, ao aceitar este Termo, autoriza expressamente o registro e armazenamento dessas informações para as finalidades descritas acima.
 
-Os dados serÃ£o retidos pelo prazo necessÃ¡rio ao cumprimento das finalidades descritas e por obrigaÃ§Ãµes legais subsequentes, sendo garantidos ao UsuÃ¡rio os direitos previstos no Art. 18 da LGPD (acesso, correÃ§Ã£o, eliminaÃ§Ã£o e portabilidade), mediante solicitaÃ§Ã£o formal Ã  Empresa.
+Os dados serão retidos pelo prazo necessário ao cumprimento das finalidades descritas e por obrigações legais subsequentes, sendo garantidos ao Usuário os direitos previstos no Art. 18 da LGPD (acesso, correção, eliminação e portabilidade), mediante solicitação formal à Empresa.
 
-4. SeguranÃ§a e Responsabilidades do UsuÃ¡rio
-O UsuÃ¡rio declara ciÃªncia e concorda com as seguintes obrigaÃ§Ãµes:
+4. Segurança e Responsabilidades do Usuário
+O Usuário declara ciência e concorda com as seguintes obrigações:
 
-a) Credenciais pessoais e intransferÃ­veis
-O login e senha de acesso sÃ£o de uso exclusivamente pessoal. Ã‰ vedado o compartilhamento de credenciais com terceiros, independentemente do vÃ­nculo com a Empresa.
+a) Credenciais pessoais e intransferíveis
+O login e senha de acesso são de uso exclusivamente pessoal. É vedado o compartilhamento de credenciais com terceiros, independentemente do vínculo com a Empresa.
 
-b) Acesso em dispositivos nÃ£o pessoais
-O UsuÃ¡rio deve exercer cautela ao acessar a plataforma em dispositivos de uso compartilhado ou pÃºblico. Recomenda-se encerrar a sessÃ£o imediatamente apÃ³s o uso e nÃ£o salvar credenciais nesses ambientes.
+b) Acesso em dispositivos não pessoais
+O Usuário deve exercer cautela ao acessar a plataforma em dispositivos de uso compartilhado ou público. Recomenda-se encerrar a sessão imediatamente após o uso e não salvar credenciais nesses ambientes.
 
-c) NotificaÃ§Ã£o de incidentes
-Caso o UsuÃ¡rio identifique ou suspeite de qualquer acesso nÃ£o autorizado Ã  sua conta ou brecha de seguranÃ§a, deverÃ¡ comunicar imediatamente a Empresa, colaborando para a investigaÃ§Ã£o e contenÃ§Ã£o do incidente.
+c) Notificação de incidentes
+Caso o Usuário identifique ou suspeite de qualquer acesso não autorizado à sua conta ou brecha de segurança, deverá comunicar imediatamente a Empresa, colaborando para a investigação e contenção do incidente.
 
 d) Uso adequado
-O acesso Ã  plataforma deve ocorrer exclusivamente para fins relacionados Ã  prestaÃ§Ã£o de serviÃ§os Ã  EXP. Qualquer uso para finalidade diversa Ã© vedado.
+O acesso à plataforma deve ocorrer exclusivamente para fins relacionados à prestação de serviços à EXP. Qualquer uso para finalidade diversa é vedado.
 
-5. VigÃªncia e RenovaÃ§Ã£o
-Este Termo tem vigÃªncia de 12 (doze) meses a partir da data de aceite, renovando-se automaticamente por igual perÃ­odo, salvo manifestaÃ§Ã£o contrÃ¡ria de qualquer das partes ou revogaÃ§Ã£o do acesso pela Empresa.
+5. Vigência e Renovação
+Este Termo tem vigência de 12 (doze) meses a partir da data de aceite, renovando-se automaticamente por igual período, salvo manifestação contrária de qualquer das partes ou revogação do acesso pela Empresa.
 
-A EXP reserva-se o direito de atualizar os termos deste instrumento, notificando os usuÃ¡rios com antecedÃªncia mÃ­nima de 15 dias, sendo necessÃ¡rio novo aceite para continuidade do acesso.
+A EXP reserva-se o direito de atualizar os termos deste instrumento, notificando os usuários com antecedência mínima de 15 dias, sendo necessário novo aceite para continuidade do acesso.
 
 6. Aceite
-Ao clicar em "Li e aceito os termos", o UsuÃ¡rio declara:
+Ao clicar em "Li e aceito os termos", o Usuário declara:
 
 Ter lido e compreendido integralmente este Termo;
-Estar ciente de suas obrigaÃ§Ãµes de sigilo, seguranÃ§a e uso responsÃ¡vel;
+Estar ciente de suas obrigações de sigilo, segurança e uso responsável;
 Autorizar o tratamento de seus dados pessoais nos termos descritos;
-Reconhecer que o acesso Ã  plataforma e seus recursos estÃ¡ vinculado Ã  manutenÃ§Ã£o da relaÃ§Ã£o de prestaÃ§Ã£o de serviÃ§os com a EXP.
+Reconhecer que o acesso à plataforma e seus recursos está vinculado à manutenção da relação de prestação de serviços com a EXP.
 
-EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceite armazenado com data, hora e identificaÃ§Ã£o do usuÃ¡rio.`
+EXP · Documento gerado automaticamente pela plataforma · Registro de aceite armazenado com data, hora e identificação do usuário.`
   };
   let currentTermDefinition = { ...DEFAULT_TERM_DEFINITION };
 
@@ -134,12 +134,12 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   }
 
   function feedbackTypeLabel(type) {
-    return String(type || '').toLowerCase() === 'sugestao' ? 'Sugestao' : 'Problema';
+    return String(type || '').toLowerCase() === 'sugestao' ? 'Sugestão' : 'Problema';
   }
 
   function feedbackStatusLabel(status) {
     const key = String(status || 'novo').toLowerCase();
-    if (key === 'em_analise') return 'Em analise';
+    if (key === 'em_analise') return 'Em análise';
     if (key === 'resolvido') return 'Resolvido';
     return 'Novo';
   }
@@ -147,7 +147,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   function feedbackOriginLabel(value) {
     const normalized = String(value || '').toLowerCase();
     if (!normalized || normalized === 'app.html' || normalized === 'sistema') return 'Sistema';
-    if (normalized.includes('gestao')) return 'Gestao';
+    if (normalized.includes('gestao')) return 'Gestão';
     if (normalized.includes('calc')) return 'Calculadora';
     if (normalized.includes('crm')) return 'Comercial';
     if (normalized.includes('financeiro')) return 'Financeiro';
@@ -170,7 +170,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     const message = document.getElementById('tool-feedback-message');
     if (type) type.value = 'problema';
     if (message) message.value = '';
-    setToolFeedbackStatus('Seu registro sera encaminhado para a Gestao de plataforma.');
+    setToolFeedbackStatus('Seu registro será encaminhado para a Gestão de plataforma.');
   }
 
   window.toggleToolFeedbackPopover = function toggleToolFeedbackPopover(event) {
@@ -268,7 +268,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     }
     if (error) {
       if (!isTermTableMissing(error)) {
-        setPlataformaStatus('Nao foi possivel carregar a definicao gerenciavel do termo.');
+        setPlataformaStatus('Não foi possível carregar a definição gerenciável do termo.');
       }
       currentTermDefinition = { ...DEFAULT_TERM_DEFINITION };
       return currentTermDefinition;
@@ -389,16 +389,16 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       + '    </div>'
       + '    <div class="shell-modal-body">'
       + '      <div id="termo-status-copy" style="font-size:11px;color:#888;line-height:1.5">Carregando...</div>'
-      + '      <div id="termo-prioritario" style="background:#1E1E1E;color:#f0f0f0;border-left:3px solid #D19931;border-radius:8px;padding:14px 16px;font-size:11px;line-height:1.65"></div>'
+      + '      <div id="termo-prioritario"></div>'
       + '      <div>'
-      + '        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:10px">Leitura completa do termo</div>'
-      + '        <div id="termo-texto" style="display:grid;gap:10px;font-size:11px;line-height:1.65;color:#555;max-height:320px;overflow:auto;padding-right:6px"></div>'
+      + '        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--cinza,#ccc);margin-bottom:10px">Leitura completa do termo</div>'
+      + '        <div id="termo-texto"></div>'
       + '      </div>'
       + '    </div>'
       + '    <div class="shell-modal-footer">'
       + '      <div class="shell-status-text" id="termo-modal-status"></div>'
       + '      <div class="shell-actions">'
-      + '        <span id="termo-sign-text" style="font-size:11px;color:#888;display:none">Termo jÃ¡ assinado</span>'
+      + '        <span id="termo-sign-text" style="font-size:11px;color:#888;display:none">Termo já assinado</span>'
       + '        <button type="button" class="shell-btn" id="termo-close-bottom">Fechar</button>'
       + '        <button type="button" class="shell-btn primary" id="termo-sign-btn">Estou ciente e concordo com os termos acima</button>'
       + '      </div>'
@@ -421,7 +421,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     if (!wrap) return;
     if (title) title.textContent = currentTermDefinition.titulo || DEFAULT_TERM_DEFINITION.titulo;
     if (priority) {
-      priority.innerHTML = '<strong style="display:block;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:#D19931">Compromisso PrioritÃ¡rio</strong>'
+      priority.innerHTML = '<strong style="display:block;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:var(--ouro,#D19931)">Compromisso Prioritário</strong>'
         + '<div>' + escapeHtml(currentTermDefinition.compromisso_prioritario || DEFAULT_TERM_DEFINITION.compromisso_prioritario).replace(/\n/g, '<br>') + '</div>';
     }
     wrap.innerHTML = splitTermBlocks(currentTermDefinition.conteudo_texto || DEFAULT_TERM_DEFINITION.conteudo_texto)
@@ -439,7 +439,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     const expiraEm = formatPtDate(termo?.expira_em);
     if (status === 'signed') {
       statusCopy.textContent = assinadoEm
-        ? 'Termo assinado em ' + assinadoEm + (expiraEm ? ' Â· validade atÃ© ' + expiraEm : '.')
+        ? 'Termo assinado em ' + assinadoEm + (expiraEm ? ' · validade até ' + expiraEm : '.')
         : 'Termo registrado como assinado.';
       modalStatus.textContent = '';
       signBtn.style.display = 'none';
@@ -460,7 +460,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       modalStatus.textContent = '';
       return;
     }
-    statusCopy.textContent = 'O termo ainda nÃ£o foi assinado para esta conta.';
+    statusCopy.textContent = 'O termo ainda não foi assinado para esta conta.';
     modalStatus.textContent = '';
   }
 
@@ -629,9 +629,9 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     if (configError || rowsError) {
       platformTempMediaConfigCache = null;
       platformTempMediaUsageCache = [];
-      setPlataformaStatus('Nao foi possivel carregar a midia temporaria. Rode os SQLs desta estrutura se necessario.');
-      if (statsWrap) statsWrap.innerHTML = '<div class="platform-empty">Falha ao carregar configuracao.</div>';
-      if (contextsWrap) contextsWrap.innerHTML = '<div class="platform-empty">Falha ao carregar distribuicao.</div>';
+      setPlataformaStatus('Não foi possível carregar a mídia temporária. Rode os SQLs desta estrutura se necessário.');
+      if (statsWrap) statsWrap.innerHTML = '<div class="platform-empty">Falha ao carregar configuração.</div>';
+      if (contextsWrap) contextsWrap.innerHTML = '<div class="platform-empty">Falha ao carregar distribuição.</div>';
       return;
     }
 
@@ -639,7 +639,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     platformTempMediaUsageCache = rows || [];
     fillPlatformTempMediaConfig(platformTempMediaConfigCache);
     renderPlatformTempMediaUsage(platformTempMediaUsageCache);
-    setPlataformaStatus('Painel de midia temporaria carregado.');
+    setPlataformaStatus('Painel de mídia temporária carregado.');
   }
 
   async function carregarFeedbackPlataforma() {
@@ -651,7 +651,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       .order('criado_em', { ascending: false });
     if (error) {
       platformFeedbackCache = [];
-      setPlataformaStatus('Nao foi possivel carregar os feedbacks. Rode o SQL desta estrutura se necessario.');
+      setPlataformaStatus('Não foi possível carregar os feedbacks. Rode o SQL desta estrutura se necessário.');
       if (wrap) wrap.innerHTML = '<div class="platform-empty">Falha ao carregar feedbacks.</div>';
       return;
     }
@@ -707,8 +707,8 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     card.innerHTML = ''
       + '<div class="platform-card-title">'
       + '  <div>'
-      + '    <strong>Termo de uso e proteÃ§Ã£o de dados</strong>'
-      + '    <span>Texto-base gerenciavel pela Gestao de plataforma.</span>'
+      + '    <strong>Termo de uso e proteção de dados</strong>'
+      + '    <span>Texto-base gerenciavel pela Gestão de plataforma.</span>'
       + '  </div>'
       + '</div>'
       + '<div class="meus-dados-grid">'
@@ -721,7 +721,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       + '    <input id="gp-term-version" type="text" maxlength="40">'
       + '  </div>'
       + '  <div class="shell-field full">'
-      + '    <label for="gp-term-priority">Compromisso Prioritario</label>'
+      + '    <label for="gp-term-priority">Compromisso Prioritário</label>'
       + '    <textarea id="gp-term-priority" rows="3"></textarea>'
       + '  </div>'
       + '  <div class="shell-field full">'
@@ -867,13 +867,13 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
 
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.app_user_id || !sessionUser?.auth_id) {
-      setMeusDadosStatus('SessÃ£o do usuÃ¡rio indisponÃ­vel para carregar "Meus dados".');
+      setMeusDadosStatus('Sessão do usuário indisponível para carregar "Meus dados".');
       return;
     }
 
     const usuario = await window.fetchCurrentUsuario(sessionUser.auth_id);
     if (!usuario) {
-      setMeusDadosStatus('NÃ£o foi possÃ­vel carregar a identidade base do usuÃ¡rio.');
+      setMeusDadosStatus('Não foi possível carregar a identidade base do usuário.');
       return;
     }
 
@@ -885,7 +885,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     ]);
 
     if (pessoais.error) {
-      setMeusDadosStatus('Falha ao carregar os dados pessoais do usuÃ¡rio.');
+      setMeusDadosStatus('Falha ao carregar os dados pessoais do usuário.');
       fillMeusDadosForm(usuario, {}, profissionais.data || {}, empresariais.data || {}, bancarios.data || {});
       return;
     }
@@ -910,7 +910,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   window.salvarMeusDados = async function salvarMeusDados() {
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.app_user_id || !sessionUser?.auth_id) {
-      setMeusDadosStatus('SessÃ£o invÃ¡lida para salvar os dados.');
+      setMeusDadosStatus('Sessão inválida para salvar os dados.');
       return;
     }
 
@@ -996,7 +996,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       .eq('id', sessionUser.app_user_id)
       .select('id, apelido, nome');
     if (userError || !userRows || !userRows.length) {
-      setMeusDadosStatus('Nao foi possivel salvar a identidade base do usuario.');
+      setMeusDadosStatus('Não foi possível salvar a identidade base do usuário.');
       return;
     }
 
@@ -1008,7 +1008,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     ]);
 
     if (personalResult.error || professionalResult.error || businessResult.error || bankResult.error) {
-      setMeusDadosStatus('Nao foi possivel salvar todos os blocos de "Meus dados".');
+      setMeusDadosStatus('Não foi possível salvar todos os blocos de "Meus dados".');
       return;
     }
 
@@ -1086,20 +1086,20 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
 
   async function carregarUsuariosPlataforma() {
     const wrap = document.getElementById('platform-users-list');
-    if (wrap) wrap.innerHTML = '<div class="platform-empty">Carregando usuarios...</div>';
+    if (wrap) wrap.innerHTML = '<div class="platform-empty">Carregando usuários...</div>';
     const { data, error } = await window.sb
       .from('usuarios')
       .select('id, auth_id, nome, apelido, iniciais, cor, role, email, email_login, ativo, status_acesso, is_platform_manager, avatar_url')
       .order('nome', { ascending: true });
     if (error) {
-      setPlataformaStatus('Nao foi possivel carregar a lista de usuarios.');
-      if (wrap) wrap.innerHTML = '<div class="platform-empty">Falha ao carregar usuarios.</div>';
+      setPlataformaStatus('Não foi possível carregar a lista de usuários.');
+      if (wrap) wrap.innerHTML = '<div class="platform-empty">Falha ao carregar usuários.</div>';
       return;
     }
     platformUsersCache = data || [];
     await carregarTermosUsuariosPlataforma(platformUsersCache.map((user) => user.id));
     renderPlatformUsersList(platformUsersCache);
-    setPlataformaStatus('Lista de usuarios carregada.');
+    setPlataformaStatus('Lista de usuários carregada.');
   }
 
   function ensureAvatarInput() {
@@ -1156,7 +1156,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     const file = input.files && input.files[0];
     const uid = pendingAvatarUserId;
     if (!uid) {
-      setPlataformaStatus('Nao foi possivel identificar o usuario do avatar.');
+      setPlataformaStatus('Não foi possível identificar o usuário do avatar.');
       return;
     }
     if (!file) {
@@ -1174,7 +1174,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       setPlataformaStatus('Enviando avatar...');
       const blob = await comprimirImagem(file, 240);
       if (!blob) {
-        setPlataformaStatus('Nao foi possivel preparar a imagem do avatar.');
+        setPlataformaStatus('Não foi possível preparar a imagem do avatar.');
         return;
       }
       const path = uid + '/' + Date.now() + '.jpg';
@@ -1187,7 +1187,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       const cleanUrl = data.publicUrl + '?v=' + Date.now();
       const { error: updateError } = await window.sb.from('usuarios').update({ avatar_url: cleanUrl }).eq('id', uid);
       if (updateError) {
-        setPlataformaStatus('Avatar enviado, mas nao foi possivel salvar a URL: ' + (updateError.message || 'falha desconhecida') + '.');
+        setPlataformaStatus('Avatar enviado, mas não foi possível salvar a URL: ' + (updateError.message || 'falha desconhecida') + '.');
         return;
       }
       const current = currentSessionUsuario();
@@ -1213,13 +1213,13 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   window.enviarToolFeedback = async function enviarToolFeedback() {
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.app_user_id) {
-      setToolFeedbackStatus('Sessao indisponivel para registrar o feedback.');
+      setToolFeedbackStatus('Sessão indisponível para registrar o feedback.');
       return;
     }
     const type = document.getElementById('tool-feedback-type')?.value || 'problema';
     const message = document.getElementById('tool-feedback-message')?.value.trim() || '';
     if (!message) {
-      setToolFeedbackStatus('Descreva o problema ou a sugestao antes de enviar.');
+      setToolFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.');
       return;
     }
     const context = currentToolFeedbackContext();
@@ -1236,11 +1236,11 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     };
     const { error } = await window.sb.from('plataforma_feedback').insert(payload);
     if (error) {
-      setToolFeedbackStatus('Nao foi possivel enviar o registro. Rode o SQL da estrutura de feedback se necessario.');
+      setToolFeedbackStatus('Não foi possível enviar o registro. Rode o SQL da estrutura de feedback se necessário.');
       return;
     }
     document.getElementById('tool-feedback-message').value = '';
-    setToolFeedbackStatus('Registro enviado para a Gestao de plataforma.');
+    setToolFeedbackStatus('Registro enviado para a Gestão de plataforma.');
     if (!document.getElementById('platform-panel-feedback')?.hasAttribute('hidden')) {
       await carregarFeedbackPlataforma();
     }
@@ -1260,7 +1260,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     };
     const { error } = await window.sb.from('plataforma_feedback').update(patch).eq('id', feedbackId);
     if (error) {
-      setPlataformaStatus('Nao foi possivel atualizar o status do feedback.');
+      setPlataformaStatus('Não foi possível atualizar o status do feedback.');
       return;
     }
     await registrarAuditoriaPlataforma('feedback.status_atualizado', null, { feedback_id: feedbackId, status });
@@ -1272,7 +1272,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     const payload = { role };
     if (role !== 'socio_admin') payload.is_platform_manager = false;
     const { error } = await window.sb.from('usuarios').update(payload).eq('id', userId);
-    if (error) { setPlataformaStatus('Nao foi possivel atualizar o role.'); return; }
+    if (error) { setPlataformaStatus('Não foi possível atualizar o role.'); return; }
     await registrarAuditoriaPlataforma('usuario.role_atualizado', userId, { role });
     await carregarUsuariosPlataforma();
     setPlataformaStatus('Role atualizada.');
@@ -1289,7 +1289,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       bloqueado_por: status === 'bloqueado' ? current?.app_user_id || null : null
     };
     const { error } = await window.sb.from('usuarios').update(patch).eq('id', userId);
-    if (error) { setPlataformaStatus('Nao foi possivel atualizar o status.'); return; }
+    if (error) { setPlataformaStatus('Não foi possível atualizar o status.'); return; }
     await registrarAuditoriaPlataforma('usuario.status_atualizado', userId, { status });
     await carregarUsuariosPlataforma();
     setPlataformaStatus('Status atualizado.');
@@ -1304,7 +1304,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       return;
     }
     const { error } = await window.sb.from('usuarios').update({ is_platform_manager: !!checked }).eq('id', userId);
-    if (error) { setPlataformaStatus('Nao foi possivel atualizar a capability de plataforma.'); return; }
+    if (error) { setPlataformaStatus('Não foi possível atualizar a capability de plataforma.'); return; }
     await registrarAuditoriaPlataforma('usuario.platform_manager_atualizado', userId, { is_platform_manager: !!checked });
     await carregarUsuariosPlataforma();
     setPlataformaStatus('Capability de plataforma atualizada.');
@@ -1335,7 +1335,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       .from('plataforma_termos')
       .upsert(payload, { onConflict: 'slug' });
     if (error) {
-      setPlataformaStatus('Nao foi possivel salvar a definicao do termo. Rode o SQL da estrutura gerenciavel se necessario.');
+      setPlataformaStatus('Não foi possível salvar a definição do termo. Rode o SQL da estrutura gerenciavel se necessário.');
       return;
     }
     currentTermDefinition = { ...currentTermDefinition, ...payload };
@@ -1364,19 +1364,19 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       updated_by: sessionUser.app_user_id || null
     };
 
-    setPlataformaStatus('Salvando politica de midia temporaria...');
+    setPlataformaStatus('Salvando política de mídia temporária...');
     const { error } = await window.sb
       .from('plataforma_midia_temporaria_config')
       .upsert(payload, { onConflict: 'id' });
 
     if (error) {
-      setPlataformaStatus('Nao foi possivel salvar a politica de midia temporaria.');
+      setPlataformaStatus('Não foi possível salvar a política de mídia temporária.');
       return;
     }
 
     platformTempMediaConfigCache = payload;
     setPlataformaDirty(false);
-    setPlataformaStatus('Politica de midia temporaria atualizada.');
+    setPlataformaStatus('Política de mídia temporária atualizada.');
     await carregarMidiaTemporariaPlataforma();
   };
 
@@ -1396,13 +1396,13 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       expira_em: null,
       resetado_em: isoNow(),
       resetado_por: sessionUser.app_user_id || null,
-      motivo_reset: 'Reset administrativo pela Gestao de plataforma'
+      motivo_reset: 'Reset administrativo pela Gestão de plataforma'
     };
     const { error } = termoAtual?.id
       ? await window.sb.from('usuarios_termos_compromisso').update(payload).eq('id', termoAtual.id)
       : await window.sb.from('usuarios_termos_compromisso').insert(payload);
     if (error) {
-      setPlataformaStatus('Nao foi possivel resetar o termo deste usuario.');
+      setPlataformaStatus('Não foi possível resetar o termo deste usuário.');
       return;
     }
     await registrarAuditoriaPlataforma('termo.resetado', userId, { versao_termo: currentTermDefinition.versao_termo });
@@ -1416,7 +1416,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
   window.fecharGestaoPlataforma = function fecharGestaoPlataforma(event) {
     if (event && event.target && event.target.id === 'plataforma-overlay') return;
     if (event && event.target && event.target.id !== 'plataforma-overlay') return;
-    if (plataformaDirty && !window.confirm('Existem dados nao salvos em "Gestao de plataforma". Deseja fechar e perder essas alteracoes?')) return;
+    if (plataformaDirty && !window.confirm('Existem dados nao salvos em "Gestão de plataforma". Deseja fechar e perder essas alteracoes?')) return;
     document.getElementById('plataforma-overlay')?.classList.remove('open');
     setPlataformaDirty(false);
   };
@@ -1472,7 +1472,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       options: { data: { nome } }
     });
     if (signUpError || !signUpData?.user?.id) {
-      setPlataformaStatus('Nao foi possivel criar o usuario no Auth. O backend de criacao ainda pode precisar de ajuste.');
+      setPlataformaStatus('Não foi possível criar o usuário no Auth. O backend de criacao ainda pode precisar de ajuste.');
       return;
     }
 
@@ -1497,13 +1497,13 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
     if (existingUser?.id) {
       const { error: updateError } = await window.sb.from('usuarios').update(upsertPayload).eq('id', existingUser.id);
       if (updateError) {
-        setPlataformaStatus('UsuÃ¡rio Auth criado, mas nao foi possivel concluir o cadastro institucional.');
+        setPlataformaStatus('Usuário Auth criado, mas não foi possível concluir o cadastro institucional.');
         return;
       }
     } else {
       const { data: insertedRows, error: insertError } = await window.sb.from('usuarios').insert(upsertPayload).select('id');
       if (insertError) {
-        setPlataformaStatus('UsuÃ¡rio Auth criado, mas nao foi possivel criar a linha institucional em usuarios.');
+        setPlataformaStatus('Usuário Auth criado, mas não foi possível criar a linha institucional em usuários.');
         return;
       }
       targetUsuarioId = insertedRows && insertedRows[0] ? insertedRows[0].id : null;
@@ -1559,7 +1559,7 @@ EXP Â· Documento gerado automaticamente pela plataforma Â· Registro de aceit
       ? await window.sb.from('usuarios_termos_compromisso').update(payload).eq('id', termoAtual.id)
       : await window.sb.from('usuarios_termos_compromisso').insert(payload);
     if (error) {
-      document.getElementById('termo-modal-status').textContent = 'Nao foi possivel registrar a assinatura do termo.';
+      document.getElementById('termo-modal-status').textContent = 'Não foi possível registrar a assinatura do termo.';
       return;
     }
     const termo = normalizeTermoStatus(await ensureTermoRegistro(sessionUser.app_user_id));

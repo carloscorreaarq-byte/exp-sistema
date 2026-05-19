@@ -100,8 +100,8 @@
     '.tmr-btns{display:flex;gap:5px}',
     '.tmr-btn{flex:1;padding:5px 8px;border-radius:6px;border:1px solid ' + CINZA + ';font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:border-color .12s,color .12s,background .12s;background:#fff;color:#888}',
     '.tmr-btn:hover{border-color:' + GRAFITE + ';color:' + GRAFITE + '}',
-    '.tmr-btn-stop{background:' + GRAFITE + ';color:#fff;border-color:' + GRAFITE + '}',
-    '.tmr-btn-stop:hover{opacity:.82;color:#fff}',
+    '.tmr-btn-stop{background:' + CINZA + ';color:#555;border-color:#C0BFBA}',
+    '.tmr-btn-stop:hover{background:#C0BFBA;border-color:#ABAAA5;color:#333;opacity:1}',
 
     /* Botão iniciar — neutro/cinza com hover amarelo */
     '.tmr-primary{width:100%;padding:5px 12px;border-radius:6px;border:1px solid ' + CINZA + ';background:#fff;color:' + GRAFITE + ';font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:border-color .12s,background .12s,color .12s}',
@@ -131,7 +131,7 @@
     /* ── Inputs confirmação ── */
     '.tmr-row{display:flex;gap:6px}',
     '.tmr-field{flex:1;display:flex;flex-direction:column;gap:2px}',
-    '.tmr-input{width:100%;padding:4px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"DM Mono",monospace;font-size:10px;color:' + GRAFITE + ';background:#fff;box-sizing:border-box;outline:none;transition:border-color .15s}',
+    '.tmr-input{width:100%;padding:4px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"Raleway",sans-serif;font-size:10px;color:' + GRAFITE + ';background:#fff;box-sizing:border-box;outline:none;transition:border-color .15s}',
     '.tmr-input:focus{border-color:' + OURO + '}',
     '.tmr-textarea{width:100%;padding:5px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"Raleway",sans-serif;font-size:10px;color:' + GRAFITE + ';background:#fff;resize:none;box-sizing:border-box;outline:none;height:48px;transition:border-color .15s}',
     '.tmr-textarea:focus{border-color:' + OURO + '}',
@@ -143,6 +143,12 @@
     '.tmr-icon-btn{background:none;border:none;padding:3px;cursor:pointer;color:#d0cfc9;line-height:1;border-radius:4px;transition:color .15s;display:flex;align-items:center}',
     '.tmr-icon-btn:hover{color:#888}',
     '.tmr-icon-btn.off{color:#c9a0a0}',
+
+    /* ── Confirm info view (clicável para editar) ── */
+    '.tmr-cf-info-view{cursor:pointer;border-radius:5px;padding:2px 5px;margin:-2px -5px;transition:background .12s;position:relative}',
+    '.tmr-cf-info-view:hover{background:' + OFF + '}',
+    '.tmr-cf-info-view::after{content:"✎";position:absolute;top:2px;right:3px;font-size:8px;color:#ccc;line-height:1}',
+    '.tmr-cf-info-view:hover::after{color:#999}',
 
     /* ── Toast ── */
     '#exp-timer-toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:' + GRAFITE + ';color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-family:"Raleway",sans-serif;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10002;white-space:nowrap}',
@@ -250,11 +256,56 @@
           '</button>',
         '</div>',
       '</div>',
-      '<div class="tmr-info-wrap">',
+      /* Modo exibição (clicável para editar) */
+      '<div class="tmr-info-wrap tmr-cf-info-view" id="tmr-cf-view" onclick="_tmr.openCfEdit()" title="Clique para alterar projeto ou categoria">',
         '<div class="tmr-info-cli" id="tmr-cf-cli"></div>',
         '<div class="tmr-info-opp" id="tmr-cf-opp">&#8212;</div>',
         '<div class="tmr-info-prd" id="tmr-cf-prd"></div>',
         '<div class="tmr-info-eta" id="tmr-cf-eta"></div>',
+      '</div>',
+      /* Modo edição inline (inicialmente oculto) */
+      '<div id="tmr-cf-edit" style="display:none;flex-direction:column;gap:4px">',
+        '<div>',
+          '<div class="tmr-sel-lbl">Tipo</div>',
+          '<select class="tmr-sel" id="tmr-cfe-tipo" onchange="_tmr.changeTipoCfe()">',
+            '<option value="projeto">Projeto</option>',
+            '<option value="organizacao">Org. Interna</option>',
+          '</select>',
+        '</div>',
+        '<div id="tmr-cfe-sub-block" style="display:none">',
+          '<div class="tmr-sel-lbl">Categoria</div>',
+          '<select class="tmr-sel" id="tmr-cfe-sub"></select>',
+        '</div>',
+        '<div id="tmr-cfe-proj-block">',
+          '<div>',
+            '<div class="tmr-sel-lbl">Cliente</div>',
+            '<select class="tmr-sel" id="tmr-cfe-cli" onchange="_tmr.changeCliCfe()">',
+              '<option value="">Carregando&#8230;</option>',
+            '</select>',
+          '</div>',
+          '<div id="tmr-cfe-opp-block" style="display:none">',
+            '<div class="tmr-sel-lbl">Projeto / oportunidade</div>',
+            '<select class="tmr-sel" id="tmr-cfe-opp" onchange="_tmr.changeOppCfe()">',
+              '<option value="">&#8212; selecionar &#8212;</option>',
+            '</select>',
+          '</div>',
+          '<div id="tmr-cfe-prod-block" style="display:none">',
+            '<div class="tmr-sel-lbl">Produto</div>',
+            '<select class="tmr-sel" id="tmr-cfe-prod" onchange="_tmr.changeProdCfe()">',
+              '<option value="">&#8212; selecionar &#8212;</option>',
+            '</select>',
+          '</div>',
+          '<div id="tmr-cfe-etapa-block" style="display:none">',
+            '<div class="tmr-sel-lbl">Etapa <span style="font-weight:400;text-transform:none">(opcional)</span></div>',
+            '<select class="tmr-sel" id="tmr-cfe-etapa">',
+              '<option value="">&#8212; selecionar &#8212;</option>',
+            '</select>',
+          '</div>',
+        '</div>',
+        '<div class="tmr-row" style="margin-top:2px">',
+          '<button class="tmr-btn-cf-sec" onclick="_tmr.applyCfEdit()" style="flex:0 0 auto;padding:4px 10px">&#10003; Ok</button>',
+          '<button class="tmr-btn-cf-sec" onclick="_tmr.cancelCfEdit()">Cancelar</button>',
+        '</div>',
       '</div>',
       '<div>',
         '<div class="tmr-sel-lbl">Data</div>',
@@ -412,7 +463,7 @@
   function _startTick() {
     clearInterval(_tickInterval);
     var BURST_INTERVAL_MS = 20 * 60 * 1000; // a cada 20 minutos
-    var BURST_DURATION_MS = 4 * 1000;        // durante 4 segundos
+    var BURST_DURATION_MS = 6 * 1000;        // durante 6 segundos (3 tic-tac)
     _tickInterval = setInterval(function () {
       var state = _loadState();
       if (!state.running) { clearInterval(_tickInterval); return; }
@@ -1042,6 +1093,254 @@
       _hideAll();
       _renderFab();
       _toast('Timer descartado');
+    },
+
+    /* ── Edição inline do projeto no confirm ── */
+    openCfEdit: async function () {
+      var view = document.getElementById('tmr-cf-view');
+      var edit = document.getElementById('tmr-cf-edit');
+      if (!view || !edit) return;
+      view.style.display = 'none';
+      edit.style.display = 'flex';
+
+      var state = _loadState();
+      var tipo  = state.tipo || 'projeto';
+
+      /* Tipo select */
+      var tipoSel = document.getElementById('tmr-cfe-tipo');
+      if (tipoSel) {
+        await _getUser();
+        if (_isSocio() && !tipoSel.querySelector('option[value="sociedade"]')) {
+          var opt = document.createElement('option');
+          opt.value = 'sociedade'; opt.textContent = 'Sociedade';
+          tipoSel.appendChild(opt);
+        }
+        tipoSel.value = tipo;
+      }
+
+      var subBlock  = document.getElementById('tmr-cfe-sub-block');
+      var projBlock = document.getElementById('tmr-cfe-proj-block');
+
+      if (tipo !== 'projeto') {
+        if (subBlock)  subBlock.style.display  = '';
+        if (projBlock) projBlock.style.display = 'none';
+        var subSel = document.getElementById('tmr-cfe-sub');
+        if (subSel) {
+          var opts = SUBTIPOS[tipo] || [];
+          subSel.innerHTML = opts.map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
+          if (state.subtipo) subSel.value = state.subtipo;
+        }
+      } else {
+        if (subBlock)  subBlock.style.display  = 'none';
+        if (projBlock) projBlock.style.display = '';
+
+        var prods   = await _getActiveProds();
+        var curProd = state.produtoId ? prods.find(function (p) { return p.id === state.produtoId; }) : null;
+        var curOpp  = curProd ? curProd.oportunidades : null;
+        var curCli  = curOpp  ? curOpp.clientes : null;
+        var curCliId = curCli ? curCli.id  : '';
+        var curOppId = curOpp ? curOpp.id  : '';
+
+        /* Clientes */
+        var clis   = _getClientes(prods);
+        var selCli = document.getElementById('tmr-cfe-cli');
+        if (selCli) {
+          selCli.innerHTML = '<option value="">&#8212; selecionar cliente &#8212;</option>' +
+            clis.map(function (c) { return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
+          selCli.value = curCliId;
+        }
+
+        var oppBlock   = document.getElementById('tmr-cfe-opp-block');
+        var prodBlock  = document.getElementById('tmr-cfe-prod-block');
+        var etapaBlock = document.getElementById('tmr-cfe-etapa-block');
+        if (oppBlock)   oppBlock.style.display   = 'none';
+        if (prodBlock)  prodBlock.style.display  = 'none';
+        if (etapaBlock) etapaBlock.style.display = 'none';
+
+        if (curCliId) {
+          var opps   = _getOpps(prods, curCliId);
+          var selOpp = document.getElementById('tmr-cfe-opp');
+          if (selOpp) {
+            selOpp.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+              opps.map(function (o) { return '<option value="' + o.id + '">' + o.label + '</option>'; }).join('');
+            selOpp.value = curOppId;
+          }
+          if (oppBlock) oppBlock.style.display = '';
+
+          if (curOppId) {
+            var ps      = _getProdsByOpp(prods, curOppId);
+            var selProd = document.getElementById('tmr-cfe-prod');
+            if (selProd) {
+              selProd.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+                ps.map(function (p) { return '<option value="' + p.id + '">' + p.label + '</option>'; }).join('');
+              selProd.value = state.produtoId || '';
+            }
+            if (prodBlock) prodBlock.style.display = '';
+
+            if (state.produtoId) {
+              var etapas   = await _getEtapas(state.produtoId);
+              var selEtapa = document.getElementById('tmr-cfe-etapa');
+              if (selEtapa) {
+                selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+                  etapas.map(function (e) { return '<option value="' + e.id + '">' + _trunc(e.nome, 36) + '</option>'; }).join('');
+                selEtapa.value = state.etapaId || '';
+              }
+              if (etapaBlock && etapas.length) etapaBlock.style.display = '';
+            }
+          }
+        }
+      }
+    },
+
+    cancelCfEdit: function () {
+      var view = document.getElementById('tmr-cf-view');
+      var edit = document.getElementById('tmr-cf-edit');
+      if (view) view.style.display = '';
+      if (edit) edit.style.display = 'none';
+    },
+
+    applyCfEdit: async function () {
+      var tipoSel = document.getElementById('tmr-cfe-tipo');
+      var tipo    = tipoSel ? tipoSel.value : 'projeto';
+      var state   = _loadState();
+
+      if (tipo !== 'projeto') {
+        var subSel  = document.getElementById('tmr-cfe-sub');
+        var subtipo = subSel ? (subSel.value || null) : null;
+        var tipoLabel = tipo === 'organizacao' ? 'Org. Interna' : 'Sociedade';
+        state.tipo       = tipo;
+        state.subtipo    = subtipo;
+        state.produtoId  = null;
+        state.etapaId    = null;
+        state.nomeCliente  = '';
+        state.nomeOpp    = tipoLabel;
+        state.nomeProduto  = '';
+        state.nomeProjeto  = tipoLabel + (subtipo ? ' · ' + subtipo : '');
+        state.nomeEtapa  = subtipo || '';
+      } else {
+        var selCli   = document.getElementById('tmr-cfe-cli');
+        var selOpp   = document.getElementById('tmr-cfe-opp');
+        var selProd  = document.getElementById('tmr-cfe-prod');
+        var selEtapa = document.getElementById('tmr-cfe-etapa');
+        var produtoId = selProd  ? (selProd.value  || null) : null;
+        var etapaId   = selEtapa ? (selEtapa.value || null) : null;
+        if (!selCli || !selCli.value)  { _toast('Selecione o cliente'); return; }
+        if (!selOpp || !selOpp.value)  { _toast('Selecione o projeto / oportunidade'); return; }
+        if (!produtoId)                { _toast('Selecione o produto'); return; }
+        var cliTxt  = selCli.options[selCli.selectedIndex].text;
+        var oppTxt  = selOpp.options[selOpp.selectedIndex].text;
+        var prodTxt = selProd.options[selProd.selectedIndex].text;
+        var etaTxt  = (etapaId && selEtapa) ? selEtapa.options[selEtapa.selectedIndex].text : '';
+        state.tipo       = 'projeto';
+        state.subtipo    = null;
+        state.produtoId  = produtoId;
+        state.etapaId    = etapaId;
+        state.nomeCliente  = cliTxt.split(' · ')[0];
+        state.nomeOpp    = oppTxt;
+        state.nomeProduto  = (prodTxt !== oppTxt) ? prodTxt : '';
+        state.nomeProjeto  = oppTxt;
+        state.nomeEtapa  = etaTxt;
+      }
+
+      _saveState(state);
+
+      /* Atualiza textos no confirm */
+      var _ctxt = function (id, v) { var el = document.getElementById(id); if (el) { el.textContent = v || ''; el.style.display = v ? '' : 'none'; } };
+      _ctxt('tmr-cf-cli', state.nomeCliente || '');
+      _ctxt('tmr-cf-opp', state.nomeOpp || state.nomeProjeto || '—');
+      _ctxt('tmr-cf-prd', state.nomeProduto || '');
+      _ctxt('tmr-cf-eta', state.nomeEtapa || state.subtipo || '');
+      /* Atualiza textos no painel expanded também */
+      _ctxt('tmr-info-cli', state.nomeCliente || '');
+      _ctxt('tmr-info-opp', state.nomeOpp || state.nomeProjeto || '—');
+      _ctxt('tmr-info-prd', state.nomeProduto || '');
+      _ctxt('tmr-info-eta', state.nomeEtapa || '');
+
+      _tmr.cancelCfEdit();
+    },
+
+    /* ── Cascata de selects no modo edição do confirm ── */
+    changeTipoCfe: function () {
+      var tipo      = (document.getElementById('tmr-cfe-tipo') || {}).value || 'projeto';
+      var subBlock  = document.getElementById('tmr-cfe-sub-block');
+      var projBlock = document.getElementById('tmr-cfe-proj-block');
+      var subSel    = document.getElementById('tmr-cfe-sub');
+      if (tipo !== 'projeto') {
+        if (subBlock)  subBlock.style.display  = '';
+        if (projBlock) projBlock.style.display = 'none';
+        if (subSel) {
+          var opts = SUBTIPOS[tipo] || [];
+          subSel.innerHTML = opts.map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
+        }
+      } else {
+        if (subBlock)  subBlock.style.display  = 'none';
+        if (projBlock) projBlock.style.display = '';
+        _tmr._loadClientesCfe();
+      }
+    },
+
+    _loadClientesCfe: async function () {
+      var selCli = document.getElementById('tmr-cfe-cli');
+      if (!selCli) return;
+      selCli.innerHTML = '<option value="">Carregando&#8230;</option>';
+      var prods = await _getActiveProds();
+      var clis  = _getClientes(prods);
+      selCli.innerHTML = '<option value="">&#8212; selecionar cliente &#8212;</option>' +
+        clis.map(function (c) { return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
+      ['tmr-cfe-opp-block','tmr-cfe-prod-block','tmr-cfe-etapa-block'].forEach(function (id) {
+        var el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+    },
+
+    changeCliCfe: async function () {
+      var cliId      = (document.getElementById('tmr-cfe-cli')  || {}).value || '';
+      var oppBlock   = document.getElementById('tmr-cfe-opp-block');
+      var prodBlock  = document.getElementById('tmr-cfe-prod-block');
+      var etapaBlock = document.getElementById('tmr-cfe-etapa-block');
+      if (oppBlock)   oppBlock.style.display   = 'none';
+      if (prodBlock)  prodBlock.style.display  = 'none';
+      if (etapaBlock) etapaBlock.style.display = 'none';
+      if (!cliId) return;
+      var prods  = await _getActiveProds();
+      var opps   = _getOpps(prods, cliId);
+      var selOpp = document.getElementById('tmr-cfe-opp');
+      if (selOpp) {
+        selOpp.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+          opps.map(function (o) { return '<option value="' + o.id + '">' + o.label + '</option>'; }).join('');
+      }
+      if (oppBlock) oppBlock.style.display = '';
+    },
+
+    changeOppCfe: async function () {
+      var oppId      = (document.getElementById('tmr-cfe-opp')  || {}).value || '';
+      var prodBlock  = document.getElementById('tmr-cfe-prod-block');
+      var etapaBlock = document.getElementById('tmr-cfe-etapa-block');
+      if (prodBlock)  prodBlock.style.display  = 'none';
+      if (etapaBlock) etapaBlock.style.display = 'none';
+      if (!oppId) return;
+      var prods   = await _getActiveProds();
+      var ps      = _getProdsByOpp(prods, oppId);
+      var selProd = document.getElementById('tmr-cfe-prod');
+      if (selProd) {
+        selProd.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+          ps.map(function (p) { return '<option value="' + p.id + '">' + p.label + '</option>'; }).join('');
+      }
+      if (prodBlock) prodBlock.style.display = '';
+      if (ps.length === 1 && selProd) { selProd.value = ps[0].id; _tmr.changeProdCfe(); }
+    },
+
+    changeProdCfe: async function () {
+      var prodId     = (document.getElementById('tmr-cfe-prod') || {}).value || '';
+      var etapaBlock = document.getElementById('tmr-cfe-etapa-block');
+      if (etapaBlock) etapaBlock.style.display = 'none';
+      if (!prodId) return;
+      var etapas   = await _getEtapas(prodId);
+      var selEtapa = document.getElementById('tmr-cfe-etapa');
+      if (selEtapa) {
+        selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
+          etapas.map(function (e) { return '<option value="' + e.id + '">' + _trunc(e.nome, 36) + '</option>'; }).join('');
+      }
+      if (etapaBlock && etapas.length) etapaBlock.style.display = '';
     },
 
     /* ── Toggles de alerta ── */
