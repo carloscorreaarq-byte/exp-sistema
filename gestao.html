@@ -906,7 +906,7 @@ body::before {
 /* Cards de projeto no dashboard */
 .proj-card {
   background: var(--branco); border: 1px solid var(--cinza);
-  padding: 12px 14px 12px 17px;
+  padding: 0;
   cursor: pointer; transition: all .12s;
   position: relative; overflow: hidden; margin-bottom: 8px;
   border-radius: 8px;
@@ -920,9 +920,20 @@ body::before {
 .proj-card.n-esp::before { background: var(--esp); }
 .proj-card.n-consul::before { background: var(--consul); }
 .proj-card:hover { border-color: #999; transform: translateY(-1px); box-shadow: 0 3px 12px rgba(0,0,0,.06); }
+.proj-card-hd {
+  background: var(--cinza2); border-bottom: 1px solid var(--cinza);
+  padding: 9px 14px 9px 17px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.proj-card-body {
+  padding: 10px 14px 10px 17px;
+}
 .proj-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.proj-card-nome { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-.proj-card-cliente { font-size: 10px; color: #888; }
+.proj-card-nome {
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+  letter-spacing: -.2px; line-height: 1.2;
+}
+.proj-card-cliente { font-size: 10px; color: #888; margin-bottom: 6px; }
 .proj-card-mid { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .proj-card-bot { display: flex; align-items: center; justify-content: space-between; }
 .proj-card-avs { display: flex; gap: 4px; }
@@ -1966,6 +1977,7 @@ body::before {
 [data-theme="dark"] .stat-mini { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .proj-card { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .proj-card:hover { border-color:#555; }
+[data-theme="dark"] .proj-card-hd { background:rgba(255,255,255,.06); border-color:var(--cinza); }
 [data-theme="dark"] .coord-strip { background:var(--branco); border-color:var(--cinza); }
 
 /* Buttons */
@@ -2578,7 +2590,7 @@ body::before {
             </div>
             <div class="task-row3">
               <button class="btn sm verde" onclick="adicionarTarefa()">Salvar</button>
-              <button class="btn sm" onclick="abrirAtribuirTarefa()">Atribuir →</button>
+              <button class="btn sm" id="btn-atribuir-tarefa" onclick="abrirDropdownAtribuir(this)">Atribuir →</button>
             </div>
           </div>
         </div>
@@ -3406,8 +3418,8 @@ body::before {
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-registros">Registros</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-checklist">Checklist</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-revisoes">Revisões</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos" style="display:none">Custos</button>
         <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas">Horas</button>
+        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos" style="display:none">Custos</button>
       </div>
       <div style="padding:16px">
         <!-- Visão Geral -->
@@ -4993,28 +5005,28 @@ function renderDashProjetos(prods, horasPorProd = {}) {
     const nucleoLabelDisp = _escN(nc.label);
 
     return `<div class="proj-card n-${nucleo}" onclick="abrirProduto(${produtoIdJs})">
-      <div class="proj-card-top">
-        <div>
-          <div class="proj-card-nome">${projetoDisp}</div>
-          <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
-        </div>
+      <div class="proj-card-hd">
+        <div class="proj-card-nome">${projetoDisp}</div>
         <span class="badge ${nc.cls}">${nucleoLabelDisp}</span>
       </div>
-      <div class="proj-card-mid">
-        ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
-        ${dataChip(etapaAtiva?.data_estimada)}
-      </div>
-      ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 2px;font-size:10px;color:#888">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>${hStr} registradas</span>
-      </div>` : ''}
-      <div class="proj-card-bot">
-        <div class="proj-card-avs">
-          ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : ''}
+      <div class="proj-card-body">
+        <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
+        <div class="proj-card-mid">
+          ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
+          ${dataChip(etapaAtiva?.data_estimada)}
         </div>
-        <div class="proj-card-acoes" onclick="event.stopPropagation()">
-          ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao(${etapaIdJs})">Solicitar revisão</button>` : ''}
-          ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
+        ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;font-size:10px;color:#888">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>${hStr} registradas</span>
+        </div>` : ''}
+        <div class="proj-card-bot">
+          <div class="proj-card-avs">
+            ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : ''}
+          </div>
+          <div class="proj-card-acoes" onclick="event.stopPropagation()">
+            ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao(${etapaIdJs})">Solicitar revisão</button>` : ''}
+            ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
+          </div>
         </div>
       </div>
     </div>`;
@@ -5050,26 +5062,26 @@ function renderDashCoord(prods, horasPorProd = {}) {
     const etapaNomeDisp = _escN(etapaAtiva?.nome || '');
     const nucleoLabelDisp = _escN(nc.label);
     return `<div class="proj-card n-${nucleo}" onclick="abrirProduto(${produtoIdJs})">
-      <div class="proj-card-top">
-        <div>
-          <div class="proj-card-nome">${projetoDisp}</div>
-          <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
-        </div>
+      <div class="proj-card-hd">
+        <div class="proj-card-nome">${projetoDisp}</div>
         <span class="badge ${nc.cls}">${nucleoLabelDisp}</span>
       </div>
-      <div class="proj-card-mid">
-        ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
-        ${emRevisao ? `<span class="badge b-am">${emRevisao} em revisão</span>` : ''}
-        ${dataChip(etapaAtiva?.data_estimada)}
-      </div>
-      ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 2px;font-size:10px;color:#888">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>${hStr} registradas</span>
-      </div>` : ''}
-      <div class="proj-card-bot">
-        <div class="proj-card-avs"></div>
-        <div class="proj-card-acoes" onclick="event.stopPropagation()">
-          ${etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
+      <div class="proj-card-body">
+        <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
+        <div class="proj-card-mid">
+          ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
+          ${emRevisao ? `<span class="badge b-am" onclick="event.stopPropagation();abrirProduto(${produtoIdJs},'mp-revisoes')" style="cursor:pointer" title="Abrir revisões">${emRevisao} em revisão</span>` : ''}
+          ${dataChip(etapaAtiva?.data_estimada)}
+        </div>
+        ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;font-size:10px;color:#888">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>${hStr} registradas</span>
+        </div>` : ''}
+        <div class="proj-card-bot">
+          <div class="proj-card-avs"></div>
+          <div class="proj-card-acoes" onclick="event.stopPropagation()">
+            ${etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
+          </div>
         </div>
       </div>
     </div>`;
@@ -5261,6 +5273,67 @@ async function adicionarTarefa() {
     carregarTarefas();
     toast('Tarefa adicionada');
   } else { toast('Erro: ' + error.message); }
+}
+
+function abrirDropdownAtribuir(btn) {
+  const existing = document.getElementById('atribuir-dropdown');
+  if (existing) { existing.remove(); return; }
+  const outros = G.todosUsuarios.filter(u => u.id !== G.usuario.id);
+  const drop = document.createElement('div');
+  drop.id = 'atribuir-dropdown';
+  drop.style.cssText = 'position:fixed;z-index:9990;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);padding:4px 0;min-width:148px;font-family:var(--font-ui)';
+  const rect = btn.getBoundingClientRect();
+  drop.style.top  = (rect.bottom + 5) + 'px';
+  drop.style.left = rect.left + 'px';
+  if (!outros.length) {
+    drop.innerHTML = '<div style="padding:8px 14px;font-size:11px;color:#aaa">Nenhum usuário</div>';
+  } else {
+    drop.innerHTML = outros.map((u, i) => {
+      const nome = u.nome.split(' ')[0];
+      return `<div data-idx="${i}" style="padding:7px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px"
+        onmouseenter="this.style.background='var(--off)'" onmouseleave="this.style.background=''"
+        onclick="window._atribuirDrop(${i})">
+        <span style="width:22px;height:22px;border-radius:50%;background:${u.cor||'#888'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais||'?')}</span>
+        ${_escN(nome)}
+      </div>`;
+    }).join('');
+    window._atribuirDrop = async (i) => {
+      const u = outros[i];
+      drop.remove();
+      delete window._atribuirDrop;
+      await atribuirParaPessoa(u.id, u.nome.split(' ')[0]);
+    };
+  }
+  document.body.appendChild(drop);
+  setTimeout(() => {
+    function handler(e) {
+      if (!drop.contains(e.target) && e.target !== btn) {
+        drop.remove();
+        delete window._atribuirDrop;
+        document.removeEventListener('click', handler);
+      }
+    }
+    document.addEventListener('click', handler);
+  }, 0);
+}
+
+async function atribuirParaPessoa(userId, primeiroNome) {
+  const desc = document.getElementById('task-nova-desc').value.trim();
+  const tipo = document.getElementById('task-nova-tipo').value;
+  const data_limite = document.getElementById('task-nova-data').value || null;
+  if (!desc) { toast('Descreva a tarefa antes de atribuir'); return; }
+  const { error } = await sb.from('tarefas_livres').insert({
+    usuario_id: userId, atribuido_para: userId, criado_por: G.usuario.id,
+    descricao: desc, tipo, data_inicio: null, data_limite
+  });
+  if (error) { toast('Erro: ' + error.message); return; }
+  document.getElementById('task-nova-desc').value = '';
+  document.getElementById('task-nova-data').value = '';
+  carregarTarefas();
+  toast('Tarefa atribuída para ' + primeiroNome);
+  criarNotificacao(userId, 'tarefa',
+    `${G.usuario.nome.split(' ')[0]} atribuiu uma tarefa para você`,
+    desc, { tipo: 'tarefa' });
 }
 
 function abrirAtribuirTarefa() {
@@ -8269,7 +8342,7 @@ async function confirmarModalRevisaoInput() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   MODAL PRODUTO
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-async function abrirProduto(id) {
+async function abrirProduto(id, targetPanel = null) {
   G.produtoAtivo = id;
   const prod = G.todosProdutos.find(p => p.id === id) || G._todosProdutosGestao.find(p => p.id === id);
   if (!prod) return;
@@ -8344,8 +8417,14 @@ async function abrirProduto(id) {
   // Reset tabs
   document.querySelectorAll('#modal-produto .modal-tab').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('#modal-produto .mtab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector('#modal-produto .modal-tab[data-panel="mp-visao"]').classList.add('active');
-  document.getElementById('mp-visao').classList.add('active');
+  const _openPanel = targetPanel || 'mp-visao';
+  const _openTabBtn = document.querySelector(`#modal-produto .modal-tab[data-panel="${_openPanel}"]`);
+  (_openTabBtn || document.querySelector('#modal-produto .modal-tab[data-panel="mp-visao"]')).classList.add('active');
+  document.getElementById(_openPanel).classList.add('active');
+  // Trigger lazy-load for non-default tabs
+  if (_openPanel === 'mp-revisoes') carregarRevisoesProduto(id);
+  else if (_openPanel === 'mp-horas') carregarHorasProduto(id);
+  else if (_openPanel === 'mp-custos') carregarCustosProduto(id);
 
   // Limpa lista de registros para forçar reload na próxima vez que a aba for aberta
   G._registros = [];
@@ -11693,11 +11772,8 @@ async function carregarHorasProduto(prodId) {
 
   const isSocio = isSocioRole(G.usuario.role);
 
-  // 1. Lançamentos de horas + custos operacionais vinculados ao produto
-  const [{ data: lancs, error }, { data: custosOp }] = await Promise.all([
-    sb.from('horas_lancadas').select('usuario_id, etapa_id, hora_inicio, hora_fim').eq('produto_id', prodId),
-    sb.from('lancamentos_custo').select('*, usuarios(nome,iniciais,cor)').eq('produto_id', prodId).order('data_lancamento'),
-  ]);
+  // 1. Lançamentos de horas vinculados ao produto
+  const { data: lancs, error } = await sb.from('horas_lancadas').select('usuario_id, etapa_id, hora_inicio, hora_fim').eq('produto_id', prodId);
 
   if (error) { wrap.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
   if (!lancs?.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lançada neste produto.</div>'; return; }
@@ -11752,14 +11828,6 @@ async function carregarHorasProduto(prodId) {
       ? `R$ ${fmtNum(margemAbs)}${margemPct !== null ? ` · ${margemPct.toFixed(1)}%` : ''}`
       : '—';
   }
-
-  // Custos operacionais por etapa
-  const custosOpPorEtapa = {};
-  (custosOp || []).forEach(c => {
-    const eid = c.etapa_id || '__sem_etapa__';
-    if (!custosOpPorEtapa[eid]) custosOpPorEtapa[eid] = [];
-    custosOpPorEtapa[eid].push(c);
-  });
 
   // 4. Header de totais prominentes
   let html = `<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
@@ -11842,57 +11910,6 @@ async function carregarHorasProduto(prodId) {
       </div>`;
     }).join('');
 
-    // Custos operacionais desta etapa
-    const custosEtapaList = custosOpPorEtapa[eid] || [];
-    let custosEtapaHtml = '';
-    if (isSocio && custosEtapaList.length) {
-      const totalCustosEt = custosEtapaList.reduce((s,c) => s+(c.valor||0), 0);
-      const custosGroupMap = {};
-      custosEtapaList.forEach(c => {
-        const key = c.subtipo || c.tipo || 'Outros';
-        if (!custosGroupMap[key]) custosGroupMap[key] = [];
-        custosGroupMap[key].push(c);
-      });
-      const custosBodyId = `hp-et-${etIdx}-custos`;
-      const gruposCustos = Object.entries(custosGroupMap).map(([grupo, itens], grpIdx) => {
-        const grpId = `${custosBodyId}-grp-${grpIdx}`;
-        const subtotal = itens.reduce((s, c) => s + (c.valor || 0), 0);
-        const linhas = itens.map(c => {
-          const u = c.usuarios || {};
-          const av = u.iniciais
-            ? `<span style="width:20px;height:20px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais || '?')}</span>`
-            : '';
-          const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
-          const descDisp = _escN(c.descricao || '');
-          const userDisp = _escN((u.nome || '').split(' ')[0] || '?');
-          return `<div style="display:flex;align-items:center;gap:7px;padding:5px 14px;border-bottom:1px solid var(--cinza2)">
-            ${av}
-            <div style="flex:1;min-width:0;font-size:10px;color:#888">${descDisp || 'Sem descrição'}<span style="color:#ccc"> · ${userDisp}</span></div>
-            <span style="font-size:9px;color:#bbb">${dataFmt}</span>
-            <span style="font-size:10px;font-weight:700;min-width:55px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
-          </div>`;
-        }).join('');
-        return `<div style="border-top:1px solid var(--cinza2)">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;cursor:pointer;background:#fafafa" onclick="toggleEl(${_sqN(grpId)})">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:11px;color:#bbb" id="${grpId}-arr">▸</span>
-              <span style="font-size:10px;font-weight:600">${_escN(grupo)}</span>
-              <span style="font-size:9px;color:#bbb">(${itens.length})</span>
-            </div>
-            <span style="font-size:10px;font-weight:700">R$ ${fmtNum(subtotal)}</span>
-          </div>
-          <div id="${grpId}" style="display:none">${linhas}</div>
-        </div>`;
-      }).join('');
-      custosEtapaHtml = `<div style="border-top:1px solid var(--cinza2);background:#fff">
-        <div style="background:var(--cinza2);padding:6px 14px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999">Custos operacionais</div>
-          <div style="font-size:10px;font-weight:700">R$ ${fmtNum(totalCustosEt)}</div>
-        </div>
-        ${gruposCustos}
-      </div>`;
-    }
-
     html += `<div style="margin-bottom:10px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:#fff">
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(etBodyId)})">
         <div style="display:flex;align-items:center;gap:8px">
@@ -11906,7 +11923,6 @@ async function carregarHorasProduto(prodId) {
       </div>
       <div id="${etBodyId}" style="display:none">
         ${pessoaLinhas}
-        ${custosEtapaHtml}
       </div>
     </div>`;
   });
