@@ -8373,8 +8373,10 @@ function renderPrancha(pr, isSocioOrCoord) {
   const prId = pr.id;
   const prIdJs = _sqN(prId);
 
-  // Checklist full (dentro de prancha-body-full)
-  const tarefasHtml = (pr.tarefas_revisao || []).map(t => {
+  // Checklist full (dentro de prancha-body-full) — ordenado por data de criação
+  const tarefasOrdenadas = [...(pr.tarefas_revisao || [])].sort((a, b) =>
+    (a.created_at || '').localeCompare(b.created_at || ''));
+  const tarefasHtml = tarefasOrdenadas.map(t => {
     const tarefaIdJs = _sqN(t.id);
     const tarefaTituloJs = _sqN(`Tarefa de revisão · ${t.descricao}`);
     const mediaCount = tempMediaCount('revisao_tarefa', t.id);
@@ -8399,8 +8401,8 @@ function renderPrancha(pr, isSocioOrCoord) {
     ? (pr.comentarios || []).map(c => renderTopicoComentario(c, podeExcluirTopico)).join('')
     : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem comentários nesta prancha.</div>';
 
-  // Preview: até 4 tarefas
-  const previewTarefas = (pr.tarefas_revisao || []).slice(0, 4);
+  // Preview: até 4 tarefas (mesma ordem)
+  const previewTarefas = tarefasOrdenadas.slice(0, 4);
   const restante = total - previewTarefas.length;
   const previewHtml = previewTarefas.length
     ? `<div class="prancha-preview">
@@ -8677,7 +8679,16 @@ async function salvarTarefaInline(pranchaId) {
   if(!valor) { cancelarTarefaInline(pranchaId); return; }
   const { error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor });
   if(error) { toast('Erro ao adicionar tarefa'); return; }
+  // Captura quais pranchas estão expandidas antes do re-render
+  const expandidas = new Set(
+    [...document.querySelectorAll('.prancha-card.expanded')].map(el => el.id.replace('prancha-', ''))
+  );
   await selecionarRevisao(G._revisaoAtiva);
+  // Re-expande as pranchas que estavam abertas
+  expandidas.forEach(pid => {
+    const card = document.getElementById('prancha-' + pid);
+    if (card) card.classList.add('expanded');
+  });
   addTarefaPrancha(pranchaId);
 }
 
@@ -13298,7 +13309,7 @@ function deletarEntradaReg(id) {
 // ── Helpers ───────────────────────────────────────────────────
 const _ckE  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const _ckA  = s => String(s||'').replace(/"/g,'&quot;');
-const _sqCk = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+const _sqCk = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,' ') + "'";
 const isSocioUser = () => isSocioRole(G.usuario.role);
 
 // ── Estado ────────────────────────────────────────────────────
@@ -14375,7 +14386,7 @@ function deletarComentarioReg(id, entradaId) {
 // Helpers de escape (independentes dos de registro)
 const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
-const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,' ') + "'";
 
 // ── Estado ────────────────────────────────────────────────────
 G._notifs = [];
