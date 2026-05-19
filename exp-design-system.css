@@ -1352,3 +1352,475 @@ input[type="checkbox"].exp-cb.exp-cb-x:checked::after {
 [data-theme="dark"] .user-term-state.pending:hover {
   background: #1f2d47;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   IDENTIDADE POR MÓDULO
+   Cada módulo sobrescreve apenas --nav-active no <style> local.
+   O resto herda automaticamente desta folha.
+
+   EXP.gestão      → --nav-active: var(--ouro)
+   EXP.comercial   → --nav-active: var(--azul)
+   EXP.financeiro  → --nav-active: var(--fin)   (definido localmente)
+   EXP.calc        → --nav-active: var(--verde)
+   EXP.apoio       → (nenhum override — usa var(--grafite) padrão)
+   EXP.contatos    → (nenhum override — usa var(--grafite) padrão)
+═══════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════════
+   BASE — BODY E CONTAINER PRINCIPAL
+   Regras estruturais compartilhadas por todos os módulos.
+   Cada módulo importa este arquivo e herda automaticamente.
+   Dark mode: zero overrides necessários — tokens mudam sozinhos.
+═══════════════════════════════════════════════════════════════ */
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  font-weight: var(--weight-light);
+  line-height: 1.5;
+  color: var(--grafite);
+  background: var(--off);
+  min-height: 100vh;
+}
+
+.main {
+  padding: var(--gap-md);
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTE — CARD
+   Superfície branca sobre fundo off-white. Borda discreta.
+   Variantes de acento: classe de cor no elemento (.verde, .azul…)
+
+   HTML canônico:
+     <div class="card verde">
+       <div class="card-hd">
+         <span class="card-title">Título</span>
+         <button class="btn sm">Ação</button>
+       </div>
+       <div class="card-body"> … </div>
+     </div>
+═══════════════════════════════════════════════════════════════ */
+
+.card {
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Barra lateral de 3px — ativa com classe de cor */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px;
+  height: 100%;
+  background: transparent;
+}
+.card.verde::before     { background: var(--verde); }
+.card.azul::before      { background: var(--azul); }
+.card.ouro::before      { background: var(--ouro); }
+.card.terracota::before { background: var(--terracota); }
+.card.cinza::before     { background: var(--cinza); }
+
+.card-hd,
+.card-hdr {
+  padding: 9px 14px 9px 17px;
+  border-bottom: 1px solid var(--cinza);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--grafite);
+  flex: 1;
+}
+
+.card-body {
+  padding: 12px 14px 12px 17px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTE — STAT (KPI)
+   Card de indicador com valor numérico em destaque.
+
+   HTML canônico:
+     <div class="stat azul">
+       <div class="stat-lbl">Pipeline ativo</div>
+       <div class="stat-val">R$ 17.665.154</div>
+       <div class="stat-sub">83 oportunidades</div>
+     </div>
+═══════════════════════════════════════════════════════════════ */
+
+.stat {
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-card);
+  padding: 14px 16px 14px 19px;
+  overflow: hidden;
+  position: relative;
+}
+
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--cinza);
+}
+.stat.verde::before     { background: var(--verde); }
+.stat.azul::before      { background: var(--azul); }
+.stat.ouro::before      { background: var(--ouro); }
+.stat.terracota::before { background: var(--terracota); }
+
+.stat-lbl {
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--grafite);
+  opacity: 0.5;
+  margin-bottom: var(--gap-xs);
+}
+
+.stat-val {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: -1px;
+  line-height: 1;
+  color: var(--grafite);
+}
+
+.stat-sub {
+  font-size: var(--text-sub);
+  color: var(--grafite);
+  opacity: 0.5;
+  margin-top: var(--gap-xs);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTE — BOTÃO
+   Três variantes: padrão (outline), sm (compacto), filled (sólido).
+   Dark mode: automático via tokens.
+
+   HTML canônico:
+     <button class="btn">Ação</button>
+     <button class="btn sm">Compacto</button>
+     <button class="btn filled">Primário</button>
+     <button class="btn sm filled">Primário compacto</button>
+═══════════════════════════════════════════════════════════════ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-xs);
+  padding: 6px 14px;
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  color: #888;
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    border-color var(--transition-fast),
+    color        var(--transition-fast),
+    background   var(--transition-fast),
+    opacity      var(--transition-fast);
+}
+.btn:hover {
+  border-color: var(--grafite);
+  color: var(--grafite);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Compacto */
+.btn.sm {
+  font-size: var(--text-label);
+  padding: 4px 10px;
+}
+
+/* Sólido — ação primária */
+.btn.filled {
+  background: var(--grafite);
+  border-color: var(--grafite);
+  color: var(--branco);
+}
+.btn.filled:hover { opacity: 0.82; }
+
+/* Perigo — ação destrutiva */
+.btn.danger {
+  border-color: var(--terracota);
+  color: var(--terracota);
+}
+.btn.danger:hover {
+  background: var(--terracota);
+  color: #fff;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTE — FILTER SELECT
+   Select/input inline de filtro, menor que o exp-input padrão.
+
+   HTML canônico:
+     <select class="filter-select" onchange="…">…</select>
+     <input type="date" class="filter-select">
+═══════════════════════════════════════════════════════════════ */
+
+.filter-select {
+  font-family: var(--font-ui);
+  font-size: var(--text-sub);
+  font-weight: var(--weight-body);
+  color: var(--grafite);
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-input);
+  padding: 4px 8px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  color-scheme: light dark;
+}
+.filter-select:focus { border-color: var(--azul); }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTE — MODAL
+   Overlay + painel. Dark mode: automático via tokens.
+
+   HTML canônico:
+     <div class="modal-bg" id="modal-x" style="display:none">
+       <div class="modal">
+         <div class="modal-hd">
+           <span class="modal-title">Título</span>
+           <button class="modal-close" onclick="fechar()">×</button>
+         </div>
+         <div class="modal-body"> … </div>
+         <div class="modal-ft">
+           <button class="btn">Cancelar</button>
+           <button class="btn filled">Salvar</button>
+         </div>
+       </div>
+     </div>
+═══════════════════════════════════════════════════════════════ */
+
+.modal-bg {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+
+.modal {
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-modal);
+  width: 540px;
+  max-width: 96vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-modal);
+}
+
+.modal-hd {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cinza);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: var(--text-title);
+  font-weight: var(--weight-semibold);
+  color: var(--grafite);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: #bbb;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--transition-fast);
+  font-family: inherit;
+}
+.modal-close:hover { color: var(--grafite); }
+
+.modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-ft {
+  padding: 10px 16px;
+  border-top: 1px solid var(--cinza);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gap-sm);
+  flex-shrink: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTE — TABELA (.tbl)
+   Tabela padrão da plataforma. Dark mode: automático via tokens.
+
+   HTML canônico:
+     <table class="tbl">
+       <thead><tr><th>Col A</th><th>Col B</th></tr></thead>
+       <tbody>
+         <tr><td>…</td><td>…</td></tr>
+       </tbody>
+     </table>
+═══════════════════════════════════════════════════════════════ */
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+}
+
+.tbl th {
+  background: var(--off);
+  color: var(--grafite);
+  text-align: left;
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--cinza);
+  opacity: 0.7;
+}
+
+.tbl td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--cinza2);
+  color: var(--grafite);
+  vertical-align: top;
+}
+
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td      { background: var(--off); }
+.tbl .n               { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTE — TOAST
+   Notificação flutuante temporária.
+   Dark mode: automático (usa var(--grafite) e var(--branco)).
+
+   JS canônico: função toast(msg, tipo='') — tipo: 'ok' | 'erro' | ''
+═══════════════════════════════════════════════════════════════ */
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: var(--grafite);
+  color: var(--branco);
+  font-family: var(--font-ui);
+  font-size: var(--text-sub);
+  font-weight: var(--weight-semibold);
+  padding: 9px 18px;
+  border-radius: var(--radius-btn);
+  box-shadow: var(--shadow-modal);
+  z-index: 9999;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: toastIn var(--transition-normal) ease;
+}
+
+.toast.ok   { background: var(--verde); }
+.toast.erro { background: var(--terracota); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0);   }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITÁRIOS — ESTADOS VAZIOS / CARREGAMENTO
+═══════════════════════════════════════════════════════════════ */
+
+.loading-state {
+  text-align: center;
+  color: var(--cinza);
+  font-size: var(--text-sub);
+  padding: 24px 16px;
+  font-family: var(--font-ui);
+}
+
+.empty-note {
+  text-align: center;
+  color: var(--cinza);
+  font-size: var(--text-sub);
+  padding: 16px;
+  font-family: var(--font-ui);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTA SOBRE DARK MODE NOS MÓDULOS
+   ───────────────────────────────────────────────────────────────
+   Todos os componentes acima usam APENAS variáveis CSS.
+   O bloco [data-theme="dark"] no início deste arquivo já redefine
+   todos os tokens (--branco, --off, --cinza, --grafite, etc.).
+
+   Portanto, os módulos NÃO precisam de:
+     [data-theme="dark"] .card  { background: var(--branco) }
+     [data-theme="dark"] .btn   { background: var(--branco) }
+     [data-theme="dark"] .modal { background: var(--branco) }
+     … e afins
+
+   Esses blocos são redundantes e podem ser removidos dos módulos.
+
+   O único dark mode legítimo nos módulos são:
+     - Componentes exclusivos do módulo com cores locais hardcoded
+     - Superfícies que usam rgba() fixo (precisam de ajuste manual)
+     - Inputs com background:#252523 (substituir por var(--branco))
+═══════════════════════════════════════════════════════════════ */
