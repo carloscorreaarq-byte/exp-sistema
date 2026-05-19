@@ -968,6 +968,13 @@ body {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 7px 0; border-bottom: 1px solid var(--cinza2);
 }
+.task-edit-btn {
+  flex-shrink: 0; margin-top: 1px; background: none; border: none;
+  color: #d0d5de; cursor: pointer; padding: 0 2px; font-size: 13px; line-height: 1;
+  transition: color .12s; opacity: 0;
+}
+.task-item:hover .task-edit-btn { opacity: 1; }
+.task-edit-btn:hover { color: var(--grafite); }
 .task-item:last-child { border-bottom: none; }
 .task-check {
   width: 14px; height: 14px; border: 1px solid var(--cinza);
@@ -5355,6 +5362,10 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
   const wrap = document.getElementById('tasks-lista');
   const TIPO_LABEL = { projeto:'Proj.', organizacao:'Org.', sociedade:'Soc.' };
   const totalPendentes = pendentes.length + acompanhando.filter(t => !t.concluida).length;
+
+  // Cache para edição inline
+  G._tarefasCache = {};
+  [...pendentes, ...acompanhando].forEach(t => { G._tarefasCache[t.id] = t; });
   const stEl = document.getElementById('st-tasks');
   if (stEl) stEl.textContent = totalPendentes > 0
     ? String(totalPendentes).padStart(2,'0') + (totalPendentes === 1 ? ' tarefa pendente!' : ' tarefas pendentes!')
@@ -5407,9 +5418,11 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
             </div>
           </div>
         </div>
+        <button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">✎</button>
       </div>`;
     }
 
+    const podeEditar = !t.criado_por || t.criado_por === G.usuario.id;
     return `<div class="task-item">
       <div class="task-check ${t.concluida?'done':''}" onclick="toggleTarefa(${taskIdJs},${t.concluida})"></div>
       <div style="flex:1;min-width:0">
@@ -5422,6 +5435,7 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
           ${prazoHtml ? `<div style="flex-shrink:0;margin-left:auto">${prazoHtml}</div>` : ''}
         </div>
       </div>
+      ${podeEditar ? `<button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">✎</button>` : ''}
     </div>`;
   }).join('');
 
@@ -5587,6 +5601,77 @@ function confirmarExcluirTarefa(id) {
       carregarTarefas();
     }
   );
+}
+
+function abrirEditarTarefa(id) {
+  const t = G._tarefasCache?.[id];
+  if (!t) return;
+
+  document.getElementById('tarefa-edit-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'tarefa-edit-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui)';
+
+  const descEsc = (t.descricao || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const dataVal = t.data_limite || '';
+  const idEsc   = String(id).replace(/'/g,"\\'");
+
+  overlay.innerHTML = `
+    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:12px;padding:22px 22px 18px;width:360px;max-width:94vw;box-shadow:0 8px 36px rgba(0,0,0,.22)">
+      <div style="font-size:13px;font-weight:700;color:var(--grafite);margin-bottom:16px">Editar tarefa</div>
+
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:5px">Descrição</label>
+        <textarea id="tarefa-edit-desc" rows="3"
+          style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;font-size:12px;font-family:var(--font-ui);resize:vertical;background:var(--branco);color:var(--grafite);outline:none;transition:border-color .12s"
+          onfocus="this.style.borderColor='var(--azul)'" onblur="this.style.borderColor='var(--cinza)'"
+        >${descEsc}</textarea>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:5px">Data limite <span style="font-weight:400;color:#bbb">(opcional)</span></label>
+        <input type="date" id="tarefa-edit-data" value="${dataVal}"
+          style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);background:var(--branco);color:var(--grafite);outline:none;transition:border-color .12s"
+          onfocus="this.style.borderColor='var(--azul)'" onblur="this.style.borderColor='var(--cinza)'"
+        >
+        ${dataVal ? `<button onclick="document.getElementById('tarefa-edit-data').value=''" style="margin-top:5px;background:none;border:none;font-size:9px;color:#bbb;cursor:pointer;padding:0;font-family:var(--font-ui)">✕ Limpar data</button>` : ''}
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="document.getElementById('tarefa-edit-overlay').remove()"
+          style="font-size:11px;font-weight:600;padding:6px 14px;border:1px solid var(--cinza);border-radius:6px;background:none;color:#888;cursor:pointer;font-family:var(--font-ui)">Cancelar</button>
+        <button onclick="salvarEditarTarefa('${idEsc}')"
+          style="font-size:11px;font-weight:600;padding:6px 16px;border:none;border-radius:6px;background:var(--grafite);color:var(--branco);cursor:pointer;font-family:var(--font-ui)">Salvar</button>
+      </div>
+    </div>`;
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => {
+    const ta = document.getElementById('tarefa-edit-desc');
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  });
+}
+
+async function salvarEditarTarefa(id) {
+  const desc  = document.getElementById('tarefa-edit-desc')?.value.trim();
+  const data_limite = document.getElementById('tarefa-edit-data')?.value || null;
+  if (!desc) { toast('A descrição não pode ser vazia.'); return; }
+
+  const btn = document.querySelector('#tarefa-edit-overlay button:last-child');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+
+  const { error } = await sb.from('tarefas_livres').update({ descricao: desc, data_limite }).eq('id', id);
+  if (error) {
+    toast('Erro ao salvar: ' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+    return;
+  }
+
+  document.getElementById('tarefa-edit-overlay')?.remove();
+  await carregarTarefas();
+  toast('Tarefa atualizada');
 }
 
 function abrirPopupConfirm(titulo, mensagem, onConfirm) {
