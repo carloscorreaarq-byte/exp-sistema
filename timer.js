@@ -155,6 +155,8 @@
 
     /* ── Dark mode ─────────────────────────────────────────────────── */
     '[data-theme="dark"] #exp-timer-fab{background:#1C1C1A;color:#555}',
+    '[data-theme="dark"] #exp-timer-fab.running{color:' + OURO + '}',
+    '[data-theme="dark"] #exp-timer-fab.paused{color:' + OURO + '}',
     '[data-theme="dark"] .tmr-panel{background:#1C1C1A;border-color:#3E3E3C}',
     '[data-theme="dark"] .tmr-hdr{color:#555}',
     '[data-theme="dark"] .tmr-panel-top-hdr{color:#555}',
@@ -182,7 +184,7 @@
     '[data-theme="dark"] .tmr-recent-btn{background:#141412;color:#999;border-color:#3E3E3C}',
     '[data-theme="dark"] .tmr-recent-btn:hover{background:#2A2A28;border-color:#555;color:#F0EFEC}',
     '[data-theme="dark"] .tmr-divider{background:#3E3E3C}',
-    '[data-theme="dark"] .tmr-input{background:#141412;color:#F0EFEC;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-input{background:#141412;color:#F0EFEC;border-color:#3E3E3C;color-scheme:dark}',
     '[data-theme="dark"] .tmr-input::placeholder{color:#444}',
     '[data-theme="dark"] .tmr-textarea{background:#141412;color:#F0EFEC;border-color:#3E3E3C}',
     '[data-theme="dark"] .tmr-textarea::placeholder{color:#444}',
