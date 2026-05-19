@@ -471,6 +471,16 @@
   --nav-active: var(--ouro);
 }
 
+/* ── Corrige sobrescrita de variáveis locais sobre o dark mode do design system ── */
+[data-theme="dark"] {
+  --cinza2:   #2A2A28;   /* divisores internos — mesma do design system */
+  --verde-bg: #1A2E22;
+  --az-bg:    #162031;
+  --am-bg:    #2C2110;
+  --tc-bg:    #281512;
+  --verde-l:  #3A8A56;
+}
+
 body {
   font-family: var(--font-ui);
   background: var(--off);
@@ -920,8 +930,8 @@ body {
 }
 .proj-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .proj-card-nome {
-  font-family: var(--font-ui); font-size: 13px; font-weight: 700;
-  letter-spacing: -.2px; line-height: 1.2;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 700;
+  letter-spacing: -.1px; line-height: 1.25;
 }
 .proj-card-cliente { font-size: 10px; color: #888; margin-bottom: 6px; }
 .proj-card-mid { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -1076,14 +1086,14 @@ body {
    GANTT
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 /* ─── KANBAN PROJETOS ───────────────────────────────────── */
-.proj-kanban { display:flex; gap:0; border:1px solid var(--cinza); border-radius:8px; overflow:hidden; height:calc(100vh - 165px); }
-.pk-col { flex:1; min-width:0; border-right:1px solid var(--cinza); display:flex; flex-direction:column; overflow:hidden; }
+.proj-kanban { display:flex; gap:0; border:1px solid var(--cinza); border-radius:8px; overflow:hidden; height:calc(100vh - 165px); background:var(--off); }
+.pk-col { flex:1; min-width:0; border-right:1px solid var(--cinza); display:flex; flex-direction:column; overflow:hidden; background:var(--off); }
 .pk-col:last-child { border-right:none; }
 .pk-col-hd { padding:8px 12px; border-bottom:1px solid var(--cinza); background:var(--branco); flex-shrink:0; display:flex; align-items:center; gap:7px; }
 .pk-col-stripe { width:3px; height:14px; border-radius:2px; flex-shrink:0; }
 .pk-col-title { font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; flex:1; color:var(--grafite); }
 .pk-col-cnt { font-size:10px; font-family:var(--font-mono); color:#aaa; }
-.pk-items { padding:8px; display:flex; flex-direction:column; gap:6px; overflow-y:auto; flex:1; }
+.pk-items { padding:8px; display:flex; flex-direction:column; gap:6px; overflow-y:auto; flex:1; background:var(--off); }
 .pk-card { background:var(--branco); border:1px solid var(--cinza); border-left-width:4px; border-radius:7px; padding:9px 11px; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
 .pk-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
 .pk-card-client { font-size:11px; font-weight:700; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; }
@@ -1095,6 +1105,14 @@ body {
 [data-theme="dark"] .pk-col { border-color:var(--cinza); }
 [data-theme="dark"] .pk-col-hd { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .pk-card { background:var(--branco); border-color:var(--cinza); }
+
+/* Kanban — scrollbar fina e sutil */
+.pk-items::-webkit-scrollbar { width:4px; }
+.pk-items::-webkit-scrollbar-track { background:transparent; }
+.pk-items::-webkit-scrollbar-thumb { background:rgba(0,0,0,.14); border-radius:2px; }
+[data-theme="dark"] .pk-items::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); }
+/* Garante que o kanban fica acima do padrão de fundo */
+.proj-kanban { isolation:isolate; }
 
 .gantt-wrap {
   border: 1px solid var(--cinza);
@@ -1349,20 +1367,26 @@ body {
 }
 .mh-day-body { display:flex; flex-direction:column; }
 .mh-day-cols-hd {
-  display:grid; grid-template-columns:94px 110px minmax(0,1fr) minmax(0,1.1fr) 120px 88px;
-  gap:10px; align-items:center; padding:5px 12px;
+  display:grid; grid-template-columns:80px 100px minmax(0,1fr) minmax(0,1.2fr) 90px minmax(0,1.4fr) 65px;
+  gap:8px; align-items:center; padding:5px 12px;
   background:var(--off); border-bottom:1px solid var(--cinza2);
   font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#aaa;
 }
 .mh-day-entry {
-  display:grid; grid-template-columns:94px 110px minmax(0,1fr) minmax(0,1.1fr) 120px 88px;
-  gap:10px; align-items:center; padding:5px 12px; border-bottom:1px solid var(--cinza2);
+  display:grid; grid-template-columns:80px 100px minmax(0,1fr) minmax(0,1.2fr) 90px minmax(0,1.4fr) 65px;
+  gap:8px; align-items:center; padding:5px 12px; border-bottom:1px solid var(--cinza2);
 }
 .mh-day-entry:last-child { border-bottom:none; }
 .mh-day-time { font-size:10px; color:#777; font-family:var(--font-mono); white-space:nowrap; }
 .mh-day-col-data { min-width:0; }
 .mh-day-main-1 {
+  font-size:11px; font-weight:400; color:var(--grafite); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mh-day-main-proj {
   font-size:11px; font-weight:600; color:var(--grafite); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mh-day-comment {
+  font-size:10px; font-weight:400; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
 }
 .mh-day-dur { text-align:right; font-size:11px; font-family:var(--font-mono); white-space:nowrap; }
 .mh-badge {
@@ -1373,6 +1397,17 @@ body {
 .mh-badge.projeto { background:rgba(29,79,160,.12); color:#1D4FA0; }
 .mh-badge.organizacao { background:rgba(29,106,74,.12); color:#1D6A4A; }
 .mh-badge.sociedade { background:rgba(196,131,26,.14); color:#A66A12; }
+[data-theme="dark"] .mh-badge.projeto { background:rgba(96,137,204,.18); color:var(--azul); }
+[data-theme="dark"] .mh-badge.organizacao { background:rgba(82,166,118,.18); color:var(--verde); }
+[data-theme="dark"] .mh-badge.sociedade { background:rgba(212,170,55,.18); color:var(--ouro); }
+/* Blocos de tempo na grade — menos vivos em dark mode */
+[data-theme="dark"] .hb-projeto { background:rgba(96,137,204,.42); }
+[data-theme="dark"] .hb-organizacao { background:rgba(82,166,118,.42); }
+[data-theme="dark"] .hb-sociedade { background:rgba(212,170,55,.42); }
+[data-theme="dark"] .cb-projeto { background:rgba(96,137,204,.52); }
+[data-theme="dark"] .cb-organizacao { background:rgba(82,166,118,.52); }
+[data-theme="dark"] .cb-sociedade { background:rgba(212,170,55,.52); }
+[data-theme="dark"] .cal-celula.fim-semana { background:rgba(255,255,255,.025); }
 .semana-nav {
   display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
   background: var(--branco); border: 1px solid var(--cinza); border-radius: 8px; padding: 8px 12px;
@@ -1660,12 +1695,13 @@ body {
 /* ── PRIORIDADES (dashboard) ─────────────────────────── */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--branco); border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; border-radius:8px; }
 .prio-card:hover { border-color:#aaa; box-shadow:0 2px 8px rgba(0,0,0,.05); }
-.prio-card.concluida { background:var(--branco); border-color:#eee; }
-.prio-card.concluida .prio-num { background:#eee !important; color:#eee !important; }
-.prio-card.concluida .prio-info * { color:#ececec !important; background:transparent !important; border-color:transparent !important; }
+.prio-card.concluida { background:rgba(62,120,88,.06); border-color:rgba(62,120,88,.28); }
+.prio-card.concluida .prio-num { background:#bbb !important; color:#fff !important; }
+.prio-card.concluida .prio-info * { color:#aaa !important; background:transparent !important; border-color:transparent !important; }
 .prio-card.concluida .prio-check.done { background:var(--verde) !important; border-color:var(--verde) !important; color:#fff !important; }
 .prio-card.hoje { background:var(--am-bg); border-color:var(--ouro); border-width:1.5px; }
 .prio-card.atrasada { background:var(--tc-bg); border-color:var(--terracota); border-width:1.5px; }
+.prio-comment { margin-top:6px; background:var(--cinza2); border-left:3px solid var(--cinza); border-radius:0 5px 5px 0; padding:5px 9px; font-size:10px; color:#666; font-style:italic; line-height:1.4; }
 .prio-num { width:22px; height:22px; border-radius:50%; background:var(--grafite); color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:var(--font-mono); flex-shrink:0; margin-top:1px; }
 .prio-num.p1 { background:var(--ouro); }
 .prio-num.p2 { background:var(--azul); }
@@ -1976,6 +2012,16 @@ body {
 [data-theme="dark"] .proj-card-hd { background:rgba(255,255,255,.06); border-color:var(--cinza); }
 [data-theme="dark"] .coord-strip { background:var(--branco); border-color:var(--cinza); }
 
+/* Prioridades dark mode */
+[data-theme="dark"] .prio-card { background:var(--branco); border-color:var(--cinza); }
+[data-theme="dark"] .prio-card:hover { border-color:#555; }
+[data-theme="dark"] .prio-card.concluida { background:rgba(62,120,88,.1); border-color:rgba(62,120,88,.25); }
+[data-theme="dark"] .prio-card.concluida .prio-num { background:#444 !important; color:#666 !important; }
+[data-theme="dark"] .prio-card.concluida .prio-info * { color:#555 !important; background:transparent !important; border-color:transparent !important; }
+[data-theme="dark"] .prio-card.hoje { background:rgba(196,154,39,.1); border-color:var(--ouro); }
+[data-theme="dark"] .prio-card.atrasada { background:rgba(184,86,56,.1); border-color:var(--terracota); }
+[data-theme="dark"] .prio-comment { background:rgba(255,255,255,.06); border-color:#555; color:#999; }
+
 /* Buttons */
 [data-theme="dark"] .btn { background:var(--branco); border-color:var(--cinza); color:#888; }
 [data-theme="dark"] .btn:hover { border-color:var(--grafite); color:var(--grafite); }
@@ -1987,14 +2033,21 @@ body {
 /* Inputs / Forms */
 [data-theme="dark"] .fgroup input,
 [data-theme="dark"] .fgroup select,
-[data-theme="dark"] .fgroup textarea { background:var(--branco); border-color:var(--cinza); color:var(--grafite); }
+[data-theme="dark"] .fgroup textarea { background:var(--branco); border-color:var(--cinza); color:var(--grafite); color-scheme:dark; }
 [data-theme="dark"] .task-check { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .tarefa-inline-ta { border-color:var(--cinza); background:var(--branco); color:var(--grafite); }
+[data-theme="dark"] .task-input-row input[type="text"],
+[data-theme="dark"] .task-input-row input[type="date"] { background:var(--branco); color:var(--grafite); border-color:var(--cinza); color-scheme:dark; }
 
 /* Tables */
 [data-theme="dark"] .tbl th { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .tbl td { border-color:var(--cinza2); }
 [data-theme="dark"] .tbl tr.click:hover td { background:var(--off); }
+
+/* Modal produto: header igual ao proj-card-hd */
+#modal-produto .modal-hd { background:var(--cinza2); }
+#modal-produto .modal-hd-title { font-family:var(--font-ui); font-size:14px; font-weight:700; letter-spacing:-.2px; text-transform:none; }
+[data-theme="dark"] #modal-produto .modal-hd { background:rgba(255,255,255,.06); }
 
 /* Modals */
 [data-theme="dark"] .modal { background:var(--branco); border-color:var(--cinza); }
@@ -2021,6 +2074,10 @@ body {
 [data-theme="dark"] .gantt-prod-row:hover td { background:var(--off); }
 [data-theme="dark"] .gantt-legenda { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .gantt-tooltip { background:#141414; }
+[data-theme="dark"] .gantt-nav-btn,
+[data-theme="dark"] .gantt-hoje-btn { color:var(--grafite); }
+[data-theme="dark"] .gantt-grupo-row td { background:rgba(255,255,255,.04); color:#999; border-color:var(--cinza); }
+[data-theme="dark"] .gantt-prod-row:hover td { background:rgba(255,255,255,.03); }
 
 /* Horas / Calendário */
 [data-theme="dark"] .lanc-form { background:var(--branco); border-color:var(--cinza); }
@@ -2084,7 +2141,12 @@ body {
 /* Dia selector */
 [data-theme="dark"] .dia-btn { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .dia-btn.selected { background:var(--grafite); border-color:var(--grafite); }
-[data-theme="dark"] .dia-btn.fim-semana { background:var(--cinza2); }
+[data-theme="dark"] .dia-btn.selected .dia-btn-nome,
+[data-theme="dark"] .dia-btn.selected .dia-btn-num { color:var(--off); }
+[data-theme="dark"] .dia-btn.selected .dia-btn-hrs { color:var(--verde); }
+[data-theme="dark"] .dia-btn.fim-semana { background:rgba(255,255,255,.03); }
+[data-theme="dark"] .dia-btn.fim-semana .dia-btn-nome,
+[data-theme="dark"] .dia-btn.fim-semana .dia-btn-num { color:#666; }
 
 /* Mencao */
 [data-theme="dark"] .mencao-dd { background:var(--branco); border-color:var(--cinza); }
@@ -2093,6 +2155,20 @@ body {
 
 /* Semana travada */
 [data-theme="dark"] .semana-travada { background:var(--cinza2); border-color:var(--cinza); }
+
+/* Horas / Detalhamento — bordas finas em dark mode */
+[data-theme="dark"] .mh-panel { border-color:var(--cinza); }
+[data-theme="dark"] .mh-panel-hd { border-color:var(--cinza); }
+[data-theme="dark"] .mh-day-block { border-color:var(--cinza); }
+[data-theme="dark"] .mh-day-hd { border-color:var(--cinza); }
+[data-theme="dark"] .mh-day-entry { border-color:var(--cinza); }
+[data-theme="dark"] .mh-day-cols-hd { border-color:var(--cinza); }
+[data-theme="dark"] .mh-summary-row { border-color:var(--cinza); }
+
+/* Calendário horas — fim de semana em dark mode */
+[data-theme="dark"] .cal-dia-header.fim-semana { background:rgba(255,255,255,.03); }
+[data-theme="dark"] .cal-dia-header.fim-semana .cal-dia-nome { color:#666; }
+[data-theme="dark"] .cal-dia-header.fim-semana .cal-dia-num { color:#777; }
 
 [data-theme="dark"] .modal-tab:hover { color:var(--grafite); }
 [data-theme="dark"] .modal-tab.active { color:var(--grafite); border-bottom-color:var(--grafite); }
@@ -5279,19 +5355,19 @@ function abrirDropdownAtribuir(btn) {
   const outros = G.todosUsuarios.filter(u => u.id !== G.usuario.id);
   const drop = document.createElement('div');
   drop.id = 'atribuir-dropdown';
-  drop.style.cssText = 'position:fixed;z-index:9990;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);padding:4px 0;min-width:148px;font-family:var(--font-ui)';
+  drop.style.cssText = 'position:fixed;z-index:9990;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.16);padding:4px 0;min-width:148px;font-family:var(--font-ui)';
   const rect = btn.getBoundingClientRect();
-  drop.style.top  = (rect.bottom + 5) + 'px';
   drop.style.left = rect.left + 'px';
+  drop.style.top  = '-9999px'; // posiciona fora da tela para medir altura
   if (!outros.length) {
-    drop.innerHTML = '<div style="padding:8px 14px;font-size:11px;color:#aaa">Nenhum usuário</div>';
+    drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:#aaa">Nenhum usuário</div>';
   } else {
     drop.innerHTML = outros.map((u, i) => {
-      const nome = u.nome.split(' ')[0];
-      return `<div data-idx="${i}" style="padding:7px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px"
+      const nome = u.apelido || u.nome.split(' ')[0];
+      return `<div data-idx="${i}" style="padding:5px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px"
         onmouseenter="this.style.background='var(--off)'" onmouseleave="this.style.background=''"
         onclick="window._atribuirDrop(${i})">
-        <span style="width:22px;height:22px;border-radius:50%;background:${u.cor||'#888'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais||'?')}</span>
+        <span style="width:20px;height:20px;border-radius:50%;background:${u.cor||'#888'};color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais||'?')}</span>
         ${_escN(nome)}
       </div>`;
     }).join('');
@@ -5303,6 +5379,10 @@ function abrirDropdownAtribuir(btn) {
     };
   }
   document.body.appendChild(drop);
+  // Abre para cima, calculando após render para conhecer a altura real
+  const dropH = drop.offsetHeight;
+  const topAcima = rect.top - dropH - 6;
+  drop.style.top = (topAcima >= 8 ? topAcima : rect.bottom + 4) + 'px';
   setTimeout(() => {
     function handler(e) {
       if (!drop.contains(e.target) && e.target !== btn) {
@@ -6017,7 +6097,7 @@ function renderCalendarioSemana(lancs) {
   // ── Scroll container: header sticky + corpo ─────────────
   html += `<div id="cal-scroll-wrap" style="max-height:430px;overflow-y:scroll">
     <div class="cal-grid" style="position:sticky;top:0;z-index:3;background:var(--branco);border-bottom:1px solid var(--cinza2)">
-      <div class="cal-header-vazio" style="background:#fff"></div>
+      <div class="cal-header-vazio" style="background:var(--branco)"></div>
       ${dias.map((d,i) => {
         const fds = i >= 5;
         const isHoje = d.toISOString().split('T')[0] === hoje.toISOString().split('T')[0];
@@ -7426,9 +7506,14 @@ function renderMhDetalhe(dias = []) {
           <div>Cliente</div>
           <div>Projeto / Bloco</div>
           <div>Etapa / Subtipo</div>
+          <div>Comentário</div>
           <div style="text-align:right">Dur.</div>
         </div>
-        ${dia.itens.map(item => `
+        ${dia.itens.map(item => {
+          const projNome = item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo));
+          const etapaNome = item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—');
+          const comentario = item.tipo === 'projeto' ? _escN(item.descricao || '') : '';
+          return `
           <div class="mh-day-entry">
             <div class="mh-day-time">${_escN((item.inicio || '').slice(0,5))} — ${_escN((item.fim || '').slice(0,5))}</div>
             <div><span class="mh-badge ${_escN(item.tipo)}">${_escN(item.tipoLabel)}</span></div>
@@ -7436,14 +7521,15 @@ function renderMhDetalhe(dias = []) {
               <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.cliente || '—') : '—'}</div>
             </div>
             <div class="mh-day-col-data">
-              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo))}</div>
+              <div class="mh-day-main-proj">${projNome}</div>
             </div>
             <div class="mh-day-col-data">
-              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</div>
+              <div class="mh-day-main-1">${etapaNome}</div>
             </div>
+            <div class="mh-day-comment" title="${comentario}">${comentario || '—'}</div>
             <div class="mh-day-dur">${fmtHClock(item.dur)}</div>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>
   `).join('');
@@ -10306,7 +10392,7 @@ async function carregarPrioridades() {
       : '';
 
     const comentHtml = pr.comentario
-      ? `<div style="margin-top:6px;background:#F0F4FF;border-left:3px solid var(--azul);border-radius:0 5px 5px 0;padding:5px 9px;font-size:10px;color:#2D4D9A;font-style:italic;line-height:1.4">${pr.comentario}</div>`
+      ? `<div class="prio-comment">${pr.comentario}</div>`
       : '';
 
     // Número de ordem real (posição no array retornado, 1-based)
@@ -11641,7 +11727,7 @@ async function carregarCustosProduto(prodId) {
       const descDisp = _escN(c.descricao || '');
       const obsDisp = _escN(c.obs || '');
       const custoIdJs = _sqN(c.id);
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--cinza2);background:#fff">
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--cinza2);background:var(--branco)">
         <div style="flex:1;min-width:0">
           <div style="font-size:11px;font-weight:600;color:var(--grafite)">${tipoLabel}${c.descricao ? ` · ${descDisp}` : ''}</div>
           ${c.obs ? `<div style="font-size:9px;color:#aaa">${obsDisp}</div>` : ''}
@@ -11725,7 +11811,7 @@ async function carregarCustosProduto(prodId) {
           </div>`;
         }).join('');
         return `<div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;background:#fafafa" onclick="toggleEl(${_sqN(evBodyId)})">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(evBodyId)})">
             <div style="display:flex;align-items:center;gap:6px">
               <span style="font-size:11px;color:#bbb" id="${evBodyId}-arr">▸</span>
               <span style="font-size:11px;font-weight:600">${titulo}</span>
@@ -11910,7 +11996,7 @@ async function carregarHorasProduto(prodId) {
       </div>`;
     }).join('');
 
-    html += `<div style="margin-bottom:10px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:#fff">
+    html += `<div style="margin-bottom:10px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:var(--branco)">
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(etBodyId)})">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">▸</span>

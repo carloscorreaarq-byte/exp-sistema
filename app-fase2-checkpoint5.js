@@ -836,7 +836,13 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     document.getElementById('md-conta').value = bancarios.conta || '';
     document.getElementById('md-tipo-conta').value = bancarios.tipo_conta || '';
     document.getElementById('md-titular').value = bancarios.titular || '';
-    document.getElementById('md-documento-titular').value = bancarios.documento_titular || '';
+    const _docVal = bancarios.documento_titular || '';
+    document.getElementById('md-documento-titular').value = _docVal;
+    const _tipoDocEl = document.getElementById('md-tipo-documento-titular');
+    if (_tipoDocEl) {
+      const _cleaned = _docVal.replace(/\D/g, '');
+      _tipoDocEl.value = _cleaned.length === 14 ? 'CNPJ' : _cleaned.length === 11 ? 'CPF' : '';
+    }
     document.getElementById('md-chave-pix').value = bancarios.chave_pix || '';
     document.getElementById('md-tipo-chave-pix').value = bancarios.tipo_chave_pix || '';
     toggleEmpresaFields();
@@ -1066,7 +1072,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       return '<div class="platform-user-row">'
         + '<div class="platform-user-avatar clickable" title="Alterar avatar" onclick="subirAvatarPlataforma(\'' + user.id + '\')" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
         + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' &middot; ' + roleLabel(user.role) + '</span></div>'
-        + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'nao') + '</div>'
+        + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'não') + '</div>'
         + '<div class="platform-inline">'
         + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
         + '<option value="colaborador"' + (user.role === 'colaborador' ? ' selected' : '') + '>Colaborador</option>'

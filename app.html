@@ -367,6 +367,10 @@ body {
   border-color: rgba(196, 154, 39, .45);
   color: var(--ouro);
 }
+.shell-btn.warn:hover {
+  border-color: var(--ouro);
+  background: rgba(196, 154, 39, .07);
+}
 
 .shell-btn.danger {
   border-color: rgba(184, 86, 56, .35);
@@ -386,7 +390,7 @@ body {
   padding: 10px 12px;
   display: grid;
   gap: 8px;
-  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,246,243,.88));
+  background: var(--branco);
 }
 
 #platform-term-card { grid-column: 1 / -1; }
@@ -1286,8 +1290,16 @@ body {
             <input id="md-titular" type="text" maxlength="160">
           </div>
           <div class="shell-field">
-            <label for="md-documento-titular">CPF ou CNPJ</label>
-            <input id="md-documento-titular" type="text" maxlength="32">
+            <label for="md-tipo-documento-titular">Tipo de documento</label>
+            <select id="md-tipo-documento-titular" onchange="(function(s){const i=document.getElementById('md-documento-titular');if(i)i.placeholder=s.value==='CNPJ'?'00.000.000/0001-00':'000.000.000-00';})(this)">
+              <option value="">Selecionar</option>
+              <option value="CPF">CPF</option>
+              <option value="CNPJ">CNPJ</option>
+            </select>
+          </div>
+          <div class="shell-field">
+            <label for="md-documento-titular">Número do documento</label>
+            <input id="md-documento-titular" type="text" maxlength="32" placeholder="000.000.000-00">
           </div>
           <div class="shell-field">
             <label for="md-chave-pix">Chave Pix</label>
@@ -1425,8 +1437,8 @@ body {
               </div>
             </div>
             <div class="platform-inline">
-              <button type="button" class="shell-btn primary" onclick="salvarMidiaTemporariaPlataforma()">Salvar política</button>
               <span class="shell-inline-note">Esta política afeta a expiração automática e os limites de compressão dos prints temporários.</span>
+              <button type="button" class="shell-btn primary" onclick="salvarMidiaTemporariaPlataforma()" style="margin-left:auto;flex-shrink:0">Salvar política</button>
             </div>
           </div>
 
@@ -1640,7 +1652,7 @@ function renderShellIdentity(usuario) {
     document.getElementById('user-cargo').textContent = 'S\u00f3cio administrador';
   }
 
-  const primeiroNome = usuario.nome.split(' ')[0];
+  const primeiroNome = usuario.apelido || usuario.nome.split(' ')[0];
   const agora = new Date();
   document.getElementById('bv-hora').textContent =
     agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }) +
