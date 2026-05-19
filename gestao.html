@@ -1111,6 +1111,16 @@ body {
 .pk-items::-webkit-scrollbar-track { background:transparent; }
 .pk-items::-webkit-scrollbar-thumb { background:rgba(0,0,0,.14); border-radius:2px; }
 [data-theme="dark"] .pk-items::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); }
+
+/* Horas — scrollbar sutil nos painéis de resumo */
+.mh-panel-body::-webkit-scrollbar { width:4px; }
+.mh-panel-body::-webkit-scrollbar-track { background:transparent; }
+.mh-panel-body::-webkit-scrollbar-thumb { background:rgba(0,0,0,.14); border-radius:2px; }
+[data-theme="dark"] .mh-panel-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); }
+.mh-day-chart::-webkit-scrollbar { height:4px; }
+.mh-day-chart::-webkit-scrollbar-track { background:transparent; }
+.mh-day-chart::-webkit-scrollbar-thumb { background:rgba(0,0,0,.14); border-radius:2px; }
+[data-theme="dark"] .mh-day-chart::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); }
 /* Garante que o kanban fica acima do padrão de fundo */
 .proj-kanban { isolation:isolate; }
 
@@ -7764,15 +7774,12 @@ async function exportarMinhasHorasPDF() {
     ? resumo.detalhesPorDia.map(dia => `
       <div class="block">
         <div class="block-hd">
-          <div>
-            <div class="block-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
-            <div class="block-sub">${dia.itens.length} lançamento(s) no dia</div>
-          </div>
+          <div class="block-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
           <div class="block-total">${fmtHClock(dia.total)}</div>
         </div>
         <table class="detail">
           <thead>
-            <tr><th>Início</th><th>Fim</th><th>Tipo</th><th>Cliente</th><th>Oportunidade</th><th>Etapa / subtipo</th><th>Duração</th></tr>
+            <tr><th>Início</th><th>Fim</th><th>Tipo</th><th>Cliente</th><th>Oportunidade</th><th>Etapa / subtipo</th><th class="n">Duração</th></tr>
           </thead>
           <tbody>
             ${dia.itens.map(item => `
@@ -7836,10 +7843,9 @@ async function exportarMinhasHorasPDF() {
   .n{text-align:right;font-family:Menlo,Consolas,monospace;white-space:nowrap}
   .section-title{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#999;margin-bottom:10px}
   .block{border:1px solid #ddd;border-radius:12px;overflow:hidden;margin-bottom:14px;page-break-inside:avoid}
-  .block-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;background:#faf8f4;border-bottom:1px solid #e8e1d6}
-  .block-title{font-size:12px;font-weight:700;color:#1E1E1E;line-height:1.35}
-  .block-sub{font-size:10px;color:#777;margin-top:4px}
-  .block-total{font-size:12px;font-weight:700;font-family:Menlo,Consolas,monospace;white-space:nowrap}
+  .block-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:#faf8f4;border-bottom:1px solid #e8e1d6}
+  .block-title{font-size:11px;font-weight:700;color:#1E1E1E;line-height:1.35}
+  .block-total{font-size:11px;font-weight:700;font-family:Menlo,Consolas,monospace;white-space:nowrap}
   .detail th{background:#fff}
   .empty{padding:18px;border:1px dashed #ddd;border-radius:12px;color:#888;text-align:center}
   @media print{body{padding:16px 20px}.block{page-break-inside:avoid}}
