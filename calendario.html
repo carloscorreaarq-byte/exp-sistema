@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP · Agenda</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
+<link rel="stylesheet" href="exp-design-system.css">
+
+<!--
+══════════════════════════════════════════════════════════════
+  EXP · MÓDULO AGENDA · CALENDÁRIO UNIFICADO
+  Versão 1.0 · Maio 2026
+
+  SETUP SQL — rodar UMA VEZ no Supabase SQL Editor:
+
+  -- 1. EVENTOS DO CALENDÁRIO
+  CREATE TABLE calendar_events (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    titulo            TEXT NOT NULL,
+    descricao         TEXT,
+    inicio            TIMESTAMPTZ NOT NULL,
+    fim               TIMESTAMPTZ,
+    dia_inteiro       BOOLEAN DEFAULT TRUE,
+    tipo              TEXT NOT NULL,
+    categoria         TEXT NOT NULL,
+    scope             TEXT DEFAULT 'pessoal',
+    user_id           UUID REFERENCES usuarios(id),
+    nucleo_id         TEXT,
+    oportunidade_id   UUID,
+    recorrencia       TEXT,
+    recorrencia_fim   DATE,
+    recorrencia_pai   UUID REFERENCES calendar_events(id),
+    source            TEXT DEFAULT 'native',
+    source_id         TEXT,
+    google_cal_id     TEXT,
+    location          TEXT,
+    meet_link         TEXT,
+    attendees         JSONB,
+    criado_por        UUID REFERENCES usuarios(id),
+    created_at        TIMESTAMPTZ DEFAULT NOW(),
+    synced_at         TIMESTAMPTZ,
+    UNIQUE(source, source_id)
+  );
+
+  -- 2. SALDO DE AUSÊNCIA REMUNERADA
+  CREATE TABLE ausencia_remunerada_saldo (
+    user_id     UUID REFERENCES usuarios(id),
+    ano         INTEGER,
+    dias_usados NUMERIC(4,1) DEFAULT 0,
+    PRIMARY KEY (user_id, ano)
+  );
+
+  -- 3. TOKENS GOOGLE CALENDAR (Fase 2)
+  CREATE TABLE google_calendar_tokens (
+    user_id         UUID PRIMARY KEY REFERENCES usuarios(id),
+    access_token    TEXT,
+    refresh_token   TEXT,
+    expires_at      TIMESTAMPTZ,
+    calendars       JSONB,
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  -- 4. RLS
+  ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE ausencia_remunerada_saldo ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "autenticados" ON calendar_events FOR ALL USING (auth.role() = 'authenticated');
+  CREATE POLICY "autenticados" ON ausencia_remunerada_saldo FOR ALL USING (auth.role() = 'authenticated');
+══════════════════════════════════════════════════════════════
+-->
+
+<style>
+/* ── RESET & ROOT ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cinza2:   #ECEAE4;
+  --verde-l:  #2D9E6B;
+  --verde-bg: #EAF5EE;
+  --az-bg:    #EAF0FB;
+  --am-bg:    #FBF3E8;
+  --tc-bg:    #FBF0EE;
+  --urb:      #5280CA; --urb-bg: #ECF1FA;
+  --pai:      #45865D; --pai-bg: #EAF5EE;
+  --consul:   #C36247; --consul-bg: #FAF0EE;
+  --esp:      #D19931; --esp-bg: #FAF4E8;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--off);
+  color: var(--grafite);
+  min-height: 100vh;
+  font-size: var(--text-body);
+  font-weight: 300;
+}
+/* body::before — padrão de linhas convergentes definido em exp-design-system.css */
+
+/* ── LOADING ───────────────────────────────────────────────── */
+#loading {
+  position: fixed; inset: 0; background: var(--off);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; flex-direction: column; gap: 14px;
+}
+.ld-brand { font-size: 20px; font-weight: 700; letter-spacing: 6px; }
+.ld-sub { font-size: 9px; color: #999; letter-spacing: 1.5px; text-transform: uppercase; }
+.ld-dots { display: flex; gap: 5px; margin-top: 4px; }
+.ld-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--cinza); animation: ldpulse 1.2s ease-in-out infinite; }
+.ld-dots span:nth-child(2) { animation-delay: .2s; }
+.ld-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes ldpulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+/* ── BOTÕES ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; font-family: var(--font-ui); font-size: 9px;
+  font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  border: 1px solid var(--cinza); background: var(--branco); color: #888;
+  cursor: pointer; transition: all .12s; white-space: nowrap; border-radius: 6px;
+}
+.btn:hover { border-color: var(--grafite); color: var(--grafite); }
+.btn.filled { background: var(--grafite); color: #fff; border-color: var(--grafite); }
+.btn.filled:hover { background: #333; }
+.btn.sm { padding: 3px 8px; font-size: 8px; }
+.btn.ghost { background: transparent; border-color: transparent; color: #999; }
+.btn.ghost:hover { border-color: var(--cinza); color: var(--grafite); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── MAIN ──────────────────────────────────────────────────── */
+.main {
+  padding: 16px; max-width: 1400px; margin: 0 auto;
+  position: relative; z-index: 1;
+}
+
+/* ── BADGES ────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px; font-size: 8px; font-weight: 700;
+  letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; border-radius: 4px;
+}
+.b-vd  { background: var(--verde-bg); color: var(--verde); }
+.b-az  { background: var(--az-bg);    color: var(--azul); }
+.b-am  { background: var(--am-bg);    color: var(--ouro); }
+.b-tc  { background: var(--tc-bg);    color: var(--terracota); }
+.b-gr  { background: var(--cinza2);   color: #777; }
+.b-urb { background: var(--urb-bg);   color: var(--urb); }
+.b-pai { background: var(--pai-bg);   color: var(--pai); }
+.b-consul { background: var(--consul-bg); color: var(--consul); }
+.b-esp { background: var(--esp-bg);   color: var(--esp); }
+
+/* ── NOTIFICAÇÕES (nav) ────────────────────────────────────── */
+.notif-wrap { position: relative; }
+.notif-bell { background: none; border: none; font-size: 17px; cursor: pointer; padding: 4px; position: relative; }
+.notif-badge {
+  position: absolute; top: 0; right: 0;
+  background: var(--terracota); color: #fff;
+  font-size: 8px; font-weight: 700; border-radius: 50%;
+  width: 14px; height: 14px; display: flex; align-items: center; justify-content: center;
+}
+.notif-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 9100;
+  width: 320px; background: var(--branco); border: 1px solid var(--cinza);
+  border-radius: 10px; box-shadow: var(--shadow-modal); overflow: hidden;
+}
+.notif-panel-hd { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--cinza2); }
+.notif-panel-hd-t { font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+.notif-panel-clr { background: none; border: none; font-size: 10px; color: var(--verde); cursor: pointer; font-family: var(--font-ui); }
+.notif-item { display: flex; flex-direction: column; gap: 3px; padding: 10px 14px; border-bottom: 1px solid var(--cinza2); cursor: pointer; transition: background .1s; }
+.notif-item:last-child { border-bottom: none; }
+.notif-item.nova { background: #eef3fb; }
+.notif-item:hover { background: var(--off); }
+.notif-titulo { font-size: 11px; font-weight: 600; }
+.notif-ts { font-size: 9px; color: #bbb; }
+
+/* ── TOOL FEEDBACK ─────────────────────────────────────────── */
+.tool-feedback-wrap { position: relative; }
+.tool-feedback-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--cinza); background: var(--branco); color: var(--grafite);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.tool-feedback-btn:hover { border-color: var(--grafite); background: var(--off); }
+.tool-feedback-pop {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 9100;
+  width: min(340px, calc(100vw - 24px)); display: none; gap: 9px; padding: 12px;
+  background: rgba(255,255,255,.98); border: 1px solid var(--cinza);
+  border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.12);
+}
+.tool-feedback-pop.open { display: grid; }
+.tool-feedback-title { font-size: 9px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: #666; }
+.tool-feedback-sub, .tool-feedback-status { font-size: 10px; color: #888; line-height: 1.45; }
+.tool-feedback-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.fgroup { display: flex; flex-direction: column; gap: 4px; }
+.fgroup label { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #888; }
+.fgroup input, .fgroup select, .fgroup textarea {
+  font-family: var(--font-ui); font-size: 12px; border: 1px solid var(--cinza);
+  border-radius: var(--radius-input); padding: 6px 9px; background: var(--branco);
+  color: var(--grafite); outline: none; transition: border-color .12s; resize: vertical;
+}
+.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus { border-color: var(--azul); }
+
+/* ── CALENDAR LAYOUT ───────────────────────────────────────── */
+.cal-shell { display: flex; flex-direction: column; gap: 12px; }
+
+/* Top bar */
+.cal-topbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--branco); border: 1px solid var(--cinza);
+  border-radius: var(--radius-card); padding: 10px 14px;
+}
+.cal-nav-group { display: flex; align-items: center; gap: 6px; }
+.cal-nav-btn {
+  width: 28px; height: 28px; border: 1px solid var(--cinza);
+  background: var(--branco); border-radius: 5px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #888; transition: all .12s; font-family: var(--font-ui);
+}
+.cal-nav-btn:hover { border-color: var(--grafite); color: var(--grafite); }
+.cal-nav-label { font-size: 13px; font-weight: 600; min-width: 120px; text-align: center; }
+.cal-today-btn {
+  font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  border: 1px solid var(--cinza); background: var(--branco); color: #888;
+  padding: 3px 9px; border-radius: 5px; cursor: pointer; transition: all .12s; font-family: var(--font-ui);
+}
+.cal-today-btn:hover { border-color: var(--grafite); color: var(--grafite); }
+.cal-counter-group { display: flex; align-items: center; gap: 16px; margin-left: 8px; }
+.cal-counter-item { display: flex; flex-direction: column; gap: 1px; }
+.cal-counter-val { font-size: 13px; font-weight: 700; color: var(--grafite); font-family: var(--font-mono, monospace); }
+.cal-counter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; }
+.cal-counter-sep { width: 1px; height: 28px; background: var(--cinza2); }
+.cal-saldo-bar { display: flex; align-items: center; gap: 8px; }
+.cal-saldo-track { width: 80px; height: 5px; background: var(--cinza2); border-radius: 3px; overflow: hidden; }
+.cal-saldo-fill { height: 100%; background: var(--azul); border-radius: 3px; transition: width .3s; }
+.cal-saldo-lbl { font-size: 9px; color: #888; }
+.cal-topbar-actions { margin-left: auto; display: flex; gap: 6px; }
+
+/* Filters bar */
+.cal-filters {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--branco); border: 1px solid var(--cinza);
+  border-radius: var(--radius-card); padding: 8px 14px;
+}
+.cal-filter-sep { width: 1px; height: 20px; background: var(--cinza2); margin: 0 4px; }
+.cal-filter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-right: 2px; }
+.cal-chip {
+  font-size: 9px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+  border: 1px solid var(--cinza); background: var(--branco); color: #888;
+  cursor: pointer; transition: all .12s; font-family: var(--font-ui);
+}
+.cal-chip:hover { border-color: var(--grafite); color: var(--grafite); }
+.cal-chip.active { background: var(--grafite); color: #fff; border-color: var(--grafite); }
+.cal-chip.cat-entrega.active     { background: var(--verde);    border-color: var(--verde); }
+.cal-chip.cat-reuniao.active     { background: var(--azul);     border-color: var(--azul); }
+.cal-chip.cat-feriado.active     { background: var(--terracota); border-color: var(--terracota); }
+.cal-chip.cat-agenda.active      { background: var(--grafite);  border-color: var(--grafite); }
+.cal-chip.cat-aniversario.active { background: var(--ouro);     border-color: var(--ouro); }
+
+/* Sub-view toggle */
+.cal-subview-bar {
+  display: flex; align-items: center; gap: 2px;
+  background: var(--cinza2); border-radius: 7px; padding: 2px; width: fit-content;
+}
+.cal-sv-btn {
+  font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  padding: 4px 14px; border: none; background: transparent; color: #888;
+  border-radius: 5px; cursor: pointer; transition: all .15s; font-family: var(--font-ui);
+}
+.cal-sv-btn.active { background: var(--branco); color: var(--grafite); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+/* ── LIST VIEW ─────────────────────────────────────────────── */
+.cal-list { display: flex; flex-direction: column; gap: 4px; }
+.cal-section-hd {
+  font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+  color: #aaa; padding: 12px 0 4px; border-bottom: 1px solid var(--cinza2); margin-bottom: 4px;
+}
+.cal-section-hd:first-child { padding-top: 0; }
+.cal-event-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 6px; background: var(--branco);
+  border: 1px solid var(--cinza2); cursor: pointer; transition: all .12s;
+  border-left: 3px solid transparent;
+}
+.cal-event-row:hover { border-color: var(--cinza); box-shadow: var(--shadow-hover); }
+.cal-event-row.ev-entrega     { border-left-color: var(--verde); }
+.cal-event-row.ev-reuniao     { border-left-color: var(--azul); }
+.cal-event-row.ev-feriado     { border-left-color: var(--terracota); }
+.cal-event-row.ev-ausencia    { border-left-color: var(--ouro); }
+.cal-event-row.ev-agenda      { border-left-color: var(--grafite); }
+.cal-event-row.ev-aniversario { border-left-color: var(--ouro); }
+.cal-event-icon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+.cal-event-body { flex: 1; min-width: 0; }
+.cal-event-title { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-event-meta { font-size: 10px; color: #888; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 1px; }
+.cal-event-right { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.cal-event-time { font-size: 10px; font-weight: 600; color: #666; font-family: var(--font-mono, monospace); }
+.cal-empty { text-align: center; padding: 40px 20px; color: #bbb; font-size: 12px; }
+
+/* ── MONTH GRID VIEW ───────────────────────────────────────── */
+.cal-grid-wrap { overflow: hidden; border-radius: var(--radius-card); border: 1px solid var(--cinza); background: var(--branco); }
+.cal-grid-head {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--cinza2);
+}
+.cal-grid-dow {
+  text-align: center; padding: 8px 4px;
+  font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #aaa;
+}
+.cal-grid-body { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal-day-cell {
+  min-height: 80px; padding: 6px; border-right: 1px solid var(--cinza2);
+  border-bottom: 1px solid var(--cinza2); display: flex; flex-direction: column; gap: 3px;
+  cursor: pointer; transition: background .1s;
+}
+.cal-day-cell:hover { background: var(--off); }
+.cal-day-cell:nth-child(7n) { border-right: none; }
+.cal-day-cell.other-month .cal-day-num { color: #ccc; }
+.cal-day-cell.other-month { background: rgba(0,0,0,.01); }
+.cal-day-cell.today .cal-day-num {
+  background: var(--grafite); color: #fff; border-radius: 50%;
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+}
+.cal-day-cell.weekend .cal-day-num { color: #bbb; }
+.cal-day-cell.has-feriado { background: var(--tc-bg); }
+.cal-day-num { font-size: 11px; font-weight: 600; line-height: 1; margin-bottom: 2px; }
+.cal-day-dots { display: flex; gap: 3px; flex-wrap: wrap; }
+.cal-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.cal-dot-entrega     { background: var(--verde); }
+.cal-dot-reuniao     { background: var(--azul); }
+.cal-dot-feriado     { background: var(--terracota); }
+.cal-dot-ausencia    { background: var(--ouro); }
+.cal-dot-agenda      { background: var(--grafite); }
+.cal-dot-aniversario { background: var(--ouro); opacity: .6; }
+.cal-day-more { font-size: 8px; color: #aaa; margin-top: 1px; }
+
+/* ── WEEK VIEW ─────────────────────────────────────────────── */
+.cal-week-wrap { border-radius: var(--radius-card); border: 1px solid var(--cinza); background: var(--branco); overflow: hidden; }
+.cal-week-head { display: grid; grid-template-columns: 48px repeat(7, 1fr); border-bottom: 1px solid var(--cinza2); }
+.cal-week-head-corner { border-right: 1px solid var(--cinza2); }
+.cal-week-head-day { text-align: center; padding: 8px 4px; border-right: 1px solid var(--cinza2); }
+.cal-week-head-day:last-child { border-right: none; }
+.cal-week-head-dow { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #aaa; }
+.cal-week-head-date { font-size: 18px; font-weight: 700; line-height: 1.1; }
+.cal-week-head-day.today .cal-week-head-date { color: var(--azul); }
+.cal-week-allday { display: grid; grid-template-columns: 48px repeat(7, 1fr); border-bottom: 1px solid var(--cinza2); min-height: 28px; }
+.cal-week-allday-lbl { font-size: 8px; color: #aaa; padding: 6px 4px; text-align: right; border-right: 1px solid var(--cinza2); }
+.cal-week-allday-col { border-right: 1px solid var(--cinza2); padding: 2px 3px; display: flex; flex-direction: column; gap: 2px; }
+.cal-week-allday-col:last-child { border-right: none; }
+.cal-week-allday-ev {
+  font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-week-body { display: grid; grid-template-columns: 48px repeat(7, 1fr); max-height: 480px; overflow-y: auto; }
+.cal-week-time-col { display: flex; flex-direction: column; border-right: 1px solid var(--cinza2); }
+.cal-week-hour-lbl {
+  height: 48px; font-size: 9px; color: #bbb; text-align: right; padding: 4px 6px 0;
+  border-bottom: 1px solid var(--cinza2); flex-shrink: 0;
+}
+.cal-week-day-col { border-right: 1px solid var(--cinza2); position: relative; }
+.cal-week-day-col:last-child { border-right: none; }
+.cal-week-hour-cell { height: 48px; border-bottom: 1px solid var(--cinza2); }
+.cal-week-timed-ev {
+  position: absolute; left: 2px; right: 2px;
+  border-radius: 4px; padding: 2px 5px; font-size: 9px; font-weight: 600;
+  overflow: hidden; cursor: pointer; z-index: 1; transition: opacity .1s;
+}
+.cal-week-timed-ev:hover { opacity: .85; }
+.ev-color-reuniao     { background: var(--az-bg);  color: var(--azul); border-left: 3px solid var(--azul); }
+.ev-color-entrega     { background: var(--verde-bg); color: var(--verde); border-left: 3px solid var(--verde); }
+.ev-color-agenda      { background: var(--cinza2); color: #555; border-left: 3px solid #999; }
+
+/* ── PEOPLE VIEW ───────────────────────────────────────────── */
+.cal-people-wrap { border-radius: var(--radius-card); border: 1px solid var(--cinza); background: var(--branco); overflow: auto; }
+.cal-people-grid { display: grid; min-width: 600px; }
+.cal-people-head { display: contents; }
+.cal-people-head-corner {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--branco); border-right: 1px solid var(--cinza2);
+  border-bottom: 1px solid var(--cinza2); padding: 8px 12px;
+  font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa;
+}
+.cal-people-head-day {
+  text-align: center; padding: 8px 4px;
+  border-right: 1px solid var(--cinza2); border-bottom: 1px solid var(--cinza2);
+  font-size: 9px;
+}
+.cal-people-head-day .dow { font-size: 8px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #aaa; }
+.cal-people-head-day .dn { font-size: 14px; font-weight: 700; }
+.cal-people-head-day.today .dn { color: var(--azul); }
+.cal-people-head-day:last-child { border-right: none; }
+.cal-people-row { display: contents; }
+.cal-people-name {
+  position: sticky; left: 0; z-index: 1;
+  background: var(--branco); border-right: 1px solid var(--cinza2);
+  border-bottom: 1px solid var(--cinza2); padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.cal-people-av {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.cal-people-nm { font-size: 11px; font-weight: 600; white-space: nowrap; }
+.cal-people-rl { font-size: 9px; color: #aaa; }
+.cal-people-cell {
+  border-right: 1px solid var(--cinza2); border-bottom: 1px solid var(--cinza2);
+  padding: 4px 3px; min-height: 52px; display: flex; flex-direction: column; gap: 2px;
+  cursor: default;
+}
+.cal-people-cell:last-child { border-right: none; }
+.cal-people-cell.weekend { background: rgba(0,0,0,.02); }
+.cal-people-cell.feriado { background: var(--tc-bg); }
+.cal-people-pill {
+  font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pp-ausencia { background: var(--az-bg);    color: var(--azul); }
+.pp-feriado  { background: var(--tc-bg);    color: var(--terracota); }
+.pp-reuniao  { background: var(--am-bg);    color: var(--ouro); }
+.pp-aniversario { background: var(--am-bg); color: var(--ouro); }
+
+/* ── MODAL ─────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: var(--overlay-bg);
+  z-index: 8000; display: none; align-items: flex-start;
+  justify-content: center; padding: 40px 16px; overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--branco); border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-modal); width: 100%; max-width: 480px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--cinza2);
+}
+.modal-title { font-size: 13px; font-weight: 700; }
+.modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #aaa; line-height: 1; font-family: var(--font-ui); }
+.modal-close:hover { color: var(--grafite); }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.modal-ft { padding: 12px 18px; border-top: 1px solid var(--cinza2); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Tipo selector */
+.tipo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.tipo-btn {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 10px 12px; border: 1px solid var(--cinza); border-radius: 7px;
+  background: var(--branco); cursor: pointer; transition: all .12s; text-align: left;
+  font-family: var(--font-ui);
+}
+.tipo-btn:hover { border-color: var(--grafite); }
+.tipo-btn.sel { border-color: var(--azul); background: var(--az-bg); }
+.tipo-btn:disabled { opacity: .35; cursor: not-allowed; }
+.tipo-btn-icon { font-size: 16px; margin-bottom: 4px; }
+.tipo-btn-name { font-size: 11px; font-weight: 700; }
+.tipo-btn-desc { font-size: 9px; color: #888; margin-top: 1px; }
+
+/* Saldo bar in modal */
+.saldo-info {
+  background: var(--az-bg); border-radius: 7px; padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.saldo-info-track { flex: 1; height: 6px; background: rgba(74,114,181,.2); border-radius: 3px; }
+.saldo-info-fill { height: 100%; background: var(--azul); border-radius: 3px; }
+.saldo-info-txt { font-size: 10px; color: var(--azul); font-weight: 600; white-space: nowrap; }
+.saldo-warn { background: var(--tc-bg); border-radius: 7px; padding: 8px 12px; font-size: 10px; color: var(--terracota); font-weight: 600; }
+.conflict-warn { background: var(--am-bg); border-radius: 7px; padding: 8px 12px; font-size: 10px; color: var(--ouro); font-weight: 600; }
+
+/* Detail modal */
+.detail-ev-header { display: flex; gap: 10px; align-items: flex-start; }
+.detail-ev-icon { font-size: 28px; flex-shrink: 0; }
+.detail-ev-title { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.detail-ev-sub { font-size: 11px; color: #888; margin-top: 3px; }
+.detail-ev-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--cinza2); font-size: 12px; }
+.detail-ev-row:last-child { border-bottom: none; }
+.detail-ev-row-lbl { font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #aaa; min-width: 80px; flex-shrink: 0; padding-top: 1px; }
+
+/* ── TOAST ─────────────────────────────────────────────────── */
+.toast-wrap { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  background: var(--grafite); color: #fff; border-radius: 8px;
+  padding: 10px 16px; font-size: 12px; font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2); pointer-events: all;
+  animation: toastin .2s ease; max-width: 320px;
+}
+@keyframes toastin { from { opacity:0; transform:translateY(8px); } }
+
+/* ── DARK MODE ─────────────────────────────────────────────── */
+[data-theme="dark"] .cal-topbar,
+[data-theme="dark"] .cal-filters,
+[data-theme="dark"] .cal-grid-wrap,
+[data-theme="dark"] .cal-week-wrap,
+[data-theme="dark"] .cal-people-wrap,
+[data-theme="dark"] .modal-box { background: var(--branco); }
+[data-theme="dark"] .cal-day-cell.other-month { background: rgba(255,255,255,.02); }
+[data-theme="dark"] .cal-day-cell.has-feriado { background: rgba(204,104,72,.08); }
+[data-theme="dark"] .cal-people-cell.feriado { background: rgba(204,104,72,.08); }
+[data-theme="dark"] .cal-event-row { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .tool-feedback-pop { background: rgba(28,28,26,.98); }
+[data-theme="dark"] .notif-panel { background: var(--branco); }
+[data-theme="dark"] .notif-item.nova { background: rgba(96,137,204,.1); }
+
+/* ── RESPONSIVE ────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .cal-counter-group { display: none; }
+  .cal-saldo-bar { display: none; }
+  .cal-grid-body .cal-day-cell { min-height: 52px; }
+  .cal-people-nm { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+  .tipo-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<body>
+<div id="loading">
+  <div class="ld-brand">EXP</div>
+  <div class="ld-sub">Agenda</div>
+  <div class="ld-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     NAV
+══════════════════════════════════════════════════════════ -->
+<nav class="nav">
+  <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
+  <div class="nav-sep"></div>
+  <div class="nav-mod-wrap" id="nav-mod-wrap">
+    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.agenda <span>▾</span></button>
+    <div class="nav-dropdown" id="nav-dropdown">
+      <a href="gestao.html">EXP.projetos</a>
+      <a href="apoio.html">EXP.apoio</a>
+      <a href="contatos.html">EXP.contatos</a>
+      <a href="calendario.html" class="nd-active">EXP.agenda</a>
+      <div class="nd-sep nd-soc" style="display:none"></div>
+      <a href="calc.html"      class="nd-soc" style="display:none">EXP.calc</a>
+      <a href="crm.html"       class="nd-soc" style="display:none">EXP.comercial</a>
+      <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="ntab active" data-tab="agenda"   onclick="switchTab('agenda')">Agenda</button>
+    <button class="ntab"        data-tab="pessoas"  onclick="switchTab('pessoas')">Pessoas</button>
+  </div>
+  <div class="nav-right">
+    <div class="conn-dot" id="conn-dot"></div>
+    <div class="notif-wrap" id="notif-wrap">
+      <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notificações">
+        🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
+      </button>
+      <div class="notif-panel" id="notif-panel" style="display:none">
+        <div class="notif-panel-hd">
+          <span class="notif-panel-hd-t">Notificações</span>
+        </div>
+        <div id="notif-lista"><div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Carregando…</div></div>
+      </div>
+    </div>
+    <div class="tool-feedback-wrap" id="tool-feedback-wrap">
+      <button class="tool-feedback-btn" onclick="toggleToolFeedback(event)" title="Problemas e sugestões">!</button>
+      <div class="tool-feedback-pop" id="tool-feedback-pop">
+        <div class="tool-feedback-title">Problema ou sugestão</div>
+        <div class="tool-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+        <div class="fgroup"><label>Tipo</label>
+          <select id="tf-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select></div>
+        <div class="fgroup"><label>Mensagem</label>
+          <textarea id="tf-msg" rows="3" placeholder="Descreva o problema ou sugestão."></textarea></div>
+        <div class="tool-feedback-status" id="tf-status"></div>
+        <div class="tool-feedback-actions">
+          <button class="btn" onclick="document.getElementById('tool-feedback-pop').classList.remove('open')">Fechar</button>
+          <button class="btn filled" onclick="enviarFeedback()">Enviar</button>
+        </div>
+      </div>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+      <span class="ttg-icon">☀</span>
+      <span class="ttg-track"><span class="ttg-knob"></span></span>
+      <span class="ttg-icon">🌙</span>
+    </button>
+    <div class="user-pill-wrap" id="user-pill-wrap">
+      <div class="user-chip" onclick="toggleUserMenu()">
+        <div class="uav" id="nav-av"></div>
+        <div class="u-text">
+          <span class="u-nome" id="nav-nome">—</span>
+          <span class="u-role" id="nav-role"></span>
+        </div>
+        <span class="u-caret">▾</span>
+      </div>
+      <div class="user-dropdown" id="user-dropdown">
+        <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+        <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
+        <div class="ud-sep"></div>
+        <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
+          <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
+          <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
+          <span class="term-state-hover">ver termo →</span>
+        </div>
+        <div class="ud-sep"></div>
+        <button onclick="sair()">Sair do sistema</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- TAB: AGENDA -->
+  <div id="tab-agenda" class="cal-shell">
+
+    <!-- Top bar -->
+    <div class="cal-topbar">
+      <div class="cal-nav-group">
+        <button class="cal-nav-btn" onclick="navMes(-1)">‹</button>
+        <span class="cal-nav-label" id="cal-nav-label">—</span>
+        <button class="cal-nav-btn" onclick="navMes(1)">›</button>
+        <button class="cal-today-btn" onclick="irHoje()">Hoje</button>
+      </div>
+      <div class="cal-counter-sep"></div>
+      <div class="cal-counter-group">
+        <div class="cal-counter-item">
+          <span class="cal-counter-val" id="cal-du-mes">—</span>
+          <span class="cal-counter-lbl">dias úteis no mês</span>
+        </div>
+        <div class="cal-counter-sep"></div>
+        <div class="cal-counter-item">
+          <span class="cal-counter-val" id="cal-du-ano">—</span>
+          <span class="cal-counter-lbl">dias úteis no ano</span>
+        </div>
+        <div class="cal-counter-sep"></div>
+        <div class="cal-saldo-bar" id="cal-saldo-bar" style="display:none">
+          <div style="display:flex;flex-direction:column;gap:1px">
+            <span class="cal-counter-lbl">ausência remunerada</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="cal-saldo-track"><div class="cal-saldo-fill" id="cal-saldo-fill" style="width:0%"></div></div>
+              <span class="cal-saldo-lbl" id="cal-saldo-txt">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cal-topbar-actions">
+        <div class="cal-subview-bar">
+          <button class="cal-sv-btn active" id="sv-lista"  onclick="setSubView('lista')">Lista</button>
+          <button class="cal-sv-btn"        id="sv-semana" onclick="setSubView('semana')">Semana</button>
+          <button class="cal-sv-btn"        id="sv-mes"    onclick="setSubView('mes')">Mês</button>
+        </div>
+        <button class="btn filled" onclick="abrirModalNovo(null)">+ Novo evento</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="cal-filters">
+      <span class="cal-filter-lbl">Núcleo</span>
+      <button class="cal-chip active" data-nucleo="" onclick="setFiltroNucleo(this, '')">Todos</button>
+      <button class="cal-chip" data-nucleo="urbanismo"    onclick="setFiltroNucleo(this,'urbanismo')">Urbanismo</button>
+      <button class="cal-chip" data-nucleo="paisagismo"   onclick="setFiltroNucleo(this,'paisagismo')">Paisagismo</button>
+      <button class="cal-chip" data-nucleo="consultorias" onclick="setFiltroNucleo(this,'consultorias')">Consultorias</button>
+      <button class="cal-chip" data-nucleo="especiais"    onclick="setFiltroNucleo(this,'especiais')">Proj. Especiais</button>
+      <div class="cal-filter-sep"></div>
+      <span class="cal-filter-lbl">Usuário</span>
+      <button class="cal-chip active" data-usr="todos" onclick="setFiltroUsr(this,'todos')">Todos</button>
+      <button class="cal-chip" data-usr="eu" onclick="setFiltroUsr(this,'eu')">Eu</button>
+      <div class="cal-filter-sep"></div>
+      <span class="cal-filter-lbl">Mostrar</span>
+      <button class="cal-chip cat-entrega active"     data-cat="entrega"     onclick="toggleCat(this)">Entregas</button>
+      <button class="cal-chip cat-reuniao active"     data-cat="reuniao"     onclick="toggleCat(this)">Reuniões</button>
+      <button class="cal-chip cat-feriado active"     data-cat="feriado"     onclick="toggleCat(this)">Feriados e Recessos</button>
+      <button class="cal-chip cat-agenda active"      data-cat="agenda"      onclick="toggleCat(this)">Agenda EXP</button>
+      <button class="cal-chip cat-aniversario active" data-cat="aniversario" onclick="toggleCat(this)">Aniversários</button>
+    </div>
+
+    <!-- Content -->
+    <div id="cal-content"></div>
+  </div>
+
+  <!-- TAB: PESSOAS -->
+  <div id="tab-pessoas" class="cal-shell" style="display:none">
+
+    <div class="cal-topbar">
+      <div class="cal-nav-group">
+        <button class="cal-nav-btn" onclick="navSemana(-1)">‹</button>
+        <span class="cal-nav-label" id="cal-pessoas-label">—</span>
+        <button class="cal-nav-btn" onclick="navSemana(1)">›</button>
+        <button class="cal-today-btn" onclick="irHojePessoas()">Esta semana</button>
+      </div>
+      <div class="cal-filter-sep"></div>
+      <span class="cal-filter-lbl">Núcleo</span>
+      <button class="cal-chip active" data-pnucleo="" onclick="setFiltroPNucleo(this,'')">Todos</button>
+      <button class="cal-chip" data-pnucleo="urbanismo"    onclick="setFiltroPNucleo(this,'urbanismo')">Urbanismo</button>
+      <button class="cal-chip" data-pnucleo="paisagismo"   onclick="setFiltroPNucleo(this,'paisagismo')">Paisagismo</button>
+      <button class="cal-chip" data-pnucleo="consultorias" onclick="setFiltroPNucleo(this,'consultorias')">Consultorias</button>
+      <button class="cal-chip" data-pnucleo="especiais"    onclick="setFiltroPNucleo(this,'especiais')">Proj. Especiais</button>
+    </div>
+
+    <div id="cal-pessoas-content"></div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: NOVO / EDITAR EVENTO
+══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-evento-overlay" onclick="fecharModalEvento(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd">
+      <span class="modal-title" id="modal-ev-title">Novo evento</span>
+      <button class="modal-close" onclick="fecharModalEvento()">×</button>
+    </div>
+    <div class="modal-body" id="modal-ev-body">
+      <!-- rendered by JS -->
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="fecharModalEvento()">Cancelar</button>
+      <button class="btn filled" id="modal-ev-save" onclick="salvarEvento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DETALHE DO EVENTO -->
+<div class="modal-overlay" id="modal-detalhe-overlay" onclick="fecharModalDetalhe(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd">
+      <span class="modal-title">Detalhes</span>
+      <button class="modal-close" onclick="fecharModalDetalhe()">×</button>
+    </div>
+    <div class="modal-body" id="modal-detalhe-body"></div>
+    <div class="modal-ft" id="modal-detalhe-ft">
+      <button class="btn" onclick="fecharModalDetalhe()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script>
+const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Estado ─────────────────────────────────────────────────
+const G = {
+  usuario: null, todosUsuarios: [],
+  eventos: [],          // calendar_events + etapas mergeados
+  etapas: [],           // raw etapas with produto join
+  saldo: null,          // ausencia_remunerada_saldo do usuario
+  feriados: [],         // só feriados/recessos scope:'todos'
+};
+
+var _tab      = 'agenda';         // 'agenda' | 'pessoas'
+var _subView  = 'lista';          // 'lista' | 'semana' | 'mes'
+var _calDate  = new Date();       // mês/semana de referência
+var _semanaDate = new Date();     // semana para tab Pessoas
+var _filtroNucleo  = '';
+var _filtroUsr     = 'todos';
+var _filtroCats    = new Set(['entrega','reuniao','feriado','agenda','aniversario']);
+var _filtroPNucleo = '';
+var _eventoEditando = null;       // evento sendo editado (null = novo)
+
+// ── Helpers de data ────────────────────────────────────────
+const isSocioRole = r => ['socio','socio_adm','socio_admin'].includes((r||'').toLowerCase());
+const fmtDate = d => d ? new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+const fmtTime = d => d ? new Date(d).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+const toISO   = d => d.toISOString().slice(0,10);
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const startOfWeek = d => { const x=new Date(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); x.setHours(0,0,0,0); return x; };
+const isSameDay = (a,b) => a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+const isWeekend = d => { const w=new Date(d).getDay(); return w===0||w===6; };
+
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DIAS_CURTOS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const DIAS_SEMANA = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+
+function diasUteisRange(ini, fim, feriados) {
+  // Conta dias úteis entre ini e fim (inclusive), excluindo feriados scope='todos'
+  const ferDatas = new Set(feriados.map(f => toISO(new Date(f.inicio))));
+  let count = 0, cur = new Date(ini);
+  cur.setHours(0,0,0,0); fim.setHours(23,59,59,999);
+  while (cur <= fim) {
+    if (!isWeekend(cur) && !ferDatas.has(toISO(cur))) count++;
+    cur = addDays(cur, 1);
+  }
+  return count;
+}
+
+// ── INIT ───────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'app.html'; return; }
+
+  const { data: usr } = await sb.from('usuarios').select('*').eq('auth_id', session.user.id).single();
+  if (!usr) { window.location.href = 'app.html'; return; }
+  G.usuario = usr;
+
+  // Nav
+  const _np = (usr.nome||'').trim().split(/\s+/).filter(Boolean);
+  document.getElementById('nav-nome').textContent = _np.length<=2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
+  document.getElementById('nav-role').textContent = (usr.role||'').replace('_',' ');
+  const av = document.getElementById('nav-av');
+  av.textContent = usr.iniciais||'?';
+  av.style.cssText = `background:${usr.cor||'#888'};color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;`;
+  if (isSocioRole(usr.role)) {
+    document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+    document.getElementById('user-menu-platform').style.display = '';
+  }
+
+  // Carregar dados
+  await Promise.all([carregarUsuarios(), carregarEventos(), carregarEtapas(), carregarSaldo()]);
+
+  document.getElementById('loading').style.display = 'none';
+  render();
+}
+
+async function carregarUsuarios() {
+  const { data } = await sb.from('usuarios').select('id,nome,role,cor,iniciais,data_aniversario,nucleo').order('nome');
+  G.todosUsuarios = data || [];
+}
+
+async function carregarEventos() {
+  const { data } = await sb.from('calendar_events').select('*').order('inicio');
+  G.eventos = data || [];
+  G.feriados = G.eventos.filter(e => (e.tipo==='feriado'||e.tipo==='recesso') && e.scope==='todos');
+}
+
+async function carregarEtapas() {
+  const { data } = await sb.from('etapas')
+    .select('id,nome,data_estimada,data_conclusao,status,produto_id,produtos(nome,nucleo)')
+    .not('data_estimada','is',null)
+    .neq('status','concluida')
+    .order('data_estimada');
+  G.etapas = data || [];
+}
+
+async function carregarSaldo() {
+  const ano = new Date().getFullYear();
+  const { data } = await sb.from('ausencia_remunerada_saldo')
+    .select('*').eq('user_id', G.usuario.id).eq('ano', ano).single();
+  G.saldo = data || { user_id: G.usuario.id, ano, dias_usados: 0 };
+
+  // Atualiza barra de saldo no topbar
+  const usado = parseFloat(G.saldo.dias_usados) || 0;
+  const pct = Math.min(100, (usado/10)*100);
+  document.getElementById('cal-saldo-fill').style.width = pct + '%';
+  document.getElementById('cal-saldo-txt').textContent = `${usado}/10 dias`;
+  document.getElementById('cal-saldo-bar').style.display = '';
+}
+
+// ── Merge de eventos (calendar_events + etapas + aniversários) ──
+function getEventosMerged() {
+  const evs = [...G.eventos];
+
+  // Etapas → eventos sintéticos
+  G.etapas.forEach(e => {
+    const dt = e.data_estimada;
+    if (!dt) return;
+    evs.push({
+      _synthetic: true,
+      id: 'etapa_' + e.id,
+      titulo: (e.nome||'Etapa') + (e.produtos?.nome ? ' — ' + e.produtos.nome : ''),
+      inicio: dt + 'T12:00:00',
+      dia_inteiro: true,
+      tipo: 'entrega',
+      categoria: 'entrega',
+      scope: 'nucleo',
+      nucleo_id: e.produtos?.nucleo || '',
+      _etapa: e,
+    });
+  });
+
+  // Aniversários do mês em foco
+  const ano = _calDate.getFullYear();
+  G.todosUsuarios.forEach(u => {
+    if (!u.data_aniversario) return;
+    const mes = parseInt(u.data_aniversario.slice(5,7));
+    const dia = parseInt(u.data_aniversario.slice(8,10));
+    const dt = `${ano}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+    evs.push({
+      _synthetic: true,
+      id: 'aniv_' + u.id,
+      titulo: '🎂 ' + (u.nome||''),
+      inicio: dt + 'T00:00:00',
+      dia_inteiro: true,
+      tipo: 'aniversario',
+      categoria: 'aniversario',
+      scope: 'todos',
+      _usuario: u,
+    });
+  });
+
+  return evs;
+}
+
+// ── Filtro aplicado ────────────────────────────────────────
+function aplicarFiltros(evs) {
+  return evs.filter(ev => {
+    // Categoria
+    const cat = ev.categoria === 'feriado_recesso' ? 'feriado' : (ev.categoria || 'agenda');
+    if (!_filtroCats.has(cat)) return false;
+
+    // Ausências pessoais sempre ficam (são do próprio usuário)
+    const tiposAusencia = ['ausencia_remunerada','ausencia_aniversario','feriado_local'];
+
+    // Usuário
+    if (_filtroUsr === 'eu') {
+      if (ev.scope === 'pessoal' && ev.user_id !== G.usuario.id) return false;
+    }
+
+    // Núcleo
+    if (_filtroNucleo) {
+      if (ev.scope === 'nucleo' && ev.nucleo_id !== _filtroNucleo) return false;
+    }
+
+    return true;
+  });
+}
+
+// ── Contadores de dias úteis ───────────────────────────────
+function atualizarContador() {
+  const hoje = new Date();
+  const fimMes = new Date(_calDate.getFullYear(), _calDate.getMonth()+1, 0);
+  const fimAno  = new Date(_calDate.getFullYear(), 11, 31);
+  const iniRef  = hoje > fimMes ? new Date(_calDate.getFullYear(), _calDate.getMonth(), 1) : hoje;
+
+  const duMes = diasUteisRange(iniRef, fimMes, G.feriados);
+  const duAno = diasUteisRange(hoje,   fimAno,  G.feriados);
+
+  document.getElementById('cal-du-mes').textContent = duMes;
+  document.getElementById('cal-du-ano').textContent = duAno;
+  document.getElementById('cal-nav-label').textContent = MESES[_calDate.getMonth()] + ' ' + _calDate.getFullYear();
+}
+
+// ── RENDER principal ───────────────────────────────────────
+function render() {
+  atualizarContador();
+  const evs = aplicarFiltros(getEventosMerged());
+  if (_subView === 'lista')   renderLista(evs);
+  else if (_subView === 'semana') renderSemana(evs);
+  else renderMes(evs);
+}
+
+// ── RENDER: LISTA ──────────────────────────────────────────
+function renderLista(evs) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const fimSemana = addDays(hoje, 7);
+  const fimMes    = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+  const fimProxMes= new Date(hoje.getFullYear(), hoje.getMonth()+2, 0);
+
+  const secoes = [
+    { key:'hoje',      label:'Hoje',           test: d => isSameDay(d,hoje) },
+    { key:'semana',    label:'Esta semana',    test: d => d>hoje && d<=fimSemana },
+    { key:'mes',       label:'Este mês',       test: d => d>fimSemana && d<=fimMes },
+    { key:'proxmes',   label:'Próximo mês',    test: d => d>fimMes && d<=fimProxMes },
+    { key:'futuro',    label:'Mais adiante',   test: d => d>fimProxMes },
+    { key:'passado',   label:'Passado recente',test: d => d<hoje && d>=addDays(hoje,-30) },
+  ];
+
+  // Filtrar eventos no intervalo visível
+  const visiveisDe = addDays(hoje,-30);
+  const filtrados  = evs.filter(ev => {
+    const d = new Date(ev.inicio); d.setHours(0,0,0,0);
+    return d >= visiveisDe;
+  }).sort((a,b) => new Date(a.inicio)-new Date(b.inicio));
+
+  let html = '<div class="cal-list">';
+  let algumConteudo = false;
+
+  secoes.forEach(sec => {
+    const grupo = filtrados.filter(ev => {
+      const d = new Date(ev.inicio); d.setHours(0,0,0,0);
+      return sec.test(d);
+    });
+    if (!grupo.length) return;
+    algumConteudo = true;
+    html += `<div class="cal-section-hd">${sec.label}</div>`;
+    grupo.forEach(ev => { html += renderEventoRow(ev); });
+  });
+
+  if (!algumConteudo) html += '<div class="cal-empty">Nenhum evento neste período.</div>';
+  html += '</div>';
+  document.getElementById('cal-content').innerHTML = html;
+}
+
+function renderEventoRow(ev) {
+  const { icon, cls } = evStyle(ev);
+  const d = new Date(ev.inicio);
+  const dataStr = fmtDate(ev.inicio);
+  const timeStr = ev.dia_inteiro ? '' : fmtTime(ev.inicio);
+  const nucleoBadge = ev.nucleo_id ? `<span class="badge ${nucleoBadge_(ev.nucleo_id)}">${ev.nucleo_id}</span>` : '';
+  const atrasado = ev.tipo==='entrega' && new Date(ev.inicio)<new Date() && !ev._concluido
+    ? '<span class="badge b-tc">Atrasada</span>' : '';
+
+  return `<div class="cal-event-row ev-${cls}" onclick="abrirDetalhe('${ev.id}')">
+    <div class="cal-event-icon">${icon}</div>
+    <div class="cal-event-body">
+      <div class="cal-event-title">${ev.titulo||'—'}</div>
+      <div class="cal-event-meta">
+        <span>${dataStr}</span>
+        ${timeStr ? `<span>${timeStr}</span>` : ''}
+        ${nucleoBadge}
+        ${atrasado}
+      </div>
+    </div>
+    ${ev.meet_link ? `<div class="cal-event-right"><a href="${ev.meet_link}" target="_blank" class="btn sm">Meet</a></div>` : ''}
+  </div>`;
+}
+
+// ── RENDER: MÊS ───────────────────────────────────────────
+function renderMes(evs) {
+  const ano = _calDate.getFullYear(), mes = _calDate.getMonth();
+  const primeiroDia = new Date(ano, mes, 1);
+  const ultimoDia   = new Date(ano, mes+1, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  // Início da grade (segunda-feira da semana do primeiro dia)
+  let inicio = new Date(primeiroDia);
+  inicio.setDate(inicio.getDate() - ((inicio.getDay()+6)%7));
+
+  // Fim da grade (domingo da semana do último dia)
+  let fim = new Date(ultimoDia);
+  fim.setDate(fim.getDate() + (7 - ((fim.getDay()+6)%7) - 1));
+
+  const dias_semana_hd = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  let html = `<div class="cal-grid-wrap">
+    <div class="cal-grid-head">${dias_semana_hd.map(d=>`<div class="cal-grid-dow">${d}</div>`).join('')}</div>
+    <div class="cal-grid-body">`;
+
+  let cur = new Date(inicio);
+  while (cur <= fim) {
+    const d = new Date(cur); d.setHours(0,0,0,0);
+    const isToday   = isSameDay(d, hoje);
+    const isOther   = d.getMonth() !== mes;
+    const isWend    = isWeekend(d);
+    const dStr      = toISO(d);
+
+    // Eventos deste dia
+    const dayEvs = evs.filter(ev => {
+      const ed = new Date(ev.inicio); ed.setHours(0,0,0,0);
+      return isSameDay(ed, d);
+    });
+    const temFeriado = dayEvs.some(e=>e.tipo==='feriado'||e.tipo==='recesso');
+
+    // Dots por categoria (max 1 por cat)
+    const cats = new Set(dayEvs.map(e => e.categoria==='feriado_recesso'?'feriado':e.categoria||'agenda'));
+    const dotMap = { entrega:'cal-dot-entrega', reuniao:'cal-dot-reuniao', feriado:'cal-dot-feriado',
+                     ausencia:'cal-dot-ausencia', agenda:'cal-dot-agenda', aniversario:'cal-dot-aniversario' };
+    const dots = [...cats].map(c=>`<div class="cal-dot ${dotMap[c]||''}"></div>`).join('');
+
+    const classes = ['cal-day-cell', isOther?'other-month':'', isToday?'today':'', isWend?'weekend':'', temFeriado?'has-feriado':''].filter(Boolean).join(' ');
+    const numHtml = isToday
+      ? `<div class="cal-day-num"><div style="background:var(--grafite);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center">${d.getDate()}</div></div>`
+      : `<div class="cal-day-num">${d.getDate()}</div>`;
+
+    html += `<div class="${classes}" onclick="abrirModalNovo('${dStr}')">
+      ${numHtml}
+      <div class="cal-day-dots">${dots}</div>
+      ${dayEvs.length>3 ? `<div class="cal-day-more">+${dayEvs.length} eventos</div>` : ''}
+    </div>`;
+
+    cur = addDays(cur, 1);
+  }
+
+  html += '</div></div>';
+  document.getElementById('cal-content').innerHTML = html;
+}
+
+// ── RENDER: SEMANA ─────────────────────────────────────────
+function renderSemana(evs) {
+  const seg = startOfWeek(_calDate);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const HORAS = Array.from({length:14},(_,i)=>i+7); // 07h–20h
+
+  let headCols = '<div class="cal-week-head-corner"></div>';
+  let alldayCols = '<div class="cal-week-allday-lbl">dia todo</div>';
+  let bodyCols = '<div class="cal-week-time-col">' + HORAS.map(h=>`<div class="cal-week-hour-lbl">${String(h).padStart(2,'0')}h</div>`).join('') + '</div>';
+
+  for (let i=0;i<7;i++) {
+    const d = addDays(seg,i); d.setHours(0,0,0,0);
+    const isToday = isSameDay(d,hoje);
+    const isWend  = isWeekend(d);
+    const dow     = DIAS_SEMANA[i];
+    const dStr    = toISO(d);
+
+    // Eventos all-day deste dia
+    const allDayEvs = evs.filter(ev => ev.dia_inteiro && isSameDay(new Date(ev.inicio),d));
+    // Eventos com horário
+    const timedEvs = evs.filter(ev => !ev.dia_inteiro && isSameDay(new Date(ev.inicio),d));
+
+    headCols += `<div class="cal-week-head-day${isToday?' today':''}" style="${isWend?'background:rgba(0,0,0,.02)':''}">
+      <div class="cal-week-head-dow">${dow.slice(0,3)}</div>
+      <div class="cal-week-head-date">${d.getDate()}</div>
+    </div>`;
+
+    alldayCols += `<div class="cal-week-allday-col">
+      ${allDayEvs.map(ev=>{const{icon,cls}=evStyle(ev);return `<div class="cal-week-allday-ev ev-color-${cls}" style="background:${evBg(ev)};color:${evColor(ev)};border-left:3px solid ${evColor(ev)}" title="${ev.titulo}">${icon} ${ev.titulo}</div>`;}).join('')}
+    </div>`;
+
+    // Coluna de horas
+    let timedHtml = HORAS.map(h=>`<div class="cal-week-hour-cell" style="${isWend?'background:rgba(0,0,0,.02)':''}"></div>`).join('');
+    // Posicionar eventos com horário
+    const evOverlays = timedEvs.map(ev=>{
+      const st=new Date(ev.inicio), en=ev.fim?new Date(ev.fim):addDays(st,0);
+      const startH = st.getHours()+(st.getMinutes()/60);
+      const endH   = en.getHours()+(en.getMinutes()/60)||startH+1;
+      const top    = Math.max(0,(startH-7))*48;
+      const height = Math.max(24,(endH-startH)*48);
+      const{icon,cls}=evStyle(ev);
+      return `<div class="cal-week-timed-ev ev-color-${cls}" style="top:${top}px;height:${height}px;background:${evBg(ev)};color:${evColor(ev)};border-left:3px solid ${evColor(ev)}" onclick="event.stopPropagation();abrirDetalhe('${ev.id}')" title="${ev.titulo}">
+        ${icon} ${ev.titulo}${ev.meet_link?'<br><a href="'+ev.meet_link+'" target="_blank" style="font-size:8px">Meet →</a>':''}
+      </div>`;
+    }).join('');
+
+    bodyCols += `<div class="cal-week-day-col" style="position:relative" onclick="abrirModalNovo('${dStr}')">
+      ${timedHtml}${evOverlays}
+    </div>`;
+  }
+
+  document.getElementById('cal-content').innerHTML = `<div class="cal-week-wrap">
+    <div class="cal-week-head">${headCols}</div>
+    <div class="cal-week-allday">${alldayCols}</div>
+    <div class="cal-week-body">${bodyCols}</div>
+  </div>`;
+}
+
+// ── RENDER: PESSOAS ────────────────────────────────────────
+function renderPessoas() {
+  const seg = startOfWeek(_semanaDate);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  document.getElementById('cal-pessoas-label').textContent =
+    fmtDate(seg) + ' – ' + fmtDate(addDays(seg,6));
+
+  const usuarios = G.todosUsuarios.filter(u => !_filtroPNucleo || u.nucleo === _filtroPNucleo);
+  if (!usuarios.length) { document.getElementById('cal-pessoas-content').innerHTML='<div class="cal-empty">Nenhum usuário neste núcleo.</div>'; return; }
+
+  // Todos os eventos desta semana
+  const semEvs = G.eventos.concat(/* aniversários */G.todosUsuarios.map(u=>{
+    if(!u.data_aniversario) return null;
+    const ano=seg.getFullYear(),mes=parseInt(u.data_aniversario.slice(5,7)),dia=parseInt(u.data_aniversario.slice(8,10));
+    return {id:'aniv_'+u.id,titulo:'🎂 Aniversário',tipo:'aniversario',categoria:'aniversario',scope:'todos',user_id:u.id,inicio:`${ano}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}T00:00:00`,dia_inteiro:true};
+  }).filter(Boolean));
+
+  const COLS = 7;
+  // grid-template-columns: 160px repeat(7,1fr)
+  let html = `<div class="cal-people-wrap"><div class="cal-people-grid" style="display:grid;grid-template-columns:160px repeat(7,1fr)">`;
+
+  // Header
+  html += '<div class="cal-people-head-corner">Colaborador</div>';
+  for(let i=0;i<7;i++){
+    const d=addDays(seg,i); const isT=isSameDay(d,hoje); const isW=isWeekend(d);
+    html+=`<div class="cal-people-head-day${isT?' today':''}" style="${isW?'background:rgba(0,0,0,.02)':''}">
+      <div class="dow">${DIAS_SEMANA[i].slice(0,3)}</div>
+      <div class="dn">${d.getDate()}</div>
+    </div>`;
+  }
+
+  // Rows
+  usuarios.forEach(u=>{
+    const hasFer = g=>G.feriados.some(f=>isSameDay(new Date(f.inicio),g));
+    html+=`<div class="cal-people-name">
+      <div class="cal-people-av" style="background:${u.cor||'#888'}">${u.iniciais||'?'}</div>
+      <div>
+        <div class="cal-people-nm">${primeiroUltimo(u.nome)}</div>
+        <div class="cal-people-rl">${u.role||''}</div>
+      </div>
+    </div>`;
+    for(let i=0;i<7;i++){
+      const d=addDays(seg,i); const isW=isWeekend(d); const isF=hasFer(d);
+      const dayEvs=semEvs.filter(ev=>ev.user_id===u.id&&isSameDay(new Date(ev.inicio),d));
+      const ausCls=isF?'pp-feriado':'';
+      let pills='';
+      if(isF) pills+='<div class="cal-people-pill pp-feriado">Feriado</div>';
+      dayEvs.forEach(ev=>{
+        if(ev.tipo==='ausencia_remunerada') pills+='<div class="cal-people-pill pp-ausencia">Ausência</div>';
+        else if(ev.tipo==='ausencia_aniversario') pills+='<div class="cal-people-pill pp-aniversario">🎂 Aniversário</div>';
+        else if(ev.tipo==='aniversario') pills+='<div class="cal-people-pill pp-aniversario">🎂</div>';
+        else if(ev.tipo==='reuniao') pills+='<div class="cal-people-pill pp-reuniao">Reunião</div>';
+        else if(ev.tipo==='feriado_local') pills+='<div class="cal-people-pill pp-ausencia">F.Local</div>';
+      });
+      html+=`<div class="cal-people-cell${isW?' weekend':''}${isF?' feriado':''}">${pills}</div>`;
+    }
+  });
+
+  html+='</div></div>';
+  document.getElementById('cal-pessoas-content').innerHTML=html;
+}
+
+// ── Helpers de estilo de evento ────────────────────────────
+function evStyle(ev){
+  const map={
+    recesso:    {icon:'🔴',cls:'feriado'},
+    feriado:    {icon:'🔴',cls:'feriado'},
+    feriado_local:{icon:'🟠',cls:'ausencia'},
+    ausencia_remunerada:{icon:'🔵',cls:'ausencia'},
+    ausencia_aniversario:{icon:'🎂',cls:'ausencia'},
+    aniversario:{icon:'🎂',cls:'aniversario'},
+    entrega:    {icon:'📌',cls:'entrega'},
+    marco:      {icon:'🚩',cls:'entrega'},
+    reuniao:    {icon:'📅',cls:'reuniao'},
+    agenda_exp: {icon:'📋',cls:'agenda'},
+  };
+  return map[ev.tipo]||{icon:'📋',cls:'agenda'};
+}
+function evBg(ev){
+  const m={feriado:'var(--tc-bg)',ausencia:'var(--am-bg)',entrega:'var(--verde-bg)',reuniao:'var(--az-bg)',aniversario:'var(--am-bg)',agenda:'var(--cinza2)'};
+  return m[evStyle(ev).cls]||'var(--cinza2)';
+}
+function evColor(ev){
+  const m={feriado:'var(--terracota)',ausencia:'var(--ouro)',entrega:'var(--verde)',reuniao:'var(--azul)',aniversario:'var(--ouro)',agenda:'#555'};
+  return m[evStyle(ev).cls]||'#555';
+}
+function nucleoBadge_(n){
+  return {urbanismo:'b-urb',paisagismo:'b-pai',consultorias:'b-consul',especiais:'b-esp'}[n]||'b-gr';
+}
+function primeiroUltimo(nome){
+  const p=(nome||'').trim().split(/\s+/).filter(Boolean);
+  return p.length<=2?p.join(' '):(p[0]+' '+p[p.length-1]);
+}
+
+// ── NAV & FILTROS ──────────────────────────────────────────
+function switchTab(tab){
+  _tab=tab;
+  document.querySelectorAll('.ntab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.getElementById('tab-agenda').style.display  = tab==='agenda'  ? '' : 'none';
+  document.getElementById('tab-pessoas').style.display = tab==='pessoas' ? '' : 'none';
+  if(tab==='pessoas') renderPessoas();
+  else render();
+}
+function setSubView(v){
+  _subView=v;
+  document.querySelectorAll('.cal-sv-btn').forEach(b=>b.classList.toggle('active',b.id==='sv-'+v));
+  render();
+}
+function navMes(dir){ _calDate=new Date(_calDate.getFullYear(),_calDate.getMonth()+dir,1); render(); }
+function navSemana(dir){ _semanaDate=addDays(_semanaDate,dir*7); renderPessoas(); }
+function irHoje(){ _calDate=new Date(); render(); }
+function irHojePessoas(){ _semanaDate=new Date(); renderPessoas(); }
+
+function setFiltroNucleo(btn,v){
+  _filtroNucleo=v;
+  document.querySelectorAll('[data-nucleo]').forEach(b=>b.classList.toggle('active',b.dataset.nucleo===v));
+  render();
+}
+function setFiltroUsr(btn,v){
+  _filtroUsr=v;
+  document.querySelectorAll('[data-usr]').forEach(b=>b.classList.toggle('active',b.dataset.usr===v));
+  render();
+}
+function toggleCat(btn){
+  const cat=btn.dataset.cat;
+  if(_filtroCats.has(cat)) _filtroCats.delete(cat); else _filtroCats.add(cat);
+  btn.classList.toggle('active',_filtroCats.has(cat));
+  render();
+}
+function setFiltroPNucleo(btn,v){
+  _filtroPNucleo=v;
+  document.querySelectorAll('[data-pnucleo]').forEach(b=>b.classList.toggle('active',b.dataset.pnucleo===v));
+  renderPessoas();
+}
+
+// ── MODAL NOVO EVENTO ──────────────────────────────────────
+const TIPOS_CONFIG = [
+  { tipo:'recesso',             icon:'🔴', nome:'Recesso',                desc:'Aplica a todos',       socio:true  },
+  { tipo:'feriado',             icon:'🔴', nome:'Feriado nacional',       desc:'Aplica a todos',       socio:true  },
+  { tipo:'agenda_exp',          icon:'📋', nome:'Agenda EXP',             desc:'Evento interno',       socio:true  },
+  { tipo:'marco',               icon:'🚩', nome:'Marco de projeto',       desc:'Vinculado a projeto',  socio:true  },
+  { tipo:'feriado_local',       icon:'🟠', nome:'Feriado local',          desc:'Apenas para você',     socio:false },
+  { tipo:'ausencia_remunerada', icon:'🔵', nome:'Ausência remunerada',    desc:'Máx 10 dias/ano',      socio:false },
+  { tipo:'ausencia_aniversario',icon:'🎂', nome:'Ausência aniversário',   desc:'No mês do aniversário',socio:false },
+  { tipo:'reuniao',             icon:'📅', nome:'Reunião',                desc:'Com horário e local',  socio:false },
+];
+
+var _modalTipoSel = null;
+var _modalDataSel = null;
+
+function abrirModalNovo(data){
+  _eventoEditando = null;
+  _modalTipoSel   = null;
+  _modalDataSel   = data || toISO(new Date());
+  document.getElementById('modal-ev-title').textContent = 'Novo evento';
+  renderModalBody();
+  document.getElementById('modal-evento-overlay').classList.add('open');
+}
+
+function abrirModalEditar(ev){
+  _eventoEditando = ev;
+  _modalTipoSel   = ev.tipo;
+  _modalDataSel   = toISO(new Date(ev.inicio));
+  document.getElementById('modal-ev-title').textContent = 'Editar evento';
+  renderModalBody();
+  document.getElementById('modal-evento-overlay').classList.add('open');
+}
+
+function renderModalBody(){
+  const isSocio = isSocioRole(G.usuario.role);
+  const ev      = _eventoEditando;
+  let html = '';
+
+  // Seleção de tipo (só quando é novo)
+  if (!ev) {
+    html += '<div class="fgroup"><label>Tipo de evento</label><div class="tipo-grid">';
+    TIPOS_CONFIG.forEach(tc => {
+      const disabled = tc.socio && !isSocio;
+      const sel      = _modalTipoSel === tc.tipo ? ' sel' : '';
+      html += `<button type="button" class="tipo-btn${sel}" ${disabled?'disabled':''} onclick="selecionarTipo('${tc.tipo}')">
+        <span class="tipo-btn-icon">${tc.icon}</span>
+        <span class="tipo-btn-name">${tc.nome}</span>
+        <span class="tipo-btn-desc">${tc.desc}${disabled?' · Somente sócios':''}</span>
+      </button>`;
+    });
+    html += '</div></div>';
+  } else {
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span style="font-size:20px">${evStyle(ev).icon}</span>
+      <span style="font-weight:700;font-size:13px">${TIPOS_CONFIG.find(t=>t.tipo===ev.tipo)?.nome||ev.tipo}</span>
+    </div>`;
+  }
+
+  if (!_modalTipoSel && !ev) {
+    document.getElementById('modal-ev-body').innerHTML = html;
+    return;
+  }
+
+  const tipo = ev?.tipo || _modalTipoSel;
+
+  // Aviso de saldo ausência remunerada
+  if (tipo === 'ausencia_remunerada' && G.saldo) {
+    const usado = parseFloat(G.saldo.dias_usados)||0;
+    const restam = 10 - usado;
+    const pct = Math.min(100,(usado/10)*100);
+    html += `<div class="saldo-info">
+      <div class="saldo-info-track"><div class="saldo-info-fill" style="width:${pct}%"></div></div>
+      <span class="saldo-info-txt">${usado}/10 dias usados · ${restam} restantes</span>
+    </div>`;
+    if (restam <= 0) html += '<div class="saldo-warn">⚠ Saldo de ausência remunerada esgotado para este ano.</div>';
+  }
+
+  // Aviso ausência aniversário
+  if (tipo === 'ausencia_aniversario') {
+    const mesAniv = G.usuario.data_aniversario ? parseInt(G.usuario.data_aniversario.slice(5,7)) : null;
+    const mesAtual = new Date().getMonth()+1;
+    if (mesAniv && mesAniv !== mesAtual) {
+      html += `<div class="saldo-warn">⚠ Ausência de aniversário só pode ser cadastrada no mês do seu aniversário (${MESES[mesAniv-1]}).</div>`;
+    }
+  }
+
+  html += `<div class="fgroup"><label>Título</label>
+    <input id="ev-titulo" type="text" value="${ev?.titulo||''}" placeholder="Nome do evento"></div>`;
+
+  // Datas
+  const isAllDay = ev ? ev.dia_inteiro : tipo !== 'reuniao';
+  const iniVal   = ev ? toISO(new Date(ev.inicio)) : (_modalDataSel || toISO(new Date()));
+  const fimVal   = ev?.fim ? toISO(new Date(ev.fim)) : iniVal;
+
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="fgroup"><label>Início</label>
+      <input id="ev-inicio" type="${isAllDay?'date':'datetime-local'}" value="${iniVal}"></div>
+    <div class="fgroup"><label>Fim</label>
+      <input id="ev-fim" type="${isAllDay?'date':'datetime-local'}" value="${fimVal}"></div>
+  </div>`;
+
+  // Escopo / núcleo para tipos que afetam equipe
+  if (['agenda_exp','marco','recesso','feriado'].includes(tipo)) {
+    html += `<div class="fgroup"><label>Núcleo</label>
+      <select id="ev-nucleo">
+        <option value="todos" ${ev?.scope==='todos'?'selected':''}>Todos os núcleos</option>
+        <option value="urbanismo"    ${ev?.nucleo_id==='urbanismo'?'selected':''}>Urbanismo</option>
+        <option value="paisagismo"   ${ev?.nucleo_id==='paisagismo'?'selected':''}>Paisagismo</option>
+        <option value="consultorias" ${ev?.nucleo_id==='consultorias'?'selected':''}>Consultorias</option>
+        <option value="especiais"    ${ev?.nucleo_id==='especiais'?'selected':''}>Proj. Especiais</option>
+      </select></div>`;
+  }
+
+  // Local / Meet para reuniões
+  if (tipo === 'reuniao') {
+    html += `<div class="fgroup"><label>Local</label>
+      <input id="ev-location" type="text" value="${ev?.location||''}" placeholder="Sala, endereço ou link"></div>
+    <div class="fgroup"><label>Link Meet</label>
+      <input id="ev-meet" type="url" value="${ev?.meet_link||''}" placeholder="https://meet.google.com/..."></div>`;
+  }
+
+  html += `<div class="fgroup"><label>Descrição</label>
+    <textarea id="ev-descricao" rows="2" placeholder="Opcional">${ev?.descricao||''}</textarea></div>`;
+
+  // Recorrência
+  html += `<div class="fgroup"><label>Recorrência</label>
+    <select id="ev-recorrencia">
+      <option value="">Não se repete</option>
+      <option value="semanal"  ${ev?.recorrencia==='semanal'?'selected':''}>Semanal</option>
+      <option value="mensal"   ${ev?.recorrencia==='mensal'?'selected':''}>Mensal</option>
+      <option value="anual"    ${ev?.recorrencia==='anual'?'selected':''}>Anual</option>
+    </select></div>`;
+
+  document.getElementById('modal-ev-body').innerHTML = html;
+}
+
+function selecionarTipo(tipo){
+  _modalTipoSel = tipo;
+  renderModalBody();
+}
+
+function fecharModalEvento(e){
+  if(e && e.target !== document.getElementById('modal-evento-overlay')) return;
+  document.getElementById('modal-evento-overlay').classList.remove('open');
+}
+
+async function salvarEvento(){
+  const tipo = _eventoEditando?.tipo || _modalTipoSel;
+  if(!tipo){ toast('Selecione um tipo de evento.'); return; }
+
+  const titulo    = document.getElementById('ev-titulo')?.value.trim();
+  const inicio    = document.getElementById('ev-inicio')?.value;
+  const fim       = document.getElementById('ev-fim')?.value || inicio;
+  if(!titulo){ toast('Informe o título do evento.'); return; }
+  if(!inicio){ toast('Informe a data de início.'); return; }
+
+  const isAllDay  = tipo !== 'reuniao';
+  const nucleoEl  = document.getElementById('ev-nucleo');
+  const nucleoVal = nucleoEl?.value || '';
+  const scope     = ['recesso','feriado'].includes(tipo) ? 'todos' :
+                    ['agenda_exp','marco'].includes(tipo) ? (nucleoVal==='todos'?'todos':'nucleo') :
+                    'pessoal';
+
+  // Validação saldo ausência remunerada
+  if(tipo==='ausencia_remunerada'){
+    const dias = diasUteisRange(new Date(inicio), new Date(fim), []);
+    const usado = parseFloat(G.saldo?.dias_usados)||0;
+    if(usado+dias>10){ toast(`⚠ Sem saldo. Usando ${dias} dias, mas só restam ${10-usado}.`); return; }
+  }
+
+  // Validação mês aniversário
+  if(tipo==='ausencia_aniversario'){
+    const mesAniv = G.usuario.data_aniversario ? parseInt(G.usuario.data_aniversario.slice(5,7)) : null;
+    if(mesAniv && mesAniv !== new Date(inicio).getMonth()+1){
+      toast('Ausência de aniversário só no mês do seu aniversário.'); return;
+    }
+  }
+
+  const categoriaMap = {
+    recesso:'feriado_recesso', feriado:'feriado_recesso',
+    feriado_local:'feriado_recesso', ausencia_remunerada:'ausencia',
+    ausencia_aniversario:'ausencia', aniversario:'aniversario',
+    entrega:'entrega', marco:'entrega', reuniao:'reuniao', agenda_exp:'agenda_exp',
+  };
+
+  const payload = {
+    titulo,
+    descricao:    document.getElementById('ev-descricao')?.value.trim() || null,
+    inicio:       isAllDay ? inicio+'T00:00:00' : inicio,
+    fim:          isAllDay ? fim+'T23:59:59'    : fim,
+    dia_inteiro:  isAllDay,
+    tipo,
+    categoria:    categoriaMap[tipo]||'agenda_exp',
+    scope,
+    user_id:      scope==='pessoal' ? G.usuario.id : null,
+    nucleo_id:    scope==='nucleo'  ? nucleoVal : null,
+    location:     document.getElementById('ev-location')?.value.trim() || null,
+    meet_link:    document.getElementById('ev-meet')?.value.trim() || null,
+    recorrencia:  document.getElementById('ev-recorrencia')?.value || null,
+    criado_por:   G.usuario.id,
+    source:       'native',
+  };
+
+  const btn = document.getElementById('modal-ev-save');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+
+  let err;
+  if(_eventoEditando){
+    const { error } = await sb.from('calendar_events').update(payload).eq('id',_eventoEditando.id);
+    err = error;
+  } else {
+    const { error } = await sb.from('calendar_events').insert(payload);
+    err = error;
+    // Atualiza saldo se ausência remunerada
+    if(!error && tipo==='ausencia_remunerada'){
+      const dias = diasUteisRange(new Date(inicio), new Date(fim), []);
+      const novoUsado = (parseFloat(G.saldo?.dias_usados)||0) + dias;
+      await sb.from('ausencia_remunerada_saldo')
+        .upsert({ user_id: G.usuario.id, ano: new Date().getFullYear(), dias_usados: novoUsado });
+      G.saldo.dias_usados = novoUsado;
+    }
+  }
+
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if(err){ toast('Erro ao salvar: '+err.message); return; }
+
+  toast(_eventoEditando ? 'Evento atualizado!' : 'Evento criado!');
+  fecharModalEvento();
+  await carregarEventos();
+  await carregarSaldo();
+  render();
+}
+
+// ── MODAL DETALHE ──────────────────────────────────────────
+function abrirDetalhe(id){
+  const ev = getEventosMerged().find(e=>e.id===id);
+  if(!ev) return;
+  const{icon,cls}=evStyle(ev);
+  const podEditar = !ev._synthetic && (ev.criado_por===G.usuario.id||isSocioRole(G.usuario.role));
+
+  let rows='';
+  rows+=`<div class="detail-ev-row"><span class="detail-ev-row-lbl">Data</span><span>${fmtDate(ev.inicio)}${ev.fim&&!isSameDay(new Date(ev.inicio),new Date(ev.fim))?' → '+fmtDate(ev.fim):''}</span></div>`;
+  if(!ev.dia_inteiro) rows+=`<div class="detail-ev-row"><span class="detail-ev-row-lbl">Horário</span><span>${fmtTime(ev.inicio)}${ev.fim?' → '+fmtTime(ev.fim):''}</span></div>`;
+  if(ev.location) rows+=`<div class="detail-ev-row"><span class="detail-ev-row-lbl">Local</span><span>${ev.location}</span></div>`;
+  if(ev.meet_link) rows+=`<div class="detail-ev-row"><span class="detail-ev-row-lbl">Meet</span><span><a href="${ev.meet_link}" target="_blank">Abrir Google Meet →</a></span></div>`;
+  if(ev.nucleo_id) rows+=`<div class="detail-ev-row"><span class="detail-ev-row-lbl">Núcleo</span><span class="badge ${nucleoBadge_(ev.nucleo_id)}">${ev.nucleo_id}</span></div>`;
+  if(ev.descricao) rows+=`<div class="detail-ev-row"><span class="detail-ev-row-lbl">Descrição</span><span>${ev.descricao}</span></div>`;
+  if(ev._etapa) rows+=`<div class="detail-ev-row"><span class="detail-ev-row-lbl">Projeto</span><span>${ev._etapa.produtos?.nome||'—'}</span></div>`;
+
+  document.getElementById('modal-detalhe-body').innerHTML=`
+    <div class="detail-ev-header">
+      <div class="detail-ev-icon">${icon}</div>
+      <div><div class="detail-ev-title">${ev.titulo}</div>
+        <div class="detail-ev-sub">${TIPOS_CONFIG.find(t=>t.tipo===ev.tipo)?.nome||ev.tipo||''}</div></div>
+    </div>
+    ${rows}`;
+
+  const ft=document.getElementById('modal-detalhe-ft');
+  ft.innerHTML=`<button class="btn" onclick="fecharModalDetalhe()">Fechar</button>`;
+  if(ev._etapa) ft.innerHTML+=`<button class="btn" onclick="window.location.href='gestao.html'">Abrir Gantt →</button>`;
+  if(podEditar) ft.innerHTML+=`<button class="btn filled" onclick="fecharModalDetalhe();abrirModalEditar(window._detEv)">Editar</button>
+    <button class="btn" style="color:var(--terracota);border-color:var(--terracota)" onclick="excluirEvento('${ev.id}')">Excluir</button>`;
+  window._detEv=ev;
+  document.getElementById('modal-detalhe-overlay').classList.add('open');
+}
+function fecharModalDetalhe(e){
+  if(e&&e.target!==document.getElementById('modal-detalhe-overlay')) return;
+  document.getElementById('modal-detalhe-overlay').classList.remove('open');
+}
+async function excluirEvento(id){
+  if(!confirm('Excluir este evento?')) return;
+  await sb.from('calendar_events').delete().eq('id',id);
+  fecharModalDetalhe();
+  await carregarEventos(); render();
+  toast('Evento excluído.');
+}
+
+// ── UI HELPERS ─────────────────────────────────────────────
+function toggleNavDropdown(){
+  document.getElementById('nav-mod-wrap').classList.toggle('open');
+}
+function toggleUserMenu(){
+  document.getElementById('user-pill-wrap').classList.toggle('open');
+}
+function toggleNotifPanel(){
+  const p=document.getElementById('notif-panel');
+  p.style.display=p.style.display==='none'?'':'none';
+}
+function toggleToolFeedback(e){
+  e.stopPropagation();
+  document.getElementById('tool-feedback-pop').classList.toggle('open');
+}
+async function enviarFeedback(){
+  const msg=document.getElementById('tf-msg').value.trim();
+  if(!msg){toast('Escreva uma mensagem.');return;}
+  await sb.from('tool_feedback').insert({tipo:document.getElementById('tf-type').value,mensagem:msg,modulo:'agenda',usuario_id:G.usuario.id});
+  document.getElementById('tf-status').textContent='Enviado! Obrigado.';
+  document.getElementById('tf-msg').value='';
+}
+function toggleTheme(){
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',isDark?'':'dark');
+  localStorage.setItem('exp-theme',isDark?'':'dark');
+}
+function sair(){ sb.auth.signOut().then(()=>window.location.href='app.html'); }
+function toast(msg,dur=3000){
+  const w=document.getElementById('toast-wrap');
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  w.appendChild(t); setTimeout(()=>t.remove(),dur);
+}
+
+document.addEventListener('click',e=>{
+  if(!document.getElementById('nav-mod-wrap').contains(e.target))
+    document.getElementById('nav-mod-wrap').classList.remove('open');
+  if(!document.getElementById('user-pill-wrap').contains(e.target))
+    document.getElementById('user-pill-wrap').classList.remove('open');
+  if(!document.getElementById('notif-wrap').contains(e.target))
+    document.getElementById('notif-panel').style.display='none';
+  if(!document.getElementById('tool-feedback-wrap').contains(e.target))
+    document.getElementById('tool-feedback-pop').classList.remove('open');
+});
+
+// ── START ──────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

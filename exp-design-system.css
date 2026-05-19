@@ -214,6 +214,44 @@
 
 
 /* ═══════════════════════════════════════════
+   FUNDO — Malha de linhas verticais convergentes
+   Identidade EXP: espaçamento logarítmico (g₀ = 400 px, r = 0.72)
+   20 linhas que vão de 400 px de gap até 1 px — efeito de perspectiva
+   A animação usa apenas opacity: roda no compositor (GPU), custo zero.
+═══════════════════════════════════════════ */
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1440' height='2' preserveAspectRatio='none'><g stroke='%23D0CFC9' stroke-width='1'><line x1='0' y1='0' x2='0' y2='2'/><line x1='400' y1='0' x2='400' y2='2'/><line x1='688' y1='0' x2='688' y2='2'/><line x1='895' y1='0' x2='895' y2='2'/><line x1='1044' y1='0' x2='1044' y2='2'/><line x1='1151' y1='0' x2='1151' y2='2'/><line x1='1228' y1='0' x2='1228' y2='2'/><line x1='1284' y1='0' x2='1284' y2='2'/><line x1='1324' y1='0' x2='1324' y2='2'/><line x1='1353' y1='0' x2='1353' y2='2'/><line x1='1374' y1='0' x2='1374' y2='2'/><line x1='1389' y1='0' x2='1389' y2='2'/><line x1='1400' y1='0' x2='1400' y2='2'/><line x1='1408' y1='0' x2='1408' y2='2'/><line x1='1414' y1='0' x2='1414' y2='2'/><line x1='1418' y1='0' x2='1418' y2='2'/><line x1='1421' y1='0' x2='1421' y2='2'/><line x1='1423' y1='0' x2='1423' y2='2'/><line x1='1424' y1='0' x2='1424' y2='2'/><line x1='1425' y1='0' x2='1425' y2='2'/></g></svg>");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  animation: expBgBreathe 10s ease-in-out infinite;
+}
+
+@keyframes expBgBreathe {
+  0%, 100% { opacity: 0.38; }
+  50%       { opacity: 0.56; }
+}
+
+@keyframes expBgBreatheDark {
+  0%, 100% { opacity: 0.06; }
+  50%       { opacity: 0.11; }
+}
+
+[data-theme="dark"] body::before {
+  animation-name: expBgBreatheDark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before                  { animation: none; opacity: 0.42; }
+  [data-theme="dark"] body::before { animation: none; opacity: 0.08; }
+}
+
+
+/* ═══════════════════════════════════════════
    COMPONENTE — THEME TOGGLE
    Estilo canônico do botão de tema claro/escuro.
    Usado em todos os módulos da plataforma.

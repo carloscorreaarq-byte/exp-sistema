@@ -52,7 +52,7 @@
     '#exp-timer-widget{position:fixed;bottom:24px;left:24px;z-index:9999;font-family:"Raleway",sans-serif;user-select:none}',
 
     /* FAB */
-    '#exp-timer-fab{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.22);border:none;outline:none;position:relative;transition:background .25s,transform .15s;color:#888;flex-shrink:0}',
+    '#exp-timer-fab{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.22);border:none;outline:none;position:relative;transition:background .25s,transform .15s;color:#888;flex-shrink:0}',
     '#exp-timer-fab:hover{transform:scale(1.07)}',
     '#exp-timer-fab:active{transform:scale(.93)}',
 
@@ -152,6 +152,46 @@
 
     /* ── Toast ── */
     '#exp-timer-toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:' + GRAFITE + ';color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-family:"Raleway",sans-serif;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10002;white-space:nowrap}',
+
+    /* ── Dark mode ─────────────────────────────────────────────────── */
+    '[data-theme="dark"] #exp-timer-fab{background:#1C1C1A;color:#555}',
+    '[data-theme="dark"] .tmr-panel{background:#1C1C1A;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-hdr{color:#555}',
+    '[data-theme="dark"] .tmr-panel-top-hdr{color:#555}',
+    '[data-theme="dark"] .tmr-sel{background:#141412;color:#F0EFEC;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-sel-lbl{color:#555}',
+    '[data-theme="dark"] .tmr-info-cli{color:#555}',
+    '[data-theme="dark"] .tmr-info-opp{color:#F0EFEC}',
+    '[data-theme="dark"] .tmr-info-prd{color:#999}',
+    '[data-theme="dark"] .tmr-info-eta{color:#666}',
+    '[data-theme="dark"] .tmr-elapsed{color:#F0EFEC}',
+    '[data-theme="dark"] .tmr-btn{background:#1C1C1A;color:#777;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-btn:hover{border-color:#F0EFEC;color:#F0EFEC}',
+    '[data-theme="dark"] .tmr-btn-stop{background:#2A2A28;color:#777;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-btn-stop:hover{background:#3E3E3C;border-color:#555;color:#ccc}',
+    '[data-theme="dark"] .tmr-primary{background:#1C1C1A;color:#F0EFEC;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-primary:hover{border-color:' + OURO + ';background:' + OURO + ';color:#fff}',
+    '[data-theme="dark"] .tmr-dark{background:#F0EFEC;color:#1C1C1A;border-color:#F0EFEC}',
+    '[data-theme="dark"] .tmr-dark:hover{opacity:.85}',
+    '[data-theme="dark"] .tmr-btn-cf-sec{background:#1C1C1A;color:#777;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-btn-cf-sec:hover{border-color:#F0EFEC;color:#F0EFEC}',
+    '[data-theme="dark"] .tmr-lnk{color:#444}',
+    '[data-theme="dark"] .tmr-lnk:hover{color:#999}',
+    '[data-theme="dark"] .tmr-lnk.back{color:#555}',
+    '[data-theme="dark"] .tmr-lnk.back:hover{color:#F0EFEC}',
+    '[data-theme="dark"] .tmr-recent-btn{background:#141412;color:#999;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-recent-btn:hover{background:#2A2A28;border-color:#555;color:#F0EFEC}',
+    '[data-theme="dark"] .tmr-divider{background:#3E3E3C}',
+    '[data-theme="dark"] .tmr-input{background:#141412;color:#F0EFEC;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-input::placeholder{color:#444}',
+    '[data-theme="dark"] .tmr-textarea{background:#141412;color:#F0EFEC;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-textarea::placeholder{color:#444}',
+    '[data-theme="dark"] .tmr-cf-info-view:hover{background:#2A2A28}',
+    '[data-theme="dark"] .tmr-cf-info-view::after{color:#444}',
+    '[data-theme="dark"] .tmr-cf-info-view:hover::after{color:#777}',
+    '[data-theme="dark"] .tmr-icon-btn{color:#444}',
+    '[data-theme="dark"] .tmr-icon-btn:hover{color:#999}',
+    '[data-theme="dark"] .tmr-icon-btn.off{color:#7a4a4a}',
   ].join('');
 
   /* ═══════════════════════════════════════════════════════════════
@@ -334,7 +374,7 @@
 
     /* ── FAB ── */
     '<button id="exp-timer-fab" title="Timer de horas">',
-      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
     '</button>',
 
     '</div>',
