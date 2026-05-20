@@ -1845,6 +1845,62 @@ body {
 .etapa-edit-row input[readonly] { background: var(--off); color: #888; cursor: default; }
 .etapa-edit-row label { font-size: 9px; color: #888; }
 
+/* ── RESULTADO / ANALYTICS POR ETAPA ────────────────── */
+.res-sumario {
+  background:var(--branco); border:1px solid var(--cinza); border-radius:10px;
+  padding:16px 18px; margin-bottom:14px;
+}
+.res-kpi-row { display:flex; gap:10px; flex-wrap:wrap; }
+.res-kpi {
+  flex:1; min-width:110px; background:var(--off); border:1px solid var(--cinza);
+  border-radius:8px; padding:10px 14px;
+}
+.res-kpi-label { font-size:8px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#999; margin-bottom:4px; }
+.res-kpi-val { font-size:20px; font-weight:700; letter-spacing:-1px; line-height:1; }
+.res-kpi-sub { font-size:10px; color:#888; margin-top:3px; }
+.res-etapa-card {
+  background:var(--branco); border:1px solid var(--cinza); border-radius:10px;
+  padding:14px 16px; margin-bottom:10px;
+}
+.res-etapa-hd {
+  display:flex; align-items:center; gap:8px; margin-bottom:12px;
+}
+.res-etapa-nome { font-size:13px; font-weight:600; flex:1; }
+.res-pct-badge {
+  font-size:9px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
+  background:var(--off); color:#888; border:1px solid var(--cinza);
+  border-radius:4px; padding:2px 7px; flex-shrink:0;
+}
+.res-compare { display:flex; gap:12px; margin-bottom:10px; }
+.res-val-blk { flex:1; }
+.res-val-label { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#aaa; margin-bottom:3px; }
+.res-val-num { font-size:16px; font-weight:700; line-height:1; letter-spacing:-.5px; }
+.res-bar-wrap { margin-bottom:10px; }
+.res-bar-track { height:6px; background:var(--cinza2); border-radius:3px; overflow:hidden; position:relative; }
+.res-bar-fill { height:100%; border-radius:3px; transition:width .4s ease; }
+.res-bar-label { font-size:10px; color:#888; margin-top:4px; }
+.res-detail-row {
+  display:flex; gap:10px; flex-wrap:wrap; padding-top:10px;
+  border-top:1px solid var(--cinza2);
+}
+.res-detail-blk { flex:1; min-width:100px; }
+.res-detail-label { font-size:9px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#aaa; margin-bottom:2px; }
+.res-detail-val { font-size:12px; font-weight:600; }
+.res-detail-sub { font-size:10px; color:#888; }
+.res-resultado {
+  margin-top:10px; padding:8px 12px; border-radius:6px;
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:700;
+}
+.res-resultado.pos { background:rgba(29,106,74,.08); color:var(--verde); }
+.res-resultado.neg { background:rgba(192,88,77,.08); color:var(--terracota); }
+.res-resultado.neutro { background:var(--off); color:#888; }
+.res-sem-pct { font-size:11px; color:#aaa; font-style:italic; padding:8px 0; }
+/* Contador de % alocado no form de edição */
+.ep-pct-total { font-size:10px; color:#888; text-align:right; padding:6px 2px 0; }
+.ep-pct-total.completo { color:var(--verde); font-weight:600; }
+.ep-pct-total.excesso { color:var(--terracota); font-weight:700; }
+
 /* ── PRIORIDADES (dashboard) ─────────────────────────── */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--branco); border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; border-radius:8px; }
 .prio-card:hover { border-color:#aaa; box-shadow:0 2px 8px rgba(0,0,0,.05); }
@@ -3663,6 +3719,7 @@ body {
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-checklist">Checklist</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-revisoes">Revisões</button>
         <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas">Horas</button>
+        <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-resultado" id="mp-tab-resultado" style="display:none">Resultado</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos" style="display:none">Custos</button>
       </div>
       <div style="padding:16px">
@@ -3722,6 +3779,11 @@ body {
         <!-- Horas (sócios) -->
         <div class="mtab-panel" id="mp-horas">
           <div id="mp-horas-wrap"></div>
+        </div>
+
+        <!-- Resultado por etapa (sócios) -->
+        <div class="mtab-panel" id="mp-resultado">
+          <div id="mp-resultado-wrap"><div class="loading-state">Carregando…</div></div>
         </div>
 
         <!-- Registros e Atas -->
@@ -4243,6 +4305,7 @@ body {
           <button class="btn sm verde" onclick="adicionarEtapaEdicao()">+ Etapa</button>
         </div>
         <div id="ep-etapas-lista" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+        <div class="ep-pct-total" id="ep-pct-total"></div>
       </div>
 
     </div>
@@ -4655,6 +4718,7 @@ async function init() {
       if (panelId === 'mp-horas')      carregarHorasProduto(G.produtoAtivo);
       if (panelId === 'mp-registros')  carregarRegistrosProduto(G.produtoAtivo);
       if (panelId === 'mp-checklist')  carregarChecklist(G.produtoAtivo);
+      if (panelId === 'mp-resultado')  carregarResultado(G.produtoAtivo);
     });
   });
 
@@ -8877,10 +8941,11 @@ async function abrirProduto(id, targetPanel = null) {
   // Sócios e coordenadores: custos
   document.getElementById('mp-tab-custos').style.display = isSocioOrCoord ? '' : 'none';
 
-  // Sócios apenas: financeiro, horas, pausar
-  document.getElementById('mp-financeiro-wrap').style.display = isSocio ? 'block' : 'none';
-  document.getElementById('mp-tab-horas').style.display       = isSocio ? '' : 'none';
-  document.getElementById('mp-btn-pausar').style.display      = (isSocio && prod.status === 'ativo') ? '' : 'none';
+  // Sócios apenas: financeiro, horas, resultado, pausar
+  document.getElementById('mp-financeiro-wrap').style.display  = isSocio ? 'block' : 'none';
+  document.getElementById('mp-tab-horas').style.display        = isSocio ? '' : 'none';
+  document.getElementById('mp-tab-resultado').style.display    = isSocio ? '' : 'none';
+  document.getElementById('mp-btn-pausar').style.display       = (isSocio && prod.status === 'ativo') ? '' : 'none';
   if (isSocio) {
     document.getElementById('mp-valor').textContent = prod.valor_contratado
       ? 'R$ ' + fmtNum(prod.valor_contratado) : '—';
@@ -12025,6 +12090,7 @@ function deletarEtapaRow(btn) {
     G._etapasParaDeletar.push(etapaId);
   }
   row.remove();
+  _recalcPctTotal();
 }
 
 let _eeDragSrc = null;
@@ -12561,6 +12627,14 @@ function _renderEtapaEdicaoRow(e, devIds) {
         <label>Dev 2</label>
         <select class="ee-dev2" style="padding:3px 7px;font-size:11px;min-width:110px">${_epUserOpts(dev2)}</select>
       </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <label>% custo</label>
+        <div style="display:flex;align-items:center;gap:3px">
+          <input type="number" class="ee-pct" value="${e.percentual_custo != null ? e.percentual_custo : ''}" placeholder="—" min="0" max="100" step="0.1"
+            oninput="_recalcPctTotal()" style="width:60px;padding:3px 7px;font-family:var(--font-mono);font-size:11px">
+          <span style="font-size:11px;color:#888">%</span>
+        </div>
+      </div>
     </div>
   </div>`;
 }
@@ -12619,6 +12693,7 @@ async function abrirEditarProduto() {
 
   fecharModal('modal-produto');
   document.getElementById('modal-editar-produto').style.display = 'flex';
+  _recalcPctTotal();
 }
 
 function adicionarEtapaEdicao() {
@@ -12626,6 +12701,12 @@ function adicionarEtapaEdicao() {
   const div = document.createElement('div');
   div.innerHTML = _renderEtapaEdicaoRow({ nome:'', status:'nao_iniciada' }, []);
   wrap.appendChild(div.firstElementChild);
+  _recalcPctTotal();
+}
+
+function deletarEtapaRowWrapper(btn) {
+  deletarEtapaRow(btn);
+  _recalcPctTotal();
 }
 
 async function salvarEdicaoProduto() {
@@ -12724,6 +12805,7 @@ async function salvarEdicaoProduto() {
       const ePTipo   = row.querySelector('.ee-ptipo').value || 'corridos';
       const eDev1    = row.querySelector('.ee-dev1').value || null;
       const eDev2    = row.querySelector('.ee-dev2').value || null;
+      const ePct     = row.querySelector('.ee-pct')?.value !== '' ? parseFloat(row.querySelector('.ee-pct').value) : null;
       if (!eNome) continue;
 
       if (etapaId) {
@@ -12737,6 +12819,7 @@ async function salvarEdicaoProduto() {
           data_liberacao: eLib,
           data_estimada: eEst,
           coordenador_id: coordId,
+          percentual_custo: ePct,
           updated_at: new Date().toISOString()
         }).eq('id', etapaId).select('id').maybeSingle();
         if (eEtapa) { toast('Erro ao salvar etapa "' + eNome + '": ' + eEtapa.message); return; }
@@ -12760,7 +12843,8 @@ async function salvarEdicaoProduto() {
           prazo_tipo: ePTipo,
           coordenador_id: coordId,
           data_liberacao: eLib,
-          data_estimada: eEst
+          data_estimada: eEst,
+          percentual_custo: ePct
         }).select().single();
         if (eNovaEtapa) { toast('Erro ao criar etapa "' + eNome + '": ' + eNovaEtapa.message); return; }
         if (novaEtapa) {
@@ -12791,6 +12875,214 @@ async function salvarEdicaoProduto() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Salvar alterações'; }
   }
+}
+
+// ── Contador de % alocado no form de edição ──────────────────
+function _recalcPctTotal() {
+  const rows = document.querySelectorAll('#ep-etapas-lista .etapa-edit-row');
+  let total = 0;
+  rows.forEach(row => {
+    const v = parseFloat(row.querySelector('.ee-pct')?.value);
+    if (!isNaN(v)) total += v;
+  });
+  const el = document.getElementById('ep-pct-total');
+  if (!el) return;
+  if (rows.length === 0) { el.textContent = ''; return; }
+  const t = total.toFixed(1).replace(/\.0$/, '');
+  el.className = 'ep-pct-total' + (total > 100 ? ' excesso' : total === 100 ? ' completo' : '');
+  el.textContent = `% custo alocado: ${t}%${total === 100 ? ' ✓' : total > 100 ? ' — excede 100%' : ` — faltam ${(100 - total).toFixed(1).replace(/\.0$/, '')}%`}`;
+}
+
+// ── Analytics: Resultado por etapa ───────────────────────────
+async function carregarResultado(prodId) {
+  if (!prodId) return;
+  const wrap = document.getElementById('mp-resultado-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading-state">Calculando…</div>';
+
+  const prod = G.todosProdutos.find(p => p.id === prodId) || G._todosProdutosGestao.find(p => p.id === prodId);
+  const valorContratado = prod?.valor_contratado || 0;
+  const etapas = G.todasEtapas.filter(e => e.produto_id === prodId).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+  if (!etapas.length) {
+    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa cadastrada neste produto.</div>';
+    return;
+  }
+
+  // Queries em paralelo
+  const hoje = new Date().toISOString().split('T')[0];
+  const etapaIds = etapas.map(e => e.id);
+  const uids = [...new Set(G.todosUsuarios.map(u => u.id))];
+
+  const [
+    { data: horas },
+    { data: vhs },
+    { data: custos },
+  ] = await Promise.all([
+    sb.from('horas_lancadas')
+      .select('usuario_id, etapa_id, hora_inicio, hora_fim')
+      .eq('produto_id', prodId)
+      .not('etapa_id', 'is', null),
+    sb.from('historico_valor_hora')
+      .select('usuario_id, valor_hora, data_vigencia')
+      .lte('data_vigencia', hoje)
+      .order('data_vigencia', { ascending: false }),
+    sb.from('lancamentos_custo')
+      .select('etapa_id, valor')
+      .eq('produto_id', prodId)
+      .not('etapa_id', 'is', null),
+  ]);
+
+  // Valor/hora mais recente por usuário
+  const vhPorUser = {};
+  (vhs || []).forEach(vh => {
+    if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
+  });
+
+  // Agrupa horas por etapa
+  const horasPorEtapa = {};  // etapaId → { horas: num, custo: num }
+  (horas || []).forEach(l => {
+    const h = diffHoras(l.hora_inicio, l.hora_fim);
+    if (!horasPorEtapa[l.etapa_id]) horasPorEtapa[l.etapa_id] = { horas: 0, custo: 0 };
+    horasPorEtapa[l.etapa_id].horas += h;
+    horasPorEtapa[l.etapa_id].custo += h * (vhPorUser[l.usuario_id] || 0);
+  });
+
+  // Agrupa custos lançados por etapa
+  const custosPorEtapa = {};
+  (custos || []).forEach(c => {
+    if (!custosPorEtapa[c.etapa_id]) custosPorEtapa[c.etapa_id] = 0;
+    custosPorEtapa[c.etapa_id] += Math.abs(parseFloat(c.valor) || 0);
+  });
+
+  // Verifica se alguma etapa tem % configurado
+  const temPct = etapas.some(e => e.percentual_custo != null);
+
+  // Totais para sumário
+  let totalPrevisto = 0, totalRealizado = 0;
+  const etapasDados = etapas.map(e => {
+    const pct       = e.percentual_custo != null ? parseFloat(e.percentual_custo) : null;
+    const previsto  = pct != null && valorContratado ? (pct / 100) * valorContratado : null;
+    const custoH    = horasPorEtapa[e.id]?.custo   || 0;
+    const horasH    = horasPorEtapa[e.id]?.horas   || 0;
+    const custoL    = custosPorEtapa[e.id]           || 0;
+    const realizado = custoH + custoL;
+    const resultado = previsto != null ? previsto - realizado : null;
+    if (previsto  != null) totalPrevisto  += previsto;
+    totalRealizado += realizado;
+    return { etapa: e, pct, previsto, realizado, resultado, custoH, horasH, custoL };
+  });
+
+  const totalResultado = temPct ? totalPrevisto - totalRealizado : null;
+  const margemPct = totalPrevisto > 0 ? ((totalResultado / totalPrevisto) * 100) : null;
+
+  // ── Render ────────────────────────────────────────────────
+  const fR = v => 'R$ ' + fmtNum(v);
+
+  // Aviso se valor_contratado não configurado
+  const semValor = !valorContratado ? `
+    <div style="background:rgba(212,170,55,.1);border:1px solid rgba(212,170,55,.4);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#8A6010">
+      ⚠ Valor contratado não informado. Configure-o na edição do projeto para ver os valores previstos.
+    </div>` : '';
+
+  const semPctAviso = !temPct ? `
+    <div style="background:var(--az-bg);border:1px solid rgba(82,128,202,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--azul)">
+      ℹ Nenhuma etapa tem % de custo configurado. Edite o projeto e defina o campo <strong>% custo</strong> em cada etapa para ver a comparação previsto × realizado.
+    </div>` : '';
+
+  // Sumário
+  let sumHtml = '';
+  if (temPct || totalRealizado > 0) {
+    const resPos = totalResultado != null ? totalResultado >= 0 : null;
+    sumHtml = `
+      <div class="res-sumario">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa;margin-bottom:10px">Resumo do projeto</div>
+        <div class="res-kpi-row">
+          ${temPct && valorContratado ? `
+          <div class="res-kpi">
+            <div class="res-kpi-label">Previsto total</div>
+            <div class="res-kpi-val">${fR(totalPrevisto)}</div>
+            <div class="res-kpi-sub">${etapas.filter(e => e.percentual_custo != null).length} de ${etapas.length} etapas configuradas</div>
+          </div>` : ''}
+          <div class="res-kpi">
+            <div class="res-kpi-label">Realizado total</div>
+            <div class="res-kpi-val">${fR(totalRealizado)}</div>
+            <div class="res-kpi-sub">horas + custos lançados</div>
+          </div>
+          ${totalResultado != null ? `
+          <div class="res-kpi">
+            <div class="res-kpi-label">Resultado</div>
+            <div class="res-kpi-val" style="color:${resPos ? 'var(--verde)' : 'var(--terracota)'}">${resPos ? '+' : ''}${fR(totalResultado)}</div>
+            <div class="res-kpi-sub">${margemPct != null ? Math.abs(margemPct).toFixed(1) + '% ' + (resPos ? 'de folga' : 'acima do previsto') : ''}</div>
+          </div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  // Cards por etapa
+  const cardsHtml = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL }) => {
+    const stBadge  = STATUS_ETAPA[etapa.status] || STATUS_ETAPA.nao_iniciada;
+    const utilPct  = previsto && previsto > 0 ? Math.min((realizado / previsto) * 100, 150) : 0;
+    const barColor = resultado != null
+      ? (resultado >= 0 ? 'var(--verde)' : 'var(--terracota)')
+      : 'var(--azul)';
+    const barOver  = utilPct > 100;
+
+    const resClass = resultado == null ? 'neutro' : resultado >= 0 ? 'pos' : 'neg';
+    const resLabel = resultado == null
+      ? (realizado > 0 ? `${fR(realizado)} realizado (sem previsto)` : 'Sem dados')
+      : resultado >= 0
+        ? `+${fR(resultado)} dentro do previsto · ${utilPct.toFixed(0)}% utilizado`
+        : `${fR(Math.abs(resultado))} acima do previsto · ${utilPct.toFixed(0)}% utilizado`;
+
+    const pctBadge = pct != null
+      ? `<span class="res-pct-badge">${pct}% alocado</span>`
+      : `<span class="res-pct-badge" style="opacity:.5">% não definido</span>`;
+
+    const barHtml = (previsto || realizado)
+      ? `<div class="res-bar-wrap">
+          <div class="res-bar-track">
+            <div class="res-bar-fill" style="width:${Math.min(utilPct, 100)}%;background:${barColor}${barOver ? ';background:var(--terracota)' : ''}"></div>
+          </div>
+          <div class="res-bar-label">${previsto ? utilPct.toFixed(0) + '% do previsto utilizado' : 'Sem valor previsto'}</div>
+        </div>` : '';
+
+    return `
+      <div class="res-etapa-card">
+        <div class="res-etapa-hd">
+          <span class="badge ${stBadge.cls}" style="font-size:8px;flex-shrink:0">${stBadge.label}</span>
+          <span class="res-etapa-nome">${escHtml ? escHtml(etapa.nome) : etapa.nome}</span>
+          ${pctBadge}
+        </div>
+        ${previsto ? `
+        <div class="res-compare">
+          <div class="res-val-blk">
+            <div class="res-val-label">Previsto</div>
+            <div class="res-val-num">${fR(previsto)}</div>
+          </div>
+          <div class="res-val-blk">
+            <div class="res-val-label">Realizado</div>
+            <div class="res-val-num">${fR(realizado)}</div>
+          </div>
+        </div>` : ''}
+        ${barHtml}
+        <div class="res-detail-row">
+          <div class="res-detail-blk">
+            <div class="res-detail-label">🕐 Horas</div>
+            <div class="res-detail-val">${fR(custoH)}</div>
+            <div class="res-detail-sub">${fmtH(horasH)} lançadas</div>
+          </div>
+          <div class="res-detail-blk">
+            <div class="res-detail-label">💳 Custos</div>
+            <div class="res-detail-val">${fR(custoL)}</div>
+            <div class="res-detail-sub">lançamentos vinculados</div>
+          </div>
+        </div>
+        <div class="res-resultado ${resClass}">${resLabel}</div>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = semValor + semPctAviso + sumHtml + cardsHtml;
 }
 
 // Fecha modal clicando fora
