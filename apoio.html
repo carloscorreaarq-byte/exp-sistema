@@ -205,6 +205,14 @@
   background:var(--off);
 }
 
+/* tema-hdr dentro de card não recebe o indent externo */
+.secao-shell .tema-hdr{padding-left:0}
+
+/* Sidebar: botão de adicionar sub-área */
+.sb-add-sub{padding:6px 12px 6px 32px;display:flex;align-items:center}
+.sb-add-sub button{background:none;border:none;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#ccc;cursor:pointer;font-family:var(--f);padding:0;transition:color .12s}
+.sb-add-sub button:hover{color:var(--verde)}
+
 /* NORMA GUIDE — two-panel */
 .norma-guide{display:flex;gap:0;border-top:1px solid var(--cinza2);margin-top:0}
 .norma-guide-left{width:220px;flex-shrink:0;border-right:1px solid var(--cinza2);padding:6px 0;overflow-y:auto}
@@ -556,7 +564,7 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
 /* body::before — padrão de linhas convergentes definido em exp-design-system.css */
 
 /* LAYOUT */
-.apoio-layout{display:flex;gap:16px;padding:16px 24px 64px;margin-top:46px;margin-left:auto;margin-right:auto;max-width:1400px;min-height:calc(100vh - 46px);align-items:flex-start;box-sizing:border-box}
+.apoio-layout{display:flex;gap:16px;padding:16px 24px 64px;margin-top:46px;margin-left:auto;margin-right:auto;max-width:1400px;min-height:calc(100vh - 46px);align-items:flex-start;box-sizing:border-box;position:relative;z-index:1}
 
 /* SIDEBAR */
 .apoio-sidebar{width:260px;flex-shrink:0;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;display:flex;flex-direction:column;overflow-y:auto;position:sticky;top:62px;max-height:calc(100vh - 78px)}
@@ -582,7 +590,7 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
 .apoio-content{flex:1;min-width:0}
 
 /* TEMA HEADER */
-.tema-hdr{margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.tema-hdr{margin-bottom:28px;padding-left:22px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .tema-hdr-left{flex:1;min-width:0}
 .tema-nome{font-size:28px;font-weight:700;letter-spacing:-.5px;color:var(--grafite);margin-bottom:6px;line-height:1.15}
 .tema-desc{font-size:13px;color:#888;font-weight:300;line-height:1.6;max-width:680px}
@@ -974,6 +982,13 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
 /* btn — color override (bg já é var(--branco)) */
 [data-theme="dark"] .btn{color:#888}
 [data-theme="dark"] .btn:hover{border-color:#888;color:var(--grafite)}
+/* botões coloridos não perdem o texto branco no dark */
+[data-theme="dark"] .btn.verde{color:#fff}
+[data-theme="dark"] .btn.verde:hover{color:#fff;background:var(--verde-l);border-color:var(--verde-l)}
+[data-theme="dark"] .btn.am{color:#fff}
+[data-theme="dark"] .btn.am:hover{color:#fff}
+[data-theme="dark"] .btn.tc{color:#fff}
+[data-theme="dark"] .btn.tc:hover{color:#fff}
 
 /* texto — contraste dark */
 [data-theme="dark"] .secao-shell-sub{color:#888}
@@ -1530,6 +1545,7 @@ create table if not exists public.cadastros_plataformas (
   nivel_acesso text not null default 'socio',
   uso text,
   clientes text,
+  cofre_link text,
   observacoes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -1539,13 +1555,13 @@ alter table public.cadastros_plataformas
   add column if not exists nivel_acesso text not null default 'socio',
   add column if not exists uso text,
   add column if not exists clientes text,
+  add column if not exists cofre_link text,
   add column if not exists observacoes text,
   add column if not exists updated_at timestamptz default now();
 
 alter table public.cadastros_plataformas
   drop column if exists cofre_nome,
-  drop column if exists cofre_referencia,
-  drop column if exists cofre_link;
+  drop column if exists cofre_referencia;
 
 create table if not exists public.cadastros_plataformas_secret (
   plataforma_id uuid primary key references public.cadastros_plataformas(id) on delete cascade,
@@ -2999,12 +3015,7 @@ function renderProjetos(el) {
     : renderTipoDetalhe(tipoAtivo);
 
   el.innerHTML = `
-    <div class="content-hdr">
-      <div class="content-hdr-left">
-        <div class="content-title">Base Projetual</div>
-        <div class="content-sub">Tipos de projeto · etapas · entregáveis · checklists de conferência</div>
-      </div>
-    </div>
+    ${(window.renderTemaHdr||function(){return ''})('projetos', 'Projetos', 'Base projetual · tipos, etapas, entregáveis e checklists de conferência')}
     <div class="area-tabs">
       ${areas.map(a => `<div class="area-tab${G.areaAtiva===a.key?' active':''}" data-area="${a.key}" onclick="setArea('${a.key}')">${a.label}</div>`).join('')}
     </div>
@@ -4999,7 +5010,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
 
   renderOrganizacao = function(el) {
     el.innerHTML = `
-      ${renderContentHeader('Organização Interna', 'Procedimentos, organização BIM e estrutura interna do escritório')}
+      ${renderTemaHdr('organizacao', 'Organização Interna', 'Procedimentos, organização BIM e estrutura interna do escritório')}
       <div class="knowledge-subtabs">
         ${ORG_SUBTEMAS.map(sub => `
           <div class="knowledge-subtab${G.subtemaOrg === sub.key ? ' active' : ''}" data-sub="${sub.key}" onclick="setSubtemaOrg('${sub.key}')">
@@ -5183,11 +5194,11 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
 
   function renderCadastrosSenhasTema(el) {
     if(!isColaborador()) {
-      el.innerHTML = `${renderContentHeader('Cadastros e Senhas', 'Área restrita para acessos institucionais')}<div class="knowledge-empty">Faça login para acessar esta área.</div>`;
+      el.innerHTML = `${renderTemaHdr('cadastros-senhas', 'Cadastros e Senhas', 'Área restrita para acessos institucionais')}<div class="knowledge-empty">Faça login para acessar esta área.</div>`;
       return;
     }
     el.innerHTML = `
-      ${renderContentHeader('Cadastros e Senhas', 'Credenciais de plataforma com visibilidade por nível de acesso')}
+      ${renderTemaHdr('cadastros-senhas', 'Cadastros e Senhas', 'Credenciais de plataforma com visibilidade por nível de acesso')}
       <div id="cadastros-senhas-root">Carregando...</div>`;
     setTimeout(iniciarCadastrosSenhas, 30);
   }
@@ -5878,7 +5889,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         .cs-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
         .cs-item-title{font-size:14px;font-weight:700;line-height:1.2;color:var(--preto)}
         .cs-item-sub{font-size:11px;color:#777;margin-top:4px;line-height:1.5}
-        .cs-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+        .cs-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:999px;border:1px solid var(--cinza);font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
         .cs-link-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);font-size:12px;color:var(--azul);text-decoration:none;transition:all .12s}
         .cs-link-btn:hover{border-color:var(--azul);background:var(--az-bg)}
         .cs-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
