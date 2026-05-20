@@ -205,6 +205,22 @@
   background:var(--off);
 }
 
+/* NORMA GUIDE — two-panel */
+.norma-guide{display:flex;gap:0;border-top:1px solid var(--cinza2);margin-top:0}
+.norma-guide-left{width:220px;flex-shrink:0;border-right:1px solid var(--cinza2);padding:6px 0;overflow-y:auto}
+.norma-guide-right{flex:1;padding:20px 22px;min-width:0}
+.norma-menu-cat{padding:8px 14px 4px;font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#bbb}
+.norma-menu-item{padding:9px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.norma-menu-item:hover{background:var(--off)}
+.norma-menu-item.active{border-left-color:var(--verde);background:var(--off)}
+.norma-menu-code{font-family:var(--fm);font-size:9px;font-weight:700;color:#aaa;margin-bottom:2px;letter-spacing:.2px}
+.norma-menu-title{font-size:10px;color:#777;line-height:1.35}
+.norma-menu-item.active .norma-menu-code{color:var(--verde)}
+.norma-menu-item.active .norma-menu-title{color:var(--preto);font-weight:600}
+/* MARCO REGULATÓRIO grid */
+.marco-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:14px}
+.marco-col-title{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--cinza2)}
+
 .knowledge-meta{
   display:flex;
   gap:8px;
@@ -540,10 +556,10 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
 /* body::before — padrão de linhas convergentes definido em exp-design-system.css */
 
 /* LAYOUT */
-.apoio-layout{display:flex;gap:16px;padding:14px 20px 48px;margin-top:46px;min-height:calc(100vh - 46px);align-items:flex-start;box-sizing:border-box}
+.apoio-layout{display:flex;gap:16px;padding:16px 24px 64px;margin-top:46px;margin-left:auto;margin-right:auto;max-width:1400px;min-height:calc(100vh - 46px);align-items:flex-start;box-sizing:border-box}
 
 /* SIDEBAR */
-.apoio-sidebar{width:220px;flex-shrink:0;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;display:flex;flex-direction:column;overflow-y:auto;position:sticky;top:62px;max-height:calc(100vh - 80px)}
+.apoio-sidebar{width:260px;flex-shrink:0;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;display:flex;flex-direction:column;overflow-y:auto;position:sticky;top:62px;max-height:calc(100vh - 78px)}
 .sb-search{padding:10px 12px;border-bottom:1px solid var(--cinza)}
 .sb-search input{width:100%;padding:6px 10px;border:1px solid var(--cinza);background:var(--off);font-family:var(--f);font-size:11px;font-weight:300;color:var(--preto);outline:none;border-radius:6px}
 .sb-search input:focus{border-color:var(--preto)}
@@ -926,6 +942,12 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
 /* norma-tab — cor de texto (bg já é var(--branco)) */
 [data-theme="dark"] .norma-tab{color:#666}
 [data-theme="dark"] .norma-tab.active{background:#252523;border-color:#666;color:var(--grafite)}
+/* norma-guide two-panel */
+[data-theme="dark"] .norma-menu-item:hover{background:#252523}
+[data-theme="dark"] .norma-menu-item.active{background:#252523}
+[data-theme="dark"] .norma-menu-title{color:#777}
+[data-theme="dark"] .norma-menu-item.active .norma-menu-title{color:var(--grafite)}
+[data-theme="dark"] .marco-col-title{border-bottom-color:var(--cinza2)}
 
 /* knowledge-meta-item — usa var(--off) em light, ok no dark; hover explícito */
 [data-theme="dark"] .knowledge-meta-item{background:#252523}
@@ -4422,11 +4444,27 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     { key: 'playgrounds', label: 'Playgrounds', slug: 'conhecimento-normas-playgrounds' }
   ];
 
+  const NORMAS_CANONICAS = [
+    { codigo: 'ABNT NBR 9050',    titulo: 'Acessibilidade a edificações, mobiliário, espaços e equipamentos urbanos' },
+    { codigo: 'ABNT NBR 16537',   titulo: 'Acessibilidade — Sinalização tátil no piso' },
+    { codigo: 'ABNT NBR 16246',   titulo: 'Florestas urbanas — Execução e manutenção' },
+    { codigo: 'ABNT NBR 16636-4', titulo: 'Elaboração de projetos de arquitetura paisagística' },
+    { codigo: 'ABNT NBR 5101',    titulo: 'Iluminação pública' },
+    { codigo: 'ABNT NBR 15215',   titulo: 'Iluminação natural — Procedimentos de cálculo' },
+    { codigo: 'ABNT NBR 15575',   titulo: 'Desempenho de edificações habitacionais' },
+    { codigo: 'ABNT NBR 10844',   titulo: 'Instalações prediais de águas pluviais' },
+    { codigo: 'ABNT NBR 15527',   titulo: 'Aproveitamento de água de chuva de coberturas' },
+    { codigo: 'ABNT NBR 16071',   titulo: 'Playgrounds — Equipamentos e superfícies' },
+    { codigo: 'ABNT NBR 10339',   titulo: 'Piscinas — Projeto, execução e manutenção' },
+    { codigo: 'ABNT NBR 9077',    titulo: 'Saídas de emergência em edifícios' },
+  ];
+
   Object.assign(G, {
     temaAtivo: 'cultura',
     subtemaOrg: 'padronizacao-tonalidades',
     subtemaConhecimento: 'vegetacao',
     subtemaNorma: 'acessibilidade',
+    normaSelecionada: '',
     apoioSecoes: [],
     apoioTables: { conteudo: false, vegetacao: false },
     temasMetaCache: {},
@@ -4596,6 +4634,26 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       toast('Nota base atualizada');
       return;
     }
+
+    if (ctx.type === 'edit-norma-guide') {
+      const descricao = document.getElementById('ng-descricao')?.value?.trim() || '';
+      if (ctx.dbId) {
+        const { error } = await sb.from('apoio_normas').update({ descricao }).eq('id', ctx.dbId);
+        if (error) { toast('Erro: ' + error.message); return; }
+        const idx = G.normasCache.findIndex(n => n.id === ctx.dbId);
+        if (idx !== -1) G.normasCache[idx] = { ...G.normasCache[idx], descricao };
+      } else {
+        const { data, error } = await sb.from('apoio_normas').insert({
+          area: 'paisagismo', codigo: ctx.codigo, titulo: ctx.titulo, descricao
+        }).select().single();
+        if (error) { toast('Erro: ' + error.message); return; }
+        if (data) G.normasCache.push(data);
+      }
+      fecharModal();
+      renderTema();
+      toast('Conteúdo da norma atualizado');
+      return;
+    }
   }
 
   function renderTemaHdr(slug, defaultNome, defaultDesc) {
@@ -4708,6 +4766,22 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     }
     renderTema();
     toast('Item removido');
+  }
+
+  async function abrirEditNormaGuide(codigo) {
+    const canonNorma = NORMAS_CANONICAS.find(n => n.codigo === codigo);
+    if (!canonNorma) return;
+    const dbNorma = G.normasCache.find(n => n.codigo === codigo);
+    abrirModal(`Editar: ${codigo}`, `
+      <div class="modal-field">
+        <label>Norma</label>
+        <input type="text" value="${escHtml(canonNorma.titulo)}" disabled style="opacity:.5;cursor:not-allowed">
+      </div>
+      <div class="modal-field">
+        <label>Conteúdo — escopo, exigências principais, aplicações práticas e observações</label>
+        <textarea id="ng-descricao" rows="10" placeholder="Descreva o alcance da norma, os principais requisitos aplicáveis ao paisagismo e as situações em que ela entra em vigor nos projetos EXP…">${escHtml(dbNorma?.descricao || '')}</textarea>
+      </div>
+    `, { type: 'edit-norma-guide', codigo, titulo: canonNorma.titulo, dbId: dbNorma?.id || null });
   }
 
   async function abrirEditNotaCargaTerra() {
@@ -4886,6 +4960,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   window.abrirEditJvSubcard = abrirEditJvSubcard;
   window.excluirJvSubcard = excluirJvSubcard;
   window.abrirEditNotaCargaTerra = abrirEditNotaCargaTerra;
+  window.abrirEditNormaGuide = abrirEditNormaGuide;
 
   window.setSubtemaOrg = function(sub) {
     G.subtemaOrg = sub;
@@ -5016,57 +5091,94 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
 
   function renderNormasDinamicas() {
     const canEdit = canEditApoio();
-    const areaAtiva = G.subtemaNorma || 'acessibilidade';
+    const sel = G.normaSelecionada || NORMAS_CANONICAS[0].codigo;
+    const selNorma = NORMAS_CANONICAS.find(n => n.codigo === sel) || NORMAS_CANONICAS[0];
+    const dbNorma = G.normasCache.find(n => n.codigo === sel);
 
-    const NORMA_AREAS = [
-      { key: 'acessibilidade', label: 'NBR 9050 · Acessibilidade' },
-      { key: 'piso-tatil', label: 'NBR 16537 · Piso Tátil' },
-      { key: 'piscinas', label: 'Piscinas' },
-      { key: 'playgrounds', label: 'Playgrounds' },
-      { key: 'geral', label: 'Geral' }
-    ];
+    // ── CARD 1: Marco Regulatório ─────────────────────────────
+    const introHtml = `
+      <div class="secao-shell" style="margin-bottom:14px">
+        <div class="secao-shell-header">
+          <div>
+            <div class="secao-shell-title">Marco Regulatório</div>
+            <div class="secao-shell-sub">Arcabouço normativo que rege projetos de paisagismo e urbanismo</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#555;line-height:1.75;margin:12px 0 0">Os projetos desenvolvidos pela EXP operam em um ambiente normativo composto por três esferas — federal, estadual e municipal. Conhecer essas referências é parte da responsabilidade técnica da equipe: garante conformidade legal, assegura a segurança das soluções propostas e alinha o trabalho às boas práticas estabelecidas pelo setor.</p>
+        <div class="marco-grid">
+          <div>
+            <div class="marco-col-title">Nível Nacional</div>
+            <ul class="apoio-ul">
+              <li>ABNT – Associação Brasileira de Normas Técnicas</li>
+              <li>Lei de Parcelamento do Solo Urbano – Lei nº 6.766/1979</li>
+              <li>Estatuto da Cidade – Lei nº 10.257/2001</li>
+              <li>Código Florestal – Lei nº 12.651/2012</li>
+              <li>Resoluções CONAMA</li>
+            </ul>
+          </div>
+          <div>
+            <div class="marco-col-title">Nível Municipal</div>
+            <ul class="apoio-ul">
+              <li>Código de Obras e Edificações Municipal</li>
+              <li>Plano Diretor Municipal</li>
+              <li>Lei de Uso e Ocupação do Solo (LUOS / Zoneamento)</li>
+              <li>Normas estaduais e municipais de arborização urbana</li>
+              <li>Manuais de drenagem urbana municipais</li>
+            </ul>
+          </div>
+          <div>
+            <div class="marco-col-title">Nível Estadual</div>
+            <ul class="apoio-ul">
+              <li>Normas do Corpo de Bombeiros Estadual</li>
+            </ul>
+          </div>
+        </div>
+      </div>`;
 
-    const tabsHtml = NORMA_AREAS.map(a => `
-      <button class="norma-tab${a.key === areaAtiva ? ' active' : ''}" onclick="G.subtemaNorma='${a.key}';renderTema()">${escHtml(a.label)}</button>
-    `).join('');
+    // ── CARD 2: Guia de Normas (two-panel) ────────────────────
+    const leftMenu = `
+      <div class="norma-guide-left">
+        <div class="norma-menu-cat">Paisagismo</div>
+        ${NORMAS_CANONICAS.map(n => `
+          <div class="norma-menu-item${n.codigo === sel ? ' active' : ''}" onclick="G.normaSelecionada=${jsStr(n.codigo)};renderTema()">
+            <div class="norma-menu-code">${escHtml(n.codigo)}</div>
+            <div class="norma-menu-title">${escHtml(n.titulo)}</div>
+          </div>`).join('')}
+      </div>`;
 
-    const normasFiltradas = G.normasCache.filter(n => n.area === areaAtiva);
-    const addBtn = canEdit ? `<button class="btn verde sm" onclick="abrirNovaNorma(${jsStr(areaAtiva)})">+ Norma</button>` : '';
-
-    const normasHtml = normasFiltradas.length > 0
-      ? normasFiltradas.map(n => {
-          const idJs = jsStr(n.id);
-          const actionsHtml = canEdit ? `
-            <div class="norma-item-actions">
-              <button class="btn-veg-icon" onclick="abrirEditNorma(${idJs})" title="Editar">✎</button>
-              <button class="btn-veg-icon" onclick="excluirNorma(${idJs})" title="Remover">✕</button>
-            </div>` : '';
-          return `<div class="norma-item">
-            <div class="norma-item-top">
-              ${n.codigo ? `<div class="norma-item-code">${escHtml(n.codigo)}</div>` : ''}
-              <div class="norma-item-title">${escHtml(n.titulo)}${n.ano ? ` <span style="font-weight:400;color:#aaa">· ${n.ano}</span>` : ''}</div>
-              ${actionsHtml}
-            </div>
-            ${n.descricao ? `<div class="norma-item-desc">${escHtml(n.descricao)}</div>` : ''}
-          </div>`;
-        }).join('')
-      : `<div class="knowledge-empty">Nenhuma norma cadastrada nesta área. ${canEdit ? 'Use o botão + para adicionar.' : ''}</div>`;
-
-    const staticSlug = `conhecimento-normas-${areaAtiva}`;
-    const staticSection = getSection(staticSlug);
-    const staticHtml = normasFiltradas.length === 0 && staticSection?.corpo
-      ? `<div class="rich-body" style="margin-bottom:14px">${parseRichBody(staticSection.corpo)}</div>`
+    const editBtn = canEdit
+      ? `<button class="btn sm" onclick="abrirEditNormaGuide(${jsStr(sel)})">✎ Editar conteúdo</button>`
       : '';
 
-    return `<section class="secao-shell">
-      ${renderTemaHdr('normas-tecnicas', 'Normas Técnicas', 'Referências normativas aplicadas ao paisagismo e urbanismo')}
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
-        <div class="norma-tabs" style="margin:0">${tabsHtml}</div>
-        ${addBtn}
-      </div>
-      ${staticHtml}
-      ${normasHtml}
-    </section>`;
+    const conteudoHtml = dbNorma?.descricao
+      ? `<div class="rich-body" style="padding-top:14px;border-top:1px solid var(--cinza2)">${escHtml(dbNorma.descricao).replace(/\n/g,'<br>')}</div>`
+      : `<div style="padding-top:14px;border-top:1px solid var(--cinza2)">
+           <div class="knowledge-empty">Conteúdo ainda não cadastrado.${canEdit ? ' Use ✎ para adicionar.' : ''}</div>
+         </div>`;
+
+    const rightPanel = `
+      <div class="norma-guide-right">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+          <div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--verde);font-weight:700;margin-bottom:6px;letter-spacing:.3px">${escHtml(selNorma.codigo)}</div>
+            <div style="font-size:16px;font-weight:700;color:var(--grafite);letter-spacing:-.3px;line-height:1.3;max-width:500px">${escHtml(selNorma.titulo)}</div>
+          </div>
+          ${editBtn}
+        </div>
+        ${conteudoHtml}
+      </div>`;
+
+    return `
+      ${introHtml}
+      <div class="secao-shell" style="padding:0;overflow:hidden">
+        <div style="padding:18px 20px 14px">
+          ${renderTemaHdr('normas-tecnicas', 'Normas Técnicas', 'Referências normativas aplicadas ao paisagismo e urbanismo')}
+        </div>
+        <div class="norma-guide">
+          ${leftMenu}
+          ${rightPanel}
+        </div>
+      </div>`;
   }
 
   function renderCadastrosSenhasTema(el) {
@@ -6637,7 +6749,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     const ctx = G.modalCtx;
     if(!ctx) return;
     // Handle new dynamic types (ctx.type)
-    const DYNAMIC_TYPES = ['tema-hdr','nova-indicacao','edit-indicacao','nova-norma','edit-norma','novo-jv-subcard','edit-jv-subcard','edit-nota-carga'];
+    const DYNAMIC_TYPES = ['tema-hdr','nova-indicacao','edit-indicacao','nova-norma','edit-norma','novo-jv-subcard','edit-jv-subcard','edit-nota-carga','edit-norma-guide'];
     if(ctx.type && DYNAMIC_TYPES.includes(ctx.type)) { await _handleDynamicModalSave(ctx); return; }
     if(ctx.tipo !== 'apoio-secao' && ctx.tipo !== 'apoio-especie' && ctx.tipo !== 'memorial-vegetal') return oldSalvarModal();
     if(ctx.tipo === 'memorial-vegetal') { salvarMemorialVegetal(); return; }
