@@ -6,7 +6,7 @@
 <title>EXP · Financeiro</title>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
+<script>!function(){var t=localStorage.getItem('exp-theme'),s=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(t===null&&s))document.documentElement.setAttribute('data-theme','dark');else document.documentElement.setAttribute('data-theme','light');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 <style>
 /* ── RESET & ROOT ─────────────────────────────────────────── */
@@ -33,6 +33,9 @@
   --consul:   #C36247; --consul-bg: #FAF0EE;
   --esp:      #D19931; --esp-bg: #FAF4E8;
   --nav-active: var(--fin);
+  /* aging bucket 90d — laranja-âmbar entre ouro e terracota */
+  --am-deep:  #C4831A;
+  --am-deep-bg: #FDF3E7;
 }
 
 body {
@@ -79,6 +82,20 @@ body {
 
 /* ── NAV ──────────────────────────────────────────────────── */
 /* estilos canônicos do nav vivem em exp-design-system.css    */
+
+/* Feedback popover */
+.nav-feedback-wrap{position:relative}
+.nav-feedback-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--cinza);background:var(--branco);color:var(--grafite);font-family:var(--font-ui);font-size:14px;font-weight:700;cursor:pointer;transition:border-color .12s,background .12s}
+.nav-feedback-btn:hover{border-color:var(--grafite);background:var(--off)}
+.nav-feedback-pop{position:absolute;top:calc(100% + 10px);right:0;width:min(360px,calc(100vw - 32px));padding:14px;border:1px solid var(--cinza);border-radius:8px;background:rgba(255,255,255,.98);box-shadow:0 4px 24px rgba(0,0,0,.1);display:none;z-index:100;gap:10px;flex-direction:column}
+.nav-feedback-pop.open{display:flex}
+.nav-feedback-pop::before{content:'';position:absolute;top:-6px;right:14px;width:12px;height:12px;transform:rotate(45deg);background:var(--branco);border-top:1px solid var(--cinza);border-left:1px solid var(--cinza)}
+.nav-feedback-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.nav-feedback-sub{font-size:10px;color:#888;line-height:1.45}
+.nav-feedback-actions{display:flex;justify-content:flex-end;gap:8px}
+[data-theme="dark"] .nav-feedback-pop{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .nav-feedback-pop::before{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .nav-feedback-pop select,[data-theme="dark"] .nav-feedback-pop textarea{background:#252523;border-color:var(--cinza);color:var(--grafite)}
 
 /* ── MAIN ─────────────────────────────────────────────────── */
 .main { padding: 16px; max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
@@ -563,7 +580,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 .aging-bkt.bkt-ok  { border-top-color: var(--verde); }
 .aging-bkt.bkt-30  { border-top-color: var(--ouro); }
 .aging-bkt.bkt-60  { border-top-color: var(--consul); }
-.aging-bkt.bkt-90  { border-top-color: #C4831A; }
+.aging-bkt.bkt-90  { border-top-color: var(--am-deep); }
 .aging-bkt.bkt-max { border-top-color: var(--terracota); }
 .aging-bkt-lbl  { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #999; margin-bottom: 6px; }
 .aging-bkt-val  { font-size: 16px; font-weight: 700; }
@@ -573,7 +590,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 .aging-row-dias { font-size: 11px; font-weight: 700; min-width: 72px; }
 .aging-row-dias.d30  { color: var(--ouro); }
 .aging-row-dias.d60  { color: var(--consul); }
-.aging-row-dias.d90  { color: #C4831A; }
+.aging-row-dias.d90  { color: var(--am-deep); }
 .aging-row-dias.dmax { color: var(--terracota); }
 .aging-row-info { flex: 1; }
 .aging-row-cliente { font-weight: 600; font-size: 12px; }
@@ -742,7 +759,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
     <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.financeiro <span>▾</span></button>
     <div class="nav-dropdown" id="nav-dropdown">
       <a href="gestao.html">EXP.projetos</a>
-      <a href="apoio.html">EXP.conhecimento</a>
+      <a href="apoio.html">EXP.apoio</a>
       <a href="contatos.html">EXP.contatos</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
       <a href="calc.html" class="nd-soc" style="display:none">EXP.calc</a>
@@ -762,6 +779,31 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
     <button class="ntab socio-only" data-tab="config" id="ntab-config">Config</button>
   </div>
   <div class="nav-right">
+    <div class="nav-feedback-wrap" id="nav-feedback-wrap">
+      <button type="button" class="nav-feedback-btn" id="nav-feedback-btn" onclick="toggleToolFeedbackPopover(event)" title="Problemas e sugestões">!</button>
+      <div class="nav-feedback-pop" id="nav-feedback-pop">
+        <div class="nav-feedback-title">Problema ou sugestão</div>
+        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+        <div style="display:grid;gap:8px">
+          <div>
+            <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;display:block;margin-bottom:4px">Tipo</label>
+            <select id="tool-feedback-type" style="width:100%;padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:11px;background:var(--branco);color:var(--grafite)">
+              <option value="problema">Problema</option>
+              <option value="sugestao">Sugestão</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;display:block;margin-bottom:4px">Mensagem</label>
+            <textarea id="tool-feedback-message" rows="4" style="width:100%;padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:11px;resize:vertical;box-sizing:border-box;background:var(--branco);color:var(--grafite)" placeholder="Descreva o problema ou sugestão…"></textarea>
+          </div>
+        </div>
+        <div class="nav-feedback-status" id="tool-feedback-status" style="font-size:10px;color:#999">Seu registro será encaminhado para a Gestão de plataforma.</div>
+        <div class="nav-feedback-actions">
+          <button type="button" class="btn-sec btn-sm" onclick="fecharToolFeedbackPopover()">Fechar</button>
+          <button type="button" class="btn-pri btn-sm" onclick="enviarToolFeedback()">Enviar</button>
+        </div>
+      </div>
+    </div>
     <div class="conn-dot" id="conn-dot" title="Status"></div>
     <div class="notif-wrap" id="notif-wrap">
       <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notificações">
@@ -782,17 +824,16 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
     </button>
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-chip" onclick="toggleUserMenu()">
-        <div class="uav" id="nav-av"></div>
-        <div class="u-text">
-          <span class="u-nome" id="nav-nome">—</span>
-          <span class="u-role" id="nav-role"></span>
+        <div class="user-av" id="nav-av"></div>
+        <div>
+          <div class="u-nome" id="nav-nome">—</div>
+          <div class="u-role" id="nav-role">—</div>
         </div>
         <span class="u-caret">▾</span>
       </div>
       <div class="user-dropdown" id="user-dropdown">
-        <div class="ud-coming">Meus dados</div>
-        <div class="ud-sep nd-soc" style="display:none"></div>
-        <div class="ud-coming nd-soc" style="display:none">Gestão da plataforma</div>
+        <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+        <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
         <div class="ud-sep"></div>
         <button onclick="sair()">Sair do sistema</button>
       </div>
@@ -2138,6 +2179,31 @@ function toggleNavDropdown() {
 function toggleUserMenu() {
   document.getElementById('user-dropdown').classList.toggle('open');
 }
+function toggleToolFeedbackPopover(e) {
+  e?.stopPropagation();
+  document.getElementById('nav-feedback-pop').classList.toggle('open');
+}
+function fecharToolFeedbackPopover() {
+  document.getElementById('nav-feedback-pop').classList.remove('open');
+}
+async function enviarToolFeedback() {
+  const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
+  const mensagem = document.getElementById('tool-feedback-message')?.value?.trim();
+  const statusEl = document.getElementById('tool-feedback-status');
+  if (!mensagem) { if(statusEl) statusEl.textContent = 'Escreva uma mensagem antes de enviar.'; return; }
+  if(statusEl) statusEl.textContent = 'Enviando…';
+  try {
+    const { error } = await sb.from('platform_feedback').insert({
+      tipo, mensagem, modulo: 'financeiro', usuario_id: G.usuario?.id, usuario_nome: G.usuario?.nome
+    });
+    if (error) throw error;
+    if(statusEl) statusEl.textContent = 'Enviado! Obrigado pelo registro.';
+    document.getElementById('tool-feedback-message').value = '';
+    setTimeout(fecharToolFeedbackPopover, 1800);
+  } catch(err) {
+    if(statusEl) statusEl.textContent = 'Erro ao enviar: ' + (err.message || 'tente novamente.');
+  }
+}
 // ══════════════════════════════════════════════════════════
 //   NOTIFICAÇÕES
 // ══════════════════════════════════════════════════════════
@@ -2385,6 +2451,7 @@ function irParaAba(tab) {
 document.addEventListener('click', e => {
   if (!e.target.closest('#nav-mod-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open');
   if (!e.target.closest('#user-pill-wrap')) document.getElementById('user-dropdown')?.classList.remove('open');
+  if (!e.target.closest('#nav-feedback-wrap')) document.getElementById('nav-feedback-pop')?.classList.remove('open');
 });
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
@@ -2392,7 +2459,11 @@ function initConnDot() {
   upd(); window.addEventListener('online', upd); window.addEventListener('offline', upd);
 }
 function initNavDropdown(role) {
-  if (['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+  if (['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase())) {
+    document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+    const platBtn = document.getElementById('user-menu-platform');
+    if (platBtn) platBtn.style.display = '';
+  }
   initConnDot();
 }
 function canAccessFinanceiroRole(role) {
@@ -5505,11 +5576,18 @@ async function init() {
   G.usuario = usr;
   G.isSocio = ['socio', 'socio_admin'].includes((usr.role || '').toLowerCase());
 
-  // Nav
+  // Nav — user chip
   const av = document.getElementById('nav-av');
-  av.textContent = usr.iniciais || usr.nome?.slice(0,2).toUpperCase();
-  av.style.background = usr.cor || '#6B4FA0';
-  document.getElementById('nav-nome').textContent = usr.nome?.split(' ')[0];
+  if (av) {
+    av.textContent = usr.iniciais || (usr.nome||'').slice(0,2).toUpperCase();
+    av.style.background = usr.cor || '#6B4FA0';
+    av.style.color = '#fff';
+  }
+  const nomePartes = (usr.nome||'').trim().split(/\s+/).filter(Boolean);
+  document.getElementById('nav-nome').textContent = nomePartes.length <= 2 ? (nomePartes.join(' ')||'—') : nomePartes[0]+' '+nomePartes[nomePartes.length-1];
+  const roleMap = { socio:'Sócio', socio_admin:'Sócio', colaborador:'Colaborador', estagiario:'Estagiário', externo:'Externo' };
+  const navRole = document.getElementById('nav-role');
+  if (navRole) navRole.textContent = roleMap[(usr.role||'').toLowerCase()] || usr.role || '';
   initNavDropdown(usr.role);
 
   // Sócios: mostrar aba Config, Análise e elementos socio-only
