@@ -6,6 +6,7 @@
 <title>EXP · Financeiro</title>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme'),s=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(t===null&&s))document.documentElement.setAttribute('data-theme','dark');else document.documentElement.setAttribute('data-theme','light');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 <style>
@@ -236,9 +237,20 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 
 /* ── KPI CARDS ────────────────────────────────────────────── */
 .kpi-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  display: grid; grid-template-columns: repeat(4, 1fr);
   gap: 10px; margin-bottom: 18px;
 }
+/* ── CHARTS ───────────────────────────────────────────────── */
+.dash-charts-row {
+  display: grid; grid-template-columns: 2fr 1fr;
+  gap: 12px; margin-bottom: 18px;
+}
+.dash-chart-card {
+  background: var(--branco); border: 1px solid var(--cinza);
+  border-radius: 10px; padding: 16px 18px;
+}
+.dash-chart-card .sec-hd { margin-bottom: 12px; }
+.dash-chart-canvas-wrap { position: relative; height: 210px; }
 .kpi-card {
   background: var(--branco); border: 1px solid var(--cinza); border-radius: 8px;
   padding: 14px 16px 14px 19px; position: relative; overflow: hidden;
@@ -906,7 +918,25 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
     </div>
   </div>
 
-  <!-- Receita por núcleo -->
+  <!-- Gráficos: Quadrimestre + Receita por Núcleo -->
+  <div class="dash-charts-row">
+    <div class="dash-chart-card">
+      <div class="sec-hd">
+        <div class="sec-title">Resultado — quadrimestre</div>
+        <div class="sec-sub" id="chart-quad-label" style="font-size:10px;color:#aaa"></div>
+      </div>
+      <div class="dash-chart-canvas-wrap"><canvas id="chart-quad"></canvas></div>
+    </div>
+    <div class="dash-chart-card">
+      <div class="sec-hd">
+        <div class="sec-title">Receita por núcleo</div>
+        <div class="sec-sub" id="chart-nucleo-label" style="font-size:10px;color:#aaa"></div>
+      </div>
+      <div class="dash-chart-canvas-wrap"><canvas id="chart-nucleo"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Receita por núcleo (cards) -->
   <div class="dash-nc-grid" id="dash-nucleos"></div>
 
   <div class="grid-2">
@@ -2983,8 +3013,178 @@ async function carregarDashboard() {
     </div>`;
   }).join('');
 
+  // ── Gráficos ─────────────────────────────────────────────────
+  await renderDashCharts(mes, ano, totalRec, byNucleo, NC_DEF);
+
   carregarAlertas();
   carregarEtapasRecentes();
+}
+
+// ── Instâncias dos charts (destruir antes de recriar) ────────
+let _chartQuad = null;
+let _chartNucleo = null;
+
+async function renderDashCharts(mes, ano, totalRecMes, byNucleo, NC_DEF) {
+  // Quadrimestre: últimos 4 meses até o selecionado (inclusive)
+  const quadMeses = [];
+  const quadLabels = [];
+  for (let i = 3; i >= 0; i--) {
+    let m = mes - i;
+    let a = ano;
+    if (m <= 0) { m += 12; a -= 1; }
+    quadMeses.push(String(m).padStart(2,'0') + String(a));
+    quadLabels.push(MESES_ABR[m - 1] + (a !== ano ? ' ' + a : ''));
+  }
+
+  document.getElementById('chart-quad-label').textContent =
+    quadLabels[0] + ' → ' + quadLabels[3];
+  document.getElementById('chart-nucleo-label').textContent =
+    MESES_FULL[mes - 1] + ' de ' + ano;
+
+  // Buscar receita e despesa do quadrimestre
+  const [{ data: qRec }, { data: qDesp }] = await Promise.all([
+    sb.from('fin_lancamentos').select('valor, mes_ano_competencia')
+      .in('mes_ano_competencia', quadMeses).eq('tipo','receita')
+      .in('situacao',['pago','aprovado']),
+    sb.from('fin_lancamentos').select('valor, mes_ano_competencia')
+      .in('mes_ano_competencia', quadMeses).eq('tipo','despesa')
+      .in('situacao',['pago','aprovado']),
+  ]);
+
+  const sumBy = (arr, key) => {
+    const acc = {};
+    quadMeses.forEach(k => acc[k] = 0);
+    (arr||[]).forEach(r => { if (acc[r[key]] !== undefined) acc[r[key]] += Math.abs(parseFloat(r.valor||0)); });
+    return quadMeses.map(k => acc[k]);
+  };
+
+  const recVals  = sumBy(qRec,  'mes_ano_competencia');
+  const despVals = sumBy(qDesp, 'mes_ano_competencia');
+  const resVals  = recVals.map((r, i) => r - despVals[i]);
+
+  // Cores do design system via CSS variables (resolvidas do :root)
+  const cssProp = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const cRoxo   = cssProp('--roxo')    || '#6B4FA0';
+  const cCinza  = cssProp('--cinza2')  || '#ECEAE4';
+  const cVerde  = cssProp('--verde')   || '#2D9E6B';
+  const cTc     = cssProp('--terracota') || '#C0584D';
+  const cText   = cssProp('--grafite') || '#2a2a2a';
+
+  // ── Chart 1: Quadrimestre (barras agrupadas + linha resultado) ──
+  if (_chartQuad) _chartQuad.destroy();
+  const ctx1 = document.getElementById('chart-quad').getContext('2d');
+  _chartQuad = new Chart(ctx1, {
+    data: {
+      labels: quadLabels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Receita',
+          data: recVals,
+          backgroundColor: cRoxo + '99',
+          borderColor: cRoxo,
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 2,
+        },
+        {
+          type: 'bar',
+          label: 'Despesas',
+          data: despVals,
+          backgroundColor: cCinza,
+          borderColor: '#ccc',
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: 'Resultado',
+          data: resVals,
+          borderColor: resVals.every(v => v >= 0) ? cVerde : cTc,
+          backgroundColor: 'transparent',
+          pointBackgroundColor: resVals.map(v => v >= 0 ? cVerde : cTc),
+          pointRadius: 4,
+          borderWidth: 2,
+          tension: 0.3,
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: cText, font: { family: 'Raleway', size: 10 }, boxWidth: 10, padding: 12 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': ' +
+              (ctx.raw < 0 ? '-' : '') + 'R$ ' + Math.abs(ctx.raw).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: '#999', font: { size: 10 } }, grid: { display: false } },
+        y: {
+          ticks: {
+            color: '#999',
+            font: { size: 9 },
+            callback: v => 'R$ ' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0)+'k' : v),
+          },
+          grid: { color: '#f0f0f0' },
+        },
+      },
+    },
+  });
+
+  // ── Chart 2: Receita por núcleo (donut) ──
+  if (_chartNucleo) _chartNucleo.destroy();
+  const ncLabels = NC_DEF.map(n => n.label);
+  const ncVals   = NC_DEF.map(n => byNucleo[n.key] || 0);
+  const ncCores  = NC_DEF.map(n => {
+    // resolve var(--xxx) → valor real
+    const m = n.cor.match(/var\((--[^)]+)\)/);
+    return m ? cssProp(m[1]) : n.cor;
+  });
+
+  const ctx2 = document.getElementById('chart-nucleo').getContext('2d');
+  _chartNucleo = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: ncLabels,
+      datasets: [{
+        data: ncVals,
+        backgroundColor: ncCores.map(c => c + 'CC'),
+        borderColor: ncCores,
+        borderWidth: 1.5,
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: cText, font: { family: 'Raleway', size: 10 }, boxWidth: 10, padding: 10 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : '0.0';
+              return ' ' + ctx.label + ': R$ ' + ctx.raw.toLocaleString('pt-BR', { minimumFractionDigits: 0 }) + ' (' + pct + '%)';
+            },
+          },
+        },
+      },
+    },
+  });
 }
 
 async function carregarAlertas() {
