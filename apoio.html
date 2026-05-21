@@ -2415,18 +2415,20 @@ window.addEventListener('DOMContentLoaded', async () => {
   const {data:u} = await sb.from('usuarios').select('*').eq('auth_id',session.user.id).single();
   G.usuario = u || {nome:'Usuário',iniciais:'?',cor:'#888',role:'colaborador'};
 
-  const ini = G.usuario.iniciais||'?';
   const avEl = document.getElementById('user-av');
   if (avEl) {
-    avEl.style.background = G.usuario.cor || '#888';
-    avEl.style.color = '#fff';
-    avEl.textContent = ini;
+    if (G.usuario.avatar_url) {
+      avEl.classList.add('has-avatar');
+      avEl.innerHTML = `<img src="${G.usuario.avatar_url}" alt="${G.usuario.iniciais || ''}">`;
+    } else {
+      avEl.textContent = G.usuario.iniciais || '?';
+      avEl.style.background = G.usuario.cor || '#888';
+    }
   }
   const _np = (G.usuario.nome||'').trim().split(/\s+/).filter(Boolean);
   const nomeExib = _np.length <= 2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
   document.getElementById('user-nome').textContent = nomeExib;
-  // role chip
-  const roleMap = { socio: 'Sócio', colaborador: 'Colaborador', estagiario: 'Estagiário', externo: 'Externo' };
+  const roleMap = { socio: 'Sócio', socio_adm: 'Sócio-administrador', socio_admin: 'Sócio-administrador', coordenador: 'Coordenador', colaborador: 'Colaborador' };
   const navRole = document.getElementById('nav-role');
   if (navRole) navRole.textContent = roleMap[G.usuario.role] || G.usuario.role || '';
   initNavDropdown(G.usuario.role);
@@ -6096,31 +6098,34 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       return `
         <article class="cs-item" id="cs-card-${esc(p.id)}">
           <div class="cs-item-top">
-            <div>
-              <div class="cs-item-title">${esc(p.nome)}</div>
+            <div class="cs-item-left">
+              <div class="cs-item-title-row">
+                ${p.cofre_link ? `<a class="cs-link-arrow" href="${esc(p.cofre_link)}" target="_blank" rel="noopener" title="Abrir plataforma">↗</a>` : ''}
+                <span class="cs-item-title">${esc(p.nome)}</span>
+              </div>
               ${p.uso ? `<div class="cs-item-sub">${esc(p.uso)}</div>` : ''}
             </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-              ${p.cofre_link ? `<a class="cs-link-btn" href="${esc(p.cofre_link)}" target="_blank" rel="noopener" title="Abrir plataforma">↗</a>` : ''}
-              <span class="cs-badge" style="background:${nivel.bg};color:${nivel.color};border-color:${nivel.border}">${esc(nivel.label)}</span>
+            <div class="cs-item-right">
+              <div class="cs-copy-bar" id="cs-copy-bar-${esc(p.id)}" style="display:none">
+                <button class="cs-copy-btn" onclick="csCopiarLogin('${esc(p.id)}')" id="cs-copy-login-${esc(p.id)}" title="Copiar login">⎘ login</button>
+                <button class="cs-copy-btn" onclick="csCopiarSenha('${esc(p.id)}')" id="cs-copy-senha-${esc(p.id)}" title="Copiar senha">⎘ senha</button>
+              </div>
+              <div class="cs-badge-wrap" onmouseenter="csBadgeHover('${esc(p.id)}')" onmouseleave="csBadgeLeave('${esc(p.id)}')">
+                <span class="cs-badge" style="background:${nivel.bg};color:${nivel.color};border-color:${nivel.border}">${esc(nivel.label)}</span>
+                <div class="cs-badge-tooltip" id="cs-tooltip-${esc(p.id)}" style="display:none"></div>
+              </div>
             </div>
           </div>
           <div class="cs-meta-grid">
             <div class="cs-meta-box">
-              <div class="cs-meta-label-row">
-                <div class="cs-meta-label">Login</div>
-                <button class="cs-copy-inline" id="cs-copy-login-${esc(p.id)}" onclick="csCopiarLogin('${esc(p.id)}')" title="Copiar login">⎘</button>
-              </div>
+              <div class="cs-meta-label">Login</div>
               <div class="cs-secret-row">
                 <span class="cs-secret-value" id="cs-login-${esc(p.id)}">---------</span>
                 <button class="cs-icon-btn cs-eye" id="cs-eye-login-${esc(p.id)}" onclick="csToggleReveal('${esc(p.id)}')" title="Revelar credencial">👁</button>
               </div>
             </div>
             <div class="cs-meta-box">
-              <div class="cs-meta-label-row">
-                <div class="cs-meta-label">Senha</div>
-                <button class="cs-copy-inline" id="cs-copy-senha-${esc(p.id)}" onclick="csCopiarSenha('${esc(p.id)}')" title="Copiar senha">⎘</button>
-              </div>
+              <div class="cs-meta-label">Senha</div>
               <div class="cs-secret-row">
                 <span class="cs-secret-value" id="cs-senha-${esc(p.id)}">---------</span>
                 <button class="cs-icon-btn cs-eye" id="cs-eye-senha-${esc(p.id)}" onclick="csToggleReveal('${esc(p.id)}')" title="Revelar credencial">👁</button>
@@ -6128,7 +6133,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
             </div>
           </div>
           ${p.clientes ? `<div class="cs-copy">Clientes: ${esc(p.clientes)}</div>` : ''}
-          ${p.observacoes ? `<div class="cs-copy">Observações: ${esc(p.observacoes)}</div>` : ''}
+          ${p.observacoes ? `<div class="cs-copy">Obs: ${esc(p.observacoes)}</div>` : ''}
           ${isSocio() ? `
           <div class="cs-actions">
             <button class="cs-btn-icon" onclick="csEditar('${esc(p.id)}')" title="Editar">✎</button>
@@ -6143,27 +6148,36 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         .cs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
         @media(max-width:1100px){.cs-grid{grid-template-columns:repeat(2,1fr)}}
         @media(max-width:720px){.cs-grid{grid-template-columns:1fr}}
-        .cs-item{background:var(--branco);border:1px solid var(--cinza);border-radius:8px;padding:10px 14px}
-        .cs-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
-        .cs-item-title{font-size:14px;font-weight:700;line-height:1.2;color:var(--preto)}
-        .cs-item-sub{font-size:11px;color:#777;margin-top:4px;line-height:1.5}
-        .cs-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:999px;border:1px solid var(--cinza);font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
-        .cs-link-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);font-size:12px;color:var(--azul);text-decoration:none;transition:all .12s}
-        .cs-link-btn:hover{border-color:var(--azul);background:var(--az-bg)}
-        .cs-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-        .cs-meta-box{background:var(--off);border:1px solid var(--cinza2);border-radius:8px;padding:10px}
-        .cs-meta-label-row{display:flex;align-items:center;gap:4px;margin-bottom:6px}
-        .cs-meta-label{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999}
-        .cs-copy-inline{display:none;background:none;border:none;padding:0 2px;margin:0;cursor:pointer;font-size:11px;color:#ccc;line-height:1;transition:color .12s}
-        .cs-copy-inline:hover{color:var(--preto)}
+        .cs-item{background:var(--branco);border:1px solid var(--cinza);border-radius:8px;padding:8px 12px}
+        .cs-item-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+        .cs-item-left{flex:1;min-width:0}
+        .cs-item-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+        .cs-item-title-row{display:flex;align-items:center;gap:5px}
+        .cs-link-arrow{font-size:12px;color:var(--azul);text-decoration:none;line-height:1;transition:opacity .12s;flex-shrink:0}
+        .cs-link-arrow:hover{opacity:.6}
+        .cs-item-title{font-size:13px;font-weight:700;line-height:1.2;color:var(--preto)}
+        .cs-item-sub{font-size:10px;color:#888;margin-top:2px;line-height:1.4}
+        .cs-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:999px;border:1px solid var(--cinza);font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;cursor:default}
+        .cs-copy-bar{display:flex;align-items:center;gap:4px}
+        .cs-copy-btn{background:var(--off);border:1px solid var(--cinza);border-radius:5px;padding:2px 7px;font-size:9px;font-weight:600;color:#777;cursor:pointer;font-family:var(--f);transition:all .12s;white-space:nowrap}
+        .cs-copy-btn:hover{border-color:var(--preto);color:var(--preto)}
+        .cs-badge-wrap{position:relative}
+        .cs-badge-tooltip{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:500;overflow:hidden}
+        .cs-badge-tooltip-hd{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;padding:6px 10px;border-bottom:1px solid var(--cinza2)}
+        .cs-badge-tooltip-row{display:flex;justify-content:space-between;gap:8px;padding:5px 10px;border-bottom:1px solid var(--cinza2);font-size:10px}
+        .cs-badge-tooltip-row:last-child{border-bottom:none}
+        .cs-badge-tooltip-empty{padding:10px;font-size:10px;color:#bbb;text-align:center}
+        .cs-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+        .cs-meta-box{background:var(--off);border:1px solid var(--cinza2);border-radius:6px;padding:7px 9px}
+        .cs-meta-label{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:5px}
         .cs-secret-row{display:flex;align-items:center;gap:6px}
         .cs-secret-value{font-size:11px;color:var(--preto);font-family:var(--fm);word-break:break-all;min-width:0;flex:1}
-        .cs-icon-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .12s}
+        .cs-icon-btn{width:24px;height:24px;border-radius:5px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .12s}
         .cs-eye{flex-shrink:0}
         .cs-icon-btn:hover{border-color:var(--preto)}
-        .cs-copy{font-size:11px;color:#666;line-height:1.5;margin-top:4px}
-        .cs-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;justify-content:flex-end}
-        .cs-btn-icon{width:28px;height:28px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;color:#888;transition:all .12s;font-family:var(--f)}
+        .cs-copy{font-size:10px;color:#888;line-height:1.5;margin-top:3px}
+        .cs-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;justify-content:flex-end}
+        .cs-btn-icon{width:26px;height:26px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;color:#888;transition:all .12s;font-family:var(--f)}
         .cs-btn-icon:hover{border-color:var(--preto);color:var(--preto)}
         .cs-btn-icon.danger:hover{border-color:var(--tc);color:var(--tc);background:var(--tc-bg)}
         .cs-form{background:var(--off);border:1px solid var(--cinza);border-radius:10px;padding:20px}
@@ -6300,13 +6314,10 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     window.__csTimers = window.__csTimers || {};
 
     function csSetCopyVisible(id, visible) {
-      // copy buttons — inline style (no border box)
-      const copyD = visible ? 'inline-flex' : 'none';
-      const cl = document.getElementById(`cs-copy-login-${id}`);
-      const cs = document.getElementById(`cs-copy-senha-${id}`);
-      if(cl) cl.style.display = copyD;
-      if(cs) cs.style.display = copyD;
-      // eye buttons — hidden while credentials are exposed
+      // copy bar — aparece no canto superior direito do card quando revelado
+      const bar = document.getElementById(`cs-copy-bar-${id}`);
+      if(bar) bar.style.display = visible ? 'flex' : 'none';
+      // eye buttons — sumem enquanto credenciais estão expostas
       const eyeD = visible ? 'none' : '';
       const eyeL = document.getElementById(`cs-eye-login-${id}`);
       const eyeS = document.getElementById(`cs-eye-senha-${id}`);
@@ -6364,6 +6375,13 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       senhaEl.dataset.revealed = 'true';
       csSetCopyVisible(id, true);
       csStartTimer(id);
+      // Registra visualização (silencioso caso a tabela não exista)
+      sb.from('cadastros_plataformas_log').insert({
+        plataforma_id: id,
+        usuario_id:   G.usuario?.id || null,
+        usuario_nome: G.usuario?.nome || null,
+        visualizado_em: new Date().toISOString()
+      }).then(() => {}).catch(() => {});
     };
 
     async function csGetCredencial(id) {
@@ -6374,6 +6392,45 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       window.__csSecretsCache[id] = { login: row?.login || '—', senha: row?.senha || '—' };
       return window.__csSecretsCache[id];
     }
+
+    window.__csBadgeTimers = window.__csBadgeTimers || {};
+
+    window.csBadgeHover = async function(id) {
+      const tooltip = document.getElementById(`cs-tooltip-${id}`);
+      if(!tooltip) return;
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `<div class="cs-badge-tooltip-hd">Últimos acessos</div><div class="cs-badge-tooltip-empty">Carregando…</div>`;
+      try {
+        const { data, error } = await sb
+          .from('cadastros_plataformas_log')
+          .select('usuario_nome, visualizado_em')
+          .eq('plataforma_id', id)
+          .order('visualizado_em', { ascending: false })
+          .limit(10);
+        if(error) throw error;
+        if(!data || !data.length) {
+          tooltip.innerHTML = `<div class="cs-badge-tooltip-hd">Últimos acessos</div><div class="cs-badge-tooltip-empty">Nenhum acesso registrado.</div>`;
+          return;
+        }
+        const fmt = d => {
+          const dt = new Date(d);
+          return dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' +
+                 dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        };
+        tooltip.innerHTML = `<div class="cs-badge-tooltip-hd">Últimos acessos</div>` +
+          data.map(l => `<div class="cs-badge-tooltip-row">
+            <span style="font-weight:600;color:var(--preto)">${l.usuario_nome || '—'}</span>
+            <span style="color:#999">${fmt(l.visualizado_em)}</span>
+          </div>`).join('');
+      } catch(e) {
+        tooltip.innerHTML = `<div class="cs-badge-tooltip-hd">Últimos acessos</div><div class="cs-badge-tooltip-empty">Tabela de log não configurada.</div>`;
+      }
+    };
+
+    window.csBadgeLeave = function(id) {
+      const tooltip = document.getElementById(`cs-tooltip-${id}`);
+      if(tooltip) tooltip.style.display = 'none';
+    };
 
     window.csCopiarLogin = async function(id) {
       try {
