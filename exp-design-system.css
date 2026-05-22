@@ -217,18 +217,25 @@
    FUNDO — Malha de linhas verticais convergentes
    Identidade EXP: espaçamento logarítmico (g₀ = 400 px, r = 0.72)
    20 linhas que vão de 400 px de gap até 1 px — efeito de perspectiva
-   A animação usa apenas opacity: roda no compositor (GPU), custo zero.
+   Duas animações simultâneas:
+     expBgBreathe — pulsa opacity (GPU compositor, custo zero)
+     expBgDrift   — deriva lentamente em 2D (transform, GPU compositor)
+   Buffer de 4% em cada lado evita expor borda durante o drift.
 ═══════════════════════════════════════════ */
 
 body::before {
   content: '';
-  position: fixed; inset: 0;
+  position: fixed;
+  top: -4%; left: -4%;
+  width: 108%; height: 108%;
   pointer-events: none;
   z-index: 0;
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1440' height='2' preserveAspectRatio='none'><g stroke='%23D0CFC9' stroke-width='1'><line x1='580' y1='0' x2='580' y2='2'/><line x1='821' y1='0' x2='821' y2='2'/><line x1='995' y1='0' x2='995' y2='2'/><line x1='1120' y1='0' x2='1120' y2='2'/><line x1='1210' y1='0' x2='1210' y2='2'/><line x1='1275' y1='0' x2='1275' y2='2'/><line x1='1322' y1='0' x2='1322' y2='2'/><line x1='1356' y1='0' x2='1356' y2='2'/><line x1='1380' y1='0' x2='1380' y2='2'/><line x1='1397' y1='0' x2='1397' y2='2'/><line x1='1410' y1='0' x2='1410' y2='2'/><line x1='1419' y1='0' x2='1419' y2='2'/><line x1='1425' y1='0' x2='1425' y2='2'/><line x1='1430' y1='0' x2='1430' y2='2'/><line x1='1433' y1='0' x2='1433' y2='2'/><line x1='1435' y1='0' x2='1435' y2='2'/><line x1='1437' y1='0' x2='1437' y2='2'/><line x1='1438' y1='0' x2='1438' y2='2'/><line x1='1439' y1='0' x2='1439' y2='2'/><line x1='1440' y1='0' x2='1440' y2='2'/></g></svg>");
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  animation: expBgBreathe 10s ease-in-out infinite;
+  animation:
+    expBgBreathe 10s ease-in-out infinite,
+    expBgDrift   32s ease-in-out infinite;
 }
 
 @keyframes expBgBreathe {
@@ -241,13 +248,23 @@ body::before {
   50%       { opacity: 0.11; }
 }
 
+/* Deriva orgânica em 2D — períodos assimétricos evitam repetição perceptível */
+@keyframes expBgDrift {
+  0%   { transform: translate(0,    0);    }
+  20%  { transform: translate(-1.6%, 1%); }
+  45%  { transform: translate(-2.8%, -1.4%); }
+  70%  { transform: translate(1.2%, -0.8%); }
+  85%  { transform: translate(2%,  1.6%); }
+  100% { transform: translate(0,    0);    }
+}
+
 [data-theme="dark"] body::before {
-  animation-name: expBgBreatheDark;
+  animation-name: expBgBreatheDark, expBgDrift;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body::before                  { animation: none; opacity: 0.42; }
-  [data-theme="dark"] body::before { animation: none; opacity: 0.08; }
+  body::before                      { animation: none; opacity: 0.42; transform: none; }
+  [data-theme="dark"] body::before  { animation: none; opacity: 0.08; transform: none; }
 }
 
 
