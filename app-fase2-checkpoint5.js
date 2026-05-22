@@ -502,7 +502,8 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       const user = platformUsersCache.find((entry) => String(entry.id) === String(item.usuario_id)) || null;
       const enviadoPor = user?.nome || 'Usuario nao identificado';
       const enviadoMeta = user ? ((user.apelido || '-') + ' · ' + roleLabel(user.role)) : 'sem identidade de usuario';
-      return '<div class="platform-feedback-row">'
+      const isResolvido = item.status === 'resolvido';
+      return '<div class="platform-feedback-row' + (isResolvido ? ' resolvido' : '') + '">'
         + '<div class="platform-feedback-head">'
         + '  <div class="platform-feedback-badges">'
         + '    <span class="platform-feedback-type ' + escapeHtml(String(item.tipo || 'problema').toLowerCase()) + '">' + feedbackTypeLabel(item.tipo) + '</span>'
@@ -522,6 +523,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         + '    <option value="em_analise"' + (item.status === 'em_analise' ? ' selected' : '') + '>Em analise</option>'
         + '    <option value="resolvido"' + (item.status === 'resolvido' ? ' selected' : '') + '>Resolvido</option>'
         + '  </select>'
+        + '  <button type="button" class="shell-btn warn" onclick="apagarFeedbackPlataforma(\'' + item.id + '\')" title="Apagar este registro de feedback" style="margin-left:4px">Apagar</button>'
         + '</div>'
         + '</div>';
     }).join('');
@@ -572,6 +574,12 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         { label: 'Media por anexo', value: (avgBytes / 1024).toFixed(1) + ' KB' },
         { label: 'Expirando em 7 dias', value: String(expiringSoon) }
       ];
+      const LIMIT_BYTES = 524288000; // 500 MB = 50% do free tier Supabase (1 GB)
+      const usedMB = (totalBytes / (1024 * 1024)).toFixed(2);
+      const limitMB = (LIMIT_BYTES / (1024 * 1024)).toFixed(0);
+      const pct = Math.min(100, (totalBytes / LIMIT_BYTES) * 100);
+      const pctStr = pct.toFixed(1);
+      const barColor = pct >= 80 ? '#C36247' : pct >= 60 ? '#D19931' : '#45865D';
       statsWrap.innerHTML = cards.map((card) => ''
         + '<div class="platform-user-card">'
         + '  <div class="platform-user-ident">'
@@ -579,7 +587,16 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         + '    <span>' + escapeHtml(card.label) + '</span>'
         + '  </div>'
         + '</div>'
-      ).join('');
+      ).join('')
+      + '<div style="margin-top:14px;padding:0 2px">'
+      + '  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'
+      + '    <span style="font-size:11px;font-weight:600;color:#333">Uso de mídia temporária</span>'
+      + '    <span style="font-size:10px;color:#888">' + escapeHtml(usedMB) + ' MB / ' + escapeHtml(limitMB) + ' MB &nbsp;(' + escapeHtml(pctStr) + '%) — 50% do armazenamento gratuito Supabase</span>'
+      + '  </div>'
+      + '  <div style="width:100%;height:8px;background:#e8e8e8;border-radius:4px;overflow:hidden">'
+      + '    <div style="height:100%;width:' + escapeHtml(pct.toFixed(2)) + '%;background:' + escapeHtml(barColor) + ';border-radius:4px;transition:width .4s"></div>'
+      + '  </div>'
+      + '</div>';
     }
 
     if (contextsWrap) {
@@ -1085,7 +1102,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
         + '</select></div>'
         + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuario atual</span>' : '') + '</div>'
-        + '<div class="platform-inline"><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
+        + '<div class="platform-inline"><button type="button" class="shell-btn" onclick="verDadosUsuarioPlataforma(\'' + user.id + '\')" style="margin-right:6px">Ver dados</button><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
         + '</div>';
     }).join('');
   }
@@ -1274,6 +1291,24 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     setPlataformaStatus('Status do feedback atualizado.');
   };
 
+  window.apagarFeedbackPlataforma = async function apagarFeedbackPlataforma(feedbackId) {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
+      return;
+    }
+    if (!window.confirm('Apagar este registro de feedback permanentemente? Esta ação não pode ser desfeita.')) return;
+    setPlataformaStatus('Apagando feedback...');
+    const { error } = await window.sb.from('plataforma_feedback').delete().eq('id', feedbackId);
+    if (error) {
+      setPlataformaStatus('Não foi possível apagar o feedback.');
+      return;
+    }
+    await registrarAuditoriaPlataforma('feedback.apagado', null, { feedback_id: feedbackId });
+    await carregarFeedbackPlataforma();
+    setPlataformaStatus('Feedback apagado.');
+  };
+
   window.salvarRolePlatform = async function salvarRolePlatform(userId, role) {
     const payload = { role };
     if (role !== 'socio_admin') payload.is_platform_manager = false;
@@ -1386,6 +1421,68 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     await carregarMidiaTemporariaPlataforma();
   };
 
+  window.verDadosUsuarioPlataforma = async function verDadosUsuarioPlataforma(userId) {
+    // Fetch full user record + termo
+    const [{ data: usuario }, { data: termo }] = await Promise.all([
+      window.sb.from('usuarios').select('*').eq('id', userId).maybeSingle(),
+      window.sb.from('usuarios_termos_compromisso').select('*').eq('usuario_id', userId).order('resetado_em', { ascending: false }).maybeSingle()
+    ]);
+
+    function row(label, value) {
+      const v = (value === null || value === undefined || value === '') ? '<em style="color:#aaa">não preenchido</em>' : escapeHtml(String(value));
+      return '<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start">'
+        + '<div style="min-width:180px;font-size:11px;color:#888;flex-shrink:0">' + escapeHtml(label) + '</div>'
+        + '<div style="font-size:12px;color:#222;word-break:break-all">' + v + '</div>'
+        + '</div>';
+    }
+
+    const u = usuario || {};
+    const t = termo || {};
+    const html = '<div style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center" id="ver-dados-overlay" onclick="if(event.target===this)this.remove()">'
+      + '<div style="background:#fff;border-radius:12px;padding:28px 28px 20px;width:min(560px,96vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+      + '  <strong style="font-size:15px">Dados do usuário</strong>'
+      + '  <button type="button" onclick="document.getElementById(\'ver-dados-overlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;padding:0 4px">&times;</button>'
+      + '</div>'
+      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#aaa;margin-bottom:4px">Dados institucionais</div>'
+      + row('ID', u.id)
+      + row('Auth ID', u.auth_id)
+      + row('Nome completo', u.nome)
+      + row('Apelido', u.apelido)
+      + row('Iniciais', u.iniciais)
+      + row('E-mail login', u.email_login)
+      + row('E-mail alternativo', u.email)
+      + row('Role', u.role)
+      + row('Status de acesso', u.status_acesso)
+      + row('Ativo', u.ativo ? 'sim' : 'não')
+      + row('Gestor de plataforma', u.is_platform_manager ? 'sim' : 'não')
+      + row('Cor', u.cor)
+      + row('CPF', u.cpf)
+      + row('Telefone', u.telefone)
+      + row('Endereço', u.endereco)
+      + row('Cidade', u.cidade)
+      + row('Estado', u.estado)
+      + row('CEP', u.cep)
+      + row('Criado em', u.criado_em)
+      + row('Atualizado em', u.atualizado_em)
+      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#aaa;margin:14px 0 4px">Termo de compromisso</div>'
+      + (termo
+        ? (row('Versão do termo', t.versao_termo)
+          + row('Status', t.status_termo)
+          + row('Assinado em', t.assinado_em)
+          + row('Expira em', t.expira_em)
+          + row('Resetado em', t.resetado_em)
+          + row('Resetado por (ID)', t.resetado_por)
+          + row('Motivo do reset', t.motivo_reset))
+        : '<div style="font-size:11px;color:#aaa;padding:6px 0">Nenhum registro de termo encontrado.</div>')
+      + '</div>'
+      + '</div>';
+
+    const existing = document.getElementById('ver-dados-overlay');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+  };
+
   window.resetarTermoPlataforma = async function resetarTermoPlataforma(userId) {
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
@@ -1463,6 +1560,15 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     const role = document.getElementById('gp-role').value;
     const isPlatformManager = !!document.getElementById('gp-platform-manager').checked;
     const cor = selectedPlatformColor();
+
+    // Service role key: read from field, then sessionStorage, then prompt
+    let serviceKey = (document.getElementById('gp-service-key')?.value || '').trim();
+    if (!serviceKey) serviceKey = sessionStorage.getItem('_exp_srk') || '';
+    if (!serviceKey) {
+      setPlataformaStatus('Informe a chave de serviço Supabase (service_role) no campo acima para criar usuários.');
+      return;
+    }
+
     if (!nome || !emailLogin || !senha) {
       setPlataformaStatus('Preencha nome, login institucional e senha inicial.');
       return;
@@ -1471,18 +1577,38 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       setPlataformaStatus('Gestor de plataforma deve ser socio administrador.');
       return;
     }
+    // Persist key for this session only
+    sessionStorage.setItem('_exp_srk', serviceKey);
+
     setPlataformaStatus('Criando usuario...');
-    const { data: signUpData, error: signUpError } = await signupClient.auth.signUp({
-      email: emailLogin,
-      password: senha,
-      options: { data: { nome } }
-    });
-    if (signUpError || !signUpData?.user?.id) {
-      setPlataformaStatus('Não foi possível criar o usuário no Auth. O backend de criacao ainda pode precisar de ajuste.');
+    const SUPABASE_URL = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+    let authId;
+    try {
+      const resp = await fetch(SUPABASE_URL + '/auth/v1/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + serviceKey,
+          'apikey': serviceKey
+        },
+        body: JSON.stringify({
+          email: emailLogin,
+          password: senha,
+          email_confirm: true,
+          user_metadata: { nome }
+        })
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json?.id) {
+        const msg = json?.msg || json?.message || json?.error_description || JSON.stringify(json);
+        setPlataformaStatus('Não foi possível criar o usuário no Auth: ' + msg);
+        return;
+      }
+      authId = json.id;
+    } catch (fetchErr) {
+      setPlataformaStatus('Erro de rede ao criar usuário: ' + (fetchErr?.message || String(fetchErr)));
       return;
     }
-
-    const authId = signUpData.user.id;
     const upsertPayload = {
       auth_id: authId,
       nome,
