@@ -400,6 +400,29 @@ textarea{resize:vertical;min-height:60px}
       <span class="ttg-track"><span class="ttg-knob"></span></span>
       <span class="ttg-icon">🌙</span>
     </button>
+    <div class="nav-feedback-wrap" id="nav-feedback-wrap">
+      <button class="nav-feedback-btn" onclick="toggleFeedbackPop(event)" title="Problemas e sugestões">!</button>
+      <div class="nav-feedback-pop" id="nav-feedback-pop">
+        <div class="nav-feedback-title">Problema ou sugestão</div>
+        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+        <div class="fgroup" style="margin-bottom:8px">
+          <label>Tipo</label>
+          <select id="crm-feedback-type">
+            <option value="problema">Problema</option>
+            <option value="sugestao">Sugestão</option>
+          </select>
+        </div>
+        <div class="fgroup" style="margin-bottom:8px">
+          <label>Mensagem</label>
+          <textarea id="crm-feedback-message" rows="4" placeholder="Descreva o erro..."></textarea>
+        </div>
+        <div class="nav-feedback-status" id="crm-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+        <div class="nav-feedback-actions">
+          <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
+          <button class="btn verde" onclick="enviarFeedbackCRM()">Enviar</button>
+        </div>
+      </div>
+    </div>
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-chip" id="user-pill" onclick="toggleUserMenu()">
         <div class="uav" id="user-av">—</div>
@@ -794,6 +817,22 @@ textarea{resize:vertical;min-height:60px}
       <input type="hidden" id="opp-id">
       <input type="hidden" id="opp-cliente-id">
 
+      <!-- Importar da calculadora -->
+      <div class="fgroup" style="margin-bottom:14px">
+        <label>Proposta EXP.calc</label>
+        <select id="opp-calc-id" onchange="onCalcPropostaChange()">
+          <option value="">— Nenhuma proposta vinculada —</option>
+        </select>
+        <div id="opp-calc-autofill-wrap" style="display:none;margin-top:4px">
+          <a href="#" style="font-size:10px;color:var(--azul);font-weight:500" onclick="autofillFromProposta();return false">← Aplicar dados da proposta (projeto, cidade, UF)</a>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <div style="flex:1;height:1px;background:var(--cinza2)"></div>
+        <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc">ou preencha manualmente</span>
+        <div style="flex:1;height:1px;background:var(--cinza2)"></div>
+      </div>
+
       <!-- Painel novo cliente -->
       <div id="opp-novo-cliente-wrap" style="display:none;background:var(--off);border:1px solid var(--cinza);padding:12px;margin-bottom:14px">
         <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Novo cliente</div>
@@ -913,15 +952,6 @@ textarea{resize:vertical;min-height:60px}
       <div style="margin-top:10px;padding:8px 10px;background:var(--am-bg);border:1px solid #f0d9b0;display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="opp-destaque" style="width:14px;height:14px;cursor:pointer;accent-color:#C4831A">
         <label for="opp-destaque" style="cursor:pointer;font-size:11px;font-weight:500;color:#8a5a10;user-select:none">Destacar esta oportunidade no dashboard (máx. 3)</label>
-      </div>
-      <div class="fgroup" style="margin-top:10px">
-        <label>Proposta EXP.calc</label>
-        <select id="opp-calc-id" onchange="onCalcPropostaChange()">
-          <option value="">— Nenhuma proposta vinculada —</option>
-        </select>
-        <div id="opp-calc-autofill-wrap" style="display:none;margin-top:4px">
-          <a href="#" style="font-size:10px;color:var(--azul);font-weight:500" onclick="autofillFromProposta();return false">← Aplicar dados da proposta (projeto, cidade, UF)</a>
-        </div>
       </div>
     </div>
     <div class="modal-ft">
@@ -1427,9 +1457,12 @@ document.addEventListener('click', e => {
     document.getElementById('nav-dropdown')?.classList.remove('open');
   if (!document.getElementById('user-pill-wrap')?.contains(e.target))
     document.getElementById('user-dropdown')?.classList.remove('open');
+  // Fecha feedback pop
+  if(!document.getElementById('nav-feedback-wrap')?.contains(e.target))
+    document.getElementById('nav-feedback-pop')?.classList.remove('open');
   // Fecha painel de alertas
   const panel=document.getElementById('alert-panel');
-  const btn=document.querySelector('.sineta-btn');
+  const btn=document.getElementById('sineta-btn-wrap');
   if(panel&&panel.classList.contains('open')&&!panel.contains(e.target)&&!btn?.contains(e.target))panel.classList.remove('open');
   // Fecha dropdown de cliente
   const dd=document.getElementById('opp-cliente-dropdown');
@@ -2309,6 +2342,27 @@ function limparTodosAlertas(){
 }
 
 function toggleAlertas(){document.getElementById('alert-panel').classList.toggle('open');}
+
+// ── Feedback (problemas e sugestões) ─────────────────────────────────
+function toggleFeedbackPop(ev){ev?.stopPropagation?.();document.getElementById('nav-feedback-pop')?.classList.toggle('open');}
+function fecharFeedbackPop(){document.getElementById('nav-feedback-pop')?.classList.remove('open');}
+function _setCRMFeedbackStatus(msg){const el=document.getElementById('crm-feedback-status');if(el)el.textContent=msg;}
+async function enviarFeedbackCRM(){
+  const u=JSON.parse(sessionStorage.getItem('exp_usuario')||'{}');
+  if(!u?.id){_setCRMFeedbackStatus('Sessão indisponível. Faça login para enviar.');return;}
+  const tipo=document.getElementById('crm-feedback-type')?.value||'problema';
+  const mensagem=(document.getElementById('crm-feedback-message')?.value||'').trim();
+  if(!mensagem){_setCRMFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.');return;}
+  _setCRMFeedbackStatus('Enviando...');
+  const{error}=await sb.from('plataforma_feedback').insert({
+    usuario_id:u.id,tipo,mensagem,status:'novo',
+    origem_modulo:'CRM',url_origem:'crm.html',
+    criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()
+  });
+  if(error){_setCRMFeedbackStatus('Não foi possível enviar. Tente novamente.');return;}
+  document.getElementById('crm-feedback-message').value='';
+  _setCRMFeedbackStatus('Registro enviado para a Gestão de plataforma.');
+}
 
 // ═══ BOAS VINDAS ════════════════════════════════════
 function showBoasVindas(){

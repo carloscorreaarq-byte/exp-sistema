@@ -1103,10 +1103,12 @@ body {
 }
 .proj-view-toggle { display: flex; border: 1px solid var(--cinza); border-radius: 6px; overflow: hidden; }
 .pvt-btn {
-  padding: 5px 12px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  padding: 5px 14px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
   text-transform: uppercase; border: none; background: var(--branco); color: #888;
   cursor: pointer; font-family: var(--font-ui); transition: all .12s;
+  display: flex; align-items: center; justify-content: center; text-align: center;
 }
+.pvt-btn + .pvt-btn { border-left: 1px solid var(--cinza2); }
 .pvt-btn.active { background: var(--grafite); color: #fff; }
 .filter-select {
   padding: 5px 9px; border: 1px solid var(--cinza); background: var(--branco);
@@ -2961,9 +2963,9 @@ body {
       <div class="card c-vd">
         <div class="card-hd" style="position:relative">
           <div class="card-title">Lista de tarefas</div>
-          <button class="task-recentes-btn" id="task-recentes-btn" onclick="toggleTaskRecentesPop(event)" title="Histórico e tarefas excluídas">↺ recentes</button>
+          <button class="task-recentes-btn" id="task-recentes-btn" onclick="toggleTaskRecentesPop(event)" title="Histórico e tarefas excluídas" style="position:absolute;left:50%;transform:translateX(-50%)">↺ recentes</button>
           <div class="task-recentes-pop" id="task-recentes-pop"></div>
-          <div id="st-tasks" style="font-size:10px;color:#bbb;font-weight:500;letter-spacing:.02em;margin-left:auto">—</div>
+          <div id="st-tasks" style="font-size:10px;color:#bbb;font-weight:500;letter-spacing:.02em;margin-left:auto;padding-left:24px">—</div>
         </div>
         <div class="card-body">
           <div id="tasks-lista">
@@ -3417,19 +3419,19 @@ body {
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="page" id="page-revisoes">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+  <div style="margin-bottom:14px">
     <div class="sec-title" style="margin-bottom:0">Revisões</div>
-    <button class="btn sm verde" id="btn-rev-top" onclick="revFabAction()">+ Nova revisão</button>
   </div>
 
   <div class="rev-layout">
     <div>
-      <!-- Pill toggle -->
-      <div class="rev-toggle-wrap">
-        <div class="rev-toggle-pill" id="rev-toggle-pill" onclick="toggleFiltroMinhasRevisoes()">
-          <div class="rev-toggle-opt active" id="rev-pill-todas">Todas</div>
-          <div class="rev-toggle-opt" id="rev-pill-minhas">Minhas</div>
+      <!-- Toggle + nova revisão na mesma linha -->
+      <div class="rev-toggle-wrap" style="display:flex;align-items:center;gap:8px">
+        <div class="proj-view-toggle" id="rev-toggle-pill">
+          <button class="pvt-btn active" id="rev-pill-todas" onclick="if(G._revMinhasOnly){toggleFiltroMinhasRevisoes()}">Todas</button>
+          <button class="pvt-btn" id="rev-pill-minhas" onclick="if(!G._revMinhasOnly){toggleFiltroMinhasRevisoes()}">Minhas</button>
         </div>
+        <button class="btn sm verde" id="btn-rev-top" onclick="revFabAction()">+ Nova revisão</button>
       </div>
       <div id="rev-lista">
         <div class="loading-state">Carregando...</div>
@@ -6186,7 +6188,7 @@ function renderKanbanProjetos() {
         ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:18px;height:18px;font-size:7px;border-radius:50%;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:700" title="${_escN(coord.nome||'')}">${_escN(coord.iniciais||'')}</div>`
         : '';
       const prazoHtml = etapaAtiva?.data_estimada
-        ? `<span style="font-size:9px;font-family:var(--font-mono);color:#888;margin-left:auto">${fmtDate(etapaAtiva.data_estimada)}</span>`
+        ? `<span style="font-size:9px;font-family:var(--font-mono);color:#888">${fmtDate(etapaAtiva.data_estimada)}</span>`
         : '';
       const statusBadge = p.status !== 'ativo'
         ? `<span class="badge ${stProd.cls}" style="font-size:7px">${stProd.label}</span>`
@@ -6201,11 +6203,12 @@ function renderKanbanProjetos() {
         ${p.nome ? `<div class="pk-card-prod">${_escN(p.nome)}</div>` : ''}
         ${etapaAtiva ? `<div class="pk-card-etapa">${_escN(etapaAtiva.nome || '')}</div>` : ''}
         <div class="pk-card-meta">
-          <span class="badge ${nc.cls}" style="font-size:7px">${_escN(nc.label)}</span>
-          ${statusBadge}
-          ${stEtapa ? `<span class="badge ${stEtapa.cls}" style="font-size:7px">${stEtapa.label}</span>` : ''}
-          ${coordHtml}
-          ${prazoHtml}
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;flex:1;min-width:0">
+            <span class="badge ${nc.cls}" style="font-size:7px">${_escN(nc.label)}</span>
+            ${statusBadge}
+            ${stEtapa ? `<span class="badge ${stEtapa.cls}" style="font-size:7px">${stEtapa.label}</span>` : ''}
+          </div>
+          ${(coordHtml||prazoHtml) ? `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${coordHtml}${prazoHtml}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -16086,8 +16089,8 @@ function renderProcDetalhe(id) {
           ${tema.descricao ? `<div style="font-size:10px;color:#999;margin-top:2px;line-height:1.4">${_escN(tema.descricao)}</div>` : ''}
         </div>
         ${isSoc ? `
-          <button onclick="procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" style="font-size:10px;border:1px solid var(--cinza);border-radius:5px;background:var(--branco);color:#666;cursor:pointer;padding:3px 9px;font-family:var(--font-ui);white-space:nowrap;flex-shrink:0">+ Tarefa</button>
-          <button onclick="procExcluirTema(${temaIdJs},${checklistIdJs})" title="Excluir tema" style="font-size:11px;border:none;background:none;color:#ccc;cursor:pointer;padding:2px 4px;flex-shrink:0">✕</button>
+          <button onclick="procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" class="btn sm">+ Tarefa</button>
+          <button onclick="procExcluirTema(${temaIdJs},${checklistIdJs})" class="btn sm tc" title="Excluir tema">✕</button>
         ` : ''}
       </div>
       <div id="proc-tarefas-wrap-${tema.id}">
@@ -16109,9 +16112,9 @@ function renderProcDetalhe(id) {
           ${criador ? `<div style="font-size:10px;color:#bbb">Criado por ${_escN(criador.nome.split(' ')[0])}</div>` : ''}
         </div>
         ${isSoc ? `
-          <button onclick="procEditarChecklist(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:var(--branco);color:#555;cursor:pointer;padding:5px 10px;font-family:var(--font-ui)" title="Editar nome e descrição">✎</button>
-          <button onclick="abrirAtribuirChecklist(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:var(--branco);color:#555;cursor:pointer;padding:5px 12px;font-family:var(--font-ui);white-space:nowrap">Atribuir ▾</button>
-          <button onclick="procArquivar(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:var(--branco);color:#555;cursor:pointer;padding:5px 10px;font-family:var(--font-ui)">${arquivado?'↺ Restaurar':'🗄 Arquivar'}</button>
+          <button onclick="procEditarChecklist(${_sqN(id)})" class="btn sm" title="Editar nome e descrição">✎</button>
+          <button onclick="abrirAtribuirChecklist(${_sqN(id)})" class="btn sm">Atribuir ▾</button>
+          <button onclick="procArquivar(${_sqN(id)})" class="btn sm">${arquivado?'↺ Restaurar':'🗄 Arquivar'}</button>
         ` : ''}
       </div>
 
