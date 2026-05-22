@@ -295,7 +295,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     if (titleLike && lines.length > 1) {
       const heading = escapeHtml(lines[0]);
       const content = lines.slice(1).map((line) => '<p style="margin:0 0 8px">' + escapeHtml(line) + '</p>').join('');
-      return '<section style="display:grid;gap:6px"><strong style="font-size:12px;color:#333">' + heading + '</strong><div>' + content + '</div></section>';
+      return '<section style="display:grid;gap:6px"><strong style="font-size:12px;font-weight:700;color:var(--grafite)">' + heading + '</strong><div>' + content + '</div></section>';
     }
     if (lines.length >= 2 && lines.every((line) => /;$/.test(line) || /:$/.test(lines[0]) || !/[.?!]$/.test(line))) {
       return '<ul style="padding-left:18px;display:grid;gap:6px">' + lines.map((line) => '<li>' + escapeHtml(line) + '</li>').join('') + '</ul>';
