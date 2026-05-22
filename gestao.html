@@ -16632,13 +16632,16 @@ function calGetMerged() {
 
   if (G.todasEtapas?.length) {
     G.todasEtapas.forEach(et => {
-      if (!et.data_entrega) return;
+      if (!et.data_estimada) return;
+      // Resolve nome do projeto via G.todosProdutos
+      const prod = (G.todosProdutos || []).find(p => p.id === et.produto_id);
+      const projNome = prod?.oportunidades?.projeto || prod?.nome || '';
       evts.push({
         id: 'etapa_' + et.id, tipo: 'entrega',
         titulo: et.nome || 'Entrega',
-        data_inicio: et.data_entrega, data_fim: et.data_entrega,
-        dia_todo: true, scope: 'todos', nucleo: et.nucleo || null,
-        usuario_id: null, projeto_nome: et.projeto_nome || et.projeto || '',
+        data_inicio: et.data_estimada, data_fim: et.data_estimada,
+        dia_todo: true, scope: 'todos', nucleo: et.nucleo || prod?.nucleo || null,
+        usuario_id: null, projeto_nome: projNome,
         source: 'etapa', source_id: String(et.id), _synthetic: true,
       });
     });
@@ -16647,8 +16650,8 @@ function calGetMerged() {
   if (G.todosUsuarios?.length) {
     G.todosUsuarios.forEach(u => {
       try {
-      if (!u.data_nascimento) return;
-      const dn = new Date(u.data_nascimento + 'T12:00:00');
+      if (!u.data_aniversario) return;
+      const dn = new Date(u.data_aniversario + 'T12:00:00');
       evts.push({
         id: 'aniv_' + u.id, tipo: 'ausencia_aniv',
         titulo: 'Aniv. ' + primeiroUltimo(u.nome),
