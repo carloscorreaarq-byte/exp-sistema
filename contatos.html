@@ -325,6 +325,29 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);min-height:10
     </button>
     <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
     <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
+    <div class="nav-feedback-wrap" id="nav-feedback-wrap">
+      <button class="nav-feedback-btn" onclick="toggleFeedbackPop(event)" title="Problemas e sugestões">!</button>
+      <div class="nav-feedback-pop" id="nav-feedback-pop">
+        <div class="nav-feedback-title">Problema ou sugestão</div>
+        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+        <div class="fgroup" style="margin-bottom:8px">
+          <label>Tipo</label>
+          <select id="ct-feedback-type">
+            <option value="problema">Problema</option>
+            <option value="sugestao">Sugestão</option>
+          </select>
+        </div>
+        <div class="fgroup" style="margin-bottom:8px">
+          <label>Mensagem</label>
+          <textarea id="ct-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+        </div>
+        <div class="nav-feedback-status" id="ct-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+        <div class="nav-feedback-actions">
+          <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
+          <button class="btn verde" onclick="enviarFeedback()">Enviar</button>
+        </div>
+      </div>
+    </div>
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-chip" onclick="toggleUserMenu()">
         <div class="uav" id="user-av">?</div>
@@ -371,7 +394,7 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);min-height:10
       autocomplete="off">
   </div>
     <select id="ct-regiao" class="ct-region-select" onchange="atualizarBuscaFiltros()">
-      <option value="">Filtrar regiao</option>
+      <option value="">Filtrar região</option>
       <option value="norte">Norte</option>
       <option value="nordeste">Nordeste</option>
       <option value="centro-oeste">Centro-Oeste</option>
@@ -1197,7 +1220,37 @@ document.addEventListener('click', e => {
   if(nw && !nw.contains(e.target)) document.getElementById('nav-dropdown')?.classList.remove('open');
   const uw = document.querySelector('.user-pill-wrap');
   if(uw && !uw.contains(e.target)) document.getElementById('user-dropdown')?.classList.remove('open');
+  if(!document.getElementById('nav-feedback-wrap')?.contains(e.target))
+    document.getElementById('nav-feedback-pop')?.classList.remove('open');
 });
+
+function toggleFeedbackPop(ev) {
+  ev?.stopPropagation?.();
+  document.getElementById('nav-feedback-pop')?.classList.toggle('open');
+}
+function fecharFeedbackPop() {
+  document.getElementById('nav-feedback-pop')?.classList.remove('open');
+}
+function setFeedbackStatus(msg) {
+  const el = document.getElementById('ct-feedback-status');
+  if(el) el.textContent = msg;
+}
+async function enviarFeedback() {
+  const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
+  if(!u?.id) { setFeedbackStatus('Sessão indisponível. Faça login para enviar feedback.'); return; }
+  const tipo = document.getElementById('ct-feedback-type')?.value || 'problema';
+  const mensagem = document.getElementById('ct-feedback-message')?.value?.trim() || '';
+  if(!mensagem) { setFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.'); return; }
+  setFeedbackStatus('Enviando...');
+  const { error } = await sb.from('plataforma_feedback').insert({
+    usuario_id: u.id, tipo, mensagem, status: 'novo',
+    origem_modulo: 'Contatos', url_origem: 'contatos.html',
+    criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString()
+  });
+  if(error) { setFeedbackStatus('Não foi possível enviar. Tente novamente.'); return; }
+  document.getElementById('ct-feedback-message').value = '';
+  setFeedbackStatus('Registro enviado para a Gestão de plataforma.');
+}
 document.addEventListener('keydown', e => { if(e.key==='Escape') fecharModal(); });
 
 // ─── AUTH & INIT ──────────────────────────────────────────────────────────────

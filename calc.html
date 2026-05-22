@@ -416,7 +416,7 @@ select option[disabled]{color:#bbb}
           </select>
         </div>
         <div class="fgroup"><label>Data</label><input type="date" id="f-data"></div>
-        <div class="fgroup"><label>Cidade</label><input type="text" id="f-cidade" placeholder="Cidade"></div>
+        <div class="fgroup"><label>Cidade</label><input type="text" id="f-cidade" placeholder="Cidade" autocomplete="off" oninput="buscarCidade(this.value)"><div class="autocomplete-list" id="ac-cidade-list"></div></div>
         <div class="fgroup"><label>UF</label>
           <select id="f-uf">
             <option value="">—</option>
@@ -1090,6 +1090,7 @@ let S = {
   },
   proposals: [],
   clientes: [],
+  cidades: [],
   calcParamsId: null,
   sbUrl: '',
   sbKey: '',
@@ -1304,6 +1305,11 @@ async function loadProposalsFromSupabase() {
     });
     if (changed > 0) {
       S.proposals.sort((a,b)=>b.id-a.id);
+      // Rebuild S.clientes and S.cidades from all proposals (Supabase may have entries not in localStorage)
+      const allClientes = S.proposals.map(p => p.cliente).filter(Boolean);
+      S.clientes = [...new Set([...S.clientes, ...allClientes])].sort();
+      const allCidades = S.proposals.map(p => p.cidade).filter(Boolean);
+      S.cidades = [...new Set([...S.cidades, ...allCidades])].sort();
       save();
     }
     setSyncStatus('ok','nuvem');
@@ -1475,8 +1481,28 @@ function novoCliente(nome) {
   selecionarCliente(nome);
   showToast(`Cliente "${nome}" criado`);
 }
+function buscarCidade(q) {
+  const list = document.getElementById('ac-cidade-list');
+  if (!q || q.length < 2) { list.classList.remove('open'); return; }
+  const ql = q.toLowerCase();
+  const matches = S.cidades.filter(c => c.toLowerCase().includes(ql)).slice(0, 8);
+  if (!matches.length) { list.classList.remove('open'); return; }
+  const rx = new RegExp(`(${escRegex(q)})`, 'gi');
+  list.innerHTML = matches.map(c => {
+    const hi = escHtml(c).replace(rx, '<mark>$1</mark>');
+    return `<div class="ac-item" onclick="selecionarCidade('${escJsStr(c)}')">${hi}</div>`;
+  }).join('');
+  list.classList.add('open');
+}
+function selecionarCidade(nome) {
+  document.getElementById('f-cidade').value = nome;
+  document.getElementById('ac-cidade-list').classList.remove('open');
+}
 document.addEventListener('click', e => {
-  if (!e.target.closest('.fgroup')) document.getElementById('ac-list').classList.remove('open');
+  if (!e.target.closest('.fgroup')) {
+    document.getElementById('ac-list').classList.remove('open');
+    document.getElementById('ac-cidade-list').classList.remove('open');
+  }
 });
 
 // ════════════════════════════════════════════════════════
@@ -1593,7 +1619,7 @@ function calcBase(area, faixas) {
 }
 
 function calcIV(it) {
-  if (!S.cub) return 0;
+  if (!S.cub) return S.mins[it.subK]||0;
   const k=it.subK, area=+it.area||0, coef=+it.coef||0;
   let base=0;
   if (k==='PAIS_FLOREIRA') base = area * S.cub;
@@ -1609,7 +1635,7 @@ function calcIV(it) {
 
 function calcPrev() {
   const si = getSubInfo();
-  if (!si||!S.cub) { ['i-prev','i-prev-fl'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';}); return; }
+  if (!si) { ['i-prev','i-prev-fl'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';}); return; }
   const mode = si.mode;
   let v = 0;
   if (mode==='calc') {
@@ -2558,6 +2584,7 @@ async function salvarProposta() {
 
   S.proposals.unshift(p);
   if (p.cliente && !S.clientes.includes(p.cliente)) S.clientes.push(p.cliente);
+  if (p.cidade && !S.cidades.includes(p.cidade)) { S.cidades.push(p.cidade); S.cidades.sort(); }
   save();
 
   // Sincroniza com Supabase
@@ -2930,6 +2957,9 @@ function atualizarFiltroPeriodo() {
   renderHist();
 }
 
+const RESP_LABEL={CC:'Carlos',GB:'Gabriela',TC:'Thayssa',LA:'Laís'};
+window.RESP_LABEL=RESP_LABEL;
+
 function renderHist() {
   const nucFil    = document.getElementById('hf-nucleo').value;
   const respFil   = document.getElementById('hf-resp').value;
@@ -2987,7 +3017,7 @@ function renderHist() {
     }
   });
 
-  const RESP_LABEL={CC:'Carlos',GB:'Gabriela',TC:'Thayssa',LA:'Laís'};
+  const RESP_LABEL=window.RESP_LABEL;
 
   document.getElementById('hist-body').innerHTML = rows.length
     ? rows.map(({p, isLatest, famSize})=>{
