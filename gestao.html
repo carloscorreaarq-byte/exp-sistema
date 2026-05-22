@@ -1039,7 +1039,7 @@ body {
 .task-edit-btn:hover { color: var(--grafite); }
 .task-item:last-child { border-bottom: none; }
 .task-check {
-  width: 14px; height: 14px; border: 1px solid var(--cinza);
+  width: 14px; height: 14px; border: 1px solid var(--cinza); border-radius: 3px;
   flex-shrink: 0; cursor: pointer; margin-top: 2px;
   display: flex; align-items: center; justify-content: center;
   transition: all .12s; background: var(--branco);
@@ -1985,7 +1985,7 @@ body {
 .prio-info { flex:1; min-width:0; }
 .prio-nome { font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prio-sub { font-size:10px; color:#888; margin-top:1px; }
-.prio-check { width:16px; height:16px; border:1.5px solid var(--cinza); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; transition:all .12s; margin-top:2px; }
+.prio-check { width:16px; height:16px; border:1.5px solid var(--cinza); border-radius:3px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; transition:all .12s; margin-top:2px; }
 .prio-check:hover { border-color:var(--verde); }
 .prio-check.done { background:var(--verde); border-color:var(--verde); color:#fff; }
 /* ── FLUXO DE TRABALHO (painel sócios) ──────────────── */
@@ -2339,6 +2339,15 @@ body {
 [data-theme="dark"] .fgroup textarea { background:var(--branco); border-color:var(--cinza); color:var(--grafite); color-scheme:dark; }
 [data-theme="dark"] .cli-admin-inp { background:var(--branco); border-color:var(--cinza); color:var(--grafite); color-scheme:dark; }
 [data-theme="dark"] .task-check { background:var(--branco); border-color:var(--cinza); }
+/* Novo projeto — inputs em etapa-preset-item */
+[data-theme="dark"] .etapa-preset-item input,
+[data-theme="dark"] .ep-input,
+[data-theme="dark"] .ep-select { background:var(--branco); border-color:var(--cinza); color:var(--grafite); color-scheme:dark; }
+/* Processos — checkboxes nativos */
+[data-theme="dark"] input[type="checkbox"].proc-ck { color-scheme:dark; }
+/* Popup edit-custo — inputs */
+[data-theme="dark"] #popup-edit-custo input,
+[data-theme="dark"] #popup-edit-custo select { background:var(--branco); border-color:var(--cinza); color:var(--grafite); color-scheme:dark; }
 [data-theme="dark"] .tarefa-inline-ta { border-color:var(--cinza); background:var(--branco); color:var(--grafite); }
 [data-theme="dark"] .task-input-row input[type="text"],
 [data-theme="dark"] .task-input-row input[type="date"] { background:var(--branco); color:var(--grafite); border-color:var(--cinza); color-scheme:dark; }
@@ -7279,7 +7288,7 @@ async function editarCustoLancado(id) {
   // Date formatted for input[type=date]
   const dataVal = c.data_lancamento?.slice(0,10) || '';
 
-  const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;color:var(--grafite)';
+  const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;color:var(--grafite);background:var(--branco);color-scheme:light dark';
   const lblStyle = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
 
   // Prepara listas para cascata de projeto
@@ -7331,92 +7340,88 @@ async function editarCustoLancado(id) {
   if (popup) popup.remove();
   popup = document.createElement('div');
   popup.id = 'popup-edit-custo';
-  popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  popup.className = 'modal-bg';
+  popup.style.cssText = 'display:flex;z-index:9999';
   popup.innerHTML = `
-    <div style="background:var(--branco);border-radius:12px;padding:24px 26px;max-width:480px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <div style="font-size:13px;font-weight:700">Editar custo</div>
-        <button onclick="document.getElementById('popup-edit-custo').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;line-height:1">×</button>
+    <div class="modal" style="max-width:480px">
+      <div class="modal-hd">
+        <div class="modal-hd-title">Editar custo</div>
+        <button class="modal-close" onclick="document.getElementById('popup-edit-custo').remove()">×</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
         <!-- Data + Valor -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <label style="${lblStyle}">Data</label>
-            <input id="ec-data" type="date" value="${dataVal}" style="${fldStyle}">
+        <div class="fg fg2">
+          <div class="fgroup">
+            <label>Data</label>
+            <input id="ec-data" type="date" value="${dataVal}">
           </div>
-          <div>
-            <label style="${lblStyle}">Valor (R$)</label>
-            <input id="ec-valor" type="number" step="0.01" value="${c.valor||''}" style="${fldStyle}">
+          <div class="fgroup">
+            <label>Valor (R$)</label>
+            <input id="ec-valor" type="number" step="0.01" value="${c.valor||''}">
           </div>
         </div>
         <!-- Tipo vinculado -->
-        <div>
-          <label style="${lblStyle}">Vinculado a</label>
-          <select id="ec-tipo" style="${fldStyle}" onchange="ecOnTipoChange()">
+        <div class="fgroup">
+          <label>Vinculado a</label>
+          <select id="ec-tipo" onchange="ecOnTipoChange()">
             <option value="projeto" ${c.tipo==='projeto'?'selected':''}>Projeto</option>
             <option value="organizacao" ${c.tipo==='organizacao'?'selected':''}>Org. Interna</option>
             <option value="sociedade" ${c.tipo==='sociedade'?'selected':''}>Sociedade</option>
           </select>
         </div>
         <!-- Área e detalhe -->
-        <div>
-          <label style="${lblStyle}">Área</label>
-          <select id="ec-area-reembolso" style="${fldStyle}" onchange="onAreaReembolsoChange('ec')">${areaOpts}</select>
+        <div class="fgroup">
+          <label>Área</label>
+          <select id="ec-area-reembolso" onchange="onAreaReembolsoChange('ec')">${areaOpts}</select>
         </div>
-        <div>
-          <label style="${lblStyle}">Detalhe</label>
-          <select id="ec-detalhe-reembolso" style="${fldStyle}">${detalheOpts}</select>
+        <div class="fgroup">
+          <label>Detalhe</label>
+          <select id="ec-detalhe-reembolso">${detalheOpts}</select>
         </div>
         <!-- Projeto cascade -->
         <div id="ec-proj-wrap" style="${c.tipo!=='projeto'?'display:none':''}">
-          <div style="margin-bottom:10px">
-            <label style="${lblStyle}">Cliente</label>
-            <select id="ec-cliente" style="${fldStyle}" onchange="ecOnClienteChange()">${cliOptsHtml}</select>
+          <div class="fgroup mb8">
+            <label>Cliente</label>
+            <select id="ec-cliente" onchange="ecOnClienteChange()">${cliOptsHtml}</select>
           </div>
-          <div id="ec-opp-wrap" style="${curCliId?'':'display:none'};margin-bottom:10px">
-            <label style="${lblStyle}">Oportunidade</label>
-            <select id="ec-opp" style="${fldStyle}" onchange="ecOnOppChange()">${oppOptsHtml}</select>
+          <div id="ec-opp-wrap" class="fgroup mb8" style="${curCliId?'':'display:none'}">
+            <label>Oportunidade</label>
+            <select id="ec-opp" onchange="ecOnOppChange()">${oppOptsHtml}</select>
           </div>
-          <div id="ec-prod-wrap" style="${prodsForOpp.length?'':'display:none'};margin-bottom:10px">
-            <label style="${lblStyle}">Produto</label>
-            <select id="ec-prod" style="${fldStyle}" onchange="ecOnProdChange()">${prodOptsHtml}</select>
+          <div id="ec-prod-wrap" class="fgroup mb8" style="${prodsForOpp.length?'':'display:none'}">
+            <label>Produto</label>
+            <select id="ec-prod" onchange="ecOnProdChange()">${prodOptsHtml}</select>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0">
-            <div id="ec-etapa-wrap" style="${etapasForProd.length?'':'display:none'}">
-              <label style="${lblStyle}">Etapa (opcional)</label>
-              <select id="ec-etapa" style="${fldStyle}">${etapaOptsHtml}</select>
+          <div class="fg fg2">
+            <div id="ec-etapa-wrap" class="fgroup" style="${etapasForProd.length?'':'display:none'}">
+              <label>Etapa (opcional)</label>
+              <select id="ec-etapa">${etapaOptsHtml}</select>
             </div>
-            <div id="ec-evt-wrap">
-              <label style="${lblStyle}">Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
-              <input id="ec-evt" type="text" list="ec-evt-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off" style="${fldStyle}">
+            <div id="ec-evt-wrap" class="fgroup">
+              <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
+              <input id="ec-evt" type="text" list="ec-evt-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
               <datalist id="ec-evt-dl">${todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
             </div>
           </div>
         </div>
         <!-- Org/Soc -->
         <div id="ec-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
-          <div id="ec-evt-orgsoc-wrap">
-            <label style="${lblStyle}">Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
-            <input id="ec-evt-soc" type="text" list="ec-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off" style="${fldStyle}">
+          <div id="ec-evt-orgsoc-wrap" class="fgroup">
+            <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
+            <input id="ec-evt-soc" type="text" list="ec-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
             <datalist id="ec-evt-soc-dl">${(c.tipo==='sociedade' ? todosEventosSoc : todosEventosCusto.filter(e=>!e.produto_id)).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
           </div>
         </div>
         <!-- Observação -->
-        <div>
-          <label style="${lblStyle}">Observação</label>
-          <input id="ec-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}" placeholder="Opcional" style="${fldStyle}">
+        <div class="fgroup">
+          <label>Observação</label>
+          <input id="ec-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}" placeholder="Opcional">
         </div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:22px">
-        <button id="ec-excluir-btn"
-          style="padding:8px 14px;border:1px solid rgba(184,86,56,.35);border-radius:6px;font-size:12px;cursor:pointer;background:transparent;color:var(--terracota);font-family:var(--font-ui);font-weight:600">Excluir custo</button>
-        <div style="display:flex;gap:8px">
-          <button onclick="document.getElementById('popup-edit-custo').remove()"
-            style="padding:8px 18px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui);font-weight:500">Cancelar</button>
-          <button id="ec-salvar-btn"
-            style="padding:8px 18px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:var(--verde);color:#fff;font-family:var(--font-ui);font-weight:700">Salvar</button>
-        </div>
+      <div class="modal-ft">
+        <button id="ec-excluir-btn" class="btn tc" style="margin-right:auto">Excluir custo</button>
+        <button onclick="document.getElementById('popup-edit-custo').remove()" class="btn">Cancelar</button>
+        <button id="ec-salvar-btn" class="btn verde">Salvar</button>
       </div>
     </div>`;
   document.body.appendChild(popup);
@@ -10324,7 +10329,7 @@ function renderCargaMensal({ porUser, usuarios, semNome }) {
             <span style="font-size:9px;color:#aaa">${pctTotal}%</span>
           </div>
         </div>
-        <div style="height:18px;background:var(--cinza2);border-radius:6px;overflow:hidden;display:flex">
+        <div style="height:8px;background:var(--cinza2);border-radius:4px;overflow:hidden;display:flex">
           <div style="height:100%;width:${pProj}%;background:var(--azul);transition:width .5s ease"></div>
           <div style="height:100%;width:${pOrg}%;background:var(--verde);transition:width .5s ease"></div>
           <div style="height:100%;width:${pSoc}%;background:var(--ouro);transition:width .5s ease"></div>
@@ -16052,9 +16057,9 @@ function renderProcDetalhe(id) {
         const tarefaIdJs = _sqN(tr.id);
 
         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
-          <input type="checkbox" ${myDone?'checked':''} ${!canCheck?'disabled':''}
+          <input type="checkbox" class="proc-ck" ${myDone?'checked':''} ${!canCheck?'disabled':''}
             onchange="toggleTarefaProcesso(${tarefaIdJs},${checklistIdJs},this.checked)"
-            style="margin-top:2px;cursor:${canCheck?'pointer':'default'};accent-color:var(--azul);flex-shrink:0">
+            style="margin-top:2px;cursor:${canCheck?'pointer':'default'};accent-color:var(--azul);flex-shrink:0;color-scheme:light dark">
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;color:${myDone?'#bbb':'#333'};${myDone?'text-decoration:line-through':''}">${_escN(tr.descricao)}</div>
             ${doneByStr ? `<div style="font-size:9px;color:#bbb;margin-top:1px">✓ ${doneByStr}</div>` : ''}
@@ -16096,6 +16101,7 @@ function renderProcDetalhe(id) {
           ${criador ? `<div style="font-size:10px;color:#bbb">Criado por ${_escN(criador.nome.split(' ')[0])}</div>` : ''}
         </div>
         ${isSoc ? `
+          <button onclick="procEditarChecklist(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:var(--branco);color:#555;cursor:pointer;padding:5px 10px;font-family:var(--font-ui)" title="Editar nome e descrição">✎</button>
           <button onclick="abrirAtribuirChecklist(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:var(--branco);color:#555;cursor:pointer;padding:5px 12px;font-family:var(--font-ui);white-space:nowrap">Atribuir ▾</button>
           <button onclick="procArquivar(${_sqN(id)})" style="font-size:11px;border:1px solid var(--cinza);border-radius:6px;background:var(--branco);color:#555;cursor:pointer;padding:5px 10px;font-family:var(--font-ui)">${arquivado?'↺ Restaurar':'🗄 Arquivar'}</button>
         ` : ''}
@@ -16123,7 +16129,7 @@ function renderProcDetalhe(id) {
       ${isSoc ? `
         <div id="proc-tema-inline-wrap"></div>
         <button onclick="procAdicionarTema(${_sqN(id)})"
-          style="margin-top:12px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:#fafafa;color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--font-ui)">
+          style="margin-top:12px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:var(--off);color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--font-ui)">
           + Adicionar tema
         </button>
       ` : ''}
@@ -16153,7 +16159,7 @@ function abrirNovoChecklist() {
 
   const userOpts = (G.todosUsuarios || []).map(u =>
     `<label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;border-bottom:1px solid var(--cinza2)">
-      <input type="checkbox" value="${u.id}" style="accent-color:var(--azul);cursor:pointer">
+      <input type="checkbox" class="proc-ck" value="${u.id}" style="accent-color:var(--azul);cursor:pointer;color-scheme:light dark">
       <div class="task-de-chip" style="background:${u.cor||'#888'};width:20px;height:20px;font-size:8px;flex-shrink:0">${_escN(u.iniciais)}</div>
       <span style="font-size:12px">${_escN(u.nome)}</span>
     </label>`
@@ -16259,12 +16265,67 @@ async function confirmarAtribuicaoChecklist(id) {
   selecionarChecklist(id);
 }
 
+// ── Editar nome/descrição do checklist ───────────────────────
+function procEditarChecklist(id) {
+  const c = G._processos.find(c => c.id === id);
+  if (!c) return;
+  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;background:var(--branco);color:var(--grafite);color-scheme:light dark';
+  const _l = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+  let pop = document.getElementById('_proc-edit-pop');
+  if (pop) { pop.remove(); return; }
+  pop = document.createElement('div');
+  pop.id = '_proc-edit-pop';
+  pop.className = 'modal-bg';
+  pop.style.cssText = 'display:flex;z-index:9999';
+  pop.innerHTML = `
+    <div class="modal" style="max-width:440px">
+      <div class="modal-hd">
+        <div class="modal-hd-title">Editar checklist</div>
+        <button class="modal-close" onclick="document.getElementById('_proc-edit-pop').remove()">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="${_l}">Nome</label>
+          <input id="_proc-edit-nome" type="text" value="${_escN(c.nome)}" style="${_f}">
+        </div>
+        <div>
+          <label style="${_l}">Descrição <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(opcional)</span></label>
+          <input id="_proc-edit-desc" type="text" value="${_escN(c.descricao||'')}" placeholder="Sub-descrição do checklist…" style="${_f}">
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button onclick="document.getElementById('_proc-edit-pop').remove()" class="btn">Cancelar</button>
+        <button onclick="_procSalvarEditChecklist('${id}')" class="btn verde">Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(pop);
+  document.getElementById('_proc-edit-nome')?.focus();
+  pop.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); _procSalvarEditChecklist(id); }
+    if (e.key === 'Escape') { pop.remove(); }
+  }));
+}
+
+async function _procSalvarEditChecklist(id) {
+  const nome = document.getElementById('_proc-edit-nome')?.value?.trim();
+  const desc = document.getElementById('_proc-edit-desc')?.value?.trim() || null;
+  if (!nome) { toast('Nome obrigatório'); return; }
+  const { error } = await sb.from('processos_checklist').update({ nome, descricao: desc }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message); return; }
+  document.getElementById('_proc-edit-pop')?.remove();
+  const c = G._processos.find(c => c.id === id);
+  if (c) { c.nome = nome; c.descricao = desc; }
+  toast('Checklist atualizado');
+  renderProcLista();
+  selecionarChecklist(id);
+}
+
 // ── Adicionar tema inline ─────────────────────────────────────
 function procAdicionarTema(checklistId) {
   const wrap = document.getElementById('proc-tema-inline-wrap');
   if (!wrap) return;
   if (wrap.querySelector('input')) { wrap.querySelector('input').focus(); return; }
-  const _fi = 'border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;width:100%';
+  const _fi = 'border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;width:100%;background:var(--branco);color:var(--grafite);color-scheme:light dark';
   wrap.innerHTML = `
     <div style="display:flex;gap:6px;margin-bottom:4px;align-items:stretch">
       <div style="flex:1;display:flex;flex-direction:column;gap:4px">
@@ -16323,7 +16384,7 @@ function procAdicionarTarefaInline(temaId, checklistId) {
   wrap.innerHTML = `
     <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
       <input id="${inpId}" type="text" placeholder="Descrever tarefa…"
-        style="flex:1;border:1px solid var(--cinza);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font-ui);outline:none;min-width:0">
+        style="flex:1;border:1px solid var(--cinza);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font-ui);outline:none;min-width:0;background:var(--branco);color:var(--grafite);color-scheme:light dark">
       <button onclick="_procConfirmarTarefaInline('${temaId}','${checklistId}')"
         style="padding:6px 12px;border:1px solid var(--grafite);border-radius:6px;background:var(--grafite);color:#fff;font-size:11px;cursor:pointer;font-family:var(--font-ui);white-space:nowrap">
         + Add
@@ -16351,6 +16412,8 @@ async function _procConfirmarTarefaInline(temaId, checklistId) {
   toast('Tarefa adicionada');
   await carregarProcessos();
   selecionarChecklist(checklistId);
+  // Reabre o input automaticamente para adicionar a próxima tarefa
+  procAdicionarTarefaInline(temaId, checklistId);
 }
 
 async function procExcluirTarefa(tarefaId, checklistId) {

@@ -270,6 +270,13 @@ select option[disabled]{color:#bbb}
 [data-theme="dark"] .b-gr{background:var(--cinza2);color:#888}
 [data-theme="dark"] .filter-bar select,[data-theme="dark"] .filter-bar input{background:var(--branco);border-color:var(--cinza);color:var(--grafite);color-scheme:dark}
 [data-theme="dark"] .page-title{color:var(--grafite)}
+/* Parâmetros — inputs gerados dinamicamente sem wrapper .fgroup */
+[data-theme="dark"] #faixas-pais input,
+[data-theme="dark"] #faixas-urb input,
+[data-theme="dark"] #mins-list input,
+[data-theme="dark"] #etapas-editor input{background:#252523;border-color:var(--cinza);color:var(--grafite);color-scheme:dark}
+[data-theme="dark"] #faixas-pais input[readonly],
+[data-theme="dark"] #faixas-urb input[readonly]{background:#1e1e1c!important;color:#555!important}
 </style>
 </head>
 <body>
@@ -306,6 +313,29 @@ select option[disabled]{color:#bbb}
     <div class="sync-indicator" id="sync-indicator" style="display:none">
       <div class="sync-dot" id="sync-dot"></div>
       <span id="sync-lbl">local</span>
+    </div>
+    <div class="nav-feedback-wrap" id="nav-feedback-wrap">
+      <button class="nav-feedback-btn" onclick="toggleFeedbackPop(event)" title="Problemas e sugestões">!</button>
+      <div class="nav-feedback-pop" id="nav-feedback-pop">
+        <div class="nav-feedback-title">Problema ou sugestão</div>
+        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+        <div class="fgroup" style="margin-bottom:8px">
+          <label>Tipo</label>
+          <select id="tool-feedback-type">
+            <option value="problema">Problema</option>
+            <option value="sugestao">Sugestão</option>
+          </select>
+        </div>
+        <div class="fgroup" style="margin-bottom:8px">
+          <label>Mensagem</label>
+          <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+        </div>
+        <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+        <div class="nav-feedback-actions">
+          <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
+          <button class="btn verde" onclick="enviarFeedback()">Enviar</button>
+        </div>
+      </div>
     </div>
     <div class="user-pill-wrap" id="user-pill-wrap">
       <div class="user-chip" onclick="toggleUserMenu()">
@@ -644,11 +674,11 @@ select option[disabled]{color:#bbb}
 <!-- COLUNA DIREITA — RESUMO -->
 <div>
   <div style="position:sticky;top:58px">
-    <div class="card-hdr" style="background:#fff;border:1px solid var(--cinza);margin-bottom:0">
+    <div class="card-hdr" style="background:var(--branco);border:1px solid var(--cinza);margin-bottom:0">
       <div class="card-title" id="resumo-title">Resumo da proposta</div>
       <div style="font-size:9px;color:#999" id="i-count">0 itens</div>
     </div>
-    <div id="resumo-body" style="background:#fff;border:1px solid var(--cinza);border-top:none;padding:12px;max-height:calc(100vh - 200px);overflow-y:auto">
+    <div id="resumo-body" style="background:var(--branco);border:1px solid var(--cinza);border-top:none;padding:12px;max-height:calc(100vh - 200px);overflow-y:auto">
       <div class="empty">Adicione serviços para ver o resumo</div>
     </div>
     <div style="display:flex;gap:6px;margin-top:8px">
@@ -3490,7 +3520,43 @@ document.addEventListener('click', e => {
     document.getElementById('nav-dropdown')?.classList.remove('open');
   if (!document.getElementById('user-pill-wrap')?.contains(e.target))
     document.getElementById('user-dropdown')?.classList.remove('open');
+  if (!document.getElementById('nav-feedback-wrap')?.contains(e.target))
+    document.getElementById('nav-feedback-pop')?.classList.remove('open');
 });
+function toggleFeedbackPop(ev) {
+  ev?.stopPropagation?.();
+  document.getElementById('nav-feedback-pop')?.classList.toggle('open');
+}
+function fecharFeedbackPop() {
+  document.getElementById('nav-feedback-pop')?.classList.remove('open');
+}
+function setFeedbackStatus(msg) {
+  const el = document.getElementById('tool-feedback-status');
+  if (el) el.textContent = msg;
+}
+async function enviarFeedback() {
+  const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
+  if (!u?.id) { setFeedbackStatus('Sessão indisponível. Faça login para enviar feedback.'); return; }
+  const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
+  const mensagem = document.getElementById('tool-feedback-message')?.value?.trim() || '';
+  if (!mensagem) { setFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.'); return; }
+  const tab = document.querySelector('.ntab.active')?.dataset?.tab || 'calc';
+  setFeedbackStatus('Enviando...');
+  const { error } = await sbNav.from('plataforma_feedback').insert({
+    usuario_id: u.id,
+    tipo,
+    mensagem,
+    status: 'novo',
+    origem_modulo: 'Calc',
+    url_origem: `calc.html#${tab}`,
+    criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString()
+  });
+  if (error) { setFeedbackStatus('Não foi possível enviar. Tente novamente.'); return; }
+  document.getElementById('tool-feedback-message').value = '';
+  setFeedbackStatus('Registro enviado para a Gestão de plataforma.');
+  showToast('Feedback enviado ✓');
+}
 function initNavDropdown(role) {
   if (['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
 }
