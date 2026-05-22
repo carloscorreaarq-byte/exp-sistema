@@ -9912,15 +9912,15 @@ async function carregarCarga() {
               <span style="font-family:var(--font-mono);font-weight:600;flex-shrink:0">R$ ${fmtNum(c.valor||0)}</span>
             </div>`;
           }).join('');
-          return `<div style="border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:#fff">
+          return `<div style="border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:var(--branco)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-              <span style="font-size:10px;font-weight:700;color:var(--azul)">${grp.nome}</span>
+              <span style="font-size:10px;font-weight:700;color:var(--grafite)">${grp.nome}</span>
               <span style="font-size:11px;font-family:var(--font-mono);font-weight:700">R$ ${fmtNum(grp.total)}</span>
             </div>${linhas}
           </div>`;
         }).join('');
       custosEl.innerHTML = `
-        <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);margin-bottom:10px">Custos da semana: R$ ${fmtNum(totalGeral)}</div>
+        <div style="font-size:11px;font-weight:700;font-family:var(--font-ui);color:#555;margin-bottom:10px">Custos da semana: <span style="font-family:var(--font-mono)">R$ ${fmtNum(totalGeral)}</span></div>
         ${eventosHtml}`;
     }
   }
@@ -9992,6 +9992,8 @@ async function carregarSubmissao() {
     });
     G._submissaoHorasPorTipo = horasPorTipo;
     G._submissaoHorasPorProd = horasPorProd;
+    G._submissaoHorasPorUsuario = horasPorUsuario;
+    G._submissaoMapaSemanas = mapaSemanas;
 
     wrap.innerHTML = '';
 
@@ -10049,68 +10051,106 @@ function mostrarResumoMembro(uid, nome) {
   const hpT   = G._submissaoHorasPorTipo?.[uid] || {};
   const hpP   = G._submissaoHorasPorProd?.[uid] || {};
   const total = Object.values(hpT).reduce((s,h)=>s+h,0);
+  const sem   = G._submissaoMapaSemanas?.[uid];
+  const totalH= G._submissaoHorasPorUsuario?.[uid] || 0;
+  const sobrecarga = totalH > 40 ? totalH - 40 : 0;
+
+  // ── Status badge ──
+  const fin = sem?.finalizada === true;
+  const emPreenchi = sem && !fin;
+  const statusLabel = fin ? 'Finalizado' : (emPreenchi ? 'Em preenchimento' : 'Sem envio');
+  const statusCor   = fin ? 'var(--verde)' : (emPreenchi ? 'var(--ouro)' : '#bbb');
+  const finalizadaEm = fin && sem?.finalizada_em
+    ? new Date(sem.finalizada_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+    : null;
+
+  const statusHtml = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(sem?.comentario||sobrecarga>0)?'10px':'16px'}">
+      <span style="display:inline-block;padding:3px 9px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;background:${statusCor === '#bbb' ? 'var(--cinza2)' : statusCor + '22'};color:${statusCor};border:1px solid ${statusCor === '#bbb' ? 'var(--cinza)' : statusCor + '55'}">${statusLabel}</span>
+      ${finalizadaEm ? `<span style="font-size:10px;color:#bbb">Enviado em ${finalizadaEm}</span>` : ''}
+      ${sobrecarga > 0 ? `<span style="font-size:10px;color:var(--terracota);font-weight:600;margin-left:auto">+${fmtHLong(sobrecarga)} sobrecarga</span>` : ''}
+    </div>`;
+
+  const comentarioHtml = sem?.comentario
+    ? `<div style="background:var(--cinza2);border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:11px;color:#555;font-style:italic;line-height:1.5">
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#bbb;display:block;margin-bottom:3px;font-style:normal">Comentário da semana</span>
+        "${sem.comentario}"
+      </div>`
+    : '';
 
   // ── Horas por tipo ──
   const tipoRows = [
-    { label:'Projetos',     h: hpT.projeto    || 0, cor:'var(--azul)'    },
-    { label:'Org. Interna', h: hpT.organizacao|| 0, cor:'var(--verde)'  },
-    { label:'Sociedade',    h: hpT.sociedade  || 0, cor:'var(--ouro)'     },
+    { label:'Projetos',     h: hpT.projeto    || 0, cor:'var(--azul)'  },
+    { label:'Org. Interna', h: hpT.organizacao|| 0, cor:'var(--verde)' },
+    { label:'Sociedade',    h: hpT.sociedade  || 0, cor:'var(--ouro)'  },
   ].filter(r => r.h > 0);
 
   const tipoHtml = tipoRows.length
-    ? tipoRows.map(r => {
-        const pct = total > 0 ? Math.round(r.h / total * 100) : 0;
-        return `<div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:11px;color:${r.cor};font-weight:600">${r.label}</span>
-            <span style="font-size:11px;font-family:var(--font-mono)">${fmtH(r.h)} (${pct}%)</span>
-          </div>
-          <div style="height:5px;background:var(--cinza2);border-radius:3px">
-            <div style="height:5px;width:${pct}%;background:${r.cor};border-radius:3px;transition:width .3s"></div>
-          </div>
-        </div>`;
-      }).join('')
-    : '<div class="empty-note">Sem horas lançadas nesta semana.</div>';
+    ? `<div style="margin-bottom:14px">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:8px">Horas por área</div>
+        ${tipoRows.map(r => {
+          const pct = total > 0 ? Math.round(r.h / total * 100) : 0;
+          return `<div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:11px;color:${r.cor};font-weight:600">${r.label}</span>
+              <span style="font-size:11px;font-family:var(--font-mono)">${fmtH(r.h)} <span style="color:#bbb;font-size:10px">(${pct}%)</span></span>
+            </div>
+            <div style="height:5px;background:var(--cinza2);border-radius:3px">
+              <div style="height:5px;width:${pct}%;background:${r.cor};border-radius:3px;transition:width .3s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`
+    : '<div class="empty-note" style="margin-bottom:14px">Sem horas lançadas nesta semana.</div>';
 
   // ── Horas por projeto ──
   const prodEntries = Object.entries(hpP).sort((a,b)=>b[1]-a[1]);
   const prodHtml = prodEntries.length
-    ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--cinza)">
-        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Por projeto</div>
+    ? `<div style="padding-top:12px;border-top:1px solid var(--cinza2)">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:8px">Por projeto</div>
         ${prodEntries.map(([pid, h]) => {
           const prod = (G._prodsGestao || G.todosProdutos || []).find(p => p.id === pid);
           const projNome = prod?.oportunidades?.projeto || prod?.nome || pid;
-          const etapaNome = prod?.nome && prod?.oportunidades?.projeto ? ` · ${truncarTexto(prod.nome,20)}` : '';
+          const etapaNome = prod?.nome && prod?.oportunidades?.projeto ? ` · ${truncarTexto(prod.nome, 22)}` : '';
           const pct = total > 0 ? Math.round(h / total * 100) : 0;
-          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <div style="font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${projNome}${etapaNome}">${projNome}${etapaNome}</div>
-            <span style="font-size:11px;font-family:var(--font-mono);color:#555;white-space:nowrap">${fmtH(h)}</span>
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#333" title="${projNome}${etapaNome}">${projNome}${etapaNome}</div>
+              <div style="height:3px;background:var(--cinza2);border-radius:2px;margin-top:3px">
+                <div style="height:3px;width:${pct}%;background:var(--azul);opacity:.5;border-radius:2px"></div>
+              </div>
+            </div>
+            <span style="font-size:11px;font-family:var(--font-mono);color:#555;white-space:nowrap;flex-shrink:0">${fmtH(h)}</span>
           </div>`;
         }).join('')}
       </div>`
     : '';
 
-  const conteudo = tipoHtml + prodHtml;
+  // Remove any existing overlay and rebuild fresh
+  document.getElementById('resumo-membro-ov')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'resumo-membro-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4)';
 
-  // Mini overlay
-  let ov = document.getElementById('resumo-membro-ov');
-  if (!ov) {
-    ov = document.createElement('div');
-    ov.id = 'resumo-membro-ov';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)';
-    ov.innerHTML = `<div id="resumo-membro-box" style="background:var(--branco);border:1px solid var(--cinza);border-radius:10px;padding:20px;min-width:300px;max-width:400px;max-height:80vh;overflow-y:auto;position:relative">
-      <button onclick="document.getElementById('resumo-membro-ov').remove()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:18px;color:#aaa;cursor:pointer">×</button>
-      <div id="resumo-membro-titulo" style="font-size:13px;font-weight:700;margin-bottom:4px"></div>
-      <div id="resumo-membro-total" style="font-size:10px;color:#888;margin-bottom:14px"></div>
-      <div id="resumo-membro-rows"></div>
-    </div>`;
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
-    document.body.appendChild(ov);
-  }
-  document.getElementById('resumo-membro-titulo').textContent = nome;
-  document.getElementById('resumo-membro-total').textContent = `Total: ${fmtH(total)}`;
-  document.getElementById('resumo-membro-rows').innerHTML = conteudo;
-  ov.style.display = 'flex';
+  const u = G.todosUsuarios?.find(u => u.id === uid);
+  const avHtml = u ? _avImg(u, 36, 12) : '';
+
+  ov.innerHTML = `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:12px;padding:24px;width:min(520px,95vw);max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.16)">
+    <button onclick="document.getElementById('resumo-membro-ov').remove()" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;line-height:1">×</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      ${avHtml}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700">${_escN(nome)}</div>
+        <div style="font-size:10px;color:#999;margin-top:1px">Total: <span style="font-family:var(--font-mono);font-weight:600;color:#555">${fmtH(total)}</span></div>
+      </div>
+    </div>
+    ${statusHtml}
+    ${comentarioHtml}
+    ${tipoHtml}
+    ${prodHtml}
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
 }
 
 // ── CARGA MENSAL ─────────────────────────────────────────────────────────────
@@ -10306,12 +10346,12 @@ async function editarNomeEvento(evId, tipo) {
   ov.innerHTML = `
     <div style="background:var(--branco);border-radius:12px;padding:28px 24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
       <div style="font-size:14px;font-weight:700;margin-bottom:16px">Renomear Evento</div>
-      <input id="_ev-nome-inp" type="text" value="" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;box-sizing:border-box;font-family:var(--font-mono)" placeholder="Nome do evento">
+      <input id="_ev-nome-inp" type="text" value="" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;box-sizing:border-box;font-family:var(--font-ui);outline:none" placeholder="Nome do evento">
       <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
         <button onclick="document.getElementById('_ev-rename-modal').remove()"
-          style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-family:var(--font-mono);font-size:12px">Cancelar</button>
+          style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-family:var(--font-ui);font-size:12px">Cancelar</button>
         <button onclick="salvarNomeEvento('${evId}','${tabela}')"
-          style="padding:8px 18px;border-radius:6px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:12px;font-weight:600">Salvar</button>
+          style="padding:8px 18px;border-radius:6px;border:none;background:var(--grafite);color:#fff;cursor:pointer;font-family:var(--font-ui);font-size:12px;font-weight:600">Salvar</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
@@ -10354,13 +10394,13 @@ async function reatribuirEvento(evId, tipo) {
       <div style="background:var(--branco);border-radius:12px;padding:28px 24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
         <div style="font-size:14px;font-weight:700;margin-bottom:6px">Reatribuir Evento</div>
         <div style="font-size:11px;color:#888;margin-bottom:16px">Todos os lançamentos deste evento serão movidos para o evento selecionado abaixo.</div>
-        <select id="_reattr-sel" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--font-mono)">
+        <select id="_reattr-sel" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--font-ui);outline:none">
           <option value="">— Selecione o evento destino —</option>
           ${opts}
         </select>
         <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-family:var(--font-mono);font-size:12px">Cancelar</button>
-          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:12px;font-weight:600">Mover lançamentos</button>
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-family:var(--font-ui);font-size:12px">Cancelar</button>
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--grafite);color:#fff;cursor:pointer;font-family:var(--font-ui);font-size:12px;font-weight:600">Mover lançamentos</button>
         </div>
       </div>`;
     ov.addEventListener('_cancel', () => { document.body.removeChild(ov); resolve(null); });
@@ -10387,40 +10427,83 @@ async function reatribuirEvento(evId, tipo) {
 }
 
 async function atribuirEventoACusto(custoId) {
-  const [{ data: evCusto }, { data: evSoc }] = await Promise.all([
+  // Fetch custo to determine tipo (projeto/organizacao/sociedade)
+  const [{ data: custo }, { data: evCusto }, { data: evSoc }] = await Promise.all([
+    sb.from('lancamentos_custo').select('tipo').eq('id', custoId).maybeSingle(),
     sb.from('eventos_custo').select('id,nome').order('nome'),
     sb.from('eventos_sociedade').select('id,nome').order('nome')
   ]);
-  const opts = [
-    ...(evCusto||[]).map(e => `<option value="custo|${e.id}">${e.nome}</option>`),
-    ...(evSoc||[]).map(e => `<option value="soc|${e.id}">${e.nome}</option>`)
+  const isSocTipo = custo?.tipo === 'sociedade';
+  const allEvCusto = evCusto || [];
+  const allEvSoc   = evSoc   || [];
+
+  // Build datalist combining both tables (labelled)
+  const dlOpts = [
+    ...allEvCusto.map(e => `<option value="${_escN(e.nome)}">`),
+    ...allEvSoc.map(e => `<option value="${_escN(e.nome)}">`)
   ].join('');
-  const sel = await new Promise(resolve => {
+  const _b = 'padding:8px 18px;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--font-ui);border:1px solid var(--cinza)';
+
+  const nomeEscolhido = await new Promise(resolve => {
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
     ov.innerHTML = `
-      <div style="background:var(--branco);border-radius:12px;padding:28px 24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-        <div style="font-size:14px;font-weight:700;margin-bottom:16px">Atribuir Evento</div>
-        <select id="_ev-sel" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--font-mono)">
-          <option value="">— Selecione um evento —</option>
-          ${opts}
-        </select>
+      <div style="background:var(--branco);border-radius:12px;padding:24px;width:min(440px,95vw);box-shadow:0 8px 32px rgba(0,0,0,.18)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Atribuir Evento</div>
+        <div style="font-size:11px;color:#999;margin-bottom:14px">Selecione um evento existente ou digite um nome novo para criar.</div>
+        <input id="_ev-atrib-inp" type="text" list="_ev-atrib-dl" autocomplete="off"
+          placeholder="Nome do evento…"
+          style="width:100%;padding:9px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--font-ui);outline:none;box-sizing:border-box">
+        <datalist id="_ev-atrib-dl">${dlOpts}</datalist>
         <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-family:var(--font-mono);font-size:12px">Cancelar</button>
-          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:12px;font-weight:600">Atribuir</button>
+          <button onclick="this.closest('[data-ov]').dispatchEvent(new CustomEvent('_cancel'))" style="${_b};background:var(--branco)">Cancelar</button>
+          <button onclick="this.closest('[data-ov]').dispatchEvent(new CustomEvent('_ok'))" style="${_b};background:var(--grafite);color:#fff;border-color:var(--grafite);font-weight:600">Atribuir</button>
         </div>
       </div>`;
-    ov.addEventListener('_cancel', () => { document.body.removeChild(ov); resolve(null); });
+    ov.querySelector('div').setAttribute('data-ov','1');
+    ov.addEventListener('_cancel', () => { ov.remove(); resolve(null); });
     ov.addEventListener('_ok', () => {
-      const v = document.getElementById('_ev-sel')?.value;
-      document.body.removeChild(ov);
-      resolve(v || null);
+      const v = document.getElementById('_ev-atrib-inp')?.value?.trim();
+      ov.remove(); resolve(v || null);
     });
+    ov.addEventListener('click', e => { if (e.target === ov) { ov.remove(); resolve(null); } });
     document.body.appendChild(ov);
+    const inp = document.getElementById('_ev-atrib-inp');
+    inp?.focus();
+    inp?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); ov.querySelector('[data-ov]').dispatchEvent(new CustomEvent('_ok')); }
+      if (e.key === 'Escape') { ov.remove(); resolve(null); }
+    });
   });
-  if (!sel) return;
-  const [tipo, evId] = sel.split('|');
-  const campo = tipo === 'soc' ? 'evento_soc_id' : 'evento_id';
+
+  if (!nomeEscolhido) return;
+
+  const nomeLower = nomeEscolhido.toLowerCase();
+  let evId = null;
+  let campo = null;
+
+  // Match against existing events (prefer appropriate table based on tipo)
+  const matchCusto = allEvCusto.find(e => e.nome.toLowerCase() === nomeLower);
+  const matchSoc   = allEvSoc.find(e => e.nome.toLowerCase() === nomeLower);
+
+  if (matchCusto && !matchSoc) {
+    evId = matchCusto.id; campo = 'evento_id';
+  } else if (matchSoc && !matchCusto) {
+    evId = matchSoc.id; campo = 'evento_soc_id';
+  } else if (matchCusto && matchSoc) {
+    // Both exist — choose by tipo
+    if (isSocTipo) { evId = matchSoc.id; campo = 'evento_soc_id'; }
+    else           { evId = matchCusto.id; campo = 'evento_id'; }
+  } else {
+    // Novo evento — criar na tabela correta pelo tipo do lançamento
+    const tabela = isSocTipo ? 'eventos_sociedade' : 'eventos_custo';
+    const { data: novo, error: errEv } = await sb.from(tabela).insert({ nome: nomeEscolhido }).select('id').single();
+    if (errEv) { toast('Erro ao criar evento: ' + errEv.message); return; }
+    evId = novo.id;
+    campo = isSocTipo ? 'evento_soc_id' : 'evento_id';
+    toast(`Evento "${nomeEscolhido}" criado`);
+  }
+
   const { error } = await sb.from('lancamentos_custo').update({ [campo]: evId }).eq('id', custoId);
   if (error) { toast('Erro ao atribuir: ' + error.message); return; }
   toast('Evento atribuído');
@@ -10519,7 +10602,7 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
           </div>`;
         }).join('');
         return `<div style="margin-bottom:10px">
-          <div style="font-size:10px;font-weight:700;color:var(--azul);margin-bottom:4px">${chave}</div>
+          <div style="font-size:10px;font-weight:700;color:var(--grafite);margin-bottom:4px">${chave}</div>
           ${linhas}
           <div style="text-align:right;font-size:10px;color:#888;margin-top:3px">Subtotal: <strong style="font-family:var(--font-mono)">${fmtR(subtotal)}</strong></div>
         </div>`;
