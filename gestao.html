@@ -981,6 +981,50 @@ body {
 .coord-strip-info { font-size: 10px; color: #888; margin-top: 1px; }
 .coord-strip-badge { display: flex; gap: 5px; align-items: center; }
 
+/* Tarefas livres — botão "ver recentes" e popup histórico */
+.task-recentes-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 9px; font-weight: 600; letter-spacing: .04em;
+  color: #bbb; padding: 0 2px; line-height: 1;
+  transition: color .12s;
+}
+.task-recentes-btn:hover { color: #888; }
+.task-recentes-pop {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  z-index: 400;
+  width: min(320px, calc(100vw - 24px));
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  padding: 10px 12px;
+  display: none; flex-direction: column; gap: 8px;
+}
+.task-recentes-pop.open { display: flex; }
+.task-recentes-pop::before {
+  content:''; position:absolute; top:-6px; right:12px;
+  width:12px; height:12px; transform:rotate(45deg);
+  background:var(--branco); border-top:1px solid var(--cinza); border-left:1px solid var(--cinza);
+}
+.task-rec-title {
+  font-size: 9px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: #999;
+}
+.task-rec-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid var(--cinza2);
+  font-size: 10px;
+}
+.task-rec-item:last-child { border-bottom: none; }
+.task-rec-desc { flex: 1; min-width: 0; color: #666; line-height: 1.45; }
+.task-rec-desc.done { text-decoration: line-through; color: #aaa; }
+.task-rec-action { font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--verde); cursor: pointer; flex-shrink: 0; margin-top: 2px; white-space: nowrap; }
+.task-rec-action:hover { opacity: .75; }
+.task-rec-empty { font-size: 10px; color: #bbb; text-align: center; padding: 8px 0; }
+[data-theme="dark"] .task-recentes-pop { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .task-recentes-pop::before { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .task-rec-desc { color: #888; }
+
 /* Tarefas livres */
 .task-item {
   display: flex; align-items: flex-start; gap: 8px;
@@ -1259,8 +1303,8 @@ body {
   padding: 8px 10px; border-top: 1px solid var(--cinza);
   background: var(--branco); flex-wrap: wrap;
 }
-.gantt-leg-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #888; }
-.gantt-leg-cor { width: 16px; height: 8px; }
+.gantt-leg-item { display: flex; align-items: center; gap: 6px; font-size: 9px; color: #888; }
+.gantt-leg-cor { width: 20px; height: 10px; border-radius: 4px; }
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    HORAS
@@ -1655,6 +1699,20 @@ body {
   padding: 6px 14px 8px; font-size: 10px; color: #888;
   border-top: 1px solid var(--cinza2);
 }
+.prancha-forum-has-comment {
+  background: var(--az-bg, rgba(74,114,181,.06));
+  border-top-color: rgba(74,114,181,.35);
+  color: var(--azul);
+}
+.prancha-forum-badge { font-weight: 700; }
+.prancha-forum-snippet {
+  display: block; margin-top: 3px;
+  font-size: 10px; font-weight: 300; color: #555;
+  font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .prancha-forum-has-comment { color: var(--azul); }
+[data-theme="dark"] .prancha-forum-snippet { color: #888; }
 .prancha-expand-hint {
   text-align: center; font-size: 9px; color: #bbb; letter-spacing: .5px; text-transform: uppercase;
   padding: 5px 0 7px; cursor: pointer;
@@ -1914,16 +1972,16 @@ body {
 [data-theme="dark"] .prio-card.concluida { background:var(--verde-bg); border-color:rgba(82,166,118,.35); }
 [data-theme="dark"] .prio-card.hoje { background:var(--ouro-bg); border-color:var(--ouro); }
 [data-theme="dark"] .prio-card.atrasada { background:rgba(192,88,77,.14); border-color:rgba(192,88,77,.55); }
-.prio-comment { margin-top:6px; background:var(--cinza2); border-left:3px solid var(--cinza); border-radius:0 5px 5px 0; padding:5px 9px; font-size:10px; color:#666; font-style:italic; line-height:1.4; }
+.prio-comment { margin-top:6px; background:rgba(0,0,0,.04); border-left:3px solid var(--cinza); border-radius:0 5px 5px 0; padding:5px 9px; font-size:10px; color:#888; font-style:italic; line-height:1.4; }
 .prazo-chip-normal { background:#FFF8E7; border:1px solid #F0D080; color:#8A6010; }
 [data-theme="dark"] .prazo-chip-normal { background:var(--am-bg); border-color:rgba(212,170,55,.4); color:var(--ouro); }
 .prio-num { width:22px; height:22px; border-radius:50%; background:var(--grafite); color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:var(--font-mono); flex-shrink:0; margin-top:1px; }
-.prio-num.p1 { background:var(--ouro); }
-.prio-num.p2 { background:var(--azul); }
-.prio-num.p3 { background:var(--verde); }
-.prio-num.p4 { background:#6B4FA0; }
-.prio-num.p5 { background:#B84C3A; }
-.prio-num.p6 { background:#3D7A5C; }
+.prio-num.p1 { background:var(--terracota); }
+.prio-num.p2 { background:var(--ouro); }
+.prio-num.p3 { background:var(--azul); }
+.prio-num.p4 { background:var(--verde); }
+.prio-num.p5 { background:var(--roxo); }
+.prio-num.p6 { background:var(--grafite); }
 .prio-info { flex:1; min-width:0; }
 .prio-nome { font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prio-sub { font-size:10px; color:#888; margin-top:1px; }
@@ -2011,28 +2069,27 @@ body {
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MODAL CADASTRO PROJETO
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.step-indicator { display: flex; gap: 0; margin-bottom: 20px; }
+.step-indicator { display: flex; gap: 6px; margin-bottom: 20px; }
 .step-item {
   flex: 1; padding: 8px 12px; text-align: center;
   font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
   background: var(--cinza2); color: #999; border: 1px solid var(--cinza);
-  border-right: none; position: relative;
+  border-radius: 6px; position: relative;
 }
-.step-item:last-child { border-right: 1px solid var(--cinza); }
 .step-item.active { background: var(--grafite); color: #fff; border-color: var(--grafite); }
-.step-item.done { background: var(--verde-bg); color: var(--verde); border-color: var(--verde-bg); }
+.step-item.done { background: var(--verde-bg); color: var(--verde); border-color: rgba(62,120,88,.35); }
 .step-panel { display: none; }
 .step-panel.active { display: block; }
 
 .etapa-preset-item {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; border: 1px solid var(--cinza2); margin-bottom: 4px;
-  background: var(--branco);
+  background: var(--branco); border-radius: 6px;
 }
 .etapa-preset-nome { font-size: 12px; flex: 1; }
-.ep-input { padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--font-ui); font-size: 11px; outline: none; width: 60px; }
+.ep-input { padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--font-ui); font-size: 11px; outline: none; width: 60px; border-radius: 5px; }
 .ep-input:focus { border-color: var(--grafite); }
-.ep-select { padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--font-ui); font-size: 11px; cursor: pointer; outline: none; }
+.ep-select { padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--font-ui); font-size: 11px; cursor: pointer; outline: none; border-radius: 5px; }
 .ep-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 0 2px; transition: color .12s; }
 .ep-del:hover { color: var(--terracota); }
 
@@ -2236,7 +2293,7 @@ body {
 [data-theme="dark"] .prio-card.concluida .prio-info * { color:#555 !important; background:transparent !important; border-color:transparent !important; }
 [data-theme="dark"] .prio-card.hoje { background:var(--ouro-bg); border-color:var(--ouro); }
 [data-theme="dark"] .prio-card.atrasada { background:rgba(184,86,56,.1); border-color:var(--terracota); }
-[data-theme="dark"] .prio-comment { background:rgba(255,255,255,.06); border-color:#555; color:#999; }
+[data-theme="dark"] .prio-comment { background:rgba(255,255,255,.04); border-color:#444; color:#888; }
 
 /* Buttons */
 [data-theme="dark"] .btn { background:var(--branco); border-color:var(--cinza); color:#888; }
@@ -2862,8 +2919,10 @@ body {
 
       <!-- Tarefas livres -->
       <div class="card c-vd">
-        <div class="card-hd">
+        <div class="card-hd" style="position:relative">
           <div class="card-title">Lista de tarefas</div>
+          <button class="task-recentes-btn" id="task-recentes-btn" onclick="toggleTaskRecentesPop(event)" title="Histórico e tarefas excluídas">↺ recentes</button>
+          <div class="task-recentes-pop" id="task-recentes-pop"></div>
           <div id="st-tasks" style="font-size:10px;color:#bbb;font-weight:500;letter-spacing:.02em;margin-left:auto">—</div>
         </div>
         <div class="card-body">
@@ -3343,11 +3402,7 @@ body {
     </div>
   </div>
 
-  <!-- FAB: + Nova revisão / Solicitar revisão -->
-  <button class="rev-fab" id="rev-fab-btn" onclick="revFabAction()" title="">
-    <span class="rev-fab-icon">+</span>
-    <span class="rev-fab-text" id="rev-fab-label">Nova revisão</span>
-  </button>
+  <!-- FAB removido — nova revisão via botão interno no produto -->
 
 </div>
 
@@ -3895,7 +3950,8 @@ body {
           <div class="fg fg2 mb8">
             <div class="fgroup">
               <label>Nome do produto</label>
-              <input type="text" id="cad-prod-nome" placeholder="Ex.: Projeto Urbanístico, Paisagismo...">
+              <input type="text" id="cad-prod-nome" list="cad-prod-nome-list" placeholder="Ex.: Projeto Urbanístico, Paisagismo..." autocomplete="off">
+              <datalist id="cad-prod-nome-list"></datalist>
             </div>
             <div class="fgroup">
               <label>Núcleo</label>
@@ -3953,7 +4009,7 @@ body {
 
     </div>
     <div class="modal-ft">
-      <button class="btn" id="cad-btn-back" style="display:none" onclick="cadStep(1)">â�← Voltar</button>
+      <button class="btn" id="cad-btn-back" style="display:none" onclick="cadStep(1)">‹ Voltar</button>
       <button class="btn" onclick="fecharModal('modal-cadastro')">Cancelar</button>
       <button class="btn filled" id="cad-btn-next" onclick="cadStep(2)">Próximo →</button>
       <button class="btn verde" id="cad-btn-salvar" style="display:none" onclick="salvarProjeto()">Criar projeto</button>
@@ -4493,6 +4549,9 @@ document.addEventListener('click', e => {
     document.getElementById('user-dropdown')?.classList.remove('open');
   if (!document.getElementById('tool-feedback-wrap')?.contains(e.target))
     document.getElementById('tool-feedback-pop')?.classList.remove('open');
+  if (!document.getElementById('task-recentes-btn')?.contains(e.target) &&
+      !document.getElementById('task-recentes-pop')?.contains(e.target))
+    document.getElementById('task-recentes-pop')?.classList.remove('open');
   if (!document.getElementById('notif-wrap')?.contains(e.target)) {
     const p = document.getElementById('notif-panel');
     if (p) p.style.display = 'none';
@@ -4841,8 +4900,7 @@ function onTabChange(tab) {
     else if (document.getElementById('pvt-gantt')?.classList.contains('active')) renderGantt();
     else renderListaProjetos();
   }
-  if (tab === 'revisoes')  { carregarRevisoes(); initRevFab(); document.getElementById('rev-fab-btn')?.classList.remove('hidden'); }
-  else { document.getElementById('rev-fab-btn')?.classList.add('hidden'); }
+  if (tab === 'revisoes')  { carregarRevisoes(); }
   if (tab === 'processos') { carregarProcessos(); }
   if (tab === 'calendario') { calInit(); }
   if (tab === 'socios') {
@@ -5705,6 +5763,8 @@ async function confirmarAtribuirTarefa() {
 }
 
 async function toggleTarefa(id, atual) {
+  const t = G._tarefasCache?.[id];
+  if (t && !atual) _taskHistSalvar({ ...t, concluida: true }, 'concluida');
   await sb.from('tarefas_livres').update({
     concluida: !atual, concluida_em: atual ? null : new Date().toISOString()
   }).eq('id', id);
@@ -5724,11 +5784,87 @@ async function toggleTarefa(id, atual) {
   carregarTarefas();
 }
 
+// ── Histórico de tarefas (últimas 20 atividades + excluídas recuperáveis) ──
+const TASK_HIST_KEY = 'exp_task_hist';
+const TASK_HIST_MAX = 20;
+
+function _taskHistSalvar(tarefa, evento) {
+  // evento: 'criada' | 'concluida' | 'excluida' | 'editada'
+  try {
+    const hist = JSON.parse(localStorage.getItem(TASK_HIST_KEY) || '[]');
+    hist.unshift({
+      id:        tarefa.id,
+      descricao: tarefa.descricao,
+      tipo:      tarefa.tipo,
+      concluida: tarefa.concluida,
+      evento,
+      payload:   evento === 'excluida' ? { ...tarefa } : null,
+      ts:        Date.now()
+    });
+    localStorage.setItem(TASK_HIST_KEY, JSON.stringify(hist.slice(0, TASK_HIST_MAX)));
+  } catch {}
+}
+
+function toggleTaskRecentesPop(e) {
+  e.stopPropagation();
+  const pop = document.getElementById('task-recentes-pop');
+  if (!pop) return;
+  const open = pop.classList.toggle('open');
+  if (!open) return;
+  renderTaskRecentesPop(pop);
+}
+
+function renderTaskRecentesPop(pop) {
+  const hist = (() => { try { return JSON.parse(localStorage.getItem(TASK_HIST_KEY) || '[]'); } catch { return []; } })();
+  const EVENTO_LABEL = { criada:'criada', concluida:'concluída', excluida:'excluída', editada:'editada' };
+  const fmtTs = ts => {
+    const d = new Date(ts);
+    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  };
+  if (!hist.length) {
+    pop.innerHTML = '<div class="task-rec-title">Histórico</div><div class="task-rec-empty">Nenhuma atividade recente.</div>';
+    return;
+  }
+  pop.innerHTML = '<div class="task-rec-title">Atividade recente</div>'
+    + hist.map((h, i) => {
+        const restoreBtn = h.evento === 'excluida' && h.payload
+          ? `<span class="task-rec-action" onclick="restaurarTarefa(${i})">Restaurar</span>`
+          : '';
+        return `<div class="task-rec-item">
+          <div class="task-rec-desc ${h.concluida ? 'done' : ''}" title="${_escN(h.descricao)}">
+            ${_escN(h.descricao)}
+            <div style="font-size:8px;color:#bbb;margin-top:2px">${EVENTO_LABEL[h.evento]||h.evento} · ${fmtTs(h.ts)}</div>
+          </div>
+          ${restoreBtn}
+        </div>`;
+      }).join('');
+}
+
+async function restaurarTarefa(histIdx) {
+  const hist = (() => { try { return JSON.parse(localStorage.getItem(TASK_HIST_KEY) || '[]'); } catch { return []; } })();
+  const entry = hist[histIdx];
+  if (!entry?.payload) return;
+  const { id: _oldId, created_at: _ca, ...resto } = entry.payload;
+  try {
+    const { error } = await sb.from('tarefas_livres').insert({ ...resto, concluida: false, concluida_em: null });
+    if (error) { toast('Erro ao restaurar: ' + error.message); return; }
+    // Remove do histórico após restaurar
+    hist.splice(histIdx, 1);
+    localStorage.setItem(TASK_HIST_KEY, JSON.stringify(hist));
+    toast('Tarefa restaurada');
+    carregarTarefas();
+    const pop = document.getElementById('task-recentes-pop');
+    if (pop) renderTaskRecentesPop(pop);
+  } catch(e) { toast('Erro: ' + e.message); }
+}
+
 function confirmarExcluirTarefa(id) {
+  const t = G._tarefasCache?.[id];
   abrirPopupConfirm(
     'Excluir tarefa?',
     'Esta tarefa atribuída será removida permanentemente.',
     async () => {
+      if (t) _taskHistSalvar(t, 'excluida');
       await sb.from('tarefas_livres').delete().eq('id', id);
       carregarTarefas();
     }
@@ -5922,7 +6058,7 @@ function renderKanbanProjetos() {
   const prods = pkFiltrarProds();
 
   const cols = {
-    fila:      { title: 'Fila',         cor: '#aaa',         items: [] },
+    fila:      { title: 'Fila (não iniciados)', cor: '#aaa',  items: [] },
     andamento: { title: 'Em andamento', cor: '#4A90D9',       items: [] },
     revisao:   { title: 'Em revisão',   cor: '#D19931',       items: [] },
     encerrado: { title: 'Encerrado',    cor: 'var(--verde)',  items: [] },
@@ -6040,7 +6176,7 @@ function renderEntregasSemana() {
     const clienteDisp = _escN(info.cliente || '');
     const oppDisp = _escN(info.oportunidade || '');
     const etapaDisp = _escN(info.etapa || '');
-    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--cinza2);${concluida ? 'opacity:.5' : ''}">
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--cinza2);${concluida ? 'opacity:.35' : ''}">
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;font-weight:${isMeu ? '600' : '400'};color:${isMeu ? 'var(--grafite)' : '#555'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${clienteDisp}">${clienteDisp}</div>
         <div style="font-size:10px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${oppDisp}">${oppDisp}</div>
@@ -7007,22 +7143,23 @@ async function renderCustosLancados() {
       const alertaEvt = semArea
         ? `<span title="Sem área financeira — clique em Editar para classificar" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`
         : '';
-      html += `<div class="lanc-item" style="${semArea ? 'border-left:2px solid #C4831A' : ''}">
+      const custoClick = travada ? '' : `onclick="editarCustoLancado('${c.id}')"`;
+      const custoTitle = travada ? 'title="Semana bloqueada"' : 'title="Clique para editar"';
+      html += `<div class="lanc-item" style="${semArea ? 'border-left:2px solid #C4831A;' : ''}cursor:${travada ? 'default' : 'pointer'}" ${custoClick} ${custoTitle}>
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
         <div class="lanc-hora" style="min-width:75px;font-family:var(--font-ui);font-size:10px;font-weight:400;color:#555">R$ ${fmtNum(c.valor)}</div>
         <div class="lanc-desc" style="font-size:10px;line-height:1.4">${descFull || cat || '—'}</div>
         ${alertaEvt}
-        <div class="lanc-dur"></div>
-        <div class="lanc-actions">
-          <button class="lanc-edit ${travada?'disabled':''}" onclick="${travada?'':'editarCustoLancado(\''+c.id+'\')'}">Editar</button>
-          <button class="lanc-del ${travada?'disabled':''}" onclick="${travada?'':'excluirCustoLancado(\''+c.id+'\')'}">×</button>
-        </div>
       </div>`;
     });
   });
 
   html += `</div>
-  <div style="font-size:10px;color:#555;text-align:right;margin-top:6px;font-family:var(--font-ui);font-weight:700">Total: R$ ${fmtNum(total)}</div>`;
+  <div style="display:flex;gap:8px;padding:5px 10px 2px;border-top:1px solid var(--cinza2);margin-top:2px">
+    <div style="width:8px;flex-shrink:0"></div>
+    <div style="min-width:75px;font-family:var(--font-ui);font-size:10px;font-weight:700;color:#555">R$ ${fmtNum(total)}</div>
+    <div style="font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#bbb;margin-top:1px">total da semana</div>
+  </div>`;
   wrap.innerHTML = html;
 }
 
@@ -7175,18 +7312,18 @@ async function editarCustoLancado(id) {
               <select id="ec-etapa" style="${fldStyle}">${etapaOptsHtml}</select>
             </div>
             <div id="ec-evt-wrap">
-              <label style="${lblStyle}">Evento</label>
-              <select id="ec-evt" style="${fldStyle}">${evtsHtml}</select>
+              <label style="${lblStyle}">Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
+              <input id="ec-evt" type="text" list="ec-evt-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off" style="${fldStyle}">
+              <datalist id="ec-evt-dl">${todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
             </div>
           </div>
         </div>
         <!-- Org/Soc -->
         <div id="ec-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
           <div id="ec-evt-orgsoc-wrap">
-            <label style="${lblStyle}">Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(obrigatório)</span></label>
-            <select id="ec-evt-soc" style="${fldStyle}">
-              ${c.tipo==='sociedade' ? evtsSocHtml : evtsHtml}
-            </select>
+            <label style="${lblStyle}">Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
+            <input id="ec-evt-soc" type="text" list="ec-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off" style="${fldStyle}">
+            <datalist id="ec-evt-soc-dl">${(c.tipo==='sociedade' ? todosEventosSoc : todosEventosCusto.filter(e=>!e.produto_id)).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
           </div>
         </div>
         <!-- Observação -->
@@ -7195,11 +7332,15 @@ async function editarCustoLancado(id) {
           <input id="ec-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}" placeholder="Opcional" style="${fldStyle}">
         </div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:22px">
-        <button onclick="document.getElementById('popup-edit-custo').remove()"
-          style="padding:8px 18px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui);font-weight:500">Cancelar</button>
-        <button id="ec-salvar-btn"
-          style="padding:8px 18px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:var(--verde);color:#fff;font-family:var(--font-ui);font-weight:700">Salvar</button>
+      <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:22px">
+        <button id="ec-excluir-btn"
+          style="padding:8px 14px;border:1px solid rgba(184,86,56,.35);border-radius:6px;font-size:12px;cursor:pointer;background:transparent;color:var(--terracota);font-family:var(--font-ui);font-weight:600">Excluir custo</button>
+        <div style="display:flex;gap:8px">
+          <button onclick="document.getElementById('popup-edit-custo').remove()"
+            style="padding:8px 18px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui);font-weight:500">Cancelar</button>
+          <button id="ec-salvar-btn"
+            style="padding:8px 18px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:var(--verde);color:#fff;font-family:var(--font-ui);font-weight:700">Salvar</button>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(popup);
@@ -7209,17 +7350,13 @@ async function editarCustoLancado(id) {
     const t = document.getElementById('ec-tipo').value;
     document.getElementById('ec-proj-wrap').style.display   = t === 'projeto' ? '' : 'none';
     document.getElementById('ec-orgsoc-wrap').style.display = t !== 'projeto' ? '' : 'none';
-    // Atualiza lista de eventos para o tipo selecionado
-    const selOrgsoc = document.getElementById('ec-evt-soc');
-    if (selOrgsoc) {
-      if (t === 'sociedade') {
-        selOrgsoc.innerHTML = '<option value="">— sem evento —</option>' +
-          todosEventosSoc.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
-      } else {
-        selOrgsoc.innerHTML = '<option value="">— sem evento —</option>' +
-          todosEventosCusto.filter(e=>!e.produto_id).map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
-      }
+    // Atualiza datalist de eventos para o tipo selecionado
+    const dl = document.getElementById('ec-evt-soc-dl');
+    if (dl) {
+      const evts = t === 'sociedade' ? todosEventosSoc : todosEventosCusto.filter(e=>!e.produto_id);
+      dl.innerHTML = evts.map(e=>`<option value="${_escN(e.nome)}">`).join('');
     }
+    document.getElementById('ec-evt-soc').value = '';
     onAreaReembolsoChange('ec');
   };
   window.ecOnClienteChange = () => {
@@ -7247,13 +7384,37 @@ async function editarCustoLancado(id) {
     const selEtapa = document.getElementById('ec-etapa');
     selEtapa.innerHTML = '<option value="">—</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
     document.getElementById('ec-etapa-wrap').style.display = prodId ? '' : 'none';
-    // Filtra eventos pelo produto selecionado
-    const selEvt = document.getElementById('ec-evt');
-    if (selEvt) {
-      selEvt.innerHTML = '<option value="">— sem evento —</option>' +
-        todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===prodId).map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+    // Filtra datalist de eventos pelo produto selecionado
+    const dl = document.getElementById('ec-evt-dl');
+    if (dl) {
+      dl.innerHTML = todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===prodId).map(e=>`<option value="${_escN(e.nome)}">`).join('');
       document.getElementById('ec-evt-wrap').style.display = '';
     }
+  };
+
+  // Helper: resolve nome de evento → ID (cria novo se necessário)
+  async function _ecResolveEvento(nome, tipo, produtoId) {
+    const n = (nome || '').trim();
+    if (!n) return null;
+    if (tipo === 'sociedade') {
+      const ex = todosEventosSoc.find(e => e.nome.toLowerCase() === n.toLowerCase());
+      if (ex) return { socId: ex.id, evtId: null };
+      const { data } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
+      if (data) { todosEventosSoc.push({ id: data.id, nome: n }); return { socId: data.id, evtId: null }; }
+      return null;
+    } else {
+      const evts = todosEventosCusto.filter(e => !e.produto_id || e.produto_id === produtoId);
+      const ex = evts.find(e => e.nome.toLowerCase() === n.toLowerCase());
+      if (ex) return { evtId: ex.id, socId: null };
+      const { data } = await sb.from('eventos_custo').insert({ nome: n, produto_id: produtoId || null }).select('id').single();
+      if (data) { todosEventosCusto.push({ id: data.id, nome: n, produto_id: produtoId || null }); return { evtId: data.id, socId: null }; }
+      return null;
+    }
+  }
+
+  document.getElementById('ec-excluir-btn').onclick = () => {
+    popup.remove();
+    excluirCustoLancado(id);
   };
 
   document.getElementById('ec-salvar-btn').onclick = async () => {
@@ -7268,16 +7429,23 @@ async function editarCustoLancado(id) {
     const upd = { valor: novoValor, descricao: novaDesc, data_lancamento: novaData, tipo: novoTipo,
                   plano_contas_id: novoPcId, subtipo: novoSubtipo };
     if (novoTipo === 'projeto') {
-      upd.produto_id    = document.getElementById('ec-prod').value || c.produto_id || null;
+      const prodId = document.getElementById('ec-prod').value || c.produto_id || null;
+      const evtNomeInput = document.getElementById('ec-evt')?.value?.trim() || '';
+      const evtRes = evtNomeInput ? await _ecResolveEvento(evtNomeInput, 'projeto', prodId) : null;
+      upd.produto_id    = prodId;
       upd.etapa_id      = document.getElementById('ec-etapa')?.value || null;
-      upd.evento_id     = document.getElementById('ec-evt')?.value || null;
+      upd.evento_id     = evtRes?.evtId || null;
       upd.evento_soc_id = null;
     } else if (novoTipo === 'sociedade') {
-      upd.evento_soc_id = document.getElementById('ec-evt-soc')?.value || null;
+      const evtNomeInput = document.getElementById('ec-evt-soc')?.value?.trim() || '';
+      const evtRes = evtNomeInput ? await _ecResolveEvento(evtNomeInput, 'sociedade', null) : null;
+      upd.evento_soc_id = evtRes?.socId || null;
       upd.evento_id     = null;
       upd.produto_id    = null; upd.etapa_id = null;
     } else {
-      upd.evento_id     = document.getElementById('ec-evt-soc')?.value || null;
+      const evtNomeInput = document.getElementById('ec-evt-soc')?.value?.trim() || '';
+      const evtRes = evtNomeInput ? await _ecResolveEvento(evtNomeInput, 'organizacao', null) : null;
+      upd.evento_id     = evtRes?.evtId || null;
       upd.evento_soc_id = null;
       upd.produto_id    = null; upd.etapa_id = null;
     }
@@ -8582,8 +8750,8 @@ function renderPrancha(pr, isSocioOrCoord) {
     ? (pr.comentarios || []).map(c => renderTopicoComentario(c, podeExcluirTopico)).join('')
     : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem comentários nesta prancha.</div>';
 
-  // Preview: até 4 tarefas (mesma ordem)
-  const previewTarefas = tarefasOrdenadas.slice(0, 4);
+  // Preview: até 3 tarefas (mesma ordem)
+  const previewTarefas = tarefasOrdenadas.slice(0, 3);
   const restante = total - previewTarefas.length;
   const previewHtml = previewTarefas.length
     ? `<div class="prancha-preview">
@@ -8597,9 +8765,17 @@ function renderPrancha(pr, isSocioOrCoord) {
 
   const pct = total > 0 ? Math.round(conc / total * 100) : 0;
   const nComentarios = (pr.comentarios || []).length;
-  const forumPreviewHtml = `<div class="prancha-forum-preview">
-    💬 ${nComentarios > 0 ? `${nComentarios} comentário${nComentarios>1?'s':''}` : 'Sem comentários'} nesta prancha
-  </div>`;
+  const forumPreviewHtml = nComentarios > 0
+    ? (() => {
+        const snippet = pr.comentarios[0]?.comentario || '';
+        const autor = pr.comentarios[0]?.criado_por_usuario?.nome?.split(' ')[0] || '';
+        const snippetTrunc = snippet.length > 80 ? snippet.slice(0, 80) + '…' : snippet;
+        return `<div class="prancha-forum-preview prancha-forum-has-comment">
+          <span class="prancha-forum-badge">💬 ${nComentarios} comentário${nComentarios>1?'s':''}</span>
+          ${snippet ? `<span class="prancha-forum-snippet">${autor ? autor + ': ' : ''}${_escN(snippetTrunc)}</span>` : ''}
+        </div>`;
+      })()
+    : '';
 
   return `<div class="prancha-card" id="prancha-${prId}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''} prancha-hd-click" onclick="togglePranchaExpand(${prIdJs})">
@@ -8837,8 +9013,17 @@ function excluirTopicoComentario(comentarioId) {
 }
 
 function addTarefaPrancha(pranchaId) {
+  // Garante que o card está expandido antes de mostrar o input
+  const card = document.getElementById('prancha-' + pranchaId);
+  if (card && !card.classList.contains('expanded')) {
+    togglePranchaExpand(pranchaId);
+  }
   const wrap = document.getElementById(`tarefa-inline-${pranchaId}`);
-  if(!wrap || wrap.querySelector('.tarefa-inline-form')) return;
+  if(!wrap || wrap.querySelector('.tarefa-inline-form')) {
+    // Já aberto — só foca no textarea
+    document.getElementById(`ti-${pranchaId}`)?.focus();
+    return;
+  }
   wrap.innerHTML = `<div class="tarefa-inline-form">
     <textarea id="ti-${pranchaId}" class="tarefa-inline-ta" rows="2"
       placeholder="Descreva o ajuste que precisa ser feito..."
@@ -8848,7 +9033,11 @@ function addTarefaPrancha(pranchaId) {
       <button class="btn sm" onclick="cancelarTarefaInline('${pranchaId}')">Cancelar</button>
     </div>
   </div>`;
-  document.getElementById(`ti-${pranchaId}`)?.focus();
+  setTimeout(() => {
+    const ta = document.getElementById(`ti-${pranchaId}`);
+    ta?.focus();
+    ta?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 60);
 }
 
 function cancelarTarefaInline(pranchaId) {
@@ -9322,6 +9511,13 @@ async function abrirModalCadastroProjeto() {
 
   // PROJ-2: inicializar estado do form (exibe campos "novo cliente" pois select começa vazio)
   onClienteChange();
+
+  // Autofill de nomes de produto existentes
+  const dl = document.getElementById('cad-prod-nome-list');
+  if (dl) {
+    const nomes = [...new Set((G.todosProdutos || []).map(p => p.nome).filter(Boolean))].sort((a,b) => a.localeCompare(b,'pt-BR'));
+    dl.innerHTML = nomes.map(n => `<option value="${_escN(n)}">`).join('');
+  }
 
   // Preset etapas
   renderEtapasPreset();
@@ -15654,15 +15850,21 @@ function renderProcDetalhe(id) {
       return `${subHead}${rows}`;
     }).join('');
 
-    return `<div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px solid var(--cinza2);margin-bottom:4px">
-        <div style="font-size:12px;font-weight:700;flex:1">${_escN(tema.nome)}</div>
+    return `<div style="margin-bottom:18px" id="proc-tema-blk-${tema.id}">
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:2px solid var(--cinza2);margin-bottom:4px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700">${_escN(tema.nome)}</div>
+          ${tema.descricao ? `<div style="font-size:10px;color:#999;margin-top:2px;line-height:1.4">${_escN(tema.descricao)}</div>` : ''}
+        </div>
         ${isSoc ? `
-          <button onclick="procAdicionarTarefa(${temaIdJs},${checklistIdJs})" style="font-size:10px;border:1px solid var(--cinza);border-radius:5px;background:var(--branco);color:#666;cursor:pointer;padding:3px 9px;font-family:var(--font-ui)">+ Tarefa</button>
-          <button onclick="procExcluirTema(${temaIdJs},${checklistIdJs})" title="Excluir tema" style="font-size:11px;border:none;background:none;color:#ccc;cursor:pointer;padding:2px 4px">✕</button>
+          <button onclick="procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" style="font-size:10px;border:1px solid var(--cinza);border-radius:5px;background:var(--branco);color:#666;cursor:pointer;padding:3px 9px;font-family:var(--font-ui);white-space:nowrap;flex-shrink:0">+ Tarefa</button>
+          <button onclick="procExcluirTema(${temaIdJs},${checklistIdJs})" title="Excluir tema" style="font-size:11px;border:none;background:none;color:#ccc;cursor:pointer;padding:2px 4px;flex-shrink:0">✕</button>
         ` : ''}
       </div>
-      ${tarefasHtml || '<div style="font-size:10px;color:#ccc;padding:6px 0;font-style:italic">Nenhuma tarefa neste tema.</div>'}
+      <div id="proc-tarefas-wrap-${tema.id}">
+        ${tarefasHtml || '<div style="font-size:10px;color:#ccc;padding:6px 0;font-style:italic">Nenhuma tarefa neste tema.</div>'}
+      </div>
+      <div id="proc-tarefa-inline-${tema.id}"></div>
     </div>`;
   }).join('');
 
@@ -15703,8 +15905,9 @@ function renderProcDetalhe(id) {
       </div>
 
       ${isSoc ? `
+        <div id="proc-tema-inline-wrap"></div>
         <button onclick="procAdicionarTema(${_sqN(id)})"
-          style="margin-top:16px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:#fafafa;color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--font-ui)">
+          style="margin-top:12px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:#fafafa;color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--font-ui)">
           + Adicionar tema
         </button>
       ` : ''}
@@ -15724,7 +15927,7 @@ async function toggleTarefaProcesso(tarefaId, checklistId, concluida) {
   renderProcDetalhe(checklistId);
 }
 
-// ── Novo checklist (popup estilo novoChecklistTarefa) ─────────
+// ── Novo checklist (popup) ────────────────────────────────────
 function abrirNovoChecklist() {
   let pop = document.getElementById('_proc-novo-pop');
   if (pop) { pop.remove(); return; }
@@ -15744,23 +15947,18 @@ function abrirNovoChecklist() {
   pop.id = '_proc-novo-pop';
   pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
   pop.innerHTML = `
-    <div style="background:var(--branco);border-radius:10px;padding:24px 28px;max-width:500px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
+    <div style="background:var(--branco);border-radius:10px;padding:24px 28px;max-width:480px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
       <div style="font-size:13px;font-weight:700;margin-bottom:16px">Novo Checklist de Processo</div>
 
       <label style="${_l}">Nome do checklist</label>
       <input id="_proc-nome" type="text" placeholder="Ex: Processo de aprovação na prefeitura" style="${_f};margin-bottom:12px">
 
-      <label style="${_l}">Responsáveis</label>
-      <div style="border:1px solid var(--cinza);border-radius:6px;padding:4px 10px;max-height:130px;overflow-y:auto;margin-bottom:12px">
-        ${userOpts}
-      </div>
+      <label style="${_l}">Descrição <span style="font-weight:400;font-size:9px;text-transform:none;letter-spacing:0">(opcional)</span></label>
+      <textarea id="_proc-desc" rows="2" placeholder="Descreva brevemente o objetivo deste checklist…" style="${_f};resize:none;margin-bottom:12px"></textarea>
 
-      <label style="${_l}">Itens do checklist</label>
-      <div id="_proc-items-lista" style="margin-bottom:6px"></div>
-      <div style="display:flex;gap:6px;margin-bottom:16px">
-        <input id="_proc-item-txt" type="text" style="${_f};flex:3" placeholder="Descrição da tarefa…">
-        <input id="_proc-item-tema" type="text" style="${_f};flex:2" placeholder="Tema (opcional)">
-        <button onclick="_procAddItem()" style="${_b};flex-shrink:0">+ Add</button>
+      <label style="${_l}">Responsáveis</label>
+      <div style="border:1px solid var(--cinza);border-radius:6px;padding:4px 10px;max-height:130px;overflow-y:auto;margin-bottom:16px">
+        ${userOpts}
       </div>
 
       <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -15769,61 +15967,22 @@ function abrirNovoChecklist() {
       </div>
     </div>`;
   pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
-  pop._items = [];
   document.body.appendChild(pop);
   document.getElementById('_proc-nome')?.focus();
-  document.getElementById('_proc-item-txt')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); _procAddItem(); }
-  });
-}
-
-function _procAddItem() {
-  const txt  = document.getElementById('_proc-item-txt')?.value.trim();
-  const tema = document.getElementById('_proc-item-tema')?.value.trim() || null;
-  if (!txt) return;
-  const pop = document.getElementById('_proc-novo-pop');
-  if (!pop) return;
-  pop._items = pop._items || [];
-  pop._items.push({ descricao: txt, tema });
-  document.getElementById('_proc-item-txt').value = '';
-  _procRenderItems();
-}
-
-function _procRemItem(i) {
-  const pop = document.getElementById('_proc-novo-pop');
-  if (!pop?._items) return;
-  pop._items.splice(i, 1);
-  _procRenderItems();
-}
-
-function _procRenderItems() {
-  const pop   = document.getElementById('_proc-novo-pop');
-  const lista = document.getElementById('_proc-items-lista');
-  if (!lista || !pop) return;
-  lista.innerHTML = (pop._items || []).map((it, i) =>
-    `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px">
-      <span style="flex:1">
-        ${it.tema ? `<span style="font-size:9px;font-weight:700;background:var(--cinza2);border-radius:3px;padding:1px 5px;color:#666;margin-right:4px">${_escN(it.tema)}</span>` : ''}
-        ${_escN(it.descricao)}
-      </span>
-      <button onclick="_procRemItem(${i})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;flex-shrink:0">×</button>
-    </div>`
-  ).join('');
 }
 
 async function confirmarNovoChecklist() {
   const nome = document.getElementById('_proc-nome')?.value?.trim();
   if (!nome) { toast('Digite o nome do checklist'); return; }
 
-  const pop = document.getElementById('_proc-novo-pop');
-  const items = pop?._items || [];
+  const desc = document.getElementById('_proc-desc')?.value?.trim() || null;
   const responsaveis = [...document.querySelectorAll('#_proc-novo-pop input[type=checkbox]:checked')].map(cb => cb.value);
 
-  pop?.remove();
+  document.getElementById('_proc-novo-pop')?.remove();
 
   // 1. Criar checklist
   const { data: cl, error: errCl } = await sb.from('processos_checklist')
-    .insert({ nome, criado_por: G.usuario.id, status: 'ativo' })
+    .insert({ nome, descricao: desc, criado_por: G.usuario.id, status: 'ativo' })
     .select().single();
   if (errCl) { toast('Erro ao criar: ' + errCl.message); return; }
 
@@ -15832,23 +15991,7 @@ async function confirmarNovoChecklist() {
     await sb.from('processos_atribuicao').insert(responsaveis.map(uid => ({ checklist_id: cl.id, usuario_id: uid })));
   }
 
-  // 3. Temas e tarefas a partir dos items
-  if (items.length) {
-    const temaNames = [...new Set(items.map(it => it.tema || '(Geral)'))];
-    for (let ti = 0; ti < temaNames.length; ti++) {
-      const nomeTema = temaNames[ti];
-      const { data: tema, error: errT } = await sb.from('processos_tema')
-        .insert({ checklist_id: cl.id, nome: nomeTema === '(Geral)' ? 'Geral' : nomeTema, ordem: ti + 1 })
-        .select().single();
-      if (errT) continue;
-      const grupoItems = items.filter(it => (it.tema || '(Geral)') === nomeTema);
-      await sb.from('processos_tarefa').insert(
-        grupoItems.map((it, i) => ({ tema_id: tema.id, descricao: it.descricao, ordem: i + 1 }))
-      );
-    }
-  }
-
-  toast('Checklist criado!');
+  toast('Checklist criado! Adicione temas e tarefas diretamente no checklist.');
   await carregarProcessos();
   selecionarChecklist(cl.id);
 }
@@ -15900,43 +16043,46 @@ async function confirmarAtribuicaoChecklist(id) {
   selecionarChecklist(id);
 }
 
-// ── Adicionar tema a checklist existente ──────────────────────
+// ── Adicionar tema inline ─────────────────────────────────────
 function procAdicionarTema(checklistId) {
-  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _b = 'padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui)';
-  let pop = document.getElementById('_proc-tema-pop');
-  if (pop) { pop.remove(); return; }
-  pop = document.createElement('div');
-  pop.id = '_proc-tema-pop';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-  pop.innerHTML = `
-    <div style="background:var(--branco);border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:13px;font-weight:700;margin-bottom:14px">Novo Tema</div>
-      <input id="_proc-tema-nome" type="text" placeholder="Ex: Documentação técnica" style="${_f};margin-bottom:16px">
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('_proc-tema-pop').remove()" style="${_b}">Cancelar</button>
-        <button onclick="confirmarNovoTema('${checklistId}')" style="${_b};background:var(--grafite);color:#fff;border-color:var(--grafite);font-weight:600">Criar</button>
+  const wrap = document.getElementById('proc-tema-inline-wrap');
+  if (!wrap) return;
+  if (wrap.querySelector('input')) { wrap.querySelector('input').focus(); return; }
+  const _fi = 'border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;width:100%';
+  wrap.innerHTML = `
+    <div style="display:flex;gap:6px;margin-bottom:4px;align-items:stretch">
+      <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+        <input id="_proc-tema-nome-il" type="text" placeholder="Nome do tema…" style="${_fi}">
+        <input id="_proc-tema-desc-il" type="text" placeholder="Sub-descrição do tema (opcional)…" style="${_fi};font-size:11px;color:#666">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <button onclick="_procConfirmarTemaInline('${checklistId}')"
+          style="padding:7px 14px;border:1px solid var(--grafite);border-radius:6px;background:var(--grafite);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-ui);font-weight:600">
+          + Criar
+        </button>
+        <button onclick="document.getElementById('proc-tema-inline-wrap').innerHTML=''"
+          style="padding:4px 14px;border:1px solid var(--cinza);border-radius:6px;background:none;color:#aaa;font-size:11px;cursor:pointer;font-family:var(--font-ui)">
+          Cancelar
+        </button>
       </div>
     </div>`;
-  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
-  const inp = document.getElementById('_proc-tema-nome');
-  if (inp) {
-    inp.focus();
-    inp.addEventListener('keydown', e => {
-      if (e.key === 'Enter') confirmarNovoTema(checklistId);
-      if (e.key === 'Escape') pop.remove();
-    });
-  }
+  const nomeInp = document.getElementById('_proc-tema-nome-il');
+  const descInp = document.getElementById('_proc-tema-desc-il');
+  nomeInp?.focus();
+  [nomeInp, descInp].forEach(inp => inp?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); _procConfirmarTemaInline(checklistId); }
+    if (e.key === 'Escape') { wrap.innerHTML = ''; }
+  }));
 }
 
-async function confirmarNovoTema(checklistId) {
-  const nome = document.getElementById('_proc-tema-nome')?.value?.trim();
+async function _procConfirmarTemaInline(checklistId) {
+  const nome = document.getElementById('_proc-tema-nome-il')?.value?.trim();
+  const desc = document.getElementById('_proc-tema-desc-il')?.value?.trim() || null;
   if (!nome) { toast('Digite o nome do tema'); return; }
-  document.getElementById('_proc-tema-pop')?.remove();
+  document.getElementById('proc-tema-inline-wrap').innerHTML = '';
   const c = G._processos.find(c => c.id === checklistId);
   const ordem = (c?.processos_tema?.length || 0) + 1;
-  const { error } = await sb.from('processos_tema').insert({ checklist_id: checklistId, nome, ordem });
+  const { error } = await sb.from('processos_tema').insert({ checklist_id: checklistId, nome, descricao: desc, ordem });
   if (error) { toast('Erro: ' + error.message); return; }
   toast('Tema adicionado');
   await carregarProcessos();
@@ -15952,41 +16098,39 @@ async function procExcluirTema(temaId, checklistId) {
   selecionarChecklist(checklistId);
 }
 
-// ── Adicionar tarefa a um tema existente ──────────────────────
-function procAdicionarTarefa(temaId, checklistId) {
-  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _l = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
-  const _b = 'padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui)';
-  let pop = document.getElementById('_proc-tar-pop');
-  if (pop) { pop.remove(); return; }
-  pop = document.createElement('div');
-  pop.id = '_proc-tar-pop';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-  pop.innerHTML = `
-    <div style="background:var(--branco);border-radius:10px;padding:24px 28px;max-width:420px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:13px;font-weight:700;margin-bottom:14px">Nova Tarefa</div>
-      <label style="${_l}">Descrição</label>
-      <textarea id="_proc-tar-desc" rows="2" placeholder="Descreva a tarefa" style="${_f};resize:none;margin-bottom:10px"></textarea>
-      <label style="${_l}">Subtema (opcional)</label>
-      <input id="_proc-tar-sub" type="text" placeholder="Ex: Plantas, Cortes..." style="${_f};margin-bottom:16px">
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('_proc-tar-pop').remove()" style="${_b}">Cancelar</button>
-        <button onclick="confirmarNovaTarefa('${temaId}','${checklistId}')" style="${_b};background:var(--grafite);color:#fff;border-color:var(--grafite);font-weight:600">Criar</button>
-      </div>
+// ── Adicionar tarefa inline em tema ───────────────────────────
+function procAdicionarTarefaInline(temaId, checklistId) {
+  const wrap = document.getElementById(`proc-tarefa-inline-${temaId}`);
+  if (!wrap) return;
+  if (wrap.querySelector('input')) { wrap.querySelector('input').focus(); return; }
+  const inpId = `_proc-tar-il-${temaId}`;
+  wrap.innerHTML = `
+    <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+      <input id="${inpId}" type="text" placeholder="Descrever tarefa…"
+        style="flex:1;border:1px solid var(--cinza);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font-ui);outline:none;min-width:0">
+      <button onclick="_procConfirmarTarefaInline('${temaId}','${checklistId}')"
+        style="padding:6px 12px;border:1px solid var(--grafite);border-radius:6px;background:var(--grafite);color:#fff;font-size:11px;cursor:pointer;font-family:var(--font-ui);white-space:nowrap">
+        + Add
+      </button>
+      <button onclick="document.getElementById('proc-tarefa-inline-${temaId}').innerHTML=''"
+        style="border:none;background:none;color:#ccc;cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0;line-height:1">✕</button>
     </div>`;
-  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
-  document.getElementById('_proc-tar-desc')?.focus();
+  const inp = document.getElementById(inpId);
+  inp?.focus();
+  inp?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); _procConfirmarTarefaInline(temaId, checklistId); }
+    if (e.key === 'Escape') { wrap.innerHTML = ''; }
+  });
 }
 
-async function confirmarNovaTarefa(temaId, checklistId) {
-  const desc = document.getElementById('_proc-tar-desc')?.value?.trim();
-  const sub  = document.getElementById('_proc-tar-sub')?.value?.trim();
+async function _procConfirmarTarefaInline(temaId, checklistId) {
+  const desc = document.getElementById(`_proc-tar-il-${temaId}`)?.value?.trim();
   if (!desc) { toast('Descreva a tarefa'); return; }
-  document.getElementById('_proc-tar-pop')?.remove();
+  const wrap = document.getElementById(`proc-tarefa-inline-${temaId}`);
+  if (wrap) wrap.innerHTML = '';
   const tema  = G._processos.flatMap(c => c.processos_tema || []).find(t => t.id === temaId);
   const ordem = (tema?.processos_tarefa?.length || 0) + 1;
-  const { error } = await sb.from('processos_tarefa').insert({ tema_id: temaId, descricao: desc, subtema: sub || null, ordem });
+  const { error } = await sb.from('processos_tarefa').insert({ tema_id: temaId, descricao: desc, ordem });
   if (error) { toast('Erro: ' + error.message); return; }
   toast('Tarefa adicionada');
   await carregarProcessos();
