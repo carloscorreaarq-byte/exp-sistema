@@ -217,25 +217,18 @@
    FUNDO — Malha de linhas verticais convergentes
    Identidade EXP: espaçamento logarítmico (g₀ = 400 px, r = 0.72)
    20 linhas que vão de 400 px de gap até 1 px — efeito de perspectiva
-   Duas animações simultâneas:
-     expBgBreathe — pulsa opacity (GPU compositor, custo zero)
-     expBgDrift   — deriva lentamente em 2D (transform, GPU compositor)
-   Buffer de 4% em cada lado evita expor borda durante o drift.
+   A animação usa apenas opacity: roda no compositor (GPU), custo zero.
 ═══════════════════════════════════════════ */
 
 body::before {
   content: '';
-  position: fixed;
-  top: -4%; left: -4%;
-  width: 108%; height: 108%;
+  position: fixed; inset: 0;
   pointer-events: none;
   z-index: 0;
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1440' height='2' preserveAspectRatio='none'><g stroke='%23D0CFC9' stroke-width='1'><line x1='580' y1='0' x2='580' y2='2'/><line x1='821' y1='0' x2='821' y2='2'/><line x1='995' y1='0' x2='995' y2='2'/><line x1='1120' y1='0' x2='1120' y2='2'/><line x1='1210' y1='0' x2='1210' y2='2'/><line x1='1275' y1='0' x2='1275' y2='2'/><line x1='1322' y1='0' x2='1322' y2='2'/><line x1='1356' y1='0' x2='1356' y2='2'/><line x1='1380' y1='0' x2='1380' y2='2'/><line x1='1397' y1='0' x2='1397' y2='2'/><line x1='1410' y1='0' x2='1410' y2='2'/><line x1='1419' y1='0' x2='1419' y2='2'/><line x1='1425' y1='0' x2='1425' y2='2'/><line x1='1430' y1='0' x2='1430' y2='2'/><line x1='1433' y1='0' x2='1433' y2='2'/><line x1='1435' y1='0' x2='1435' y2='2'/><line x1='1437' y1='0' x2='1437' y2='2'/><line x1='1438' y1='0' x2='1438' y2='2'/><line x1='1439' y1='0' x2='1439' y2='2'/><line x1='1440' y1='0' x2='1440' y2='2'/></g></svg>");
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  animation:
-    expBgBreathe 10s ease-in-out infinite,
-    expBgDrift   32s ease-in-out infinite;
+  animation: expBgBreathe 10s ease-in-out infinite;
 }
 
 @keyframes expBgBreathe {
@@ -248,18 +241,8 @@ body::before {
   50%       { opacity: 0.11; }
 }
 
-/* Deriva orgânica em 2D — períodos assimétricos evitam repetição perceptível */
-@keyframes expBgDrift {
-  0%   { transform: translate(0,    0);    }
-  20%  { transform: translate(-1.6%, 1%); }
-  45%  { transform: translate(-2.8%, -1.4%); }
-  70%  { transform: translate(1.2%, -0.8%); }
-  85%  { transform: translate(2%,  1.6%); }
-  100% { transform: translate(0,    0);    }
-}
-
 [data-theme="dark"] body::before {
-  animation-name: expBgBreatheDark, expBgDrift;
+  animation-name: expBgBreatheDark;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1371,6 +1354,79 @@ input[type="checkbox"].exp-cb.exp-cb-x:checked::after {
 }
 
 
+/* ═══════════════════════════════════════════
+   COMPONENTE — FEEDBACK POPOVER (botão "!")
+   Botão de reportar problema/sugestão presente em todos os módulos.
+   HTML esperado no nav-right:
+     <div class="nav-feedback-wrap" id="nav-feedback-wrap">
+       <button class="nav-feedback-btn" id="nav-feedback-btn"
+               onclick="toggleToolFeedbackPopover(event)"
+               title="Problemas e sugestões">!</button>
+       <div class="nav-feedback-pop" id="nav-feedback-pop">
+         <div class="nav-feedback-title">Problema ou sugestão</div>
+         <div class="nav-feedback-sub">...</div>
+         ...
+         <div class="nav-feedback-status" id="tool-feedback-status"></div>
+         <div class="nav-feedback-actions">...</div>
+       </div>
+     </div>
+═══════════════════════════════════════════ */
+
+.nav-feedback-wrap { position: relative; }
+
+.nav-feedback-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--cinza);
+  background: var(--branco);
+  color: var(--grafite);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+.nav-feedback-btn:hover {
+  border-color: var(--grafite);
+  background: var(--off);
+  transform: translateY(-1px);
+}
+
+.nav-feedback-pop {
+  position: absolute; top: calc(100% + 10px); right: 0;
+  z-index: 9100;
+  width: min(360px, calc(100vw - 24px));
+  padding: 12px;
+  display: none; flex-direction: column; gap: 10px;
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+}
+.nav-feedback-pop.open { display: flex; }
+.nav-feedback-pop::before {
+  content: ''; position: absolute; top: -6px; right: 12px;
+  width: 12px; height: 12px; transform: rotate(45deg);
+  background: var(--branco);
+  border-top: 1px solid var(--cinza);
+  border-left: 1px solid var(--cinza);
+}
+
+.nav-feedback-title {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: #666;
+}
+.nav-feedback-sub,
+.nav-feedback-status { font-size: 10px; color: #888; line-height: 1.45; }
+.nav-feedback-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+
+/* Dark mode */
+[data-theme="dark"] .nav-feedback-pop { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .nav-feedback-pop::before { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .nav-feedback-pop select,
+[data-theme="dark"] .nav-feedback-pop textarea { background: var(--branco); border-color: var(--cinza); color: var(--grafite); }
+
+
 /* ═══════════════════════════════════════════════════════════════
    IDENTIDADE POR MÓDULO
    Cada módulo sobrescreve apenas --nav-active no <style> local.
@@ -1391,6 +1447,21 @@ input[type="checkbox"].exp-cb.exp-cb-x:checked::after {
    Cada módulo importa este arquivo e herda automaticamente.
    Dark mode: zero overrides necessários — tokens mudam sozinhos.
 ═══════════════════════════════════════════════════════════════ */
+
+/* ── Scrollbar slim global ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,.15) transparent;
+}
+[data-theme="dark"] * {
+  scrollbar-color: rgba(255,255,255,.12) transparent;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.28); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
 
 body {
   font-family: var(--font-ui);
