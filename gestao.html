@@ -1491,7 +1491,7 @@ body {
   display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
   background: var(--branco); border: 1px solid var(--cinza); border-radius: 8px; padding: 8px 12px;
 }
-.semana-label { font-family: var(--font-ui); font-size: 12px; font-weight: 600; flex: 1; text-align: center; letter-spacing: -.1px; }
+.semana-label { font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; flex: 1; text-align: center; color: #999; }
 .semana-nav-btn {
   width: 30px; height: 30px; border: 1px solid var(--cinza); background: var(--off);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -2036,6 +2036,36 @@ body {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; border-bottom: 1px solid var(--cinza2);
 }
+
+/* Valor/hora — simulador */
+.vhs-card {
+  background: var(--off); border: 1px solid var(--cinza); border-radius: 8px;
+  padding: 16px 20px; margin-top: 16px;
+}
+.vhs-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 680px) { .vhs-inputs { grid-template-columns: 1fr 1fr; } }
+.vhs-result {
+  background: var(--branco); border: 1px solid var(--cinza2); border-radius: 8px;
+  padding: 14px 18px; display: flex; align-items: flex-start; gap: 28px; flex-wrap: wrap;
+}
+.vhs-value-box { text-align: center; min-width: 140px; }
+.vhs-value-big { font-size: 26px; font-weight: 700; font-family: var(--font-mono); color: var(--grafite); }
+.vhs-breakdown { flex: 1; min-width: 200px; }
+.vhs-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; padding: 3px 0; }
+.vhs-row + .vhs-row { border-top: 1px solid var(--cinza2); }
+.vhs-row.total { font-weight: 700; padding-top: 6px; border-top: 1px solid var(--cinza) !important; }
+.vhs-hint { font-size: 9px; color: #bbb; margin-top: 3px; line-height: 1.4; }
+.vhs-inp { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+[data-theme="dark"] .vhs-card { background: var(--branco); }
+[data-theme="dark"] .vhs-result { background: var(--off); border-color: var(--cinza); }
+
+/* Admin clientes — inputs */
+.cli-admin-inp {
+  border: 1px solid var(--cinza); border-radius: 6px; padding: 5px 8px;
+  font-size: 11px; font-family: var(--font-ui); outline: none;
+  box-sizing: border-box; width: 100%;
+  background: var(--branco); color: var(--grafite);
+}
 .vh-av { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; }
 .vh-nome { font-size: 12px; flex: 1; }
 .vh-valor { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--verde); min-width: 80px; }
@@ -2307,6 +2337,7 @@ body {
 [data-theme="dark"] .fgroup input,
 [data-theme="dark"] .fgroup select,
 [data-theme="dark"] .fgroup textarea { background:var(--branco); border-color:var(--cinza); color:var(--grafite); color-scheme:dark; }
+[data-theme="dark"] .cli-admin-inp { background:var(--branco); border-color:var(--cinza); color:var(--grafite); color-scheme:dark; }
 [data-theme="dark"] .task-check { background:var(--branco); border-color:var(--cinza); }
 [data-theme="dark"] .tarefa-inline-ta { border-color:var(--cinza); background:var(--branco); color:var(--grafite); }
 [data-theme="dark"] .task-input-row input[type="text"],
@@ -3667,6 +3698,51 @@ body {
     <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden" id="vh-lista">
       <div class="loading-state">Carregando...</div>
     </div>
+
+    <!-- Simulador de Valor/Hora -->
+    <div class="sec-title" style="margin-top:22px;margin-bottom:8px">Simulação de valor/hora</div>
+    <div class="vhs-card">
+      <div class="vhs-inputs">
+        <div class="fgroup">
+          <label>Honorário mensal (R$)</label>
+          <input type="number" id="vhs-honorario" class="vhs-inp" value="5000" min="0" step="100" oninput="calcularVH()">
+          <span class="vhs-hint">Salário/pró-labore bruto do membro</span>
+        </div>
+        <div class="fgroup">
+          <label>Bônus quadrimestral (%)</label>
+          <input type="number" id="vhs-bonus-q" class="vhs-inp" value="20" min="0" max="200" step="1" oninput="calcularVH()">
+          <span class="vhs-hint">% do honorário por quadrimestre (base 20%)</span>
+        </div>
+        <div class="fgroup">
+          <label>Bônus anual (Nº de salários)</label>
+          <input type="number" id="vhs-bonus-a" class="vhs-inp" value="1" min="0" max="12" step="0.5" oninput="calcularVH()">
+          <span class="vhs-hint">Salários extras ÷ 12 avos/mês (base 1)</span>
+        </div>
+        <div class="fgroup">
+          <label>Folha / Receita bruta (%)</label>
+          <input type="number" id="vhs-relacao" class="vhs-inp" value="50" min="1" max="100" step="1" oninput="calcularVH()">
+          <span class="vhs-hint">% da receita destinada à folha (base 50%)</span>
+        </div>
+        <div class="fgroup">
+          <label>Horas rentáveis (%)</label>
+          <input type="number" id="vhs-rentaveis" class="vhs-inp" value="75" min="1" max="100" step="1" oninput="calcularVH()">
+          <span class="vhs-hint">% das horas efetivamente faturáveis (base 75%)</span>
+        </div>
+        <div class="fgroup">
+          <label>Horas médias no mês</label>
+          <input type="number" id="vhs-horas" class="vhs-inp" value="180" min="1" max="300" step="5" oninput="calcularVH()">
+          <span class="vhs-hint">Total de horas trabalhadas/mês (base 180h)</span>
+        </div>
+      </div>
+      <div class="vhs-result" id="vhs-resultado">
+        <div class="vhs-value-box">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:6px">Valor / hora</div>
+          <div class="vhs-value-big" id="vhs-valor">—</div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">por hora faturada</div>
+        </div>
+        <div class="vhs-breakdown" id="vhs-breakdown"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ENTREGAS DA SEMANA — EQUIPE (G-S1/G-S4) -->
@@ -4936,7 +5012,7 @@ function onSocioPanel(panel) {
   }
   if (panel === 'submissao') carregarSubmissao();
   if (panel === 'espelho') carregarEspelho();
-  if (panel === 'valorhora') carregarValorHora();
+  if (panel === 'valorhora') { carregarValorHora(); setTimeout(calcularVH, 100); }
   if (panel === 'usuarios') carregarUsuariosAdmin();
   if (panel === 'fluxo') carregarFluxo();
   if (panel === 'entregas') carregarEntregasEquipe();
@@ -12251,19 +12327,19 @@ async function carregarClientesAdmin() {
   if (error) { wrap.innerHTML = `<div class="loading-state">Erro: ${error.message}</div>`; return; }
   if (!clientes?.length) { wrap.innerHTML = '<div class="loading-state">Nenhum cliente cadastrado</div>'; return; }
 
-  const iStyle = 'border:1px solid var(--cinza);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-ui);outline:none;box-sizing:border-box;width:100%';
+  const hdrCell = 'padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa';
   wrap.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 160px 72px 64px;gap:0;border-bottom:1px solid var(--cinza)">
-      <div style="padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa">Nome</div>
-      <div style="padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa">Cidade</div>
-      <div style="padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa">UF</div>
+      <div style="${hdrCell}">Nome</div>
+      <div style="${hdrCell}">Cidade</div>
+      <div style="${hdrCell}">UF</div>
       <div></div>
     </div>
     ${clientes.map(c => `
     <div class="cli-admin-row" id="cli-row-${c.id}" style="display:grid;grid-template-columns:1fr 160px 72px 64px;gap:0;align-items:center;border-bottom:1px solid var(--cinza)">
-      <div style="padding:6px 14px"><input id="cli-nome-${c.id}" value="${(c.nome||'').replace(/"/g,'&quot;')}" style="${iStyle}" placeholder="Nome do cliente"></div>
-      <div style="padding:6px 14px"><input id="cli-cidade-${c.id}" value="${(c.cidade||'').replace(/"/g,'&quot;')}" style="${iStyle}" placeholder="Cidade"></div>
-      <div style="padding:6px 14px"><input id="cli-uf-${c.id}" value="${(c.uf||'').replace(/"/g,'&quot;')}" style="${iStyle};text-transform:uppercase" maxlength="2" placeholder="UF"></div>
+      <div style="padding:6px 14px"><input class="cli-admin-inp" id="cli-nome-${c.id}" value="${(c.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome do cliente"></div>
+      <div style="padding:6px 14px"><input class="cli-admin-inp" id="cli-cidade-${c.id}" value="${(c.cidade||'').replace(/"/g,'&quot;')}" placeholder="Cidade"></div>
+      <div style="padding:6px 14px"><input class="cli-admin-inp" id="cli-uf-${c.id}" value="${(c.uf||'').replace(/"/g,'&quot;')}" style="text-transform:uppercase" maxlength="2" placeholder="UF"></div>
       <div style="padding:6px 10px;text-align:center">
         <button class="btn sm verde" id="cli-btn-${c.id}" onclick="salvarEdicaoClienteAdmin('${c.id}')">Salvar</button>
       </div>
@@ -12315,6 +12391,63 @@ async function salvarValorHora(uid) {
   if (eVH) { toast('Erro ao salvar: ' + eVH.message); return; }
   toast('Valor/hora atualizado');
   carregarValorHora();
+}
+
+// ── Simulador de valor/hora ────────────────────────────────────
+function calcularVH() {
+  const honorario      = Math.max(0, parseFloat(document.getElementById('vhs-honorario')?.value)  || 0);
+  const bonusQ_pct     = Math.max(0, parseFloat(document.getElementById('vhs-bonus-q')?.value)    || 0);
+  const bonusA_salario = Math.max(0, parseFloat(document.getElementById('vhs-bonus-a')?.value)    || 0);
+  const relacaoFolha   = Math.max(1, parseFloat(document.getElementById('vhs-relacao')?.value)    || 50);
+  const horasRent      = Math.max(1, parseFloat(document.getElementById('vhs-rentaveis')?.value)  || 75);
+  const horasMes       = Math.max(1, parseFloat(document.getElementById('vhs-horas')?.value)      || 180);
+
+  // Provisões mensais
+  const bonus_q = honorario * (bonusQ_pct / 100) / 4;        // quadrimestral ÷ 4 meses
+  const bonus_a = honorario * bonusA_salario / 12;            // N salários ÷ 12 avos
+  const custo_total = honorario + bonus_q + bonus_a;
+
+  // Custo ajustado pela relação folha/receita (empresa precisa faturar custo ÷ relação)
+  const custo_ajustado = custo_total / (relacaoFolha / 100);
+
+  // Horas efetivamente faturáveis
+  const horas_efetivas = horasMes * (horasRent / 100);
+
+  const vh = horas_efetivas > 0 ? custo_ajustado / horas_efetivas : 0;
+
+  const fR = v => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fH = v => `${v.toFixed(0)}h`;
+  const fP = v => `${v.toFixed(1).replace('.', ',')}%`;
+
+  const valEl = document.getElementById('vhs-valor');
+  if (valEl) valEl.textContent = fR(vh);
+
+  const bd = document.getElementById('vhs-breakdown');
+  if (!bd) return;
+
+  bd.innerHTML = `
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:8px">Composição</div>
+    <div class="vhs-row"><span style="color:#777">Honorário base</span><span style="font-family:var(--font-mono)">${fR(honorario)}</span></div>
+    <div class="vhs-row">
+      <span style="color:#777">Provisão bônus quadrimestral <span style="font-size:9px;color:#bbb">(${fP(bonusQ_pct/4)}/mês)</span></span>
+      <span style="font-family:var(--font-mono)">${fR(bonus_q)}</span>
+    </div>
+    <div class="vhs-row">
+      <span style="color:#777">Provisão bônus anual <span style="font-size:9px;color:#bbb">(${bonusA_salario}/12 avos)</span></span>
+      <span style="font-family:var(--font-mono)">${fR(bonus_a)}</span>
+    </div>
+    <div class="vhs-row total">
+      <span>Custo total do membro</span>
+      <span style="font-family:var(--font-mono)">${fR(custo_total)}</span>
+    </div>
+    <div class="vhs-row">
+      <span style="color:#777">Receita necessária <span style="font-size:9px;color:#bbb">(÷ ${fP(relacaoFolha)} folha/receita)</span></span>
+      <span style="font-family:var(--font-mono)">${fR(custo_ajustado)}</span>
+    </div>
+    <div class="vhs-row">
+      <span style="color:#777">Horas faturáveis/mês <span style="font-size:9px;color:#bbb">(${fH(horasMes)} × ${fP(horasRent)})</span></span>
+      <span style="font-family:var(--font-mono)">${fH(horas_efetivas)}</span>
+    </div>`;
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
