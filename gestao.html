@@ -5318,9 +5318,16 @@ async function carregarHorasGlobal() {
 
 async function carregarProdutos() {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
-  const { data: prodsGestao } = await sb.from('produtos')
+  // Tenta query completa (com colunas novas); fallback sem elas se ainda não existirem
+  let { data: prodsGestao, error: _pgErr } = await sb.from('produtos')
     .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, clientes(id, nome, cidade, uf))`)
     .order('created_at', { ascending: false });
+  if (_pgErr) {
+    const { data: _pgFallback } = await sb.from('produtos')
+      .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, clientes(id, nome, cidade, uf))`)
+      .order('created_at', { ascending: false });
+    prodsGestao = _pgFallback;
+  }
 
   // 2. Propostas fechadas do CRM (fonte de visualização)
   const STAGES_FECHADOS = [
@@ -13497,16 +13504,6 @@ async function abrirEditarProduto() {
   const isSocio = isSocioRole(G.usuario.role);
   document.getElementById('ep-valor-wrap').style.display = isSocio ? 'block' : 'none';
   if (isSocio) document.getElementById('ep-valor').value = prod.valor_contratado || '';
-
-  // Links do projeto (sócios)
-  const epLinksWrap = document.getElementById('ep-links-wrap');
-  if (epLinksWrap) {
-    epLinksWrap.style.display = isSocio ? 'block' : 'none';
-    if (isSocio) {
-      document.getElementById('ep-link-arquivo').value  = prod.oportunidades?.link_arquivo  || '';
-      document.getElementById('ep-link-planilha').value = prod.oportunidades?.link_planilha || '';
-    }
-  }
 
   // Links do projeto (sócios)
   const epLinksWrap = document.getElementById('ep-links-wrap');
