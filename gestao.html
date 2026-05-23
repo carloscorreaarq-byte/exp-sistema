@@ -518,17 +518,12 @@ body {
   z-index: 9999;
   flex-direction: column; gap: 14px;
 }
-.ld-brand { font-size: 20px; font-weight: 700; letter-spacing: 6px; }
+.ld-logo { height: 30px; display: block; mix-blend-mode: multiply; }
+[data-theme="dark"] .ld-logo { filter: invert(1) brightness(0.85); mix-blend-mode: screen; }
 .ld-sub { font-size: 9px; color: #999; letter-spacing: 1.5px; text-transform: uppercase; }
-.ld-dots { display: flex; gap: 5px; margin-top: 4px; }
-.ld-dots span {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--cinza);
-  animation: ldpulse 1.2s ease-in-out infinite;
-}
-.ld-dots span:nth-child(2) { animation-delay: .2s; }
-.ld-dots span:nth-child(3) { animation-delay: .4s; }
-@keyframes ldpulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+.ld-bar { width: 120px; height: 2px; background: var(--cinza); border-radius: 2px; overflow: hidden; position: relative; margin-top: 4px; }
+.ld-bar::after { content: ''; position: absolute; top: 0; left: 0; width: 40%; height: 100%; background: var(--grafite); border-radius: 2px; animation: ldbar 1.4s ease-in-out infinite; }
+@keyframes ldbar { 0%{transform:translateX(-150%)} 100%{transform:translateX(350%)} }
 
 .btn-back {
   padding: 4px 10px; border: 1px solid var(--cinza); background: var(--branco);
@@ -940,7 +935,7 @@ body {
 .proj-card:hover { border-color: #999; transform: translateY(-1px); box-shadow: 0 3px 12px rgba(0,0,0,.06); }
 .proj-card-hd {
   background: var(--cinza2); border-bottom: 1px solid var(--cinza);
-  padding: 9px 14px 9px 17px;
+  padding: 6px 14px 6px 17px;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .proj-card-body {
@@ -948,7 +943,7 @@ body {
 }
 .proj-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .proj-card-nome {
-  font-family: var(--font-ui); font-size: 12px; font-weight: 700;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700;
   letter-spacing: -.1px; line-height: 1.25;
 }
 .proj-card-cliente { font-size: 10px; color: #888; margin-bottom: 6px; }
@@ -1216,7 +1211,8 @@ body {
 }
 .gantt-nav-btn:hover { border-color: var(--grafite); }
 .gantt-periodo {
-  font-family: var(--font-ui); font-size: 11px; font-weight: 500;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 600;
+  letter-spacing: .5px; text-transform: uppercase; color: #999;
   min-width: 160px; text-align: center;
 }
 .gantt-hoje-btn {
@@ -1503,7 +1499,7 @@ body {
 .semana-nav-btn:hover { border-color: var(--grafite); background: var(--cinza2); }
 .semana-hoje-btn {
   height: 30px; padding: 0 10px; border: 1px solid var(--cinza); background: var(--off);
-  border-radius: 6px; font-family: var(--font-ui); font-size: 9px; font-weight: 600;
+  border-radius: 6px; font-family: var(--font-ui); font-size: 11px; font-weight: 300;
   color: var(--grafite); cursor: pointer; white-space: nowrap; transition: all .12s; flex-shrink: 0;
 }
 .semana-hoje-btn:hover { border-color: var(--grafite); background: var(--cinza2); }
@@ -2185,7 +2181,7 @@ body {
   position:absolute; left:1px; right:1px; border-radius:2px;
   font-family:var(--font-ui); font-size:8px; font-weight:600; color:#fff; padding:1px 3px;
   overflow:hidden; cursor:pointer; letter-spacing:.1px;
-  white-space:nowrap; text-overflow:ellipsis;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
   z-index:2;
 }
 .cal-bloco:hover { filter:brightness(.88); z-index:5; }
@@ -2206,10 +2202,8 @@ body {
 }
 .cal-total-semana { font-family:var(--font-mono); font-size:20px; font-weight:700; }
 .cal-total-semana.over { color: var(--terracota); font-weight: 800; }
-.cal-meta-bar-wrap { height:5px; background:var(--cinza2); width:100%; }
-.cal-meta-bar { height:100%; background:var(--verde); transition:width .3s; }
-.cal-meta-bar.am { background:var(--ouro); }
-.cal-meta-bar.tc { background:var(--terracota); }
+.cal-meta-bar-wrap { height:8px; background:var(--cinza2); width:100%; border-radius:4px; overflow:hidden; display:flex; }
+.cal-meta-seg { height:100%; transition:width .3s; }
 .cal-meta-txt { font-size:9px; color:#888; }
 .cal-breakdown { display:flex; gap:10px; flex-shrink:0; }
 .cal-bd-item { font-size:9px; color:#888; display:flex; align-items:center; gap:4px; }
@@ -2518,25 +2512,29 @@ body {
 .cal-topbar {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   background: var(--branco); border: 1px solid var(--cinza);
-  border-radius: var(--radius-card); padding: 6px 12px;
+  border-radius: var(--radius-card); padding: 4px 10px;
 }
 .cal-nav-btn {
-  width: 24px; height: 24px; border: 1px solid var(--cinza);
-  background: var(--branco); border-radius: 5px; cursor: pointer;
+  width: 26px; height: 26px; border: 1px solid var(--cinza);
+  background: var(--off); border-radius: 6px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: #888; transition: all .12s; font-family: var(--font-ui);
+  font-size: 13px; color: var(--grafite); transition: all .12s; font-family: var(--font-ui);
 }
-.cal-nav-btn:hover { border-color: var(--grafite); color: var(--grafite); }
-.cal-nav-label { font-size: 13px; font-weight: 600; min-width: 130px; text-align: center; }
+.cal-nav-btn:hover { border-color: var(--grafite); background: var(--cinza2); }
+.cal-nav-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
+  color: #999; min-width: 120px; text-align: center;
+}
 .cal-today-btn {
-  font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  border: 1px solid var(--cinza); background: var(--branco); color: #888;
-  padding: 3px 9px; border-radius: 5px; cursor: pointer; transition: all .12s; font-family: var(--font-ui);
+  font-size: 11px; font-weight: 300; letter-spacing: 0;
+  border: 1px solid var(--cinza); background: var(--off); color: var(--grafite);
+  padding: 0 10px; height: 26px; border-radius: 6px; cursor: pointer;
+  transition: all .12s; font-family: var(--font-ui); white-space: nowrap;
 }
-.cal-today-btn:hover { border-color: var(--grafite); color: var(--grafite); }
-.cal-counter-group { display: flex; align-items: center; gap: 14px; margin-left: 4px; }
+.cal-today-btn:hover { border-color: var(--grafite); background: var(--cinza2); }
+.cal-counter-group { display: flex; align-items: center; gap: 10px; margin-left: 4px; }
 .cal-counter-item { display: flex; flex-direction: column; gap: 1px; }
-.cal-counter-val { font-size: 12px; font-weight: 700; font-family: var(--font-mono); }
+.cal-counter-val { font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
 .cal-counter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; }
 .cal-counter-sep { width: 1px; height: 28px; background: var(--cinza2); }
 .cal-saldo-bar { display: flex; align-items: center; gap: 8px; }
@@ -2545,15 +2543,15 @@ body {
 .cal-saldo-lbl { font-size: 9px; color: #888; }
 .cal-topbar-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 .cal-filters {
-  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   background: var(--branco); border: 1px solid var(--cinza);
-  border-radius: var(--radius-card); padding: 5px 12px;
+  border-radius: var(--radius-card); padding: 3px 10px;
 }
-.cal-filter-sep { width: 1px; height: 20px; background: var(--cinza2); margin: 0 3px; }
-.cal-filter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-right: 2px; }
+.cal-filter-sep { width: 1px; height: 18px; background: var(--cinza2); margin: 0 2px; }
+.cal-filter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-right: 1px; }
 .cal-chip {
-  font-size: 9px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
-  border: 1px solid var(--cinza); background: var(--branco); color: #888;
+  font-size: 8px; font-weight: 700; letter-spacing: .4px; padding: 2px 9px; border-radius: 20px;
+  border: 1px solid var(--cinza); background: var(--branco); color: #888; text-transform: uppercase;
   cursor: pointer; transition: all .12s; font-family: var(--font-ui);
 }
 .cal-chip:hover { border-color: var(--grafite); color: var(--grafite); }
@@ -2576,7 +2574,7 @@ body {
 .cal-list { display: flex; flex-direction: column; gap: 4px; }
 .cal-section-hd {
   font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
-  color: #aaa; padding: 12px 0 4px; border-bottom: 1px solid var(--cinza2); margin-bottom: 4px;
+  color: #aaa; padding: 8px 0 3px; border-bottom: 1px solid var(--cinza2); margin-bottom: 3px;
 }
 .cal-section-hd:first-child { padding-top: 0; }
 .cal-event-row {
@@ -2711,14 +2709,14 @@ body {
 [data-theme="dark"] .cal-people-cell.feriado  { background: rgba(204,104,72,.08); }
 [data-theme="dark"] .cal-modal-box { background: var(--branco); }
 /* Cal Lista */
-.cal-lista { display: flex; flex-direction: column; gap: 6px; padding: 16px 0; }
-.cal-lista-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; border-radius: 8px; cursor: pointer; transition: filter .12s; }
+.cal-lista { display: flex; flex-direction: column; gap: 3px; padding: 10px 0; }
+.cal-lista-item { display: flex; align-items: center; gap: 10px; padding: 5px 12px; border-radius: 7px; cursor: pointer; transition: filter .12s; }
 .cal-lista-item:hover { filter: brightness(.96); }
-.cal-lista-data { font-size: 10px; font-weight: 700; color: #888; min-width: 80px; padding-top: 1px; }
-.cal-lista-body { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cal-lista-icon { font-size: 14px; }
-.cal-lista-titulo { font-size: 12px; font-weight: 600; }
-.cal-lista-proj { font-size: 10px; color: #999; padding: 1px 6px; background: var(--cinza2); border-radius: 4px; }
+.cal-lista-data { font-size: 10px; font-weight: 700; color: #888; min-width: 80px; flex-shrink: 0; }
+.cal-lista-body { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.cal-lista-icon { font-size: 13px; }
+.cal-lista-titulo { font-size: 11px; font-weight: 600; }
+.cal-lista-proj { font-size: 10px; color: #aaa; font-weight: 400; }
 /* Cal Pessoas */
 .cal-pessoas-grid { overflow-x: auto; }
 .cal-pg-header { display: grid; grid-template-columns: 140px repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
@@ -2783,9 +2781,9 @@ body {
 
 <!-- LOADING -->
 <div id="loading">
-  <div class="ld-brand">EXP</div>
+  <img class="ld-logo" src="exp.png" alt="EXP">
   <div class="ld-sub">Gestão de Projetos</div>
-  <div class="ld-dots"><span></span><span></span><span></span></div>
+  <div class="ld-bar"></div>
 </div>
 
 <!-- TOAST -->
@@ -2818,10 +2816,10 @@ body {
   <div class="nav-tabs">
     <button class="ntab active" data-tab="dashboard">Dashboard</button>
     <button class="ntab" data-tab="projetos">Projetos</button>
-    <button class="ntab" data-tab="horas">Horas/Custos</button>
     <button class="ntab" data-tab="revisoes">Revisões</button>
     <button class="ntab" data-tab="processos">Processos</button>
     <button class="ntab" data-tab="calendario">Calendário</button>
+    <button class="ntab" data-tab="horas">Horas/Custos</button>
     <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">Sócios</button>
   </div>
   <div class="nav-right">
@@ -3393,8 +3391,11 @@ body {
       <div class="mh-card-t">Composição por tipo de entrada</div>
       <div class="mh-card-sub">Fatiamento proporcional do mês por oportunidade, organização interna e sociedade.</div>
     </div>
-    <div class="mh-type-bars" id="mh-type-bars">
-      <div class="loading-state">Carregando…</div>
+    <div style="display:flex;gap:24px;align-items:flex-start">
+      <div class="mh-type-bars" id="mh-type-bars" style="flex:1">
+        <div class="loading-state">Carregando…</div>
+      </div>
+      <div id="mh-pie-wrap" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
     </div>
   </div>
 
@@ -3869,32 +3870,49 @@ body {
       <div class="modal-tabs" style="padding:0 16px;margin-bottom:0">
         <button class="modal-tab active" data-modal="modal-produto" data-panel="mp-visao">Visão Geral</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-registros">Registros</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-checklist">Checklist</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-revisoes">Revisões</button>
-        <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas">Horas</button>
-        <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-resultado" id="mp-tab-resultado" style="display:none">Resultado</button>
+        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-chk-rev" id="mp-tab-chk-rev">Checklists & Revisões</button>
+        <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas" style="display:none">Horas</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos" style="display:none">Custos</button>
+        <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-resultado" id="mp-tab-resultado" style="display:none">Resultado</button>
       </div>
       <div style="padding:16px">
         <!-- Visão Geral -->
         <div class="mtab-panel active" id="mp-visao">
-          <div class="fg fg2 mb14">
+          <div class="fg mb14" id="mp-visao-grid">
+            <!-- Col 1: Dados do produto -->
             <div class="ms">
               <div class="ms-title">Dados do produto</div>
               <div class="dr"><div class="dk">Cliente</div><div class="dv" id="mp-cliente">—</div></div>
               <div class="dr"><div class="dk">Oportunidade</div><div class="dv" id="mp-opp">—</div></div>
-              <div class="dr"><div class="dk">Núcleo</div><div class="dv" id="mp-nucleo">—</div></div>
               <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">—</div></div>
               <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">—</div></div>
               <div class="dr"><div class="dk">Início</div><div class="dv" id="mp-inicio">—</div></div>
             </div>
+            <!-- Col 2: Dados do projeto -->
+            <div class="ms">
+              <div class="ms-title">Dados do projeto</div>
+              <div class="dr"><div class="dk">Endereço</div><div class="dv" id="mp-proj-endereco">—</div></div>
+              <div class="dr"><div class="dk">CNPJ</div><div class="dv" id="mp-proj-cnpj">—</div></div>
+              <div class="dr"><div class="dk">Arq. Responsável</div><div class="dv" id="mp-proj-esc-arq">—</div></div>
+              <div class="dr"><div class="dk">Int. Responsável</div><div class="dv" id="mp-proj-esc-int">—</div></div>
+              <div class="dr"><div class="dk">Gestão</div><div class="dv" id="mp-proj-gestao">—</div></div>
+            </div>
+            <!-- Col 3: Dados financeiros e contratuais (sócios) -->
             <div class="ms socio-only" id="mp-financeiro-wrap">
-              <div class="ms-title">Dados financeiros</div>
+              <div class="ms-title">Dados financeiros e contratuais</div>
               <div class="dr"><div class="dk">Valor contratado</div><div class="dv" id="mp-valor">—</div></div>
               <div class="dr"><div class="dk">Horas totais</div><div class="dv" id="mp-horas-total">—</div></div>
               <div class="dr"><div class="dk">Custo execução</div><div class="dv" id="mp-custo">—</div></div>
               <div class="dr"><div class="dk">Margem</div><div class="dv" id="mp-margem">—</div></div>
+              <div class="dr" id="mp-contrato-status-row" style="display:none"><div class="dk">Contrato</div><div class="dv" id="mp-contrato-status">—</div></div>
+              <div class="dr" id="mp-contrato-elab-row" style="display:none"><div class="dk">Elaborado por</div><div class="dv" id="mp-contrato-elab">—</div></div>
+              <div class="dr" id="mp-contrato-assin-row" style="display:none"><div class="dk">Assinatura</div><div class="dv" id="mp-contrato-assin">—</div></div>
             </div>
+          </div>
+          <!-- Links do projeto (visível para todos se preenchido) -->
+          <div class="ms mb14" id="mp-links-wrap" style="display:none">
+            <div class="ms-title">Links do projeto</div>
+            <div id="mp-links-body" style="display:flex;gap:20px;flex-wrap:wrap;padding:6px 0;font-size:12px"></div>
           </div>
           <div class="ms">
             <div class="ms-title" style="display:flex;justify-content:space-between">
@@ -3908,20 +3926,35 @@ body {
             <div id="mp-pausas-lista"></div>
           </div>
         </div>
-        <!-- Revisões do produto -->
-        <div class="mtab-panel" id="mp-revisoes">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="font-size:11px;color:#888">Revisões deste produto</div>
-            <button class="btn sm verde" id="mp-btn-rev-action" onclick="abrirRevisaoProdutoAtivo()">+ Nova revisão</button>
+        <!-- Checklists & Revisões (aba unificada) -->
+        <div class="mtab-panel" id="mp-chk-rev">
+          <!-- Checklist de Etapa -->
+          <div class="ck-section" id="mp-ck-etapa-sec">
+            <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
+              <span class="ck-section-title">Checklist de Etapa</span>
+            </div>
+            <div id="ck-etapa-lista"><div class="empty-note">Carregando…</div></div>
           </div>
-          <!-- Revisão ativa -->
-          <div id="mp-revisao-ativa-wrap" style="margin-bottom:16px"></div>
-          <!-- Histórico -->
-          <div>
-            <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Histórico de revisões</div>
+          <!-- Revisões -->
+          <div class="ck-section" id="mp-revisoes-sec">
+            <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
+              <span class="ck-section-title">Revisões</span>
+              <button class="btn sm verde" id="mp-btn-rev-action" onclick="abrirRevisaoProdutoAtivo()">+ Nova revisão</button>
+            </div>
+            <div id="mp-revisao-ativa-wrap" style="margin-bottom:12px"></div>
             <div id="mp-revisoes-lista"></div>
           </div>
+          <!-- Checklists de Tarefas -->
+          <div class="ck-section" id="mp-ck-tarefas-sec">
+            <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
+              <span class="ck-section-title">Checklists de Tarefas</span>
+              <button class="btn sm verde socio-only" id="btn-novo-ck-tarefa" onclick="novoChecklistTarefa()" style="display:none">+ Novo</button>
+            </div>
+            <div id="ck-tarefas-form-wrap"></div>
+            <div id="ck-tarefas-lista"><div class="empty-note">Carregando…</div></div>
+          </div>
         </div>
+
         <!-- Custos e Reembolsos -->
         <div class="mtab-panel" id="mp-custos">
           <div id="mp-custos-lista">
@@ -3947,26 +3980,6 @@ body {
           </div>
           <div id="reg-form-wrap" style="display:none"></div>
           <div id="reg-lista"></div>
-        </div>
-
-        <!-- Checklist -->
-        <div class="mtab-panel" id="mp-checklist">
-          <!-- Entrega de Etapa -->
-          <div class="ck-section">
-            <div class="ck-section-hd">
-              <span class="ck-section-title">Entrega de Etapa</span>
-            </div>
-            <div id="ck-etapa-lista"><div class="empty-note">Carregando…</div></div>
-          </div>
-          <!-- Checklists de Tarefas -->
-          <div class="ck-section">
-            <div class="ck-section-hd">
-              <span class="ck-section-title">Checklists de Tarefas</span>
-              <button class="btn sm verde socio-only" id="btn-novo-ck-tarefa" onclick="novoChecklistTarefa()" style="display:none">+ Novo</button>
-            </div>
-            <div id="ck-tarefas-form-wrap"></div>
-            <div id="ck-tarefas-lista"><div class="empty-note">Carregando…</div></div>
-          </div>
         </div>
       </div>
     </div>
@@ -4148,9 +4161,19 @@ body {
       <button class="modal-close" onclick="fecharModal('modal-editar-lancamento')">×</button>
     </div>
     <div class="modal-body">
-      <div class="fgroup mb8">
-        <label>Dia da semana</label>
-        <select id="el-dia"></select>
+      <div class="fg fg2 mb8">
+        <div class="fgroup">
+          <label>Tipo</label>
+          <select id="el-tipo" onchange="elOnTipoChange()">
+            <option value="projeto">Projeto</option>
+            <option value="organizacao">Org. Interna</option>
+            <option value="sociedade">Sociedade</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Dia da semana</label>
+          <select id="el-dia"></select>
+        </div>
       </div>
       <div class="fg fg2 mb8">
         <div class="fgroup">
@@ -4161,6 +4184,10 @@ body {
           <label>Hora fim</label>
           <input type="time" id="el-fim">
         </div>
+      </div>
+      <div class="fgroup mb8" id="el-subtipo-wrap" style="display:none">
+        <label>Subcategoria</label>
+        <select id="el-subtipo"></select>
       </div>
       <div class="fgroup mb8" id="el-produto-wrap" style="display:none">
         <label>Produto</label>
@@ -4448,6 +4475,50 @@ body {
           <div class="fgroup">
             <label>Data de assinatura</label>
             <input type="date" id="ep-contrato-assinatura">
+          </div>
+        </div>
+      </div>
+
+      <!-- Dados do projeto -->
+      <div class="ms mb14" id="ep-proj-wrap">
+        <div class="ms-title">Dados do projeto</div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup">
+            <label>Endereço</label>
+            <input type="text" id="ep-proj-endereco" placeholder="Endereço do projeto">
+          </div>
+          <div class="fgroup">
+            <label>CNPJ do cliente</label>
+            <input type="text" id="ep-proj-cnpj" placeholder="00.000.000/0000-00">
+          </div>
+        </div>
+        <div class="fg fg3 mb8">
+          <div class="fgroup">
+            <label>Escritório resp. | Arquitetura</label>
+            <input type="text" id="ep-proj-esc-arq" placeholder="Nome do escritório">
+          </div>
+          <div class="fgroup">
+            <label>Escritório resp. | Interiores</label>
+            <input type="text" id="ep-proj-esc-int" placeholder="Nome do escritório">
+          </div>
+          <div class="fgroup">
+            <label>Gestão</label>
+            <input type="text" id="ep-proj-gestao" placeholder="Responsável pela gestão">
+          </div>
+        </div>
+      </div>
+
+      <!-- Links do projeto (sócios) -->
+      <div class="ms mb14 socio-only" id="ep-links-wrap" style="display:none">
+        <div class="ms-title">Links do projeto</div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup">
+            <label>Plataforma de arquivos</label>
+            <input type="url" id="ep-link-arquivo" placeholder="https://">
+          </div>
+          <div class="fgroup">
+            <label>Planilha de trabalho</label>
+            <input type="url" id="ep-link-planilha" placeholder="https://">
           </div>
         </div>
       </div>
@@ -4876,10 +4947,9 @@ async function init() {
       modal.querySelectorAll('.mtab-panel').forEach(p => p.classList.remove('active'));
       document.getElementById(panelId).classList.add('active');
       if (panelId === 'mp-custos')     carregarCustosProduto(G.produtoAtivo);
-      if (panelId === 'mp-revisoes')   carregarRevisoesProduto(G.produtoAtivo);
+      if (panelId === 'mp-chk-rev')    { carregarRevisoesProduto(G.produtoAtivo); carregarChecklist(G.produtoAtivo); }
       if (panelId === 'mp-horas')      carregarHorasProduto(G.produtoAtivo);
       if (panelId === 'mp-registros')  carregarRegistrosProduto(G.produtoAtivo);
-      if (panelId === 'mp-checklist')  carregarChecklist(G.produtoAtivo);
       if (panelId === 'mp-resultado')  carregarResultado(G.produtoAtivo);
     });
   });
@@ -5249,7 +5319,7 @@ async function carregarHorasGlobal() {
 async function carregarProdutos() {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
   const { data: prodsGestao } = await sb.from('produtos')
-    .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, clientes(id, nome, cidade, uf))`)
+    .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, clientes(id, nome, cidade, uf))`)
     .order('created_at', { ascending: false });
 
   // 2. Propostas fechadas do CRM (fonte de visualização)
@@ -5541,7 +5611,7 @@ function renderDashCoord(prods, horasPorProd = {}) {
         <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
         <div class="proj-card-mid">
           ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
-          ${emRevisao ? `<span class="badge b-am" onclick="event.stopPropagation();abrirProduto(${produtoIdJs},'mp-revisoes')" style="cursor:pointer" title="Abrir revisões">${emRevisao} em revisão</span>` : ''}
+          ${emRevisao ? `<span class="badge b-am" onclick="event.stopPropagation();abrirProduto(${produtoIdJs},'mp-chk-rev')" style="cursor:pointer" title="Abrir revisões">${emRevisao} em revisão</span>` : ''}
           ${dataChip(etapaAtiva?.data_estimada)}
         </div>
         ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;font-size:10px;color:#888">
@@ -6701,12 +6771,14 @@ function renderCalendarioSemana(lancs) {
         const projetoInfo = l.tipo === 'projeto' ? getProjetoHierarquiaLinha(l.produto_id, l.etapa_id, 16) : null;
         const desc = l.tipo === 'projeto' ? projetoInfo.principal : (l.subtipo || l.tipo);
         const acao = G._semanaTravada ? '' : `onclick="event.stopPropagation();deletarLancamento('${l.id}')"`;
+        const _bInner = l.tipo === 'projeto'
+          ? `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;line-height:1.2">${projetoInfo.cliente}</div>`
+            + `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;line-height:1.2;opacity:.8">${truncarTexto(projetoInfo.oportunidade,14)}</div>`
+          : `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${desc}</div>`;
         blocoHtml += `<div class="cal-bloco ${cls}"
           style="top:${topOff}px;height:${height}px"
           title="${l.tipo === 'projeto' ? projetoInfo.completa : desc} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' · Semana bloqueada' : ''}"
-          ${acao}>
-          ${desc}
-        </div>`;
+          ${acao}>${_bInner}</div>`;
       });
 
       html += `<div class="cal-celula ${fds?'fim-semana':''} ${isHoje?'hoje-col':''}">${blocoHtml}</div>`;
@@ -6723,21 +6795,29 @@ function renderCalendarioSemana(lancs) {
     }).join('')}
   </div>`;
 
+  const _META = 40;
+  const _pctVis = Math.min(totalSemana / _META * 100, 100);
+  const _pctProj = totalSemana > 0 ? (porTipo.projeto / totalSemana * _pctVis) : 0;
+  const _pctOrg  = totalSemana > 0 ? (porTipo.organizacao / totalSemana * _pctVis) : 0;
+  const _pctSoc  = totalSemana > 0 ? (porTipo.sociedade / totalSemana * _pctVis) : 0;
+  const _overH   = totalSemana > _META ? fmtH(totalSemana - _META) : '';
   html += `<div class="cal-resumo">
     <div style="flex-shrink:0">
       <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:2px">Semana</div>
-      <div class="cal-total-semana ${totalSemana > 40 ? 'over' : ''}" style="color:${totalSemana>40?'var(--terracota)':totalSemana>32?'var(--ouro)':'var(--grafite)'}">${fmtH(totalSemana)}</div>
+      <div class="cal-total-semana ${totalSemana > _META ? 'over' : ''}" style="color:${totalSemana>_META?'var(--terracota)':totalSemana>32?'var(--ouro)':'var(--grafite)'}">${fmtH(totalSemana)}</div>
     </div>
     <div style="flex:1">
       <div class="cal-meta-bar-wrap">
-        <div class="cal-meta-bar ${totalSemana>40?'tc':totalSemana>32?'am':''}" style="width:${pct.toFixed(1)}%"></div>
+        <div class="cal-meta-seg" style="background:var(--azul);width:${_pctProj.toFixed(1)}%"></div>
+        <div class="cal-meta-seg" style="background:var(--verde);width:${_pctOrg.toFixed(1)}%"></div>
+        <div class="cal-meta-seg" style="background:var(--ouro);width:${_pctSoc.toFixed(1)}%"></div>
       </div>
-      <div class="cal-meta-txt">${pct.toFixed(0)}% da meta de 40h</div>
+      <div class="cal-meta-txt">${totalSemana > _META ? `${(totalSemana/_META*100).toFixed(0)}% <span style="color:var(--terracota);font-size:8px">(+${_overH} acima)</span>` : `${_pctVis.toFixed(0)}% da meta de ${_META}h`}</div>
     </div>
     <div class="cal-breakdown">
-      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div>Proj: ${fmtH(porTipo.projeto)}</div>
-      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--verde)"></div>Org: ${fmtH(porTipo.organizacao)}</div>
-      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--ouro)"></div>Soc: ${fmtH(porTipo.sociedade)}</div>
+      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div><div><div>Proj: ${fmtH(porTipo.projeto)}</div><div style="opacity:.65;font-size:8px">${(_META>0?(porTipo.projeto/_META*100):0).toFixed(0)}%</div></div></div>
+      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--verde)"></div><div><div>Org: ${fmtH(porTipo.organizacao)}</div><div style="opacity:.65;font-size:8px">${(_META>0?(porTipo.organizacao/_META*100):0).toFixed(0)}%</div></div></div>
+      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--ouro)"></div><div><div>Soc: ${fmtH(porTipo.sociedade)}</div><div style="opacity:.65;font-size:8px">${(_META>0?(porTipo.sociedade/_META*100):0).toFixed(0)}%</div></div></div>
     </div>
   </div>`;
 
@@ -7638,20 +7718,19 @@ function abrirEditarLancamento(id) {
   if (!lanc) { toast('Lançamento não encontrado'); return; }
 
   G._editLancamentoId = id;
-  G._editLancamentoTipo = lanc.tipo;
+
+  // Preenche tipo
+  document.getElementById('el-tipo').value = lanc.tipo || 'projeto';
 
   popularDiasEdicaoLancamento(parseInt(lanc.dia_semana) || 1);
   document.getElementById('el-inicio').value = lanc.hora_inicio?.slice(0,5) || '';
   document.getElementById('el-fim').value   = lanc.hora_fim?.slice(0,5)    || '';
   document.getElementById('el-desc').value  = lanc.descricao || '';
 
-  const prodWrap  = document.getElementById('el-produto-wrap');
-  const etapaWrap = document.getElementById('el-etapa-wrap');
-  const selProd   = document.getElementById('el-produto');
-
   if (lanc.tipo === 'projeto') {
-    // Popula select de produto com todos os produtos activos
+    document.getElementById('el-subtipo-wrap').style.display = 'none';
     const prods = (G._prodsGestao || G.todosProdutos || []).filter(p => p.status === 'ativo');
+    const selProd = document.getElementById('el-produto');
     selProd.innerHTML = '<option value="">Selecionar produto...</option>' +
       prods.map(p => {
         const cli = p.oportunidades?.clientes?.nome || '';
@@ -7659,11 +7738,16 @@ function abrirEditarLancamento(id) {
         const label = [cli, opp, p.nome].filter(Boolean).join(' · ');
         return `<option value="${p.id}" ${p.id === lanc.produto_id ? 'selected' : ''}>${label}</option>`;
       }).join('');
-    prodWrap.style.display = 'block';
+    document.getElementById('el-produto-wrap').style.display = 'block';
     popularEtapasEdicaoLancamento(lanc.produto_id, lanc.etapa_id || null);
   } else {
-    prodWrap.style.display  = 'none';
-    etapaWrap.style.display = 'none';
+    document.getElementById('el-produto-wrap').style.display  = 'none';
+    document.getElementById('el-etapa-wrap').style.display = 'none';
+    // Popula subcategorias
+    const selSub = document.getElementById('el-subtipo');
+    const opts = (SUBTIPOS[lanc.tipo] || []);
+    selSub.innerHTML = opts.map(s => `<option value="${s}" ${s === lanc.subtipo ? 'selected' : ''}>${s}</option>`).join('');
+    document.getElementById('el-subtipo-wrap').style.display = 'block';
   }
 
   document.getElementById('modal-editar-lancamento').style.display = 'flex';
@@ -7672,6 +7756,31 @@ function abrirEditarLancamento(id) {
 function elOnProdutoChange() {
   const prodId = document.getElementById('el-produto').value || null;
   popularEtapasEdicaoLancamento(prodId, null);
+}
+
+function elOnTipoChange() {
+  const tipo = document.getElementById('el-tipo').value;
+  const isProjeto = tipo === 'projeto';
+  document.getElementById('el-subtipo-wrap').style.display = isProjeto ? 'none' : 'block';
+  document.getElementById('el-produto-wrap').style.display = isProjeto ? 'block' : 'none';
+  if (!isProjeto) {
+    document.getElementById('el-etapa-wrap').style.display = 'none';
+    const selSub = document.getElementById('el-subtipo');
+    selSub.innerHTML = (SUBTIPOS[tipo] || []).map(s => `<option value="${s}">${s}</option>`).join('');
+  } else {
+    // Reset produto/etapa
+    document.getElementById('el-produto').innerHTML = '<option value="">Selecionar produto...</option>';
+    document.getElementById('el-etapa-wrap').style.display = 'none';
+    const prods = (G._prodsGestao || G.todosProdutos || []).filter(p => p.status === 'ativo');
+    const selProd = document.getElementById('el-produto');
+    selProd.innerHTML = '<option value="">Selecionar produto...</option>' +
+      prods.map(p => {
+        const cli = p.oportunidades?.clientes?.nome || '';
+        const opp = p.oportunidades?.projeto || '';
+        const label = [cli, opp, p.nome].filter(Boolean).join(' · ');
+        return `<option value="${p.id}">${label}</option>`;
+      }).join('');
+  }
 }
 
 async function salvarEdicaoLancamento() {
@@ -7687,28 +7796,32 @@ async function salvarEdicaoLancamento() {
     return;
   }
 
+  const novoTipo = document.getElementById('el-tipo').value;
   const diaNum  = parseInt(document.getElementById('el-dia').value, 10);
   const ini     = document.getElementById('el-inicio').value;
   const fim     = document.getElementById('el-fim').value;
   const desc    = document.getElementById('el-desc').value.trim();
-  const prodId  = lanc.tipo === 'projeto' ? (document.getElementById('el-produto').value || lanc.produto_id) : null;
-  const etapaId = lanc.tipo === 'projeto' ? (document.getElementById('el-etapa').value || null) : null;
+  const prodId  = novoTipo === 'projeto' ? (document.getElementById('el-produto').value || null) : null;
+  const etapaId = novoTipo === 'projeto' ? (document.getElementById('el-etapa').value || null) : null;
+  const subtipo = novoTipo !== 'projeto' ? (document.getElementById('el-subtipo').value || null) : null;
 
   if (!ini || !fim) { toast('Preencha os horários'); return; }
   if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
-  if (lanc.tipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
+  if (novoTipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
 
   const dias    = getDiasSemana(G.semanaOffset);
   const dataObj = dias[(diaNum || 1) - 1];
   const dataISO = dataObj.toISOString().split('T')[0];
 
   const { error } = await sb.from('horas_lancadas').update({
+    tipo: novoTipo,
     dia_semana: diaNum,
     data_lancamento: dataISO,
     hora_inicio: ini,
     hora_fim: fim,
     produto_id: prodId,
     etapa_id: etapaId,
+    subtipo: subtipo,
     descricao: desc || null
   }).eq('id', id);
 
@@ -8023,6 +8136,58 @@ function renderMhDayChart(dataset) {
   }).join('');
 }
 
+function renderMhPieChart(resumo) {
+  const total = resumo.total || 0;
+  if (!total) return '';
+  const TIPOS = [
+    { key:'projeto',     label:'Projetos',    color:'var(--azul)'  },
+    { key:'organizacao', label:'Org. Interna', color:'var(--verde)' },
+    { key:'sociedade',   label:'Sociedade',   color:'var(--ouro)'  },
+  ];
+  const R = 42, CX = 56, CY = 56, SW = 14;
+  const CIRCUMF = 2 * Math.PI * R;
+  let cumLen = 0;
+  const segs = TIPOS.map(t => {
+    const h = resumo.porTipo?.[t.key]?.total || 0;
+    const pct = total > 0 ? h / total : 0;
+    const len = pct * CIRCUMF;
+    const offset = CIRCUMF / 4 - cumLen;
+    cumLen += len;
+    return { ...t, h, pct, len, offset };
+  }).filter(t => t.h > 0);
+
+  const arcs = segs.map(t =>
+    `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${t.color}"
+      stroke-width="${SW}"
+      stroke-dasharray="${t.len.toFixed(2)} ${CIRCUMF.toFixed(2)}"
+      stroke-dashoffset="${t.offset.toFixed(2)}">
+      <title>${t.label}: ${fmtHMin(t.h)} (${(t.pct*100).toFixed(0)}%)</title>
+    </circle>`
+  ).join('');
+
+  const legend = segs.map(t =>
+    `<div style="display:flex;align-items:center;gap:6px">
+       <div style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0"></div>
+       <div>
+         <div style="font-size:9px;font-weight:700;color:var(--grafite)">${(t.pct*100).toFixed(0)}% · ${fmtHMin(t.h)}</div>
+         <div style="font-size:8px;color:#aaa;letter-spacing:.3px">${t.label}</div>
+       </div>
+     </div>`
+  ).join('');
+
+  return `
+    <svg width="112" height="112" viewBox="0 0 112 112" style="display:block">
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--cinza2)" stroke-width="${SW}"/>
+      ${arcs}
+      <text x="${CX}" y="${CY - 4}" text-anchor="middle"
+        font-family="var(--font-mono)" font-size="11" font-weight="700" fill="var(--grafite)">${fmtHMin(total)}</text>
+      <text x="${CX}" y="${CY + 9}" text-anchor="middle"
+        font-family="var(--font-ui)" font-size="7" letter-spacing="0.5" fill="#aaa">TOTAL</text>
+    </svg>
+    <div style="display:flex;flex-direction:column;gap:7px">${legend}</div>
+  `;
+}
+
 function renderMhTypeBars(resumo) {
   const tipos = ['projeto', 'organizacao', 'sociedade']
     .map(tipo => resumo.porTipo[tipo])
@@ -8048,16 +8213,35 @@ function renderMhTypeBars(resumo) {
 }
 
 function renderMhSummaryPanels(resumo) {
-  const proj = resumo.porTipo.projeto || { total:0, items:[] };
+  const totalGeral = resumo.total || 0;
+  const proj = resumo.porTipo.projeto     || { total:0, items:[] };
   const org  = resumo.porTipo.organizacao || { total:0, items:[] };
-  const soc  = resumo.porTipo.sociedade || { total:0, items:[] };
-  const temSoc = soc.items.length > 0;
+  const soc  = resumo.porTipo.sociedade   || { total:0, items:[] };
+  const temSoc = soc.total > 0;
 
-  const panel = (titulo, bucket, tipo, extraClass = '') => `
+  const COR = { projeto:'var(--azul)', organizacao:'var(--verde)', sociedade:'var(--ouro)' };
+
+  const panel = (titulo, bucket, tipo, extraClass = '') => {
+    const pct = totalGeral > 0 ? (bucket.total / totalGeral * 100).toFixed(0) : 0;
+    const cor = COR[tipo] || 'var(--grafite)';
+    return `
     <div class="mh-panel ${extraClass}">
       <div class="mh-panel-hd">
-        <div class="mh-panel-k">${_escN(titulo)}</div>
-        <div class="mh-panel-v">${fmtHClock(bucket.total)} · ${bucket.items.length} frente(s)</div>
+        <div class="mh-panel-k" style="margin-bottom:10px">${_escN(titulo)}</div>
+        <div style="display:flex;gap:18px;align-items:flex-end">
+          <div>
+            <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:var(--grafite);line-height:1">${fmtHMin(bucket.total)}</div>
+            <div style="font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Horas</div>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--grafite);line-height:1">${bucket.items.length}</div>
+            <div style="font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Frentes</div>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:${cor};line-height:1">${pct}%</div>
+            <div style="font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">do total</div>
+          </div>
+        </div>
       </div>
       <div class="mh-panel-body">
         <div class="mh-summary-list">
@@ -8065,6 +8249,7 @@ function renderMhSummaryPanels(resumo) {
         </div>
       </div>
     </div>`;
+  };
 
   return {
     classes: 'mh-summary-panels',
@@ -8122,16 +8307,17 @@ function renderMhDetalhe(dias = []) {
 
 function renderMinhasHorasResumo(dataset) {
   const { ini, fim, mesNome, resumo } = dataset;
-  document.getElementById('mh-total-geral').textContent = fmtHClock(resumo.total);
+  document.getElementById('mh-total-geral').textContent = fmtHMin(resumo.total);
   document.getElementById('mh-total-geral-sub').textContent = `${fmtHLong(resumo.total)} · ${mesNome}`;
   document.getElementById('mh-total-projetos').textContent = String(resumo.totalFrentes).padStart(2, '0');
   document.getElementById('mh-total-dias').textContent = String(resumo.diasAtivos).padStart(2, '0');
-  document.getElementById('mh-media-dia').textContent = resumo.diasAtivos ? fmtHClock(resumo.mediaDia) : '—';
+  document.getElementById('mh-media-dia').textContent = resumo.diasAtivos ? fmtHMin(resumo.mediaDia) : '—';
   document.getElementById('mh-projetos-sub').textContent = `${resumo.lancamentos} lançamento(s) no período`;
   document.getElementById('mh-periodo-faixa').textContent = `${fmtDate(ini)} — ${fmtDate(fim)}`;
   document.getElementById('mh-chart-sub').textContent = `${resumo.diasAtivos} dia(s) lançados · pico diário ${fmtHClock(Math.max(...(resumo.detalhesPorDia || []).map(d => d.total), 0))}`;
   document.getElementById('mh-day-chart').innerHTML = renderMhDayChart(dataset);
   document.getElementById('mh-type-bars').innerHTML = renderMhTypeBars(resumo);
+  const _pw = document.getElementById('mh-pie-wrap'); if (_pw) _pw.innerHTML = renderMhPieChart(resumo);
   const summaryPanels = renderMhSummaryPanels(resumo);
   const summaryWrap = document.getElementById('mh-summary-panels');
   summaryWrap.className = summaryPanels.classes;
@@ -8164,6 +8350,7 @@ async function carregarMinhasHoras() {
   const ym = garantirMesMinhasHoras();
   document.getElementById('mh-day-chart').innerHTML = '<div class="loading-state">Carregando…</div>';
   document.getElementById('mh-type-bars').innerHTML = '<div class="loading-state">Carregando…</div>';
+  const _pieWrap = document.getElementById('mh-pie-wrap'); if (_pieWrap) _pieWrap.innerHTML = '';
   document.getElementById('mh-summary-panels').innerHTML = '<div class="loading-state">Carregando…</div>';
   document.getElementById('mh-detalhe-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
   try {
@@ -9351,15 +9538,30 @@ async function abrirProduto(id, targetPanel = null) {
   const isSocio = isSocioRole(G.usuario.role);
 
   document.getElementById('mp-titulo').textContent = (cli?.nome || '—') + ' | ' + (opp?.projeto || prod.nome);
-  document.getElementById('mp-subtipo-hd').innerHTML = `<span class="badge ${nc.cls}" style="font-size:8px">${nc.label}</span> <span style="color:#bbb">${prod.nome}</span>`;
+  document.getElementById('mp-subtipo-hd').textContent = prod.nome;
   document.getElementById('mp-cliente').textContent = cli?.nome || '—';
   document.getElementById('mp-opp').textContent = opp?.projeto || '—';
-  document.getElementById('mp-nucleo').innerHTML = `<span class="badge ${nc.cls}">${nc.label}</span>`;
   document.getElementById('mp-status').innerHTML = `<span class="badge ${stProd.cls}">${stProd.label}</span>`;
   document.getElementById('mp-coord').innerHTML = coord
     ? `<div style="display:flex;align-items:center;gap:6px"><div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px">${coord.iniciais}</div>${coord.nome}</div>`
     : '—';
   document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
+
+  // Dados do projeto (novos campos na oportunidade)
+  document.getElementById('mp-proj-endereco').textContent = opp?.endereco || '—';
+  document.getElementById('mp-proj-cnpj').textContent     = opp?.cnpj || '—';
+  document.getElementById('mp-proj-esc-arq').textContent  = opp?.escritorio_arq || '—';
+  document.getElementById('mp-proj-esc-int').textContent  = opp?.escritorio_int || '—';
+  document.getElementById('mp-proj-gestao').textContent   = opp?.gestao_empresa || '—';
+
+  // Links do projeto
+  const mpLinksWrap = document.getElementById('mp-links-wrap');
+  const mpLinksBody = document.getElementById('mp-links-body');
+  const links = [];
+  if (opp?.link_arquivo)  links.push(`<a href="${opp.link_arquivo}"  target="_blank" rel="noopener" style="color:var(--azul);text-decoration:none;display:flex;align-items:center;gap:4px">📁 Plataforma de arquivos</a>`);
+  if (opp?.link_planilha) links.push(`<a href="${opp.link_planilha}" target="_blank" rel="noopener" style="color:var(--azul);text-decoration:none;display:flex;align-items:center;gap:4px">📊 Planilha de trabalho</a>`);
+  if (links.length) { mpLinksBody.innerHTML = links.join(''); mpLinksWrap.style.display = ''; }
+  else              { mpLinksWrap.style.display = 'none'; }
 
   // Controle de acesso do modal por role
   const isSocioOrCoord = isSocio || G.usuario.role === 'coordenador';
@@ -9375,6 +9577,21 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-financeiro-wrap').style.display  = isSocio ? 'block' : 'none';
   document.getElementById('mp-tab-horas').style.display        = isSocio ? '' : 'none';
   document.getElementById('mp-tab-resultado').style.display    = isSocio ? '' : 'none';
+  // Grid: 3 cols para sócios, 2 para os demais
+  const visaoGrid = document.getElementById('mp-visao-grid');
+  if (visaoGrid) visaoGrid.className = `fg mb14 ${isSocio ? 'fg3' : 'fg2'}`;
+  // Dados de contrato na visão geral (sócios)
+  if (isSocio) {
+    const cSt   = prod.contrato_status;
+    const cElab = prod.contrato_elaborado_por;
+    const cAssin = prod.contrato_data_assinatura;
+    const CSTLBL = { pendente:'Pendente', em_elaboracao:'Em elaboração', assinado:'Assinado' };
+    if (cSt)    { document.getElementById('mp-contrato-status').textContent = CSTLBL[cSt] || cSt; document.getElementById('mp-contrato-status-row').style.display = ''; }
+    if (cElab)  { document.getElementById('mp-contrato-elab').textContent   = cElab;                document.getElementById('mp-contrato-elab-row').style.display   = ''; }
+    if (cAssin) { document.getElementById('mp-contrato-assin').textContent  = fmtDate(cAssin);      document.getElementById('mp-contrato-assin-row').style.display  = ''; }
+  } else {
+    ['mp-contrato-status-row','mp-contrato-elab-row','mp-contrato-assin-row'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  }
   document.getElementById('mp-btn-pausar').style.display       = (isSocio && prod.status === 'ativo') ? '' : 'none';
   if (isSocio) {
     document.getElementById('mp-valor').textContent = prod.valor_contratado
@@ -9423,7 +9640,7 @@ async function abrirProduto(id, targetPanel = null) {
   (_openTabBtn || document.querySelector('#modal-produto .modal-tab[data-panel="mp-visao"]')).classList.add('active');
   document.getElementById(_openPanel).classList.add('active');
   // Trigger lazy-load for non-default tabs
-  if (_openPanel === 'mp-revisoes') carregarRevisoesProduto(id);
+  if (_openPanel === 'mp-chk-rev')  { carregarRevisoesProduto(id); carregarChecklist(id); }
   else if (_openPanel === 'mp-horas') carregarHorasProduto(id);
   else if (_openPanel === 'mp-custos') carregarCustosProduto(id);
 
@@ -12608,6 +12825,14 @@ function fmtHLong(h) {
   return `${hh}h ${mm.toString().padStart(2,'0')}min`;
 }
 
+function fmtHMin(h) {
+  if (!h && h !== 0) return '—';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return `${hh}h${mm.toString().padStart(2,'0')}min`;
+}
+
 function fmtHClock(h) {
   if (!h && h !== 0) return '00:00';
   const totalMin = Math.round(h * 60);
@@ -13243,6 +13468,20 @@ async function abrirEditarProduto() {
   document.getElementById('ep-opp-cidade').value = prod.oportunidades?.cidade || '';
   document.getElementById('ep-em-gestao').value = prod.em_gestao === false ? 'false' : 'true';
 
+  // Dados do projeto
+  document.getElementById('ep-proj-endereco').value  = prod.oportunidades?.endereco       || '';
+  document.getElementById('ep-proj-cnpj').value      = prod.oportunidades?.cnpj            || '';
+  document.getElementById('ep-proj-esc-arq').value   = prod.oportunidades?.escritorio_arq  || '';
+  document.getElementById('ep-proj-esc-int').value   = prod.oportunidades?.escritorio_int  || '';
+  document.getElementById('ep-proj-gestao').value    = prod.oportunidades?.gestao_empresa  || '';
+
+  // Dados do projeto
+  document.getElementById('ep-proj-endereco').value  = prod.oportunidades?.endereco       || '';
+  document.getElementById('ep-proj-cnpj').value      = prod.oportunidades?.cnpj            || '';
+  document.getElementById('ep-proj-esc-arq').value   = prod.oportunidades?.escritorio_arq  || '';
+  document.getElementById('ep-proj-esc-int').value   = prod.oportunidades?.escritorio_int  || '';
+  document.getElementById('ep-proj-gestao').value    = prod.oportunidades?.gestao_empresa  || '';
+
   const coordSel = document.getElementById('ep-coord');
   coordSel.innerHTML = '<option value="">—</option>' +
     G.todosUsuarios.map(u => `<option value="${u.id}" ${u.id === prod.coordenador_id ? 'selected' : ''}>${u.nome}</option>`).join('');
@@ -13258,6 +13497,26 @@ async function abrirEditarProduto() {
   const isSocio = isSocioRole(G.usuario.role);
   document.getElementById('ep-valor-wrap').style.display = isSocio ? 'block' : 'none';
   if (isSocio) document.getElementById('ep-valor').value = prod.valor_contratado || '';
+
+  // Links do projeto (sócios)
+  const epLinksWrap = document.getElementById('ep-links-wrap');
+  if (epLinksWrap) {
+    epLinksWrap.style.display = isSocio ? 'block' : 'none';
+    if (isSocio) {
+      document.getElementById('ep-link-arquivo').value  = prod.oportunidades?.link_arquivo  || '';
+      document.getElementById('ep-link-planilha').value = prod.oportunidades?.link_planilha || '';
+    }
+  }
+
+  // Links do projeto (sócios)
+  const epLinksWrap = document.getElementById('ep-links-wrap');
+  if (epLinksWrap) {
+    epLinksWrap.style.display = isSocio ? 'block' : 'none';
+    if (isSocio) {
+      document.getElementById('ep-link-arquivo').value  = prod.oportunidades?.link_arquivo  || '';
+      document.getElementById('ep-link-planilha').value = prod.oportunidades?.link_planilha || '';
+    }
+  }
 
   // PROJ-10: campos de contrato (apenas sócios)
   const contratoWrap = document.getElementById('ep-contrato-wrap');
@@ -13365,17 +13624,31 @@ async function salvarEdicaoProduto() {
     if (!prodSalvo) { toast('O produto não foi atualizado. Verifique as permissões no Supabase.'); return; }
 
     if (prod.oportunidade_id) {
-      const { data: oppSalva, error: eOpp } = await sb.from('oportunidades')
-        .update({
-          cliente_id: clienteId,
-          projeto: oppNome,
-          cidade: oppCidade
-        })
-        .eq('id', prod.oportunidade_id)
-        .select('id')
-        .maybeSingle();
-
-      if (eOpp) { toast('Erro ao salvar oportunidade: ' + eOpp.message); return; }
+      const oppPayload = {
+        cliente_id: clienteId,
+        projeto: oppNome,
+        cidade: oppCidade,
+        endereco:       document.getElementById('ep-proj-endereco').value.trim() || null,
+        cnpj:           document.getElementById('ep-proj-cnpj').value.trim()     || null,
+        escritorio_arq: document.getElementById('ep-proj-esc-arq').value.trim()  || null,
+        escritorio_int: document.getElementById('ep-proj-esc-int').value.trim()  || null,
+        gestao_empresa: document.getElementById('ep-proj-gestao').value.trim()   || null,
+      };
+      if (isSocio) {
+        oppPayload.link_arquivo  = document.getElementById('ep-link-arquivo').value.trim()  || null;
+        oppPayload.link_planilha = document.getElementById('ep-link-planilha').value.trim() || null;
+      }
+      let { data: oppSalva, error: eOpp } = await sb.from('oportunidades')
+        .update(oppPayload).eq('id', prod.oportunidade_id).select('id').maybeSingle();
+      // Fallback: se colunas novas não existirem no banco ainda, salva sem elas
+      if (eOpp) {
+        const { data: oppSalva2, error: eOpp2 } = await sb.from('oportunidades')
+          .update({ cliente_id: clienteId, projeto: oppNome, cidade: oppCidade })
+          .eq('id', prod.oportunidade_id).select('id').maybeSingle();
+        if (eOpp2) { toast('Erro ao salvar oportunidade: ' + eOpp2.message); return; }
+        if (!eOpp2) toast('Projeto salvo. Dados do projeto foram ignorados porque as colunas ainda não existem no banco.');
+        oppSalva = oppSalva2;
+      }
       if (!oppSalva) { toast('A oportunidade não foi atualizada. Verifique as permissões no Supabase.'); return; }
     }
 
@@ -16894,7 +17167,7 @@ function calRenderLista() {
         <div class="cal-lista-body">
           <span class="cal-lista-icon">${meta.icon}</span>
           <span class="cal-lista-titulo">${ev.titulo}</span>
-          ${ev.projeto_nome ? `<span class="cal-lista-proj">${ev.projeto_nome}</span>` : ''}
+          ${ev.projeto_nome ? `<span class="cal-lista-proj"> | ${ev.projeto_nome}</span>` : ''}
         </div>
       </div>`;
     }).join('')}</div>`;
