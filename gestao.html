@@ -1022,29 +1022,29 @@ body {
 
 /* Tarefas livres */
 .task-item {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 7px 0; border-bottom: 1px solid var(--cinza2);
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 5px 0; border-bottom: 1px solid var(--cinza2);
 }
 .task-edit-btn {
   flex-shrink: 0; margin-top: 1px; background: none; border: none;
-  color: #d0d5de; cursor: pointer; padding: 0 2px; font-size: 13px; line-height: 1;
+  color: #d0d5de; cursor: pointer; padding: 0 2px; font-size: 12px; line-height: 1;
   transition: color .12s; opacity: 0;
 }
 .task-item:hover .task-edit-btn { opacity: 1; }
 .task-edit-btn:hover { color: var(--grafite); }
 .task-item:last-child { border-bottom: none; }
 .task-check {
-  width: 14px; height: 14px; border: 1px solid var(--cinza); border-radius: 3px;
+  width: 13px; height: 13px; border: 1px solid var(--cinza); border-radius: 3px;
   flex-shrink: 0; cursor: pointer; margin-top: 2px;
   display: flex; align-items: center; justify-content: center;
   transition: all .12s; background: var(--branco);
 }
 .task-check:hover { border-color: var(--verde); }
 .task-check.done { background: var(--verde); border-color: var(--verde); }
-.task-check.done::after { content: '✓'; font-size: 9px; color: #fff; font-weight: 700; }
-.task-desc { font-size: 11px; line-height: 1.4; }
+.task-check.done::after { content: '✓'; font-size: 8px; color: #fff; font-weight: 700; }
+.task-desc { font-size: 10px; line-height: 1.4; }
 .task-desc.done { text-decoration: line-through; color: #aaa; }
-.task-meta { display: flex; align-items: center; gap: 5px; margin-top: 3px; flex-wrap: wrap; }
+.task-meta { display: flex; align-items: center; gap: 5px; margin-top: 2px; flex-wrap: wrap; }
 .task-prazo { font-size: 9px; font-family: var(--font-mono); color: #aaa; }
 .task-prazo.vencida { color: var(--terracota); font-weight: 700; }
 .task-prazo.hoje { color: var(--ouro); font-weight: 700; }
@@ -1052,19 +1052,19 @@ body {
 .task-de-chip { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; color: #fff; flex-shrink: 0; }
 .task-status-chip {
   font-size: 8px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
-  padding: 1px 6px; background: var(--cinza2); color: #777; border-radius: 4px;
+  padding: 1px 5px; background: var(--cinza2); color: #777; border-radius: 4px;
 }
 .task-status-chip.ok { background: rgba(69,134,93,.12); color: var(--verde); }
 .task-status-chip.pend { background: rgba(209,153,49,.12); color: #8f650d; }
 .task-status-chip.info { background: rgba(82,128,202,.12); color: var(--azul); }
 .task-tipo-chip {
-  font-size: 8px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
-  padding: 1px 6px; background: var(--cinza2); color: #777; border-radius: 4px;
+  font-size: 7px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+  padding: 1px 5px; background: var(--cinza2); color: #777; border-radius: 4px;
 }
-.task-input-row { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.task-input-row { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
 .task-input-row input[type="text"] {
-  width: 100%; padding: 5px 9px; border: 1px solid var(--cinza); border-radius: 6px;
-  font-family: var(--font-ui); font-size: 12px; font-weight: 300; outline: none; box-sizing: border-box;
+  width: 100%; padding: 4px 9px; border: 1px solid var(--cinza); border-radius: 6px;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 300; outline: none; box-sizing: border-box;
 }
 .task-input-row input[type="text"]:focus { border-color: var(--grafite); }
 .task-input-row .task-row2 { display: flex; gap: 5px; }
@@ -6525,6 +6525,7 @@ function renderGantt() {
       const avsHtml = todos.map(u =>
         `<div class="gantt-av" style="background:${u.cor||'#888'};${u.id===coord?.id?'border-color:#aaa':''}" title="${_escAttrN(u.nome)} (${u.id===coord?.id?'coord':'dev'})">${_escN(u.iniciais)}</div>`
       ).join('');
+      const opp = p.oportunidades;
       const oppProjetoDisp = _escN(opp?.projeto || p.nome || '');
       const prodNomeDisp = _escN(p.nome || '');
       const nucleoLabelDisp = _escN(nc.label);
@@ -8636,7 +8637,7 @@ async function carregarRevisoesProduto(prodId) {
   if (lista) {
     lista.innerHTML = concluidas.length
       ? concluidas.map(r => _revCard(r, false)).join('')
-      : '<div class="empty-note">Nenhuma revisão finalizada.</div>';
+      : '';
   }
 }
 
@@ -9558,7 +9559,7 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-cidade-uf').textContent = _cidadeUF || '—';
   document.getElementById('mp-status').innerHTML = `<span class="badge ${stProd.cls}">${stProd.label}</span>`;
   document.getElementById('mp-coord').innerHTML = coord
-    ? `<div style="display:flex;align-items:center;gap:6px"><div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px">${coord.iniciais}</div>${coord.nome}</div>`
+    ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${coord.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:#fff;flex-shrink:0">${coord.iniciais}</div>${coord.nome}</div>`
     : '—';
   document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
 
@@ -16444,7 +16445,7 @@ function renderProcDetalhe(id) {
     return u ? `<div class="task-de-chip" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:9px" title="${_escN(u.nome)}">${_escN(u.iniciais)}</div>` : '';
   }).join('');
 
-  const PROC_PREVIEW = 3; // tarefas visíveis antes de expandir
+  const PROC_PREVIEW = 3;
 
   const _procTarefaRow = (tr, uid, atrib, canCheck, checklistIdJs, isSoc) => {
     const statusMap = G._procStatus[tr.id] || {};
@@ -16454,64 +16455,65 @@ function renderProcDetalhe(id) {
       : Object.keys(statusMap).filter(k => statusMap[k]).map(k => { const u = G.todosUsuarios?.find(u => u.id === k); return u ? u.iniciais : '?'; });
     const doneByStr = _escN(doneBy.join(', '));
     const tarefaIdJs = _sqN(tr.id);
-    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+    return `<div class="prancha-preview-task">
+      <div class="prancha-preview-check ${myDone?'done':''}"></div>
       <input type="checkbox" class="proc-ck" ${myDone?'checked':''} ${!canCheck?'disabled':''}
         onchange="toggleTarefaProcesso(${tarefaIdJs},${checklistIdJs},this.checked)"
-        style="margin-top:2px;cursor:${canCheck?'pointer':'default'};accent-color:var(--azul);flex-shrink:0;color-scheme:light dark">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:${myDone?'#bbb':'#333'};${myDone?'text-decoration:line-through':''}">${_escN(tr.descricao)}</div>
-        ${doneByStr ? `<div style="font-size:9px;color:#bbb;margin-top:1px">✓ ${doneByStr}</div>` : ''}
-      </div>
-      ${isSoc ? `<button onclick="procExcluirTarefa(${tarefaIdJs},${checklistIdJs})" title="Excluir tarefa" style="font-size:11px;border:none;background:none;color:#ddd;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1">✕</button>` : ''}
+        style="display:none">
+      <span style="flex:1;font-size:10px;color:${myDone?'#bbb':'var(--grafite)'};${myDone?'text-decoration:line-through':''};cursor:${canCheck?'pointer':'default'}"
+        onclick="${canCheck?`toggleTarefaProcesso(${tarefaIdJs},${checklistIdJs},${!myDone})`:''}">
+        ${_escN(tr.descricao)}
+      </span>
+      ${doneByStr ? `<span style="font-size:9px;color:#bbb;flex-shrink:0">✓ ${doneByStr}</span>` : ''}
+      ${isSoc ? `<button onclick="procExcluirTarefa(${tarefaIdJs},${checklistIdJs})" title="Excluir" style="font-size:10px;border:none;background:none;color:#ddd;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1">✕</button>` : ''}
     </div>`;
   };
 
   const temasHtml = (c.processos_tema || []).map(tema => {
     const tarefas = tema.processos_tarefa || [];
-    const subtemas = [...new Set(tarefas.map(t => t.subtema || ''))];
     const checklistIdJs = _sqN(id);
     const temaIdJs = _sqN(tema.id);
     const expandido = G._procTemasExp.has(tema.id);
-    const totalTarefas = tarefas.length;
-    const ocultas = totalTarefas > PROC_PREVIEW && !expandido ? totalTarefas - PROC_PREVIEW : 0;
+    const tConc = tarefas.filter(tr => (G._procStatus[tr.id]||{})[uid] === true).length;
+    const tTotal = tarefas.length;
+    const tPct = tTotal > 0 ? Math.round(tConc / tTotal * 100) : 0;
+    const temaDone = tTotal > 0 && tConc === tTotal;
+    const ocultas = tTotal > PROC_PREVIEW && !expandido ? tTotal - PROC_PREVIEW : 0;
 
-    // Renderiza linhas de tarefa com controle de visibilidade inicial
-    let contadorGlobal = 0;
+    let contador = 0;
+    const subtemas = [...new Set(tarefas.map(t => t.subtema || ''))];
     const tarefasHtml = subtemas.map(sub => {
       const grupo = tarefas.filter(t => (t.subtema || '') === sub);
       const subHead = sub
-        ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;margin:8px 0 4px">${_escN(sub)}</div>`
+        ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;padding:6px 14px 2px">${_escN(sub)}</div>`
         : '';
       const rows = grupo.map(tr => {
-        const hidden = !expandido && contadorGlobal >= PROC_PREVIEW;
-        contadorGlobal++;
-        return `<div ${hidden ? 'class="proc-tarefa-oculta" style="display:none"' : ''}>${_procTarefaRow(tr, uid, atrib, canCheck, checklistIdJs, isSoc)}</div>`;
+        const hidden = !expandido && contador >= PROC_PREVIEW;
+        contador++;
+        return `<div ${hidden?'style="display:none"':''} style="padding:0 14px">${_procTarefaRow(tr, uid, atrib, canCheck, checklistIdJs, isSoc)}</div>`;
       }).join('');
       return `${subHead}${rows}`;
     }).join('');
 
-    const verMaisBtn = ocultas > 0
-      ? `<div style="text-align:center;padding:6px 0">
-          <button class="btn sm" onclick="procExpandirTema(${_sqN(tema.id)},${checklistIdJs})">+ ${ocultas} tarefa${ocultas>1?'s':''}</button>
-         </div>`
+    const verMais = ocultas > 0
+      ? `<div class="prancha-preview-more" style="padding:4px 14px 8px;cursor:pointer" onclick="procExpandirTema(${_sqN(tema.id)},${checklistIdJs})">+ ${ocultas} tarefa${ocultas>1?'s':''}</div>`
       : '';
 
-    return `<div style="margin-bottom:18px" id="proc-tema-blk-${tema.id}">
-      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:2px solid var(--cinza2);margin-bottom:4px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:700">${_escN(tema.nome)}</div>
-          ${tema.descricao ? `<div style="font-size:10px;color:#999;margin-top:2px;line-height:1.4">${_escN(tema.descricao)}</div>` : ''}
+    return `<div class="prancha-card" id="proc-tema-blk-${tema.id}">
+      <div class="prancha-header ${temaDone?'concluida-bg':''}">
+        <span class="prancha-nome">${_escN(tema.nome)}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="prancha-prog">${tConc}/${tTotal}</span>
+          ${isSoc ? `<button onclick="event.stopPropagation();procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" class="btn sm">+ Tarefa</button>` : ''}
+          ${isSoc ? `<button onclick="event.stopPropagation();procExcluirTema(${temaIdJs},${checklistIdJs})" class="btn sm tc" title="Excluir tema">✕</button>` : ''}
         </div>
-        ${isSoc ? `
-          <button onclick="procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" class="btn sm">+ Tarefa</button>
-          <button onclick="procExcluirTema(${temaIdJs},${checklistIdJs})" class="btn sm tc" title="Excluir tema">✕</button>
-        ` : ''}
       </div>
-      <div id="proc-tarefas-wrap-${tema.id}">
-        ${tarefasHtml || '<div style="font-size:10px;color:#ccc;padding:6px 0;font-style:italic">Nenhuma tarefa neste tema.</div>'}
+      <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${tPct}%"></div></div>
+      <div class="prancha-preview" style="padding:6px 0">
+        ${tarefasHtml || `<div style="padding:4px 14px;font-size:10px;color:#ccc;font-style:italic">Nenhuma tarefa neste tema.</div>`}
+        ${verMais}
       </div>
-      ${verMaisBtn}
-      <div id="proc-tarefa-inline-${tema.id}"></div>
+      <div id="proc-tarefa-inline-${tema.id}" style="padding:0 14px"></div>
     </div>`;
   }).join('');
 
@@ -16519,47 +16521,38 @@ function renderProcDetalhe(id) {
   const arquivado = c.status === 'arquivado';
 
   detalhe.innerHTML = `
-    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:10px;padding:20px 24px">
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <div class="rev-summary-bars" style="margin-top:0;margin-bottom:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
-          <div style="font-size:16px;font-weight:700;margin-bottom:2px">${_escN(c.nome)}</div>
-          ${c.descricao ? `<div style="font-size:11px;color:#888;margin-bottom:2px">${_escN(c.descricao)}</div>` : ''}
-          ${criador ? `<div style="font-size:10px;color:#bbb">Criado por ${_escN(criador.nome.split(' ')[0])}</div>` : ''}
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">${_escN(c.nome)}</div>
+          ${c.descricao ? `<div style="font-size:10px;color:#888">${_escN(c.descricao)}</div>` : ''}
+          ${criador ? `<div style="font-size:9px;color:#bbb;margin-top:2px">Criado por ${_escN(criador.nome.split(' ')[0])}</div>` : ''}
         </div>
-        ${isSoc ? `
-          <button onclick="procEditarChecklist(${_sqN(id)})" class="btn sm" title="Editar nome e descrição">✎</button>
-          <button onclick="abrirAtribuirChecklist(${_sqN(id)})" class="btn sm">Atribuir ▾</button>
-          <button onclick="procArquivar(${_sqN(id)})" class="btn sm">${arquivado?'↺ Restaurar':'🗄 Arquivar'}</button>
-        ` : ''}
-      </div>
-
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-        <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb">Responsáveis:</span>
-        ${chips || '<span style="font-size:10px;color:#ccc;font-style:italic">Nenhum atribuído</span>'}
-      </div>
-
-      <div style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-          <span style="font-size:11px;font-weight:600;color:${done?'var(--verde)':'#555'}">${done?'✓ Concluído':'Em andamento'}</span>
-          <span style="font-size:10px;color:#aaa;margin-left:auto">${conc}/${total} tarefas · ${pct}%</span>
-        </div>
-        <div style="height:5px;background:var(--cinza2);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${done?'var(--verde)':'var(--azul)'};transition:width .3s;border-radius:3px"></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          ${chips}
+          ${isSoc ? `<button onclick="procEditarChecklist(${_sqN(id)})" class="btn sm" title="Editar">✎</button>` : ''}
+          ${isSoc ? `<button onclick="abrirAtribuirChecklist(${_sqN(id)})" class="btn sm">Atribuir ▾</button>` : ''}
+          ${isSoc ? `<button onclick="procArquivar(${_sqN(id)})" class="btn sm">${arquivado?'↺ Restaurar':'Arquivar'}</button>` : ''}
         </div>
       </div>
-
-      <div id="proc-temas-wrap">
-        ${temasHtml || '<div class="empty-note" style="margin:0">Nenhum tema adicionado ainda.</div>'}
+      <div class="rev-summary-bar-row" style="margin-top:10px">
+        <span class="rev-summary-bar-label">Tarefas concluídas</span>
+        <div class="rev-summary-bar-track"><div class="rev-summary-bar-fill" style="width:${pct}%"></div></div>
+        <span class="rev-summary-count">${conc}/${total}</span>
       </div>
+    </div>
 
-      ${isSoc ? `
-        <div id="proc-tema-inline-wrap"></div>
-        <button onclick="procAdicionarTema(${_sqN(id)})"
-          style="margin-top:12px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:var(--off);color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--font-ui)">
-          + Adicionar tema
-        </button>
-      ` : ''}
-    </div>`;
+    <div id="proc-temas-wrap">
+      ${temasHtml || '<div class="empty-note">Nenhum tema adicionado ainda.</div>'}
+    </div>
+
+    ${isSoc ? `
+      <div id="proc-tema-inline-wrap"></div>
+      <button onclick="procAdicionarTema(${_sqN(id)})"
+        style="margin-top:10px;font-size:11px;border:1px dashed var(--cinza);border-radius:7px;background:var(--off);color:#888;cursor:pointer;padding:8px 16px;width:100%;text-align:center;font-family:var(--font-ui)">
+        + Adicionar tema
+      </button>
+    ` : ''}`;
 }
 
 async function toggleTarefaProcesso(tarefaId, checklistId, concluida) {
