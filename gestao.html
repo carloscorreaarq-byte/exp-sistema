@@ -850,8 +850,8 @@ body {
   border-bottom: 1px solid var(--cinza2);
 }
 .dr { display: flex; border-bottom: 1px solid var(--cinza2); }
-.dk { font-size: 9px; color: #888; padding: 4px 8px; min-width: 110px; background: var(--off); border-right: 1px solid var(--cinza2); }
-.dv { font-size: 11px; padding: 4px 8px; flex: 1; }
+.dk { font-size: 8px; color: #999; padding: 3px 8px; min-width: 100px; background: var(--off); border-right: 1px solid var(--cinza2); letter-spacing: .1px; }
+.dv { font-size: 10px; padding: 3px 8px; flex: 1; }
 
 /* ── TIMELINE ────────────────────────────────────────────── */
 .timeline { position: relative; padding-left: 20px; }
@@ -3886,6 +3886,7 @@ body {
               <div class="ms-title">Dados do produto</div>
               <div class="dr"><div class="dk">Cliente</div><div class="dv" id="mp-cliente">—</div></div>
               <div class="dr"><div class="dk">Oportunidade</div><div class="dv" id="mp-opp">—</div></div>
+              <div class="dr"><div class="dk">Cidade / UF</div><div class="dv" id="mp-cidade-uf">—</div></div>
               <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">—</div></div>
               <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">—</div></div>
               <div class="dr"><div class="dk">Início</div><div class="dv" id="mp-inicio">—</div></div>
@@ -3895,9 +3896,10 @@ body {
               <div class="ms-title">Dados do projeto</div>
               <div class="dr"><div class="dk">Endereço</div><div class="dv" id="mp-proj-endereco">—</div></div>
               <div class="dr"><div class="dk">CNPJ</div><div class="dv" id="mp-proj-cnpj">—</div></div>
-              <div class="dr"><div class="dk">Arq. Responsável</div><div class="dv" id="mp-proj-esc-arq">—</div></div>
-              <div class="dr"><div class="dk">Int. Responsável</div><div class="dv" id="mp-proj-esc-int">—</div></div>
+              <div class="dr"><div class="dk">Escritório | Arquitetura</div><div class="dv" id="mp-proj-esc-arq">—</div></div>
+              <div class="dr"><div class="dk">Escritório | Interiores</div><div class="dv" id="mp-proj-esc-int">—</div></div>
               <div class="dr"><div class="dk">Gestão</div><div class="dv" id="mp-proj-gestao">—</div></div>
+              <div class="dr"><div class="dk">Prev. orçamentária</div><div class="dv" id="mp-proj-prev-orc">—</div></div>
             </div>
             <!-- Col 3: Dados financeiros e contratuais (sócios) -->
             <div class="ms socio-only" id="mp-financeiro-wrap">
@@ -3908,7 +3910,7 @@ body {
               <div class="dr"><div class="dk">Margem</div><div class="dv" id="mp-margem">—</div></div>
               <div class="dr" id="mp-contrato-status-row" style="display:none"><div class="dk">Contrato</div><div class="dv" id="mp-contrato-status">—</div></div>
               <div class="dr" id="mp-contrato-elab-row" style="display:none"><div class="dk">Elaborado por</div><div class="dv" id="mp-contrato-elab">—</div></div>
-              <div class="dr" id="mp-contrato-assin-row" style="display:none"><div class="dk">Assinatura</div><div class="dv" id="mp-contrato-assin">—</div></div>
+              <div class="dr" id="mp-contrato-assin-row" style="display:none"><div class="dk">Assinado em</div><div class="dv" id="mp-contrato-assin">—</div></div>
             </div>
           </div>
           <!-- Links do projeto (visível para todos se preenchido) -->
@@ -3920,6 +3922,14 @@ body {
             <div class="ms-title" style="display:flex;justify-content:space-between">
               Etapas
               <button class="btn sm socio-only" id="btn-edit-etapas" onclick="editarEtapas()">Editar etapas</button>
+            </div>
+            <div id="mp-etapas-prog" style="margin-bottom:10px;display:none">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="flex:1;height:4px;background:var(--cinza2);border-radius:2px;overflow:hidden">
+                  <div id="mp-etapas-prog-fill" style="height:100%;background:var(--verde);border-radius:2px;transition:width .3s"></div>
+                </div>
+                <div id="mp-etapas-prog-label" style="font-size:9px;color:#aaa;flex-shrink:0;font-family:var(--font-mono)"></div>
+              </div>
             </div>
             <div class="timeline" id="mp-etapas-timeline"></div>
           </div>
@@ -5322,11 +5332,11 @@ async function carregarProdutos() {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
   // Tenta query completa (com colunas novas); fallback sem elas se ainda não existirem
   let { data: prodsGestao, error: _pgErr } = await sb.from('produtos')
-    .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, clientes(id, nome, cidade, uf))`)
+    .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, cidade, uf))`)
     .order('created_at', { ascending: false });
   if (_pgErr) {
     const { data: _pgFallback } = await sb.from('produtos')
-      .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, clientes(id, nome, cidade, uf))`)
+      .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, previsao_orcamentaria, clientes(id, nome, cidade, uf))`)
       .order('created_at', { ascending: false });
     prodsGestao = _pgFallback;
   }
@@ -9544,6 +9554,8 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-subtipo-hd').textContent = prod.nome;
   document.getElementById('mp-cliente').textContent = cli?.nome || '—';
   document.getElementById('mp-opp').textContent = opp?.projeto || '—';
+  const _cidadeUF = [cli?.cidade, cli?.uf].filter(Boolean).join(' / ');
+  document.getElementById('mp-cidade-uf').textContent = _cidadeUF || '—';
   document.getElementById('mp-status').innerHTML = `<span class="badge ${stProd.cls}">${stProd.label}</span>`;
   document.getElementById('mp-coord').innerHTML = coord
     ? `<div style="display:flex;align-items:center;gap:6px"><div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px">${coord.iniciais}</div>${coord.nome}</div>`
@@ -9556,6 +9568,7 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-proj-esc-arq').textContent  = opp?.escritorio_arq || '—';
   document.getElementById('mp-proj-esc-int').textContent  = opp?.escritorio_int || '—';
   document.getElementById('mp-proj-gestao').textContent   = opp?.gestao_empresa || '—';
+  document.getElementById('mp-proj-prev-orc').textContent = opp?.previsao_orcamentaria ? 'R$ ' + fmtNum(opp.previsao_orcamentaria) : '—';
 
   // Links do projeto
   const mpLinksWrap = document.getElementById('mp-links-wrap');
@@ -9591,7 +9604,9 @@ async function abrirProduto(id, targetPanel = null) {
     const CSTLBL = { pendente:'Pendente', em_elaboracao:'Em elaboração', assinado:'Assinado' };
     if (cSt)    { document.getElementById('mp-contrato-status').textContent = CSTLBL[cSt] || cSt; document.getElementById('mp-contrato-status-row').style.display = ''; }
     if (cElab)  { document.getElementById('mp-contrato-elab').textContent   = cElab;                document.getElementById('mp-contrato-elab-row').style.display   = ''; }
-    if (cAssin) { document.getElementById('mp-contrato-assin').textContent  = fmtDate(cAssin);      document.getElementById('mp-contrato-assin-row').style.display  = ''; }
+    // Data de assinatura só aparece quando o contrato está assinado
+    if (cAssin && cSt === 'assinado') { document.getElementById('mp-contrato-assin').textContent = fmtDate(cAssin); document.getElementById('mp-contrato-assin-row').style.display = ''; }
+    else { document.getElementById('mp-contrato-assin-row').style.display = 'none'; }
   } else {
     ['mp-contrato-status-row','mp-contrato-elab-row','mp-contrato-assin-row'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
   }
@@ -9609,8 +9624,19 @@ async function abrirProduto(id, targetPanel = null) {
   const mpBtnRev = document.getElementById('mp-btn-rev-action');
   if (mpBtnRev) mpBtnRev.textContent = '+ ' + (isSocio ? 'Nova revisão' : 'Solicitar revisão');
 
-  // Etapas timeline
+  // Etapas timeline + progress bar
   const etapas = G.todasEtapas.filter(e => e.produto_id === id).sort((a,b) => a.ordem - b.ordem);
+  const _etTotal = etapas.length;
+  const _etConc  = etapas.filter(e => e.status === 'concluida').length;
+  const _etProg  = document.getElementById('mp-etapas-prog');
+  if (_etProg && _etTotal > 0) {
+    const _pct = Math.round(_etConc / _etTotal * 100);
+    document.getElementById('mp-etapas-prog-fill').style.width = _pct + '%';
+    document.getElementById('mp-etapas-prog-label').textContent = `${_etConc}/${_etTotal} · ${_pct}%`;
+    _etProg.style.display = '';
+  } else if (_etProg) {
+    _etProg.style.display = 'none';
+  }
   const tlWrap = document.getElementById('mp-etapas-timeline');
   tlWrap.innerHTML = etapas.map((e, i) => {
     const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
