@@ -11,441 +11,7 @@
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 
-<!--
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES
-  Versão 1.0 · Abril 2026
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-  SETUP SQL — rodar UMA VEZ no Supabase SQL Editor:
-
-  -- ── TABELA DE NOTIFICAÇÕES (adicionar se não existir) ──────
-  -- ── CHECKLIST ────────────────────────────────────────────────
-  -- Preset de checklist de etapa (gerenciado pelos sócios)
-  CREATE TABLE checklist_etapa_preset (
-    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome       text NOT NULL,
-    nucleo     text,
-    criado_por uuid REFERENCES usuarios(id),
-    created_at timestamptz DEFAULT now()
-  );
-  CREATE TABLE checklist_etapa_preset_item (
-    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    preset_id  uuid REFERENCES checklist_etapa_preset(id) ON DELETE CASCADE,
-    secao      text,
-    texto      text NOT NULL,
-    ordem      int  DEFAULT 0
-  );
-  -- Checklist de entrega de etapa (instanciado por etapa de produto)
-  CREATE TABLE checklist_etapa_exec (
-    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    produto_id      uuid REFERENCES produtos(id)  ON DELETE CASCADE,
-    etapa_id        uuid REFERENCES etapas(id)    ON DELETE CASCADE,
-    preset_id       uuid REFERENCES checklist_etapa_preset(id),
-    atribuido_para  uuid REFERENCES usuarios(id),
-    atribuido_nome  text,
-    atribuido_iniciais text,
-    atribuido_cor   text,
-    created_at      timestamptz DEFAULT now()
-  );
-  CREATE TABLE checklist_etapa_exec_item (
-    id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    checklist_id        uuid REFERENCES checklist_etapa_exec(id) ON DELETE CASCADE,
-    secao               text,
-    texto               text NOT NULL,
-    ordem               int  DEFAULT 0,
-    concluido           bool DEFAULT false,
-    concluido_por       uuid REFERENCES usuarios(id),
-    concluido_por_nome  text,
-    concluido_em        timestamptz
-  );
-  -- Checklist de tarefas (aberto por sócios, vinculado a colaborador)
-  CREATE TABLE checklist_tarefa (
-    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    produto_id      uuid REFERENCES produtos(id)  ON DELETE CASCADE,
-    titulo          text NOT NULL,
-    atribuido_para  uuid REFERENCES usuarios(id),
-    atribuido_nome  text,
-    atribuido_iniciais text,
-    atribuido_cor   text,
-    status          text DEFAULT 'aberto',  -- aberto | fechado
-    criado_por      uuid REFERENCES usuarios(id),
-    criado_por_nome text,
-    created_at      timestamptz DEFAULT now()
-  );
-  CREATE TABLE checklist_tarefa_item (
-    id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    checklist_id        uuid REFERENCES checklist_tarefa(id) ON DELETE CASCADE,
-    secao               text,
-    texto               text NOT NULL,
-    ordem               int  DEFAULT 0,
-    concluido           bool DEFAULT false,
-    concluido_por       uuid REFERENCES usuarios(id),
-    concluido_por_nome  text,
-    concluido_em        timestamptz
-  );
-  -- Seções de preset (subdivisões com texto introdutório)
-  CREATE TABLE checklist_etapa_preset_secao (
-    id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    preset_id uuid REFERENCES checklist_etapa_preset(id) ON DELETE CASCADE,
-    titulo    text NOT NULL,
-    intro     text,
-    ordem     int  DEFAULT 0
-  );
-  -- Seções de exec (copiadas do preset no momento da atribuição)
-  CREATE TABLE checklist_etapa_exec_secao (
-    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    checklist_id uuid REFERENCES checklist_etapa_exec(id) ON DELETE CASCADE,
-    titulo       text NOT NULL,
-    intro        text,
-    ordem        int  DEFAULT 0
-  );
-  -- Colunas adicionais em tabelas existentes
-  ALTER TABLE checklist_etapa_preset      ADD COLUMN IF NOT EXISTS tipo_produto text;
-  ALTER TABLE checklist_etapa_preset      ADD COLUMN IF NOT EXISTS etapa_tipo   text;
-  ALTER TABLE checklist_etapa_preset_item ADD COLUMN IF NOT EXISTS secao_id uuid REFERENCES checklist_etapa_preset_secao(id) ON DELETE SET NULL;
-  ALTER TABLE checklist_etapa_exec_item   ADD COLUMN IF NOT EXISTS secao_id uuid REFERENCES checklist_etapa_exec_secao(id)   ON DELETE SET NULL;
-
-  -- RLS
-  ALTER TABLE checklist_etapa_preset_secao ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE checklist_etapa_exec_secao   ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "autenticados" ON checklist_etapa_preset_secao FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON checklist_etapa_exec_secao   FOR ALL USING (auth.role()='authenticated');
-
-  -- RLS
-  ALTER TABLE checklist_etapa_preset      ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE checklist_etapa_preset_item ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE checklist_etapa_exec        ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE checklist_etapa_exec_item   ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE checklist_tarefa            ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE checklist_tarefa_item       ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "autenticados" ON checklist_etapa_preset      FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON checklist_etapa_preset_item FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON checklist_etapa_exec        FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON checklist_etapa_exec_item   FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON checklist_tarefa            FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON checklist_tarefa_item       FOR ALL USING (auth.role()='authenticated');
-  -- ────────────────────────────────────────────────────────────
-  CREATE TABLE IF NOT EXISTS notificacoes (
-    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario_id      uuid REFERENCES usuarios(id) ON DELETE CASCADE,
-    tipo            text NOT NULL,  -- mencao | tarefa | revisao | prancha | lembrete
-    titulo          text NOT NULL,
-    corpo           text,
-    link_tipo       text,           -- registro | revisao | tarefa | lembrete
-    link_produto_id uuid,
-    link_etapa_id   uuid,
-    link_entrada_id uuid,
-    link_revisao_id uuid,
-    criado_por      uuid REFERENCES usuarios(id),
-    criado_por_nome text,
-    lido_em         timestamptz,    -- null = não lida (aparece colorida)
-    encerrado_em    timestamptz,    -- null = visível; preenchido = arquivada
-    created_at      timestamptz DEFAULT now()
-  );
-  ALTER TABLE notificacoes ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "autenticados" ON notificacoes FOR ALL USING (auth.role() = 'authenticated');
-  -- Realtime: habilitar para que o sino atualize automaticamente
-  ALTER PUBLICATION supabase_realtime ADD TABLE notificacoes;
-  -- ────────────────────────────────────────────────────────────
-
-  -- ANIVERSÁRIO
-  ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS data_aniversario date;
-  -- ────────────────────────────────────────────────────────────
-
-  -- 1. PRODUTOS (unidade executável)
-  CREATE TABLE produtos (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    oportunidade_id uuid REFERENCES oportunidades(id),
-    proposta_origem_id text,           -- para integração futura com exp_proposals
-    nome text NOT NULL,
-    nucleo text,                        -- urbanismo | paisagismo | especiais | consultorias
-    coordenador_id uuid REFERENCES usuarios(id),
-    status text DEFAULT 'inativo',     -- ativo | inativo | pausado | encerrado
-    data_inicio date,
-    valor_contratado numeric,          -- visível apenas para sócios
-    obs text,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
-  );
-
-  -- 2. PAUSAS DE PRODUTO
-  CREATE TABLE pausas_produto (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    produto_id uuid REFERENCES produtos(id),
-    data_inicio date NOT NULL,
-    motivo text,
-    data_retomada date,
-    registrado_por uuid REFERENCES usuarios(id),
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 3. ETAPAS
-  CREATE TABLE etapas (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    produto_id uuid REFERENCES produtos(id),
-    nome text NOT NULL,
-    descricao text,
-    ordem integer DEFAULT 0,
-    prazo_dias integer,
-    prazo_tipo text DEFAULT 'corridos',  -- corridos | uteis
-    coordenador_id uuid REFERENCES usuarios(id),
-    data_liberacao date,
-    data_estimada date,
-    data_conclusao date,
-    status text DEFAULT 'nao_iniciada', -- nao_iniciada | em_andamento | em_revisao | concluida | pausada
-    entregaveis text,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
-  );
-
-  -- 4. ETAPA_DESENVOLVEDORES (many-to-many)
-  CREATE TABLE etapa_desenvolvedores (
-    etapa_id uuid REFERENCES etapas(id) ON DELETE CASCADE,
-    usuario_id uuid REFERENCES usuarios(id),
-    PRIMARY KEY (etapa_id, usuario_id)
-  );
-
-  -- 5. PRODUTO_OBSERVADORES
-  CREATE TABLE produto_observadores (
-    produto_id uuid REFERENCES produtos(id) ON DELETE CASCADE,
-    usuario_id uuid REFERENCES usuarios(id),
-    PRIMARY KEY (produto_id, usuario_id)
-  );
-
-  -- 6. REVISÕES
-  CREATE TABLE revisoes (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    etapa_id uuid REFERENCES etapas(id),
-    numero integer DEFAULT 1,
-    aberta_por uuid REFERENCES usuarios(id),
-    status text DEFAULT 'aberta',  -- aberta | concluida
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
-  );
-
-  -- 7. PRANCHAS
-  CREATE TABLE pranchas (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    revisao_id uuid REFERENCES revisoes(id) ON DELETE CASCADE,
-    nome text NOT NULL,
-    ordem integer DEFAULT 0,
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 8. TAREFAS DE REVISÃO
-  CREATE TABLE tarefas_revisao (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    prancha_id uuid REFERENCES pranchas(id) ON DELETE CASCADE,
-    descricao text NOT NULL,
-    imagem_url text,
-    concluida boolean DEFAULT false,
-    concluida_por uuid REFERENCES usuarios(id),
-    concluida_em timestamptz,
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 9. COMENTÃRIOS DE PRANCHA
-  CREATE TABLE prancha_comentarios (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    revisao_id uuid REFERENCES revisoes(id) ON DELETE CASCADE,
-    prancha_id uuid REFERENCES pranchas(id) ON DELETE CASCADE,
-    comentario text NOT NULL,
-    criado_por uuid REFERENCES usuarios(id),
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 9.1 MENSAGENS DA THREAD DE COMENTÁRIOS
-  CREATE TABLE prancha_comentario_mensagens (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    comentario_id uuid REFERENCES prancha_comentarios(id) ON DELETE CASCADE,
-    revisao_id uuid REFERENCES revisoes(id) ON DELETE CASCADE,
-    prancha_id uuid REFERENCES pranchas(id) ON DELETE CASCADE,
-    mensagem text NOT NULL,
-    criado_por uuid REFERENCES usuarios(id),
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 10. TAREFAS LIVRES
-  CREATE TABLE tarefas_livres (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario_id uuid REFERENCES usuarios(id),
-    criado_por uuid REFERENCES usuarios(id),
-    atribuido_para uuid REFERENCES usuarios(id),
-    descricao text NOT NULL,
-    tipo text DEFAULT 'projeto',  -- projeto | organizacao | sociedade
-    produto_id uuid REFERENCES produtos(id),
-    etapa_id uuid REFERENCES etapas(id),
-    data_inicio date,
-    data_limite date,
-    concluida boolean DEFAULT false,
-    concluida_em timestamptz,
-    google_task_id text,
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 11. SEMANAS (controle de finalização)
-  CREATE TABLE semanas (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario_id uuid REFERENCES usuarios(id),
-    ano integer NOT NULL,
-    semana integer NOT NULL,        -- ISO week number
-    data_inicio date NOT NULL,
-    data_fim date NOT NULL,
-    finalizada boolean DEFAULT false,
-    finalizada_em timestamptz,
-    comentario text,
-    desbloqueada_por uuid REFERENCES usuarios(id),
-    UNIQUE(usuario_id, ano, semana)
-  );
-
-  -- 12. HORAS LANÇADAS
-  CREATE TABLE horas_lancadas (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario_id uuid REFERENCES usuarios(id),
-    semana_id uuid REFERENCES semanas(id),
-    data_lancamento date NOT NULL,
-    dia_semana integer,             -- 1=seg ... 7=dom
-    hora_inicio time NOT NULL,
-    hora_fim time NOT NULL,
-    tipo text NOT NULL,             -- projeto | organizacao | sociedade
-    subtipo text,
-    produto_id uuid REFERENCES produtos(id),
-    etapa_id uuid REFERENCES etapas(id),
-    descricao text,
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 13. HISTÓRICO DE VALOR/HORA
-  CREATE TABLE historico_valor_hora (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario_id uuid REFERENCES usuarios(id),
-    valor_hora numeric NOT NULL,
-    data_vigencia date NOT NULL,
-    registrado_por uuid REFERENCES usuarios(id),
-    created_at timestamptz DEFAULT now()
-  );
-
-  -- 14. ESPELHO FINANCEIRO (etapas concluídas para faturamento)
-  CREATE TABLE espelho_financeiro (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    etapa_id uuid REFERENCES etapas(id),
-    produto_id uuid REFERENCES produtos(id),
-    cliente_nome text,
-    oportunidade_nome text,
-    produto_nome text,
-    etapa_nome text,
-    data_conclusao date,
-    coordenador_nome text,
-    horas_totais numeric DEFAULT 0,
-    custo_execucao numeric DEFAULT 0,
-    valor_contratado numeric DEFAULT 0,
-    status_faturamento text DEFAULT 'pendente',  -- pendente | faturado | pago
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now()
-  );
-
-  -- RLS básico (ajustar conforme política de segurança)
-  ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE etapas ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE horas_lancadas ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE revisoes ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE pranchas ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE tarefas_revisao ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE prancha_comentarios ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE prancha_comentario_mensagens ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE tarefas_livres ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE semanas ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE espelho_financeiro ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE historico_valor_hora ENABLE ROW LEVEL SECURITY;
-
-  -- Lançamentos de custo operacional (vinculado à semana, como horas_lancadas)
-  CREATE TABLE lancamentos_custo (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario_id uuid REFERENCES usuarios(id),
-    semana_id uuid REFERENCES semanas(id),
-    data_lancamento date NOT NULL,
-    valor numeric(10,2) NOT NULL,
-    tipo text NOT NULL CHECK (tipo IN ('projeto','organizacao','sociedade')),
-    subtipo text,
-    produto_id uuid REFERENCES produtos(id),
-    etapa_id uuid REFERENCES etapas(id),
-    evento_id uuid REFERENCES eventos_custo(id) ON DELETE SET NULL,
-    evento_soc_id uuid REFERENCES eventos_sociedade(id) ON DELETE SET NULL,
-    descricao text,
-    created_at timestamptz DEFAULT now()
-  );
-  ALTER TABLE lancamentos_custo ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "autenticados" ON lancamentos_custo FOR ALL USING (auth.role() = 'authenticated');
-
-  -- Políticas permissivas temporárias (refinar depois)
-  CREATE POLICY "autenticados" ON produtos FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON etapas FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON horas_lancadas FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON revisoes FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON pranchas FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON tarefas_revisao FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON prancha_comentarios FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON prancha_comentario_mensagens FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON tarefas_livres FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON semanas FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON espelho_financeiro FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON historico_valor_hora FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON pausas_produto FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON etapa_desenvolvedores FOR ALL USING (auth.role() = 'authenticated');
-  CREATE POLICY "autenticados" ON produto_observadores FOR ALL USING (auth.role() = 'authenticated');
-
-  -- ── PROCESSOS ────────────────────────────────────────────────
-  CREATE TABLE processos_checklist (
-    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome       text NOT NULL,
-    descricao  text,
-    status     text DEFAULT 'ativo',   -- ativo | arquivado
-    criado_por uuid REFERENCES usuarios(id),
-    created_at timestamptz DEFAULT now()
-  );
-  CREATE TABLE processos_tema (
-    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    checklist_id uuid REFERENCES processos_checklist(id) ON DELETE CASCADE,
-    nome         text NOT NULL,
-    ordem        int  DEFAULT 0,
-    created_at   timestamptz DEFAULT now()
-  );
-  CREATE TABLE processos_tarefa (
-    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tema_id    uuid REFERENCES processos_tema(id) ON DELETE CASCADE,
-    descricao  text NOT NULL,
-    subtema    text,
-    ordem      int  DEFAULT 0,
-    created_at timestamptz DEFAULT now()
-  );
-  CREATE TABLE processos_atribuicao (
-    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    checklist_id uuid REFERENCES processos_checklist(id) ON DELETE CASCADE,
-    usuario_id   uuid REFERENCES usuarios(id) ON DELETE CASCADE,
-    UNIQUE(checklist_id, usuario_id)
-  );
-  CREATE TABLE processos_tarefa_status (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tarefa_id   uuid REFERENCES processos_tarefa(id) ON DELETE CASCADE,
-    usuario_id  uuid REFERENCES usuarios(id) ON DELETE CASCADE,
-    concluida   bool DEFAULT false,
-    concluida_em timestamptz,
-    UNIQUE(tarefa_id, usuario_id)
-  );
-  ALTER TABLE processos_checklist    ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE processos_tema         ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE processos_tarefa       ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE processos_atribuicao   ENABLE ROW LEVEL SECURITY;
-  ALTER TABLE processos_tarefa_status ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "autenticados" ON processos_checklist     FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON processos_tema          FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON processos_tarefa        FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON processos_atribuicao    FOR ALL USING (auth.role()='authenticated');
-  CREATE POLICY "autenticados" ON processos_tarefa_status FOR ALL USING (auth.role()='authenticated');
-
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
--->
+<!-- EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES -->
 
 <style>
 /* ── RESET & ROOT ─────────────────────────────────────────── */
@@ -16613,17 +16179,33 @@ G._procSelecionado = null;
 G._procTemasExp    = new Set(); // tema IDs manualmente expandidos
 
 async function carregarProcessos() {
-  const { data: checklists, error } = await sb
+  let query = sb
     .from('processos_checklist')
     .select(`
       *,
       processos_atribuicao(usuario_id),
       processos_tema(
-        id, nome, ordem,
+        id, nome, descricao, ordem,
         processos_tarefa(id, descricao, subtema, ordem)
       )
     `)
     .order('created_at', { ascending: false });
+  let { data: checklists, error } = await query;
+
+  if (error && /descricao/i.test(error.message || '')) {
+    ({ data: checklists, error } = await sb
+      .from('processos_checklist')
+      .select(`
+        *,
+        processos_atribuicao(usuario_id),
+        processos_tema(
+          id, nome, ordem,
+          processos_tarefa(id, descricao, subtema, ordem)
+        )
+      `)
+      .order('created_at', { ascending: false }));
+    (checklists || []).forEach(c => (c.processos_tema || []).forEach(t => { if (typeof t.descricao === 'undefined') t.descricao = null; }));
+  }
 
   if (error) { console.error(error); toast('Erro ao carregar processos'); return; }
 
@@ -16664,14 +16246,17 @@ function _procTotalConc(checklist) {
   (checklist.processos_tema || []).forEach(t => {
     (t.processos_tarefa || []).forEach(tr => {
       total++;
-      const statusMap = G._procStatus[tr.id] || {};
-      const done = atrib.length
-        ? atrib.some(uid => statusMap[uid])
-        : Object.values(statusMap).some(Boolean);
-      if (done) conc++;
+      if (_procTarefaConcluida(tr.id, atrib)) conc++;
     });
   });
   return { total, conc };
+}
+
+function _procTarefaConcluida(tarefaId, atrib = []) {
+  const statusMap = G._procStatus[tarefaId] || {};
+  return atrib.length
+    ? atrib.some(uid => statusMap[uid])
+    : Object.values(statusMap).some(Boolean);
 }
 
 function renderProcLista() {
@@ -16781,7 +16366,7 @@ function renderProcDetalhe(id) {
     const checklistIdJs = _sqN(id);
     const temaIdJs = _sqN(tema.id);
     const expandido = G._procTemasExp.has(tema.id);
-    const tConc = tarefas.filter(tr => (G._procStatus[tr.id]||{})[uid] === true).length;
+    const tConc = tarefas.filter(tr => _procTarefaConcluida(tr.id, atrib)).length;
     const tTotal = tarefas.length;
     const tPct = tTotal > 0 ? Math.round(tConc / tTotal * 100) : 0;
     const temaDone = tTotal > 0 && tConc === tTotal;
@@ -16808,7 +16393,10 @@ function renderProcDetalhe(id) {
 
     return `<div class="prancha-card" id="proc-tema-blk-${tema.id}">
       <div class="prancha-header ${temaDone?'concluida-bg':''}">
-        <span class="prancha-nome">${_escN(tema.nome)}</span>
+        <div style="min-width:0;flex:1">
+          <span class="prancha-nome">${_escN(tema.nome)}</span>
+          ${tema.descricao ? `<div style="font-size:10px;color:#999;margin-top:2px;line-height:1.35">${_escN(tema.descricao)}</div>` : ''}
+        </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="prancha-prog">${tConc}/${tTotal}</span>
           ${isSoc ? `<button onclick="event.stopPropagation();procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" class="btn sm">+ Tarefa</button>` : ''}
@@ -16936,7 +16524,13 @@ async function confirmarNovoChecklist() {
 
   // 2. Atribuições
   if (responsaveis.length) {
-    await sb.from('processos_atribuicao').insert(responsaveis.map(uid => ({ checklist_id: cl.id, usuario_id: uid })));
+    const { error: errAtr } = await sb.from('processos_atribuicao')
+      .insert(responsaveis.map(uid => ({ checklist_id: cl.id, usuario_id: uid })));
+    if (errAtr) {
+      await sb.from('processos_checklist').delete().eq('id', cl.id);
+      toast('Erro ao atribuir responsáveis: ' + errAtr.message);
+      return;
+    }
   }
 
   toast('Checklist criado! Adicione temas e tarefas diretamente no checklist.');
@@ -16981,11 +16575,26 @@ function abrirAtribuirChecklist(id) {
 async function confirmarAtribuicaoChecklist(id) {
   const selecionados = [...document.querySelectorAll('#_proc-atrib-pop input[type=checkbox]:checked')].map(cb => cb.value);
   document.getElementById('_proc-atrib-pop')?.remove();
-  await sb.from('processos_atribuicao').delete().eq('checklist_id', id);
-  if (selecionados.length) {
-    const { error } = await sb.from('processos_atribuicao').insert(selecionados.map(uid => ({ checklist_id: id, usuario_id: uid })));
+
+  const c = G._processos.find(x => x.id === id);
+  const atuais = c?.processos_atribuicao?.map(a => a.usuario_id) || [];
+  const paraInserir = selecionados.filter(uid => !atuais.includes(uid));
+  const paraRemover = atuais.filter(uid => !selecionados.includes(uid));
+
+  if (paraInserir.length) {
+    const { error } = await sb.from('processos_atribuicao')
+      .insert(paraInserir.map(uid => ({ checklist_id: id, usuario_id: uid })));
     if (error) { toast('Erro ao atribuir: ' + error.message); return; }
   }
+
+  for (const uid of paraRemover) {
+    const { error } = await sb.from('processos_atribuicao')
+      .delete()
+      .eq('checklist_id', id)
+      .eq('usuario_id', uid);
+    if (error) { toast('Erro ao remover responsável: ' + error.message); return; }
+  }
+
   toast('Responsáveis atualizados');
   await carregarProcessos();
   selecionarChecklist(id);
@@ -17085,7 +16694,10 @@ async function _procConfirmarTemaInline(checklistId) {
   document.getElementById('proc-tema-inline-wrap').innerHTML = '';
   const c = G._processos.find(c => c.id === checklistId);
   const ordem = (c?.processos_tema?.length || 0) + 1;
-  const { error } = await sb.from('processos_tema').insert({ checklist_id: checklistId, nome, descricao: desc, ordem });
+  let { error } = await sb.from('processos_tema').insert({ checklist_id: checklistId, nome, descricao: desc, ordem });
+  if (error && /descricao/i.test(error.message || '')) {
+    ({ error } = await sb.from('processos_tema').insert({ checklist_id: checklistId, nome, ordem }));
+  }
   if (error) { toast('Erro: ' + error.message); return; }
   toast('Tema adicionado');
   await carregarProcessos();
