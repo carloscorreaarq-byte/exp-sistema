@@ -1664,6 +1664,11 @@ commit;`;
 
 const CADASTROS_SENHAS_SETUP_SQL = `begin;
 
+create schema if not exists private;
+
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+
 create table if not exists public.cadastros_plataformas (
   id uuid default gen_random_uuid() primary key,
   numero integer not null default 1,
@@ -1695,6 +1700,65 @@ create table if not exists public.cadastros_plataformas_secret (
   senha text,
   updated_at timestamptz default now()
 );
+
+create table if not exists public.cadastros_plataformas_log (
+  id uuid default gen_random_uuid() primary key,
+  plataforma_id uuid not null references public.cadastros_plataformas(id) on delete cascade,
+  usuario_id uuid references public.usuarios(id),
+  usuario_nome text,
+  visualizado_em timestamptz default now()
+);
+
+create index if not exists idx_cadastros_plataformas_log_plataforma
+  on public.cadastros_plataformas_log (plataforma_id, visualizado_em desc);
+
+create or replace function private.current_exp_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (
+      select u.role::text
+      from public.usuarios u
+      where u.auth_id = auth.uid()
+      limit 1
+    ),
+    'anonymous'
+  );
+$$;
+
+create or replace function private.is_authenticated_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select auth.role() = 'authenticated' and auth.uid() is not null;
+$$;
+
+create or replace function private.is_socio()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select private.current_exp_role() in ('socio', 'socio_admin');
+$$;
+
+create or replace function private.can_edit_apoio()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select private.is_socio();
+$$;
 
 create or replace function private.current_exp_user_name()
 returns text
@@ -1764,6 +1828,21 @@ as $$
   select private.current_cadastro_access_rank() >= private.cadastro_access_rank(p_nivel);
 $$;
 
+create or replace function private.can_view_cadastro_plataforma_by_id(p_plataforma_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.cadastros_plataformas p
+    where p.id = p_plataforma_id
+      and private.can_view_cadastro_plataforma(p.nivel_acesso)
+  );
+$$;
+
 create or replace function public.cs_reveal_credential(p_plataforma_id uuid)
 returns table(login text, senha text)
 language plpgsql
@@ -1828,8 +1907,120 @@ begin
 end;
 $$;
 
+create or replace function public.cs_save_plataforma(
+  p_id uuid,
+  p_numero integer,
+  p_nome text,
+  p_nivel_acesso text,
+  p_uso text,
+  p_clientes text,
+  p_cofre_link text,
+  p_observacoes text,
+  p_login text,
+  p_senha text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_nivel text;
+  v_login text;
+  v_senha text;
+  v_login_final text;
+  v_senha_final text;
+begin
+  if not private.can_edit_apoio() then
+    raise exception 'Voce nao tem permissao para salvar esta plataforma.';
+  end if;
+
+  if nullif(trim(coalesce(p_nome, '')), '') is null then
+    raise exception 'Informe o nome da plataforma.';
+  end if;
+
+  v_nivel := case coalesce(lower(trim(p_nivel_acesso)), 'socio')
+    when 'colaborador' then 'colaborador'
+    when 'administrador' then 'administrador'
+    else 'socio'
+  end;
+
+  if p_id is null then
+    insert into public.cadastros_plataformas (
+      numero,
+      nome,
+      nivel_acesso,
+      uso,
+      clientes,
+      cofre_link,
+      observacoes
+    )
+    values (
+      greatest(coalesce(p_numero, 1), 1),
+      trim(p_nome),
+      v_nivel,
+      nullif(trim(coalesce(p_uso, '')), ''),
+      nullif(trim(coalesce(p_clientes, '')), ''),
+      nullif(trim(coalesce(p_cofre_link, '')), ''),
+      nullif(trim(coalesce(p_observacoes, '')), '')
+    )
+    returning id into v_id;
+  else
+    update public.cadastros_plataformas
+    set
+      numero = greatest(coalesce(p_numero, numero, 1), 1),
+      nome = trim(p_nome),
+      nivel_acesso = v_nivel,
+      uso = nullif(trim(coalesce(p_uso, '')), ''),
+      clientes = nullif(trim(coalesce(p_clientes, '')), ''),
+      cofre_link = nullif(trim(coalesce(p_cofre_link, '')), ''),
+      observacoes = nullif(trim(coalesce(p_observacoes, '')), ''),
+      updated_at = now()
+    where id = p_id
+    returning id into v_id;
+
+    if v_id is null then
+      raise exception 'Plataforma nao encontrada.';
+    end if;
+  end if;
+
+  if nullif(trim(coalesce(p_login, '')), '') is not null
+     or nullif(trim(coalesce(p_senha, '')), '') is not null then
+    select s.login, s.senha
+      into v_login, v_senha
+    from public.cadastros_plataformas_secret s
+    where s.plataforma_id = v_id;
+
+    v_login_final := coalesce(nullif(trim(coalesce(p_login, '')), ''), v_login);
+    v_senha_final := coalesce(nullif(trim(coalesce(p_senha, '')), ''), v_senha);
+
+    insert into public.cadastros_plataformas_secret (
+      plataforma_id,
+      login,
+      senha,
+      updated_at
+    )
+    values (
+      v_id,
+      v_login_final,
+      v_senha_final,
+      now()
+    )
+    on conflict (plataforma_id) do update
+    set
+      login = excluded.login,
+      senha = excluded.senha,
+      updated_at = now();
+  end if;
+
+  return v_id;
+end;
+$$;
+
 alter table public.cadastros_plataformas enable row level security;
 alter table public.cadastros_plataformas_secret enable row level security;
+alter table public.cadastros_plataformas_log enable row level security;
 
 drop policy if exists cadastros_plataformas_select on public.cadastros_plataformas;
 drop policy if exists cadastros_plataformas_insert on public.cadastros_plataformas;
@@ -1840,6 +2031,8 @@ drop policy if exists cadastros_plataformas_secret_insert on public.cadastros_pl
 drop policy if exists cadastros_plataformas_secret_update on public.cadastros_plataformas_secret;
 drop policy if exists cadastros_plataformas_secret_delete on public.cadastros_plataformas_secret;
 drop policy if exists cadastros_plataformas_secret_select on public.cadastros_plataformas_secret;
+drop policy if exists cadastros_plataformas_log_select on public.cadastros_plataformas_log;
+drop policy if exists cadastros_plataformas_log_insert on public.cadastros_plataformas_log;
 
 create policy cadastros_plataformas_select
 on public.cadastros_plataformas
@@ -1866,12 +2059,36 @@ for delete
 to authenticated
 using (private.can_edit_apoio());
 
+create policy cadastros_plataformas_log_select
+on public.cadastros_plataformas_log
+for select
+to authenticated
+using (private.can_view_cadastro_plataforma_by_id(plataforma_id));
+
+create policy cadastros_plataformas_log_insert
+on public.cadastros_plataformas_log
+for insert
+to authenticated
+with check (private.can_view_cadastro_plataforma_by_id(plataforma_id));
+
+revoke all on function private.current_exp_role() from public;
+revoke all on function private.is_authenticated_user() from public;
+revoke all on function private.is_socio() from public;
+revoke all on function private.can_edit_apoio() from public;
 revoke all on function private.current_exp_user_name() from public;
+revoke all on function private.can_view_cadastro_plataforma_by_id(uuid) from public;
+grant execute on function private.current_exp_role() to authenticated;
+grant execute on function private.is_authenticated_user() to authenticated;
+grant execute on function private.is_socio() to authenticated;
+grant execute on function private.can_edit_apoio() to authenticated;
 grant execute on function private.current_exp_user_name() to authenticated;
 revoke all on function public.cs_reveal_credential(uuid) from public;
 grant execute on function public.cs_reveal_credential(uuid) to authenticated;
 revoke all on function public.cs_upsert_credential(uuid, text, text) from public;
 grant execute on function public.cs_upsert_credential(uuid, text, text) to authenticated;
+revoke all on function public.cs_save_plataforma(uuid, integer, text, text, text, text, text, text, text, text) from public;
+grant execute on function private.can_view_cadastro_plataforma_by_id(uuid) to authenticated;
+grant execute on function public.cs_save_plataforma(uuid, integer, text, text, text, text, text, text, text, text) to authenticated;
 
 commit;`;
 
@@ -1946,19 +2163,32 @@ alter table public.apoio_normas enable row level security;
 alter table public.apoio_indicacoes enable row level security;
 alter table public.apoio_subtemas_custom enable row level security;
 
-create policy if not exists "auth_select" on public.apoio_subtemas_custom for select to authenticated using (true);
-create policy if not exists "auth_modify" on public.apoio_subtemas_custom for all to authenticated using (private.is_socio());
+drop policy if exists "auth_select" on public.apoio_subtemas_custom;
+drop policy if exists "auth_modify" on public.apoio_subtemas_custom;
+drop policy if exists "auth_select" on public.apoio_temas_meta;
+drop policy if exists "auth_modify" on public.apoio_temas_meta;
+drop policy if exists "auth_select" on public.apoio_cards;
+drop policy if exists "auth_modify" on public.apoio_cards;
+drop policy if exists "auth_select" on public.apoio_jardim_subcards;
+drop policy if exists "auth_modify" on public.apoio_jardim_subcards;
+drop policy if exists "auth_select" on public.apoio_normas;
+drop policy if exists "auth_modify" on public.apoio_normas;
+drop policy if exists "auth_select" on public.apoio_indicacoes;
+drop policy if exists "auth_modify" on public.apoio_indicacoes;
 
-create policy if not exists "auth_select" on public.apoio_temas_meta for select to authenticated using (true);
-create policy if not exists "auth_modify" on public.apoio_temas_meta for all to authenticated using (private.is_socio());
-create policy if not exists "auth_select" on public.apoio_cards for select to authenticated using (true);
-create policy if not exists "auth_modify" on public.apoio_cards for all to authenticated using (private.is_socio());
-create policy if not exists "auth_select" on public.apoio_jardim_subcards for select to authenticated using (true);
-create policy if not exists "auth_modify" on public.apoio_jardim_subcards for all to authenticated using (private.is_socio());
-create policy if not exists "auth_select" on public.apoio_normas for select to authenticated using (true);
-create policy if not exists "auth_modify" on public.apoio_normas for all to authenticated using (private.is_socio());
-create policy if not exists "auth_select" on public.apoio_indicacoes for select to authenticated using (true);
-create policy if not exists "auth_modify" on public.apoio_indicacoes for all to authenticated using (private.is_socio());
+create policy "auth_select" on public.apoio_subtemas_custom for select to authenticated using (true);
+create policy "auth_modify" on public.apoio_subtemas_custom for all to authenticated using (private.is_socio()) with check (private.is_socio());
+
+create policy "auth_select" on public.apoio_temas_meta for select to authenticated using (true);
+create policy "auth_modify" on public.apoio_temas_meta for all to authenticated using (private.is_socio()) with check (private.is_socio());
+create policy "auth_select" on public.apoio_cards for select to authenticated using (true);
+create policy "auth_modify" on public.apoio_cards for all to authenticated using (private.is_socio()) with check (private.is_socio());
+create policy "auth_select" on public.apoio_jardim_subcards for select to authenticated using (true);
+create policy "auth_modify" on public.apoio_jardim_subcards for all to authenticated using (private.is_socio()) with check (private.is_socio());
+create policy "auth_select" on public.apoio_normas for select to authenticated using (true);
+create policy "auth_modify" on public.apoio_normas for all to authenticated using (private.is_socio()) with check (private.is_socio());
+create policy "auth_select" on public.apoio_indicacoes for select to authenticated using (true);
+create policy "auth_modify" on public.apoio_indicacoes for all to authenticated using (private.is_socio()) with check (private.is_socio());
 
 commit;`;
 
@@ -4683,6 +4913,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     indicacoesCache: [],
     jardimSubcardsCache: {},
     dynamicTablesOk: false,
+    dynamicTablesError: '',
     vegetacaoSpecies: [],
     vegFilters: { busca: '', grupo: '', tipo: '', insolacao: '', porte: '', altura: '' },
     vegSelectionMode: false,
@@ -5193,6 +5424,22 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       sb.from('apoio_jardim_subcards').select('*').order('secao').order('ordem'),
       sb.from('apoio_subtemas_custom').select('*').order('tema_slug').order('ordem')
     ]);
+    const resultados = [
+      ['apoio_temas_meta', metaRes],
+      ['apoio_normas', normasRes],
+      ['apoio_indicacoes', indicacoesRes],
+      ['apoio_jardim_subcards', jvRes],
+      ['apoio_subtemas_custom', subtemasRes]
+    ];
+    const falhas = resultados.filter(([, res]) => res?.error);
+    if (falhas.length) {
+      G.dynamicTablesOk = false;
+      G.dynamicTablesError = falhas.map(([nome, res]) => `${nome}: ${res.error.message || 'falha desconhecida'}`).join(' | ');
+      falhas.forEach(([nome, res]) => console.warn(`Falha ao carregar ${nome}`, res.error));
+    } else {
+      G.dynamicTablesOk = true;
+      G.dynamicTablesError = '';
+    }
     if (metaRes.data) {
       metaRes.data.forEach(m => { G.temasMetaCache[m.slug] = m; });
     }
@@ -5212,13 +5459,12 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         G.subtemasCustomCache[item.tema_slug].push(item);
       });
     }
-    G.dynamicTablesOk = true;
   }
 
   carregarDados = async function() {
     await oldCarregarDados();
     await carregarApoioExtra();
-    await carregarDadosDinamicos().catch(() => {});
+    await carregarDadosDinamicos();
     syncSidebar();
   };
 
@@ -6287,47 +6533,28 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         toast('Informe o nome da plataforma.');
         return;
       }
-      let error;
-      let plataformaId = id;
-      if(id) {
-        ({ error } = await sb.from('cadastros_plataformas').update({
-          numero: payload.numero,
-          nome: payload.nome,
-          nivel_acesso: payload.nivel_acesso,
-          uso: payload.uso || null,
-          clientes: payload.clientes || null,
-          cofre_link: payload.cofre_link || null,
-          observacoes: payload.observacoes || null,
-          updated_at: new Date().toISOString()
-        }).eq('id', id));
-      } else {
-        const { data, error: insertError } = await sb.from('cadastros_plataformas').insert({
-          numero: payload.numero,
-          nome: payload.nome,
-          nivel_acesso: payload.nivel_acesso,
-          uso: payload.uso || null,
-          clientes: payload.clientes || null,
-          cofre_link: payload.cofre_link || null,
-          observacoes: payload.observacoes || null
-        }).select('id').single();
-        error = insertError;
-        plataformaId = data?.id || '';
-      }
+      const { data, error } = await sb.rpc('cs_save_plataforma', {
+        p_id: id || null,
+        p_numero: payload.numero,
+        p_nome: payload.nome,
+        p_nivel_acesso: payload.nivel_acesso,
+        p_uso: payload.uso || null,
+        p_clientes: payload.clientes || null,
+        p_cofre_link: payload.cofre_link || null,
+        p_observacoes: payload.observacoes || null,
+        p_login: credencial.login || null,
+        p_senha: credencial.senha || null
+      });
       if(error) {
+        const msg = String(error.message || '');
+        if (error.code === 'PGRST202' || msg.includes('cs_save_plataforma') || msg.includes('schema cache')) {
+          toast('Atualize o SQL de Cadastros e Senhas no Supabase antes de salvar alterações nesta área.');
+          return;
+        }
         toast('Erro ao salvar plataforma: ' + error.message);
         return;
       }
-      if(credencial.login || credencial.senha) {
-        const { error: secretError } = await sb.rpc('cs_upsert_credential', {
-          p_plataforma_id: plataformaId,
-          p_login: credencial.login || null,
-          p_senha: credencial.senha || null
-        });
-        if(secretError) {
-          toast('Erro ao salvar credencial: ' + secretError.message);
-          return;
-        }
-      }
+      const plataformaId = (Array.isArray(data) ? data[0] : data) || id;
       delete window.__csSecretsCache[plataformaId];
       iniciarCadastrosSenhas();
     };
@@ -6834,7 +7061,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   }
 
   function readSpeciesPayload(id) {
-    return {
+    const payload = {
       ...(id ? { id } : {}),
       grupo: document.getElementById('veg-grupo').value,
       nome_popular: document.getElementById('veg-nome-popular').value.trim(),
@@ -6871,12 +7098,13 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       url_imagem: document.getElementById('veg-url-imagem')?.value.trim() || '',
       updated_at: new Date().toISOString(),
       atualizado_por: G.usuario?.id || null,
-      criado_por: G.usuario?.id || null,
       // Qualquer edição remove a validação — deve ser re-validada manualmente
       validado: false,
       validado_por: null,
       validado_em: null
     };
+    if (!id) payload.criado_por = G.usuario?.id || null;
+    return payload;
   }
 
   function upsertSpeciesLocal(species) {

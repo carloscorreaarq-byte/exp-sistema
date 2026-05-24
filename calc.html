@@ -1133,12 +1133,71 @@ function load() {
     if (d.cSubs)  cSubs  = d.cSubs;
     if (d.cRepasse !== undefined) cRepasse = d.cRepasse;
     if (d.editingProposalId !== undefined) editingProposalId = d.editingProposalId;
+    refreshProposalCaches();
   } catch(e) {}
 }
 
 // ════════════════════════════════════════════════════════
 // SUPABASE
 // ════════════════════════════════════════════════════════
+function refreshProposalCaches() {
+  const maxPropCode = S.proposals.reduce((max, p) => {
+    const code = Number(p?.propCode);
+    return Number.isFinite(code) ? Math.max(max, code) : max;
+  }, 0);
+  S.propCodeSeq = Math.max(Number(S.propCodeSeq) || 0, maxPropCode);
+  S.proposals.sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
+  const allClientes = S.proposals.map(p => p?.cliente).filter(Boolean);
+  const allCidades = S.proposals.map(p => p?.cidade).filter(Boolean);
+  S.clientes = [...new Set([...S.clientes, ...allClientes])].sort();
+  S.cidades = [...new Set([...S.cidades, ...allCidades])].sort();
+}
+
+function normalizeProposalFromRow(row) {
+  let parsed = {};
+  try {
+    parsed = row?.data_json ? JSON.parse(row.data_json) : {};
+  } catch(e) {}
+
+  const normalized = {
+    ...parsed,
+    id: row?.proposal_id ?? parsed.id ?? Date.now(),
+    version: row?.version ?? parsed.version ?? 0,
+    propCode: row?.prop_code ?? parsed.propCode ?? null,
+    parentId: row?.parent_id ?? parsed.parentId ?? null,
+    status: row?.status ?? parsed.status ?? 'ativa',
+    cliente: row?.cliente ?? parsed.cliente ?? '',
+    projeto: row?.projeto ?? parsed.projeto ?? '',
+    resp: row?.resp ?? parsed.resp ?? '',
+    cidade: row?.cidade ?? parsed.cidade ?? '',
+    uf: row?.uf ?? parsed.uf ?? '',
+    obs: row?.obs ?? parsed.obs ?? '',
+    data: row?.data_proposta ?? parsed.data ?? '',
+    mainNucleo: row?.main_nucleo ?? parsed.mainNucleo ?? '',
+    total: row?.total ?? parsed.total ?? 0,
+    createdAt: row?.created_at ?? parsed.createdAt ?? null,
+    _sbUpdatedAt: row?.updated_at ?? parsed._sbUpdatedAt ?? null,
+  };
+
+  if ('items' in (row || {})) normalized.items = row.items ?? [];
+  if ('desps' in (row || {})) normalized.desps = row.desps ?? [];
+  if ('subs' in (row || {})) normalized.subs = row.subs ?? [];
+  if ('repasse' in (row || {})) normalized.repasse = row.repasse ?? null;
+  if ('despbit' in (row || {})) normalized.despBit = row.despbit ?? 0;
+
+  return normalized;
+}
+
+async function fetchLatestCalcParamsRow() {
+  if (!S.sbUrl || !S.sbKey) return null;
+  const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?select=*&order=updated_at.desc,id.desc&limit=1`, {
+    headers: getSBHeaders()
+  });
+  if (!r.ok) throw new Error(await r.text());
+  const d = await r.json();
+  return d?.[0] || null;
+}
+
 function getSBHeaders() {
   return {
     'Content-Type': 'application/json',
@@ -1254,6 +1313,11 @@ async function syncProposalToSupabase(proposal) {
     }
 
     if (r.ok || r.status === 201 || r.status === 200 || r.status === 204) {
+      if (payload === corePayload) {
+        console.warn('Supabase sync parcial: payload mínimo salvo, colunas estruturadas podem ter ficado defasadas.');
+        setSyncStatus('err', 'sync parcial');
+        return false;
+      }
       proposal._sbUpdatedAt = payload.updated_at;
       setSyncStatus('ok', 'nuvem');
       return true;
@@ -1283,10 +1347,7 @@ async function loadProposalsFromSupabase() {
     rows.forEach(row => {
       try {
         // Usa colunas jsonb estruturadas se disponíveis (K6), senão parse data_json
-        let p = JSON.parse(row.data_json);
-        if (row.items) p.items = row.items;
-        if (row.desps) p.desps = row.desps;
-        if (row.subs)  p.subs  = row.subs;
+        const p = normalizeProposalFromRow(row);
         const existing = localMap.get(row.proposal_id);
         if (!existing) {
           S.proposals.push(p);
@@ -1294,24 +1355,13 @@ async function loadProposalsFromSupabase() {
           changed++;
         } else if ((row.updated_at || '') > (existing._sbUpdatedAt || '')) {
           // Atualiza campos essenciais da proposta existente com dados do banco
-          existing.items  = p.items;
-          existing.desps  = p.desps;
-          existing.subs   = p.subs;
-          existing.status = p.status;
-          existing._sbUpdatedAt = row.updated_at;
+          Object.assign(existing, p);
           changed++;
         }
       } catch(e){}
     });
-    if (changed > 0) {
-      S.proposals.sort((a,b)=>b.id-a.id);
-      // Rebuild S.clientes and S.cidades from all proposals (Supabase may have entries not in localStorage)
-      const allClientes = S.proposals.map(p => p.cliente).filter(Boolean);
-      S.clientes = [...new Set([...S.clientes, ...allClientes])].sort();
-      const allCidades = S.proposals.map(p => p.cidade).filter(Boolean);
-      S.cidades = [...new Set([...S.cidades, ...allCidades])].sort();
-      save();
-    }
+    refreshProposalCaches();
+    if (changed > 0) save();
     setSyncStatus('ok','nuvem');
     if (document.getElementById('tab-hist').classList.contains('active')) renderHist();
     // Sincroniza clientes e cidades com a tabela do CRM (silencioso)
@@ -2593,6 +2643,7 @@ async function salvarProposta() {
 
   // Nova proposta: gera propCode sequencial
   if (propCode === null) {
+    refreshProposalCaches();
     S.propCodeSeq = (S.propCodeSeq||0) + 1;
     propCode = S.propCodeSeq;
   }
@@ -2624,8 +2675,7 @@ async function salvarProposta() {
   };
 
   S.proposals.unshift(p);
-  if (p.cliente && !S.clientes.includes(p.cliente)) S.clientes.push(p.cliente);
-  if (p.cidade && !S.cidades.includes(p.cidade)) { S.cidades.push(p.cidade); S.cidades.sort(); }
+  refreshProposalCaches();
   save();
 
   // Sincroniza com Supabase
@@ -3439,8 +3489,14 @@ async function saveParamsToSupabase() {
   };
   try {
     const hdrs = { ...getSBHeaders() };
-    if (S.calcParamsId) {
-      const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?id=eq.${S.calcParamsId}`, {
+    let targetId = S.calcParamsId;
+    if (!targetId) {
+      const latestRow = await fetchLatestCalcParamsRow();
+      targetId = latestRow?.id || null;
+      if (targetId) S.calcParamsId = targetId;
+    }
+    if (targetId) {
+      const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?id=eq.${targetId}`, {
         method: 'PATCH', headers: hdrs, body: JSON.stringify(payload),
       });
       if (!r.ok) throw new Error(await r.text());
@@ -3463,22 +3519,19 @@ async function saveParamsToSupabase() {
 async function loadParamsFromSupabase() {
   if (!S.sbUrl || !S.sbKey) return;
   try {
-    const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?limit=1`, { headers: getSBHeaders() });
-    if (!r.ok) return;
-    const d = await r.json();
-    if (!d?.length) return;
-    const row = d[0];
+    const row = await fetchLatestCalcParamsRow();
+    if (!row) return;
     S.calcParamsId = row.id;
-    if (row.cub)         S.cub         = row.cub;
-    if (row.cub_mes)     S.cubMes      = row.cub_mes;
-    if (row.cub_hist)    S.cubHist     = row.cub_hist;
-    if (row.fp)          S.fP          = row.fp;
-    if (row.fu)          S.fU          = row.fu;
-    if (row.mins)        S.mins        = row.mins;
+    if (row.cub != null)         S.cub         = row.cub;
+    if (row.cub_mes != null)     S.cubMes      = row.cub_mes;
+    if (row.cub_hist != null)    S.cubHist     = row.cub_hist;
+    if (row.fp != null)          S.fP          = row.fp;
+    if (row.fu != null)          S.fU          = row.fu;
+    if (row.mins != null)        S.mins        = row.mins;
     // CALC-3+4: merge profundo — preserva nucleos ausentes no registro do Supabase
-    if (row.etapas)      S.etapas     = { ...S.etapas,     ...row.etapas };
-    if (row.dist_etapas) S.distEtapas = { ...S.distEtapas, ...row.dist_etapas };
-    if (row.params)      S.params      = row.params;
+    if (row.etapas != null)      S.etapas     = { ...S.etapas,     ...row.etapas };
+    if (row.dist_etapas != null) S.distEtapas = { ...S.distEtapas, ...row.dist_etapas };
+    if (row.params != null)      S.params      = row.params;
     save();
     updateCubDisplay();
     renderParams();
