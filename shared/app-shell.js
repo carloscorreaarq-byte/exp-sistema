@@ -4,7 +4,7 @@
 
   let shellLifecycleBound = false;
   let shellUiBound = false;
-  const SHELL_TIMEOUT_MS = 12000;
+  const SHELL_TIMEOUT_MS = 25000;
 
   function ensureClients() {
     if (!window.supabase) {
@@ -62,6 +62,24 @@
   function redirectToLogin() {
     sessionStorage.removeItem('exp_usuario');
     window.location.href = 'index.html';
+  }
+
+  function applySessionUsuario(authId, usuario) {
+    const payload = buildExpUsuarioPayload(authId, usuario);
+    sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
+    window.G = window.G || {};
+    window.G.usuario = usuario;
+    renderShellIdentity(usuario);
+    publishSessionReady(payload);
+    return payload;
+  }
+
+  function tryUseCachedUsuario(expectedAuthId = null) {
+    const cached = currentSessionUsuario();
+    if (!cached) return null;
+    if (expectedAuthId && cached.auth_id && cached.auth_id !== expectedAuthId) return null;
+    const payload = applySessionUsuario(cached.auth_id || expectedAuthId || null, cached);
+    return { session: null, usuario: cached, payload, fromCache: true };
   }
 
   function withTimeout(promise, message, timeoutMs = SHELL_TIMEOUT_MS) {
@@ -214,29 +232,40 @@
 
   async function bootstrapAuthenticatedShell() {
     const sb = ensureClients();
-    const { data: { session } } = await withTimeout(
-      sb.auth.getSession(),
-      'Tempo esgotado ao validar a sessao atual.'
-    );
-    if (!session) {
-      redirectToLogin();
-      return null;
-    }
+    try {
+      const { data: { session } } = await withTimeout(
+        sb.auth.getSession(),
+        'Tempo esgotado ao validar a sessao atual.'
+      );
+      if (!session) {
+        const cachedNoSession = tryUseCachedUsuario();
+        if (cachedNoSession) return cachedNoSession;
+        redirectToLogin();
+        return null;
+      }
 
-    const usuario = await fetchCurrentUsuario(session.user.id);
-    if (!usuario) {
-      await sb.auth.signOut();
-      redirectToLogin();
-      return null;
-    }
+      try {
+        const usuario = await fetchCurrentUsuario(session.user.id);
+        if (!usuario) {
+          const cachedMissingUser = tryUseCachedUsuario(session.user.id);
+          if (cachedMissingUser) return cachedMissingUser;
+          await sb.auth.signOut();
+          redirectToLogin();
+          return null;
+        }
 
-    const payload = buildExpUsuarioPayload(session.user.id, usuario);
-    sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
-    window.G = window.G || {};
-    window.G.usuario = usuario;
-    renderShellIdentity(usuario);
-    publishSessionReady(payload);
-    return { session, usuario, payload };
+        const payload = applySessionUsuario(session.user.id, usuario);
+        return { session, usuario, payload };
+      } catch (error) {
+        const cachedTimedOut = tryUseCachedUsuario(session.user.id);
+        if (cachedTimedOut) return cachedTimedOut;
+        throw error;
+      }
+    } catch (error) {
+      const cached = tryUseCachedUsuario();
+      if (cached) return cached;
+      throw error;
+    }
   }
 
   function bindSessionLifecycle() {
@@ -244,25 +273,28 @@
     shellLifecycleBound = true;
     const sb = ensureClients();
     sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        redirectToLogin();
-        return;
+      try {
+        if (event === 'SIGNED_OUT' || !session) {
+          redirectToLogin();
+          return;
+        }
+        if (!['TOKEN_REFRESHED', 'SIGNED_IN', 'USER_UPDATED', 'INITIAL_SESSION'].includes(event)) {
+          return;
+        }
+        const usuario = await fetchCurrentUsuario(session.user.id);
+        if (!usuario) {
+          const cachedMissingUser = tryUseCachedUsuario(session.user.id);
+          if (cachedMissingUser) return;
+          await sb.auth.signOut();
+          redirectToLogin();
+          return;
+        }
+        applySessionUsuario(session.user.id, usuario);
+      } catch (error) {
+        const cached = tryUseCachedUsuario(session?.user?.id || null);
+        if (cached) return;
+        console.warn('Falha ao atualizar sessao compartilhada.', error);
       }
-      if (!['TOKEN_REFRESHED', 'SIGNED_IN', 'USER_UPDATED', 'INITIAL_SESSION'].includes(event)) {
-        return;
-      }
-      const usuario = await fetchCurrentUsuario(session.user.id);
-      if (!usuario) {
-        await sb.auth.signOut();
-        redirectToLogin();
-        return;
-      }
-      const payload = buildExpUsuarioPayload(session.user.id, usuario);
-      sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
-      window.G = window.G || {};
-      window.G.usuario = usuario;
-      renderShellIdentity(usuario);
-      publishSessionReady(payload);
     });
   }
 
