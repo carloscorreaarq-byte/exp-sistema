@@ -1588,6 +1588,20 @@ body {
 .res-sem-pct { font-size:11px; color:#aaa; font-style:italic; padding:8px 0; }
 /* Contador de % alocado no form de edição */
 .ep-pct-total { font-size:10px; color:#888; text-align:right; padding:6px 2px 0; }
+/* Gráfico de colunas verticais — Resultado */
+.res-vchart { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; align-items:flex-end; }
+.res-vchart-col { display:flex; flex-direction:column; align-items:center; flex:1; min-width:52px; max-width:96px; }
+.res-vchart-barwrap { position:relative; width:100%; height:140px; }
+.res-vchart-bg { position:absolute; bottom:0; left:0; right:0; background:rgba(82,128,202,.13); border-radius:4px 4px 0 0; border:1px solid rgba(82,128,202,.18); border-bottom:none; }
+.res-vchart-fill { position:absolute; bottom:0; left:0; right:0; border-radius:4px 4px 0 0; overflow:hidden; display:flex; flex-direction:column-reverse; }
+.res-vchart-horas { background:var(--azul); }
+.res-vchart-custos { background:var(--ouro,#d4aa37); }
+.res-vchart-label { font-size:9px; font-weight:600; color:var(--grafite); text-align:center; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; padding:0 2px; }
+.res-vchart-pct { font-size:9px; color:#888; margin-top:1px; text-align:center; }
+.res-vchart-margem { font-size:9px; font-weight:700; margin-top:1px; text-align:center; }
+.res-vchart-margem.pos { color:var(--verde); }
+.res-vchart-margem.neg { color:var(--terracota); }
+.res-vchart-margem.zero { color:#aaa; }
 .ep-pct-total.completo { color:var(--verde); font-weight:600; }
 .ep-pct-total.excesso { color:var(--terracota); font-weight:700; }
 
@@ -3872,7 +3886,7 @@ body {
           <div class="ck-section" id="mp-ck-tarefas-sec">
             <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
               <span class="ck-section-title">Checklists de Tarefas</span>
-              <button class="btn sm verde socio-only" id="btn-novo-ck-tarefa" onclick="novoChecklistTarefa()" style="display:none">+ Novo</button>
+              <button class="btn sm verde socio-only" id="btn-novo-ck-tarefa" onclick="novoChecklistTarefa()" style="display:none">+ Novo checklist</button>
             </div>
             <div id="ck-tarefas-form-wrap"></div>
             <div id="ck-tarefas-lista"><div class="empty-note">Carregando…</div></div>
@@ -13789,31 +13803,41 @@ async function carregarResultado(prodId) {
     const resPos = totalResultado != null ? totalResultado >= 0 : null;
     const etapasComparativo = etapasDados.filter(({ previsto, realizado }) => (previsto || 0) > 0 || realizado > 0);
     const escalaChart = etapasComparativo.reduce((m, { previsto, realizado }) => Math.max(m, previsto || 0, realizado || 0), 0) || 1;
+    const CHART_H = 140;
     const chartHtml = etapasComparativo.length ? `
-        <div class="res-chart">
-          <div class="res-chart-head">
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--cinza2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">
             <span>Comparativo por etapa</span>
-            <div class="res-chart-legend">
-              <span><i class="res-chart-dot prev"></i> Previsto</span>
-              <span><i class="res-chart-dot real"></i> Realizado</span>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:4px"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;background:rgba(82,128,202,.22)"></i> Previsto</span>
+              <span style="display:inline-flex;align-items:center;gap:4px"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;background:var(--azul)"></i> Horas</span>
+              <span style="display:inline-flex;align-items:center;gap:4px"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;background:var(--ouro,#d4aa37)"></i> Custos</span>
             </div>
           </div>
-          ${etapasComparativo.map(({ etapa, previsto, realizado, resultado }) => {
-            const previstoW = Math.max(((previsto || 0) / escalaChart) * 100, (previsto || 0) > 0 ? 6 : 0);
-            const realizadoW = Math.max((realizado / escalaChart) * 100, realizado > 0 ? 6 : 0);
-            const realCls = resultado == null ? 'real' : resultado >= 0 ? 'real pos' : 'real neg';
-            return `
-              <div class="res-chart-row">
-                <div class="res-chart-name">${_regEsc(etapa.nome)}</div>
-                <div class="res-chart-track">
-                  ${(previsto || 0) > 0 ? `<span class="res-chart-prev" style="width:${Math.min(previstoW, 100)}%"></span>` : ''}
-                  ${realizado > 0 ? `<span class="res-chart-real ${realCls}" style="width:${Math.min(realizadoW, 100)}%"></span>` : ''}
-                </div>
-                <div class="res-chart-values">
-                  ${previsto ? `<strong>${fR(realizado)}</strong> / ${fR(previsto)}` : `<strong>${fR(realizado)}</strong>`}
-                </div>
-              </div>`;
-          }).join('')}
+          <div class="res-vchart">
+            ${etapasComparativo.map(({ etapa, previsto, realizado, resultado, custoH, custoL }) => {
+              const previstoH = previsto ? Math.round((previsto / escalaChart) * CHART_H) : 0;
+              const realizadoH = Math.round((realizado / escalaChart) * CHART_H);
+              const horasH  = realizado > 0 ? Math.round((custoH  / realizado) * realizadoH) : 0;
+              const custosH = realizadoH - horasH;
+              const pctConsumo = previsto && previsto > 0 ? Math.round((realizado / previsto) * 100) : null;
+              const margemCls = resultado == null ? 'zero' : resultado >= 0 ? 'pos' : 'neg';
+              const margemTxt = resultado == null ? '—' : (resultado >= 0 ? '+' : '') + fR(Math.abs(resultado));
+              return `
+                <div class="res-vchart-col">
+                  <div class="res-vchart-barwrap">
+                    ${previstoH > 0 ? `<div class="res-vchart-bg" style="height:${previstoH}px"></div>` : ''}
+                    ${realizadoH > 0 ? `<div class="res-vchart-fill" style="height:${realizadoH}px">
+                      ${custosH > 0 ? `<div class="res-vchart-custos" style="flex:${custosH}"></div>` : ''}
+                      ${horasH  > 0 ? `<div class="res-vchart-horas"  style="flex:${horasH}"></div>`  : ''}
+                    </div>` : ''}
+                  </div>
+                  <div class="res-vchart-label" title="${_regEsc(etapa.nome)}">${_regEsc(etapa.nome)}</div>
+                  ${pctConsumo != null ? `<div class="res-vchart-pct">${pctConsumo}%</div>` : ''}
+                  <div class="res-vchart-margem ${margemCls}">${margemTxt}</div>
+                </div>`;
+            }).join('')}
+          </div>
         </div>` : '';
     sumHtml = `
       <div class="res-sumario">
