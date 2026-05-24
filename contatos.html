@@ -546,11 +546,13 @@ function buildExpUsuarioPayload(authId, usuario) {
   const nome = (usuario && usuario.nome) || '';
   return {
     auth_id: authId || null,
+    id: usuario && typeof usuario.id !== 'undefined' ? usuario.id : null,
     app_user_id: usuario && typeof usuario.id !== 'undefined' ? usuario.id : null,
     nome,
     apelido: (usuario && usuario.apelido) || (nome ? nome.split(' ')[0] : ''),
     iniciais: (usuario && usuario.iniciais) || '',
     cor: (usuario && usuario.cor) || '#888',
+    avatar_url: (usuario && usuario.avatar_url) || null,
     role: (usuario && usuario.role) || '',
     viewer_only: !!(usuario && usuario.viewer_only),
     is_platform_manager: !!(usuario && usuario.is_platform_manager),
@@ -940,46 +942,7 @@ function renderDesativados() {
   }).join('');
 }
 
-renderPendentes = function() {};
 
-// ─── PENDENTES (sócios) ──────────────────────────────────────────────────────
-function renderPendentes() {
-  const wrap = document.getElementById('pendentes-wrap');
-  if(!isSocio() || G.pendentes.length === 0) { wrap.style.display = 'none'; atualizarSineta(); return; }
-  wrap.style.display = 'block';
-
-  const cards = G.pendentes.map(p => {
-    const c       = G.contatos.find(x=>x.id===p.contato_id) || G.desativados.find(x=>x.id===p.contato_id) || {};
-    const pid     = singleQuote(p.id);
-    const mudancas = CAMPOS.filter(f => p.dados_novos[f] !== undefined && String(p.dados_novos[f]||'') !== String(c[f]||''));
-    const rowsHtml = mudancas.map(f => `
-      <div class="pendente-row">
-        <span class="pendente-label">${CAMPO_LABELS[f]}</span>
-        <span class="pendente-old">${esc(c[f]||'—')}</span>
-        <span class="pendente-arrow">→</span>
-        <span class="pendente-new">${esc(p.dados_novos[f]||'—')}</span>
-      </div>`).join('');
-    return `
-    <div class="pendente-card">
-      <div class="pendente-head">
-        <span class="pendente-nome">${esc(c.nome||'Contato desconhecido')}</span>
-        <span class="pendente-meta">por ${esc(p.editado_por_nome||'—')} · ${fmtData(p.editado_em)}</span>
-        <div class="pendente-btns">
-          <button class="btn verde xs" onclick="aprovarEdicao(${pid})">✓ Aprovar</button>
-          <button class="btn outline xs" onclick="rejeitarEdicao(${pid})">✕ Rejeitar</button>
-        </div>
-      </div>
-      <div class="pendente-mudancas">${rowsHtml || '<span style="font-size:10px;color:#bbb">Sem alterações detectadas.</span>'}</div>
-    </div>`;
-  }).join('');
-
-  wrap.innerHTML = `
-    <div class="pendentes-banner">
-      <div class="pendentes-title">✎ Edições pendentes · ${G.pendentes.length}</div>
-      ${cards}
-    </div>`;
-  atualizarSineta();
-}
 
 // ─── MODAL ───────────────────────────────────────────────────────────────────
 let _edicaoId = null;
@@ -1119,9 +1082,7 @@ async function reativarContato(id) {
   buscar(G.busca);
 }
 
-async function aprovarEdicao() {}
 
-async function rejeitarEdicao() {}
 
 // ─── CARREGAR DADOS ───────────────────────────────────────────────────────────
 async function carregarContatos() {
@@ -1160,8 +1121,6 @@ async function carregarContatos() {
 }
 
 // ─── SINETA ──────────────────────────────────────────────────────────────────
-function atualizarSineta() {}
-function scrollToPendentes() {}
 
 // ── EXP ROOM PRESENCE ───────────────────────────────────────
 // Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
@@ -1236,13 +1195,14 @@ function setFeedbackStatus(msg) {
 }
 async function enviarFeedback() {
   const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
-  if(!u?.id) { setFeedbackStatus('Sessão indisponível. Faça login para enviar feedback.'); return; }
+  const userId = u?.app_user_id || u?.id || null;
+  if(!userId) { setFeedbackStatus('Sessão indisponível. Faça login para enviar feedback.'); return; }
   const tipo = document.getElementById('ct-feedback-type')?.value || 'problema';
   const mensagem = document.getElementById('ct-feedback-message')?.value?.trim() || '';
   if(!mensagem) { setFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.'); return; }
   setFeedbackStatus('Enviando...');
   const { error } = await sb.from('plataforma_feedback').insert({
-    usuario_id: u.id, tipo, mensagem, status: 'novo',
+    usuario_id: userId, tipo, mensagem, status: 'novo',
     origem_modulo: 'Contatos', url_origem: 'contatos.html',
     criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString()
   });
@@ -1259,12 +1219,34 @@ async function sair() {
   window.location.href = 'index.html';
 }
 
+async function carregarUsuarioSessao(authId) {
+  const selects = [
+    'id, nome, iniciais, role, cor, avatar_url, viewer_only, apelido, is_platform_manager, can_coordinate_projects, termo_status, termo_assinado_em, termo_expira_em, status_acesso',
+    'id, nome, iniciais, role, cor, avatar_url, viewer_only',
+    'id, nome, iniciais, role, cor'
+  ];
+
+  let lastError = null;
+  for (const fields of selects) {
+    const { data, error } = await sb.from('usuarios').select(fields).eq('auth_id', authId).single();
+    if (!error && data) return data;
+    lastError = error || lastError;
+  }
+
+  throw lastError || new Error('Usuário não encontrado');
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await sb.auth.getSession();
   if(!session) { window.location.href = 'index.html'; return; }
 
-  const { data: u } = await sb.from('usuarios').select('id, nome, iniciais, role, cor, avatar_url, viewer_only').eq('auth_id', session.user.id).single();
-  if(!u) { window.location.href = 'index.html'; return; }
+  let u = null;
+  try {
+    u = await carregarUsuarioSessao(session.user.id);
+  } catch {
+    window.location.href = 'index.html';
+    return;
+  }
   G.usuario = u;
   sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, u)));
   if (['socio', 'socio_admin'].includes((u.role || '').toLowerCase())) {
@@ -1276,6 +1258,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     av.classList.add('has-avatar');
     av.innerHTML = `<img src="${u.avatar_url}" alt="${u.iniciais || ''}">`;
   } else {
+    av.classList.remove('has-avatar');
+    av.innerHTML = '';
     av.textContent = u.iniciais || '?';
     av.style.background = u.cor || '#888';
   }

@@ -433,14 +433,14 @@ body {
   margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
 }
 /* ── TIMELINE ────────────────────────────────────────────── */
-.timeline { position: relative; padding-left: 18px; }
+.timeline { position: relative; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
 .timeline::before {
-  content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px;
+  content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px;
   width: 1px; background: var(--cinza2);
 }
-.tl-item { position: relative; margin-bottom: 10px; padding-left: 14px; }
+.tl-item { position: relative; padding-left: 14px; }
 .tl-dot {
-  position: absolute; left: -12px; top: 4px;
+  position: absolute; left: -12px; top: 5px;
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--cinza); border: 1.5px solid #fff;
   box-shadow: 0 0 0 1px var(--cinza);
@@ -18347,7 +18347,8 @@ window.gcalCarregarEventos = async function() {
 // Abre o modal de reunião pré-preenchido com dados da etapa
 function gcalAbrirReuniaoEtapa(etapaId, etapaNome, produtoNome) {
   if (!GCAL.token) {
-    toast('Conecte o Google Calendar primeiro para agendar reuniões.');
+    toast('Conecte o Google Calendar para agendar reuniões.');
+    gcalAbrirConfig();
     return;
   }
   // Guarda contexto da etapa para usar no salvar
@@ -18443,12 +18444,8 @@ const _tlWrapRender = (etapas_arg) => {
       reuniaoBadge = `<div class="tl-reuniao-badge${passada?' passada':''}">${meetLink}📅 ${fmtDate(e.data_reuniao)}</div>`;
     }
 
-    // Botão agendar inline (à direita do nome)
-    const agendarBtn = GCAL.token
-      ? `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})">
-           📅 ${e.data_reuniao ? 'Reagendar' : 'Agendar'}
-         </button>`
-      : '';
+    // Botão agendar inline (à direita do nome) — sempre visível
+    const agendarBtn = `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})">📅 ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
 
     return `<div class="tl-item">
       <div class="tl-dot ${st.dot}"></div>
