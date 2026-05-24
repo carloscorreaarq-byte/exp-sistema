@@ -2521,6 +2521,7 @@ body {
 }
 .gcal-btn:hover { border-color: #999; }
 .gcal-btn.conectado { border-color: #34a853; color: #34a853; }
+.gcal-btn.expirado  { border-color: #fbbc04; color: #f09800; }
 .gcal-btn .gcal-logo { width: 13px; height: 13px; flex-shrink: 0; }
 .gcal-badge {
   display: inline-flex; align-items: center; justify-content: center;
@@ -2574,6 +2575,90 @@ body {
 .gcal-toggle input:checked + .gcal-toggle-slider::before { transform: translateX(14px); }
 .cb-google { background: #4285f4; }
 
+/* ── Modal Agendar Reunião ───────────────────────────────── */
+.gcr-field { margin-bottom: 12px; }
+.gcr-label {
+  display: block; font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; color: #999; margin-bottom: 4px;
+}
+.gcr-input {
+  width: 100%; border: 1px solid var(--cinza); border-radius: 7px;
+  padding: 7px 10px; font-size: 12px; font-family: var(--font-ui);
+  outline: none; box-sizing: border-box; background: var(--branco); color: var(--grafite);
+  transition: border-color .12s;
+}
+.gcr-input:focus { border-color: #4285f4; }
+.gcr-time-row { display: flex; gap: 8px; }
+.gcr-time-row .gcr-field { flex: 1; }
+.gcr-tag-wrap {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  border: 1px solid var(--cinza); border-radius: 7px; padding: 5px 8px;
+  min-height: 36px; cursor: text; transition: border-color .12s;
+  background: var(--branco); position: relative;
+}
+.gcr-tag-wrap:focus-within { border-color: #4285f4; }
+.gcr-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--cinza2); border-radius: 20px;
+  padding: 2px 8px 2px 4px; font-size: 11px; max-width: 200px;
+}
+.gcr-tag-av {
+  width: 18px; height: 18px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-size: 7px;
+  font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.gcr-tag-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.gcr-tag-rm {
+  font-size: 12px; color: #aaa; cursor: pointer; line-height: 1;
+  flex-shrink: 0; padding: 0 1px;
+}
+.gcr-tag-rm:hover { color: var(--terracota); }
+.gcr-tag-input {
+  border: none; outline: none; font-size: 12px; font-family: var(--font-ui);
+  background: transparent; min-width: 140px; flex: 1; color: var(--grafite);
+}
+.gcr-suggestions {
+  position: absolute; top: calc(100% + 3px); left: 0; right: 0;
+  background: var(--branco); border: 1px solid var(--cinza); border-radius: 8px;
+  z-index: 200; max-height: 180px; overflow-y: auto;
+  box-shadow: 0 4px 14px rgba(0,0,0,.1);
+}
+.gcr-sug-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  cursor: pointer; font-size: 11px; transition: background .1s;
+}
+.gcr-sug-item:hover { background: var(--cinza2); }
+.gcr-sug-av {
+  width: 22px; height: 22px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-size: 8px;
+  font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.gcr-sug-nome { font-weight: 600; }
+.gcr-sug-email { color: #999; font-size: 10px; }
+.gcr-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid var(--cinza2);
+}
+.gcr-toggle-row:last-child { border-bottom: none; }
+.gcr-toggle-lbl { font-size: 11px; font-weight: 500; }
+.gcr-toggle-desc { font-size: 9px; color: #999; margin-top: 1px; }
+.gcr-meet-badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 10px;
+  color: #1a73e8; background: #e8f0fe; border-radius: 4px; padding: 2px 7px;
+  margin-top: 6px;
+}
+.gcr-link-box {
+  background: var(--cinza2); border-radius: 7px; padding: 10px 12px;
+  margin-top: 8px; display: flex; align-items: center; gap: 8px;
+}
+.gcr-link-url { font-size: 11px; color: #1a73e8; flex: 1; word-break: break-all; }
+.gcr-copy-btn {
+  font-size: 10px; padding: 3px 8px; border: 1px solid var(--cinza);
+  border-radius: 5px; background: var(--branco); cursor: pointer;
+  white-space: nowrap; font-family: var(--font-ui);
+}
+.gcr-copy-btn:hover { border-color: #999; }
+
 /* ── CALENDÁRIO ──────────────────────────────────────────── */
 .cal-shell { display: flex; flex-direction: column; gap: 7px; }
 .cal-topbar {
@@ -2610,12 +2695,37 @@ body {
 .cal-saldo-lbl { font-size: 9px; color: #888; }
 .cal-topbar-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 .cal-filters {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 0;
   background: var(--branco); border: 1px solid var(--cinza);
-  border-radius: var(--radius-card); padding: 3px 10px;
+  border-radius: var(--radius-card); overflow: hidden;
 }
+.cal-filter-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 5px 10px; border-bottom: 1px solid var(--cinza2);
+}
+.cal-filter-row:last-child { border-bottom: none; }
 .cal-filter-sep { width: 1px; height: 18px; background: var(--cinza2); margin: 0 2px; }
-.cal-filter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-right: 1px; }
+.cal-filter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-right: 2px; white-space: nowrap; }
+/* Avatar toggle buttons */
+.cal-av-btn {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 7px; font-weight: 700; color: #fff; cursor: pointer;
+  transition: opacity .15s, transform .12s, box-shadow .15s;
+  border: 2px solid transparent; position: relative;
+}
+.cal-av-btn:hover { transform: scale(1.12); }
+.cal-av-btn.ativo { box-shadow: 0 0 0 2px var(--branco), 0 0 0 3.5px currentColor; }
+.cal-av-btn.inativo { opacity: .28; filter: grayscale(.5); }
+.cal-av-btn-all {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700; cursor: pointer;
+  border: 1.5px dashed var(--cinza); color: #aaa; background: var(--off);
+  transition: all .12s;
+}
+.cal-av-btn-all:hover { border-color: #999; color: #666; }
+.cal-av-btn-all.ativo { border-color: var(--grafite); background: var(--grafite); color: #fff; border-style: solid; }
 .cal-chip {
   font-size: 8px; font-weight: 700; letter-spacing: .4px; padding: 2px 9px; border-radius: 20px;
   border: 1px solid var(--cinza); background: var(--branco); color: #888; text-transform: uppercase;
@@ -3611,28 +3721,37 @@ body {
             </svg>
             <span id="gcal-topbar-lbl">Google Calendar</span>
           </button>
+          <button class="btn sm verde" id="gcal-btn-reuniao" onclick="gcalAbrirReuniao()" style="display:none">📅 Agendar reunião</button>
           <button class="btn filled" onclick="calAbrirModalNovo(null)">+ Novo evento</button>
         </div>
       </div>
       <div class="cal-filters">
-        <span class="cal-filter-lbl">N&uacute;cleo</span>
-        <button class="cal-chip active" data-nucleo="" onclick="calSetNucleo(this,'')">Todos</button>
-        <button class="cal-chip" data-nucleo="urbanismo"    onclick="calSetNucleo(this,'urbanismo')">Urbanismo</button>
-        <button class="cal-chip" data-nucleo="paisagismo"   onclick="calSetNucleo(this,'paisagismo')">Paisagismo</button>
-        <button class="cal-chip" data-nucleo="consultorias" onclick="calSetNucleo(this,'consultorias')">Consultorias</button>
-        <button class="cal-chip" data-nucleo="especiais"    onclick="calSetNucleo(this,'especiais')">Proj. Especiais</button>
-        <div class="cal-filter-sep"></div>
-        <span class="cal-filter-lbl">Usu&aacute;rio</span>
-        <button class="cal-chip active" data-usr="todos" onclick="calSetUsr(this,'todos')">Todos</button>
-        <button class="cal-chip" data-usr="eu" onclick="calSetUsr(this,'eu')">Eu</button>
-        <div class="cal-filter-sep"></div>
-        <span class="cal-filter-lbl">Mostrar</span>
-        <button class="cal-chip cat-entrega active"     data-cat="entrega"     onclick="calToggleCat(this)">Entregas</button>
-        <button class="cal-chip cat-reuniao active"     data-cat="reuniao"     onclick="calToggleCat(this)">Reuni&otilde;es</button>
-        <button class="cal-chip cat-feriado active"     data-cat="feriado"     onclick="calToggleCat(this)">Feriados e Recessos</button>
-        <button class="cal-chip cat-agenda active"      data-cat="agenda"      onclick="calToggleCat(this)">Agenda EXP</button>
-        <button class="cal-chip cat-aniversario active" data-cat="aniversario" onclick="calToggleCat(this)">Anivers&aacute;rios</button>
-        <button class="cal-chip cat-google" data-cat="google" id="cal-chip-google" onclick="calToggleCat(this)" style="display:none">Google Calendar</button>
+        <!-- Row 1: Pessoas (avatar toggles) -->
+        <div class="cal-filter-row">
+          <span class="cal-filter-lbl">Pessoas</span>
+          <div id="cal-avatar-row" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            <!-- renderizado por calRenderAvatarFiltros() -->
+          </div>
+        </div>
+        <!-- Row 2: Agendas / tipos -->
+        <div class="cal-filter-row">
+          <span class="cal-filter-lbl">Agendas</span>
+          <button class="cal-chip cat-reuniao active"     data-cat="reuniao"     onclick="calToggleCat(this)">Reuni&otilde;es EXP</button>
+          <button class="cal-chip cat-entrega active"     data-cat="entrega"     onclick="calToggleCat(this)">Entregas</button>
+          <button class="cal-chip cat-feriado active"     data-cat="feriado"     onclick="calToggleCat(this)">Feriados</button>
+          <button class="cal-chip cat-aniversario active" data-cat="aniversario" onclick="calToggleCat(this)">Anivers&aacute;rios</button>
+          <!-- Chips Google: renderizados dinamicamente por gcalRenderAgendaChips() -->
+          <div id="cal-gcal-chips" style="display:contents"></div>
+        </div>
+        <!-- Row 3: Núcleo (compacto) -->
+        <div class="cal-filter-row">
+          <span class="cal-filter-lbl">N&uacute;cleo</span>
+          <button class="cal-chip active" data-nucleo="" onclick="calSetNucleo(this,'')">Todos</button>
+          <button class="cal-chip" data-nucleo="urbanismo"    onclick="calSetNucleo(this,'urbanismo')">Urbanismo</button>
+          <button class="cal-chip" data-nucleo="paisagismo"   onclick="calSetNucleo(this,'paisagismo')">Paisagismo</button>
+          <button class="cal-chip" data-nucleo="consultorias" onclick="calSetNucleo(this,'consultorias')">Consultorias</button>
+          <button class="cal-chip" data-nucleo="especiais"    onclick="calSetNucleo(this,'especiais')">Proj. Especiais</button>
+        </div>
       </div>
       <div id="cal-content"></div>
     </div>
@@ -9801,28 +9920,32 @@ async function abrirProduto(id, targetPanel = null) {
     _etProg.style.display = 'none';
   }
   const tlWrap = document.getElementById('mp-etapas-timeline');
-  tlWrap.innerHTML = etapas.map((e, i) => {
-    const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
-    const coord = G.todosUsuarios.find(u => u.id === e.coordenador_id);
-    return `<div class="tl-item">
-      <div class="tl-dot ${st.dot}"></div>
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-        <div>
-          <div class="tl-label">${i+1}. ${e.nome}</div>
-          <div class="tl-text">
-            <span class="badge ${st.cls}">${st.label}</span>
-            ${coord ? `<span style="margin-left:6px;font-size:10px;color:#888">${coord.iniciais}</span>` : ''}
+  if (typeof _tlWrapRender === 'function') {
+    _tlWrapRender(etapas);
+  } else {
+    tlWrap.innerHTML = etapas.map((e, i) => {
+      const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
+      const coord = G.todosUsuarios.find(u => u.id === e.coordenador_id);
+      return `<div class="tl-item">
+        <div class="tl-dot ${st.dot}"></div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div class="tl-label">${i+1}. ${e.nome}</div>
+            <div class="tl-text">
+              <span class="badge ${st.cls}">${st.label}</span>
+              ${coord ? `<span style="margin-left:6px;font-size:10px;color:#888">${coord.iniciais}</span>` : ''}
+            </div>
+            ${e.descricao ? `<div class="tl-date" style="margin-top:4px;font-family:var(--font-ui)">${e.descricao}</div>` : ''}
           </div>
-          ${e.descricao ? `<div class="tl-date" style="margin-top:4px;font-family:var(--font-ui)">${e.descricao}</div>` : ''}
+          <div style="text-align:right;flex-shrink:0">
+            ${e.data_liberacao ? `<div class="tl-date">Lib: ${fmtDate(e.data_liberacao)}</div>` : ''}
+            ${e.data_estimada ? `<div class="tl-date">Est: ${fmtDate(e.data_estimada)}</div>` : ''}
+            ${e.data_conclusao ? `<div class="tl-date" style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</div>` : ''}
+          </div>
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          ${e.data_liberacao ? `<div class="tl-date">Lib: ${fmtDate(e.data_liberacao)}</div>` : ''}
-          ${e.data_estimada ? `<div class="tl-date">Est: ${fmtDate(e.data_estimada)}</div>` : ''}
-          ${e.data_conclusao ? `<div class="tl-date" style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</div>` : ''}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    }).join('');
+  }
 
   // Reset tabs
   document.querySelectorAll('#modal-produto .modal-tab').forEach(b => b.classList.remove('active'));
@@ -17585,16 +17708,30 @@ function calRenderModalBody(tipos, dataIni) {
       <label>Descrição (opcional)</label>
       <textarea id="cal-inp-desc" rows="2" placeholder="Detalhes..."></textarea>
     </div>
-    ${GCAL.token ? `
-    <div class="gcal-sync-row" id="cal-gcal-sync-row" style="margin-top:4px">
-      <div>
-        <div class="gcal-sync-lbl">Adicionar ao Google Calendar</div>
-      </div>
-      <label class="gcal-toggle">
-        <input type="checkbox" id="cal-gcal-sync-ck" checked>
-        <span class="gcal-toggle-slider"></span>
-      </label>
-    </div>` : ''}
+    ${GCAL.token ? (() => {
+      // Smart default por tipo: reuniao→EXP Reuniões, entrega→EXP Entregas, etc.
+      const _tipo = CAL.tipoSelecionado || '';
+      const _kw = /reunia/i.test(_tipo) ? 'reuni' : /entrega/i.test(_tipo) ? 'entrega' : /adm|agenda/i.test(_tipo) ? 'adm' : '';
+      const _defId = gcalDefaultCalId(_kw || '.');
+      const _calOpts = GCAL.calendarios.map(c =>
+        `<option value="${c.id}" ${c.id === _defId ? 'selected' : ''}>${c.summary}</option>`
+      ).join('');
+      return `
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--cinza2)">
+        <div class="gcal-sync-row" style="border:none;padding:0 0 6px">
+          <div><div class="gcal-sync-lbl">Adicionar ao Google Calendar</div></div>
+          <label class="gcal-toggle">
+            <input type="checkbox" id="cal-gcal-sync-ck" checked onchange="document.getElementById('gcal-novo-agenda-wrap').style.display=this.checked?'block':'none'">
+            <span class="gcal-toggle-slider"></span>
+          </label>
+        </div>
+        <div id="gcal-novo-agenda-wrap">
+          <select id="gcal-novo-agenda" class="gcr-input" style="font-size:11px;padding:5px 8px">
+            ${_calOpts}
+          </select>
+        </div>
+      </div>`;
+    })() : ''}
     <div id="cal-aviso-ausencia" class="cal-aviso" style="display:none"></div>`;
 }
 
@@ -17790,19 +17927,46 @@ function gcalSetPrefs(prefs) {
   localStorage.setItem('gcal_prefs_' + (G.usuario?.id || ''), JSON.stringify(prefs));
 }
 
-// Se usuário conectou antes (para auto-reconexão silenciosa)
-function gcalEraConectado() {
-  return localStorage.getItem('gcal_connected_' + (G.usuario?.id || '')) === '1';
+// ── Persistência do token em sessionStorage ───────────────
+// sessionStorage sobrevive ao F5 mas some ao fechar o navegador.
+// Guardamos também o timestamp de expiração (tokens duram 1h).
+const GCAL_TOKEN_KEY   = () => 'gcal_token_'   + (G.usuario?.id || '');
+const GCAL_EXPIRY_KEY  = () => 'gcal_expiry_'  + (G.usuario?.id || '');
+const GCAL_CONNECTED_KEY = () => 'gcal_connected_' + (G.usuario?.id || '');
+
+function gcalSalvarToken(token) {
+  const expiry = Date.now() + 55 * 60 * 1000; // 55 min (margem antes dos 60)
+  sessionStorage.setItem(GCAL_TOKEN_KEY(), token);
+  sessionStorage.setItem(GCAL_EXPIRY_KEY(), String(expiry));
+  localStorage.setItem(GCAL_CONNECTED_KEY(), '1');
 }
-function gcalMarcarConectado(v) {
-  if (v) localStorage.setItem('gcal_connected_' + (G.usuario?.id || ''), '1');
-  else   localStorage.removeItem('gcal_connected_' + (G.usuario?.id || ''));
+function gcalCarregarTokenSalvo() {
+  const token  = sessionStorage.getItem(GCAL_TOKEN_KEY());
+  const expiry = parseInt(sessionStorage.getItem(GCAL_EXPIRY_KEY()) || '0');
+  if (token && Date.now() < expiry) return token;
+  return null;
+}
+function gcalLimparToken() {
+  sessionStorage.removeItem(GCAL_TOKEN_KEY());
+  sessionStorage.removeItem(GCAL_EXPIRY_KEY());
+  localStorage.removeItem(GCAL_CONNECTED_KEY());
+}
+function gcalEraConectado() {
+  return localStorage.getItem(GCAL_CONNECTED_KEY()) === '1';
 }
 
 // ── Inicializa o GIS token client ─────────────────────────
 function gcalInitClient() {
   if (!GCAL_CLIENT_ID || typeof google === 'undefined') return;
   try {
+    // Verifica se já existe token válido em sessionStorage (sobreviveu ao F5)
+    const tokenSalvo = gcalCarregarTokenSalvo();
+    if (tokenSalvo) {
+      GCAL.token = tokenSalvo;
+      gcalCarregarEventosEAtualizarUI(false); // silencioso, sem toast
+      return;
+    }
+    // Sem token em sessão — cria o client mas NÃO abre popup automaticamente
     GCAL.tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GCAL_CLIENT_ID,
       scope: [
@@ -17811,23 +17975,20 @@ function gcalInitClient() {
       ].join(' '),
       callback: gcalHandleToken,
     });
-    // Tenta reconexão silenciosa se o usuário já conectou antes
-    if (gcalEraConectado()) {
-      GCAL.tokenClient.requestAccessToken({ prompt: '' });
-    }
+    // Se já conectou antes mas token expirou, mostra botão "Reconectar" no topbar
+    if (gcalEraConectado()) gcalAtualizarUI();
   } catch(e) { console.warn('gcalInitClient error', e); }
 }
 
 // Chamada pelo GIS após autenticação
 function gcalHandleToken(resp) {
   if (resp.error) {
-    // Falha silenciosa (ex: re-auth sem interação) — não mostra toast
     if (resp.error !== 'access_denied') console.warn('gcal token error', resp.error);
     gcalAtualizarUI();
     return;
   }
   GCAL.token = resp.access_token;
-  gcalMarcarConectado(true);
+  gcalSalvarToken(resp.access_token);
   gcalCarregarEventosEAtualizarUI(true);
 }
 
@@ -17842,7 +18003,7 @@ function gcalConectar() {
     toast('Google Identity Services ainda não carregou. Tente novamente em instantes.');
     return;
   }
-  GCAL.tokenClient.requestAccessToken({ prompt: 'consent' });
+  GCAL.tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function gcalDesconectar() {
@@ -17852,7 +18013,7 @@ function gcalDesconectar() {
   GCAL.token    = null;
   GCAL.eventos  = [];
   GCAL.calendarios = [];
-  gcalMarcarConectado(false);
+  gcalLimparToken();
   gcalAtualizarUI();
   // Remove chip de filtro e re-renderiza
   CAL.filtroCats.delete('google');
@@ -17966,9 +18127,15 @@ function gcalAtualizarUI() {
   if (btn && lbl) {
     if (GCAL.token) {
       btn.classList.add('conectado');
+      btn.classList.remove('expirado');
       lbl.textContent = 'Google ✓';
-    } else {
+    } else if (gcalEraConectado()) {
+      // Token expirou — avisa discretamente e deixa o usuário reconectar com 1 clique
       btn.classList.remove('conectado');
+      btn.classList.add('expirado');
+      lbl.textContent = 'Google · Reconectar';
+    } else {
+      btn.classList.remove('conectado', 'expirado');
       lbl.textContent = 'Google Calendar';
     }
   }
@@ -18048,11 +18215,14 @@ function gcalSalvarPrefs() {
 }
 
 // ── Criar evento no Google Calendar ───────────────────────
-async function gcalCriarEvento(titulo, inicio, fim, descricao, meetLink) {
+// calId opcional — se não passar, usa a agenda selecionada no modal ou a primary
+async function gcalCriarEvento(titulo, inicio, fim, descricao, meetLink, calId) {
   if (!GCAL.token) return;
-  // Pega o ID do calendário principal
-  const primary = GCAL.calendarios.find(c => c.primary) || GCAL.calendarios[0];
-  if (!primary) return;
+  const targetId = calId
+    || document.getElementById('gcal-novo-agenda')?.value
+    || GCAL.calendarios.find(c => c.primary)?.id
+    || GCAL.calendarios[0]?.id;
+  if (!targetId) return;
   const body = {
     summary:     titulo,
     description: descricao || '',
@@ -18061,12 +18231,11 @@ async function gcalCriarEvento(titulo, inicio, fim, descricao, meetLink) {
   };
   if (meetLink) body.location = meetLink;
   try {
-    await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(primary.id)}/events`, {
+    await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetId)}/events`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + GCAL.token, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    // Recarrega eventos do Google em background
     setTimeout(() => gcalCarregarEventos().then(() => calRender()), 1500);
   } catch(e) { console.warn('gcalCriarEvento error', e); }
 }
@@ -18096,11 +18265,852 @@ window.calGetMerged = function() {
   document.head.appendChild(s);
 })();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTRO POR AVATAR (pessoas)
+// ─────────────────────────────────────────────────────────────────────────────
+// CAL.filtroUsuarios: Set de user IDs ativos. 'all' = todos.
+CAL.filtroUsuarios = new Set(['all']);
+
+function calRenderAvatarFiltros() {
+  const row = document.getElementById('cal-avatar-row');
+  if (!row) return;
+  const usuarios = (G.todosUsuarios || []).filter(u => u.ativo !== false);
+  const todosAtivos = CAL.filtroUsuarios.has('all');
+
+  let html = `<div class="cal-av-btn-all ${todosAtivos ? 'ativo' : ''}" onclick="calToggleTodosUsuarios()" title="Todos">✦</div>`;
+  html += usuarios.map(u => {
+    const ativo = todosAtivos || CAL.filtroUsuarios.has(u.id);
+    return `<div class="cal-av-btn ${ativo ? 'ativo' : 'inativo'}"
+      style="background:${u.cor || '#888'};color:#fff"
+      onclick="calToggleUsuario('${u.id}')" title="${_escN(u.nome)}">${_escN(u.iniciais || '?')}</div>`;
+  }).join('');
+  row.innerHTML = html;
+}
+
+function calToggleTodosUsuarios() {
+  CAL.filtroUsuarios = new Set(['all']);
+  calRenderAvatarFiltros();
+  calRender();
+}
+
+function calToggleUsuario(uid) {
+  if (CAL.filtroUsuarios.has('all')) {
+    // Sai do modo "todos" e mantém apenas este usuário
+    CAL.filtroUsuarios = new Set([uid]);
+  } else {
+    if (CAL.filtroUsuarios.has(uid)) {
+      CAL.filtroUsuarios.delete(uid);
+      if (CAL.filtroUsuarios.size === 0) CAL.filtroUsuarios = new Set(['all']);
+    } else {
+      CAL.filtroUsuarios.add(uid);
+      const total = (G.todosUsuarios || []).filter(u => u.ativo !== false).length;
+      if (CAL.filtroUsuarios.size >= total) CAL.filtroUsuarios = new Set(['all']);
+    }
+  }
+  calRenderAvatarFiltros();
+  calRender();
+}
+
+// Patch de calFiltrar para incluir filtro de usuário por avatar
+const _calFiltrarOrig = calFiltrar;
+window.calFiltrar = function(evts) {
+  return _calFiltrarOrig(evts).filter(ev => {
+    if (CAL.filtroUsuarios.has('all')) return true;
+    // Eventos com usuario_id: filtra pelo usuário
+    if (ev.usuario_id) return CAL.filtroUsuarios.has(ev.usuario_id);
+    // Eventos Google com usuário registrado
+    if (ev._gcalUsuarioId) return CAL.filtroUsuarios.has(ev._gcalUsuarioId);
+    // Eventos de escopo global (feriados, entregas de projeto, etc): sempre mostra
+    return true;
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REGISTRO DE AGENDAS GOOGLE (pessoais + EXP compartilhadas)
+// ─────────────────────────────────────────────────────────────────────────────
+// Estrutura localStorage:
+//   gcal_user_reg_{userId}  → [ {calId, nome, tipo, cor, usuarioExpId} ]
+//   gcal_exp_config          → { reunioes:{calId,bidi}, entregas:{calId}, adm:{calId} }
+
+function gcalGetUserReg() {
+  try { return JSON.parse(localStorage.getItem('gcal_user_reg_' + (G.usuario?.id || '')) || '[]'); }
+  catch { return []; }
+}
+function gcalSetUserReg(arr) {
+  localStorage.setItem('gcal_user_reg_' + (G.usuario?.id || ''), JSON.stringify(arr));
+}
+function gcalGetExpConfig() {
+  try { return JSON.parse(localStorage.getItem('gcal_exp_config') || '{}'); }
+  catch { return {}; }
+}
+function gcalSetExpConfig(obj) {
+  localStorage.setItem('gcal_exp_config', JSON.stringify(obj));
+}
+
+// Chips de tipo de agenda Google na barra de filtros
+CAL.filtroGcalTipos = new Set(['all']); // 'all' ou Set de tipos ativos
+
+function gcalRenderAgendaChips() {
+  const wrap = document.getElementById('cal-gcal-chips');
+  if (!wrap) return;
+  const reg  = gcalGetUserReg();
+  const exp  = gcalGetExpConfig();
+  if (!GCAL.token || (!reg.length && !Object.keys(exp).length)) { wrap.innerHTML = ''; return; }
+
+  const tiposMap = {
+    pessoal_eventos: { label: 'Pessoal · Eventos',      cat: 'gcal_pev' },
+    pessoal_planej:  { label: 'Pessoal · Plan.',         cat: 'gcal_ppl' },
+  };
+  const expLabels = {
+    reunioes: { label: 'Google · Reuniões', cat: 'gcal_reu', color: '#4285f4' },
+    entregas:  { label: 'Google · Entregas', cat: 'gcal_ent', color: '#34a853' },
+    adm:       { label: 'Google · ADM',      cat: 'gcal_adm', color: '#fbbc04' },
+  };
+
+  const tiposPresentes = new Set(reg.map(r => r.tipo));
+  let html = '';
+
+  Object.entries(tiposMap).forEach(([tipo, meta]) => {
+    if (!tiposPresentes.has(tipo)) return;
+    const ativo = CAL.filtroGcalTipos.has('all') || CAL.filtroGcalTipos.has(meta.cat);
+    html += `<button class="cal-chip ${ativo ? 'active' : ''}" data-gcalcat="${meta.cat}"
+      onclick="calToggleGcalCat(this,'${meta.cat}')"
+      style="${ativo ? 'background:#4285f4;border-color:#4285f4;' : ''}">${meta.label}</button>`;
+  });
+
+  Object.entries(expLabels).forEach(([key, meta]) => {
+    if (!exp[key]?.calId) return;
+    const ativo = CAL.filtroGcalTipos.has('all') || CAL.filtroGcalTipos.has(meta.cat);
+    html += `<button class="cal-chip ${ativo ? 'active' : ''}" data-gcalcat="${meta.cat}"
+      onclick="calToggleGcalCat(this,'${meta.cat}')"
+      style="${ativo ? `background:${meta.color};border-color:${meta.color};` : ''}">${meta.label}</button>`;
+  });
+
+  wrap.innerHTML = html;
+}
+
+function calToggleGcalCat(btn, cat) {
+  if (CAL.filtroGcalTipos.has('all')) {
+    // Sai do modo "todos": mantém apenas esta categoria desativada
+    const allCats = ['gcal_pev','gcal_ppl','gcal_reu','gcal_ent','gcal_adm'];
+    CAL.filtroGcalTipos = new Set(allCats.filter(c => c !== cat));
+  } else {
+    if (CAL.filtroGcalTipos.has(cat)) CAL.filtroGcalTipos.delete(cat);
+    else { CAL.filtroGcalTipos.add(cat); }
+    if (CAL.filtroGcalTipos.size >= 5) CAL.filtroGcalTipos = new Set(['all']);
+  }
+  gcalRenderAgendaChips();
+  calRender();
+}
+
+// Patch de calFiltrar para filtrar por tipo de agenda Google
+const _calFiltrarGcal = window.calFiltrar;
+window.calFiltrar = function(evts) {
+  return _calFiltrarGcal(evts).filter(ev => {
+    if (!ev._gcal) return true; // eventos EXP: não filtra aqui
+    if (CAL.filtroGcalTipos.has('all')) return true;
+    return ev._gcalCat && CAL.filtroGcalTipos.has(ev._gcalCat);
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAL CONFIG GOOGLE CALENDAR — redesenhado
+// ─────────────────────────────────────────────────────────────────────────────
+const _gcalAbrirConfigOrig = gcalAbrirConfig;
+window.gcalAbrirConfig = function() {
+  const modal = document.getElementById('gcal-modal');
+  if (!modal) return;
+  const sub = document.getElementById('gcal-modal-sub');
+  if (sub) sub.textContent = GCAL.token
+    ? 'Gerencie suas agendas e as agendas compartilhadas da EXP.'
+    : 'Conecte sua conta para ver eventos do Google no calendário EXP.';
+
+  document.getElementById('gcal-state-off').style.display = GCAL.token ? 'none' : 'block';
+  document.getElementById('gcal-state-on').style.display  = GCAL.token ? 'block' : 'none';
+
+  if (GCAL.token) {
+    gcalRenderConfigOn();
+  }
+  modal.classList.add('open');
+};
+
+function gcalRenderConfigOn() {
+  const stateOn = document.getElementById('gcal-state-on');
+  if (!stateOn) return;
+  const reg = gcalGetUserReg();
+  const exp = gcalGetExpConfig();
+  const prefs = gcalGetPrefs();
+
+  // Monta opções dos calendários do usuário no Google
+  const calRows = GCAL.calendarios.map(c => {
+    const saved = reg.find(r => r.calId === c.id);
+    const tipo  = saved?.tipo || '';
+    const cor   = c.backgroundColor || '#4285f4';
+    return `<div class="gcal-cal-row" style="align-items:flex-start;gap:6px;padding:7px 0">
+      <div class="gcal-cal-dot" style="background:${cor};margin-top:3px"></div>
+      <div style="flex:1">
+        <div class="gcal-cal-name">${_escN(c.summary)}${c.primary ? ' <span class="gcal-cal-primary">(principal)</span>' : ''}</div>
+        <select onchange="gcalSalvarRegistro('${c.id}','${cor}',this.value)"
+          style="margin-top:4px;font-size:10px;border:1px solid var(--cinza);border-radius:5px;padding:3px 6px;font-family:var(--font-ui);background:var(--branco);color:var(--grafite)">
+          <option value="" ${!tipo?'selected':''}>Não usar</option>
+          <option value="pessoal_eventos" ${tipo==='pessoal_eventos'?'selected':''}>Meus eventos pessoais</option>
+          <option value="pessoal_planej"  ${tipo==='pessoal_planej' ?'selected':''}>Meu planejamento</option>
+        </select>
+      </div>
+    </div>`;
+  }).join('') || '<div style="font-size:10px;color:#aaa;padding:6px 0">Nenhum calendário encontrado.</div>';
+
+  const expF = (key, label, color) => {
+    const val = exp[key]?.calId || '';
+    const bidi = exp[key]?.bidi || false;
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <span style="font-size:11px;font-weight:600">${label}</span>
+      </div>
+      <input type="text" class="gcr-input" style="font-size:10px;padding:5px 8px;margin-bottom:4px"
+        placeholder="ID da agenda (ex: abc@group.calendar.google.com)"
+        value="${_escN(val)}"
+        onchange="gcalSalvarExpConfig('${key}',this.value,document.getElementById('gcal-exp-bidi-${key}')?.checked)">
+      ${key==='reunioes' ? `<label style="display:flex;align-items:center;gap:6px;font-size:10px;cursor:pointer;margin-top:4px">
+        <input type="checkbox" id="gcal-exp-bidi-${key}" ${bidi?'checked':''} onchange="gcalSalvarExpConfig('${key}',this.previousElementSibling.value,this.checked)" style="accent-color:#4285f4">
+        Bidirecional (eventos criados no EXP vão para esta agenda)
+      </label>` : ''}
+    </div>`;
+  };
+
+  stateOn.innerHTML = `
+    <span class="gcal-section-lbl">Minhas agendas</span>
+    <div style="margin-bottom:14px">${calRows}</div>
+
+    <span class="gcal-section-lbl">Agendas EXP compartilhadas</span>
+    <div style="margin-bottom:14px;font-size:10px;color:#888;margin-top:-2px;margin-bottom:8px">
+      Cole o ID de cada agenda Google compartilhada do escritório.
+    </div>
+    <div style="margin-bottom:14px">
+      ${expF('reunioes', 'EXP Reuniões',  '#4285f4')}
+      ${expF('entregas', 'EXP Entregas',  '#34a853')}
+      ${expF('adm',      'EXP ADM',       '#fbbc04')}
+    </div>
+
+    <span class="gcal-section-lbl">Sincronização</span>
+    <div style="margin-bottom:16px">
+      <div class="gcal-sync-row">
+        <div><div class="gcal-sync-lbl">Enviar reuniões ao Google Calendar</div>
+          <div class="gcal-sync-desc">Novos eventos Reunião EXP vão para a agenda configurada</div></div>
+        <label class="gcal-toggle">
+          <input type="checkbox" id="gcal-sync-reuniao" ${prefs.reuniao?'checked':''} onchange="gcalSalvarPrefs()">
+          <span class="gcal-toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:space-between">
+      <button class="btn tc sm" onclick="gcalDesconectar()">Desconectar</button>
+      <button class="btn filled sm" onclick="gcalRecarregarAgendas()">↺ Recarregar</button>
+      <button class="btn sm" onclick="gcalFecharConfig()">Fechar</button>
+    </div>`;
+}
+
+function gcalSalvarRegistro(calId, cor, tipo) {
+  let reg = gcalGetUserReg().filter(r => r.calId !== calId);
+  if (tipo) {
+    const nomeCal = GCAL.calendarios.find(c => c.id === calId)?.summary || calId;
+    reg.push({ calId, nome: nomeCal, tipo, cor, usuarioExpId: G.usuario?.id });
+  }
+  gcalSetUserReg(reg);
+  // Recarrega eventos e chips
+  gcalCarregarEventos().then(() => { gcalRenderAgendaChips(); calRender(); });
+}
+
+function gcalSalvarExpConfig(key, calId, bidi) {
+  const exp = gcalGetExpConfig();
+  if (calId?.trim()) {
+    exp[key] = { calId: calId.trim(), bidi: !!bidi };
+  } else {
+    delete exp[key];
+  }
+  gcalSetExpConfig(exp);
+  gcalCarregarEventos().then(() => { gcalRenderAgendaChips(); calRender(); });
+}
+
+async function gcalRecarregarAgendas() {
+  await gcalCarregarCalendarios();
+  gcalRenderConfigOn();
+  await gcalCarregarEventos();
+  gcalRenderAgendaChips();
+  calRender();
+  toast('Agendas recarregadas!');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REESCREVER gcalCarregarEventos para usar registros de agenda
+// ─────────────────────────────────────────────────────────────────────────────
+const _gcalCarregarEventosOrig = gcalCarregarEventos;
+window.gcalCarregarEventos = async function() {
+  if (!GCAL.token) return;
+  GCAL.eventos = [];
+  const { ano, mes } = CAL;
+  const timeMin = new Date(ano, mes - 1, 1).toISOString();
+  const timeMax = new Date(ano, mes + 2, 0, 23, 59, 59).toISOString();
+
+  const reg = gcalGetUserReg();
+  const exp = gcalGetExpConfig();
+
+  // Calendários a buscar: pessoais registrados + EXP
+  const fontes = [
+    ...reg.filter(r => r.calId && r.tipo).map(r => ({
+      calId: r.calId, tipo: r.tipo,
+      cat:   r.tipo === 'pessoal_planej' ? 'gcal_ppl' : 'gcal_pev',
+      usuarioExpId: r.usuarioExpId || G.usuario?.id,
+      cor:   r.cor || '#4285f4',
+    })),
+    ...Object.entries(exp).filter(([,v]) => v?.calId).map(([key, v]) => ({
+      calId: v.calId, tipo: 'exp_' + key,
+      cat:   key === 'reunioes' ? 'gcal_reu' : key === 'entregas' ? 'gcal_ent' : 'gcal_adm',
+      usuarioExpId: null,
+      cor:   key === 'reunioes' ? '#4285f4' : key === 'entregas' ? '#34a853' : '#fbbc04',
+    })),
+  ];
+
+  for (const fonte of fontes) {
+    try {
+      const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(fonte.calId)}/events`);
+      url.searchParams.set('timeMin', timeMin);
+      url.searchParams.set('timeMax', timeMax);
+      url.searchParams.set('singleEvents', 'true');
+      url.searchParams.set('orderBy', 'startTime');
+      url.searchParams.set('maxResults', '500');
+
+      const r = await fetch(url.toString(), { headers: { Authorization: 'Bearer ' + GCAL.token } });
+      if (r.status === 401) { GCAL.token = null; gcalLimparToken(); break; }
+      if (!r.ok) continue;
+      const data = await r.json();
+
+      (data.items || []).forEach(ev => {
+        if (!ev.summary && !ev.description) return;
+        const dIni  = ev.start?.date || ev.start?.dateTime?.slice(0, 10);
+        const dFim  = ev.end?.date   || ev.end?.dateTime?.slice(0, 10) || dIni;
+        const hIni  = ev.start?.dateTime?.slice(11, 16) || null;
+        const hFim  = ev.end?.dateTime?.slice(11, 16)   || null;
+        const etapaId = ev.extendedProperties?.private?.expEtapaId || null;
+        GCAL.eventos.push({
+          id:            'gcal_' + ev.id,
+          titulo:        ev.summary || '(sem título)',
+          data_inicio:   dIni,
+          data_fim:      dFim,
+          dia_todo:      !!ev.start?.date,
+          hora_inicio:   hIni,
+          hora_fim:      hFim,
+          descricao:     ev.description || '',
+          meet_link:     ev.hangoutLink || ev.conferenceData?.entryPoints?.[0]?.uri || '',
+          local:         ev.location || '',
+          tipo:          'google',
+          scope:         fonte.usuarioExpId ? 'usuario' : 'todos',
+          nucleo:        null,
+          usuario_id:    fonte.usuarioExpId || null,
+          _gcal:         true,
+          _gcalColor:    fonte.cor,
+          _gcalCat:      fonte.cat,
+          _gcalTipo:     fonte.tipo,
+          _gcalUsuarioId:fonte.usuarioExpId,
+          _gcalCalId:    fonte.calId,
+          _gcalEvId:     ev.id,
+          _etapaId:      etapaId,
+          source:        'google',
+        });
+      });
+    } catch(e) { console.warn('gcal fetch error', fonte.calId, e); }
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REUNIÃO POR ETAPA
+// ─────────────────────────────────────────────────────────────────────────────
+// Abre o modal de reunião pré-preenchido com dados da etapa
+function gcalAbrirReuniaoEtapa(etapaId, etapaNome, produtoNome) {
+  if (!GCAL.token) {
+    toast('Conecte o Google Calendar primeiro para agendar reuniões.');
+    return;
+  }
+  // Guarda contexto da etapa para usar no salvar
+  GCAL._etapaCtx = { etapaId, etapaNome, produtoNome };
+  gcalAbrirReuniao();
+  // Preenche título após render
+  setTimeout(() => {
+    const titulo = document.getElementById('gcr-titulo');
+    if (titulo && !titulo.value) titulo.value = `${etapaNome} · ${produtoNome}`;
+    // Pré-seleciona EXP Reuniões se configurada
+    const exp = gcalGetExpConfig();
+    const sel = document.getElementById('gcr-agenda');
+    if (sel && exp.reunioes?.calId) {
+      const opt = [...sel.options].find(o => o.value === exp.reunioes.calId);
+      if (opt) sel.value = exp.reunioes.calId;
+    }
+  }, 80);
+}
+
+// Patch de gcalSalvarReuniao para gravar etapa_id no evento Google e no Supabase
+const _gcalSalvarReuniaoOrig = gcalSalvarReuniao;
+window.gcalSalvarReuniao = async function() {
+  // Injeta extendedProperties antes do salvar original
+  const ctx = GCAL._etapaCtx;
+  if (ctx) {
+    // O _gcalSalvarReuniaoOrig vai ler o body normal;
+    // precisamos de um hook para adicionar extendedProperties.
+    // Fazemos via monkey-patch de fetch por 1 chamada.
+    const _origFetch = window.fetch;
+    let intercepted = false;
+    window.fetch = async function(url, opts) {
+      if (!intercepted && typeof url === 'string' && url.includes('/calendar/v3/calendars') && opts?.method === 'POST') {
+        intercepted = true;
+        try {
+          const body = JSON.parse(opts.body);
+          body.extendedProperties = { private: { expEtapaId: String(ctx.etapaId), expProduto: ctx.produtoNome } };
+          // Appende info da etapa na descrição
+          const etapaInfo = `\n\n📋 Etapa EXP: ${ctx.etapaNome}\n🏗 Projeto: ${ctx.produtoNome}`;
+          body.description = (body.description || '') + etapaInfo;
+          opts = { ...opts, body: JSON.stringify(body) };
+        } catch {}
+        window.fetch = _origFetch;
+      }
+      return _origFetch(url, opts);
+    };
+  }
+
+  await _gcalSalvarReuniaoOrig();
+
+  // Após salvar, se tinha contexto de etapa, atualiza a etapa com data_reuniao
+  if (ctx) {
+    GCAL._etapaCtx = null;
+    const data  = document.getElementById('gcr-data')?.value;
+    // O modal já fechou; busca meet link do último evento criado
+    const ultimo = GCAL.eventos.filter(e => e._gcalTipo?.includes('reu')).slice(-1)[0];
+    const link   = ultimo?.meet_link || null;
+    if (data || link) {
+      try {
+        await sb.from('etapas').update({
+          data_reuniao:  data  || null,
+          reuniao_link:  link  || null,
+        }).eq('id', ctx.etapaId);
+        // Recarrega etapas
+        const { data: ets } = await sb.from('etapas').select('*').eq('produto_id', G.produtoAtivo);
+        if (ets) G.todasEtapas = G.todasEtapas.map(e => ets.find(x => x.id === e.id) || e);
+        // Re-renderiza timeline se modal produto aberto
+        if (document.getElementById('modal-produto')?.style.display !== 'none') {
+          abrirModalProduto(G.produtoAtivo);
+        }
+        toast('Reunião vinculada à etapa!');
+      } catch(e) { console.warn('etapa reuniao update', e); }
+    }
+  }
+};
+
+// Patch da timeline de etapas para mostrar data_reuniao + botão agendar
+const _tlWrapRender = (etapas_arg) => {
+  const tlWrap = document.getElementById('mp-etapas-timeline');
+  if (!tlWrap) return;
+  tlWrap.innerHTML = etapas_arg.map((e, i) => {
+    const st    = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
+    const coord = G.todosUsuarios?.find(u => u.id === e.coordenador_id);
+    const prodNome = G.todosProdutos?.find(p => p.id === e.produto_id)?.nome || '';
+    const meetChip = e.reuniao_link
+      ? `<a href="${e.reuniao_link}" target="_blank" class="gcr-meet-badge" style="font-size:9px;margin-top:3px;display:inline-flex">🎥 Meet</a>`
+      : '';
+    const agendarBtn = GCAL.token
+      ? `<button class="btn sm" style="margin-top:4px;font-size:9px" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})">📅 ${e.data_reuniao ? 'Reagendar' : 'Agendar reunião'}</button>`
+      : '';
+    return `<div class="tl-item">
+      <div class="tl-dot ${st.dot}"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;width:100%">
+        <div style="flex:1;min-width:0">
+          <div class="tl-label">${i+1}. ${_escN(e.nome)}</div>
+          <div class="tl-text">
+            <span class="badge ${st.cls}">${st.label}</span>
+            ${coord ? `<span style="margin-left:6px;font-size:10px;color:#888">${coord.iniciais}</span>` : ''}
+          </div>
+          ${e.descricao ? `<div class="tl-date" style="margin-top:4px;font-family:var(--font-ui)">${_escN(e.descricao)}</div>` : ''}
+          <div style="margin-top:3px">${meetChip}${agendarBtn}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${e.data_liberacao ? `<div class="tl-date">Lib: ${fmtDate(e.data_liberacao)}</div>` : ''}
+          ${e.data_estimada  ? `<div class="tl-date">Est: ${fmtDate(e.data_estimada)}</div>`  : ''}
+          ${e.data_reuniao   ? `<div class="tl-date" style="color:#4285f4">📅 ${fmtDate(e.data_reuniao)}</div>` : ''}
+          ${e.data_conclusao ? `<div class="tl-date" style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+};
+
 // ── Inicializa quando o módulo Calendário é aberto ────────
 const _calInitOrig = calInit;
 window.calInit = async function() {
   await _calInitOrig();
+  calRenderAvatarFiltros();
+  gcalRenderAgendaChips();
   gcalInitClient(); // tenta reconexão silenciosa
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AGENDAR REUNIÃO — modal completo com campos do Google Calendar
+// ─────────────────────────────────────────────────────────────────────────────
+GCAL._reuniaoConvidados = []; // { email, nome, cor, iniciais }
+
+function gcalAbrirReuniao() {
+  if (!GCAL.token) {
+    toast('Conecte o Google Calendar primeiro.');
+    gcalAbrirConfig();
+    return;
+  }
+  GCAL._reuniaoConvidados = [];
+  // Adiciona o usuário atual como organizador automaticamente
+  if (G.usuario) {
+    const email = G.usuario.email || '';
+    if (email) GCAL._reuniaoConvidados.push({
+      email, nome: G.usuario.nome, cor: G.usuario.cor || '#888',
+      iniciais: G.usuario.iniciais || '?', isExp: true
+    });
+  }
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const hIni = '10:00', hFim = '11:00';
+
+  // Monta opções de agenda com smart default
+  const cals = GCAL.calendarios;
+  const _calOpt = (c, defaultId) => {
+    const sel = c.id === defaultId ? 'selected' : '';
+    const dot = c.backgroundColor || '#4285f4';
+    return `<option value="${c.id}" ${sel} data-color="${dot}">${c.summary}</option>`;
+  };
+  // Smart default: procura agenda chamada "reunião" (case-insensitive), senão primary
+  const defaultCal = cals.find(c => /reuni/i.test(c.summary)) ||
+                     cals.find(c => c.primary) ||
+                     cals[0];
+  const calOptions = cals.map(c => _calOpt(c, defaultCal?.id)).join('');
+
+  document.getElementById('gcal-reuniao-body').innerHTML = `
+    <div class="gcr-field">
+      <label class="gcr-label">Agenda Google</label>
+      <select id="gcr-agenda" class="gcr-input" onchange="gcalAtualizarCorAgenda(this)">
+        ${calOptions}
+      </select>
+    </div>
+
+    <div class="gcr-field">
+      <label class="gcr-label">Título</label>
+      <input id="gcr-titulo" class="gcr-input" type="text" placeholder="Ex: Alinhamento semanal, Apresentação cliente...">
+    </div>
+
+    <div class="gcr-time-row">
+      <div class="gcr-field">
+        <label class="gcr-label">Data</label>
+        <input id="gcr-data" class="gcr-input" type="date" value="${hoje}">
+      </div>
+      <div class="gcr-field">
+        <label class="gcr-label">Início</label>
+        <input id="gcr-hora-ini" class="gcr-input" type="time" value="${hIni}">
+      </div>
+      <div class="gcr-field">
+        <label class="gcr-label">Fim</label>
+        <input id="gcr-hora-fim" class="gcr-input" type="time" value="${hFim}">
+      </div>
+    </div>
+
+    <div class="gcr-field">
+      <label class="gcr-label">Convidados</label>
+      <div class="gcr-tag-wrap" id="gcr-tag-wrap" onclick="document.getElementById('gcr-convidado-inp').focus()">
+        <div id="gcr-tags-area"></div>
+        <input id="gcr-convidado-inp" class="gcr-tag-input" type="text"
+          placeholder="Nome ou e-mail..."
+          oninput="gcalFiltrarConvidados(this.value)"
+          onkeydown="gcalConvidadoKeydown(event)">
+        <div class="gcr-suggestions" id="gcr-suggestions" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="gcr-field">
+      <label class="gcr-label">Local (opcional)</label>
+      <input id="gcr-local" class="gcr-input" type="text" placeholder="Endereço, sala, link...">
+    </div>
+
+    <div class="gcr-field">
+      <label class="gcr-label">Pauta / descrição (opcional)</label>
+      <textarea id="gcr-desc" class="gcr-input" rows="3" placeholder="Tópicos da reunião, links, documentos..." style="resize:vertical"></textarea>
+    </div>
+
+    <div class="gcr-toggle-row">
+      <div>
+        <div class="gcr-toggle-lbl">🎥 Gerar link Google Meet</div>
+        <div class="gcr-toggle-desc">Link criado automaticamente e enviado aos convidados</div>
+      </div>
+      <label class="gcal-toggle">
+        <input type="checkbox" id="gcr-meet" checked onchange="gcalToggleMeetPreview()">
+        <span class="gcal-toggle-slider"></span>
+      </label>
+    </div>
+    <div id="gcr-meet-preview" class="gcr-meet-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24"><path d="M19 8L15 12l4 4V8z" fill="#1a73e8"/><rect x="2" y="7" width="13" height="10" rx="2" fill="#1a73e8"/></svg>
+      Link Meet será gerado ao agendar
+    </div>
+
+    <div class="gcr-toggle-row" style="margin-top:8px">
+      <div>
+        <div class="gcr-toggle-lbl">Salvar também no EXP</div>
+        <div class="gcr-toggle-desc">Aparece no calendário EXP para toda a equipe</div>
+      </div>
+      <label class="gcal-toggle">
+        <input type="checkbox" id="gcr-exp" checked>
+        <span class="gcal-toggle-slider"></span>
+      </label>
+    </div>
+  `;
+
+  gcalRenderTags();
+  document.getElementById('gcal-reuniao-modal').classList.add('open');
+  setTimeout(() => document.getElementById('gcr-titulo')?.focus(), 100);
+}
+
+function gcalFecharReuniao() {
+  document.getElementById('gcal-reuniao-modal')?.classList.remove('open');
+}
+
+function gcalToggleMeetPreview() {
+  const on = document.getElementById('gcr-meet')?.checked;
+  const prev = document.getElementById('gcr-meet-preview');
+  if (prev) prev.style.display = on ? 'inline-flex' : 'none';
+}
+
+function gcalAtualizarCorAgenda(sel) {
+  const calId = sel.value;
+  const cal = GCAL.calendarios.find(c => c.id === calId);
+  const cor = cal?.backgroundColor || '#4285f4';
+  sel.style.borderColor = cor;
+  sel.style.boxShadow = `0 0 0 1px ${cor}22`;
+}
+
+// Helper: retorna o ID da agenda ideal com base em palavra-chave
+function gcalDefaultCalId(keyword) {
+  const match = GCAL.calendarios.find(c => new RegExp(keyword, 'i').test(c.summary));
+  return match?.id || GCAL.calendarios.find(c => c.primary)?.id || GCAL.calendarios[0]?.id;
+}
+
+// ── Tag input de convidados ────────────────────────────────
+function gcalRenderTags() {
+  const area = document.getElementById('gcr-tags-area');
+  if (!area) return;
+  area.innerHTML = GCAL._reuniaoConvidados.map((c, i) => `
+    <div class="gcr-tag">
+      <div class="gcr-tag-av" style="background:${c.cor || '#888'}">${_escN(c.iniciais || c.email[0].toUpperCase())}</div>
+      <span class="gcr-tag-nome" title="${_escN(c.email)}">${_escN(c.nome || c.email)}</span>
+      <span class="gcr-tag-rm" onclick="gcalRemoverConvidado(${i})">×</span>
+    </div>`).join('');
+}
+
+function gcalRemoverConvidado(idx) {
+  GCAL._reuniaoConvidados.splice(idx, 1);
+  gcalRenderTags();
+}
+
+function gcalAddConvidado(c) {
+  if (GCAL._reuniaoConvidados.find(x => x.email === c.email)) return;
+  GCAL._reuniaoConvidados.push(c);
+  gcalRenderTags();
+  const inp = document.getElementById('gcr-convidado-inp');
+  if (inp) { inp.value = ''; gcalFiltrarConvidados(''); }
+}
+
+function gcalFiltrarConvidados(q) {
+  const sug = document.getElementById('gcr-suggestions');
+  if (!sug) return;
+  q = (q || '').toLowerCase().trim();
+  if (!q) { sug.style.display = 'none'; return; }
+
+  const usuarios = (G.todosUsuarios || []).filter(u =>
+    u.email && (
+      u.nome?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q)
+    ) && !GCAL._reuniaoConvidados.find(c => c.email === u.email)
+  ).slice(0, 6);
+
+  // Se q parece um email válido e não está na lista, oferece como opção externa
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q);
+  const externo = isEmail && !usuarios.find(u => u.email === q)
+    ? [{ email: q, nome: q, cor: '#888', iniciais: q[0].toUpperCase(), isExt: true }]
+    : [];
+
+  const todos = [...usuarios.map(u => ({
+    email: u.email, nome: u.nome, cor: u.cor || '#888',
+    iniciais: u.iniciais || u.nome?.[0] || '?', isExp: true
+  })), ...externo];
+
+  if (!todos.length) { sug.style.display = 'none'; return; }
+
+  sug.innerHTML = todos.map((c, i) => `
+    <div class="gcr-sug-item" onclick="gcalAddConvidado(${_sqN(c)})">
+      <div class="gcr-sug-av" style="background:${c.cor}">${_escN(c.iniciais)}</div>
+      <div>
+        <div class="gcr-sug-nome">${_escN(c.nome)}</div>
+        <div class="gcr-sug-email">${_escN(c.email)}${c.isExt ? ' · externo' : ''}</div>
+      </div>
+    </div>`).join('');
+  sug.style.display = 'block';
+}
+
+function gcalConvidadoKeydown(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const v = e.target.value.trim().replace(/,$/, '');
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+      gcalAddConvidado({ email: v, nome: v, cor: '#888', iniciais: v[0].toUpperCase() });
+    }
+  }
+  if (e.key === 'Escape') {
+    const sug = document.getElementById('gcr-suggestions');
+    if (sug) sug.style.display = 'none';
+  }
+}
+
+// Fecha suggestions ao clicar fora
+document.addEventListener('click', e => {
+  if (!e.target.closest('#gcr-tag-wrap')) {
+    const sug = document.getElementById('gcr-suggestions');
+    if (sug) sug.style.display = 'none';
+  }
+});
+
+// ── Salvar reunião no Google Calendar ─────────────────────
+async function gcalSalvarReuniao() {
+  const titulo  = document.getElementById('gcr-titulo')?.value.trim();
+  const data    = document.getElementById('gcr-data')?.value;
+  const hIni    = document.getElementById('gcr-hora-ini')?.value;
+  const hFim    = document.getElementById('gcr-hora-fim')?.value;
+  const local   = document.getElementById('gcr-local')?.value.trim();
+  const desc    = document.getElementById('gcr-desc')?.value.trim();
+  const meet    = document.getElementById('gcr-meet')?.checked ?? true;
+  const tbEXP   = document.getElementById('gcr-exp')?.checked  ?? true;
+
+  if (!titulo) { toast('Digite o título da reunião.'); document.getElementById('gcr-titulo')?.focus(); return; }
+  if (!data)   { toast('Selecione a data.'); return; }
+  if (!hIni || !hFim) { toast('Defina hora de início e fim.'); return; }
+  if (hFim <= hIni)   { toast('Hora de fim deve ser após o início.'); return; }
+
+  const btn = document.getElementById('gcr-salvar-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Agendando...'; }
+
+  try {
+    const tz = 'America/Sao_Paulo';
+    const startDT = `${data}T${hIni}:00`;
+    const endDT   = `${data}T${hFim}:00`;
+
+    const body = {
+      summary:     titulo,
+      description: desc || undefined,
+      location:    local || undefined,
+      start: { dateTime: startDT, timeZone: tz },
+      end:   { dateTime: endDT,   timeZone: tz },
+      attendees: GCAL._reuniaoConvidados.map(c => ({
+        email: c.email,
+        displayName: (!c.email.includes(c.nome) ? c.nome : undefined),
+      })).filter(a => a.email),
+      reminders: { useDefault: true },
+    };
+
+    if (meet) {
+      body.conferenceData = {
+        createRequest: {
+          requestId: 'exp-' + G.usuario?.id + '-' + Date.now(),
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      };
+    }
+
+    // Usa a agenda selecionada no dropdown, senão fallback para primary
+    const agendaId = document.getElementById('gcr-agenda')?.value ||
+                     GCAL.calendarios.find(c => c.primary)?.id ||
+                     GCAL.calendarios[0]?.id;
+    if (!agendaId) throw new Error('Nenhum calendário Google disponível. Reconecte o Google Calendar.');
+
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(agendaId)}/events${meet ? '?conferenceDataVersion=1&sendUpdates=all' : '?sendUpdates=all'}`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + GCAL.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const errData = await r.json();
+      throw new Error(errData?.error?.message || `Erro ${r.status}`);
+    }
+    const evCriado = await r.json();
+    const meetLink = evCriado.hangoutLink || evCriado.conferenceData?.entryPoints?.[0]?.uri || null;
+
+    // Salva também no EXP (tabela calendar_events)
+    if (tbEXP) {
+      await sb.from('calendar_events').insert({
+        tipo:        'reuniao',
+        titulo,
+        inicio:      startDT,
+        fim:         endDT,
+        dia_inteiro: false,
+        descricao:   [desc, local ? '📍 ' + local : '', meetLink ? '🔗 ' + meetLink : ''].filter(Boolean).join('\n') || null,
+        meet_link:   meetLink || null,
+        scope:       'todos',
+        nucleo_id:   null,
+        user_id:     null,
+        criado_por:  G.usuario?.id,
+      });
+      await calCarregarEventos();
+    }
+
+    // Recarrega eventos do Google
+    await gcalCarregarEventos();
+    calRender();
+    gcalFecharReuniao();
+
+    // Mostra resultado com link Meet
+    if (meetLink) {
+      gcalMostrarResultadoReuniao(titulo, data, hIni, hFim, meetLink, GCAL._reuniaoConvidados.length);
+    } else {
+      toast('Reunião agendada! Convites enviados aos ' + GCAL._reuniaoConvidados.length + ' convidados.');
+    }
+
+  } catch(e) {
+    toast('Erro: ' + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Agendar'; }
+  }
+}
+
+// ── Resultado: mostra link Meet para copiar ───────────────
+function gcalMostrarResultadoReuniao(titulo, data, hIni, hFim, meetLink, nConvidados) {
+  const dtFmt = new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  const modal = document.getElementById('gcal-reuniao-modal');
+  if (!modal) return;
+  document.getElementById('gcal-reuniao-body').innerHTML = `
+    <div style="text-align:center;padding:8px 0 16px">
+      <div style="font-size:32px;margin-bottom:8px">✅</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">${_escN(titulo)}</div>
+      <div style="font-size:11px;color:#888;margin-bottom:16px">${dtFmt} · ${hIni}–${hFim} · ${nConvidados} convidado${nConvidados !== 1 ? 's' : ''}</div>
+      <div style="font-size:10px;font-weight:700;color:#34a853;margin-bottom:8px;letter-spacing:.3px">LINK GOOGLE MEET GERADO</div>
+      <div class="gcr-link-box">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 8L15 12l4 4V8z" fill="#1a73e8"/><rect x="2" y="7" width="13" height="10" rx="2" fill="#1a73e8"/></svg>
+        <a class="gcr-link-url" href="${meetLink}" target="_blank">${meetLink}</a>
+        <button class="gcr-copy-btn" onclick="navigator.clipboard.writeText('${meetLink}').then(()=>toast('Link copiado!'))">Copiar</button>
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:10px">Convites com o link foram enviados a todos os convidados pelo Google Calendar.</div>
+    </div>
+  `;
+  document.getElementById('gcal-reuniao-modal').querySelector('.cal-modal-ft').innerHTML =
+    `<a href="${meetLink}" target="_blank" class="btn filled sm" style="text-decoration:none">Entrar no Meet</a>
+     <button class="btn sm" onclick="gcalFecharReuniao()">Fechar</button>`;
+}
+
+// Atualiza botão "Agendar reunião" junto com o estado do Google
+const _gcalAtualizarUIOrig = gcalAtualizarUI;
+window.gcalAtualizarUI = function() {
+  _gcalAtualizarUIOrig();
+  const btnR = document.getElementById('gcal-btn-reuniao');
+  if (btnR) btnR.style.display = GCAL.token ? '' : 'none';
 };
 
 init();
@@ -18122,6 +19132,24 @@ init();
       <div class="cal-modal-ft">
         <button class="btn sm" onclick="calFecharModalNovo()">Cancelar</button>
         <button class="btn filled sm" onclick="calSalvar()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agendar Reunião Google Calendar -->
+  <div class="cal-modal-overlay" id="gcal-reuniao-modal" onclick="if(event.target===this)gcalFecharReuniao()">
+    <div class="cal-modal-box" style="max-width:520px">
+      <div class="cal-modal-hd">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="gcal-badge" style="width:18px;height:18px;font-size:9px">G</span>
+          <span class="cal-modal-title">Agendar Reunião</span>
+        </div>
+        <button class="cal-modal-close" onclick="gcalFecharReuniao()">✕</button>
+      </div>
+      <div class="cal-modal-body" id="gcal-reuniao-body" style="padding:16px 18px;overflow-y:auto;max-height:70vh"></div>
+      <div class="cal-modal-ft">
+        <button class="btn sm" onclick="gcalFecharReuniao()">Cancelar</button>
+        <button class="btn filled sm" id="gcr-salvar-btn" onclick="gcalSalvarReuniao()">Agendar</button>
       </div>
     </div>
   </div>
