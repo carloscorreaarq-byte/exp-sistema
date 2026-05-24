@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EXP · Pessoas</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="exp-design-system.css">
+<script>
+  (function(){
+    var saved = localStorage.getItem('exp-theme');
+    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(saved === 'dark' || (!saved && sys))
+      document.documentElement.setAttribute('data-theme','dark');
+  })();
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --tc:      var(--terracota);
+  --tc-bg:   #FBF0EE;
+  --az-bg:   #EAF0FB;
+  --am-bg:   #FBF3E8;
+  --roxo:    #6B4FA0;
+  --roxo-bg: #F3EFFE;
+  --cinza2:  #ECEAE4;
+  --verde-bg:#EAF5EE;
+  --acento:  var(--terracota);
+}
+body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-height:100vh}
+
+/* ── LOADING ─── */
+#loading{position:fixed;inset:0;background:var(--off);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+.loading-logo{height:30px;display:block;mix-blend-mode:multiply}
+[data-theme="dark"] .loading-logo{filter:invert(1) brightness(.85);mix-blend-mode:screen}
+.loading-bar{width:120px;height:2px;background:var(--cinza);border-radius:2px;overflow:hidden;position:relative;margin-top:4px}
+.loading-bar::after{content:'';position:absolute;top:0;left:0;width:40%;height:100%;background:var(--grafite);border-radius:2px;animation:ldbar 1.4s ease-in-out infinite}
+@keyframes ldbar{0%{transform:translateX(-150%)}100%{transform:translateX(350%)}}
+
+/* ── CONTEÚDO ─── */
+#conteudo{display:none;animation:fadeUp .3s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── LAYOUT ─── */
+.ps-wrap{max-width:1120px;margin:0 auto;padding:22px 24px;position:relative;z-index:1}
+.ps-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.ps-header-left{flex:1}
+.ps-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.ps-sub{font-size:11px;color:#999;margin-top:2px}
+.ps-layout{display:grid;grid-template-columns:256px 1fr;gap:14px;align-items:start}
+
+/* ── SIDEBAR ─── */
+.ps-sidebar{background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;overflow:hidden;position:sticky;top:14px}
+.ps-search-wrap{padding:10px 10px 8px;border-bottom:1px solid var(--cinza2)}
+.ps-search{width:100%;padding:7px 10px;border:1px solid var(--cinza2);border-radius:6px;font-family:var(--font-ui);font-size:11px;color:var(--grafite);background:var(--off);outline:none;transition:border-color .12s}
+.ps-search:focus{border-color:var(--grafite)}
+.ps-search::placeholder{color:#bbb}
+.ps-filtros{display:flex;gap:5px;padding:8px 10px;border-bottom:1px solid var(--cinza2);flex-wrap:wrap}
+.ps-filtro{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 9px;border-radius:99px;border:1px solid var(--cinza2);background:none;cursor:pointer;color:#999;font-family:var(--font-ui);transition:all .12s}
+.ps-filtro.ativo{background:var(--grafite);color:#fff;border-color:var(--grafite)}
+.ps-filtro:hover:not(.ativo){border-color:#bbb;color:#555}
+.ps-lista{overflow-y:auto;max-height:calc(100vh - 220px)}
+.ps-lista-empty{padding:24px;text-align:center;font-size:11px;color:#bbb}
+
+/* ── ITEM DA LISTA ─── */
+.ps-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--cinza2);transition:background .1s;border-left:3px solid transparent}
+.ps-item:last-child{border-bottom:none}
+.ps-item:hover{background:var(--off)}
+.ps-item.sel{background:var(--tc-bg);border-left-color:var(--tc)}
+.ps-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.ps-item-info{min-width:0;flex:1}
+.ps-item-nome{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-item-cargo{font-size:10px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-item-badges{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap}
+
+/* ── BADGE STATUS ─── */
+.badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+.badge.ativo{background:var(--verde-bg);color:var(--verde)}
+.badge.ferias{background:var(--az-bg);color:var(--azul)}
+.badge.desligado{background:var(--tc-bg);color:var(--tc)}
+.badge.clt{background:var(--az-bg);color:var(--azul)}
+.badge.pj{background:var(--am-bg);color:var(--ouro)}
+.badge.socio{background:#f3effe;color:var(--roxo)}
+.badge.estagio{background:var(--cinza2);color:#777}
+
+/* ── PAINEL DETALHE ─── */
+.ps-detalhe{background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;overflow:hidden}
+.ps-det-header{padding:18px 20px 14px;border-bottom:1px solid var(--cinza2);display:flex;align-items:flex-start;gap:14px}
+.ps-det-av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0}
+.ps-det-info{flex:1;min-width:0}
+.ps-det-nome{font-size:17px;font-weight:700;letter-spacing:-.2px;margin-bottom:3px}
+.ps-det-cargo{font-size:12px;color:#777;margin-bottom:6px}
+.ps-det-badges{display:flex;gap:5px;flex-wrap:wrap}
+.ps-det-actions{display:flex;gap:6px;flex-shrink:0;padding-top:4px}
+.ps-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--cinza2);background:none;cursor:pointer;border-radius:6px;color:#777;transition:all .12s;white-space:nowrap}
+.ps-btn:hover{border-color:var(--grafite);color:var(--grafite)}
+.ps-btn.primary{background:var(--tc);color:#fff;border-color:var(--tc)}
+.ps-btn.primary:hover{background:#9e4930}
+
+/* ── TABS ─── */
+.ps-tabs{display:flex;gap:0;border-bottom:1px solid var(--cinza2);padding:0 20px;overflow-x:auto}
+.ps-tab{padding:10px 14px;font-size:10px;font-weight:600;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .12s;margin-bottom:-1px}
+.ps-tab:hover{color:var(--grafite)}
+.ps-tab.ativo{color:var(--tc);border-bottom-color:var(--tc)}
+
+/* ── CONTEÚDO DAS TABS ─── */
+.ps-tab-body{padding:18px 20px;overflow-y:auto;max-height:calc(100vh - 290px)}
+.ps-tab-panel{display:none}
+.ps-tab-panel.ativo{display:block}
+
+/* ── SEÇÃO INTERNA ─── */
+.ps-sec{margin-bottom:20px}
+.ps-sec:last-child{margin-bottom:0}
+.ps-sec-title{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.ps-sec-title::after{content:'';flex:1;height:1px;background:var(--cinza2)}
+.ps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.ps-grid.cols2{grid-template-columns:1fr 1fr}
+.ps-grid.cols3{grid-template-columns:repeat(3,1fr)}
+
+/* ── CAMPO DE DADOS ─── */
+.ps-field{display:flex;flex-direction:column;gap:3px}
+.ps-field label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb}
+.ps-field-val{font-size:11px;color:var(--grafite);font-weight:500}
+.ps-field-val.muted{color:#aaa;font-weight:400;font-style:italic}
+
+/* ── CARD MÉTRICA ─── */
+.ps-metric{background:var(--off);border:1px solid var(--cinza2);border-radius:8px;padding:12px 14px}
+.ps-metric-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:4px}
+.ps-metric-val{font-size:20px;font-weight:700;letter-spacing:-.5px;line-height:1}
+.ps-metric-sub{font-size:10px;color:#aaa;margin-top:3px}
+.ps-metric-val.pos{color:var(--verde)}
+.ps-metric-val.neg{color:var(--tc)}
+.ps-metric-val.neu{color:var(--ouro)}
+
+/* ── LINHA DE HISTÓRICO ─── */
+.ps-hist-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--cinza2)}
+.ps-hist-row:last-child{border-bottom:none}
+.ps-hist-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.ps-hist-dot.verde{background:var(--verde)}
+.ps-hist-dot.azul{background:var(--azul)}
+.ps-hist-dot.ouro{background:var(--ouro)}
+.ps-hist-dot.tc{background:var(--tc)}
+.ps-hist-dot.cinza{background:var(--cinza)}
+.ps-hist-corpo{flex:1}
+.ps-hist-title{font-size:11px;font-weight:600;margin-bottom:2px}
+.ps-hist-desc{font-size:10px;color:#888;line-height:1.5}
+.ps-hist-data{font-size:9px;color:#bbb;margin-top:3px;font-family:var(--font-mono)}
+
+/* ── CARD OCORRÊNCIA / FEEDBACK ─── */
+.ps-reg-card{border:1px solid var(--cinza2);border-radius:8px;padding:12px 14px;margin-bottom:8px;background:var(--off)}
+.ps-reg-card:last-child{margin-bottom:0}
+.ps-reg-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.ps-reg-tipo{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:99px}
+.ps-reg-tipo.advertencia{background:var(--tc-bg);color:var(--tc)}
+.ps-reg-tipo.conflito{background:#fff3f3;color:#c0392b}
+.ps-reg-tipo.desempenho{background:var(--am-bg);color:var(--ouro)}
+.ps-reg-tipo.positivo{background:var(--verde-bg);color:var(--verde)}
+.ps-reg-tipo.corretivo{background:var(--am-bg);color:var(--ouro)}
+.ps-reg-tipo.desenvolvimento{background:var(--az-bg);color:var(--azul)}
+.ps-reg-status{font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:99px}
+.ps-reg-status.aberta{background:var(--tc-bg);color:var(--tc)}
+.ps-reg-status.resolvida{background:var(--verde-bg);color:var(--verde)}
+.ps-reg-status.encerrada{background:var(--cinza2);color:#888}
+.ps-reg-data{font-size:9px;color:#bbb;font-family:var(--font-mono);margin-left:auto}
+.ps-reg-text{font-size:11px;color:#555;line-height:1.55}
+.ps-reg-autor{font-size:9px;color:#bbb;margin-top:5px}
+
+/* ── TABELA FINANCEIRA ─── */
+.ps-table{width:100%;border-collapse:collapse;font-size:10px}
+.ps-table th{text-align:left;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#bbb;padding:4px 8px 8px;border-bottom:1px solid var(--cinza2)}
+.ps-table td{padding:8px;border-bottom:1px solid var(--cinza2);vertical-align:middle;color:var(--grafite)}
+.ps-table tr:last-child td{border-bottom:none}
+.ps-table td.num{font-family:var(--font-mono);font-size:11px;font-weight:600;text-align:right}
+.ps-table td.pos{color:var(--verde)}
+.ps-table td.neg{color:var(--tc)}
+.ps-table .tag-pg{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:2px 6px;border-radius:99px}
+.ps-table .tag-pg.pago{background:var(--verde-bg);color:var(--verde)}
+.ps-table .tag-pg.pendente{background:var(--am-bg);color:var(--ouro)}
+.ps-table .tag-pg.adiantamento{background:var(--az-bg);color:var(--azul)}
+
+/* ── BARRA HORAS ─── */
+.ps-barra-wrap{margin-bottom:12px}
+.ps-barra-label{display:flex;justify-content:space-between;font-size:10px;color:#888;margin-bottom:5px}
+.ps-barra-label strong{color:var(--grafite)}
+.ps-barra-bg{height:6px;background:var(--cinza2);border-radius:99px;overflow:hidden}
+.ps-barra-fill{height:100%;border-radius:99px;transition:width .3s}
+.ps-barra-fill.horas{background:var(--azul)}
+.ps-barra-fill.extras{background:var(--ouro)}
+.ps-barra-fill.faltas{background:var(--tc)}
+
+/* ── VAZIO ─── */
+.ps-empty{text-align:center;padding:40px 20px;color:#bbb}
+.ps-empty-icon{font-size:28px;margin-bottom:8px;opacity:.4}
+.ps-empty-text{font-size:11px}
+
+/* ── NOVA ENTRADA ─── */
+.ps-add-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border:1px dashed var(--cinza2);border-radius:8px;background:none;cursor:pointer;font-family:var(--font-ui);font-size:10px;color:#bbb;transition:all .12s;margin-bottom:12px}
+.ps-add-btn:hover{border-color:var(--tc);color:var(--tc);background:var(--tc-bg)}
+
+/* ── DARK MODE ─── */
+[data-theme="dark"] .ps-sidebar,[data-theme="dark"] .ps-detalhe{background:var(--branco);border-color:var(--cinza)}
+[data-theme="dark"] .ps-item:hover{background:var(--off)}
+[data-theme="dark"] .ps-item.sel{background:rgba(184,86,56,.08)}
+[data-theme="dark"] .ps-metric{background:var(--off);border-color:var(--cinza)}
+[data-theme="dark"] .ps-reg-card{background:var(--off);border-color:var(--cinza)}
+[data-theme="dark"] .ps-search{background:var(--off);border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .ps-table td{color:var(--grafite)}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <img class="loading-logo" src="exp.png" alt="EXP">
+  <div class="loading-bar"></div>
+</div>
+
+<div id="conteudo">
+
+<nav class="nav">
+  <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
+  <div class="nav-sep"></div>
+  <div class="nav-dropdown">
+    <span class="nav-mod">Pessoas</span>
+    <div class="nav-dropdown-menu">
+      <a href="gestao.html">EXP.projetos</a>
+      <a href="apoio.html">EXP.apoio</a>
+      <a href="contatos.html">EXP.contatos</a>
+      <div class="nd-sep nd-soc" style="display:none"></div>
+      <a href="calc.html" class="nd-soc" style="display:none">EXP.calculadora</a>
+      <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
+      <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
+      <a href="analise.html" class="nd-soc" style="display:none">EXP.análise</a>
+      <a href="pessoas.html" class="nd-soc nav-current" style="display:none">EXP.pessoas</a>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="conn-dot online" title="Conectado"></div>
+    <div class="user-pill-wrap">
+      <div class="user-chip" id="user-chip">
+        <div class="user-av" id="user-av" style="background:var(--terracota)">CC</div>
+        <div>
+          <div class="u-nome">Carlos Corrêa</div>
+          <div class="u-role">Sócio administrador</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="ps-wrap">
+
+  <div class="ps-header">
+    <div class="ps-header-left">
+      <div class="ps-title">Pessoas</div>
+      <div class="ps-sub">4 colaboradores · 3 ativos · 1 em férias</div>
+    </div>
+    <button class="ps-btn primary" onclick="alert('Cadastro de colaborador')">+ Colaborador</button>
+  </div>
+
+  <div class="ps-layout">
+
+    <!-- SIDEBAR — lista de colaboradores -->
+    <div class="ps-sidebar">
+      <div class="ps-search-wrap">
+        <input class="ps-search" type="text" placeholder="Buscar colaborador..." oninput="filtrarLista(this.value)">
+      </div>
+      <div class="ps-filtros">
+        <button class="ps-filtro ativo" onclick="setFiltro(this,'todos')">Todos</button>
+        <button class="ps-filtro" onclick="setFiltro(this,'ativo')">Ativos</button>
+        <button class="ps-filtro" onclick="setFiltro(this,'ferias')">Férias</button>
+        <button class="ps-filtro" onclick="setFiltro(this,'desligado')">Desligados</button>
+      </div>
+      <div class="ps-lista" id="ps-lista">
+
+        <div class="ps-item sel" onclick="selecionarColab(this,0)" data-status="ativo">
+          <div class="ps-av" style="background:#4A72B5">CC</div>
+          <div class="ps-item-info">
+            <div class="ps-item-nome">Carlos Corrêa</div>
+            <div class="ps-item-cargo">Sócio administrador</div>
+            <div class="ps-item-badges">
+              <span class="badge ativo">Ativo</span>
+              <span class="badge socio">Sócio</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ps-item" onclick="selecionarColab(this,1)" data-status="ativo">
+          <div class="ps-av" style="background:#2D9E6B">AL</div>
+          <div class="ps-item-info">
+            <div class="ps-item-nome">Ana Lima</div>
+            <div class="ps-item-cargo">Arquiteta sênior</div>
+            <div class="ps-item-badges">
+              <span class="badge ativo">Ativo</span>
+              <span class="badge clt">CLT</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ps-item" onclick="selecionarColab(this,2)" data-status="ferias">
+          <div class="ps-av" style="background:#C49A27">MR</div>
+          <div class="ps-item-info">
+            <div class="ps-item-nome">Mariana Ramos</div>
+            <div class="ps-item-cargo">Projetista</div>
+            <div class="ps-item-badges">
+              <span class="badge ferias">Férias</span>
+              <span class="badge clt">CLT</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ps-item" onclick="selecionarColab(this,3)" data-status="ativo">
+          <div class="ps-av" style="background:#888">PS</div>
+          <div class="ps-item-info">
+            <div class="ps-item-nome">Pedro Souza</div>
+            <div class="ps-item-cargo">Estagiário</div>
+            <div class="ps-item-badges">
+              <span class="badge ativo">Ativo</span>
+              <span class="badge estagio">Estágio</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAINEL DETALHE -->
+    <div class="ps-detalhe">
+      <div class="ps-det-header">
+        <div class="ps-det-av" id="det-av" style="background:#4A72B5">CC</div>
+        <div class="ps-det-info">
+          <div class="ps-det-nome" id="det-nome">Carlos Corrêa</div>
+          <div class="ps-det-cargo" id="det-cargo">Sócio administrador · desde jan/2020</div>
+          <div class="ps-det-badges" id="det-badges">
+            <span class="badge ativo">Ativo</span>
+            <span class="badge socio">Sócio</span>
+          </div>
+        </div>
+        <div class="ps-det-actions">
+          <button class="ps-btn">Editar dados</button>
+          <button class="ps-btn">⋯</button>
+        </div>
+      </div>
+
+      <div class="ps-tabs">
+        <div class="ps-tab ativo" onclick="mudarTab(this,'dados')">Dados</div>
+        <div class="ps-tab" onclick="mudarTab(this,'jornada')">Jornada</div>
+        <div class="ps-tab" onclick="mudarTab(this,'financeiro')">Financeiro</div>
+        <div class="ps-tab" onclick="mudarTab(this,'evolucao')">Evolução</div>
+        <div class="ps-tab" onclick="mudarTab(this,'ocorrencias')">Ocorrências</div>
+        <div class="ps-tab" onclick="mudarTab(this,'feedbacks')">Feedbacks</div>
+      </div>
+
+      <div class="ps-tab-body">
+
+        <!-- TAB: DADOS -->
+        <div class="ps-tab-panel ativo" id="tab-dados">
+          <div class="ps-sec">
+            <div class="ps-sec-title">Contato</div>
+            <div class="ps-grid">
+              <div class="ps-field"><label>E-mail corporativo</label><div class="ps-field-val">carlos@escritorioexp.com.br</div></div>
+              <div class="ps-field"><label>E-mail pessoal</label><div class="ps-field-val">carlos.correa@gmail.com</div></div>
+              <div class="ps-field"><label>Celular</label><div class="ps-field-val">(11) 98765-4321</div></div>
+              <div class="ps-field"><label>Telefone fixo</label><div class="ps-field-val muted">Não informado</div></div>
+            </div>
+          </div>
+          <div class="ps-sec">
+            <div class="ps-sec-title">Pessoal</div>
+            <div class="ps-grid">
+              <div class="ps-field"><label>Nome completo</label><div class="ps-field-val">Carlos Eduardo Corrêa</div></div>
+              <div class="ps-field"><label>Data de nascimento</label><div class="ps-field-val">12/03/1985</div></div>
+              <div class="ps-field"><label>CPF</label><div class="ps-field-val">•••.•••.•••-••</div></div>
+              <div class="ps-field"><label>Cidade natal</label><div class="ps-field-val">São Paulo, SP</div></div>
+            </div>
+          </div>
+          <div class="ps-sec">
+            <div class="ps-sec-title">Vínculo</div>
+            <div class="ps-grid">
+              <div class="ps-field"><label>Tipo de contrato</label><div class="ps-field-val">Sócio administrador</div></div>
+              <div class="ps-field"><label>Data de entrada</label><div class="ps-field-val">15/01/2020</div></div>
+              <div class="ps-field"><label>Participação societária</label><div class="ps-field-val">50%</div></div>
+              <div class="ps-field"><label>Carga horária</label><div class="ps-field-val">44h / semana</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: JORNADA -->
+        <div class="ps-tab-panel" id="tab-jornada">
+          <div class="ps-sec">
+            <div class="ps-sec-title">Resumo — maio 2026</div>
+            <div class="ps-grid cols3">
+              <div class="ps-metric"><div class="ps-metric-label">Horas trabalhadas</div><div class="ps-metric-val">142h</div><div class="ps-metric-sub">de 176h contratadas</div></div>
+              <div class="ps-metric"><div class="ps-metric-label">Horas extras</div><div class="ps-metric-val neu">18h</div><div class="ps-metric-sub">a compensar</div></div>
+              <div class="ps-metric"><div class="ps-metric-label">Faltas</div><div class="ps-metric-val pos">0</div><div class="ps-metric-sub">sem ocorrências</div></div>
+            </div>
+          </div>
+          <div class="ps-sec">
+            <div class="ps-sec-title">Horas por semana</div>
+            <div class="ps-barra-wrap">
+              <div class="ps-barra-label"><span>Semana 1</span><strong>42h trabalhadas</strong></div>
+              <div class="ps-barra-bg"><div class="ps-barra-fill horas" style="width:95%"></div></div>
+            </div>
+            <div class="ps-barra-wrap">
+              <div class="ps-barra-label"><span>Semana 2</span><strong>38h trabalhadas</strong></div>
+              <div class="ps-barra-bg"><div class="ps-barra-fill horas" style="width:86%"></div></div>
+            </div>
+            <div class="ps-barra-wrap">
+              <div class="ps-barra-label"><span>Semana 3</span><strong>46h trabalhadas</strong></div>
+              <div class="ps-barra-bg"><div class="ps-barra-fill extras" style="width:100%"></div></div>
+            </div>
+            <div class="ps-barra-wrap">
+              <div class="ps-barra-label"><span>Semana 4</span><strong>16h (parcial)</strong></div>
+              <div class="ps-barra-bg"><div class="ps-barra-fill horas" style="width:36%"></div></div>
+            </div>
+          </div>
+          <div class="ps-sec">
+            <div class="ps-sec-title">Férias</div>
+            <div class="ps-grid cols2">
+              <div class="ps-metric"><div class="ps-metric-label">Saldo disponível</div><div class="ps-metric-val pos">18 dias</div><div class="ps-metric-sub">período 2025/2026</div></div>
+              <div class="ps-metric"><div class="ps-metric-label">Último gozo</div><div class="ps-metric-val" style="font-size:14px">jan/2025</div><div class="ps-metric-sub">10 dias corridos</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: FINANCEIRO -->
+        <div class="ps-tab-panel" id="tab-financeiro">
+          <div class="ps-sec">
+            <div class="ps-sec-title">Remuneração base</div>
+            <div class="ps-grid cols3">
+              <div class="ps-metric"><div class="ps-metric-label">Pró-labore</div><div class="ps-metric-val">R$ 8.500</div><div class="ps-metric-sub">mensal bruto</div></div>
+              <div class="ps-metric"><div class="ps-metric-label">Hora extra</div><div class="ps-metric-val" style="font-size:14px">R$ 72,40</div><div class="ps-metric-sub">valor/hora</div></div>
+              <div class="ps-metric"><div class="ps-metric-label">Custo total/h</div><div class="ps-metric-val" style="font-size:14px">R$ 48,30</div><div class="ps-metric-sub">encargos incluídos</div></div>
+            </div>
+          </div>
+          <div class="ps-sec">
+            <div class="ps-sec-title">Histórico de pagamentos</div>
+            <table class="ps-table">
+              <thead>
+                <tr>
+                  <th>Competência</th>
+                  <th>Tipo</th>
+                  <th>Bruto</th>
+                  <th>Líquido</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Maio 2026</td><td>Pró-labore</td><td class="num">R$ 8.500</td><td class="num">R$ 7.225</td><td><span class="tag-pg pendente">Pendente</span></td></tr>
+                <tr><td>Abr 2026</td><td>Pró-labore</td><td class="num">R$ 8.500</td><td class="num">R$ 7.225</td><td><span class="tag-pg pago">Pago</span></td></tr>
+                <tr><td>Abr 2026</td><td>Horas extras</td><td class="num">R$ 868</td><td class="num">R$ 868</td><td><span class="tag-pg pago">Pago</span></td></tr>
+                <tr><td>Mar 2026</td><td>Pró-labore</td><td class="num">R$ 8.500</td><td class="num">R$ 7.225</td><td><span class="tag-pg pago">Pago</span></td></tr>
+                <tr><td>Mar 2026</td><td>Adiantamento</td><td class="num">R$ 2.000</td><td class="num">R$ 2.000</td><td><span class="tag-pg adiantamento">Adiantamento</span></td></tr>
+                <tr><td>Fev 2026</td><td>Pró-labore</td><td class="num">R$ 8.500</td><td class="num">R$ 7.225</td><td><span class="tag-pg pago">Pago</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: EVOLUÇÃO -->
+        <div class="ps-tab-panel" id="tab-evolucao">
+          <div class="ps-sec">
+            <div class="ps-sec-title">Progressão na empresa</div>
+            <div class="ps-hist-row">
+              <div class="ps-hist-dot verde"></div>
+              <div class="ps-hist-corpo">
+                <div class="ps-hist-title">Reajuste salarial — Pró-labore R$ 7.000 → R$ 8.500</div>
+                <div class="ps-hist-desc">Revisão anual em função do resultado do escritório no exercício 2025.</div>
+                <div class="ps-hist-data">jan/2026</div>
+              </div>
+            </div>
+            <div class="ps-hist-row">
+              <div class="ps-hist-dot azul"></div>
+              <div class="ps-hist-corpo">
+                <div class="ps-hist-title">Assumiu gestão operacional do escritório</div>
+                <div class="ps-hist-desc">Passou a acumular a função de coordenação de projetos além da gestão societária.</div>
+                <div class="ps-hist-data">mar/2024</div>
+              </div>
+            </div>
+            <div class="ps-hist-row">
+              <div class="ps-hist-dot ouro"></div>
+              <div class="ps-hist-corpo">
+                <div class="ps-hist-title">Pró-labore R$ 5.500 → R$ 7.000</div>
+                <div class="ps-hist-desc">Revisão após crescimento da carteira de projetos e resultado positivo 2022/2023.</div>
+                <div class="ps-hist-data">jan/2023</div>
+              </div>
+            </div>
+            <div class="ps-hist-row">
+              <div class="ps-hist-dot cinza"></div>
+              <div class="ps-hist-corpo">
+                <div class="ps-hist-title">Fundação do escritório — Entrada como sócio 50%</div>
+                <div class="ps-hist-desc">Início das atividades com pró-labore inicial de R$ 5.500.</div>
+                <div class="ps-hist-data">jan/2020</div>
+              </div>
+            </div>
+          </div>
+          <div class="ps-sec">
+            <div class="ps-sec-title">Avaliações de desempenho</div>
+            <div class="ps-hist-row">
+              <div class="ps-hist-dot verde"></div>
+              <div class="ps-hist-corpo">
+                <div class="ps-hist-title">Avaliação anual 2025 — Excelente</div>
+                <div class="ps-hist-desc">Liderança de projetos, gestão de equipe e resultado financeiro acima do esperado.</div>
+                <div class="ps-hist-data">dez/2025</div>
+              </div>
+            </div>
+            <div class="ps-hist-row">
+              <div class="ps-hist-dot verde"></div>
+              <div class="ps-hist-corpo">
+                <div class="ps-hist-title">Avaliação anual 2024 — Bom</div>
+                <div class="ps-hist-desc">Adaptação à nova função de gestão operacional com boa evolução no segundo semestre.</div>
+                <div class="ps-hist-data">dez/2024</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: OCORRÊNCIAS -->
+        <div class="ps-tab-panel" id="tab-ocorrencias">
+          <button class="ps-add-btn" onclick="alert('Registrar ocorrência')">+ Registrar ocorrência</button>
+          <div class="ps-empty" id="ocorr-empty" style="display:none">
+            <div class="ps-empty-icon">✓</div>
+            <div class="ps-empty-text">Nenhuma ocorrência registrada.</div>
+          </div>
+          <div class="ps-reg-card">
+            <div class="ps-reg-head">
+              <span class="ps-reg-tipo desempenho">Desempenho</span>
+              <span class="ps-reg-status resolvida">Resolvida</span>
+              <span class="ps-reg-data">12/03/2024</span>
+            </div>
+            <div class="ps-reg-text">Atraso recorrente na entrega de relatórios mensais de acompanhamento de projetos. Conversado sobre importância do prazo para o ciclo de faturamento.</div>
+            <div class="ps-reg-autor">Registrado por Carlos Corrêa</div>
+          </div>
+          <div class="ps-reg-card">
+            <div class="ps-reg-head">
+              <span class="ps-reg-tipo conflito">Conflito</span>
+              <span class="ps-reg-status encerrada">Encerrada</span>
+              <span class="ps-reg-data">05/09/2023</span>
+            </div>
+            <div class="ps-reg-text">Desentendimento com cliente durante visita de obra. Situação contornada no mesmo dia com mediação do sócio. Não houve desdobramento.</div>
+            <div class="ps-reg-autor">Registrado por Carlos Corrêa</div>
+          </div>
+        </div>
+
+        <!-- TAB: FEEDBACKS -->
+        <div class="ps-tab-panel" id="tab-feedbacks">
+          <button class="ps-add-btn" onclick="alert('Registrar feedback')">+ Registrar feedback</button>
+          <div class="ps-reg-card">
+            <div class="ps-reg-head">
+              <span class="ps-reg-tipo positivo">Positivo</span>
+              <span class="ps-reg-data">10/05/2026</span>
+            </div>
+            <div class="ps-reg-text">Excelente condução do projeto Residência Pinheiros — cliente muito satisfeito com a entrega dentro do prazo e qualidade acima do esperado.</div>
+            <div class="ps-reg-autor">por Carlos Corrêa</div>
+          </div>
+          <div class="ps-reg-card">
+            <div class="ps-reg-head">
+              <span class="ps-reg-tipo desenvolvimento">Desenvolvimento</span>
+              <span class="ps-reg-data">15/02/2026</span>
+            </div>
+            <div class="ps-reg-text">Oportunidade de melhorar a comunicação escrita nos memoriais descritivos. Os projetos estão ótimos tecnicamente, mas os textos precisam de mais objetividade para o cliente leigo.</div>
+            <div class="ps-reg-autor">por Carlos Corrêa</div>
+          </div>
+          <div class="ps-reg-card">
+            <div class="ps-reg-head">
+              <span class="ps-reg-tipo corretivo">Corretivo</span>
+              <span class="ps-reg-data">08/10/2025</span>
+            </div>
+            <div class="ps-reg-text">Pontualidade nas reuniões de equipe precisa melhorar. Atrasos frequentes impactam o ritmo da reunião e o tempo dos demais.</div>
+            <div class="ps-reg-autor">por Carlos Corrêa</div>
+          </div>
+        </div>
+
+      </div><!-- /tab-body -->
+    </div><!-- /detalhe -->
+
+  </div><!-- /layout -->
+</div><!-- /ps-wrap -->
+</div><!-- /conteudo -->
+
+<script>
+/* ── MOCK DATA ─────────────────────────────────── */
+const colaboradores = [
+  {
+    av:'CC', cor:'#4A72B5',
+    nome:'Carlos Corrêa', cargo:'Sócio administrador',
+    entrada:'15/01/2020', status:'ativo', contrato:'Sócio'
+  },
+  {
+    av:'AL', cor:'#2D9E6B',
+    nome:'Ana Lima', cargo:'Arquiteta sênior',
+    entrada:'03/08/2021', status:'ativo', contrato:'CLT'
+  },
+  {
+    av:'MR', cor:'#C49A27',
+    nome:'Mariana Ramos', cargo:'Projetista',
+    entrada:'10/02/2022', status:'ferias', contrato:'CLT'
+  },
+  {
+    av:'PS', cor:'#888',
+    nome:'Pedro Souza', cargo:'Estagiário',
+    entrada:'01/03/2025', status:'ativo', contrato:'Estágio'
+  }
+];
+
+const statusLabel = { ativo:'Ativo', ferias:'Férias', desligado:'Desligado' };
+const contratoClass = { 'Sócio':'socio', 'CLT':'clt', 'PJ':'pj', 'Estágio':'estagio' };
+
+function selecionarColab(el, idx) {
+  document.querySelectorAll('.ps-item').forEach(i => i.classList.remove('sel'));
+  el.classList.add('sel');
+
+  const c = colaboradores[idx];
+  document.getElementById('det-av').textContent = c.av;
+  document.getElementById('det-av').style.background = c.cor;
+  document.getElementById('det-nome').textContent = c.nome;
+  document.getElementById('det-cargo').textContent = c.cargo + ' · desde ' + mesAno(c.entrada);
+  document.getElementById('det-badges').innerHTML =
+    `<span class="badge ${c.status}">${statusLabel[c.status]}</span>` +
+    `<span class="badge ${contratoClass[c.contrato] || 'clt'}">${c.contrato}</span>`;
+
+  mudarTab(document.querySelector('.ps-tab'), 'dados');
+}
+
+function mesAno(data) {
+  const [d,m,a] = data.split('/');
+  const meses = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  return meses[parseInt(m)] + '/' + a;
+}
+
+function mudarTab(el, tab) {
+  document.querySelectorAll('.ps-tab').forEach(t => t.classList.remove('ativo'));
+  document.querySelectorAll('.ps-tab-panel').forEach(p => p.classList.remove('ativo'));
+  const tabs = document.querySelectorAll('.ps-tab');
+  const tabNames = ['dados','jornada','financeiro','evolucao','ocorrencias','feedbacks'];
+  tabNames.forEach((name, i) => {
+    if (name === tab) tabs[i].classList.add('ativo');
+  });
+  const panel = document.getElementById('tab-' + tab);
+  if (panel) panel.classList.add('ativo');
+}
+
+let filtroAtivo = 'todos';
+function setFiltro(el, f) {
+  document.querySelectorAll('.ps-filtro').forEach(b => b.classList.remove('ativo'));
+  el.classList.add('ativo');
+  filtroAtivo = f;
+  filtrarLista(document.querySelector('.ps-search').value);
+}
+
+function filtrarLista(q) {
+  const busca = q.toLowerCase().trim();
+  document.querySelectorAll('.ps-item').forEach((item, i) => {
+    const c = colaboradores[i];
+    const matchQ = !busca || c.nome.toLowerCase().includes(busca) || c.cargo.toLowerCase().includes(busca);
+    const matchF = filtroAtivo === 'todos' || c.status === filtroAtivo;
+    item.style.display = matchQ && matchF ? '' : 'none';
+  });
+}
+
+/* ── INIT ──────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('conteudo').style.display = 'block';
+});
+</script>
+</body>
+</html>

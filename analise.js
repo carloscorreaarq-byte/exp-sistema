@@ -122,9 +122,15 @@ function analiseBindEventosBase() {
     analiseResetFiltros(reset.dataset.aba);
   });
 
-  document.getElementById('analise-drilldown')?.addEventListener('click', (event) => {
+  document.getElementById('analise-modal')?.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
-    if (event.target.closest('[data-drilldown-close]')) {
+    if (event.target.closest('[data-modal-close]')) {
+      analiseFecharProjeto();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && ANALISE._produtoIsoladoId) {
       analiseFecharProjeto();
     }
   });
@@ -432,7 +438,6 @@ function analiseAbrirProjeto(produtoId) {
   if (!produtoId || !ANALISE._dadosPorProduto[String(produtoId)]) return;
   ANALISE._produtoIsoladoId = String(produtoId);
   analiseRenderProjetoDetalhe();
-  document.getElementById('analise-drilldown')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function analiseFecharProjeto() {
@@ -441,7 +446,7 @@ function analiseFecharProjeto() {
 }
 
 function analiseRenderProjetoDetalhe() {
-  const host = document.getElementById('analise-drilldown');
+  const host = document.getElementById('analise-modal-body');
   if (!host) return;
 
   const item = ANALISE._produtoIsoladoId
@@ -449,8 +454,8 @@ function analiseRenderProjetoDetalhe() {
     : null;
 
   if (!item || ANALISE._carregando || ANALISE._erro) {
-    host.hidden = true;
     host.innerHTML = '';
+    analiseToggleModal(false);
     return;
   }
 
@@ -460,17 +465,17 @@ function analiseRenderProjetoDetalhe() {
   const budgetUtil = budgetHoras > 0 ? (item.horasTotais / budgetHoras) * 100 : null;
   const cliente = item.produto?.oportunidades?.clientes?.nome || 'Cliente nao identificado';
   const encerradoEm = item.statusResumo?.concluidoEm ? item.statusResumo.concluidoEm.toLocaleDateString('pt-BR') : 'N/D';
+  const margemInfo = analiseClassificarMargem(item.margemPct);
 
-  host.hidden = false;
   host.innerHTML = `
-    <div class="analise-drill-card">
-      <div class="analise-drill-head">
+    <div class="analise-modal-card">
+      <div class="analise-modal-head">
         <div>
           <div class="analise-state-kicker">Leitura isolada</div>
-          <h2 class="analise-drill-title">${_escN(item.produto?.nome || 'Projeto sem nome')}</h2>
+          <h2 class="analise-drill-title" id="analise-modal-title">${_escN(item.produto?.nome || 'Projeto sem nome')}</h2>
           <div class="analise-drill-sub">${_escN(cliente)} • ${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')} • ${_escN(item.statusResumo?.statusLabel || 'N/D')}</div>
         </div>
-        <button type="button" class="btn sm" data-drilldown-close="1">Fechar</button>
+        <button type="button" class="btn sm" data-modal-close="1">Fechar</button>
       </div>
       <div class="analise-kpis-row">
         ${analiseKpiCard('Horas totais', fmtH(item.horasTotais), `${concluidas}/${etapas.length} etapas concluidas`)}
@@ -481,13 +486,32 @@ function analiseRenderProjetoDetalhe() {
       <div class="analise-drill-meta">
         <span class="analise-chip analise-chip-muted">Fase: ${_escN(item.statusResumo?.faseLabel || 'N/D')}</span>
         <span class="analise-chip analise-chip-muted">Encerrado em: ${_escN(encerradoEm)}</span>
-        <span class="${analiseClassificarMargem(item.margemPct).cls}">${_escN(analiseClassificarMargem(item.margemPct).label)}</span>
+        <span class="${margemInfo.cls}">${_escN(margemInfo.label)}</span>
+      </div>
+      <div class="analise-visual-grid">
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Mapa de margem</div>
+          ${analiseGraficoMargemProjeto(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Composicao do custo</div>
+          ${analiseGraficoCustosProjeto(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Etapas por status</div>
+          ${analiseGraficoStatusEtapas(item)}
+        </section>
+        <section class="analise-visual-card analise-visual-card-wide">
+          <div class="analise-visual-title">Leitura de budget por etapa</div>
+          ${analiseGraficoBudgetEtapas(item)}
+        </section>
       </div>
       <div class="analise-table-wrap">
         ${analiseTabelaDetalheEtapas(item)}
       </div>
     </div>
   `;
+  analiseToggleModal(true);
 }
 
 function analiseRenderFatalState() {
@@ -496,11 +520,18 @@ function analiseRenderFatalState() {
   if (activePanel) {
     activePanel.innerHTML = analiseErrorTemplate(ANALISE._erro || 'Erro inesperado ao montar a visualizacao.');
   }
-  const host = document.getElementById('analise-drilldown');
+  const host = document.getElementById('analise-modal-body');
   if (host) {
-    host.hidden = true;
     host.innerHTML = '';
   }
+  analiseToggleModal(false);
+}
+
+function analiseToggleModal(open) {
+  const modal = document.getElementById('analise-modal');
+  if (!modal) return;
+  modal.hidden = !open;
+  document.body.classList.toggle('analise-modal-open', !!open);
 }
 
 function analiseGetConfig() {
@@ -1246,6 +1277,150 @@ function analiseTabelaDetalheEtapas(item) {
         `).join('')}
       </tbody>
     </table>
+  `;
+}
+
+function analiseGraficoMargemProjeto(item) {
+  const contratado = Number(item.produto?.valor_contratado || 0);
+  if (contratado <= 0) {
+    return '<div class="empty-note">Sem valor contratado conhecido para calcular a leitura visual da margem.</div>';
+  }
+
+  const custo = Number(item.custoTotal || 0);
+  const margem = contratado - custo;
+  const custoPct = Math.max(0, Math.min(100, (custo / contratado) * 100));
+  const margemPct = Math.max(-100, Math.min(100, Number(item.margemPct || 0)));
+  const status = analiseClassificarMargem(item.margemPct);
+  const corMargem = status.cls === 'margem-risco'
+    ? 'var(--terracota)'
+    : status.cls === 'margem-atencao'
+      ? 'var(--ouro)'
+      : 'var(--verde)';
+
+  return `
+    <div class="analise-chart-copy">Quanto do contrato ja foi consumido pelo custo e qual espaco de margem ainda existe.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 120" aria-label="Grafico de margem do projeto">
+      <rect x="16" y="46" width="288" height="20" rx="10" fill="var(--off)"></rect>
+      <rect x="16" y="46" width="${(288 * custoPct) / 100}" height="20" rx="10" fill="var(--grafite)"></rect>
+      <text x="16" y="28" class="svg-label">Contrato</text>
+      <text x="304" y="28" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(contratado))}</text>
+      <text x="16" y="92" class="svg-label">Custo consumido</text>
+      <text x="304" y="92" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(custo))}</text>
+      <text x="16" y="110" class="svg-label">Margem atual</text>
+      <text x="304" y="110" text-anchor="end" class="svg-value" fill="${corMargem}">${_escN(analiseFmtPct(margemPct))} | ${_escN(analiseFmtMoney(margem, margem === null))}</text>
+    </svg>
+  `;
+}
+
+function analiseGraficoCustosProjeto(item) {
+  const custoHH = Number(item.custoHH || 0);
+  const custoExtra = Number(item.custosLancados || 0);
+  const total = custoHH + custoExtra;
+  if (total <= 0) {
+    return '<div class="empty-note">Ainda nao ha custo registrado para compor o grafico.</div>';
+  }
+  const hhPct = (custoHH / total) * 100;
+  const extraPct = (custoExtra / total) * 100;
+
+  return `
+    <div class="analise-chart-copy">Separacao entre custo de horas trabalhadas e demais lancamentos financeiros.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 140" aria-label="Composicao do custo do projeto">
+      <rect x="16" y="42" width="288" height="24" rx="12" fill="var(--off)"></rect>
+      <rect x="16" y="42" width="${(288 * hhPct) / 100}" height="24" rx="12" fill="var(--grafite)"></rect>
+      <rect x="${16 + (288 * hhPct) / 100}" y="42" width="${(288 * extraPct) / 100}" height="24" rx="12" fill="var(--terracota)"></rect>
+      <circle cx="22" cy="94" r="5" fill="var(--grafite)"></circle>
+      <text x="34" y="98" class="svg-label">HH: ${_escN(analiseFmtMoney(custoHH))}</text>
+      <circle cx="170" cy="94" r="5" fill="var(--terracota)"></circle>
+      <text x="182" y="98" class="svg-label">Custos: ${_escN(analiseFmtMoney(custoExtra))}</text>
+      <text x="16" y="26" class="svg-label">Custo total</text>
+      <text x="304" y="26" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(total))}</text>
+      <text x="16" y="122" class="svg-label">Peso HH ${_escN(analiseFmtPct(hhPct))}</text>
+      <text x="304" y="122" text-anchor="end" class="svg-label">Peso custos ${_escN(analiseFmtPct(extraPct))}</text>
+    </svg>
+  `;
+}
+
+function analiseGraficoStatusEtapas(item) {
+  const etapas = item.etapasDados || [];
+  if (!etapas.length) {
+    return '<div class="empty-note">Sem etapas para leitura visual de status.</div>';
+  }
+  const total = etapas.length;
+  const ordem = ['nao_iniciada', 'em_andamento', 'em_revisao', 'pausada', 'concluida'];
+  const cores = {
+    nao_iniciada: '#b8b8b8',
+    em_andamento: '#5280CA',
+    em_revisao: '#D19931',
+    pausada: '#8f7f76',
+    concluida: '#45865D',
+  };
+
+  let acumulado = 16;
+  const segmentos = ordem.map((status) => {
+    const qtd = etapas.filter((etapaItem) => etapaItem.etapa?.status === status).length;
+    const width = total > 0 ? (288 * qtd) / total : 0;
+    const segment = {
+      status,
+      qtd,
+      x: acumulado,
+      width,
+      color: cores[status],
+      label: STATUS_ETAPA[status]?.label || status,
+    };
+    acumulado += width;
+    return segment;
+  });
+
+  return `
+    <div class="analise-chart-copy">Distribuicao das etapas do projeto ao longo do fluxo operacional.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Status das etapas do projeto">
+      <rect x="16" y="40" width="288" height="24" rx="12" fill="var(--off)"></rect>
+      ${segmentos.filter((segment) => segment.qtd > 0).map((segment) => `
+        <rect x="${segment.x}" y="40" width="${segment.width}" height="24" rx="12" fill="${segment.color}"></rect>
+      `).join('')}
+      <text x="16" y="24" class="svg-label">Fluxo de etapas</text>
+      <text x="304" y="24" text-anchor="end" class="svg-value">${total} etapa(s)</text>
+      ${segmentos.map((segment, index) => `
+        <circle cx="${22 + (index % 2) * 148}" cy="${94 + Math.floor(index / 2) * 22}" r="5" fill="${segment.color}"></circle>
+        <text x="${34 + (index % 2) * 148}" y="${98 + Math.floor(index / 2) * 22}" class="svg-label">${_escN(segment.label)}: ${segment.qtd}</text>
+      `).join('')}
+    </svg>
+  `;
+}
+
+function analiseGraficoBudgetEtapas(item) {
+  const etapas = item.etapasDados || [];
+  if (!etapas.length) {
+    return '<div class="empty-note">Sem etapas para leitura de budget.</div>';
+  }
+
+  return `
+    <div class="analise-budget-stack">
+      ${etapas.map((etapaItem) => {
+        const budget = Number(etapaItem.etapa?.budget_horas || 0);
+        const uso = Number(etapaItem.utilizacaoBudget || 0);
+        const largura = budget > 0 ? Math.min(100, uso) : 0;
+        const classe = budget <= 0 ? 'analise-chip-muted' : uso > 100 ? 'analise-chip-risk' : uso >= 85 ? 'analise-chip-warn' : 'analise-chip-ok';
+        return `
+          <div class="analise-budget-row">
+            <div class="analise-budget-head">
+              <div>
+                <div class="analise-table-main">${_escN(etapaItem.etapa?.nome || `Etapa ${etapaItem.etapa?.ordem || 'N/D'}`)}</div>
+                <div class="analise-table-sub">${_escN(STATUS_ETAPA[etapaItem.etapa?.status]?.label || etapaItem.etapa?.status || 'N/D')}</div>
+              </div>
+              <span class="analise-chip ${classe}">${budget > 0 ? _escN(analiseFmtPct(uso)) : 'Sem budget'}</span>
+            </div>
+            <div class="analise-budget-bar">
+              <div class="analise-budget-fill ${classe}" style="width:${largura}%"></div>
+            </div>
+            <div class="analise-budget-meta">
+              <span>${_escN(fmtH(etapaItem.horasTotais))} consumidas</span>
+              <span>${budget > 0 ? _escN(fmtH(budget)) + ' de budget' : 'budget_horas nao definido'}</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
   `;
 }
 
