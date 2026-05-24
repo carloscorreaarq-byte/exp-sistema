@@ -14,6 +14,13 @@ const ANALISE = {
   _avisos: {
     usuariosSemVH: [],
     etapasSemBudget: 0,
+    budgetDiagnostico: {
+      carregado: 0,
+      zero: 0,
+      vazio: 0,
+      sem_campo: 0,
+      invalido: 0,
+    },
   },
   _filtros: {
     acumulado: { nucleo: '', status: '', ordem: 'nome' },
@@ -290,6 +297,13 @@ function analiseAgregarDados() {
   const dadosPorProduto = {};
   const dadosPorEtapa = {};
   const usuariosSemVH = new Set();
+  const budgetDiagnostico = {
+    carregado: 0,
+    zero: 0,
+    vazio: 0,
+    sem_campo: 0,
+    invalido: 0,
+  };
   const produtoIds = new Set(ANALISE._produtos.map((produto) => String(produto.id)));
 
   ANALISE._produtos.forEach((produto) => {
@@ -304,6 +318,7 @@ function analiseAgregarDados() {
       etapasDados: [],
       etapasProgresso: {},
       statusResumo: null,
+      previsao: null,
     };
   });
 
@@ -357,10 +372,15 @@ function analiseAgregarDados() {
 
   Object.values(dadosPorEtapa).forEach((registro) => {
     registro.custoTotal = registro.custoHH + registro.custosLancados;
-    const budget = analiseGetBudgetHoras(registro.etapa);
+    const budgetMeta = analiseGetBudgetMeta(registro.etapa);
+    const budget = budgetMeta.value;
+    registro.budgetMeta = budgetMeta;
     registro.utilizacaoBudget = budget > 0
       ? (registro.horasTotais / budget) * 100
       : null;
+    if (budgetDiagnostico[budgetMeta.status] !== undefined) {
+      budgetDiagnostico[budgetMeta.status] += 1;
+    }
   });
 
   Object.values(dadosPorProduto).forEach((registro) => {
@@ -385,6 +405,7 @@ function analiseAgregarDados() {
     });
 
     registro.statusResumo = analiseDerivarStatusProduto(registro.produto, registro.etapasDados);
+    registro.previsao = analiseDerivarPrevisaoProduto(registro);
   });
 
   ANALISE._dadosPorProduto = dadosPorProduto;
@@ -395,6 +416,7 @@ function analiseAgregarDados() {
   ANALISE._avisos.etapasSemBudget = Object.values(dadosPorEtapa)
     .filter((registro) => analiseGetBudgetHoras(registro.etapa) <= 0)
     .length;
+  ANALISE._avisos.budgetDiagnostico = budgetDiagnostico;
 }
 
 function analiseSwitchTab(aba) {
@@ -470,6 +492,7 @@ function analiseRenderProjetoDetalhe() {
   const cliente = item.produto?.oportunidades?.clientes?.nome || 'Cliente nao identificado';
   const encerradoEm = item.statusResumo?.concluidoEm ? item.statusResumo.concluidoEm.toLocaleDateString('pt-BR') : 'N/D';
   const margemInfo = analiseClassificarMargem(item.margemPct);
+  const previsao = item.previsao || {};
 
   host.innerHTML = `
     <div class="analise-modal-card">
@@ -485,12 +508,15 @@ function analiseRenderProjetoDetalhe() {
         ${analiseKpiCard('Horas totais', fmtH(item.horasTotais), `${concluidas}/${etapas.length} etapas concluidas`)}
         ${analiseKpiCard('Custo total', analiseFmtMoney(item.custoTotal), 'HH + custos lancados')}
         ${analiseKpiCard('Margem', analiseFmtPct(item.margemPct), analiseFmtMoney(item.margem, item.margem === null))}
-      ${analiseKpiCard('Budget consolidado', budgetHoras > 0 ? fmtH(budgetHoras) : 'N/D', budgetHoras > 0 ? `Uso atual ${analiseFmtPct(budgetUtil)}` : 'Nenhuma etapa com budget carregado')}
+        ${analiseKpiCard('Budget consolidado', budgetHoras > 0 ? fmtH(budgetHoras) : 'N/D', budgetHoras > 0 ? `Uso atual ${analiseFmtPct(budgetUtil)}` : 'Nenhuma etapa com budget carregado')}
+        ${analiseKpiCard('Margem projetada', analiseFmtPct(previsao.margemProjetadaPct), analiseFmtMoney(previsao.margemProjetada, previsao.margemProjetada === null))}
       </div>
       <div class="analise-drill-meta">
         <span class="analise-chip analise-chip-muted">Fase: ${_escN(item.statusResumo?.faseLabel || 'N/D')}</span>
         <span class="analise-chip analise-chip-muted">Encerrado em: ${_escN(encerradoEm)}</span>
         <span class="${margemInfo.cls}">${_escN(margemInfo.label)}</span>
+        <span class="${analiseRiscoChipClass(previsao.riscoKey)}">${_escN(previsao.riscoLabel || 'Sem previsao')}</span>
+        <span class="analise-chip analise-chip-muted">Confianca: ${_escN(previsao.confiancaLabel || 'Baixa')}</span>
       </div>
       <div class="analise-visual-grid">
         <section class="analise-visual-card">
@@ -504,6 +530,10 @@ function analiseRenderProjetoDetalhe() {
         <section class="analise-visual-card">
           <div class="analise-visual-title">Etapas por status</div>
           ${analiseGraficoStatusEtapas(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Projecao de risco</div>
+          ${analiseGraficoProjecaoProjeto(item)}
         </section>
         <section class="analise-visual-card analise-visual-card-wide">
           <div class="analise-visual-title">Leitura de budget por etapa</div>
@@ -539,20 +569,7 @@ function analiseToggleModal(open) {
 }
 
 function analiseGetBudgetHoras(etapa) {
-  if (!etapa || typeof etapa !== 'object') return 0;
-  const candidates = [
-    etapa.budget_horas,
-    etapa.budgetHoras,
-    etapa.horas_orcadas,
-    etapa.horas_previstas,
-    etapa.horas_planejadas,
-    etapa.orcamento_horas,
-  ];
-  for (const value of candidates) {
-    const parsed = analiseToNumber(value);
-    if (parsed > 0) return parsed;
-  }
-  return 0;
+  return analiseGetBudgetMeta(etapa).value;
 }
 
 function analiseToNumber(value) {
@@ -566,6 +583,57 @@ function analiseToNumber(value) {
   }
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function analiseGetBudgetMeta(etapa) {
+  if (!etapa || typeof etapa !== 'object') {
+    return { value: 0, status: 'sem_campo', source: null, raw: null, label: 'Sem campo', detail: 'Nenhum campo de budget encontrado na etapa.' };
+  }
+
+  const candidates = [
+    { key: 'budget_horas', label: 'budget_horas' },
+    { key: 'budgetHoras', label: 'budgetHoras' },
+    { key: 'horas_orcadas', label: 'horas_orcadas' },
+    { key: 'horas_previstas', label: 'horas_previstas' },
+    { key: 'horas_planejadas', label: 'horas_planejadas' },
+    { key: 'orcamento_horas', label: 'orcamento_horas' },
+  ];
+
+  let firstExisting = null;
+  for (const candidate of candidates) {
+    if (!Object.prototype.hasOwnProperty.call(etapa, candidate.key)) continue;
+    const raw = etapa[candidate.key];
+    if (firstExisting === null) {
+      firstExisting = { ...candidate, raw };
+    }
+    if (raw === null || raw === '') continue;
+    const parsed = analiseToNumber(raw);
+    if (parsed > 0) {
+      return {
+        value: parsed,
+        status: 'carregado',
+        source: candidate.key,
+        raw,
+        label: 'Carregado',
+        detail: `${candidate.label}: ${parsed}`,
+      };
+    }
+  }
+
+  if (!firstExisting) {
+    return { value: 0, status: 'sem_campo', source: null, raw: null, label: 'Sem campo', detail: 'Nenhum campo de budget encontrado na etapa.' };
+  }
+
+  if (firstExisting.raw === null || firstExisting.raw === '') {
+    return { value: 0, status: 'vazio', source: firstExisting.key, raw: firstExisting.raw, label: 'Vazio', detail: `${firstExisting.label} existe, mas esta vazio.` };
+  }
+
+  const parsed = analiseToNumber(firstExisting.raw);
+  if (parsed === 0) {
+    return { value: 0, status: 'zero', source: firstExisting.key, raw: firstExisting.raw, label: 'Zero', detail: `${firstExisting.label} esta preenchido com zero.` };
+  }
+
+  return { value: 0, status: 'invalido', source: firstExisting.key, raw: firstExisting.raw, label: 'Invalido', detail: `${firstExisting.label} nao pode ser convertido para numero.` };
 }
 
 function analiseGetConfig() {
@@ -700,6 +768,10 @@ function analiseRenderAcumulado() {
   const margemPonderada = contratadoTotal > 0
     ? ((contratadoTotal - custoTotal) / contratadoTotal) * 100
     : null;
+  const produtosComPrevisao = produtos.filter((item) => item.previsao?.margemProjetadaPct !== null);
+  const margemProjetadaMedia = produtosComPrevisao.length
+    ? produtosComPrevisao.reduce((sum, item) => sum + Number(item.previsao?.margemProjetadaPct || 0), 0) / produtosComPrevisao.length
+    : null;
 
   panel.innerHTML = `
     ${analiseWarningsHtml()}
@@ -708,6 +780,7 @@ function analiseRenderAcumulado() {
       ${analiseKpiCard('Horas lancadas', fmtH(horasTotal), 'Soma de horas com produto associado')}
       ${analiseKpiCard('Custo total', analiseFmtMoney(custoTotal), 'HH + custos lancados')}
       ${analiseKpiCard('Margem ponderada', analiseFmtPct(margemPonderada), 'Baseada em valor contratado conhecido')}
+      ${analiseKpiCard('Margem projetada media', analiseFmtPct(margemProjetadaMedia), 'Heuristica inicial baseada em budget e estagio')}
     </div>
     ${analiseFilterBar({
       aba: 'acumulado',
@@ -734,6 +807,10 @@ function analiseRenderAcumulado() {
       <section class="analise-visual-card">
         <div class="analise-visual-title">Contrato x custo</div>
         ${analiseGraficoContratoVsCusto(contratadoTotal, custoTotal)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Risco projetado</div>
+        ${analiseGraficoRiscoProjetado(produtos)}
       </section>
     </div>
     <div class="analise-state-grid">
@@ -788,6 +865,8 @@ function analiseRenderDesenvolvimento() {
   const comBudget = etapas.filter((item) => analiseGetBudgetHoras(item.etapa) > 0);
   const acimaBudget = comBudget.filter((item) => Number(item.utilizacaoBudget || 0) > 100);
   const rowsProjeto = analiseAgruparEtapasAtivasPorProjeto(etapas);
+  const projetosEmRisco = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'risco');
+  const projetosAtencao = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'atencao');
 
   panel.innerHTML = `
     <div class="analise-kpis-row">
@@ -795,6 +874,7 @@ function analiseRenderDesenvolvimento() {
       ${analiseKpiCard('Com budget', String(comBudget.length), 'Etapas com budget carregado')}
       ${analiseKpiCard('Acima do budget', String(acimaBudget.length), 'Utilizacao acima de 100%')}
       ${analiseKpiCard('Projetos em execucao', String(rowsProjeto.length), 'Com pelo menos uma etapa ativa')}
+      ${analiseKpiCard('Risco projetado', String(projetosEmRisco.length), `${projetosAtencao.length} em atencao pela projecao atual`)}
     </div>
     ${analiseFilterBar({
       aba: 'desenvolvimento',
@@ -838,6 +918,10 @@ function analiseRenderDesenvolvimento() {
       <section class="analise-visual-card">
         <div class="analise-visual-title">Carga por nucleo</div>
         ${analiseGraficoCargaNucleoAtivo(etapas)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Semaforo de risco</div>
+        ${analiseGraficoSemaforoProjetos(rowsProjeto)}
       </section>
     </div>
     <div class="analise-table-wrap">
@@ -1087,6 +1171,80 @@ function analiseSortNullLastDesc(a, b) {
   return Number(b) - Number(a);
 }
 
+function analiseDerivarPrevisaoProduto(registro) {
+  const etapas = registro.etapasDados || [];
+  const contratado = Number(registro.produto?.valor_contratado || 0);
+  const taxaProjeto = registro.horasTotais > 0 ? registro.custoHH / registro.horasTotais : 0;
+  const taxaFallback = taxaProjeto > 0 ? taxaProjeto : analiseTaxaHoraFallback();
+
+  let custoHHProjetado = 0;
+  let etapasComBudget = 0;
+  let etapasSemBudget = 0;
+  let etapasEstouradas = 0;
+
+  etapas.forEach((etapaItem) => {
+    const budgetMeta = etapaItem.budgetMeta || analiseGetBudgetMeta(etapaItem.etapa);
+    const horasReais = Number(etapaItem.horasTotais || 0);
+    const status = etapaItem.etapa?.status || 'nao_iniciada';
+    let horasProjetadas = horasReais;
+
+    if (budgetMeta.status === 'carregado') {
+      etapasComBudget += 1;
+      const budget = budgetMeta.value;
+      if (horasReais > budget) etapasEstouradas += 1;
+
+      if (status === 'concluida') horasProjetadas = Math.max(horasReais, budget);
+      else if (status === 'em_andamento') horasProjetadas = Math.max(horasReais * 1.12, budget);
+      else if (status === 'em_revisao') horasProjetadas = Math.max(horasReais * 1.08, budget);
+      else if (status === 'nao_iniciada') horasProjetadas = budget;
+      else if (status === 'pausada') horasProjetadas = Math.max(horasReais, budget * 0.5);
+    } else {
+      etapasSemBudget += 1;
+      if (status === 'concluida') horasProjetadas = horasReais;
+      else if (status === 'em_andamento') horasProjetadas = horasReais * 1.2;
+      else if (status === 'em_revisao') horasProjetadas = horasReais * 1.1;
+      else horasProjetadas = horasReais;
+    }
+
+    custoHHProjetado += horasProjetadas * (taxaProjeto > 0 && horasReais > 0 ? etapaItem.custoHH / horasReais : taxaFallback);
+  });
+
+  const custoProjetado = custoHHProjetado + Number(registro.custosLancados || 0);
+  const margemProjetada = contratado > 0 ? contratado - custoProjetado : null;
+  const margemProjetadaPct = contratado > 0 ? (margemProjetada / contratado) * 100 : null;
+  const coberturaBudget = etapas.length > 0 ? etapasComBudget / etapas.length : 0;
+  const confiancaLabel = coberturaBudget >= 0.8 ? 'Alta' : coberturaBudget >= 0.45 ? 'Media' : 'Baixa';
+  const riscoAtual = analiseClassificarMargem(margemProjetadaPct);
+  const riscoKey = margemProjetadaPct === null
+    ? 'incerto'
+    : margemProjetadaPct < analiseGetConfig().margem_threshold
+      ? 'risco'
+      : margemProjetadaPct < analiseGetConfig().margem_threshold + analiseGetConfig().margem_atencao
+        ? 'atencao'
+        : 'saudavel';
+
+  return {
+    custoProjetado,
+    margemProjetada,
+    margemProjetadaPct,
+    coberturaBudget,
+    etapasComBudget,
+    etapasSemBudget,
+    etapasEstouradas,
+    confiancaLabel,
+    riscoKey,
+    riscoLabel: riscoKey === 'risco' ? 'Risco projetado' : riscoKey === 'atencao' ? 'Atencao projetada' : riscoKey === 'saudavel' ? 'Saudavel projetado' : 'Incerteza alta',
+    riscoCss: riscoAtual.cls,
+  };
+}
+
+function analiseTaxaHoraFallback() {
+  const projetos = Object.values(ANALISE._dadosPorProduto || {});
+  const horas = projetos.reduce((sum, item) => sum + Number(item.horasTotais || 0), 0);
+  const custoHH = projetos.reduce((sum, item) => sum + Number(item.custoHH || 0), 0);
+  return horas > 0 ? custoHH / horas : 0;
+}
+
 function analiseDerivarStatusProduto(produto, etapasDados) {
   const statusRaw = analiseNormalizarStatusProdutoRaw(produto?.status);
   const etapas = etapasDados || [];
@@ -1268,8 +1426,8 @@ function analiseTabelaDesenvolvimentoEtapa(rows) {
               <td>${_escN(item.etapa?.nome || `Etapa ${item.etapa?.ordem || 'N/D'}`)}</td>
               <td>${analiseStatusEtapaBadge(item.etapa?.status)}</td>
               <td>${_escN(fmtH(item.horasTotais))}</td>
-              <td>${_escN(analiseGetBudgetHoras(item.etapa) > 0 ? fmtH(analiseGetBudgetHoras(item.etapa)) : 'N/D')}</td>
-              <td>${analiseBudgetBadge(item.utilizacaoBudget, analiseGetBudgetHoras(item.etapa) > 0 ? 1 : 0)}</td>
+              <td>${analiseBudgetCell(item.budgetMeta || analiseGetBudgetMeta(item.etapa))}</td>
+              <td>${analiseBudgetBadge(item.utilizacaoBudget, item.budgetMeta || analiseGetBudgetMeta(item.etapa))}</td>
               <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
             </tr>
           `).join('')}
@@ -1345,8 +1503,8 @@ function analiseTabelaDetalheEtapas(item) {
             </td>
             <td>${analiseStatusEtapaBadge(etapaItem.etapa?.status)}</td>
             <td>${_escN(fmtH(etapaItem.horasTotais))}</td>
-            <td>${_escN(analiseGetBudgetHoras(etapaItem.etapa) > 0 ? fmtH(analiseGetBudgetHoras(etapaItem.etapa)) : 'N/D')}</td>
-            <td>${analiseBudgetBadge(etapaItem.utilizacaoBudget, analiseGetBudgetHoras(etapaItem.etapa) > 0 ? 1 : 0)}</td>
+            <td>${analiseBudgetCell(etapaItem.budgetMeta || analiseGetBudgetMeta(etapaItem.etapa))}</td>
+            <td>${analiseBudgetBadge(etapaItem.utilizacaoBudget, etapaItem.budgetMeta || analiseGetBudgetMeta(etapaItem.etapa))}</td>
             <td>${_escN(analiseFmtMoney(etapaItem.custoHH))}</td>
             <td>${_escN(analiseFmtMoney(etapaItem.custoTotal))}</td>
             <td>${_escN(etapaItem.etapa?.data_conclusao ? fmtDate(etapaItem.etapa.data_conclusao) : 'N/D')}</td>
@@ -1474,7 +1632,8 @@ function analiseGraficoBudgetEtapas(item) {
   return `
     <div class="analise-budget-stack">
       ${etapas.map((etapaItem) => {
-        const budget = analiseGetBudgetHoras(etapaItem.etapa);
+        const budgetMeta = etapaItem.budgetMeta || analiseGetBudgetMeta(etapaItem.etapa);
+        const budget = budgetMeta.value;
         const uso = Number(etapaItem.utilizacaoBudget || 0);
         const largura = budget > 0 ? Math.min(100, uso) : 0;
         const classe = budget <= 0 ? 'analise-chip-muted' : uso > 100 ? 'analise-chip-risk' : uso >= 85 ? 'analise-chip-warn' : 'analise-chip-ok';
@@ -1485,14 +1644,14 @@ function analiseGraficoBudgetEtapas(item) {
                 <div class="analise-table-main">${_escN(etapaItem.etapa?.nome || `Etapa ${etapaItem.etapa?.ordem || 'N/D'}`)}</div>
                 <div class="analise-table-sub">${_escN(STATUS_ETAPA[etapaItem.etapa?.status]?.label || etapaItem.etapa?.status || 'N/D')}</div>
               </div>
-              <span class="analise-chip ${classe}">${budget > 0 ? _escN(analiseFmtPct(uso)) : 'Sem budget'}</span>
+              <span class="analise-chip ${classe}">${budget > 0 ? _escN(analiseFmtPct(uso)) : _escN(budgetMeta.label)}</span>
             </div>
             <div class="analise-budget-bar">
               <div class="analise-budget-fill ${classe}" style="width:${largura}%"></div>
             </div>
             <div class="analise-budget-meta">
               <span>${_escN(fmtH(etapaItem.horasTotais))} consumidas</span>
-              <span>${budget > 0 ? _escN(fmtH(budget)) + ' de budget' : 'budget nao definido'}</span>
+              <span>${budget > 0 ? _escN(fmtH(budget)) + ' de budget' : _escN(budgetMeta.detail || 'budget nao definido')}</span>
             </div>
           </div>
         `;
@@ -1706,13 +1865,135 @@ function analiseGraficoDistribuicaoSimples(rows, copy) {
   `;
 }
 
+function analiseGraficoRiscoProjetado(produtos) {
+  const rows = [
+    { key: 'risco', label: 'Risco', color: '#C36247' },
+    { key: 'atencao', label: 'Atencao', color: '#D19931' },
+    { key: 'saudavel', label: 'Saudavel', color: '#45865D' },
+    { key: 'incerto', label: 'Incerteza', color: '#8E8E8E' },
+  ].map((row) => ({
+    ...row,
+    count: (produtos || []).filter((item) => (item.previsao?.riscoKey || 'incerto') === row.key).length,
+  }));
+
+  const coberturaAlta = (produtos || []).filter((item) => Number(item.previsao?.coberturaBudget || 0) >= 0.8).length;
+  return `
+    <div class="analise-chart-copy">Leitura inicial da carteira olhando para margem futura, cobertura de budget e estagio das etapas.</div>
+    ${analiseGraficoDistribuicaoSimples(rows, 'Projetos distribuidos pelo risco estimado da margem final.')}
+    <div class="analise-budget-meta" style="margin-top:10px">
+      <span>${_escN(String(coberturaAlta))} projeto(s) com cobertura de budget alta</span>
+      <span>${_escN(String(Math.max(0, (produtos || []).length - coberturaAlta)))} com previsao mais heuristica</span>
+    </div>
+  `;
+}
+
+function analiseGraficoSemaforoProjetos(rowsProjeto) {
+  if (!(rowsProjeto || []).length) {
+    return '<div class="empty-note">Nenhum projeto ativo suficiente para compor o semaforo.</div>';
+  }
+
+  const grupos = [
+    { key: 'risco', label: 'Risco', color: '#C36247', fill: 'var(--terracota-soft)' },
+    { key: 'atencao', label: 'Atencao', color: '#D19931', fill: 'var(--ouro-soft)' },
+    { key: 'saudavel', label: 'Saudavel', color: '#45865D', fill: 'var(--verde-soft)' },
+  ].map((item) => ({
+    ...item,
+    count: rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === item.key).length,
+  }));
+
+  const topRisco = rowsProjeto
+    .filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'risco')
+    .slice(0, 3)
+    .map((row) => row.produto?.nome || 'Projeto sem nome');
+
+  return `
+    <div class="analise-chart-copy">Semaforo rapido dos projetos em execucao para priorizar onde olhar primeiro.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Semaforo de risco dos projetos ativos">
+      ${grupos.map((grupo, index) => {
+        const x = 24 + index * 96;
+        return `
+          <circle cx="${x + 36}" cy="54" r="24" fill="${grupo.fill}" stroke="${grupo.color}" stroke-width="3"></circle>
+          <text x="${x + 36}" y="59" text-anchor="middle" class="svg-value">${grupo.count}</text>
+          <text x="${x + 36}" y="94" text-anchor="middle" class="svg-label">${_escN(grupo.label)}</text>
+        `;
+      }).join('')}
+      <text x="16" y="126" class="svg-label">Projetos ativos no foco imediato</text>
+      <text x="304" y="126" text-anchor="end" class="svg-value">${_escN(String(rowsProjeto.length))}</text>
+    </svg>
+    <div class="analise-budget-meta" style="margin-top:10px">
+      <span>${topRisco.length ? _escN(`Prioridade: ${topRisco.join(' | ')}`) : 'Sem projetos em risco alto nesta leitura.'}</span>
+    </div>
+  `;
+}
+
+function analiseGraficoProjecaoProjeto(item) {
+  const previsao = item?.previsao || {};
+  const contratado = Number(item?.produto?.valor_contratado || 0);
+  const custoAtual = Number(item?.custoTotal || 0);
+  const custoProjetado = Number(previsao.custoProjetado || 0);
+  const base = Math.max(contratado, custoProjetado, custoAtual, 1);
+  const atualWidth = Math.max(0, Math.min(288, (288 * custoAtual) / base));
+  const projetadoWidth = Math.max(0, Math.min(288, (288 * custoProjetado) / base));
+  const contratadoX = contratado > 0 ? 16 + (288 * contratado) / base : null;
+  const corProjetada = previsao.riscoKey === 'risco'
+    ? 'var(--terracota)'
+    : previsao.riscoKey === 'atencao'
+      ? 'var(--ouro)'
+      : 'var(--verde)';
+
+  return `
+    <div class="analise-chart-copy">Comparacao entre custo atual, custo projetado no fechamento e a referencia contratada do projeto.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Projecao do projeto">
+      <rect x="16" y="36" width="288" height="16" rx="8" fill="var(--off)"></rect>
+      <rect x="16" y="36" width="${atualWidth}" height="16" rx="8" fill="var(--grafite)"></rect>
+      <text x="16" y="26" class="svg-label">Custo atual</text>
+      <text x="304" y="26" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(custoAtual))}</text>
+      <rect x="16" y="78" width="288" height="16" rx="8" fill="var(--off)"></rect>
+      <rect x="16" y="78" width="${projetadoWidth}" height="16" rx="8" fill="${corProjetada}"></rect>
+      <text x="16" y="68" class="svg-label">Custo projetado</text>
+      <text x="304" y="68" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(custoProjetado))}</text>
+      ${contratadoX !== null ? `<line x1="${contratadoX}" y1="30" x2="${contratadoX}" y2="102" stroke="var(--grafite)" stroke-dasharray="4 3"></line>` : ''}
+      ${contratadoX !== null ? `<text x="${Math.min(304, contratadoX + 4)}" y="116" class="svg-label">Contrato ${_escN(analiseFmtMoney(contratado))}</text>` : '<text x="16" y="116" class="svg-label">Contrato indisponivel para esta previsao.</text>'}
+    </svg>
+    <div class="analise-budget-meta" style="margin-top:10px">
+      <span class="${analiseRiscoChipClass(previsao.riscoKey)}">${_escN(previsao.riscoLabel || 'Sem previsao')}</span>
+      <span>${_escN(`${previsao.etapasEstouradas || 0} etapa(s) acima do budget | confianca ${previsao.confiancaLabel || 'Baixa'}`)}</span>
+    </div>
+  `;
+}
+
+function analiseRiscoChipClass(riscoKey) {
+  if (riscoKey === 'risco') return 'analise-chip analise-chip-risk';
+  if (riscoKey === 'atencao') return 'analise-chip analise-chip-warn';
+  if (riscoKey === 'saudavel') return 'analise-chip analise-chip-ok';
+  return 'analise-chip analise-chip-muted';
+}
+
 function analiseBudgetBadge(utilizacaoBudget, temBudget) {
-  if (!temBudget) {
-    return '<span class="analise-chip analise-chip-muted">N/D</span>';
+  const budgetMeta = typeof temBudget === 'object' ? temBudget : null;
+  const hasBudget = budgetMeta ? budgetMeta.status === 'carregado' : !!temBudget;
+  if (!hasBudget) {
+    const label = budgetMeta ? budgetMeta.label : 'N/D';
+    return `<span class="analise-chip analise-chip-muted">${_escN(label)}</span>`;
   }
   const pct = Number(utilizacaoBudget || 0);
   const cls = pct > 100 ? 'analise-chip-risk' : pct >= 85 ? 'analise-chip-warn' : 'analise-chip-ok';
   return `<span class="analise-chip ${cls}">${_escN(analiseFmtPct(pct))}</span>`;
+}
+
+function analiseBudgetCell(budgetMeta) {
+  if (!budgetMeta || budgetMeta.status !== 'carregado') {
+    const label = budgetMeta?.label || 'N/D';
+    const detail = budgetMeta?.source ? `Campo ${budgetMeta.source}` : 'Sem origem detectada';
+    return `
+      <div class="analise-table-main">${_escN(label)}</div>
+      <div class="analise-table-sub">${_escN(detail)}</div>
+    `;
+  }
+  return `
+    <div class="analise-table-main">${_escN(fmtH(budgetMeta.value))}</div>
+    <div class="analise-table-sub">${_escN(budgetMeta.source || 'budget')}</div>
+  `;
 }
 
 function analiseStatusEtapaBadge(status) {
@@ -1750,6 +2031,7 @@ function analiseKpiCard(label, value, sub) {
 function analiseWarningsHtml() {
   const usuarios = ANALISE._avisos.usuariosSemVH || [];
   const etapasSemBudget = Number(ANALISE._avisos.etapasSemBudget || 0);
+  const budgetDiagnostico = ANALISE._avisos.budgetDiagnostico || {};
   const chunks = [];
 
   if (usuarios.length) {
@@ -1763,14 +2045,21 @@ function analiseWarningsHtml() {
   }
 
   if (etapasSemBudget > 0) {
+    const parts = [
+      budgetDiagnostico.sem_campo ? `${budgetDiagnostico.sem_campo} sem campo` : null,
+      budgetDiagnostico.vazio ? `${budgetDiagnostico.vazio} vazia(s)` : null,
+      budgetDiagnostico.zero ? `${budgetDiagnostico.zero} zerada(s)` : null,
+      budgetDiagnostico.invalido ? `${budgetDiagnostico.invalido} invalida(s)` : null,
+    ].filter(Boolean).join(', ');
     chunks.push(`
       <div class="analise-warning">
-        <strong>Aviso de budget:</strong> ${etapasSemBudget} etapa(s) ainda nao possuem budget carregado. Isso reduz a leitura de utilizacao e risco operacional.
+        <strong>Aviso de budget:</strong> ${etapasSemBudget} etapa(s) ainda nao possuem budget utilizavel. ${_escN(parts)}. Isso reduz a leitura de utilizacao e risco operacional.
       </div>
     `);
   }
 
-  return chunks.join('');
+  if (!chunks.length) return '';
+  return `<div class="analise-warning-stack">${chunks.join('')}</div>`;
 }
 
 function analiseResumoNucleos(produtos) {
