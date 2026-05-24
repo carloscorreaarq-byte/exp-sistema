@@ -514,9 +514,35 @@ function analiseRenderAcumulado() {
     return;
   }
 
-  const produtos = Object.values(ANALISE._dadosPorProduto);
-  if (!produtos.length) {
+  const produtosBase = Object.values(ANALISE._dadosPorProduto);
+  if (!produtosBase.length) {
     panel.innerHTML = analiseEmptyTemplate('Nenhum projeto elegivel foi encontrado para a analise.');
+    return;
+  }
+
+  const filtro = ANALISE._filtros.acumulado;
+  const produtos = produtosBase
+    .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
+    .filter((item) => !filtro.status || analiseProdutoStatusKey(item.produto?.status) === filtro.status)
+    .sort((a, b) => analiseOrdenarProdutosAcumulado(a, b, filtro.ordem));
+
+  if (!produtos.length) {
+    panel.innerHTML = `
+      ${analiseFilterBar({
+        aba: 'acumulado',
+        controls: [
+          { key: 'nucleo', label: 'Nucleo', value: filtro.nucleo, options: analiseNucleoOptions() },
+          { key: 'status', label: 'Status', value: filtro.status, options: analiseStatusProdutoOptions(produtosBase) },
+          {
+            key: 'ordem',
+            label: 'Ordenar',
+            value: filtro.ordem,
+            options: analiseAcumuladoOrderOptions(),
+          },
+        ],
+      })}
+      ${analiseEmptyTemplate('Nenhum projeto atende aos filtros atuais.')}
+    `;
     return;
   }
 
@@ -530,11 +556,24 @@ function analiseRenderAcumulado() {
   panel.innerHTML = `
     ${analiseWarningsHtml()}
     <div class="analise-kpis-row">
-      ${analiseKpiCard('Projetos elegiveis', String(produtos.length), 'Produtos reais com etapas para leitura societaria')}
+      ${analiseKpiCard('Projetos na leitura', String(produtos.length), produtos.length === produtosBase.length ? 'Base completa elegivel' : `${produtosBase.length} elegiveis no total`)}
       ${analiseKpiCard('Horas lancadas', fmtH(horasTotal), 'Soma de horas com produto associado')}
       ${analiseKpiCard('Custo total', analiseFmtMoney(custoTotal), 'HH + custos lancados')}
       ${analiseKpiCard('Margem ponderada', analiseFmtPct(margemPonderada), 'Baseada em valor contratado conhecido')}
     </div>
+    ${analiseFilterBar({
+      aba: 'acumulado',
+      controls: [
+        { key: 'nucleo', label: 'Nucleo', value: filtro.nucleo, options: analiseNucleoOptions() },
+        { key: 'status', label: 'Status', value: filtro.status, options: analiseStatusProdutoOptions(produtosBase) },
+        {
+          key: 'ordem',
+          label: 'Ordenar',
+          value: filtro.ordem,
+          options: analiseAcumuladoOrderOptions(),
+        },
+      ],
+    })}
     <div class="analise-state-grid">
       ${analiseResumoNucleos(produtos)}
     </div>
@@ -552,10 +591,7 @@ function analiseRenderAcumulado() {
           </tr>
         </thead>
         <tbody>
-          ${produtos
-            .sort((a, b) => String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR'))
-            .map((item) => analiseLinhaProduto(item))
-            .join('')}
+          ${produtos.map((item) => analiseLinhaProduto(item)).join('')}
         </tbody>
       </table>
     </div>
@@ -770,6 +806,70 @@ function analiseAnoOptionsEncerrados() {
   )).sort((a, b) => Number(b) - Number(a));
 
   return [{ value: '', label: 'Todos' }, ...anos.map((ano) => ({ value: ano, label: ano }))];
+}
+
+function analiseStatusProdutoOptions(produtos) {
+  const labels = {};
+  (produtos || []).forEach((item) => {
+    const key = analiseProdutoStatusKey(item.produto?.status);
+    if (!key || labels[key]) return;
+    labels[key] = analiseProdutoStatusLabel(item.produto?.status);
+  });
+
+  return [
+    { value: '', label: 'Todos' },
+    ...Object.entries(labels)
+      .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+      .map(([value, label]) => ({ value, label })),
+  ];
+}
+
+function analiseAcumuladoOrderOptions() {
+  return [
+    { value: 'nome', label: 'Nome do projeto' },
+    { value: 'horas_desc', label: 'Mais horas' },
+    { value: 'custo_desc', label: 'Maior custo' },
+    { value: 'margem_asc', label: 'Menor margem' },
+    { value: 'margem_desc', label: 'Maior margem' },
+  ];
+}
+
+function analiseProdutoStatusKey(status) {
+  return String(status || '').trim().toLowerCase();
+}
+
+function analiseProdutoStatusLabel(status) {
+  const raw = String(status || '').trim();
+  if (!raw) return 'N/D';
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function analiseOrdenarProdutosAcumulado(a, b, ordem) {
+  if (ordem === 'horas_desc') return Number(b.horasTotais || 0) - Number(a.horasTotais || 0);
+  if (ordem === 'custo_desc') return Number(b.custoTotal || 0) - Number(a.custoTotal || 0);
+  if (ordem === 'margem_asc') return analiseSortNullLastAsc(a.margemPct, b.margemPct);
+  if (ordem === 'margem_desc') return analiseSortNullLastDesc(a.margemPct, b.margemPct);
+  return String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR');
+}
+
+function analiseSortNullLastAsc(a, b) {
+  const aNull = a === null || typeof a === 'undefined';
+  const bNull = b === null || typeof b === 'undefined';
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+  return Number(a) - Number(b);
+}
+
+function analiseSortNullLastDesc(a, b) {
+  const aNull = a === null || typeof a === 'undefined';
+  const bNull = b === null || typeof b === 'undefined';
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+  return Number(b) - Number(a);
 }
 
 function analiseAgruparEtapasAtivasPorProjeto(etapas) {
@@ -1030,7 +1130,7 @@ function analiseLinhaProduto(item) {
         <div class="analise-table-sub">${_escN(item.produto?.oportunidades?.clientes?.nome || '')}</div>
       </td>
       <td>${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</td>
-      <td>${_escN(item.produto?.status || 'N/D')}</td>
+      <td>${_escN(analiseProdutoStatusLabel(item.produto?.status))}</td>
       <td>${_escN(fmtH(item.horasTotais))}</td>
       <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
       <td>${_escN(analiseFmtMoney(item.produto?.valor_contratado || 0, item.produto?.valor_contratado ? false : true))}</td>
