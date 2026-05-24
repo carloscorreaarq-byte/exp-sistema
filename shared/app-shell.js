@@ -14,7 +14,7 @@
     }
     if (!window.sbSignup) {
       window.sbSignup = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'exp-signup-temp' },
       });
     }
     return window.sb;
