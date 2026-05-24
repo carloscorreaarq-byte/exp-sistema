@@ -24,6 +24,10 @@
     return ['socio', 'socio_adm', 'socio_admin'].includes(String(role || '').toLowerCase());
   }
 
+  function isSocioAdminRole(role) {
+    return ['socio_adm', 'socio_admin'].includes(String(role || '').toLowerCase());
+  }
+
   function buildExpUsuarioPayload(authId, usuario) {
     const nome = usuario?.nome || '';
     return {
@@ -67,17 +71,61 @@
       .eq('auth_id', authId)
       .single();
     if (!usuario) return null;
+    const termo = await fetchLatestTermo(usuario.id);
+    const usuarioComTermo = attachTermToUsuario(usuario, termo);
+    return {
+      ...usuarioComTermo,
+      apelido: usuarioComTermo.apelido || null,
+      email_login: usuarioComTermo.email_login || usuarioComTermo.email || null,
+      avatar_url: usuarioComTermo.avatar_url || null,
+      is_platform_manager: !!usuarioComTermo.is_platform_manager,
+      can_coordinate_projects: !!usuarioComTermo.can_coordinate_projects,
+      termo_status: usuarioComTermo.termo_status || null,
+      termo_assinado_em: usuarioComTermo.termo_assinado_em || null,
+      termo_expira_em: usuarioComTermo.termo_expira_em || null,
+      status_acesso: usuarioComTermo.status_acesso || null,
+    };
+  }
+
+  async function fetchLatestTermo(usuarioId) {
+    if (!usuarioId) return null;
+    try {
+      const sb = ensureClients();
+      const { data } = await sb
+        .from('usuarios_termos_compromisso')
+        .select('*')
+        .eq('usuario_id', usuarioId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function normalizeTermoStatus(termo) {
+    if (!termo) {
+      return {
+        status_termo: null,
+        assinado_em: null,
+        expira_em: null,
+      };
+    }
+    const expiresAt = termo.expira_em ? new Date(termo.expira_em).getTime() : null;
+    if (termo.status_termo === 'signed' && expiresAt && expiresAt < Date.now()) {
+      return { ...termo, status_termo: 'expired' };
+    }
+    return termo;
+  }
+
+  function attachTermToUsuario(usuario, termo) {
+    const normalized = normalizeTermoStatus(termo);
     return {
       ...usuario,
-      apelido: usuario.apelido || null,
-      email_login: usuario.email_login || usuario.email || null,
-      avatar_url: usuario.avatar_url || null,
-      is_platform_manager: !!usuario.is_platform_manager,
-      can_coordinate_projects: !!usuario.can_coordinate_projects,
-      termo_status: usuario.termo_status || null,
-      termo_assinado_em: usuario.termo_assinado_em || null,
-      termo_expira_em: usuario.termo_expira_em || null,
-      status_acesso: usuario.status_acesso || null,
+      termo_status: normalized.status_termo || null,
+      termo_assinado_em: normalized.assinado_em || null,
+      termo_expira_em: normalized.expira_em || null,
     };
   }
 
@@ -217,6 +265,7 @@
   window.SUPABASE_URL = window.SUPABASE_URL || SUPABASE_URL;
   window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
   window.isSocioRole = window.isSocioRole || isSocioRole;
+  window.isSocioAdminRole = window.isSocioAdminRole || isSocioAdminRole;
   window.buildExpUsuarioPayload = window.buildExpUsuarioPayload || buildExpUsuarioPayload;
   window.currentSessionUsuario = window.currentSessionUsuario || currentSessionUsuario;
   window.redirectToLogin = window.redirectToLogin || redirectToLogin;
