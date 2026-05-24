@@ -10,6 +10,10 @@ const ANALISE = {
   _produtoIsoladoId: null,
   _carregando: false,
   _ultimaCarga: null,
+  _erro: null,
+  _avisos: {
+    usuariosSemVH: [],
+  },
   _filtros: {
     acumulado: { nucleo: '', status: '', ordem: 'nome' },
     desenvolvimento: { nucleo: '', statusEtapa: '', agrupamento: 'projeto' },
@@ -25,37 +29,22 @@ async function analiseBootstrap() {
   G.todasEtapas = G.todasEtapas || [];
   G.todosUsuarios = G.todosUsuarios || [];
 
-  console.log('[analise] bootstrap iniciado');
   try {
-    console.log('[analise] chamando appShellInit...');
     const boot = await appShellInit();
-    console.log('[analise] appShellInit retornou:', boot);
-    if (!boot) {
-      console.warn('[analise] boot é null — sem sessão ou usuario nao encontrado');
-      return;
-    }
-    console.log('[analise] validando acesso, role:', boot.usuario?.role);
+    if (!boot) return;
     analiseValidarAcesso();
-    console.log('[analise] acesso ok, renderizando shell');
     analiseRenderShell(boot.usuario);
     analiseBindEventosBase();
     analiseRenderConfig();
     analiseRenderAbaAtiva();
     document.getElementById('shell-loading').style.display = 'none';
     document.getElementById('shell-app').style.display = 'block';
-    console.log('[analise] shell visivel, iniciando dados');
     await analiseInit();
   } catch (error) {
-    console.error('[analise] erro no bootstrap:', error);
     document.getElementById('shell-loading').style.display = 'none';
     document.getElementById('shell-app').style.display = 'block';
-    document.getElementById('anp-acumulado').innerHTML = `
-      <div class="analise-state">
-        <div class="analise-state-kicker">Falha</div>
-        <div class="analise-state-title">Nao foi possivel iniciar o modulo.</div>
-        <div class="analise-state-copy">${_escN(error?.message || 'Erro desconhecido ao montar a camada inicial do shell.')}</div>
-      </div>
-    `;
+    ANALISE._erro = error?.message || 'Erro desconhecido ao montar a camada inicial do shell.';
+    analiseRenderAbaAtiva();
   }
 }
 
@@ -69,11 +58,12 @@ function analiseValidarAcesso() {
 function analiseRenderShell(usuario) {
   const subtitle = document.getElementById('analise-user-context');
   const firstName = usuario?.apelido || String(usuario?.nome || '').split(' ')[0] || 'usuario';
-  subtitle.textContent = `Modulo independente em Sprint 1. Shell autenticado pronto para ${firstName}.`;
+  subtitle.textContent = `Modulo independente com carga analitica propria. Sessao autenticada pronta para ${firstName}.`;
 
   const configBtn = document.getElementById('analise-btn-config');
-  configBtn.hidden = String(usuario?.role || '').toLowerCase() !== 'socio_admin' &&
-    String(usuario?.role || '').toLowerCase() !== 'socio_adm';
+  if (configBtn) {
+    configBtn.hidden = !analisePodeConfigurarMargem(usuario?.role);
+  }
 }
 
 function analiseBindEventosBase() {
@@ -85,7 +75,6 @@ function analiseBindEventosBase() {
 
   document.getElementById('analise-btn-reload')?.addEventListener('click', async () => {
     ANALISE._ultimaCarga = null;
-    toast('Estrutura base pronta. A carga real entra no Sprint 2.');
     await analiseInit(true);
   });
 
@@ -103,12 +92,257 @@ function analiseBindEventosBase() {
 }
 
 async function analiseInit(forceReload = false) {
-  if (!forceReload && ANALISE._ultimaCarga) {
+  const cacheValido =
+    !forceReload &&
+    ANALISE._ultimaCarga &&
+    ANALISE._produtos.length > 0 &&
+    (Date.now() - ANALISE._ultimaCarga) < 5 * 60 * 1000;
+
+  if (cacheValido) {
     analiseRenderAbaAtiva();
     return;
   }
-  ANALISE._ultimaCarga = Date.now();
+
+  await analiseCarregarDados();
+}
+
+async function analiseCarregarDados() {
+  ANALISE._carregando = true;
+  ANALISE._erro = null;
   analiseRenderAbaAtiva();
+
+  try {
+    await analiseCarregarContextoBase();
+
+    const sb = window.sb;
+    const [
+      horasResp,
+      custosResp,
+      vhResp,
+    ] = await Promise.all([
+      sb.from('horas_lancadas').select('produto_id, etapa_id, usuario_id, hora_inicio, hora_fim'),
+      sb.from('lancamentos_custo').select('produto_id, etapa_id, valor'),
+      sb.from('historico_valor_hora').select('usuario_id, valor_hora, data_vigencia').order('data_vigencia', { ascending: false }),
+    ]);
+
+    analiseCheckQueryError(horasResp.error, 'Falha ao carregar horas_lancadas.');
+    analiseCheckQueryError(custosResp.error, 'Falha ao carregar lancamentos_custo.');
+    analiseCheckQueryError(vhResp.error, 'Falha ao carregar historico_valor_hora.');
+
+    ANALISE._horas = horasResp.data || [];
+    ANALISE._custos = custosResp.data || [];
+    ANALISE._vhPorUser = analiseMontarValorHoraAtual(vhResp.data || []);
+
+    const produtosElegiveis = analiseProdutosElegiveis(G.todosProdutos, G.todasEtapas);
+    const produtoIds = new Set(produtosElegiveis.map((produto) => String(produto.id)));
+
+    ANALISE._produtos = produtosElegiveis;
+    ANALISE._etapas = (G.todasEtapas || []).filter((etapa) => produtoIds.has(String(etapa.produto_id)));
+
+    analiseAgregarDados();
+    ANALISE._ultimaCarga = Date.now();
+  } catch (error) {
+    ANALISE._erro = error?.message || 'Nao foi possivel carregar os dados do modulo.';
+  } finally {
+    ANALISE._carregando = false;
+    analiseRenderAbaAtiva();
+  }
+}
+
+async function analiseCarregarContextoBase() {
+  const sb = window.sb;
+
+  const [{ data: usuarios, error: usuariosError }] = await Promise.all([
+    sb.from('usuarios').select('*').eq('ativo', true).order('nome'),
+  ]);
+  analiseCheckQueryError(usuariosError, 'Falha ao carregar usuarios.');
+  G.todosUsuarios = usuarios || [];
+
+  const { produtos, etapas } = await analiseCarregarProdutosEEtapas();
+  G.todosProdutos = produtos.todosProdutos;
+  G._prodsGestao = produtos.prodsGestao;
+  G._todosProdutosGestao = produtos.todosProdutosGestao;
+  G._crmVirtuais = produtos.crmVirtuais;
+  G.todasEtapas = etapas;
+}
+
+async function analiseCarregarProdutosEEtapas() {
+  const sb = window.sb;
+
+  let prodsGestao = [];
+  let produtosError = null;
+  const produtosCompleto = await sb.from('produtos')
+    .select('*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, cidade, uf))')
+    .order('created_at', { ascending: false });
+
+  if (produtosCompleto.error) {
+    produtosError = produtosCompleto.error;
+    const fallback = await sb.from('produtos')
+      .select('*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, previsao_orcamentaria, clientes(id, nome, cidade, uf))')
+      .order('created_at', { ascending: false });
+    analiseCheckQueryError(fallback.error, 'Falha ao carregar produtos.');
+    prodsGestao = fallback.data || [];
+  } else {
+    prodsGestao = produtosCompleto.data || [];
+  }
+
+  if (produtosError && !prodsGestao.length) {
+    throw new Error('Falha ao carregar produtos.');
+  }
+
+  const [etapasResp, proposalsResp] = await Promise.all([
+    sb.from('etapas').select('*').order('ordem'),
+    sb.from('exp_proposals')
+      .select('proposal_id, parent_id, version, projeto, cliente, cidade, uf, main_nucleo, total, status')
+      .in('status', ['fechado_ganho', 'Fechado/Ganho', 'fechado', 'Fechado', 'ganho', 'Ganho', 'won', 'closed_won', 'Fechado/ganho']),
+  ]);
+
+  analiseCheckQueryError(etapasResp.error, 'Falha ao carregar etapas.');
+
+  const proposals = proposalsResp.data || [];
+  const byParent = {};
+  proposals.forEach((item) => {
+    const key = item.parent_id || item.proposal_id;
+    if (!byParent[key] || Number(item.version || 0) > Number(byParent[key].version || 0)) {
+      byParent[key] = item;
+    }
+  });
+
+  const importados = new Set((prodsGestao || []).map((produto) => produto.proposta_origem_id).filter(Boolean));
+  const prodsVirtCrm = Object.values(byParent)
+    .filter((item) => !importados.has(item.parent_id || item.proposal_id))
+    .map((item) => ({
+      id: '__crm__' + (item.parent_id || item.proposal_id),
+      nome: item.projeto || '(sem nome)',
+      nucleo: analiseNormalizarNucleo(item.main_nucleo),
+      status: 'inativo',
+      valor_contratado: item.total,
+      _crm: true,
+      _propId: item.parent_id || item.proposal_id,
+      oportunidades: {
+        projeto: item.projeto,
+        clientes: { nome: item.cliente, cidade: item.cidade, uf: item.uf },
+      },
+    }));
+
+  const prodsAtivos = (prodsGestao || []).filter((produto) => produto.em_gestao !== false);
+  const prodsAtivosFixed = analiseFixProdutos(prodsAtivos);
+  const prodsVirtFixed = analiseFixProdutos(prodsVirtCrm);
+
+  return {
+    produtos: {
+      prodsGestao: prodsAtivosFixed,
+      todosProdutosGestao: analiseFixProdutos(prodsGestao || []),
+      crmVirtuais: prodsVirtFixed,
+      todosProdutos: [...prodsAtivosFixed, ...prodsVirtFixed],
+    },
+    etapas: etapasResp.data || [],
+  };
+}
+
+function analiseAgregarDados() {
+  const dadosPorProduto = {};
+  const dadosPorEtapa = {};
+  const usuariosSemVH = new Set();
+  const produtoIds = new Set(ANALISE._produtos.map((produto) => String(produto.id)));
+
+  ANALISE._produtos.forEach((produto) => {
+    dadosPorProduto[String(produto.id)] = {
+      produto,
+      horasTotais: 0,
+      custoHH: 0,
+      custosLancados: 0,
+      custoTotal: 0,
+      margem: null,
+      margemPct: null,
+      etapasDados: [],
+      etapasProgresso: {},
+    };
+  });
+
+  ANALISE._etapas.forEach((etapa) => {
+    if (!produtoIds.has(String(etapa.produto_id))) return;
+    dadosPorEtapa[String(etapa.id)] = {
+      etapa,
+      horasTotais: 0,
+      custoHH: 0,
+      custosLancados: 0,
+      custoTotal: 0,
+      utilizacaoBudget: null,
+    };
+  });
+
+  ANALISE._horas.forEach((lancamento) => {
+    const produtoKey = String(lancamento.produto_id || '');
+    const etapaKey = String(lancamento.etapa_id || '');
+    const horas = diffHoras(lancamento.hora_inicio, lancamento.hora_fim);
+    const valorHora = ANALISE._vhPorUser[String(lancamento.usuario_id)] || 0;
+    const custoHH = horas * valorHora;
+
+    if (dadosPorProduto[produtoKey]) {
+      dadosPorProduto[produtoKey].horasTotais += horas;
+      dadosPorProduto[produtoKey].custoHH += custoHH;
+    }
+
+    if (dadosPorEtapa[etapaKey]) {
+      dadosPorEtapa[etapaKey].horasTotais += horas;
+      dadosPorEtapa[etapaKey].custoHH += custoHH;
+    }
+
+    if (lancamento.usuario_id && !ANALISE._vhPorUser[String(lancamento.usuario_id)]) {
+      usuariosSemVH.add(String(lancamento.usuario_id));
+    }
+  });
+
+  ANALISE._custos.forEach((lancamento) => {
+    const produtoKey = String(lancamento.produto_id || '');
+    const etapaKey = String(lancamento.etapa_id || '');
+    const valor = Math.abs(Number(lancamento.valor) || 0);
+
+    if (dadosPorProduto[produtoKey]) {
+      dadosPorProduto[produtoKey].custosLancados += valor;
+    }
+
+    if (dadosPorEtapa[etapaKey]) {
+      dadosPorEtapa[etapaKey].custosLancados += valor;
+    }
+  });
+
+  Object.values(dadosPorEtapa).forEach((registro) => {
+    registro.custoTotal = registro.custoHH + registro.custosLancados;
+    const budget = Number(registro.etapa?.budget_horas || 0);
+    registro.utilizacaoBudget = budget > 0
+      ? (registro.horasTotais / budget) * 100
+      : null;
+  });
+
+  Object.values(dadosPorProduto).forEach((registro) => {
+    registro.custoTotal = registro.custoHH + registro.custosLancados;
+
+    const contratado = Number(registro.produto?.valor_contratado || 0);
+    if (contratado > 0) {
+      registro.margem = contratado - registro.custoTotal;
+      registro.margemPct = (registro.margem / contratado) * 100;
+    } else {
+      registro.margem = null;
+      registro.margemPct = null;
+    }
+
+    registro.etapasDados = Object.values(dadosPorEtapa)
+      .filter((etapaRegistro) => String(etapaRegistro.etapa?.produto_id) === String(registro.produto.id))
+      .sort((a, b) => Number(a.etapa?.ordem || 0) - Number(b.etapa?.ordem || 0));
+
+    registro.etapasDados.forEach((etapaRegistro) => {
+      const status = etapaRegistro.etapa?.status || 'nao_iniciada';
+      registro.etapasProgresso[status] = (registro.etapasProgresso[status] || 0) + 1;
+    });
+  });
+
+  ANALISE._dadosPorProduto = dadosPorProduto;
+  ANALISE._dadosPorEtapa = dadosPorEtapa;
+  ANALISE._avisos.usuariosSemVH = Array.from(usuariosSemVH)
+    .map((usuarioId) => G.todosUsuarios.find((usuario) => String(usuario.id) === usuarioId))
+    .filter(Boolean);
 }
 
 function analiseSwitchTab(aba) {
@@ -181,11 +415,15 @@ function analiseRenderConfig() {
 }
 
 function analiseAbrirConfig() {
-  if (!isSocioRole(G.usuario?.role)) return;
+  if (!analisePodeConfigurarMargem(G.usuario?.role)) return;
   document.getElementById('analise-config-panel')?.classList.add('open');
 }
 
 function analiseSalvarConfig() {
+  if (!analisePodeConfigurarMargem(G.usuario?.role)) {
+    toast('Somente socio administrador pode alterar esta configuracao.');
+    return;
+  }
   try {
     const next = analiseSetConfig({
       margem_threshold: document.getElementById('analise-threshold')?.value,
@@ -198,55 +436,278 @@ function analiseSalvarConfig() {
   }
 }
 
+function analisePodeConfigurarMargem(role) {
+  if (typeof isSocioAdminRole === 'function') {
+    return isSocioAdminRole(role);
+  }
+  return ['socio_admin', 'socio_adm'].includes(String(role || '').toLowerCase());
+}
+
 function analiseRenderAcumulado() {
-  document.getElementById('anp-acumulado').innerHTML = analisePlaceholderTemplate({
-    kicker: 'Sprint 1',
-    title: 'Aba base pronta para o Acumulado',
-    copy: 'A estrutura independente do modulo ja esta no ar. No Sprint 2 entram a carga real de produtos, etapas, horas, custos e a primeira agregacao de dados para KPIs, cards e graficos.',
-    cards: [
-      ['Entry point', 'analise.html esta autenticado e separado de gestao.html.'],
-      ['Shell', 'Nav, tema, conexao e identidade do usuario ja funcionam nesta pagina.'],
-      ['Proximo passo', 'Carregar produtos, etapas, horas_lancadas, lancamentos_custo e historico_valor_hora.'],
-    ],
-  });
+  const panel = document.getElementById('anp-acumulado');
+  if (!panel) return;
+
+  if (ANALISE._carregando) {
+    panel.innerHTML = analiseLoadingTemplate('Carregando produtos, horas, custos e valor/hora...');
+    return;
+  }
+
+  if (ANALISE._erro) {
+    panel.innerHTML = analiseErrorTemplate(ANALISE._erro);
+    return;
+  }
+
+  const produtos = Object.values(ANALISE._dadosPorProduto);
+  if (!produtos.length) {
+    panel.innerHTML = analiseEmptyTemplate('Nenhum projeto elegivel foi encontrado para a analise.');
+    return;
+  }
+
+  const contratadoTotal = produtos.reduce((sum, item) => sum + Math.max(0, Number(item.produto?.valor_contratado || 0)), 0);
+  const custoTotal = produtos.reduce((sum, item) => sum + item.custoTotal, 0);
+  const horasTotal = produtos.reduce((sum, item) => sum + item.horasTotais, 0);
+  const margemPonderada = contratadoTotal > 0
+    ? ((contratadoTotal - custoTotal) / contratadoTotal) * 100
+    : null;
+
+  panel.innerHTML = `
+    ${analiseWarningsHtml()}
+    <div class="analise-kpis-row">
+      ${analiseKpiCard('Projetos elegiveis', String(produtos.length), 'Produtos reais com etapas para leitura societaria')}
+      ${analiseKpiCard('Horas lancadas', fmtH(horasTotal), 'Soma de horas com produto associado')}
+      ${analiseKpiCard('Custo total', analiseFmtMoney(custoTotal), 'HH + custos lancados')}
+      ${analiseKpiCard('Margem ponderada', analiseFmtPct(margemPonderada), 'Baseada em valor contratado conhecido')}
+    </div>
+    <div class="analise-state-grid">
+      ${analiseResumoNucleos(produtos)}
+    </div>
+    <div class="analise-table-wrap">
+      <table class="analise-table">
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Nucleo</th>
+            <th>Status</th>
+            <th>Horas</th>
+            <th>Custo total</th>
+            <th>Contratado</th>
+            <th>Margem</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${produtos
+            .sort((a, b) => String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR'))
+            .map((item) => analiseLinhaProduto(item))
+            .join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function analiseRenderDesenvolvimento() {
-  document.getElementById('anp-desenvolvimento').innerHTML = analisePlaceholderTemplate({
-    kicker: 'Sprint 1',
-    title: 'Superficie operacional reservada',
-    copy: 'Esta aba ja nasceu com a navegacao, a troca de painis e a configuracao de margem. No Sprint 2 e 4 entram os dados ativos, o budget por etapa e a edicao inline.',
+  const panel = document.getElementById('anp-desenvolvimento');
+  if (!panel) return;
+
+  if (ANALISE._carregando) {
+    panel.innerHTML = analiseLoadingTemplate('Carregando etapas em desenvolvimento...');
+    return;
+  }
+
+  if (ANALISE._erro) {
+    panel.innerHTML = analiseErrorTemplate(ANALISE._erro);
+    return;
+  }
+
+  const etapas = Object.values(ANALISE._dadosPorEtapa);
+  const emCurso = etapas.filter((item) => ['em_andamento', 'em_revisao'].includes(item.etapa?.status));
+  const comBudget = emCurso.filter((item) => Number(item.etapa?.budget_horas || 0) > 0);
+
+  panel.innerHTML = analisePlaceholderTemplate({
+    kicker: 'Sprint 2',
+    title: 'Camada operacional com dados reais carregados',
+    copy: `Foram identificadas ${emCurso.length} etapas em andamento ou revisao, sendo ${comBudget.length} com budget_horas configurado. A tabela operacional e a edicao inline entram no proximo passo desta frente.`,
     cards: [
-      ['Budget', 'A persistencia de budget_horas entra junto com a carga real e o bind da tabela.'],
-      ['Risco', 'A classificacao de margem sera conectada aos dados assim que a agregacao estiver pronta.'],
-      ['Fluxo', 'WIP, aging e gargalos ficam para as releases posteriores.'],
+      ['Etapas ativas', String(emCurso.length)],
+      ['Com budget', String(comBudget.length)],
+      ['Aviso', 'A leitura real dos dados ja esta pronta para sustentar a aba operacional.'],
     ],
   });
 }
 
 function analiseRenderEncerrados() {
-  document.getElementById('anp-encerrados').innerHTML = analisePlaceholderTemplate({
-    kicker: 'Sprint 1',
-    title: 'Area de historico isolada e preparada',
-    copy: 'A pagina ja esta pronta para receber a lista de encerrados, o grafico historico de margem e a analise isolada por projeto sem depender do modal ou das tabs de Gestao.',
+  const panel = document.getElementById('anp-encerrados');
+  if (!panel) return;
+
+  if (ANALISE._carregando) {
+    panel.innerHTML = analiseLoadingTemplate('Carregando historico de encerrados...');
+    return;
+  }
+
+  if (ANALISE._erro) {
+    panel.innerHTML = analiseErrorTemplate(ANALISE._erro);
+    return;
+  }
+
+  const encerrados = Object.values(ANALISE._dadosPorProduto).filter((item) => {
+    const status = String(item.produto?.status || '').toLowerCase();
+    return status === 'encerrado' || status === 'concluido';
+  });
+
+  panel.innerHTML = analisePlaceholderTemplate({
+    kicker: 'Sprint 2',
+    title: 'Historico pronto para a analise isolada',
+    copy: `A carga real encontrou ${encerrados.length} projetos encerrados/concluidos. No Sprint 5 entram lista detalhada, grafico historico e leitura previsto x realizado.`,
     cards: [
-      ['Lista', 'Projetos encerrados serao renderizados nesta superficie, nao em gestao.html.'],
-      ['Isolada', 'A analise detalhada tera rota de estado propria dentro do modulo.'],
-      ['Timeline', 'Previsto x realizado entra junto com os graficos do Sprint 5.'],
+      ['Encerrados', String(encerrados.length)],
+      ['Base pronta', 'Produtos, etapas, horas e custos ja estao agregados para essa visao.'],
     ],
   });
 }
 
 function analiseRenderPessoas() {
-  document.getElementById('anp-pessoas').innerHTML = analisePlaceholderTemplate({
+  const panel = document.getElementById('anp-pessoas');
+  if (!panel) return;
+
+  if (ANALISE._carregando) {
+    panel.innerHTML = analiseLoadingTemplate('Carregando base por pessoa...');
+    return;
+  }
+
+  if (ANALISE._erro) {
+    panel.innerHTML = analiseErrorTemplate(ANALISE._erro);
+    return;
+  }
+
+  panel.innerHTML = analisePlaceholderTemplate({
     kicker: 'Backlog',
     title: 'Aba reservada para eficiencia por pessoa',
-    copy: 'Esta aba fica propositalmente leve na v1.0. O objetivo agora e estabilizar a base do modulo e depois evoluir para utilizacao, carga simultanea e contribuicao por margem.',
+    copy: `A base atual ja conhece ${G.todosUsuarios.length} usuarios ativos e ${ANALISE._horas.length} lancamentos de horas. A leitura por pessoa entra quando a camada financeira e operacional estiver estabilizada.`,
     cards: [
-      ['Escopo futuro', 'Horas, utilizacao, revisoes e carga por pessoa.'],
-      ['Dependencia', 'Exige consolidar primeiro a camada financeira e preditiva.'],
+      ['Usuarios ativos', String(G.todosUsuarios.length)],
+      ['Lancamentos', String(ANALISE._horas.length)],
     ],
   });
+}
+
+function analiseKpiCard(label, value, sub) {
+  return `
+    <div class="analise-kpi">
+      <div class="analise-kpi-label">${_escN(label)}</div>
+      <div class="analise-kpi-val">${_escN(value)}</div>
+      <div class="analise-kpi-sub">${_escN(sub)}</div>
+    </div>
+  `;
+}
+
+function analiseWarningsHtml() {
+  const usuarios = ANALISE._avisos.usuariosSemVH || [];
+  if (!usuarios.length) return '';
+  const nomes = usuarios.slice(0, 5).map((usuario) => usuario.nome || `#${usuario.id}`).join(', ');
+  const extra = usuarios.length > 5 ? ` e mais ${usuarios.length - 5}` : '';
+  return `
+    <div class="analise-warning">
+      <strong>Aviso de custo:</strong> ${usuarios.length} usuario(s) com horas lancadas ainda nao possuem valor/hora vigente. O custo de HH desses casos esta zerado. ${_escN(nomes + extra)}.
+    </div>
+  `;
+}
+
+function analiseResumoNucleos(produtos) {
+  const resumo = {};
+  produtos.forEach((item) => {
+    const nucleo = item.produto?.nucleo || 'sem_nucleo';
+    if (!resumo[nucleo]) {
+      resumo[nucleo] = {
+        label: NUCLEO_COR[nucleo]?.label || 'Sem nucleo',
+        projetos: 0,
+        horas: 0,
+        custo: 0,
+      };
+    }
+    resumo[nucleo].projetos += 1;
+    resumo[nucleo].horas += item.horasTotais;
+    resumo[nucleo].custo += item.custoTotal;
+  });
+
+  return Object.entries(resumo)
+    .sort((a, b) => a[1].label.localeCompare(b[1].label, 'pt-BR'))
+    .map(([nucleo, item]) => {
+      const cor = NUCLEO_COR[nucleo]?.dot || 'var(--grafite)';
+      return `
+        <div class="analise-state-card" style="border-left:3px solid ${cor}">
+          <strong>${_escN(item.label)}</strong>
+          <span>${item.projetos} projeto(s)</span>
+          <span>${fmtH(item.horas)} registradas</span>
+          <span>${analiseFmtMoney(item.custo)} de custo</span>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function analiseLinhaProduto(item) {
+  const classeMargem = analiseClassificarMargem(item.margemPct);
+  return `
+    <tr>
+      <td>
+        <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+        <div class="analise-table-sub">${_escN(item.produto?.oportunidades?.clientes?.nome || '')}</div>
+      </td>
+      <td>${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</td>
+      <td>${_escN(item.produto?.status || 'N/D')}</td>
+      <td>${_escN(fmtH(item.horasTotais))}</td>
+      <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
+      <td>${_escN(analiseFmtMoney(item.produto?.valor_contratado || 0, item.produto?.valor_contratado ? false : true))}</td>
+      <td><span class="${classeMargem.cls}">${_escN(analiseFmtPct(item.margemPct))}</span></td>
+    </tr>
+  `;
+}
+
+function analiseClassificarMargem(margemPct) {
+  const config = analiseGetConfig();
+  if (margemPct === null || typeof margemPct === 'undefined') {
+    return { cls: 'margem-nd', label: 'N/D' };
+  }
+  if (margemPct < config.margem_threshold) {
+    return { cls: 'margem-risco', label: 'Em risco' };
+  }
+  if (margemPct < config.margem_threshold + config.margem_atencao) {
+    return { cls: 'margem-atencao', label: 'Atencao' };
+  }
+  return { cls: 'margem-saudavel', label: 'Saudavel' };
+}
+
+function analiseFmtMoney(value, dashIfZero = false) {
+  const number = Number(value || 0);
+  if (dashIfZero && number <= 0) return 'N/D';
+  return `R$ ${fmtNum(number)}`;
+}
+
+function analiseFmtPct(value) {
+  if (value === null || typeof value === 'undefined' || Number.isNaN(Number(value))) return 'N/D';
+  return `${Number(value).toFixed(1).replace('.', ',')}%`;
+}
+
+function analiseLoadingTemplate(message) {
+  return `
+    <div class="loading-state">${_escN(message)}</div>
+  `;
+}
+
+function analiseErrorTemplate(message) {
+  return `
+    <div class="analise-state">
+      <div class="analise-state-kicker">Falha</div>
+      <div class="analise-state-title">Nao foi possivel carregar a analise.</div>
+      <div class="analise-state-copy">${_escN(message)}</div>
+    </div>
+  `;
+}
+
+function analiseEmptyTemplate(message) {
+  return `
+    <div class="empty-note">${_escN(message)}</div>
+  `;
 }
 
 function analisePlaceholderTemplate({ kicker, title, copy, cards }) {
@@ -265,4 +726,81 @@ function analisePlaceholderTemplate({ kicker, title, copy, cards }) {
       </div>
     </div>
   `;
+}
+
+function analiseProdutosElegiveis(produtos, etapas) {
+  const produtoIdsComEtapa = new Set((etapas || []).map((etapa) => String(etapa.produto_id)));
+  return (produtos || []).filter((produto) => {
+    if (!produto || produto._crm) return false;
+    if (produto.em_gestao === false) return false;
+    return produtoIdsComEtapa.has(String(produto.id));
+  });
+}
+
+function analiseMontarValorHoraAtual(registros) {
+  const mapa = {};
+  (registros || []).forEach((registro) => {
+    const key = String(registro.usuario_id || '');
+    if (!key || mapa[key] !== undefined) return;
+    mapa[key] = Number(registro.valor_hora || 0);
+  });
+  return mapa;
+}
+
+function analiseNormalizarNucleo(raw) {
+  if (!raw) return null;
+  const normalized = String(raw)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  if (normalized.includes('urban')) return 'urbanismo';
+  if (normalized.includes('paisa')) return 'paisagismo';
+  if (normalized.includes('consul')) return 'consultorias';
+  if (normalized.includes('espe')) return 'especiais';
+  return null;
+}
+
+function analiseFixProdutos(produtos) {
+  return (produtos || []).map((produto) => {
+    const cloned = { ...produto };
+    if (cloned.oportunidades) {
+      cloned.oportunidades = { ...cloned.oportunidades };
+      cloned.oportunidades.projeto = analiseFixMojibake(cloned.oportunidades.projeto);
+      cloned.oportunidades.cidade = analiseFixMojibake(cloned.oportunidades.cidade);
+      if (cloned.oportunidades.clientes) {
+        cloned.oportunidades.clientes = { ...cloned.oportunidades.clientes };
+        cloned.oportunidades.clientes.nome = analiseFixMojibake(cloned.oportunidades.clientes.nome);
+        cloned.oportunidades.clientes.cidade = analiseFixMojibake(cloned.oportunidades.clientes.cidade);
+      }
+    }
+    cloned.nome = analiseFixMojibake(cloned.nome);
+    return cloned;
+  });
+}
+
+function analiseFixMojibake(value) {
+  if (!value) return value;
+  return String(value)
+    .replace(/Ã§/g, 'ç')
+    .replace(/Ã£/g, 'ã')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ã´/g, 'ô')
+    .replace(/Ãµ/g, 'õ')
+    .replace(/Ã¢/g, 'â')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ãº/g, 'ú')
+    .replace(/Ã /g, 'à')
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ãª/g, 'ê')
+    .replace(/Ã±/g, 'ñ')
+    .replace(/Ã¼/g, 'ü')
+    .replace(/Ã\u00a3/g, 'ã');
+}
+
+function analiseCheckQueryError(error, fallbackMessage) {
+  if (error) {
+    throw new Error(fallbackMessage);
+  }
 }
