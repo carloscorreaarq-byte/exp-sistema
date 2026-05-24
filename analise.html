@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP · Analise de Eficiencia</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/app-shell.css">
+<link rel="stylesheet" href="analise.css">
+<script>
+  (function () {
+    var saved = localStorage.getItem('exp-theme');
+    var sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark' || (!saved && sys)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  })();
+</script>
+</head>
+<body data-page="analise">
+  <div id="shell-loading" class="shell-loading-screen">
+    <img class="shell-loading-logo" src="exp.png" alt="EXP">
+    <div class="shell-loading-bar"></div>
+  </div>
+
+  <div id="shell-app" style="display:none;">
+    <nav class="nav">
+      <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
+      <div class="nav-sep"></div>
+      <span class="nav-mod">Analise</span>
+      <div class="nav-right">
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
+          <span class="ttg-icon">☀</span>
+          <span class="ttg-track"><span class="ttg-knob"></span></span>
+          <span class="ttg-icon">🌙</span>
+        </button>
+        <div class="conn-dot" id="conn-dot" title="Verificando conexao..."></div>
+        <div class="user-pill-wrap">
+          <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
+            <div class="user-av" id="user-av"></div>
+            <div>
+              <div class="u-nome" id="user-nome">—</div>
+              <div class="u-role" id="user-cargo">—</div>
+            </div>
+            <span class="user-chip-arrow">▾</span>
+          </div>
+          <div class="user-dropdown" id="user-dropdown">
+            <button type="button" onclick="window.location.href='app.html'">Voltar ao inicio</button>
+            <button type="button" onclick="sair()">Sair do sistema</button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main id="page-analise" class="shell-main">
+      <section class="analise-header">
+        <div class="analise-title-row">
+          <div>
+            <span class="sec-badge">Societario</span>
+            <h1 class="sec-title">Analise de Eficiencia</h1>
+            <div class="analise-subtitle" id="analise-user-context">Carregando contexto do modulo...</div>
+          </div>
+          <div class="analise-header-actions">
+            <button class="btn sm" id="analise-btn-reload" type="button">Atualizar</button>
+            <button class="btn sm" id="analise-btn-config" type="button" hidden>Configurar</button>
+          </div>
+        </div>
+
+        <div class="analise-config-panel" id="analise-config-panel">
+          <div class="analise-config-grid">
+            <div class="fgroup">
+              <label for="analise-threshold">Threshold de margem (%)</label>
+              <input id="analise-threshold" type="number" min="0" max="100">
+            </div>
+            <div class="fgroup">
+              <label for="analise-atencao">Faixa de atencao (%)</label>
+              <input id="analise-atencao" type="number" min="0" max="20">
+            </div>
+          </div>
+          <div class="analise-config-preview" id="analise-config-preview"></div>
+          <div class="analise-config-actions">
+            <button class="btn sm" id="analise-btn-fechar-config" type="button">Cancelar</button>
+            <button class="btn sm filled" id="analise-btn-salvar-config" type="button">Salvar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="analise-shell-card">
+        <div class="analise-tabs-bar" id="analise-tabs-bar">
+          <button class="analise-tab active" type="button" data-aba="acumulado">Acumulado</button>
+          <button class="analise-tab" type="button" data-aba="desenvolvimento">Em Desenvolvimento</button>
+          <button class="analise-tab" type="button" data-aba="encerrados">Encerrados</button>
+          <button class="analise-tab" type="button" data-aba="pessoas">Por Pessoa</button>
+        </div>
+
+        <div class="analise-panels">
+          <section class="analise-panel active" id="anp-acumulado"></section>
+          <section class="analise-panel" id="anp-desenvolvimento"></section>
+          <section class="analise-panel" id="anp-encerrados"></section>
+          <section class="analise-panel" id="anp-pessoas"></section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="shared/app-constants.js"></script>
+  <script src="shared/app-utils.js"></script>
+  <script src="shared/app-shell.js"></script>
+  <script src="analise.js"></script>
+</body>
+</html>
