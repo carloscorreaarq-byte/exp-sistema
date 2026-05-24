@@ -1588,20 +1588,21 @@ body {
 .res-sem-pct { font-size:11px; color:#aaa; font-style:italic; padding:8px 0; }
 /* Contador de % alocado no form de edição */
 .ep-pct-total { font-size:10px; color:#888; text-align:right; padding:6px 2px 0; }
-/* Gráfico de colunas verticais — Resultado */
-.res-vchart { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; align-items:flex-end; }
-.res-vchart-col { display:flex; flex-direction:column; align-items:center; flex:1; min-width:52px; max-width:96px; }
-.res-vchart-barwrap { position:relative; width:100%; height:140px; }
-.res-vchart-bg { position:absolute; bottom:0; left:0; right:0; background:rgba(82,128,202,.13); border-radius:4px 4px 0 0; border:1px solid rgba(82,128,202,.18); border-bottom:none; }
-.res-vchart-fill { position:absolute; bottom:0; left:0; right:0; border-radius:4px 4px 0 0; overflow:hidden; display:flex; flex-direction:column-reverse; }
-.res-vchart-horas { background:var(--azul); }
-.res-vchart-custos { background:var(--ouro,#d4aa37); }
-.res-vchart-label { font-size:9px; font-weight:600; color:var(--grafite); text-align:center; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; padding:0 2px; }
-.res-vchart-pct { font-size:9px; color:#888; margin-top:1px; text-align:center; }
-.res-vchart-margem { font-size:9px; font-weight:700; margin-top:1px; text-align:center; }
-.res-vchart-margem.pos { color:var(--verde); }
-.res-vchart-margem.neg { color:var(--terracota); }
-.res-vchart-margem.zero { color:#aaa; }
+/* Resultado — layout 2 painéis */
+.res-layout { display:grid; grid-template-columns:230px 1fr; gap:12px; align-items:start; }
+.res-painel-esq { background:var(--azul); color:#fff; border-radius:12px; padding:16px; position:sticky; top:0; }
+.res-pe-row { display:flex; justify-content:space-between; gap:8px; font-size:10px; margin-bottom:6px; opacity:.9; }
+.res-pe-row.sm { font-size:9px; opacity:.72; margin-bottom:3px; }
+.res-pe-div { border-top:1px solid rgba(255,255,255,.2); margin:10px 0; }
+.res-painel-dir { overflow-y:auto; max-height:560px; display:flex; flex-direction:column; gap:6px; padding-right:2px; }
+.res-card-etapa { border-radius:8px; padding:12px 14px; border:1px solid; }
+.res-card-etapa.default { background:#fdf0f4; border-color:#f0c8d4; }
+.res-card-etapa.concluida-pos { background:var(--verde-bg,#eaf5ee); border-color:rgba(45,158,107,.3); }
+.res-card-etapa.concluida-neg { background:#fdecea; border-color:rgba(195,68,59,.25); }
+.res-card-hd { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+.res-card-valores { display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:10px; margin-bottom:8px; }
+.res-card-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:10px; color:#888; padding-top:8px; border-top:1px solid rgba(0,0,0,.07); }
+.res-card-meta strong { color:var(--grafite); }
 .ep-pct-total.completo { color:var(--verde); font-weight:600; }
 .ep-pct-total.excesso { color:var(--terracota); font-weight:700; }
 
@@ -13786,116 +13787,92 @@ async function carregarResultado(prodId) {
   // ── Render ────────────────────────────────────────────────
   const fR = v => 'R$ ' + fmtNum(v);
 
-  // Aviso se valor_contratado não configurado
+  // Totais detalhados
+  const totalHorasH = etapasDados.reduce((s, d) => s + d.horasH, 0);
+  const totalCustoH = etapasDados.reduce((s, d) => s + d.custoH, 0);
+  const totalCustoL = etapasDados.reduce((s, d) => s + d.custoL, 0);
+
+  // Avisos
   const semValor = !valorContratado ? `
-    <div style="background:rgba(212,170,55,.1);border:1px solid rgba(212,170,55,.4);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#8A6010">
+    <div style="background:rgba(212,170,55,.1);border:1px solid rgba(212,170,55,.4);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#8A6010">
       ⚠ Valor contratado não informado. Configure-o na edição do projeto para ver os valores previstos.
     </div>` : '';
-
   const semPctAviso = !temPct ? `
-    <div style="background:var(--az-bg);border:1px solid rgba(82,128,202,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--azul)">
-      ℹ Nenhuma etapa tem % de custo configurado. Edite o projeto e defina o campo <strong>% custo</strong> em cada etapa para ver a comparação previsto × realizado.
+    <div style="background:var(--az-bg);border:1px solid rgba(82,128,202,.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--azul)">
+      ℹ Nenhuma etapa tem % de custo configurado. Edite o projeto e defina <strong>% custo</strong> em cada etapa para ver o comparativo.
     </div>` : '';
 
-  // Sumário
-  let sumHtml = '';
-  if (temPct || totalRealizado > 0) {
-    const resPos = totalResultado != null ? totalResultado >= 0 : null;
-    const etapasComparativo = etapasDados.filter(({ previsto, realizado }) => (previsto || 0) > 0 || realizado > 0);
-    const escalaChart = etapasComparativo.reduce((m, { previsto, realizado }) => Math.max(m, previsto || 0, realizado || 0), 0) || 1;
-    const CHART_H = 140;
-    const chartHtml = etapasComparativo.length ? `
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--cinza2)">
-          <div style="display:flex;align-items:center;justify-content:space-between;font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">
-            <span>Comparativo por etapa</span>
-            <div style="display:flex;gap:12px;flex-wrap:wrap">
-              <span style="display:inline-flex;align-items:center;gap:4px"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;background:rgba(82,128,202,.22)"></i> Previsto</span>
-              <span style="display:inline-flex;align-items:center;gap:4px"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;background:var(--azul)"></i> Horas</span>
-              <span style="display:inline-flex;align-items:center;gap:4px"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0;background:var(--ouro,#d4aa37)"></i> Custos</span>
-            </div>
-          </div>
-          <div class="res-vchart">
-            ${etapasComparativo.map(({ etapa, previsto, realizado, resultado, custoH, custoL }) => {
-              const previstoH = previsto ? Math.round((previsto / escalaChart) * CHART_H) : 0;
-              const realizadoH = Math.round((realizado / escalaChart) * CHART_H);
-              const horasH  = realizado > 0 ? Math.round((custoH  / realizado) * realizadoH) : 0;
-              const custosH = realizadoH - horasH;
-              const pctConsumo = previsto && previsto > 0 ? Math.round((realizado / previsto) * 100) : null;
-              const margemCls = resultado == null ? 'zero' : resultado >= 0 ? 'pos' : 'neg';
-              const margemTxt = resultado == null ? '—' : (resultado >= 0 ? '+' : '') + fR(Math.abs(resultado));
-              return `
-                <div class="res-vchart-col">
-                  <div class="res-vchart-barwrap">
-                    ${previstoH > 0 ? `<div class="res-vchart-bg" style="height:${previstoH}px"></div>` : ''}
-                    ${realizadoH > 0 ? `<div class="res-vchart-fill" style="height:${realizadoH}px">
-                      ${custosH > 0 ? `<div class="res-vchart-custos" style="flex:${custosH}"></div>` : ''}
-                      ${horasH  > 0 ? `<div class="res-vchart-horas"  style="flex:${horasH}"></div>`  : ''}
-                    </div>` : ''}
-                  </div>
-                  <div class="res-vchart-label" title="${_regEsc(etapa.nome)}">${_regEsc(etapa.nome)}</div>
-                  ${pctConsumo != null ? `<div class="res-vchart-pct">${pctConsumo}%</div>` : ''}
-                  <div class="res-vchart-margem ${margemCls}">${margemTxt}</div>
-                </div>`;
-            }).join('')}
-          </div>
-        </div>` : '';
-    sumHtml = `
-      <div class="res-sumario">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa;margin-bottom:10px">Resumo do projeto</div>
-        <div class="res-kpi-row">
-          ${temPct && valorContratado ? `
-          <div class="res-kpi">
-            <div class="res-kpi-label">Previsto total</div>
-            <div class="res-kpi-val">${fR(totalPrevisto)}</div>
-            <div class="res-kpi-sub">${etapas.filter(e => e.percentual_custo != null).length} de ${etapas.length} etapas configuradas</div>
-          </div>` : ''}
-          <div class="res-kpi">
-            <div class="res-kpi-label">Realizado total</div>
-            <div class="res-kpi-val">${fR(totalRealizado)}</div>
-            <div class="res-kpi-sub">horas + custos lançados</div>
-          </div>
-          ${totalResultado != null ? `
-          <div class="res-kpi">
-            <div class="res-kpi-label">Resultado</div>
-            <div class="res-kpi-val" style="color:${resPos ? 'var(--verde)' : 'var(--terracota)'}">${resPos ? '+' : ''}${fR(totalResultado)}</div>
-            <div class="res-kpi-sub">${margemPct != null ? Math.abs(margemPct).toFixed(1) + '% ' + (resPos ? 'de folga' : 'acima do previsto') : ''}</div>
-          </div>` : ''}
-        </div>
-        ${chartHtml}
-      </div>`;
-  }
+  const resPos = totalResultado != null ? totalResultado >= 0 : null;
+  const margemSinal = margemPct != null ? (margemPct >= 0 ? '+' : '') + margemPct.toFixed(1) + '%' : null;
 
-  // Cards por etapa
-  const cardsHtml = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL }) => {
+  // Mini chart (inside painel esq)
+  const etapasComp = etapasDados.filter(({ previsto, realizado }) => (previsto || 0) > 0 || realizado > 0);
+  const escalaM = etapasComp.reduce((m, d) => Math.max(m, d.previsto || 0, d.realizado || 0), 0) || 1;
+  const MINI_H = 72;
+  const miniChart = etapasComp.length ? `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.18)">
+      <div style="font-size:8px;letter-spacing:.5px;text-transform:uppercase;opacity:.6;margin-bottom:8px">Por etapa</div>
+      <div style="display:flex;gap:3px;align-items:flex-end;height:${MINI_H}px">
+        ${etapasComp.map(({ etapa, previsto, realizado, resultado }) => {
+          const bH = previsto ? Math.round((previsto / escalaM) * MINI_H) : 0;
+          const fH = Math.min(Math.round((realizado / escalaM) * MINI_H), MINI_H);
+          const fillCol = resultado == null ? 'rgba(255,255,255,.55)' : resultado >= 0 ? '#6fcf97' : '#f2994a';
+          return `<div style="flex:1;position:relative;height:${MINI_H}px" title="${_regEsc(etapa.nome)}">
+            ${bH > 0 ? `<div style="position:absolute;bottom:0;left:0;right:0;height:${bH}px;background:rgba(255,255,255,.15);border-radius:3px 3px 0 0"></div>` : ''}
+            ${fH > 0 ? `<div style="position:absolute;bottom:0;left:0;right:0;height:${fH}px;background:${fillCol};border-radius:3px 3px 0 0;opacity:.9"></div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:3px;margin-top:4px">
+        ${etapasComp.map(({ etapa }) => `<div style="flex:1;font-size:7px;opacity:.55;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_regEsc(etapa.nome)}</div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Painel esquerdo azul
+  const painelEsq = `
+    <div class="res-painel-esq">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;opacity:.65;margin-bottom:14px">Resultado do Projeto</div>
+      ${valorContratado ? `<div class="res-pe-row"><span>Contratado</span><span>${fR(valorContratado)}</span></div>` : ''}
+      ${temPct && totalPrevisto > 0 ? `<div class="res-pe-row"><span>Previsto <span style="opacity:.6">(${etapas.filter(e=>e.percentual_custo!=null).length}/${etapas.length})</span></span><span>${fR(totalPrevisto)}</span></div>` : ''}
+      <div class="res-pe-row"><span>Realizado</span><span>${fR(totalRealizado)}</span></div>
+      <div class="res-pe-div"></div>
+      ${totalResultado != null ? `
+      <div style="margin-bottom:8px">
+        <div style="font-size:9px;opacity:.65;margin-bottom:3px">Saldo</div>
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.8px;color:${resPos ? '#6fcf97' : '#f2994a'}">${resPos ? '+' : ''}${fR(totalResultado)}</div>
+      </div>
+      <div style="margin-bottom:4px">
+        <div style="font-size:9px;opacity:.65;margin-bottom:2px">Margem de lucro</div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-1.5px;color:${resPos ? '#6fcf97' : '#f2994a'};line-height:1.1">${margemSinal ?? '—'}</div>
+      </div>` : `
+      <div style="font-size:10px;opacity:.6;font-style:italic;line-height:1.4">Configure % de custo nas etapas para ver resultado e margem.</div>`}
+      <div class="res-pe-div"></div>
+      <div style="font-size:9px;opacity:.65;margin-bottom:6px;font-weight:600">Composição</div>
+      <div class="res-pe-row sm"><span>Horas lançadas</span><span>${fmtH(totalHorasH)}</span></div>
+      <div class="res-pe-row sm"><span>Custo horas</span><span>${fR(totalCustoH)}</span></div>
+      <div class="res-pe-row sm"><span>Custos diretos</span><span>${fR(totalCustoL)}</span></div>
+      ${miniChart}
+    </div>`;
+
+  // Cards por etapa (painel direito rosa/verde/vermelho)
+  const cardsEtapas = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL }) => {
+    const isConcluida = etapa.status === 'concluida';
+    const cardCls = isConcluida && resultado != null
+      ? (resultado >= 0 ? 'concluida-pos' : 'concluida-neg')
+      : 'default';
     const stBadge  = STATUS_ETAPA[etapa.status] || STATUS_ETAPA.nao_iniciada;
-    const resClass = resultado == null ? 'neutro' : resultado >= 0 ? 'pos' : 'neg';
     const utilPct  = previsto && previsto > 0 ? (realizado / previsto) * 100 : null;
-    const resLabel = resultado == null
-      ? (realizado > 0 ? 'Realizado sem previsto definido' : 'Sem dados financeiros')
-      : resultado >= 0
-        ? 'Dentro do previsto'
-        : 'Acima do previsto';
-
-    const pctBadge = pct != null
-      ? `<span class="res-pct-badge">${pct}% alocado</span>`
-      : `<span class="res-pct-badge" style="opacity:.5">% não definido</span>`;
-    const metaHtml = (horasH > 0 || custoL > 0 || custoH > 0)
-      ? `<div class="res-detail-meta">
-          <span><strong>${fmtH(horasH)}</strong> lançadas</span>
-          <span><strong>${fR(custoH)}</strong> em horas</span>
-          <span><strong>${fR(custoL)}</strong> em custos</span>
-          ${utilPct != null ? `<span><strong>${utilPct.toFixed(0)}%</strong> consumido</span>` : ''}
-        </div>`
-      : `<div class="res-detail-meta">Sem horas e custos lançados${utilPct != null ? ` · <strong>${utilPct.toFixed(0)}%</strong> consumido` : ''}</div>`;
-
+    const margemEtapa = previsto && previsto > 0 ? ((resultado ?? 0) / previsto * 100) : null;
+    const saldoCor = resultado == null ? 'var(--grafite)' : resultado >= 0 ? 'var(--verde)' : 'var(--terracota)';
+    const margemCor = margemEtapa == null ? '#aaa' : margemEtapa >= 0 ? 'var(--verde)' : 'var(--terracota)';
     return `
-      <div class="res-etapa-card">
-        <div class="res-etapa-hd">
+      <div class="res-card-etapa ${cardCls}">
+        <div class="res-card-hd">
           <span class="badge ${stBadge.cls}" style="font-size:8px;flex-shrink:0">${stBadge.label}</span>
           <span class="res-etapa-nome">${_regEsc(etapa.nome)}</span>
-          ${pctBadge}
+          ${pct != null ? `<span class="res-pct-badge">${pct}% alocado</span>` : `<span class="res-pct-badge" style="opacity:.4">% indefinido</span>`}
         </div>
-        <div class="res-compare">
+        <div class="res-card-valores">
           <div class="res-val-blk">
             <div class="res-val-label">Previsto</div>
             <div class="res-val-num">${previsto != null ? fR(previsto) : '—'}</div>
@@ -13906,19 +13883,33 @@ async function carregarResultado(prodId) {
           </div>
           <div class="res-val-blk">
             <div class="res-val-label">Saldo</div>
-            <div class="res-val-num" style="color:${resultado == null ? 'var(--grafite)' : resultado >= 0 ? 'var(--verde)' : 'var(--terracota)'}">
-              ${resultado == null ? '—' : `${resultado >= 0 ? '+' : '-'}${fR(Math.abs(resultado))}`}
+            <div class="res-val-num" style="color:${saldoCor}">
+              ${resultado == null ? '—' : (resultado >= 0 ? '+' : '') + fR(Math.abs(resultado))}
+            </div>
+          </div>
+          <div class="res-val-blk">
+            <div class="res-val-label">Margem</div>
+            <div class="res-val-num" style="color:${margemCor}">
+              ${margemEtapa != null ? (margemEtapa >= 0 ? '+' : '') + margemEtapa.toFixed(1) + '%' : '—'}
             </div>
           </div>
         </div>
-        <div class="res-detail-row">
-          ${metaHtml}
-          <div class="res-resultado-inline ${resClass}">${resLabel}</div>
-        </div>
+        ${(horasH > 0 || custoL > 0) ? `
+        <div class="res-card-meta">
+          ${horasH > 0 ? `<span>${fmtH(horasH)} lançadas</span>` : ''}
+          ${custoH > 0 ? `<span>${fR(custoH)} em horas</span>` : ''}
+          ${custoL > 0 ? `<span>${fR(custoL)} custos diretos</span>` : ''}
+          ${utilPct != null ? `<span><strong>${utilPct.toFixed(0)}%</strong> consumido</span>` : ''}
+        </div>` : ''}
       </div>`;
   }).join('');
 
-  wrap.innerHTML = semValor + semPctAviso + sumHtml + cardsHtml;
+  wrap.innerHTML = `
+    ${semValor}${semPctAviso}
+    <div class="res-layout">
+      ${painelEsq}
+      <div class="res-painel-dir">${cardsEtapas || '<div class="empty-note">Nenhuma etapa com dados.</div>'}</div>
+    </div>`;
 }
 
 // Fecha modal clicando fora
