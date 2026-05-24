@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 
@@ -1732,8 +1733,8 @@ body {
 /* Processos */
 .proc-layout { display: grid; grid-template-columns: 280px 1fr; gap: 14px; align-items: start; }
 .proc-lista-item {
-  padding: 10px 12px; border: 1px solid var(--cinza); background: var(--branco);
-  cursor: pointer; margin-bottom: 6px; transition: all .12s;
+  padding: 6px 10px; border: 1px solid var(--cinza); background: var(--branco);
+  cursor: pointer; margin-bottom: 4px; transition: all .12s;
   position: relative; overflow: hidden; border-radius: 8px;
 }
 .proc-lista-item::before {
@@ -1743,8 +1744,9 @@ body {
 .proc-lista-item.proc-done::before { background: var(--verde); }
 .proc-lista-item:hover { border-color: #999; }
 .proc-lista-item.selected { border-color: var(--grafite); }
-.proc-nome { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
-.proc-prog { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; }
+.proc-nome { font-size: 11px; font-weight: 600; margin-bottom: 1px; }
+.proc-desc { font-size: 10px; color: #888; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proc-prog { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; margin-top: 4px; }
 .proc-prog-bar { flex: 1; height: 3px; background: var(--cinza2); border-radius: 2px; }
 .proc-prog-fill { height: 100%; background: var(--azul); border-radius: 2px; transition: width .3s; }
 .proc-prog-fill.done { background: var(--verde); }
@@ -2508,6 +2510,69 @@ body {
 .stab.active { color: var(--grafite); border-bottom-color: var(--grafite); }
 .stab-panel { display: none; }
 .stab-panel.active { display: block; }
+
+/* ── GOOGLE CALENDAR ─────────────────────────────────────── */
+.gcal-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px; border: 1px solid var(--cinza);
+  background: var(--branco); cursor: pointer; font-size: 10px;
+  font-family: var(--font-ui); color: var(--grafite); white-space: nowrap;
+  transition: border-color .12s;
+}
+.gcal-btn:hover { border-color: #999; }
+.gcal-btn.conectado { border-color: #34a853; color: #34a853; }
+.gcal-btn .gcal-logo { width: 13px; height: 13px; flex-shrink: 0; }
+.gcal-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 3px; font-size: 8px;
+  font-weight: 700; background: #4285f4; color: #fff; flex-shrink: 0;
+  line-height: 1; font-family: var(--font-ui);
+}
+.gcal-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  z-index: 1100; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.gcal-modal-overlay.open { opacity: 1; pointer-events: all; }
+.gcal-modal {
+  background: var(--branco); border-radius: 12px; width: 420px; max-width: 96vw;
+  max-height: 80vh; overflow-y: auto; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+}
+.gcal-modal-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.gcal-modal-sub { font-size: 11px; color: #888; margin-bottom: 16px; }
+.gcal-section-lbl {
+  font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: #999; margin-bottom: 6px; display: block;
+}
+.gcal-cal-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--cinza2);
+}
+.gcal-cal-row:last-child { border-bottom: none; }
+.gcal-cal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.gcal-cal-name { font-size: 11px; flex: 1; }
+.gcal-cal-primary { font-size: 9px; color: #4285f4; }
+.gcal-sync-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid var(--cinza2);
+}
+.gcal-sync-row:last-child { border-bottom: none; }
+.gcal-sync-lbl { font-size: 11px; }
+.gcal-sync-desc { font-size: 9px; color: #999; }
+.gcal-toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+.gcal-toggle input { opacity: 0; width: 0; height: 0; }
+.gcal-toggle-slider {
+  position: absolute; inset: 0; background: var(--cinza); border-radius: 18px;
+  cursor: pointer; transition: background .2s;
+}
+.gcal-toggle-slider::before {
+  content: ''; position: absolute; width: 14px; height: 14px;
+  left: 2px; top: 2px; background: #fff; border-radius: 50%;
+  transition: transform .2s;
+}
+.gcal-toggle input:checked + .gcal-toggle-slider { background: #34a853; }
+.gcal-toggle input:checked + .gcal-toggle-slider::before { transform: translateX(14px); }
+.cb-google { background: #4285f4; }
 
 /* ── CALENDÁRIO ──────────────────────────────────────────── */
 .cal-shell { display: flex; flex-direction: column; gap: 7px; }
@@ -3466,17 +3531,23 @@ body {
 ══════════════════════════════════════════════════════════════ -->
 <div class="page" id="page-processos">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div class="sec-title" style="margin-bottom:0;flex:1">Processos</div>
-    <button class="btn sm verde socio-only" id="btn-novo-proc" onclick="abrirNovoChecklist()" style="display:none">+ Novo checklist</button>
+  <div style="margin-bottom:14px">
+    <div class="sec-title" style="margin-bottom:0">Processos</div>
   </div>
 
   <div class="proc-layout">
-    <div id="proc-lista">
-      <div class="loading-state">Carregando...</div>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <button class="btn sm verde socio-only" id="btn-novo-proc" onclick="abrirNovoChecklist()" style="display:none;margin-left:auto">+ Novo checklist</button>
+      </div>
+      <div id="proc-lista">
+        <div class="loading-state">Carregando...</div>
+      </div>
     </div>
-    <div id="proc-detalhe">
-      <div class="empty-note">Selecione um checklist para ver os detalhes</div>
+    <div>
+      <div id="proc-detalhe">
+        <div class="empty-note">Selecione um checklist para ver os detalhes</div>
+      </div>
     </div>
   </div>
 
@@ -3527,6 +3598,19 @@ body {
             <button class="cal-sv-btn"        id="sv-semana" onclick="calSetView('semana')">Semana</button>
             <button class="cal-sv-btn"        id="sv-mes"    onclick="calSetView('mes')">M&ecirc;s</button>
           </div>
+          <button class="gcal-btn" id="gcal-topbar-btn" onclick="gcalAbrirConfig()">
+            <svg class="gcal-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18.316 5.684H5.684v12.632h12.632V5.684z" fill="#fff"/>
+              <path d="M18.316 21L21 18.316l-2.684-1.79-8.526 1.79-1.79 2.684L10.79 21h7.526z" fill="#EA4335"/>
+              <path d="M3 18.316L5.684 21V18.316H3z" fill="#FBBC04"/>
+              <path d="M21 5.684L18.316 3H5.684L3 5.684h18z" fill="#4285F4" opacity=".4"/>
+              <path d="M18.316 3L21 5.684v12.632L18.316 21V3z" fill="#34A853"/>
+              <path d="M3 5.684v12.632L5.684 21V5.684H3z" fill="#FBBC04"/>
+              <path d="M3 5.684L5.684 3h12.632L21 5.684H3z" fill="#4285F4"/>
+              <path d="M12.053 9.382c.926 0 1.643.42 2.033 1.04l1.09-.712c-.601-.9-1.607-1.55-3.123-1.55-2.23 0-3.953 1.72-3.953 3.84s1.723 3.84 3.953 3.84c2.1 0 3.663-1.46 3.663-3.79 0-.25-.023-.49-.06-.7h-3.603v1.22h2.25c-.15.83-.84 1.5-2.25 1.5-1.374 0-2.492-1.12-2.492-2.07 0-.95 1.118-2.618 2.492-2.618z" fill="#4285F4"/>
+            </svg>
+            <span id="gcal-topbar-lbl">Google Calendar</span>
+          </button>
           <button class="btn filled" onclick="calAbrirModalNovo(null)">+ Novo evento</button>
         </div>
       </div>
@@ -3548,6 +3632,7 @@ body {
         <button class="cal-chip cat-feriado active"     data-cat="feriado"     onclick="calToggleCat(this)">Feriados e Recessos</button>
         <button class="cal-chip cat-agenda active"      data-cat="agenda"      onclick="calToggleCat(this)">Agenda EXP</button>
         <button class="cal-chip cat-aniversario active" data-cat="aniversario" onclick="calToggleCat(this)">Anivers&aacute;rios</button>
+        <button class="cal-chip cat-google" data-cat="google" id="cal-chip-google" onclick="calToggleCat(this)" style="display:none">Google Calendar</button>
       </div>
       <div id="cal-content"></div>
     </div>
@@ -3576,6 +3661,83 @@ body {
   </div>
 
 </div><!-- /page-calendario -->
+
+<!-- ── Modal Google Calendar Config ──────────────────────── -->
+<div class="gcal-modal-overlay" id="gcal-modal" onclick="if(event.target===this)gcalFecharConfig()">
+  <div class="gcal-modal">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18.316 5.684H5.684v12.632h12.632V5.684z" fill="#fff"/><path d="M18.316 21L21 18.316l-2.684-1.79-8.526 1.79-1.79 2.684L10.79 21h7.526z" fill="#EA4335"/><path d="M3 18.316L5.684 21V18.316H3z" fill="#FBBC04"/><path d="M21 5.684L18.316 3H5.684L3 5.684h18z" fill="#4285F4" opacity=".4"/><path d="M18.316 3L21 5.684v12.632L18.316 21V3z" fill="#34A853"/><path d="M3 5.684v12.632L5.684 21V5.684H3z" fill="#FBBC04"/><path d="M3 5.684L5.684 3h12.632L21 5.684H3z" fill="#4285F4"/></svg>
+      <div class="gcal-modal-title">Google Calendar</div>
+    </div>
+    <div class="gcal-modal-sub" id="gcal-modal-sub">Conecte sua conta para ver eventos do Google no calendário EXP.</div>
+
+    <!-- Estado: desconectado -->
+    <div id="gcal-state-off">
+      <button class="btn filled" onclick="gcalConectar()" style="width:100%;margin-bottom:12px">
+        Conectar com Google
+      </button>
+      <div style="font-size:10px;color:#aaa;text-align:center">
+        Você será redirecionado para autorizar o acesso ao Google Calendar.<br>
+        Apenas leitura e criação de eventos — nunca deletamos nada.
+      </div>
+    </div>
+
+    <!-- Estado: conectado -->
+    <div id="gcal-state-on" style="display:none">
+
+      <!-- Calendários disponíveis -->
+      <span class="gcal-section-lbl">Seus calendários</span>
+      <div id="gcal-cals-list" style="margin-bottom:14px">
+        <div style="font-size:10px;color:#aaa;padding:8px 0">Carregando...</div>
+      </div>
+
+      <!-- Calendário compartilhado do escritório -->
+      <span class="gcal-section-lbl">Calendário do escritório</span>
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;color:#888;margin-bottom:6px">
+          Cole o ID do Google Calendar compartilhado do escritório (ex: <code>abc@group.calendar.google.com</code>).
+          Todos que tiverem acesso verão os eventos.
+        </div>
+        <div style="display:flex;gap:6px">
+          <input id="gcal-shared-id" type="text" placeholder="ID do calendário compartilhado"
+            style="flex:1;border:1px solid var(--cinza);border-radius:6px;padding:6px 8px;font-size:11px;font-family:var(--font-ui);outline:none"
+            value="">
+          <button class="btn sm" onclick="gcalSalvarShared()">Salvar</button>
+        </div>
+      </div>
+
+      <!-- Opções de sincronização -->
+      <span class="gcal-section-lbl">Sincronização</span>
+      <div style="margin-bottom:16px">
+        <div class="gcal-sync-row">
+          <div>
+            <div class="gcal-sync-lbl">Enviar reuniões ao Google Calendar</div>
+            <div class="gcal-sync-desc">Novos eventos do tipo Reunião são adicionados automaticamente</div>
+          </div>
+          <label class="gcal-toggle">
+            <input type="checkbox" id="gcal-sync-reuniao" onchange="gcalSalvarPrefs()">
+            <span class="gcal-toggle-slider"></span>
+          </label>
+        </div>
+        <div class="gcal-sync-row">
+          <div>
+            <div class="gcal-sync-lbl">Enviar Agenda EXP ao Google Calendar</div>
+            <div class="gcal-sync-desc">Eventos de Agenda EXP são sincronizados na sua conta</div>
+          </div>
+          <label class="gcal-toggle">
+            <input type="checkbox" id="gcal-sync-agenda" onchange="gcalSalvarPrefs()">
+            <span class="gcal-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:space-between">
+        <button class="btn tc sm" onclick="gcalDesconectar()">Desconectar</button>
+        <button class="btn sm" onclick="gcalFecharConfig()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="page" id="page-socios">
 
@@ -16388,14 +16550,13 @@ function renderProcLista() {
       ? `<div class="task-de-chip" style="background:#bbb;width:18px;height:18px;font-size:7px">+${atrib.length-4}</div>` : '';
     const selected = G._procSelecionado === c.id ? ' selected' : '';
     return `<div class="proc-lista-item${done?' proc-done':''}${selected}" onclick="selecionarChecklist(${_sqN(c.id)})">
-      <div class="proc-nome">${_escN(c.nome)}</div>
-      ${c.descricao ? `<div style="font-size:10px;color:#888;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escN(c.descricao)}</div>` : ''}
-      <div style="display:flex;align-items:center;gap:3px;margin-bottom:6px;flex-wrap:wrap">
-        ${chips}${moreChips}
-        ${!atrib.length ? '<span style="font-size:9px;color:#ccc;font-style:italic">Sem responsável</span>' : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+        <div class="proc-nome">${_escN(c.nome)}</div>
+        <div style="display:flex;align-items:center;gap:3px">${chips}${moreChips}${!atrib.length ? '<span style="font-size:9px;color:#ccc;font-style:italic">—</span>' : ''}</div>
       </div>
+      ${c.descricao ? `<div class="proc-desc">${_escN(c.descricao)}</div>` : ''}
       <div class="proc-prog">
-        <span>${conc}/${total}</span>
+        <span>${conc}/${total} tarefas</span>
         <div class="proc-prog-bar"><div class="proc-prog-fill${done?' done':''}" style="width:${pct}%"></div></div>
         <span>${pct}%</span>
       </div>
@@ -16903,6 +17064,7 @@ const CAL_CAT_MAP = {
   feriado:     ['feriado', 'recesso', 'feriado_local'],
   agenda:      ['agenda_exp'],
   aniversario: ['ausencia_aniv', 'ausencia_rem'],
+  google:      ['google'],
 };
 
 const CAL_TIPOS_META = {
@@ -16914,11 +17076,13 @@ const CAL_TIPOS_META = {
   entrega:      { icon: '📦',  label: 'Entrega' },
   agenda_exp:   { icon: '📅',  label: 'Agenda EXP' },
   reuniao:      { icon: '🤝',  label: 'Reunião' },
+  google:       { icon: '📆',  label: 'Google Calendar' },
 };
 
 function calMeta(tipo) { return CAL_TIPOS_META[tipo] || { icon: '📌', label: tipo }; }
 
-function calEvBg(tipo) {
+function calEvBg(tipo, ev) {
+  if (tipo === 'google') return ev?._gcalColor ? ev._gcalColor + '22' : 'rgba(66,133,244,.1)';
   return {
     recesso:       'var(--tc-bg)',
     feriado:       'var(--tc-bg)',
@@ -16930,7 +17094,8 @@ function calEvBg(tipo) {
     reuniao:       'var(--az-bg)',
   }[tipo] || 'var(--cinza2)';
 }
-function calEvColor(tipo) {
+function calEvColor(tipo, ev) {
+  if (tipo === 'google') return ev?._gcalColor || '#4285f4';
   return {
     recesso:       'var(--terracota)',
     feriado:       'var(--terracota)',
@@ -16942,7 +17107,8 @@ function calEvColor(tipo) {
     reuniao:       'var(--azul)',
   }[tipo] || 'var(--grafite)';
 }
-function calEvBorder(tipo) {
+function calEvBorder(tipo, ev) {
+  if (tipo === 'google') return ev?._gcalColor || '#4285f4';
   return {
     recesso:       'var(--terracota)',
     feriado:       'var(--terracota)',
@@ -17198,10 +17364,12 @@ function calRenderLista() {
     `<div class="cal-lista">${evts.map(ev => {
       const meta = calMeta(ev.tipo);
       const dtFmt = new Date(ev.data_inicio+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
-      return `<div class="cal-lista-item" style="border-left:4px solid ${calEvBorder(ev.tipo)};background:${calEvBg(ev.tipo)}" onclick="calAbrirDetalhe('${ev.id}')">
-        <div class="cal-lista-data">${dtFmt}</div>
+      const horaStr = ev.hora_inicio ? ` · ${ev.hora_inicio}${ev.hora_fim ? '–'+ev.hora_fim : ''}` : '';
+      const gBadge  = ev._gcal ? `<span class="gcal-badge" title="Google Calendar">G</span>` : '';
+      return `<div class="cal-lista-item" style="border-left:4px solid ${calEvBorder(ev.tipo,ev)};background:${calEvBg(ev.tipo,ev)}" onclick="calAbrirDetalhe('${ev.id}')">
+        <div class="cal-lista-data">${dtFmt}${horaStr}</div>
         <div class="cal-lista-body">
-          <span class="cal-lista-icon">${meta.icon}</span>
+          ${gBadge}<span class="cal-lista-icon">${meta.icon}</span>
           <span class="cal-lista-titulo">${ev.titulo}</span>
           ${ev.projeto_nome ? `<span class="cal-lista-proj"> | ${ev.projeto_nome}</span>` : ''}
         </div>
@@ -17249,9 +17417,10 @@ function calRenderMes() {
             const m   = calMeta(ev.tipo);
             const tit = ev.titulo.length > 19 ? ev.titulo.slice(0,17)+'…' : ev.titulo;
             const prj = ev.projeto_nome ? ' · ' + ev.projeto_nome.split(' ')[0] : '';
+            const gPfx = ev._gcal ? '<span style="font-size:7px;font-weight:700;background:#4285f4;color:#fff;border-radius:2px;padding:0 2px;margin-right:2px;vertical-align:middle">G</span>' : '';
             return `<div class="cal-ev-chip" title="${ev.titulo}${ev.projeto_nome?' — '+ev.projeto_nome:''}"
-              style="background:${calEvBg(ev.tipo)};color:${calEvColor(ev.tipo)};border-left:3px solid ${calEvBorder(ev.tipo)}"
-              onclick="event.stopPropagation();calAbrirDetalhe('${ev.id}')">${m.icon} ${tit}${prj}</div>`;
+              style="background:${calEvBg(ev.tipo,ev)};color:${calEvColor(ev.tipo,ev)};border-left:3px solid ${calEvBorder(ev.tipo,ev)}"
+              onclick="event.stopPropagation();calAbrirDetalhe('${ev.id}')">${gPfx}${m.icon} ${tit}${prj}</div>`;
           }).join('')}
           ${evs.length > MAX ? `<div class="cal-mais-evts" onclick="event.stopPropagation();calDiaClick('${key}')">+${evs.length-MAX} mais</div>` : ''}
         </div>
@@ -17297,8 +17466,8 @@ function calRenderSemana() {
         <span class="cal-semana-num${ehHoje?' cal-hoje-num':''}">${d.getDate()}</span>
       </div>
       <div class="cal-semana-evts">
-        ${evs.map(ev => `<div class="cal-semana-ev" style="background:${calEvBg(ev.tipo)};color:${calEvColor(ev.tipo)};border-left:3px solid ${calEvBorder(ev.tipo)}" onclick="calAbrirDetalhe('${ev.id}')">
-            ${calMeta(ev.tipo).icon} ${ev.titulo}
+        ${evs.map(ev => `<div class="cal-semana-ev" style="background:${calEvBg(ev.tipo,ev)};color:${calEvColor(ev.tipo,ev)};border-left:3px solid ${calEvBorder(ev.tipo,ev)}" onclick="calAbrirDetalhe('${ev.id}')">
+            ${ev._gcal?'<span style="font-size:7px;font-weight:700;background:#4285f4;color:#fff;border-radius:2px;padding:0 2px;margin-right:2px">G</span>':''}${calMeta(ev.tipo).icon} ${ev.titulo}
             ${ev.projeto_nome?`<span class="cal-semana-proj">${ev.projeto_nome}</span>`:''}
           </div>`).join('')}
       </div>
@@ -17416,6 +17585,16 @@ function calRenderModalBody(tipos, dataIni) {
       <label>Descrição (opcional)</label>
       <textarea id="cal-inp-desc" rows="2" placeholder="Detalhes..."></textarea>
     </div>
+    ${GCAL.token ? `
+    <div class="gcal-sync-row" id="cal-gcal-sync-row" style="margin-top:4px">
+      <div>
+        <div class="gcal-sync-lbl">Adicionar ao Google Calendar</div>
+      </div>
+      <label class="gcal-toggle">
+        <input type="checkbox" id="cal-gcal-sync-ck" checked>
+        <span class="gcal-toggle-slider"></span>
+      </label>
+    </div>` : ''}
     <div id="cal-aviso-ausencia" class="cal-aviso" style="display:none"></div>`;
 }
 
@@ -17478,6 +17657,15 @@ async function calSalvar() {
       ({ error: err } = await sb.from('calendar_events').insert(payload));
     }
     if (err) throw err;
+    // Sincroniza ao Google Calendar se conectado e toggle ativo
+    const gcalCk = document.getElementById('cal-gcal-sync-ck');
+    if (GCAL.token && gcalCk?.checked && !CAL.editId) {
+      const prefs = gcalGetPrefs();
+      const syncTipo = (tipo === 'reuniao' && prefs.reuniao) || (tipo === 'agenda_exp' && prefs.agenda) || gcalCk.checked;
+      if (syncTipo) {
+        await gcalCriarEvento(titulo, ini, fim || ini, desc || '');
+      }
+    }
     calFecharModalNovo();
     await calCarregarEventos();
     if (tipo === 'ausencia_rem') await calCarregarSaldo();
@@ -17496,19 +17684,23 @@ function calAbrirDetalhe(id) {
   const meta   = calMeta(ev.tipo);
   const pode   = isSocioRole(G.usuario?.role) || ev.usuario_id === G.usuario?.id;
   const dtFmt  = new Date(ev.data_inicio+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const horaStr = ev.hora_inicio ? `${ev.hora_inicio}${ev.hora_fim ? ' – ' + ev.hora_fim : ''}` : '';
+  const gBadgeHd = ev._gcal ? `<span class="gcal-badge" style="font-size:9px;width:18px;height:18px" title="Google Calendar">G</span>` : '';
   modal.querySelector('.cal-modal-body').innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <span style="font-size:28px">${meta.icon}</span>
+      ${gBadgeHd}<span style="font-size:28px">${meta.icon}</span>
       <div><div style="font-weight:700;font-size:16px">${ev.titulo}</div>
         <div style="font-size:12px;color:var(--cinza)">${meta.label}</div></div>
     </div>
-    <div class="cal-detalhe-campo"><b>Data</b> ${dtFmt}${ev.data_fim&&ev.data_fim!==ev.data_inicio?' → '+new Date(ev.data_fim+'T12:00:00').toLocaleDateString('pt-BR'):''}</div>
+    <div class="cal-detalhe-campo"><b>Data</b> ${dtFmt}${ev.data_fim&&ev.data_fim!==ev.data_inicio?' → '+new Date(ev.data_fim+'T12:00:00').toLocaleDateString('pt-BR'):''}${horaStr ? ' · ' + horaStr : ''}</div>
     ${ev.projeto_nome?`<div class="cal-detalhe-campo"><b>Projeto</b> ${ev.projeto_nome}</div>`:''}
-    ${ev.descricao?`<div class="cal-detalhe-campo"><b>Descrição</b> ${ev.descricao}</div>`:''}
-    ${ev.meet_link?`<div class="cal-detalhe-campo"><b>Link</b> <a href="${ev.meet_link}" target="_blank">${ev.meet_link}</a></div>`:''}
+    ${ev.local?`<div class="cal-detalhe-campo"><b>Local</b> ${_escN(ev.local)}</div>`:''}
+    ${ev.descricao?`<div class="cal-detalhe-campo"><b>Descrição</b> ${_escN(ev.descricao)}</div>`:''}
+    ${ev.meet_link?`<div class="cal-detalhe-campo"><b>Link</b> <a href="${ev.meet_link}" target="_blank" style="color:var(--azul)">${ev.meet_link.length>50?ev.meet_link.slice(0,50)+'…':ev.meet_link}</a></div>`:''}
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-      ${pode&&!ev._synthetic?`<button class="btn filled sm" onclick="calEditar('${ev.id}')">Editar</button>`:''}
-      ${pode&&!ev._synthetic?`<button class="btn tc sm" onclick="calExcluir('${ev.id}')">Excluir</button>`:''}
+      ${pode&&!ev._synthetic&&!ev._gcal?`<button class="btn filled sm" onclick="calEditar('${ev.id}')">Editar</button>`:''}
+      ${pode&&!ev._synthetic&&!ev._gcal?`<button class="btn tc sm" onclick="calExcluir('${ev.id}')">Excluir</button>`:''}
+      ${ev._gcal?`<a href="https://calendar.google.com/calendar/event?eid=${btoa(ev._gcalEvId||'').replace(/=/g,'')}" target="_blank" class="btn sm filled" style="text-decoration:none">Abrir no Google</a>`:''}
       <button class="btn sm" onclick="calFecharDetalhe()">Fechar</button>
     </div>`;
   modal.classList.add('open');
@@ -17552,6 +17744,364 @@ async function calExcluir(id) {
   });
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GOOGLE CALENDAR INTEGRATION
+// ─────────────────────────────────────────────────────────────────────────────
+// Preencha com o seu Client ID OAuth 2.0 do Google Cloud Console
+const GCAL_CLIENT_ID = '394553967709-9ab5np8qj5udmhde9vsrg0lgp5k93qrs.apps.googleusercontent.com';
+
+const GCAL = {
+  token:      null,   // access_token atual (expira em 1h)
+  eventos:    [],     // eventos buscados do Google
+  calendarios:[],     // lista de calendários do usuário (objects)
+  tokenClient: null,  // GIS token client
+  _loading: false,
+};
+
+// IDs de calendários que o usuário ativou (persiste em localStorage)
+function gcalGetCalIds() {
+  try {
+    const raw = localStorage.getItem('gcal_cal_ids_' + (G.usuario?.id || ''));
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function gcalSetCalIds(ids) {
+  localStorage.setItem('gcal_cal_ids_' + (G.usuario?.id || ''), JSON.stringify(ids));
+}
+
+// ID do calendário compartilhado do escritório
+function gcalGetSharedId() {
+  return localStorage.getItem('gcal_shared_id') || '';
+}
+function gcalSetSharedId(id) {
+  if (id) localStorage.setItem('gcal_shared_id', id.trim());
+  else    localStorage.removeItem('gcal_shared_id');
+}
+
+// Preferências de sync
+function gcalGetPrefs() {
+  try {
+    const raw = localStorage.getItem('gcal_prefs_' + (G.usuario?.id || ''));
+    return raw ? JSON.parse(raw) : { reuniao: true, agenda: false };
+  } catch { return { reuniao: true, agenda: false }; }
+}
+function gcalSetPrefs(prefs) {
+  localStorage.setItem('gcal_prefs_' + (G.usuario?.id || ''), JSON.stringify(prefs));
+}
+
+// Se usuário conectou antes (para auto-reconexão silenciosa)
+function gcalEraConectado() {
+  return localStorage.getItem('gcal_connected_' + (G.usuario?.id || '')) === '1';
+}
+function gcalMarcarConectado(v) {
+  if (v) localStorage.setItem('gcal_connected_' + (G.usuario?.id || ''), '1');
+  else   localStorage.removeItem('gcal_connected_' + (G.usuario?.id || ''));
+}
+
+// ── Inicializa o GIS token client ─────────────────────────
+function gcalInitClient() {
+  if (!GCAL_CLIENT_ID || typeof google === 'undefined') return;
+  try {
+    GCAL.tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GCAL_CLIENT_ID,
+      scope: [
+        'https://www.googleapis.com/auth/calendar.readonly',
+        'https://www.googleapis.com/auth/calendar.events',
+      ].join(' '),
+      callback: gcalHandleToken,
+    });
+    // Tenta reconexão silenciosa se o usuário já conectou antes
+    if (gcalEraConectado()) {
+      GCAL.tokenClient.requestAccessToken({ prompt: '' });
+    }
+  } catch(e) { console.warn('gcalInitClient error', e); }
+}
+
+// Chamada pelo GIS após autenticação
+function gcalHandleToken(resp) {
+  if (resp.error) {
+    // Falha silenciosa (ex: re-auth sem interação) — não mostra toast
+    if (resp.error !== 'access_denied') console.warn('gcal token error', resp.error);
+    gcalAtualizarUI();
+    return;
+  }
+  GCAL.token = resp.access_token;
+  gcalMarcarConectado(true);
+  gcalCarregarEventosEAtualizarUI(true);
+}
+
+// ── Conectar / Desconectar ─────────────────────────────────
+function gcalConectar() {
+  if (!GCAL_CLIENT_ID) {
+    toast('Configure o GCAL_CLIENT_ID no código para usar esta funcionalidade.');
+    return;
+  }
+  if (!GCAL.tokenClient) { gcalInitClient(); }
+  if (!GCAL.tokenClient) {
+    toast('Google Identity Services ainda não carregou. Tente novamente em instantes.');
+    return;
+  }
+  GCAL.tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function gcalDesconectar() {
+  if (GCAL.token) {
+    try { google.accounts.oauth2.revoke(GCAL.token); } catch {}
+  }
+  GCAL.token    = null;
+  GCAL.eventos  = [];
+  GCAL.calendarios = [];
+  gcalMarcarConectado(false);
+  gcalAtualizarUI();
+  // Remove chip de filtro e re-renderiza
+  CAL.filtroCats.delete('google');
+  const chip = document.getElementById('cal-chip-google');
+  if (chip) { chip.style.display = 'none'; chip.classList.remove('active'); }
+  calRender();
+  toast('Google Calendar desconectado.');
+}
+
+// ── Carregar calendários do usuário ───────────────────────
+async function gcalCarregarCalendarios() {
+  if (!GCAL.token) return;
+  try {
+    const r = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=50', {
+      headers: { Authorization: 'Bearer ' + GCAL.token }
+    });
+    if (r.status === 401) { GCAL.token = null; gcalAtualizarUI(); return; }
+    const data = await r.json();
+    GCAL.calendarios = data.items || [];
+    // Se não há IDs salvos, ativa o calendário primário por padrão
+    const savedIds = gcalGetCalIds();
+    if (!savedIds.length) {
+      const primary = GCAL.calendarios.find(c => c.primary);
+      if (primary) gcalSetCalIds([primary.id]);
+    }
+  } catch(e) { console.warn('gcalCarregarCalendarios', e); }
+}
+
+// ── Carregar eventos do Google ─────────────────────────────
+async function gcalCarregarEventos() {
+  if (!GCAL.token) return;
+  GCAL.eventos = [];
+  const { ano, mes } = CAL;
+  // Busca 3 meses ao redor do mês atual para cobrir navegação sem re-fetch
+  const timeMin = new Date(ano, mes - 1, 1).toISOString();
+  const timeMax = new Date(ano, mes + 2, 0, 23, 59, 59).toISOString();
+
+  let calIds = gcalGetCalIds();
+  const sharedId = gcalGetSharedId();
+  if (sharedId && !calIds.includes(sharedId)) calIds = [...calIds, sharedId];
+  if (!calIds.length) return;
+
+  for (const calId of calIds) {
+    try {
+      const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`);
+      url.searchParams.set('timeMin', timeMin);
+      url.searchParams.set('timeMax', timeMax);
+      url.searchParams.set('singleEvents', 'true');
+      url.searchParams.set('orderBy', 'startTime');
+      url.searchParams.set('maxResults', '500');
+
+      const r = await fetch(url.toString(), {
+        headers: { Authorization: 'Bearer ' + GCAL.token }
+      });
+      if (r.status === 401) { GCAL.token = null; break; }
+      if (!r.ok) continue; // calendário sem acesso — pula
+      const data = await r.json();
+      const calMeta = GCAL.calendarios.find(c => c.id === calId);
+      const calColor = calMeta?.backgroundColor || '#4285f4';
+      const isShared = calId === sharedId;
+
+      (data.items || []).forEach(ev => {
+        if (!ev.summary && !ev.description) return; // pula eventos sem título
+        const dIni = ev.start?.date || ev.start?.dateTime?.slice(0, 10);
+        const dFim = ev.end?.date   || ev.end?.dateTime?.slice(0, 10)   || dIni;
+        const horaIni = ev.start?.dateTime?.slice(11, 16) || null;
+        const horaFim = ev.end?.dateTime?.slice(11, 16)   || null;
+        GCAL.eventos.push({
+          id:          'gcal_' + ev.id,
+          titulo:      ev.summary || '(sem título)',
+          data_inicio: dIni,
+          data_fim:    dFim,
+          dia_todo:    !!ev.start?.date,
+          hora_inicio: horaIni,
+          hora_fim:    horaFim,
+          descricao:   ev.description || '',
+          meet_link:   ev.hangoutLink || ev.conferenceData?.entryPoints?.[0]?.uri || '',
+          local:       ev.location || '',
+          tipo:        'google',
+          scope:       isShared ? 'todos' : 'usuario',
+          nucleo:      null,
+          usuario_id:  isShared ? null : G.usuario?.id,
+          _gcal:       true,
+          _gcalColor:  calColor,
+          _gcalCalId:  calId,
+          _gcalIsShared: isShared,
+          _gcalEvId:   ev.id,
+          source:      'google',
+        });
+      });
+    } catch(e) { console.warn('gcal fetch events error', calId, e); }
+  }
+}
+
+async function gcalCarregarEventosEAtualizarUI(mostraToast) {
+  await gcalCarregarCalendarios();
+  await gcalCarregarEventos();
+  gcalAtualizarUI();
+  // Ativa filtro google e mostra chip
+  CAL.filtroCats.add('google');
+  const chip = document.getElementById('cal-chip-google');
+  if (chip) { chip.style.display = ''; chip.classList.add('active'); }
+  calRender();
+  if (mostraToast) toast('Google Calendar conectado! ' + GCAL.eventos.length + ' eventos carregados.');
+}
+
+// ── UI: botão topbar + modal ───────────────────────────────
+function gcalAtualizarUI() {
+  const btn = document.getElementById('gcal-topbar-btn');
+  const lbl = document.getElementById('gcal-topbar-lbl');
+  if (btn && lbl) {
+    if (GCAL.token) {
+      btn.classList.add('conectado');
+      lbl.textContent = 'Google ✓';
+    } else {
+      btn.classList.remove('conectado');
+      lbl.textContent = 'Google Calendar';
+    }
+  }
+}
+
+function gcalAbrirConfig() {
+  const modal = document.getElementById('gcal-modal');
+  if (!modal) return;
+  // Mostra estado correto
+  document.getElementById('gcal-state-off').style.display = GCAL.token ? 'none' : 'block';
+  document.getElementById('gcal-state-on').style.display  = GCAL.token ? 'block' : 'none';
+  // Preenche calendários
+  if (GCAL.token) gcalRenderCalendarios();
+  // Shared id
+  const sharedInput = document.getElementById('gcal-shared-id');
+  if (sharedInput) sharedInput.value = gcalGetSharedId();
+  // Prefs
+  const prefs = gcalGetPrefs();
+  const ckReu = document.getElementById('gcal-sync-reuniao');
+  const ckAge = document.getElementById('gcal-sync-agenda');
+  if (ckReu) ckReu.checked = prefs.reuniao;
+  if (ckAge) ckAge.checked = prefs.agenda;
+
+  modal.classList.add('open');
+}
+
+function gcalFecharConfig() {
+  const modal = document.getElementById('gcal-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+function gcalRenderCalendarios() {
+  const wrap = document.getElementById('gcal-cals-list');
+  if (!wrap) return;
+  const savedIds = gcalGetCalIds();
+  if (!GCAL.calendarios.length) {
+    wrap.innerHTML = '<div style="font-size:10px;color:#aaa;padding:4px 0">Nenhum calendário encontrado.</div>';
+    return;
+  }
+  wrap.innerHTML = GCAL.calendarios.map(c => {
+    const checked = savedIds.includes(c.id) ? 'checked' : '';
+    const color = c.backgroundColor || '#4285f4';
+    return `<div class="gcal-cal-row">
+      <div class="gcal-cal-dot" style="background:${color}"></div>
+      <div class="gcal-cal-name">${_escN(c.summary || c.id)}${c.primary ? ' <span class="gcal-cal-primary">(principal)</span>' : ''}</div>
+      <label class="gcal-toggle">
+        <input type="checkbox" ${checked} onchange="gcalToggleCal('${c.id}',this.checked)">
+        <span class="gcal-toggle-slider"></span>
+      </label>
+    </div>`;
+  }).join('');
+}
+
+function gcalToggleCal(calId, ativo) {
+  let ids = gcalGetCalIds();
+  if (ativo && !ids.includes(calId)) ids.push(calId);
+  if (!ativo) ids = ids.filter(i => i !== calId);
+  gcalSetCalIds(ids);
+  gcalCarregarEventos().then(() => calRender());
+}
+
+function gcalSalvarShared() {
+  const v = document.getElementById('gcal-shared-id')?.value?.trim() || '';
+  gcalSetSharedId(v);
+  gcalCarregarEventos().then(() => {
+    calRender();
+    toast(v ? 'Calendário compartilhado salvo!' : 'Calendário compartilhado removido.');
+  });
+}
+
+function gcalSalvarPrefs() {
+  const prefs = {
+    reuniao: document.getElementById('gcal-sync-reuniao')?.checked ?? true,
+    agenda:  document.getElementById('gcal-sync-agenda')?.checked  ?? false,
+  };
+  gcalSetPrefs(prefs);
+}
+
+// ── Criar evento no Google Calendar ───────────────────────
+async function gcalCriarEvento(titulo, inicio, fim, descricao, meetLink) {
+  if (!GCAL.token) return;
+  // Pega o ID do calendário principal
+  const primary = GCAL.calendarios.find(c => c.primary) || GCAL.calendarios[0];
+  if (!primary) return;
+  const body = {
+    summary:     titulo,
+    description: descricao || '',
+    start:       { date: inicio },
+    end:         { date: fim || inicio },
+  };
+  if (meetLink) body.location = meetLink;
+  try {
+    await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(primary.id)}/events`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + GCAL.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    // Recarrega eventos do Google em background
+    setTimeout(() => gcalCarregarEventos().then(() => calRender()), 1500);
+  } catch(e) { console.warn('gcalCriarEvento error', e); }
+}
+
+// ── Filtragem: inclui tipos google ────────────────────────
+const _calTipoAtivoOrig = calTipoAtivo;
+// Patch de calTipoAtivo para incluir 'google'
+window.calTipoAtivo = function(tipo) {
+  if (tipo === 'google') return CAL.filtroCats.has('google');
+  return _calTipoAtivoOrig(tipo);
+};
+
+// ── Patch de calGetMerged para incluir eventos Google ─────
+const _calGetMergedOrig = calGetMerged;
+window.calGetMerged = function() {
+  const evts = _calGetMergedOrig();
+  if (GCAL.token && GCAL.eventos.length && CAL.filtroCats.has('google')) {
+    evts.push(...GCAL.eventos);
+  }
+  return evts;
+};
+
+// ── CSS de chip do tipo google ────────────────────────────
+(function() {
+  const s = document.createElement('style');
+  s.textContent = '.cat-google.active { background: #4285f4; color: #fff; border-color: #4285f4; }';
+  document.head.appendChild(s);
+})();
+
+// ── Inicializa quando o módulo Calendário é aberto ────────
+const _calInitOrig = calInit;
+window.calInit = async function() {
+  await _calInitOrig();
+  gcalInitClient(); // tenta reconexão silenciosa
+};
 
 init();
 </script>
