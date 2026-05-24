@@ -440,7 +440,7 @@ body {
 }
 .tl-item { position: relative; padding-left: 14px; }
 .tl-dot {
-  position: absolute; left: -12px; top: 5px;
+  position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--cinza); border: 1.5px solid #fff;
   box-shadow: 0 0 0 1px var(--cinza);
@@ -18434,37 +18434,42 @@ const _tlWrapRender = (etapas_arg) => {
     const coord    = G.todosUsuarios?.find(u => u.id === e.coordenador_id);
     const prodNome = G.todosProdutos?.find(p => p.id === e.produto_id)?.nome || '';
 
-    // Badge de reunião à direita
+    // Badge de reunião (compacto, inline)
     let reuniaoBadge = '';
     if (e.data_reuniao) {
       const passada = e.data_reuniao < hoje;
       const meetLink = e.reuniao_link
-        ? `<a href="${e.reuniao_link}" target="_blank" style="color:#4285f4;font-size:9px;text-decoration:none">🎥</a> `
+        ? `<a href="${e.reuniao_link}" target="_blank" style="color:#4285f4;font-size:9px;text-decoration:none;margin-right:2px">🎥</a>`
         : '';
-      reuniaoBadge = `<div class="tl-reuniao-badge${passada?' passada':''}">${meetLink}📅 ${fmtDate(e.data_reuniao)}</div>`;
+      reuniaoBadge = `<span class="tl-reuniao-badge${passada?' passada':''}">${meetLink}📅 ${fmtDate(e.data_reuniao)}</span>`;
     }
 
-    // Botão agendar inline (à direita do nome) — sempre visível
+    // Botão agendar — sempre visível
     const agendarBtn = `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})">📅 ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
+
+    // Datas comprimidas numa linha só para não aumentar a altura do item
+    const dataPartes = [];
+    if (e.data_liberacao) dataPartes.push(`Lib: ${fmtDate(e.data_liberacao)}`);
+    if (e.data_estimada)  dataPartes.push(`Est: ${fmtDate(e.data_estimada)}`);
+    if (e.data_conclusao) dataPartes.push(`<span style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</span>`);
+    const datasHtml = dataPartes.length
+      ? `<div class="tl-date" style="white-space:nowrap">${dataPartes.join(' · ')}</div>`
+      : '';
 
     return `<div class="tl-item">
       <div class="tl-dot ${st.dot}"></div>
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;width:100%">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span class="tl-label">${i+1}. ${_escN(e.nome)}</span>
             <span class="badge ${st.cls}" style="font-size:8px">${st.label}</span>
             ${coord ? `<span style="font-size:9px;color:#aaa">${coord.iniciais}</span>` : ''}
             ${agendarBtn}
+            ${reuniaoBadge}
           </div>
-          ${e.descricao ? `<div class="tl-date" style="margin-top:2px;font-family:var(--font-ui);color:#aaa">${_escN(e.descricao)}</div>` : ''}
+          ${e.descricao ? `<div class="tl-date" style="margin-top:1px;font-family:var(--font-ui);color:#aaa">${_escN(e.descricao)}</div>` : ''}
         </div>
-        <div style="text-align:right;flex-shrink:0;min-width:70px">
-          ${e.data_liberacao ? `<div class="tl-date">Lib: ${fmtDate(e.data_liberacao)}</div>` : ''}
-          ${e.data_estimada  ? `<div class="tl-date">Est: ${fmtDate(e.data_estimada)}</div>`  : ''}
-          ${reuniaoBadge}
-          ${e.data_conclusao ? `<div class="tl-date" style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</div>` : ''}
-        </div>
+        <div style="text-align:right;flex-shrink:0">${datasHtml}</div>
       </div>
     </div>`;
   }).join('');
