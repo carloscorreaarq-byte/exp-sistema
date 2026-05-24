@@ -2695,37 +2695,40 @@ body {
 .cal-saldo-lbl { font-size: 9px; color: #888; }
 .cal-topbar-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 .cal-filters {
-  display: flex; flex-direction: column; gap: 0;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
   background: var(--branco); border: 1px solid var(--cinza);
-  border-radius: var(--radius-card); overflow: hidden;
+  border-radius: var(--radius-card); padding: 5px 10px;
 }
-.cal-filter-row {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  padding: 5px 10px; border-bottom: 1px solid var(--cinza2);
-}
-.cal-filter-row:last-child { border-bottom: none; }
-.cal-filter-sep { width: 1px; height: 18px; background: var(--cinza2); margin: 0 2px; }
-.cal-filter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-right: 2px; white-space: nowrap; }
+.cal-filter-sep { width: 1px; height: 16px; background: var(--cinza2); margin: 0 3px; flex-shrink: 0; align-self: center; }
+.cal-filter-lbl { font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #bbb; margin-right: 1px; white-space: nowrap; }
 /* Avatar toggle buttons */
 .cal-av-btn {
-  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
   font-size: 7px; font-weight: 700; color: #fff; cursor: pointer;
   transition: opacity .15s, transform .12s, box-shadow .15s;
   border: 2px solid transparent; position: relative;
 }
-.cal-av-btn:hover { transform: scale(1.12); }
-.cal-av-btn.ativo { box-shadow: 0 0 0 2px var(--branco), 0 0 0 3.5px currentColor; }
-.cal-av-btn.inativo { opacity: .28; filter: grayscale(.5); }
+.cal-av-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.cal-av-btn:hover { transform: scale(1.1); }
+.cal-av-btn.ativo { box-shadow: 0 0 0 2px var(--branco), 0 0 0 3.5px var(--av-cor, #888); }
+.cal-av-btn.inativo { opacity: .25; filter: grayscale(.6); }
 .cal-av-btn-all {
-  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 8px; font-weight: 700; cursor: pointer;
+  font-size: 9px; font-weight: 700; cursor: pointer;
   border: 1.5px dashed var(--cinza); color: #aaa; background: var(--off);
   transition: all .12s;
 }
 .cal-av-btn-all:hover { border-color: #999; color: #666; }
 .cal-av-btn-all.ativo { border-color: var(--grafite); background: var(--grafite); color: #fff; border-style: solid; }
+.cal-cfg-btn {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--cinza);
+  background: var(--branco); color: #aaa; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s; margin-left: auto; flex-shrink: 0;
+}
+.cal-cfg-btn:hover { border-color: var(--grafite); color: var(--grafite); background: var(--off); }
 .cal-chip {
   font-size: 8px; font-weight: 700; letter-spacing: .4px; padding: 2px 9px; border-radius: 20px;
   border: 1px solid var(--cinza); background: var(--branco); color: #888; text-transform: uppercase;
@@ -3726,32 +3729,26 @@ body {
         </div>
       </div>
       <div class="cal-filters">
-        <!-- Row 1: Pessoas (avatar toggles) -->
-        <div class="cal-filter-row">
-          <span class="cal-filter-lbl">Pessoas</span>
-          <div id="cal-avatar-row" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-            <!-- renderizado por calRenderAvatarFiltros() -->
-          </div>
-        </div>
-        <!-- Row 2: Agendas / tipos -->
-        <div class="cal-filter-row">
-          <span class="cal-filter-lbl">Agendas</span>
-          <button class="cal-chip cat-reuniao active"     data-cat="reuniao"     onclick="calToggleCat(this)">Reuni&otilde;es EXP</button>
-          <button class="cal-chip cat-entrega active"     data-cat="entrega"     onclick="calToggleCat(this)">Entregas</button>
-          <button class="cal-chip cat-feriado active"     data-cat="feriado"     onclick="calToggleCat(this)">Feriados</button>
-          <button class="cal-chip cat-aniversario active" data-cat="aniversario" onclick="calToggleCat(this)">Anivers&aacute;rios</button>
-          <!-- Chips Google: renderizados dinamicamente por gcalRenderAgendaChips() -->
-          <div id="cal-gcal-chips" style="display:contents"></div>
-        </div>
-        <!-- Row 3: Núcleo (compacto) -->
-        <div class="cal-filter-row">
-          <span class="cal-filter-lbl">N&uacute;cleo</span>
-          <button class="cal-chip active" data-nucleo="" onclick="calSetNucleo(this,'')">Todos</button>
-          <button class="cal-chip" data-nucleo="urbanismo"    onclick="calSetNucleo(this,'urbanismo')">Urbanismo</button>
-          <button class="cal-chip" data-nucleo="paisagismo"   onclick="calSetNucleo(this,'paisagismo')">Paisagismo</button>
-          <button class="cal-chip" data-nucleo="consultorias" onclick="calSetNucleo(this,'consultorias')">Consultorias</button>
-          <button class="cal-chip" data-nucleo="especiais"    onclick="calSetNucleo(this,'especiais')">Proj. Especiais</button>
-        </div>
+        <!-- Pessoas: avatares renderizados por calRenderAvatarFiltros() -->
+        <div id="cal-avatar-row" style="display:contents"></div>
+        <div class="cal-filter-sep"></div>
+        <!-- Agendas EXP nativas -->
+        <button class="cal-chip cat-reuniao active"     data-cat="reuniao"     onclick="calToggleCat(this)">Reuni&otilde;es</button>
+        <button class="cal-chip cat-entrega active"     data-cat="entrega"     onclick="calToggleCat(this)">Entregas</button>
+        <button class="cal-chip cat-feriado active"     data-cat="feriado"     onclick="calToggleCat(this)">Feriados</button>
+        <button class="cal-chip cat-aniversario active" data-cat="aniversario" onclick="calToggleCat(this)">Anivers&aacute;rios</button>
+        <!-- Chips Google Calendar: renderizados dinamicamente -->
+        <div id="cal-gcal-chips" style="display:contents"></div>
+        <div class="cal-filter-sep"></div>
+        <!-- Núcleo -->
+        <button class="cal-chip active" data-nucleo="" onclick="calSetNucleo(this,'')">Todos</button>
+        <button class="cal-chip" data-nucleo="urbanismo"    onclick="calSetNucleo(this,'urbanismo')">Urb.</button>
+        <button class="cal-chip" data-nucleo="paisagismo"   onclick="calSetNucleo(this,'paisagismo')">Pais.</button>
+        <button class="cal-chip" data-nucleo="consultorias" onclick="calSetNucleo(this,'consultorias')">Cons.</button>
+        <button class="cal-chip" data-nucleo="especiais"    onclick="calSetNucleo(this,'especiais')">Esp.</button>
+        <div class="cal-filter-sep"></div>
+        <!-- Config -->
+        <button class="cal-cfg-btn" onclick="gcalAbrirConfig()" title="Configurar agendas Google">&#9881;</button>
       </div>
       <div id="cal-content"></div>
     </div>
@@ -18261,7 +18258,8 @@ window.calGetMerged = function() {
 // ── CSS de chip do tipo google ────────────────────────────
 (function() {
   const s = document.createElement('style');
-  s.textContent = '.cat-google.active { background: #4285f4; color: #fff; border-color: #4285f4; }';
+  s.textContent = '.cat-google.active    { background: #4285f4; color: #fff; border-color: #4285f4; }
+.cat-comercial.active { background: #e84393; color: #fff; border-color: #e84393; }';
   document.head.appendChild(s);
 })();
 
@@ -18280,9 +18278,15 @@ function calRenderAvatarFiltros() {
   let html = `<div class="cal-av-btn-all ${todosAtivos ? 'ativo' : ''}" onclick="calToggleTodosUsuarios()" title="Todos">✦</div>`;
   html += usuarios.map(u => {
     const ativo = todosAtivos || CAL.filtroUsuarios.has(u.id);
+    const cor = u.cor || '#888';
+    const inner = u.avatar_url
+      ? `<img src="${u.avatar_url}" alt="${_escN(u.iniciais || '')}"`
+        + ` style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
+      : `<span style="font-size:7px;font-weight:700;color:#fff">${_escN(u.iniciais || '?')}</span>`;
+    const bg = u.avatar_url ? 'transparent' : cor;
     return `<div class="cal-av-btn ${ativo ? 'ativo' : 'inativo'}"
-      style="background:${u.cor || '#888'};color:#fff"
-      onclick="calToggleUsuario('${u.id}')" title="${_escN(u.nome)}">${_escN(u.iniciais || '?')}</div>`;
+      style="background:${bg};--av-cor:${cor};border-color:${cor}"
+      onclick="calToggleUsuario('${u.id}')" title="${_escN(u.nome)}">${inner}</div>`;
   }).join('');
   row.innerHTML = html;
 }
@@ -18346,6 +18350,15 @@ function gcalGetExpConfig() {
 function gcalSetExpConfig(obj) {
   localStorage.setItem('gcal_exp_config', JSON.stringify(obj));
 }
+// Configuração central de agendas por pessoa (definida pelo admin, válida para todos)
+// Estrutura: { [userId]: { eventos: 'calId', planejamento: 'calId' } }
+function gcalGetUsersCal() {
+  try { return JSON.parse(localStorage.getItem('gcal_users_cal') || '{}'); }
+  catch { return {}; }
+}
+function gcalSetUsersCal(obj) {
+  localStorage.setItem('gcal_users_cal', JSON.stringify(obj));
+}
 
 // Chips de tipo de agenda Google na barra de filtros
 CAL.filtroGcalTipos = new Set(['all']); // 'all' ou Set de tipos ativos
@@ -18362,9 +18375,10 @@ function gcalRenderAgendaChips() {
     pessoal_planej:  { label: 'Pessoal · Plan.',         cat: 'gcal_ppl' },
   };
   const expLabels = {
-    reunioes: { label: 'Google · Reuniões', cat: 'gcal_reu', color: '#4285f4' },
-    entregas:  { label: 'Google · Entregas', cat: 'gcal_ent', color: '#34a853' },
-    adm:       { label: 'Google · ADM',      cat: 'gcal_adm', color: '#fbbc04' },
+    reunioes:  { label: 'Goog · Reuniões', cat: 'gcal_reu', color: '#4285f4' },
+    entregas:  { label: 'Goog · Entregas', cat: 'gcal_ent', color: '#34a853' },
+    adm:       { label: 'Goog · ADM',      cat: 'gcal_adm', color: '#fbbc04' },
+    comercial: { label: 'Goog · Comercial',cat: 'gcal_com', color: '#e84393' },
   };
 
   const tiposPresentes = new Set(reg.map(r => r.tipo));
@@ -18392,12 +18406,12 @@ function gcalRenderAgendaChips() {
 function calToggleGcalCat(btn, cat) {
   if (CAL.filtroGcalTipos.has('all')) {
     // Sai do modo "todos": mantém apenas esta categoria desativada
-    const allCats = ['gcal_pev','gcal_ppl','gcal_reu','gcal_ent','gcal_adm'];
+    const allCats = ['gcal_pev','gcal_ppl','gcal_reu','gcal_ent','gcal_adm','gcal_com'];
     CAL.filtroGcalTipos = new Set(allCats.filter(c => c !== cat));
   } else {
     if (CAL.filtroGcalTipos.has(cat)) CAL.filtroGcalTipos.delete(cat);
     else { CAL.filtroGcalTipos.add(cat); }
-    if (CAL.filtroGcalTipos.size >= 5) CAL.filtroGcalTipos = new Set(['all']);
+    if (CAL.filtroGcalTipos.size >= 6) CAL.filtroGcalTipos = new Set(['all']);
   }
   gcalRenderAgendaChips();
   calRender();
@@ -18437,67 +18451,90 @@ window.gcalAbrirConfig = function() {
 function gcalRenderConfigOn() {
   const stateOn = document.getElementById('gcal-state-on');
   if (!stateOn) return;
-  const reg = gcalGetUserReg();
-  const exp = gcalGetExpConfig();
-  const prefs = gcalGetPrefs();
+  const reg      = gcalGetUserReg();
+  const exp      = gcalGetExpConfig();
+  const prefs    = gcalGetPrefs();
+  const usersCal = gcalGetUsersCal();
 
-  // Monta opções dos calendários do usuário no Google
+  // ── Minhas agendas (calendários detectados via OAuth) ─────────────────
   const calRows = GCAL.calendarios.map(c => {
     const saved = reg.find(r => r.calId === c.id);
     const tipo  = saved?.tipo || '';
     const cor   = c.backgroundColor || '#4285f4';
-    return `<div class="gcal-cal-row" style="align-items:flex-start;gap:6px;padding:7px 0">
-      <div class="gcal-cal-dot" style="background:${cor};margin-top:3px"></div>
-      <div style="flex:1">
-        <div class="gcal-cal-name">${_escN(c.summary)}${c.primary ? ' <span class="gcal-cal-primary">(principal)</span>' : ''}</div>
-        <select onchange="gcalSalvarRegistro('${c.id}','${cor}',this.value)"
-          style="margin-top:4px;font-size:10px;border:1px solid var(--cinza);border-radius:5px;padding:3px 6px;font-family:var(--font-ui);background:var(--branco);color:var(--grafite)">
-          <option value="" ${!tipo?'selected':''}>Não usar</option>
-          <option value="pessoal_eventos" ${tipo==='pessoal_eventos'?'selected':''}>Meus eventos pessoais</option>
-          <option value="pessoal_planej"  ${tipo==='pessoal_planej' ?'selected':''}>Meu planejamento</option>
-        </select>
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></div>
+      <div style="flex:1;font-size:10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${_escN(c.summary)}${c.primary?' <span style="font-size:9px;color:#aaa;font-weight:400">(principal)</span>':''}
       </div>
+      <select onchange="gcalSalvarRegistro('${c.id}','${cor}',this.value)"
+        style="font-size:10px;border:1px solid var(--cinza);border-radius:5px;padding:2px 5px;font-family:var(--font-ui);background:var(--branco);color:var(--grafite);flex-shrink:0">
+        <option value="" ${!tipo?'selected':''}>— não usar</option>
+        <option value="pessoal_eventos" ${tipo==='pessoal_eventos'?'selected':''}>Meus eventos</option>
+        <option value="pessoal_planej"  ${tipo==='pessoal_planej' ?'selected':''}>Meu planejamento</option>
+      </select>
     </div>`;
-  }).join('') || '<div style="font-size:10px;color:#aaa;padding:6px 0">Nenhum calendário encontrado.</div>';
+  }).join('') || '<div style="font-size:10px;color:#aaa;padding:6px 0">Nenhum calendário — clique em Recarregar.</div>';
 
-  const expF = (key, label, color) => {
-    const val = exp[key]?.calId || '';
-    const bidi = exp[key]?.bidi || false;
-    return `<div style="margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>
-        <span style="font-size:11px;font-weight:600">${label}</span>
-      </div>
-      <input type="text" class="gcr-input" style="font-size:10px;padding:5px 8px;margin-bottom:4px"
-        placeholder="ID da agenda (ex: abc@group.calendar.google.com)"
+  // ── Agendas por pessoa (config central do admin) ──────────────────────
+  const usuarios = (G.todosUsuarios || []).filter(u => u.ativo !== false);
+  const usrRows = usuarios.map(u => {
+    const cfg = usersCal[u.id] || {};
+    const av  = u.avatar_url
+      ? `<img src="${u.avatar_url}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+      : `<div style="width:22px;height:22px;border-radius:50%;background:${u.cor||'#888'};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0">${_escN(u.iniciais||'?')}</div>`;
+    return `<div style="display:grid;grid-template-columns:22px 1fr 1fr;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+      ${av}
+      <input class="gcr-input" style="font-size:9px;padding:3px 6px" placeholder="Pessoal (cal ID / e-mail)"
+        value="${_escN(cfg.eventos||'')}"
+        onblur="gcalSalvarUserCal('${u.id}','eventos',this.value)" title="${_escN(u.nome)} — agenda de eventos pessoais">
+      <input class="gcr-input" style="font-size:9px;padding:3px 6px" placeholder="Planejamento (cal ID)"
+        value="${_escN(cfg.planejamento||'')}"
+        onblur="gcalSalvarUserCal('${u.id}','planejamento',this.value)" title="${_escN(u.nome)} — agenda de planejamento">
+    </div>`;
+  }).join('');
+
+  // ── Agendas EXP compartilhadas ────────────────────────────────────────
+  const expDefs = [
+    { key: 'reunioes',  label: 'Reuniões',   color: '#4285f4', bidi: true  },
+    { key: 'entregas',  label: 'Entregas',   color: '#34a853', bidi: false },
+    { key: 'adm',       label: 'ADM',        color: '#fbbc04', bidi: false },
+    { key: 'comercial', label: 'Comercial',  color: '#e84393', bidi: false },
+  ];
+  const expRows = expDefs.map(({ key, label, color, bidi: hasBidi }) => {
+    const val  = exp[key]?.calId || '';
+    const bidi = exp[key]?.bidi  || false;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+      <span style="font-size:10px;font-weight:600;width:72px;flex-shrink:0">EXP ${label}</span>
+      <input class="gcr-input" style="flex:1;font-size:9px;padding:3px 6px" placeholder="ID da agenda Google"
         value="${_escN(val)}"
-        onchange="gcalSalvarExpConfig('${key}',this.value,document.getElementById('gcal-exp-bidi-${key}')?.checked)">
-      ${key==='reunioes' ? `<label style="display:flex;align-items:center;gap:6px;font-size:10px;cursor:pointer;margin-top:4px">
-        <input type="checkbox" id="gcal-exp-bidi-${key}" ${bidi?'checked':''} onchange="gcalSalvarExpConfig('${key}',this.previousElementSibling.value,this.checked)" style="accent-color:#4285f4">
-        Bidirecional (eventos criados no EXP vão para esta agenda)
+        onblur="gcalSalvarExpConfig('${key}',this.value,document.getElementById('gcal-bidi-${key}')?.checked)">
+      ${hasBidi ? `<label style="display:flex;align-items:center;gap:4px;font-size:9px;cursor:pointer;flex-shrink:0">
+        <input type="checkbox" id="gcal-bidi-${key}" ${bidi?'checked':''} style="accent-color:#4285f4"
+          onchange="gcalSalvarExpConfig('${key}',this.closest('div').querySelector('input[type=text],input:not([type])').value,this.checked)">
+        Bidi
       </label>` : ''}
     </div>`;
-  };
+  }).join('');
 
   stateOn.innerHTML = `
-    <span class="gcal-section-lbl">Minhas agendas</span>
+    <span class="gcal-section-lbl">Minhas agendas Google</span>
     <div style="margin-bottom:14px">${calRows}</div>
 
+    <span class="gcal-section-lbl">Agendas por pessoa</span>
+    <div style="display:grid;grid-template-columns:22px 1fr 1fr;gap:6px;padding:4px 0 2px;font-size:8px;font-weight:700;text-transform:uppercase;color:#aaa">
+      <div></div><div>Pessoal · Eventos</div><div>Planejamento</div>
+    </div>
+    <div style="margin-bottom:14px">${usrRows}</div>
+
     <span class="gcal-section-lbl">Agendas EXP compartilhadas</span>
-    <div style="margin-bottom:14px;font-size:10px;color:#888;margin-top:-2px;margin-bottom:8px">
-      Cole o ID de cada agenda Google compartilhada do escritório.
-    </div>
-    <div style="margin-bottom:14px">
-      ${expF('reunioes', 'EXP Reuniões',  '#4285f4')}
-      ${expF('entregas', 'EXP Entregas',  '#34a853')}
-      ${expF('adm',      'EXP ADM',       '#fbbc04')}
-    </div>
+    <div style="margin-bottom:14px">${expRows}</div>
 
     <span class="gcal-section-lbl">Sincronização</span>
     <div style="margin-bottom:16px">
       <div class="gcal-sync-row">
         <div><div class="gcal-sync-lbl">Enviar reuniões ao Google Calendar</div>
-          <div class="gcal-sync-desc">Novos eventos Reunião EXP vão para a agenda configurada</div></div>
+          <div class="gcal-sync-desc">Novos eventos criados no EXP vão para a agenda EXP Reuniões</div></div>
         <label class="gcal-toggle">
           <input type="checkbox" id="gcal-sync-reuniao" ${prefs.reuniao?'checked':''} onchange="gcalSalvarPrefs()">
           <span class="gcal-toggle-slider"></span>
@@ -18505,10 +18542,12 @@ function gcalRenderConfigOn() {
       </div>
     </div>
 
-    <div style="display:flex;gap:8px;justify-content:space-between">
-      <button class="btn tc sm" onclick="gcalDesconectar()">Desconectar</button>
-      <button class="btn filled sm" onclick="gcalRecarregarAgendas()">↺ Recarregar</button>
-      <button class="btn sm" onclick="gcalFecharConfig()">Fechar</button>
+    <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
+      <button class="btn tc sm" onclick="gcalDesconectar()" style="color:var(--terracota);border-color:var(--terracota)">Desconectar</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn sm" onclick="gcalRecarregarAgendas()">↺ Recarregar agendas</button>
+        <button class="btn filled sm" onclick="gcalFecharConfig()">Fechar</button>
+      </div>
     </div>`;
 }
 
@@ -18534,6 +18573,19 @@ function gcalSalvarExpConfig(key, calId, bidi) {
   gcalCarregarEventos().then(() => { gcalRenderAgendaChips(); calRender(); });
 }
 
+function gcalSalvarUserCal(userId, campo, calId) {
+  const cfg = gcalGetUsersCal();
+  if (!cfg[userId]) cfg[userId] = {};
+  if (calId?.trim()) {
+    cfg[userId][campo] = calId.trim();
+  } else {
+    delete cfg[userId][campo];
+    if (!Object.keys(cfg[userId]).length) delete cfg[userId];
+  }
+  gcalSetUsersCal(cfg);
+  gcalCarregarEventos().then(() => { gcalRenderAgendaChips(); calRender(); });
+}
+
 async function gcalRecarregarAgendas() {
   await gcalCarregarCalendarios();
   gcalRenderConfigOn();
@@ -18554,26 +18606,54 @@ window.gcalCarregarEventos = async function() {
   const timeMin = new Date(ano, mes - 1, 1).toISOString();
   const timeMax = new Date(ano, mes + 2, 0, 23, 59, 59).toISOString();
 
-  const reg = gcalGetUserReg();
-  const exp = gcalGetExpConfig();
+  const reg      = gcalGetUserReg();
+  const exp      = gcalGetExpConfig();
+  const usersCal = gcalGetUsersCal();
 
-  // Calendários a buscar: pessoais registrados + EXP
+  // Mapa de cores e categorias para agendas EXP
+  const _expMeta = {
+    reunioes:  { cat: 'gcal_reu', cor: '#4285f4' },
+    entregas:  { cat: 'gcal_ent', cor: '#34a853' },
+    adm:       { cat: 'gcal_adm', cor: '#fbbc04' },
+    comercial: { cat: 'gcal_com', cor: '#e84393' },
+  };
+
+  // Calendários a buscar: pessoais do usuário logado (via OAuth) + por pessoa (admin config) + EXP compartilhadas
   const fontes = [
+    // Pessoais do próprio usuário logado (detectados via OAuth)
     ...reg.filter(r => r.calId && r.tipo).map(r => ({
       calId: r.calId, tipo: r.tipo,
       cat:   r.tipo === 'pessoal_planej' ? 'gcal_ppl' : 'gcal_pev',
       usuarioExpId: r.usuarioExpId || G.usuario?.id,
       cor:   r.cor || '#4285f4',
     })),
-    ...Object.entries(exp).filter(([,v]) => v?.calId).map(([key, v]) => ({
+    // Pessoais de outros usuários (configurados pelo admin em gcal_users_cal)
+    ...Object.entries(usersCal).flatMap(([uid, cals]) => {
+      const u = (G.todosUsuarios || []).find(x => x.id === uid);
+      const cor = u?.cor || '#888';
+      const list = [];
+      if (cals.eventos?.trim())     list.push({ calId: cals.eventos.trim(),     cat: 'gcal_pev', tipo: 'pessoal_eventos', usuarioExpId: uid, cor });
+      if (cals.planejamento?.trim()) list.push({ calId: cals.planejamento.trim(), cat: 'gcal_ppl', tipo: 'pessoal_planej',  usuarioExpId: uid, cor });
+      return list;
+    }),
+    // EXP compartilhadas
+    ...Object.entries(exp).filter(([k, v]) => v?.calId && _expMeta[k]).map(([key, v]) => ({
       calId: v.calId, tipo: 'exp_' + key,
-      cat:   key === 'reunioes' ? 'gcal_reu' : key === 'entregas' ? 'gcal_ent' : 'gcal_adm',
+      cat:   _expMeta[key].cat,
       usuarioExpId: null,
-      cor:   key === 'reunioes' ? '#4285f4' : key === 'entregas' ? '#34a853' : '#fbbc04',
+      cor:   _expMeta[key].cor,
     })),
   ];
 
-  for (const fonte of fontes) {
+  // Remove duplicatas (mesmo calId + usuarioExpId)
+  const seen = new Set();
+  const fontesUniq = fontes.filter(f => {
+    const k = f.calId + '|' + (f.usuarioExpId || '');
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+
+  for (const fonte of fontesUniq) {
     try {
       const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(fonte.calId)}/events`);
       url.searchParams.set('timeMin', timeMin);
