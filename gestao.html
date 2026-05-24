@@ -1589,17 +1589,19 @@ body {
 /* Contador de % alocado no form de edição */
 .ep-pct-total { font-size:10px; color:#888; text-align:right; padding:6px 2px 0; }
 /* Resultado — layout 2 painéis */
-.res-layout { display:grid; grid-template-columns:230px 1fr; gap:12px; align-items:start; }
-.res-painel-esq { background:var(--azul); color:#fff; border-radius:12px; padding:16px; position:sticky; top:0; }
+.res-layout { display:grid; grid-template-columns:270px 1fr; gap:14px; align-items:start; }
+.res-painel-esq { background:var(--azul); color:#fff; border-radius:12px; padding:18px; position:sticky; top:0; }
 .res-pe-row { display:flex; justify-content:space-between; gap:8px; font-size:10px; margin-bottom:6px; opacity:.9; }
 .res-pe-row.sm { font-size:9px; opacity:.72; margin-bottom:3px; }
 .res-pe-div { border-top:1px solid rgba(255,255,255,.2); margin:10px 0; }
 .res-painel-dir { overflow-y:auto; max-height:560px; display:flex; flex-direction:column; gap:6px; padding-right:2px; }
 .res-card-etapa { border-radius:8px; padding:12px 14px; border:1px solid; }
+.res-card-etapa.nao-iniciada { background:#fff; border-color:var(--cinza); }
 .res-card-etapa.default { background:#fdf0f4; border-color:#f0c8d4; }
-.res-card-etapa.concluida-pos { background:var(--verde-bg,#eaf5ee); border-color:rgba(45,158,107,.3); }
+.res-card-etapa.concluida-verde { background:var(--verde-bg,#eaf5ee); border-color:rgba(45,158,107,.3); }
+.res-card-etapa.concluida-amarelo { background:#fffbeb; border-color:rgba(212,170,55,.4); }
 .res-card-etapa.concluida-neg { background:#fdecea; border-color:rgba(195,68,59,.25); }
-.res-card-hd { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+.res-card-hd { display:flex; align-items:center; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
 .res-card-valores { display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:10px; margin-bottom:8px; }
 .res-card-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:10px; color:#888; padding-top:8px; border-top:1px solid rgba(0,0,0,.07); }
 .res-card-meta strong { color:var(--grafite); }
@@ -13792,6 +13794,14 @@ async function carregarResultado(prodId) {
   const totalCustoH = etapasDados.reduce((s, d) => s + d.custoH, 0);
   const totalCustoL = etapasDados.reduce((s, d) => s + d.custoL, 0);
 
+  // Margem realizada: apenas etapas concluídas com previsto definido
+  const etapasConcluidas = etapasDados.filter(d => d.etapa.status === 'concluida' && d.previsto != null && d.previsto > 0);
+  const totalPrevistoConc  = etapasConcluidas.reduce((s, d) => s + d.previsto,   0);
+  const totalRealizadoConc = etapasConcluidas.reduce((s, d) => s + d.realizado,  0);
+  const margemRealizada    = totalPrevistoConc > 0 ? ((totalPrevistoConc - totalRealizadoConc) / totalPrevistoConc * 100) : null;
+  const resPosReal         = margemRealizada != null ? margemRealizada >= 0 : null;
+  const margemRealizadaSinal = margemRealizada != null ? (margemRealizada >= 0 ? '+' : '') + margemRealizada.toFixed(1) + '%' : null;
+
   // Avisos
   const semValor = !valorContratado ? `
     <div style="background:rgba(212,170,55,.1);border:1px solid rgba(212,170,55,.4);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#8A6010">
@@ -13803,7 +13813,6 @@ async function carregarResultado(prodId) {
     </div>` : '';
 
   const resPos = totalResultado != null ? totalResultado >= 0 : null;
-  const margemSinal = margemPct != null ? (margemPct >= 0 ? '+' : '') + margemPct.toFixed(1) + '%' : null;
 
   // Mini chart (inside painel esq)
   const etapasComp = etapasDados.filter(({ previsto, realizado }) => (previsto || 0) > 0 || realizado > 0);
@@ -13838,14 +13847,16 @@ async function carregarResultado(prodId) {
       <div class="res-pe-div"></div>
       ${totalResultado != null ? `
       <div style="margin-bottom:8px">
-        <div style="font-size:9px;opacity:.65;margin-bottom:3px">Saldo</div>
+        <div style="font-size:9px;opacity:.65;margin-bottom:3px">Saldo total</div>
         <div style="font-size:18px;font-weight:800;letter-spacing:-.8px;color:${resPos ? '#6fcf97' : '#f2994a'}">${resPos ? '+' : ''}${fR(totalResultado)}</div>
-      </div>
+      </div>` : ''}
       <div style="margin-bottom:4px">
-        <div style="font-size:9px;opacity:.65;margin-bottom:2px">Margem de lucro</div>
-        <div style="font-size:30px;font-weight:800;letter-spacing:-1.5px;color:${resPos ? '#6fcf97' : '#f2994a'};line-height:1.1">${margemSinal ?? '—'}</div>
-      </div>` : `
-      <div style="font-size:10px;opacity:.6;font-style:italic;line-height:1.4">Configure % de custo nas etapas para ver resultado e margem.</div>`}
+        <div style="font-size:9px;opacity:.65;margin-bottom:2px">Margem de lucro realizada${etapasConcluidas.length ? ` <span style="opacity:.7">(${etapasConcluidas.length} etapa${etapasConcluidas.length > 1 ? 's' : ''} concluída${etapasConcluidas.length > 1 ? 's' : ''})</span>` : ''}</div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-1.5px;color:${resPosReal ? '#6fcf97' : margemRealizada != null ? '#f2994a' : 'rgba(255,255,255,.4)'};line-height:1.1">${margemRealizadaSinal ?? '—'}</div>
+        ${!etapasConcluidas.length ? `<div style="font-size:9px;opacity:.55;margin-top:4px">Nenhuma etapa concluída ainda.</div>` : ''}
+      </div>
+      ${!totalResultado && !margemRealizada ? `
+      <div style="font-size:10px;opacity:.6;font-style:italic;line-height:1.4">Configure % de custo nas etapas para ver o resultado.</div>` : ''}
       <div class="res-pe-div"></div>
       <div style="font-size:9px;opacity:.65;margin-bottom:6px;font-weight:600">Composição</div>
       <div class="res-pe-row sm"><span>Horas lançadas</span><span>${fmtH(totalHorasH)}</span></div>
@@ -13856,22 +13867,33 @@ async function carregarResultado(prodId) {
 
   // Cards por etapa (painel direito rosa/verde/vermelho)
   const cardsEtapas = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL }) => {
-    const isConcluida = etapa.status === 'concluida';
-    const cardCls = isConcluida && resultado != null
-      ? (resultado >= 0 ? 'concluida-pos' : 'concluida-neg')
-      : 'default';
+    const isConcluida  = etapa.status === 'concluida';
+    const isNaoIniciada = etapa.status === 'nao_iniciada';
     const stBadge  = STATUS_ETAPA[etapa.status] || STATUS_ETAPA.nao_iniciada;
     const utilPct  = previsto && previsto > 0 ? (realizado / previsto) * 100 : null;
     const margemEtapa = previsto && previsto > 0 ? ((resultado ?? 0) / previsto * 100) : null;
     const saldoCor = resultado == null ? 'var(--grafite)' : resultado >= 0 ? 'var(--verde)' : 'var(--terracota)';
     const margemCor = margemEtapa == null ? '#aaa' : margemEtapa >= 0 ? 'var(--verde)' : 'var(--terracota)';
+    let cardCls;
+    if (isNaoIniciada) {
+      cardCls = 'nao-iniciada';
+    } else if (isConcluida && margemEtapa != null) {
+      cardCls = margemEtapa >= 20 ? 'concluida-verde' : margemEtapa >= 0 ? 'concluida-amarelo' : 'concluida-neg';
+    } else {
+      cardCls = 'default';
+    }
+    const semHorasAlert = horasH === 0 && !isNaoIniciada ? `
+      <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#8A6010;background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.3);border-radius:5px;padding:4px 8px;margin-bottom:8px">
+        ⚠ Nenhuma hora lançada — dados podem estar imprecisos.
+      </div>` : '';
     return `
       <div class="res-card-etapa ${cardCls}">
         <div class="res-card-hd">
-          <span class="badge ${stBadge.cls}" style="font-size:8px;flex-shrink:0">${stBadge.label}</span>
           <span class="res-etapa-nome">${_regEsc(etapa.nome)}</span>
+          <span class="badge ${stBadge.cls}" style="font-size:8px;flex-shrink:0">${stBadge.label}</span>
           ${pct != null ? `<span class="res-pct-badge">${pct}% alocado</span>` : `<span class="res-pct-badge" style="opacity:.4">% indefinido</span>`}
         </div>
+        ${semHorasAlert}
         <div class="res-card-valores">
           <div class="res-val-blk">
             <div class="res-val-label">Previsto</div>

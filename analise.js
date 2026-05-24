@@ -297,6 +297,7 @@ function analiseAgregarDados() {
       margemPct: null,
       etapasDados: [],
       etapasProgresso: {},
+      statusResumo: null,
     };
   });
 
@@ -376,6 +377,8 @@ function analiseAgregarDados() {
       const status = etapaRegistro.etapa?.status || 'nao_iniciada';
       registro.etapasProgresso[status] = (registro.etapasProgresso[status] || 0) + 1;
     });
+
+    registro.statusResumo = analiseDerivarStatusProduto(registro.produto, registro.etapasDados);
   });
 
   ANALISE._dadosPorProduto = dadosPorProduto;
@@ -523,7 +526,7 @@ function analiseRenderAcumulado() {
   const filtro = ANALISE._filtros.acumulado;
   const produtos = produtosBase
     .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
-    .filter((item) => !filtro.status || analiseProdutoStatusKey(item.produto?.status) === filtro.status)
+    .filter((item) => !filtro.status || analiseProdutoStatusKey(item) === filtro.status)
     .sort((a, b) => analiseOrdenarProdutosAcumulado(a, b, filtro.ordem));
 
   if (!produtos.length) {
@@ -617,6 +620,7 @@ function analiseRenderDesenvolvimento() {
     .map((item) => ({
       ...item,
       produto: ANALISE._dadosPorProduto[String(item.etapa?.produto_id)]?.produto || null,
+      produtoRegistro: ANALISE._dadosPorProduto[String(item.etapa?.produto_id)] || null,
     }))
     .filter((item) => ['em_andamento', 'em_revisao'].includes(item.etapa?.status))
     .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
@@ -689,9 +693,9 @@ function analiseRenderEncerrados() {
   const encerrados = Object.values(ANALISE._dadosPorProduto)
     .map((item) => ({
       ...item,
-      concluidoEm: analiseDataEncerramentoProduto(item.produto),
+      concluidoEm: item.statusResumo?.concluidoEm || null,
     }))
-    .filter((item) => analiseProdutoEncerrado(item.produto))
+    .filter((item) => analiseProdutoEncerrado(item))
     .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
     .filter((item) => !filtro.ano || String(item.concluidoEm?.getFullYear() || '') === String(filtro.ano));
 
@@ -800,7 +804,7 @@ function analiseNucleoOptions() {
 function analiseAnoOptionsEncerrados() {
   const anos = Array.from(new Set(
     Object.values(ANALISE._dadosPorProduto)
-      .map((item) => analiseDataEncerramentoProduto(item.produto))
+      .map((item) => item.statusResumo?.concluidoEm || null)
       .filter(Boolean)
       .map((date) => String(date.getFullYear()))
   )).sort((a, b) => Number(b) - Number(a));
@@ -811,9 +815,9 @@ function analiseAnoOptionsEncerrados() {
 function analiseStatusProdutoOptions(produtos) {
   const labels = {};
   (produtos || []).forEach((item) => {
-    const key = analiseProdutoStatusKey(item.produto?.status);
+    const key = analiseProdutoStatusKey(item);
     if (!key || labels[key]) return;
-    labels[key] = analiseProdutoStatusLabel(item.produto?.status);
+    labels[key] = analiseProdutoStatusLabel(item);
   });
 
   return [
@@ -834,14 +838,38 @@ function analiseAcumuladoOrderOptions() {
   ];
 }
 
-function analiseProdutoStatusKey(status) {
-  return String(status || '').trim().toLowerCase();
+function analiseProdutoStatusKey(itemOrStatus) {
+  if (itemOrStatus && typeof itemOrStatus === 'object' && 'statusResumo' in itemOrStatus) {
+    return itemOrStatus.statusResumo?.statusKey || 'nd';
+  }
+  return analiseNormalizarStatusProdutoRaw(itemOrStatus) || 'nd';
 }
 
-function analiseProdutoStatusLabel(status) {
-  const raw = String(status || '').trim();
-  if (!raw) return 'N/D';
-  return raw
+function analiseProdutoStatusLabel(itemOrStatus) {
+  if (itemOrStatus && typeof itemOrStatus === 'object' && 'statusResumo' in itemOrStatus) {
+    return itemOrStatus.statusResumo?.statusLabel || 'N/D';
+  }
+  const raw = analiseNormalizarStatusProdutoRaw(itemOrStatus);
+  return analiseStatusProdutoLabelFromKey(raw);
+}
+
+function analiseNormalizarStatusProdutoRaw(status) {
+  const raw = String(status || '').trim().toLowerCase();
+  if (!raw) return '';
+  if (raw === 'concluido' || raw === 'concluida' || raw === 'finalizado' || raw === 'finalizada') return 'encerrado';
+  if (raw === 'paused') return 'pausado';
+  if (raw === 'active') return 'ativo';
+  if (raw === 'inactive') return 'inativo';
+  return raw;
+}
+
+function analiseStatusProdutoLabelFromKey(statusKey) {
+  if (statusKey === 'ativo') return 'Ativo';
+  if (statusKey === 'encerrado') return 'Encerrado';
+  if (statusKey === 'pausado') return 'Pausado';
+  if (statusKey === 'inativo') return 'Inativo';
+  if (!statusKey) return 'N/D';
+  return statusKey
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -870,6 +898,82 @@ function analiseSortNullLastDesc(a, b) {
   if (aNull) return 1;
   if (bNull) return -1;
   return Number(b) - Number(a);
+}
+
+function analiseDerivarStatusProduto(produto, etapasDados) {
+  const statusRaw = analiseNormalizarStatusProdutoRaw(produto?.status);
+  const etapas = etapasDados || [];
+  const totalEtapas = etapas.length;
+  const temEmAndamento = etapas.some((item) => item.etapa?.status === 'em_andamento');
+  const temRevisao = etapas.some((item) => item.etapa?.status === 'em_revisao');
+  const temPausada = etapas.some((item) => item.etapa?.status === 'pausada');
+  const etapasConcluidas = etapas.filter((item) => item.etapa?.status === 'concluida');
+  const todasConcluidas = totalEtapas > 0 && etapasConcluidas.length === totalEtapas;
+
+  let statusKey = statusRaw;
+  if (!statusKey) {
+    if (produto?.em_gestao === false) statusKey = 'inativo';
+    else if (todasConcluidas) statusKey = 'encerrado';
+    else if (temPausada && !temEmAndamento && !temRevisao) statusKey = 'pausado';
+    else statusKey = 'ativo';
+  } else if (statusKey !== 'encerrado' && todasConcluidas) {
+    statusKey = 'encerrado';
+  }
+
+  let faseKey = 'fila';
+  if (statusKey === 'encerrado') faseKey = 'concluido';
+  else if (temEmAndamento) faseKey = 'andamento';
+  else if (temRevisao) faseKey = 'revisao';
+  else if (temPausada) faseKey = 'pausado';
+
+  const concluidoEm = analiseExtrairConclusaoProduto(produto, etapasConcluidas, statusKey);
+  return {
+    statusRaw,
+    statusKey,
+    statusLabel: analiseStatusProdutoLabelFromKey(statusKey),
+    faseKey,
+    faseLabel: analiseProdutoFaseLabel(faseKey),
+    concluidoEm,
+    encerradoPorEtapas: statusRaw !== 'encerrado' && statusKey === 'encerrado',
+    totalEtapas,
+    concluidas: etapasConcluidas.length,
+  };
+}
+
+function analiseProdutoFaseLabel(faseKey) {
+  if (faseKey === 'concluido') return 'Concluido';
+  if (faseKey === 'andamento') return 'Em andamento';
+  if (faseKey === 'revisao') return 'Em revisao';
+  if (faseKey === 'pausado') return 'Pausado';
+  return 'Fila';
+}
+
+function analiseExtrairConclusaoProduto(produto, etapasConcluidas, statusKey) {
+  const diretas = [
+    produto?.data_conclusao,
+    produto?.concluido_em,
+    produto?.encerrado_em,
+  ];
+  for (const raw of diretas) {
+    const parsed = analiseParseDate(raw);
+    if (parsed) return parsed;
+  }
+
+  if (statusKey === 'encerrado' && Array.isArray(etapasConcluidas) && etapasConcluidas.length) {
+    const datasEtapas = etapasConcluidas
+      .map((item) => analiseParseDate(item.etapa?.data_conclusao))
+      .filter(Boolean)
+      .sort((a, b) => b.getTime() - a.getTime());
+    if (datasEtapas.length) return datasEtapas[0];
+  }
+
+  return null;
+}
+
+function analiseParseDate(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function analiseAgruparEtapasAtivasPorProjeto(etapas) {
@@ -971,7 +1075,7 @@ function analiseTabelaDesenvolvimentoEtapa(rows) {
             <tr>
               <td>
                 <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
-                <div class="analise-table-sub">${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</div>
+                <div class="analise-table-sub">${_escN(`${NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D'} • ${item.produtoRegistro?.statusResumo?.faseLabel || 'Fila'}`)}</div>
               </td>
               <td>${_escN(item.etapa?.nome || `Etapa ${item.etapa?.ordem || 'N/D'}`)}</td>
               <td>${analiseStatusEtapaBadge(item.etapa?.status)}</td>
@@ -1009,7 +1113,7 @@ function analiseTabelaEncerrados(rows) {
           <tr>
             <td>
               <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
-              <div class="analise-table-sub">${_escN(item.produto?.oportunidades?.clientes?.nome || '')}</div>
+              <div class="analise-table-sub">${_escN(item.statusResumo?.encerradoPorEtapas ? 'Encerrado pela conclusao das etapas' : (item.produto?.oportunidades?.clientes?.nome || ''))}</div>
             </td>
             <td>${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</td>
             <td>${_escN(item.concluidoEm ? item.concluidoEm.toLocaleDateString('pt-BR') : 'N/D')}</td>
@@ -1038,22 +1142,11 @@ function analiseStatusEtapaBadge(status) {
   return `<span class="analise-chip analise-chip-muted">${_escN(label)}</span>`;
 }
 
-function analiseProdutoEncerrado(produto) {
-  const status = String(produto?.status || '').toLowerCase();
-  return status === 'encerrado' || status === 'concluido';
-}
-
-function analiseDataEncerramentoProduto(produto) {
-  const candidates = [
-    produto?.data_conclusao,
-    produto?.encerrado_em,
-    produto?.updated_at,
-    produto?.created_at,
-  ];
-  const raw = candidates.find(Boolean);
-  if (!raw) return null;
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? null : date;
+function analiseProdutoEncerrado(itemOrProduto) {
+  if (itemOrProduto && typeof itemOrProduto === 'object' && 'statusResumo' in itemOrProduto) {
+    return itemOrProduto.statusResumo?.statusKey === 'encerrado';
+  }
+  return analiseNormalizarStatusProdutoRaw(itemOrProduto?.status) === 'encerrado';
 }
 
 function analiseOrdenarEncerrados(a, b, ordem) {
@@ -1123,6 +1216,8 @@ function analiseResumoNucleos(produtos) {
 
 function analiseLinhaProduto(item) {
   const classeMargem = analiseClassificarMargem(item.margemPct);
+  const statusLabel = analiseProdutoStatusLabel(item);
+  const faseLabel = item.statusResumo?.faseLabel;
   return `
     <tr>
       <td>
@@ -1130,7 +1225,10 @@ function analiseLinhaProduto(item) {
         <div class="analise-table-sub">${_escN(item.produto?.oportunidades?.clientes?.nome || '')}</div>
       </td>
       <td>${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</td>
-      <td>${_escN(analiseProdutoStatusLabel(item.produto?.status))}</td>
+      <td>
+        <div class="analise-table-main">${_escN(statusLabel)}</div>
+        <div class="analise-table-sub">${_escN(faseLabel || 'N/D')}</div>
+      </td>
       <td>${_escN(fmtH(item.horasTotais))}</td>
       <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
       <td>${_escN(analiseFmtMoney(item.produto?.valor_contratado || 0, item.produto?.valor_contratado ? false : true))}</td>
