@@ -688,6 +688,20 @@ function analiseRenderAcumulado() {
         },
       ],
     })}
+    <div class="analise-visual-grid">
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Margem por nucleo</div>
+        ${analiseGraficoMargemPorNucleo(produtos)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Status dos projetos</div>
+        ${analiseGraficoStatusProjetos(produtos)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Contrato x custo</div>
+        ${analiseGraficoContratoVsCusto(contratadoTotal, custoTotal)}
+      </section>
+    </div>
     <div class="analise-state-grid">
       ${analiseResumoNucleos(produtos)}
     </div>
@@ -778,6 +792,20 @@ function analiseRenderDesenvolvimento() {
         },
       ],
     })}
+    <div class="analise-visual-grid">
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Etapas ativas por status</div>
+        ${analiseGraficoStatusEtapasAtivas(etapas)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Uso de budget ativo</div>
+        ${analiseGraficoResumoBudgetAtivo(etapas)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Carga por nucleo</div>
+        ${analiseGraficoCargaNucleoAtivo(etapas)}
+      </section>
+    </div>
     <div class="analise-table-wrap">
       ${filtro.agrupamento === 'etapa'
         ? analiseTabelaDesenvolvimentoEtapa(etapas)
@@ -852,6 +880,20 @@ function analiseRenderEncerrados() {
         },
       ],
     })}
+    <div class="analise-visual-grid">
+      <section class="analise-visual-card analise-visual-card-wide">
+        <div class="analise-visual-title">Historico de margem</div>
+        ${analiseGraficoMargemHistorica(encerrados)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Margem por nucleo</div>
+        ${analiseGraficoMargemPorNucleo(encerrados)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Custo encerrado por nucleo</div>
+        ${analiseGraficoCustoPorNucleo(encerrados)}
+      </section>
+    </div>
     <div class="analise-table-wrap">
       ${analiseTabelaEncerrados(encerrados)}
     </div>
@@ -1421,6 +1463,211 @@ function analiseGraficoBudgetEtapas(item) {
         `;
       }).join('')}
     </div>
+  `;
+}
+
+function analiseGraficoMargemPorNucleo(produtos) {
+  if (!(produtos || []).length) {
+    return '<div class="empty-note">Sem projetos para compor a leitura por nucleo.</div>';
+  }
+
+  const rows = Object.entries(
+    produtos.reduce((acc, item) => {
+      const key = item.produto?.nucleo || 'sem_nucleo';
+      if (!acc[key]) {
+        acc[key] = { label: NUCLEO_COR[key]?.label || 'Sem nucleo', contratado: 0, custo: 0 };
+      }
+      acc[key].contratado += Math.max(0, Number(item.produto?.valor_contratado || 0));
+      acc[key].custo += Number(item.custoTotal || 0);
+      return acc;
+    }, {})
+  ).map(([key, row]) => {
+    const margemPct = row.contratado > 0 ? ((row.contratado - row.custo) / row.contratado) * 100 : null;
+    return { ...row, key, margemPct };
+  }).sort((a, b) => (Number(b.margemPct) || -999) - (Number(a.margemPct) || -999));
+
+  const maxWidth = 220;
+  return `
+    <div class="analise-chart-copy">Comparativo simples de margem percentual agregada por nucleo.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 ${60 + rows.length * 24}" aria-label="Margem por nucleo">
+      ${rows.map((row, index) => {
+        const y = 28 + index * 24;
+        const pct = Math.max(0, Math.min(100, Number(row.margemPct || 0)));
+        const cor = Number(row.margemPct || 0) < 20 ? 'var(--terracota)' : Number(row.margemPct || 0) < 25 ? 'var(--ouro)' : 'var(--verde)';
+        return `
+          <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
+          <rect x="102" y="${y - 10}" width="${maxWidth}" height="10" rx="5" fill="var(--off)"></rect>
+          <rect x="102" y="${y - 10}" width="${(maxWidth * pct) / 100}" height="10" rx="5" fill="${cor}"></rect>
+          <text x="312" y="${y}" text-anchor="end" class="svg-value">${_escN(analiseFmtPct(row.margemPct))}</text>
+        `;
+      }).join('')}
+    </svg>
+  `;
+}
+
+function analiseGraficoStatusProjetos(produtos) {
+  if (!(produtos || []).length) {
+    return '<div class="empty-note">Sem projetos para compor a leitura de status.</div>';
+  }
+  const labels = ['ativo', 'pausado', 'encerrado', 'inativo'];
+  const counts = labels.map((statusKey) => ({
+    label: analiseStatusProdutoLabelFromKey(statusKey),
+    count: produtos.filter((item) => item.statusResumo?.statusKey === statusKey).length,
+    color: statusKey === 'ativo' ? '#5280CA' : statusKey === 'pausado' ? '#D19931' : statusKey === 'encerrado' ? '#45865D' : '#B8B8B8',
+  }));
+  return analiseGraficoDistribuicaoSimples(counts, 'Leitura do portifolio por status canônico.');
+}
+
+function analiseGraficoContratoVsCusto(contratadoTotal, custoTotal) {
+  if (Number(contratadoTotal || 0) <= 0) {
+    return '<div class="empty-note">Sem base contratual suficiente para comparar contrato e custo.</div>';
+  }
+  const pct = Math.max(0, Math.min(100, (Number(custoTotal || 0) / Number(contratadoTotal || 1)) * 100));
+  return `
+    <div class="analise-chart-copy">Visao geral do quanto do valor contratado ja foi consumido em custo.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 120" aria-label="Contrato versus custo">
+      <rect x="16" y="42" width="288" height="22" rx="11" fill="var(--off)"></rect>
+      <rect x="16" y="42" width="${(288 * pct) / 100}" height="22" rx="11" fill="var(--grafite)"></rect>
+      <text x="16" y="26" class="svg-label">Contrato total</text>
+      <text x="304" y="26" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(contratadoTotal))}</text>
+      <text x="16" y="94" class="svg-label">Custo acumulado</text>
+      <text x="304" y="94" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(custoTotal))}</text>
+    </svg>
+  `;
+}
+
+function analiseGraficoStatusEtapasAtivas(etapas) {
+  const counts = [
+    { label: STATUS_ETAPA.em_andamento?.label || 'Em andamento', count: etapas.filter((item) => item.etapa?.status === 'em_andamento').length, color: '#5280CA' },
+    { label: STATUS_ETAPA.em_revisao?.label || 'Em revisao', count: etapas.filter((item) => item.etapa?.status === 'em_revisao').length, color: '#D19931' },
+  ];
+  return analiseGraficoDistribuicaoSimples(counts, 'Separacao das etapas ativas entre producao e revisao.');
+}
+
+function analiseGraficoResumoBudgetAtivo(etapas) {
+  const comBudget = etapas.filter((item) => Number(item.etapa?.budget_horas || 0) > 0);
+  if (!comBudget.length) {
+    return '<div class="empty-note">Nenhuma etapa ativa tem budget_horas definido.</div>';
+  }
+  const faixas = [
+    { label: 'Saudavel', count: comBudget.filter((item) => Number(item.utilizacaoBudget || 0) < 85).length, color: '#45865D' },
+    { label: 'Atencao', count: comBudget.filter((item) => Number(item.utilizacaoBudget || 0) >= 85 && Number(item.utilizacaoBudget || 0) <= 100).length, color: '#D19931' },
+    { label: 'Estourado', count: comBudget.filter((item) => Number(item.utilizacaoBudget || 0) > 100).length, color: '#C36247' },
+  ];
+  return analiseGraficoDistribuicaoSimples(faixas, 'Panorama rapido do uso do budget nas etapas em curso.');
+}
+
+function analiseGraficoCargaNucleoAtivo(etapas) {
+  if (!etapas.length) {
+    return '<div class="empty-note">Sem etapas ativas para compor a carga por nucleo.</div>';
+  }
+  const rows = Object.entries(
+    etapas.reduce((acc, item) => {
+      const key = item.produto?.nucleo || 'sem_nucleo';
+      if (!acc[key]) acc[key] = { label: NUCLEO_COR[key]?.label || 'Sem nucleo', horas: 0 };
+      acc[key].horas += Number(item.horasTotais || 0);
+      return acc;
+    }, {})
+  ).map(([key, row]) => ({ ...row, key })).sort((a, b) => b.horas - a.horas);
+
+  const maxHoras = Math.max(...rows.map((row) => row.horas), 1);
+  return `
+    <div class="analise-chart-copy">Horas consumidas nas etapas ativas, recortadas por nucleo.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 ${60 + rows.length * 24}" aria-label="Carga ativa por nucleo">
+      ${rows.map((row, index) => {
+        const y = 28 + index * 24;
+        return `
+          <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
+          <rect x="102" y="${y - 10}" width="210" height="10" rx="5" fill="var(--off)"></rect>
+          <rect x="102" y="${y - 10}" width="${(210 * row.horas) / maxHoras}" height="10" rx="5" fill="${NUCLEO_COR[row.key]?.dot || 'var(--grafite)'}"></rect>
+          <text x="312" y="${y}" text-anchor="end" class="svg-value">${_escN(fmtH(row.horas))}</text>
+        `;
+      }).join('')}
+    </svg>
+  `;
+}
+
+function analiseGraficoMargemHistorica(encerrados) {
+  if (!(encerrados || []).length) {
+    return '<div class="empty-note">Sem projetos encerrados para formar a serie historica.</div>';
+  }
+  const rows = encerrados.slice(0, 10).sort((a, b) => (a.concluidoEm?.getTime() || 0) - (b.concluidoEm?.getTime() || 0));
+  const maxPct = Math.max(...rows.map((item) => Math.abs(Number(item.margemPct || 0))), 1);
+  const barWidth = Math.max(18, Math.floor(240 / Math.max(rows.length, 1)));
+
+  return `
+    <div class="analise-chart-copy">Ultimos projetos encerrados filtrados, em ordem cronologica, para leitura da margem historica.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 180" aria-label="Historico de margem dos encerrados">
+      <line x1="20" y1="134" x2="304" y2="134" stroke="var(--cinza2)" stroke-width="1"></line>
+      ${rows.map((item, index) => {
+        const value = Number(item.margemPct || 0);
+        const h = (90 * Math.abs(value)) / maxPct;
+        const x = 28 + index * (barWidth + 8);
+        const y = value >= 0 ? 134 - h : 134;
+        const cor = value < 20 ? 'var(--terracota)' : value < 25 ? 'var(--ouro)' : 'var(--verde)';
+        return `
+          <rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="${cor}"></rect>
+          <text x="${x + barWidth / 2}" y="154" text-anchor="middle" class="svg-label">${_escN((item.concluidoEm || new Date()).toLocaleDateString('pt-BR', { month: '2-digit', year: '2-digit' }))}</text>
+          <text x="${x + barWidth / 2}" y="${value >= 0 ? y - 6 : y + h + 12}" text-anchor="middle" class="svg-value">${_escN(analiseFmtPct(value))}</text>
+        `;
+      }).join('')}
+    </svg>
+  `;
+}
+
+function analiseGraficoCustoPorNucleo(produtos) {
+  if (!(produtos || []).length) {
+    return '<div class="empty-note">Sem base para compor custo por nucleo.</div>';
+  }
+  const rows = Object.entries(
+    produtos.reduce((acc, item) => {
+      const key = item.produto?.nucleo || 'sem_nucleo';
+      if (!acc[key]) acc[key] = { label: NUCLEO_COR[key]?.label || 'Sem nucleo', custo: 0 };
+      acc[key].custo += Number(item.custoTotal || 0);
+      return acc;
+    }, {})
+  ).map(([key, row]) => ({ ...row, key })).sort((a, b) => b.custo - a.custo);
+  const max = Math.max(...rows.map((row) => row.custo), 1);
+
+  return `
+    <div class="analise-chart-copy">Concentracao do custo total entre os nucleos presentes no filtro.</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 ${60 + rows.length * 24}" aria-label="Custo por nucleo">
+      ${rows.map((row, index) => {
+        const y = 28 + index * 24;
+        return `
+          <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
+          <rect x="102" y="${y - 10}" width="210" height="10" rx="5" fill="var(--off)"></rect>
+          <rect x="102" y="${y - 10}" width="${(210 * row.custo) / max}" height="10" rx="5" fill="${NUCLEO_COR[row.key]?.dot || 'var(--grafite)'}"></rect>
+          <text x="312" y="${y}" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(row.custo))}</text>
+        `;
+      }).join('')}
+    </svg>
+  `;
+}
+
+function analiseGraficoDistribuicaoSimples(rows, copy) {
+  const total = (rows || []).reduce((sum, row) => sum + Number(row.count || 0), 0);
+  if (!total) {
+    return '<div class="empty-note">Ainda nao ha volume suficiente para desenhar este grafico.</div>';
+  }
+  let offset = 16;
+  return `
+    <div class="analise-chart-copy">${_escN(copy)}</div>
+    <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Grafico de distribuicao">
+      <rect x="16" y="40" width="288" height="24" rx="12" fill="var(--off)"></rect>
+      ${rows.filter((row) => row.count > 0).map((row) => {
+        const width = (288 * Number(row.count || 0)) / total;
+        const out = `
+          <rect x="${offset}" y="40" width="${width}" height="24" rx="12" fill="${row.color}"></rect>
+        `;
+        offset += width;
+        return out;
+      }).join('')}
+      ${rows.map((row, index) => `
+        <circle cx="${22 + (index % 2) * 148}" cy="${94 + Math.floor(index / 2) * 22}" r="5" fill="${row.color}"></circle>
+        <text x="${34 + (index % 2) * 148}" y="${98 + Math.floor(index / 2) * 22}" class="svg-label">${_escN(row.label)}: ${row.count}</text>
+      `).join('')}
+    </svg>
   `;
 }
 
