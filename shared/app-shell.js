@@ -4,6 +4,7 @@
 
   let shellLifecycleBound = false;
   let shellUiBound = false;
+  const SHELL_TIMEOUT_MS = 12000;
 
   function ensureClients() {
     if (!window.supabase) {
@@ -63,13 +64,28 @@
     window.location.href = 'index.html';
   }
 
+  function withTimeout(promise, message, timeoutMs = SHELL_TIMEOUT_MS) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  }
+
   async function fetchCurrentUsuario(authId) {
     const sb = ensureClients();
-    const { data: usuario } = await sb
-      .from('usuarios')
-      .select('id, nome, iniciais, role, cor, viewer_only, apelido, email, email_login, avatar_url, is_platform_manager, can_coordinate_projects, status_acesso')
-      .eq('auth_id', authId)
-      .single();
+    const { data: usuario, error } = await withTimeout(
+      sb
+        .from('usuarios')
+        .select('id, nome, iniciais, role, cor, viewer_only, apelido, email, email_login, avatar_url, is_platform_manager, can_coordinate_projects, status_acesso')
+        .eq('auth_id', authId)
+        .single(),
+      'Tempo esgotado ao carregar o usuario da sessao.'
+    );
+    if (error) {
+      throw new Error(error.message || 'Falha ao carregar o usuario autenticado.');
+    }
     if (!usuario) return null;
     const termo = await fetchLatestTermo(usuario.id);
     const usuarioComTermo = attachTermToUsuario(usuario, termo);
@@ -198,7 +214,10 @@
 
   async function bootstrapAuthenticatedShell() {
     const sb = ensureClients();
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: { session } } = await withTimeout(
+      sb.auth.getSession(),
+      'Tempo esgotado ao validar a sessao atual.'
+    );
     if (!session) {
       redirectToLogin();
       return null;
