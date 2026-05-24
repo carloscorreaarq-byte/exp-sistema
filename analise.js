@@ -21,31 +21,57 @@ const ANALISE = {
   },
 };
 
-document.addEventListener('DOMContentLoaded', analiseBootstrap);
+let analiseBootstrapStarted = false;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', analiseBootstrap, { once: true });
+} else {
+  queueMicrotask(analiseBootstrap);
+}
 
 async function analiseBootstrap() {
+  if (analiseBootstrapStarted) return;
+  analiseBootstrapStarted = true;
   window.G = window.G || {};
   G.todosProdutos = G.todosProdutos || [];
   G.todasEtapas = G.todasEtapas || [];
   G.todosUsuarios = G.todosUsuarios || [];
 
   try {
-    const boot = await appShellInit();
+    const boot = await analiseWithTimeout(
+      appShellInit(),
+      12000,
+      'Tempo esgotado ao inicializar a sessao do modulo.'
+    );
     if (!boot) return;
     analiseValidarAcesso();
     analiseRenderShell(boot.usuario);
     analiseBindEventosBase();
     analiseRenderConfig();
     analiseRenderAbaAtiva();
-    document.getElementById('shell-loading').style.display = 'none';
-    document.getElementById('shell-app').style.display = 'block';
+    analiseSetShellReady();
     await analiseInit();
   } catch (error) {
-    document.getElementById('shell-loading').style.display = 'none';
-    document.getElementById('shell-app').style.display = 'block';
+    analiseSetShellReady();
     ANALISE._erro = error?.message || 'Erro desconhecido ao montar a camada inicial do shell.';
     analiseRenderAbaAtiva();
   }
+}
+
+function analiseWithTimeout(promise, timeoutMs, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    }),
+  ]);
+}
+
+function analiseSetShellReady() {
+  const loading = document.getElementById('shell-loading');
+  const app = document.getElementById('shell-app');
+  if (loading) loading.style.display = 'none';
+  if (app) app.style.display = 'block';
 }
 
 function analiseValidarAcesso() {
