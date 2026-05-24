@@ -25,18 +25,28 @@ async function analiseBootstrap() {
   G.todasEtapas = G.todasEtapas || [];
   G.todosUsuarios = G.todosUsuarios || [];
 
+  console.log('[analise] bootstrap iniciado');
   try {
+    console.log('[analise] chamando appShellInit...');
     const boot = await appShellInit();
-    if (!boot) return;
+    console.log('[analise] appShellInit retornou:', boot);
+    if (!boot) {
+      console.warn('[analise] boot é null — sem sessão ou usuario nao encontrado');
+      return;
+    }
+    console.log('[analise] validando acesso, role:', boot.usuario?.role);
     analiseValidarAcesso();
+    console.log('[analise] acesso ok, renderizando shell');
     analiseRenderShell(boot.usuario);
     analiseBindEventosBase();
     analiseRenderConfig();
     analiseRenderAbaAtiva();
     document.getElementById('shell-loading').style.display = 'none';
     document.getElementById('shell-app').style.display = 'block';
+    console.log('[analise] shell visivel, iniciando dados');
     await analiseInit();
   } catch (error) {
+    console.error('[analise] erro no bootstrap:', error);
     document.getElementById('shell-loading').style.display = 'none';
     document.getElementById('shell-app').style.display = 'block';
     document.getElementById('anp-acumulado').innerHTML = `
