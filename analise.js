@@ -89,6 +89,20 @@ function analiseBindEventosBase() {
   document.getElementById('analise-btn-salvar-config')?.addEventListener('click', () => {
     analiseSalvarConfig();
   });
+
+  document.getElementById('analise-panels')?.addEventListener('change', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.matches('[data-filter-key]')) return;
+    analiseAtualizarFiltro(target.dataset.aba, target.dataset.filterKey, target.value);
+  });
+
+  document.getElementById('analise-panels')?.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    const reset = event.target.closest('[data-filter-reset]');
+    if (!reset) return;
+    analiseResetFiltros(reset.dataset.aba);
+  });
 }
 
 async function analiseInit(forceReload = false) {
@@ -363,6 +377,23 @@ function analiseRenderAbaAtiva() {
   return analiseRenderPessoas();
 }
 
+function analiseAtualizarFiltro(aba, key, value) {
+  if (!aba || !key || !ANALISE._filtros[aba]) return;
+  ANALISE._filtros[aba][key] = value;
+  analiseRenderAbaAtiva();
+}
+
+function analiseResetFiltros(aba) {
+  if (aba === 'desenvolvimento') {
+    ANALISE._filtros.desenvolvimento = { nucleo: '', statusEtapa: '', agrupamento: 'projeto' };
+  } else if (aba === 'encerrados') {
+    ANALISE._filtros.encerrados = { nucleo: '', ano: '', ordem: 'conclusao_desc' };
+  } else if (aba === 'acumulado') {
+    ANALISE._filtros.acumulado = { nucleo: '', status: '', ordem: 'nome' };
+  }
+  analiseRenderAbaAtiva();
+}
+
 function analiseGetConfig() {
   const defaults = { margem_threshold: 20, margem_atencao: 5 };
   try {
@@ -519,20 +550,63 @@ function analiseRenderDesenvolvimento() {
     return;
   }
 
-  const etapas = Object.values(ANALISE._dadosPorEtapa);
-  const emCurso = etapas.filter((item) => ['em_andamento', 'em_revisao'].includes(item.etapa?.status));
-  const comBudget = emCurso.filter((item) => Number(item.etapa?.budget_horas || 0) > 0);
+  const filtro = ANALISE._filtros.desenvolvimento;
+  const etapas = Object.values(ANALISE._dadosPorEtapa)
+    .map((item) => ({
+      ...item,
+      produto: ANALISE._dadosPorProduto[String(item.etapa?.produto_id)]?.produto || null,
+    }))
+    .filter((item) => ['em_andamento', 'em_revisao'].includes(item.etapa?.status))
+    .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
+    .filter((item) => !filtro.statusEtapa || item.etapa?.status === filtro.statusEtapa);
 
-  panel.innerHTML = analisePlaceholderTemplate({
-    kicker: 'Sprint 2',
-    title: 'Camada operacional com dados reais carregados',
-    copy: `Foram identificadas ${emCurso.length} etapas em andamento ou revisao, sendo ${comBudget.length} com budget_horas configurado. A tabela operacional e a edicao inline entram no proximo passo desta frente.`,
-    cards: [
-      ['Etapas ativas', String(emCurso.length)],
-      ['Com budget', String(comBudget.length)],
-      ['Aviso', 'A leitura real dos dados ja esta pronta para sustentar a aba operacional.'],
-    ],
-  });
+  const comBudget = etapas.filter((item) => Number(item.etapa?.budget_horas || 0) > 0);
+  const acimaBudget = comBudget.filter((item) => Number(item.utilizacaoBudget || 0) > 100);
+  const rowsProjeto = analiseAgruparEtapasAtivasPorProjeto(etapas);
+
+  panel.innerHTML = `
+    <div class="analise-kpis-row">
+      ${analiseKpiCard('Etapas ativas', String(etapas.length), 'Em andamento ou em revisao')}
+      ${analiseKpiCard('Com budget', String(comBudget.length), 'Etapas com budget_horas definido')}
+      ${analiseKpiCard('Acima do budget', String(acimaBudget.length), 'Utilizacao acima de 100%')}
+      ${analiseKpiCard('Projetos em execucao', String(rowsProjeto.length), 'Com pelo menos uma etapa ativa')}
+    </div>
+    ${analiseFilterBar({
+      aba: 'desenvolvimento',
+      controls: [
+        {
+          key: 'nucleo',
+          label: 'Nucleo',
+          value: filtro.nucleo,
+          options: analiseNucleoOptions(),
+        },
+        {
+          key: 'statusEtapa',
+          label: 'Status da etapa',
+          value: filtro.statusEtapa,
+          options: [
+            { value: '', label: 'Todos' },
+            { value: 'em_andamento', label: STATUS_ETAPA.em_andamento?.label || 'Em andamento' },
+            { value: 'em_revisao', label: STATUS_ETAPA.em_revisao?.label || 'Em revisao' },
+          ],
+        },
+        {
+          key: 'agrupamento',
+          label: 'Agrupar por',
+          value: filtro.agrupamento,
+          options: [
+            { value: 'projeto', label: 'Projeto' },
+            { value: 'etapa', label: 'Etapa' },
+          ],
+        },
+      ],
+    })}
+    <div class="analise-table-wrap">
+      ${filtro.agrupamento === 'etapa'
+        ? analiseTabelaDesenvolvimentoEtapa(etapas)
+        : analiseTabelaDesenvolvimentoProjeto(rowsProjeto)}
+    </div>
+  `;
 }
 
 function analiseRenderEncerrados() {
@@ -549,20 +623,62 @@ function analiseRenderEncerrados() {
     return;
   }
 
-  const encerrados = Object.values(ANALISE._dadosPorProduto).filter((item) => {
-    const status = String(item.produto?.status || '').toLowerCase();
-    return status === 'encerrado' || status === 'concluido';
-  });
+  const filtro = ANALISE._filtros.encerrados;
+  const encerrados = Object.values(ANALISE._dadosPorProduto)
+    .map((item) => ({
+      ...item,
+      concluidoEm: analiseDataEncerramentoProduto(item.produto),
+    }))
+    .filter((item) => analiseProdutoEncerrado(item.produto))
+    .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
+    .filter((item) => !filtro.ano || String(item.concluidoEm?.getFullYear() || '') === String(filtro.ano));
 
-  panel.innerHTML = analisePlaceholderTemplate({
-    kicker: 'Sprint 2',
-    title: 'Historico pronto para a analise isolada',
-    copy: `A carga real encontrou ${encerrados.length} projetos encerrados/concluidos. No Sprint 5 entram lista detalhada, grafico historico e leitura previsto x realizado.`,
-    cards: [
-      ['Encerrados', String(encerrados.length)],
-      ['Base pronta', 'Produtos, etapas, horas e custos ja estao agregados para essa visao.'],
-    ],
-  });
+  encerrados.sort((a, b) => analiseOrdenarEncerrados(a, b, filtro.ordem));
+
+  const encerradosComMargem = encerrados.filter((item) => item.margemPct !== null);
+  const margemMedia = encerradosComMargem.length
+    ? encerradosComMargem.reduce((sum, item) => sum + Number(item.margemPct || 0), 0) / encerradosComMargem.length
+    : null;
+
+  panel.innerHTML = `
+    <div class="analise-kpis-row">
+      ${analiseKpiCard('Projetos encerrados', String(encerrados.length), 'Filtro aplicado sobre a base consolidada')}
+      ${analiseKpiCard('Horas encerradas', fmtH(encerrados.reduce((sum, item) => sum + item.horasTotais, 0)), 'Soma de horas dos projetos filtrados')}
+      ${analiseKpiCard('Custo encerrado', analiseFmtMoney(encerrados.reduce((sum, item) => sum + item.custoTotal, 0)), 'HH + custos lancados')}
+      ${analiseKpiCard('Margem media', analiseFmtPct(margemMedia), 'Media simples da margem percentual')}
+    </div>
+    ${analiseFilterBar({
+      aba: 'encerrados',
+      controls: [
+        {
+          key: 'nucleo',
+          label: 'Nucleo',
+          value: filtro.nucleo,
+          options: analiseNucleoOptions(),
+        },
+        {
+          key: 'ano',
+          label: 'Ano',
+          value: filtro.ano,
+          options: analiseAnoOptionsEncerrados(),
+        },
+        {
+          key: 'ordem',
+          label: 'Ordenar',
+          value: filtro.ordem,
+          options: [
+            { value: 'conclusao_desc', label: 'Mais recentes' },
+            { value: 'conclusao_asc', label: 'Mais antigos' },
+            { value: 'margem_asc', label: 'Menor margem' },
+            { value: 'margem_desc', label: 'Maior margem' },
+          ],
+        },
+      ],
+    })}
+    <div class="analise-table-wrap">
+      ${analiseTabelaEncerrados(encerrados)}
+    </div>
+  `;
 }
 
 function analiseRenderPessoas() {
@@ -588,6 +704,240 @@ function analiseRenderPessoas() {
       ['Lancamentos', String(ANALISE._horas.length)],
     ],
   });
+}
+
+function analiseFilterBar({ aba, controls }) {
+  return `
+    <div class="analise-filter-bar">
+      <div class="analise-filter-grid">
+        ${(controls || []).map((control) => `
+          <label class="analise-filter-field">
+            <span>${_escN(control.label)}</span>
+            <select data-aba="${_escN(aba)}" data-filter-key="${_escN(control.key)}">
+              ${(control.options || []).map((option) => `
+                <option value="${_escN(option.value)}" ${String(option.value) === String(control.value) ? 'selected' : ''}>${_escN(option.label)}</option>
+              `).join('')}
+            </select>
+          </label>
+        `).join('')}
+      </div>
+      <button type="button" class="btn sm" data-filter-reset="1" data-aba="${_escN(aba)}">Limpar filtros</button>
+    </div>
+  `;
+}
+
+function analiseNucleoOptions() {
+  return [
+    { value: '', label: 'Todos' },
+    ...Object.entries(NUCLEO_COR)
+      .sort((a, b) => a[1].label.localeCompare(b[1].label, 'pt-BR'))
+      .map(([value, item]) => ({ value, label: item.label })),
+  ];
+}
+
+function analiseAnoOptionsEncerrados() {
+  const anos = Array.from(new Set(
+    Object.values(ANALISE._dadosPorProduto)
+      .map((item) => analiseDataEncerramentoProduto(item.produto))
+      .filter(Boolean)
+      .map((date) => String(date.getFullYear()))
+  )).sort((a, b) => Number(b) - Number(a));
+
+  return [{ value: '', label: 'Todos' }, ...anos.map((ano) => ({ value: ano, label: ano }))];
+}
+
+function analiseAgruparEtapasAtivasPorProjeto(etapas) {
+  const byProduto = {};
+  etapas.forEach((item) => {
+    const produtoId = String(item.produto?.id || item.etapa?.produto_id || '');
+    if (!produtoId) return;
+    if (!byProduto[produtoId]) {
+      byProduto[produtoId] = {
+        produto: item.produto,
+        etapas: [],
+        horasTotais: 0,
+        custoTotal: 0,
+        budgetHoras: 0,
+        etapasComBudget: 0,
+        acimaBudget: 0,
+      };
+    }
+    byProduto[produtoId].etapas.push(item);
+    byProduto[produtoId].horasTotais += item.horasTotais;
+    byProduto[produtoId].custoTotal += item.custoTotal;
+    if (Number(item.etapa?.budget_horas || 0) > 0) {
+      byProduto[produtoId].budgetHoras += Number(item.etapa?.budget_horas || 0);
+      byProduto[produtoId].etapasComBudget += 1;
+      if (Number(item.utilizacaoBudget || 0) > 100) {
+        byProduto[produtoId].acimaBudget += 1;
+      }
+    }
+  });
+
+  return Object.values(byProduto).sort((a, b) =>
+    String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR')
+  );
+}
+
+function analiseTabelaDesenvolvimentoProjeto(rows) {
+  if (!rows.length) {
+    return analiseEmptyTemplate('Nenhum projeto em desenvolvimento atende aos filtros atuais.');
+  }
+
+  return `
+    <table class="analise-table">
+      <thead>
+        <tr>
+          <th>Projeto</th>
+          <th>Nucleo</th>
+          <th>Etapas ativas</th>
+          <th>Horas</th>
+          <th>Budget</th>
+          <th>Uso budget</th>
+          <th>Custo atual</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((row) => {
+          const budgetPct = row.budgetHoras > 0 ? (row.horasTotais / row.budgetHoras) * 100 : null;
+          return `
+            <tr>
+              <td>
+                <div class="analise-table-main">${_escN(row.produto?.nome || 'Projeto sem nome')}</div>
+                <div class="analise-table-sub">${_escN(row.etapas.map((item) => item.etapa?.nome || `Etapa ${item.etapa?.ordem || ''}`).join(' • '))}</div>
+              </td>
+              <td>${_escN(NUCLEO_COR[row.produto?.nucleo]?.label || 'N/D')}</td>
+              <td>${_escN(String(row.etapas.length))}</td>
+              <td>${_escN(fmtH(row.horasTotais))}</td>
+              <td>${_escN(row.budgetHoras > 0 ? fmtH(row.budgetHoras) : 'N/D')}</td>
+              <td>${analiseBudgetBadge(budgetPct, row.etapasComBudget)}</td>
+              <td>${_escN(analiseFmtMoney(row.custoTotal))}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function analiseTabelaDesenvolvimentoEtapa(rows) {
+  if (!rows.length) {
+    return analiseEmptyTemplate('Nenhuma etapa ativa atende aos filtros atuais.');
+  }
+
+  return `
+    <table class="analise-table">
+      <thead>
+        <tr>
+          <th>Projeto</th>
+          <th>Etapa</th>
+          <th>Status</th>
+          <th>Horas</th>
+          <th>Budget</th>
+          <th>Uso budget</th>
+          <th>Custo etapa</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .sort((a, b) => String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR'))
+          .map((item) => `
+            <tr>
+              <td>
+                <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+                <div class="analise-table-sub">${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</div>
+              </td>
+              <td>${_escN(item.etapa?.nome || `Etapa ${item.etapa?.ordem || 'N/D'}`)}</td>
+              <td>${analiseStatusEtapaBadge(item.etapa?.status)}</td>
+              <td>${_escN(fmtH(item.horasTotais))}</td>
+              <td>${_escN(Number(item.etapa?.budget_horas || 0) > 0 ? fmtH(item.etapa?.budget_horas || 0) : 'N/D')}</td>
+              <td>${analiseBudgetBadge(item.utilizacaoBudget, Number(item.etapa?.budget_horas || 0) > 0 ? 1 : 0)}</td>
+              <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
+            </tr>
+          `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function analiseTabelaEncerrados(rows) {
+  if (!rows.length) {
+    return analiseEmptyTemplate('Nenhum projeto encerrado atende aos filtros atuais.');
+  }
+
+  return `
+    <table class="analise-table">
+      <thead>
+        <tr>
+          <th>Projeto</th>
+          <th>Nucleo</th>
+          <th>Encerrado em</th>
+          <th>Horas</th>
+          <th>Custo total</th>
+          <th>Contratado</th>
+          <th>Margem</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((item) => `
+          <tr>
+            <td>
+              <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+              <div class="analise-table-sub">${_escN(item.produto?.oportunidades?.clientes?.nome || '')}</div>
+            </td>
+            <td>${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</td>
+            <td>${_escN(item.concluidoEm ? item.concluidoEm.toLocaleDateString('pt-BR') : 'N/D')}</td>
+            <td>${_escN(fmtH(item.horasTotais))}</td>
+            <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
+            <td>${_escN(analiseFmtMoney(item.produto?.valor_contratado || 0, item.produto?.valor_contratado ? false : true))}</td>
+            <td><span class="${analiseClassificarMargem(item.margemPct).cls}">${_escN(analiseFmtPct(item.margemPct))}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function analiseBudgetBadge(utilizacaoBudget, temBudget) {
+  if (!temBudget) {
+    return '<span class="analise-chip analise-chip-muted">N/D</span>';
+  }
+  const pct = Number(utilizacaoBudget || 0);
+  const cls = pct > 100 ? 'analise-chip-risk' : pct >= 85 ? 'analise-chip-warn' : 'analise-chip-ok';
+  return `<span class="analise-chip ${cls}">${_escN(analiseFmtPct(pct))}</span>`;
+}
+
+function analiseStatusEtapaBadge(status) {
+  const label = STATUS_ETAPA[status]?.label || status || 'N/D';
+  return `<span class="analise-chip analise-chip-muted">${_escN(label)}</span>`;
+}
+
+function analiseProdutoEncerrado(produto) {
+  const status = String(produto?.status || '').toLowerCase();
+  return status === 'encerrado' || status === 'concluido';
+}
+
+function analiseDataEncerramentoProduto(produto) {
+  const candidates = [
+    produto?.data_conclusao,
+    produto?.encerrado_em,
+    produto?.updated_at,
+    produto?.created_at,
+  ];
+  const raw = candidates.find(Boolean);
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function analiseOrdenarEncerrados(a, b, ordem) {
+  if (ordem === 'margem_asc') return (Number(a.margemPct) || -9999) - (Number(b.margemPct) || -9999);
+  if (ordem === 'margem_desc') return (Number(b.margemPct) || -9999) - (Number(a.margemPct) || -9999);
+
+  const timeA = a.concluidoEm ? a.concluidoEm.getTime() : 0;
+  const timeB = b.concluidoEm ? b.concluidoEm.getTime() : 0;
+  if (ordem === 'conclusao_asc') return timeA - timeB;
+  return timeB - timeA;
 }
 
 function analiseKpiCard(label, value, sub) {

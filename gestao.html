@@ -129,7 +129,7 @@ body {
 .btn-coment-del{background:none;border:none;cursor:pointer;font-size:11px;color:#ccc;padding:0 0 0 6px;font-family:inherit;line-height:1}
 .btn-coment-del:hover{color:var(--terracota)}
 /* ── CHECKLIST ───────────────────────────────────────────────── */
-.ck-section{margin-bottom:10px}
+.ck-section{margin-bottom:20px}
 .ck-section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
 .ck-section-title{font-size:10px;font-weight:700;letter-spacing:.4px}
 .ck-card{background:var(--branco);border:1px solid var(--cinza);border-radius:8px;margin-bottom:5px;overflow:hidden}
@@ -412,6 +412,7 @@ body {
 
 /* ── SEÇÃO INTERNA MODAL ─────────────────────────────────── */
 .ms { margin-bottom: 16px; }
+#mp-visao-grid > .ms { margin-bottom: 0; }
 .ms-title {
   font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
   color: #999; margin-bottom: 8px; padding-bottom: 5px;
@@ -455,11 +456,11 @@ body {
 .tl-date { font-size: 9px; font-family: var(--font-mono); color: #aaa; margin-top: 1px; }
 /* Botão agendar inline na timeline */
 .tl-agendar-btn {
-  font-size: 9px; font-weight: 600; color: #4285f4; background: none;
-  border: 1px solid #4285f422; border-radius: 4px; padding: 1px 5px;
+  font-size: 9px; font-weight: 500; color: #bbb; background: none;
+  border: 1px solid var(--cinza2); border-radius: 4px; padding: 1px 5px;
   cursor: pointer; white-space: nowrap; transition: all .12s; font-family: var(--font-ui);
 }
-.tl-agendar-btn:hover { background: #4285f411; border-color: #4285f4; }
+.tl-agendar-btn:hover { background: #4285f40d; border-color: #4285f466; color: #4285f4; }
 .tl-reuniao-badge {
   font-size: 9px; color: #4285f4; font-family: var(--font-mono); white-space: nowrap;
 }
@@ -3415,83 +3416,6 @@ body {
 
 </div><!-- /page-calendario -->
 
-<!-- ── Modal Google Calendar Config ──────────────────────── -->
-<div class="gcal-modal-overlay" id="gcal-modal" onclick="if(event.target===this)gcalFecharConfig()">
-  <div class="gcal-modal">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18.316 5.684H5.684v12.632h12.632V5.684z" fill="#fff"/><path d="M18.316 21L21 18.316l-2.684-1.79-8.526 1.79-1.79 2.684L10.79 21h7.526z" fill="#EA4335"/><path d="M3 18.316L5.684 21V18.316H3z" fill="#FBBC04"/><path d="M21 5.684L18.316 3H5.684L3 5.684h18z" fill="#4285F4" opacity=".4"/><path d="M18.316 3L21 5.684v12.632L18.316 21V3z" fill="#34A853"/><path d="M3 5.684v12.632L5.684 21V5.684H3z" fill="#FBBC04"/><path d="M3 5.684L5.684 3h12.632L21 5.684H3z" fill="#4285F4"/></svg>
-      <div class="gcal-modal-title">Google Calendar</div>
-    </div>
-    <div class="gcal-modal-sub" id="gcal-modal-sub">Conecte sua conta para ver eventos do Google no calendário EXP.</div>
-
-    <!-- Estado: desconectado -->
-    <div id="gcal-state-off">
-      <button class="btn filled" onclick="gcalConectar()" style="width:100%;margin-bottom:12px">
-        Conectar com Google
-      </button>
-      <div style="font-size:10px;color:#aaa;text-align:center">
-        Você será redirecionado para autorizar o acesso ao Google Calendar.<br>
-        Apenas leitura e criação de eventos — nunca deletamos nada.
-      </div>
-    </div>
-
-    <!-- Estado: conectado -->
-    <div id="gcal-state-on" style="display:none">
-
-      <!-- Calendários disponíveis -->
-      <span class="gcal-section-lbl">Seus calendários</span>
-      <div id="gcal-cals-list" style="margin-bottom:14px">
-        <div style="font-size:10px;color:#aaa;padding:8px 0">Carregando...</div>
-      </div>
-
-      <!-- Calendário compartilhado do escritório -->
-      <span class="gcal-section-lbl">Calendário do escritório</span>
-      <div style="margin-bottom:14px">
-        <div style="font-size:10px;color:#888;margin-bottom:6px">
-          Cole o ID do Google Calendar compartilhado do escritório (ex: <code>abc@group.calendar.google.com</code>).
-          Todos que tiverem acesso verão os eventos.
-        </div>
-        <div style="display:flex;gap:6px">
-          <input id="gcal-shared-id" type="text" placeholder="ID do calendário compartilhado"
-            style="flex:1;border:1px solid var(--cinza);border-radius:6px;padding:6px 8px;font-size:11px;font-family:var(--font-ui);outline:none"
-            value="">
-          <button class="btn sm" onclick="gcalSalvarShared()">Salvar</button>
-        </div>
-      </div>
-
-      <!-- Opções de sincronização -->
-      <span class="gcal-section-lbl">Sincronização</span>
-      <div style="margin-bottom:16px">
-        <div class="gcal-sync-row">
-          <div>
-            <div class="gcal-sync-lbl">Enviar reuniões ao Google Calendar</div>
-            <div class="gcal-sync-desc">Novos eventos do tipo Reunião são adicionados automaticamente</div>
-          </div>
-          <label class="gcal-toggle">
-            <input type="checkbox" id="gcal-sync-reuniao" onchange="gcalSalvarPrefs()">
-            <span class="gcal-toggle-slider"></span>
-          </label>
-        </div>
-        <div class="gcal-sync-row">
-          <div>
-            <div class="gcal-sync-lbl">Enviar Agenda EXP ao Google Calendar</div>
-            <div class="gcal-sync-desc">Eventos de Agenda EXP são sincronizados na sua conta</div>
-          </div>
-          <label class="gcal-toggle">
-            <input type="checkbox" id="gcal-sync-agenda" onchange="gcalSalvarPrefs()">
-            <span class="gcal-toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:8px;justify-content:space-between">
-        <button class="btn tc sm" onclick="gcalDesconectar()">Desconectar</button>
-        <button class="btn sm" onclick="gcalFecharConfig()">Fechar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div class="page" id="page-socios">
 
   <div class="socio-tabs">
@@ -3772,6 +3696,83 @@ body {
 <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      MODAIS
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+
+<!-- Modal Google Calendar Config -->
+<div class="gcal-modal-overlay" id="gcal-modal" onclick="if(event.target===this)gcalFecharConfig()">
+  <div class="gcal-modal">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18.316 5.684H5.684v12.632h12.632V5.684z" fill="#fff"/><path d="M18.316 21L21 18.316l-2.684-1.79-8.526 1.79-1.79 2.684L10.79 21h7.526z" fill="#EA4335"/><path d="M3 18.316L5.684 21V18.316H3z" fill="#FBBC04"/><path d="M21 5.684L18.316 3H5.684L3 5.684h18z" fill="#4285F4" opacity=".4"/><path d="M18.316 3L21 5.684v12.632L18.316 21V3z" fill="#34A853"/><path d="M3 5.684v12.632L5.684 21V5.684H3z" fill="#FBBC04"/><path d="M3 5.684L5.684 3h12.632L21 5.684H3z" fill="#4285F4"/></svg>
+      <div class="gcal-modal-title">Google Calendar</div>
+    </div>
+    <div class="gcal-modal-sub" id="gcal-modal-sub">Conecte sua conta para ver eventos do Google no calendário EXP.</div>
+
+    <!-- Estado: desconectado -->
+    <div id="gcal-state-off">
+      <button class="btn filled" onclick="gcalConectar()" style="width:100%;margin-bottom:12px">
+        Conectar com Google
+      </button>
+      <div style="font-size:10px;color:#aaa;text-align:center">
+        Você será redirecionado para autorizar o acesso ao Google Calendar.<br>
+        Apenas leitura e criação de eventos — nunca deletamos nada.
+      </div>
+    </div>
+
+    <!-- Estado: conectado -->
+    <div id="gcal-state-on" style="display:none">
+
+      <!-- Calendários disponíveis -->
+      <span class="gcal-section-lbl">Seus calendários</span>
+      <div id="gcal-cals-list" style="margin-bottom:14px">
+        <div style="font-size:10px;color:#aaa;padding:8px 0">Carregando...</div>
+      </div>
+
+      <!-- Calendário compartilhado do escritório -->
+      <span class="gcal-section-lbl">Calendário do escritório</span>
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;color:#888;margin-bottom:6px">
+          Cole o ID do Google Calendar compartilhado do escritório (ex: <code>abc@group.calendar.google.com</code>).
+          Todos que tiverem acesso verão os eventos.
+        </div>
+        <div style="display:flex;gap:6px">
+          <input id="gcal-shared-id" type="text" placeholder="ID do calendário compartilhado"
+            style="flex:1;border:1px solid var(--cinza);border-radius:6px;padding:6px 8px;font-size:11px;font-family:var(--font-ui);outline:none"
+            value="">
+          <button class="btn sm" onclick="gcalSalvarShared()">Salvar</button>
+        </div>
+      </div>
+
+      <!-- Opções de sincronização -->
+      <span class="gcal-section-lbl">Sincronização</span>
+      <div style="margin-bottom:16px">
+        <div class="gcal-sync-row">
+          <div>
+            <div class="gcal-sync-lbl">Enviar reuniões ao Google Calendar</div>
+            <div class="gcal-sync-desc">Novos eventos do tipo Reunião são adicionados automaticamente</div>
+          </div>
+          <label class="gcal-toggle">
+            <input type="checkbox" id="gcal-sync-reuniao" onchange="gcalSalvarPrefs()">
+            <span class="gcal-toggle-slider"></span>
+          </label>
+        </div>
+        <div class="gcal-sync-row">
+          <div>
+            <div class="gcal-sync-lbl">Enviar Agenda EXP ao Google Calendar</div>
+            <div class="gcal-sync-desc">Eventos de Agenda EXP são sincronizados na sua conta</div>
+          </div>
+          <label class="gcal-toggle">
+            <input type="checkbox" id="gcal-sync-agenda" onchange="gcalSalvarPrefs()">
+            <span class="gcal-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:space-between">
+        <button class="btn tc sm" onclick="gcalDesconectar()">Desconectar</button>
+        <button class="btn sm" onclick="gcalFecharConfig()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: Detalhe do Produto -->
 <div class="modal-bg" id="modal-produto" style="display:none">
@@ -9496,7 +9497,7 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-tab-resultado').style.display    = isSocio ? '' : 'none';
   // Grid: 3 cols para sócios, 2 para os demais
   const visaoGrid = document.getElementById('mp-visao-grid');
-  if (visaoGrid) visaoGrid.className = `fg mb14 ${isSocio ? 'fg3' : 'fg2'}`;
+  if (visaoGrid) visaoGrid.className = `fg mb8 ${isSocio ? 'fg3' : 'fg2'}`;
   // Dados de contrato na visão geral (sócios)
   if (isSocio) {
     const cSt   = prod.contrato_status;
