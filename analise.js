@@ -38,11 +38,7 @@ async function analiseBootstrap() {
   G.todosUsuarios = G.todosUsuarios || [];
 
   try {
-    const boot = await analiseWithTimeout(
-      appShellInit(),
-      12000,
-      'Tempo esgotado ao inicializar a sessao do modulo.'
-    );
+    const boot = await appShellInit();
     if (!boot) return;
     analiseValidarAcesso();
     analiseRenderShell(boot.usuario);
@@ -56,15 +52,6 @@ async function analiseBootstrap() {
     ANALISE._erro = error?.message || 'Erro desconhecido ao montar a camada inicial do shell.';
     analiseRenderAbaAtiva();
   }
-}
-
-function analiseWithTimeout(promise, timeoutMs, message) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      window.setTimeout(() => reject(new Error(message)), timeoutMs);
-    }),
-  ]);
 }
 
 function analiseSetShellReady() {
@@ -412,11 +399,16 @@ function analiseSwitchTab(aba) {
 }
 
 function analiseRenderAbaAtiva() {
-  if (ANALISE._abaAtiva === 'acumulado') analiseRenderAcumulado();
-  else if (ANALISE._abaAtiva === 'desenvolvimento') analiseRenderDesenvolvimento();
-  else if (ANALISE._abaAtiva === 'encerrados') analiseRenderEncerrados();
-  else analiseRenderPessoas();
-  analiseRenderProjetoDetalhe();
+  try {
+    if (ANALISE._abaAtiva === 'acumulado') analiseRenderAcumulado();
+    else if (ANALISE._abaAtiva === 'desenvolvimento') analiseRenderDesenvolvimento();
+    else if (ANALISE._abaAtiva === 'encerrados') analiseRenderEncerrados();
+    else analiseRenderPessoas();
+    analiseRenderProjetoDetalhe();
+  } catch (error) {
+    ANALISE._erro = error?.message || 'Erro inesperado ao renderizar a aba atual.';
+    analiseRenderFatalState();
+  }
 }
 
 function analiseAtualizarFiltro(aba, key, value) {
@@ -496,6 +488,19 @@ function analiseRenderProjetoDetalhe() {
       </div>
     </div>
   `;
+}
+
+function analiseRenderFatalState() {
+  const activePanel = document.querySelector(`.analise-panel${ANALISE._abaAtiva ? `#anp-${ANALISE._abaAtiva}` : '.active'}`) ||
+    document.querySelector('.analise-panel.active');
+  if (activePanel) {
+    activePanel.innerHTML = analiseErrorTemplate(ANALISE._erro || 'Erro inesperado ao montar a visualizacao.');
+  }
+  const host = document.getElementById('analise-drilldown');
+  if (host) {
+    host.hidden = true;
+    host.innerHTML = '';
+  }
 }
 
 function analiseGetConfig() {
