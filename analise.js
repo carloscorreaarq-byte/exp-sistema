@@ -13,6 +13,7 @@ const ANALISE = {
   _erro: null,
   _avisos: {
     usuariosSemVH: [],
+    etapasSemBudget: 0,
   },
   _filtros: {
     acumulado: { nucleo: '', status: '', ordem: 'nome' },
@@ -356,7 +357,7 @@ function analiseAgregarDados() {
 
   Object.values(dadosPorEtapa).forEach((registro) => {
     registro.custoTotal = registro.custoHH + registro.custosLancados;
-    const budget = Number(registro.etapa?.budget_horas || 0);
+    const budget = analiseGetBudgetHoras(registro.etapa);
     registro.utilizacaoBudget = budget > 0
       ? (registro.horasTotais / budget) * 100
       : null;
@@ -391,6 +392,9 @@ function analiseAgregarDados() {
   ANALISE._avisos.usuariosSemVH = Array.from(usuariosSemVH)
     .map((usuarioId) => G.todosUsuarios.find((usuario) => String(usuario.id) === usuarioId))
     .filter(Boolean);
+  ANALISE._avisos.etapasSemBudget = Object.values(dadosPorEtapa)
+    .filter((registro) => analiseGetBudgetHoras(registro.etapa) <= 0)
+    .length;
 }
 
 function analiseSwitchTab(aba) {
@@ -461,7 +465,7 @@ function analiseRenderProjetoDetalhe() {
 
   const etapas = item.etapasDados || [];
   const concluidas = etapas.filter((etapaItem) => etapaItem.etapa?.status === 'concluida').length;
-  const budgetHoras = etapas.reduce((sum, etapaItem) => sum + Number(etapaItem.etapa?.budget_horas || 0), 0);
+  const budgetHoras = etapas.reduce((sum, etapaItem) => sum + analiseGetBudgetHoras(etapaItem.etapa), 0);
   const budgetUtil = budgetHoras > 0 ? (item.horasTotais / budgetHoras) * 100 : null;
   const cliente = item.produto?.oportunidades?.clientes?.nome || 'Cliente nao identificado';
   const encerradoEm = item.statusResumo?.concluidoEm ? item.statusResumo.concluidoEm.toLocaleDateString('pt-BR') : 'N/D';
@@ -473,7 +477,7 @@ function analiseRenderProjetoDetalhe() {
         <div>
           <div class="analise-state-kicker">Leitura isolada</div>
           <h2 class="analise-drill-title" id="analise-modal-title">${_escN(item.produto?.nome || 'Projeto sem nome')}</h2>
-          <div class="analise-drill-sub">${_escN(cliente)} • ${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')} • ${_escN(item.statusResumo?.statusLabel || 'N/D')}</div>
+          <div class="analise-drill-sub">${_escN(cliente)} | ${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')} | ${_escN(item.statusResumo?.statusLabel || 'N/D')}</div>
         </div>
         <button type="button" class="btn sm" data-modal-close="1">Fechar</button>
       </div>
@@ -481,7 +485,7 @@ function analiseRenderProjetoDetalhe() {
         ${analiseKpiCard('Horas totais', fmtH(item.horasTotais), `${concluidas}/${etapas.length} etapas concluidas`)}
         ${analiseKpiCard('Custo total', analiseFmtMoney(item.custoTotal), 'HH + custos lancados')}
         ${analiseKpiCard('Margem', analiseFmtPct(item.margemPct), analiseFmtMoney(item.margem, item.margem === null))}
-        ${analiseKpiCard('Budget consolidado', budgetHoras > 0 ? fmtH(budgetHoras) : 'N/D', budgetHoras > 0 ? `Uso atual ${analiseFmtPct(budgetUtil)}` : 'Sem budget_horas nas etapas')}
+      ${analiseKpiCard('Budget consolidado', budgetHoras > 0 ? fmtH(budgetHoras) : 'N/D', budgetHoras > 0 ? `Uso atual ${analiseFmtPct(budgetUtil)}` : 'Nenhuma etapa com budget carregado')}
       </div>
       <div class="analise-drill-meta">
         <span class="analise-chip analise-chip-muted">Fase: ${_escN(item.statusResumo?.faseLabel || 'N/D')}</span>
@@ -532,6 +536,36 @@ function analiseToggleModal(open) {
   if (!modal) return;
   modal.hidden = !open;
   document.body.classList.toggle('analise-modal-open', !!open);
+}
+
+function analiseGetBudgetHoras(etapa) {
+  if (!etapa || typeof etapa !== 'object') return 0;
+  const candidates = [
+    etapa.budget_horas,
+    etapa.budgetHoras,
+    etapa.horas_orcadas,
+    etapa.horas_previstas,
+    etapa.horas_planejadas,
+    etapa.orcamento_horas,
+  ];
+  for (const value of candidates) {
+    const parsed = analiseToNumber(value);
+    if (parsed > 0) return parsed;
+  }
+  return 0;
+}
+
+function analiseToNumber(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().replace(/\./g, '').replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function analiseGetConfig() {
@@ -751,14 +785,14 @@ function analiseRenderDesenvolvimento() {
     .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
     .filter((item) => !filtro.statusEtapa || item.etapa?.status === filtro.statusEtapa);
 
-  const comBudget = etapas.filter((item) => Number(item.etapa?.budget_horas || 0) > 0);
+  const comBudget = etapas.filter((item) => analiseGetBudgetHoras(item.etapa) > 0);
   const acimaBudget = comBudget.filter((item) => Number(item.utilizacaoBudget || 0) > 100);
   const rowsProjeto = analiseAgruparEtapasAtivasPorProjeto(etapas);
 
   panel.innerHTML = `
     <div class="analise-kpis-row">
       ${analiseKpiCard('Etapas ativas', String(etapas.length), 'Em andamento ou em revisao')}
-      ${analiseKpiCard('Com budget', String(comBudget.length), 'Etapas com budget_horas definido')}
+      ${analiseKpiCard('Com budget', String(comBudget.length), 'Etapas com budget carregado')}
       ${analiseKpiCard('Acima do budget', String(acimaBudget.length), 'Utilizacao acima de 100%')}
       ${analiseKpiCard('Projetos em execucao', String(rowsProjeto.length), 'Com pelo menos uma etapa ativa')}
     </div>
@@ -1148,8 +1182,9 @@ function analiseAgruparEtapasAtivasPorProjeto(etapas) {
     byProduto[produtoId].etapas.push(item);
     byProduto[produtoId].horasTotais += item.horasTotais;
     byProduto[produtoId].custoTotal += item.custoTotal;
-    if (Number(item.etapa?.budget_horas || 0) > 0) {
-      byProduto[produtoId].budgetHoras += Number(item.etapa?.budget_horas || 0);
+    const budgetHoras = analiseGetBudgetHoras(item.etapa);
+    if (budgetHoras > 0) {
+      byProduto[produtoId].budgetHoras += budgetHoras;
       byProduto[produtoId].etapasComBudget += 1;
       if (Number(item.utilizacaoBudget || 0) > 100) {
         byProduto[produtoId].acimaBudget += 1;
@@ -1187,7 +1222,7 @@ function analiseTabelaDesenvolvimentoProjeto(rows) {
             <tr class="analise-row-link" data-produto-id="${_escN(row.produto?.id || '')}">
               <td>
                 <div class="analise-table-main">${_escN(row.produto?.nome || 'Projeto sem nome')}</div>
-                <div class="analise-table-sub">${_escN(row.etapas.map((item) => item.etapa?.nome || `Etapa ${item.etapa?.ordem || ''}`).join(' • '))}</div>
+                <div class="analise-table-sub">${_escN(row.etapas.map((item) => item.etapa?.nome || `Etapa ${item.etapa?.ordem || ''}`).join(' | '))}</div>
               </td>
               <td>${_escN(NUCLEO_COR[row.produto?.nucleo]?.label || 'N/D')}</td>
               <td>${_escN(String(row.etapas.length))}</td>
@@ -1228,13 +1263,13 @@ function analiseTabelaDesenvolvimentoEtapa(rows) {
             <tr class="analise-row-link" data-produto-id="${_escN(item.produto?.id || '')}">
               <td>
                 <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
-                <div class="analise-table-sub">${_escN(`${NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D'} • ${item.produtoRegistro?.statusResumo?.faseLabel || 'Fila'}`)}</div>
+                <div class="analise-table-sub">${_escN(`${NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D'} | ${item.produtoRegistro?.statusResumo?.faseLabel || 'Fila'}`)}</div>
               </td>
               <td>${_escN(item.etapa?.nome || `Etapa ${item.etapa?.ordem || 'N/D'}`)}</td>
               <td>${analiseStatusEtapaBadge(item.etapa?.status)}</td>
               <td>${_escN(fmtH(item.horasTotais))}</td>
-              <td>${_escN(Number(item.etapa?.budget_horas || 0) > 0 ? fmtH(item.etapa?.budget_horas || 0) : 'N/D')}</td>
-              <td>${analiseBudgetBadge(item.utilizacaoBudget, Number(item.etapa?.budget_horas || 0) > 0 ? 1 : 0)}</td>
+              <td>${_escN(analiseGetBudgetHoras(item.etapa) > 0 ? fmtH(analiseGetBudgetHoras(item.etapa)) : 'N/D')}</td>
+              <td>${analiseBudgetBadge(item.utilizacaoBudget, analiseGetBudgetHoras(item.etapa) > 0 ? 1 : 0)}</td>
               <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
             </tr>
           `).join('')}
@@ -1310,8 +1345,8 @@ function analiseTabelaDetalheEtapas(item) {
             </td>
             <td>${analiseStatusEtapaBadge(etapaItem.etapa?.status)}</td>
             <td>${_escN(fmtH(etapaItem.horasTotais))}</td>
-            <td>${_escN(Number(etapaItem.etapa?.budget_horas || 0) > 0 ? fmtH(etapaItem.etapa?.budget_horas || 0) : 'N/D')}</td>
-            <td>${analiseBudgetBadge(etapaItem.utilizacaoBudget, Number(etapaItem.etapa?.budget_horas || 0) > 0 ? 1 : 0)}</td>
+            <td>${_escN(analiseGetBudgetHoras(etapaItem.etapa) > 0 ? fmtH(analiseGetBudgetHoras(etapaItem.etapa)) : 'N/D')}</td>
+            <td>${analiseBudgetBadge(etapaItem.utilizacaoBudget, analiseGetBudgetHoras(etapaItem.etapa) > 0 ? 1 : 0)}</td>
             <td>${_escN(analiseFmtMoney(etapaItem.custoHH))}</td>
             <td>${_escN(analiseFmtMoney(etapaItem.custoTotal))}</td>
             <td>${_escN(etapaItem.etapa?.data_conclusao ? fmtDate(etapaItem.etapa.data_conclusao) : 'N/D')}</td>
@@ -1439,7 +1474,7 @@ function analiseGraficoBudgetEtapas(item) {
   return `
     <div class="analise-budget-stack">
       ${etapas.map((etapaItem) => {
-        const budget = Number(etapaItem.etapa?.budget_horas || 0);
+        const budget = analiseGetBudgetHoras(etapaItem.etapa);
         const uso = Number(etapaItem.utilizacaoBudget || 0);
         const largura = budget > 0 ? Math.min(100, uso) : 0;
         const classe = budget <= 0 ? 'analise-chip-muted' : uso > 100 ? 'analise-chip-risk' : uso >= 85 ? 'analise-chip-warn' : 'analise-chip-ok';
@@ -1457,7 +1492,7 @@ function analiseGraficoBudgetEtapas(item) {
             </div>
             <div class="analise-budget-meta">
               <span>${_escN(fmtH(etapaItem.horasTotais))} consumidas</span>
-              <span>${budget > 0 ? _escN(fmtH(budget)) + ' de budget' : 'budget_horas nao definido'}</span>
+              <span>${budget > 0 ? _escN(fmtH(budget)) + ' de budget' : 'budget nao definido'}</span>
             </div>
           </div>
         `;
@@ -1545,9 +1580,9 @@ function analiseGraficoStatusEtapasAtivas(etapas) {
 }
 
 function analiseGraficoResumoBudgetAtivo(etapas) {
-  const comBudget = etapas.filter((item) => Number(item.etapa?.budget_horas || 0) > 0);
+  const comBudget = etapas.filter((item) => analiseGetBudgetHoras(item.etapa) > 0);
   if (!comBudget.length) {
-    return '<div class="empty-note">Nenhuma etapa ativa tem budget_horas definido.</div>';
+    return '<div class="empty-note">Nenhuma etapa ativa tem budget carregado.</div>';
   }
   const faixas = [
     { label: 'Saudavel', count: comBudget.filter((item) => Number(item.utilizacaoBudget || 0) < 85).length, color: '#45865D' },
@@ -1714,14 +1749,28 @@ function analiseKpiCard(label, value, sub) {
 
 function analiseWarningsHtml() {
   const usuarios = ANALISE._avisos.usuariosSemVH || [];
-  if (!usuarios.length) return '';
-  const nomes = usuarios.slice(0, 5).map((usuario) => usuario.nome || `#${usuario.id}`).join(', ');
-  const extra = usuarios.length > 5 ? ` e mais ${usuarios.length - 5}` : '';
-  return `
-    <div class="analise-warning">
-      <strong>Aviso de custo:</strong> ${usuarios.length} usuario(s) com horas lancadas ainda nao possuem valor/hora vigente. O custo de HH desses casos esta zerado. ${_escN(nomes + extra)}.
-    </div>
-  `;
+  const etapasSemBudget = Number(ANALISE._avisos.etapasSemBudget || 0);
+  const chunks = [];
+
+  if (usuarios.length) {
+    const nomes = usuarios.slice(0, 5).map((usuario) => usuario.nome || `#${usuario.id}`).join(', ');
+    const extra = usuarios.length > 5 ? ` e mais ${usuarios.length - 5}` : '';
+    chunks.push(`
+      <div class="analise-warning">
+        <strong>Aviso de custo:</strong> ${usuarios.length} usuario(s) com horas lancadas ainda nao possuem valor/hora vigente. O custo de HH desses casos esta zerado. ${_escN(nomes + extra)}.
+      </div>
+    `);
+  }
+
+  if (etapasSemBudget > 0) {
+    chunks.push(`
+      <div class="analise-warning">
+        <strong>Aviso de budget:</strong> ${etapasSemBudget} etapa(s) ainda nao possuem budget carregado. Isso reduz a leitura de utilizacao e risco operacional.
+      </div>
+    `);
+  }
+
+  return chunks.join('');
 }
 
 function analiseResumoNucleos(produtos) {
