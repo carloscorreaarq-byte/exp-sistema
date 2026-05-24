@@ -1508,12 +1508,52 @@ body {
 .res-kpi-label { font-size:8px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#999; margin-bottom:4px; }
 .res-kpi-val { font-size:20px; font-weight:700; letter-spacing:-1px; line-height:1; }
 .res-kpi-sub { font-size:10px; color:#888; margin-top:3px; }
+.res-chart {
+  margin-top:14px; padding-top:12px; border-top:1px solid var(--cinza2);
+  display:grid; gap:8px;
+}
+.res-chart-head {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  font-size:9px; color:#888; text-transform:uppercase; letter-spacing:.5px;
+}
+.res-chart-legend { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.res-chart-legend span { display:inline-flex; align-items:center; gap:4px; }
+.res-chart-dot {
+  width:8px; height:8px; border-radius:50%;
+  display:inline-block; flex-shrink:0;
+}
+.res-chart-dot.prev { background:rgba(82,128,202,.35); }
+.res-chart-dot.real { background:var(--azul); }
+.res-chart-row {
+  display:grid; grid-template-columns:minmax(72px, 108px) 1fr auto; gap:10px;
+  align-items:center;
+}
+.res-chart-name {
+  font-size:10px; font-weight:600; color:var(--grafite);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.res-chart-track {
+  position:relative; height:12px; background:var(--cinza2);
+  border-radius:999px; overflow:hidden;
+}
+.res-chart-prev,
+.res-chart-real {
+  position:absolute; left:0; top:0; height:100%; border-radius:999px;
+}
+.res-chart-prev { background:rgba(82,128,202,.22); }
+.res-chart-real { background:var(--azul); min-width:2px; }
+.res-chart-real.pos { background:var(--verde); }
+.res-chart-real.neg { background:var(--terracota); }
+.res-chart-values {
+  font-size:10px; color:#666; text-align:right; white-space:nowrap;
+}
+.res-chart-values strong { color:var(--grafite); font-weight:700; }
 .res-etapa-card {
   background:var(--branco); border:1px solid var(--cinza); border-radius:8px;
-  padding:8px 12px; margin-bottom:6px;
+  padding:10px 12px; margin-bottom:6px;
 }
 .res-etapa-hd {
-  display:flex; align-items:center; gap:6px; margin-bottom:6px;
+  display:flex; align-items:center; gap:6px; margin-bottom:8px;
 }
 .res-etapa-nome { font-size:11px; font-weight:600; flex:1; }
 .res-pct-badge {
@@ -1521,30 +1561,28 @@ body {
   background:var(--off); color:#aaa; border:1px solid var(--cinza);
   border-radius:3px; padding:1px 5px; flex-shrink:0;
 }
-.res-compare { display:flex; gap:10px; margin-bottom:6px; }
-.res-val-blk { flex:1; }
+.res-compare {
+  display:grid; grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px; margin-bottom:8px;
+}
+.res-val-blk { min-width:0; }
 .res-val-label { font-size:8px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#aaa; margin-bottom:2px; }
 .res-val-num { font-size:13px; font-weight:700; line-height:1; letter-spacing:-.3px; }
-.res-bar-wrap { margin-bottom:6px; }
-.res-bar-track { height:4px; background:var(--cinza2); border-radius:2px; overflow:hidden; position:relative; }
-.res-bar-fill { height:100%; border-radius:2px; transition:width .4s ease; }
-.res-bar-label { font-size:9px; color:#aaa; margin-top:2px; }
 .res-detail-row {
-  display:flex; gap:8px; flex-wrap:wrap; padding-top:6px;
+  display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding-top:8px;
   border-top:1px solid var(--cinza2);
 }
-.res-detail-blk { flex:1; min-width:80px; }
-.res-detail-label { font-size:8px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:#aaa; margin-bottom:1px; }
-.res-detail-val { font-size:11px; font-weight:600; }
-.res-detail-sub { font-size:9px; color:#aaa; }
-.res-resultado {
-  margin-top:6px; padding:5px 9px; border-radius:5px;
-  display:flex; align-items:center; gap:6px;
-  font-size:10px; font-weight:700;
+.res-detail-meta {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  font-size:10px; color:#888;
 }
-.res-resultado.pos { background:rgba(29,106,74,.08); color:var(--verde); }
-.res-resultado.neg { background:rgba(192,88,77,.08); color:var(--terracota); }
-.res-resultado.neutro { background:var(--off); color:#888; }
+.res-detail-meta strong { color:var(--grafite); font-weight:700; }
+.res-resultado-inline {
+  font-size:10px; font-weight:700; white-space:nowrap;
+}
+.res-resultado-inline.pos { color:var(--verde); }
+.res-resultado-inline.neg { color:var(--terracota); }
+.res-resultado-inline.neutro { color:#888; }
 .res-sem-pct { font-size:11px; color:#aaa; font-style:italic; padding:8px 0; }
 /* Contador de % alocado no form de edição */
 .ep-pct-total { font-size:10px; color:#888; text-align:right; padding:6px 2px 0; }
@@ -13747,6 +13785,34 @@ async function carregarResultado(prodId) {
   let sumHtml = '';
   if (temPct || totalRealizado > 0) {
     const resPos = totalResultado != null ? totalResultado >= 0 : null;
+    const etapasComparativo = etapasDados.filter(({ previsto, realizado }) => (previsto || 0) > 0 || realizado > 0);
+    const escalaChart = etapasComparativo.reduce((m, { previsto, realizado }) => Math.max(m, previsto || 0, realizado || 0), 0) || 1;
+    const chartHtml = etapasComparativo.length ? `
+        <div class="res-chart">
+          <div class="res-chart-head">
+            <span>Comparativo por etapa</span>
+            <div class="res-chart-legend">
+              <span><i class="res-chart-dot prev"></i> Previsto</span>
+              <span><i class="res-chart-dot real"></i> Realizado</span>
+            </div>
+          </div>
+          ${etapasComparativo.map(({ etapa, previsto, realizado, resultado }) => {
+            const previstoW = Math.max(((previsto || 0) / escalaChart) * 100, (previsto || 0) > 0 ? 6 : 0);
+            const realizadoW = Math.max((realizado / escalaChart) * 100, realizado > 0 ? 6 : 0);
+            const realCls = resultado == null ? 'real' : resultado >= 0 ? 'real pos' : 'real neg';
+            return `
+              <div class="res-chart-row">
+                <div class="res-chart-name">${_regEsc(etapa.nome)}</div>
+                <div class="res-chart-track">
+                  ${(previsto || 0) > 0 ? `<span class="res-chart-prev" style="width:${Math.min(previstoW, 100)}%"></span>` : ''}
+                  ${realizado > 0 ? `<span class="res-chart-real ${realCls}" style="width:${Math.min(realizadoW, 100)}%"></span>` : ''}
+                </div>
+                <div class="res-chart-values">
+                  ${previsto ? `<strong>${fR(realizado)}</strong> / ${fR(previsto)}` : `<strong>${fR(realizado)}</strong>`}
+                </div>
+              </div>`;
+          }).join('')}
+        </div>` : '';
     sumHtml = `
       <div class="res-sumario">
         <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa;margin-bottom:10px">Resumo do projeto</div>
@@ -13769,36 +13835,32 @@ async function carregarResultado(prodId) {
             <div class="res-kpi-sub">${margemPct != null ? Math.abs(margemPct).toFixed(1) + '% ' + (resPos ? 'de folga' : 'acima do previsto') : ''}</div>
           </div>` : ''}
         </div>
+        ${chartHtml}
       </div>`;
   }
 
   // Cards por etapa
   const cardsHtml = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL }) => {
     const stBadge  = STATUS_ETAPA[etapa.status] || STATUS_ETAPA.nao_iniciada;
-    const utilPct  = previsto && previsto > 0 ? Math.min((realizado / previsto) * 100, 150) : 0;
-    const barColor = resultado != null
-      ? (resultado >= 0 ? 'var(--verde)' : 'var(--terracota)')
-      : 'var(--azul)';
-    const barOver  = utilPct > 100;
-
     const resClass = resultado == null ? 'neutro' : resultado >= 0 ? 'pos' : 'neg';
+    const utilPct  = previsto && previsto > 0 ? (realizado / previsto) * 100 : null;
     const resLabel = resultado == null
-      ? (realizado > 0 ? `${fR(realizado)} realizado (sem previsto)` : 'Sem dados')
+      ? (realizado > 0 ? 'Realizado sem previsto definido' : 'Sem dados financeiros')
       : resultado >= 0
-        ? `+${fR(resultado)} dentro do previsto · ${utilPct.toFixed(0)}% utilizado`
-        : `${fR(Math.abs(resultado))} acima do previsto · ${utilPct.toFixed(0)}% utilizado`;
+        ? 'Dentro do previsto'
+        : 'Acima do previsto';
 
     const pctBadge = pct != null
       ? `<span class="res-pct-badge">${pct}% alocado</span>`
       : `<span class="res-pct-badge" style="opacity:.5">% não definido</span>`;
-
-    const barHtml = (previsto || realizado)
-      ? `<div class="res-bar-wrap">
-          <div class="res-bar-track">
-            <div class="res-bar-fill" style="width:${Math.min(utilPct, 100)}%;background:${barColor}${barOver ? ';background:var(--terracota)' : ''}"></div>
-          </div>
-          <div class="res-bar-label">${previsto ? utilPct.toFixed(0) + '% do previsto utilizado' : 'Sem valor previsto'}</div>
-        </div>` : '';
+    const metaHtml = (horasH > 0 || custoL > 0 || custoH > 0)
+      ? `<div class="res-detail-meta">
+          <span><strong>${fmtH(horasH)}</strong> lançadas</span>
+          <span><strong>${fR(custoH)}</strong> em horas</span>
+          <span><strong>${fR(custoL)}</strong> em custos</span>
+          ${utilPct != null ? `<span><strong>${utilPct.toFixed(0)}%</strong> consumido</span>` : ''}
+        </div>`
+      : `<div class="res-detail-meta">Sem horas e custos lançados${utilPct != null ? ` · <strong>${utilPct.toFixed(0)}%</strong> consumido` : ''}</div>`;
 
     return `
       <div class="res-etapa-card">
@@ -13807,31 +13869,26 @@ async function carregarResultado(prodId) {
           <span class="res-etapa-nome">${_regEsc(etapa.nome)}</span>
           ${pctBadge}
         </div>
-        ${previsto ? `
         <div class="res-compare">
           <div class="res-val-blk">
             <div class="res-val-label">Previsto</div>
-            <div class="res-val-num">${fR(previsto)}</div>
+            <div class="res-val-num">${previsto != null ? fR(previsto) : '—'}</div>
           </div>
           <div class="res-val-blk">
             <div class="res-val-label">Realizado</div>
             <div class="res-val-num">${fR(realizado)}</div>
           </div>
-        </div>` : ''}
-        ${barHtml}
-        <div class="res-detail-row">
-          <div class="res-detail-blk">
-            <div class="res-detail-label">🕐 Horas</div>
-            <div class="res-detail-val">${fR(custoH)}</div>
-            <div class="res-detail-sub">${fmtH(horasH)} lançadas</div>
-          </div>
-          <div class="res-detail-blk">
-            <div class="res-detail-label">💳 Custos</div>
-            <div class="res-detail-val">${fR(custoL)}</div>
-            <div class="res-detail-sub">lançamentos vinculados</div>
+          <div class="res-val-blk">
+            <div class="res-val-label">Saldo</div>
+            <div class="res-val-num" style="color:${resultado == null ? 'var(--grafite)' : resultado >= 0 ? 'var(--verde)' : 'var(--terracota)'}">
+              ${resultado == null ? '—' : `${resultado >= 0 ? '+' : '-'}${fR(Math.abs(resultado))}`}
+            </div>
           </div>
         </div>
-        <div class="res-resultado ${resClass}">${resLabel}</div>
+        <div class="res-detail-row">
+          ${metaHtml}
+          <div class="res-resultado-inline ${resClass}">${resLabel}</div>
+        </div>
       </div>`;
   }).join('');
 
