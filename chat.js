@@ -1,15 +1,15 @@
-/* ═══════════════════════════════════════════════════════════════════
-   EXP · CHAT WIDGET — chat.js  v2.0
-   Fase 2: #geral · DMs · status redesign · som · links
-   ─────────────────────────────────────────────────────────────────
+﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   EXP Â· CHAT WIDGET â€” chat.js  v2.0
+   Fase 2: #geral Â· DMs Â· status redesign Â· som Â· links
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Incluir <script src="chat.js"></script> antes de </body>
-   em todos os módulos. Requer @supabase/supabase-js@2 já carregado.
-   ═══════════════════════════════════════════════════════════════════ */
+   em todos os mÃ³dulos. Requer @supabase/supabase-js@2 jÃ¡ carregado.
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 (function () {
   'use strict';
 
-  /* ── Config ─────────────────────────────────────────────────────── */
+  /* â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   var SB_URL     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
   var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
   var STATUS_KEY = 'exp_chat_status';
@@ -30,44 +30,44 @@
     qualidade_fallback: 0.70
   };
 
-  /* ── CSS embutido ────────────────────────────────────────────────── */
+  /* â”€â”€ CSS embutido â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   var CSS_TEXT = [
     '#exp-chat-widget{position:fixed;bottom:24px;right:24px;z-index:10000;font-family:"Raleway",sans-serif}',
-    /* ── Controls bar ── */
+    /* â”€â”€ Controls bar â”€â”€ */
     '.chat-controls{display:flex;align-items:flex-end;gap:8px;justify-content:flex-end}',
-    /* ── FAB toggle ── */
+    /* â”€â”€ FAB toggle â”€â”€ */
     '.chat-toggle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .3s,transform .15s;user-select:none;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.22)}',
     '.chat-toggle:hover{transform:scale(1.06)}.chat-toggle:active{transform:scale(.94)}',
     '.chat-badge{position:absolute;top:-5px;right:-5px;background:#B84C3A;color:#fff;font-size:9px;font-weight:700;font-family:"DM Mono",monospace;min-width:17px;height:17px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--off,#F7F6F3)}',
-    /* ── Person button (aparece quando aberto) ── */
+    /* â”€â”€ Person button (aparece quando aberto) â”€â”€ */
     '.chat-person-btn{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid #1D6A4A;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .3s,color .3s,box-shadow .15s;color:#1D6A4A;flex-shrink:0}',
     '.chat-person-btn:hover{box-shadow:0 2px 10px rgba(0,0,0,.14)}',
-    /* ── Status indicator (aparece quando fechado) ── */
+    /* â”€â”€ Status indicator (aparece quando fechado) â”€â”€ */
     '.chat-status-ind{display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px 7px;background:rgba(255,255,255,.95);border-radius:14px;box-shadow:0 1px 8px rgba(0,0,0,.13);transition:box-shadow .15s;user-select:none;margin-bottom:5px;align-self:flex-end}',
     '.chat-status-ind:hover{box-shadow:0 2px 12px rgba(0,0,0,.2)}',
     '.chat-status-ind-dot{width:8px;height:8px;border-radius:50%;transition:background .3s}',
     '.chat-status-ind-dot.online{background:#2D9E6B}.chat-status-ind-dot.foco{background:#1D4FA0}.chat-status-ind-dot.ausente{background:#C4831A}',
-    /* ── Status popover (flat — sem efeito 3D) ── */
+    /* â”€â”€ Status popover (flat â€” sem efeito 3D) â”€â”€ */
     '.chat-status-pop{position:absolute;bottom:50px;right:50px;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);padding:5px;flex-direction:column;gap:1px;min-width:144px;z-index:10002}',
     '.chat-status-pop-hdr{font-size:10px;font-weight:600;color:var(--cinza,#D0CFC9);padding:4px 10px 6px;text-transform:uppercase;letter-spacing:.7px}',
     '.chat-sopt{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;border:none;background:none;cursor:pointer;font-family:"Raleway",sans-serif;font-size:12px;font-weight:500;width:100%;text-align:left;transition:background .1s;color:#111110}',
     '.chat-sopt:hover{background:var(--off,#F7F6F3)}.chat-sopt.active{background:var(--cinza2,#ECEAE4);font-weight:700}',
     '.chat-sopt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}',
-    /* ── Group confirm bar ── */
+    /* â”€â”€ Group confirm bar â”€â”€ */
     '.chat-group-bar{padding:10px 12px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:space-between;background:#fff;flex-shrink:0}',
     '.chat-group-info{font-size:11px;color:var(--cinza,#D0CFC9);font-weight:500}',
     '.chat-group-confirm{background:#111110;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-family:"Raleway",sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:opacity .15s}',
     '.chat-group-confirm:hover{opacity:.8}',
-    /* ── Member checkbox ── */
+    /* â”€â”€ Member checkbox â”€â”€ */
     '.chat-member-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--cinza2,#ECEAE4);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}',
     '.chat-member-check.sel{background:#111110;border-color:#111110}',
     '.chat-member-check.sel::after{content:"";width:5px;height:5px;border-radius:50%;background:#fff}',
-    /* ── Panel ── */
+    /* â”€â”€ Panel â”€â”€ */
     '.chat-panel{position:absolute;bottom:58px;right:0;width:320px;height:490px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.14);display:none;flex-direction:column;overflow:hidden;animation:chatOpen .18s ease-out;border:1px solid var(--cinza2,#ECEAE4)}',
     '@keyframes chatOpen{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}',
-    /* ── Views ── */
+    /* â”€â”€ Views â”€â”€ */
     '.chat-view{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}',
-    /* ── Header ── */
+    /* â”€â”€ Header â”€â”€ */
     '.chat-header{padding:7px 11px;background:var(--cinza2,#ECEAE4);color:var(--grafite,#111110);display:flex;align-items:center;gap:7px;flex-shrink:0}',
     '.chat-header-info{flex:1;min-width:0}',
     '.chat-header-title{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -79,7 +79,7 @@
     '.chat-close:hover{background:rgba(0,0,0,.13)}',
     '.chat-back-btn{background:rgba(0,0,0,.07);border:none;color:var(--grafite,#111110);cursor:pointer;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0}',
     '.chat-back-btn:hover{background:rgba(0,0,0,.13)}',
-    /* ── Conv list / member list ── */
+    /* â”€â”€ Conv list / member list â”€â”€ */
     '.chat-conv-list,.chat-member-list{flex:1;overflow-y:auto;padding:6px}',
     '.chat-conv-list::-webkit-scrollbar,.chat-member-list::-webkit-scrollbar{width:3px}',
     '.chat-conv-list::-webkit-scrollbar-thumb,.chat-member-list::-webkit-scrollbar-thumb{background:var(--cinza,#D0CFC9);border-radius:2px}',
@@ -112,24 +112,24 @@
     '.chat-alert-title{font-size:10px;font-weight:700;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-alert-preview{font-size:10px;color:#666;line-height:1.35;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
     '.chat-alert-chip{margin-left:auto;font-size:8px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE);border-radius:999px;padding:3px 7px}',
-    /* ── Messages ── */
+    /* â”€â”€ Messages â”€â”€ */
     '.chat-messages{flex:1;overflow-y:auto;padding:8px 8px 4px;display:flex;flex-direction:column;gap:0;scroll-behavior:smooth}',
     '.chat-messages::-webkit-scrollbar{width:3px}',
     '.chat-messages::-webkit-scrollbar-thumb{background:var(--cinza,#D0CFC9);border-radius:2px}',
-    /* ── Empty / loading ── */
+    /* â”€â”€ Empty / loading â”€â”€ */
     '.chat-empty{text-align:center;color:var(--cinza,#D0CFC9);font-size:11px;line-height:1.7;margin:auto;padding:20px}',
     '.chat-empty-icon{font-size:22px;margin-bottom:6px;opacity:.5}',
     '.chat-loading{display:flex;align-items:center;justify-content:center;gap:5px;margin:auto;padding:20px}',
     '.chat-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--cinza,#D0CFC9);animation:chatPulse 1.2s ease-in-out infinite}',
     '.chat-loading-dot:nth-child(2){animation-delay:.2s}.chat-loading-dot:nth-child(3){animation-delay:.4s}',
     '@keyframes chatPulse{0%,80%,100%{opacity:.2}40%{opacity:1}}',
-    /* ── Date separator ── */
+    /* â”€â”€ Date separator â”€â”€ */
     '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:"DM Mono",monospace;letter-spacing:.5px}',
     '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
-    /* ── Message bubble ── */
+    /* â”€â”€ Message bubble â”€â”€ */
     '.chat-msg{display:flex;flex-direction:column;padding:2px 6px;border-radius:6px;transition:background .1s}',
     '.chat-msg:hover{background:var(--off,#F7F6F3)}',
-    /* Alinhamento: recebidas à esq, enviadas à dir */
+    /* Alinhamento: recebidas Ã  esq, enviadas Ã  dir */
     '.chat-msg.own{align-items:flex-end}',
     '.chat-msg-meta{display:flex;align-items:center;gap:5px;margin-top:4px;margin-bottom:3px}',
     '.chat-msg.own .chat-msg-meta{flex-direction:row-reverse}',
@@ -147,33 +147,33 @@
     '.chat-media-thumb img{display:block;width:100%;height:auto;max-height:172px;object-fit:cover}',
     '.chat-media-thumb-pending{display:flex;align-items:center;justify-content:center;min-height:88px;padding:10px;font-size:10px;font-weight:600;color:#666;background:linear-gradient(135deg, rgba(29,106,74,.08), rgba(196,131,26,.08))}',
     '.chat-media-expired{display:flex;align-items:center;justify-content:center;min-height:72px;padding:10px;font-size:10px;font-weight:600;color:#777;background:#F3F1EB;border:1px dashed #D0CFC9;border-radius:12px;margin-top:4px}',
-    '.chat-media-failed{margin-top:6px;font-size:10px;font-weight:600;color:#B84C3A}',
+    '.chat-media-failed{margin-top:6px;font-size:10px;font-weight:600;color:#B84C3A;background:none;border:none;padding:0;cursor:pointer;text-align:left;text-decoration:underline}',
     '.chat-link{color:var(--verde,#1D6A4A);text-decoration:underline;word-break:break-all}',
     '.chat-link:hover{color:var(--verde-l,#2D9E6B)}',
-    /* ── Bubble row: bolha + botões de reação lado a lado ── */
+    /* â”€â”€ Bubble row: bolha + botÃµes de reaÃ§Ã£o lado a lado â”€â”€ */
     '.chat-msg-bubble-row{display:flex;align-items:flex-end;gap:4px;margin-left:22px}',
     '.chat-msg.own .chat-msg-bubble-row{flex-direction:row-reverse;margin-left:0;margin-right:22px}',
     '.chat-msg-bubble-row.has-rxn{margin-bottom:14px}',
     '.chat-msg-bubble-wrap{position:relative}',
-    /* ── Botões de reação: dois círculos LADO A LADO (aparecem no hover) ── */
+    /* â”€â”€ BotÃµes de reaÃ§Ã£o: dois cÃ­rculos LADO A LADO (aparecem no hover) â”€â”€ */
     '.chat-msg-react-btns{display:flex;flex-direction:row;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0;align-items:center}',
     '.chat-msg:hover .chat-msg-react-btns{opacity:1}',
     '.chat-rbtn{width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:transform .1s,background .1s,border-color .1s;padding:0;flex-shrink:0;color:var(--cinza,#D0CFC9)}',
     '.chat-rbtn:hover{transform:scale(1.15)}',
     '.chat-rbtn.like.active{color:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE)}',
     '.chat-rbtn.heart.active{color:#B84C3A;border-color:#B84C3A;background:#FDF0EE}',
-    /* ── Badge de reação na quina da bolha ── */
+    /* â”€â”€ Badge de reaÃ§Ã£o na quina da bolha â”€â”€ */
     '.chat-msg-rxn-badge{position:absolute;bottom:-9px;right:-10px;background:#fff;border-radius:10px;padding:1px 5px;font-size:10px;box-shadow:0 1px 5px rgba(0,0,0,.15);border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;gap:2px;line-height:1.5;white-space:nowrap}',
     '.chat-msg.own .chat-msg-rxn-badge{right:auto;left:-10px}',
     '.chat-msg-rxn-count{font-size:8px;font-family:"DM Mono",monospace;color:var(--cinza,#D0CFC9);margin-left:1px}',
-    /* ── Status dot inline (presence) ── */
+    /* â”€â”€ Status dot inline (presence) â”€â”€ */
     '.chat-presence-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}',
     '.chat-presence-dot.online{background:#2D9E6B}.chat-presence-dot.foco{background:#1D4FA0}.chat-presence-dot.ausente{background:#C4831A}',
     '.chat-presence-dot.offline{background:var(--cinza,#D0CFC9)}',
     '.chat-rbtn{width:21px;height:21px;border-radius:50%;background:#fff;border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:transform .1s,background .1s;padding:0;line-height:1;flex-shrink:0}',
     '.chat-rbtn:hover{transform:scale(1.15)}',
     '.chat-rbtn.active{border-color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE)}',
-    /* ── Input ── */
+    /* â”€â”€ Input â”€â”€ */
     '.chat-input-area{padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0}',
     '.chat-attach{width:33px;height:33px;background:var(--off,#F7F6F3);border:1px solid var(--cinza2,#ECEAE4);border-radius:9px;color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .15s,background .15s,transform .08s}',
     '.chat-attach:hover{background:#fff;border-color:var(--verde,#1D6A4A)}.chat-attach:active{transform:scale(.93)}',
@@ -189,13 +189,24 @@
     '.chat-media-viewer-card{width:min(780px, calc(100vw - 28px));max-height:calc(100vh - 36px);background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden}',
     '.chat-media-viewer-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cinza2,#ECEAE4)}',
     '.chat-media-viewer-title{flex:1;min-width:0;font-size:12px;font-weight:700;color:var(--grafite,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-    '.chat-media-viewer-body{padding:14px;background:#F7F6F3;display:flex;align-items:center;justify-content:center;min-height:260px}',
-    '.chat-media-viewer-body img{max-width:100%;max-height:calc(100vh - 180px);border-radius:12px;display:block}',
+    '.chat-media-viewer-tools{display:flex;align-items:center;gap:6px}',
+    '.chat-media-viewer-zoombtn{width:28px;height:28px;border-radius:9px;border:1px solid rgba(17,17,16,.08);background:#fff;color:var(--grafite,#111110);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}',
+    '.chat-media-viewer-zoombtn:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
+    '.chat-media-viewer-zoomlabel{min-width:44px;text-align:center;font-family:"DM Mono",monospace;font-size:10px;color:#666}',
+    '.chat-media-viewer-count{min-width:42px;text-align:center;font-family:"DM Mono",monospace;font-size:10px;color:#666}',
+    '.chat-media-viewer-body{padding:14px;background:#F7F6F3;display:flex;align-items:center;justify-content:center;min-height:260px;overflow:auto}',
+    '.chat-media-viewer-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 180px);width:100%}',
+    '.chat-media-viewer-body img{max-width:100%;max-height:calc(100vh - 180px);border-radius:12px;display:block;box-shadow:0 12px 28px rgba(0,0,0,.12)}',
+    '.chat-media-viewer-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid rgba(17,17,16,.08);background:rgba(255,255,255,.94);color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.12)}',
+    '.chat-media-viewer-nav:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
+    '.chat-media-viewer-nav.prev{left:8px}',
+    '.chat-media-viewer-nav.next{right:8px}',
+    '.chat-media-viewer-nav[disabled]{opacity:.35;cursor:default;pointer-events:none}',
     '.chat-media-viewer-empty{font-size:11px;color:#777;text-align:center;padding:26px}',
-    /* ── Toast ── */
+    /* â”€â”€ Toast â”€â”€ */
     '.chat-new-msg-toast{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:var(--verde,#1D6A4A);color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 10px rgba(29,106,74,.3);animation:chatToastIn .2s ease-out;z-index:10003}',
     '@keyframes chatToastIn{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}',
-    /* ── Dark mode ── */
+    /* â”€â”€ Dark mode â”€â”€ */
     '[data-theme="dark"] .chat-panel{background:#1C1C1B;border-color:#2E2D2B}',
     '[data-theme="dark"] .chat-header{background:#252523;color:#F0EDE6}',
     '[data-theme="dark"] .chat-icon-btn{background:rgba(255,255,255,.08);color:#F0EDE6}',
@@ -253,13 +264,19 @@
     '[data-theme="dark"] .chat-media-viewer-card{background:#1C1C1B}',
     '[data-theme="dark"] .chat-media-viewer-head{background:#252523}',
     '[data-theme="dark"] .chat-media-viewer-title{color:#F0EDE6}',
+    '[data-theme="dark"] .chat-media-viewer-zoombtn{background:#2A2927;border-color:#3A3937;color:#F0EDE6}',
+    '[data-theme="dark"] .chat-media-viewer-zoombtn:hover{border-color:#B7E2C8;color:#B7E2C8}',
+    '[data-theme="dark"] .chat-media-viewer-zoomlabel{color:#B4AEA4}',
+    '[data-theme="dark"] .chat-media-viewer-count{color:#B4AEA4}',
     '[data-theme="dark"] .chat-media-viewer-body{background:#252523}',
+    '[data-theme="dark"] .chat-media-viewer-nav{background:rgba(42,41,39,.94);border-color:#3A3937;color:#F0EDE6}',
+    '[data-theme="dark"] .chat-media-viewer-nav:hover{border-color:#B7E2C8;color:#B7E2C8}',
     '[data-theme="dark"] .chat-media-viewer-empty{color:#B4AEA4}'
   ].join('\n');
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      ESTADO
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   var sb, user;
   var presenceCh = null, msgCh = null;
   var messages      = [];
@@ -272,7 +289,7 @@
   var currentLabel   = '# geral';
   var loadRequestSeq = 0;
   var teamMembers      = [];
-  var allMembers       = [];        // todos os usuários incluindo o próprio — para lookup de avatares
+  var allMembers       = [];        // todos os usuÃ¡rios incluindo o prÃ³prio â€” para lookup de avatares
   var projectThreads   = [];
   var projectThreadMeta = {};
   var recentConversationAlerts = [];
@@ -293,14 +310,14 @@
   var userStatus     = localStorage.getItem(STATUS_KEY) || 'online';
   var soundEnabled   = localStorage.getItem(SOUND_KEY) !== 'false';
 
-  /* ── DOM refs ─────────────────────────────────────────────────── */
+  /* â”€â”€ DOM refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   var $panel, $msgs, $input, $badge, $toggle;
   var $viewHome, $viewChan, $viewMembers, $viewSearch;
   var $chanTitle, $personBtn, $statusInd, $statusPop;
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      INIT
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function init() {
     var raw = sessionStorage.getItem('exp_usuario');
     if (!raw) {
@@ -331,9 +348,9 @@
     init();
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      MOUNT
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function mountWidget() {
     if (document.getElementById('exp-chat-widget')) return;
     injectCSS();
@@ -364,13 +381,18 @@
 
     document.addEventListener('paste', function (event) {
       if (!isOpen || currentView !== 'channel' || mediaUploadBusy) return;
-      var items = Array.from((event.clipboardData && event.clipboardData.items) || []);
-      var imageItem = items.find(function (item) { return /^image\/(png|jpeg|webp)$/i.test(item.type || ''); });
-      if (!imageItem) return;
-      var file = imageItem.getAsFile();
-      if (!file) return;
+      var imageItems = Array.from((event.clipboardData && event.clipboardData.items) || []).filter(function (item) {
+        return /^image\/(png|jpeg|webp)$/i.test(item.type || '');
+      });
+      if (!imageItems.length) return;
       event.preventDefault();
-      sendMediaFile(file);
+      imageItems.reduce(function (chain, item) {
+        return chain.then(function () {
+          var file = item.getAsFile();
+          if (!file) return null;
+          return sendMediaFile(file);
+        });
+      }, Promise.resolve());
     });
 
     document.addEventListener('click', function (e) {
@@ -380,6 +402,20 @@
       if (e.target && e.target.closest && e.target.closest('.chat-media-thumb')) return;
       if (card && card.contains(e.target)) return;
       closeMediaViewer();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (!mediaViewerState) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMediaViewer();
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        prevMediaViewer();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        nextMediaViewer();
+      }
     });
   }
 
@@ -405,7 +441,7 @@
     }
   }
 
-  /* ── CSS ──────────────────────────────────────────────────────── */
+  /* â”€â”€ CSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   function injectCSS() {
     if (document.getElementById('exp-chat-css')) return;
     var s = document.createElement('style');
@@ -414,9 +450,9 @@
     document.head.appendChild(s);
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      HTML
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function injectHTML() {
     var wrap = document.createElement('div');
     wrap.id = 'exp-chat-widget';
@@ -428,7 +464,7 @@
     var fn = firstName(user.nome);
     return (
       '<div class="chat-alert-stack" id="exp-chat-alerts" style="display:none"></div>' +
-      /* ── Painel ── */
+      /* â”€â”€ Painel â”€â”€ */
       '<div class="chat-panel" id="exp-chat-panel" style="display:none">' +
 
         /* View: Home (lista de conversas) */
@@ -436,10 +472,11 @@
           '<div class="chat-header">' +
             '<div class="chat-header-info"><div class="chat-header-title">EXP.chat</div></div>' +
             '<div class="chat-header-acts">' +
-              '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSound()" title="Som de notificação">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
+              '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSound()" title="Som de notificaÃ§Ã£o">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.openSearch()" title="Pesquisar">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
+            '</div>' +
             '</div>' +
           '</div>' +
           '<div class="chat-conv-list" id="exp-chat-convlist"><div class="chat-loading">' + ldots() + '</div></div>' +
@@ -468,7 +505,7 @@
           '<div class="chat-input-area">' +
             '<input id="exp-chat-media-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="expChat.handleMediaInput(this)">' +
             '<button class="chat-attach" onclick="expChat.pickMedia()" title="Anexar print">' + icoAttach() + '</button>' +
-            '<textarea class="chat-input" id="exp-chat-input" placeholder="Mensagem…" rows="1"' +
+            '<textarea class="chat-input" id="exp-chat-input" placeholder="Mensagemâ€¦" rows="1"' +
               ' onkeydown="expChat.handleKey(event)" oninput="expChat.autoResize(this)"></textarea>' +
             '<button class="chat-send" onclick="expChat.send()" title="Enviar (Enter)">' + icoSend() + '</button>' +
           '</div>' +
@@ -485,7 +522,7 @@
           '<div class="chat-member-list" id="exp-chat-memberlist"><div class="chat-loading">' + ldots() + '</div></div>' +
           '<div class="chat-group-bar" id="exp-chat-group-bar" style="display:none">' +
             '<span class="chat-group-info" id="exp-chat-group-info"></span>' +
-            '<button class="chat-group-confirm" onclick="expChat.confirmGroup()">Abrir →</button>' +
+            '<button class="chat-group-confirm" onclick="expChat.confirmGroup()">Abrir â†’</button>' +
           '</div>' +
         '</div>' +
 
@@ -495,16 +532,26 @@
         '<div class="chat-media-viewer-card">' +
           '<div class="chat-media-viewer-head">' +
             '<div class="chat-media-viewer-title" id="exp-chat-media-viewer-title">Print do chat</div>' +
+            '<div class="chat-media-viewer-tools">' +
+              '<span class="chat-media-viewer-count" id="exp-chat-media-viewer-count">1/1</span>' +
+              '<button class="chat-media-viewer-zoombtn" onclick="expChat.zoomOutMediaViewer()" title="Diminuir zoom">-</button>' +
+              '<button class="chat-media-viewer-zoombtn" onclick="expChat.resetMediaViewerZoom()" title="Redefinir zoom"><span id="exp-chat-media-viewer-zoom-label">100%</span></button>' +
+              '<button class="chat-media-viewer-zoombtn" onclick="expChat.zoomInMediaViewer()" title="Aumentar zoom">+</button>' +
+            '</div>' +
             '<button class="chat-close" onclick="expChat.closeMediaViewer()">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-media-viewer-body">' +
-            '<img id="exp-chat-media-viewer-img" style="display:none" alt="Print do chat">' +
-            '<div class="chat-media-viewer-empty" id="exp-chat-media-viewer-empty">Carregando imagem…</div>' +
+            '<div class="chat-media-viewer-stage">' +
+              '<button class="chat-media-viewer-nav prev" id="exp-chat-media-viewer-prev" onclick="expChat.prevMediaViewer()" title="Imagem anterior">&#8249;</button>' +
+              '<img id="exp-chat-media-viewer-img" style="display:none" alt="Print do chat">' +
+              '<div class="chat-media-viewer-empty" id="exp-chat-media-viewer-empty">Carregando imagem…</div>' +
+              '<button class="chat-media-viewer-nav next" id="exp-chat-media-viewer-next" onclick="expChat.nextMediaViewer()" title="Próxima imagem">&#8250;</button>' +
+            '</div>' +
           '</div>' +
-        '</div>' +
+      '</div>' +
       '</div>' +
 
-      /* ── Status popover ── */
+      /* â”€â”€ Status popover â”€â”€ */
       '<div class="chat-status-pop" id="exp-chat-status-pop" style="display:none">' +
         '<div class="chat-status-pop-hdr">' + escHtml(fn) + '</div>' +
         sopt('online',  'Online') +
@@ -512,7 +559,7 @@
         sopt('ausente', 'Ausente') +
       '</div>' +
 
-      /* ── Controls (person btn + status ind + toggle) ── */
+      /* â”€â”€ Controls (person btn + status ind + toggle) â”€â”€ */
       '<div class="chat-controls">' +
         '<button class="chat-person-btn" id="exp-chat-person-btn" onclick="expChat.toggleStatusPop()" title="Meu status" style="display:none">' +
           icoPerson() +
@@ -531,7 +578,7 @@
     );
   }
 
-  /* ── Helpers de markup ────────────────────────────────────────── */
+  /* â”€â”€ Helpers de markup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   var SOPT_COLORS = { online:'#2D9E6B', foco:'#1D4FA0', ausente:'#C4831A' };
   function sopt(val, label) {
     return '<button class="chat-sopt" data-status="' + val + '" onclick="expChat.setStatus(\'' + val + '\')">' +
@@ -542,7 +589,7 @@
     return '<div class="chat-loading-dot"></div><div class="chat-loading-dot"></div><div class="chat-loading-dot"></div>';
   }
 
-  /* ── SVG icons ────────────────────────────────────────────────── */
+  /* â”€â”€ SVG icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   function icoChat()    { return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'; }
   function icoSend()    { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'; }
   function icoBack()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'; }
@@ -558,9 +605,9 @@
   function icoHeart()   { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'; }
   function icoEmpty()   { return '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'; }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      STATUS
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function applyStatus(status, broadcast) {
     if (typeof broadcast === 'undefined') broadcast = true;
     userStatus = status;
@@ -568,7 +615,7 @@
 
     var color = STATUS_COLORS[status] || STATUS_COLORS.online;
 
-    /* FAB: cor de status só quando não há foto (foto preenche o círculo) */
+    /* FAB: cor de status sÃ³ quando nÃ£o hÃ¡ foto (foto preenche o cÃ­rculo) */
     if ($toggle && !user.avatar_url) {
       $toggle.style.background = color;
     }
@@ -582,7 +629,7 @@
       $personBtn.style.color       = color;
     }
 
-    /* Popover: marcar opção ativa */
+    /* Popover: marcar opÃ§Ã£o ativa */
     if ($statusPop) {
       var opts = $statusPop.querySelectorAll('.chat-sopt');
       for (var i = 0; i < opts.length; i++) {
@@ -611,9 +658,9 @@
     $statusPop.style.display = 'none';
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      ABRIR / FECHAR
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function toggle() { isOpen ? close() : open(); }
 
   function open() {
@@ -637,9 +684,9 @@
     renderConversationAlerts();
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      VIEWS
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function showView(view) {
     currentView = view;
     var map = { home: $viewHome, channel: $viewChan, members: $viewMembers, search: $viewSearch };
@@ -652,9 +699,9 @@
     renderConversationAlerts();
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     HOME — lista de conversas
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     HOME â€” lista de conversas
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function renderHome() {
     var $list = document.getElementById('exp-chat-convlist');
     if (!$list) return;
@@ -673,7 +720,7 @@
       var projectItems = res[1] || [];
       var msgs = r.data || [];
 
-      /* Agrupar por canal dinâmico, manter a mensagem mais recente */
+      /* Agrupar por canal dinÃ¢mico, manter a mensagem mais recente */
       var seen = {};
       var dmList = [];
       msgs.forEach(function (m) {
@@ -692,12 +739,12 @@
         (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
         '</div>';
 
-      /* Linha #sócios (apenas para role socio) */
+      /* Linha #sÃ³cios (apenas para role socio) */
       if (isSocioLikeRole(user.role)) {
         var socU = channelUnread['socios'] || 0;
-        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sócios\')">' +
+        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sÃ³cios\')">' +
           '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
-          '<div class="chat-conv-info"><div class="chat-conv-name">sócios</div><div class="chat-conv-preview">Canal privado</div></div>' +
+          '<div class="chat-conv-info"><div class="chat-conv-name">sÃ³cios</div><div class="chat-conv-preview">Canal privado</div></div>' +
           (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
           '</div>';
       }
@@ -731,7 +778,7 @@
       /* Linhas de DMs e grupos */
       dmList.forEach(function (dm) {
         var meta = getConversationMeta(dm, uid);
-        var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + '…' : dm.content;
+        var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + 'â€¦' : dm.content;
         var dmU      = channelUnread[dm.channel] || 0;
         var chanJson = dm.channel.replace(/'/g, "\\'");
         var nameEsc  = escHtml(meta.label);
@@ -807,7 +854,7 @@
             softAvHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
             '<div class="chat-search-body">' +
               '<div class="chat-search-title">' + labelEsc + '</div>' +
-              '<div class="chat-search-meta">' + escHtml(item.author || 'Equipe') + ' · ' + escHtml(item.when || '') + '</div>' +
+              '<div class="chat-search-meta">' + escHtml(item.author || 'Equipe') + ' Â· ' + escHtml(item.when || '') + '</div>' +
               '<div class="chat-search-snippet">' + escHtml(item.snippet || '') + '</div>' +
             '</div>' +
           '</div>';
@@ -820,9 +867,9 @@
     });
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      ABRIR CANAL / DM
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function openChannel(channel, displayName) {
     removeConversationAlert(channel);
     closeMediaViewer();
@@ -841,7 +888,7 @@
 
   function goHome() { selectedMembers = []; showView('home'); }
 
-  /* Atualiza o subtítulo do canal com status de presença */
+  /* Atualiza o subtÃ­tulo do canal com status de presenÃ§a */
   function updateChannelStatus() {
     var $sub = document.getElementById('exp-chat-chan-sub');
     if (!$sub) return;
@@ -857,7 +904,7 @@
       $sub.style.display = '';
       $sub.innerHTML = '<span class="chat-presence-dot ' + status + '"></span>' + escHtml(label);
 
-    /* Para grupos: mostrar quantos estão online */
+    /* Para grupos: mostrar quantos estÃ£o online */
     } else if (currentChannel.startsWith('group:')) {
       var uids   = currentChannel.replace('group:', '').split(':');
       var online = uids.filter(function (uid) { return onlinePresence[uid]; }).length;
@@ -868,15 +915,15 @@
       $sub.style.display = '';
       $sub.innerHTML = 'Chat do projeto';
 
-    /* Canais fixos: ocultar subtítulo */
+    /* Canais fixos: ocultar subtÃ­tulo */
     } else {
       $sub.style.display = 'none';
     }
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     NOVO DM — seletor de membros
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     NOVO DM â€” seletor de membros
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function startDM() {
     showView('members');
     loadTeamMembers();
@@ -888,9 +935,9 @@
       .order('nome')
       .then(function (r) {
         var all = r.data || [];
-        /* allMembers inclui o próprio usuário — usado para lookup de avatares */
+        /* allMembers inclui o prÃ³prio usuÃ¡rio â€” usado para lookup de avatares */
         allMembers = all;
-        /* teamMembers exclui o próprio usuário — usado no seletor de novo DM */
+        /* teamMembers exclui o prÃ³prio usuÃ¡rio â€” usado no seletor de novo DM */
         teamMembers = all.filter(function (m) {
           return m.auth_id !== user.auth_id && m.id !== user.id;
         });
@@ -904,10 +951,10 @@
     var $list = document.getElementById('exp-chat-memberlist');
     if (!$list) return;
     if (!teamMembers.length) {
-      $list.innerHTML = '<div class="chat-empty">Carregando equipe…</div>';
+      $list.innerHTML = '<div class="chat-empty">Carregando equipeâ€¦</div>';
       return;
     }
-    var roleLabel = { socio: 'Sócio', socio_admin: 'Sócio administrador', coordenador: 'Coordenador', colaborador: 'Colaborador' };
+    var roleLabel = { socio: 'SÃ³cio', socio_admin: 'SÃ³cio administrador', coordenador: 'Coordenador', colaborador: 'Colaborador' };
     var html = '';
     teamMembers.forEach(function (m) {
       var cor = m.cor || '#1D6A4A';
@@ -923,13 +970,13 @@
         '</div>' +
         '<div class="chat-conv-info">' +
           '<div class="chat-conv-name">' + escHtml(m.nome) + '</div>' +
-          '<div class="chat-conv-preview">' + pLabels[pStatus] + ' · ' + (roleLabel[m.role] || '') + '</div>' +
+          '<div class="chat-conv-preview">' + pLabels[pStatus] + ' Â· ' + (roleLabel[m.role] || '') + '</div>' +
         '</div>' +
         '</div>';
     });
     $list.innerHTML = html;
 
-    /* Barra de confirmação */
+    /* Barra de confirmaÃ§Ã£o */
     var $bar  = document.getElementById('exp-chat-group-bar');
     var $info = document.getElementById('exp-chat-group-info');
     var n = selectedMembers.length;
@@ -939,7 +986,7 @@
       else if (n > 1) $info.textContent = n + ' pessoas selecionadas';
     }
     var $btn = document.querySelector('.chat-group-confirm');
-    if ($btn) $btn.textContent = n === 1 ? 'Mensagem direta →' : 'Criar grupo →';
+    if ($btn) $btn.textContent = n === 1 ? 'Mensagem direta â†’' : 'Criar grupo â†’';
   }
 
   function toggleMember(authId) {
@@ -975,9 +1022,9 @@
     return 'dm:' + [uid1, uid2].sort().join(':');
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      PRESENCE
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function setupPresence() {
     presenceCh = sb.channel('exp:chat:presence');
     presenceCh
@@ -1010,9 +1057,9 @@
     };
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     REALTIME — receber mensagens
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     REALTIME â€” receber mensagens
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function subscribeIncoming() {
     if (msgCh) { sb.removeChannel(msgCh); msgCh = null; }
 
@@ -1022,7 +1069,7 @@
         var ch  = msg.channel;
         var uid = user.auth_id;
 
-        /* Ignorar canais que não envolvem o usuário */
+        /* Ignorar canais que nÃ£o envolvem o usuÃ¡rio */
         var isSocios = ch === 'socios' && isSocioLikeRole(user.role);
         if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
 
@@ -1093,9 +1140,9 @@
       .subscribe();
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      CARREGAR MENSAGENS
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function loadMessages() {
     if (isLoading) return;
     var channel = currentChannel;
@@ -1140,9 +1187,9 @@
       });
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     NÃO LIDAS
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     NÃƒO LIDAS
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function fetchAllUnread() {
     var uid   = user.auth_id;
     var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
@@ -1161,7 +1208,7 @@
         var readMap = {};
         (r.data || []).forEach(function (row) { readMap[row.channel] = row.last_read_at; });
 
-        /* Contar não lidas por canal fixo */
+        /* Contar nÃ£o lidas por canal fixo */
         var fixedChannels = ['general'];
         if (isSocioLikeRole(user.role)) fixedChannels.push('socios');
 
@@ -1232,9 +1279,9 @@
     });
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      ENVIAR
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function send() {
     if (!$input) return;
     var content = $input.value.trim();
@@ -1304,10 +1351,83 @@
     }
   }
 
+  function mediaRpcContent(rawContent) {
+    return isImageOnlySentinel(rawContent) ? '' : String(rawContent || '');
+  }
+
+  async function persistPreparedMedia(prepared, content, contextType, pendingMsg) {
+    if (!prepared || !prepared.blob) throw new Error('O print nÃ£o estÃ¡ mais disponÃ­vel para reenvio.');
+    var storagePath = '';
+    var uploaded = false;
+    var previewUrl = prepared.objectUrl || (pendingMsg && pendingMsg.temp_media && pendingMsg.temp_media.objectUrl) || null;
+    try {
+      storagePath = buildChatMediaPath(contextType, prepared.ext);
+      setComposerStatus('Enviando print...', '', true);
+      var uploadRes = await sb.storage.from(TEMP_MEDIA_BUCKET).upload(storagePath, prepared.blob, {
+        contentType: prepared.mimeType,
+        upsert: false
+      });
+      if (uploadRes.error) throw uploadRes.error;
+      uploaded = true;
+
+      var rpcName = contextType === 'chat_thread_message'
+        ? 'send_chat_thread_message_with_temp_media'
+        : 'send_chat_message_with_temp_media';
+      var rpcPayload = contextType === 'chat_thread_message'
+        ? {
+            p_thread_id: projectThreadIdFromChannel(currentChannel),
+            p_content: content,
+            p_storage_path: storagePath,
+            p_mime_type: prepared.mimeType,
+            p_arquivo_ext: prepared.ext,
+            p_size_bytes: prepared.blob.size,
+            p_width_px: prepared.width,
+            p_height_px: prepared.height
+          }
+        : {
+            p_channel: currentChannel,
+            p_content: content,
+            p_storage_path: storagePath,
+            p_mime_type: prepared.mimeType,
+            p_arquivo_ext: prepared.ext,
+            p_size_bytes: prepared.blob.size,
+            p_width_px: prepared.width,
+            p_height_px: prepared.height
+          };
+      var rpcRes = await sb.rpc(rpcName, rpcPayload);
+      if (rpcRes.error) throw rpcRes.error;
+
+      if (!saved || !saved.id) throw new Error('Mensagem com print nÃ£o retornou do servidor.');
+
+      upsertMessage(contextType === 'chat_thread_message' ? normalizeProjectMessage(saved) : saved);
+      assignMessageMedia(contextType, saved.id, {
+        storage_path: storagePath,
+        objectUrl: previewUrl,
+        mime_type: prepared.mimeType,
+        arquivo_ext: prepared.ext,
+        width_px: prepared.width,
+        height_px: prepared.height,
+        pending: false,
+        failed: false,
+        failed_load: false,
+        blob: null,
+        expires_at: addDaysIso(7)
+      }, pendingMsg ? pendingMsg.id : null);
+      renderMessages();
+      setComposerStatus('Print enviado. Expira em 7 dias.', 'ok', false);
+      return saved;
+    } catch (error) {
+      if (uploaded && storagePath) {
+        try { await sb.storage.from(TEMP_MEDIA_BUCKET).remove([storagePath]); } catch (e) {}
+      }
+      throw error;
+    }
+  }
+
   async function sendMediaFile(file) {
     if (!$input || mediaUploadBusy) return;
     if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) {
-      console.warn('[EXP Chat] Tipo de imagem nÃ£o suportado.');
+      console.warn('[EXP Chat] Tipo de imagem nÃƒÂ£o suportado.');
       setComposerStatus('Use apenas prints em PNG, JPG ou WEBP.', 'warn', true);
       return;
     }
@@ -1335,10 +1455,14 @@
         temp_media: {
           objectUrl: previewUrl,
           mime_type: optimized.mimeType,
+          arquivo_ext: optimized.ext,
           width_px: optimized.width,
           height_px: optimized.height,
           expires_at: addDaysIso(7),
-          pending: true
+          pending: true,
+          failed: false,
+          failed_load: false,
+          blob: optimized.blob
         }
       });
       upsertMessage(pendingMsg);
@@ -1346,65 +1470,31 @@
         storage_path: null,
         objectUrl: previewUrl,
         mime_type: optimized.mimeType,
+        arquivo_ext: optimized.ext,
         width_px: optimized.width,
         height_px: optimized.height,
         pending: true,
+        failed: false,
+        failed_load: false,
+        blob: optimized.blob,
         expires_at: addDaysIso(7)
       });
       renderMessages();
       scrollBottom();
 
-      storagePath = buildChatMediaPath(contextType, optimized.ext);
-      setComposerStatus('Enviando print...', '', true);
-      var uploadRes = await sb.storage.from(TEMP_MEDIA_BUCKET).upload(storagePath, optimized.blob, {
-        contentType: optimized.mimeType,
-        upsert: false
-      });
-      if (uploadRes.error) throw uploadRes.error;
-      uploaded = true;
+      await persistPreparedMedia({
+        blob: optimized.blob,
+        mimeType: optimized.mimeType,
+        ext: optimized.ext,
+        width: optimized.width,
+        height: optimized.height,
+        objectUrl: previewUrl
+      }, mediaRpcContent(content || CHAT_IMAGE_SENTINEL), contextType, pendingMsg);
+      var saved = { id: true };
 
-      var rpcName = contextType === 'chat_thread_message'
-        ? 'send_chat_thread_message_with_temp_media'
-        : 'send_chat_message_with_temp_media';
-      var rpcPayload = contextType === 'chat_thread_message'
-        ? {
-            p_thread_id: projectThreadIdFromChannel(currentChannel),
-            p_content: content,
-            p_storage_path: storagePath,
-            p_mime_type: optimized.mimeType,
-            p_arquivo_ext: optimized.ext,
-            p_size_bytes: optimized.blob.size,
-            p_width_px: optimized.width,
-            p_height_px: optimized.height
-          }
-        : {
-            p_channel: currentChannel,
-            p_content: content,
-            p_storage_path: storagePath,
-            p_mime_type: optimized.mimeType,
-            p_arquivo_ext: optimized.ext,
-            p_size_bytes: optimized.blob.size,
-            p_width_px: optimized.width,
-            p_height_px: optimized.height
-          };
-      var rpcRes = await sb.rpc(rpcName, rpcPayload);
-      if (rpcRes.error) throw rpcRes.error;
 
-      var saved = Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data;
-      if (!saved || !saved.id) throw new Error('Mensagem com print nÃ£o retornou do servidor.');
+      if (!saved || !saved.id) throw new Error('Mensagem com print nÃƒÂ£o retornou do servidor.');
 
-      upsertMessage(contextType === 'chat_thread_message' ? normalizeProjectMessage(saved) : saved);
-      assignMessageMedia(contextType, saved.id, {
-        storage_path: storagePath,
-        objectUrl: previewUrl,
-        mime_type: optimized.mimeType,
-        width_px: optimized.width,
-        height_px: optimized.height,
-        pending: false,
-        expires_at: addDaysIso(7)
-      }, pendingMsg ? pendingMsg.id : null);
-      renderMessages();
-      setComposerStatus('Print enviado. Expira em 7 dias.', 'ok', false);
     } catch (error) {
       var failMsg = describeChatMediaError(error);
       if (pendingMsg && pendingMsg.id) {
@@ -1418,10 +1508,13 @@
           storage_path: null,
           objectUrl: previewUrl,
           mime_type: optimized && optimized.mimeType || null,
+          arquivo_ext: optimized && optimized.ext || null,
           width_px: optimized && optimized.width || null,
           height_px: optimized && optimized.height || null,
           pending: false,
           failed: true,
+          failed_load: false,
+          blob: optimized && optimized.blob || null,
           expires_at: addDaysIso(7)
         });
       }
@@ -1436,9 +1529,106 @@
     }
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      REACTIONS
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  function retryMediaIssue(messageId) {
+    var msg = messages.find(function (item) { return item.id === messageId; });
+    var media = msg ? getMessageMedia(msg) : null;
+    if (msg && msg.failed) {
+      retryMediaMessage(messageId);
+      return;
+    }
+    if (media && media.failed_load) retryMediaLoad(messageId);
+  }
+
+  async function retryMediaMessage(messageId) {
+    if (mediaUploadBusy) return;
+    var msg = messages.find(function (item) { return item.id === messageId; });
+    var media = msg ? getMessageMedia(msg) : null;
+    if (!msg || !media || !media.blob) {
+      setComposerStatus('Esse print nÃ£o estÃ¡ mais disponÃ­vel para reenvio. Cole novamente.', 'warn', true);
+      return;
+    }
+    var contextType = mediaContextTypeForMessage(msg);
+    mediaUploadBusy = true;
+    try {
+      msg.pending = true;
+      msg.failed = false;
+      delete msg.error_message;
+      assignMessageMedia(contextType, msg.id, Object.assign({}, media, {
+        pending: true,
+        failed: false,
+        failed_load: false
+      }));
+      renderMessages();
+      await persistPreparedMedia({
+        blob: media.blob,
+        mimeType: media.mime_type || 'image/webp',
+        ext: media.arquivo_ext || 'webp',
+        width: media.width_px || null,
+        height: media.height_px || null,
+        objectUrl: media.objectUrl || null
+      }, mediaRpcContent(msg.content), contextType, msg);
+    } catch (error) {
+      var failMsg = describeChatMediaError(error);
+      msg.pending = false;
+      msg.failed = true;
+      msg.error_message = failMsg;
+      assignMessageMedia(contextType, msg.id, Object.assign({}, media, {
+        pending: false,
+        failed: true,
+        failed_load: false
+      }));
+      console.warn('[EXP Chat] Erro ao reenviar print:', error && error.message ? error.message : error);
+      setComposerStatus('Falha ao reenviar print: ' + failMsg, 'warn', true);
+      renderMessages();
+    } finally {
+      mediaUploadBusy = false;
+    }
+  }
+
+  async function retryMediaLoad(messageId) {
+    var msg = messages.find(function (item) { return item.id === messageId; });
+    if (!msg || String(msg.id || '').indexOf('pending:') === 0) return;
+    var contextType = mediaContextTypeForMessage(msg);
+    var currentMedia = getMessageMedia(msg) || {};
+    assignMessageMedia(contextType, msg.id, Object.assign({}, currentMedia, {
+      pending: true,
+      failed_load: false
+    }));
+    renderMessages();
+    try {
+      var metaRes = await sb.from('gestao_anexos_temporarios')
+        .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at')
+        .eq('contexto_tipo', contextType)
+        .eq('contexto_id', msg.id)
+        .is('removido_em', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (metaRes.error || !metaRes.data) throw metaRes.error || new Error('Print nÃ£o encontrado.');
+      var down = await sb.storage.from(TEMP_MEDIA_BUCKET).download(metaRes.data.storage_path);
+      if (down.error || !down.data) throw down.error || new Error('Falha ao carregar o print.');
+      assignMessageMedia(contextType, msg.id, Object.assign({}, metaRes.data, {
+        objectUrl: URL.createObjectURL(down.data),
+        pending: false,
+        failed: false,
+        failed_load: false,
+        blob: currentMedia.blob || null
+      }));
+      renderMessages();
+    } catch (error) {
+      assignMessageMedia(contextType, msg.id, Object.assign({}, currentMedia, {
+        pending: false,
+        failed_load: true
+      }));
+      setComposerStatus('Falha ao carregar print. Clique no aviso para tentar de novo.', 'warn', true);
+      renderMessages();
+    }
+  }
+
   function toggleReaction(msgId, type) {
     var msg = messages.find(function (m) { return m.id === msgId; });
     if (!msg) return;
@@ -1474,9 +1664,9 @@
       });
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      RENDER MENSAGENS
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function renderMessages() {
     if (!$msgs) return;
     if (!messages.length) {
@@ -1511,6 +1701,7 @@
       var showExpired = imageOnly && !media && isChatMediaExpired(msg);
       var showMediaLoading = imageOnly && !media && !showExpired;
       var showFailed = !!msg.failed;
+      var showLoadFailed = !!(media && media.failed_load);
 
       var rx      = msg.reactions || { like: [], love: [] };
       var likeArr = rx.like  || [];
@@ -1533,16 +1724,16 @@
 
       var side = isOwn ? 'sent' : 'recv';
 
-      /* Badge na quina da bolha (quando há reações) */
+      /* Badge na quina da bolha (quando hÃ¡ reaÃ§Ãµes) */
       var badgeHtml = '';
       if (hasRxn) {
         badgeHtml = '<div class="chat-msg-rxn-badge">';
-        if (likeN > 0) badgeHtml += '👍' + (likeN > 1 ? '<span class="chat-msg-rxn-count">' + likeN + '</span>' : '');
-        if (loveN > 0) badgeHtml += '❤️' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '');
+        if (likeN > 0) badgeHtml += 'ðŸ‘' + (likeN > 1 ? '<span class="chat-msg-rxn-count">' + likeN + '</span>' : '');
+        if (loveN > 0) badgeHtml += 'â¤ï¸' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '');
         badgeHtml += '</div>';
       }
 
-      /* Bolha + botões de reação lado a lado */
+      /* Bolha + botÃµes de reaÃ§Ã£o lado a lado */
       html += '<div class="chat-msg-bubble-row' + (hasRxn ? ' has-rxn' : '') + '">' +
         '<div class="chat-msg-bubble-wrap">' +
           '<div class="chat-msg-text ' + side + (hasText ? '' : ' media-only') + '">' +
@@ -1554,12 +1745,14 @@
               '</div>'
             : media && media.pending
               ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Enviando print...</div></div>'
+              : showLoadFailed
+                ? '<button type="button" class="chat-media-failed" onclick="expChat.retryMediaIssue(\'' + msg.id + '\')">Falha ao carregar print. Clique para tentar de novo.</button>'
               : showExpired
                 ? '<div class="chat-media-expired">Print expirado</div>'
                 : showMediaLoading
                   ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Carregando print...</div></div>'
                 : '') +
-          (showFailed ? '<div class="chat-media-failed">Falha no envio do print</div>' : '') +
+          (showFailed ? '<button type="button" class="chat-media-failed" onclick="expChat.retryMediaIssue(\'' + msg.id + '\')">Falha no envio do print. Clique para tentar de novo.</button>' : '') +
           badgeHtml +
         '</div>' +
         '<div class="chat-msg-react-btns">' +
@@ -1576,30 +1769,30 @@
     $msgs.innerHTML = html;
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     LINKIFY — URLs viram hiperlinks
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     LINKIFY â€” URLs viram hiperlinks
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function linkify(html) {
     return html.replace(/(https?:\/\/[^\s&"<>]+)/g, function (url) {
       return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="chat-link">' + url + '</a>';
     });
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     PUSH NOTIFICATION — DM direto ou menção
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     PUSH NOTIFICATION â€” DM direto ou menÃ§Ã£o
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function _shouldPush(msg) {
-    // Foco: silêncio total
+    // Foco: silÃªncio total
     if (userStatus === 'foco') return false;
 
     var ch  = msg.channel;
     var uid = user.auth_id;
 
-    // DM 1:1 ou grupo direcionado ao usuário
+    // DM 1:1 ou grupo direcionado ao usuÃ¡rio
     if ((ch.startsWith('dm:') || ch.startsWith('group:')) && ch.includes(uid)) return true;
     if (isProjectChannel(ch)) return true;
 
-    // Menção pelo nome no canal geral ou sócios
+    // MenÃ§Ã£o pelo nome no canal geral ou sÃ³cios
     var fn      = (user.nome || '').split(' ')[0].toLowerCase();
     var content = (msg.content || '').toLowerCase();
     if (content.includes('@' + fn)) return true;
@@ -1614,9 +1807,9 @@
     var isDM     = msg.channel.startsWith('dm:') || msg.channel.startsWith('group:');
     var isProject = isProjectChannel(msg.channel);
     var sender   = (msg.sender_name || '').split(' ')[0];
-    var title    = isProject ? sender + ' atualizou um projeto' : (isDM ? sender + ' enviou uma mensagem' : sender + ' mencionou você');
+    var title    = isProject ? sender + ' atualizou um projeto' : (isDM ? sender + ' enviou uma mensagem' : sender + ' mencionou vocÃª');
     var body     = (msg.content || '').length > 80
-      ? msg.content.substring(0, 80) + '…'
+      ? msg.content.substring(0, 80) + 'â€¦'
       : msg.content;
     sb.functions.invoke('send-push', {
       body: {
@@ -1629,16 +1822,16 @@
     }).catch(function (e) { console.warn('[EXP Chat Push]', e); });
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     SOM DE NOTIFICAÇÃO (Web Audio API — sem arquivo externo)
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     SOM DE NOTIFICAÃ‡ÃƒO (Web Audio API â€” sem arquivo externo)
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function playNotificationSound() {
     if (!soundEnabled) return;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       var ctx = new Ctx();
-      /* Dois tons suaves: C6 (1047 Hz) → E6 (1319 Hz) */
+      /* Dois tons suaves: C6 (1047 Hz) â†’ E6 (1319 Hz) */
       [{ f: 1046.5, t: 0, d: 0.18 }, { f: 1318.5, t: 0.13, d: 0.22 }].forEach(function (n) {
         var osc  = ctx.createOscillator();
         var gain = ctx.createGain();
@@ -1662,9 +1855,9 @@
     if (btn) btn.innerHTML = soundEnabled ? icoSound() : icoSoundOff();
   }
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      UI HELPERS
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function updateBadge() {
     var total = Object.values ? Object.values(channelUnread).reduce(function (a, b) { return a + b; }, 0) :
       Object.keys(channelUnread).reduce(function (a, k) { return a + channelUnread[k]; }, 0);
@@ -1682,7 +1875,7 @@
     var old = document.getElementById('exp-chat-toast');
     if (old) old.remove();
     var t = document.createElement('div');
-    t.id = 'exp-chat-toast'; t.className = 'chat-new-msg-toast'; t.textContent = '↓ Nova mensagem';
+    t.id = 'exp-chat-toast'; t.className = 'chat-new-msg-toast'; t.textContent = 'â†“ Nova mensagem';
     t.onclick = function () { scrollBottom(); t.remove(); };
     $panel.appendChild(t);
     setTimeout(function () { if (t.parentNode) t.remove(); }, 4000);
@@ -1719,13 +1912,13 @@
     var raw = String(error && (error.message || error.details || error.code) || 'Falha ao anexar print.');
     var lower = raw.toLowerCase();
     if (lower.indexOf('send_chat_message_with_temp_media') !== -1 || lower.indexOf('send_chat_thread_message_with_temp_media') !== -1) {
-      return 'A estrutura de prints do chat ainda nÃ£o estÃ¡ aplicada no banco.';
+      return 'A estrutura de prints do chat ainda nÃƒÂ£o estÃƒÂ¡ aplicada no banco.';
     }
     if (lower.indexOf('row-level security') !== -1 || lower.indexOf('access denied') !== -1) {
-      return 'Seu usuÃ¡rio nÃ£o conseguiu gravar este print no storage/chat.';
+      return 'Seu usuÃƒÂ¡rio nÃƒÂ£o conseguiu gravar este print no storage/chat.';
     }
     if (lower.indexOf('bucket') !== -1 || lower.indexOf('storage') !== -1) {
-      return 'NÃ£o foi possÃ­vel subir o print para o storage.';
+      return 'NÃƒÂ£o foi possÃƒÂ­vel subir o print para o storage.';
     }
     return raw;
   }
@@ -1733,7 +1926,7 @@
   function previewFirstLine(text) {
     var line = String(text || '').split(/\r?\n/)[0].trim();
     if (isImageOnlySentinel(line)) return 'Print anexado';
-    if (line.length > 70) return line.substring(0, 70) + '…';
+    if (line.length > 70) return line.substring(0, 70) + 'â€¦';
     return line || 'Nova mensagem';
   }
 
@@ -1743,7 +1936,7 @@
       return { channel: msg.channel, label: pmeta.label, iniciais: pmeta.iniciais, cor: pmeta.cor, preview: previewFirstLine(msg.content) };
     }
     if (msg.channel === 'general') return { channel: 'general', label: '# geral', iniciais: '#', cor: '#1D6A4A', preview: previewFirstLine(msg.content) };
-    if (msg.channel === 'socios') return { channel: 'socios', label: '# sócios', iniciais: '#', cor: '#C4831A', preview: previewFirstLine(msg.content) };
+    if (msg.channel === 'socios') return { channel: 'socios', label: '# sÃ³cios', iniciais: '#', cor: '#C4831A', preview: previewFirstLine(msg.content) };
     var meta = getConversationMeta(msg, user.auth_id);
     return { channel: msg.channel, label: meta.label, iniciais: meta.iniciais, cor: meta.cor, preview: previewFirstLine(msg.content) };
   }
@@ -1815,7 +2008,7 @@
 
   function getChannelLabel(channel) {
     if (channel === 'general') return '# geral';
-    if (channel === 'socios') return '# sócios';
+    if (channel === 'socios') return '# sÃ³cios';
     if (isProjectChannel(channel) && projectThreadMeta[channel]) return projectThreadMeta[channel].label;
     return currentLabel || '# geral';
   }
@@ -1970,7 +2163,7 @@
           return result;
         })
         .then(function (result) {
-          if (!result.blob) throw new Error('NÃ£o foi possÃ­vel preparar o print.');
+          if (!result.blob) throw new Error('NÃƒÂ£o foi possÃƒÂ­vel preparar o print.');
           if (result.blob.size > maxBytes) {
             return rasterizeChatMedia(
               img,
@@ -1982,9 +2175,9 @@
           return result;
         })
         .then(function (result) {
-          if (!result.blob) throw new Error('NÃ£o foi possÃ­vel comprimir o print.');
+          if (!result.blob) throw new Error('NÃƒÂ£o foi possÃƒÂ­vel comprimir o print.');
           if (result.blob.size > maxBytes) {
-            throw new Error('O print ficou pesado demais mesmo apÃ³s compressÃ£o.');
+            throw new Error('O print ficou pesado demais mesmo apÃƒÂ³s compressÃƒÂ£o.');
           }
           return {
             blob: result.blob,
@@ -2007,7 +2200,7 @@
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
-        reject(new Error('Arquivo de imagem invÃ¡lido.'));
+        reject(new Error('Arquivo de imagem invÃƒÂ¡lido.'));
       };
       img.src = url;
     });
@@ -2128,7 +2321,13 @@
         var rows = r.data || [];
         return Promise.all(rows.map(function (row) {
           return sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function (down) {
-            if (down.error || !down.data) return null;
+            if (down.error || !down.data) {
+              return {
+                key: mediaKeyFor(contextType, row.contexto_id),
+                messageId: row.contexto_id,
+                media: Object.assign({}, row, { objectUrl: null, pending: false, failed_load: true })
+              };
+            }
             return {
               key: mediaKeyFor(contextType, row.contexto_id),
               messageId: row.contexto_id,
@@ -2153,28 +2352,82 @@
     if (!messages.some(function (msg) { return msg.id === row.contexto_id; })) return;
     if (messageMediaMap[mediaKeyFor(expectedType, row.contexto_id)]) return;
     sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function (down) {
-      if (down.error || !down.data) return;
-      assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
-        objectUrl: URL.createObjectURL(down.data),
-        pending: false
-      }));
+      if (down.error || !down.data) {
+        assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
+          objectUrl: null,
+          pending: false,
+          failed_load: true
+        }));
+      } else {
+        assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
+          objectUrl: URL.createObjectURL(down.data),
+          pending: false,
+          failed_load: false
+        }));
+      }
       if (isOpen && currentView === 'channel') renderMessages();
     });
   }
 
-  function openMediaViewer(mediaKey) {
-    var media = messageMediaMap[mediaKey] || null;
+  function getMediaViewerGalleryKeys() {
+    return messages.map(function (msg) {
+      var media = getMessageMedia(msg);
+      return media && media.objectUrl ? mediaKeyForMessage(msg) : null;
+    }).filter(Boolean);
+  }
+
+  function syncMediaViewerFrame() {
     var viewer = document.getElementById('exp-chat-media-viewer');
     var img = document.getElementById('exp-chat-media-viewer-img');
     var empty = document.getElementById('exp-chat-media-viewer-empty');
     var title = document.getElementById('exp-chat-media-viewer-title');
-    if (!viewer || !img || !empty || !media) return;
-    mediaViewerState = { mediaKey: mediaKey };
+    var count = document.getElementById('exp-chat-media-viewer-count');
+    var prevBtn = document.getElementById('exp-chat-media-viewer-prev');
+    var nextBtn = document.getElementById('exp-chat-media-viewer-next');
+    if (!viewer || !img || !empty || !mediaViewerState) return;
+    var gallery = mediaViewerState.gallery || [];
+    var index = Math.max(0, Math.min(Number(mediaViewerState.index || 0), Math.max(gallery.length - 1, 0)));
+    mediaViewerState.index = index;
+    var mediaKey = gallery[index] || mediaViewerState.mediaKey;
+    var media = mediaKey ? (messageMediaMap[mediaKey] || null) : null;
+    mediaViewerState.mediaKey = mediaKey;
+    mediaViewerState.baseWidth = Number(media && media.width_px || 0) || null;
     if (title) title.textContent = getChannelLabel(currentChannel) || 'Print do chat';
-    img.style.display = media.objectUrl ? 'block' : 'none';
-    if (media.objectUrl) img.src = media.objectUrl;
-    empty.textContent = media.objectUrl ? '' : 'NÃ£o foi possÃ­vel carregar este print.';
+    if (count) count.textContent = (gallery.length ? (index + 1) : 1) + '/' + Math.max(gallery.length, 1);
+    if (prevBtn) {
+      prevBtn.style.display = gallery.length > 1 ? 'flex' : 'none';
+      prevBtn.disabled = index <= 0;
+    }
+    if (nextBtn) {
+      nextBtn.style.display = gallery.length > 1 ? 'flex' : 'none';
+      nextBtn.disabled = index >= gallery.length - 1;
+    }
+    img.style.display = media && media.objectUrl ? 'block' : 'none';
+    if (media && media.objectUrl) img.src = media.objectUrl;
+    else img.removeAttribute('src');
+    empty.style.display = media && media.objectUrl ? 'none' : 'block';
+    empty.textContent = media && media.objectUrl ? '' : 'Não foi possível carregar este print.';
     viewer.style.display = 'flex';
+    updateMediaViewerZoom();
+  }
+
+  function openMediaViewer(mediaKey) {
+    var media = messageMediaMap[mediaKey] || null;
+    if (!media) return;
+    var gallery = getMediaViewerGalleryKeys();
+    var index = gallery.indexOf(mediaKey);
+    if (index === -1) {
+      gallery = [mediaKey];
+      index = 0;
+    }
+    mediaViewerState = {
+      mediaKey: mediaKey,
+      gallery: gallery,
+      index: index,
+      zoom: 1,
+      baseWidth: Number(media.width_px || 0) || null
+    };
+    syncMediaViewerFrame();
   }
 
   function closeMediaViewer() {
@@ -2182,12 +2435,68 @@
     var viewer = document.getElementById('exp-chat-media-viewer');
     var img = document.getElementById('exp-chat-media-viewer-img');
     var empty = document.getElementById('exp-chat-media-viewer-empty');
+    var zoomLabel = document.getElementById('exp-chat-media-viewer-zoom-label');
     if (img) {
       img.removeAttribute('src');
       img.style.display = 'none';
+      img.style.width = '';
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = 'calc(100vh - 180px)';
     }
-    if (empty) empty.textContent = 'Carregando imagem…';
+    if (empty) empty.textContent = 'Carregando imagemâ€¦';
+    if (zoomLabel) zoomLabel.textContent = '100%';
     if (viewer) viewer.style.display = 'none';
+  }
+
+  function prevMediaViewer() {
+    if (!mediaViewerState || !mediaViewerState.gallery || mediaViewerState.index <= 0) return;
+    mediaViewerState.index -= 1;
+    mediaViewerState.zoom = 1;
+    syncMediaViewerFrame();
+  }
+
+  function nextMediaViewer() {
+    if (!mediaViewerState || !mediaViewerState.gallery || mediaViewerState.index >= mediaViewerState.gallery.length - 1) return;
+    mediaViewerState.index += 1;
+    mediaViewerState.zoom = 1;
+    syncMediaViewerFrame();
+  }
+
+  function updateMediaViewerZoom() {
+    var img = document.getElementById('exp-chat-media-viewer-img');
+    var zoomLabel = document.getElementById('exp-chat-media-viewer-zoom-label');
+    if (!img || !mediaViewerState) return;
+    var zoom = Math.max(1, Math.min(Number(mediaViewerState.zoom || 1), 4));
+    mediaViewerState.zoom = zoom;
+    if (zoomLabel) zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    if (zoom <= 1.001) {
+      img.style.width = '';
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = 'calc(100vh - 180px)';
+      return;
+    }
+    var baseWidth = Number(mediaViewerState.baseWidth || img.naturalWidth || img.clientWidth || 720);
+    img.style.maxWidth = 'none';
+    img.style.maxHeight = 'none';
+    img.style.width = Math.round(baseWidth * zoom) + 'px';
+  }
+
+  function zoomInMediaViewer() {
+    if (!mediaViewerState) return;
+    mediaViewerState.zoom = Math.min(4, Number(mediaViewerState.zoom || 1) + 0.25);
+    updateMediaViewerZoom();
+  }
+
+  function zoomOutMediaViewer() {
+    if (!mediaViewerState) return;
+    mediaViewerState.zoom = Math.max(1, Number(mediaViewerState.zoom || 1) - 0.25);
+    updateMediaViewerZoom();
+  }
+
+  function resetMediaViewerZoom() {
+    if (!mediaViewerState) return;
+    mediaViewerState.zoom = 1;
+    updateMediaViewerZoom();
   }
 
   function fetchProjectHomeItems(uid) {
@@ -2273,7 +2582,7 @@
           { channel: 'general', label: '# geral', iniciais: '#', cor: '#1D6A4A', avatarUrl: null, kind: 'Canal' }
         ];
         if (isSocioLikeRole(user.role)) {
-          items.push({ channel: 'socios', label: '# sócios', iniciais: '#', cor: '#C4831A', avatarUrl: null, kind: 'Canal privado' });
+          items.push({ channel: 'socios', label: '# sÃ³cios', iniciais: '#', cor: '#C4831A', avatarUrl: null, kind: 'Canal privado' });
         }
         msgs.forEach(function (m) {
           if (!isDynamicChannel(m.channel) || !channelHasUser(m.channel, uid) || seen[m.channel]) return;
@@ -2313,7 +2622,7 @@
           var meta = msg.channel === 'general'
             ? { label: '# geral', iniciais: '#', cor: '#1D6A4A', avatarUrl: null }
             : msg.channel === 'socios'
-              ? { label: '# sócios', iniciais: '#', cor: '#C4831A', avatarUrl: null }
+              ? { label: '# sÃ³cios', iniciais: '#', cor: '#C4831A', avatarUrl: null }
               : getConversationMeta(msg, uid);
           return {
             channel: msg.channel,
@@ -2484,9 +2793,9 @@
   function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 80) + 'px'; }
   function handleKey(e)   { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
 
-  /* ══════════════════════════════════════════════════════════════════
-     API PÚBLICA
-  ══════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     API PÃšBLICA
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   window.expChat = {
     toggle:          toggle,
     open:            open,
@@ -2503,8 +2812,14 @@
     searchInput:     searchInput,
     pickMedia:       pickMedia,
     handleMediaInput: handleMediaInput,
+    retryMediaIssue: retryMediaIssue,
     openMediaViewer: openMediaViewer,
     closeMediaViewer: closeMediaViewer,
+    prevMediaViewer: prevMediaViewer,
+    nextMediaViewer: nextMediaViewer,
+    zoomInMediaViewer: zoomInMediaViewer,
+    zoomOutMediaViewer: zoomOutMediaViewer,
+    resetMediaViewerZoom: resetMediaViewerZoom,
     toggleProjectSection: toggleProjectSection,
     startDM:         startDM,
     toggleMember:    toggleMember,
@@ -2517,9 +2832,9 @@
     }
   };
 
-  /* ══════════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      BOOT
-  ══════════════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function boot() {
     if (typeof supabase === 'undefined') { setTimeout(boot, 200); return; }
     init();

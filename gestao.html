@@ -9093,6 +9093,13 @@ function abrirSolicitarRevisaoColabProd(prodId) {
           referencia_id: etapaId, lida: false
         });
       }
+      const { count: cntP } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
+      await sb.from('revisoes').insert({
+        etapa_id: etapaId,
+        numero: (cntP || 0) + 1,
+        aberta_por: G.usuario.id,
+        status: 'aberta'
+      });
       await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
       pop.remove();
       toast('Revisão solicitada — coordenador notificado');
@@ -9198,6 +9205,15 @@ function abrirSolicitarRevisaoColab() {
           lida: false
         });
       }
+
+      // Cria revisão vazia (aparece na lista, coordenador preenche as pranchas)
+      const { count } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
+      await sb.from('revisoes').insert({
+        etapa_id: etapaId,
+        numero: (count || 0) + 1,
+        aberta_por: G.usuario.id,
+        status: 'aberta'
+      });
 
       // Atualiza status da etapa
       await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
@@ -10099,8 +10115,14 @@ async function concluirEtapa(etapaId) {
 }
 
 async function solicitarRevisao(etapaId) {
+  const { count: cntK } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
+  await sb.from('revisoes').insert({
+    etapa_id: etapaId,
+    numero: (cntK || 0) + 1,
+    aberta_por: G.usuario.id,
+    status: 'aberta'
+  });
   await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
-  // Slack placeholder
   console.log('[SLACK] Revisão solicitada para etapa', etapaId);
   toast('Revisão solicitada — coordenador notificado');
   await carregarProdutos();
@@ -14497,9 +14519,11 @@ function _projHistClienteSigla(nome) {
 
 function sugerirTituloChatProjeto(prodId) {
   const prod = G.todosProdutos.find(p => p.id === prodId) || G._todosProdutosGestao.find(p => p.id === prodId);
-  const cliente = prod?.oportunidades?.clientes?.nome || '';
+  const cliObj = prod?.oportunidades?.clientes;
+  // Prefere sigla salva no cadastro; cai no gerador automático se não tiver
+  const sigla = cliObj?.sigla?.trim() || _projHistClienteSigla(cliObj?.nome || '');
   const oportunidade = prod?.oportunidades?.projeto || prod?.nome || 'Projeto';
-  return `${_projHistClienteSigla(cliente)}-${oportunidade}`;
+  return `${sigla}-${oportunidade}`;
 }
 
 function _projHistChatDisplayTitle(prodId) {
