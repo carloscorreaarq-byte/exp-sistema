@@ -1800,6 +1800,7 @@ async function salvarMeusDados() {
 
   setMeusDadosStatus('Salvando dados...');
 
+  try {
   const nomeCompleto = document.getElementById('md-nome-completo').value.trim();
   const apelido = document.getElementById('md-apelido').value.trim();
   const usuarioPayload = {
@@ -1860,6 +1861,10 @@ async function salvarMeusDados() {
   }
 
   setMeusDadosStatus('Dados salvos com sucesso.');
+  } catch (err) {
+    console.error('[salvarMeusDados]', err);
+    setMeusDadosStatus('Erro inesperado ao salvar. Tente novamente.');
+  }
 }
 
 function abrirGestaoPlataformaStub() {
@@ -1913,8 +1918,12 @@ function bindSessionLifecycle() {
     if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
       const usuario = await fetchCurrentUsuario(session.user.id);
       if (!usuario) {
-        await sb.auth.signOut();
-        redirectToLogin();
+        // TOKEN_REFRESHED e USER_UPDATED são eventos de background — não redirecionar por
+        // falha transitória na busca do usuário (evita logout durante preenchimento de formulário).
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          await sb.auth.signOut();
+          redirectToLogin();
+        }
         return;
       }
       const payload = buildExpUsuarioPayload(session.user.id, usuario);
