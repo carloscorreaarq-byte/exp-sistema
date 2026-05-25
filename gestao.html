@@ -1429,14 +1429,14 @@ body {
 }
 .tarefa-item:last-child { border-bottom: none; }
 .tarefa-check {
-  width: 16px; height: 16px; border: 1px solid var(--cinza);
-  flex-shrink: 0; cursor: pointer;
+  width: 15px; height: 15px; border: 1.5px solid var(--cinza);
+  border-radius: 4px; flex-shrink: 0; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all .12s;
 }
-.tarefa-check:hover { border-color: var(--verde); }
+.tarefa-check:hover { border-color: var(--verde); background: var(--verde-bg); }
 .tarefa-check.done { background: var(--verde); border-color: var(--verde); }
-.tarefa-check.done::after { content: '✓'; font-size: 10px; color: #fff; font-weight: 700; }
+.tarefa-check.done::after { content: '✓'; font-size: 9px; color: #fff; font-weight: 700; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
 .tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0;width:46px;justify-content:flex-end}
@@ -9556,18 +9556,16 @@ function editarTarefaRevisao(id, pranchaId) {
   const descEl = item.querySelector('.tarefa-desc');
   if (!descEl) return;
   const textoAtual = descEl.textContent;
-  const tId = JSON.stringify(id);
-  const pId = JSON.stringify(pranchaId);
-  // Substitui a linha por um textarea inline + botões salvar/cancelar
+  // UUIDs só têm hex+hífen — aspas simples são seguras aqui
   item.innerHTML = `
     <textarea class="tarefa-edit-ta" rows="2"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();salvarEdicaoTarefaRevisao(${tId},${pId},this)}else if(event.key==='Escape'){cancelarEdicaoTarefaRevisao(${tId},${pId})}"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();salvarEdicaoTarefaRevisao('${id}','${pranchaId}',this)}else if(event.key==='Escape'){cancelarEdicaoTarefaRevisao('${id}','${pranchaId}')}"
       style="flex:1;resize:none;padding:3px 6px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--grafite);border-radius:4px;outline:none;background:var(--branco);color:var(--grafite);line-height:1.4">${textoAtual}</textarea>
     <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
-      <button onclick="salvarEdicaoTarefaRevisao(${tId},${pId},this.closest('.tarefa-item').querySelector('textarea'))"
-        style="background:none;border:none;color:var(--verde);font-size:14px;cursor:pointer;padding:0 3px" title="Salvar">✓</button>
-      <button onclick="cancelarEdicaoTarefaRevisao(${tId},${pId})"
-        style="background:none;border:none;color:#aaa;font-size:14px;cursor:pointer;padding:0 3px" title="Cancelar">✕</button>
+      <button onclick="salvarEdicaoTarefaRevisao('${id}','${pranchaId}',this.closest('.tarefa-item').querySelector('textarea'))"
+        class="btn sm verde" style="padding:2px 8px;font-size:11px" title="Salvar">✓</button>
+      <button onclick="cancelarEdicaoTarefaRevisao('${id}','${pranchaId}')"
+        class="btn sm" style="padding:2px 8px;font-size:11px" title="Cancelar">✕</button>
     </div>`;
   item.style.alignItems = 'flex-start';
   item.querySelector('textarea').focus();
