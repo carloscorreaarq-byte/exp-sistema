@@ -1960,6 +1960,10 @@ body {
 .reg-check-add{display:flex;gap:6px;margin-top:8px}
 .reg-check-add input{flex:1;padding:4px 8px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);border-radius:4px;outline:none}
 .reg-check-add input:focus{border-color:var(--grafite)}
+.reg-check-edit-btn{background:none;border:none;cursor:pointer;color:transparent;font-size:12px;padding:0 2px;line-height:1;transition:color .12s;flex-shrink:0}
+.reg-check-item:hover .reg-check-edit-btn{color:#bbb}
+.reg-check-edit-btn:hover{color:var(--grafite) !important}
+.reg-check-inline-input{flex:1;padding:1px 5px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--grafite);border-radius:3px;outline:none;background:var(--branco);color:var(--grafite)}
 .reg-coment-item{display:flex;gap:8px;margin-bottom:10px}
 .reg-coment-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
 .reg-coment-bubble{flex:1}
@@ -14956,10 +14960,10 @@ function _renderEncsPanel(r) {
     const who = checked && enc.concluido_por_nome
       ? `<div class="reg-check-who">✓ ${_regEsc(enc.concluido_por_nome)} · ${fmtDate(enc.concluido_em, true)}</div>` : '';
     return `
-      <div class="reg-check-item">
+      <div class="reg-check-item" data-enc-id="${enc.id}">
         <input type="checkbox" class="reg-check-cb" ${checked?'checked':''} onchange="toggleEncaminhamento(${_sqReg(enc.id)},this.checked,${_sqReg(r.id)})">
         <div style="flex:1">
-          <div style="display:flex;align-items:center">${_regAtribAvatar(enc)}<span class="reg-check-txt${checked?' done':''}">${_regEsc(enc.texto)}</span></div>
+          <div style="display:flex;align-items:center;gap:4px">${_regAtribAvatar(enc)}<span class="reg-check-txt${checked?' done':''}">${_regEsc(enc.texto)}</span><button class="reg-check-edit-btn" onclick="editarEncaminhamento(${_sqReg(enc.id)},${_sqReg(r.id)})" title="Editar">✎</button></div>
           ${who}
         </div>
       </div>`;
@@ -15133,6 +15137,51 @@ async function toggleEncaminhamento(encId, checked, entradaId) {
       panel.innerHTML = hdrHtml + _renderEncsPanel(r);
     }
   }
+}
+
+// ── Edição inline de item de checklist ──────────────────────
+function editarEncaminhamento(encId, entradaId) {
+  const item = document.querySelector(`.reg-check-item[data-enc-id="${encId}"]`);
+  if (!item) return;
+  const txtSpan = item.querySelector('.reg-check-txt');
+  if (!txtSpan) return;
+  const textoAtual = txtSpan.textContent;
+  const row = txtSpan.closest('div[style*="display:flex"]');
+  const eId = JSON.stringify(encId);
+  const rId = JSON.stringify(entradaId);
+  row.innerHTML =
+    `<input class="reg-check-inline-input" value="${_regAttr(textoAtual)}"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();salvarEdicaoEnc(${eId},${rId},this)}else if(event.key==='Escape'){cancelarEdicaoEnc(${eId},${rId})}">
+    <button onclick="salvarEdicaoEnc(${eId},${rId},this.previousElementSibling)" style="background:none;border:none;color:var(--verde);font-size:13px;cursor:pointer;padding:0 3px" title="Salvar">✓</button>
+    <button onclick="cancelarEdicaoEnc(${eId},${rId})" style="background:none;border:none;color:#ccc;font-size:13px;cursor:pointer;padding:0 3px" title="Cancelar">✕</button>`;
+  const inp = row.querySelector('input');
+  inp.focus(); inp.select();
+}
+
+async function salvarEdicaoEnc(encId, entradaId, inputEl) {
+  const novoTexto = inputEl.value.trim();
+  if (!novoTexto) return;
+  const { error } = await sb.from('reg_encaminhamento').update({ texto: novoTexto }).eq('id', encId);
+  if (error) { toast('Erro ao salvar.'); return; }
+  const r = G._registros.find(x => x.id === entradaId);
+  if (r) {
+    const enc = (r.reg_encaminhamento||[]).find(e => e.id === encId);
+    if (enc) enc.texto = novoTexto;
+  }
+  _reRenderEncPanel(entradaId);
+}
+
+function cancelarEdicaoEnc(encId, entradaId) {
+  _reRenderEncPanel(entradaId);
+}
+
+function _reRenderEncPanel(entradaId) {
+  const panel = document.getElementById(`rp-check-${entradaId}`);
+  if (!panel) return;
+  const hdr = panel.querySelector('div:first-child');
+  const hdrHtml = hdr ? hdr.outerHTML : '';
+  const r = G._registros.find(x => x.id === entradaId);
+  panel.innerHTML = hdrHtml + (r ? _renderEncsPanel(r) : '');
 }
 
 // ── Form de nova/editar entrada ─────────────────────────────
