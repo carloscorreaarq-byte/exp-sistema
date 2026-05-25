@@ -867,15 +867,19 @@ body {
 
 /* Grupo no gantt */
 .gantt-grupo-row td {
-  background: var(--cinza2); padding: 5px 10px;
-  font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  color: #777; border-bottom: 1px solid var(--cinza);
+  background: var(--cinza2); padding: 6px 10px;
+  font-size: 11px; font-weight: 700;
+  color: var(--grafite); border-bottom: 1px solid var(--cinza);
 }
 .gantt-prod-row td { border-bottom: 1px solid var(--cinza2); vertical-align: middle; height: 44px; max-height: 44px; }
-.gantt-prod-row:hover td { background: #fafaf8; }
+.gantt-prod-row:hover td { background: var(--off); }
 .gantt-prod-row td.info-cell {
-  padding: 6px 10px; border-right: 1px solid var(--cinza);
-  min-width: 260px; width: 260px; overflow: hidden;
+  padding: 6px 10px 6px 14px; border-right: 1px solid var(--cinza);
+  min-width: 260px; width: 260px; overflow: hidden; position: relative;
+}
+.gantt-type-accent {
+  position: absolute; left: 0; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 3px 3px 0;
 }
 .gantt-prod-nome { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
 .gantt-prod-coord { font-size: 10px; color: #888; }
@@ -6787,14 +6791,11 @@ function renderGantt() {
 
       rows += `<tr class="gantt-prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto(${prodIdJs})`}">
         <td class="info-cell">
+          <div class="gantt-type-accent" style="background:${nc.dot}" title="${nucleoLabelDisp}"></div>
           <div style="display:flex;align-items:flex-start;gap:6px">
             <div style="flex:1;min-width:0">
               <div class="gantt-prod-nome" style="margin-bottom:1px">${oppProjetoDisp}</div>
               ${opp?.projeto ? `<div style="font-size:10px;color:#999;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prodNomeDisp}</div>` : ''}
-              <div style="display:flex;align-items:center;gap:4px">
-                <span class="badge ${nc.cls}" style="font-size:7px">${nucleoLabelDisp}</span>
-                ${p._crm ? '<span class="badge b-gr" style="font-size:7px">CRM</span>' : ''}
-              </div>
             </div>
             <div class="gantt-avs">${avsHtml}</div>
           </div>
