@@ -1641,7 +1641,7 @@
     var lockKey = msgId + '|' + type;
     if (reactionLocks[lockKey]) return;
     var uid = user.auth_id;
-    var rx  = msg.reactions || { like: [], love: [] };
+    var rx  = normalizeReactions(msg.reactions);
     var arr = (rx[type] || []).slice();
     var idx = arr.indexOf(uid);
     if (idx === -1) arr.push(uid); else arr.splice(idx, 1);
@@ -1711,7 +1711,7 @@
       var showFailed = !!msg.failed;
       var showLoadFailed = !!(media && media.failed_load);
 
-      var rx      = msg.reactions || { like: [], love: [] };
+      var rx      = normalizeReactions(msg.reactions);
       var likeArr = rx.like  || [];
       var loveArr = rx.love  || [];
       var liked   = likeArr.indexOf(uid) !== -1;
@@ -2066,6 +2066,20 @@
     projectThreadMeta[channel] = meta;
   }
 
+  function normalizeReactionList(value) {
+    if (Array.isArray(value)) return value.filter(Boolean).map(function (item) { return String(item); });
+    if (typeof value === 'string' && value) return [value];
+    return [];
+  }
+
+  function normalizeReactions(reactions) {
+    var base = reactions && typeof reactions === 'object' && !Array.isArray(reactions) ? reactions : {};
+    return {
+      like: normalizeReactionList(base.like),
+      love: normalizeReactionList(base.love)
+    };
+  }
+
   function normalizeProjectMessage(msg) {
     return {
       id: msg.id,
@@ -2077,7 +2091,7 @@
       sender_cor: msg.sender_cor,
       content: msg.content,
       created_at: msg.created_at,
-      reactions: msg.reactions || { like: [], love: [] }
+      reactions: normalizeReactions(msg.reactions)
     };
   }
 
@@ -2093,7 +2107,7 @@
       sender_cor: user.cor || '#1D6A4A',
       content: content,
       created_at: new Date().toISOString(),
-      reactions: { like: [], love: [] },
+      reactions: normalizeReactions(null),
       pending: true
     }, extra || {});
   }
@@ -2111,10 +2125,13 @@
 
   function upsertMessage(nextMsg) {
     if (!nextMsg || !nextMsg.id) return;
+    var normalizedMsg = Object.assign({}, nextMsg, {
+      reactions: normalizeReactions(nextMsg.reactions)
+    });
     var idx = messages.findIndex(function (m) { return m.id === nextMsg.id; });
-    if (idx === -1) idx = messages.findIndex(function (m) { return isMatchingPendingMessage(m, nextMsg); });
-    if (idx !== -1) messages[idx] = Object.assign({}, messages[idx], nextMsg, { pending: false });
-    else messages.push(nextMsg);
+    if (idx === -1) idx = messages.findIndex(function (m) { return isMatchingPendingMessage(m, normalizedMsg); });
+    if (idx !== -1) messages[idx] = Object.assign({}, messages[idx], normalizedMsg, { pending: false });
+    else messages.push(normalizedMsg);
     messages.sort(compareMessages);
   }
 
