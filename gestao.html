@@ -713,12 +713,18 @@ body {
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .proj-toolbar {
   display: flex; align-items: center; gap: 8px;
-  margin-bottom: 14px; flex-wrap: wrap;
+  margin-bottom: 14px; flex-wrap: nowrap;
 }
 .proj-filters {
-  display: flex; align-items: center; gap: 8px;
-  flex-wrap: wrap; flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: nowrap; flex: 1; min-width: 0;
 }
+#fil-busca        { flex: 1 1 0; min-width: 120px; }
+#fil-nucleo       { width: 118px; flex-shrink: 0; }
+#fil-gestao       { width: 100px; flex-shrink: 0; }
+#fil-status       { width: 110px; flex-shrink: 0; }
+#fil-coord        { width: 142px; flex-shrink: 0; }
+#fil-participante { width: 142px; flex-shrink: 0; }
 .proj-toolbar-action {
   margin-left: auto; display: flex; align-items: center;
 }
@@ -1525,7 +1531,7 @@ body {
 /* ── ETAPA EDIT ROW ─────────────────────────────────────── */
 .etapa-edit-row {
   background: var(--off); border: 1px solid var(--cinza); border-radius: 6px;
-  padding: 10px; display: flex; flex-direction: column; gap: 7px; cursor: default;
+  padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; cursor: default;
 }
 .etapa-edit-row input,
 .etapa-edit-row select {
@@ -1533,7 +1539,7 @@ body {
   border: 1px solid var(--cinza); font-family: var(--font-ui); outline: none;
 }
 .etapa-edit-row input[readonly] { background: var(--off); color: #888; cursor: default; }
-.etapa-edit-row label { font-size: 9px; color: #888; }
+.etapa-edit-row label { font-size: 8px; color: #aaa; letter-spacing: .3px; text-transform: uppercase; }
 
 /* ── RESULTADO / ANALYTICS POR ETAPA ────────────────── */
 .res-sumario {
@@ -2979,7 +2985,7 @@ body {
       <button class="pvt-btn" id="pvt-kanban" onclick="setProjetosView('kanban')">Kanban</button>
     </div>
     <div class="proj-filters" id="lista-filters">
-      <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto" style="min-width:280px">
+      <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto">
       <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
         <option value="">Todos os núcleos</option>
         <option value="urbanismo">Urbanismo</option>
@@ -13715,52 +13721,56 @@ function _renderEtapaEdicaoRow(e, devIds) {
   const isNova = !e.id;
   return `<div class="etapa-edit-row" data-etapa-id="${e.id || ''}" draggable="true"
     ondragstart="eeDragStart(event)" ondragover="eeDragOver(event)" ondrop="eeDrop(event)" ondragend="eeDragEnd()">
-    <div style="display:flex;gap:8px;align-items:center">
-      <span style="cursor:grab;font-size:14px;color:#ccc;flex-shrink:0;user-select:none" title="Arrastar para reordenar">⠿</span>
-      <input type="text" class="ee-nome" value="${e.nome || ''}" placeholder="Nome da etapa" style="flex:1;padding:4px 8px;font-size:12px;${!isNova ? 'font-weight:500' : ''}">
-      <select class="ee-status" style="padding:4px 7px;font-size:11px">
+    <div style="display:flex;gap:6px;align-items:center">
+      <span style="cursor:grab;font-size:12px;color:#ccc;flex-shrink:0;user-select:none" title="Arrastar para reordenar">⠿</span>
+      <input type="text" class="ee-nome" value="${e.nome || ''}" placeholder="Nome da etapa" style="flex:1;padding:3px 6px;font-size:11px;${!isNova ? 'font-weight:500' : ''}">
+      <select class="ee-status" style="padding:3px 6px;font-size:10px">
         <option value="nao_iniciada" ${e.status==='nao_iniciada'?'selected':''}>Não iniciada</option>
         <option value="em_andamento" ${e.status==='em_andamento'?'selected':''}>Em andamento</option>
         <option value="em_revisao"   ${e.status==='em_revisao'  ?'selected':''}>Em revisão</option>
         <option value="concluida"    ${e.status==='concluida'   ?'selected':''}>Concluída</option>
         <option value="pausada"      ${e.status==='pausada'     ?'selected':''}>Pausada</option>
       </select>
-      <button onclick="deletarEtapaRow(this)" title="Remover etapa" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#ccc'">×</button>
+      <button onclick="deletarEtapaRow(this)" title="Remover etapa" style="background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#ccc'">×</button>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:flex-end">
+      <div style="display:flex;flex-direction:column;gap:1px">
         <label>Liberação</label>
-        <input type="date" class="ee-lib" value="${e.data_liberacao||''}" oninput="recalcEstimada(this)" style="padding:3px 7px;font-size:11px">
+        <input type="date" class="ee-lib" value="${e.data_liberacao||''}" oninput="recalcEstimada(this)" style="padding:2px 5px;font-size:10px;width:112px">
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <label>Prazo (dias)</label>
-        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="—" min="1" oninput="recalcEstimada(this)" style="width:70px;padding:3px 7px;font-family:var(--font-mono);font-size:11px">
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <label>Prazo</label>
+        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="—" min="1" oninput="recalcEstimada(this)" style="width:52px;padding:2px 5px;font-family:var(--font-mono);font-size:10px">
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <label>Tipo prazo</label>
-        <select class="ee-ptipo" onchange="recalcEstimada(this)" style="padding:3px 7px;font-size:11px">
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <label>Tipo</label>
+        <select class="ee-ptipo" onchange="recalcEstimada(this)" style="padding:2px 5px;font-size:10px;width:76px">
           <option value="corridos" ${(e.prazo_tipo||'corridos')==='corridos'?'selected':''}>Corridos</option>
           <option value="uteis"    ${e.prazo_tipo==='uteis'?'selected':''}>Úteis</option>
         </select>
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <label>Estimada (auto)</label>
-        <input type="date" class="ee-est" value="${e.data_estimada||''}" readonly style="padding:3px 7px;font-size:11px">
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <label>Estimada</label>
+        <input type="date" class="ee-est" value="${e.data_estimada||''}" readonly style="padding:2px 5px;font-size:10px;width:112px">
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <label style="color:var(--verde)">Concluída</label>
+        <input type="date" class="ee-conclusao" value="${e.data_conclusao||''}" style="padding:2px 5px;font-size:10px;width:112px;${e.data_conclusao ? 'border-color:var(--verde);color:var(--verde)' : ''}">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
         <label>Dev 1</label>
-        <select class="ee-dev1" style="padding:3px 7px;font-size:11px;min-width:110px">${_epUserOpts(dev1)}</select>
+        <select class="ee-dev1" style="padding:2px 5px;font-size:10px;width:100%">${_epUserOpts(dev1)}</select>
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
         <label>Dev 2</label>
-        <select class="ee-dev2" style="padding:3px 7px;font-size:11px;min-width:110px">${_epUserOpts(dev2)}</select>
+        <select class="ee-dev2" style="padding:2px 5px;font-size:10px;width:100%">${_epUserOpts(dev2)}</select>
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;flex-direction:column;gap:1px">
         <label>% custo</label>
-        <div style="display:flex;align-items:center;gap:3px">
+        <div style="display:flex;align-items:center;gap:2px">
           <input type="number" class="ee-pct" value="${e.percentual_custo != null ? e.percentual_custo : ''}" placeholder="—" min="0" max="100" step="0.1"
-            oninput="_recalcPctTotal()" style="width:60px;padding:3px 7px;font-family:var(--font-mono);font-size:11px">
-          <span style="font-size:11px;color:#888">%</span>
+            oninput="_recalcPctTotal()" style="width:48px;padding:2px 5px;font-family:var(--font-mono);font-size:10px">
+          <span style="font-size:10px;color:#aaa">%</span>
         </div>
       </div>
     </div>
@@ -13971,7 +13981,8 @@ async function salvarEdicaoProduto() {
       const ePTipo   = row.querySelector('.ee-ptipo').value || 'corridos';
       const eDev1    = row.querySelector('.ee-dev1').value || null;
       const eDev2    = row.querySelector('.ee-dev2').value || null;
-      const ePct     = row.querySelector('.ee-pct')?.value !== '' ? parseFloat(row.querySelector('.ee-pct').value) : null;
+      const ePct       = row.querySelector('.ee-pct')?.value !== '' ? parseFloat(row.querySelector('.ee-pct').value) : null;
+      const eConclusao = row.querySelector('.ee-conclusao')?.value || null;
       if (!eNome) continue;
 
       if (etapaId) {
@@ -13984,6 +13995,7 @@ async function salvarEdicaoProduto() {
           prazo_tipo: ePTipo,
           data_liberacao: eLib,
           data_estimada: eEst,
+          data_conclusao: eConclusao,
           coordenador_id: coordId,
           percentual_custo: ePct,
           updated_at: new Date().toISOString()
@@ -14010,6 +14022,7 @@ async function salvarEdicaoProduto() {
           coordenador_id: coordId,
           data_liberacao: eLib,
           data_estimada: eEst,
+          data_conclusao: eConclusao,
           percentual_custo: ePct
         }).select().single();
         if (eNovaEtapa) { toast('Erro ao criar etapa "' + eNome + '": ' + eNovaEtapa.message); return; }
