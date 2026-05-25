@@ -477,7 +477,6 @@
               '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
             '</div>' +
-            '</div>' +
           '</div>' +
           '<div class="chat-conv-list" id="exp-chat-convlist"><div class="chat-loading">' + ldots() + '</div></div>' +
         '</div>' +
