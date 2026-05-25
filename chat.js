@@ -187,8 +187,10 @@
     '.chat-composer-status.warn{color:#B84C3A}',
     '.chat-media-viewer{position:fixed;inset:0;background:rgba(17,17,16,.58);display:none;align-items:center;justify-content:center;z-index:10020;padding:20px}',
     '.chat-media-viewer-card{width:min(780px, calc(100vw - 28px));max-height:calc(100vh - 36px);background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden}',
-    '.chat-media-viewer-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cinza2,#ECEAE4)}',
-    '.chat-media-viewer-title{flex:1;min-width:0;font-size:12px;font-weight:700;color:var(--grafite,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chat-media-viewer-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--cinza2,#ECEAE4)}',
+    '.chat-media-viewer-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}',
+    '.chat-media-viewer-title{min-width:0;font-family:"Raleway",sans-serif;font-size:13px;font-weight:700;color:var(--grafite,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chat-media-viewer-meta{font-family:"DM Mono",monospace;font-size:10px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-media-viewer-tools{display:flex;align-items:center;gap:6px}',
     '.chat-media-viewer-zoombtn{width:28px;height:28px;border-radius:9px;border:1px solid rgba(17,17,16,.08);background:#fff;color:var(--grafite,#111110);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}',
     '.chat-media-viewer-zoombtn:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
@@ -264,6 +266,7 @@
     '[data-theme="dark"] .chat-media-viewer-card{background:#1C1C1B}',
     '[data-theme="dark"] .chat-media-viewer-head{background:#252523}',
     '[data-theme="dark"] .chat-media-viewer-title{color:#F0EDE6}',
+    '[data-theme="dark"] .chat-media-viewer-meta{color:#B4AEA4}',
     '[data-theme="dark"] .chat-media-viewer-zoombtn{background:#2A2927;border-color:#3A3937;color:#F0EDE6}',
     '[data-theme="dark"] .chat-media-viewer-zoombtn:hover{border-color:#B7E2C8;color:#B7E2C8}',
     '[data-theme="dark"] .chat-media-viewer-zoomlabel{color:#B4AEA4}',
@@ -530,7 +533,10 @@
       '<div class="chat-media-viewer" id="exp-chat-media-viewer" style="display:none">' +
         '<div class="chat-media-viewer-card">' +
           '<div class="chat-media-viewer-head">' +
-            '<div class="chat-media-viewer-title" id="exp-chat-media-viewer-title">Print do chat</div>' +
+            '<div class="chat-media-viewer-copy">' +
+              '<div class="chat-media-viewer-title" id="exp-chat-media-viewer-title">Print do chat</div>' +
+              '<div class="chat-media-viewer-meta" id="exp-chat-media-viewer-meta">Autor · data · hora</div>' +
+            '</div>' +
             '<div class="chat-media-viewer-tools">' +
               '<span class="chat-media-viewer-count" id="exp-chat-media-viewer-count">1/1</span>' +
               '<button class="chat-media-viewer-zoombtn" onclick="expChat.zoomOutMediaViewer()" title="Diminuir zoom">-</button>' +
@@ -738,12 +744,12 @@
         (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
         '</div>';
 
-      /* Linha #sÃ³cios (apenas para role socio) */
+      /* Linha #sócios (apenas para role socio) */
       if (isSocioLikeRole(user.role)) {
         var socU = channelUnread['socios'] || 0;
-        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sÃ³cios\')">' +
+        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# s\u00F3cios\')">' +
           '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
-          '<div class="chat-conv-info"><div class="chat-conv-name">sÃ³cios</div><div class="chat-conv-preview">Canal privado</div></div>' +
+          '<div class="chat-conv-info"><div class="chat-conv-name">s\u00F3cios</div><div class="chat-conv-preview">Canal privado</div></div>' +
           (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
           '</div>';
       }
@@ -1631,6 +1637,7 @@
   function toggleReaction(msgId, type) {
     var msg = messages.find(function (m) { return m.id === msgId; });
     if (!msg) return;
+    var isProjectMsg = isProjectChannel(msg.channel);
     var lockKey = msgId + '|' + type;
     if (reactionLocks[lockKey]) return;
     var uid = user.auth_id;
@@ -1642,7 +1649,7 @@
     upd[type] = arr;
     msg.reactions = upd;
     renderMessages();
-    var rpcName = isProjectChannel(currentChannel) ? 'chat_thread_toggle_reaction' : 'chat_toggle_reaction';
+    var rpcName = isProjectMsg ? 'chat_thread_toggle_reaction' : 'chat_toggle_reaction';
     reactionLocks[lockKey] = true;
     sb.rpc(rpcName, { p_message_id: msgId, p_reaction: type })
       .then(function (r) {
@@ -1650,12 +1657,14 @@
           msg.reactions = rx;
           renderMessages();
           console.warn('[EXP Chat] Erro ao reagir:', r.error.message);
+          setComposerStatus('Não foi possível salvar a reação.', 'warn', true);
           return;
         }
         var updated = Array.isArray(r.data) ? r.data[0] : r.data;
         if (updated && updated.id) {
-          upsertMessage(isProjectChannel(currentChannel) ? normalizeProjectMessage(updated) : updated);
+          upsertMessage(isProjectMsg ? normalizeProjectMessage(updated) : updated);
         }
+        setComposerStatus('', '', false);
         renderMessages();
       })
       .finally(function () {
@@ -1935,7 +1944,7 @@
       return { channel: msg.channel, label: pmeta.label, iniciais: pmeta.iniciais, cor: pmeta.cor, preview: previewFirstLine(msg.content) };
     }
     if (msg.channel === 'general') return { channel: 'general', label: '# geral', iniciais: '#', cor: '#1D6A4A', preview: previewFirstLine(msg.content) };
-    if (msg.channel === 'socios') return { channel: 'socios', label: '# sÃ³cios', iniciais: '#', cor: '#C4831A', preview: previewFirstLine(msg.content) };
+    if (msg.channel === 'socios') return { channel: 'socios', label: '# s\u00F3cios', iniciais: '#', cor: '#C4831A', preview: previewFirstLine(msg.content) };
     var meta = getConversationMeta(msg, user.auth_id);
     return { channel: msg.channel, label: meta.label, iniciais: meta.iniciais, cor: meta.cor, preview: previewFirstLine(msg.content) };
   }
@@ -2007,7 +2016,7 @@
 
   function getChannelLabel(channel) {
     if (channel === 'general') return '# geral';
-    if (channel === 'socios') return '# sÃ³cios';
+    if (channel === 'socios') return '# s\u00F3cios';
     if (isProjectChannel(channel) && projectThreadMeta[channel]) return projectThreadMeta[channel].label;
     return currentLabel || '# geral';
   }
@@ -2375,11 +2384,26 @@
     }).filter(Boolean);
   }
 
+  function getMessageByMediaKey(mediaKey) {
+    return messages.find(function (msg) { return mediaKeyForMessage(msg) === mediaKey; }) || null;
+  }
+
+  function formatMediaViewerMeta(msg) {
+    if (!msg) return 'Print do chat';
+    var dt = msg.created_at ? new Date(msg.created_at) : null;
+    var when = dt && !isNaN(dt.getTime())
+      ? dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' · ' + fmtTime(dt)
+      : '';
+    var author = firstName(msg.sender_name || 'Equipe');
+    return when ? (author + ' · ' + when) : author;
+  }
+
   function syncMediaViewerFrame() {
     var viewer = document.getElementById('exp-chat-media-viewer');
     var img = document.getElementById('exp-chat-media-viewer-img');
     var empty = document.getElementById('exp-chat-media-viewer-empty');
     var title = document.getElementById('exp-chat-media-viewer-title');
+    var meta = document.getElementById('exp-chat-media-viewer-meta');
     var count = document.getElementById('exp-chat-media-viewer-count');
     var prevBtn = document.getElementById('exp-chat-media-viewer-prev');
     var nextBtn = document.getElementById('exp-chat-media-viewer-next');
@@ -2389,9 +2413,11 @@
     mediaViewerState.index = index;
     var mediaKey = gallery[index] || mediaViewerState.mediaKey;
     var media = mediaKey ? (messageMediaMap[mediaKey] || null) : null;
+    var msg = mediaKey ? getMessageByMediaKey(mediaKey) : null;
     mediaViewerState.mediaKey = mediaKey;
     mediaViewerState.baseWidth = Number(media && media.width_px || 0) || null;
     if (title) title.textContent = getChannelLabel(currentChannel) || 'Print do chat';
+    if (meta) meta.textContent = formatMediaViewerMeta(msg);
     if (count) count.textContent = (gallery.length ? (index + 1) : 1) + '/' + Math.max(gallery.length, 1);
     if (prevBtn) {
       prevBtn.style.display = gallery.length > 1 ? 'flex' : 'none';
@@ -2434,6 +2460,7 @@
     var viewer = document.getElementById('exp-chat-media-viewer');
     var img = document.getElementById('exp-chat-media-viewer-img');
     var empty = document.getElementById('exp-chat-media-viewer-empty');
+    var meta = document.getElementById('exp-chat-media-viewer-meta');
     var zoomLabel = document.getElementById('exp-chat-media-viewer-zoom-label');
     if (img) {
       img.removeAttribute('src');
@@ -2443,6 +2470,7 @@
       img.style.maxHeight = 'calc(100vh - 180px)';
     }
     if (empty) empty.textContent = 'Carregando imagemâ€¦';
+    if (meta) meta.textContent = 'Autor · data · hora';
     if (zoomLabel) zoomLabel.textContent = '100%';
     if (viewer) viewer.style.display = 'none';
   }
@@ -2581,7 +2609,7 @@
           { channel: 'general', label: '# geral', iniciais: '#', cor: '#1D6A4A', avatarUrl: null, kind: 'Canal' }
         ];
         if (isSocioLikeRole(user.role)) {
-          items.push({ channel: 'socios', label: '# sÃ³cios', iniciais: '#', cor: '#C4831A', avatarUrl: null, kind: 'Canal privado' });
+          items.push({ channel: 'socios', label: '# s\u00F3cios', iniciais: '#', cor: '#C4831A', avatarUrl: null, kind: 'Canal privado' });
         }
         msgs.forEach(function (m) {
           if (!isDynamicChannel(m.channel) || !channelHasUser(m.channel, uid) || seen[m.channel]) return;
@@ -2621,7 +2649,7 @@
           var meta = msg.channel === 'general'
             ? { label: '# geral', iniciais: '#', cor: '#1D6A4A', avatarUrl: null }
             : msg.channel === 'socios'
-              ? { label: '# sÃ³cios', iniciais: '#', cor: '#C4831A', avatarUrl: null }
+              ? { label: '# s\u00F3cios', iniciais: '#', cor: '#C4831A', avatarUrl: null }
               : getConversationMeta(msg, uid);
           return {
             channel: msg.channel,
