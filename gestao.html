@@ -9380,7 +9380,7 @@ function renderPrancha(pr, isSocioOrCoord) {
       ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs}, ${isSocioOrCoord ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
       : '';
     const camClass = mediaCount ? 'has-media' : 'is-empty';
-    return `<div class="tarefa-item">
+    return `<div class="tarefa-item" data-tarefa-id="${t.id}">
       <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
            ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Apenas o coordenador ou desenvolvedor do projeto pode marcar"'}
            style="${isSocioOrCoord ? '' : 'cursor:default;opacity:.6'}"></div>
@@ -9388,6 +9388,7 @@ function renderPrancha(pr, isSocioOrCoord) {
       ${mediaViewBtn}
       <div class="tarefa-item-tools">
         ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">📷</button>` : ''}
+        ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">✎</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act tc" type="button" title="Excluir tarefa" onclick="excluirTarefaRevisao('${t.id}', '${prId}')">✕</button>` : ''}
       </div>
     </div>`;
@@ -9547,6 +9548,42 @@ async function excluirTarefaRevisao(id, pranchaId) {
       toast('Erro ao excluir tarefa: ' + (err?.message || err));
     }
   });
+}
+
+function editarTarefaRevisao(id, pranchaId) {
+  const item = document.querySelector(`.tarefa-item[data-tarefa-id="${id}"]`);
+  if (!item) return;
+  const descEl = item.querySelector('.tarefa-desc');
+  if (!descEl) return;
+  const textoAtual = descEl.textContent;
+  const tId = JSON.stringify(id);
+  const pId = JSON.stringify(pranchaId);
+  // Substitui a linha por um textarea inline + botões salvar/cancelar
+  item.innerHTML = `
+    <textarea class="tarefa-edit-ta" rows="2"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();salvarEdicaoTarefaRevisao(${tId},${pId},this)}else if(event.key==='Escape'){cancelarEdicaoTarefaRevisao(${tId},${pId})}"
+      style="flex:1;resize:none;padding:3px 6px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--grafite);border-radius:4px;outline:none;background:var(--branco);color:var(--grafite);line-height:1.4">${textoAtual}</textarea>
+    <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
+      <button onclick="salvarEdicaoTarefaRevisao(${tId},${pId},this.closest('.tarefa-item').querySelector('textarea'))"
+        style="background:none;border:none;color:var(--verde);font-size:14px;cursor:pointer;padding:0 3px" title="Salvar">✓</button>
+      <button onclick="cancelarEdicaoTarefaRevisao(${tId},${pId})"
+        style="background:none;border:none;color:#aaa;font-size:14px;cursor:pointer;padding:0 3px" title="Cancelar">✕</button>
+    </div>`;
+  item.style.alignItems = 'flex-start';
+  item.querySelector('textarea').focus();
+  item.querySelector('textarea').select();
+}
+
+async function salvarEdicaoTarefaRevisao(id, pranchaId, inputEl) {
+  const novoTexto = inputEl.value.trim();
+  if (!novoTexto) return;
+  const { error } = await sb.from('tarefas_revisao').update({ descricao: novoTexto }).eq('id', id);
+  if (error) { toast('Erro ao salvar: ' + error.message); return; }
+  if (G._revisaoAtiva) await selecionarRevisao(G._revisaoAtiva);
+}
+
+async function cancelarEdicaoTarefaRevisao(id, pranchaId) {
+  if (G._revisaoAtiva) await selecionarRevisao(G._revisaoAtiva);
 }
 
 function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLabel = '', inputPlaceholder = '', textareaLabel = '', textareaPlaceholder = '', multiline = true }) {
