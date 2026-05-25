@@ -667,12 +667,46 @@ body {
 
 /* Agenda */
 .agenda-item {
-  padding: 7px 10px; border-left: 3px solid var(--cinza2);
-  margin-bottom: 6px; background: var(--branco); border: 1px solid var(--cinza2);
-  border-left: 3px solid var(--azul);
+  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--cinza2); border-left: 3px solid var(--azul);
+  margin-bottom: 4px; background: var(--branco);
+  transition: box-shadow .12s, border-color .12s;
 }
+.agenda-item:hover { box-shadow: 0 2px 6px rgba(0,0,0,.07); border-color: #bbb; }
+.agenda-item:last-child { margin-bottom: 0; }
 .agenda-hora { font-family: var(--font-mono); font-size: 9px; color: #888; margin-bottom: 2px; }
-.agenda-titulo { font-size: 12px; font-weight: 500; }
+.agenda-titulo { font-size: 11px; font-weight: 600; line-height: 1.3; }
+.agenda-subtag { font-size: 9px; color: #aaa; margin-top: 2px; }
+.agenda-dia-sep {
+  font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: #ccc; padding: 8px 0 5px; display: flex; align-items: center; gap: 6px;
+}
+.agenda-dia-sep:first-child { padding-top: 0; }
+.agenda-dia-sep::after { content: ''; flex: 1; height: 1px; background: var(--cinza2); }
+.agenda-dia-sep.hoje { color: var(--azul); }
+.agenda-vazio { text-align: center; padding: 20px 0; font-size: 11px; color: #bbb; }
+.agenda-sem-gcal { font-size: 10px; color: #bbb; padding: 8px 0 2px; text-align: center; }
+.agenda-mais { font-size: 9px; color: #bbb; text-align: center; padding: 6px 0 0; font-family: var(--font-mono); }
+/* Modal agenda evento */
+.agev-overlay {
+  display: none; position: fixed; inset: 0; background: var(--overlay-bg);
+  z-index: 700; align-items: center; justify-content: center; padding: 20px;
+}
+.agev-overlay.open { display: flex; }
+.agev-box {
+  background: var(--branco); border-radius: 10px; width: 100%; max-width: 380px;
+  box-shadow: var(--shadow-modal); border: 1px solid var(--cinza2); overflow: hidden;
+}
+.agev-cor { height: 4px; }
+.agev-body { padding: 16px 18px 18px; }
+.agev-titulo { font-size: 14px; font-weight: 700; letter-spacing: -.2px; margin-bottom: 4px; }
+.agev-row { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; color: #666; margin-bottom: 5px; line-height: 1.4; }
+.agev-row .agev-icon { font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+.agev-desc { font-size: 11px; color: #777; line-height: 1.55; margin: 10px 0 12px; border-top: 1px solid var(--cinza2); padding-top: 10px; white-space: pre-wrap; }
+.agev-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid var(--cinza2); padding-top: 12px; }
+.agev-close { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 18px; cursor: pointer; color: #bbb; font-family: var(--font-ui); line-height: 1; }
+.agev-close:hover { color: var(--grafite); }
+[data-theme="dark"] .agev-box { background: var(--branco); border-color: var(--cinza); }
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PROJETOS — LISTA
@@ -2396,15 +2430,14 @@ body {
 .cal-chip.cat-feriado.active     { background: var(--terracota); border-color: var(--terracota); }
 .cal-chip.cat-agenda.active      { background: #555;             border-color: #555; }
 .cal-chip.cat-aniversario.active { background: var(--ouro);      border-color: var(--ouro); }
-.cal-subview-bar {
-  display: flex; gap: 2px; background: var(--cinza2); border-radius: 7px; padding: 2px; width: fit-content;
-}
+.cal-subview-bar { display: flex; border: 1px solid var(--cinza); border-radius: 6px; overflow: hidden; }
 .cal-sv-btn {
-  font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
-  padding: 4px 14px; border: none; background: transparent; color: #888;
-  border-radius: 5px; cursor: pointer; transition: all .15s; font-family: var(--font-ui);
+  padding: 5px 14px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; border: none; background: var(--branco); color: #888;
+  cursor: pointer; font-family: var(--font-ui); transition: all .12s;
 }
-.cal-sv-btn.active { background: var(--branco); color: var(--grafite); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.cal-sv-btn + .cal-sv-btn { border-left: 1px solid var(--cinza2); }
+.cal-sv-btn.active { background: var(--grafite); color: #fff; }
 /* Lista */
 .cal-list { display: flex; flex-direction: column; gap: 4px; }
 .cal-section-hd {
@@ -2502,7 +2535,7 @@ body {
 /* Modal calendário */
 .cal-modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); z-index: 8000; display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
 .cal-modal-overlay.open { display: flex; }
-.cal-modal-box { background: var(--branco); border-radius: 10px; border: 1px solid var(--cinza); width: 100%; max-width: 480px; display: flex; flex-direction: column; overflow: hidden; animation: mIn .2s ease both; }
+.cal-modal-box { background: var(--branco); border-radius: 10px; border: 1px solid var(--cinza); width: 100%; max-width: 520px; display: flex; flex-direction: column; overflow: hidden; animation: mIn .2s ease both; }
 .cal-modal-hd { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--cinza2); }
 .cal-modal-title { font-size: 13px; font-weight: 700; }
 .cal-modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #aaa; line-height: 1; font-family: var(--font-ui); }
@@ -2510,7 +2543,7 @@ body {
 .cal-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow-y: auto; }
 .cal-modal-ft { padding: 12px 18px; border-top: 1px solid var(--cinza2); display: flex; justify-content: flex-end; gap: 8px; }
 /* Tipo selector */
-.cal-tipo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.cal-tipo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 5px; }
 .cal-tipo-btn { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid var(--cinza); border-radius: 7px; background: var(--branco); cursor: pointer; transition: border-color .12s, background .12s; text-align: left; font-family: var(--font-ui); width: 100%; }
 .cal-tipo-btn:hover { border-color: var(--grafite); }
 .cal-tipo-btn.sel { border-color: var(--azul); background: var(--az-bg); }
@@ -2847,14 +2880,7 @@ body {
           <span class="badge b-gr" style="margin-left:auto;font-size:7px">Google Calendar</span>
         </div>
         <div class="card-body" id="agenda-body">
-          <div style="padding:12px 0; text-align:center; color:#999; font-size:11px">
-            <div style="margin-bottom:8px">Teste de integração com Google Calendar</div>
-            <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
-              <a href="https://calendar.google.com/calendar/u/0/r/week" target="_blank" class="btn sm">Abrir Calendar</a>
-              <a href="#" target="_blank" class="btn sm verde" id="agenda-room-link">EXP Room</a>
-            </div>
-            <div style="font-size:10px;color:#bbb;margin-top:8px">A sincronização automática ainda está em fase de teste.</div>
-          </div>
+          <div class="agenda-vazio">Carregando eventos…</div>
         </div>
       </div>
 
@@ -3230,7 +3256,7 @@ body {
       <div class="mh-type-bars" id="mh-type-bars" style="flex:1">
         <div class="loading-state">Carregando…</div>
       </div>
-      <div id="mh-pie-wrap" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
+      <div id="mh-pie-wrap" style="flex-shrink:0;display:flex;flex-direction:row;align-items:center;gap:16px"></div>
     </div>
   </div>
 
@@ -3379,7 +3405,6 @@ body {
             </svg>
             <span id="gcal-topbar-lbl">Google Calendar</span>
           </button>
-          <button class="btn sm verde" id="gcal-btn-reuniao" onclick="gcalAbrirReuniao()" style="display:none">📅 Agendar reunião</button>
           <button class="btn filled" onclick="calAbrirModalNovo(null)">+ Novo evento</button>
         </div>
       </div>
@@ -3714,6 +3739,15 @@ body {
      MODAIS
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 
+<!-- Modal detalhe evento agenda -->
+<div class="agev-overlay" id="agev-overlay" onclick="if(event.target===this)fecharAgendaEv()">
+  <div class="agev-box" style="position:relative">
+    <button class="agev-close" onclick="fecharAgendaEv()">&times;</button>
+    <div class="agev-cor" id="agev-cor"></div>
+    <div class="agev-body" id="agev-body"></div>
+  </div>
+</div>
+
 <!-- Modal Google Calendar Config -->
 <div class="gcal-modal-overlay" id="gcal-modal" onclick="if(event.target===this)gcalFecharConfig()">
   <div class="gcal-modal">
@@ -3877,7 +3911,7 @@ body {
             <div id="ck-etapa-lista"><div class="empty-note">Carregando…</div></div>
           </div>
           <!-- Revisões -->
-          <div class="ck-section" id="mp-revisoes-sec">
+          <div class="ck-section" id="mp-revisoes-sec" style="margin-top:4px">
             <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
               <span class="ck-section-title">Revisões</span>
               <button class="btn sm verde" id="mp-btn-rev-action" onclick="abrirRevisaoProdutoAtivo()">+ Nova revisão</button>
@@ -5392,6 +5426,154 @@ async function carregarProdutos() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   DASHBOARD
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ─────────────────────────────────────────────────────────────────────────────
+// AGENDA DA SEMANA — dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+const AGENDA = { _evMap: {} };
+
+function renderAgendaSemana() {
+  const body = document.getElementById('agenda-body');
+  if (!body) return;
+  AGENDA._evMap = {};
+
+  const hoje      = new Date();
+  const dHoje     = hoje.toISOString().slice(0, 10);
+
+  // Segunda e domingo da semana corrente
+  const dow       = hoje.getDay(); // 0=dom
+  const seg       = new Date(hoje); seg.setDate(hoje.getDate() - (dow === 0 ? 6 : dow - 1));
+  const dom       = new Date(seg);  dom.setDate(seg.getDate() + 6);
+  const dDom      = dom.toISOString().slice(0, 10);
+
+  const uid = G.usuario?.id;
+
+  // Coleta eventos: banco local + Google Calendar
+  const todos = [];
+
+  (CAL.eventos || []).forEach(e => {
+    if (!e.data_inicio) return;
+    const d = e.data_inicio.slice(0, 10);
+    if (d < dHoje || d > dDom) return;
+    if (e.tipo === 'feriado' || e.tipo === 'recesso') return;
+    // Filtra por usuário: eventos pessoais do usuário logado ou de todos
+    if (e.usuario_id && String(e.usuario_id) !== String(uid) && e.scope !== 'todos') return;
+    todos.push(e);
+  });
+
+  (GCAL.eventos || []).forEach(e => {
+    if (!e.data_inicio) return;
+    const d = e.data_inicio.slice(0, 10);
+    if (d < dHoje || d > dDom) return;
+    todos.push(e);
+  });
+
+  // Ordena por data + hora
+  todos.sort((a, b) => {
+    const ka = a.data_inicio + (a.hora_inicio || '00:00');
+    const kb = b.data_inicio + (b.hora_inicio || '00:00');
+    return ka < kb ? -1 : 1;
+  });
+
+  // Limita a 8 e gera mapa para acesso rápido no click
+  const total   = todos.length;
+  const exibe   = todos.slice(0, 8);
+  exibe.forEach((e, i) => {
+    const key = 'agev_' + i;
+    e._agKey = key;
+    AGENDA._evMap[key] = e;
+  });
+
+  // Renderiza vazio
+  if (!exibe.length) {
+    let html = '<div class="agenda-vazio">Nenhum evento até o fim desta semana.</div>';
+    if (!GCAL.token) html += '<div class="agenda-sem-gcal">Conecte o Google Calendar para ver seus eventos.</div>';
+    body.innerHTML = html;
+    return;
+  }
+
+  // Agrupa por dia
+  const diasNomes = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const porDia = {};
+  exibe.forEach(e => {
+    const d = e.data_inicio.slice(0, 10);
+    if (!porDia[d]) porDia[d] = [];
+    porDia[d].push(e);
+  });
+
+  const tipoLabel = { reuniao:'Reunião', ausencia:'Ausência', etapa:'Entrega', google:'Google Cal', aniversario:'Aniversário' };
+
+  let html = '';
+  Object.keys(porDia).sort().forEach(d => {
+    const [ano, mes, dia] = d.split('-');
+    const dt      = new Date(d + 'T12:00:00');
+    const isHoje  = d === dHoje;
+    const label   = `${dia}/${mes} · ${diasNomes[dt.getDay()]}`;
+    html += `<div class="agenda-dia-sep${isHoje ? ' hoje' : ''}">${isHoje ? '● Hoje · ' : ''}${label}</div>`;
+
+    porDia[d].forEach(e => {
+      const hora = e.dia_todo ? 'Dia todo'
+        : e.hora_inicio ? (e.hora_inicio.slice(0,5) + (e.hora_fim ? ' – ' + e.hora_fim.slice(0,5) : ''))
+        : '—';
+      const cor  = e._gcalColor || (e.tipo === 'reuniao' ? 'var(--azul)' : e.tipo === 'ausencia' ? 'var(--ouro)' : e.tipo === 'etapa' ? 'var(--verde)' : 'var(--cinza)');
+      const sub  = tipoLabel[e.tipo] || '';
+      html += `<div class="agenda-item" style="border-left-color:${cor}" onclick="abrirAgendaEv('${e._agKey}')">
+        <div class="agenda-hora">${hora}</div>
+        <div class="agenda-titulo">${e.titulo}</div>
+        ${sub ? `<div class="agenda-subtag">${sub}</div>` : ''}
+      </div>`;
+    });
+  });
+
+  if (total > 8) {
+    html += `<div class="agenda-mais">+${total - 8} evento${total - 8 > 1 ? 's' : ''} nesta semana</div>`;
+  }
+  if (!GCAL.token) {
+    html += '<div class="agenda-sem-gcal">Conecte o Google Calendar para ver todos os eventos.</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function abrirAgendaEv(key) {
+  const e = AGENDA._evMap[key];
+  if (!e) return;
+
+  const diasNomes = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const [ano, mes, dia] = (e.data_inicio || '').slice(0, 10).split('-');
+  const dt    = e.data_inicio ? new Date(e.data_inicio + 'T12:00:00') : null;
+  const data  = dt ? `${dia}/${mes}/${ano} · ${diasNomes[dt.getDay()]}` : '—';
+  const hora  = e.dia_todo ? 'Dia todo'
+    : e.hora_inicio ? (e.hora_inicio.slice(0,5) + (e.hora_fim ? ' – ' + e.hora_fim.slice(0,5) : ''))
+    : '—';
+  const cor   = e._gcalColor || (e.tipo === 'reuniao' ? '#4A72B5' : e.tipo === 'ausencia' ? '#C49A27' : e.tipo === 'etapa' ? '#2D9E6B' : '#ccc');
+
+  let descHtml = '';
+  if (e.descricao) {
+    const txt = e.descricao.replace(/</g,'&lt;').replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}" target="_blank" style="color:var(--azul)">${u}</a>`);
+    descHtml = `<div class="agev-desc">${txt}</div>`;
+  }
+
+  let actHtml = '';
+  if (e.meet_link) actHtml += `<a href="${e.meet_link}" target="_blank" class="btn sm verde" style="text-decoration:none">📹 Meet</a>`;
+  if (e._gcal && e._gcalEvId) actHtml += `<a href="https://calendar.google.com/calendar/event?eid=${btoa(e._gcalEvId).replace(/=/g,'')}" target="_blank" class="btn sm" style="text-decoration:none">Abrir no Google</a>`;
+  if (e.local) actHtml += `<a href="https://maps.google.com/?q=${encodeURIComponent(e.local)}" target="_blank" class="btn sm" style="text-decoration:none">📍 Maps</a>`;
+
+  document.getElementById('agev-cor').style.background = cor;
+  document.getElementById('agev-body').innerHTML = `
+    <div class="agev-titulo">${e.titulo}</div>
+    <div class="agev-row"><span class="agev-icon">📅</span><span>${data}</span></div>
+    <div class="agev-row"><span class="agev-icon">🕐</span><span>${hora}</span></div>
+    ${e.local ? `<div class="agev-row"><span class="agev-icon">📍</span><span>${e.local}</span></div>` : ''}
+    ${descHtml}
+    ${actHtml ? `<div class="agev-actions">${actHtml}</div>` : ''}
+  `;
+  document.getElementById('agev-overlay').classList.add('open');
+}
+
+function fecharAgendaEv() {
+  document.getElementById('agev-overlay').classList.remove('open');
+}
+
 async function carregarDashboard() {
   const uid = G.usuario.id;
   const role = G.usuario.role;
@@ -5453,6 +5635,7 @@ async function carregarDashboard() {
   }
 
   carregarPrioridades();
+  renderAgendaSemana();
 }
 
 function renderDashProjetos(prods, horasPorProd = {}) {
@@ -6879,10 +7062,11 @@ async function lancarHoras() {
 
   // cria semana se não existir
   if (!semDb) {
+    const semanaInfo = isoWeekInfo(new Date(semIni + 'T12:00:00'));
     const payloadSemana = {
       usuario_id: G.usuario.id,
-      ano: new Date(semIni + 'T12:00:00').getFullYear(),
-      semana: isoWeek(new Date(semIni + 'T12:00:00')),
+      ano: semanaInfo.year,
+      semana: semanaInfo.week,
       data_inicio: semIni,
       data_fim: semFim,
       finalizada: false
@@ -7136,11 +7320,12 @@ async function lancarCusto() {
     .select('id,finalizada').eq('usuario_id', G.usuario.id).eq('data_inicio', semIni).maybeSingle();
   if (semDb?.finalizada) { toast('Semana já finalizada'); return; }
   if (!semDb) {
+    const semanaInfo = isoWeekInfo(new Date(semIni + 'T12:00:00'));
     const { data: nova, error: eSem } = await sb.from('semanas')
       .upsert({
         usuario_id: G.usuario.id,
-        ano: new Date(semIni + 'T12:00:00').getFullYear(),
-        semana: isoWeek(new Date(semIni + 'T12:00:00')),
+        ano: semanaInfo.year,
+        semana: semanaInfo.week,
         data_inicio: semIni, data_fim: semFim, finalizada: false
       }, { onConflict: 'usuario_id,ano,semana' }).select().single();
     if (eSem) { toast('Erro ao criar semana: ' + eSem.message); return; }
@@ -7821,8 +8006,9 @@ async function abrirFinalizarSemana() {
 async function confirmarFinalizarSemana() {
   const comentario = document.getElementById('fin-comentario').value.trim();
   const { ini: si, fim: sf } = semanaRangeOffset(G.semanaOffset);
-  const ano = new Date(si + 'T12:00:00').getFullYear();
-  const semana = isoWeek(new Date(si + 'T12:00:00'));
+  const semanaInfo = isoWeekInfo(new Date(si + 'T12:00:00'));
+  const ano = semanaInfo.year;
+  const semana = semanaInfo.week;
 
   // Busca por data_inicio (mesma chave que renderSemana usa) para garantir
   // que ambas as funções operam na mesma row, independente do valor de semana.
@@ -8095,21 +8281,28 @@ function renderMhPieChart(resumo) {
   ];
   const R = 42, CX = 56, CY = 56, SW = 14;
   const CIRCUMF = 2 * Math.PI * R;
+  // Acumula segmentos com comprimento exato para evitar gap de float
   let cumLen = 0;
-  const segs = TIPOS.map(t => {
+  const segs = [];
+  TIPOS.forEach(t => {
     const h = resumo.porTipo?.[t.key]?.total || 0;
+    if (!h) return;
     const pct = total > 0 ? h / total : 0;
-    const len = pct * CIRCUMF;
     const offset = CIRCUMF / 4 - cumLen;
+    const len = pct * CIRCUMF;
     cumLen += len;
-    return { ...t, h, pct, len, offset };
-  }).filter(t => t.h > 0);
+    segs.push({ ...t, h, pct, len, offset });
+  });
+  // Ajusta o último segmento para cobrir exatamente (evita gap)
+  if (segs.length > 0) {
+    segs[segs.length - 1].len = CIRCUMF - (cumLen - segs[segs.length - 1].len);
+  }
 
   const arcs = segs.map(t =>
     `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${t.color}"
       stroke-width="${SW}"
-      stroke-dasharray="${t.len.toFixed(2)} ${CIRCUMF.toFixed(2)}"
-      stroke-dashoffset="${t.offset.toFixed(2)}">
+      stroke-dasharray="${t.len.toFixed(3)} ${(CIRCUMF - t.len + 1).toFixed(3)}"
+      stroke-dashoffset="${t.offset.toFixed(3)}">
       <title>${t.label}: ${fmtHMin(t.h)} (${(t.pct*100).toFixed(0)}%)</title>
     </circle>`
   ).join('');
@@ -8125,15 +8318,11 @@ function renderMhPieChart(resumo) {
   ).join('');
 
   return `
-    <svg width="112" height="112" viewBox="0 0 112 112" style="display:block">
+    <svg width="112" height="112" viewBox="0 0 112 112" style="display:block;flex-shrink:0">
       <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--cinza2)" stroke-width="${SW}"/>
       ${arcs}
-      <text x="${CX}" y="${CY - 4}" text-anchor="middle"
-        font-family="var(--font-mono)" font-size="11" font-weight="700" fill="var(--grafite)">${fmtHMin(total)}</text>
-      <text x="${CX}" y="${CY + 9}" text-anchor="middle"
-        font-family="var(--font-ui)" font-size="7" letter-spacing="0.5" fill="#aaa">TOTAL</text>
     </svg>
-    <div style="display:flex;flex-direction:column;gap:7px">${legend}</div>
+    <div style="display:flex;flex-direction:column;gap:7px;justify-content:center">${legend}</div>
   `;
 }
 
@@ -9585,7 +9774,6 @@ async function abrirProduto(id, targetPanel = null) {
             <div class="tl-label">${i+1}. ${e.nome}</div>
             <div class="tl-text">
               <span class="badge ${st.cls}">${st.label}</span>
-              ${coord ? `<span style="margin-left:6px;font-size:10px;color:#888">${coord.iniciais}</span>` : ''}
             </div>
             ${e.descricao ? `<div class="tl-date" style="margin-top:4px;font-family:var(--font-ui)">${e.descricao}</div>` : ''}
           </div>
@@ -12846,10 +13034,25 @@ function semanaRangeOffset(offset = 0) {
   return { ini, fim, label };
 }
 
+function isoWeekInfo(d) {
+  const target = new Date(d);
+  target.setHours(12, 0, 0, 0);
+  const day = target.getDay() || 7;
+  const weekStart = new Date(target);
+  weekStart.setDate(target.getDate() - day + 1);
+  const weekThursday = new Date(weekStart);
+  weekThursday.setDate(weekStart.getDate() + 3);
+  const year = weekThursday.getFullYear();
+  const jan4 = new Date(year, 0, 4, 12, 0, 0, 0);
+  const jan4Day = jan4.getDay() || 7;
+  const week1Start = new Date(jan4);
+  week1Start.setDate(jan4.getDate() - jan4Day + 1);
+  const week = Math.floor((weekStart - week1Start) / (7 * 24 * 3600 * 1000)) + 1;
+  return { year, week, start: weekStart };
+}
+
 function isoWeek(d) {
-  const jan4 = new Date(d.getFullYear(), 0, 4);
-  const startWeek1 = startOfWeek(jan4);
-  return Math.ceil((d - startWeek1) / (7 * 24 * 3600 * 1000)) + 1;
+  return isoWeekInfo(d).week;
 }
 
 // Recalcula "data estimada" a partir de liberação + prazo + tipo de prazo
@@ -16496,7 +16699,7 @@ function renderProcDetalhe(id) {
         <div style="display:flex;align-items:center;gap:8px">
           <span class="prancha-prog">${tConc}/${tTotal}</span>
           ${isSoc ? `<button onclick="event.stopPropagation();procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" class="btn sm">+ Tarefa</button>` : ''}
-          ${isSoc ? `<button onclick="event.stopPropagation();procExcluirTema(${temaIdJs},${checklistIdJs})" class="btn sm tc" title="Excluir tema">✕</button>` : ''}
+          ${isSoc ? `<button onclick="event.stopPropagation();procExcluirTema(${temaIdJs},${checklistIdJs})" class="btn sm" title="Excluir tema">✕</button>` : ''}
         </div>
       </div>
       <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${tPct}%"></div></div>
@@ -17206,7 +17409,9 @@ function calSetPNucleo(btn, val) {
 function calRenderLista() {
   const merged   = calGetMerged();
   const filtrado = calFiltrar(merged);
-  const ini = new Date(CAL.ano, CAL.mes, 1);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const mesIni = new Date(CAL.ano, CAL.mes, 1);
+  const ini = mesIni > hoje ? mesIni : hoje; // mostra do dia atual em diante
   const fim = new Date(CAL.ano, CAL.mes+1, 0);
   const evts = filtrado
     .filter(e => { const d = new Date(e.data_inicio+'T12:00:00'); return d >= ini && d <= fim; })
@@ -17214,7 +17419,7 @@ function calRenderLista() {
 
   const el = document.getElementById('cal-content');
   if (!el) return;
-  el.innerHTML = evts.length === 0 ? '<p class="cal-empty">Nenhum evento neste mês.</p>' :
+  el.innerHTML = evts.length === 0 ? '<p class="cal-empty">Nenhum evento a partir de hoje neste período.</p>' :
     `<div class="cal-lista">${evts.map(ev => {
       const meta = calMeta(ev.tipo);
       const dtFmt = new Date(ev.data_inicio+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
@@ -17467,6 +17672,14 @@ function calRenderModalBody(tipos, dataIni) {
 }
 
 function calSelTipo(tipo) {
+  // Reunião com Google Calendar conectado → abre modal dedicado
+  if (tipo === 'reuniao' && GCAL.token) {
+    const dataAtual = document.getElementById('cal-inp-ini')?.value || null;
+    calFecharModalNovo();
+    gcalAbrirReuniao(dataAtual);
+    return;
+  }
+
   document.querySelectorAll('.cal-tipo-btn').forEach(b => b.classList.remove('sel'));
   const btn = document.getElementById('cal-tipo-' + tipo);
   if (btn) btn.classList.add('sel');
@@ -17849,6 +18062,7 @@ async function gcalCarregarEventosEAtualizarUI(mostraToast) {
   if (chip) { chip.style.display = ''; chip.classList.add('active'); }
   calRender();
   if (mostraToast) toast('Google Calendar conectado! ' + GCAL.eventos.length + ' eventos carregados.');
+  renderAgendaSemana();
 }
 
 // ── UI: botão topbar + modal ───────────────────────────────
@@ -18585,7 +18799,7 @@ window.calInit = async function() {
 // ─────────────────────────────────────────────────────────────────────────────
 GCAL._reuniaoConvidados = []; // { email, nome, cor, iniciais }
 
-function gcalAbrirReuniao() {
+function gcalAbrirReuniao(dateOverride) {
   if (!GCAL.token) {
     toast('Conecte o Google Calendar primeiro.');
     gcalAbrirConfig();
@@ -18601,7 +18815,7 @@ function gcalAbrirReuniao() {
     });
   }
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = dateOverride || new Date().toISOString().slice(0, 10);
   const hIni = '10:00', hFim = '11:00';
 
   // Monta opções de agenda com smart default
@@ -18938,8 +19152,6 @@ function gcalMostrarResultadoReuniao(titulo, data, hIni, hFim, meetLink, nConvid
 const _gcalAtualizarUIOrig = gcalAtualizarUI;
 window.gcalAtualizarUI = function() {
   _gcalAtualizarUIOrig();
-  const btnR = document.getElementById('gcal-btn-reuniao');
-  if (btnR) btnR.style.display = GCAL.token ? '' : 'none';
 };
 
 init();
