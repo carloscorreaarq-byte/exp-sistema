@@ -5767,9 +5767,14 @@ async function init() {
   // Nav — user chip
   const av = document.getElementById('nav-av');
   if (av) {
-    av.textContent = usr.iniciais || (usr.nome||'').slice(0,2).toUpperCase();
-    av.style.background = usr.cor || '#6B4FA0';
-    av.style.color = '#fff';
+    if (usr.avatar_url) {
+      av.classList.add('has-avatar');
+      av.innerHTML = `<img src="${usr.avatar_url}" alt="${usr.iniciais||''}">`;
+    } else {
+      av.textContent = usr.iniciais || (usr.nome||'').slice(0,2).toUpperCase();
+      av.style.background = usr.cor || '#6B4FA0';
+      av.style.color = '#fff';
+    }
   }
   const nomePartes = (usr.nome||'').trim().split(/\s+/).filter(Boolean);
   document.getElementById('nav-nome').textContent = nomePartes.length <= 2 ? (nomePartes.join(' ')||'—') : nomePartes[0]+' '+nomePartes[nomePartes.length-1];

@@ -1410,8 +1410,13 @@ window.addEventListener('DOMContentLoaded', async()=>{
   const _RLABELS = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
   const ini=currentUser.iniciais||'?';
   const _uav = document.getElementById('user-av');
-  _uav.style.cssText=`background:${currentUser.cor||'#888'};color:#fff`;
-  _uav.textContent=ini;
+  if (currentUser.avatar_url) {
+    _uav.classList.add('has-avatar');
+    _uav.innerHTML = `<img src="${currentUser.avatar_url}" alt="${ini}">`;
+  } else {
+    _uav.style.cssText=`background:${currentUser.cor||'#888'};color:#fff`;
+    _uav.textContent=ini;
+  }
   const _np = (currentUser.nome||'').trim().split(/\s+/).filter(Boolean);
   document.getElementById('user-nome').textContent = _np.length <= 2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
   document.getElementById('nav-role').textContent = _RLABELS[currentUser.role] || currentUser.role || '';
