@@ -236,6 +236,8 @@
   var projectThreadMeta = {};
   var recentConversationAlerts = [];
   var projectSectionCollapsed = true;
+  var pendingMessageSeq = 0;
+  var reactionLocks = {};
   var searchQuery = '';
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var channelUnread    = {};        // { channel: count }
@@ -940,7 +942,7 @@
         var isOwn    = msg.sender_id === uid;
 
         if (isActive) {
-          messages.push(msg);
+          upsertMessage(msg);
           renderMessages();
           if (scrolledToEnd) scrollBottom();
           else if (!isOwn) showNewMsgToast();
@@ -957,8 +959,8 @@
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, function (payload) {
         var up = payload.new;
         if (up.channel !== currentChannel) return;
-        var idx = messages.findIndex(function (m) { return m.id === up.id; });
-        if (idx !== -1) { messages[idx] = up; if (isOpen && currentView === 'channel') renderMessages(); }
+        upsertMessage(up);
+        if (isOpen && currentView === 'channel') renderMessages();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_thread_messages' }, function (payload) {
         var raw = payload.new;
@@ -973,7 +975,7 @@
         var isOwn    = raw.sender_auth_id === user.auth_id;
 
         if (isActive) {
-          messages.push(msg);
+          upsertMessage(msg);
           renderMessages();
           if (scrolledToEnd) scrollBottom();
           else if (!isOwn) showNewMsgToast();
@@ -991,8 +993,8 @@
         var up = normalizeProjectMessage(payload.new);
         updateProjectThreadSnapshot(payload.new.thread_id, payload.new.content, payload.new.created_at, payload.new.sender_auth_id);
         if (up.channel !== currentChannel) return;
-        var idx = messages.findIndex(function (m) { return m.id === up.id; });
-        if (idx !== -1) { messages[idx] = up; if (isOpen && currentView === 'channel') renderMessages(); }
+        upsertMessage(up);
+        if (isOpen && currentView === 'channel') renderMessages();
       })
       .subscribe();
   }
@@ -1141,17 +1143,26 @@
     if (!content) return;
     $input.value = '';
     $input.style.height = 'auto';
+    var pendingMsg = buildPendingMessage(content);
+    upsertMessage(pendingMsg);
+    renderMessages();
+    scrollBottom();
 
     if (isProjectChannel(currentChannel)) {
       sb.from('chat_thread_messages').insert({
         thread_id: currentChannel.replace('project:', ''),
         sender_auth_id: user.auth_id,
         content: content
-      }).then(function (r) {
+      }).select('*').single().then(function (r) {
         if (r.error) {
+          removeMessageById(pendingMsg.id);
+          renderMessages();
           $input.value = content;
           console.warn('[EXP Chat] Erro ao enviar no projeto:', r.error.message);
+          return;
         }
+        upsertMessage(normalizeProjectMessage(r.data));
+        renderMessages();
       });
       return;
     }
@@ -1163,11 +1174,16 @@
       sender_iniciais: user.iniciais || user.nome.substring(0, 2).toUpperCase(),
       sender_cor:      user.cor || '#1D6A4A',
       content:         content
-    }).then(function (r) {
+    }).select('*').single().then(function (r) {
       if (r.error) {
+        removeMessageById(pendingMsg.id);
+        renderMessages();
         $input.value = content;
         console.warn('[EXP Chat] Erro ao enviar:', r.error.message);
+        return;
       }
+      upsertMessage(r.data);
+      renderMessages();
     });
   }
 
@@ -1177,6 +1193,8 @@
   function toggleReaction(msgId, type) {
     var msg = messages.find(function (m) { return m.id === msgId; });
     if (!msg) return;
+    var lockKey = msgId + '|' + type;
+    if (reactionLocks[lockKey]) return;
     var uid = user.auth_id;
     var rx  = msg.reactions || { like: [], love: [] };
     var arr = (rx[type] || []).slice();
@@ -1187,19 +1205,23 @@
     msg.reactions = upd;
     renderMessages();
     var rpcName = isProjectChannel(currentChannel) ? 'chat_thread_toggle_reaction' : 'chat_toggle_reaction';
+    reactionLocks[lockKey] = true;
     sb.rpc(rpcName, { p_message_id: msgId, p_reaction: type })
       .then(function (r) {
         if (r.error) {
           msg.reactions = rx;
           renderMessages();
+          console.warn('[EXP Chat] Erro ao reagir:', r.error.message);
           return;
         }
         var updated = Array.isArray(r.data) ? r.data[0] : r.data;
         if (updated && updated.id) {
-          var idx2 = messages.findIndex(function (m) { return m.id === updated.id; });
-          if (idx2 !== -1) messages[idx2] = updated;
+          upsertMessage(isProjectChannel(currentChannel) ? normalizeProjectMessage(updated) : updated);
         }
         renderMessages();
+      })
+      .finally(function () {
+        delete reactionLocks[lockKey];
       });
   }
 
@@ -1546,6 +1568,47 @@
       created_at: msg.created_at,
       reactions: msg.reactions || { like: [], love: [] }
     };
+  }
+
+  function buildPendingMessage(content) {
+    pendingMessageSeq += 1;
+    return {
+      id: 'pending:' + pendingMessageSeq,
+      channel: currentChannel,
+      thread_id: isProjectChannel(currentChannel) ? projectThreadIdFromChannel(currentChannel) : null,
+      sender_id: user.auth_id,
+      sender_name: user.nome,
+      sender_iniciais: user.iniciais || user.nome.substring(0, 2).toUpperCase(),
+      sender_cor: user.cor || '#1D6A4A',
+      content: content,
+      created_at: new Date().toISOString(),
+      reactions: { like: [], love: [] },
+      pending: true
+    };
+  }
+
+  function isMatchingPendingMessage(existing, nextMsg) {
+    if (!existing || !existing.pending || !nextMsg) return false;
+    return existing.channel === nextMsg.channel &&
+      existing.sender_id === nextMsg.sender_id &&
+      existing.content === nextMsg.content;
+  }
+
+  function compareMessages(a, b) {
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+  }
+
+  function upsertMessage(nextMsg) {
+    if (!nextMsg || !nextMsg.id) return;
+    var idx = messages.findIndex(function (m) { return m.id === nextMsg.id; });
+    if (idx === -1) idx = messages.findIndex(function (m) { return isMatchingPendingMessage(m, nextMsg); });
+    if (idx !== -1) messages[idx] = Object.assign({}, messages[idx], nextMsg, { pending: false });
+    else messages.push(nextMsg);
+    messages.sort(compareMessages);
+  }
+
+  function removeMessageById(messageId) {
+    messages = messages.filter(function (m) { return m.id !== messageId; });
   }
 
   function fetchProjectHomeItems(uid) {
