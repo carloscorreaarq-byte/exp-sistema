@@ -879,6 +879,7 @@ body {
 }
 .gantt-prod-row td { border-bottom: 1px solid var(--cinza2); vertical-align: middle; height: 44px; max-height: 44px; }
 .gantt-prod-row:hover td { background: var(--off); }
+.gantt-prod-row.pausado td.info-cell { opacity: 0.4; }
 .gantt-prod-row td.info-cell {
   padding: 6px 10px 6px 14px; border-right: 1px solid var(--cinza);
   min-width: 260px; width: 260px; overflow: hidden; position: relative;
@@ -6764,7 +6765,11 @@ function renderGantt() {
   });
 
   let rows = '';
-  Object.values(grupos).forEach(({ cli, prods: ps }) => {
+  Object.values(grupos)
+    .sort((a, b) => (a.cli?.nome||'').localeCompare(b.cli?.nome||'', 'pt-BR'))
+    .forEach(({ cli, prods: ps }) => {
+    ps.sort((a, b) => (a.oportunidades?.projeto||'').localeCompare(b.oportunidades?.projeto||'', 'pt-BR'));
+
     rows += `<tr class="gantt-grupo-row">
       <td colspan="${SEMANAS_VIS + 1}">${cli?.nome || 'Sem cliente'}</td>
     </tr>`;
@@ -6795,7 +6800,7 @@ function renderGantt() {
       const nucleoLabelDisp = _escN(nc.label);
       const prodIdJs = _sqN(p.id);
 
-      rows += `<tr class="gantt-prod-row" onclick="${p._crm ? 'void(0)' : `abrirProduto(${prodIdJs})`}">
+      rows += `<tr class="gantt-prod-row${pausado ? ' pausado' : ''}" onclick="${p._crm ? 'void(0)' : `abrirProduto(${prodIdJs})`}">
         <td class="info-cell">
           <div class="gantt-type-accent" style="background:${nc.dot}" title="${nucleoLabelDisp}"></div>
           <div style="display:flex;align-items:flex-start;gap:6px">
