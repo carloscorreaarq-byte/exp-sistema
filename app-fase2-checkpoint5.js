@@ -232,12 +232,16 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   async function registrarAuditoriaPlataforma(acao, usuarioAlvo, payloadResumido) {
     const current = currentSessionUsuario();
     if (!current?.app_user_id) return;
-    await window.sb.from('usuarios_auditoria').insert({
-      usuario_alvo: usuarioAlvo || null,
-      acao,
-      executado_por: current.app_user_id,
-      payload_resumido: payloadResumido || null
-    });
+    try {
+      await window.sb.from('usuarios_auditoria').insert({
+        usuario_alvo: usuarioAlvo || null,
+        acao,
+        executado_por: current.app_user_id,
+        payload_resumido: payloadResumido || null
+      });
+    } catch (error) {
+      console.warn('[EXP Plataforma] Falha ao registrar auditoria', error);
+    }
   }
 
   function escapeHtml(value) {
@@ -919,7 +923,6 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   };
 
   window.fecharMeusDados = function fecharMeusDados(event) {
-    if (event && event.target && event.target.id === 'meus-dados-overlay') return;
     if (event && event.target && event.target.id !== 'meus-dados-overlay') return;
     if (meusDadosDirty && !window.confirm('Existem alteracoes nao salvas em "Meus dados". Deseja fechar e perder essas alteracoes?')) return;
     document.getElementById('meus-dados-overlay')?.classList.remove('open');
@@ -1425,7 +1428,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     // Fetch full user record + termo
     const [{ data: usuario }, { data: termo }] = await Promise.all([
       window.sb.from('usuarios').select('*').eq('id', userId).maybeSingle(),
-      window.sb.from('usuarios_termos_compromisso').select('*').eq('usuario_id', userId).order('resetado_em', { ascending: false }).maybeSingle()
+      window.sb.from('usuarios_termos_compromisso').select('*').eq('usuario_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle()
     ]);
 
     function row(label, value) {
@@ -1517,7 +1520,6 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   };
 
   window.fecharGestaoPlataforma = function fecharGestaoPlataforma(event) {
-    if (event && event.target && event.target.id === 'plataforma-overlay') return;
     if (event && event.target && event.target.id !== 'plataforma-overlay') return;
     if (plataformaDirty && !window.confirm('Existem dados nao salvos em "Gestão de plataforma". Deseja fechar e perder essas alteracoes?')) return;
     document.getElementById('plataforma-overlay')?.classList.remove('open');

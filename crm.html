@@ -380,9 +380,9 @@ textarea{resize:vertical;min-height:60px}
     <div class="ntab active" onclick="goTab('dash',this)">Dashboard</div>
     <div class="ntab" onclick="goTab('pipe',this)">Pipeline</div>
     <div class="ntab" onclick="goTab('orc',this)">Orçamentos</div>
+    <div class="ntab" onclick="goTab('alcance',this)">Alcance</div>
     <div class="ntab" onclick="goTab('fechamentos',this)">Fechamentos</div>
     <div class="ntab" onclick="goTab('negativas',this)">Negativas</div>
-    <div class="ntab" onclick="goTab('alcance',this)">Alcance</div>
     <div class="ntab" onclick="goTab('relatorios',this)">Relatórios</div>
     <div class="ntab" onclick="goTab('contatos',this)">Contatos</div>
   </div>
@@ -487,7 +487,7 @@ textarea{resize:vertical;min-height:60px}
         </div>
       </div>
       <div class="card-body" style="padding:8px 14px">
-        <canvas id="chart-mensal" height="90"></canvas>
+        <canvas id="chart-mensal" height="65"></canvas>
       </div>
     </div>
     <div class="card consul" style="margin-bottom:0">
@@ -500,10 +500,23 @@ textarea{resize:vertical;min-height:60px}
         </div>
       </div>
       <div class="card-body" style="padding:8px 12px;display:flex;flex-direction:column;align-items:center">
-        <canvas id="chart-tipo" style="max-width:140px;max-height:140px"></canvas>
-        <div id="chart-tipo-legenda" style="margin-top:8px;width:100%"></div>
+        <div style="width:140px;height:140px;position:relative">
+          <canvas id="chart-tipo"></canvas>
+        </div>
+        <div id="chart-tipo-legenda" style="margin-top:8px;width:100%;max-width:160px"></div>
       </div>
     </div>
+  </div>
+
+  <div class="card am" style="margin-bottom:10px">
+    <div class="card-hdr" style="gap:8px">
+      <div class="card-title" style="flex:1">Próximos follow-ups</div>
+      <div style="display:flex;gap:3px">
+        <button id="dash-fu-btn-todos" class="btn xs" onclick="setDashFuMode('todos')">Todos</button>
+        <button id="dash-fu-btn-meus" class="btn xs ghost" onclick="setDashFuMode('meus')">Meus</button>
+      </div>
+    </div>
+    <div id="dash-fu-list" style="padding:0 14px 10px"><div class="loading">Carregando...</div></div>
   </div>
 
   <div class="g2" style="gap:10px;margin-bottom:10px">
@@ -530,17 +543,6 @@ textarea{resize:vertical;min-height:60px}
       <div id="dash-negativas"><div class="loading">Carregando...</div></div>
     </div>
   </div>
-
-  <div class="card am">
-    <div class="card-hdr" style="gap:8px">
-      <div class="card-title" style="flex:1">Próximos follow-ups</div>
-      <div style="display:flex;gap:3px">
-        <button id="dash-fu-btn-todos" class="btn xs" onclick="setDashFuMode('todos')">Todos</button>
-        <button id="dash-fu-btn-meus" class="btn xs ghost" onclick="setDashFuMode('meus')">Meus</button>
-      </div>
-    </div>
-    <div id="dash-fu-list" style="padding:0 14px 10px"><div class="loading">Carregando...</div></div>
-  </div>
 </div>
 
 <!-- ═══ PIPELINE ═══════════════════════════════════════════════ -->
@@ -559,7 +561,8 @@ textarea{resize:vertical;min-height:60px}
       <option value="Projetos Especiais">Proj. Especiais</option>
     </select>
     <select id="pf-ordem" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-      <option value="recentes">Mais recentes</option>
+      <option value="" disabled>Ordenar por</option>
+      <option value="recentes" selected>Mais recentes</option>
       <option value="valor">Maior valor</option>
       <option value="contato">Último contato</option>
     </select>
@@ -587,37 +590,36 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ ORÇAMENTOS ═══════════════════════════════════════════════ -->
 <div class="page" id="tab-orc">
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+    <select id="of-ano" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;font-weight:700;border:1px solid var(--cinza)">
+      <option value="todos">Todos anos</option>
+      <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
+    </select>
+    <select id="of-nucleo" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+      <option value="todos">Todos núcleos</option>
+      <option value="Urbanismo">Urbanismo</option>
+      <option value="Paisagismo">Paisagismo</option>
+      <option value="Consultorias">Consultorias</option>
+      <option value="Projetos Especiais">Proj. Especiais</option>
+    </select>
+    <select id="of-status" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+      <option value="todos">Todos status</option>
+      <option value="Prospecção">Prospecção</option>
+      <option value="Orçamento ativo">Orçamento ativo</option>
+      <option value="Fechado">Fechado</option>
+      <option value="Negado">Negado</option>
+      <option value="Cancelado">Cancelado</option>
+      <option value="Expirado">Expirado</option>
+    </select>
+    <select id="of-resp" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+      <option value="todos">Todos resp.</option>
+      <option value="Carlos">Carlos</option>
+      <option value="Gabriela">Gabriela</option>
+    </select>
+    <input id="of-busca" type="text" placeholder="Buscar cliente, nº, cidade..." oninput="renderOrc()" style="font-size:10px;padding:4px 7px;min-width:140px;flex:1;max-width:240px;border:1px solid var(--cinza)">
+  </div>
   <div class="card cinza">
-    <div class="card-hdr" style="flex-wrap:nowrap;gap:6px;overflow-x:auto">
-      <select id="of-ano" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;font-weight:700;flex-shrink:0">
-        <option value="todos">Todos anos</option>
-        <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
-      </select>
-      <select id="of-nucleo" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;flex-shrink:0">
-        <option value="todos">Todos núcleos</option>
-        <option value="Urbanismo">Urbanismo</option>
-        <option value="Paisagismo">Paisagismo</option>
-        <option value="Consultorias">Consultorias</option>
-        <option value="Projetos Especiais">Proj. Especiais</option>
-      </select>
-      <select id="of-status" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;flex-shrink:0">
-        <option value="todos">Todos status</option>
-        <option value="Prospecção">Prospecção</option>
-        <option value="Orçamento ativo">Orçamento ativo</option>
-        <option value="Fechado">Fechado</option>
-        <option value="Negado">Negado</option>
-        <option value="Cancelado">Cancelado</option>
-        <option value="Expirado">Expirado</option>
-      </select>
-      <select id="of-resp" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;flex-shrink:0">
-        <option value="todos">Todos resp.</option>
-        <option value="Carlos">Carlos</option>
-        <option value="Gabriela">Gabriela</option>
-      </select>
-      <input id="of-busca" type="text" placeholder="Buscar cliente, nº, cidade..." oninput="renderOrc()" style="font-size:10px;padding:4px 7px;min-width:0;flex:1;max-width:220px">
-      <div class="card-title" style="flex:none;white-space:nowrap;font-size:9px">↕ cabeçalho ordena</div>
-    </div>
-    <div class="soma-bar">Total filtrado: <span id="orc-soma" style="font-family:var(--font-mono)">—</span> &nbsp;·&nbsp; <span id="orc-cnt">—</span> propostas</div>
+    <div class="soma-bar">Total filtrado: <span id="orc-soma" style="font-family:var(--font-mono)">—</span> &nbsp;·&nbsp; <span id="orc-cnt">—</span> propostas &nbsp;<span style="color:#bbb;font-weight:400">· ↕ cabeçalho ordena</span></div>
     <div style="overflow-x:auto">
     <table id="orc-table">
       <thead><tr>
@@ -1405,11 +1407,14 @@ window.addEventListener('DOMContentLoaded', async()=>{
   }
   currentUser = u||{nome:'Usuário',iniciais:'?',cor:'#888',viewer_only:true};
 
+  const _RLABELS = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
   const ini=currentUser.iniciais||'?';
-  document.getElementById('user-av').style.cssText=`background:${currentUser.cor||'#888'};color:#fff`;
-  document.getElementById('user-av').textContent=ini;
+  const _uav = document.getElementById('user-av');
+  _uav.style.cssText=`background:${currentUser.cor||'#888'};color:#fff`;
+  _uav.textContent=ini;
   const _np = (currentUser.nome||'').trim().split(/\s+/).filter(Boolean);
   document.getElementById('user-nome').textContent = _np.length <= 2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
+  document.getElementById('nav-role').textContent = _RLABELS[currentUser.role] || currentUser.role || '';
   initNavDropdown(currentUser.role);
   initExpRoom(currentUser.id, (currentUser.nome||'').split(' ')[0]);
 
@@ -1883,11 +1888,11 @@ function renderDash(){
     data:tLabels.map(l=>tipoMap[l]),
     backgroundColor:tCores,
     borderWidth:1,borderColor:'#fff'
-  }]},options:{responsive:true,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.parsed)} (${Math.round(ctx.parsed/total_tipo*100)}%)`}}}}});
+  }]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.parsed)} (${Math.round(ctx.parsed/total_tipo*100)}%)`}}}}});
   document.getElementById('chart-tipo-legenda').innerHTML=tLabels.length?tLabels.map((l,i)=>`
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
       <div style="width:8px;height:8px;border-radius:2px;background:${tCores[i]};flex-shrink:0"></div>
-      <div style="font-size:9px;flex:1;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px" title="${escAttr(l)}">${escHtml(l)}</div>
+      <div style="font-size:9px;flex:1;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(l)}">${escHtml(l)}</div>
       <div style="font-size:9px;font-family:var(--font-mono);color:#555;font-weight:600">${fmt(tipoMap[l])}</div>
       <div style="font-size:9px;font-family:var(--font-mono);color:#999;min-width:28px;text-align:right">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
     </div>`).join(''):'<div style="font-size:10px;color:#aaa;padding:4px 0">Sem fechamentos em '+anoStr+'</div>';

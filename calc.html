@@ -285,13 +285,13 @@ select option[disabled]{color:#bbb}
   <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
   <div class="nav-sep"></div>
   <div class="nav-mod-wrap" id="nav-mod-wrap">
-    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.calc <span>▾</span></button>
+    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.calculadora <span>▾</span></button>
     <div class="nav-dropdown" id="nav-dropdown">
       <a href="gestao.html">EXP.projetos</a>
       <a href="apoio.html">EXP.apoio</a>
       <a href="contatos.html">EXP.contatos</a>
       <div class="nd-sep nd-soc" style="display:none"></div>
-      <a href="calc.html" class="nd-active nd-soc" style="display:none">EXP.calc</a>
+      <a href="calc.html" class="nd-active nd-soc" style="display:none">EXP.calculadora</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
       <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
     </div>
@@ -3722,23 +3722,25 @@ function initNavUserFromSession() {
       if (u.avatar_url) {
         av.classList.add('has-avatar');
         av.innerHTML = `<img src="${u.avatar_url}" alt="${u.iniciais||''}">`;
-      } else if (u.iniciais) {
-        av.textContent = u.iniciais;
-        av.style.background = u.cor || '#888';
+      } else {
+        av.textContent = u.iniciais || '?';
+        av.style.cssText = `background:${u.cor||'#888'};color:#fff`;
       }
     }
     const nomeEl = document.getElementById('nav-nome');
-    if (nomeEl && u.nome) {
+    if (nomeEl) {
       const _np = (u.nome||'').trim().split(/\s+/).filter(Boolean);
-      nomeEl.textContent = _np.length <= 2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
+      nomeEl.textContent = _np.length > 0
+        ? (_np.length <= 2 ? _np.join(' ') : _np[0]+' '+_np[_np.length-1])
+        : '—';
     }
-    const roleMap = { socio:'Sócio', socio_adm:'Sócio-adm.', socio_admin:'Sócio-adm.', coordenador:'Coordenador', colaborador:'Colaborador' };
+    const roleMap = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
     const roleEl = document.getElementById('nav-role');
-    if (roleEl && u.role) roleEl.textContent = roleMap[u.role] || u.role;
+    if (roleEl) roleEl.textContent = u.role ? (roleMap[u.role] || u.role) : '';
     if (u.iniciais === 'CC') document.body.classList.add('can-delete');
     initNavDropdown(u.role);
     initExpRoom(u.app_user_id || u.id || u.auth_id, (u.nome||'').split(' ')[0]);
-  } catch(e) {}
+  } catch(e) { console.error('initNavUserFromSession:', e); }
 }
 // ── EXP ROOM PRESENCE ───────────────────────────────────────
 // Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);

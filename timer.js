@@ -13,6 +13,7 @@
   var SB_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
   var SB_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
   var TIMER_KEY   = 'exp_timer_state';
+  var TIMER_KEY_PREFIX = TIMER_KEY + ':';
   var EXPAND_SECS = 180;
 
   /* Cores da plataforma */
@@ -249,7 +250,7 @@
           '</select>',
         '</div>',
         '<div id="tmr-etapa-block" style="display:none">',
-          '<div class="tmr-sel-lbl">Etapa <span style="font-weight:400;text-transform:none">(opcional)</span></div>',
+          '<div class="tmr-sel-lbl">Etapa</div>',
           '<select class="tmr-sel" id="tmr-sel-etapa">',
             '<option value="">&#8212; selecionar &#8212;</option>',
           '</select>',
@@ -391,12 +392,41 @@
        nomeProjeto, nomeEtapa   ← strings de exibição
      }
   ═══════════════════════════════════════════════════════════════ */
-  function _loadState() {
-    try { return JSON.parse(localStorage.getItem(TIMER_KEY)) || {}; }
+  function _stateKeyForUser(userId) { return userId ? (TIMER_KEY_PREFIX + userId) : null; }
+  function _readStoredState(key) {
+    if (!key) return {};
+    try { return JSON.parse(localStorage.getItem(key)) || {}; }
     catch (e) { return {}; }
   }
-  function _saveState(s) { localStorage.setItem(TIMER_KEY, JSON.stringify(s)); }
-  function _clearState() { localStorage.removeItem(TIMER_KEY); }
+  function _migrateLegacyState(userId) {
+    if (!userId) return;
+    var scopedKey = _stateKeyForUser(userId);
+    var scopedState = _readStoredState(scopedKey);
+    if (scopedState && scopedState.originalStart) {
+      localStorage.removeItem(TIMER_KEY);
+      return;
+    }
+    var legacyState = _readStoredState(TIMER_KEY);
+    if (!legacyState || !legacyState.originalStart) return;
+    if (legacyState.ownerId && legacyState.ownerId !== userId) return;
+    legacyState.ownerId = userId;
+    localStorage.setItem(scopedKey, JSON.stringify(legacyState));
+    localStorage.removeItem(TIMER_KEY);
+  }
+  function _currentStateKey() {
+    return _cachedUser && _cachedUser.id ? _stateKeyForUser(_cachedUser.id) : null;
+  }
+  function _loadState() { return _readStoredState(_currentStateKey()); }
+  function _saveState(s) {
+    var key = _currentStateKey();
+    if (!key) return;
+    if (_cachedUser && _cachedUser.id) s.ownerId = _cachedUser.id;
+    localStorage.setItem(key, JSON.stringify(s));
+  }
+  function _clearState() {
+    var key = _currentStateKey();
+    if (key) localStorage.removeItem(key);
+  }
 
   /* ═══════════════════════════════════════════════════════════════
      Tempo
@@ -414,6 +444,25 @@
   function _fmtTime(d)  { return _pad(d.getHours()) + ':' + _pad(d.getMinutes()); }
   function _fmtDate(d)  { return d.getFullYear() + '-' + _pad(d.getMonth() + 1) + '-' + _pad(d.getDate()); }
   function _trunc(s, n) { n = n || 34; return s && s.length > n ? s.slice(0, n - 1) + '…' : (s || ''); }
+  function _isTimeRangeValid(ini, fim) { return !!ini && !!fim && ini < fim; }
+  function _getIsoWeekInfo(dateObj) {
+    var target = new Date(dateObj);
+    target.setHours(12, 0, 0, 0);
+    var isoDia = target.getDay() || 7;
+    var weekIni = new Date(target);
+    weekIni.setDate(target.getDate() - isoDia + 1);
+    var weekFim = new Date(weekIni);
+    weekFim.setDate(weekIni.getDate() + 6);
+    var weekThursday = new Date(weekIni);
+    weekThursday.setDate(weekIni.getDate() + 3);
+    var isoYear = weekThursday.getFullYear();
+    var jan4 = new Date(isoYear, 0, 4, 12, 0, 0, 0);
+    var jan4IsoDay = jan4.getDay() || 7;
+    var week1Start = new Date(jan4);
+    week1Start.setDate(jan4.getDate() - jan4IsoDay + 1);
+    var weekNum = Math.floor((weekIni - week1Start) / (7 * 24 * 3600 * 1000)) + 1;
+    return { isoDay: isoDia, year: isoYear, week: weekNum, start: weekIni, end: weekFim };
+  }
 
   /* ═══════════════════════════════════════════════════════════════
      Supabase
@@ -431,6 +480,7 @@
     if (_cachedUser && _cachedUser.id) return _cachedUser;
     if (window.G && window.G.usuario && window.G.usuario.id) {
       _cachedUser = window.G.usuario;
+      _migrateLegacyState(_cachedUser.id);
       return _cachedUser;
     }
     var client = _getSb();
@@ -442,6 +492,7 @@
       var q = await client.from('usuarios').select('id, nome, role, iniciais, cor, auth_id')
         .eq('auth_id', session.user.id).maybeSingle();
       _cachedUser = q.data;
+      if (_cachedUser && _cachedUser.id) _migrateLegacyState(_cachedUser.id);
       return _cachedUser;
     } catch (e) { return null; }
   }
@@ -661,6 +712,7 @@
         .limit(30);
       var seen = new Set(), result = [];
       (res.data || []).forEach(function (r) {
+        if (r.tipo === 'projeto' && (!r.produto_id || !r.etapa_id)) return;
         var key = (r.tipo || '') + '|' + (r.subtipo || '') + '|' + (r.produto_id || '') + '|' + (r.etapa_id || '');
         if (seen.has(key) || result.length >= 3) return;
         seen.add(key);
@@ -902,7 +954,7 @@
         var tipoLabel = tipo === 'organizacao' ? 'Org. Interna' : 'Sociedade';
         nomeProjeto   = tipoLabel + (subtipo ? ' · ' + subtipo : '');
       } else {
-        /* Projeto: precisa pelo menos produto selecionado */
+        /* Projeto: precisa pelo menos produto e etapa */
         var selProd  = document.getElementById('tmr-sel-prod');
         var selEtapa = document.getElementById('tmr-sel-etapa');
         var selOpp   = document.getElementById('tmr-sel-opp');
@@ -914,6 +966,7 @@
         if (!selCli || !selCli.value) { _toast('Selecione o cliente'); return; }
         if (!selOpp || !selOpp.value) { _toast('Selecione o projeto / oportunidade'); return; }
         if (!produtoId)               { _toast('Selecione o produto'); return; }
+        if (!etapaId)                 { _toast('Selecione a etapa'); return; }
 
         /* Captura labels de cada nível */
         var cliTxt  = selCli  ? selCli.options[selCli.selectedIndex].text   : '';
@@ -1050,6 +1103,21 @@
         if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
         return;
       }
+      if (!_isTimeRangeValid(ini, fim)) {
+        _toast('Hora fim deve ser maior que início');
+        if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+        return;
+      }
+      if ((state.tipo || 'projeto') === 'projeto' && !state.produtoId) {
+        _toast('Selecione o produto');
+        if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+        return;
+      }
+      if ((state.tipo || 'projeto') === 'projeto' && !state.etapaId) {
+        _toast('Selecione a etapa');
+        if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+        return;
+      }
 
       var client = _getSb();
       if (!client) {
@@ -1060,18 +1128,10 @@
 
       /* ── Calcula semana ──────────────────────────────────────── */
       var dateObj = new Date(dataISO + 'T12:00:00');
-      var jsDay   = dateObj.getDay();
-      var isoDia  = jsDay === 0 ? 7 : jsDay;                         // 1=Seg … 7=Dom
-      var weekMon = new Date(dateObj);
-      weekMon.setDate(dateObj.getDate() - (isoDia - 1));
-      var weekSun = new Date(weekMon);
-      weekSun.setDate(weekMon.getDate() + 6);
-      var thursd  = new Date(dateObj);
-      thursd.setDate(dateObj.getDate() + (4 - isoDia));
-      var yrStart = new Date(thursd.getFullYear(), 0, 1);
-      var semNum  = Math.ceil(((thursd - yrStart) / 86400000 + 1) / 7);
-      var weekIni = _fmtDate(weekMon);
-      var weekFim = _fmtDate(weekSun);
+      var weekInfo = _getIsoWeekInfo(dateObj);
+      var isoDia  = weekInfo.isoDia;
+      var weekIni = _fmtDate(weekInfo.start);
+      var weekFim = _fmtDate(weekInfo.end);
 
       /* ── Busca semana existente ── */
       var sfRes = await client.from('semanas').select('id, finalizada')
@@ -1087,7 +1147,7 @@
       /* ── Cria semana se não existir ── */
       if (!semDb) {
         var scRes = await client.from('semanas')
-          .upsert({ usuario_id: user.id, ano: thursd.getFullYear(), semana: semNum, data_inicio: weekIni, data_fim: weekFim, finalizada: false }, { onConflict: 'usuario_id,ano,semana' })
+          .upsert({ usuario_id: user.id, ano: weekInfo.year, semana: weekInfo.week, data_inicio: weekIni, data_fim: weekFim, finalizada: false }, { onConflict: 'usuario_id,ano,semana' })
           .select().single();
         if (scRes.error) {
           _toast('Erro na semana: ' + scRes.error.message);
@@ -1269,6 +1329,7 @@
         if (!selCli || !selCli.value)  { _toast('Selecione o cliente'); return; }
         if (!selOpp || !selOpp.value)  { _toast('Selecione o projeto / oportunidade'); return; }
         if (!produtoId)                { _toast('Selecione o produto'); return; }
+        if (!etapaId)                  { _toast('Selecione a etapa'); return; }
         var cliTxt  = selCli.options[selCli.selectedIndex].text;
         var oppTxt  = selOpp.options[selOpp.selectedIndex].text;
         var prodTxt = selProd.options[selProd.selectedIndex].text;
@@ -1468,7 +1529,9 @@
   /* ═══════════════════════════════════════════════════════════════
      Init
   ═══════════════════════════════════════════════════════════════ */
-  function _init() {
+  async function _init() {
+    await _getUser();
+
     /* CSS */
     var styleEl = document.createElement('style');
     styleEl.textContent = CSS;

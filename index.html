@@ -454,24 +454,43 @@ const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-function buildExpUsuarioPayload(authId, usuario) {
-  const nome = (usuario && usuario.nome) || '';
+function normalizeUsuario(usuario) {
+  if (!usuario) return null;
   return {
+    ...usuario,
+    id: typeof usuario.id !== 'undefined' ? usuario.id : null,
+    apelido: usuario.apelido || null,
+    email_login: usuario.email_login || usuario.email || null,
+    avatar_url: usuario.avatar_url || null,
+    viewer_only: !!usuario.viewer_only,
+    is_platform_manager: !!usuario.is_platform_manager,
+    can_coordinate_projects: !!usuario.can_coordinate_projects,
+    termo_status: usuario.termo_status || usuario.status_termo || null,
+    termo_assinado_em: usuario.termo_assinado_em || usuario.assinado_em || null,
+    termo_expira_em: usuario.termo_expira_em || usuario.expira_em || null,
+    status_acesso: usuario.status_acesso || null
+  };
+}
+function buildExpUsuarioPayload(authId, usuario) {
+  const safeUsuario = normalizeUsuario(usuario) || {};
+  const nome = safeUsuario.nome || '';
+  return {
+    id: safeUsuario.id || null,
     auth_id: authId || null,
-    app_user_id: usuario && typeof usuario.id !== 'undefined' ? usuario.id : null,
+    app_user_id: safeUsuario.id || null,
     nome,
-    apelido: (usuario && usuario.apelido) || (nome ? nome.split(' ')[0] : ''),
-    iniciais: (usuario && usuario.iniciais) || '',
-    cor: (usuario && usuario.cor) || '#888',
-    role: (usuario && usuario.role) || '',
-    viewer_only: !!(usuario && usuario.viewer_only),
-    is_platform_manager: !!(usuario && usuario.is_platform_manager),
-    can_coordinate_projects: !!(usuario && usuario.can_coordinate_projects),
-    termo_status: (usuario && usuario.termo_status) || null,
-    termo_assinado_em: (usuario && usuario.termo_assinado_em) || null,
-    termo_expira_em: (usuario && usuario.termo_expira_em) || null,
-    status_acesso: (usuario && usuario.status_acesso) || null,
-    avatar_url: (usuario && usuario.avatar_url) || null
+    apelido: safeUsuario.apelido || (nome ? nome.split(' ')[0] : ''),
+    iniciais: safeUsuario.iniciais || '',
+    cor: safeUsuario.cor || '#888',
+    role: safeUsuario.role || '',
+    viewer_only: !!safeUsuario.viewer_only,
+    is_platform_manager: !!safeUsuario.is_platform_manager,
+    can_coordinate_projects: !!safeUsuario.can_coordinate_projects,
+    termo_status: safeUsuario.termo_status || null,
+    termo_assinado_em: safeUsuario.termo_assinado_em || null,
+    termo_expira_em: safeUsuario.termo_expira_em || null,
+    status_acesso: safeUsuario.status_acesso || null,
+    avatar_url: safeUsuario.avatar_url || null
   };
 }
 const ROLES = {
@@ -510,18 +529,81 @@ function hideMsg(elId) {
   if (el) el.className = el.className.replace(' show','').replace('msg-ok','msg-erro').replace(' show','');
 }
 
+function setConnectionStatus(ok, msg) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-txt');
+  if (!dot || !txt) return;
+  dot.classList.toggle('ok', !!ok);
+  txt.textContent = msg;
+}
+
+function resetLoggedState() {
+  const viewerBadge = document.getElementById('logado-viewer');
+  const avatar = document.getElementById('logado-avatar');
+  if (viewerBadge) viewerBadge.style.display = 'none';
+  if (avatar) {
+    avatar.textContent = '';
+    avatar.style.background = '#888';
+  }
+  const nome = document.getElementById('logado-nome');
+  const cargo = document.getElementById('logado-cargo');
+  if (nome) nome.textContent = '';
+  if (cargo) cargo.textContent = '';
+}
+
+async function fetchTermoCompromisso(usuarioId) {
+  if (!usuarioId) return {};
+  const { data, error } = await sb
+    .from('usuarios_termos_compromisso')
+    .select('status_termo, assinado_em, expira_em')
+    .eq('usuario_id', usuarioId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return {};
+  return {
+    termo_status: data.status_termo || null,
+    termo_assinado_em: data.assinado_em || null,
+    termo_expira_em: data.expira_em || null
+  };
+}
+
 async function fetchCurrentUsuario(authId) {
-  const { data: usuario } = await sb
-    .from('usuarios')
-    .select('id, nome, iniciais, role, cor, viewer_only')
-    .eq('auth_id', authId)
-    .single();
-  return usuario || null;
+  const selects = [
+    'id, nome, iniciais, role, cor, viewer_only, apelido, email, email_login, avatar_url, is_platform_manager, can_coordinate_projects, status_acesso',
+    'id, nome, iniciais, role, cor, viewer_only, avatar_url, apelido, status_acesso',
+    'id, nome, iniciais, role, cor, viewer_only'
+  ];
+
+  let usuario = null;
+  let lastError = null;
+
+  for (const fields of selects) {
+    const { data, error } = await sb
+      .from('usuarios')
+      .select(fields)
+      .eq('auth_id', authId)
+      .maybeSingle();
+
+    if (!error) {
+      usuario = data || null;
+      break;
+    }
+    lastError = error;
+  }
+
+  if (!usuario && lastError) throw lastError;
+  if (!usuario) return null;
+
+  const termo = await fetchTermoCompromisso(usuario.id);
+  return normalizeUsuario({ ...usuario, ...termo });
 }
 
 async function handleOrphanedSession(authUser) {
   await sb.auth.signOut();
   sessionStorage.removeItem('exp_usuario');
+  resetLoggedState();
   if (authUser) {
     showErro('erro-login', 'Sua sessao nao possui perfil valido na plataforma. Contate um socio administrador.');
   }
@@ -544,19 +626,20 @@ function voltarLogin() {
 
 // ── INIT ──────────────────────────────────────────────────
 async function init() {
-  // Verifica configuração básica do cliente, sem depender de leitura pública em `usuarios`
+  // Verifica cliente e acesso básico à tabela `usuarios`
   try {
-    const { error } = await sb.auth.getSession();
-    const dot = document.getElementById('status-dot');
-    const txt = document.getElementById('status-txt');
-    if (!error) { dot.classList.add('ok'); txt.textContent = 'Cliente de autenticacao configurado'; }
-    else { txt.textContent = 'Erro de conexão'; }
-  } catch { document.getElementById('status-txt').textContent = 'Sem conexão'; }
+    const { error } = await sb.from('usuarios').select('id').limit(1);
+    if (!error) setConnectionStatus(true, 'Cliente e banco acessiveis');
+    else setConnectionStatus(false, 'Falha ao acessar usuarios');
+  } catch {
+    setConnectionStatus(false, 'Sem conexao');
+  }
 
   // Detecta link de recuperação de senha (Supabase envia #type=recovery na URL)
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') {
       sessionStorage.removeItem('exp_usuario');
+      resetLoggedState();
       showPanel('form-login');
       return;
     }
@@ -621,7 +704,17 @@ async function fazerLogin() {
 
 // ── MOSTRAR USUÁRIO LOGADO ────────────────────────────────
 async function mostrarLogado(authUser) {
-  const usuario = await fetchCurrentUsuario(authUser.id);
+  let usuario = null;
+  try {
+    usuario = await fetchCurrentUsuario(authUser.id);
+  } catch (error) {
+    console.error('Falha ao carregar perfil do usuario autenticado.', error);
+    resetLoggedState();
+    showErro('erro-login', 'Nao foi possivel validar sua sessao no banco agora. Tente novamente em instantes.');
+    showPanel('form-login');
+    return false;
+  }
+
   if (!usuario) {
     await handleOrphanedSession(authUser);
     return false;
@@ -633,10 +726,7 @@ async function mostrarLogado(authUser) {
 
   document.getElementById('logado-nome').textContent  = usuario.nome;
   document.getElementById('logado-cargo').textContent = ROLES[usuario.role] || usuario.role;
-
-  if (usuario.viewer_only) {
-    document.getElementById('logado-viewer').style.display = 'inline-block';
-  }
+  document.getElementById('logado-viewer').style.display = usuario.viewer_only ? 'inline-block' : 'none';
 
   document.getElementById('form-login').style.display       = 'none';
   document.getElementById('rec-panel').style.display        = 'none';
@@ -721,6 +811,7 @@ async function salvarNovaSenha() {
 async function sair() {
   await sb.auth.signOut();
   sessionStorage.removeItem('exp_usuario');
+  resetLoggedState();
   document.getElementById('painel-logado').style.display = 'none';
   document.getElementById('form-login').style.display    = 'block';
   document.getElementById('inp-email').value = '';

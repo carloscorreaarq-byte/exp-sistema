@@ -193,6 +193,7 @@
   var currentView    = 'home';      // 'home' | 'channel' | 'members'
   var currentChannel = 'general';
   var currentLabel   = '# geral';
+  var loadRequestSeq = 0;
   var teamMembers      = [];
   var allMembers       = [];        // todos os usuários incluindo o próprio — para lookup de avatares
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
@@ -217,7 +218,6 @@
     }
     try { user = JSON.parse(raw); } catch (e) { return; }
     if (!user || !user.nome) return;
-    if (!user.auth_id) user.auth_id = user.id || null;
     if (!user.app_user_id && typeof user.id !== 'undefined') user.app_user_id = user.id;
     if (!user.apelido) user.apelido = (user.nome || '').split(' ')[0] || '';
 
@@ -227,6 +227,7 @@
 
     sb.auth.getSession().then(function (r) {
       if (!r.data || !r.data.session) return;
+      user.auth_id = r.data.session.user.id;
       mountWidget();
     });
   }
@@ -514,17 +515,16 @@
 
     sb.from('chat_messages')
       .select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id')
-      .like('channel', 'dm:%')
       .gte('created_at', since)
       .order('created_at', { ascending: false })
       .then(function (r) {
         var msgs = r.data || [];
 
-        /* Agrupar por canal, manter a mensagem mais recente */
+        /* Agrupar por canal dinâmico, manter a mensagem mais recente */
         var seen = {};
         var dmList = [];
         msgs.forEach(function (m) {
-          if (m.channel.indexOf(uid) === -1) return;
+          if (!isDynamicChannel(m.channel) || !channelHasUser(m.channel, uid)) return;
           if (!seen[m.channel]) { seen[m.channel] = true; dmList.push(m); }
         });
 
@@ -539,7 +539,7 @@
           '</div>';
 
         /* Linha #sócios (apenas para role socio) */
-        if (['socio', 'socio_admin'].includes((user.role || '').toLowerCase())) {
+        if (isSocioLikeRole(user.role)) {
           var socU = channelUnread['socios'] || 0;
           html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sócios\')">' +
             '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
@@ -548,29 +548,19 @@
             '</div>';
         }
 
-        /* Linhas de DMs */
+        /* Linhas de DMs e grupos */
         dmList.forEach(function (dm) {
-          var isOwn = dm.sender_id === uid;
-          var parts = dm.channel.replace('dm:', '').split(':');
-          var otherUid = parts.find(function (p) { return p !== uid; }) || '';
-          var member = allMembers.find(function (m) { return m.auth_id === otherUid; });
+          var meta = getConversationMeta(dm, uid);
+          var name = meta.label;
+          var iniciais = meta.iniciais;
+          var cor = meta.cor;
+          var avatarUrl = meta.avatarUrl;
 
-          var name, iniciais, cor, avatarUrl;
-          var dmMember = allMembers.find(function (m) { return m.auth_id === dm.sender_id; });
-          if (!isOwn) {
-            name = dm.sender_name; iniciais = dm.sender_iniciais || dm.sender_name.substring(0, 2).toUpperCase(); cor = dm.sender_cor || '#1D6A4A';
-            avatarUrl = dmMember ? dmMember.avatar_url : null;
-          } else if (member) {
-            name = member.nome; iniciais = member.iniciais || member.nome.substring(0, 2).toUpperCase(); cor = member.cor || '#1D6A4A';
-            avatarUrl = member.avatar_url || null;
-          } else {
-            name = 'Colega'; iniciais = '??'; cor = '#1D6A4A'; avatarUrl = null;
-          }
 
           var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + '…' : dm.content;
           var dmU      = channelUnread[dm.channel] || 0;
           var chanJson = dm.channel.replace(/'/g, "\\'");
-          var nameEsc  = escHtml(firstName(name));
+          var nameEsc  = escHtml(meta.label);
 
           html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
             avHtml(iniciais, cor, avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
@@ -781,7 +771,7 @@
         var uid = user.auth_id;
 
         /* Ignorar canais que não envolvem o usuário */
-        var isSocios = ch === 'socios' && ['socio', 'socio_admin'].includes((user.role || '').toLowerCase());
+        var isSocios = ch === 'socios' && isSocioLikeRole(user.role);
         if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
 
         var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
@@ -815,15 +805,18 @@
   ══════════════════════════════════════════════════════════════════ */
   function loadMessages() {
     if (isLoading) return;
+    var channel = currentChannel;
+    var requestSeq = ++loadRequestSeq;
     isLoading = true;
     showLoading();
     var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
     sb.from('chat_messages')
       .select('*')
-      .eq('channel', currentChannel)
+      .eq('channel', channel)
       .gte('created_at', since)
       .order('created_at', { ascending: true })
       .then(function (r) {
+        if (requestSeq !== loadRequestSeq || channel !== currentChannel) return;
         isLoading = false;
         if (r.error) { showError(); return; }
         messages = r.data || [];
@@ -841,12 +834,13 @@
 
     sb.from('chat_read_status').select('channel,last_read_at').eq('user_id', uid)
       .then(function (r) {
+        if (r.error) return;
         var readMap = {};
         (r.data || []).forEach(function (row) { readMap[row.channel] = row.last_read_at; });
 
         /* Contar não lidas por canal fixo */
         var fixedChannels = ['general'];
-        if (['socio', 'socio_admin'].includes((user.role || '').toLowerCase())) fixedChannels.push('socios');
+        if (isSocioLikeRole(user.role)) fixedChannels.push('socios');
 
         fixedChannels.forEach(function (ch) {
           var lastRead = readMap[ch] || since;
@@ -860,15 +854,35 @@
               updateBadge();
             });
         });
+
+        sb.from('chat_messages')
+          .select('channel,sender_id,created_at')
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .then(function (r2) {
+            if (r2.error) return;
+            var nextUnread = {};
+            (r2.data || []).forEach(function (msg) {
+              if (msg.sender_id === uid) return;
+              var lastRead = readMap[msg.channel] || since;
+              if (msg.created_at > lastRead) nextUnread[msg.channel] = (nextUnread[msg.channel] || 0) + 1;
+            });
+            channelUnread = nextUnread;
+            updateBadge();
+            if (isOpen && currentView === 'home') renderHome();
+          });
       });
   }
 
   function markRead() {
+    var channel = currentChannel;
     sb.from('chat_read_status').upsert({
-      user_id: user.auth_id, channel: currentChannel, last_read_at: new Date().toISOString()
-    }).then(function () {
-      channelUnread[currentChannel] = 0;
+      user_id: user.auth_id, channel: channel, last_read_at: new Date().toISOString()
+    }).then(function (r) {
+      if (r.error) return;
+      channelUnread[channel] = 0;
       updateBadge();
+      if (isOpen && currentView === 'home') renderHome();
     });
   }
 
@@ -912,8 +926,20 @@
     upd[type] = arr;
     msg.reactions = upd;
     renderMessages();
-    sb.from('chat_messages').update({ reactions: upd }).eq('id', msgId)
-      .then(function (r) { if (r.error) { msg.reactions = rx; renderMessages(); } });
+    sb.rpc('chat_toggle_reaction', { p_message_id: msgId, p_reaction: type })
+      .then(function (r) {
+        if (r.error) {
+          msg.reactions = rx;
+          renderMessages();
+          return;
+        }
+        var updated = Array.isArray(r.data) ? r.data[0] : r.data;
+        if (updated && updated.id) {
+          var idx2 = messages.findIndex(function (m) { return m.id === updated.id; });
+          if (idx2 !== -1) messages[idx2] = updated;
+        }
+        renderMessages();
+      });
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -1120,6 +1146,68 @@
 
   function fmtTime(d) { return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
   function firstName(name) { return name ? name.split(' ')[0] : ''; }
+  function isSocioLikeRole(role) { return ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase()); }
+  function isDynamicChannel(channel) { return !!channel && (channel.indexOf('dm:') === 0 || channel.indexOf('group:') === 0); }
+
+  function channelHasUser(channel, uid) {
+    if (!isDynamicChannel(channel) || !uid) return false;
+    return channel.replace(/^dm:|^group:/, '').split(':').indexOf(uid) !== -1;
+  }
+
+  function getConversationMeta(conv, uid) {
+    var senderMember = allMembers.find(function (m) { return m.auth_id === conv.sender_id; });
+
+    if (conv.channel.indexOf('group:') === 0) {
+      var others = conv.channel.replace('group:', '').split(':')
+        .filter(function (part) { return part !== uid; })
+        .map(function (part) { return allMembers.find(function (m) { return m.auth_id === part; }); })
+        .filter(Boolean);
+      var label = others.length ? others.map(function (m) { return firstName(m.nome); }).join(', ') : 'Grupo';
+      var initials = others.length
+        ? others.slice(0, 2).map(function (m) { return firstName(m.nome).charAt(0).toUpperCase(); }).join('')
+        : 'GP';
+      return {
+        label: label,
+        iniciais: initials,
+        cor: '#111110',
+        avatarUrl: null,
+        preview: conv.content
+      };
+    }
+
+    var isOwn = conv.sender_id === uid;
+    var parts = conv.channel.replace('dm:', '').split(':');
+    var otherUid = parts.find(function (p) { return p !== uid; }) || '';
+    var member = allMembers.find(function (m) { return m.auth_id === otherUid; });
+
+    if (!isOwn) {
+      return {
+        label: firstName(conv.sender_name),
+        iniciais: conv.sender_iniciais || conv.sender_name.substring(0, 2).toUpperCase(),
+        cor: conv.sender_cor || '#1D6A4A',
+        avatarUrl: senderMember ? senderMember.avatar_url : null,
+        preview: conv.content
+      };
+    }
+
+    if (member) {
+      return {
+        label: firstName(member.nome),
+        iniciais: member.iniciais || member.nome.substring(0, 2).toUpperCase(),
+        cor: member.cor || '#1D6A4A',
+        avatarUrl: member.avatar_url || null,
+        preview: conv.content
+      };
+    }
+
+    return {
+      label: 'Colega',
+      iniciais: '??',
+      cor: '#1D6A4A',
+      avatarUrl: null,
+      preview: conv.content
+    };
+  }
 
   function avHtml(iniciais, cor, avatarUrl, extraStyle) {
     var s = extraStyle || '';
