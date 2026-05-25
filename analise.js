@@ -220,6 +220,15 @@ async function analiseCarregarDados() {
     ANALISE._erro = error?.message || 'Não foi possível carregar os dados do módulo.';
   } finally {
     ANALISE._carregando = false;
+    if (!ANALISE._erro) {
+      const subtitleEl = document.getElementById('analise-user-context');
+      if (subtitleEl) {
+        const nProjetos = ANALISE._produtos.length;
+        const totalHoras = Object.values(ANALISE._dadosPorProduto).reduce((sum, item) => sum + item.horasTotais, 0);
+        const hhmm = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        subtitleEl.textContent = `${nProjetos} projetos · ${fmtH(totalHoras)} lançadas · Atualizado às ${hhmm}`;
+      }
+    }
     analiseRenderAbaAtiva();
   }
 }
@@ -801,8 +810,8 @@ function analiseRenderAcumulado() {
       ${analiseKpiCard('Projetos na leitura', String(produtos.length), produtos.length === produtosBase.length ? 'Base completa elegível' : `${produtosBase.length} elegíveis no total`)}
       ${analiseKpiCard('Horas lançadas', fmtH(horasTotal), 'Soma de horas com produto associado')}
       ${analiseKpiCard('Custo total', analiseFmtMoney(custoTotal), 'HH + custos lançados')}
-      ${analiseKpiCard('Margem ponderada', analiseFmtPct(margemPonderada), 'Baseada em valor contratado conhecido')}
-      ${analiseKpiCard('Margem projetada média', analiseFmtPct(margemProjetadaMedia), 'Heurística inicial baseada em budget e estágio')}
+      ${analiseKpiCardSemantic('Margem ponderada', analiseFmtPct(margemPonderada), 'Baseada em valor contratado conhecido', analiseMargemKpiCls(margemPonderada))}
+      ${analiseKpiCardSemantic('Margem projetada média', analiseFmtPct(margemProjetadaMedia), 'Heurística inicial baseada em budget e estágio', analiseMargemKpiCls(margemProjetadaMedia))}
     </div>
     ${analiseFilterBar({
       aba: 'acumulado',
@@ -889,8 +898,14 @@ function analiseRenderDesenvolvimento() {
   const rowsProjeto = analiseAgruparEtapasAtivasPorProjeto(etapas);
   const projetosEmRisco = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'risco');
   const projetosAtencao = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'atencao');
+  const projetosSaudavel = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'saudavel');
 
   panel.innerHTML = `
+    ${analiseSemaforoCompacto([
+      { key: 'risco', label: 'Risco', count: projetosEmRisco.length },
+      { key: 'atencao', label: 'Atenção', count: projetosAtencao.length },
+      { key: 'saudavel', label: 'Saudável', count: projetosSaudavel.length },
+    ])}
     <div class="analise-kpis-row">
       ${analiseKpiCard('Etapas ativas', String(etapas.length), 'Em andamento ou em revisão')}
       ${analiseKpiCard('Com budget', String(comBudget.length), 'Etapas com budget carregado')}
@@ -940,10 +955,6 @@ function analiseRenderDesenvolvimento() {
       <section class="analise-visual-card">
         <div class="analise-visual-title">Carga por nucleo</div>
         ${analiseGraficoCargaNucleoAtivo(etapas)}
-      </section>
-      <section class="analise-visual-card">
-        <div class="analise-visual-title">Semáforo de risco</div>
-        ${analiseGraficoSemaforoProjetos(rowsProjeto)}
       </section>
     </div>
     <div class="analise-table-wrap">
@@ -1704,7 +1715,6 @@ function analiseGraficoMargemPorNucleo(produtos) {
 
   const maxWidth = 220;
   return `
-    <div class="analise-chart-copy">Comparativo simples de margem percentual agregada por nucleo.</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 ${60 + rows.length * 24}" aria-label="Margem por nucleo">
       ${rows.map((row, index) => {
         const y = 28 + index * 24;
@@ -1712,8 +1722,8 @@ function analiseGraficoMargemPorNucleo(produtos) {
         const cor = Number(row.margemPct || 0) < 20 ? 'var(--terracota)' : Number(row.margemPct || 0) < 25 ? 'var(--ouro)' : 'var(--verde)';
         return `
           <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
-          <rect x="102" y="${y - 10}" width="${maxWidth}" height="10" rx="5" fill="var(--off)"></rect>
-          <rect x="102" y="${y - 10}" width="${(maxWidth * pct) / 100}" height="10" rx="5" fill="${cor}"></rect>
+          <rect x="102" y="${y - 12}" width="${maxWidth}" height="14" rx="7" fill="var(--off)"></rect>
+          <rect x="102" y="${y - 12}" width="${(maxWidth * pct) / 100}" height="14" rx="7" fill="${cor}"></rect>
           <text x="312" y="${y}" text-anchor="end" class="svg-value">${_escN(analiseFmtPct(row.margemPct))}</text>
         `;
       }).join('')}
@@ -1740,7 +1750,6 @@ function analiseGraficoContratoVsCusto(contratadoTotal, custoTotal) {
   }
   const pct = Math.max(0, Math.min(100, (Number(custoTotal || 0) / Number(contratadoTotal || 1)) * 100));
   return `
-    <div class="analise-chart-copy">Visao geral do quanto do valor contratado ja foi consumido em custo.</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 120" aria-label="Contrato versus custo">
       <rect x="16" y="42" width="288" height="22" rx="11" fill="var(--off)"></rect>
       <rect x="16" y="42" width="${(288 * pct) / 100}" height="22" rx="11" fill="var(--grafite)"></rect>
@@ -1788,14 +1797,13 @@ function analiseGraficoCargaNucleoAtivo(etapas) {
 
   const maxHoras = Math.max(...rows.map((row) => row.horas), 1);
   return `
-    <div class="analise-chart-copy">Horas consumidas nas etapas ativas, recortadas por nucleo.</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 ${60 + rows.length * 24}" aria-label="Carga ativa por nucleo">
       ${rows.map((row, index) => {
         const y = 28 + index * 24;
         return `
           <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
-          <rect x="102" y="${y - 10}" width="210" height="10" rx="5" fill="var(--off)"></rect>
-          <rect x="102" y="${y - 10}" width="${(210 * row.horas) / maxHoras}" height="10" rx="5" fill="${NUCLEO_COR[row.key]?.dot || 'var(--grafite)'}"></rect>
+          <rect x="102" y="${y - 12}" width="210" height="14" rx="7" fill="var(--off)"></rect>
+          <rect x="102" y="${y - 12}" width="${(210 * row.horas) / maxHoras}" height="14" rx="7" fill="${NUCLEO_COR[row.key]?.dot || 'var(--grafite)'}"></rect>
           <text x="312" y="${y}" text-anchor="end" class="svg-value">${_escN(fmtH(row.horas))}</text>
         `;
       }).join('')}
@@ -1817,7 +1825,6 @@ function analiseGraficoMargemHistorica(encerrados) {
   const chartHeight = 42 + rows.length * 28;
 
   return `
-    <div class="analise-chart-copy">Últimos projetos encerrados filtrados, em ordem decrescente, para leitura da margem histórica sem sobreposição.</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 ${chartHeight}" aria-label="Histórico de margem dos encerrados">
       <line x1="${axisX}" y1="18" x2="${axisX}" y2="${chartHeight - 10}" stroke="var(--cinza2)" stroke-width="1"></line>
       ${rows.map((item, index) => {
@@ -1851,14 +1858,13 @@ function analiseGraficoCustoPorNucleo(produtos) {
   const max = Math.max(...rows.map((row) => row.custo), 1);
 
   return `
-    <div class="analise-chart-copy">Concentracao do custo total entre os nucleos presentes no filtro.</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 ${60 + rows.length * 24}" aria-label="Custo por nucleo">
       ${rows.map((row, index) => {
         const y = 28 + index * 24;
         return `
           <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
-          <rect x="102" y="${y - 10}" width="210" height="10" rx="5" fill="var(--off)"></rect>
-          <rect x="102" y="${y - 10}" width="${(210 * row.custo) / max}" height="10" rx="5" fill="${NUCLEO_COR[row.key]?.dot || 'var(--grafite)'}"></rect>
+          <rect x="102" y="${y - 12}" width="210" height="14" rx="7" fill="var(--off)"></rect>
+          <rect x="102" y="${y - 12}" width="${(210 * row.custo) / max}" height="14" rx="7" fill="${NUCLEO_COR[row.key]?.dot || 'var(--grafite)'}"></rect>
           <text x="312" y="${y}" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(row.custo))}</text>
         `;
       }).join('')}
@@ -1873,7 +1879,6 @@ function analiseGraficoDistribuicaoSimples(rows, copy) {
   }
   let offset = 16;
   return `
-    <div class="analise-chart-copy">${_escN(copy)}</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Grafico de distribuicao">
       <rect x="16" y="40" width="288" height="24" rx="12" fill="var(--off)"></rect>
       ${rows.filter((row) => row.count > 0).map((row) => {
@@ -1905,8 +1910,7 @@ function analiseGraficoRiscoProjetado(produtos) {
 
   const coberturaAlta = (produtos || []).filter((item) => Number(item.previsao?.coberturaBudget || 0) >= 0.8).length;
   return `
-    <div class="analise-chart-copy">Leitura inicial da carteira olhando para margem futura, cobertura de budget e estágio das etapas.</div>
-    ${analiseGraficoDistribuicaoSimples(rows, 'Projetos distribuídos pelo risco estimado da margem final.')}
+    ${analiseGraficoDistribuicaoSimples(rows, '')}
     <div class="analise-budget-meta" style="margin-top:10px">
       <span>${_escN(String(coberturaAlta))} projeto(s) com cobertura de budget alta</span>
       <span>${_escN(String(Math.max(0, (produtos || []).length - coberturaAlta)))} com previsão mais heurística</span>
@@ -1934,7 +1938,6 @@ function analiseGraficoSemaforoProjetos(rowsProjeto) {
     .map((row) => row.produto?.nome || 'Projeto sem nome');
 
   return `
-    <div class="analise-chart-copy">Semáforo rápido dos projetos em execução para priorizar onde olhar primeiro.</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Semáforo de risco dos projetos ativos">
       ${grupos.map((grupo, index) => {
         const x = 24 + index * 96;
@@ -2051,6 +2054,38 @@ function analiseKpiCard(label, value, sub) {
       <div class="analise-kpi-label">${_escN(label)}</div>
       <div class="analise-kpi-val">${_escN(value)}</div>
       <div class="analise-kpi-sub">${_escN(sub)}</div>
+    </div>
+  `;
+}
+
+function analiseKpiCardSemantic(label, value, sub, colorCls) {
+  return `
+    <div class="analise-kpi">
+      <div class="analise-kpi-label">${_escN(label)}</div>
+      <div class="analise-kpi-val${colorCls ? ` ${colorCls}` : ''}">${_escN(value)}</div>
+      <div class="analise-kpi-sub">${_escN(sub)}</div>
+    </div>
+  `;
+}
+
+function analiseMargemKpiCls(margemPct) {
+  const cls = analiseClassificarMargem(margemPct).cls;
+  if (cls === 'margem-risco') return 'kpi-risco';
+  if (cls === 'margem-atencao') return 'kpi-atencao';
+  if (cls === 'margem-saudavel') return 'kpi-saudavel';
+  return '';
+}
+
+function analiseSemaforoCompacto(grupos) {
+  if (!(grupos || []).some((g) => g.count > 0)) return '';
+  return `
+    <div class="analise-semaforo-compacto">
+      ${grupos.map((g) => `
+        <div class="analise-semaforo-item semaforo-${_escN(g.key)}">
+          <span class="analise-semaforo-num">${_escN(String(g.count))}</span>
+          <span class="analise-semaforo-lbl">${_escN(g.label)}</span>
+        </div>
+      `).join('')}
     </div>
   `;
 }
