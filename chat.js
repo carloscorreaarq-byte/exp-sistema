@@ -369,7 +369,7 @@
               '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSound()" title="Som de notificação">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.openSearch()" title="Pesquisar">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
-              '<button class="chat-close" onclick="expChat.close()">✕</button>' +
+              '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
             '</div>' +
           '</div>' +
           '<div class="chat-conv-list" id="exp-chat-convlist"><div class="chat-loading">' + ldots() + '</div></div>' +
@@ -392,7 +392,7 @@
           '<div class="chat-header">' +
             '<button class="chat-back-btn" onclick="expChat.goHome()">' + icoBack() + '</button>' +
             '<div class="chat-header-info"><div class="chat-header-title" id="exp-chat-chan-title"># geral</div><div class="chat-header-sub" id="exp-chat-chan-sub" style="display:none"></div></div>' +
-            '<button class="chat-close" onclick="expChat.close()">✕</button>' +
+            '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-messages" id="exp-chat-msgs"><div class="chat-loading">' + ldots() + '</div></div>' +
           '<div class="chat-input-area">' +
@@ -407,7 +407,7 @@
           '<div class="chat-header">' +
             '<button class="chat-back-btn" onclick="expChat.goHome()">' + icoBack() + '</button>' +
             '<div class="chat-header-info"><div class="chat-header-title">Nova mensagem</div></div>' +
-            '<button class="chat-close" onclick="expChat.close()">✕</button>' +
+            '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-member-list" id="exp-chat-memberlist"><div class="chat-loading">' + ldots() + '</div></div>' +
           '<div class="chat-group-bar" id="exp-chat-group-bar" style="display:none">' +
@@ -595,6 +595,7 @@
       });
 
       var html = '';
+      var projectHtml = '';
 
       /* Linha #geral */
       var genU = channelUnread['general'] || 0;
@@ -620,13 +621,18 @@
         return new Date(b.lastCreatedAt || 0) - new Date(a.lastCreatedAt || 0);
       });
 
-      if (sortedProjectItems.length) html += '<div class="chat-conv-section">Projetos</div>';
-      sortedProjectItems.forEach(function (item) {
+      if (sortedProjectItems.length) {
+        projectHtml += '<button class="chat-conv-section-btn" onclick="expChat.toggleProjectSection()">' +
+          '<span>Projetos</span>' +
+          '<span class="chat-conv-section-chev">' + (projectSectionCollapsed ? '&#9656;' : '&#9662;') + '</span>' +
+          '</button>';
+      }
+      if (!projectSectionCollapsed) sortedProjectItems.forEach(function (item) {
         var unread = channelUnread[item.channel] || item.unread || 0;
         var chanJson = item.channel.replace(/'/g, "\\'");
         var labelEsc = escHtml(item.label);
-        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
-          avHtml(item.iniciais, item.cor, null, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
+        projectHtml += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+          softAvHtml(item.iniciais, item.cor, null, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + labelEsc + '</div>' +
             '<div class="chat-conv-preview">' + escHtml(item.preview || 'Chat do projeto') + '</div>' +
@@ -653,8 +659,14 @@
           '</div>';
       });
 
+      html += projectHtml;
       $list.innerHTML = html;
     });
+  }
+
+  function toggleProjectSection() {
+    projectSectionCollapsed = !projectSectionCollapsed;
+    if (isOpen && currentView === 'home') renderHome();
   }
 
   function openSearch() {
@@ -691,7 +703,7 @@
           var chanJson = item.channel.replace(/'/g, "\\'");
           var labelEsc = escHtml(item.label);
           return '<div class="chat-search-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
-            avHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
+            softAvHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
             '<div class="chat-search-body">' +
               '<div class="chat-search-title">' + labelEsc + '</div>' +
               '<div class="chat-search-meta">' + escHtml(item.kind || 'Conversa') + '</div>' +
@@ -705,7 +717,7 @@
           var chanJson = item.channel.replace(/'/g, "\\'");
           var labelEsc = escHtml(item.label);
           return '<div class="chat-search-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
-            avHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
+            softAvHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
             '<div class="chat-search-body">' +
               '<div class="chat-search-title">' + labelEsc + '</div>' +
               '<div class="chat-search-meta">' + escHtml(item.author || 'Equipe') + ' · ' + escHtml(item.when || '') + '</div>' +
@@ -1439,7 +1451,7 @@
       var labelEsc = escHtml(item.label);
       return '<div class="chat-alert-card" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
         '<div class="chat-alert-top">' +
-          avHtml(item.iniciais, item.cor, null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
+          softAvHtml(item.iniciais, item.cor, null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
           '<div class="chat-conv-info"><div class="chat-alert-title">' + labelEsc + '</div></div>' +
           '<span class="chat-alert-chip">Nova</span>' +
         '</div>' +
@@ -1805,6 +1817,18 @@
     return '<div class="chat-av" style="background:' + cor + ';' + s + '">' + escHtml(iniciais) + '</div>';
   }
 
+  function softBgColor(hex) {
+    var color = /^#[0-9A-Fa-f]{6}$/.test(hex || '') ? hex : '#1D6A4A';
+    return 'rgba(' + hexRgb(color) + ',0.16)';
+  }
+
+  function softAvHtml(iniciais, cor, avatarUrl, extraStyle) {
+    var s = extraStyle || '';
+    if (avatarUrl) return avHtml(iniciais, cor, avatarUrl, s);
+    var color = /^#[0-9A-Fa-f]{6}$/.test(cor || '') ? cor : '#1D6A4A';
+    return '<div class="chat-av" style="background:' + softBgColor(color) + ';color:' + color + ';' + s + '">' + escHtml(iniciais) + '</div>';
+  }
+
   function escHtml(s) {
     if (!s) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -1835,6 +1859,7 @@
     goHome:          goHome,
     openSearch:      openSearch,
     searchInput:     searchInput,
+    toggleProjectSection: toggleProjectSection,
     startDM:         startDM,
     toggleMember:    toggleMember,
     confirmGroup:    confirmGroup,
