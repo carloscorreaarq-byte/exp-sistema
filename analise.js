@@ -50,6 +50,7 @@ async function analiseBootstrap() {
     if (!boot) return;
     analiseValidarAcesso();
     analiseRenderShell(boot.usuario);
+    analiseInitExpRoom(boot.usuario?.id, boot.usuario?.nome);
     analiseBindEventosBase();
     analiseRenderConfig();
     analiseRenderAbaAtiva();
@@ -84,6 +85,12 @@ function analiseRenderShell(usuario) {
   const configBtn = document.getElementById('analise-btn-config');
   if (configBtn) {
     configBtn.hidden = !analisePodeConfigurarMargem(usuario?.role);
+  }
+
+  if (isSocioRole(usuario?.role)) {
+    document.querySelectorAll('.nd-soc').forEach(el => { el.style.display = ''; });
+    const pm = document.getElementById('user-menu-platform');
+    if (pm) pm.style.display = '';
   }
 }
 
@@ -140,6 +147,21 @@ function analiseBindEventosBase() {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && ANALISE._produtoIsoladoId) {
       analiseFecharProjeto();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const navMod = document.getElementById('nav-mod-wrap');
+    if (navMod && !navMod.contains(event.target)) {
+      document.getElementById('nav-dropdown')?.classList.remove('open');
+    }
+    const fbWrap = document.getElementById('nav-feedback-wrap');
+    if (fbWrap && !fbWrap.contains(event.target)) {
+      document.getElementById('nav-feedback-pop')?.classList.remove('open');
+    }
+    const userPill = document.getElementById('user-pill-wrap');
+    if (userPill && !userPill.contains(event.target)) {
+      document.getElementById('user-dropdown')?.classList.remove('open');
     }
   });
 }
@@ -2263,4 +2285,100 @@ function analiseCheckQueryError(error, fallbackMessage) {
   if (error) {
     throw new Error(fallbackMessage);
   }
+}
+
+// ─── Nav helpers ────────────────────────────────────────────────────────────
+
+function toggleNavDropdown() {
+  document.getElementById('nav-dropdown')?.classList.toggle('open');
+}
+
+function toggleFeedbackPop(ev) {
+  if (ev) ev.stopPropagation();
+  document.getElementById('nav-feedback-pop')?.classList.toggle('open');
+}
+
+function fecharFeedbackPop() {
+  document.getElementById('nav-feedback-pop')?.classList.remove('open');
+}
+
+function analiseSetFeedbackStatus(msg) {
+  const el = document.getElementById('tool-feedback-status');
+  if (el) el.textContent = msg;
+}
+
+async function enviarFeedbackAnalise() {
+  const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
+  const msg = (document.getElementById('tool-feedback-message')?.value || '').trim();
+  if (!msg) {
+    analiseSetFeedbackStatus('Escreva uma mensagem antes de enviar.');
+    return;
+  }
+  const sb = window.sb;
+  if (!sb) {
+    analiseSetFeedbackStatus('Sem conexão com o banco de dados.');
+    return;
+  }
+  const usuario = G.usuario || {};
+  const { error } = await sb.from('plataforma_feedback').insert({
+    tipo,
+    mensagem: msg,
+    origem: 'analise',
+    usuario_id: usuario.id || null,
+    usuario_nome: usuario.nome || null,
+  });
+  if (error) {
+    analiseSetFeedbackStatus('Erro ao enviar. Tente novamente.');
+    return;
+  }
+  analiseSetFeedbackStatus('Enviado com sucesso! Obrigado.');
+  const msgEl = document.getElementById('tool-feedback-message');
+  if (msgEl) msgEl.value = '';
+  setTimeout(fecharFeedbackPop, 1800);
+}
+
+// ─── EXP Room ────────────────────────────────────────────────────────────────
+
+let _analiseExpRoomInterval = null;
+
+async function analiseCheckExpRoomStatus() {
+  const btn = document.getElementById('exp-room-btn');
+  if (!btn) return;
+  try {
+    const sb = window.sb;
+    if (!sb) return;
+    const { data } = await sb
+      .from('exp_config')
+      .select('value')
+      .eq('key', 'exp_room_active')
+      .single();
+    const active = data?.value === 'true' || data?.value === true;
+    btn.classList.toggle('active', active);
+    btn.title = active ? 'EXP Room — Reunião em andamento' : 'EXP Room — Reunião online';
+  } catch {
+    /* silencioso */
+  }
+}
+
+async function analiseRegistrarExpRoomClick(userId, userName) {
+  try {
+    const sb = window.sb;
+    if (!sb || !userId) return;
+    await sb.from('exp_room_presenca').upsert(
+      { usuario_id: userId, usuario_nome: userName || null, ultimo_acesso: new Date().toISOString() },
+      { onConflict: 'usuario_id' }
+    );
+  } catch {
+    /* silencioso */
+  }
+}
+
+function analiseInitExpRoom(userId, userName) {
+  const btn = document.getElementById('exp-room-btn');
+  if (!btn) return;
+  analiseCheckExpRoomStatus();
+  _analiseExpRoomInterval = setInterval(analiseCheckExpRoomStatus, 60000);
+  btn.addEventListener('click', () => {
+    analiseRegistrarExpRoomClick(userId, userName);
+  });
 }

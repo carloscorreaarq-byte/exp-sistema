@@ -78,6 +78,9 @@
     '.chat-conv-item,.chat-member-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;transition:background .1s}',
     '.chat-conv-item:hover,.chat-member-item:hover{background:var(--off,#F7F6F3)}',
     '.chat-conv-section{padding:8px 10px 4px;font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--cinza,#D0CFC9)}',
+    '.chat-conv-section-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 4px;border:none;background:none;cursor:pointer;font-family:"Raleway",sans-serif;font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--cinza,#D0CFC9);text-align:left}',
+    '.chat-conv-section-btn:hover{color:var(--grafite,#111110)}',
+    '.chat-conv-section-chev{font-size:11px;line-height:1;color:inherit}',
     '.chat-conv-av-hash{width:28px;height:28px;border-radius:50%;background:var(--verde-bg,#EAF5EE);color:var(--verde,#1D6A4A);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
     '.chat-conv-info{flex:1;min-width:0}',
     '.chat-conv-name{font-size:12px;font-weight:600;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -191,6 +194,8 @@
     '[data-theme="dark"] .chat-conv-name{color:#F0EDE6}',
     '[data-theme="dark"] .chat-conv-preview{color:#8C8A85}',
     '[data-theme="dark"] .chat-conv-section{color:#8C8A85}',
+    '[data-theme="dark"] .chat-conv-section-btn{color:#8C8A85}',
+    '[data-theme="dark"] .chat-conv-section-btn:hover{color:#F0EDE6}',
     '[data-theme="dark"] .chat-search-wrap{background:#1C1C1B;border-bottom-color:#2E2D2B}',
     '[data-theme="dark"] .chat-search-input{background:#252523;border-color:#2E2D2B;color:#F0EDE6}',
     '[data-theme="dark"] .chat-search-input:focus{background:#2A2927}',
@@ -230,6 +235,7 @@
   var projectThreads   = [];
   var projectThreadMeta = {};
   var recentConversationAlerts = [];
+  var projectSectionCollapsed = true;
   var searchQuery = '';
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var channelUnread    = {};        // { channel: count }
@@ -373,7 +379,7 @@
           '<div class="chat-header">' +
             '<button class="chat-back-btn" onclick="expChat.goHome()">' + icoBack() + '</button>' +
             '<div class="chat-header-info"><div class="chat-header-title">Pesquisar</div></div>' +
-            '<button class="chat-close" onclick="expChat.close()">âœ•</button>' +
+              '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-search-wrap">' +
             '<input class="chat-search-input" id="exp-chat-search-input" type="text" placeholder="Buscar conversas e mensagens" oninput="expChat.searchInput(this.value)">' +
@@ -454,6 +460,7 @@
   function icoChat()    { return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'; }
   function icoSend()    { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'; }
   function icoBack()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'; }
+  function icoClose()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>'; }
   function icoSearch()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>'; }
   function icoPerson()  { return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'; }
   function icoChevron() { return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'; }
@@ -637,7 +644,7 @@
         var nameEsc  = escHtml(meta.label);
 
         html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
-          avHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
+          softAvHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + nameEsc + '</div>' +
             '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
