@@ -18530,6 +18530,146 @@ function calSelTipo(tipo) {
 }
 
 // ── Renderiza o formulário inline de evento Google Calendar ──
+function gcalGetAtivosGestaoProjeto() {
+  const base = Array.isArray(G._prodsGestao) && G._prodsGestao.length ? G._prodsGestao : (G.todosProdutos || []);
+  return base.filter(p => p && p.status === 'ativo' && p.em_gestao !== false);
+}
+
+function gcalGetClienteOptionsHtml() {
+  const clientesMap = new Map();
+  gcalGetAtivosGestaoProjeto().forEach(p => {
+    const cli = p.oportunidades?.clientes;
+    if (cli?.id) clientesMap.set(String(cli.id), {
+      nome: cli.nome || cli.id,
+      cidade: cli.cidade || '',
+      uf: cli.uf || ''
+    });
+  });
+  const opts = [...clientesMap.entries()]
+    .sort((a, b) => (a[1].nome || '').localeCompare(b[1].nome || '', 'pt-BR'))
+    .map(([id, cd]) => {
+      const loc = cd.cidade ? ` — ${cd.cidade}${cd.uf ? `/${cd.uf}` : ''}` : '';
+      return `<option value="${id}">${_escN(cd.nome)}${_escN(loc)}</option>`;
+    }).join('');
+  return '<option value="">Selecionar cliente...</option>' + opts;
+}
+
+function gcalRenderProjetoVinculoFields() {
+  const clientesHtml = gcalGetClienteOptionsHtml();
+  if (!clientesHtml || clientesHtml.indexOf('</option>') === -1) return '';
+  return `
+    <div class="gcr-time-row">
+      <div class="gcr-field">
+        <label class="gcr-label">Cliente</label>
+        <select id="gcr-cliente" class="gcr-input" onchange="gcalProjetoFiltrarOpps()">
+          ${clientesHtml}
+        </select>
+      </div>
+      <div class="gcr-field" id="gcr-opp-wrap" style="display:none">
+        <label class="gcr-label">Oportunidade</label>
+        <select id="gcr-oportunidade" class="gcr-input" onchange="gcalProjetoFiltrarEtapas()">
+          <option value="">Selecionar oportunidade...</option>
+        </select>
+      </div>
+    </div>
+    <div class="gcr-field" id="gcr-etapa-wrap" style="display:none">
+      <label class="gcr-label">Etapa</label>
+      <select id="gcr-etapa" class="gcr-input">
+        <option value="">Selecionar etapa...</option>
+      </select>
+    </div>`;
+}
+
+function gcalProjetoFiltrarOpps() {
+  const cliId = document.getElementById('gcr-cliente')?.value || '';
+  const oppWrap = document.getElementById('gcr-opp-wrap');
+  const etapaWrap = document.getElementById('gcr-etapa-wrap');
+  const selOpp = document.getElementById('gcr-oportunidade');
+  const selEtapa = document.getElementById('gcr-etapa');
+  if (oppWrap) oppWrap.style.display = 'none';
+  if (etapaWrap) etapaWrap.style.display = 'none';
+  if (selOpp) selOpp.innerHTML = '<option value="">Selecionar oportunidade...</option>';
+  if (selEtapa) selEtapa.innerHTML = '<option value="">Selecionar etapa...</option>';
+  if (!cliId) return;
+
+  const vistos = new Set();
+  const opps = [];
+  gcalGetAtivosGestaoProjeto().forEach(p => {
+    const opp = p.oportunidades;
+    const cli = opp?.clientes;
+    if (!opp?.id || !cli?.id) return;
+    if (String(cli.id) !== String(cliId) || vistos.has(String(opp.id))) return;
+    vistos.add(String(opp.id));
+    opps.push(opp);
+  });
+
+  if (selOpp) {
+    selOpp.innerHTML = '<option value="">Selecionar oportunidade...</option>' +
+      opps
+        .sort((a, b) => String(a.projeto || '').localeCompare(String(b.projeto || ''), 'pt-BR'))
+        .map(o => `<option value="${o.id}">${_escN(o.projeto || '(sem nome)')}</option>`)
+        .join('');
+  }
+  if (oppWrap) oppWrap.style.display = 'block';
+}
+
+function gcalProjetoFiltrarEtapas() {
+  const oppId = document.getElementById('gcr-oportunidade')?.value || '';
+  const etapaWrap = document.getElementById('gcr-etapa-wrap');
+  const selEtapa = document.getElementById('gcr-etapa');
+  if (etapaWrap) etapaWrap.style.display = 'none';
+  if (selEtapa) selEtapa.innerHTML = '<option value="">Selecionar etapa...</option>';
+  if (!oppId) return;
+
+  const ativos = gcalGetAtivosGestaoProjeto().filter(p => String(p.oportunidade_id) === String(oppId));
+  const etapas = [];
+  ativos.forEach(prod => {
+    (G.todasEtapas || [])
+      .filter(e => String(e.produto_id) === String(prod.id))
+      .forEach(e => {
+        etapas.push({
+          id: e.id,
+          nome: e.nome || 'Etapa',
+          ordem: e.ordem ?? 0,
+          produtoNome: prod.nome || prod.subtipo || 'Produto'
+        });
+      });
+  });
+
+  if (selEtapa) {
+    selEtapa.innerHTML = '<option value="">Selecionar etapa...</option>' +
+      etapas
+        .sort((a, b) => (a.produtoNome || '').localeCompare(b.produtoNome || '', 'pt-BR') || (a.ordem - b.ordem) || (a.nome || '').localeCompare(b.nome || '', 'pt-BR'))
+        .map(e => `<option value="${e.id}">${_escN(e.produtoNome)} · ${_escN(e.nome)}</option>`)
+        .join('');
+  }
+  if (etapaWrap) etapaWrap.style.display = etapas.length ? 'block' : 'none';
+}
+
+function gcalGetProjetoContextoSelecionado() {
+  const clienteId = document.getElementById('gcr-cliente')?.value || null;
+  const oportunidadeId = document.getElementById('gcr-oportunidade')?.value || null;
+  const etapaId = document.getElementById('gcr-etapa')?.value || null;
+  const ativos = gcalGetAtivosGestaoProjeto();
+  const etapa = etapaId ? (G.todasEtapas || []).find(e => String(e.id) === String(etapaId)) || null : null;
+  const produto = etapa ? (ativos.find(p => String(p.id) === String(etapa.produto_id)) || (G.todosProdutos || []).find(p => String(p.id) === String(etapa.produto_id)) || null) : null;
+  const oportunidade = produto?.oportunidades || (oportunidadeId ? ativos.find(p => String(p.oportunidade_id) === String(oportunidadeId))?.oportunidades || null : null);
+  const cliente = oportunidade?.clientes || (clienteId ? ativos.find(p => String(p.oportunidades?.clientes?.id) === String(clienteId))?.oportunidades?.clientes || null : null);
+  return {
+    clienteId,
+    oportunidadeId,
+    etapaId,
+    clienteNome: cliente?.nome || '',
+    oportunidadeNome: oportunidade?.projeto || '',
+    etapaNome: etapa?.nome || '',
+    produtoId: produto?.id || etapa?.produto_id || null,
+    produtoNome: produto?.nome || produto?.subtipo || '',
+    cliente,
+    oportunidade,
+    etapa
+  };
+}
+
 function calRenderGcalInlineForm() {
   const dataIni = document.getElementById('cal-inp-ini')?.value || new Date().toISOString().slice(0,10);
   const cals = GCAL.calendarios || [];
@@ -18537,8 +18677,7 @@ function calRenderGcalInlineForm() {
   const calOpts = cals.map(c =>
     `<option value="${c.id}" ${c.id === defaultCal?.id ? 'selected' : ''}>${_escN(c.summary)}</option>`
   ).join('');
-  const projAtivos = (G.todosProdutos || []).filter(p => !['cancelado','encerrado'].includes(p.status));
-  const projOpts = projAtivos.map(p => `<option value="${p.id}">${_escN(p.nome)}</option>`).join('');
+  const vinculoProjetoHtml = gcalRenderProjetoVinculoFields();
 
   return `
     <div style="display:flex;flex-direction:column;gap:11px">
@@ -18586,20 +18725,7 @@ function calRenderGcalInlineForm() {
           <span class="gcal-toggle-slider"></span>
         </label>
       </div>
-      ${projOpts ? `
-      <div class="gcr-field">
-        <label class="gcr-label">Vincular a projeto (opcional)</label>
-        <select id="gcr-projeto" class="gcr-input" onchange="calGcalProjetoChanged(this.value)">
-          <option value="">Sem vínculo</option>
-          ${projOpts}
-        </select>
-      </div>
-      <div class="gcr-field" id="gcr-etapa-wrap" style="display:none">
-        <label class="gcr-label">Etapa</label>
-        <select id="gcr-etapa" class="gcr-input">
-          <option value="">Selecione a etapa...</option>
-        </select>
-      </div>` : ''}
+      ${vinculoProjetoHtml}
       <div class="gcr-field">
         <label class="gcr-label">Pauta / descrição (opcional)</label>
         <textarea id="gcr-desc" class="gcr-input" rows="2" placeholder="Tópicos, links, documentos..." style="resize:vertical"></textarea>
@@ -18640,8 +18766,8 @@ async function calSalvarGcalInline() {
   const desc     = document.getElementById('gcr-desc')?.value.trim() || '';
   const meet     = document.getElementById('gcr-meet-ck')?.checked !== false;
   const tbEXP    = document.getElementById('gcr-exp')?.checked ?? true;
-  const projId   = document.getElementById('gcr-projeto')?.value || null;
-  const etapaId  = document.getElementById('gcr-etapa')?.value || null;
+  const ctxProj  = gcalGetProjetoContextoSelecionado();
+  const etapaId  = ctxProj.etapaId;
   const agendaId = document.getElementById('gcr-agenda')?.value ||
                    GCAL.calendarios.find(c => c.primary)?.id ||
                    GCAL.calendarios[0]?.id;
@@ -18661,11 +18787,11 @@ async function calSalvarGcalInline() {
     const endDT   = `${data}T${hFim}:00`;
 
     let descFull = desc;
-    if (projId && etapaId) {
-      const proj  = (G.todosProdutos || []).find(p => String(p.id) === String(projId));
-      const etapa = (G.todasEtapas  || []).find(e => String(e.id) === String(etapaId));
-      if (proj && etapa) descFull += (descFull ? '\n\n' : '') + `📋 Etapa EXP: ${etapa.nome}\n🏗 Projeto: ${proj.nome}`;
-    }
+    const vincLinhas = [];
+    if (ctxProj.clienteNome) vincLinhas.push(`🏢 Cliente EXP: ${ctxProj.clienteNome}`);
+    if (ctxProj.oportunidadeNome) vincLinhas.push(`💼 Oportunidade EXP: ${ctxProj.oportunidadeNome}`);
+    if (ctxProj.etapaNome) vincLinhas.push(`📋 Etapa EXP: ${ctxProj.etapaNome}`);
+    if (vincLinhas.length) descFull += (descFull ? '\n\n' : '') + vincLinhas.join('\n');
 
     const body = {
       summary:     titulo,
@@ -18683,7 +18809,16 @@ async function calSalvarGcalInline() {
         },
       };
     }
-    if (etapaId) body.extendedProperties = { private: { expEtapaId: String(etapaId) } };
+    if (ctxProj.clienteId || ctxProj.oportunidadeId || ctxProj.produtoId || etapaId) {
+      body.extendedProperties = {
+        private: {
+          ...(ctxProj.clienteId ? { expClienteId: String(ctxProj.clienteId) } : {}),
+          ...(ctxProj.oportunidadeId ? { expOportunidadeId: String(ctxProj.oportunidadeId) } : {}),
+          ...(ctxProj.produtoId ? { expProdutoId: String(ctxProj.produtoId) } : {}),
+          ...(etapaId ? { expEtapaId: String(etapaId) } : {})
+        }
+      };
+    }
 
     const qs = meet ? '?conferenceDataVersion=1&sendUpdates=all' : '?sendUpdates=all';
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(agendaId)}/events${qs}`;
@@ -18699,7 +18834,7 @@ async function calSalvarGcalInline() {
     if (tbEXP) {
       await sb.from('calendar_events').insert({
         tipo: 'reuniao', categoria: 'reuniao', titulo, inicio: startDT, fim: endDT, dia_inteiro: false,
-        descricao: [desc, meetLink ? '🔗 ' + meetLink : ''].filter(Boolean).join('\n') || null,
+        descricao: [descFull, meetLink ? '🔗 ' + meetLink : ''].filter(Boolean).join('\n') || null,
         meet_link: meetLink || null,
         scope: 'todos', nucleo_id: null, user_id: null, criado_por: G.usuario?.id,
       });
@@ -18709,7 +18844,7 @@ async function calSalvarGcalInline() {
     if (etapaId) {
       try {
         await sb.from('etapas').update({ data_reuniao: data || null, reuniao_link: meetLink || null }).eq('id', etapaId);
-        const { data: ets } = await sb.from('etapas').select('*').eq('produto_id', projId);
+        const { data: ets } = await sb.from('etapas').select('*').eq('produto_id', ctxProj.produtoId);
         if (ets) G.todasEtapas = G.todasEtapas.map(e => ets.find(x => x.id === e.id) || e);
         toast('Reunião vinculada à etapa!');
       } catch(e2) { console.warn('etapa reuniao update', e2); }
@@ -19841,6 +19976,7 @@ window.calInit = async function() {
 // AGENDAR REUNIÃO — modal completo com campos do Google Calendar
 // ─────────────────────────────────────────────────────────────────────────────
 GCAL._reuniaoConvidados = []; // { email, nome, cor, iniciais }
+GCAL._reuniaoSugestoes = [];
 
 function gcalAbrirReuniao(dateOverride) {
   if (!GCAL.token) {
@@ -19860,6 +19996,7 @@ function gcalAbrirReuniao(dateOverride) {
 
   const hoje = dateOverride || new Date().toISOString().slice(0, 10);
   const hIni = '10:00', hFim = '11:00';
+  const vinculoProjetoHtml = gcalRenderProjetoVinculoFields();
 
   // Monta opções de agenda com smart default
   const cals = GCAL.calendarios;
@@ -19901,6 +20038,8 @@ function gcalAbrirReuniao(dateOverride) {
         <input id="gcr-hora-fim" class="gcr-input" type="time" value="${hFim}">
       </div>
     </div>
+
+    ${vinculoProjetoHtml}
 
     <div class="gcr-field">
       <label class="gcr-label">Convidados</label>
@@ -20006,11 +20145,17 @@ function gcalAddConvidado(c) {
   if (inp) { inp.value = ''; gcalFiltrarConvidados(''); }
 }
 
+function gcalSelecionarSugestaoConvidado(idx) {
+  const item = GCAL._reuniaoSugestoes?.[Number(idx)];
+  if (!item) return;
+  gcalAddConvidado(item);
+}
+
 function gcalFiltrarConvidados(q) {
   const sug = document.getElementById('gcr-suggestions');
   if (!sug) return;
   q = (q || '').toLowerCase().trim();
-  if (!q) { sug.style.display = 'none'; return; }
+  if (!q) { GCAL._reuniaoSugestoes = []; sug.style.display = 'none'; return; }
 
   const usuarios = (G.todosUsuarios || []).filter(u =>
     u.email && (
@@ -20030,10 +20175,12 @@ function gcalFiltrarConvidados(q) {
     iniciais: u.iniciais || u.nome?.[0] || '?', isExp: true
   })), ...externo];
 
-  if (!todos.length) { sug.style.display = 'none'; return; }
+  if (!todos.length) { GCAL._reuniaoSugestoes = []; sug.style.display = 'none'; return; }
+
+  GCAL._reuniaoSugestoes = todos;
 
   sug.innerHTML = todos.map((c, i) => `
-    <div class="gcr-sug-item" onclick="gcalAddConvidado(${_sqN(c)})">
+    <div class="gcr-sug-item" onclick="gcalSelecionarSugestaoConvidado(${i})">
       <div class="gcr-sug-av" style="background:${c.cor}">${_escN(c.iniciais)}</div>
       <div>
         <div class="gcr-sug-nome">${_escN(c.nome)}</div>
@@ -20075,6 +20222,7 @@ async function gcalSalvarReuniao() {
   const desc    = document.getElementById('gcr-desc')?.value.trim();
   const meet    = (document.getElementById('gcr-meet')?.value ?? '1') === '1';
   const tbEXP   = document.getElementById('gcr-exp')?.checked  ?? true;
+  const ctxProj = gcalGetProjetoContextoSelecionado();
 
   if (!titulo) { toast('Digite o título da reunião.'); document.getElementById('gcr-titulo')?.focus(); return; }
   if (!data)   { toast('Selecione a data.'); return; }
@@ -20091,7 +20239,7 @@ async function gcalSalvarReuniao() {
 
     const body = {
       summary:     titulo,
-      description: desc || undefined,
+      description: undefined,
       location:    local || undefined,
       start: { dateTime: startDT, timeZone: tz },
       end:   { dateTime: endDT,   timeZone: tz },
@@ -20102,12 +20250,30 @@ async function gcalSalvarReuniao() {
       reminders: { useDefault: true },
     };
 
+    let descFull = desc || '';
+    const vincLinhas = [];
+    if (ctxProj.clienteNome) vincLinhas.push(`🏢 Cliente EXP: ${ctxProj.clienteNome}`);
+    if (ctxProj.oportunidadeNome) vincLinhas.push(`💼 Oportunidade EXP: ${ctxProj.oportunidadeNome}`);
+    if (ctxProj.etapaNome) vincLinhas.push(`📋 Etapa EXP: ${ctxProj.etapaNome}`);
+    if (vincLinhas.length) descFull += (descFull ? '\n\n' : '') + vincLinhas.join('\n');
+    body.description = descFull || undefined;
+
     if (meet) {
       body.conferenceData = {
         createRequest: {
           requestId: 'exp-' + G.usuario?.id + '-' + Date.now(),
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
+      };
+    }
+    if (ctxProj.clienteId || ctxProj.oportunidadeId || ctxProj.produtoId || ctxProj.etapaId) {
+      body.extendedProperties = {
+        private: {
+          ...(ctxProj.clienteId ? { expClienteId: String(ctxProj.clienteId) } : {}),
+          ...(ctxProj.oportunidadeId ? { expOportunidadeId: String(ctxProj.oportunidadeId) } : {}),
+          ...(ctxProj.produtoId ? { expProdutoId: String(ctxProj.produtoId) } : {}),
+          ...(ctxProj.etapaId ? { expEtapaId: String(ctxProj.etapaId) } : {})
+        }
       };
     }
 
@@ -20139,7 +20305,7 @@ async function gcalSalvarReuniao() {
         inicio:      startDT,
         fim:         endDT,
         dia_inteiro: false,
-        descricao:   [desc, local ? '📍 ' + local : '', meetLink ? '🔗 ' + meetLink : ''].filter(Boolean).join('\n') || null,
+        descricao:   [descFull, local ? '📍 ' + local : '', meetLink ? '🔗 ' + meetLink : ''].filter(Boolean).join('\n') || null,
         meet_link:   meetLink || null,
         scope:       'todos',
         nucleo_id:   null,
@@ -20147,6 +20313,18 @@ async function gcalSalvarReuniao() {
         criado_por:  G.usuario?.id,
       });
       await calCarregarEventos();
+    }
+
+    if (ctxProj.etapaId) {
+      try {
+        await sb.from('etapas').update({ data_reuniao: data || null, reuniao_link: meetLink || null }).eq('id', ctxProj.etapaId);
+        if (ctxProj.produtoId) {
+          const { data: ets } = await sb.from('etapas').select('*').eq('produto_id', ctxProj.produtoId);
+          if (ets) G.todasEtapas = G.todasEtapas.map(e => ets.find(x => x.id === e.id) || e);
+        }
+      } catch (e2) {
+        console.warn('etapa reuniao update', e2);
+      }
     }
 
     // Recarrega eventos do Google
