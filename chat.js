@@ -1736,8 +1736,8 @@
       var badgeHtml = '';
       if (hasRxn) {
         badgeHtml = '<div class="chat-msg-rxn-badge">';
-        if (likeN > 0) badgeHtml += 'ðŸ‘' + (likeN > 1 ? '<span class="chat-msg-rxn-count">' + likeN + '</span>' : '');
-        if (loveN > 0) badgeHtml += 'â¤ï¸' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '');
+        if (likeN > 0) badgeHtml += '&#128077;' + (likeN > 1 ? '<span class="chat-msg-rxn-count">' + likeN + '</span>' : '');
+        if (loveN > 0) badgeHtml += '&#10084;&#65039;' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '');
         badgeHtml += '</div>';
       }
 
