@@ -147,6 +147,7 @@
     '.chat-media-thumb img{display:block;width:100%;height:auto;max-height:172px;object-fit:cover}',
     '.chat-media-thumb-pending{display:flex;align-items:center;justify-content:center;min-height:88px;padding:10px;font-size:10px;font-weight:600;color:#666;background:linear-gradient(135deg, rgba(29,106,74,.08), rgba(196,131,26,.08))}',
     '.chat-media-expired{display:flex;align-items:center;justify-content:center;min-height:72px;padding:10px;font-size:10px;font-weight:600;color:#777;background:#F3F1EB;border:1px dashed #D0CFC9;border-radius:12px;margin-top:4px}',
+    '.chat-media-failed{margin-top:6px;font-size:10px;font-weight:600;color:#B84C3A}',
     '.chat-link{color:var(--verde,#1D6A4A);text-decoration:underline;word-break:break-all}',
     '.chat-link:hover{color:var(--verde-l,#2D9E6B)}',
     /* ── Bubble row: bolha + botões de reação lado a lado ── */
@@ -181,6 +182,9 @@
     '.chat-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
     '.chat-send{width:33px;height:33px;background:var(--cinza2,#ECEAE4);border:none;border-radius:9px;color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,transform .08s}',
     '.chat-send:hover{background:var(--cinza,#D0CFC9)}.chat-send:active{transform:scale(.93)}',
+    '.chat-composer-status{padding:0 10px 8px;font-size:10px;color:#666;background:#fff}',
+    '.chat-composer-status.ok{color:#1D6A4A}',
+    '.chat-composer-status.warn{color:#B84C3A}',
     '.chat-media-viewer{position:fixed;inset:0;background:rgba(17,17,16,.58);display:none;align-items:center;justify-content:center;z-index:10020;padding:20px}',
     '.chat-media-viewer-card{width:min(780px, calc(100vw - 28px));max-height:calc(100vh - 36px);background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden}',
     '.chat-media-viewer-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cinza2,#ECEAE4)}',
@@ -207,6 +211,7 @@
     '[data-theme="dark"] .chat-media-thumb{background:#252523;border-color:#3A3836}',
     '[data-theme="dark"] .chat-media-thumb-pending{color:#C8C3BA;background:linear-gradient(135deg, rgba(29,106,74,.18), rgba(196,131,26,.16))}',
     '[data-theme="dark"] .chat-media-expired{background:#252523;border-color:#4A4742;color:#B4AEA4}',
+    '[data-theme="dark"] .chat-media-failed{color:#E58C7D}',
     '[data-theme="dark"] .chat-msg-name{color:#F0EDE6}',
     '[data-theme="dark"] .chat-msg-rxn-badge{background:#2A2927;border-color:#2E2D2B}',
     '[data-theme="dark"] .chat-rbtn{background:#2A2927;border-color:#2E2D2B;color:#8C8A85}',
@@ -217,6 +222,9 @@
     '[data-theme="dark"] .chat-input:focus{border-color:var(--verde,#1D6A4A);background:#2A2927}',
     '[data-theme="dark"] .chat-send{background:#2E2D2B;color:#F0EDE6}',
     '[data-theme="dark"] .chat-send:hover{background:#3A3836}',
+    '[data-theme="dark"] .chat-composer-status{background:#1C1C1B;color:#B4AEA4}',
+    '[data-theme="dark"] .chat-composer-status.ok{color:#7DD4A3}',
+    '[data-theme="dark"] .chat-composer-status.warn{color:#E58C7D}',
     '[data-theme="dark"] .chat-conv-list,.chat-member-list,[data-theme="dark"] .chat-conv-item,[data-theme="dark"] .chat-member-item{background:transparent}',
     '[data-theme="dark"] .chat-conv-item:hover,[data-theme="dark"] .chat-member-item:hover{background:rgba(255,255,255,.05)}',
     '[data-theme="dark"] .chat-conv-name{color:#F0EDE6}',
@@ -277,6 +285,7 @@
   var messageMediaMap = {};
   var mediaRequestSeq = 0;
   var mediaUploadBusy = false;
+  var composerStatusTimer = null;
   var searchQuery = '';
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var channelUnread    = {};        // { channel: count }
@@ -463,6 +472,7 @@
               ' onkeydown="expChat.handleKey(event)" oninput="expChat.autoResize(this)"></textarea>' +
             '<button class="chat-send" onclick="expChat.send()" title="Enviar (Enter)">' + icoSend() + '</button>' +
           '</div>' +
+          '<div class="chat-composer-status" id="exp-chat-composer-status" style="display:none"></div>' +
         '</div>' +
 
         /* View: Seletor de membro (novo DM) */
@@ -817,6 +827,7 @@
     removeConversationAlert(channel);
     closeMediaViewer();
     clearMessageMediaCache();
+    setComposerStatus('', '', false);
     currentChannel = channel;
     currentLabel   = displayName || getChannelLabel(channel);
     if ($chanTitle) $chanTitle.textContent = currentLabel;
@@ -1297,6 +1308,7 @@
     if (!$input || mediaUploadBusy) return;
     if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) {
       console.warn('[EXP Chat] Tipo de imagem nÃ£o suportado.');
+      setComposerStatus('Use apenas prints em PNG, JPG ou WEBP.', 'warn', true);
       return;
     }
 
@@ -1314,6 +1326,7 @@
     var messageId = newUuid();
 
     try {
+      setComposerStatus('Otimizando print...', '', true);
       var cfg = await loadChatMediaConfig();
       optimized = await optimizeChatMediaImage(file, cfg);
       previewUrl = URL.createObjectURL(optimized.blob);
@@ -1342,6 +1355,7 @@
       scrollBottom();
 
       storagePath = buildChatMediaPath(contextType, optimized.ext);
+      setComposerStatus('Enviando print...', '', true);
       var uploadRes = await sb.storage.from(TEMP_MEDIA_BUCKET).upload(storagePath, optimized.blob, {
         contentType: optimized.mimeType,
         upsert: false
@@ -1390,14 +1404,32 @@
         expires_at: addDaysIso(7)
       }, pendingMsg ? pendingMsg.id : null);
       renderMessages();
+      setComposerStatus('Print enviado. Expira em 7 dias.', 'ok', false);
     } catch (error) {
-      if (pendingMsg && pendingMsg.id) removeMessageById(pendingMsg.id);
-      clearMessageMediaEntry(contextType, messageId);
+      var failMsg = describeChatMediaError(error);
+      if (pendingMsg && pendingMsg.id) {
+        pendingMsg.pending = false;
+        pendingMsg.failed = true;
+        pendingMsg.error_message = failMsg;
+        upsertMessage(pendingMsg);
+      }
+      if (previewUrl) {
+        assignMessageMedia(contextType, pendingMsg ? pendingMsg.id : messageId, {
+          storage_path: null,
+          objectUrl: previewUrl,
+          mime_type: optimized && optimized.mimeType || null,
+          width_px: optimized && optimized.width || null,
+          height_px: optimized && optimized.height || null,
+          pending: false,
+          failed: true,
+          expires_at: addDaysIso(7)
+        });
+      }
       if (uploaded && storagePath) {
         try { await sb.storage.from(TEMP_MEDIA_BUCKET).remove([storagePath]); } catch (e) {}
       }
-      if (content) $input.value = content;
       console.warn('[EXP Chat] Erro ao anexar print:', error && error.message ? error.message : error);
+      setComposerStatus('Falha ao enviar print: ' + failMsg, 'warn', true);
       renderMessages();
     } finally {
       mediaUploadBusy = false;
@@ -1478,6 +1510,7 @@
       var hasText = !!String(msg.content || '').trim() && !imageOnly;
       var showExpired = imageOnly && !media && isChatMediaExpired(msg);
       var showMediaLoading = imageOnly && !media && !showExpired;
+      var showFailed = !!msg.failed;
 
       var rx      = msg.reactions || { like: [], love: [] };
       var likeArr = rx.like  || [];
@@ -1526,6 +1559,7 @@
                 : showMediaLoading
                   ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Carregando print...</div></div>'
                 : '') +
+          (showFailed ? '<div class="chat-media-failed">Falha no envio do print</div>' : '') +
           badgeHtml +
         '</div>' +
         '<div class="chat-msg-react-btns">' +
@@ -1652,6 +1686,48 @@
     t.onclick = function () { scrollBottom(); t.remove(); };
     $panel.appendChild(t);
     setTimeout(function () { if (t.parentNode) t.remove(); }, 4000);
+  }
+
+  function setComposerStatus(message, tone, sticky) {
+    var el = document.getElementById('exp-chat-composer-status');
+    if (!el) return;
+    if (composerStatusTimer) {
+      clearTimeout(composerStatusTimer);
+      composerStatusTimer = null;
+    }
+    if (!message) {
+      el.style.display = 'none';
+      el.textContent = '';
+      el.className = 'chat-composer-status';
+      return;
+    }
+    el.textContent = message;
+    el.className = 'chat-composer-status' + (tone ? ' ' + tone : '');
+    el.style.display = 'block';
+    if (!sticky) {
+      composerStatusTimer = setTimeout(function () {
+        if (!el) return;
+        el.style.display = 'none';
+        el.textContent = '';
+        el.className = 'chat-composer-status';
+        composerStatusTimer = null;
+      }, 4200);
+    }
+  }
+
+  function describeChatMediaError(error) {
+    var raw = String(error && (error.message || error.details || error.code) || 'Falha ao anexar print.');
+    var lower = raw.toLowerCase();
+    if (lower.indexOf('send_chat_message_with_temp_media') !== -1 || lower.indexOf('send_chat_thread_message_with_temp_media') !== -1) {
+      return 'A estrutura de prints do chat ainda nÃ£o estÃ¡ aplicada no banco.';
+    }
+    if (lower.indexOf('row-level security') !== -1 || lower.indexOf('access denied') !== -1) {
+      return 'Seu usuÃ¡rio nÃ£o conseguiu gravar este print no storage/chat.';
+    }
+    if (lower.indexOf('bucket') !== -1 || lower.indexOf('storage') !== -1) {
+      return 'NÃ£o foi possÃ­vel subir o print para o storage.';
+    }
+    return raw;
   }
 
   function previewFirstLine(text) {
