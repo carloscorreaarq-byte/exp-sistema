@@ -20,6 +20,7 @@
     foco:    '#1D4FA0',
     ausente: '#C4831A'
   };
+  var BRAND_AVATAR_COLORS = ['#1D6A4A', '#1D4FA0', '#C4831A', '#B84C3A', '#6D7D8A', '#4A72B5', '#7A9E7E'];
 
   /* ── CSS embutido ────────────────────────────────────────────────── */
   var CSS_TEXT = [
@@ -196,6 +197,8 @@
   var loadRequestSeq = 0;
   var teamMembers      = [];
   var allMembers       = [];        // todos os usuários incluindo o próprio — para lookup de avatares
+  var projectThreads   = [];
+  var projectThreadMeta = {};
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var channelUnread    = {};        // { channel: count }
   var onlinePresence   = {};        // { auth_id: { status, nome, ... } }
@@ -513,67 +516,79 @@
     var uid   = user.auth_id;
     var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
-    sb.from('chat_messages')
-      .select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id')
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .then(function (r) {
-        var msgs = r.data || [];
+    Promise.all([
+      sb.from('chat_messages')
+        .select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false }),
+      fetchProjectHomeItems(uid)
+    ]).then(function (res) {
+      var r = res[0];
+      var projectItems = res[1] || [];
+      var msgs = r.data || [];
 
-        /* Agrupar por canal dinâmico, manter a mensagem mais recente */
-        var seen = {};
-        var dmList = [];
-        msgs.forEach(function (m) {
-          if (!isDynamicChannel(m.channel) || !channelHasUser(m.channel, uid)) return;
-          if (!seen[m.channel]) { seen[m.channel] = true; dmList.push(m); }
-        });
-
-        var html = '';
-
-        /* Linha #geral */
-        var genU = channelUnread['general'] || 0;
-        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
-          '<div class="chat-conv-av-hash">#</div>' +
-          '<div class="chat-conv-info"><div class="chat-conv-name">geral</div><div class="chat-conv-preview">Toda a equipe</div></div>' +
-          (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
-          '</div>';
-
-        /* Linha #sócios (apenas para role socio) */
-        if (isSocioLikeRole(user.role)) {
-          var socU = channelUnread['socios'] || 0;
-          html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sócios\')">' +
-            '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
-            '<div class="chat-conv-info"><div class="chat-conv-name">sócios</div><div class="chat-conv-preview">Canal privado</div></div>' +
-            (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
-            '</div>';
-        }
-
-        /* Linhas de DMs e grupos */
-        dmList.forEach(function (dm) {
-          var meta = getConversationMeta(dm, uid);
-          var name = meta.label;
-          var iniciais = meta.iniciais;
-          var cor = meta.cor;
-          var avatarUrl = meta.avatarUrl;
-
-
-          var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + '…' : dm.content;
-          var dmU      = channelUnread[dm.channel] || 0;
-          var chanJson = dm.channel.replace(/'/g, "\\'");
-          var nameEsc  = escHtml(meta.label);
-
-          html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
-            avHtml(iniciais, cor, avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
-            '<div class="chat-conv-info">' +
-              '<div class="chat-conv-name">' + nameEsc + '</div>' +
-              '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
-            '</div>' +
-            (dmU > 0 ? '<div class="chat-conv-badge">' + dmU + '</div>' : '') +
-            '</div>';
-        });
-
-        $list.innerHTML = html;
+      /* Agrupar por canal dinâmico, manter a mensagem mais recente */
+      var seen = {};
+      var dmList = [];
+      msgs.forEach(function (m) {
+        if (!isDynamicChannel(m.channel) || !channelHasUser(m.channel, uid)) return;
+        if (!seen[m.channel]) { seen[m.channel] = true; dmList.push(m); }
       });
+
+      var html = '';
+
+      /* Linha #geral */
+      var genU = channelUnread['general'] || 0;
+      html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
+        '<div class="chat-conv-av-hash">#</div>' +
+        '<div class="chat-conv-info"><div class="chat-conv-name">geral</div><div class="chat-conv-preview">Toda a equipe</div></div>' +
+        (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
+        '</div>';
+
+      /* Linha #sócios (apenas para role socio) */
+      if (isSocioLikeRole(user.role)) {
+        var socU = channelUnread['socios'] || 0;
+        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# sócios\')">' +
+          '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
+          '<div class="chat-conv-info"><div class="chat-conv-name">sócios</div><div class="chat-conv-preview">Canal privado</div></div>' +
+          (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
+          '</div>';
+      }
+
+      projectItems.forEach(function (item) {
+        var unread = channelUnread[item.channel] || item.unread || 0;
+        var chanJson = item.channel.replace(/'/g, "\\'");
+        var labelEsc = escHtml(item.label);
+        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+          avHtml(item.iniciais, item.cor, null, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
+          '<div class="chat-conv-info">' +
+            '<div class="chat-conv-name">' + labelEsc + '</div>' +
+            '<div class="chat-conv-preview">' + escHtml(item.preview || 'Chat do projeto') + '</div>' +
+          '</div>' +
+          (unread > 0 ? '<div class="chat-conv-badge">' + unread + '</div>' : '') +
+          '</div>';
+      });
+
+      /* Linhas de DMs e grupos */
+      dmList.forEach(function (dm) {
+        var meta = getConversationMeta(dm, uid);
+        var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + '…' : dm.content;
+        var dmU      = channelUnread[dm.channel] || 0;
+        var chanJson = dm.channel.replace(/'/g, "\\'");
+        var nameEsc  = escHtml(meta.label);
+
+        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
+          avHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
+          '<div class="chat-conv-info">' +
+            '<div class="chat-conv-name">' + nameEsc + '</div>' +
+            '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
+          '</div>' +
+          (dmU > 0 ? '<div class="chat-conv-badge">' + dmU + '</div>' : '') +
+          '</div>';
+      });
+
+      $list.innerHTML = html;
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -581,8 +596,8 @@
   ══════════════════════════════════════════════════════════════════ */
   function openChannel(channel, displayName) {
     currentChannel = channel;
-    currentLabel   = displayName;
-    if ($chanTitle) $chanTitle.textContent = displayName;
+    currentLabel   = displayName || getChannelLabel(channel);
+    if ($chanTitle) $chanTitle.textContent = currentLabel;
     messages = [];
     showView('channel');
     updateChannelStatus();
@@ -615,6 +630,10 @@
       var online = uids.filter(function (uid) { return onlinePresence[uid]; }).length;
       $sub.style.display = '';
       $sub.innerHTML = online + ' de ' + uids.length + ' online';
+
+    } else if (isProjectChannel(currentChannel)) {
+      $sub.style.display = '';
+      $sub.innerHTML = 'Chat do projeto';
 
     /* Canais fixos: ocultar subtítulo */
     } else {
@@ -797,6 +816,39 @@
         var idx = messages.findIndex(function (m) { return m.id === up.id; });
         if (idx !== -1) { messages[idx] = up; if (isOpen && currentView === 'channel') renderMessages(); }
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_thread_messages' }, function (payload) {
+        var raw = payload.new;
+        var msg = normalizeProjectMessage(raw);
+        var ch  = msg.channel;
+        if (!projectThreadMeta[ch]) {
+          projectThreadMeta[ch] = buildProjectThreadMeta(raw.thread_id, null, raw.content, raw.created_at, raw.sender_auth_id);
+        }
+        updateProjectThreadSnapshot(raw.thread_id, raw.content, raw.created_at, raw.sender_auth_id);
+
+        var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
+        var isOwn    = raw.sender_auth_id === user.auth_id;
+
+        if (isActive) {
+          messages.push(msg);
+          renderMessages();
+          if (scrolledToEnd) scrollBottom();
+          else if (!isOwn) showNewMsgToast();
+          if (!isOwn) markRead();
+        } else if (!isOwn) {
+          channelUnread[ch] = (channelUnread[ch] || 0) + 1;
+          updateBadge();
+          if (isOpen && currentView === 'home') renderHome();
+          playNotificationSound();
+          _sendChatPush(msg);
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_thread_messages' }, function (payload) {
+        var up = normalizeProjectMessage(payload.new);
+        updateProjectThreadSnapshot(payload.new.thread_id, payload.new.content, payload.new.created_at, payload.new.sender_auth_id);
+        if (up.channel !== currentChannel) return;
+        var idx = messages.findIndex(function (m) { return m.id === up.id; });
+        if (idx !== -1) { messages[idx] = up; if (isOpen && currentView === 'channel') renderMessages(); }
+      })
       .subscribe();
   }
 
@@ -809,6 +861,24 @@
     var requestSeq = ++loadRequestSeq;
     isLoading = true;
     showLoading();
+    if (isProjectChannel(channel)) {
+      var threadId = projectThreadIdFromChannel(channel);
+      sb.from('chat_thread_messages')
+        .select('*')
+        .eq('thread_id', threadId)
+        .order('created_at', { ascending: false })
+        .limit(200)
+        .then(function (r) {
+          if (requestSeq !== loadRequestSeq || channel !== currentChannel) return;
+          isLoading = false;
+          if (r.error) { showError(); return; }
+          messages = (r.data || []).slice().reverse().map(normalizeProjectMessage);
+          renderMessages();
+          scrollBottom();
+        });
+      return;
+    }
+
     var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
     sb.from('chat_messages')
       .select('*')
@@ -831,6 +901,14 @@
   function fetchAllUnread() {
     var uid   = user.auth_id;
     var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+
+    fetchProjectUnreadMap(uid).then(function (projectUnread) {
+      Object.keys(projectUnread || {}).forEach(function (channel) {
+        channelUnread[channel] = projectUnread[channel];
+      });
+      updateBadge();
+      if (isOpen && currentView === 'home') renderHome();
+    });
 
     sb.from('chat_read_status').select('channel,last_read_at').eq('user_id', uid)
       .then(function (r) {
@@ -861,6 +939,10 @@
           .order('created_at', { ascending: false })
           .then(function (r2) {
             if (r2.error) return;
+            var preservedProjectUnread = {};
+            Object.keys(channelUnread).forEach(function (key) {
+              if (isProjectChannel(key)) preservedProjectUnread[key] = channelUnread[key];
+            });
             var nextUnread = {};
             (r2.data || []).forEach(function (msg) {
               if (msg.sender_id === uid) return;
@@ -868,6 +950,9 @@
               if (msg.created_at > lastRead) nextUnread[msg.channel] = (nextUnread[msg.channel] || 0) + 1;
             });
             channelUnread = nextUnread;
+            Object.keys(preservedProjectUnread).forEach(function (key) {
+              channelUnread[key] = preservedProjectUnread[key];
+            });
             updateBadge();
             if (isOpen && currentView === 'home') renderHome();
           });
@@ -876,6 +961,20 @@
 
   function markRead() {
     var channel = currentChannel;
+    if (isProjectChannel(channel)) {
+      sb.from('chat_thread_reads').upsert({
+        user_auth_id: user.auth_id,
+        thread_id: projectThreadIdFromChannel(channel),
+        last_read_at: new Date().toISOString()
+      }).then(function (r) {
+        if (r.error) return;
+        channelUnread[channel] = 0;
+        updateBadge();
+        if (projectThreadMeta[channel]) projectThreadMeta[channel].unread = 0;
+        if (isOpen && currentView === 'home') renderHome();
+      });
+      return;
+    }
     sb.from('chat_read_status').upsert({
       user_id: user.auth_id, channel: channel, last_read_at: new Date().toISOString()
     }).then(function (r) {
@@ -895,6 +994,20 @@
     if (!content) return;
     $input.value = '';
     $input.style.height = 'auto';
+
+    if (isProjectChannel(currentChannel)) {
+      sb.from('chat_thread_messages').insert({
+        thread_id: currentChannel.replace('project:', ''),
+        sender_auth_id: user.auth_id,
+        content: content
+      }).then(function (r) {
+        if (r.error) {
+          $input.value = content;
+          console.warn('[EXP Chat] Erro ao enviar no projeto:', r.error.message);
+        }
+      });
+      return;
+    }
 
     sb.from('chat_messages').insert({
       channel:         currentChannel,
@@ -926,7 +1039,8 @@
     upd[type] = arr;
     msg.reactions = upd;
     renderMessages();
-    sb.rpc('chat_toggle_reaction', { p_message_id: msgId, p_reaction: type })
+    var rpcName = isProjectChannel(currentChannel) ? 'chat_thread_toggle_reaction' : 'chat_toggle_reaction';
+    sb.rpc(rpcName, { p_message_id: msgId, p_reaction: type })
       .then(function (r) {
         if (r.error) {
           msg.reactions = rx;
@@ -1047,6 +1161,7 @@
 
     // DM 1:1 ou grupo direcionado ao usuário
     if ((ch.startsWith('dm:') || ch.startsWith('group:')) && ch.includes(uid)) return true;
+    if (isProjectChannel(ch)) return true;
 
     // Menção pelo nome no canal geral ou sócios
     var fn      = (user.nome || '').split(' ')[0].toLowerCase();
@@ -1061,8 +1176,9 @@
     var appUserId = user.app_user_id || user.id;
     if (!appUserId) return;
     var isDM     = msg.channel.startsWith('dm:') || msg.channel.startsWith('group:');
+    var isProject = isProjectChannel(msg.channel);
     var sender   = (msg.sender_name || '').split(' ')[0];
-    var title    = isDM ? sender + ' enviou uma mensagem' : sender + ' mencionou você';
+    var title    = isProject ? sender + ' atualizou um projeto' : (isDM ? sender + ' enviou uma mensagem' : sender + ' mencionou você');
     var body     = (msg.content || '').length > 80
       ? msg.content.substring(0, 80) + '…'
       : msg.content;
@@ -1148,10 +1264,154 @@
   function firstName(name) { return name ? name.split(' ')[0] : ''; }
   function isSocioLikeRole(role) { return ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase()); }
   function isDynamicChannel(channel) { return !!channel && (channel.indexOf('dm:') === 0 || channel.indexOf('group:') === 0); }
+  function isProjectChannel(channel) { return !!channel && channel.indexOf('project:') === 0; }
+  function projectChannel(threadId) { return 'project:' + threadId; }
+  function projectThreadIdFromChannel(channel) { return String(channel || '').replace('project:', ''); }
 
   function channelHasUser(channel, uid) {
     if (!isDynamicChannel(channel) || !uid) return false;
     return channel.replace(/^dm:|^group:/, '').split(':').indexOf(uid) !== -1;
+  }
+
+  function getChannelLabel(channel) {
+    if (channel === 'general') return '# geral';
+    if (channel === 'socios') return '# sócios';
+    if (isProjectChannel(channel) && projectThreadMeta[channel]) return projectThreadMeta[channel].label;
+    return currentLabel || '# geral';
+  }
+
+  function brandColorForKey(key) {
+    var str = String(key || 'exp');
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    return BRAND_AVATAR_COLORS[Math.abs(hash) % BRAND_AVATAR_COLORS.length];
+  }
+
+  function initialsFromLabel(label, fallback) {
+    var base = String(label || '').trim();
+    if (!base) return fallback || 'GP';
+    if (base.indexOf('-') !== -1) {
+      var head = base.split('-')[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      if (head) return head.slice(0, 3);
+    }
+    var tokens = base.split(/\s+/).filter(Boolean);
+    var initials = tokens.slice(0, 2).map(function (t) { return t.charAt(0).toUpperCase(); }).join('');
+    if (initials.length >= 2) return initials.slice(0, 3);
+    return base.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3) || (fallback || 'GP');
+  }
+
+  function buildProjectThreadMeta(threadId, title, preview, createdAt, senderAuthId) {
+    var channel = projectChannel(threadId);
+    var label = title || (projectThreadMeta[channel] && projectThreadMeta[channel].label) || 'Projeto';
+    return {
+      threadId: threadId,
+      channel: channel,
+      label: label,
+      iniciais: initialsFromLabel(label, 'PRJ'),
+      cor: brandColorForKey(channel + ':' + label),
+      preview: preview || 'Chat do projeto',
+      lastCreatedAt: createdAt || null,
+      lastSenderId: senderAuthId || null,
+      unread: projectThreadMeta[channel] ? (projectThreadMeta[channel].unread || 0) : 0
+    };
+  }
+
+  function updateProjectThreadSnapshot(threadId, preview, createdAt, senderAuthId) {
+    var channel = projectChannel(threadId);
+    var meta = projectThreadMeta[channel] || buildProjectThreadMeta(threadId, null, preview, createdAt, senderAuthId);
+    meta.preview = preview || meta.preview;
+    meta.lastCreatedAt = createdAt || meta.lastCreatedAt;
+    meta.lastSenderId = senderAuthId || meta.lastSenderId;
+    projectThreadMeta[channel] = meta;
+  }
+
+  function normalizeProjectMessage(msg) {
+    return {
+      id: msg.id,
+      channel: projectChannel(msg.thread_id),
+      thread_id: msg.thread_id,
+      sender_id: msg.sender_auth_id,
+      sender_name: msg.sender_nome,
+      sender_iniciais: msg.sender_iniciais,
+      sender_cor: msg.sender_cor,
+      content: msg.content,
+      created_at: msg.created_at,
+      reactions: msg.reactions || { like: [], love: [] }
+    };
+  }
+
+  function fetchProjectHomeItems(uid) {
+    return sb.from('chat_threads')
+      .select('id,title,produto_id,last_message_at')
+      .eq('type', 'project')
+      .is('archived_at', null)
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .then(function (r) {
+        if (r.error) return [];
+        projectThreads = r.data || [];
+        if (!projectThreads.length) {
+          projectThreadMeta = {};
+          return [];
+        }
+
+        var ids = projectThreads.map(function (t) { return t.id; });
+        return sb.from('chat_thread_reads')
+          .select('thread_id,last_read_at')
+          .eq('user_auth_id', uid)
+          .in('thread_id', ids)
+          .then(function (readsRes) {
+            var readMap = {};
+            (readsRes.data || []).forEach(function (row) { readMap[row.thread_id] = row.last_read_at; });
+            return Promise.all(projectThreads.map(function (thread) {
+              return sb.from('chat_thread_messages')
+                .select('thread_id,content,created_at,sender_auth_id')
+                .eq('thread_id', thread.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .then(function (lastRes) {
+                  var last = (lastRes.data || [])[0] || null;
+                  var meta = buildProjectThreadMeta(
+                    thread.id,
+                    thread.title,
+                    last ? last.content : 'Chat do projeto',
+                    last ? last.created_at : thread.last_message_at,
+                    last ? last.sender_auth_id : null
+                  );
+                  meta.unread = (last && last.sender_auth_id !== uid && (!readMap[thread.id] || last.created_at > readMap[thread.id])) ? 1 : 0;
+                  projectThreadMeta[meta.channel] = meta;
+                  return meta;
+                });
+            }));
+          });
+      });
+  }
+
+  function fetchProjectUnreadMap(uid) {
+    return fetchProjectHomeItems(uid).then(function (items) {
+      var unread = {};
+      (items || []).forEach(function (item) {
+        if (item.unread) unread[item.channel] = item.unread;
+      });
+      return unread;
+    }).catch(function () {
+      return {};
+    });
+  }
+
+  function applyProjectThreadTitle(threadId, title) {
+    var channel = projectChannel(threadId);
+    var meta = projectThreadMeta[channel] || buildProjectThreadMeta(threadId, title, null, null, null);
+    meta.label = title || meta.label;
+    meta.iniciais = initialsFromLabel(meta.label, 'PRJ');
+    meta.cor = brandColorForKey(channel + ':' + meta.label);
+    projectThreadMeta[channel] = meta;
+    projectThreads = (projectThreads || []).map(function (thread) {
+      return thread.id === threadId ? Object.assign({}, thread, { title: meta.label }) : thread;
+    });
+    if (currentChannel === channel) {
+      currentLabel = meta.label;
+      if ($chanTitle) $chanTitle.textContent = meta.label;
+    }
   }
 
   function getConversationMeta(conv, uid) {
@@ -1169,7 +1429,7 @@
       return {
         label: label,
         iniciais: initials,
-        cor: '#111110',
+        cor: brandColorForKey(conv.channel + ':' + label),
         avatarUrl: null,
         preview: conv.content
       };
@@ -1248,7 +1508,12 @@
     startDM:         startDM,
     toggleMember:    toggleMember,
     confirmGroup:    confirmGroup,
-    toggleSound:     toggleSound
+    toggleSound:     toggleSound,
+    refreshHome:     function () { renderHome(); },
+    refreshProjectThreadTitle: function (threadId, title) {
+      applyProjectThreadTitle(threadId, title);
+      if (isOpen && currentView === 'home') renderHome();
+    }
   };
 
   /* ══════════════════════════════════════════════════════════════════
