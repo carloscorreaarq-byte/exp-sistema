@@ -294,7 +294,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     } catch (caughtError) {
       error = caughtError;
     }
-    if (updateError) {
+    if (error) {
       if (!isTermTableMissing(error)) {
         setPlataformaStatus('Não foi possível carregar a definição gerenciável do termo.');
       }
@@ -1293,6 +1293,10 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   };
 
   window.salvarStatusFeedbackPlataforma = async function salvarStatusFeedbackPlataforma(feedbackId, status) {
+    if (String(status || '').toLowerCase() === 'resolvido') {
+      return window.resolverEApagarFeedbackPlataforma(feedbackId);
+    }
+    return window.recusarFeedbackPlataforma(feedbackId);
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
       setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
@@ -1321,6 +1325,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   };
 
   window.apagarFeedbackPlataforma = async function apagarFeedbackPlataforma(feedbackId) {
+    return window.recusarFeedbackPlataforma(feedbackId);
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
       setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
