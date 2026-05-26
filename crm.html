@@ -168,6 +168,9 @@ textarea{resize:vertical;min-height:60px}
 .pcard-fech{border-left:5px solid var(--verde);background:var(--verde-bg)}
 .pcard.dragging{opacity:.35;pointer-events:none}
 .kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--azul);outline-offset:-4px;border-radius:6px}
+.kcol-dupla{flex-direction:column}
+.kcol-sec{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.kcol-sep{height:1px;background:var(--cinza);flex-shrink:0}
 
 /* LINHA DO TEMPO */
 .timeline{position:relative;padding-left:20px}
@@ -194,13 +197,13 @@ textarea{resize:vertical;min-height:60px}
 .modal-x:hover{color:var(--grafite)}
 .modal-body{padding:16px;overflow-y:auto;flex:1}
 .modal-ft{padding:10px 16px;border-top:1px solid var(--cinza);display:flex;gap:7px;justify-content:flex-end;background:var(--branco);flex-shrink:0}
-.ms{margin-bottom:16px}
+.ms{margin-bottom:12px}
 .ms-title{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--cinza2)}
 .fech-row{transition:border-color .15s,opacity .15s}
 .dr{display:flex;border-bottom:1px solid var(--cinza2)}
 .dr:last-child{border-bottom:none}
-.dk{font-size:10px;color:#888;padding:6px 10px;min-width:140px;background:var(--off);border-right:1px solid var(--cinza2);flex-shrink:0}
-.dv{font-size:12px;padding:6px 10px;flex:1}
+.dk{font-size:10px;color:#888;padding:5px 8px;min-width:110px;background:var(--off);border-right:1px solid var(--cinza2);flex-shrink:0}
+.dv{font-size:11px;padding:5px 8px;flex:1}
 .follow-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2);font-size:11px}
 .follow-row:last-child{border-bottom:none}
 
@@ -570,7 +573,7 @@ textarea{resize:vertical;min-height:60px}
   </div>
   <div class="kanban" id="kanban-board" style="grid-template-columns:repeat(4,1fr)">
     <div class="kcol">
-      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--azul)"></div><div class="kcol-title">Prospecção</div><div class="kcol-cnt" id="k-cnt-p">0</div><div class="kcol-sum" style="visibility:hidden">—</div></div>
+      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--azul)"></div><div class="kcol-title">Lead</div><div class="kcol-cnt" id="k-cnt-p">0</div><div class="kcol-sum" style="visibility:hidden">—</div></div>
       <div class="kitems" id="k-prosp"></div>
     </div>
     <div class="kcol">
@@ -578,12 +581,19 @@ textarea{resize:vertical;min-height:60px}
       <div class="kitems" id="k-orc"></div>
     </div>
     <div class="kcol">
-      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--roxo)"></div><div class="kcol-title">Em negociação</div><div class="kcol-cnt" id="k-cnt-neg">0</div><div class="kcol-sum" id="k-sum-neg"></div></div>
+      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--roxo)"></div><div class="kcol-title">Negociação</div><div class="kcol-cnt" id="k-cnt-neg">0</div><div class="kcol-sum" id="k-sum-neg"></div></div>
       <div class="kitems" id="k-negoc"></div>
     </div>
-    <div class="kcol">
-      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--verde)"></div><div class="kcol-title">Fechado <span style="font-weight:300;font-size:8px">(45 dias)</span></div><div class="kcol-cnt" id="k-cnt-f">0</div><div class="kcol-sum" id="k-sum-f"></div></div>
-      <div class="kitems" id="k-fech"></div>
+    <div class="kcol kcol-dupla">
+      <div class="kcol-sec">
+        <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--verde)"></div><div class="kcol-title">Fechado <span style="font-weight:300;font-size:8px">(45 dias)</span></div><div class="kcol-cnt" id="k-cnt-f">0</div><div class="kcol-sum" id="k-sum-f"></div></div>
+        <div class="kitems" id="k-fech"></div>
+      </div>
+      <div class="kcol-sep"></div>
+      <div class="kcol-sec">
+        <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--terracota)"></div><div class="kcol-title">Negado</div><div class="kcol-cnt" id="k-cnt-neg2">0</div><div class="kcol-sum" style="visibility:hidden">—</div></div>
+        <div class="kitems" id="k-neg"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -924,10 +934,16 @@ textarea{resize:vertical;min-height:60px}
         <div class="fgroup">
           <label>Estágio inicial</label>
           <select id="opp-stage">
-            <option value="prospecção">Prospecção</option>
+            <option value="prospecção">Lead</option>
             <option value="enviada">Orçamento ativo</option>
           </select>
         </div>
+      </div>
+
+      <div class="fg fg3 mb8">
+        <div class="fgroup"><label>Resp. cliente — Nome</label><input type="text" id="opp-rc-nome" placeholder="Nome do contato no cliente"></div>
+        <div class="fgroup"><label>Telefone / WhatsApp</label><input type="text" id="opp-rc-tel" placeholder="(xx) xxxxx-xxxx"></div>
+        <div class="fgroup"><label>E-mail</label><input type="email" id="opp-rc-email" placeholder="nome@empresa.com"></div>
       </div>
 
       <div class="fg fg2 mb8">
@@ -1229,7 +1245,7 @@ let origMode    = 'resumido';
 
 // Mapa de pipeline_stage → label amigável
 const STAGE_LABEL = {
-  'prospecção':'Prospecção','prospeccao':'Prospecção',
+  'prospecção':'Lead','prospeccao':'Lead',
   'enviada':'Orçamento ativo','ativo':'Orçamento ativo',
   'negociacao':'Negociação','negociação':'Negociação',
   'fechada':'Fechado','fechado':'Fechado',
@@ -1239,7 +1255,7 @@ const STAGE_LABEL = {
 };
 // Agrupamento para filtros kanban
 const STAGE_GROUP = {
-  'prospecção':'Prospecção','prospeccao':'Prospecção',
+  'prospecção':'Lead','prospeccao':'Lead',
   'enviada':'Orçamento ativo','ativo':'Orçamento ativo',
   'negociacao':'Negociação','negociação':'Negociação',
   'fechada':'Fechado','fechado':'Fechado',
@@ -1301,7 +1317,7 @@ function openM(id){document.getElementById(id).classList.add('open');}
 function stageLabel(s){return STAGE_LABEL[s?.toLowerCase()]||s||'—';}
 function stageGroup(s){
   const sl=(s||'').toLowerCase();
-  if(['prospecção','prospeccao'].includes(sl))return'Prospecção';
+  if(['prospecção','prospeccao'].includes(sl))return'Lead';
   if(['enviada','ativo'].includes(sl))return'Orçamento ativo';
   if(['negociacao','negociação'].includes(sl))return'Negociação';
   if(['fechada','fechado'].includes(sl))return'Fechado';
@@ -1995,6 +2011,7 @@ function renderPipe(){
   const orcAtiv = ops.filter(o=>['enviada','ativo'].includes((o.pipeline_stage||'').toLowerCase()));
   const negoc   = ops.filter(o=>['negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase()));
   const fech    = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||o.updated_at)&&new Date(oppDataFechamento(o)||o.updated_at)>=cut45);
+  const negado  = ops.filter(o=>isNegada(o));
 
   const vOrc=orcAtiv.reduce((s,o)=>s+oppValorEfetivo(o),0);
   const vNeg=negoc.reduce((s,o)=>s+oppValorEfetivo(o),0);
@@ -2007,6 +2024,7 @@ function renderPipe(){
   document.getElementById('k-sum-neg').textContent=fmt(vNeg);
   document.getElementById('k-cnt-f').textContent=fech.length;
   document.getElementById('k-sum-f').textContent=fmt(vFech);
+  document.getElementById('k-cnt-neg2').textContent=negado.length;
   document.getElementById('pipe-total').textContent=`Pipeline: ${fmt(vOrc+vNeg)}`;
 
   function card(op){
@@ -2049,11 +2067,12 @@ function renderPipe(){
   document.getElementById('k-orc').innerHTML=sortCards(orcAtiv).map(card).join('')||empty;
   document.getElementById('k-negoc').innerHTML=sortCards(negoc).map(card).join('')||empty;
   document.getElementById('k-fech').innerHTML=sortCards(fech).map(card).join('')||empty;
+  document.getElementById('k-neg').innerHTML=sortCards(negado).map(card).join('')||empty;
   setupPipelineDrag();
 }
 
 function setupPipelineDrag(){
-  const STAGE_MAP={'k-prosp':'prospecção','k-orc':'enviada','k-negoc':'negociacao','k-fech':'fechada'};
+  const STAGE_MAP={'k-prosp':'prospecção','k-orc':'enviada','k-negoc':'negociacao','k-fech':'fechada','k-neg':'negada'};
   let dragId=null, srcCol=null;
 
   document.querySelectorAll('.pcard[data-id]').forEach(el=>{
@@ -2528,6 +2547,9 @@ async function abrirNovaOpp(){
   document.getElementById('opp-cidade').value='';
   document.getElementById('opp-uf').value='';
   document.getElementById('opp-obs').value='';
+  document.getElementById('opp-rc-nome').value='';
+  document.getElementById('opp-rc-tel').value='';
+  document.getElementById('opp-rc-email').value='';
   document.getElementById('opp-indicou').value='';
   document.getElementById('opp-evento').value='';
   document.getElementById('opp-data-entrada').value=new Date().toISOString().slice(0,10);
@@ -2562,6 +2584,9 @@ function editarOpp(){
   document.getElementById('opp-num-legado-wrap').style.display='grid';
   document.getElementById('opp-num-legado').value=op.num_legado||'';
   document.getElementById('opp-obs').value=op.obs||'';
+  document.getElementById('opp-rc-nome').value=op.resp_cliente_nome||'';
+  document.getElementById('opp-rc-tel').value=op.resp_cliente_tel||'';
+  document.getElementById('opp-rc-email').value=op.resp_cliente_email||'';
   document.getElementById('opp-indicou').value=op.indicou||'';
   document.getElementById('opp-evento').value='';
   document.getElementById('opp-data-entrada').value=op.data_entrada||'';
@@ -2726,6 +2751,9 @@ async function salvarOpp(){
     indicou,
     data_entrada:document.getElementById('opp-data-entrada').value||null,
     obs:document.getElementById('opp-obs').value.trim()||null,
+    resp_cliente_nome:document.getElementById('opp-rc-nome').value.trim()||null,
+    resp_cliente_tel:document.getElementById('opp-rc-tel').value.trim()||null,
+    resp_cliente_email:document.getElementById('opp-rc-email').value.trim()||null,
     destaque:document.getElementById('opp-destaque').checked,
     proposta_calc_id:document.getElementById('opp-calc-id').value.trim()||null,
     updated_at:new Date().toISOString(),
@@ -3488,9 +3516,9 @@ function abrirDetail(oppId){
   // Barra de ações: mostra todos os 4 estágios exceto o atual
   if(canEdit && isOpen){
     const _pipeStages=[
-      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Prospecção'},
+      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Lead'},
       {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo'},
-      {key:'negociacao',vals:['negociacao','negociação'],label:'Em Negociação'},
+      {key:'negociacao',vals:['negociacao','negociação'],label:'Negociação'},
     ];
     html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
       <span style="font-size:9px;color:#bbb;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Mover para:</span>`;
@@ -3523,6 +3551,11 @@ function abrirDetail(oppId){
     ${op.projeto?`<div class="dr"><div class="dk">Projeto</div><div class="dv">${escHtml(op.projeto)}</div></div>`:''}
     <div class="dr"><div class="dk">Cidade</div><div class="dv">${escHtml(op.cidade||'—')}${op.uf?' / '+escHtml(op.uf):''}</div></div>
     ${op.origem?`<div class="dr"><div class="dk">Origem</div><div class="dv"><strong>${escHtml(op.origem)}</strong>${op.indicou?' — '+escHtml(op.indicou):''}</div></div>`:''}
+    ${(op.resp_cliente_nome||op.resp_cliente_tel||op.resp_cliente_email)?`<div class="dr"><div class="dk">Resp. cliente</div><div class="dv" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      ${op.resp_cliente_nome?`<span style="font-weight:600">${escHtml(op.resp_cliente_nome)}</span>`:''}
+      ${op.resp_cliente_tel?`<span style="font-family:var(--font-mono);font-size:10px">${escHtml(op.resp_cliente_tel)}</span>`:''}
+      ${op.resp_cliente_email?`<a href="mailto:${escAttr(op.resp_cliente_email)}" style="font-size:10px;color:var(--azul)">${escHtml(op.resp_cliente_email)}</a>`:''}
+    </div></div>`:''}
   </div>`;
 
   // Produtos / Serviços — vínculo direto com exp_proposals (sem copiar para tabela produtos)
@@ -3564,16 +3597,16 @@ function abrirDetail(oppId){
         else if(pSt==='fechado')
           acaoBtns=`<button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','cancelado')">⊗ Cancelar</button>`;
       }
-      html+=`<div style="border:1px solid var(--cinza2);padding:8px 12px;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      html+=`<div style="border:1px solid var(--cinza2);padding:6px 10px;margin-bottom:5px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
           ${tipoBadgeProd(p.nucleo)}
-          <span style="font-size:12px;font-weight:500">${escHtml(subLabel)}</span>
+          <span style="font-size:11px;font-weight:500">${escHtml(subLabel)}</span>
           ${!_useCalc?`<span style="margin-left:auto;display:flex;gap:5px;align-items:center">
             ${estagBadgeProd(p.status)}
             ${canEdit?`<button class="btn sm ghost" onclick="editarProd('${escJsStr(p.id)}')" style="padding:1px 6px" title="Editar">✎</button>`:''}
           </span>`:''}
         </div>
-        <div style="display:flex;gap:16px;font-size:11px;color:#888;flex-wrap:wrap">
+        <div style="display:flex;gap:14px;font-size:10px;color:#888;flex-wrap:wrap">
           ${p.valor_proposto?`<span>Proposta: <strong style="color:var(--grafite)">${fmt(p.valor_proposto)}</strong></span>`:''}
           ${!_useCalc&&p.valor_fechado?`<span>Fechado: <strong style="color:var(--verde)">${fmt(p.valor_fechado)}</strong></span>`:''}
           ${!_useCalc&&p.data_fechamento?`<span>Fech.: ${fmtD(p.data_fechamento)}</span>`:''}
@@ -3599,7 +3632,7 @@ function abrirDetail(oppId){
             const tot=(s.val||0)*(1+(s.bit||0)/100)*(1+(s.ret||0)/100);
             const aprov=s.status_aprov||'pendente';
             const apCor=aprov==='aprovada'?'var(--verde)':aprov==='negada'?'var(--terracota)':'var(--ouro)';
-            ch+=`<div style="border:1px solid var(--cinza2);padding:6px 10px;margin-bottom:4px;font-size:11px">
+            ch+=`<div style="border:1px solid var(--cinza2);padding:5px 8px;margin-bottom:4px;font-size:10px">
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
                 <span style="font-weight:600">${s.serv||'—'}</span>
                 ${s.emp?`<span style="color:#888">${s.emp}</span>`:''}
@@ -3617,7 +3650,7 @@ function abrirDetail(oppId){
         if(_desps.length){
           ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Despesas Indiretas</div>`;
           _desps.forEach(d=>{
-            ch+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+            ch+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
               <span style="flex:1">${d.desc||'—'}</span>
               ${d.bit?`<span style="color:#888">Bit.: ${d.bit}%</span>`:''}
               <span style="font-family:var(--font-mono);font-weight:600">${fmt(d.valComBit||d.val||0)}</span>
@@ -3626,7 +3659,7 @@ function abrirDetail(oppId){
         }
         if(_rep&&(_rep.nome||_rep.valorRep)){
           ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Repasse Comercial</div>
-            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11px">
+            <div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:10px">
               <span style="flex:1"><strong>${_rep.nome||'—'}</strong>${_rep.tipo==='pct'?` · ${_rep.val}% sobre serviços`:' · valor fixo'}</span>
               <span style="font-family:var(--font-mono);font-weight:600">${fmt(_rep.valorRep||0)}</span>
             </div>`;
@@ -3655,7 +3688,7 @@ function abrirDetail(oppId){
   }
 
 
-  if(op.obs)html+=`<div class="ms"><div class="ms-title">Observações</div><div style="font-size:12px;color:#555;padding:4px 0">${escHtml(op.obs)}</div></div>`;
+  if(op.obs)html+=`<div class="ms"><div class="ms-title">Observações</div><div style="font-size:11px;color:#555;padding:4px 0">${escHtml(op.obs)}</div></div>`;
 
   document.getElementById('det-body').innerHTML=html;
   openM('modal-detail');
