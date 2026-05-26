@@ -53,6 +53,34 @@ body[data-page="analise"] {
   gap: 6px;
 }
 
+.analise-module-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analise-module-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid var(--cinza);
+  border-radius: 999px;
+  background: var(--branco);
+  color: #777;
+  text-decoration: none;
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.analise-module-link:hover {
+  background: var(--off);
+  color: var(--grafite);
+  border-color: var(--grafite);
+}
+
 /* ── PAINEL DE CONFIG ─────────────────────────────────────── */
 .analise-config-panel {
   display: none;
@@ -122,8 +150,48 @@ body[data-page="analise"] {
 /* ── PAINÉIS DE ABA ───────────────────────────────────────── */
 /* tabs agora estão na nav (.ntab do design system) —
    não há mais estilos .analise-tab aqui */
+.analise-shell-card {
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.analise-tabs-bar {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--cinza2);
+  background: var(--branco);
+}
+
+.analise-tab {
+  appearance: none;
+  border: none;
+  background: none;
+  color: #999;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  font-weight: 600;
+  padding: 12px 16px 11px;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.analise-tab:hover {
+  color: var(--grafite);
+  background: var(--off);
+}
+
+.analise-tab.active {
+  color: var(--grafite);
+  border-bottom-color: var(--grafite);
+}
+
 .analise-panels {
-  padding: 0;
+  padding: 16px;
 }
 
 .analise-panel {
@@ -226,7 +294,7 @@ body.analise-modal-open {
 }
 
 .analise-modal-body {
-  width: min(860px, calc(100vw - 32px));
+  width: min(1040px, calc(100vw - 32px));
   max-height: calc(100vh - 40px);
   overflow: auto;
 }
@@ -687,17 +755,99 @@ body.analise-modal-open {
   color: #888;
 }
 
+.analise-row-risk td:first-child {
+  box-shadow: inset 3px 0 0 var(--terracota);
+}
+
+.analise-row-warn td:first-child {
+  box-shadow: inset 3px 0 0 var(--ouro);
+}
+
+.analise-row-ok td:first-child {
+  box-shadow: inset 3px 0 0 var(--verde);
+}
+
+.analise-delta-risk {
+  color: var(--terracota);
+}
+
+.analise-delta-warn {
+  color: var(--ouro);
+}
+
+.analise-delta-ok {
+  color: var(--verde);
+}
+
+.analise-delta-neutral {
+  color: #888;
+}
+
+.analise-priority-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.analise-priority-card {
+  border: 1px solid var(--cinza2);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  background: var(--branco);
+}
+
+.analise-priority-card.analise-row-risk {
+  background: linear-gradient(180deg, rgba(195, 98, 71, 0.08), transparent 58%), var(--branco);
+}
+
+.analise-priority-card.analise-row-warn {
+  background: linear-gradient(180deg, rgba(209, 153, 49, 0.08), transparent 58%), var(--branco);
+}
+
+.analise-priority-card.analise-row-ok {
+  background: linear-gradient(180deg, rgba(69, 134, 93, 0.08), transparent 58%), var(--branco);
+}
+
+.analise-priority-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analise-priority-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.analise-priority-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--text-label);
+  font-weight: var(--weight-label);
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.analise-priority-metrics strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--grafite);
+}
+
 /* ── MODAL — OVERRIDES INTERNOS ──────────────────────────── */
 /* Grid 2 colunas fixas dentro do modal — evita 4 colunas largas */
 .analise-modal-card .analise-visual-grid {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 /* SVG limitado em largura para não escalar demais dentro dos cards */
 .analise-modal-card .analise-svg-chart {
-  max-width: 360px;
-  margin: 0 auto;
-  display: block;
+  max-width: none;
 }
 
 /* Budget stack no modal: 2 colunas para etapas */
@@ -709,7 +859,7 @@ body.analise-modal-open {
 
 /* KPI row dentro do modal — colunas menores */
 .analise-modal-card .analise-kpis-row {
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 /* ── DARK MODE ────────────────────────────────────────────── */
@@ -718,6 +868,7 @@ body.analise-modal-open {
 
 [data-theme="dark"] .analise-modal-card,
 [data-theme="dark"] .analise-budget-row,
+[data-theme="dark"] .analise-priority-card,
 [data-theme="dark"] .analise-state-card,
 [data-theme="dark"] .analise-visual-card,
 [data-theme="dark"] .analise-kpi,
@@ -770,5 +921,9 @@ body.analise-modal-open {
   .analise-visual-card,
   .analise-visual-card-wide {
     grid-column: 1 / -1;
+  }
+
+  .analise-priority-metrics {
+    grid-template-columns: 1fr;
   }
 }

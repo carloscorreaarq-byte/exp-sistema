@@ -23,8 +23,8 @@ const ANALISE = {
     },
   },
   _filtros: {
-    acumulado: { nucleo: '', status: '', ordem: 'nome' },
-    desenvolvimento: { nucleo: '', statusEtapa: '', agrupamento: 'projeto' },
+    acumulado: { nucleo: '', status: '', risco: '', ordem: 'risco_desc' },
+    desenvolvimento: { nucleo: '', statusEtapa: '', risco: '', agrupamento: 'projeto', ordem: 'risco_desc' },
     encerrados: { nucleo: '', ano: '', ordem: 'conclusao_desc' },
   },
 };
@@ -482,11 +482,11 @@ function analiseAtualizarFiltro(aba, key, value) {
 
 function analiseResetFiltros(aba) {
   if (aba === 'desenvolvimento') {
-    ANALISE._filtros.desenvolvimento = { nucleo: '', statusEtapa: '', agrupamento: 'projeto' };
+    ANALISE._filtros.desenvolvimento = { nucleo: '', statusEtapa: '', risco: '', agrupamento: 'projeto', ordem: 'risco_desc' };
   } else if (aba === 'encerrados') {
     ANALISE._filtros.encerrados = { nucleo: '', ano: '', ordem: 'conclusao_desc' };
   } else if (aba === 'acumulado') {
-    ANALISE._filtros.acumulado = { nucleo: '', status: '', ordem: 'nome' };
+    ANALISE._filtros.acumulado = { nucleo: '', status: '', risco: '', ordem: 'risco_desc' };
   }
   analiseRenderAbaAtiva();
 }
@@ -1134,12 +1134,58 @@ function analiseStatusProdutoOptions(produtos) {
 
 function analiseAcumuladoOrderOptions() {
   return [
+    { value: 'risco_desc', label: 'Maior risco projetado' },
+    { value: 'risco_asc', label: 'Menor risco projetado' },
+    { value: 'margem_proj_asc', label: 'Menor margem projetada' },
+    { value: 'margem_proj_desc', label: 'Maior margem projetada' },
+    { value: 'delta_proj_desc', label: 'Maior queda projetada' },
     { value: 'nome', label: 'Nome do projeto' },
     { value: 'horas_desc', label: 'Mais horas' },
     { value: 'custo_desc', label: 'Maior custo' },
     { value: 'margem_asc', label: 'Menor margem' },
     { value: 'margem_desc', label: 'Maior margem' },
   ];
+}
+
+function analiseDesenvolvimentoOrderOptions() {
+  return [
+    { value: 'risco_desc', label: 'Maior risco projetado' },
+    { value: 'risco_asc', label: 'Menor risco projetado' },
+    { value: 'margem_proj_asc', label: 'Menor margem projetada' },
+    { value: 'margem_proj_desc', label: 'Maior margem projetada' },
+    { value: 'delta_proj_desc', label: 'Maior queda projetada' },
+    { value: 'budget_desc', label: 'Maior uso de budget' },
+    { value: 'horas_desc', label: 'Mais horas' },
+    { value: 'nome', label: 'Nome do projeto' },
+  ];
+}
+
+function analiseRiscoOptions(includeIncerto = true) {
+  const base = [{ value: '', label: 'Todos' }];
+  const items = [
+    { value: 'risco', label: 'Em risco' },
+    { value: 'atencao', label: 'Atenção' },
+    { value: 'saudavel', label: 'Saudável' },
+  ];
+  if (includeIncerto) {
+    items.push({ value: 'incerto', label: 'Incerto' });
+  }
+  return base.concat(items);
+}
+
+function analiseRiscoRank(riscoKey) {
+  if (riscoKey === 'risco') return 4;
+  if (riscoKey === 'atencao') return 3;
+  if (riscoKey === 'incerto') return 2;
+  if (riscoKey === 'saudavel') return 1;
+  return 0;
+}
+
+function analiseDeltaMargemProjetada(item) {
+  const atual = Number(item?.margemPct);
+  const projetada = Number(item?.previsao?.margemProjetadaPct);
+  if (!Number.isFinite(atual) || !Number.isFinite(projetada)) return null;
+  return atual - projetada;
 }
 
 function analiseProdutoStatusKey(itemOrStatus) {
@@ -1179,10 +1225,33 @@ function analiseStatusProdutoLabelFromKey(statusKey) {
 }
 
 function analiseOrdenarProdutosAcumulado(a, b, ordem) {
+  if (ordem === 'risco_desc') return analiseRiscoRank(b.previsao?.riscoKey) - analiseRiscoRank(a.previsao?.riscoKey);
+  if (ordem === 'risco_asc') return analiseRiscoRank(a.previsao?.riscoKey) - analiseRiscoRank(b.previsao?.riscoKey);
+  if (ordem === 'margem_proj_asc') return analiseSortNullLastAsc(a.previsao?.margemProjetadaPct, b.previsao?.margemProjetadaPct);
+  if (ordem === 'margem_proj_desc') return analiseSortNullLastDesc(a.previsao?.margemProjetadaPct, b.previsao?.margemProjetadaPct);
+  if (ordem === 'delta_proj_desc') return analiseSortNullLastDesc(analiseDeltaMargemProjetada(a), analiseDeltaMargemProjetada(b));
   if (ordem === 'horas_desc') return Number(b.horasTotais || 0) - Number(a.horasTotais || 0);
   if (ordem === 'custo_desc') return Number(b.custoTotal || 0) - Number(a.custoTotal || 0);
   if (ordem === 'margem_asc') return analiseSortNullLastAsc(a.margemPct, b.margemPct);
   if (ordem === 'margem_desc') return analiseSortNullLastDesc(a.margemPct, b.margemPct);
+  return String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR');
+}
+
+function analiseOrdenarProjetosDesenvolvimento(a, b, ordem) {
+  const prevA = a.produtoRegistro?.previsao || {};
+  const prevB = b.produtoRegistro?.previsao || {};
+  const budgetPctA = a.budgetHoras > 0 ? (a.horasTotais / a.budgetHoras) * 100 : null;
+  const budgetPctB = b.budgetHoras > 0 ? (b.horasTotais / b.budgetHoras) * 100 : null;
+  const deltaA = analiseDeltaMargemProjetada(a.produtoRegistro);
+  const deltaB = analiseDeltaMargemProjetada(b.produtoRegistro);
+
+  if (ordem === 'risco_desc') return analiseRiscoRank(prevB.riscoKey) - analiseRiscoRank(prevA.riscoKey);
+  if (ordem === 'risco_asc') return analiseRiscoRank(prevA.riscoKey) - analiseRiscoRank(prevB.riscoKey);
+  if (ordem === 'margem_proj_asc') return analiseSortNullLastAsc(prevA.margemProjetadaPct, prevB.margemProjetadaPct);
+  if (ordem === 'margem_proj_desc') return analiseSortNullLastDesc(prevA.margemProjetadaPct, prevB.margemProjetadaPct);
+  if (ordem === 'delta_proj_desc') return analiseSortNullLastDesc(deltaA, deltaB);
+  if (ordem === 'budget_desc') return analiseSortNullLastDesc(budgetPctA, budgetPctB);
+  if (ordem === 'horas_desc') return Number(b.horasTotais || 0) - Number(a.horasTotais || 0);
   return String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR');
 }
 
@@ -1362,6 +1431,7 @@ function analiseAgruparEtapasAtivasPorProjeto(etapas) {
     if (!byProduto[produtoId]) {
       byProduto[produtoId] = {
         produto: item.produto,
+        produtoRegistro: item.produtoRegistro,
         etapas: [],
         horasTotais: 0,
         custoTotal: 0,
@@ -1766,7 +1836,7 @@ function analiseGraficoStatusEtapasAtivas(etapas) {
     { label: STATUS_ETAPA.em_andamento?.label || 'Em andamento', count: etapas.filter((item) => item.etapa?.status === 'em_andamento').length, color: '#5280CA' },
     { label: STATUS_ETAPA.em_revisao?.label || 'Em revisão', count: etapas.filter((item) => item.etapa?.status === 'em_revisao').length, color: '#D19931' },
   ];
-  return analiseGraficoDistribuicaoSimples(counts, 'Separacao das etapas ativas entre producao e revisao.');
+  return analiseGraficoDistribuicaoSimples(counts, 'Separação das etapas ativas entre produção e revisão.');
 }
 
 function analiseGraficoResumoBudgetAtivo(etapas) {
@@ -2189,7 +2259,7 @@ function analiseClassificarMargem(margemPct) {
     return { cls: 'margem-risco', label: 'Em risco' };
   }
   if (margemPct < config.margem_threshold + config.margem_atencao) {
-    return { cls: 'margem-atencao', label: 'Atencao' };
+    return { cls: 'margem-atencao', label: 'Atenção' };
   }
   return { cls: 'margem-saudavel', label: 'Saudável' };
 }
@@ -2417,3 +2487,731 @@ function analiseInitExpRoom(userId, userName) {
     analiseRegistrarExpRoomClick(userId, userName);
   });
 }
+
+// Overrides de estabilizacao da base do modulo
+analiseInitExpRoom = function analiseInitExpRoomStable() {};
+
+analiseRenderShell = function analiseRenderShellStable(usuario) {
+  const subtitle = document.getElementById('analise-user-context');
+  const firstName = usuario?.apelido || String(usuario?.nome || '').split(' ')[0] || 'usuario';
+  if (subtitle) {
+    subtitle.textContent = `Módulo independente com carga analítica própria. Sessão autenticada pronta para ${firstName}.`;
+  }
+
+  const configBtn = document.getElementById('analise-btn-config');
+  if (configBtn) {
+    configBtn.hidden = !analisePodeConfigurarMargem(usuario?.role);
+  }
+
+  const platformBtn = document.getElementById('user-menu-platform');
+  if (platformBtn) {
+    platformBtn.hidden = !usuario?.is_platform_manager;
+  }
+};
+
+analiseBindEventosBase = function analiseBindEventosBaseStable() {
+  document.getElementById('analise-tabs-bar')?.addEventListener('click', (event) => {
+    const button = event.target.closest('.analise-tab');
+    if (!button) return;
+    analiseSwitchTab(button.dataset.aba);
+  });
+
+  document.getElementById('analise-btn-reload')?.addEventListener('click', async () => {
+    ANALISE._ultimaCarga = null;
+    await analiseInit(true);
+  });
+
+  document.getElementById('analise-btn-config')?.addEventListener('click', () => {
+    analiseAbrirConfig();
+  });
+
+  document.getElementById('analise-btn-fechar-config')?.addEventListener('click', () => {
+    document.getElementById('analise-config-panel')?.classList.remove('open');
+  });
+
+  document.getElementById('analise-btn-salvar-config')?.addEventListener('click', () => {
+    analiseSalvarConfig();
+  });
+
+  document.getElementById('analise-panels')?.addEventListener('change', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.matches('[data-filter-key]')) return;
+    analiseAtualizarFiltro(target.dataset.aba, target.dataset.filterKey, target.value);
+  });
+
+  document.getElementById('analise-panels')?.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    const row = event.target.closest('[data-produto-id]');
+    if (row) {
+      analiseAbrirProjeto(row.getAttribute('data-produto-id'));
+      return;
+    }
+    const reset = event.target.closest('[data-filter-reset]');
+    if (!reset) return;
+    analiseResetFiltros(reset.dataset.aba);
+  });
+
+  document.getElementById('analise-modal')?.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    if (event.target.closest('[data-modal-close]')) {
+      analiseFecharProjeto();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && ANALISE._produtoIsoladoId) {
+      analiseFecharProjeto();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const userPill = document.getElementById('user-pill-wrap');
+    if (userPill && !userPill.contains(event.target)) {
+      document.getElementById('user-dropdown')?.classList.remove('open');
+    }
+  });
+};
+
+var _analiseRenderAbaAtivaBase = analiseRenderAbaAtiva;
+analiseRenderAbaAtiva = function analiseRenderAbaAtivaStable() {
+  _analiseRenderAbaAtivaBase();
+
+  if (ANALISE._erro || ANALISE._carregando) return;
+
+  const subtitleEl = document.getElementById('analise-user-context');
+  if (!subtitleEl || !ANALISE._produtos.length) return;
+
+  const totalHoras = Object.values(ANALISE._dadosPorProduto).reduce((sum, item) => sum + Number(item.horasTotais || 0), 0);
+  const hhmm = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  subtitleEl.textContent = `${ANALISE._produtos.length} projetos · ${fmtH(totalHoras)} lançadas · Atualizado às ${hhmm}`;
+};
+
+analiseRenderProjetoDetalhe = function analiseRenderProjetoDetalheStable() {
+  const host = document.getElementById('analise-modal-body');
+  if (!host) return;
+
+  const item = ANALISE._produtoIsoladoId
+    ? ANALISE._dadosPorProduto[String(ANALISE._produtoIsoladoId)]
+    : null;
+
+  if (!item || ANALISE._carregando || ANALISE._erro) {
+    host.innerHTML = '';
+    analiseToggleModal(false);
+    return;
+  }
+
+  const etapas = item.etapasDados || [];
+  const concluidas = etapas.filter((etapaItem) => etapaItem.etapa?.status === 'concluida').length;
+  const budgetHoras = etapas.reduce((sum, etapaItem) => sum + analiseGetBudgetHoras(etapaItem.etapa), 0);
+  const budgetUtil = budgetHoras > 0 ? (item.horasTotais / budgetHoras) * 100 : null;
+  const cliente = item.produto?.oportunidades?.clientes?.nome || 'Cliente não identificado';
+  const encerradoEm = item.statusResumo?.concluidoEm ? item.statusResumo.concluidoEm.toLocaleDateString('pt-BR') : 'N/D';
+  const margemInfo = analiseClassificarMargem(item.margemPct);
+  const previsao = item.previsao || {};
+
+  host.innerHTML = `
+    <div class="analise-modal-card">
+      <div class="analise-modal-head">
+        <div>
+          <div class="analise-state-kicker">Leitura isolada</div>
+          <h2 class="analise-drill-title" id="analise-modal-title">${_escN(item.produto?.nome || 'Projeto sem nome')}</h2>
+          <div class="analise-drill-sub">${_escN(cliente)} | ${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')} | ${_escN(item.statusResumo?.statusLabel || 'N/D')}</div>
+        </div>
+        <button type="button" class="btn sm" data-modal-close="1">Fechar</button>
+      </div>
+      <div class="analise-kpis-row">
+        ${analiseKpiCard('Horas totais', fmtH(item.horasTotais), `${concluidas}/${etapas.length} etapas concluídas`)}
+        ${analiseKpiCard('Custo total', analiseFmtMoney(item.custoTotal), 'HH + custos lançados')}
+        ${analiseKpiCard('Margem', analiseFmtPct(item.margemPct), analiseFmtMoney(item.margem, item.margem === null))}
+        ${analiseKpiCard('Budget consolidado', budgetHoras > 0 ? fmtH(budgetHoras) : 'N/D', budgetHoras > 0 ? `Uso atual ${analiseFmtPct(budgetUtil)}` : 'Nenhuma etapa com budget carregado')}
+        ${analiseKpiCard('Margem projetada', analiseFmtPct(previsao.margemProjetadaPct), analiseFmtMoney(previsao.margemProjetada, previsao.margemProjetada === null))}
+      </div>
+      <div class="analise-drill-meta">
+        <span class="analise-chip analise-chip-muted">Fase: ${_escN(item.statusResumo?.faseLabel || 'N/D')}</span>
+        <span class="analise-chip analise-chip-muted">Encerrado em: ${_escN(encerradoEm)}</span>
+        <span class="${margemInfo.cls}">${_escN(margemInfo.label)}</span>
+        <span class="${analiseRiscoChipClass(previsao.riscoKey)}">${_escN(previsao.riscoLabel || 'Sem previsão')}</span>
+        <span class="analise-chip analise-chip-muted">Confiança: ${_escN(previsao.confiancaLabel || 'Baixa')}</span>
+      </div>
+      <div class="analise-visual-grid">
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Mapa de margem</div>
+          ${analiseGraficoMargemProjeto(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Composição do custo</div>
+          ${analiseGraficoCustosProjeto(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Etapas por status</div>
+          ${analiseGraficoStatusEtapas(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Projeção de risco</div>
+          ${analiseGraficoProjecaoProjeto(item)}
+        </section>
+        <section class="analise-visual-card analise-visual-card-wide">
+          <div class="analise-visual-title">Leitura de budget por etapa</div>
+          ${analiseGraficoBudgetEtapas(item)}
+        </section>
+      </div>
+      <div class="analise-table-wrap">
+        ${analiseTabelaDetalheEtapas(item)}
+      </div>
+    </div>
+  `;
+
+  analiseToggleModal(true);
+};
+
+function analiseRiscoBadgeHtml(previsao) {
+  const riscoKey = previsao?.riscoKey || 'incerto';
+  const riscoLabel = riscoKey === 'risco'
+    ? 'Em risco'
+    : riscoKey === 'atencao'
+      ? 'Atenção'
+      : riscoKey === 'saudavel'
+        ? 'Saudável'
+        : 'Incerto';
+  return `<span class="${analiseRiscoChipClass(riscoKey)}">${_escN(riscoLabel)}</span>`;
+}
+
+function analiseDeltaToneClass(delta) {
+  if (delta === null || typeof delta === 'undefined' || Number.isNaN(Number(delta))) return 'analise-delta-neutral';
+  if (Number(delta) >= 5) return 'analise-delta-risk';
+  if (Number(delta) > 0) return 'analise-delta-warn';
+  return 'analise-delta-ok';
+}
+
+function analiseRowToneClass(riscoKey) {
+  if (riscoKey === 'risco') return 'analise-row-risk';
+  if (riscoKey === 'atencao') return 'analise-row-warn';
+  if (riscoKey === 'saudavel') return 'analise-row-ok';
+  return '';
+}
+
+function analiseListaPrioridadesProjeto(registros, somenteAtivos = false) {
+  const items = (registros || [])
+    .filter(Boolean)
+    .filter((item) => !somenteAtivos || item.statusResumo?.statusKey === 'ativo')
+    .sort((a, b) => analiseOrdenarProdutosAcumulado(a, b, 'risco_desc'))
+    .slice(0, 6);
+
+  if (!items.length) {
+    return '<div class="empty-note">Nenhum projeto entrou na priorização desta leitura.</div>';
+  }
+
+  return `
+    <div class="analise-priority-grid">
+      ${items.map((item) => {
+        const previsao = item.previsao || {};
+        const delta = analiseDeltaMargemProjetada(item);
+        const cliente = item.produto?.oportunidades?.clientes?.nome || 'Cliente não identificado';
+        return `
+          <article class="analise-priority-card ${analiseRowToneClass(previsao.riscoKey)}">
+            <div class="analise-priority-head">
+              <div>
+                <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+                <div class="analise-table-sub">${_escN(cliente)} · ${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</div>
+              </div>
+              ${analiseRiscoBadgeHtml(previsao)}
+            </div>
+            <div class="analise-priority-metrics">
+              <div>
+                <span class="analise-priority-label">Margem projetada</span>
+                <strong>${_escN(analiseFmtPct(previsao.margemProjetadaPct))}</strong>
+              </div>
+              <div>
+                <span class="analise-priority-label">Queda projetada</span>
+                <strong class="${analiseDeltaToneClass(delta)}">${_escN(delta === null ? 'N/D' : analiseFmtPct(delta))}</strong>
+              </div>
+              <div>
+                <span class="analise-priority-label">Confiança</span>
+                <strong>${_escN(previsao.confiancaLabel || 'Baixa')}</strong>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+analiseLinhaProduto = function analiseLinhaProdutoEnhanced(item) {
+  const classeMargem = analiseClassificarMargem(item.margemPct);
+  const statusLabel = analiseProdutoStatusLabel(item);
+  const faseLabel = item.statusResumo?.faseLabel;
+  const previsao = item.previsao || {};
+  const delta = analiseDeltaMargemProjetada(item);
+
+  return `
+    <tr class="analise-row-link ${analiseRowToneClass(previsao.riscoKey)}" data-produto-id="${_escN(item.produto?.id || '')}">
+      <td>
+        <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+        <div class="analise-table-sub">${_escN(item.produto?.oportunidades?.clientes?.nome || '')}</div>
+      </td>
+      <td>${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</td>
+      <td>
+        <div class="analise-table-main">${_escN(statusLabel)}</div>
+        <div class="analise-table-sub">${_escN(faseLabel || 'N/D')}</div>
+      </td>
+      <td>
+        <div class="analise-table-main">${analiseRiscoBadgeHtml(previsao)}</div>
+        <div class="analise-table-sub">Confiança ${_escN(previsao.confiancaLabel || 'Baixa')}</div>
+      </td>
+      <td>
+        <div class="analise-table-main">${_escN(analiseFmtPct(previsao.margemProjetadaPct))}</div>
+        <div class="analise-table-sub">${_escN(analiseFmtMoney(previsao.margemProjetada, previsao.margemProjetada === null))}</div>
+      </td>
+      <td>
+        <div class="analise-table-main ${analiseDeltaToneClass(delta)}">${_escN(delta === null ? 'N/D' : analiseFmtPct(delta))}</div>
+        <div class="analise-table-sub">Atual ${_escN(analiseFmtPct(item.margemPct))}</div>
+      </td>
+      <td>${_escN(fmtH(item.horasTotais))}</td>
+      <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
+      <td>${_escN(analiseFmtMoney(item.produto?.valor_contratado || 0, item.produto?.valor_contratado ? false : true))}</td>
+      <td><span class="${classeMargem.cls}">${_escN(analiseFmtPct(item.margemPct))}</span></td>
+    </tr>
+  `;
+};
+
+analiseTabelaDesenvolvimentoProjeto = function analiseTabelaDesenvolvimentoProjetoEnhanced(rows) {
+  if (!rows.length) {
+    return analiseEmptyTemplate('Nenhum projeto em desenvolvimento atende aos filtros atuais.');
+  }
+
+  return `
+    <table class="analise-table">
+      <thead>
+        <tr>
+          <th>Projeto</th>
+          <th>Risco proj.</th>
+          <th>Margem proj.</th>
+          <th>Delta proj.</th>
+          <th>Etapas ativas</th>
+          <th>Horas</th>
+          <th>Budget</th>
+          <th>Uso budget</th>
+          <th>Custo atual</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((row) => {
+          const budgetPct = row.budgetHoras > 0 ? (row.horasTotais / row.budgetHoras) * 100 : null;
+          const previsao = row.produtoRegistro?.previsao || {};
+          const delta = analiseDeltaMargemProjetada(row.produtoRegistro);
+          return `
+            <tr class="analise-row-link ${analiseRowToneClass(previsao.riscoKey)}" data-produto-id="${_escN(row.produto?.id || '')}">
+              <td>
+                <div class="analise-table-main">${_escN(row.produto?.nome || 'Projeto sem nome')}</div>
+                <div class="analise-table-sub">${_escN(`${NUCLEO_COR[row.produto?.nucleo]?.label || 'N/D'} · ${row.etapas.length} etapa(s)`)} </div>
+              </td>
+              <td>
+                <div class="analise-table-main">${analiseRiscoBadgeHtml(previsao)}</div>
+                <div class="analise-table-sub">Confiança ${_escN(previsao.confiancaLabel || 'Baixa')}</div>
+              </td>
+              <td>
+                <div class="analise-table-main">${_escN(analiseFmtPct(previsao.margemProjetadaPct))}</div>
+                <div class="analise-table-sub">${_escN(analiseFmtMoney(previsao.margemProjetada, previsao.margemProjetada === null))}</div>
+              </td>
+              <td>
+                <div class="analise-table-main ${analiseDeltaToneClass(delta)}">${_escN(delta === null ? 'N/D' : analiseFmtPct(delta))}</div>
+                <div class="analise-table-sub">vs. atual</div>
+              </td>
+              <td>${_escN(String(row.etapas.length))}</td>
+              <td>${_escN(fmtH(row.horasTotais))}</td>
+              <td>${_escN(row.budgetHoras > 0 ? fmtH(row.budgetHoras) : 'N/D')}</td>
+              <td>${analiseBudgetBadge(budgetPct, row.etapasComBudget)}</td>
+              <td>${_escN(analiseFmtMoney(row.custoTotal))}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+};
+
+analiseTabelaDesenvolvimentoEtapa = function analiseTabelaDesenvolvimentoEtapaEnhanced(rows) {
+  if (!rows.length) {
+    return analiseEmptyTemplate('Nenhuma etapa ativa atende aos filtros atuais.');
+  }
+
+  const ordem = ANALISE._filtros.desenvolvimento?.ordem || 'risco_desc';
+  const sortedRows = [...rows].sort((a, b) => {
+    const prevA = a.produtoRegistro || {};
+    const prevB = b.produtoRegistro || {};
+    if (ordem === 'nome') {
+      return String(a.produto?.nome || '').localeCompare(String(b.produto?.nome || ''), 'pt-BR');
+    }
+    return analiseOrdenarProjetosDesenvolvimento(
+      {
+        produto: a.produto,
+        produtoRegistro: prevA,
+        horasTotais: a.horasTotais,
+        budgetHoras: analiseGetBudgetHoras(a.etapa),
+      },
+      {
+        produto: b.produto,
+        produtoRegistro: prevB,
+        horasTotais: b.horasTotais,
+        budgetHoras: analiseGetBudgetHoras(b.etapa),
+      },
+      ordem
+    );
+  });
+
+  return `
+    <table class="analise-table">
+      <thead>
+        <tr>
+          <th>Projeto</th>
+          <th>Etapa</th>
+          <th>Risco proj.</th>
+          <th>Status</th>
+          <th>Horas</th>
+          <th>Budget</th>
+          <th>Uso budget</th>
+          <th>Custo etapa</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sortedRows.map((item) => {
+          const previsao = item.produtoRegistro?.previsao || {};
+          return `
+            <tr class="analise-row-link ${analiseRowToneClass(previsao.riscoKey)}" data-produto-id="${_escN(item.produto?.id || '')}">
+              <td>
+                <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+                <div class="analise-table-sub">${_escN(`${NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D'} · margem proj. ${analiseFmtPct(previsao.margemProjetadaPct)}`)}</div>
+              </td>
+              <td>${_escN(item.etapa?.nome || `Etapa ${item.etapa?.ordem || 'N/D'}`)}</td>
+              <td>${analiseRiscoBadgeHtml(previsao)}</td>
+              <td>${analiseStatusEtapaBadge(item.etapa?.status)}</td>
+              <td>${_escN(fmtH(item.horasTotais))}</td>
+              <td>${analiseBudgetCell(item.budgetMeta || analiseGetBudgetMeta(item.etapa))}</td>
+              <td>${analiseBudgetBadge(item.utilizacaoBudget, item.budgetMeta || analiseGetBudgetMeta(item.etapa))}</td>
+              <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+};
+
+analiseRenderAcumulado = function analiseRenderAcumuladoEnhanced() {
+  const panel = document.getElementById('anp-acumulado');
+  if (!panel) return;
+
+  if (ANALISE._carregando) {
+    panel.innerHTML = analiseLoadingTemplate('Carregando projetos, horas, custos e valor/hora...');
+    return;
+  }
+
+  if (ANALISE._erro) {
+    panel.innerHTML = analiseErrorTemplate(ANALISE._erro);
+    return;
+  }
+
+  const produtosBase = Object.values(ANALISE._dadosPorProduto);
+  if (!produtosBase.length) {
+    panel.innerHTML = analiseEmptyTemplate('Nenhum projeto elegível foi encontrado para a análise.');
+    return;
+  }
+
+  const filtro = ANALISE._filtros.acumulado;
+  const produtos = produtosBase
+    .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
+    .filter((item) => !filtro.status || analiseProdutoStatusKey(item) === filtro.status)
+    .filter((item) => !filtro.risco || (item.previsao?.riscoKey || 'incerto') === filtro.risco)
+    .sort((a, b) => analiseOrdenarProdutosAcumulado(a, b, filtro.ordem));
+
+  if (!produtos.length) {
+    panel.innerHTML = `
+      ${analiseFilterBar({
+        aba: 'acumulado',
+        controls: [
+          { key: 'nucleo', label: 'Núcleo', value: filtro.nucleo, options: analiseNucleoOptions() },
+          { key: 'status', label: 'Status', value: filtro.status, options: analiseStatusProdutoOptions(produtosBase) },
+          { key: 'risco', label: 'Risco', value: filtro.risco, options: analiseRiscoOptions() },
+          { key: 'ordem', label: 'Ordenar', value: filtro.ordem, options: analiseAcumuladoOrderOptions() },
+        ],
+      })}
+      ${analiseEmptyTemplate('Nenhum projeto atende aos filtros atuais.')}
+    `;
+    return;
+  }
+
+  const contratadoTotal = produtos.reduce((sum, item) => sum + Math.max(0, Number(item.produto?.valor_contratado || 0)), 0);
+  const custoTotal = produtos.reduce((sum, item) => sum + item.custoTotal, 0);
+  const horasTotal = produtos.reduce((sum, item) => sum + item.horasTotais, 0);
+  const margemPonderada = contratadoTotal > 0 ? ((contratadoTotal - custoTotal) / contratadoTotal) * 100 : null;
+  const produtosComPrevisao = produtos.filter((item) => item.previsao?.margemProjetadaPct !== null);
+  const margemProjetadaMedia = produtosComPrevisao.length
+    ? produtosComPrevisao.reduce((sum, item) => sum + Number(item.previsao?.margemProjetadaPct || 0), 0) / produtosComPrevisao.length
+    : null;
+
+  panel.innerHTML = `
+    ${analiseWarningsHtml()}
+    <div class="analise-kpis-row">
+      ${analiseKpiCard('Projetos na leitura', String(produtos.length), produtos.length === produtosBase.length ? 'Base completa elegível' : `${produtosBase.length} elegíveis no total`)}
+      ${analiseKpiCard('Horas lançadas', fmtH(horasTotal), 'Soma de horas com produto associado')}
+      ${analiseKpiCard('Custo total', analiseFmtMoney(custoTotal), 'HH + custos lançados')}
+      ${analiseKpiCardSemantic('Margem ponderada', analiseFmtPct(margemPonderada), 'Baseada em valor contratado conhecido', analiseMargemKpiCls(margemPonderada))}
+      ${analiseKpiCardSemantic('Margem projetada média', analiseFmtPct(margemProjetadaMedia), 'Heurística inicial baseada em budget e estágio', analiseMargemKpiCls(margemProjetadaMedia))}
+    </div>
+    ${analiseFilterBar({
+      aba: 'acumulado',
+      controls: [
+        { key: 'nucleo', label: 'Núcleo', value: filtro.nucleo, options: analiseNucleoOptions() },
+        { key: 'status', label: 'Status', value: filtro.status, options: analiseStatusProdutoOptions(produtosBase) },
+        { key: 'risco', label: 'Risco', value: filtro.risco, options: analiseRiscoOptions() },
+        { key: 'ordem', label: 'Ordenar', value: filtro.ordem, options: analiseAcumuladoOrderOptions() },
+      ],
+    })}
+    <div class="analise-visual-grid">
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Margem por núcleo</div>
+        ${analiseGraficoMargemPorNucleo(produtos)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Status dos projetos</div>
+        ${analiseGraficoStatusProjetos(produtos)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Contrato x custo</div>
+        ${analiseGraficoContratoVsCusto(contratadoTotal, custoTotal)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Risco projetado</div>
+        ${analiseGraficoRiscoProjetado(produtos)}
+      </section>
+      <section class="analise-visual-card analise-visual-card-wide">
+        <div class="analise-visual-title">Prioridades da leitura</div>
+        ${analiseListaPrioridadesProjeto(produtos)}
+      </section>
+    </div>
+    <div class="analise-state-grid">
+      ${analiseResumoNucleos(produtos)}
+    </div>
+    <div class="analise-table-wrap">
+      <table class="analise-table analise-table-projects">
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Núcleo</th>
+            <th>Status</th>
+            <th>Risco proj.</th>
+            <th>Margem proj.</th>
+            <th>Delta proj.</th>
+            <th>Horas</th>
+            <th>Custo total</th>
+            <th>Contratado</th>
+            <th>Margem</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${produtos.map((item) => analiseLinhaProduto(item)).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+analiseRenderDesenvolvimento = function analiseRenderDesenvolvimentoEnhanced() {
+  const panel = document.getElementById('anp-desenvolvimento');
+  if (!panel) return;
+
+  if (ANALISE._carregando) {
+    panel.innerHTML = analiseLoadingTemplate('Carregando etapas em desenvolvimento...');
+    return;
+  }
+
+  if (ANALISE._erro) {
+    panel.innerHTML = analiseErrorTemplate(ANALISE._erro);
+    return;
+  }
+
+  const filtro = ANALISE._filtros.desenvolvimento;
+  const etapas = Object.values(ANALISE._dadosPorEtapa)
+    .map((item) => ({
+      ...item,
+      produto: ANALISE._dadosPorProduto[String(item.etapa?.produto_id)]?.produto || null,
+      produtoRegistro: ANALISE._dadosPorProduto[String(item.etapa?.produto_id)] || null,
+    }))
+    .filter((item) => ['em_andamento', 'em_revisao'].includes(item.etapa?.status))
+    .filter((item) => !filtro.nucleo || item.produto?.nucleo === filtro.nucleo)
+    .filter((item) => !filtro.statusEtapa || item.etapa?.status === filtro.statusEtapa)
+    .filter((item) => !filtro.risco || (item.produtoRegistro?.previsao?.riscoKey || 'incerto') === filtro.risco);
+
+  const comBudget = etapas.filter((item) => analiseGetBudgetHoras(item.etapa) > 0);
+  const acimaBudget = comBudget.filter((item) => Number(item.utilizacaoBudget || 0) > 100);
+  const rowsProjeto = analiseAgruparEtapasAtivasPorProjeto(etapas)
+    .sort((a, b) => analiseOrdenarProjetosDesenvolvimento(a, b, filtro.ordem));
+  const projetosEmRisco = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'risco');
+  const projetosAtencao = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'atencao');
+  const projetosSaudavel = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'saudavel');
+
+  panel.innerHTML = `
+    ${analiseSemaforoCompacto([
+      { key: 'risco', label: 'Risco', count: projetosEmRisco.length },
+      { key: 'atencao', label: 'Atenção', count: projetosAtencao.length },
+      { key: 'saudavel', label: 'Saudável', count: projetosSaudavel.length },
+    ])}
+    <div class="analise-kpis-row">
+      ${analiseKpiCard('Etapas ativas', String(etapas.length), 'Em andamento ou em revisão')}
+      ${analiseKpiCard('Com budget', String(comBudget.length), 'Etapas com budget carregado')}
+      ${analiseKpiCard('Acima do budget', String(acimaBudget.length), 'Utilização acima de 100%')}
+      ${analiseKpiCard('Projetos em execução', String(rowsProjeto.length), 'Com pelo menos uma etapa ativa')}
+      ${analiseKpiCard('Risco projetado', String(projetosEmRisco.length), `${projetosAtencao.length} em atenção pela projeção atual`)}
+    </div>
+    ${analiseFilterBar({
+      aba: 'desenvolvimento',
+      controls: [
+        { key: 'nucleo', label: 'Núcleo', value: filtro.nucleo, options: analiseNucleoOptions() },
+        {
+          key: 'statusEtapa',
+          label: 'Status da etapa',
+          value: filtro.statusEtapa,
+          options: [
+            { value: '', label: 'Todos' },
+            { value: 'em_andamento', label: STATUS_ETAPA.em_andamento?.label || 'Em andamento' },
+            { value: 'em_revisao', label: STATUS_ETAPA.em_revisao?.label || 'Em revisão' },
+          ],
+        },
+        { key: 'risco', label: 'Risco', value: filtro.risco, options: analiseRiscoOptions() },
+        {
+          key: 'agrupamento',
+          label: 'Agrupar por',
+          value: filtro.agrupamento,
+          options: [
+            { value: 'projeto', label: 'Projeto' },
+            { value: 'etapa', label: 'Etapa' },
+          ],
+        },
+        { key: 'ordem', label: 'Ordenar', value: filtro.ordem, options: analiseDesenvolvimentoOrderOptions() },
+      ],
+    })}
+    <div class="analise-visual-grid">
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Etapas ativas por status</div>
+        ${analiseGraficoStatusEtapasAtivas(etapas)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Uso de budget ativo</div>
+        ${analiseGraficoResumoBudgetAtivo(etapas)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Carga por núcleo</div>
+        ${analiseGraficoCargaNucleoAtivo(etapas)}
+      </section>
+      <section class="analise-visual-card">
+        <div class="analise-visual-title">Semáforo de risco ativo</div>
+        ${analiseGraficoSemaforoProjetos(rowsProjeto)}
+      </section>
+      <section class="analise-visual-card analise-visual-card-wide">
+        <div class="analise-visual-title">Projetos que pedem atenção</div>
+        ${analiseListaPrioridadesProjeto(rowsProjeto.map((row) => row.produtoRegistro).filter(Boolean), true)}
+      </section>
+    </div>
+    <div class="analise-table-wrap">
+      ${filtro.agrupamento === 'etapa'
+        ? analiseTabelaDesenvolvimentoEtapa(etapas)
+        : analiseTabelaDesenvolvimentoProjeto(rowsProjeto)}
+    </div>
+  `;
+};
+
+var _analiseRenderAbaAtivaStableBase = analiseRenderAbaAtiva;
+analiseRenderAbaAtiva = function analiseRenderAbaAtivaFinal() {
+  _analiseRenderAbaAtivaStableBase();
+
+  if (ANALISE._erro || ANALISE._carregando) return;
+
+  const subtitleEl = document.getElementById('analise-user-context');
+  if (!subtitleEl || !ANALISE._produtos.length) return;
+
+  const totalHoras = Object.values(ANALISE._dadosPorProduto).reduce((sum, item) => sum + Number(item.horasTotais || 0), 0);
+  const hhmm = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  subtitleEl.textContent = `${ANALISE._produtos.length} projetos · ${fmtH(totalHoras)} lançadas · Atualizado às ${hhmm}`;
+};
+
+analiseRenderProjetoDetalhe = function analiseRenderProjetoDetalheFinal() {
+  const host = document.getElementById('analise-modal-body');
+  if (!host) return;
+
+  const item = ANALISE._produtoIsoladoId
+    ? ANALISE._dadosPorProduto[String(ANALISE._produtoIsoladoId)]
+    : null;
+
+  if (!item || ANALISE._carregando || ANALISE._erro) {
+    host.innerHTML = '';
+    analiseToggleModal(false);
+    return;
+  }
+
+  const etapas = item.etapasDados || [];
+  const concluidas = etapas.filter((etapaItem) => etapaItem.etapa?.status === 'concluida').length;
+  const budgetHoras = etapas.reduce((sum, etapaItem) => sum + analiseGetBudgetHoras(etapaItem.etapa), 0);
+  const budgetUtil = budgetHoras > 0 ? (item.horasTotais / budgetHoras) * 100 : null;
+  const cliente = item.produto?.oportunidades?.clientes?.nome || 'Cliente não identificado';
+  const encerradoEm = item.statusResumo?.concluidoEm ? item.statusResumo.concluidoEm.toLocaleDateString('pt-BR') : 'N/D';
+  const margemInfo = analiseClassificarMargem(item.margemPct);
+  const previsao = item.previsao || {};
+  const delta = analiseDeltaMargemProjetada(item);
+
+  host.innerHTML = `
+    <div class="analise-modal-card">
+      <div class="analise-modal-head">
+        <div>
+          <div class="analise-state-kicker">Leitura isolada</div>
+          <h2 class="analise-drill-title" id="analise-modal-title">${_escN(item.produto?.nome || 'Projeto sem nome')}</h2>
+          <div class="analise-drill-sub">${_escN(cliente)} | ${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')} | ${_escN(item.statusResumo?.statusLabel || 'N/D')}</div>
+        </div>
+        <button type="button" class="btn sm" data-modal-close="1">Fechar</button>
+      </div>
+      <div class="analise-kpis-row">
+        ${analiseKpiCard('Horas totais', fmtH(item.horasTotais), `${concluidas}/${etapas.length} etapas concluídas`)}
+        ${analiseKpiCard('Custo total', analiseFmtMoney(item.custoTotal), 'HH + custos lançados')}
+        ${analiseKpiCard('Margem atual', analiseFmtPct(item.margemPct), analiseFmtMoney(item.margem, item.margem === null))}
+        ${analiseKpiCard('Budget consolidado', budgetHoras > 0 ? fmtH(budgetHoras) : 'N/D', budgetHoras > 0 ? `Uso atual ${analiseFmtPct(budgetUtil)}` : 'Nenhuma etapa com budget carregado')}
+        ${analiseKpiCard('Margem projetada', analiseFmtPct(previsao.margemProjetadaPct), analiseFmtMoney(previsao.margemProjetada, previsao.margemProjetada === null))}
+      </div>
+      <div class="analise-drill-meta">
+        <span class="analise-chip analise-chip-muted">Fase: ${_escN(item.statusResumo?.faseLabel || 'N/D')}</span>
+        <span class="analise-chip analise-chip-muted">Encerrado em: ${_escN(encerradoEm)}</span>
+        <span class="${margemInfo.cls}">${_escN(margemInfo.label)}</span>
+        <span class="${analiseRiscoChipClass(previsao.riscoKey)}">${_escN(previsao.riscoLabel || 'Sem previsão')}</span>
+        <span class="analise-chip analise-chip-muted">Confiança: ${_escN(previsao.confiancaLabel || 'Baixa')}</span>
+        <span class="analise-chip analise-chip-muted">Queda proj.: ${_escN(delta === null ? 'N/D' : analiseFmtPct(delta))}</span>
+      </div>
+      <div class="analise-visual-grid">
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Mapa de margem</div>
+          ${analiseGraficoMargemProjeto(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Composição do custo</div>
+          ${analiseGraficoCustosProjeto(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Etapas por status</div>
+          ${analiseGraficoStatusEtapas(item)}
+        </section>
+        <section class="analise-visual-card">
+          <div class="analise-visual-title">Projeção de risco</div>
+          ${analiseGraficoProjecaoProjeto(item)}
+        </section>
+        <section class="analise-visual-card analise-visual-card-wide">
+          <div class="analise-visual-title">Leitura de budget por etapa</div>
+          ${analiseGraficoBudgetEtapas(item)}
+        </section>
+      </div>
+      <div class="analise-table-wrap">
+        ${analiseTabelaDetalheEtapas(item)}
+      </div>
+    </div>
+  `;
+
+  analiseToggleModal(true);
+};
