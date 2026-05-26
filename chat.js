@@ -303,6 +303,7 @@
   var mediaViewerState = null;
   var mediaObjectUrl = null;
   var messageMediaMap = {};
+  var failedStoragePaths = {};
   var mediaRequestSeq = 0;
   var mediaUploadBusy = false;
   var composerStatusTimer = null;
@@ -1365,6 +1366,8 @@
     var storagePath = '';
     var uploaded = false;
     var previewUrl = prepared.objectUrl || (pendingMsg && pendingMsg.temp_media && pendingMsg.temp_media.objectUrl) || null;
+    var targetChannel = pendingMsg && pendingMsg.channel ? pendingMsg.channel : currentChannel;
+    var targetThreadId = pendingMsg && pendingMsg.thread_id ? pendingMsg.thread_id : projectThreadIdFromChannel(currentChannel);
     try {
       storagePath = buildChatMediaPath(contextType, prepared.ext);
       setComposerStatus('Enviando print...', '', true);
@@ -1380,7 +1383,7 @@
         : 'send_chat_message_with_temp_media';
       var rpcPayload = contextType === 'chat_thread_message'
         ? {
-            p_thread_id: projectThreadIdFromChannel(currentChannel),
+            p_thread_id: targetThreadId,
             p_content: content,
             p_storage_path: storagePath,
             p_mime_type: prepared.mimeType,
@@ -1390,7 +1393,7 @@
             p_height_px: prepared.height
           }
         : {
-            p_channel: currentChannel,
+            p_channel: targetChannel,
             p_content: content,
             p_storage_path: storagePath,
             p_mime_type: prepared.mimeType,
@@ -1401,6 +1404,7 @@
           };
       var rpcRes = await sb.rpc(rpcName, rpcPayload);
       if (rpcRes.error) throw rpcRes.error;
+      var saved = Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data;
 
       if (!saved || !saved.id) throw new Error('Mensagem com print nÃ£o retornou do servidor.');
 
@@ -1445,8 +1449,6 @@
     var optimized = null;
     var previewUrl = null;
     var pendingMsg = null;
-    var storagePath = '';
-    var uploaded = false;
     var contextType = isProjectChannel(currentChannel) ? 'chat_thread_message' : 'chat_message';
     var messageId = newUuid();
 
@@ -1495,11 +1497,6 @@
         height: optimized.height,
         objectUrl: previewUrl
       }, mediaRpcContent(content || CHAT_IMAGE_SENTINEL), contextType, pendingMsg);
-      var saved = { id: true };
-
-
-      if (!saved || !saved.id) throw new Error('Mensagem com print nÃƒÂ£o retornou do servidor.');
-
     } catch (error) {
       var failMsg = describeChatMediaError(error);
       if (pendingMsg && pendingMsg.id) {
@@ -1616,6 +1613,7 @@
       if (metaRes.error || !metaRes.data) throw metaRes.error || new Error('Print nÃ£o encontrado.');
       var down = await sb.storage.from(TEMP_MEDIA_BUCKET).download(metaRes.data.storage_path);
       if (down.error || !down.data) throw down.error || new Error('Falha ao carregar o print.');
+      delete failedStoragePaths[metaRes.data.storage_path];
       assignMessageMedia(contextType, msg.id, Object.assign({}, metaRes.data, {
         objectUrl: URL.createObjectURL(down.data),
         pending: false,
@@ -2345,8 +2343,16 @@
         if (requestSeq !== mediaRequestSeq || r.error) return;
         var rows = r.data || [];
         return Promise.all(rows.map(function (row) {
+          if (!row.storage_path || failedStoragePaths[row.storage_path]) {
+            return {
+              key: mediaKeyFor(contextType, row.contexto_id),
+              messageId: row.contexto_id,
+              media: Object.assign({}, row, { objectUrl: null, pending: false, failed_load: true })
+            };
+          }
           return sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function (down) {
             if (down.error || !down.data) {
+              failedStoragePaths[row.storage_path] = true;
               return {
                 key: mediaKeyFor(contextType, row.contexto_id),
                 messageId: row.contexto_id,
@@ -2376,8 +2382,18 @@
     if (String(row.contexto_tipo || '').toLowerCase() !== expectedType) return;
     if (!messages.some(function (msg) { return msg.id === row.contexto_id; })) return;
     if (messageMediaMap[mediaKeyFor(expectedType, row.contexto_id)]) return;
+    if (!row.storage_path || failedStoragePaths[row.storage_path]) {
+      assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
+        objectUrl: null,
+        pending: false,
+        failed_load: true
+      }));
+      if (isOpen && currentView === 'channel') renderMessages();
+      return;
+    }
     sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function (down) {
       if (down.error || !down.data) {
+        failedStoragePaths[row.storage_path] = true;
         assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
           objectUrl: null,
           pending: false,

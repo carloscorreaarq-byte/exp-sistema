@@ -1437,6 +1437,8 @@ body {
 .tarefa-check:hover { border-color: var(--verde); background: var(--verde-bg); }
 .tarefa-check.done { background: var(--verde); border-color: var(--verde); }
 .tarefa-check.done::after { content: '✓'; font-size: 9px; color: #fff; font-weight: 700; }
+.tarefa-check.readonly { cursor: default; }
+.tarefa-check.readonly:hover { border-color: var(--cinza); background: transparent; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
 .tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0;width:46px;justify-content:flex-end}
@@ -9348,9 +9350,16 @@ async function selecionarRevisao(id) {
           <div style="font-size:10px;color:#999">${etapa?.nome || '—'} · Revisão #${rev.numero}</div>
           ${envolvidosHtml}
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           ${podePreencher ? `<button class="btn sm verde" onclick="addPranchaRevisao('${id}')">+ Prancha</button>` : ''}
           <button class="btn sm" onclick="notificarRevisao('${id}')" title="Notificar coordenador que revisão está pronta">📢 Notificar</button>
+          ${isSocioRole(G.usuario.role) ? `
+            ${rev.status === 'concluida'
+              ? `<button class="btn sm az" onclick="reabrirRevisao('${id}')" title="Reabrir revisão">↺ Reabrir</button>`
+              : `<button class="btn sm" style="color:var(--verde);border-color:var(--verde)" onclick="fecharRevisao('${id}')" title="Marcar revisão como concluída">✓ Fechar</button>`
+            }
+            <button class="btn sm" style="color:var(--terracota);border-color:var(--terracota)" onclick="excluirRevisao('${id}')" title="Excluir revisão permanentemente">🗑 Excluir</button>
+          ` : ''}
         </div>
       </div>
       ${!podePreencher ? `
@@ -9382,6 +9391,7 @@ function renderPrancha(pr, isSocioOrCoord) {
   const conc = pr.tarefas_revisao?.filter(t => t.concluida).length || 0;
   const concluida100 = total > 0 && conc === total;
   const podeExcluirTopico = isSocioRole(G.usuario.role) || G._revisaoAbertaPor === G.usuario.id;
+  const podeGerirPrancha  = isSocioRole(G.usuario.role);
   const prId = pr.id;
   const prIdJs = _sqN(prId);
 
@@ -9398,8 +9408,7 @@ function renderPrancha(pr, isSocioOrCoord) {
     const camClass = mediaCount ? 'has-media' : 'is-empty';
     return `<div class="tarefa-item" data-tarefa-id="${t.id}">
       <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
-           ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Apenas o coordenador ou desenvolvedor do projeto pode marcar"'}
-           style="${isSocioOrCoord ? '' : 'cursor:default;opacity:.6'}"></div>
+           ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Acompanhe o progresso — apenas participantes do projeto podem marcar"'}></div>
       <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
       ${mediaViewBtn}
       <div class="tarefa-item-tools">
@@ -9450,6 +9459,8 @@ function renderPrancha(pr, isSocioOrCoord) {
         <span class="prancha-prog">${conc}/${total}</span>
         <button class="btn sm" onclick="event.stopPropagation();addComentarioPrancha('${prId}')">+ Comentário</button>
         ${isSocioOrCoord ? `<button class="btn sm" onclick="event.stopPropagation();addTarefaPrancha('${prId}')">+ Tarefa</button>` : ''}
+        ${podeGerirPrancha ? `<button class="btn sm" onclick="event.stopPropagation();editarNomePrancha('${prId}',${_sqN(pr.nome)})" title="Renomear prancha">✎</button>` : ''}
+        ${podeGerirPrancha ? `<button class="btn sm" style="color:var(--terracota);border-color:var(--terracota)" onclick="event.stopPropagation();excluirPrancha('${prId}','${G._revisaoAtiva}')" title="Excluir prancha">✕</button>` : ''}
       </div>
     </div>
     <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${pct}%"></div></div>
@@ -9476,6 +9487,84 @@ function togglePranchaExpand(pranchaId) {
   card.classList.toggle('expanded');
   const hint = card.querySelector('.prancha-expand-hint');
   if (hint) hint.textContent = card.classList.contains('expanded') ? '▴ recolher' : '▾ clique para expandir';
+}
+
+// ── Renomear prancha (inline) ──────────────────────────────────────────────
+function editarNomePrancha(pranchaId, nomeAtual) {
+  const card = document.getElementById('prancha-' + pranchaId);
+  if (!card) return;
+  const nomeEl = card.querySelector('.prancha-nome');
+  if (!nomeEl || nomeEl.dataset.editing) return;
+  nomeEl.dataset.editing = '1';
+  const orig = nomeEl.innerHTML;
+  nomeEl.innerHTML = `<input id="pn-inp-${pranchaId}" type="text" value="${nomeAtual.replace(/"/g,'&quot;')}"
+    style="font-size:12px;font-weight:600;padding:1px 5px;border:1px solid var(--grafite);border-radius:4px;font-family:var(--font-ui);width:180px;outline:none"
+    onclick="event.stopPropagation()"
+    onkeydown="if(event.key==='Enter'){event.preventDefault();salvarNomePrancha('${pranchaId}',this.value)}else if(event.key==='Escape'){event.target.closest('.prancha-nome').innerHTML=\`${orig.replace(/`/g,'\\`')}\`;delete event.target.closest('.prancha-nome').dataset.editing}">`;
+  const inp = nomeEl.querySelector('input');
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+async function salvarNomePrancha(pranchaId, novoNome) {
+  const nome = novoNome.trim();
+  if (!nome) { toast('Nome não pode ficar vazio'); return; }
+  const { error } = await sb.from('pranchas').update({ nome }).eq('id', pranchaId);
+  if (error) { toast('Erro ao renomear: ' + error.message); return; }
+  toast('Prancha renomeada');
+  if (G._revisaoAtiva) await selecionarRevisao(G._revisaoAtiva);
+}
+
+// ── Excluir prancha ────────────────────────────────────────────────────────
+async function excluirPrancha(pranchaId, revisaoId) {
+  if (!confirm('Excluir esta prancha e todas as suas tarefas e comentários?')) return;
+  // Delete cascade: tarefas → mensagens → comentários → prancha
+  await sb.from('tarefas_revisao').delete().eq('prancha_id', pranchaId);
+  await sb.from('prancha_comentario_mensagens').delete().eq('prancha_id', pranchaId);
+  await sb.from('prancha_comentarios').delete().eq('prancha_id', pranchaId);
+  const { error } = await sb.from('pranchas').delete().eq('id', pranchaId);
+  if (error) { toast('Erro ao excluir prancha: ' + error.message); return; }
+  toast('Prancha excluída');
+  if (revisaoId) await selecionarRevisao(revisaoId);
+  carregarRevisoes();
+}
+
+// ── Fechar / Reabrir revisão ───────────────────────────────────────────────
+async function fecharRevisao(id) {
+  const { error } = await sb.from('revisoes').update({ status: 'concluida' }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('Revisão marcada como concluída');
+  await selecionarRevisao(id);
+  carregarRevisoes();
+}
+
+async function reabrirRevisao(id) {
+  const { error } = await sb.from('revisoes').update({ status: 'aberta' }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('Revisão reaberta');
+  await selecionarRevisao(id);
+  carregarRevisoes();
+}
+
+// ── Excluir revisão completa ───────────────────────────────────────────────
+async function excluirRevisao(id) {
+  if (!confirm('Excluir esta revisão permanentemente? Todas as pranchas, tarefas e comentários serão removidos.')) return;
+  // Busca IDs das pranchas desta revisão
+  const { data: pranchasRev } = await sb.from('pranchas').select('id').eq('revisao_id', id);
+  const prIds = (pranchasRev || []).map(p => p.id);
+  if (prIds.length) {
+    await sb.from('tarefas_revisao').delete().in('prancha_id', prIds);
+    await sb.from('prancha_comentario_mensagens').delete().in('prancha_id', prIds);
+    await sb.from('prancha_comentarios').delete().in('prancha_id', prIds);
+    await sb.from('pranchas').delete().in('id', prIds);
+  }
+  const { error } = await sb.from('revisoes').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir revisão: ' + error.message); return; }
+  // Limpa painel de detalhe
+  const detalhe = document.getElementById('rev-detalhe');
+  if (detalhe) detalhe.innerHTML = '';
+  G._revisaoAtiva = null;
+  toast('Revisão excluída');
+  carregarRevisoes();
 }
 
 function renderMensagemThread(msg) {
