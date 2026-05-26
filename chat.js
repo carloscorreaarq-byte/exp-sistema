@@ -508,7 +508,7 @@
           '<div class="chat-input-area">' +
             '<input id="exp-chat-media-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="expChat.handleMediaInput(this)">' +
             '<button class="chat-attach" onclick="expChat.pickMedia()" title="Anexar print">' + icoAttach() + '</button>' +
-            '<textarea class="chat-input" id="exp-chat-input" placeholder="Mensagemâ€¦" rows="1"' +
+            '<textarea class="chat-input" id="exp-chat-input" placeholder="Mensagem..." rows="1"' +
               ' onkeydown="expChat.handleKey(event)" oninput="expChat.autoResize(this)"></textarea>' +
             '<button class="chat-send" onclick="expChat.send()" title="Enviar (Enter)">' + icoSend() + '</button>' +
           '</div>' +
@@ -737,6 +737,21 @@
       var html = '';
       var projectHtml = '';
 
+      function buildProjectHomeRow(item) {
+        var unread = channelUnread[item.channel] || item.unread || 0;
+        var chanJson = item.channel.replace(/'/g, "\\'");
+        var labelEsc = escHtml(item.label);
+        var preview = escHtml(compactPreviewText(item.preview || 'Chat do projeto', 42, 'Chat do projeto'));
+        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+          softAvHtml(item.iniciais, item.cor, null, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
+          '<div class="chat-conv-info">' +
+            '<div class="chat-conv-name">' + labelEsc + '</div>' +
+            '<div class="chat-conv-preview">' + preview + '</div>' +
+          '</div>' +
+          (unread > 0 ? '<div class="chat-conv-badge">' + unread + '</div>' : '') +
+          '</div>';
+      }
+
       /* Linha #geral */
       var genU = channelUnread['general'] || 0;
       html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
@@ -760,6 +775,9 @@
         if (unreadDiff) return unreadDiff;
         return new Date(b.lastCreatedAt || 0) - new Date(a.lastCreatedAt || 0);
       });
+      var highlightedProjectItems = projectSectionCollapsed
+        ? sortedProjectItems.filter(function (item) { return (channelUnread[item.channel] || item.unread || 0) > 0; }).slice(0, 3)
+        : [];
 
       if (sortedProjectItems.length) {
         projectHtml += '<button class="chat-conv-section-btn" onclick="expChat.toggleProjectSection()">' +
@@ -768,23 +786,13 @@
           '</button>';
       }
       if (!projectSectionCollapsed) sortedProjectItems.forEach(function (item) {
-        var unread = channelUnread[item.channel] || item.unread || 0;
-        var chanJson = item.channel.replace(/'/g, "\\'");
-        var labelEsc = escHtml(item.label);
-        projectHtml += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
-          softAvHtml(item.iniciais, item.cor, null, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
-          '<div class="chat-conv-info">' +
-            '<div class="chat-conv-name">' + labelEsc + '</div>' +
-            '<div class="chat-conv-preview">' + escHtml(item.preview || 'Chat do projeto') + '</div>' +
-          '</div>' +
-          (unread > 0 ? '<div class="chat-conv-badge">' + unread + '</div>' : '') +
-          '</div>';
+        projectHtml += buildProjectHomeRow(item);
       });
 
       /* Linhas de DMs e grupos */
       dmList.forEach(function (dm) {
         var meta = getConversationMeta(dm, uid);
-        var preview  = dm.content.length > 34 ? dm.content.substring(0, 34) + 'â€¦' : dm.content;
+        var preview  = compactPreviewText(dm.content, 34, 'Nova mensagem');
         var dmU      = channelUnread[dm.channel] || 0;
         var chanJson = dm.channel.replace(/'/g, "\\'");
         var nameEsc  = escHtml(meta.label);
@@ -797,6 +805,10 @@
           '</div>' +
           (dmU > 0 ? '<div class="chat-conv-badge">' + dmU + '</div>' : '') +
           '</div>';
+      });
+
+      highlightedProjectItems.forEach(function (item) {
+        html += buildProjectHomeRow(item);
       });
 
       html += projectHtml;
@@ -860,7 +872,7 @@
             softAvHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
             '<div class="chat-search-body">' +
               '<div class="chat-search-title">' + labelEsc + '</div>' +
-              '<div class="chat-search-meta">' + escHtml(item.author || 'Equipe') + ' Â· ' + escHtml(item.when || '') + '</div>' +
+              '<div class="chat-search-meta">' + escHtml(item.author || 'Equipe') + ' &middot; ' + escHtml(item.when || '') + '</div>' +
               '<div class="chat-search-snippet">' + escHtml(item.snippet || '') + '</div>' +
             '</div>' +
           '</div>';
@@ -957,10 +969,16 @@
     var $list = document.getElementById('exp-chat-memberlist');
     if (!$list) return;
     if (!teamMembers.length) {
-      $list.innerHTML = '<div class="chat-empty">Carregando equipeâ€¦</div>';
+      $list.innerHTML = '<div class="chat-empty">Carregando equipe...</div>';
       return;
     }
-    var roleLabel = { socio: 'SÃ³cio', socio_admin: 'SÃ³cio administrador', coordenador: 'Coordenador', colaborador: 'Colaborador' };
+    var roleLabel = {
+      socio: 'S\u00F3cio',
+      socio_adm: 'S\u00F3cio administrador',
+      socio_admin: 'S\u00F3cio administrador',
+      coordenador: 'Coordenador',
+      colaborador: 'Colaborador'
+    };
     var html = '';
     teamMembers.forEach(function (m) {
       var cor = m.cor || '#1D6A4A';
@@ -968,6 +986,7 @@
       var pres    = onlinePresence[m.auth_id];
       var pStatus = pres ? pres.status : 'offline';
       var pLabels = { online: 'Online', foco: 'Foco', ausente: 'Ausente', offline: 'Offline' };
+      var roleText = roleLabel[(m.role || '').toLowerCase()] || '';
       html += '<div class="chat-member-item" onclick="expChat.toggleMember(\'' + m.auth_id + '\')">' +
         '<div class="chat-member-check' + (sel ? ' sel' : '') + '"></div>' +
         '<div style="position:relative;flex-shrink:0">' +
@@ -976,7 +995,7 @@
         '</div>' +
         '<div class="chat-conv-info">' +
           '<div class="chat-conv-name">' + escHtml(m.nome) + '</div>' +
-          '<div class="chat-conv-preview">' + pLabels[pStatus] + ' Â· ' + (roleLabel[m.role] || '') + '</div>' +
+          '<div class="chat-conv-preview">' + escHtml(pLabels[pStatus]) + ' &middot; ' + escHtml(roleText) + '</div>' +
         '</div>' +
         '</div>';
     });
@@ -1815,7 +1834,7 @@
     var sender   = (msg.sender_name || '').split(' ')[0];
     var title    = isProject ? sender + ' atualizou um projeto' : (isDM ? sender + ' enviou uma mensagem' : sender + ' mencionou vocÃª');
     var body     = (msg.content || '').length > 80
-      ? msg.content.substring(0, 80) + 'â€¦'
+      ? msg.content.substring(0, 80) + '...'
       : msg.content;
     sb.functions.invoke('send-push', {
       body: {
@@ -1930,9 +1949,9 @@
   }
 
   function previewFirstLine(text) {
-    var line = String(text || '').split(/\r?\n/)[0].trim();
+    var line = normalizePreviewText(String(text || '').split(/\r?\n/)[0]).trim();
     if (isImageOnlySentinel(line)) return 'Print anexado';
-    if (line.length > 70) return line.substring(0, 70) + 'â€¦';
+    if (line.length > 70) return line.substring(0, 70) + '...';
     return line || 'Nova mensagem';
   }
 
@@ -2502,7 +2521,7 @@
       img.style.maxWidth = '100%';
       img.style.maxHeight = 'calc(100vh - 180px)';
     }
-    if (empty) empty.textContent = 'Carregando imagemâ€¦';
+    if (empty) empty.textContent = 'Carregando imagem...';
     if (meta) meta.textContent = 'Autor · data · hora';
     if (zoomLabel) zoomLabel.textContent = '100%';
     if (viewer) viewer.style.display = 'none';
@@ -2843,6 +2862,38 @@
   function escHtml(s) {
     if (!s) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function previewNoiseScore(text) {
+    var found = String(text || '').match(/[ÃÂâï¿½]/g);
+    return found ? found.length : 0;
+  }
+
+  function normalizePreviewText(text) {
+    var raw = String(text == null ? '' : text);
+    if (!raw || !/[ÃÂâï¿½]/.test(raw)) return raw;
+    try {
+      if (typeof TextDecoder === 'function') {
+        var bytes = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i) & 255;
+        var decoded = new TextDecoder('utf-8').decode(bytes);
+        if (decoded && previewNoiseScore(decoded) < previewNoiseScore(raw)) return decoded;
+      }
+    } catch (e) {}
+    return raw
+      .replace(/â€¦/g, '...')
+      .replace(/â€“/g, '-')
+      .replace(/â€”/g, '-')
+      .replace(/â€˜|â€™/g, "'")
+      .replace(/â€œ|â€/g, '"')
+      .replace(/Â/g, '');
+  }
+
+  function compactPreviewText(text, maxLen, fallback) {
+    var clean = normalizePreviewText(text).trim();
+    var limit = Number(maxLen) > 0 ? Number(maxLen) : 34;
+    if (!clean) return fallback || '';
+    return clean.length > limit ? clean.substring(0, limit) + '...' : clean;
   }
 
   function hexRgb(hex) {
