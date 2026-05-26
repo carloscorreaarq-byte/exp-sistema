@@ -411,6 +411,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
   <div class="ps-page-tabs">
     <button class="ps-page-tab ativo" id="ps-page-tab-colaboradores" onclick="setPageView('colaboradores')">Colaboradores</button>
     <button class="ps-page-tab" id="ps-page-tab-matriz" onclick="setPageView('matriz')">Base da matriz</button>
+    <button class="ps-page-tab" id="ps-page-tab-clima" onclick="setPageView('clima')">Pesquisa de Clima</button>
   </div>
 
   <div class="ps-view ativo" id="ps-view-colaboradores">
@@ -444,6 +445,10 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
 
   <div class="ps-view" id="ps-view-matriz">
     <div id="pm-root"></div>
+  </div>
+
+  <div class="ps-view" id="ps-view-clima">
+    <div id="pc-root"></div>
   </div>
 </div>
 
@@ -612,6 +617,42 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
   </div>
 </div>
 
+<!-- MODAL VINCULO -->
+<div class="ps-modal-overlay" id="modal-vinculo" onclick="fecharModal('modal-vinculo',event)">
+  <div class="ps-modal" onclick="event.stopPropagation()">
+    <div class="ps-modal-hdr">
+      <div class="ps-modal-title">Editar vinculo</div>
+      <button class="ps-modal-close" onclick="fecharModal('modal-vinculo')">&times;</button>
+    </div>
+    <div class="ps-modal-body">
+      <div class="ps-field-modal">
+        <label>Posicao na Matriz</label>
+        <select id="vinculo-posicao">
+          <option value="">— Nao definida —</option>
+        </select>
+      </div>
+      <div class="ps-field-modal">
+        <label>Data de Entrada</label>
+        <input id="vinculo-data-entrada" type="date">
+      </div>
+      <div class="ps-field-modal">
+        <label>Tipo de Contrato</label>
+        <select id="vinculo-tipo-contrato">
+          <option value="">— Nao definido —</option>
+          <option value="sociedade">Sociedade</option>
+          <option value="partnership">Partnership</option>
+          <option value="pj">PJ</option>
+        </select>
+      </div>
+      <div class="ps-modal-status" id="vinculo-modal-status"></div>
+    </div>
+    <div class="ps-modal-footer">
+      <button class="ps-btn-sm" onclick="fecharModal('modal-vinculo')">Cancelar</button>
+      <button class="ps-btn-sm" style="background:var(--terracota);color:#fff;border-color:var(--terracota)" onclick="salvarVinculo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ── SUPABASE ─────────────────────────────────────────────── */
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
@@ -638,6 +679,16 @@ const G = {
   matrizModalBusy: false,
   beneficioModalCtx: null,
   beneficiosCache: { recorrentes: [], eventos: [] },
+  climaLoaded: false,
+  climaLoading: false,
+  climaTablesOk: false,
+  climaError: '',
+  climaPerguntas: [],
+  climaSurveyAtivo: false,
+  climaSurveyStep: 0,
+  climaSurveyRespostas: {},
+  climaSurveyUsuarioId: null,
+  climaSurveyRodada: '',
 };
 
 const PLANO_GENTE_SENIORIDADES = ['E1','E2','J1','J2','J3','P1','P2','P3','S1','S2','S3'];
@@ -851,6 +902,48 @@ create policy "auth_modify" on public.pessoas_beneficios_eventos for all to auth
 
 commit;`;
 
+const VINCULO_SETUP_SQL = `alter table public.usuarios_dados_profissionais
+  add column if not exists posicao_matriz text,
+  add column if not exists data_entrada date,
+  add column if not exists tipo_contrato text;`;
+
+const CLIMA_SETUP_SQL = `begin;
+
+create table if not exists public.pessoas_pesquisa_clima_perguntas (
+  id uuid primary key default gen_random_uuid(),
+  texto text not null,
+  ordem int not null default 0,
+  ativo boolean not null default true,
+  criado_em timestamptz not null default now(),
+  criado_por uuid references public.usuarios(id)
+);
+
+create table if not exists public.pessoas_pesquisa_clima_respostas (
+  id uuid primary key default gen_random_uuid(),
+  pergunta_id uuid not null references public.pessoas_pesquisa_clima_perguntas(id) on delete cascade,
+  usuario_id uuid references public.usuarios(id),
+  resposta text not null default '',
+  rodada text,
+  respondido_em timestamptz not null default now()
+);
+
+alter table public.pessoas_pesquisa_clima_perguntas enable row level security;
+alter table public.pessoas_pesquisa_clima_respostas enable row level security;
+
+drop policy if exists "auth_select" on public.pessoas_pesquisa_clima_perguntas;
+drop policy if exists "auth_modify" on public.pessoas_pesquisa_clima_perguntas;
+drop policy if exists "auth_select" on public.pessoas_pesquisa_clima_respostas;
+drop policy if exists "auth_modify" on public.pessoas_pesquisa_clima_respostas;
+
+create policy "auth_select" on public.pessoas_pesquisa_clima_perguntas for select to authenticated using (true);
+create policy "auth_modify" on public.pessoas_pesquisa_clima_perguntas for all to authenticated using (private.is_socio()) with check (private.is_socio());
+create policy "auth_select" on public.pessoas_pesquisa_clima_respostas for select to authenticated using (true);
+create policy "auth_modify" on public.pessoas_pesquisa_clima_respostas for all to authenticated using (private.is_socio()) with check (private.is_socio());
+
+commit;`;
+
+const TIPO_CONTRATO_LABEL = { sociedade: 'Sociedade', partnership: 'Partnership', pj: 'PJ' };
+
 const ROLES_LABEL = {
   socio: 'Sócio',
   socio_adm: 'Sócio-administrador',
@@ -958,13 +1051,21 @@ function syncPageChrome() {
   const subEl = document.getElementById('ps-sub');
   const membrosTab = document.getElementById('ps-page-tab-colaboradores');
   const matrizTab = document.getElementById('ps-page-tab-matriz');
+  const climaTab = document.getElementById('ps-page-tab-clima');
   if (membrosTab) membrosTab.textContent = 'Membros';
   if (matrizTab) matrizTab.textContent = 'Matriz';
+  if (climaTab) climaTab.textContent = 'Pesquisa de Clima';
   if (!titleEl || !subEl) return;
 
   if (G.pageView === 'matriz') {
     titleEl.textContent = 'Base da Matriz de Responsabilidades';
     subEl.textContent = 'Cadastre categorias, adicione ou remova campos e programe a evolucao de cada um ao longo dos niveis E1-S3.';
+    return;
+  }
+
+  if (G.pageView === 'clima') {
+    titleEl.textContent = 'Pesquisa de Clima';
+    subEl.textContent = 'Gerencie perguntas e aplique pesquisas de clima para cada colaborador.';
     return;
   }
 
@@ -977,14 +1078,22 @@ function syncPageChrome() {
 }
 
 function setPageView(view) {
-  G.pageView = view === 'matriz' ? 'matriz' : 'colaboradores';
+  G.pageView = ['matriz', 'clima'].includes(view) ? view : 'colaboradores';
   const isMatriz = G.pageView === 'matriz';
-  document.getElementById('ps-view-colaboradores')?.classList.toggle('ativo', !isMatriz);
+  const isClima = G.pageView === 'clima';
+  const isColab = !isMatriz && !isClima;
+  document.getElementById('ps-view-colaboradores')?.classList.toggle('ativo', isColab);
   document.getElementById('ps-view-matriz')?.classList.toggle('ativo', isMatriz);
-  document.getElementById('ps-page-tab-colaboradores')?.classList.toggle('ativo', !isMatriz);
+  document.getElementById('ps-view-clima')?.classList.toggle('ativo', isClima);
+  document.getElementById('ps-page-tab-colaboradores')?.classList.toggle('ativo', isColab);
   document.getElementById('ps-page-tab-matriz')?.classList.toggle('ativo', isMatriz);
+  document.getElementById('ps-page-tab-clima')?.classList.toggle('ativo', isClima);
   syncPageChrome();
   if (isMatriz) carregarBaseMatriz();
+  if (isClima) {
+    if (!G.climaLoaded) carregarClimaView();
+    else renderClimaView();
+  }
 }
 
 function comporCategoriasMatriz(categorias, campos, evolucoes) {
@@ -2586,14 +2695,22 @@ async function renderDados(u, body) {
     : `<div class="ps-field-val">${escHtml(String(value))}</div>`;
   const field = (label, value) => `<div class="ps-field"><label>${label}</label>${renderValue(value)}</div>`;
 
+  const posicaoMatrizLabel = PLANO_GENTE_SENIORIDADES_META.find(item => item.key === profissional.posicao_matriz)?.label || null;
+  const tipoContratoLabel = TIPO_CONTRATO_LABEL[profissional.tipo_contrato] || null;
+  const canEditVinculo = isSocio(G.usuarioLogado?.role);
+
   body.innerHTML = `
     <div class="ps-sec">
       <div class="ps-sec-title">Vinculo na plataforma</div>
+      ${canEditVinculo ? `<button class="ps-btn-sm" style="margin-bottom:10px" onclick="abrirModalVinculo()">Editar vinculo</button>` : ''}
       <div class="ps-grid">
         ${field('Funcao', roleLabel(u.role))}
         ${field('Status', u.ativo !== false ? 'Ativo' : 'Inativo')}
         ${field('Iniciais', u.iniciais)}
         ${field('Apelido', u.apelido)}
+        ${field('Posicao na Matriz', posicaoMatrizLabel)}
+        ${field('Data de Entrada', profissional.data_entrada ? fmtData(profissional.data_entrada) : null)}
+        ${field('Tipo de Contrato', tipoContratoLabel)}
       </div>
     </div>
     <div class="ps-sec">
@@ -2864,6 +2981,79 @@ async function renderBeneficios(u, body) {
     </div>`;
 }
 
+/* ── MODAL VINCULO ────────────────────────────────────────── */
+async function abrirModalVinculo() {
+  if (!G.selecionado || !isSocio(G.usuarioLogado?.role)) return;
+  const u = G.selecionado;
+  const { data: prof } = await sb.from('usuarios_dados_profissionais')
+    .select('posicao_matriz,data_entrada,tipo_contrato')
+    .eq('usuario_id', u.id).maybeSingle();
+  const profissional = prof || {};
+
+  const posicaoSelect = document.getElementById('vinculo-posicao');
+  if (posicaoSelect) {
+    posicaoSelect.innerHTML = '<option value="">— Nao definida —</option>' +
+      PLANO_GENTE_SENIORIDADES_META.map(item =>
+        `<option value="${item.key}"${profissional.posicao_matriz === item.key ? ' selected' : ''}>${escHtml(item.label)}</option>`
+      ).join('');
+  }
+  const dataInput = document.getElementById('vinculo-data-entrada');
+  if (dataInput) dataInput.value = profissional.data_entrada?.slice(0, 10) || '';
+  const tipoSelect = document.getElementById('vinculo-tipo-contrato');
+  if (tipoSelect) tipoSelect.value = profissional.tipo_contrato || '';
+
+  const statusEl = document.getElementById('vinculo-modal-status');
+  if (statusEl) { statusEl.textContent = ''; statusEl.className = 'ps-modal-status'; }
+
+  document.getElementById('modal-vinculo')?.classList.add('open');
+}
+
+async function salvarVinculo() {
+  const u = G.selecionado;
+  if (!u || !isSocio(G.usuarioLogado?.role)) return;
+
+  const posicao = document.getElementById('vinculo-posicao')?.value || null;
+  const dataEntrada = document.getElementById('vinculo-data-entrada')?.value || null;
+  const tipoContrato = document.getElementById('vinculo-tipo-contrato')?.value || null;
+
+  const { data: existing } = await sb.from('usuarios_dados_profissionais')
+    .select('id').eq('usuario_id', u.id).maybeSingle();
+
+  const base = {
+    posicao_matriz: posicao || null,
+    data_entrada: dataEntrada || null,
+    tipo_contrato: tipoContrato || null,
+    atualizado_em: new Date().toISOString(),
+    atualizado_por: G.usuarioLogado?.id || null
+  };
+
+  let error;
+  if (existing?.id) {
+    ({ error } = await sb.from('usuarios_dados_profissionais').update(base).eq('usuario_id', u.id));
+  } else {
+    ({ error } = await sb.from('usuarios_dados_profissionais').insert({ usuario_id: u.id, ...base }));
+  }
+
+  if (error) {
+    const statusEl = document.getElementById('vinculo-modal-status');
+    const msg = /column|does not exist/i.test(error.message)
+      ? 'Execute o SQL de setup no Supabase antes de salvar:\n' + VINCULO_SETUP_SQL
+      : 'Erro ao salvar: ' + error.message;
+    if (statusEl) {
+      statusEl.textContent = /column|does not exist/i.test(error.message)
+        ? 'Colunas ausentes — execute o SQL de setup no Supabase SQL Editor antes de salvar.'
+        : 'Erro ao salvar: ' + error.message;
+      statusEl.className = 'ps-modal-status show erro';
+    } else {
+      alert(msg);
+    }
+    return;
+  }
+
+  fecharModal('modal-vinculo');
+  await renderTabContent('dados');
+}
+
 function renderFinanceiro(u, body) {
   body.innerHTML = `
     <div class="ps-fin-aviso">
@@ -3094,6 +3284,278 @@ async function excluirEvolucao(id) {
   if (!confirm('Excluir este registro?')) return;
   await sb.from('pessoas_evolucao').delete().eq('id', id);
   await renderTabContent('evolucao');
+}
+
+/* ── PESQUISA DE CLIMA ────────────────────────────────────── */
+async function carregarClimaView() {
+  if (G.climaLoading) return;
+  G.climaLoading = true;
+  renderClimaView();
+
+  const res = await sb.from('pessoas_pesquisa_clima_perguntas')
+    .select('*').eq('ativo', true).order('ordem');
+
+  if (res.error?.code === '42P01' || /Could not find the table/i.test(String(res.error?.message || ''))) {
+    G.climaTablesOk = false;
+    G.climaError = 'As tabelas de pesquisa de clima ainda nao existem.';
+    G.climaLoaded = true;
+    G.climaLoading = false;
+    renderClimaView();
+    return;
+  }
+  if (res.error) {
+    G.climaTablesOk = false;
+    G.climaError = res.error.message || 'Erro ao carregar perguntas.';
+    G.climaLoaded = true;
+    G.climaLoading = false;
+    renderClimaView();
+    return;
+  }
+
+  G.climaPerguntas = res.data || [];
+  G.climaTablesOk = true;
+  G.climaError = '';
+  G.climaLoaded = true;
+  G.climaLoading = false;
+  renderClimaView();
+}
+
+function renderClimaView() {
+  const root = document.getElementById('pc-root');
+  if (!root) return;
+
+  if (G.climaLoading && !G.climaLoaded) {
+    root.innerHTML = `<div class="pm-main"><div class="pm-empty">Carregando pesquisa de clima...</div></div>`;
+    return;
+  }
+
+  if (!G.climaTablesOk) {
+    root.innerHTML = `
+      <div class="pm-callout">
+        <strong>Pesquisa de Clima ainda nao configurada no banco</strong>
+        <p>Execute o SQL abaixo no Supabase SQL Editor para ativar a pesquisa de clima.</p>
+        ${G.climaError ? `<p style="margin-top:6px">${escHtml(G.climaError)}</p>` : ''}
+        <details open>
+          <summary>Ver SQL de setup</summary>
+          <textarea readonly>${escHtml(CLIMA_SETUP_SQL)}</textarea>
+        </details>
+      </div>
+      <div class="pm-main"><div class="pm-empty">Apos o setup, esta area permitira gerenciar perguntas e aplicar pesquisas de clima.</div></div>`;
+    return;
+  }
+
+  if (G.climaSurveyAtivo) {
+    renderClimaSurveyRunner(root);
+    return;
+  }
+
+  const canEdit = isSocio(G.usuarioLogado?.role);
+  const perguntasHtml = G.climaPerguntas.map((p, i) => `
+    <div class="ps-reg-card" style="border-left:3px solid var(--azul)">
+      <div class="ps-reg-head">
+        <span class="ps-reg-marcador" style="background:var(--az-bg);color:var(--azul)">${i + 1}</span>
+        <span class="ps-reg-tema">${escHtml(p.texto)}</span>
+      </div>
+      ${canEdit ? `<div class="ps-reg-actions">
+        <button class="ps-btn-sm" onclick="editarPerguntaClima('${p.id}')">Editar</button>
+        <button class="ps-btn-sm danger" onclick="excluirPerguntaClima('${p.id}')">Excluir</button>
+      </div>` : ''}
+    </div>
+  `).join('') || `<div class="ps-empty"><div class="ps-empty-icon">❓</div><div class="ps-empty-text">Nenhuma pergunta cadastrada ainda.</div></div>`;
+
+  const usuariosOpts = G.usuarios.filter(u => u.ativo !== false)
+    .map(u => `<option value="${u.id}">${escHtml(shortDisplayName(u.nome) || u.email_login || u.email || u.id)}</option>`)
+    .join('');
+
+  root.innerHTML = `
+    <div class="pm-shell">
+      <div class="pm-main">
+        <div class="pm-head">
+          <div>
+            <div class="pm-title">Pesquisa de Clima</div>
+            <div class="pm-sub">Gerencie as perguntas e aplique a pesquisa colaborador a colaborador, pergunta a pergunta.</div>
+          </div>
+          <div class="pm-toolbar">
+            ${canEdit ? `<button class="ps-btn-sm" onclick="novaPerguntaClima()">+ Nova pergunta</button>` : ''}
+          </div>
+        </div>
+
+        <div class="ps-sec">
+          <div class="ps-sec-title">Perguntas da pesquisa (${G.climaPerguntas.length})</div>
+          ${perguntasHtml}
+        </div>
+
+        ${G.climaPerguntas.length ? `
+        <div class="ps-sec">
+          <div class="ps-sec-title">Aplicar pesquisa</div>
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div class="ps-field-modal" style="flex:1;min-width:200px">
+              <label>Colaborador</label>
+              <select id="clima-usuario-select">
+                <option value="">Selecione o colaborador...</option>
+                ${usuariosOpts}
+              </select>
+            </div>
+            <button class="ps-btn-sm" style="background:var(--verde);color:#fff;border-color:var(--verde);padding:8px 14px" onclick="iniciarSurveyClima()">Iniciar pesquisa &rarr;</button>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+    </div>`;
+}
+
+function renderClimaSurveyRunner(root) {
+  const perguntas = G.climaPerguntas;
+  const step = G.climaSurveyStep;
+  const total = perguntas.length;
+  const current = perguntas[step];
+  const u = G.usuarios.find(usr => usr.id === G.climaSurveyUsuarioId);
+
+  if (!current) {
+    root.innerHTML = `<div class="pm-main"><div class="pm-empty">Nenhuma pergunta para exibir.</div></div>`;
+    return;
+  }
+
+  const pct = Math.round((step / total) * 100);
+  const isUltima = step === total - 1;
+
+  root.innerHTML = `
+    <div class="pm-main">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <button class="ps-btn-sm" onclick="cancelarSurveyClima()">&#8592; Cancelar</button>
+        <div style="font-size:11px;color:#888">Pesquisa com <strong>${escHtml(shortDisplayName(u?.nome) || 'Colaborador')}</strong> &middot; ${new Date().toLocaleDateString('pt-BR')}</div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#888;margin-bottom:5px">
+          <span>Pergunta ${step + 1} de ${total}</span>
+          <span>${pct}% concluido</span>
+        </div>
+        <div class="ps-barra-bg" style="height:4px"><div class="ps-barra-fill azul" style="width:${pct}%"></div></div>
+      </div>
+
+      <div class="ps-reg-card" style="border-left:3px solid var(--azul);margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600;line-height:1.55;color:var(--grafite)">${escHtml(current.texto)}</div>
+      </div>
+
+      <div class="ps-field-modal" style="margin-bottom:20px">
+        <label>Resposta aberta</label>
+        <textarea id="clima-resposta-atual" rows="5" placeholder="Digite a resposta aqui...">${escHtml(G.climaSurveyRespostas[current.id] || '')}</textarea>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <button class="ps-btn-sm" onclick="climaSurveyAnterior()" ${step === 0 ? 'disabled style="opacity:.4"' : ''}>&#8592; Anterior</button>
+        ${isUltima
+          ? `<button class="ps-btn-sm" style="background:var(--verde);color:#fff;border-color:var(--verde);padding:8px 16px" onclick="finalizarSurveyClima()">Finalizar e salvar</button>`
+          : `<button class="ps-btn-sm" style="background:var(--azul);color:#fff;border-color:var(--azul);padding:8px 16px" onclick="climaSurveyProxima()">Proxima &rarr;</button>`
+        }
+      </div>
+    </div>`;
+}
+
+function climaSurveyCapturarResposta() {
+  const perguntas = G.climaPerguntas;
+  const current = perguntas[G.climaSurveyStep];
+  if (!current) return;
+  const textarea = document.getElementById('clima-resposta-atual');
+  if (textarea) G.climaSurveyRespostas[current.id] = textarea.value || '';
+}
+
+function climaSurveyProxima() {
+  climaSurveyCapturarResposta();
+  G.climaSurveyStep++;
+  renderClimaView();
+}
+
+function climaSurveyAnterior() {
+  climaSurveyCapturarResposta();
+  if (G.climaSurveyStep > 0) G.climaSurveyStep--;
+  renderClimaView();
+}
+
+function cancelarSurveyClima() {
+  if (!confirm('Cancelar a pesquisa? As respostas nao salvas serao perdidas.')) return;
+  G.climaSurveyAtivo = false;
+  G.climaSurveyStep = 0;
+  G.climaSurveyRespostas = {};
+  G.climaSurveyUsuarioId = null;
+  G.climaSurveyRodada = '';
+  renderClimaView();
+}
+
+function iniciarSurveyClima() {
+  const sel = document.getElementById('clima-usuario-select');
+  const usuarioId = sel?.value || '';
+  if (!usuarioId) { alert('Selecione um colaborador antes de iniciar.'); return; }
+  if (!G.climaPerguntas.length) { alert('Nenhuma pergunta cadastrada.'); return; }
+  G.climaSurveyAtivo = true;
+  G.climaSurveyStep = 0;
+  G.climaSurveyRespostas = {};
+  G.climaSurveyUsuarioId = usuarioId;
+  G.climaSurveyRodada = new Date().toISOString().slice(0, 10);
+  renderClimaView();
+}
+
+async function finalizarSurveyClima() {
+  climaSurveyCapturarResposta();
+  const perguntas = G.climaPerguntas;
+  const respostas = perguntas
+    .filter(p => G.climaSurveyRespostas[p.id] != null)
+    .map(p => ({
+      pergunta_id: p.id,
+      usuario_id: G.climaSurveyUsuarioId || null,
+      resposta: G.climaSurveyRespostas[p.id] || '',
+      rodada: G.climaSurveyRodada,
+      respondido_em: new Date().toISOString()
+    }));
+
+  if (!respostas.length) { alert('Nenhuma resposta para salvar.'); return; }
+
+  const { error } = await sb.from('pessoas_pesquisa_clima_respostas').insert(respostas);
+  if (error) { alert('Erro ao salvar respostas: ' + error.message); return; }
+
+  G.climaSurveyAtivo = false;
+  G.climaSurveyStep = 0;
+  G.climaSurveyRespostas = {};
+  G.climaSurveyUsuarioId = null;
+  G.climaSurveyRodada = '';
+  alert('Pesquisa salva com sucesso!');
+  renderClimaView();
+}
+
+async function novaPerguntaClima() {
+  if (!isSocio(G.usuarioLogado?.role)) return;
+  const texto = window.prompt('Texto da nova pergunta:');
+  if (!texto || !texto.trim()) return;
+  const ordem = (G.climaPerguntas[G.climaPerguntas.length - 1]?.ordem || 0) + 1;
+  const { error } = await sb.from('pessoas_pesquisa_clima_perguntas').insert({
+    texto: texto.trim(), ordem, criado_por: G.usuarioLogado?.id || null
+  });
+  if (error) { alert('Erro ao criar pergunta: ' + error.message); return; }
+  G.climaLoaded = false;
+  await carregarClimaView();
+}
+
+async function editarPerguntaClima(id) {
+  if (!isSocio(G.usuarioLogado?.role)) return;
+  const pergunta = G.climaPerguntas.find(p => p.id === id);
+  if (!pergunta) return;
+  const novoTexto = window.prompt('Editar pergunta:', pergunta.texto);
+  if (novoTexto == null || !novoTexto.trim()) return;
+  const { error } = await sb.from('pessoas_pesquisa_clima_perguntas')
+    .update({ texto: novoTexto.trim() }).eq('id', id);
+  if (error) { alert('Erro ao atualizar pergunta: ' + error.message); return; }
+  G.climaLoaded = false;
+  await carregarClimaView();
+}
+
+async function excluirPerguntaClima(id) {
+  if (!isSocio(G.usuarioLogado?.role)) return;
+  if (!confirm('Excluir esta pergunta?')) return;
+  const { error } = await sb.from('pessoas_pesquisa_clima_perguntas').delete().eq('id', id);
+  if (error) { alert('Erro ao excluir pergunta: ' + error.message); return; }
+  G.climaLoaded = false;
+  await carregarClimaView();
 }
 
 /* ── NAV — tema, dropdown, user menu, feedback, exp room ──── */
