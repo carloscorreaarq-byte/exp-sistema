@@ -533,7 +533,7 @@ textarea{resize:vertical;min-height:60px}
         </div>
       </div>
       <div class="card-body" style="padding:8px 14px">
-        <canvas id="chart-mensal" height="65"></canvas>
+        <canvas id="chart-mensal" height="90"></canvas>
       </div>
     </div>
     <div class="card consul" style="margin-bottom:0">
@@ -545,11 +545,11 @@ textarea{resize:vertical;min-height:60px}
           <button id="dtm-resp" class="btn xs ghost" onclick="setDashTipoMode('resp')" style="font-size:8px;padding:1px 6px">Resp.</button>
         </div>
       </div>
-      <div class="card-body" style="padding:8px 12px;display:flex;flex-direction:column;align-items:center">
-        <div style="width:140px;height:140px;position:relative">
+      <div class="card-body" style="padding:8px 12px;display:flex;flex-direction:column;align-items:center;gap:8px">
+        <div style="width:155px;height:155px;position:relative;overflow:hidden;flex-shrink:0;margin:0 auto">
           <canvas id="chart-tipo"></canvas>
         </div>
-        <div id="chart-tipo-legenda" style="margin-top:8px;width:100%;max-width:160px"></div>
+        <div id="chart-tipo-legenda" style="width:100%;max-width:170px;margin:0 auto"></div>
       </div>
     </div>
   </div>
@@ -563,21 +563,6 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
     <div id="dash-fu-list" style="padding:0 0 4px"><div class="loading">Carregando...</div></div>
-  </div>
-
-  <div class="g2" style="gap:10px;margin-bottom:10px">
-    <div class="card am">
-      <div class="card-hdr" style="display:flex;align-items:center">
-        <div class="card-title" style="flex:1" id="dash-orig-title">Origem das receitas fechadas</div>
-        <button id="orig-mode-btn" class="btn xs ghost" onclick="toggleOrigMode()" style="font-size:9px;padding:2px 7px">Completo</button>
-        <button id="orig-val-btn" class="btn xs ghost" onclick="toggleOrigValMode()" style="font-size:9px;padding:2px 7px">Qtd</button>
-      </div>
-      <div class="card-body" style="padding:10px 14px" id="dash-origens"></div>
-    </div>
-    <div class="card verde">
-      <div class="card-hdr"><div class="card-title">Indicadores adicionais</div></div>
-      <div class="card-body" style="padding:10px 14px" id="dash-extra"></div>
-    </div>
   </div>
 
   <div class="card az" style="margin-bottom:10px">
@@ -1462,6 +1447,7 @@ let _origFechadas=[], _origAnoStr='';
 let origValMode='rs';
 function renderOrigensChart(fechadas, anoStr){
   _origFechadas=fechadas; _origAnoStr=anoStr;
+  if(!document.getElementById('dash-origens'))return;
   const origMapRs={}, origMapQtd={};
   fechadas.forEach(op=>{
     const g = origMode==='completo' ? (op.origem||'—') : origGroup(op.origem);
@@ -1547,15 +1533,18 @@ function renderValorPropostas(){
   const indic=ops.filter(o=>(o.origem||'').toLowerCase().startsWith('indica')).length;
   const txIndic=ops.length?Math.round(indic/ops.length*100):0;
 
-  // Origens fechadas (dual: R$ e qtd)
+  // Origens: R$ = fechados, Qtd = todos os leads
   const origRs={}, origQtd={};
-  fechadas.forEach(op=>{
+  ops.forEach(op=>{
     const g=origGroup(op.origem);
     origQtd[g]=(origQtd[g]||0)+1;
+  });
+  fechadas.forEach(op=>{
+    const g=origGroup(op.origem);
     origRs[g]=(origRs[g]||0)+oppValorFechado(op);
   });
   const origKeys=[...new Set([...Object.keys(origRs),...Object.keys(origQtd)])];
-  const origEntries=origKeys.map(k=>({k,rs:origRs[k]||0,qtd:origQtd[k]||0})).sort((a,b)=>b.rs-a.rs);
+  const origEntries=origKeys.map(k=>({k,rs:origRs[k]||0,qtd:origQtd[k]||0})).sort((a,b)=>b.qtd-a.qtd||b.rs-a.rs);
   const maxRs=Math.max(...origEntries.map(e=>e.rs),1);
   const maxQtd=Math.max(...origEntries.map(e=>e.qtd),1);
 
@@ -1640,20 +1629,20 @@ function renderValorPropostas(){
       </div>
     </div>
 
-    <div class="vp-sec-title">Origem dos leads fechados</div>
+    <div class="vp-sec-title">Origem dos leads</div>
     ${origEntries.length?`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px">
       <div>
-        <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:6px">Por valor (R$)</div>
+        <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:6px">Por valor R$ <span style="font-weight:400;text-transform:none">(fechados)</span></div>
         ${origEntries.map(({k,rs})=>`<div style="margin-bottom:7px">
           <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
-            <span>${escHtml(k)}</span><span style="font-family:var(--font-mono);font-size:9px">${fmt(rs)}</span>
+            <span>${escHtml(k)}</span><span style="font-family:var(--font-mono);font-size:9px">${rs?fmt(rs):'—'}</span>
           </div>
           <div style="height:3px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(rs/maxRs*100)}%;background:var(--ouro)"></div></div>
         </div>`).join('')}
       </div>
       <div>
-        <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:6px">Por quantidade (opp.)</div>
+        <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:6px">Por quantidade <span style="font-weight:400;text-transform:none">(todos os leads)</span></div>
         ${origEntries.map(({k,qtd})=>`<div style="margin-bottom:7px">
           <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
             <span>${escHtml(k)}</span><span style="font-family:var(--font-mono);font-size:9px">${qtd} opp.</span>
@@ -1661,7 +1650,7 @@ function renderValorPropostas(){
           <div style="height:3px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(qtd/maxQtd*100)}%;background:var(--azul)"></div></div>
         </div>`).join('')}
       </div>
-    </div>`:'<div style="font-size:11px;color:#aaa;margin-bottom:8px">Sem fechamentos com origem registrada.</div>'}
+    </div>`:'<div style="font-size:11px;color:#aaa;margin-bottom:8px">Sem dados de origem registrados.</div>'}
 
     <div class="vp-sec-title">CLV histórico — top clientes</div>
     ${topClientes.length?`<div>${topClientes.map((c,i)=>`
@@ -2067,6 +2056,8 @@ function renderDash(){
 
   const vPipe = ativas.reduce((s,op)=>s+oppValorProposto(op),0);
   const vPipeEfetivo = ativas.reduce((s,op)=>s+oppValorEfetivo(op,false),0);
+  const vPipeTotal = ops.reduce((s,op)=>s+oppValorProposto(op),0);
+  const fatTotal = ops.reduce((sum,op)=>sum+op._produtos.filter(p=>p.status==='fechado').reduce((s,p)=>s+(+p.valor_fechado||0),0),0);
 
   // 2B — conversão correta: opps abertas em anoStr que têm ao menos 1 produto fechado
   const ops2026 = ops.filter(o=>(o.data_entrada||'').startsWith(anoStr));
@@ -2079,9 +2070,9 @@ function renderDash(){
   document.getElementById('s-fat').textContent=fmt(fatAno);
   document.getElementById('s-fat-sub').innerHTML=`${fechadas.filter(o=>{
     const d=oppDataFechamento(o); return d&&d.startsWith(anoStr);
-  }).length} projetos fechados em ${anoStr}<br><span style="font-size:9px;color:var(--verde)">Efetivo EXP: ${fmt(fatEfetivo)}</span>`;
+  }).length} projetos fechados em ${anoStr}<br><span style="font-size:9px;color:var(--verde)">Efetivo EXP: ${fmt(fatEfetivo)}</span><br><span style="font-size:9px;color:#aaa">Total acumulado: ${fmt(fatTotal)}</span>`;
   document.getElementById('s-pipe').textContent=fmt(vPipe);
-  document.getElementById('s-pipe-sub').innerHTML=`${ativas.length} oportunidades ativas<br><span style="font-size:9px;color:var(--azul)">Efetivo EXP: ${fmt(vPipeEfetivo)}</span>`;
+  document.getElementById('s-pipe-sub').innerHTML=`${ativas.length} oportunidades ativas<br><span style="font-size:9px;color:var(--azul)">Efetivo EXP: ${fmt(vPipeEfetivo)}</span><br><span style="font-size:9px;color:#aaa">Total histórico: ${fmt(vPipeTotal)}</span>`;
   // D1: hierarquia ativo / total
   document.getElementById('s-ativas').innerHTML=`${ativas.length}<span style="font-size:14px;font-weight:400;color:#aaa"> / ${ops.length}</span>`;
   document.getElementById('s-ativas-sub').textContent=`ativas de ${ops.length} total · ${nProdsAtivos} produtos`;
@@ -2112,30 +2103,35 @@ function renderDash(){
   });
   let datasets;
   if(respFil==='todos'){
-    // uma linha por núcleo
     const nucOrdem=['Urbanismo','Paisagismo','Consultorias','Projetos Especiais'];
     const nucs = nucFil==='todos'
       ? nucOrdem.filter(n=>nucMap[n])
       : [nucFil].filter(n=>nucMap[n]);
     datasets = nucs.map(grp=>{
       const cor=CHART_CORES[grp]||'#aaa';
-      return{label:grp,data:nucMap[grp],borderColor:cor,backgroundColor:cor+'22',borderWidth:2,pointRadius:3,tension:.3,fill:false};
+      return{label:grp,data:nucMap[grp],borderColor:cor,backgroundColor:cor+'18',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false};
     });
+    // Linha de soma total — sempre visível quando há mais de um núcleo
+    if(nucFil==='todos' && datasets.length>0){
+      const total=Array(12).fill(0);
+      nucs.forEach(n=>nucMap[n].forEach((v,i)=>total[i]+=v));
+      datasets.push({label:'Total',data:total,borderColor:CHART_CORES.Total,backgroundColor:'transparent',borderWidth:3,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,borderDash:[5,3]});
+    }
     if(!datasets.length){
       const total=Array(12).fill(0);
       Object.values(nucMap).forEach(d=>d.forEach((v,i)=>total[i]+=v));
-      datasets=[{label:`Total ${anoStr}`,data:total,borderColor:CHART_CORES.Total,backgroundColor:CHART_CORES.Total+'22',borderWidth:2,pointRadius:3,tension:.3,fill:false}];
+      datasets=[{label:`Total ${anoStr}`,data:total,borderColor:CHART_CORES.Total,backgroundColor:CHART_CORES.Total+'22',borderWidth:3,pointRadius:4,tension:.3,fill:false}];
     }
   } else {
     datasets=Object.entries(uMap).map(([uid,dados])=>{
       const u=allUsers[uid]||{};
       const cor=u.cor||'#aaa';
-      return{label:u.nome?.split(' ')[0]||'?',data:dados,borderColor:cor,backgroundColor:cor+'22',borderWidth:2,pointRadius:3,tension:.3,fill:false};
+      return{label:u.nome?.split(' ')[0]||'?',data:dados,borderColor:cor,backgroundColor:cor+'18',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false};
     });
   }
   if(chartMensal)chartMensal.destroy();
   const ctx1=document.getElementById('chart-mensal').getContext('2d');
-  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8}}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9},callback:v=>v>=1000?Math.round(v/1000)+'k':v}}}}});
+  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8,usePointStyle:true}}},scales:{x:{ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{font:{size:9},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(0,0,0,.04)'}}}}});
 
   // S4-02 — donut com toggle: por núcleo / pipeline stage / responsável
   // Atualiza estado visual dos botões
@@ -2194,30 +2190,6 @@ function renderDash(){
   const elTipoTitle=document.getElementById('chart-tipo-title');
   if(elTipoTitle)elTipoTitle.textContent=`Por tipo · ${anoStr}`;
 
-  // origens
-  renderOrigensChart(fechadas, anoStr);
-
-  // indicadores extra
-  const tempos=fechadas.filter(op=>{
-    const fch=oppDataFechamento(op); const ent=op.data_entrada;
-    return fch&&ent;
-  }).map(op=>Math.round((new Date(oppDataFechamento(op))-new Date(op.data_entrada))/86400000));
-  const mediaT=tempos.length?Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length):null;
-  // 2C — previsão correta: itera todos os produtos ativos de cada oportunidade
-  const prev=ativas.reduce((s,op)=>{
-    return s+op._produtos
-      .filter(p=>['ativo','negociacao','negociação'].includes((p.status||'').toLowerCase()))
-      .reduce((ps,p)=>ps+(+p.valor_proposto||0)*(+p.prob||3)/5,0);
-  },0);
-  document.getElementById('dash-extra').innerHTML=`
-    <div class="dr"><div class="dk">Tempo médio fechamento</div><div class="dv">${mediaT?mediaT+' dias':'—'}</div></div>
-    <div class="dr"><div class="dk" title="Soma ponderada: valor proposto × probabilidade/5, apenas produtos ativos">Previsão realista ⓘ</div><div class="dv" style="font-weight:600;font-family:var(--font-mono)">${fmt(prev)}</div></div>
-    <div class="dr"><div class="dk">Orçamentos expirados</div><div class="dv" style="color:var(--terracota);font-weight:600">${allOps.filter(o=>isExpiredOp(o)).length}</div></div>
-    <div class="dr"><div class="dk">Sem follow-up +30d</div><div class="dv" style="color:var(--ouro);font-weight:600">${allOps.filter(o=>isAtiva(o)&&semFU30(o)).length}</div></div>
-  `;
-  // 3D — atualizar título da seção de origens com o ano
-  const elOrigTitle=document.getElementById('dash-orig-title');
-  if(elOrigTitle)elOrigTitle.textContent=`Origem das receitas fechadas · ${anoStr}`;
 
   // fechamentos e negativas — 45 dias
   const cut=new Date();cut.setDate(cut.getDate()-45);
