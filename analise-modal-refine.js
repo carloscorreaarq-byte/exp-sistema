@@ -216,7 +216,7 @@
 
     return `
       <div class="analise-chart-copy">Separação entre custo de horas trabalhadas e demais lançamentos financeiros.</div>
-      <svg class="analise-svg-chart" viewBox="0 0 320 140" aria-label="Composição do custo do projeto">
+      <svg class="analise-svg-chart" viewBox="0 0 320 126" aria-label="Composição do custo do projeto">
         <rect x="16" y="42" width="288" height="24" rx="12" fill="var(--off)"></rect>
         <rect x="16" y="42" width="${(288 * hhPct) / 100}" height="24" rx="12" fill="var(--grafite)"></rect>
         <rect x="${16 + (288 * hhPct) / 100}" y="42" width="${(288 * extraPct) / 100}" height="24" rx="12" fill="var(--terracota)"></rect>
@@ -226,8 +226,8 @@
         <text x="182" y="98" class="svg-label">Custos: ${_escN(analiseFmtMoney(custoExtra))}</text>
         <text x="16" y="26" class="svg-label">Custo total</text>
         <text x="304" y="26" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(total))}</text>
-        <text x="16" y="122" class="svg-label">Peso HH ${_escN(analiseFmtPct(hhPct))}</text>
-        <text x="304" y="122" text-anchor="end" class="svg-label">Peso custos ${_escN(analiseFmtPct(extraPct))}</text>
+        <text x="16" y="112" class="svg-label">Peso HH ${_escN(analiseFmtPct(hhPct))}</text>
+        <text x="304" y="112" text-anchor="end" class="svg-label">Peso custos ${_escN(analiseFmtPct(extraPct))}</text>
       </svg>
     `;
   };
@@ -265,7 +265,7 @@
 
     return `
       <div class="analise-chart-copy">Distribuição das etapas do projeto ao longo do fluxo operacional.</div>
-      <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Status das etapas do projeto">
+      <svg class="analise-svg-chart" viewBox="0 0 320 124" aria-label="Status das etapas do projeto">
         <rect x="16" y="40" width="288" height="24" rx="12" fill="var(--off)"></rect>
         ${segmentos.filter((segment) => segment.qtd > 0).map((segment) => `
           <rect x="${segment.x}" y="40" width="${segment.width}" height="24" rx="12" fill="${segment.color}"></rect>
@@ -273,8 +273,8 @@
         <text x="16" y="24" class="svg-label">Fluxo de etapas</text>
         <text x="304" y="24" text-anchor="end" class="svg-value">${total} etapa(s)</text>
         ${segmentos.map((segment, index) => `
-          <circle cx="${22 + (index % 2) * 148}" cy="${94 + Math.floor(index / 2) * 22}" r="5" fill="${segment.color}"></circle>
-          <text x="${34 + (index % 2) * 148}" y="${98 + Math.floor(index / 2) * 22}" class="svg-label">${_escN(segment.label)}: ${segment.qtd}</text>
+          <circle cx="${22 + (index % 2) * 148}" cy="${82 + Math.floor(index / 2) * 18}" r="4" fill="${segment.color}"></circle>
+          <text x="${34 + (index % 2) * 148}" y="${85 + Math.floor(index / 2) * 18}" class="svg-label">${_escN(segment.label)}: ${segment.qtd}</text>
         `).join('')}
       </svg>
     `;
@@ -297,7 +297,7 @@
 
     return `
       <div class="analise-chart-copy">Comparação entre custo atual, custo projetado no fechamento e a referência contratada do projeto.</div>
-      <svg class="analise-svg-chart" viewBox="0 0 320 150" aria-label="Projeção do projeto">
+      <svg class="analise-svg-chart" viewBox="0 0 320 126" aria-label="Projeção do projeto">
         <rect x="16" y="36" width="288" height="16" rx="8" fill="var(--off)"></rect>
         <rect x="16" y="36" width="${atualWidth}" height="16" rx="8" fill="var(--grafite)"></rect>
         <text x="16" y="26" class="svg-label">Custo atual</text>
@@ -307,7 +307,7 @@
         <text x="16" y="68" class="svg-label">Custo projetado</text>
         <text x="304" y="68" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(custoProjetado))}</text>
         ${contratadoX !== null ? `<line x1="${contratadoX}" y1="30" x2="${contratadoX}" y2="102" stroke="var(--grafite)" stroke-dasharray="4 3"></line>` : ''}
-        ${contratadoX !== null ? `<text x="${Math.min(304, contratadoX + 4)}" y="116" class="svg-label">Contrato ${_escN(analiseFmtMoney(contratado))}</text>` : '<text x="16" y="116" class="svg-label">Contrato indisponível para esta previsão.</text>'}
+        ${contratadoX !== null ? `<text x="${Math.min(304, contratadoX + 4)}" y="108" class="svg-label">Contrato ${_escN(analiseFmtMoney(contratado))}</text>` : '<text x="16" y="108" class="svg-label">Contrato indisponível para esta previsão.</text>'}
       </svg>
       <div class="analise-budget-meta" style="margin-top:10px">
         <span class="${analiseRiscoChipClass(previsao.riscoKey)}">${_escN(analiseRiscoLabelSeguro(previsao.riscoKey))}</span>
@@ -453,6 +453,237 @@
     `;
 
     analiseToggleModal(true);
+  };
+
+  function analiseProjetoContextoLinha(item) {
+    const cliente = item?.produto?.oportunidades?.clientes?.nome || 'Cliente não identificado';
+    const oportunidade = item?.produto?.oportunidades?.projeto || '';
+    return oportunidade ? `${cliente} | ${oportunidade}` : cliente;
+  }
+
+  analiseLinhaProduto = function analiseLinhaProdutoRefinada(item) {
+    const classeMargem = analiseClassificarMargem(item.margemPct);
+    const statusLabel = analiseProdutoStatusLabel(item);
+    const faseLabel = item.statusResumo?.faseLabel;
+    const previsao = item.previsao || {};
+    const delta = analiseDeltaMargemProjetada(item);
+
+    return `
+      <tr class="analise-row-link ${analiseRowToneClass(previsao.riscoKey)}" data-produto-id="${_escN(item.produto?.id || '')}">
+        <td>
+          <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+          <div class="analise-table-sub">${_escN(analiseProjetoContextoLinha(item))}</div>
+        </td>
+        <td>${_escN(NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D')}</td>
+        <td>
+          <div class="analise-table-main">${_escN(statusLabel)}</div>
+          <div class="analise-table-sub">${_escN(faseLabel || 'N/D')}</div>
+        </td>
+        <td>
+          <div class="analise-table-main">${analiseRiscoBadgeHtml(previsao)}</div>
+          <div class="analise-table-sub">Confiança ${_escN(analiseConfiancaLabelSegura(previsao))}</div>
+        </td>
+        <td>
+          <div class="analise-table-main">${_escN(analiseFmtPct(previsao.margemProjetadaPct))}</div>
+          <div class="analise-table-sub">${_escN(analiseFmtMoney(previsao.margemProjetada, previsao.margemProjetada === null))}</div>
+        </td>
+        <td>
+          <div class="analise-table-main ${analiseDeltaToneClass(delta)}">${_escN(delta === null ? 'N/D' : analiseFmtPct(delta))}</div>
+          <div class="analise-table-sub">Atual ${_escN(analiseFmtPct(item.margemPct))}</div>
+        </td>
+        <td>${_escN(fmtH(item.horasTotais))}</td>
+        <td>${_escN(analiseFmtMoney(item.custoTotal))}</td>
+        <td>${_escN(analiseFmtMoney(item.produto?.valor_contratado || 0, item.produto?.valor_contratado ? false : true))}</td>
+        <td><span class="${classeMargem.cls}">${_escN(analiseFmtPct(item.margemPct))}</span></td>
+      </tr>
+    `;
+  };
+
+  analiseTabelaDesenvolvimentoProjeto = function analiseTabelaDesenvolvimentoProjetoRefinada(rows) {
+    if (!rows.length) {
+      return analiseEmptyTemplate('Nenhum projeto em desenvolvimento atende aos filtros atuais.');
+    }
+
+    return `
+      <table class="analise-table">
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Risco proj.</th>
+            <th>Margem proj.</th>
+            <th>Delta proj.</th>
+            <th>Etapas ativas</th>
+            <th>Horas</th>
+            <th>Budget</th>
+            <th>Uso budget</th>
+            <th>Custo atual</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => {
+            const budgetPct = row.budgetHoras > 0 ? (row.horasTotais / row.budgetHoras) * 100 : null;
+            const previsao = row.produtoRegistro?.previsao || {};
+            const delta = analiseDeltaMargemProjetada(row.produtoRegistro);
+            return `
+              <tr class="analise-row-link ${analiseRowToneClass(previsao.riscoKey)}" data-produto-id="${_escN(row.produto?.id || '')}">
+                <td>
+                  <div class="analise-table-main">${_escN(row.produto?.nome || 'Projeto sem nome')}</div>
+                  <div class="analise-table-sub">${_escN(analiseProjetoContextoLinha({ produto: row.produto }))}</div>
+                </td>
+                <td>
+                  <div class="analise-table-main">${analiseRiscoBadgeHtml(previsao)}</div>
+                  <div class="analise-table-sub">Confiança ${_escN(analiseConfiancaLabelSegura(previsao))}</div>
+                </td>
+                <td>
+                  <div class="analise-table-main">${_escN(analiseFmtPct(previsao.margemProjetadaPct))}</div>
+                  <div class="analise-table-sub">${_escN(analiseFmtMoney(previsao.margemProjetada, previsao.margemProjetada === null))}</div>
+                </td>
+                <td>
+                  <div class="analise-table-main ${analiseDeltaToneClass(delta)}">${_escN(delta === null ? 'N/D' : analiseFmtPct(delta))}</div>
+                  <div class="analise-table-sub">vs. atual</div>
+                </td>
+                <td>${_escN(String(row.etapas.length))}</td>
+                <td>${_escN(fmtH(row.horasTotais))}</td>
+                <td>${_escN(row.budgetHoras > 0 ? fmtH(row.budgetHoras) : 'N/D')}</td>
+                <td>${analiseBudgetBadge(budgetPct, row.etapasComBudget)}</td>
+                <td>${_escN(analiseFmtMoney(row.custoTotal))}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  };
+
+  analiseListaPrioridadesProjeto = function analiseListaPrioridadesProjetoRefinada(registros, somenteAtivos = false) {
+    const items = (registros || [])
+      .filter(Boolean)
+      .filter((item) => !somenteAtivos || item.statusResumo?.statusKey === 'ativo')
+      .sort((a, b) => analiseOrdenarProdutosAcumulado(a, b, 'risco_desc'))
+      .slice(0, 6);
+
+    if (!items.length) {
+      return '<div class="empty-note">Nenhum projeto entrou na priorização desta leitura.</div>';
+    }
+
+    return `
+      <div class="analise-priority-grid">
+        ${items.map((item) => {
+          const previsao = item.previsao || {};
+          const delta = analiseDeltaMargemProjetada(item);
+          return `
+            <article class="analise-priority-card ${analiseRowToneClass(previsao.riscoKey)}">
+              <div class="analise-priority-head">
+                <div>
+                  <div class="analise-table-main">${_escN(item.produto?.nome || 'Projeto sem nome')}</div>
+                  <div class="analise-table-sub">${_escN(analiseProjetoContextoLinha(item))}</div>
+                </div>
+                ${analiseRiscoBadgeHtml(previsao)}
+              </div>
+              <div class="analise-priority-metrics">
+                <div>
+                  <span class="analise-priority-label">Margem proj.</span>
+                  <strong>${_escN(analiseFmtPct(previsao.margemProjetadaPct))}</strong>
+                </div>
+                <div>
+                  <span class="analise-priority-label">Delta</span>
+                  <strong class="${analiseDeltaToneClass(delta)}">${_escN(delta === null ? 'N/D' : analiseFmtPct(delta))}</strong>
+                </div>
+                <div>
+                  <span class="analise-priority-label">Confiança</span>
+                  <strong>${_escN(analiseConfiancaLabelSegura(previsao))}</strong>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    `;
+  };
+
+  analiseGraficoMargemPorNucleo = function analiseGraficoMargemPorNucleoRefinado(produtos) {
+    const base = analiseProdutosMargemNucleo(produtos);
+    if (!base.length) {
+      return '<div class="empty-note">Sem projetos encerrados com horas vinculadas a etapas concluídas para compor a margem por núcleo.</div>';
+    }
+
+    const rows = Object.entries(
+      base.reduce((acc, item) => {
+        const key = item.produto?.nucleo || 'sem_nucleo';
+        if (!acc[key]) acc[key] = { label: NUCLEO_COR[key]?.label || 'Sem núcleo', contratado: 0, custo: 0 };
+        acc[key].contratado += Math.max(0, Number(item.produto?.valor_contratado || 0));
+        acc[key].custo += Number(item.custoTotal || 0);
+        return acc;
+      }, {})
+    ).map(([key, row]) => {
+      const margemPct = row.contratado > 0 ? ((row.contratado - row.custo) / row.contratado) * 100 : null;
+      return { ...row, key, margemPct };
+    }).sort((a, b) => (Number(b.margemPct) || -999) - (Number(a.margemPct) || -999));
+
+    const maxWidth = 174;
+    const height = 26 + rows.length * 20;
+    return `
+      <div class="analise-chart-copy">Base formada apenas por projetos encerrados com horas vinculadas a etapas concluídas.</div>
+      <svg class="analise-svg-chart" viewBox="0 0 320 ${height}" aria-label="Margem por núcleo">
+        ${rows.map((row, index) => {
+          const y = 18 + index * 20;
+          const pct = Math.max(0, Math.min(100, Number(row.margemPct || 0)));
+          const margem = Number(row.margemPct || 0);
+          const cor = margem < 10 ? 'var(--terracota)' : margem < 20 ? 'var(--ouro)' : margem < 30 ? 'var(--azul)' : 'var(--verde)';
+          return `
+            <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
+            <rect x="118" y="${y - 8}" width="${maxWidth}" height="10" rx="5" fill="var(--cinza2)"></rect>
+            <rect x="118" y="${y - 8}" width="${(maxWidth * pct) / 100}" height="10" rx="5" fill="${cor}"></rect>
+            <text x="304" y="${y}" text-anchor="end" class="svg-value">${_escN(analiseFmtPct(row.margemPct))}</text>
+          `;
+        }).join('')}
+      </svg>
+    `;
+  };
+
+  analiseGraficoContratoVsCusto = function analiseGraficoContratoVsCustoRefinado(contratadoTotal, custoTotal) {
+    if (Number(contratadoTotal || 0) <= 0) {
+      return '<div class="empty-note">Sem base contratual suficiente para comparar contrato e custo.</div>';
+    }
+    const contratado = Number(contratadoTotal || 0);
+    const custo = Number(custoTotal || 0);
+    const pct = Math.max(0, Math.min(100, (custo / Math.max(contratado, 1)) * 100));
+    return `
+      <div class="analise-chart-copy">Mostra quanto do valor contratado já foi consumido pelo custo acumulado do portfólio filtrado.</div>
+      <svg class="analise-svg-chart" viewBox="0 0 320 94" aria-label="Contrato versus custo">
+        <text x="16" y="22" class="svg-label">Contrato total</text>
+        <text x="304" y="22" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(contratado))}</text>
+        <rect x="16" y="34" width="288" height="12" rx="6" fill="var(--cinza2)"></rect>
+        <rect x="16" y="34" width="${(288 * pct) / 100}" height="12" rx="6" fill="var(--grafite)"></rect>
+        <text x="16" y="68" class="svg-label">Custo acumulado</text>
+        <text x="304" y="68" text-anchor="end" class="svg-value">${_escN(analiseFmtMoney(custo))}</text>
+        <text x="16" y="84" class="svg-label">${_escN(analiseFmtPct(pct))} do contrato consumido</text>
+      </svg>
+    `;
+  };
+
+  analiseGraficoDistribuicaoSimples = function analiseGraficoDistribuicaoSimplesRefinado(rows, copy) {
+    const total = (rows || []).reduce((sum, row) => sum + Number(row.count || 0), 0);
+    if (!total) {
+      return '<div class="empty-note">Ainda não há volume suficiente para desenhar este gráfico.</div>';
+    }
+    let offset = 16;
+    return `
+      <div class="analise-chart-copy">${_escN(copy || '')}</div>
+      <svg class="analise-svg-chart" viewBox="0 0 320 94" aria-label="Gráfico de distribuição">
+        <rect x="16" y="18" width="288" height="14" rx="7" fill="var(--cinza2)"></rect>
+        ${rows.filter((row) => row.count > 0).map((row) => {
+          const width = (288 * Number(row.count || 0)) / total;
+          const out = `<rect x="${offset}" y="18" width="${width}" height="14" rx="7" fill="${row.color}"></rect>`;
+          offset += width;
+          return out;
+        }).join('')}
+        ${rows.map((row, index) => `
+          <circle cx="${22 + (index % 2) * 148}" cy="${56 + Math.floor(index / 2) * 18}" r="4" fill="${row.color}"></circle>
+          <text x="${34 + (index % 2) * 148}" y="${59 + Math.floor(index / 2) * 18}" class="svg-label">${_escN(row.label)}: ${row.count}</text>
+        `).join('')}
+      </svg>
+    `;
   };
 
   const analiseRenderAbaAtivaBase = analiseRenderAbaAtiva;
