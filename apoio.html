@@ -3055,8 +3055,13 @@ function renderPlanoPessoas(el) {
   `;
 }
 
+function getMatrizPlanoData() {
+  return G.matrizPlanoCache?.secoes?.length ? G.matrizPlanoCache : MATRIZ_PLANO_GENTE_DADOS;
+}
+
 function getMatrizPlanoSecao(secaoKey) {
-  return MATRIZ_PLANO_GENTE_DADOS.secoes.find(secao => secao.key === secaoKey) || MATRIZ_PLANO_GENTE_DADOS.secoes[0];
+  const matrizData = getMatrizPlanoData();
+  return matrizData.secoes.find(secao => secao.key === secaoKey) || matrizData.secoes[0];
 }
 
 function getSenioridadeLabel(colunaKey) {
@@ -3121,7 +3126,7 @@ function renderMatrizStatusTextoV2() {
 }
 
 function renderMatrizTabs() {
-  return MATRIZ_PLANO_GENTE_DADOS.secoes.map(secao => `
+  return getMatrizPlanoData().secoes.map(secao => `
     <button
       class="matriz-tab${G.matrizPlanoSecaoAtiva === secao.key ? ' active' : ''}"
       onclick="setMatrizPlanoSecao('${secao.key}')">
@@ -3359,7 +3364,7 @@ function refreshMatrizPlanoGenteModal() {
 }
 
 window.abrirMatrizPlanoGente = function() {
-  G.matrizPlanoSecaoAtiva = 'habilidades';
+  G.matrizPlanoSecaoAtiva = getMatrizPlanoData().secoes[0]?.key || 'habilidades';
   G.matrizPlanoHoverColuna = '';
   G.matrizPlanoFocoColuna = '';
   const modal = document.getElementById('modal-edit');
@@ -4858,6 +4863,79 @@ Qualquer colaborador autenticado pode cadastrar e editar espécies.
 
 ## Qualidade da base
 Toda nova espécie deve entrar com o máximo de informação possível para que o banco seja útil nas consultas futuras.`
+    },
+    {
+      slug: 'plano-gente-sobre',
+      grupo: 'plano-gente',
+      subgrupo: null,
+      ordem: 1,
+      titulo: 'Sobre o Plano de Gente',
+      resumo: '',
+      corpo: `O crescimento de cada pessoa na EXP nÃ£o Ã© medido pelo tempo de empresa, mas pela qualidade das entregas, pela autonomia conquistada e pela capacidade de contribuir de forma consistente para o trabalho, para os processos e para a equipe.
+
+A estrutura de nÃ­veis existe para dar clareza sobre onde cada colaborador estÃ¡ hoje, o que caracteriza seu nÃ­vel atual e o que representa o prÃ³ximo passo. A progressÃ£o nÃ£o Ã© automÃ¡tica â€” ela acontece quando hÃ¡ demonstraÃ§Ã£o real de amadurecimento tÃ©cnico, aumento de responsabilidade e contribuiÃ§Ã£o mais consistente para o funcionamento da EXP.`
+    },
+    {
+      slug: 'plano-gente-nucleos',
+      grupo: 'plano-gente',
+      subgrupo: null,
+      ordem: 2,
+      titulo: 'NÃºcleos de atuaÃ§Ã£o',
+      resumo: 'Os colaboradores atuam em um dos dois nÃºcleos de projeto da EXP',
+      corpo: `## Paisagismo
+Projetos de paisagem, jardins, praÃ§as e espaÃ§os livres. Abrange desde residÃªncias atÃ© grandes empreendimentos e espaÃ§os pÃºblicos.
+
+## Urbanismo
+Projetos urbanos, loteamentos, masterplans e intervenÃ§Ãµes em escala de cidade. Requer leitura de contexto territorial e visÃ£o de conjunto.`
+    },
+    {
+      slug: 'plano-gente-trilha',
+      grupo: 'plano-gente',
+      subgrupo: null,
+      ordem: 3,
+      titulo: 'Estrutura de progressÃ£o',
+      resumo: 'Trilha de 9 nÃ­veis â€” da entrada Ã  referÃªncia estratÃ©gica e operacional',
+      corpo: `## JÃºnior|#3E7858|#eaf5ee|#b8d9c9
+I|Entrada|Atua com acompanhamento prÃ³ximo em tarefas mais direcionadas, desenvolvendo base tÃ©cnica e entendimento dos processos da EXP.
+II|ConsolidaÃ§Ã£o|Maior seguranÃ§a na execuÃ§Ã£o, melhor compreensÃ£o dos fluxos de trabalho e entregas com mais constÃ¢ncia e menor dependÃªncia.
+III|ConsistÃªncia|DomÃ­nio da rotina, qualidade crescente nas entregas e capacidade de conduzir partes de projetos com autonomia progressiva.
+
+## Pleno|#4A72B5|#eaf0fb|#b3caea
+I|Autonomia|Conduz atividades e etapas de projeto com menor supervisÃ£o, sustentando responsabilidades mais amplas dentro da rotina da equipe.
+II|CoordenaÃ§Ã£o|Organiza fluxos, acompanha demandas com visÃ£o de conjunto e pode coordenar projetos e equipes em determinados contextos.
+III|Maturidade|Alta consistÃªncia, boa leitura de prioridades, papel importante na sustentaÃ§Ã£o da qualidade e dos processos da equipe.
+
+## SÃªnior|#C49A27|#fbf3e8|#d9c9ae
+I|ReferÃªncia|DomÃ­nio tÃ©cnico amplo, resolve situaÃ§Ãµes complexas e exerce funÃ§Ã£o de referÃªncia em projetos, decisÃµes e direcionamentos.
+II|LideranÃ§a|Conduz contextos mais complexos com maior capacidade de articulaÃ§Ã£o entre projetos, pessoas e processos.
+III|EstratÃ©gia|NÃ­vel mais alto da trilha. Alta maturidade, capaz de sustentar contextos complexos simultaneamente e assumir posiÃ§Ãµes de direÃ§Ã£o de nÃºcleo.`
+    },
+    {
+      slug: 'plano-gente-criterios',
+      grupo: 'plano-gente',
+      subgrupo: null,
+      ordem: 4,
+      titulo: 'O que se considera na evoluÃ§Ã£o',
+      resumo: 'A progressÃ£o considera de forma combinada os seguintes aspectos',
+      corpo: `- Qualidade tÃ©cnica|A excelÃªncia das entregas Ã© o principal indicador de maturidade profissional.
+- ConsistÃªncia|Entregas regulares e confiÃ¡veis ao longo do tempo, nÃ£o apenas momentos isolados.
+- Autonomia|Capacidade crescente de conduzir atividades sem necessidade de supervisÃ£o constante.
+- Responsabilidade|Assumir e honrar compromissos com o projeto, a equipe e os processos.
+- OrganizaÃ§Ã£o|GestÃ£o eficiente do prÃ³prio trabalho, prazos e prioridades.
+- ComunicaÃ§Ã£o|Clareza e objetividade na troca de informaÃ§Ãµes com a equipe e a lideranÃ§a.
+- ContribuiÃ§Ã£o para processos|Identificar melhorias e contribuir para que o trabalho funcione melhor para todos.
+- AderÃªncia Ã  cultura EXP|Incorporar os valores, a intenÃ§Ã£o e o modo de fazer da EXP em cada entrega.`
+    },
+    {
+      slug: 'plano-gente-matriz-intro',
+      grupo: 'plano-gente',
+      subgrupo: null,
+      ordem: 5,
+      titulo: 'Matriz de Responsabilidades',
+      resumo: 'Leitura das responsabilidades esperadas por senioridade',
+      corpo: `A matriz organiza o nÃ­vel de envolvimento esperado em habilidades, execuÃ§Ã£o, valores e lideranÃ§a ao longo da trilha da EXP.
+
+Ela agora passa a ser gerida a partir do mÃ³dulo de pessoas, permitindo atualizar categorias, campos e a progressÃ£o esperada em cada nÃ­vel da trilha.`
     }
   ];
 
@@ -4914,6 +4992,7 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
     jardimSubcardsCache: {},
     dynamicTablesOk: false,
     dynamicTablesError: '',
+    matrizPlanoCache: null,
     vegetacaoSpecies: [],
     vegFilters: { busca: '', grupo: '', tipo: '', insolacao: '', porte: '', altura: '' },
     vegSelectionMode: false,
@@ -5391,6 +5470,35 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       </div>`;
   }
 
+  function comporMatrizPlanoCache(categorias, campos, evolucoes) {
+    const evoMap = new Map();
+    (evolucoes || []).forEach(item => {
+      evoMap.set(`${item.campo_id}:${item.senioridade}`, Number(item.valor || 0));
+    });
+    const camposPorCategoria = new Map();
+    (campos || [])
+      .filter(item => item.ativo !== false)
+      .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+      .forEach(item => {
+        if (!camposPorCategoria.has(item.categoria_id)) camposPorCategoria.set(item.categoria_id, []);
+        camposPorCategoria.get(item.categoria_id).push({
+          texto: item.texto,
+          valores: Object.fromEntries(PLANO_GENTE_SENIORIDADES.map(level => [level.key, evoMap.get(`${item.id}:${level.key}`) ?? 0]))
+        });
+      });
+    return {
+      secoes: (categorias || [])
+        .filter(item => item.ativo !== false)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+        .map(item => ({
+          key: item.chave,
+          titulo: item.titulo,
+          intro: item.intro || '',
+          itens: camposPorCategoria.get(item.id) || []
+        }))
+    };
+  }
+
   async function carregarApoioExtra() {
     const [conteudoRes, vegetacaoRes] = await Promise.all([
       sb.from('apoio_conteudo_secao').select('*').order('ordem').order('slug'),
@@ -5417,12 +5525,15 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
   }
 
   async function carregarDadosDinamicos() {
-    const [metaRes, normasRes, indicacoesRes, jvRes, subtemasRes] = await Promise.all([
+    const [metaRes, normasRes, indicacoesRes, jvRes, subtemasRes, matrizCategoriasRes, matrizCamposRes, matrizEvolucoesRes] = await Promise.all([
       sb.from('apoio_temas_meta').select('*'),
       sb.from('apoio_normas').select('*').order('area').order('ordem'),
       sb.from('apoio_indicacoes').select('*').order('ordem'),
       sb.from('apoio_jardim_subcards').select('*').order('secao').order('ordem'),
-      sb.from('apoio_subtemas_custom').select('*').order('tema_slug').order('ordem')
+      sb.from('apoio_subtemas_custom').select('*').order('tema_slug').order('ordem'),
+      sb.from('pessoas_matriz_categoria').select('*').order('ordem'),
+      sb.from('pessoas_matriz_campo').select('*').order('categoria_id').order('ordem'),
+      sb.from('pessoas_matriz_evolucao').select('*')
     ]);
     const resultados = [
       ['apoio_temas_meta', metaRes],
@@ -5459,6 +5570,15 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
         G.subtemasCustomCache[item.tema_slug].push(item);
       });
     }
+    const matrizMissing = [matrizCategoriasRes, matrizCamposRes, matrizEvolucoesRes].some(res => res?.error?.code === '42P01' || String(res?.error?.message || '').includes('Could not find the table'));
+    if (matrizMissing) {
+      G.matrizPlanoCache = null;
+    } else if (matrizCategoriasRes.error || matrizCamposRes.error || matrizEvolucoesRes.error) {
+      console.warn('Falha ao carregar base dinâmica da matriz', matrizCategoriasRes.error || matrizCamposRes.error || matrizEvolucoesRes.error);
+      G.matrizPlanoCache = null;
+    } else {
+      G.matrizPlanoCache = comporMatrizPlanoCache(matrizCategoriasRes.data || [], matrizCamposRes.data || [], matrizEvolucoesRes.data || []);
+    }
   }
 
   carregarDados = async function() {
@@ -5490,6 +5610,173 @@ Toda nova espécie deve entrar com o máximo de informação possível para que 
       renderTemaHdr('cultura', 'Cultura', 'Valores, identidade e forma de trabalhar da EXP'),
       renderStaticSection('cultura-identidade'),
       renderStaticSection('cultura-comunicacao')
+    ].join('');
+  };
+
+  function renderPlanoShell(secao, corpoHtml, extraActions) {
+    return `
+      <section class="secao-shell" id="${escAttr(secao.slug)}">
+        <div class="secao-shell-header">
+          <div>
+            <div class="secao-shell-title">${escHtml(secao.titulo || 'Seção')}</div>
+            ${secao.resumo ? `<div class="secao-shell-sub">${escHtml(secao.resumo)}</div>` : ''}
+          </div>
+          <div class="secao-shell-actions">
+            ${extraActions || ''}
+            ${renderEditButton(secao.slug)}
+          </div>
+        </div>
+        ${corpoHtml}
+      </section>`;
+  }
+
+  function splitRichSections(text) {
+    const source = String(text || '').replace(/\r/g, '').trim();
+    if (!source) return [];
+    const lines = source.split('\n');
+    const sections = [];
+    let current = null;
+    const flush = () => {
+      if (!current) return;
+      current.body = current.body.trim();
+      sections.push(current);
+    };
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('## ')) {
+        flush();
+        current = { heading: trimmed.slice(3).trim(), body: '' };
+        return;
+      }
+      if (!current) current = { heading: '', body: '' };
+      current.body += (current.body ? '\n' : '') + line;
+    });
+    flush();
+    return sections;
+  }
+
+  function parsePlanoNucleos(secao) {
+    return splitRichSections(secao.corpo).map(item => ({
+      titulo: item.heading || 'Núcleo',
+      descricao: item.body.replace(/\n+/g, ' ').trim()
+    })).filter(item => item.titulo || item.descricao);
+  }
+
+  function parsePlanoTrilha(secao) {
+    const defaults = {
+      'júnior': { color: '#3E7858', bg: '#eaf5ee', border: '#b8d9c9' },
+      'junior': { color: '#3E7858', bg: '#eaf5ee', border: '#b8d9c9' },
+      'pleno': { color: '#4A72B5', bg: '#eaf0fb', border: '#b3caea' },
+      'sênior': { color: '#C49A27', bg: '#fbf3e8', border: '#d9c9ae' },
+      'senior': { color: '#C49A27', bg: '#fbf3e8', border: '#d9c9ae' }
+    };
+    return splitRichSections(secao.corpo).map(item => {
+      const [labelRaw, color, bg, border] = item.heading.split('|').map(part => part.trim());
+      const palette = defaults[(labelRaw || '').toLowerCase()] || { color: '#666', bg: '#f6f5f1', border: '#d8d6cf' };
+      const levels = item.body.split('\n').map(line => line.trim()).filter(Boolean).map(line => {
+        const [num, focus, desc] = line.split('|').map(part => (part || '').trim());
+        return { num, focus, desc };
+      }).filter(level => level.num && level.focus);
+      return {
+        label: labelRaw || 'Trilha',
+        color: color || palette.color,
+        bg: bg || palette.bg,
+        border: border || palette.border,
+        levels
+      };
+    }).filter(item => item.levels.length);
+  }
+
+  function parsePlanoCriterios(secao) {
+    return String(secao.corpo || '')
+      .replace(/\r/g, '')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.startsWith('- '))
+      .map(line => {
+        const raw = line.slice(2);
+        const [titulo, desc] = raw.split('|');
+        return { titulo: (titulo || '').trim(), desc: (desc || '').trim() };
+      })
+      .filter(item => item.titulo);
+  }
+
+  renderPlanoPessoas = function(el) {
+    const secaoSobre = getSection('plano-gente-sobre');
+    const secaoNucleos = getSection('plano-gente-nucleos');
+    const secaoTrilha = getSection('plano-gente-trilha');
+    const secaoCriterios = getSection('plano-gente-criterios');
+    const secaoMatriz = getSection('plano-gente-matriz-intro');
+    const nucleos = parsePlanoNucleos(secaoNucleos);
+    const trilhas = parsePlanoTrilha(secaoTrilha);
+    const criterios = parsePlanoCriterios(secaoCriterios);
+
+    const nucleosHtml = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+        ${nucleos.map(item => `
+          <div class="pg-nucleos-box" style="background:var(--verde-bg);border:1px solid #c0d9c8;border-radius:8px;padding:16px 18px">
+            <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--verde);margin-bottom:7px">${escHtml(item.titulo)}</div>
+            <div class="pg-criterio-text" style="font-size:11px;color:#555;line-height:1.65">${escHtml(item.descricao)}</div>
+          </div>
+        `).join('')}
+      </div>`;
+
+    const trilhaTrackHtml = `
+      <div style="overflow-x:auto;padding-bottom:4px">
+        <div style="display:grid;grid-template-columns:repeat(${Math.max(trilhas.length,1)}, minmax(250px,1fr));gap:18px;min-width:${Math.max(trilhas.length * 260, 720)}px">
+          ${trilhas.map(trilha => `
+            <div class="pg-track-card" style="background:${trilha.bg};border:1px solid ${trilha.border};border-radius:10px;padding:16px 14px 14px">
+              <div class="pg-track-label" style="font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${trilha.color};text-align:center;margin-bottom:14px">${escHtml(trilha.label)}</div>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+                ${trilha.levels.map((lvl, idx) => `
+                  <div style="display:flex;align-items:flex-start;gap:14px;flex:1">
+                    <div style="text-align:center;flex:1">
+                      <div style="width:34px;height:34px;border-radius:50%;background:${trilha.color};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${escHtml(lvl.num)}</div>
+                      <div style="font-size:8px;font-weight:600;color:${trilha.color};letter-spacing:.2px;line-height:1.3">${escHtml(lvl.focus)}</div>
+                    </div>
+                    ${idx < trilha.levels.length - 1 ? `<div style="width:20px;height:1px;background:${trilha.color}55;margin-top:17px;flex-shrink:0"></div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+
+    const trilhaCardsHtml = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:14px">
+        ${trilhas.map(trilha => `
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${trilha.levels.map(lvl => `
+              <div class="pg-card" style="background:var(--branco);border:1px solid ${trilha.border};border-left:3px solid ${trilha.color};border-radius:8px;padding:11px 12px">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                  <div style="width:18px;height:18px;border-radius:50%;background:${trilha.color};color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${escHtml(lvl.num)}</div>
+                  <div class="pg-card-title" style="font-size:10px;font-weight:700;color:var(--grafite)">${escHtml(trilha.label)} <span style="font-weight:400;color:${trilha.color}">· ${escHtml(lvl.focus)}</span></div>
+                </div>
+                <div class="pg-card-desc" style="font-size:10px;color:#666;line-height:1.55">${escHtml(lvl.desc)}</div>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>`;
+
+    const criteriosHtml = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">
+        ${criterios.map(item => `
+          <div class="pg-criterio" style="background:var(--off);border:1px solid var(--cinza);border-radius:6px;padding:10px 12px">
+            <div class="pg-criterio-title" style="font-size:10px;font-weight:700;color:var(--grafite);margin-bottom:3px">${escHtml(item.titulo)}</div>
+            <div class="pg-criterio-text" style="font-size:10px;color:#666;line-height:1.5">${escHtml(item.desc)}</div>
+          </div>
+        `).join('')}
+      </div>`;
+
+    el.innerHTML = [
+      (window.renderTemaHdr || function(){ return ''; })('plano-gente', 'Plano de Gente', 'Estrutura de crescimento profissional na EXP'),
+      renderPlanoShell(secaoSobre, parseRichBody(secaoSobre.corpo)),
+      renderPlanoShell(secaoNucleos, nucleosHtml),
+      renderPlanoShell(secaoTrilha, `${trilhaTrackHtml}${trilhaCardsHtml}`),
+      renderPlanoShell(secaoCriterios, criteriosHtml),
+      renderPlanoShell(secaoMatriz, parseRichBody(secaoMatriz.corpo), `<button class="btn verde sm" onclick="abrirMatrizPlanoGente()">Abrir matriz</button>`)
     ].join('');
   };
 

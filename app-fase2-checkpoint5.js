@@ -156,6 +156,30 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     return value || 'Sistema';
   }
 
+  async function enviarPushFeedbackResolvido(item) {
+    const current = currentSessionUsuario();
+    const usuarioId = item?.usuario_id || null;
+    if (!usuarioId || usuarioId === current?.app_user_id) return;
+    const tipo = String(item?.tipo || '').toLowerCase();
+    const title = tipo === 'sugestao' ? 'Sugestao implementada' : 'Ajuste realizado';
+    const body = tipo === 'sugestao'
+      ? 'A plataforma foi adaptada conforme sua sugestao, obrigado pela contribuicao!'
+      : 'A plataforma foi ajustada conforme o problema reportado, obrigado pela contribuicao!';
+    try {
+      await window.sb.functions.invoke('send-push', {
+        body: {
+          usuario_id: usuarioId,
+          title,
+          body,
+          url: window.location.href,
+          tag: 'exp-platform-feedback-' + (item.id || 'resolved')
+        }
+      });
+    } catch (error) {
+      console.warn('[EXP Plataforma] Falha ao enviar push de feedback resolvido', error);
+    }
+  }
+
   function currentToolFeedbackContext() {
     const page = String(window.location.pathname.split('/').pop() || 'app.html');
     const navModule = document.querySelector('.nav-mod')?.textContent?.trim() || '';
@@ -270,7 +294,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     } catch (caughtError) {
       error = caughtError;
     }
-    if (error) {
+    if (updateError) {
       if (!isTermTableMissing(error)) {
         setPlataformaStatus('Não foi possível carregar a definição gerenciável do termo.');
       }
@@ -506,12 +530,10 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       const user = platformUsersCache.find((entry) => String(entry.id) === String(item.usuario_id)) || null;
       const enviadoPor = user?.nome || 'Usuario nao identificado';
       const enviadoMeta = user ? ((user.apelido || '-') + ' · ' + roleLabel(user.role)) : 'sem identidade de usuario';
-      const isResolvido = item.status === 'resolvido';
-      return '<div class="platform-feedback-row' + (isResolvido ? ' resolvido' : '') + '">'
+      return '<div class="platform-feedback-row">'
         + '<div class="platform-feedback-head">'
         + '  <div class="platform-feedback-badges">'
         + '    <span class="platform-feedback-type ' + escapeHtml(String(item.tipo || 'problema').toLowerCase()) + '">' + feedbackTypeLabel(item.tipo) + '</span>'
-        + '    <span class="platform-feedback-state ' + escapeHtml(String(item.status || 'novo').toLowerCase()) + '">' + feedbackStatusLabel(item.status) + '</span>'
         + '  </div>'
         + '  <div class="platform-feedback-meta">' + escapeHtml(formatPtDate(item.criado_em) || '-') + ' · ' + escapeHtml(feedbackOriginLabel(item.origem_modulo || item.url_origem)) + '</div>'
         + '</div>'
@@ -522,12 +544,10 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         + '<div class="platform-feedback-copy">' + escapeHtml(item.mensagem).replace(/\n/g, '<br>') + '</div>'
         + '<div class="platform-feedback-actions">'
         + '  <div class="platform-feedback-meta">' + escapeHtml(item.url_origem || '') + '</div>'
-        + '  <select class="shell-btn" onchange="salvarStatusFeedbackPlataforma(\'' + item.id + '\', this.value)">'
-        + '    <option value="novo"' + ((item.status || 'novo') === 'novo' ? ' selected' : '') + '>Novo</option>'
-        + '    <option value="em_analise"' + (item.status === 'em_analise' ? ' selected' : '') + '>Em analise</option>'
-        + '    <option value="resolvido"' + (item.status === 'resolvido' ? ' selected' : '') + '>Resolvido</option>'
-        + '  </select>'
-        + '  <button type="button" class="shell-btn warn" onclick="apagarFeedbackPlataforma(\'' + item.id + '\')" title="Apagar este registro de feedback" style="margin-left:4px">Apagar</button>'
+        + '  <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'
+        + '    <button type="button" class="shell-btn primary" onclick="resolverEApagarFeedbackPlataforma(\'' + item.id + '\')" title="Resolver registro, avisar o autor e remover da fila">Resolver e apagar</button>'
+        + '    <button type="button" class="shell-btn warn" onclick="recusarFeedbackPlataforma(\'' + item.id + '\')" title="Recusar registro e remover da fila sem notificar o autor">Recusar</button>'
+        + '  </div>'
         + '</div>'
         + '</div>';
     }).join('');
@@ -1278,13 +1298,19 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
       return;
     }
+    const item = platformFeedbackCache.find((entry) => String(entry.id) === String(feedbackId)) || null;
+    if (!item) {
+      setPlataformaStatus('Nao foi possivel localizar este feedback na fila atual.');
+      return;
+    }
+    setPlataformaStatus('Resolvendo feedback e notificando o autor...');
     const patch = {
-      status,
+      status: 'resolvido',
       atualizado_em: isoNow(),
-      tratado_por: status === 'novo' ? null : (sessionUser.app_user_id || null),
-      tratado_em: status === 'novo' ? null : isoNow()
+      tratado_por: sessionUser.app_user_id || null,
+      tratado_em: isoNow()
     };
-    const { error } = await window.sb.from('plataforma_feedback').update(patch).eq('id', feedbackId);
+    const { error: updateError } = await window.sb.from('plataforma_feedback').update(patch).eq('id', feedbackId);
     if (error) {
       setPlataformaStatus('Não foi possível atualizar o status do feedback.');
       return;
@@ -1310,6 +1336,60 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     await registrarAuditoriaPlataforma('feedback.apagado', null, { feedback_id: feedbackId });
     await carregarFeedbackPlataforma();
     setPlataformaStatus('Feedback apagado.');
+  };
+
+  // Override do fluxo legado de status para um fluxo binario:
+  // resolver e apagar com push para o autor, ou recusar sem notificacao.
+  window.resolverEApagarFeedbackPlataforma = async function resolverEApagarFeedbackPlataforma(feedbackId) {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
+      return;
+    }
+    const item = platformFeedbackCache.find((entry) => String(entry.id) === String(feedbackId)) || null;
+    if (!item) {
+      setPlataformaStatus('Nao foi possivel localizar este feedback na fila atual.');
+      return;
+    }
+    setPlataformaStatus('Resolvendo feedback e notificando o autor...');
+    const patch = {
+      status: 'resolvido',
+      atualizado_em: isoNow(),
+      tratado_por: sessionUser.app_user_id || null,
+      tratado_em: isoNow()
+    };
+    const { error: updateError } = await window.sb.from('plataforma_feedback').update(patch).eq('id', feedbackId);
+    if (updateError) {
+      setPlataformaStatus('Nao foi possivel marcar o feedback como resolvido.');
+      return;
+    }
+    await enviarPushFeedbackResolvido(item);
+    const { error: deleteError } = await window.sb.from('plataforma_feedback').delete().eq('id', feedbackId);
+    if (deleteError) {
+      setPlataformaStatus('O autor foi notificado, mas nao foi possivel remover o feedback da fila.');
+      return;
+    }
+    await registrarAuditoriaPlataforma('feedback.resolvido_e_apagado', null, { feedback_id: feedbackId, tipo: item.tipo || null });
+    await carregarFeedbackPlataforma();
+    setPlataformaStatus('Feedback resolvido, autor notificado e registro removido da fila.');
+  };
+
+  window.recusarFeedbackPlataforma = async function recusarFeedbackPlataforma(feedbackId) {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('Este fluxo exige acesso administrativo de plataforma.');
+      return;
+    }
+    if (!window.confirm('Recusar este registro e remover da fila sem notificar o autor?')) return;
+    setPlataformaStatus('Recusando feedback...');
+    const { error } = await window.sb.from('plataforma_feedback').delete().eq('id', feedbackId);
+    if (error) {
+      setPlataformaStatus('Nao foi possivel recusar o feedback.');
+      return;
+    }
+    await registrarAuditoriaPlataforma('feedback.recusado', null, { feedback_id: feedbackId });
+    await carregarFeedbackPlataforma();
+    setPlataformaStatus('Feedback recusado e removido da fila.');
   };
 
   window.salvarRolePlatform = async function salvarRolePlatform(userId, role) {
