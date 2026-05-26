@@ -1763,13 +1763,27 @@ function analiseGraficoBudgetEtapas(item) {
   `;
 }
 
+function analiseProdutosMargemNucleo(produtos) {
+  return (produtos || []).filter((item) => {
+    const etapas = item.etapasDados || [];
+    const temHorasConcluidas = etapas.some((etapaItem) =>
+      etapaItem.etapa?.status === 'concluida' && Number(etapaItem.horasTotais || 0) > 0
+    );
+    return item.statusResumo?.statusKey === 'encerrado'
+      && Number(item.horasTotais || 0) > 0
+      && temHorasConcluidas
+      && Number(item.produto?.valor_contratado || 0) > 0;
+  });
+}
+
 function analiseGraficoMargemPorNucleo(produtos) {
-  if (!(produtos || []).length) {
-    return '<div class="empty-note">Sem projetos para compor a leitura por nucleo.</div>';
+  const base = analiseProdutosMargemNucleo(produtos);
+  if (!base.length) {
+    return '<div class="empty-note">Sem projetos encerrados com horas concluídas para compor a margem por núcleo.</div>';
   }
 
   const rows = Object.entries(
-    produtos.reduce((acc, item) => {
+    base.reduce((acc, item) => {
       const key = item.produto?.nucleo || 'sem_nucleo';
       if (!acc[key]) {
         acc[key] = { label: NUCLEO_COR[key]?.label || 'Sem nucleo', contratado: 0, custo: 0 };
@@ -1785,11 +1799,19 @@ function analiseGraficoMargemPorNucleo(produtos) {
 
   const maxWidth = 220;
   return `
+    <div class="analise-chart-copy">Base formada apenas por projetos encerrados com horas vinculadas a etapas concluídas.</div>
     <svg class="analise-svg-chart" viewBox="0 0 320 ${60 + rows.length * 24}" aria-label="Margem por nucleo">
       ${rows.map((row, index) => {
         const y = 28 + index * 24;
         const pct = Math.max(0, Math.min(100, Number(row.margemPct || 0)));
-        const cor = Number(row.margemPct || 0) < 20 ? 'var(--terracota)' : Number(row.margemPct || 0) < 25 ? 'var(--ouro)' : 'var(--verde)';
+        const margem = Number(row.margemPct || 0);
+        const cor = margem < 10
+          ? 'var(--terracota)'
+          : margem < 20
+            ? 'var(--ouro)'
+            : margem < 30
+              ? 'var(--azul)'
+              : 'var(--verde)';
         return `
           <text x="16" y="${y}" class="svg-label">${_escN(row.label)}</text>
           <rect x="102" y="${y - 12}" width="${maxWidth}" height="14" rx="7" fill="var(--off)"></rect>
