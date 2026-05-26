@@ -1714,7 +1714,7 @@ function renderPlatformPalette() {
   wrap.setAttribute('data-selected', PLATFORM_COLORS[0]);
 }
 
-function fillMeusDadosForm(usuario, dados = {}) {
+function fillMeusDadosForm(usuario, dados = {}, profissionais = {}, empresariais = {}, bancarios = {}) {
   document.getElementById('md-nome-completo').value = dados.nome_completo || usuario.nome || '';
   document.getElementById('md-apelido').value = usuario.apelido || (usuario.nome ? usuario.nome.split(' ')[0] : '');
   document.getElementById('md-email-login').value = usuario.email_login || usuario.email || '';
@@ -1735,6 +1735,33 @@ function fillMeusDadosForm(usuario, dados = {}) {
   document.getElementById('md-emergencia-nome').value = dados.emergencia_nome || '';
   document.getElementById('md-emergencia-relacao').value = dados.emergencia_relacao || '';
   document.getElementById('md-emergencia-telefone').value = dados.emergencia_telefone || '';
+  document.getElementById('md-registro-cau').value = profissionais.registro_cau || '';
+  document.getElementById('md-instituicao-formacao').value = profissionais.instituicao_formacao || '';
+  document.getElementById('md-mes-ano-formacao').value = profissionais.mes_ano_formacao || '';
+  document.getElementById('md-vinculo-exp').checked = !!empresariais.vinculo_exp;
+  document.getElementById('md-razao-social').value = empresariais.razao_social || '';
+  document.getElementById('md-nome-fantasia').value = empresariais.nome_fantasia || '';
+  document.getElementById('md-cnpj').value = empresariais.cnpj || '';
+  document.getElementById('md-data-inscricao').value = empresariais.data_inscricao || '';
+  document.getElementById('md-regime-tributario').value = empresariais.regime_tributario || '';
+  document.getElementById('md-emp-logradouro').value = empresariais.logradouro || '';
+  document.getElementById('md-emp-numero').value = empresariais.numero || '';
+  document.getElementById('md-emp-complemento').value = empresariais.complemento || '';
+  document.getElementById('md-emp-cep').value = empresariais.cep || '';
+  document.getElementById('md-emp-bairro').value = empresariais.bairro || '';
+  document.getElementById('md-emp-municipio').value = empresariais.municipio || '';
+  document.getElementById('md-emp-uf').value = empresariais.uf || '';
+  document.getElementById('md-email-empresarial').value = empresariais.email_empresarial || '';
+  document.getElementById('md-telefone-empresarial').value = empresariais.telefone_empresarial || '';
+  document.getElementById('md-banco').value = bancarios.banco || '';
+  document.getElementById('md-agencia').value = bancarios.agencia || '';
+  document.getElementById('md-conta').value = bancarios.conta || '';
+  document.getElementById('md-tipo-conta').value = bancarios.tipo_conta || '';
+  document.getElementById('md-titular').value = bancarios.titular || '';
+  document.getElementById('md-documento-titular').value = bancarios.documento_titular || '';
+  document.getElementById('md-chave-pix').value = bancarios.chave_pix || '';
+  document.getElementById('md-tipo-chave-pix').value = bancarios.tipo_chave_pix || '';
+  toggleEmpresaFields();
 
   const avatar = document.getElementById('meus-dados-avatar');
   avatar.style.background = usuario.cor || '#888';
@@ -1770,20 +1797,21 @@ async function abrirMeusDados() {
     return;
   }
 
-  const { data, error } = await sb
-    .from('usuarios_dados_pessoais')
-    .select('*')
-    .eq('usuario_id', sessionUser.app_user_id)
-    .maybeSingle();
+  const [pessoais, profissionais, empresariais, bancarios] = await Promise.all([
+    sb.from('usuarios_dados_pessoais').select('*').eq('usuario_id', sessionUser.app_user_id).maybeSingle(),
+    sb.from('usuarios_dados_profissionais').select('*').eq('usuario_id', sessionUser.app_user_id).maybeSingle(),
+    sb.from('usuarios_dados_empresariais').select('*').eq('usuario_id', sessionUser.app_user_id).maybeSingle(),
+    sb.from('usuarios_dados_bancarios').select('*').eq('usuario_id', sessionUser.app_user_id).maybeSingle()
+  ]);
 
-  if (error) {
+  if (pessoais.error) {
     setMeusDadosStatus('Falha ao carregar os dados pessoais do usuário.');
-    fillMeusDadosForm(usuario, {});
+    fillMeusDadosForm(usuario, {}, profissionais.data || {}, empresariais.data || {}, bancarios.data || {});
     return;
   }
 
-  fillMeusDadosForm(usuario, data || {});
-  setMeusDadosStatus('Dados carregados. Esta e a primeira etapa funcional de "Meus dados".');
+  fillMeusDadosForm(usuario, pessoais.data || {}, profissionais.data || {}, empresariais.data || {}, bancarios.data || {});
+  setMeusDadosStatus('Dados carregados.');
 }
 
 function fecharMeusDados(event) {
@@ -1803,10 +1831,12 @@ async function salvarMeusDados() {
   try {
   const nomeCompleto = document.getElementById('md-nome-completo').value.trim();
   const apelido = document.getElementById('md-apelido').value.trim();
+  const nomeBase = nomeCompleto || sessionUser.nome || null;
+  const apelidoBase = apelido || sessionUser.apelido || (nomeBase ? nomeBase.split(' ')[0] : null);
   const usuarioPayload = {
-    nome: nomeCompleto || null,
-    apelido: apelido || null,
-    iniciais: initialsFromNome(nomeCompleto || apelido || sessionUser.nome || '')
+    nome: nomeBase,
+    apelido: apelidoBase,
+    iniciais: initialsFromNome(nomeBase || apelidoBase || '')
   };
 
   const dadosPessoaisPayload = {
@@ -1831,6 +1861,44 @@ async function salvarMeusDados() {
     emergencia_telefone: document.getElementById('md-emergencia-telefone').value.trim() || null,
     updated_at: new Date().toISOString()
   };
+  const dadosProfissionaisPayload = {
+    usuario_id: sessionUser.app_user_id,
+    registro_cau: document.getElementById('md-registro-cau').value.trim() || null,
+    instituicao_formacao: document.getElementById('md-instituicao-formacao').value.trim() || null,
+    mes_ano_formacao: document.getElementById('md-mes-ano-formacao').value.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+  const dadosEmpresariaisPayload = {
+    usuario_id: sessionUser.app_user_id,
+    vinculo_exp: !!document.getElementById('md-vinculo-exp').checked,
+    razao_social: document.getElementById('md-razao-social').value.trim() || null,
+    nome_fantasia: document.getElementById('md-nome-fantasia').value.trim() || null,
+    cnpj: document.getElementById('md-cnpj').value.trim() || null,
+    data_inscricao: document.getElementById('md-data-inscricao').value || null,
+    regime_tributario: document.getElementById('md-regime-tributario').value || null,
+    logradouro: document.getElementById('md-emp-logradouro').value.trim() || null,
+    numero: document.getElementById('md-emp-numero').value.trim() || null,
+    complemento: document.getElementById('md-emp-complemento').value.trim() || null,
+    cep: document.getElementById('md-emp-cep').value.trim() || null,
+    bairro: document.getElementById('md-emp-bairro').value.trim() || null,
+    municipio: document.getElementById('md-emp-municipio').value.trim() || null,
+    uf: document.getElementById('md-emp-uf').value.trim().toUpperCase() || null,
+    email_empresarial: document.getElementById('md-email-empresarial').value.trim() || null,
+    telefone_empresarial: document.getElementById('md-telefone-empresarial').value.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+  const dadosBancariosPayload = {
+    usuario_id: sessionUser.app_user_id,
+    banco: document.getElementById('md-banco').value.trim() || null,
+    agencia: document.getElementById('md-agencia').value.trim() || null,
+    conta: document.getElementById('md-conta').value.trim() || null,
+    tipo_conta: document.getElementById('md-tipo-conta').value || null,
+    titular: document.getElementById('md-titular').value.trim() || null,
+    documento_titular: document.getElementById('md-documento-titular').value.trim() || null,
+    chave_pix: document.getElementById('md-chave-pix').value.trim() || null,
+    tipo_chave_pix: document.getElementById('md-tipo-chave-pix').value || null,
+    updated_at: new Date().toISOString()
+  };
 
   const { error: userError } = await sb
     .from('usuarios')
@@ -1842,11 +1910,14 @@ async function salvarMeusDados() {
     return;
   }
 
-  const { error: personalError } = await sb
-    .from('usuarios_dados_pessoais')
-    .upsert(dadosPessoaisPayload, { onConflict: 'usuario_id' });
+  const [personalResult, professionalResult, businessResult, bankResult] = await Promise.all([
+    sb.from('usuarios_dados_pessoais').upsert(dadosPessoaisPayload, { onConflict: 'usuario_id' }),
+    sb.from('usuarios_dados_profissionais').upsert(dadosProfissionaisPayload, { onConflict: 'usuario_id' }),
+    sb.from('usuarios_dados_empresariais').upsert(dadosEmpresariaisPayload, { onConflict: 'usuario_id' }),
+    sb.from('usuarios_dados_bancarios').upsert(dadosBancariosPayload, { onConflict: 'usuario_id' })
+  ]);
 
-  if (personalError) {
+  if (personalResult.error || professionalResult.error || businessResult.error || bankResult.error) {
     setMeusDadosStatus('Não foi possível salvar os dados pessoais.');
     return;
   }
@@ -1857,10 +1928,129 @@ async function salvarMeusDados() {
     sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
     renderShellIdentity(usuarioAtualizado);
     publishSessionReady(payload);
-    fillMeusDadosForm(usuarioAtualizado, dadosPessoaisPayload);
+    fillMeusDadosForm(usuarioAtualizado, dadosPessoaisPayload, dadosProfissionaisPayload, dadosEmpresariaisPayload, dadosBancariosPayload);
   }
 
   setMeusDadosStatus('Dados salvos com sucesso.');
+  } catch (err) {
+    console.error('[salvarMeusDados]', err);
+    setMeusDadosStatus('Erro inesperado ao salvar. Tente novamente.');
+  }
+}
+
+async function salvarMeusDados() {
+  const sessionUser = currentSessionUsuario();
+  if (!sessionUser?.app_user_id || !sessionUser?.auth_id) {
+    setMeusDadosStatus('Sessao invalida para salvar os dados.');
+    return;
+  }
+
+  setMeusDadosStatus('Salvando dados...');
+
+  try {
+    const nomeCompleto = document.getElementById('md-nome-completo').value.trim();
+    const apelido = document.getElementById('md-apelido').value.trim();
+    const nomeBase = nomeCompleto || sessionUser.nome || null;
+    const apelidoBase = apelido || sessionUser.apelido || (nomeBase ? nomeBase.split(' ')[0] : null);
+    const usuarioPayload = {
+      nome: nomeBase,
+      apelido: apelidoBase,
+      iniciais: initialsFromNome(nomeBase || apelidoBase || '')
+    };
+
+    const dadosPessoaisPayload = {
+      usuario_id: sessionUser.app_user_id,
+      nome_completo: nomeCompleto || null,
+      data_nascimento: document.getElementById('md-data-nascimento').value || null,
+      cidade_nascimento: document.getElementById('md-cidade-nascimento').value.trim() || null,
+      uf_nascimento: document.getElementById('md-uf-nascimento').value.trim().toUpperCase() || null,
+      email_pessoal: document.getElementById('md-email-pessoal').value.trim() || null,
+      celular: document.getElementById('md-celular').value.trim() || null,
+      telefone_corporativo: document.getElementById('md-telefone-corporativo').value.trim() || null,
+      telefone_fixo: document.getElementById('md-telefone-fixo').value.trim() || null,
+      logradouro: document.getElementById('md-logradouro').value.trim() || null,
+      numero: document.getElementById('md-numero').value.trim() || null,
+      complemento: document.getElementById('md-complemento').value.trim() || null,
+      cep: document.getElementById('md-cep').value.trim() || null,
+      bairro: document.getElementById('md-bairro').value.trim() || null,
+      cidade: document.getElementById('md-cidade').value.trim() || null,
+      uf: document.getElementById('md-uf').value.trim().toUpperCase() || null,
+      emergencia_nome: document.getElementById('md-emergencia-nome').value.trim() || null,
+      emergencia_relacao: document.getElementById('md-emergencia-relacao').value.trim() || null,
+      emergencia_telefone: document.getElementById('md-emergencia-telefone').value.trim() || null,
+      updated_at: new Date().toISOString()
+    };
+    const dadosProfissionaisPayload = {
+      usuario_id: sessionUser.app_user_id,
+      registro_cau: document.getElementById('md-registro-cau').value.trim() || null,
+      instituicao_formacao: document.getElementById('md-instituicao-formacao').value.trim() || null,
+      mes_ano_formacao: document.getElementById('md-mes-ano-formacao').value.trim() || null,
+      updated_at: new Date().toISOString()
+    };
+    const dadosEmpresariaisPayload = {
+      usuario_id: sessionUser.app_user_id,
+      vinculo_exp: !!document.getElementById('md-vinculo-exp').checked,
+      razao_social: document.getElementById('md-razao-social').value.trim() || null,
+      nome_fantasia: document.getElementById('md-nome-fantasia').value.trim() || null,
+      cnpj: document.getElementById('md-cnpj').value.trim() || null,
+      data_inscricao: document.getElementById('md-data-inscricao').value || null,
+      regime_tributario: document.getElementById('md-regime-tributario').value || null,
+      logradouro: document.getElementById('md-emp-logradouro').value.trim() || null,
+      numero: document.getElementById('md-emp-numero').value.trim() || null,
+      complemento: document.getElementById('md-emp-complemento').value.trim() || null,
+      cep: document.getElementById('md-emp-cep').value.trim() || null,
+      bairro: document.getElementById('md-emp-bairro').value.trim() || null,
+      municipio: document.getElementById('md-emp-municipio').value.trim() || null,
+      uf: document.getElementById('md-emp-uf').value.trim().toUpperCase() || null,
+      email_empresarial: document.getElementById('md-email-empresarial').value.trim() || null,
+      telefone_empresarial: document.getElementById('md-telefone-empresarial').value.trim() || null,
+      updated_at: new Date().toISOString()
+    };
+    const dadosBancariosPayload = {
+      usuario_id: sessionUser.app_user_id,
+      banco: document.getElementById('md-banco').value.trim() || null,
+      agencia: document.getElementById('md-agencia').value.trim() || null,
+      conta: document.getElementById('md-conta').value.trim() || null,
+      tipo_conta: document.getElementById('md-tipo-conta').value || null,
+      titular: document.getElementById('md-titular').value.trim() || null,
+      documento_titular: document.getElementById('md-documento-titular').value.trim() || null,
+      chave_pix: document.getElementById('md-chave-pix').value.trim() || null,
+      tipo_chave_pix: document.getElementById('md-tipo-chave-pix').value || null,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error: userError } = await sb
+      .from('usuarios')
+      .update(usuarioPayload)
+      .eq('id', sessionUser.app_user_id);
+
+    if (userError) {
+      setMeusDadosStatus('Nao foi possivel salvar a identidade base do usuario.');
+      return;
+    }
+
+    const [personalResult, professionalResult, businessResult, bankResult] = await Promise.all([
+      sb.from('usuarios_dados_pessoais').upsert(dadosPessoaisPayload, { onConflict: 'usuario_id' }),
+      sb.from('usuarios_dados_profissionais').upsert(dadosProfissionaisPayload, { onConflict: 'usuario_id' }),
+      sb.from('usuarios_dados_empresariais').upsert(dadosEmpresariaisPayload, { onConflict: 'usuario_id' }),
+      sb.from('usuarios_dados_bancarios').upsert(dadosBancariosPayload, { onConflict: 'usuario_id' })
+    ]);
+
+    if (personalResult.error || professionalResult.error || businessResult.error || bankResult.error) {
+      setMeusDadosStatus('Nao foi possivel salvar todos os blocos de "Meus dados".');
+      return;
+    }
+
+    const usuarioAtualizado = await fetchCurrentUsuario(sessionUser.auth_id);
+    if (usuarioAtualizado) {
+      const payload = buildExpUsuarioPayload(sessionUser.auth_id, usuarioAtualizado);
+      sessionStorage.setItem('exp_usuario', JSON.stringify(payload));
+      renderShellIdentity(usuarioAtualizado);
+      publishSessionReady(payload);
+      fillMeusDadosForm(usuarioAtualizado, dadosPessoaisPayload, dadosProfissionaisPayload, dadosEmpresariaisPayload, dadosBancariosPayload);
+    }
+
+    setMeusDadosStatus('Dados salvos com sucesso.');
   } catch (err) {
     console.error('[salvarMeusDados]', err);
     setMeusDadosStatus('Erro inesperado ao salvar. Tente novamente.');
