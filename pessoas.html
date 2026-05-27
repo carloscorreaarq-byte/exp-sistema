@@ -1037,6 +1037,10 @@ create table if not exists public.pessoas_pesquisa_clima_respostas (
   respondido_em timestamptz not null default now()
 );
 
+-- migration: add campanha_id to existing tables that predate this column
+alter table public.pessoas_pesquisa_clima_respostas
+  add column if not exists campanha_id uuid references public.pessoas_pesquisa_clima_campanhas(id) on delete set null;
+
 alter table public.pessoas_pesquisa_clima_perguntas enable row level security;
 alter table public.pessoas_pesquisa_clima_campanhas enable row level security;
 alter table public.pessoas_pesquisa_clima_disparos enable row level security;
@@ -1058,7 +1062,7 @@ create policy "auth_modify" on public.pessoas_pesquisa_clima_campanhas for all t
 create policy "auth_select" on public.pessoas_pesquisa_clima_disparos for select to authenticated using (true);
 create policy "auth_modify" on public.pessoas_pesquisa_clima_disparos for all to authenticated using (private.is_socio()) with check (private.is_socio());
 create policy "auth_select" on public.pessoas_pesquisa_clima_respostas for select to authenticated using (true);
-create policy "auth_modify" on public.pessoas_pesquisa_clima_respostas for all to authenticated using (private.is_socio()) with check (private.is_socio());
+create policy "auth_modify" on public.pessoas_pesquisa_clima_respostas for all to authenticated using (true) with check (true);
 
 commit;`;
 
