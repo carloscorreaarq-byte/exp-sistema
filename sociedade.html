@@ -1000,10 +1000,15 @@ function findUsuarioByActorId(actorId) {
 }
 
 function formatDbError(error, fallback) {
-  const msg = String(error?.message || '').toLowerCase();
-  if (error?.code === '42501' || msg.includes('row-level security') || msg.includes('permission denied') || msg.includes('forbidden')) {
-    return 'Permissao negada no banco para o modulo sociedade';
+  const msg  = String(error?.message || '').toLowerCase();
+  const code = error?.code || '';
+  if (code === '42501' || msg.includes('row-level security') || msg.includes('permission denied') || msg.includes('forbidden')) {
+    return 'Permissão negada — verifique as políticas RLS no Supabase';
   }
+  if (code === '42703' || msg.includes('column') || msg.includes('does not exist')) {
+    return 'Coluna faltando no banco — rode o ALTER TABLE descrito no código';
+  }
+  if (msg) return fallback + ': ' + error.message;
   return fallback;
 }
 
@@ -1277,7 +1282,7 @@ async function carregarPautas() {
   const [pRes, lRes, ckRes, cmRes] = await Promise.all([
     sb.from('soc_pautas').select('*').order('updated_at', { ascending: false }),
     sb.from('soc_pautas_leituras').select('pauta_id, lido_em').eq('user_id', authUserId()),
-    sb.from('soc_pautas_checklists').select('id, pauta_id, responsavel_id, prazo, concluido, valor'),
+    sb.from('soc_pautas_checklists').select('id, pauta_id, responsavel_id, prazo, concluido'),
     sb.from('soc_pautas_comentarios').select('id, pauta_id'),
   ]);
 
@@ -1742,16 +1747,25 @@ async function salvarPauta() {
   if (btn) btn.disabled = true;
 
   // Montar registros de checklist com resp por item (ou resp geral)
+  // Omite `valor` se for vazio para não quebrar caso a coluna ainda não exista
   function buildCkRows(pautaId) {
-    return G.ckItensNovos.map(it => ({
-      pauta_id:       pautaId,
-      texto:          it.texto,
-      responsavel_id: G.ckRespGeral || it.responsavel_id || null,
-      valor:          it.valor !== '' && it.valor != null ? Number(it.valor) : null,
-      concluido:      false,
-      criado_por:     authUserId(),
-    }));
+    return G.ckItensNovos.map(it => {
+      const row = {
+        pauta_id:       pautaId,
+        texto:          it.texto || '—',
+        responsavel_id: G.ckRespGeral || it.responsavel_id || null,
+        concluido:      false,
+        criado_por:     authUserId(),
+      };
+      const v = it.valor !== '' && it.valor != null ? Number(it.valor) : null;
+      if (v !== null && !isNaN(v)) row.valor = v;
+      return row;
+    });
   }
+
+  // IDs dos itens já gravados (carregados no modal de edição)
+  // Coletamos ANTES de qualquer operação para deletar depois do INSERT com segurança
+  const oldCkIds = G.ckItensNovos.filter(it => it.id).map(it => it.id);
 
   try {
     if (G.editandoPautaId) {
@@ -1760,9 +1774,18 @@ async function salvarPauta() {
       }).eq('id', G.editandoPautaId);
       if (error) throw error;
 
-      await sb.from('soc_pautas_checklists').delete().eq('pauta_id', G.editandoPautaId);
       if (temCk && G.ckItensNovos.length) {
-        await sb.from('soc_pautas_checklists').insert(buildCkRows(G.editandoPautaId));
+        // 1. Inserir PRIMEIRO — se falhar, os itens antigos ainda existem
+        const { error: insErr } = await sb.from('soc_pautas_checklists')
+          .insert(buildCkRows(G.editandoPautaId));
+        if (insErr) throw insErr;
+        // 2. Só deletar os antigos após insert confirmado
+        if (oldCkIds.length) {
+          await sb.from('soc_pautas_checklists').delete().in('id', oldCkIds);
+        }
+      } else {
+        // Checkbox desmarcado: apagar tudo
+        await sb.from('soc_pautas_checklists').delete().eq('pauta_id', G.editandoPautaId);
       }
       toast('Pauta atualizada', 'ok');
     } else {
@@ -1772,7 +1795,9 @@ async function salvarPauta() {
       if (error || !nova) throw error || new Error('Erro');
 
       if (temCk && G.ckItensNovos.length) {
-        await sb.from('soc_pautas_checklists').insert(buildCkRows(nova.id));
+        const { error: insErr } = await sb.from('soc_pautas_checklists')
+          .insert(buildCkRows(nova.id));
+        if (insErr) throw insErr;
       }
       toast('Pauta publicada', 'ok');
     }
