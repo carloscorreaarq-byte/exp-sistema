@@ -202,7 +202,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .pauta-detalhe-hd { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--cinza2); }
 .pauta-detalhe-titulo { font-size: 20px; font-weight: 700; letter-spacing: -.5px; line-height: 1.25; }
 .pauta-detalhe-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #aaa; margin-top: 9px; flex-wrap: wrap; }
-.pauta-detalhe-corpo { font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; margin-bottom: 20px; color: var(--grafite); }
+.pauta-detalhe-corpo { font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; margin-bottom: 20px; color: var(--grafite); }
 
 /* Checklist dentro da pauta */
 .ck-pauta-wrap { border: 1px solid var(--cinza); border-radius: 9px; margin-bottom: 18px; overflow: hidden; }
@@ -228,9 +228,9 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .ck-edit-seq  { font-size: 9px; color: #ccc; width: 14px; text-align: right; flex-shrink: 0; font-weight: 700; }
 .ck-edit-inp  { flex: 1; font-size: 12px; border: 1px solid var(--cinza); border-radius: 6px; padding: 4px 8px; font-family: var(--font-ui); color: var(--grafite); background: var(--branco); outline: none; min-width: 0; }
 .ck-edit-inp:focus { border-color: var(--soc); }
-.ck-edit-resp { font-size: 10px; border: 1px solid var(--cinza); border-radius: 6px; padding: 3px 5px; font-family: var(--font-ui); color: var(--grafite); background: var(--branco); cursor: pointer; outline: none; max-width: 110px; min-width: 0; }
+.ck-edit-resp { font-size: 10px; border: 1px solid var(--cinza); border-radius: 6px; padding: 4px 6px; font-family: var(--font-ui); color: var(--grafite); background: var(--branco); cursor: pointer; outline: none; width: 130px; min-width: 0; flex-shrink: 0; }
 .ck-edit-resp:focus { border-color: var(--soc); }
-.ck-edit-valor { font-size: 11px; border: 1px solid var(--cinza); border-radius: 6px; padding: 4px 6px; font-family: var(--font-ui); color: var(--grafite); background: var(--branco); outline: none; width: 74px; flex-shrink: 0; }
+.ck-edit-valor { font-size: 11px; border: 1px solid var(--cinza); border-radius: 6px; padding: 4px 8px; font-family: var(--font-ui); color: var(--grafite); background: var(--branco); outline: none; width: 110px; flex-shrink: 0; }
 .ck-edit-valor:focus { border-color: var(--soc); }
 .ck-edit-del  { background: none; border: none; cursor: pointer; color: #d0d0d0; font-size: 13px; padding: 0 3px; font-family: inherit; flex-shrink: 0; line-height: 1; }
 .ck-edit-del:hover { color: var(--terracota); }
@@ -695,13 +695,18 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
         <!-- Lista de itens -->
         <div id="mp-ck-itens"></div>
 
-        <!-- Adicionar item -->
-        <div style="display:flex;gap:6px;margin-top:10px">
-          <input type="text" id="mp-ck-novo-item"
-            style="flex:1;border:1px dashed var(--cinza);border-radius:6px;padding:5px 9px;font-size:12px;font-family:var(--font-ui);background:transparent;color:var(--grafite);outline:none"
-            placeholder="+ Novo item… (Enter para adicionar)"
+        <!-- Linha de novo item: todos os campos visíveis desde o início -->
+        <div style="display:flex;gap:6px;align-items:center;margin-top:10px;padding:8px 10px;background:var(--off);border:1px dashed var(--cinza);border-radius:8px">
+          <span class="ck-edit-seq" style="color:#ddd">+</span>
+          <input type="text" id="mp-ck-novo-item" class="ck-edit-inp"
+            placeholder="Descrição do item…"
             onkeydown="if(event.key==='Enter'){event.preventDefault();addCkNovoItem()}">
-          <button class="btn sm soc" onclick="addCkNovoItem()">+ Adicionar</button>
+          <select id="mp-ck-novo-resp" class="ck-edit-resp">
+            <option value="">Resp.</option>
+          </select>
+          <input type="number" id="mp-ck-novo-valor" class="ck-edit-valor"
+            placeholder="R$ 0" min="0" step="0.01" title="Valor (R$)">
+          <button class="btn sm soc" onclick="addCkNovoItem()" style="flex-shrink:0">+ Add</button>
         </div>
       </div>
 
@@ -780,14 +785,10 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
               <input type="text" id="mpr-t-tema" placeholder="Ex: Logística">
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <input type="checkbox" id="mpr-t-tem-custo" onchange="toggleCustoFields()" style="width:14px;height:14px;cursor:pointer;accent-color:var(--soc)">
-            <label for="mpr-t-tem-custo" style="font-size:12px;cursor:pointer">Esta tarefa tem custo</label>
-          </div>
-          <div id="mpr-custo-fields" style="display:none">
+          <div id="mpr-custo-fields">
             <div class="fg fg3 mb8">
               <div class="fgroup">
-                <label>Valor (R$)</label>
+                <label>Valor (R$) <span style="font-weight:300;text-transform:none;letter-spacing:0;color:#bbb">opcional</span></label>
                 <input type="number" id="mpr-t-valor" placeholder="0,00" min="0" step="0.01">
               </div>
               <div class="fgroup">
@@ -980,7 +981,8 @@ const G = {
 
 /* ── HELPERS ────────────────────────────────────────────────── */
 function authUserId() {
-  return G.sessao?.user?.id || G.usuario?.auth_id || null;
+  // Cobre: id=auth_uuid (padrão mais comum) e auth_id separado
+  return G.sessao?.user?.id || G.usuario?.auth_id || G.usuario?.id || null;
 }
 
 function actorIdForUser(usuario) {
@@ -992,11 +994,15 @@ function sameActor(a, b) {
 }
 
 function isCurrentActor(actorId) {
-  return sameActor(actorId, authUserId()) || sameActor(actorId, G.usuario?.id);
+  const me = authUserId();
+  return sameActor(actorId, me) || sameActor(actorId, G.usuario?.id) || sameActor(actorId, G.usuario?.auth_id);
 }
 
 function findUsuarioByActorId(actorId) {
-  return G.todosUsuarios.find(u => sameActor(u.auth_id, actorId) || sameActor(u.id, actorId)) || null;
+  if (!actorId) return null;
+  return G.todosUsuarios.find(u =>
+    sameActor(u.auth_id, actorId) || sameActor(u.id, actorId)
+  ) || null;
 }
 
 function formatDbError(error, fallback) {
@@ -1125,7 +1131,15 @@ async function init() {
 }
 
 async function carregarUsuarios() {
-  const { data } = await sb.from('usuarios').select('id, auth_id, nome, iniciais, cor, apelido, cargo').eq('ativo', true).order('nome');
+  // Tenta com auth_id; se a coluna não existir faz fallback sem ela
+  let { data, error } = await sb.from('usuarios')
+    .select('id, auth_id, nome, iniciais, cor, apelido, cargo')
+    .eq('ativo', true).order('nome');
+  if (error) {
+    ({ data } = await sb.from('usuarios')
+      .select('id, nome, iniciais, cor, apelido, cargo')
+      .eq('ativo', true).order('nome'));
+  }
   G.todosUsuarios = data || [];
 }
 
@@ -1207,9 +1221,16 @@ async function carregarTemas() {
   const { data, error } = await sb.from('soc_temas').select('*').order('nome');
   if (error) {
     console.error('soc_temas select failed', error);
-    toast(formatDbError(error, 'Nao foi possivel carregar os temas'), 'erro');
+    toast(formatDbError(error, 'Não foi possível carregar os temas'), 'erro');
   }
-  G.temas = data || [];
+  // Deduplicar por nome (caso o seed tenha sido rodado mais de uma vez)
+  const visto = new Set();
+  G.temas = (data || []).filter(t => {
+    const k = t.nome.trim().toLowerCase();
+    if (visto.has(k)) return false;
+    visto.add(k);
+    return true;
+  });
   atualizarSelectTemas();
 }
 
@@ -1240,11 +1261,18 @@ function _popularSelectTema(selId, currentVal) {
   sel.value = val;
 }
 
-function popularSelectRespGeral() {
-  const opts = `<option value="">— Atribuição individual por item —</option>` +
+function _optsUsuarios(placeholder) {
+  return `<option value="">${placeholder}</option>` +
     G.todosUsuarios.map(u => `<option value="${actorIdForUser(u)}">${_esc(u.apelido || u.nome)}</option>`).join('');
-  const sel = document.getElementById('mp-ck-resp-geral');
+}
+
+function popularSelectRespGeral() {
+  const opts = _optsUsuarios('— Atribuição individual por item —');
+  const sel  = document.getElementById('mp-ck-resp-geral');
   if (sel) { const v = sel.value; sel.innerHTML = opts; sel.value = v; }
+  // Também popula o select de resp da linha de novo item
+  const selN = document.getElementById('mp-ck-novo-resp');
+  if (selN) { const v = selN.value; selN.innerHTML = _optsUsuarios('Resp.'); selN.value = v; }
 }
 
 function onChangeTema() {
@@ -1658,11 +1686,17 @@ function toggleCkForm() {
 }
 
 function addCkNovoItem() {
-  const inp = document.getElementById('mp-ck-novo-item');
-  const txt = inp?.value.trim();
+  const inp   = document.getElementById('mp-ck-novo-item');
+  const txt   = inp?.value.trim();
   if (!txt) return;
-  G.ckItensNovos.push({ texto: txt, responsavel_id: null, valor: '' });
+  const resp  = document.getElementById('mp-ck-novo-resp')?.value  || null;
+  const valor = document.getElementById('mp-ck-novo-valor')?.value || '';
+  G.ckItensNovos.push({ texto: txt, responsavel_id: resp, valor });
   inp.value = '';
+  const selN = document.getElementById('mp-ck-novo-resp');
+  const valN = document.getElementById('mp-ck-novo-valor');
+  if (selN) selN.value = '';
+  if (valN) valN.value = '';
   renderCkItensModal();
   inp.focus();
 }
@@ -1693,8 +1727,13 @@ function renderCkItensModal() {
     return;
   }
 
-  const respOpts = `<option value="">—</option>` +
-    G.todosUsuarios.map(u => `<option value="${actorIdForUser(u)}">${_esc(u.apelido || u.nome.split(' ')[0])}</option>`).join('');
+  // Garantir que o select de novo item também esteja populado
+  const selN = document.getElementById('mp-ck-novo-resp');
+  if (selN && selN.options.length <= 1) {
+    const vN = selN.value; selN.innerHTML = _optsUsuarios('Resp.'); selN.value = vN;
+  }
+
+  const respOpts = _optsUsuarios('—');
 
   wrap.innerHTML = G.ckItensNovos.map((it, i) => {
     const respVal = respBloqueado ? (G.ckRespGeral || '') : (it.responsavel_id || '');
@@ -2293,7 +2332,7 @@ function mesParaDate(str) {
 /* Gera array de {mes:'MM/YYYY', valor} para os últimos N meses + os meses do projeto */
 function calcFluxo(tarefas) {
   const fluxo = {};
-  (tarefas || []).filter(t => t.tem_custo && t.valor && t.mes_inicio).forEach(t => {
+  (tarefas || []).filter(t => t.valor > 0 && t.mes_inicio).forEach(t => {
     const parcelas = Math.max(1, t.parcelas || 1);
     const vp       = t.valor / parcelas;
     const base     = mesParaDate(t.mes_inicio);
@@ -2350,7 +2389,7 @@ function renderFluxoChart(canvasId, tarefas) {
 }
 
 function custoTotal(tarefas) {
-  return (tarefas || []).filter(t => t.tem_custo).reduce((s, t) => s + (Number(t.valor) || 0), 0);
+  return (tarefas || []).reduce((s, t) => s + (Number(t.valor) || 0), 0);
 }
 
 /* ── CARREGAR ────────────────────────────────────────────────── */
@@ -2456,7 +2495,7 @@ async function renderProjPlanDetalhe(id) {
       <input type="checkbox" class="ptarefa-cb" ${t.concluida?'checked':''} onchange="toggleProjTarefa('${t.id}','${id}',this.checked)">
       <div class="ptarefa-info">
         <div class="ptarefa-desc ${t.concluida?'done':''}">${_esc(t.descricao)}</div>
-        ${t.tem_custo ? `<div class="ptarefa-custo-tag">${fmtMoeda(t.valor)} · ${t.mes_inicio} · ${t.parcelas}x</div>` : ''}
+        ${t.valor > 0 ? `<div class="ptarefa-custo-tag">${fmtMoeda(t.valor)}${t.mes_inicio ? ` · ${t.mes_inicio}` : ''}${t.parcelas > 1 ? ` · ${t.parcelas}x` : ''}</div>` : ''}
       </div>
     </div>`).join('')}
   `).join('');
@@ -2743,10 +2782,8 @@ function abrirModalNovoProjeto() {
   document.getElementById('mpr-dt-aprovacao').value = '';
   document.getElementById('mpr-dt-inicio').value    = '';
   document.getElementById('mpr-dt-conclusao').value = '';
-  document.getElementById('mpr-t-desc').value   = '';
-  document.getElementById('mpr-t-tema').value   = '';
-  document.getElementById('mpr-t-tem-custo').checked = false;
-  document.getElementById('mpr-custo-fields').style.display = 'none';
+  document.getElementById('mpr-t-desc').value     = '';
+  document.getElementById('mpr-t-tema').value     = '';
   document.getElementById('mpr-t-valor').value    = '';
   document.getElementById('mpr-t-mes').value      = '';
   document.getElementById('mpr-t-parcelas').value = '1';
@@ -2781,10 +2818,11 @@ async function abrirModalEditarProjeto(id) {
   document.getElementById('mpr-dt-conclusao').value = p.data_conclusao_prev || '';
 
   _popularSelectTema('mpr-tema', p.tema_id || '');
-  document.getElementById('mpr-t-desc').value  = '';
-  document.getElementById('mpr-t-tema').value  = '';
-  document.getElementById('mpr-t-tem-custo').checked = false;
-  document.getElementById('mpr-custo-fields').style.display = 'none';
+  document.getElementById('mpr-t-desc').value     = '';
+  document.getElementById('mpr-t-tema').value     = '';
+  document.getElementById('mpr-t-valor').value    = '';
+  document.getElementById('mpr-t-mes').value      = '';
+  document.getElementById('mpr-t-parcelas').value = '1';
 
   renderProjMembrosGrid();
   renderProjTarefasModal();
@@ -2814,26 +2852,21 @@ function toggleProjMembro(uid, el) {
   el.classList.toggle('sel');
 }
 
-function toggleCustoFields() {
-  const checked = document.getElementById('mpr-t-tem-custo')?.checked;
-  document.getElementById('mpr-custo-fields').style.display = checked ? 'block' : 'none';
-}
+function toggleCustoFields() {} // mantido por compatibilidade, não faz mais nada
 
 function addProjetoTarefa() {
-  const desc     = document.getElementById('mpr-t-desc')?.value.trim();
-  const tema     = document.getElementById('mpr-t-tema')?.value.trim() || '—';
-  const temCusto = document.getElementById('mpr-t-tem-custo')?.checked;
-  const valor    = temCusto ? parseFloat(document.getElementById('mpr-t-valor')?.value || 0) : 0;
-  const mes      = temCusto ? document.getElementById('mpr-t-mes')?.value.trim() : '';
-  const parcelas = temCusto ? parseInt(document.getElementById('mpr-t-parcelas')?.value || 1) : 1;
+  const desc  = document.getElementById('mpr-t-desc')?.value.trim();
+  const tema  = document.getElementById('mpr-t-tema')?.value.trim() || '—';
+  const valor = parseFloat(document.getElementById('mpr-t-valor')?.value || 0) || 0;
+  const mes   = document.getElementById('mpr-t-mes')?.value.trim() || '';
+  const parc  = parseInt(document.getElementById('mpr-t-parcelas')?.value || 1, 10) || 1;
   if (!desc) { toast('Informe a descrição da tarefa', 'erro'); return; }
 
-  G.projTarefasNovos.push({ tema, descricao: desc, tem_custo: temCusto, valor, mes_inicio: mes, parcelas, concluida: false, ordem: G.projTarefasNovos.length });
+  const temCusto = valor > 0 && !!mes;
+  G.projTarefasNovos.push({ tema, descricao: desc, tem_custo: temCusto, valor, mes_inicio: mes, parcelas: parc, concluida: false, ordem: G.projTarefasNovos.length });
 
-  document.getElementById('mpr-t-desc').value  = '';
-  document.getElementById('mpr-t-tema').value  = '';
-  document.getElementById('mpr-t-tem-custo').checked = false;
-  document.getElementById('mpr-custo-fields').style.display = 'none';
+  document.getElementById('mpr-t-desc').value     = '';
+  document.getElementById('mpr-t-tema').value     = '';
   document.getElementById('mpr-t-valor').value    = '';
   document.getElementById('mpr-t-mes').value      = '';
   document.getElementById('mpr-t-parcelas').value = '1';
@@ -2857,7 +2890,7 @@ function renderProjTarefasModal() {
     <div class="ptarefa-form-row">
       <div class="ptarefa-info" style="flex:1">
         <div class="ptarefa-form-desc">${_esc(t.descricao)} <span style="font-size:10px;color:#aaa">[${_esc(t.tema)}]</span></div>
-        ${t.tem_custo ? `<div class="ptarefa-form-custo">${fmtMoeda(t.valor)} · ${_esc(t.mes_inicio||'—')} · ${t.parcelas}x</div>` : ''}
+        ${t.valor > 0 ? `<div class="ptarefa-form-custo">${fmtMoeda(t.valor)}${t.mes_inicio ? ` · ${t.mes_inicio}` : ''}${t.parcelas > 1 ? ` · ${t.parcelas}x` : ''}</div>` : ''}
       </div>
       <button class="ptarefa-del" onclick="removeProjTarefa(${i})" title="Remover">✕</button>
     </div>`).join('');
