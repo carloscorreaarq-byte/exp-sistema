@@ -993,42 +993,59 @@ function toast(msg, tipo = '') {
 }
 
 /* ── AUTH & INIT ────────────────────────────────────────────── */
-async function init() {
+async function resolveSession() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location = 'index.html'; return; }
+  if (session) return session;
+  return new Promise(resolve => {
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_ev, s) => {
+      subscription.unsubscribe();
+      resolve(s);
+    });
+    setTimeout(() => resolve(null), 4000);
+  });
+}
 
-  const uid = session.user.id;
-  const { data: usr } = await sb.from('usuarios').select('*').eq('id', uid).single();
-  if (!usr) { window.location = 'index.html'; return; }
+async function init() {
+  try {
+    const session = await resolveSession();
+    if (!session) { window.location = 'index.html'; return; }
 
-  const isSocio = ['socio', 'socio_adm', 'socio_admin'].includes((usr.role || '').toLowerCase());
-  if (!isSocio) { window.location = 'app.html'; return; }
+    const uid = session.user.id;
+    const { data: usr, error: usrErr } = await sb.from('usuarios').select('*').eq('id', uid).single();
+    if (usrErr || !usr) { console.error('usuarios lookup failed', usrErr); window.location = 'index.html'; return; }
 
-  G.usuario = usr;
+    const isSocio = ['socio', 'socio_adm', 'socio_admin'].includes((usr.role || '').toLowerCase());
+    if (!isSocio) { window.location = 'app.html'; return; }
 
-  // Nav user chip
-  const nav_av = document.getElementById('nav-av');
-  if (nav_av) {
-    nav_av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${usr.cor||'#888'};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center`;
-    nav_av.textContent = usr.iniciais || '?';
+    G.usuario = usr;
+
+    // Nav user chip
+    const nav_av = document.getElementById('nav-av');
+    if (nav_av) {
+      nav_av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${usr.cor||'#888'};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center`;
+      nav_av.textContent = usr.iniciais || '?';
+    }
+    const nomeCurto = usr.apelido || usr.nome?.split(' ')[0] || '—';
+    const el_nome = document.getElementById('nav-nome');
+    if (el_nome) el_nome.textContent = nomeCurto;
+    const el_role = document.getElementById('nav-role');
+    if (el_role) el_role.textContent = usr.cargo || usr.role || '';
+    const el_um = document.getElementById('um-nome-full');
+    if (el_um) el_um.textContent = usr.nome || '—';
+
+    // Conn dot
+    const dot = document.getElementById('conn-dot');
+    if (dot) dot.classList.add('online');
+
+    // Carregar base
+    await Promise.all([carregarUsuarios(), carregarTemas()]);
+    await carregarPautas();
+
+    document.getElementById('loading').style.display = 'none';
+  } catch (e) {
+    console.error('Sociedade init error:', e);
+    window.location = 'index.html';
   }
-  const nomeCurto = usr.apelido || usr.nome?.split(' ')[0] || '—';
-  const el_nome = document.getElementById('nav-nome');
-  if (el_nome) el_nome.textContent = nomeCurto;
-  const el_role = document.getElementById('nav-role');
-  if (el_role) el_role.textContent = usr.cargo || usr.role || '';
-  const el_um = document.getElementById('um-nome-full');
-  if (el_um) el_um.textContent = usr.nome || '—';
-
-  // Conn dot
-  const dot = document.getElementById('conn-dot');
-  if (dot) dot.classList.add('online');
-
-  // Carregar base
-  await Promise.all([carregarUsuarios(), carregarTemas()]);
-  await carregarPautas();
-
-  document.getElementById('loading').style.display = 'none';
 }
 
 async function carregarUsuarios() {

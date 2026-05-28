@@ -2263,29 +2263,39 @@ async function verificarPesquisaPendente(usuarioId) {
   }
 }
 
+const CLIMA_ESCALA_LABELS_APP = { 0:'Nada', 1:'Pouco', 2:'Regular', 3:'Médio', 4:'Bastante', 5:'Muito' };
+
 async function abrirSurveyPendente() {
   const campNome = document.getElementById('clima-survey-campanha-nome');
   if (campNome) campNome.textContent = climaApp.campanhaTitle;
-
   const body = document.getElementById('clima-survey-body');
   if (body) body.innerHTML = '<div style="padding:32px 0;text-align:center;color:#bbb;font-size:12px">Carregando perguntas…</div>';
   document.getElementById('clima-survey-overlay')?.classList.add('open');
 
-  const { data, error } = await sb
-    .from('pessoas_pesquisa_clima_perguntas')
-    .select('*')
-    .eq('ativo', true)
-    .order('ordem');
+  // Busca campanha para saber se é anônima + modelo
+  const { data: camp } = await sb
+    .from('pessoas_pesquisa_clima_campanhas')
+    .select('id, titulo, anonima, modelo_id')
+    .eq('id', climaApp.campanhaId)
+    .single();
+
+  const modeloId = camp?.modelo_id;
+  climaApp.anonima = camp?.anonima || false;
+
+  const query = sb.from('pessoas_pesquisa_clima_perguntas').select('*').eq('ativo', true).order('ordem');
+  if (modeloId) query.eq('modelo_id', modeloId);
+  const { data, error } = await query;
 
   if (error || !data?.length) {
     if (body) body.innerHTML = '<div style="padding:32px 0;text-align:center;color:#bbb;font-size:12px">Nenhuma pergunta encontrada. Contacte a administração.</div>';
     return;
   }
 
-  climaApp.perguntas = data;
-  climaApp.step      = 0;
-  climaApp.respostas = {};
-  climaApp.ativo     = true;
+  climaApp.perguntas       = data;
+  climaApp.step            = 0;
+  climaApp.respostas       = {};
+  climaApp.ativo           = true;
+  climaApp.disclosureDone  = false;
   renderSurveyStep();
 }
 
@@ -2305,27 +2315,70 @@ function ignorarSurveyPendente() {
 function renderSurveyStep() {
   const body = document.getElementById('clima-survey-body');
   if (!body) return;
+
+  // Aviso de anonimato/publicidade antes da 1ª pergunta
+  if (!climaApp.disclosureDone) {
+    const cls   = climaApp.anonima ? 'anonima' : 'publica';
+    const titulo = climaApp.anonima ? '🔒 Pesquisa Anônima' : '👁 Pesquisa Pública';
+    const texto  = climaApp.anonima
+      ? 'Esta pesquisa é <strong>anônima</strong>. Suas respostas <strong>não são vinculadas ao seu nome</strong> e são apresentadas em ordem aleatória para os administradores. Nenhum sócio consegue identificar quem respondeu o quê.'
+      : 'Esta pesquisa é <strong>pública</strong>. Suas respostas serão <strong>vinculadas ao seu nome</strong> e poderão ser vistas pelos administradores individualmente.';
+    body.innerHTML = `
+      <div style="max-width:480px;margin:0 auto">
+        <div class="clima-disclosure ${cls}" style="margin-bottom:24px">
+          <div class="clima-disclosure-titulo">${titulo}</div>
+          <div class="clima-disclosure-texto">${texto}</div>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">${escHtml(climaApp.campanhaTitle)}</div>
+        <div style="font-size:11px;color:#888;margin-bottom:24px">${climaApp.perguntas.length} pergunta${climaApp.perguntas.length!==1?'s':''} nesta pesquisa.</div>
+        <div style="display:flex;gap:10px">
+          <button class="shell-btn" style="background:var(--terracota);border-color:var(--terracota);color:#fff" onclick="climaApp.disclosureDone=true;renderSurveyStep()">Começar →</button>
+          <button class="shell-btn" onclick="ignorarSurveyPendente();document.getElementById('clima-survey-overlay').classList.remove('open')">Deixar para depois</button>
+        </div>
+      </div>`;
+    return;
+  }
+
   const { perguntas, step, respostas } = climaApp;
-  const total   = perguntas.length;
-  const p       = perguntas[step];
+  const total    = perguntas.length;
+  const p        = perguntas[step];
   if (!p) return;
+  const tipo     = p.tipo || 'aberta';
   const pct      = Math.round((step / total) * 100);
   const isUltima = step === total - 1;
-  const salvo    = respostas[p.id] || '';
+  const salvo    = respostas[p.id] || {};
+
+  let inputHtml = '';
+  if (tipo === 'simnao') {
+    const sv = salvo.simnao;
+    inputHtml = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px">
+        <button class="clima-simnao-btn${sv===true?' ativo-sim':''}" onclick="appSetSN(true)">✅ Sim</button>
+        <button class="clima-simnao-btn${sv===false?' ativo-nao':''}" onclick="appSetSN(false)">❌ Não</button>
+      </div>`;
+  } else if (tipo === 'escala') {
+    const val = salvo.escala ?? 3;
+    inputHtml = `
+      <div class="clima-escala-wrap">
+        <input type="range" class="clima-escala-slider" id="clima-escala-input" min="0" max="5" step="1" value="${val}">
+        <div class="clima-escala-labels"><span>0 Nada</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5 Muito</span></div>
+        <div class="clima-escala-valor" id="cesc-val">${val}</div>
+        <div class="clima-escala-label-desc" id="cesc-desc">${CLIMA_ESCALA_LABELS_APP[val]||''}</div>
+      </div>`;
+  } else {
+    inputHtml = `<textarea class="clima-runner-textarea" id="clima-resp-input" rows="5" placeholder="Escreva sua resposta…">${escHtml(salvo.texto||'')}</textarea>`;
+  }
 
   body.innerHTML = `
     <div class="clima-runner-wrap">
-      <div class="clima-progress-bar">
-        <div class="clima-progress-fill" style="width:${pct}%"></div>
-      </div>
-      <div class="clima-runner-counter">${step + 1} de ${total}</div>
+      <div class="clima-progress-bar"><div class="clima-progress-fill" style="width:${pct}%"></div></div>
+      <div class="clima-runner-counter">${step+1} de ${total}</div>
       <div class="clima-runner-pergunta">${escHtml(p.texto)}</div>
-      <textarea class="clima-runner-textarea" id="clima-resp-input"
-        placeholder="Escreva sua resposta…">${escHtml(salvo)}</textarea>
-      <div class="clima-runner-nav">
+      ${inputHtml}
+      <div class="clima-runner-nav" style="margin-top:12px">
         ${step > 0
           ? `<button class="shell-btn" onclick="surveyAnterior()">← Anterior</button>`
-          : `<button class="shell-btn" onclick="ignorarSurveyPendente();document.getElementById('clima-survey-overlay').classList.remove('open')">Deixar para depois</button>`}
+          : `<button class="shell-btn" onclick="climaApp.disclosureDone=false;renderSurveyStep()">← Início</button>`}
         <span class="clima-runner-label">${escHtml(climaApp.campanhaTitle)}</span>
         ${isUltima
           ? `<button class="shell-btn" style="background:var(--terracota);border-color:var(--terracota);color:#fff" onclick="finalizarSurveyApp()">Enviar respostas</button>`
@@ -2333,13 +2386,34 @@ function renderSurveyStep() {
       </div>
     </div>`;
 
-  document.getElementById('clima-resp-input')?.focus();
+  if (tipo === 'escala') {
+    const sl = document.getElementById('clima-escala-input');
+    if (sl) sl.addEventListener('input', function() {
+      document.getElementById('cesc-val').textContent = this.value;
+      document.getElementById('cesc-desc').textContent = CLIMA_ESCALA_LABELS_APP[this.value] || '';
+    });
+  }
+  if (tipo === 'aberta') document.getElementById('clima-resp-input')?.focus();
+}
+
+function appSetSN(val) {
+  const p = climaApp.perguntas[climaApp.step];
+  if (p) climaApp.respostas[p.id] = { simnao: val };
+  renderSurveyStep();
 }
 
 function capturarRespostaSurvey() {
-  const input = document.getElementById('clima-resp-input');
   const p = climaApp.perguntas[climaApp.step];
-  if (p && input) climaApp.respostas[p.id] = input.value;
+  if (!p) return;
+  const tipo = p.tipo || 'aberta';
+  if (tipo === 'simnao') return; // captured via appSetSN
+  if (tipo === 'escala') {
+    const sl = document.getElementById('clima-escala-input');
+    if (sl) climaApp.respostas[p.id] = { escala: Number(sl.value) };
+  } else {
+    const ta = document.getElementById('clima-resp-input');
+    if (ta) climaApp.respostas[p.id] = { texto: ta.value || '' };
+  }
 }
 
 function surveyProxima() {
@@ -2360,41 +2434,36 @@ async function finalizarSurveyApp() {
   let usuarioId = null;
   try { usuarioId = JSON.parse(sessionStorage.getItem('exp_usuario'))?.app_user_id || null; } catch (_) {}
 
-  const respostas = climaApp.perguntas
-    .filter(p => climaApp.respostas[p.id] != null)
-    .map(p => ({
-      pergunta_id:   p.id,
-      campanha_id:   climaApp.campanhaId,
-      usuario_id:    usuarioId,
-      resposta:      climaApp.respostas[p.id] || '',
-      respondido_em: new Date().toISOString(),
-    }));
+  const rows = climaApp.perguntas.map(p => {
+    const r = climaApp.respostas[p.id] || {};
+    return {
+      pergunta_id:     p.id,
+      campanha_id:     climaApp.campanhaId,
+      usuario_id:      usuarioId,
+      resposta_texto:  r.texto ?? null,
+      resposta_simnao: r.simnao ?? null,
+      resposta_escala: r.escala ?? null,
+      respondido_em:   new Date().toISOString(),
+    };
+  }).filter(r => r.resposta_texto != null || r.resposta_simnao != null || r.resposta_escala != null);
 
-  if (!respostas.length) {
+  if (!rows.length) {
     if (body) body.innerHTML = '<div style="padding:40px 0;text-align:center;color:#bbb;font-size:12px">Nenhuma resposta para salvar.</div>';
     return;
   }
 
-  let { error: respErr } = await sb.from('pessoas_pesquisa_clima_respostas').insert(respostas);
-  if (respErr && /campanha_id/i.test(respErr.message)) {
-    // coluna ainda não existe — salva sem ela para não perder as respostas
-    const semCampanha = respostas.map(({ campanha_id: _, ...r }) => r);
-    const res2 = await sb.from('pessoas_pesquisa_clima_respostas').insert(semCampanha);
-    respErr = res2.error;
-  }
+  const { error: respErr } = await sb.from('pessoas_pesquisa_clima_respostas').insert(rows);
   if (respErr) {
     if (body) body.innerHTML = `<div style="padding:40px 0;text-align:center;color:var(--terracota);font-size:12px">Erro ao salvar: ${escHtml(respErr.message)}</div>`;
     return;
   }
 
-  // Marca disparo como respondido
   await sb.from('pessoas_pesquisa_clima_disparos')
     .update({ status: 'respondido', respondido_em: new Date().toISOString() })
     .eq('id', climaApp.disparoId);
 
   climaApp.ativo = false;
   document.getElementById('clima-survey-banner')?.classList.remove('visible');
-
   if (body) body.innerHTML = `
     <div class="clima-runner-ok">
       <div class="clima-runner-ok-icon">✓</div>
