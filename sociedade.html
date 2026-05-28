@@ -1009,15 +1009,30 @@ async function init() {
   try {
     const session = await resolveSession();
     if (!session) { window.location = 'index.html'; return; }
+    G.sessao = session;
 
     const uid = session.user.id;
-    const { data: usr, error: usrErr } = await sb.from('usuarios').select('*').eq('id', uid).single();
+    const { data: usr, error: usrErr } = await sb.from('usuarios')
+      .select('*')
+      .eq('auth_id', uid)
+      .single();
     if (usrErr || !usr) { console.error('usuarios lookup failed', usrErr); window.location = 'index.html'; return; }
 
     const isSocio = ['socio', 'socio_adm', 'socio_admin'].includes((usr.role || '').toLowerCase());
     if (!isSocio) { window.location = 'app.html'; return; }
 
     G.usuario = usr;
+    sessionStorage.setItem('exp_usuario', JSON.stringify({
+      id: usr.id,
+      auth_id: usr.auth_id,
+      nome: usr.nome,
+      apelido: usr.apelido,
+      iniciais: usr.iniciais,
+      cor: usr.cor,
+      role: usr.role,
+      cargo: usr.cargo,
+      avatar_url: usr.avatar_url || null,
+    }));
 
     // Nav user chip
     const nav_av = document.getElementById('nav-av');
