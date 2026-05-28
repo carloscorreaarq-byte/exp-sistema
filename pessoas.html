@@ -3370,15 +3370,22 @@ function renderClimaContent() {
   if (!body) return;
 
   if (!G.climaTablesOk) {
+    const isMigration = /campanha_id/i.test(G.climaError || '');
+    const migrationSQL = `alter table public.pessoas_pesquisa_clima_respostas\n  add column if not exists campanha_id uuid references public.pessoas_pesquisa_clima_campanhas(id) on delete set null;`;
     body.innerHTML = `
       <div class="pm-callout">
-        <strong>Setup necessario</strong>
-        <p>Execute o SQL abaixo no Supabase SQL Editor para ativar a pesquisa de clima.</p>
-        ${G.climaError ? `<p style="margin-top:6px;color:var(--terracota)">${escHtml(G.climaError)}</p>` : ''}
+        <strong>${isMigration ? 'Migração necessária' : 'Setup necessário'}</strong>
+        <p>${isMigration
+          ? 'A tabela existe mas falta a coluna <code>campanha_id</code>. Execute o SQL abaixo no Supabase SQL Editor — é rápido e não apaga dados existentes.'
+          : 'Execute o SQL abaixo no Supabase SQL Editor para ativar a pesquisa de clima.'}</p>
+        ${G.climaError ? `<p style="margin-top:6px;color:var(--terracota);font-size:10px">${escHtml(G.climaError)}</p>` : ''}
         <details open style="margin-top:10px">
-          <summary style="cursor:pointer;font-size:10px;font-weight:700;color:#8a6010">Ver SQL de setup</summary>
-          <textarea readonly style="width:100%;min-height:180px;margin-top:8px;padding:8px 10px;font-family:var(--font-mono);font-size:9px;border:1px solid rgba(196,154,39,.25);border-radius:6px;background:#fffaf0;color:#6f5210;resize:vertical">${escHtml(CLIMA_SETUP_SQL)}</textarea>
+          <summary style="cursor:pointer;font-size:10px;font-weight:700;color:#8a6010">${isMigration ? 'SQL de migração (só este)' : 'SQL de setup completo'}</summary>
+          <textarea readonly style="width:100%;min-height:${isMigration ? 80 : 180}px;margin-top:8px;padding:8px 10px;font-family:var(--font-mono);font-size:9px;border:1px solid rgba(196,154,39,.25);border-radius:6px;background:#fffaf0;color:#6f5210;resize:vertical">${escHtml(isMigration ? migrationSQL : CLIMA_SETUP_SQL)}</textarea>
         </details>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="ps-btn-sm" onclick="G.climaLoaded=false;carregarClimaView()">↻ Verificar novamente</button>
+        </div>
       </div>`;
     return;
   }
@@ -3654,7 +3661,14 @@ async function finalizarSurveyClima() {
     }));
 
   if (!respostas.length) { alert('Nenhuma resposta para salvar.'); return; }
-  const { error } = await sb.from('pessoas_pesquisa_clima_respostas').insert(respostas);
+  let { error } = await sb.from('pessoas_pesquisa_clima_respostas').insert(respostas);
+  if (error && /campanha_id/i.test(error.message)) {
+    // coluna ainda não existe — salva sem ela e orienta o admin
+    const semCampanha = respostas.map(({ campanha_id: _, ...r }) => r);
+    const res2 = await sb.from('pessoas_pesquisa_clima_respostas').insert(semCampanha);
+    error = res2.error;
+    if (!res2.error) alert('Respostas salvas (sem vínculo de rodada).\n\nPara vincular respostas às rodadas, execute o SQL de setup novamente no Supabase — o ALTER TABLE adicionará a coluna campanha_id.');
+  }
   if (error) { alert('Erro ao salvar: ' + error.message); return; }
 
   G.climaSurveyAtivo = false;

@@ -2375,7 +2375,13 @@ async function finalizarSurveyApp() {
     return;
   }
 
-  const { error: respErr } = await sb.from('pessoas_pesquisa_clima_respostas').insert(respostas);
+  let { error: respErr } = await sb.from('pessoas_pesquisa_clima_respostas').insert(respostas);
+  if (respErr && /campanha_id/i.test(respErr.message)) {
+    // coluna ainda não existe — salva sem ela para não perder as respostas
+    const semCampanha = respostas.map(({ campanha_id: _, ...r }) => r);
+    const res2 = await sb.from('pessoas_pesquisa_clima_respostas').insert(semCampanha);
+    respErr = res2.error;
+  }
   if (respErr) {
     if (body) body.innerHTML = `<div style="padding:40px 0;text-align:center;color:var(--terracota);font-size:12px">Erro ao salvar: ${escHtml(respErr.message)}</div>`;
     return;
