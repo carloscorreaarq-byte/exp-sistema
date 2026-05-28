@@ -3333,18 +3333,23 @@ async function carregarClimaView() {
   const body = document.getElementById('clima-modal-body');
   if (body) body.innerHTML = '<div class="ps-loading-tab">Carregando…</div>';
 
-  const [pergRes, campRes] = await Promise.all([
+  const [pergRes, campRes, colProbe] = await Promise.all([
     sb.from('pessoas_pesquisa_clima_perguntas').select('*').eq('ativo', true).order('ordem'),
-    sb.from('pessoas_pesquisa_clima_campanhas').select('*').order('criado_em', { ascending: false }).limit(10)
+    sb.from('pessoas_pesquisa_clima_campanhas').select('*').order('criado_em', { ascending: false }).limit(10),
+    sb.from('pessoas_pesquisa_clima_respostas').select('campanha_id').limit(0)
   ]);
 
   const missingTable = [pergRes, campRes].some(r =>
     r.error?.code === '42P01' || /Could not find the table/i.test(String(r.error?.message || ''))
   );
+  const missingColumn = /campanha_id/i.test(String(colProbe.error?.message || ''));
 
   if (missingTable) {
     G.climaTablesOk = false;
     G.climaError = 'Tabelas ainda nao existem no banco.';
+  } else if (missingColumn) {
+    G.climaTablesOk = false;
+    G.climaError = 'Coluna campanha_id ausente — re-execute o SQL de setup abaixo para aplicar a migração.';
   } else if (pergRes.error) {
     G.climaTablesOk = false;
     G.climaError = pergRes.error.message;

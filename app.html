@@ -716,6 +716,34 @@ body {
   }
 }
 
+/* ── PESQUISA DE CLIMA — banner ──────────────────────────── */
+.clima-banner{display:none;align-items:center;gap:12px;background:var(--tc-bg);border:1px solid rgba(184,86,56,.22);border-left:3px solid var(--terracota);border-radius:var(--radius-input);padding:10px 14px;margin-bottom:14px}
+.clima-banner.visible{display:flex}
+.clima-banner-icon{font-size:18px;flex-shrink:0}
+.clima-banner-copy{flex:1;min-width:0}
+.clima-banner-titulo{font-size:12px;font-weight:700;color:var(--terracota)}
+.clima-banner-sub{font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clima-banner-btn{flex-shrink:0;height:30px;padding:0 14px;background:var(--terracota);color:#fff;border:none;border-radius:var(--radius-btn);font-family:var(--font-ui);font-size:11px;font-weight:600;cursor:pointer}
+.clima-banner-btn:hover{opacity:.85}
+.clima-banner-depois{flex-shrink:0;background:none;border:none;color:#bbb;font-size:11px;cursor:pointer;padding:4px 6px;font-family:var(--font-ui)}
+.clima-banner-depois:hover{color:#777}
+
+/* ── PESQUISA DE CLIMA — runner modal ────────────────────── */
+#clima-survey-overlay{z-index:500}
+.clima-runner-wrap{display:flex;flex-direction:column;gap:0}
+.clima-progress-bar{height:3px;background:var(--cinza2);border-radius:2px;margin-bottom:24px;overflow:hidden}
+.clima-progress-fill{height:100%;background:var(--terracota);border-radius:2px;transition:width .3s ease}
+.clima-runner-counter{font-family:var(--font-mono);font-size:10px;color:#bbb;margin-bottom:8px}
+.clima-runner-pergunta{font-size:17px;font-weight:600;line-height:1.45;margin-bottom:20px;letter-spacing:-.2px}
+.clima-runner-textarea{width:100%;min-height:130px;border:1px solid var(--cinza);border-radius:var(--radius-input);padding:12px 14px;font-family:var(--font-ui);font-size:var(--text-body);color:var(--grafite);background:var(--branco);resize:vertical;line-height:1.5;outline:none;transition:border-color .12s}
+.clima-runner-textarea:focus{border-color:var(--terracota)}
+.clima-runner-nav{display:flex;align-items:center;justify-content:space-between;margin-top:20px;gap:8px}
+.clima-runner-label{font-size:10px;color:#bbb;font-family:var(--font-mono);letter-spacing:.3px}
+.clima-runner-ok{padding:32px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.clima-runner-ok-icon{font-size:42px;line-height:1}
+.clima-runner-ok-titulo{font-size:16px;font-weight:700}
+.clima-runner-ok-sub{font-size:12px;color:#888;max-width:300px;line-height:1.55}
+
 @media (max-width: 760px) {
   .shell-modal-overlay {
     padding: 10px;
@@ -897,6 +925,17 @@ body {
 
 <div class="main">
 
+  <!-- BANNER: PESQUISA DE CLIMA PENDENTE -->
+  <div class="clima-banner" id="clima-survey-banner">
+    <div class="clima-banner-icon">🌡</div>
+    <div class="clima-banner-copy">
+      <div class="clima-banner-titulo">Pesquisa de clima pendente</div>
+      <div class="clima-banner-sub" id="clima-banner-sub">Você foi convidado a responder uma pesquisa de clima.</div>
+    </div>
+    <button class="clima-banner-btn" onclick="abrirSurveyPendente()">Responder agora</button>
+    <button class="clima-banner-depois" onclick="ignorarSurveyPendente()" title="Deixar para depois">Depois</button>
+  </div>
+
   <!-- AVISO VIEWER -->
   <div class="viewer-aviso" id="viewer-aviso">
     👁 Você está no modo <strong>visualização</strong> — pode consultar mas não pode editar dados.
@@ -981,17 +1020,31 @@ body {
       <div class="mod-tag">▶ Acessar módulo</div>
     </a>
 
-    <div class="mod-card sociedade disabled">
+    <a href="sociedade.html" class="mod-card sociedade">
       <div class="mod-icone">🤝</div>
       <div class="mod-nome">EXP.sociedade</div>
       <div class="mod-desc">Canal societário para planejamento de ações estratégicas, investimentos, comunicação de tarefas e alinhamento entre sócios.</div>
-      <div class="mod-tag mod-em-breve">Em breve</div>
-    </div>
+      <div class="mod-tag">Sociedade</div>
+    </a>
 
   </div>
 
 </div><!-- /main -->
 </div><!-- /conteudo -->
+
+<!-- MODAL: PESQUISA DE CLIMA -->
+<div class="shell-modal-overlay" id="clima-survey-overlay" onclick="fecharSurveyOverlay(event)">
+  <div class="shell-modal" onclick="event.stopPropagation()" style="max-width:600px">
+    <div class="shell-modal-header">
+      <div class="shell-modal-title">
+        <strong>🌡 Pesquisa de Clima</strong>
+        <span id="clima-survey-campanha-nome">—</span>
+      </div>
+      <button class="shell-modal-close" onclick="fecharSurveyOverlay()">&times;</button>
+    </div>
+    <div class="shell-modal-body" id="clima-survey-body" style="padding:24px 20px"></div>
+  </div>
+</div>
 
 <div class="shell-modal-overlay" id="meus-dados-overlay" onclick="fecharMeusDados(event)">
   <div class="shell-modal" role="dialog" aria-modal="true" aria-labelledby="meus-dados-title" onclick="event.stopPropagation()">
@@ -2174,6 +2227,179 @@ function _vapidB64ToUint8(b64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+// ── PESQUISA DE CLIMA ──────────────────────────────────────────────
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const climaApp = {
+  disparoId: null,
+  campanhaId: null,
+  campanhaTitle: '',
+  perguntas: [],
+  step: 0,
+  respostas: {},
+  ativo: false,
+};
+
+async function verificarPesquisaPendente(usuarioId) {
+  try {
+    const { data, error } = await sb
+      .from('pessoas_pesquisa_clima_disparos')
+      .select('id, campanha_id, status, campanha:pessoas_pesquisa_clima_campanhas(titulo)')
+      .eq('usuario_id', usuarioId)
+      .eq('status', 'pendente')
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return;
+    climaApp.disparoId    = data.id;
+    climaApp.campanhaId   = data.campanha_id;
+    climaApp.campanhaTitle = data.campanha?.titulo || 'Pesquisa de Clima';
+    const sub = document.getElementById('clima-banner-sub');
+    if (sub) sub.textContent = `Rodada: ${climaApp.campanhaTitle}`;
+    document.getElementById('clima-survey-banner')?.classList.add('visible');
+  } catch (_) {
+    // tabela pode não existir ainda — silencioso
+  }
+}
+
+async function abrirSurveyPendente() {
+  const campNome = document.getElementById('clima-survey-campanha-nome');
+  if (campNome) campNome.textContent = climaApp.campanhaTitle;
+
+  const body = document.getElementById('clima-survey-body');
+  if (body) body.innerHTML = '<div style="padding:32px 0;text-align:center;color:#bbb;font-size:12px">Carregando perguntas…</div>';
+  document.getElementById('clima-survey-overlay')?.classList.add('open');
+
+  const { data, error } = await sb
+    .from('pessoas_pesquisa_clima_perguntas')
+    .select('*')
+    .eq('ativo', true)
+    .order('ordem');
+
+  if (error || !data?.length) {
+    if (body) body.innerHTML = '<div style="padding:32px 0;text-align:center;color:#bbb;font-size:12px">Nenhuma pergunta encontrada. Contacte a administração.</div>';
+    return;
+  }
+
+  climaApp.perguntas = data;
+  climaApp.step      = 0;
+  climaApp.respostas = {};
+  climaApp.ativo     = true;
+  renderSurveyStep();
+}
+
+function fecharSurveyOverlay(ev) {
+  if (ev && ev.target !== document.getElementById('clima-survey-overlay')) return;
+  if (climaApp.ativo && Object.keys(climaApp.respostas).length > 0) {
+    if (!confirm('Fechar agora? As respostas preenchidas serão perdidas.')) return;
+  }
+  document.getElementById('clima-survey-overlay')?.classList.remove('open');
+  climaApp.ativo = false;
+}
+
+function ignorarSurveyPendente() {
+  document.getElementById('clima-survey-banner')?.classList.remove('visible');
+}
+
+function renderSurveyStep() {
+  const body = document.getElementById('clima-survey-body');
+  if (!body) return;
+  const { perguntas, step, respostas } = climaApp;
+  const total   = perguntas.length;
+  const p       = perguntas[step];
+  if (!p) return;
+  const pct      = Math.round((step / total) * 100);
+  const isUltima = step === total - 1;
+  const salvo    = respostas[p.id] || '';
+
+  body.innerHTML = `
+    <div class="clima-runner-wrap">
+      <div class="clima-progress-bar">
+        <div class="clima-progress-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="clima-runner-counter">${step + 1} de ${total}</div>
+      <div class="clima-runner-pergunta">${escHtml(p.texto)}</div>
+      <textarea class="clima-runner-textarea" id="clima-resp-input"
+        placeholder="Escreva sua resposta…">${escHtml(salvo)}</textarea>
+      <div class="clima-runner-nav">
+        ${step > 0
+          ? `<button class="shell-btn" onclick="surveyAnterior()">← Anterior</button>`
+          : `<button class="shell-btn" onclick="ignorarSurveyPendente();document.getElementById('clima-survey-overlay').classList.remove('open')">Deixar para depois</button>`}
+        <span class="clima-runner-label">${escHtml(climaApp.campanhaTitle)}</span>
+        ${isUltima
+          ? `<button class="shell-btn" style="background:var(--terracota);border-color:var(--terracota);color:#fff" onclick="finalizarSurveyApp()">Enviar respostas</button>`
+          : `<button class="shell-btn" style="background:var(--grafite);border-color:var(--grafite);color:#fff" onclick="surveyProxima()">Próxima →</button>`}
+      </div>
+    </div>`;
+
+  document.getElementById('clima-resp-input')?.focus();
+}
+
+function capturarRespostaSurvey() {
+  const input = document.getElementById('clima-resp-input');
+  const p = climaApp.perguntas[climaApp.step];
+  if (p && input) climaApp.respostas[p.id] = input.value;
+}
+
+function surveyProxima() {
+  capturarRespostaSurvey();
+  if (climaApp.step < climaApp.perguntas.length - 1) { climaApp.step++; renderSurveyStep(); }
+}
+
+function surveyAnterior() {
+  capturarRespostaSurvey();
+  if (climaApp.step > 0) { climaApp.step--; renderSurveyStep(); }
+}
+
+async function finalizarSurveyApp() {
+  capturarRespostaSurvey();
+  const body = document.getElementById('clima-survey-body');
+  if (body) body.innerHTML = '<div style="padding:40px 0;text-align:center;color:#999;font-size:12px">Salvando respostas…</div>';
+
+  let usuarioId = null;
+  try { usuarioId = JSON.parse(sessionStorage.getItem('exp_usuario'))?.app_user_id || null; } catch (_) {}
+
+  const respostas = climaApp.perguntas
+    .filter(p => climaApp.respostas[p.id] != null)
+    .map(p => ({
+      pergunta_id:   p.id,
+      campanha_id:   climaApp.campanhaId,
+      usuario_id:    usuarioId,
+      resposta:      climaApp.respostas[p.id] || '',
+      respondido_em: new Date().toISOString(),
+    }));
+
+  if (!respostas.length) {
+    if (body) body.innerHTML = '<div style="padding:40px 0;text-align:center;color:#bbb;font-size:12px">Nenhuma resposta para salvar.</div>';
+    return;
+  }
+
+  const { error: respErr } = await sb.from('pessoas_pesquisa_clima_respostas').insert(respostas);
+  if (respErr) {
+    if (body) body.innerHTML = `<div style="padding:40px 0;text-align:center;color:var(--terracota);font-size:12px">Erro ao salvar: ${escHtml(respErr.message)}</div>`;
+    return;
+  }
+
+  // Marca disparo como respondido
+  await sb.from('pessoas_pesquisa_clima_disparos')
+    .update({ status: 'respondido', respondido_em: new Date().toISOString() })
+    .eq('id', climaApp.disparoId);
+
+  climaApp.ativo = false;
+  document.getElementById('clima-survey-banner')?.classList.remove('visible');
+
+  if (body) body.innerHTML = `
+    <div class="clima-runner-ok">
+      <div class="clima-runner-ok-icon">✓</div>
+      <div class="clima-runner-ok-titulo">Obrigado!</div>
+      <div class="clima-runner-ok-sub">Suas respostas foram registradas. Elas contribuem para um ambiente de trabalho melhor para todos.</div>
+      <button class="shell-btn" style="margin-top:4px" onclick="document.getElementById('clima-survey-overlay').classList.remove('open')">Fechar</button>
+    </div>`;
+}
+
+// ── FIM PESQUISA DE CLIMA ───────────────────────────────────────────
+
 async function init() {
   const boot = await bootstrapAuthenticatedShell();
   if (!boot) return;
@@ -2199,6 +2425,11 @@ async function init() {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('conteudo').style.display = 'block';
   initPushDesktop(boot.payload);
+
+  // Verifica pesquisa de clima pendente (silencioso — falha não bloqueia)
+  if (boot.payload?.app_user_id) {
+    verificarPesquisaPendente(boot.payload.app_user_id);
+  }
 }
 
 async function sair() {
