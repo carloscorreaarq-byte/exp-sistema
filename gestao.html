@@ -2017,15 +2017,19 @@ body {
 .projhist-item-title{font-size:12px;font-weight:700;color:var(--grafite);margin-bottom:4px}
 .projhist-item-excerpt{font-size:11px;color:#555;line-height:1.6;white-space:pre-wrap;word-break:break-word}
 .projhist-item-side{flex-shrink:0}
-.projhist-chat-meta{font-size:10px;color:#888;margin-bottom:8px}
-.projhist-chat-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
-.projhist-chat-title-edit{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.projhist-chat-meta{font-size:10px;color:#888;flex:1}
+.projhist-chat-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+/* Edição de nome: oculta por padrão, expande ao clicar em "renomear" */
+.projhist-chat-title-edit{display:none;align-items:flex-end;gap:8px;flex-wrap:wrap;width:100%;margin-top:6px;padding-top:8px;border-top:1px solid var(--cinza2)}
+.projhist-chat-title-edit.visible{display:flex}
 .projhist-chat-title-field{display:flex;flex-direction:column;gap:4px;min-width:240px}
 .projhist-chat-title-field label{font-size:9px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:#888}
 .projhist-chat-title-field input{padding:7px 9px;border:1px solid var(--cinza);border-radius:8px;font-family:var(--font-ui);font-size:11px;background:var(--branco);color:var(--grafite);outline:none}
 .projhist-chat-title-field input:focus{border-color:var(--grafite)}
 .projhist-chat-title-hint{font-size:9px;color:#999;line-height:1.4;max-width:280px}
-.projhist-chat-list{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;padding-right:4px}
+.projhist-chat-rename-btn{background:none;border:none;font-size:10px;color:var(--azul);cursor:pointer;padding:0;font-family:var(--font-ui);flex-shrink:0;text-decoration:underline;text-underline-offset:2px}
+/* Lista de mensagens: altura fixa para evitar double-scroll dentro do modal */
+.projhist-chat-list{display:flex;flex-direction:column;gap:10px;height:360px;overflow-y:auto;padding-right:4px}
 .projhist-chat-empty{border:1px dashed var(--cinza);border-radius:10px;padding:26px 18px;text-align:center;font-size:11px;color:#999;background:var(--off)}
 .projhist-chat-row{display:flex}
 .projhist-chat-row.mine{justify-content:flex-end}
@@ -2771,6 +2775,9 @@ body {
       <a href="calc.html" class="nd-soc" style="display:none">EXP.calculadora</a>
       <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
       <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
+      <a href="analise.html" class="nd-soc" style="display:none">EXP.análise</a>
+      <a href="pessoas.html" class="nd-soc" style="display:none">EXP.pessoas</a>
+      <a href="sociedade.html" class="nd-soc" style="display:none">EXP.sociedade</a>
     </div>
   </div>
   <div class="nav-tabs">
@@ -4072,14 +4079,16 @@ body {
             <div id="projhist-pane-conversa" class="projhist-pane">
               <div class="projhist-chat-top">
                 <div id="projchat-meta" class="projhist-chat-meta"></div>
-                <div class="projhist-chat-title-edit">
-                  <div class="projhist-chat-title-field">
-                    <label for="projchat-title-input">Nome da conversa no chat</label>
-                    <input type="text" id="projchat-title-input" placeholder="Sigla-oportunidade">
-                  </div>
-                  <button class="btn sm" id="projchat-title-save-btn" onclick="salvarTituloChatProjeto()">Salvar nome</button>
-                  <div class="projhist-chat-title-hint" id="projchat-title-hint"></div>
+                <button class="projhist-chat-rename-btn" onclick="toggleChatTitleEdit()" id="projchat-rename-btn" title="Renomear conversa">✎ renomear</button>
+              </div>
+              <div class="projhist-chat-title-edit" id="projhist-chat-title-edit">
+                <div class="projhist-chat-title-field">
+                  <label for="projchat-title-input">Nome da conversa no chat</label>
+                  <input type="text" id="projchat-title-input" placeholder="Sigla-oportunidade">
                 </div>
+                <button class="btn sm" id="projchat-title-save-btn" onclick="salvarTituloChatProjeto()">Salvar nome</button>
+                <button class="btn sm" onclick="toggleChatTitleEdit()">Cancelar</button>
+                <div class="projhist-chat-title-hint" id="projchat-title-hint"></div>
               </div>
               <div id="projchat-list" class="projhist-chat-list"></div>
               <div class="projhist-compose">
@@ -14529,6 +14538,7 @@ function _projHistResetState(prodId) {
   if (titleInput) titleInput.value = '';
   const titleHint = document.getElementById('projchat-title-hint');
   if (titleHint) titleHint.textContent = '';
+  document.getElementById('projhist-chat-title-edit')?.classList.remove('visible');
 }
 
 function _projHistStopRealtime() {
@@ -14749,6 +14759,13 @@ async function carregarChatProjeto(prodId, options = {}) {
   }
 }
 
+function toggleChatTitleEdit() {
+  const wrap = document.getElementById('projhist-chat-title-edit');
+  if (!wrap) return;
+  const showing = wrap.classList.toggle('visible');
+  if (showing) document.getElementById('projchat-title-input')?.focus();
+}
+
 async function salvarTituloChatProjeto() {
   if (!G.produtoAtivo) return;
   const input = document.getElementById('projchat-title-input');
@@ -14771,6 +14788,7 @@ async function salvarTituloChatProjeto() {
       window.expChat.refreshHome();
     }
     toast('Nome da conversa atualizado.');
+    document.getElementById('projhist-chat-title-edit')?.classList.remove('visible');
   } catch (err) {
     toast('Erro ao salvar nome do chat: ' + (err.message || err));
   } finally {
