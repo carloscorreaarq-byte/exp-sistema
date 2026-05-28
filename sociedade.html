@@ -951,6 +951,34 @@ const G = {
 };
 
 /* ── HELPERS ────────────────────────────────────────────────── */
+function authUserId() {
+  return G.sessao?.user?.id || G.usuario?.auth_id || null;
+}
+
+function actorIdForUser(usuario) {
+  return usuario?.auth_id || usuario?.id || '';
+}
+
+function sameActor(a, b) {
+  return !!a && !!b && String(a) === String(b);
+}
+
+function isCurrentActor(actorId) {
+  return sameActor(actorId, authUserId()) || sameActor(actorId, G.usuario?.id);
+}
+
+function findUsuarioByActorId(actorId) {
+  return G.todosUsuarios.find(u => sameActor(u.auth_id, actorId) || sameActor(u.id, actorId)) || null;
+}
+
+function formatDbError(error, fallback) {
+  const msg = String(error?.message || '').toLowerCase();
+  if (error?.code === '42501' || msg.includes('row-level security') || msg.includes('permission denied') || msg.includes('forbidden')) {
+    return 'Permissao negada no banco para o modulo sociedade';
+  }
+  return fallback;
+}
+
 function _esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -1064,7 +1092,7 @@ async function init() {
 }
 
 async function carregarUsuarios() {
-  const { data } = await sb.from('usuarios').select('id, nome, iniciais, cor, apelido, cargo').eq('ativo', true).order('nome');
+  const { data } = await sb.from('usuarios').select('id, auth_id, nome, iniciais, cor, apelido, cargo').eq('ativo', true).order('nome');
   G.todosUsuarios = data || [];
 }
 
@@ -1143,7 +1171,11 @@ async function enviarToolFeedback() {
    TEMAS
 ══════════════════════════════════════════════════════════════ */
 async function carregarTemas() {
-  const { data } = await sb.from('soc_temas').select('*').order('nome');
+  const { data, error } = await sb.from('soc_temas').select('*').order('nome');
+  if (error) {
+    console.error('soc_temas select failed', error);
+    toast(formatDbError(error, 'Nao foi possivel carregar os temas'), 'erro');
+  }
   G.temas = data || [];
   atualizarSelectTemas();
 }
@@ -1175,7 +1207,7 @@ function popularSelectRespModal() {
   const sel = document.getElementById('mp-ck-resp');
   if (!sel) return;
   sel.innerHTML = `<option value="">Sem responsável específico</option>` +
-    G.todosUsuarios.map(u => `<option value="${u.id}">${_esc(u.nome)}</option>`).join('');
+    G.todosUsuarios.map(u => `<option value="${actorIdForUser(u)}">${_esc(u.nome)}</option>`).join('');
 }
 
 function onChangeTema() {
@@ -1188,9 +1220,13 @@ async function criarNovoTema(nome) {
   const { data, error } = await sb.from('soc_temas').insert({
     nome: nome.trim(),
     cor: '#5A7EA5',
-    criado_por: G.usuario.id,
+    criado_por: authUserId(),
   }).select().single();
-  if (error || !data) { toast('Erro ao criar tema', 'erro'); return null; }
+  if (error || !data) {
+    console.error('soc_temas insert failed', error);
+    toast(formatDbError(error, 'Erro ao criar tema'), 'erro');
+    return null;
+  }
   G.temas.push(data);
   G.temas.sort((a,b) => a.nome.localeCompare(b.nome));
   atualizarSelectTemas();
@@ -1203,7 +1239,7 @@ async function criarNovoTema(nome) {
 async function carregarPautas() {
   const [pRes, lRes, ckRes, cmRes] = await Promise.all([
     sb.from('soc_pautas').select('*').order('updated_at', { ascending: false }),
-    sb.from('soc_pautas_leituras').select('pauta_id, lido_em').eq('user_id', G.usuario.id),
+    sb.from('soc_pautas_leituras').select('pauta_id, lido_em').eq('user_id', authUserId()),
     sb.from('soc_pautas_checklists').select('id, pauta_id, responsavel_id, prazo, concluido'),
     sb.from('soc_pautas_comentarios').select('id, pauta_id'),
   ]);
@@ -1231,8 +1267,8 @@ function renderPautaLista() {
   }
   if (G.filtroMinhas) {
     lista = lista.filter(p =>
-      p.autor_id === G.usuario.id ||
-      G.checklists.some(c => c.pauta_id === p.id && c.responsavel_id === G.usuario.id)
+      isCurrentActor(p.autor_id) ||
+      G.checklists.some(c => c.pauta_id === p.id && isCurrentActor(c.responsavel_id))
     );
   }
 
@@ -1245,12 +1281,12 @@ function renderPautaLista() {
 
 function renderPautaCard(p) {
   const tema   = G.temas.find(t => t.id === p.tema_id);
-  const autor  = G.todosUsuarios.find(u => u.id === p.autor_id);
+  const autor  = findUsuarioByActorId(p.autor_id);
   const lida   = G.leituras[p.id];
   const naoLida = !lida || new Date(p.updated_at) > new Date(lida);
 
   // Indicador de tarefa minha nesta pauta
-  const meusCks     = G.checklists.filter(c => c.pauta_id === p.id && c.responsavel_id === G.usuario.id);
+  const meusCks     = G.checklists.filter(c => c.pauta_id === p.id && isCurrentActor(c.responsavel_id));
   const temCkMeu    = meusCks.length > 0;
   const todosFeitos = meusCks.every(c => c.concluido);
   const algumAtras  = meusCks.some(c => !c.concluido && c.prazo && new Date(c.prazo) < new Date());
@@ -1319,7 +1355,7 @@ async function selecionarPauta(id) {
 
   // Marcar como lida
   await sb.from('soc_pautas_leituras').upsert(
-    { pauta_id: id, user_id: G.usuario.id, lido_em: new Date().toISOString() },
+    { pauta_id: id, user_id: authUserId(), lido_em: new Date().toISOString() },
     { onConflict: 'pauta_id,user_id' }
   );
   G.leituras[id] = new Date().toISOString();
@@ -1338,8 +1374,8 @@ async function renderPautaDetalhe(id) {
   if (!pauta) return;
 
   const tema   = G.temas.find(t => t.id === pauta.tema_id);
-  const autor  = G.todosUsuarios.find(u => u.id === pauta.autor_id);
-  const isAutor = pauta.autor_id === G.usuario.id;
+  const autor  = findUsuarioByActorId(pauta.autor_id);
+  const isAutor = isCurrentActor(pauta.autor_id);
 
   const [{ data: ckItems }, { data: comentarios }] = await Promise.all([
     sb.from('soc_pautas_checklists').select('*').eq('pauta_id', id).order('created_at'),
@@ -1350,7 +1386,7 @@ async function renderPautaDetalhe(id) {
   const ckTotal  = ckItems?.length || 0;
   const ckFeitos = ckItems?.filter(c => c.concluido).length || 0;
   const ckPct    = ckTotal ? Math.round(ckFeitos / ckTotal * 100) : 0;
-  const meusCks  = ckItems?.filter(c => c.responsavel_id === G.usuario.id) || [];
+  const meusCks  = ckItems?.filter(c => isCurrentActor(c.responsavel_id)) || [];
   const dotCor   = meusCks.length === 0 ? '' :
     meusCks.some(c => !c.concluido && c.prazo && new Date(c.prazo) < new Date()) ? 'var(--terracota)' :
     meusCks.some(c => !c.concluido) ? 'var(--ouro)' : '#ccc';
@@ -1374,7 +1410,7 @@ async function renderPautaDetalhe(id) {
       </div>
       <div class="ck-pauta-body" id="ck-body-${id}" style="display:none">
         ${(ckItems||[]).map(ck => {
-          const resp    = G.todosUsuarios.find(u => u.id === ck.responsavel_id);
+          const resp    = findUsuarioByActorId(ck.responsavel_id);
           const atras   = !ck.concluido && ck.prazo && new Date(ck.prazo) < new Date();
           return `<div class="ck-item">
             <input type="checkbox" class="ck-cb" ${ck.concluido?'checked':''} onchange="toggleCkItem('${ck.id}','${id}',this.checked)">
@@ -1434,8 +1470,8 @@ async function renderPautaDetalhe(id) {
 }
 
 function renderComentario(c, pautaId) {
-  const autor   = G.todosUsuarios.find(u => u.id === c.autor_id);
-  const isAutor = c.autor_id === G.usuario.id;
+  const autor   = findUsuarioByActorId(c.autor_id);
+  const isAutor = isCurrentActor(c.autor_id);
   const corpo   = destacarMencoes(_esc(c.corpo || '').replace(/\n/g, '<br>'));
   return `<div class="coment-item" id="coment-${c.id}">
     <div class="coment-hd">
@@ -1475,10 +1511,10 @@ async function adicionarComentario(pautaId) {
 
   const { error } = await sb.from('soc_pautas_comentarios').insert({
     pauta_id: pautaId,
-    autor_id: G.usuario.id,
+    autor_id: authUserId(),
     corpo,
   });
-  if (error) { toast('Erro ao comentar', 'erro'); return; }
+  if (error) { toast(formatDbError(error, 'Erro ao comentar'), 'erro'); return; }
 
   // Atualizar updated_at da pauta para subir na lista
   await sb.from('soc_pautas').update({ updated_at: new Date().toISOString() }).eq('id', pautaId);
@@ -1630,7 +1666,7 @@ async function salvarPauta() {
           G.ckItensNovos.map(it => ({
             pauta_id: G.editandoPautaId, responsavel_id: respId || null,
             texto: it.texto, prazo: prazo || null, concluido: false,
-            criado_por: G.usuario.id,
+            criado_por: authUserId(),
           }))
         );
       } else if (!temCk) {
@@ -1641,7 +1677,7 @@ async function salvarPauta() {
     } else {
       // Criar
       const { data: nova, error } = await sb.from('soc_pautas').insert({
-        tema_id: temaId, titulo, corpo, autor_id: G.usuario.id,
+        tema_id: temaId, titulo, corpo, autor_id: authUserId(),
       }).select().single();
       if (error || !nova) throw error || new Error('Erro');
 
@@ -1650,7 +1686,7 @@ async function salvarPauta() {
           G.ckItensNovos.map(it => ({
             pauta_id: nova.id, responsavel_id: respId || null,
             texto: it.texto, prazo: prazo || null, concluido: false,
-            criado_por: G.usuario.id,
+            criado_por: authUserId(),
           }))
         );
       }
@@ -1662,7 +1698,7 @@ async function salvarPauta() {
     if (G.editandoPautaId) await renderPautaDetalhe(G.editandoPautaId);
 
   } catch (e) {
-    toast('Erro ao salvar pauta', 'erro');
+    toast(formatDbError(e, 'Erro ao salvar pauta'), 'erro');
     console.error(e);
   } finally {
     if (btn) btn.disabled = false;
@@ -1841,7 +1877,7 @@ async function renderAtaDetalhe(id) {
   const ata = G.atas.find(a => a.id === id);
   if (!ata) return;
 
-  const isAutor = ata.criado_por === G.usuario.id;
+  const isAutor = isCurrentActor(ata.criado_por);
   const dataFmt = ata.data
     ? new Date(ata.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
     : '—';
@@ -1852,7 +1888,7 @@ async function renderAtaDetalhe(id) {
   ]);
 
   const presentesUsers = (presentes || [])
-    .map(p => G.todosUsuarios.find(u => u.id === p.usuario_id))
+    .map(p => findUsuarioByActorId(p.usuario_id))
     .filter(Boolean);
 
   const itensPauta   = (itens || []).filter(i => i.tipo === 'pauta');
@@ -1955,8 +1991,9 @@ function renderAtaPresentes() {
   const grid = document.getElementById('ma-presentes-grid');
   if (!grid) return;
   grid.innerHTML = G.todosUsuarios.map(u => {
-    const sel = G.ataPresentes.has(u.id);
-    return `<div class="presente-opt${sel ? ' sel' : ''}" onclick="togglePresente('${u.id}',this)">
+    const actorId = actorIdForUser(u);
+    const sel = G.ataPresentes.has(actorId);
+    return `<div class="presente-opt${sel ? ' sel' : ''}" onclick="togglePresente('${actorId}',this)">
       ${avatarEl(u, 20)}
       <span>${_esc(u.apelido || u.nome.split(' ')[0])}</span>
     </div>`;
@@ -2022,7 +2059,7 @@ async function salvarAta() {
       await sb.from('soc_atas_itens').delete().eq('ata_id', ataId);
     } else {
       const { data: nova, error } = await sb.from('soc_atas').insert({
-        data, titulo: titulo || null, criado_por: G.usuario.id,
+        data, titulo: titulo || null, criado_por: authUserId(),
       }).select().single();
       if (error || !nova) throw error || new Error('Erro ao criar ata');
       ataId = nova.id;
@@ -2051,7 +2088,7 @@ async function salvarAta() {
     await renderAtaDetalhe(ataId);
 
   } catch (e) {
-    toast('Erro ao salvar ata', 'erro');
+    toast(formatDbError(e, 'Erro ao salvar ata'), 'erro');
     console.error(e);
   } finally {
     if (btn) btn.disabled = false;
@@ -2284,7 +2321,7 @@ async function renderProjPlanDetalhe(id) {
   if (!p) return;
 
   const tema    = G.temas.find(t => t.id === p.tema_id);
-  const isEditor = p.criador_id === G.usuario.id;
+  const isEditor = isCurrentActor(p.criador_id);
   const chipStyle = tema ? `background:${tema.cor}22;color:${tema.cor};border:1px solid ${tema.cor}44` : '';
 
   const [{ data: tarefas }, { data: membros }] = await Promise.all([
@@ -2292,7 +2329,7 @@ async function renderProjPlanDetalhe(id) {
     sb.from('soc_proj_membros').select('socio_id').eq('projeto_id', id),
   ]);
 
-  const membroUsers = (membros || []).map(m => G.todosUsuarios.find(u => u.id === m.socio_id)).filter(Boolean);
+  const membroUsers = (membros || []).map(m => findUsuarioByActorId(m.socio_id)).filter(Boolean);
   const total = custoTotal(tarefas);
 
   // Agrupar tarefas por tema
@@ -2387,7 +2424,7 @@ async function renderProjAprovDetalhe(id) {
   const total  = custoTotal(tarefas);
   const fluxo  = calcFluxo(tarefas);
 
-  const autor = G.todosUsuarios.find(u => u.id === p.criador_id);
+  const autor = findUsuarioByActorId(p.criador_id);
 
   wrap.innerHTML = `
     <div class="proj-detalhe">
@@ -2496,7 +2533,7 @@ async function renderProjAvalDetalhe(id) {
   const resultado = p.resultado_final || '';
 
   const retornosHtml = (retornos || []).map(r => {
-    const autor = G.todosUsuarios.find(u => u.id === r.autor_id);
+    const autor = findUsuarioByActorId(r.autor_id);
     return `<div class="retorno-item">
       <div class="retorno-hd">${fmtData(r.created_at)} · ${_esc(autor?.nome || '?')}</div>
       <div class="retorno-txt">${_esc(r.texto)}</div>
@@ -2568,7 +2605,7 @@ async function adicionarRetorno(pid) {
   const ta   = document.getElementById(`retorno-nova-${pid}`);
   const texto = ta?.value.trim();
   if (!texto) return;
-  await sb.from('soc_proj_retornos').insert({ projeto_id: pid, texto, autor_id: G.usuario.id });
+  await sb.from('soc_proj_retornos').insert({ projeto_id: pid, texto, autor_id: authUserId() });
   if (ta) ta.value = '';
   await renderProjAvalDetalhe(pid);
 }
@@ -2661,10 +2698,11 @@ function renderProjMembrosGrid() {
   const grid = document.getElementById('mpr-membros-grid');
   if (!grid) return;
   grid.innerHTML = G.todosUsuarios
-    .filter(u => u.id !== G.usuario.id)
+    .filter(u => !sameActor(actorIdForUser(u), authUserId()))
     .map(u => {
-      const sel = G.projMembros.has(u.id);
-      return `<div class="presente-opt${sel?' sel':''}" onclick="toggleProjMembro('${u.id}',this)">
+      const actorId = actorIdForUser(u);
+      const sel = G.projMembros.has(actorId);
+      return `<div class="presente-opt${sel?' sel':''}" onclick="toggleProjMembro('${actorId}',this)">
         ${avatarEl(u, 20)} <span>${_esc(u.apelido || u.nome.split(' ')[0])}</span>
       </div>`;
     }).join('');
@@ -2750,7 +2788,7 @@ async function salvarProjeto() {
       await sb.from('soc_proj_membros').delete().eq('projeto_id', projId);
     } else {
       const { data: novo, error } = await sb.from('soc_projetos').insert({
-        nome, tema_id: temaId, objetivo, criador_id: G.usuario.id,
+        nome, tema_id: temaId, objetivo, criador_id: authUserId(),
         data_aprovacao_prev: dtAprov, data_inicio_prev: dtInicio, data_conclusao_prev: dtConc,
       }).select().single();
       if (error || !novo) throw error || new Error('Erro ao criar projeto');
@@ -2776,7 +2814,7 @@ async function salvarProjeto() {
     await renderProjPlanDetalhe(projId);
 
   } catch (e) {
-    toast('Erro ao salvar', 'erro');
+    toast(formatDbError(e, 'Erro ao salvar'), 'erro');
     console.error(e);
   } finally {
     if (btn) btn.disabled = false;
