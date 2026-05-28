@@ -6877,6 +6877,17 @@ function getSemanaAtual() { return { offset: 0 }; }
 function navegarSemana(d) { G.semanaOffset += d; G.diaSelecionado = null; renderSemana(); }
 function semanaHoje()     { G.semanaOffset = 0;  G.diaSelecionado = null; renderSemana(); }
 
+// Retorna o índice 0-6 (seg→dom) de um lançamento dentro dos dias da semana.
+// Usa data_lancamento como fonte primária (sempre confiável); dia_semana como fallback.
+function getLancIdx(l, dias) {
+  const iso = l.data_lancamento?.slice(0, 10);
+  if (iso) {
+    const i = dias.findIndex(d => d.toISOString().split('T')[0] === iso);
+    if (i >= 0) return i;
+  }
+  return (parseInt(l.dia_semana) || 1) - 1;
+}
+
 // Retorna array de 7 Date (seg→dom) para o offset dado
 function getDiasSemana(offset) {
   const { ini } = semanaRangeOffset(offset);
@@ -6896,7 +6907,7 @@ function renderDiaSelector(lancs) {
   // Horas por dia para mostrar no botão
   const hPorDia = Array(7).fill(0);
   (lancs || []).forEach(l => {
-    const idx = (parseInt(l.dia_semana) || 1) - 1;
+    const idx = getLancIdx(l, dias);
     if (idx >= 0 && idx < 7) hPorDia[idx] += diffHoras(l.hora_inicio, l.hora_fim);
   });
 
@@ -6995,7 +7006,7 @@ function renderCalendarioSemana(lancs) {
   const hPorDia = Array(7).fill(0);
   const lancPorDia = Array.from({length:7}, () => []);
   lancs.forEach(l => {
-    const idx = (parseInt(l.dia_semana) || 1) - 1;
+    const idx = getLancIdx(l, dias);
     if (idx >= 0 && idx < 7) {
       hPorDia[idx] += diffHoras(l.hora_inicio, l.hora_fim);
       lancPorDia[idx].push(l);
@@ -7062,7 +7073,7 @@ function renderCalendarioSemana(lancs) {
         const cls = COR_CLS[l.tipo] || 'cb-projeto';
         const projetoInfo = l.tipo === 'projeto' ? getProjetoHierarquiaLinha(l.produto_id, l.etapa_id, 16) : null;
         const desc = l.tipo === 'projeto' ? projetoInfo.principal : (l.subtipo || l.tipo);
-        const acao = G._semanaTravada ? '' : `onclick="event.stopPropagation();deletarLancamento('${l.id}')"`;
+        const acao = G._semanaTravada ? '' : `onclick="event.stopPropagation();abrirEditarLancamento('${l.id}')"`;
         const _bInner = l.tipo === 'projeto'
           ? `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;line-height:1.2">${projetoInfo.cliente}</div>`
             + `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;line-height:1.2;opacity:.8">${truncarTexto(projetoInfo.oportunidade,14)}</div>`
@@ -7135,7 +7146,7 @@ function renderLancamentos(lancs) {
   // Agrupa por dia
   const lancPorDia = Array.from({length:7}, () => []);
   lancs.forEach(l => {
-    const idx = (parseInt(l.dia_semana)||1) - 1;
+    const idx = getLancIdx(l, dias);
     if (idx >= 0 && idx < 7) lancPorDia[idx].push(l);
   });
 

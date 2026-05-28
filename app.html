@@ -743,6 +743,39 @@ body {
 .clima-runner-ok-icon{font-size:42px;line-height:1}
 .clima-runner-ok-titulo{font-size:16px;font-weight:700}
 .clima-runner-ok-sub{font-size:12px;color:#888;max-width:300px;line-height:1.55}
+/* runner — sim/não */
+.clima-simnao-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0 24px}
+.clima-simnao-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 16px;border-radius:10px;border:1.5px solid var(--cinza2);background:var(--branco);font-family:var(--font-ui);cursor:pointer;transition:all .15s}
+.clima-simnao-btn:hover{border-color:#bbb;background:var(--off)}
+.clima-simnao-icon{width:30px;height:30px;border-radius:50%;border:2px solid var(--cinza2);display:flex;align-items:center;justify-content:center;font-size:15px;color:#ccc;transition:all .15s}
+.clima-simnao-lbl{font-size:12px;font-weight:700;color:#bbb;letter-spacing:.4px;text-transform:uppercase;transition:color .15s}
+.clima-simnao-btn.ativo-sim{border-color:var(--verde);border-width:2px;background:var(--verde-bg)}
+.clima-simnao-btn.ativo-sim .clima-simnao-icon{border-color:var(--verde);background:var(--verde);color:#fff}
+.clima-simnao-btn.ativo-sim .clima-simnao-lbl{color:var(--verde)}
+.clima-simnao-btn.ativo-nao{border-color:var(--terracota);border-width:2px;background:var(--tc-bg)}
+.clima-simnao-btn.ativo-nao .clima-simnao-icon{border-color:var(--terracota);background:var(--terracota);color:#fff}
+.clima-simnao-btn.ativo-nao .clima-simnao-lbl{color:var(--terracota)}
+/* runner — escala */
+.clima-escala-wrap{padding:16px 0 4px}
+.clima-escala-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--cinza2);outline:none;cursor:pointer;display:block}
+.clima-escala-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--terracota);cursor:pointer;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.22)}
+.clima-escala-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--terracota);cursor:pointer;border:3px solid #fff}
+.clima-escala-ticks{display:flex;justify-content:space-between;padding:4px 11px 0;margin-top:4px}
+.clima-escala-tick-col{display:flex;flex-direction:column;align-items:center;gap:2px}
+.clima-escala-tick-col::before{content:'';display:block;width:1px;height:7px;background:var(--cinza2);margin-bottom:2px;transition:background .12s}
+.clima-escala-tick-col.ativo::before{background:var(--terracota)}
+.clima-escala-tick-num{font-size:11px;font-weight:600;color:#aaa;font-family:var(--font-mono);transition:color .12s}
+.clima-escala-tick-col.ativo .clima-escala-tick-num{color:var(--terracota);font-weight:700}
+.clima-escala-tick-lbl{font-size:9px;color:#bbb;text-transform:uppercase;letter-spacing:.3px;height:12px;line-height:12px}
+.clima-escala-tick-col.ativo .clima-escala-tick-lbl{color:var(--terracota)}
+/* runner — aviso anonimato/publicidade */
+.clima-disclosure{border-radius:10px;padding:14px 16px}
+.clima-disclosure.anonima{background:#f5f0fb;border:1px solid rgba(107,79,160,.2)}
+.clima-disclosure.publica{background:var(--az-bg);border:1px solid rgba(74,114,181,.2)}
+.clima-disclosure-titulo{font-size:12px;font-weight:700;margin-bottom:5px}
+.clima-disclosure.anonima .clima-disclosure-titulo{color:var(--roxo)}
+.clima-disclosure.publica .clima-disclosure-titulo{color:var(--azul)}
+.clima-disclosure-texto{font-size:11px;line-height:1.6;color:#666}
 
 @media (max-width: 760px) {
   .shell-modal-overlay {
@@ -2240,6 +2273,8 @@ const climaApp = {
   step: 0,
   respostas: {},
   ativo: false,
+  anonima: false,
+  disclosureDone: false,
 };
 
 async function verificarPesquisaPendente(usuarioId) {
@@ -2352,18 +2387,24 @@ function renderSurveyStep() {
   if (tipo === 'simnao') {
     const sv = salvo.simnao;
     inputHtml = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px">
-        <button class="clima-simnao-btn${sv===true?' ativo-sim':''}" onclick="appSetSN(true)">✅ Sim</button>
-        <button class="clima-simnao-btn${sv===false?' ativo-nao':''}" onclick="appSetSN(false)">❌ Não</button>
+      <div class="clima-simnao-wrap">
+        <button class="clima-simnao-btn${sv===true?' ativo-sim':''}" onclick="appSetSN(true)">
+          <div class="clima-simnao-icon">✓</div>
+          <div class="clima-simnao-lbl">Sim</div>
+        </button>
+        <button class="clima-simnao-btn${sv===false?' ativo-nao':''}" onclick="appSetSN(false)">
+          <div class="clima-simnao-icon">✗</div>
+          <div class="clima-simnao-lbl">Não</div>
+        </button>
       </div>`;
   } else if (tipo === 'escala') {
     const val = salvo.escala ?? 3;
     inputHtml = `
       <div class="clima-escala-wrap">
         <input type="range" class="clima-escala-slider" id="clima-escala-input" min="0" max="5" step="1" value="${val}">
-        <div class="clima-escala-labels"><span>0 Nada</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5 Muito</span></div>
-        <div class="clima-escala-valor" id="cesc-val">${val}</div>
-        <div class="clima-escala-label-desc" id="cesc-desc">${CLIMA_ESCALA_LABELS_APP[val]||''}</div>
+        <div class="clima-escala-ticks">
+          ${[0,1,2,3,4,5].map(n => `<div class="clima-escala-tick-col${val===n?' ativo':''}"><div class="clima-escala-tick-num">${n}</div><div class="clima-escala-tick-lbl">${n===0?'nada':n===1?'pouco':n===5?'muito':''}</div></div>`).join('')}
+        </div>
       </div>`;
   } else {
     inputHtml = `<textarea class="clima-runner-textarea" id="clima-resp-input" rows="5" placeholder="Escreva sua resposta…">${escHtml(salvo.texto||'')}</textarea>`;
@@ -2389,8 +2430,10 @@ function renderSurveyStep() {
   if (tipo === 'escala') {
     const sl = document.getElementById('clima-escala-input');
     if (sl) sl.addEventListener('input', function() {
-      document.getElementById('cesc-val').textContent = this.value;
-      document.getElementById('cesc-desc').textContent = CLIMA_ESCALA_LABELS_APP[this.value] || '';
+      const n = Number(this.value);
+      document.querySelectorAll('.clima-escala-tick-col').forEach((col, i) => {
+        col.classList.toggle('ativo', i === n);
+      });
     });
   }
   if (tipo === 'aberta') document.getElementById('clima-resp-input')?.focus();
