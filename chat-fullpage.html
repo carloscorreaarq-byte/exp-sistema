@@ -1104,6 +1104,108 @@ body {
 .fp-task-assign-btn:hover { border-color: var(--ca); color: var(--ca); }
 [data-theme="dark"] .fp-task-assign-btn { background: #1E1E1D; border-color: #3A3836; color: #F0EDE6; }
 
+/* ── Painel de prioridades (sobrepõe sidebar, mesmo tamanho) ── */
+#fp-prio-panel {
+  width: 340px; flex-shrink: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: fpSlideIn .18s ease-out;
+}
+[data-theme="dark"] #fp-prio-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+#fp-prio-panel-head {
+  display: flex; align-items: center;
+  padding: 0 14px;
+  height: 44px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+  gap: 8px;
+}
+[data-theme="dark"] #fp-prio-panel-head { border-bottom-color: #2E2D2B; }
+#fp-prio-panel-title {
+  font-size: 14px; font-weight: 800; letter-spacing: -.2px;
+  color: var(--grafite, #111110); flex: 1;
+}
+[data-theme="dark"] #fp-prio-panel-title { color: #F0EDE6; }
+#fp-prio-panel-count {
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  color: var(--cinza, #D0CFC9);
+}
+#fp-prio-panel-list {
+  flex: 1; overflow-y: auto; padding: 8px 10px 12px;
+}
+#fp-prio-panel-list::-webkit-scrollbar { width: 3px; }
+#fp-prio-panel-list::-webkit-scrollbar-thumb { background: var(--cinza, #D0CFC9); border-radius: 2px; }
+
+/* Card de prioridade dentro do painel */
+.fp-pp-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  margin-bottom: 6px;
+  cursor: pointer; transition: filter .1s;
+  border-left: 3px solid transparent;
+}
+.fp-pp-card:hover { filter: brightness(.97); }
+.fp-pp-card          { background: #EAF0FB; border-left-color: #1D4FA0; }
+.fp-pp-card.hoje     { background: #FBF3E8; border-left-color: #C4831A; }
+.fp-pp-card.atrasada { background: #F5E0DD; border-left-color: #B84C3A; }
+[data-theme="dark"] .fp-pp-card          { background: rgba(29,79,160,.15);  border-left-color: #4A72B5; }
+[data-theme="dark"] .fp-pp-card.hoje     { background: rgba(196,131,26,.15); border-left-color: #C4831A; }
+[data-theme="dark"] .fp-pp-card.atrasada { background: rgba(184,76,58,.18);  border-left-color: #B84C3A; }
+
+.fp-pp-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #fff;
+  flex-shrink: 0; margin-top: 1px;
+}
+.fp-pp-num.p1 { background: #1D6A4A; }
+.fp-pp-num.p2 { background: #1D4FA0; }
+.fp-pp-num.p3 { background: #C4831A; }
+.fp-pp-num.p4 { background: #B84C3A; }
+.fp-pp-num.p5, .fp-pp-num.p6 { background: #6D7D8A; }
+
+.fp-pp-info { flex: 1; min-width: 0; }
+.fp-pp-nome {
+  font-size: 12px; font-weight: 700; line-height: 1.35;
+  color: #1D4FA0; word-break: break-word;
+}
+.fp-pp-card.hoje     .fp-pp-nome { color: #C4831A; }
+.fp-pp-card.atrasada .fp-pp-nome { color: #B84C3A; }
+[data-theme="dark"] .fp-pp-nome               { color: #7AA3D4; }
+[data-theme="dark"] .fp-pp-card.hoje     .fp-pp-nome { color: #E5A84A; }
+[data-theme="dark"] .fp-pp-card.atrasada .fp-pp-nome { color: #E07B6B; }
+
+.fp-pp-cidade { font-size: 10px; color: #666; margin-top: 2px; }
+[data-theme="dark"] .fp-pp-cidade { color: #8C8A85; }
+.fp-pp-etapa  { font-size: 10px; color: #888; margin-top: 1px; }
+.fp-pp-prod   { font-size: 9px; color: #aaa; margin-top: 1px; text-transform: uppercase; letter-spacing: .4px; }
+.fp-pp-coment { font-size: 10px; margin-top: 4px; font-style: italic; color: #999; }
+.fp-pp-chips  { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.fp-pp-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 600;
+  border-radius: 4px; padding: 1px 7px;
+  border: 1px solid var(--cinza2, #ECEAE4); color: #888;
+}
+.fp-pp-chip.atrasada { background: #FBF0EE; border-color: #B84C3A; color: #B84C3A; }
+.fp-pp-chip.hoje     { background: #FBF3E8; border-color: #C4831A; color: #C4831A; }
+
+.fp-pp-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid currentColor; flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 10px;
+  opacity: .35; transition: opacity .15s;
+}
+.fp-pp-card          .fp-pp-check { color: #1D4FA0; }
+.fp-pp-card.hoje     .fp-pp-check { color: #C4831A; }
+.fp-pp-card.atrasada .fp-pp-check { color: #B84C3A; }
+.fp-pp-check:hover { opacity: 1; }
+
 /* ── Banner de prioridade — estilo prio-card do dashboard ── */
 #fp-prio-banner {
   position: fixed;
@@ -1227,74 +1329,26 @@ body {
 
 .fp-notif-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px;
-  background: #2A2926;
+  padding: 0 12px;
+  height: 44px;
+  background: var(--off, #F7F6F3);
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
   flex-shrink: 0;
 }
-.fp-notif-head-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.85); }
+[data-theme="dark"] .fp-notif-head { background: #252523; border-bottom-color: #2E2D2B; }
+.fp-notif-head-title {
+  font-size: 13px; font-weight: 800; letter-spacing: -.2px;
+  color: var(--grafite, #111110);
+}
+[data-theme="dark"] .fp-notif-head-title { color: #F0EDE6; }
 
 #notif-lista { flex: 1; overflow-y: auto; }
 #notif-lista::-webkit-scrollbar { width: 3px; }
 #notif-lista::-webkit-scrollbar-thumb { background: var(--cinza, #D0CFC9); border-radius: 2px; }
 
-.fp-notif-sec {
-  font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  color: #aaa; padding: 7px 12px 4px;
-  border-top: 1px solid var(--cinza2, #ECEAE4);
-  background: var(--off, #F7F6F3);
-}
-[data-theme="dark"] .fp-notif-sec { background: #252523; border-top-color: #2E2D2B; }
-.fp-notif-sec:first-child { border-top: none; }
-
-/* ── Overrides AppNotif items para o painel escuro do chat ── */
-#notif-panel .notif-item {
-  border-bottom-color: rgba(255,255,255,.08);
-  padding: 9px 12px;
-}
-#notif-panel .notif-item:hover      { background: rgba(255,255,255,.05); }
-#notif-panel .notif-item.nova       { background: rgba(74,114,181,.15); }
-#notif-panel .notif-item.nova:hover { background: rgba(74,114,181,.22); }
-#notif-panel .notif-titulo   { color: #F0EDE6; }
-#notif-panel .notif-corpo    { color: #9C9A95; }
-#notif-panel .notif-ts       { color: #6C6A65; }
-#notif-panel .notif-check-btn {
-  background: rgba(255,255,255,.08);
-  border-color: rgba(255,255,255,.15);
-  color: #9C9A95;
-}
-#notif-panel .notif-check-btn:hover { border-color: #3D7A4F; color: #3D7A4F; }
-#notif-panel .notif-sec-hd {
-  background: rgba(255,255,255,.04);
-  border-top-color: rgba(255,255,255,.08);
-  color: #6C6A65;
-}
-
-.fp-notif-item {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 9px 12px; cursor: pointer;
-  border-bottom: 1px solid var(--off, #F7F6F3);
-  transition: background .1s;
-}
-.fp-notif-item:hover { background: var(--off, #F7F6F3); }
-[data-theme="dark"] .fp-notif-item { border-bottom-color: #252523; }
-[data-theme="dark"] .fp-notif-item:hover { background: rgba(255,255,255,.04); }
-.fp-notif-item.nova { background: #EEF3FB; }
-[data-theme="dark"] .fp-notif-item.nova { background: rgba(74,114,181,.12); }
-.fp-notif-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
-.fp-notif-body { flex: 1; min-width: 0; }
-.fp-notif-titulo { font-size: 11px; font-weight: 600; color: var(--grafite, #111110); line-height: 1.3; }
-[data-theme="dark"] .fp-notif-titulo { color: #F0EDE6; }
-.fp-notif-corpo { font-size: 10px; color: #888; margin-top: 2px; line-height: 1.4; }
-.fp-notif-ts    { font-size: 9px; color: #bbb; margin-top: 2px; font-family: 'DM Mono', monospace; }
-.fp-notif-enc {
-  width: 20px; height: 20px; border-radius: 5px; border: none;
-  background: none; color: #ccc; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; flex-shrink: 0; transition: color .1s, background .1s;
-}
-.fp-notif-enc:hover { background: var(--cinza2, #ECEAE4); color: #555; }
-
-.fp-notif-empty { padding: 20px; text-align: center; font-size: 11px; color: #bbb; }
+/* .fp-notif-* — estilos herdados do exp-design-system.css via .notif-* */
+/* Apenas overrides específicos do chat fullpage abaixo */
+#notif-panel .notif-sec-hd { top: 44px; } /* sticky abaixo do nosso header de 44px */
 
 /* ── Overlay do projeto (sobre o chat) ── */
 #fp-proj-overlay {
@@ -1487,8 +1541,9 @@ body {
       <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:'DM Mono',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
     </button>
 
-    <!-- Prioridade do projeto (hover abre card estilo dashboard) -->
+    <!-- Prioridade do projeto (hover = banner rápido, click = painel completo) -->
     <button class="fp-nav-item" id="fp-nav-prio" title="Minha prioridade"
+            onclick="fpChat.togglePrioPanel()"
             onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
     </button>
@@ -1509,8 +1564,10 @@ body {
   <div id="notif-panel" style="display:none">
     <div class="fp-notif-head">
       <span class="fp-notif-head-title">Notificações</span>
-      <button class="fp-sb-icon-btn" onclick="fpChat.toggleNotifPanel()" title="Fechar" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.7)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      <button onclick="fpChat.toggleNotifPanel()" title="Fechar"
+        style="border:none;background:none;cursor:pointer;color:var(--cinza,#D0CFC9);display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;padding:0;transition:color .12s"
+        onmouseenter="this.style.color='var(--grafite,#111110)'" onmouseleave="this.style.color='var(--cinza,#D0CFC9)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
       </button>
     </div>
     <div id="notif-lista"></div>
@@ -1547,6 +1604,24 @@ body {
         <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="fpChat.openAssignDrop(this)" title="Atribuir para alguém">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Painel de prioridades (sobrepõe sidebar) ── -->
+  <aside id="fp-prio-panel" style="display:none">
+    <div id="fp-prio-panel-head">
+      <span id="fp-prio-panel-title">Prioridades</span>
+      <span id="fp-prio-panel-count"></span>
+      <button onclick="fpChat.closePrioPanel()" title="Fechar"
+        style="border:none;background:none;cursor:pointer;color:var(--cinza,#D0CFC9);display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;padding:0;transition:color .12s;flex-shrink:0"
+        onmouseenter="this.style.color='var(--grafite,#111110)'" onmouseleave="this.style.color='var(--cinza,#D0CFC9)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-prio-panel-list">
+      <div class="fp-loading" style="padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
       </div>
     </div>
   </aside>

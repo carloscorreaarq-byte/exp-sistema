@@ -1838,6 +1838,7 @@
     /* prioridade */
     checkPrio,
     /* prioridade / projeto */
+    togglePrioPanel, openPrioPanel, closePrioPanel, checkPrioPanel,
     showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
     /* notificações */
     toggleNotifPanel, encerrarNotif,
@@ -2096,6 +2097,134 @@
         if (r.error) { btn.classList.remove('done'); return; }
         tasksCache = tasksCache.filter(function(t) { return String(t.id) !== String(taskId); });
         setTimeout(function() { renderTasks(tasksCache); }, 400);
+      });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     PAINEL COMPLETO DE PRIORIDADES (click no ⭐)
+  ═══════════════════════════════════════════════════════════════════ */
+  var prioPanelOpen   = false;
+  var allPrioData     = null;   /* cache de todas as prioridades */
+  var allPrioLoaded   = false;
+
+  function togglePrioPanel() {
+    hidePrioBanner();
+    prioPanelOpen ? closePrioPanel() : openPrioPanel();
+  }
+
+  function openPrioPanel() {
+    prioPanelOpen = true;
+    var $panel   = document.getElementById('fp-prio-panel');
+    var $sidebar = document.getElementById('fp-sidebar');
+    var $tasks   = document.getElementById('fp-tasks-panel');
+    var $btn     = document.getElementById('fp-nav-prio');
+    /* esconde sidebar (ou tasks se estiver aberto) */
+    if ($sidebar) $sidebar.style.display = 'none';
+    if ($tasks && $tasks.style.display !== 'none') $tasks.style.display = 'none';
+    if ($panel)  $panel.style.display = 'flex';
+    if ($btn)    $btn.classList.add('active');
+    if (!allPrioLoaded) fetchAllPrioridades();
+    else renderPrioPanel();
+  }
+
+  function closePrioPanel() {
+    prioPanelOpen = false;
+    var $panel   = document.getElementById('fp-prio-panel');
+    var $sidebar = document.getElementById('fp-sidebar');
+    var $btn     = document.getElementById('fp-nav-prio');
+    if ($panel)  $panel.style.display = 'none';
+    if ($sidebar) $sidebar.style.display = 'flex';
+    if ($btn)    $btn.classList.remove('active');
+  }
+
+  function fetchAllPrioridades() {
+    var uid = user.id || user.app_user_id;
+    if (!uid) return;
+    var $list = document.getElementById('fp-prio-panel-list');
+    if ($list) $list.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+
+    sb.from('prioridades_usuario')
+      .select('id,produto_id,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
+      .eq('usuario_id', uid).eq('concluida', false).order('ordem')
+      .then(function(r) {
+        allPrioLoaded = true;
+        allPrioData   = r.data || [];
+        renderPrioPanel();
+      })
+      .catch(function() {
+        allPrioLoaded = true;
+        allPrioData   = [];
+        renderPrioPanel();
+      });
+  }
+
+  function renderPrioPanel() {
+    var $list  = document.getElementById('fp-prio-panel-list');
+    var $count = document.getElementById('fp-prio-panel-count');
+    if (!$list) return;
+
+    var items = allPrioData || [];
+    if ($count) $count.textContent = items.length ? items.length + (items.length === 1 ? ' item' : ' itens') : '';
+
+    if (!items.length) {
+      $list.innerHTML = '<div style="padding:28px 16px;text-align:center;font-size:11px;color:var(--cinza,#D0CFC9)">Nenhuma prioridade definida ✓</div>';
+      return;
+    }
+
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    var html = '';
+
+    items.forEach(function(pr) {
+      var prod = pr.produtos || {};
+      var opp  = prod.oportunidades || {};
+      var cli  = opp.clientes || {};
+      var titulo   = [cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto';
+      var cidadeUf = [opp.cidade, cli.uf].filter(Boolean).join('/');
+      var etapas   = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
+      var etapa    = etapas.find(function(e){ return e.status==='em_andamento'; }) || etapas.find(function(e){ return e.status!=='concluida'; });
+      var ord      = Math.min(pr.ordem || 1, 6);
+      var numCls   = NUM_CLS[ord] || 'p6';
+
+      var estadoCard = '';
+      var chipHtml   = '';
+      if (pr.prazo_texto) {
+        var pdt = new Date(pr.prazo_texto + 'T12:00:00'); pdt.setHours(0,0,0,0);
+        var dtFmt = pdt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' });
+        if (pdt < hoje)        estadoCard = 'atrasada';
+        else if (+pdt===+hoje) estadoCard = 'hoje';
+        chipHtml = '<div class="fp-pp-chips"><span class="fp-pp-chip ' + estadoCard + '">📅 ' + escHtml(dtFmt) + '</span></div>';
+      }
+
+      var produtoId = escHtml(String(pr.produto_id || ''));
+      var prioId    = escHtml(String(pr.id));
+
+      html += '<div class="fp-pp-card ' + estadoCard + '" onclick="fpChat.openProjectOverlay(\'' + produtoId + '\')">' +
+        '<div class="fp-pp-num ' + numCls + '">' + ord + '</div>' +
+        '<div class="fp-pp-info">' +
+          '<div class="fp-pp-nome">' + escHtml(titulo) + '</div>' +
+          (cidadeUf  ? '<div class="fp-pp-cidade">' + escHtml(cidadeUf) + '</div>' : '') +
+          (etapa     ? '<div class="fp-pp-etapa">↳ ' + escHtml(etapa.nome||'') + '</div>' : '') +
+          (prod.nome && prod.nome !== titulo ? '<div class="fp-pp-prod">' + escHtml(prod.nome) + '</div>' : '') +
+          (pr.comentario ? '<div class="fp-pp-coment">' + escHtml(pr.comentario) + '</div>' : '') +
+          chipHtml +
+        '</div>' +
+        '<button class="fp-pp-check" onclick="event.stopPropagation();fpChat.checkPrioPanel(\'' + prioId + '\')" title="Concluída">✓</button>' +
+        '</div>';
+    });
+
+    $list.innerHTML = html;
+  }
+
+  function checkPrioPanel(prioId) {
+    sb.from('prioridades_usuario')
+      .update({ concluida: true, concluida_em: new Date().toISOString() })
+      .eq('id', prioId)
+      .then(function(r) {
+        if (r.error) return;
+        allPrioData   = (allPrioData || []).filter(function(p){ return String(p.id) !== String(prioId); });
+        prioLoaded    = false;   /* invalida o cache do banner */
+        prioData      = null;
+        renderPrioPanel();
       });
   }
 
