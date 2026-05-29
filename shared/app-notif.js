@@ -3,33 +3,34 @@
 // ══════════════════════════════════════════════════════════════
 //
 // USO EM CADA MÓDULO:
-//   1. Inclua este script após app-shell.js
-//   2. No DOMContentLoaded (ou após auth):
-//        AppNotif.init();
+//   1. Inclua este script após o CDN do Supabase
+//   2. No DOMContentLoaded (após auth):
+//        AppNotif.init({ userId: G.usuario.id });
 //
-// COMPUTED ALERTS (módulos sem tabela de notificações):
-//   AppNotif.setComputedSection('comercial', {
-//     label: 'Comercial',
-//     items: [
-//       { key: 'fu_abc', icon: '⏰', titulo: 'Sem follow-up 30d',
-//         corpo: 'Cliente XYZ', onClick: fn, onDismiss: fn }
-//     ]
-//   });
+// O bell carrega automaticamente:
+//   - Notificações da tabela `notificacoes` (todos os módulos)
+//   - Tarefas ativas do usuário (tarefas_livres)
+//   - Alertas CRM (oportunidades sem follow-up / propostas expiradas)
 //
-// PARA MÓDULOS QUE INSEREM NA TABELA:
-//   Sempre passe modulo: 'gestao' | 'sociedade' | 'comercial' | 'financeiro'
-//   no insert do Supabase. O bell agrupa automaticamente.
+// Módulos com dados locais mais ricos podem sobrescrever:
+//   AppNotif.setComputedSection('tarefas', { label, items })
+//   AppNotif.setComputedSection('comercial', { label, items })
+//
+// Após mutações chamar:
+//   AppNotif.refreshTarefas()    — gestao.html ao concluir tarefa
+//   AppNotif.refreshCrmAlerts()  — crm.html ao dispensar alerta
 //
 // ══════════════════════════════════════════════════════════════
 
 window.AppNotif = (() => {
   /* ── estado interno ──────────────────────────────────────── */
-  let _notifs     = [];   // rows da tabela notificacoes
-  let _tarefas    = [];   // tarefas livres ativas (gestao alimenta via setComputedSection)
-  let _computed   = {};   // { [key]: { label, items[] } }
-  let _sub        = null; // canal realtime
-  let _userId     = null;
-  let _panelOpen  = false;
+  let _notifs    = [];   // rows da tabela notificacoes
+  let _computed  = {};   // { [key]: { label, items[] } }
+  let _sub       = null;
+  let _userId    = null;
+  let _panelOpen = false;
+
+  const _DISMISSED_KEY = 'exp_alertas_ok'; // compartilhado com crm.html
 
   /* ── labels dos módulos ──────────────────────────────────── */
   const MODULE_LABELS = {
@@ -39,14 +40,13 @@ window.AppNotif = (() => {
     financeiro: 'Financeiro',
   };
 
-  /* ── esc helper ──────────────────────────────────────────── */
+  /* ── helpers ─────────────────────────────────────────────── */
   function _esc(s) {
     return String(s ?? '')
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  /* ── formata data relativa ───────────────────────────────── */
   function _rel(iso) {
     if (!iso) return '';
     const diff = Date.now() - new Date(iso).getTime();
@@ -61,6 +61,22 @@ window.AppNotif = (() => {
     return new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
   }
 
+  function _fmtDate(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${String(y).slice(2)}`;
+  }
+
+  function _diasDesde(d) {
+    if (!d) return null;
+    return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+  }
+
+  function _getDismissed() {
+    try { return new Set(JSON.parse(localStorage.getItem(_DISMISSED_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+
   /* ── badge ───────────────────────────────────────────────── */
   function _badgeTotal() {
     const unread   = _notifs.filter(n => !n.lido_em).length;
@@ -73,19 +89,19 @@ window.AppNotif = (() => {
     const badge = document.getElementById('notif-badge');
     if (!badge) return;
     const total = _badgeTotal();
-    badge.textContent  = total > 9 ? '9+' : total;
+    badge.textContent   = total > 9 ? '9+' : total;
     badge.style.display = total > 0 ? 'flex' : 'none';
   }
 
-  /* ── section header helper ───────────────────────────────── */
+  /* ── render helpers ──────────────────────────────────────── */
   function _secHd(label) {
     return `<div class="notif-sec-hd">${_esc(label)}</div>`;
   }
 
-  /* ── renderiza um item da tabela notificacoes ────────────── */
   const TYPE_ICONS = {
     mencao:'@', tarefa:'✔', revisao_solicitada:'📋', revisao:'📋',
-    prancha:'🖼', lembrete:'📢', fin_vencimento:'💰', fin_aprovacao:'✅',
+    checklist_atribuido:'☑', prancha:'🖼', lembrete:'📢',
+    fin_vencimento:'💰', fin_aprovacao:'✅',
   };
 
   function _itemHtml(n) {
@@ -107,18 +123,18 @@ window.AppNotif = (() => {
     </div>`;
   }
 
-  /* ── renderiza um item computed (CRM alertas, tarefas, etc.) */
   function _computedItemHtml(it, sectionKey) {
     const hasDismiss = typeof it.onDismiss === 'function';
+    const hasAction  = it.onAction && typeof it.onAction.fn === 'function';
     return `<div class="notif-item" onclick="AppNotif._computedClick('${sectionKey}','${_esc(it.key)}')"
               role="button" tabindex="0">
       <div class="notif-item-row">
         <span class="notif-icon">${it.icon || '⚡'}</span>
-        <span class="notif-titulo">${_esc(it.titulo)}</span>
+        <span class="notif-titulo">${it.titulo}</span>
         ${hasDismiss
           ? `<button class="notif-check-btn" title="Dispensar"
                onclick="event.stopPropagation();AppNotif._dismissComputed('${sectionKey}','${_esc(it.key)}')">×</button>`
-          : it.onAction
+          : hasAction
             ? `<button class="notif-check-btn" title="${_esc(it.onAction.label)}"
                  onclick="event.stopPropagation();AppNotif._actionComputed('${sectionKey}','${_esc(it.key)}')">${_esc(it.onAction.label)}</button>`
             : ''}
@@ -128,22 +144,20 @@ window.AppNotif = (() => {
     </div>`;
   }
 
-  /* ── renderiza o painel completo ─────────────────────────── */
+  /* ── renderiza o painel ──────────────────────────────────── */
   function _renderPanel() {
     const lista = document.getElementById('notif-lista');
     if (!lista) return;
 
-    const unread  = _notifs.filter(n => !n.lido_em);
-    const lidas   = _notifs.filter(n =>  n.lido_em);
+    const unread = _notifs.filter(n => !n.lido_em);
+    const lidas  = _notifs.filter(n =>  n.lido_em);
 
-    // Agrupa as lidas por módulo
     const byModule = {};
     lidas.forEach(n => {
       const key = n.modulo || 'gestao';
       (byModule[key] = byModule[key] || []).push(n);
     });
 
-    // Verifica se tem alguma coisa pra mostrar
     const hasComputed = Object.values(_computed).some(s => s.items?.length > 0);
     const empty = !unread.length && !lidas.length && !hasComputed;
 
@@ -155,30 +169,29 @@ window.AppNotif = (() => {
 
     let html = '';
 
-    // ── Seção 1: Não lidas ────────────────────────────────────
+    // 1. Não lidas (todas, de qualquer módulo)
     if (unread.length) {
       html += _secHd(`Não lidas (${unread.length})`);
       html += unread.map(_itemHtml).join('');
     }
 
-    // ── Seção 2+: Lidas, agrupadas por módulo ────────────────
+    // 2. Lidas agrupadas por módulo
     Object.entries(byModule).forEach(([moduleKey, items]) => {
-      const label = MODULE_LABELS[moduleKey] || moduleKey;
-      html += _secHd(label);
+      html += _secHd(MODULE_LABELS[moduleKey] || moduleKey);
       html += items.map(_itemHtml).join('');
     });
 
-    // ── Seções computed (CRM alertas, tarefas, etc.) ─────────
+    // 3. Seções computadas (tarefas, comercial, etc.)
     Object.entries(_computed).forEach(([key, section]) => {
       if (!section.items?.length) return;
-      html += _secHd(section.label || key);
+      html += _secHd(section.label || MODULE_LABELS[key] || key);
       html += section.items.map(it => _computedItemHtml(it, key)).join('');
     });
 
     lista.innerHTML = html;
   }
 
-  /* ── handlers chamados pelo HTML (via onclick string) ───────── */
+  /* ── handlers (chamados pelos onclick inline) ────────────── */
   async function _abrirNotif(id) {
     const n = _notifs.find(x => x.id === id);
     if (!n) return;
@@ -188,9 +201,7 @@ window.AppNotif = (() => {
       _renderBadge();
       _renderPanel();
     }
-    // Fecha o painel
     close();
-    // Dispara evento para o módulo tratar navegação específica
     window.dispatchEvent(new CustomEvent('exp:notif-open', { detail: n }));
   }
 
@@ -203,35 +214,50 @@ window.AppNotif = (() => {
   }
 
   function _computedClick(sectionKey, itemKey) {
-    const section = _computed[sectionKey];
-    const item    = section?.items?.find(it => it.key === itemKey);
+    const item = _computed[sectionKey]?.items?.find(it => it.key === itemKey);
     if (item?.onClick) item.onClick();
     close();
   }
 
   function _dismissComputed(sectionKey, itemKey) {
-    const section = _computed[sectionKey];
-    const item    = section?.items?.find(it => it.key === itemKey);
+    const item = _computed[sectionKey]?.items?.find(it => it.key === itemKey);
     if (item?.onDismiss) item.onDismiss();
-    // onDismiss deve chamar setComputedSection novamente com a lista atualizada
+    // onDismiss atualiza localStorage + chama _dismissCrmAlert interno
   }
 
   function _actionComputed(sectionKey, itemKey) {
-    const section = _computed[sectionKey];
-    const item    = section?.items?.find(it => it.key === itemKey);
+    const item = _computed[sectionKey]?.items?.find(it => it.key === itemKey);
     if (item?.onAction?.fn) item.onAction.fn();
   }
 
-  /* ── fecha painel ao clicar fora ─────────────────────────── */
+  /* ── dismiss de alerta CRM (global, sem depender do crm.html) */
+  function _dismissCrmAlert(key) {
+    const dismissed = _getDismissed();
+    dismissed.add(key);
+    localStorage.setItem(_DISMISSED_KEY, JSON.stringify([...dismissed]));
+    if (_computed['comercial']) {
+      _computed['comercial'].items = _computed['comercial'].items.filter(it => it.key !== key);
+      _renderBadge();
+      if (_panelOpen) _renderPanel();
+    }
+  }
+
+  /* ── outside click ───────────────────────────────────────── */
   function _bindOutsideClick() {
     document.addEventListener('click', e => {
       if (!_panelOpen) return;
-      const wrap = document.getElementById('notif-wrap');
-      if (wrap && !wrap.contains(e.target)) close();
+      const wrap  = document.getElementById('notif-wrap');
+      const panel = document.getElementById('notif-panel');
+      const bell  = document.getElementById('notif-bell-btn') ||
+                    document.getElementById('fp-nav-bell');
+      const inside = (wrap  && wrap.contains(e.target))  ||
+                     (panel && panel.contains(e.target))  ||
+                     (bell  && bell.contains(e.target));
+      if (!inside) close();
     }, { capture: true });
   }
 
-  /* ── toggle ──────────────────────────────────────────────── */
+  /* ── toggle / close ──────────────────────────────────────── */
   function togglePanel() {
     const panel = document.getElementById('notif-panel');
     if (!panel) return;
@@ -246,7 +272,6 @@ window.AppNotif = (() => {
     if (panel) panel.style.display = 'none';
   }
 
-  /* ── encerra todas ───────────────────────────────────────── */
   async function encerrarTodas() {
     if (!_userId) return;
     await window.sb?.from('notificacoes')
@@ -258,7 +283,133 @@ window.AppNotif = (() => {
     _renderPanel();
   }
 
-  /* ── fetch inicial ───────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════
+     COMPUTED SECTIONS — fetch global
+  ══════════════════════════════════════════════════════════ */
+
+  /* ── tarefas ativas ──────────────────────────────────────── */
+  async function _fetchTarefas(userId) {
+    const { data } = await window.sb
+      .from('tarefas_livres')
+      .select('id, descricao, data_limite, criado_por, atribuido_para, produto_id, etapa_id, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .or(`atribuido_para.eq.${userId},and(usuario_id.eq.${userId},atribuido_para.is.null)`)
+      .eq('concluida', false)
+      .order('created_at', { ascending: false });
+
+    const hoje = new Date().toISOString().split('T')[0];
+    const items = (data || []).map(t => {
+      const cli   = t.produtos?.oportunidades?.clientes?.nome || '';
+      const proj  = t.produtos?.oportunidades?.projeto || '';
+      const prod  = t.produtos?.nome || '';
+      const etapa = t.etapas?.nome || '';
+      const ctx   = [cli && proj ? `${cli} · ${proj}` : (proj || cli), prod, etapa]
+                      .filter(Boolean).join(' › ');
+      const vencida = t.data_limite && t.data_limite < hoje;
+      const prazo   = t.data_limite
+        ? ` · ${_fmtDate(t.data_limite)}${vencida ? ' ⚠' : ''}` : '';
+
+      return {
+        key:    'tarefa_' + t.id,
+        icon:   '☑',
+        titulo: _esc(t.descricao),
+        corpo:  (ctx + prazo) || undefined,
+        // onClick: navega para gestao.html se não estivermos lá
+        onClick: () => {
+          if (typeof irParaTarefas === 'function') { irParaTarefas(); }
+          else window.location.href = 'gestao.html';
+        },
+        // onAction: conclui tarefa se gestao.html estiver carregada, senão sem ação
+        onAction: typeof concluirTarefaSino === 'function'
+          ? { label: '✓', fn: () => concluirTarefaSino(t.id) }
+          : undefined,
+      };
+    });
+
+    _computed['tarefas'] = { label: `Tarefas ativas`, items };
+  }
+
+  /* ── alertas CRM ─────────────────────────────────────────── */
+  async function _fetchCrmAlerts() {
+    const [opsRes, fusRes, prodsRes] = await Promise.all([
+      window.sb.from('oportunidades')
+        .select('id, num_legado, pipeline_stage, clientes(nome)')
+        .in('pipeline_stage', ['prospecção','prospeccao','enviada','ativo','negociacao','negociação']),
+      window.sb.from('followups_produto')
+        .select('produto_id, data_contato, created_at')
+        .order('data_contato', { ascending: false }),
+      window.sb.from('produtos')
+        .select('id, oportunidade_id, status, data_envio')
+        .in('status', ['ativo','negociacao','negociação']),
+    ]);
+
+    const ops   = opsRes.data  || [];
+    const fus   = fusRes.data  || [];
+    const prods = prodsRes.data || [];
+
+    // Índices
+    const fusByProd  = {};
+    fus.forEach(f => {
+      (fusByProd[f.produto_id] = fusByProd[f.produto_id] || []).push(f);
+    });
+    const prodsByOp = {};
+    prods.forEach(p => {
+      (prodsByOp[p.oportunidade_id] = prodsByOp[p.oportunidade_id] || []).push(p);
+    });
+
+    const dismissed = _getDismissed();
+    const items = [];
+
+    ops.forEach(op => {
+      const label    = `${op.num_legado || ''} ${op.clientes?.nome || ''}`.trim();
+      const opProds  = prodsByOp[op.id] || [];
+      const key_exp  = 'exp_' + op.id;
+      const key_fu   = 'fu_'  + op.id;
+
+      // Proposta expirada: produto enviado há >90 dias
+      const isExpired = opProds.some(p =>
+        p.data_envio && (_diasDesde(p.data_envio) ?? 0) > 90
+      );
+
+      if (isExpired && !dismissed.has(key_exp)) {
+        items.push({
+          key: key_exp, icon: '⚡', titulo: 'Proposta expirada', corpo: label,
+          onClick:   () => window.location.href = 'crm.html',
+          onDismiss: () => _dismissCrmAlert(key_exp),
+        });
+        return;
+      }
+
+      // Sem follow-up há >30 dias
+      const opFus = opProds.flatMap(p => fusByProd[p.id] || []);
+      const lastFu = opFus.reduce((max, f) => {
+        const d = f.data_contato || f.created_at;
+        return d > max ? d : max;
+      }, '');
+      const semFU30 = !lastFu || (_diasDesde(lastFu) ?? 0) > 30;
+
+      if (semFU30 && !dismissed.has(key_fu)) {
+        items.push({
+          key: key_fu, icon: '⏰', titulo: 'Sem follow-up 30d', corpo: label,
+          onClick:   () => window.location.href = 'crm.html',
+          onDismiss: () => _dismissCrmAlert(key_fu),
+        });
+      }
+    });
+
+    _computed['comercial'] = { label: 'Comercial', items: items.slice(0, 50) };
+  }
+
+  /* ── carrega todas as seções computadas ──────────────────── */
+  async function _fetchAllComputed(userId) {
+    await Promise.allSettled([
+      _fetchTarefas(userId),
+      _fetchCrmAlerts(),
+    ]);
+    _renderBadge();
+    if (_panelOpen) _renderPanel();
+  }
+
+  /* ── notificacoes da tabela ──────────────────────────────── */
   async function _fetch(userId) {
     const { data } = await window.sb
       .from('notificacoes')
@@ -272,7 +423,7 @@ window.AppNotif = (() => {
     if (_panelOpen) _renderPanel();
   }
 
-  /* ── realtime subscribe ──────────────────────────────────── */
+  /* ── realtime ────────────────────────────────────────────── */
   function _subscribe(userId) {
     try {
       _sub = window.sb
@@ -303,30 +454,26 @@ window.AppNotif = (() => {
     } catch { /* realtime opcional */ }
   }
 
-  /* ── API pública: setComputedSection ─────────────────────── */
-  // Cada módulo chama isso para registrar alertas computados (sem persistência)
-  // Exemplo: AppNotif.setComputedSection('comercial', { label: 'Comercial', items: [...] })
-  function setComputedSection(key, { label, items = [] } = {}) {
-    _computed[key] = { label: label || MODULE_LABELS[key] || key, items };
-    _renderBadge();
-    if (_panelOpen) _renderPanel();
-  }
+  /* ══════════════════════════════════════════════════════════
+     API PÚBLICA
+  ══════════════════════════════════════════════════════════ */
 
-  /* ── API pública: init ───────────────────────────────────── */
-  // userId opcional: passa diretamente quando o módulo já tem o user autenticado
-  // (páginas sem app-shell.js, ex: gestao.html, sociedade.html)
+  // init({ userId }) — chamar após autenticação
   async function init({ userId } = {}) {
     async function _boot(uid) {
       _userId = uid;
       if (!_userId || !window.sb) return;
-      await _fetch(_userId);
+      // Notificações da tabela + seções computadas em paralelo
+      await Promise.all([
+        _fetch(_userId),
+        _fetchAllComputed(_userId),
+      ]);
       _subscribe(_userId);
     }
 
     if (userId) {
       await _boot(userId);
     } else {
-      // Tenta sessionStorage (app-shell.js salva como app_user_id)
       const cached = (() => {
         try { return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); } catch { return null; }
       })();
@@ -334,7 +481,6 @@ window.AppNotif = (() => {
       if (uid) {
         await _boot(uid);
       } else {
-        // Aguarda evento do app-shell.js
         window.addEventListener('exp:session-ready', e => {
           const u = e.detail;
           _boot(u?.app_user_id || u?.id);
@@ -342,20 +488,39 @@ window.AppNotif = (() => {
       }
     }
 
-    // Bind fora-do-panel click
     _bindOutsideClick();
-
-    // Expõe handlers no window (onclick inline nos HTMLs)
-    window._appNotifToggle       = togglePanel;
+    window._appNotifToggle        = togglePanel;
     window._appNotifEncerrarTodas = encerrarTodas;
   }
 
-  /* ── expõe handlers internos necessários pelos onclick ───── */
+  // setComputedSection — módulo com dados locais mais ricos sobrescreve
+  function setComputedSection(key, { label, items = [] } = {}) {
+    _computed[key] = { label: label || MODULE_LABELS[key] || key, items };
+    _renderBadge();
+    if (_panelOpen) _renderPanel();
+  }
+
+  // refreshTarefas — chamar após concluir/reabrir tarefa
+  async function refreshTarefas() {
+    if (!_userId) return;
+    await _fetchTarefas(_userId);
+    _renderBadge();
+    if (_panelOpen) _renderPanel();
+  }
+
+  // refreshCrmAlerts — chamar após dispensar alerta (quando crm.html não gerencia)
+  async function refreshCrmAlerts() {
+    await _fetchCrmAlerts();
+    _renderBadge();
+    if (_panelOpen) _renderPanel();
+  }
+
   return {
     init,
     setComputedSection,
+    refreshTarefas,
+    refreshCrmAlerts,
     close,
-    // internos (chamados pelos onclick inline gerados pelo render)
     _abrirNotif,
     _encerrarNotif,
     _computedClick,
