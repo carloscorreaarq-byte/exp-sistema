@@ -54,6 +54,11 @@
   var showOnlyFlagged   = false;
   var statusPopOpen     = false;
   var mvZoom            = 1;
+  /* busca dentro da conversa */
+  var inSearchOpen      = false;
+  var inSearchQuery     = '';
+  var inSearchResults   = [];  // índices em messages[]
+  var inSearchCurrent   = 0;
 
   function loadFlags() {
     try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || '[]'); } catch(e) { return []; }
@@ -850,12 +855,16 @@
     var prevSender=null, prevTime=null, lastDate=null;
 
     toRender.forEach(function(msg) {
+      var msgIdx   = messages.indexOf(msg);
       var isOwn    = msg.sender_id===uid;
       var dt       = new Date(msg.created_at);
       var dateStr  = dt.toDateString();
       var isFlagged = isMessageFlagged(msg.id);
       /* Não lida: criada DEPOIS do last_read_at anterior */
       var isUnread = !isOwn && lastReadAt && msg.created_at > lastReadAt;
+      /* Busca interna: é o resultado atualmente focado? */
+      var isCurrentResult = inSearchQuery && inSearchResults.length > 0 && inSearchResults[inSearchCurrent] === msgIdx;
+      var isAnyResult     = inSearchQuery && inSearchResults.indexOf(msgIdx) !== -1;
 
       if (dateStr!==lastDate) {
         lastDate=dateStr;
@@ -887,9 +896,12 @@
 
       /* Classe do bloco */
       var blockClass = 'fp-msg-block';
-      if (grouped) blockClass += ' grouped';
-      if (isFlagged) blockClass += ' flagged';
-      else if (isUnread) blockClass += ' unread';
+      if (isOwn)           blockClass += ' own';
+      if (grouped)         blockClass += ' grouped';
+      if (isFlagged)       blockClass += ' flagged';
+      else if (isUnread)   blockClass += ' unread';
+      if (isCurrentResult) blockClass += ' search-current';
+      else if (isAnyResult) blockClass += ' search-match';
 
       /* Avatar */
       var avHtml = avatar
@@ -914,7 +926,9 @@
 
       /* Texto */
       if (hasText) {
-        html += '<div class="fp-msg-text">'+fpLinkify(escHtml(msg.content).replace(/\n/g,'<br>'))+'</div>';
+        var textHtml = fpLinkify(escHtml(msg.content).replace(/\n/g,'<br>'));
+        if (inSearchQuery) textHtml = highlightText(textHtml, inSearchQuery, isCurrentResult);
+        html += '<div class="fp-msg-text">'+textHtml+'</div>';
       }
 
       /* Mídia */
@@ -1410,6 +1424,112 @@
   function isImageOnlySentinel(c){ return String(c||'').trim()===CHAT_IMAGE_SENTINEL; }
   function isChatMediaExpired(msg){ if(!msg||!msg.created_at) return false; return Date.now()-new Date(msg.created_at).getTime()>(7*24*60*60*1000); }
 
+  /* ═══════════════════════════════════════════════════════════════════
+     BUSCA DENTRO DA CONVERSA
+  ═══════════════════════════════════════════════════════════════════ */
+  function toggleInSearch() {
+    inSearchOpen ? closeInSearch() : openInSearch();
+  }
+
+  function openInSearch() {
+    if (!currentChannel) return;
+    inSearchOpen = true;
+    var bar = document.getElementById('fp-in-search-bar');
+    var btn = document.getElementById('fp-in-search-btn');
+    if (bar) bar.classList.add('open');
+    if (btn) btn.style.background = 'rgba(0,0,0,.12)';
+    setTimeout(function() {
+      var inp = document.getElementById('fp-in-search-input');
+      if (inp) inp.focus();
+    }, 60);
+  }
+
+  function closeInSearch() {
+    inSearchOpen   = false;
+    inSearchQuery  = '';
+    inSearchResults = [];
+    inSearchCurrent = 0;
+    var bar = document.getElementById('fp-in-search-bar');
+    var inp = document.getElementById('fp-in-search-input');
+    var btn = document.getElementById('fp-in-search-btn');
+    if (bar) bar.classList.remove('open');
+    if (inp) inp.value = '';
+    if (btn) btn.style.background = '';
+    renderMessages(); /* remove highlights */
+  }
+
+  function inSearchInput(value) {
+    inSearchQuery   = (value || '').trim();
+    inSearchCurrent = 0;
+    runInSearch();
+  }
+
+  function inSearchKey(e) {
+    if (e.key === 'Enter') { e.shiftKey ? inSearchPrev() : inSearchNext(); }
+    if (e.key === 'Escape') { e.preventDefault(); closeInSearch(); }
+  }
+
+  function runInSearch() {
+    var q = inSearchQuery.toLowerCase();
+    inSearchResults = [];
+    if (q) {
+      messages.forEach(function(msg, idx) {
+        var text = String(msg.content || '').toLowerCase();
+        if (text.indexOf(q) !== -1) inSearchResults.push(idx);
+      });
+    }
+    renderMessages();
+    updateInSearchCount();
+    if (inSearchResults.length > 0) scrollToSearchResult(inSearchResults[inSearchCurrent]);
+  }
+
+  function inSearchNext() {
+    if (!inSearchResults.length) return;
+    inSearchCurrent = (inSearchCurrent + 1) % inSearchResults.length;
+    updateInSearchCount();
+    renderMessages();
+    scrollToSearchResult(inSearchResults[inSearchCurrent]);
+  }
+
+  function inSearchPrev() {
+    if (!inSearchResults.length) return;
+    inSearchCurrent = (inSearchCurrent - 1 + inSearchResults.length) % inSearchResults.length;
+    updateInSearchCount();
+    renderMessages();
+    scrollToSearchResult(inSearchResults[inSearchCurrent]);
+  }
+
+  function updateInSearchCount() {
+    var $count = document.getElementById('fp-in-search-count');
+    if (!$count) return;
+    if (!inSearchQuery) { $count.textContent = ''; $count.className = 'fp-in-search-count'; return; }
+    if (!inSearchResults.length) {
+      $count.textContent = 'Sem resultados';
+      $count.className = 'fp-in-search-count';
+    } else {
+      $count.textContent = (inSearchCurrent + 1) + ' de ' + inSearchResults.length;
+      $count.className = 'fp-in-search-count found';
+    }
+  }
+
+  function scrollToSearchResult(msgIdx) {
+    if (msgIdx === undefined || msgIdx === null) return;
+    var msg = messages[msgIdx];
+    if (!msg) return;
+    setTimeout(function() {
+      var el = $msgs && $msgs.querySelector('[data-id="' + CSS.escape(String(msg.id)) + '"]');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 30);
+  }
+
+  /* Injetar highlights no texto de uma mensagem */
+  function highlightText(rawHtml, query, isCurrent) {
+    if (!query) return rawHtml;
+    var escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var cls = isCurrent ? 'fp-search-highlight current' : 'fp-search-highlight';
+    return rawHtml.replace(new RegExp('(' + escaped + ')', 'gi'), '<mark class="' + cls + '">$1</mark>');
+  }
+
   /* ── SVG icons ── */
   function icoLike(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>'; }
   function icoHeart(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'; }
@@ -1427,7 +1547,9 @@
     send, handleKey, autoResize,
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
-    openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset
+    openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
+    /* busca dentro da conversa */
+    toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev
   };
 
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);

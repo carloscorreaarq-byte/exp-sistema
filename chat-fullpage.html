@@ -87,7 +87,7 @@ body {
 #fp-app {
   display: none; /* shown after login */
   flex: 1;
-  padding: 14px;
+  padding: 16px 28px;   /* mais margem lateral */
   gap: 10px;
   min-height: 0;
   height: 100vh;
@@ -113,11 +113,16 @@ body {
 [data-theme="dark"] #fp-nav { background: #1E1E1D; border-color: #2E2D2B; }
 
 .fp-nav-logo {
-  width: 28px; height: 28px;
-  margin-bottom: 8px;
+  width: 50px; height: 44px;
+  margin-bottom: 4px;
   display: flex; align-items: center; justify-content: center;
 }
-.fp-nav-logo img { height: 20px; mix-blend-mode: multiply; }
+.fp-nav-logo img {
+  height: 16px;
+  mix-blend-mode: multiply;
+  transform: rotate(-90deg);
+  transform-origin: center center;
+}
 [data-theme="dark"] .fp-nav-logo img { filter: invert(1) brightness(.85); mix-blend-mode: screen; }
 
 .fp-nav-sep {
@@ -434,6 +439,7 @@ body {
   overflow: hidden; min-width: 0;
 }
 [data-theme="dark"] #fp-main { background: #1E1E1D; border-color: #2E2D2B; }
+[data-theme="dark"] #fp-chat-area { background: #1E1E1D !important; }
 
 /* Header do canal */
 #fp-chat-header {
@@ -560,6 +566,15 @@ body {
 .fp-msg-block.grouped { padding-top: 1px; padding-bottom: 1px; }
 .fp-msg-block.grouped .fp-msg-av { visibility: hidden; }
 
+/* Mensagens próprias — alinhadas à direita */
+.fp-msg-block.own { flex-direction: row-reverse; }
+.fp-msg-block.own .fp-msg-content { align-items: flex-end; display: flex; flex-direction: column; }
+.fp-msg-block.own .fp-msg-header  { flex-direction: row-reverse; }
+.fp-msg-block.own .fp-msg-text    { text-align: right; background: var(--ca-bg); color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-msg-block.own .fp-msg-text { background: var(--ca-mid); color: #F0EDE6; }
+.fp-msg-block.own .fp-msg-reactions { justify-content: flex-end; }
+.fp-msg-block.own .fp-msg-actions  { margin-left: 0; margin-right: auto; }
+
 /* Conteúdo da mensagem */
 .fp-msg-content { flex: 1; min-width: 0; }
 .fp-msg-header {
@@ -641,6 +656,67 @@ body {
 [data-theme="dark"] .fp-action-btn:hover { background: rgba(255,255,255,.07); color: #F0EDE6; }
 .fp-action-btn.flag-active { color: var(--ca); }
 
+/* ── Busca dentro da conversa ────────────────────────── */
+#fp-in-search-bar {
+  display: none;
+  align-items: center; gap: 8px;
+  padding: 7px 14px;
+  background: var(--off, #F7F6F3);
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] #fp-in-search-bar { background: #252523; border-bottom-color: #2E2D2B; }
+#fp-in-search-bar.open { display: flex; }
+
+.fp-in-search-wrap {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 8px; padding: 5px 10px;
+}
+[data-theme="dark"] .fp-in-search-wrap { background: #1E1E1D; border-color: #3A3836; }
+.fp-in-search-wrap:focus-within { border-color: var(--ca); }
+.fp-in-search-input {
+  flex: 1; border: none; background: none; outline: none;
+  font-family: 'Raleway', sans-serif; font-size: 12px;
+  color: var(--grafite, #111110);
+}
+[data-theme="dark"] .fp-in-search-input { color: #F0EDE6; }
+.fp-in-search-input::placeholder { color: var(--cinza, #D0CFC9); }
+
+.fp-in-search-count {
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  color: var(--cinza, #D0CFC9); white-space: nowrap; flex-shrink: 0;
+}
+.fp-in-search-count.found { color: var(--ca); font-weight: 600; }
+
+.fp-in-search-nav {
+  width: 26px; height: 26px; border-radius: 7px; border: none;
+  background: none; color: #888; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s; padding: 0; flex-shrink: 0;
+}
+.fp-in-search-nav:hover { background: var(--cinza2, #ECEAE4); color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-in-search-nav:hover { background: rgba(255,255,255,.08); color: #F0EDE6; }
+.fp-in-search-close {
+  width: 26px; height: 26px; border-radius: 7px; border: none;
+  background: none; color: #888; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s; padding: 0; flex-shrink: 0;
+}
+.fp-in-search-close:hover { background: rgba(184,76,58,.1); color: #B84C3A; }
+
+/* Highlight de resultado */
+.fp-search-highlight {
+  background: rgba(196,131,26,.35);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.fp-search-highlight.current {
+  background: var(--ca);
+  color: #fff;
+  border-radius: 2px;
+}
 /* Toast nova mensagem */
 .fp-new-msg-toast {
   position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
@@ -833,6 +909,12 @@ body {
 .fp-mv-nav.next { right: 8px; }
 .fp-mv-nav[disabled] { opacity: .3; cursor: default; pointer-events: none; }
 .fp-mv-empty { font-size: 11px; color: #999; text-align: center; padding: 30px; }
+
+/* Resultados de busca dentro da conversa */
+.fp-msg-block.search-match   { background: rgba(196,131,26,.08) !important; }
+.fp-msg-block.search-current { background: rgba(196,131,26,.22) !important; outline: 2px solid rgba(196,131,26,.5); outline-offset: -2px; border-radius: 8px; }
+[data-theme="dark"] .fp-msg-block.search-match   { background: rgba(196,131,26,.10) !important; }
+[data-theme="dark"] .fp-msg-block.search-current { background: rgba(196,131,26,.20) !important; }
 </style>
 </head>
 <body>
@@ -964,13 +1046,35 @@ body {
     </div>
 
     <!-- Chat área -->
-    <div id="fp-chat-area" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0;min-width:0">
+    <div id="fp-chat-area" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0;min-width:0;background:var(--branco,#fff)">
       <div id="fp-chat-header">
         <div class="fp-hdr-av" id="fp-hdr-av"></div>
         <div class="fp-hdr-info">
           <div class="fp-hdr-title" id="fp-hdr-title">—</div>
           <div class="fp-hdr-sub"   id="fp-hdr-sub" style="display:none"></div>
         </div>
+        <!-- Botão de busca dentro da conversa -->
+        <button class="fp-chat-icon-btn" onclick="fpChat.toggleInSearch()" id="fp-in-search-btn" title="Buscar nesta conversa">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </div>
+
+      <!-- Barra de busca dentro da conversa -->
+      <div id="fp-in-search-bar">
+        <div class="fp-in-search-wrap">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cinza,#D0CFC9);flex-shrink:0"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+          <input class="fp-in-search-input" id="fp-in-search-input" type="text" placeholder="Buscar nesta conversa…" oninput="fpChat.inSearchInput(this.value)" onkeydown="fpChat.inSearchKey(event)">
+          <span class="fp-in-search-count" id="fp-in-search-count"></span>
+        </div>
+        <button class="fp-in-search-nav" onclick="fpChat.inSearchPrev()" title="Anterior">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="fp-in-search-nav" onclick="fpChat.inSearchNext()" title="Próximo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </button>
+        <button class="fp-in-search-close" onclick="fpChat.closeInSearch()" title="Fechar">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+        </button>
       </div>
       <div id="fp-messages">
         <div class="fp-loading">
@@ -1042,5 +1146,22 @@ body {
 </div>
 
 <script src="chat-fullpage.js"></script>
+<script src="timer.js"></script>
+
+<!-- Timer: reposicionar para não cobrir a nav lateral esquerda -->
+<!-- O nav ocupa ~28px (padding) + 50px (largura) + 10px (gap) = ~88px do lado esquerdo -->
+<!-- Movemos o timer para a direita do nav, na base do sidebar -->
+<style>
+  /* Timer posicionado logo à direita da nav bar, alinhado com o sidebar */
+  #exp-timer-widget {
+    left: 82px !important;   /* além do nav (28px padding + 50px nav + 4px gap) */
+    bottom: 18px !important;
+    z-index: 9998 !important; /* abaixo de modais (400+) mas acima do layout */
+  }
+  /* Painel do timer abre para cima — sem conflito com o layout */
+  .tmr-panel {
+    bottom: 52px !important;
+  }
+</style>
 </body>
 </html>
