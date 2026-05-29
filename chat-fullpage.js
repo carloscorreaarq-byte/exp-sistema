@@ -723,14 +723,15 @@
     if (!$sub) return;
 
     if (currentChannel && currentChannel.startsWith('dm:')) {
-      /* DM: status dot sobreposto ao avatar, sem texto extra */
+      /* DM: dot sobreposto ao avatar + texto de status abaixo do nome */
       var parts = currentChannel.replace('dm:','').split(':');
       var oUid  = parts.find(function(p){return p!==user.auth_id;});
       var pres  = oUid ? onlinePresence[oUid] : null;
       var st    = pres ? pres.status : 'offline';
+      var stLab = {online:'Online', foco:'Foco', ausente:'Ausente', offline:'Offline'};
       if ($dot) $dot.className = 'fp-hdr-status-dot ' + st;
-      $sub.className = 'fp-hdr-sub';      /* oculto */
-      $sub.textContent = '';
+      $sub.className = 'fp-hdr-sub visible';
+      $sub.textContent = stLab[st] || st;
 
     } else if (currentChannel && currentChannel.startsWith('group:')) {
       if ($dot) $dot.className = 'fp-hdr-status-dot'; /* oculto */
@@ -765,8 +766,8 @@
     if (btn) {
       var rect     = btn.getBoundingClientRect();
       var panelH   = $panel.offsetHeight || 380;
-      /* alinha o topo do popover com o topo do botão, sobe se sair da tela */
-      var topPos   = Math.max(16, Math.min(rect.top, window.innerHeight - panelH - 16));
+      /* um pouco acima do botão */
+      var topPos   = Math.max(16, Math.min(rect.top - 40, window.innerHeight - panelH - 16));
       $panel.style.top  = topPos + 'px';
       $panel.style.left = (rect.right + 8) + 'px';
     }
