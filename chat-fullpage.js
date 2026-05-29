@@ -32,7 +32,7 @@
   var allMembers        = [];
   var projectThreads    = [];
   var projectThreadMeta = {};
-  var projectSectionCollapsed = false;
+  var projectSectionCollapsed = true;
   var pendingMessageSeq = 0;
   var reactionLocks     = {};
   var chatMediaConfig   = null;
