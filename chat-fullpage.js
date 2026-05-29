@@ -98,9 +98,10 @@
   }
 
   function mount() {
-    document.getElementById('fp-loading').style.display = 'none';
-    var $app = document.getElementById('fp-app');
-    $app.style.display = 'flex';
+    var $loading = document.getElementById('fp-loading');
+    var $app     = document.getElementById('fp-app');
+    if ($loading) $loading.style.display = 'none';
+    if ($app)     $app.style.display     = 'flex';
 
     $msgs  = document.getElementById('fp-messages');
     $input = document.getElementById('fp-input');

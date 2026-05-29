@@ -474,7 +474,7 @@
         /* View: Home (lista de conversas) */
         '<div class="chat-view" id="exp-chat-home">' +
           '<div class="chat-header">' +
-            '<div class="chat-header-info"><div class="chat-header-title">EXP.chat</div></div>' +
+            '<div class="chat-header-info"><div class="chat-header-title" onclick="window.location.href=\'chat-fullpage.html\'" style="cursor:pointer;user-select:none" title="Abrir chat em tela cheia">EXP.chat ↗</div></div>' +
             '<div class="chat-header-acts">' +
               '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSound()" title="Som de notificaÃ§Ã£o">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.openSearch()" title="Pesquisar">' + icoSearch() + '</button>' +
