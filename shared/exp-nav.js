@@ -79,7 +79,7 @@ window.ExpNav = (() => {
       if (href && href === activeHref) return ''; /* oculta o módulo atual */
       var tag      = href ? 'a' : 'button';
       var hrefAttr = href ? ' href="' + href + '"' : '';
-      return '<' + tag + hrefAttr + ' class="exp-nav-item' + isActive + '" title="' + titleAttr + '"' + (extra || '') + '>' +
+      return '<' + tag + hrefAttr + ' class="exp-nav-item" title="' + titleAttr + '"' + (extra || '') + '>' +
         svgPath + '</' + tag + '>';
     }
 
