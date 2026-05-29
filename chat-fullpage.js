@@ -214,9 +214,37 @@
   }
 
   function syncColorUI() {
-    document.querySelectorAll('.fp-color-dot').forEach(function(dot) {
+    /* atualizar bolinha ativa */
+    var $activeDot = document.getElementById('fp-color-active-dot');
+    var colorMap = { verde:'#1D6A4A', azul:'#1D4FA0', ouro:'#C4831A', terracota:'#B84C3A' };
+    if ($activeDot) $activeDot.style.background = colorMap[chatColor] || colorMap.verde;
+
+    /* marcar no popover */
+    document.querySelectorAll('.fp-color-pop-dot').forEach(function(dot) {
       dot.classList.toggle('active', dot.getAttribute('data-color') === chatColor);
     });
+  }
+
+  var colorPickerOpen = false;
+  function toggleColorPicker(event) {
+    event.stopPropagation();
+    var $pop = document.getElementById('fp-color-pop');
+    if (!$pop) return;
+    colorPickerOpen = !colorPickerOpen;
+    $pop.style.display = colorPickerOpen ? 'flex' : 'none';
+    if (colorPickerOpen) {
+      setTimeout(function() {
+        function handler(e) {
+          var trigger = document.getElementById('fp-color-trigger');
+          if (!trigger || !trigger.contains(e.target)) {
+            colorPickerOpen = false;
+            $pop.style.display = 'none';
+            document.removeEventListener('click', handler);
+          }
+        }
+        document.addEventListener('click', handler);
+      }, 0);
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -431,6 +459,15 @@
       });
       stackHtml += '</div></div>';
       avHtml = stackHtml;
+    } else if (isProjectChannel(channel)) {
+      /* avatar de projeto: fundo semi-transparente, fonte menor */
+      var mc = cor || '#1D6A4A';
+      var mi = iniciais || '?';
+      /* converte hex → rgba semi-transparente */
+      var r16 = parseInt(mc.slice(1,3),16), g16=parseInt(mc.slice(3,5),16), b16=parseInt(mc.slice(5,7),16);
+      avHtml = '<div class="fp-conv-av-wrap">' +
+        '<div class="fp-av-circle" style="background:rgba('+r16+','+g16+','+b16+',.22);color:'+escHtml(mc)+';font-size:9px;font-weight:700;border:1.5px solid rgba('+r16+','+g16+','+b16+',.35)">' + escHtml(mi) + '</div>' +
+        '</div>';
     } else if (avatarUrl) {
       avHtml = '<div class="fp-conv-av-wrap"><img class="fp-av-img" src="' + escHtml(avatarUrl) + '" alt="">' +
         (presenceStatus ? '<span class="fp-presence-dot-sm ' + presenceStatus + '"></span>' : '') +
@@ -575,14 +612,43 @@
   /* ═══════════════════════════════════════════════════════════════════
      NOVO DM
   ═══════════════════════════════════════════════════════════════════ */
-  function openNewDM() {
+  function openNewDM(event) {
     selectedMembers = [];
-    document.getElementById('fp-members-panel').style.display = 'flex';
+    var $panel = document.getElementById('fp-members-panel');
+    var $btn   = document.getElementById('fp-new-dm-btn');
+    if (!$panel) return;
+
+    /* Posicionar à direita do botão */
+    $panel.style.display = 'flex';
+    var btn  = (event && event.currentTarget) || $btn;
+    if (btn) {
+      var rect     = btn.getBoundingClientRect();
+      var panelH   = $panel.offsetHeight || 340;
+      var topPos   = Math.max(16, Math.min(rect.top, window.innerHeight - panelH - 16));
+      $panel.style.top  = topPos + 'px';
+      $panel.style.left = (rect.right + 8) + 'px';
+    }
     renderMembersModal();
+
+    /* Fechar clicando fora */
+    setTimeout(function() {
+      function handler(e) {
+        var p = document.getElementById('fp-members-panel');
+        var b = document.getElementById('fp-new-dm-btn');
+        if (!p) return;
+        if (!p.contains(e.target) && !(b && b.contains(e.target))) {
+          closeNewDM();
+          document.removeEventListener('click', handler);
+        }
+      }
+      document.addEventListener('click', handler);
+    }, 0);
   }
+
   function closeNewDM() {
     selectedMembers = [];
-    document.getElementById('fp-members-panel').style.display = 'none';
+    var $p = document.getElementById('fp-members-panel');
+    if ($p) $p.style.display = 'none';
   }
   function renderMembersModal() {
     var $list = document.getElementById('fp-members-list');
@@ -1451,17 +1517,29 @@
   /* ═══════════════════════════════════════════════════════════════════
      BUSCA DENTRO DA CONVERSA
   ═══════════════════════════════════════════════════════════════════ */
-  function toggleInSearch() {
-    inSearchOpen ? closeInSearch() : openInSearch();
+  function toggleInSearch(event) {
+    inSearchOpen ? closeInSearch() : openInSearch(event);
   }
 
-  function openInSearch() {
+  function openInSearch(event) {
     if (!currentChannel) return;
     inSearchOpen = true;
-    var bar = document.getElementById('fp-in-search-bar');
-    var btn = document.getElementById('fp-in-search-btn');
-    if (bar) bar.classList.add('open');
-    if (btn) btn.style.background = 'rgba(0,0,0,.12)';
+    var $bar = document.getElementById('fp-in-search-bar');
+    var $btn = document.getElementById('fp-in-search-btn');
+    if (!$bar) return;
+
+    $bar.classList.add('open');
+    if ($btn) $btn.style.background = 'rgba(0,0,0,.12)';
+
+    /* Posicionar à esquerda do botão, alinhado verticalmente */
+    var btn  = (event && event.currentTarget) || $btn;
+    if (btn) {
+      var rect    = btn.getBoundingClientRect();
+      var barW    = $bar.offsetWidth || 320;
+      $bar.style.top  = (rect.top + (rect.height - 42) / 2) + 'px';
+      $bar.style.left = Math.max(8, rect.left - barW - 8) + 'px';
+    }
+
     setTimeout(function() {
       var inp = document.getElementById('fp-in-search-input');
       if (inp) inp.focus();
@@ -1469,17 +1547,17 @@
   }
 
   function closeInSearch() {
-    inSearchOpen   = false;
-    inSearchQuery  = '';
+    inSearchOpen    = false;
+    inSearchQuery   = '';
     inSearchResults = [];
     inSearchCurrent = 0;
-    var bar = document.getElementById('fp-in-search-bar');
-    var inp = document.getElementById('fp-in-search-input');
-    var btn = document.getElementById('fp-in-search-btn');
-    if (bar) bar.classList.remove('open');
-    if (inp) inp.value = '';
-    if (btn) btn.style.background = '';
-    renderMessages(); /* remove highlights */
+    var $bar = document.getElementById('fp-in-search-bar');
+    var $inp = document.getElementById('fp-in-search-input');
+    var $btn = document.getElementById('fp-in-search-btn');
+    if ($bar) { $bar.classList.remove('open'); $bar.style.top=''; $bar.style.left=''; }
+    if ($inp) $inp.value = '';
+    if ($btn) $btn.style.background = '';
+    renderMessages();
   }
 
   function inSearchInput(value) {
@@ -1565,7 +1643,7 @@
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
     toggleStatusPop, setStatus, toggleSound,
-    setColor,
+    setColor, toggleColorPicker,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM,
     send, handleKey, autoResize,
@@ -1575,7 +1653,9 @@
     /* busca dentro da conversa */
     toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev,
     /* tarefas */
-    toggleTasksPanel, checkTask,
+    toggleTasksPanel, checkTask, addTask, openAssignDrop, taskDescInput, _assignTo: window._assignTo,
+    /* prioridade */
+    checkPrio,
     /* prioridade / projeto */
     showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
     /* notificações */
@@ -1659,6 +1739,101 @@
     $list.innerHTML = html;
   }
 
+  function taskDescInput(el) {
+    /* auto-resize do textarea */
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  }
+
+  function addTask() {
+    var desc  = (document.getElementById('fp-task-desc')  || {}).value  || '';
+    var tipo  = (document.getElementById('fp-task-tipo')  || {}).value  || '';
+    var data  = (document.getElementById('fp-task-data')  || {}).value  || null;
+    desc = desc.trim();
+    if (!desc) { document.getElementById('fp-task-desc').focus(); return; }
+    var uid = user.id || user.app_user_id;
+    sb.from('tarefas_livres').insert({
+      usuario_id: uid, criado_por: uid, descricao: desc, tipo: tipo || null, data_limite: data || null
+    }).then(function(r) {
+      if (r.error) return;
+      document.getElementById('fp-task-desc').value = '';
+      document.getElementById('fp-task-data').value = '';
+      loadTasks();
+    });
+  }
+
+  function openAssignDrop(btn) {
+    /* remove dropdown existente */
+    var ex = document.getElementById('fp-assign-drop');
+    if (ex) { ex.remove(); return; }
+
+    var outros = teamMembers.filter(function(m) { return m.id !== (user.id || user.app_user_id); });
+    var drop = document.createElement('div');
+    drop.id = 'fp-assign-drop';
+    drop.style.cssText = 'position:fixed;z-index:700;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.16);padding:4px 0;min-width:160px;font-family:Raleway,sans-serif';
+
+    if (!outros.length) {
+      drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:#aaa">Nenhum membro</div>';
+    } else {
+      drop.innerHTML = outros.map(function(u, i) {
+        var nome = (u.apelido || (u.nome||'').split(' ')[0]);
+        var cor  = u.cor || '#888';
+        var ini  = u.iniciais || (u.nome||'').substring(0,2).toUpperCase();
+        return '<div data-i="'+i+'" style="padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px" ' +
+          'onmouseenter="this.style.background=\'#F7F6F3\'" onmouseleave="this.style.background=\'\'" ' +
+          'onclick="fpChat._assignTo('+i+')">' +
+          '<span style="width:20px;height:20px;border-radius:50%;background:'+escHtml(cor)+';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+escHtml(ini)+'</span>' +
+          escHtml(nome) + '</div>';
+      }).join('');
+    }
+
+    document.body.appendChild(drop);
+    var rect   = btn.getBoundingClientRect();
+    var dropH  = drop.offsetHeight;
+    var topPos = rect.top - dropH - 6;
+    drop.style.left = rect.left + 'px';
+    drop.style.top  = (topPos >= 8 ? topPos : rect.bottom + 4) + 'px';
+
+    /* store refs for the onclick */
+    window._fpAssignOthers = outros;
+    setTimeout(function() {
+      function handler(e) {
+        if (!drop.contains(e.target) && e.target !== btn) {
+          drop.remove(); delete window._fpAssignOthers;
+          document.removeEventListener('click', handler);
+        }
+      }
+      document.addEventListener('click', handler);
+    }, 0);
+  }
+
+  window._assignTo = function(i) {
+    var ex = document.getElementById('fp-assign-drop');
+    if (ex) ex.remove();
+    var u = (window._fpAssignOthers || [])[i];
+    delete window._fpAssignOthers;
+    if (!u) return;
+    var desc = (document.getElementById('fp-task-desc') || {}).value || '';
+    var tipo = (document.getElementById('fp-task-tipo') || {}).value || '';
+    var data = (document.getElementById('fp-task-data') || {}).value || null;
+    desc = desc.trim();
+    if (!desc) { document.getElementById('fp-task-desc').focus(); return; }
+    var meuid = user.id || user.app_user_id;
+    sb.from('tarefas_livres').insert({
+      usuario_id: u.id, atribuido_para: u.id, criado_por: meuid,
+      descricao: desc, tipo: tipo || null, data_limite: data || null
+    }).then(function(r) {
+      if (r.error) return;
+      document.getElementById('fp-task-desc').value = '';
+      document.getElementById('fp-task-data').value = '';
+      loadTasks();
+    });
+  };
+
+  /* expor para o HTML inline */
+  window.fpChat = window.fpChat || {};
+  window.fpChat._assignTo = window._assignTo;
+
   function checkTask(event, taskId) {
     event.stopPropagation();
     var btn = event.currentTarget;
@@ -1684,10 +1859,14 @@
     var $banner = document.getElementById('fp-prio-banner');
     var $btn    = document.getElementById('fp-nav-prio');
     if (!$banner || !$btn) return;
-    var rect = $btn.getBoundingClientRect();
-    $banner.style.top  = Math.max(16, rect.top - 4) + 'px';
+    $banner.style.display = 'block';  /* precisa estar visível para medir */
+    var rect      = $btn.getBoundingClientRect();
+    var bannerH   = $banner.offsetHeight || 240;
+    /* alinha o fundo do banner ao fundo do botão, não saindo da tela */
+    var bottomPos = rect.bottom;
+    var topPos    = Math.max(16, bottomPos - bannerH);
+    $banner.style.top  = topPos + 'px';
     $banner.style.left = (rect.right + 8) + 'px';
-    $banner.style.display = 'block';
     if (!prioLoaded) fetchPrioridade();
     else renderPrioBanner();
   }
@@ -1744,7 +1923,7 @@
     }
 
     $inner.innerHTML =
-      '<div class="fp-prio-hdr">Minha prioridade</div>' +
+      '<div class="fp-prio-hdr">Minha prioridade #' + ord + '</div>' +
       '<div class="fp-prio-card ' + estadoCard + '" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id||'')) + '\')">' +
         '<div class="fp-prio-num ' + numCls + '">' + ord + '</div>' +
         '<div class="fp-prio-info">' +
@@ -1755,6 +1934,7 @@
           prazoChipHtml +
           (pr.comentario ? '<div style="font-size:10px;color:#888;margin-top:4px;font-style:italic">' + escHtml(pr.comentario) + '</div>' : '') +
         '</div>' +
+        '<button class="fp-prio-check" onclick="event.stopPropagation();fpChat.checkPrio(\'' + escHtml(String(pr.id)) + '\')" title="Marcar como concluída">✓</button>' +
       '</div>' +
       '<div class="fp-prio-footer">' +
         '<button class="fp-prio-abrir" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id||'')) + '\')">Ver detalhes do projeto</button>' +
@@ -1811,10 +1991,12 @@
     if (!$panel || !$btn) return;
 
     if (notifPanelOpen) {
-      var rect = $btn.getBoundingClientRect();
-      $panel.style.top  = Math.max(16, rect.top - 4) + 'px';
-      $panel.style.left = (rect.right + 8) + 'px';
       $panel.style.display = 'flex';
+      var rect   = $btn.getBoundingClientRect();
+      var panelH = $panel.offsetHeight || 360;
+      var topPos = Math.max(16, rect.bottom - panelH);
+      $panel.style.top  = topPos + 'px';
+      $panel.style.left = (rect.right + 8) + 'px';
       renderNotifPanel();
       /* marcar como lidas */
       markNotifsRead();
@@ -1866,6 +2048,19 @@
     }).join('');
 
     $lista.innerHTML = html;
+  }
+
+  function checkPrio(prioId) {
+    sb.from('prioridades_usuario')
+      .update({ concluida: true, concluida_em: new Date().toISOString() })
+      .eq('id', prioId)
+      .then(function(r) {
+        if (r.error) return;
+        prioLoaded = false;  /* força refetch na próxima vez */
+        prioData   = null;
+        var $b = document.getElementById('fp-prio-banner');
+        if ($b) $b.style.display = 'none';
+      });
   }
 
   function encerrarNotif(id) {
