@@ -2167,8 +2167,16 @@
     var $count = document.getElementById('fp-prio-panel-count');
     if (!$list) return;
 
-    var items = allPrioData || [];
-    if ($count) $count.textContent = items.length ? items.length + (items.length === 1 ? ' item' : ' itens') : '';
+    /* pendentes primeiro (por ordem), concluídas por último (por data de conclusão) */
+    var raw = (allPrioData || []).slice();
+    raw.sort(function(a, b) {
+      if (!!a.concluida !== !!b.concluida) return a.concluida ? 1 : -1;
+      if (!a.concluida) return (a.ordem || 99) - (b.ordem || 99);
+      return (b.concluida_em || '').localeCompare(a.concluida_em || '');
+    });
+    var items = raw;
+    var pendentes = items.filter(function(p){ return !p.concluida; }).length;
+    if ($count) $count.textContent = pendentes ? pendentes + ' em aberto' : 'todas concluídas';
 
     if (!items.length) {
       $list.innerHTML = '<div style="padding:28px 16px;text-align:center;font-size:11px;color:var(--cinza,#D0CFC9)">Nenhuma prioridade definida ✓</div>';
@@ -2200,6 +2208,8 @@
       }
 
       var concluida = !!pr.concluida;
+      /* concluídas: sem cor de estado, apenas cinza */
+      if (concluida) { estadoCard = ''; chipHtml = ''; }
       var produtoId = escHtml(String(pr.produto_id || ''));
       var prioId    = escHtml(String(pr.id));
 
