@@ -28,29 +28,33 @@
    VARIÁVEIS DE ACENTO — aplicadas sobre light/dark
 ══════════════════════════════════════════════════ */
 :root {
-  --ca:    #1D6A4A;   /* accent */
-  --ca-bg: #EAF5EE;   /* accent background suave */
-  --ca-mid:rgba(29,106,74,.13);
-  --ca-viv:rgba(29,106,74,.22);
-  --cinza2:#ECEAE4;
+  --ca:          #1D6A4A;
+  --ca-bg:       #EAF5EE;
+  --ca-mid:      rgba(29,106,74,.13);
+  --ca-viv:      rgba(29,106,74,.22);
+  --ca-rgb-vals: 29,106,74;
+  --cinza2:      #ECEAE4;
 }
 [data-chat-color="azul"] {
-  --ca:    #1D4FA0;
-  --ca-bg: #EAF0FB;
-  --ca-mid:rgba(29,79,160,.12);
-  --ca-viv:rgba(29,79,160,.22);
+  --ca:          #1D4FA0;
+  --ca-bg:       #EAF0FB;
+  --ca-mid:      rgba(29,79,160,.12);
+  --ca-viv:      rgba(29,79,160,.22);
+  --ca-rgb-vals: 29,79,160;
 }
 [data-chat-color="ouro"] {
-  --ca:    #C4831A;
-  --ca-bg: #FBF3E8;
-  --ca-mid:rgba(196,131,26,.12);
-  --ca-viv:rgba(196,131,26,.22);
+  --ca:          #C4831A;
+  --ca-bg:       #FBF3E8;
+  --ca-mid:      rgba(196,131,26,.12);
+  --ca-viv:      rgba(196,131,26,.22);
+  --ca-rgb-vals: 196,131,26;
 }
 [data-chat-color="terracota"] {
-  --ca:    #B84C3A;
-  --ca-bg: #FBF0EE;
-  --ca-mid:rgba(184,76,58,.12);
-  --ca-viv:rgba(184,76,58,.22);
+  --ca:          #B84C3A;
+  --ca-bg:       #FBF0EE;
+  --ca-mid:      rgba(184,76,58,.12);
+  --ca-viv:      rgba(184,76,58,.22);
+  --ca-rgb-vals: 184,76,58;
 }
 
 /* ══════════════════════════════════════════════════
@@ -85,14 +89,14 @@ body {
    LAYOUT PRINCIPAL — cards flutuando no background
 ══════════════════════════════════════════════════ */
 #fp-app {
-  display: none; /* shown after login */
+  display: none;
   flex: 1;
-  padding: 16px 72px 16px 16px; /* direita larga; esquerda menor para o timer */
-  gap: 10px;
+  padding: 20px 72px 72px 72px;
+  gap: 11px;
   min-height: 0;
   height: 100vh;
   align-items: stretch;
-  position: relative;   /* fix: ficar acima do body::before (backdrop lines) */
+  position: relative;
   z-index: 1;
 }
 
@@ -100,19 +104,26 @@ body {
    NAV LATERAL (ícones de módulos)
 ══════════════════════════════════════════════════ */
 #fp-nav {
-  width: 60px;                        /* um pouco mais largo */
-  background: #2A2926;                /* cor própria — grafite suave, diferente dos cards */
+  width: 66px;
+  background: #2A2926;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 0 80px;               /* padding-bottom reserva espaço pro timer */
+  padding: 10px 0 0;
   gap: 2px;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: visible;   /* permite tooltip sair da nav */
 }
 [data-theme="dark"] #fp-nav { background: #1A1A18; }
+
+/* Timer centralizado no fundo da nav */
+#exp-timer-widget {
+  left: calc(72px + (66px / 2) - 23px) !important;  /* centro da nav */
+  bottom: 20px !important;
+  z-index: 9998 !important;
+}
 
 .fp-nav-logo {
   width: 50px; height: 44px;
@@ -173,7 +184,7 @@ body {
   flex-shrink: 0;
   background: var(--branco, #fff);
   border: 1px solid var(--cinza2, #ECEAE4);
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -192,12 +203,17 @@ body {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 10px;
 }
-.fp-sb-title {
-  font-size: 13px; font-weight: 700;
-  color: var(--grafite, #111110);
-  flex: 1;
+.fp-sb-logo {
+  height: 16px; flex: 1;
+  opacity: .55;
+  mix-blend-mode: multiply;
+  display: block;
 }
-[data-theme="dark"] .fp-sb-title { color: #F0EDE6; }
+[data-theme="dark"] .fp-sb-logo {
+  filter: invert(1) brightness(.7);
+  mix-blend-mode: screen;
+  opacity: .45;
+}
 
 .fp-sb-icon-btn {
   width: 28px; height: 28px; border-radius: 7px; border: none;
@@ -345,12 +361,14 @@ body {
 .fp-av-hash {
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700;
-  background: var(--ca-bg); color: var(--ca);
+  font-size: 14px; font-weight: 700;
+  /* semi-transparente: funciona em light e dark sem cor fixa */
+  background: rgba(var(--ca-rgb, 29,106,74), .15);
+  color: var(--ca);
 }
 .fp-av-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: block; }
 .fp-presence-dot-sm {
-  width: 9px; height: 9px; border-radius: 50%;
+  width: 10px; height: 10px; border-radius: 50%;
   position: absolute; bottom: -1px; right: -1px;
   border: 2px solid var(--branco, #fff);
 }
@@ -380,7 +398,7 @@ body {
 .fp-conv-body { flex: 1; min-width: 0; }
 .fp-conv-top {
   display: flex; align-items: baseline; gap: 5px;
-  margin-bottom: 3px;
+  margin-bottom: 1px;
 }
 .fp-conv-name {
   font-size: 12px; font-weight: 600; color: #3A3836;
@@ -418,42 +436,52 @@ body {
   opacity: .7;
 }
 
-/* Color trigger (bolinha na linha dos toggles) */
-#fp-color-trigger {
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0;
-}
-#fp-color-active-dot {
-  width: 14px; height: 14px; border-radius: 50%;
-  background: var(--ca);
-  border: 2px solid rgba(255,255,255,.5);
-  box-shadow: 0 1px 4px rgba(0,0,0,.2);
-  transition: transform .15s;
-}
-#fp-color-trigger:hover #fp-color-active-dot { transform: scale(1.15); }
+/* (color trigger removido — agora dentro do popover de visualização) */
 
-#fp-color-pop {
+/* Popover de visualização */
+#fp-view-pop {
   position: absolute; bottom: calc(100% + 6px); right: 0;
   background: var(--branco, #fff);
   border: 1px solid var(--cinza2, #ECEAE4);
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0,0,0,.15);
-  padding: 7px 8px;
-  display: none; flex-direction: row; gap: 6px;
-  z-index: 200;
-  white-space: nowrap;
+  padding: 8px 10px 10px;
+  display: none; flex-direction: column; gap: 6px;
+  z-index: 200; min-width: 160px;
 }
-[data-theme="dark"] #fp-color-pop { background: #252523; border-color: #2E2D2B; }
+[data-theme="dark"] #fp-view-pop { background: #1E1E1D; border-color: #2E2D2B; }
+.fp-view-pop-section {
+  font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--cinza, #D0CFC9);
+  margin-top: 4px;
+}
+.fp-view-pop-colors { display: flex; gap: 6px; }
+.fp-view-pop-tones  { display: flex; gap: 6px; }
+.fp-view-pop-sizes  { display: flex; align-items: center; gap: 6px; }
 .fp-color-pop-dot {
   width: 18px; height: 18px; border-radius: 50%;
   border: 2px solid transparent; cursor: pointer;
-  transition: transform .12s, border-color .12s;
-  flex-shrink: 0;
+  transition: transform .12s, border-color .12s; flex-shrink: 0;
 }
 .fp-color-pop-dot:hover { transform: scale(1.2); }
 .fp-color-pop-dot.active { border-color: var(--grafite, #111110); }
 [data-theme="dark"] .fp-color-pop-dot.active { border-color: #F0EDE6; }
+.fp-tone-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform .12s, border-color .12s; flex-shrink: 0;
+}
+.fp-tone-dot:hover { transform: scale(1.2); }
+.fp-tone-dot.active { border-color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-tone-dot.active { border-color: #F0EDE6; }
+.fp-view-size-btn {
+  padding: 3px 8px; border-radius: 6px; border: 1px solid var(--cinza2, #ECEAE4);
+  background: var(--off, #F7F6F3); cursor: pointer;
+  font-family: 'Raleway', sans-serif; font-size: 11px; font-weight: 600;
+  color: var(--grafite, #111110); transition: border-color .12s;
+}
+.fp-view-size-btn:hover { border-color: var(--ca); }
+[data-theme="dark"] .fp-view-size-btn { background: #252523; border-color: #2E2D2B; color: #C8C3BA; }
 
 /* ══════════════════════════════════════════════════
    MAIN — área de chat
@@ -462,7 +490,7 @@ body {
   flex: 1;
   background: var(--branco, #fff);
   border: 1px solid var(--cinza2, #ECEAE4);
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex; flex-direction: column;
   overflow: hidden; min-width: 0;
 }
@@ -479,21 +507,38 @@ body {
   border-bottom: 1px solid #D8D6D0;
 }
 [data-theme="dark"] #fp-chat-header { background: #2A2927; border-bottom-color: #3A3836; }
-.fp-hdr-av { flex-shrink: 0; }
+/* Avatar do header com status sobreposto */
+.fp-hdr-av {
+  flex-shrink: 0;
+  position: relative;
+}
+/* Status dot: canto inferior-esquerdo do avatar, alinhado com o nome */
+.fp-hdr-status-dot {
+  position: absolute;
+  bottom: -1px; left: -1px;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid #ECEAE4;  /* mesma cor do header */
+  display: none;
+}
+[data-theme="dark"] .fp-hdr-status-dot { border-color: #2A2927; }
+.fp-hdr-status-dot.online  { background: #2D9E6B; display: block; }
+.fp-hdr-status-dot.foco    { background: #1D4FA0; display: block; }
+.fp-hdr-status-dot.ausente { background: #C4831A; display: block; }
+
 .fp-hdr-info { flex: 1; min-width: 0; }
 .fp-hdr-title {
   font-size: 14px; font-weight: 700; color: var(--grafite, #111110);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 [data-theme="dark"] .fp-hdr-title { color: #F0EDE6; }
+/* sub agora só mostra texto de status ou tipo de canal — sem ícone inline */
 .fp-hdr-sub {
   font-size: 10px; color: #888; margin-top: 1px;
-  display: flex; align-items: center; gap: 5px;
+  display: none; align-items: center; gap: 5px;
 }
-.fp-hdr-presence { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.fp-hdr-presence.online  { background: #2D9E6B; }
-.fp-hdr-presence.foco    { background: #1D4FA0; }
-.fp-hdr-presence.ausente { background: #C4831A; }
+/* mostrar sub apenas para grupos/projetos (status textual) */
+.fp-hdr-sub.visible { display: flex; }
+.fp-hdr-presence { display: none; } /* substituído pelo dot sobreposto no avatar */
 .fp-chat-icon-btn {
   width: 30px; height: 30px; border-radius: 8px; border: none;
   background: rgba(0,0,0,.06); color: var(--grafite, #111110);
@@ -569,16 +614,17 @@ body {
 .fp-msg-block:hover { background: var(--off, #F7F6F3); }
 [data-theme="dark"] .fp-msg-block:hover { background: rgba(255,255,255,.03); }
 
-/* Não lidas: fundo suave */
+/* Não lidas: 15% opacidade */
 .fp-msg-block.unread {
-  background: var(--ca-mid) !important;
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .15) !important;
 }
 
-/* Sinalizadas: fundo mais vivo */
+/* Sinalizadas: 20% opacidade + outline 3px */
 .fp-msg-block.flagged {
-  background: var(--ca-viv) !important;
-  border-left: 3px solid var(--ca);
-  padding-left: 9px;
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .20) !important;
+  outline: 3px solid var(--ca);
+  outline-offset: -1px;
+  border-radius: 8px;
 }
 
 /* Avatar da mensagem */
@@ -615,14 +661,16 @@ body {
 }
 [data-theme="dark"] .fp-msg-name { color: #F0EDE6; }
 .fp-msg-ts {
-  font-size: 10px; font-family: 'DM Mono', monospace;
-  color: #aaa;
+  font-size: 8px; font-family: 'DM Mono', monospace;
+  color: #aaa; letter-spacing: .2px;
 }
 .fp-msg-text {
-  font-size: 13px; line-height: 1.55; color: #333;
+  font-size: var(--fp-msg-size, 12px);
+  line-height: 1.55;
+  color: var(--fp-msg-color, #333);
   word-break: break-word;
 }
-[data-theme="dark"] .fp-msg-text { color: #C8C3BA; }
+[data-theme="dark"] .fp-msg-text { color: var(--fp-msg-color, #C8C3BA); }
 .fp-link { color: var(--ca); text-decoration: underline; word-break: break-all; }
 .fp-link:hover { opacity: .8; }
 
@@ -1470,7 +1518,8 @@ body {
   <aside id="fp-sidebar">
     <div class="fp-sb-head">
       <div class="fp-sb-head-row">
-        <span class="fp-sb-title">EXP.chat</span>
+        <!-- Logo EXP (mais clara) -->
+        <img src="exp.png" alt="EXP" class="fp-sb-logo" onerror="this.style.display='none'">
         <!-- Status -->
         <div class="fp-sb-status" id="fp-status-btn" onclick="fpChat.toggleStatusPop()" title="Meu status">
           <span class="fp-status-dot online" id="fp-status-dot"></span>
@@ -1498,7 +1547,7 @@ body {
         <input class="fp-search-input" id="fp-search-input" type="text" placeholder="Buscar conversas…" oninput="fpChat.filterConvs(this.value)">
       </div>
 
-      <!-- Toggles + cor (mesma linha) -->
+      <!-- Toggles + editar visualização (mesma linha) -->
       <div class="fp-sb-toggles">
         <button class="fp-toggle-btn" id="fp-toggle-unread" onclick="fpChat.toggleUnreads()">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="4"/></svg>
@@ -1508,15 +1557,28 @@ body {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
           Sinalizadas
         </button>
-        <!-- Bolinha da cor atual — clique abre popover -->
-        <div id="fp-color-trigger" onclick="fpChat.toggleColorPicker(event)" title="Cor do chat" style="position:relative">
-          <div id="fp-color-active-dot"></div>
-          <!-- Popover de cores -->
-          <div id="fp-color-pop" style="display:none">
-            <div class="fp-color-pop-dot" data-color="verde"     style="background:#1D6A4A" onclick="fpChat.setColor('verde')"></div>
-            <div class="fp-color-pop-dot" data-color="azul"      style="background:#1D4FA0" onclick="fpChat.setColor('azul')"></div>
-            <div class="fp-color-pop-dot" data-color="ouro"      style="background:#C4831A" onclick="fpChat.setColor('ouro')"></div>
-            <div class="fp-color-pop-dot" data-color="terracota" style="background:#B84C3A" onclick="fpChat.setColor('terracota')"></div>
+        <!-- Editar visualização -->
+        <div id="fp-view-trigger" onclick="fpChat.toggleViewPicker(event)" title="Editar visualização" style="position:relative">
+          <button class="fp-toggle-btn" style="padding:5px 7px">
+            <svg width="12" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <!-- Popover de visualização -->
+          <div id="fp-view-pop" style="display:none">
+            <div class="fp-view-pop-section">Cor</div>
+            <div class="fp-view-pop-colors">
+              <div class="fp-color-pop-dot" data-color="verde"     style="background:#1D6A4A" onclick="fpChat.setColor('verde')"></div>
+              <div class="fp-color-pop-dot" data-color="azul"      style="background:#1D4FA0" onclick="fpChat.setColor('azul')"></div>
+              <div class="fp-color-pop-dot" data-color="ouro"      style="background:#C4831A" onclick="fpChat.setColor('ouro')"></div>
+              <div class="fp-color-pop-dot" data-color="terracota" style="background:#B84C3A" onclick="fpChat.setColor('terracota')"></div>
+            </div>
+            <div class="fp-view-pop-section">Tom de fonte</div>
+            <div class="fp-view-pop-tones" id="fp-tone-dots"></div>
+            <div class="fp-view-pop-section">Tamanho</div>
+            <div class="fp-view-pop-sizes">
+              <button class="fp-view-size-btn" onclick="fpChat.changeFontSize(-1)">A−</button>
+              <span id="fp-font-size-label" style="font-size:10px;color:#888;min-width:28px;text-align:center"></span>
+              <button class="fp-view-size-btn" onclick="fpChat.changeFontSize(+1)">A+</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1541,10 +1603,12 @@ body {
     <!-- Chat área -->
     <div id="fp-chat-area" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0;min-width:0;background:var(--branco,#fff)">
       <div id="fp-chat-header">
-        <div class="fp-hdr-av" id="fp-hdr-av"></div>
+        <div class="fp-hdr-av" id="fp-hdr-av">
+          <span id="fp-hdr-status-dot" class="fp-hdr-status-dot"></span>
+        </div>
         <div class="fp-hdr-info">
           <div class="fp-hdr-title" id="fp-hdr-title">—</div>
-          <div class="fp-hdr-sub"   id="fp-hdr-sub" style="display:none"></div>
+          <div class="fp-hdr-sub"   id="fp-hdr-sub"></div>
         </div>
         <!-- Botão de busca dentro da conversa -->
         <button class="fp-chat-icon-btn" onclick="fpChat.toggleInSearch(event)" id="fp-in-search-btn" title="Buscar nesta conversa">

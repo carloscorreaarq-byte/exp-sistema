@@ -132,6 +132,7 @@
     loadTeamMembers();
     initNotif();
     initExpRoom();
+    applyViewPrefs();
 
     /* Scroll tracking */
     if ($msgs) $msgs.addEventListener('scroll', function() {
@@ -217,19 +218,68 @@
     });
   }
 
-  var colorPickerOpen = false;
-  function toggleColorPicker(event) {
+  /* ── Visualização: cor, tom de fonte, tamanho ── */
+  var FONT_SIZES  = [10, 11, 12, 13, 14];
+  var fontSizeIdx = parseInt(localStorage.getItem('exp_chat_font_size') || '2', 10); // default: 12px
+
+  /* Tons de texto — escala de cinza invertida entre light e dark */
+  var TONES_LIGHT = ['#555', '#3A3836', '#222', '#111'];  /* do mais claro ao mais escuro */
+  var TONES_DARK  = ['#8C8A85', '#B4AEA4', '#D0CFC9', '#F0EDE6'];
+  var fontToneIdx = parseInt(localStorage.getItem('exp_chat_font_tone') || '1', 10);
+
+  function applyViewPrefs() {
+    var size = FONT_SIZES[Math.max(0, Math.min(fontSizeIdx, FONT_SIZES.length-1))];
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var tone = dark ? TONES_DARK[fontToneIdx] : TONES_LIGHT[fontToneIdx];
+    var $msgs = document.getElementById('fp-messages');
+    if ($msgs) {
+      $msgs.style.setProperty('--fp-msg-size', size + 'px');
+      $msgs.style.setProperty('--fp-msg-color', tone);
+    }
+    /* atualizar label de tamanho */
+    var $lbl = document.getElementById('fp-font-size-label');
+    if ($lbl) $lbl.textContent = size + 'px';
+    /* atualizar tom dots */
+    var $dots = document.querySelectorAll('.fp-tone-dot');
+    $dots.forEach(function(d, i) { d.classList.toggle('active', i === fontToneIdx); });
+  }
+
+  function changeFontSize(delta) {
+    fontSizeIdx = Math.max(0, Math.min(fontSizeIdx + delta, FONT_SIZES.length - 1));
+    localStorage.setItem('exp_chat_font_size', String(fontSizeIdx));
+    applyViewPrefs();
+  }
+
+  function setFontTone(idx) {
+    fontToneIdx = idx;
+    localStorage.setItem('exp_chat_font_tone', String(idx));
+    applyViewPrefs();
+  }
+
+  var viewPickerOpen = false;
+  function toggleViewPicker(event) {
     event.stopPropagation();
-    var $pop = document.getElementById('fp-color-pop');
+    var $pop = document.getElementById('fp-view-pop');
     if (!$pop) return;
-    colorPickerOpen = !colorPickerOpen;
-    $pop.style.display = colorPickerOpen ? 'flex' : 'none';
-    if (colorPickerOpen) {
+    viewPickerOpen = !viewPickerOpen;
+    $pop.style.display = viewPickerOpen ? 'flex' : 'none';
+    if (viewPickerOpen) {
+      /* Renderizar tone dots */
+      var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      var tones = dark ? TONES_DARK : TONES_LIGHT;
+      var $td = document.getElementById('fp-tone-dots');
+      if ($td) {
+        $td.innerHTML = tones.map(function(c, i) {
+          return '<div class="fp-tone-dot' + (i === fontToneIdx ? ' active' : '') + '" ' +
+            'style="background:' + c + '" onclick="fpChat.setFontTone(' + i + ')"></div>';
+        }).join('');
+      }
+      applyViewPrefs();
       setTimeout(function() {
         function handler(e) {
-          var trigger = document.getElementById('fp-color-trigger');
-          if (!trigger || !trigger.contains(e.target)) {
-            colorPickerOpen = false;
+          var t = document.getElementById('fp-view-trigger');
+          if (!t || !t.contains(e.target)) {
+            viewPickerOpen = false;
             $pop.style.display = 'none';
             document.removeEventListener('click', handler);
           }
@@ -442,9 +492,9 @@
     /* Avatar */
     var avHtml;
     if (avVariant === 'hash-verde') {
-      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:var(--ca-bg);color:var(--ca)">#</div></div>';
+      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(29,106,74,.15);color:#1D6A4A">#</div></div>';
     } else if (avVariant === 'hash-ouro') {
-      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:#FBF3E8;color:#C4831A">#</div></div>';
+      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(196,131,26,.15);color:#C4831A">#</div></div>';
     } else if (channel.startsWith('group:') && members && members.length >= 2) {
       /* Avatares empilhados */
       var stackClass = members.length >= 3 ? 'fp-av-stack trio' : 'fp-av-stack';
@@ -468,7 +518,7 @@
       var pb16 = parseInt(pc.slice(5,7)||'4A',16);
       var pbg  = 'rgba('+pr16+','+pg16+','+pb16+',.15)';
       avHtml = '<div class="fp-conv-av-wrap">' +
-        '<div class="fp-av-hash" style="background:' + pbg + ';color:' + escHtml(pc) + '">' + escHtml(iniciais||'?') + '</div>' +
+        '<div class="fp-av-hash" style="background:' + pbg + ';color:' + escHtml(pc) + ';font-size:10px">' + escHtml(iniciais||'?') + '</div>' +
         '</div>';
     } else if (avatarUrl) {
       avHtml = '<div class="fp-conv-av-wrap"><img class="fp-av-img" src="' + escHtml(avatarUrl) + '" alt="">' +
@@ -513,7 +563,74 @@
     });
   }
 
-  function filterConvs(value) { filterQuery = String(value||''); renderConvList(); }
+  var filterTimer = null;
+  function filterConvs(value) {
+    filterQuery = String(value||'');
+    if (filterTimer) clearTimeout(filterTimer);
+    /* Para queries curtas, renderiza imediatamente (filtro local) */
+    if (filterQuery.length < 2) { renderConvList(); return; }
+    /* Para queries mais longas, debounce + busca no banco */
+    filterTimer = setTimeout(function() { renderConvListWithSearch(filterQuery); }, 350);
+  }
+
+  function renderConvListWithSearch(q) {
+    /* Primeiro renderiza o filtro local (instantâneo) */
+    renderConvList();
+    if (!q || q.length < 2) return;
+
+    var uid   = user.auth_id;
+    var since = new Date(Date.now() - 72*60*60*1000).toISOString();
+    var $list = document.getElementById('fp-conv-list');
+
+    /* Busca mensagens contendo o termo */
+    sb.from('chat_messages')
+      .select('channel,sender_name,content,created_at,sender_id,sender_iniciais,sender_cor')
+      .ilike('content', '%' + q + '%')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(40)
+      .then(function(r) {
+        if (filterQuery !== q) return; /* query mudou enquanto esperava */
+        var msgs = r.data || [];
+        if (!msgs.length) return;
+
+        /* Deduplica por canal, filtra canais que o user pode ver */
+        var seen = {};
+        var results = [];
+        msgs.forEach(function(m) {
+          if (seen[m.channel]) return;
+          seen[m.channel] = true;
+          var ch = m.channel;
+          /* Verificar acesso: general, socios (se sócio), ou canal com uid */
+          if (ch !== 'general' && !(ch === 'socios' && isSocioLikeRole(user.role)) && ch.indexOf(uid) === -1) return;
+          results.push(m);
+        });
+
+        if (!results.length) return;
+
+        /* Adicionar seção de resultados ao final */
+        var extra = '<div class="fp-task-section" style="margin-top:8px">Nas mensagens</div>';
+        results.forEach(function(m) {
+          var meta    = isDynamicChannel(m.channel) ? getConversationMeta(m, uid) : { label: m.channel === 'general' ? '# geral' : '# sócios', iniciais: '#', cor: '#1D6A4A', avatarUrl: null };
+          var chanJson = m.channel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          var labelEsc = escHtml(meta.label);
+          var snippet  = String(m.content||'').replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), function(match){ return '<mark style="background:rgba(0,0,0,.12);border-radius:2px;padding:0 1px">'+escHtml(match)+'</mark>'; });
+          var snipSafe = escHtml(String(m.content||'')).replace(new RegExp(escHtml(q),'gi'), function(match){ return '<mark style="background:rgba(0,0,0,.12);border-radius:2px;padding:0 1px">'+match+'</mark>'; });
+
+          extra += '<div class="fp-conv-item" data-channel="'+escHtml(m.channel)+'" onclick="fpChat.openChannel(\''+chanJson+'\',\''+labelEsc+'\')">'+
+            '<div class="fp-conv-av-wrap"><div class="fp-av-circle" style="background:'+escHtml(meta.cor||'#1D6A4A')+'">'+escHtml(meta.iniciais||'?')+'</div></div>'+
+            '<div class="fp-conv-body">'+
+              '<div class="fp-conv-top"><span class="fp-conv-name">'+labelEsc+'</span></div>'+
+              '<div class="fp-conv-preview" style="-webkit-line-clamp:2">'+snipSafe+'</div>'+
+            '</div>'+
+            '</div>';
+        });
+
+        /* Adicionar ao final do list atual */
+        if ($list) $list.innerHTML += extra;
+        setActiveConvItem(currentChannel);
+      }).catch(function() {});
+  }
   function toggleProjectSection() { projectSectionCollapsed = !projectSectionCollapsed; renderConvList(); }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -590,24 +707,34 @@
 
   function updateChannelSubtitle() {
     var $sub = document.getElementById('fp-hdr-sub');
+    var $dot = document.getElementById('fp-hdr-status-dot');
     if (!$sub) return;
+
     if (currentChannel && currentChannel.startsWith('dm:')) {
+      /* DM: status dot sobreposto ao avatar, sem texto extra */
       var parts = currentChannel.replace('dm:','').split(':');
       var oUid  = parts.find(function(p){return p!==user.auth_id;});
       var pres  = oUid ? onlinePresence[oUid] : null;
       var st    = pres ? pres.status : 'offline';
-      var lab   = {online:'Online',foco:'Foco',ausente:'Ausente',offline:'Offline'};
-      $sub.style.display = 'flex';
-      $sub.innerHTML = '<span class="fp-hdr-presence '+st+'"></span>' + escHtml(lab[st]||st);
+      if ($dot) $dot.className = 'fp-hdr-status-dot ' + st;
+      $sub.className = 'fp-hdr-sub';      /* oculto */
+      $sub.textContent = '';
+
     } else if (currentChannel && currentChannel.startsWith('group:')) {
+      if ($dot) $dot.className = 'fp-hdr-status-dot'; /* oculto */
       var uids   = currentChannel.replace('group:','').split(':');
-      var online = uids.filter(function(u){return onlinePresence[u];}).length;
-      $sub.style.display = 'flex';
-      $sub.textContent = online + ' de ' + uids.length + ' online';
+      var onlineN = uids.filter(function(u){return onlinePresence[u];}).length;
+      $sub.className = 'fp-hdr-sub visible';
+      $sub.textContent = onlineN + ' de ' + uids.length + ' online';
+
     } else if (isProjectChannel(currentChannel)) {
-      $sub.style.display = 'flex'; $sub.textContent = 'Chat do projeto';
+      if ($dot) $dot.className = 'fp-hdr-status-dot';
+      $sub.className = 'fp-hdr-sub visible';
+      $sub.textContent = 'Chat do projeto';
+
     } else {
-      $sub.style.display = 'none';
+      if ($dot) $dot.className = 'fp-hdr-status-dot';
+      $sub.className = 'fp-hdr-sub';
     }
   }
 
@@ -1684,7 +1811,7 @@
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
     toggleStatusPop, setStatus, toggleSound,
-    setColor, toggleColorPicker,
+    setColor, toggleViewPicker, changeFontSize, setFontTone,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM,
     send, handleKey, autoResize,
