@@ -117,8 +117,8 @@ body {
 
 /* ── BOAS VINDAS ─────────────────────────────────────────── */
 .bv { margin: 0; }
-.bv-hora  { font-family: var(--font-mono); font-size: 10px; color: #aaa; letter-spacing: 1px; margin-bottom: 6px; }
-.bv-titulo { font-size: 26px; font-weight: 700; letter-spacing: -.6px; line-height: 1.1; margin-bottom: 8px; }
+.bv-hora  { font-family: var(--font-mono); font-size: 10px; color: #aaa; letter-spacing: 1px; margin-bottom: 16px; }
+.bv-titulo { font-size: 26px; font-weight: 700; letter-spacing: -.6px; line-height: 1.1; margin-bottom: 3px; }
 .bv-info-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .bv-info-row .term-chip { margin-top: 0; }
 
@@ -329,7 +329,8 @@ body {
 .dash-task-check svg { width: 8px; height: 8px; stroke: #fff; stroke-width: 3; display: none; }
 .dash-task-item.done .dash-task-check svg { display: block; }
 .dash-task-body { flex: 1; min-width: 0; }
-.dash-task-desc { font-size: var(--text-body); font-weight: 400; line-height: 1.4; }
+.dash-task-desc { font-size: 11px; font-weight: 400; line-height: 1.4; color: #555; }
+[data-theme="dark"] .dash-task-desc { color: #8C8A85; }
 .dash-task-item.done .dash-task-desc { text-decoration: line-through; color: #bbb; font-weight: 400; }
 .dash-task-meta { font-size: var(--text-sub); color: #999; margin-top: 2px; }
 .dash-task-meta .vencida { color: var(--terracota); }
@@ -1481,13 +1482,13 @@ body {
 </div><!-- /#app-shell -->
 </div><!-- /#conteudo -->
 
-<!-- POPDOWN: LANÇAR CUSTO -->
-<div id="dash-custo-popdown">
+<!-- POPDOWN: LANÇAR CUSTO (mesmos campos e tabela do gestao.html) -->
+<div id="dash-custo-popdown" style="width:340px">
   <div class="dash-pop-head">
     <strong>Lançar custo</strong>
     <button class="dash-pop-close" onclick="closeDashCustoPop()">&times;</button>
   </div>
-  <div class="dash-pop-body">
+  <div class="dash-pop-body" style="max-height:70vh;overflow-y:auto">
     <div class="dash-field-row">
       <div class="dash-field">
         <label>Valor (R$)</label>
@@ -1500,21 +1501,49 @@ body {
     </div>
     <div class="dash-field">
       <label>Vinculado a</label>
-      <select id="dc-tipo">
+      <select id="dc-tipo" onchange="dcAtualizarForm()">
         <option value="projeto">Projeto</option>
-        <option value="organizacao">Org. interna</option>
+        <option value="organizacao">Org. Interna</option>
         <option value="sociedade">Sociedade</option>
       </select>
     </div>
+    <div class="dash-field" id="dc-area-wrap">
+      <label>Área</label>
+      <select id="dc-area" onchange="dcAtualizarDetalhe()"><option value="">Carregando…</option></select>
+    </div>
+    <div class="dash-field" id="dc-detalhe-wrap" style="display:none">
+      <label>Detalhe</label>
+      <select id="dc-detalhe"><option value="">—</option></select>
+    </div>
+    <!-- Projeto: cliente → opp → produto -->
+    <div id="dc-projeto-wrap">
+      <div class="dash-field">
+        <label>Cliente</label>
+        <select id="dc-cliente" onchange="dcFiltrarOpps()"><option value="">Selecionar cliente…</option></select>
+      </div>
+      <div class="dash-field" id="dc-opp-wrap" style="display:none">
+        <label>Projeto</label>
+        <select id="dc-oportunidade" onchange="dcFiltrarProdutos()"><option value="">Selecionar…</option></select>
+      </div>
+      <div class="dash-field" id="dc-prod-wrap" style="display:none">
+        <label>Produto</label>
+        <select id="dc-produto"><option value="">Selecionar…</option></select>
+      </div>
+    </div>
+    <!-- Org/Sociedade: evento -->
+    <div class="dash-field" id="dc-evento-soc-wrap" style="display:none">
+      <label>Evento / tipo</label>
+      <select id="dc-evento-soc"><option value="">— sem evento —</option></select>
+    </div>
     <div class="dash-field">
-      <label>Descrição</label>
+      <label>Descrição (opcional)</label>
       <input type="text" id="dc-desc" placeholder="Detalhe do custo…">
     </div>
+    <div id="dc-status" style="font-size:11px;color:#aaa;margin-top:2px"></div>
   </div>
   <div class="dash-pop-footer">
-    <a href="gestao.html" class="shell-btn" style="text-decoration:none">Ver gestão</a>
     <button class="shell-btn" onclick="closeDashCustoPop()">Cancelar</button>
-    <button class="shell-btn primary" onclick="saveDashCusto()">Registrar</button>
+    <button class="shell-btn primary" onclick="saveDashCusto()">Registrar custo</button>
   </div>
 </div>
 
@@ -1546,7 +1575,7 @@ body {
   </div>
 </div>
 
-<!-- MODAL: NOVO EVENTO -->
+<!-- MODAL: NOVO EVENTO (mesmos campos do calendário em gestao.html) -->
 <div class="dash-modal-overlay" id="dash-event-overlay" onclick="if(event.target===this)closeDashModal('event')">
   <div class="dash-modal" onclick="event.stopPropagation()">
     <div class="dash-modal-head">
@@ -1555,31 +1584,43 @@ body {
     </div>
     <div class="dash-modal-body">
       <div class="dash-field">
+        <label>Tipo</label>
+        <select id="de-tipo">
+          <option value="reuniao">Reunião</option>
+          <option value="agenda_exp">Agenda EXP</option>
+          <option value="ausencia_rem">Ausência remunerada</option>
+          <option value="ausencia_aniv">Aniversário / licença</option>
+          <option value="recesso">Recesso</option>
+          <option value="feriado">Feriado</option>
+        </select>
+      </div>
+      <div class="dash-field">
         <label>Título</label>
-        <input type="text" id="de-titulo" placeholder="Nome do evento ou reunião">
+        <input type="text" id="de-titulo" placeholder="Nome do evento">
       </div>
       <div class="dash-field-row">
         <div class="dash-field">
-          <label>Data</label>
+          <label>Data início</label>
           <input type="date" id="de-data">
         </div>
         <div class="dash-field">
-          <label>Tipo</label>
-          <select id="de-tipo">
-            <option value="reuniao">Reunião</option>
-            <option value="agenda_exp">Agenda EXP</option>
-          </select>
+          <label>Data fim</label>
+          <input type="date" id="de-data-fim">
         </div>
       </div>
       <div class="dash-field-row">
         <div class="dash-field">
-          <label>Início</label>
+          <label>Hora início</label>
           <input type="time" id="de-ini">
         </div>
         <div class="dash-field">
-          <label>Fim</label>
+          <label>Hora fim</label>
           <input type="time" id="de-fim">
         </div>
+      </div>
+      <div class="dash-field">
+        <label>Descrição (opcional)</label>
+        <textarea id="de-desc" rows="2" placeholder="Detalhes…"></textarea>
       </div>
     </div>
     <div class="dash-modal-footer">
@@ -3568,28 +3609,37 @@ async function toggleDashTask(id, concluida) {
 
 // ── Modais ────────────────────────────────────────────────────────
 
-function openDashCustoPop(btn) {
+/* ── CUSTO: dados em cache ────────────────────────────────── */
+let _dcAreas = [], _dcClientes = [], _dcOpps = [], _dcProds = [];
+
+function _dcStatus(msg) {
+  const el = document.getElementById('dc-status');
+  if (el) el.textContent = msg || '';
+}
+
+async function openDashCustoPop(btn) {
   const pop = document.getElementById('dash-custo-popdown');
   if (!pop) return;
-  document.getElementById('dc-valor').value = '';
-  document.getElementById('dc-data').value  = new Date().toISOString().split('T')[0];
-  document.getElementById('dc-desc').value  = '';
+  // reset
+  ['dc-valor','dc-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('dc-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('dc-tipo').value = 'projeto';
+  _dcStatus('');
+  // posição
   if (btn) {
-    const rect = btn.getBoundingClientRect();
-    const popW = 280;
-    let left = rect.right - popW;
-    if (left < 8) left = 8;
+    const rect = btn.getBoundingClientRect(), popW = 340;
+    let left = rect.right - popW; if (left < 8) left = 8;
     pop.style.top  = (rect.bottom + 6) + 'px';
     pop.style.left = left + 'px';
   }
   pop.classList.add('open');
+  // carrega dados
+  await Promise.all([_dcCarregarAreas(), _dcCarregarClientes()]);
+  dcAtualizarForm();
   setTimeout(() => document.getElementById('dc-valor')?.focus(), 60);
   setTimeout(() => {
     function handler(e) {
-      if (!pop.contains(e.target) && e.target !== btn) {
-        pop.classList.remove('open');
-        document.removeEventListener('click', handler);
-      }
+      if (!pop.contains(e.target) && e.target !== btn) { pop.classList.remove('open'); document.removeEventListener('click', handler); }
     }
     document.addEventListener('click', handler);
   }, 0);
@@ -3599,24 +3649,149 @@ function closeDashCustoPop() {
   document.getElementById('dash-custo-popdown')?.classList.remove('open');
 }
 
+async function _dcCarregarAreas() {
+  if (_dcAreas.length) { _dcPreencherAreas(); return; }
+  const { data } = await sb.from('plano_contas').select('id,conta,subconta').order('conta').order('subconta');
+  _dcAreas = data || [];
+  _dcPreencherAreas();
+}
+
+function _dcPreencherAreas() {
+  const sel = document.getElementById('dc-area');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecionar área…</option>' +
+    _dcAreas.map(a => `<option value="${a.id}">${a.conta} — ${a.subconta}</option>`).join('');
+  document.getElementById('dc-detalhe-wrap').style.display = 'none';
+}
+
+function dcAtualizarDetalhe() {
+  // Para esta versão simplificada, detalhe não é necessário
+}
+
+async function _dcCarregarClientes() {
+  if (_dcClientes.length) { _dcPreencherClientes(); return; }
+  const { data } = await sb.from('clientes').select('id,nome').order('nome');
+  _dcClientes = data || [];
+  _dcPreencherClientes();
+}
+
+function _dcPreencherClientes() {
+  const sel = document.getElementById('dc-cliente');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecionar cliente…</option>' +
+    _dcClientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  document.getElementById('dc-opp-wrap').style.display = 'none';
+  document.getElementById('dc-prod-wrap').style.display = 'none';
+}
+
+async function dcFiltrarOpps() {
+  const cliId = document.getElementById('dc-cliente').value;
+  if (!cliId) { document.getElementById('dc-opp-wrap').style.display = 'none'; return; }
+  const { data } = await sb.from('oportunidades').select('id,projeto').eq('cliente_id', cliId).order('projeto');
+  _dcOpps = data || [];
+  const sel = document.getElementById('dc-oportunidade');
+  sel.innerHTML = '<option value="">Selecionar projeto…</option>' +
+    _dcOpps.map(o => `<option value="${o.id}">${o.projeto}</option>`).join('');
+  document.getElementById('dc-opp-wrap').style.display = '';
+  document.getElementById('dc-prod-wrap').style.display = 'none';
+}
+
+async function dcFiltrarProdutos() {
+  const oppId = document.getElementById('dc-oportunidade').value;
+  if (!oppId) return;
+  const { data } = await sb.from('produtos').select('id,nome').eq('oportunidade_id', oppId).order('nome');
+  _dcProds = data || [];
+  const sel = document.getElementById('dc-produto');
+  sel.innerHTML = '<option value="">Selecionar produto…</option>' +
+    _dcProds.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+  document.getElementById('dc-prod-wrap').style.display = '';
+}
+
+async function dcAtualizarForm() {
+  const tipo = document.getElementById('dc-tipo').value;
+  const isProjeto = tipo === 'projeto';
+  document.getElementById('dc-projeto-wrap').style.display = isProjeto ? '' : 'none';
+  document.getElementById('dc-evento-soc-wrap').style.display = isProjeto ? 'none' : '';
+  if (!isProjeto) {
+    const { data } = await sb.from('eventos_sociedade').select('id,nome').eq('tipo', tipo).order('nome');
+    const sel = document.getElementById('dc-evento-soc');
+    sel.innerHTML = '<option value="">— sem evento —</option>' +
+      (data || []).map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+  }
+}
+
 async function saveDashCusto() {
   const valor = parseFloat(document.getElementById('dc-valor').value);
   const data  = document.getElementById('dc-data').value;
   const tipo  = document.getElementById('dc-tipo').value;
+  const pcId  = document.getElementById('dc-area').value;
   const desc  = document.getElementById('dc-desc').value.trim();
-  if (!valor || !data) return;
-  const uid = _dashUsuario?.id;
-  const { error } = await sb.from('custos_usuario').insert({
-    usuario_id: uid, valor, data_custo: data, tipo, descricao: desc || null, status: 'pendente'
-  }).catch(() => ({ error: true }));
-  if (error) {
-    /* fallback: tenta tabela alternativa de lançamentos */
-    await sb.from('horas_lancadas').insert({
-      usuario_id: uid, data_lancamento: data, tipo, descricao: desc,
-      custo: valor, hora_inicio: '08:00', hora_fim: '08:00'
+  const uid   = _dashUsuario?.id;
+
+  if (!valor || valor <= 0) { _dcStatus('Informe o valor do custo.'); return; }
+  if (!pcId)                { _dcStatus('Selecione a área.'); return; }
+  if (!data)                { _dcStatus('Informe a data.'); return; }
+
+  let prodId = null, eventoSocId = null;
+  if (tipo === 'projeto') {
+    prodId = document.getElementById('dc-produto')?.value || null;
+  } else {
+    eventoSocId = document.getElementById('dc-evento-soc')?.value || null;
+  }
+
+  _dcStatus('Registrando…');
+
+  /* Busca ou cria a semana */
+  const semStart = (() => {
+    const d = new Date(data + 'T12:00:00');
+    const dow = d.getDay() || 7;
+    d.setDate(d.getDate() - dow + 1);
+    return d.toISOString().split('T')[0];
+  })();
+  const semEnd = (() => {
+    const d = new Date(semStart + 'T12:00:00');
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().split('T')[0];
+  })();
+
+  let { data: semDb } = await sb.from('semanas').select('id,finalizada')
+    .eq('usuario_id', uid).eq('data_inicio', semStart).maybeSingle();
+  if (semDb?.finalizada) { _dcStatus('Semana já finalizada.'); return; }
+  if (!semDb) {
+    const d = new Date(semStart + 'T12:00:00');
+    const startOfYear = new Date(d.getFullYear(), 0, 1);
+    const week = Math.ceil(((d - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+    const { data: nova, error: eSem } = await sb.from('semanas').upsert({
+      usuario_id: uid, ano: d.getFullYear(), semana: week,
+      data_inicio: semStart, data_fim: semEnd, finalizada: false
+    }, { onConflict: 'usuario_id,ano,semana' }).select().single();
+    if (eSem) { _dcStatus('Erro ao criar semana.'); return; }
+    semDb = nova;
+  }
+
+  const { data: inserted, error } = await sb.from('lancamentos_custo').insert({
+    usuario_id: uid, semana_id: semDb.id, data_lancamento: data,
+    valor, tipo, plano_contas_id: pcId,
+    produto_id: prodId || null, evento_soc_id: eventoSocId || null,
+    descricao: desc || null
+  }).select('id').single();
+
+  if (error) { _dcStatus('Erro: ' + (error.message || 'tente novamente.')); return; }
+
+  /* Sincroniza com fin_lancamentos */
+  if (inserted?.id) {
+    const area = _dcAreas.find(a => a.id === pcId);
+    await sb.from('fin_lancamentos').insert({
+      plano_contas_id: pcId, valor: Math.abs(valor),
+      tipo: 'despesa', situacao: 'realizado',
+      data_competencia: data, data_vencimento: data,
+      observacao: [area?.subconta, desc].filter(Boolean).join(' · ') || 'Custo',
+      origem: 'reembolso', origem_id: inserted.id,
     }).catch(() => {});
   }
+
   closeDashCustoPop();
+  _dcStatus('');
 }
 
 function openDashTaskPop(btn) {
@@ -3664,10 +3839,14 @@ function openDashModal(type) {
   if (type === 'task') {
     openDashTaskPop(); /* fallback sem âncora */
   } else {
-    document.getElementById('de-titulo').value = '';
-    document.getElementById('de-data').value = new Date().toISOString().split('T')[0];
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('de-titulo').value   = '';
+    document.getElementById('de-data').value     = hoje;
+    document.getElementById('de-data-fim').value = hoje;
     document.getElementById('de-ini').value = '';
     document.getElementById('de-fim').value = '';
+    document.getElementById('de-desc').value = '';
+    document.getElementById('de-tipo').value = 'reuniao';
     document.getElementById('dash-event-overlay').classList.add('open');
   }
 }
@@ -3695,19 +3874,31 @@ async function saveDashTask() {
 }
 
 async function saveDashEvent() {
-  const titulo = document.getElementById('de-titulo').value.trim();
-  const data   = document.getElementById('de-data').value;
-  const ini    = document.getElementById('de-ini').value;
-  const fim    = document.getElementById('de-fim').value;
-  const tipo   = document.getElementById('de-tipo').value;
+  const titulo   = document.getElementById('de-titulo').value.trim();
+  const data     = document.getElementById('de-data').value;
+  const dataFim  = document.getElementById('de-data-fim').value || data;
+  const ini      = document.getElementById('de-ini').value;
+  const fim      = document.getElementById('de-fim').value;
+  const tipo     = document.getElementById('de-tipo').value;
+  const desc     = document.getElementById('de-desc')?.value.trim() || null;
   if (!titulo || !data) return;
+
   const diaInteiro = !ini;
+  const ehGlobal   = ['recesso','feriado','feriado_local','agenda_exp'].includes(tipo);
+
+  /* categoria igual ao mapeamento do gestao.html */
+  const CAL_CAT = { reuniao:'reuniao', ausencia_rem:'ausencia', ausencia_aniv:'ausencia',
+    agenda_exp:'agenda_exp', recesso:'recesso', feriado:'feriado', feriado_local:'feriado' };
+
   const { error } = await sb.from('calendar_events').insert({
-    titulo, tipo, categoria: tipo,
-    inicio: ini ? `${data}T${ini}:00+00:00` : `${data}T12:00:00+00:00`,
-    fim:    fim ? `${data}T${fim}:00+00:00` : `${data}T12:00:00+00:00`,
+    tipo, categoria: CAL_CAT[tipo] || tipo, titulo,
+    inicio:      ini     ? `${data}T${ini}:00+00:00`    : `${data}T12:00:00+00:00`,
+    fim:         fim     ? `${dataFim}T${fim}:00+00:00`  : `${dataFim}T12:00:00+00:00`,
     dia_inteiro: diaInteiro,
-    scope: 'usuario', user_id: _dashUsuario?.id, criado_por: _dashUsuario?.id,
+    descricao:   desc,
+    scope:       ehGlobal ? 'todos' : 'usuario',
+    user_id:     ehGlobal ? null : _dashUsuario?.id,
+    criado_por:  _dashUsuario?.id,
   });
   if (error) return;
   closeDashModal('event');
