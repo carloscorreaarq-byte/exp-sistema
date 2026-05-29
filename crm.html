@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="shared/app-notif.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 <style>
@@ -439,9 +440,17 @@ textarea{resize:vertical;min-height:60px}
     <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none">+ Nova oportunidade</button>
     <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
     <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
-    <div class="notif-bell nd-soc" id="sineta-btn-wrap" onclick="toggleAlertas()" title="Alertas" style="display:none">
-      🔔
-      <div class="notif-badge" id="sineta-cnt" style="display:none">0</div>
+    <div class="notif-wrap nd-soc" id="notif-wrap" style="display:none">
+      <button class="notif-bell" id="notif-bell-btn" onclick="_appNotifToggle()" title="Notificações">
+        🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
+      </button>
+      <div class="notif-panel" id="notif-panel" style="display:none">
+        <div class="notif-panel-hd">
+          <span class="notif-panel-hd-t">Notificações</span>
+          <button class="notif-panel-clr" onclick="_appNotifEncerrarTodas()">Encerrar todas ✓</button>
+        </div>
+        <div id="notif-lista"></div>
+      </div>
     </div>
     <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
       <span class="ttg-icon">☀</span>
@@ -496,14 +505,7 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
-<!-- PAINEL ALERTAS -->
-<div class="alert-panel" id="alert-panel">
-  <div class="card-hdr" style="position:sticky;top:0;background:var(--branco);z-index:2">
-    <div class="card-title">Alertas</div>
-    <button class="btn sm ghost" onclick="toggleAlertas()">Fechar</button>
-  </div>
-  <div id="alertas-body"><div class="loading">Carregando...</div></div>
-</div>
+<!-- alert-panel migrado para o bell unificado (AppNotif seção "comercial") -->
 
 <div class="main">
 
@@ -1702,6 +1704,9 @@ window.addEventListener('DOMContentLoaded', async()=>{
   renderOrc();
   renderContatos();
   calcAlertas();
+  // Bell global — também exibe alertas de follow-up no painel unificado
+  AppNotif.init({ userId: currentUser.id });
+  document.getElementById('notif-wrap').style.display = '';
   if(!currentUser?.viewer_only){
     document.getElementById('btn-nova-opp').style.display='inline-flex';
   }
@@ -1753,10 +1758,7 @@ document.addEventListener('click', e => {
   // Fecha feedback pop
   if(!document.getElementById('nav-feedback-wrap')?.contains(e.target))
     document.getElementById('nav-feedback-pop')?.classList.remove('open');
-  // Fecha painel de alertas
-  const panel=document.getElementById('alert-panel');
-  const btn=document.getElementById('sineta-btn-wrap');
-  if(panel&&panel.classList.contains('open')&&!panel.contains(e.target)&&!btn?.contains(e.target))panel.classList.remove('open');
+  // Fechar painel de notificações é tratado pelo AppNotif (via outside-click)
   // Fecha dropdown de cliente
   const dd=document.getElementById('opp-cliente-dropdown');
   const inp=document.getElementById('opp-cliente-text');
@@ -2658,7 +2660,7 @@ async function salvarFU(){
   calcAlertas();
 }
 
-// ═══ ALERTAS ════════════════════════════════════════
+// ═══ ALERTAS — integrados no bell global (AppNotif) ══════════
 function calcAlertas(){
   // COM-5: monta lista completa, filtra descartados, limita a 50
   const todos=[];
@@ -2667,35 +2669,27 @@ function calcAlertas(){
     else if(semFU30(o)) todos.push({key:'fu_'+o.id,tipo:'fu',op:o,msg:`${o.num_legado||''} ${o._cliente?.nome||''}`.trim()});
   });
   const ativos=todos.filter(a=>!alertasDescartados.has(a.key)).slice(0,50);
-  const cnt=ativos.length;
-  const badge=document.getElementById('sineta-cnt');
-  badge.textContent=cnt;badge.style.display=cnt?'flex':'none';
-  const body=document.getElementById('alertas-body');
-  if(!ativos.length){
-    body.innerHTML=`<div class="alert-item"><div style="font-size:11px;color:#aaa;padding:4px">Nenhum alerta pendente 🎉</div></div>`;
-    return;
+
+  // Alimenta o bell unificado
+  if(typeof AppNotif !== 'undefined') {
+    AppNotif.setComputedSection('comercial', {
+      label: 'Comercial',
+      items: ativos.map(a => ({
+        key:      a.key,
+        icon:     a.tipo === 'exp' ? '⚡' : '⏰',
+        titulo:   a.tipo === 'exp' ? 'Proposta expirada' : 'Sem follow-up 30d',
+        corpo:    a.msg,
+        onClick:  () => { abrirDetail(a.op.id); },
+        onDismiss: () => descartarAlerta(a.key),
+      }))
+    });
   }
-  body.innerHTML=
-    `<div style="display:flex;justify-content:flex-end;padding:6px 12px;border-bottom:1px solid var(--cinza2)">
-       <button class="btn sm ghost" onclick="limparTodosAlertas()" style="font-size:9px">Limpar todos</button>
-     </div>`+
-    ativos.map(a=>`
-      <div class="alert-item" style="justify-content:space-between;gap:6px">
-        <div style="display:flex;align-items:flex-start;gap:8px;flex:1;cursor:pointer" onclick="abrirDetail('${escJsStr(a.op.id)}');toggleAlertas()">
-          <div class="alert-dot" style="background:${a.tipo==='exp'?'var(--terracota)':'var(--ouro)'}"></div>
-          <div>
-            <div style="font-size:11px;font-weight:600">${a.tipo==='exp'?'Proposta expirada':'Sem follow-up 30d'}</div>
-            <div style="font-size:10px;color:#888;margin-top:2px">${escHtml(a.msg)}</div>
-          </div>
-        </div>
-        <button onclick="descartarAlerta('${escJsStr(a.key)}')" title="Dispensar" style="border:none;background:none;cursor:pointer;color:#bbb;font-size:16px;padding:0 2px;line-height:1;flex-shrink:0">×</button>
-      </div>`).join('');
 }
 
 function descartarAlerta(key){
   alertasDescartados.add(key);
   localStorage.setItem('exp_alertas_ok',JSON.stringify([...alertasDescartados]));
-  calcAlertas();
+  calcAlertas(); // re-sincroniza seção "comercial" no AppNotif
 }
 
 function limparTodosAlertas(){
@@ -2707,7 +2701,8 @@ function limparTodosAlertas(){
   calcAlertas();
 }
 
-function toggleAlertas(){document.getElementById('alert-panel').classList.toggle('open');}
+// toggleAlertas mantido por compatibilidade (pode ser chamado em outros lugares)
+function toggleAlertas(){ _appNotifToggle?.(); }
 
 // ── Feedback (problemas e sugestões) ─────────────────────────────────
 function toggleFeedbackPop(ev){ev?.stopPropagation?.();document.getElementById('nav-feedback-pop')?.classList.toggle('open');}

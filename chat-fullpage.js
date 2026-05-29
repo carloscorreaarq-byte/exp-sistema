@@ -468,6 +468,16 @@
       });
       stackHtml += '</div></div>';
       avHtml = stackHtml;
+    } else if (isProjectChannel(channel)) {
+      /* quadrado arredondado — mesma estrutura do #geral e #socios */
+      var pc  = cor || '#1D6A4A';
+      var pr16 = parseInt(pc.slice(1,3)||'1D',16);
+      var pg16 = parseInt(pc.slice(3,5)||'6A',16);
+      var pb16 = parseInt(pc.slice(5,7)||'4A',16);
+      var pbg  = 'rgba('+pr16+','+pg16+','+pb16+',.15)';
+      avHtml = '<div class="fp-conv-av-wrap">' +
+        '<div class="fp-av-hash" style="background:' + pbg + ';color:' + escHtml(pc) + '">' + escHtml(iniciais||'?') + '</div>' +
+        '</div>';
     } else if (avatarUrl) {
       avHtml = '<div class="fp-conv-av-wrap"><img class="fp-av-img" src="' + escHtml(avatarUrl) + '" alt="">' +
         (presenceStatus ? '<span class="fp-presence-dot-sm ' + presenceStatus + '"></span>' : '') +
@@ -631,9 +641,11 @@
     }
     renderMembersModal();
 
-    /* Fechar clicando fora */
+    /* Fechar clicando fora — ignora alvos que saíram do DOM (re-render) */
     setTimeout(function() {
       function handler(e) {
+        /* Se o alvo já não está no documento (DOM substituído por re-render), ignorar */
+        if (!document.body.contains(e.target)) return;
         var p = document.getElementById('fp-members-panel');
         var b = document.getElementById('fp-new-dm-btn');
         if (!p) return;
@@ -1968,7 +1980,7 @@
 
     $inner.innerHTML =
       '<div class="fp-prio-hdr" style="' + hdrStyle + '">Minha prioridade</div>' +
-      '<div class="fp-prio-card ' + estadoCard + '" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id||'')) + '\')">' +
+      '<div class="fp-prio-card ' + estadoCard + '">' +
         '<div class="fp-prio-info">' +
           '<div class="fp-prio-nome">' + escHtml(titulo) + '</div>' +
           (cidadeUf ? '<div class="fp-prio-cidade">' + escHtml(cidadeUf) + '</div>' : '') +
@@ -1979,9 +1991,7 @@
         '</div>' +
         '<button class="fp-prio-check" onclick="event.stopPropagation();fpChat.checkPrio(\'' + escHtml(String(pr.id)) + '\')" title="Marcar como concluída">✓</button>' +
       '</div>' +
-      '<div class="fp-prio-footer">' +
-        '<button class="fp-prio-abrir" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id||'')) + '\')">Ver detalhes do projeto</button>' +
-      '</div>';
+      '';
   }
 
   /* ═══════════════════════════════════════════════════════════════════

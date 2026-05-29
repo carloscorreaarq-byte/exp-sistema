@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="shared/app-notif.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 
@@ -428,13 +429,13 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
     <div class="conn-dot" id="conn-dot"></div>
     <!-- Notificações -->
     <div class="notif-wrap" id="notif-wrap">
-      <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notificações">
+      <button class="notif-bell" id="notif-bell-btn" onclick="_appNotifToggle()" title="Notificações">
         🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
       </button>
       <div class="notif-panel" id="notif-panel" style="display:none">
         <div class="notif-panel-hd">
           <span class="notif-panel-hd-t">Notificações</span>
-          <button class="notif-panel-clr" onclick="encerrarTodasNotif()">Encerrar todas ✓</button>
+          <button class="notif-panel-clr" onclick="_appNotifEncerrarTodas()">Encerrar todas ✓</button>
         </div>
         <div id="notif-lista"><div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Carregando…</div></div>
       </div>
@@ -1129,6 +1130,9 @@ async function init() {
     await Promise.all([carregarUsuarios(), carregarTemas()]);
     await carregarPautas();
 
+    // Bell global
+    AppNotif.init({ userId: usr.id });
+
     document.getElementById('loading').style.display = 'none';
   } catch (e) {
     console.error('Sociedade init error:', e);
@@ -1195,11 +1199,33 @@ async function fazerLogout() {
   window.location = 'index.html';
 }
 
-function toggleNotifPanel() {
-  const p = document.getElementById('notif-panel');
-  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+// Bell delegado ao AppNotif global — ver shared/app-notif.js
+
+// ── Notifica responsáveis ao salvar checklist de pauta ────────
+// rows: array dos itens inseridos ({ responsavel_id, texto, ... })
+// pautaTitulo: título da pauta para o corpo da notificação
+async function _notificarAtribuicaoChecklist(rows, pautaTitulo) {
+  const meuId = G.usuario?.id;
+  // Coleta responsáveis únicos (exclui o próprio usuário)
+  const responsaveisIds = [...new Set(
+    rows.map(r => r.responsavel_id).filter(id => id && id !== meuId)
+  )];
+  if (!responsaveisIds.length) return;
+
+  const meuNome = G.usuario?.nome || 'Alguém';
+  const notifs  = responsaveisIds.map(uid => ({
+    usuario_id:      uid,
+    tipo:            'checklist_atribuido',
+    titulo:          `Checklist atribuído — ${pautaTitulo}`,
+    corpo:           `${meuNome} atribuiu itens do checklist da pauta "${pautaTitulo}" a você.`,
+    modulo:          'sociedade',
+    criado_por:      meuId,
+    criado_por_nome: meuNome,
+    created_at:      new Date().toISOString(),
+  }));
+
+  await sb.from('notificacoes').insert(notifs).catch(e => console.warn('notif checklist:', e));
 }
-function encerrarTodasNotif() { toggleNotifPanel(); }
 
 function toggleToolFeedbackPop(e) {
   e?.stopPropagation();
@@ -1821,13 +1847,14 @@ async function salvarPauta() {
 
       if (temCk && G.ckItensNovos.length) {
         // 1. Inserir PRIMEIRO — se falhar, os itens antigos ainda existem
-        const { error: insErr } = await sb.from('soc_pautas_checklists')
-          .insert(buildCkRows(G.editandoPautaId));
+        const rows = buildCkRows(G.editandoPautaId);
+        const { error: insErr } = await sb.from('soc_pautas_checklists').insert(rows);
         if (insErr) throw insErr;
         // 2. Só deletar os antigos após insert confirmado
         if (oldCkIds.length) {
           await sb.from('soc_pautas_checklists').delete().in('id', oldCkIds);
         }
+        await _notificarAtribuicaoChecklist(rows, titulo);
       } else {
         // Checkbox desmarcado: apagar tudo
         await sb.from('soc_pautas_checklists').delete().eq('pauta_id', G.editandoPautaId);
@@ -1840,9 +1867,10 @@ async function salvarPauta() {
       if (error || !nova) throw error || new Error('Erro');
 
       if (temCk && G.ckItensNovos.length) {
-        const { error: insErr } = await sb.from('soc_pautas_checklists')
-          .insert(buildCkRows(nova.id));
+        const rows = buildCkRows(nova.id);
+        const { error: insErr } = await sb.from('soc_pautas_checklists').insert(rows);
         if (insErr) throw insErr;
+        await _notificarAtribuicaoChecklist(rows, titulo);
       }
       toast('Pauta publicada', 'ok');
     }
