@@ -107,10 +107,6 @@ window.ExpNav = (() => {
 
     return `
 <nav id="exp-nav">
-  <div class="exp-nav-logo">
-    <img src="exp.png" alt="EXP" onerror="this.style.display='none'">
-  </div>
-  <div class="exp-nav-sep"></div>
 
   ${item('app.html',       'Hub',        ico.hub)}
   ${item('gestao.html',    'Projetos',   ico.projetos)}
@@ -156,7 +152,6 @@ window.ExpNav = (() => {
     ${ico.star}
   </button>
 
-  <div class="exp-nav-user" id="exp-nav-user" title="Minha conta"></div>
 </nav>`;
   }
 
