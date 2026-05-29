@@ -89,6 +89,7 @@
     sb = (typeof window.sb !== 'undefined' && window.sb)
       ? window.sb
       : supabase.createClient(SB_URL, SB_KEY);
+    window.sb = sb; // expõe para o AppNotif (shared/app-notif.js)
 
     sb.auth.getSession().then(function(r) {
       if (!r.data || !r.data.session) return;
