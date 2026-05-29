@@ -133,6 +133,7 @@
     loadTeamMembers();
     initNotif();
     initExpRoom();
+    preloadTasksCount();
     applyViewPrefs();
 
     /* Scroll tracking */
@@ -1858,6 +1859,31 @@
   var delegadasCache      = [];
   var delegadasExpanded   = false;
 
+  function updateTasksBadge(count) {
+    var $badge = document.getElementById('fp-tasks-badge');
+    if (!$badge) return;
+    if (count > 0) {
+      $badge.textContent = count;
+      $badge.style.display = 'flex';
+    } else {
+      $badge.style.display = 'none';
+    }
+    /* atualiza também o contador no cabeçalho do painel */
+    var $hdrCount = document.getElementById('fp-tasks-panel-count');
+    if ($hdrCount) $hdrCount.textContent = count ? count + (count === 1 ? ' tarefa' : ' tarefas') : '';
+  }
+
+  /* Pré-carrega contagem de tarefas pendentes ao inicializar */
+  function preloadTasksCount() {
+    var uid = user.id || user.app_user_id;
+    if (!uid) return;
+    sb.from('tarefas_livres')
+      .select('id', { count: 'exact', head: true })
+      .or('usuario_id.eq.' + uid + ',atribuido_para.eq.' + uid)
+      .eq('concluida', false)
+      .then(function(r) { if (r.count) updateTasksBadge(r.count); });
+  }
+
   function toggleTasksPanel() {
     tasksPanelOpen = !tasksPanelOpen;
     var $sidebar = document.getElementById('fp-sidebar');
@@ -1908,6 +1934,7 @@
       tasksCache     = todas;
       delegadasCache = delegadas;
       renderTasks(todas, delegadas);
+      updateTasksBadge(todas.length);
     }).catch(function() {
       var $list = document.getElementById('fp-tasks-list');
       if ($list) $list.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center">Erro ao carregar tarefas.</div>';
@@ -2496,7 +2523,12 @@
   ═══════════════════════════════════════════════════════════════════ */
 
   function initNotif() {
-    AppNotif.init({ userId: user.id || user.app_user_id });
+    AppNotif.init({ userId: user.id || user.app_user_id }).then(function() {
+      /* Tarefas gerenciadas localmente no painel — remove do sininho */
+      AppNotif.setComputedSection('tarefas', { label: 'Tarefas', items: [] });
+    }).catch(function() {
+      AppNotif.setComputedSection('tarefas', { label: 'Tarefas', items: [] });
+    });
   }
 
   function toggleNotifPanel() {
