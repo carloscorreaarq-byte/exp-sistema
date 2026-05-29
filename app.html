@@ -648,8 +648,8 @@ body {
 [data-theme="dark"] #feedback-icon-btn { background: #252523; border-color: #2E2D2B; color: #6B6860; }
 [data-theme="dark"] #feedback-icon-btn:hover { border-color: #8C8A85; color: #C8C3BA; background: #2E2D2B; }
 
-/* Popover do feedback — abre para baixo */
-#feedback-icon-btn .nav-feedback-pop {
+/* Popover do feedback — irmão do botão, posicionado pelo wrapper */
+#feedback-icon-wrap .nav-feedback-pop {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -1268,28 +1268,29 @@ body {
         </div>
       </div>
 
-      <!-- Botão de feedback — abre popover para baixo -->
-      <div style="position:relative;flex-shrink:0">
+      <!-- Botão de feedback — wrapper div com position:relative para o popover -->
+      <div id="feedback-icon-wrap" style="position:relative;flex-shrink:0">
         <button id="feedback-icon-btn" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          <div class="nav-feedback-pop" id="nav-feedback-pop">
-            <div class="nav-feedback-title">Problema ou sugestão</div>
-            <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-            <div class="shell-field">
-              <label for="tool-feedback-type">Tipo</label>
-              <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
-            </div>
-            <div class="shell-field">
-              <label for="tool-feedback-message">Mensagem</label>
-              <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o problema ou sugestão."></textarea>
-            </div>
-            <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-            <div class="nav-feedback-actions">
-              <button type="button" class="shell-btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
-              <button type="button" class="shell-btn primary" onclick="enviarToolFeedback()">Enviar</button>
-            </div>
-          </div>
         </button>
+        <!-- Popover como irmão do botão, fora do <button> -->
+        <div class="nav-feedback-pop" id="nav-feedback-pop">
+          <div class="nav-feedback-title">Problema ou sugestão</div>
+          <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+          <div class="shell-field">
+            <label for="tool-feedback-type">Tipo</label>
+            <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
+          </div>
+          <div class="shell-field">
+            <label for="tool-feedback-message">Mensagem</label>
+            <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o problema ou sugestão."></textarea>
+          </div>
+          <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+          <div class="nav-feedback-actions">
+            <button type="button" class="shell-btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
+            <button type="button" class="shell-btn primary" onclick="enviarToolFeedback()">Enviar</button>
+          </div>
+        </div>
       </div>
 
       <!-- user chip + dropdown (mantidos para os modais existentes) -->
@@ -1982,11 +1983,11 @@ function toggleUserMenu() {
 }
 document.addEventListener('click', e => {
   const wrap = document.querySelector('.user-pill-wrap');
-  const feedbackBtn = document.getElementById('feedback-icon-btn');
+  const feedbackWrap = document.getElementById('feedback-icon-wrap');
   if (wrap && !wrap.contains(e.target)) {
     document.getElementById('user-dropdown')?.classList.remove('open');
   }
-  if (feedbackBtn && !feedbackBtn.contains(e.target)) {
+  if (feedbackWrap && !feedbackWrap.contains(e.target)) {
     document.getElementById('nav-feedback-pop')?.classList.remove('open');
   }
 });
