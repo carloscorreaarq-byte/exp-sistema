@@ -76,7 +76,7 @@ window.ExpNav = (() => {
     var isSocio    = _isSocio(role);
 
     function item(href, titleAttr, svgPath, extra) {
-      var isActive = href === activeHref ? ' active' : '';
+      if (href && href === activeHref) return ''; /* oculta o módulo atual */
       var tag      = href ? 'a' : 'button';
       var hrefAttr = href ? ' href="' + href + '"' : '';
       return '<' + tag + hrefAttr + ' class="exp-nav-item' + isActive + '" title="' + titleAttr + '"' + (extra || '') + '>' +
@@ -113,23 +113,23 @@ window.ExpNav = (() => {
   ${item('chat-fullpage.html', 'Chat',   ico.chat)}
   ${item('apoio.html',     'Apoio',      ico.apoio)}
   ${item('contatos.html',  'Contatos',   ico.contatos)}
-  <a href="calendario.html" class="exp-nav-item${activeHref==='calendario.html'?' active':''}" title="Calendário"
+  ${activeHref !== 'calendario.html' ? `<a href="calendario.html" class="exp-nav-item" title="Calendário"
      id="exp-nav-cal"
      onmouseenter="ExpNav.showCalBanner(event)" onmouseleave="ExpNav.hideCalBanner()">
     ${ico.calendario}
-  </a>
+  </a>` : ''}
 
   <div class="exp-nav-sep" id="exp-nav-sep-soc"${isSocio?'':' style="display:none"'}></div>
-  <a href="crm.html"        class="exp-nav-item${activeHref==='crm.html'?' active':''}" title="Comercial"
+  ${activeHref !== 'crm.html' ? `<a href="crm.html" class="exp-nav-item" title="Comercial"
      id="exp-nav-crm"${socStyle}
      onmouseenter="ExpNav.showCrmBanner(event)" onmouseleave="ExpNav.hideCrmBanner()">
     ${ico.crm}
-  </a>
-  <a href="financeiro.html" class="exp-nav-item${activeHref==='financeiro.html'?' active':''}" title="Financeiro"${socStyle}>${ico.financeiro}</a>
-  <a href="analise.html"    class="exp-nav-item${activeHref==='analise.html'?' active':''}"    title="Análise"${socStyle}>${ico.analise}</a>
-  <a href="pessoas.html"    class="exp-nav-item${activeHref==='pessoas.html'?' active':''}"    title="Pessoas"${socStyle}>${ico.pessoas}</a>
-  <a href="sociedade.html"  class="exp-nav-item${activeHref==='sociedade.html'?' active':''}"  title="Sociedade"${socStyle}>${ico.sociedade}</a>
-  <a href="calc.html"       class="exp-nav-item${activeHref==='calc.html'?' active':''}"       title="Calculadora"${socStyle}>${ico.calc}</a>
+  </a>` : ''}
+  ${activeHref !== 'financeiro.html' ? `<a href="financeiro.html" class="exp-nav-item" title="Financeiro"${socStyle}>${ico.financeiro}</a>` : ''}
+  ${activeHref !== 'analise.html'    ? `<a href="analise.html"    class="exp-nav-item" title="Análise"${socStyle}>${ico.analise}</a>`    : ''}
+  ${activeHref !== 'pessoas.html'    ? `<a href="pessoas.html"    class="exp-nav-item" title="Pessoas"${socStyle}>${ico.pessoas}</a>`    : ''}
+  ${activeHref !== 'sociedade.html'  ? `<a href="sociedade.html"  class="exp-nav-item" title="Sociedade"${socStyle}>${ico.sociedade}</a>` : ''}
+  ${activeHref !== 'calc.html'       ? `<a href="calc.html"       class="exp-nav-item" title="Calculadora"${socStyle}>${ico.calc}</a>`   : ''}
 
   <div class="exp-nav-spacer"></div>
   <div class="exp-nav-sep"></div>
