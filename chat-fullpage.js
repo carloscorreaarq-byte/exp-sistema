@@ -1837,6 +1837,10 @@
     toggleTasksPanel, checkTask, addTask, openAssignDrop, taskDescInput, toggleDelegadas, _assignTo: window._assignTo,
     /* prioridade */
     checkPrio,
+    /* calendário hover */
+    showCalBanner, hideCalBanner,
+    /* comercial hover */
+    showCrmBanner, hideCrmBanner,
     /* prioridade / projeto */
     togglePrioPanel, openPrioPanel, closePrioPanel, checkPrioPanel,
     showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
@@ -2144,8 +2148,8 @@
     if ($list) $list.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
 
     sb.from('prioridades_usuario')
-      .select('id,produto_id,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
-      .eq('usuario_id', uid).eq('concluida', false).order('ordem')
+      .select('id,produto_id,prazo_texto,ordem,comentario,concluida,concluida_em,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
+      .eq('usuario_id', uid).order('ordem')
       .then(function(r) {
         allPrioLoaded = true;
         allPrioData   = r.data || [];
@@ -2195,11 +2199,11 @@
         chipHtml = '<div class="fp-pp-chips"><span class="fp-pp-chip ' + estadoCard + '">📅 ' + escHtml(dtFmt) + '</span></div>';
       }
 
+      var concluida = !!pr.concluida;
       var produtoId = escHtml(String(pr.produto_id || ''));
       var prioId    = escHtml(String(pr.id));
 
-      html += '<div class="fp-pp-card ' + estadoCard + '" onclick="fpChat.openProjectOverlay(\'' + produtoId + '\')">' +
-        '<div class="fp-pp-num ' + numCls + '">' + ord + '</div>' +
+      html += '<div class="fp-pp-card ' + estadoCard + (concluida ? ' fp-pp-done' : '') + '" onclick="fpChat.openProjectOverlay(\'' + produtoId + '\')">' +
         '<div class="fp-pp-info">' +
           '<div class="fp-pp-nome">' + escHtml(titulo) + '</div>' +
           (cidadeUf  ? '<div class="fp-pp-cidade">' + escHtml(cidadeUf) + '</div>' : '') +
@@ -2226,6 +2230,156 @@
         prioData      = null;
         renderPrioPanel();
       });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     HOVER BANNER — CALENDÁRIO (próximos 3 eventos)
+  ═══════════════════════════════════════════════════════════════════ */
+  var calBannerTimer = null;
+  var calData        = null;
+  var calLoaded      = false;
+
+  function _positionBanner($banner, $btn) {
+    var rect    = $btn.getBoundingClientRect();
+    var bannerH = $banner.offsetHeight || 200;
+    var topPos  = Math.max(16, Math.min(rect.top, window.innerHeight - bannerH - 16));
+    $banner.style.top  = topPos + 'px';
+    $banner.style.left = (rect.right + 8) + 'px';
+  }
+
+  function showCalBanner(event) {
+    if (calBannerTimer) { clearTimeout(calBannerTimer); calBannerTimer = null; }
+    var $b = document.getElementById('fp-cal-banner');
+    var $btn = (event && event.currentTarget) || document.getElementById('fp-nav-cal');
+    if (!$b || !$btn) return;
+    $b.style.display = 'block';
+    _positionBanner($b, $btn);
+    if (!calLoaded) fetchCalEvents();
+    else renderCalBanner();
+  }
+  function hideCalBanner() {
+    calBannerTimer = setTimeout(function() {
+      var $b = document.getElementById('fp-cal-banner');
+      if ($b) $b.style.display = 'none';
+    }, 220);
+  }
+  function fetchCalEvents() {
+    var uid     = user.auth_id;
+    var todayISO = new Date().toISOString();
+    sb.from('calendar_events')
+      .select('id,titulo,tipo,inicio,fim,dia_inteiro,meet_link')
+      .gte('inicio', todayISO)
+      .or('scope.eq.todos,user_id.eq.' + uid)
+      .order('inicio').limit(3)
+      .then(function(r) { calLoaded = true; calData = r.data || []; renderCalBanner(); })
+      .catch(function()  { calLoaded = true; calData = [];            renderCalBanner(); });
+  }
+  function renderCalBanner() {
+    var $body = document.getElementById('fp-cal-banner-body');
+    var $sub  = document.getElementById('fp-cal-banner-sub');
+    if (!$body) return;
+    var items = calData || [];
+    if ($sub) $sub.textContent = items.length ? 'próximos ' + items.length : '';
+    if (!items.length) {
+      $body.innerHTML = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhum evento próximo 🎉</div>';
+      return;
+    }
+    /* paleta por tipo */
+    var tipoCor = { reuniao:'#1D4FA0', visita:'#1D6A4A', prazo:'#B84C3A', entrega:'#C4831A' };
+    var html = '';
+    items.forEach(function(ev) {
+      var cor  = tipoCor[(ev.tipo||'').toLowerCase()] || '#6D7D8A';
+      var dt   = new Date(ev.inicio);
+      var dFmt = dt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' });
+      var hFmt = ev.dia_inteiro ? 'dia inteiro' : dt.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+      var meet = ev.meet_link ? '<a class="fp-cal-meet" href="' + escHtml(ev.meet_link) + '" target="_blank" rel="noopener">▶ Meet</a>' : '';
+      html += '<div class="fp-cal-item">' +
+        '<div class="fp-cal-dot" style="background:' + escHtml(cor) + '"></div>' +
+        '<div class="fp-cal-info">' +
+          '<div class="fp-cal-titulo">' + escHtml(ev.titulo || '—') + '</div>' +
+          '<div class="fp-cal-meta">' +
+            '<span>' + escHtml(dFmt) + ' · ' + escHtml(hFmt) + '</span>' +
+            meet +
+          '</div>' +
+        '</div>' +
+        '</div>';
+    });
+    $body.innerHTML = html;
+    /* reposicionar depois de renderizar (altura mudou) */
+    var $banner = document.getElementById('fp-cal-banner');
+    var $btn    = document.getElementById('fp-nav-cal');
+    if ($banner && $btn) _positionBanner($banner, $btn);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     HOVER BANNER — COMERCIAL (5 follow-ups em aberto)
+  ═══════════════════════════════════════════════════════════════════ */
+  var crmBannerTimer = null;
+  var crmData        = null;
+  var crmLoaded      = false;
+
+  function showCrmBanner(event) {
+    if (crmBannerTimer) { clearTimeout(crmBannerTimer); crmBannerTimer = null; }
+    var $b   = document.getElementById('fp-crm-banner');
+    var $btn = (event && event.currentTarget) || document.getElementById('fp-nav-crm');
+    if (!$b || !$btn) return;
+    $b.style.display = 'block';
+    _positionBanner($b, $btn);
+    if (!crmLoaded) fetchCrmFollowups();
+    else renderCrmBanner();
+  }
+  function hideCrmBanner() {
+    crmBannerTimer = setTimeout(function() {
+      var $b = document.getElementById('fp-crm-banner');
+      if ($b) $b.style.display = 'none';
+    }, 220);
+  }
+  function fetchCrmFollowups() {
+    sb.from('followups_produto')
+      .select('id,next_date,observacao,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
+      .not('next_date', 'is', null)
+      .order('next_date', { ascending: true })
+      .limit(5)
+      .then(function(r) { crmLoaded = true; crmData = r.data || []; renderCrmBanner(); })
+      .catch(function()  { crmLoaded = true; crmData = [];            renderCrmBanner(); });
+  }
+  function renderCrmBanner() {
+    var $body = document.getElementById('fp-crm-banner-body');
+    var $sub  = document.getElementById('fp-crm-banner-sub');
+    if (!$body) return;
+    var items = crmData || [];
+    if ($sub) $sub.textContent = items.length ? items.length + (items.length === 1 ? ' item' : ' itens') : '';
+    if (!items.length) {
+      $body.innerHTML = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhum follow-up pendente ✓</div>';
+      return;
+    }
+    var hoje   = new Date().toISOString().split('T')[0];
+    var html   = '';
+    items.forEach(function(fu) {
+      var prod   = fu.produtos || {};
+      var opp    = prod.oportunidades || {};
+      var cli    = opp.clientes || {};
+      var cliente = escHtml(cli.nome || '—');
+      var projeto = escHtml(opp.projeto || prod.nome || '—');
+      var dt      = fu.next_date || '';
+      var cls     = dt < hoje ? 'atrasado' : dt === hoje ? 'hoje' : '';
+      var dtParts = dt ? dt.split('-') : [];
+      var dtFmt   = dtParts.length === 3
+        ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0].slice(2)
+        : '—';
+      html += '<div class="fp-fu-item ' + cls + '">' +
+        '<div class="fp-fu-info">' +
+          '<div class="fp-fu-cliente">' + cliente + '</div>' +
+          '<div class="fp-fu-proj">' + projeto + '</div>' +
+        '</div>' +
+        '<div class="fp-fu-date">' + escHtml(dtFmt) + '</div>' +
+        '</div>';
+    });
+    $body.innerHTML = html;
+    /* reposicionar */
+    var $banner = document.getElementById('fp-crm-banner');
+    var $btn    = document.getElementById('fp-nav-crm');
+    if ($banner && $btn) _positionBanner($banner, $btn);
   }
 
   /* ═══════════════════════════════════════════════════════════════════
