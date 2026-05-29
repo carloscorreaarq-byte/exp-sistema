@@ -1586,8 +1586,6 @@
     var state = _loadState();
     if (state.running && state.startedAt) {
       _startTick();
-      _renderExpanded();
-      _scheduleCollapse();
     }
   }
 

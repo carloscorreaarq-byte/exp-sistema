@@ -257,9 +257,7 @@
     userStatus = status;
     localStorage.setItem(STATUS_KEY, status);
     var dot = document.getElementById('fp-status-dot');
-    var lbl = document.getElementById('fp-status-label');
     if (dot) dot.className = 'fp-status-dot ' + status;
-    if (lbl) lbl.textContent = STATUS_LABELS[status] || status;
     document.querySelectorAll('#fp-status-pop .fp-sopt').forEach(function(o){
       o.classList.toggle('active', o.getAttribute('data-status') === status);
     });
@@ -309,6 +307,17 @@
     if (bf) bf.classList.toggle('active', showOnlyFlagged);
     if (bu) bu.classList.remove('active');
     renderConvList();
+
+    /* Se ativou e há conversa aberta: rolar até a primeira mensagem sinalizada */
+    if (showOnlyFlagged && currentChannel && messages.length) {
+      renderMessages();
+      setTimeout(function() {
+        var firstFlagged = messages.find(function(m){ return isMessageFlagged(m.id); });
+        if (!firstFlagged) return;
+        var el = $msgs && $msgs.querySelector('[data-id="' + CSS.escape(String(firstFlagged.id)) + '"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 60);
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -459,15 +468,6 @@
       });
       stackHtml += '</div></div>';
       avHtml = stackHtml;
-    } else if (isProjectChannel(channel)) {
-      /* avatar de projeto: fundo semi-transparente, fonte menor */
-      var mc = cor || '#1D6A4A';
-      var mi = iniciais || '?';
-      /* converte hex → rgba semi-transparente */
-      var r16 = parseInt(mc.slice(1,3),16), g16=parseInt(mc.slice(3,5),16), b16=parseInt(mc.slice(5,7),16);
-      avHtml = '<div class="fp-conv-av-wrap">' +
-        '<div class="fp-av-circle" style="background:rgba('+r16+','+g16+','+b16+',.22);color:'+escHtml(mc)+';font-size:9px;font-weight:700;border:1.5px solid rgba('+r16+','+g16+','+b16+',.35)">' + escHtml(mi) + '</div>' +
-        '</div>';
     } else if (avatarUrl) {
       avHtml = '<div class="fp-conv-av-wrap"><img class="fp-av-img" src="' + escHtml(avatarUrl) + '" alt="">' +
         (presenceStatus ? '<span class="fp-presence-dot-sm ' + presenceStatus + '"></span>' : '') +
@@ -623,7 +623,8 @@
     var btn  = (event && event.currentTarget) || $btn;
     if (btn) {
       var rect     = btn.getBoundingClientRect();
-      var panelH   = $panel.offsetHeight || 340;
+      var panelH   = $panel.offsetHeight || 380;
+      /* alinha o topo do popover com o topo do botão, sobe se sair da tela */
       var topPos   = Math.max(16, Math.min(rect.top, window.innerHeight - panelH - 16));
       $panel.style.top  = topPos + 'px';
       $panel.style.left = (rect.right + 8) + 'px';
@@ -926,16 +927,12 @@
   function renderMessages() {
     if (!$msgs) return;
 
-    /* Filtro de sinalizadas no chat aberto */
+    /* Sinalizadas: mostra TODA a conversa (contexto), não filtra.
+       A mensagem sinalizada vira um marco visual na linha do tempo. */
     var toRender = messages;
-    if (showOnlyFlagged) {
-      toRender = messages.filter(function(m){ return isMessageFlagged(m.id); });
-    }
 
     if (!toRender.length) {
-      $msgs.innerHTML = showOnlyFlagged
-        ? '<div class="fp-empty"><div class="fp-empty-icon">🚩</div>Nenhuma mensagem sinalizada nesta conversa.</div>'
-        : '<div class="fp-empty"><div class="fp-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>Nenhuma mensagem ainda.</div>';
+      $msgs.innerHTML = '<div class="fp-empty"><div class="fp-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>Nenhuma mensagem ainda.</div>';
       return;
     }
 
@@ -1312,33 +1309,73 @@
   }
 
   function fetchProjectHomeItems(uid){
-    return sb.from('chat_threads').select('id,title,produto_id,last_message_at').eq('type','project').is('archived_at',null).order('last_message_at',{ascending:false,nullsFirst:false})
+    /* Otimizado: 3 queries fixas independente do nº de projetos
+       (era 2N queries paralelas — 40+ requests com 20 projetos) */
+    return sb.from('chat_threads')
+      .select('id,title,produto_id,last_message_at')
+      .eq('type','project').is('archived_at',null)
+      .order('last_message_at',{ascending:false,nullsFirst:false})
       .then(function(r){
-        if(r.error) return [];
-        projectThreads=r.data||[];
-        if(!projectThreads.length){ projectThreadMeta={}; return []; }
-        var ids=projectThreads.map(function(t){return t.id;});
-        return sb.from('chat_thread_reads').select('thread_id,last_read_at').eq('user_auth_id',uid).in('thread_id',ids)
-          .then(function(readsRes){
-            var readMap={};
-            (readsRes.data||[]).forEach(function(row){ readMap[row.thread_id]=row.last_read_at; });
-            return Promise.all(projectThreads.map(function(thread){
-              var lastRead=readMap[thread.id]||null;
-              return Promise.all([
-                sb.from('chat_thread_messages').select('thread_id,content,created_at,sender_auth_id').eq('thread_id',thread.id).order('created_at',{ascending:false}).limit(1),
-                lastRead
-                  ? sb.from('chat_thread_messages').select('id',{count:'exact',head:true}).eq('thread_id',thread.id).gt('created_at',lastRead).neq('sender_auth_id',uid)
-                  : sb.from('chat_thread_messages').select('id',{count:'exact',head:true}).eq('thread_id',thread.id).neq('sender_auth_id',uid)
-              ]).then(function(parts){
-                var last=(parts[0].data||[])[0]||null;
-                var unreadCount=parts[1]&&typeof parts[1].count==='number'?parts[1].count:0;
-                var meta=buildProjectThreadMeta(thread.id,thread.title,last?last.content:'Chat do projeto',last?last.created_at:thread.last_message_at,last?last.sender_auth_id:null);
-                meta.unread=unreadCount;
-                projectThreadMeta[meta.channel]=meta;
-                return meta;
-              });
-            }));
+        if(r.error||!r.data||!r.data.length){ projectThreadMeta={}; projectThreads=[]; return []; }
+        projectThreads = r.data;
+        var ids = projectThreads.map(function(t){ return t.id; });
+
+        /* Query 2 + 3 em paralelo */
+        return Promise.all([
+          /* Última mensagem de cada thread: pega as N mais recentes e filtra client-side */
+          sb.from('chat_thread_messages')
+            .select('thread_id,content,created_at,sender_auth_id')
+            .in('thread_id', ids)
+            .order('created_at',{ascending:false})
+            .limit(ids.length * 3),   /* margem para ter pelo menos 1 por thread */
+
+          /* Reads do usuário para todos os threads de uma vez */
+          sb.from('chat_thread_reads')
+            .select('thread_id,last_read_at')
+            .eq('user_auth_id', uid)
+            .in('thread_id', ids),
+
+          /* Todas as mensagens não lidas (sender != uid) para todos os threads */
+          sb.from('chat_thread_messages')
+            .select('thread_id,created_at,sender_auth_id')
+            .in('thread_id', ids)
+            .neq('sender_auth_id', uid)
+            .order('created_at',{ascending:false})
+            .limit(500)
+        ]).then(function(parts){
+          /* Última mensagem por thread (client-side) */
+          var lastMsgMap = {};
+          (parts[0].data||[]).forEach(function(m){
+            if (!lastMsgMap[m.thread_id]) lastMsgMap[m.thread_id] = m;
           });
+
+          /* Read map */
+          var readMap = {};
+          (parts[1].data||[]).forEach(function(row){ readMap[row.thread_id] = row.last_read_at; });
+
+          /* Contar não lidas por thread (client-side) */
+          var unreadMap = {};
+          (parts[2].data||[]).forEach(function(m){
+            var lr = readMap[m.thread_id] || null;
+            if (!lr || m.created_at > lr) {
+              unreadMap[m.thread_id] = (unreadMap[m.thread_id]||0) + 1;
+            }
+          });
+
+          return projectThreads.map(function(thread){
+            var last  = lastMsgMap[thread.id] || null;
+            var unread = unreadMap[thread.id] || 0;
+            var meta = buildProjectThreadMeta(
+              thread.id, thread.title,
+              last ? last.content : 'Chat do projeto',
+              last ? last.created_at : thread.last_message_at,
+              last ? last.sender_auth_id : null
+            );
+            meta.unread = unread;
+            projectThreadMeta[meta.channel] = meta;
+            return meta;
+          });
+        });
       }).catch(function(){ return []; });
   }
 
@@ -1922,17 +1959,23 @@
       prazoChipHtml = '<div><span class="fp-prio-prazo-chip ' + estadoCard + '">📅 ' + escHtml(dtFmt) + '</span></div>';
     }
 
+    /* cor do header acompanha o estado — monocromático */
+    var hdrStyle = estadoCard === 'atrasada'
+      ? 'background:#F5E0DD;color:#B84C3A;border-bottom:1px solid rgba(184,76,58,.2)'
+      : estadoCard === 'hoje'
+        ? 'background:#FBF3E8;color:#C4831A;border-bottom:1px solid rgba(196,131,26,.2)'
+        : 'background:#EAF0FB;color:#1D4FA0;border-bottom:1px solid rgba(29,79,160,.2)';
+
     $inner.innerHTML =
-      '<div class="fp-prio-hdr">Minha prioridade #' + ord + '</div>' +
+      '<div class="fp-prio-hdr" style="' + hdrStyle + '">Minha prioridade</div>' +
       '<div class="fp-prio-card ' + estadoCard + '" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id||'')) + '\')">' +
-        '<div class="fp-prio-num ' + numCls + '">' + ord + '</div>' +
         '<div class="fp-prio-info">' +
           '<div class="fp-prio-nome">' + escHtml(titulo) + '</div>' +
           (cidadeUf ? '<div class="fp-prio-cidade">' + escHtml(cidadeUf) + '</div>' : '') +
           (etapa    ? '<div class="fp-prio-etapa">↳ ' + escHtml(etapa.nome||'') + '</div>' : '') +
           (prod.nome? '<div class="fp-prio-prod">' + escHtml(prod.nome) + '</div>' : '') +
           prazoChipHtml +
-          (pr.comentario ? '<div style="font-size:10px;color:#888;margin-top:4px;font-style:italic">' + escHtml(pr.comentario) + '</div>' : '') +
+          (pr.comentario ? '<div style="font-size:10px;margin-top:4px;font-style:italic;opacity:.75">' + escHtml(pr.comentario) + '</div>' : '') +
         '</div>' +
         '<button class="fp-prio-check" onclick="event.stopPropagation();fpChat.checkPrio(\'' + escHtml(String(pr.id)) + '\')" title="Marcar como concluída">✓</button>' +
       '</div>' +
@@ -1994,6 +2037,7 @@
       $panel.style.display = 'flex';
       var rect   = $btn.getBoundingClientRect();
       var panelH = $panel.offsetHeight || 360;
+      /* alinha o fundo do painel ao fundo do botão, sobe para cima */
       var topPos = Math.max(16, rect.bottom - panelH);
       $panel.style.top  = topPos + 'px';
       $panel.style.left = (rect.right + 8) + 'px';
