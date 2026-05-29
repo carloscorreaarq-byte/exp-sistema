@@ -423,6 +423,45 @@ body {
 /* ── EMPTY STATE INLINE ──────────────────────────────────── */
 .dash-empty { padding: 18px 14px; font-size: var(--text-sub); color: #bbb; text-align: center; }
 
+/* ── Botão + limpo (sem moldura) ─────────────────────────── */
+.dash-lbl-add {
+  font-size: 20px; font-weight: 300; line-height: 1;
+  color: #ccc; border: none; background: none;
+  cursor: pointer; padding: 0 2px;
+  transition: color .12s;
+}
+.dash-lbl-add:hover { color: var(--grafite); }
+[data-theme="dark"] .dash-lbl-add { color: #3A3836; }
+[data-theme="dark"] .dash-lbl-add:hover { color: #C8C3BA; }
+
+/* ── Ícone $ (lançar custo) ──────────────────────────────── */
+.dash-lbl-custo {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: none; background: none;
+  color: #bbb; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; font-family: var(--font-mono);
+  transition: color .12s;
+}
+.dash-lbl-custo:hover { color: var(--grafite); }
+[data-theme="dark"] .dash-lbl-custo { color: #3A3836; }
+[data-theme="dark"] .dash-lbl-custo:hover { color: #C8C3BA; }
+
+/* ── POPDOWN de custo ────────────────────────────────────── */
+#dash-custo-popdown {
+  position: fixed;
+  background: var(--branco);
+  border: 1px solid var(--cinza2);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.14);
+  width: 280px;
+  display: none; flex-direction: column;
+  overflow: hidden; z-index: 400;
+  animation: dashPopIn .15s ease-out;
+}
+[data-theme="dark"] #dash-custo-popdown { background: #1E1E1D; border-color: #2E2D2B; }
+#dash-custo-popdown.open { display: flex; }
+
 /* ── POPDOWN de nova tarefa ──────────────────────────────── */
 #dash-task-popdown {
   position: fixed;
@@ -1441,6 +1480,43 @@ body {
 
 </div><!-- /#app-shell -->
 </div><!-- /#conteudo -->
+
+<!-- POPDOWN: LANÇAR CUSTO -->
+<div id="dash-custo-popdown">
+  <div class="dash-pop-head">
+    <strong>Lançar custo</strong>
+    <button class="dash-pop-close" onclick="closeDashCustoPop()">&times;</button>
+  </div>
+  <div class="dash-pop-body">
+    <div class="dash-field-row">
+      <div class="dash-field">
+        <label>Valor (R$)</label>
+        <input type="number" id="dc-valor" step="0.01" min="0" placeholder="0,00">
+      </div>
+      <div class="dash-field">
+        <label>Data</label>
+        <input type="date" id="dc-data">
+      </div>
+    </div>
+    <div class="dash-field">
+      <label>Vinculado a</label>
+      <select id="dc-tipo">
+        <option value="projeto">Projeto</option>
+        <option value="organizacao">Org. interna</option>
+        <option value="sociedade">Sociedade</option>
+      </select>
+    </div>
+    <div class="dash-field">
+      <label>Descrição</label>
+      <input type="text" id="dc-desc" placeholder="Detalhe do custo…">
+    </div>
+  </div>
+  <div class="dash-pop-footer">
+    <a href="gestao.html" class="shell-btn" style="text-decoration:none">Ver gestão</a>
+    <button class="shell-btn" onclick="closeDashCustoPop()">Cancelar</button>
+    <button class="shell-btn primary" onclick="saveDashCusto()">Registrar</button>
+  </div>
+</div>
 
 <!-- POPDOWN: NOVA TAREFA -->
 <div id="dash-task-popdown">
@@ -3108,12 +3184,7 @@ function renderTasksSection(tarefas, tarefasAtribuidas) {
   return `
     <div class="dash-sec">
       <div class="dash-lbl">Tarefas
-        <div class="dash-lbl-actions">
-          <button class="dash-btn primary" onclick="openDashTaskPop(this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova
-          </button>
-        </div>
+        <button class="dash-lbl-add" onclick="openDashTaskPop(this)" title="Nova tarefa">+</button>
       </div>
       <div class="dash-card">
         <div class="task-tabs">
@@ -3337,23 +3408,14 @@ function renderDashboard(data) {
   const colSide = `
     <div class="dash-sec">
       <div class="dash-lbl">Horas esta semana
-        <div class="dash-lbl-actions"><a href="gestao.html" class="dash-btn">Lançar</a></div>
+        <button class="dash-lbl-custo" onclick="openDashCustoPop(this)" title="Lançar custo">$</button>
       </div>
       ${renderHoursWidget(horasSemana)}
       ${renderMiniCal(eventDays || new Set(), taskDays || new Set())}
     </div>
     <div class="dash-sec" style="margin-top:14px">
       <div class="dash-lbl">Próximos eventos
-        <div class="dash-lbl-actions">
-          <a href="calendario.html" class="dash-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Calendário
-          </a>
-          <button class="dash-btn primary" onclick="openDashModal('event')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Novo
-          </button>
-        </div>
+        <button class="dash-lbl-add" onclick="openDashModal('event')" title="Novo evento">+</button>
       </div>
       <div class="dash-card${evCompact ? ' dash-events-compact' : ''}">${_renderEventItems(eventos, evCompact ? 3 : 5)}</div>
     </div>`;
@@ -3505,6 +3567,57 @@ async function toggleDashTask(id, concluida) {
 }
 
 // ── Modais ────────────────────────────────────────────────────────
+
+function openDashCustoPop(btn) {
+  const pop = document.getElementById('dash-custo-popdown');
+  if (!pop) return;
+  document.getElementById('dc-valor').value = '';
+  document.getElementById('dc-data').value  = new Date().toISOString().split('T')[0];
+  document.getElementById('dc-desc').value  = '';
+  if (btn) {
+    const rect = btn.getBoundingClientRect();
+    const popW = 280;
+    let left = rect.right - popW;
+    if (left < 8) left = 8;
+    pop.style.top  = (rect.bottom + 6) + 'px';
+    pop.style.left = left + 'px';
+  }
+  pop.classList.add('open');
+  setTimeout(() => document.getElementById('dc-valor')?.focus(), 60);
+  setTimeout(() => {
+    function handler(e) {
+      if (!pop.contains(e.target) && e.target !== btn) {
+        pop.classList.remove('open');
+        document.removeEventListener('click', handler);
+      }
+    }
+    document.addEventListener('click', handler);
+  }, 0);
+}
+
+function closeDashCustoPop() {
+  document.getElementById('dash-custo-popdown')?.classList.remove('open');
+}
+
+async function saveDashCusto() {
+  const valor = parseFloat(document.getElementById('dc-valor').value);
+  const data  = document.getElementById('dc-data').value;
+  const tipo  = document.getElementById('dc-tipo').value;
+  const desc  = document.getElementById('dc-desc').value.trim();
+  if (!valor || !data) return;
+  const uid = _dashUsuario?.id;
+  const { error } = await sb.from('custos_usuario').insert({
+    usuario_id: uid, valor, data_custo: data, tipo, descricao: desc || null, status: 'pendente'
+  }).catch(() => ({ error: true }));
+  if (error) {
+    /* fallback: tenta tabela alternativa de lançamentos */
+    await sb.from('horas_lancadas').insert({
+      usuario_id: uid, data_lancamento: data, tipo, descricao: desc,
+      custo: valor, hora_inicio: '08:00', hora_fim: '08:00'
+    }).catch(() => {});
+  }
+  closeDashCustoPop();
+}
 
 function openDashTaskPop(btn) {
   const pop = document.getElementById('dash-task-popdown');
