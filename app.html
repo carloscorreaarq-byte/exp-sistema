@@ -87,7 +87,7 @@ body {
 
 /* ── NAV LATERAL ─────────────────────────────────────────── */
 #app-nav {
-  width: 54px;
+  width: 66px;
   background: #2A2926;
   border-radius: 11px;
   display: flex;
@@ -186,19 +186,20 @@ body {
 /* ── SCROLL BODY ─────────────────────────────────────────── */
 #app-body {
   flex: 1; overflow-y: auto;
-  padding: 14px 18px 18px;
+  padding: 20px 72px;
 }
 #app-body::-webkit-scrollbar { width: 4px; }
 #app-body::-webkit-scrollbar-thumb { background: var(--cinza); border-radius: 2px; }
 
-/* ── DASHBOARD GRID ──────────────────────────────────────── */
+/* ── DASHBOARD GRID — 3 colunas ──────────────────────────── */
 #app-dashboard {
   display: grid;
-  grid-template-columns: 1fr 290px;
-  gap: 12px;
+  grid-template-columns: 230px 1fr 264px;
+  gap: 14px;
   align-items: start;
 }
-@media (max-width: 860px) { #app-dashboard { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { #app-dashboard { grid-template-columns: 200px 1fr 240px; } }
+@media (max-width: 860px)  { #app-dashboard { grid-template-columns: 1fr; } }
 
 /* ── SECTION LABEL ───────────────────────────────────────── */
 .dash-lbl {
@@ -238,22 +239,25 @@ body {
 .dash-btn.primary:hover { opacity: .88; }
 .dash-btn svg { width: 10px; height: 10px; stroke-width: 2.5; }
 
-/* ── WIDGET DE HORAS ─────────────────────────────────────── */
+/* ── WIDGET DE HORAS — número sobre a barra ──────────────── */
 .hours-widget {
-  padding: 14px 14px;
-  display: flex; gap: 14px; align-items: center;
+  padding: 16px 16px 12px;
+  background: var(--branco);    /* fundo opaco */
 }
-.hours-num {
+.hours-num-row {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-bottom: 10px;
+}
+.hours-big-num {
   font-family: var(--font-mono);
-  font-size: 32px; font-weight: 500;
-  letter-spacing: -1px; line-height: 1;
-  flex-shrink: 0;
+  font-size: 38px; font-weight: 500;
+  letter-spacing: -2px; line-height: 1;
+  color: var(--grafite);
 }
-.hours-side { flex: 1; min-width: 0; }
-.hours-pct { font-size: var(--text-sub); color: #777; margin-bottom: 7px; }
-.hours-pct strong { color: var(--verde); font-weight: 700; }
+.hours-pct-inline { font-size: var(--text-sub); color: #888; }
+.hours-pct-inline strong { color: var(--verde); font-weight: 700; }
 .hours-bar { display: flex; gap: 3px; margin-bottom: 4px; }
-.hours-seg { flex: 1; height: 4px; border-radius: 2px; background: var(--cinza2); }
+.hours-seg { flex: 1; height: 5px; border-radius: 3px; background: var(--cinza2); }
 .hours-seg.past  { background: var(--verde); }
 .hours-seg.today { background: var(--ouro); }
 .hours-days { display: flex; gap: 3px; }
@@ -263,13 +267,69 @@ body {
   letter-spacing: .3px; color: #ccc; text-transform: uppercase;
 }
 .hours-day-lbl.past  { color: var(--verde); }
-.hours-day-lbl.today { color: var(--ouro); }
+.hours-day-lbl.today { color: var(--ouro); font-weight: 700; }
 
-/* ── ITEM DE TAREFA ──────────────────────────────────────── */
+/* ── MINI CALENDÁRIO ─────────────────────────────────────── */
+.mini-cal { padding: 10px 12px 12px; }
+.mini-cal-row { display: flex; gap: 2px; }
+.mini-cal-col {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; cursor: pointer; padding: 5px 3px 6px;
+  border-radius: 8px; transition: background .1s;
+}
+.mini-cal-col:hover { background: var(--off); }
+[data-theme="dark"] .mini-cal-col:hover { background: rgba(255,255,255,.04); }
+.mini-cal-col.active-day { background: var(--off); }
+.mini-cal-lbl {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .4px; color: #ccc; font-family: var(--font-mono);
+}
+.mini-cal-lbl.past  { color: var(--cinza); }
+.mini-cal-lbl.today { color: var(--grafite); font-weight: 800; }
+.mini-cal-num {
+  font-size: 13px; font-weight: 600; color: #999;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+}
+.mini-cal-col.today-col .mini-cal-num {
+  background: var(--grafite); color: var(--branco);
+}
+[data-theme="dark"] .mini-cal-col.today-col .mini-cal-num { background: #F0EDE6; color: #111; }
+.mini-cal-dot-wrap { height: 6px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.mini-cal-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--azul);
+}
+.mini-cal-dot.tarefa { background: var(--verde); }
+.mini-cal-dot.both   { background: var(--ouro); }
+
+/* ── TAREFAS — card com abas ─────────────────────────────── */
+.task-tabs {
+  display: flex; gap: 2px;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid var(--cinza2);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .task-tabs { border-bottom-color: #2A2926; }
+.task-tab {
+  height: 26px; padding: 0 10px; border-radius: 999px; border: none;
+  background: none; font-family: var(--font-ui); font-size: var(--text-label);
+  font-weight: var(--weight-label); letter-spacing: .04em;
+  color: #bbb; cursor: pointer; transition: background .1s, color .1s;
+}
+.task-tab.active { background: var(--off); color: var(--grafite); }
+[data-theme="dark"] .task-tab.active { background: rgba(255,255,255,.07); color: #F0EDE6; }
+.task-tab:hover:not(.active) { color: #777; }
+
+.task-list-scroll {
+  overflow-y: auto; max-height: 420px;
+}
+.task-list-scroll::-webkit-scrollbar { width: 3px; }
+.task-list-scroll::-webkit-scrollbar-thumb { background: var(--cinza); border-radius: 2px; }
+
 .dash-task-item {
   display: flex; align-items: flex-start; gap: 9px;
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--cinza2);
+  padding: 9px 14px; border-bottom: 1px solid var(--cinza2);
   cursor: pointer; transition: background .1s;
 }
 .dash-task-item:last-child { border-bottom: none; }
@@ -277,23 +337,22 @@ body {
 [data-theme="dark"] .dash-task-item { border-bottom-color: #2A2926; }
 [data-theme="dark"] .dash-task-item:hover { background: rgba(255,255,255,.03); }
 .dash-task-check {
-  width: 16px; height: 16px;
-  border-radius: 4px; border: 1.5px solid #ccc;
+  width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #ccc;
   flex-shrink: 0; margin-top: 1px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all .12s;
+  display: flex; align-items: center; justify-content: center; transition: all .12s;
 }
 .dash-task-item.done .dash-task-check { background: var(--verde); border-color: var(--verde); }
 .dash-task-check svg { width: 8px; height: 8px; stroke: #fff; stroke-width: 3; display: none; }
 .dash-task-item.done .dash-task-check svg { display: block; }
 .dash-task-body { flex: 1; min-width: 0; }
-.dash-task-desc {
-  font-size: var(--text-body); font-weight: 500; line-height: 1.3;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.dash-task-desc { font-size: var(--text-body); font-weight: 500; line-height: 1.3; }
 .dash-task-item.done .dash-task-desc { text-decoration: line-through; color: #bbb; font-weight: 400; }
 .dash-task-meta { font-size: var(--text-sub); color: #999; margin-top: 2px; }
 .dash-task-meta .vencida { color: var(--terracota); }
+.dash-task-atrib {
+  font-size: var(--text-sub); color: #bbb;
+  margin-top: 1px; font-style: italic;
+}
 
 /* ── ITEM DE EVENTO ──────────────────────────────────────── */
 .dash-event-item {
@@ -309,39 +368,63 @@ body {
 .dash-event-dot.agenda_exp { background: var(--verde); }
 .dash-event-dot.feriado, .dash-event-dot.recesso { background: var(--ouro); }
 .dash-event-body { flex: 1; min-width: 0; }
-.dash-event-title {
-  font-size: var(--text-body); font-weight: 500;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.dash-event-title { font-size: var(--text-body); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash-event-when { font-size: var(--text-sub); color: #999; margin-top: 2px; }
-.dash-event-meet {
-  font-size: var(--text-sub); font-weight: 600;
-  color: var(--azul); text-decoration: none; flex-shrink: 0;
-}
+.dash-event-meet { font-size: var(--text-sub); font-weight: 600; color: var(--azul); text-decoration: none; flex-shrink: 0; }
 .dash-event-meet:hover { text-decoration: underline; }
 
-/* ── ITEM DE PRIORIDADE ──────────────────────────────────── */
-.dash-prio-item {
-  display: flex; align-items: center; gap: 9px;
-  padding: 9px 14px; border-bottom: 1px solid var(--cinza2);
+/* ── CARDS DE PRIORIDADE — monocromatico sem suavizado ───── */
+.prio-hub-card {
+  background: var(--branco);
+  border: 1px solid var(--cinza2);
+  border-left: 3px solid var(--cinza);
+  border-radius: var(--radius-card);
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s;
 }
-.dash-prio-item:last-child { border-bottom: none; }
-[data-theme="dark"] .dash-prio-item { border-bottom-color: #2A2926; }
-.dash-prio-num {
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--cinza2); flex-shrink: 0;
+.prio-hub-card:last-child { margin-bottom: 0; }
+.prio-hub-card:hover { transform: translateX(2px); box-shadow: var(--shadow-card); }
+/* Coloração por número — monocromatica saturada */
+.prio-hub-card.p1 { border-left-color: var(--verde);     background: rgba(29,106,74,.07); }
+.prio-hub-card.p2 { border-left-color: var(--azul);      background: rgba(29,79,160,.07); }
+.prio-hub-card.p3 { border-left-color: var(--ouro);      background: rgba(196,131,26,.07); }
+.prio-hub-card.p4,
+.prio-hub-card.p5,
+.prio-hub-card.p6 { border-left-color: var(--terracota); background: rgba(184,76,58,.07); }
+[data-theme="dark"] .prio-hub-card.p1 { background: rgba(29,106,74,.14); }
+[data-theme="dark"] .prio-hub-card.p2 { background: rgba(29,79,160,.14); }
+[data-theme="dark"] .prio-hub-card.p3 { background: rgba(196,131,26,.14); }
+[data-theme="dark"] .prio-hub-card.p4,
+[data-theme="dark"] .prio-hub-card.p5,
+[data-theme="dark"] .prio-hub-card.p6 { background: rgba(184,76,58,.14); }
+
+.prio-hub-head { display: flex; align-items: flex-start; gap: 8px; }
+.prio-hub-num {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 800; color: #999;
+  font-size: 9px; font-weight: 800; margin-top: 1px;
 }
-.dash-prio-num.p1 { background: var(--verde-bg); color: var(--verde); }
-.dash-prio-num.p2 { background: var(--az-bg); color: var(--azul); }
-.dash-prio-num.p3 { background: var(--am-bg); color: var(--ouro); }
-.dash-prio-body { flex: 1; min-width: 0; }
-.dash-prio-name { font-size: var(--text-body); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dash-prio-sub  { font-size: var(--text-sub); color: #999; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dash-prio-prazo { font-size: var(--text-sub); font-weight: 600; color: #999; flex-shrink: 0; white-space: nowrap; }
-.dash-prio-prazo.vencida { color: var(--terracota); }
-.dash-prio-prazo.hoje    { color: var(--ouro); }
+/* Números com cores sólidas */
+.prio-hub-card.p1 .prio-hub-num { background: var(--verde);     color: #fff; }
+.prio-hub-card.p2 .prio-hub-num { background: var(--azul);      color: #fff; }
+.prio-hub-card.p3 .prio-hub-num { background: var(--ouro);      color: #fff; }
+.prio-hub-card.p4 .prio-hub-num,
+.prio-hub-card.p5 .prio-hub-num,
+.prio-hub-card.p6 .prio-hub-num { background: var(--terracota); color: #fff; }
+
+.prio-hub-body  { flex: 1; min-width: 0; }
+.prio-hub-nome  { font-size: 11px; font-weight: 700; line-height: 1.35; margin-bottom: 2px; }
+.prio-hub-sub   { font-size: var(--text-sub); color: #888; margin-bottom: 3px;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prio-hub-prazo {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 700; padding: 1px 6px;
+  border-radius: 4px; border: 1px solid var(--cinza2); color: #888;
+}
+.prio-hub-prazo.vencida { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
+.prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
 
 /* ── EMPTY STATE INLINE ──────────────────────────────────── */
 .dash-empty { padding: 18px 14px; font-size: var(--text-sub); color: #bbb; text-align: center; }
@@ -2961,56 +3044,83 @@ function renderHoursWidget(horasSemana) {
   const days = _weekDays();
   return `
     <div class="dash-card hours-widget">
-      <div class="hours-num">${_fmtH(horasSemana)}</div>
-      <div class="hours-side">
-        <div class="hours-pct"><strong>${pct}%</strong> da semana · 40h</div>
-        <div class="hours-bar">
-          ${days.map(d => `<div class="hours-seg ${d.status}"></div>`).join('')}
-        </div>
-        <div class="hours-days">
-          ${days.map(d => `<div class="hours-day-lbl ${d.status}">${d.lbl}</div>`).join('')}
-        </div>
+      <div class="hours-num-row">
+        <div class="hours-big-num">${_fmtH(horasSemana)}</div>
+        <div class="hours-pct-inline"><strong>${pct}%</strong> da semana</div>
+      </div>
+      <div class="hours-bar">
+        ${days.map(d => `<div class="hours-seg ${d.status}"></div>`).join('')}
+      </div>
+      <div class="hours-days">
+        ${days.map(d => `<div class="hours-day-lbl ${d.status}">${d.lbl}</div>`).join('')}
       </div>
     </div>`;
 }
 
-function renderTasksSection(tarefas) {
-  const slice = tarefas.slice(0, 6);
-  const items = slice.length === 0
-    ? `<div class="dash-empty">Sem tarefas pendentes 🎉</div>`
-    : slice.map(t => {
-        const vencida = _isVencida(t.data_limite);
-        const meta = [t.produto_nome, t.data_limite
-          ? (vencida
-              ? `<span class="vencida">${_fmtDate(t.data_limite)}</span>`
-              : _fmtDate(t.data_limite))
-          : null].filter(Boolean).join(' · ');
-        return `
-          <div class="dash-task-item ${t.concluida ? 'done' : ''}"
-               onclick="toggleDashTask('${t.id}',${t.concluida})">
-            <div class="dash-task-check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <div class="dash-task-body">
-              <div class="dash-task-desc">${escHtml(t.descricao)}</div>
-              ${meta ? `<div class="dash-task-meta">${meta}</div>` : ''}
-            </div>
-          </div>`;
-      }).join('');
-  const verTodas = tarefas.length > 0
-    ? `<a href="gestao.html" class="dash-btn">Ver todas (${tarefas.length})</a>` : '';
+let _taskTab = 'minhas';
+
+function _renderTaskItems(lista, showAtrib) {
+  if (!lista.length) return `<div class="dash-empty">Nenhuma tarefa</div>`;
+  return lista.map(t => {
+    const vencida = _isVencida(t.data_limite);
+    const meta = [
+      t.produto_nome,
+      t.data_limite
+        ? (vencida ? `<span class="vencida">${_fmtDate(t.data_limite)}</span>` : _fmtDate(t.data_limite))
+        : null
+    ].filter(Boolean).join(' · ');
+    const atribLine = showAtrib && t.atribuido_nome
+      ? `<div class="dash-task-atrib">→ ${escHtml(t.atribuido_nome)}</div>` : '';
+    return `
+      <div class="dash-task-item ${t.concluida ? 'done' : ''}"
+           onclick="toggleDashTask('${t.id}',${t.concluida})">
+        <div class="dash-task-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="dash-task-body">
+          <div class="dash-task-desc">${escHtml(t.descricao)}</div>
+          ${meta ? `<div class="dash-task-meta">${meta}</div>` : ''}
+          ${atribLine}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function switchTaskTab(tab) {
+  _taskTab = tab;
+  const d = window._dashData;
+  document.querySelectorAll('.task-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  const lista = tab === 'minhas' ? d.tarefas : d.tarefasAtribuidas;
+  document.getElementById('dash-tasks-list').innerHTML = _renderTaskItems(lista, tab === 'atribuidas');
+}
+
+function renderTasksSection(tarefas, tarefasAtribuidas) {
+  const lista = _taskTab === 'minhas' ? tarefas : tarefasAtribuidas;
   return `
     <div class="dash-sec">
       <div class="dash-lbl">Tarefas
         <div class="dash-lbl-actions">
-          ${verTodas}
           <button class="dash-btn primary" onclick="openDashModal('task')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Atribuir
+            Nova
           </button>
         </div>
       </div>
-      <div class="dash-card" id="dash-tasks-card">${items}</div>
+      <div class="dash-card">
+        <div class="task-tabs">
+          <button class="task-tab ${_taskTab==='minhas'?'active':''}" data-tab="minhas" onclick="switchTaskTab('minhas')">
+            Minhas <span style="opacity:.6">(${tarefas.length})</span>
+          </button>
+          <button class="task-tab ${_taskTab==='atribuidas'?'active':''}" data-tab="atribuidas" onclick="switchTaskTab('atribuidas')">
+            Atribuídas <span style="opacity:.6">(${tarefasAtribuidas.length})</span>
+          </button>
+        </div>
+        <div class="task-list-scroll">
+          <div id="dash-tasks-list">${_renderTaskItems(lista, _taskTab==='atribuidas')}</div>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -3051,94 +3161,184 @@ function renderEventsSection(eventos) {
 }
 
 function renderPriosSection(prios) {
-  const NUM_CLS = ['','p1','p2','p3'];
-  const slice = prios.slice(0, 5);
-  const items = slice.length === 0
-    ? `<div class="dash-empty">Sem prioridades definidas</div>`
-    : slice.map((pr, idx) => {
-        const ord = pr.ordem || (idx + 1);
-        const numCls = NUM_CLS[Math.min(ord, 3)] || '';
-        const prazo = _fmtPrazo(pr.prazo_texto);
-        const nome = pr.produtos?.oportunidades
-          ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
-          : pr.produtos?.nome || '—';
-        const etapa = pr.etapa_nome || '';
-        return `
-          <div class="dash-prio-item">
-            <div class="dash-prio-num ${numCls}">${ord}</div>
-            <div class="dash-prio-body">
-              <div class="dash-prio-name">${escHtml(nome)}</div>
-              ${etapa ? `<div class="dash-prio-sub">${escHtml(etapa)}</div>` : ''}
-            </div>
-            ${prazo ? `<div class="dash-prio-prazo ${prazo.cls}">${prazo.label}</div>` : ''}
-          </div>`;
-      }).join('');
+  const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
+  const lbl = `Prioridades${prios.length ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">${prios.length}</span>` : ''}`;
+  if (!prios.length) return `
+    <div class="dash-sec">
+      <div class="dash-lbl">${lbl}</div>
+      <div class="dash-empty" style="border:1px solid var(--cinza2);border-radius:var(--radius-card)">Sem prioridades definidas</div>
+    </div>`;
   return `
     <div class="dash-sec">
-      <div class="dash-lbl">Prioridades
-        <div class="dash-lbl-actions">
-          <a href="gestao.html" class="dash-btn">Ver gestão</a>
-        </div>
-      </div>
-      <div class="dash-card">${items}</div>
+      <div class="dash-lbl">${lbl}</div>
+      ${prios.map((pr, idx) => {
+          const ord  = pr.ordem || (idx + 1);
+          const cls  = NUM_CLS[Math.min(ord, 6)] || 'p6';
+          const prazo = _fmtPrazo(pr.prazo_texto);
+          const nome  = pr.produtos?.oportunidades
+            ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
+            : pr.produtos?.nome || '—';
+          const sub = pr.etapa_nome || pr.comentario || '';
+          const prazoHtml = prazo
+            ? `<div style="margin-top:4px"><span class="prio-hub-prazo ${prazo.cls || ''}">📅 ${prazo.label}</span></div>` : '';
+          return `
+            <div class="prio-hub-card ${cls}" onclick="location.href='gestao.html'">
+              <div class="prio-hub-head">
+                <div class="prio-hub-num">${ord}</div>
+                <div class="prio-hub-body">
+                  <div class="prio-hub-nome">${escHtml(nome)}</div>
+                  ${sub ? `<div class="prio-hub-sub">${escHtml(sub)}</div>` : ''}
+                  ${prazoHtml}
+                </div>
+              </div>
+            </div>`;
+        }).join('')}
     </div>`;
 }
 
+function renderMiniCal(eventDays, taskDays) {
+  // eventDays / taskDays = Set of ISO date strings (YYYY-MM-DD)
+  const today = new Date(); today.setHours(0,0,0,0);
+  const day   = today.getDay() || 7;
+  const mon   = new Date(today); mon.setDate(today.getDate() - day + 1);
+  const LBLS  = ['Seg','Ter','Qua','Qui','Sex'];
+
+  const cols = LBLS.map((lbl, i) => {
+    const d    = new Date(mon); d.setDate(mon.getDate() + i);
+    const iso  = d.toISOString().split('T')[0];
+    const diff = d - today;
+    const status   = diff < 0 ? 'past' : diff === 0 ? 'today' : 'future';
+    const todayCls = diff === 0 ? 'today-col' : '';
+    const hasEvt   = eventDays.has(iso);
+    const hasTsk   = taskDays.has(iso);
+    let dotHtml = '';
+    if (hasEvt && hasTsk) dotHtml = `<div class="mini-cal-dot both"></div>`;
+    else if (hasEvt)      dotHtml = `<div class="mini-cal-dot"></div>`;
+    else if (hasTsk)      dotHtml = `<div class="mini-cal-dot tarefa"></div>`;
+    return `
+      <div class="mini-cal-col ${todayCls}" onclick="filterDashEvents('${iso}')">
+        <div class="mini-cal-lbl ${status}">${lbl}</div>
+        <div class="mini-cal-num">${d.getDate()}</div>
+        <div class="mini-cal-dot-wrap">${dotHtml}</div>
+      </div>`;
+  });
+
+  return `
+    <div class="dash-card" style="margin-top:10px">
+      <div class="mini-cal">
+        <div class="mini-cal-row">${cols.join('')}</div>
+      </div>
+    </div>`;
+}
+
+function filterDashEvents(iso) {
+  // Destaca o dia clicado — toggle
+  document.querySelectorAll('.mini-cal-col').forEach(el => {
+    const active = el.getAttribute('onclick')?.includes(iso);
+    el.classList.toggle('active-day', active);
+  });
+}
+
 function renderDashboard(data) {
-  const { tarefas, eventos, prios, horasSemana } = data;
-  const colMain = renderTasksSection(tarefas) + renderEventsSection(eventos);
+  const { tarefas, tarefasAtribuidas, eventos, prios, horasSemana, eventDays, taskDays } = data;
+
+  const colPrio = renderPriosSection(prios);
+  const colMain = renderTasksSection(tarefas, tarefasAtribuidas || []) + renderEventsSection(eventos);
   const colSide = `
     <div class="dash-sec">
       <div class="dash-lbl">Horas esta semana
-        <div class="dash-lbl-actions">
-          <a href="gestao.html" class="dash-btn">Lançar</a>
-        </div>
+        <div class="dash-lbl-actions"><a href="gestao.html" class="dash-btn">Lançar</a></div>
       </div>
       ${renderHoursWidget(horasSemana)}
-    </div>
-    ${renderPriosSection(prios)}
-  `;
+      ${renderMiniCal(eventDays || new Set(), taskDays || new Set())}
+    </div>`;
+
   document.getElementById('app-dashboard').innerHTML =
-    `<div>${colMain}</div><div>${colSide}</div>`;
+    `<div>${colPrio}</div><div>${colMain}</div><div>${colSide}</div>`;
 }
 
 async function loadDashboard(usuario) {
   _dashUsuario = usuario;
   const { start, end } = _getWeekRange();
   const todayISO = new Date().toISOString().split('T')[0];
+
   const [
     { data: horasData },
     { data: tarefasRaw },
+    { data: tarefasAtribRaw },
     { data: eventosRaw },
     { data: priosRaw },
+    { data: eventosSemana },
+    { data: tarefasSemana },
   ] = await Promise.all([
     sb.from('horas_lancadas')
       .select('hora_inicio, hora_fim')
       .eq('usuario_id', usuario.id)
       .gte('data_lancamento', start)
       .lte('data_lancamento', end),
+
+    // Minhas tarefas pendentes
     sb.from('tarefas_livres')
       .select('id, descricao, data_limite, concluida, produto_id, produtos(nome)')
       .eq('atribuido_para', usuario.id)
       .eq('concluida', false)
       .order('data_limite', { ascending: true, nullsFirst: false }),
+
+    // Tarefas que eu atribuí a outros
+    sb.from('tarefas_livres')
+      .select('id, descricao, data_limite, concluida, produto_id, produtos(nome), atribuido_para, usuarios!tarefas_livres_atribuido_para_fkey(nome)')
+      .eq('atribuido_por', usuario.id)
+      .neq('atribuido_para', usuario.id)
+      .eq('concluida', false)
+      .order('data_limite', { ascending: true, nullsFirst: false }),
+
+    // Próximos eventos
     sb.from('calendar_events')
       .select('id, titulo, tipo, inicio, fim, dia_inteiro, meet_link')
       .gte('inicio', todayISO)
       .or(`scope.eq.todos,user_id.eq.${usuario.id}`)
       .order('inicio')
-      .limit(5),
+      .limit(8),
+
+    // Prioridades — todas
     sb.from('prioridades_usuario')
-      .select('id, ordem, prazo_texto, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)))')
+      .select('id, ordem, prazo_texto, comentario, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)))')
       .eq('usuario_id', usuario.id)
       .eq('concluida', false)
       .order('ordem'),
+
+    // Eventos desta semana para o mini-calendário
+    sb.from('calendar_events')
+      .select('inicio')
+      .gte('inicio', start)
+      .lte('inicio', end + 'T23:59:59')
+      .or(`scope.eq.todos,user_id.eq.${usuario.id}`),
+
+    // Tarefas com prazo nesta semana para o mini-calendário
+    sb.from('tarefas_livres')
+      .select('data_limite')
+      .eq('atribuido_para', usuario.id)
+      .eq('concluida', false)
+      .gte('data_limite', start)
+      .lte('data_limite', end),
   ]);
+
+  // Conjuntos de dias com eventos/tarefas para o mini-calendário
+  const eventDays = new Set((eventosSemana || []).map(e => e.inicio?.split('T')[0]).filter(Boolean));
+  const taskDays  = new Set((tarefasSemana || []).map(t => t.data_limite).filter(Boolean));
+
   window._dashData = {
-    tarefas: (tarefasRaw || []).map(t => ({ ...t, produto_nome: t.produtos?.nome || null })),
-    eventos: eventosRaw || [],
-    prios:   priosRaw || [],
+    tarefas:          (tarefasRaw || []).map(t => ({ ...t, produto_nome: t.produtos?.nome || null })),
+    tarefasAtribuidas:(tarefasAtribRaw || []).map(t => ({
+      ...t,
+      produto_nome: t.produtos?.nome || null,
+      atribuido_nome: t.usuarios?.nome || null,
+    })),
+    eventos:     eventosRaw || [],
+    prios:       priosRaw || [],
     horasSemana: _calcHoras(horasData || []),
+    eventDays,
+    taskDays,
   };
   renderDashboard(window._dashData);
 }
@@ -3149,20 +3349,18 @@ async function toggleDashTask(id, concluida) {
     concluida: nova, concluida_em: nova ? new Date().toISOString() : null
   }).eq('id', id);
   if (error) return;
-  window._dashData.tarefas = window._dashData.tarefas.map(t =>
-    t.id === id ? { ...t, concluida: nova } : t);
-  document.getElementById('dash-tasks-card').outerHTML =
-    `<div class="dash-card" id="dash-tasks-card">${
-      (() => {
-        const slice = window._dashData.tarefas.filter(t => !t.concluida).slice(0,6);
-        if (!slice.length) return `<div class="dash-empty">Sem tarefas pendentes 🎉</div>`;
-        return slice.map(t => {
-          const vencida = _isVencida(t.data_limite);
-          const meta = [t.produto_nome, t.data_limite ? (vencida ? `<span class="vencida">${_fmtDate(t.data_limite)}</span>` : _fmtDate(t.data_limite)) : null].filter(Boolean).join(' · ');
-          return `<div class="dash-task-item ${t.concluida?'done':''}" onclick="toggleDashTask('${t.id}',${t.concluida})"><div class="dash-task-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div><div class="dash-task-body"><div class="dash-task-desc">${escHtml(t.descricao)}</div>${meta?`<div class="dash-task-meta">${meta}</div>`:''}</div></div>`;
-        }).join('');
-      })()
-    }</div>`;
+  // Atualiza a lista em memória e re-renderiza somente a lista de itens
+  if (_taskTab === 'minhas') {
+    window._dashData.tarefas = window._dashData.tarefas.map(t =>
+      t.id === id ? { ...t, concluida: nova } : t);
+    const lista = window._dashData.tarefas.filter(t => !t.concluida);
+    const el = document.getElementById('dash-tasks-list');
+    if (el) el.innerHTML = _renderTaskItems(lista, false);
+    // Atualiza contagem na aba
+    document.querySelectorAll('.task-tab').forEach(tab => {
+      if (tab.dataset.tab === 'minhas') tab.innerHTML = `Minhas <span style="opacity:.6">(${lista.length})</span>`;
+    });
+  }
 }
 
 // ── Modais ────────────────────────────────────────────────────────
