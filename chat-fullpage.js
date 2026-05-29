@@ -222,20 +222,31 @@
   var FONT_SIZES  = [10, 11, 12, 13, 14];
   var fontSizeIdx = parseInt(localStorage.getItem('exp_chat_font_size') || '2', 10); // default: 12px
 
-  /* Tons de texto — escala de cinza invertida entre light e dark */
-  var TONES_LIGHT = ['#555', '#3A3836', '#222', '#111'];  /* do mais claro ao mais escuro */
-  var TONES_DARK  = ['#8C8A85', '#B4AEA4', '#D0CFC9', '#F0EDE6'];
+  /* Tons de texto — escala de cinza com maior amplitude entre opções */
+  var TONES_LIGHT = ['#AAA', '#777', '#333', '#000'];   /* muito claro → preto */
+  var TONES_DARK  = ['#555', '#8C8A85', '#C8C3BA', '#F0EDE6']; /* muito escuro → quase branco */
   var fontToneIdx = parseInt(localStorage.getItem('exp_chat_font_tone') || '1', 10);
+
+  /* Tons de preview da sidebar — um passo mais claro que o texto de mensagem */
+  var TONES_PREVIEW_LIGHT = ['#CCC', '#AAA', '#777', '#444'];
+  var TONES_PREVIEW_DARK  = ['#3A3836', '#555', '#8C8A85', '#B4AEA4'];
 
   function applyViewPrefs() {
     var size = FONT_SIZES[Math.max(0, Math.min(fontSizeIdx, FONT_SIZES.length-1))];
     var dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    var tone = dark ? TONES_DARK[fontToneIdx] : TONES_LIGHT[fontToneIdx];
+    var tone        = dark ? TONES_DARK[fontToneIdx]         : TONES_LIGHT[fontToneIdx];
+    var tonePreview = dark ? TONES_PREVIEW_DARK[fontToneIdx] : TONES_PREVIEW_LIGHT[fontToneIdx];
+
     var $msgs = document.getElementById('fp-messages');
     if ($msgs) {
       $msgs.style.setProperty('--fp-msg-size', size + 'px');
       $msgs.style.setProperty('--fp-msg-color', tone);
     }
+
+    /* Aplicar nos previews da sidebar via CSS custom property no root */
+    document.documentElement.style.setProperty('--fp-preview-color', tonePreview);
+    document.documentElement.style.setProperty('--fp-conv-name-color', tone);
+
     /* atualizar label de tamanho */
     var $lbl = document.getElementById('fp-font-size-label');
     if ($lbl) $lbl.textContent = size + 'px';
@@ -271,7 +282,7 @@
       if ($td) {
         $td.innerHTML = tones.map(function(c, i) {
           return '<div class="fp-tone-dot' + (i === fontToneIdx ? ' active' : '') + '" ' +
-            'style="background:' + c + '" onclick="fpChat.setFontTone(' + i + ')"></div>';
+            'style="background:' + c + '" onclick="event.stopPropagation();fpChat.setFontTone(' + i + ')"></div>';
         }).join('');
       }
       applyViewPrefs();
