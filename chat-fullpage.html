@@ -87,7 +87,7 @@ body {
 #fp-app {
   display: none; /* shown after login */
   flex: 1;
-  padding: 16px 24px 16px 16px; /* esq menor: timer fica no padding esquerdo */
+  padding: 16px 72px 16px 16px; /* direita larga; esquerda menor para o timer */
   gap: 10px;
   min-height: 0;
   height: 100vh;
@@ -911,6 +911,161 @@ body {
 .fp-mv-nav[disabled] { opacity: .3; cursor: default; pointer-events: none; }
 .fp-mv-empty { font-size: 11px; color: #999; text-align: center; padding: 30px; }
 
+/* ── Painel de tarefas (mesma forma da sidebar) ── */
+#fp-tasks-panel {
+  width: 340px; flex-shrink: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 12px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: fpSlideIn .18s ease-out;
+}
+[data-theme="dark"] #fp-tasks-panel { background: #1E1E1D; border-color: #2E2D2B; }
+@keyframes fpSlideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+
+/* Tarefa individual */
+.fp-task-item {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 6px; border-radius: 8px;
+  cursor: pointer; transition: background .1s;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+}
+.fp-task-item:last-child { border-bottom: none; }
+.fp-task-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-task-item { border-bottom-color: #2A2927; }
+[data-theme="dark"] .fp-task-item:hover { background: rgba(255,255,255,.04); }
+.fp-task-check {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--cinza, #D0CFC9);
+  flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s, border-color .12s;
+}
+.fp-task-check:hover { border-color: var(--ca); }
+.fp-task-check.done  { background: var(--ca); border-color: var(--ca); }
+.fp-task-check.done::after { content:''; width:6px; height:6px; border-radius:50%; background:#fff; }
+.fp-task-body  { flex: 1; min-width: 0; }
+.fp-task-desc  { font-size: 12px; color: #333; line-height: 1.4; word-break: break-word; }
+[data-theme="dark"] .fp-task-desc { color: #C8C3BA; }
+.fp-task-meta  { font-size: 10px; color: #999; margin-top: 3px; display: flex; align-items: center; gap: 6px; }
+.fp-task-prazo { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600; }
+.fp-task-prazo.vencida { color: #B84C3A; }
+.fp-task-prazo.hoje    { color: #C4831A; }
+.fp-task-section { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--cinza, #D0CFC9); padding: 10px 6px 4px; }
+
+/* ── Banner de prioridade (hover no ícone de projeto) ── */
+#fp-prio-banner {
+  position: fixed;
+  /* posicionado pelo JS ao mostrar */
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.16);
+  padding: 12px 14px;
+  width: 260px;
+  display: none;
+  z-index: 600;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-prio-banner { background: #252523; border-color: #2E2D2B; }
+@keyframes fpBannerIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+
+.fp-prio-label { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--cinza, #D0CFC9); margin-bottom: 6px; }
+.fp-prio-titulo { font-size: 13px; font-weight: 700; color: var(--grafite, #111110); line-height: 1.3; margin-bottom: 4px; }
+[data-theme="dark"] .fp-prio-titulo { color: #F0EDE6; }
+.fp-prio-sub { font-size: 11px; color: #888; margin-bottom: 8px; }
+.fp-prio-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.fp-prio-chip {
+  font-size: 9px; font-weight: 600; letter-spacing: .3px;
+  padding: 2px 7px; border-radius: 20px;
+  border: 1px solid var(--cinza2, #ECEAE4);
+  color: #777; background: var(--off, #F7F6F3);
+}
+.fp-prio-chip.prazo-ok      { border-color: var(--ca); color: var(--ca); background: var(--ca-bg); }
+.fp-prio-chip.prazo-hoje    { border-color: #C4831A; color: #C4831A; background: #FBF3E8; }
+.fp-prio-chip.prazo-vencida { border-color: #B84C3A; color: #B84C3A; background: #FBF0EE; }
+.fp-prio-abrir {
+  width: 100%; padding: 7px; border-radius: 8px;
+  border: none; background: var(--ca); color: #fff;
+  font-family: 'Raleway', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.fp-prio-abrir:hover { opacity: .85; }
+
+/* ── Overlay do projeto (sobre o chat) ── */
+#fp-proj-overlay {
+  position: fixed; inset: 0;
+  background: rgba(17,17,16,.4);
+  z-index: 450;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 40px 24px;
+  overflow-y: auto;
+}
+#fp-proj-card {
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.22);
+  width: min(640px, 100%);
+  overflow: hidden;
+  animation: fpSlideIn .18s ease-out;
+}
+[data-theme="dark"] #fp-proj-card { background: #1E1E1D; border-color: #2E2D2B; }
+#fp-proj-card-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  background: var(--cinza2, #ECEAE4);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+[data-theme="dark"] #fp-proj-card-head { background: #2A2927; border-bottom-color: #3A3836; }
+#fp-proj-card-title-wrap { flex: 1; min-width: 0; }
+#fp-proj-card-label { font-size: 14px; font-weight: 700; color: var(--grafite, #111110); }
+[data-theme="dark"] #fp-proj-card-label { color: #F0EDE6; }
+#fp-proj-card-sub  { font-size: 11px; color: #888; margin-top: 2px; }
+.fp-proj-card-action {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; color: var(--ca);
+  text-decoration: none; padding: 5px 10px;
+  border: 1px solid var(--ca); border-radius: 8px;
+  white-space: nowrap; transition: background .12s;
+}
+.fp-proj-card-action:hover { background: var(--ca-bg); }
+.fp-proj-card-close {
+  width: 28px; height: 28px; border-radius: 7px; border: none;
+  background: rgba(0,0,0,.07); color: var(--grafite, #111110);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; padding: 0;
+}
+[data-theme="dark"] .fp-proj-card-close { background: rgba(255,255,255,.08); color: #F0EDE6; }
+#fp-proj-card-body { padding: 16px 18px 20px; }
+.fp-proj-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 8px 0; border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  font-size: 12px;
+}
+[data-theme="dark"] .fp-proj-row { border-bottom-color: #2A2927; }
+.fp-proj-row:last-child { border-bottom: none; }
+.fp-proj-row-lbl { width: 100px; flex-shrink: 0; font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .4px; padding-top: 1px; }
+.fp-proj-row-val { flex: 1; color: var(--grafite, #111110); line-height: 1.45; }
+[data-theme="dark"] .fp-proj-row-val { color: #C8C3BA; }
+.fp-etapa-pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 10px; font-weight: 600;
+  background: var(--ca-bg); color: var(--ca);
+  border: 1px solid rgba(0,0,0,.06);
+  margin: 2px 4px 2px 0;
+}
+
+/* Theme toggle dentro da nav escura */
+#fp-nav .theme-toggle { opacity: .6; transition: opacity .15s; }
+#fp-nav .theme-toggle:hover { opacity: 1; }
+#fp-nav .ttg-track { background: rgba(255,255,255,.15); }
+#fp-nav .ttg-knob  { background: rgba(255,255,255,.7);  }
+[data-theme="dark"] #fp-nav .ttg-track { background: rgba(255,255,255,.25); }
+[data-theme="dark"] #fp-nav .ttg-knob  { background: #fff; }
+
 /* Resultados de busca dentro da conversa */
 .fp-msg-block.search-match   { background: rgba(196,131,26,.08) !important; }
 .fp-msg-block.search-current { background: rgba(196,131,26,.22) !important; outline: 2px solid rgba(196,131,26,.5); outline-offset: -2px; border-radius: 8px; }
@@ -966,11 +1121,47 @@ body {
     <div class="fp-nav-spacer"></div>
     <div class="fp-nav-sep"></div>
 
-    <!-- Chat ativo -->
-    <a href="chat-fullpage.html" class="fp-nav-item active" title="Chat">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    </a>
+    <!-- Toggle dark/light mode -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema" style="padding:4px;margin-bottom:2px">
+      <span class="ttg-icon" style="filter:invert(1) brightness(1.5)">☀</span>
+      <span class="ttg-track"><span class="ttg-knob"></span></span>
+      <span class="ttg-icon" style="filter:invert(1) brightness(1.5)">🌙</span>
+    </button>
+
+    <!-- Prioridade do projeto (hover abre banner) -->
+    <button class="fp-nav-item" id="fp-nav-prio" title="Minha prioridade"
+            onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>
+
+    <!-- Lista de tarefas (abre painel no lugar da sidebar) -->
+    <button class="fp-nav-item" id="fp-nav-tasks" title="Minhas tarefas" onclick="fpChat.toggleTasksPanel()">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    </button>
   </nav>
+
+  <!-- Banner flutuante de prioridade (aparece no hover do ícone de projeto) -->
+  <div id="fp-prio-banner"
+       onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
+    <div id="fp-prio-banner-inner"></div>
+  </div>
+
+  <!-- ── Painel de tarefas (substitui sidebar) ── -->
+  <aside id="fp-tasks-panel" style="display:none">
+    <div class="fp-sb-head">
+      <div class="fp-sb-head-row">
+        <span class="fp-sb-title">Minhas tarefas</span>
+        <button class="fp-sb-icon-btn" onclick="fpChat.toggleTasksPanel()" title="Fechar">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 80px">
+      <div class="fp-loading" style="padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
+  </aside>
 
   <!-- ── Sidebar ── -->
   <aside id="fp-sidebar">
@@ -1094,6 +1285,26 @@ body {
   </main>
 
 </div><!-- /#fp-app -->
+
+<!-- Overlay do projeto (abre sobre o chat) -->
+<div id="fp-proj-overlay" style="display:none">
+  <div id="fp-proj-card">
+    <div id="fp-proj-card-head">
+      <div id="fp-proj-card-title-wrap">
+        <div id="fp-proj-card-label"></div>
+        <div id="fp-proj-card-sub"></div>
+      </div>
+      <a id="fp-proj-card-link" href="gestao.html" target="_blank" class="fp-proj-card-action" title="Abrir em Projetos">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 0 1 0h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Abrir Projetos
+      </a>
+      <button onclick="fpChat.closeProjectOverlay()" class="fp-proj-card-close">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-proj-card-body"></div>
+  </div>
+</div>
 
 <!-- Modal novo DM -->
 <div id="fp-members-panel">

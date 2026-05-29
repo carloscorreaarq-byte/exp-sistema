@@ -168,11 +168,25 @@
     });
 
     document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        /* fechar overlay do projeto primeiro */
+        var $proj = document.getElementById('fp-proj-overlay');
+        if ($proj && $proj.style.display === 'flex') { e.preventDefault(); closeProjectOverlay(); return; }
+        if (mediaViewerState) { e.preventDefault(); closeMediaViewer(); return; }
+        if (inSearchOpen) { e.preventDefault(); closeInSearch(); return; }
+      }
       if (!mediaViewerState) return;
-      if (e.key === 'Escape')     { e.preventDefault(); closeMediaViewer(); }
-      else if (e.key === 'ArrowLeft')  { e.preventDefault(); mvPrev(); }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); mvPrev(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); mvNext(); }
     });
+
+    /* Fechar overlay do projeto clicando no backdrop */
+    var $projOverlay = document.getElementById('fp-proj-overlay');
+    if ($projOverlay) {
+      $projOverlay.addEventListener('click', function(e) {
+        if (e.target === $projOverlay) closeProjectOverlay();
+      });
+    }
 
     window.addEventListener('beforeunload', function() { if (presenceCh) presenceCh.untrack(); });
 
@@ -1549,7 +1563,264 @@
     react, flagMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
     /* busca dentro da conversa */
-    toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev
+    toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev,
+    /* tarefas */
+    toggleTasksPanel, checkTask,
+    /* prioridade / projeto */
+    showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════
+     PAINEL DE TAREFAS
+  ═══════════════════════════════════════════════════════════════════ */
+  var tasksPanelOpen = false;
+  var tasksCache     = [];
+
+  function toggleTasksPanel() {
+    tasksPanelOpen = !tasksPanelOpen;
+    var $sidebar = document.getElementById('fp-sidebar');
+    var $tasks   = document.getElementById('fp-tasks-panel');
+    var $btn     = document.getElementById('fp-nav-tasks');
+    if ($sidebar) $sidebar.style.display = tasksPanelOpen ? 'none' : 'flex';
+    if ($tasks)   $tasks.style.display   = tasksPanelOpen ? 'flex' : 'none';
+    if ($btn)     $btn.classList.toggle('active', tasksPanelOpen);
+    if (tasksPanelOpen) loadTasks();
+  }
+
+  function loadTasks() {
+    var uid = user.id || user.app_user_id;
+    if (!uid) return;
+    var $list = document.getElementById('fp-tasks-list');
+    if ($list) $list.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+
+    Promise.all([
+      sb.from('tarefas_livres').select('*').eq('usuario_id', uid).is('atribuido_para', null).eq('concluida', false),
+      sb.from('tarefas_livres').select('*').eq('atribuido_para', uid).eq('concluida', false)
+    ]).then(function(res) {
+      var proprias  = res[0].data || [];
+      var recebidas = res[1].data || [];
+      var todas = proprias.concat(recebidas.filter(function(r) {
+        return !proprias.find(function(p) { return p.id === r.id; });
+      }));
+      todas.sort(function(a, b) {
+        if (a.data_limite && b.data_limite) return a.data_limite.localeCompare(b.data_limite);
+        if (a.data_limite) return -1;
+        if (b.data_limite) return 1;
+        return (b.created_at || '').localeCompare(a.created_at || '');
+      });
+      tasksCache = todas;
+      renderTasks(todas);
+    }).catch(function() {
+      var $list = document.getElementById('fp-tasks-list');
+      if ($list) $list.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center">Erro ao carregar tarefas.</div>';
+    });
+  }
+
+  function renderTasks(tasks) {
+    var $list = document.getElementById('fp-tasks-list');
+    if (!$list) return;
+    if (!tasks.length) {
+      $list.innerHTML = '<div class="fp-empty" style="padding:24px;text-align:center">Nenhuma tarefa pendente ✓</div>';
+      return;
+    }
+    var hoje = new Date().toISOString().split('T')[0];
+    var html = '<div class="fp-task-section">Pendentes — ' + tasks.length + '</div>';
+    tasks.forEach(function(t) {
+      var vencida = t.data_limite && t.data_limite < hoje;
+      var ehHoje  = t.data_limite === hoje;
+      var prazoHtml = '';
+      if (t.data_limite) {
+        var cls = vencida ? 'vencida' : ehHoje ? 'hoje' : '';
+        var dt  = new Date(t.data_limite + 'T12:00:00');
+        var dtFmt = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+        prazoHtml = '<span class="fp-task-prazo ' + cls + '">' + dtFmt + (vencida?' ⚠':'') + '</span>';
+      }
+      var tipoHtml = t.tipo ? '<span style="font-size:9px;color:#bbb;text-transform:capitalize">' + escHtml(t.tipo) + '</span>' : '';
+      html += '<div class="fp-task-item">' +
+        '<div class="fp-task-check" onclick="fpChat.checkTask(event,\'' + escHtml(String(t.id)) + '\')" title="Concluir"></div>' +
+        '<div class="fp-task-body">' +
+          '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
+          '<div class="fp-task-meta">' + prazoHtml + tipoHtml + '</div>' +
+        '</div>' +
+        '</div>';
+    });
+    $list.innerHTML = html;
+  }
+
+  function checkTask(event, taskId) {
+    event.stopPropagation();
+    var btn = event.currentTarget;
+    btn.classList.add('done');
+    sb.from('tarefas_livres').update({ concluida: true }).eq('id', taskId)
+      .then(function(r) {
+        if (r.error) { btn.classList.remove('done'); return; }
+        tasksCache = tasksCache.filter(function(t) { return String(t.id) !== String(taskId); });
+        setTimeout(function() { renderTasks(tasksCache); }, 400);
+      });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     BANNER DE PRIORIDADE + OVERLAY DO PROJETO
+  ═══════════════════════════════════════════════════════════════════ */
+  var prioData       = null;   // cache da primeira prioridade
+  var prioBannerTimer = null;
+  var prioLoaded     = false;
+
+  function showPrioBanner() {
+    if (prioBannerTimer) { clearTimeout(prioBannerTimer); prioBannerTimer = null; }
+    var $banner = document.getElementById('fp-prio-banner');
+    var $btn    = document.getElementById('fp-nav-prio');
+    if (!$banner || !$btn) return;
+
+    /* Posicionar ao lado do botão */
+    var rect = $btn.getBoundingClientRect();
+    $banner.style.top  = Math.max(16, rect.top - 10) + 'px';
+    $banner.style.left = (rect.right + 10) + 'px';
+    $banner.style.display = 'block';
+
+    if (!prioLoaded) fetchPrioridade();
+    else renderPrioBanner();
+  }
+
+  function hidePrioBanner() {
+    prioBannerTimer = setTimeout(function() {
+      var $banner = document.getElementById('fp-prio-banner');
+      if ($banner) $banner.style.display = 'none';
+    }, 200);
+  }
+
+  function fetchPrioridade() {
+    var uid = user.id || user.app_user_id;
+    if (!uid) return;
+    sb.from('prioridades_usuario')
+      .select('id,produto_id,prazo_texto,ordem,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
+      .eq('usuario_id', uid)
+      .eq('concluida', false)
+      .order('ordem')
+      .limit(1)
+      .maybeSingle()
+      .then(function(r) {
+        prioLoaded = true;
+        prioData   = r.data || null;
+        renderPrioBanner();
+      }).catch(function() {
+        prioLoaded = true;
+        renderPrioBanner();
+      });
+  }
+
+  function renderPrioBanner() {
+    var $inner = document.getElementById('fp-prio-banner-inner');
+    if (!$inner) return;
+    if (!prioData) {
+      $inner.innerHTML = '<div class="fp-prio-label">Minha prioridade</div>' +
+        '<div style="font-size:12px;color:#aaa;margin-bottom:10px">Nenhuma prioridade definida.</div>';
+      return;
+    }
+    var pr   = prioData;
+    var prod = pr.produtos || {};
+    var opp  = prod.oportunidades || {};
+    var cli  = opp.clientes || {};
+    var titulo  = [cli.nome, opp.projeto].filter(Boolean).join(' · ') || prod.nome || 'Projeto';
+    var cidade  = [opp.cidade || cli.uf].filter(Boolean).join('/');
+    var etapas  = (prod.etapas || []).filter(function(e) { return e.status !== 'concluida'; });
+    var etapaAtual = etapas.find(function(e){ return e.status==='em_andamento'; }) || etapas[0];
+
+    /* Prazo */
+    var prazoHtml = '';
+    var prazoClass = 'prazo-ok';
+    if (pr.prazo_texto) {
+      var hoje = new Date(); hoje.setHours(0,0,0,0);
+      var pdt  = new Date(pr.prazo_texto + 'T12:00:00'); pdt.setHours(0,0,0,0);
+      var dtFmt = pdt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+      if (pdt < hoje)        prazoClass = 'prazo-vencida';
+      else if (+pdt===+hoje) prazoClass = 'prazo-hoje';
+      prazoHtml = '<span class="fp-prio-chip ' + prazoClass + '">' + escHtml(dtFmt) + '</span>';
+    }
+
+    var etapaHtml = etapaAtual
+      ? '<span class="fp-prio-chip">' + escHtml(etapaAtual.nome || '') + '</span>' : '';
+    var cidadeHtml = cidade
+      ? '<span class="fp-prio-chip">' + escHtml(cidade) + '</span>' : '';
+
+    $inner.innerHTML =
+      '<div class="fp-prio-label">Minha prioridade</div>' +
+      '<div class="fp-prio-titulo">' + escHtml(titulo) + '</div>' +
+      (prod.nome ? '<div class="fp-prio-sub">' + escHtml(prod.nome) + '</div>' : '') +
+      '<div class="fp-prio-chips">' + prazoHtml + etapaHtml + cidadeHtml + '</div>' +
+      '<button class="fp-prio-abrir" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id || '')) + '\')">Ver detalhes do projeto</button>';
+  }
+
+  function openProjectOverlay(produtoId) {
+    hidePrioBanner();
+    var $overlay = document.getElementById('fp-proj-overlay');
+    var $body    = document.getElementById('fp-proj-card-body');
+    var $lbl     = document.getElementById('fp-proj-card-label');
+    var $sub     = document.getElementById('fp-proj-card-sub');
+    if (!$overlay) return;
+    $overlay.style.display = 'flex';
+    if ($lbl)  $lbl.textContent  = 'Carregando…';
+    if ($sub)  $sub.textContent  = '';
+    if ($body) $body.innerHTML   = '<div class="fp-loading" style="padding:32px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+
+    sb.from('produtos')
+      .select('id,nome,status,oportunidades(projeto,cidade,area_total,tipologia,clientes(nome,uf)),etapas(nome,status,ordem)')
+      .eq('id', produtoId)
+      .single()
+      .then(function(r) {
+        if (r.error || !r.data) {
+          if ($body) $body.innerHTML = '<div class="fp-empty">Projeto não encontrado.</div>';
+          return;
+        }
+        var prod = r.data;
+        var opp  = prod.oportunidades || {};
+        var cli  = opp.clientes || {};
+        var titulo = [cli.nome, opp.projeto].filter(Boolean).join(' · ') || prod.nome;
+        if ($lbl) $lbl.textContent = titulo;
+        if ($sub) $sub.textContent = prod.nome || '';
+
+        var etapas = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
+        var etapaAtual = etapas.find(function(e){return e.status==='em_andamento';});
+        var etapasHtml = etapas.map(function(e) {
+          var isAtual = e.status === 'em_andamento';
+          var style = isAtual ? 'background:var(--ca-bg);color:var(--ca);border-color:var(--ca)' : '';
+          return '<span class="fp-etapa-pill" style="' + style + '">' + escHtml(e.nome||'') + '</span>';
+        }).join('');
+
+        var rows = [
+          ['Cliente',  cli.nome || '—'],
+          ['Projeto',  opp.projeto || prod.nome || '—'],
+          ['Cidade',   [opp.cidade, cli.uf].filter(Boolean).join('/') || '—'],
+          ['Tipologia',opp.tipologia || '—'],
+          ['Área',     opp.area_total ? opp.area_total + ' m²' : '—'],
+          ['Etapa atual', etapaAtual ? etapaAtual.nome : '—'],
+        ];
+
+        var rowsHtml = rows.map(function(r) {
+          return '<div class="fp-proj-row">' +
+            '<div class="fp-proj-row-lbl">' + escHtml(r[0]) + '</div>' +
+            '<div class="fp-proj-row-val">' + escHtml(String(r[1])) + '</div>' +
+            '</div>';
+        }).join('');
+
+        if ($body) $body.innerHTML =
+          '<div style="margin-bottom:14px">' + etapasHtml + '</div>' +
+          rowsHtml;
+      }).catch(function() {
+        if ($body) $body.innerHTML = '<div class="fp-empty">Erro ao carregar projeto.</div>';
+      });
+  }
+
+  function closeProjectOverlay() {
+    var $overlay = document.getElementById('fp-proj-overlay');
+    if ($overlay) $overlay.style.display = 'none';
+  }
+
+  /* toggleTheme — mesmo padrão dos outros módulos */
+  window.toggleTheme = function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('exp-theme', next);
   };
 
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
