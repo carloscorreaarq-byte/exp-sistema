@@ -97,7 +97,7 @@ body::after {
 .card {
   background: #fff;
   border: 1px solid var(--cinza);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 32px;
   position: relative;
   overflow: hidden;
@@ -140,7 +140,7 @@ body::after {
   outline: none; transition: border-color .15s;
   -webkit-appearance: none;
 }
-.fgroup input:focus { border-color: var(--preto); background: #fff; }
+.fgroup input:focus { border-color: var(--verde); background: #fff; }
 .fgroup input::placeholder { color: #bbb; font-weight: 300; }
 
 /* Botão principal */
@@ -232,6 +232,10 @@ body::after {
   font-size: 17px; font-weight: 700; color: #fff;
   margin-bottom: 14px; letter-spacing: 1px;
   font-family: var(--f);
+  overflow: hidden;
+}
+.logado-avatar img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .logado-nome {
   font-size: 17px; font-weight: 600;
@@ -542,7 +546,7 @@ function resetLoggedState() {
   const avatar = document.getElementById('logado-avatar');
   if (viewerBadge) viewerBadge.style.display = 'none';
   if (avatar) {
-    avatar.textContent = '';
+    avatar.innerHTML = '';
     avatar.style.background = '#888';
   }
   const nome = document.getElementById('logado-nome');
@@ -721,8 +725,12 @@ async function mostrarLogado(authUser) {
   }
 
   const avatar = document.getElementById('logado-avatar');
-  avatar.textContent = usuario.iniciais;
   avatar.style.background = usuario.cor || '#888';
+  if (usuario.avatar_url) {
+    avatar.innerHTML = '<img src="' + usuario.avatar_url + '" alt="" onerror="this.parentNode.textContent=\'' + (usuario.iniciais || '??') + '\'">';
+  } else {
+    avatar.textContent = usuario.iniciais || '??';
+  }
 
   document.getElementById('logado-nome').textContent  = usuario.nome;
   document.getElementById('logado-cargo').textContent = ROLES[usuario.role] || usuario.role;
