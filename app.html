@@ -83,6 +83,12 @@ body {
 /* Espaçamentos: padding 20px 72px, gap 11px, align-items stretch */
 
 /* ── NAV LATERAL — gerenciada por shared/exp-nav.css + shared/exp-nav.js ── */
+/* Timer: centralizado sobre a nav (72px padding + 66px nav / 2 - 23px metade do widget) */
+#exp-timer-widget {
+  left:   calc(72px + (66px / 2) - 23px) !important;
+  bottom: 34px !important;
+  z-index: 9998 !important;
+}
 
 /* ── ÁREA PRINCIPAL ──────────────────────────────────────── */
 #app-main {
@@ -115,7 +121,7 @@ body {
 /* ── SCROLL BODY ─────────────────────────────────────────── */
 #app-body {
   flex: 1; overflow-y: auto;
-  padding: 20px 72px;
+  padding: 16px 18px 20px;   /* alinhado com #app-topbar (18px lateral) */
 }
 #app-body::-webkit-scrollbar { width: 4px; }
 #app-body::-webkit-scrollbar-thumb { background: var(--cinza); border-radius: 2px; }
@@ -329,22 +335,32 @@ body {
 [data-theme="dark"] .prio-hub-card.p5,
 [data-theme="dark"] .prio-hub-card.p6 { background: rgba(184,76,58,.14); }
 
-.prio-hub-head { display: flex; align-items: flex-start; gap: 8px; }
-.prio-hub-num {
-  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 800; margin-top: 1px;
-}
-/* Números com cores sólidas */
-.prio-hub-card.p1 .prio-hub-num { background: var(--verde);     color: #fff; }
-.prio-hub-card.p2 .prio-hub-num { background: var(--azul);      color: #fff; }
-.prio-hub-card.p3 .prio-hub-num { background: var(--ouro);      color: #fff; }
-.prio-hub-card.p4 .prio-hub-num,
-.prio-hub-card.p5 .prio-hub-num,
-.prio-hub-card.p6 .prio-hub-num { background: var(--terracota); color: #fff; }
+.prio-hub-head { display: flex; align-items: flex-start; }
+.prio-hub-num  { display: none; } /* número removido — cor da borda já indica prioridade */
 
 .prio-hub-body  { flex: 1; min-width: 0; }
-.prio-hub-nome  { font-size: 11px; font-weight: 700; line-height: 1.35; margin-bottom: 2px; }
+.prio-hub-nome  { font-size: 12px; font-weight: 700; line-height: 1.4; margin-bottom: 3px; }
+.prio-hub-etapa { font-size: 10px; color: #888; margin-top: 2px; }
+[data-theme="dark"] .prio-hub-etapa { color: #6B6860; }
+/* Concluída — sem cor, acinzentada */
+.prio-hub-card.prio-done {
+  background: var(--off) !important;
+  border-left-color: var(--cinza) !important;
+  opacity: .55;
+}
+[data-theme="dark"] .prio-hub-card.prio-done { background: rgba(255,255,255,.03) !important; }
+.prio-hub-card.prio-done .prio-hub-nome { text-decoration: line-through; color: #aaa; }
+/* Botão de check */
+.prio-hub-check {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid rgba(0,0,0,.2); background: none;
+  color: rgba(0,0,0,.3); font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s, border-color .12s, color .12s;
+  margin-left: 8px; margin-top: 2px;
+}
+.prio-hub-check:hover { background: var(--verde); border-color: var(--verde); color: #fff; }
+[data-theme="dark"] .prio-hub-check { border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.3); }
 .prio-hub-sub   { font-size: var(--text-sub); color: #888; margin-bottom: 3px;
                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prio-hub-prazo {
@@ -615,6 +631,32 @@ body {
 .shell-btn.primary:hover { opacity: .92; }
 
 /* feedback-popover — estilos canônicos em exp-design-system.css */
+
+/* ── Botão de feedback (ícone ao lado esquerdo do user chip) ── */
+#feedback-icon-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--cinza2);
+  border-radius: 8px;
+  background: var(--off);
+  color: #999;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: border-color .12s, color .12s, background .12s;
+  position: relative;
+}
+#feedback-icon-btn:hover { border-color: var(--grafite); color: var(--grafite); background: #fff; }
+[data-theme="dark"] #feedback-icon-btn { background: #252523; border-color: #2E2D2B; color: #6B6860; }
+[data-theme="dark"] #feedback-icon-btn:hover { border-color: #8C8A85; color: #C8C3BA; background: #2E2D2B; }
+
+/* Popover do feedback — abre para baixo */
+#feedback-icon-btn .nav-feedback-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  bottom: auto;
+  width: 300px;
+}
 
 .shell-btn.warn {
   border-color: rgba(196, 154, 39, .45);
@@ -1226,6 +1268,30 @@ body {
         </div>
       </div>
 
+      <!-- Botão de feedback — abre popover para baixo -->
+      <div style="position:relative;flex-shrink:0">
+        <button id="feedback-icon-btn" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          <div class="nav-feedback-pop" id="nav-feedback-pop">
+            <div class="nav-feedback-title">Problema ou sugestão</div>
+            <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+            <div class="shell-field">
+              <label for="tool-feedback-type">Tipo</label>
+              <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
+            </div>
+            <div class="shell-field">
+              <label for="tool-feedback-message">Mensagem</label>
+              <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o problema ou sugestão."></textarea>
+            </div>
+            <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+            <div class="nav-feedback-actions">
+              <button type="button" class="shell-btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
+              <button type="button" class="shell-btn primary" onclick="enviarToolFeedback()">Enviar</button>
+            </div>
+          </div>
+        </button>
+      </div>
+
       <!-- user chip + dropdown (mantidos para os modais existentes) -->
       <div class="user-pill-wrap" style="flex-shrink:0;position:relative">
         <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
@@ -1246,28 +1312,6 @@ body {
             <span class="term-state-hover">ver termo →</span>
           </div>
           <div class="user-dropdown-note" id="user-dropdown-note"></div>
-          <div class="user-dropdown-sep"></div>
-          <!-- Feedback inline -->
-          <div class="nav-feedback-wrap" id="nav-feedback-wrap" style="padding:0 4px 4px">
-            <button type="button" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:7px 10px;font-family:var(--font-ui);font-size:12px;color:#777;border-radius:var(--radius-btn)" onclick="toggleToolFeedbackPopover(event)">Reportar problema / sugestão</button>
-            <div class="nav-feedback-pop" id="nav-feedback-pop" style="left:0;right:0;top:auto;bottom:calc(100% + 4px)">
-              <div class="nav-feedback-title">Problema ou sugestão</div>
-              <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-              <div class="shell-field">
-                <label for="tool-feedback-type">Tipo</label>
-                <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
-              </div>
-              <div class="shell-field">
-                <label for="tool-feedback-message">Mensagem</label>
-                <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o problema ou sugestão."></textarea>
-              </div>
-              <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-              <div class="nav-feedback-actions">
-                <button type="button" class="shell-btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
-                <button type="button" class="shell-btn primary" onclick="enviarToolFeedback()">Enviar</button>
-              </div>
-            </div>
-          </div>
           <div class="user-dropdown-sep"></div>
           <button onclick="sair()">Sair do sistema</button>
           <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
@@ -1938,11 +1982,11 @@ function toggleUserMenu() {
 }
 document.addEventListener('click', e => {
   const wrap = document.querySelector('.user-pill-wrap');
-  const feedbackWrap = document.getElementById('nav-feedback-wrap');
+  const feedbackBtn = document.getElementById('feedback-icon-btn');
   if (wrap && !wrap.contains(e.target)) {
     document.getElementById('user-dropdown')?.classList.remove('open');
   }
-  if (feedbackWrap && !feedbackWrap.contains(e.target)) {
+  if (feedbackBtn && !feedbackBtn.contains(e.target)) {
     document.getElementById('nav-feedback-pop')?.classList.remove('open');
   }
 });
@@ -3038,37 +3082,52 @@ function renderEventsSection(eventos) {
 
 function renderPriosSection(prios) {
   const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
-  const lbl = `Prioridades${prios.length ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">${prios.length}</span>` : ''}`;
-  if (!prios.length) return `
+  const pendentes  = prios.filter(p => !p.concluida);
+  const concluidas = prios.filter(p =>  p.concluida);
+  const total = prios.length;
+  const lbl = `Prioridades${total ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">${pendentes.length} em aberto</span>` : ''}`;
+
+  if (!total) return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
       <div class="dash-empty" style="border:1px solid var(--cinza2);border-radius:var(--radius-card)">Sem prioridades definidas</div>
     </div>`;
+
+  function buildCard(pr, idx, done) {
+    const ord  = pr.ordem || (idx + 1);
+    const cls  = done ? 'prio-done' : (NUM_CLS[Math.min(ord, 6)] || 'p6');
+    const prazo = !done && _fmtPrazo(pr.prazo_texto);
+    const nome  = pr.produtos?.oportunidades
+      ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
+      : pr.produtos?.nome || '—';
+    const etapas = (pr.produtos?.etapas || []).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+    const etapa  = etapas.find(e => e.status === 'em_andamento') || etapas.find(e => e.status !== 'concluida');
+    const coment = pr.comentario || '';
+    const prazoHtml = prazo ? `<span class="prio-hub-prazo ${prazo.cls || ''}">📅 ${prazo.label}</span>` : '';
+    const checkHtml = !done
+      ? `<button class="prio-hub-check" title="Concluir prioridade"
+           onclick="event.stopPropagation();checkPrioHub('${pr.id}',this)">✓</button>`
+      : `<span style="font-size:9px;font-weight:700;color:#2D9E6B;opacity:.6">✓</span>`;
+    return `
+      <div class="prio-hub-card ${cls}" onclick="location.href='gestao.html'">
+        <div class="prio-hub-head">
+          <div class="prio-hub-body">
+            <div class="prio-hub-nome">${escHtml(nome)}</div>
+            ${etapa ? `<div class="prio-hub-etapa">↳ ${escHtml(etapa.nome)}</div>` : ''}
+            ${coment ? `<div class="prio-hub-sub">${escHtml(coment)}</div>` : ''}
+            ${prazoHtml ? `<div style="margin-top:5px">${prazoHtml}</div>` : ''}
+          </div>
+          ${checkHtml}
+        </div>
+      </div>`;
+  }
+
   return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
-      ${prios.map((pr, idx) => {
-          const ord  = pr.ordem || (idx + 1);
-          const cls  = NUM_CLS[Math.min(ord, 6)] || 'p6';
-          const prazo = _fmtPrazo(pr.prazo_texto);
-          const nome  = pr.produtos?.oportunidades
-            ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
-            : pr.produtos?.nome || '—';
-          const sub = pr.etapa_nome || pr.comentario || '';
-          const prazoHtml = prazo
-            ? `<div style="margin-top:4px"><span class="prio-hub-prazo ${prazo.cls || ''}">📅 ${prazo.label}</span></div>` : '';
-          return `
-            <div class="prio-hub-card ${cls}" onclick="location.href='gestao.html'">
-              <div class="prio-hub-head">
-                <div class="prio-hub-num">${ord}</div>
-                <div class="prio-hub-body">
-                  <div class="prio-hub-nome">${escHtml(nome)}</div>
-                  ${sub ? `<div class="prio-hub-sub">${escHtml(sub)}</div>` : ''}
-                  ${prazoHtml}
-                </div>
-              </div>
-            </div>`;
-        }).join('')}
+      ${pendentes.map((pr,i) => buildCard(pr,i,false)).join('')}
+      ${concluidas.length ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc;margin:10px 0 5px">Concluídas</div>` : ''}
+      ${concluidas.map((pr,i) => buildCard(pr,i,true)).join('')}
     </div>`;
 }
 
@@ -3153,10 +3212,10 @@ async function loadDashboard(usuario) {
       .gte('data_lancamento', start)
       .lte('data_lancamento', end),
 
-    // Minhas tarefas pendentes
+    // Minhas tarefas pendentes — próprias (usuario_id sem atribuição) + atribuídas a mim
     sb.from('tarefas_livres')
       .select('id, descricao, data_limite, concluida, produto_id, produtos(nome)')
-      .eq('atribuido_para', usuario.id)
+      .or(`and(usuario_id.eq.${usuario.id},atribuido_para.is.null),atribuido_para.eq.${usuario.id}`)
       .eq('concluida', false)
       .order('data_limite', { ascending: true, nullsFirst: false }),
 
@@ -3176,12 +3235,12 @@ async function loadDashboard(usuario) {
       .order('inicio')
       .limit(8),
 
-    // Prioridades — todas
+    // Prioridades — todas (inclusive concluídas, ordenadas: pendentes primeiro)
     sb.from('prioridades_usuario')
-      .select('id, ordem, prazo_texto, comentario, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)))')
+      .select('id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))')
       .eq('usuario_id', usuario.id)
-      .eq('concluida', false)
-      .order('ordem'),
+      .order('concluida', { ascending: true })
+      .order('ordem', { ascending: true }),
 
     // Eventos desta semana para o mini-calendário
     sb.from('calendar_events')
@@ -3217,6 +3276,24 @@ async function loadDashboard(usuario) {
     taskDays,
   };
   renderDashboard(window._dashData);
+}
+
+async function checkPrioHub(prioId, btn) {
+  if (btn) { btn.disabled = true; btn.style.opacity = '.4'; }
+  const { error } = await sb.from('prioridades_usuario')
+    .update({ concluida: true, concluida_em: new Date().toISOString() })
+    .eq('id', prioId);
+  if (error) { if (btn) { btn.disabled = false; btn.style.opacity = ''; } return; }
+  // Move o item de pendentes → concluídas em memória e re-renderiza
+  if (window._dashData?.prios) {
+    window._dashData.prios = window._dashData.prios.map(p =>
+      String(p.id) === String(prioId) ? { ...p, concluida: true, concluida_em: new Date().toISOString() } : p
+    );
+    const colPrio = renderPriosSection(window._dashData.prios);
+    const dashEl  = document.getElementById('app-dashboard');
+    if (dashEl) dashEl.firstElementChild.innerHTML = colPrio.match(/<div class="dash-sec">([\s\S]*)<\/div>\s*$/)?.[0] || colPrio;
+    renderDashboard(window._dashData);
+  }
 }
 
 async function toggleDashTask(id, concluida) {
