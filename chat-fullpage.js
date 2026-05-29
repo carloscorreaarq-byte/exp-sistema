@@ -145,16 +145,7 @@
         var btn = document.getElementById('fp-status-btn');
         if (pop && !pop.contains(e.target) && btn && !btn.contains(e.target)) closeStatusPop();
       }
-      /* Fechar notif panel clicando fora */
-      if (notifPanelOpen) {
-        var np  = document.getElementById('fp-notif-panel');
-        var nb  = document.getElementById('fp-nav-bell');
-        if (np && !np.contains(e.target) && nb && !nb.contains(e.target)) {
-          notifPanelOpen = false;
-          np.style.display = 'none';
-          nb.classList.remove('active');
-        }
-      }
+      /* Fechar notif panel — gerenciado pelo AppNotif via outside-click */
     });
 
     /* Colar imagem */
@@ -1998,115 +1989,36 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════
-     NOTIFICAÇÕES
+     NOTIFICAÇÕES — delegado ao AppNotif global (shared/app-notif.js)
   ═══════════════════════════════════════════════════════════════════ */
-  var notifCache     = [];
-  var notifPanelOpen = false;
 
   function initNotif() {
-    loadNotif();
-    /* Realtime: novas notificações chegam */
-    try {
-      sb.channel('fp-notif-' + user.auth_id)
-        .on('postgres_changes', { event:'INSERT', schema:'public', table:'notificacoes',
-          filter: 'usuario_id=eq.' + (user.id || user.app_user_id) }, function(payload) {
-          notifCache.unshift(payload.new);
-          if (notifCache.length > 20) notifCache = notifCache.slice(0, 20);
-          updateNotifBadge();
-          if (notifPanelOpen) renderNotifPanel();
-        })
-        .subscribe();
-    } catch(e) {}
-  }
-
-  function loadNotif() {
-    var uid = user.id || user.app_user_id;
-    if (!uid) return;
-    sb.from('notificacoes')
-      .select('*').eq('usuario_id', uid).is('encerrado_em', null)
-      .order('created_at', { ascending:false }).limit(20)
-      .then(function(r) {
-        notifCache = r.data || [];
-        updateNotifBadge();
-        if (notifPanelOpen) renderNotifPanel();
-      });
-  }
-
-  function updateNotifBadge() {
-    var novas = notifCache.filter(function(n){ return !n.lido_em; }).length;
-    var $badge = document.getElementById('fp-notif-badge');
-    if (!$badge) return;
-    $badge.textContent  = novas > 9 ? '9+' : String(novas);
-    $badge.style.display = novas > 0 ? 'flex' : 'none';
+    AppNotif.init({ userId: user.id || user.app_user_id });
   }
 
   function toggleNotifPanel() {
-    notifPanelOpen = !notifPanelOpen;
-    var $panel = document.getElementById('fp-notif-panel');
+    var $panel = document.getElementById('notif-panel');
     var $btn   = document.getElementById('fp-nav-bell');
     if (!$panel || !$btn) return;
-
-    if (notifPanelOpen) {
-      $panel.style.display = 'flex';
+    var willOpen = $panel.style.display === 'none' || !$panel.style.display;
+    _appNotifToggle();
+    if (willOpen) {
+      $panel.style.display = 'flex'; // override block→flex para layout do chat
       var rect   = $btn.getBoundingClientRect();
       var panelH = $panel.offsetHeight || 360;
-      /* alinha o fundo do painel ao fundo do botão, sobe para cima */
-      var topPos = Math.max(16, rect.bottom - panelH);
-      $panel.style.top  = topPos + 'px';
+      $panel.style.top  = Math.max(16, rect.bottom - panelH) + 'px';
       $panel.style.left = (rect.right + 8) + 'px';
-      renderNotifPanel();
-      /* marcar como lidas */
-      markNotifsRead();
+      $btn.classList.add('active');
     } else {
-      $panel.style.display = 'none';
+      $btn.classList.remove('active');
     }
-    if ($btn) $btn.classList.toggle('active', notifPanelOpen);
   }
 
-  function markNotifsRead() {
-    var uid = user.id || user.app_user_id;
-    var unread = notifCache.filter(function(n){ return !n.lido_em; });
-    if (!unread.length) return;
-    var ids = unread.map(function(n){ return n.id; });
-    sb.from('notificacoes').update({ lido_em: new Date().toISOString() })
-      .in('id', ids)
-      .then(function() {
-        notifCache.forEach(function(n){ if (!n.lido_em) n.lido_em = new Date().toISOString(); });
-        updateNotifBadge();
-      });
+  function encerrarNotif(id) {
+    AppNotif._encerrarNotif(id);
   }
 
-  function renderNotifPanel() {
-    var $lista = document.getElementById('fp-notif-lista');
-    if (!$lista) return;
-
-    if (!notifCache.length) {
-      $lista.innerHTML = '<div class="fp-notif-empty">Nenhuma notificação pendente ✓</div>';
-      return;
-    }
-
-    var icons = { mencao:'@', tarefa:'☑', revisao:'📋', prancha:'🖼', lembrete:'📢' };
-    var html = '<div class="fp-notif-sec">Notificações (' + notifCache.length + ')</div>';
-    html += notifCache.map(function(n) {
-      var nova  = !n.lido_em;
-      var dt    = new Date(n.created_at);
-      var dtStr = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' +
-                  dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      var icon  = icons[n.tipo] || '🔔';
-      return '<div class="fp-notif-item' + (nova?' nova':'') + '">' +
-        '<span class="fp-notif-icon">' + icon + '</span>' +
-        '<div class="fp-notif-body">' +
-          '<div class="fp-notif-titulo">' + escHtml(n.titulo||'') + '</div>' +
-          (n.corpo ? '<div class="fp-notif-corpo">' + escHtml(n.corpo) + '</div>' : '') +
-          '<div class="fp-notif-ts">' + escHtml(dtStr) + (n.criado_por_nome ? ' · ' + escHtml(n.criado_por_nome) : '') + '</div>' +
-        '</div>' +
-        '<button class="fp-notif-enc" onclick="fpChat.encerrarNotif(\'' + escHtml(String(n.id)) + '\')" title="Encerrar">✓</button>' +
-        '</div>';
-    }).join('');
-
-    $lista.innerHTML = html;
-  }
-
+  // ── código legado removido — mantido temporariamente para referência ──
   function checkPrio(prioId) {
     sb.from('prioridades_usuario')
       .update({ concluida: true, concluida_em: new Date().toISOString() })
@@ -2117,15 +2029,6 @@
         prioData   = null;
         var $b = document.getElementById('fp-prio-banner');
         if ($b) $b.style.display = 'none';
-      });
-  }
-
-  function encerrarNotif(id) {
-    sb.from('notificacoes').update({ encerrado_em: new Date().toISOString() }).eq('id', id)
-      .then(function() {
-        notifCache = notifCache.filter(function(n){ return String(n.id) !== String(id); });
-        updateNotifBadge();
-        renderNotifPanel();
       });
   }
 
