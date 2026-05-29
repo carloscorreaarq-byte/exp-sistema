@@ -1694,7 +1694,7 @@
     /* busca dentro da conversa */
     toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev,
     /* tarefas */
-    toggleTasksPanel, checkTask, addTask, openAssignDrop, taskDescInput, _assignTo: window._assignTo,
+    toggleTasksPanel, checkTask, addTask, openAssignDrop, taskDescInput, toggleDelegadas, _assignTo: window._assignTo,
     /* prioridade */
     checkPrio,
     /* prioridade / projeto */
@@ -1708,8 +1708,10 @@
   /* ═══════════════════════════════════════════════════════════════════
      PAINEL DE TAREFAS
   ═══════════════════════════════════════════════════════════════════ */
-  var tasksPanelOpen = false;
-  var tasksCache     = [];
+  var tasksPanelOpen      = false;
+  var tasksCache          = [];
+  var delegadasCache      = [];
+  var delegadasExpanded   = false;
 
   function toggleTasksPanel() {
     tasksPanelOpen = !tasksPanelOpen;
@@ -1728,58 +1730,126 @@
     var $list = document.getElementById('fp-tasks-list');
     if ($list) $list.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
 
+    var cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+    var cutoffISO = cutoff.toISOString();
+
     Promise.all([
       sb.from('tarefas_livres').select('*').eq('usuario_id', uid).is('atribuido_para', null).eq('concluida', false),
-      sb.from('tarefas_livres').select('*').eq('atribuido_para', uid).eq('concluida', false)
+      sb.from('tarefas_livres').select('*').eq('atribuido_para', uid).eq('concluida', false),
+      /* Atribuídas por mim para outros */
+      sb.from('tarefas_livres').select('*').eq('criado_por', uid).not('atribuido_para', 'is', null)
     ]).then(function(res) {
       var proprias  = res[0].data || [];
       var recebidas = res[1].data || [];
+      var delegadas = (res[2].data || []).filter(function(t) {
+        if (!t.atribuido_para || t.atribuido_para === uid) return false;
+        if (!t.concluida) return true;
+        return (t.updated_at || t.created_at || '') >= cutoffISO;
+      });
+
       var todas = proprias.concat(recebidas.filter(function(r) {
         return !proprias.find(function(p) { return p.id === r.id; });
       }));
-      todas.sort(function(a, b) {
+      var ordenar = function(a, b) {
+        if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
         if (a.data_limite && b.data_limite) return a.data_limite.localeCompare(b.data_limite);
         if (a.data_limite) return -1;
         if (b.data_limite) return 1;
         return (b.created_at || '').localeCompare(a.created_at || '');
-      });
-      tasksCache = todas;
-      renderTasks(todas);
+      };
+      todas.sort(ordenar);
+      delegadas.sort(ordenar);
+
+      tasksCache     = todas;
+      delegadasCache = delegadas;
+      renderTasks(todas, delegadas);
     }).catch(function() {
       var $list = document.getElementById('fp-tasks-list');
       if ($list) $list.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center">Erro ao carregar tarefas.</div>';
     });
   }
 
-  function renderTasks(tasks) {
+  function renderTasks(tasks, delegadas) {
     var $list = document.getElementById('fp-tasks-list');
     if (!$list) return;
-    if (!tasks.length) {
-      $list.innerHTML = '<div class="fp-empty" style="padding:24px;text-align:center">Nenhuma tarefa pendente ✓</div>';
-      return;
-    }
+    delegadas = delegadas || delegadasCache || [];
+
     var hoje = new Date().toISOString().split('T')[0];
-    var html = '<div class="fp-task-section">Pendentes — ' + tasks.length + '</div>';
-    tasks.forEach(function(t) {
-      var vencida = t.data_limite && t.data_limite < hoje;
+
+    function taskPrazoHtml(t) {
+      if (!t.data_limite) return '';
+      var vencida = t.data_limite < hoje;
       var ehHoje  = t.data_limite === hoje;
-      var prazoHtml = '';
-      if (t.data_limite) {
-        var cls = vencida ? 'vencida' : ehHoje ? 'hoje' : '';
-        var dt  = new Date(t.data_limite + 'T12:00:00');
-        var dtFmt = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
-        prazoHtml = '<span class="fp-task-prazo ' + cls + '">' + dtFmt + (vencida?' ⚠':'') + '</span>';
+      var cls = vencida ? 'vencida' : ehHoje ? 'hoje' : '';
+      var dt  = new Date(t.data_limite + 'T12:00:00');
+      var dtFmt = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+      return '<span class="fp-task-prazo ' + cls + '">' + escHtml(dtFmt) + (vencida?' ⚠':'') + '</span>';
+    }
+
+    function tipoHtml(t) {
+      return t.tipo ? '<span style="font-size:9px;color:#bbb;text-transform:capitalize">' + escHtml(t.tipo) + '</span>' : '';
+    }
+
+    var html = '';
+
+    /* ── Pendentes ── */
+    if (!tasks.length) {
+      html += '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma tarefa pendente ✓</div>';
+    } else {
+      html += '<div class="fp-task-section">Pendentes — ' + tasks.length + '</div>';
+      tasks.forEach(function(t) {
+        html += '<div class="fp-task-item">' +
+          '<div class="fp-task-check" onclick="fpChat.checkTask(event,\'' + escHtml(String(t.id)) + '\')" title="Concluir"></div>' +
+          '<div class="fp-task-body">' +
+            '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
+            '<div class="fp-task-meta">' + taskPrazoHtml(t) + tipoHtml(t) + '</div>' +
+          '</div>' +
+          '</div>';
+      });
+    }
+
+    /* ── Atribuídas (recolhível) ── */
+    if (delegadas.length) {
+      var pendD    = delegadas.filter(function(t){ return !t.concluida; });
+      var conclD   = delegadas.filter(function(t){ return  t.concluida; });
+      var labelBtn = delegadasExpanded ? '▾ Atribuídas — ' + delegadas.length : '▶ Ver atribuídas (' + delegadas.length + ')';
+
+      html += '<button class="fp-task-section fp-delegadas-toggle" onclick="fpChat.toggleDelegadas()" style="cursor:pointer;width:100%;text-align:left;border:none;background:none;font-family:Raleway,sans-serif">' +
+        labelBtn + '</button>';
+
+      if (delegadasExpanded) {
+        delegadas.forEach(function(t) {
+          var para = allMembers.find(function(m){ return m.id === t.atribuido_para || m.auth_id === t.atribuido_para; });
+          var paraNome = para ? firstName(para.nome) : '?';
+          var paraCor  = para ? (para.cor || '#888') : '#888';
+          var paraIni  = para ? (para.iniciais || paraNome.substring(0,2).toUpperCase()) : '?';
+
+          var statusHtml = t.concluida
+            ? '<span style="font-size:9px;font-weight:600;color:#2D9E6B;background:#EAF5EE;padding:1px 6px;border-radius:4px">Concluída</span>'
+            : '<span style="font-size:9px;font-weight:600;color:#888;background:var(--off,#F7F6F3);padding:1px 6px;border-radius:4px;border:1px solid var(--cinza2,#ECEAE4)">Pendente</span>';
+
+          html += '<div class="fp-task-item fp-task-delegada' + (t.concluida?' fp-task-done':'') + '">' +
+            /* avatar de quem recebeu */
+            '<div style="width:20px;height:20px;border-radius:50%;background:' + escHtml(paraCor) + ';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:\'DM Mono\',monospace">' + escHtml(paraIni) + '</div>' +
+            '<div class="fp-task-body">' +
+              '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
+              '<div class="fp-task-meta">' +
+                '<span style="font-size:10px;color:#888">para ' + escHtml(paraNome) + '</span>' +
+                taskPrazoHtml(t) +
+                statusHtml +
+              '</div>' +
+            '</div>' +
+            '</div>';
+        });
       }
-      var tipoHtml = t.tipo ? '<span style="font-size:9px;color:#bbb;text-transform:capitalize">' + escHtml(t.tipo) + '</span>' : '';
-      html += '<div class="fp-task-item">' +
-        '<div class="fp-task-check" onclick="fpChat.checkTask(event,\'' + escHtml(String(t.id)) + '\')" title="Concluir"></div>' +
-        '<div class="fp-task-body">' +
-          '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
-          '<div class="fp-task-meta">' + prazoHtml + tipoHtml + '</div>' +
-        '</div>' +
-        '</div>';
-    });
+    }
+
     $list.innerHTML = html;
+  }
+
+  function toggleDelegadas() {
+    delegadasExpanded = !delegadasExpanded;
+    renderTasks(tasksCache, delegadasCache);
   }
 
   function taskDescInput(el) {

@@ -6232,19 +6232,7 @@ async function toggleTarefa(id, atual) {
   await sb.from('tarefas_livres').update({
     concluida: !atual, concluida_em: atual ? null : new Date().toISOString()
   }).eq('id', id);
-  // Atualiza badge do sino sincronizando tarefas ativas
-  if (!atual) {
-    // Tarefa sendo concluída: remove do cache do sino
-    G._tarefasParaSino = (G._tarefasParaSino || []).filter(t => t.id !== id);
-  } else {
-    // Tarefa sendo reaberta: recarrega do banco
-    const { data } = await sb.from('tarefas_livres')
-      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
-      .or(`atribuido_para.eq.${G.usuario.id},and(usuario_id.eq.${G.usuario.id},atribuido_para.is.null)`)
-      .eq('concluida', false).order('created_at', { ascending: false });
-    G._tarefasParaSino = data || [];
-  }
-  _syncTarefasSinoComputed();
+  AppNotif.refreshTarefas();
   carregarTarefas();
 }
 
@@ -16739,8 +16727,7 @@ const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
 const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,' ') + "'";
 
-// ── Estado (notifs gerenciados pelo AppNotif) ─────────────────
-G._tarefasParaSino = [];
+// ── Estado (notifs e tarefas gerenciados pelo AppNotif) ───────
 
 // ── Push Desktop — registro do Service Worker ─────────────────────────
 const _VAPID_PUB = 'BCRHUrgL16XzJCyEPvkujum8zkDiRpoLbpd5NRUmeeC8wRJM9GvMxxiNkoCRUWokj3JJmIl6ucciYUz_y-n7UK0';
@@ -16817,58 +16804,11 @@ async function criarNotificacao(usuarioId, tipo, titulo, corpo, link = {}) {
 //   SININHO — delegado ao AppNotif global (shared/app-notif.js)
 // ══════════════════════════════════════════════════════════════
 
-// ── Inicia o bell: carrega tarefas como seção computada + inicia AppNotif ──
+// ── Inicia o bell global (AppNotif carrega tudo: notifs + tarefas + CRM) ──
 async function iniciarNotificacoes() {
-  await _carregarTarefasSino();
   await AppNotif.init({ userId: G.usuario.id });
   // Ouve cliques em notificações para navegação específica deste módulo
   window.addEventListener('exp:notif-open', e => _onNotifOpen(e.detail));
-}
-
-// ── Carrega tarefas ativas e registra como seção computada ────
-async function _carregarTarefasSino() {
-  const uid = G.usuario.id;
-  const { data: tarefas } = await sb.from('tarefas_livres')
-    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
-    .or(`atribuido_para.eq.${uid},and(usuario_id.eq.${uid},atribuido_para.is.null)`)
-    .eq('concluida', false)
-    .order('created_at', { ascending: false });
-
-  G._tarefasParaSino = tarefas || [];
-  _syncTarefasSinoComputed();
-}
-
-// ── Sincroniza G._tarefasParaSino → AppNotif seção "tarefas" ──
-function _syncTarefasSinoComputed() {
-  const hoje = new Date().toISOString().split('T')[0];
-  const items = (G._tarefasParaSino || []).map(t => {
-    const cli   = t.produtos?.oportunidades?.clientes?.nome || '';
-    const proj  = t.produtos?.oportunidades?.projeto || '';
-    const prod  = t.produtos?.nome || '';
-    const etapa = t.etapas?.nome || '';
-    const partes = [
-      cli && proj ? `${cli} · ${proj}` : (proj || cli), prod, etapa
-    ].filter(Boolean);
-    const ctx     = partes.join(' › ');
-    const vencida = t.data_limite && t.data_limite < hoje;
-    const ehHoje  = t.data_limite === hoje;
-    const prazo   = t.data_limite
-      ? ` · ${fmtDate(t.data_limite)}${vencida ? ' ⚠' : ''}` : '';
-    const criador = t.criado_por && t.criado_por !== G.usuario.id
-      ? G.todosUsuarios?.find(u => u.id === t.criado_por) : null;
-    const de = criador ? ` · de ${criador.nome.split(' ')[0]}` : '';
-
-    return {
-      key:    'tarefa_' + t.id,
-      icon:   '☑',
-      titulo: _escN(t.descricao),
-      corpo:  (ctx + prazo + de) || undefined,
-      onClick:  () => irParaTarefas(),
-      onAction: { label: '✓', fn: () => concluirTarefaSino(t.id) },
-    };
-  });
-
-  AppNotif.setComputedSection('tarefas', { label: `Tarefas ativas`, items });
 }
 
 // ── Conclui tarefa direto do painel ───────────────────────────
@@ -16876,8 +16816,7 @@ async function concluirTarefaSino(id) {
   await sb.from('tarefas_livres').update({
     concluida: true, concluida_em: new Date().toISOString()
   }).eq('id', id);
-  G._tarefasParaSino = (G._tarefasParaSino || []).filter(t => t.id !== id);
-  _syncTarefasSinoComputed();
+  AppNotif.refreshTarefas();
   carregarTarefas();
 }
 
