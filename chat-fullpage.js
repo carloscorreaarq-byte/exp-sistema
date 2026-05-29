@@ -2576,34 +2576,46 @@
 
   function openProjectOverlay(produtoId) {
     hidePrioBanner();
+    if (!produtoId) return;
+
     var $overlay = document.getElementById('fp-proj-overlay');
-    var $body    = document.getElementById('fp-proj-card-body');
-    var $lbl     = document.getElementById('fp-proj-card-label');
-    var $sub     = document.getElementById('fp-proj-card-sub');
     if (!$overlay) return;
     $overlay.style.display = 'flex';
-    if ($lbl)  $lbl.textContent  = 'Carregando…';
-    if ($sub)  $sub.textContent  = '';
-    if ($body) $body.innerHTML   = '<div class="fp-loading" style="padding:32px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+
+    /* re-busca os elementos a cada abertura (overlay pode ter sido re-renderizado) */
+    function $el(id) { return document.getElementById(id); }
+    $el('fp-proj-card-label') && ($el('fp-proj-card-label').textContent = 'Carregando…');
+    $el('fp-proj-card-sub')   && ($el('fp-proj-card-sub').textContent   = '');
+    $el('fp-proj-card-body')  && ($el('fp-proj-card-body').innerHTML    =
+      '<div class="fp-loading" style="padding:32px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>');
 
     sb.from('produtos')
       .select('id,nome,status,oportunidades(projeto,cidade,area_total,tipologia,clientes(nome,uf)),etapas(nome,status,ordem)')
       .eq('id', produtoId)
-      .single()
+      .maybeSingle()                       /* não lança erro se não encontrar */
       .then(function(r) {
+        var body = $el('fp-proj-card-body');
+        var lbl  = $el('fp-proj-card-label');
+        var sub  = $el('fp-proj-card-sub');
+
         if (r.error || !r.data) {
-          if ($body) $body.innerHTML = '<div class="fp-empty">Projeto não encontrado.</div>';
+          if (body) body.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center;font-size:12px;color:#aaa">Projeto não encontrado.</div>';
           return;
         }
         var prod = r.data;
-        var opp  = prod.oportunidades || {};
-        var cli  = opp.clientes || {};
-        var titulo = [cli.nome, opp.projeto].filter(Boolean).join(' · ') || prod.nome;
-        if ($lbl) $lbl.textContent = titulo;
-        if ($sub) $sub.textContent = prod.nome || '';
+
+        /* oportunidades pode ser objeto (belongsTo) ou array[0] (hasMany) */
+        var opp = Array.isArray(prod.oportunidades)
+          ? (prod.oportunidades[0] || {})
+          : (prod.oportunidades || {});
+        var cli = (Array.isArray(opp.clientes) ? opp.clientes[0] : opp.clientes) || {};
+
+        var titulo = [cli.nome, opp.projeto].filter(Boolean).join(' · ') || prod.nome || 'Projeto';
+        if (lbl) lbl.textContent = titulo;
+        if (sub) sub.textContent = prod.nome || '';
 
         var etapas = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
-        var etapaAtual = etapas.find(function(e){return e.status==='em_andamento';});
+        var etapaAtual = etapas.find(function(e){ return e.status==='em_andamento'; });
         var etapasHtml = etapas.map(function(e) {
           var isAtual = e.status === 'em_andamento';
           var style = isAtual ? 'background:var(--ca-bg);color:var(--ca);border-color:var(--ca)' : '';
@@ -2611,26 +2623,28 @@
         }).join('');
 
         var rows = [
-          ['Cliente',  cli.nome || '—'],
-          ['Projeto',  opp.projeto || prod.nome || '—'],
-          ['Cidade',   [opp.cidade, cli.uf].filter(Boolean).join('/') || '—'],
-          ['Tipologia',opp.tipologia || '—'],
-          ['Área',     opp.area_total ? opp.area_total + ' m²' : '—'],
-          ['Etapa atual', etapaAtual ? etapaAtual.nome : '—'],
+          ['Cliente',      cli.nome || '—'],
+          ['Projeto',      opp.projeto || prod.nome || '—'],
+          ['Cidade',       [opp.cidade, cli.uf].filter(Boolean).join('/') || '—'],
+          ['Tipologia',    opp.tipologia || '—'],
+          ['Área',         opp.area_total ? opp.area_total + ' m²' : '—'],
+          ['Etapa atual',  etapaAtual ? etapaAtual.nome : '—'],
         ];
 
-        var rowsHtml = rows.map(function(r) {
+        var rowsHtml = rows.map(function(row) {
           return '<div class="fp-proj-row">' +
-            '<div class="fp-proj-row-lbl">' + escHtml(r[0]) + '</div>' +
-            '<div class="fp-proj-row-val">' + escHtml(String(r[1])) + '</div>' +
+            '<div class="fp-proj-row-lbl">' + escHtml(row[0]) + '</div>' +
+            '<div class="fp-proj-row-val">' + escHtml(String(row[1])) + '</div>' +
             '</div>';
         }).join('');
 
-        if ($body) $body.innerHTML =
-          '<div style="margin-bottom:14px">' + etapasHtml + '</div>' +
+        if (body) body.innerHTML =
+          (etapasHtml ? '<div style="margin-bottom:14px">' + etapasHtml + '</div>' : '') +
           rowsHtml;
-      }).catch(function() {
-        if ($body) $body.innerHTML = '<div class="fp-empty">Erro ao carregar projeto.</div>';
+      })
+      .catch(function(err) {
+        var body = $el('fp-proj-card-body');
+        if (body) body.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center;font-size:12px;color:#aaa">Erro ao carregar projeto.</div>';
       });
   }
 
