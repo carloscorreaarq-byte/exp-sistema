@@ -1884,15 +1884,34 @@
       .then(function(r) { if (r.count) updateTasksBadge(r.count); });
   }
 
+  /* Fecha qualquer painel expansível sem esconder a sidebar */
+  function _closeExpPanel() {
+    if (tasksPanelOpen) {
+      tasksPanelOpen = false;
+      var $t = document.getElementById('fp-tasks-panel');
+      var $b = document.getElementById('fp-nav-tasks');
+      if ($t) $t.style.display = 'none';
+      if ($b) $b.classList.remove('active');
+    }
+    if (prioPanelOpen) {
+      prioPanelOpen = false;
+      var $p  = document.getElementById('fp-prio-panel');
+      var $bp = document.getElementById('fp-nav-prio');
+      if ($p)  $p.style.display = 'none';
+      if ($bp) $bp.classList.remove('active');
+    }
+  }
+
   function toggleTasksPanel() {
-    tasksPanelOpen = !tasksPanelOpen;
-    var $sidebar = document.getElementById('fp-sidebar');
-    var $tasks   = document.getElementById('fp-tasks-panel');
-    var $btn     = document.getElementById('fp-nav-tasks');
-    if ($sidebar) $sidebar.style.display = tasksPanelOpen ? 'none' : 'flex';
-    if ($tasks)   $tasks.style.display   = tasksPanelOpen ? 'flex' : 'none';
-    if ($btn)     $btn.classList.toggle('active', tasksPanelOpen);
-    if (tasksPanelOpen) loadTasks();
+    var wasOpen = tasksPanelOpen;
+    _closeExpPanel();               /* fecha qualquer painel aberto */
+    if (wasOpen) return;            /* era eu → apenas fecha */
+    tasksPanelOpen = true;
+    var $tasks = document.getElementById('fp-tasks-panel');
+    var $btn   = document.getElementById('fp-nav-tasks');
+    if ($tasks) $tasks.style.display = 'flex';
+    if ($btn)   $btn.classList.add('active');
+    loadTasks();
   }
 
   function loadTasks() {
@@ -2140,33 +2159,21 @@
 
   function togglePrioPanel() {
     hidePrioBanner();
-    prioPanelOpen ? closePrioPanel() : openPrioPanel();
-  }
-
-  function openPrioPanel() {
+    var wasOpen = prioPanelOpen;
+    _closeExpPanel();               /* fecha qualquer painel aberto */
+    if (wasOpen) return;            /* era eu → apenas fecha */
     prioPanelOpen = true;
-    var $panel   = document.getElementById('fp-prio-panel');
-    var $sidebar = document.getElementById('fp-sidebar');
-    var $tasks   = document.getElementById('fp-tasks-panel');
-    var $btn     = document.getElementById('fp-nav-prio');
-    /* esconde sidebar (ou tasks se estiver aberto) */
-    if ($sidebar) $sidebar.style.display = 'none';
-    if ($tasks && $tasks.style.display !== 'none') $tasks.style.display = 'none';
-    if ($panel)  $panel.style.display = 'flex';
-    if ($btn)    $btn.classList.add('active');
+    var $panel = document.getElementById('fp-prio-panel');
+    var $btn   = document.getElementById('fp-nav-prio');
+    if ($panel) $panel.style.display = 'flex';
+    if ($btn)   $btn.classList.add('active');
     if (!allPrioLoaded) fetchAllPrioridades();
     else renderPrioPanel();
   }
 
-  function closePrioPanel() {
-    prioPanelOpen = false;
-    var $panel   = document.getElementById('fp-prio-panel');
-    var $sidebar = document.getElementById('fp-sidebar');
-    var $btn     = document.getElementById('fp-nav-prio');
-    if ($panel)  $panel.style.display = 'none';
-    if ($sidebar) $sidebar.style.display = 'flex';
-    if ($btn)    $btn.classList.remove('active');
-  }
+  /* mantida por compatibilidade com o botão × do painel */
+  function openPrioPanel()  { if (!prioPanelOpen) togglePrioPanel(); }
+  function closePrioPanel() { if (prioPanelOpen)  togglePrioPanel(); }
 
   function fetchAllPrioridades() {
     var uid = user.id || user.app_user_id;
