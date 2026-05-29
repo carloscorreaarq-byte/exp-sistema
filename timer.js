@@ -14,7 +14,7 @@
   var SB_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
   var TIMER_KEY   = 'exp_timer_state';
   var TIMER_KEY_PREFIX = TIMER_KEY + ':';
-  var EXPAND_SECS = 180;
+  var EXPAND_SECS = 15;
 
   /* Cores da plataforma */
   var OURO        = '#C49A27';
