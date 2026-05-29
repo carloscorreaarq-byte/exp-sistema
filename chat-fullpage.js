@@ -809,7 +809,7 @@
       var ps   = pres ? pres.status : 'offline';
       var pl   = {online:'Online',foco:'Foco',ausente:'Ausente',offline:'Offline'};
       var roleT= roleLabel[(m.role||'').toLowerCase()]||'';
-      html += '<div class="fp-member-item" onclick="fpChat.toggleMember(\''+m.auth_id+'\')">'+
+      html += '<div class="fp-member-item'+(sel?' sel':'')+'" onclick="fpChat.toggleMember(\''+m.auth_id+'\')">'+
         '<div class="fp-member-check'+(sel?' sel':'')+'"></div>'+
         '<div style="position:relative;flex-shrink:0">'+
           (m.avatar_url
