@@ -131,6 +131,7 @@
     subscribeIncoming();
     loadTeamMembers();
     initNotif();
+    initExpRoom();
 
     /* Scroll tracking */
     if ($msgs) $msgs.addEventListener('scroll', function() {
@@ -1708,7 +1709,9 @@
     /* prioridade / projeto */
     showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
     /* notificações */
-    toggleNotifPanel, encerrarNotif
+    toggleNotifPanel, encerrarNotif,
+    /* EXP Room */
+    roomClick
   };
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -2189,6 +2192,58 @@
   function closeProjectOverlay() {
     var $overlay = document.getElementById('fp-proj-overlay');
     if ($overlay) $overlay.style.display = 'none';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     EXP ROOM PRESENCE
+  ═══════════════════════════════════════════════════════════════════ */
+  var ROOM_TIMEOUT_MIN = 5;   /* minutos de "presença" visível */
+
+  function initExpRoom() {
+    checkRoomStatus();
+    setInterval(checkRoomStatus, 30000);  /* atualiza a cada 30s */
+  }
+
+  function checkRoomStatus() {
+    sb.from('exp_config')
+      .select('updated_at,value')
+      .eq('key', 'exp_room_active')
+      .maybeSingle()
+      .then(function(r) {
+        var btn = document.getElementById('fp-room-btn');
+        if (!btn) return;
+        var data = r.data;
+        if (data && data.updated_at) {
+          var mins = (Date.now() - new Date(data.updated_at).getTime()) / 60000;
+          if (mins <= ROOM_TIMEOUT_MIN) {
+            btn.classList.add('active');
+            var quem  = (data.value && data.value !== 'true') ? data.value : 'Alguém';
+            var quando = mins < 1 ? 'agora mesmo' : 'há ' + Math.floor(mins) + ' min';
+            btn.setAttribute('data-tooltip', quem + ' · ' + quando);
+            return;
+          }
+        }
+        btn.classList.remove('active');
+        btn.removeAttribute('data-tooltip');
+      }).catch(function() {});
+  }
+
+  function roomClick() {
+    var uid  = user.id || user.app_user_id;
+    var nome = (user.nome || '').split(' ')[0] || 'Alguém';
+    /* Registrar no banco */
+    sb.from('exp_config').upsert({
+      key: 'exp_room_active',
+      value: nome,
+      updated_at: new Date().toISOString(),
+      updated_by: String(uid || '')
+    }, { onConflict: 'key' }).then(function() {
+      var btn = document.getElementById('fp-room-btn');
+      if (btn) {
+        btn.classList.add('active');
+        btn.setAttribute('data-tooltip', nome + ' · agora mesmo');
+      }
+    }).catch(function() {});
   }
 
   /* toggleTheme — mesmo padrão dos outros módulos */

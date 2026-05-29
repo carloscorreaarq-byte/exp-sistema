@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="shared/app-notif.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 
@@ -2796,14 +2797,14 @@ body {
     </a>
     <!-- Notificações -->
     <div class="notif-wrap" id="notif-wrap">
-      <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notificações">
+      <button class="notif-bell" id="notif-bell-btn" onclick="_appNotifToggle()" title="Notificações">
         🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
       </button>
       <button class="notif-plus socio-only" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe" style="display:none">＋</button>
       <div class="notif-panel" id="notif-panel" style="display:none">
         <div class="notif-panel-hd">
           <span class="notif-panel-hd-t">Notificações</span>
-          <button class="notif-panel-clr" onclick="encerrarTodasNotif()">Encerrar todas ✓</button>
+          <button class="notif-panel-clr" onclick="_appNotifEncerrarTodas()">Encerrar todas ✓</button>
         </div>
         <div id="notif-lista"><div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Carregando…</div></div>
       </div>
@@ -6243,7 +6244,7 @@ async function toggleTarefa(id, atual) {
       .eq('concluida', false).order('created_at', { ascending: false });
     G._tarefasParaSino = data || [];
   }
-  _renderNotifBadge();
+  _syncTarefasSinoComputed();
   carregarTarefas();
 }
 
@@ -16738,8 +16739,8 @@ const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
 const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,' ') + "'";
 
-// ── Estado ────────────────────────────────────────────────────
-G._notifs = [];
+// ── Estado (notifs gerenciados pelo AppNotif) ─────────────────
+G._tarefasParaSino = [];
 
 // ── Push Desktop — registro do Service Worker ─────────────────────────
 const _VAPID_PUB = 'BCRHUrgL16XzJCyEPvkujum8zkDiRpoLbpd5NRUmeeC8wRJM9GvMxxiNkoCRUWokj3JJmIl6ucciYUz_y-n7UK0';
@@ -16803,6 +16804,7 @@ async function criarNotificacao(usuarioId, tipo, titulo, corpo, link = {}) {
       link_etapa_id:   link.etapa_id    || null,
       link_entrada_id: link.entrada_id  || null,
       link_revisao_id: link.revisao_id  || null,
+      modulo:          'gestao',
       criado_por:      G.usuario.id,
       criado_por_nome: G.usuario.nome,
       created_at:      new Date().toISOString(),
@@ -16811,193 +16813,90 @@ async function criarNotificacao(usuarioId, tipo, titulo, corpo, link = {}) {
   } catch(e) { console.warn('criarNotificacao:', e.message); }
 }
 
-// ── Inicia: carrega + assina realtime ─────────────────────────
+// ══════════════════════════════════════════════════════════════
+//   SININHO — delegado ao AppNotif global (shared/app-notif.js)
+// ══════════════════════════════════════════════════════════════
+
+// ── Inicia o bell: carrega tarefas como seção computada + inicia AppNotif ──
 async function iniciarNotificacoes() {
-  await carregarNotificacoes();
-  // Realtime: novas notificações chegam em tempo real
-  try {
-    sb.channel('notif-' + G.usuario.id)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'notificacoes',
-        filter: `usuario_id=eq.${G.usuario.id}`
-      }, payload => {
-        G._notifs.unshift(payload.new);
-        if(G._notifs.length > 10) G._notifs = G._notifs.slice(0, 10);
-        // Recarrega tarefas para manter o badge sincronizado
-        sb.from('tarefas_livres')
-          .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
-          .or(`atribuido_para.eq.${G.usuario.id},and(usuario_id.eq.${G.usuario.id},atribuido_para.is.null)`)
-          .eq('concluida', false)
-          .order('created_at', { ascending: false })
-          .then(({ data }) => { G._tarefasParaSino = data || []; _renderNotifBadge(); });
-        // Re-renderiza o painel se estiver aberto
-        const p = document.getElementById('notif-panel');
-        if(p && p.style.display !== 'none') renderNotifPanel();
-      })
-      .subscribe();
-  } catch(e) { /* realtime opcional */ }
+  await _carregarTarefasSino();
+  await AppNotif.init({ userId: G.usuario.id });
+  // Ouve cliques em notificações para navegação específica deste módulo
+  window.addEventListener('exp:notif-open', e => _onNotifOpen(e.detail));
 }
 
-// ── Carrega notificações não encerradas + tarefas ativas ──────
-async function carregarNotificacoes() {
+// ── Carrega tarefas ativas e registra como seção computada ────
+async function _carregarTarefasSino() {
   const uid = G.usuario.id;
-  const [{ data: notifs }, { data: tarefas }] = await Promise.all([
-    sb.from('notificacoes')
-      .select('*')
-      .eq('usuario_id', uid)
-      .is('encerrado_em', null)
-      .order('created_at', { ascending: false })
-      .limit(10),
-    sb.from('tarefas_livres')
-      .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
-      .or(`atribuido_para.eq.${uid},and(usuario_id.eq.${uid},atribuido_para.is.null)`)
-      .eq('concluida', false)
-      .order('created_at', { ascending: false })
-  ]);
-  G._notifs           = notifs  || [];
-  G._tarefasParaSino  = tarefas || [];
-  _renderNotifBadge();
+  const { data: tarefas } = await sb.from('tarefas_livres')
+    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+    .or(`atribuido_para.eq.${uid},and(usuario_id.eq.${uid},atribuido_para.is.null)`)
+    .eq('concluida', false)
+    .order('created_at', { ascending: false });
+
+  G._tarefasParaSino = tarefas || [];
+  _syncTarefasSinoComputed();
 }
 
-function _renderNotifBadge() {
-  const novas  = G._notifs.filter(n => !n.lido_em).length;
-  const ativas = (G._tarefasParaSino || []).length;
-  const total  = novas + ativas;
-  const badge  = document.getElementById('notif-badge');
-  if (!badge) return;
-  badge.textContent  = total > 9 ? '9+' : total;
-  badge.style.display = total > 0 ? 'flex' : 'none';
+// ── Sincroniza G._tarefasParaSino → AppNotif seção "tarefas" ──
+function _syncTarefasSinoComputed() {
+  const hoje = new Date().toISOString().split('T')[0];
+  const items = (G._tarefasParaSino || []).map(t => {
+    const cli   = t.produtos?.oportunidades?.clientes?.nome || '';
+    const proj  = t.produtos?.oportunidades?.projeto || '';
+    const prod  = t.produtos?.nome || '';
+    const etapa = t.etapas?.nome || '';
+    const partes = [
+      cli && proj ? `${cli} · ${proj}` : (proj || cli), prod, etapa
+    ].filter(Boolean);
+    const ctx     = partes.join(' › ');
+    const vencida = t.data_limite && t.data_limite < hoje;
+    const ehHoje  = t.data_limite === hoje;
+    const prazo   = t.data_limite
+      ? ` · ${fmtDate(t.data_limite)}${vencida ? ' ⚠' : ''}` : '';
+    const criador = t.criado_por && t.criado_por !== G.usuario.id
+      ? G.todosUsuarios?.find(u => u.id === t.criado_por) : null;
+    const de = criador ? ` · de ${criador.nome.split(' ')[0]}` : '';
+
+    return {
+      key:    'tarefa_' + t.id,
+      icon:   '☑',
+      titulo: _escN(t.descricao),
+      corpo:  (ctx + prazo + de) || undefined,
+      onClick:  () => irParaTarefas(),
+      onAction: { label: '✓', fn: () => concluirTarefaSino(t.id) },
+    };
+  });
+
+  AppNotif.setComputedSection('tarefas', { label: `Tarefas ativas`, items });
 }
 
-// ── Abre/fecha painel ─────────────────────────────────────────
-function toggleNotifPanel() {
-  const panel = document.getElementById('notif-panel');
-  if(!panel) return;
-  const open = panel.style.display !== 'none';
-  panel.style.display = open ? 'none' : 'block';
-  if(!open) renderNotifPanel();
-}
-
-// ── Renderiza lista de notificações ──────────────────────────
-function renderNotifPanel() {
-  const lista = document.getElementById('notif-lista');
-  if (!lista) return;
-
-  const notifs  = G._notifs        || [];
-  const tarefas = G._tarefasParaSino || [];
-  const hoje    = new Date().toISOString().split('T')[0];
-
-  if (!notifs.length && !tarefas.length) {
-    lista.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Nenhuma notificação ou tarefa pendente</div>';
-    return;
-  }
-
-  const _sec = (label) =>
-    `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;padding:7px 14px 4px;border-top:1px solid var(--cinza2);background:var(--off)">${label}</div>`;
-
-  let html = '';
-
-  // ── Seção 1: Notificações ──────────────────────────────────
-  if (notifs.length) {
-    const icons = { mencao:'@', tarefa:'✔', revisao:'📋', prancha:'🖼', lembrete:'📢' };
-    html += _sec(`Notificações (${notifs.length})`);
-    html += notifs.map(n => {
-      const nova  = !n.lido_em;
-      const dt    = new Date(n.created_at);
-      const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      const icon  = icons[n.tipo] || '🔔';
-      return `<div class="notif-item${nova?' nova':''}" onclick="abrirNotif(${_sqN(n.id)})">
-        <div class="notif-item-row">
-          <span class="notif-icon">${icon}</span>
-          <span class="notif-titulo">${_escN(n.titulo)}</span>
-          <button class="notif-check-btn" title="Encerrar" onclick="event.stopPropagation();encerrarNotif(${_sqN(n.id)})">✓</button>
-        </div>
-        ${n.corpo?`<div class="notif-corpo">${_escN(n.corpo)}</div>`:''}
-        <div class="notif-ts">${dtStr}${n.criado_por_nome?' · '+_escN(n.criado_por_nome):''}</div>
-      </div>`;
-    }).join('');
-  }
-
-  // ── Seção 2: Tarefas ativas ────────────────────────────────
-  if (tarefas.length) {
-    html += _sec(`Tarefas ativas (${tarefas.length})`);
-    html += tarefas.map(t => {
-      // Contexto: projeto / etapa
-      const cli    = t.produtos?.oportunidades?.clientes?.nome || '';
-      const proj   = t.produtos?.oportunidades?.projeto || '';
-      const prod   = t.produtos?.nome || '';
-      const etapa  = t.etapas?.nome || '';
-      const partes = [
-        cli && proj ? `${cli} · ${proj}` : (proj || cli),
-        prod,
-        etapa
-      ].filter(Boolean);
-      const ctx = partes.join(' › ');
-
-      const vencida = t.data_limite && t.data_limite < hoje;
-      const ehHoje  = t.data_limite === hoje;
-      const prazoStr = t.data_limite
-        ? ` · <span style="color:${vencida?'var(--terracota)':ehHoje?'var(--ouro)':'#aaa'}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
-        : '';
-
-      const criador = t.criado_por && t.criado_por !== G.usuario.id
-        ? G.todosUsuarios?.find(u => u.id === t.criado_por) : null;
-      const deStr = criador ? ` · de ${criador.nome.split(' ')[0]}` : '';
-
-      return `<div class="notif-item" onclick="irParaTarefas()">
-        <div class="notif-item-row">
-          <span class="notif-icon">☑</span>
-          <span class="notif-titulo">${_escN(t.descricao)}</span>
-          <button class="notif-check-btn" title="Concluir tarefa" onclick="event.stopPropagation();concluirTarefaSino('${t.id}')">✓</button>
-        </div>
-        ${ctx || prazoStr || deStr
-          ? `<div class="notif-corpo">${ctx ? _escN(ctx) : ''}${prazoStr}${deStr ? _escN(deStr) : ''}</div>`
-          : ''}
-      </div>`;
-    }).join('');
-  }
-
-  lista.innerHTML = html;
-}
-
-// ── Conclui tarefa direto do painel do sino ────────────────────
+// ── Conclui tarefa direto do painel ───────────────────────────
 async function concluirTarefaSino(id) {
   await sb.from('tarefas_livres').update({
     concluida: true, concluida_em: new Date().toISOString()
   }).eq('id', id);
   G._tarefasParaSino = (G._tarefasParaSino || []).filter(t => t.id !== id);
-  _renderNotifBadge();
-  renderNotifPanel();
-  carregarTarefas(); // atualiza dashboard
+  _syncTarefasSinoComputed();
+  carregarTarefas();
 }
 
-// ── Navega para aba de tarefas ─────────────────────────────────
+// ── Navega para aba de tarefas ────────────────────────────────
 function irParaTarefas() {
-  const panel = document.getElementById('notif-panel');
-  if (panel) panel.style.display = 'none';
+  AppNotif.close();
   document.querySelector('.ntab[data-tab="dashboard"]')?.click();
 }
 
-// ── Abre notificação: marca como lida + navega ────────────────
-async function abrirNotif(id) {
-  const n = G._notifs.find(x => x.id === id);
-  if(!n) return;
-  // Marca como lida
-  if(!n.lido_em) {
-    n.lido_em = new Date().toISOString();
-    sb.from('notificacoes').update({ lido_em: n.lido_em }).eq('id', id);
-    _renderNotifBadge();
-    renderNotifPanel();
-  }
-  // Fecha painel e navega
-  const panel = document.getElementById('notif-panel');
-  if(panel) panel.style.display = 'none';
+// ── Navegação ao abrir notificação do módulo gestão ───────────
+// Acionado via evento 'exp:notif-open' emitido pelo AppNotif
+function _onNotifOpen(n) {
+  if (!n || n.modulo !== 'gestao') return;
 
-  if(n.link_tipo === 'solicitacao_data') {
+  if (n.link_tipo === 'solicitacao_data') {
     try {
       const d = JSON.parse(n.corpo);
       _prazoEdit._pendingRequest = d;
-      _prazoEdit._pendingNotifId = id;
+      _prazoEdit._pendingNotifId = n.id;
       document.getElementById('vd-titulo').textContent = 'Solicitação de alteração de prazo';
       document.getElementById('vd-msg').textContent =
         `${d.solicitanteNome?.split(' ')[0] || 'Colaborador'} solicitou alteração de prazo: ` +
@@ -17005,27 +16904,27 @@ async function abrirNotif(id) {
       document.getElementById('vd-btns').style.display = 'none';
       document.getElementById('vd-btns-resp').style.display = 'flex';
       document.getElementById('modal-validar-data').style.display = 'flex';
-    } catch(e) { toast('Erro ao abrir solicitação.'); }
+    } catch { toast('Erro ao abrir solicitação.'); }
     return;
   }
-  if(n.link_tipo === 'registro' && n.link_produto_id) {
-    await abrirProduto(n.link_produto_id);
-    setTimeout(() => {
-      const tabBtn = document.querySelector('#modal-produto .modal-tab[data-panel="mp-registros"]');
-      if(tabBtn) tabBtn.click();
-      if(n.link_entrada_id) setTimeout(() => {
-        const card = document.getElementById('re-' + n.link_entrada_id);
-        if(card) {
-          card.style.outline = '2px solid var(--azul)';
-          card.scrollIntoView({ behavior:'smooth', block:'nearest' });
-          setTimeout(() => card.style.outline = '', 2500);
-        }
-      }, 700);
-    }, 300);
-  } else if(n.link_tipo === 'revisao' && n.link_revisao_id) {
+  if (n.link_tipo === 'registro' && n.link_produto_id) {
+    abrirProduto(n.link_produto_id).then(() => {
+      setTimeout(() => {
+        document.querySelector('#modal-produto .modal-tab[data-panel="mp-registros"]')?.click();
+        if (n.link_entrada_id) setTimeout(() => {
+          const card = document.getElementById('re-' + n.link_entrada_id);
+          if (card) {
+            card.style.outline = '2px solid var(--azul)';
+            card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+            setTimeout(() => card.style.outline = '', 2500);
+          }
+        }, 700);
+      }, 300);
+    });
+  } else if (n.link_tipo === 'revisao' && n.link_revisao_id) {
     document.querySelector('.ntab[data-tab="revisoes"]')?.click();
     setTimeout(() => selecionarRevisao(n.link_revisao_id), 500);
-  } else if(n.link_tipo === 'tarefa') {
+  } else if (n.link_tipo === 'tarefa') {
     document.querySelector('.ntab[data-tab="dashboard"]')?.click();
     setTimeout(() => {
       document.querySelector('[id^="tarefa-"]')?.scrollIntoView({ behavior:'smooth' });
@@ -17033,22 +16932,9 @@ async function abrirNotif(id) {
   }
 }
 
-// ── Encerra (check ✓) ─────────────────────────────────────────
+// ── Encerrar notif individual (chamado externamente, ex: prazo) ─
 async function encerrarNotif(id) {
-  await sb.from('notificacoes').update({ encerrado_em: new Date().toISOString() }).eq('id', id);
-  G._notifs = G._notifs.filter(n => n.id !== id);
-  _renderNotifBadge();
-  renderNotifPanel();
-}
-
-async function encerrarTodasNotif() {
-  await sb.from('notificacoes')
-    .update({ encerrado_em: new Date().toISOString() })
-    .eq('usuario_id', G.usuario.id)
-    .is('encerrado_em', null);
-  G._notifs = [];
-  _renderNotifBadge();
-  renderNotifPanel();
+  await AppNotif._encerrarNotif(id);
 }
 
 // ══════════════════════════════════════════════════════════════

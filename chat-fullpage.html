@@ -1297,6 +1297,32 @@ body {
 [data-theme="light"] #fp-theme-toggle::after { top: 2px;  background: rgba(255,255,255,.9); }
 [data-theme="dark"]  #fp-theme-toggle::after { top: 13px; background: #fff; }
 
+/* EXP Room — ativo: ícone pisca em verde */
+#fp-room-btn.active { color: #2D9E6B !important; }
+#fp-room-btn.active #fp-room-icon {
+  stroke: #2D9E6B;
+  animation: fpRoomPulse 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 3px rgba(45,158,107,.6));
+}
+@keyframes fpRoomPulse {
+  0%, 100% { opacity: 1;   stroke-width: 2;   }
+  50%       { opacity: .45; stroke-width: 2.5; }
+}
+/* tooltip "quem está lá" */
+#fp-room-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%; transform: translateY(-50%);
+  background: #2D9E6B;
+  color: #fff;
+  font-size: 10px; font-weight: 600;
+  padding: 4px 9px; border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 500;
+}
+
 /* Resultados de busca — cinza neutro */
 .fp-msg-block.search-match   { background: rgba(0,0,0,.05) !important; }
 .fp-msg-block.search-current { background: rgba(0,0,0,.10) !important; outline: 2px solid rgba(0,0,0,.2); outline-offset: -2px; border-radius: 8px; }
@@ -1356,8 +1382,12 @@ body {
     <button id="fp-theme-toggle" onclick="toggleTheme()" title="Alternar tema claro/escuro"></button>
 
     <!-- EXP Room -->
-    <a href="room.html" class="fp-nav-item" title="EXP Room">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+    <a id="fp-room-btn" href="https://meet.google.com/mqe-cgge-maz" target="_blank"
+       class="fp-nav-item" title="EXP Room" onclick="fpChat.roomClick()">
+      <svg id="fp-room-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="23 7 16 12 23 17 23 7"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
     </a>
 
     <!-- Sininho de notificações -->
