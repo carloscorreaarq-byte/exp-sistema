@@ -130,6 +130,7 @@
     fetchAllUnread();
     subscribeIncoming();
     loadTeamMembers();
+    initNotif();
 
     /* Scroll tracking */
     if ($msgs) $msgs.addEventListener('scroll', function() {
@@ -138,12 +139,21 @@
 
     /* Fechar status pop clicando fora */
     document.addEventListener('click', function(e) {
-      if (!statusPopOpen) return;
-      var pop = document.getElementById('fp-status-pop');
-      var btn = document.getElementById('fp-status-btn');
-      if (!pop) return;
-      if (pop.contains(e.target) || (btn && btn.contains(e.target))) return;
-      closeStatusPop();
+      if (statusPopOpen) {
+        var pop = document.getElementById('fp-status-pop');
+        var btn = document.getElementById('fp-status-btn');
+        if (pop && !pop.contains(e.target) && btn && !btn.contains(e.target)) closeStatusPop();
+      }
+      /* Fechar notif panel clicando fora */
+      if (notifPanelOpen) {
+        var np  = document.getElementById('fp-notif-panel');
+        var nb  = document.getElementById('fp-nav-bell');
+        if (np && !np.contains(e.target) && nb && !nb.contains(e.target)) {
+          notifPanelOpen = false;
+          np.style.display = 'none';
+          nb.classList.remove('active');
+        }
+      }
     });
 
     /* Colar imagem */
@@ -1567,7 +1577,9 @@
     /* tarefas */
     toggleTasksPanel, checkTask,
     /* prioridade / projeto */
-    showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay
+    showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
+    /* notificações */
+    toggleNotifPanel, encerrarNotif
   };
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -1660,95 +1672,209 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════
-     BANNER DE PRIORIDADE + OVERLAY DO PROJETO
+     BANNER DE PRIORIDADE — estilo prio-card do dashboard
   ═══════════════════════════════════════════════════════════════════ */
-  var prioData       = null;   // cache da primeira prioridade
+  var prioData        = null;
   var prioBannerTimer = null;
-  var prioLoaded     = false;
+  var prioLoaded      = false;
+  var NUM_CLS         = ['','p1','p2','p3','p4','p5','p6'];
 
   function showPrioBanner() {
     if (prioBannerTimer) { clearTimeout(prioBannerTimer); prioBannerTimer = null; }
     var $banner = document.getElementById('fp-prio-banner');
     var $btn    = document.getElementById('fp-nav-prio');
     if (!$banner || !$btn) return;
-
-    /* Posicionar ao lado do botão */
     var rect = $btn.getBoundingClientRect();
-    $banner.style.top  = Math.max(16, rect.top - 10) + 'px';
-    $banner.style.left = (rect.right + 10) + 'px';
+    $banner.style.top  = Math.max(16, rect.top - 4) + 'px';
+    $banner.style.left = (rect.right + 8) + 'px';
     $banner.style.display = 'block';
-
     if (!prioLoaded) fetchPrioridade();
     else renderPrioBanner();
   }
 
   function hidePrioBanner() {
     prioBannerTimer = setTimeout(function() {
-      var $banner = document.getElementById('fp-prio-banner');
-      if ($banner) $banner.style.display = 'none';
-    }, 200);
+      var $b = document.getElementById('fp-prio-banner');
+      if ($b) $b.style.display = 'none';
+    }, 220);
   }
 
   function fetchPrioridade() {
     var uid = user.id || user.app_user_id;
     if (!uid) return;
     sb.from('prioridades_usuario')
-      .select('id,produto_id,prazo_texto,ordem,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
-      .eq('usuario_id', uid)
-      .eq('concluida', false)
-      .order('ordem')
-      .limit(1)
-      .maybeSingle()
-      .then(function(r) {
-        prioLoaded = true;
-        prioData   = r.data || null;
-        renderPrioBanner();
-      }).catch(function() {
-        prioLoaded = true;
-        renderPrioBanner();
-      });
+      .select('id,produto_id,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
+      .eq('usuario_id', uid).eq('concluida', false).order('ordem').limit(1).maybeSingle()
+      .then(function(r) { prioLoaded=true; prioData=r.data||null; renderPrioBanner(); })
+      .catch(function()  { prioLoaded=true; renderPrioBanner(); });
   }
 
   function renderPrioBanner() {
     var $inner = document.getElementById('fp-prio-banner-inner');
     if (!$inner) return;
+
     if (!prioData) {
-      $inner.innerHTML = '<div class="fp-prio-label">Minha prioridade</div>' +
-        '<div style="font-size:12px;color:#aaa;margin-bottom:10px">Nenhuma prioridade definida.</div>';
+      $inner.innerHTML =
+        '<div class="fp-prio-hdr">Minha prioridade</div>' +
+        '<div class="fp-notif-empty">Nenhuma prioridade definida.</div>';
       return;
     }
+
     var pr   = prioData;
     var prod = pr.produtos || {};
     var opp  = prod.oportunidades || {};
     var cli  = opp.clientes || {};
-    var titulo  = [cli.nome, opp.projeto].filter(Boolean).join(' · ') || prod.nome || 'Projeto';
-    var cidade  = [opp.cidade || cli.uf].filter(Boolean).join('/');
-    var etapas  = (prod.etapas || []).filter(function(e) { return e.status !== 'concluida'; });
-    var etapaAtual = etapas.find(function(e){ return e.status==='em_andamento'; }) || etapas[0];
+    var titulo   = [cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto';
+    var cidadeUf = [opp.cidade, cli.uf].filter(Boolean).join('/');
+    var etapas   = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
+    var etapa    = etapas.find(function(e){ return e.status==='em_andamento'; }) || etapas.find(function(e){ return e.status!=='concluida'; });
+    var ord      = pr.ordem || 1;
+    var numCls   = NUM_CLS[Math.min(ord, 6)] || 'p6';
 
-    /* Prazo */
-    var prazoHtml = '';
-    var prazoClass = 'prazo-ok';
+    /* Estado */
+    var estadoCard = '';
+    var prazoChipHtml = '';
     if (pr.prazo_texto) {
       var hoje = new Date(); hoje.setHours(0,0,0,0);
       var pdt  = new Date(pr.prazo_texto + 'T12:00:00'); pdt.setHours(0,0,0,0);
-      var dtFmt = pdt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
-      if (pdt < hoje)        prazoClass = 'prazo-vencida';
-      else if (+pdt===+hoje) prazoClass = 'prazo-hoje';
-      prazoHtml = '<span class="fp-prio-chip ' + prazoClass + '">' + escHtml(dtFmt) + '</span>';
+      var dtFmt = pdt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' });
+      if (pdt < hoje)        estadoCard = 'atrasada';
+      else if (+pdt===+hoje) estadoCard = 'hoje';
+      prazoChipHtml = '<div><span class="fp-prio-prazo-chip ' + estadoCard + '">📅 ' + escHtml(dtFmt) + '</span></div>';
     }
 
-    var etapaHtml = etapaAtual
-      ? '<span class="fp-prio-chip">' + escHtml(etapaAtual.nome || '') + '</span>' : '';
-    var cidadeHtml = cidade
-      ? '<span class="fp-prio-chip">' + escHtml(cidade) + '</span>' : '';
-
     $inner.innerHTML =
-      '<div class="fp-prio-label">Minha prioridade</div>' +
-      '<div class="fp-prio-titulo">' + escHtml(titulo) + '</div>' +
-      (prod.nome ? '<div class="fp-prio-sub">' + escHtml(prod.nome) + '</div>' : '') +
-      '<div class="fp-prio-chips">' + prazoHtml + etapaHtml + cidadeHtml + '</div>' +
-      '<button class="fp-prio-abrir" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id || '')) + '\')">Ver detalhes do projeto</button>';
+      '<div class="fp-prio-hdr">Minha prioridade</div>' +
+      '<div class="fp-prio-card ' + estadoCard + '" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id||'')) + '\')">' +
+        '<div class="fp-prio-num ' + numCls + '">' + ord + '</div>' +
+        '<div class="fp-prio-info">' +
+          '<div class="fp-prio-nome">' + escHtml(titulo) + '</div>' +
+          (cidadeUf ? '<div class="fp-prio-cidade">' + escHtml(cidadeUf) + '</div>' : '') +
+          (etapa    ? '<div class="fp-prio-etapa">↳ ' + escHtml(etapa.nome||'') + '</div>' : '') +
+          (prod.nome? '<div class="fp-prio-prod">' + escHtml(prod.nome) + '</div>' : '') +
+          prazoChipHtml +
+          (pr.comentario ? '<div style="font-size:10px;color:#888;margin-top:4px;font-style:italic">' + escHtml(pr.comentario) + '</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="fp-prio-footer">' +
+        '<button class="fp-prio-abrir" onclick="fpChat.openProjectOverlay(\'' + escHtml(String(prod.id||'')) + '\')">Ver detalhes do projeto</button>' +
+      '</div>';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     NOTIFICAÇÕES
+  ═══════════════════════════════════════════════════════════════════ */
+  var notifCache     = [];
+  var notifPanelOpen = false;
+
+  function initNotif() {
+    loadNotif();
+    /* Realtime: novas notificações chegam */
+    try {
+      sb.channel('fp-notif-' + user.auth_id)
+        .on('postgres_changes', { event:'INSERT', schema:'public', table:'notificacoes',
+          filter: 'usuario_id=eq.' + (user.id || user.app_user_id) }, function(payload) {
+          notifCache.unshift(payload.new);
+          if (notifCache.length > 20) notifCache = notifCache.slice(0, 20);
+          updateNotifBadge();
+          if (notifPanelOpen) renderNotifPanel();
+        })
+        .subscribe();
+    } catch(e) {}
+  }
+
+  function loadNotif() {
+    var uid = user.id || user.app_user_id;
+    if (!uid) return;
+    sb.from('notificacoes')
+      .select('*').eq('usuario_id', uid).is('encerrado_em', null)
+      .order('created_at', { ascending:false }).limit(20)
+      .then(function(r) {
+        notifCache = r.data || [];
+        updateNotifBadge();
+        if (notifPanelOpen) renderNotifPanel();
+      });
+  }
+
+  function updateNotifBadge() {
+    var novas = notifCache.filter(function(n){ return !n.lido_em; }).length;
+    var $badge = document.getElementById('fp-notif-badge');
+    if (!$badge) return;
+    $badge.textContent  = novas > 9 ? '9+' : String(novas);
+    $badge.style.display = novas > 0 ? 'flex' : 'none';
+  }
+
+  function toggleNotifPanel() {
+    notifPanelOpen = !notifPanelOpen;
+    var $panel = document.getElementById('fp-notif-panel');
+    var $btn   = document.getElementById('fp-nav-bell');
+    if (!$panel || !$btn) return;
+
+    if (notifPanelOpen) {
+      var rect = $btn.getBoundingClientRect();
+      $panel.style.top  = Math.max(16, rect.top - 4) + 'px';
+      $panel.style.left = (rect.right + 8) + 'px';
+      $panel.style.display = 'flex';
+      renderNotifPanel();
+      /* marcar como lidas */
+      markNotifsRead();
+    } else {
+      $panel.style.display = 'none';
+    }
+    if ($btn) $btn.classList.toggle('active', notifPanelOpen);
+  }
+
+  function markNotifsRead() {
+    var uid = user.id || user.app_user_id;
+    var unread = notifCache.filter(function(n){ return !n.lido_em; });
+    if (!unread.length) return;
+    var ids = unread.map(function(n){ return n.id; });
+    sb.from('notificacoes').update({ lido_em: new Date().toISOString() })
+      .in('id', ids)
+      .then(function() {
+        notifCache.forEach(function(n){ if (!n.lido_em) n.lido_em = new Date().toISOString(); });
+        updateNotifBadge();
+      });
+  }
+
+  function renderNotifPanel() {
+    var $lista = document.getElementById('fp-notif-lista');
+    if (!$lista) return;
+
+    if (!notifCache.length) {
+      $lista.innerHTML = '<div class="fp-notif-empty">Nenhuma notificação pendente ✓</div>';
+      return;
+    }
+
+    var icons = { mencao:'@', tarefa:'☑', revisao:'📋', prancha:'🖼', lembrete:'📢' };
+    var html = '<div class="fp-notif-sec">Notificações (' + notifCache.length + ')</div>';
+    html += notifCache.map(function(n) {
+      var nova  = !n.lido_em;
+      var dt    = new Date(n.created_at);
+      var dtStr = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' +
+                  dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      var icon  = icons[n.tipo] || '🔔';
+      return '<div class="fp-notif-item' + (nova?' nova':'') + '">' +
+        '<span class="fp-notif-icon">' + icon + '</span>' +
+        '<div class="fp-notif-body">' +
+          '<div class="fp-notif-titulo">' + escHtml(n.titulo||'') + '</div>' +
+          (n.corpo ? '<div class="fp-notif-corpo">' + escHtml(n.corpo) + '</div>' : '') +
+          '<div class="fp-notif-ts">' + escHtml(dtStr) + (n.criado_por_nome ? ' · ' + escHtml(n.criado_por_nome) : '') + '</div>' +
+        '</div>' +
+        '<button class="fp-notif-enc" onclick="fpChat.encerrarNotif(\'' + escHtml(String(n.id)) + '\')" title="Encerrar">✓</button>' +
+        '</div>';
+    }).join('');
+
+    $lista.innerHTML = html;
+  }
+
+  function encerrarNotif(id) {
+    sb.from('notificacoes').update({ encerrado_em: new Date().toISOString() }).eq('id', id)
+      .then(function() {
+        notifCache = notifCache.filter(function(n){ return String(n.id) !== String(id); });
+        updateNotifBadge();
+        renderNotifPanel();
+      });
   }
 
   function openProjectOverlay(produtoId) {

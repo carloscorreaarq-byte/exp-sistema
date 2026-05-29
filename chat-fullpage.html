@@ -954,44 +954,153 @@ body {
 .fp-task-prazo.hoje    { color: #C4831A; }
 .fp-task-section { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--cinza, #D0CFC9); padding: 10px 6px 4px; }
 
-/* ── Banner de prioridade (hover no ícone de projeto) ── */
+/* ── Banner de prioridade — estilo prio-card do dashboard ── */
 #fp-prio-banner {
   position: fixed;
-  /* posicionado pelo JS ao mostrar */
   background: var(--branco, #fff);
   border: 1px solid var(--cinza2, #ECEAE4);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.16);
-  padding: 12px 14px;
-  width: 260px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: 290px;
   display: none;
   z-index: 600;
+  overflow: hidden;
   animation: fpBannerIn .15s ease-out;
 }
-[data-theme="dark"] #fp-prio-banner { background: #252523; border-color: #2E2D2B; }
+[data-theme="dark"] #fp-prio-banner { background: #1E1E1D; border-color: #2E2D2B; }
 @keyframes fpBannerIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
 
-.fp-prio-label { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--cinza, #D0CFC9); margin-bottom: 6px; }
-.fp-prio-titulo { font-size: 13px; font-weight: 700; color: var(--grafite, #111110); line-height: 1.3; margin-bottom: 4px; }
-[data-theme="dark"] .fp-prio-titulo { color: #F0EDE6; }
-.fp-prio-sub { font-size: 11px; color: #888; margin-bottom: 8px; }
-.fp-prio-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-.fp-prio-chip {
-  font-size: 9px; font-weight: 600; letter-spacing: .3px;
-  padding: 2px 7px; border-radius: 20px;
-  border: 1px solid var(--cinza2, #ECEAE4);
-  color: #777; background: var(--off, #F7F6F3);
+.fp-prio-hdr {
+  padding: 8px 12px 6px;
+  font-size: 9px; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase; color: var(--cinza, #D0CFC9);
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  background: var(--off, #F7F6F3);
 }
-.fp-prio-chip.prazo-ok      { border-color: var(--ca); color: var(--ca); background: var(--ca-bg); }
-.fp-prio-chip.prazo-hoje    { border-color: #C4831A; color: #C4831A; background: #FBF3E8; }
-.fp-prio-chip.prazo-vencida { border-color: #B84C3A; color: #B84C3A; background: #FBF0EE; }
+[data-theme="dark"] .fp-prio-hdr { background: #252523; border-bottom-color: #2E2D2B; }
+
+/* prio-card fiel ao gestão */
+.fp-prio-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer; transition: background .1s;
+}
+.fp-prio-card:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-prio-card:hover { background: rgba(255,255,255,.04); }
+.fp-prio-card.atrasada { background: #FBF0EE; }
+.fp-prio-card.hoje     { background: #FBF3E8; }
+[data-theme="dark"] .fp-prio-card.atrasada { background: rgba(184,76,58,.1); }
+[data-theme="dark"] .fp-prio-card.hoje     { background: rgba(196,131,26,.1); }
+
+.fp-prio-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  flex-shrink: 0; margin-top: 1px;
+}
+.fp-prio-num.p1 { background: #1D6A4A; }
+.fp-prio-num.p2 { background: #1D4FA0; }
+.fp-prio-num.p3 { background: #C4831A; }
+.fp-prio-num.p4 { background: #B84C3A; }
+.fp-prio-num.p5 { background: #6D7D8A; }
+.fp-prio-num.p6 { background: #aaa; }
+
+.fp-prio-info { flex: 1; min-width: 0; }
+.fp-prio-nome { font-size: 13px; font-weight: 700; color: var(--grafite, #111110); line-height: 1.3; }
+[data-theme="dark"] .fp-prio-nome { color: #F0EDE6; }
+.fp-prio-cidade { font-size: 10px; color: #666; margin-top: 2px; font-weight: 500; }
+[data-theme="dark"] .fp-prio-cidade { color: #8C8A85; }
+.fp-prio-etapa  { font-size: 10px; color: #888; margin-top: 2px; }
+.fp-prio-prod   { font-size: 9px; color: #aaa; margin-top: 1px; text-transform: uppercase; letter-spacing: .4px; }
+.fp-prio-prazo-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 600;
+  border-radius: 4px; padding: 1px 7px;
+  margin-top: 5px;
+  border: 1px solid var(--cinza2, #ECEAE4);
+  color: #888;
+}
+.fp-prio-prazo-chip.atrasada { background: #FBF0EE; border-color: #B84C3A; color: #B84C3A; }
+.fp-prio-prazo-chip.hoje     { background: #FBF3E8; border-color: #C4831A; color: #C4831A; }
+
+.fp-prio-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--cinza2, #ECEAE4);
+  background: var(--off, #F7F6F3);
+}
+[data-theme="dark"] .fp-prio-footer { background: #252523; border-top-color: #2E2D2B; }
 .fp-prio-abrir {
-  width: 100%; padding: 7px; border-radius: 8px;
+  width: 100%; padding: 6px; border-radius: 7px;
   border: none; background: var(--ca); color: #fff;
   font-family: 'Raleway', sans-serif; font-size: 11px; font-weight: 600;
   cursor: pointer; transition: opacity .15s;
 }
 .fp-prio-abrir:hover { opacity: .85; }
+
+/* ── Painel de notificações ── */
+#fp-notif-panel {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: 300px;
+  max-height: 480px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 600;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-notif-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+.fp-notif-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px;
+  background: #2A2926;
+  flex-shrink: 0;
+}
+.fp-notif-head-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.85); }
+
+#fp-notif-lista { flex: 1; overflow-y: auto; }
+#fp-notif-lista::-webkit-scrollbar { width: 3px; }
+#fp-notif-lista::-webkit-scrollbar-thumb { background: var(--cinza, #D0CFC9); border-radius: 2px; }
+
+.fp-notif-sec {
+  font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  color: #aaa; padding: 7px 12px 4px;
+  border-top: 1px solid var(--cinza2, #ECEAE4);
+  background: var(--off, #F7F6F3);
+}
+[data-theme="dark"] .fp-notif-sec { background: #252523; border-top-color: #2E2D2B; }
+.fp-notif-sec:first-child { border-top: none; }
+
+.fp-notif-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 12px; cursor: pointer;
+  border-bottom: 1px solid var(--off, #F7F6F3);
+  transition: background .1s;
+}
+.fp-notif-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-notif-item { border-bottom-color: #252523; }
+[data-theme="dark"] .fp-notif-item:hover { background: rgba(255,255,255,.04); }
+.fp-notif-item.nova { background: #EEF3FB; }
+[data-theme="dark"] .fp-notif-item.nova { background: rgba(74,114,181,.12); }
+.fp-notif-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+.fp-notif-body { flex: 1; min-width: 0; }
+.fp-notif-titulo { font-size: 11px; font-weight: 600; color: var(--grafite, #111110); line-height: 1.3; }
+[data-theme="dark"] .fp-notif-titulo { color: #F0EDE6; }
+.fp-notif-corpo { font-size: 10px; color: #888; margin-top: 2px; line-height: 1.4; }
+.fp-notif-ts    { font-size: 9px; color: #bbb; margin-top: 2px; font-family: 'DM Mono', monospace; }
+.fp-notif-enc {
+  width: 20px; height: 20px; border-radius: 5px; border: none;
+  background: none; color: #ccc; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; flex-shrink: 0; transition: color .1s, background .1s;
+}
+.fp-notif-enc:hover { background: var(--cinza2, #ECEAE4); color: #555; }
+
+.fp-notif-empty { padding: 20px; text-align: center; font-size: 11px; color: #bbb; }
 
 /* ── Overlay do projeto (sobre o chat) ── */
 #fp-proj-overlay {
@@ -1128,7 +1237,13 @@ body {
       <span class="ttg-icon" style="filter:invert(1) brightness(1.5)">🌙</span>
     </button>
 
-    <!-- Prioridade do projeto (hover abre banner) -->
+    <!-- Sininho de notificações -->
+    <button class="fp-nav-item" id="fp-nav-bell" title="Notificações" onclick="fpChat.toggleNotifPanel()" style="position:relative">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="fp-notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:'DM Mono',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
+    </button>
+
+    <!-- Prioridade do projeto (hover abre card estilo dashboard) -->
     <button class="fp-nav-item" id="fp-nav-prio" title="Minha prioridade"
             onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -1140,10 +1255,21 @@ body {
     </button>
   </nav>
 
-  <!-- Banner flutuante de prioridade (aparece no hover do ícone de projeto) -->
+  <!-- Banner flutuante de prioridade (hover no ícone ⭐) -->
   <div id="fp-prio-banner"
        onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
     <div id="fp-prio-banner-inner"></div>
+  </div>
+
+  <!-- Painel de notificações (clique no sininho) -->
+  <div id="fp-notif-panel">
+    <div class="fp-notif-head">
+      <span class="fp-notif-head-title">Notificações</span>
+      <button class="fp-sb-icon-btn" onclick="fpChat.toggleNotifPanel()" title="Fechar" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.7)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-notif-lista"></div>
   </div>
 
   <!-- ── Painel de tarefas (substitui sidebar) ── -->
