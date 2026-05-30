@@ -629,12 +629,16 @@ body {
   background: rgba(var(--ca-rgb-vals, 29,106,74), .15) !important;
 }
 
-/* Sinalizadas: 20% opacidade + outline 3px */
+/* Sinalizadas: estilo prio-card — borda esquerda grossa + fundo semitransparente */
 .fp-msg-block.flagged {
-  background: rgba(var(--ca-rgb-vals, 29,106,74), .20) !important;
-  outline: 3px solid var(--ca);
-  outline-offset: -1px;
-  border-radius: 8px;
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .13) !important;
+  border-left: 3px solid var(--ca);
+  border-radius: 0 8px 8px 0;
+  padding-left: 9px;   /* compensa a borda para manter alinhamento visual */
+  margin-left: 2px;    /* pequeno recuo para a borda não encostar na borda do container */
+}
+[data-theme="dark"] .fp-msg-block.flagged {
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .18) !important;
 }
 
 /* Avatar da mensagem */
@@ -1301,6 +1305,53 @@ body {
 .fp-fu-item.hoje     .fp-fu-date { color: #C4831A; background: #FBF3E8; border-color: #C4831A; }
 .fp-fu-item.atrasado .fp-fu-date { color: #B84C3A; background: #FBF0EE; border-color: #B84C3A; }
 
+/* Seção de fechamentos/negados — estilo prio-card */
+.fp-crm-sec-hdr {
+  padding: 6px 14px 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: #aaa; flex-shrink: 0;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+}
+[data-theme="dark"] .fp-crm-sec-hdr { color: #555; border-bottom-color: #2A2927; }
+
+.fp-crm-fech-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  border-left: 3px solid transparent;
+  transition: background .1s;
+}
+.fp-crm-fech-item:last-child { border-bottom: none; }
+[data-theme="dark"] .fp-crm-fech-item { border-bottom-color: #2A2927; }
+
+.fp-crm-fech-item.fechado {
+  border-left-color: #1D6A4A;
+  background: rgba(29,106,74,.08);
+}
+.fp-crm-fech-item.negado {
+  border-left-color: #B84C3A;
+  background: rgba(184,76,58,.08);
+}
+[data-theme="dark"] .fp-crm-fech-item.fechado { background: rgba(29,106,74,.14); }
+[data-theme="dark"] .fp-crm-fech-item.negado  { background: rgba(184,76,58,.14); }
+
+.fp-crm-fech-info { flex: 1; min-width: 0; }
+.fp-crm-fech-cliente {
+  font-size: 11px; font-weight: 700; color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-crm-fech-cliente { color: #F0EDE6; }
+.fp-crm-fech-opp {
+  font-size: 10px; color: #888; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fp-crm-fech-valor {
+  font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600;
+  flex-shrink: 0; margin-top: 2px; padding: 2px 7px; border-radius: 4px;
+  border: 1px solid;
+}
+.fp-crm-fech-item.fechado .fp-crm-fech-valor { color: #1D6A4A; background: rgba(29,106,74,.10); border-color: rgba(29,106,74,.25); }
+.fp-crm-fech-item.negado  .fp-crm-fech-valor { color: #B84C3A; background: rgba(184,76,58,.10); border-color: rgba(184,76,58,.25); }
+
 /* ── Banner de prioridade — estilo prio-card do dashboard ── */
 #fp-prio-banner {
   position: fixed;
@@ -1685,6 +1736,21 @@ body {
 /* Apenas overrides específicos do chat fullpage abaixo */
 #notif-panel .notif-sec-hd { top: 0; }
 
+/* Cabeçalho do painel de notificações */
+.exp-notif-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px 10px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .exp-notif-head { border-bottom-color: #2E2D2B; }
+.exp-notif-head-title {
+  font-size: 12px; font-weight: 700; letter-spacing: .3px;
+  color: var(--grafite, #111110);
+  font-family: 'Raleway', sans-serif;
+}
+[data-theme="dark"] .exp-notif-head-title { color: #F0EDE6; }
+
 /* ── Overlay do projeto (sobre o chat) ── */
 #fp-proj-overlay {
   position: fixed; inset: 0;
@@ -1920,7 +1986,7 @@ body {
   <div id="fp-crm-banner"
        onmouseenter="fpChat.showCrmBanner()" onmouseleave="fpChat.hideCrmBanner()">
     <div class="fp-hov-hdr">
-      <span class="fp-hov-hdr-title">Follow-ups em aberto</span>
+      <span class="fp-hov-hdr-title">Atualizações comerciais</span>
       <span class="fp-hov-hdr-sub" id="fp-crm-banner-sub"></span>
     </div>
     <div id="fp-crm-banner-body"></div>

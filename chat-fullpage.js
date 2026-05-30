@@ -2283,9 +2283,10 @@
   /* ═══════════════════════════════════════════════════════════════════
      HOVER BANNER — CALENDÁRIO (próximos 3 eventos)
   ═══════════════════════════════════════════════════════════════════ */
-  var calBannerTimer = null;
-  var calData        = null;
-  var calLoaded      = false;
+  var calBannerTimer  = null;
+  var calData         = null;
+  var calLoaded       = false;
+  var calLoadedAt     = 0;      /* timestamp da última busca — recarrega após 5 min */
 
   function _positionBanner($banner, $btn) {
     var rect    = $btn.getBoundingClientRect();
@@ -2302,7 +2303,8 @@
     if (!$b || !$btn) return;
     $b.style.display = 'block';
     _positionBanner($b, $btn);
-    if (!calLoaded) fetchCalEvents();
+    var stale = (Date.now() - calLoadedAt) > 5 * 60 * 1000;  /* 5 min */
+    if (!calLoaded || stale) fetchCalEvents();
     else renderCalBanner();
   }
   function hideCalBanner() {
@@ -2312,15 +2314,18 @@
     }, 220);
   }
   function fetchCalEvents() {
-    var uid     = user.auth_id;
-    var todayISO = new Date().toISOString();
+    /* user_id na tabela é o ID interno (usuarios.id), não o auth_id */
+    var internalId = user.app_user_id || user.id;
+    /* início de hoje (meia-noite local) em ISO — para não perder eventos que já começaram */
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayISO = today.toISOString();
     sb.from('calendar_events')
-      .select('id,titulo,tipo,inicio,fim,dia_inteiro,meet_link')
-      .gte('inicio', todayISO)
-      .or('scope.eq.todos,user_id.eq.' + uid)
-      .order('inicio').limit(3)
-      .then(function(r) { calLoaded = true; calData = r.data || []; renderCalBanner(); })
-      .catch(function()  { calLoaded = true; calData = [];            renderCalBanner(); });
+      .select('id,titulo,tipo,inicio,fim,dia_inteiro,meet_link,scope')
+      .gte('fim', todayISO)         /* mostra eventos que ainda não terminaram hoje */
+      .or('scope.eq.todos,user_id.eq.' + internalId)
+      .order('inicio').limit(5)
+      .then(function(r) { calLoaded = true; calLoadedAt = Date.now(); calData = r.data || []; renderCalBanner(); })
+      .catch(function()  { calLoaded = true; calLoadedAt = Date.now(); calData = [];            renderCalBanner(); });
   }
   function renderCalBanner() {
     var $body = document.getElementById('fp-cal-banner-body');
@@ -2366,6 +2371,8 @@
   var crmData        = null;
   var crmLoaded      = false;
 
+  var crmEncerrados = null;   /* produtos fechados/negados últimos 7 dias */
+
   function showCrmBanner(event) {
     if (crmBannerTimer) { clearTimeout(crmBannerTimer); crmBannerTimer = null; }
     var $b   = document.getElementById('fp-crm-banner');
@@ -2373,7 +2380,7 @@
     if (!$b || !$btn) return;
     $b.style.display = 'block';
     _positionBanner($b, $btn);
-    if (!crmLoaded) fetchCrmFollowups();
+    if (!crmLoaded) fetchCrmData();
     else renderCrmBanner();
   }
   function hideCrmBanner() {
@@ -2382,49 +2389,106 @@
       if ($b) $b.style.display = 'none';
     }, 220);
   }
-  function fetchCrmFollowups() {
-    sb.from('followups_produto')
-      .select('id,next_date,observacao,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
-      .not('next_date', 'is', null)
-      .order('next_date', { ascending: true })
-      .limit(5)
-      .then(function(r) { crmLoaded = true; crmData = r.data || []; renderCrmBanner(); })
-      .catch(function()  { crmLoaded = true; crmData = [];            renderCrmBanner(); });
+
+  function fetchCrmData() {
+    var cutoff7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    var hoje    = new Date().toISOString().split('T')[0];
+
+    Promise.all([
+      /* Seção 1: produtos fechados/negados nos últimos 7 dias */
+      sb.from('produtos')
+        .select('id,nome,status,valor_fechado,valor_proposto,data_fechamento,updated_at,oportunidades(projeto,clientes(nome))')
+        .in('status', ['fechado', 'negado'])
+        .or('data_fechamento.gte.' + cutoff7 + ',and(status.eq.negado,updated_at.gte.' + cutoff7 + ')')
+        .order('updated_at', { ascending: false })
+        .limit(5),
+      /* Seção 2: próximos follow-ups */
+      sb.from('followups_produto')
+        .select('id,next_date,observacao,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
+        .not('next_date', 'is', null)
+        .gte('next_date', hoje)
+        .order('next_date', { ascending: true })
+        .limit(5)
+    ]).then(function(res) {
+      crmLoaded     = true;
+      crmEncerrados = res[0].data || [];
+      crmData       = res[1].data || [];
+      renderCrmBanner();
+    }).catch(function() {
+      crmLoaded     = true;
+      crmEncerrados = [];
+      crmData       = [];
+      renderCrmBanner();
+    });
   }
+
   function renderCrmBanner() {
     var $body = document.getElementById('fp-crm-banner-body');
     var $sub  = document.getElementById('fp-crm-banner-sub');
     if (!$body) return;
-    var items = crmData || [];
-    if ($sub) $sub.textContent = items.length ? items.length + (items.length === 1 ? ' item' : ' itens') : '';
-    if (!items.length) {
-      $body.innerHTML = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhum follow-up pendente ✓</div>';
-      return;
+
+    var enc  = crmEncerrados || [];
+    var fups = crmData || [];
+    var total = enc.length + fups.length;
+    if ($sub) $sub.textContent = total ? total + (total === 1 ? ' item' : ' itens') : '';
+
+    var html = '';
+
+    /* ── Seção 1: Fechamentos e negações ── */
+    if (enc.length) {
+      html += '<div class="fp-crm-sec-hdr">Últimos 7 dias</div>';
+      enc.forEach(function(p) {
+        var opp     = p.oportunidades || {};
+        var cli     = opp.clientes || {};
+        var cliente = escHtml(cli.nome || '—');
+        var projeto = escHtml(opp.projeto || p.nome || '—');
+        var isFech  = (p.status === 'fechado');
+        var cls     = isFech ? 'fechado' : 'negado';
+        var valor   = isFech ? (+p.valor_fechado || +p.valor_proposto || 0)
+                             : (+p.valor_proposto || 0);
+        var valFmt  = valor ? 'R$ ' + valor.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—';
+        html += '<div class="fp-crm-fech-item ' + cls + '">' +
+          '<div class="fp-crm-fech-info">' +
+            '<div class="fp-crm-fech-cliente">' + cliente + '</div>' +
+            '<div class="fp-crm-fech-opp">' + projeto + '</div>' +
+          '</div>' +
+          '<div class="fp-crm-fech-valor">' + escHtml(valFmt) + '</div>' +
+          '</div>';
+      });
     }
-    var hoje   = new Date().toISOString().split('T')[0];
-    var html   = '';
-    items.forEach(function(fu) {
-      var prod   = fu.produtos || {};
-      var opp    = prod.oportunidades || {};
-      var cli    = opp.clientes || {};
-      var cliente = escHtml(cli.nome || '—');
-      var projeto = escHtml(opp.projeto || prod.nome || '—');
-      var dt      = fu.next_date || '';
-      var cls     = dt < hoje ? 'atrasado' : dt === hoje ? 'hoje' : '';
-      var dtParts = dt ? dt.split('-') : [];
-      var dtFmt   = dtParts.length === 3
-        ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0].slice(2)
-        : '—';
-      html += '<div class="fp-fu-item ' + cls + '">' +
-        '<div class="fp-fu-info">' +
-          '<div class="fp-fu-cliente">' + cliente + '</div>' +
-          '<div class="fp-fu-proj">' + projeto + '</div>' +
-        '</div>' +
-        '<div class="fp-fu-date">' + escHtml(dtFmt) + '</div>' +
-        '</div>';
-    });
+
+    /* ── Seção 2: Próximos follow-ups ── */
+    if (fups.length) {
+      html += '<div class="fp-crm-sec-hdr">Próximos follow-ups</div>';
+      var hoje = new Date().toISOString().split('T')[0];
+      fups.forEach(function(fu) {
+        var prod    = fu.produtos || {};
+        var opp     = prod.oportunidades || {};
+        var cli     = opp.clientes || {};
+        var cliente = escHtml(cli.nome || '—');
+        var projeto = escHtml(opp.projeto || prod.nome || '—');
+        var dt      = fu.next_date || '';
+        var cls     = dt < hoje ? 'atrasado' : dt === hoje ? 'hoje' : '';
+        var dtParts = dt ? dt.split('-') : [];
+        var dtFmt   = dtParts.length === 3
+          ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0].slice(2)
+          : '—';
+        html += '<div class="fp-fu-item ' + cls + '">' +
+          '<div class="fp-fu-info">' +
+            '<div class="fp-fu-cliente">' + cliente + '</div>' +
+            '<div class="fp-fu-proj">' + projeto + '</div>' +
+          '</div>' +
+          '<div class="fp-fu-date">' + escHtml(dtFmt) + '</div>' +
+          '</div>';
+      });
+    }
+
+    if (!html) {
+      html = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhuma atualização recente ✓</div>';
+    }
+
     $body.innerHTML = html;
-    /* reposicionar */
+    /* reposicionar após altura mudar */
     var $banner = document.getElementById('fp-crm-banner');
     var $btn    = document.getElementById('fp-nav-crm');
     if ($banner && $btn) _positionBanner($banner, $btn);
@@ -2959,11 +3023,12 @@
   /* ═══════════════════════════════════════════════════════════════════
      EXP ROOM PRESENCE
   ═══════════════════════════════════════════════════════════════════ */
-  var ROOM_TIMEOUT_MIN = 5;   /* minutos de "presença" visível */
+  var ROOM_BLINK_SECS = 120;   /* segundos que o ícone fica piscando após um clique */
+  var _roomBlinkTimer = null;  /* timer local para parar o blink no próprio dispositivo */
 
   function initExpRoom() {
     checkRoomStatus();
-    setInterval(checkRoomStatus, 30000);  /* atualiza a cada 30s */
+    setInterval(checkRoomStatus, 15000);  /* atualiza a cada 15s para precisão dos 120s */
   }
 
   function checkRoomStatus() {
@@ -2976,11 +3041,11 @@
         if (!btn) return;
         var data = r.data;
         if (data && data.updated_at) {
-          var mins = (Date.now() - new Date(data.updated_at).getTime()) / 60000;
-          if (mins <= ROOM_TIMEOUT_MIN) {
+          var secs = (Date.now() - new Date(data.updated_at).getTime()) / 1000;
+          if (secs <= ROOM_BLINK_SECS) {
             btn.classList.add('active');
-            var quem  = (data.value && data.value !== 'true') ? data.value : 'Alguém';
-            var quando = mins < 1 ? 'agora mesmo' : 'há ' + Math.floor(mins) + ' min';
+            var quem   = (data.value && data.value !== 'true') ? data.value : 'Alguém';
+            var quando = secs < 60 ? 'agora mesmo' : 'há ' + Math.floor(secs / 60) + ' min';
             btn.setAttribute('data-tooltip', quem + ' · ' + quando);
             return;
           }
@@ -3005,6 +3070,13 @@
         btn.classList.add('active');
         btn.setAttribute('data-tooltip', nome + ' · agora mesmo');
       }
+      /* parar o blink localmente após 120 s, sem esperar o próximo poll */
+      if (_roomBlinkTimer) clearTimeout(_roomBlinkTimer);
+      _roomBlinkTimer = setTimeout(function() {
+        var b = document.getElementById('fp-room-btn');
+        if (b) { b.classList.remove('active'); b.removeAttribute('data-tooltip'); }
+        _roomBlinkTimer = null;
+      }, ROOM_BLINK_SECS * 1000);
     }).catch(function() {});
   }
 
