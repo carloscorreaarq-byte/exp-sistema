@@ -1844,6 +1844,8 @@
     showCrmBanner, hideCrmBanner,
     /* apoio — painel de busca */
     toggleApoioPanel, closeApoioPanel, apoioSearchInput, apoioClear,
+    /* contatos — painel de busca */
+    toggleContatosPanel, closeContatosPanel, contatosSearchInput, contatosClear,
     /* prioridade / projeto */
     togglePrioPanel, openPrioPanel, closePrioPanel, checkPrioPanel,
     showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
@@ -2586,6 +2588,144 @@
     /* reposicionar após altura mudar */
     var $panel = document.getElementById('fp-apoio-panel');
     var $btn   = document.getElementById('fp-nav-apoio');
+    if ($panel && $btn) _positionBanner($panel, $btn);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     PAINEL DE BUSCA — CONTATOS
+  ═══════════════════════════════════════════════════════════════════ */
+  var contatosPanelOpen   = false;
+  var contatosSearchTimer = null;
+
+  /* Cores por tipo de contato */
+  var CONTATO_TIPO_COR = {
+    'fornecedor':  '#1D4FA0',
+    'prestador':   '#1D6A4A',
+    'parceiro':    '#C4831A',
+    'cliente':     '#B84C3A',
+    'outro':       '#6D7D8A'
+  };
+  function _contatoTipoCor(tipo) {
+    if (!tipo) return '#6D7D8A';
+    return CONTATO_TIPO_COR[(tipo+'').toLowerCase()] || '#6D7D8A';
+  }
+
+  function toggleContatosPanel(event) {
+    if (contatosPanelOpen) closeContatosPanel();
+    else                   openContatosPanel(event);
+  }
+
+  function openContatosPanel(event) {
+    contatosPanelOpen = true;
+    var $p   = document.getElementById('fp-contatos-panel');
+    var $btn = (event && event.currentTarget) || document.getElementById('fp-nav-contatos');
+    if (!$p || !$btn) return;
+    $p.style.display = 'flex';
+    _positionBanner($p, $btn);
+    setTimeout(function() {
+      var $inp = document.getElementById('fp-contatos-input');
+      if ($inp) $inp.focus();
+    }, 50);
+    setTimeout(function() {
+      document.addEventListener('click', _contatosOutsideClick);
+      document.addEventListener('keydown', _contatosKeyClose);
+    }, 10);
+  }
+
+  function closeContatosPanel() {
+    contatosPanelOpen = false;
+    var $p = document.getElementById('fp-contatos-panel');
+    if ($p) $p.style.display = 'none';
+    document.removeEventListener('click', _contatosOutsideClick);
+    document.removeEventListener('keydown', _contatosKeyClose);
+  }
+
+  function _contatosOutsideClick(e) {
+    var $p    = document.getElementById('fp-contatos-panel');
+    var $wrap = document.getElementById('fp-nav-contatos-wrap');
+    if ($p && !$p.contains(e.target) && $wrap && !$wrap.contains(e.target)) {
+      closeContatosPanel();
+    }
+  }
+  function _contatosKeyClose(e) { if (e.key === 'Escape') closeContatosPanel(); }
+
+  function contatosSearchInput(q) {
+    var $clr = document.getElementById('fp-contatos-clear');
+    if ($clr) $clr.style.display = q ? 'flex' : 'none';
+    if (contatosSearchTimer) clearTimeout(contatosSearchTimer);
+    if (!q.trim()) {
+      var $body = document.getElementById('fp-contatos-body');
+      if ($body) $body.innerHTML = '<div class="fp-apoio-empty">Digite para buscar contatos</div>';
+      var $sub = document.getElementById('fp-contatos-hdr-sub');
+      if ($sub) $sub.textContent = '';
+      return;
+    }
+    contatosSearchTimer = setTimeout(function() { _doContatosSearch(q.trim()); }, 280);
+  }
+
+  function contatosClear() {
+    var $inp = document.getElementById('fp-contatos-input');
+    if ($inp) { $inp.value = ''; $inp.focus(); }
+    contatosSearchInput('');
+  }
+
+  function _doContatosSearch(q) {
+    var $body = document.getElementById('fp-contatos-body');
+    if (!$body) return;
+    $body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+    var like = '%' + q + '%';
+    sb.from('exp_contatos')
+      .select('id,nome,empresa,tipo_produto,cidade,estado,telefone,email,tipo')
+      .eq('desativado', false)
+      .or('nome.ilike.' + like + ',empresa.ilike.' + like + ',tipo_produto.ilike.' + like + ',cidade.ilike.' + like)
+      .order('nome')
+      .limit(10)
+      .then(function(res) {
+        _renderContatosResults(res.data || [], q);
+      })
+      .catch(function() {
+        if ($body) $body.innerHTML = '<div class="fp-apoio-empty">Erro ao buscar. Tente novamente.</div>';
+      });
+  }
+
+  function _renderContatosResults(contatos, q) {
+    var $body = document.getElementById('fp-contatos-body');
+    var $sub  = document.getElementById('fp-contatos-hdr-sub');
+    if (!$body) return;
+    var total = contatos.length;
+    if ($sub) $sub.textContent = total ? total + ' resultado' + (total !== 1 ? 's' : '') : '';
+    if (!total) {
+      $body.innerHTML = '<div class="fp-apoio-empty">Nenhum resultado para<br>"' + escHtml(q) + '"</div>';
+      return;
+    }
+    var html = '';
+    contatos.forEach(function(c) {
+      var cor = _contatoTipoCor(c.tipo);
+      /* linha 1: empresa · tipo */
+      var sub1Parts = [];
+      if (c.empresa) sub1Parts.push(escHtml(c.empresa));
+      if (c.tipo)    sub1Parts.push('<span class="fp-contatos-result-tag">' + escHtml(c.tipo) + '</span>');
+      /* linha 2: cidade/estado · telefone */
+      var meta = [];
+      var loc = [c.cidade, c.estado].filter(Boolean).join('/');
+      if (loc)       meta.push(escHtml(loc));
+      if (c.telefone) meta.push(escHtml(c.telefone));
+      if (c.tipo_produto) meta.push(escHtml(c.tipo_produto));
+      /* link: abre contatos.html com busca pré-preenchida pelo nome */
+      var href = 'contatos.html?q=' + encodeURIComponent(c.nome);
+      html += '<a href="' + href + '" class="fp-contatos-result">' +
+        '<div class="fp-contatos-result-dot" style="background:' + cor + '"></div>' +
+        '<div class="fp-contatos-result-info">' +
+          '<div class="fp-contatos-result-name">' + escHtml(c.nome) + '</div>' +
+          (sub1Parts.length ? '<div class="fp-contatos-result-sub">' + sub1Parts.join('&ensp;·&ensp;') + '</div>' : '') +
+          (meta.length ? '<div class="fp-contatos-result-meta">' + meta.join('&ensp;·&ensp;') + '</div>' : '') +
+        '</div>' +
+        '</a>';
+    });
+    $body.innerHTML = html;
+    /* reposicionar após altura mudar */
+    var $panel = document.getElementById('fp-contatos-panel');
+    var $btn   = document.getElementById('fp-nav-contatos');
     if ($panel && $btn) _positionBanner($panel, $btn);
   }
 
