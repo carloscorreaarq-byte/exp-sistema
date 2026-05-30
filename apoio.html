@@ -602,31 +602,139 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
 
 /* body::before — padrão de linhas convergentes definido em exp-design-system.css */
 
-/* LAYOUT */
-.apoio-layout{display:flex;gap:16px;padding:16px 24px 64px;margin-top:46px;margin-left:auto;margin-right:auto;max-width:1400px;min-height:calc(100vh - 46px);align-items:flex-start;box-sizing:border-box;position:relative;z-index:1}
+/* ═══════════════════════════════════════════════════
+   NOVO LAYOUT — cards flutuando no background
+═══════════════════════════════════════════════════ */
+body{height:100vh;overflow:hidden}
+[data-theme="dark"] body{background:#161615}
 
-/* SIDEBAR */
-.apoio-sidebar{width:260px;flex-shrink:0;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;position:sticky;top:62px;max-height:calc(100vh - 78px)}
-.sb-search{padding:10px 12px;border-bottom:1px solid var(--cinza)}
-.sb-search input{width:100%;padding:6px 10px;border:1px solid var(--cinza);background:var(--off);font-family:var(--f);font-size:11px;font-weight:300;color:var(--preto);outline:none;border-radius:6px;box-sizing:border-box}
-.sb-search input:focus{border-color:var(--preto)}
-.sb-search input::placeholder{color:#bbb}
-.sb-section-lbl{padding:10px 12px 4px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
-.sb-theme-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:400;color:#666;transition:all .12s;border-left:3px solid transparent;user-select:none}
-.sb-theme-item:hover{background:var(--off);color:var(--preto)}
-.sb-theme-item.active{background:var(--off);color:var(--preto);font-weight:600;border-left-color:var(--apoio-ac)}
+#ap-app{
+  display:none; /* JS seta flex após carregar */
+  height:100vh;padding:20px 72px;gap:11px;
+  align-items:stretch;position:relative;z-index:1;
+}
+
+/* Nav lateral */
+#ap-nav{
+  width:66px;flex-shrink:0;
+  background:#2A2926;border-radius:14px;
+  display:flex;flex-direction:column;align-items:center;
+  padding:10px 0 84px; /* 84px reserva para o timer */
+  gap:2px;overflow:visible;
+}
+[data-theme="dark"] #ap-nav{background:#1A1A18}
+
+.ap-nav-logo{width:50px;height:44px;margin-bottom:4px;display:flex;align-items:center;justify-content:center}
+.ap-nav-logo img{height:16px;mix-blend-mode:multiply;transform:rotate(-90deg);transform-origin:center center}
+[data-theme="dark"] .ap-nav-logo img{filter:invert(1) brightness(.85);mix-blend-mode:screen}
+
+.ap-nav-sep{width:32px;height:1px;background:rgba(255,255,255,.1);margin:4px 0;flex-shrink:0}
+
+.ap-nav-item{
+  width:40px;height:36px;border-radius:9px;
+  border:none;background:none;color:rgba(255,255,255,.35);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .12s,color .12s;
+  text-decoration:none;flex-shrink:0;position:relative;
+}
+.ap-nav-item:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.8)}
+.ap-nav-item.active{background:rgba(255,255,255,.14);color:#fff}
+.ap-nav-item[title]:hover::after{
+  content:attr(title);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);
+  background:#111110;color:#fff;font-size:10px;font-weight:600;
+  padding:4px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:500;
+}
+.ap-nav-spacer{flex:1}
+
+/* Timer: centralizado na nav dentro do padding esquerdo */
+#exp-timer-widget{left:calc(72px + (66px / 2) - 23px) !important;bottom:34px !important;z-index:9998 !important}
+
+/* Card sidebar */
+#ap-sidebar{
+  width:340px;flex-shrink:0;
+  background:var(--branco,#fff);
+  border:1px solid var(--cinza2,#ECEAE4);
+  border-radius:14px;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+[data-theme="dark"] #ap-sidebar{background:#1E1E1D;border-color:#2E2D2B}
+
+.ap-sb-head{padding:12px 14px 10px;border-bottom:1px solid var(--cinza2,#ECEAE4);flex-shrink:0}
+[data-theme="dark"] .ap-sb-head{border-bottom-color:#2E2D2B}
+.ap-sb-head-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+
+.ap-sb-logo{height:auto;max-height:20px;width:auto;object-fit:contain;opacity:.5;mix-blend-mode:multiply;display:block;margin-right:auto}
+[data-theme="dark"] .ap-sb-logo{filter:invert(1) brightness(.7);mix-blend-mode:screen;opacity:.45}
+
+.ap-sb-icon-btn{
+  width:28px;height:28px;border-radius:7px;border:none;
+  background:var(--off,#F7F6F3);color:var(--grafite,#111110);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .12s;flex-shrink:0;
+}
+.ap-sb-icon-btn:hover{background:var(--cinza2,#ECEAE4)}
+[data-theme="dark"] .ap-sb-icon-btn{background:#252523;color:#F0EDE6}
+[data-theme="dark"] .ap-sb-icon-btn:hover{background:#2E2D2B}
+
+/* User chip no header da sidebar */
+.ap-user-chip{display:flex;align-items:center;gap:7px;cursor:pointer;border-radius:8px;padding:3px 6px 3px 3px;transition:background .12s;position:relative;flex-shrink:0}
+.ap-user-chip:hover{background:var(--cinza2,#ECEAE4)}
+[data-theme="dark"] .ap-user-chip:hover{background:rgba(255,255,255,.07)}
+.ap-user-av{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--cinza,#D0CFC9);color:#fff;
+  font-size:9px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;overflow:hidden;
+}
+.ap-user-av img{width:100%;height:100%;object-fit:cover}
+.ap-user-info{display:flex;flex-direction:column;min-width:0}
+.ap-user-nome{font-size:11px;font-weight:700;color:var(--grafite,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+[data-theme="dark"] .ap-user-nome{color:#F0EDE6}
+.ap-user-role{font-size:9px;color:#888;white-space:nowrap}
+
+/* Search na sidebar */
+.ap-sb-search{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 8px;margin:0 14px 10px;
+  background:var(--off,#F7F6F3);
+  border:1px solid var(--cinza2,#ECEAE4);
+  border-radius:9px;
+}
+[data-theme="dark"] .ap-sb-search{background:#252523;border-color:#2E2D2B}
+.ap-sb-search input{flex:1;border:none;background:none;font-family:var(--f,'Raleway',sans-serif);font-size:12px;color:var(--preto,#111110);outline:none}
+[data-theme="dark"] .ap-sb-search input{color:#F0EDE6}
+.ap-sb-search input::placeholder{color:var(--cinza,#D0CFC9)}
+
+/* Lista de temas dentro da sidebar */
+.ap-sb-body{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:8px}
+.sb-section-lbl{padding:10px 14px 4px;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb}
+.sb-theme-item{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:400;color:#666;transition:all .12s;border-left:3px solid transparent;user-select:none}
+.sb-theme-item:hover{background:var(--off,#F7F6F3);color:var(--preto,#111110)}
+[data-theme="dark"] .sb-theme-item:hover{background:rgba(255,255,255,.05);color:#F0EDE6}
+.sb-theme-item.active{background:var(--off,#F7F6F3);color:var(--preto,#111110);font-weight:600;border-left-color:var(--apoio-ac,#3E7858)}
+[data-theme="dark"] .sb-theme-item.active{background:rgba(255,255,255,.07);color:#F0EDE6}
 .sb-icon{font-size:10px;flex-shrink:0;opacity:.7}
 .sb-chevron{font-size:13px;color:#ccc;margin-left:auto;transition:transform .2s;flex-shrink:0;line-height:1;font-weight:300}
 .sb-theme-item.open .sb-chevron{transform:rotate(90deg)}
-.sb-submenu{display:none;flex-direction:column;background:var(--off)}
+.sb-submenu{display:none;flex-direction:column;background:var(--off,#F7F6F3)}
+[data-theme="dark"] .sb-submenu{background:rgba(255,255,255,.03)}
 .sb-submenu.open{display:flex}
-.sb-sub-item{padding:7px 12px 7px 32px;font-size:11px;color:#888;cursor:pointer;transition:all .12s;border-left:3px solid transparent;border-bottom:1px solid var(--cinza2)}
+.sb-sub-item{padding:7px 14px 7px 32px;font-size:11px;color:#888;cursor:pointer;transition:all .12s;border-left:3px solid transparent;border-bottom:1px solid var(--cinza2,#ECEAE4)}
 .sb-sub-item:last-child{border-bottom:none}
-.sb-sub-item:hover{color:var(--preto);background:var(--cinza2)}
-.sb-sub-item.active{color:var(--apoio-ac);font-weight:600;border-left-color:var(--apoio-ac)}
+.sb-sub-item:hover{color:var(--preto,#111110);background:var(--cinza2,#ECEAE4)}
+[data-theme="dark"] .sb-sub-item:hover{color:#F0EDE6;background:rgba(255,255,255,.07)}
+.sb-sub-item.active{color:var(--apoio-ac,#3E7858);font-weight:600;border-left-color:var(--apoio-ac,#3E7858)}
 
-/* CONTENT */
-.apoio-content{flex:1;min-width:0}
+/* Card de conteúdo */
+#apoio-content{
+  flex:1;min-width:0;
+  background:var(--branco,#fff);
+  border:1px solid var(--cinza2,#ECEAE4);
+  border-radius:14px;
+  overflow-y:auto;padding:24px 28px;
+}
+[data-theme="dark"] #apoio-content{background:#1E1E1D;border-color:#2E2D2B}
 
 /* TEMA HEADER */
 .tema-hdr{margin-bottom:28px;padding-left:22px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
@@ -1186,30 +1294,58 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
   <div class="loading-bar"></div>
 </div>
 
-<nav class="nav">
-  <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
-  <span class="nav-sep"></span>
-  <div class="nav-mod-wrap" id="nav-mod-wrap">
-    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.apoio <span>▾</span></button>
-    <div class="nav-dropdown" id="nav-dropdown">
-      <a href="gestao.html">EXP.projetos</a>
-      <a href="apoio.html" class="nd-active">EXP.apoio</a>
-      <a href="contatos.html">EXP.contatos</a>
-      <div class="nd-sep nd-soc" style="display:none"></div>
-      <a href="calc.html" class="nd-soc" style="display:none">EXP.calculadora</a>
-      <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
-      <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
-      <a href="analise.html" class="nd-soc" style="display:none">EXP.análise</a>
-      <a href="pessoas.html" class="nd-soc" style="display:none">EXP.pessoas</a>
-      <a href="sociedade.html" class="nd-soc" style="display:none">EXP.sociedade</a>
+<div id="ap-app">
+
+  <!-- ── Nav lateral de módulos ── -->
+  <nav id="ap-nav">
+    <div class="ap-nav-logo">
+      <img src="exp.png" alt="EXP" onerror="this.style.display='none'">
     </div>
-  </div>
-  <div class="nav-right">
-    <div class="conn-dot" id="conn-dot"></div>
-    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
-    <div class="nav-feedback-wrap" id="nav-feedback-wrap">
-      <button type="button" class="nav-feedback-btn" id="nav-feedback-btn" onclick="toggleToolFeedbackPopover(event)" aria-label="Comunicar problema ou sugestão" title="Problemas e sugestões">!</button>
-      <div class="nav-feedback-pop" id="nav-feedback-pop">
+
+    <a href="app.html"        class="ap-nav-item" title="Hub">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </a>
+    <a href="gestao.html"     class="ap-nav-item" title="Projetos">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+    </a>
+    <a href="apoio.html"      class="ap-nav-item active" title="Apoio">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </a>
+    <a href="contatos.html"   class="ap-nav-item" title="Contatos">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </a>
+
+    <div class="ap-nav-sep nd-soc" style="display:none"></div>
+    <a href="crm.html"        class="ap-nav-item nd-soc" title="Comercial" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </a>
+    <a href="financeiro.html" class="ap-nav-item nd-soc" title="Financeiro" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </a>
+    <a href="analise.html"    class="ap-nav-item nd-soc" title="Análise" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6"  y1="20" x2="6"  y2="14"/></svg>
+    </a>
+    <a href="pessoas.html"    class="ap-nav-item nd-soc" title="Pessoas" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </a>
+
+    <div class="ap-nav-spacer"></div>
+
+    <!-- EXP Room -->
+    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank"
+       class="ap-nav-item" id="exp-room-btn" title="EXP Room">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+    </a>
+
+    <!-- Feedback -->
+    <div class="ap-nav-item" id="nav-feedback-wrap" style="position:relative">
+      <button type="button" class="ap-nav-item" id="nav-feedback-btn"
+              onclick="toggleToolFeedbackPopover(event)"
+              style="width:40px;height:36px;border-radius:9px" title="Problemas e sugestões">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </button>
+      <div class="nav-feedback-pop" id="nav-feedback-pop"
+           style="position:fixed;left:82px;bottom:80px">
         <div class="nav-feedback-title">Problema ou sugestão</div>
         <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
         <div style="display:grid;gap:8px">
@@ -1232,43 +1368,58 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
         </div>
       </div>
     </div>
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
-      <span class="ttg-icon">☀</span>
-      <span class="ttg-track"><span class="ttg-knob"></span></span>
-      <span class="ttg-icon">🌙</span>
-    </button>
-    <div class="user-pill-wrap" id="user-pill-wrap">
-      <div class="user-chip" onclick="toggleUserMenu()">
-        <div class="user-av" id="user-av"></div>
-        <div>
-          <div class="u-nome" id="user-nome">—</div>
-          <div class="u-role" id="nav-role">—</div>
-        </div>
-        <span class="u-caret">▾</span>
-      </div>
-      <div class="user-dropdown" id="user-dropdown">
-        <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
-        <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
-        <div class="ud-sep"></div>
-        <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
-          <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
-          <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
-          <span class="term-state-hover">ver termo →</span>
-        </div>
-        <div class="ud-sep"></div>
-        <button onclick="sair()">Sair do sistema</button>
-      </div>
-    </div>
-  </div>
-</nav>
 
-<div class="apoio-layout">
-  <aside class="apoio-sidebar">
-    <div class="sb-search">
-      <input type="text" id="sb-search-input" placeholder="Buscar no apoio..." oninput="buscarDebounce(this.value)">
+    <!-- Theme toggle -->
+    <button class="ap-nav-item" onclick="toggleTheme()" title="Alternar tema">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+
+  </nav>
+
+  <!-- ── Sidebar card (340px) ── -->
+  <aside id="ap-sidebar">
+
+    <!-- Cabeçalho: logo + user + ações -->
+    <div class="ap-sb-head">
+      <div class="ap-sb-head-row">
+        <img src="exp.png" alt="EXP" class="ap-sb-logo" onerror="this.style.display='none'">
+
+        <!-- dot de conexão -->
+        <div class="conn-dot" id="conn-dot" style="flex-shrink:0"></div>
+
+        <!-- User chip com dropdown -->
+        <div class="ap-user-chip" id="user-pill-wrap" onclick="toggleUserMenu()">
+          <div class="ap-user-av" id="user-av"></div>
+          <div class="ap-user-info">
+            <div class="ap-user-nome" id="user-nome">—</div>
+            <div class="ap-user-role" id="nav-role">—</div>
+          </div>
+        </div>
+        <div class="user-dropdown" id="user-dropdown">
+          <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+          <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
+          <div class="ud-sep"></div>
+          <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
+            <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
+            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
+            <span class="term-state-hover">ver termo →</span>
+          </div>
+          <div class="ud-sep"></div>
+          <button onclick="sair()">Sair do sistema</button>
+        </div>
+      </div>
+
+      <!-- Busca -->
+      <div class="ap-sb-search">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cinza,#D0CFC9);flex-shrink:0"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="sb-search-input" placeholder="Buscar no apoio…" oninput="buscarDebounce(this.value)">
+      </div>
     </div>
-    <div class="sb-section-lbl">Temas</div>
-    <div id="sb-temas">
+
+    <!-- Lista de temas -->
+    <div class="ap-sb-body">
+      <div class="sb-section-lbl">Temas</div>
+      <div id="sb-temas">
       <div class="sb-theme-item active" data-tema="cultura" onclick="setTema('cultura')">
         <span class="sb-icon">•</span>
         <span>Cultura</span>
@@ -1316,12 +1467,15 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
         <span>Cadastros e Senhas</span>
       </div>
     </div>
+    </div><!-- /.ap-sb-body -->
   </aside>
 
-  <main class="apoio-content" id="apoio-content">
+  <!-- ── Card de conteúdo ── -->
+  <main id="apoio-content">
     <div class="loading-inline"><div class="loading-inline-spinner"></div> Carregando...</div>
   </main>
-</div>
+
+</div><!-- /#ap-app -->
 
 <!-- MODAL DE EDIÇÃO -->
 <div class="modal-overlay" id="modal-edit" style="display:none" onclick="if(event.target===this)fecharModal()">
@@ -2731,6 +2885,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await carregarDados();
   document.getElementById('loading').style.display = 'none';
+  document.getElementById('ap-app').style.display = 'flex';
   renderTema();
 
   // Deep link: apoio.html?tema=vegetacao&sub=normas-tecnicas
