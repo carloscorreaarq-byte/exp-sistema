@@ -72,6 +72,8 @@ body {
 
 /* ── USER CHIP OVERRIDES ─────────────────────────────────── */
 .u-role { margin-top: 1px; }
+/* Remove espaço vazio quando user-dropdown-note não tem conteúdo */
+.user-dropdown-note:empty { display: none; }
 
 /* ── CONN DOT ────────────────────────────────────────────── */
 
@@ -2269,17 +2271,9 @@ function renderTermState(usuario) {
 
 function renderShellIdentity(usuario) {
   const av = document.getElementById('user-av');
-  av.classList.toggle('has-avatar', !!usuario.avatar_url);
+  av.classList.remove('has-avatar');   /* sempre bolinha colorida com iniciais */
   av.style.background = usuario.cor || '#888';
-  av.innerHTML = '';
-  if (usuario.avatar_url) {
-    const img = document.createElement('img');
-    img.src = usuario.avatar_url;
-    img.alt = usuario.nome || 'Avatar';
-    av.appendChild(img);
-  } else {
-    av.textContent = usuario.iniciais;
-  }
+  av.textContent = usuario.iniciais || (usuario.nome || '??').substring(0, 2).toUpperCase();
   const _nomeParts = (usuario.nome || '').trim().split(/\s+/).filter(Boolean);
   document.getElementById('user-nome').textContent = _nomeParts.length <= 2 ? (_nomeParts.join(' ') || '—') : _nomeParts[0] + ' ' + _nomeParts[_nomeParts.length - 1];
   document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'Socio administrador' : (ROLES[usuario.role] || usuario.role);

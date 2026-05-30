@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
 <script>
   (function(){
     var saved = localStorage.getItem('exp-theme');
@@ -608,45 +609,14 @@ tr.veg-row-selected td{background:rgba(45,74,45,.06);}
 body{height:100vh;overflow:hidden}
 [data-theme="dark"] body{background:#161615}
 
+/* Layout principal — mesmo padrão dos outros módulos */
 #ap-app{
   display:none; /* JS seta flex após carregar */
-  height:100vh;padding:20px 72px;gap:11px;
-  align-items:stretch;position:relative;z-index:1;
+  flex:1; height:100vh; padding:20px 72px; gap:11px;
+  align-items:stretch; position:relative; z-index:1;
 }
 
-/* Nav lateral */
-#ap-nav{
-  width:66px;flex-shrink:0;
-  background:#2A2926;border-radius:14px;
-  display:flex;flex-direction:column;align-items:center;
-  padding:10px 0 84px; /* 84px reserva para o timer */
-  gap:2px;overflow:visible;
-}
-[data-theme="dark"] #ap-nav{background:#1A1A18}
-
-.ap-nav-logo{width:50px;height:44px;margin-bottom:4px;display:flex;align-items:center;justify-content:center}
-.ap-nav-logo img{height:16px;mix-blend-mode:multiply;transform:rotate(-90deg);transform-origin:center center}
-[data-theme="dark"] .ap-nav-logo img{filter:invert(1) brightness(.85);mix-blend-mode:screen}
-
-.ap-nav-sep{width:32px;height:1px;background:rgba(255,255,255,.1);margin:4px 0;flex-shrink:0}
-
-.ap-nav-item{
-  width:40px;height:36px;border-radius:9px;
-  border:none;background:none;color:rgba(255,255,255,.35);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;transition:background .12s,color .12s;
-  text-decoration:none;flex-shrink:0;position:relative;
-}
-.ap-nav-item:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.8)}
-.ap-nav-item.active{background:rgba(255,255,255,.14);color:#fff}
-.ap-nav-item[title]:hover::after{
-  content:attr(title);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);
-  background:#111110;color:#fff;font-size:10px;font-weight:600;
-  padding:4px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:500;
-}
-.ap-nav-spacer{flex:1}
-
-/* Timer: centralizado na nav dentro do padding esquerdo */
+/* Timer: centralizado na nav (exp-nav.css já define, mas override garante posição) */
 #exp-timer-widget{left:calc(72px + (66px / 2) - 23px) !important;bottom:34px !important;z-index:9998 !important}
 
 /* Card sidebar */
@@ -1296,112 +1266,16 @@ body{height:100vh;overflow:hidden}
 
 <div id="ap-app">
 
-  <!-- ── Nav lateral de módulos ── -->
-  <nav id="ap-nav">
-    <a href="app.html"        class="ap-nav-item" title="Hub">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </a>
-    <a href="gestao.html"     class="ap-nav-item" title="Projetos">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-    </a>
-    <a href="apoio.html"      class="ap-nav-item active" title="Apoio">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    </a>
-    <a href="contatos.html"   class="ap-nav-item" title="Contatos">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </a>
-
-    <div class="ap-nav-sep nd-soc" style="display:none"></div>
-    <a href="crm.html"        class="ap-nav-item nd-soc" title="Comercial" style="display:none">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    </a>
-    <a href="financeiro.html" class="ap-nav-item nd-soc" title="Financeiro" style="display:none">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    </a>
-    <a href="analise.html"    class="ap-nav-item nd-soc" title="Análise" style="display:none">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6"  y1="20" x2="6"  y2="14"/></svg>
-    </a>
-    <a href="pessoas.html"    class="ap-nav-item nd-soc" title="Pessoas" style="display:none">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    </a>
-
-    <div class="ap-nav-spacer"></div>
-
-    <!-- EXP Room -->
-    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank"
-       class="ap-nav-item" id="exp-room-btn" title="EXP Room">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-    </a>
-
-    <!-- Feedback -->
-    <div id="nav-feedback-wrap" style="position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-      <button type="button" class="ap-nav-item" id="nav-feedback-btn"
-              onclick="toggleToolFeedbackPopover(event)" title="Problemas e sugestões">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      </button>
-      <div class="nav-feedback-pop" id="nav-feedback-pop"
-           style="position:fixed;left:82px;bottom:80px">
-        <div class="nav-feedback-title">Problema ou sugestão</div>
-        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-        <div style="display:grid;gap:8px">
-          <div>
-            <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;display:block;margin-bottom:4px">Tipo</label>
-            <select id="tool-feedback-type" style="width:100%;padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--f);font-size:11px;background:var(--branco);color:var(--preto)">
-              <option value="problema">Problema</option>
-              <option value="sugestao">Sugestão</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;display:block;margin-bottom:4px">Mensagem</label>
-            <textarea id="tool-feedback-message" rows="4" style="width:100%;padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--f);font-size:11px;resize:vertical;box-sizing:border-box;background:var(--branco);color:var(--preto)" placeholder="Descreva o problema ou sugestão…"></textarea>
-          </div>
-        </div>
-        <div class="nav-feedback-status" id="tool-feedback-status" style="font-size:10px;color:#999">Seu registro será encaminhado para a Gestão de plataforma.</div>
-        <div class="nav-feedback-actions">
-          <button type="button" class="btn sm" onclick="fecharToolFeedbackPopover()">Fechar</button>
-          <button type="button" class="btn sm tc" onclick="enviarToolFeedback()">Enviar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Theme toggle -->
-    <button class="ap-nav-item" onclick="toggleTheme()" title="Alternar tema">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    </button>
-
-  </nav>
+  <!-- #exp-nav injetada pelo ExpNav.init() -->
 
   <!-- ── Sidebar card (340px) ── -->
   <aside id="ap-sidebar">
 
-    <!-- Cabeçalho: logo + user + ações -->
+    <!-- Cabeçalho: logo + busca -->
     <div class="ap-sb-head">
       <div class="ap-sb-head-row">
         <img src="exp.png" alt="EXP" class="ap-sb-logo" onerror="this.style.display='none'">
-
-        <!-- dot de conexão -->
         <div class="conn-dot" id="conn-dot" style="flex-shrink:0"></div>
-
-        <!-- User chip com dropdown -->
-        <div class="ap-user-chip" id="user-pill-wrap" onclick="toggleUserMenu()">
-          <div class="ap-user-av" id="user-av"></div>
-          <div class="ap-user-info">
-            <div class="ap-user-nome" id="user-nome">—</div>
-            <div class="ap-user-role" id="nav-role">—</div>
-          </div>
-        </div>
-        <div class="user-dropdown" id="user-dropdown">
-          <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
-          <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
-          <div class="ud-sep"></div>
-          <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
-            <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
-            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
-            <span class="term-state-hover">ver termo →</span>
-          </div>
-          <div class="ud-sep"></div>
-          <button onclick="sair()">Sair do sistema</button>
-        </div>
       </div>
 
       <!-- Busca -->
@@ -2823,26 +2697,11 @@ async function registrarExpRoomClick(userId, userName) {
     await sb.from('exp_config').upsert({ key:'exp_room_active', value: userName||'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
   } catch(e) {}
 }
-function initExpRoom(userId, userName) {
-  const btn = document.getElementById('exp-room-btn');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    registrarExpRoomClick(userId, userName);
-    btn.classList.add('active');
-    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
-  });
-  checkExpRoomStatus();
-  setInterval(checkExpRoomStatus, 60000);
-}
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
   if (!dot) return;
   const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexão'; };
   update(); window.addEventListener('online',update); window.addEventListener('offline',update);
-}
-function initNavDropdown(role) {
-  if (['socio', 'socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
-  initConnDot();
 }
 async function sair() {
   await sb.auth.signOut();
@@ -2858,24 +2717,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   const {data:u} = await sb.from('usuarios').select('*').eq('auth_id',session.user.id).single();
   G.usuario = u || {nome:'Usuário',iniciais:'?',cor:'#888',role:'colaborador'};
 
-  const avEl = document.getElementById('user-av');
-  if (avEl) {
-    if (G.usuario.avatar_url) {
-      avEl.classList.add('has-avatar');
-      avEl.innerHTML = `<img src="${G.usuario.avatar_url}" alt="${G.usuario.iniciais || ''}">`;
-    } else {
-      avEl.textContent = G.usuario.iniciais || '?';
-      avEl.style.background = G.usuario.cor || '#888';
-    }
+  /* Salva no sessionStorage para o ExpNav encontrar e injetar a nav */
+  sessionStorage.setItem('exp_usuario', JSON.stringify({
+    id: G.usuario.id, app_user_id: G.usuario.id,
+    auth_id: session.user.id,
+    nome: G.usuario.nome, iniciais: G.usuario.iniciais,
+    cor: G.usuario.cor, avatar_url: G.usuario.avatar_url || null,
+    role: G.usuario.role,
+  }));
+  window.dispatchEvent(new CustomEvent('exp:session-ready', { detail: G.usuario }));
+
+  /* Mostrar itens de sócio */
+  if (['socio','socio_admin'].includes((G.usuario.role||'').toLowerCase())) {
+    document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   }
-  const _np = (G.usuario.nome||'').trim().split(/\s+/).filter(Boolean);
-  const nomeExib = _np.length <= 2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
-  document.getElementById('user-nome').textContent = nomeExib;
-  const roleMap = { socio: 'Sócio', socio_adm: 'Sócio-administrador', socio_admin: 'Sócio-administrador', coordenador: 'Coordenador', colaborador: 'Colaborador' };
-  const navRole = document.getElementById('nav-role');
-  if (navRole) navRole.textContent = roleMap[G.usuario.role] || G.usuario.role || '';
-  initNavDropdown(G.usuario.role);
-  initExpRoom(G.usuario.id, (G.usuario.nome||'').split(' ')[0]);
+  initConnDot();
   if(isColaborador()) document.getElementById('sb-cadastros-senhas')?.style && (document.getElementById('sb-cadastros-senhas').style.display = '');
 
   await carregarDados();
@@ -7995,14 +7851,15 @@ Ela agora passa a ser gerida a partir do mÃ³dulo de pessoas, permitindo atuali
 <script src="chat.js"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
-<!-- Timer: override pós-script para garantir posição na nav — mesmo padrão do chat-fullpage -->
-<style>
-  #exp-timer-widget {
-    left:   calc(72px + (66px / 2) - 23px) !important;
-    bottom: 34px !important;
-    z-index: 9998 !important;
-  }
-</style>
+<!-- EXP · Nav compartilhada -->
+<script src="shared/app-notif.js"></script>
+<script src="shared/exp-nav.js"></script>
+<script>
+  ExpNav.init({
+    module: 'apoio',
+    onUserMenu: function() { window.location.href = 'app.html'; },
+  });
+</script>
 </body>
 </html>
 
