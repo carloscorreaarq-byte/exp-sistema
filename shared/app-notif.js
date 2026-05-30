@@ -243,13 +243,19 @@ window.AppNotif = (() => {
   }
 
   /* ── outside click ───────────────────────────────────────── */
+  function _getPanel() {
+    return document.getElementById('notif-panel') ||
+           document.getElementById('exp-notif-panel');
+  }
+
   function _bindOutsideClick() {
     document.addEventListener('click', e => {
       if (!_panelOpen) return;
       const wrap  = document.getElementById('notif-wrap');
-      const panel = document.getElementById('notif-panel');
+      const panel = _getPanel();
       const bell  = document.getElementById('notif-bell-btn') ||
-                    document.getElementById('fp-nav-bell');
+                    document.getElementById('fp-nav-bell')    ||
+                    document.getElementById('exp-nav-bell');
       const inside = (wrap  && wrap.contains(e.target))  ||
                      (panel && panel.contains(e.target))  ||
                      (bell  && bell.contains(e.target));
@@ -259,16 +265,17 @@ window.AppNotif = (() => {
 
   /* ── toggle / close ──────────────────────────────────────── */
   function togglePanel() {
-    const panel = document.getElementById('notif-panel');
-    if (!panel) return;
     _panelOpen = !_panelOpen;
-    panel.style.display = _panelOpen ? 'block' : 'none';
+    /* só controla display quando o painel local (#notif-panel) existe;
+       para #exp-notif-panel o ExpNav gerencia o display */
+    const panel = document.getElementById('notif-panel');
+    if (panel) panel.style.display = _panelOpen ? 'block' : 'none';
     if (_panelOpen) _renderPanel();
   }
 
   function close() {
     _panelOpen = false;
-    const panel = document.getElementById('notif-panel');
+    const panel = _getPanel();
     if (panel) panel.style.display = 'none';
   }
 

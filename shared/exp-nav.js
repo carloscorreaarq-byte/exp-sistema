@@ -536,12 +536,7 @@ window.ExpNav = (() => {
 
       /* AppNotif */
       if (window.AppNotif) {
-        AppNotif.init({ userId: user.id || user.app_user_id }).then(function() {
-          /* remove seção de tarefas do sininho (gerenciada localmente) */
-          AppNotif.setComputedSection('tarefas', { label: 'Tarefas', items: [] });
-        }).catch(function() {
-          AppNotif.setComputedSection('tarefas', { label: 'Tarefas', items: [] });
-        });
+        AppNotif.init({ userId: user.id || user.app_user_id });
       }
 
       /* outside click notif */
