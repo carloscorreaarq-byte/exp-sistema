@@ -1842,6 +1842,8 @@
     showCalBanner, hideCalBanner,
     /* comercial hover */
     showCrmBanner, hideCrmBanner,
+    /* apoio — painel de busca */
+    toggleApoioPanel, closeApoioPanel, apoioSearchInput, apoioClear,
     /* prioridade / projeto */
     togglePrioPanel, openPrioPanel, closePrioPanel, checkPrioPanel,
     showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
@@ -2424,6 +2426,167 @@
     var $banner = document.getElementById('fp-crm-banner');
     var $btn    = document.getElementById('fp-nav-crm');
     if ($banner && $btn) _positionBanner($banner, $btn);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     PAINEL DE BUSCA — APOIO
+  ═══════════════════════════════════════════════════════════════════ */
+  var apoioPanelOpen   = false;
+  var apoioSearchTimer = null;
+
+  function toggleApoioPanel(event) {
+    if (apoioPanelOpen) closeApoioPanel();
+    else                openApoioPanel(event);
+  }
+
+  function openApoioPanel(event) {
+    apoioPanelOpen = true;
+    var $p   = document.getElementById('fp-apoio-panel');
+    var $btn = (event && event.currentTarget) || document.getElementById('fp-nav-apoio');
+    if (!$p || !$btn) return;
+    $p.style.display = 'flex';
+    _positionBanner($p, $btn);
+    setTimeout(function() {
+      var $inp = document.getElementById('fp-apoio-input');
+      if ($inp) $inp.focus();
+    }, 50);
+    setTimeout(function() {
+      document.addEventListener('click', _apoioOutsideClick);
+      document.addEventListener('keydown', _apoioKeyClose);
+    }, 10);
+  }
+
+  function closeApoioPanel() {
+    apoioPanelOpen = false;
+    var $p = document.getElementById('fp-apoio-panel');
+    if ($p) $p.style.display = 'none';
+    document.removeEventListener('click', _apoioOutsideClick);
+    document.removeEventListener('keydown', _apoioKeyClose);
+  }
+
+  function _apoioOutsideClick(e) {
+    var $p   = document.getElementById('fp-apoio-panel');
+    var $btn = document.getElementById('fp-nav-apoio');
+    var $wrap = document.getElementById('fp-nav-apoio-wrap');
+    if ($p && !$p.contains(e.target) && $wrap && !$wrap.contains(e.target)) {
+      closeApoioPanel();
+    }
+  }
+
+  function _apoioKeyClose(e) {
+    if (e.key === 'Escape') closeApoioPanel();
+  }
+
+  function apoioSearchInput(q) {
+    var $clr = document.getElementById('fp-apoio-clear');
+    if ($clr) $clr.style.display = q ? 'flex' : 'none';
+    if (apoioSearchTimer) clearTimeout(apoioSearchTimer);
+    if (!q.trim()) {
+      var $body = document.getElementById('fp-apoio-body');
+      if ($body) $body.innerHTML = '<div class="fp-apoio-empty">Digite para buscar no módulo de Apoio</div>';
+      var $sub = document.getElementById('fp-apoio-hdr-sub');
+      if ($sub) $sub.textContent = '';
+      return;
+    }
+    apoioSearchTimer = setTimeout(function() { _doApoioSearch(q.trim()); }, 280);
+  }
+
+  function apoioClear() {
+    var $inp = document.getElementById('fp-apoio-input');
+    if ($inp) { $inp.value = ''; $inp.focus(); }
+    apoioSearchInput('');
+  }
+
+  function _doApoioSearch(q) {
+    var $body = document.getElementById('fp-apoio-body');
+    if (!$body) return;
+    $body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+    var like = '%' + q + '%';
+    Promise.all([
+      sb.from('apoio_normas').select('id,codigo,titulo,area').or('titulo.ilike.' + like + ',codigo.ilike.' + like).limit(4),
+      sb.from('apoio_vegetacao_especie').select('id,nome_popular,nome_cientifico,grupo').ilike('nome_popular', like).limit(4),
+      sb.from('apoio_indicacoes').select('id,titulo,autor').ilike('titulo', like).limit(3),
+      sb.from('apoio_subtemas_custom').select('id,nome,tema_slug').ilike('nome', like).limit(3),
+      sb.from('cadastros_plataformas').select('id,nome,numero').ilike('nome', like).limit(3)
+    ]).then(function(res) {
+      _renderApoioResults(res[0].data||[], res[1].data||[], res[2].data||[], res[3].data||[], res[4].data||[], q);
+    }).catch(function() {
+      if ($body) $body.innerHTML = '<div class="fp-apoio-empty">Erro ao buscar. Tente novamente.</div>';
+    });
+  }
+
+  function _renderApoioResults(normas, vegetacao, indicacoes, subtemas, cadastros, q) {
+    var $body = document.getElementById('fp-apoio-body');
+    var $sub  = document.getElementById('fp-apoio-hdr-sub');
+    if (!$body) return;
+    var total = normas.length + vegetacao.length + indicacoes.length + subtemas.length + cadastros.length;
+    if ($sub) $sub.textContent = total ? total + ' resultado' + (total !== 1 ? 's' : '') : '';
+    if (!total) {
+      $body.innerHTML = '<div class="fp-apoio-empty">Nenhum resultado para<br>"' + escHtml(q) + '"</div>';
+      return;
+    }
+    var html = '';
+    if (normas.length) {
+      html += '<div class="fp-apoio-group-hdr">Normas Técnicas</div>';
+      normas.forEach(function(n) {
+        var label = n.codigo ? n.codigo + ' — ' + n.titulo : n.titulo;
+        html += '<a href="apoio.html?tema=apoio&sub=normas-tecnicas" class="fp-apoio-result">' +
+          '<div class="fp-apoio-result-dot" style="background:#1D4FA0"></div>' +
+          '<div class="fp-apoio-result-info">' +
+            '<div class="fp-apoio-result-title">' + escHtml(label) + '</div>' +
+            '<div class="fp-apoio-result-sub">' + escHtml(n.area || '') + '</div>' +
+          '</div></a>';
+      });
+    }
+    if (vegetacao.length) {
+      html += '<div class="fp-apoio-group-hdr">Vegetação</div>';
+      vegetacao.forEach(function(v) {
+        html += '<a href="apoio.html?tema=vegetacao" class="fp-apoio-result">' +
+          '<div class="fp-apoio-result-dot" style="background:#1D6A4A"></div>' +
+          '<div class="fp-apoio-result-info">' +
+            '<div class="fp-apoio-result-title">' + escHtml(v.nome_popular) + '</div>' +
+            '<div class="fp-apoio-result-sub">' + escHtml(v.nome_cientifico || v.grupo || '') + '</div>' +
+          '</div></a>';
+      });
+    }
+    if (indicacoes.length) {
+      html += '<div class="fp-apoio-group-hdr">Indicações</div>';
+      indicacoes.forEach(function(i) {
+        html += '<a href="apoio.html?tema=apoio&sub=indicacoes-conteudo" class="fp-apoio-result">' +
+          '<div class="fp-apoio-result-dot" style="background:#C4831A"></div>' +
+          '<div class="fp-apoio-result-info">' +
+            '<div class="fp-apoio-result-title">' + escHtml(i.titulo) + '</div>' +
+            '<div class="fp-apoio-result-sub">' + escHtml(i.autor || '') + '</div>' +
+          '</div></a>';
+      });
+    }
+    if (subtemas.length) {
+      html += '<div class="fp-apoio-group-hdr">Conhecimento</div>';
+      subtemas.forEach(function(s) {
+        html += '<a href="apoio.html?tema=apoio" class="fp-apoio-result">' +
+          '<div class="fp-apoio-result-dot" style="background:#3E7858"></div>' +
+          '<div class="fp-apoio-result-info">' +
+            '<div class="fp-apoio-result-title">' + escHtml(s.nome) + '</div>' +
+            '<div class="fp-apoio-result-sub">' + escHtml(s.tema_slug || '') + '</div>' +
+          '</div></a>';
+      });
+    }
+    if (cadastros.length) {
+      html += '<div class="fp-apoio-group-hdr">Cadastros</div>';
+      cadastros.forEach(function(c) {
+        html += '<a href="apoio.html?tema=cadastros-senhas" class="fp-apoio-result">' +
+          '<div class="fp-apoio-result-dot" style="background:#6D7D8A"></div>' +
+          '<div class="fp-apoio-result-info">' +
+            '<div class="fp-apoio-result-title">' + escHtml(c.nome) + '</div>' +
+            '<div class="fp-apoio-result-sub">' + escHtml(c.numero ? '#' + c.numero : '') + '</div>' +
+          '</div></a>';
+      });
+    }
+    $body.innerHTML = html;
+    /* reposicionar após altura mudar */
+    var $panel = document.getElementById('fp-apoio-panel');
+    var $btn   = document.getElementById('fp-nav-apoio');
+    if ($panel && $btn) _positionBanner($panel, $btn);
   }
 
   /* ═══════════════════════════════════════════════════════════════════

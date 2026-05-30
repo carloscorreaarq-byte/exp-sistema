@@ -1315,6 +1315,148 @@ body {
 [data-theme="dark"] #fp-prio-banner { background: #1E1E1D; border-color: #2E2D2B; }
 @keyframes fpBannerIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
 
+/* ══════════════════════════════════════════════════
+   APOIO — seta de atalho + painel de busca
+══════════════════════════════════════════════════ */
+
+/* Wrapper em volta do nav item do Apoio */
+.fp-nav-apoio-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Setinha que espia pela esquerda da nav no hover
+   O nav item é 40px, centralizado num nav de 66px → 13px de margem esquerda.
+   right: calc(100% - 4px) → direita da seta 4px dentro do item (17px dentro da nav) = oculta.
+   No hover: right: calc(100% + 6px) → 6px para fora da nav = visível. */
+.fp-apoio-go-btn {
+  position: absolute;
+  right: calc(100% - 4px);
+  top: 50%; transform: translateY(-50%);
+  width: 20px; height: 28px;
+  background: #232320;
+  border-radius: 5px 0 0 5px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0);
+  opacity: 0;
+  pointer-events: none;
+  transition: right .16s ease, opacity .16s ease, color .12s;
+  text-decoration: none;
+  z-index: 5;
+}
+[data-theme="dark"] .fp-apoio-go-btn { background: #181816; }
+
+.fp-nav-apoio-wrap:hover .fp-apoio-go-btn {
+  right: calc(100% + 6px);
+  opacity: 1;
+  color: rgba(255,255,255,.5);
+  pointer-events: auto;
+}
+.fp-apoio-go-btn:hover { color: rgba(255,255,255,.9) !important; }
+
+/* ── Painel de busca Apoio ── */
+#fp-apoio-panel {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.16);
+  width: 360px;
+  display: none;
+  z-index: 600;
+  overflow: hidden;
+  animation: fpBannerIn .15s ease-out;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+}
+[data-theme="dark"] #fp-apoio-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+.fp-apoio-search-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-apoio-search-row { border-bottom-color: #2E2D2B; }
+
+.fp-apoio-search-input {
+  flex: 1; border: none; background: none;
+  font-family: 'Raleway', sans-serif; font-size: 12px;
+  color: var(--grafite, #111110); outline: none;
+}
+[data-theme="dark"] .fp-apoio-search-input { color: #F0EDE6; }
+.fp-apoio-search-input::placeholder { color: var(--cinza, #D0CFC9); }
+
+.fp-apoio-clear-btn {
+  width: 18px; height: 18px; border-radius: 50%; border: none;
+  background: var(--cinza2, #ECEAE4); color: #888;
+  font-size: 10px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+  padding: 0;
+}
+.fp-apoio-clear-btn:hover { background: var(--cinza, #D0CFC9); color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-apoio-clear-btn { background: #2E2D2B; color: #888; }
+[data-theme="dark"] .fp-apoio-clear-btn:hover { background: #3A3937; color: #C8C3BA; }
+
+#fp-apoio-body {
+  flex: 1; overflow-y: auto;
+  min-height: 60px; max-height: 380px;
+}
+
+.fp-apoio-group-hdr {
+  padding: 8px 14px 3px;
+  font-size: 8px; font-weight: 700; letter-spacing: .7px;
+  text-transform: uppercase; color: #bbb;
+}
+[data-theme="dark"] .fp-apoio-group-hdr { color: #555; }
+
+.fp-apoio-result {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 14px; cursor: pointer;
+  transition: background .1s; text-decoration: none;
+}
+.fp-apoio-result:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-apoio-result:hover { background: rgba(255,255,255,.05); }
+
+.fp-apoio-result-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.fp-apoio-result-info { flex: 1; min-width: 0; }
+.fp-apoio-result-title {
+  font-size: 12px; font-weight: 600;
+  color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-apoio-result-title { color: #F0EDE6; }
+.fp-apoio-result-sub {
+  font-size: 10px; color: #888; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.fp-apoio-empty {
+  padding: 24px 14px;
+  font-size: 11px; color: var(--cinza, #D0CFC9);
+  text-align: center; line-height: 1.5;
+}
+
+.fp-apoio-footer {
+  padding: 9px 14px;
+  border-top: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-apoio-footer { border-top-color: #2E2D2B; }
+
+.fp-apoio-full-link {
+  display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  font-size: 10px; font-weight: 600; color: #999;
+  text-decoration: none; transition: color .12s;
+}
+.fp-apoio-full-link:hover { color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-apoio-full-link { color: #555; }
+[data-theme="dark"] .fp-apoio-full-link:hover { color: #F0EDE6; }
+
 .fp-prio-hdr {
   padding: 8px 14px 7px;
   font-size: 9px; font-weight: 700; letter-spacing: .6px;
@@ -1586,9 +1728,16 @@ body {
     <a href="gestao.html"     class="fp-nav-item" title="Projetos">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
     </a>
-    <a href="apoio.html"      class="fp-nav-item" title="Apoio">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    </a>
+    <div class="fp-nav-apoio-wrap" id="fp-nav-apoio-wrap">
+      <!-- Seta: espia pela esquerda da nav no hover, leva direto para apoio.html -->
+      <a href="apoio.html" class="fp-apoio-go-btn" id="fp-apoio-go-btn" title="Abrir módulo Apoio">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      <!-- Botão principal: abre painel de busca -->
+      <button class="fp-nav-item" id="fp-nav-apoio" onclick="fpChat.toggleApoioPanel(event)" title="Apoio">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </button>
+    </div>
     <a href="contatos.html"   class="fp-nav-item" title="Contatos">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     </a>
@@ -1668,6 +1817,35 @@ body {
       <span class="fp-hov-hdr-sub" id="fp-crm-banner-sub"></span>
     </div>
     <div id="fp-crm-banner-body"></div>
+  </div>
+
+  <!-- ── Painel de busca Apoio (abre ao clicar no ícone Apoio da nav) ── -->
+  <div id="fp-apoio-panel">
+    <div class="fp-hov-hdr">
+      <span class="fp-hov-hdr-title">Apoio</span>
+      <span class="fp-hov-hdr-sub" id="fp-apoio-hdr-sub"></span>
+    </div>
+    <div class="fp-apoio-search-row">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cinza,#D0CFC9);flex-shrink:0"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+      <input class="fp-apoio-search-input" id="fp-apoio-input" type="text"
+             placeholder="Buscar normas, vegetação, conhecimento…"
+             oninput="fpChat.apoioSearchInput(this.value)"
+             onkeydown="if(event.key==='Escape')fpChat.closeApoioPanel()"
+             autocomplete="off">
+      <button class="fp-apoio-clear-btn" id="fp-apoio-clear"
+              onclick="fpChat.apoioClear()" title="Limpar" style="display:none">
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-apoio-body">
+      <div class="fp-apoio-empty">Digite para buscar no módulo de Apoio</div>
+    </div>
+    <div class="fp-apoio-footer">
+      <a href="apoio.html" class="fp-apoio-full-link">
+        Abrir módulo completo
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+    </div>
   </div>
 
   <!-- Banner flutuante de prioridade (hover no ícone ⭐) -->
