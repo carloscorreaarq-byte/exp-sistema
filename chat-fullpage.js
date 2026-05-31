@@ -2380,13 +2380,16 @@
     if (!$b || !$btn) return;
     $b.style.display = 'block';
     _positionBanner($b, $btn);
+    $btn.classList.add('active');
     if (!crmLoaded) fetchCrmData();
     else renderCrmBanner();
   }
   function hideCrmBanner() {
     crmBannerTimer = setTimeout(function() {
-      var $b = document.getElementById('fp-crm-banner');
+      var $b   = document.getElementById('fp-crm-banner');
+      var $btn = document.getElementById('fp-nav-crm');
       if ($b) $b.style.display = 'none';
+      if ($btn) $btn.classList.remove('active');
     }, 220);
   }
 
