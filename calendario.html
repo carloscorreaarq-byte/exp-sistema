@@ -327,6 +327,35 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 [data-theme="dark"] .cal-people-cell.feriado{background:rgba(204,104,72,.08)}
 [data-theme="dark"] .cal-modal-box{background:var(--branco)}
 .cat-google.active{background:#4285f4;color:#fff;border-color:#4285f4}
+/* Feedback icon — padrão app.html */
+#feedback-icon-btn {
+  width: 24px; height: 24px;
+  border: none; background: none;
+  color: #bbb;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: color .12s;
+  padding: 0;
+}
+#feedback-icon-btn:hover { color: var(--grafite, #111110); }
+[data-theme="dark"] #feedback-icon-btn { color: #555; }
+[data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
+
+#feedback-icon-wrap .nav-feedback-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0; left: auto; bottom: auto;
+  width: 300px;
+}
+
+#cal-action-bar {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; padding: 8px 16px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] #cal-action-bar { border-bottom-color: #2A2926; }
+
 /* ── Dark mode overrides ───────────────────────────────── */
 [data-theme="dark"]{--cinza2:rgba(255,255,255,.07);--verde-bg:rgba(76,163,102,.13);--az-bg:rgba(74,114,181,.13);--am-bg:rgba(226,174,82,.13);--tc-bg:rgba(204,104,72,.13)}
 [data-theme="dark"] .btn.filled{background:rgba(255,255,255,.11);color:#e0dfd8;border-color:rgba(255,255,255,.18)}
@@ -388,6 +417,48 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 <div id="conteudo">
 <div id="app-shell" class="exp-app-shell">
   <div id="cal-main">
+    <div id="cal-action-bar">
+      <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
+      <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
+        <button id="feedback-icon-btn" onclick="toggleToolFeedbackPop(event)" title="Reportar problema ou sugestão">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </button>
+        <div class="nav-feedback-pop" id="tool-feedback-pop">
+          <div class="nav-feedback-title">Problema ou sugestão</div>
+          <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+          <div class="fgroup">
+            <label>Tipo</label>
+            <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
+          </div>
+          <div class="fgroup">
+            <label>Mensagem</label>
+            <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+          </div>
+          <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+          <div class="nav-feedback-actions">
+            <button class="btn" onclick="fecharToolFeedbackPop()">Fechar</button>
+            <button class="btn filled" onclick="enviarToolFeedback()">Enviar</button>
+          </div>
+        </div>
+      </div>
+      <div class="user-pill-wrap" id="user-pill-wrap" style="position:relative">
+        <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
+          <div class="user-av" id="user-av"></div>
+          <div>
+            <div class="u-nome" id="user-nome">—</div>
+            <div class="u-role" id="user-cargo">—</div>
+          </div>
+          <span class="user-chip-arrow">▾</span>
+        </div>
+        <div class="user-dropdown" id="user-dropdown">
+          <button onclick="sair()">Sair do sistema</button>
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
+            <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc"></div>
+            <span style="font-size:10px;color:#bbb" id="conn-label">conectando…</span>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="cal-body">
       <div id="page-calendario">
 
@@ -650,11 +721,99 @@ async function carregarProdutos() {
   G.todasEtapas   = etapas || [];
 }
 
-function sair() {
-  sb.auth.signOut().then(() => {
-    sessionStorage.removeItem('exp_usuario');
-    window.location.href = 'index.html';
+async function sair() {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('exp_usuario');
+  window.location.href = 'index.html';
+}
+
+function toggleToolFeedbackPop(ev) {
+  ev?.stopPropagation?.();
+  document.getElementById('tool-feedback-pop')?.classList.toggle('open');
+}
+function fecharToolFeedbackPop() {
+  document.getElementById('tool-feedback-pop')?.classList.remove('open');
+}
+async function enviarToolFeedback() {
+  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
+  const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
+  const mensagem = document.getElementById('tool-feedback-message')?.value?.trim() || '';
+  if (!mensagem) { document.getElementById('tool-feedback-status').textContent = 'Escreva a mensagem antes de enviar.'; return; }
+  document.getElementById('tool-feedback-status').textContent = 'Enviando…';
+  const { error } = await sb.from('feedbacks_ferramenta').insert({
+    usuario_id: _me.id, tipo, mensagem,
+    origem_modulo: 'Calendario', url_origem: location.href,
   });
+  document.getElementById('tool-feedback-status').textContent = error ? 'Erro ao enviar.' : 'Enviado! Obrigado.';
+  if (!error) setTimeout(fecharToolFeedbackPop, 1800);
+}
+function toggleUserMenu() {
+  document.getElementById('user-dropdown')?.classList.toggle('open');
+}
+function renderCalUserChip(usr) {
+  if (!usr) return;
+  const av = document.getElementById('user-av');
+  if (av) { av.style.background = usr.cor || '#888'; av.textContent = usr.iniciais || (usr.nome||'??').substring(0,2).toUpperCase(); }
+  const nEl = document.getElementById('user-nome');
+  if (nEl) { const p = (usr.nome||'').trim().split(/\s+/).filter(Boolean); nEl.textContent = p.length <= 2 ? p.join(' ') : p[0]+' '+p[p.length-1]; }
+  const rEl = document.getElementById('user-cargo');
+  const RLBL = {socio:'Sócio',socio_adm:'Sócio-adm',socio_admin:'Sócio-adm',coordenador:'Coordenador',colaborador:'Colaborador'};
+  if (rEl) rEl.textContent = RLBL[usr.role] || usr.role || '';
+}
+async function abrirLembretePopup() {
+  let pop = document.getElementById('popup-lembrete');
+  if (pop) { pop.remove(); return; }
+  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
+  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
+  const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+  const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
+  const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
+  const opts = (usuarios || []).filter(u => u.id !== _me.id).map(u =>
+    `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`
+  ).join('');
+  pop = document.createElement('div');
+  pop.id = 'popup-lembrete';
+  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  pop.innerHTML = `
+    <div style="background:var(--branco,#fff);border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
+      <label style="${_ls}">Para</label>
+      <select id="lemb-para" style="${_fs};margin-bottom:10px">
+        <option value="todos">Toda a equipe</option>
+        ${opts}
+      </select>
+      <label style="${_ls}">Mensagem</label>
+      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
+        <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
+      </div>
+    </div>`;
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+}
+async function _enviarLembrete() {
+  const msg = document.getElementById('lemb-msg')?.value.trim();
+  const para = document.getElementById('lemb-para')?.value;
+  if (!msg) return;
+  const btn = document.querySelector('#popup-lembrete button:last-child');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
+  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true);
+  const targets = para === 'todos'
+    ? (usuarios || []).filter(u => u.id !== _me.id)
+    : [(usuarios || []).find(u => u.id === para)].filter(Boolean);
+  for (const u of targets) {
+    await sb.from('notificacoes').insert({
+      usuario_id: u.id, tipo: 'lembrete',
+      titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
+      corpo: msg, link_tipo: 'lembrete',
+      modulo: location.pathname.split('/').pop().replace('.html',''),
+      criado_por: _me.id, criado_por_nome: _me.nome,
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+  }
+  document.getElementById('popup-lembrete')?.remove();
 }
 
 async function init() {
@@ -681,6 +840,7 @@ async function init() {
     }));
 
     await Promise.all([carregarUsuarios(), carregarProdutos()]);
+    renderCalUserChip(u);
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('conteudo').style.display = 'flex';
@@ -1496,7 +1656,13 @@ function gcalConvidadoKeydown(e) {
   if (e.key==='Escape') { const sug=document.getElementById('gcr-suggestions'); if(sug) sug.style.display='none'; }
 }
 
-document.addEventListener('click',e=>{ if (!e.target.closest('#gcr-tag-wrap')) { const sug=document.getElementById('gcr-suggestions'); if(sug) sug.style.display='none'; } });
+document.addEventListener('click',e=>{
+  if (!e.target.closest('#gcr-tag-wrap')) { const sug=document.getElementById('gcr-suggestions'); if(sug) sug.style.display='none'; }
+  if (!document.getElementById('user-pill-wrap')?.contains(e.target))
+    document.getElementById('user-dropdown')?.classList.remove('open');
+  if (!document.getElementById('feedback-icon-wrap')?.contains(e.target))
+    document.getElementById('tool-feedback-pop')?.classList.remove('open');
+});
 
 async function gcalSalvarReuniao() {
   const titulo=document.getElementById('gcr-titulo')?.value.trim(), data=document.getElementById('gcr-data')?.value, hIni=document.getElementById('gcr-hora-ini')?.value, hFim=document.getElementById('gcr-hora-fim')?.value, local=document.getElementById('gcr-local-addr')?.value.trim()||'', desc=document.getElementById('gcr-desc')?.value.trim(), meet=(document.getElementById('gcr-meet')?.value??'1')==='1', tbEXP=document.getElementById('gcr-exp')?.checked??true;

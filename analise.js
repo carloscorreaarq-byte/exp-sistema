@@ -155,10 +155,8 @@ function analiseBindEventosBase() {
     if (navMod && !navMod.contains(event.target)) {
       document.getElementById('nav-dropdown')?.classList.remove('open');
     }
-    const fbWrap = document.getElementById('nav-feedback-wrap');
-    if (fbWrap && !fbWrap.contains(event.target)) {
-      document.getElementById('nav-feedback-pop')?.classList.remove('open');
-    }
+    if (!document.getElementById('feedback-icon-wrap')?.contains(event.target))
+      document.getElementById('tool-feedback-pop')?.classList.remove('open');
     const userPill = document.getElementById('user-pill-wrap');
     if (userPill && !userPill.contains(event.target)) {
       document.getElementById('user-dropdown')?.classList.remove('open');
