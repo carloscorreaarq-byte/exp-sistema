@@ -44,9 +44,15 @@ window.ExpNav = (() => {
   let _roomTimer   = null;
 
   /* hover banners */
-  let _calData = null, _calLoaded = false, _calTimer = null;
-  let _crmData = null, _crmLoaded = false, _crmTimer = null;
+  let _calData = null, _calLoaded = false, _calTimer = null, _calLoadedAt = 0;
+  let _crmData = null, _crmLoaded = false, _crmTimer = null, _crmEncerrados = null;
   let _prioData = null, _prioLoaded = false, _prioTimer = null;
+  /* painéis flutuantes de busca */
+  let _apoioPanelOpen = false, _apoioSearchTimer = null;
+  let _contatosPanelOpen = false, _contatosSearchTimer = null;
+  /* EXP Room */
+  let _roomBlinkTimer = null;
+  const ROOM_BLINK_SECS = 120;
 
   /* ── Helpers ──────────────────────────────────────────────── */
   function _esc(s) {
@@ -108,11 +114,27 @@ window.ExpNav = (() => {
     return `
 <nav id="exp-nav">
 
-  ${item('app.html',       'Hub',        ico.hub)}
-  ${item('gestao.html',    'Projetos',   ico.projetos)}
-  ${item('chat-fullpage.html', 'Chat',   ico.chat)}
-  ${item('apoio.html',     'Apoio',      ico.apoio)}
-  ${item('contatos.html',  'Contatos',   ico.contatos)}
+  ${item('app.html',           'Hub',      ico.hub)}
+  ${item('gestao.html',        'Projetos', ico.projetos)}
+  ${item('chat-fullpage.html', 'Chat',     ico.chat)}
+
+  ${activeHref !== 'apoio.html' ? `<div class="exp-nav-apoio-wrap" id="exp-nav-apoio-wrap">
+    <a href="apoio.html" class="exp-apoio-go-btn" id="exp-apoio-go-btn" title="Abrir módulo Apoio">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <button class="exp-nav-item" id="exp-nav-apoio" onclick="ExpNav.toggleApoioPanel(event)" title="Apoio">
+      ${ico.apoio}
+    </button>
+  </div>` : ''}
+
+  ${activeHref !== 'contatos.html' ? `<div class="exp-nav-contatos-wrap" id="exp-nav-contatos-wrap">
+    <a href="contatos.html" class="exp-contatos-go-btn" id="exp-contatos-go-btn" title="Abrir módulo Contatos">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <button class="exp-nav-item" id="exp-nav-contatos" onclick="ExpNav.toggleContatosPanel(event)" title="Contatos">
+      ${ico.contatos}
+    </button>
+  </div>` : ''}
   ${activeHref !== 'calendario.html' ? `<a href="calendario.html" class="exp-nav-item" title="Calendário"
      id="exp-nav-cal"
      onmouseenter="ExpNav.showCalBanner(event)" onmouseleave="ExpNav.hideCalBanner()">
@@ -168,11 +190,11 @@ window.ExpNav = (() => {
   <div id="exp-cal-banner-body"></div>
 </div>
 
-<!-- Banner: follow-ups -->
+<!-- Banner: comercial -->
 <div id="exp-crm-banner"
      onmouseenter="ExpNav.showCrmBanner()" onmouseleave="ExpNav.hideCrmBanner()">
   <div class="exp-hov-hdr">
-    <span class="exp-hov-hdr-title">Follow-ups em aberto</span>
+    <span class="exp-hov-hdr-title">Atualizações comerciais</span>
     <span class="exp-hov-hdr-sub" id="exp-crm-banner-sub"></span>
   </div>
   <div id="exp-crm-banner-body"></div>
@@ -184,17 +206,75 @@ window.ExpNav = (() => {
   <div id="exp-prio-banner-inner"></div>
 </div>
 
+<!-- Painel de busca — Apoio -->
+<div id="exp-apoio-panel">
+  <div class="exp-hov-hdr">
+    <span class="exp-hov-hdr-title">Apoio</span>
+    <span class="exp-hov-hdr-sub" id="exp-apoio-hdr-sub"></span>
+  </div>
+  <div class="exp-apoio-search-row">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#aaa"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="exp-apoio-search-input" id="exp-apoio-input" type="text"
+           placeholder="Buscar no módulo de Apoio…"
+           oninput="ExpNav.apoioSearchInput(this.value)"
+           onkeydown="if(event.key==='Escape')ExpNav.closeApoioPanel()"
+           autocomplete="off" style="flex:1">
+    <button class="exp-apoio-clear-btn" id="exp-apoio-clear"
+            onclick="ExpNav.apoioClear()" title="Limpar" style="display:none">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div id="exp-apoio-body">
+    <div class="exp-panel-empty">Digite para buscar no módulo de Apoio</div>
+  </div>
+  <div class="exp-panel-footer">
+    <a href="apoio.html" class="exp-panel-full-link">
+      Abrir módulo completo
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  </div>
+</div>
+
+<!-- Painel de busca — Contatos -->
+<div id="exp-contatos-panel">
+  <div class="exp-hov-hdr">
+    <span class="exp-hov-hdr-title">Contatos</span>
+    <span class="exp-hov-hdr-sub" id="exp-contatos-hdr-sub"></span>
+  </div>
+  <div class="exp-apoio-search-row">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#aaa"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="exp-apoio-search-input" id="exp-contatos-input" type="text"
+           placeholder="Buscar por nome, empresa, produto…"
+           oninput="ExpNav.contatosSearchInput(this.value)"
+           onkeydown="if(event.key==='Escape')ExpNav.closeContatosPanel()"
+           autocomplete="off" style="flex:1">
+    <button class="exp-apoio-clear-btn" id="exp-contatos-clear"
+            onclick="ExpNav.contatosClear()" title="Limpar" style="display:none">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div id="exp-contatos-body">
+    <div class="exp-panel-empty">Digite para buscar contatos</div>
+  </div>
+  <div class="exp-panel-footer">
+    <a href="contatos.html" class="exp-panel-full-link">
+      Abrir módulo completo
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  </div>
+</div>
+
 <!-- Painel de notificações -->
 <div id="exp-notif-panel" style="display:none">
   <div class="exp-notif-head">
     <span class="exp-notif-head-title">Notificações</span>
     <button onclick="ExpNav.toggleNotifPanel()" title="Fechar"
-      style="border:none;background:none;cursor:pointer;color:var(--cinza,#D0CFC9);display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;padding:0;transition:color .12s"
+      style="border:none;background:none;cursor:pointer;color:var(--cinza,#D0CFC9);display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;padding:0;transition:color .12s"
       onmouseenter="this.style.color='var(--grafite,#111110)'" onmouseleave="this.style.color='var(--cinza,#D0CFC9)'">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
     </button>
   </div>
-  <div id="exp-notif-lista" id="notif-lista"></div>
+  <div id="notif-lista"></div>
 </div>`;
   }
 
@@ -262,6 +342,13 @@ window.ExpNav = (() => {
     }, { onConflict: 'key' }).then(function() {
       var btn = document.getElementById('exp-room-btn');
       if (btn) { btn.classList.add('active'); btn.setAttribute('data-tooltip', nome + ' · agora mesmo'); }
+      /* apaga blink localmente após 120s exatos */
+      if (_roomBlinkTimer) clearTimeout(_roomBlinkTimer);
+      _roomBlinkTimer = setTimeout(function() {
+        var b = document.getElementById('exp-room-btn');
+        if (b) { b.classList.remove('active'); b.removeAttribute('data-tooltip'); }
+        _roomBlinkTimer = null;
+      }, ROOM_BLINK_SECS * 1000);
     }).catch(function() {});
   }
 
@@ -273,11 +360,11 @@ window.ExpNav = (() => {
         if (!btn) return;
         var d = r.data;
         if (d && d.updated_at) {
-          var mins = (Date.now() - new Date(d.updated_at).getTime()) / 60000;
-          if (mins <= ROOM_TIMEOUT) {
+          var secs = (Date.now() - new Date(d.updated_at).getTime()) / 1000;
+          if (secs <= ROOM_BLINK_SECS) {
             btn.classList.add('active');
             var quem   = (d.value && d.value !== 'true') ? d.value : 'Alguém';
-            var quando = mins < 1 ? 'agora mesmo' : 'há ' + Math.floor(mins) + ' min';
+            var quando = secs < 60 ? 'agora mesmo' : 'há ' + Math.floor(secs / 60) + ' min';
             btn.setAttribute('data-tooltip', quem + ' · ' + quando);
             return;
           }
@@ -292,18 +379,21 @@ window.ExpNav = (() => {
     var $panel = document.getElementById('exp-notif-panel');
     var $btn   = document.getElementById('exp-nav-bell');
     if (!$panel) return;
-    var willOpen = $panel.style.display === 'none' || !$panel.style.display;
-    /* delega ao AppNotif para controle do estado interno */
-    if (window._appNotifToggle) window._appNotifToggle();
-    if (willOpen) {
+    var isOpen = $panel.style.display === 'flex';
+    if (isOpen) {
+      /* fechar */
+      $panel.style.display = 'none';
+      if ($btn) $btn.classList.remove('active');
+      if (window._appNotifToggle) window._appNotifToggle();
+    } else {
+      /* abrir */
+      if (window._appNotifToggle) window._appNotifToggle();
       $panel.style.display = 'flex';
       var rect   = ($btn || {getBoundingClientRect:function(){return{right:80,bottom:400};}}).getBoundingClientRect();
       var panelH = $panel.offsetHeight || 360;
       $panel.style.top  = Math.max(16, rect.bottom - panelH) + 'px';
       $panel.style.left = (rect.right + 8) + 'px';
       if ($btn) $btn.classList.add('active');
-    } else {
-      if ($btn) $btn.classList.remove('active');
     }
   }
 
@@ -330,7 +420,8 @@ window.ExpNav = (() => {
     if (!$b) return;
     $b.style.display = 'block';
     _positionBanner($b, $btn);
-    if (!_calLoaded) _fetchCalEvents();
+    var stale = (Date.now() - _calLoadedAt) > 5 * 60 * 1000;
+    if (!_calLoaded || stale) _fetchCalEvents();
     else _renderCalBanner();
   }
 
@@ -343,14 +434,18 @@ window.ExpNav = (() => {
 
   function _fetchCalEvents() {
     var sb = _sb(); if (!sb || !_user) return;
-    var uid = _user.auth_id || _user.app_user_id || _user.id;
+    /* user_id na tabela é o ID interno (usuarios.id), não auth_id */
+    var internalId = _user.app_user_id || _user.id;
+    /* início de hoje (meia-noite local) para não perder eventos que já começaram */
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayISO = today.toISOString();
     sb.from('calendar_events')
-      .select('id,titulo,tipo,inicio,fim,dia_inteiro,meet_link')
-      .gte('inicio', new Date().toISOString())
-      .or('scope.eq.todos,user_id.eq.' + uid)
-      .order('inicio').limit(3)
-      .then(function(r) { _calLoaded = true; _calData = r.data || []; _renderCalBanner(); })
-      .catch(function()  { _calLoaded = true; _calData = [];            _renderCalBanner(); });
+      .select('id,titulo,tipo,inicio,fim,dia_inteiro,meet_link,scope')
+      .gte('fim', todayISO)
+      .or('scope.eq.todos,user_id.eq.' + internalId)
+      .order('inicio').limit(5)
+      .then(function(r) { _calLoaded = true; _calLoadedAt = Date.now(); _calData = r.data || []; _renderCalBanner(); })
+      .catch(function()  { _calLoaded = true; _calLoadedAt = Date.now(); _calData = [];            _renderCalBanner(); });
   }
 
   function _renderCalBanner() {
@@ -392,58 +487,94 @@ window.ExpNav = (() => {
     if (!$b) return;
     $b.style.display = 'block';
     _positionBanner($b, $btn);
-    if (!_crmLoaded) _fetchCrmFollowups();
+    if ($btn) $btn.classList.add('active');
+    if (!_crmLoaded) _fetchCrmData();
     else _renderCrmBanner();
   }
 
   function hideCrmBanner() {
     _crmTimer = setTimeout(function() {
-      var $b = document.getElementById('exp-crm-banner');
+      var $b   = document.getElementById('exp-crm-banner');
+      var $btn = document.getElementById('exp-nav-crm');
       if ($b) $b.style.display = 'none';
+      if ($btn) $btn.classList.remove('active');
     }, 220);
   }
 
-  function _fetchCrmFollowups() {
+  function _fetchCrmData() {
     var sb = _sb(); if (!sb) return;
-    sb.from('followups_produto')
-      .select('id,next_date,observacao,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
-      .not('next_date','is',null)
-      .order('next_date', { ascending: true }).limit(5)
-      .then(function(r) { _crmLoaded = true; _crmData = r.data || []; _renderCrmBanner(); })
-      .catch(function()  { _crmLoaded = true; _crmData = [];            _renderCrmBanner(); });
+    var cutoff7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    var hoje    = new Date().toISOString().split('T')[0];
+    Promise.all([
+      sb.from('produtos')
+        .select('id,nome,status,valor_fechado,valor_proposto,data_fechamento,updated_at,oportunidades(projeto,clientes(nome))')
+        .in('status', ['fechado','negado'])
+        .or('data_fechamento.gte.' + cutoff7 + ',and(status.eq.negado,updated_at.gte.' + cutoff7 + ')')
+        .order('updated_at', { ascending: false }).limit(5),
+      sb.from('followups_produto')
+        .select('id,next_date,observacao,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
+        .not('next_date','is',null)
+        .gte('next_date', hoje)
+        .order('next_date', { ascending: true }).limit(5)
+    ]).then(function(res) {
+      _crmLoaded = true; _crmEncerrados = res[0].data || []; _crmData = res[1].data || [];
+      _renderCrmBanner();
+    }).catch(function() {
+      _crmLoaded = true; _crmEncerrados = []; _crmData = []; _renderCrmBanner();
+    });
   }
 
   function _renderCrmBanner() {
     var $body = document.getElementById('exp-crm-banner-body');
     var $sub  = document.getElementById('exp-crm-banner-sub');
     if (!$body) return;
-    var items = _crmData || [];
-    if ($sub) $sub.textContent = items.length ? items.length + ' itens' : '';
-    if (!items.length) {
-      $body.innerHTML = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhum follow-up pendente ✓</div>';
-      return;
-    }
-    var hoje = new Date().toISOString().split('T')[0];
+    var enc  = _crmEncerrados || [];
+    var fups = _crmData || [];
+    var total = enc.length + fups.length;
+    if ($sub) $sub.textContent = total ? total + (total === 1 ? ' item' : ' itens') : '';
     var html = '';
-    items.forEach(function(fu) {
-      var prod    = fu.produtos || {};
-      var opp     = prod.oportunidades || {};
-      var cli     = opp.clientes || {};
-      var dt      = fu.next_date || '';
-      var cls     = dt < hoje ? 'atrasado' : dt === hoje ? 'hoje' : '';
-      var parts   = dt ? dt.split('-') : [];
-      var dtFmt   = parts.length === 3 ? parts[2]+'/'+parts[1]+'/'+parts[0].slice(2) : '—';
-      html += '<div class="exp-fu-item ' + cls + '">' +
-        '<div class="exp-fu-info">' +
-          '<div class="exp-fu-cliente">' + _esc(cli.nome||'—') + '</div>' +
-          '<div class="exp-fu-proj">' + _esc(opp.projeto||prod.nome||'—') + '</div>' +
-        '</div>' +
-        '<div class="exp-fu-date">' + _esc(dtFmt) + '</div>' +
-        '</div>';
-    });
+
+    if (enc.length) {
+      html += '<div class="exp-crm-sec-hdr">Últimos 7 dias</div>';
+      enc.forEach(function(p) {
+        var opp     = p.oportunidades || {};
+        var cli     = opp.clientes || {};
+        var isFech  = p.status === 'fechado';
+        var cls     = isFech ? 'fechado' : 'negado';
+        var valor   = isFech ? (+p.valor_fechado || +p.valor_proposto || 0) : (+p.valor_proposto || 0);
+        var valFmt  = valor ? 'R$ ' + valor.toLocaleString('pt-BR', { minimumFractionDigits:0, maximumFractionDigits:0 }) : '—';
+        html += '<div class="exp-crm-fech-item ' + cls + '">' +
+          '<div class="exp-fu-info">' +
+            '<div class="exp-fu-cliente">' + _esc(cli.nome||'—') + '</div>' +
+            '<div class="exp-fu-proj">' + _esc(opp.projeto||p.nome||'—') + '</div>' +
+          '</div>' +
+          '<div class="exp-crm-fech-valor">' + _esc(valFmt) + '</div>' +
+          '</div>';
+      });
+    }
+
+    if (fups.length) {
+      html += '<div class="exp-crm-sec-hdr">Próximos follow-ups</div>';
+      var hoje = new Date().toISOString().split('T')[0];
+      fups.forEach(function(fu) {
+        var prod = fu.produtos || {}, opp = prod.oportunidades || {}, cli = opp.clientes || {};
+        var dt   = fu.next_date || '';
+        var cls  = dt < hoje ? 'atrasado' : dt === hoje ? 'hoje' : '';
+        var pts  = dt ? dt.split('-') : [];
+        var dtFmt = pts.length === 3 ? pts[2]+'/'+pts[1]+'/'+pts[0].slice(2) : '—';
+        html += '<div class="exp-fu-item ' + cls + '">' +
+          '<div class="exp-fu-info">' +
+            '<div class="exp-fu-cliente">' + _esc(cli.nome||'—') + '</div>' +
+            '<div class="exp-fu-proj">' + _esc(opp.projeto||prod.nome||'—') + '</div>' +
+          '</div>' +
+          '<div class="exp-fu-date">' + _esc(dtFmt) + '</div>' +
+          '</div>';
+      });
+    }
+
+    if (!html) html = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhuma atualização recente ✓</div>';
     $body.innerHTML = html;
-    var $b   = document.getElementById('exp-crm-banner');
-    var $btn = document.getElementById('exp-nav-crm');
+    var $b = document.getElementById('exp-crm-banner'), $btn = document.getElementById('exp-nav-crm');
     if ($b && $btn) _positionBanner($b, $btn);
   }
 
@@ -519,6 +650,213 @@ window.ExpNav = (() => {
       '</div>';
   }
 
+  /* ── PAINEL APOIO ────────────────────────────────────────── */
+  function toggleApoioPanel(event) {
+    if (_apoioPanelOpen) closeApoioPanel(); else _openApoioPanel(event);
+  }
+  function _openApoioPanel(event) {
+    _apoioPanelOpen = true;
+    var $p   = document.getElementById('exp-apoio-panel');
+    var $btn = (event && event.currentTarget) || document.getElementById('exp-nav-apoio');
+    if (!$p || !$btn) return;
+    $p.style.display = 'flex';
+    _positionBanner($p, $btn);
+    if ($btn) $btn.classList.add('active');
+    setTimeout(function() { var $i = document.getElementById('exp-apoio-input'); if ($i) $i.focus(); }, 50);
+    setTimeout(function() {
+      document.addEventListener('click', _apoioOutside);
+      document.addEventListener('keydown', _apoioKey);
+    }, 10);
+  }
+  function closeApoioPanel() {
+    _apoioPanelOpen = false;
+    var $p = document.getElementById('exp-apoio-panel');
+    if ($p) $p.style.display = 'none';
+    var $btn = document.getElementById('exp-nav-apoio');
+    if ($btn) $btn.classList.remove('active');
+    document.removeEventListener('click', _apoioOutside);
+    document.removeEventListener('keydown', _apoioKey);
+  }
+  function _apoioOutside(e) {
+    var $p = document.getElementById('exp-apoio-panel'), $w = document.getElementById('exp-nav-apoio-wrap');
+    if ($p && !$p.contains(e.target) && $w && !$w.contains(e.target)) closeApoioPanel();
+  }
+  function _apoioKey(e) { if (e.key === 'Escape') closeApoioPanel(); }
+
+  function apoioSearchInput(q) {
+    var $clr = document.getElementById('exp-apoio-clear');
+    if ($clr) $clr.style.display = q ? 'flex' : 'none';
+    if (_apoioSearchTimer) clearTimeout(_apoioSearchTimer);
+    if (!q.trim()) {
+      var $b = document.getElementById('exp-apoio-body');
+      if ($b) $b.innerHTML = '<div class="exp-panel-empty">Digite para buscar no módulo de Apoio</div>';
+      var $s = document.getElementById('exp-apoio-hdr-sub'); if ($s) $s.textContent = '';
+      return;
+    }
+    _apoioSearchTimer = setTimeout(function() { _doApoioSearch(q.trim()); }, 280);
+  }
+  function apoioClear() {
+    var $i = document.getElementById('exp-apoio-input');
+    if ($i) { $i.value = ''; $i.focus(); }
+    apoioSearchInput('');
+  }
+  function _doApoioSearch(q) {
+    var sb = _sb(); if (!sb) return;
+    var $b = document.getElementById('exp-apoio-body');
+    if (!$b) return;
+    $b.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:24px"><div class="exp-loading-dot"></div><div class="exp-loading-dot"></div><div class="exp-loading-dot"></div></div>';
+    var like = '%' + q + '%';
+    Promise.all([
+      sb.from('apoio_normas').select('id,codigo,titulo,area').or('titulo.ilike.'+like+',codigo.ilike.'+like).limit(4),
+      sb.from('apoio_vegetacao_especie').select('id,nome_popular,nome_cientifico,grupo').ilike('nome_popular',like).limit(4),
+      sb.from('apoio_indicacoes').select('id,titulo,autor').ilike('titulo',like).limit(3),
+      sb.from('apoio_subtemas_custom').select('id,nome,tema_slug').ilike('nome',like).limit(3)
+    ]).then(function(res) {
+      _renderApoioResults(res[0].data||[], res[1].data||[], res[2].data||[], res[3].data||[], q);
+    }).catch(function() {
+      var $b2 = document.getElementById('exp-apoio-body');
+      if ($b2) $b2.innerHTML = '<div class="exp-panel-empty">Erro ao buscar. Tente novamente.</div>';
+    });
+  }
+  function _renderApoioResults(normas, veg, ind, sub, q) {
+    var $b   = document.getElementById('exp-apoio-body');
+    var $sub = document.getElementById('exp-apoio-hdr-sub');
+    if (!$b) return;
+    var total = normas.length + veg.length + ind.length + sub.length;
+    if ($sub) $sub.textContent = total ? total + ' resultado' + (total !== 1 ? 's' : '') : '';
+    if (!total) { $b.innerHTML = '<div class="exp-panel-empty">Nenhum resultado para "' + _esc(q) + '"</div>'; return; }
+    var html = '';
+    if (normas.length) {
+      html += '<div class="exp-panel-group-hdr">Normas Técnicas</div>';
+      normas.forEach(function(n) {
+        var label = n.codigo ? n.codigo + ' — ' + (n.titulo||'') : (n.titulo||'');
+        html += '<a href="apoio.html?tema=apoio&sub=normas-tecnicas" class="exp-panel-result"><div class="exp-panel-dot" style="background:#1D4FA0"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(label) + '</div><div class="exp-panel-sub">' + _esc(n.area||'') + '</div></div></a>';
+      });
+    }
+    if (veg.length) {
+      html += '<div class="exp-panel-group-hdr">Vegetação</div>';
+      veg.forEach(function(v) {
+        html += '<a href="apoio.html?tema=vegetacao" class="exp-panel-result"><div class="exp-panel-dot" style="background:#1D6A4A"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(v.nome_popular) + '</div><div class="exp-panel-sub">' + _esc(v.nome_cientifico||v.grupo||'') + '</div></div></a>';
+      });
+    }
+    if (ind.length) {
+      html += '<div class="exp-panel-group-hdr">Indicações</div>';
+      ind.forEach(function(i) {
+        html += '<a href="apoio.html?tema=apoio&sub=indicacoes-conteudo" class="exp-panel-result"><div class="exp-panel-dot" style="background:#C4831A"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(i.titulo) + '</div><div class="exp-panel-sub">' + _esc(i.autor||'') + '</div></div></a>';
+      });
+    }
+    if (sub.length) {
+      html += '<div class="exp-panel-group-hdr">Conhecimento</div>';
+      sub.forEach(function(s) {
+        html += '<a href="apoio.html?tema=apoio" class="exp-panel-result"><div class="exp-panel-dot" style="background:#3E7858"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(s.nome) + '</div><div class="exp-panel-sub">' + _esc(s.tema_slug||'') + '</div></div></a>';
+      });
+    }
+    $b.innerHTML = html;
+    var $p = document.getElementById('exp-apoio-panel'), $btn = document.getElementById('exp-nav-apoio');
+    if ($p && $btn) _positionBanner($p, $btn);
+  }
+
+  /* ── PAINEL CONTATOS ─────────────────────────────────────── */
+  var _CONTATO_COR = { fornecedor:'#1D4FA0', prestador:'#1D6A4A', parceiro:'#C4831A', cliente:'#B84C3A', outro:'#6D7D8A' };
+  function _contatoCor(tipo) { return _CONTATO_COR[(tipo||'').toLowerCase()] || '#6D7D8A'; }
+
+  function toggleContatosPanel(event) {
+    if (_contatosPanelOpen) closeContatosPanel(); else _openContatosPanel(event);
+  }
+  function _openContatosPanel(event) {
+    _contatosPanelOpen = true;
+    var $p   = document.getElementById('exp-contatos-panel');
+    var $btn = (event && event.currentTarget) || document.getElementById('exp-nav-contatos');
+    if (!$p || !$btn) return;
+    $p.style.display = 'flex';
+    _positionBanner($p, $btn);
+    if ($btn) $btn.classList.add('active');
+    setTimeout(function() { var $i = document.getElementById('exp-contatos-input'); if ($i) $i.focus(); }, 50);
+    setTimeout(function() {
+      document.addEventListener('click', _contatosOutside);
+      document.addEventListener('keydown', _contatosKey);
+    }, 10);
+  }
+  function closeContatosPanel() {
+    _contatosPanelOpen = false;
+    var $p = document.getElementById('exp-contatos-panel');
+    if ($p) $p.style.display = 'none';
+    var $btn = document.getElementById('exp-nav-contatos');
+    if ($btn) $btn.classList.remove('active');
+    document.removeEventListener('click', _contatosOutside);
+    document.removeEventListener('keydown', _contatosKey);
+  }
+  function _contatosOutside(e) {
+    var $p = document.getElementById('exp-contatos-panel'), $w = document.getElementById('exp-nav-contatos-wrap');
+    if ($p && !$p.contains(e.target) && $w && !$w.contains(e.target)) closeContatosPanel();
+  }
+  function _contatosKey(e) { if (e.key === 'Escape') closeContatosPanel(); }
+
+  function contatosSearchInput(q) {
+    var $clr = document.getElementById('exp-contatos-clear');
+    if ($clr) $clr.style.display = q ? 'flex' : 'none';
+    if (_contatosSearchTimer) clearTimeout(_contatosSearchTimer);
+    if (!q.trim()) {
+      var $b = document.getElementById('exp-contatos-body');
+      if ($b) $b.innerHTML = '<div class="exp-panel-empty">Digite para buscar contatos</div>';
+      var $s = document.getElementById('exp-contatos-hdr-sub'); if ($s) $s.textContent = '';
+      return;
+    }
+    _contatosSearchTimer = setTimeout(function() { _doContatosSearch(q.trim()); }, 280);
+  }
+  function contatosClear() {
+    var $i = document.getElementById('exp-contatos-input');
+    if ($i) { $i.value = ''; $i.focus(); }
+    contatosSearchInput('');
+  }
+  function _doContatosSearch(q) {
+    var sb = _sb(); if (!sb) return;
+    var $b = document.getElementById('exp-contatos-body');
+    if (!$b) return;
+    $b.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:24px"><div class="exp-loading-dot"></div><div class="exp-loading-dot"></div><div class="exp-loading-dot"></div></div>';
+    var like = '%' + q + '%';
+    sb.from('exp_contatos')
+      .select('id,nome,empresa,tipo_produto,cidade,estado,telefone,tipo')
+      .eq('desativado', false)
+      .or('nome.ilike.'+like+',empresa.ilike.'+like+',tipo_produto.ilike.'+like+',cidade.ilike.'+like)
+      .order('nome').limit(10)
+      .then(function(r) { _renderContatosResults(r.data||[], q); })
+      .catch(function() {
+        var $b2 = document.getElementById('exp-contatos-body');
+        if ($b2) $b2.innerHTML = '<div class="exp-panel-empty">Erro ao buscar. Tente novamente.</div>';
+      });
+  }
+  function _renderContatosResults(contatos, q) {
+    var $b   = document.getElementById('exp-contatos-body');
+    var $sub = document.getElementById('exp-contatos-hdr-sub');
+    if (!$b) return;
+    var total = contatos.length;
+    if ($sub) $sub.textContent = total ? total + ' resultado' + (total !== 1 ? 's' : '') : '';
+    if (!total) { $b.innerHTML = '<div class="exp-panel-empty">Nenhum resultado para "' + _esc(q) + '"</div>'; return; }
+    var html = '';
+    contatos.forEach(function(c) {
+      var cor   = _contatoCor(c.tipo);
+      var sub1  = [];
+      if (c.empresa) sub1.push(_esc(c.empresa));
+      if (c.tipo)    sub1.push('<span class="exp-contatos-tag">' + _esc(c.tipo) + '</span>');
+      var meta  = [];
+      var loc   = [c.cidade, c.estado].filter(Boolean).join('/');
+      if (loc)          meta.push(_esc(loc));
+      if (c.telefone)   meta.push(_esc(c.telefone));
+      if (c.tipo_produto) meta.push(_esc(c.tipo_produto));
+      html += '<a href="contatos.html?q=' + encodeURIComponent(c.nome) + '" class="exp-contatos-result">' +
+        '<div class="exp-panel-dot" style="background:' + cor + ';margin-top:5px"></div>' +
+        '<div class="exp-panel-info">' +
+          '<div class="exp-panel-title">' + _esc(c.nome) + '</div>' +
+          (sub1.length ? '<div class="exp-panel-sub">' + sub1.join('&ensp;·&ensp;') + '</div>' : '') +
+          (meta.length ? '<div class="exp-contatos-meta">' + meta.join('&ensp;·&ensp;') + '</div>' : '') +
+        '</div></a>';
+    });
+    $b.innerHTML = html;
+    var $p = document.getElementById('exp-contatos-panel'), $btn = document.getElementById('exp-nav-contatos');
+    if ($p && $btn) _positionBanner($p, $btn);
+  }
+
   /* ── Init ────────────────────────────────────────────────── */
   function init(config) {
     _config = config || {};
@@ -544,7 +882,7 @@ window.ExpNav = (() => {
 
       /* EXP Room */
       _checkRoomStatus();
-      setInterval(_checkRoomStatus, 30000);
+      setInterval(_checkRoomStatus, 15000);
 
       /* callback do módulo */
       if (typeof _config.onUserReady === 'function') _config.onUserReady(user);
@@ -573,5 +911,7 @@ window.ExpNav = (() => {
     showCalBanner,  hideCalBanner,
     showCrmBanner,  hideCrmBanner,
     showPrioBanner, hidePrioBanner,
+    toggleApoioPanel,   closeApoioPanel,   apoioSearchInput,   apoioClear,
+    toggleContatosPanel, closeContatosPanel, contatosSearchInput, contatosClear,
   };
 })();

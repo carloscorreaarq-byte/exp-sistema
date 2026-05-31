@@ -175,6 +175,224 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
+   SETINHA + PAINEL — APOIO e CONTATOS
+   ══════════════════════════════════════════════════════════════ */
+.exp-nav-apoio-wrap,
+.exp-nav-contatos-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 66px; /* cobre toda a largura da nav → sem gap entre wrapper e go-btn */
+}
+
+.exp-apoio-go-btn,
+.exp-contatos-go-btn {
+  position: absolute;
+  right: calc(100% - 4px);
+  top: 50%; transform: translateY(-50%);
+  width: 20px; height: 28px;
+  background: #232320;
+  border-radius: 5px 0 0 5px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0);
+  opacity: 0;
+  pointer-events: none;
+  transition: right .16s ease, opacity .16s ease, color .12s;
+  text-decoration: none;
+  z-index: 5;
+}
+[data-theme="dark"] .exp-apoio-go-btn,
+[data-theme="dark"] .exp-contatos-go-btn { background: #181816; }
+
+.exp-nav-apoio-wrap:hover    .exp-apoio-go-btn,
+.exp-nav-contatos-wrap:hover .exp-contatos-go-btn {
+  right: calc(100%);
+  opacity: 1;
+  color: rgba(255,255,255,.5);
+  pointer-events: auto;
+}
+.exp-apoio-go-btn:hover,
+.exp-contatos-go-btn:hover { color: rgba(255,255,255,.9) !important; }
+
+/* Painéis flutuantes Apoio e Contatos */
+#exp-apoio-panel,
+#exp-contatos-panel {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.16);
+  width: 380px;
+  display: none;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+  z-index: 600;
+  overflow: hidden;
+  animation: expNavBannerIn .15s ease-out;
+}
+[data-theme="dark"] #exp-apoio-panel,
+[data-theme="dark"] #exp-contatos-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+/* Barra de busca — reutilizada pelos dois painéis */
+.exp-apoio-search-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .exp-apoio-search-row { border-bottom-color: #2E2D2B; }
+
+.exp-apoio-search-input {
+  flex: 1; border: none; outline: none; background: none;
+  font-size: 12px; color: var(--grafite, #111110);
+  font-family: 'Raleway', sans-serif;
+}
+[data-theme="dark"] .exp-apoio-search-input { color: #F0EDE6; }
+.exp-apoio-search-input::placeholder { color: var(--cinza, #D0CFC9); }
+
+.exp-apoio-clear-btn {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: none; background: var(--off, #F7F6F3); color: #888;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .1s; flex-shrink: 0;
+}
+.exp-apoio-clear-btn:hover { background: var(--cinza, #D0CFC9); color: var(--grafite, #111110); }
+[data-theme="dark"] .exp-apoio-clear-btn { background: #2E2D2B; color: #888; }
+
+/* Área de resultados */
+#exp-apoio-body,
+#exp-contatos-body {
+  flex: 1; overflow-y: auto;
+  min-height: 60px; max-height: 400px;
+}
+
+/* Footer com link para módulo completo */
+.exp-panel-footer {
+  padding: 9px 14px;
+  border-top: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .exp-panel-footer { border-top-color: #2E2D2B; }
+.exp-panel-full-link {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600; color: #aaa; text-decoration: none;
+  transition: color .12s;
+}
+.exp-panel-full-link:hover { color: var(--grafite, #111110); }
+[data-theme="dark"] .exp-panel-full-link { color: #555; }
+[data-theme="dark"] .exp-panel-full-link:hover { color: #F0EDE6; }
+
+/* Cabeçalho de grupo */
+.exp-panel-group-hdr {
+  padding: 5px 14px 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  color: #aaa;
+}
+[data-theme="dark"] .exp-panel-group-hdr { color: #555; }
+
+/* Item de resultado genérico (Apoio e Contatos) */
+.exp-panel-result {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 14px;
+  text-decoration: none; color: inherit;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  transition: background .1s;
+}
+.exp-panel-result:last-child { border-bottom: none; }
+.exp-panel-result:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .exp-panel-result { border-bottom-color: #2A2927; }
+[data-theme="dark"] .exp-panel-result:hover { background: rgba(255,255,255,.05); }
+
+.exp-panel-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0; margin-top: 4px;
+}
+.exp-panel-info { flex: 1; min-width: 0; }
+.exp-panel-title {
+  font-size: 12px; font-weight: 600; color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .exp-panel-title { color: #F0EDE6; }
+.exp-panel-sub {
+  font-size: 10px; color: #888; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Estado vazio dos painéis */
+.exp-panel-empty {
+  padding: 20px 14px;
+  font-size: 11px; color: var(--cinza, #D0CFC9);
+  text-align: center;
+}
+
+/* Loading dots */
+.exp-loading-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cinza, #D0CFC9);
+  animation: expDotPulse 1s ease-in-out infinite;
+}
+.exp-loading-dot:nth-child(2) { animation-delay: .15s; }
+.exp-loading-dot:nth-child(3) { animation-delay: .30s; }
+@keyframes expDotPulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+/* Contatos — card com 3 linhas */
+.exp-contatos-result {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 14px;
+  text-decoration: none; color: inherit;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  transition: background .1s;
+}
+.exp-contatos-result:last-child { border-bottom: none; }
+.exp-contatos-result:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .exp-contatos-result { border-bottom-color: #2A2927; }
+[data-theme="dark"] .exp-contatos-result:hover { background: rgba(255,255,255,.05); }
+
+.exp-contatos-tag {
+  display: inline-block;
+  background: var(--cinza2, #ECEAE4); color: #666;
+  font-size: 9px; font-weight: 600; letter-spacing: .3px;
+  padding: 1px 5px; border-radius: 4px; text-transform: uppercase;
+}
+[data-theme="dark"] .exp-contatos-tag { background: #2E2D2B; color: #888; }
+
+.exp-contatos-meta {
+  font-size: 10px; color: #aaa; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CRM BANNER — seção de fechamentos/negados
+   ══════════════════════════════════════════════════════════════ */
+.exp-crm-sec-hdr {
+  padding: 6px 14px 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: #aaa;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+}
+[data-theme="dark"] .exp-crm-sec-hdr { color: #555; border-bottom-color: #2A2927; }
+
+.exp-crm-fech-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  border-left: 3px solid transparent;
+}
+.exp-crm-fech-item:last-child { border-bottom: none; }
+[data-theme="dark"] .exp-crm-fech-item { border-bottom-color: #2A2927; }
+
+.exp-crm-fech-item.fechado { border-left-color: #1D6A4A; background: rgba(29,106,74,.08); }
+.exp-crm-fech-item.negado  { border-left-color: #B84C3A; background: rgba(184,76,58,.08); }
+[data-theme="dark"] .exp-crm-fech-item.fechado { background: rgba(29,106,74,.14); }
+[data-theme="dark"] .exp-crm-fech-item.negado  { background: rgba(184,76,58,.14); }
+
+.exp-crm-fech-valor {
+  font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600;
+  flex-shrink: 0; margin-top: 2px; padding: 2px 7px; border-radius: 4px; border: 1px solid;
+}
+.exp-crm-fech-item.fechado .exp-crm-fech-valor { color: #1D6A4A; background: rgba(29,106,74,.10); border-color: rgba(29,106,74,.25); }
+.exp-crm-fech-item.negado  .exp-crm-fech-valor { color: #B84C3A; background: rgba(184,76,58,.10); border-color: rgba(184,76,58,.25); }
+
+/* ══════════════════════════════════════════════════════════════
    PAINEL DE NOTIFICAÇÕES
    ══════════════════════════════════════════════════════════════ */
 #exp-notif-panel {
@@ -244,16 +462,16 @@
 /* cabeçalho dos banners */
 .exp-hov-hdr {
   display: flex; align-items: center;
-  padding: 0 14px; height: 44px;
+  padding: 8px 14px 7px;
   background: var(--off, #F7F6F3);
   border-bottom: 1px solid var(--cinza2, #ECEAE4);
   flex-shrink: 0;
 }
 [data-theme="dark"] .exp-hov-hdr { background: #252523; border-bottom-color: #2E2D2B; }
 .exp-hov-hdr-title {
-  font-size: 13px; font-weight: 800; letter-spacing: -.2px;
+  font-size: 9px; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase;
   color: var(--grafite, #111110); flex: 1;
-  font-family: 'Raleway', sans-serif;
 }
 [data-theme="dark"] .exp-hov-hdr-title { color: #F0EDE6; }
 .exp-hov-hdr-sub {
