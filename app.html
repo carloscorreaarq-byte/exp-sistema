@@ -3459,7 +3459,8 @@ function _fetchMonthCalData() {
   Promise.all([
     sb.from('calendar_events').select('inicio').gte('inicio', start).lte('inicio', end + 'T23:59:59')
       .or(`scope.eq.todos,user_id.eq.${uid}`),
-    sb.from('tarefas_livres').select('data_limite').eq('atribuido_para', uid)
+    sb.from('tarefas_livres').select('data_limite')
+      .or(`and(usuario_id.eq.${uid},atribuido_para.is.null),atribuido_para.eq.${uid}`)
       .eq('concluida', false).gte('data_limite', start).lte('data_limite', end),
   ]).then(([evRes, tkRes]) => {
     const evDays = new Set((evRes.data || []).map(e => e.inicio?.split('T')[0]).filter(Boolean));
@@ -3653,16 +3654,17 @@ async function loadDashboard(usuario) {
 
     // Minhas tarefas pendentes — próprias (usuario_id sem atribuição) + atribuídas a mim
     sb.from('tarefas_livres')
-      .select('id, descricao, data_limite, concluida, produto_id, produtos(nome)')
+      .select('id, descricao, data_limite, concluida, produto_id, usuario_id, atribuido_para, criado_por')
       .or(`and(usuario_id.eq.${usuario.id},atribuido_para.is.null),atribuido_para.eq.${usuario.id}`)
       .eq('concluida', false)
       .order('data_limite', { ascending: true, nullsFirst: false }),
 
     // Tarefas que eu atribuí a outros (inclui concluídas)
     sb.from('tarefas_livres')
-      .select('id, descricao, data_limite, concluida, produto_id, produtos(nome), atribuido_para, usuarios!tarefas_livres_atribuido_para_fkey(nome)')
-      .eq('atribuido_por', usuario.id)
+      .select('id, descricao, data_limite, concluida, produto_id, usuario_id, atribuido_para, criado_por')
+      .eq('criado_por', usuario.id)
       .neq('atribuido_para', usuario.id)
+      .not('atribuido_para', 'is', null)
       .order('concluida', { ascending: true })
       .order('data_limite', { ascending: true, nullsFirst: false }),
 
@@ -3691,22 +3693,38 @@ async function loadDashboard(usuario) {
     // Tarefas com prazo nesta semana para o mini-calendário
     sb.from('tarefas_livres')
       .select('data_limite')
-      .eq('atribuido_para', usuario.id)
+      .or(`and(usuario_id.eq.${usuario.id},atribuido_para.is.null),atribuido_para.eq.${usuario.id}`)
       .eq('concluida', false)
       .gte('data_limite', start)
       .lte('data_limite', end),
   ]);
+  const allTaskRows = [...(tarefasRaw || []), ...(tarefasAtribRaw || [])];
+  const produtoIds = [...new Set(allTaskRows.map(t => t.produto_id).filter(Boolean))];
+  const atribuidoIds = [...new Set((tarefasAtribRaw || []).map(t => t.atribuido_para).filter(Boolean))];
+  const [prodRes, userRes] = await Promise.all([
+    produtoIds.length
+      ? sb.from('produtos').select('id,nome').in('id', produtoIds)
+      : Promise.resolve({ data: [] }),
+    atribuidoIds.length
+      ? sb.from('usuarios').select('id,nome').in('id', atribuidoIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const produtoMap = new Map((prodRes.data || []).map(p => [String(p.id), p.nome || null]));
+  const usuarioMap = new Map((userRes.data || []).map(u => [String(u.id), u.nome || null]));
 
   // Conjuntos de dias com eventos/tarefas para o mini-calendário
   const eventDays = new Set((eventosSemana || []).map(e => e.inicio?.split('T')[0]).filter(Boolean));
   const taskDays  = new Set((tarefasSemana || []).map(t => t.data_limite).filter(Boolean));
 
   window._dashData = {
-    tarefas:          (tarefasRaw || []).map(t => ({ ...t, produto_nome: t.produtos?.nome || null })),
+    tarefas:          (tarefasRaw || []).map(t => ({
+      ...t,
+      produto_nome: produtoMap.get(String(t.produto_id)) || null,
+    })),
     tarefasAtribuidas:(tarefasAtribRaw || []).map(t => ({
       ...t,
-      produto_nome: t.produtos?.nome || null,
-      atribuido_nome: t.usuarios?.nome || null,
+      produto_nome: produtoMap.get(String(t.produto_id)) || null,
+      atribuido_nome: usuarioMap.get(String(t.atribuido_para)) || null,
     })),
     eventos:     eventosRaw || [],
     prios:       priosRaw || [],
@@ -4174,14 +4192,21 @@ async function saveDashTask() {
   const atrib = document.getElementById('dt-atribuir').value;
   const data  = document.getElementById('dt-data').value || null;
   if (!desc) return;
-  const { error } = await sb.from('tarefas_livres').insert({
+  const uid = _dashUsuario?.id;
+  const payload = {
     descricao: desc,
-    atribuido_para: atrib || _dashUsuario?.id,
-    atribuido_por:  _dashUsuario?.id,
+    usuario_id: atrib || uid,
+    criado_por: uid,
     data_limite: data,
-    concluida: false, tipo: 'livre',
-  });
-  if (error) return;
+    concluida: false,
+    tipo: 'livre',
+  };
+  if (atrib && atrib !== uid) payload.atribuido_para = atrib;
+  const { error } = await sb.from('tarefas_livres').insert(payload);
+  if (error) {
+    toast('Erro ao salvar tarefa: ' + (error.message || 'tente novamente.'));
+    return;
+  }
   closeDashModal('task');
   if (_dashUsuario) loadDashboard(_dashUsuario);
 }
