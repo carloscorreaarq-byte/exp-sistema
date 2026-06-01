@@ -764,6 +764,32 @@ body {
 .shell-btn:hover { border-color: var(--grafite); }
 .shell-btn.primary:hover { opacity: .92; }
 
+/* ── fgroup (form field group) — padrão gestao.html ───────── */
+.fgroup { display: flex; flex-direction: column; gap: 4px; }
+.fgroup label { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #999; }
+.fgroup input, .fgroup select, .fgroup textarea {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 300;
+  border: 1px solid var(--cinza); background: var(--branco); color: var(--grafite);
+  padding: 5px 9px; outline: none; transition: border-color .12s;
+  width: 100%; border-radius: 8px; box-sizing: border-box;
+}
+.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus { border-color: var(--grafite); }
+.fgroup textarea { resize: vertical; min-height: 60px; }
+.fgroup select { cursor: pointer; }
+[data-theme="dark"] .fgroup input,
+[data-theme="dark"] .fgroup select,
+[data-theme="dark"] .fgroup textarea { background:#252523; border-color:#3A3836; color:var(--grafite); color-scheme:dark; }
+
+/* ── Popdown do lembrete ──────────────────────────────────── */
+#lemb-wrap .nav-feedback-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  bottom: auto;
+  width: 300px;
+}
+
 /* feedback-popover — estilos canônicos em exp-design-system.css */
 
 /* ── Botão de feedback — apenas ícone, sem borda ── */
@@ -3995,11 +4021,13 @@ async function saveDashCusto() {
 function openDashTaskPop(btn) {
   const pop = document.getElementById('dash-task-popdown');
   if (!pop) return;
-  // preenche select de usuários
+  // preenche select de usuários — retenta se vazio ou se ainda mostra placeholder
   const sel = document.getElementById('dt-atribuir');
-  if (sel && sel.options[0]?.value === '') {
-    sb.from('usuarios').select('id, nome').eq('ativo', true).order('nome').then(({ data }) => {
-      sel.innerHTML = (data || []).map(u =>
+  const precisaCarregar = sel && (sel.options.length === 0 || sel.options[0]?.value === '');
+  if (precisaCarregar) {
+    sb.from('usuarios').select('id, nome').eq('ativo', true).order('nome').then(({ data, error }) => {
+      if (error || !data?.length) return; // mantém placeholder para poder tentar na próxima abertura
+      sel.innerHTML = data.map(u =>
         `<option value="${u.id}"${u.id === _dashUsuario?.id ? ' selected' : ''}>${escHtml(u.nome.split(' ')[0])}</option>`
       ).join('');
     });
