@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css">
 <link rel="stylesheet" href="shared/exp-nav.css">
 <script>
@@ -291,56 +292,51 @@ body {
 .mini-cal-dot.both   { background: var(--ouro); }
 
 /* ── TAREFAS — card com abas ─────────────────────────────── */
-.task-tabs {
-  display: flex; gap: 2px;
-  padding: 8px 14px 6px;
-  border-bottom: 1px solid var(--cinza2);
-  flex-shrink: 0;
-}
-[data-theme="dark"] .task-tabs { border-bottom-color: #2A2926; }
-.task-tab {
-  height: 26px; padding: 0 10px; border-radius: 999px; border: none;
-  background: none; font-family: var(--font-ui); font-size: var(--text-label);
-  font-weight: var(--weight-label); letter-spacing: .04em;
-  color: #bbb; cursor: pointer; transition: background .1s, color .1s;
-}
-.task-tab.active { background: var(--off); color: var(--grafite); }
-[data-theme="dark"] .task-tab.active { background: rgba(255,255,255,.07); color: #F0EDE6; }
-.task-tab:hover:not(.active) { color: #777; }
-
 .task-list-scroll {
-  overflow-y: auto; max-height: 260px;
+  overflow-y: auto; max-height: 300px;
 }
 .task-list-scroll::-webkit-scrollbar { width: 3px; }
 .task-list-scroll::-webkit-scrollbar-thumb { background: var(--cinza); border-radius: 2px; }
 
+/* Separador de seção dentro da lista */
+.dash-task-section {
+  padding: 6px 14px 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: #bbb; background: var(--off); border-bottom: 1px solid var(--cinza2);
+  position: sticky; top: 0; z-index: 1;
+}
+[data-theme="dark"] .dash-task-section { background: #1A1A18; border-bottom-color: #2A2926; }
+
 .dash-task-item {
   display: flex; align-items: flex-start; gap: 9px;
-  padding: 9px 14px; border-bottom: 1px solid var(--cinza2);
+  padding: 8px 14px; border-bottom: 1px solid var(--cinza2);
   cursor: pointer; transition: background .1s;
 }
 .dash-task-item:last-child { border-bottom: none; }
 .dash-task-item:hover { background: var(--off); }
 [data-theme="dark"] .dash-task-item { border-bottom-color: #2A2926; }
 [data-theme="dark"] .dash-task-item:hover { background: rgba(255,255,255,.03); }
+
 .dash-task-check {
-  width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid #ccc;
+  width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #ccc;
   flex-shrink: 0; margin-top: 2px;
   display: flex; align-items: center; justify-content: center; transition: all .12s;
 }
 .dash-task-item.done .dash-task-check { background: var(--verde); border-color: var(--verde); }
-.dash-task-check svg { width: 7px; height: 7px; stroke: #fff; stroke-width: 3; display: none; }
+.dash-task-check svg { width: 8px; height: 8px; stroke: #fff; stroke-width: 3; display: none; }
 .dash-task-item.done .dash-task-check svg { display: block; }
+
 .dash-task-body { flex: 1; min-width: 0; }
-.dash-task-desc { font-size: 11px; font-weight: 400; line-height: 1.4; color: #555; }
-[data-theme="dark"] .dash-task-desc { color: #8C8A85; }
-.dash-task-item.done .dash-task-desc { text-decoration: line-through; color: #bbb; font-weight: 400; }
-.dash-task-meta { font-size: var(--text-sub); color: #999; margin-top: 2px; }
-.dash-task-meta .vencida { color: var(--terracota); }
-.dash-task-atrib {
-  font-size: var(--text-sub); color: #bbb;
-  margin-top: 1px; font-style: italic;
+.dash-task-desc {
+  font-size: 12px; font-weight: 400; line-height: 1.45;
+  color: var(--grafite); font-family: var(--font-ui);
 }
+[data-theme="dark"] .dash-task-desc { color: #D8D5CE; }
+.dash-task-item.done .dash-task-desc { text-decoration: line-through; color: #bbb; }
+
+.dash-task-meta { font-size: 10px; color: #999; margin-top: 2px; }
+.dash-task-meta .vencida { color: var(--terracota); font-weight: 600; }
+.dash-task-atrib { font-size: 10px; color: #aaa; margin-top: 1px; }
 
 /* ── ITEM DE EVENTO ──────────────────────────────────────── */
 .dash-event-item {
@@ -1430,6 +1426,26 @@ body {
         </div>
       </div>
 
+      <!-- Lembrete -->
+      <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
+        <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">＋</button>
+        <div class="nav-feedback-pop" id="lemb-popdown">
+          <div class="nav-feedback-title">Lembrete para a equipe</div>
+          <div class="fgroup">
+            <label>Para</label>
+            <select id="lemb-para"><option value="">Carregando…</option></select>
+          </div>
+          <div class="fgroup">
+            <label>Mensagem</label>
+            <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="resize:vertical"></textarea>
+          </div>
+          <div class="nav-feedback-status" id="lemb-status"></div>
+          <div class="nav-feedback-actions">
+            <button class="btn" onclick="fecharLembretePopdown()">Fechar</button>
+            <button class="btn filled" style="background:var(--ouro,#C4831A);border-color:var(--ouro,#C4831A)" onclick="_enviarLembrete()">Enviar lembrete</button>
+          </div>
+        </div>
+      </div>
       <!-- user chip + dropdown -->
       <div class="user-pill-wrap" style="position:relative">
         <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
@@ -1493,12 +1509,12 @@ body {
 </div><!-- /#conteudo -->
 
 <!-- POPDOWN: LANÇAR CUSTO (mesmos campos e tabela do gestao.html) -->
-<div id="dash-custo-popdown" style="width:340px">
+<div id="dash-custo-popdown" style="width:360px">
   <div class="dash-pop-head">
     <strong>Lançar custo</strong>
     <button class="dash-pop-close" onclick="closeDashCustoPop()">&times;</button>
   </div>
-  <div class="dash-pop-body" style="max-height:70vh;overflow-y:auto">
+  <div class="dash-pop-body" style="max-height:72vh;overflow-y:auto;display:flex;flex-direction:column;gap:9px">
     <div class="dash-field-row">
       <div class="dash-field">
         <label>Valor (R$)</label>
@@ -1509,24 +1525,27 @@ body {
         <input type="date" id="dc-data">
       </div>
     </div>
+    <!-- Área (plano de contas) -->
     <div class="dash-field">
+      <label>Área</label>
+      <select id="dc-area" onchange="dcOnAreaChange()"><option value="">Selecionar área…</option></select>
+    </div>
+    <!-- Subtipo / Detalhe -->
+    <div class="dash-field" id="dc-detalhe-wrap" style="display:none">
+      <label>Detalhe</label>
+      <select id="dc-detalhe"><option value="">—</option></select>
+    </div>
+    <!-- Vinculado a (aparece após escolher área) -->
+    <div class="dash-field" id="dc-tipo-wrap" style="display:none">
       <label>Vinculado a</label>
-      <select id="dc-tipo" onchange="dcAtualizarForm()">
+      <select id="dc-tipo" onchange="dcOnTipoChange()">
         <option value="projeto">Projeto</option>
         <option value="organizacao">Org. Interna</option>
         <option value="sociedade">Sociedade</option>
       </select>
     </div>
-    <div class="dash-field" id="dc-area-wrap">
-      <label>Área</label>
-      <select id="dc-area" onchange="dcAtualizarDetalhe()"><option value="">Carregando…</option></select>
-    </div>
-    <div class="dash-field" id="dc-detalhe-wrap" style="display:none">
-      <label>Detalhe</label>
-      <select id="dc-detalhe"><option value="">—</option></select>
-    </div>
-    <!-- Projeto: cliente → opp → produto -->
-    <div id="dc-projeto-wrap" style="display:flex;flex-direction:column;gap:9px">
+    <!-- Projeto: cliente → opp → produto → etapa -->
+    <div id="dc-projeto-wrap" style="display:none;flex-direction:column;gap:9px">
       <div class="dash-field">
         <label>Cliente</label>
         <select id="dc-cliente" onchange="dcFiltrarOpps()"><option value="">Selecionar cliente…</option></select>
@@ -1537,19 +1556,31 @@ body {
       </div>
       <div class="dash-field" id="dc-prod-wrap" style="display:none">
         <label>Produto</label>
-        <select id="dc-produto"><option value="">Selecionar…</option></select>
+        <select id="dc-produto" onchange="dcFiltrarEtapas()"><option value="">Selecionar…</option></select>
+      </div>
+      <div class="dash-field" id="dc-etapa-wrap" style="display:none">
+        <label>Etapa <span style="font-weight:400;font-size:9px;color:#bbb">(opcional)</span></label>
+        <select id="dc-etapa"><option value="">—</option></select>
       </div>
     </div>
-    <!-- Org/Sociedade: evento -->
-    <div class="dash-field" id="dc-evento-soc-wrap" style="display:none">
-      <label>Evento / tipo</label>
-      <select id="dc-evento-soc"><option value="">— sem evento —</option></select>
+    <!-- Evento (projeto e org interna) -->
+    <div class="dash-field" id="dc-evt-proj-wrap" style="display:none">
+      <label id="dc-evt-proj-label">Evento</label>
+      <input type="text" id="dc-evt-proj" list="dc-evt-proj-dl" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+      <datalist id="dc-evt-proj-dl"></datalist>
     </div>
+    <!-- Evento (sociedade) -->
+    <div class="dash-field" id="dc-evt-soc-wrap" style="display:none">
+      <label id="dc-evt-soc-label">Evento</label>
+      <input type="text" id="dc-evt-soc" list="dc-evt-soc-dl" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+      <datalist id="dc-evt-soc-dl"></datalist>
+    </div>
+    <!-- Descrição (sempre opcional) -->
     <div class="dash-field">
-      <label>Descrição (opcional)</label>
-      <input type="text" id="dc-desc" placeholder="Detalhe do custo…">
+      <label>Descrição <span style="font-weight:400;font-size:9px;color:#bbb">(opcional)</span></label>
+      <input type="text" id="dc-desc" placeholder="">
     </div>
-    <div id="dc-status" style="font-size:11px;color:#aaa;margin-top:2px"></div>
+    <div id="dc-status" style="font-size:11px;color:#c00;margin-top:2px"></div>
   </div>
   <div class="dash-pop-footer">
     <button class="shell-btn" onclick="closeDashCustoPop()">Cancelar</button>
@@ -1585,7 +1616,7 @@ body {
   </div>
 </div>
 
-<!-- MODAL: NOVO EVENTO (mesmos campos do calendário em gestao.html) -->
+<!-- MODAL: NOVO EVENTO -->
 <div class="dash-modal-overlay" id="dash-event-overlay" onclick="if(event.target===this)closeDashModal('event')">
   <div class="dash-modal" onclick="event.stopPropagation()">
     <div class="dash-modal-head">
@@ -1595,7 +1626,7 @@ body {
     <div class="dash-modal-body">
       <div class="dash-field">
         <label>Tipo</label>
-        <select id="de-tipo">
+        <select id="de-tipo" onchange="deOnTipoChange()">
           <option value="reuniao">Reunião</option>
           <option value="agenda_exp">Agenda EXP</option>
           <option value="ausencia_rem">Ausência remunerada</option>
@@ -1603,6 +1634,12 @@ body {
           <option value="recesso">Recesso</option>
           <option value="feriado">Feriado</option>
         </select>
+      </div>
+      <!-- Banner Google Calendar (visível apenas para agenda_exp) -->
+      <div id="de-gcal-banner" style="display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;background:#f0f4ff;border:1px solid #c5d4f7;font-size:11px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="17" rx="2" stroke="#4285f4" stroke-width="1.8"/><line x1="3" y1="9" x2="21" y2="9" stroke="#4285f4" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285f4" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285f4" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span id="de-gcal-status" style="flex:1;color:#3c4a6b"></span>
+        <button id="de-gcal-btn" class="shell-btn" style="height:22px;padding:0 8px;font-size:10px" onclick="deConectarGcal()"></button>
       </div>
       <div class="dash-field">
         <label>Título</label>
@@ -3098,7 +3135,9 @@ async function finalizarSurveyApp() {
 let _dashUsuario = null;
 
 function _getWeekRange() {
-  const d = new Date(), day = d.getDay() || 7;
+  // Zera horas antes de converter para ISO para evitar drift de timezone (UTC-3)
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const day = d.getDay() || 7;
   d.setDate(d.getDate() - day + 1);
   const start = d.toISOString().split('T')[0];
   d.setDate(d.getDate() + 6);
@@ -3183,63 +3222,53 @@ function renderHoursWidget(horasSemana) {
     </div>`;
 }
 
-let _taskTab = 'minhas';
-
-function _renderTaskItems(lista, showAtrib) {
-  if (!lista.length) return `<div class="dash-empty">Nenhuma tarefa</div>`;
-  return lista.map(t => {
-    const vencida = _isVencida(t.data_limite);
-    const meta = [
-      t.produto_nome,
-      t.data_limite
-        ? (vencida ? `<span class="vencida">${_fmtDate(t.data_limite)}</span>` : _fmtDate(t.data_limite))
-        : null
-    ].filter(Boolean).join(' · ');
-    const atribLine = showAtrib && t.atribuido_nome
-      ? `<div class="dash-task-atrib">→ ${escHtml(t.atribuido_nome)}</div>` : '';
-    return `
-      <div class="dash-task-item ${t.concluida ? 'done' : ''}"
-           onclick="toggleDashTask('${t.id}',${t.concluida})">
-        <div class="dash-task-check">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div class="dash-task-body">
-          <div class="dash-task-desc">${escHtml(t.descricao)}</div>
-          ${meta ? `<div class="dash-task-meta">${meta}</div>` : ''}
-          ${atribLine}
-        </div>
-      </div>`;
-  }).join('');
+function _renderTaskItem(t, showAtrib) {
+  const vencida = _isVencida(t.data_limite);
+  const meta = [
+    t.produto_nome,
+    t.data_limite
+      ? (vencida ? `<span class="vencida">${_fmtDate(t.data_limite)}</span>` : _fmtDate(t.data_limite))
+      : null
+  ].filter(Boolean).join(' · ');
+  const atribLine = showAtrib && t.atribuido_nome
+    ? `<div class="dash-task-atrib">→ ${escHtml(t.atribuido_nome)}</div>` : '';
+  return `
+    <div class="dash-task-item ${t.concluida ? 'done' : ''}"
+         onclick="toggleDashTask('${t.id}',${t.concluida})">
+      <div class="dash-task-check">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="dash-task-body">
+        <div class="dash-task-desc">${escHtml(t.descricao)}</div>
+        ${meta ? `<div class="dash-task-meta">${meta}</div>` : ''}
+        ${atribLine}
+      </div>
+    </div>`;
 }
 
-function switchTaskTab(tab) {
-  _taskTab = tab;
-  const d = window._dashData;
-  document.querySelectorAll('.task-tab').forEach(el => {
-    el.classList.toggle('active', el.dataset.tab === tab);
-  });
-  const lista = tab === 'minhas' ? d.tarefas : d.tarefasAtribuidas;
-  document.getElementById('dash-tasks-list').innerHTML = _renderTaskItems(lista, tab === 'atribuidas');
+function _renderAllTasks(tarefas, atribuidas) {
+  let html = '';
+  if (tarefas.length) {
+    html += `<div class="dash-task-section">Minhas (${tarefas.length})</div>`;
+    html += tarefas.map(t => _renderTaskItem(t, false)).join('');
+  }
+  if (atribuidas.length) {
+    html += `<div class="dash-task-section">Atribuídas (${atribuidas.length})</div>`;
+    html += atribuidas.map(t => _renderTaskItem(t, true)).join('');
+  }
+  if (!html) html = `<div class="dash-empty">Nenhuma tarefa</div>`;
+  return html;
 }
 
 function renderTasksSection(tarefas, tarefasAtribuidas) {
-  const lista = _taskTab === 'minhas' ? tarefas : tarefasAtribuidas;
   return `
     <div class="dash-sec">
       <div class="dash-lbl">Tarefas
         <button class="dash-lbl-add" onclick="openDashTaskPop(this)" title="Nova tarefa">+</button>
       </div>
       <div class="dash-card">
-        <div class="task-tabs">
-          <button class="task-tab ${_taskTab==='minhas'?'active':''}" data-tab="minhas" onclick="switchTaskTab('minhas')">
-            Minhas <span style="opacity:.6">(${tarefas.length})</span>
-          </button>
-          <button class="task-tab ${_taskTab==='atribuidas'?'active':''}" data-tab="atribuidas" onclick="switchTaskTab('atribuidas')">
-            Atribuídas <span style="opacity:.6">(${tarefasAtribuidas.length})</span>
-          </button>
-        </div>
         <div class="task-list-scroll">
-          <div id="dash-tasks-list">${_renderTaskItems(lista, _taskTab==='atribuidas')}</div>
+          <div id="dash-tasks-list">${_renderAllTasks(tarefas, tarefasAtribuidas)}</div>
         </div>
       </div>
     </div>`;
@@ -3595,24 +3624,61 @@ async function toggleDashTask(id, concluida) {
     concluida: nova, concluida_em: nova ? new Date().toISOString() : null
   }).eq('id', id);
   if (error) return;
-  // Atualiza a lista em memória e re-renderiza somente a lista de itens
-  if (_taskTab === 'minhas') {
-    window._dashData.tarefas = window._dashData.tarefas.map(t =>
-      t.id === id ? { ...t, concluida: nova } : t);
-    const lista = window._dashData.tarefas.filter(t => !t.concluida);
-    const el = document.getElementById('dash-tasks-list');
-    if (el) el.innerHTML = _renderTaskItems(lista, false);
-    // Atualiza contagem na aba
-    document.querySelectorAll('.task-tab').forEach(tab => {
-      if (tab.dataset.tab === 'minhas') tab.innerHTML = `Minhas <span style="opacity:.6">(${lista.length})</span>`;
-    });
-  }
+  // Atualiza em memória e re-renderiza a lista completa
+  const d = window._dashData;
+  d.tarefas = d.tarefas.map(t => t.id === id ? { ...t, concluida: nova } : t);
+  d.tarefasAtribuidas = d.tarefasAtribuidas.map(t => t.id === id ? { ...t, concluida: nova } : t);
+  const el = document.getElementById('dash-tasks-list');
+  if (el) el.innerHTML = _renderAllTasks(
+    d.tarefas.filter(t => !t.concluida),
+    d.tarefasAtribuidas.filter(t => !t.concluida)
+  );
 }
 
 // ── Modais ────────────────────────────────────────────────────────
 
 /* ── CUSTO: dados em cache ────────────────────────────────── */
-let _dcAreas = [], _dcClientes = [], _dcOpps = [], _dcProds = [];
+// ── Constantes de categorias de custo ──────────────────────────────────
+const DC_DETALHES = {
+  'Visitas Técnicas':                      ['Alimentação','Transporte','Hospedagem','Aluguel de carro','Pedágio','Gasolina','Estacionamento','Outro'],
+  'Plotagem':                              [],
+  'Treinamentos e Capacitação':            [],
+  'Cultura e Integração':                  ['HH','Endomarketing','Presente de aniversário','Presente aniversário EXP','Presente de fim de ano','Outro'],
+  'Trabalho Presencial':                   ['Alimentação','Transporte','Coworking','Outro'],
+  'Taxas e Anuidades Profissionais (CAU)': [],
+  'Certificações (Renovações)':            [],
+  'Softwares de projetos':                 ['Autodesk','Adobe','SketchUp','Outro'],
+  'Softwares de gestão e nuvem':           ['Google Drive','Office 365','Slack','Outro'],
+  'Manutenções à TI':                      [],
+  'Inteligência Artificial':               [],
+  'Segurança Técnica':                     [],
+  'Mídias pagas (Digital)':               [],
+  'Congressos e Eventos':                  ['Entrada','Coquetel','Alimentação','Transporte','Passagem','Estacionamento','Outro'],
+  'Relacionamento e Brindes':              ['Brindes de fim de ano','Revista EXP','Presente individualizado','Outro'],
+  'Computadores':                          [],
+};
+// Regras por área
+const DC_AREA_RULES = {
+  'Visitas Técnicas':                      { requer_evento: true,  requer_projeto: true,  tipo_fixo: 'projeto' },
+  'Plotagem':                              { requer_evento: false, requer_projeto: true,  tipo_fixo: 'projeto' },
+  'Treinamentos e Capacitação':            { requer_evento: true },
+  'Cultura e Integração':                  { requer_evento: true },
+  'Trabalho Presencial':                   { requer_evento: true },
+  'Taxas e Anuidades Profissionais (CAU)': { requer_evento: false, tipo_fixo: 'sociedade' },
+  'Certificações (Renovações)':            { requer_evento: false, tipo_fixo: 'sociedade' },
+  'Softwares de projetos':                 { requer_evento: false, tipo_fixo: 'sociedade' },
+  'Softwares de gestão e nuvem':           { requer_evento: false, tipo_fixo: 'sociedade' },
+  'Manutenções à TI':                      { requer_evento: true,  tipo_fixo: 'sociedade' },
+  'Inteligência Artificial':               { requer_evento: true,  tipo_fixo: 'sociedade' },
+  'Segurança Técnica':                     { requer_evento: false, tipo_fixo: 'sociedade' },
+  'Mídias pagas (Digital)':               { requer_evento: false, tipo_fixo: 'sociedade' },
+  'Congressos e Eventos':                  { requer_evento: true },
+  'Relacionamento e Brindes':              { requer_evento: true },
+  'Computadores':                          { requer_evento: false, tipo_fixo: 'sociedade' },
+};
+const DC_AREAS_VALIDAS = new Set(Object.keys(DC_DETALHES));
+
+let _dcAreas = [], _dcClientes = [], _dcOpps = [], _dcProds = [], _dcEvCusto = [], _dcEvSoc = [];
 
 function _dcStatus(msg) {
   const el = document.getElementById('dc-status');
@@ -3622,22 +3688,28 @@ function _dcStatus(msg) {
 async function openDashCustoPop(btn) {
   const pop = document.getElementById('dash-custo-popdown');
   if (!pop) return;
-  // reset
-  ['dc-valor','dc-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // reset campos
+  ['dc-valor','dc-desc','dc-evt-proj','dc-evt-soc'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   document.getElementById('dc-data').value = new Date().toISOString().split('T')[0];
-  document.getElementById('dc-tipo').value = 'projeto';
+  document.getElementById('dc-area').value = '';
   _dcStatus('');
+  // oculta campos dependentes
+  ['dc-detalhe-wrap','dc-tipo-wrap','dc-evt-proj-wrap','dc-evt-soc-wrap',
+   'dc-opp-wrap','dc-prod-wrap','dc-etapa-wrap'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  document.getElementById('dc-projeto-wrap').style.display = 'none';
   // posição
   if (btn) {
-    const rect = btn.getBoundingClientRect(), popW = 340;
+    const rect = btn.getBoundingClientRect(), popW = 360;
     let left = rect.right - popW; if (left < 8) left = 8;
     pop.style.top  = (rect.bottom + 6) + 'px';
     pop.style.left = left + 'px';
   }
   pop.classList.add('open');
-  // carrega dados
-  await Promise.all([_dcCarregarAreas(), _dcCarregarClientes()]);
-  dcAtualizarForm();
+  await Promise.all([_dcCarregarAreas(), _dcCarregarClientes(), _dcCarregarEventos()]);
   setTimeout(() => document.getElementById('dc-valor')?.focus(), 60);
   setTimeout(() => {
     function handler(e) {
@@ -3653,37 +3725,123 @@ function closeDashCustoPop() {
 
 async function _dcCarregarAreas() {
   if (_dcAreas.length) { _dcPreencherAreas(); return; }
-  const { data } = await sb.from('plano_contas').select('id,conta,subconta').order('conta').order('subconta');
-  _dcAreas = data || [];
+  const { data } = await sb.from('fin_plano_contas')
+    .select('id,grupo,subconta').eq('ativo', true).order('ordem');
+  _dcAreas = (data || []).filter(a => DC_AREAS_VALIDAS.has(a.subconta));
   _dcPreencherAreas();
 }
 
 function _dcPreencherAreas() {
   const sel = document.getElementById('dc-area');
   if (!sel) return;
+  // agrupa por grupo
+  const grupos = {};
+  _dcAreas.forEach(a => { if (!grupos[a.grupo]) grupos[a.grupo] = []; grupos[a.grupo].push(a); });
   sel.innerHTML = '<option value="">Selecionar área…</option>' +
-    _dcAreas.map(a => `<option value="${a.id}">${a.conta} — ${a.subconta}</option>`).join('');
-  document.getElementById('dc-detalhe-wrap').style.display = 'none';
-}
-
-function dcAtualizarDetalhe() {
-  // Para esta versão simplificada, detalhe não é necessário
+    Object.entries(grupos).map(([g, items]) =>
+      `<optgroup label="${g}">${items.map(a => `<option value="${a.id}">${a.subconta}</option>`).join('')}</optgroup>`
+    ).join('');
 }
 
 async function _dcCarregarClientes() {
-  if (_dcClientes.length) { _dcPreencherClientes(); return; }
+  if (_dcClientes.length) return;
   const { data } = await sb.from('clientes').select('id,nome').order('nome');
   _dcClientes = data || [];
-  _dcPreencherClientes();
-}
-
-function _dcPreencherClientes() {
   const sel = document.getElementById('dc-cliente');
   if (!sel) return;
   sel.innerHTML = '<option value="">Selecionar cliente…</option>' +
     _dcClientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
-  document.getElementById('dc-opp-wrap').style.display = 'none';
-  document.getElementById('dc-prod-wrap').style.display = 'none';
+}
+
+async function _dcCarregarEventos() {
+  if (_dcEvCusto.length || _dcEvSoc.length) return;
+  const [{ data: ec }, { data: es }] = await Promise.all([
+    sb.from('eventos_custo').select('id,nome,produto_id').order('nome'),
+    sb.from('eventos_sociedade').select('id,nome').order('nome'),
+  ]);
+  _dcEvCusto = ec || [];
+  _dcEvSoc   = es || [];
+}
+
+function dcOnAreaChange() {
+  const areaId  = document.getElementById('dc-area').value;
+  const area    = _dcAreas.find(a => a.id === areaId);
+  const subconta = area?.subconta || '';
+  const rules   = DC_AREA_RULES[subconta] || {};
+  const detalhes = DC_DETALHES[subconta] || [];
+
+  // Subtipo
+  const detalheWrap = document.getElementById('dc-detalhe-wrap');
+  const detalheSel  = document.getElementById('dc-detalhe');
+  if (detalhes.length) {
+    detalheSel.innerHTML = detalhes.map(d => `<option value="${d}">${d}</option>`).join('');
+    detalheWrap.style.display = '';
+  } else {
+    detalheWrap.style.display = 'none';
+  }
+
+  // Se área fixa o tipo, aplica; caso contrário mostra selector
+  const tipoWrap = document.getElementById('dc-tipo-wrap');
+  const tipoSel  = document.getElementById('dc-tipo');
+  if (rules.tipo_fixo) {
+    tipoSel.value = rules.tipo_fixo;
+    tipoWrap.style.display = 'none';
+  } else {
+    tipoWrap.style.display = '';
+  }
+
+  if (areaId) dcOnTipoChange();
+  else {
+    // sem área: oculta tudo
+    ['dc-projeto-wrap','dc-evt-proj-wrap','dc-evt-soc-wrap'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+  }
+}
+
+function dcOnTipoChange() {
+  const areaId   = document.getElementById('dc-area').value;
+  const area     = _dcAreas.find(a => a.id === areaId);
+  const subconta = area?.subconta || '';
+  const rules    = DC_AREA_RULES[subconta] || {};
+  const tipo     = document.getElementById('dc-tipo').value;
+
+  const isProjeto = tipo === 'projeto';
+
+  // Projeto cascade
+  const projWrap = document.getElementById('dc-projeto-wrap');
+  projWrap.style.display = isProjeto ? 'flex' : 'none';
+
+  // Evento projeto/org
+  const evtProjWrap = document.getElementById('dc-evt-proj-wrap');
+  const evtSocWrap  = document.getElementById('dc-evt-soc-wrap');
+
+  if (isProjeto) {
+    evtSocWrap.style.display  = 'none';
+    evtProjWrap.style.display = '';
+    const label = document.getElementById('dc-evt-proj-label');
+    if (label) label.textContent = rules.requer_evento ? 'Evento *' : 'Evento (opcional)';
+    // popula datalist com eventos de custo
+    const dl = document.getElementById('dc-evt-proj-dl');
+    if (dl) dl.innerHTML = _dcEvCusto.map(e => `<option value="${e.nome}">`).join('');
+  } else if (tipo === 'organizacao') {
+    evtProjWrap.style.display = '';
+    evtSocWrap.style.display  = 'none';
+    const label = document.getElementById('dc-evt-proj-label');
+    if (label) label.textContent = rules.requer_evento ? 'Evento *' : 'Evento (opcional)';
+    const dl = document.getElementById('dc-evt-proj-dl');
+    if (dl) dl.innerHTML = _dcEvCusto.filter(e => !e.produto_id).map(e => `<option value="${e.nome}">`).join('');
+  } else {
+    // sociedade
+    evtProjWrap.style.display = 'none';
+    evtSocWrap.style.display  = rules.requer_evento ? '' : (subconta === 'Congressos e Eventos' || subconta === 'Relacionamento e Brindes' ? '' : 'none');
+    const label = document.getElementById('dc-evt-soc-label');
+    if (label) label.textContent = rules.requer_evento ? 'Evento *' : 'Evento (opcional)';
+    const dl = document.getElementById('dc-evt-soc-dl');
+    if (dl) dl.innerHTML = _dcEvSoc.map(e => `<option value="${e.nome}">`).join('');
+    // para sociedade sem evento obrigatório mas com regra requer_evento=false, pode não mostrar
+    if (!rules.requer_evento) evtSocWrap.style.display = 'none';
+  }
 }
 
 async function dcFiltrarOpps() {
@@ -3691,11 +3849,11 @@ async function dcFiltrarOpps() {
   if (!cliId) { document.getElementById('dc-opp-wrap').style.display = 'none'; return; }
   const { data } = await sb.from('oportunidades').select('id,projeto').eq('cliente_id', cliId).order('projeto');
   _dcOpps = data || [];
-  const sel = document.getElementById('dc-oportunidade');
-  sel.innerHTML = '<option value="">Selecionar projeto…</option>' +
-    _dcOpps.map(o => `<option value="${o.id}">${o.projeto}</option>`).join('');
+  document.getElementById('dc-oportunidade').innerHTML =
+    '<option value="">Selecionar projeto…</option>' + _dcOpps.map(o => `<option value="${o.id}">${o.projeto}</option>`).join('');
   document.getElementById('dc-opp-wrap').style.display = '';
   document.getElementById('dc-prod-wrap').style.display = 'none';
+  document.getElementById('dc-etapa-wrap').style.display = 'none';
 }
 
 async function dcFiltrarProdutos() {
@@ -3703,59 +3861,95 @@ async function dcFiltrarProdutos() {
   if (!oppId) return;
   const { data } = await sb.from('produtos').select('id,nome').eq('oportunidade_id', oppId).order('nome');
   _dcProds = data || [];
-  const sel = document.getElementById('dc-produto');
-  sel.innerHTML = '<option value="">Selecionar produto…</option>' +
-    _dcProds.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+  document.getElementById('dc-produto').innerHTML =
+    '<option value="">Selecionar produto…</option>' + _dcProds.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
   document.getElementById('dc-prod-wrap').style.display = '';
+  document.getElementById('dc-etapa-wrap').style.display = 'none';
+  // atualiza datalist de eventos pelo produto
+  const prodId = document.getElementById('dc-produto').value;
+  const dl = document.getElementById('dc-evt-proj-dl');
+  if (dl) dl.innerHTML = _dcEvCusto.filter(e => !e.produto_id || e.produto_id === prodId).map(e => `<option value="${e.nome}">`).join('');
 }
 
-async function dcAtualizarForm() {
-  const tipo = document.getElementById('dc-tipo').value;
-  const isProjeto = tipo === 'projeto';
-  document.getElementById('dc-projeto-wrap').style.display = isProjeto ? '' : 'none';
-  document.getElementById('dc-evento-soc-wrap').style.display = isProjeto ? 'none' : '';
-  if (!isProjeto) {
-    const { data } = await sb.from('eventos_sociedade').select('id,nome').eq('tipo', tipo).order('nome');
-    const sel = document.getElementById('dc-evento-soc');
-    sel.innerHTML = '<option value="">— sem evento —</option>' +
-      (data || []).map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+async function dcFiltrarEtapas() {
+  const prodId = document.getElementById('dc-produto').value;
+  if (!prodId) { document.getElementById('dc-etapa-wrap').style.display = 'none'; return; }
+  const { data } = await sb.from('etapas').select('id,nome,ordem').eq('produto_id', prodId).order('ordem');
+  document.getElementById('dc-etapa').innerHTML =
+    '<option value="">—</option>' + (data || []).map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+  document.getElementById('dc-etapa-wrap').style.display = '';
+  // atualiza datalist de eventos pelo produto selecionado
+  const dl = document.getElementById('dc-evt-proj-dl');
+  if (dl) dl.innerHTML = _dcEvCusto.filter(e => !e.produto_id || e.produto_id === prodId).map(e => `<option value="${e.nome}">`).join('');
+}
+
+async function _dcResolveEvento(nome, tipo, produtoId) {
+  const n = (nome || '').trim();
+  if (!n) return { evtId: null, socId: null };
+  if (tipo === 'sociedade') {
+    const ex = _dcEvSoc.find(e => e.nome.toLowerCase() === n.toLowerCase());
+    if (ex) return { socId: ex.id, evtId: null };
+    const { data } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
+    if (data) { _dcEvSoc.push({ id: data.id, nome: n }); return { socId: data.id, evtId: null }; }
+  } else {
+    const evts = _dcEvCusto.filter(e => !e.produto_id || e.produto_id === produtoId);
+    const ex = evts.find(e => e.nome.toLowerCase() === n.toLowerCase());
+    if (ex) return { evtId: ex.id, socId: null };
+    const { data } = await sb.from('eventos_custo').insert({ nome: n, produto_id: produtoId || null }).select('id').single();
+    if (data) { _dcEvCusto.push({ id: data.id, nome: n, produto_id: produtoId || null }); return { evtId: data.id, socId: null }; }
   }
+  return { evtId: null, socId: null };
 }
 
 async function saveDashCusto() {
-  const valor = parseFloat(document.getElementById('dc-valor').value);
-  const data  = document.getElementById('dc-data').value;
-  const tipo  = document.getElementById('dc-tipo').value;
-  const pcId  = document.getElementById('dc-area').value;
-  const desc  = document.getElementById('dc-desc').value.trim();
-  const uid   = _dashUsuario?.id;
+  const valor   = parseFloat(document.getElementById('dc-valor').value);
+  const data    = document.getElementById('dc-data').value;
+  const tipo    = document.getElementById('dc-tipo').value;
+  const areaId  = document.getElementById('dc-area').value;
+  const subtipo = document.getElementById('dc-detalhe')?.value || null;
+  const desc    = document.getElementById('dc-desc').value.trim() || null;
+  const uid     = _dashUsuario?.id;
 
   if (!valor || valor <= 0) { _dcStatus('Informe o valor do custo.'); return; }
-  if (!pcId)                { _dcStatus('Selecione a área.'); return; }
+  if (!areaId)              { _dcStatus('Selecione a área.'); return; }
   if (!data)                { _dcStatus('Informe a data.'); return; }
 
-  let prodId = null, eventoSocId = null;
-  if (tipo === 'projeto') {
-    prodId = document.getElementById('dc-produto')?.value || null;
-  } else {
-    eventoSocId = document.getElementById('dc-evento-soc')?.value || null;
+  const area    = _dcAreas.find(a => a.id === areaId);
+  const rules   = DC_AREA_RULES[area?.subconta || ''] || {};
+
+  // Valida evento se obrigatório
+  const evtProjNome = document.getElementById('dc-evt-proj')?.value?.trim() || '';
+  const evtSocNome  = document.getElementById('dc-evt-soc')?.value?.trim() || '';
+  if (rules.requer_evento) {
+    const temEvt = tipo === 'sociedade' ? evtSocNome : evtProjNome;
+    if (!temEvt) { _dcStatus('Informe o evento (obrigatório para esta área).'); return; }
   }
+
+  // Valida projeto se obrigatório
+  const prodId = document.getElementById('dc-produto')?.value || null;
+  if (rules.requer_projeto && !prodId) { _dcStatus('Selecione o produto do projeto.'); return; }
 
   _dcStatus('Registrando…');
 
-  /* Busca ou cria a semana */
+  // Resolve evento
+  let evtId = null, evtSocId = null;
+  if (tipo === 'projeto' || tipo === 'organizacao') {
+    const res = await _dcResolveEvento(evtProjNome, tipo, prodId);
+    evtId = res.evtId;
+  } else {
+    const res = await _dcResolveEvento(evtSocNome, 'sociedade', null);
+    evtSocId = res.socId;
+  }
+
+  // Busca ou cria semana
   const semStart = (() => {
-    const d = new Date(data + 'T12:00:00');
-    const dow = d.getDay() || 7;
-    d.setDate(d.getDate() - dow + 1);
-    return d.toISOString().split('T')[0];
+    const d = new Date(data + 'T12:00:00'); const dow = d.getDay() || 7;
+    d.setDate(d.getDate() - dow + 1); return d.toISOString().split('T')[0];
   })();
   const semEnd = (() => {
-    const d = new Date(semStart + 'T12:00:00');
-    d.setDate(d.getDate() + 6);
+    const d = new Date(semStart + 'T12:00:00'); d.setDate(d.getDate() + 6);
     return d.toISOString().split('T')[0];
   })();
-
   let { data: semDb } = await sb.from('semanas').select('id,finalizada')
     .eq('usuario_id', uid).eq('data_inicio', semStart).maybeSingle();
   if (semDb?.finalizada) { _dcStatus('Semana já finalizada.'); return; }
@@ -3771,24 +3965,26 @@ async function saveDashCusto() {
     semDb = nova;
   }
 
+  const etapaId = document.getElementById('dc-etapa')?.value || null;
+
   const { data: inserted, error } = await sb.from('lancamentos_custo').insert({
     usuario_id: uid, semana_id: semDb.id, data_lancamento: data,
-    valor, tipo, plano_contas_id: pcId,
-    produto_id: prodId || null, evento_soc_id: eventoSocId || null,
-    descricao: desc || null
+    valor, tipo, plano_contas_id: areaId, subtipo,
+    produto_id: prodId || null, etapa_id: etapaId || null,
+    evento_id: evtId || null, evento_soc_id: evtSocId || null,
+    descricao: desc,
   }).select('id').single();
 
   if (error) { _dcStatus('Erro: ' + (error.message || 'tente novamente.')); return; }
 
-  /* Sincroniza com fin_lancamentos */
+  // Sincroniza fin_lancamentos
   if (inserted?.id) {
-    const area = _dcAreas.find(a => a.id === pcId);
+    const finObs = [subtipo, desc].filter(Boolean).join(' · ') || area?.subconta || 'Custo';
     await sb.from('fin_lancamentos').insert({
-      plano_contas_id: pcId, valor: Math.abs(valor),
+      plano_contas_id: areaId, valor: Math.abs(valor),
       tipo: 'despesa', situacao: 'realizado',
       data_competencia: data, data_vencimento: data,
-      observacao: [area?.subconta, desc].filter(Boolean).join(' · ') || 'Custo',
-      origem: 'reembolso', origem_id: inserted.id,
+      observacao: finObs, origem: 'reembolso', origem_id: inserted.id,
     }).catch(() => {});
   }
 
@@ -3875,34 +4071,139 @@ async function saveDashTask() {
   if (_dashUsuario) loadDashboard(_dashUsuario);
 }
 
+// ── Google Calendar (app.html) ─────────────────────────────────────────
+const GCAL_CLIENT_ID = '394553967709-9ab5np8qj5udmhde9vsrg0lgp5k93qrs.apps.googleusercontent.com';
+const _gcalTokenKey  = () => 'gcal_token_' + (_dashUsuario?.id || '');
+const _gcalExpiryKey = () => 'gcal_expiry_' + (_dashUsuario?.id || '');
+
+function _gcalGetToken() {
+  const token  = sessionStorage.getItem(_gcalTokenKey());
+  const expiry = parseInt(sessionStorage.getItem(_gcalExpiryKey()) || '0');
+  return (token && Date.now() < expiry) ? token : null;
+}
+function _gcalSaveToken(token) {
+  sessionStorage.setItem(_gcalTokenKey(), token);
+  sessionStorage.setItem(_gcalExpiryKey(), String(Date.now() + 55 * 60 * 1000));
+}
+
+let _gcalTokenClient = null;
+let _gcalConnectResolve = null;
+
+function _gcalInitClient(callback) {
+  if (typeof google === 'undefined' || !GCAL_CLIENT_ID) { callback && callback(null); return; }
+  _gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GCAL_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/calendar.events',
+    callback: resp => {
+      if (resp.access_token) {
+        _gcalSaveToken(resp.access_token);
+        deAtualizarGcalBanner();
+      }
+      if (_gcalConnectResolve) { _gcalConnectResolve(resp.access_token || null); _gcalConnectResolve = null; }
+      callback && callback(resp.access_token || null);
+    },
+  });
+}
+
+function deConectarGcal() {
+  if (!_gcalTokenClient) _gcalInitClient();
+  if (!_gcalTokenClient) { alert('Google Identity Services ainda não carregou. Tente novamente.'); return; }
+  _gcalTokenClient.requestAccessToken({ prompt: '' });
+}
+
+function deAtualizarGcalBanner() {
+  const banner  = document.getElementById('de-gcal-banner');
+  const status  = document.getElementById('de-gcal-status');
+  const btn     = document.getElementById('de-gcal-btn');
+  if (!banner) return;
+  const token = _gcalGetToken();
+  if (token) {
+    status.textContent = 'Evento será criado também no Google Calendar';
+    btn.textContent    = 'Desconectar';
+    btn.onclick        = () => { sessionStorage.removeItem(_gcalTokenKey()); sessionStorage.removeItem(_gcalExpiryKey()); deAtualizarGcalBanner(); };
+    banner.style.background = '#f0fff4';
+    banner.style.borderColor = '#a7f3c0';
+    status.style.color = '#166534';
+  } else {
+    status.textContent = 'Conecte o Google Calendar para criar o evento lá também';
+    btn.textContent    = 'Conectar';
+    btn.onclick        = deConectarGcal;
+    banner.style.background  = '#f0f4ff';
+    banner.style.borderColor = '#c5d4f7';
+    status.style.color = '#3c4a6b';
+  }
+}
+
+function deOnTipoChange() {
+  const tipo   = document.getElementById('de-tipo').value;
+  const banner = document.getElementById('de-gcal-banner');
+  if (!banner) return;
+  banner.style.display = tipo === 'agenda_exp' ? 'flex' : 'none';
+  if (tipo === 'agenda_exp') {
+    if (!_gcalTokenClient) _gcalInitClient();
+    deAtualizarGcalBanner();
+  }
+}
+
+async function _gcalCriarEvento(titulo, data, dataFim, ini, fim, desc) {
+  const token = _gcalGetToken();
+  if (!token) return;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let body;
+  if (ini && fim) {
+    body = {
+      summary: titulo, description: desc || '',
+      start: { dateTime: `${data}T${ini}:00`, timeZone: tz },
+      end:   { dateTime: `${dataFim || data}T${fim}:00`, timeZone: tz },
+    };
+  } else {
+    const endDate = new Date(dataFim || data); endDate.setDate(endDate.getDate() + 1);
+    body = {
+      summary: titulo, description: desc || '',
+      start: { date: data },
+      end:   { date: endDate.toISOString().split('T')[0] },
+    };
+  }
+  try {
+    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (e) { console.warn('gcal create event error', e); }
+}
+
 async function saveDashEvent() {
-  const titulo   = document.getElementById('de-titulo').value.trim();
-  const data     = document.getElementById('de-data').value;
-  const dataFim  = document.getElementById('de-data-fim').value || data;
-  const ini      = document.getElementById('de-ini').value;
-  const fim      = document.getElementById('de-fim').value;
-  const tipo     = document.getElementById('de-tipo').value;
-  const desc     = document.getElementById('de-desc')?.value.trim() || null;
+  const titulo  = document.getElementById('de-titulo').value.trim();
+  const data    = document.getElementById('de-data').value;
+  const dataFim = document.getElementById('de-data-fim').value || data;
+  const ini     = document.getElementById('de-ini').value;
+  const fim     = document.getElementById('de-fim').value;
+  const tipo    = document.getElementById('de-tipo').value;
+  const desc    = document.getElementById('de-desc')?.value.trim() || null;
   if (!titulo || !data) return;
 
   const diaInteiro = !ini;
   const ehGlobal   = ['recesso','feriado','feriado_local','agenda_exp'].includes(tipo);
-
-  /* categoria igual ao mapeamento do gestao.html */
-  const CAL_CAT = { reuniao:'reuniao', ausencia_rem:'ausencia', ausencia_aniv:'ausencia',
+  const CAL_CAT    = { reuniao:'reuniao', ausencia_rem:'ausencia', ausencia_aniv:'ausencia',
     agenda_exp:'agenda_exp', recesso:'recesso', feriado:'feriado', feriado_local:'feriado' };
 
   const { error } = await sb.from('calendar_events').insert({
     tipo, categoria: CAL_CAT[tipo] || tipo, titulo,
-    inicio:      ini     ? `${data}T${ini}:00+00:00`    : `${data}T12:00:00+00:00`,
-    fim:         fim     ? `${dataFim}T${fim}:00+00:00`  : `${dataFim}T12:00:00+00:00`,
-    dia_inteiro: diaInteiro,
-    descricao:   desc,
+    inicio:      ini ? `${data}T${ini}:00+00:00`       : `${data}T12:00:00+00:00`,
+    fim:         fim ? `${dataFim}T${fim}:00+00:00`     : `${dataFim}T12:00:00+00:00`,
+    dia_inteiro: diaInteiro, descricao: desc,
     scope:       ehGlobal ? 'todos' : 'usuario',
     user_id:     ehGlobal ? null : _dashUsuario?.id,
     criado_por:  _dashUsuario?.id,
   });
   if (error) return;
+
+  // Cria no Google Calendar se for agenda_exp e token disponível
+  if (tipo === 'agenda_exp') {
+    await _gcalCriarEvento(titulo, data, dataFim, ini, fim, desc);
+  }
+
   closeDashModal('event');
   if (_dashUsuario) loadDashboard(_dashUsuario);
 }
@@ -3975,6 +4276,64 @@ init().then(() => {
     module: 'app',
     onUserMenu: function() { if (window.toggleUserMenu) toggleUserMenu(); },
   });
+</script>
+<script>
+let _lembUsuarios = [];
+
+async function toggleLembretePopdown(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('lemb-popdown');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  // Carrega usuários na primeira abertura
+  const sel = document.getElementById('lemb-para');
+  if (sel && _lembUsuarios.length === 0) {
+    const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+    const { data } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
+    _lembUsuarios = (data || []).filter(u => u.id !== _me.id);
+    sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
+      _lembUsuarios.map(u => `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`).join('');
+  }
+  document.getElementById('lemb-msg').value = '';
+  document.getElementById('lemb-status').textContent = '';
+  pop.classList.add('open');
+  setTimeout(() => {
+    function handler(ev) {
+      if (!pop.contains(ev.target) && ev.target.id !== 'notif-plus-btn') {
+        pop.classList.remove('open');
+        document.removeEventListener('click', handler);
+      }
+    }
+    document.addEventListener('click', handler);
+  }, 0);
+}
+
+function fecharLembretePopdown() {
+  document.getElementById('lemb-popdown')?.classList.remove('open');
+}
+
+async function _enviarLembrete() {
+  const msg    = document.getElementById('lemb-msg')?.value.trim();
+  const para   = document.getElementById('lemb-para')?.value;
+  const status = document.getElementById('lemb-status');
+  if (!msg) { if (status) status.textContent = 'Escreva a mensagem do lembrete.'; return; }
+  if (status) status.textContent = 'Enviando…';
+  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+  const targets = para === 'todos' ? _lembUsuarios
+    : _lembUsuarios.filter(u => u.id === para);
+  for (const u of targets) {
+    await sb.from('notificacoes').insert({
+      usuario_id: u.id, tipo: 'lembrete',
+      titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
+      corpo: msg, link_tipo: 'lembrete', modulo: 'app',
+      criado_por: _me.id, criado_por_nome: _me.nome,
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+  }
+  fecharLembretePopdown();
+}
 </script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>

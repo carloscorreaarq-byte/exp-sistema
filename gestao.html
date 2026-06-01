@@ -192,8 +192,9 @@ body {
 
 /* ── User chip no header do gestao ──────────────────────── */
 .gestao-hd-right .user-pill-wrap { min-width: 100px; max-width: 170px; }
-.gestao-hd-right .user-chip { background: var(--branco); }
-[data-theme="dark"] .gestao-hd-right .user-chip { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); }
+.gestao-hd-right .user-chip { background: transparent; }
+.gestao-hd-right .notif-plus { background: transparent; }
+[data-theme="dark"] .gestao-hd-right .user-chip { background: transparent; border-color: rgba(255,255,255,.12); }
 [data-theme="dark"] .gestao-hd-right .user-chip:hover { border-color: rgba(255,255,255,.28); }
 /* @ Mention autocomplete */
 .mencao-dd{position:fixed;background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.13);z-index:9000;max-height:180px;overflow-y:auto;min-width:190px}
@@ -1303,10 +1304,12 @@ body {
 .lanc-item:last-child { border-bottom: none; }
 .lanc-tipo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .lanc-hora { font-family: var(--font-ui); font-size: 10px; color: #888; min-width: 75px; font-weight: 400; }
-.lanc-desc { font-size: 10px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
-.lanc-desc-main { font-weight: 600; color: var(--grafite); }
-.lanc-desc-sep { color: #ccc; font-weight: 300; margin: 0 3px; }
-.lanc-desc-sub { font-size: 10px; color: #999; font-weight: 300; }
+.lanc-desc { font-size: 10px; flex: 1; min-width: 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lanc-desc-cli { font-weight: 400; color: #aaa; }
+.lanc-desc-main { font-weight: 700; color: var(--grafite); }
+.lanc-desc-sep { color: #ddd; font-weight: 300; margin: 0 3px; }
+.lanc-desc-sub { color: #bbb; font-weight: 400; }
+.lanc-desc-nota { color: #bbb; font-style: italic; }
 .lanc-dur { font-family: var(--font-ui); font-size: 10px; font-weight: 600; color: #555; }
 .lanc-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .lanc-edit {
@@ -1743,6 +1746,14 @@ body {
 .res-card-valores { display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:10px; margin-bottom:8px; }
 .res-card-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:10px; color:#888; padding-top:8px; border-top:1px solid rgba(0,0,0,.07); }
 .res-card-meta strong { color:var(--grafite); }
+.res-card-prazo { margin-top:10px; padding-top:10px; border-top:1px solid rgba(0,0,0,.07); }
+.res-prazo-hd { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#bbb; margin-bottom:6px; }
+.res-prazo-inline { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11px; }
+.res-prazo-seg { display:flex; align-items:baseline; gap:3px; font-weight:600; color:var(--grafite); }
+.res-prazo-label { font-size:8px; color:#bbb; font-weight:600; letter-spacing:.3px; text-transform:uppercase; }
+.res-prazo-sep { font-size:9px; color:#ccc; }
+.res-prazo-dias { font-size:9px; font-weight:400; color:#aaa; }
+.res-prazo-result { font-size:11px; font-weight:700; margin-left:4px; }
 .ep-pct-total.completo { color:var(--verde); font-weight:600; }
 .ep-pct-total.excesso { color:var(--terracota); font-weight:700; }
 
@@ -1941,25 +1952,66 @@ body {
 .page.active { animation: pageIn .3s ease both; }
 @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
-/* â”€â”€ CALENDÃRIO SEMANAL DE HORAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CALENDARÁRIO SEMANAL DE HORAS ─────────────────────────── */
+.cal-semana { background:var(--branco); border:1px solid var(--cinza); overflow:hidden; border-radius:8px; }
+.cal-grid { display:grid; grid-template-columns:44px repeat(7,1fr); }
+.cal-dia-header {
   padding:6px 4px; text-align:center; border-right:1px solid var(--cinza2);
   border-bottom:1px solid var(--cinza); cursor:pointer; transition:background .1s;
 }
+.cal-dia-header:hover { background:var(--off); }
+.cal-dia-header.fim-semana { background:var(--cinza2); }
+.cal-dia-header.hoje { background:var(--az-bg); }
+.cal-dia-nome { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#999; }
+.cal-dia-header.hoje .cal-dia-nome { color:var(--azul); }
+.cal-dia-header.fim-semana .cal-dia-nome { color:#bbb; }
+.cal-dia-num { font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--grafite); line-height:1.2; }
+.cal-dia-header.hoje .cal-dia-num { color:var(--azul); }
+.cal-dia-header.fim-semana .cal-dia-num { color:#bbb; }
+.cal-dia-total { font-family:var(--font-ui); font-size:9px; color:var(--verde); font-weight:700; margin-top:1px; min-height:12px; }
+.cal-aniv-wrap { display:flex; flex-direction:column; gap:2px; margin-top:3px; }
+.cal-aniv { display:inline-flex; align-items:center; gap:2px; font-size:8px; font-weight:700; background:#fff0f5; color:#c0396a; border-radius:4px; padding:1px 4px; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.cal-hora-label { font-family:var(--font-ui); font-size:8px; color:#ddd; text-align:right; padding:0 4px 0 0; line-height:1; height:26px; display:flex; align-items:flex-start; justify-content:flex-end; padding-top:2px; border-right:1px solid var(--cinza2); }
+.cal-celula { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza2); height:26px; position:relative; }
+.cal-celula.fim-semana { background:#fafaf8; }
+.cal-celula.hoje-col { background:rgba(29,79,160,.03); }
+.cal-bloco {
   position:absolute; left:1px; right:1px; border-radius:2px;
-  font-family:var(--font-ui); font-size:8px; font-weight:600; color:#fff; padding:1px 3px;
+  font-family:var(--font-ui); font-size:8px; font-weight:600; color:#fff; padding:2px 3px;
   overflow:hidden; cursor:pointer; letter-spacing:.1px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  bottom:1px; line-height:1.3;
   z-index:2;
 }
+.cal-bloco-linha1 { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; }
+.cal-bloco-linha2 { font-weight:400; opacity:.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; font-size:7px; }
+.cal-bloco:hover { filter:brightness(.88); z-index:5; }
 .cb-projeto { background:var(--azul); }
 .cb-organizacao { background:var(--verde); }
 .cb-sociedade { background:var(--ouro); }
+.cal-totais-row {
   display:grid; grid-template-columns:44px repeat(7,1fr);
   border-top:1px solid var(--cinza); background:var(--cinza2);
 }
+.cal-total-label { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#bbb; padding:5px 4px; text-align:right; border-right:1px solid var(--cinza); }
+.cal-total-dia { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--grafite); padding:5px 4px; text-align:center; border-right:1px solid var(--cinza2); }
+.cal-total-dia.zero { color:#ccc; }
+.cal-total-dia.fim-semana { color:#aaa; }
+.cal-resumo {
   display:flex; align-items:center; gap:14px; padding:8px 12px;
   border-top:1px solid var(--cinza); background:var(--branco);
 }
+.cal-total-semana { font-family:var(--font-mono); font-size:20px; font-weight:700; }
+.cal-total-semana.over { color:var(--terracota); font-weight:800; }
+.cal-meta-bar-wrap { height:5px; background:var(--cinza2); width:100%; }
+.cal-meta-bar { height:100%; background:var(--verde); transition:width .3s; }
+.cal-meta-bar.am { background:var(--ouro); }
+.cal-meta-bar.tc { background:var(--terracota); }
+.cal-meta-txt { font-size:9px; color:#888; }
+.cal-breakdown { display:flex; gap:10px; flex-shrink:0; }
+.cal-bd-item { font-size:9px; color:#888; display:flex; align-items:center; gap:4px; }
+.cal-bd-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.cal-header-vazio { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza); }
 
 /* ── SELETOR DE DIA ──────────────────────────────────────── */
 .dia-selector { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top:2px; }
@@ -2530,9 +2582,7 @@ body {
       <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">Sócios</button>
     </div>
     <div class="gestao-hd-right">
-      <!-- Lembrete — visível para todos -->
-      <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-      <!-- Feedback — ícone bandeira (padrão app.html) -->
+      <!-- Bandeira (feedback) — primeiro -->
       <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
         <button id="feedback-icon-btn" onclick="toggleToolFeedbackPop(event)" title="Reportar problema ou sugestão">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
@@ -2555,6 +2605,26 @@ body {
           <div class="nav-feedback-actions">
             <button class="btn" onclick="fecharToolFeedbackPop()">Fechar</button>
             <button class="btn filled" onclick="enviarToolFeedback()">Enviar</button>
+          </div>
+        </div>
+      </div>
+      <!-- Lembrete (+) — segundo -->
+      <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
+        <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">＋</button>
+        <div class="nav-feedback-pop" id="lemb-popdown">
+          <div class="nav-feedback-title">Lembrete para a equipe</div>
+          <div id="lemb-para-wrap" class="fgroup">
+            <label>Para</label>
+            <select id="lemb-para"><option value="">Carregando…</option></select>
+          </div>
+          <div class="fgroup">
+            <label>Mensagem</label>
+            <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="resize:vertical"></textarea>
+          </div>
+          <div class="nav-feedback-status" id="lemb-status"></div>
+          <div class="nav-feedback-actions">
+            <button class="btn" onclick="fecharLembretePopdown()">Fechar</button>
+            <button class="btn filled" style="background:var(--ouro);border-color:var(--ouro)" onclick="enviarLembrete()">Enviar lembrete</button>
           </div>
         </div>
       </div>
@@ -3217,6 +3287,7 @@ body {
     <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--cinza)">
       <button id="rb-tab-membro" class="modal-tab active" onclick="setReembolsoView('membro')">Por membro</button>
       <button id="rb-tab-evento" class="modal-tab" onclick="setReembolsoView('evento')">Por evento</button>
+      <button id="rb-tab-reclassificacao" class="modal-tab" onclick="setReembolsoView('reclassificacao')" style="display:none">Reclassificação</button>
     </div>
     <div id="rb-lista"><div class="loading-state">Selecione um mês para carregar.</div></div>
   </div>
@@ -4320,8 +4391,15 @@ const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
 
 function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-  localStorage.setItem('exp-theme', isDark ? '' : 'dark');
+  const next = isDark ? '' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('exp-theme', next);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀︎';
+}
+function syncThemeBtn() {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '🌙' : '☀︎';
 }
 function toggleNavDropdown() {
   document.getElementById('nav-dropdown').classList.toggle('open');
@@ -4490,22 +4568,74 @@ const SUBTIPOS_CUSTO = {
 };
 // Detalhe por área do plano de contas (subconta → opções granulares)
 const REEMBOLSO_DETALHES = {
+  // CUSTOS DIRETOS (Projeto)
   'Visitas Técnicas':
-    ['Alimentação','Hospedagem','Passagem aérea / rodoviária','Uber / Táxi','Aluguel de veículo','Combustível','Pedágio','Outro'],
+    ['Alimentação','Transporte','Hospedagem','Aluguel de carro','Pedágio','Gasolina','Estacionamento','Outro'],
   'Plotagem':
-    ['Impressão','Cópia','Outro'],
+    [],
+  // DESPESAS COM PESSOAL
   'Treinamentos e Capacitação':
-    ['Inscrição','Material','Alimentação','Hospedagem','Passagem','Deslocamento','Outro'],
+    [],
   'Cultura e Integração':
-    ['Happy Hour','Confraternização','Presente interno','Almoço / Jantar em equipe','Outro'],
+    ['HH','Endomarketing','Presente de aniversário','Presente aniversário EXP','Presente de fim de ano','Outro'],
   'Trabalho Presencial':
-    ['Coworking','Alimentação / Café','Transporte','Estacionamento','Outro'],
+    ['Alimentação','Transporte','Coworking','Outro'],
+  // DESPESAS ADMINISTRATIVAS
+  'Taxas e Anuidades Profissionais (CAU)':
+    [],
+  'Certificações (Renovações)':
+    [],
+  // DESPESAS COM OPERAÇÃO
+  'Softwares de projetos':
+    ['Autodesk','Adobe','SketchUp','Outro'],
+  'Softwares de gestão e nuvem':
+    ['Google Drive','Office 365','Slack','Outro'],
   'Manutenções à TI':
-    ['Hardware','Periférico','Reparo','Software','Outro'],
+    [],
+  'Inteligência Artificial':
+    [],
+  'Segurança Técnica':
+    [],
+  // DESPESAS COM MARKETING
+  'Mídias pagas (Digital)':
+    [],
   'Congressos e Eventos':
-    ['Inscrição','Alimentação','Hospedagem','Passagem','Deslocamento','Outro'],
+    ['Entrada','Coquetel','Alimentação','Transporte','Passagem','Estacionamento','Outro'],
   'Relacionamento e Brindes':
-    ['Brinde ao cliente','Almoço / Jantar com cliente','Material de relacionamento','Outro'],
+    ['Brindes de fim de ano','Revista EXP','Presente individualizado','Outro'],
+  // INVESTIMENTOS
+  'Computadores':
+    [],
+};
+
+// Áreas válidas para lançamento de custo na Gestão (set de subcontas)
+const GESTAO_CUSTOS_AREAS = new Set([
+  'Visitas Técnicas','Plotagem',
+  'Treinamentos e Capacitação','Cultura e Integração','Trabalho Presencial',
+  'Taxas e Anuidades Profissionais (CAU)','Certificações (Renovações)',
+  'Softwares de projetos','Softwares de gestão e nuvem','Manutenções à TI','Inteligência Artificial','Segurança Técnica',
+  'Mídias pagas (Digital)','Congressos e Eventos','Relacionamento e Brindes',
+  'Computadores',
+]);
+
+// Regras por área: requer_evento, requer_projeto, especial
+const GESTAO_AREA_RULES = {
+  'Visitas Técnicas':                      { requer_evento: true,  requer_projeto: true },
+  'Plotagem':                              { requer_evento: false, requer_projeto: true },
+  'Treinamentos e Capacitação':            { requer_evento: true  },
+  'Cultura e Integração':                  { requer_evento: true  },
+  'Trabalho Presencial':                   { requer_evento: true  },
+  'Taxas e Anuidades Profissionais (CAU)': { requer_evento: false },
+  'Certificações (Renovações)':            { requer_evento: false },
+  'Softwares de projetos':                 { requer_evento: false },
+  'Softwares de gestão e nuvem':           { requer_evento: false },
+  'Manutenções à TI':                      { requer_evento: true  },
+  'Inteligência Artificial':               { requer_evento: true  },
+  'Segurança Técnica':                     { requer_evento: false },
+  'Mídias pagas (Digital)':               { requer_evento: false },
+  'Congressos e Eventos':                  { requer_evento: true  },
+  'Relacionamento e Brindes':              { requer_evento: true  },
+  'Computadores':                          { requer_evento: false, especial: 'computador' },
 };
 const ROLES_LABEL = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
 
@@ -4528,6 +4658,7 @@ async function init() {
 
   // Renderiza user chip no header
   renderUserChip(usr);
+  syncThemeBtn();
 
   // Inicia nav lateral compartilhada
   if (window.ExpNav) {
@@ -4541,6 +4672,11 @@ async function init() {
   // Aba sócios
   if (isSocioRole(usr.role)) {
     document.querySelectorAll('.socio-only').forEach(el => el.style.display = '');
+    // Aba reclassificação visível apenas para sócio-administrador
+    if (['socio_adm','socio_admin'].includes((usr.role||'').toLowerCase())) {
+      const tabRcl = document.getElementById('rb-tab-reclassificacao');
+      if (tabRcl) tabRcl.style.display = '';
+    }
   } else {
     // Colaboradores: ocultar filtros avançados de projetos
     ['fil-nucleo', 'fil-gestao', 'fil-coord'].forEach(id => {
@@ -6366,6 +6502,7 @@ async function renderSemana() {
     .order('dia_semana').order('hora_inicio');
 
   G._lancAtivos = lancamentos || [];
+  renderCalendarioSemana(G._lancAtivos);
   renderDiaSelector(G._lancAtivos);
   renderLancamentos(G._lancAtivos);
   renderCustosLancados();
@@ -6375,6 +6512,139 @@ async function renderSemana() {
   finTotal.textContent = fmtH(totalHoras);
   finTotal.style.color = totalHoras > 40 ? 'var(--terracota)' : 'var(--grafite)';
   finTotal.style.fontWeight = totalHoras > 40 ? '800' : '700';
+}
+
+function renderCalendarioSemana(lancs) {
+  const wrap = document.getElementById('cal-semana-wrap');
+  if (!wrap) return;
+  const dias = getDiasSemana(G.semanaOffset);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const COR_CLS = { projeto:'cb-projeto', organizacao:'cb-organizacao', sociedade:'cb-sociedade' };
+
+  const hPorDia = Array(7).fill(0);
+  const lancPorDia = Array.from({length:7}, () => []);
+  lancs.forEach(l => {
+    const idx = getLancIdx(l, dias);
+    if (idx >= 0 && idx < 7) {
+      hPorDia[idx] += diffHoras(l.hora_inicio, l.hora_fim);
+      lancPorDia[idx].push(l);
+    }
+  });
+
+  const totalSemana = hPorDia.reduce((s,h) => s+h, 0);
+  const pct = Math.min(totalSemana / 40 * 100, 100);
+  const porTipo = {projeto:0, organizacao:0, sociedade:0};
+  lancs.forEach(l => { const d = diffHoras(l.hora_inicio,l.hora_fim); if (l.tipo in porTipo) porTipo[l.tipo] += d; });
+
+  // Faixa horária: 0h–24h, slots de 30min (altura 26px)
+  const HORA_INI = 0, HORA_FIM = 24, SLOT_H = 26;
+  const SLOTS = (HORA_FIM - HORA_INI) * 2;
+
+  let html = '';
+
+  // Header sticky
+  html += `<div id="cal-scroll-wrap" style="max-height:430px;overflow-y:scroll">
+    <div class="cal-grid" style="position:sticky;top:0;z-index:3;background:var(--branco);border-bottom:1px solid var(--cinza2)">
+      <div class="cal-header-vazio" style="background:var(--branco)"></div>
+      ${dias.map((d,i) => {
+        const fds = i >= 5;
+        const isHoje = d.toISOString().split('T')[0] === hoje.toISOString().split('T')[0];
+        const mesdia = `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const anivs  = (G.todosUsuarios||[]).filter(u => u.data_aniversario && u.data_aniversario.slice(5,10) === mesdia);
+        const anivHtml = anivs.length
+          ? `<div class="cal-aniv-wrap">${anivs.map(u=>`<div class="cal-aniv">🎂 ${u.nome.split(' ')[0]}</div>`).join('')}</div>`
+          : '';
+        return `<div class="cal-dia-header ${fds?'fim-semana':''} ${isHoje?'hoje':''} ${hPorDia[i]>0?'tem-horas':''}"
+          onclick="selecionarDia(${i})">
+          <div class="cal-dia-nome">${NOMES[i]}</div>
+          <div class="cal-dia-num">${d.getDate()}</div>
+          <div class="cal-dia-total">${hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·'}</div>
+          ${anivHtml}
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="cal-grid">`;
+
+  for (let s = 0; s < SLOTS; s++) {
+    const h = HORA_INI + Math.floor(s / 2);
+    const m = s % 2 === 0 ? '00' : '30';
+    html += `<div class="cal-hora-label">${m === '00' ? h+'h' : ''}</div>`;
+
+    for (let i = 0; i < 7; i++) {
+      const fds = i >= 5;
+      const isHoje = dias[i].toISOString().split('T')[0] === hoje.toISOString().split('T')[0];
+      const blocos = lancPorDia[i].filter(l => {
+        const [lh, lm] = (l.hora_inicio || '00:00').split(':').map(Number);
+        const slotH = HORA_INI + Math.floor(s / 2);
+        const slotM = s % 2 === 0 ? 0 : 30;
+        return lh === slotH && lm >= slotM && lm < slotM + 30;
+      });
+
+      let blocoHtml = '';
+      blocos.forEach(l => {
+        const [lh, lm] = l.hora_inicio.split(':').map(Number);
+        const [fh, fm] = l.hora_fim.split(':').map(Number);
+        const durMin = (fh * 60 + fm) - (lh * 60 + lm);
+        const height = Math.max(16, durMin / 30 * SLOT_H - 2);
+        const topOff = ((lm % 30) / 30) * SLOT_H;
+        const cls = COR_CLS[l.tipo] || 'cb-projeto';
+        const projetoInfo = l.tipo === 'projeto' ? getProjetoHierarquia(l.produto_id, l.etapa_id) : null;
+        const linha1 = l.tipo === 'projeto' ? projetoInfo.oportunidade : (l.subtipo || l.tipo);
+        const linha2 = l.tipo === 'projeto' ? projetoInfo.etapa : '';
+        const titleTxt = l.tipo === 'projeto'
+          ? `${projetoInfo.cliente} · ${projetoInfo.oportunidade} · ${projetoInfo.etapa} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' · Semana bloqueada' : ''}`
+          : `${linha1} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' · Semana bloqueada' : ''}`;
+        const acao = G._semanaTravada ? '' : `onclick="event.stopPropagation();abrirEditarLancamento('${l.id}')"`;
+        blocoHtml += `<div class="cal-bloco ${cls}"
+          style="top:${topOff}px;height:${height}px"
+          title="${titleTxt}"
+          ${acao}>
+          <span class="cal-bloco-linha1">${linha1}</span>${linha2 && height > 22 ? `<span class="cal-bloco-linha2">${linha2}</span>` : ''}
+        </div>`;
+      });
+
+      html += `<div class="cal-celula ${fds?'fim-semana':''} ${isHoje?'hoje-col':''}">${blocoHtml}</div>`;
+    }
+  }
+  html += `</div></div>`;
+
+  // Rodapé: totais por dia
+  html += `<div class="cal-totais-row">
+    <div class="cal-total-label">Total</div>
+    ${hPorDia.map((h, i) => {
+      const fds = i >= 5;
+      return `<div class="cal-total-dia ${h===0?'zero':''} ${fds?'fim-semana':''}">${h>0?fmtH(h):'—'}</div>`;
+    }).join('')}
+  </div>`;
+
+  const pctTipo = t => totalSemana > 0 ? Math.round(porTipo[t] / totalSemana * 100) : 0;
+  html += `<div class="cal-resumo">
+    <div style="flex-shrink:0">
+      <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:2px">Semana</div>
+      <div class="cal-total-semana ${totalSemana > 40 ? 'over' : ''}" style="color:${totalSemana>40?'var(--terracota)':totalSemana>32?'var(--ouro)':'var(--grafite)'}">${fmtH(totalSemana)}</div>
+      <div style="font-size:9px;color:#aaa;margin-top:1px">${pct.toFixed(0)}% de 40h</div>
+    </div>
+    <div style="flex:1">
+      <div class="cal-meta-bar-wrap">
+        <div class="cal-meta-bar ${totalSemana>40?'tc':totalSemana>32?'am':''}" style="width:${pct.toFixed(1)}%"></div>
+      </div>
+      <div class="cal-meta-txt">${totalSemana > 0 ? `${(40 - Math.min(totalSemana,40)).toFixed(1).replace('.',',')}h restantes` : 'Nenhuma hora lançada'}</div>
+    </div>
+    <div class="cal-breakdown">
+      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div>Proj: ${fmtH(porTipo.projeto)}${pctTipo('projeto')>0?` <span style="color:#bbb">(${pctTipo('projeto')}%)</span>`:''}</div>
+      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--verde)"></div>Org: ${fmtH(porTipo.organizacao)}${pctTipo('organizacao')>0?` <span style="color:#bbb">(${pctTipo('organizacao')}%)</span>`:''}</div>
+      <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--ouro)"></div>Soc: ${fmtH(porTipo.sociedade)}${pctTipo('sociedade')>0?` <span style="color:#bbb">(${pctTipo('sociedade')}%)</span>`:''}</div>
+    </div>
+  </div>`;
+
+  wrap.innerHTML = html;
+
+  // Auto-scroll para mostrar 8h no topo (rAF aguarda o layout ser calculado)
+  requestAnimationFrame(() => {
+    const scrollWrap = document.getElementById('cal-scroll-wrap');
+    if (scrollWrap) scrollWrap.scrollTop = (8 - HORA_INI) * 2 * SLOT_H;
+  });
 }
 
 function renderLancamentos(lancs) {
@@ -6394,36 +6664,59 @@ function renderLancamentos(lancs) {
     if (idx >= 0 && idx < 7) lancPorDia[idx].push(l);
   });
 
+  // Detecta sobreposições em um array já ordenado por hora_inicio
+  function detectarSobrepostos(arr) {
+    const sobrepostos = new Set();
+    for (let a = 0; a < arr.length; a++) {
+      const iniA = arr[a].hora_inicio || '00:00', fimA = arr[a].hora_fim || '00:00';
+      for (let b = a + 1; b < arr.length; b++) {
+        const iniB = arr[b].hora_inicio || '00:00', fimB = arr[b].hora_fim || '00:00';
+        if (iniB < fimA && fimB > iniA) { sobrepostos.add(arr[a].id); sobrepostos.add(arr[b].id); }
+      }
+    }
+    return sobrepostos;
+  }
+
   let html = `<div class="lanc-lista-box">`;
   lancPorDia.forEach((dayL, i) => {
     if (!dayL.length) return;
+    // Ordena por hora_inicio
+    const sorted = [...dayL].sort((a, b) => (a.hora_inicio || '').localeCompare(b.hora_inicio || ''));
+    const sobrepostos = detectarSobrepostos(sorted);
     const fds = i >= 5;
     html += `<div style="padding:4px 10px 2px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;background:${fds?'var(--cinza2)':'var(--off)'}">${NOMES[i]} ${dias[i].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div>`;
-    dayL.forEach(l => {
+    sorted.forEach(l => {
       const dur = diffHoras(l.hora_inicio, l.hora_fim);
       const cor = COR_TIPO[l.tipo] || '#888';
+      const sobreposto = sobrepostos.has(l.id);
       let descMain = '', descSub = '';
       if (l.tipo === 'projeto') {
         const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
-        descMain = `${info.cliente} | ${info.oportunidade}`;
-        descSub = info.etapa + (l.descricao ? ` · ${l.descricao}` : '');
+        descMain = info.cliente;
+        descSub = [info.oportunidade, info.etapa, l.descricao].filter(Boolean).join(' · ');
       } else {
         const TIPO_PT = { organizacao: 'Organização', sociedade: 'Sociedade', gestao: 'Gestão' };
         descMain = l.subtipo || TIPO_PT[l.tipo] || l.tipo;
         descSub = l.descricao || '';
       }
-      // Sinaliza lançamentos incompletos
       const incompleto = l.tipo === 'projeto' && (!l.produto_id || !l.etapa_id);
-      const alertaHora = incompleto
-        ? `<span title="${!l.produto_id ? 'Produto não definido' : 'Etapa não definida'} — clique em Editar para corrigir" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`
-        : '';
+      let alertas = '';
+      if (sobreposto) alertas += `<span title="Horário sobrepõe outro lançamento — verifique e corrija" style="color:#C0392B;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`;
+      else if (incompleto) alertas += `<span title="${!l.produto_id ? 'Produto não definido' : 'Etapa não definida'} — clique para corrigir" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`;
       const lancClick = G._semanaTravada ? '' : `onclick="abrirEditarLancamento('${l.id}')"`;
-      const lancTitle = G._semanaTravada ? 'title="Semana bloqueada"' : 'title="Clique para editar"';
-      html += `<div class="lanc-item" style="${incompleto ? 'border-left:2px solid #C4831A;' : ''}cursor:${G._semanaTravada ? 'default' : 'pointer'}" ${lancClick} ${lancTitle}>
+      const lancTitle = G._semanaTravada ? 'title="Semana bloqueada"' : `title="${sobreposto ? 'Sobreposição de horário — clique para corrigir' : 'Clique para editar'}"`;
+      const borderStyle = sobreposto ? 'border-left:2px solid #C0392B;' : incompleto ? 'border-left:2px solid #C4831A;' : '';
+      const horaStyle = sobreposto ? 'color:#C0392B;font-weight:600;' : '';
+      html += `<div class="lanc-item" style="${borderStyle}cursor:${G._semanaTravada ? 'default' : 'pointer'}" ${lancClick} ${lancTitle}>
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
-        <div class="lanc-hora">${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)}</div>
-        <div class="lanc-desc"><span class="lanc-desc-main">${descMain}</span>${descSub ? `<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">${descSub}</span>` : ''}</div>
-        ${alertaHora}
+        <div class="lanc-hora" style="${horaStyle}">${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)}</div>
+        <div class="lanc-desc">${l.tipo === 'projeto' ? (() => {
+  const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
+  const clr = sobreposto ? 'color:#C0392B;' : '';
+  return `<span class="lanc-desc-main" style="${clr}">${info.cliente}</span><span class="lanc-desc-sep">|</span><span class="lanc-desc-main" style="${clr}">${info.oportunidade}</span><span class="lanc-desc-sep">|</span><span class="lanc-desc-main" style="${clr}">${info.etapa}</span>${l.descricao ? `<span class="lanc-desc-sep">·</span><span class="lanc-desc-nota">${l.descricao}</span>` : ''}`;
+})() : `<span class="lanc-desc-main" style="${sobreposto?'color:#C0392B;':''}">${descMain}</span>${descSub ? `<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">${descSub}</span>` : ''}`
+}</div>
+        ${alertas}
         <div class="lanc-dur">${fmtH(dur)}</div>
       </div>`;
     });
@@ -6550,11 +6843,11 @@ async function deletarLancamento(id) {
 
 async function carregarReembolsoAreas() {
   const { data } = await sb.from('fin_plano_contas')
-    .select('id,subconta')
-    .eq('origem_modulo','reembolso')
+    .select('id,grupo,subconta,ordem')
     .eq('ativo', true)
     .order('ordem');
-  G._reembolsoAreas = data || [];
+  // Filtra apenas as áreas válidas para lançamento de custo na Gestão
+  G._reembolsoAreas = (data || []).filter(pc => GESTAO_CUSTOS_AREAS.has(pc.subconta));
   const opts = G._reembolsoAreas.map(pc => `<option value="${pc.id}">${pc.subconta}</option>`).join('');
   const sel = document.getElementById('cf-area-reembolso');
   if (sel) { sel.innerHTML = opts; onAreaReembolsoChange('cf'); }
@@ -9314,31 +9607,49 @@ async function abrirProduto(id, targetPanel = null) {
     _etSeg.style.display = 'none';
   }
   const tlWrap = document.getElementById('mp-etapas-timeline');
-  if (typeof _tlWrapRender === 'function') {
-    _tlWrapRender(etapas);
-  } else {
-    tlWrap.innerHTML = etapas.map((e, i) => {
-      const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
-      const coord = G.todosUsuarios.find(u => u.id === e.coordenador_id);
-      return `<div class="tl-item">
-        <div class="tl-dot ${st.dot}"></div>
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div>
-            <div class="tl-label">${i+1}. ${e.nome}</div>
-            <div class="tl-text">
-              <span class="badge ${st.cls}">${st.label}</span>
-            </div>
-            ${e.descricao ? `<div class="tl-date" style="margin-top:4px;font-family:var(--font-ui)">${e.descricao}</div>` : ''}
+  const hoje = new Date().toISOString().slice(0, 10);
+  tlWrap.innerHTML = etapas.map((e, i) => {
+    const st     = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
+    const coord  = G.todosUsuarios.find(u => u.id === e.coordenador_id);
+    const prodNome = G.todosProdutos?.find(p => p.id === e.produto_id)?.nome || '';
+
+    // Badge de reunião já agendada
+    let reuniaoBadge = '';
+    if (e.data_reuniao) {
+      const passada = e.data_reuniao < hoje;
+      const meetLink = e.reuniao_link
+        ? `<a href="${e.reuniao_link}" target="_blank" style="color:#4285f4;font-size:9px;text-decoration:none;margin-right:2px">🎥</a>`
+        : '';
+      reuniaoBadge = `<span class="tl-reuniao-badge${passada ? ' passada' : ''}">${meetLink}📅 ${fmtDate(e.data_reuniao)}</span>`;
+    }
+
+    const agendarBtn = `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})" title="Agendar reunião no Google Calendar">📅 ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
+
+    const dataPartes = [];
+    if (e.data_liberacao) dataPartes.push(`Lib: ${fmtDate(e.data_liberacao)}`);
+    if (e.data_estimada)  dataPartes.push(`Est: ${fmtDate(e.data_estimada)}`);
+    if (e.data_conclusao) dataPartes.push(`<span style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</span>`);
+    const datasHtml = dataPartes.length
+      ? `<div class="tl-date" style="white-space:nowrap">${dataPartes.join(' · ')}</div>`
+      : '';
+
+    return `<div class="tl-item">
+      <div class="tl-dot ${st.dot}"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span class="tl-label">${i+1}. ${_escN(e.nome)}</span>
+            <span class="badge ${st.cls}" style="font-size:8px">${st.label}</span>
+            ${coord ? `<span style="font-size:9px;color:#aaa">${coord.iniciais}</span>` : ''}
+            ${agendarBtn}
+            ${reuniaoBadge}
           </div>
-          <div style="text-align:right;flex-shrink:0">
-            ${e.data_liberacao ? `<div class="tl-date">Lib: ${fmtDate(e.data_liberacao)}</div>` : ''}
-            ${e.data_estimada ? `<div class="tl-date">Est: ${fmtDate(e.data_estimada)}</div>` : ''}
-            ${e.data_conclusao ? `<div class="tl-date" style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</div>` : ''}
-          </div>
+          ${e.descricao ? `<div class="tl-date" style="margin-top:1px;font-family:var(--font-ui);color:#aaa">${_escN(e.descricao)}</div>` : ''}
         </div>
-      </div>`;
-    }).join('');
-  }
+        <div style="text-align:right;flex-shrink:0">${datasHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
 
   // Reset tabs
   document.querySelectorAll('#modal-produto .modal-tab').forEach(b => b.classList.remove('active'));
@@ -10447,14 +10758,29 @@ function renderCargaMensal({ porUser, usuarios, semNome }) {
 let _rbView = 'membro';
 let _rbData = null; // cache for export
 
+function isClassificacaoCorreta(c) {
+  if (!c.plano_contas_id) return false;
+  const area = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id);
+  if (!area || !GESTAO_CUSTOS_AREAS.has(area.subconta)) return false;
+  const rules = GESTAO_AREA_RULES[area.subconta] || {};
+  if (rules.requer_projeto && !c.produto_id) return false;
+  if (rules.requer_evento && !c.evento_id && !c.evento_soc_id) return false;
+  return true;
+}
+
 function setReembolsoView(v) {
   _rbView = v;
-  ['membro','evento'].forEach(t => {
+  ['membro','evento','reclassificacao'].forEach(t => {
     const btn = document.getElementById('rb-tab-'+t);
     if (!btn) return;
     btn.classList.toggle('active', t === v);
   });
-  if (_rbData) renderReembolso(_rbData);
+  if (v === 'reclassificacao') {
+    if (_rbData) renderReclassificacao(_rbData);
+    else document.getElementById('rb-lista').innerHTML = '<div class="empty-note">Selecione um mês para carregar.</div>';
+  } else {
+    if (_rbData) renderReembolso(_rbData);
+  }
 }
 
 async function editarNomeEvento(evId, tipo) {
@@ -10671,7 +10997,8 @@ async function carregarReembolso() {
   }
 
   _rbData = { custos, usuarios, mes, evNomes: rbEvNomes };
-  renderReembolso(_rbData);
+  if (_rbView === 'reclassificacao') renderReclassificacao(_rbData);
+  else renderReembolso(_rbData);
 }
 
 function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
@@ -10812,6 +11139,382 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
     html += '</div>';
     wrap.innerHTML = html;
   }
+}
+
+function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
+  const wrap = document.getElementById('rb-lista');
+  if (!wrap) return;
+  const fmtR    = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
+
+  const isSocAdmin = ['socio_adm','socio_admin'].includes((G.usuario?.role||'').toLowerCase());
+
+  // Separa corretos e incorretos
+  const incorretos = custos.filter(c => !isClassificacaoCorreta(c));
+  const corretos   = custos.filter(c =>  isClassificacaoCorreta(c));
+
+  const renderLinha = (c, semAlerta) => {
+    const u       = usuarios.find(u => u.id === c.usuario_id);
+    const area    = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id);
+    const evId    = c.evento_id || c.evento_soc_id;
+    const evNome  = evId ? (evNomes[evId] || '') : '';
+    const cli     = c.produtos?.oportunidades?.clientes?.nome || '';
+    const op      = c.produtos?.oportunidades?.projeto || '';
+    const vinculo = [cli, op].filter(Boolean).join(' · ') || c.tipo || '';
+    const cat     = [area?.subconta, c.subtipo].filter(Boolean).join(' › ');
+    const cor     = semAlerta ? 'var(--grafite)' : '#D32F2F';
+    const cursor  = isSocAdmin ? 'pointer' : 'default';
+    const onclick = isSocAdmin ? `onclick="abrirReclassificacaoCusto('${c.id}')"` : '';
+    const title   = isSocAdmin ? (semAlerta ? 'Clique para editar' : 'Clique para reclassificar') : (semAlerta ? '' : 'Requer reclassificação — apenas sócio-administrador');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--cinza2);cursor:${cursor}" ${onclick} title="${title}">
+      ${u ? _avImg(u, 22, 9) : ''}
+      <div style="flex:1;min-width:0">
+        <span style="font-size:11px;font-weight:600;color:${cor}">${u?.nome || '—'}</span>
+        ${vinculo ? `<span style="font-size:10px;color:#888"> · ${vinculo}</span>` : ''}
+        ${evNome  ? `<span style="font-size:9px;background:var(--cinza2);border-radius:3px;padding:1px 5px;color:#555;margin-left:4px">${evNome}</span>` : ''}
+        ${cat     ? `<div style="font-size:9px;color:#aaa;margin-top:1px">${cat}</div>` : '<div style="font-size:9px;color:#D32F2F;margin-top:1px">Sem classificação</div>'}
+        ${c.descricao ? `<div style="font-size:9px;color:#bbb">${c.descricao}</div>` : ''}
+      </div>
+      <div style="font-size:10px;color:#888;flex-shrink:0">${fmtDate(c.data_lancamento)}</div>
+      <div style="font-size:11px;font-family:var(--font-mono);font-weight:600;flex-shrink:0;color:${cor}">${fmtR(c.valor)}</div>
+    </div>`;
+  };
+
+  let html = '';
+
+  if (incorretos.length) {
+    html += `<div style="background:var(--branco);border:1px solid #D32F2F;border-radius:8px;overflow:hidden;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fff5f5;border-bottom:1px solid #ffd0d0">
+        <span style="font-size:11px;font-weight:700;color:#D32F2F;flex:1">⚠ Requerem reclassificação (${incorretos.length})</span>
+        ${!isSocAdmin ? `<span style="font-size:9px;color:#D32F2F">Apenas sócio-administrador pode reclassificar</span>` : ''}
+      </div>
+      ${incorretos.map(c => renderLinha(c, false)).join('')}
+    </div>`;
+  }
+
+  if (corretos.length) {
+    html += `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--cinza2)">
+        <span style="font-size:11px;font-weight:700;color:#2E7D32">✓ Classificados corretamente (${corretos.length})</span>
+      </div>
+      ${corretos.map(c => renderLinha(c, true)).join('')}
+    </div>`;
+  }
+
+  if (!incorretos.length && !corretos.length) {
+    html = '<div class="empty-note">Nenhum custo lançado neste mês.</div>';
+  }
+
+  wrap.innerHTML = html;
+}
+
+async function abrirReclassificacaoCusto(id) {
+  const isSocAdmin = ['socio_adm','socio_admin'].includes((G.usuario?.role||'').toLowerCase());
+  if (!isSocAdmin) { toast('Apenas sócio-administrador pode reclassificar'); return; }
+
+  const { data: c } = await sb.from('lancamentos_custo')
+    .select('*, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+    .eq('id', id).single();
+  if (!c) return;
+
+  let evtNome = '';
+  if (c.evento_id) {
+    const { data: ev } = await sb.from('eventos_custo').select('nome').eq('id', c.evento_id).maybeSingle();
+    evtNome = ev?.nome || '';
+  } else if (c.evento_soc_id) {
+    const { data: ev } = await sb.from('eventos_sociedade').select('nome').eq('id', c.evento_soc_id).maybeSingle();
+    evtNome = ev?.nome || '';
+  }
+
+  const [{ data: _evCusto }, { data: _evSoc }] = await Promise.all([
+    sb.from('eventos_custo').select('id,nome,produto_id').order('nome'),
+    sb.from('eventos_sociedade').select('id,nome').order('nome')
+  ]);
+  const todosEventosCusto = _evCusto || [];
+  const todosEventosSoc   = _evSoc   || [];
+
+  const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;color:var(--grafite);background:var(--branco);color-scheme:light dark';
+  const lblStyle = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
+
+  // Opções de área agrupadas por grupo do plano de contas
+  const gruposMap = {};
+  (G._reembolsoAreas||[]).forEach(pc => {
+    if (!gruposMap[pc.grupo]) gruposMap[pc.grupo] = [];
+    gruposMap[pc.grupo].push(pc);
+  });
+  const areaOpts = Object.entries(gruposMap).map(([grupo, pcs]) =>
+    `<optgroup label="${grupo}">${pcs.map(pc => `<option value="${pc.id}" ${pc.id===c.plano_contas_id?'selected':''}>${pc.subconta}</option>`).join('')}</optgroup>`
+  ).join('');
+
+  const curArea     = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id);
+  const curDetalhes = curArea ? (REEMBOLSO_DETALHES[curArea.subconta]||[]) : [];
+  const detalheOpts = curDetalhes.length
+    ? curDetalhes.map(d => `<option value="${d}" ${d===c.subtipo?'selected':''}>${d}</option>`).join('')
+    : `<option value="${c.subtipo||''}">${c.subtipo||'—'}</option>`;
+
+  // Cascata de projeto
+  const todosProds = G._prodsGestao || G.todosProdutos || [];
+  const clientesMap2 = new Map();
+  todosProds.forEach(p => {
+    const cli = p.oportunidades?.clientes;
+    if (cli?.id) clientesMap2.set(cli.id, { nome: cli.nome, cidade: cli.cidade, uf: cli.uf });
+  });
+  const cliOptsHtml = '<option value="">Selecionar cliente...</option>' +
+    [...clientesMap2.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR'))
+      .map(([cid,cd]) => `<option value="${cid}" ${cid===c.produtos?.oportunidades?.cliente_id?'selected':''}>${cd.nome}${cd.cidade?` — ${cd.cidade}`:''}${cd.uf?`/${cd.uf}`:''}</option>`).join('');
+
+  const curProd = todosProds.find(p => p.id === c.produto_id);
+  const curCli  = curProd?.oportunidades?.clientes;
+  const curCliId = curCli?.id || '';
+  const oppsForCli = curCliId
+    ? [...new Map(todosProds.filter(p=>p.oportunidades?.clientes?.id===curCliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()]
+    : [];
+  const oppOptsHtml = '<option value="">Selecionar oportunidade...</option>' +
+    oppsForCli.map(([oid,o]) => `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}</option>`).join('');
+  const prodsForOpp = curProd?.oportunidade_id
+    ? todosProds.filter(p=>p.oportunidade_id===curProd.oportunidade_id)
+    : [];
+  const prodOptsHtml = '<option value="">Selecionar produto...</option>' +
+    prodsForOpp.map(p=>`<option value="${p.id}" ${p.id===c.produto_id?'selected':''}>${p.nome}</option>`).join('');
+  const etapasForProd = c.produto_id
+    ? (G.todasEtapas||[]).filter(e=>e.produto_id===c.produto_id).sort((a,b)=>(a.ordem||0)-(b.ordem||0))
+    : [];
+  const etapaOptsHtml = '<option value="">—</option>' +
+    etapasForProd.map(e=>`<option value="${e.id}" ${e.id===c.etapa_id?'selected':''}>${e.nome}</option>`).join('');
+
+  const evtsHtml = '<option value="">— sem evento —</option>' +
+    todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${_escN(e.nome)}">`).join('');
+  const evtsSocHtml = '<option value="">— sem evento —</option>' +
+    todosEventosSoc.map(e=>`<option value="${_escN(e.nome)}">`).join('');
+
+  const dataVal = c.data_lancamento?.slice(0,10) || '';
+  const classificado = isClassificacaoCorreta(c);
+  const statusHtml = classificado
+    ? `<div style="font-size:10px;color:#2E7D32;margin-bottom:4px">✓ Classificado corretamente</div>`
+    : `<div style="font-size:10px;color:#D32F2F;margin-bottom:4px">⚠ Requer reclassificação</div>`;
+
+  let popup = document.getElementById('popup-reclassificacao');
+  if (popup) popup.remove();
+  popup = document.createElement('div');
+  popup.id = 'popup-reclassificacao';
+  popup.className = 'modal-bg';
+  popup.style.cssText = 'display:flex;z-index:9999';
+  popup.innerHTML = `
+    <div class="modal" style="max-width:500px">
+      <div class="modal-hd">
+        <div class="modal-hd-title">Reclassificar custo</div>
+        <button class="modal-close" onclick="document.getElementById('popup-reclassificacao').remove()">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+        ${statusHtml}
+        <!-- Data + Valor (somente leitura para contexto) -->
+        <div class="fg fg2">
+          <div class="fgroup">
+            <label>Data</label>
+            <input id="rcl-data" type="date" value="${dataVal}">
+          </div>
+          <div class="fgroup">
+            <label>Valor (R$)</label>
+            <input id="rcl-valor" type="number" step="0.01" value="${c.valor||''}">
+          </div>
+        </div>
+        <!-- Tipo -->
+        <div class="fgroup">
+          <label>Vinculado a</label>
+          <select id="rcl-tipo" onchange="rclOnTipoChange()">
+            <option value="projeto"     ${c.tipo==='projeto'    ?'selected':''}>Projeto</option>
+            <option value="organizacao" ${c.tipo==='organizacao'?'selected':''}>Org. Interna</option>
+            <option value="sociedade"   ${c.tipo==='sociedade'  ?'selected':''}>Sociedade</option>
+          </select>
+        </div>
+        <!-- Área (agrupada por grupo do plano de contas) -->
+        <div class="fgroup">
+          <label>Área (Plano de Contas)</label>
+          <select id="rcl-area" onchange="rclOnAreaChange()">${areaOpts}</select>
+        </div>
+        <!-- Subtipo (detalhe) -->
+        <div class="fgroup" id="rcl-detalhe-wrap" style="${curDetalhes.length?'':'display:none'}">
+          <label>Detalhe</label>
+          <select id="rcl-detalhe">${detalheOpts}</select>
+        </div>
+        <!-- Descrição (opcional em todos) -->
+        <div class="fgroup">
+          <label>Descrição <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(opcional)</span></label>
+          <input id="rcl-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}" placeholder="Opcional">
+        </div>
+        <!-- Cascade projeto -->
+        <div id="rcl-proj-wrap" style="${c.tipo!=='projeto'?'display:none':''}">
+          <div class="fgroup mb8">
+            <label>Cliente</label>
+            <select id="rcl-cliente" onchange="rclOnClienteChange()">${cliOptsHtml}</select>
+          </div>
+          <div id="rcl-opp-wrap" class="fgroup mb8" style="${curCliId?'':'display:none'}">
+            <label>Oportunidade</label>
+            <select id="rcl-opp" onchange="rclOnOppChange()">${oppOptsHtml}</select>
+          </div>
+          <div id="rcl-prod-wrap" class="fgroup mb8" style="${prodsForOpp.length?'':'display:none'}">
+            <label>Produto</label>
+            <select id="rcl-prod" onchange="rclOnProdChange()">${prodOptsHtml}</select>
+          </div>
+          <div id="rcl-etapa-wrap" class="fgroup mb8" style="${etapasForProd.length?'':'display:none'}">
+            <label>Etapa (opcional)</label>
+            <select id="rcl-etapa">${etapaOptsHtml}</select>
+          </div>
+          <div id="rcl-evt-proj-wrap" class="fgroup">
+            <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
+            <input id="rcl-evt-proj" type="text" list="rcl-evt-proj-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+            <datalist id="rcl-evt-proj-dl">${todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
+          </div>
+        </div>
+        <!-- Org/Soc evento -->
+        <div id="rcl-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
+          <div class="fgroup">
+            <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
+            <input id="rcl-evt-soc" type="text" list="rcl-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+            <datalist id="rcl-evt-soc-dl">${(c.tipo==='sociedade'?todosEventosSoc:todosEventosCusto.filter(e=>!e.produto_id)).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button onclick="document.getElementById('popup-reclassificacao').remove()" class="btn">Cancelar</button>
+        <button id="rcl-salvar-btn" class="btn verde">Salvar reclassificação</button>
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+
+  // Helpers de cascata
+  window.rclOnTipoChange = () => {
+    const t = document.getElementById('rcl-tipo').value;
+    document.getElementById('rcl-proj-wrap').style.display   = t === 'projeto' ? '' : 'none';
+    document.getElementById('rcl-orgsoc-wrap').style.display = t !== 'projeto' ? '' : 'none';
+    const dl = document.getElementById('rcl-evt-soc-dl');
+    if (dl) {
+      const evts = t === 'sociedade' ? todosEventosSoc : todosEventosCusto.filter(e=>!e.produto_id);
+      dl.innerHTML = evts.map(e=>`<option value="${_escN(e.nome)}">`).join('');
+    }
+    document.getElementById('rcl-evt-soc').value = '';
+    rclOnAreaChange();
+  };
+  window.rclOnAreaChange = () => {
+    const areaId = document.getElementById('rcl-area').value;
+    const area = (G._reembolsoAreas||[]).find(a => a.id === areaId);
+    const detalhes = area ? (REEMBOLSO_DETALHES[area.subconta]||[]) : [];
+    const wrap = document.getElementById('rcl-detalhe-wrap');
+    const sel  = document.getElementById('rcl-detalhe');
+    if (detalhes.length) {
+      sel.innerHTML = detalhes.map(d=>`<option value="${d}">${d}</option>`).join('');
+      wrap.style.display = '';
+    } else {
+      wrap.style.display = 'none';
+    }
+  };
+  window.rclOnClienteChange = () => {
+    const cliId = document.getElementById('rcl-cliente').value;
+    const todosP = G._prodsGestao || G.todosProdutos || [];
+    const opps = [...new Map(todosP.filter(p=>p.oportunidades?.clientes?.id===cliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()];
+    document.getElementById('rcl-opp').innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>`<option value="${oid}">${o?.projeto||oid}</option>`).join('');
+    document.getElementById('rcl-opp-wrap').style.display  = cliId ? '' : 'none';
+    document.getElementById('rcl-prod-wrap').style.display = 'none';
+    document.getElementById('rcl-etapa-wrap').style.display = 'none';
+  };
+  window.rclOnOppChange = () => {
+    const oppId = document.getElementById('rcl-opp').value;
+    const todosP = G._prodsGestao || G.todosProdutos || [];
+    const ps = todosP.filter(p=>p.oportunidade_id===oppId);
+    document.getElementById('rcl-prod').innerHTML = '<option value="">Selecionar produto...</option>' + ps.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+    document.getElementById('rcl-prod-wrap').style.display = oppId ? '' : 'none';
+    document.getElementById('rcl-etapa-wrap').style.display = 'none';
+  };
+  window.rclOnProdChange = () => {
+    const prodId = document.getElementById('rcl-prod').value;
+    const etapas = (G.todasEtapas||[]).filter(e=>e.produto_id===prodId).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+    document.getElementById('rcl-etapa').innerHTML = '<option value="">—</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+    document.getElementById('rcl-etapa-wrap').style.display = prodId ? '' : 'none';
+    const dl = document.getElementById('rcl-evt-proj-dl');
+    if (dl) dl.innerHTML = todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===prodId).map(e=>`<option value="${_escN(e.nome)}">`).join('');
+  };
+
+  async function _rclResolveEvento(nome, tipo, produtoId) {
+    const n = (nome||'').trim();
+    if (!n) return null;
+    if (tipo === 'sociedade') {
+      const ex = todosEventosSoc.find(e=>e.nome.toLowerCase()===n.toLowerCase());
+      if (ex) return { socId: ex.id, evtId: null };
+      const { data } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
+      if (data) { todosEventosSoc.push({ id: data.id, nome: n }); return { socId: data.id, evtId: null }; }
+      return null;
+    } else {
+      const evts = todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===produtoId);
+      const ex = evts.find(e=>e.nome.toLowerCase()===n.toLowerCase());
+      if (ex) return { evtId: ex.id, socId: null };
+      const { data } = await sb.from('eventos_custo').insert({ nome: n, produto_id: produtoId||null }).select('id').single();
+      if (data) { todosEventosCusto.push({ id: data.id, nome: n, produto_id: produtoId||null }); return { evtId: data.id, socId: null }; }
+      return null;
+    }
+  }
+
+  document.getElementById('rcl-salvar-btn').onclick = async () => {
+    const novoValor = parseFloat(document.getElementById('rcl-valor').value);
+    const novaData  = document.getElementById('rcl-data').value || c.data_lancamento;
+    const novoTipo  = document.getElementById('rcl-tipo').value;
+    const novaDesc  = document.getElementById('rcl-desc').value.trim() || null;
+    const novoPcId  = document.getElementById('rcl-area').value || null;
+    const novoSubtipo = document.getElementById('rcl-detalhe')?.value || null;
+    if (isNaN(novoValor) || novoValor <= 0) { toast('Valor inválido'); return; }
+    if (!novoPcId) { toast('Selecione uma área do plano de contas'); return; }
+
+    const upd = { valor: novoValor, descricao: novaDesc, data_lancamento: novaData, tipo: novoTipo,
+                  plano_contas_id: novoPcId, subtipo: novoSubtipo };
+
+    if (novoTipo === 'projeto') {
+      const prodId = document.getElementById('rcl-prod').value || c.produto_id || null;
+      const evtNomeInput = document.getElementById('rcl-evt-proj')?.value?.trim() || '';
+      const evtRes = evtNomeInput ? await _rclResolveEvento(evtNomeInput, 'projeto', prodId) : null;
+      upd.produto_id    = prodId;
+      upd.etapa_id      = document.getElementById('rcl-etapa')?.value || null;
+      upd.evento_id     = evtRes?.evtId || null;
+      upd.evento_soc_id = null;
+    } else if (novoTipo === 'sociedade') {
+      const evtNomeInput = document.getElementById('rcl-evt-soc')?.value?.trim() || '';
+      const evtRes = evtNomeInput ? await _rclResolveEvento(evtNomeInput, 'sociedade', null) : null;
+      upd.evento_soc_id = evtRes?.socId || null;
+      upd.evento_id     = null;
+      upd.produto_id    = null; upd.etapa_id = null;
+    } else {
+      const evtNomeInput = document.getElementById('rcl-evt-soc')?.value?.trim() || '';
+      const evtRes = evtNomeInput ? await _rclResolveEvento(evtNomeInput, 'organizacao', null) : null;
+      upd.evento_id     = evtRes?.evtId || null;
+      upd.evento_soc_id = null;
+      upd.produto_id    = null; upd.etapa_id = null;
+    }
+
+    const { error } = await sb.from('lancamentos_custo').update(upd).eq('id', id);
+    if (error) { toast('Erro: ' + error.message); return; }
+
+    // Sincroniza fin_lancamentos
+    const area = (G._reembolsoAreas||[]).find(a => a.id === novoPcId);
+    const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso';
+    const { data: existFin } = await sb.from('fin_lancamentos')
+      .select('id').eq('origem','reembolso').eq('origem_id', id).maybeSingle();
+    if (existFin?.id) {
+      await sb.from('fin_lancamentos').update({
+        plano_contas_id: novoPcId, valor: Math.abs(novoValor),
+        data_competencia: novaData, data_vencimento: novaData, observacao: finObs,
+      }).eq('id', existFin.id);
+    } else {
+      await sb.from('fin_lancamentos').insert({
+        plano_contas_id: novoPcId, valor: Math.abs(novoValor),
+        tipo: 'despesa', situacao: 'realizado',
+        data_competencia: novaData, data_vencimento: novaData,
+        observacao: finObs, origem: 'reembolso', origem_id: id,
+      });
+    }
+
+    popup.remove();
+    toast('Reclassificado com sucesso');
+    await carregarReembolso();
+  };
+  popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
 }
 
 function exportarReembolsoExcel() {
@@ -11645,8 +12348,12 @@ async function salvarFluxoUsuario(userId) {
   const nome = G.todosUsuarios.find(u => u.id === userId)?.nome?.split(' ')[0] || 'colaborador';
   toast(`Fluxo de ${nome} salvo ✓`);
 
-  // Reseta botão e recarrega para sincronizar IDs novos
-  carregarFluxo();
+  // Recarrega em background preservando a posição de scroll
+  const wrap = document.getElementById('fluxo-grid');
+  const scrollEl = wrap?.closest('.page') || document.documentElement;
+  const scrollY = scrollEl.scrollTop;
+  await carregarFluxo();
+  requestAnimationFrame(() => { scrollEl.scrollTop = scrollY; });
 }
 
 // ── Drag-and-drop reordenação ─────────────────────────────────────────────────
@@ -12517,8 +13224,10 @@ function toast(msg, dur = 2500) {
 function fmtDate(d, curto = false) {
   if (!d) return '—';
   const dt = typeof d === 'string' ? new Date(d + (d.length === 10 ? 'T12:00:00' : '')) : d;
-  if (curto) return dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
-  return dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const day = String(dt.getDate()).padStart(2,'0');
+  const mon = String(dt.getMonth()+1).padStart(2,'0');
+  if (curto) return `${day}.${mon}`;
+  return `${day}.${mon}`;
 }
 
 function fmtDataInicio(d) {
@@ -13644,6 +14353,20 @@ async function carregarResultado(prodId) {
       ${miniChart}
     </div>`;
 
+  // Calcula prazo de execução de cada etapa
+  // "Execução" = data_liberacao → data_conclusao (real) ou data_estimada (prev)
+  function calcPrazo(etapa) {
+    const lib  = etapa.data_liberacao;
+    const prev = etapa.data_estimada;
+    const conc = etapa.data_conclusao;
+    if (!lib) return null;
+    const diffDias = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+    const diasPrev = prev ? diffDias(lib, prev) : null;
+    const diasReal = conc ? diffDias(lib, conc) : null;
+    const atraso   = diasPrev != null && diasReal != null ? diasReal - diasPrev : null;
+    return { lib, prev, conc, diasPrev, diasReal, atraso };
+  }
+
   // Cards por etapa (painel direito rosa/verde/vermelho)
   const cardsEtapas = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL }) => {
     const isConcluida  = etapa.status === 'concluida';
@@ -13702,6 +14425,29 @@ async function carregarResultado(prodId) {
           ${custoL > 0 ? `<span>${fR(custoL)} custos diretos</span>` : ''}
           ${utilPct != null ? `<span><strong>${utilPct.toFixed(0)}%</strong> consumido</span>` : ''}
         </div>` : ''}
+        ${(() => {
+          const p = calcPrazo(etapa);
+          if (!p) return '';
+          const fmtD = iso => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '—';
+          const atrasoCor  = p.atraso == null ? '#aaa' : p.atraso > 0 ? 'var(--terracota)' : 'var(--verde)';
+          const atrasoIcon = p.atraso == null ? '' : p.atraso > 0 ? '⚠ ' : '✓ ';
+          const atrasoTxt  = p.atraso == null ? '—'
+            : p.atraso === 0 ? 'No prazo'
+            : p.atraso > 0  ? `+${p.atraso}d de atraso`
+            : `${Math.abs(p.atraso)}d adiantado`;
+          return `
+          <div class="res-card-prazo">
+            <div class="res-prazo-hd">Prazo de execução</div>
+            <div class="res-prazo-inline">
+              <span class="res-prazo-seg"><span class="res-prazo-label">Lib</span> ${fmtD(p.lib)}</span>
+              <span class="res-prazo-sep">→</span>
+              <span class="res-prazo-seg"><span class="res-prazo-label">Prev</span> ${fmtD(p.prev)}${p.diasPrev != null ? ` <span class="res-prazo-dias">${p.diasPrev}d</span>` : ''}</span>
+              <span class="res-prazo-sep">→</span>
+              <span class="res-prazo-seg"><span class="res-prazo-label">Conc</span> ${fmtD(p.conc)}${p.diasReal != null ? ` <span class="res-prazo-dias">${p.diasReal}d</span>` : ''}</span>
+              <span class="res-prazo-result" style="color:${atrasoCor}">${atrasoIcon}${atrasoTxt}</span>
+            </div>
+          </div>`;
+        })()}
       </div>`;
   }).join('');
 
@@ -15973,6 +16719,27 @@ const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
 const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,' ') + "'";
 
+// ── Agendar reunião por etapa (abre Google Calendar pré-preenchido) ───────────
+async function gcalAbrirReuniaoEtapa(etapaId, etapaNome, produtoNome) {
+  const titulo = encodeURIComponent(`EXP | ${etapaNome} | ${produtoNome}`);
+  // Abre Google Calendar na criação de evento com título pré-preenchido
+  window.open(`https://calendar.google.com/calendar/r/eventedit?text=${titulo}`, '_blank');
+
+  // Pergunta se quer registrar a data da reunião na etapa
+  const dataStr = prompt(`Data da reunião para "${etapaNome}" (AAAA-MM-DD):`);
+  if (!dataStr || !/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) return;
+
+  const { error } = await sb.from('etapas').update({ data_reuniao: dataStr, reuniao_link: null }).eq('id', etapaId);
+  if (error) { toast('Erro ao salvar data: ' + error.message); return; }
+
+  // Atualiza local e re-renderiza
+  G.todasEtapas = G.todasEtapas.map(e => e.id === etapaId ? { ...e, data_reuniao: dataStr } : e);
+  if (document.getElementById('modal-produto')?.style.display !== 'none') {
+    abrirModalProduto(G.produtoAtivo);
+  }
+  toast('Data da reunião registrada!');
+}
+
 // ── Estado (notifs e tarefas gerenciados pelo AppNotif) ───────
 
 // ── Push Desktop — registro do Service Worker ─────────────────────────
@@ -16271,58 +17038,58 @@ async function notificarMencoes(texto, ta, link) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//   LEMBRETE (sócios) — popup de envio manual
+//   LEMBRETE — popdown ancorado no botão +
 // ══════════════════════════════════════════════════════════════
 
-function abrirLembretePopup() {
-  let pop = document.getElementById('popup-lembrete');
-  if(pop) { pop.remove(); return; }
-  const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
-  const _fs = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _bs = 'padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui)';
-  const opts = (G.todosUsuarios||[]).map(u =>
-    `<option value="${u.id}">${_escN(u.nome)}</option>`
-  ).join('');
-  pop = document.createElement('div');
-  pop.id = 'popup-lembrete';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-  pop.innerHTML = `
-    <div style="background:var(--branco);border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
-      <label style="${_ls}">Para</label>
-      <select id="lemb-para" style="${_fs};margin-bottom:10px">
-        <option value="todos">Toda a equipe</option>
-        ${opts}
-      </select>
-      <label style="${_ls}">Mensagem</label>
-      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira."
-        style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
-        <button onclick="enviarLembrete()" style="${_bs};background:var(--ouro);color:#fff;border-color:var(--ouro);font-weight:600">Enviar lembrete</button>
-      </div>
-    </div>`;
-  pop.addEventListener('click', e => { if(e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
+function toggleLembretePopdown(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('lemb-popdown');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  // Fecha outros popdowns abertos
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  // Preenche select de usuários
+  const sel = document.getElementById('lemb-para');
+  if (sel && sel.options.length <= 1) {
+    sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
+      (G.todosUsuarios||[]).map(u => `<option value="${u.id}">${_escN(u.nome)}</option>`).join('');
+  }
+  document.getElementById('lemb-msg').value = '';
+  document.getElementById('lemb-status').textContent = '';
+  pop.classList.add('open');
+  setTimeout(() => {
+    function handler(ev) {
+      if (!pop.contains(ev.target) && ev.target.id !== 'notif-plus-btn') {
+        pop.classList.remove('open');
+        document.removeEventListener('click', handler);
+      }
+    }
+    document.addEventListener('click', handler);
+  }, 0);
+}
+
+function fecharLembretePopdown() {
+  document.getElementById('lemb-popdown')?.classList.remove('open');
 }
 
 async function enviarLembrete() {
   const msg  = document.getElementById('lemb-msg')?.value.trim();
   const para = document.getElementById('lemb-para')?.value;
-  if(!msg) { toast('Escreva a mensagem do lembrete'); return; }
-  const btn = document.querySelector('#popup-lembrete button:last-child');
-  if(btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  const status = document.getElementById('lemb-status');
+  if (!msg) { if (status) status.textContent = 'Escreva a mensagem do lembrete.'; return; }
   const targets = para === 'todos'
     ? (G.todosUsuarios||[]).filter(u => u.id !== G.usuario.id)
     : [(G.todosUsuarios||[]).find(u => u.id === para)].filter(Boolean);
-  for(const u of targets) {
+  if (status) status.textContent = 'Enviando…';
+  for (const u of targets) {
     await criarNotificacao(u.id, 'lembrete',
       `Lembrete de ${G.usuario.nome.split(' ')[0]}`,
       msg,
       { tipo: 'lembrete' }
     );
   }
-  document.getElementById('popup-lembrete')?.remove();
+  fecharLembretePopdown();
   toast(`Lembrete enviado para ${targets.length === 1 ? targets[0].nome.split(' ')[0] : 'toda a equipe'}`);
 }
 
