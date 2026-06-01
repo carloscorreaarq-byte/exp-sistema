@@ -649,7 +649,7 @@
     /* ── reutiliza G.todasEtapas ── */
     if (window.G && Array.isArray(window.G.todasEtapas)) {
       var e = window.G.todasEtapas
-        .filter(function (et) { return et.produto_id === prodId; })
+        .filter(function (et) { return String(et.produto_id) === String(prodId); })
         .slice().sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); });
       _etapaCache[prodId] = e;
       return e;
@@ -682,7 +682,7 @@
     prods.forEach(function (p) {
       var opp = p.oportunidades || {};
       var cli = opp.clientes || {};
-      if (cli.id === cliId && opp.id && !map[opp.id]) {
+      if (String(cli.id) === String(cliId) && opp.id && !map[opp.id]) {
         map[opp.id] = { id: opp.id, label: _trunc(opp.projeto || '(sem nome)', 36) };
       }
     });
@@ -691,7 +691,7 @@
 
   /* ── Produtos por oportunidade ── */
   function _getProdsByOpp(prods, oppId) {
-    return prods.filter(function (p) { return p.oportunidade_id === oppId; })
+    return prods.filter(function (p) { return String(p.oportunidade_id) === String(oppId); })
       .map(function (p) { return { id: p.id, label: _trunc(p.nome || p.subtipo || '(sem nome)', 36) }; });
   }
 
@@ -1034,6 +1034,10 @@
       clearTimeout(_collapseTimer);
       clearInterval(_tickInterval);
       var state = _loadState();
+      var cfView = document.getElementById('tmr-cf-view');
+      var cfEdit = document.getElementById('tmr-cf-edit');
+      if (cfView) cfView.style.display = '';
+      if (cfEdit) cfEdit.style.display = 'none';
       /* Congela tempo */
       if (state.running && state.startedAt) {
         var elapsed    = Date.now() - new Date(state.startedAt).getTime();
@@ -1205,92 +1209,75 @@
       view.style.display = 'none';
       edit.style.display = 'flex';
 
-      var state = _loadState();
-      var tipo  = state.tipo || 'projeto';
+      try {
+        var state = _loadState();
+        var tipo  = state.tipo || 'projeto';
 
-      /* Tipo select */
-      var tipoSel = document.getElementById('tmr-cfe-tipo');
-      if (tipoSel) {
-        await _getUser();
-        if (_isSocio() && !tipoSel.querySelector('option[value="sociedade"]')) {
-          var opt = document.createElement('option');
-          opt.value = 'sociedade'; opt.textContent = 'Sociedade';
-          tipoSel.appendChild(opt);
+        /* Tipo select */
+        var tipoSel = document.getElementById('tmr-cfe-tipo');
+        if (tipoSel) {
+          await _getUser();
+          if (_isSocio() && !tipoSel.querySelector('option[value="sociedade"]')) {
+            var opt = document.createElement('option');
+            opt.value = 'sociedade'; opt.textContent = 'Sociedade';
+            tipoSel.appendChild(opt);
+          }
+          tipoSel.value = tipo;
         }
-        tipoSel.value = tipo;
-      }
 
-      var subBlock  = document.getElementById('tmr-cfe-sub-block');
-      var projBlock = document.getElementById('tmr-cfe-proj-block');
+        var subBlock  = document.getElementById('tmr-cfe-sub-block');
+        var projBlock = document.getElementById('tmr-cfe-proj-block');
 
-      if (tipo !== 'projeto') {
-        if (subBlock)  subBlock.style.display  = '';
-        if (projBlock) projBlock.style.display = 'none';
-        var subSel = document.getElementById('tmr-cfe-sub');
-        if (subSel) {
-          var opts = SUBTIPOS[tipo] || [];
-          subSel.innerHTML = opts.map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
-          if (state.subtipo) subSel.value = state.subtipo;
+        if (tipo !== 'projeto') {
+          if (subBlock)  subBlock.style.display  = '';
+          if (projBlock) projBlock.style.display = 'none';
+          var subSel = document.getElementById('tmr-cfe-sub');
+          if (subSel) {
+            var opts = SUBTIPOS[tipo] || [];
+            subSel.innerHTML = opts.map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
+            if (state.subtipo) subSel.value = state.subtipo;
+          }
+          return;
         }
-      } else {
+
         if (subBlock)  subBlock.style.display  = 'none';
         if (projBlock) projBlock.style.display = '';
 
-        var prods   = await _getActiveProds();
-        var curProd = state.produtoId ? prods.find(function (p) { return p.id === state.produtoId; }) : null;
-        var curOpp  = curProd ? curProd.oportunidades : null;
-        var curCli  = curOpp  ? curOpp.clientes : null;
-        var curCliId = curCli ? curCli.id  : '';
-        var curOppId = curOpp ? curOpp.id  : '';
+        var prods    = await _getActiveProds();
+        var curProd  = state.produtoId ? prods.find(function (p) { return String(p.id) === String(state.produtoId); }) : null;
+        var curOpp   = curProd ? curProd.oportunidades : null;
+        var curCli   = curOpp ? curOpp.clientes : null;
+        var curCliId = curCli ? String(curCli.id) : '';
+        var curOppId = curOpp ? String(curOpp.id) : '';
+        var curProdId = state.produtoId ? String(state.produtoId) : '';
+        var curEtapaId = state.etapaId ? String(state.etapaId) : '';
 
-        /* Clientes */
-        var clis   = _getClientes(prods);
+        await _tmr._loadClientesCfe();
+
         var selCli = document.getElementById('tmr-cfe-cli');
-        if (selCli) {
-          selCli.innerHTML = '<option value="">&#8212; selecionar cliente &#8212;</option>' +
-            clis.map(function (c) { return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
+        if (selCli && curCliId) {
           selCli.value = curCliId;
+          if (selCli.value) await _tmr.changeCliCfe();
         }
 
-        var oppBlock   = document.getElementById('tmr-cfe-opp-block');
-        var prodBlock  = document.getElementById('tmr-cfe-prod-block');
-        var etapaBlock = document.getElementById('tmr-cfe-etapa-block');
-        if (oppBlock)   oppBlock.style.display   = 'none';
-        if (prodBlock)  prodBlock.style.display  = 'none';
-        if (etapaBlock) etapaBlock.style.display = 'none';
-
-        if (curCliId) {
-          var opps   = _getOpps(prods, curCliId);
-          var selOpp = document.getElementById('tmr-cfe-opp');
-          if (selOpp) {
-            selOpp.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-              opps.map(function (o) { return '<option value="' + o.id + '">' + o.label + '</option>'; }).join('');
-            selOpp.value = curOppId;
-          }
-          if (oppBlock) oppBlock.style.display = '';
-
-          if (curOppId) {
-            var ps      = _getProdsByOpp(prods, curOppId);
-            var selProd = document.getElementById('tmr-cfe-prod');
-            if (selProd) {
-              selProd.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-                ps.map(function (p) { return '<option value="' + p.id + '">' + p.label + '</option>'; }).join('');
-              selProd.value = state.produtoId || '';
-            }
-            if (prodBlock) prodBlock.style.display = '';
-
-            if (state.produtoId) {
-              var etapas   = await _getEtapas(state.produtoId);
-              var selEtapa = document.getElementById('tmr-cfe-etapa');
-              if (selEtapa) {
-                selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-                  etapas.map(function (e) { return '<option value="' + e.id + '">' + _trunc(e.nome, 36) + '</option>'; }).join('');
-                selEtapa.value = state.etapaId || '';
-              }
-              if (etapaBlock && etapas.length) etapaBlock.style.display = '';
-            }
-          }
+        var selOpp = document.getElementById('tmr-cfe-opp');
+        if (selOpp && curOppId) {
+          selOpp.value = curOppId;
+          if (selOpp.value) await _tmr.changeOppCfe();
         }
+
+        var selProd = document.getElementById('tmr-cfe-prod');
+        if (selProd && curProdId) {
+          selProd.value = curProdId;
+          if (selProd.value) await _tmr.changeProdCfe();
+        }
+
+        var selEtapa = document.getElementById('tmr-cfe-etapa');
+        if (selEtapa && curEtapaId) selEtapa.value = curEtapaId;
+      } catch (e) {
+        console.warn('[EXP Timer] openCfEdit', e);
+        _toast('Não foi possível carregar os campos para edição');
+        _tmr.cancelCfEdit();
       }
     },
 
