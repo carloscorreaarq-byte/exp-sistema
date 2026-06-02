@@ -470,9 +470,25 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
           <span class="user-chip-arrow">▾</span>
         </div>
         <div class="user-dropdown" id="user-dropdown">
+          <div class="user-dropdown-summary">
+            <div class="ud-summary-name" id="user-dropdown-nome-completo">—</div>
+            <div class="ud-summary-role" id="user-dropdown-role-completo">—</div>
+            <div class="ud-summary-email" id="user-dropdown-email">—</div>
+          </div>
+          <div class="user-dropdown-sep"></div>
+          <button type="button" onclick="abrirMeusDados()">Meus dados</button>
+          <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataforma()">Gestão de plataforma</button>
+          <div class="user-dropdown-sep"></div>
+          <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.()">
+            <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
+            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
+            <span class="term-state-hover">ver termo →</span>
+          </div>
+          <div class="user-dropdown-note" id="user-dropdown-note"></div>
+          <div class="user-dropdown-sep"></div>
           <button onclick="sair()">Sair do sistema</button>
           <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
-            <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc"></div>
+            <div class="conn-dot" id="conn-dot" title="Verificando conexão…" style="width:7px;height:7px;border-radius:50%;background:#ccc"></div>
             <span style="font-size:10px;color:#bbb" id="conn-label">conectando…</span>
           </div>
         </div>
@@ -766,19 +782,91 @@ async function enviarToolFeedback() {
   document.getElementById('tool-feedback-status').textContent = error ? 'Erro ao enviar.' : 'Enviado! Obrigado.';
   if (!error) setTimeout(fecharToolFeedbackPop, 1800);
 }
+const ROLES_LABEL = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
+
 function toggleUserMenu() {
   document.getElementById('user-dropdown')?.classList.toggle('open');
 }
-function renderCalUserChip(usr) {
+document.addEventListener('click', e => {
+  if (!document.getElementById('user-pill-wrap')?.contains(e.target))
+    document.getElementById('user-dropdown')?.classList.remove('open');
+});
+
+function renderUserDropdown(usr) {
+  const nomeEl  = document.getElementById('user-dropdown-nome-completo');
+  const cargoEl = document.getElementById('user-dropdown-role-completo');
+  const emailEl = document.getElementById('user-dropdown-email');
+  const noteEl  = document.getElementById('user-dropdown-note');
+  if (nomeEl)  nomeEl.textContent  = usr.nome || '—';
+  if (cargoEl) cargoEl.textContent = ROLES_LABEL[usr.role] || usr.role || '—';
+  if (emailEl) emailEl.textContent = usr.email_login || usr.email || 'Sem e-mail institucional cadastrado';
+  const meta = [];
+  if (usr.viewer_only)         meta.push('Modo visualização');
+  if (usr.is_platform_manager) meta.push('Gestor de plataforma');
+  if (usr.apelido)             meta.push('Apelido: ' + usr.apelido);
+  if (noteEl) noteEl.textContent = meta.join(' · ');
+}
+
+function renderTermState(usr) {
+  const el  = document.getElementById('user-term-state');
+  const txt = document.getElementById('user-term-state-text');
+  const ico = document.getElementById('user-term-state-icon');
+  if (!el) return;
+  const status = (usr?.termo_status || '').toLowerCase();
+  const isOk   = ['assinado','vigente','ok','signed'].includes(status);
+  el.classList.remove('pending', 'ok');
+  if (isOk) {
+    el.classList.add('ok');
+    if (ico) ico.textContent = '✓';
+    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais assinado.';
+  } else {
+    el.classList.add('pending');
+    if (ico) ico.textContent = '⚠';
+    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+  }
+}
+
+function renderUserChip(usr) {
   if (!usr) return;
   const av = document.getElementById('user-av');
-  if (av) { av.style.background = usr.cor || '#888'; av.textContent = usr.iniciais || (usr.nome||'??').substring(0,2).toUpperCase(); }
+  if (av) {
+    av.classList.toggle('has-avatar', !!usr.avatar_url);
+    av.style.background = usr.cor || '#888';
+    av.innerHTML = '';
+    if (usr.avatar_url) {
+      const img = document.createElement('img');
+      img.src = usr.avatar_url;
+      img.alt = usr.nome || 'Avatar';
+      av.appendChild(img);
+    } else {
+      av.textContent = usr.iniciais || (usr.nome || '??').substring(0, 2).toUpperCase();
+    }
+  }
+  const parts = (usr.nome || '').trim().split(/\s+/).filter(Boolean);
   const nEl = document.getElementById('user-nome');
-  if (nEl) { const p = (usr.nome||'').trim().split(/\s+/).filter(Boolean); nEl.textContent = p.length <= 2 ? p.join(' ') : p[0]+' '+p[p.length-1]; }
+  if (nEl) nEl.textContent = parts.length <= 2 ? parts.join(' ') : parts[0] + ' ' + parts[parts.length - 1];
   const rEl = document.getElementById('user-cargo');
-  const RLBL = {socio:'Sócio',socio_adm:'Sócio-adm',socio_admin:'Sócio-adm',coordenador:'Coordenador',colaborador:'Colaborador'};
-  if (rEl) rEl.textContent = RLBL[usr.role] || usr.role || '';
+  if (rEl) rEl.textContent = ROLES_LABEL[usr.role] || usr.role || '—';
+  const platformBtn = document.getElementById('user-menu-platform');
+  if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || usr.role === 'socio_admin' || usr.role === 'socio_adm');
+  renderUserDropdown(usr);
+  renderTermState(usr);
 }
+
+function abrirMeusDados() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.location.href = 'app.html';
+}
+
+function abrirGestaoPlataforma() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.location.href = 'app.html';
+}
+
+window.abrirTermoCompromisso = function() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.location.href = 'app.html';
+};
 let _lembUsuarios = [];
 
 async function toggleLembretePopdown(e) {
@@ -846,7 +934,7 @@ async function init() {
     G.usuario = u;
     G.usuario.auth_id = session.user.id;
 
-    sessionStorage.setItem('exp_usuario', JSON.stringify({
+    const _navPayload = {
       auth_id:     session.user.id,
       app_user_id: u.id,
       id:          u.id,
@@ -857,10 +945,12 @@ async function init() {
       role:        u.role || '',
       avatar_url:  u.avatar_url || null,
       email:       u.email || '',
-    }));
+    };
+    sessionStorage.setItem('exp_usuario', JSON.stringify(_navPayload));
+    window.dispatchEvent(new CustomEvent('exp:session-ready', { detail: _navPayload }));
 
     await Promise.all([carregarUsuarios(), carregarProdutos()]);
-    renderCalUserChip(u);
+    renderUserChip(u);
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('conteudo').style.display = 'flex';

@@ -200,37 +200,10 @@ body {
   min-width: 290px;
   max-width: min(320px, calc(100vw - 32px));
 }
-.gestao-hd-right .user-dropdown-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 12px 14px 10px;
-}
-.gestao-hd-right .ud-summary-name {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--grafite);
-  line-height: 1.35;
-  word-break: break-word;
-}
-.gestao-hd-right .ud-summary-role {
-  font-size: 10px;
-  color: #777;
-  line-height: 1.35;
-}
-.gestao-hd-right .ud-summary-email {
-  font-size: 10px;
-  color: #999;
-  line-height: 1.4;
-  word-break: break-word;
-}
 .gestao-hd-right .user-dropdown-note:empty { display: none; }
 .gestao-hd-right .notif-plus { background: transparent; }
 [data-theme="dark"] .gestao-hd-right .user-chip { background: transparent; border-color: rgba(255,255,255,.12); }
 [data-theme="dark"] .gestao-hd-right .user-chip:hover { border-color: rgba(255,255,255,.28); }
-[data-theme="dark"] .gestao-hd-right .ud-summary-name { color: var(--grafite); }
-[data-theme="dark"] .gestao-hd-right .ud-summary-role { color: #A7A095; }
-[data-theme="dark"] .gestao-hd-right .ud-summary-email { color: #8F897F; }
 /* @ Mention autocomplete */
 .mencao-dd{position:fixed;background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.13);z-index:9000;max-height:180px;overflow-y:auto;min-width:190px}
 .mencao-it{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-size:11px;font-family:var(--font-ui)}
@@ -2693,7 +2666,16 @@ body {
             <div class="ud-summary-role" id="user-dropdown-role-completo">—</div>
             <div class="ud-summary-email" id="user-dropdown-email">—</div>
           </div>
-          <div class="user-dropdown-note" id="user-dropdown-meta"></div>
+          <div class="user-dropdown-sep"></div>
+          <button type="button" onclick="abrirMeusDados()">Meus dados</button>
+          <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataforma()">Gestão de plataforma</button>
+          <div class="user-dropdown-sep"></div>
+          <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.()">
+            <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
+            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
+            <span class="term-state-hover">ver termo →</span>
+          </div>
+          <div class="user-dropdown-note" id="user-dropdown-note"></div>
           <div class="user-dropdown-sep"></div>
           <button onclick="sair()">Sair do sistema</button>
           <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
@@ -4478,27 +4460,41 @@ function formatUserAccessStatus(usr) {
 }
 
 function renderUserDropdown(usr) {
-  const nomeEl = document.getElementById('user-dropdown-nome-completo');
+  const nomeEl  = document.getElementById('user-dropdown-nome-completo');
   const cargoEl = document.getElementById('user-dropdown-role-completo');
   const emailEl = document.getElementById('user-dropdown-email');
-  const metaEl = document.getElementById('user-dropdown-meta');
+  const noteEl  = document.getElementById('user-dropdown-note');
   const roleLabel = ROLES_LABEL[usr.role] || usr.role || '—';
   const email = usr.email_login || usr.email || '';
 
-  if (nomeEl) nomeEl.textContent = usr.nome || '—';
+  if (nomeEl)  nomeEl.textContent  = usr.nome || '—';
   if (cargoEl) cargoEl.textContent = roleLabel;
   if (emailEl) emailEl.textContent = email || 'Sem e-mail institucional cadastrado';
 
   const meta = [];
-  const acesso = formatUserAccessStatus(usr);
-  const termo = formatUserTermStatus(usr.termo_status);
-  if (acesso) meta.push(acesso);
-  if (termo) meta.push(termo);
-  if (usr.viewer_only) meta.push('Modo visualização');
+  if (usr.viewer_only)        meta.push('Modo visualização');
   if (usr.is_platform_manager) meta.push('Gestor de plataforma');
-  if (usr.apelido) meta.push('Apelido: ' + usr.apelido);
+  if (usr.apelido)             meta.push('Apelido: ' + usr.apelido);
+  if (noteEl) noteEl.textContent = meta.join(' · ');
+}
 
-  if (metaEl) metaEl.textContent = meta.join(' · ');
+function renderTermState(usr) {
+  const el  = document.getElementById('user-term-state');
+  const txt = document.getElementById('user-term-state-text');
+  const ico = document.getElementById('user-term-state-icon');
+  if (!el) return;
+  const status = (usr?.termo_status || '').toLowerCase();
+  const isOk   = ['assinado','vigente','ok','signed'].includes(status);
+  el.classList.remove('pending', 'ok');
+  if (isOk) {
+    el.classList.add('ok');
+    if (ico) ico.textContent = '✓';
+    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais assinado.';
+  } else {
+    el.classList.add('pending');
+    if (ico) ico.textContent = '⚠';
+    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+  }
 }
 
 function renderUserChip(usr) {
@@ -4517,13 +4513,30 @@ function renderUserChip(usr) {
     }
   }
   const parts = (usr.nome || '').trim().split(/\s+/).filter(Boolean);
-  const nomeDisplay = parts.length <= 2 ? parts.join(' ') : parts[0] + ' ' + parts[parts.length - 1];
   const el = document.getElementById('user-nome');
-  if (el) el.textContent = nomeDisplay || '—';
+  if (el) el.textContent = parts.length <= 2 ? parts.join(' ') : parts[0] + ' ' + parts[parts.length - 1];
   const cargo = document.getElementById('user-cargo');
   if (cargo) cargo.textContent = ROLES_LABEL[usr.role] || usr.role || '—';
+  const platformBtn = document.getElementById('user-menu-platform');
+  if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || usr.role === 'socio_admin' || usr.role === 'socio_adm');
   renderUserDropdown(usr);
+  renderTermState(usr);
 }
+
+function abrirMeusDados() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.location.href = 'app.html';
+}
+
+function abrirGestaoPlataforma() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.location.href = 'app.html';
+}
+
+window.abrirTermoCompromisso = function() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+  window.location.href = 'app.html';
+};
 function setToolFeedbackStatus(msg){
   const el = document.getElementById('tool-feedback-status');
   if (el) el.textContent = msg;
@@ -4757,7 +4770,10 @@ async function init() {
   if (!G.usuario.auth_id) G.usuario.auth_id = session.user.id;
 
   // Persiste sessão para shared/exp-nav.js
-  try { sessionStorage.setItem('exp_usuario', JSON.stringify(usr)); } catch(e) {}
+  try {
+    sessionStorage.setItem('exp_usuario', JSON.stringify(usr));
+    window.dispatchEvent(new CustomEvent('exp:session-ready', { detail: usr }));
+  } catch(e) {}
 
   // Renderiza user chip no header
   renderUserChip(usr);
@@ -11666,16 +11682,24 @@ async function abrirReclassificacaoCusto(id) {
     if (tipo === 'sociedade') {
       const ex = todosEventosSoc.find(e=>e.nome.toLowerCase()===n.toLowerCase());
       if (ex) return { socId: ex.id, evtId: null };
-      const { data } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
+      const { data, error: insErr } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
       if (data) { todosEventosSoc.push({ id: data.id, nome: n }); return { socId: data.id, evtId: null }; }
-      return null;
+      // Insert pode falhar por unique constraint — tenta buscar pelo nome no banco
+      const { data: found } = await sb.from('eventos_sociedade').select('id').ilike('nome', n).maybeSingle();
+      if (found) { todosEventosSoc.push({ id: found.id, nome: n }); return { socId: found.id, evtId: null }; }
+      return { _err: insErr?.message || 'Falha ao criar evento de sociedade' };
     } else {
       const evts = todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===produtoId);
       const ex = evts.find(e=>e.nome.toLowerCase()===n.toLowerCase());
       if (ex) return { evtId: ex.id, socId: null };
-      const { data } = await sb.from('eventos_custo').insert({ nome: n, produto_id: produtoId||null }).select('id').single();
+      const { data, error: insErr } = await sb.from('eventos_custo').insert({ nome: n, produto_id: produtoId||null }).select('id').single();
       if (data) { todosEventosCusto.push({ id: data.id, nome: n, produto_id: produtoId||null }); return { evtId: data.id, socId: null }; }
-      return null;
+      // Insert pode falhar por unique constraint — tenta buscar pelo nome no banco
+      let q = sb.from('eventos_custo').select('id').ilike('nome', n);
+      if (produtoId) q = q.eq('produto_id', produtoId); else q = q.is('produto_id', null);
+      const { data: found } = await q.maybeSingle();
+      if (found) { todosEventosCusto.push({ id: found.id, nome: n, produto_id: produtoId||null }); return { evtId: found.id, socId: null }; }
+      return { _err: insErr?.message || 'Falha ao criar evento de custo' };
     }
   }
 
@@ -11725,8 +11749,9 @@ async function abrirReclassificacaoCusto(id) {
 
     if (novoTipo === 'projeto') {
       const evtRes = evtProjInput ? await _rclResolveEvento(evtProjInput, 'projeto', prodId) : null;
+      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return; }
       if (rules.requer_evento && !evtRes?.evtId) {
-        _rclErro('Não foi possível criar/encontrar o evento. Tente novamente.');
+        _rclErro('Esta área exige um evento válido. Preencha o campo Evento.');
         btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
       }
       upd.produto_id    = prodId;
@@ -11735,8 +11760,9 @@ async function abrirReclassificacaoCusto(id) {
       upd.evento_soc_id = null;
     } else if (novoTipo === 'sociedade') {
       const evtRes = evtSocInput ? await _rclResolveEvento(evtSocInput, 'sociedade', null) : null;
+      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return; }
       if (rules.requer_evento && !evtRes?.socId) {
-        _rclErro('Não foi possível criar/encontrar o evento. Tente novamente.');
+        _rclErro('Esta área exige um evento válido. Preencha o campo Evento.');
         btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
       }
       upd.evento_soc_id = evtRes?.socId || null;
@@ -11744,8 +11770,9 @@ async function abrirReclassificacaoCusto(id) {
       upd.produto_id    = null; upd.etapa_id = null;
     } else {
       const evtRes = evtSocInput ? await _rclResolveEvento(evtSocInput, 'organizacao', null) : null;
+      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return; }
       if (rules.requer_evento && !evtRes?.evtId) {
-        _rclErro('Não foi possível criar/encontrar o evento. Tente novamente.');
+        _rclErro('Esta área exige um evento válido. Preencha o campo Evento.');
         btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
       }
       upd.evento_id     = evtRes?.evtId || null;
@@ -16718,52 +16745,51 @@ function _renderPresetsAdmin() {
 
 function abrirFormPreset(id) {
   const preset = id ? G._ckPresets.find(p => p.id === id) : null;
-  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:8px;padding:10px 14px;font-size:13px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _l = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:6px';
-  const _b = 'padding:8px 20px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;cursor:pointer;background:var(--branco);font-family:var(--font-ui)';
 
   let pop = document.getElementById('popup-preset');
   if(pop) pop.remove();
   pop = document.createElement('div');
   pop.id = 'popup-preset';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto';
+  pop.className = 'modal-bg';
+  pop.style.cssText = 'display:flex;z-index:9999;align-items:flex-start';
   pop.innerHTML = `
-    <div style="background:var(--branco);border-radius:12px;padding:28px 32px;max-width:680px;width:95%;box-shadow:0 8px 40px rgba(0,0,0,.2);margin-bottom:40px">
-      <div style="font-size:16px;font-weight:700;margin-bottom:20px">${preset?'Editar preset':'Novo preset de checklist'}</div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div>
-          <label style="${_l}">Nome do preset</label>
-          <input id="pre-nome" type="text" style="${_f}" value="${_ckA(preset?.nome||'')}" placeholder="Ex: Entrega de Projeto Executivo">
+    <div class="modal" style="max-width:600px;width:95%;margin:32px auto">
+      <div class="modal-hd">
+        <span class="modal-hd-title">${preset?'Editar preset':'Novo preset de checklist'}</span>
+        <button class="modal-close" onclick="document.getElementById('popup-preset').remove()">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
+        <div class="fg fg2">
+          <div class="fgroup">
+            <label>Nome do preset</label>
+            <input id="pre-nome" type="text" value="${_ckA(preset?.nome||'')}" placeholder="Ex: Entrega de Projeto Executivo">
+          </div>
+          <div class="fgroup">
+            <label>Tipo de etapa alvo</label>
+            <input id="pre-etapa-tipo" type="text" value="${_ckA(preset?.etapa_tipo||'')}" placeholder="Ex: Projeto Executivo, EP, Definitivo…">
+          </div>
         </div>
-        <div>
-          <label style="${_l}">Tipo de etapa alvo</label>
-          <input id="pre-etapa-tipo" type="text" style="${_f}" value="${_ckA(preset?.etapa_tipo||'')}" placeholder="Ex: Projeto Executivo, EP, Definitivo…">
+        <div class="fgroup">
+          <label>Tipo de produto</label>
+          <select id="pre-tipo-produto">
+            <option value="">Genérico (todos os tipos)</option>
+            <option value="urbanismo"    ${preset?.tipo_produto==='urbanismo'?'selected':''}>Urbanismo</option>
+            <option value="paisagismo"   ${preset?.tipo_produto==='paisagismo'?'selected':''}>Paisagismo</option>
+            <option value="especiais"    ${preset?.tipo_produto==='especiais'?'selected':''}>Especiais</option>
+            <option value="consultorias" ${preset?.tipo_produto==='consultorias'?'selected':''}>Consultorias</option>
+          </select>
+        </div>
+        <div style="border-top:1px solid var(--cinza2);padding-top:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999">Seções e itens</span>
+            <button onclick="_addPreSecao()" class="btn sm">+ Nova seção</button>
+          </div>
+          <div id="pre-secoes-lista"></div>
         </div>
       </div>
-
-      <div style="margin-bottom:20px">
-        <label style="${_l}">Tipo de produto</label>
-        <select id="pre-tipo-produto" style="${_f}">
-          <option value="">Genérico (todos os tipos)</option>
-          <option value="urbanismo"    ${preset?.tipo_produto==='urbanismo'?'selected':''}>Urbanismo</option>
-          <option value="paisagismo"   ${preset?.tipo_produto==='paisagismo'?'selected':''}>Paisagismo</option>
-          <option value="especiais"    ${preset?.tipo_produto==='especiais'?'selected':''}>Especiais</option>
-          <option value="consultorias" ${preset?.tipo_produto==='consultorias'?'selected':''}>Consultorias</option>
-        </select>
-      </div>
-
-      <div style="border-top:1px solid var(--cinza2);padding-top:18px;margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555">Seções e itens</span>
-          <button onclick="_addPreSecao()" style="${_b};padding:6px 14px;font-size:12px;background:var(--azul);color:#fff;border-color:var(--azul)">+ Nova seção</button>
-        </div>
-        <div id="pre-secoes-lista"></div>
-      </div>
-
-      <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--cinza2);padding-top:18px">
-        <button onclick="document.getElementById('popup-preset').remove()" style="${_b}">Cancelar</button>
-        <button onclick="salvarPreset(${_sqCk(id||'')})" style="${_b};background:var(--verde);color:#fff;border-color:var(--verde);font-weight:700">Salvar preset</button>
+      <div class="modal-ft">
+        <button onclick="document.getElementById('popup-preset').remove()" class="btn">Cancelar</button>
+        <button onclick="salvarPreset(${_sqCk(id||'')})" class="btn verde">Salvar preset</button>
       </div>
     </div>`;
 
@@ -16793,25 +16819,25 @@ function _renderPreForm() {
   const pop   = document.getElementById('popup-preset');
   const lista = document.getElementById('pre-secoes-lista');
   if(!lista || !pop) return;
-  const _f = 'width:100%;border:1px solid var(--cinza);border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
+  const _fi = 'flex:1;border:1px solid var(--cinza);border-radius:6px;padding:5px 9px;font-size:11px;font-family:var(--font-ui);font-weight:300;outline:none;box-sizing:border-box;background:var(--branco);color:var(--grafite);min-width:0';
   const data  = pop._data;
 
   let html = '';
 
   // Itens sem seção
-  html += `<div style="margin-bottom:16px">
-    <div style="font-size:10px;color:#aaa;margin-bottom:6px">Itens sem seção (aparecem no topo do checklist)</div>
+  html += `<div style="margin-bottom:12px">
+    <div style="font-size:9px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Itens sem seção (aparecem no topo do checklist)</div>
     <div id="pre-sem-sec-lista">
       ${data.semSecao.map((it,i)=>`
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
           <input type="text" value="${_ckA(it.texto)}" placeholder="Descrição do item…"
-            style="${_f};flex:1" onchange="_preUpdateSemSec(${i},this.value)">
-          <button onclick="_remPreSemSec(${i})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:16px;flex-shrink:0">×</button>
+            style="${_fi}" onchange="_preUpdateSemSec(${i},this.value)">
+          <button onclick="_remPreSemSec(${i})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;line-height:1;padding:2px 4px">×</button>
         </div>`).join('')}
     </div>
-    <div style="display:flex;gap:8px;margin-top:6px">
-      <input id="pre-sem-sec-novo" type="text" style="${_f};flex:1" placeholder="Novo item…">
-      <button onclick="_addPreSemSec()" style="padding:9px 14px;border:1px solid var(--cinza);border-radius:8px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui);flex-shrink:0">+ Add</button>
+    <div style="display:flex;gap:6px;margin-top:5px">
+      <input id="pre-sem-sec-novo" type="text" style="${_fi}" placeholder="Novo item…">
+      <button onclick="_addPreSemSec()" class="btn sm" style="flex-shrink:0">+ Add</button>
     </div>
   </div>`;
 
@@ -16820,30 +16846,29 @@ function _renderPreForm() {
     <div class="pre-secao-block" id="pre-sec-${si}">
       <div class="pre-secao-hd">
         <input type="text" value="${_ckA(s.titulo)}" placeholder="Título da seção…"
-          style="flex:1;border:none;border-bottom:2px solid var(--azul);padding:6px 2px;font-size:14px;font-weight:700;font-family:var(--font-ui);outline:none;color:var(--azul);background:transparent"
+          style="flex:1;border:none;border-bottom:1px solid var(--azul);padding:4px 2px;font-size:11px;font-weight:700;font-family:var(--font-ui);outline:none;color:var(--azul);background:transparent"
           onchange="_preUpdateSecao(${si},'titulo',this.value)">
-        <button onclick="_remPreSecao(${si})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:18px;flex-shrink:0" title="Remover seção">×</button>
+        <button onclick="_remPreSecao(${si})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;padding:2px 4px" title="Remover seção">×</button>
       </div>
-      <div style="margin-bottom:10px">
-        <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;display:block;margin-bottom:5px">Texto introdutório (instrução geral — não é um item marcável)</label>
-        <textarea rows="3" placeholder="Descreva o objetivo desta seção, critérios de entrega, observações importantes…"
-          style="${_f};resize:vertical;line-height:1.5"
+      <div class="fgroup" style="margin-bottom:8px">
+        <label>Texto introdutório (instrução geral — não é um item marcável)</label>
+        <textarea rows="2" placeholder="Descreva o objetivo desta seção, critérios de entrega…"
           onchange="_preUpdateSecao(${si},'intro',this.value)">${_ckA(s.intro||'')}</textarea>
       </div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;margin-bottom:6px">Itens desta seção</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#aaa;margin-bottom:5px">Itens desta seção</div>
       <div id="pre-sec-items-${si}">
         ${s.items.map((it,ii)=>`
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-            <span style="color:#aaa;font-size:11px;flex-shrink:0">·</span>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+            <span style="color:#aaa;font-size:10px;flex-shrink:0">·</span>
             <input type="text" value="${_ckA(it.texto)}" placeholder="Descrição do item…"
-              style="${_f};flex:1" onchange="_preUpdateSecaoItem(${si},${ii},this.value)">
-            <button onclick="_remPreSecaoItem(${si},${ii})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:16px;flex-shrink:0">×</button>
+              style="${_fi}" onchange="_preUpdateSecaoItem(${si},${ii},this.value)">
+            <button onclick="_remPreSecaoItem(${si},${ii})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;padding:2px 4px">×</button>
           </div>`).join('')}
       </div>
-      <div style="display:flex;gap:8px;margin-top:4px">
-        <input id="pre-sec-novo-${si}" type="text" style="${_f};flex:1" placeholder="Novo item para esta seção…"
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <input id="pre-sec-novo-${si}" type="text" style="${_fi}" placeholder="Novo item para esta seção…"
           onkeydown="if(event.key==='Enter'){event.preventDefault();_addPreSecaoItem(${si})}">
-        <button onclick="_addPreSecaoItem(${si})" style="padding:9px 14px;border:1px solid var(--cinza);border-radius:8px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui);flex-shrink:0">+ Add</button>
+        <button onclick="_addPreSecaoItem(${si})" class="btn sm" style="flex-shrink:0">+ Add</button>
       </div>
     </div>`).join('');
 
