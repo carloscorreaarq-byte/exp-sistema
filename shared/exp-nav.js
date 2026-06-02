@@ -433,19 +433,33 @@ window.ExpNav = (() => {
   }
 
   function _fetchCalEvents() {
-    var sb = _sb(); if (!sb || !_user) return;
+    var sb = _sb(); if (!sb) return;
+    /* Se _user ainda não foi setado, tenta reler do sessionStorage */
+    if (!_user) {
+      try { var c = JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); if (c && (c.nome || c.app_user_id)) _user = c; } catch(e) {}
+    }
+    if (!_user) return;
     /* user_id na tabela é o ID interno (usuarios.id), não auth_id */
     var internalId = _user.app_user_id || _user.id;
     /* início de hoje (meia-noite local) para não perder eventos que já começaram */
     var today = new Date(); today.setHours(0,0,0,0);
     var todayISO = today.toISOString();
+    /* scope 'nucleo' também é semi-global — inclui na exibição */
     sb.from('calendar_events')
       .select('id,titulo,tipo,inicio,fim,dia_inteiro,meet_link,scope')
       .gte('fim', todayISO)
-      .or('scope.eq.todos,user_id.eq.' + internalId)
+      .or('scope.eq.todos,scope.eq.nucleo,user_id.eq.' + internalId)
       .order('inicio').limit(5)
-      .then(function(r) { _calLoaded = true; _calLoadedAt = Date.now(); _calData = r.data || []; _renderCalBanner(); })
-      .catch(function()  { _calLoaded = true; _calLoadedAt = Date.now(); _calData = [];            _renderCalBanner(); });
+      .then(function(r) {
+        _calLoaded = true; _calLoadedAt = Date.now();
+        if (r.error) { console.warn('[ExpNav] calendar_events query error:', r.error); _calData = []; }
+        else { _calData = r.data || []; }
+        _renderCalBanner();
+      })
+      .catch(function(e) {
+        console.warn('[ExpNav] _fetchCalEvents failed:', e);
+        _calLoaded = true; _calLoadedAt = Date.now(); _calData = []; _renderCalBanner();
+      });
   }
 
   function _renderCalBanner() {
