@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP · Apontamentos</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared/app-notif.js" defer></script>
+<script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
+<link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
+<style>
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-ui);
+  background: var(--off);
+  color: var(--grafite);
+}
+
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--off);
+  z-index: 9999;
+}
+
+.ld-logo { height: 30px; display: block; mix-blend-mode: multiply; }
+[data-theme="dark"] .ld-logo { filter: invert(1) brightness(0.85); mix-blend-mode: screen; }
+.ld-sub { font-size: 9px; color: #999; letter-spacing: 1.4px; text-transform: uppercase; }
+.ld-bar { width: 120px; height: 2px; background: var(--cinza); border-radius: 2px; overflow: hidden; position: relative; }
+.ld-bar::after { content:''; position:absolute; inset:0; width:40%; background: var(--grafite); border-radius: 2px; animation: ldbar 1.4s ease-in-out infinite; }
+@keyframes ldbar { 0% { transform: translateX(-150%); } 100% { transform: translateX(350%); } }
+
+#app-shell {
+  display: none;
+  min-height: 100vh;
+}
+
+.apo-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.apo-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.apo-head-copy h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.apo-head-copy p {
+  margin: 8px 0 0;
+  max-width: 720px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #666;
+}
+
+.apo-status {
+  min-width: 240px;
+  flex-shrink: 0;
+  background: var(--branco);
+  border: 1px solid var(--cinza2);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 12px 34px rgba(20,20,20,.06);
+}
+
+.apo-status-kicker,
+.apo-card-kicker {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: #999;
+}
+
+.apo-status-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apo-status-main strong {
+  font-size: 27px;
+  font-weight: 600;
+}
+
+.apo-status-main span {
+  font-size: 11px;
+  color: #999;
+}
+
+.apo-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  min-height: 0;
+}
+
+.apo-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.apo-card {
+  background: var(--branco);
+  border: 1px solid var(--cinza2);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 12px 34px rgba(20,20,20,.06);
+}
+
+.apo-card h2 {
+  margin: 6px 0 4px;
+  font-size: 23px;
+  font-weight: 600;
+}
+
+.apo-card-sub {
+  margin: 0 0 16px;
+  color: #777;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.apo-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.apo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.apo-field label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #8f8f8f;
+}
+
+.apo-field.full { grid-column: 1 / -1; }
+
+.apo-field input,
+.apo-field select,
+.apo-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--cinza2);
+  border-radius: 10px;
+  background: var(--branco);
+  color: var(--grafite);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.apo-field textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.apo-field input:focus,
+.apo-field select:focus,
+.apo-field textarea:focus {
+  border-color: var(--ouro);
+  box-shadow: 0 0 0 3px rgba(196,154,39,.10);
+}
+
+.apo-inline-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #777;
+}
+
+.apo-inline-note strong { color: var(--grafite); }
+.apo-inline-note.warn { color: #9a6500; }
+
+.apo-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.apo-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--cinza2);
+  background: var(--branco);
+  color: var(--grafite);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s, opacity .12s;
+}
+
+.apo-btn:hover { border-color: var(--grafite); }
+.apo-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.apo-btn-primary {
+  background: var(--grafite);
+  border-color: var(--grafite);
+  color: #fff;
+}
+
+.apo-btn-primary:hover {
+  background: #2A2926;
+  border-color: #2A2926;
+}
+
+.apo-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.apo-pill {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--off);
+  border: 1px solid var(--cinza2);
+  font-size: 11px;
+  color: #666;
+}
+
+.apo-pill strong { color: var(--grafite); }
+
+.apo-pill-good {
+  background: rgba(62, 120, 88, .10);
+  border-color: rgba(62, 120, 88, .24);
+  color: #2d6f50;
+}
+
+.apo-pill-warn {
+  background: rgba(184, 76, 58, .10);
+  border-color: rgba(184, 76, 58, .20);
+  color: #9b4639;
+}
+
+.apo-stage-note {
+  margin-top: 8px;
+}
+
+.apo-hours-bottom {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 14px;
+}
+
+.apo-mini-card {
+  border: 1px solid var(--cinza2);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--off);
+}
+
+.apo-mini-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.apo-mini-head h3 {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.apo-mini-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #777;
+}
+
+.apo-week-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.apo-kpi {
+  border: 1px solid var(--cinza2);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--branco);
+}
+
+.apo-kpi-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: #999;
+}
+
+.apo-kpi-value {
+  margin-top: 6px;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.apo-kpi-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #777;
+}
+
+.apo-recent-list {
+  display: grid;
+  gap: 10px;
+}
+
+.apo-recent-item {
+  border: 1px solid var(--cinza2);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--branco);
+  display: grid;
+  gap: 7px;
+}
+
+.apo-recent-top,
+.apo-recent-bottom {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apo-recent-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.apo-recent-sub {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #777;
+}
+
+.apo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--cinza2);
+  background: var(--off);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: #666;
+  white-space: nowrap;
+}
+
+.apo-tag.good {
+  color: #2d6f50;
+  background: rgba(62, 120, 88, .10);
+  border-color: rgba(62, 120, 88, .24);
+}
+
+.apo-tag.warn {
+  color: #9b4639;
+  background: rgba(184, 76, 58, .10);
+  border-color: rgba(184, 76, 58, .20);
+}
+
+.apo-empty {
+  min-height: 116px;
+  border: 1px dashed var(--cinza2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #888;
+  background: rgba(20,20,20,.015);
+}
+
+.apo-placeholder {
+  min-height: 174px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.apo-placeholder-copy p {
+  margin: 0;
+  color: #777;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.apo-placeholder-list {
+  display: grid;
+  gap: 8px;
+}
+
+.apo-placeholder-list div {
+  min-height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(20,20,20,.04), rgba(20,20,20,.07));
+}
+
+.apo-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.apo-status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.apo-status-item {
+  border: 1px solid var(--cinza2);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--branco);
+  display: grid;
+  gap: 7px;
+}
+
+.apo-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.apo-history-item {
+  border: 1px solid var(--cinza2);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--branco);
+  display: grid;
+  gap: 6px;
+}
+
+.apo-history-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: #999;
+}
+
+.apo-formula {
+  display: inline-block;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(196,154,39,.12);
+  color: #70520a;
+  font-size: 11px;
+  margin-top: 10px;
+}
+
+.apo-feedback {
+  min-height: 18px;
+  font-size: 12px;
+  color: #666;
+}
+
+.apo-feedback.ok { color: #2f7d49; }
+.apo-feedback.err { color: #b84c3a; }
+
+[data-theme="dark"] body { background: #151513; color: #F0EFEC; }
+[data-theme="dark"] .apo-status,
+[data-theme="dark"] .apo-card { background: #1D1D1B; border-color: #2E2D2B; box-shadow: none; }
+[data-theme="dark"] .apo-head-copy p,
+[data-theme="dark"] .apo-card-sub,
+[data-theme="dark"] .apo-inline-note,
+[data-theme="dark"] .apo-feedback { color: #A9A7A0; }
+[data-theme="dark"] .apo-status-kicker,
+[data-theme="dark"] .apo-card-kicker,
+[data-theme="dark"] .apo-field label { color: #6E6B64; }
+[data-theme="dark"] .apo-field input,
+[data-theme="dark"] .apo-field select,
+[data-theme="dark"] .apo-field textarea { background: #141412; border-color: #2E2D2B; color: #F0EFEC; }
+[data-theme="dark"] .apo-pill { background: #141412; border-color: #2E2D2B; color: #B9B7AF; }
+[data-theme="dark"] .apo-pill-good { background: rgba(62, 120, 88, .16); border-color: rgba(62, 120, 88, .28); color: #89c7a9; }
+[data-theme="dark"] .apo-pill-warn { background: rgba(184, 76, 58, .16); border-color: rgba(184, 76, 58, .28); color: #d89b92; }
+[data-theme="dark"] .apo-btn { background: #1D1D1B; border-color: #2E2D2B; color: #F0EFEC; }
+[data-theme="dark"] .apo-btn-primary { background: #F0EFEC; border-color: #F0EFEC; color: #1D1D1B; }
+[data-theme="dark"] .apo-mini-card,
+[data-theme="dark"] .apo-kpi,
+[data-theme="dark"] .apo-recent-item,
+[data-theme="dark"] .apo-status-item,
+[data-theme="dark"] .apo-history-item { background: #141412; border-color: #2E2D2B; }
+[data-theme="dark"] .apo-mini-sub,
+[data-theme="dark"] .apo-kpi-meta,
+[data-theme="dark"] .apo-recent-sub,
+[data-theme="dark"] .apo-history-type,
+[data-theme="dark"] .apo-empty { color: #A9A7A0; }
+[data-theme="dark"] .apo-kpi-label { color: #6E6B64; }
+[data-theme="dark"] .apo-tag { background: #1D1D1B; border-color: #2E2D2B; color: #B9B7AF; }
+[data-theme="dark"] .apo-tag.good { background: rgba(62, 120, 88, .16); border-color: rgba(62, 120, 88, .28); color: #89c7a9; }
+[data-theme="dark"] .apo-tag.warn { background: rgba(184, 76, 58, .16); border-color: rgba(184, 76, 58, .28); color: #d89b92; }
+[data-theme="dark"] .apo-placeholder-list div { background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.08)); }
+[data-theme="dark"] .apo-formula { background: rgba(196,154,39,.18); color: #E4C56B; }
+
+@media (max-width: 1080px) {
+  .apo-grid { grid-template-columns: 1fr; }
+  .apo-status { min-width: 0; }
+  .apo-hours-bottom { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) and (min-width: 721px) {
+  .apo-week-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .apo-main { padding: 16px; gap: 14px; }
+  .apo-head { flex-direction: column; }
+  .apo-head-copy h1 { font-size: 28px; }
+  .apo-form-grid { grid-template-columns: 1fr; }
+  .apo-actions { flex-direction: column; align-items: stretch; }
+  .apo-week-grid { grid-template-columns: 1fr; }
+  .apo-mini-head,
+  .apo-recent-top,
+  .apo-recent-bottom { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div id="loading">
+  <img src="logoexp.png" alt="EXP" class="ld-logo">
+  <div class="ld-sub">Carregando apontamentos</div>
+  <div class="ld-bar"></div>
+</div>
+
+<div id="app-shell" class="exp-app-shell">
+  <main class="apo-main">
+    <section class="apo-head">
+      <div class="apo-head-copy">
+        <div class="apo-card-kicker">Uso diário</div>
+        <h1>Apontamentos</h1>
+        <p>Primeira camada do novo fluxo operacional: registrar horas com menos atrito, sem disputar regra com Gestão, e preparar a base correta para os próximos blocos.</p>
+      </div>
+      <aside class="apo-status">
+        <div class="apo-status-kicker">Fase 1 · MVP</div>
+        <div class="apo-status-main">
+          <strong>Horas</strong>
+          <span>primeiro bloco</span>
+        </div>
+        <div class="apo-inline-note"><strong>Billable:</strong> hora que resulta ou pode resultar em cobrança ao cliente.</div>
+        <div class="apo-inline-note warn"><strong>Ajustes remanescentes:</strong> etapa de projeto não billable.</div>
+      </aside>
+    </section>
+
+    <section class="apo-grid">
+      <div class="apo-col">
+        <section class="apo-card">
+          <div class="apo-card-kicker">Bloco 1</div>
+          <h2>Horas</h2>
+          <p class="apo-card-sub">Formulário mínimo para lançamento de horas. Usa a mesma base de `horas_lancadas` da plataforma e preserva a lógica central de `Gestão` e do `Timer`.</p>
+
+          <form id="apo-hours-form">
+            <div class="apo-form-grid">
+              <div class="apo-field">
+                <label for="apo-date">Data</label>
+                <input type="date" id="apo-date" required>
+              </div>
+              <div class="apo-field">
+                <label for="apo-type">Tipo de hora</label>
+                <select id="apo-type" required></select>
+              </div>
+
+              <div class="apo-field full" id="apo-category-wrap" style="display:none">
+                <label for="apo-category">Categoria</label>
+                <select id="apo-category"></select>
+              </div>
+
+              <div class="apo-field full" id="apo-project-wrap">
+                <label for="apo-project">Projeto</label>
+                <select id="apo-project"></select>
+              </div>
+
+              <div class="apo-field full" id="apo-stage-wrap">
+                <label for="apo-stage">Etapa</label>
+                <select id="apo-stage"></select>
+                <div class="apo-inline-note apo-stage-note" id="apo-stage-note"></div>
+              </div>
+
+              <div class="apo-field">
+                <label for="apo-start">Inicio</label>
+                <input type="time" id="apo-start" required>
+              </div>
+              <div class="apo-field">
+                <label for="apo-end">Fim</label>
+                <input type="time" id="apo-end" required>
+              </div>
+
+              <div class="apo-field full">
+                <label for="apo-desc">Descrição do registro</label>
+                <textarea id="apo-desc" placeholder="Ex.: lançamento de projeto, montagem de apresentação"></textarea>
+              </div>
+            </div>
+
+            <div class="apo-pills">
+              <div class="apo-pill"><strong>Canal:</strong> apontamentos</div>
+              <div class="apo-pill"><strong>Horas calculadas:</strong> <span id="apo-duration">0h</span></div>
+              <div class="apo-pill" id="apo-classification-pill"><strong>Classificação:</strong> <span id="apo-classification">Aguardando seleção</span></div>
+            </div>
+
+            <div class="apo-actions">
+              <button type="submit" class="apo-btn apo-btn-primary" id="apo-submit">Registrar horas</button>
+              <button type="button" class="apo-btn" id="apo-reset">Limpar</button>
+              <button type="button" class="apo-btn" id="apo-open-timer">Abrir timer</button>
+            </div>
+            <div class="apo-formula">Billable será derivado da regra do tipo e da etapa.</div>
+
+            <div class="apo-feedback" id="apo-feedback"></div>
+          </form>
+
+          <div class="apo-hours-bottom">
+            <section class="apo-mini-card">
+              <div class="apo-mini-head">
+                <div>
+                  <div class="apo-card-kicker">Semana em foco</div>
+                  <h3>Leitura semanal</h3>
+                </div>
+                <div class="apo-mini-sub" id="apo-week-range">Carregando semana...</div>
+              </div>
+              <div class="apo-week-grid">
+                <div class="apo-kpi">
+                  <div class="apo-kpi-label">Total da semana</div>
+                  <div class="apo-kpi-value" id="apo-week-total">0h</div>
+                  <div class="apo-kpi-meta">Tudo o que você registrou na semana selecionada.</div>
+                </div>
+                <div class="apo-kpi">
+                  <div class="apo-kpi-label">Billable</div>
+                  <div class="apo-kpi-value" id="apo-week-billable">0h</div>
+                  <div class="apo-kpi-meta">Horas com potencial de cobrança ao cliente.</div>
+                </div>
+                <div class="apo-kpi">
+                  <div class="apo-kpi-label">Não billable</div>
+                  <div class="apo-kpi-value" id="apo-week-nonbillable">0h</div>
+                  <div class="apo-kpi-meta">Inclui internos, societários e ajustes remanescentes.</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="apo-mini-card">
+              <div class="apo-mini-head">
+                <div>
+                  <div class="apo-card-kicker">Rotina recente</div>
+                  <h3>Últimos lançamentos</h3>
+                </div>
+                <div class="apo-mini-sub">Usa a mesma base oficial de `horas_lancadas`.</div>
+              </div>
+              <div class="apo-recent-list" id="apo-recent-list">
+                <div class="apo-empty">Ainda não há lançamentos para esta semana.</div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+
+      <div class="apo-col">
+        <section class="apo-card">
+          <div class="apo-card-kicker">Bloco 2</div>
+          <h2>Gastos</h2>
+          <p class="apo-card-sub">Registro operacional individual com base em `lancamentos_custo`, preservando o reflexo financeiro quando houver classificação suficiente.</p>
+
+          <form id="apo-costs-form" class="apo-stack">
+            <div class="apo-form-grid">
+              <div class="apo-field">
+                <label for="apo-cost-date">Data</label>
+                <input type="date" id="apo-cost-date" required>
+              </div>
+              <div class="apo-field">
+                <label for="apo-cost-value">Valor</label>
+                <input type="number" id="apo-cost-value" min="0" step="0.01" placeholder="0,00" required>
+              </div>
+
+              <div class="apo-field">
+                <label for="apo-cost-type">Tipo do gasto</label>
+                <select id="apo-cost-type" required></select>
+              </div>
+              <div class="apo-field">
+                <label for="apo-cost-area">Área financeira</label>
+                <select id="apo-cost-area" required></select>
+              </div>
+
+              <div class="apo-field full">
+                <label for="apo-cost-detail">Detalhe</label>
+                <select id="apo-cost-detail"></select>
+              </div>
+
+              <div class="apo-field full" id="apo-cost-project-wrap">
+                <label for="apo-cost-project">Projeto</label>
+                <select id="apo-cost-project"></select>
+              </div>
+
+              <div class="apo-field full" id="apo-cost-stage-wrap">
+                <label for="apo-cost-stage">Etapa</label>
+                <select id="apo-cost-stage"></select>
+              </div>
+
+              <div class="apo-field full">
+                <label for="apo-cost-desc">Descrição</label>
+                <textarea id="apo-cost-desc" placeholder="Ex.: impressão externa, deslocamento de visita, taxa de certificação"></textarea>
+              </div>
+            </div>
+
+            <div class="apo-pills">
+              <div class="apo-pill"><strong>Base:</strong> lancamentos_custo</div>
+              <div class="apo-pill" id="apo-cost-status-pill"><strong>Status esperado:</strong> <span id="apo-cost-status-text">Registrado</span></div>
+            </div>
+
+            <div class="apo-actions">
+              <button type="submit" class="apo-btn apo-btn-primary" id="apo-cost-submit">Registrar gasto</button>
+              <button type="button" class="apo-btn" id="apo-cost-reset">Limpar</button>
+            </div>
+
+            <div class="apo-feedback" id="apo-cost-feedback"></div>
+          </form>
+
+          <div class="apo-hours-bottom" style="margin-top:18px;grid-template-columns:1fr">
+            <section class="apo-mini-card">
+              <div class="apo-mini-head">
+                <div>
+                  <div class="apo-card-kicker">Acompanhamento</div>
+                  <h3>Gastos recentes</h3>
+                </div>
+                <div class="apo-mini-sub">Status operacional da sua semana atual.</div>
+              </div>
+              <div class="apo-status-list" id="apo-costs-list">
+                <div class="apo-empty">Nenhum gasto registrado nesta semana.</div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="apo-card">
+          <div class="apo-card-kicker">Bloco 3</div>
+          <h2>Histórico</h2>
+          <p class="apo-card-sub">Visão derivada da rotina recente, reunindo horas e gastos sem criar um novo domínio de dado.</p>
+          <div class="apo-history-list" id="apo-history-list">
+            <div class="apo-empty">O histórico aparecerá conforme você registrar horas e gastos.</div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="shared/app-shell.js"></script>
+<script src="shared/exp-nav.js"></script>
+<script src="timer.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var AP = {
+    user: null,
+    products: [],
+    stageCache: {},
+    currentWeekInfo: null,
+    costAreas: [],
+  };
+
+  var SUBTIPOS = {
+    organizacao: ['Capacitação', 'Reunião semanal', 'Feedback', 'Reunião interna'],
+    sociedade: ['Marketing', 'Prospecção', 'Administrativo', 'Jurídico', 'Reunião societária', 'Consultoria', 'RH e pessoas', 'Gestão', 'Outros'],
+  };
+
+  var TIPO_LABEL = {
+    projeto: 'Projeto',
+    organizacao: 'Organização interna',
+    sociedade: 'Societária'
+  };
+
+  var REEMBOLSO_DETALHES = {
+    'Visitas Tecnicas': ['Uber', 'Combustivel', 'Pedagio', 'Alimentacao', 'Estacionamento', 'Outro'],
+    'Plotagem': ['Impressao', 'Encadernacao', 'Outro'],
+    'Treinamentos e Capacitacao': ['Curso', 'Evento', 'Certificacao', 'Outro'],
+    'Cultura e Integracao': ['Alimentacao', 'Atividade de equipe', 'Outro'],
+    'Trabalho Presencial': ['Alimentacao', 'Transporte', 'Estacionamento', 'Outro'],
+    'Taxas e Anuidades Profissionais (CAU)': ['Taxa', 'Anuidade', 'Outro'],
+    'Certificacoes (Renovacoes)': ['Renovacao', 'Taxa', 'Outro'],
+    'Softwares de projetos': ['Licenca', 'Assinatura', 'Outro'],
+    'Softwares de gestao e nuvem': ['Licenca', 'Assinatura', 'Outro'],
+    'Manutencoes a TI': ['Equipamento', 'Servico', 'Outro'],
+    'Inteligencia Artificial': ['Assinatura', 'Credito', 'Outro'],
+    'Seguranca Tecnica': ['Servico', 'Taxa', 'Outro'],
+    'Midias pagas (Digital)': ['Campanha', 'Impulsionamento', 'Outro'],
+    'Congressos e Eventos': ['Inscricao', 'Passagem', 'Hospedagem', 'Outro'],
+    'Relacionamento e Brindes': ['Brinde', 'Presente', 'Outro'],
+    'Computadores': ['Acessorio', 'Manutencao', 'Equipamento']
+  };
+
+  var GESTAO_CUSTOS_AREAS = [
+    'Visitas Tecnicas', 'Plotagem',
+    'Treinamentos e Capacitacao', 'Cultura e Integracao', 'Trabalho Presencial',
+    'Taxas e Anuidades Profissionais (CAU)', 'Certificacoes (Renovacoes)',
+    'Softwares de projetos', 'Softwares de gestao e nuvem', 'Manutencoes a TI', 'Inteligencia Artificial', 'Seguranca Tecnica',
+    'Midias pagas (Digital)', 'Congressos e Eventos', 'Relacionamento e Brindes',
+    'Computadores'
+  ];
+
+  var GESTAO_AREA_RULES = {
+    'Visitas Tecnicas': { requer_projeto: true },
+    'Plotagem': { requer_projeto: true }
+  };
+
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function setFeedback(text, mode) {
+    var el = document.getElementById('apo-feedback');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'apo-feedback' + (mode ? ' ' + mode : '');
+  }
+
+  function setCostFeedback(text, mode) {
+    var el = document.getElementById('apo-cost-feedback');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'apo-feedback' + (mode ? ' ' + mode : '');
+  }
+
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text || '';
+  }
+
+  function normalizeText(text) {
+    return String(text || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function isStageNonBillableName(stageName) {
+    var normalized = normalizeText(stageName);
+    return normalized.indexOf('ajustes remanescentes') >= 0
+      || (normalized.indexOf('ajuste') >= 0 && normalized.indexOf('remanesc') >= 0);
+  }
+
+  function costAreaKey(text) {
+    return normalizeText(text);
+  }
+
+  function formatDuration(start, end) {
+    if (!start || !end || start >= end) return '0h';
+    var startDate = new Date('1970-01-01T' + start + ':00');
+    var endDate = new Date('1970-01-01T' + end + ':00');
+    var mins = Math.round((endDate - startDate) / 60000);
+    if (!Number.isFinite(mins) || mins <= 0) return '0h';
+    var hours = mins / 60;
+    return (hours % 1 === 0 ? String(hours) : hours.toFixed(2).replace('.', ',')) + 'h';
+  }
+
+  function durationHours(start, end) {
+    if (!start || !end || start >= end) return 0;
+    var startDate = new Date('1970-01-01T' + start + ':00');
+    var endDate = new Date('1970-01-01T' + end + ':00');
+    var mins = Math.round((endDate - startDate) / 60000);
+    return !Number.isFinite(mins) || mins <= 0 ? 0 : (mins / 60);
+  }
+
+  function formatHours(value) {
+    var hours = Number(value || 0);
+    if (!Number.isFinite(hours) || hours <= 0) return '0h';
+    return (hours % 1 === 0 ? String(hours) : hours.toFixed(2).replace('.', ',')) + 'h';
+  }
+
+  function formatDatePt(dateIso) {
+    if (!dateIso) return '';
+    var date = new Date(dateIso + 'T12:00:00');
+    if (Number.isNaN(date.getTime())) return dateIso;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+
+  function getWeekInfo(dateIso) {
+    var dateObj = new Date(dateIso + 'T12:00:00');
+    var isoDay = dateObj.getDay() || 7;
+    var monday = new Date(dateObj);
+    monday.setDate(dateObj.getDate() - (isoDay - 1));
+    var sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    return {
+      isoDay: isoDay,
+      start: monday.toISOString().split('T')[0],
+      end: sunday.toISOString().split('T')[0]
+    };
+  }
+
+  function getSelectedStageName() {
+    var stageSelect = document.getElementById('apo-stage');
+    if (!stageSelect || !stageSelect.value || stageSelect.selectedIndex < 0) return '';
+    return (stageSelect.options[stageSelect.selectedIndex] || {}).text || '';
+  }
+
+  function getSelectedCostStageName() {
+    var stageSelect = document.getElementById('apo-cost-stage');
+    if (!stageSelect || !stageSelect.value || stageSelect.selectedIndex < 0) return '';
+    return (stageSelect.options[stageSelect.selectedIndex] || {}).text || '';
+  }
+
+  function getClassification(type, stageName) {
+    if (type === 'projeto') {
+      if (!stageName) {
+        return {
+          label: 'Projeto aguardando etapa',
+          detail: 'Selecione a etapa para definir a leitura billable.',
+          pillClass: '',
+          tagClass: '',
+          billable: null
+        };
+      }
+
+      if (isStageNonBillableName(stageName)) {
+        return {
+          label: 'Projeto não billable',
+          detail: 'Ajustes remanescentes não entram em cobrança ao cliente.',
+          pillClass: 'apo-pill-warn',
+          tagClass: 'warn',
+          billable: false
+        };
+      }
+
+      return {
+        label: 'Projeto billable',
+        detail: 'Hora que resulta ou pode resultar em cobrança ao cliente.',
+        pillClass: 'apo-pill-good',
+        tagClass: 'good',
+        billable: true
+      };
+    }
+
+    return {
+      label: 'Não billable',
+      detail: 'Horas internas e societárias não entram em cobrança ao cliente.',
+      pillClass: 'apo-pill-warn',
+      tagClass: 'warn',
+      billable: false
+    };
+  }
+
+  function updateDuration() {
+    var start = document.getElementById('apo-start').value;
+    var end = document.getElementById('apo-end').value;
+    document.getElementById('apo-duration').textContent = formatDuration(start, end);
+  }
+
+  function fillTypeOptions() {
+    var select = document.getElementById('apo-type');
+    var options = [
+      { value: 'projeto', label: 'Projeto' },
+      { value: 'organizacao', label: 'Organização interna' }
+    ];
+    if (window.isSocioRole && window.isSocioRole(AP.user.role)) {
+      options.push({ value: 'sociedade', label: 'Societária' });
+    }
+    select.innerHTML = options.map(function (opt) {
+      return '<option value="' + opt.value + '">' + esc(opt.label) + '</option>';
+    }).join('');
+  }
+
+  function updateTypeUI() {
+    var type = document.getElementById('apo-type').value;
+    var projectWrap = document.getElementById('apo-project-wrap');
+    var stageWrap = document.getElementById('apo-stage-wrap');
+    var categoryWrap = document.getElementById('apo-category-wrap');
+    var categorySelect = document.getElementById('apo-category');
+    var isProject = type === 'projeto';
+
+    projectWrap.style.display = isProject ? '' : 'none';
+    stageWrap.style.display = isProject ? '' : 'none';
+    categoryWrap.style.display = isProject ? 'none' : '';
+
+    if (!isProject) {
+      var opts = (SUBTIPOS[type] || []).map(function (item) {
+        return '<option value="' + esc(item) + '">' + esc(item) + '</option>';
+      }).join('');
+      categorySelect.innerHTML = opts || '<option value="">Sem categoria</option>';
+    }
+
+    updateClassificationUI();
+  }
+
+  function fillCostTypeOptions() {
+    var select = document.getElementById('apo-cost-type');
+    var options = [
+      { value: 'projeto', label: 'Projeto' },
+      { value: 'organizacao', label: 'Organização interna' }
+    ];
+    if (window.isSocioRole && window.isSocioRole(AP.user.role)) {
+      options.push({ value: 'sociedade', label: 'Societária' });
+    }
+    select.innerHTML = options.map(function (opt) {
+      return '<option value="' + opt.value + '">' + esc(opt.label) + '</option>';
+    }).join('');
+  }
+
+  function getCurrentCostArea() {
+    var areaId = document.getElementById('apo-cost-area').value;
+    return AP.costAreas.find(function (area) { return String(area.id) === String(areaId); }) || null;
+  }
+
+  function getCostRules(area) {
+    var areaName = area && area.subconta ? area.subconta : '';
+    return GESTAO_AREA_RULES[costAreaKey(areaName) === 'visitas tecnicas' ? 'Visitas Tecnicas' : areaName] || GESTAO_AREA_RULES[areaName] || {};
+  }
+
+  function fillCostAreas() {
+    var select = document.getElementById('apo-cost-area');
+    select.innerHTML = '<option value="">Selecionar área...</option>' + AP.costAreas.map(function (area) {
+      return '<option value="' + area.id + '">' + esc(area.subconta) + '</option>';
+    }).join('');
+  }
+
+  function fillCostDetails() {
+    var detailSelect = document.getElementById('apo-cost-detail');
+    var area = getCurrentCostArea();
+    var key = area ? costAreaKey(area.subconta) : '';
+    var matchKey = Object.keys(REEMBOLSO_DETALHES).find(function (k) {
+      return costAreaKey(k) === key;
+    });
+    var details = matchKey ? REEMBOLSO_DETALHES[matchKey] : ['Outro'];
+    detailSelect.innerHTML = details.map(function (item) {
+      return '<option value="' + esc(item) + '">' + esc(item) + '</option>';
+    }).join('');
+  }
+
+  function updateCostUI() {
+    var type = document.getElementById('apo-cost-type').value;
+    var area = getCurrentCostArea();
+    var rules = getCostRules(area);
+    var projectWrap = document.getElementById('apo-cost-project-wrap');
+    var stageWrap = document.getElementById('apo-cost-stage-wrap');
+    var isProject = type === 'projeto';
+
+    if (rules.requer_projeto && type !== 'projeto') {
+      document.getElementById('apo-cost-type').value = 'projeto';
+      type = 'projeto';
+      isProject = true;
+    }
+
+    projectWrap.style.display = isProject ? '' : 'none';
+    stageWrap.style.display = isProject ? '' : 'none';
+
+    fillCostDetails();
+    updateCostStatusPreview();
+  }
+
+  function updateCostStatusPreview() {
+    var area = getCurrentCostArea();
+    var areaId = document.getElementById('apo-cost-area').value;
+    var status = 'Registrado';
+    var pill = document.getElementById('apo-cost-status-pill');
+
+    if (areaId && area) status = 'Enviado ao financeiro';
+    if (pill) pill.className = 'apo-pill' + (status === 'Enviado ao financeiro' ? ' apo-pill-good' : '');
+    setText('apo-cost-status-text', status);
+  }
+
+  function updateClassificationUI() {
+    var type = document.getElementById('apo-type').value;
+    var productId = document.getElementById('apo-project').value;
+    var stageName = getSelectedStageName();
+    var stageNote = document.getElementById('apo-stage-note');
+    var classification = getClassification(type, stageName);
+    var pill = document.getElementById('apo-classification-pill');
+    var text = document.getElementById('apo-classification');
+
+    if (pill) pill.className = 'apo-pill ' + (classification.pillClass || '');
+    if (text) text.textContent = classification.label;
+
+    if (!stageNote) return;
+    stageNote.className = 'apo-inline-note apo-stage-note' + (classification.billable === false ? ' warn' : '');
+
+    if (type !== 'projeto') {
+      stageNote.textContent = classification.detail;
+      return;
+    }
+
+    if (!productId) {
+      stageNote.className = 'apo-inline-note apo-stage-note';
+      stageNote.textContent = 'Selecione o projeto para carregar as etapas e a leitura billable.';
+      return;
+    }
+
+    var stages = AP.stageCache[productId] || [];
+    var hasAdjustmentStage = stages.some(function (stage) {
+      return isStageNonBillableName(stage.nome);
+    });
+
+    if (!stageName) {
+      stageNote.className = 'apo-inline-note apo-stage-note' + (hasAdjustmentStage ? '' : ' warn');
+      stageNote.textContent = hasAdjustmentStage
+        ? 'Selecione a etapa para definir a classificação deste lançamento.'
+        : 'Este projeto ainda não mostra a etapa "ajustes remanescentes" neste cadastro.';
+      return;
+    }
+
+    stageNote.textContent = classification.detail;
+  }
+
+  function productLabel(product) {
+    var opp = product.oportunidades || {};
+    var cli = opp.clientes || {};
+    return [cli.nome, opp.projeto, product.nome || product.subtipo || '(sem nome)']
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  async function loadProducts() {
+    var res = await window.sb
+      .from('produtos')
+      .select('id, nome, subtipo, oportunidade_id, status, em_gestao, oportunidades(id, projeto, clientes(id, nome, cidade, uf))')
+      .eq('status', 'ativo')
+      .eq('em_gestao', true);
+
+    if (res.error) throw new Error(res.error.message || 'Falha ao carregar projetos ativos.');
+    AP.products = res.data || [];
+
+    var select = document.getElementById('apo-project');
+    select.innerHTML = '<option value="">Selecionar projeto...</option>' + AP.products.map(function (product) {
+      return '<option value="' + product.id + '">' + esc(productLabel(product)) + '</option>';
+    }).join('');
+
+    var costSelect = document.getElementById('apo-cost-project');
+    if (costSelect) {
+      costSelect.innerHTML = '<option value="">Selecionar projeto...</option>' + AP.products.map(function (product) {
+        return '<option value="' + product.id + '">' + esc(productLabel(product)) + '</option>';
+      }).join('');
+    }
+  }
+
+  async function loadStages(productId) {
+    if (!productId) return [];
+    if (AP.stageCache[productId]) return AP.stageCache[productId];
+
+    var res = await window.sb
+      .from('etapas')
+      .select('id, nome, ordem')
+      .eq('produto_id', productId)
+      .order('ordem');
+
+    if (res.error) throw new Error(res.error.message || 'Falha ao carregar etapas.');
+    AP.stageCache[productId] = res.data || [];
+    return AP.stageCache[productId];
+  }
+
+  async function onProjectChange() {
+    var productId = document.getElementById('apo-project').value;
+    var stageSelect = document.getElementById('apo-stage');
+    stageSelect.innerHTML = '<option value="">Selecionar etapa...</option>';
+    if (!productId) {
+      updateClassificationUI();
+      return;
+    }
+    var stages = await loadStages(productId);
+    stageSelect.innerHTML = '<option value="">Selecionar etapa...</option>' + stages.map(function (stage) {
+      return '<option value="' + stage.id + '">' + esc(stage.nome) + '</option>';
+    }).join('');
+    updateClassificationUI();
+  }
+
+  async function onCostProjectChange() {
+    var productId = document.getElementById('apo-cost-project').value;
+    var stageSelect = document.getElementById('apo-cost-stage');
+    stageSelect.innerHTML = '<option value="">Selecionar etapa...</option>';
+    if (!productId) return;
+    var stages = await loadStages(productId);
+    stageSelect.innerHTML = '<option value="">Selecionar etapa...</option>' + stages.map(function (stage) {
+      return '<option value="' + stage.id + '">' + esc(stage.nome) + '</option>';
+    }).join('');
+  }
+
+  async function loadCostAreas() {
+    var res = await window.sb
+      .from('fin_plano_contas')
+      .select('id, grupo, subconta, ordem')
+      .eq('ativo', true)
+      .order('ordem');
+
+    if (res.error) throw new Error(res.error.message || 'Falha ao carregar áreas de gasto.');
+
+    AP.costAreas = (res.data || []).filter(function (area) {
+      return GESTAO_CUSTOS_AREAS.some(function (name) {
+        return costAreaKey(name) === costAreaKey(area.subconta);
+      });
+    });
+
+    fillCostAreas();
+  }
+
+  async function ensureWeek(dateIso) {
+    var dateObj = new Date(dateIso + 'T12:00:00');
+    var isoDay = dateObj.getDay() || 7;
+    var monday = new Date(dateObj);
+    monday.setDate(dateObj.getDate() - (isoDay - 1));
+    var sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    var weekStart = monday.toISOString().split('T')[0];
+    var weekEnd = sunday.toISOString().split('T')[0];
+
+    var firstThursday = new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + 3));
+    var yearStart = new Date(Date.UTC(firstThursday.getUTCFullYear(), 0, 1));
+    var week = Math.ceil((((firstThursday - yearStart) / 86400000) + 1) / 7);
+    var year = firstThursday.getUTCFullYear();
+
+    var res = await window.sb
+      .from('semanas')
+      .select('id, finalizada')
+      .eq('usuario_id', AP.user.id)
+      .eq('data_inicio', weekStart)
+      .maybeSingle();
+
+    if (res.error) throw new Error(res.error.message || 'Falha ao localizar a semana.');
+    var weekRow = res.data;
+
+    if (weekRow && weekRow.finalizada) {
+      throw new Error('A semana deste lancamento ja esta finalizada.');
+    }
+
+    if (!weekRow) {
+      var createRes = await window.sb
+        .from('semanas')
+        .upsert({
+          usuario_id: AP.user.id,
+          ano: year,
+          semana: week,
+          data_inicio: weekStart,
+          data_fim: weekEnd,
+          finalizada: false
+        }, { onConflict: 'usuario_id,ano,semana' })
+        .select('id')
+        .single();
+
+      if (createRes.error) throw new Error(createRes.error.message || 'Falha ao criar a semana do lançamento.');
+      weekRow = createRes.data;
+    }
+
+    return { id: weekRow.id, isoDay: isoDay };
+  }
+
+  function buildRecentTitle(row) {
+    if (row.tipo === 'projeto') {
+      var opp = ((row.produtos || {}).oportunidades || {});
+      var productName = (row.produtos || {}).nome || '';
+      return opp.projeto || productName || 'Projeto';
+    }
+    return TIPO_LABEL[row.tipo] || row.tipo || 'Hora';
+  }
+
+  function buildRecentSub(row) {
+    if (row.tipo === 'projeto') {
+      var client = (((row.produtos || {}).oportunidades || {}).clientes || {}).nome || 'Sem cliente';
+      var stage = ((row.etapas || {}).nome) || 'Sem etapa';
+      return client + ' · ' + stage;
+    }
+    return row.subtipo || 'Sem categoria';
+  }
+
+  function buildCostStatus(row) {
+    if (row.fin_status) {
+      return {
+        label: row.fin_status === 'realizado' ? 'Enviado ao financeiro' : 'Em analise',
+        tagClass: row.fin_status === 'realizado' ? 'good' : ''
+      };
+    }
+    return { label: 'Registrado', tagClass: '' };
+  }
+
+  function renderWeeklyMetrics(rows) {
+    var totals = rows.reduce(function (acc, row) {
+      var hours = durationHours(row.hora_inicio, row.hora_fim);
+      var stageName = ((row.etapas || {}).nome) || '';
+      var classification = getClassification(row.tipo, stageName);
+      acc.total += hours;
+      if (classification.billable) acc.billable += hours;
+      else acc.nonbillable += hours;
+      return acc;
+    }, { total: 0, billable: 0, nonbillable: 0 });
+
+    setText('apo-week-total', formatHours(totals.total));
+    setText('apo-week-billable', formatHours(totals.billable));
+    setText('apo-week-nonbillable', formatHours(totals.nonbillable));
+  }
+
+  function renderRecentList(rows) {
+    var el = document.getElementById('apo-recent-list');
+    if (!el) return;
+
+    if (!rows.length) {
+      el.innerHTML = '<div class="apo-empty">Ainda não há lançamentos para esta semana. Assim que você registrar horas, elas aparecerão aqui.</div>';
+      return;
+    }
+
+    el.innerHTML = rows.slice(0, 6).map(function (row) {
+      var stageName = ((row.etapas || {}).nome) || '';
+      var classification = getClassification(row.tipo, stageName);
+      var duration = formatHours(durationHours(row.hora_inicio, row.hora_fim));
+      var dateAndTime = [formatDatePt(row.data_lancamento), row.hora_inicio, row.hora_fim].filter(Boolean).join(' · ');
+      var desc = row.descricao ? '<div class="apo-recent-sub">' + esc(row.descricao) + '</div>' : '';
+
+      return '' +
+        '<article class="apo-recent-item">' +
+          '<div class="apo-recent-top">' +
+            '<div>' +
+              '<div class="apo-recent-title">' + esc(buildRecentTitle(row)) + '</div>' +
+              '<div class="apo-recent-sub">' + esc(buildRecentSub(row)) + '</div>' +
+            '</div>' +
+            '<span class="apo-tag ' + (classification.tagClass || '') + '">' + esc(classification.label) + '</span>' +
+          '</div>' +
+          desc +
+          '<div class="apo-recent-bottom">' +
+            '<div class="apo-recent-sub">' + esc(dateAndTime) + '</div>' +
+            '<div class="apo-recent-title">' + esc(duration) + '</div>' +
+          '</div>' +
+        '</article>';
+    }).join('');
+  }
+
+  function renderHoursFallback() {
+    setText('apo-week-total', '0h');
+    setText('apo-week-billable', '0h');
+    setText('apo-week-nonbillable', '0h');
+    var recent = document.getElementById('apo-recent-list');
+    if (recent) {
+      recent.innerHTML = '<div class="apo-empty">Não foi possível carregar os lançamentos recentes agora.</div>';
+    }
+  }
+
+  async function refreshWeekInsights() {
+    var dateIso = document.getElementById('apo-date').value;
+    if (!dateIso || !AP.user) return;
+
+    var info = getWeekInfo(dateIso);
+    AP.currentWeekInfo = info;
+    setText('apo-week-range', formatDatePt(info.start) + ' a ' + formatDatePt(info.end));
+
+    var res = await window.sb
+      .from('horas_lancadas')
+      .select('id, data_lancamento, hora_inicio, hora_fim, tipo, subtipo, descricao, produto_id, etapa_id, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .eq('usuario_id', AP.user.id)
+      .gte('data_lancamento', info.start)
+      .lte('data_lancamento', info.end)
+      .order('data_lancamento', { ascending: false })
+      .order('hora_inicio', { ascending: false });
+
+    if (res.error) throw new Error(res.error.message || 'Falha ao carregar a leitura semanal.');
+
+    var rows = res.data || [];
+    renderWeeklyMetrics(rows);
+    renderRecentList(rows);
+    return rows;
+  }
+
+  function openTimerShortcut() {
+    var fab = document.getElementById('exp-timer-fab');
+    if (!fab) {
+      setFeedback('Timer indisponivel nesta tela.', 'err');
+      return;
+    }
+
+    fab.click();
+    setFeedback('Timer aberto para captura ao vivo.', 'ok');
+  }
+
+  function renderCostList(rows) {
+    var el = document.getElementById('apo-costs-list');
+    if (!el) return;
+
+    if (!rows.length) {
+      el.innerHTML = '<div class="apo-empty">Nenhum gasto registrado nesta semana.</div>';
+      return;
+    }
+
+    el.innerHTML = rows.slice(0, 6).map(function (row) {
+      var status = buildCostStatus(row);
+      var title = row.tipo === 'projeto'
+        ? ((((row.produtos || {}).oportunidades || {}).projeto) || (row.produtos || {}).nome || 'Gasto de projeto')
+        : (TIPO_LABEL[row.tipo] || row.tipo || 'Gasto');
+      var detail = [row.area_nome, row.subtipo].filter(Boolean).join(' · ') || 'Sem classificacao';
+      var stage = row.tipo === 'projeto' ? (((row.etapas || {}).nome) || '') : '';
+      var desc = row.descricao ? '<div class="apo-recent-sub">' + esc(row.descricao) + '</div>' : '';
+      return '' +
+        '<article class="apo-status-item">' +
+          '<div class="apo-recent-top">' +
+            '<div>' +
+              '<div class="apo-recent-title">' + esc(title) + '</div>' +
+              '<div class="apo-recent-sub">' + esc(detail) + '</div>' +
+            '</div>' +
+            '<span class="apo-tag ' + (status.tagClass || '') + '">' + esc(status.label) + '</span>' +
+          '</div>' +
+          desc +
+          '<div class="apo-recent-bottom">' +
+            '<div class="apo-recent-sub">' + esc(formatDatePt(row.data_lancamento)) + (stage ? ' · ' + esc(stage) : '') + '</div>' +
+            '<div class="apo-recent-title">R$ ' + esc((Number(row.valor || 0)).toFixed(2).replace('.', ',')) + '</div>' +
+          '</div>' +
+        '</article>';
+    }).join('');
+  }
+
+  function renderCostsFallback() {
+    var el = document.getElementById('apo-costs-list');
+    if (el) {
+      el.innerHTML = '<div class="apo-empty">Não foi possível carregar os gastos recentes agora.</div>';
+    }
+  }
+
+  async function refreshCostList() {
+    var dateIso = document.getElementById('apo-date').value;
+    if (!dateIso || !AP.user) return;
+    var info = getWeekInfo(dateIso);
+
+    var costsRes = await window.sb
+      .from('lancamentos_custo')
+      .select('id, data_lancamento, valor, tipo, subtipo, descricao, plano_contas_id, produto_id, etapa_id, produtos(nome, oportunidades(projeto)), etapas(nome)')
+      .eq('usuario_id', AP.user.id)
+      .gte('data_lancamento', info.start)
+      .lte('data_lancamento', info.end)
+      .order('data_lancamento', { ascending: false });
+
+    if (costsRes.error) throw new Error(costsRes.error.message || 'Falha ao carregar gastos recentes.');
+
+    var rows = costsRes.data || [];
+    var ids = rows.map(function (row) { return row.id; }).filter(Boolean);
+    var statusMap = {};
+    if (ids.length) {
+      var finRes = await window.sb
+        .from('fin_lancamentos')
+        .select('origem_id, situacao')
+        .eq('origem', 'reembolso')
+        .in('origem_id', ids);
+      if (!finRes.error) {
+        (finRes.data || []).forEach(function (item) {
+          statusMap[item.origem_id] = item.situacao || 'realizado';
+        });
+      }
+    }
+
+    rows.forEach(function (row) {
+      row.fin_status = statusMap[row.id] || null;
+      var area = AP.costAreas.find(function (item) { return String(item.id) === String(row.plano_contas_id); }) || null;
+      row.area_nome = area && area.subconta ? area.subconta : '';
+    });
+
+    renderCostList(rows);
+    return rows;
+  }
+
+  function renderHistory(hoursRows, costRows) {
+    var el = document.getElementById('apo-history-list');
+    if (!el) return;
+
+    var items = [];
+    (hoursRows || []).slice(0, 6).forEach(function (row) {
+      items.push({
+        kind: 'Hora',
+        date: row.data_lancamento,
+        title: buildRecentTitle(row),
+        sub: buildRecentSub(row),
+        value: formatHours(durationHours(row.hora_inicio, row.hora_fim)),
+        desc: row.descricao || ''
+      });
+    });
+    (costRows || []).slice(0, 6).forEach(function (row) {
+      items.push({
+        kind: 'Gasto',
+        date: row.data_lancamento,
+        title: row.area_nome || 'Gasto',
+        sub: row.subtipo || (TIPO_LABEL[row.tipo] || row.tipo || ''),
+        value: 'R$ ' + (Number(row.valor || 0)).toFixed(2).replace('.', ','),
+        desc: row.descricao || ''
+      });
+    });
+
+    items.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+    items = items.slice(0, 8);
+
+    if (!items.length) {
+      el.innerHTML = '<div class="apo-empty">O histórico aparecerá conforme você registrar horas e gastos.</div>';
+      return;
+    }
+
+    el.innerHTML = items.map(function (item) {
+      return '' +
+        '<article class="apo-history-item">' +
+          '<div class="apo-recent-top">' +
+            '<div>' +
+              '<div class="apo-history-type">' + esc(item.kind) + '</div>' +
+              '<div class="apo-recent-title">' + esc(item.title) + '</div>' +
+              '<div class="apo-recent-sub">' + esc(item.sub) + '</div>' +
+            '</div>' +
+            '<div class="apo-recent-title">' + esc(item.value) + '</div>' +
+          '</div>' +
+          (item.desc ? '<div class="apo-recent-sub">' + esc(item.desc) + '</div>' : '') +
+          '<div class="apo-recent-sub">' + esc(formatDatePt(item.date)) + '</div>' +
+        '</article>';
+    }).join('');
+  }
+
+  async function refreshHistory() {
+    var dateIso = document.getElementById('apo-date').value;
+    if (!dateIso || !AP.user) return;
+    var info = getWeekInfo(dateIso);
+
+    var hoursRes = await window.sb
+      .from('horas_lancadas')
+      .select('data_lancamento, hora_inicio, hora_fim, tipo, subtipo, descricao, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+      .eq('usuario_id', AP.user.id)
+      .gte('data_lancamento', info.start)
+      .lte('data_lancamento', info.end)
+      .order('data_lancamento', { ascending: false })
+      .order('hora_inicio', { ascending: false });
+
+    var costsRes = await window.sb
+      .from('lancamentos_custo')
+      .select('data_lancamento, valor, tipo, subtipo, descricao, plano_contas_id')
+      .eq('usuario_id', AP.user.id)
+      .gte('data_lancamento', info.start)
+      .lte('data_lancamento', info.end)
+      .order('data_lancamento', { ascending: false });
+
+    if (hoursRes.error) throw new Error(hoursRes.error.message || 'Falha ao carregar histórico de horas.');
+    if (costsRes.error) throw new Error(costsRes.error.message || 'Falha ao carregar histórico de gastos.');
+
+    var costRows = (costsRes.data || []).map(function (row) {
+      var area = AP.costAreas.find(function (item) { return String(item.id) === String(row.plano_contas_id); }) || null;
+      row.area_nome = area && area.subconta ? area.subconta : '';
+      return row;
+    });
+
+    renderHistory(hoursRes.data || [], costRows);
+  }
+
+  function renderHistoryFallback() {
+    var el = document.getElementById('apo-history-list');
+    if (el) {
+      el.innerHTML = '<div class="apo-empty">Não foi possível carregar o histórico agora.</div>';
+    }
+  }
+
+  async function submitHours(event) {
+    event.preventDefault();
+    setFeedback('', '');
+
+    var btn = document.getElementById('apo-submit');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    try {
+      var type = document.getElementById('apo-type').value;
+      var date = document.getElementById('apo-date').value;
+      var start = document.getElementById('apo-start').value;
+      var end = document.getElementById('apo-end').value;
+      var description = document.getElementById('apo-desc').value.trim();
+      var productId = type === 'projeto' ? (document.getElementById('apo-project').value || null) : null;
+      var stageId = type === 'projeto' ? (document.getElementById('apo-stage').value || null) : null;
+      var subtipo = type !== 'projeto' ? (document.getElementById('apo-category').value || null) : null;
+
+      if (!date) throw new Error('Selecione a data do lançamento.');
+      if (!start || !end) throw new Error('Preencha início e fim.');
+      if (start >= end) throw new Error('A hora final deve ser maior que a hora inicial.');
+      if (type === 'projeto' && !productId) throw new Error('Selecione o projeto.');
+      if (type === 'projeto' && !stageId) throw new Error('Selecione a etapa.');
+
+      var week = await ensureWeek(date);
+      var payload = {
+        usuario_id: AP.user.id,
+        semana_id: week.id,
+        data_lancamento: date,
+        dia_semana: week.isoDay,
+        hora_inicio: start,
+        hora_fim: end,
+        tipo: type,
+        subtipo: subtipo,
+        produto_id: productId,
+        etapa_id: stageId,
+        descricao: description || null
+      };
+
+      var res = await window.sb.from('horas_lancadas').insert(payload);
+      if (res.error) throw new Error(res.error.message || 'Falha ao registrar as horas.');
+
+      document.getElementById('apo-desc').value = '';
+      var updates = await Promise.allSettled([refreshWeekInsights(), refreshHistory()]);
+      if (updates[0].status === 'rejected') renderHoursFallback();
+      if (updates[1].status === 'rejected') renderHistoryFallback();
+      setFeedback('Horas registradas com sucesso.', 'ok');
+    } catch (error) {
+      setFeedback(error.message || 'Não foi possível registrar as horas.', 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Registrar horas';
+    }
+  }
+
+  async function submitCost(event) {
+    event.preventDefault();
+    setCostFeedback('', '');
+
+    var btn = document.getElementById('apo-cost-submit');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    try {
+      var type = document.getElementById('apo-cost-type').value;
+      var date = document.getElementById('apo-cost-date').value;
+      var value = parseFloat(document.getElementById('apo-cost-value').value) || 0;
+      var areaId = document.getElementById('apo-cost-area').value || null;
+      var detail = document.getElementById('apo-cost-detail').value || null;
+      var description = document.getElementById('apo-cost-desc').value.trim();
+      var productId = type === 'projeto' ? (document.getElementById('apo-cost-project').value || null) : null;
+      var stageId = type === 'projeto' ? (document.getElementById('apo-cost-stage').value || null) : null;
+      var area = getCurrentCostArea();
+      var rules = getCostRules(area);
+
+      if (!date) throw new Error('Selecione a data do gasto.');
+      if (!value || value <= 0) throw new Error('Informe um valor válido para o gasto.');
+      if (!areaId) throw new Error('Selecione a área financeira.');
+      if (type === 'projeto' && !productId) throw new Error('Selecione o projeto do gasto.');
+      if (rules.requer_projeto && !productId) throw new Error('Esta área exige vinculação com projeto.');
+
+      var week = await ensureWeek(date);
+      var payload = {
+        usuario_id: AP.user.id,
+        semana_id: week.id,
+        data_lancamento: date,
+        valor: value,
+        tipo: type,
+        subtipo: detail,
+        plano_contas_id: areaId,
+        produto_id: productId,
+        etapa_id: stageId,
+        descricao: description || null
+      };
+
+      var insertRes = await window.sb.from('lancamentos_custo').insert(payload).select('id').single();
+      if (insertRes.error) throw new Error(insertRes.error.message || 'Falha ao registrar o gasto.');
+
+      var finRes = await window.sb.from('fin_lancamentos').insert({
+        plano_contas_id: areaId,
+        valor: Math.abs(value),
+        tipo: 'despesa',
+        situacao: 'realizado',
+        data_competencia: date,
+        data_vencimento: date,
+        observacao: [detail, description].filter(Boolean).join(' · ') || ((area && area.subconta) ? area.subconta : 'Gasto'),
+        origem: 'reembolso',
+        origem_id: insertRes.data?.id || null
+      });
+
+      resetCostForm();
+      var updates = await Promise.allSettled([refreshCostList(), refreshHistory()]);
+      if (updates[0].status === 'rejected') renderCostsFallback();
+      if (updates[1].status === 'rejected') renderHistoryFallback();
+      if (finRes && finRes.error) {
+        setCostFeedback('Gasto registrado, mas o envio ao Financeiro falhou. Vale revisar este lançamento.', 'err');
+      } else {
+        setCostFeedback('Gasto registrado com sucesso.', 'ok');
+      }
+    } catch (error) {
+      setCostFeedback(error.message || 'Não foi possível registrar o gasto.', 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Registrar gasto';
+    }
+  }
+
+  function resetHoursForm() {
+    document.getElementById('apo-hours-form').reset();
+    document.getElementById('apo-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('apo-start').value = '09:00';
+    document.getElementById('apo-end').value = '10:00';
+    fillTypeOptions();
+    updateTypeUI();
+    document.getElementById('apo-project').value = '';
+    document.getElementById('apo-stage').innerHTML = '<option value="">Selecionar etapa...</option>';
+    updateClassificationUI();
+    updateDuration();
+    setFeedback('', '');
+  }
+
+  function resetCostForm() {
+    document.getElementById('apo-costs-form').reset();
+    document.getElementById('apo-cost-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('apo-cost-value').value = '';
+    fillCostTypeOptions();
+    fillCostAreas();
+    document.getElementById('apo-cost-project').value = '';
+    document.getElementById('apo-cost-stage').innerHTML = '<option value="">Selecionar etapa...</option>';
+    updateCostUI();
+    setCostFeedback('', '');
+  }
+
+  async function init() {
+    try {
+      var boot = await window.appShellInit();
+      AP.user = boot.usuario;
+
+      fillTypeOptions();
+      fillCostTypeOptions();
+      resetHoursForm();
+      resetCostForm();
+
+      window.ExpNav.init({ module: 'apontamentos' });
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('app-shell').style.display = 'flex';
+
+      document.getElementById('apo-type').addEventListener('change', updateTypeUI);
+      document.getElementById('apo-project').addEventListener('change', function () {
+        onProjectChange().catch(function (error) {
+          setFeedback(error.message || 'Falha ao carregar etapas.', 'err');
+        });
+      });
+      document.getElementById('apo-stage').addEventListener('change', updateClassificationUI);
+      document.getElementById('apo-date').addEventListener('change', function () {
+        Promise.allSettled([refreshWeekInsights(), refreshCostList(), refreshHistory()]).then(function (results) {
+          if (results[0].status === 'rejected') {
+            renderHoursFallback();
+            setFeedback(results[0].reason?.message || 'Falha ao atualizar a semana.', 'err');
+          }
+          if (results[1].status === 'rejected') {
+            renderCostsFallback();
+            setCostFeedback(results[1].reason?.message || 'Falha ao atualizar os gastos.', 'err');
+          }
+          if (results[2].status === 'rejected') {
+            renderHistoryFallback();
+          }
+        });
+      });
+      document.getElementById('apo-start').addEventListener('input', updateDuration);
+      document.getElementById('apo-end').addEventListener('input', updateDuration);
+      document.getElementById('apo-hours-form').addEventListener('submit', submitHours);
+      document.getElementById('apo-reset').addEventListener('click', resetHoursForm);
+      document.getElementById('apo-open-timer').addEventListener('click', openTimerShortcut);
+      document.getElementById('apo-cost-type').addEventListener('change', updateCostUI);
+      document.getElementById('apo-cost-area').addEventListener('change', updateCostUI);
+      document.getElementById('apo-cost-project').addEventListener('change', function () {
+        onCostProjectChange().catch(function (error) {
+          setCostFeedback(error.message || 'Falha ao carregar etapas do gasto.', 'err');
+        });
+      });
+      document.getElementById('apo-costs-form').addEventListener('submit', submitCost);
+      document.getElementById('apo-cost-reset').addEventListener('click', resetCostForm);
+
+      try {
+        await loadProducts();
+      } catch (error) {
+        setFeedback(error.message || 'Falha ao carregar projetos.', 'err');
+      }
+
+      try {
+        await loadCostAreas();
+        resetCostForm();
+      } catch (error) {
+        setCostFeedback(error.message || 'Falha ao carregar áreas de gasto.', 'err');
+      }
+
+      var initialLoads = await Promise.allSettled([refreshWeekInsights(), refreshCostList(), refreshHistory()]);
+      if (initialLoads[0].status === 'rejected') {
+        renderHoursFallback();
+        setFeedback(initialLoads[0].reason?.message || 'Falha ao carregar as horas iniciais.', 'err');
+      }
+      if (initialLoads[1].status === 'rejected') {
+        renderCostsFallback();
+        setCostFeedback(initialLoads[1].reason?.message || 'Falha ao carregar os gastos iniciais.', 'err');
+      }
+      if (initialLoads[2].status === 'rejected') {
+        renderHistoryFallback();
+      }
+    } catch (error) {
+      setFeedback(error.message || 'Falha ao iniciar Apontamentos.', 'err');
+      document.getElementById('loading').innerHTML = '<div class="ld-sub">Falha ao carregar apontamentos</div>';
+      console.error(error);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
