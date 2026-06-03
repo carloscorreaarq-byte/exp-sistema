@@ -1199,6 +1199,18 @@ body {
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   }
 
+  function dateLabel(dateIso, mode) {
+    if (!dateIso) return '';
+    var date = new Date(dateIso + 'T12:00:00');
+    if (Number.isNaN(date.getTime())) return dateIso;
+
+    if (mode === 'short') {
+      return date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    }
+
+    return date.toLocaleDateString('pt-BR', { weekday: 'long' });
+  }
+
   function getWeekInfo(dateIso) {
     var dateObj = new Date(dateIso + 'T12:00:00');
     var isoDay = dateObj.getDay() || 7;
