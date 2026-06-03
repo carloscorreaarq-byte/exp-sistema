@@ -167,6 +167,55 @@ body{
 /* ── Custos lista (mesmo visual) ────── */
 .custo-val{font-size:10px;font-weight:600;color:var(--terracota);white-space:nowrap;flex-shrink:0;}
 
+/* ── Calendário (cópia exata do gestao) ── */
+.cal-semana { background:var(--branco); border:1px solid var(--cinza); overflow:hidden; border-radius:8px; margin-bottom:10px; }
+.cal-grid { display:grid; grid-template-columns:44px repeat(7,1fr); }
+.cal-dia-header { padding:6px 4px; text-align:center; border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza); cursor:pointer; transition:background .1s; }
+.cal-dia-header:hover { background:var(--off); }
+.cal-dia-header.fim-semana { background:var(--cinza2); }
+.cal-dia-header.hoje { background:var(--az-bg); }
+.cal-dia-nome { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#999; }
+.cal-dia-header.hoje .cal-dia-nome { color:var(--azul); }
+.cal-dia-header.fim-semana .cal-dia-nome { color:#bbb; }
+.cal-dia-num { font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--grafite); line-height:1.2; }
+.cal-dia-header.hoje .cal-dia-num { color:var(--azul); }
+.cal-dia-header.fim-semana .cal-dia-num { color:#bbb; }
+.cal-dia-total { font-family:var(--font-ui); font-size:9px; color:var(--verde); font-weight:700; margin-top:1px; min-height:12px; }
+.cal-hora-label { font-family:var(--font-ui); font-size:8px; color:#ddd; text-align:right; padding:0 4px 0 0; line-height:1; height:26px; display:flex; align-items:flex-start; justify-content:flex-end; padding-top:2px; border-right:1px solid var(--cinza2); }
+.cal-celula { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza2); height:26px; position:relative; }
+.cal-celula.fim-semana { background:#fafaf8; }
+.cal-celula.hoje-col { background:rgba(29,79,160,.03); }
+.cal-bloco { position:absolute; left:1px; right:1px; border-radius:2px; font-family:var(--font-ui); font-size:8px; font-weight:600; color:#fff; padding:2px 3px; overflow:hidden; cursor:pointer; letter-spacing:.1px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; bottom:1px; line-height:1.3; z-index:2; }
+.cal-bloco-linha1 { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; }
+.cal-bloco-linha2 { font-weight:400; opacity:.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; font-size:7px; }
+.cal-bloco:hover { filter:brightness(.88); z-index:5; }
+.cb-projeto { background:var(--azul); }
+.cb-organizacao { background:var(--verde); }
+.cb-sociedade { background:var(--ouro); }
+.cal-totais-row { display:grid; grid-template-columns:44px repeat(7,1fr); border-top:1px solid var(--cinza); background:var(--cinza2); }
+.cal-total-label { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#bbb; padding:5px 4px; text-align:right; border-right:1px solid var(--cinza); }
+.cal-total-dia { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--grafite); padding:5px 4px; text-align:center; border-right:1px solid var(--cinza2); }
+.cal-total-dia.zero { color:#ccc; }
+.cal-total-dia.fim-semana { color:#aaa; }
+.cal-resumo { display:flex; align-items:center; gap:14px; padding:8px 12px; border-top:1px solid var(--cinza); background:var(--branco); }
+.cal-total-semana { font-family:var(--font-mono); font-size:20px; font-weight:700; }
+.cal-total-semana.over { color:var(--terracota); font-weight:800; }
+.cal-meta-bar-wrap { height:5px; background:var(--cinza2); width:100%; }
+.cal-meta-bar { height:100%; background:var(--verde); transition:width .3s; }
+.cal-meta-bar.am { background:var(--ouro); }
+.cal-meta-bar.tc { background:var(--terracota); }
+.cal-meta-txt { font-size:9px; color:#888; }
+.cal-breakdown { display:flex; flex-direction:column; align-items:flex-start; gap:4px; flex-shrink:0; }
+.cal-bd-item { font-size:9px; color:#888; display:flex; align-items:center; gap:4px; }
+.cal-bd-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.cal-header-vazio { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza); }
+[data-theme="dark"] .cal-dia-header.fim-semana { background:#22211F; }
+[data-theme="dark"] .cal-celula.fim-semana { background:#22211F; }
+[data-theme="dark"] .cal-total-dia.fim-semana { background:#22211F; color:#8F897F; }
+[data-theme="dark"] .cb-projeto { background:rgba(96,137,204,.52); }
+[data-theme="dark"] .cb-organizacao { background:rgba(82,166,118,.52); }
+[data-theme="dark"] .cb-sociedade { background:rgba(212,170,55,.52); }
+
 /* ── Card/form sidebar ────────────────── */
 .apo-form-card{
   position:sticky;top:20px;
@@ -332,16 +381,9 @@ body{
 
         <!-- Coluna principal: calendário + lista -->
         <div>
-          <!-- Calendário semanal -->
-          <div class="apo-week-cal" id="apo-week-cal">
-            <div style="grid-column:1/-1;padding:10px;font-size:11px;color:#bbb;">Carregando…</div>
-          </div>
-
-          <!-- KPIs -->
-          <div class="apo-kpis">
-            <div class="apo-kpi"><div class="apo-kpi-lbl">Total</div><div class="apo-kpi-val" id="kpi-total">—</div></div>
-            <div class="apo-kpi"><div class="apo-kpi-lbl">Billable</div><div class="apo-kpi-val" id="kpi-billable">—</div></div>
-            <div class="apo-kpi"><div class="apo-kpi-lbl">Não billable</div><div class="apo-kpi-val" id="kpi-nonbillable">—</div></div>
+          <!-- Calendário semanal (idêntico ao gestao) -->
+          <div class="cal-semana">
+            <div id="cal-semana-wrap"><div style="padding:14px;font-size:11px;color:#bbb;">Carregando…</div></div>
           </div>
 
           <!-- Lista de lançamentos (estilo gestão) -->
@@ -684,52 +726,150 @@ body{
     el.style.color = iso ? 'var(--grafite)' : '#aaa';
   }
 
-  // ── Renderização: calendário semanal ─────────────────────────────
+  // ── Calendário: cópia exata de gestao.html::renderCalendarioSemana ──
 
-  function renderCalendario(rows) {
-    var el = document.getElementById('apo-week-cal');
-    var info = AP.weekInfo;
-    if (!el || !info) return;
-    var selected = document.getElementById('apo-date').value;
-    var dias = getDiasSemana(info);
-    var totByDay = {};
-    (rows||[]).forEach(function(r) {
-      var k = r.data_lancamento;
-      var cls = getClass(r.tipo, (r.etapas||{}).nome||'');
-      if (!totByDay[k]) totByDay[k] = { total:0, billable:0 };
-      var h = diffH(r.hora_inicio, r.hora_fim);
-      totByDay[k].total += h;
-      if (cls.billable) totByDay[k].billable += h;
+  function renderCalendario(lancs) {
+    var wrap = document.getElementById('cal-semana-wrap');
+    if (!wrap || !AP.weekInfo) return;
+
+    // dias da semana como objetos Date (igual ao gestao)
+    var diasDate = [];
+    var cur = new Date(AP.weekInfo.start + 'T12:00:00');
+    for (var d = 0; d < 7; d++) { diasDate.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    var NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    var COR_CLS = { projeto:'cb-projeto', organizacao:'cb-organizacao', sociedade:'cb-sociedade' };
+
+    var hPorDia = [0,0,0,0,0,0,0];
+    var lancPorDia = [[],[],[],[],[],[],[]];
+    (lancs||[]).forEach(function(l) {
+      var iso = l.data_lancamento;
+      for (var i = 0; i < 7; i++) {
+        if (diasDate[i].toISOString().slice(0,10) === iso) {
+          hPorDia[i] += diffH(l.hora_inicio, l.hora_fim);
+          lancPorDia[i].push(l);
+          break;
+        }
+      }
     });
-    el.innerHTML = dias.map(function(iso, i) {
-      var b = totByDay[iso] || { total:0, billable:0 };
+
+    var totalSemana = hPorDia.reduce(function(s,h){ return s+h; }, 0);
+    var pct = Math.min(totalSemana / 40 * 100, 100);
+    var porTipo = { projeto:0, organizacao:0, sociedade:0 };
+    (lancs||[]).forEach(function(l) {
+      var dh = diffH(l.hora_inicio, l.hora_fim);
+      if (l.tipo in porTipo) porTipo[l.tipo] += dh;
+    });
+
+    var HORA_INI = 0, HORA_FIM = 24, SLOT_H = 26;
+    var SLOTS = (HORA_FIM - HORA_INI) * 2;
+
+    var html = '';
+
+    // Header sticky
+    html += '<div id="cal-scroll-wrap" style="max-height:430px;overflow-y:scroll">' +
+      '<div class="cal-grid" style="position:sticky;top:0;z-index:3;background:var(--branco);border-bottom:1px solid var(--cinza2)">' +
+      '<div class="cal-header-vazio" style="background:var(--branco)"></div>';
+
+    diasDate.forEach(function(d, i) {
       var fds = i >= 5;
-      var isActive = iso === selected;
-      return '<button type="button" class="apo-day' +
-        (isActive ? ' active' : '') + (fds ? ' fds' : '') + '" data-date="' + esc(iso) + '">' +
-        '<div class="apo-day-top"><span class="apo-day-lbl">' + esc(NOMES_SEMANA[i]) + '</span>' +
-        '<span class="apo-day-dt">' + esc(fmtDate(iso)) + '</span></div>' +
-        '<div class="apo-day-h">' + esc(fmtH(b.total)) + '</div>' +
-        '<div class="apo-day-sub">' + (b.total ? esc(fmtH(b.billable)) + ' bill.' : '—') + '</div>' +
-        '</button>';
-    }).join('');
-    el.querySelectorAll('[data-date]').forEach(function(btn) {
-      btn.addEventListener('click', function() { setSelectedDate(btn.getAttribute('data-date')); });
+      var isHoje = d.toISOString().slice(0,10) === hoje.toISOString().slice(0,10);
+      html += '<div class="cal-dia-header ' + (fds?'fim-semana ':'') + (isHoje?'hoje ':'') + (hPorDia[i]>0?'tem-horas':'') + '"' +
+        ' onclick="calSelecionarDia(\'' + d.toISOString().slice(0,10) + '\')">' +
+        '<div class="cal-dia-nome">' + NOMES[i] + '</div>' +
+        '<div class="cal-dia-num">' + d.getDate() + '</div>' +
+        '<div class="cal-dia-total">' + (hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·') + '</div>' +
+        '</div>';
+    });
+
+    html += '</div><div class="cal-grid">';
+
+    for (var s = 0; s < SLOTS; s++) {
+      var h = HORA_INI + Math.floor(s / 2);
+      var m = s % 2 === 0 ? '00' : '30';
+      html += '<div class="cal-hora-label">' + (m === '00' ? h + 'h' : '') + '</div>';
+
+      for (var i = 0; i < 7; i++) {
+        var fds = i >= 5;
+        var isHoje = diasDate[i].toISOString().slice(0,10) === hoje.toISOString().slice(0,10);
+        var slotH = HORA_INI + Math.floor(s / 2);
+        var slotM = s % 2 === 0 ? 0 : 30;
+
+        var blocos = lancPorDia[i].filter(function(l) {
+          var parts = (l.hora_inicio || '00:00').split(':').map(Number);
+          return parts[0] === slotH && parts[1] >= slotM && parts[1] < slotM + 30;
+        });
+
+        var blocoHtml = '';
+        blocos.forEach(function(l) {
+          var lParts = (l.hora_inicio || '00:00').split(':').map(Number);
+          var fParts = (l.hora_fim || '00:00').split(':').map(Number);
+          var durMin = (fParts[0]*60+fParts[1]) - (lParts[0]*60+lParts[1]);
+          var height = Math.max(16, durMin / 30 * SLOT_H - 2);
+          var topOff = ((lParts[1] % 30) / 30) * SLOT_H;
+          var cls = COR_CLS[l.tipo] || 'cb-projeto';
+          // descrição inline (sem getProjetoHierarquia — usa dados do join)
+          var opp = (l.produtos||{}).oportunidades || {};
+          var cli = ((opp.clientes||{}).nome) || '';
+          var proj = opp.projeto || '';
+          var etapa = (l.etapas||{}).nome || '';
+          var linha1 = l.tipo === 'projeto' ? (proj || cli) : (l.subtipo || l.tipo);
+          var linha2 = l.tipo === 'projeto' ? etapa : '';
+          var titleTxt = l.tipo === 'projeto'
+            ? esc([cli, proj, etapa].filter(Boolean).join(' · ') + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')')
+            : esc(linha1 + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')');
+          blocoHtml += '<div class="cal-bloco ' + cls + '" style="top:' + topOff + 'px;height:' + height + 'px" title="' + titleTxt + '">' +
+            '<span class="cal-bloco-linha1">' + esc(linha1) + '</span>' +
+            (linha2 && height > 22 ? '<span class="cal-bloco-linha2">' + esc(linha2) + '</span>' : '') +
+            '</div>';
+        });
+
+        html += '<div class="cal-celula ' + (fds?'fim-semana ':'') + (isHoje?'hoje-col':'') + '">' + blocoHtml + '</div>';
+      }
+    }
+
+    html += '</div></div>';
+
+    // Rodapé: totais por dia
+    html += '<div class="cal-totais-row"><div class="cal-total-label">Total</div>';
+    hPorDia.forEach(function(h, i) {
+      var fds = i >= 5;
+      html += '<div class="cal-total-dia ' + (h===0?'zero ':'') + (fds?'fim-semana':'') + '">' + (h>0?fmtH(h):'—') + '</div>';
+    });
+    html += '</div>';
+
+    // Resumo
+    var pctTipo = function(t) { return totalSemana > 0 ? Math.round(porTipo[t] / totalSemana * 100) : 0; };
+    var semCor = totalSemana > 40 ? 'var(--terracota)' : totalSemana > 32 ? 'var(--ouro)' : 'var(--grafite)';
+    html += '<div class="cal-resumo">' +
+      '<div style="flex-shrink:0">' +
+        '<div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:2px">Semana</div>' +
+        '<div class="cal-total-semana ' + (totalSemana>40?'over':'') + '" style="color:' + semCor + '">' + fmtH(totalSemana) + '</div>' +
+        '<div style="font-size:9px;color:#aaa;margin-top:1px">' + pct.toFixed(0) + '% de 40h</div>' +
+      '</div>' +
+      '<div style="flex:1">' +
+        '<div class="cal-meta-bar-wrap"><div class="cal-meta-bar ' + (totalSemana>40?'tc':totalSemana>32?'am':'') + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+        '<div class="cal-meta-txt">' + (totalSemana > 0 ? (40 - Math.min(totalSemana,40)).toFixed(1).replace('.',',') + 'h restantes' : 'Nenhuma hora lançada') + '</div>' +
+      '</div>' +
+      '<div class="cal-breakdown">' +
+        '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div>Proj: ' + fmtH(porTipo.projeto) + (pctTipo('projeto')>0?' <span style="color:#bbb">('+pctTipo('projeto')+'%)</span>':'') + '</div>' +
+        '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--verde)"></div>Org: ' + fmtH(porTipo.organizacao) + (pctTipo('organizacao')>0?' <span style="color:#bbb">('+pctTipo('organizacao')+'%)</span>':'') + '</div>' +
+        '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--ouro)"></div>Soc: ' + fmtH(porTipo.sociedade) + (pctTipo('sociedade')>0?' <span style="color:#bbb">('+pctTipo('sociedade')+'%)</span>':'') + '</div>' +
+      '</div>' +
+    '</div>';
+
+    wrap.innerHTML = html;
+
+    // Auto-scroll para 8h (igual ao gestao)
+    requestAnimationFrame(function() {
+      var sw = document.getElementById('cal-scroll-wrap');
+      if (sw) sw.scrollTop = (8 - HORA_INI) * 2 * SLOT_H;
     });
   }
 
-  function renderKPIs(rows) {
-    var acc = (rows||[]).reduce(function(a, r) {
-      var h = diffH(r.hora_inicio, r.hora_fim);
-      var cls = getClass(r.tipo, (r.etapas||{}).nome||'');
-      a.total += h;
-      if (cls.billable) a.b += h; else a.nb += h;
-      return a;
-    }, {total:0, b:0, nb:0});
-    setText('kpi-total', fmtH(acc.total));
-    setText('kpi-billable', fmtH(acc.b));
-    setText('kpi-nonbillable', fmtH(acc.nb));
-  }
+  // Clique no header do dia seleciona a data no formulário
+  window.calSelecionarDia = function(iso) { setSelectedDate(iso); };
 
   // ── Renderização: lista de lançamentos (estilo gestao) ───────────
 
@@ -870,7 +1010,6 @@ body{
     if (res.error) throw new Error(res.error.message);
     AP.weekHours = res.data || [];
     renderCalendario(AP.weekHours);
-    renderKPIs(AP.weekHours);
     renderLancamentos(AP.weekHours);
   }
 
