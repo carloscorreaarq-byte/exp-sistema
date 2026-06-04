@@ -149,6 +149,7 @@ body {
   letter-spacing: 1px; text-transform: uppercase; color: #999;
   margin-bottom: 5px;
   padding-left: var(--radius-card);
+  min-height: 22px;   /* garante que todas as colunas tenham o mesmo ponto de início */
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .dash-lbl-actions { display: flex; align-items: center; gap: 5px; }
@@ -546,6 +547,10 @@ body {
   width: 100%; border: 1px solid var(--cinza); border-radius: var(--radius-input);
   background: var(--branco); color: var(--grafite);
   font-family: var(--font-ui); font-size: var(--text-body);
+  outline: none; transition: border-color .12s;
+}
+.dash-field input:focus, .dash-field select:focus, .dash-field textarea:focus {
+  border-color: var(--grafite);
 }
 .dash-field input, .dash-field select { height: 32px; padding: 0 9px; }
 .dash-field textarea { min-height: 72px; padding: 8px 10px; resize: vertical; line-height: 1.5; }
@@ -3330,6 +3335,16 @@ function _renderTaskItem(t, showAtrib) {
     </div>`;
 }
 
+/* Filtra tarefas delegadas: pendentes + concluídas nos últimos 7 dias */
+function _filtrarAtribuidas(atribuidas) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 7);
+  const cutoffISO = cutoff.toISOString();
+  return (atribuidas || []).filter(t =>
+    !t.concluida || (t.concluida_em || t.updated_at || '') >= cutoffISO
+  );
+}
+
 function _renderAllTasks(tarefas, atribuidas) {
   let html = '';
   if (tarefas.length) {
@@ -3592,7 +3607,7 @@ function renderDashboard(data) {
   const { tarefas, tarefasAtribuidas, eventos, prios, horasSemana, eventDays, taskDays } = data;
 
   const colPrio = renderPriosSection(prios);
-  const colMain = renderTasksSection(tarefas, tarefasAtribuidas || []);
+  const colMain = renderTasksSection(tarefas, _filtrarAtribuidas(tarefasAtribuidas));
 
   /* Eventos compactos em view mês para dar espaço ao calendário */
   const evCompact = _calView === 'month';
@@ -3770,7 +3785,7 @@ async function toggleDashTask(id, concluida) {
   const el = document.getElementById('dash-tasks-list');
   if (el) el.innerHTML = _renderAllTasks(
     d.tarefas.filter(t => !t.concluida),
-    d.tarefasAtribuidas.filter(t => !t.concluida)
+    _filtrarAtribuidas(d.tarefasAtribuidas)
   );
 }
 

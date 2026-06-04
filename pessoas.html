@@ -42,7 +42,7 @@
   --roxo-bg:  #1E1530;
   --verde-bg: #1A2E22;
 }
-body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-height:100vh;display:flex;flex-direction:column;}
+body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 #loading{position:fixed;inset:0;background:var(--off);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
 .loading-logo{height:30px;display:block;mix-blend-mode:multiply}
@@ -54,7 +54,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
 /* container principal — exp-nav.css (via .exp-app-shell) aplica display:flex+row */
 #conteudo{flex:1;min-height:0;display:none;}
 /* timer posicionado dentro do exp-app-shell de pessoas */
-#exp-timer-widget{left:calc(20px + (66px/2) - 23px)!important;bottom:24px!important;z-index:9998!important;}
+#exp-timer-widget{left:calc(72px + (66px/2) - 23px)!important;bottom:24px!important;z-index:9998!important;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── LAYOUT ─── */
@@ -3798,6 +3798,15 @@ function renderClimaTabAplicar(body) {
   const modeloOpts = G.climaModelos.map(m => `<option value="${m.id}" ${m.id===modeloId?'selected':''}>${escHtml(m.titulo)}</option>`).join('');
   const userOpts = G.usuarios.filter(u => u.ativo !== false)
     .map(u => `<option value="${u.id}">${escHtml(shortDisplayName(u.nome) || u.email_login || '')}</option>`).join('');
+  // Campanhas ativas para o modelo selecionado
+  const campanhasAtivas = G.climaCampanhas.filter(c => c.modelo_id === modeloId && c.status === 'ativa');
+  const campOpts = campanhasAtivas.map(c => `<option value="${c.id}">${escHtml(c.titulo)}</option>`).join('');
+  const campSelector = campanhasAtivas.length
+    ? `<div class="ps-field-modal" style="margin-bottom:12px">
+        <label>Rodada (campanha)</label>
+        <select id="clima-aplicar-campanha">${campOpts}</select>
+       </div>`
+    : `<div style="font-size:10px;color:#bbb;margin-bottom:12px;padding:8px 10px;background:var(--am-bg);border-radius:6px">Nenhuma campanha ativa para este modelo. As respostas serão salvas sem vínculo de rodada.</div>`;
 
   body.innerHTML = `
     <div style="max-width:480px">
@@ -3809,6 +3818,7 @@ function renderClimaTabAplicar(body) {
           ${modeloOpts}
         </select>
       </div>
+      ${campSelector}
       <div style="font-size:10px;color:#bbb;margin-bottom:14px">${pergsDoModelo.length} pergunta${pergsDoModelo.length!==1?'s':''} neste modelo</div>
       <div class="ps-field-modal" style="margin-bottom:16px">
         <label>Colaborador</label>
@@ -4152,11 +4162,12 @@ function iniciarSurveyClima() {
   if (!uid) { alert('Selecione um colaborador.'); return; }
   const pergs = G.climaPerguntas.filter(p => p.modelo_id === modeloId);
   if (!pergs.length) { alert('Nenhuma pergunta neste modelo.'); return; }
+  const campId = document.getElementById('clima-aplicar-campanha')?.value || null;
   G.climaSurveyAtivo      = true;
   G.climaSurveyStep       = 0;
   G.climaSurveyRespostas  = {};
   G.climaSurveyUsuarioId  = uid;
-  G.climaSurveyCampanhaId = null;
+  G.climaSurveyCampanhaId = campId;
   G.climaSurveyAnonima    = false;
   G.climaSurveyDisclosure = true;
   G._surveyPerguntas      = pergs; // snapshot das perguntas do modelo
