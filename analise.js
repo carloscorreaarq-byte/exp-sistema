@@ -65,9 +65,13 @@ async function analiseBootstrap() {
 
 function analiseSetShellReady() {
   const loading = document.getElementById('shell-loading');
-  const app = document.getElementById('shell-app');
+  const app = document.getElementById('conteudo');
   if (loading) loading.style.display = 'none';
-  if (app) app.style.display = 'block';
+  if (app) app.style.display = 'flex';
+  /* inicializa nav lateral após shell visível */
+  if (typeof ExpNav !== 'undefined' && typeof ExpNav.init === 'function') {
+    ExpNav.init({ module: 'analise' });
+  }
 }
 
 function analiseValidarAcesso() {

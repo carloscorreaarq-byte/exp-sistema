@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP - An&aacute;lise de Efici&ecirc;ncia</title>
+<title>EXP · Análise de Eficiência</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="exp-design-system.css">
-<link rel="stylesheet" href="shared/app-shell.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
 <link rel="stylesheet" href="analise.css">
 <script>
   (function () {
@@ -21,139 +21,177 @@
 </script>
 </head>
 <body data-page="analise">
-  <div id="shell-loading" class="shell-loading-screen">
-    <img class="shell-loading-logo" src="exp.png" alt="EXP">
-    <div class="shell-loading-bar"></div>
+
+  <!-- ── Loading screen ──────────────────────────────────────── -->
+  <div id="shell-loading" class="analise-loading-screen">
+    <img class="analise-loading-logo" src="exp.png" alt="EXP">
+    <div class="analise-loading-bar"></div>
   </div>
 
-  <div id="shell-app" style="display:none;">
-    <nav class="nav">
-      <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
-      <div class="nav-sep"></div>
-      <div class="nav-mod-wrap" id="nav-mod-wrap">
-        <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.análise <span>▾</span></button>
-        <div class="nav-dropdown" id="nav-dropdown">
-          <a href="gestao.html">EXP.projetos</a>
-          <a href="apoio.html">EXP.apoio</a>
-          <a href="contatos.html">EXP.contatos</a>
-          <div class="nd-sep nd-soc" style="display:none"></div>
-          <a href="calc.html" class="nd-soc" style="display:none">EXP.calculadora</a>
-          <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
-          <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
-          <a href="analise.html" class="nd-active nd-soc" style="display:none">EXP.análise</a>
-          <a href="pessoas.html" class="nd-soc" style="display:none">EXP.pessoas</a>
-          <a href="sociedade.html" class="nd-soc" style="display:none">EXP.sociedade</a>
-        </div>
-      </div>
-      <div class="nav-right">
-        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
-          <span class="ttg-icon">&#9728;</span>
-          <span class="ttg-track"><span class="ttg-knob"></span></span>
-          <span class="ttg-icon">&#9790;</span>
-        </button>
-        <div class="conn-dot" id="conn-dot" title="Verificando conex&atilde;o..."></div>
-        <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-        <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-          <button id="feedback-icon-btn" onclick="toggleToolFeedbackPop(event)" title="Reportar problema ou sugestão">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          </button>
-          <div class="nav-feedback-pop" id="tool-feedback-pop">
-            <div class="nav-feedback-title">Problema ou sugestão</div>
-            <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-            <div class="fgroup">
-              <label>Tipo</label>
-              <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
-            </div>
-            <div class="fgroup">
-              <label>Mensagem</label>
-              <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
-            </div>
-            <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-            <div class="nav-feedback-actions">
-              <button class="btn" onclick="fecharToolFeedbackPop()">Fechar</button>
-              <button class="btn filled" onclick="enviarToolFeedback()">Enviar</button>
-            </div>
-          </div>
-        </div>
-        <div class="user-pill-wrap" id="user-pill-wrap">
-          <div class="user-chip" onclick="toggleUserMenu()">
-            <div class="user-av" id="user-av"></div>
-            <div class="u-text">
-              <span class="u-nome" id="user-nome">&mdash;</span>
-              <span class="u-role" id="user-cargo"></span>
-            </div>
-            <span class="u-caret">&#9662;</span>
-          </div>
-          <div class="user-dropdown" id="user-dropdown">
-            <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
-            <button type="button" id="user-menu-platform" hidden onclick="window.location.href='app.html'">Gest&atilde;o de plataforma</button>
-            <div class="ud-sep"></div>
-            <button type="button" onclick="sair()">Sair do sistema</button>
-          </div>
-        </div>
-      </div>
-    </nav>
+  <!-- ── App ─────────────────────────────────────────────────── -->
+  <div id="conteudo" style="display:none">
+    <div id="app-shell" class="exp-app-shell">
 
-    <main id="page-analise" class="shell-main">
-      <section class="analise-header">
-        <div class="analise-header-card">
-          <div class="analise-title-row">
-            <div>
-              <h1 class="sec-title">An&aacute;lise de Efici&ecirc;ncia</h1>
-              <div class="analise-subtitle" id="analise-user-context">Carregando contexto do m&oacute;dulo...</div>
-            </div>
-            <div class="analise-header-actions">
-              <button class="btn sm" id="analise-btn-reload" type="button">Atualizar</button>
-              <button class="btn sm" id="analise-btn-config" type="button" hidden>Configurar</button>
-            </div>
+      <!-- Nav lateral — injetada por shared/exp-nav.js -->
+
+      <!-- ── Card principal do módulo ── -->
+      <div id="analise-main">
+
+        <!-- Topbar: título + contexto + ações -->
+        <div id="analise-topbar">
+          <div class="analise-bv">
+            <h1 class="analise-title">Análise de Eficiência</h1>
+            <div class="analise-subtitle" id="analise-user-context">Carregando contexto do módulo…</div>
+          </div>
+          <div class="analise-hd-actions">
+            <button class="btn sm" id="analise-btn-reload" type="button">Atualizar</button>
+            <button class="btn sm" id="analise-btn-config" type="button" hidden>Configurar</button>
           </div>
         </div>
 
-        <div class="analise-config-panel" id="analise-config-panel">
-          <div class="analise-config-grid">
-            <div class="fgroup">
-              <label for="analise-threshold">Threshold de margem (%)</label>
-              <input id="analise-threshold" type="number" min="0" max="100">
+        <!-- Corpo rolável -->
+        <div id="analise-body">
+
+          <!-- Painel de configuração (inline reveal) -->
+          <div class="analise-config-panel" id="analise-config-panel">
+            <div class="analise-config-grid">
+              <div class="fgroup">
+                <label for="analise-threshold">Threshold de margem (%)</label>
+                <input id="analise-threshold" type="number" min="0" max="100">
+              </div>
+              <div class="fgroup">
+                <label for="analise-atencao">Faixa de atenção (%)</label>
+                <input id="analise-atencao" type="number" min="0" max="20">
+              </div>
             </div>
-            <div class="fgroup">
-              <label for="analise-atencao">Faixa de aten&ccedil;&atilde;o (%)</label>
-              <input id="analise-atencao" type="number" min="0" max="20">
+            <div class="analise-config-preview" id="analise-config-preview"></div>
+            <div class="analise-config-actions">
+              <button class="btn sm" id="analise-btn-fechar-config" type="button">Cancelar</button>
+              <button class="btn sm filled" id="analise-btn-salvar-config" type="button">Salvar</button>
             </div>
           </div>
-          <div class="analise-config-preview" id="analise-config-preview"></div>
-          <div class="analise-config-actions">
-            <button class="btn sm" id="analise-btn-fechar-config" type="button">Cancelar</button>
-            <button class="btn sm filled" id="analise-btn-salvar-config" type="button">Salvar</button>
-          </div>
-        </div>
-      </section>
 
-      <section class="analise-shell-card">
-        <div class="analise-tabs-bar" id="analise-tabs-bar">
-          <button class="analise-tab active" type="button" data-aba="acumulado">Acumulado</button>
-          <button class="analise-tab" type="button" data-aba="desenvolvimento">Em Desenvolvimento</button>
-          <button class="analise-tab" type="button" data-aba="encerrados">Encerrados</button>
-          <button class="analise-tab" type="button" data-aba="pessoas">Por Pessoa</button>
-        </div>
+          <!-- Card de abas -->
+          <div class="analise-shell-card">
+            <div class="analise-tabs-bar" id="analise-tabs-bar">
+              <!-- abas operacionais -->
+              <button class="analise-tab active" type="button" data-aba="acumulado">Acumulado</button>
+              <button class="analise-tab" type="button" data-aba="desenvolvimento">Em Desenvolvimento</button>
+              <button class="analise-tab" type="button" data-aba="encerrados">Encerrados</button>
+              <button class="analise-tab" type="button" data-aba="pessoas">Por Pessoa</button>
+              <!-- separador visual -->
+              <div class="analise-tabs-sep"></div>
+              <!-- abas analíticas — placeholder (em breve) -->
+              <button class="analise-tab analise-tab-placeholder" type="button" data-aba="tendencia" title="Em desenvolvimento">
+                Tendência
+                <span class="analise-tab-badge">em breve</span>
+              </button>
+              <button class="analise-tab analise-tab-placeholder" type="button" data-aba="comparativo" title="Em desenvolvimento">
+                Comparativo
+                <span class="analise-tab-badge">em breve</span>
+              </button>
+              <button class="analise-tab analise-tab-placeholder" type="button" data-aba="distribuicao" title="Em desenvolvimento">
+                Distribuição
+                <span class="analise-tab-badge">em breve</span>
+              </button>
+            </div>
 
-        <div class="analise-panels" id="analise-panels">
-          <section class="analise-panel active" id="anp-acumulado">
-            <div class="loading-state">Inicializando m&oacute;dulo de an&aacute;lise...</div>
-          </section>
-          <section class="analise-panel" id="anp-desenvolvimento">
-            <div class="loading-state">Inicializando m&oacute;dulo de an&aacute;lise...</div>
-          </section>
-          <section class="analise-panel" id="anp-encerrados">
-            <div class="loading-state">Inicializando m&oacute;dulo de an&aacute;lise...</div>
-          </section>
-          <section class="analise-panel" id="anp-pessoas">
-            <div class="loading-state">Inicializando m&oacute;dulo de an&aacute;lise...</div>
-          </section>
-        </div>
-      </section>
-    </main>
-  </div>
+            <div class="analise-panels" id="analise-panels">
+              <!-- painéis operacionais -->
+              <section class="analise-panel active" id="anp-acumulado">
+                <div class="loading-state">Inicializando módulo de análise…</div>
+              </section>
+              <section class="analise-panel" id="anp-desenvolvimento">
+                <div class="loading-state">Inicializando módulo de análise…</div>
+              </section>
+              <section class="analise-panel" id="anp-encerrados">
+                <div class="loading-state">Inicializando módulo de análise…</div>
+              </section>
+              <section class="analise-panel" id="anp-pessoas">
+                <div class="loading-state">Inicializando módulo de análise…</div>
+              </section>
 
+              <!-- painéis analíticos — placeholder -->
+              <section class="analise-panel" id="anp-tendencia">
+                <div class="analise-placeholder-panel">
+                  <div class="analise-placeholder-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  </div>
+                  <div class="analise-placeholder-title">Tendência de Margem</div>
+                  <div class="analise-placeholder-copy">Evolução da margem bruta ao longo do tempo por projeto, sócio e categoria. Visualização de curvas de tendência, sazonalidade e alertas preditivos de desvio.</div>
+                  <div class="analise-placeholder-charts">
+                    <div class="analise-chart-slot">
+                      <div class="analise-chart-slot-label">Margem por trimestre</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                    <div class="analise-chart-slot">
+                      <div class="analise-chart-slot-label">Projeção vs. realizado</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                    <div class="analise-chart-slot analise-chart-slot-wide">
+                      <div class="analise-chart-slot-label">Série histórica de eficiência</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="analise-panel" id="anp-comparativo">
+                <div class="analise-placeholder-panel">
+                  <div class="analise-placeholder-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  </div>
+                  <div class="analise-placeholder-title">Comparativo por Período</div>
+                  <div class="analise-placeholder-copy">Comparação de métricas entre períodos selecionados: horas, margem, custo e eficiência. Permite identificar variações de desempenho entre meses, trimestres e anos.</div>
+                  <div class="analise-placeholder-charts">
+                    <div class="analise-chart-slot">
+                      <div class="analise-chart-slot-label">Período A</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                    <div class="analise-chart-slot">
+                      <div class="analise-chart-slot-label">Período B</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                    <div class="analise-chart-slot analise-chart-slot-wide">
+                      <div class="analise-chart-slot-label">Variação percentual por indicador</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="analise-panel" id="anp-distribuicao">
+                <div class="analise-placeholder-panel">
+                  <div class="analise-placeholder-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 6.88 17.26"/><path d="M12 2v10l6.88 7.26"/></svg>
+                  </div>
+                  <div class="analise-placeholder-title">Distribuição de Horas e Custos</div>
+                  <div class="analise-placeholder-copy">Breakdown da alocação de horas e custos por projeto, sócio, tipo de serviço e fase. Gráficos de composição para leitura rápida de onde o esforço está concentrado.</div>
+                  <div class="analise-placeholder-charts">
+                    <div class="analise-chart-slot">
+                      <div class="analise-chart-slot-label">Distribuição por sócio</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                    <div class="analise-chart-slot">
+                      <div class="analise-chart-slot-label">Distribuição por tipo</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                    <div class="analise-chart-slot analise-chart-slot-wide">
+                      <div class="analise-chart-slot-label">Heatmap de alocação mensal</div>
+                      <div class="analise-chart-slot-area"></div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div><!-- /#analise-panels -->
+          </div><!-- /.analise-shell-card -->
+
+        </div><!-- /#analise-body -->
+      </div><!-- /#analise-main -->
+    </div><!-- /#app-shell -->
+  </div><!-- /#conteudo -->
+
+  <!-- ── Modal de drill-down ─────────────────────────────────── -->
   <div class="analise-modal" id="analise-modal" hidden>
     <div class="analise-modal-backdrop" data-modal-close="1"></div>
     <div class="analise-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analise-modal-title">
@@ -161,87 +199,29 @@
     </div>
   </div>
 
-  <script>
-function toggleToolFeedbackPop(ev) {
-  ev?.stopPropagation?.();
-  document.getElementById('tool-feedback-pop')?.classList.toggle('open');
-}
-function fecharToolFeedbackPop() {
-  document.getElementById('tool-feedback-pop')?.classList.remove('open');
-}
-async function enviarToolFeedback() {
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
-  const mensagem = document.getElementById('tool-feedback-message')?.value?.trim() || '';
-  if (!mensagem) { document.getElementById('tool-feedback-status').textContent = 'Escreva a mensagem antes de enviar.'; return; }
-  document.getElementById('tool-feedback-status').textContent = 'Enviando…';
-  const { error } = await sb.from('feedbacks_ferramenta').insert({
-    usuario_id: _me.id, tipo, mensagem,
-    origem_modulo: 'Analise', url_origem: location.href,
-  });
-  document.getElementById('tool-feedback-status').textContent = error ? 'Erro ao enviar. Tente novamente.' : 'Enviado! Obrigado.';
-  if (!error) setTimeout(fecharToolFeedbackPop, 1800);
-}
-async function abrirLembretePopup() {
-  let pop = document.getElementById('popup-lembrete');
-  if (pop) { pop.remove(); return; }
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
-  const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
-  const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
-  const opts = (usuarios || []).filter(u => u.id !== _me.id).map(u =>
-    `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`
-  ).join('');
-  pop = document.createElement('div');
-  pop.id = 'popup-lembrete';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-  pop.innerHTML = `
-    <div style="background:var(--branco,#fff);border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
-      <label style="${_ls}">Para</label>
-      <select id="lemb-para" style="${_fs};margin-bottom:10px">
-        <option value="todos">Toda a equipe</option>
-        ${opts}
-      </select>
-      <label style="${_ls}">Mensagem</label>
-      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
-        <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
-      </div>
-    </div>`;
-  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
-}
-async function _enviarLembrete() {
-  const msg = document.getElementById('lemb-msg')?.value.trim();
-  const para = document.getElementById('lemb-para')?.value;
-  if (!msg) return;
-  const btn = document.querySelector('#popup-lembrete button:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true);
-  const targets = para === 'todos'
-    ? (usuarios || []).filter(u => u.id !== _me.id)
-    : [(usuarios || []).find(u => u.id === para)].filter(Boolean);
-  for (const u of targets) {
-    await sb.from('notificacoes').insert({
-      usuario_id: u.id, tipo: 'lembrete',
-      titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
-      corpo: msg, link_tipo: 'lembrete',
-      modulo: location.pathname.split('/').pop().replace('.html',''),
-      criado_por: _me.id, criado_por_nome: _me.nome,
-      created_at: new Date().toISOString(),
-    }).catch(() => {});
-  }
-  document.getElementById('popup-lembrete')?.remove();
-}
-  </script>
   <script src="shared/app-constants.js"></script>
   <script src="shared/app-utils.js"></script>
   <script src="shared/app-shell.js"></script>
+  <script src="shared/app-notif.js"></script>
+  <script src="shared/exp-nav.js"></script>
   <script src="analise.js"></script>
   <script src="analise-modal-refine.js"></script>
+  <script>
+    /* Placeholder tabs — bloquear clique, apenas visual */
+    document.querySelectorAll('.analise-tab-placeholder').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        /* toggle painel para mostrar o wireframe */
+        var aba = btn.dataset.aba;
+        if (!aba) return;
+        document.querySelectorAll('.analise-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.analise-panel').forEach(function(p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        var panel = document.getElementById('anp-' + aba);
+        if (panel) panel.classList.add('active');
+      });
+    });
+  </script>
 </body>
 </html>

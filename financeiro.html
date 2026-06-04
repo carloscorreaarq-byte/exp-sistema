@@ -1168,6 +1168,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
       <div class="page-title">Lançamentos</div>
       <div class="page-sub">Razão geral — todas as entradas e saídas</div>
     </div>
+    <button class="btn btn-sec btn-sm" onclick="abrirModalPagamentoExtraordinario()">+ Pagto extra</button>
     <button class="btn btn-pri btn-sm" onclick="abrirModalLancamento()">+ Novo lançamento</button>
   </div>
 
@@ -1646,6 +1647,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
       <button class="modal-close" onclick="fecharModal('modal-lancamento')">×</button>
     </div>
     <div class="modal-body">
+      <div id="lanc-origem-banner" style="display:none;font-size:11px;color:#555;margin-bottom:14px;padding:10px 12px;background:var(--verde-bg);border:1px solid var(--cinza);border-radius:8px"></div>
       <div class="form-row">
         <div class="form-group">
           <label>Data de competência *</label>
@@ -1704,6 +1706,12 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
             <option value="aguardando_pagamento">Aguardando pagamento</option>
             <option value="pago">Pago</option>
           </select>
+        </div>
+      </div>
+      <div class="form-row" id="lanc-ref-row" style="display:none">
+        <div class="form-group w2">
+          <label>Referência da aprovação</label>
+          <input type="text" id="lanc-origem-ref" placeholder="Ex: semana 01/06 aprovada por sócio administrativo">
         </div>
       </div>
     </div>
@@ -1965,9 +1973,56 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
         <button class="btn btn-ghost btn-sm" onclick="adicionarRepasse()">+ Adicionar repasse</button>
       </div>
 
-      <!-- Seção 4: Informações adicionais -->
+      <!-- Seção 4: Entidade de cobrança -->
       <div class="divider"></div>
-      <div style="font-size:11px;font-weight:700;margin-bottom:10px">4. Informações Adicionais</div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">4. Entidade de cobrança</div>
+      <div style="font-size:10px;color:#888;margin-bottom:10px">Use quando o pagador / faturado for diferente do cliente institucional.</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome da entidade</label>
+          <input type="text" id="fin-cob-nome" placeholder="Razão social ou nome oficial">
+        </div>
+        <div class="form-group">
+          <label>Nome fantasia</label>
+          <input type="text" id="fin-cob-fantasia" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>CNPJ</label>
+          <input type="text" id="fin-cob-cnpj" placeholder="00.000.000/0000-00">
+        </div>
+        <div class="form-group">
+          <label>CEP</label>
+          <input type="text" id="fin-cob-cep" placeholder="00000-000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group w2">
+          <label>Endereço</label>
+          <input type="text" id="fin-cob-endereco" placeholder="Rua, número, complemento">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Responsável</label>
+          <input type="text" id="fin-cob-responsavel" placeholder="Nome do responsável">
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="fin-cob-email" placeholder="financeiro@empresa.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group w2">
+          <label>Contato vinculado</label>
+          <input type="text" id="fin-cob-contato" placeholder="Telefone, ramal ou observação de contato">
+        </div>
+      </div>
+
+      <!-- Seção 5: Informações adicionais -->
+      <div class="divider"></div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">5. Informações Adicionais</div>
       <div class="form-row">
         <div class="form-group">
           <label>Data do contrato</label>
@@ -2204,6 +2259,20 @@ function nucleoBadge(n) {
 const _finEsc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const _finAttr = s => _finEsc(s).replace(/'/g,'&#39;');
 const _finSq  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+function origemLancBadge(l) {
+  const origem = l?.origem || l?.origem_modulo || '';
+  if (!origem) return '';
+  const mapa = {
+    manual: { label: 'Manual', cls: 'b-gr' },
+    crm: { label: 'CRM', cls: 'b-az' },
+    recorrente: { label: 'Recorrente', cls: 'b-am' },
+    reembolso: { label: 'Reembolso', cls: 'b-consul' },
+    banco_horas: { label: 'Horas adicionais', cls: 'b-vd' },
+    pagamento_extraordinario: { label: 'Horas adicionais', cls: 'b-vd' },
+  };
+  const meta = mapa[origem] || { label: origem, cls: 'b-gr' };
+  return `<span class="badge ${meta.cls}" style="font-size:8px">${_finEsc(meta.label)}</span>`;
+}
 function sitBadge(s) {
   const m = SIT_LANC[s];
   if (!m) return `<span class="badge b-gr">${_finEsc(s||'—')}</span>`;
@@ -3774,6 +3843,7 @@ function filtrarLancamentos() {
       <td>${fmtData(l.data_prevista) || fmtData(l.data_pagamento)}</td>
       <td>
         <div style="font-weight:500">${principalDisp}</div>
+        ${origemLancBadge(l)}
         ${l.observacao && l.fornecedor_cliente ? `<div style="font-size:10px;color:#888">${obsDisp}</div>` : ''}
       </td>
       <td style="font-size:10px;color:#888">${subcontaDisp}</td>
@@ -3790,17 +3860,23 @@ function filtrarLancamentos() {
 }
 
 let _lancEditId = null;
+let _lancOrigemMode = 'manual';
 
 function abrirModalLancamento(id) {
+  _lancOrigemMode = 'manual';
   _lancEditId = id || null;
   document.getElementById('modal-lanc-titulo').textContent = id ? 'Editar Lançamento' : 'Novo Lançamento';
 
   // Limpar campos
   ['lanc-competencia','lanc-prevista','lanc-pagamento','lanc-descricao',
-   'lanc-nf','lanc-valor','lanc-conta-bancaria','lanc-forma'].forEach(fid => {
+   'lanc-nf','lanc-valor','lanc-conta-bancaria','lanc-forma','lanc-origem-ref'].forEach(fid => {
     const el = document.getElementById(fid);
     if (el) el.value = '';
   });
+  const banner = document.getElementById('lanc-origem-banner');
+  if (banner) { banner.style.display = 'none'; banner.textContent = ''; }
+  const refRow = document.getElementById('lanc-ref-row');
+  if (refRow) refRow.style.display = 'none';
   const sit = document.getElementById('lanc-situacao-form');
   if (sit) sit.value = 'previsto';
   const plano = document.getElementById('lanc-plano');
@@ -3810,6 +3886,7 @@ function abrirModalLancamento(id) {
   if (id) {
     const l = G.lancamentos.find(x => x.id === id);
     if (l) {
+      _lancOrigemMode = l.origem === 'pagamento_extraordinario' ? 'pagamento_extraordinario' : 'manual';
       if (document.getElementById('lanc-competencia')) document.getElementById('lanc-competencia').value = l.data_competencia || '';
       if (document.getElementById('lanc-prevista'))    document.getElementById('lanc-prevista').value    = l.data_prevista   || '';
       if (document.getElementById('lanc-pagamento'))   document.getElementById('lanc-pagamento').value   = l.data_pagamento  || '';
@@ -3820,10 +3897,35 @@ function abrirModalLancamento(id) {
       if (document.getElementById('lanc-conta-bancaria')) document.getElementById('lanc-conta-bancaria').value = l.conta_bancaria_id || '';
       if (document.getElementById('lanc-forma'))       document.getElementById('lanc-forma').value       = l.forma_pagamento || '';
       if (document.getElementById('lanc-situacao-form')) document.getElementById('lanc-situacao-form').value = l.situacao || 'previsto';
+      if (document.getElementById('lanc-origem-ref')) document.getElementById('lanc-origem-ref').value = l.origem_id || '';
+      if (_lancOrigemMode === 'pagamento_extraordinario') {
+        document.getElementById('modal-lanc-titulo').textContent = 'Editar Pagamento Extraordinário';
+        if (banner) {
+          banner.style.display = 'block';
+          banner.textContent = 'Este lançamento está marcado como pagamento extraordinário de horas adicionais.';
+        }
+        if (refRow) refRow.style.display = '';
+      }
     }
   }
 
   abrirModal('modal-lancamento');
+}
+function abrirModalPagamentoExtraordinario() {
+  abrirModalLancamento();
+  _lancOrigemMode = 'pagamento_extraordinario';
+  document.getElementById('modal-lanc-titulo').textContent = 'Novo Pagamento Extraordinário';
+  const banner = document.getElementById('lanc-origem-banner');
+  if (banner) {
+    banner.style.display = 'block';
+    banner.textContent = 'Use esta entrada apenas para horas adicionais já aprovadas para pagamento. Registre a saída com valor negativo.';
+  }
+  const refRow = document.getElementById('lanc-ref-row');
+  if (refRow) refRow.style.display = '';
+  const sit = document.getElementById('lanc-situacao-form');
+  if (sit) sit.value = 'a_pagar';
+  const desc = document.getElementById('lanc-descricao');
+  if (desc) desc.placeholder = 'Ex: Pagamento extraordinário de horas adicionais - Colaborador X';
 }
 function editarLancamento(id) { abrirModalLancamento(id); }
 
@@ -3853,11 +3955,16 @@ async function salvarLancamento() {
     forma_pagamento:    document.getElementById('lanc-forma').value || null,
     situacao:           document.getElementById('lanc-situacao-form').value,
   };
+  const origemRef = document.getElementById('lanc-origem-ref')?.value?.trim() || null;
+  if (origemRef) payload.origem_id = origemRef;
+  if (_lancOrigemMode === 'pagamento_extraordinario') {
+    payload.observacao = 'Pagamento extraordinario de horas adicionais';
+  }
   let error;
   if (_lancEditId) {
     ({ error } = await sb.from('fin_lancamentos').update(payload).eq('id', _lancEditId));
   } else {
-    payload.origem = 'manual';
+    payload.origem = _lancOrigemMode === 'pagamento_extraordinario' ? 'pagamento_extraordinario' : 'manual';
     payload.criado_por_id   = G.usuario.id;
     payload.criado_por_nome = G.usuario.nome;
     ({ error } = await sb.from('fin_lancamentos').insert(payload));
@@ -4286,6 +4393,48 @@ async function salvarConta() {
 // ══════════════════════════════════════════════════════════
 let G_ativoEdit = null; // ativo sendo finalizado
 
+function finExtrairPayloadObs(rawObs) {
+  const texto = String(rawObs || '');
+  const match = texto.match(/\[ENTIDADE_COBRANCA\]([\s\S]*?)\[\/ENTIDADE_COBRANCA\]/);
+  if (!match) return { entidade: null, obsLivre: texto.trim() || '' };
+  let entidade = null;
+  try { entidade = JSON.parse(match[1]); } catch (_) { entidade = null; }
+  const obsLivre = texto.replace(match[0], '').trim();
+  return { entidade, obsLivre };
+}
+
+function finMontarObsComEntidade(obsLivre, entidade) {
+  const payload = entidade && Object.values(entidade).some(v => String(v || '').trim())
+    ? `[ENTIDADE_COBRANCA]${JSON.stringify(entidade)}[/ENTIDADE_COBRANCA]`
+    : '';
+  return [payload, String(obsLivre || '').trim()].filter(Boolean).join('\n');
+}
+
+function finSetEntidadeCobrancaFields(entidade) {
+  const data = entidade || {};
+  document.getElementById('fin-cob-nome').value = data.nome || '';
+  document.getElementById('fin-cob-fantasia').value = data.nome_fantasia || '';
+  document.getElementById('fin-cob-cnpj').value = data.cnpj || '';
+  document.getElementById('fin-cob-cep').value = data.cep || '';
+  document.getElementById('fin-cob-endereco').value = data.endereco || '';
+  document.getElementById('fin-cob-responsavel').value = data.responsavel || '';
+  document.getElementById('fin-cob-email').value = data.email || '';
+  document.getElementById('fin-cob-contato').value = data.contato || '';
+}
+
+function finGetEntidadeCobrancaFields() {
+  return {
+    nome: document.getElementById('fin-cob-nome').value.trim() || null,
+    nome_fantasia: document.getElementById('fin-cob-fantasia').value.trim() || null,
+    cnpj: document.getElementById('fin-cob-cnpj').value.trim() || null,
+    cep: document.getElementById('fin-cob-cep').value.trim() || null,
+    endereco: document.getElementById('fin-cob-endereco').value.trim() || null,
+    responsavel: document.getElementById('fin-cob-responsavel').value.trim() || null,
+    email: document.getElementById('fin-cob-email').value.trim() || null,
+    contato: document.getElementById('fin-cob-contato').value.trim() || null
+  };
+}
+
 async function finalizarRascunho(id) {
   // Carregar ativo completo com etapas e repasses
   const { data: ativo } = await sb.from('fin_ativos').select('*').eq('id', id).single();
@@ -4333,8 +4482,10 @@ async function finalizarRascunho(id) {
   }
 
   // Data contrato / obs
+  const obsPayload = finExtrairPayloadObs(ativo.obs || '');
   document.getElementById('fin-data-contrato').value = ativo.data_contrato || '';
-  document.getElementById('fin-obs').value = ativo.obs || '';
+  document.getElementById('fin-obs').value = obsPayload.obsLivre || '';
+  finSetEntidadeCobrancaFields(obsPayload.entidade);
 
   // Renderizar etapas
   renderEtapasFinalizacao();
@@ -4523,6 +4674,8 @@ async function confirmarAtivo() {
   }
 
   // Atualizar ativo
+  const obsLivre = document.getElementById('fin-obs').value || null;
+  const entidadeCobranca = finGetEntidadeCobrancaFields();
   const updateAtivo = {
     situacao_financeira: 'ativo',
     modalidade_cobranca: mod,
@@ -4535,7 +4688,7 @@ async function confirmarAtivo() {
     data_inicio_mensal: mod === 'mensal' ? document.getElementById('fin-mensal-inicio').value || null : null,
     data_fim_mensal: mod === 'mensal' ? document.getElementById('fin-mensal-fim').value || null : null,
     data_contrato: document.getElementById('fin-data-contrato').value || null,
-    obs: document.getElementById('fin-obs').value || null,
+    obs: finMontarObsComEntidade(obsLivre, entidadeCobranca) || null,
   };
 
   const { error: errAtivo } = await sb.from('fin_ativos').update(updateAtivo).eq('id', G_ativoEdit.id);
@@ -4939,6 +5092,7 @@ function dreDD(idx) {
           <td style="color:#888;font-size:11px;white-space:nowrap">${fmtData(l.data_competencia)}</td>
           <td>
             <div style="font-weight:500">${principalDisp}</div>
+            ${origemLancBadge(l)}
             ${l.observacao && l.fornecedor_cliente ? `<div style="font-size:10px;color:#aaa">${obsDisp}</div>` : ''}
           </td>
           <td style="font-size:10px;color:#888">${subcontaDisp}</td>
