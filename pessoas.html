@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
+<script src="shared/app-notif.js" defer></script>
 <script>
   (function(){
     var saved = localStorage.getItem('exp-theme');
@@ -28,7 +30,20 @@
   --verde-bg:#EAF5EE;
   --nav-active: var(--terracota);
 }
-body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-height:100vh}
+[data-theme="dark"]{
+  --branco:   #1D1D1B;
+  --off:      #151513;
+  --grafite:  #F0EFEC;
+  --cinza:    #2E2D2B;
+  --cinza2:   #2A2928;
+  --tc-bg:    #281512;
+  --az-bg:    #162031;
+  --am-bg:    #2C2110;
+  --roxo-bg:  #1E1530;
+  --verde-bg: #1A2E22;
+}
+body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-height:100vh;display:flex;flex-direction:column;}
+#conteudo{flex:1;min-height:0;}
 
 #loading{position:fixed;inset:0;background:var(--off);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
 .loading-logo{height:30px;display:block;mix-blend-mode:multiply}
@@ -41,7 +56,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── LAYOUT ─── */
-.ps-wrap{max-width:1120px;margin:0 auto;padding:16px;position:relative;z-index:1}
+.ps-wrap{flex:1;min-width:0;padding:20px 24px;position:relative;z-index:1;overflow-y:auto;}
 .ps-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .ps-header-left{flex:1}
 .ps-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
@@ -234,19 +249,41 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
 .ps-modal-status.erro{background:var(--tc-bg);border:1px solid rgba(184,86,56,.2);color:var(--terracota)}
 
 /* ── DARK MODE ─── */
-[data-theme="dark"] .ps-sidebar,[data-theme="dark"] .ps-detalhe{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .ps-item:hover{background:var(--off)}
-[data-theme="dark"] .ps-item.sel{background:rgba(184,86,56,.08)}
-[data-theme="dark"] .ps-metric,.ps-reg-card{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .ps-reg-card{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .ps-search{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .ps-modal{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .ps-field-modal select,[data-theme="dark"] .ps-field-modal textarea,[data-theme="dark"] .ps-field-modal input{background:var(--off);border-color:var(--cinza);color:var(--grafite)}
-[data-theme="dark"] .ps-page-tab{background:var(--branco);border-color:var(--cinza);color:#aaa}
-[data-theme="dark"] .pm-sidebar,[data-theme="dark"] .pm-main{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .pm-cat-card{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .pm-cat-card.ativo{background:rgba(184,86,56,.08);border-color:rgba(184,86,56,.35)}
-[data-theme="dark"] .pm-field-input,[data-theme="dark"] .pm-level-select{background:var(--off);border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .ps-sidebar,[data-theme="dark"] .ps-detalhe{background:var(--branco);border-color:var(--cinza);}
+[data-theme="dark"] .ps-item{border-color:var(--cinza2);}
+[data-theme="dark"] .ps-item:hover{background:#222220;}
+[data-theme="dark"] .ps-item.sel{background:rgba(184,86,56,.12);border-left-color:var(--terracota);}
+[data-theme="dark"] .ps-metric{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .ps-reg-card{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .ps-search{background:#222220;border-color:var(--cinza);color:var(--grafite);}
+[data-theme="dark"] .ps-search::placeholder{color:#555;}
+[data-theme="dark"] .ps-search-wrap,[data-theme="dark"] .ps-filtros{border-color:var(--cinza);}
+[data-theme="dark"] .ps-modal{background:var(--branco);border-color:var(--cinza);}
+[data-theme="dark"] .ps-field-modal select,[data-theme="dark"] .ps-field-modal textarea,[data-theme="dark"] .ps-field-modal input{background:#222220;border-color:var(--cinza);color:var(--grafite);}
+[data-theme="dark"] .ps-page-tab{background:var(--branco);border-color:var(--cinza);color:#888;}
+[data-theme="dark"] .ps-page-tab.ativo{background:var(--terracota);border-color:var(--terracota);color:#fff;}
+[data-theme="dark"] .ps-page-tab:hover:not(.ativo){border-color:var(--terracota);color:var(--terracota);}
+[data-theme="dark"] .ps-det-header,[data-theme="dark"] .ps-tab-bar{border-color:var(--cinza);}
+[data-theme="dark"] .ps-tab{border-color:var(--cinza);color:#888;}
+[data-theme="dark"] .ps-tab.ativo{background:var(--grafite);color:var(--off);}
+[data-theme="dark"] .pm-sidebar,[data-theme="dark"] .pm-main{background:var(--branco);border-color:var(--cinza);}
+[data-theme="dark"] .pm-cat-card{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .pm-cat-card.ativo{background:rgba(184,86,56,.12);border-color:rgba(184,86,56,.4);}
+[data-theme="dark"] .pm-field-input,[data-theme="dark"] .pm-level-select{background:#222220;border-color:var(--cinza);color:var(--grafite);}
+[data-theme="dark"] .pm-table-wrap{border-color:var(--cinza);background:var(--branco);}
+[data-theme="dark"] .ps-sec-title{color:#555;}
+[data-theme="dark"] .ps-barra-bg{background:#2A2928;}
+/* badges — cor mais viva e levemente transparente em dark */
+[data-theme="dark"] .badge.ativo{background:rgba(62,120,88,.22);color:#89c7a9;}
+[data-theme="dark"] .badge.inativo{background:#2A2928;color:#777;}
+[data-theme="dark"] .badge.socio{background:rgba(107,79,160,.22);color:#b89fd4;}
+[data-theme="dark"] .badge.colaborador{background:rgba(74,114,181,.22);color:#99b9e8;}
+[data-theme="dark"] .badge.coordenador,[data-theme="dark"] .badge.pj{background:rgba(196,154,39,.22);color:#e4c56b;}
+[data-theme="dark"] .badge.estagio{background:#2A2928;color:#888;}
+/* marcadores de registro */
+[data-theme="dark"] .ps-reg-marcador.positivo{background:rgba(62,120,88,.18);color:#89c7a9;}
+[data-theme="dark"] .ps-reg-marcador.atencao{background:rgba(196,154,39,.18);color:#e4c56b;}
+[data-theme="dark"] .ps-reg-marcador.negativo{background:rgba(184,86,56,.18);color:#d89b92;}
 
 .pm-shell{display:flex;flex-direction:column;gap:14px}
 .pm-main{background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;padding:16px 18px}
@@ -438,16 +475,31 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
 .clima-res-pessoa-hdr{padding:10px 14px;background:var(--off);border-bottom:1px solid var(--cinza2);display:flex;align-items:center;gap:8px;cursor:pointer}
 .clima-res-pessoa-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 /* dark mode clima */
-[data-theme="dark"] .clima-panel{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .clima-hdr{border-color:var(--cinza)}
-[data-theme="dark"] .clima-hdr-brand{border-color:var(--cinza)}
-[data-theme="dark"] .clima-perg-item,[data-theme="dark"] .clima-runner-card{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .clima-runner-textarea{background:var(--off);border-color:var(--cinza);color:var(--grafite)}
-[data-theme="dark"] .clima-user-check{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .clima-user-check.sel{background:rgba(184,86,56,.08);border-color:rgba(184,86,56,.4)}
-[data-theme="dark"] .clima-res-rodada{border-color:var(--cinza)}
-[data-theme="dark"] .clima-res-rodada-hdr{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .clima-res-item{border-color:var(--cinza)}
+[data-theme="dark"] .clima-panel{background:var(--branco);border-color:var(--cinza);}
+[data-theme="dark"] .clima-hdr{border-color:var(--cinza);}
+[data-theme="dark"] .clima-hdr-brand{border-color:var(--cinza);}
+[data-theme="dark"] .clima-perg-item,[data-theme="dark"] .clima-runner-card{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .clima-runner-textarea{background:#222220;border-color:var(--cinza);color:var(--grafite);}
+[data-theme="dark"] .clima-user-check{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .clima-user-check.sel{background:rgba(184,86,56,.12);border-color:rgba(184,86,56,.4);}
+[data-theme="dark"] .clima-res-rodada{border-color:var(--cinza);}
+[data-theme="dark"] .clima-res-rodada-hdr{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .clima-res-item{border-color:var(--cinza);}
+[data-theme="dark"] .clima-camp-card{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .clima-camp-card:hover{background:var(--branco);}
+[data-theme="dark"] .clima-camp-card.sel{background:rgba(184,86,56,.12);border-color:var(--terracota);}
+[data-theme="dark"] .clima-res-bloco{border-color:var(--cinza);}
+[data-theme="dark"] .clima-res-bloco-hdr{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .clima-res-pessoa-card{border-color:var(--cinza);}
+[data-theme="dark"] .clima-res-pessoa-hdr{background:#222220;border-color:var(--cinza);}
+[data-theme="dark"] .clima-res-texto-item{border-color:#2A2928;color:var(--grafite);}
+[data-theme="dark"] .ps-sec{border-color:var(--cinza2);}
+[data-theme="dark"] .pm-callout{background:rgba(196,154,39,.08);border-color:rgba(196,154,39,.2);}
+[data-theme="dark"] .pm-callout strong,[data-theme="dark"] .pm-callout p,[data-theme="dark"] .pm-callout summary{color:#c4a83a;}
+[data-theme="dark"] .pm-category-tab{background:var(--branco);border-color:var(--cinza);}
+[data-theme="dark"] .pm-category-tab.ativo{background:rgba(184,86,56,.12);border-color:rgba(184,86,56,.4);}
+[data-theme="dark"] .ps-benef-status.ativo{background:rgba(62,120,88,.18);color:#89c7a9;}
+[data-theme="dark"] .ps-benef-status.inativo{background:#2A2928;color:#777;}
 
 /* ── PM inline-style helpers ─── */
 .pm-mt-14{margin-top:14px}
@@ -488,90 +540,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
   <div class="loading-bar"></div>
 </div>
 
-<div id="conteudo">
-
-<nav class="nav">
-  <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
-  <div class="nav-sep"></div>
-  <div class="nav-mod-wrap" id="nav-mod-wrap">
-    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.pessoas <span>▾</span></button>
-    <div class="nav-dropdown" id="nav-dropdown">
-      <a href="gestao.html">EXP.projetos</a>
-      <a href="apoio.html">EXP.apoio</a>
-      <a href="contatos.html">EXP.contatos</a>
-      <div class="nd-sep nd-soc" style="display:none"></div>
-      <a href="calc.html" class="nd-soc" style="display:none">EXP.calculadora</a>
-      <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
-      <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
-      <a href="analise.html" class="nd-soc" style="display:none">EXP.análise</a>
-      <a href="pessoas.html" class="nd-active nd-soc" style="display:none">EXP.pessoas</a>
-      <a href="sociedade.html" class="nd-soc" style="display:none">EXP.sociedade</a>
-    </div>
-  </div>
-  <div class="nav-tabs">
-    <button class="ntab active" id="ntab-colaboradores" onclick="setPageView('colaboradores')">Colaboradores</button>
-    <button class="ntab" id="ntab-matriz" onclick="setPageView('matriz')">Matriz</button>
-    <button class="ntab ntab-clima" id="ntab-clima" onclick="abrirClimaModal()">Pesquisa de Clima</button>
-  </div>
-  <div class="nav-right">
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
-      <span class="ttg-icon">☀</span>
-      <span class="ttg-track"><span class="ttg-knob"></span></span>
-      <span class="ttg-icon">🌙</span>
-    </button>
-    <div class="conn-dot" id="conn-dot" title="Verificando conexão..."></div>
-    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
-    <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-    <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-      <button id="feedback-icon-btn" onclick="toggleFeedbackPop(event)" title="Reportar problema ou sugestão">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      </button>
-      <div class="nav-feedback-pop" id="nav-feedback-pop">
-        <div class="nav-feedback-title">Problema ou sugestão</div>
-        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-        <div style="margin-bottom:8px;display:flex;flex-direction:column;gap:4px">
-          <label style="font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#888">Tipo</label>
-          <select id="tool-feedback-type" style="font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);padding:5px 8px;background:var(--branco);color:var(--grafite);outline:none;border-radius:4px;width:100%">
-            <option value="problema">Problema</option>
-            <option value="sugestao">Sugestão</option>
-          </select>
-        </div>
-        <div style="margin-bottom:8px;display:flex;flex-direction:column;gap:4px">
-          <label style="font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#888">Mensagem</label>
-          <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria." style="font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);padding:6px 8px;background:var(--branco);color:var(--grafite);outline:none;border-radius:4px;width:100%;resize:vertical;box-sizing:border-box"></textarea>
-        </div>
-        <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-        <div class="nav-feedback-actions" style="margin-top:8px">
-          <button class="ps-btn-sm" onclick="fecharFeedbackPop()">Fechar</button>
-          <button class="ps-btn-sm" style="background:var(--verde);color:#fff;border-color:var(--verde)" onclick="enviarFeedback()">Enviar</button>
-        </div>
-      </div>
-    </div>
-    <div class="user-pill-wrap" id="user-pill-wrap">
-      <div class="user-chip" onclick="toggleUserMenu()">
-        <div class="uav" id="nav-av"></div>
-        <div class="u-text">
-          <span class="u-nome" id="nav-nome">—</span>
-          <span class="u-role" id="nav-role"></span>
-        </div>
-        <span class="u-caret">▾</span>
-      </div>
-      <div class="user-dropdown" id="user-dropdown">
-        <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
-        <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
-        <div class="ud-sep"></div>
-        <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
-          <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
-          <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
-          <span class="term-state-hover">ver termo →</span>
-        </div>
-        <div class="ud-sep"></div>
-        <button onclick="sair()">Sair do sistema</button>
-      </div>
-    </div>
-  </div>
-</nav>
-
+<div id="conteudo" class="exp-app-shell">
 <div class="ps-wrap">
 
   <div class="ps-header">
@@ -579,6 +548,11 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);min-h
       <div class="ps-title">Pessoas</div>
       <div class="ps-sub" id="ps-sub">Carregando colaboradores…</div>
     </div>
+  </div>
+  <div class="ps-page-tabs">
+    <button class="ps-page-tab ativo" id="ntab-colaboradores" onclick="setPageView('colaboradores')">Colaboradores</button>
+    <button class="ps-page-tab" id="ntab-matriz" onclick="setPageView('matriz')">Matriz</button>
+    <button class="ps-page-tab" id="ntab-clima" onclick="abrirClimaModal()">Pesquisa de Clima</button>
   </div>
 
 <div class="ps-view ativo" id="ps-view-colaboradores">
@@ -1343,8 +1317,8 @@ function setPageView(view) {
   const isMatriz = G.pageView === 'matriz';
   document.getElementById('ps-view-colaboradores')?.classList.toggle('ativo', !isMatriz);
   document.getElementById('ps-view-matriz')?.classList.toggle('ativo', isMatriz);
-  document.getElementById('ntab-colaboradores')?.classList.toggle('active', !isMatriz);
-  document.getElementById('ntab-matriz')?.classList.toggle('active', isMatriz);
+  document.getElementById('ntab-colaboradores')?.classList.toggle('ativo', !isMatriz);
+  document.getElementById('ntab-matriz')?.classList.toggle('ativo', isMatriz);
   syncPageChrome();
   if (isMatriz) carregarBaseMatriz();
 }
@@ -1984,41 +1958,35 @@ async function init() {
     return;
   }
 
-  renderNavUser(usr);
-  exibirModulosSocio();
-  initExpRoom(usr.id, (usr.nome||'').split(' ')[0]);
+  // Armazena sessão no formato que ExpNav espera
+  sessionStorage.setItem('exp_usuario', JSON.stringify({
+    auth_id: session.user.id,
+    app_user_id: usr.id,
+    nome: usr.nome || '',
+    apelido: (usr.nome || '').split(' ')[0],
+    iniciais: usr.iniciais || '',
+    cor: usr.cor || '#888',
+    avatar_url: usr.avatar_url || null,
+    email_login: usr.email_login || usr.email || null,
+    role: usr.role || '',
+    viewer_only: false,
+    is_platform_manager: !!usr.is_platform_manager,
+    can_coordinate_projects: false,
+  }));
+  window.sb = sb;
+
   await carregarUsuarios();
   syncPageChrome();
-  verificarConexao();
 
   document.getElementById('loading').style.display = 'none';
-  document.getElementById('conteudo').style.display = 'block';
+  document.getElementById('conteudo').style.display = 'flex';
+
+  if (window.ExpNav) window.ExpNav.init({ module: 'pessoas' });
 }
 
 function renderNavUser(u) {
-  const av = document.getElementById('nav-av');
-  if (av) {
-    if (u.avatar_url) {
-      av.classList.add('has-avatar');
-      av.innerHTML = `<img src="${u.avatar_url}" alt="${u.iniciais||''}">`;
-    } else {
-      av.textContent = u.iniciais || '?';
-      av.style.cssText = `background:${u.cor||'#888'};color:#fff`;
-    }
-  }
-  const nomes = (u.nome||'').trim().split(/\s+/).filter(Boolean);
-  const nomeExib = nomes.length <= 2 ? nomes.join(' ') : nomes[0]+' '+nomes[nomes.length-1];
-  const nomeEl = document.getElementById('nav-nome');
-  if (nomeEl) nomeEl.textContent = nomeExib || '—';
-  const roleEl = document.getElementById('nav-role');
-  if (roleEl) roleEl.textContent = roleLabel(u.role);
-
-  /* Salva na sessionStorage para as funções de nav usarem */
-  sessionStorage.setItem('exp_usuario', JSON.stringify({
-    id: u.id, auth_id: u.auth_id, nome: u.nome,
-    iniciais: u.iniciais, cor: u.cor, role: u.role,
-    avatar_url: u.avatar_url, is_platform_manager: u.is_platform_manager
-  }));
+  // Elementos do nav antigo removidos — ExpNav.init() renderiza o nav lateral.
+  // Sessão já armazenada em init() no formato correto.
 }
 
 function exibirModulosSocio() {
@@ -2361,12 +2329,45 @@ async function renderDados(u, body) {
 }
 
 /* ── TAB: JORNADA ─────────────────────────────────────────── */
+async function salvarJornada(usuarioId) {
+  const input = document.getElementById('jornada-meta-input');
+  const fb = document.getElementById('jornada-meta-fb');
+  const btn = document.getElementById('jornada-meta-btn');
+  const val = parseFloat(input?.value);
+  if (!val || val <= 0 || val > 80) {
+    if (fb) { fb.textContent = 'Informe um valor entre 1 e 80 horas.'; fb.style.color = 'var(--terracota)'; }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  try {
+    const { error } = await sb.from('usuarios_jornada')
+      .upsert({ usuario_id: usuarioId, jornada_semanal_h: val, atualizado_por: G.usuarioLogado?.id || null },
+               { onConflict: 'usuario_id' });
+    if (error) throw error;
+    if (fb) { fb.textContent = 'Meta semanal salva.'; fb.style.color = 'var(--verde)'; }
+    setTimeout(() => { if (fb) fb.textContent = ''; }, 2500);
+  } catch(e) {
+    if (fb) { fb.textContent = e.message || 'Erro ao salvar.'; fb.style.color = 'var(--terracota)'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+  }
+}
+
 async function renderJornada(u, body) {
   const hoje = new Date();
-  const { data: horas, error } = await sb.from('horas_lancadas')
-    .select('hora_inicio,hora_fim,tipo,data_lancamento')
-    .eq('usuario_id', u.id)
-    .order('data_lancamento', { ascending: true });
+
+  // Carrega jornada e horas em paralelo
+  const [
+    { data: jornadaRow },
+    { data: horas, error }
+  ] = await Promise.all([
+    sb.from('usuarios_jornada').select('jornada_semanal_h,observacao').eq('usuario_id', u.id).maybeSingle(),
+    sb.from('horas_lancadas').select('hora_inicio,hora_fim,tipo,data_lancamento').eq('usuario_id', u.id).order('data_lancamento', { ascending: true }),
+  ]);
+
+  const metaAtual = jornadaRow?.jornada_semanal_h ?? 40;
+
+  if (error) {
 
   if (error) {
     body.innerHTML = `<div class="ps-sem-tabela">Erro ao carregar horas: ${error.message}</div>`;
@@ -2429,21 +2430,42 @@ async function renderJornada(u, body) {
   }).join('') || '<div style="color:#bbb;font-size:11px">Nenhum lançamento registrado.</div>';
 
   body.innerHTML = `
-    <div class="ps-sec">
-      <div class="ps-sec-title">Visão geral</div>
-      <div class="ps-grid cols3" style="grid-template-columns:repeat(4,1fr)">
-        <div class="ps-metric"><div class="ps-metric-label">Mês atual</div><div class="ps-metric-val">${fmtH(horasMesAtual)}</div><div class="ps-metric-sub">até hoje</div></div>
-        <div class="ps-metric"><div class="ps-metric-label">Média mensal</div><div class="ps-metric-val ${mediaH>0?'neu':''}">${mediaH>0?fmtH(mediaH):'â€”'}</div><div class="ps-metric-sub">${mesesPassados.length} mes${mesesPassados.length!==1?'es':''} concluído${mesesPassados.length!==1?'s':''}</div></div>
-        <div class="ps-metric"><div class="ps-metric-label">Média por dia útil</div><div class="ps-metric-val ${mediaDiaUtil>0?'neu':''}">${mediaDiaUtil>0?fmtH(mediaDiaUtil):'â€”'}</div><div class="ps-metric-sub">${diasUteisTrabalhados} dia${diasUteisTrabalhados!==1?'s':''} útil${diasUteisTrabalhados!==1?'eis':''} com horas</div></div>
-        <div class="ps-metric"><div class="ps-metric-label">Total geral</div><div class="ps-metric-val">${fmtH(totalGeral)}</div><div class="ps-metric-sub">${todos.length} lançamentos</div></div>
+    <div class=”ps-sec” style=”margin-bottom:16px”>
+      <div class=”ps-sec-title”>Definir jornada</div>
+      <div style=”background:var(--branco);border:1px solid var(--cinza2);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap”>
+        <div style=”flex:1;min-width:200px”>
+          <div style=”font-size:11px;font-weight:600;margin-bottom:2px”>Meta semanal contratada</div>
+          <div style=”font-size:11px;color:#888;line-height:1.5”>Define a jornada de referência para cálculo de excesso e banco de horas.</div>
+        </div>
+        <div style=”display:flex;align-items:center;gap:8px;flex-wrap:wrap”>
+          <div style=”display:flex;align-items:center;gap:6px;border:1px solid var(--cinza2);border-radius:6px;padding:4px 10px;background:var(--off)”>
+            <input id=”jornada-meta-input” type=”number” min=”1” max=”80” step=”0.5” value=”${metaAtual}”
+              style=”width:56px;border:none;background:transparent;font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--grafite);text-align:right;outline:none”>
+            <span style=”font-size:11px;color:#888”>h/semana</span>
+          </div>
+          <button id=”jornada-meta-btn” onclick=”salvarJornada('${u.id}')”
+            style=”min-height:32px;padding:0 14px;border-radius:6px;border:1px solid var(--cinza2);background:var(--grafite);color:#fff;font-family:var(--font-ui);font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:pointer”>
+            Salvar
+          </button>
+          <span id=”jornada-meta-fb” style=”font-size:11px;color:#888”></span>
+        </div>
       </div>
     </div>
-    <div class="ps-sec">
-      <div class="ps-sec-title">Distribuição por tipo · histórico geral</div>
+    <div class=”ps-sec”>
+      <div class=”ps-sec-title”>Visão geral</div>
+      <div class=”ps-grid cols3” style=”grid-template-columns:repeat(4,1fr)”>
+        <div class=”ps-metric”><div class=”ps-metric-label”>Mês atual</div><div class=”ps-metric-val”>${fmtH(horasMesAtual)}</div><div class=”ps-metric-sub”>até hoje</div></div>
+        <div class=”ps-metric”><div class=”ps-metric-label”>Média mensal</div><div class=”ps-metric-val ${mediaH>0?'neu':''}”>${mediaH>0?fmtH(mediaH):'—'}</div><div class=”ps-metric-sub”>${mesesPassados.length} mes${mesesPassados.length!==1?'es':''} concluído${mesesPassados.length!==1?'s':''}</div></div>
+        <div class=”ps-metric”><div class=”ps-metric-label”>Média por dia útil</div><div class=”ps-metric-val ${mediaDiaUtil>0?'neu':''}”>${mediaDiaUtil>0?fmtH(mediaDiaUtil):'—'}</div><div class=”ps-metric-sub”>${diasUteisTrabalhados} dia${diasUteisTrabalhados!==1?'s':''} útil${diasUteisTrabalhados!==1?'eis':''} com horas</div></div>
+        <div class=”ps-metric”><div class=”ps-metric-label”>Total geral</div><div class=”ps-metric-val”>${fmtH(totalGeral)}</div><div class=”ps-metric-sub”>${todos.length} lançamentos</div></div>
+      </div>
+    </div>
+    <div class=”ps-sec”>
+      <div class=”ps-sec-title”>Distribuição por tipo · histórico geral</div>
       ${tiposHtml}
     </div>
-    <div class="ps-sec">
-      <div class="ps-sec-title">Histórico mensal</div>
+    <div class=”ps-sec”>
+      <div class=”ps-sec-title”>Histórico mensal</div>
       ${histHtml}
     </div>`;
   return;
@@ -4441,5 +4463,6 @@ async function _enviarLembrete() {
   document.getElementById('popup-lembrete')?.remove();
 }
 </script>
+<script src="shared/exp-nav.js"></script>
 </body>
 </html>
