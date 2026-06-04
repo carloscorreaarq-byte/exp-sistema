@@ -4934,7 +4934,10 @@ window.lfFiltrarOpps = function () {
 
   selOpp.innerHTML =
     '<option value="">Selecionar oportunidade...</option>' +
-    opps.map(o => `<option value="${o.id}">${o.projeto || '(sem nome)'}</option>`).join('');
+    opps.map(o => {
+      const loc = o.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      return `<option value="${o.id}">${o.projeto || '(sem nome)'}${loc}</option>`;
+    }).join('');
 
   oppWrap.style.display = 'block';
 };
@@ -6915,6 +6918,22 @@ async function lancarHoras() {
     semDb = nova;
   }
 
+  let dupQuery = sb.from('horas_lancadas')
+    .select('id')
+    .eq('usuario_id', G.usuario.id)
+    .eq('data_lancamento', dataISO)
+    .eq('hora_inicio', ini)
+    .eq('hora_fim', fim)
+    .eq('tipo', tipo);
+  dupQuery = subtipo ? dupQuery.eq('subtipo', subtipo) : dupQuery.is('subtipo', null);
+  dupQuery = prodId ? dupQuery.eq('produto_id', prodId) : dupQuery.is('produto_id', null);
+  dupQuery = etapaId ? dupQuery.eq('etapa_id', etapaId) : dupQuery.is('etapa_id', null);
+  const { data: lancDup } = await dupQuery.limit(1);
+  if (lancDup?.length) {
+    toast('Já existe um lançamento idêntico neste horário.');
+    return;
+  }
+
   const { error } = await sb.from('horas_lancadas').insert({
     usuario_id: G.usuario.id,
     semana_id: semDb.id,
@@ -7460,7 +7479,10 @@ async function editarCustoLancado(id) {
     ? [...new Map(todosProds.filter(p=>p.oportunidades?.clientes?.id===curCliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()]
     : [];
   const oppOptsHtml = '<option value="">Selecionar oportunidade...</option>' +
-    oppsForCli.map(([oid, o]) => `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}</option>`).join('');
+    oppsForCli.map(([oid, o]) => {
+      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      return `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}${loc}</option>`;
+    }).join('');
   const prodsForOpp = curProd?.oportunidade_id
     ? todosProds.filter(p=>p.oportunidade_id===curProd.oportunidade_id)
     : [];
@@ -7595,7 +7617,10 @@ async function editarCustoLancado(id) {
     const todosP = G._prodsGestao || G.todosProdutos || [];
     const opps = [...new Map(todosP.filter(p=>p.oportunidades?.clientes?.id===cliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()];
     const sel = document.getElementById('ec-opp');
-    sel.innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>`<option value="${oid}">${o?.projeto||oid}</option>`).join('');
+    sel.innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>{
+      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      return `<option value="${oid}">${o?.projeto||oid}${loc}</option>`;
+    }).join('');
     document.getElementById('ec-opp-wrap').style.display  = cliId ? '' : 'none';
     document.getElementById('ec-prod-wrap').style.display = 'none';
     document.getElementById('ec-etapa-wrap').style.display = 'none';
@@ -10284,7 +10309,10 @@ async function carregarOppsDoCliente(cliId) {
   const filtradas = (opps || []).filter(o => !stagesNeg.includes((o.pipeline_stage || '').toLowerCase()));
   const sel = document.getElementById('cad-opp-sel');
   sel.innerHTML = '<option value="">Nova oportunidade...</option>' +
-    filtradas.map(o => `<option value="${o.id}">${o.projeto || '(sem nome)'}</option>`).join('');
+    filtradas.map(o => {
+      const loc = o.cidade ? ` — ${_escN(o.cidade)}${o.uf ? `/${_escN(o.uf)}` : ''}` : '';
+      return `<option value="${o.id}">${_escN(o.projeto || '(sem nome)')}${loc}</option>`;
+    }).join('');
 }
 
 function onOppChange() {
@@ -11506,7 +11534,10 @@ async function abrirReclassificacaoCusto(id) {
     ? [...new Map(todosProds.filter(p=>p.oportunidades?.clientes?.id===curCliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()]
     : [];
   const oppOptsHtml = '<option value="">Selecionar oportunidade...</option>' +
-    oppsForCli.map(([oid,o]) => `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}</option>`).join('');
+    oppsForCli.map(([oid,o]) => {
+      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      return `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}${loc}</option>`;
+    }).join('');
   const prodsForOpp = curProd?.oportunidade_id
     ? todosProds.filter(p=>p.oportunidade_id===curProd.oportunidade_id)
     : [];
@@ -11654,7 +11685,10 @@ async function abrirReclassificacaoCusto(id) {
     const cliId = document.getElementById('rcl-cliente').value;
     const todosP = G._prodsGestao || G.todosProdutos || [];
     const opps = [...new Map(todosP.filter(p=>p.oportunidades?.clientes?.id===cliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()];
-    document.getElementById('rcl-opp').innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>`<option value="${oid}">${o?.projeto||oid}</option>`).join('');
+    document.getElementById('rcl-opp').innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>{
+      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      return `<option value="${oid}">${o?.projeto||oid}${loc}</option>`;
+    }).join('');
     document.getElementById('rcl-opp-wrap').style.display  = cliId ? '' : 'none';
     document.getElementById('rcl-prod-wrap').style.display = 'none';
     document.getElementById('rcl-etapa-wrap').style.display = 'none';

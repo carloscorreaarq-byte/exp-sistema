@@ -637,7 +637,7 @@
     if (!client) return [];
     var res = await client
       .from('produtos')
-      .select('id, nome, subtipo, oportunidade_id, oportunidades(id, projeto, clientes(id, nome, cidade, uf))')
+      .select('id, nome, subtipo, oportunidade_id, oportunidades(id, projeto, cidade, uf, clientes(id, nome, cidade, uf))')
       .eq('status', 'ativo')
       .eq('em_gestao', true);
     _allProds = res.data || [];
@@ -683,7 +683,9 @@
       var opp = p.oportunidades || {};
       var cli = opp.clientes || {};
       if (String(cli.id) === String(cliId) && opp.id && !map[opp.id]) {
-        map[opp.id] = { id: opp.id, label: _trunc(opp.projeto || '(sem nome)', 36) };
+        var label = _trunc(opp.projeto || '(sem nome)', 36);
+        if (opp.cidade) label += ' · ' + opp.cidade + (opp.uf ? '/' + opp.uf : '');
+        map[opp.id] = { id: opp.id, label: label };
       }
     });
     return Object.values(map);
@@ -1159,6 +1161,23 @@
           return;
         }
         semDb = scRes.data;
+      }
+
+      var dupQuery = client.from('horas_lancadas')
+        .select('id')
+        .eq('usuario_id', user.id)
+        .eq('data_lancamento', dataISO)
+        .eq('hora_inicio', ini)
+        .eq('hora_fim', fim)
+        .eq('tipo', state.tipo || 'projeto');
+      dupQuery = state.subtipo ? dupQuery.eq('subtipo', state.subtipo) : dupQuery.is('subtipo', null);
+      dupQuery = state.produtoId ? dupQuery.eq('produto_id', state.produtoId) : dupQuery.is('produto_id', null);
+      dupQuery = state.etapaId ? dupQuery.eq('etapa_id', state.etapaId) : dupQuery.is('etapa_id', null);
+      var dupRes = await dupQuery.limit(1);
+      if (dupRes.data && dupRes.data.length) {
+        _toast('Já existe um lançamento idêntico neste horário');
+        if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+        return;
       }
 
       /* ── Insere lançamento ── */

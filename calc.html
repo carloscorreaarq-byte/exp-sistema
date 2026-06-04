@@ -1118,6 +1118,8 @@ let S = {
   proposals: [],
   clientes: [],
   cidades: [],
+  crmClients: [],
+  crmLinkedProposalRoots: [],
   calcParamsId: null,
   sbUrl: '',
   sbKey: '',
@@ -1176,8 +1178,10 @@ function refreshProposalCaches() {
   S.proposals.sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
   const allClientes = S.proposals.map(p => p?.cliente).filter(Boolean);
   const allCidades = S.proposals.map(p => p?.cidade).filter(Boolean);
-  S.clientes = [...new Set([...S.clientes, ...allClientes])].sort();
-  S.cidades = [...new Set([...S.cidades, ...allCidades])].sort();
+  const crmClientes = (S.crmClients || []).map(c => c?.nome).filter(Boolean);
+  const crmCidades = (S.crmClients || []).map(c => c?.cidade).filter(Boolean);
+  S.clientes = [...new Set([...S.clientes, ...crmClientes, ...allClientes])].sort();
+  S.cidades = [...new Set([...S.cidades, ...crmCidades, ...allCidades])].sort();
 }
 
 function normalizeProposalFromRow(row) {
@@ -1194,6 +1198,7 @@ function normalizeProposalFromRow(row) {
     parentId: row?.parent_id ?? parsed.parentId ?? null,
     status: row?.status ?? parsed.status ?? 'ativa',
     cliente: row?.cliente ?? parsed.cliente ?? '',
+    clienteId: parsed.clienteId ?? parsed.cliente_id ?? null,
     projeto: row?.projeto ?? parsed.projeto ?? '',
     resp: row?.resp ?? parsed.resp ?? '',
     cidade: row?.cidade ?? parsed.cidade ?? '',
@@ -1213,6 +1218,115 @@ function normalizeProposalFromRow(row) {
   if ('despbit' in (row || {})) normalized.despBit = row.despbit ?? 0;
 
   return normalized;
+}
+
+function normTxt(v) {
+  return String(v || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getClienteInput() {
+  return document.getElementById('f-cliente');
+}
+
+function clearClienteSelectionMeta() {
+  const inp = getClienteInput();
+  if (inp) delete inp.dataset.clienteId;
+}
+
+function setClienteSelectionMeta(cliente) {
+  const inp = getClienteInput();
+  if (!inp) return;
+  if (cliente?.id) inp.dataset.clienteId = cliente.id;
+  else delete inp.dataset.clienteId;
+}
+
+function findSharedClientById(id) {
+  if (!id) return null;
+  return (S.crmClients || []).find(c => String(c.id) === String(id)) || null;
+}
+
+function findSharedClientByName(nome) {
+  const alvo = normTxt(nome);
+  if (!alvo) return null;
+  return (S.crmClients || []).find(c => normTxt(c.nome) === alvo) || null;
+}
+
+async function ensureSharedClientForProposal(proposal) {
+  if (!proposal?.cliente) return proposal;
+
+  let shared = proposal.clienteId ? findSharedClientById(proposal.clienteId) : null;
+  if (!shared) shared = findSharedClientByName(proposal.cliente);
+
+  if (shared) {
+    proposal.clienteId = shared.id;
+    proposal.cliente = shared.nome || proposal.cliente;
+    setClienteSelectionMeta(shared);
+    return proposal;
+  }
+
+  if (!S.sbUrl || !S.sbKey) return proposal;
+
+  try {
+    const r = await fetch(S.sbUrl + '/rest/v1/clientes', {
+      method: 'POST',
+      headers: {
+        ...getSBHeaders(),
+        Prefer: 'return=representation'
+      },
+      body: JSON.stringify({
+        nome: proposal.cliente
+      })
+    });
+    if (!r.ok) {
+      console.warn('Falha ao compartilhar cliente da proposta:', r.status, await r.text());
+      return proposal;
+    }
+    const rows = await r.json();
+    const created = Array.isArray(rows) ? rows[0] : rows;
+    if (created?.id) {
+      proposal.clienteId = created.id;
+      proposal.cliente = created.nome || proposal.cliente;
+      S.crmClients = [...(S.crmClients || []).filter(c => String(c.id) !== String(created.id)), created]
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+      refreshProposalCaches();
+      save();
+      setClienteSelectionMeta(created);
+    }
+  } catch (e) {
+    console.warn('Falha ao criar cliente institucional a partir da Calc:', e);
+  }
+
+  return proposal;
+}
+
+async function syncCalcProposalAlertsFromCRM() {
+  if (!S.sbUrl || !S.sbKey) return;
+  try {
+    const r = await fetch(S.sbUrl + '/rest/v1/oportunidades?select=proposta_calc_id&proposta_calc_id=not.is.null', {
+      headers: getSBHeaders()
+    });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const linkedRoots = new Set();
+    (rows || []).forEach(row => {
+      const pid = String(row?.proposta_calc_id || '').trim();
+      if (!pid) return;
+      const match = S.proposals.find(p => String(p.id) === pid);
+      linkedRoots.add(String(match?.parentId || match?.id || pid));
+    });
+    S.crmLinkedProposalRoots = [...linkedRoots];
+    save();
+  } catch (e) {}
+}
+
+function isProposalFamilyLinkedToCRM(proposal) {
+  const fid = String(proposal?.parentId || proposal?.id || '');
+  if (!fid) return false;
+  return (S.crmLinkedProposalRoots || []).includes(fid);
 }
 
 async function fetchLatestCalcParamsRow() {
@@ -1393,6 +1507,9 @@ async function loadProposalsFromSupabase() {
     if (document.getElementById('tab-hist').classList.contains('active')) renderHist();
     // Sincroniza clientes e cidades com a tabela do CRM (silencioso)
     syncClientesFromCRM();
+    syncCalcProposalAlertsFromCRM().then(() => {
+      if (document.getElementById('tab-hist').classList.contains('active')) renderHist();
+    });
   } catch(e) {
     setSyncStatus('err','sem rede');
   }
@@ -1401,10 +1518,11 @@ async function loadProposalsFromSupabase() {
 async function syncClientesFromCRM() {
   if (!S.sbUrl || !S.sbKey) return;
   try {
-    const r = await fetch(S.sbUrl + '/rest/v1/clientes?select=nome,cidade&order=nome', { headers: getSBHeaders() });
+    const r = await fetch(S.sbUrl + '/rest/v1/clientes?select=id,nome,sigla,cidade,uf&order=nome', { headers: getSBHeaders() });
     if (!r.ok) return;
     const rows = await r.json();
     if (!Array.isArray(rows) || !rows.length) return;
+    S.crmClients = rows.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
     const nomescrm  = rows.map(c => c.nome).filter(Boolean);
     const cidadescrm = rows.map(c => c.cidade).filter(Boolean);
     const antesC = S.clientes.length, antesD = S.cidades.length;
@@ -1574,25 +1692,46 @@ function buscarCliente(q) {
   const list = document.getElementById('ac-list');
   if (!q || q.length < 2) { list.classList.remove('open'); return; }
   const ql = q.toLowerCase();
-  const matches = S.clientes.filter(c => c.toLowerCase().includes(ql)).slice(0,8);
-  const hasExact = S.clientes.some(c => c.toLowerCase() === ql);
+  const crmMatches = (S.crmClients || [])
+    .filter(c => (c.nome || '').toLowerCase().includes(ql))
+    .slice(0, 8);
+  const fallback = S.clientes
+    .filter(c => c.toLowerCase().includes(ql) && !crmMatches.some(cli => cli.nome === c))
+    .slice(0, Math.max(0, 8 - crmMatches.length))
+    .map(nome => ({ nome }));
+  const matches = [...crmMatches, ...fallback];
+  const hasExact = matches.some(c => (c.nome || '').toLowerCase() === ql);
   const rx = new RegExp(`(${escRegex(q)})`, 'gi');
   let html = matches.map(c => {
-    const hi = escHtml(c).replace(rx, '<mark>$1</mark>');
-    return `<div class="ac-item" onclick="selecionarCliente('${escJsStr(c)}')">${hi}</div>`;
+    const nome = c.nome || '';
+    const hi = escHtml(nome).replace(rx, '<mark>$1</mark>');
+    const loc = c.cidade ? ` <span style="color:#999">${escHtml(c.cidade)}${c.uf ? '/' + escHtml(c.uf) : ''}</span>` : '';
+    if (c.id) {
+      return `<div class="ac-item" onclick="selecionarClienteById('${escJsStr(c.id)}')">${hi}${loc}</div>`;
+    }
+    return `<div class="ac-item" onclick="selecionarCliente('${escJsStr(nome)}')">${hi}</div>`;
   }).join('');
   if (!hasExact) html += `<div class="ac-item ac-new" onclick="novoCliente('${escJsStr(q)}')">+ Criar "${escHtml(q)}"</div>`;
   list.innerHTML = html;
   list.classList.add('open');
 }
+function selecionarClienteById(id) {
+  const cliente = findSharedClientById(id);
+  if (!cliente) return;
+  document.getElementById('f-cliente').value = cliente.nome || '';
+  setClienteSelectionMeta(cliente);
+  document.getElementById('ac-list').classList.remove('open');
+}
 function selecionarCliente(nome) {
   document.getElementById('f-cliente').value = nome;
+  clearClienteSelectionMeta();
   document.getElementById('ac-list').classList.remove('open');
 }
 function novoCliente(nome) {
   if (!S.clientes.includes(nome)) { S.clientes.push(nome); S.clientes.sort(); }
+  clearClienteSelectionMeta();
   selecionarCliente(nome);
-  showToast(`Cliente "${nome}" criado`);
+  showToast(`Cliente "${nome}" será compartilhado ao salvar a proposta`);
 }
 function buscarCidade(q) {
   const list = document.getElementById('ac-cidade-list');
@@ -2682,6 +2821,7 @@ async function salvarProposta() {
     parentId,
     status,
     cliente:     document.getElementById('f-cliente').value.trim(),
+    clienteId:   document.getElementById('f-cliente').dataset.clienteId || null,
     projeto:     proj,
     resp:        document.getElementById('f-resp').value,
     cidade:      document.getElementById('f-cidade').value.trim(),
@@ -2700,6 +2840,8 @@ async function salvarProposta() {
     cubSnap:     S.cub,
     cubMes:      S.cubMes,
   };
+
+  await ensureSharedClientForProposal(p);
 
   S.proposals.unshift(p);
   refreshProposalCaches();
@@ -2720,6 +2862,7 @@ async function salvarProposta() {
   ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
     const e=document.getElementById(id); if(e)e.value='';
   });
+  clearClienteSelectionMeta();
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('repasse-form').style.display='none';
   document.getElementById('repasse-preview').style.display='none';
@@ -2739,6 +2882,7 @@ function limpar() {
   ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
     const e=document.getElementById(id);if(e)e.value='';
   });
+  clearClienteSelectionMeta();
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('repasse-form').style.display='none';
   document.getElementById('repasse-preview').style.display='none';
@@ -3160,11 +3304,16 @@ function renderHist() {
           : '';
         const clienteDisp = escHtml(p.cliente||'');
         const respDisp = escHtml(RESP_LABEL[p.resp]||p.resp||'');
+        const alertaNaoAbsorvida = isLatest && isFinalizada && !isProposalFamilyLinkedToCRM(p);
+        const projetoStyle = alertaNaoAbsorvida ? 'font-weight:700;color:var(--terracota)' : '';
+        const projetoAlert = alertaNaoAbsorvida
+          ? ' <span title="Proposta finalizada ainda não absorvida no CRM" style="color:var(--terracota);font-weight:700">⚠</span>'
+          : '';
         return `<tr class="click" style="${rowStyle}" onclick="abrirProposta(${p.id})">
           <td>${cod} ${famIndicator}</td>
           <td>${versBadge}</td>
           <td style="font-weight:500">${clienteDisp||'—'}</td>
-          <td>${escHtml(p.projeto||'')}</td>
+          <td style="${projetoStyle}">${escHtml(p.projeto||'')}${projetoAlert}</td>
           <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${escHtml(NC[p.mainNucleo]||p.mainNucleo||'')}</span></td>
           <td>${respDisp||'—'}</td>
           <td style="font-size:10px">${escHtml(p.cidade||'')}${p.uf?' ('+escHtml(p.uf)+')':''}</td>
@@ -3351,6 +3500,8 @@ function carregarPropostaParaRevisao(p) {
   editingProposalId = p.id;
 
   document.getElementById('f-cliente').value = p.cliente||'';
+  if (p.clienteId) document.getElementById('f-cliente').dataset.clienteId = p.clienteId;
+  else clearClienteSelectionMeta();
   document.getElementById('f-projeto').value = p.projeto||'';
   document.getElementById('f-resp').value    = p.resp||'CC';
   document.getElementById('f-data').value    = p.data||new Date().toISOString().slice(0,10);

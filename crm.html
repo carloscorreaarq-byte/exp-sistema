@@ -4691,9 +4691,18 @@ function renderRelatorios(){
 // ═══ INTEGRAÇÃO CALC ═════════════════════════════════
 async function recarregarProposals() {
   try {
-    let r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at').order('created_at',{ascending:false});
-    if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at').order('created_at',{ascending:false});
-    if (!r.error && r.data) allProposals = r.data;
+    let r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at,data_json').order('created_at',{ascending:false});
+    if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at,data_json').order('created_at',{ascending:false});
+    if (!r.error && r.data) {
+      allProposals = r.data.map(p => {
+        let parsed = {};
+        try { parsed = p?.data_json ? JSON.parse(p.data_json) : {}; } catch(e) {}
+        return {
+          ...p,
+          clienteId: parsed?.clienteId || parsed?.cliente_id || null
+        };
+      });
+    }
   } catch(e) {}
 }
 
@@ -4802,7 +4811,9 @@ function autofillFromProposta() {
   if (p.cidade) document.getElementById('opp-cidade').value = p.cidade;
   if (p.uf) document.getElementById('opp-uf').value = p.uf;
   if (p.cliente) {
-    const match = allClients.find(c => (c.nome||'').toLowerCase() === p.cliente.toLowerCase());
+    const match = p.clienteId
+      ? allClients.find(c => String(c.id) === String(p.clienteId))
+      : allClients.find(c => (c.nome||'').toLowerCase() === p.cliente.toLowerCase());
     if (match) {
       document.getElementById('opp-cliente-id').value = match.id;
       document.getElementById('opp-cliente-text').value = match.nome;

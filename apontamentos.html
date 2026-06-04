@@ -1543,6 +1543,18 @@ body{
       if (type==='projeto'&&!productId) throw new Error('Selecione o projeto.');
       if (type==='projeto'&&!stageId) throw new Error('Selecione a etapa.');
       var week = await ensureWeek(date);
+      var dupQuery = window.sb.from('horas_lancadas')
+        .select('id')
+        .eq('usuario_id', uid())
+        .eq('data_lancamento', date)
+        .eq('hora_inicio', start)
+        .eq('hora_fim', end)
+        .eq('tipo', type);
+      dupQuery = subtipo ? dupQuery.eq('subtipo', subtipo) : dupQuery.is('subtipo', null);
+      dupQuery = productId ? dupQuery.eq('produto_id', productId) : dupQuery.is('produto_id', null);
+      dupQuery = stageId ? dupQuery.eq('etapa_id', stageId) : dupQuery.is('etapa_id', null);
+      var dupRes = await dupQuery.limit(1);
+      if (dupRes.data && dupRes.data.length) throw new Error('Já existe um lançamento idêntico neste horário.');
       var res = await window.sb.from('horas_lancadas').insert({
         usuario_id:uid(), semana_id:week.id, data_lancamento:date,
         dia_semana:week.isoDay, hora_inicio:start, hora_fim:end,
