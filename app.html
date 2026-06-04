@@ -286,6 +286,13 @@ body {
 }
 [data-theme="dark"] .mini-cal-col.today-col .mini-cal-num { background: #F0EDE6; color: #111; }
 .mini-cal-dot-wrap { height: 6px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.mini-cal-col.feriado-col { background: rgba(29,79,160,.07); }
+.mini-cal-col.feriado-col .mini-cal-num { color: var(--azul); font-weight: 700; }
+.mini-cal-col.feriado-col .mini-cal-lbl { color: var(--azul); }
+[data-theme="dark"] .mini-cal-col.feriado-col { background: rgba(29,79,160,.15); }
+[data-theme="dark"] .mini-cal-col.feriado-col .mini-cal-num { color: #6FA0E8; }
+[data-theme="dark"] .mini-cal-col.feriado-col .mini-cal-lbl { color: #6FA0E8; }
+.mini-cal-dot.feriado-dot { background: var(--azul); }
 .mini-cal-dot {
   width: 5px; height: 5px; border-radius: 50%; background: var(--azul);
 }
@@ -424,6 +431,11 @@ body {
 }
 .prio-hub-prazo.vencida { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
 .prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
+/* Card inteiro muda de cor quando atrasado ou vence hoje */
+.prio-hub-card.vencida:not(.prio-done) { border-left-color: var(--terracota) !important; background: rgba(184,76,58,.09) !important; }
+.prio-hub-card.hoje:not(.prio-done)    { border-left-color: var(--ouro)      !important; background: rgba(196,131,26,.09) !important; }
+[data-theme="dark"] .prio-hub-card.vencida:not(.prio-done) { background: rgba(184,76,58,.18) !important; }
+[data-theme="dark"] .prio-hub-card.hoje:not(.prio-done)    { background: rgba(196,131,26,.18) !important; }
 
 /* ── EMPTY STATE INLINE ──────────────────────────────────── */
 .dash-empty { padding: 18px 14px; font-size: var(--text-sub); color: #bbb; text-align: center; }
@@ -3425,8 +3437,8 @@ function renderPriosSection(prios) {
 
   function buildCard(pr, idx, done) {
     const ord  = pr.ordem || (idx + 1);
-    const cls  = done ? 'prio-done' : (NUM_CLS[Math.min(ord, 6)] || 'p6');
     const prazo = !done && _fmtPrazo(pr.prazo_texto);
+    const cls  = done ? 'prio-done' : [(NUM_CLS[Math.min(ord, 6)] || 'p6'), prazo?.cls].filter(Boolean).join(' ');
     const nome  = pr.produtos?.oportunidades
       ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
       : pr.produtos?.nome || '—';
@@ -3492,7 +3504,7 @@ function _fetchMonthCalData() {
   });
 }
 
-function renderMiniCal(eventDays, taskDays) {
+function renderMiniCal(eventDays, taskDays, feriadoDays = new Set()) {
   const today = new Date(); today.setHours(0,0,0,0);
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const monthLbl = MESES[today.getMonth()] + ' ' + today.getFullYear();
@@ -3543,13 +3555,15 @@ function renderMiniCal(eventDays, taskDays) {
     const diff = d - today;
     const status   = diff < 0 ? 'past' : diff === 0 ? 'today' : 'future';
     const todayCls = diff === 0 ? 'today-col' : '';
-    const hasEvt = eventDays.has(iso), hasTsk = taskDays.has(iso);
+    const hasEvt = eventDays.has(iso), hasTsk = taskDays.has(iso), hasFer = feriadoDays.has(iso);
     let dotHtml = '';
     if (hasEvt && hasTsk) dotHtml = `<div class="mini-cal-dot both"></div>`;
     else if (hasEvt)      dotHtml = `<div class="mini-cal-dot"></div>`;
     else if (hasTsk)      dotHtml = `<div class="mini-cal-dot tarefa"></div>`;
+    if (hasFer)           dotHtml += `<div class="mini-cal-dot feriado-dot"></div>`;
+    const ferCls = hasFer ? ' feriado-col' : '';
     return `
-      <div class="mini-cal-col ${todayCls}" data-iso="${iso}">
+      <div class="mini-cal-col ${todayCls}${ferCls}" data-iso="${iso}">
         <div class="mini-cal-lbl ${status}">${lbl}</div>
         <div class="mini-cal-num">${d.getDate()}</div>
         <div class="mini-cal-dot-wrap">${dotHtml}</div>
@@ -3606,7 +3620,7 @@ function wireDashboardDom() {
 }
 
 function renderDashboard(data) {
-  const { tarefas, tarefasAtribuidas, eventos, prios, horasSemana, eventDays, taskDays } = data;
+  const { tarefas, tarefasAtribuidas, eventos, prios, horasSemana, eventDays, taskDays, feriadoDays } = data;
 
   const colPrio = renderPriosSection(prios);
   const colMain = renderTasksSection(tarefas, _filtrarAtribuidas(tarefasAtribuidas));
@@ -3619,7 +3633,7 @@ function renderDashboard(data) {
         <button class="dash-lbl-custo" onclick="openDashCustoPop(this)" title="Lançar custo">$</button>
       </div>
       ${renderHoursWidget(horasSemana)}
-      ${renderMiniCal(eventDays || new Set(), taskDays || new Set())}
+      ${renderMiniCal(eventDays || new Set(), taskDays || new Set(), feriadoDays || new Set())}
     </div>
     <div class="dash-sec" style="margin-top:14px">
       <div class="dash-lbl">Próximos eventos
@@ -3706,7 +3720,7 @@ async function loadDashboard(usuario) {
 
     // Eventos desta semana para o mini-calendário
     sb.from('calendar_events')
-      .select('inicio')
+      .select('inicio,tipo')
       .gte('inicio', start)
       .lte('inicio', end + 'T23:59:59')
       .or(`scope.eq.todos,user_id.eq.${usuario.id}`),
@@ -3734,8 +3748,9 @@ async function loadDashboard(usuario) {
   const usuarioMap = new Map((userRes.data || []).map(u => [String(u.id), u.nome || null]));
 
   // Conjuntos de dias com eventos/tarefas para o mini-calendário
-  const eventDays = new Set((eventosSemana || []).map(e => e.inicio?.split('T')[0]).filter(Boolean));
-  const taskDays  = new Set((tarefasSemana || []).map(t => t.data_limite).filter(Boolean));
+  const eventDays   = new Set((eventosSemana || []).map(e => e.inicio?.split('T')[0]).filter(Boolean));
+  const taskDays    = new Set((tarefasSemana || []).map(t => t.data_limite).filter(Boolean));
+  const feriadoDays = new Set((eventosSemana || []).filter(e => e.tipo === 'feriado' || e.tipo === 'feriado_local').map(e => e.inicio?.split('T')[0]).filter(Boolean));
 
   window._dashData = {
     tarefas:          (tarefasRaw || []).map(t => ({
@@ -3752,6 +3767,7 @@ async function loadDashboard(usuario) {
     horasSemana: _calcHoras(horasData || []),
     eventDays,
     taskDays,
+    feriadoDays,
   };
   renderDashboard(window._dashData);
 }

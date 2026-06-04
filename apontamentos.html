@@ -570,7 +570,6 @@ body{
 
 <script src="shared/app-shell.js"></script>
 <script src="shared/exp-nav.js"></script>
-<script src="timer.js"></script>
 <script>
 (function () {
   'use strict';
@@ -585,6 +584,8 @@ body{
     weekHours: [],
     weekCosts: [],
     tabLoaded: {},
+    eventsBound: false,
+    timerRequested: false,
   };
 
   var SUBTIPOS = {
@@ -1634,6 +1635,71 @@ body{
 
   // ── Init ──────────────────────────────────────────────────────────
 
+  function revealApp() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app-shell').style.display = 'flex';
+  }
+
+  function bindEvents() {
+    if (AP.eventsBound) return;
+    AP.eventsBound = true;
+
+    document.getElementById('stab-horas').addEventListener('click',function(){ switchTab('horas'); });
+    document.getElementById('stab-custos').addEventListener('click',function(){ switchTab('custos'); });
+    document.getElementById('stab-historico').addEventListener('click',function(){ switchTab('historico'); });
+    document.getElementById('apo-week-prev').addEventListener('click',function(){ shiftWeek(-1); });
+    document.getElementById('apo-week-next').addEventListener('click',function(){ shiftWeek(1); });
+    document.getElementById('apo-week-today').addEventListener('click',function(){ setSelectedDate(new Date().toISOString().slice(0,10)); });
+
+    document.getElementById('apo-type').addEventListener('change',updateTypeUI);
+    document.getElementById('apo-project').addEventListener('change',function(){
+      onProjectChange().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+    });
+    document.getElementById('apo-stage').addEventListener('change',updateClassUI);
+    document.getElementById('apo-start').addEventListener('input',updateDuration);
+    document.getElementById('apo-end').addEventListener('input',updateDuration);
+    document.getElementById('apo-hours-form').addEventListener('submit',submitHoras);
+    document.getElementById('apo-reset').addEventListener('click',resetHorasForm);
+
+    document.getElementById('apo-cost-type').addEventListener('change',updateCostUI);
+    document.getElementById('apo-cost-area').addEventListener('change',updateCostUI);
+    document.getElementById('apo-cost-project').addEventListener('change',function(){
+      onCostProjectChange().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
+    });
+    document.getElementById('apo-costs-form').addEventListener('submit',submitCustos);
+    document.getElementById('apo-cost-reset').addEventListener('click',resetCostForm);
+
+    document.getElementById('btn-exp-horas-csv').addEventListener('click',exportarHorasCSV);
+    document.getElementById('btn-exp-horas-pdf').addEventListener('click',exportarHorasPDF);
+    document.getElementById('btn-exp-custos-csv').addEventListener('click',exportarCustosCSV);
+    document.getElementById('btn-exp-custos-pdf').addEventListener('click',exportarCustosPDF);
+    document.getElementById('exp-mes').addEventListener('change',function(){
+      loadHistoricoMes(this.value);
+    });
+  }
+
+  function runAfterFirstPaint(fn) {
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(function() {
+        window.setTimeout(fn, 0);
+      });
+      return;
+    }
+    window.setTimeout(fn, 0);
+  }
+
+  function loadTimerWidgetDeferred() {
+    if (AP.timerRequested || window._expTimerRequested) return;
+    AP.timerRequested = true;
+    window._expTimerRequested = true;
+    window.setTimeout(function() {
+      var script = document.createElement('script');
+      script.src = 'timer.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }, 120);
+  }
+
   async function init() {
     try {
       var boot = await window.appShellInit();
@@ -1653,56 +1719,29 @@ body{
 
       window.ExpNav.init({ module:'apontamentos' });
 
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('app-shell').style.display = 'flex';
+      bindEvents();
+      revealApp();
 
       // Eventos de navegação
-      document.getElementById('stab-horas').addEventListener('click',function(){ switchTab('horas'); });
-      document.getElementById('stab-custos').addEventListener('click',function(){ switchTab('custos'); });
-      document.getElementById('stab-historico').addEventListener('click',function(){ switchTab('historico'); });
-      document.getElementById('apo-week-prev').addEventListener('click',function(){ shiftWeek(-1); });
-      document.getElementById('apo-week-next').addEventListener('click',function(){ shiftWeek(1); });
-      document.getElementById('apo-week-today').addEventListener('click',function(){ setSelectedDate(new Date().toISOString().slice(0,10)); });
 
       // Eventos formulário horas
-      document.getElementById('apo-type').addEventListener('change',updateTypeUI);
-      document.getElementById('apo-project').addEventListener('change',function(){
-        onProjectChange().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
-      });
-      document.getElementById('apo-stage').addEventListener('change',updateClassUI);
-      document.getElementById('apo-start').addEventListener('input',updateDuration);
-      document.getElementById('apo-end').addEventListener('input',updateDuration);
-      document.getElementById('apo-hours-form').addEventListener('submit',submitHoras);
-      document.getElementById('apo-reset').addEventListener('click',resetHorasForm);
 
       // Eventos formulário custos
-      document.getElementById('apo-cost-type').addEventListener('change',updateCostUI);
-      document.getElementById('apo-cost-area').addEventListener('change',updateCostUI);
-      document.getElementById('apo-cost-project').addEventListener('change',function(){
-        onCostProjectChange().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
-      });
-      document.getElementById('apo-costs-form').addEventListener('submit',submitCustos);
-      document.getElementById('apo-cost-reset').addEventListener('click',resetCostForm);
 
       // Eventos exportação
-      document.getElementById('btn-exp-horas-csv').addEventListener('click',exportarHorasCSV);
-      document.getElementById('btn-exp-horas-pdf').addEventListener('click',exportarHorasPDF);
-      document.getElementById('btn-exp-custos-csv').addEventListener('click',exportarCustosCSV);
-      document.getElementById('btn-exp-custos-pdf').addEventListener('click',exportarCustosPDF);
-      document.getElementById('exp-mes').addEventListener('change',function(){
-        loadHistoricoMes(this.value);
-      });
 
       // Carregamento paralelo: produtos + áreas + horas da semana
-      AP.tabLoaded.horas = true;
-      await Promise.all([
-        loadProducts().catch(function(e){ setFb('apo-feedback',e.message,'err'); }),
-        loadCostAreas().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); }),
-        loadHorasData().catch(function(e){ setFb('apo-feedback',e.message,'err'); }),
-      ]);
+      runAfterFirstPaint(function() {
+        AP.tabLoaded.horas = true;
+        loadProducts().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+        loadCostAreas()
+          .then(function(){ return loadHistoricoMes(today.slice(0,7)); })
+          .catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
+        loadHorasData().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+        loadTimerWidgetDeferred();
+      });
 
       // Pré-carrega histórico do mês atual em background
-      loadHistoricoMes(today.slice(0,7));
 
     } catch(e) {
       document.getElementById('loading').innerHTML = '<div class="ld-sub">Falha ao carregar</div>';

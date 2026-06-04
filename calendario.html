@@ -351,12 +351,60 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 }
 
 #cal-action-bar {
-  display: flex; align-items: center; justify-content: flex-end;
-  gap: 8px; padding: 8px 16px;
+  display: flex; align-items: center; gap: 0;
+  padding: 0 16px; min-height: 42px;
   border-bottom: 1px solid var(--cinza2, #ECEAE4);
   flex-shrink: 0;
 }
 [data-theme="dark"] #cal-action-bar { border-bottom-color: #2A2926; }
+/* Tabs CRM-style no topo */
+.cal-tab {
+  padding: 0 14px; height: 42px;
+  display: flex; align-items: center;
+  font-size: 11px; font-weight: 600; color: #999;
+  border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .12s, border-color .12s;
+  white-space: nowrap; font-family: var(--font-ui);
+}
+.cal-tab:hover { color: var(--grafite); }
+.cal-tab.active { color: var(--azul); border-bottom-color: var(--azul); }
+[data-theme="dark"] .cal-tab { color: rgba(255,255,255,.35); }
+[data-theme="dark"] .cal-tab:hover { color: #D0CFC9; }
+[data-theme="dark"] .cal-tab.active { color: #6B9FE8; border-bottom-color: #6B9FE8; }
+#cal-action-bar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+/* Disponibilidade — grid semanal */
+.cal-disp-topbar { display: flex; align-items: center; gap: 8px; padding: 10px 0 12px; flex-wrap: wrap; }
+.cal-disp-bh-info { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.cal-disp-bh-lbl  { font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #aaa; }
+.cal-disp-bh-val  { font-size: 14px; font-weight: 800; color: var(--grafite); font-family: var(--font-mono); }
+.cal-disp-grid { overflow-x: auto; }
+.cal-disp-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.cal-disp-head-corner { width: 140px; min-width: 120px; }
+.cal-disp-head-day {
+  text-align: center; font-size: 9px; font-weight: 700; letter-spacing: .4px;
+  text-transform: uppercase; color: #aaa; padding: 4px 2px 8px;
+}
+.cal-disp-head-day.cal-hoje { color: var(--azul); }
+.cal-disp-head-day.cal-fds  { opacity: .4; }
+.cal-disp-nome {
+  font-size: 11px; font-weight: 600; padding: 3px 6px 3px 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 140px; color: var(--grafite);
+}
+.cal-disp-cell { padding: 2px 3px; vertical-align: middle; }
+.cal-disp-cell.cal-fds { opacity: .25; }
+.cal-disp-bars { display: flex; flex-direction: column; gap: 2px; }
+.cal-disp-bar {
+  height: 8px; border-radius: 3px;
+  background: var(--cinza2);
+  transition: background .12s;
+}
+.cal-disp-bar.compensado { background: #6f942e; }
+.cal-disp-bar.feriado    { background: var(--terracota); opacity: .5; }
+[data-theme="dark"] .cal-disp-bar { background: rgba(255,255,255,.08); }
+[data-theme="dark"] .cal-disp-bar.compensado { background: #8aa855; }
+[data-theme="dark"] .cal-disp-bar.feriado    { background: var(--terracota); opacity: .4; }
 
 /* ── Dark mode overrides ───────────────────────────────── */
 [data-theme="dark"]{--cinza2:rgba(255,255,255,.07);--verde-bg:rgba(76,163,102,.13);--az-bg:rgba(74,114,181,.13);--am-bg:rgba(226,174,82,.13);--tc-bg:rgba(204,104,72,.13)}
@@ -402,11 +450,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 [data-theme="dark"] .cal-people-pill.pp-ausencia{background:rgba(74,114,181,.18);color:var(--azul)}
 [data-theme="dark"] .cal-people-pill.pp-feriado{background:rgba(204,104,72,.18);color:var(--terracota)}
 [data-theme="dark"] .cal-people-pill.pp-reuniao,[data-theme="dark"] .cal-people-pill.pp-aniversario{background:rgba(226,174,82,.18);color:var(--ouro)}
-/* Sub-abas */
-[data-theme="dark"] .stab-bar{border-bottom-color:rgba(255,255,255,.07)}
-[data-theme="dark"] .stab{color:rgba(255,255,255,.35)}
-[data-theme="dark"] .stab:hover{color:rgba(255,255,255,.7)}
-[data-theme="dark"] .stab.active{color:var(--grafite);border-bottom-color:var(--grafite)}
+/* Sub-abas legadas (removidas) — dark mode cal-tab já no bloco de estilos */
 </style>
 </head>
 <body>
@@ -420,6 +464,13 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 <div id="app-shell" class="exp-app-shell">
   <div id="cal-main">
     <div id="cal-action-bar">
+      <!-- Tabs no topo (CRM-style) -->
+      <button class="cal-tab active" id="cal-tab-agenda" onclick="calSwitchTab('agenda')">Agenda</button>
+      <button class="cal-tab" id="cal-tab-disp" onclick="calSwitchTab('disp')">Disponibilidade</button>
+      <!-- Área direita: tema, lembretes, feedback, user chip -->
+      <div id="cal-action-bar-right">
+      <div id="app-topbar-right" style="display:contents">
+      <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>
       <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
         <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">＋</button>
         <div class="nav-feedback-pop" id="lemb-popdown">
@@ -494,14 +545,11 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
           </div>
         </div>
       </div>
+      </div><!-- /app-topbar-right -->
+      </div><!-- /cal-action-bar-right -->
     </div>
     <div id="cal-body">
       <div id="page-calendario">
-
-        <div class="stab-bar" id="stab-bar-cal">
-          <button class="stab active" id="stab-cal-agenda"  onclick="calSwitchTab('agenda')">Agenda</button>
-          <button class="stab"        id="stab-cal-pessoas" onclick="calSwitchTab('pessoas')">Pessoas</button>
-        </div>
 
         <div class="stab-panel active" id="stp-cal-agenda">
           <div class="cal-shell">
@@ -569,24 +617,26 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
           </div>
         </div>
 
-        <div class="stab-panel" id="stp-cal-pessoas">
+        <div class="stab-panel" id="stp-cal-disp">
           <div class="cal-shell">
-            <div class="cal-topbar">
-              <div style="display:flex;align-items:center;gap:6px">
-                <button class="cal-nav-btn" onclick="calNavSemana(-1)">&#8249;</button>
-                <span class="cal-nav-label" id="cal-pessoas-label">&#8212;</span>
-                <button class="cal-nav-btn" onclick="calNavSemana(1)">&#8250;</button>
-                <button class="cal-today-btn" onclick="calIrHojePessoas()">Esta semana</button>
-              </div>
-              <div style="width:1px;height:28px;background:var(--cinza2);margin:0 8px"></div>
-              <span class="cal-filter-lbl">N&uacute;cleo</span>
+            <div class="cal-disp-topbar">
+              <button class="cal-nav-btn" onclick="calNavSemana(-1)">&#8249;</button>
+              <span class="cal-nav-label" id="cal-disp-label">&#8212;</span>
+              <button class="cal-nav-btn" onclick="calNavSemana(1)">&#8250;</button>
+              <button class="cal-today-btn" onclick="calIrHojePessoas()">Esta semana</button>
+              <div style="width:1px;height:20px;background:var(--cinza2);margin:0 4px"></div>
               <button class="cal-chip active" data-pnucleo="" onclick="calSetPNucleo(this,'')">Todos</button>
-              <button class="cal-chip" data-pnucleo="urbanismo"    onclick="calSetPNucleo(this,'urbanismo')">Urbanismo</button>
-              <button class="cal-chip" data-pnucleo="paisagismo"   onclick="calSetPNucleo(this,'paisagismo')">Paisagismo</button>
-              <button class="cal-chip" data-pnucleo="consultorias" onclick="calSetPNucleo(this,'consultorias')">Consultorias</button>
-              <button class="cal-chip" data-pnucleo="especiais"    onclick="calSetPNucleo(this,'especiais')">Proj. Especiais</button>
+              <button class="cal-chip" data-pnucleo="urbanismo"    onclick="calSetPNucleo(this,'urbanismo')">Urb.</button>
+              <button class="cal-chip" data-pnucleo="paisagismo"   onclick="calSetPNucleo(this,'paisagismo')">Pais.</button>
+              <button class="cal-chip" data-pnucleo="consultorias" onclick="calSetPNucleo(this,'consultorias')">Cons.</button>
+              <button class="cal-chip" data-pnucleo="especiais"    onclick="calSetPNucleo(this,'especiais')">Esp.</button>
+              <div class="cal-disp-bh-info">
+                <span class="cal-disp-bh-lbl">Banco de horas</span>
+                <span class="cal-disp-bh-val" id="cal-disp-bh-val">—</span>
+                <button class="btn sm" id="cal-disp-btn-comp" style="display:none" onclick="calAbrirModalCompensacao(null)">+ Compensação</button>
+              </div>
             </div>
-            <div id="cal-pessoas-content"></div>
+            <div id="cal-disp-content"></div>
           </div>
         </div>
 
@@ -753,7 +803,7 @@ async function carregarUsuarios() {
 
 async function carregarProdutos() {
   const [{ data: prods }, { data: etapas }] = await Promise.all([
-    sb.from('produtos').select('*, oportunidades(id,projeto,oportunidade_id,clientes(id,nome,cidade,uf))').order('nome'),
+    sb.from('produtos').select('*, oportunidades(id,projeto,clientes(id,nome,cidade,uf))').order('nome'),
     sb.from('etapas').select('*').order('ordem'),
   ]);
   G.todosProdutos = prods || [];
@@ -834,17 +884,9 @@ function renderUserChip(usr) {
   if (!usr) return;
   const av = document.getElementById('user-av');
   if (av) {
-    av.classList.toggle('has-avatar', !!usr.avatar_url);
+    av.classList.remove('has-avatar');
     av.style.background = usr.cor || '#888';
-    av.innerHTML = '';
-    if (usr.avatar_url) {
-      const img = document.createElement('img');
-      img.src = usr.avatar_url;
-      img.alt = usr.nome || 'Avatar';
-      av.appendChild(img);
-    } else {
-      av.textContent = usr.iniciais || (usr.nome || '??').substring(0, 2).toUpperCase();
-    }
+    av.textContent = usr.iniciais || (usr.nome || '??').substring(0, 2).toUpperCase();
   }
   const parts = (usr.nome || '').trim().split(/\s+/).filter(Boolean);
   const nEl = document.getElementById('user-nome');
@@ -957,6 +999,8 @@ async function init() {
     renderUserChip(u);
     const compBtn = document.getElementById('cal-btn-compensacao');
     if (compBtn) compBtn.style.display = isSocioAdmRole(u.role) ? '' : 'none';
+    const dispCompBtn = document.getElementById('cal-disp-btn-comp');
+    if (dispCompBtn) dispCompBtn.style.display = isSocioAdmRole(u.role) ? '' : 'none';
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('conteudo').style.display = 'flex';
@@ -970,10 +1014,10 @@ async function init() {
 
 // ── Sub-abas ──────────────────────────────────────────────
 function calSwitchTab(sub) {
-  document.querySelectorAll('#stab-bar-cal .stab').forEach(b => b.classList.toggle('active', b.id === 'stab-cal-' + sub));
-  document.getElementById('stp-cal-agenda').classList.toggle('active',  sub === 'agenda');
-  document.getElementById('stp-cal-pessoas').classList.toggle('active', sub === 'pessoas');
-  if (sub === 'pessoas') calRenderPessoas(); else calRender();
+  document.querySelectorAll('#cal-action-bar .cal-tab').forEach(b => b.classList.toggle('active', b.id === 'cal-tab-' + sub));
+  document.getElementById('stp-cal-agenda').classList.toggle('active', sub === 'agenda');
+  document.getElementById('stp-cal-disp').classList.toggle('active',   sub === 'disp');
+  if (sub === 'disp') calRenderDisp(); else calRender();
 }
 
 // ── No-op para funções específicas de gestao.html ─────────
@@ -1041,11 +1085,22 @@ function calEvBorder(tipo, ev) {
   return { recesso:'var(--terracota)', feriado:'var(--terracota)', feriado_local:'var(--ouro)', ausencia_rem:'var(--azul)', ausencia_aniv:'var(--ouro)', compensacao_bh:'#6f942e', entrega:'var(--verde)', agenda_exp:'#888', reuniao:'var(--azul)' }[tipo] || '#ccc';
 }
 
+async function calCarregarBancoHoras() {
+  if (!G.usuario?.id) return;
+  try {
+    const { data } = await sb.from('banco_horas_saldo').select('horas_disponiveis').eq('usuario_id', G.usuario.id).maybeSingle();
+    const val = document.getElementById('cal-disp-bh-val');
+    if (val) val.textContent = data?.horas_disponiveis != null ? data.horas_disponiveis + 'h' : '—';
+  } catch(e) {
+    /* tabela pode não existir ainda — mantém '—' */
+  }
+}
+
 async function calInit() {
   if (CAL.iniciado) return;
   CAL.iniciado = true;
   await calCarregarEventos();
-  await calCarregarSaldo();
+  await Promise.all([calCarregarSaldo(), calCarregarBancoHoras()]);
   calAtualizarTopbar();
   try { calRender(); } catch(e) { console.error('calRender error', e); }
   calRenderAvatarFiltros();
@@ -1082,12 +1137,14 @@ function calAtualizarTopbar() {
   const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const lb = document.getElementById('cal-nav-label');
   if (lb) lb.textContent = nomes[CAL.mes] + ' ' + CAL.ano;
-  const duMes = calDiasUteis(CAL.ano, CAL.mes);
-  const duAno = calDiasUteisAno(CAL.ano);
+  const duMes     = calDiasUteis(CAL.ano, CAL.mes);
+  const duMesRest = calDiasRestantesMes(CAL.ano, CAL.mes);
+  const duAno     = calDiasUteisAno(CAL.ano);
+  const duAnoRest = calDiasRestantesAno(CAL.ano);
   const el_mes = document.getElementById('cal-du-mes');
   const el_ano = document.getElementById('cal-du-ano');
-  if (el_mes) el_mes.textContent = duMes;
-  if (el_ano) el_ano.textContent = duAno;
+  if (el_mes) el_mes.textContent = `${duMesRest}/${duMes}`;
+  if (el_ano) el_ano.textContent = `${duAnoRest}/${duAno}`;
   const saldoBar  = document.getElementById('cal-saldo-bar');
   const saldoFill = document.getElementById('cal-saldo-fill');
   const saldoTxt  = document.getElementById('cal-saldo-txt');
@@ -1106,12 +1163,15 @@ function calAtualizarLabelPessoas() {
   const dow   = base.getDay() === 0 ? 6 : base.getDay() - 1;
   base.setDate(base.getDate() - dow + CAL.semanaOffset * 7);
   const fim = new Date(base); fim.setDate(base.getDate() + 6);
+  const txt = base.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) + ' – ' + fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
   const lb = document.getElementById('cal-pessoas-label');
-  if (lb) lb.textContent = base.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) + ' – ' + fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  if (lb) lb.textContent = txt;
+  const lb2 = document.getElementById('cal-disp-label');
+  if (lb2) lb2.textContent = txt;
 }
 
 function calDiasUteis(ano, mes) {
-  const feriados = new Set(CAL.eventos.filter(e => (e.tipo==='feriado'||e.tipo==='recesso') && e.scope==='todos').map(e => e.data_inicio?.slice(0,10)));
+  const feriados = _calFeriados();
   let c = 0, total = new Date(ano, mes+1, 0).getDate();
   for (let d = 1; d <= total; d++) {
     const dt = new Date(ano, mes, d);
@@ -1126,6 +1186,42 @@ function calDiasUteisAno(ano) {
   let total = 0;
   for (let m = 0; m < 12; m++) total += calDiasUteis(ano, m);
   return total;
+}
+
+function _calFeriados() {
+  return new Set(CAL.eventos.filter(e => (e.tipo==='feriado'||e.tipo==='recesso') && e.scope==='todos').map(e => e.data_inicio?.slice(0,10)));
+}
+
+function calDiasRestantesMes(ano, mes) {
+  const feriados = _calFeriados();
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const total = new Date(ano, mes+1, 0).getDate();
+  let c = 0;
+  for (let d = 1; d <= total; d++) {
+    const dt = new Date(ano, mes, d);
+    if (dt < hoje) continue;
+    if (dt.getDay()===0 || dt.getDay()===6) continue;
+    const key = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if (!feriados.has(key)) c++;
+  }
+  return c;
+}
+
+function calDiasRestantesAno(ano) {
+  const feriados = _calFeriados();
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  let c = 0;
+  for (let m = 0; m < 12; m++) {
+    const total = new Date(ano, m+1, 0).getDate();
+    for (let d = 1; d <= total; d++) {
+      const dt = new Date(ano, m, d);
+      if (dt < hoje) continue;
+      if (dt.getDay()===0 || dt.getDay()===6) continue;
+      const key = `${ano}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      if (!feriados.has(key)) c++;
+    }
+  }
+  return c;
 }
 
 function calGetMerged() {
@@ -1291,28 +1387,50 @@ function calRenderSemana() {
   if (el) el.innerHTML = html;
 }
 
-function calRenderPessoas() {
+function calRenderDisp() {
   calAtualizarLabelPessoas();
-  const merged = calGetMerged();
-  const hoje = new Date(), base = new Date(hoje);
-  const dow = base.getDay()===0?6:base.getDay()-1;
+  const merged  = calGetMerged();
+  const hoje    = new Date(); hoje.setHours(0,0,0,0);
+  const base    = new Date(hoje);
+  const dow     = base.getDay()===0?6:base.getDay()-1;
   base.setDate(base.getDate()-dow+CAL.semanaOffset*7);
-  const dias = Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(base.getDate()+i);return d;});
-  const ausencias = ['recesso','feriado','feriado_local','ausencia_rem','ausencia_aniv','compensacao_bh'];
-  const usuarios  = CAL.filtroPNucleo ? (G.todosUsuarios||[]).filter(u=>u.nucleo===CAL.filtroPNucleo) : (G.todosUsuarios||[]);
-  const nomes = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  let html = `<div class="cal-pessoas-grid"><div class="cal-pg-header"><div class="cal-pg-nome-col"></div>${dias.map((d,i)=>`<div class="cal-pg-dia-head${d.toDateString()===hoje.toDateString()?' cal-hoje':''}">${nomes[i]}<br><small>${d.getDate()}</small></div>`).join('')}</div>`;
+  const dias    = Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(base.getDate()+i);return d;});
+  const nomes   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const feriados= new Set(CAL.eventos.filter(e=>(e.tipo==='feriado'||e.tipo==='recesso')&&e.scope==='todos').map(e=>e.data_inicio?.slice(0,10)));
+  const usuarios= CAL.filtroPNucleo?(G.todosUsuarios||[]).filter(u=>u.nucleo===CAL.filtroPNucleo):(G.todosUsuarios||[]);
+
+  // cabeçalho
+  let html = `<div class="cal-disp-grid"><table class="cal-disp-table"><thead><tr>
+    <th class="cal-disp-head-corner"></th>
+    ${dias.map((d,i)=>{
+      const fds=d.getDay()===0||d.getDay()===6;
+      const isHoje=d.toDateString()===hoje.toDateString();
+      return `<th class="cal-disp-head-day${isHoje?' cal-hoje':''}${fds?' cal-fds':(feriados.has(d.toISOString().slice(0,10))?' cal-hoje':'')}">
+        ${nomes[i]}<br><small style="font-weight:400;font-size:9px">${d.getDate()}</small>
+      </th>`;
+    }).join('')}
+  </tr></thead><tbody>`;
+
   usuarios.forEach(u=>{
-    html+=`<div class="cal-pg-row"><div class="cal-pg-nome">${primeiroUltimo(u.nome)}</div>`;
+    html+=`<tr><td class="cal-disp-nome">${primeiroUltimo(u.nome)}</td>`;
     dias.forEach(d=>{
-      const key=d.toISOString().slice(0,10);
-      const evs=merged.filter(ev=>ev.data_inicio.slice(0,10)===key&&ausencias.includes(ev.tipo)&&(ev.scope==='todos'||ev.usuario_id===u.id));
-      html+=`<div class="cal-pg-cell${evs.length?' cal-pg-ausente':''}">${evs.map(e=>calMeta(e.tipo).icon).join('')}</div>`;
+      const key   = d.toISOString().slice(0,10);
+      const fds   = d.getDay()===0||d.getDay()===6;
+      const ehFer = feriados.has(key);
+      const comp  = merged.some(ev=>ev.data_inicio.slice(0,10)===key&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
+      const barCls= ehFer?'feriado':comp?'compensado':'';
+      html+=`<td class="cal-disp-cell${fds?' cal-fds':''}">
+        <div class="cal-disp-bars">
+          <div class="cal-disp-bar ${barCls}" title="${fds?'Fim de semana':ehFer?'Feriado/Recesso':comp?'Compensação BH':'Disponível'}"></div>
+          <div class="cal-disp-bar ${barCls}" title="${fds?'Fim de semana':ehFer?'Feriado/Recesso':comp?'Compensação BH':'Disponível'}"></div>
+        </div>
+      </td>`;
     });
-    html+='</div>';
+    html+='</tr>';
   });
-  html+='</div>';
-  const el=document.getElementById('cal-pessoas-content');
+
+  html+='</tbody></table></div>';
+  const el=document.getElementById('cal-disp-content');
   if (el) el.innerHTML=html;
 }
 

@@ -2603,7 +2603,9 @@ body {
       <button class="ntab" data-tab="horas">Horas/Custos</button>
       <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">Sócios</button>
     </div>
-    <div class="gestao-hd-right">
+    <div class="gestao-hd-right" id="app-topbar-right">
+      <!-- Toggle tema -->
+      <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>
       <!-- Bandeira (feedback) — primeiro -->
       <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
         <button id="feedback-icon-btn" onclick="toggleToolFeedbackPop(event)" title="Reportar problema ou sugestão">
@@ -4500,17 +4502,9 @@ function renderTermState(usr) {
 function renderUserChip(usr) {
   const av = document.getElementById('user-av');
   if (av) {
-    av.classList.toggle('has-avatar', !!usr.avatar_url);
+    av.classList.remove('has-avatar');
     av.style.background = usr.cor || '#888';
-    av.innerHTML = '';
-    if (usr.avatar_url) {
-      const img = document.createElement('img');
-      img.src = usr.avatar_url;
-      img.alt = usr.nome || 'Avatar';
-      av.appendChild(img);
-    } else {
-      av.textContent = usr.iniciais || (usr.nome || '??').substring(0, 2).toUpperCase();
-    }
+    av.textContent = usr.iniciais || (usr.nome || '??').substring(0, 2).toUpperCase();
   }
   const parts = (usr.nome || '').trim().split(/\s+/).filter(Boolean);
   const el = document.getElementById('user-nome');
