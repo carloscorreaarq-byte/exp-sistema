@@ -668,6 +668,38 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 .aging-row-detalhe { font-size: 10px; color: #aaa; margin-top: 1px; }
 .aging-row-val  { font-weight: 700; font-size: 13px; color: var(--terracota); white-space: nowrap; }
 .aging-row-btn  { flex-shrink: 0; }
+/* ── PAINEL FINANCEIRO POR CLIENTE ────────────────────────── */
+.clientefin-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+.clientefin-toolbar input {
+  flex:1; min-width:260px; padding:10px 12px; border:1px solid var(--cinza); border-radius:8px;
+  background:var(--branco); color:var(--grafite); font-family:var(--font-ui);
+}
+.clientefin-lista { display:flex; flex-direction:column; gap:12px; }
+.clientefin-card {
+  background:var(--branco); border:1px solid var(--cinza); border-radius:10px; padding:16px 18px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.clientefin-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.clientefin-title { font-size:14px; font-weight:700; }
+.clientefin-meta { font-size:10px; color:#888; margin-top:3px; display:flex; gap:8px; flex-wrap:wrap; }
+.clientefin-kpis { display:grid; grid-template-columns:repeat(5, minmax(110px,1fr)); gap:10px; }
+.clientefin-kpi { background:var(--off); border:1px solid var(--cinza2); border-radius:8px; padding:10px 12px; }
+.clientefin-kpi-lbl { font-size:9px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.clientefin-kpi-val { font-size:14px; font-weight:700; }
+.clientefin-kpi-sub { font-size:10px; color:#aaa; margin-top:2px; }
+.clientefin-openlist { display:flex; flex-direction:column; gap:6px; }
+.clientefin-openrow {
+  display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px;
+  border:1px solid var(--cinza2); border-radius:8px; background:var(--off);
+}
+.clientefin-openinfo { flex:1; }
+.clientefin-openmain { font-size:12px; font-weight:600; }
+.clientefin-opensub { font-size:10px; color:#888; margin-top:2px; }
+.clientefin-openval { text-align:right; white-space:nowrap; }
+.clientefin-openval strong { font-size:13px; display:block; }
+.clientefin-openval span { font-size:10px; color:#888; }
+.clientefin-risk { color:var(--terracota); font-weight:700; }
+.clientefin-ok { color:var(--verde); font-weight:700; }
 /* ── FECHAMENTO MENSAL ───────────────────────────────────── */
 .fech-lista { display: flex; flex-direction: column; gap: 6px; }
 .fech-row {
@@ -745,6 +777,10 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 [data-theme="dark"] .ativo-card { background: var(--branco); border-color: var(--cinza); }
 [data-theme="dark"] .aging-bkt { background: var(--branco); border-color: var(--cinza); }
 [data-theme="dark"] .aging-row { background: var(--branco); border-color: var(--cinza); }
+[data-theme="dark"] .clientefin-card,
+[data-theme="dark"] .clientefin-kpi,
+[data-theme="dark"] .clientefin-openrow,
+[data-theme="dark"] .clientefin-toolbar input { background: var(--branco); border-color: var(--cinza); }
 [data-theme="dark"] .fech-row { background: var(--branco); border-color: var(--cinza); }
 [data-theme="dark"] .fech-preview { background: var(--fin-bg); }
 
@@ -1200,6 +1236,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
   <div style="display:flex;gap:0;border-bottom:1px solid var(--cinza);margin-bottom:18px">
     <button class="ntab active" data-cobtab="pipeline" onclick="setCobTab('pipeline')" style="border-bottom-color:var(--fin)">Pipeline</button>
     <button class="ntab" data-cobtab="aging" onclick="setCobTab('aging')">Aging de Recebíveis</button>
+    <button class="ntab" data-cobtab="clientes" onclick="setCobTab('clientes')">Clientes</button>
   </div>
 
   <!-- Pipeline (kanban) -->
@@ -1273,6 +1310,16 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
       <div class="empty-state"><div class="empty-state-title">Carregando…</div></div>
     </div>
   </div><!-- /cob-tab-aging -->
+
+  <!-- Painel por Cliente -->
+  <div id="cob-tab-clientes" style="display:none">
+    <div class="clientefin-toolbar">
+      <input type="text" id="clientefin-q" placeholder="Buscar entidade de cobrança ou cliente..." oninput="renderPainelClientesFinanceiros()">
+    </div>
+    <div class="clientefin-lista" id="clientefin-lista">
+      <div class="empty-state"><div class="empty-state-title">Carregando…</div></div>
+    </div>
+  </div><!-- /cob-tab-clientes -->
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -2044,6 +2091,12 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
       </div>
 
       <!-- Seção 1: Modalidade de cobrança -->
+      <div class="form-row">
+        <div class="form-group w2">
+          <label>Regra prática de pagamento</label>
+          <textarea id="fin-cob-regra" placeholder="Ex: emitir até dia 05 para receber no fim do mês; cliente paga no mês seguinte até dia 10"></textarea>
+        </div>
+      </div>
       <div class="divider"></div>
       <div style="margin-bottom:16px">
         <div style="font-size:11px;font-weight:700;margin-bottom:10px">1. Modalidade de Cobrança</div>
@@ -3640,11 +3693,14 @@ function setCobTab(tab) {
     b.classList.toggle('active', b.dataset.cobtab === tab);
     if (b.dataset.cobtab === 'pipeline') b.style.borderBottomColor = tab === 'pipeline' ? 'var(--fin)' : '';
     if (b.dataset.cobtab === 'aging')    b.style.borderBottomColor = tab === 'aging'    ? 'var(--fin)' : '';
+    if (b.dataset.cobtab === 'clientes') b.style.borderBottomColor = tab === 'clientes' ? 'var(--fin)' : '';
   });
   document.getElementById('cob-tab-pipeline').style.display = tab === 'pipeline' ? '' : 'none';
   document.getElementById('cob-tab-aging').style.display    = tab === 'aging'    ? '' : 'none';
+  document.getElementById('cob-tab-clientes').style.display = tab === 'clientes' ? '' : 'none';
   document.getElementById('cob-filtros-pipeline').style.display = tab === 'pipeline' ? '' : 'none';
   if (tab === 'aging') renderAging();
+  if (tab === 'clientes') renderPainelClientesFinanceiros();
 }
 
 function renderAging() {
@@ -3734,6 +3790,197 @@ function renderAging() {
   </div>`;
 }
 
+function _clienteFinDaysBetween(a, b) {
+  if (!a || !b) return null;
+  const da = new Date(String(a).slice(0,10) + 'T12:00:00');
+  const db = new Date(String(b).slice(0,10) + 'T12:00:00');
+  if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) return null;
+  return Math.round((db - da) / 86400000);
+}
+
+function _clienteFinEntidadeData(parcela) {
+  const payload = finExtrairPayloadObs(parcela?.fin_ativos?.obs);
+  const entidade = payload?.entidade || null;
+  const nomeEntidade = String(entidade?.nome_fantasia || entidade?.nome || '').trim();
+  const clienteInstitucional = String(parcela?.fin_ativos?.cliente_nome || '').trim();
+  const titulo = nomeEntidade || clienteInstitucional || 'Cobrança não identificada';
+  const chave = titulo.toLowerCase();
+  const subtitulo = nomeEntidade && clienteInstitucional && nomeEntidade.toLowerCase() !== clienteInstitucional.toLowerCase()
+    ? clienteInstitucional
+    : '';
+  return { chave, titulo, subtitulo, entidade, clienteInstitucional };
+}
+
+function renderPainelClientesFinanceiros() {
+  const el = document.getElementById('clientefin-lista');
+  if (!el) return;
+
+  const q = (document.getElementById('clientefin-q')?.value || '').trim().toLowerCase();
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const grupos = new Map();
+  (G.parcelas || []).forEach(p => {
+    const entidadeData = _clienteFinEntidadeData(p);
+    const cliente = entidadeData.titulo;
+    const key = entidadeData.chave;
+    if (!grupos.has(key)) {
+      grupos.set(key, {
+        key,
+        cliente,
+        clienteInstitucional: entidadeData.clienteInstitucional,
+        subtitulo: entidadeData.subtitulo,
+        entidade: entidadeData.entidade,
+        projetos: new Set(),
+        total: 0,
+        recebido: 0,
+        aberto: 0,
+        aEmitir: 0,
+        vencido: 0,
+        futuro: 0,
+        nfsAbertas: 0,
+        prazoDias: [],
+        itensAbertos: [],
+      });
+    }
+    const g = grupos.get(key);
+    const valor = parseFloat(p.valor) || 0;
+    const situacao = String(p.situacao || '').toLowerCase();
+    const projetoRef = p.fin_ativos?.num_legado || p.ativo_id || null;
+    if (projetoRef) g.projetos.add(String(projetoRef));
+    g.total += valor;
+
+    if (situacao === 'pago') {
+      g.recebido += valor;
+      const prazo = _clienteFinDaysBetween(p.data_emissao_nf || p.data_prevista_cobranca, p.data_pagamento);
+      if (prazo !== null) g.prazoDias.push(prazo);
+      return;
+    }
+
+    if (['entregue', 'a_emitir'].includes(situacao)) {
+      g.aEmitir += valor;
+      g.futuro += valor;
+      g.itensAbertos.push({ ...p, grupoSituacao: 'emitir' });
+      return;
+    }
+
+    if (situacao === 'aguardando_pagamento') {
+      g.aberto += valor;
+      g.nfsAbertas += 1;
+      const dtVenc = p.data_vencimento ? new Date(String(p.data_vencimento).slice(0,10) + 'T12:00:00') : null;
+      if (dtVenc && !Number.isNaN(dtVenc.getTime()) && dtVenc < hoje) g.vencido += valor;
+      else g.futuro += valor;
+      g.itensAbertos.push({ ...p, grupoSituacao: 'aguardando' });
+    }
+  });
+
+  let lista = [...grupos.values()];
+  if (q) {
+    lista = lista.filter(g =>
+      g.cliente.toLowerCase().includes(q) ||
+      String(g.clienteInstitucional || '').toLowerCase().includes(q) ||
+      String(g.entidade?.cnpj || '').toLowerCase().includes(q) ||
+      [...g.projetos].some(p => String(p).toLowerCase().includes(q))
+    );
+  }
+  lista.sort((a, b) => (b.aberto + b.aEmitir + b.vencido) - (a.aberto + a.aEmitir + a.vencido));
+
+  if (!lista.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">📂</div>
+      <div class="empty-state-title">Nenhum cliente encontrado</div>
+      <div class="empty-state-sub">Ajuste a busca ou aguarde a carga das parcelas de cobrança.</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = lista.map(g => {
+    const prazoMedio = g.prazoDias.length ? Math.round(g.prazoDias.reduce((s, n) => s + n, 0) / g.prazoDias.length) : null;
+    const projetosLabel = g.projetos.size ? `${g.projetos.size} projeto${g.projetos.size !== 1 ? 's' : ''}` : 'sem projeto vinculado';
+    const subtituloParts = [
+      g.subtitulo ? `Cliente institucional: ${g.subtitulo}` : '',
+      g.entidade?.cnpj ? `CNPJ: ${g.entidade.cnpj}` : '',
+      g.nfsAbertas + ` NF${g.nfsAbertas !== 1 ? 's' : ''} em aberto`,
+      `Prazo médio: ${prazoMedio === null ? '—' : prazoMedio + ' dia' + (prazoMedio !== 1 ? 's' : '')}`
+    ].filter(Boolean);
+    const itens = g.itensAbertos
+      .sort((a, b) => {
+        const da = a.data_vencimento || a.data_prevista_cobranca || '9999-12-31';
+        const db = b.data_vencimento || b.data_prevista_cobranca || '9999-12-31';
+        return String(da).localeCompare(String(db));
+      })
+      .slice(0, 3);
+
+    return `
+      <div class="clientefin-card">
+        <div class="clientefin-head">
+          <div>
+            <div class="clientefin-title">${_finEsc(g.cliente)}</div>
+            <div class="clientefin-meta">
+              <span>${_finEsc(projetosLabel)}</span>
+              ${subtituloParts.map(item => `<span>${_finEsc(item)}</span>`).join('')}
+            </div>
+            ${g.entidade?.regra_pagamento ? `<div style="font-size:11px;color:#666;margin-top:8px"><strong>Prática de pagamento:</strong> ${_finEsc(g.entidade.regra_pagamento)}</div>` : ''}
+          </div>
+          <div class="clientefin-openval">
+            <strong>${moeda(g.total)}</strong>
+            <span>entrada total da cobrança</span>
+          </div>
+        </div>
+
+        <div class="clientefin-kpis">
+          <div class="clientefin-kpi">
+            <div class="clientefin-kpi-lbl">Recebido</div>
+            <div class="clientefin-kpi-val">${moeda(g.recebido)}</div>
+            <div class="clientefin-kpi-sub">pagamentos confirmados</div>
+          </div>
+          <div class="clientefin-kpi">
+            <div class="clientefin-kpi-lbl">Em aberto</div>
+            <div class="clientefin-kpi-val">${moeda(g.aberto)}</div>
+            <div class="clientefin-kpi-sub">NFs aguardando pagamento</div>
+          </div>
+          <div class="clientefin-kpi">
+            <div class="clientefin-kpi-lbl">A emitir</div>
+            <div class="clientefin-kpi-val">${moeda(g.aEmitir)}</div>
+            <div class="clientefin-kpi-sub">parcelas sem NF emitida</div>
+          </div>
+          <div class="clientefin-kpi">
+            <div class="clientefin-kpi-lbl">Vencido</div>
+            <div class="clientefin-kpi-val ${g.vencido > 0 ? 'clientefin-risk' : ''}">${moeda(g.vencido)}</div>
+            <div class="clientefin-kpi-sub">cobranças atrasadas</div>
+          </div>
+          <div class="clientefin-kpi">
+            <div class="clientefin-kpi-lbl">Futuro</div>
+            <div class="clientefin-kpi-val ${g.futuro > 0 ? 'clientefin-ok' : ''}">${moeda(g.futuro)}</div>
+            <div class="clientefin-kpi-sub">a emitir ou a receber</div>
+          </div>
+        </div>
+
+        <div class="clientefin-openlist">
+          ${itens.length ? itens.map(p => {
+            const tipoDisp = _finEsc(TIPO_PARCELA_MAP[p.tipo]?.label || p.tipo || 'Parcela');
+            const descDisp = _finEsc(p.descricao || 'Parcela sem descrição');
+            const dataRef = p.grupoSituacao === 'aguardando'
+              ? `Vence ${fmtData(p.data_vencimento) || '—'}`
+              : `Prev. ${fmtData(p.data_prevista_cobranca) || '—'}`;
+            const projetoDisp = _finEsc(p.fin_ativos?.num_legado || 'sem projeto');
+            return `
+              <div class="clientefin-openrow">
+                <div class="clientefin-openinfo">
+                  <div class="clientefin-openmain">${tipoDisp} · ${descDisp}</div>
+                  <div class="clientefin-opensub">${projetoDisp} · ${dataRef}</div>
+                </div>
+                <div class="clientefin-openval">
+                  <strong>${moeda(parseFloat(p.valor) || 0)}</strong>
+                  <span>${p.grupoSituacao === 'aguardando' ? 'NF em aberto' : 'aguardando emissão'}</span>
+                </div>
+              </div>`;
+          }).join('') : `<div class="empty-state"><div class="empty-state-title">Nenhuma pendência aberta</div><div class="empty-state-sub">Este cliente não tem parcelas abertas ou aguardando emissão.</div></div>`}
+        </div>
+      </div>`;
+  }).join('');
+}
+
 // ══════════════════════════════════════════════════════════
 //   PIPELINE DE COBRANÇA
 // ══════════════════════════════════════════════════════════
@@ -3742,12 +3989,13 @@ async function carregarPipeline() {
   const tipo   = document.getElementById('cob-filtro-tipo')?.value;
 
   let q = sb.from('fin_parcelas')
-    .select('*, fin_ativos(cliente_nome, num_legado, nucleo)')
+    .select('*, fin_ativos(cliente_nome, num_legado, nucleo, obs)')
     .in('situacao', ['entregue','a_emitir','aguardando_pagamento','pago'])
     .order('data_prevista_cobranca');
 
   const { data: all } = await q;
   G.parcelas = all || [];
+  renderPainelClientesFinanceiros();
 
   const filtradas = G.parcelas.filter(p =>
     (!tipo || p.tipo === tipo) &&
@@ -4588,6 +4836,7 @@ function finSetEntidadeCobrancaFields(entidade) {
   document.getElementById('fin-cob-responsavel').value = data.responsavel || '';
   document.getElementById('fin-cob-email').value = data.email || '';
   document.getElementById('fin-cob-contato').value = data.contato || '';
+  document.getElementById('fin-cob-regra').value = data.regra_pagamento || '';
 }
 
 function finGetEntidadeCobrancaFields() {
@@ -4599,7 +4848,8 @@ function finGetEntidadeCobrancaFields() {
     endereco: document.getElementById('fin-cob-endereco').value.trim() || null,
     responsavel: document.getElementById('fin-cob-responsavel').value.trim() || null,
     email: document.getElementById('fin-cob-email').value.trim() || null,
-    contato: document.getElementById('fin-cob-contato').value.trim() || null
+    contato: document.getElementById('fin-cob-contato').value.trim() || null,
+    regra_pagamento: document.getElementById('fin-cob-regra').value.trim() || null
   };
 }
 

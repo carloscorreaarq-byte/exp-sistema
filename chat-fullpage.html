@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
 <script>
 (function(){
   var saved = localStorage.getItem('exp-theme');
@@ -28,40 +29,42 @@
    VARIÁVEIS DE ACENTO — aplicadas sobre light/dark
 ══════════════════════════════════════════════════ */
 :root {
-  --ca:          #1D6A4A;
-  --ca-bg:       #EAF5EE;
-  --ca-mid:      rgba(29,106,74,.13);
-  --ca-viv:      rgba(29,106,74,.22);
-  --ca-rgb-vals: 29,106,74;
-  --cinza2:      #ECEAE4;
+  --ca:          var(--verde);        /* acento dinâmico — padrão verde canônico */
+  --ca-bg:       var(--verde-bg);
+  --ca-mid:      var(--verde-soft);
+  --ca-viv:      rgba(62,120,88,.22);
+  --ca-rgb-vals: 62,120,88;
+  /* foco de input — segue o acento dinâmico do chat */
+  --mod-focus:      var(--ca);
+  --mod-focus-soft: var(--ca-mid);
 }
 [data-chat-color="azul"] {
-  --ca:          #1D4FA0;
-  --ca-bg:       #EAF0FB;
-  --ca-mid:      rgba(29,79,160,.12);
-  --ca-viv:      rgba(29,79,160,.22);
-  --ca-rgb-vals: 29,79,160;
+  --ca:          var(--azul);
+  --ca-bg:       var(--azul-bg);
+  --ca-mid:      var(--azul-soft);
+  --ca-viv:      rgba(74,114,181,.22);
+  --ca-rgb-vals: 74,114,181;
 }
 [data-chat-color="ouro"] {
-  --ca:          #C4831A;
-  --ca-bg:       #FBF3E8;
-  --ca-mid:      rgba(196,131,26,.12);
-  --ca-viv:      rgba(196,131,26,.22);
-  --ca-rgb-vals: 196,131,26;
+  --ca:          var(--ouro);
+  --ca-bg:       var(--ouro-bg);
+  --ca-mid:      var(--ouro-soft);
+  --ca-viv:      rgba(196,154,39,.22);
+  --ca-rgb-vals: 196,154,39;
 }
 [data-chat-color="terracota"] {
-  --ca:          #B84C3A;
-  --ca-bg:       #FBF0EE;
-  --ca-mid:      rgba(184,76,58,.12);
-  --ca-viv:      rgba(184,76,58,.22);
-  --ca-rgb-vals: 184,76,58;
+  --ca:          var(--terracota);
+  --ca-bg:       var(--terracota-bg);
+  --ca-mid:      var(--terracota-soft);
+  --ca-viv:      rgba(184,86,56,.22);
+  --ca-rgb-vals: 184,86,56;
 }
 
 /* ══════════════════════════════════════════════════
    BASE
 ══════════════════════════════════════════════════ */
 body {
-  font-family: 'Raleway', sans-serif;
+  font-family: var(--font-ui);
   background: var(--off, #F7F6F3);
   color: var(--grafite, #111110);
   height: 100vh;
@@ -101,85 +104,19 @@ body {
 }
 
 /* ══════════════════════════════════════════════════
-   NAV LATERAL (ícones de módulos)
+   NAV LATERAL — estilos base em shared/exp-nav.css
+   Override: padding-bottom extra para o timer
 ══════════════════════════════════════════════════ */
-#fp-nav {
-  width: 66px;
-  background: #2A2926;
-  border: none;
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px 0 0;
-  gap: 2px;
-  flex-shrink: 0;
-  overflow: visible;   /* permite tooltip sair da nav */
+#exp-nav {
+  padding-bottom: 84px !important;
 }
-[data-theme="dark"] #fp-nav { background: #1A1A18; }
 
-/* Timer: centrado, sobe para ficar dentro da nav */
+/* Timer: centrado na nav */
 #exp-timer-widget {
   left: calc(72px + (66px / 2) - 23px) !important;
   bottom: 34px !important;
   z-index: 9998 !important;
 }
-
-/* Nav: padding-bottom reserva espaço — timer sobe mais, então reserva mais */
-#fp-nav {
-  padding-bottom: 84px !important;
-}
-
-.fp-nav-logo {
-  width: 50px; height: 44px;
-  margin-bottom: 4px;
-  display: flex; align-items: center; justify-content: center;
-}
-.fp-nav-logo img {
-  height: 16px;
-  mix-blend-mode: multiply;
-  transform: rotate(-90deg);
-  transform-origin: center center;
-}
-[data-theme="dark"] .fp-nav-logo img { filter: invert(1) brightness(.85); mix-blend-mode: screen; }
-
-.fp-nav-sep {
-  width: 32px; height: 1px;
-  background: rgba(255,255,255,.1);
-  margin: 4px 0;
-  flex-shrink: 0;
-}
-
-.fp-nav-item {
-  width: 40px; height: 36px;
-  border-radius: 9px;
-  border: none;
-  background: none;
-  color: rgba(255,255,255,.35);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: background .12s, color .12s;
-  text-decoration: none;
-  flex-shrink: 0;
-  position: relative;
-}
-.fp-nav-item:hover { background: rgba(255,255,255,.1); color: rgba(255,255,255,.8); }
-.fp-nav-item.active { background: rgba(255,255,255,.14); color: #fff; }
-.fp-nav-item[title]:hover::after {
-  content: attr(title);
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%; transform: translateY(-50%);
-  background: #111110;
-  color: #fff;
-  font-size: 10px; font-weight: 600;
-  padding: 4px 8px; border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 500;
-}
-
-.fp-nav-spacer { flex: 1; }
 
 /* ══════════════════════════════════════════════════
    SIDEBAR
@@ -269,7 +206,7 @@ body {
 }
 [data-theme="dark"] #fp-status-pop { background: #1E1E1D; border-color: #2E2D2B; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
 .fp-sopt-hdr {
-  font-family: 'Raleway', sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px; font-weight: 600; color: #888;
   padding: 5px 10px 7px;
 }
@@ -277,7 +214,7 @@ body {
   display: flex; align-items: center; gap: 9px;
   padding: 7px 10px; border-radius: 7px;
   border: none; background: none; cursor: pointer;
-  font-family: 'Raleway', sans-serif; font-size: 12px; font-weight: 500;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
   width: 100%; text-align: left; transition: background .1s;
   color: var(--grafite, #111110);
   -webkit-font-smoothing: antialiased;
@@ -302,7 +239,7 @@ body {
 .fp-sb-search svg { color: var(--cinza, #D0CFC9); flex-shrink: 0; }
 .fp-search-input {
   flex: 1; border: none; background: none;
-  font-family: 'Raleway', sans-serif; font-size: 12px;
+  font-family: var(--font-ui); font-size: 12px;
   color: var(--grafite, #111110); outline: none;
 }
 [data-theme="dark"] .fp-search-input { color: #F0EDE6; }
@@ -317,7 +254,7 @@ body {
   display: flex; align-items: center; justify-content: center; gap: 5px;
   padding: 5px 8px; border-radius: 8px; border: 1px solid var(--cinza2, #ECEAE4);
   background: none; cursor: pointer;
-  font-family: 'Raleway', sans-serif; font-size: 10px; font-weight: 600;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 600;
   color: var(--cinza, #D0CFC9);
   transition: all .12s; user-select: none;
 }
@@ -339,7 +276,7 @@ body {
   font-size: 9px; font-weight: 700; letter-spacing: .65px;
   text-transform: uppercase; color: var(--cinza, #D0CFC9);
   cursor: pointer; border: none; background: none; width: 100%;
-  font-family: 'Raleway', sans-serif; text-align: left; transition: color .12s;
+  font-family: var(--font-ui); text-align: left; transition: color .12s;
 }
 .fp-section-hdr:hover { color: var(--grafite, #111110); }
 [data-theme="dark"] .fp-section-hdr { color: #4A4845; }
@@ -365,7 +302,7 @@ body {
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; color: #fff;
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
 }
 .fp-av-hash {
   width: 36px; height: 36px; border-radius: 10px;
@@ -393,7 +330,7 @@ body {
   width: 24px; height: 24px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 8px; font-weight: 700; color: #fff;
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
   border: 2px solid var(--branco, #fff);
 }
 [data-theme="dark"] .fp-av-stack .fp-av-s { border-color: #1E1E1D; }
@@ -417,7 +354,7 @@ body {
 }
 [data-theme="dark"] .fp-conv-name { color: var(--fp-conv-name-color, #C8C3BA); }
 .fp-conv-ts {
-  font-size: 9px; font-family: 'DM Mono', monospace;
+  font-size: 9px; font-family: var(--font-mono);
   color: var(--cinza, #D0CFC9); flex-shrink: 0;
   white-space: nowrap;
 }
@@ -435,7 +372,7 @@ body {
 [data-theme="dark"] .fp-conv-item.unread .fp-conv-preview { color: #9A9590; }
 .fp-conv-badge {
   background: var(--ca); color: #fff;
-  font-size: 9px; font-weight: 700; font-family: 'DM Mono', monospace;
+  font-size: 9px; font-weight: 700; font-family: var(--font-mono);
   min-width: 16px; height: 16px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   padding: 0 3px; flex-shrink: 0; margin-top: 2px;
@@ -487,7 +424,7 @@ body {
 .fp-view-size-btn {
   padding: 3px 8px; border-radius: 6px; border: 1px solid var(--cinza2, #ECEAE4);
   background: var(--off, #F7F6F3); cursor: pointer;
-  font-family: 'Raleway', sans-serif; font-size: 11px; font-weight: 600;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
   color: var(--grafite, #111110); transition: border-color .12s;
 }
 .fp-view-size-btn:hover { border-color: var(--ca); }
@@ -605,7 +542,7 @@ body {
   display: flex; align-items: center; gap: 8px;
   margin: 14px 0 6px;
   color: var(--cinza, #D0CFC9); font-size: 9px;
-  font-family: 'DM Mono', monospace; letter-spacing: .5px;
+  font-family: var(--font-mono); letter-spacing: .5px;
 }
 .fp-date-sep::before, .fp-date-sep::after {
   content: ''; flex: 1; height: 1px;
@@ -647,7 +584,7 @@ body {
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700; color: #fff;
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
   margin-top: 2px;
 }
 .fp-msg-av img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; display: block; }
@@ -675,7 +612,7 @@ body {
 }
 [data-theme="dark"] .fp-msg-name { color: #F0EDE6; }
 .fp-msg-ts {
-  font-size: 8px; font-family: 'DM Mono', monospace;
+  font-size: 8px; font-family: var(--font-mono);
   color: #aaa; letter-spacing: .2px;
 }
 .fp-msg-text {
@@ -720,7 +657,7 @@ body {
 .fp-rxn-btn:hover { border-color: var(--ca); }
 .fp-rxn-btn.active { background: var(--ca-bg); border-color: var(--ca); }
 [data-theme="dark"] .fp-rxn-btn.active { background: var(--ca-mid); }
-.fp-rxn-count { font-size: 10px; font-family: 'DM Mono', monospace; color: #888; }
+.fp-rxn-count { font-size: 10px; font-family: var(--font-mono); color: #888; }
 .fp-rxn-btn.active .fp-rxn-count { color: var(--ca); font-weight: 700; }
 
 /* Botões de ação (aparecem no hover do bloco) */
@@ -776,14 +713,14 @@ body {
 [data-theme="dark"] .fp-in-search-wrap:focus-within { background: #252523; }
 .fp-in-search-input {
   flex: 1; border: none; background: none; outline: none;
-  font-family: 'Raleway', sans-serif; font-size: 12px;
+  font-family: var(--font-ui); font-size: 12px;
   color: var(--grafite, #111110);
 }
 [data-theme="dark"] .fp-in-search-input { color: #F0EDE6; }
 .fp-in-search-input::placeholder { color: var(--cinza, #D0CFC9); }
 
 .fp-in-search-count {
-  font-size: 10px; font-family: 'DM Mono', monospace;
+  font-size: 10px; font-family: var(--font-mono);
   color: var(--cinza, #D0CFC9); white-space: nowrap; flex-shrink: 0;
 }
 .fp-in-search-count.found { color: var(--ca); font-weight: 600; }
@@ -848,7 +785,7 @@ body {
 [data-theme="dark"] .fp-attach-btn { background: #252523; border-color: #2E2D2B; color: #F0EDE6; }
 #fp-input {
   flex: 1; border: 1px solid #D0CFC9; border-radius: 10px;
-  padding: 8px 12px; font-family: 'Raleway', sans-serif; font-size: 13px;
+  padding: 8px 12px; font-family: var(--font-ui); font-size: 13px;
   resize: none; outline: none; max-height: 120px; min-height: 34px;
   color: var(--grafite, #111110); background: #fff;
   line-height: 1.45; transition: border-color .15s; overflow-y: auto;
@@ -934,7 +871,7 @@ body {
 .fp-members-confirm {
   background: var(--ca); color: #fff; border: none;
   border-radius: 8px; padding: 7px 16px;
-  font-family: 'Raleway', sans-serif; font-size: 11px; font-weight: 600;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
   cursor: pointer; transition: opacity .15s;
 }
 .fp-members-confirm:hover { opacity: .8; }
@@ -964,7 +901,7 @@ body {
 .fp-mv-copy { flex: 1; min-width: 0; }
 .fp-mv-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--grafite, #111110); }
 [data-theme="dark"] .fp-mv-title { color: #F0EDE6; }
-.fp-mv-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: #999; }
+.fp-mv-meta { font-family: var(--font-mono); font-size: 10px; color: #999; }
 .fp-mv-tools { display: flex; align-items: center; gap: 5px; }
 .fp-mv-zoombtn {
   width: 28px; height: 28px; border-radius: 8px;
@@ -974,8 +911,8 @@ body {
 }
 .fp-mv-zoombtn:hover { border-color: var(--ca); color: var(--ca); }
 [data-theme="dark"] .fp-mv-zoombtn { background: #2A2927; border-color: #3A3937; color: #F0EDE6; }
-.fp-mv-zoomlabel { min-width: 42px; text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; color: #999; }
-.fp-mv-count { min-width: 40px; text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; color: #999; }
+.fp-mv-zoomlabel { min-width: 42px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: #999; }
+.fp-mv-count { min-width: 40px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: #999; }
 .fp-mv-close {
   width: 28px; height: 28px; border-radius: 7px; border: none;
   background: rgba(0,0,0,.07); color: var(--grafite, #111110);
@@ -1049,7 +986,7 @@ body {
 .fp-task-desc  { font-size: 12px; color: #333; line-height: 1.4; word-break: break-word; }
 [data-theme="dark"] .fp-task-desc { color: #C8C3BA; }
 .fp-task-meta  { font-size: 10px; color: #999; margin-top: 3px; display: flex; align-items: center; gap: 6px; }
-.fp-task-prazo { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600; }
+.fp-task-prazo { font-family: var(--font-mono); font-size: 9px; font-weight: 600; }
 .fp-task-prazo.vencida { color: #B84C3A; }
 .fp-task-prazo.hoje    { color: #C4831A; }
 .fp-task-section { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--cinza, #D0CFC9); padding: 10px 6px 4px; }
@@ -1071,7 +1008,7 @@ body {
 [data-theme="dark"] #fp-task-form { background: rgba(var(--ca-rgb-vals, 29,106,74), .12); border-top-color: rgba(var(--ca-rgb-vals, 29,106,74), .25); }
 #fp-task-desc {
   width: 100%; border: 1px solid var(--cinza2, #ECEAE4); border-radius: 8px;
-  padding: 7px 10px; font-family: 'Raleway', sans-serif; font-size: 12px;
+  padding: 7px 10px; font-family: var(--font-ui); font-size: 12px;
   resize: none; outline: none; background: #fff; color: var(--grafite, #111110);
   line-height: 1.4; transition: border-color .15s; margin-bottom: 7px;
 }
@@ -1083,7 +1020,7 @@ body {
 }
 #fp-task-tipo, #fp-task-data {
   border: 1px solid var(--cinza2, #ECEAE4); border-radius: 7px;
-  padding: 5px 7px; font-family: 'Raleway', sans-serif; font-size: 10px;
+  padding: 5px 7px; font-family: var(--font-ui); font-size: 10px;
   background: #fff; color: var(--grafite, #111110); outline: none;
   transition: border-color .15s;
 }
@@ -1094,7 +1031,7 @@ body {
 .fp-task-add-btn {
   padding: 5px 10px; border-radius: 7px; border: none;
   background: var(--ca); color: #fff;
-  font-family: 'Raleway', sans-serif; font-size: 10px; font-weight: 600;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 600;
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
   transition: opacity .15s;
 }
@@ -1136,7 +1073,7 @@ body {
 }
 [data-theme="dark"] #fp-prio-panel-title { color: #F0EDE6; }
 #fp-prio-panel-count {
-  font-size: 10px; font-family: 'DM Mono', monospace;
+  font-size: 10px; font-family: var(--font-mono);
   color: var(--cinza, #D0CFC9);
 }
 #fp-prio-panel-list {
@@ -1243,7 +1180,7 @@ body {
 }
 [data-theme="dark"] .fp-hov-hdr-title { color: #F0EDE6; }
 .fp-hov-hdr-sub {
-  font-size: 10px; font-family: 'DM Mono', monospace; color: var(--cinza, #D0CFC9);
+  font-size: 10px; font-family: var(--font-mono); color: var(--cinza, #D0CFC9);
 }
 
 /* item de evento */
@@ -1297,7 +1234,7 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .fp-fu-date {
-  font-size: 9px; font-family: 'DM Mono', monospace; font-weight: 600;
+  font-size: 9px; font-family: var(--font-mono); font-weight: 600;
   flex-shrink: 0; margin-top: 2px; padding: 2px 7px; border-radius: 4px;
   color: #888; background: var(--off, #F7F6F3);
   border: 1px solid var(--cinza2, #ECEAE4);
@@ -1345,7 +1282,7 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .fp-crm-fech-valor {
-  font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600;
+  font-size: 10px; font-family: var(--font-mono); font-weight: 600;
   flex-shrink: 0; margin-top: 2px; padding: 2px 7px; border-radius: 4px;
   border: 1px solid;
 }
@@ -1369,44 +1306,9 @@ body {
 @keyframes fpBannerIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
 
 /* ══════════════════════════════════════════════════
-   APOIO — seta de atalho + painel de busca
+   APOIO — seta de atalho: estilos base em shared/exp-nav.css
+   (.exp-nav-apoio-wrap / .exp-apoio-go-btn)
 ══════════════════════════════════════════════════ */
-
-/* Wrapper em volta do nav item do Apoio */
-.fp-nav-apoio-wrap {
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
-  width: 66px; /* cobre toda a largura da nav → sem gap entre wrapper e go-btn */
-}
-
-/* Setinha que espia pela esquerda da nav no hover
-   O nav item é 40px, centralizado num nav de 66px → 13px de margem esquerda.
-   right: calc(100% - 4px) → direita da seta 4px dentro do item (17px dentro da nav) = oculta.
-   No hover: right: calc(100% + 6px) → 6px para fora da nav = visível. */
-.fp-apoio-go-btn {
-  position: absolute;
-  right: calc(100% - 4px);
-  top: 50%; transform: translateY(-50%);
-  width: 20px; height: 28px;
-  background: #232320;
-  border-radius: 5px 0 0 5px;
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(255,255,255,0);
-  opacity: 0;
-  pointer-events: none;
-  transition: right .16s ease, opacity .16s ease, color .12s;
-  text-decoration: none;
-  z-index: 5;
-}
-[data-theme="dark"] .fp-apoio-go-btn { background: #181816; }
-
-.fp-nav-apoio-wrap:hover .fp-apoio-go-btn {
-  right: calc(100%);   /* flush com a borda esquerda do wrapper — sem gap para o mouse cruzar */
-  opacity: 1;
-  color: rgba(255,255,255,.5);
-  pointer-events: auto;
-}
-.fp-apoio-go-btn:hover { color: rgba(255,255,255,.9) !important; }
 
 /* ── Painel de busca Apoio ── */
 #fp-apoio-panel {
@@ -1435,7 +1337,7 @@ body {
 
 .fp-apoio-search-input {
   flex: 1; border: none; background: none;
-  font-family: 'Raleway', sans-serif; font-size: 12px;
+  font-family: var(--font-ui); font-size: 12px;
   color: var(--grafite, #111110); outline: none;
 }
 [data-theme="dark"] .fp-apoio-search-input { color: #F0EDE6; }
@@ -1512,39 +1414,9 @@ body {
 [data-theme="dark"] .fp-apoio-full-link:hover { color: #F0EDE6; }
 
 /* ══════════════════════════════════════════════════
-   CONTATOS — seta de atalho + painel de busca
+   CONTATOS — seta de atalho: estilos base em shared/exp-nav.css
+   (.exp-nav-contatos-wrap / .exp-contatos-go-btn)
 ══════════════════════════════════════════════════ */
-
-.fp-nav-contatos-wrap {
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
-  width: 66px;
-}
-
-.fp-contatos-go-btn {
-  position: absolute;
-  right: calc(100% - 4px);
-  top: 50%; transform: translateY(-50%);
-  width: 20px; height: 28px;
-  background: #232320;
-  border-radius: 5px 0 0 5px;
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(255,255,255,0);
-  opacity: 0;
-  pointer-events: none;
-  transition: right .16s ease, opacity .16s ease, color .12s;
-  text-decoration: none;
-  z-index: 5;
-}
-[data-theme="dark"] .fp-contatos-go-btn { background: #181816; }
-
-.fp-nav-contatos-wrap:hover .fp-contatos-go-btn {
-  right: calc(100%);
-  opacity: 1;
-  color: rgba(255,255,255,.5);
-  pointer-events: auto;
-}
-.fp-contatos-go-btn:hover { color: rgba(255,255,255,.9) !important; }
 
 #fp-contatos-panel {
   position: fixed;
@@ -1707,7 +1579,7 @@ body {
 .fp-prio-abrir {
   width: 100%; padding: 6px; border-radius: 7px;
   border: none; background: var(--ca); color: #fff;
-  font-family: 'Raleway', sans-serif; font-size: 11px; font-weight: 600;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
   cursor: pointer; transition: opacity .15s;
 }
 .fp-prio-abrir:hover { opacity: .85; }
@@ -1863,63 +1735,63 @@ body {
 <div id="fp-app">
 
   <!-- ── Nav lateral de módulos ── -->
-  <nav id="fp-nav">
+  <nav id="exp-nav">
 
-    <a href="app.html"        class="fp-nav-item" title="Hub">
+    <a href="app.html"        class="exp-nav-item" title="Hub">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     </a>
-    <a href="gestao.html"     class="fp-nav-item" title="Projetos">
+    <a href="gestao.html"     class="exp-nav-item" title="Projetos">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
     </a>
-    <div class="fp-nav-apoio-wrap" id="fp-nav-apoio-wrap">
+    <div class="exp-nav-apoio-wrap" id="fp-nav-apoio-wrap">
       <!-- Seta: espia pela esquerda da nav no hover, leva direto para apoio.html -->
-      <a href="apoio.html" class="fp-apoio-go-btn" id="fp-apoio-go-btn" title="Abrir módulo Apoio">
+      <a href="apoio.html" class="exp-apoio-go-btn" id="fp-apoio-go-btn" title="Abrir módulo Apoio">
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </a>
       <!-- Botão principal: abre painel de busca -->
-      <button class="fp-nav-item" id="fp-nav-apoio" onclick="fpChat.toggleApoioPanel(event)" title="Apoio">
+      <button class="exp-nav-item" id="fp-nav-apoio" onclick="fpChat.toggleApoioPanel(event)" title="Apoio">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       </button>
     </div>
-    <div class="fp-nav-contatos-wrap" id="fp-nav-contatos-wrap">
+    <div class="exp-nav-contatos-wrap" id="fp-nav-contatos-wrap">
       <!-- Seta: espia pela esquerda da nav no hover, leva direto para contatos.html -->
-      <a href="contatos.html" class="fp-contatos-go-btn" id="fp-contatos-go-btn" title="Abrir módulo Contatos">
+      <a href="contatos.html" class="exp-contatos-go-btn" id="fp-contatos-go-btn" title="Abrir módulo Contatos">
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </a>
       <!-- Botão principal: abre painel de busca -->
-      <button class="fp-nav-item" id="fp-nav-contatos" onclick="fpChat.toggleContatosPanel(event)" title="Contatos">
+      <button class="exp-nav-item" id="fp-nav-contatos" onclick="fpChat.toggleContatosPanel(event)" title="Contatos">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
     </div>
-    <a href="calendario.html" class="fp-nav-item" title="Calendário" id="fp-nav-cal"
+    <a href="calendario.html" class="exp-nav-item" title="Calendário" id="fp-nav-cal"
        onmouseenter="fpChat.showCalBanner(event)" onmouseleave="fpChat.hideCalBanner()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8"  y1="2" x2="8"  y2="6"/><line x1="3"  y1="10" x2="21" y2="10"/></svg>
     </a>
 
-    <div class="fp-nav-sep" id="fp-nav-sep-soc" style="display:none"></div>
-    <a href="crm.html"        class="fp-nav-item fp-nav-soc" title="Comercial" style="display:none" id="fp-nav-crm"
+    <div class="exp-nav-sep" id="fp-nav-sep-soc" style="display:none"></div>
+    <a href="crm.html"        class="exp-nav-item fp-nav-soc" title="Comercial" style="display:none" id="fp-nav-crm"
        onmouseenter="fpChat.showCrmBanner(event)" onmouseleave="fpChat.hideCrmBanner()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     </a>
-    <a href="financeiro.html" class="fp-nav-item fp-nav-soc" title="Financeiro" style="display:none">
+    <a href="financeiro.html" class="exp-nav-item fp-nav-soc" title="Financeiro" style="display:none">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
     </a>
-    <a href="analise.html"    class="fp-nav-item fp-nav-soc" title="Análise" style="display:none">
+    <a href="analise.html"    class="exp-nav-item fp-nav-soc" title="Análise" style="display:none">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6"  y1="20" x2="6"  y2="14"/></svg>
     </a>
-    <a href="pessoas.html"    class="fp-nav-item fp-nav-soc" title="Pessoas" style="display:none">
+    <a href="pessoas.html"    class="exp-nav-item fp-nav-soc" title="Pessoas" style="display:none">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     </a>
-    <a href="sociedade.html"  class="fp-nav-item fp-nav-soc" title="Sociedade" style="display:none">
+    <a href="sociedade.html"  class="exp-nav-item fp-nav-soc" title="Sociedade" style="display:none">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
     </a>
 
-    <div class="fp-nav-spacer"></div>
-    <div class="fp-nav-sep"></div>
+    <div class="exp-nav-spacer"></div>
+    <div class="exp-nav-sep"></div>
 
     <!-- EXP Room -->
     <a id="fp-room-btn" href="https://meet.google.com/mqe-cgge-maz" target="_blank"
-       class="fp-nav-item" title="EXP Room" onclick="fpChat.roomClick()">
+       class="exp-nav-item" title="EXP Room" onclick="fpChat.roomClick()">
       <svg id="fp-room-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="23 7 16 12 23 17 23 7"/>
         <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
@@ -1927,22 +1799,22 @@ body {
     </a>
 
     <!-- Sininho de notificações -->
-    <button class="fp-nav-item" id="fp-nav-bell" title="Notificações" onclick="fpChat.toggleNotifPanel()" style="position:relative">
+    <button class="exp-nav-item" id="fp-nav-bell" title="Notificações" onclick="fpChat.toggleNotifPanel()" style="position:relative">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:'DM Mono',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
+      <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:var(--font-mono);min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
     </button>
 
     <!-- Prioridade do projeto (hover = banner rápido, click = painel completo) -->
-    <button class="fp-nav-item" id="fp-nav-prio" title="Minha prioridade"
+    <button class="exp-nav-item" id="fp-nav-prio" title="Minha prioridade"
             onclick="fpChat.togglePrioPanel()"
             onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
     </button>
 
     <!-- Lista de tarefas (abre painel no lugar da sidebar) -->
-    <button class="fp-nav-item" id="fp-nav-tasks" title="Minhas tarefas" onclick="fpChat.toggleTasksPanel()" style="position:relative">
+    <button class="exp-nav-item" id="fp-nav-tasks" title="Minhas tarefas" onclick="fpChat.toggleTasksPanel()" style="position:relative">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      <span id="fp-tasks-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca);color:#fff;font-size:8px;font-weight:700;font-family:'DM Mono',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
+      <span id="fp-tasks-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca);color:#fff;font-size:8px;font-weight:700;font-family:var(--font-mono);min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
     </button>
 
     <!-- Cluster inferior: tema -->
@@ -2052,7 +1924,7 @@ body {
   <aside id="fp-tasks-panel" style="display:none">
     <div style="padding:12px 14px 10px;border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.18);display:flex;align-items:center;flex-shrink:0">
       <span style="font-size:14px;font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Tarefas</span>
-      <span id="fp-tasks-panel-count" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--ca);opacity:.6;margin-right:6px"></span>
+      <span id="fp-tasks-panel-count" style="font-size:10px;font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
       <button onclick="fpChat.toggleTasksPanel()" title="Fechar"
         style="width:24px;height:24px;border:none;background:none;color:var(--ca);opacity:.6;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
         onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.6'">
@@ -2120,11 +1992,11 @@ body {
           </div>
         </div>
         <!-- Som -->
-        <button class="fp-sb-icon-btn" id="fp-sound-btn" onclick="fpChat.toggleSound()" title="Som">
+        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-sound-btn" onclick="fpChat.toggleSound()" title="Som">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </button>
         <!-- Nova mensagem -->
-        <button class="fp-sb-icon-btn" id="fp-new-dm-btn" onclick="fpChat.openNewDM(event)" title="Nova mensagem">
+        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-new-dm-btn" onclick="fpChat.openNewDM(event)" title="Nova mensagem">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
       </div>
@@ -2266,7 +2138,7 @@ body {
 <div id="fp-members-panel">
   <div class="fp-members-head">
     <span class="fp-members-title">Nova mensagem</span>
-    <button class="fp-sb-icon-btn" onclick="fpChat.closeNewDM()" style="width:22px;height:22px">
+    <button class="fp-sb-icon-btn exp-sb-icon-btn" onclick="fpChat.closeNewDM()" style="width:22px;height:22px">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
     </button>
   </div>
