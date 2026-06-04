@@ -441,24 +441,88 @@ window.ExpNav = (() => {
       });
   }
 
-  /* ── Verifica clima ativa para colaboradores ──────────────── */
-  function _checkClimaAtiva(userId) {
+  /* ── Clima: dados da campanha ativa ─────────────────────────── */
+  var _climaData   = null; /* { campanha_id, titulo, minha_pendente } */
+  var _climaTimer  = null;
+
+  function _checkClimaAtiva(userId, isSocio) {
     var sb = _sb();
     if (!sb || !userId) return;
-    /* Verifica se há disparo pendente para este usuário */
-    sb.from('pessoas_pesquisa_clima_disparos')
-      .select('id')
-      .eq('usuario_id', userId)
-      .eq('status', 'pendente')
-      .limit(1)
-      .then(function(res) {
-        if (res.error || !(res.data && res.data.length)) return;
-        var btn = document.getElementById('exp-nav-pessoas-collab');
-        var badge = document.getElementById('exp-clima-badge');
-        if (btn) btn.style.display = '';
+
+    /* Busca campanha ativa + disparo pendente do usuário em paralelo */
+    Promise.all([
+      sb.from('pessoas_pesquisa_clima_campanhas')
+        .select('id, titulo')
+        .eq('status', 'ativa')
+        .order('criado_em', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      sb.from('pessoas_pesquisa_clima_disparos')
+        .select('id, status')
+        .eq('usuario_id', userId)
+        .eq('status', 'pendente')
+        .limit(1)
+        .maybeSingle(),
+    ]).then(function(res) {
+      var campanha      = res[0].data;
+      var disparoPend   = res[1].data;
+
+      if (!campanha) return; /* sem campanha ativa — nada a fazer */
+
+      _climaData = {
+        campanha_id:    campanha.id,
+        titulo:         campanha.titulo || 'Pesquisa de Clima',
+        minha_pendente: !!disparoPend,
+      };
+
+      if (isSocio) {
+        /* Sócio: mostra badge no pessoas-btn e ativa hover */
+        var badge = document.getElementById('exp-clima-badge-soc');
         if (badge) badge.style.display = 'block';
-      })
-      .catch(function() {});
+      } else {
+        /* Colaborador: só mostra se tiver disparo pendente */
+        if (!disparoPend) return;
+        var btn   = document.getElementById('exp-nav-pessoas-collab');
+        var badge2 = document.getElementById('exp-clima-badge');
+        if (btn)   btn.style.display   = '';
+        if (badge2) badge2.style.display = 'block';
+      }
+    }).catch(function() {});
+  }
+
+  /* ── Hover banner — Clima ────────────────────────────────────── */
+  function showClimaBanner(event) {
+    if (_climaTimer) { clearTimeout(_climaTimer); _climaTimer = null; }
+    if (!_climaData) return; /* sem clima ativa — hover silencioso */
+    var $b   = document.getElementById('exp-clima-banner');
+    var $btn = (event && event.currentTarget) || document.getElementById('exp-nav-pessoas-btn');
+    if (!$b) return;
+
+    /* Popula conteúdo */
+    var nome = document.getElementById('exp-clima-nome');
+    var sub  = document.getElementById('exp-clima-sub');
+    var link = document.getElementById('exp-clima-link');
+    if (nome) nome.textContent = _climaData.titulo;
+    if (sub)  sub.textContent  = _climaData.minha_pendente
+      ? 'Sua participação ainda está pendente.'
+      : 'Campanha em andamento.';
+    if (link) {
+      link.textContent = _climaData.minha_pendente ? 'Responder pesquisa →' : 'Ver resultados →';
+      link.href = 'pessoas.html?clima=1';
+    }
+
+    $b.style.display = 'flex';
+    _positionBanner($b, $btn);
+    if ($btn) $btn.classList.add('active');
+  }
+
+  function hideClimaBanner() {
+    _climaTimer = setTimeout(function() {
+      var $b   = document.getElementById('exp-clima-banner');
+      var $btn = document.getElementById('exp-nav-pessoas-btn');
+      if ($b)  $b.style.display = 'none';
+      if ($btn) $btn.classList.remove('active');
+    }, 220);
   }
 
   /* ── HTML dos painéis flutuantes ─────────────────────────── */
@@ -1225,10 +1289,8 @@ window.ExpNav = (() => {
       _checkRoomStatus();
       setInterval(_checkRoomStatus, 15000);
 
-      /* Clima ativa para colaboradores não-sócios */
-      if (!_isSocio(role)) {
-        _checkClimaAtiva(user.id || user.app_user_id);
-      }
+      /* Clima ativa — para todos os perfis */
+      _checkClimaAtiva(user.id || user.app_user_id, _isSocio(role));
 
       /* callback do módulo */
       if (typeof _config.onUserReady === 'function') _config.onUserReady(user);
@@ -1277,5 +1339,6 @@ window.ExpNav = (() => {
     toggleTarefasPanel,
     toggleTarefa,
     addTarefa,
+    showClimaBanner, hideClimaBanner,
   };
 })();
