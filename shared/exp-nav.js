@@ -795,7 +795,7 @@ window.ExpNav = (() => {
     if (!user) return;
     if ($av) {
       $av.style.background = user.cor || '#888';
-      if (user.avatar_url) {
+      if (user.avatar_url && !_config.forceInitials) {
         $av.innerHTML = '<img src="' + _esc(user.avatar_url) + '" alt="">';
       } else {
         $av.textContent = (user.iniciais || (user.nome || '??').substring(0,2)).toUpperCase();
@@ -805,7 +805,7 @@ window.ExpNav = (() => {
       var nomes = (user.nome || '').trim().split(/\s+/).filter(Boolean);
       $nome.textContent = nomes.length <= 2 ? nomes.join(' ') : nomes[0] + ' ' + nomes[nomes.length-1];
     }
-    var ROLE_PT = { socio:'Sócio', socio_adm:'Sócio Adm.', socio_admin:'Sócio Adm.', colaborador:'Colaborador', coordenador:'Coordenador', estagio:'Estagiário' };
+    var ROLE_PT = { socio:'Sócio', socio_adm:'Sócio Administrador', socio_admin:'Sócio Administrador', colaborador:'Colaborador', coordenador:'Coordenador', estagio:'Estagiário' };
     if ($role) $role.textContent = ROLE_PT[user.role] || user.role || '';
     /* Callback do módulo (para compatibilidade) */
     if (typeof _config.onUserMenu === 'function' && $av) {
