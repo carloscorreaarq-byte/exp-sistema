@@ -57,6 +57,13 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-
 [data-theme="dark"] .crm-tab.active{color:#6B9FE8;border-bottom-color:#6B9FE8}
 #crm-topbar-right{margin-left:auto;display:flex;align-items:center;gap:6px}
 
+/* #exp-topbar-right dentro do topbar do CRM — in-flow, não flutuante */
+#crm-topbar #exp-topbar-right{
+  position:static !important;
+  top:auto !important; right:auto !important;
+  display:flex; align-items:center; gap:2px;
+}
+
 /* SCROLL da área principal */
 #crm-body{flex:1;overflow-y:auto;padding:16px}
 #crm-body::-webkit-scrollbar{width:4px}
@@ -438,7 +445,39 @@ textarea{resize:vertical;min-height:60px}
       <button class="crm-tab" onclick="goTab('relatorios',this)">Relatórios</button>
       <button class="crm-tab" onclick="goTab('contatos',this)">Contatos</button>
       <div id="crm-topbar-right">
-        <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none">+ Nova oportunidade</button>
+        <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none;margin-right:4px">+ Nova oportunidade</button>
+
+        <!-- Controles padrão da plataforma — populados pelo ExpNav -->
+        <div id="exp-topbar-right">
+          <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>
+          <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </button>
+          <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
+            <div class="exp-nav-user" id="exp-nav-user"></div>
+            <div class="exp-user-info">
+              <div class="exp-user-nome" id="exp-user-nome">—</div>
+              <div class="exp-user-role" id="exp-user-role"></div>
+            </div>
+            <span class="exp-user-caret">▾</span>
+            <div class="exp-user-dropdown" id="exp-user-dropdown">
+              <button onclick="window.location.href='app.html'">Meus dados</button>
+              <button onclick="window.location.href='app.html'">Gestão de plataforma</button>
+              <div class="exp-user-dropdown-sep"></div>
+              <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
+              <div class="exp-user-dropdown-sep"></div>
+              <button onclick="ExpNav._sair()">Sair</button>
+              <div class="exp-user-dropdown-footer">
+                <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
+                <span id="exp-conn-label" style="font-size:10px">conectando…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1620,8 +1659,12 @@ window.addEventListener('DOMContentLoaded', async()=>{
     return;
   }
   currentUser = u||{nome:'Usuário',iniciais:'?',cor:'#888',viewer_only:true};
+  sessionStorage.setItem('exp_usuario', JSON.stringify(currentUser));
 
-  ExpNav.init({ module: 'crm' });
+  ExpNav.init({
+    module: 'crm',
+    onUserMenu: function() { window.location.href = 'app.html'; },
+  });
 
   await carregarDados();
   renderDash();

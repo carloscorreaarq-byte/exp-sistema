@@ -5,12 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP · Sociedade</title>
 <link rel="icon" type="image/png" href="favicon.png">
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="shared/app-notif.js"></script>
-<script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
+<script>
+  (function(){
+    var saved = localStorage.getItem('exp-theme');
+    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(saved === 'dark' || (!saved && sys))
+      document.documentElement.setAttribute('data-theme','dark');
+  })();
+</script>
 <link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
 
 <style>
 /* ── RESET & ROOT ──────────────────────────────────────────── */
@@ -41,7 +48,7 @@
   --soc-bg:   #152030;
   --verde-l:  #3A8A56;
 }
-body { font-family: var(--font-ui); background: var(--off); color: var(--grafite); min-height: 100vh; font-size: var(--text-body); font-weight: 300; }
+body { font-family: var(--font-ui); background: var(--off); color: var(--grafite); height: 100vh; overflow: hidden; display: flex; flex-direction: column; font-size: var(--text-body); font-weight: 300; }
 * { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.18) transparent; }
 [data-theme="dark"] * { scrollbar-color: rgba(255,255,255,.14) transparent; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -386,6 +393,111 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 [data-theme="dark"] .filter-select { background: var(--branco); color: var(--grafite); }
 [data-theme="dark"] .ck-cb { background: var(--branco); }
 
+/* ── SHELL LAYOUT ────────────────────────────────────────────── */
+#conteudo { flex: 1; display: flex; min-height: 0; }
+/* #app-shell usa .exp-app-shell de shared/exp-nav.css */
+
+/* Timer centralizado sobre a nav lateral */
+#exp-timer-widget {
+  left:   calc(72px + (66px / 2) - 23px) !important;
+  bottom: 34px !important;
+  z-index: 9998 !important;
+}
+
+/* ── ÁREA PRINCIPAL ──────────────────────────────────────────── */
+#app-main {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  background: var(--branco);
+  border: 1px solid var(--cinza2);
+  border-radius: 14px;
+}
+[data-theme="dark"] #app-main { background: #1E1E1D; border-color: #2E2D2B; }
+
+/* ── TOP BAR ─────────────────────────────────────────────────── */
+#app-topbar {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--cinza2);
+  flex-shrink: 0; gap: 8px;
+}
+[data-theme="dark"] #app-topbar { border-bottom-color: #2A2926; }
+
+#app-topbar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+#app-topbar-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding-top: 2px; }
+
+/* Título da seção na topbar */
+.topbar-modulo-titulo {
+  font-size: 13px; font-weight: 700; letter-spacing: -.2px;
+  color: var(--grafite);
+}
+[data-theme="dark"] .topbar-modulo-titulo { color: #D8D5CE; }
+
+/* ── ABAS INLINE (dentro do app-main) ───────────────────────── */
+.app-tabs-bar {
+  display: flex; align-items: center; gap: 0;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--cinza2);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .app-tabs-bar { border-bottom-color: #2A2926; }
+.app-tab {
+  padding: 10px 16px; font-size: 9px; font-weight: 700;
+  letter-spacing: .5px; text-transform: uppercase; color: #aaa;
+  border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all .12s; background: none;
+  border-top: none; border-left: none; border-right: none;
+  font-family: var(--font-ui);
+}
+.app-tab:hover { color: var(--grafite); }
+.app-tab.active { color: var(--soc); border-bottom-color: var(--soc); }
+
+/* ── SCROLL BODY ─────────────────────────────────────────────── */
+#app-body {
+  flex: 1; overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+#app-body::-webkit-scrollbar { width: 4px; }
+#app-body::-webkit-scrollbar-thumb { background: var(--cinza); border-radius: 2px; }
+
+/* ── SHELL FIELD / BTN (popover de feedback e lembrete) ─────── */
+.shell-field { display: flex; flex-direction: column; gap: 3px; }
+.shell-field label { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #aaa; }
+.shell-field input, .shell-field select, .shell-field textarea {
+  font-family: var(--font-ui); font-size: 11px; border: 1px solid var(--cinza);
+  background: var(--branco); color: var(--grafite); padding: 5px 8px;
+  outline: none; transition: border-color .12s; width: 100%; border-radius: 6px;
+}
+.shell-field input:focus, .shell-field select:focus, .shell-field textarea:focus { border-color: var(--soc); }
+.shell-field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+.shell-btn {
+  height: 26px; padding: 0 11px; border-radius: 999px;
+  border: 1px solid var(--cinza2); background: var(--branco);
+  font-family: var(--font-ui); font-size: 9px; font-weight: 700;
+  letter-spacing: .04em; color: #777; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+  transition: border-color .12s, color .12s;
+}
+.shell-btn:hover { border-color: var(--grafite); color: var(--grafite); }
+.shell-btn.primary { background: var(--grafite); color: var(--branco); border-color: var(--grafite); }
+.shell-btn.primary:hover { opacity: .88; }
+
+/* ── LEMBRETE POPDOWN ────────────────────────────────────────── */
+#lemb-wrap { position: relative; display: flex; align-items: center; }
+#lemb-popdown { display: flex; flex-direction: column; gap: 10px; }
+
+/* Feedback popover — posicionamento */
+#feedback-icon-wrap .nav-feedback-pop {
+  position: absolute; top: calc(100% + 8px);
+  right: 0; left: auto; bottom: auto; width: 300px;
+}
+#lemb-wrap .nav-feedback-pop {
+  position: absolute; top: calc(100% + 8px);
+  right: 0; left: auto; bottom: auto; width: 300px;
+}
+
 /* Feedback icon — padrão app.html */
 #feedback-icon-btn {
   width: 24px; height: 24px;
@@ -400,12 +512,6 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 [data-theme="dark"] #feedback-icon-btn { color: #555; }
 [data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
 
-#feedback-icon-wrap .nav-feedback-pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0; left: auto; bottom: auto;
-  width: 300px;
-}
 </style>
 </head>
 <body>
@@ -420,100 +526,110 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- NAV -->
-<nav class="nav">
-  <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
-  <div class="nav-sep"></div>
-  <div class="nav-mod-wrap" id="nav-mod-wrap">
-    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.sociedade <span>▾</span></button>
-    <div class="nav-dropdown" id="nav-dropdown">
-      <a href="gestao.html">EXP.projetos</a>
-      <a href="apoio.html">EXP.apoio</a>
-      <a href="contatos.html">EXP.contatos</a>
-      <div class="nd-sep nd-soc" style="display:none"></div>
-      <a href="calc.html" class="nd-soc" style="display:none">EXP.calculadora</a>
-      <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
-      <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
-      <a href="analise.html" class="nd-soc" style="display:none">EXP.análise</a>
-      <a href="pessoas.html" class="nd-soc" style="display:none">EXP.pessoas</a>
-      <a href="sociedade.html" class="nd-active nd-soc" style="display:none">EXP.sociedade</a>
-    </div>
-  </div>
-  <div class="nav-tabs">
-    <button class="ntab active" data-tab="dashboard"  onclick="switchTab('dashboard')">Dashboard</button>
-    <button class="ntab"        data-tab="pautas"     onclick="switchTab('pautas')">Pautas <span class="ntab-badge" id="badge-pautas" style="display:none">0</span></button>
-    <button class="ntab"        data-tab="projetos"   onclick="switchTab('projetos')">Projetos</button>
-    <button class="ntab"        data-tab="produtos"   onclick="switchTab('produtos')">Produtos</button>
-    <button class="ntab"        data-tab="atas"       onclick="switchTab('atas')">Atas</button>
-  </div>
-  <div class="nav-right">
-    <div class="conn-dot" id="conn-dot"></div>
-    <!-- Notificações -->
-    <div class="notif-wrap" id="notif-wrap">
-      <button class="notif-bell" id="notif-bell-btn" onclick="_appNotifToggle()" title="Notificações">
-        🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
-      </button>
-      <div class="notif-panel" id="notif-panel" style="display:none">
-        <div class="notif-panel-hd">
-          <span class="notif-panel-hd-t">Notificações</span>
-          <button class="notif-panel-clr" onclick="_appNotifEncerrarTodas()">Encerrar todas ✓</button>
-        </div>
-        <div id="notif-lista"><div style="padding:20px;text-align:center;color:#bbb;font-size:11px">Carregando…</div></div>
-      </div>
-    </div>
-    <!-- Feedback -->
-    <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-    <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-      <button id="feedback-icon-btn" onclick="toggleToolFeedbackPop(event)" title="Reportar problema ou sugestão">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      </button>
-      <div class="nav-feedback-pop" id="tool-feedback-pop">
-        <div class="nav-feedback-title">Problema ou sugestão</div>
-        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-        <div class="fgroup mb14">
-          <label>Tipo</label>
-          <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
-        </div>
-        <div class="fgroup mb14">
-          <label>Mensagem</label>
-          <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o problema ou sugestão."></textarea>
-        </div>
-        <div class="nav-feedback-status" id="tool-feedback-status">Será encaminhado para a Gestão de plataforma.</div>
-        <div class="nav-feedback-actions">
-          <button class="btn" onclick="fecharToolFeedbackPop()">Fechar</button>
-          <button class="btn filled" onclick="enviarToolFeedback()">Enviar</button>
-        </div>
-      </div>
-    </div>
-    <!-- Tema -->
-    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
-      <span class="ttg-icon">☀</span>
-      <span class="ttg-track"><span class="ttg-knob"></span></span>
-      <span class="ttg-icon">🌙</span>
-    </button>
-    <!-- Usuário -->
-    <div class="user-pill-wrap" id="user-pill-wrap">
-      <div class="user-chip" onclick="toggleUserMenu()">
-        <div class="uav" id="nav-av"></div>
-        <div class="u-text">
-          <span class="u-nome" id="nav-nome">—</span>
-          <span class="u-role" id="nav-role"></span>
-        </div>
-        <span class="u-caret">▾</span>
-      </div>
-      <div class="user-menu" id="user-menu" style="display:none">
-        <div class="um-nome" id="um-nome-full">—</div>
-        <div class="um-sep"></div>
-        <button class="um-item" onclick="fazerLogout()">Sair</button>
-      </div>
-    </div>
-  </div>
-</nav>
+<div id="conteudo" style="display:none">
+<div id="app-shell" class="exp-app-shell">
 
-<!-- ══════════════════════════════════════════════════════════════
-     MAIN
-══════════════════════════════════════════════════════════════ -->
-<div class="main">
+  <!-- ── Nav lateral — injetada por shared/exp-nav.js ── -->
+
+  <!-- ── Área principal ── -->
+  <div id="app-main">
+
+    <!-- Top bar: título do módulo + controles -->
+    <div id="app-topbar">
+      <div id="app-topbar-left">
+        <span class="topbar-modulo-titulo">EXP · Sociedade</span>
+      </div>
+      <div id="app-topbar-right">
+
+        <!-- Feedback -->
+        <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
+          <button id="feedback-icon-btn" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </button>
+          <div class="nav-feedback-pop" id="nav-feedback-pop">
+            <div class="nav-feedback-title">Problema ou sugestão</div>
+            <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+            <div class="shell-field">
+              <label for="tool-feedback-type">Tipo</label>
+              <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
+            </div>
+            <div class="shell-field">
+              <label for="tool-feedback-message">Mensagem</label>
+              <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o problema ou sugestão."></textarea>
+            </div>
+            <div class="nav-feedback-status" id="tool-feedback-status">Será encaminhado para a Gestão de plataforma.</div>
+            <div class="nav-feedback-actions">
+              <button type="button" class="shell-btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
+              <button type="button" class="shell-btn primary" onclick="enviarToolFeedback()">Enviar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lembrete -->
+        <div id="lemb-wrap">
+          <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">＋</button>
+          <div class="nav-feedback-pop" id="lemb-popdown">
+            <div class="nav-feedback-title">Lembrete para a equipe</div>
+            <div class="shell-field">
+              <label>Para</label>
+              <select id="lemb-para"><option value="">Carregando…</option></select>
+            </div>
+            <div class="shell-field">
+              <label>Mensagem</label>
+              <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="resize:vertical"></textarea>
+            </div>
+            <div class="nav-feedback-status" id="lemb-status"></div>
+            <div class="nav-feedback-actions">
+              <button class="shell-btn" onclick="fecharLembretePopdown()">Fechar</button>
+              <button class="shell-btn primary" style="background:var(--ouro);border-color:var(--ouro)" onclick="_enviarLembrete()">Enviar lembrete</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- User chip + dropdown -->
+        <div class="user-pill-wrap" style="position:relative">
+          <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
+            <div class="user-av" id="nav-av"></div>
+            <div>
+              <div class="u-nome" id="nav-nome">—</div>
+              <div class="u-role" id="nav-role"></div>
+            </div>
+            <span class="user-chip-arrow">▾</span>
+          </div>
+          <div class="user-dropdown" id="user-dropdown">
+            <button type="button" onclick="fazerLogout()">Sair do sistema</button>
+            <div class="user-dropdown-sep"></div>
+            <!-- Toggle tema dentro do dropdown -->
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px 4px">
+              <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema" style="flex-shrink:0">
+                <span class="ttg-icon">☀</span>
+                <span class="ttg-track"><span class="ttg-knob"></span></span>
+                <span class="ttg-icon">🌙</span>
+              </button>
+              <span style="font-size:10px;color:#aaa">Tema</span>
+            </div>
+            <div class="user-dropdown-sep"></div>
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
+              <div class="conn-dot" id="conn-dot" title="Verificando conexão…" style="width:7px;height:7px;border-radius:50%;background:#ccc"></div>
+              <span style="font-size:10px;color:#bbb" id="conn-label">conectando…</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /#app-topbar-right -->
+    </div><!-- /#app-topbar -->
+
+    <!-- Abas de seção -->
+    <div class="app-tabs-bar">
+      <button class="app-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="app-tab" data-tab="pautas"     onclick="switchTab('pautas')">Pautas <span class="ntab-badge" id="badge-pautas" style="display:none">0</span></button>
+      <button class="app-tab" data-tab="projetos"   onclick="switchTab('projetos')">Projetos</button>
+      <button class="app-tab" data-tab="produtos"   onclick="switchTab('produtos')">Produtos</button>
+      <button class="app-tab" data-tab="atas"       onclick="switchTab('atas')">Atas</button>
+    </div>
+
+    <!-- Corpo rolável -->
+    <div id="app-body">
 
   <!-- ── DASHBOARD ─────────────────────────────────────────── -->
   <div class="page active" id="page-dashboard">
@@ -660,7 +776,10 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
     </div>
   </div>
 
-</div><!-- /main -->
+    </div><!-- /#app-body -->
+  </div><!-- /#app-main -->
+</div><!-- /#app-shell -->
+</div><!-- /#conteudo -->
 
 <!-- ══════════════════════════════════════════════════════════════
      MODAL — NOVA / EDITAR PAUTA
@@ -1132,10 +1251,10 @@ async function init() {
       avatar_url: usr.avatar_url || null,
     }));
 
-    // Nav user chip
+    // User chip — topbar
     const nav_av = document.getElementById('nav-av');
     if (nav_av) {
-      nav_av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${usr.cor||'#888'};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center`;
+      nav_av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${usr.cor||'#888'};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
       nav_av.textContent = usr.iniciais || '?';
     }
     const nomeCurto = usr.apelido || usr.nome?.split(' ')[0] || '—';
@@ -1143,12 +1262,12 @@ async function init() {
     if (el_nome) el_nome.textContent = nomeCurto;
     const el_role = document.getElementById('nav-role');
     if (el_role) el_role.textContent = usr.cargo || usr.role || '';
-    const el_um = document.getElementById('um-nome-full');
-    if (el_um) el_um.textContent = usr.nome || '—';
 
-    // Conn dot
+    // Conn dot + label
     const dot = document.getElementById('conn-dot');
-    if (dot) dot.classList.add('online');
+    if (dot) { dot.style.background = '#22c55e'; dot.title = 'Conectado'; }
+    const connLabel = document.getElementById('conn-label');
+    if (connLabel) connLabel.textContent = 'conectado';
 
     // Carregar base
     await Promise.all([carregarUsuarios(), carregarTemas()]);
@@ -1158,6 +1277,7 @@ async function init() {
     AppNotif.init({ userId: usr.id });
 
     document.getElementById('loading').style.display = 'none';
+    document.getElementById('conteudo').style.display = 'flex';
   } catch (e) {
     console.error('Sociedade init error:', e);
     window.location = 'index.html';
@@ -1177,27 +1297,15 @@ async function carregarUsuarios() {
   G.todosUsuarios = data || [];
 }
 
-/* ── NAV ────────────────────────────────────────────────────── */
+/* ── NAV / ABAS ─────────────────────────────────────────────── */
 function switchTab(tab) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.ntab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.app-tab').forEach(b => b.classList.remove('active'));
   const pg = document.getElementById('page-' + tab);
-  const bt = document.querySelector(`[data-tab="${tab}"]`);
+  const bt = document.querySelector(`.app-tab[data-tab="${tab}"]`);
   if (pg) pg.classList.add('active');
   if (bt) bt.classList.add('active');
 }
-
-function toggleNavDropdown() {
-  const dd = document.getElementById('nav-dropdown');
-  if (dd) dd.classList.toggle('open');
-}
-document.addEventListener('click', e => {
-  const wrap = document.getElementById('nav-mod-wrap');
-  if (wrap && !wrap.contains(e.target)) {
-    const dd = document.getElementById('nav-dropdown');
-    if (dd) dd.classList.remove('open');
-  }
-});
 
 function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -1206,21 +1314,77 @@ function toggleTheme() {
   localStorage.setItem('exp-theme', next);
 }
 
+/* ── USER CHIP / DROPDOWN ───────────────────────────────────── */
 function toggleUserMenu() {
-  const m = document.getElementById('user-menu');
-  if (m) m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  const dd = document.getElementById('user-dropdown');
+  if (!dd) return;
+  dd.classList.toggle('open');
 }
 document.addEventListener('click', e => {
-  const wrap = document.getElementById('user-pill-wrap');
+  const wrap = document.querySelector('.user-pill-wrap');
   if (wrap && !wrap.contains(e.target)) {
-    const m = document.getElementById('user-menu');
-    if (m) m.style.display = 'none';
+    document.getElementById('user-dropdown')?.classList.remove('open');
   }
 });
 
 async function fazerLogout() {
   await sb.auth.signOut();
   window.location = 'index.html';
+}
+
+/* ── POPDOWNS (feedback + lembrete) ────────────────────────── */
+function _bindPopdownDocHandler(pop, testFn) {
+  function handler(e) {
+    if (testFn(e)) { pop.classList.remove('open'); document.removeEventListener('click', handler, true); }
+  }
+  document.addEventListener('click', handler, true);
+}
+
+function toggleToolFeedbackPopover(e) {
+  e?.stopPropagation();
+  const p = document.getElementById('nav-feedback-pop');
+  if (!p) return;
+  const wasOpen = p.classList.contains('open');
+  // fecha lembrete se aberto
+  document.getElementById('lemb-popdown')?.classList.remove('open');
+  if (wasOpen) { p.classList.remove('open'); return; }
+  p.classList.add('open');
+  _bindPopdownDocHandler(p, ev => !p.contains(ev.target) && ev.target.id !== 'feedback-icon-btn');
+}
+function fecharToolFeedbackPopover() {
+  document.getElementById('nav-feedback-pop')?.classList.remove('open');
+}
+async function enviarToolFeedback() {
+  const tipo = document.getElementById('tool-feedback-type')?.value;
+  const msg  = document.getElementById('tool-feedback-message')?.value.trim();
+  if (!msg) return;
+  await sb.from('feedbacks').insert({ tipo, mensagem: msg, modulo: 'sociedade', user_id: G.usuario?.id }).catch(()=>{});
+  document.getElementById('tool-feedback-message').value = '';
+  fecharToolFeedbackPopover();
+  toast('Feedback enviado', 'ok');
+}
+
+function toggleLembretePopdown(e) {
+  e?.stopPropagation();
+  const p = document.getElementById('lemb-popdown');
+  if (!p) return;
+  const wasOpen = p.classList.contains('open');
+  // fecha feedback se aberto
+  document.getElementById('nav-feedback-pop')?.classList.remove('open');
+  if (wasOpen) { p.classList.remove('open'); return; }
+  // Preenche select de destinatários
+  const sel = document.getElementById('lemb-para');
+  if (sel && sel.children.length <= 1) {
+    const _me = G.usuario;
+    const opts = (G.todosUsuarios || []).filter(u => u.id !== _me?.id)
+      .map(u => `<option value="${u.id}">${_esc((u.nome||'').split(' ')[0])}</option>`).join('');
+    sel.innerHTML = `<option value="todos">Toda a equipe</option>${opts}`;
+  }
+  p.classList.add('open');
+  _bindPopdownDocHandler(p, ev => !p.contains(ev.target) && ev.target.id !== 'notif-plus-btn');
+}
+function fecharLembretePopdown() {
+  document.getElementById('lemb-popdown')?.classList.remove('open');
 }
 
 // Bell delegado ao AppNotif global — ver shared/app-notif.js
@@ -1249,25 +1413,6 @@ async function _notificarAtribuicaoChecklist(rows, pautaTitulo) {
   }));
 
   await sb.from('notificacoes').insert(notifs).catch(e => console.warn('notif checklist:', e));
-}
-
-function toggleToolFeedbackPop(e) {
-  e?.stopPropagation();
-  const p = document.getElementById('tool-feedback-pop');
-  if (p) p.classList.toggle('open');
-}
-function fecharToolFeedbackPop() {
-  const p = document.getElementById('tool-feedback-pop');
-  if (p) p.classList.remove('open');
-}
-async function enviarToolFeedback() {
-  const tipo = document.getElementById('tool-feedback-type')?.value;
-  const msg  = document.getElementById('tool-feedback-message')?.value.trim();
-  if (!msg) return;
-  await sb.from('feedbacks').insert({ tipo, mensagem: msg, modulo: 'sociedade', user_id: G.usuario?.id }).catch(()=>{});
-  document.getElementById('tool-feedback-message').value = '';
-  fecharToolFeedbackPop();
-  toast('Feedback enviado', 'ok');
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3043,61 +3188,33 @@ switchTab = function(tab) {
   if (tab === 'projetos' && !G.projetos.length) carregarProjetos();
 };
 
-async function abrirLembretePopup() {
-  let pop = document.getElementById('popup-lembrete');
-  if (pop) { pop.remove(); return; }
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
-  const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
-  const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
-  const opts = (usuarios || []).filter(u => u.id !== _me.id).map(u =>
-    `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`
-  ).join('');
-  pop = document.createElement('div');
-  pop.id = 'popup-lembrete';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-  pop.innerHTML = `
-    <div style="background:var(--branco,#fff);border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
-      <label style="${_ls}">Para</label>
-      <select id="lemb-para" style="${_fs};margin-bottom:10px">
-        <option value="todos">Toda a equipe</option>
-        ${opts}
-      </select>
-      <label style="${_ls}">Mensagem</label>
-      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
-        <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
-      </div>
-    </div>`;
-  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
-}
 async function _enviarLembrete() {
-  const msg = document.getElementById('lemb-msg')?.value.trim();
+  const msg  = document.getElementById('lemb-msg')?.value.trim();
   const para = document.getElementById('lemb-para')?.value;
   if (!msg) return;
-  const btn = document.querySelector('#popup-lembrete button:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true);
+  const statusEl = document.getElementById('lemb-status');
+  if (statusEl) statusEl.textContent = 'Enviando…';
+  const _me = G.usuario || {};
   const targets = para === 'todos'
-    ? (usuarios || []).filter(u => u.id !== _me.id)
-    : [(usuarios || []).find(u => u.id === para)].filter(Boolean);
+    ? (G.todosUsuarios || []).filter(u => u.id !== _me.id)
+    : [(G.todosUsuarios || []).find(u => u.id === para)].filter(Boolean);
   for (const u of targets) {
     await sb.from('notificacoes').insert({
       usuario_id: u.id, tipo: 'lembrete',
       titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
       corpo: msg, link_tipo: 'lembrete',
-      modulo: location.pathname.split('/').pop().replace('.html',''),
+      modulo: 'sociedade',
       criado_por: _me.id, criado_por_nome: _me.nome,
       created_at: new Date().toISOString(),
     }).catch(() => {});
   }
-  document.getElementById('popup-lembrete')?.remove();
+  if (statusEl) statusEl.textContent = 'Lembrete enviado!';
+  document.getElementById('lemb-msg').value = '';
+  setTimeout(fecharLembretePopdown, 1200);
 }
 </script>
+<script src="shared/app-notif.js"></script>
+<script src="shared/exp-nav.js"></script>
+<script src="timer.js"></script>
 </body>
 </html>

@@ -9,6 +9,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
+<script src="shared/app-notif.js"></script>
 <script>
   (function(){
     var saved = localStorage.getItem('exp-theme');
@@ -27,7 +29,29 @@
   --roxo:#6B4FA0; --roxo-bg:#F3EFFE;
   --nav-active: var(--verde);
 }
-body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300}
+body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+#app{flex:1;min-height:0;display:flex}
+#calc-card{flex:1;background:var(--branco);border:1px solid var(--cinza2);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+[data-theme="dark"] #calc-card{background:#1E1E1D;border-color:#2E2D2B}
+.calc-card-hd{height:48px;background:var(--cinza2);border-bottom:1px solid var(--cinza2);display:flex;align-items:center;padding:0 8px 0 4px;flex-shrink:0;gap:0}
+[data-theme="dark"] .calc-card-hd{background:#2A2927;border-bottom-color:#2E2D2B}
+.calc-hd-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;padding-left:10px}
+.calc-hd-right .user-pill-wrap{min-width:100px;max-width:170px}
+.calc-hd-right .user-chip{background:transparent}
+.calc-hd-right .notif-plus{background:transparent}
+[data-theme="dark"] .calc-hd-right .user-chip{background:transparent;border-color:rgba(255,255,255,.12)}
+[data-theme="dark"] .calc-hd-right .user-chip:hover{border-color:rgba(255,255,255,.28)}
+.calc-card-body{flex:1;overflow-y:auto;min-height:0}
+/* scrollbar sutil — padrão gestão */
+.calc-card-body{scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.18) transparent}
+.calc-card-body::-webkit-scrollbar{width:4px}
+.calc-card-body::-webkit-scrollbar-track{background:transparent}
+.calc-card-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.16);border-radius:4px}
+.calc-card-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.28)}
+[data-theme="dark"] .calc-card-body{scrollbar-color:rgba(255,255,255,.14) transparent}
+[data-theme="dark"] .calc-card-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14)}
+[data-theme="dark"] .calc-card-body::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.main{padding:14px 16px;position:relative;z-index:1}
 
 .del-col{display:none}
 body.can-delete .del-col{display:table-cell}
@@ -36,7 +60,7 @@ body.can-delete .del-col{display:table-cell}
 
 /* LAYOUT */
 .page{display:none}.page.active{display:block}
-.cols{display:grid;grid-template-columns:2fr 1fr;gap:var(--gap-md);align-items:start}
+.cols{display:grid;grid-template-columns:2fr 3fr;gap:var(--gap-md);align-items:start}
 .cols.cols-eq{grid-template-columns:1fr 1fr}
 
 /* CARD */
@@ -59,7 +83,7 @@ body.can-delete .del-col{display:table-cell}
 .fg{display:grid;gap:7px}.fg2{grid-template-columns:1fr 1fr}.fg3{grid-template-columns:1fr 1fr 1fr}.fg4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .fgroup{display:flex;flex-direction:column;gap:3px;position:relative}
 .fgroup label{font-size:var(--text-label);font-weight:var(--weight-semibold);letter-spacing:.4px;text-transform:uppercase;color:#888}
-.fgroup input,.fgroup select,.fgroup textarea{font-family:var(--font-ui);font-size:12px;border:1px solid var(--cinza);padding:6px 9px;background:var(--branco);color:var(--grafite);width:100%;outline:none;transition:border-color var(--transition-fast);border-radius:var(--radius-btn)}
+.fgroup input,.fgroup select,.fgroup textarea{font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);padding:4px 8px;background:var(--branco);color:var(--grafite);width:100%;outline:none;transition:border-color var(--transition-fast);border-radius:var(--radius-btn)}
 .fgroup input:focus,.fgroup select:focus{border-color:var(--grafite)}
 .fgroup textarea{resize:vertical;min-height:48px}
 .inp-readonly{background:var(--cinza2)!important;color:#888!important;cursor:default}
@@ -76,7 +100,7 @@ body.can-delete .del-col{display:table-cell}
 /* STEPPER */
 .stepper{display:flex;border-radius:var(--radius-btn);overflow:hidden}
 .stepper input{text-align:center;border-left:none;border-right:none;flex:1;min-width:0;border-radius:0!important}
-.sbt{background:var(--branco);border:1px solid var(--cinza);color:#666;padding:0 10px;cursor:pointer;font-size:15px;display:flex;align-items:center;font-weight:300;transition:var(--transition-fast);white-space:nowrap}
+.sbt{background:var(--branco);border:1px solid var(--cinza);color:#666;padding:0 8px;cursor:pointer;font-size:14px;display:flex;align-items:center;font-weight:300;transition:var(--transition-fast);white-space:nowrap}
 .sbt:hover{background:var(--grafite);color:var(--branco);border-color:var(--grafite)}
 
 /* BOTÕES */
@@ -302,94 +326,94 @@ select option[disabled]{color:#bbb}
 </head>
 <body>
 
-<div class="nav">
-  <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
-  <div class="nav-sep"></div>
-  <div class="nav-mod-wrap" id="nav-mod-wrap">
-    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.calculadora <span>▾</span></button>
-    <div class="nav-dropdown" id="nav-dropdown">
-      <a href="gestao.html">EXP.projetos</a>
-      <a href="apoio.html">EXP.apoio</a>
-      <a href="contatos.html">EXP.contatos</a>
-      <div class="nd-sep nd-soc" style="display:none"></div>
-      <a href="calc.html" class="nd-active nd-soc" style="display:none">EXP.calculadora</a>
-      <a href="crm.html" class="nd-soc" style="display:none">EXP.comercial</a>
-      <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
-      <a href="analise.html" class="nd-soc" style="display:none">EXP.análise</a>
-      <a href="pessoas.html" class="nd-soc" style="display:none">EXP.pessoas</a>
-      <a href="sociedade.html" class="nd-soc" style="display:none">EXP.sociedade</a>
-    </div>
-  </div>
-  <div class="nav-tabs">
-    <div class="ntab active" data-tab="calc" onclick="goTab('calc')">Calcular proposta</div>
-    <div class="ntab" data-tab="hist" onclick="goTab('hist')">Histórico</div>
-    <div class="ntab" data-tab="base" onclick="goTab('base')">Base de cálculo</div>
-    <div class="ntab" data-tab="params" onclick="goTab('params')">Parâmetros</div>
-  </div>
-  <div class="nav-right">
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro">
-      <span class="ttg-icon">☀</span>
-      <span class="ttg-track"><span class="ttg-knob"></span></span>
-      <span class="ttg-icon">🌙</span>
-    </button>
-    <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
-    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
-    <div class="sync-indicator" id="sync-indicator" style="display:none">
-      <div class="sync-dot" id="sync-dot"></div>
-      <span id="sync-lbl">local</span>
-    </div>
-    <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-    <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-      <button id="feedback-icon-btn" onclick="toggleFeedbackPop(event)" title="Reportar problema ou sugestão">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      </button>
-      <div class="nav-feedback-pop" id="nav-feedback-pop">
-        <div class="nav-feedback-title">Problema ou sugestão</div>
-        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-        <div class="fgroup" style="margin-bottom:8px">
-          <label>Tipo</label>
-          <select id="tool-feedback-type">
-            <option value="problema">Problema</option>
-            <option value="sugestao">Sugestão</option>
-          </select>
-        </div>
-        <div class="fgroup" style="margin-bottom:8px">
-          <label>Mensagem</label>
-          <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
-        </div>
-        <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-        <div class="nav-feedback-actions">
-          <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
-          <button class="btn verde" onclick="enviarFeedback()">Enviar</button>
-        </div>
-      </div>
-    </div>
-    <div class="user-pill-wrap" id="user-pill-wrap">
-      <div class="user-chip" onclick="toggleUserMenu()">
-        <div class="uav" id="nav-av"></div>
-        <div class="u-text">
-          <span class="u-nome" id="nav-nome">—</span>
-          <span class="u-role" id="nav-role"></span>
-        </div>
-        <span class="u-caret">▾</span>
-      </div>
-      <div class="user-dropdown" id="user-dropdown">
-        <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
-        <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
-        <div class="ud-sep"></div>
-        <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
-          <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
-          <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
-          <span class="term-state-hover">ver termo →</span>
-        </div>
-        <div class="ud-sep"></div>
-        <button onclick="sair()">Sair do sistema</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div id="app">
+<div id="app-shell" class="exp-app-shell">
 
-<div class="main">
+<!-- Nav lateral — injetada por shared/exp-nav.js -->
+
+<!-- ── Card principal do módulo ── -->
+<div id="calc-card">
+
+  <!-- Header: tabs internas + ações -->
+  <div class="calc-card-hd">
+    <div class="nav-tabs">
+      <button class="ntab active" data-tab="calc" onclick="goTab('calc')">Calcular</button>
+      <button class="ntab" data-tab="hist" onclick="goTab('hist')">Histórico</button>
+      <button class="ntab" data-tab="base" onclick="goTab('base')">Base de cálculo</button>
+      <button class="ntab" data-tab="params" onclick="goTab('params')">Parâmetros</button>
+    </div>
+    <div class="calc-hd-right">
+      <!-- Sync indicator (oculto por padrão, ativado pelo Supabase) -->
+      <div class="sync-indicator" id="sync-indicator" style="display:none">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-lbl">local</span>
+      </div>
+      <!-- Feedback -->
+      <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
+        <button id="feedback-icon-btn" onclick="toggleFeedbackPop(event)" title="Reportar problema ou sugestão">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </button>
+        <div class="nav-feedback-pop" id="nav-feedback-pop">
+          <div class="nav-feedback-title">Problema ou sugestão</div>
+          <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+          <div class="fgroup" style="margin-bottom:8px">
+            <label>Tipo</label>
+            <select id="tool-feedback-type">
+              <option value="problema">Problema</option>
+              <option value="sugestao">Sugestão</option>
+            </select>
+          </div>
+          <div class="fgroup" style="margin-bottom:8px">
+            <label>Mensagem</label>
+            <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+          </div>
+          <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+          <div class="nav-feedback-actions">
+            <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
+            <button class="btn verde" onclick="enviarFeedback()">Enviar</button>
+          </div>
+        </div>
+      </div>
+      <!-- Lembrete -->
+      <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
+      <!-- User chip -->
+      <div class="user-pill-wrap" id="user-pill-wrap">
+        <div class="user-chip" onclick="toggleUserMenu()">
+          <div class="uav" id="nav-av"></div>
+          <div class="u-text">
+            <span class="u-nome" id="nav-nome">—</span>
+            <span class="u-role" id="nav-role"></span>
+          </div>
+          <span class="u-caret">▾</span>
+        </div>
+        <div class="user-dropdown" id="user-dropdown">
+          <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+          <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
+          <div class="ud-sep"></div>
+          <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
+            <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
+            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
+            <span class="term-state-hover">ver termo →</span>
+          </div>
+          <div class="ud-sep"></div>
+          <button onclick="sair()">Sair do sistema</button>
+          <div class="ud-sep"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 10px 6px">
+            <span style="font-size:10px;color:#999;letter-spacing:.3px">Aparência</span>
+            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro" style="margin:0">
+              <span class="ttg-icon">☀</span>
+              <span class="ttg-track"><span class="ttg-knob"></span></span>
+              <span class="ttg-icon">🌙</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /calc-card-hd -->
+
+  <!-- Corpo scrollável -->
+  <div class="calc-card-body">
+  <div class="main">
 
 <!-- ═══════════════════════════════════════════════════
      ABA CALCULAR
@@ -700,12 +724,12 @@ select option[disabled]{color:#bbb}
 
 <!-- COLUNA DIREITA — RESUMO -->
 <div>
-  <div style="position:sticky;top:58px">
+  <div style="position:sticky;top:14px;display:flex;flex-direction:column;height:calc(100vh - 132px)">
     <div class="card-hdr" style="background:var(--branco);border:1px solid var(--cinza);margin-bottom:0">
       <div class="card-title" id="resumo-title">Resumo da proposta</div>
       <div style="font-size:9px;color:#999" id="i-count">0 itens</div>
     </div>
-    <div id="resumo-body" style="background:var(--branco);border:1px solid var(--cinza);border-top:none;padding:12px;max-height:calc(100vh - 200px);overflow-y:auto">
+    <div id="resumo-body" style="background:var(--branco);border:1px solid var(--cinza);border-top:none;padding:12px;flex:1;overflow-y:auto;min-height:0">
       <div class="empty">Adicione serviços para ver o resumo</div>
     </div>
     <div style="display:flex;gap:6px;margin-top:8px">
@@ -994,6 +1018,10 @@ select option[disabled]{color:#bbb}
 </div><!-- /tab-params -->
 
 </div><!-- /main -->
+  </div><!-- /calc-card-body -->
+</div><!-- /calc-card -->
+</div><!-- /app-shell -->
+</div><!-- /app -->
 
 <!-- MODAL EDITAR VALOR -->
 <div class="modal-bg" id="modal-edit">
@@ -4164,5 +4192,9 @@ async function _enviarLembrete() {
 <script src="chat.js"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
+<script src="shared/exp-nav.js"></script>
+<script>
+ExpNav.init({ module: 'calc' });
+</script>
 </body>
 </html>
