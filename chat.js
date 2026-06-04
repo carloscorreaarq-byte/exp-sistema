@@ -907,6 +907,14 @@
     setTimeout(function () { if ($input) $input.focus(); }, 120);
   }
 
+  function openProjectThread(threadId, displayName) {
+    if (!threadId) return;
+    var channel = projectChannel(threadId);
+    if (displayName) applyProjectThreadTitle(threadId, displayName);
+    open();
+    openChannel(channel, displayName || getChannelLabel(channel));
+  }
+
   function goHome() { selectedMembers = []; showView('home'); }
 
   /* Atualiza o subtÃ­tulo do canal com status de presenÃ§a */
@@ -2921,6 +2929,7 @@
     toggleStatusPop: toggleStatusPop,
     react:           toggleReaction,
     openChannel:     openChannel,
+    openProjectThread: openProjectThread,
     goHome:          goHome,
     openSearch:      openSearch,
     searchInput:     searchInput,

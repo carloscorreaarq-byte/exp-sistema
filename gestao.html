@@ -2112,6 +2112,11 @@ body {
 .reg-form-field input,.reg-form-field select,.reg-form-field textarea{padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:12px;color:var(--grafite);background:var(--branco);outline:none;transition:border-color .15s}
 .reg-form-field input:focus,.reg-form-field select:focus,.reg-form-field textarea:focus{border-color:var(--grafite)}
 .reg-form-field textarea{resize:vertical;min-height:100px;line-height:1.6}
+.reg-type-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:700;letter-spacing:.45px;text-transform:uppercase}
+.reg-type-badge.ata{background:#eef7eb;color:#2f7b48}
+.reg-type-badge.visita{background:#f8efe4;color:#9a6431}
+.reg-visit-meta{display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:8px;font-size:10px;color:#777}
+.reg-visit-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border:1px solid var(--cinza2);border-radius:999px;background:var(--off)}
 .reg-encs-list{margin-top:6px}
 .reg-enc-pill{display:flex;align-items:center;gap:6px;background:var(--branco);border:1px solid var(--cinza2);border-radius:4px;padding:4px 8px;margin-bottom:5px;font-size:11px}
 .reg-enc-del{background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;line-height:1;padding:0 2px}
@@ -3761,6 +3766,7 @@ body {
             <div id="projhist-pane-conversa" class="projhist-pane">
               <div class="projhist-chat-top">
                 <div id="projchat-meta" class="projhist-chat-meta"></div>
+                <button class="btn sm" onclick="abrirChatProjetoNoWidget()" id="projchat-open-widget-btn" title="Abrir esta mesma conversa no chat geral">Abrir no chat</button>
                 <button class="projhist-chat-rename-btn" onclick="toggleChatTitleEdit()" id="projchat-rename-btn" title="Renomear conversa">✎ renomear</button>
               </div>
               <div class="projhist-chat-title-edit" id="projhist-chat-title-edit">
@@ -15342,6 +15348,27 @@ async function salvarTituloChatProjeto() {
   }
 }
 
+async function abrirChatProjetoNoWidget() {
+  if (!G.produtoAtivo) return;
+  try {
+    const threadId = await _projHistEnsureThread(G.produtoAtivo);
+    await _projHistLoadThreadMeta(threadId, G.produtoAtivo);
+    const title = _projHistChatDisplayTitle(G.produtoAtivo);
+    if (window.expChat?.openProjectThread) {
+      window.expChat.openProjectThread(threadId, title);
+      return;
+    }
+    if (window.expChat?.openChannel) {
+      window.expChat.open();
+      window.expChat.openChannel(`project:${threadId}`, title);
+      return;
+    }
+    toast('Chat geral ainda não está disponível nesta tela.');
+  } catch (err) {
+    toast('Erro ao abrir conversa no chat: ' + (err.message || err));
+  }
+}
+
 function _projHistReactionUsers(reactions, key) {
   const list = reactions?.[key];
   return Array.isArray(list) ? list : [];
@@ -15562,6 +15589,52 @@ function _hlMencao(s) {
   );
 }
 
+function _regTipoLabel(tipo) {
+  return (tipo || '').toLowerCase() === 'visita' ? 'Visita' : 'Ata';
+}
+
+function _regTipoClass(tipo) {
+  return (tipo || '').toLowerCase() === 'visita' ? 'visita' : 'ata';
+}
+
+function _regSchemaMissingColumnsError(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  return msg.includes('tipo_registro') || msg.includes('local_visita') || msg.includes('data_visita');
+}
+
+async function _regPersistEntrada(entradaId, payload) {
+  const payloadComVisita = {
+    ...payload,
+    tipo_registro: payload.tipo_registro || 'ata',
+    local_visita: payload.local_visita || '',
+    data_visita: payload.data_visita || null,
+  };
+
+  if (!entradaId) {
+    const first = await sb.from('reg_entrada').insert(payloadComVisita).select().single();
+    if (!first.error) return first;
+    if (!_regSchemaMissingColumnsError(first.error)) return first;
+    const fallback = { ...payload };
+    delete fallback.tipo_registro;
+    delete fallback.local_visita;
+    delete fallback.data_visita;
+    const second = await sb.from('reg_entrada').insert(fallback).select().single();
+    if (!second.error) toast('SQL do DEV-16 ainda não aplicado: registro salvo sem tipagem de visita.');
+    return second;
+  }
+
+  const first = await sb.from('reg_entrada').update(payloadComVisita).eq('id', entradaId);
+  if (!first.error) return first;
+  if (!_regSchemaMissingColumnsError(first.error)) return first;
+  const fallback = { ...payload };
+  delete fallback.tipo_registro;
+  delete fallback.local_visita;
+  delete fallback.data_visita;
+  const second = await sb.from('reg_entrada').update(fallback).eq('id', entradaId);
+  if (!second.error) toast('SQL do DEV-16 ainda não aplicado: registro salvo sem tipagem de visita.');
+  return second;
+}
+
 async function carregarRegistrosProduto(prodId) {
   if(!prodId) return;
   const wrap = document.getElementById('reg-lista');
@@ -15588,6 +15661,7 @@ async function carregarRegistrosProduto(prodId) {
 
 function _renderEntrada(r, collapsed) {
   const etapa   = r.etapa_id ? G.todasEtapas.find(e => e.id === r.etapa_id) : null;
+  const tipoRegistro = (r.tipo_registro || 'ata').toLowerCase();
   const isAutor = r.criado_por === G.usuario.id;
   const canModerate = isSocioRole(G.usuario.role);
   const encs    = r.reg_encaminhamento || [];
@@ -15596,9 +15670,16 @@ function _renderEntrada(r, collapsed) {
   const nComts  = r.reg_comentario?.length || 0;
   const dt      = new Date(r.criado_em);
   const dtStr   = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const visitaMeta = tipoRegistro === 'visita'
+    ? `<div class="reg-visit-meta">
+        ${r.data_visita ? `<span class="reg-visit-chip">Data: ${fmtDate(r.data_visita)}</span>` : ''}
+        ${r.local_visita ? `<span class="reg-visit-chip">Local: ${_regEsc(r.local_visita)}</span>` : ''}
+      </div>`
+    : '';
 
   const bodyHtml = `
     ${r.participantes?`<div class="reg-participantes">Participantes: ${_regEsc(r.participantes)}</div>`:''}
+    ${visitaMeta}
     ${r.corpo?`<div class="reg-corpo">${_hlMencao(r.corpo)}</div>`:''}`;
 
   if (collapsed) {
@@ -15612,6 +15693,7 @@ function _renderEntrada(r, collapsed) {
           ${r.titulo?`<div style="font-size:12px;font-weight:600;color:var(--grafite);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_regEsc(r.titulo)}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span class="reg-type-badge ${_regTipoClass(tipoRegistro)}">${_regTipoLabel(tipoRegistro)}</span>
           ${etapa?`<span class="reg-etapa-tag">${_regEsc(etapa.nome)}</span>`:''}
           <span style="font-size:11px;color:#bbb">▸</span>
         </div>
@@ -15643,6 +15725,7 @@ function _renderEntrada(r, collapsed) {
         <div class="reg-meta-ts">${dtStr}${r.atualizado_em?' · editado':''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span class="reg-type-badge ${_regTipoClass(tipoRegistro)}">${_regTipoLabel(tipoRegistro)}</span>
         ${etapa?`<span class="reg-etapa-tag">${_regEsc(etapa.nome)}</span>`:''}
         ${isAutor||canModerate?`<button class="btn sm" onclick="editarEntradaReg(${_sqReg(r.id)})">✎</button>`:''}
         ${isAutor||canModerate?`<button class="btn sm tc" onclick="deletarEntradaReg(${_sqReg(r.id)})">✕</button>`:''}
@@ -15930,6 +16013,9 @@ function _renderFormRegistro(entrada) {
   const etapas = G.todasEtapas.filter(e => e.produto_id === G.produtoAtivo);
   const etapaOpts = '<option value="">— sem etapa —</option>' +
     etapas.map(e=>`<option value="${_regAttr(e.id)}"${entrada?.etapa_id===e.id?' selected':''}>${_regEsc(e.nome)}</option>`).join('');
+  const tipoRegistro = (entrada?.tipo_registro || 'ata').toLowerCase() === 'visita' ? 'visita' : 'ata';
+  const dataVisita = entrada?.data_visita ? String(entrada.data_visita).slice(0,10) : '';
+  const localVisita = entrada?.local_visita || '';
   const encsHtml = G._regEncsForms.map((enc,i)=>`
     <div class="reg-enc-pill">
       <span style="flex:1">${_regEsc(enc.texto)}</span>
@@ -15939,12 +16025,27 @@ function _renderFormRegistro(entrada) {
   <div class="reg-form">
     <div class="reg-form-grid">
       <div class="reg-form-field">
+        <label>Tipo de registro</label>
+        <select id="rf-tipo" onchange="onTipoRegistroChange()">
+          <option value="ata"${tipoRegistro==='ata'?' selected':''}>Ata / registro geral</option>
+          <option value="visita"${tipoRegistro==='visita'?' selected':''}>Registro de visita</option>
+        </select>
+      </div>
+      <div class="reg-form-field">
         <label>Etapa (opcional)</label>
         <select id="rf-etapa">${etapaOpts}</select>
       </div>
       <div class="reg-form-field">
         <label>Título</label>
         <input type="text" id="rf-titulo" value="${_regAttr(entrada?.titulo||'')}" placeholder="Ex: Reunião de briefing">
+      </div>
+      <div class="reg-form-field" id="rf-data-visita-wrap" style="${tipoRegistro==='visita'?'':'display:none'}">
+        <label>Data da visita</label>
+        <input type="date" id="rf-data-visita" value="${_regAttr(dataVisita)}">
+      </div>
+      <div class="reg-form-field full" id="rf-local-visita-wrap" style="${tipoRegistro==='visita'?'':'display:none'}">
+        <label>Local da visita</label>
+        <input type="text" id="rf-local-visita" value="${_regAttr(localVisita)}" placeholder="Ex: Obra, stand, lote, endereço ou referência">
       </div>
       <div class="reg-form-field full">
         <label>Participantes</label>
@@ -15977,6 +16078,16 @@ function _renderFormRegistro(entrada) {
   // Ativa @mention no campo de corpo
   const corpoEl = document.getElementById('rf-corpo');
   if(corpoEl) ativarMencao(corpoEl);
+  onTipoRegistroChange();
+}
+
+function onTipoRegistroChange() {
+  const tipo = (document.getElementById('rf-tipo')?.value || 'ata').toLowerCase();
+  const isVisita = tipo === 'visita';
+  const dataWrap = document.getElementById('rf-data-visita-wrap');
+  const localWrap = document.getElementById('rf-local-visita-wrap');
+  if (dataWrap) dataWrap.style.display = isVisita ? '' : 'none';
+  if (localWrap) localWrap.style.display = isVisita ? '' : 'none';
 }
 
 function _syncEncsLista() {
@@ -16026,38 +16137,44 @@ function cancelarFormRegistro() {
 }
 
 async function salvarEntradaReg() {
+  const tipoRegistro  = (document.getElementById('rf-tipo')?.value || 'ata').toLowerCase() === 'visita' ? 'visita' : 'ata';
   const titulo        = document.getElementById('rf-titulo')?.value.trim();
   const corpo         = document.getElementById('rf-corpo')?.value.trim();
   const etapaId       = document.getElementById('rf-etapa')?.value || null;
+  const dataVisita    = document.getElementById('rf-data-visita')?.value || null;
+  const localVisita   = document.getElementById('rf-local-visita')?.value.trim() || '';
   const participantes = document.getElementById('rf-participantes')?.value.trim();
   if(!titulo && !corpo) { toast('Informe um título ou o conteúdo do registro.'); return; }
   const u   = G.usuario;
   const now = new Date().toISOString();
   try {
     let entradaId = G._regEditId;
+    const entradaPayload = {
+      produto_id:          G.produtoAtivo,
+      etapa_id:            etapaId || null,
+      tipo_registro:       tipoRegistro,
+      data_visita:         tipoRegistro === 'visita' ? (dataVisita || null) : null,
+      local_visita:        tipoRegistro === 'visita' ? localVisita : '',
+      titulo:              titulo  || '',
+      participantes:       participantes || '',
+      corpo:               corpo   || '',
+    };
     if(!entradaId) {
-      const { data, error } = await sb.from('reg_entrada').insert({
-        produto_id:          G.produtoAtivo,
-        etapa_id:            etapaId || null,
-        titulo:              titulo  || '',
-        participantes:       participantes || '',
-        corpo:               corpo   || '',
+      const { data, error } = await _regPersistEntrada(null, {
+        ...entradaPayload,
         criado_por:          u.id,
         criado_por_nome:     u.nome,
         criado_por_iniciais: u.iniciais,
         criado_por_cor:      u.cor,
         criado_em:           now,
-      }).select().single();
+      });
       if(error) throw error;
       entradaId = data.id;
     } else {
-      const { error } = await sb.from('reg_entrada').update({
-        etapa_id:      etapaId || null,
-        titulo:        titulo  || '',
-        participantes: participantes || '',
-        corpo:         corpo   || '',
+      const { error } = await _regPersistEntrada(entradaId, {
+        ...entradaPayload,
         atualizado_em: now,
-      }).eq('id', entradaId);
+      });
       if(error) throw error;
       await sb.from('reg_encaminhamento').delete().eq('entrada_id', entradaId);
     }
