@@ -26,6 +26,7 @@ window.ExpNav = (() => {
   const MODULE_HREFS = {
     app:        'app.html',
     gestao:     'gestao.html',
+    apontamentos:'apontamentos.html',
     apoio:      'apoio.html',
     contatos:   'contatos.html',
     chat:       'chat-fullpage.html',
@@ -93,88 +94,371 @@ window.ExpNav = (() => {
     var ico = {
       hub:       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
       projetos:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
-      chat:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      apontamentos:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+      calendario:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
       apoio:     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
       contatos:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-      calendario:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      chat:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      calc:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>',
       crm:       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
       financeiro:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
       analise:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
       pessoas:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
       sociedade: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
-      calc:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>',
       room:      '<svg id="exp-room-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
       bell:      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
       star:      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+      tarefas:   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
     };
 
-    var socSep   = isSocio ? '<div class="exp-nav-sep" id="exp-nav-sep-soc"></div>' : '';
     var socStyle = isSocio ? '' : ' style="display:none"';
 
-    return `
-<nav id="exp-nav">
+    /* Pessoas para não-sócios: inicialmente oculto, revelado por _checkClimaAtiva() */
+    var pessoasCollab = (activeHref !== 'pessoas.html' && !isSocio)
+      ? '<a href="pessoas.html" class="exp-nav-item" id="exp-nav-pessoas-collab" title="Pesquisa de Clima" style="display:none;position:relative">' +
+          ico.pessoas +
+          '<span id="exp-clima-badge" style="position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#C49A27;border:1.5px solid #2A2926;display:none"></span>' +
+        '</a>'
+      : '';
 
-  ${item('app.html',           'Hub',      ico.hub)}
-  ${item('gestao.html',        'Projetos', ico.projetos)}
-  ${item('chat-fullpage.html', 'Chat',     ico.chat)}
+    return '<nav id="exp-nav">\n' +
 
-  ${activeHref !== 'apoio.html' ? `<div class="exp-nav-apoio-wrap" id="exp-nav-apoio-wrap">
-    <a href="apoio.html" class="exp-apoio-go-btn" id="exp-apoio-go-btn" title="Abrir módulo Apoio">
-      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </a>
-    <button class="exp-nav-item" id="exp-nav-apoio" onclick="ExpNav.toggleApoioPanel(event)" title="Apoio">
-      ${ico.apoio}
-    </button>
-  </div>` : ''}
+    /* ── Módulos principais ─────────────────────────────── */
+    item('app.html',           'Hub',          ico.hub) +
+    item('gestao.html',        'Projetos',     ico.projetos) +
+    item('apontamentos.html',  'Apontamentos', ico.apontamentos) +
 
-  ${activeHref !== 'contatos.html' ? `<div class="exp-nav-contatos-wrap" id="exp-nav-contatos-wrap">
-    <a href="contatos.html" class="exp-contatos-go-btn" id="exp-contatos-go-btn" title="Abrir módulo Contatos">
-      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </a>
-    <button class="exp-nav-item" id="exp-nav-contatos" onclick="ExpNav.toggleContatosPanel(event)" title="Contatos">
-      ${ico.contatos}
-    </button>
-  </div>` : ''}
-  ${activeHref !== 'calendario.html' ? `<a href="calendario.html" class="exp-nav-item" title="Calendário"
-     id="exp-nav-cal"
-     onmouseenter="ExpNav.showCalBanner(event)" onmouseleave="ExpNav.hideCalBanner()">
-    ${ico.calendario}
-  </a>` : ''}
+    /* Calendário com banner hover */
+    (activeHref !== 'calendario.html'
+      ? '<a href="calendario.html" class="exp-nav-item" id="exp-nav-cal" title="Calendário"' +
+        ' onmouseenter="ExpNav.showCalBanner(event)" onmouseleave="ExpNav.hideCalBanner()">' +
+        ico.calendario + '</a>'
+      : '') +
 
-  <div class="exp-nav-sep" id="exp-nav-sep-soc"${isSocio?'':' style="display:none"'}></div>
-  ${activeHref !== 'crm.html' ? `<a href="crm.html" class="exp-nav-item" title="Comercial"
-     id="exp-nav-crm"${socStyle}
-     onmouseenter="ExpNav.showCrmBanner(event)" onmouseleave="ExpNav.hideCrmBanner()">
-    ${ico.crm}
-  </a>` : ''}
-  ${activeHref !== 'financeiro.html' ? `<a href="financeiro.html" class="exp-nav-item" title="Financeiro"${socStyle}>${ico.financeiro}</a>` : ''}
-  ${activeHref !== 'analise.html'    ? `<a href="analise.html"    class="exp-nav-item" title="Análise"${socStyle}>${ico.analise}</a>`    : ''}
-  ${activeHref !== 'pessoas.html'    ? `<a href="pessoas.html"    class="exp-nav-item" title="Pessoas"${socStyle}>${ico.pessoas}</a>`    : ''}
-  ${activeHref !== 'sociedade.html'  ? `<a href="sociedade.html"  class="exp-nav-item" title="Sociedade"${socStyle}>${ico.sociedade}</a>` : ''}
-  ${activeHref !== 'calc.html'       ? `<a href="calc.html"       class="exp-nav-item" title="Calculadora"${socStyle}>${ico.calc}</a>`   : ''}
+    /* Apoio com painel de busca */
+    (activeHref !== 'apoio.html'
+      ? '<div class="exp-nav-apoio-wrap" id="exp-nav-apoio-wrap">' +
+          '<a href="apoio.html" class="exp-apoio-go-btn" id="exp-apoio-go-btn" title="Abrir módulo Apoio">' +
+            '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>' +
+          '</a>' +
+          '<button class="exp-nav-item" id="exp-nav-apoio" onclick="ExpNav.toggleApoioPanel(event)" title="Apoio">' +
+            ico.apoio +
+          '</button>' +
+        '</div>'
+      : '') +
 
-  <div class="exp-nav-spacer"></div>
-  <div class="exp-nav-sep"></div>
+    /* Contatos com painel de busca */
+    (activeHref !== 'contatos.html'
+      ? '<div class="exp-nav-contatos-wrap" id="exp-nav-contatos-wrap">' +
+          '<a href="contatos.html" class="exp-contatos-go-btn" id="exp-contatos-go-btn" title="Abrir módulo Contatos">' +
+            '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>' +
+          '</a>' +
+          '<button class="exp-nav-item" id="exp-nav-contatos" onclick="ExpNav.toggleContatosPanel(event)" title="Contatos">' +
+            ico.contatos +
+          '</button>' +
+        '</div>'
+      : '') +
 
-  <button id="exp-theme-toggle" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>
+    item('chat-fullpage.html', 'Chat', ico.chat) +
 
-  <a id="exp-room-btn" href="${ROOM_URL}" target="_blank" rel="noopener"
-     class="exp-nav-item" title="EXP Room" onclick="ExpNav.roomClick()">
-    ${ico.room}
-  </a>
+    /* ── Separador de sócios ─────────────────────────── */
+    '<div class="exp-nav-sep"' + (isSocio ? '' : ' style="display:none"') + '></div>' +
 
-  <button class="exp-nav-item" id="exp-nav-bell" title="Notificações"
-          onclick="ExpNav.toggleNotifPanel()" style="position:relative">
-    ${ico.bell}
-    <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:'DM Mono',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
-  </button>
+    /* ── Módulos de sócios ──────────────────────────── */
+    /* calc */
+    (activeHref !== 'calc.html'
+      ? '<a href="calc.html" class="exp-nav-item" title="Calculadora"' + socStyle + '>' + ico.calc + '</a>'
+      : '') +
 
-  <button class="exp-nav-item" id="exp-nav-prio" title="Minha prioridade"
-          onmouseenter="ExpNav.showPrioBanner(event)" onmouseleave="ExpNav.hidePrioBanner()">
-    ${ico.star}
-  </button>
+    /* crm com banner hover */
+    (activeHref !== 'crm.html'
+      ? '<a href="crm.html" class="exp-nav-item" id="exp-nav-crm" title="Comercial"' + socStyle +
+        ' onmouseenter="ExpNav.showCrmBanner(event)" onmouseleave="ExpNav.hideCrmBanner()">' +
+        ico.crm + '</a>'
+      : '') +
 
-</nav>`;
+    (activeHref !== 'financeiro.html' ? '<a href="financeiro.html" class="exp-nav-item" title="Financeiro"' + socStyle + '>' + ico.financeiro + '</a>' : '') +
+    (activeHref !== 'analise.html'    ? '<a href="analise.html"    class="exp-nav-item" title="Análise"'    + socStyle + '>' + ico.analise    + '</a>' : '') +
+
+    /* pessoas — sócios: wrapper com go-btn + hover clima; colaboradores: condicional via JS */
+    (activeHref !== 'pessoas.html'
+      ? (isSocio
+          ? '<div class="exp-nav-pessoas-wrap" id="exp-nav-pessoas-wrap">' +
+              '<a href="pessoas.html" class="exp-pessoas-go-btn" id="exp-pessoas-go-btn" title="Abrir módulo Pessoas">' +
+                '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>' +
+              '</a>' +
+              '<button class="exp-nav-item" id="exp-nav-pessoas-btn" title="Pessoas"' +
+              ' style="position:relative"' +
+              ' onmouseenter="ExpNav.showClimaBanner(event)" onmouseleave="ExpNav.hideClimaBanner()"' +
+              ' onclick="window.location.href=\'pessoas.html\'">' +
+                ico.pessoas +
+                '<span id="exp-clima-badge-soc" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#C49A27;border:1.5px solid #2A2926"></span>' +
+              '</button>' +
+            '</div>'
+          : pessoasCollab)
+      : '') +
+
+    (activeHref !== 'sociedade.html' ? '<a href="sociedade.html" class="exp-nav-item" title="Sociedade"' + socStyle + '>' + ico.sociedade + '</a>' : '') +
+
+    /* ── Separador de ferramentas ────────────────────── */
+    '<div class="exp-nav-spacer"></div>' +
+    '<div class="exp-nav-sep"></div>' +
+    '<button id="exp-theme-toggle" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>' +
+
+    /* ── Ferramentas ────────────────────────────────── */
+    '<a id="exp-room-btn" href="' + ROOM_URL + '" target="_blank" rel="noopener"' +
+    ' class="exp-nav-item" title="EXP Room" onclick="ExpNav.roomClick()">' + ico.room + '</a>' +
+
+    '<button class="exp-nav-item" id="exp-nav-bell" title="Notificações"' +
+    ' onclick="ExpNav.toggleNotifPanel()" style="position:relative">' +
+      ico.bell +
+      '<span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
+    '</button>' +
+
+    '<button class="exp-nav-item" id="exp-nav-prio" title="Prioridades"' +
+    ' onmouseenter="ExpNav.showPrioBanner(event)" onmouseleave="ExpNav.hidePrioBanner()">' +
+      ico.star +
+    '</button>' +
+
+    '<button class="exp-nav-item" id="exp-nav-tarefas" title="Tarefas e Atribuições"' +
+    ' onclick="ExpNav.toggleTarefasPanel()" style="position:relative">' +
+      ico.tarefas +
+      '<span id="exp-tarefas-badge" style="display:none;position:absolute;top:4px;right:4px;background:#C49A27;color:#fff;font-size:7px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:13px;height:13px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
+    '</button>' +
+
+    '</nav>';
+  }
+
+  /* ── PAINEL DE TAREFAS ───────────────────────────────────── */
+
+  var _tfOpen  = false;
+  var _tfCache = { pendentes: [], acompanhando: [] };
+  var _tfLoaded = false;
+
+  function toggleTarefasPanel() {
+    var $panel = document.getElementById('exp-tarefas-panel');
+    var $btn   = document.getElementById('exp-nav-tarefas');
+    if (!$panel) return;
+    _tfOpen = !_tfOpen;
+    $panel.style.display = _tfOpen ? 'flex' : 'none';
+    if ($btn) $btn.classList.toggle('active', _tfOpen);
+    if (_tfOpen && !_tfLoaded) _fetchTarefas();
+    /* fecha outros painéis flutuantes */
+    if (_tfOpen) {
+      var notif = document.getElementById('exp-notif-panel');
+      if (notif && notif.style.display === 'flex') {
+        notif.style.display = 'none';
+        var bell = document.getElementById('exp-nav-bell');
+        if (bell) bell.classList.remove('active');
+      }
+    }
+  }
+
+  function _fetchTarefas() {
+    var sb = _sb();
+    if (!sb || !_user) return;
+    var uid = _user.app_user_id || _user.id;
+    if (!uid) return;
+    var cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    Promise.all([
+      /* minhas tarefas sem atribuição */
+      sb.from('tarefas_livres')
+        .select('id,descricao,tipo,data_limite,concluida,criado_por,atribuido_para,created_at')
+        .eq('usuario_id', uid).is('atribuido_para', null).eq('concluida', false),
+      /* tarefas recebidas (atribuídas a mim) */
+      sb.from('tarefas_livres')
+        .select('id,descricao,tipo,data_limite,concluida,criado_por,atribuido_para,usuario_id,created_at')
+        .eq('atribuido_para', uid).eq('concluida', false),
+      /* tarefas que delegei */
+      sb.from('tarefas_livres')
+        .select('id,descricao,tipo,data_limite,concluida,criado_por,atribuido_para,usuario_id,created_at')
+        .eq('criado_por', uid).not('atribuido_para', 'is', null),
+      /* usuários para mostrar chips */
+      sb.from('usuarios').select('id,nome,iniciais,cor').eq('ativo', true),
+    ]).then(function(res) {
+      _tfLoaded = true;
+      var proprias  = res[0].data || [];
+      var recebidas = res[1].data || [];
+      var delegadas = (res[2].data || []).filter(function(t) {
+        if (!t.atribuido_para || t.atribuido_para === uid) return false;
+        if (!t.concluida) return true;
+        return (t.created_at || '') >= cutoff;
+      });
+      var usuarios = res[3].data || [];
+
+      var ordenar = function(a, b) {
+        if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
+        if (a.data_limite && b.data_limite) return a.data_limite.localeCompare(b.data_limite);
+        if (a.data_limite) return -1;
+        if (b.data_limite) return 1;
+        return (b.created_at || '').localeCompare(a.created_at || '');
+      };
+
+      _tfCache = {
+        pendentes:    [...proprias, ...recebidas].sort(ordenar),
+        acompanhando: delegadas.sort(ordenar),
+        usuarios:     usuarios,
+        uid:          uid,
+      };
+
+      _renderTarefas();
+      _updateTarefasBadge();
+    }).catch(function() {
+      var $body = document.getElementById('exp-tf-body');
+      if ($body) $body.innerHTML = '<div class="exp-tf-vazio">Erro ao carregar tarefas.</div>';
+    });
+  }
+
+  function _fmtTfDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T12:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+
+  function _renderTarefas() {
+    var $body = document.getElementById('exp-tf-body');
+    if (!$body) return;
+    var hoje = new Date().toISOString().slice(0, 10);
+    var { pendentes, acompanhando, usuarios, uid } = _tfCache;
+
+    function userBy(id) {
+      return (usuarios || []).find(function(u) { return u.id === id; }) || null;
+    }
+
+    function renderRow(t, modo) {
+      var vencida = t.data_limite && t.data_limite < hoje;
+      var ehHoje  = t.data_limite === hoje;
+      var prazo   = t.data_limite
+        ? '<span class="exp-tf-prazo ' + (vencida ? 'vencida' : ehHoje ? 'hoje' : '') + '">' +
+            _esc(_fmtTfDate(t.data_limite)) + (vencida ? ' ⚠' : '') + '</span>'
+        : '';
+
+      var chipHtml = '';
+      if (modo === 'recebida') {
+        var criador = userBy(t.criado_por);
+        if (criador) chipHtml = '<span class="exp-tf-chip" style="background:' + _esc(criador.cor || '#888') + '" title="de ' + _esc(criador.nome || '') + '">' + _esc(criador.iniciais || '') + '</span>';
+      }
+      if (modo === 'delegada') {
+        var dest = userBy(t.atribuido_para);
+        if (dest) chipHtml = '<span class="exp-tf-chip" style="background:' + _esc(dest.cor || '#888') + '" title="para ' + _esc(dest.nome || '') + '">' + _esc(dest.iniciais || '') + '</span>';
+      }
+
+      var doneClass = t.concluida ? ' done' : '';
+      var checkDone = t.concluida ? ' done' : '';
+      return '<div class="exp-tf-item">' +
+        '<div class="exp-tf-check' + checkDone + '" onclick="ExpNav.toggleTarefa(\'' + _esc(t.id) + '\',' + (t.concluida ? 'true' : 'false') + ')" title="' + (t.concluida ? 'Desfazer' : 'Concluir') + '"></div>' +
+        '<div class="exp-tf-info">' +
+          '<div class="exp-tf-desc' + doneClass + '">' + _esc(t.descricao || '') + '</div>' +
+          '<div class="exp-tf-meta">' + prazo + chipHtml + '</div>' +
+        '</div>' +
+        '</div>';
+    }
+
+    var html = '';
+
+    if (!pendentes.length && !acompanhando.length) {
+      html = '<div class="exp-tf-vazio">Sem tarefas pendentes. ✓</div>';
+    } else {
+      if (pendentes.length) {
+        html += '<div class="exp-tf-sec">Minhas tarefas</div>';
+        html += pendentes.map(function(t) {
+          var modo = (t.criado_por && t.criado_por !== uid && t.atribuido_para === uid) ? 'recebida' : 'propria';
+          return renderRow(t, modo);
+        }).join('');
+      }
+      if (acompanhando.length) {
+        html += '<div class="exp-tf-sec">Delegadas</div>';
+        html += acompanhando.map(function(t) { return renderRow(t, 'delegada'); }).join('');
+      }
+    }
+
+    $body.innerHTML = html;
+  }
+
+  function _updateTarefasBadge() {
+    var $badge = document.getElementById('exp-tarefas-badge');
+    if (!$badge) return;
+    var count = (_tfCache.pendentes || []).filter(function(t) { return !t.concluida; }).length;
+    if (count > 0) {
+      $badge.textContent = count > 9 ? '9+' : String(count);
+      $badge.style.display = 'flex';
+    } else {
+      $badge.style.display = 'none';
+    }
+  }
+
+  function toggleTarefa(id, atualConcluida) {
+    var sb = _sb(); if (!sb) return;
+    var nova = !atualConcluida;
+    sb.from('tarefas_livres')
+      .update({ concluida: nova, concluida_em: nova ? new Date().toISOString() : null })
+      .eq('id', id)
+      .then(function() {
+        /* atualiza cache local sem refetch */
+        ['pendentes', 'acompanhando'].forEach(function(grupo) {
+          (_tfCache[grupo] || []).forEach(function(t) {
+            if (t.id === id) t.concluida = nova;
+          });
+        });
+        _renderTarefas();
+        _updateTarefasBadge();
+      })
+      .catch(function() {});
+  }
+
+  function addTarefa() {
+    var $desc = document.getElementById('exp-tf-nova-desc');
+    var $tipo = document.getElementById('exp-tf-nova-tipo');
+    var $data = document.getElementById('exp-tf-nova-data');
+    var $btn  = document.getElementById('exp-tf-add-btn');
+    var sb    = _sb();
+    if (!sb || !_user) return;
+    var uid   = _user.app_user_id || _user.id;
+    var desc  = ($desc && $desc.value || '').trim();
+    if (!desc) { if ($desc) $desc.focus(); return; }
+    if ($btn) { $btn.disabled = true; $btn.textContent = '…'; }
+    var payload = {
+      usuario_id:  uid,
+      criado_por:  uid,
+      descricao:   desc,
+      tipo:        ($tipo && $tipo.value) || 'projeto',
+      data_limite: ($data && $data.value) || null,
+      concluida:   false,
+    };
+    sb.from('tarefas_livres').insert(payload).select('*').single()
+      .then(function(r) {
+        if ($desc) $desc.value = '';
+        if ($data) $data.value = '';
+        if (r.data) {
+          _tfCache.pendentes.unshift(r.data);
+          _renderTarefas();
+          _updateTarefasBadge();
+        }
+      })
+      .catch(function() {})
+      .finally(function() {
+        if ($btn) { $btn.disabled = false; $btn.textContent = '+ Salvar'; }
+      });
+  }
+
+  /* ── Verifica clima ativa para colaboradores ──────────────── */
+  function _checkClimaAtiva(userId) {
+    var sb = _sb();
+    if (!sb || !userId) return;
+    /* Verifica se há disparo pendente para este usuário */
+    sb.from('pessoas_pesquisa_clima_disparos')
+      .select('id')
+      .eq('usuario_id', userId)
+      .eq('status', 'pendente')
+      .limit(1)
+      .then(function(res) {
+        if (res.error || !(res.data && res.data.length)) return;
+        var btn = document.getElementById('exp-nav-pessoas-collab');
+        var badge = document.getElementById('exp-clima-badge');
+        if (btn) btn.style.display = '';
+        if (badge) badge.style.display = 'block';
+      })
+      .catch(function() {});
   }
 
   /* ── HTML dos painéis flutuantes ─────────────────────────── */
@@ -204,6 +488,48 @@ window.ExpNav = (() => {
 <div id="exp-prio-banner"
      onmouseenter="ExpNav.showPrioBanner()" onmouseleave="ExpNav.hidePrioBanner()">
   <div id="exp-prio-banner-inner"></div>
+</div>
+
+<!-- Banner: clima (pesquisa ativa) -->
+<div id="exp-clima-banner"
+     onmouseenter="ExpNav.showClimaBanner()" onmouseleave="ExpNav.hideClimaBanner()">
+  <div class="exp-clima-hdr">
+    <div class="exp-clima-hdr-dot"></div>
+    <span class="exp-clima-hdr-title">Pesquisa de Clima ativa</span>
+  </div>
+  <div class="exp-clima-body">
+    <div class="exp-clima-nome" id="exp-clima-nome">—</div>
+    <div class="exp-clima-sub" id="exp-clima-sub">Sua participação está pendente.</div>
+    <a href="pessoas.html?clima=1" class="exp-clima-btn" id="exp-clima-link">Responder pesquisa →</a>
+  </div>
+</div>
+
+<!-- Painel: Tarefas e Atribuições -->
+<div id="exp-tarefas-panel">
+  <div class="exp-tf-head">
+    <span class="exp-tf-head-title">Tarefas &amp; Atribuições</span>
+    <button class="exp-tf-head-close" onclick="ExpNav.toggleTarefasPanel()" title="Fechar">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="exp-tf-body" id="exp-tf-body">
+    <div class="exp-tf-vazio">Carregando tarefas…</div>
+  </div>
+  <div class="exp-tf-input-wrap">
+    <input class="exp-tf-input" id="exp-tf-nova-desc" type="text"
+           placeholder="Nova tarefa…"
+           onkeydown="if(event.key==='Enter')ExpNav.addTarefa()">
+    <div class="exp-tf-input-row">
+      <select class="exp-tf-select" id="exp-tf-nova-tipo">
+        <option value="projeto">Projeto</option>
+        <option value="organizacao">Org. Interna</option>
+        <option value="sociedade">Societária</option>
+      </select>
+      <input class="exp-tf-select" id="exp-tf-nova-data" type="date"
+             style="width:120px;flex:none" title="Data limite (opcional)">
+      <button class="exp-tf-add-btn" id="exp-tf-add-btn" onclick="ExpNav.addTarefa()">+ Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Painel de busca — Apoio -->
@@ -891,12 +1217,18 @@ window.ExpNav = (() => {
         AppNotif.init({ userId: user.id || user.app_user_id });
       }
 
-      /* outside click notif */
+      /* outside click notif + tarefas */
       _bindNotifOutsideClick();
+      _bindTarefasOutsideClick();
 
       /* EXP Room */
       _checkRoomStatus();
       setInterval(_checkRoomStatus, 15000);
+
+      /* Clima ativa para colaboradores não-sócios */
+      if (!_isSocio(role)) {
+        _checkClimaAtiva(user.id || user.app_user_id);
+      }
 
       /* callback do módulo */
       if (typeof _config.onUserReady === 'function') _config.onUserReady(user);
@@ -916,6 +1248,21 @@ window.ExpNav = (() => {
     }
   }
 
+  /* ── Outside click — fecha tarefas ──────────────────────── */
+  function _bindTarefasOutsideClick() {
+    document.addEventListener('click', function(e) {
+      if (!_tfOpen) return;
+      var $panel = document.getElementById('exp-tarefas-panel');
+      var $btn   = document.getElementById('exp-nav-tarefas');
+      if (!$panel) return;
+      if ($panel.contains(e.target)) return;
+      if ($btn   && $btn.contains(e.target)) return;
+      _tfOpen = false;
+      $panel.style.display = 'none';
+      if ($btn) $btn.classList.remove('active');
+    });
+  }
+
   /* ── API pública ─────────────────────────────────────────── */
   return {
     init,
@@ -927,5 +1274,8 @@ window.ExpNav = (() => {
     showPrioBanner, hidePrioBanner,
     toggleApoioPanel,   closeApoioPanel,   apoioSearchInput,   apoioClear,
     toggleContatosPanel, closeContatosPanel, contatosSearchInput, contatosClear,
+    toggleTarefasPanel,
+    toggleTarefa,
+    addTarefa,
   };
 })();
