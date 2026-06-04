@@ -4710,6 +4710,8 @@ function populateCalcDropdown(selectedId) {
   const sel = document.getElementById('opp-calc-id');
   if (!sel) return;
   const currentOppId = document.getElementById('opp-id').value;
+  const selectedProposal = allProposals.find(p => p.proposal_id === selectedId);
+  const selectedFamilyRoot = selectedProposal ? (selectedProposal.parent_id || selectedProposal.proposal_id) : selectedId;
 
   // Raízes de família já vinculadas a OUTRAS oportunidades
   const linkedFamilyRoots = new Set();
@@ -4747,27 +4749,27 @@ function populateCalcDropdown(selectedId) {
     const latest  = fam[0];
     const froot   = latest.parent_id || latest.proposal_id;
     const ocupada = linkedFamilyRoots.has(froot);
+    if (ocupada && String(froot) !== String(selectedFamilyRoot || '')) return;
     const codStr  = latest.prop_code
       ? `EXP-${String(latest.prop_code).padStart(3,'0')}`
       : `#${latest.proposal_id}`;
     const famLbl  = [latest.projeto||'Sem título', latest.cliente||''].filter(Boolean).join(' · ');
-    const ocupTag = ocupada ? ' · já vinculada' : '';
     const finTag  = latest.status === 'finalizada' ? ' ✓' : '';
 
     if (fam.length === 1) {
       const p      = fam[0];
       const verLbl = _verLabel(p.version||0);
-      const lbl    = `${codStr}${finTag} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]${ocupTag}`;
+      const lbl    = `${codStr}${finTag} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]`;
       const isSel  = p.proposal_id === selectedId ? ' selected' : '';
-      opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
+      opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}>${lbl}</option>`);
     } else {
-      opts.push(`<option disabled style="color:#aaa;font-size:10px">— ${codStr}${finTag} · ${famLbl}${ocupTag}</option>`);
+      opts.push(`<option disabled style="color:#aaa;font-size:10px">— ${codStr}${finTag} · ${famLbl}</option>`);
       fam.forEach((p, i) => {
         const verLbl = _verLabel(p.version||0);
         const isSel  = p.proposal_id === selectedId ? ' selected' : '';
         const star   = i === 0 ? ' ★' : '';
         const lbl    = `    ${verLbl} — ${fmt(+p.total)}${star}`;
-        opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}${ocupada?' disabled':''} style="${ocupada?'color:#bbb':''}">${lbl}</option>`);
+        opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}>${lbl}</option>`);
       });
     }
   };
