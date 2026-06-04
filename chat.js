@@ -575,9 +575,12 @@
           icoChevron() +
         '</div>' +
         '<div class="chat-toggle" id="exp-chat-toggle" onclick="expChat.toggle()">' +
-          (user.avatar_url
-            ? '<img src="' + escHtml(user.avatar_url) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block" alt="">'
-            : icoChat()) +
+          softAvHtml(
+            user.iniciais || (user.nome || '').substring(0,2).toUpperCase(),
+            user.cor || '#1D6A4A',
+            user.avatar_url || null,
+            'width:100%;height:100%;border-radius:50%;font-size:15px;font-weight:700;letter-spacing:0'
+          ) +
           '<div class="chat-badge" id="exp-chat-badge"></div>' +
         '</div>' +
       '</div>'

@@ -803,6 +803,13 @@ body {
 [data-theme="dark"] .fgroup select,
 [data-theme="dark"] .fgroup textarea { background:#252523; border-color:#3A3836; color:var(--grafite); color-scheme:dark; }
 
+/* ── Botão + lembrete — sem moldura, igual ao toggle de tema ─ */
+#notif-plus-btn {
+  border: none; background: none;
+  -webkit-appearance: none; appearance: none;
+  outline: none; padding: 0;
+}
+
 /* ── Popdown do lembrete ──────────────────────────────────── */
 #lemb-wrap .nav-feedback-pop {
   position: absolute;
@@ -2313,11 +2320,15 @@ document.addEventListener('DOMContentLoaded', _syncThemeToggleIco);
 document.addEventListener('click', e => {
   const wrap = document.querySelector('.user-pill-wrap');
   const feedbackWrap = document.getElementById('feedback-icon-wrap');
+  const lembWrap = document.getElementById('lemb-wrap');
   if (wrap && !wrap.contains(e.target)) {
     document.getElementById('user-dropdown')?.classList.remove('open');
   }
   if (feedbackWrap && !feedbackWrap.contains(e.target)) {
     document.getElementById('nav-feedback-pop')?.classList.remove('open');
+  }
+  if (lembWrap && !lembWrap.contains(e.target)) {
+    closePopdown(document.getElementById('lemb-popdown'));
   }
 });
 
@@ -4526,9 +4537,6 @@ async function toggleLembretePopdown(e) {
   document.getElementById('lemb-msg').value = '';
   document.getElementById('lemb-status').textContent = '';
   pop.classList.add('open');
-  setTimeout(() => {
-    bindPopdownDocHandler(pop, ev => !pop.contains(ev.target) && ev.target.id !== 'notif-plus-btn');
-  }, 0);
 }
 
 function fecharLembretePopdown() {
