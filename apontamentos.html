@@ -318,6 +318,45 @@ body{
 .exp-block-title{font-size:11px;font-weight:700;color:var(--grafite);}
 .exp-block-actions{display:flex;gap:6px;}
 
+/* Banco de horas */
+.bh-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+.bh-card{
+  background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-card);
+  padding:10px 12px;
+}
+.bh-card-lbl{font-size:var(--text-label);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#aaa;}
+.bh-card-val{margin-top:4px;font-size:18px;line-height:1;font-weight:600;color:var(--grafite);}
+.bh-card-sub{margin-top:4px;font-size:10px;color:#999;}
+.bh-note-box{
+  background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-card);
+  padding:12px 14px;margin-bottom:12px;
+}
+.bh-note-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#aaa;margin-bottom:6px;}
+.bh-note-text{font-size:11px;line-height:1.5;color:#666;}
+.bh-note-text strong{color:var(--grafite);}
+.bh-admin-box{margin-top:14px;}
+.bh-item{
+  padding:10px 12px;border-bottom:1px solid var(--cinza2);background:var(--branco);
+  display:flex;flex-direction:column;gap:8px;
+}
+.bh-item:last-child{border-bottom:none;}
+.bh-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.bh-item-main{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.bh-item-title{font-size:11px;font-weight:700;color:var(--grafite);}
+.bh-item-meta{font-size:10px;color:#888;line-height:1.4;}
+.bh-item-badges{display:flex;flex-wrap:wrap;gap:5px;}
+.bh-mini-pill{
+  padding:3px 7px;border-radius:999px;border:1px solid var(--cinza2);
+  background:var(--off);font-size:9px;color:#666;
+}
+.bh-mini-pill.ok{background:var(--verde-bg);border-color:rgba(62,120,88,.22);color:#2d6f50;}
+.bh-mini-pill.warn{background:var(--terracota-bg);border-color:rgba(184,86,56,.22);color:#9b4639;}
+.bh-mini-pill.am{background:rgba(196,154,39,.10);border-color:rgba(196,154,39,.22);color:#916b13;}
+.bh-admin-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end;}
+.bh-admin-actions .apo-field{margin-bottom:0;}
+.bh-admin-actions .apo-actions{margin-top:0;}
+.bh-empty{padding:14px 12px;font-size:11px;color:#bbb;text-align:center;}
+
 /* ── Dark mode ────────────────────────── */
 [data-theme="dark"] body{background:#151513;color:#F0EFEC;}
 [data-theme="dark"] .semana-nav,
@@ -347,12 +386,16 @@ body{
   .apo-layout{grid-template-columns:1fr;}
   .apo-form-card{position:static;}
   .exp-hist-grid{grid-template-columns:1fr;}
+  .bh-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .bh-admin-actions{grid-template-columns:1fr 1fr;}
 }
 @media(max-width:700px){
   .apo-main{padding:12px;}
   .apo-week-cal{grid-template-columns:repeat(7,minmax(0,1fr));}
   .apo-kpis{flex-wrap:wrap;}
   .apo-row{grid-template-columns:1fr;}
+  .bh-grid{grid-template-columns:1fr;}
+  .bh-admin-actions{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -376,6 +419,7 @@ body{
       <div class="stab-bar">
         <button class="stab active" id="stab-horas" type="button">Horas</button>
         <button class="stab" id="stab-custos" type="button">Custos</button>
+        <button class="stab" id="stab-banco" type="button">Banco</button>
         <button class="stab" id="stab-historico" type="button">Histórico</button>
       </div>
       <!-- Semana nav (visível nas abas Horas e Custos) -->
@@ -542,6 +586,95 @@ body{
     </div><!-- /stp-custos -->
 
     <!-- ══ ABA HISTÓRICO ════════════════════════════════════════ -->
+    <div class="stab-panel" id="stp-banco">
+      <div class="apo-layout">
+
+        <div>
+          <div class="bh-grid">
+            <div class="bh-card">
+              <div class="bh-card-lbl">Jornada semanal</div>
+              <div class="bh-card-val" id="bh-kpi-jornada">—</div>
+              <div class="bh-card-sub" id="bh-kpi-jornada-sub">Meta contratada</div>
+            </div>
+            <div class="bh-card">
+              <div class="bh-card-lbl">Horas registradas</div>
+              <div class="bh-card-val" id="bh-kpi-registradas">—</div>
+              <div class="bh-card-sub">Carga bruta da semana</div>
+            </div>
+            <div class="bh-card">
+              <div class="bh-card-lbl">Excesso bruto</div>
+              <div class="bh-card-val" id="bh-kpi-excesso">—</div>
+              <div class="bh-card-sub">Antes da regra de reconhecimento</div>
+            </div>
+            <div class="bh-card">
+              <div class="bh-card-lbl">Elegível</div>
+              <div class="bh-card-val" id="bh-kpi-elegivel">—</div>
+              <div class="bh-card-sub" id="bh-kpi-elegivel-sub">Horas inteiras reconhecíveis</div>
+            </div>
+            <div class="bh-card">
+              <div class="bh-card-lbl">Saldo disponível</div>
+              <div class="bh-card-val" id="bh-kpi-saldo">—</div>
+              <div class="bh-card-sub">Para futura compensação</div>
+            </div>
+          </div>
+
+          <div class="bh-note-box">
+            <div class="bh-note-title">Leitura institucional da semana</div>
+            <div class="bh-note-text" id="bh-week-note">Carregando banco de horas…</div>
+          </div>
+
+          <div class="sec-title">Minhas solicitações</div>
+          <div id="bh-requests-wrap">
+            <div class="lanc-lista-box"><div class="bh-empty">Carregando…</div></div>
+          </div>
+
+          <div class="bh-admin-box" id="bh-admin-wrap" style="display:none">
+            <div class="sec-title">Solicitações pendentes</div>
+            <div id="bh-admin-list-wrap">
+              <div class="lanc-lista-box"><div class="bh-empty">Sem solicitações pendentes.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="apo-form-card">
+          <div class="apo-form-title">Solicitar horas adicionais</div>
+          <form id="apo-bh-form">
+            <div class="apo-pills">
+              <div class="apo-pill"><strong>Elegíveis:</strong> <span id="bh-pill-elegivel">—</span></div>
+              <div class="apo-pill"><strong>Já solicitadas:</strong> <span id="bh-pill-solicitadas">—</span></div>
+              <div class="apo-pill"><strong>Disponíveis:</strong> <span id="bh-pill-disponivel">—</span></div>
+            </div>
+
+            <div class="apo-field">
+              <label for="apo-bh-qty">Horas a solicitar</label>
+              <input type="number" id="apo-bh-qty" min="1" step="1" placeholder="0" required>
+              <div class="apo-note" id="bh-qty-note">Somente horas inteiras reconhecíveis.</div>
+            </div>
+
+            <div class="apo-field">
+              <label for="apo-bh-destino">Destino pretendido</label>
+              <select id="apo-bh-destino">
+                <option value="compensacao">Compensação</option>
+                <option value="pagamento_extraordinario">Pagamento extraordinário</option>
+              </select>
+            </div>
+
+            <div class="apo-field">
+              <label for="apo-bh-justificativa">Justificativa</label>
+              <textarea id="apo-bh-justificativa" placeholder="Contexto da semana, prazo, urgência, necessidade…"></textarea>
+            </div>
+
+            <div class="apo-actions">
+              <button type="submit" class="apo-btn apo-btn-primary" id="apo-bh-submit">Solicitar</button>
+              <button type="button" class="apo-btn" id="apo-bh-reset">Limpar</button>
+            </div>
+            <div class="apo-feedback" id="apo-bh-feedback"></div>
+          </form>
+        </div>
+
+      </div>
+    </div><!-- /stp-banco -->
+
     <div class="stab-panel" id="stp-historico">
       <!-- Barra de exportação -->
       <div class="exp-bar">
@@ -595,6 +728,10 @@ body{
     weekInfo: null,
     weekHours: [],
     weekCosts: [],
+    bankSummary: null,
+    bankRequests: [],
+    bankPending: [],
+    bankSqlReady: true,
     tabLoaded: {},
     eventsBound: false,
     timerRequested: false,
@@ -657,6 +794,10 @@ body{
     var hrs = Math.floor(h), min = Math.round((h-hrs)*60);
     return min === 0 ? hrs+'h' : hrs+'h'+String(min).padStart(2,'0');
   }
+  function round1(n) { return Math.round((Number(n)||0) * 10) / 10; }
+  function isSocioAdmRole(role) {
+    return ['socio_adm','socio_admin'].includes(String(role||'').toLowerCase());
+  }
   function fmtDate(iso) {
     if (!iso) return '';
     var d = new Date(iso+'T12:00:00');
@@ -713,6 +854,38 @@ body{
     setText('apo-week-range', fmtDate(info.start) + ' — ' + fmtDate(info.end));
   }
 
+  function calcExcessoBruto(total, jornada) {
+    return round1(Math.max((Number(total)||0) - (Number(jornada)||0), 0));
+  }
+  function calcExcessoElegivel(total, jornada) {
+    var excesso = calcExcessoBruto(total, jornada);
+    return excesso >= 1 ? Math.floor(excesso) : 0;
+  }
+  function formatBhStatus(status) {
+    return {
+      pendente:'Pendente',
+      aprovado_integralmente:'Aprovado integralmente',
+      aprovado_parcialmente:'Aprovado parcialmente',
+      recusado:'Recusado',
+      cancelado:'Cancelado',
+    }[status] || (status || '—');
+  }
+  function formatBhDestino(dest) {
+    return {
+      compensacao:'Compensação',
+      pagamento_extraordinario:'Pagamento extraordinário',
+      misto:'Misto',
+    }[dest] || '—';
+  }
+  function formatBhDestinoStatus(status) {
+    return {
+      aguardando_definicao:'Aguardando definição',
+      saldo_para_compensacao:'Saldo para compensação',
+      aguardando_pagamento_extraordinario:'Aguardando pagamento extraordinário',
+      encerrado:'Encerrado',
+    }[status] || '—';
+  }
+
   function shiftWeek(offset) {
     var base = document.getElementById('apo-date').value || new Date().toISOString().slice(0,10);
     var d = new Date(base+'T12:00:00');
@@ -730,6 +903,7 @@ body{
     var tab = activeTab();
     if (tab === 'horas') loadHorasData().catch(function(){});
     else if (tab === 'custos') loadCustosData().catch(function(){});
+    else if (tab === 'banco') loadBancoData().catch(function(){});
   }
 
   function updateSelectedDayUI(iso) {
@@ -1047,6 +1221,332 @@ body{
   }
 
   // ── Histórico por mês ────────────────────────────────────────────
+
+  function renderBancoResumo() {
+    var sum = AP.bankSummary;
+    if (!sum) return;
+    setText('bh-kpi-jornada', fmtH(sum.jornadaSemanalH));
+    setText('bh-kpi-registradas', fmtH(sum.horasRegistradasH));
+    setText('bh-kpi-excesso', fmtH(sum.excessoBrutoH));
+    setText('bh-kpi-elegivel', fmtH(sum.excessoElegivelH));
+    setText('bh-kpi-saldo', fmtH(sum.saldoDisponivelH));
+    setText('bh-pill-elegivel', fmtH(sum.excessoElegivelH));
+    setText('bh-pill-solicitadas', fmtH(sum.jaSolicitadoH));
+    setText('bh-pill-disponivel', fmtH(sum.disponivelSolicitarH));
+    setText('bh-kpi-jornada-sub', sum.jornadaDefaulted ? 'Sem cadastro em Pessoas; usando 40h' : 'Meta contratada');
+    setText('bh-kpi-elegivel-sub', sum.excessoElegivelH > 0 ? 'Horas inteiras reconhecíveis' : 'Sem horas reconhecíveis nesta semana');
+    setText('bh-week-note',
+      'Nesta semana, foram registradas ' + fmtH(sum.horasRegistradasH) +
+      ' para uma jornada de ' + fmtH(sum.jornadaSemanalH) +
+      '. O excesso bruto é ' + fmtH(sum.excessoBrutoH) +
+      ', mas somente ' + fmtH(sum.excessoElegivelH) +
+      ' entram como horas reconhecíveis. Já existem ' + fmtH(sum.jaSolicitadoH) +
+      ' em solicitações abertas para esta semana, deixando ' + fmtH(sum.disponivelSolicitarH) +
+      ' ainda disponíveis para pedir.'
+    );
+    var qty = document.getElementById('apo-bh-qty');
+    if (qty) qty.max = String(Math.max(sum.disponivelSolicitarH, 0));
+    setText('bh-qty-note',
+      sum.disponivelSolicitarH > 0
+        ? 'Somente horas inteiras reconhecíveis. Restam ' + fmtH(sum.disponivelSolicitarH) + ' disponíveis nesta semana.'
+        : 'Não há horas inteiras elegíveis disponíveis para solicitar nesta semana.'
+    );
+  }
+
+  function renderBancoRequests() {
+    var wrap = document.getElementById('bh-requests-wrap');
+    if (!wrap) return;
+    var rows = AP.bankRequests || [];
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Nenhuma solicitação registrada ainda.</div></div>';
+      return;
+    }
+    var html = '<div class="lanc-lista-box">';
+    rows.forEach(function(r) {
+      var canCancel = r.status_solicitacao === 'pendente';
+      var statusCls = r.status_solicitacao === 'pendente' ? 'am' : (String(r.status_solicitacao || '').indexOf('aprovado') === 0 ? 'ok' : 'warn');
+      html += '<div class="bh-item">' +
+        '<div class="bh-item-top">' +
+          '<div class="bh-item-main">' +
+            '<div class="bh-item-title">' + esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim)) + '</div>' +
+            '<div class="bh-item-meta">Solicitado em ' + esc(new Date(r.created_at || Date.now()).toLocaleDateString('pt-BR')) +
+            ' · pedido: ' + esc(fmtH(r.quantidade_solicitada_h)) +
+            ' · pretendido: ' + esc(formatBhDestino(r.destino_solicitado)) + '</div>' +
+          '</div>' +
+          '<div class="bh-item-badges">' +
+            '<span class="bh-mini-pill ' + statusCls + '">' + esc(formatBhStatus(r.status_solicitacao)) + '</span>' +
+            '<span class="bh-mini-pill">' + esc(formatBhDestinoStatus(r.status_destino || 'aguardando_definicao')) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="bh-item-meta">Jornada: ' + esc(fmtH(r.jornada_semanal_h || 0)) +
+        ' · registradas: ' + esc(fmtH(r.horas_registradas_h || 0)) +
+        ' · excesso elegível: ' + esc(fmtH(r.excesso_elegivel_h || 0)) +
+        ' · aprovado: ' + esc(fmtH(r.quantidade_aprovada_h || 0)) + '</div>' +
+        (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+        (r.observacao_decisao ? '<div class="bh-item-meta"><strong>Decisão:</strong> ' + esc(r.observacao_decisao) + '</div>' : '') +
+        (canCancel ? '<div class="apo-actions"><button type="button" class="apo-btn apo-btn-sm" data-bh-cancel="' + esc(r.id) + '">Cancelar pedido</button></div>' : '') +
+      '</div>';
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-cancel]'), function(btn) {
+      btn.addEventListener('click', function() {
+        cancelBancoRequest(this.getAttribute('data-bh-cancel')).catch(function(e){
+          setFb('apo-bh-feedback', e.message, 'err');
+        });
+      });
+    });
+  }
+
+  function renderBancoAdmin() {
+    var wrapBox = document.getElementById('bh-admin-wrap');
+    var wrap = document.getElementById('bh-admin-list-wrap');
+    if (!wrapBox || !wrap) return;
+    var admin = isSocioAdmRole(AP.user && AP.user.role);
+    wrapBox.style.display = admin ? '' : 'none';
+    if (!admin) return;
+    var rows = AP.bankPending || [];
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Sem solicitações pendentes.</div></div>';
+      return;
+    }
+    var html = '<div class="lanc-lista-box">';
+    rows.forEach(function(r) {
+      html += '<div class="bh-item">' +
+        '<div class="bh-item-top">' +
+          '<div class="bh-item-main">' +
+            '<div class="bh-item-title">' + esc(r.usuario_nome || 'Usuário') + ' · ' + esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim)) + '</div>' +
+            '<div class="bh-item-meta">Pedido: ' + esc(fmtH(r.quantidade_solicitada_h)) +
+            ' · elegível: ' + esc(fmtH(r.excesso_elegivel_h || 0)) +
+            ' · jornada: ' + esc(fmtH(r.jornada_semanal_h || 0)) +
+            ' · registradas: ' + esc(fmtH(r.horas_registradas_h || 0)) + '</div>' +
+          '</div>' +
+          '<div class="bh-item-badges"><span class="bh-mini-pill am">Pendente</span></div>' +
+        '</div>' +
+        (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+        '<div class="bh-admin-actions">' +
+          '<div class="apo-field"><label for="bh-approve-' + esc(r.id) + '">Aprovar</label><input type="number" id="bh-approve-' + esc(r.id) + '" min="0" step="1" value="' + esc(String(r.quantidade_solicitada_h || 0)) + '"></div>' +
+          '<div class="apo-field"><label for="bh-comp-' + esc(r.id) + '">Compensação</label><input type="number" id="bh-comp-' + esc(r.id) + '" min="0" step="1" value="' + esc(String(r.quantidade_solicitada_h || 0)) + '"></div>' +
+          '<div class="apo-field"><label for="bh-pay-' + esc(r.id) + '">Pagamento</label><input type="number" id="bh-pay-' + esc(r.id) + '" min="0" step="1" value="0"></div>' +
+          '<div class="apo-field"><label for="bh-note-' + esc(r.id) + '">Observação</label><input type="text" id="bh-note-' + esc(r.id) + '" placeholder="Observação da decisão"></div>' +
+        '</div>' +
+        '<div class="apo-actions">' +
+          '<button type="button" class="apo-btn apo-btn-primary apo-btn-sm" data-bh-approve="' + esc(r.id) + '">Decidir</button>' +
+          '<button type="button" class="apo-btn apo-btn-sm" data-bh-refuse="' + esc(r.id) + '">Recusar</button>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-approve]'), function(btn) {
+      btn.addEventListener('click', function() {
+        approveBancoRequest(this.getAttribute('data-bh-approve')).catch(function(e){
+          setFb('apo-bh-feedback', e.message, 'err');
+        });
+      });
+    });
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-refuse]'), function(btn) {
+      btn.addEventListener('click', function() {
+        refuseBancoRequest(this.getAttribute('data-bh-refuse')).catch(function(e){
+          setFb('apo-bh-feedback', e.message, 'err');
+        });
+      });
+    });
+  }
+
+  async function loadBancoData() {
+    var u = uid(), info = AP.weekInfo;
+    if (!u || !info) return;
+    AP.bankSqlReady = true;
+    try {
+      var horasRes = await window.sb
+        .from('horas_lancadas')
+        .select('data_lancamento,hora_inicio,hora_fim')
+        .eq('usuario_id', u)
+        .gte('data_lancamento', info.start)
+        .lte('data_lancamento', info.end);
+      if (horasRes.error) throw horasRes.error;
+
+      var [jornadaRes, saldoRes, reqRes, pendingRes] = await Promise.all([
+        window.sb.from('usuarios_jornada').select('jornada_semanal_h').eq('usuario_id', u).maybeSingle(),
+        window.sb.from('banco_horas_saldo').select('horas_disponiveis,horas_pagamento_pendente').eq('usuario_id', u).maybeSingle(),
+        window.sb.from('banco_horas_solicitacoes').select('*').eq('usuario_id', u).order('created_at', { ascending:false }).limit(30),
+        isSocioAdmRole(AP.user && AP.user.role)
+          ? window.sb.from('banco_horas_solicitacoes').select('*').eq('status_solicitacao', 'pendente').order('created_at', { ascending:true }).limit(30)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (jornadaRes.error) throw jornadaRes.error;
+      if (saldoRes.error && saldoRes.error.code !== 'PGRST116') throw saldoRes.error;
+      if (reqRes.error) throw reqRes.error;
+      if (pendingRes && pendingRes.error) throw pendingRes.error;
+
+      var horas = horasRes.data || [];
+      var jornada = Number((jornadaRes.data && jornadaRes.data.jornada_semanal_h) || 40);
+      var total = round1(horas.reduce(function(sum, row) {
+        return sum + diffH(row.hora_inicio, row.hora_fim);
+      }, 0));
+      var excessoBruto = calcExcessoBruto(total, jornada);
+      var excessoElegivel = calcExcessoElegivel(total, jornada);
+      var reqs = reqRes.data || [];
+      var jaSolicitado = reqs
+        .filter(function(r) {
+          return r.semana_inicio === info.start &&
+            r.status_solicitacao !== 'recusado' &&
+            r.status_solicitacao !== 'cancelado';
+        })
+        .reduce(function(sum, r) { return sum + Number(r.quantidade_solicitada_h || 0); }, 0);
+      var saldo = saldoRes.data || {};
+      AP.bankSummary = {
+        jornadaSemanalH: jornada,
+        jornadaDefaulted: !(jornadaRes.data && jornadaRes.data.jornada_semanal_h != null),
+        horasRegistradasH: total,
+        excessoBrutoH: excessoBruto,
+        excessoElegivelH: excessoElegivel,
+        jaSolicitadoH: Number(jaSolicitado || 0),
+        disponivelSolicitarH: Math.max(excessoElegivel - Number(jaSolicitado || 0), 0),
+        saldoDisponivelH: Number(saldo.horas_disponiveis || 0),
+        saldoPagamentoPendenteH: Number(saldo.horas_pagamento_pendente || 0),
+      };
+      AP.bankRequests = reqs;
+      AP.bankPending = pendingRes && pendingRes.data ? pendingRes.data : [];
+      renderBancoResumo();
+      renderBancoRequests();
+      renderBancoAdmin();
+    } catch(e) {
+      AP.bankSqlReady = false;
+      document.getElementById('bh-week-note').textContent = 'Banco de horas indisponível. Execute primeiro o SQL da DEV-08 no Supabase.';
+      document.getElementById('bh-requests-wrap').innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Execute o SQL da DEV-08 para habilitar solicitações e saldo.</div></div>';
+      document.getElementById('bh-admin-list-wrap').innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Execute o SQL da DEV-08 para habilitar aprovação.</div></div>';
+      setFb('apo-bh-feedback', e.message || 'Banco de horas indisponível.', 'err');
+    }
+  }
+
+  async function submitBancoHoras(ev) {
+    ev.preventDefault();
+    setFb('apo-bh-feedback', '', '');
+    var btn = document.getElementById('apo-bh-submit');
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+    try {
+      if (!AP.bankSummary) await loadBancoData();
+      if (!AP.bankSqlReady) throw new Error('Execute o SQL da DEV-08 antes de solicitar horas adicionais.');
+      var sum = AP.bankSummary;
+      var qty = parseInt(document.getElementById('apo-bh-qty').value || '0', 10);
+      var destino = document.getElementById('apo-bh-destino').value;
+      var justificativa = document.getElementById('apo-bh-justificativa').value.trim();
+      if (!qty || qty <= 0) throw new Error('Informe uma quantidade inteira válida.');
+      if (qty > sum.disponivelSolicitarH) throw new Error('A solicitação não pode ultrapassar o saldo elegível disponível da semana.');
+      var ins = await window.sb.from('banco_horas_solicitacoes').insert({
+        usuario_id: uid(),
+        usuario_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+        semana_inicio: AP.weekInfo.start,
+        semana_fim: AP.weekInfo.end,
+        jornada_semanal_h: sum.jornadaSemanalH,
+        horas_registradas_h: sum.horasRegistradasH,
+        excesso_bruto_h: sum.excessoBrutoH,
+        excesso_elegivel_h: sum.excessoElegivelH,
+        quantidade_solicitada_h: qty,
+        destino_solicitado: destino,
+        status_solicitacao: 'pendente',
+        status_destino: 'aguardando_definicao',
+        justificativa: justificativa || null,
+      });
+      if (ins.error) throw ins.error;
+      document.getElementById('apo-bh-form').reset();
+      document.getElementById('apo-bh-destino').value = 'compensacao';
+      setFb('apo-bh-feedback', 'Solicitação registrada.', 'ok');
+      await loadBancoData();
+    } catch(e) {
+      setFb('apo-bh-feedback', e.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Solicitar';
+    }
+  }
+
+  async function cancelBancoRequest(id) {
+    var res = await window.sb.from('banco_horas_solicitacoes')
+      .update({ status_solicitacao:'cancelado', cancelado_em:new Date().toISOString(), updated_at:new Date().toISOString() })
+      .eq('id', id)
+      .eq('usuario_id', uid())
+      .eq('status_solicitacao', 'pendente');
+    if (res.error) throw new Error(res.error.message);
+    setFb('apo-bh-feedback', 'Solicitação cancelada.', 'ok');
+    await loadBancoData();
+  }
+
+  async function applyBancoSaldo(usuarioId, compHoras, payHoras) {
+    var cur = await window.sb.from('banco_horas_saldo')
+      .select('usuario_id,horas_disponiveis,horas_pagamento_pendente')
+      .eq('usuario_id', usuarioId)
+      .maybeSingle();
+    if (cur.error && cur.error.code !== 'PGRST116') throw cur.error;
+    var row = cur.data || { usuario_id: usuarioId, horas_disponiveis: 0, horas_pagamento_pendente: 0 };
+    var upd = await window.sb.from('banco_horas_saldo').upsert({
+      usuario_id: usuarioId,
+      horas_disponiveis: Number(row.horas_disponiveis || 0) + Number(compHoras || 0),
+      horas_pagamento_pendente: Number(row.horas_pagamento_pendente || 0) + Number(payHoras || 0),
+      updated_at: new Date().toISOString(),
+    }, { onConflict:'usuario_id' });
+    if (upd.error) throw upd.error;
+  }
+
+  async function approveBancoRequest(id) {
+    if (!isSocioAdmRole(AP.user && AP.user.role)) throw new Error('A aprovação é restrita a sócios administrativos.');
+    var base = (AP.bankPending || []).find(function(r){ return String(r.id) === String(id); });
+    if (!base) throw new Error('Solicitação não encontrada.');
+    var aprov = parseInt(document.getElementById('bh-approve-' + id).value || '0', 10);
+    var comp = parseInt(document.getElementById('bh-comp-' + id).value || '0', 10);
+    var pay = parseInt(document.getElementById('bh-pay-' + id).value || '0', 10);
+    var obs = (document.getElementById('bh-note-' + id).value || '').trim();
+    if (aprov < 0 || comp < 0 || pay < 0) throw new Error('Valores de decisão não podem ser negativos.');
+    if (aprov > Number(base.quantidade_solicitada_h || 0)) throw new Error('A aprovação não pode ultrapassar a quantidade solicitada.');
+    if ((comp + pay) !== aprov) throw new Error('Compensação e pagamento devem somar exatamente o total aprovado.');
+    var status = aprov === 0 ? 'recusado' : (aprov === Number(base.quantidade_solicitada_h || 0) ? 'aprovado_integralmente' : 'aprovado_parcialmente');
+    var destino = comp > 0 && pay > 0 ? 'misto' : (comp > 0 ? 'compensacao' : (pay > 0 ? 'pagamento_extraordinario' : null));
+    var statusDestino = comp > 0 && pay === 0 ? 'saldo_para_compensacao'
+      : (pay > 0 && comp === 0 ? 'aguardando_pagamento_extraordinario'
+      : (aprov > 0 ? 'aguardando_definicao' : 'encerrado'));
+    await applyBancoSaldo(base.usuario_id, comp, pay);
+    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+      quantidade_aprovada_h: aprov,
+      horas_para_compensacao_h: comp,
+      horas_para_pagamento_h: pay,
+      destino_aprovado: destino,
+      status_solicitacao: status,
+      status_destino: statusDestino,
+      observacao_decisao: obs || null,
+      aprovado_por: uid(),
+      aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+      aprovado_em: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', id).eq('status_solicitacao', 'pendente');
+    if (upd.error) throw new Error(upd.error.message);
+    setFb('apo-bh-feedback', 'Solicitação decidida.', 'ok');
+    await loadBancoData();
+  }
+
+  async function refuseBancoRequest(id) {
+    if (!isSocioAdmRole(AP.user && AP.user.role)) throw new Error('A recusa é restrita a sócios administrativos.');
+    var obs = (document.getElementById('bh-note-' + id).value || '').trim();
+    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+      quantidade_aprovada_h: 0,
+      horas_para_compensacao_h: 0,
+      horas_para_pagamento_h: 0,
+      destino_aprovado: null,
+      status_solicitacao: 'recusado',
+      status_destino: 'encerrado',
+      observacao_decisao: obs || null,
+      aprovado_por: uid(),
+      aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+      aprovado_em: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', id).eq('status_solicitacao', 'pendente');
+    if (upd.error) throw new Error(upd.error.message);
+    setFb('apo-bh-feedback', 'Solicitação recusada.', 'ok');
+    await loadBancoData();
+  }
 
   async function loadHistoricoMes(mes) {
     if (!mes) return;
@@ -1631,7 +2131,7 @@ body{
   }
 
   function switchTab(tab) {
-    ['horas','custos','historico'].forEach(function(t) {
+    ['horas','custos','banco','historico'].forEach(function(t) {
       document.getElementById('stab-'+t).classList.toggle('active',t===tab);
       document.getElementById('stp-'+t).classList.toggle('active',t===tab);
     });
@@ -1642,10 +2142,15 @@ body{
     } else if (tab==='custos' && !AP.tabLoaded.custos) {
       AP.tabLoaded.custos = true;
       loadCustosData().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
+    } else if (tab==='banco' && !AP.tabLoaded.banco) {
+      AP.tabLoaded.banco = true;
+      loadBancoData().catch(function(e){ setFb('apo-bh-feedback',e.message,'err'); });
     } else if (tab==='historico' && !AP.tabLoaded.historico) {
       AP.tabLoaded.historico = true;
       var mes = document.getElementById('exp-mes').value;
       if (mes) loadHistoricoMes(mes);
+    } else if (tab==='banco') {
+      loadBancoData().catch(function(e){ setFb('apo-bh-feedback',e.message,'err'); });
     }
   }
 
@@ -1662,6 +2167,7 @@ body{
 
     document.getElementById('stab-horas').addEventListener('click',function(){ switchTab('horas'); });
     document.getElementById('stab-custos').addEventListener('click',function(){ switchTab('custos'); });
+    document.getElementById('stab-banco').addEventListener('click',function(){ switchTab('banco'); });
     document.getElementById('stab-historico').addEventListener('click',function(){ switchTab('historico'); });
     document.getElementById('apo-week-prev').addEventListener('click',function(){ shiftWeek(-1); });
     document.getElementById('apo-week-next').addEventListener('click',function(){ shiftWeek(1); });
@@ -1684,6 +2190,12 @@ body{
     });
     document.getElementById('apo-costs-form').addEventListener('submit',submitCustos);
     document.getElementById('apo-cost-reset').addEventListener('click',resetCostForm);
+    document.getElementById('apo-bh-form').addEventListener('submit',submitBancoHoras);
+    document.getElementById('apo-bh-reset').addEventListener('click',function(){
+      document.getElementById('apo-bh-form').reset();
+      document.getElementById('apo-bh-destino').value = 'compensacao';
+      setFb('apo-bh-feedback','','');
+    });
 
     document.getElementById('btn-exp-horas-csv').addEventListener('click',exportarHorasCSV);
     document.getElementById('btn-exp-horas-pdf').addEventListener('click',exportarHorasPDF);
