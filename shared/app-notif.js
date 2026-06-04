@@ -80,8 +80,9 @@ window.AppNotif = (() => {
   /* ── badge ───────────────────────────────────────────────── */
   function _badgeTotal() {
     const unread   = _notifs.filter(n => !n.lido_em).length;
-    const computed = Object.values(_computed)
-      .reduce((acc, s) => acc + (s.items?.length ?? 0), 0);
+    const computed = Object.entries(_computed)
+      .filter(([k]) => k !== 'tarefas')
+      .reduce((acc, [, s]) => acc + (s.items?.length ?? 0), 0);
     return unread + computed;
   }
 
@@ -94,8 +95,11 @@ window.AppNotif = (() => {
   }
 
   /* ── render helpers ──────────────────────────────────────── */
-  function _secHd(label) {
-    return `<div class="notif-sec-hd">${_esc(label)}</div>`;
+  function _secHd(label, count) {
+    const ct = count != null
+      ? `<span style="font-family:'DM Mono',monospace;font-size:8px;color:#bbb;font-weight:400;margin-left:5px">${count}</span>`
+      : '';
+    return `<div class="notif-sec-hd">${_esc(label)}${ct}</div>`;
   }
 
   const TYPE_ICONS = {
@@ -171,20 +175,21 @@ window.AppNotif = (() => {
 
     // 1. Não lidas (todas, de qualquer módulo)
     if (unread.length) {
-      html += _secHd(`Não lidas (${unread.length})`);
+      html += _secHd('Não lidas', unread.length);
       html += unread.map(_itemHtml).join('');
     }
 
     // 2. Lidas agrupadas por módulo
     Object.entries(byModule).forEach(([moduleKey, items]) => {
-      html += _secHd(MODULE_LABELS[moduleKey] || moduleKey);
+      html += _secHd(MODULE_LABELS[moduleKey] || moduleKey, items.length);
       html += items.map(_itemHtml).join('');
     });
 
-    // 3. Seções computadas (tarefas, comercial, etc.)
+    // 3. Seções computadas (comercial, etc.) — tarefas excluídas: visualização contínua na nav
     Object.entries(_computed).forEach(([key, section]) => {
+      if (key === 'tarefas') return;
       if (!section.items?.length) return;
-      html += _secHd(section.label || MODULE_LABELS[key] || key);
+      html += _secHd(section.label || MODULE_LABELS[key] || key, section.items.length);
       html += section.items.map(it => _computedItemHtml(it, key)).join('');
     });
 
@@ -326,36 +331,49 @@ window.AppNotif = (() => {
     const items = [];
 
     ops.forEach(op => {
-      const label    = `${op.num_legado || ''} ${op.clientes?.nome || ''}`.trim();
+      const cliente  = op.clientes?.nome || '';
+      const num      = op.num_legado || '';
+      const titulo   = [num, cliente].filter(Boolean).join(' · ') || 'Oportunidade';
       const opProds  = prodsByOp[op.id] || [];
       const key_exp  = 'exp_' + op.id;
       const key_fu   = 'fu_'  + op.id;
 
-      // Proposta expirada: produto enviado há >90 dias
-      const isExpired = opProds.some(p =>
+      // Proposta expirada: produto enviado há >90 dias — mostra dias reais
+      const expiredProd = opProds.find(p =>
         p.data_envio && (_diasDesde(p.data_envio) ?? 0) > 90
       );
 
-      if (isExpired && !dismissed.has(key_exp)) {
+      if (expiredProd && !dismissed.has(key_exp)) {
+        const dias = _diasDesde(expiredProd.data_envio) ?? 0;
         items.push({
-          key: key_exp, icon: '⚡', titulo: 'Proposta expirada', corpo: label,
+          key:   key_exp,
+          icon:  '⚡',
+          titulo,
+          corpo: `Proposta enviada há ${dias} dias sem retorno`,
           onClick:   () => window.location.href = 'crm.html',
           onDismiss: () => _dismissCrmAlert(key_exp),
         });
         return;
       }
 
-      // Sem follow-up há >30 dias
+      // Sem follow-up há >30 dias — mostra dias reais
       const opFus = opProds.flatMap(p => fusByProd[p.id] || []);
       const lastFu = opFus.reduce((max, f) => {
         const d = f.data_contato || f.created_at;
         return d > max ? d : max;
       }, '');
-      const semFU30 = !lastFu || (_diasDesde(lastFu) ?? 0) > 30;
+      const diasSemFU = lastFu ? (_diasDesde(lastFu) ?? 0) : null;
+      const semFU30   = !lastFu || (diasSemFU ?? 0) > 30;
 
       if (semFU30 && !dismissed.has(key_fu)) {
+        const descDias = diasSemFU !== null
+          ? `Sem contato há ${diasSemFU} dias`
+          : 'Sem follow-up registrado';
         items.push({
-          key: key_fu, icon: '⏰', titulo: 'Sem follow-up 30d', corpo: label,
+          key:   key_fu,
+          icon:  '⏰',
+          titulo,
+          corpo: descDias,
           onClick:   () => window.location.href = 'crm.html',
           onDismiss: () => _dismissCrmAlert(key_fu),
         });
@@ -381,6 +399,7 @@ window.AppNotif = (() => {
       .select('*')
       .eq('usuario_id', userId)
       .is('encerrado_em', null)
+      .neq('tipo', 'tarefa')
       .order('created_at', { ascending: false })
       .limit(50);
     _notifs = data || [];
@@ -397,6 +416,7 @@ window.AppNotif = (() => {
           event: 'INSERT', schema: 'public', table: 'notificacoes',
           filter: `usuario_id=eq.${userId}`
         }, payload => {
+          if (payload.new.tipo === 'tarefa') return;
           _notifs.unshift(payload.new);
           if (_notifs.length > 50) _notifs = _notifs.slice(0, 50);
           _renderBadge();

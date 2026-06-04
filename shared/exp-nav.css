@@ -98,21 +98,102 @@
 /* ── Spacer ────────────────────────────────────────────────── */
 .exp-nav-spacer { flex: 1; }
 
-/* ── Avatar do usuário ─────────────────────────────────────── */
-.exp-nav-user {
-  width: 30px; height: 30px; border-radius: 50%;
-  overflow: hidden; cursor: pointer;
+/* ══════════════════════════════════════════════════════════════
+   TOPBAR DIREITA — user chip + ícones soltos (fora da nav)
+   Injetado pelo ExpNav em módulos sem topbar própria.
+   Em app.html, o #app-topbar-right é o equivalente nativo.
+   ══════════════════════════════════════════════════════════════ */
+#exp-topbar-right {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ── Ícones soltos (tema, feedback, lembrete) ──────────────── */
+.exp-tr-btn {
+  width: 28px; height: 28px;
+  border: none; background: none;
+  cursor: pointer; border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: #fff;
-  font-family: 'DM Mono', monospace;
-  flex-shrink: 0; margin-bottom: 6px;
-  border: 2px solid rgba(255,255,255,.15);
-  transition: border-color .12s;
+  color: #aaa; font-size: 13px; line-height: 1;
+  transition: color .12s, background .12s;
+  padding: 0; flex-shrink: 0;
+}
+.exp-tr-btn:hover { color: var(--grafite, #111110); background: var(--cinza2, #ECEAE4); }
+[data-theme="dark"] .exp-tr-btn { color: #555; }
+[data-theme="dark"] .exp-tr-btn:hover { color: #D0CFC9; background: #2A2928; }
+[data-theme="light"] #exp-tr-theme::before { content: '☀'; }
+[data-theme="dark"]  #exp-tr-theme::before { content: '🌙'; }
+
+/* ── User chip ─────────────────────────────────────────────── */
+.exp-user-chip {
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 10px 4px 4px;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color .12s, box-shadow .12s;
+  margin-left: 6px;
   position: relative;
 }
-.exp-nav-user:hover { border-color: rgba(255,255,255,.4); }
+.exp-user-chip:hover { border-color: #BEB7AA; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+[data-theme="dark"] .exp-user-chip { background: #1D1D1B; border-color: #2E2D2B; }
+[data-theme="dark"] .exp-user-chip:hover { border-color: #4A4844; }
+
+.exp-nav-user {
+  width: 26px; height: 26px; border-radius: 50%;
+  overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: #fff;
+  font-family: 'DM Mono', monospace;
+}
 .exp-nav-user img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* tooltip do avatar */
+
+.exp-user-info { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.exp-user-nome { font-size: 11px; font-weight: 600; color: var(--grafite, #111110); white-space: nowrap; }
+.exp-user-role { font-size: 9px; color: #aaa; white-space: nowrap; }
+[data-theme="dark"] .exp-user-nome { color: #F0EDE6; }
+.exp-user-caret { font-size: 9px; color: #bbb; flex-shrink: 0; }
+
+/* ── Dropdown do user chip ─────────────────────────────────── */
+.exp-user-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+  min-width: 190px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 600;
+}
+.exp-user-dropdown.open { display: flex; }
+[data-theme="dark"] .exp-user-dropdown { background: #1D1D1B; border-color: #2E2D2B; }
+.exp-user-dropdown button {
+  padding: 9px 14px; text-align: left; border: none; background: none;
+  font-family: 'Raleway', sans-serif; font-size: 11px; font-weight: 500;
+  color: var(--grafite, #111110); cursor: pointer;
+  transition: background .1s;
+}
+.exp-user-dropdown button:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .exp-user-dropdown button { color: #D0CFC9; }
+[data-theme="dark"] .exp-user-dropdown button:hover { background: #252523; }
+.exp-user-dropdown-sep { height: 1px; background: var(--cinza2, #ECEAE4); margin: 2px 0; flex-shrink: 0; }
+[data-theme="dark"] .exp-user-dropdown-sep { background: #2E2D2B; }
+.exp-user-dropdown-footer {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px 8px; font-size: 10px; color: #bbb;
+}
+
+/* tooltip nos ícones soltos */
 .exp-nav-user[title]:hover::after {
   content: attr(title);
   position: absolute;
@@ -128,44 +209,8 @@
   font-family: 'Raleway', sans-serif;
 }
 
-/* ── Toggle dark/light (ícone sol/lua solto) ───────────────── */
-#exp-theme-toggle {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  background: none; border: none;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: opacity .15s;
-  font-size: 14px; line-height: 1;
-  opacity: .45;
-}
-#exp-theme-toggle:hover { opacity: .8; }
-[data-theme="light"] #exp-theme-toggle::before { content: '☀'; }
-[data-theme="dark"]  #exp-theme-toggle::before { content: '🌙'; }
-
-/* ── Ícones soltos do rodapé (feedback, lembrete) ──────────── */
-.exp-nav-loose {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  background: none; border: none;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; color: rgba(255,255,255,.35);
-  transition: color .12s, opacity .12s;
-  font-size: 13px; line-height: 1;
-  text-decoration: none;
-}
-.exp-nav-loose:hover { color: rgba(255,255,255,.75); }
-
-/* ── Cluster inferior (feedback + lembrete + tema, junto do avatar) */
-.exp-nav-bottom-cluster {
-  display: flex; align-items: center; justify-content: center;
-  gap: 2px; margin-bottom: 6px;
-}
-
-/* ── Avatar do usuário (sem margin-bottom próprio quando cluster existe) */
-.exp-nav-user { margin-bottom: 0; }
+/* (exp-nav-loose, exp-nav-bottom-cluster, exp-theme-toggle na nav — removidos;
+    equivalentes agora em #exp-topbar-right / .exp-tr-btn) */
 
 /* ── EXP Room — pulsa em verde quando ativo ────────────────── */
 #exp-room-btn.active { color: #2D9E6B !important; }
@@ -532,11 +577,12 @@
 .notif-titulo { font-size: 11px; font-weight: 600; flex: 1; line-height: 1.4; }
 .notif-check-btn {
   width: 20px; height: 20px; border: 1px solid var(--cinza, #D0CFC9);
-  border-radius: 50%; background: var(--branco, #fff); font-size: 9px;
+  border-radius: 50%; background: var(--branco, #fff); font-size: 13px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; color: #888; font-family: inherit; padding: 0; line-height: 1;
+  flex-shrink: 0; color: #aaa; font-family: inherit; padding: 0; line-height: 1;
+  transition: border-color .12s, color .12s;
 }
-.notif-check-btn:hover { border-color: var(--verde, #1D6A4A); color: var(--verde, #1D6A4A); }
+.notif-check-btn:hover { border-color: var(--verde, #1D6A4A); color: var(--verde, #1D6A4A); background: rgba(29,106,74,.06); }
 .notif-corpo { font-size: 10px; color: #666; line-height: 1.4; padding-left: 21px; white-space: pre-wrap; word-break: break-word; }
 .notif-ts { font-size: 9px; color: #bbb; padding-left: 21px; }
 [data-theme="dark"] .notif-corpo { color: #999; }

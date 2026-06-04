@@ -228,22 +228,7 @@ window.ExpNav = (() => {
         '</button>'
       : '') +
 
-    /* ── Rodapé: cluster de ícones soltos + avatar ──── */
-    '<div class="exp-nav-sep" style="margin-top:6px"></div>' +
-    '<div class="exp-nav-bottom-cluster">' +
-      /* feedback / bandeira */
-      '<button class="exp-nav-loose" id="exp-feedback-btn" title="Feedback" onclick="ExpNav.toggleFeedbackPop(event)">' +
-        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>' +
-      '</button>' +
-      /* lembrete + */
-      '<button class="exp-nav-loose" id="exp-lembrete-btn" title="Enviar lembrete" onclick="ExpNav.abrirLembrete()">' +
-        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
-      '</button>' +
-      /* tema sol/lua */
-      '<button id="exp-theme-toggle" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>' +
-    '</div>' +
-    /* avatar do usuário */
-    '<div class="exp-nav-user" id="exp-nav-user" title="Minha conta"></div>' +
+    /* rodapé da nav — sem cluster, sem avatar (estão no #exp-topbar-right) */
 
     '</nav>';
   }
@@ -544,6 +529,37 @@ window.ExpNav = (() => {
     }, 220);
   }
 
+  /* ── HTML do topbar direito (user chip + ícones soltos) ───── */
+  function _buildTopRightHTML(isSocio) {
+    var icoFlag = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+    var icoPlus = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    return '<div id="exp-topbar-right">' +
+      '<button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>' +
+      '<button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">' + icoFlag + '</button>' +
+      '<button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">' + icoPlus + '</button>' +
+      '<div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">' +
+        '<div class="exp-nav-user" id="exp-nav-user"></div>' +
+        '<div class="exp-user-info">' +
+          '<div class="exp-user-nome" id="exp-user-nome">—</div>' +
+          '<div class="exp-user-role" id="exp-user-role"></div>' +
+        '</div>' +
+        '<span class="exp-user-caret">▾</span>' +
+        '<div class="exp-user-dropdown" id="exp-user-dropdown">' +
+          '<button onclick="window.location.href=\'app.html\'">Meus dados</button>' +
+          (isSocio ? '<button onclick="window.location.href=\'app.html\'">Gestão de plataforma</button>' : '') +
+          '<div class="exp-user-dropdown-sep"></div>' +
+          '<button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign(\'app.html\')">Termo de compromisso</button>' +
+          '<div class="exp-user-dropdown-sep"></div>' +
+          '<button onclick="ExpNav._sair()">Sair</button>' +
+          '<div class="exp-user-dropdown-footer">' +
+            '<div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>' +
+            '<span id="exp-conn-label" style="font-size:10px">conectando…</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   /* ── HTML do painel de tarefas (in-flow, na app-shell) ───── */
   function _buildTarefasPanelHTML() {
     return '<div id="exp-tarefas-panel"><div class="exp-tf-inner">' +
@@ -709,6 +725,7 @@ window.ExpNav = (() => {
     /* encontra o container principal (flex row) para inserir a nav */
     var container = document.getElementById('app-shell') ||
                     document.getElementById('app-wrap')  ||
+                    document.querySelector('.exp-app-shell') ||
                     document.querySelector('[id$="-app"]') ||
                     document.body;
 
@@ -720,6 +737,22 @@ window.ExpNav = (() => {
 
     /* insere a nav como primeiro filho do container */
     container.insertBefore(navEl, container.firstChild);
+
+    /* topbar direita — user chip + ícones soltos, injetado no body como fixed
+       somente se o módulo não tiver sua própria área (#app-topbar-right) */
+    if (!document.getElementById('app-topbar-right') && !document.getElementById('exp-topbar-right')) {
+      var trWrap = document.createElement('div');
+      trWrap.innerHTML = _buildTopRightHTML(_isSocio(role)).trim();
+      document.body.appendChild(trWrap.firstElementChild);
+      /* outside click fecha dropdown */
+      document.addEventListener('click', function(e) {
+        var chip = document.getElementById('exp-user-chip');
+        var dd   = document.getElementById('exp-user-dropdown');
+        if (dd && dd.classList.contains('open') && chip && !chip.contains(e.target)) {
+          dd.classList.remove('open');
+        }
+      });
+    }
 
     /* painel de tarefas — in-flow, inserido na app-shell para empurrar o conteúdo */
     var tfWrap = document.createElement('div');
@@ -737,18 +770,44 @@ window.ExpNav = (() => {
     if (lista && !document.getElementById('notif-lista')) lista.id = 'notif-lista';
   }
 
-  /* ── Avatar do usuário ───────────────────────────────────── */
+  /* ── Topbar-right: toggle dropdown ──────────────────────── */
+  function _toggleUserDropdown() {
+    var dd = document.getElementById('exp-user-dropdown');
+    if (dd) dd.classList.toggle('open');
+  }
+
+  /* ── Topbar-right: sair ──────────────────────────────────── */
+  function _sair() {
+    try { window.sb?.auth?.signOut(); } catch(e) {}
+    sessionStorage.removeItem('exp_usuario');
+    window.location.href = 'index.html';
+  }
+
+  /* ── Avatar do usuário (agora no topbar-right) ───────────── */
   function _updateAvatar(user) {
-    var $av = document.getElementById('exp-nav-user');
-    if (!$av || !user) return;
-    $av.title = user.nome || 'Minha conta';
-    $av.style.background = user.cor || '#888';
-    if (user.avatar_url) {
-      $av.innerHTML = '<img src="' + _esc(user.avatar_url) + '" alt="">';
-    } else {
-      $av.textContent = (user.iniciais || (user.nome || '??').substring(0,2)).toUpperCase();
+    /* Avatar no topbar-right */
+    var $av   = document.getElementById('exp-nav-user');
+    var $nome = document.getElementById('exp-user-nome');
+    var $role = document.getElementById('exp-user-role');
+    if (!user) return;
+    if ($av) {
+      $av.style.background = user.cor || '#888';
+      if (user.avatar_url) {
+        $av.innerHTML = '<img src="' + _esc(user.avatar_url) + '" alt="">';
+      } else {
+        $av.textContent = (user.iniciais || (user.nome || '??').substring(0,2)).toUpperCase();
+      }
     }
-    $av.onclick = _config.onUserMenu || function() {};
+    if ($nome) {
+      var nomes = (user.nome || '').trim().split(/\s+/).filter(Boolean);
+      $nome.textContent = nomes.length <= 2 ? nomes.join(' ') : nomes[0] + ' ' + nomes[nomes.length-1];
+    }
+    var ROLE_PT = { socio:'Sócio', socio_adm:'Sócio Adm.', socio_admin:'Sócio Adm.', colaborador:'Colaborador', coordenador:'Coordenador', estagio:'Estagiário' };
+    if ($role) $role.textContent = ROLE_PT[user.role] || user.role || '';
+    /* Callback do módulo (para compatibilidade) */
+    if (typeof _config.onUserMenu === 'function' && $av) {
+      $av.onclick = _config.onUserMenu;
+    }
   }
 
   /* ── Tema ────────────────────────────────────────────────── */
@@ -1386,6 +1445,8 @@ window.ExpNav = (() => {
     toggleTarefa,
     addTarefa,
     showClimaBanner, hideClimaBanner,
+    _toggleUserDropdown,
+    _sair,
     toggleFeedbackPop: function(e) {
       if (typeof window.toggleFeedbackPop === 'function') { window.toggleFeedbackPop(e); return; }
       var pop = document.getElementById('nav-feedback-pop') || document.getElementById('exp-feedback-pop');
