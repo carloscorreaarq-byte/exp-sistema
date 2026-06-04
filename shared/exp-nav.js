@@ -203,7 +203,6 @@ window.ExpNav = (() => {
     /* ── Separador de ferramentas ────────────────────── */
     '<div class="exp-nav-spacer"></div>' +
     '<div class="exp-nav-sep"></div>' +
-    '<button id="exp-theme-toggle" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>' +
 
     /* ── Ferramentas ────────────────────────────────── */
     '<a id="exp-room-btn" href="' + ROOM_URL + '" target="_blank" rel="noopener"' +
@@ -220,11 +219,31 @@ window.ExpNav = (() => {
       ico.star +
     '</button>' +
 
-    '<button class="exp-nav-item" id="exp-nav-tarefas" title="Tarefas e Atribuições"' +
-    ' onclick="ExpNav.toggleTarefasPanel()" style="position:relative">' +
-      ico.tarefas +
-      '<span id="exp-tarefas-badge" style="display:none;position:absolute;top:4px;right:4px;background:#C49A27;color:#fff;font-size:7px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:13px;height:13px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
-    '</button>' +
+    /* tarefas — não aparece no módulo app */
+    (module !== 'app'
+      ? '<button class="exp-nav-item" id="exp-nav-tarefas" title="Tarefas e Atribuições"' +
+        ' onclick="ExpNav.toggleTarefasPanel()" style="position:relative">' +
+          ico.tarefas +
+          '<span id="exp-tarefas-badge" style="display:none;position:absolute;top:4px;right:4px;background:#C49A27;color:#fff;font-size:7px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:13px;height:13px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
+        '</button>'
+      : '') +
+
+    /* ── Rodapé: cluster de ícones soltos + avatar ──── */
+    '<div class="exp-nav-sep" style="margin-top:6px"></div>' +
+    '<div class="exp-nav-bottom-cluster">' +
+      /* feedback / bandeira */
+      '<button class="exp-nav-loose" id="exp-feedback-btn" title="Feedback" onclick="ExpNav.toggleFeedbackPop(event)">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>' +
+      '</button>' +
+      /* lembrete + */
+      '<button class="exp-nav-loose" id="exp-lembrete-btn" title="Enviar lembrete" onclick="ExpNav.abrirLembrete()">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+      '</button>' +
+      /* tema sol/lua */
+      '<button id="exp-theme-toggle" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>' +
+    '</div>' +
+    /* avatar do usuário */
+    '<div class="exp-nav-user" id="exp-nav-user" title="Minha conta"></div>' +
 
     '</nav>';
   }
@@ -240,10 +259,10 @@ window.ExpNav = (() => {
     var $btn   = document.getElementById('exp-nav-tarefas');
     if (!$panel) return;
     _tfOpen = !_tfOpen;
-    $panel.style.display = _tfOpen ? 'flex' : 'none';
+    $panel.classList.toggle('open', _tfOpen);
     if ($btn) $btn.classList.toggle('active', _tfOpen);
     if (_tfOpen && !_tfLoaded) _fetchTarefas();
-    /* fecha outros painéis flutuantes */
+    /* fecha notif se aberta */
     if (_tfOpen) {
       var notif = document.getElementById('exp-notif-panel');
       if (notif && notif.style.display === 'flex') {
@@ -525,6 +544,31 @@ window.ExpNav = (() => {
     }, 220);
   }
 
+  /* ── HTML do painel de tarefas (in-flow, na app-shell) ───── */
+  function _buildTarefasPanelHTML() {
+    return '<div id="exp-tarefas-panel"><div class="exp-tf-inner">' +
+      '<div class="exp-tf-head">' +
+        '<span class="exp-tf-head-title">Tarefas &amp; Atribuições</span>' +
+        '<button class="exp-tf-head-close" onclick="ExpNav.toggleTarefasPanel()" title="Fechar">' +
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="exp-tf-body" id="exp-tf-body"><div class="exp-tf-vazio">Carregando tarefas…</div></div>' +
+      '<div class="exp-tf-input-wrap">' +
+        '<input class="exp-tf-input" id="exp-tf-nova-desc" type="text" placeholder="Nova tarefa…" onkeydown="if(event.key===\'Enter\')ExpNav.addTarefa()">' +
+        '<div class="exp-tf-input-row">' +
+          '<select class="exp-tf-select" id="exp-tf-nova-tipo">' +
+            '<option value="projeto">Projeto</option>' +
+            '<option value="organizacao">Org. Interna</option>' +
+            '<option value="sociedade">Societária</option>' +
+          '</select>' +
+          '<input class="exp-tf-select" id="exp-tf-nova-data" type="date" style="width:120px;flex:none" title="Data limite (opcional)">' +
+          '<button class="exp-tf-add-btn" id="exp-tf-add-btn" onclick="ExpNav.addTarefa()">+ Salvar</button>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
+  }
+
   /* ── HTML dos painéis flutuantes ─────────────────────────── */
   function _buildPanelsHTML() {
     return `
@@ -554,6 +598,21 @@ window.ExpNav = (() => {
   <div id="exp-prio-banner-inner"></div>
 </div>
 
+<!-- Popup: lembrete de equipe -->
+<div id="exp-lembrete-pop" style="display:none;position:fixed;z-index:700;width:280px;flex-direction:column;gap:10px;padding:14px;background:var(--branco,#fff);border:1px solid var(--cinza2,#ECEAE4);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18)">
+  <div style="font-size:11px;font-weight:700;color:var(--grafite,#111110)">Enviar lembrete</div>
+  <div style="font-size:10px;color:#999;line-height:1.5;margin-top:-4px">Envia uma notificação no sininho para o destinatário selecionado.</div>
+  <select id="exp-lemb-para" style="width:100%;padding:6px 8px;border:1px solid var(--cinza2,#ECEAE4);border-radius:6px;font-family:'Raleway',sans-serif;font-size:11px;background:var(--branco,#fff);color:var(--grafite,#111110);outline:none">
+    <option value="todos">Toda a equipe</option>
+  </select>
+  <textarea id="exp-lemb-msg" rows="3" placeholder="Mensagem do lembrete…" style="width:100%;padding:7px 9px;border:1px solid var(--cinza2,#ECEAE4);border-radius:6px;font-family:'Raleway',sans-serif;font-size:11px;resize:vertical;outline:none;background:var(--branco,#fff);color:var(--grafite,#111110)"></textarea>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button id="exp-lemb-send" onclick="ExpNav.enviarLembrete()" style="flex:1;padding:6px 12px;background:var(--grafite,#111110);color:#fff;border:none;border-radius:6px;font-family:'Raleway',sans-serif;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:pointer">Enviar</button>
+    <button onclick="ExpNav.fecharLembrete()" style="padding:6px 10px;background:none;border:1px solid var(--cinza2,#ECEAE4);border-radius:6px;font-family:'Raleway',sans-serif;font-size:10px;color:#888;cursor:pointer">Cancelar</button>
+  </div>
+  <div id="exp-lemb-status" style="font-size:10px;color:var(--verde,#3E7858);min-height:14px"></div>
+</div>
+
 <!-- Banner: clima (pesquisa ativa) -->
 <div id="exp-clima-banner"
      onmouseenter="ExpNav.showClimaBanner()" onmouseleave="ExpNav.hideClimaBanner()">
@@ -565,34 +624,6 @@ window.ExpNav = (() => {
     <div class="exp-clima-nome" id="exp-clima-nome">—</div>
     <div class="exp-clima-sub" id="exp-clima-sub">Sua participação está pendente.</div>
     <a href="pessoas.html?clima=1" class="exp-clima-btn" id="exp-clima-link">Responder pesquisa →</a>
-  </div>
-</div>
-
-<!-- Painel: Tarefas e Atribuições -->
-<div id="exp-tarefas-panel">
-  <div class="exp-tf-head">
-    <span class="exp-tf-head-title">Tarefas &amp; Atribuições</span>
-    <button class="exp-tf-head-close" onclick="ExpNav.toggleTarefasPanel()" title="Fechar">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="exp-tf-body" id="exp-tf-body">
-    <div class="exp-tf-vazio">Carregando tarefas…</div>
-  </div>
-  <div class="exp-tf-input-wrap">
-    <input class="exp-tf-input" id="exp-tf-nova-desc" type="text"
-           placeholder="Nova tarefa…"
-           onkeydown="if(event.key==='Enter')ExpNav.addTarefa()">
-    <div class="exp-tf-input-row">
-      <select class="exp-tf-select" id="exp-tf-nova-tipo">
-        <option value="projeto">Projeto</option>
-        <option value="organizacao">Org. Interna</option>
-        <option value="sociedade">Societária</option>
-      </select>
-      <input class="exp-tf-select" id="exp-tf-nova-data" type="date"
-             style="width:120px;flex:none" title="Data limite (opcional)">
-      <button class="exp-tf-add-btn" id="exp-tf-add-btn" onclick="ExpNav.addTarefa()">+ Salvar</button>
-    </div>
   </div>
 </div>
 
@@ -690,7 +721,13 @@ window.ExpNav = (() => {
     /* insere a nav como primeiro filho do container */
     container.insertBefore(navEl, container.firstChild);
 
-    /* painéis flutuantes — no body para evitar clipping */
+    /* painel de tarefas — in-flow, inserido na app-shell para empurrar o conteúdo */
+    var tfWrap = document.createElement('div');
+    tfWrap.innerHTML = _buildTarefasPanelHTML().trim();
+    var tfEl = tfWrap.firstElementChild;
+    if (tfEl) container.insertBefore(tfEl, navEl.nextSibling);
+
+    /* demais painéis flutuantes — no body para evitar clipping */
     var panelWrap = document.createElement('div');
     panelWrap.innerHTML = _buildPanelsHTML().trim();
     while (panelWrap.firstChild) document.body.appendChild(panelWrap.firstChild);
@@ -787,18 +824,27 @@ window.ExpNav = (() => {
     }
   }
 
-  /* outside click fecha o painel de notificações */
+  /* outside click fecha notificações e lembrete */
   function _bindNotifOutsideClick() {
     document.addEventListener('click', function(e) {
+      /* notificações */
       var $panel = document.getElementById('exp-notif-panel');
       var $btn   = document.getElementById('exp-nav-bell');
-      if (!$panel || $panel.style.display === 'none') return;
-      if ($panel.contains(e.target)) return;
-      if ($btn   && $btn.contains(e.target)) return;
-      /* fecha */
-      if (window._appNotifToggle) window._appNotifToggle();
-      $panel.style.display = 'none';
-      if ($btn) $btn.classList.remove('active');
+      if ($panel && $panel.style.display !== 'none') {
+        if (!$panel.contains(e.target) && !($btn && $btn.contains(e.target))) {
+          if (window._appNotifToggle) window._appNotifToggle();
+          $panel.style.display = 'none';
+          if ($btn) $btn.classList.remove('active');
+        }
+      }
+      /* lembrete */
+      if (_lembreteOpen) {
+        var $lPop = document.getElementById('exp-lembrete-pop');
+        var $lBtn = document.getElementById('exp-lembrete-btn');
+        if ($lPop && !$lPop.contains(e.target) && !($lBtn && $lBtn.contains(e.target))) {
+          _fecharLembrete();
+        }
+      }
     });
   }
 
@@ -1320,7 +1366,7 @@ window.ExpNav = (() => {
       if ($panel.contains(e.target)) return;
       if ($btn   && $btn.contains(e.target)) return;
       _tfOpen = false;
-      $panel.style.display = 'none';
+      $panel.classList.remove('open');
       if ($btn) $btn.classList.remove('active');
     });
   }
@@ -1340,5 +1386,88 @@ window.ExpNav = (() => {
     toggleTarefa,
     addTarefa,
     showClimaBanner, hideClimaBanner,
+    toggleFeedbackPop: function(e) {
+      if (typeof window.toggleFeedbackPop === 'function') { window.toggleFeedbackPop(e); return; }
+      var pop = document.getElementById('nav-feedback-pop') || document.getElementById('exp-feedback-pop');
+      if (pop) pop.style.display = pop.style.display === 'block' ? 'none' : 'block';
+    },
+    abrirLembrete: _abrirLembrete,
+    enviarLembrete: _enviarLembrete,
+    fecharLembrete: _fecharLembrete,
   };
+
+  /* ── Popup de lembrete ───────────────────────────────────── */
+  var _lembreteOpen = false;
+  var _lembreteUsuarios = null;
+
+  function _abrirLembrete() {
+    if (typeof window.abrirLembretePopup === 'function') { window.abrirLembretePopup(); return; }
+    var pop = document.getElementById('exp-lembrete-pop');
+    if (!pop) return;
+    _lembreteOpen = true;
+    pop.style.display = 'flex';
+    /* posiciona acima do botão */
+    var btn = document.getElementById('exp-lembrete-btn');
+    if (btn) {
+      var rect = btn.getBoundingClientRect();
+      pop.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+      pop.style.left = (rect.right + 8) + 'px';
+    }
+    /* carrega usuários se necessário */
+    if (!_lembreteUsuarios) _carregarUsuariosLembrete();
+  }
+
+  function _fecharLembrete() {
+    _lembreteOpen = false;
+    var pop = document.getElementById('exp-lembrete-pop');
+    if (pop) pop.style.display = 'none';
+  }
+
+  function _carregarUsuariosLembrete() {
+    var sb = _sb(); if (!sb) return;
+    sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome')
+      .then(function(r) {
+        _lembreteUsuarios = r.data || [];
+        var sel = document.getElementById('exp-lemb-para');
+        if (!sel) return;
+        sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
+          _lembreteUsuarios.map(function(u) {
+            return '<option value="' + _esc(u.id) + '">' + _esc(u.nome) + '</option>';
+          }).join('');
+      }).catch(function() {});
+  }
+
+  function _enviarLembrete() {
+    var sb = _sb(); if (!sb || !_user) return;
+    var msg  = (document.getElementById('exp-lemb-msg')  || {}).value || '';
+    var para = (document.getElementById('exp-lemb-para') || {}).value || 'todos';
+    var btn  = document.getElementById('exp-lemb-send');
+    msg = msg.trim();
+    if (!msg) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+    var uid  = _user.app_user_id || _user.id;
+    var nome = (_user.nome || '').split(' ')[0] || 'Alguém';
+    var targets = para === 'todos'
+      ? (_lembreteUsuarios || []).filter(function(u) { return u.id !== uid; })
+      : (_lembreteUsuarios || []).filter(function(u) { return u.id === para; });
+    var inserts = targets.map(function(u) {
+      return sb.from('notificacoes').insert({
+        usuario_id: u.id, tipo: 'lembrete',
+        titulo: 'Lembrete de ' + nome,
+        corpo: msg, link_tipo: 'lembrete',
+        modulo: (location.pathname.split('/').pop() || '').replace('.html', ''),
+        criado_por: uid, criado_por_nome: _user.nome || '',
+        created_at: new Date().toISOString(),
+      }).catch(function() {});
+    });
+    Promise.all(inserts).then(function() {
+      var msgEl = document.getElementById('exp-lemb-msg');
+      if (msgEl) msgEl.value = '';
+      var st = document.getElementById('exp-lemb-status');
+      if (st) { st.textContent = 'Lembrete enviado!'; setTimeout(function() { if (st) st.textContent = ''; }, 2000); }
+    }).finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = 'Enviar'; }
+      _fecharLembrete();
+    });
+  }
 })();

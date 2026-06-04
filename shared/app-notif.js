@@ -294,47 +294,6 @@ window.AppNotif = (() => {
      COMPUTED SECTIONS — fetch global
   ══════════════════════════════════════════════════════════ */
 
-  /* ── tarefas ativas ──────────────────────────────────────── */
-  async function _fetchTarefas(userId) {
-    const { data } = await window.sb
-      .from('tarefas_livres')
-      .select('id, descricao, data_limite, criado_por, atribuido_para, produto_id, etapa_id, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
-      .or(`atribuido_para.eq.${userId},and(usuario_id.eq.${userId},atribuido_para.is.null)`)
-      .eq('concluida', false)
-      .order('created_at', { ascending: false });
-
-    const hoje = new Date().toISOString().split('T')[0];
-    const items = (data || []).map(t => {
-      const cli   = t.produtos?.oportunidades?.clientes?.nome || '';
-      const proj  = t.produtos?.oportunidades?.projeto || '';
-      const prod  = t.produtos?.nome || '';
-      const etapa = t.etapas?.nome || '';
-      const ctx   = [cli && proj ? `${cli} · ${proj}` : (proj || cli), prod, etapa]
-                      .filter(Boolean).join(' › ');
-      const vencida = t.data_limite && t.data_limite < hoje;
-      const prazo   = t.data_limite
-        ? ` · ${_fmtDate(t.data_limite)}${vencida ? ' ⚠' : ''}` : '';
-
-      return {
-        key:    'tarefa_' + t.id,
-        icon:   '☑',
-        titulo: _esc(t.descricao),
-        corpo:  (ctx + prazo) || undefined,
-        // onClick: navega para gestao.html se não estivermos lá
-        onClick: () => {
-          if (typeof irParaTarefas === 'function') { irParaTarefas(); }
-          else window.location.href = 'gestao.html';
-        },
-        // onAction: conclui tarefa se gestao.html estiver carregada, senão sem ação
-        onAction: typeof concluirTarefaSino === 'function'
-          ? { label: '✓', fn: () => concluirTarefaSino(t.id) }
-          : undefined,
-      };
-    });
-
-    _computed['tarefas'] = { label: `Tarefas ativas`, items };
-  }
-
   /* ── alertas CRM ─────────────────────────────────────────── */
   async function _fetchCrmAlerts() {
     const [opsRes, fusRes, prodsRes] = await Promise.all([
@@ -409,7 +368,6 @@ window.AppNotif = (() => {
   /* ── carrega todas as seções computadas ──────────────────── */
   async function _fetchAllComputed(userId) {
     await Promise.allSettled([
-      _fetchTarefas(userId),
       _fetchCrmAlerts(),
     ]);
     _renderBadge();
@@ -507,14 +465,6 @@ window.AppNotif = (() => {
     if (_panelOpen) _renderPanel();
   }
 
-  // refreshTarefas — chamar após concluir/reabrir tarefa
-  async function refreshTarefas() {
-    if (!_userId) return;
-    await _fetchTarefas(_userId);
-    _renderBadge();
-    if (_panelOpen) _renderPanel();
-  }
-
   // refreshCrmAlerts — chamar após dispensar alerta (quando crm.html não gerencia)
   async function refreshCrmAlerts() {
     await _fetchCrmAlerts();
@@ -525,7 +475,6 @@ window.AppNotif = (() => {
   return {
     init,
     setComputedSection,
-    refreshTarefas,
     refreshCrmAlerts,
     close,
     _abrirNotif,

@@ -128,29 +128,44 @@
   font-family: 'Raleway', sans-serif;
 }
 
-/* ── Toggle dark/light (pill vertical, sem ícone) ──────────── */
+/* ── Toggle dark/light (ícone sol/lua solto) ───────────────── */
 #exp-theme-toggle {
-  width: 16px; height: 26px;
-  border-radius: 8px;
-  background: rgba(255,255,255,.15);
-  border: 1px solid rgba(255,255,255,.18);
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: none; border: none;
   cursor: pointer;
-  position: relative;
-  margin: 10px 0 4px;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  transition: background .2s;
+  transition: opacity .15s;
+  font-size: 14px; line-height: 1;
+  opacity: .45;
 }
-#exp-theme-toggle:hover { background: rgba(255,255,255,.22); }
-#exp-theme-toggle::after {
-  content: '';
-  position: absolute;
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  left: 2px;
-  transition: top .2s, background .2s;
+#exp-theme-toggle:hover { opacity: .8; }
+[data-theme="light"] #exp-theme-toggle::before { content: '☀'; }
+[data-theme="dark"]  #exp-theme-toggle::before { content: '🌙'; }
+
+/* ── Ícones soltos do rodapé (feedback, lembrete) ──────────── */
+.exp-nav-loose {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: none; border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: rgba(255,255,255,.35);
+  transition: color .12s, opacity .12s;
+  font-size: 13px; line-height: 1;
+  text-decoration: none;
 }
-[data-theme="light"] #exp-theme-toggle::after { top: 2px;  background: rgba(255,255,255,.9); }
-[data-theme="dark"]  #exp-theme-toggle::after { top: 13px; background: #fff; }
+.exp-nav-loose:hover { color: rgba(255,255,255,.75); }
+
+/* ── Cluster inferior (feedback + lembrete + tema, junto do avatar) */
+.exp-nav-bottom-cluster {
+  display: flex; align-items: center; justify-content: center;
+  gap: 2px; margin-bottom: 6px;
+}
+
+/* ── Avatar do usuário (sem margin-bottom próprio quando cluster existe) */
+.exp-nav-user { margin-bottom: 0; }
 
 /* ── EXP Room — pulsa em verde quando ativo ────────────────── */
 #exp-room-btn.active { color: #2D9E6B !important; }
@@ -535,23 +550,28 @@
 /* ══════════════════════════════════════════════════════════════
    PAINEL DE TAREFAS
    ══════════════════════════════════════════════════════════════ */
+/* Tarefas panel — in-flow, empurra o conteúdo do módulo */
 #exp-tarefas-panel {
-  position: fixed;
-  top: 20px;
-  bottom: 20px;
-  left: calc(72px + 66px + 11px + 8px); /* depois do nav + gap */
+  flex-shrink: 0;
+  width: 0;
+  overflow: hidden;
+  transition: width .22s cubic-bezier(.4,0,.2,1);
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border-radius: 12px;
+  border: none;
+  /* conteúdo interno tem largura fixa de 340px — fica clipped quando fechado */
+}
+#exp-tarefas-panel.open {
   width: 340px;
   background: var(--branco, #fff);
   border: 1px solid var(--cinza2, #ECEAE4);
-  border-radius: 12px;
-  box-shadow: 0 8px 40px rgba(0,0,0,.18);
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 600;
-  animation: expNavBannerIn .15s ease-out;
+  box-shadow: 0 4px 24px rgba(0,0,0,.14);
 }
-[data-theme="dark"] #exp-tarefas-panel { background: #1E1E1D; border-color: #2E2D2B; }
+[data-theme="dark"] #exp-tarefas-panel.open { background: #1E1E1D; border-color: #2E2D2B; }
+/* inner wrapper com largura fixa para o conteúdo não reflow */
+.exp-tf-inner { width: 340px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
 .exp-tf-head {
   display: flex; align-items: center; gap: 10px;
