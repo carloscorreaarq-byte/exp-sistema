@@ -9,8 +9,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="shared/app-notif.js"></script>
-<script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
+<script>
+  (function(){
+    var saved = localStorage.getItem('exp-theme');
+    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(saved === 'dark' || (!saved && sys))
+      document.documentElement.setAttribute('data-theme','dark');
+  })();
+</script>
 <link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -29,13 +37,30 @@
   --ger:#B88820;
   --nav-active:var(--azul);
 }
-body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300}
+body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
-/* NAV — estilos canônicos em exp-design-system.css */
-.nav-dropdown a.nd-disabled{opacity:.4;pointer-events:none}
+/* SHELL */
+#conteudo{flex:1;display:flex;min-height:0}
+#app-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--branco);border:1px solid var(--cinza2);border-radius:14px}
+[data-theme="dark"] #app-main{background:#1E1E1D;border-color:#2E2D2B}
 
-/* LAYOUT */
-.main{padding:16px;max-width:1400px;margin:0 auto}
+/* ── Timer — centralizado sobre a nav ───────────────────────── */
+#exp-timer-widget{left:calc(72px + (66px / 2) - 23px) !important;bottom:34px !important;z-index:9998 !important}
+
+/* ── Topbar interno — tabs + botão ─────────────────────────── */
+#crm-topbar{display:flex;align-items:center;gap:0;padding:0 16px;border-bottom:1px solid var(--cinza2);flex-shrink:0;min-height:42px}
+[data-theme="dark"] #crm-topbar{border-bottom-color:#2A2926}
+.crm-tab{padding:0 12px;height:42px;display:flex;align-items:center;font-size:11px;font-weight:600;color:#999;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:color .12s,border-color .12s;white-space:nowrap;font-family:var(--font-ui)}
+.crm-tab:hover{color:var(--grafite)}
+.crm-tab.active{color:var(--azul);border-bottom-color:var(--azul)}
+[data-theme="dark"] .crm-tab:hover{color:#D0CFC9}
+[data-theme="dark"] .crm-tab.active{color:#6B9FE8;border-bottom-color:#6B9FE8}
+#crm-topbar-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+/* SCROLL da área principal */
+#crm-body{flex:1;overflow-y:auto;padding:16px}
+#crm-body::-webkit-scrollbar{width:4px}
+#crm-body::-webkit-scrollbar-thumb{background:var(--cinza);border-radius:2px}
 .page{display:none}.page.active{display:block}
 
 /* CARD */
@@ -148,7 +173,7 @@ textarea{resize:vertical;min-height:60px}
 .mb14{margin-bottom:14px}
 
 /* KANBAN */
-.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;height:calc(100vh - 138px)}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;height:calc(100vh - 114px)}
 .kcol{border-right:1px solid var(--cinza);display:flex;flex-direction:column;overflow:hidden;height:100%}
 .kcol:last-child{border-right:none}
 .kcol-hd{padding:8px 10px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:6px;background:var(--branco);position:sticky;top:0;z-index:5;flex-shrink:0}
@@ -212,14 +237,6 @@ textarea{resize:vertical;min-height:60px}
 .follow-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2);font-size:11px}
 .follow-row:last-child{border-bottom:none}
 
-/* PAINEL ALERTAS */
-.alert-panel{display:none;position:fixed;top:50px;right:16px;width:340px;background:var(--branco);border:1px solid var(--cinza);z-index:150;max-height:calc(100vh - 80px);overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.1);border-radius:8px}
-.alert-panel.open{display:block}
-.alert-item{padding:10px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;display:flex;align-items:flex-start;gap:8px;transition:background .1s}
-.alert-item:hover{background:var(--off)}
-.alert-item:last-child{border-bottom:none}
-.alert-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
-
 /* BOAS VINDAS */
 .bv-section{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--cinza2)}
 .bv-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
@@ -268,7 +285,7 @@ textarea{resize:vertical;min-height:60px}
 .loading{padding:40px;text-align:center;color:#aaa;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
 
 /* ALCANCE MAP */
-.alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 92px)}
+.alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 114px)}
 .alc-side{display:flex;flex-direction:column;overflow:hidden}
 .alc-map-wrap{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;padding:4px}
 #alc-svg{width:100%;height:auto;max-height:calc(100vh - 100px);display:block}
@@ -292,9 +309,6 @@ textarea{resize:vertical;min-height:60px}
 
 /* ══ DARK MODE ══════════════════════════════════════════════ */
 [data-theme="dark"] body{background:var(--off);color:var(--grafite)}
-
-/* Nav dark — estilos canônicos em exp-design-system.css */
-[data-theme="dark"] .alert-panel{background:var(--branco);border-color:var(--cinza)}
 
 /* Cards / Stats */
 [data-theme="dark"] .card{background:var(--branco);border-color:var(--cinza)}
@@ -363,8 +377,6 @@ textarea{resize:vertical;min-height:60px}
 /* Toast */
 [data-theme="dark"] .toast{background:var(--grafite)}
 
-/* Ntab + Exp-pulse dark — estilos canônicos em exp-design-system.css */
-
 /* FOLLOW-UP TASK LIST */
 .fu-item{display:flex;align-items:flex-start;gap:10px;padding:7px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
 .fu-item:last-child{border-bottom:none}
@@ -404,134 +416,33 @@ textarea{resize:vertical;min-height:60px}
 [data-theme="dark"] .fu-item.fu-soon{background:rgba(196,154,39,.07)}
 [data-theme="dark"] .vp-metric{background:var(--off)}
 
-/* Feedback icon — padrão app.html */
-#feedback-icon-btn {
-  width: 24px; height: 24px;
-  border: none; background: none;
-  color: #bbb;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0;
-  transition: color .12s;
-  padding: 0;
-}
-#feedback-icon-btn:hover { color: var(--grafite, #111110); }
-[data-theme="dark"] #feedback-icon-btn { color: #555; }
-[data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
-
-#feedback-icon-wrap .nav-feedback-pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0; left: auto; bottom: auto;
-  width: 300px;
-}
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<div class="nav">
-  <a href="app.html" class="nav-brand"><img src="exp.png" alt="EXP" class="nav-brand-logo"></a>
-  <div class="nav-sep"></div>
-  <div class="nav-mod-wrap" id="nav-mod-wrap">
-    <button class="nav-lbl-btn" onclick="toggleNavDropdown()">EXP.comercial <span>▾</span></button>
-    <div class="nav-dropdown" id="nav-dropdown">
-      <a href="gestao.html">EXP.projetos</a>
-      <a href="apoio.html">EXP.apoio</a>
-      <a href="contatos.html">EXP.contatos</a>
-      <div class="nd-sep nd-soc" style="display:none"></div>
-      <a href="calc.html" class="nd-soc" style="display:none">EXP.calculadora</a>
-      <a href="crm.html" class="nd-active nd-soc" style="display:none">EXP.comercial</a>
-      <a href="financeiro.html" class="nd-soc" style="display:none">EXP.financeiro</a>
-      <a href="analise.html" class="nd-soc" style="display:none">EXP.análise</a>
-      <a href="pessoas.html" class="nd-soc" style="display:none">EXP.pessoas</a>
-      <a href="sociedade.html" class="nd-soc" style="display:none">EXP.sociedade</a>
-    </div>
-  </div>
-  <div class="nav-tabs">
-    <div class="ntab active" onclick="goTab('dash',this)">Dashboard</div>
-    <div class="ntab" onclick="goTab('pipe',this)">Pipeline</div>
-    <div class="ntab" onclick="goTab('orc',this)">Orçamentos</div>
-    <div class="ntab" onclick="goTab('alcance',this)">Alcance</div>
-    <div class="ntab" onclick="goTab('fechamentos',this)">Fechamentos</div>
-    <div class="ntab" onclick="goTab('negativas',this)">Negativas</div>
-    <div class="ntab" onclick="goTab('relatorios',this)">Relatórios</div>
-    <div class="ntab" onclick="goTab('contatos',this)">Contatos</div>
-  </div>
-  <div class="nav-right">
-    <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none">+ Nova oportunidade</button>
-    <div class="conn-dot" id="conn-dot" title="Status de conexão"></div>
-    <a href="https://meet.google.com/mqe-cgge-maz" target="_blank" class="exp-room-btn" id="exp-room-btn" title="EXP Room — Reunião online">📹</a>
-    <div class="notif-wrap nd-soc" id="notif-wrap" style="display:none">
-      <button class="notif-bell" id="notif-bell-btn" onclick="_appNotifToggle()" title="Notificações">
-        🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
-      </button>
-      <div class="notif-panel" id="notif-panel" style="display:none">
-        <div class="notif-panel-hd">
-          <span class="notif-panel-hd-t">Notificações</span>
-          <button class="notif-panel-clr" onclick="_appNotifEncerrarTodas()">Encerrar todas ✓</button>
-        </div>
-        <div id="notif-lista"></div>
-      </div>
-    </div>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
-      <span class="ttg-icon">☀</span>
-      <span class="ttg-track"><span class="ttg-knob"></span></span>
-      <span class="ttg-icon">🌙</span>
-    </button>
-    <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-    <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-      <button id="feedback-icon-btn" onclick="toggleFeedbackPop(event)" title="Reportar problema ou sugestão">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      </button>
-      <div class="nav-feedback-pop" id="nav-feedback-pop">
-        <div class="nav-feedback-title">Problema ou sugestão</div>
-        <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-        <div class="fgroup" style="margin-bottom:8px">
-          <label>Tipo</label>
-          <select id="crm-feedback-type">
-            <option value="problema">Problema</option>
-            <option value="sugestao">Sugestão</option>
-          </select>
-        </div>
-        <div class="fgroup" style="margin-bottom:8px">
-          <label>Mensagem</label>
-          <textarea id="crm-feedback-message" rows="4" placeholder="Descreva o erro..."></textarea>
-        </div>
-        <div class="nav-feedback-status" id="crm-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-        <div class="nav-feedback-actions">
-          <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
-          <button class="btn verde" onclick="enviarFeedbackCRM()">Enviar</button>
-        </div>
-      </div>
-    </div>
-    <div class="user-pill-wrap" id="user-pill-wrap">
-      <div class="user-chip" id="user-pill" onclick="toggleUserMenu()">
-        <div class="uav" id="user-av">—</div>
-        <div class="u-text">
-          <span class="u-nome" id="user-nome">—</span>
-          <span class="u-role" id="nav-role"></span>
-        </div>
-        <span class="u-caret">▾</span>
-      </div>
-      <div class="user-dropdown" id="user-dropdown">
-        <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
-        <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
-        <div class="ud-sep"></div>
-        <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
-          <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
-          <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
-          <span class="term-state-hover">ver termo →</span>
-        </div>
-        <div class="ud-sep"></div>
-        <button onclick="sair()">Sair do sistema</button>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- alert-panel migrado para o bell unificado (AppNotif seção "comercial") -->
+<div id="conteudo">
+<div id="app-shell" class="exp-app-shell">
 
-<div class="main">
+  <!-- Nav lateral — injetada por shared/exp-nav.js -->
+
+  <div id="app-main">
+
+    <div id="crm-topbar">
+      <button class="crm-tab active" onclick="goTab('dash',this)">Dashboard</button>
+      <button class="crm-tab" onclick="goTab('pipe',this)">Pipeline</button>
+      <button class="crm-tab" onclick="goTab('orc',this)">Orçamentos</button>
+      <button class="crm-tab" onclick="goTab('alcance',this)">Alcance</button>
+      <button class="crm-tab" onclick="goTab('fechamentos',this)">Fechamentos</button>
+      <button class="crm-tab" onclick="goTab('negativas',this)">Negativas</button>
+      <button class="crm-tab" onclick="goTab('relatorios',this)">Relatórios</button>
+      <button class="crm-tab" onclick="goTab('contatos',this)">Contatos</button>
+      <div id="crm-topbar-right">
+        <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none">+ Nova oportunidade</button>
+      </div>
+    </div>
+
+    <div id="crm-body">
 
 <!-- ═══ DASHBOARD ═══════════════════════════════════════════════ -->
 <div class="page active" id="tab-dash">
@@ -915,7 +826,10 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
-</div><!-- /main -->
+</div><!-- /#crm-body -->
+  </div><!-- /#app-main -->
+</div><!-- /#app-shell -->
+</div><!-- /#conteudo -->
 
 <!-- ═══════════ MODAL: NOVA / EDITAR OPORTUNIDADE ═══════════════════ -->
 <div class="modal-bg" id="modal-opp">
@@ -1296,6 +1210,7 @@ const { createClient } = supabase;
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.sb = sb;
 
 // ═══ SCHEMA REAL DO BANCO ═══════════════════════════
 // oportunidades: id, num_legado, cliente_id, projeto, cidade, uf,
@@ -1706,21 +1621,7 @@ window.addEventListener('DOMContentLoaded', async()=>{
   }
   currentUser = u||{nome:'Usuário',iniciais:'?',cor:'#888',viewer_only:true};
 
-  const _RLABELS = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
-  const ini=currentUser.iniciais||'?';
-  const _uav = document.getElementById('user-av');
-  if (currentUser.avatar_url) {
-    _uav.classList.add('has-avatar');
-    _uav.innerHTML = `<img src="${currentUser.avatar_url}" alt="${ini}">`;
-  } else {
-    _uav.style.cssText=`background:${currentUser.cor||'#888'};color:#fff`;
-    _uav.textContent=ini;
-  }
-  const _np = (currentUser.nome||'').trim().split(/\s+/).filter(Boolean);
-  document.getElementById('user-nome').textContent = _np.length <= 2 ? (_np.join(' ')||'—') : _np[0]+' '+_np[_np.length-1];
-  document.getElementById('nav-role').textContent = _RLABELS[currentUser.role] || currentUser.role || '';
-  initNavDropdown(currentUser.role);
-  initExpRoom(currentUser.id, (currentUser.nome||'').split(' ')[0]);
+  ExpNav.init({ module: 'crm' });
 
   await carregarDados();
   renderDash();
@@ -1730,7 +1631,6 @@ window.addEventListener('DOMContentLoaded', async()=>{
   calcAlertas();
   // Bell global — também exibe alertas de follow-up no painel unificado
   AppNotif.init({ userId: currentUser.id });
-  document.getElementById('notif-wrap').style.display = '';
   if(!currentUser?.viewer_only){
     document.getElementById('btn-nova-opp').style.display='inline-flex';
   }
@@ -1763,76 +1663,12 @@ window.addEventListener('DOMContentLoaded', async()=>{
     .subscribe();
 });
 
-function toggleTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-  localStorage.setItem('exp-theme', isDark ? '' : 'dark');
-}
-function toggleNavDropdown() {
-  document.getElementById('nav-dropdown').classList.toggle('open');
-}
-function toggleUserMenu() {
-  document.getElementById('user-dropdown').classList.toggle('open');
-}
 document.addEventListener('click', e => {
-  if (!document.getElementById('nav-mod-wrap')?.contains(e.target))
-    document.getElementById('nav-dropdown')?.classList.remove('open');
-  if (!document.getElementById('user-pill-wrap')?.contains(e.target))
-    document.getElementById('user-dropdown')?.classList.remove('open');
-  // Fecha feedback pop
-  if(!document.getElementById('feedback-icon-wrap')?.contains(e.target))
-    document.getElementById('nav-feedback-pop')?.classList.remove('open');
-  // Fechar painel de notificações é tratado pelo AppNotif (via outside-click)
   // Fecha dropdown de cliente
   const dd=document.getElementById('opp-cliente-dropdown');
   const inp=document.getElementById('opp-cliente-text');
   if(dd&&dd.style.display!=='none'&&!dd.contains(e.target)&&e.target!==inp)dd.style.display='none';
 });
-// ── EXP ROOM PRESENCE ───────────────────────────────────────
-// Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
-const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
-async function checkExpRoomStatus() {
-  try {
-    const { data } = await sb.from('exp_config').select('updated_at,value').eq('key','exp_room_active').maybeSingle();
-    const btn = document.getElementById('exp-room-btn');
-    if (!btn) return;
-    if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
-      btn.classList.add('active');
-      const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
-      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
-      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
-    } else {
-      btn.classList.remove('active');
-      btn.removeAttribute('data-tooltip');
-    }
-  } catch(e) {}
-}
-async function registrarExpRoomClick(userId, userName) {
-  try {
-    await sb.from('exp_config').upsert({ key:'exp_room_active', value: userName||'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
-  } catch(e) {}
-}
-function initExpRoom(userId, userName) {
-  const btn = document.getElementById('exp-room-btn');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    registrarExpRoomClick(userId, userName);
-    btn.classList.add('active');
-    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
-  });
-  checkExpRoomStatus();
-  setInterval(checkExpRoomStatus, 60000);
-}
-function initConnDot() {
-  const dot = document.getElementById('conn-dot');
-  if (!dot) return;
-  const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexão'; };
-  update(); window.addEventListener('online',update); window.addEventListener('offline',update);
-}
-function initNavDropdown(role) {
-  if (['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
-  initConnDot();
-}
 function canAccessCrmRole(role) {
   return ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase());
 }
@@ -2725,29 +2561,7 @@ function limparTodosAlertas(){
   calcAlertas();
 }
 
-// toggleAlertas mantido por compatibilidade (pode ser chamado em outros lugares)
 function toggleAlertas(){ _appNotifToggle?.(); }
-
-// ── Feedback (problemas e sugestões) ─────────────────────────────────
-function toggleFeedbackPop(ev){ev?.stopPropagation?.();document.getElementById('nav-feedback-pop')?.classList.toggle('open');}
-function fecharFeedbackPop(){document.getElementById('nav-feedback-pop')?.classList.remove('open');}
-function _setCRMFeedbackStatus(msg){const el=document.getElementById('crm-feedback-status');if(el)el.textContent=msg;}
-async function enviarFeedbackCRM(){
-  const u=JSON.parse(sessionStorage.getItem('exp_usuario')||'{}');
-  if(!u?.id){_setCRMFeedbackStatus('Sessão indisponível. Faça login para enviar.');return;}
-  const tipo=document.getElementById('crm-feedback-type')?.value||'problema';
-  const mensagem=(document.getElementById('crm-feedback-message')?.value||'').trim();
-  if(!mensagem){_setCRMFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.');return;}
-  _setCRMFeedbackStatus('Enviando...');
-  const{error}=await sb.from('plataforma_feedback').insert({
-    usuario_id:u.id,tipo,mensagem,status:'novo',
-    origem_modulo:'CRM',url_origem:'crm.html',
-    criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()
-  });
-  if(error){_setCRMFeedbackStatus('Não foi possível enviar. Tente novamente.');return;}
-  document.getElementById('crm-feedback-message').value='';
-  _setCRMFeedbackStatus('Registro enviado para a Gestão de plataforma.');
-}
 
 // ═══ BOAS VINDAS ════════════════════════════════════
 function showBoasVindas(){
@@ -2787,7 +2601,7 @@ function showBoasVindas(){
 // ═══ NAV ════════════════════════════════════════════
 function goTab(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.crm-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   if(id==='pipe')renderPipe();
@@ -4949,6 +4763,8 @@ async function _enviarLembrete() {
 <script src="chat.js"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
+<!-- EXP · Nav lateral compartilhada -->
+<script src="shared/exp-nav.js"></script>
 </body>
 </html>
 
