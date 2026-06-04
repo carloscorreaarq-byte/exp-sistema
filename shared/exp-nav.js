@@ -861,6 +861,24 @@ window.ExpNav = (() => {
   }
 
   /* ── Notificações ────────────────────────────────────────── */
+  var _notifAutoCloseTimer = null;
+
+  function _clearNotifAutoClose() {
+    if (_notifAutoCloseTimer) { clearTimeout(_notifAutoCloseTimer); _notifAutoCloseTimer = null; }
+  }
+
+  function _scheduleNotifAutoClose() {
+    _clearNotifAutoClose();
+    _notifAutoCloseTimer = setTimeout(function() {
+      var $panel = document.getElementById('exp-notif-panel');
+      var $btn   = document.getElementById('exp-nav-bell');
+      if ($panel && $panel.style.display === 'flex') {
+        $panel.style.display = 'none';
+        if ($btn) $btn.classList.remove('active');
+      }
+    }, 2000);
+  }
+
   function toggleNotifPanel() {
     var $panel = document.getElementById('exp-notif-panel');
     var $btn   = document.getElementById('exp-nav-bell');
@@ -868,6 +886,7 @@ window.ExpNav = (() => {
     var isOpen = $panel.style.display === 'flex';
     if (isOpen) {
       /* fechar */
+      _clearNotifAutoClose();
       $panel.style.display = 'none';
       if ($btn) $btn.classList.remove('active');
       if (window._appNotifToggle) window._appNotifToggle();
@@ -880,6 +899,13 @@ window.ExpNav = (() => {
       $panel.style.top  = Math.max(16, rect.bottom - panelH) + 'px';
       $panel.style.left = (rect.right + 8) + 'px';
       if ($btn) $btn.classList.add('active');
+      /* bind hover no painel para cancelar/retomar o auto-close */
+      if (!$panel._notifHoverBound) {
+        $panel._notifHoverBound = true;
+        $panel.addEventListener('mouseenter', _clearNotifAutoClose);
+        $panel.addEventListener('mouseleave', _scheduleNotifAutoClose);
+      }
+      _scheduleNotifAutoClose();
     }
   }
 
