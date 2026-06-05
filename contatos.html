@@ -54,6 +54,10 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
   border-radius:var(--radius-shell,14px);
 }
 [data-theme="dark"] #cont-main{background:#1E1E1D;border-color:#2E2D2B;}
+/* Card header — topbar superior do card, borda inferior */
+.ct-card-hd{height:48px;background:var(--branco);border-bottom:1px solid var(--cinza2);display:flex;align-items:center;padding:0 8px 0 4px;flex-shrink:0;gap:0}
+[data-theme="dark"] .ct-card-hd{background:#1E1E1D;border-bottom-color:#2A2926}
+.ct-card-hd #exp-topbar-right{position:static!important;top:auto!important;right:auto!important;display:flex;align-items:center;gap:2px;margin-left:auto}
 .main{flex:1;overflow-y:auto;padding:32px 48px 0;position:relative;z-index:1}
 .main::-webkit-scrollbar{width:4px}
 .main::-webkit-scrollbar-thumb{background:var(--cinza);border-radius:2px}
@@ -82,22 +86,8 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
 }
 
-/* Theme toggle */
-#ct-theme-toggle {
-  width: 28px; height: 28px;
-  border: none; border-radius: 6px;
-  background: none; color: #bbb;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0; padding: 0;
-  transition: color .12s;
-}
-#ct-theme-toggle:hover { color: var(--grafite); }
-[data-theme="dark"] #ct-theme-toggle { color: #555; }
-[data-theme="dark"] #ct-theme-toggle:hover { color: #C8C3BA; }
-#ct-theme-toggle .tr-sun  { display: block; }
-#ct-theme-toggle .tr-moon { display: none; }
-[data-theme="dark"] #ct-theme-toggle .tr-sun  { display: none; }
-[data-theme="dark"] #ct-theme-toggle .tr-moon { display: block; }
+/* ct-card-hd: alinha o exp-topbar-right à direita */
+.ct-card-hd { justify-content: flex-end; }
 
 #ct-feedback-float .nav-feedback-pop,
 #feedback-icon-wrap .nav-feedback-pop {
@@ -353,11 +343,45 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
 <!-- Shell: nav lateral (injetada) + card principal -->
 <div id="app-shell">
   <!-- #exp-nav injetada pelo ExpNav.init() -->
-  <div id="app-topbar-right" hidden></div>
   <div id="cont-main">
+    <!-- Card header: topbar superior com user chip + ações padrão -->
+    <div class="ct-card-hd">
+      <div id="exp-topbar-right">
+        <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema claro/escuro">
+          <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </button>
+        <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
+          <div class="exp-nav-user" id="exp-nav-user"></div>
+          <div class="exp-user-info">
+            <div class="exp-user-nome" id="exp-user-nome">—</div>
+            <div class="exp-user-role" id="exp-user-role"></div>
+          </div>
+          <span class="exp-user-caret">▾</span>
+          <div class="exp-user-dropdown" id="exp-user-dropdown">
+            <button onclick="window.location.href='app.html'">Meus dados</button>
+            <div class="exp-user-dropdown-sep"></div>
+            <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
+            <div class="exp-user-dropdown-sep"></div>
+            <button onclick="ExpNav._sair()">Sair</button>
+            <div class="exp-user-dropdown-footer">
+              <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
+              <span id="exp-conn-label" style="font-size:10px">conectando…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="main">
 
-  <!-- HEADER -->
+  <!-- HEADER: título + ação principal -->
   <div class="ct-header">
     <div class="ct-header-left">
       <div class="ct-title">EXP.contatos</div>
@@ -365,33 +389,6 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
     </div>
     <div class="ct-header-right">
       <button class="btn verde" onclick="abrirModal(null)">+ Novo contato</button>
-      <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-      <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-        <button id="feedback-icon-btn" onclick="toggleFeedbackPop(event)" title="Reportar problema ou sugestão">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-        </button>
-        <div class="nav-feedback-pop" id="nav-feedback-pop">
-          <div class="nav-feedback-title">Problema ou sugestão</div>
-          <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-          <div class="fgroup">
-            <label>Tipo</label>
-            <select id="ct-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
-          </div>
-          <div class="fgroup">
-            <label>Mensagem</label>
-            <textarea id="ct-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
-          </div>
-          <div class="nav-feedback-status" id="ct-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-          <div class="nav-feedback-actions">
-            <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
-            <button class="btn filled" onclick="enviarFeedback()">Enviar</button>
-          </div>
-        </div>
-      </div>
-      <button id="ct-theme-toggle" onclick="toggleTheme()" title="Alternar tema claro/escuro">
-        <svg class="tr-sun"  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        <svg class="tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      </button>
     </div>
   </div>
 
@@ -629,7 +626,9 @@ let G = {
   regiao:     '',
   issueTimer: null,
 };
-const isSocio = () => ['socio', 'socio_admin'].includes((G.usuario?.role || '').toLowerCase());
+const isSocio = () => (typeof window.isSocioRole === 'function'
+  ? window.isSocioRole(G.usuario?.role)
+  : ['socio', 'socio_adm', 'socio_admin'].includes((G.usuario?.role || '').toLowerCase()));
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function esc(s) {
@@ -1311,7 +1310,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   G.usuario = u;
   sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, u)));
-  if (['socio', 'socio_admin'].includes((u.role || '').toLowerCase())) {
+  if ((typeof window.isSocioRole === 'function' ? window.isSocioRole(u.role) : ['socio', 'socio_adm', 'socio_admin'].includes((u.role || '').toLowerCase()))) {
     document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   }
 
