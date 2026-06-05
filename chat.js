@@ -997,7 +997,8 @@
       var pres    = onlinePresence[m.auth_id];
       var pStatus = pres ? pres.status : 'offline';
       var pLabels = { online: 'Online', foco: 'Foco', ausente: 'Ausente', offline: 'Offline' };
-      var roleText = roleLabel[(m.role || '').toLowerCase()] || '';
+      var normalizedRole = typeof window.normalizeExpRole === 'function' ? window.normalizeExpRole(m.role) : (m.role || '').toLowerCase();
+      var roleText = roleLabel[normalizedRole] || roleLabel[(m.role || '').toLowerCase()] || '';
       html += '<div class="chat-member-item" onclick="expChat.toggleMember(\'' + m.auth_id + '\')">' +
         '<div class="chat-member-check' + (sel ? ' sel' : '') + '"></div>' +
         '<div style="position:relative;flex-shrink:0">' +
@@ -2031,7 +2032,12 @@
 
   function fmtTime(d) { return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
   function firstName(name) { return name ? name.split(' ')[0] : ''; }
-  function isSocioLikeRole(role) { return ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase()); }
+  function isSocioLikeRole(role) {
+    if (typeof window.isSocioRole === 'function') return window.isSocioRole(role);
+    var normalized = (role || '').toLowerCase().trim();
+    if (normalized === 'socio_adm') normalized = 'socio_admin';
+    return ['socio', 'socio_admin'].includes(normalized);
+  }
   function isDynamicChannel(channel) { return !!channel && (channel.indexOf('dm:') === 0 || channel.indexOf('group:') === 0); }
   function isProjectChannel(channel) { return !!channel && channel.indexOf('project:') === 0; }
   function projectChannel(threadId) { return 'project:' + threadId; }

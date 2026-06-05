@@ -1676,6 +1676,9 @@ window.addEventListener('DOMContentLoaded', async()=>{
     return;
   }
   currentUser = u||{nome:'Usuário',iniciais:'?',cor:'#888',viewer_only:true};
+  if (typeof window.normalizeExpRole === 'function' && currentUser && currentUser.role) {
+    currentUser.role = window.normalizeExpRole(currentUser.role);
+  }
   sessionStorage.setItem('exp_usuario', JSON.stringify(currentUser));
 
   ExpNav.init({
@@ -1731,7 +1734,9 @@ document.addEventListener('click', e => {
   if(dd&&dd.style.display!=='none'&&!dd.contains(e.target)&&e.target!==inp)dd.style.display='none';
 });
 function canAccessCrmRole(role) {
-  return ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase());
+  if (typeof window.isSocioRole === 'function') return window.isSocioRole(role);
+  const normalized = typeof window.normalizeExpRole === 'function' ? window.normalizeExpRole(role) : (role || '').toLowerCase().trim();
+  return ['socio', 'socio_admin'].includes(normalized);
 }
 async function sair() {
   await sb.auth.signOut();

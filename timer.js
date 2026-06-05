@@ -42,7 +42,10 @@
     var role = '';
     if (window.G && window.G.usuario) role = window.G.usuario.role || '';
     else if (_cachedUser) role = _cachedUser.role || '';
-    return ['socio','socio_adm','socio_admin'].indexOf(role.toLowerCase()) >= 0;
+    if (typeof window.isSocioRole === 'function') return window.isSocioRole(role);
+    var normalized = (role || '').toLowerCase().trim();
+    if (normalized === 'socio_adm') normalized = 'socio_admin';
+    return ['socio','socio_admin'].indexOf(normalized) >= 0;
   }
 
   /* ═══════════════════════════════════════════════════════════════

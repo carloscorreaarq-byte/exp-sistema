@@ -814,7 +814,8 @@
       var pres = onlinePresence[m.auth_id];
       var ps   = pres ? pres.status : 'offline';
       var pl   = {online:'Online',foco:'Foco',ausente:'Ausente',offline:'Offline'};
-      var roleT= roleLabel[(m.role||'').toLowerCase()]||'';
+      var normalizedRole = typeof window.normalizeExpRole === 'function' ? window.normalizeExpRole(m.role) : (m.role||'').toLowerCase();
+      var roleT= roleLabel[normalizedRole] || roleLabel[(m.role||'').toLowerCase()] || '';
       html += '<div class="fp-member-item'+(sel?' sel':'')+'" onclick="fpChat.toggleMember(\''+m.auth_id+'\')">'+
         '<div class="fp-member-check'+(sel?' sel':'')+'"></div>'+
         '<div style="position:relative;flex-shrink:0">'+
@@ -1632,7 +1633,12 @@
     if(d.toDateString()===yest.toDateString())  return 'Ontem';
     return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long'});
   }
-  function isSocioLikeRole(r){ return ['socio','socio_adm','socio_admin'].indexOf((r||'').toLowerCase())!==-1; }
+  function isSocioLikeRole(r){
+    if (typeof window.isSocioRole === 'function') return window.isSocioRole(r);
+    var normalized = (r||'').toLowerCase().trim();
+    if (normalized === 'socio_adm') normalized = 'socio_admin';
+    return ['socio','socio_admin'].indexOf(normalized)!==-1;
+  }
   function isDynamicChannel(ch){ return !!ch&&(ch.indexOf('dm:')===0||ch.indexOf('group:')===0); }
   function isProjectChannel(ch){ return !!ch&&ch.indexOf('project:')===0; }
   function projectThreadIdFromChannel(ch){ return String(ch||'').replace('project:',''); }

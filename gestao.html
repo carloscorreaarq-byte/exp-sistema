@@ -4572,7 +4572,7 @@ function renderUserChip(usr) {
   const cargo = document.getElementById('user-cargo');
   if (cargo) cargo.textContent = ROLES_LABEL[usr.role] || usr.role || '—';
   const platformBtn = document.getElementById('user-menu-platform');
-  if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || usr.role === 'socio_admin' || usr.role === 'socio_adm');
+  if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || normalizeRole(usr.role) === 'socio_admin');
   renderUserDropdown(usr);
   renderTermState(usr);
 }
@@ -4692,7 +4692,10 @@ function initConnDot() {
   const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexão'; };
   update(); window.addEventListener('online',update); window.addEventListener('offline',update);
 }
-const isSocioRole = (role) => ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase());
+const normalizeRole = (role) => typeof window.normalizeExpRole === 'function'
+  ? window.normalizeExpRole(role)
+  : (((role || '').toLowerCase().trim() === 'socio_adm') ? 'socio_admin' : (role || '').toLowerCase().trim());
+const isSocioRole = (role) => ['socio', 'socio_admin'].includes(normalizeRole(role));
 function initNavDropdown(role) {
   if (isSocioRole(role)) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   initConnDot();
@@ -11706,7 +11709,7 @@ function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
   const fmtR    = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
   const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
 
-  const isSocAdmin = ['socio_adm','socio_admin'].includes((G.usuario?.role||'').toLowerCase());
+  const isSocAdmin = normalizeRole(G.usuario?.role) === 'socio_admin';
 
   // Separa corretos e incorretos
   const incorretos = custos.filter(c => !isClassificacaoCorreta(c));
@@ -11768,7 +11771,7 @@ function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
 }
 
 async function abrirReclassificacaoCusto(id) {
-  const isSocAdmin = ['socio_adm','socio_admin'].includes((G.usuario?.role||'').toLowerCase());
+  const isSocAdmin = normalizeRole(G.usuario?.role) === 'socio_admin';
   if (!isSocAdmin) { toast('Apenas sócio-administrador pode reclassificar'); return; }
 
   // Garante que as áreas estejam carregadas (pode falhar se RLS não foi configurado)

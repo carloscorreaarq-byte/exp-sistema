@@ -744,8 +744,11 @@ let G = {
 };
 
 // ── Helpers ───────────────────────────────────────────────
-const isSocioRole = (role) => ['socio','socio_adm','socio_admin'].includes((role||'').toLowerCase());
-const isSocioAdmRole = (role) => ['socio_adm','socio_admin'].includes((role||'').toLowerCase());
+const normalizeRole = (role) => typeof window.normalizeExpRole === 'function'
+  ? window.normalizeExpRole(role)
+  : (((role || '').toLowerCase().trim() === 'socio_adm') ? 'socio_admin' : (role || '').toLowerCase().trim());
+const isSocioRole = (role) => ['socio','socio_admin'].includes(normalizeRole(role));
+const isSocioAdmRole = (role) => normalizeRole(role) === 'socio_admin';
 
 function toast(msg, dur = 2500) {
   const el = document.getElementById('toast');
@@ -892,7 +895,7 @@ function renderUserChip(usr) {
   const rEl = document.getElementById('user-cargo');
   if (rEl) rEl.textContent = ROLES_LABEL[usr.role] || usr.role || '—';
   const platformBtn = document.getElementById('user-menu-platform');
-  if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || usr.role === 'socio_admin' || usr.role === 'socio_adm');
+  if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || normalizeRole(usr.role) === 'socio_admin');
   renderUserDropdown(usr);
   renderTermState(usr);
 }

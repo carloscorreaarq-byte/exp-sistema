@@ -1223,7 +1223,8 @@ async function init() {
       .single();
     if (usrErr || !usr) { console.error('usuarios lookup failed', usrErr); window.location = 'index.html'; return; }
 
-    const isSocio = ['socio', 'socio_adm', 'socio_admin'].includes((usr.role || '').toLowerCase());
+    const normalizedRole = typeof window.normalizeExpRole === 'function' ? window.normalizeExpRole(usr.role) : (usr.role || '').toLowerCase().trim();
+    const isSocio = ['socio', 'socio_admin'].includes(normalizedRole);
     if (!isSocio) { window.location = 'app.html'; return; }
 
     // Todos que chegam aqui são sócios — revelar itens exclusivos no nav
@@ -1238,7 +1239,7 @@ async function init() {
       apelido: usr.apelido,
       iniciais: usr.iniciais,
       cor: usr.cor,
-      role: usr.role,
+      role: normalizedRole,
       cargo: usr.cargo,
       avatar_url: usr.avatar_url || null,
     }));

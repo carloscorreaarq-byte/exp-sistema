@@ -1198,11 +1198,14 @@ const ROLES_LABEL = {
   estagiario: 'Estagiário',
   estagio: 'Estagiário',
 };
-const isSocio = r => ['socio','socio_adm','socio_admin'].includes((r||'').toLowerCase());
-const roleLabel = r => ROLES_LABEL[r] || r || 'Usuário';
+const normalizeRole = r => typeof window.normalizeExpRole === 'function'
+  ? window.normalizeExpRole(r)
+  : (((r || '').toLowerCase().trim() === 'socio_adm') ? 'socio_admin' : (r || '').toLowerCase().trim());
+const isSocio = r => ['socio','socio_admin'].includes(normalizeRole(r));
+const roleLabel = r => ROLES_LABEL[normalizeRole(r)] || ROLES_LABEL[r] || r || 'Usuário';
 const badgeClass = r => {
   const m = { socio:'socio',socio_adm:'socio',socio_admin:'socio',coordenador:'coordenador',colaborador:'colaborador',estagiario:'estagio',estagio:'estagio' };
-  return m[r] || 'colaborador';
+  return m[normalizeRole(r)] || m[r] || 'colaborador';
 };
 
 /* ── UTILIDADES ───────────────────────────────────────────── */

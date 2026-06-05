@@ -31,8 +31,12 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-
 #app{flex:1;min-height:0;display:flex}
 #calc-card{flex:1;background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-shell,14px);display:flex;flex-direction:column;overflow:hidden;min-width:0}
 [data-theme="dark"] #calc-card{background:#1E1E1D;border-color:#2E2D2B}
-.calc-card-hd{height:48px;background:var(--cinza2);border-bottom:1px solid var(--cinza2);display:flex;align-items:center;padding:0 8px 0 4px;flex-shrink:0;gap:0}
-[data-theme="dark"] .calc-card-hd{background:#2A2927;border-bottom-color:#2E2D2B}
+.calc-card-hd{height:48px;background:var(--branco);border-bottom:1px solid var(--cinza2);display:flex;align-items:center;padding:0 8px 0 4px;flex-shrink:0;gap:0}
+[data-theme="dark"] .calc-card-hd{background:#1E1E1D;border-bottom-color:#2A2926}
+.calc-card-hd .ntab{font-size:11px;text-transform:none;letter-spacing:0;padding:0 12px;height:48px}
+.calc-card-hd .ntab.active{color:var(--verde);border-bottom-color:var(--verde)}
+[data-theme="dark"] .calc-card-hd .ntab:hover{color:#D0CFC9}
+[data-theme="dark"] .calc-card-hd .ntab.active{color:#5FAD7E;border-bottom-color:#5FAD7E}
 .calc-hd-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;padding-left:10px}
 #calc-theme-moon{display:none}
 [data-theme="dark"] #calc-theme-sun{display:none}
@@ -3925,11 +3929,16 @@ async function enviarFeedback() {
   setFeedbackStatus('Registro enviado para a Gestão de plataforma.');
   showToast('Feedback enviado ✓');
 }
+function normalizeRole(role) {
+  if (typeof window.normalizeExpRole === 'function') return window.normalizeExpRole(role);
+  const normalized = (role || '').toLowerCase().trim();
+  return normalized === 'socio_adm' ? 'socio_admin' : normalized;
+}
 function initNavDropdown(role) {
-  if (['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase())) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+  if (['socio','socio_admin'].includes(normalizeRole(role))) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
 }
 function canAccessCalcRole(role) {
-  return ['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase());
+  return ['socio','socio_admin'].includes(normalizeRole(role));
 }
 function buildExpUsuarioPayload(authId, usuario) {
   const nome = (usuario && usuario.nome) || '';
@@ -3940,7 +3949,7 @@ function buildExpUsuarioPayload(authId, usuario) {
     apelido: (usuario && usuario.apelido) || (nome ? nome.split(' ')[0] : ''),
     iniciais: (usuario && usuario.iniciais) || '',
     cor: (usuario && usuario.cor) || '#888',
-    role: (usuario && usuario.role) || '',
+    role: normalizeRole((usuario && usuario.role) || ''),
     viewer_only: !!(usuario && usuario.viewer_only),
     is_platform_manager: !!(usuario && usuario.is_platform_manager),
     can_coordinate_projects: !!(usuario && usuario.can_coordinate_projects),
@@ -3977,7 +3986,7 @@ function initNavUserFromSession() {
     }
     const roleMap = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
     const roleEl = document.getElementById('nav-role');
-    if (roleEl) roleEl.textContent = u.role ? (roleMap[u.role] || u.role) : '';
+    if (roleEl) roleEl.textContent = u.role ? (roleMap[normalizeRole(u.role)] || roleMap[u.role] || u.role) : '';
     if (u.iniciais === 'CC') document.body.classList.add('can-delete');
     initNavDropdown(u.role);
     initExpRoom(u.app_user_id || u.id || u.auth_id, (u.nome||'').split(' ')[0]);
@@ -4144,7 +4153,7 @@ async function abrirLembretePopup() {
   let pop = document.getElementById('popup-lembrete');
   if (pop) { pop.remove(); return; }
   const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
+  const { data: usuarios } = await sbNav.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
   const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
   const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
   const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
@@ -4179,7 +4188,7 @@ async function _enviarLembrete() {
   const btn = document.querySelector('#popup-lembrete button:last-child');
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
   const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true);
+  const { data: usuarios } = await sbNav.from('usuarios').select('id,nome').eq('ativo', true);
   const targets = para === 'todos'
     ? (usuarios || []).filter(u => u.id !== _me.id)
     : [(usuarios || []).find(u => u.id === para)].filter(Boolean);
