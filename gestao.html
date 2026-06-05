@@ -14706,6 +14706,113 @@ async function salvarCompetenciaReal() {
   }
 }
 
+function resultadoDiffDias(a, b) {
+  if (!a || !b) return null;
+  const ini = new Date(`${String(a).slice(0,10)}T12:00:00`);
+  const fim = new Date(`${String(b).slice(0,10)}T12:00:00`);
+  return Math.round((fim - ini) / 86400000);
+}
+
+function resultadoPrazoResumoEtapa(etapa) {
+  if (!etapa?.data_liberacao) return null;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const diasPrev = etapa.data_estimada ? resultadoDiffDias(etapa.data_liberacao, etapa.data_estimada) : null;
+  const diasReal = etapa.data_conclusao ? resultadoDiffDias(etapa.data_liberacao, etapa.data_conclusao) : null;
+  const atrasoConcluido = diasPrev != null && diasReal != null ? (diasReal - diasPrev) : null;
+  const atrasoAtual = etapa.data_estimada ? resultadoDiffDias(etapa.data_estimada, hoje) : null;
+  return {
+    lib: etapa.data_liberacao,
+    prev: etapa.data_estimada,
+    conc: etapa.data_conclusao,
+    diasPrev,
+    diasReal,
+    atrasoConcluido,
+    atrasoAtual,
+    emAtrasoHoje: atrasoAtual != null && atrasoAtual > 0 && etapa.status !== 'concluida',
+  };
+}
+
+function resultadoClassificarEfetividade(score) {
+  if (score == null) return { label: 'N/D', chipCls: 'b-gr', tone: '#888' };
+  if (score >= 75) return { label: 'Saudavel', chipCls: 'b-vd', tone: 'var(--verde)' };
+  if (score >= 50) return { label: 'Atencao', chipCls: 'b-am', tone: '#8A6010' };
+  return { label: 'Critica', chipCls: 'b-tc', tone: 'var(--terracota)' };
+}
+
+function resultadoCalcularEfetividadeEtapa(ctx) {
+  const { etapa, horasH, utilPct, resultado, compResumo, riscoCompetencia } = ctx;
+  if (!etapa || etapa.status === 'nao_iniciada') {
+    return { score: null, ...resultadoClassificarEfetividade(null), motivos: ['Etapa ainda nao iniciada.'] };
+  }
+
+  let score = 100;
+  const motivos = [];
+  const prazo = resultadoPrazoResumoEtapa(etapa);
+
+  if (resultado != null) {
+    if (resultado < 0) {
+      score -= 28;
+      motivos.push('Saldo negativo na etapa.');
+    } else if (resultado === 0) {
+      score -= 10;
+      motivos.push('Saldo zerado, sem folga na etapa.');
+    }
+  }
+
+  if (utilPct != null) {
+    if (utilPct > 120) {
+      score -= 30;
+      motivos.push('Consumo acima de 120% do previsto.');
+    } else if (utilPct > 100) {
+      score -= 18;
+      motivos.push('Consumo acima do previsto.');
+    } else if (utilPct >= 85) {
+      score -= 8;
+      motivos.push('Consumo perto do limite previsto.');
+    }
+  }
+
+  if (prazo?.atrasoConcluido != null) {
+    if (prazo.atrasoConcluido > 15) {
+      score -= 22;
+      motivos.push('Etapa concluida com atraso alto.');
+    } else if (prazo.atrasoConcluido > 0) {
+      score -= 12;
+      motivos.push('Etapa concluida com atraso.');
+    }
+  } else if (prazo?.emAtrasoHoje) {
+    if (prazo.atrasoAtual > 15) {
+      score -= 22;
+      motivos.push('Etapa ativa com atraso alto.');
+    } else if (prazo.atrasoAtual > 0) {
+      score -= 12;
+      motivos.push('Etapa ativa em atraso.');
+    }
+  }
+
+  if (compResumo) {
+    if (etapa.status === 'concluida' && compResumo.acumulado < 100) {
+      score -= 14;
+      motivos.push('Etapa concluida sem 100% de competencia registrada.');
+    } else if (horasH > 0 && compResumo.acumulado === 0) {
+      score -= 12;
+      motivos.push('Horas lancadas sem competencia registrada.');
+    }
+  }
+
+  if (riscoCompetencia) {
+    score -= 24;
+    motivos.push('Risco de competencia ativo na etapa.');
+  }
+
+  if (!motivos.length) {
+    motivos.push('Leitura estavel com base em custo, prazo e competencia.');
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  return { score, ...resultadoClassificarEfetividade(score), motivos, prazo };
+}
+
 // ── Analytics: Resultado por etapa ───────────────────────────
 async function carregarResultado(prodId) {
   if (!prodId) return;
@@ -14790,11 +14897,14 @@ async function carregarResultado(prodId) {
     const compValorMes = previsto != null ? (previsto * (compResumo.noMes / 100)) : null;
     const compValorAcumulado = previsto != null ? (previsto * (compResumo.acumulado / 100)) : null;
     const riscoCompetencia = compResumo.acumulado >= 100 && realizado > 1000;
+    const utilPct = previsto && previsto > 0 ? (realizado / previsto) * 100 : null;
+    const margemEtapa = previsto && previsto > 0 ? ((resultado ?? 0) / previsto * 100) : null;
+    const efetividade = resultadoCalcularEfetividadeEtapa({ etapa: e, previsto, realizado, resultado, horasH, utilPct, compResumo, riscoCompetencia, margemEtapa });
     if (previsto  != null) totalPrevisto  += previsto;
     if (compValorMes != null) totalCompetenciaMes += compValorMes;
     if (compValorAcumulado != null) totalCompetenciaAcumulada += compValorAcumulado;
     totalRealizado += realizado;
-    return { etapa: e, pct, previsto, realizado, resultado, custoH, horasH, custoL, compResumo, compValorMes, compValorAcumulado, riscoCompetencia };
+    return { etapa: e, pct, previsto, realizado, resultado, custoH, horasH, custoL, compResumo, compValorMes, compValorAcumulado, riscoCompetencia, utilPct, margemEtapa, efetividade };
   });
 
   const totalResultado = temPct ? totalPrevisto - totalRealizado : null;
@@ -14830,6 +14940,16 @@ async function carregarResultado(prodId) {
       ⚠ A tabela de competência real ainda não existe no banco. Execute <strong>revisão/sql-dev-12-competencia-real.sql</strong> para habilitar esta frente.
     </div>` : '';
   const etapasRiscoCompetencia = etapasDados.filter(d => d.riscoCompetencia);
+  const etapasEfetivas = etapasDados.filter(d => d.efetividade?.score != null);
+  const etapasEfSaudavel = etapasEfetivas.filter(d => (d.efetividade?.score || 0) >= 75).length;
+  const etapasEfAtencao = etapasEfetivas.filter(d => {
+    const score = d.efetividade?.score;
+    return score != null && score >= 50 && score < 75;
+  }).length;
+  const etapasEfCritica = etapasEfetivas.filter(d => (d.efetividade?.score || 0) < 50).length;
+  const efetividadeMedia = etapasEfetivas.length
+    ? etapasEfetivas.reduce((s, d) => s + Number(d.efetividade?.score || 0), 0) / etapasEfetivas.length
+    : null;
   const riscoCompetenciaResumo = etapasRiscoCompetencia.length ? `
     <div style="background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.35);border-radius:10px;padding:12px 14px;margin-bottom:12px;color:#8A6010">
       <div style="font-size:11px;font-weight:700;margin-bottom:4px">⚠ Risco de competência detectado</div>
@@ -14892,6 +15012,13 @@ async function carregarResultado(prodId) {
       ${!totalResultado && !margemRealizada ? `
       <div style="font-size:10px;opacity:.6;font-style:italic;line-height:1.4">Configure % de custo nas etapas para ver o resultado.</div>` : ''}
       <div class="res-pe-div"></div>
+      <div style="font-size:9px;opacity:.65;margin-bottom:6px;font-weight:600">Efetividade gerencial</div>
+      <div class="res-pe-row sm"><span>Media das etapas</span><span>${efetividadeMedia != null ? Math.round(efetividadeMedia) + '/100' : '—'}</span></div>
+      <div class="res-pe-row sm"><span>Saudaveis</span><span>${etapasEfSaudavel}</span></div>
+      <div class="res-pe-row sm"><span>Em atencao</span><span>${etapasEfAtencao}</span></div>
+      <div class="res-pe-row sm"><span>Criticas</span><span>${etapasEfCritica}</span></div>
+      <div style="font-size:9px;opacity:.55;line-height:1.45;margin-top:6px">Leitura gerencial baseada em saldo, consumo, prazo e coerencia da competencia.</div>
+      <div class="res-pe-div"></div>
       ${etapasRiscoCompetencia.length ? `<div style="background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.28);border-radius:8px;padding:8px 10px;margin-bottom:10px">
         <div style="font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Risco de competência</div>
         <div style="font-size:16px;font-weight:800;color:#8A6010;line-height:1">${etapasRiscoCompetencia.length}</div>
@@ -14906,25 +15033,11 @@ async function carregarResultado(prodId) {
 
   // Calcula prazo de execução de cada etapa
   // "Execução" = data_liberacao → data_conclusao (real) ou data_estimada (prev)
-  function calcPrazo(etapa) {
-    const lib  = etapa.data_liberacao;
-    const prev = etapa.data_estimada;
-    const conc = etapa.data_conclusao;
-    if (!lib) return null;
-    const diffDias = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
-    const diasPrev = prev ? diffDias(lib, prev) : null;
-    const diasReal = conc ? diffDias(lib, conc) : null;
-    const atraso   = diasPrev != null && diasReal != null ? diasReal - diasPrev : null;
-    return { lib, prev, conc, diasPrev, diasReal, atraso };
-  }
-
   // Cards por etapa (painel direito rosa/verde/vermelho)
-  const cardsEtapas = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL, compResumo, compValorMes, compValorAcumulado, riscoCompetencia }) => {
+  const cardsEtapas = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL, compResumo, compValorMes, compValorAcumulado, riscoCompetencia, utilPct, margemEtapa, efetividade }) => {
     const isConcluida  = etapa.status === 'concluida';
     const isNaoIniciada = etapa.status === 'nao_iniciada';
     const stBadge  = STATUS_ETAPA[etapa.status] || STATUS_ETAPA.nao_iniciada;
-    const utilPct  = previsto && previsto > 0 ? (realizado / previsto) * 100 : null;
-    const margemEtapa = previsto && previsto > 0 ? ((resultado ?? 0) / previsto * 100) : null;
     const saldoCor = resultado == null ? 'var(--grafite)' : resultado >= 0 ? 'var(--verde)' : 'var(--terracota)';
     const margemCor = margemEtapa == null ? '#aaa' : margemEtapa >= 0 ? 'var(--verde)' : 'var(--terracota)';
     let cardCls;
@@ -14945,6 +15058,10 @@ async function carregarResultado(prodId) {
           <span class="res-etapa-nome">${_regEsc(etapa.nome)}</span>
           <span class="badge ${stBadge.cls}" style="font-size:8px;flex-shrink:0">${stBadge.label}</span>
           ${pct != null ? `<span class="res-pct-badge">${pct}% alocado</span>` : `<span class="res-pct-badge" style="opacity:.4">% indefinido</span>`}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <span class="badge ${efetividade.chipCls}" style="font-size:8px">${efetividade.label}</span>
+          <span style="font-size:10px;font-family:var(--font-mono);font-weight:700;color:${efetividade.tone}">${efetividade.score != null ? efetividade.score + '/100' : 'N/D'}</span>
         </div>
         ${semHorasAlert}
         <div class="res-card-valores">
@@ -14984,15 +15101,16 @@ async function carregarResultado(prodId) {
         </div>
         ${riscoCompetencia ? `<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#8A6010;background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.3);border-radius:6px;padding:6px 8px;margin-top:10px">⚠ Etapa já fechada em 100% de competência e com custo superior a R$ 1.000.</div>` : ''}
         ${(() => {
-          const p = calcPrazo(etapa);
+          const p = resultadoPrazoResumoEtapa(etapa);
           if (!p) return '';
           const fmtD = iso => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '—';
-          const atrasoCor  = p.atraso == null ? '#aaa' : p.atraso > 0 ? 'var(--terracota)' : 'var(--verde)';
-          const atrasoIcon = p.atraso == null ? '' : p.atraso > 0 ? '⚠ ' : '✓ ';
-          const atrasoTxt  = p.atraso == null ? '—'
-            : p.atraso === 0 ? 'No prazo'
-            : p.atraso > 0  ? `+${p.atraso}d de atraso`
-            : `${Math.abs(p.atraso)}d adiantado`;
+          const atrasoBase = p.atrasoConcluido;
+          const atrasoCor  = atrasoBase == null ? '#aaa' : atrasoBase > 0 ? 'var(--terracota)' : 'var(--verde)';
+          const atrasoIcon = atrasoBase == null ? '' : atrasoBase > 0 ? '⚠ ' : '✓ ';
+          const atrasoTxt  = atrasoBase == null ? '—'
+            : atrasoBase === 0 ? 'No prazo'
+            : atrasoBase > 0  ? `+${atrasoBase}d de atraso`
+            : `${Math.abs(atrasoBase)}d adiantado`;
           return `
           <div class="res-card-prazo">
             <div class="res-prazo-hd">Prazo de execução</div>
@@ -15006,6 +15124,10 @@ async function carregarResultado(prodId) {
             </div>
           </div>`;
         })()}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(0,0,0,.12);font-size:10px;color:#666;line-height:1.45">
+          <strong style="font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:#888">Leitura de efetividade</strong><br>
+          ${_regEsc((efetividade.motivos || []).slice(0, 2).join(' · '))}
+        </div>
       </div>`;
   }).join('');
 

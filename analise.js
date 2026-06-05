@@ -3,10 +3,13 @@ const ANALISE = {
   _etapas: [],
   _horas: [],
   _custos: [],
+  _competenciaRows: [],
+  _competenciaDisponivel: true,
   _vhPorUser: {},
   _dadosPorProduto: {},
   _dadosPorEtapa: {},
   _abaAtiva: 'acumulado',
+  _subtemaAtivo: 'resumo',
   _produtoIsoladoId: null,
   _carregando: false,
   _ultimaCarga: null,
@@ -104,6 +107,11 @@ function analiseBindEventosBase() {
     if (!button) return;
     analiseSwitchTab(button.dataset.aba);
   });
+  document.getElementById('analise-subtema-bar')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-subtema]');
+    if (!button) return;
+    analiseSwitchSubtema(button.dataset.subtema);
+  });
 
   document.getElementById('analise-btn-reload')?.addEventListener('click', async () => {
     ANALISE._ultimaCarga = null;
@@ -196,18 +204,27 @@ async function analiseCarregarDados() {
       horasResp,
       custosResp,
       vhResp,
+      competenciaResp,
     ] = await Promise.all([
       sb.from('horas_lancadas').select('produto_id, etapa_id, usuario_id, hora_inicio, hora_fim'),
       sb.from('lancamentos_custo').select('produto_id, etapa_id, valor'),
       sb.from('historico_valor_hora').select('usuario_id, valor_hora, data_vigencia').order('data_vigencia', { ascending: false }),
+      sb.from('competencia_real_etapas').select('*').then(r => r.error ? { data: [], error: r.error } : r),
     ]);
 
     analiseCheckQueryError(horasResp.error, 'Falha ao carregar horas_lancadas.');
     analiseCheckQueryError(custosResp.error, 'Falha ao carregar lancamentos_custo.');
     analiseCheckQueryError(vhResp.error, 'Falha ao carregar historico_valor_hora.');
+    if (competenciaResp.error) {
+      ANALISE._competenciaDisponivel = false;
+      console.warn('analiseCarregarDados [competencia_real_etapas]:', competenciaResp.error.message);
+    } else {
+      ANALISE._competenciaDisponivel = true;
+    }
 
     ANALISE._horas = horasResp.data || [];
     ANALISE._custos = custosResp.data || [];
+    ANALISE._competenciaRows = competenciaResp.data || [];
     ANALISE._vhPorUser = analiseMontarValorHoraAtual(vhResp.data || []);
 
     const produtosElegiveis = analiseProdutosElegiveis(G.todosProdutos, G.todasEtapas);
@@ -414,6 +431,8 @@ function analiseAgregarDados() {
     if (budgetDiagnostico[budgetMeta.status] !== undefined) {
       budgetDiagnostico[budgetMeta.status] += 1;
     }
+    registro.competenciaResumo = analiseCompetenciaResumoEtapa(registro.etapa?.id);
+    registro.riscoCompetencia = registro.competenciaResumo.acumulado >= 100 && registro.custoTotal > 1000;
   });
 
   Object.values(dadosPorProduto).forEach((registro) => {
@@ -435,6 +454,7 @@ function analiseAgregarDados() {
     registro.etapasDados.forEach((etapaRegistro) => {
       const status = etapaRegistro.etapa?.status || 'nao_iniciada';
       registro.etapasProgresso[status] = (registro.etapasProgresso[status] || 0) + 1;
+      etapaRegistro.efetividade = analiseCalcularEfetividadeEtapa(etapaRegistro);
     });
 
     registro.statusResumo = analiseDerivarStatusProduto(registro.produto, registro.etapasDados);
@@ -461,6 +481,42 @@ function analiseSwitchTab(aba) {
     node.classList.toggle('active', node.id === `anp-${aba}`);
   });
   analiseRenderAbaAtiva();
+}
+
+function analiseSwitchSubtema(subtema) {
+  ANALISE._subtemaAtivo = subtema || 'resumo';
+  document.querySelectorAll('#analise-subtema-bar [data-subtema]').forEach((node) => {
+    node.classList.toggle('active', node.dataset.subtema === ANALISE._subtemaAtivo);
+  });
+  analiseRenderAbaAtiva();
+}
+
+function analiseSubtemaResumoHtml() {
+  const mapa = {
+    resumo: {
+      kicker: 'Leitura geral',
+      texto: 'Visao consolidada da aba atual, com os principais sinais de custo, margem, risco e carga.',
+    },
+    rentabilidade: {
+      kicker: 'Pergunta central',
+      texto: 'Quanto estamos produzindo com margem saudavel, onde o custo esta pesando mais e quais projetos pedem revisao de resultado.',
+    },
+    risco: {
+      kicker: 'Pergunta central',
+      texto: 'Quais projetos ou etapas estao pedindo atencao imediata, seja por margem projetada, risco operacional ou desvio de budget.',
+    },
+    carga: {
+      kicker: 'Pergunta central',
+      texto: 'Onde a operacao esta concentrando horas e budget agora, e como essa carga se distribui entre etapas, projetos e nucleos.',
+    },
+  };
+  const meta = mapa[ANALISE._subtemaAtivo] || mapa.resumo;
+  return `
+    <div class="analise-state" style="margin-bottom:14px">
+      <div class="analise-state-kicker">${_escN(meta.kicker)}</div>
+      <div class="analise-state-copy">${_escN(meta.texto)}</div>
+    </div>
+  `;
 }
 
 function analiseRenderAbaAtiva() {
@@ -897,6 +953,13 @@ function analiseRenderDesenvolvimento() {
 
   const comBudget = etapas.filter((item) => analiseGetBudgetHoras(item.etapa) > 0);
   const acimaBudget = comBudget.filter((item) => Number(item.utilizacaoBudget || 0) > 100);
+  const etapasEfetivas = etapas.filter((item) => item.efetividade?.score != null);
+  const etapasEfSaudavel = etapasEfetivas.filter((item) => (item.efetividade?.score || 0) >= 75);
+  const etapasEfAtencao = etapasEfetivas.filter((item) => {
+    const score = item.efetividade?.score;
+    return score != null && score >= 50 && score < 75;
+  });
+  const etapasEfCritica = etapasEfetivas.filter((item) => (item.efetividade?.score || 0) < 50);
   const rowsProjeto = analiseAgruparEtapasAtivasPorProjeto(etapas);
   const projetosEmRisco = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'risco');
   const projetosAtencao = rowsProjeto.filter((row) => row.produtoRegistro?.previsao?.riscoKey === 'atencao');
@@ -2093,6 +2156,134 @@ function analiseRiscoChipClass(riscoKey) {
   return 'analise-chip analise-chip-muted';
 }
 
+function analiseCompetenciaResumoEtapa(etapaId) {
+  const rows = (ANALISE._competenciaRows || []).filter((row) => String(row.etapa_id || '') === String(etapaId || ''));
+  const acumulado = rows.reduce((sum, row) => sum + Number(row.percentual || 0), 0);
+  return {
+    acumulado,
+    saldo: Math.max(0, 100 - acumulado),
+  };
+}
+
+function analisePrazoResumoEtapa(etapa) {
+  if (!etapa?.data_liberacao) return null;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const lib = String(etapa.data_liberacao || '').slice(0, 10);
+  const prev = String(etapa.data_estimada || '').slice(0, 10) || null;
+  const conc = String(etapa.data_conclusao || '').slice(0, 10) || null;
+  const diff = (a, b) => {
+    if (!a || !b) return null;
+    const ini = new Date(`${a}T12:00:00`);
+    const fim = new Date(`${b}T12:00:00`);
+    return Math.round((fim - ini) / 86400000);
+  };
+  const diasPrev = prev ? diff(lib, prev) : null;
+  const diasReal = conc ? diff(lib, conc) : null;
+  const atrasoConcluido = diasPrev != null && diasReal != null ? (diasReal - diasPrev) : null;
+  const atrasoAtual = prev ? diff(prev, hoje) : null;
+  return {
+    atrasoConcluido,
+    atrasoAtual,
+    emAtrasoHoje: atrasoAtual != null && atrasoAtual > 0 && etapa.status !== 'concluida',
+  };
+}
+
+function analiseClassificarEfetividade(score) {
+  if (score == null) return { label: 'N/D', chipCls: 'analise-chip analise-chip-muted', toneCls: '' };
+  if (score >= 75) return { label: 'Saudavel', chipCls: 'analise-chip analise-chip-ok', toneCls: 'kpi-saudavel' };
+  if (score >= 50) return { label: 'Atencao', chipCls: 'analise-chip analise-chip-warn', toneCls: 'kpi-atencao' };
+  return { label: 'Critica', chipCls: 'analise-chip analise-chip-risk', toneCls: 'kpi-risco' };
+}
+
+function analiseEfetividadeBadge(efetividade) {
+  if (!efetividade || efetividade.score == null) {
+    return `<span class="analise-chip analise-chip-muted">N/D</span>`;
+  }
+  return `<span class="${efetividade.chipCls}">${_escN(`${efetividade.label} · ${efetividade.score}/100`)}</span>`;
+}
+
+function analiseCalcularEfetividadeEtapa(registro) {
+  const etapa = registro?.etapa;
+  if (!etapa || etapa.status === 'nao_iniciada') {
+    return { score: null, ...analiseClassificarEfetividade(null), motivos: ['Etapa ainda nao iniciada.'] };
+  }
+
+  let score = 100;
+  const motivos = [];
+  const prazo = analisePrazoResumoEtapa(etapa);
+  const resultado = registro?.margem;
+  const utilPct = Number(registro?.utilizacaoBudget);
+  const compResumo = analiseCompetenciaResumoEtapa(etapa.id);
+  const riscoCompetencia = compResumo.acumulado >= 100 && Number(registro?.custoTotal || 0) > 1000;
+
+  if (resultado != null) {
+    if (resultado < 0) {
+      score -= 28;
+      motivos.push('Saldo negativo na etapa.');
+    } else if (resultado === 0) {
+      score -= 10;
+      motivos.push('Saldo zerado, sem folga.');
+    }
+  }
+
+  if (Number.isFinite(utilPct)) {
+    if (utilPct > 120) {
+      score -= 30;
+      motivos.push('Uso acima de 120% do budget.');
+    } else if (utilPct > 100) {
+      score -= 18;
+      motivos.push('Uso acima do budget.');
+    } else if (utilPct >= 85) {
+      score -= 8;
+      motivos.push('Uso perto do limite do budget.');
+    }
+  }
+
+  if (prazo?.atrasoConcluido != null) {
+    if (prazo.atrasoConcluido > 15) {
+      score -= 22;
+      motivos.push('Etapa concluida com atraso alto.');
+    } else if (prazo.atrasoConcluido > 0) {
+      score -= 12;
+      motivos.push('Etapa concluida com atraso.');
+    }
+  } else if (prazo?.emAtrasoHoje) {
+    if (prazo.atrasoAtual > 15) {
+      score -= 22;
+      motivos.push('Etapa ativa com atraso alto.');
+    } else if (prazo.atrasoAtual > 0) {
+      score -= 12;
+      motivos.push('Etapa ativa em atraso.');
+    }
+  }
+
+  if (etapa.status === 'concluida' && compResumo.acumulado < 100) {
+    score -= 14;
+    motivos.push('Concluida sem 100% de competencia.');
+  } else if (Number(registro?.horasTotais || 0) > 0 && compResumo.acumulado === 0) {
+    score -= 12;
+    motivos.push('Horas lancadas sem competencia registrada.');
+  }
+
+  if (riscoCompetencia) {
+    score -= 24;
+    motivos.push('Risco de competencia ativo.');
+  }
+
+  if (!motivos.length) {
+    motivos.push('Leitura estavel com base em budget, saldo, prazo e competencia.');
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  return {
+    score,
+    ...analiseClassificarEfetividade(score),
+    motivos,
+    compResumo,
+    riscoCompetencia,
+  };
+}
+
 function analiseBudgetBadge(utilizacaoBudget, temBudget) {
   const budgetMeta = typeof temBudget === 'object' ? temBudget : null;
   const hasBudget = budgetMeta ? budgetMeta.status === 'carregado' : !!temBudget;
@@ -2891,6 +3082,7 @@ analiseTabelaDesenvolvimentoEtapa = function analiseTabelaDesenvolvimentoEtapaEn
         <tr>
           <th>Projeto</th>
           <th>Etapa</th>
+          <th>Efetividade</th>
           <th>Risco proj.</th>
           <th>Status</th>
           <th>Horas</th>
@@ -2909,6 +3101,7 @@ analiseTabelaDesenvolvimentoEtapa = function analiseTabelaDesenvolvimentoEtapaEn
                 <div class="analise-table-sub">${_escN(`${NUCLEO_COR[item.produto?.nucleo]?.label || 'N/D'} · margem proj. ${analiseFmtPct(previsao.margemProjetadaPct)}`)}</div>
               </td>
               <td>${_escN(item.etapa?.nome || `Etapa ${item.etapa?.ordem || 'N/D'}`)}</td>
+              <td>${analiseEfetividadeBadge(item.efetividade)}</td>
               <td>${analiseRiscoBadgeHtml(previsao)}</td>
               <td>${analiseStatusEtapaBadge(item.etapa?.status)}</td>
               <td>${_escN(fmtH(item.horasTotais))}</td>

@@ -22,35 +22,30 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  /* locais — não cobertos pelo design system */
-  --cinza2:#ECEAE4;
-  --verde-l:#2D9E6B;--verde-bg:#EAF5EE;
-  --az-bg:#EAF0FB;
-  --am-bg:#FBF3E8;
-  --tc-bg:#FBF0EE;
-  --roxo:#6B4FA0;
-  /* CRM — tipos/núcleos */
+  /* núcleos CRM — locais, sem equivalente no design system */
   --urb:#5280CA;--urb-bg:#ECF1FA;
   --pai-inc:#2A5239;--pai-hor:#45865D;--pai-res:#6AA87D;--pai-urb:#9CC4A8;
-  --consul:#C36247;--consul-bg:#FAF0EE;
-  --esp:#D19931;--esp-bg:#FAF4E8;
+  --consul:#C36247;--consul-bg:var(--tc-bg);
+  --esp:#D19931;--esp-bg:var(--am-bg);
   --ger:#B88820;
   --nav-active:var(--azul);
+  /* foco de input — CRM usa azul */
+  --mod-focus:var(--azul);
+  --mod-focus-soft:var(--azul-soft);
 }
 body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 /* SHELL */
 #conteudo{flex:1;display:flex;min-height:0}
-#app-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--branco);border:1px solid var(--cinza2);border-radius:14px}
+#app-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-shell,14px)}
 [data-theme="dark"] #app-main{background:#1E1E1D;border-color:#2E2D2B}
 
-/* ── Timer — centralizado sobre a nav ───────────────────────── */
-#exp-timer-widget{left:calc(72px + (66px / 2) - 23px) !important;bottom:34px !important;z-index:9998 !important}
+/* timer override movido para após timer.js no body */
 
 /* ── Topbar interno — tabs + botão ─────────────────────────── */
 #crm-topbar{display:flex;align-items:center;gap:0;padding:0 16px;border-bottom:1px solid var(--cinza2);flex-shrink:0;min-height:42px}
 [data-theme="dark"] #crm-topbar{border-bottom-color:#2A2926}
-.crm-tab{padding:0 12px;height:42px;display:flex;align-items:center;font-size:11px;font-weight:600;color:#999;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:color .12s,border-color .12s;white-space:nowrap;font-family:var(--font-ui)}
+.crm-tab{padding:0 12px;height:42px;display:flex;align-items:center;font-size:11px;font-weight:600;color:#999;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:color var(--transition-fast),border-color var(--transition-fast);white-space:nowrap;font-family:var(--font-ui)}
 .crm-tab:hover{color:var(--grafite)}
 .crm-tab.active{color:var(--azul);border-bottom-color:var(--azul)}
 [data-theme="dark"] .crm-tab:hover{color:#D0CFC9}
@@ -71,7 +66,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-
 .page{display:none}.page.active{display:block}
 
 /* CARD */
-.card{background:var(--branco);border:1px solid var(--cinza);margin-bottom:10px;position:relative;border-radius:8px;overflow:hidden}
+.card{background:var(--branco);border:1px solid var(--cinza);margin-bottom:10px;position:relative;border-radius:var(--radius-card,8px);overflow:hidden}
 .card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
 .card.verde::before{background:var(--verde)}
 .card.az::before{background:var(--azul)}
@@ -95,7 +90,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-
 
 /* STATS */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
-.stat{background:var(--branco);border:1px solid var(--cinza);padding:14px 16px 14px 19px;position:relative;border-radius:8px;overflow:hidden}
+.stat{background:var(--branco);border:1px solid var(--cinza);padding:14px 16px 14px 19px;position:relative;border-radius:var(--radius-card,8px);overflow:hidden}
 .stat::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
 .stat.verde::before{background:var(--verde)}
 .stat.az::before{background:var(--azul)}
@@ -108,7 +103,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-
 .stat-sub{font-size:10px;color:#888;margin-top:2px}
 
 /* BADGE */
-.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;border-radius:4px}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;border-radius:var(--radius-badge,4px)}
 .b-urb{background:var(--urb-bg);color:var(--urb)}
 .b-pai{background:var(--verde-bg);color:var(--verde)}
 .b-consul{background:var(--consul-bg);color:var(--consul)}
@@ -153,21 +148,23 @@ tr.orc-fech td{background:var(--verde-bg)}
 #rel-mensal-table tfoot td{font-size:11px;padding:6px 8px}
 
 /* BTN */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--cinza);background:var(--branco);color:#888;cursor:pointer;transition:all .12s;white-space:nowrap;border-radius:6px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;font-family:var(--font-ui);font-size:var(--text-body);font-weight:var(--weight-semibold);border:1px solid var(--cinza);background:var(--branco);color:#888;cursor:pointer;transition:border-color var(--transition-fast),color var(--transition-fast),background var(--transition-fast);white-space:nowrap;border-radius:var(--radius-btn,6px);text-decoration:none}
 .btn:hover{border-color:var(--grafite);color:var(--grafite)}
-.btn.filled{background:var(--grafite);color:#fff;border-color:var(--grafite)}
-.btn.filled:hover{background:var(--grafite)}
+.btn:disabled{opacity:.45;cursor:default;pointer-events:none}
+.btn.filled{background:var(--grafite);color:var(--branco);border-color:var(--grafite)}
+.btn.filled:hover{opacity:.82}
 .btn.verde{background:var(--verde);color:#fff;border-color:var(--verde)}
-.btn.verde:hover{background:var(--verde-l)}
-.btn.tc{background:var(--terracota);color:#fff;border-color:var(--terracota)}
-.btn.sm{padding:3px 8px;font-size:8px}
-.btn.xs{padding:2px 7px;font-size:8px}
+.btn.verde:hover{opacity:.88}
+.btn.tc,.btn.danger{border-color:var(--terracota);color:var(--terracota)}
+.btn.tc:hover,.btn.danger:hover{background:var(--terracota);color:#fff}
+.btn.sm{padding:4px 10px;font-size:var(--text-label)}
+.btn.xs{padding:2px 8px;font-size:var(--text-label);border-radius:var(--radius-badge,4px)}
 .btn.ghost{background:transparent;border-color:transparent;color:#999}
 .btn.ghost:hover{border-color:var(--cinza);color:var(--grafite)}
 
 /* INPUT / SELECT */
-input[type=text],input[type=date],input[type=number],input[type=email],input[type=month],textarea,select{font-family:var(--font-ui);font-size:12px;font-weight:300;border:1px solid var(--cinza);background:var(--branco);color:var(--grafite);padding:5px 9px;width:100%;outline:none;transition:border-color .12s;border-radius:6px}
-input:focus,select:focus,textarea:focus{border-color:var(--grafite)}
+input[type=text],input[type=date],input[type=number],input[type=email],input[type=month],textarea,select{font-family:var(--font-ui);font-size:var(--text-body);font-weight:var(--weight-light);border:1px solid var(--cinza);background:var(--branco);color:var(--grafite);padding:6px 10px;width:100%;outline:none;transition:border-color var(--transition-fast),box-shadow var(--transition-fast);border-radius:var(--radius-input,6px)}
+input:focus,select:focus,textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
 select{cursor:pointer}
 textarea{resize:vertical;min-height:60px}
 .fgroup{display:flex;flex-direction:column;gap:4px}
@@ -180,7 +177,7 @@ textarea{resize:vertical;min-height:60px}
 .mb14{margin-bottom:14px}
 
 /* KANBAN */
-.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;height:calc(100vh - 114px)}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:var(--radius-card,8px);overflow:hidden;height:calc(100vh - 114px)}
 .kcol{border-right:1px solid var(--cinza);display:flex;flex-direction:column;overflow:hidden;height:100%}
 .kcol:last-child{border-right:none}
 .kcol-hd{padding:8px 10px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:6px;background:var(--branco);position:sticky;top:0;z-index:5;flex-shrink:0}
@@ -190,7 +187,7 @@ textarea{resize:vertical;min-height:60px}
 .kcol-sum{font-size:10px;font-family:var(--font-mono);font-weight:600;color:#555}
 .kitems{padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1}
 /* CARD */
-.pcard{background:var(--branco);border:1px solid var(--cinza);padding:9px 11px;cursor:pointer;transition:border-color .12s,box-shadow .12s;position:relative;border-radius:8px}
+.pcard{background:var(--branco);border:1px solid var(--cinza);padding:9px 11px;cursor:pointer;transition:border-color var(--transition-fast),box-shadow var(--transition-fast);position:relative;border-radius:var(--radius-card,8px)}
 .pcard:hover{border-color:#aaa;box-shadow:0 2px 6px rgba(0,0,0,.07)}
 .pcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
 .pcard-code{font-size:9px;font-family:var(--font-mono);color:#aaa}
@@ -204,7 +201,7 @@ textarea{resize:vertical;min-height:60px}
 .pcard-neg{border-left:5px solid var(--esp);background:var(--am-bg)}
 .pcard-fech{border-left:5px solid var(--verde);background:var(--verde-bg)}
 .pcard.dragging{opacity:.35;pointer-events:none}
-.kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--azul);outline-offset:-4px;border-radius:6px}
+.kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--azul);outline-offset:-4px;border-radius:var(--radius-input,6px)}
 .kcol-dupla{flex-direction:column}
 .kcol-sec{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .kcol-sep{height:1px;background:var(--cinza);flex-shrink:0}
@@ -225,7 +222,7 @@ textarea{resize:vertical;min-height:60px}
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:200;align-items:center;justify-content:center;padding:40px 16px;overflow-y:auto}
 .modal-bg.open{display:flex}
-.modal{background:var(--branco);width:640px;max-width:calc(100vw - 32px);border:1px solid var(--cinza);position:relative;margin:auto;display:flex;flex-direction:column;max-height:calc(100vh - 80px);border-radius:10px;overflow:hidden}
+.modal{background:var(--branco);width:640px;max-width:calc(100vw - 32px);border:1px solid var(--cinza);position:relative;margin:auto;display:flex;flex-direction:column;max-height:calc(100vh - 80px);border-radius:var(--radius-card,8px);overflow:hidden}
 .modal.lg{width:860px}
 .modal.xl{width:1060px}
 .modal-hd{padding:12px 16px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;background:var(--branco);flex-shrink:0;z-index:5}
@@ -236,7 +233,7 @@ textarea{resize:vertical;min-height:60px}
 .modal-ft{padding:10px 16px;border-top:1px solid var(--cinza);display:flex;gap:7px;justify-content:flex-end;background:var(--branco);flex-shrink:0}
 .ms{margin-bottom:12px}
 .ms-title{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--cinza2)}
-.fech-row{transition:border-color .15s,opacity .15s}
+.fech-row{transition:border-color var(--transition-normal),opacity var(--transition-normal)}
 .dr{display:flex;border-bottom:1px solid var(--cinza2)}
 .dr:last-child{border-bottom:none}
 .dk{font-size:10px;color:#888;padding:5px 8px;min-width:110px;background:var(--off);border-right:1px solid var(--cinza2);flex-shrink:0}
@@ -252,7 +249,7 @@ textarea{resize:vertical;min-height:60px}
 .bv-item:last-child{border-bottom:none}
 
 /* CONTATOS */
-.cont-empresa{background:var(--branco);border:1px solid var(--cinza);margin-bottom:8px;border-radius:6px;overflow:hidden}
+.cont-empresa{background:var(--branco);border:1px solid var(--cinza);margin-bottom:8px;border-radius:var(--radius-input,6px);overflow:hidden}
 .cont-hd{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
 .cont-hd:hover{background:var(--off)}
 .cont-nome{font-size:13px;font-weight:600}
@@ -264,7 +261,7 @@ textarea{resize:vertical;min-height:60px}
 .pessoa-row:last-child{border-bottom:none}
 
 /* TOAST */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--grafite);color:#fff;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.3px;z-index:999;opacity:0;transition:opacity .2s;border-radius:6px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--grafite);color:#fff;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.3px;z-index:999;opacity:0;transition:opacity var(--transition-normal);border-radius:var(--radius-input,6px)}
 .toast.show{pointer-events:auto}
 .toast a{color:var(--azul);text-decoration:underline}
 .toast.show{opacity:1}
@@ -297,15 +294,15 @@ textarea{resize:vertical;min-height:60px}
 .alc-map-wrap{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;padding:4px}
 #alc-svg{width:100%;height:auto;max-height:calc(100vh - 100px);display:block}
 #alc-svg{background:var(--off);border-radius:8px}
-.alc-city-card{background:var(--branco);border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color .12s}
+.alc-city-card{background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color var(--transition-fast)}
 .alc-city-card:hover{border-color:var(--azul)}
 .alc-city-opp{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-top:1px solid var(--cinza2);margin-top:3px;cursor:pointer}
 .alc-city-opp:hover span:first-child{text-decoration:underline}
-.alc-dot{transition:opacity .12s}
+.alc-dot{transition:opacity var(--transition-fast)}
 .alc-dot:hover{opacity:.85}
 
 /* DESTAQUE */
-.destaque-card{background:var(--branco);border:1px solid var(--esp);padding:12px 14px 12px 17px;position:relative;cursor:pointer;transition:border-color .12s;border-radius:8px;overflow:hidden}
+.destaque-card{background:var(--branco);border:1px solid var(--esp);padding:12px 14px 12px 17px;position:relative;cursor:pointer;transition:border-color var(--transition-fast);border-radius:8px;overflow:hidden}
 .destaque-card::before{content:'';position:absolute;top:0;left:0;width:5px;height:100%;background:var(--esp)}
 .destaque-card:hover{border-color:var(--grafite)}
 .destaque-card-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ouro);margin-bottom:5px}
@@ -496,20 +493,25 @@ textarea{resize:vertical;min-height:60px}
     <div class="stat tc"><div class="stat-lbl">Taxa de conversão</div><div class="stat-val" id="s-conv">—</div><div class="stat-sub" id="s-conv-sub"></div></div>
   </div>
 
+  <div class="card cinza" style="margin-bottom:10px">
+    <div class="card-hdr"><div class="card-title">Pesquisa de satisfacao</div></div>
+    <div class="card-body" id="dash-sat-body"><div class="loading">Carregando...</div></div>
+  </div>
+
   <!-- Linha 1: gráfico mensal (largo) + distribuição (compacto) — 3fr 1fr alinha com stat-row -->
   <div style="display:grid;grid-template-columns:3fr 1fr;gap:10px;margin-bottom:10px">
     <div class="card az">
       <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
         <div class="card-title" style="flex:1;min-width:120px">Faturamento mensal — ano corrente</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <select id="dash-nucleo" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:4px">
+          <select id="dash-nucleo" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px)">
             <option value="todos">Todos núcleos</option>
             <option value="Paisagismo">Paisagismo</option>
             <option value="Urbanismo">Urbanismo</option>
             <option value="Consultorias">Consultorias</option>
             <option value="Projetos Especiais">Proj. Especiais</option>
           </select>
-          <select id="dash-resp" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:4px">
+          <select id="dash-resp" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px)">
             <option value="todos">Todos resp.</option>
           </select>
         </div>
@@ -779,7 +781,7 @@ textarea{resize:vertical;min-height:60px}
     <!-- sidebar -->
     <div class="alc-side">
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="alc-modo" onchange="alcMode=this.value;renderAlcance()" style="flex:1;font-size:11px;font-weight:600;padding:7px 10px;border:1px solid var(--cinza);background:var(--branco);border-radius:6px;cursor:pointer">
+        <select id="alc-modo" onchange="alcMode=this.value;renderAlcance()" style="flex:1;font-size:11px;font-weight:600;padding:7px 10px;border:1px solid var(--cinza);background:var(--branco);border-radius:var(--radius-input,6px);cursor:pointer">
           <option value="todos">Todas as oportunidades</option>
           <option value="op">Oportunidades ativas</option>
           <option value="fech">Fechamentos</option>
@@ -1287,6 +1289,10 @@ let allClients= [];
 let allUsers  = {};  // { uuid: {nome, iniciais, cor, viewer_only} }
 let allContatos=[];
 let allProposals=[];
+let allPesquisasSat=[];
+let allFinAtivosResumo=[];
+let pesquisaSatDisponivel=true;
+let finAtivosDisponivel=true;
 let detailOppId = null;
 let orcSortKey  = 'data_entrada';
 let orcSortDir  = -1;
@@ -1730,7 +1736,7 @@ async function sair() {
 }
 
 async function carregarDados(){
-  const [opsRes, prodsRes, clientesRes, usersRes, contatosRes, fusRes, proposalsRes] = await Promise.all([
+  const [opsRes, prodsRes, clientesRes, usersRes, contatosRes, fusRes, proposalsRes, pesquisasRes, finAtivosRes] = await Promise.all([
     sb.from('oportunidades').select('*').not('excluida','is',true).order('data_entrada',{ascending:false}),
     sb.from('produtos').select('*'),
     sb.from('clientes').select('*').order('nome'),
@@ -1738,9 +1744,23 @@ async function carregarDados(){
     sb.from('contatos').select('*'),
     sb.from('followups_produto').select('*'),
     sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at').order('created_at',{ascending:false}).then(r => r.error ? sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at').order('created_at',{ascending:false}) : r),
+    sb.from('crm_pesquisa_satisfacao').select('*').then(r=>r.error ? { data: [], error: r.error } : r),
+    sb.from('fin_ativos').select('id,oportunidade_id,situacao_financeira').then(r=>r.error ? { data: [], error: r.error } : r),
   ]);
   const _erros = [['oportunidades',opsRes],['produtos',prodsRes],['clientes',clientesRes],['usuarios',usersRes],['contatos',contatosRes],['followups_produto',fusRes],['exp_proposals',proposalsRes]];
   _erros.forEach(([nome,res])=>{ if(res.error) console.error(`carregarDados [${nome}]:`, res.error.message); });
+  if(pesquisasRes.error){
+    pesquisaSatDisponivel=false;
+    console.warn('carregarDados [crm_pesquisa_satisfacao]:', pesquisasRes.error.message);
+  } else {
+    pesquisaSatDisponivel=true;
+  }
+  if(finAtivosRes.error){
+    finAtivosDisponivel=false;
+    console.warn('carregarDados [fin_ativos]:', finAtivosRes.error.message);
+  } else {
+    finAtivosDisponivel=true;
+  }
 
   // Mapa de usuarios por id
   allUsers = {};
@@ -1749,6 +1769,8 @@ async function carregarDados(){
   allClients   = clientesRes.data||[];
   allContatos  = contatosRes.data||[];
   allProds     = prodsRes.data||[];
+  allPesquisasSat = pesquisasRes.data || [];
+  allFinAtivosResumo = finAtivosRes.data || [];
   // Todas as propostas (sem filtro de status — inclui Original, R1, R2, etc.)
   const proposalsAll = proposalsRes.data||[];
   allProposals = proposalsAll;
@@ -1785,6 +1807,15 @@ async function carregarDados(){
   // Mapa proposal_id → proposal (todas as versões)
   const proposalMap={};
   proposalsAll.forEach(p=>{ proposalMap[p.proposal_id]=p; });
+  const pesquisaMap={};
+  allPesquisasSat.forEach(r=>{ pesquisaMap[String(r.oportunidade_id||'')]=r; });
+  const finOppMap={};
+  allFinAtivosResumo.forEach(a=>{
+    const k=String(a.oportunidade_id||'');
+    if(!k)return;
+    if(!finOppMap[k]) finOppMap[k]=[];
+    finOppMap[k].push(a);
+  });
 
   allOps=(opsRes.data||[]).map(op=>({
     ...op,
@@ -1793,6 +1824,8 @@ async function carregarDados(){
     _produtos: prodsMap[op.id]||[],
     _user: allUsers[op.resp_id]||null,
     _proposal: op.proposta_calc_id ? (proposalMap[op.proposta_calc_id]||null) : null,
+    _pesquisaSat: pesquisaMap[String(op.id)] || null,
+    _finConcluido: (finOppMap[String(op.id)]||[]).some(a=>isProjetoConcluidoStatus(a.situacao_financeira)),
   }));
 }
 
@@ -1849,6 +1882,54 @@ function isNegada(op){
 function isAtiva(op){
   const s=(op.pipeline_stage||'').toLowerCase();
   return['prospecção','prospeccao','enviada','ativo','negociacao','negociação'].includes(s);
+}
+function normTextKey(v){
+  return String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function isProjetoConcluidoStatus(v){
+  const s=normTextKey(v);
+  return s==='concluido' || s==='concluida' || s==='concluído' || s==='concluída';
+}
+function pesquisaSatBadge(status){
+  const s=normTextKey(status)||'pendente';
+  if(s==='respondida') return '<span class="badge b-vd">Respondida</span>';
+  if(s==='dispensada') return '<span class="badge b-gr">Dispensada</span>';
+  return '<span class="badge b-am">Pendente</span>';
+}
+function pesquisaSatStatusLabel(status){
+  const s=normTextKey(status)||'pendente';
+  if(s==='respondida') return 'Respondida';
+  if(s==='dispensada') return 'Dispensada';
+  return 'Pendente';
+}
+function getPesquisaSat(opId){
+  return allPesquisasSat.find(r=>String(r.oportunidade_id||'')===String(opId||''))||null;
+}
+function isPesquisaSatElegivel(op){
+  return !!(op && (isFechada(op) || op._finConcluido));
+}
+function getPesquisaSatStats(){
+  const elegiveis = allOps.filter(isPesquisaSatElegivel);
+  const registros = elegiveis.map(op=>getPesquisaSat(op.id)).filter(Boolean);
+  const respondidas = registros.filter(r=>normTextKey(r.status)==='respondida');
+  const notas = respondidas.map(r=>Number(r.nota)).filter(n=>Number.isFinite(n)&&n>0);
+  return {
+    elegiveis: elegiveis.length,
+    respondidas: respondidas.length,
+    pendentes: elegiveis.filter(op=>{
+      const r=getPesquisaSat(op.id);
+      return !r || normTextKey(r.status)==='pendente';
+    }).length,
+    notaMedia: notas.length ? (notas.reduce((s,n)=>s+n,0)/notas.length) : null,
+    ultimas: respondidas
+      .slice()
+      .sort((a,b)=>(b.respondido_em||b.updated_at||'').localeCompare(a.respondido_em||a.updated_at||''))
+      .slice(0,5)
+      .map(r=>{
+        const op=allOps.find(o=>String(o.id)===String(r.oportunidade_id));
+        return { ...r, _op: op||null };
+      })
+  };
 }
 
 function semFU30(op){
@@ -1994,6 +2075,7 @@ function renderDash(){
   document.getElementById('s-ativas-sub').textContent=`ativas de ${ops.length} total · ${nProdsAtivos} produtos`;
   document.getElementById('s-conv').textContent=conv+'%';
   document.getElementById('s-conv-sub').textContent=`${fechadas2026.length} de ${ops2026.length} opp. abertas em ${anoStr}`;
+  renderDashPesquisaSatisfacao();
 
   // 2E — gráfico mensal: por núcleo quando resp='todos', por usuário quando resp filtrado
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2143,6 +2225,38 @@ function renderDash(){
   document.getElementById('dash-negativas').innerHTML=recNeg.length?tblNeg:`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
   renderDashFu();
   renderValorPropostas();
+}
+function renderDashPesquisaSatisfacao(){
+  const el=document.getElementById('dash-sat-body');
+  if(!el)return;
+  if(!pesquisaSatDisponivel){
+    el.innerHTML=`<div class="empty-note">Pesquisa de satisfacao ainda indisponivel. Rode o SQL do DEV-19 para habilitar a base.</div>`;
+    return;
+  }
+  const st=getPesquisaSatStats();
+  const notaMedia = st.notaMedia==null ? '—' : st.notaMedia.toFixed(1).replace('.',',');
+  const ultimas = st.ultimas.length ? `
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${st.ultimas.map(r=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r._op?._cliente?.nome||r.cliente_nome||'—')}</div>
+            <div style="font-size:10px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r._op?.projeto||'Pesquisa respondida')}</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-weight:700">${Number(r.nota||0)}/5</div>
+        </div>
+      `).join('')}
+    </div>` : `<div class="empty-note">Nenhuma resposta registrada ainda.</div>`;
+  el.innerHTML=`
+    <div class="g4" style="margin-bottom:10px">
+      <div class="stat cinza" style="margin-bottom:0"><div class="stat-lbl">Elegiveis</div><div class="stat-val" style="font-size:18px">${st.elegiveis}</div><div class="stat-sub">oportunidades / projetos finalizados</div></div>
+      <div class="stat verde" style="margin-bottom:0"><div class="stat-lbl">Respondidas</div><div class="stat-val" style="font-size:18px">${st.respondidas}</div><div class="stat-sub">pesquisas com retorno</div></div>
+      <div class="stat am" style="margin-bottom:0"><div class="stat-lbl">Pendentes</div><div class="stat-val" style="font-size:18px">${st.pendentes}</div><div class="stat-sub">ainda sem resposta fechada</div></div>
+      <div class="stat az" style="margin-bottom:0"><div class="stat-lbl">Nota media</div><div class="stat-val" style="font-size:18px">${notaMedia}</div><div class="stat-sub">base aberta, sem retroalimentacao</div></div>
+    </div>
+    <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Ultimas respostas</div>
+    ${ultimas}
+  `;
 }
 
 // ═══ PIPELINE ═══════════════════════════════════════
@@ -2473,7 +2587,7 @@ function editarSiglaCliente(e, clienteId, siglaAtual){
   const wrap=document.createElement('span');
   wrap.style.cssText='display:inline-flex;align-items:center;gap:4px;margin-left:4px';
   wrap.innerHTML=`<input id="sigla-inp-${clienteId.slice(0,8)}" type="text" value="${escAttr(siglaAtual)}" maxlength="6"
-    placeholder="CPB" style="width:58px;padding:2px 6px;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;border:1px solid var(--grafite);border-radius:4px;font-family:var(--font-mono)">
+    placeholder="CPB" style="width:58px;padding:2px 6px;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;border:1px solid var(--grafite);border-radius:var(--radius-badge,4px);font-family:var(--font-mono)">
     <button class="btn sm verde" style="padding:2px 8px">✓</button>
     <button class="btn sm" style="padding:2px 8px">✕</button>`;
   btn.insertAdjacentElement('afterend', wrap);
@@ -3263,7 +3377,7 @@ function _renderFechItens(op) {
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
         <label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;white-space:nowrap">Valor fechado (R$)</label>
         <input type="number" id="fch-vf-total" value="${escAttr(totalProp)}" min="0" step="100"
-          style="font-size:12px;font-family:var(--font-mono);border:1px solid var(--azul);padding:4px 8px;width:140px;border-radius:4px;font-weight:700">
+          style="font-size:12px;font-family:var(--font-mono);border:1px solid var(--azul);padding:4px 8px;width:140px;border-radius:var(--radius-badge,4px);font-weight:700">
       </div>
     </div>`;
   }
@@ -3699,6 +3813,78 @@ async function salvarRespClienteComoContato(){
   renderContatos();
 }
 
+async function salvarPesquisaSatisfacao(oppId){
+  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(!pesquisaSatDisponivel){toast('Rode o SQL do DEV-19 antes de registrar a pesquisa.');return;}
+  const op=allOps.find(o=>o.id===oppId);
+  if(!op){toast('Oportunidade não encontrada.');return;}
+  const notaEl=document.getElementById(`sat-nota-${oppId}`);
+  const respEl=document.getElementById(`sat-resposta-${oppId}`);
+  const contEl=document.getElementById(`sat-contato-${oppId}`);
+  const mailEl=document.getElementById(`sat-email-${oppId}`);
+  const statusEl=document.getElementById(`sat-status-${oppId}`);
+  const notaRaw=notaEl?.value||'';
+  const payload={
+    oportunidade_id: op.id,
+    cliente_id: op.cliente_id||null,
+    cliente_nome: op._cliente?.nome||null,
+    status: statusEl?.value || 'pendente',
+    nota: notaRaw ? Number(notaRaw) : null,
+    resposta_aberta: respEl?.value.trim() || null,
+    contato_referencia: contEl?.value.trim() || null,
+    email_referencia: mailEl?.value.trim() || null,
+    respondido_em: (statusEl?.value==='respondida') ? new Date().toISOString() : null,
+    registrado_por: currentUser?.id || null,
+    registrado_por_nome: currentUser?.nome || null,
+  };
+  if(payload.status==='respondida' && !payload.nota && !payload.resposta_aberta){
+    toast('Informe nota ou resposta aberta para marcar como respondida.');
+    return;
+  }
+  const existente=getPesquisaSat(oppId);
+  let error=null;
+  if(existente){
+    ({ error } = await sb.from('crm_pesquisa_satisfacao').update(payload).eq('id',existente.id));
+  } else {
+    ({ error } = await sb.from('crm_pesquisa_satisfacao').insert(payload));
+  }
+  if(error){toast('Erro ao salvar pesquisa: '+error.message);return;}
+  toast('Pesquisa de satisfacao atualizada.');
+  await carregarDados();
+  renderDash();
+  abrirDetail(oppId);
+}
+
+async function marcarPesquisaSatisfacaoStatus(oppId,status){
+  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(!pesquisaSatDisponivel){toast('Rode o SQL do DEV-19 antes de registrar a pesquisa.');return;}
+  const op=allOps.find(o=>o.id===oppId);
+  if(!op){toast('Oportunidade não encontrada.');return;}
+  const existente=getPesquisaSat(oppId);
+  const payload={
+    oportunidade_id: op.id,
+    cliente_id: op.cliente_id||null,
+    cliente_nome: op._cliente?.nome||null,
+    status,
+    registrado_por: currentUser?.id || null,
+    registrado_por_nome: currentUser?.nome || null,
+  };
+  if(status!=='respondida'){
+    payload.respondido_em = null;
+  }
+  let error=null;
+  if(existente){
+    ({ error } = await sb.from('crm_pesquisa_satisfacao').update(payload).eq('id',existente.id));
+  } else {
+    ({ error } = await sb.from('crm_pesquisa_satisfacao').insert(payload));
+  }
+  if(error){toast('Erro ao atualizar pesquisa: '+error.message);return;}
+  toast(status==='dispensada' ? 'Pesquisa dispensada.' : 'Pesquisa marcada como pendente.');
+  await carregarDados();
+  renderDash();
+  abrirDetail(oppId);
+}
+
 // ═══════════════════════════════════════════════════
 // DETALHE — cabeçalho correto, sem "fechar oportunidade"
 // ═══════════════════════════════════════════════════
@@ -3897,6 +4083,67 @@ function abrirDetail(oppId){
     html+=`</div></div>`;
   }
 
+  const pesquisa = getPesquisaSat(oppId);
+  const elegivelPesquisa = isPesquisaSatElegivel(op);
+  const satStatus = pesquisa?.status || 'pendente';
+  const satNota = pesquisa?.nota ? String(pesquisa.nota) : '';
+  const satResposta = pesquisa?.resposta_aberta || '';
+  const satContato = pesquisa?.contato_referencia || op.resp_cliente_nome || '';
+  const satEmail = pesquisa?.email_referencia || op.resp_cliente_email || '';
+  html+=`<div class="ms"><div class="ms-title">Pesquisa de satisfacao</div>`;
+  if(!pesquisaSatDisponivel){
+    html+=`<div style="font-size:11px;color:#888;padding:4px 0">Rode o SQL do DEV-19 para habilitar esta frente no CRM.</div>`;
+  } else if(!elegivelPesquisa){
+    html+=`<div style="font-size:11px;color:#888;padding:4px 0">Disponivel quando a oportunidade estiver fechada ou o projeto estiver concluido no financeiro.</div>`;
+  } else {
+    html+=`
+      <div class="dr"><div class="dk">Status</div><div class="dv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${pesquisaSatBadge(satStatus)}${pesquisa?.respondido_em?`<span style="font-size:10px;color:#888">respondida em ${fmtD(pesquisa.respondido_em)}</span>`:''}</div></div>
+      <div class="fg fg2 mb8" style="margin-top:10px">
+        <div class="fgroup">
+          <label>Status da pesquisa</label>
+          <select id="sat-status-${oppId}" ${canEdit?'':'disabled'}>
+            <option value="pendente"${satStatus==='pendente'?' selected':''}>Pendente</option>
+            <option value="respondida"${satStatus==='respondida'?' selected':''}>Respondida</option>
+            <option value="dispensada"${satStatus==='dispensada'?' selected':''}>Dispensada</option>
+          </select>
+        </div>
+        <div class="fgroup">
+          <label>Nota</label>
+          <select id="sat-nota-${oppId}" ${canEdit?'':'disabled'}>
+            <option value="">Sem nota</option>
+            <option value="1"${satNota==='1'?' selected':''}>1</option>
+            <option value="2"${satNota==='2'?' selected':''}>2</option>
+            <option value="3"${satNota==='3'?' selected':''}>3</option>
+            <option value="4"${satNota==='4'?' selected':''}>4</option>
+            <option value="5"${satNota==='5'?' selected':''}>5</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg fg2 mb8">
+        <div class="fgroup">
+          <label>Contato de referencia</label>
+          <input type="text" id="sat-contato-${oppId}" value="${escAttr(satContato)}" ${canEdit?'':'disabled'}>
+        </div>
+        <div class="fgroup">
+          <label>E-mail de referencia</label>
+          <input type="email" id="sat-email-${oppId}" value="${escAttr(satEmail)}" ${canEdit?'':'disabled'}>
+        </div>
+      </div>
+      <div class="fgroup">
+        <label>Resposta aberta</label>
+        <textarea id="sat-resposta-${oppId}" ${canEdit?'':'disabled'}>${escHtml(satResposta)}</textarea>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+        ${canEdit?`
+          <button class="btn sm verde" onclick="salvarPesquisaSatisfacao('${escJsStr(oppId)}')">Salvar pesquisa</button>
+          <button class="btn sm" onclick="marcarPesquisaSatisfacaoStatus('${escJsStr(oppId)}','pendente')">Marcar pendente</button>
+          <button class="btn sm ghost" onclick="marcarPesquisaSatisfacaoStatus('${escJsStr(oppId)}','dispensada')">Dispensar</button>
+        `:''}
+      </div>
+      <div style="font-size:10px;color:#888;margin-top:8px">Leitura aberta, sem retroalimentacao automatica de outros dados.</div>
+    `;
+  }
+  html+=`</div>`;
 
   if(op.obs)html+=`<div class="ms"><div class="ms-title">Observações</div><div style="font-size:11px;color:#555;padding:4px 0">${escHtml(op.obs)}</div></div>`;
 
@@ -4245,11 +4492,11 @@ function renderAlcance(){
   const fechVal=fechadas.reduce((s,o)=>s+oppValorFechado(o),0);
   document.getElementById('alc-stats').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:2px">
-      <div style="text-align:center;padding:8px 4px;background:var(--branco);border:1px solid var(--cinza);border-radius:6px">
+      <div style="text-align:center;padding:8px 4px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px)">
         <div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${ops.length}</div>
         <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">oportunidades</div>
       </div>
-      <div style="text-align:center;padding:8px 4px;background:var(--branco);border:1px solid var(--cinza);border-radius:6px">
+      <div style="text-align:center;padding:8px 4px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px)">
         <div style="font-size:12px;font-weight:700;font-family:var(--font-mono)">${fmt(alcMode==='fech'?fechVal:pipeVal)}</div>
         <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${alcMode==='fech'?'valor fechado':'pipeline'}</div>
       </div>
@@ -4835,8 +5082,8 @@ async function abrirLembretePopup() {
   const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
   const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
   const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
-  const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
+  const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:var(--radius-input,6px);padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
+  const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:var(--radius-input,6px);font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
   const opts = (usuarios || []).filter(u => u.id !== _me.id).map(u =>
     `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`
   ).join('');
@@ -4844,7 +5091,7 @@ async function abrirLembretePopup() {
   pop.id = 'popup-lembrete';
   pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
   pop.innerHTML = `
-    <div style="background:var(--branco,#fff);border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="background:var(--branco,#fff);border-radius:var(--radius-card,8px);padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
       <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
       <label style="${_ls}">Para</label>
       <select id="lemb-para" style="${_fs};margin-bottom:10px">
@@ -4891,6 +5138,9 @@ async function _enviarLembrete() {
 <script src="chat.js"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
+<style>
+  #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:34px!important;z-index:9998!important}
+</style>
 <!-- EXP · Nav lateral compartilhada -->
 <script src="shared/exp-nav.js"></script>
 </body>
