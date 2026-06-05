@@ -1382,6 +1382,10 @@ function isProposalFamilyLinkedToCRM(proposal) {
   return (S.crmLinkedProposalRoots || []).includes(fid);
 }
 
+function getProposalFamilyId(proposal) {
+  return String(proposal?.parentId || proposal?.id || '');
+}
+
 async function fetchLatestCalcParamsRow() {
   if (!S.sbUrl || !S.sbKey) return null;
   const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?select=*&order=updated_at.desc,id.desc&limit=1`, {
@@ -3374,8 +3378,11 @@ function renderHist() {
           : '';
         const clienteDisp = escHtml(p.cliente||'');
         const respDisp = escHtml(RESP_LABEL[p.resp]||p.resp||'');
-        const semVinculoCRM = isLatest && !isProposalFamilyLinkedToCRM(p);
+        const semVinculoCRM = !isProposalFamilyLinkedToCRM(p);
         const crmBadge = semVinculoCRM ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:var(--tc-bg);color:var(--terracota);border:1px solid var(--terracota);border-radius:4px;padding:2px 7px">Sem CRM</span>` : '';
+        const deleteBtn = semVinculoCRM
+          ? `<button class="del-prop-btn" onclick="event.stopPropagation();excluirProposta(${p.id})" title="Excluir proposta calculada">×</button>`
+          : `<button class="del-prop-btn" disabled title="Propostas vinculadas ao CRM não podem ser excluídas pela calculadora" style="opacity:.28;cursor:not-allowed">×</button>`;
         return `<tr class="click" style="${rowStyle}" onclick="abrirProposta(${p.id})">
           <td>${cod} ${famIndicator}</td>
           <td>${versBadge}</td>
@@ -3388,7 +3395,7 @@ function renderHist() {
           <td style="font-weight:700;font-family:var(--font-mono)">${fmt(p.total)}</td>
           <td style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${efetivo}</td>
           <td>${[statusBadge, crmBadge].filter(Boolean).join(' ')}</td>
-          <td class="del-col"><button class="del-prop-btn" onclick="event.stopPropagation();excluirProposta(${p.id})" title="Excluir proposta">×</button></td>
+          <td class="del-col">${deleteBtn}</td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="11" class="empty">Nenhuma proposta encontrada</td></tr>';
@@ -4040,18 +4047,35 @@ function initConnDot() {
 }
 
 function excluirProposta(id) {
-  abrirPopupConfirm('Excluir proposta', 'Excluir esta proposta permanentemente? Esta ação não pode ser desfeita.', async () => {
+  const proposal = S.proposals.find(p => p.id === id);
+  if (!proposal) return;
+  if (isProposalFamilyLinkedToCRM(proposal)) {
+    showToast('Propostas vinculadas ao CRM não podem ser excluídas pela calculadora.');
+    return;
+  }
+  const familyId = getProposalFamilyId(proposal);
+  const family = S.proposals.filter(p => getProposalFamilyId(p) === familyId);
+  const familySize = family.length;
+  const confirmMsg = familySize > 1
+    ? `Excluir permanentemente esta família de proposta, incluindo ${familySize} versões? Esta ação não pode ser desfeita.`
+    : 'Excluir esta proposta permanentemente? Esta ação não pode ser desfeita.';
+  abrirPopupConfirm('Excluir proposta', confirmMsg, async () => {
     try {
       if (S.sbUrl && S.sbKey) {
-        const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?proposal_id=eq.' + encodeURIComponent(String(id)), {
+        const deleteFilter = familySize > 1
+          ? `or=(proposal_id.eq.${encodeURIComponent(familyId)},parent_id.eq.${encodeURIComponent(familyId)})`
+          : `proposal_id=eq.${encodeURIComponent(String(id))}`;
+        const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?' + deleteFilter, {
           method: 'DELETE',
-          headers: getSBHeaders()
+          headers: { ...getSBHeaders(true), 'Prefer': 'return=minimal' }
         });
         if (!r.ok && r.status !== 204) throw new Error('HTTP ' + r.status);
       }
-      S.proposals = S.proposals.filter(p => p.id !== id);
+      S.proposals = S.proposals.filter(p => getProposalFamilyId(p) !== familyId);
+      S.crmLinkedProposalRoots = (S.crmLinkedProposalRoots || []).filter(root => String(root) !== familyId);
       save();
       renderHist();
+      showToast(familySize > 1 ? 'Família de proposta excluída.' : 'Proposta excluída.');
     } catch(e) {
       showToast('Erro ao excluir: ' + e.message);
     }
