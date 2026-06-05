@@ -292,7 +292,7 @@ textarea{resize:vertical;min-height:60px}
 .alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 114px)}
 .alc-side{display:flex;flex-direction:column;overflow:hidden}
 .alc-map-wrap{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;padding:4px}
-#alc-svg{width:100%;height:auto;max-height:calc(100vh - 100px);display:block}
+#alc-svg{width:100%;height:auto;max-height:calc(100vh - 160px);display:block}
 #alc-svg{background:var(--off);border-radius:8px}
 .alc-city-card{background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color var(--transition-fast)}
 .alc-city-card:hover{border-color:var(--azul)}
@@ -370,7 +370,7 @@ textarea{resize:vertical;min-height:60px}
 [data-theme="dark"] .pessoa-row{border-color:var(--cinza2)}
 
 /* Alcance map */
-[data-theme="dark"] #alc-svg{background:var(--cinza2)}
+[data-theme="dark"] #alc-svg{background:var(--cinza2);opacity:.82}
 [data-theme="dark"] .alc-city-card{background:var(--branco);border-color:var(--cinza)}
 [data-theme="dark"] .alc-city-card:hover{border-color:var(--azul)}
 [data-theme="dark"] .alc-city-opp{border-color:var(--cinza2)}
@@ -625,7 +625,7 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ ORÇAMENTOS ═══════════════════════════════════════════════ -->
 <div class="page" id="tab-orc">
-  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:nowrap;overflow-x:auto">
     <select id="of-ano" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;font-weight:700;border:1px solid var(--cinza)">
       <option value="todos">Todos anos</option>
       <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
@@ -1137,6 +1137,7 @@ textarea{resize:vertical;min-height:60px}
       <div style="display:flex;align-items:center;gap:8px">
         <button class="btn sm" id="det-edit-btn" onclick="editarOpp()" style="display:none">Editar</button>
         <button class="btn sm verde" id="det-fu-btn" onclick="openFollowUpModal()" style="display:none">+ Follow-up</button>
+        <button class="btn sm tc" id="det-del-btn" onclick="excluirOpp()" style="display:none" title="Excluir oportunidade permanentemente">Excluir</button>
         <span class="modal-x" onclick="closeM('modal-detail')">×</span>
       </div>
     </div>
@@ -2424,7 +2425,7 @@ function renderOrc(){
     else if(sl)ops=ops.filter(o=>sl.includes((o.pipeline_stage||'').toLowerCase()));
   }
   if(respFil!=='todos')ops=ops.filter(o=>userNome(o.resp_id)===respFil);
-  if(q)ops=ops.filter(o=>(o._cliente?.nome||'').toLowerCase().includes(q)||(o.num_legado||'').toLowerCase().includes(q)||(o.cidade||'').toLowerCase().includes(q));
+  if(q)ops=ops.filter(o=>(o._cliente?.nome||'').toLowerCase().includes(q)||(o.num_legado||'').toLowerCase().includes(q)||(o.cidade||'').toLowerCase().includes(q)||(o.uf||'').toLowerCase().includes(q)||(o.projeto||'').toLowerCase().includes(q));
 
   ops=ops.slice().sort((a,b)=>{
     let va=a[orcSortKey]||'', vb=b[orcSortKey]||'';
@@ -3129,6 +3130,20 @@ async function salvarProd(){
 // ═══════════════════════════════════════════════════
 
 let _acaoTipo=null,_acaoOppId=null,_acaoProdId=null;
+
+async function excluirOpp(){
+  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  const op=allOps.find(o=>o.id===detailOppId);
+  if(!op)return;
+  const label=[op.num_legado,op._cliente?.nome,op.projeto].filter(Boolean).join(' · ');
+  if(!confirm(`Excluir a oportunidade "${label}"?\n\nEsta ação não pode ser desfeita.`))return;
+  const {error}=await sb.from('oportunidades').update({excluida:true,updated_at:new Date().toISOString()}).eq('id',op.id);
+  if(error){toast('Erro ao excluir: '+error.message);return;}
+  allOps=allOps.filter(o=>o.id!==op.id);
+  closeM('modal-detail');
+  renderDash();renderPipe();renderOrc();renderContatos();calcAlertas();
+  toast('Oportunidade excluída.');
+}
 
 function abrirAcaoOpp(tipo){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
@@ -3904,6 +3919,7 @@ function abrirDetail(oppId){
   const canEdit=!currentUser?.viewer_only;
   document.getElementById('det-fu-btn').style.display=canEdit?'inline-flex':'none';
   document.getElementById('det-edit-btn').style.display=canEdit?'inline-flex':'none';
+  document.getElementById('det-del-btn').style.display=canEdit?'inline-flex':'none';
   // Cabeçalho: número · cliente · projeto
   const hdrParts=[op.num_legado,op._cliente?.nome,op.projeto].filter(Boolean);
   document.getElementById('det-title').textContent=hdrParts.join(' · ');
