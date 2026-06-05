@@ -2149,8 +2149,19 @@ body{
   }
 
   function fillCostAreas() {
+    var grupos = [];
+    var grupoMap = {};
+    AP.costAreas.forEach(function(a) {
+      var g = a.grupo || 'Outros';
+      if (!grupoMap[g]) { grupoMap[g] = []; grupos.push(g); }
+      grupoMap[g].push(a);
+    });
     document.getElementById('apo-cost-area').innerHTML = '<option value="">Selecionar área…</option>' +
-      AP.costAreas.map(function(a){ return '<option value="'+a.id+'">'+esc(a.subconta)+'</option>'; }).join('');
+      grupos.map(function(g) {
+        return '<optgroup label="'+esc(g)+'">'+
+          grupoMap[g].map(function(a){ return '<option value="'+a.id+'">'+esc(a.subconta)+'</option>'; }).join('')+
+          '</optgroup>';
+      }).join('');
   }
 
   function getCurrArea() {

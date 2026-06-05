@@ -1,1112 +1,47 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>EXP · Calculadora de Honorários</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="exp-design-system.css">
-<link rel="stylesheet" href="shared/exp-nav.css">
-<script src="shared/app-notif.js"></script>
-<script>
+﻿
+
+
+
   (function(){
     var saved = localStorage.getItem('exp-theme');
     var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if(saved === 'dark' || (!saved && sys))
       document.documentElement.setAttribute('data-theme','dark');
   })();
-</script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-/* ── VARS LOCAIS — apenas o que o design system não cobre ─── */
-:root{
-  --nav-active:     var(--verde);
-  --mod-focus:      var(--verde);
-  --mod-focus-soft: var(--verde-soft);
-}
-body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300;height:100vh;overflow:hidden;display:flex;flex-direction:column}
-#app{flex:1;min-height:0;display:flex}
-#calc-card{flex:1;background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-shell,14px);display:flex;flex-direction:column;overflow:hidden;min-width:0}
-[data-theme="dark"] #calc-card{background:#1E1E1D;border-color:#2E2D2B}
-.calc-card-hd{height:48px;background:var(--branco);border-bottom:1px solid var(--cinza2);display:flex;align-items:center;padding:0 8px 0 4px;flex-shrink:0;gap:0}
-[data-theme="dark"] .calc-card-hd{background:#1E1E1D;border-bottom-color:#2A2926}
-.calc-card-hd .ntab{font-size:11px;text-transform:none;letter-spacing:0;padding:0 12px;height:48px}
-.calc-card-hd .ntab.active{color:var(--verde);border-bottom-color:var(--verde)}
-[data-theme="dark"] .calc-card-hd .ntab:hover{color:#D0CFC9}
-[data-theme="dark"] .calc-card-hd .ntab.active{color:#5FAD7E;border-bottom-color:#5FAD7E}
-.calc-hd-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;padding-left:10px}
-#calc-theme-moon{display:none}
-[data-theme="dark"] #calc-theme-sun{display:none}
-[data-theme="dark"] #calc-theme-moon{display:block}
-.calc-hd-right .user-pill-wrap{min-width:100px;max-width:170px}
-.calc-hd-right .user-chip{background:transparent}
-.calc-hd-right .notif-plus{background:transparent}
-[data-theme="dark"] .calc-hd-right .user-chip{background:transparent;border-color:rgba(255,255,255,.12)}
-[data-theme="dark"] .calc-hd-right .user-chip:hover{border-color:rgba(255,255,255,.28)}
-.calc-card-body{flex:1;overflow-y:auto;min-height:0}
-/* scrollbar sutil — padrão gestão */
-.calc-card-body{scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.18) transparent}
-.calc-card-body::-webkit-scrollbar{width:4px}
-.calc-card-body::-webkit-scrollbar-track{background:transparent}
-.calc-card-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.16);border-radius:4px}
-.calc-card-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.28)}
-[data-theme="dark"] .calc-card-body{scrollbar-color:rgba(255,255,255,.14) transparent}
-[data-theme="dark"] .calc-card-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14)}
-[data-theme="dark"] .calc-card-body::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
-.main{padding:14px 16px;position:relative;z-index:1}
 
-.del-col{display:none}
-body.can-delete .del-col{display:table-cell}
-.del-prop-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
-.del-prop-btn:hover{color:var(--terracota)}
 
-/* LAYOUT */
-.page{display:none}.page.active{display:block}
-.cols{display:grid;grid-template-columns:2fr 3fr;gap:var(--gap-md);align-items:start}
-.cols.cols-eq{grid-template-columns:1fr 1fr}
-
-/* CARD */
-.card{background:var(--branco);border:1px solid var(--cinza);margin-bottom:10px;position:relative;border-radius:var(--radius-card);overflow:hidden}
-.card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
-.card.verde::before{background:var(--verde)}
-.card.az::before{background:var(--azul)}
-.card.am::before{background:var(--ouro)}
-.card.tc::before{background:var(--terracota)}
-.card.roxo::before{background:var(--roxo)}
-.card.neutro::before{background:var(--cinza)}
-.card-hdr{padding:9px 14px 9px 17px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:var(--gap-sm);flex-wrap:wrap}
-.card-title{font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.7px;text-transform:uppercase;flex:1}
-.card-body{padding:13px 14px 13px 17px}
-
-/* SEC */
-.sec{font-size:8px;font-weight:var(--weight-label);letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
-
-/* FORM */
-.fg{display:grid;gap:7px}.fg2{grid-template-columns:1fr 1fr}.fg3{grid-template-columns:1fr 1fr 1fr}.fg4{grid-template-columns:repeat(4,minmax(0,1fr))}
-.fgroup{display:flex;flex-direction:column;gap:3px;position:relative}
-.fgroup label{font-size:var(--text-label);font-weight:var(--weight-semibold);letter-spacing:.4px;text-transform:uppercase;color:#888}
-.fgroup input,.fgroup select,.fgroup textarea{font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);padding:4px 8px;background:var(--branco);color:var(--grafite);width:100%;outline:none;transition:border-color var(--transition-fast);border-radius:var(--radius-btn)}
-.fgroup input:focus,.fgroup select:focus,.fgroup textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.fgroup textarea{resize:vertical;min-height:48px}
-.inp-readonly{background:var(--cinza2)!important;color:#888!important;cursor:default}
-
-/* AUTOCOMPLETE */
-.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:var(--branco);border:1px solid var(--cinza);border-top:none;z-index:50;max-height:180px;overflow-y:auto;display:none;border-radius:0 0 var(--radius-btn) var(--radius-btn)}
-.autocomplete-list.open{display:block}
-.ac-item{padding:7px 9px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--cinza2)}
-.ac-item:last-child{border-bottom:none}
-.ac-item:hover{background:var(--cinza2)}
-.ac-item mark{background:transparent;color:var(--verde);font-weight:var(--weight-label)}
-.ac-new{color:#888;font-style:italic}
-
-/* STEPPER */
-.stepper{display:flex;border-radius:var(--radius-btn);overflow:hidden}
-.stepper input{text-align:center;border-left:none;border-right:none;flex:1;min-width:0;border-radius:0!important}
-.sbt{background:var(--branco);border:1px solid var(--cinza);color:#666;padding:0 8px;cursor:pointer;font-size:14px;display:flex;align-items:center;font-weight:300;transition:var(--transition-fast);white-space:nowrap}
-.sbt:hover{background:var(--grafite);color:var(--branco);border-color:var(--grafite)}
-
-/* BOTÕES */
-.btn{display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border:1px solid var(--cinza);font-family:var(--font-ui);font-size:var(--text-body);font-weight:var(--weight-semibold);color:#888;background:var(--branco);cursor:pointer;transition:border-color var(--transition-fast),color var(--transition-fast),background var(--transition-fast);border-radius:var(--radius-btn);white-space:nowrap;text-decoration:none}
-.btn:hover{border-color:var(--grafite);color:var(--grafite)}
-.btn:disabled{opacity:.45;cursor:default;pointer-events:none}
-.btn.sm{padding:4px 10px;font-size:var(--text-label)}
-.btn.xs{padding:2px 8px;font-size:var(--text-label);border-radius:var(--radius-badge)}
-.btn.ghost{border-color:var(--cinza);color:#888}
-.btn.ghost:hover{border-color:var(--grafite);color:var(--grafite)}
-.btn.verde{background:var(--verde);color:#fff;border-color:var(--verde)}
-.btn.verde:hover{background:var(--verde-l)}
-.btn.am{background:var(--ouro);color:#fff;border-color:var(--ouro)}
-.btn.tc{background:var(--terracota);color:#fff;border-color:var(--terracota)}
-.btn.az{background:var(--azul);color:#fff;border-color:var(--azul)}
-.btn.danger{border-color:var(--cinza);color:var(--terracota)}
-.btn.danger:hover{background:var(--tc-bg);border-color:var(--terracota)}
-/* Botão principal de adicionar item à proposta */
-.btn-add-item{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;font-family:var(--font-ui);font-size:10px;font-weight:var(--weight-label);letter-spacing:.6px;text-transform:uppercase;background:var(--verde);color:#fff;border:none;cursor:pointer;width:100%;margin-top:8px;transition:var(--transition-fast);border-radius:var(--radius-btn)}
-.btn-add-item:hover{background:var(--verde-l)}
-/* Botão dashed genérico para adicionar blocos */
-.btn-add{display:flex;align-items:center;gap:5px;padding:6px 10px;font-size:var(--text-sub);border:1px dashed var(--cinza);background:transparent;color:#888;cursor:pointer;width:100%;margin-top:6px;transition:var(--transition-fast);border-radius:var(--radius-btn)}
-.btn-add:hover{border-color:var(--grafite);color:var(--grafite)}
-
-/* BADGE */
-.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:var(--weight-label);letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;border-radius:var(--radius-badge)}
-.b-vd{background:var(--verde-bg);color:var(--verde)}
-.b-az{background:var(--az-bg);color:var(--azul)}
-.b-am{background:var(--am-bg);color:var(--ouro)}
-.b-tc{background:var(--tc-bg);color:var(--terracota)}
-.b-roxo{background:var(--roxo-bg);color:var(--roxo)}
-.b-gr{background:var(--cinza2);color:#666}
-.badge-revisada{background:var(--tc-bg);color:#7A2A1C;border:1px solid var(--terracota);font-size:8px;font-weight:var(--weight-label);letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap;border-radius:var(--radius-badge)}
-.badge-bloqueada{background:var(--cinza2);color:#999;border:1px solid var(--cinza);font-size:8px;font-weight:var(--weight-label);letter-spacing:.3px;text-transform:uppercase;padding:1px 6px;white-space:nowrap;border-radius:var(--radius-badge)}
-
-/* HINT */
-.hint{background:var(--cinza2);border-left:3px solid var(--cinza);padding:7px 10px;font-size:var(--text-sub);color:#666;line-height:1.5;margin-bottom:8px;border-radius:0 var(--radius-badge) var(--radius-badge) 0}
-.hint.verde{border-left-color:var(--verde);background:var(--verde-bg)}
-.hint.az{border-left-color:var(--azul);background:var(--az-bg)}
-
-/* RESUMO */
-.rg{margin-bottom:8px}
-.rg-head{padding:7px 11px;display:flex;align-items:center;gap:7px;border:1px solid var(--cinza);background:var(--off)}
-.rg-stripe{width:3px;height:10px;flex-shrink:0}
-.rg-label{font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;flex:1}
-.rg-sub{font-size:var(--text-sub);font-weight:var(--weight-label);margin-left:auto}
-.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr 22px;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:var(--branco);font-size:var(--text-sub);font-weight:300;min-width:0}
-.rg-item>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rg-item:hover{background:var(--off)}
-.rg-val{font-weight:var(--weight-label);text-align:right}
-.rg-val.edited{color:var(--verde)}
-
-/* TOTAL — fundo permanentemente escuro, não inverte no dark mode */
-.total-bar{background:#141414;color:#fff;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;margin-top:4px;border-radius:var(--radius-btn)}
-.total-lbl{font-size:8px;font-weight:var(--weight-label);letter-spacing:1px;text-transform:uppercase;opacity:.6}
-.total-val{font-size:20px;font-weight:var(--weight-label);letter-spacing:-.5px;font-family:var(--font-mono)}
-.desc-bar{background:var(--tc-bg);border:1px solid var(--terracota);border-top:none;padding:6px 13px;display:flex;justify-content:space-between;font-size:var(--text-sub)}
-
-/* BLOCO DESPESA */
-.bloco{border:1px solid var(--cinza);border-left:3px solid var(--cinza);margin-bottom:7px;padding:11px 12px;border-radius:0 var(--radius-btn) var(--radius-btn) 0}
-.bloco-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
-.bloco-lbl{font-size:10px;font-weight:var(--weight-semibold);color:var(--grafite)}
-.bloco-sub{font-size:var(--text-sub);font-weight:var(--weight-label);color:#888}
-.bloco-acts{display:flex;align-items:center;gap:5px}
-
-/* DESPESAS MINIMIZADO */
-.desp-minimized{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
-.desp-minimized-msg{font-size:var(--text-sub);color:#999}
-
-/* SUB MINIMIZADO */
-.sub-collapsed{padding:10px 0;color:#999;font-size:var(--text-sub)}
-
-/* HIST */
-table{width:100%;border-collapse:collapse}
-th{padding:6px 9px;font-size:8px;font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;color:#999;text-align:left;background:var(--off);border-bottom:1px solid var(--cinza);white-space:nowrap}
-td{padding:7px 9px;border-top:1px solid var(--cinza2);font-size:var(--text-sub);font-weight:300;vertical-align:middle}
-tr.click{cursor:pointer}tr.click:hover td{background:var(--off)}
-tr.blocked-row td{color:#aaa;background:var(--off)}
-.empty{color:#999;font-size:var(--text-sub);text-align:center;padding:18px}
-
-/* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:500;align-items:center;justify-content:center;padding:var(--gap-md)}
-.modal-bg.open{display:flex}
-.modal{background:var(--branco);width:520px;max-width:97vw;max-height:92vh;overflow-y:auto;border:1px solid var(--cinza);border-radius:var(--radius-modal)}
-.modal-hd{padding:11px 15px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--branco);z-index:5}
-.modal-title{font-size:10px;font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase}
-.modal-x{font-size:20px;cursor:pointer;color:#999;font-weight:300;line-height:1;padding:0 3px}
-.modal-x:hover{color:var(--grafite)}
-.modal-body{padding:15px}
-.modal-ft{padding:10px 15px;border-top:1px solid var(--cinza);display:flex;gap:5px;justify-content:flex-end;position:sticky;bottom:0;background:var(--branco)}
-
-/* MODAL HIST DETALHE */
-.modal.wide{width:760px}
-
-/* PARAMS */
-.pr-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 22px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--cinza2)}
-.pr-row:last-child{border-bottom:none}
-
-/* TOAST */
-.toast{position:fixed;bottom:14px;right:14px;background:#141414;color:#fff;padding:8px 14px;font-size:10px;font-weight:var(--weight-semibold);letter-spacing:.3px;opacity:0;transition:opacity var(--transition-normal);pointer-events:none;z-index:9999;border-radius:var(--radius-btn)}
-.toast.show{opacity:1}
-.blocked{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--terracota);color:#fff;padding:8px 18px;font-size:10px;font-weight:var(--weight-semibold);opacity:0;transition:opacity var(--transition-normal);pointer-events:none;z-index:9999;white-space:nowrap;border-radius:var(--radius-btn)}
-.blocked.show{opacity:1}
-
-/* PILLS NUCLEO */
-.nucleo-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
-.npill{padding:5px 13px;border:1px solid var(--cinza);font-size:var(--text-sub);cursor:pointer;background:var(--branco);color:#888;transition:var(--transition-fast);border-radius:20px}
-.npill.sel{font-weight:var(--weight-semibold)}
-.npill.sel.pais{background:var(--verde-bg);border-color:var(--verde);color:var(--verde)}
-.npill.sel.urb{background:var(--az-bg);border-color:var(--azul);color:var(--azul)}
-.npill.sel.consul{background:var(--tc-bg);border-color:var(--terracota);color:var(--terracota)}
-.npill.sel.esp{background:var(--am-bg);border-color:var(--ouro);color:var(--ouro)}
-
-/* ETAPAS EDITOR */
-.etapa-row{display:grid;grid-template-columns:2fr 1fr 1fr 80px 22px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2)}
-.etapa-row:last-child{border-bottom:none}
-
-.mt8{margin-top:8px}.mt12{margin-top:12px}.mb8{margin-bottom:8px}
-select option[disabled]{color:#bbb}
-
-/* SUPABASE STATUS */
-.sync-indicator{display:flex;align-items:center;gap:4px;font-size:var(--text-label);color:#aaa}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:#aaa}
-.sync-dot.ok{background:var(--verde)}
-.sync-dot.err{background:var(--terracota)}
-.sync-dot.sync{background:var(--ouro);animation:blink .8s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-
-/* SEÇÃO MINIMIZÁVEL */
-.collapsible-trigger{display:flex;align-items:center;cursor:pointer;user-select:none;gap:6px;font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;color:#888}
-.collapsible-trigger:hover{color:var(--grafite)}
-.collapse-arrow{font-size:10px;transition:transform .2s;display:inline-block}
-.collapse-arrow.open{transform:rotate(90deg)}
-
-/* PAGE HEADER */
-.page-title{font-size:17px;font-weight:700;letter-spacing:-.3px;color:var(--grafite)}
-.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-.page-hdr .page-title{margin-bottom:0}
-.page-title.solo{margin-bottom:14px}
-
-/* FILTER BAR */
-.filter-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.filter-bar select,.filter-bar input[type=text],.filter-bar input:not([type]){font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);padding:4px 8px;background:var(--branco);color:var(--grafite);outline:none;border-radius:var(--radius-btn)}
-.filter-bar select:focus,.filter-bar input:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.filter-bar input[type=text],.filter-bar input:not([type]){width:160px}
-
-/* BASE / BODY TEXT */
-.body-text{font-size:11px;color:#666;line-height:1.7}
-.formula-box{padding:10px 13px;font-size:11px;margin-top:10px;border-radius:var(--radius-btn)}
-.formula-box:first-child{margin-top:0}
-.formula-box-label{font-weight:700;margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase}
-.formula-box-expr{font-family:var(--font-mono);font-size:12px}
-.formula-box-note{margin-top:4px;font-size:10px;color:#888}
-
-/* ── DARK MODE ──────────────────────────────────────────────── */
-[data-theme="dark"]{
-  --cinza2:#2A2A28;
-  --verde-bg:#1A2B22; --az-bg:#1A2232; --am-bg:#2A2210; --tc-bg:#2A1A14; --roxo-bg:#1E1A2A;
-}
-[data-theme="dark"] .card{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .card-hdr{border-color:var(--cinza)}
-[data-theme="dark"] .fgroup input,[data-theme="dark"] .fgroup select,[data-theme="dark"] .fgroup textarea{background:#252523;border-color:var(--cinza);color:var(--grafite);color-scheme:dark}
-[data-theme="dark"] .fgroup input:focus,[data-theme="dark"] .fgroup select:focus,[data-theme="dark"] .fgroup textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-[data-theme="dark"] .inp-readonly{background:#1e1e1c!important;color:#666!important}
-[data-theme="dark"] .autocomplete-list{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .ac-item:hover{background:var(--off)}
-[data-theme="dark"] .sbt{background:#252523;border-color:var(--cinza);color:#888}
-[data-theme="dark"] .sbt:hover{background:#1a1a18;color:#fff;border-color:#1a1a18}
-[data-theme="dark"] .btn{background:var(--branco);border-color:var(--cinza);color:#888}
-[data-theme="dark"] .btn:hover{border-color:var(--grafite);color:var(--grafite)}
-[data-theme="dark"] .btn.ghost:hover{border-color:var(--grafite);color:var(--grafite)}
-[data-theme="dark"] .btn.danger{color:var(--terracota)}
-[data-theme="dark"] .btn.danger:hover{background:var(--tc-bg);border-color:var(--terracota)}
-[data-theme="dark"] .npill{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .modal{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .modal-hd{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .modal-ft{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] th{background:#1e1e1c;color:#666;border-color:var(--cinza)}
-[data-theme="dark"] td{border-color:var(--cinza)}
-[data-theme="dark"] tr.click:hover td{background:var(--off)}
-[data-theme="dark"] tr.blocked-row td{background:var(--off);color:#555}
-[data-theme="dark"] .rg-head{background:var(--off);border-color:var(--cinza)}
-[data-theme="dark"] .rg-item{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .rg-item:hover{background:var(--off)}
-[data-theme="dark"] .desc-bar{background:var(--tc-bg);border-color:var(--terracota)}
-[data-theme="dark"] .bloco{border-color:var(--cinza)}
-[data-theme="dark"] .hint{background:var(--off);border-color:var(--cinza);color:#888}
-[data-theme="dark"] .hint.verde{background:var(--verde-bg);border-color:var(--verde)}
-[data-theme="dark"] .hint.az{background:var(--az-bg);border-color:var(--azul)}
-[data-theme="dark"] .badge-revisada{background:var(--tc-bg)}
-[data-theme="dark"] .badge-bloqueada{background:var(--cinza2);border-color:var(--cinza)}
-[data-theme="dark"] .b-gr{background:var(--cinza2);color:#888}
-[data-theme="dark"] .filter-bar select,[data-theme="dark"] .filter-bar input{background:var(--branco);border-color:var(--cinza);color:var(--grafite);color-scheme:dark}
-[data-theme="dark"] .page-title{color:var(--grafite)}
-/* Parâmetros — inputs gerados dinamicamente sem wrapper .fgroup */
-[data-theme="dark"] #faixas-pais input,
-[data-theme="dark"] #faixas-urb input,
-[data-theme="dark"] #mins-list input,
-[data-theme="dark"] #etapas-editor input{background:#252523;border-color:var(--cinza);color:var(--grafite);color-scheme:dark}
-[data-theme="dark"] #faixas-pais input[readonly],
-[data-theme="dark"] #faixas-urb input[readonly]{background:#1e1e1c!important;color:#555!important}
-
-/* Feedback icon — padrão app.html */
-#feedback-icon-btn {
-  width: 24px; height: 24px;
-  border: none; background: none;
-  color: #bbb;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0;
-  transition: color .12s;
-  padding: 0;
-}
-#feedback-icon-btn:hover { color: var(--grafite, #111110); }
-[data-theme="dark"] #feedback-icon-btn { color: #555; }
-[data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
-
-#feedback-icon-wrap .nav-feedback-pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0; left: auto; bottom: auto;
-  width: 300px;
-}
-</style>
-</head>
-<body>
-
-<div id="app">
-<div id="app-shell" class="exp-app-shell">
-
-<!-- Nav lateral — injetada por shared/exp-nav.js -->
-
-<!-- ── Card principal do módulo ── -->
-<div id="calc-card">
-
-  <!-- Header: tabs internas + ações -->
-  <div class="calc-card-hd">
-    <div class="nav-tabs">
-      <button class="ntab active" data-tab="calc" onclick="goTab('calc')">Calcular</button>
-      <button class="ntab" data-tab="hist" onclick="goTab('hist')">Histórico</button>
-      <button class="ntab" data-tab="base" onclick="goTab('base')">Base de cálculo</button>
-      <button class="ntab" data-tab="params" onclick="goTab('params')">Parâmetros</button>
-    </div>
-    <div class="calc-hd-right" id="app-topbar-right">
-      <!-- Toggle de tema -->
-      <button id="calc-theme-toggle" onclick="toggleTheme()" title="Alternar tema claro/escuro"
-        style="width:28px;height:28px;border:none;background:none;color:#bbb;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex-shrink:0;transition:color .12s"
-        onmouseenter="this.style.color='var(--grafite)'" onmouseleave="this.style.color='#bbb'">
-        <svg id="calc-theme-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        <svg id="calc-theme-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      </button>
-      <!-- Sync indicator (oculto por padrão, ativado pelo Supabase) -->
-      <div class="sync-indicator" id="sync-indicator" style="display:none">
-        <div class="sync-dot" id="sync-dot"></div>
-        <span id="sync-lbl">local</span>
-      </div>
-      <!-- Feedback -->
-      <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-        <button id="feedback-icon-btn" onclick="toggleFeedbackPop(event)" title="Reportar problema ou sugestão">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-        </button>
-        <div class="nav-feedback-pop" id="nav-feedback-pop">
-          <div class="nav-feedback-title">Problema ou sugestão</div>
-          <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-          <div class="fgroup" style="margin-bottom:8px">
-            <label>Tipo</label>
-            <select id="tool-feedback-type">
-              <option value="problema">Problema</option>
-              <option value="sugestao">Sugestão</option>
-            </select>
-          </div>
-          <div class="fgroup" style="margin-bottom:8px">
-            <label>Mensagem</label>
-            <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
-          </div>
-          <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-          <div class="nav-feedback-actions">
-            <button class="btn" onclick="fecharFeedbackPop()">Fechar</button>
-            <button class="btn verde" onclick="enviarFeedback()">Enviar</button>
-          </div>
-        </div>
-      </div>
-      <!-- Lembrete -->
-      <button class="notif-plus" id="notif-plus-btn" onclick="abrirLembretePopup()" title="Enviar lembrete para a equipe">＋</button>
-      <!-- User chip -->
-      <div class="user-pill-wrap" id="user-pill-wrap">
-        <div class="user-chip" onclick="toggleUserMenu()">
-          <div class="uav" id="nav-av"></div>
-          <div class="u-text">
-            <span class="u-nome" id="nav-nome">—</span>
-            <span class="u-role" id="nav-role"></span>
-          </div>
-          <span class="u-caret">▾</span>
-        </div>
-        <div class="user-dropdown" id="user-dropdown">
-          <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
-          <button type="button" class="nd-soc" id="user-menu-platform" style="display:none" onclick="window.location.href='app.html'">Gestão de plataforma</button>
-          <div class="ud-sep"></div>
-          <div class="user-term-state pending" id="user-term-state" onclick="window.location.href='app.html'">
-            <span class="user-term-state-icon" id="user-term-state-icon">ℹ</span>
-            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso</span>
-            <span class="term-state-hover">ver termo →</span>
-          </div>
-          <div class="ud-sep"></div>
-          <button onclick="sair()">Sair do sistema</button>
-          <div class="ud-sep"></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 10px 6px">
-            <span style="font-size:10px;color:#999;letter-spacing:.3px">Aparência</span>
-            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Alternar modo claro/escuro" style="margin:0">
-              <span class="ttg-icon">☀</span>
-              <span class="ttg-track"><span class="ttg-knob"></span></span>
-              <span class="ttg-icon">🌙</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div><!-- /calc-card-hd -->
-
-  <!-- Corpo scrollável -->
-  <div class="calc-card-body">
-  <div class="main">
-
-<!-- ═══════════════════════════════════════════════════
-     ABA CALCULAR
-════════════════════════════════════════════════════ -->
-<div class="page active" id="tab-calc">
-<div class="cols">
-
-<!-- COLUNA ESQUERDA -->
-<div>
-
-  <!-- CUB -->
-  <div class="card am">
-    <div class="card-hdr">
-      <div class="card-title">CUB/SC RM Vigente</div>
-      <button class="btn sm ghost" onclick="toggleCubEdit()">✎ Atualizar</button>
-    </div>
-    <div class="card-body" id="cub-body">
-      <div style="display:flex;align-items:baseline;gap:10px">
-        <div style="font-size:24px;font-weight:700;color:var(--ouro);font-family:var(--font-mono)" id="cub-val">—</div>
-        <div style="font-size:11px;color:#888" id="cub-mes">—</div>
-      </div>
-    </div>
-    <div id="cub-edit" style="display:none;padding:0 14px 13px 17px">
-      <div class="fg fg3">
-        <div class="fgroup"><label>Novo valor (R$)</label><input type="number" id="cub-inp" step="0.01" placeholder="Ex: 3028.45"></div>
-        <div class="fgroup"><label>Mês de referência</label><input type="month" id="cub-mes-inp"></div>
-        <div class="fgroup"><label style="opacity:0">.</label><button class="btn verde" onclick="salvarCUB()">💾 Salvar CUB</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- IDENTIFICAÇÃO -->
-  <div class="card neutro" id="card-id">
-    <div class="card-hdr"><div class="card-title">Identificação da proposta</div></div>
-    <div class="card-body">
-      <div class="fg fg2 mb8" id="grupo-cidades">
-        <div class="fgroup">
-          <label>Cliente / empresa</label>
-          <input type="text" id="f-cliente" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="buscarCliente(this.value);updateCardBars()">
-          <div class="autocomplete-list" id="ac-list"></div>
-        </div>
-        <div class="fgroup"><label>Nome do projeto</label><input type="text" id="f-projeto" placeholder="Ex: Bairro Arvoredo" oninput="updateCardBars()"></div>
-      </div>
-      <div class="fg fg4 mb8">
-        <div class="fgroup"><label>Responsável</label>
-          <select id="f-resp">
-            <option value="CC">Carlos Corrêa</option>
-            <option value="GB">Gabriela Budel</option>
-            <option value="TC">Thayssa Christensen</option>
-            <option value="LA">Laís de Andrade</option>
-          </select>
-        </div>
-        <div class="fgroup"><label>Data</label><input type="date" id="f-data"></div>
-        <div class="fgroup"><label>Cidade</label><input type="text" id="f-cidade" placeholder="Cidade" autocomplete="off" oninput="buscarCidade(this.value)"><div class="autocomplete-list" id="ac-cidade-list"></div></div>
-        <div class="fgroup"><label>UF</label>
-          <select id="f-uf">
-            <option value="">—</option>
-            <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
-            <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
-            <option>GO</option><option>MA</option><option>MG</option><option>MS</option>
-            <option>MT</option><option>PA</option><option>PB</option><option>PE</option>
-            <option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
-            <option>RO</option><option>RR</option><option>RS</option><option>SC</option>
-            <option>SE</option><option>SP</option><option>TO</option>
-            <option value="-">Exterior</option>
-          </select>
-        </div>
-      </div>
-      <div class="fgroup"><label>Observações</label><textarea id="f-obs" placeholder="Observações gerais da proposta..."></textarea></div>
-    </div>
-  </div>
-
-  <!-- ADICIONAR ITEM -->
-  <div class="card neutro" id="card-servicos">
-    <div class="card-hdr"><div class="card-title">Adicionar serviço</div></div>
-    <div class="card-body">
-
-      <!-- PILLS NUCLEO -->
-      <div class="nucleo-pills">
-        <div class="npill sel pais" id="pill-PAIS" onclick="selNucleo('PAIS')">Paisagismo</div>
-        <div class="npill" id="pill-URB" onclick="selNucleo('URB')">Urbanismo</div>
-        <div class="npill" id="pill-CONSUL" onclick="selNucleo('CONSUL')">Consultoria</div>
-        <div class="npill" id="pill-ESP" onclick="selNucleo('ESP')">Proj. Especial</div>
-      </div>
-
-      <!-- SUBTIPO -->
-      <div class="fg fg2 mb8" id="grupo-subtipos">
-        <div class="fgroup" id="grupo-subtipo1">
-          <label id="lbl-subtipo1">Tipo</label>
-          <select id="i-sub1" onchange="updateSub2()"></select>
-        </div>
-        <div class="fgroup" id="grupo-subtipo2" style="display:none">
-          <label id="lbl-subtipo2">Subtipo</label>
-          <select id="i-sub2" onchange="updateItemForm()"></select>
-        </div>
-      </div>
-
-      <!-- HINT -->
-      <div id="i-hint" class="hint" style="display:none"></div>
-
-      <!-- FORM CALC (PAIS normal / URB) -->
-      <div id="f-calc" style="display:none">
-        <div class="fg fg3 mb8">
-          <div class="fgroup">
-            <label id="lbl-area">Área (m²)</label>
-            <input type="number" id="i-area" min="0" step="1" oninput="calcPrev()">
-          </div>
-          <div class="fgroup" id="grupo-coef">
-            <label id="lbl-coef">Coef. complexidade</label>
-            <div class="stepper">
-              <button class="sbt" onclick="stepCoef(-1)">−</button>
-              <input type="number" id="i-coef" min="0" max="10" step="0.05" value="1.00" oninput="calcPrev()">
-              <button class="sbt" onclick="stepCoef(1)">+</button>
-            </div>
-          </div>
-          <div class="fgroup">
-            <label>Preview</label>
-            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev">—</div>
-          </div>
-        </div>
-        <div class="fgroup"><label>Descrição / observação</label><input type="text" id="i-desc" placeholder="Ex: Torre A, área comum..."></div>
-      </div>
-
-      <!-- FORM FLOREIRA -->
-      <div id="f-floreira" style="display:none">
-        <div class="fg fg3 mb8">
-          <div class="fgroup">
-            <label>Quantidade de CUB</label>
-            <div class="stepper">
-              <button class="sbt" onclick="stepCubQty(-1)">−</button>
-              <input type="number" id="i-cub-qty" min="2" max="20" step="0.25" value="2.00" oninput="calcPrev()">
-              <button class="sbt" onclick="stepCubQty(1)">+</button>
-            </div>
-          </div>
-          <div class="fgroup">
-            <label>Preview</label>
-            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev-fl">—</div>
-          </div>
-        </div>
-        <div class="fgroup"><label>Descrição</label><input type="text" id="i-desc-fl" placeholder="Ex: Fachada torre A, 18 andares"></div>
-      </div>
-
-      <!-- FORM ESP -->
-      <div id="f-esp" style="display:none">
-        <div class="fg fg2 mb8">
-          <div class="fgroup"><label>Identificador / serviço</label><input type="text" id="i-esp-id" placeholder="Ex: Plano de Mobilidade Urbana"></div>
-          <div class="fgroup"><label>Valor proposto (R$)</label><input type="number" id="i-esp-val" min="0" step="100"></div>
-        </div>
-      </div>
-
-      <!-- FORM CONSUL -->
-      <div id="f-consul" style="display:none">
-        <div class="fg fg3 mb8">
-          <div class="fgroup"><label>Identificador</label><input type="text" id="i-consul-id" placeholder="Ex: Consultoria mobilidade"></div>
-          <div class="fgroup"><label>Tipo de cobrança</label>
-            <select id="i-consul-tipo">
-              <option value="total">Valor total único</option>
-              <option value="mensal">Valor mensal (retainer)</option>
-            </select>
-          </div>
-          <div class="fgroup"><label>Estimativa de horas</label><input type="number" id="i-consul-horas" min="1" step="1" placeholder="Ex: 40"></div>
-        </div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup"><label>Valor por hora (R$)</label><input type="number" id="i-consul-hora-val" min="0" step="50" oninput="calcConsulPrev()"></div>
-          <div class="fgroup"><label>Preview</label>
-            <div style="font-size:16px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--terracota)" id="i-prev-consul">—</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FORM LIVRE (URB_IMG / URB_CHARRETE) -->
-      <div id="f-livre" style="display:none">
-        <div class="fg fg2 mb8">
-          <div class="fgroup"><label>Identificador / descrição</label><input type="text" id="i-livre-id" placeholder="Ex: Charrete Design"></div>
-          <div class="fgroup"><label>Valor proposto (R$)</label><input type="number" id="i-livre-val" min="0" step="100"></div>
-        </div>
-      </div>
-
-      <button class="btn-add-item" onclick="addItem()">+ Adicionar à proposta</button>
-    </div>
-  </div>
-
-  <!-- SUBCONTRATAÇÕES -->
-  <div class="card neutro" id="card-subs">
-    <div class="card-hdr">
-      <div class="card-title">Subcontratações</div>
-      <button class="btn sm ghost" id="btn-sub-toggle" onclick="toggleSubForm()">+ Adicionar</button>
-    </div>
-    <!-- Lista de subs já adicionadas (sempre visível) -->
-    <div id="sub-list-wrap" style="display:none">
-      <div class="card-body" style="padding-bottom:6px">
-        <div id="sub-list"></div>
-      </div>
-    </div>
-    <!-- Formulário de nova sub (colapsado) -->
-    <div id="sub-form" style="display:none">
-      <div class="card-body">
-        <div class="sec mb8">Nova subcontratação</div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup"><label>Serviço</label><input type="text" id="sc-serv" placeholder="Ex: Levantamento topográfico"></div>
-          <div class="fgroup"><label>Empresa cotada</label><input type="text" id="sc-emp" placeholder="Ex: GeoSul Topografia"></div>
-        </div>
-        <div class="fg mb8" style="grid-template-columns:1.5fr 130px 90px 90px">
-          <div class="fgroup"><label>Data da cotação</label><input type="date" id="sc-data"></div>
-          <div class="fgroup"><label>Valor (R$)</label><input type="number" id="sc-val" min="0" step="100" style="font-size:13px;font-weight:600"></div>
-          <div class="fgroup"><label>Bitributação (%)</label><input type="number" id="sc-bit" min="0" max="50" step="0.5" value="15"></div>
-          <div class="fgroup"><label>Ganho EXP (%)</label><input type="number" id="sc-ret" min="0" max="100" step="1" value="20"></div>
-        </div>
-        <button class="btn-add-item" style="background:var(--terracota);margin-top:0" onclick="addSubcontr()">+ Confirmar subcontratação</button>
-      </div>
-    </div>
-    <!-- Estado vazio (padrão) -->
-    <div id="sub-empty" class="card-body" style="padding-top:8px;padding-bottom:8px">
-      <div style="font-size:11px;color:#aaa">Nenhuma subcontratação nesta proposta. Clique em "+ Adicionar" se necessário.</div>
-    </div>
-  </div>
-
-  <!-- REPASSE COMERCIAL -->
-  <div class="card neutro" id="card-repasse">
-    <div class="card-hdr">
-      <div class="card-title">Repasse comercial</div>
-      <button class="btn sm ghost" id="btn-repasse" onclick="toggleRepasse()">+ Adicionar</button>
-    </div>
-    <div id="repasse-form" style="display:none">
-      <div class="card-body">
-        <div class="fg fg3">
-          <div class="fgroup"><label>Nome do repasse</label><input type="text" id="rep-nome" placeholder="Ex: Comissão parceiro"></div>
-          <div class="fgroup"><label>Tipo</label>
-            <select id="rep-tipo" onchange="onRepTipoChange()">
-              <option value="pct">Percentual (%)</option>
-              <option value="val">Valor fixo (R$)</option>
-            </select>
-          </div>
-          <div class="fgroup"><label id="rep-val-lbl">Percentual (%)</label>
-            <input type="number" id="rep-val" min="0" step="0.5" placeholder="Ex: 5">
-          </div>
-        </div>
-        <div style="font-size:11px;color:#888;margin-top:6px" id="rep-info">Incide sobre o valor dos serviços, não sobre despesas ou subcontratações.</div>
-        <button class="btn-add-item" style="background:var(--ouro);margin-top:8px" onclick="confirmarRepasse()">+ Adicionar repasse</button>
-      </div>
-    </div>
-    <div id="repasse-preview" style="display:none">
-      <div class="card-body" style="padding-top:8px;padding-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-size:12px;font-weight:600" id="rep-preview-nome"></div>
-            <div style="font-size:10px;color:#888" id="rep-preview-desc"></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-size:14px;font-weight:700;color:var(--ouro);font-family:var(--font-mono)" id="rep-preview-val"></div>
-            <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
-            <button class="btn xs danger" onclick="remRepasse()">✕</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Estado vazio -->
-    <div id="repasse-empty" class="card-body" style="padding-top:8px;padding-bottom:8px">
-      <div style="font-size:11px;color:#aaa">Nenhum repasse comercial nesta proposta. Clique em "+ Adicionar" se necessário.</div>
-    </div>
-  </div>
-
-  <!-- DESPESAS INDIRETAS -->
-  <div class="card neutro" id="card-desps">
-    <div class="card-hdr">
-      <div class="card-title">Despesas indiretas</div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap">
-        <button class="btn sm ghost" onclick="addDesp('passagem')">+ Passagem</button>
-        <button class="btn sm ghost" onclick="addDesp('translado')">+ Translado</button>
-        <button class="btn sm ghost" onclick="addDesp('carro')">+ Carro</button>
-        <button class="btn sm ghost" onclick="addDesp('hotel')">+ Hotel</button>
-        <button class="btn sm ghost" onclick="addDesp('alim')">+ Alimentação</button>
-        <button class="btn sm ghost" onclick="addDesp('horasTec')" style="border-color:var(--verde);color:var(--verde)">+ Horas técnicas</button>
-      </div>
-    </div>
-    <!-- Despesas adicionadas -->
-    <div id="desp-list-wrap" style="display:none">
-      <div class="card-body" style="padding-bottom:6px">
-        <div id="desp-list"></div>
-      </div>
-    </div>
-    <!-- Bitributação — aparece só quando há despesas -->
-    <div id="desp-bit-wrap" style="display:none">
-      <div class="card-body" style="border-top:1px solid var(--cinza2);padding-top:10px">
-        <div class="fg fg3">
-          <div class="fgroup">
-            <label>Índice de bitributação sobre despesas (%)</label>
-            <input type="number" id="desp-bit" min="0" max="50" step="0.5" value="15" onchange="calcResumo()">
-          </div>
-          <div class="fgroup">
-            <label style="opacity:0">.</label>
-            <div style="font-size:11px;color:#888;padding:6px 0">Multiplica o total de despesas por (1 + %/100)</div>
-          </div>
-          <div class="fgroup">
-            <label>Total despesas (com bitrib.)</label>
-            <div style="font-size:16px;font-weight:700;padding:6px 0;font-family:var(--font-mono)" id="desp-total-display">R$ 0,00</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Estado vazio (padrão) -->
-    <div id="desp-empty" class="card-body" style="padding-top:8px;padding-bottom:8px">
-      <div style="font-size:11px;color:#aaa">Nenhuma despesa indireta cadastrada. Use os botões acima para adicionar.</div>
-    </div>
-  </div>
-
-</div><!-- /col esq -->
-
-<!-- COLUNA DIREITA — RESUMO -->
-<div>
-  <div style="position:sticky;top:14px;display:flex;flex-direction:column;height:calc(100vh - 132px)">
-    <div class="card-hdr" style="background:var(--branco);border:1px solid var(--cinza);margin-bottom:0">
-      <div class="card-title" id="resumo-title">Resumo da proposta</div>
-      <div style="font-size:9px;color:#999" id="i-count">0 itens</div>
-    </div>
-    <div id="resumo-body" style="background:var(--branco);border:1px solid var(--cinza);border-top:none;padding:12px;flex:1;overflow-y:auto;min-height:0">
-      <div class="empty">Adicione serviços para ver o resumo</div>
-    </div>
-    <div style="display:flex;gap:6px;margin-top:8px">
-      <button class="btn verde" style="flex:1;font-size:9px" onclick="salvarProposta()">💾 Salvar</button>
-      <button class="btn az" style="flex:1;font-size:9px" onclick="exportarPDF()">📄 PDF</button>
-      <button class="btn ghost" style="font-size:9px" onclick="limpar()">Nova</button>
-    </div>
-    <div id="sync-status-bar" style="margin-top:6px;font-size:9px;color:#aaa;text-align:center;min-height:14px"></div>
-  </div>
-</div>
-
-</div><!-- /cols -->
-</div><!-- /tab-calc -->
-
-<!-- ═══════════════════════════════════════════════════
-     ABA HISTÓRICO
-════════════════════════════════════════════════════ -->
-<div class="page" id="tab-hist">
-  <div class="page-hdr">
-    <div class="page-title">Quadro global de propostas</div>
-    <div class="filter-bar">
-      <button id="hf-btn-ativas" class="btn sm" onclick="toggleFiltroAtivas()">Última versão</button>
-      <select id="hf-periodo" onchange="atualizarFiltroPeriodo()">
-        <option value="todos">Todo o período</option>
-        <option value="ano">Ano</option>
-        <option value="semestre">Semestre</option>
-        <option value="trimestre">Trimestre</option>
-        <option value="mes">Mês</option>
-      </select>
-      <select id="hf-periodo-val" onchange="renderHist()" style="display:none"></select>
-      <select id="hf-nucleo" onchange="renderHist()">
-        <option value="todos">Todos os núcleos</option>
-        <option value="PAIS">Paisagismo</option>
-        <option value="URB">Urbanismo</option>
-        <option value="CONSUL">Consultoria</option>
-        <option value="ESP">Especial</option>
-      </select>
-      <select id="hf-resp" onchange="renderHist()">
-        <option value="todos">Todos responsáveis</option>
-        <option value="CC">Carlos Corrêa</option>
-        <option value="GB">Gabriela Budel</option>
-        <option value="TC">Thayssa Christensen</option>
-        <option value="LA">Laís de Andrade</option>
-      </select>
-      <select id="hf-crm" onchange="renderHist()">
-        <option value="todos">Todos os vínculos CRM</option>
-        <option value="sem_vinculo">Sem vínculo CRM</option>
-      </select>
-      <input id="hf-search" placeholder="Buscar..." oninput="renderHist()">
-    </div>
-  </div>
-  <div class="card neutro">
-    <div style="overflow-x:auto">
-      <table>
-        <thead><tr>
-          <th>Nº</th><th>Versão</th><th>Cliente</th><th>Projeto</th><th>Núcleo</th><th>Resp.</th>
-          <th>Cidade/UF</th><th>Data</th><th>Total proposta</th><th>Efetivo EXP</th><th>Status</th><th class="del-col">Excluir</th>
-        </tr></thead>
-        <tbody id="hist-body"></tbody>
-        <tfoot id="hist-foot"></tfoot>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════
-     ABA BASE DE CÁLCULO
-════════════════════════════════════════════════════ -->
-<div class="page" id="tab-base">
-  <div class="page-title solo">Base de cálculo</div>
-  <div class="cols cols-eq">
-
-    <!-- COLUNA ESQUERDA -->
-    <div>
-      <!-- METODOLOGIA -->
-      <div class="card verde">
-        <div class="card-hdr"><div class="card-title">Metodologia geral</div></div>
-        <div class="card-body">
-          <p class="body-text" style="margin-bottom:10px">
-            Os honorários EXP são calculados com base no <strong>CUB/m²</strong> vigente (índice de custo da construção civil), aplicado sobre a área do projeto com multiplicadores por faixa de área e coeficiente de complexidade.
-          </p>
-          <div style="background:var(--verde-bg);border:1px solid var(--verde);padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--verde);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Fórmula geral — Paisagismo e Urbanismo</div>
-            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = Σ (faixa_i × mult_i × CUB) × coef</div>
-            <div style="margin-top:6px;font-size:10px;color:#666">Onde cada faixa aplica um multiplicador decrescente à medida que a área aumenta.</div>
-          </div>
-          <div style="margin-top:10px;background:var(--az-bg);border:1px solid var(--azul);padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--azul);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Fórmula — Consultoria</div>
-            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = Valor/hora × Nº de horas</div>
-          </div>
-          <div style="margin-top:10px;background:var(--am-bg);border:1px solid var(--ouro);padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--ouro);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Floreiras (PAIS)</div>
-            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = N° CUB × CUB atual</div>
-            <div style="margin-top:4px;font-size:10px;color:#666">Área informada em unidades de CUB (ex: 3,5 CUB = 3,5 × valor do CUB).</div>
-          </div>
-          <div style="margin-top:10px;background:var(--am-bg);border:1px solid var(--ouro);padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--ouro);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Urbanismo — Estudo de Conceito</div>
-            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = coef × CUB</div>
-            <div style="margin-top:4px;font-size:10px;color:#666">Coeficiente representa o número de CUBs a cobrar pelo conceito.</div>
-          </div>
-          <div style="margin-top:10px;background:var(--tc-bg);border:1px solid var(--terracota);padding:10px 13px;font-size:11px">
-            <div style="font-weight:700;color:var(--terracota);margin-bottom:6px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Arbitrado (PAIS)</div>
-            <div style="font-family:var(--font-mono);font-size:12px;color:#333">Honorário = área (m²) × 0,085 × CUB</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SUBCONTRATAÇÕES -->
-      <div class="card tc">
-        <div class="card-hdr"><div class="card-title">Fórmula — Subcontratações</div></div>
-        <div class="card-body">
-          <p class="body-text" style="margin-bottom:10px">
-            Quando a EXP subcontrata serviços de terceiros, o total cobrado ao cliente inclui o custo direto, a bitributação estimada (encargos sobre o repasse) e o ganho EXP como margem adicional.
-          </p>
-          <div style="background:var(--tc-bg);border:1px solid #E8A89E;padding:10px 13px">
-            <div style="font-weight:700;color:var(--terracota);margin-bottom:8px;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Composição do valor ao cliente</div>
-            <div style="display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:11px;font-family:var(--font-mono)">
-              <span style="color:#555">Custo cotado (X)</span><span style="font-weight:600">X</span>
-              <span style="color:var(--terracota)">+ Bitributação (%)</span><span style="color:var(--terracota)">+ X × bit%</span>
-              <span style="color:var(--verde)">+ Ganho EXP (%)</span><span style="color:var(--verde)">+ X × ganho%</span>
-              <span style="font-weight:700;border-top:1px solid #E8A89E;padding-top:4px">= Total ao cliente</span>
-              <span style="font-weight:700;border-top:1px solid #E8A89E;padding-top:4px">X × (1 + bit% + ganho%)</span>
-            </div>
-          </div>
-          <div style="margin-top:8px;font-size:10px;color:#888;line-height:1.6">
-            O <strong>Ganho EXP</strong> é receita adicional da EXP sobre o serviço subcontratado — não é repassado ao contratado. O <strong>Pago ao contratado</strong> = X + X×bit%.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- COLUNA DIREITA -->
-    <div>
-      <!-- CUB ATUAL -->
-      <div class="card am">
-        <div class="card-hdr"><div class="card-title">CUB vigente</div></div>
-        <div class="card-body">
-          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
-            <span style="font-size:28px;font-weight:700;font-family:var(--font-mono);color:var(--ouro)" id="base-cub-val">—</span>
-            <span style="font-size:11px;color:#888">/m²</span>
-          </div>
-          <div style="font-size:10px;color:#aaa" id="base-cub-mes">Nenhum CUB cadastrado</div>
-          <div style="margin-top:8px;font-size:10px;color:#666;line-height:1.6">
-            O CUB (Custo Unitário Básico) é o índice de referência da construção civil, publicado mensalmente pelo SINDUSCON. Todos os honorários calculados pela ferramenta são indexados a este valor — atualize-o mensalmente nos <strong>Parâmetros</strong>.
-          </div>
-        </div>
-      </div>
-
-      <!-- FAIXAS VIGENTES -->
-      <div class="card verde">
-        <div class="card-hdr"><div class="card-title">Faixas vigentes — Paisagismo</div></div>
-        <div class="card-body" id="base-faixas-pais"><div class="empty">—</div></div>
-      </div>
-      <div class="card az">
-        <div class="card-hdr"><div class="card-title">Faixas vigentes — Urbanismo</div></div>
-        <div class="card-body" id="base-faixas-urb"><div class="empty">—</div></div>
-      </div>
-
-      <!-- COMISSÃO COMERCIAL -->
-      <div class="card neutro">
-        <div class="card-hdr"><div class="card-title">Comissão comercial — Repasse</div></div>
-        <div class="card-body">
-          <p class="body-text">
-            Quando um projeto é indicado por um parceiro comercial (ex: arquiteto, corretor), aplica-se uma comissão sobre o valor total dos serviços EXP. O valor do repasse é somado ao total da proposta e cobrado do cliente.
-          </p>
-          <div style="margin-top:8px;background:var(--cinza2);padding:8px 11px;font-family:var(--font-mono);font-size:11px" id="base-repasse-info">—</div>
-        </div>
-      </div>
-
-      <!-- MÍNIMOS -->
-      <div class="card neutro">
-        <div class="card-hdr"><div class="card-title">Cobranças mínimas por subtipo</div></div>
-        <div class="card-body" id="base-mins"><div class="empty">—</div></div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════
-     ABA PARÂMETROS
-════════════════════════════════════════════════════ -->
-<div class="page" id="tab-params">
-  <div class="page-title solo">Parâmetros de cálculo</div>
-
-  <!-- SUPABASE CONFIG — colapsado por padrão -->
-  <div class="card az">
-    <div class="card-hdr" style="cursor:pointer" onclick="toggleSBConfig()">
-      <div class="card-title">Configurações técnicas</div>
-      <span style="font-size:9px;color:#aaa;font-weight:600;letter-spacing:.3px" id="sb-toggle-lbl">▶ Expandir</span>
-    </div>
-    <div id="sb-config-body" style="display:none">
-      <div class="card-body">
-        <div class="hint az mb8">Os dados são armazenados localmente e sincronizados com o Supabase quando configurado. Configure abaixo para compartilhamento entre logins da equipe.</div>
-        <div class="fg fg3 mb8">
-          <div class="fgroup"><label>Supabase URL</label><input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" oninput="saveSBConfig()"></div>
-          <div class="fgroup"><label>Anon Key</label><input type="text" id="sb-key" placeholder="eyJhbGci..." oninput="saveSBConfig()"></div>
-          <div class="fgroup"><label style="opacity:0">.</label>
-            <button class="btn az" onclick="testSupabase()">🔗 Testar conexão</button>
-          </div>
-        </div>
-        <div id="sb-status" style="font-size:11px;color:#888"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CUB HISTORICO -->
-  <div class="card am">
-    <div class="card-hdr"><div class="card-title">Histórico do CUB</div></div>
-    <div class="card-body" id="cub-hist-list"><div class="empty">Nenhum registro.</div></div>
-  </div>
-
-  <!-- FAIXAS PAIS -->
-  <div class="card verde">
-    <div class="card-hdr"><div class="card-title">Faixas — Paisagismo (m² × multiplicador × CUB × coef)</div></div>
-    <div class="card-body">
-      <div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;padding:3px 0;border-bottom:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#999">
-        <div>De (m²)</div><div>Até (m²)</div><div>Descrição</div><div>Multiplicador</div><div></div>
-      </div>
-      <div id="faixas-pais"></div>
-      <button class="btn-add" onclick="addFaixa('P')">+ Nova faixa</button>
-    </div>
-  </div>
-
-  <!-- FAIXAS URB -->
-  <div class="card az">
-    <div class="card-hdr"><div class="card-title">Faixas — Urbanismo (ha × multiplicador × CUB × coef)</div></div>
-    <div class="card-body">
-      <div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;padding:3px 0;border-bottom:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#999">
-        <div>De (ha)</div><div>Até (ha)</div><div>Descrição</div><div>Multiplicador</div><div></div>
-      </div>
-      <div id="faixas-urb"></div>
-      <button class="btn-add" onclick="addFaixa('U')">+ Nova faixa</button>
-    </div>
-  </div>
-
-  <!-- MÍNIMOS -->
-  <div class="card neutro">
-    <div class="card-hdr"><div class="card-title">Cobranças mínimas por subtipo</div></div>
-    <div class="card-body" id="mins-list"></div>
-  </div>
-
-  <!-- DESPESAS REF -->
-  <div class="card neutro">
-    <div class="card-hdr"><div class="card-title">Valores de referência — Despesas indiretas</div></div>
-    <div class="card-body">
-      <div class="fg fg3">
-        <div class="fgroup"><label>Diária técnica (R$)</label><input type="number" id="p-diaria" value="680" oninput="saveParams()"></div>
-        <div class="fgroup"><label>Gasolina (R$/litro)</label><input type="number" id="p-gas" step="0.05" value="6.20" oninput="saveParams()"></div>
-        <div class="fgroup"><label>Aluguel de carro (R$/dia)</label><input type="number" id="p-car" value="180" oninput="saveParams()"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ETAPAS POR TIPO -->
-  <div class="card neutro">
-    <div class="card-hdr">
-      <div class="card-title">Etapas e distribuição por tipo de projeto</div>
-    </div>
-    <div class="card-body">
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px" id="etapa-nucleo-tabs">
-        <button class="btn sm filled" onclick="selEtapaNucleo('PAIS',this)">Paisagismo</button>
-        <button class="btn sm ghost" onclick="selEtapaNucleo('URB',this)">Urbanismo</button>
-        <button class="btn sm ghost" onclick="selEtapaNucleo('CONSUL',this)">Consultoria</button>
-        <button class="btn sm ghost" onclick="selEtapaNucleo('ESP',this)">Especial</button>
-      </div>
-      <div style="margin-bottom:10px">
-        <div class="fg fg3">
-          <div class="fgroup"><label>Núcleo</label><div id="etapa-nucleo-lbl" style="font-size:12px;padding:6px 0;font-weight:600">Paisagismo</div></div>
-          <div class="fgroup" id="etapa-tipo-grp">
-            <label>Tipo</label>
-            <select id="etapa-tipo-sel" onchange="updateEtapaSubtipo()"></select>
-          </div>
-          <div class="fgroup" id="etapa-sub-grp" style="display:none">
-            <label>Subtipo</label>
-            <select id="etapa-sub-sel" onchange="editEtapaChave=this.value;renderEtapasEditor()"></select>
-          </div>
-        </div>
-      </div>
-      <div id="etapas-editor"></div>
-      <button class="btn-add" onclick="addEtapa()">+ Nova etapa</button>
-      <button class="btn verde sm mt8" onclick="saveParams()">💾 Salvar parâmetros</button>
-    </div>
-  </div>
-
-</div><!-- /tab-params -->
-
-</div><!-- /main -->
-  </div><!-- /calc-card-body -->
-</div><!-- /calc-card -->
-</div><!-- /app-shell -->
-</div><!-- /app -->
-
-<!-- MODAL EDITAR VALOR -->
-<div class="modal-bg" id="modal-edit">
-  <div class="modal">
-    <div class="modal-hd"><div class="modal-title">Ajustar valor do item</div><span class="modal-x" onclick="closeM('modal-edit')">×</span></div>
-    <div class="modal-body">
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Valor calculado</label><input type="text" id="ev-calc" class="inp-readonly" readonly></div>
-        <div class="fgroup"><label>Valor proposto (R$)</label><input type="number" id="ev-novo" min="0" step="100" oninput="_evPreview()"></div>
-      </div>
-      <!-- atalhos de arredondamento -->
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px" id="ev-atalhos"></div>
-      <!-- preview da diferença -->
-      <div id="ev-diff" style="font-size:11px;color:#888;margin-bottom:10px;min-height:16px"></div>
-      <div class="fgroup"><label>Justificativa <span style="font-size:9px;font-weight:400;color:#aaa">(opcional)</span></label><textarea id="ev-just" placeholder="Ex: desconto para cliente recorrente, arredondamento comercial..."></textarea></div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn ghost" onclick="closeM('modal-edit')">Cancelar</button>
-      <button class="btn ghost tc" id="btn-restaurar" onclick="restaurarValor()" style="display:none">↺ Restaurar calculado</button>
-      <button class="btn am" onclick="confirmEdit()">Aplicar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL DETALHE PROPOSTA (HISTÓRICO) -->
-<div class="modal-bg" id="modal-hist-detail">
-  <div class="modal wide">
-    <div class="modal-hd">
-      <div class="modal-title" id="mhd-title">Proposta</div>
-      <span class="modal-x" onclick="closeM('modal-hist-detail')">×</span>
-    </div>
-    <div class="modal-body" id="mhd-body"></div>
-    <div class="modal-ft" id="mhd-footer"></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-<div class="blocked" id="blocked"></div>
-
-<script>
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SUBTIPOS COMPLETOS
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const SUBS = {
   PAIS: {
-    'Paisagismo de incorporação': {
-      'Térreo / Passeios':        { k:'PAIS_TERREO',  mode:'calc', coefBase:0.85, hint:'Coef. 0,8 a 1,0 conforme possibilidade de repetição, complexidade e desníveis. Mínimo R$ 17.280. Cálculo sobre m².' },
-      'Pavimento condominial / Ático': { k:'PAIS_CONDO', mode:'calc', coefBase:1.0, hint:'Coef. 0,9 a 1,3 conforme programa de necessidades, piscina e classe do empreendimento. Mínimo R$ 24.000. Cálculo sobre m².' },
-      'Floreiras em fachadas':    { k:'PAIS_FLOREIRA', mode:'floreira', coefBase:null, hint:'Cobrado em múltiplos de CUB (mín. 2 CUB). Selecione a quantidade de 0,25 em 0,25.' },
+    'Paisagismo de incorporaÃ§Ã£o': {
+      'TÃ©rreo / Passeios':        { k:'PAIS_TERREO',  mode:'calc', coefBase:0.85, hint:'Coef. 0,8 a 1,0 conforme possibilidade de repetiÃ§Ã£o, complexidade e desnÃ­veis. MÃ­nimo R$ 17.280. CÃ¡lculo sobre mÂ².' },
+      'Pavimento condominial / Ãtico': { k:'PAIS_CONDO', mode:'calc', coefBase:1.0, hint:'Coef. 0,9 a 1,3 conforme programa de necessidades, piscina e classe do empreendimento. MÃ­nimo R$ 24.000. CÃ¡lculo sobre mÂ².' },
+      'Floreiras em fachadas':    { k:'PAIS_FLOREIRA', mode:'floreira', coefBase:null, hint:'Cobrado em mÃºltiplos de CUB (mÃ­n. 2 CUB). Selecione a quantidade de 0,25 em 0,25.' },
     },
     'Paisagismo urbano': {
-      'Arborização viária':       { k:'PAIS_ARB',     mode:'calc', coefBase:0.085, hint:'Multiplicador fixo de 0,085 sobre a Superfície de Viário (SV). Mínimo R$ 17.280. Informe a área de SV em m². O coeficiente não é aplicado.' },
-      'Streetscape':              { k:'PAIS_STREET',  mode:'calc', coefBase:0.2, hint:'Coef. 0,2 como base. Mínimo R$ 17.280. Cálculo sobre m².' },
-      'Espaço público — Parque / Praça': { k:'PAIS_PARQUE', mode:'calc', coefBase:0.5, hint:'Coef. 0,4 a 0,6 conforme complexidade. Mínimo R$ 24.000. Cálculo sobre m².' },
-      'Espaço público — Parque baixo impacto': { k:'PAIS_PARQUE_BAIXO', mode:'calc', coefBase:0.25, hint:'Coef. 0,25 (base). Mínimo R$ 24.000. Parques de baixa intervenção. Cálculo sobre m².' },
+      'ArborizaÃ§Ã£o viÃ¡ria':       { k:'PAIS_ARB',     mode:'calc', coefBase:0.085, hint:'Multiplicador fixo de 0,085 sobre a SuperfÃ­cie de ViÃ¡rio (SV). MÃ­nimo R$ 17.280. Informe a Ã¡rea de SV em mÂ². O coeficiente nÃ£o Ã© aplicado.' },
+      'Streetscape':              { k:'PAIS_STREET',  mode:'calc', coefBase:0.2, hint:'Coef. 0,2 como base. MÃ­nimo R$ 17.280. CÃ¡lculo sobre mÂ².' },
+      'EspaÃ§o pÃºblico â€” Parque / PraÃ§a': { k:'PAIS_PARQUE', mode:'calc', coefBase:0.5, hint:'Coef. 0,4 a 0,6 conforme complexidade. MÃ­nimo R$ 24.000. CÃ¡lculo sobre mÂ².' },
+      'EspaÃ§o pÃºblico â€” Parque baixo impacto': { k:'PAIS_PARQUE_BAIXO', mode:'calc', coefBase:0.25, hint:'Coef. 0,25 (base). MÃ­nimo R$ 24.000. Parques de baixa intervenÃ§Ã£o. CÃ¡lculo sobre mÂ².' },
     },
     'Paisagismo residencial': {
-      'Térreo / Passeios':        { k:'PAIS_RES_TERREO', mode:'calc', coefBase:0.9, hint:'Coef. 0,8 a 1,2. Mínimo R$ 17.280. Cálculo sobre m².' },
-      'Espaço sobre laje':        { k:'PAIS_RES_LAJE',   mode:'calc', coefBase:1.0, hint:'Coef. 0,9 a 1,3 conforme complexidade. Mínimo R$ 17.280. Cálculo sobre m².' },
+      'TÃ©rreo / Passeios':        { k:'PAIS_RES_TERREO', mode:'calc', coefBase:0.9, hint:'Coef. 0,8 a 1,2. MÃ­nimo R$ 17.280. CÃ¡lculo sobre mÂ².' },
+      'EspaÃ§o sobre laje':        { k:'PAIS_RES_LAJE',   mode:'calc', coefBase:1.0, hint:'Coef. 0,9 a 1,3 conforme complexidade. MÃ­nimo R$ 17.280. CÃ¡lculo sobre mÂ².' },
     },
   },
   URB: {
-    'Conceituação':               { k:'URB_CONCEITO', mode:'calc',    coefBase:3, hint:'Cobrado em múltiplos de CUB: de 2 a 5 CUB. Informe no campo Coef. o número de CUBs. Não vinculado a área.' },
-    'Estudo de Viabilidade':      { k:'URB_VIAB',     mode:'calc',    coefBase:0.30, hint:'Coef. 0,25 a 0,40. Mínimo R$ 15.000. Cálculo sobre ha.' },
-    'Masterplan':                 { k:'URB_MASTER',   mode:'calc',    coefBase:1.0, hint:'Coef. 0,8 a 1,2. Bairro agrega valor. Mínimo R$ 20.000. Cálculo sobre ha.' },
-    'Projeto Urbanístico':        { k:'URB_PROJETO',  mode:'calc',    coefBase:0.7, hint:'Coef. 0,5 a 0,9. Bairro agrega valor. Mínimo R$ 15.000. Cálculo sobre ha.' },
-    'Desmembramento / Unificação':{ k:'URB_DESM',     mode:'calc',    coefBase:0.10, hint:'Coef. 0,10. Mínimo R$ 12.000. Cálculo sobre ha.' },
-    'Imagens Renderizadas':       { k:'URB_IMG',      mode:'livre',   coefBase:null, hint:'Valor aberto — insira o valor final acordado. Mínimo R$ 10.000.' },
+    'ConceituaÃ§Ã£o':               { k:'URB_CONCEITO', mode:'calc',    coefBase:3, hint:'Cobrado em mÃºltiplos de CUB: de 2 a 5 CUB. Informe no campo Coef. o nÃºmero de CUBs. NÃ£o vinculado a Ã¡rea.' },
+    'Estudo de Viabilidade':      { k:'URB_VIAB',     mode:'calc',    coefBase:0.30, hint:'Coef. 0,25 a 0,40. MÃ­nimo R$ 15.000. CÃ¡lculo sobre ha.' },
+    'Masterplan':                 { k:'URB_MASTER',   mode:'calc',    coefBase:1.0, hint:'Coef. 0,8 a 1,2. Bairro agrega valor. MÃ­nimo R$ 20.000. CÃ¡lculo sobre ha.' },
+    'Projeto UrbanÃ­stico':        { k:'URB_PROJETO',  mode:'calc',    coefBase:0.7, hint:'Coef. 0,5 a 0,9. Bairro agrega valor. MÃ­nimo R$ 15.000. CÃ¡lculo sobre ha.' },
+    'Desmembramento / UnificaÃ§Ã£o':{ k:'URB_DESM',     mode:'calc',    coefBase:0.10, hint:'Coef. 0,10. MÃ­nimo R$ 12.000. CÃ¡lculo sobre ha.' },
+    'Imagens Renderizadas':       { k:'URB_IMG',      mode:'livre',   coefBase:null, hint:'Valor aberto â€” insira o valor final acordado. MÃ­nimo R$ 10.000.' },
     'Charrete Design':            { k:'URB_CHARRETE', mode:'livre',   coefBase:null, hint:'Valor fixo: R$ 30.000 a R$ 100.000. Insira o valor final acordado.' },
   },
   CONSUL: {
-    'Por hora técnica':           { k:'CONSUL_HORA',   mode:'consul', coefBase:null },
+    'Por hora tÃ©cnica':           { k:'CONSUL_HORA',   mode:'consul', coefBase:null },
     'Retainer mensal':            { k:'CONSUL_MENSAL', mode:'consul', coefBase:null },
   },
   ESP: {
@@ -1118,26 +53,26 @@ const NC  = { PAIS:'Paisagismo', URB:'Urbanismo', CONSUL:'Consultoria', ESP:'Pro
 const NBADGE = { PAIS:'b-vd', URB:'b-az', CONSUL:'b-tc', ESP:'b-am' };
 const NCOR  = { PAIS:'var(--verde)', URB:'var(--az)', CONSUL:'var(--tc)', ESP:'var(--am)' };
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ESTADO
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 let S = {
   cub: 3028.45, cubMes: '2026-03',
   cubHist: [{ val: 3028.45, mes: '2026-03', by: 'Sistema', at: '2026-03-20' }],
   fP: [
-    { max:300,   mult:.03,   label:'A — até 300 m²' },
-    { max:800,   mult:.01,   label:'B — 301 a 800 m²' },
-    { max:5000,  mult:.004,  label:'C — 801 a 5.000 m²' },
-    { max:10000, mult:.003,  label:'D — 5.001 a 10.000 m²' },
-    { max:null,  mult:.0025, label:'E — acima de 10.000 m²' },
+    { max:300,   mult:.03,   label:'A â€” atÃ© 300 mÂ²' },
+    { max:800,   mult:.01,   label:'B â€” 301 a 800 mÂ²' },
+    { max:5000,  mult:.004,  label:'C â€” 801 a 5.000 mÂ²' },
+    { max:10000, mult:.003,  label:'D â€” 5.001 a 10.000 mÂ²' },
+    { max:null,  mult:.0025, label:'E â€” acima de 10.000 mÂ²' },
   ],
   fU: [
-    { max:5,    mult:.00015, label:'A — até 5 ha' },
-    { max:20,   mult:.00013, label:'B — 5 a 20 ha' },
-    { max:50,   mult:.00009, label:'C — 20 a 50 ha' },
-    { max:100,  mult:.00006, label:'D — 50 a 100 ha' },
-    { max:250,  mult:.00004, label:'E — 100 a 250 ha' },
-    { max:null, mult:.00001, label:'F — acima de 250 ha' },
+    { max:5,    mult:.00015, label:'A â€” atÃ© 5 ha' },
+    { max:20,   mult:.00013, label:'B â€” 5 a 20 ha' },
+    { max:50,   mult:.00009, label:'C â€” 20 a 50 ha' },
+    { max:100,  mult:.00006, label:'D â€” 50 a 100 ha' },
+    { max:250,  mult:.00004, label:'E â€” 100 a 250 ha' },
+    { max:null, mult:.00001, label:'F â€” acima de 250 ha' },
   ],
   mins: {
     PAIS_TERREO:17280, PAIS_CONDO:24000, PAIS_FLOREIRA:0,
@@ -1151,8 +86,8 @@ let S = {
   etapas: {
     PAIS: { default: ['Briefing','Estudo Conceitual','Estudo Preliminar','Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'] },
     URB:  { default: ['Briefing','Estudo Conceitual','Estudo Preliminar','Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'] },
-    CONSUL: { default: ['Briefing','Análise técnica','Entrega'] },
-    ESP:    { default: ['Briefing','Diagnóstico','Diretrizes','Relatório final'] },
+    CONSUL: { default: ['Briefing','AnÃ¡lise tÃ©cnica','Entrega'] },
+    ESP:    { default: ['Briefing','DiagnÃ³stico','Diretrizes','RelatÃ³rio final'] },
   },
   distEtapas: {
     PAIS: { default: [5,15,20,15,20,20,5] },
@@ -1177,15 +112,15 @@ let currentNucleo = 'PAIS';
 let evItemId = null;
 let editEtapaNucleo = 'PAIS', editEtapaChave = 'default';
 let dSeq = 1;
-// ID da proposta sendo editada (revisão)
+// ID da proposta sendo editada (revisÃ£o)
 let editingProposalId = null;
-// C12/K4 — link CRM
+// C12/K4 â€” link CRM
 let linkedOppInfo  = null;   // { id, projeto, prods: [{nucleo, subtipo, status}] }
 let lockedNucleos  = new Set(); // nucleos travados (prod fechado/negado)
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // STORAGE LOCAL
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function save() {
   try { localStorage.setItem('exp_calc_v4', JSON.stringify({ S, cItems, cDesps, cSubs, cRepasse, editingProposalId })); } catch(e){}
 }
@@ -1195,7 +130,7 @@ function load() {
     if (!r) return;
     const d = JSON.parse(r);
     if (d.S) {
-      // CALC-3+4: merge profundo — preserva nucleos URB/CONSUL/ESP ausentes em dados antigos
+      // CALC-3+4: merge profundo â€” preserva nucleos URB/CONSUL/ESP ausentes em dados antigos
       const defEtapas = S.etapas;
       const defDist   = S.distEtapas;
       S = { ...S, ...d.S };
@@ -1211,9 +146,9 @@ function load() {
   } catch(e) {}
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SUPABASE
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function refreshProposalCaches() {
   const maxPropCode = S.proposals.reduce((max, p) => {
     const code = Number(p?.propCode);
@@ -1362,12 +297,12 @@ async function syncCalcProposalAlertsFromCRM() {
     (rows || []).forEach(row => {
       const pid = String(row?.proposta_calc_id || '').trim();
       if (!pid) return;
-      /* Tenta achar a proposta pelo id (UUID) ou pelo proposal_id salvo na família */
+      /* Tenta achar a proposta pelo id (UUID) ou pelo proposal_id salvo na famÃ­lia */
       const match = S.proposals.find(p =>
         String(p.id) === pid ||
         (p.parentId && String(p.parentId) === pid)
       );
-      /* Raiz da família: parentId (se é revisão) ou id (se é original) */
+      /* Raiz da famÃ­lia: parentId (se Ã© revisÃ£o) ou id (se Ã© original) */
       const root = match ? String(match.parentId || match.id) : pid;
       linkedRoots.add(root);
     });
@@ -1397,8 +332,8 @@ async function fetchLatestCalcParamsRow() {
 }
 
 function getSBHeaders(withAuth) {
-  /* Tenta usar o token de sessão do usuário logado na plataforma EXP.
-     Isso permite acesso a tabelas com RLS que requerem autenticação. */
+  /* Tenta usar o token de sessÃ£o do usuÃ¡rio logado na plataforma EXP.
+     Isso permite acesso a tabelas com RLS que requerem autenticaÃ§Ã£o. */
   let token = S.sbKey;
   if (withAuth) {
     try {
@@ -1431,7 +366,7 @@ async function testSupabase() {
   try {
     const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?limit=1', { headers: getSBHeaders() });
     if (r.ok || r.status===200) {
-      el.textContent = 'Conexão OK';
+      el.textContent = 'ConexÃ£o OK';
       el.style.color = 'var(--verde)';
       setSyncStatus('ok');
       return;
@@ -1461,7 +396,7 @@ async function syncProposalToSupabase(proposal) {
   if (!S.sbUrl || !S.sbKey) return false;
   setSyncStatus('sync', 'salvando...');
   try {
-    // Payload mínimo — colunas que existem desde a criação da tabela
+    // Payload mÃ­nimo â€” colunas que existem desde a criaÃ§Ã£o da tabela
     const corePayload = {
       proposal_id: String(proposal.id),
       version:     proposal.version || 1,
@@ -1477,8 +412,8 @@ async function syncProposalToSupabase(proposal) {
       updated_at:  new Date().toISOString(),
     };
 
-    // Payload estendido — inclui colunas adicionadas via migration
-    // Atenção: despbit em minúsculo para corresponder ao nome PostgreSQL (unquoted → lowercase)
+    // Payload estendido â€” inclui colunas adicionadas via migration
+    // AtenÃ§Ã£o: despbit em minÃºsculo para corresponder ao nome PostgreSQL (unquoted â†’ lowercase)
     const extPayload = {
       ...corePayload,
       resp:          proposal.resp        || '',
@@ -1514,7 +449,7 @@ async function syncProposalToSupabase(proposal) {
       r = await trySync(payload);
     }
 
-    // Tentativa 3: fallback para payload mínimo (apenas colunas originais)
+    // Tentativa 3: fallback para payload mÃ­nimo (apenas colunas originais)
     if (!r.ok && (r.status === 400 || r.status === 422)) {
       const errText2 = r.bodyUsed ? '' : await r.text();
       if (errText2) console.warn('Supabase sync 400 fallback detalhe:', errText2);
@@ -1524,7 +459,7 @@ async function syncProposalToSupabase(proposal) {
 
     if (r.ok || r.status === 201 || r.status === 200 || r.status === 204) {
       if (payload === corePayload) {
-        console.warn('Supabase sync parcial: payload mínimo salvo, colunas estruturadas podem ter ficado defasadas.');
+        console.warn('Supabase sync parcial: payload mÃ­nimo salvo, colunas estruturadas podem ter ficado defasadas.');
         setSyncStatus('err', 'sync parcial');
         return false;
       }
@@ -1551,12 +486,12 @@ async function loadProposalsFromSupabase() {
     const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?order=created_at.desc&limit=500', { headers: getSBHeaders() });
     if (!r.ok) { setSyncStatus('err','erro sync'); return; }
     const rows = await r.json();
-    // Merge: banco é fonte primária — atualiza existentes e adiciona novos
+    // Merge: banco Ã© fonte primÃ¡ria â€” atualiza existentes e adiciona novos
     const localMap = new Map(S.proposals.map(p=>[String(p.id), p]));
     let changed = 0;
     rows.forEach(row => {
       try {
-        // Usa colunas jsonb estruturadas se disponíveis (K6), senão parse data_json
+        // Usa colunas jsonb estruturadas se disponÃ­veis (K6), senÃ£o parse data_json
         const p = normalizeProposalFromRow(row);
         const existing = localMap.get(row.proposal_id);
         if (!existing) {
@@ -1601,9 +536,9 @@ async function syncClientesFromCRM() {
   } catch(e) {}
 }
 
-// ════════════════════════════════════════════════════════
-// C12/K4 — STATUS DO CRM PARA PROPOSTA VINCULADA
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// C12/K4 â€” STATUS DO CRM PARA PROPOSTA VINCULADA
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function checkCRMLinkStatus(proposalId) {
   linkedOppInfo = null;
   lockedNucleos = new Set();
@@ -1625,8 +560,8 @@ async function checkCRMLinkStatus(proposalId) {
     );
     if (!rProd.ok) return;
     const prods = await rProd.json();
-    linkedOppInfo = { id: opp.id, projeto: opp.projeto || '—', prods };
-    // Trava núcleos cujos produtos estão em status final (fechado ou negado)
+    linkedOppInfo = { id: opp.id, projeto: opp.projeto || 'â€”', prods };
+    // Trava nÃºcleos cujos produtos estÃ£o em status final (fechado ou negado)
     prods.forEach(p => {
       const st = (p.status || '').toLowerCase();
       if (st === 'fechado' || st === 'negado') lockedNucleos.add(p.nucleo);
@@ -1637,18 +572,18 @@ async function checkCRMLinkStatus(proposalId) {
 async function atualizarStatusCRM() {
   if (!editingProposalId) return;
   const btn = document.getElementById('btn-check-crm');
-  if (btn) { btn.textContent = '⟳ verificando...'; btn.disabled = true; }
+  if (btn) { btn.textContent = 'âŸ³ verificando...'; btn.disabled = true; }
   await checkCRMLinkStatus(editingProposalId);
   calcResumo();
-  if (btn) { btn.textContent = '↻ Atualizar status'; btn.disabled = false; }
+  if (btn) { btn.textContent = 'â†» Atualizar status'; btn.disabled = false; }
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // UTILS
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const fmt = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtM = ym => { if(!ym)return'—'; const[y,m]=ym.split('-'); const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return`${ms[+m-1]}/${y}`; };
-const fmtD = d => d ? d.split('-').reverse().join('/') : '—';
+const fmtM = ym => { if(!ym)return'â€”'; const[y,m]=ym.split('-'); const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return`${ms[+m-1]}/${y}`; };
+const fmtD = d => d ? d.split('-').reverse().join('/') : 'â€”';
 const escHtml = v => String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const escAttr = escHtml;
 const escJsStr = v => String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n');
@@ -1676,9 +611,9 @@ function abrirPopupConfirm(titulo, mensagem, onConfirm, btnLabel = 'Excluir') {
 function closeM(id) { document.getElementById(id).classList.remove('open'); }
 function openM(id)  { document.getElementById(id).classList.add('open'); }
 
-// ════════════════════════════════════════════════════════
-// NAVEGAÇÃO
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// NAVEGAÃ‡ÃƒO
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function goTab(t) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('active'));
@@ -1692,32 +627,32 @@ function goTab(t) {
 
 function renderBase() {
   // CUB
-  document.getElementById('base-cub-val').textContent = S.cub ? fmt(S.cub) : '—';
-  document.getElementById('base-cub-mes').textContent = S.cubMes ? `Referência: ${S.cubMes}` : 'Nenhum CUB cadastrado';
+  document.getElementById('base-cub-val').textContent = S.cub ? fmt(S.cub) : 'â€”';
+  document.getElementById('base-cub-mes').textContent = S.cubMes ? `ReferÃªncia: ${S.cubMes}` : 'Nenhum CUB cadastrado';
 
   // Faixas Paisagismo
   const faixaRow = (f,i,unid) => `<div style="display:grid;grid-template-columns:1fr 1fr 2fr 80px;gap:6px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px;align-items:center">
-    <span style="color:#888">${i===0?'até':f.min!=null?fmt(f.min):'—'} ${unid}</span>
+    <span style="color:#888">${i===0?'atÃ©':f.min!=null?fmt(f.min):'â€”'} ${unid}</span>
     <span style="color:#888">${f.max!=null?fmt(f.max)+' '+unid:'sem limite'}</span>
     <span>${f.desc||''}</span>
-    <span style="font-family:var(--font-mono);font-weight:600;text-align:right">× ${f.mult}</span>
+    <span style="font-family:var(--font-mono);font-weight:600;text-align:right">Ã— ${f.mult}</span>
   </div>`;
   const hdrFaixa = `<div style="display:grid;grid-template-columns:1fr 1fr 2fr 80px;gap:6px;padding:3px 0;border-bottom:1px solid var(--cinza);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#999">
-    <div>De</div><div>Até</div><div>Descrição</div><div style="text-align:right">Mult.</div>
+    <div>De</div><div>AtÃ©</div><div>DescriÃ§Ã£o</div><div style="text-align:right">Mult.</div>
   </div>`;
   document.getElementById('base-faixas-pais').innerHTML = S.fP.length
-    ? hdrFaixa + S.fP.map((f,i)=>faixaRow(f,i,'m²')).join('') + `<div style="font-size:10px;color:#888;margin-top:6px">Fórmula: Σ (faixa × mult × CUB) × coef · CUB atual: <strong>${S.cub?fmt(S.cub):'—'}</strong></div>`
+    ? hdrFaixa + S.fP.map((f,i)=>faixaRow(f,i,'mÂ²')).join('') + `<div style="font-size:10px;color:#888;margin-top:6px">FÃ³rmula: Î£ (faixa Ã— mult Ã— CUB) Ã— coef Â· CUB atual: <strong>${S.cub?fmt(S.cub):'â€”'}</strong></div>`
     : '<div class="empty">Nenhuma faixa cadastrada</div>';
   document.getElementById('base-faixas-urb').innerHTML = S.fU.length
-    ? hdrFaixa + S.fU.map((f,i)=>faixaRow(f,i,'ha')).join('') + `<div style="font-size:10px;color:#888;margin-top:6px">Fórmula: Σ (faixa × mult × CUB) × coef · CUB atual: <strong>${S.cub?fmt(S.cub):'—'}</strong></div>`
+    ? hdrFaixa + S.fU.map((f,i)=>faixaRow(f,i,'ha')).join('') + `<div style="font-size:10px;color:#888;margin-top:6px">FÃ³rmula: Î£ (faixa Ã— mult Ã— CUB) Ã— coef Â· CUB atual: <strong>${S.cub?fmt(S.cub):'â€”'}</strong></div>`
     : '<div class="empty">Nenhuma faixa cadastrada</div>';
 
   // Repasse
   document.getElementById('base-repasse-info').innerHTML =
-    `<span style="color:#555">Valor do repasse</span> = total_EXP × pct%<br>
-     <span style="font-size:10px;color:#888">Configurado individualmente em cada proposta. O repasse é somado ao total e cobrado do cliente — o nome do indicador fica registrado na proposta.</span>`;
+    `<span style="color:#555">Valor do repasse</span> = total_EXP Ã— pct%<br>
+     <span style="font-size:10px;color:#888">Configurado individualmente em cada proposta. O repasse Ã© somado ao total e cobrado do cliente â€” o nome do indicador fica registrado na proposta.</span>`;
 
-  // Mínimos
+  // MÃ­nimos
   const NC2 = { PAIS_PLEN:'PAIS Pleno', PAIS_EXEC:'PAIS Exec.', PAIS_ARB:'PAIS Arb.', PAIS_FLOREIRA:'PAIS Floreira',
                  URB_PLEN:'URB Pleno', URB_EXEC:'URB Exec.', URB_CONCEITO:'URB Conceito' };
   const mins = Object.entries(S.mins||{}).filter(([,v])=>v>0);
@@ -1726,16 +661,16 @@ function renderBase() {
         <span style="color:#555">${NC2[k]||k}</span>
         <span style="font-family:var(--font-mono);font-weight:600">${fmt(v)}</span>
       </div>`).join('')
-    : '<div class="empty">Nenhum mínimo cadastrado</div>';
+    : '<div class="empty">Nenhum mÃ­nimo cadastrado</div>';
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CUB
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function updateCubDisplay() {
-  const v = S.cub ? fmt(S.cub) : '—';
+  const v = S.cub ? fmt(S.cub) : 'â€”';
   document.getElementById('cub-val').textContent = v;
-  document.getElementById('cub-mes').textContent = S.cub ? fmtM(S.cubMes) : 'Não cadastrado';
+  document.getElementById('cub-mes').textContent = S.cub ? fmtM(S.cubMes) : 'NÃ£o cadastrado';
   // nav-cub removido (Sprint B)
 }
 function toggleCubEdit() {
@@ -1745,18 +680,18 @@ function toggleCubEdit() {
 function salvarCUB() {
   const v = parseFloat(document.getElementById('cub-inp').value);
   const m = document.getElementById('cub-mes-inp').value;
-  if(!v||!m){ showBlocked('Informe valor e mês'); return; }
+  if(!v||!m){ showBlocked('Informe valor e mÃªs'); return; }
   S.cub = v; S.cubMes = m;
-  S.cubHist.unshift({ val:v, mes:m, by:'Usuário', at:new Date().toISOString().slice(0,10) });
+  S.cubHist.unshift({ val:v, mes:m, by:'UsuÃ¡rio', at:new Date().toISOString().slice(0,10) });
   updateCubDisplay();
   document.getElementById('cub-edit').style.display = 'none';
   cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc = calcIV(it); });
-  calcResumo(); save(); saveParamsToSupabase(); showToast('CUB atualizado — proposta recalibrada');
+  calcResumo(); save(); saveParamsToSupabase(); showToast('CUB atualizado â€” proposta recalibrada');
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // AUTOCOMPLETE CLIENTE
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function buscarCliente(q) {
   const list = document.getElementById('ac-list');
   if (!q || q.length < 2) { list.classList.remove('open'); return; }
@@ -1800,7 +735,7 @@ function novoCliente(nome) {
   if (!S.clientes.includes(nome)) { S.clientes.push(nome); S.clientes.sort(); }
   clearClienteSelectionMeta();
   selecionarCliente(nome);
-  showToast(`Cliente "${nome}" será compartilhado ao salvar a proposta`);
+  showToast(`Cliente "${nome}" serÃ¡ compartilhado ao salvar a proposta`);
 }
 function buscarCidade(q) {
   const list = document.getElementById('ac-cidade-list');
@@ -1826,9 +761,9 @@ document.addEventListener('click', e => {
   }
 });
 
-// ════════════════════════════════════════════════════════
-// NÚCLEO E SUBTIPOS
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// NÃšCLEO E SUBTIPOS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function selNucleo(n) {
   currentNucleo = n;
   ['PAIS','URB','CONSUL','ESP'].forEach(x => {
@@ -1899,7 +834,7 @@ function updateItemForm() {
     const n = currentNucleo;
     const isConceito = si?.k === 'URB_CONCEITO';
     const isArb = si?.k === 'PAIS_ARB';
-    document.getElementById('lbl-area').textContent = n==='URB' ? 'Área (ha)' : 'Área (m²)';
+    document.getElementById('lbl-area').textContent = n==='URB' ? 'Ãrea (ha)' : 'Ãrea (mÂ²)';
     document.getElementById('grupo-coef').style.display = isArb ? 'none' : '';
     const coefEl = document.getElementById('i-coef');
     if (isConceito) {
@@ -1924,9 +859,9 @@ function updateItemForm() {
   }
 }
 
-// ════════════════════════════════════════════════════════
-// ENGINE DE CÁLCULO
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ENGINE DE CÃLCULO
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function calcBase(area, faixas) {
   let rem=area, tot=0, prev=0;
   for (const f of faixas) {
@@ -1956,25 +891,25 @@ function calcIV(it) {
 
 function calcPrev() {
   const si = getSubInfo();
-  if (!si) { ['i-prev','i-prev-fl'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';}); return; }
+  if (!si) { ['i-prev','i-prev-fl'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='â€”';}); return; }
   const mode = si.mode;
   let v = 0;
   if (mode==='calc') {
     const a=+document.getElementById('i-area').value||0;
     const c=+document.getElementById('i-coef').value||0;
     v = calcIV({subK:si.k,area:a,coef:c,mode});
-    document.getElementById('i-prev').textContent = v>0?fmt(v):'—';
+    document.getElementById('i-prev').textContent = v>0?fmt(v):'â€”';
   } else if (mode==='floreira') {
     const qty=+document.getElementById('i-cub-qty').value||0;
     v = calcIV({subK:si.k,area:qty,coef:0,mode});
-    document.getElementById('i-prev-fl').textContent = v>0?fmt(v):'—';
+    document.getElementById('i-prev-fl').textContent = v>0?fmt(v):'â€”';
   }
 }
 
 function calcConsulPrev() {
   const hv = +document.getElementById('i-consul-hora-val').value||0;
   const h  = +document.getElementById('i-consul-horas').value||0;
-  document.getElementById('i-prev-consul').textContent = hv&&h ? fmt(hv*h) : '—';
+  document.getElementById('i-prev-consul').textContent = hv&&h ? fmt(hv*h) : 'â€”';
 }
 
 function stepCoef(d) {
@@ -1991,9 +926,9 @@ function stepCubQty(d) {
   el.value=v.toFixed(2); calcPrev();
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ADICIONAR ITEM
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function addItem() {
   if (!S.cub) { showBlocked('Cadastre o CUB antes de calcular'); return; }
   const si = getSubInfo();
@@ -2003,7 +938,7 @@ function addItem() {
 
   let subLabel = '';
   if (n==='PAIS') {
-    subLabel = document.getElementById('i-sub1').value + ' · ' + document.getElementById('i-sub2').value;
+    subLabel = document.getElementById('i-sub1').value + ' Â· ' + document.getElementById('i-sub2').value;
   } else {
     subLabel = document.getElementById('i-sub1').value;
   }
@@ -2067,10 +1002,10 @@ function remItem(id) {
   });
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // EDITAR VALOR
-// ════════════════════════════════════════════════════════
-let _evBase = 0; // valor calculado base do item em edição
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+let _evBase = 0; // valor calculado base do item em ediÃ§Ã£o
 
 function openEdit(id) {
   const it = cItems.find(i=>i.itemId===id); if(!it)return;
@@ -2088,7 +1023,7 @@ function openEdit(id) {
 function _evRenderAtalhos(base) {
   const wrap = document.getElementById('ev-atalhos');
   if (!wrap) return;
-  // Múltiplos de R$20: 4 abaixo e 4 acima do valor calculado
+  // MÃºltiplos de R$20: 4 abaixo e 4 acima do valor calculado
   const step  = 20;
   const piso  = Math.floor(base / step) * step;
   const sugs  = [];
@@ -2099,7 +1034,7 @@ function _evRenderAtalhos(base) {
   wrap.innerHTML = sugs.map(v => {
     const diff  = v - base;
     const cor   = diff < 0 ? 'var(--tc)' : 'var(--verde)';
-    const sinal = diff > 0 ? '+' : '−';
+    const sinal = diff > 0 ? '+' : 'âˆ’';
     return `<button class="btn xs ghost" style="font-family:var(--font-mono);font-size:10px" onclick="_evAplicar(${v})">
       ${fmt(v)} <span style="color:${cor};font-size:9px">${sinal}${fmt(Math.abs(diff))}</span>
     </button>`;
@@ -2119,17 +1054,17 @@ function _evPreview() {
   if (Math.abs(diff) < 0.01) { el.textContent = ''; return; }
   const cor   = diff < 0 ? 'var(--tc)' : 'var(--verde)';
   const sinal = diff > 0 ? '+' : '';
-  const pct   = _evBase > 0 ? (diff/_evBase*100).toFixed(1) : '—';
-  el.innerHTML = `Diferença: <strong style="color:${cor}">${sinal}${fmt(Math.abs(diff))} (${sinal}${pct}%)</strong>`;
+  const pct   = _evBase > 0 ? (diff/_evBase*100).toFixed(1) : 'â€”';
+  el.innerHTML = `DiferenÃ§a: <strong style="color:${cor}">${sinal}${fmt(Math.abs(diff))} (${sinal}${pct}%)</strong>`;
 }
 
 function confirmEdit() {
   const novo = +document.getElementById('ev-novo').value;
-  if (novo < 0) { showBlocked('Valor inválido'); return; }
+  if (novo < 0) { showBlocked('Valor invÃ¡lido'); return; }
   const it = cItems.find(i=>i.itemId===evItemId); if(!it)return;
   const just = document.getElementById('ev-just').value.trim();
   if (Math.abs(novo - _evBase) < 0.01) {
-    // Sem alteração — restaura ao calculado
+    // Sem alteraÃ§Ã£o â€” restaura ao calculado
     it.valorProposto = null; it.editJust = null; it.editAt = null;
   } else {
     it.valorProposto = novo;
@@ -2155,9 +1090,9 @@ function _restaurarDireto(id) {
   }, 'Restaurar');
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // REPASSE
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function toggleRepasse() {
   const f     = document.getElementById('repasse-form');
   const empty = document.getElementById('repasse-empty');
@@ -2170,8 +1105,8 @@ function onRepTipoChange() {
   const t = document.getElementById('rep-tipo').value;
   document.getElementById('rep-val-lbl').textContent = t==='pct' ? 'Percentual (%)' : 'Valor (R$)';
   document.getElementById('rep-info').textContent = t==='pct'
-    ? 'Incide sobre o valor dos serviços, não sobre despesas ou subcontratações.'
-    : 'Valor fixo somado à proposta.';
+    ? 'Incide sobre o valor dos serviÃ§os, nÃ£o sobre despesas ou subcontrataÃ§Ãµes.'
+    : 'Valor fixo somado Ã  proposta.';
 }
 function confirmarRepasse() {
   const nome = document.getElementById('rep-nome').value.trim();
@@ -2186,7 +1121,7 @@ function confirmarRepasse() {
   document.getElementById('repasse-empty').style.display = 'none';
   document.getElementById('repasse-preview').style.display = 'block';
   document.getElementById('rep-preview-nome').textContent = nome;
-  document.getElementById('rep-preview-desc').textContent = tipo==='pct' ? `${val}% sobre serviços` : 'Valor fixo';
+  document.getElementById('rep-preview-desc').textContent = tipo==='pct' ? `${val}% sobre serviÃ§os` : 'Valor fixo';
   document.getElementById('rep-preview-val').textContent = fmt(valorRep);
   updateCardBars(); calcResumo(); save();
   showToast('Repasse adicionado');
@@ -2219,9 +1154,9 @@ function remRepasse() {
   updateCardBars(); calcResumo(); save();
 }
 
-// ════════════════════════════════════════════════════════
-// BARRAS LATERAIS DINÂMICAS
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BARRAS LATERAIS DINÃ‚MICAS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function setCardBar(id, colorClass) {
   const el = document.getElementById(id);
   if (el) el.className = 'card ' + colorClass;
@@ -2236,20 +1171,20 @@ function updateCardBars() {
   setCardBar('card-desps',    cDesps.some(d=>d.confirmada)      ? 'az'     : 'neutro');
 }
 
-// ════════════════════════════════════════════════════════
-// PARÂMETROS — TOGGLE SUPABASE
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// PARÃ‚METROS â€” TOGGLE SUPABASE
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function toggleSBConfig() {
   const body = document.getElementById('sb-config-body');
   const lbl  = document.getElementById('sb-toggle-lbl');
   const open = body.style.display !== 'none';
   body.style.display = open ? 'none' : 'block';
-  lbl.textContent    = open ? '▶ Expandir' : '▼ Recolher';
+  lbl.textContent    = open ? 'â–¶ Expandir' : 'â–¼ Recolher';
 }
 
-// ════════════════════════════════════════════════════════
-// HISTÓRICO — FILTRO APENAS ATIVAS
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// HISTÃ“RICO â€” FILTRO APENAS ATIVAS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function toggleFiltroAtivas() {
   S.histSoAativas = !S.histSoAativas;
   const btn = document.getElementById('hf-btn-ativas');
@@ -2262,15 +1197,15 @@ function toggleFiltroAtivas() {
   renderHist();
 }
 
-// ════════════════════════════════════════════════════════
-// SUBCONTRATAÇÕES
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// SUBCONTRATAÃ‡Ã•ES
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function toggleSubForm() {
   const form = document.getElementById('sub-form');
   const empty = document.getElementById('sub-empty');
   const isOpen = form.style.display !== 'none';
   form.style.display = isOpen ? 'none' : 'block';
-  // se não tem subs e formulário fechado, mostra empty state
+  // se nÃ£o tem subs e formulÃ¡rio fechado, mostra empty state
   updateSubVisibility();
 }
 
@@ -2284,13 +1219,13 @@ function updateSubVisibility() {
 function addSubcontr() {
   const serv = document.getElementById('sc-serv').value.trim();
   const emp  = document.getElementById('sc-emp').value.trim();
-  if (!serv) { showBlocked('Informe o serviço'); return; }
+  if (!serv) { showBlocked('Informe o serviÃ§o'); return; }
   const val  = +document.getElementById('sc-val').value||0;
   const bit  = +document.getElementById('sc-bit').value||0;
   const ret  = +document.getElementById('sc-ret').value||0;
   const data = document.getElementById('sc-data').value;
   const ganhoEXP  = val*ret/100;
-  // valComBit = total ao cliente: X + bitributação + ganho EXP (adicional sobre X)
+  // valComBit = total ao cliente: X + bitributaÃ§Ã£o + ganho EXP (adicional sobre X)
   const valComBit = val*(1+bit/100+ret/100);
   cSubs.push({ id:Date.now(), serv, emp, data, val, bit, ret, valComBit, ganhoEXP });
   ['sc-serv','sc-emp','sc-val','sc-data'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
@@ -2299,11 +1234,11 @@ function addSubcontr() {
   document.getElementById('sub-form').style.display = 'none';
   renderSubList();
   updateSubVisibility();
-  calcResumo(); updateCardBars(); save(); showToast('Subcontratação adicionada');
+  calcResumo(); updateCardBars(); save(); showToast('SubcontrataÃ§Ã£o adicionada');
 }
 function remSub(id) {
   const sc = cSubs.find(s=>s.id===id); if(!sc)return;
-  abrirPopupConfirm('Remover subcontratação', `Remover "${sc.serv||'sem nome'}"?`, () => {
+  abrirPopupConfirm('Remover subcontrataÃ§Ã£o', `Remover "${sc.serv||'sem nome'}"?`, () => {
     cSubs = cSubs.filter(s=>s.id!==id);
     renderSubList();
     updateSubVisibility();
@@ -2320,7 +1255,7 @@ function renderSubList() {
     <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--cinza2)">
       <div>
         <div style="font-size:12px;font-weight:600">${escHtml(sc.serv)}</div>
-        <div style="font-size:10px;color:#888">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}
+        <div style="font-size:10px;color:#888">${sc.emp}${sc.data?' Â· '+fmtD(sc.data):''}
           <span style="margin-left:6px;color:#bbb">bit.${sc.bit}% / ganho ${sc.ret}%</span>
         </div>
       </div>
@@ -2329,17 +1264,17 @@ function renderSubList() {
           <div style="font-size:11px;color:#888;text-decoration:line-through">${fmt(sc.val)}</div>
           <div style="font-size:13px;font-weight:700;color:var(--terracota);font-family:var(--font-mono)">${fmt(sc.valComBit)}</div>
         </div>
-        <button class="btn xs danger" onclick="remSub(${sc.id})">✕</button>
+        <button class="btn xs danger" onclick="remSub(${sc.id})">âœ•</button>
       </div>
     </div>`;
   }).join('');
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // DESPESAS INDIRETAS
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const DESP_CORES = { alim:'#1D9E75', carro:'#378ADD', translado:'#BA7517', passagem:'#D4537E', hotel:'#6B4FA0', horasTec:'#1D6A4A' };
-const DESP_LABELS = { alim:'Alimentação', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem', hotel:'Hospedagem', horasTec:'Horas técnicas (Ganho EXP)' };
+const DESP_LABELS = { alim:'AlimentaÃ§Ã£o', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem', hotel:'Hospedagem', horasTec:'Horas tÃ©cnicas (Ganho EXP)' };
 
 function calcDesp(d) {
   if (d.tipo==='alim')      return (+d.diarias||0)*(+d.pessoas||1)*(+d.valorDiario||0);
@@ -2351,7 +1286,7 @@ function calcDesp(d) {
   return 0;
 }
 function getTotDesp() {
-  // horasTec é Ganho EXP — não entra no total repassado ao cliente
+  // horasTec Ã© Ganho EXP â€” nÃ£o entra no total repassado ao cliente
   const raw = cDesps.filter(d=>d.confirmada&&d.tipo!=='horasTec').reduce((s,d)=>s+calcDesp(d),0);
   const bit = (+document.getElementById('desp-bit').value||0)/100;
   return raw*(1+bit);
@@ -2432,24 +1367,24 @@ function renderDesps() {
 
     if (d.tipo==='alim') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
+        <div class="fgroup"><label>NÂº de diÃ¡rias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
           oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Pessoas por diária</label><input type="number" min="1" value="${escAttr(d.pessoas||1)}"
+        <div class="fgroup"><label>Pessoas por diÃ¡ria</label><input type="number" min="1" value="${escAttr(d.pessoas||1)}"
           oninput="setDesp(${d.id},'pessoas',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor diário/pessoa (R$)</label><input type="number" min="0" step="5" value="${escAttr(d.valorDiario||80)}"
+        <div class="fgroup"><label>Valor diÃ¡rio/pessoa (R$)</label><input type="number" min="0" step="5" value="${escAttr(d.valorDiario||80)}"
           oninput="setDesp(${d.id},'valorDiario',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Descrição</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Missão Pelotas — 3 pessoas, 2 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>DescriÃ§Ã£o</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: MissÃ£o Pelotas â€” 3 pessoas, 2 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='carro') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
+        <div class="fgroup"><label>NÂº de diÃ¡rias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
           oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor diária c/ seguro (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.valorDiaria||180)}"
+        <div class="fgroup"><label>Valor diÃ¡ria c/ seguro (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.valorDiaria||180)}"
           oninput="setDesp(${d.id},'valorDiaria',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
         <div class="fgroup"><label>Km rodados</label><input type="number" min="0" value="${escAttr(d.km||0)}"
@@ -2463,7 +1398,7 @@ function renderDesps() {
         <div class="fgroup"><label>Valor/litro (R$)</label><input type="number" min="0" step=".05" value="${escAttr(d.vl||6.20)}"
           oninput="setDesp(${d.id},'vl',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Floripa → Pelotas" oninput="setDesp(${d.id},'desc',this.value)"></div>
+        <div class="fgroup"><label>Trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Floripa â†’ Pelotas" oninput="setDesp(${d.id},'desc',this.value)"></div>
       </div>`;
     }
     if (d.tipo==='translado') {
@@ -2471,29 +1406,29 @@ function renderDesps() {
         <div class="fgroup"><label>Valor total estimado (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.vt||0)}"
           oninput="setDesp(${d.id},'vt',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Descrição / trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Ubers — São Raimundo Nonato, 4 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>
+        <div class="fgroup"><label>DescriÃ§Ã£o / trecho</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Ubers â€” SÃ£o Raimundo Nonato, 4 dias" oninput="setDesp(${d.id},'desc',this.value)"></div>
       </div>`;
     }
     if (d.tipo==='hotel') {
       body=`<div class="fg fg3" style="margin-bottom:7px">
-        <div class="fgroup"><label>Cidade</label><input type="text" value="${escAttr(d.cidade||'')}" placeholder="Ex: São Paulo" oninput="setDesp(${d.id},'cidade',this.value)"></div>
-        <div class="fgroup"><label>Nº de diárias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
+        <div class="fgroup"><label>Cidade</label><input type="text" value="${escAttr(d.cidade||'')}" placeholder="Ex: SÃ£o Paulo" oninput="setDesp(${d.id},'cidade',this.value)"></div>
+        <div class="fgroup"><label>NÂº de diÃ¡rias</label><input type="number" min="1" value="${escAttr(d.diarias||1)}"
           oninput="setDesp(${d.id},'diarias',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
-        <div class="fgroup"><label>Valor/diária (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.valorDiaria||180)}"
+        <div class="fgroup"><label>Valor/diÃ¡ria (R$)</label><input type="number" min="0" step="10" value="${escAttr(d.valorDiaria||180)}"
           oninput="setDesp(${d.id},'valorDiaria',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Descrição</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Hotel Centro — 3 noites" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>DescriÃ§Ã£o</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Hotel Centro â€” 3 noites" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='passagem') {
       body=`<div class="fg fg4 mb8">
-        <div class="fgroup"><label>Origem</label><input type="text" value="${escAttr(d.orig||'')}" placeholder="Ex: Florianópolis" oninput="setDesp(${d.id},'orig',this.value)"></div>
+        <div class="fgroup"><label>Origem</label><input type="text" value="${escAttr(d.orig||'')}" placeholder="Ex: FlorianÃ³polis" oninput="setDesp(${d.id},'orig',this.value)"></div>
         <div class="fgroup"><label>Destino</label><input type="text" value="${escAttr(d.dest||'')}" placeholder="Ex: Teresina" oninput="setDesp(${d.id},'dest',this.value)"></div>
         <div class="fgroup"><label>Meio</label>
           <select onchange="setDesp(${d.id},'meio',this.value)">
-            <option value="${escAttr('aviao')}" ${d.meio==='aviao'?'selected':''}>Avião</option>
-            <option value="${escAttr('onibus')}" ${d.meio==='onibus'?'selected':''}>Ônibus</option>
+            <option value="${escAttr('aviao')}" ${d.meio==='aviao'?'selected':''}>AviÃ£o</option>
+            <option value="${escAttr('onibus')}" ${d.meio==='onibus'?'selected':''}>Ã”nibus</option>
             <option value="${escAttr('trem')}" ${d.meio==='trem'?'selected':''}>Trem</option>
             <option value="${escAttr('outro')}" ${d.meio==='outro'?'selected':''}>Outro</option>
           </select>
@@ -2502,10 +1437,10 @@ function renderDesps() {
           oninput="setDesp(${d.id},'val',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Observação</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Ida e volta · 2 pessoas" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>ObservaÃ§Ã£o</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Ida e volta Â· 2 pessoas" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
     if (d.tipo==='horasTec') {
-      body=`<div style="font-size:9px;color:var(--verde);font-weight:600;margin-bottom:6px;letter-spacing:.3px">↳ Valor entra como Ganho EXP (não repassa ao cliente)</div>
+      body=`<div style="font-size:9px;color:var(--verde);font-weight:600;margin-bottom:6px;letter-spacing:.3px">â†³ Valor entra como Ganho EXP (nÃ£o repassa ao cliente)</div>
       <div class="fg fg3" style="margin-bottom:7px">
         <div class="fgroup"><label>Dias</label><input type="number" min="1" value="${escAttr(d.dias||1)}"
           oninput="setDesp(${d.id},'dias',+this.value);updateDespSubtotal(${d.id})"
@@ -2517,13 +1452,13 @@ function renderDesps() {
           oninput="setDesp(${d.id},'valorHora',+this.value);updateDespSubtotal(${d.id})"
           onchange="calcResumo()"></div>
       </div>
-      <div class="fgroup"><label>Descrição</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Consultoria técnica — visita ao terreno" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
+      <div class="fgroup"><label>DescriÃ§Ã£o</label><input type="text" value="${escAttr(d.desc||'')}" placeholder="Ex: Consultoria tÃ©cnica â€” visita ao terreno" oninput="setDesp(${d.id},'desc',this.value)"></div>`;
     }
 
     const subColor = d.confirmada ? '' : 'color:#bbb';
     const okBtn = d.confirmada
-      ? `<span style="font-size:9px;font-weight:600;color:var(--verde);letter-spacing:.5px">✓ confirmada</span>`
-      : `<button class="btn xs" style="background:var(--verde);color:#fff;border-color:var(--verde)" onclick="confirmarDesp(${d.id})">✓ OK</button>`;
+      ? `<span style="font-size:9px;font-weight:600;color:var(--verde);letter-spacing:.5px">âœ“ confirmada</span>`
+      : `<button class="btn xs" style="background:var(--verde);color:#fff;border-color:var(--verde)" onclick="confirmarDesp(${d.id})">âœ“ OK</button>`;
     html+=`<div class="bloco" style="border-left-color:${d.confirmada?cor:'#ccc'}">
       <div class="bloco-head">
         <div style="display:flex;align-items:center;gap:6px">
@@ -2534,7 +1469,7 @@ function renderDesps() {
           <span class="bloco-sub" id="desp-sub-${d.id}" style="${subColor}">${sub}</span>
           ${okBtn}
           <button class="btn xs ghost" onclick="dupDesp(${d.id})">+ Duplicar</button>
-          <button class="btn xs danger" onclick="remDesp(${d.id})">✕</button>
+          <button class="btn xs danger" onclick="remDesp(${d.id})">âœ•</button>
         </div>
       </div>
       ${body}
@@ -2543,9 +1478,9 @@ function renderDesps() {
   el.innerHTML = html;
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // RESUMO GERAL
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function calcResumo() {
   cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc=calcIV(it); });
 
@@ -2573,25 +1508,25 @@ function calcResumo() {
 
   const body = document.getElementById('resumo-body');
   if (!cItems.length && !cSubs.length && !totDesp && !totRep) {
-    body.innerHTML = '<div class="empty">Adicione serviços para ver o resumo</div>';
+    body.innerHTML = '<div class="empty">Adicione serviÃ§os para ver o resumo</div>';
     return;
   }
 
   let html = '';
 
-  // Banner de edição ativa
+  // Banner de ediÃ§Ã£o ativa
   if (editingProposalId !== null) {
     const orig = S.proposals.find(p=>p.id===editingProposalId);
     if (orig) {
       const cod = orig.propCode ? `EXP-${String(orig.propCode).padStart(3,'0')}` : `#${orig.id}`;
       const projetoOrig = escHtml(orig.projeto||'');
       html += `<div style="background:var(--az-bg);border:1px solid var(--azul);padding:8px 11px;font-size:11px;color:var(--az);margin-bottom:10px">
-        ✏️ Revisando <strong>${cod}</strong> — ${projetoOrig}. Ao salvar, será criada versão <strong>${_verLabel((orig.version||0)+1)}</strong>.
+        âœï¸ Revisando <strong>${cod}</strong> â€” ${projetoOrig}. Ao salvar, serÃ¡ criada versÃ£o <strong>${_verLabel((orig.version||0)+1)}</strong>.
       </div>`;
     }
   }
 
-  // C12/K4 — banner de status CRM
+  // C12/K4 â€” banner de status CRM
   if (linkedOppInfo) {
     const allFinal = linkedOppInfo.prods.length > 0 &&
       linkedOppInfo.prods.every(p=>['fechado','negado','cancelado'].includes((p.status||'').toLowerCase()));
@@ -2600,18 +1535,18 @@ function calcResumo() {
       const st=(p.status||'').toLowerCase();
       const cor = st==='fechado'?'var(--verde)':st==='negado'?'var(--terracota)':st==='cancelado'?'var(--cinza)':'var(--azul)';
       const corBg = st==='fechado'?'var(--verde-bg)':st==='negado'?'var(--tc-bg)':st==='cancelado'?'var(--cinza2)':'var(--az-bg)';
-      return `<span style="font-size:9px;font-weight:600;color:${cor};background:${corBg};padding:2px 6px">${escHtml(p.nucleo||'')} · ${escHtml(p.status||'')}</span>`;
+      return `<span style="font-size:9px;font-weight:600;color:${cor};background:${corBg};padding:2px 6px">${escHtml(p.nucleo||'')} Â· ${escHtml(p.status||'')}</span>`;
     }).join(' ');
     html += `<div style="background:var(--am-bg);border:1px solid var(--ouro);padding:8px 11px;font-size:11px;color:var(--ouro);margin-bottom:10px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap">
-      <div style="flex:1">🔗 <strong>CRM vinculado:</strong> ${projetoVinculado}
+      <div style="flex:1">ðŸ”— <strong>CRM vinculado:</strong> ${projetoVinculado}
         ${lockBadges?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${lockBadges}</div>`:''}
-        ${allFinal?`<div style="margin-top:4px;font-weight:600;color:var(--terracota)">⚠ Proposta inteiramente travada.</div>`:''}
+        ${allFinal?`<div style="margin-top:4px;font-weight:600;color:var(--terracota)">âš  Proposta inteiramente travada.</div>`:''}
       </div>
-      <button id="btn-check-crm" class="btn xs ghost" onclick="atualizarStatusCRM()" style="white-space:nowrap;flex-shrink:0">↻ Atualizar</button>
+      <button id="btn-check-crm" class="btn xs ghost" onclick="atualizarStatusCRM()" style="white-space:nowrap;flex-shrink:0">â†» Atualizar</button>
     </div>`;
   }
 
-  // GRUPOS POR NÚCLEO (Produtos / Serviços EXP)
+  // GRUPOS POR NÃšCLEO (Produtos / ServiÃ§os EXP)
   ['PAIS','URB','CONSUL','ESP'].forEach(nuc=>{
     const its = cItems.filter(i=>i.nucleo===nuc);
     if (!its.length) return;
@@ -2622,7 +1557,7 @@ function calcResumo() {
       <div class="rg-head">
         <div class="rg-stripe" style="background:${cor}"></div>
         <span class="rg-label">${NC[nuc]}</span>
-        ${isLocked?`<span style="font-size:10px;color:var(--terracota);margin-left:6px">🔒 travado</span>`:''}
+        ${isLocked?`<span style="font-size:10px;color:var(--terracota);margin-left:6px">ðŸ”’ travado</span>`:''}
         <span class="rg-sub" style="color:${cor}">${fmt(stot)}</span>
       </div>
       ${its.map(it=>{
@@ -2631,21 +1566,21 @@ function calcResumo() {
         const subLabelDisp = escHtml(it.subLabel||'');
         const itemIdDisp = escHtml(it.id||'');
         const itemDescDisp = escHtml(it.desc||'');
-        let detail='—';
+        let detail='â€”';
         if(it.mode==='calc'){
-          if(it.subK==='PAIS_ARB') detail=`${(+it.area).toLocaleString('pt-BR')} m² SV`;
+          if(it.subK==='PAIS_ARB') detail=`${(+it.area).toLocaleString('pt-BR')} mÂ² SV`;
           else if(it.subK==='URB_CONCEITO') detail=`${(+it.coef).toFixed(2)} CUB`;
-          else if(it.nucleo==='URB') detail=`${(+it.area).toLocaleString('pt-BR',{maximumFractionDigits:2})} ha · coef. ${(+it.coef).toFixed(2)}`;
-          else detail=`${(+it.area).toLocaleString('pt-BR')} m² · coef. ${(+it.coef).toFixed(2)}`;
+          else if(it.nucleo==='URB') detail=`${(+it.area).toLocaleString('pt-BR',{maximumFractionDigits:2})} ha Â· coef. ${(+it.coef).toFixed(2)}`;
+          else detail=`${(+it.area).toLocaleString('pt-BR')} mÂ² Â· coef. ${(+it.coef).toFixed(2)}`;
         } else if(it.mode==='floreira') detail=`${(+it.area).toFixed(2)} CUB`;
-        else if(it.mode==='consul') detail=`${it.horas||0}h · ${it.tipoCobranca==='mensal'?'mensal':'total'}`;
+        else if(it.mode==='consul') detail=`${it.horas||0}h Â· ${it.tipoCobranca==='mensal'?'mensal':'total'}`;
         else detail='valor livre';
         return`<div class="rg-item">
           <div>
             <span class="badge ${NBADGE[nuc]}" style="font-size:8px">${subLabelDisp}</span>
             ${it.id?`<span style="font-size:10px;color:#888;margin-left:4px">${itemIdDisp}</span>`:''}
             ${it.desc?`<span style="font-size:10px;color:#888;margin-left:4px">${itemDescDisp}</span>`:''}
-            ${isEd?`<span style="font-size:9px;color:var(--verde);margin-left:4px">✓ editado</span>`:''}
+            ${isEd?`<span style="font-size:9px;color:var(--verde);margin-left:4px">âœ“ editado</span>`:''}
           </div>
           <div style="font-size:10px;color:#888">${detail}</div>
           <div style="font-size:9px;color:#aaa">CUB ${it.cubSnap?fmt(it.cubSnap):''}</div>
@@ -2655,10 +1590,10 @@ function calcResumo() {
           </div>
           <div style="display:flex;gap:3px">
             ${isLocked
-              ? `<span style="font-size:10px;color:var(--terracota);padding:2px 5px">🔒</span>`
-              : `<button class="btn xs ghost" onclick="openEdit(${it.itemId})" title="Ajustar valor">✎</button>
-                 ${isEd ? `<button class="btn xs ghost" style="color:var(--terracota)" onclick="event.stopPropagation();_restaurarDireto(${it.itemId})" title="Restaurar valor calculado">↺</button>` : ''}
-                 <button class="btn xs danger" onclick="remItem(${it.itemId})">✕</button>`
+              ? `<span style="font-size:10px;color:var(--terracota);padding:2px 5px">ðŸ”’</span>`
+              : `<button class="btn xs ghost" onclick="openEdit(${it.itemId})" title="Ajustar valor">âœŽ</button>
+                 ${isEd ? `<button class="btn xs ghost" style="color:var(--terracota)" onclick="event.stopPropagation();_restaurarDireto(${it.itemId})" title="Restaurar valor calculado">â†º</button>` : ''}
+                 <button class="btn xs danger" onclick="remItem(${it.itemId})">âœ•</button>`
             }
           </div>
         </div>`;
@@ -2666,12 +1601,12 @@ function calcResumo() {
     </div>`;
   });
 
-  // SUBCONTRATAÇÕES — com breakdown por sub
+  // SUBCONTRATAÃ‡Ã•ES â€” com breakdown por sub
   if (cSubs.length) {
     html+=`<div class="rg">
       <div class="rg-head">
         <div class="rg-stripe" style="background:var(--terracota)"></div>
-        <span class="rg-label">Subcontratações</span>
+        <span class="rg-label">SubcontrataÃ§Ãµes</span>
         <span class="rg-sub" style="color:var(--terracota)">${fmt(totSub)}</span>
       </div>
       ${cSubs.map(_sc=>{
@@ -2681,21 +1616,21 @@ function calcResumo() {
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
             <div style="min-width:0;flex:1">
               <div style="font-size:11px;font-weight:600">${sc.serv}</div>
-              <div style="font-size:10px;color:#888;margin-bottom:6px">${sc.emp}${sc.data?' · '+fmtD(sc.data):''}</div>
+              <div style="font-size:10px;color:#888;margin-bottom:6px">${sc.emp}${sc.data?' Â· '+fmtD(sc.data):''}</div>
               <div style="display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:10px">
                 <span style="color:#aaa">Custo cotado</span><span style="font-family:var(--font-mono)">${fmt(sc.val)}</span>
                 <span style="color:var(--terracota)">+ Bitrib. est. ${sc.bit}%</span><span style="font-family:var(--font-mono);color:var(--terracota)">+ ${fmt(bitVal)}</span>
-                <span style="color:#888;padding-top:2px">→ Pago ao contratado</span><span style="font-family:var(--font-mono);padding-top:2px">${fmt(sc.val+bitVal)}</span>
+                <span style="color:#888;padding-top:2px">â†’ Pago ao contratado</span><span style="font-family:var(--font-mono);padding-top:2px">${fmt(sc.val+bitVal)}</span>
                 <span style="color:var(--verde)">+ Ganho EXP ${sc.ret}%</span><span style="font-family:var(--font-mono);color:var(--verde);font-weight:600">+ ${fmt(sc.ganhoEXP)}</span>
                 <span style="color:#555;font-weight:600;border-top:1px solid var(--cinza2);padding-top:3px">Total ao cliente</span><span style="font-family:var(--font-mono);font-weight:700;border-top:1px solid var(--cinza2);padding-top:3px">${fmt(sc.valComBit)}</span>
               </div>
             </div>
-            <button class="btn xs danger" onclick="remSub(${sc.id})" style="flex-shrink:0;margin-top:2px">✕</button>
+            <button class="btn xs danger" onclick="remSub(${sc.id})" style="flex-shrink:0;margin-top:2px">âœ•</button>
           </div>
         </div>`;
       }).join('')}
       ${ganhoSubs>0?`<div style="border:1px solid var(--cinza);border-top:none;background:var(--verde-bg);padding:5px 11px;display:flex;justify-content:space-between;font-size:10px">
-        <span style="color:var(--verde);font-weight:600">Ganho EXP total s/ subcontratações</span>
+        <span style="color:var(--verde);font-weight:600">Ganho EXP total s/ subcontrataÃ§Ãµes</span>
         <span style="font-weight:700;color:var(--verde);font-family:var(--font-mono)">${fmt(ganhoSubs)}</span>
       </div>`:''}
     </div>`;
@@ -2713,23 +1648,23 @@ function calcResumo() {
       <div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px;display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-size:11px;font-weight:600">${repNome}</div>
-          <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}</div>
+          <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% sobre serviÃ§os`:'Valor fixo'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <div style="font-weight:700;color:var(--ouro);font-family:var(--font-mono);font-size:13px">${fmt(totRep)}</div>
-          <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
-          <button class="btn xs danger" onclick="remRepasse()">✕</button>
+          <button class="btn xs ghost" onclick="editarRepasse()">âœŽ</button>
+          <button class="btn xs danger" onclick="remRepasse()">âœ•</button>
         </div>
       </div>
     </div>`;
   }
 
-  // DESPESAS — com cada item + bitributação total
+  // DESPESAS â€” com cada item + bitributaÃ§Ã£o total
   if (totDesp>0) {
     const rawDesp = cDesps.reduce((s,d)=>s+calcDesp(d),0);
     const bit     = +document.getElementById('desp-bit').value||0;
     const bitAmt  = rawDesp*(bit/100);
-    const DLBL    = { alim:'Alimentação', carro:'Veículo', translado:'Translado', hotel:'Hospedagem', passagem:'Passagem' };
+    const DLBL    = { alim:'AlimentaÃ§Ã£o', carro:'VeÃ­culo', translado:'Translado', hotel:'Hospedagem', passagem:'Passagem' };
     html+=`<div class="rg">
       <div class="rg-head">
         <div class="rg-stripe" style="background:#888"></div>
@@ -2741,17 +1676,17 @@ function calcResumo() {
         const val  = calcDesp(d);
         const lbl  = escHtml(DLBL[d.tipo]||d.tipo);
         const desc = d.desc||d.cidade||'';
-        const det  = d.tipo==='alim'?`${d.diarias||1}d × ${d.pessoas||1}p`
-          : d.tipo==='hotel'?`${d.diarias||1}d${d.cidade?' · '+d.cidade:''}`
-          : d.tipo==='passagem'&&d.orig?`${d.orig}→${d.dest||''}`:'';
+        const det  = d.tipo==='alim'?`${d.diarias||1}d Ã— ${d.pessoas||1}p`
+          : d.tipo==='hotel'?`${d.diarias||1}d${d.cidade?' Â· '+d.cidade:''}`
+          : d.tipo==='passagem'&&d.orig?`${d.orig}â†’${d.dest||''}`:'';
         return`<div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:6px 11px;display:flex;align-items:center;justify-content:space-between;gap:6px">
           <div style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            <strong>${lbl}</strong>${desc?' — '+desc:''}
+            <strong>${lbl}</strong>${desc?' â€” '+desc:''}
             ${det?`<span style="font-size:9px;color:#bbb;margin-left:4px">${det}</span>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
             <span style="font-weight:700;font-family:var(--font-mono);font-size:11px">${fmt(val)}</span>
-            <button class="btn xs danger" onclick="remDesp(${d.id})">✕</button>
+            <button class="btn xs danger" onclick="remDesp(${d.id})">âœ•</button>
           </div>
         </div>`;
       }).join('')}
@@ -2770,26 +1705,26 @@ function calcResumo() {
 
   if (desconto>0.01) {
     html+=`<div class="desc-bar">
-      <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--terracota)">⬇ Desconto aplicado</span>
+      <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--terracota)">â¬‡ Desconto aplicado</span>
       <span style="font-weight:700;color:var(--terracota)">${fmt(desconto)}</span>
     </div>`;
   }
 
-  // GANHO EXP — box destacado
+  // GANHO EXP â€” box destacado
   const ganhoTec = cDesps.filter(d=>d.tipo==='horasTec'&&d.confirmada).reduce((s,d)=>s+calcDesp(d),0);
   const totalGanhoEXP = totI + ganhoSubs + ganhoTec;
   html+=`<div style="margin-top:8px;background:var(--verde-bg);border:1px solid var(--verde);padding:10px 13px">
     <div style="font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--verde);margin-bottom:6px">Ganho EXP</div>
     <div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
-      <span style="color:#444">Serviços EXP (produtos)</span>
+      <span style="color:#444">ServiÃ§os EXP (produtos)</span>
       <span style="font-family:var(--font-mono);font-weight:600">${fmt(totI)}</span>
     </div>
     ${ganhoSubs>0?`<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
-      <span style="color:#444">Ganho s/ subcontratações</span>
+      <span style="color:#444">Ganho s/ subcontrataÃ§Ãµes</span>
       <span style="font-family:var(--font-mono);font-weight:600">${fmt(ganhoSubs)}</span>
     </div>`:''}
     ${ganhoTec>0?`<div style="font-size:11px;display:flex;justify-content:space-between;padding:2px 0">
-      <span style="color:#444">Horas técnicas</span>
+      <span style="color:#444">Horas tÃ©cnicas</span>
       <span style="font-family:var(--font-mono);font-weight:600">${fmt(ganhoTec)}</span>
     </div>`:''}
     <div style="font-size:12px;font-weight:700;display:flex;justify-content:space-between;padding:5px 0;margin-top:4px;border-top:1px solid #8FD0B0">
@@ -2798,7 +1733,7 @@ function calcResumo() {
     </div>
   </div>`;
 
-  // DISTRIBUIÇÃO POR ETAPA
+  // DISTRIBUIÃ‡ÃƒO POR ETAPA
   if (cItems.length && totI>0) {
     const nMain  = cItems[0].nucleo;
     const subKey = cItems[0].subK;
@@ -2806,7 +1741,7 @@ function calcResumo() {
     const dists  = S.distEtapas[nMain]?.[subKey] || S.distEtapas[nMain]?.default || [];
     if (ets.length) {
       html+=`<div style="margin-top:12px;border-top:1px solid var(--cinza2);padding-top:10px">
-        <div class="sec" style="color:#aaa">Distribuição por etapa <span style="font-weight:400;font-size:9px">(serviços EXP)</span></div>
+        <div class="sec" style="color:#aaa">DistribuiÃ§Ã£o por etapa <span style="font-weight:400;font-size:9px">(serviÃ§os EXP)</span></div>
         ${ets.map((e,i)=>{
           const pct=dists[i]||0, val=totI*pct/100;
           return`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px;color:#888">
@@ -2818,20 +1753,20 @@ function calcResumo() {
         }).join('')}
         ${ganhoSubs>0?`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:11px;color:var(--verde)">
           <div style="width:16px;flex-shrink:0"></div>
-          <span style="flex:1">+ Ganho EXP s/ subcontratações</span>
+          <span style="flex:1">+ Ganho EXP s/ subcontrataÃ§Ãµes</span>
           <span style="font-family:var(--font-mono);color:var(--verde);font-weight:600">${fmt(ganhoSubs)}</span>
         </div>`:''}
       </div>`;
     }
   }
 
-  // LOG DE EDIÇÕES
+  // LOG DE EDIÃ‡Ã•ES
   const editados = cItems.filter(i=>i.editJust);
   if (editados.length) {
     html+=`<div style="margin-top:10px;background:var(--off);border:1px solid var(--cinza);padding:10px">
-      <div class="sec">Registro de alterações de valor</div>
+      <div class="sec">Registro de alteraÃ§Ãµes de valor</div>
       ${editados.map(it=>`<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
-        <div><strong>${it.subLabel}</strong>${it.id?' — '+it.id:''}<br><span style="color:#888;font-size:9px">${it.editJust}</span></div>
+        <div><strong>${it.subLabel}</strong>${it.id?' â€” '+it.id:''}<br><span style="color:#888;font-size:9px">${it.editJust}</span></div>
         <div style="text-align:right;text-decoration:line-through;color:#bbb">${fmt(it.valorCalc)}</div>
         <div style="text-align:right;color:var(--verde);font-weight:700">${fmt(it.valorProposto)}</div>
       </div>`).join('')}
@@ -2841,16 +1776,16 @@ function calcResumo() {
   body.innerHTML = html;
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SALVAR / LIMPAR / PDF
-// ════════════════════════════════════════════════════════
-// Retorna label legível de versão: 0 → 'Original', 1 → 'R1', 2 → 'R2' ...
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Retorna label legÃ­vel de versÃ£o: 0 â†’ 'Original', 1 â†’ 'R1', 2 â†’ 'R2' ...
 function _verLabel(v) { return (v === 0 || v == null) ? 'Original' : 'R' + v; }
 
 async function salvarProposta() {
   const proj = document.getElementById('f-projeto').value.trim();
   if (!proj) { showBlocked('Informe o nome do projeto'); return; }
-  if (!cItems.length) { showBlocked('Adicione ao menos um serviço'); return; }
+  if (!cItems.length) { showBlocked('Adicione ao menos um serviÃ§o'); return; }
   const totI  = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const rep   = getRepasseCalc(totI);
   const total = totI+(rep?rep.valorRep:0)+cSubs.reduce((s,c)=>s+c.valComBit,0)+getTotDesp();
@@ -2871,7 +1806,7 @@ async function salvarProposta() {
       version  = (orig.version || 0) + 1;
       propCode = orig.propCode || null;
       parentId = orig.parentId || orig.id;
-      // A proposta original NÃO é marcada como 'revisada' — permanece 'ativa'
+      // A proposta original NÃƒO Ã© marcada como 'revisada' â€” permanece 'ativa'
     }
     editingProposalId = null;
   }
@@ -2918,14 +1853,14 @@ async function salvarProposta() {
 
   // Sincroniza com Supabase
   const synced = await syncProposalToSupabase(p);
-  const syncMsg = synced ? ' · sincronizado na nuvem ✓' : '';
+  const syncMsg = synced ? ' Â· sincronizado na nuvem âœ“' : '';
   showToast('Proposta salva' + syncMsg);
 
   document.getElementById('sync-status-bar').textContent = synced
-    ? 'Proposta registrada na nuvem — consultável por qualquer login da equipe.'
+    ? 'Proposta registrada na nuvem â€” consultÃ¡vel por qualquer login da equipe.'
     : (S.sbUrl ? 'Salva localmente. Configure o Supabase para sincronizar.' : 'Salva localmente.');
 
-  // Limpa formulário após salvar
+  // Limpa formulÃ¡rio apÃ³s salvar
   cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null; editingProposalId=null;
   linkedOppInfo=null; lockedNucleos=new Set();
   ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
@@ -2967,31 +1902,31 @@ function limpar() {
   showToast('Calculadora limpa');
 }
 
-// ── EXPORTAR PDF ──────────────────────────────────────
+// â”€â”€ EXPORTAR PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function sanitizeFilename(s) {
   return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
 }
 
 function exportarPDF() {
-  if (!cItems.length && !cSubs.length) { showBlocked('Adicione serviços antes de exportar'); return; }
+  if (!cItems.length && !cSubs.length) { showBlocked('Adicione serviÃ§os antes de exportar'); return; }
 
   const proj     = document.getElementById('f-projeto').value.trim() || 'Proposta';
-  const cliente  = document.getElementById('f-cliente').value.trim() || '—';
+  const cliente  = document.getElementById('f-cliente').value.trim() || 'â€”';
   const respEl   = document.getElementById('f-resp');
-  const respNome = respEl ? respEl.options[respEl.selectedIndex]?.text || respEl.value : '—';
+  const respNome = respEl ? respEl.options[respEl.selectedIndex]?.text || respEl.value : 'â€”';
   const dataVal  = document.getElementById('f-data').value;
   const data     = fmtD(dataVal);
   const cidade   = document.getElementById('f-cidade').value.trim();
   const uf       = document.getElementById('f-uf').value;
   const obs      = document.getElementById('f-obs').value.trim();
 
-  // Tenta obter propCode/version da proposta em edição ou usa defaults
+  // Tenta obter propCode/version da proposta em ediÃ§Ã£o ou usa defaults
   let propCode = null, version = 0;
   if (editingProposalId !== null) {
     const orig = S.proposals.find(p=>p.id===editingProposalId);
     if (orig) { propCode = orig.propCode; version = (orig.version||0)+1; }
   } else {
-    // Busca pela proposta de maior versão com este projeto/cliente
+    // Busca pela proposta de maior versÃ£o com este projeto/cliente
     const matches = S.proposals.filter(p=>p.projeto===proj && p.cliente===cliente);
     const match = matches.sort((a,b)=>(b.version||0)-(a.version||0))[0];
     if (match) { propCode = match.propCode; version = match.version||0; }
@@ -3021,24 +1956,24 @@ function exportarPDF() {
 
   function chkPage(need=14) { if(y>285-need){doc.addPage();y=18;} }
 
-  // ── CABEÇALHO ──────────────────────────────────────
+  // â”€â”€ CABEÃ‡ALHO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   doc.setFillColor(...CL.black); doc.rect(0,0,W,18,'F');
   doc.setTextColor(...CL.white);
   doc.setFont('helvetica','bold'); doc.setFontSize(13);
   doc.text('EXP', M, 12);
   doc.setFont('helvetica','normal'); doc.setFontSize(8);
-  doc.text('Proposta de Honorários', M+14, 12);
+  doc.text('Proposta de HonorÃ¡rios', M+14, 12);
   doc.setFont('helvetica','bold'); doc.setFontSize(9);
   doc.text(`${codStr}  ${versStr}`, W-M, 12, {align:'right'});
   y = 26;
 
-  // ── NOME DO PROJETO ─────────────────────────────────
+  // â”€â”€ NOME DO PROJETO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   doc.setTextColor(...CL.black);
   doc.setFont('helvetica','bold'); doc.setFontSize(18);
   doc.text(proj, M, y, {maxWidth:TW-40}); y+=8;
 
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...CL.gray);
-  const infoLine = `${cliente}   ·   ${respNome}   ·   ${cidade}${uf?' ('+uf+')':''}   ·   ${data}`;
+  const infoLine = `${cliente}   Â·   ${respNome}   Â·   ${cidade}${uf?' ('+uf+')':''}   Â·   ${data}`;
   doc.text(infoLine, M, y, {maxWidth:TW}); y+=5;
 
   if (obs) {
@@ -3048,7 +1983,7 @@ function exportarPDF() {
   }
   doc.setDrawColor(...CL.lgray); doc.line(M, y, W-M, y); y+=6;
 
-  // ── PRODUTOS / SERVIÇOS EXP ─────────────────────────
+  // â”€â”€ PRODUTOS / SERVIÃ‡OS EXP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const NCOR_PDF = { PAIS:CL.verde, URB:CL.az, CONSUL:CL.tc, ESP:CL.am };
   ['PAIS','URB','CONSUL','ESP'].forEach(nuc=>{
     const its = cItems.filter(i=>i.nucleo===nuc);
@@ -3068,14 +2003,14 @@ function exportarPDF() {
       const isEd = it.valorProposto!==null;
       let detail='';
       if(it.mode==='calc'){
-        if(it.subK==='PAIS_ARB') detail=`${(+it.area).toLocaleString('pt-BR')} m² SV`;
-        else if(it.nucleo==='URB') detail=`${(+it.area).toLocaleString('pt-BR',{maximumFractionDigits:2})} ha · coef. ${(+it.coef).toFixed(2)}`;
-        else detail=`${(+it.area).toLocaleString('pt-BR')} m² · coef. ${(+it.coef).toFixed(2)}`;
+        if(it.subK==='PAIS_ARB') detail=`${(+it.area).toLocaleString('pt-BR')} mÂ² SV`;
+        else if(it.nucleo==='URB') detail=`${(+it.area).toLocaleString('pt-BR',{maximumFractionDigits:2})} ha Â· coef. ${(+it.coef).toFixed(2)}`;
+        else detail=`${(+it.area).toLocaleString('pt-BR')} mÂ² Â· coef. ${(+it.coef).toFixed(2)}`;
       } else if(it.mode==='floreira') detail=`${(+it.area).toFixed(2)} CUB`;
       else if(it.mode==='consul') detail=`${it.horas||0}h`;
 
       doc.setTextColor(...CL.black); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-      const itemLabel = it.subLabel+(it.desc?' — '+it.desc:'')+(it.id?' / '+it.id:'');
+      const itemLabel = it.subLabel+(it.desc?' â€” '+it.desc:'')+(it.id?' / '+it.id:'');
       doc.text(itemLabel, M+3, y, {maxWidth:TW-30});
       doc.text(fmt(disp), W-M-2, y, {align:'right'});
       if (detail) {
@@ -3094,7 +2029,7 @@ function exportarPDF() {
     y+=3;
   });
 
-  // S5-01 — REPASSE (movido para antes de Subcontratações)
+  // S5-01 â€” REPASSE (movido para antes de SubcontrataÃ§Ãµes)
   if (rep) {
     chkPage(10);
     doc.setFillColor(251,243,232); doc.rect(M,y-3,TW,7,'F');
@@ -3102,45 +2037,45 @@ function exportarPDF() {
     doc.text('REPASSE COMERCIAL', M+3, y+1);
     doc.text(fmt(totRep), W-M-2, y+1, {align:'right'}); y+=9;
     doc.setTextColor(...CL.black); doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    doc.text(`${rep.nome}  ·  ${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}`, M+3, y);
+    doc.text(`${rep.nome}  Â·  ${rep.tipo==='pct'?`${rep.val}% sobre serviÃ§os`:'Valor fixo'}`, M+3, y);
     doc.setFont('helvetica','bold'); doc.text(fmt(totRep), W-M-2, y, {align:'right'});
     doc.setDrawColor(...CL.lgray); doc.line(M,y+4,W-M,y+4); y+=8;
   }
 
-  // S5-01+S5-02 — SUBCONTRATAÇÕES (layout corrigido: 2 linhas por item, sem overflow)
+  // S5-01+S5-02 â€” SUBCONTRATAÃ‡Ã•ES (layout corrigido: 2 linhas por item, sem overflow)
   if (cSubs.length) {
     chkPage(12);
     doc.setFillColor(251,240,238); doc.rect(M,y-3,TW,7,'F');
     doc.setTextColor(...CL.tc); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-    doc.text('SUBCONTRATAÇÕES', M+3, y+1);
+    doc.text('SUBCONTRATAÃ‡Ã•ES', M+3, y+1);
     doc.text(fmt(totSub), W-M-2, y+1, {align:'right'}); y+=9;
 
     cSubs.forEach(sc=>{
       chkPage(18);
-      // Linha 1: serviço + total alinhado à direita
+      // Linha 1: serviÃ§o + total alinhado Ã  direita
       doc.setTextColor(...CL.black); doc.setFont('helvetica','bold'); doc.setFontSize(8);
       doc.text(sc.serv, M+3, y, {maxWidth: TW-35});
       doc.text(fmt(sc.valComBit), W-M-2, y, {align:'right'});
-      // Linha 2: empresa · data
+      // Linha 2: empresa Â· data
       doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
-      const infoSub = [sc.emp, sc.data ? fmtD(sc.data) : ''].filter(Boolean).join(' · ');
+      const infoSub = [sc.emp, sc.data ? fmtD(sc.data) : ''].filter(Boolean).join(' Â· ');
       if (infoSub) { doc.text(infoSub, M+3, y+4.5); }
       // Linha 3: breakdown custo + bitrib + ganho EXP
       doc.setFontSize(7);
       const breakdownParts = [`Custo: ${fmt(sc.val)}`];
       if (sc.bit > 0) breakdownParts.push(`+ Bitrib. ${sc.bit}%: ${fmt(sc.val * sc.bit / 100)}`);
-      if (sc.ganhoEXP > 0) breakdownParts.push(`· Ganho EXP (${sc.ret}%): ${fmt(sc.ganhoEXP)}`);
+      if (sc.ganhoEXP > 0) breakdownParts.push(`Â· Ganho EXP (${sc.ret}%): ${fmt(sc.ganhoEXP)}`);
       doc.setTextColor(...CL.gray);
       doc.text(breakdownParts.join('   '), M+3, y+9, {maxWidth: TW-6});
       doc.setDrawColor(...CL.lgray); doc.line(M, y+13, W-M, y+13); y+=16;
     });
     if (ganhoSubs>0) {
       doc.setTextColor(...CL.verde); doc.setFont('helvetica','bold'); doc.setFontSize(7);
-      doc.text(`Ganho EXP total s/ subcontratações: ${fmt(ganhoSubs)}`, M+3, y); y+=6;
+      doc.text(`Ganho EXP total s/ subcontrataÃ§Ãµes: ${fmt(ganhoSubs)}`, M+3, y); y+=6;
     }
   }
 
-  // S5-01+S5-03 — DESPESAS INDIRETAS (breakdown por item com fórmula de cálculo)
+  // S5-01+S5-03 â€” DESPESAS INDIRETAS (breakdown por item com fÃ³rmula de cÃ¡lculo)
   if (cDesps.length) {
     chkPage(12);
     doc.setFillColor(245,245,243); doc.rect(M,y-3,TW,7,'F');
@@ -3148,25 +2083,25 @@ function exportarPDF() {
     doc.text('DESPESAS INDIRETAS', M+3, y+1);
     doc.text(fmt(totDesp), W-M-2, y+1, {align:'right'}); y+=9;
 
-    const DLBL = { alim:'Alimentação', carro:'Veículo', translado:'Translado', hotel:'Hospedagem', passagem:'Passagem', horasTec:'Horas técnicas (interno)' };
+    const DLBL = { alim:'AlimentaÃ§Ã£o', carro:'VeÃ­culo', translado:'Translado', hotel:'Hospedagem', passagem:'Passagem', horasTec:'Horas tÃ©cnicas (interno)' };
     cDesps.filter(d=>d.confirmada).forEach(d=>{
       chkPage(12);
       const val = calcDesp(d);
       const lbl = DLBL[d.tipo] || d.tipo;
       const det = d.desc || d.cidade || '';
-      // Fórmula de cálculo por tipo
+      // FÃ³rmula de cÃ¡lculo por tipo
       let formula = '';
       if (d.tipo==='alim' && (+d.diarias||0)>0)
-        formula = `${d.diarias} diárias × ${d.pessoas||1} pessoa(s) × ${fmt(d.valorDiario||0)}`;
+        formula = `${d.diarias} diÃ¡rias Ã— ${d.pessoas||1} pessoa(s) Ã— ${fmt(d.valorDiario||0)}`;
       else if (d.tipo==='carro')
-        formula = `${d.diarias||0}d × ${fmt(d.valorDiaria||0)}${+d.km>0?' + '+d.km+'km':''}`;
+        formula = `${d.diarias||0}d Ã— ${fmt(d.valorDiaria||0)}${+d.km>0?' + '+d.km+'km':''}`;
       else if (d.tipo==='hotel' && (+d.diarias||0)>0)
-        formula = `${d.diarias} diárias × ${fmt(d.valorDiaria||0)}`;
+        formula = `${d.diarias} diÃ¡rias Ã— ${fmt(d.valorDiaria||0)}`;
       else if (d.tipo==='horasTec' && (+d.dias||0)>0)
-        formula = `${d.dias}d × ${d.horasDia||0}h × ${fmt(d.valorHora||0)}/h`;
+        formula = `${d.dias}d Ã— ${d.horasDia||0}h Ã— ${fmt(d.valorHora||0)}/h`;
 
       doc.setTextColor(...CL.black); doc.setFont('helvetica','normal'); doc.setFontSize(8);
-      doc.text(lbl+(det?' — '+det:''), M+3, y, {maxWidth: TW-30});
+      doc.text(lbl+(det?' â€” '+det:''), M+3, y, {maxWidth: TW-30});
       if (d.tipo !== 'horasTec') {
         doc.setFont('helvetica','bold');
         doc.text(fmt(val), W-M-2, y, {align:'right'});
@@ -3180,12 +2115,12 @@ function exportarPDF() {
     });
     if (bitDesp>0) {
       doc.setTextColor(...CL.gray); doc.setFontSize(7);
-      doc.text(`Bruto: ${fmt(rawDesp)}  +  Bitributação ${bitDesp}%: ${fmt(bitDespAmt)}  =  Total: ${fmt(totDesp)}`, M+3, y); y+=5;
+      doc.text(`Bruto: ${fmt(rawDesp)}  +  BitributaÃ§Ã£o ${bitDesp}%: ${fmt(bitDespAmt)}  =  Total: ${fmt(totDesp)}`, M+3, y); y+=5;
     }
     y+=2;
   }
 
-  // ── TOTAL ─────────────────────────────────────────
+  // â”€â”€ TOTAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   chkPage(16);
   y+=2;
   doc.setFillColor(...CL.black); doc.rect(M,y,TW,14,'F');
@@ -3194,7 +2129,7 @@ function exportarPDF() {
   doc.setFontSize(14); doc.text(fmt(total), W-M-4, y+9, {align:'right'});
   y+=18;
 
-  // S5-01 — DISTRIBUIÇÃO POR ETAPA (movida para antes do Ganho EXP)
+  // S5-01 â€” DISTRIBUIÃ‡ÃƒO POR ETAPA (movida para antes do Ganho EXP)
   if (cItems.length && totI>0) {
     const nMain  = cItems[0].nucleo;
     const subKey = cItems[0].subK;
@@ -3203,7 +2138,7 @@ function exportarPDF() {
     if (ets.length) {
       chkPage(10+ets.length*6);
       doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
-      doc.text('DISTRIBUIÇÃO POR ETAPA  ·  serviços EXP', M+2, y); y+=5;
+      doc.text('DISTRIBUIÃ‡ÃƒO POR ETAPA  Â·  serviÃ§os EXP', M+2, y); y+=5;
       doc.setDrawColor(...CL.lgray); doc.line(M,y,W-M,y); y+=3;
       ets.forEach((e,i)=>{
         const pct=dists[i]||0, val=totI*pct/100;
@@ -3217,15 +2152,15 @@ function exportarPDF() {
     }
   }
 
-  // ── GANHO EXP (interno — sempre ao final) ────────
+  // â”€â”€ GANHO EXP (interno â€” sempre ao final) â”€â”€â”€â”€â”€â”€â”€â”€
   chkPage(18);
   doc.setFillColor(234,245,238); doc.rect(M,y,TW,ganhoSubs>0?16:11,'F');
   doc.setTextColor(...CL.verde); doc.setFont('helvetica','bold'); doc.setFontSize(7);
   doc.text('GANHO EXP', M+3, y+5);
   doc.setFont('helvetica','normal'); doc.setFontSize(8);
-  doc.text(`Serviços EXP: ${fmt(totI)}`, M+3, y+10);
+  doc.text(`ServiÃ§os EXP: ${fmt(totI)}`, M+3, y+10);
   if (ganhoSubs>0) {
-    doc.text(`Ganho s/ subcontratações: ${fmt(ganhoSubs)}`, M+3, y+14);
+    doc.text(`Ganho s/ subcontrataÃ§Ãµes: ${fmt(ganhoSubs)}`, M+3, y+14);
     doc.setFont('helvetica','bold');
     doc.text(`Total ganhos EXP: ${fmt(totI+ganhoSubs)}`, W-M-2, y+14, {align:'right'});
     y+=18;
@@ -3235,14 +2170,14 @@ function exportarPDF() {
   }
   y+=6;
 
-  // ── RODAPÉ ────────────────────────────────────────
+  // â”€â”€ RODAPÃ‰ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const dateStr   = new Date().toLocaleDateString('pt-BR');
   const yyyymmdd  = dataVal ? dataVal.replace(/-/g,'') : new Date().toISOString().slice(0,10).replace(/-/g,'');
   const pagesCount= doc.internal.getNumberOfPages();
   for (let i=1;i<=pagesCount;i++) {
     doc.setPage(i);
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...CL.gray);
-    doc.text(`EXP Arquitetura  ·  ${codStr}  ${versStr}  ·  Gerado em ${dateStr}`, M, 292);
+    doc.text(`EXP Arquitetura  Â·  ${codStr}  ${versStr}  Â·  Gerado em ${dateStr}`, M, 292);
     doc.text(`${i}/${pagesCount}`, W-M, 292, {align:'right'});
   }
 
@@ -3251,9 +2186,9 @@ function exportarPDF() {
   showToast('PDF exportado: ' + fn);
 }
 
-// ════════════════════════════════════════════════════════
-// HISTÓRICO
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// HISTÃ“RICO
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function atualizarFiltroPeriodo() {
   const tipo = document.getElementById('hf-periodo').value;
   const sel  = document.getElementById('hf-periodo-val');
@@ -3268,12 +2203,12 @@ function atualizarFiltroPeriodo() {
     anos.forEach(a=>{ const o=document.createElement('option'); o.value=a; o.textContent=a; sel.appendChild(o); });
   } else if (tipo === 'semestre') {
     for (let a=ano; a>=ano-2; a--) {
-      [2,1].forEach(s=>{ const o=document.createElement('option'); o.value=`${a}-S${s}`; o.textContent=`${a} — ${s}º semestre`; sel.appendChild(o); });
+      [2,1].forEach(s=>{ const o=document.createElement('option'); o.value=`${a}-S${s}`; o.textContent=`${a} â€” ${s}Âº semestre`; sel.appendChild(o); });
     }
     sel.value = `${ano}-S${hoje.getMonth()<6?1:2}`;
   } else if (tipo === 'trimestre') {
     for (let a=ano; a>=ano-1; a--) {
-      [4,3,2,1].forEach(t=>{ const o=document.createElement('option'); o.value=`${a}-T${t}`; o.textContent=`${a} — ${t}º tri`; sel.appendChild(o); });
+      [4,3,2,1].forEach(t=>{ const o=document.createElement('option'); o.value=`${a}-T${t}`; o.textContent=`${a} â€” ${t}Âº tri`; sel.appendChild(o); });
     }
     sel.value = `${ano}-T${Math.ceil((hoje.getMonth()+1)/3)}`;
   } else if (tipo === 'mes') {
@@ -3288,7 +2223,7 @@ function atualizarFiltroPeriodo() {
   renderHist();
 }
 
-const RESP_LABEL={CC:'Carlos',GB:'Gabriela',TC:'Thayssa',LA:'Laís'};
+const RESP_LABEL={CC:'Carlos',GB:'Gabriela',TC:'Thayssa',LA:'LaÃ­s'};
 window.RESP_LABEL=RESP_LABEL;
 
 function renderHist() {
@@ -3299,7 +2234,7 @@ function renderHist() {
   const tipo      = document.getElementById('hf-periodo').value;
   const periodoV  = document.getElementById('hf-periodo-val').value;
 
-  // Filtra por núcleo, responsável, busca e período — sem filtrar por status
+  // Filtra por nÃºcleo, responsÃ¡vel, busca e perÃ­odo â€” sem filtrar por status
   const fps = S.proposals.filter(p=>{
     if(nucFil!=='todos'&&p.mainNucleo!==nucFil&&p.mainNucleo!=='MISTO')return false;
     if(respFil!=='todos'&&p.resp!==respFil)return false;
@@ -3324,7 +2259,7 @@ function renderHist() {
     return true;
   });
 
-  // Agrupa por família (parentId ou próprio id)
+  // Agrupa por famÃ­lia (parentId ou prÃ³prio id)
   const familyMap = {};
   fps.forEach(p=>{
     const fid = p.parentId || p.id;
@@ -3332,14 +2267,14 @@ function renderHist() {
     familyMap[fid].push(p);
   });
 
-  // Ordena cada família: versão mais alta primeiro
+  // Ordena cada famÃ­lia: versÃ£o mais alta primeiro
   const sortedFamilies = Object.values(familyMap).map(fam=>{
     fam.sort((a,b)=>(b.version||0)-(a.version||0));
     return fam;
-  // Famílias ordenadas pela data da proposta mais recente
+  // FamÃ­lias ordenadas pela data da proposta mais recente
   }).sort((a,b)=> (b[0].createdAt||b[0].data||'') > (a[0].createdAt||a[0].data||'') ? 1 : -1);
 
-  // histSoAativas agora = "apenas última versão por família"
+  // histSoAativas agora = "apenas Ãºltima versÃ£o por famÃ­lia"
   const rows = [];
   const familiesToRender = sortedFamilies.filter(fam => {
     if (crmFil === 'sem_vinculo') return !isProposalFamilyLinkedToCRM(fam[0]);
@@ -3358,21 +2293,21 @@ function renderHist() {
   document.getElementById('hist-body').innerHTML = rows.length
     ? rows.map(({p, isLatest, famSize})=>{
         const isFinalizada = p.status==='finalizada';
-        // Revisões antigas (não latest) ficam em cinza claro — ainda clicáveis
+        // RevisÃµes antigas (nÃ£o latest) ficam em cinza claro â€” ainda clicÃ¡veis
         const rowStyle = (!isLatest) ? 'opacity:.55' : '';
         const cod = p.propCode
           ? `<span style="font-size:10px;font-family:var(--font-mono);font-weight:600">EXP-${String(p.propCode).padStart(3,'0')}</span>`
           : `<span style="font-size:9px;color:#aaa">#${p.id}</span>`;
-        // Badge de versão: versão mais nova em azul, antigas em cinza
+        // Badge de versÃ£o: versÃ£o mais nova em azul, antigas em cinza
         const versBadge = isLatest
           ? `<span style="font-size:9px;color:var(--az);font-weight:700">${_verLabel(p.version||0)}</span>`
           : `<span style="font-size:9px;color:#aaa;font-weight:600">${_verLabel(p.version||0)}</span>`;
-        const efetivo = p.totalEfetivo != null ? fmt(p.totalEfetivo) : `<span style="color:#bbb">—</span>`;
+        const efetivo = p.totalEfetivo != null ? fmt(p.totalEfetivo) : `<span style="color:#bbb">â€”</span>`;
         // Status: finalizada = badge verde (pronta para CRM); revisada = badge laranja; ativa = sem badge
         const statusBadge = isFinalizada
-          ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde);border-radius:4px;padding:2px 7px">✓ Finalizada</span>`
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde);border-radius:4px;padding:2px 7px">âœ“ Finalizada</span>`
           : (p.status==='revisada' ? `<span class="badge-revisada">Revisada</span>` : '');
-        // Indicador de família com múltiplas versões (apenas na latest)
+        // Indicador de famÃ­lia com mÃºltiplas versÃµes (apenas na latest)
         const famIndicator = (famSize > 1 && isLatest)
           ? `<span style="font-size:8px;background:var(--az-bg);color:var(--azul);padding:1px 5px;border-radius:3px;font-weight:700">${famSize}v</span>`
           : '';
@@ -3382,14 +2317,14 @@ function renderHist() {
         const crmBadge = semVinculoCRM ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:var(--tc-bg);color:var(--terracota);border:1px solid var(--terracota);border-radius:4px;padding:2px 7px">Sem CRM</span>` : '';
         const deleteBtn = semVinculoCRM
           ? `<button class="btn xs danger" onclick="event.stopPropagation();excluirProposta(${p.id})" title="Excluir proposta calculada">Excluir</button>`
-          : `<button class="btn xs ghost" disabled title="Propostas vinculadas ao CRM não podem ser excluídas pela calculadora" style="opacity:.5;cursor:not-allowed">Vinculada</button>`;
+          : `<button class="btn xs ghost" disabled title="Propostas vinculadas ao CRM nÃ£o podem ser excluÃ­das pela calculadora" style="opacity:.5;cursor:not-allowed">Vinculada</button>`;
         return `<tr class="click" style="${rowStyle}" onclick="abrirProposta(${p.id})">
           <td>${cod} ${famIndicator}</td>
           <td>${versBadge}</td>
-          <td style="font-weight:500">${clienteDisp||'—'}</td>
+          <td style="font-weight:500">${clienteDisp||'â€”'}</td>
           <td>${escHtml(p.projeto||'')}</td>
           <td><span class="badge ${NBADGE[p.mainNucleo]||'b-gr'}">${escHtml(NC[p.mainNucleo]||p.mainNucleo||'')}</span></td>
-          <td>${respDisp||'—'}</td>
+          <td>${respDisp||'â€”'}</td>
           <td style="font-size:10px">${escHtml(p.cidade||'')}${p.uf?' ('+escHtml(p.uf)+')':''}</td>
           <td style="font-size:10px">${fmtD(p.data)}</td>
           <td style="font-weight:700;font-family:var(--font-mono)">${fmt(p.total)}</td>
@@ -3400,7 +2335,7 @@ function renderHist() {
       }).join('')
     : '<tr><td colspan="12" class="empty">Nenhuma proposta encontrada</td></tr>';
 
-  // tfoot com totais — conta apenas latest por família para evitar dupla contagem
+  // tfoot com totais â€” conta apenas latest por famÃ­lia para evitar dupla contagem
   const latestRows = rows.filter(r=>r.isLatest);
   const sumTotal    = latestRows.reduce((s,{p})=>s+(p.total||0),0);
   const sumEfetivo  = latestRows.filter(({p})=>p.totalEfetivo!=null).reduce((s,{p})=>s+(p.totalEfetivo||0),0);
@@ -3410,7 +2345,7 @@ function renderHist() {
     ? `<tr style="border-top:2px solid var(--cinza)">
         <td colspan="8" style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa;padding:6px 8px">${nFamilias} proposta${nFamilias!==1?'s':''}</td>
         <td style="font-weight:700;font-family:var(--font-mono);font-size:12px">${fmt(sumTotal)}</td>
-        <td style="font-weight:700;font-family:var(--font-mono);font-size:12px;color:var(--verde)">${hasEfetivo?fmt(sumEfetivo):'—'}</td>
+        <td style="font-weight:700;font-family:var(--font-mono);font-size:12px;color:var(--verde)">${hasEfetivo?fmt(sumEfetivo):'â€”'}</td>
         <td></td>
         <td class="del-col"></td>
       </tr>`
@@ -3421,13 +2356,13 @@ function abrirProposta(id) {
   const p = S.proposals.find(x=>x.id===id);
   if (!p) return;
 
-  // Encontra versões relacionadas
+  // Encontra versÃµes relacionadas
   const familyId = p.parentId || p.id;
   const family = S.proposals.filter(x=>(x.parentId===familyId||x.id===familyId)).sort((a,b)=>a.id-b.id);
 
   // Modal de detalhe
   const codDisp = p.propCode ? `EXP-${String(p.propCode).padStart(3,'0')}` : `#${p.id}`;
-  document.getElementById('mhd-title').textContent = `${codDisp}  ${_verLabel(p.version||0)} — ${p.projeto}`;
+  document.getElementById('mhd-title').textContent = `${codDisp}  ${_verLabel(p.version||0)} â€” ${p.projeto}`;
 
   const body = document.getElementById('mhd-body');
   let html = '';
@@ -3438,12 +2373,12 @@ function abrirProposta(id) {
   const cidadeDetail = escHtml(p.cidade||'');
   const ufDetail = escHtml(p.uf||'');
   html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cliente</div><div style="font-weight:600">${clienteDetail||'—'}</div></div>
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Responsável</div><div>${respDetail||'—'}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cliente</div><div style="font-weight:600">${clienteDetail||'â€”'}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">ResponsÃ¡vel</div><div>${respDetail||'â€”'}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Data</div><div>${fmtD(p.data)}</div></div>
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cidade</div><div>${cidadeDetail||'—'}${p.uf?' ('+ufDetail+')':''}</div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Cidade</div><div>${cidadeDetail||'â€”'}${p.uf?' ('+ufDetail+')':''}</div></div>
     <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Total</div><div style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${fmt(p.total)}</div></div>
-    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">Versão</div><div><span style="font-weight:700;color:var(--az)">${_verLabel(p.version||0)}</span></div></div>
+    <div><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.4px;font-weight:700">VersÃ£o</div><div><span style="font-weight:700;color:var(--az)">${_verLabel(p.version||0)}</span></div></div>
   </div>`;
 
   if (p.obs) {
@@ -3451,7 +2386,7 @@ function abrirProposta(id) {
   }
 
   // Itens
-  html += `<div class="sec">Serviços</div>`;
+  html += `<div class="sec">ServiÃ§os</div>`;
   (p.items||[]).forEach(it=>{
     const disp = it.valorProposto!==null?it.valorProposto:it.valorCalc;
     const subLabelDisp = escHtml(it.subLabel||'');
@@ -3467,14 +2402,14 @@ function abrirProposta(id) {
     </div>`;
   });
 
-  // Subcontratações
+  // SubcontrataÃ§Ãµes
   if ((p.subs||[]).length) {
-    html += `<div class="sec" style="margin-top:10px">Subcontratações</div>`;
+    html += `<div class="sec" style="margin-top:10px">SubcontrataÃ§Ãµes</div>`;
     p.subs.forEach(sc=>{
       const servDisp = escHtml(sc.serv||'');
       const empDisp = escHtml(sc.emp||'');
       html += `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
-        <div>${servDisp} <span style="color:#888">· ${empDisp}</span></div>
+        <div>${servDisp} <span style="color:#888">Â· ${empDisp}</span></div>
         <div style="font-weight:700;color:var(--terracota)">${fmt(sc.valComBit)}</div>
       </div>`;
     });
@@ -3486,9 +2421,9 @@ function abrirProposta(id) {
     <span style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${fmt(p.total)}</span>
   </div>`;
 
-  // Histórico de versões da família
+  // HistÃ³rico de versÃµes da famÃ­lia
   if (family.length > 1) {
-    html += `<div style="margin-top:14px"><div class="sec">Versões desta proposta</div>`;
+    html += `<div style="margin-top:14px"><div class="sec">VersÃµes desta proposta</div>`;
     family.forEach(v=>{
       const vc = v.propCode ? `EXP-${String(v.propCode).padStart(3,'0')}` : `#${v.id}`;
       html += `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
@@ -3509,28 +2444,28 @@ function abrirProposta(id) {
   const footer = document.getElementById('mhd-footer');
   footer.innerHTML = '';
 
-  // PDF da proposta histórica
+  // PDF da proposta histÃ³rica
   const btnPdf = document.createElement('button');
   btnPdf.className = 'btn az sm';
-  btnPdf.textContent = '📄 PDF';
+  btnPdf.textContent = 'ðŸ“„ PDF';
   btnPdf.onclick = ()=>exportarPDFFromProposal(p);
   footer.appendChild(btnPdf);
 
-  // Botão Finalizar / Reabrir proposta
+  // BotÃ£o Finalizar / Reabrir proposta
   const _isFinalizada = p.status === 'finalizada';
   const btnFin = document.createElement('button');
   btnFin.className = _isFinalizada ? 'btn ghost sm' : 'btn verde sm';
   btnFin.style.cssText = _isFinalizada ? '' : 'font-weight:700';
-  btnFin.textContent = _isFinalizada ? '↩ Reabrir proposta' : '✓ Finalizar proposta';
+  btnFin.textContent = _isFinalizada ? 'â†© Reabrir proposta' : 'âœ“ Finalizar proposta';
   btnFin.title = _isFinalizada
     ? 'Reabrir como ativa (remove da lista de finalizadas no CRM)'
-    : 'Marcar como finalizada — ficará disponível para vincular a uma oportunidade no CRM';
+    : 'Marcar como finalizada â€” ficarÃ¡ disponÃ­vel para vincular a uma oportunidade no CRM';
   btnFin.onclick = () => {
     const novoStatus = _isFinalizada ? 'ativa' : 'finalizada';
     const titulo = _isFinalizada ? 'Reabrir proposta' : 'Finalizar proposta';
     const msg = _isFinalizada
       ? 'Reabrir esta proposta como ativa?'
-      : 'Finalizar esta proposta? Ela ficará marcada como "Finalizada" e poderá ser vinculada a uma oportunidade no CRM.';
+      : 'Finalizar esta proposta? Ela ficarÃ¡ marcada como "Finalizada" e poderÃ¡ ser vinculada a uma oportunidade no CRM.';
     const btnLabel = _isFinalizada ? 'Reabrir' : 'Finalizar';
     abrirPopupConfirm(titulo, msg, async () => {
       const idx = S.proposals.findIndex(x => x.id === p.id);
@@ -3545,11 +2480,11 @@ function abrirProposta(id) {
   };
   footer.appendChild(btnFin);
 
-  // Só permite revisar propostas não-finalizadas
+  // SÃ³ permite revisar propostas nÃ£o-finalizadas
   if (p.status !== 'revisada' && p.status !== 'finalizada') {
     const btnRev = document.createElement('button');
     btnRev.className = 'btn am sm';
-    btnRev.textContent = '✏️ Criar revisão';
+    btnRev.textContent = 'âœï¸ Criar revisÃ£o';
     btnRev.onclick = ()=>{
       closeM('modal-hist-detail');
       carregarPropostaParaRevisao(p);
@@ -3561,7 +2496,7 @@ function abrirProposta(id) {
 }
 
 function carregarPropostaParaRevisao(p) {
-  // Carrega os dados da proposta no formulário de cálculo
+  // Carrega os dados da proposta no formulÃ¡rio de cÃ¡lculo
   cItems  = JSON.parse(JSON.stringify(p.items||[]));
   cSubs   = JSON.parse(JSON.stringify(p.subs||[]));
   cDesps  = JSON.parse(JSON.stringify(p.desps||[])).map(d=>({confirmada:true,...d}));
@@ -3582,7 +2517,7 @@ function carregarPropostaParaRevisao(p) {
     const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
     const valorRep = cRepasse.tipo==='pct' ? totI*cRepasse.val/100 : cRepasse.val;
     document.getElementById('rep-preview-nome').textContent = cRepasse.nome;
-    document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviços` : 'Valor fixo';
+    document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviÃ§os` : 'Valor fixo';
     document.getElementById('rep-preview-val').textContent  = fmt(valorRep);
     document.getElementById('repasse-preview').style.display = 'block';
     document.getElementById('repasse-empty').style.display   = 'none';
@@ -3596,7 +2531,7 @@ function carregarPropostaParaRevisao(p) {
     document.getElementById('desp-bit').value = p.despBit;
   }
 
-  // Reconstrói lista de subs e desps
+  // ReconstrÃ³i lista de subs e desps
   renderSubList(); updateSubVisibility();
   renderDesps(); updateDespVisibility();
   calcResumo(); updateCardBars(); save();
@@ -3607,7 +2542,7 @@ function carregarPropostaParaRevisao(p) {
   // Vai para aba calc
   goTab('calc');
   const nextVer = _verLabel((p.version||0)+1);
-  showToast(`Proposta carregada — ao salvar será criada ${nextVer}`);
+  showToast(`Proposta carregada â€” ao salvar serÃ¡ criada ${nextVer}`);
 }
 
 function exportarPDFFromProposal(p) {
@@ -3642,26 +2577,26 @@ function exportarPDFFromProposal(p) {
   }
 }
 
-// ════════════════════════════════════════════════════════
-// PARÂMETROS
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// PARÃ‚METROS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function renderParams() {
   const cubHistSafe = S.cubHist.map(h=>({ ...h, by:escHtml(h.by||''), at:escHtml(h.at?.slice(0,10)||'') }));
   document.getElementById('cub-hist-list').innerHTML = cubHistSafe.map(h=>
     `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
       <span style="color:#888">${fmtM(h.mes)}</span>
       <span style="font-family:var(--font-mono);font-weight:700;color:var(--ouro)">${fmt(h.val)}</span>
-      <span style="color:#bbb;font-size:10px">${h.by} · ${h.at||''}</span>
+      <span style="color:#bbb;font-size:10px">${h.by} Â· ${h.at||''}</span>
     </div>`
   ).join('') || '<div class="empty">Nenhum registro</div>';
 
-  // CALC-1+2: coluna "De" agora é readonly (derivada da anterior), "Até" agora é editável
+  // CALC-1+2: coluna "De" agora Ã© readonly (derivada da anterior), "AtÃ©" agora Ã© editÃ¡vel
   const fRow=(f,tipo,i)=>`<div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--cinza2)">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui);background:var(--off);color:#888" type="text" value="${escAttr(i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':(S['f'+tipo][i-1]?.max??0)))}" placeholder="0" readonly tabindex="-1">
-    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui)" type="number" value="${escAttr(f.max===null?'':(f.max||0))}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui);background:var(--off);color:#888" type="text" value="${escAttr(i===0?'0':(S['f'+tipo][i-1]?.max===null?'âˆž':(S['f'+tipo][i-1]?.max??0)))}" placeholder="0" readonly tabindex="-1">
+    <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui)" type="number" value="${escAttr(f.max===null?'':(f.max||0))}" placeholder="âˆž" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
     <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui)" type="text" value="${escAttr(f.label)}" onchange="S.f${tipo}[${i}].label=this.value">
     <input class="fgroup input" style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-mono)" type="number" step="0.00001" value="${escAttr(f.mult)}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
-    <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">✕</button>
+    <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">âœ•</button>
   </div>`;
   document.getElementById('faixas-pais').innerHTML = S.fP.map((f,i)=>fRow(f,'P',i)).join('');
   document.getElementById('faixas-urb').innerHTML  = S.fU.map((f,i)=>fRow(f,'U',i)).join('');
@@ -3682,12 +2617,12 @@ function renderParams() {
     .map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2)">
       <div>
         <span class="badge ${NBADGE[x.nuc]}">${x.nucDisp}</span>
-        ${x.tipo?`<span style="font-size:10px;color:#888;margin-left:5px">${x.tipo} ·</span>`:''}
+        ${x.tipo?`<span style="font-size:10px;color:#888;margin-left:5px">${x.tipo} Â·</span>`:''}
         <span style="font-size:11px;margin-left:4px">${x.sub}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--font-mono);text-align:right" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
-        <span style="font-size:10px;color:#888">mín.</span>
+        <span style="font-size:10px;color:#888">mÃ­n.</span>
       </div>
     </div>`).join('');
 
@@ -3703,7 +2638,7 @@ function renderParams() {
 }
 
 function addFaixa(tipo) {
-  // CALC-2: inserir antes da última faixa infinita, com "de" preenchido da anterior
+  // CALC-2: inserir antes da Ãºltima faixa infinita, com "de" preenchido da anterior
   const arr = tipo==='P' ? S.fP : S.fU;
   const lastInfIdx = arr.findIndex(f => f.max === null);
   const insertIdx  = lastInfIdx >= 0 ? lastInfIdx : arr.length;
@@ -3721,7 +2656,7 @@ function saveParams() {
   S.params.diaria=+document.getElementById('p-diaria').value||680;
   S.params.gas   =+document.getElementById('p-gas').value||6.20;
   S.params.car   =+document.getElementById('p-car').value||180;
-  save(); saveParamsToSupabase(); showToast('Parâmetros salvos');
+  save(); saveParamsToSupabase(); showToast('ParÃ¢metros salvos');
 }
 
 async function saveParamsToSupabase() {
@@ -3774,7 +2709,7 @@ async function loadParamsFromSupabase() {
     if (row.fp != null)          S.fP          = row.fp;
     if (row.fu != null)          S.fU          = row.fu;
     if (row.mins != null)        S.mins        = row.mins;
-    // CALC-3+4: merge profundo — preserva nucleos ausentes no registro do Supabase
+    // CALC-3+4: merge profundo â€” preserva nucleos ausentes no registro do Supabase
     if (row.etapas != null)      S.etapas     = { ...S.etapas,     ...row.etapas };
     if (row.dist_etapas != null) S.distEtapas = { ...S.distEtapas, ...row.dist_etapas };
     if (row.params != null)      S.params      = row.params;
@@ -3786,7 +2721,7 @@ async function loadParamsFromSupabase() {
   }
 }
 
-// ── ETAPAS POR TIPO ──────────────────────────────────────
+// â”€â”€ ETAPAS POR TIPO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderEtapaNucleoTabs() {
   selEtapaNucleo(editEtapaNucleo,
     document.querySelector('#etapa-nucleo-tabs button'));
@@ -3854,10 +2789,10 @@ function renderEtapasEditor() {
     <div style="font-size:10px;color:#888;padding:4px 0">${NC[n]} / ${editEtapaChave!=='default'?editEtapaChave:'Geral'}</div>
     <div style="font-size:10px;color:#888;padding:4px 0">etapa ${i+1}</div>
     <div style="display:flex;align-items:center;gap:3px"><input style="width:50px;font-size:11px;border:1px solid var(--cinza);padding:4px 5px;font-family:var(--font-mono);text-align:center" type="number" value="${escAttr(dists[i]||0)}" onchange="if(!S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}']=[...S.distEtapas['${n}'].default];S.distEtapas['${n}']['${chave}'][${i}]=parseInt(this.value)||0;renderEtapasEditor()"><span style="font-size:11px;color:#888">%</span></div>
-    <button class="btn xs danger" onclick="S.etapas['${n}']['${chave}'].splice(${i},1);if(S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}'].splice(${i},1);renderEtapasEditor()">✕</button>
+    <button class="btn xs danger" onclick="S.etapas['${n}']['${chave}'].splice(${i},1);if(S.distEtapas['${n}']['${chave}'])S.distEtapas['${n}']['${chave}'].splice(${i},1);renderEtapasEditor()">âœ•</button>
   </div>`).join('');
 
-  html+=`<div style="font-size:11px;color:${soma===100?'var(--verde)':'var(--tc)'};margin-top:6px;font-weight:500">Total: ${soma}% ${soma===100?'✓':'← deve somar 100%'}</div>`;
+  html+=`<div style="font-size:11px;color:${soma===100?'var(--verde)':'var(--tc)'};margin-top:6px;font-weight:500">Total: ${soma}% ${soma===100?'âœ“':'â† deve somar 100%'}</div>`;
   document.getElementById('etapas-editor').innerHTML=html;
 }
 
@@ -3870,9 +2805,9 @@ function addEtapa() {
   renderEtapasEditor();
 }
 
-// ════════════════════════════════════════════════════════
-// NAV — Sprint B
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// NAV â€” Sprint B
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const SUPABASE_URL_NAV     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY_NAV = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 const sbNav = supabase.createClient(SUPABASE_URL_NAV, SUPABASE_ANON_KEY_NAV);
@@ -3909,10 +2844,10 @@ function setFeedbackStatus(msg) {
 }
 async function enviarFeedback() {
   const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
-  if (!u?.id) { setFeedbackStatus('Sessão indisponível. Faça login para enviar feedback.'); return; }
+  if (!u?.id) { setFeedbackStatus('SessÃ£o indisponÃ­vel. FaÃ§a login para enviar feedback.'); return; }
   const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
   const mensagem = document.getElementById('tool-feedback-message')?.value?.trim() || '';
-  if (!mensagem) { setFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.'); return; }
+  if (!mensagem) { setFeedbackStatus('Descreva o problema ou a sugestÃ£o antes de enviar.'); return; }
   const tab = document.querySelector('.ntab.active')?.dataset?.tab || 'calc';
   setFeedbackStatus('Enviando...');
   const { error } = await sbNav.from('plataforma_feedback').insert({
@@ -3925,10 +2860,10 @@ async function enviarFeedback() {
     criado_em: new Date().toISOString(),
     atualizado_em: new Date().toISOString()
   });
-  if (error) { setFeedbackStatus('Não foi possível enviar. Tente novamente.'); return; }
+  if (error) { setFeedbackStatus('NÃ£o foi possÃ­vel enviar. Tente novamente.'); return; }
   document.getElementById('tool-feedback-message').value = '';
-  setFeedbackStatus('Registro enviado para a Gestão de plataforma.');
-  showToast('Feedback enviado ✓');
+  setFeedbackStatus('Registro enviado para a GestÃ£o de plataforma.');
+  showToast('Feedback enviado âœ“');
 }
 function normalizeRole(role) {
   if (typeof window.normalizeExpRole === 'function') return window.normalizeExpRole(role);
@@ -3983,9 +2918,9 @@ function initNavUserFromSession() {
       const _np = (u.nome||'').trim().split(/\s+/).filter(Boolean);
       nomeEl.textContent = _np.length > 0
         ? (_np.length <= 2 ? _np.join(' ') : _np[0]+' '+_np[_np.length-1])
-        : '—';
+        : 'â€”';
     }
-    const roleMap = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
+    const roleMap = { socio:'SÃ³cio', socio_adm:'SÃ³cio-administrador', socio_admin:'SÃ³cio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
     const roleEl = document.getElementById('nav-role');
     if (roleEl) roleEl.textContent = u.role ? (roleMap[normalizeRole(u.role)] || roleMap[u.role] || u.role) : '';
     document.body.classList.toggle('can-delete', canAccessCalcRole(u.role));
@@ -3993,7 +2928,7 @@ function initNavUserFromSession() {
     initExpRoom(u.app_user_id || u.id || u.auth_id, (u.nome||'').split(' ')[0]);
   } catch(e) { console.error('initNavUserFromSession:', e); }
 }
-// ── EXP ROOM PRESENCE ───────────────────────────────────────
+// â”€â”€ EXP ROOM PRESENCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
 const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
 async function checkExpRoomStatus() {
@@ -4004,8 +2939,8 @@ async function checkExpRoomStatus() {
     if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
       btn.classList.add('active');
       const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
-      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
-      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
+      const quem = (data.value && data.value !== 'true') ? data.value : 'AlguÃ©m';
+      btn.setAttribute('data-tooltip', `${quem} Â· ${mins === 0 ? 'agora mesmo' : `hÃ¡ ${mins} min`}`);
     } else {
       btn.classList.remove('active');
       btn.removeAttribute('data-tooltip');
@@ -4023,7 +2958,7 @@ function initExpRoom(userId, userName) {
   btn.addEventListener('click', () => {
     registrarExpRoomClick(userId, userName);
     btn.classList.add('active');
-    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
+    btn.setAttribute('data-tooltip', `${userName||'VocÃª'} Â· agora mesmo`);
   });
   checkExpRoomStatus();
   setInterval(checkExpRoomStatus, 60000);
@@ -4033,7 +2968,7 @@ function initConnDot() {
   if(!dot) return;
   const update = () => {
     dot.className = 'conn-dot ' + (navigator.onLine ? 'online' : 'offline');
-    dot.title = navigator.onLine ? 'Conectado' : 'Sem conexão';
+    dot.title = navigator.onLine ? 'Conectado' : 'Sem conexÃ£o';
   };
   update();
   window.addEventListener('online',  update);
@@ -4044,15 +2979,15 @@ function excluirProposta(id) {
   const proposal = S.proposals.find(p => p.id === id);
   if (!proposal) return;
   if (isProposalFamilyLinkedToCRM(proposal)) {
-    showToast('Propostas vinculadas ao CRM não podem ser excluídas pela calculadora.');
+    showToast('Propostas vinculadas ao CRM nÃ£o podem ser excluÃ­das pela calculadora.');
     return;
   }
   const familyId = getProposalFamilyId(proposal);
   const family = S.proposals.filter(p => getProposalFamilyId(p) === familyId);
   const familySize = family.length;
   const confirmMsg = familySize > 1
-    ? `Excluir permanentemente esta família de proposta, incluindo ${familySize} versões? Esta ação não pode ser desfeita.`
-    : 'Excluir esta proposta permanentemente? Esta ação não pode ser desfeita.';
+    ? `Excluir permanentemente esta famÃ­lia de proposta, incluindo ${familySize} versÃµes? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`
+    : 'Excluir esta proposta permanentemente? Esta aÃ§Ã£o nÃ£o pode ser desfeita.';
   abrirPopupConfirm('Excluir proposta', confirmMsg, async () => {
     try {
       if (S.sbUrl && S.sbKey) {
@@ -4069,34 +3004,34 @@ function excluirProposta(id) {
       S.crmLinkedProposalRoots = (S.crmLinkedProposalRoots || []).filter(root => String(root) !== familyId);
       save();
       renderHist();
-      showToast(familySize > 1 ? 'Família de proposta excluída.' : 'Proposta excluída.');
+      showToast(familySize > 1 ? 'FamÃ­lia de proposta excluÃ­da.' : 'Proposta excluÃ­da.');
     } catch(e) {
       showToast('Erro ao excluir: ' + e.message);
     }
   });
 }
 
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // INIT
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 load();
 
-// Verifica sessão Supabase antes de mostrar qualquer conteúdo
+// Verifica sessÃ£o Supabase antes de mostrar qualquer conteÃºdo
 document.body.style.visibility = 'hidden';
 (async () => {
   try {
     const { data: { session } } = await sbNav.auth.getSession();
     if (!session) { window.location.href = 'index.html'; return; }
-    // Atualiza sessionStorage com dados frescos da sessão
+    // Atualiza sessionStorage com dados frescos da sessÃ£o
     const { data: uDb } = await sbNav.from('usuarios').select('id, nome, iniciais, role, cor, viewer_only').eq('auth_id', session.user.id).maybeSingle();
     if (!uDb || !canAccessCalcRole(uDb.role)) {
-      showToast('A calculadora está disponível apenas para sócios e sócios administradores.');
+      showToast('A calculadora estÃ¡ disponÃ­vel apenas para sÃ³cios e sÃ³cios administradores.');
       window.location.href = 'app.html';
       return;
     }
     if (uDb) sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, uDb)));
   } catch(e) {
-    console.error('Erro na verificação de sessão:', e);
+    console.error('Erro na verificaÃ§Ã£o de sessÃ£o:', e);
     window.location.href = 'index.html';
     return;
   }
@@ -4118,7 +3053,7 @@ if (cRepasse) {
   const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const valorRep = cRepasse.tipo==='pct' ? totI*cRepasse.val/100 : cRepasse.val;
   document.getElementById('rep-preview-nome').textContent = cRepasse.nome;
-  document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviços` : 'Valor fixo';
+  document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviÃ§os` : 'Valor fixo';
   document.getElementById('rep-preview-val').textContent  = fmt(valorRep);
   document.getElementById('repasse-preview').style.display = 'block';
   document.getElementById('repasse-empty').style.display   = 'none';
@@ -4130,7 +3065,7 @@ if (cRepasse) {
 calcResumo();
 updateCardBars();
 
-// Auto-configura Supabase com credenciais do sistema se não configurado
+// Auto-configura Supabase com credenciais do sistema se nÃ£o configurado
 if (!S.sbUrl) {
   S.sbUrl = SUPABASE_URL_NAV;
   S.sbKey = SUPABASE_ANON_KEY_NAV;
@@ -4140,7 +3075,7 @@ if (!S.sbUrl) {
 // Tenta sincronizar ao carregar se Supabase configurado
 if (S.sbUrl && S.sbKey) {
   setSyncStatus('sync','conectando...');
-  // Sobe propostas locais ainda não sincronizadas, depois carrega do banco
+  // Sobe propostas locais ainda nÃ£o sincronizadas, depois carrega do banco
   Promise.all([loadParamsFromSupabase(), loadProposalsFromSupabase()]).then(async () => {
     // Push backlog: propostas locais que nunca foram para o Supabase
     const pendentes = S.proposals.filter(p => !p._sbUpdatedAt);
@@ -4151,17 +3086,17 @@ if (S.sbUrl && S.sbKey) {
   setSyncStatus('', 'local');
 }
 
-// Restaura estado de edição ativa no banner
+// Restaura estado de ediÃ§Ã£o ativa no banner
 if (editingProposalId !== null) {
   calcResumo();
 }
 
-// Infra — polling de status CRM a cada 2 min quando revisando proposta vinculada
+// Infra â€” polling de status CRM a cada 2 min quando revisando proposta vinculada
 setInterval(async () => {
   if (editingProposalId !== null && S.sbUrl && S.sbKey) {
     const sizeBefore = lockedNucleos.size;
     await checkCRMLinkStatus(editingProposalId);
-    // Só re-renderiza se algo mudou (evita piscar a tela)
+    // SÃ³ re-renderiza se algo mudou (evita piscar a tela)
     if (lockedNucleos.size !== sizeBefore || linkedOppInfo) calcResumo();
   }
 }, 120000);
@@ -4190,7 +3125,7 @@ async function abrirLembretePopup() {
         ${opts}
       </select>
       <label style="${_ls}">Mensagem</label>
-      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
+      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal atÃ© sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
         <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
@@ -4204,7 +3139,7 @@ async function _enviarLembrete() {
   const para = document.getElementById('lemb-para')?.value;
   if (!msg) return;
   const btn = document.querySelector('#popup-lembrete button:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviandoâ€¦'; }
   const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
   const { data: usuarios } = await sbNav.from('usuarios').select('id,nome').eq('ativo', true);
   const targets = para === 'todos'
@@ -4222,18 +3157,10 @@ async function _enviarLembrete() {
   }
   document.getElementById('popup-lembrete')?.remove();
 }
-</script>
 
-<!-- EXP · Chat Widget -->
-<script src="chat.js"></script>
-<!-- EXP · Timer Widget -->
-<script src="timer.js"></script>
-<style>
-  #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:34px!important;z-index:9998!important}
-</style>
-<script src="shared/exp-nav.js"></script>
-<script>
+
+
+
+
 ExpNav.init({ module: 'calc' });
-</script>
-</body>
-</html>
+
