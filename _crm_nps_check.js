@@ -1,1290 +1,31 @@
-﻿<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>EXP · CRM Comercial</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="shared/app-notif.js"></script>
-<script>
-  (function(){
-    var saved = localStorage.getItem('exp-theme');
-    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if(saved === 'dark' || (!saved && sys))
-      document.documentElement.setAttribute('data-theme','dark');
-  })();
-</script>
-<link rel="stylesheet" href="exp-design-system.css">
-<link rel="stylesheet" href="shared/exp-nav.css">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  /* núcleos CRM — locais, sem equivalente no design system */
-  --urb:#5280CA;--urb-bg:#ECF1FA;
-  --pai-inc:#2A5239;--pai-hor:#45865D;--pai-res:#6AA87D;--pai-urb:#9CC4A8;
-  --consul:#C36247;--consul-bg:var(--tc-bg);
-  --esp:#D19931;--esp-bg:var(--am-bg);
-  --ger:#B88820;
-  --nav-active:var(--azul);
-  /* foco de input — CRM usa azul */
-  --mod-focus:var(--azul);
-  --mod-focus-soft:var(--azul-soft);
-}
-body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-size:var(--text-body);line-height:1.5;font-weight:300;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
-/* SHELL */
-#conteudo{flex:1;display:flex;min-height:0}
-#app-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-shell,14px)}
-[data-theme="dark"] #app-main{background:#1E1E1D;border-color:#2E2D2B}
-
-/* timer override movido para após timer.js no body */
-
-/* ── Topbar interno — tabs + botão ─────────────────────────── */
-#crm-topbar{display:flex;align-items:center;gap:0;padding:0 16px;border-bottom:1px solid var(--cinza2);flex-shrink:0;min-height:42px}
-[data-theme="dark"] #crm-topbar{border-bottom-color:#2A2926}
-.crm-tab{padding:0 12px;height:42px;display:flex;align-items:center;font-size:11px;font-weight:600;color:#999;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:color var(--transition-fast),border-color var(--transition-fast);white-space:nowrap;font-family:var(--font-ui)}
-.crm-tab:hover{color:var(--grafite)}
-.crm-tab.active{color:var(--azul);border-bottom-color:var(--azul)}
-[data-theme="dark"] .crm-tab:hover{color:#D0CFC9}
-[data-theme="dark"] .crm-tab.active{color:#6B9FE8;border-bottom-color:#6B9FE8}
-#crm-topbar-right{margin-left:auto;display:flex;align-items:center;gap:6px}
-
-/* #exp-topbar-right dentro do topbar do CRM — in-flow, não flutuante */
-#crm-topbar #exp-topbar-right{
-  position:static !important;
-  top:auto !important; right:auto !important;
-  display:flex; align-items:center; gap:2px;
-}
-
-/* SCROLL da área principal */
-#crm-body{flex:1;overflow-y:auto;padding:16px}
-#crm-body::-webkit-scrollbar{width:4px}
-#crm-body::-webkit-scrollbar-thumb{background:var(--cinza);border-radius:2px}
-.page{display:none}.page.active{display:block}
-
-/* CARD */
-.card{background:var(--branco);border:1px solid var(--cinza);margin-bottom:10px;position:relative;border-radius:var(--radius-card,8px);overflow:hidden}
-.card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
-.card.verde::before{background:var(--verde)}
-.card.az::before{background:var(--azul)}
-.card.am::before{background:var(--ouro)}
-.card.tc::before{background:var(--terracota)}
-.card.cinza::before{background:var(--cinza)}
-.card.urb::before{background:var(--urb)}
-.card.consul::before{background:var(--consul)}
-.card.pai::before{background:var(--verde)}
-.stat.cinza::before{background:var(--cinza)}
-.card.esp::before{background:var(--esp)}
-.card-hdr{padding:9px 14px 9px 17px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card-title{font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;flex:1}
-.card-body{padding:12px 14px 12px 17px}
-
-/* GRID */
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-
-/* STATS */
-.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
-.stat{background:var(--branco);border:1px solid var(--cinza);padding:14px 16px 14px 19px;position:relative;border-radius:var(--radius-card,8px);overflow:hidden}
-.stat::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
-.stat.verde::before{background:var(--verde)}
-.stat.az::before{background:var(--azul)}
-.stat.am::before{background:var(--ouro)}
-.stat.tc::before{background:var(--terracota)}
-.stat.urb::before{background:var(--urb)}
-.stat.consul::before{background:var(--consul)}
-.stat-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:4px}
-.stat-val{font-size:22px;font-weight:700;font-family:var(--font-mono);letter-spacing:-1px}
-.stat-sub{font-size:10px;color:#888;margin-top:2px}
-
-/* BADGE */
-.badge{display:inline-flex;align-items:center;padding:2px 7px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;border-radius:var(--radius-badge,4px)}
-.b-urb{background:var(--urb-bg);color:var(--urb)}
-.b-pai{background:var(--verde-bg);color:var(--verde)}
-.b-consul{background:var(--consul-bg);color:var(--consul)}
-.b-esp{background:var(--esp-bg);color:var(--esp)}
-.b-ger{background:var(--am-bg);color:var(--ger)}
-.b-vd{background:var(--verde-bg);color:var(--verde)}
-.b-az{background:var(--az-bg);color:var(--azul)}
-.b-am{background:var(--am-bg);color:var(--ouro)}
-.b-tc{background:var(--tc-bg);color:var(--terracota)}
-.b-gr{background:var(--cinza2);color:#777}
-.b-exp{background:var(--tc-bg);color:var(--terracota)}
-
-/* TEMP (temperatura do lead) */
-.temp{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.temp.hot{background:var(--verde)}
-.temp.warm{background:var(--ouro)}
-.temp.cold{background:var(--terracota)}
-.temp.none{background:#ccc}
-
-/* TABELA */
-table{width:100%;border-collapse:collapse}
-th{padding:6px 10px;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;text-align:left;border-bottom:1px solid var(--cinza);cursor:pointer;white-space:nowrap;background:var(--branco)}
-th:hover{color:var(--grafite)}
-th.sorted{color:var(--grafite)}
-td{padding:7px 10px;font-size:12px;border-bottom:1px solid var(--cinza2);vertical-align:middle}
-tr.click{cursor:pointer}
-tr.click:hover td{background:var(--off)}
-tr.expired td{background:var(--tc-bg)}
-tr.orc-neg td{background:var(--am-bg)}
-tr.orc-dest td{background:var(--am-bg)}
-tr.orc-fech td{background:var(--verde-bg)}
-.dtag{font-size:10px;color:#888;font-family:var(--font-mono)}
-.num-tag{font-size:10px;font-weight:700;font-family:var(--font-mono);color:#555}
-/* Tabela de orçamentos — layout compacto */
-#orc-table td{padding:5px 8px;font-size:11px}
-#orc-table th{padding:5px 8px}
-#orc-table td:nth-child(3),#orc-table td:nth-child(4),#orc-table td:nth-child(11),#orc-table td:nth-child(12),#orc-table td:nth-child(14){white-space:nowrap}
-#orc-table td:nth-child(2){max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#orc-table td:nth-child(5){max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
-#rel-mensal-table td,#rel-mensal-table th{padding:5px 8px;font-size:11px}
-#rel-mensal-table th{cursor:default}
-#rel-mensal-table tfoot td{font-size:11px;padding:6px 8px}
-
-/* BTN */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;font-family:var(--font-ui);font-size:var(--text-body);font-weight:var(--weight-semibold);border:1px solid var(--cinza);background:var(--branco);color:#888;cursor:pointer;transition:border-color var(--transition-fast),color var(--transition-fast),background var(--transition-fast);white-space:nowrap;border-radius:var(--radius-btn,6px);text-decoration:none}
-.btn:hover{border-color:var(--grafite);color:var(--grafite)}
-.btn:disabled{opacity:.45;cursor:default;pointer-events:none}
-.btn.filled{background:var(--grafite);color:var(--branco);border-color:var(--grafite)}
-.btn.filled:hover{opacity:.82}
-.btn.verde{background:var(--verde);color:#fff;border-color:var(--verde)}
-.btn.verde:hover{opacity:.88}
-.btn.tc,.btn.danger{border-color:var(--terracota);color:var(--terracota)}
-.btn.tc:hover,.btn.danger:hover{background:var(--terracota);color:#fff}
-.btn.sm{padding:4px 10px;font-size:var(--text-label)}
-.btn.xs{padding:2px 8px;font-size:var(--text-label);border-radius:var(--radius-badge,4px)}
-.btn.ghost{background:transparent;border-color:transparent;color:#999}
-.btn.ghost:hover{border-color:var(--cinza);color:var(--grafite)}
-
-/* INPUT / SELECT */
-input[type=text],input[type=date],input[type=number],input[type=email],input[type=month],textarea,select{font-family:var(--font-ui);font-size:var(--text-body);font-weight:var(--weight-light);border:1px solid var(--cinza);background:var(--branco);color:var(--grafite);padding:6px 10px;width:100%;outline:none;transition:border-color var(--transition-fast),box-shadow var(--transition-fast);border-radius:var(--radius-input,6px)}
-input:focus,select:focus,textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-select{cursor:pointer}
-textarea{resize:vertical;min-height:60px}
-.fgroup{display:flex;flex-direction:column;gap:4px}
-.fgroup label{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999}
-.fg{display:grid;gap:10px}
-.fg2{grid-template-columns:1fr 1fr}
-.fg3{grid-template-columns:1fr 1fr 1fr}
-.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
-.mb8{margin-bottom:8px}
-.mb14{margin-bottom:14px}
-
-/* KANBAN */
-.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:var(--radius-card,8px);overflow:hidden;height:calc(100vh - 114px)}
-.kcol{border-right:1px solid var(--cinza);display:flex;flex-direction:column;overflow:hidden;height:100%}
-.kcol:last-child{border-right:none}
-.kcol-hd{padding:8px 10px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:6px;background:var(--branco);position:sticky;top:0;z-index:5;flex-shrink:0}
-.kcol-stripe{width:3px;height:14px;border-radius:2px;flex-shrink:0}
-.kcol-title{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;flex:1}
-.kcol-cnt{font-size:9px;font-family:var(--font-mono);color:#888}
-.kcol-sum{font-size:10px;font-family:var(--font-mono);font-weight:600;color:#555}
-.kitems{padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1}
-/* CARD */
-.pcard{background:var(--branco);border:1px solid var(--cinza);padding:9px 11px;cursor:pointer;transition:border-color var(--transition-fast),box-shadow var(--transition-fast);position:relative;border-radius:var(--radius-card,8px)}
-.pcard:hover{border-color:#aaa;box-shadow:0 2px 6px rgba(0,0,0,.07)}
-.pcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
-.pcard-code{font-size:9px;font-family:var(--font-mono);color:#aaa}
-.pcard-client{font-size:12px;font-weight:700;margin-bottom:1px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcard-proj{font-size:10px;color:#666;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcard-loc{font-size:9px;color:#aaa;margin-bottom:6px}
-.pcard-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.pcard-val{font-size:11px;font-weight:700;font-family:var(--font-mono);margin-left:auto;color:var(--grafite)}
-.pcard-exp{border-left:5px solid var(--terracota);background:var(--tc-bg)}
-.pcard-dest{border-left:5px solid var(--esp);background:var(--am-bg)}
-.pcard-neg{border-left:5px solid var(--esp);background:var(--am-bg)}
-.pcard-fech{border-left:5px solid var(--verde);background:var(--verde-bg)}
-.pcard.dragging{opacity:.35;pointer-events:none}
-.kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--azul);outline-offset:-4px;border-radius:var(--radius-input,6px)}
-.kcol-dupla{flex-direction:column}
-.kcol-sec{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
-.kcol-sep{height:1px;background:var(--cinza);flex-shrink:0}
-
-/* LINHA DO TEMPO */
-.timeline{position:relative;padding-left:20px}
-.timeline::before{content:'';position:absolute;left:6px;top:4px;bottom:4px;width:1px;background:var(--cinza)}
-.tl-item{position:relative;margin-bottom:14px;padding-left:16px}
-.tl-dot{position:absolute;left:-14px;top:3px;width:8px;height:8px;border-radius:50%;background:var(--cinza);border:2px solid var(--branco);box-shadow:0 0 0 1px var(--cinza)}
-.tl-dot.verde{background:var(--verde);box-shadow:0 0 0 1px var(--verde)}
-.tl-dot.am{background:var(--ouro);box-shadow:0 0 0 1px var(--ouro)}
-.tl-dot.az{background:var(--azul);box-shadow:0 0 0 1px var(--azul)}
-.tl-dot.tc{background:var(--terracota);box-shadow:0 0 0 1px var(--terracota)}
-.tl-label{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;margin-bottom:2px}
-.tl-text{font-size:12px}
-.tl-date{font-size:9px;font-family:var(--font-mono);color:#aaa;margin-top:1px}
-
-/* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:200;align-items:center;justify-content:center;padding:40px 16px;overflow-y:auto}
-.modal-bg.open{display:flex}
-.modal{background:var(--branco);width:640px;max-width:calc(100vw - 32px);border:1px solid var(--cinza);position:relative;margin:auto;display:flex;flex-direction:column;max-height:calc(100vh - 80px);border-radius:var(--radius-card,8px);overflow:hidden}
-.modal.lg{width:860px}
-.modal.xl{width:1060px}
-.modal-hd{padding:12px 16px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;background:var(--branco);flex-shrink:0;z-index:5}
-.modal-title{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
-.modal-x{font-size:20px;cursor:pointer;color:#999;line-height:1;padding:2px 6px}
-.modal-x:hover{color:var(--grafite)}
-.modal-body{padding:16px;overflow-y:auto;flex:1}
-.modal-ft{padding:10px 16px;border-top:1px solid var(--cinza);display:flex;gap:7px;justify-content:flex-end;background:var(--branco);flex-shrink:0}
-.ms{margin-bottom:12px}
-.ms-title{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--cinza2)}
-.fech-row{transition:border-color var(--transition-normal),opacity var(--transition-normal)}
-.dr{display:flex;border-bottom:1px solid var(--cinza2)}
-.dr:last-child{border-bottom:none}
-.dk{font-size:10px;color:#888;padding:5px 8px;min-width:110px;background:var(--off);border-right:1px solid var(--cinza2);flex-shrink:0}
-.dv{font-size:11px;padding:5px 8px;flex:1}
-.follow-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2);font-size:11px}
-.follow-row:last-child{border-bottom:none}
-
-/* BOAS VINDAS */
-.bv-section{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--cinza2)}
-.bv-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
-.bv-title{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px}
-.bv-item{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px}
-.bv-item:last-child{border-bottom:none}
-
-/* CONTATOS */
-.cont-empresa{background:var(--branco);border:1px solid var(--cinza);margin-bottom:8px;border-radius:var(--radius-input,6px);overflow:hidden}
-.cont-hd{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
-.cont-hd:hover{background:var(--off)}
-.cont-nome{font-size:13px;font-weight:600}
-.cont-status{display:flex;align-items:center;gap:6px}
-.status-dot{width:6px;height:6px;border-radius:50%}
-.cont-body{padding:0 14px 12px;border-top:1px solid var(--cinza2);display:none}
-.cont-body.open{display:block}
-.pessoa-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--cinza2);font-size:11px}
-.pessoa-row:last-child{border-bottom:none}
-
-/* TOAST */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--grafite);color:#fff;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.3px;z-index:999;opacity:0;transition:opacity var(--transition-normal);border-radius:var(--radius-input,6px)}
-.toast.show{pointer-events:auto}
-.toast a{color:var(--azul);text-decoration:underline}
-.toast.show{opacity:1}
-
-/* EMPTY */
-.empty-note{padding:24px;text-align:center;color:#aaa;font-size:11px}
-
-/* SOMA BAR */
-.soma-bar{padding:6px 12px;background:var(--cinza2);font-size:10px;font-weight:600;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
-
-/* RESP BADGE */
-.resp-cc{background:var(--az-bg);color:var(--azul)}
-.resp-gb{background:var(--am-bg);color:var(--ouro)}
-.resp-tc{background:var(--tc-bg);color:var(--terracota)}
-.resp-la{background:var(--verde-bg);color:var(--verde)}
-
-/* POPUP BOAS VINDAS */
-.bv-modal{width:480px}
-
-/* SCORE SAUDE */
-.score-bar{height:4px;background:var(--cinza2);position:relative;margin-top:4px}
-.score-fill{height:100%;background:var(--verde);transition:width .4s}
-
-/* LOADING */
-.loading{padding:40px;text-align:center;color:#aaa;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
-
-/* ALCANCE MAP */
-.alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 114px)}
-.alc-side{display:flex;flex-direction:column;overflow:hidden}
-.alc-map-wrap{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;padding:4px}
-#alc-svg{width:100%;height:auto;max-height:calc(100vh - 100px);display:block}
-#alc-svg{background:var(--off);border-radius:8px}
-.alc-city-card{background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color var(--transition-fast)}
-.alc-city-card:hover{border-color:var(--azul)}
-.alc-city-opp{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-top:1px solid var(--cinza2);margin-top:3px;cursor:pointer}
-.alc-city-opp:hover span:first-child{text-decoration:underline}
-.alc-dot{transition:opacity var(--transition-fast)}
-.alc-dot:hover{opacity:.85}
-
-/* DESTAQUE */
-.destaque-card{background:var(--branco);border:1px solid var(--esp);padding:12px 14px 12px 17px;position:relative;cursor:pointer;transition:border-color var(--transition-fast);border-radius:8px;overflow:hidden}
-.destaque-card::before{content:'';position:absolute;top:0;left:0;width:5px;height:100%;background:var(--esp)}
-.destaque-card:hover{border-color:var(--grafite)}
-.destaque-card-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ouro);margin-bottom:5px}
-.destaque-card-cliente{font-weight:600;font-size:12px;margin-bottom:2px}
-.destaque-card-proj{font-size:11px;color:#666;margin-bottom:6px}
-.destaque-card-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:space-between}
-.destaque-card-valor{font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--grafite)}
-
-/* ══ DARK MODE ══════════════════════════════════════════════ */
-[data-theme="dark"] body{background:var(--off);color:var(--grafite)}
-
-/* Cards / Stats */
-[data-theme="dark"] .card{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .card-hdr{border-color:var(--cinza)}
-[data-theme="dark"] .stat{background:var(--branco);border-color:var(--cinza)}
-
-/* Buttons */
-[data-theme="dark"] .btn{background:var(--branco);border-color:var(--cinza);color:#888}
-[data-theme="dark"] .btn:hover{border-color:var(--grafite);color:var(--grafite)}
-[data-theme="dark"] .btn.filled{background:var(--grafite);color:var(--off);border-color:var(--grafite)}
-
-/* Inputs / Selects */
-[data-theme="dark"] input[type=text],
-[data-theme="dark"] input[type=date],
-[data-theme="dark"] input[type=number],
-[data-theme="dark"] input[type=email],
-[data-theme="dark"] input[type=month],
-[data-theme="dark"] textarea,
-[data-theme="dark"] select{background:var(--branco);border-color:var(--cinza);color:var(--grafite)}
-
-/* Table */
-[data-theme="dark"] th{background:var(--branco);border-color:var(--cinza);color:#888}
-[data-theme="dark"] th:hover,[data-theme="dark"] th.sorted{color:var(--grafite)}
-[data-theme="dark"] td{border-color:var(--cinza2)}
-[data-theme="dark"] tr.click:hover td{background:var(--off)}
-[data-theme="dark"] tr.expired td{background:rgba(184,86,56,.08)}
-[data-theme="dark"] tr.orc-neg td,[data-theme="dark"] tr.orc-dest td{background:rgba(196,154,39,.07)}
-[data-theme="dark"] tr.orc-fech td{background:rgba(62,120,88,.07)}
-
-/* Kanban */
-[data-theme="dark"] .kanban{border-color:var(--cinza)}
-[data-theme="dark"] .kcol{border-color:var(--cinza)}
-[data-theme="dark"] .kcol-hd{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .pcard{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .pcard:hover{border-color:var(--cinza)}
-[data-theme="dark"] .pcard-exp{background:rgba(184,86,56,.1)}
-[data-theme="dark"] .pcard-dest,[data-theme="dark"] .pcard-neg{background:rgba(196,154,39,.08)}
-[data-theme="dark"] .pcard-fech{background:rgba(62,120,88,.08)}
-[data-theme="dark"] .kitems.drag-over{outline-color:var(--azul)}
-[data-theme="dark"] .soma-bar{background:var(--cinza2)}
-
-/* Modals */
-[data-theme="dark"] .modal{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .modal-hd{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .modal-ft{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .ms-title{border-color:var(--cinza2)}
-[data-theme="dark"] .dk{background:var(--off);border-color:var(--cinza2)}
-[data-theme="dark"] .dr{border-color:var(--cinza2)}
-[data-theme="dark"] .follow-row{border-color:var(--cinza2)}
-
-/* Contacts */
-[data-theme="dark"] .cont-empresa{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .cont-hd:hover{background:var(--off)}
-[data-theme="dark"] .cont-body{border-color:var(--cinza2)}
-[data-theme="dark"] .pessoa-row{border-color:var(--cinza2)}
-
-/* Alcance map */
-[data-theme="dark"] #alc-svg{background:var(--cinza2)}
-[data-theme="dark"] .alc-city-card{background:var(--branco);border-color:var(--cinza)}
-[data-theme="dark"] .alc-city-card:hover{border-color:var(--azul)}
-[data-theme="dark"] .alc-city-opp{border-color:var(--cinza2)}
-
-/* Destaque card */
-[data-theme="dark"] .destaque-card{background:var(--branco)}
-
-/* Toast */
-[data-theme="dark"] .toast{background:var(--grafite)}
-
-/* FOLLOW-UP TASK LIST */
-.fu-item{display:flex;align-items:flex-start;gap:10px;padding:7px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
-.fu-item:last-child{border-bottom:none}
-.fu-item:hover{background:var(--off)}
-.fu-item.fu-past{background:var(--tc-bg)}
-.fu-item.fu-soon{background:var(--am-bg)}
-.fu-date{min-width:46px;display:flex;flex-direction:column;align-items:center;padding:3px 6px;border-radius:5px;background:var(--cinza2);font-size:8px;font-family:var(--font-mono);font-weight:700;color:#888;text-align:center;flex-shrink:0;line-height:1.2}
-.fu-date.fu-past{background:var(--tc-bg);color:var(--terracota)}
-.fu-date.fu-soon{background:var(--am-bg);color:var(--ouro)}
-.fu-date-day{font-size:15px;font-weight:700;display:block}
-.fu-body{flex:1;min-width:0}
-.fu-client{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fu-proj{font-size:9px;color:#999;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fu-obs{font-size:10px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fu-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
-
-/* VALOR DE PROPOSTAS (D2) */
-.vp-sec-title{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
-.vp-sec-title:first-child{margin-top:0}
-.vp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.vp-grid.g2{grid-template-columns:1fr 1fr}
-.vp-grid.g3{grid-template-columns:1fr 1fr 1fr}
-.vp-metric{background:var(--off);border-radius:5px;padding:6px 9px}
-.vp-metric-lbl{font-size:8px;color:#999;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-bottom:2px}
-.vp-metric-val{font-size:17px;font-weight:700;font-family:var(--font-mono);letter-spacing:-.5px;line-height:1.2}
-.vp-metric-val.sm{font-size:13px}
-.vp-metric-val.xs{font-size:11px}
-.vp-metric-sub{font-size:9px;color:#aaa;margin-top:1px}
-.vp-clv-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)}
-.vp-clv-row:last-child{border-bottom:none}
-.vp-clv-pos{font-size:9px;font-family:var(--font-mono);color:#aaa;min-width:14px;text-align:center;flex-shrink:0}
-.vp-clv-name{font-size:11px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vp-clv-count{font-size:9px;color:#888;white-space:nowrap;flex-shrink:0}
-.vp-clv-val{font-size:11px;font-weight:700;font-family:var(--font-mono);white-space:nowrap;flex-shrink:0}
-[data-theme="dark"] .fu-item:hover{background:var(--off)}
-[data-theme="dark"] .fu-item.fu-past{background:rgba(184,86,56,.1)}
-[data-theme="dark"] .fu-item.fu-soon{background:rgba(196,154,39,.07)}
-[data-theme="dark"] .vp-metric{background:var(--off)}
-
-</style>
-</head>
-<body>
-
-
-<div id="conteudo">
-<div id="app-shell" class="exp-app-shell">
-
-  <!-- Nav lateral — injetada por shared/exp-nav.js -->
-
-  <div id="app-main">
-
-    <div id="crm-topbar">
-      <button class="crm-tab active" onclick="goTab('dash',this)">Dashboard</button>
-      <button class="crm-tab" onclick="goTab('pipe',this)">Pipeline</button>
-      <button class="crm-tab" onclick="goTab('orc',this)">Orçamentos</button>
-      <button class="crm-tab" onclick="goTab('alcance',this)">Alcance</button>
-      <button class="crm-tab" onclick="goTab('fechamentos',this)">Fechamentos</button>
-      <button class="crm-tab" onclick="goTab('negativas',this)">Negativas</button>
-      <button class="crm-tab" onclick="goTab('nps',this)">NPS</button>
-      <button class="crm-tab" onclick="goTab('relatorios',this)">Relatórios</button>
-      <button class="crm-tab" onclick="goTab('contatos',this)">Contatos</button>
-      <div id="crm-topbar-right">
-        <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none;margin-right:4px">+ Nova oportunidade</button>
-
-        <!-- Controles padrão da plataforma — populados pelo ExpNav -->
-        <div id="exp-topbar-right">
-          <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema claro/escuro">
-            <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          </button>
-          <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          </button>
-          <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
-          <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
-            <div class="exp-nav-user" id="exp-nav-user"></div>
-            <div class="exp-user-info">
-              <div class="exp-user-nome" id="exp-user-nome">—</div>
-              <div class="exp-user-role" id="exp-user-role"></div>
-            </div>
-            <span class="exp-user-caret">▾</span>
-            <div class="exp-user-dropdown" id="exp-user-dropdown">
-              <button onclick="window.location.href='app.html'">Meus dados</button>
-              <button onclick="window.location.href='app.html'">Gestão de plataforma</button>
-              <div class="exp-user-dropdown-sep"></div>
-              <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
-              <div class="exp-user-dropdown-sep"></div>
-              <button onclick="ExpNav._sair()">Sair</button>
-              <div class="exp-user-dropdown-footer">
-                <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
-                <span id="exp-conn-label" style="font-size:10px">conectando…</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <div id="crm-body">
-
-<!-- ═══ DASHBOARD ═══════════════════════════════════════════════ -->
-<div class="page active" id="tab-dash">
-  <div id="dash-destaques" style="display:none;margin-bottom:14px"></div>
-  <div class="stat-row" id="dash-stats">
-    <div class="stat verde"><div class="stat-lbl">Faturamento no ano</div><div class="stat-val" id="s-fat">—</div><div class="stat-sub" id="s-fat-sub"></div></div>
-    <div class="stat az"><div class="stat-lbl">Pipeline ativo</div><div class="stat-val" id="s-pipe">—</div><div class="stat-sub" id="s-pipe-sub"></div></div>
-    <div class="stat am"><div class="stat-lbl">Propostas ativas</div><div class="stat-val" id="s-ativas">—</div><div class="stat-sub" id="s-ativas-sub"></div></div>
-    <div class="stat tc"><div class="stat-lbl">Taxa de conversão</div><div class="stat-val" id="s-conv">—</div><div class="stat-sub" id="s-conv-sub"></div></div>
-  </div>
-
-  <!-- Linha 1: gráfico mensal (largo) + distribuição (compacto) — 3fr 1fr alinha com stat-row -->
-  <div style="display:grid;grid-template-columns:3fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card az">
-      <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
-        <div class="card-title" style="flex:1;min-width:120px">Faturamento mensal — ano corrente</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <select id="dash-nucleo" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px)">
-            <option value="todos">Todos núcleos</option>
-            <option value="Paisagismo">Paisagismo</option>
-            <option value="Urbanismo">Urbanismo</option>
-            <option value="Consultorias">Consultorias</option>
-            <option value="Projetos Especiais">Proj. Especiais</option>
-          </select>
-          <select id="dash-resp" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px)">
-            <option value="todos">Todos resp.</option>
-          </select>
-        </div>
-      </div>
-      <div class="card-body" style="padding:8px 14px">
-        <canvas id="chart-mensal" height="90"></canvas>
-      </div>
-    </div>
-    <div class="card consul" style="margin-bottom:0">
-      <div class="card-hdr" style="flex-direction:column;align-items:flex-start;gap:5px">
-        <div class="card-title" id="chart-tipo-title">Por tipo</div>
-        <div style="display:flex;gap:3px">
-          <button id="dtm-nucleo" class="btn xs" onclick="setDashTipoMode('nucleo')" style="font-size:8px;padding:1px 6px">Núcleo</button>
-          <button id="dtm-stage" class="btn xs ghost" onclick="setDashTipoMode('stage')" style="font-size:8px;padding:1px 6px">Pipeline</button>
-          <button id="dtm-resp" class="btn xs ghost" onclick="setDashTipoMode('resp')" style="font-size:8px;padding:1px 6px">Resp.</button>
-        </div>
-      </div>
-      <div class="card-body" style="padding:8px 12px;display:flex;flex-direction:column;align-items:center;gap:8px">
-        <div style="width:155px;height:155px;position:relative;overflow:hidden;flex-shrink:0;margin:0 auto">
-          <canvas id="chart-tipo"></canvas>
-        </div>
-        <div id="chart-tipo-legenda" style="width:100%;max-width:170px;margin:0 auto"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card am" style="margin-bottom:10px">
-    <div class="card-hdr" style="gap:8px">
-      <div class="card-title" style="flex:1">Próximos follow-ups</div>
-      <div style="display:flex;gap:3px">
-        <button id="dash-fu-btn-todos" class="btn xs" onclick="setDashFuMode('todos')">Todos</button>
-        <button id="dash-fu-btn-meus" class="btn xs ghost" onclick="setDashFuMode('meus')">Meus</button>
-      </div>
-    </div>
-    <div id="dash-fu-list" style="padding:0 0 4px"><div class="loading">Carregando...</div></div>
-  </div>
-
-  <div class="card az" style="margin-bottom:10px">
-    <div class="card-hdr" style="flex-wrap:wrap;gap:6px">
-      <div class="card-title" style="flex:1">Valor de propostas</div>
-      <div style="display:flex;gap:3px;flex-wrap:wrap">
-        <button class="btn vp-f xs" data-nucleo="todos" onclick="setVpNucleo(this,'todos')">Todas</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Paisagismo" onclick="setVpNucleo(this,'Paisagismo')">PAI</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Urbanismo" onclick="setVpNucleo(this,'Urbanismo')">URB</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Consultorias" onclick="setVpNucleo(this,'Consultorias')">CNS</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Projetos Especiais" onclick="setVpNucleo(this,'Projetos Especiais')">ESP</button>
-      </div>
-    </div>
-    <div class="card-body" style="padding:12px 14px 14px 17px" id="vp-body">
-      <div class="loading">Carregando...</div>
-    </div>
-  </div>
-
-  <div class="g2" style="gap:10px;margin-bottom:10px">
-    <div class="card cinza">
-      <div class="card-hdr"><div class="card-title">Fechamentos — últimos 45 dias</div></div>
-      <div id="dash-fechamentos"><div class="loading">Carregando...</div></div>
-    </div>
-    <div class="card cinza">
-      <div class="card-hdr"><div class="card-title">Negativas — últimos 45 dias</div></div>
-      <div id="dash-negativas"><div class="loading">Carregando...</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ PIPELINE ═══════════════════════════════════════════════ -->
-<div class="page" id="tab-pipe">
-  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:nowrap">
-    <select id="pf-resp" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-      <option value="todos">Todos resp.</option>
-      <option value="Carlos">Carlos</option>
-      <option value="Gabriela">Gabriela</option>
-    </select>
-    <select id="pf-nucleo" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-      <option value="todos">Todos núcleos</option>
-      <option value="Urbanismo">Urbanismo</option>
-      <option value="Paisagismo">Paisagismo</option>
-      <option value="Consultorias">Consultorias</option>
-      <option value="Projetos Especiais">Proj. Especiais</option>
-    </select>
-    <select id="pf-ordem" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-      <option value="" disabled>Ordenar por</option>
-      <option value="recentes" selected>Mais recentes</option>
-      <option value="valor">Maior valor</option>
-      <option value="contato">Último contato</option>
-    </select>
-    <div style="margin-left:auto;font-size:10px;color:#888;white-space:nowrap" id="pipe-total"></div>
-  </div>
-  <div class="kanban" id="kanban-board" style="grid-template-columns:repeat(4,1fr)">
-    <div class="kcol">
-      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--azul)"></div><div class="kcol-title">Lead</div><div class="kcol-cnt" id="k-cnt-p">0</div><div class="kcol-sum" style="visibility:hidden">—</div></div>
-      <div class="kitems" id="k-prosp"></div>
-    </div>
-    <div class="kcol">
-      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--ouro)"></div><div class="kcol-title">Orçamento ativo</div><div class="kcol-cnt" id="k-cnt-o">0</div><div class="kcol-sum" id="k-sum-o"></div></div>
-      <div class="kitems" id="k-orc"></div>
-    </div>
-    <div class="kcol">
-      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--roxo)"></div><div class="kcol-title">Negociação</div><div class="kcol-cnt" id="k-cnt-neg">0</div><div class="kcol-sum" id="k-sum-neg"></div></div>
-      <div class="kitems" id="k-negoc"></div>
-    </div>
-    <div class="kcol kcol-dupla">
-      <div class="kcol-sec">
-        <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--verde)"></div><div class="kcol-title">Fechado <span style="font-weight:300;font-size:8px">(45 dias)</span></div><div class="kcol-cnt" id="k-cnt-f">0</div><div class="kcol-sum" id="k-sum-f"></div></div>
-        <div class="kitems" id="k-fech"></div>
-      </div>
-      <div class="kcol-sep"></div>
-      <div class="kcol-sec">
-        <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--terracota)"></div><div class="kcol-title">Negado</div><div class="kcol-cnt" id="k-cnt-neg2">0</div><div class="kcol-sum" style="visibility:hidden">—</div></div>
-        <div class="kitems" id="k-neg"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ORÇAMENTOS ═══════════════════════════════════════════════ -->
-<div class="page" id="tab-orc">
-  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-    <select id="of-ano" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;font-weight:700;border:1px solid var(--cinza)">
-      <option value="todos">Todos anos</option>
-      <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
-    </select>
-    <select id="of-nucleo" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-      <option value="todos">Todos núcleos</option>
-      <option value="Urbanismo">Urbanismo</option>
-      <option value="Paisagismo">Paisagismo</option>
-      <option value="Consultorias">Consultorias</option>
-      <option value="Projetos Especiais">Proj. Especiais</option>
-    </select>
-    <select id="of-status" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-      <option value="todos">Todos status</option>
-      <option value="Prospecção">Prospecção</option>
-      <option value="Orçamento ativo">Orçamento ativo</option>
-      <option value="Fechado">Fechado</option>
-      <option value="Negado">Negado</option>
-      <option value="Cancelado">Cancelado</option>
-      <option value="Expirado">Expirado</option>
-    </select>
-    <select id="of-resp" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-      <option value="todos">Todos resp.</option>
-      <option value="Carlos">Carlos</option>
-      <option value="Gabriela">Gabriela</option>
-    </select>
-    <input id="of-busca" type="text" placeholder="Buscar cliente, nº, cidade..." oninput="renderOrc()" style="font-size:10px;padding:4px 7px;min-width:140px;flex:1;max-width:240px;border:1px solid var(--cinza)">
-  </div>
-  <div class="card cinza">
-    <div class="soma-bar">Total filtrado: <span id="orc-soma" style="font-family:var(--font-mono)">—</span> &nbsp;·&nbsp; <span id="orc-cnt">—</span> propostas &nbsp;<span style="color:#bbb;font-weight:400">· ↕ cabeçalho ordena</span></div>
-    <div style="overflow-x:auto">
-    <table id="orc-table">
-      <thead><tr>
-        <th onclick="sortOrc('num_legado')" id="oth-num">Nº</th>
-        <th>Cliente</th>
-        <th onclick="sortOrc('tipo')" id="oth-tipo">Tipo</th>
-        <th>Resp.</th>
-        <th onclick="sortOrc('cidade')" id="oth-cidade">Cidade/UF</th>
-        <th onclick="sortOrc('data_entrada')" id="oth-entrada">Entrada</th>
-        <th onclick="sortOrc('data_envio')" id="oth-envio">Envio</th>
-        <th onclick="sortOrc('valor_proposto')" id="oth-valor">Proposta</th>
-        <th title="Valor que compete à EXP (exclui repasses e subcontratações)">Efetivo EXP</th>
-        <th onclick="sortOrc('valor_fechado')" id="oth-fech">Fechamento</th>
-        <th>Prob.</th>
-        <th>Dias envio</th>
-        <th>Status</th>
-        <th>Temperatura</th>
-      </tr></thead>
-      <tbody id="orc-body"></tbody>
-    </table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ CONTATOS ═══════════════════════════════════════════════ -->
-<div class="page" id="tab-contatos">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <input id="ct-busca" type="text" placeholder="Buscar empresa ou contato..." oninput="renderContatos()" style="font-size:10px;padding:5px 9px;width:280px;border:1px solid var(--cinza)">
-    <select id="ct-status" onchange="renderContatos()" style="font-size:10px;padding:5px 9px;border:1px solid var(--cinza)">
-      <option value="todos">Todos status</option>
-      <option value="Ativo">Ativo</option>
-      <option value="Sem atividade">Sem atividade</option>
-      <option value="Inativo">Inativo</option>
-      <option value="Prospecção">Prospecção</option>
-    </select>
-    <div style="margin-left:auto;font-size:10px;color:#888" id="ct-total"></div>
-  </div>
-  <div id="contatos-list"><div class="loading">Carregando...</div></div>
-</div>
-
-<!-- ═══ FECHAMENTOS ══════════════════════════════════════════════ -->
-<div class="page" id="tab-fechamentos">
-  <div class="stat-row" id="fech-stats" style="margin-bottom:14px">
-    <div class="stat verde"><div class="stat-lbl">Faturamento no ano</div><div class="stat-val" id="fech-s-fat">—</div><div class="stat-sub" id="fech-s-fat-sub"></div></div>
-    <div class="stat az"><div class="stat-lbl">Efetivo EXP no ano</div><div class="stat-val" id="fech-s-efetivo">—</div><div class="stat-sub" id="fech-s-efetivo-sub"></div></div>
-    <div class="stat am"><div class="stat-lbl">Projetos fechados</div><div class="stat-val" id="fech-s-qtd">—</div><div class="stat-sub" id="fech-s-qtd-sub"></div></div>
-    <div class="stat consul"><div class="stat-lbl">Ticket médio (efetivo)</div><div class="stat-val" id="fech-s-ticket">—</div><div class="stat-sub" id="fech-s-ticket-sub"></div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card verde">
-      <div class="card-hdr" style="gap:6px">
-        <div class="card-title" style="flex:1">Fechamentos por tipo</div>
-        <select id="ff-ano" onchange="renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-          <option value="todos">Todos anos</option>
-          <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
-        </select>
-        <select id="ff-resp" onchange="renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-          <option value="todos">Todos resp.</option>
-        </select>
-      </div>
-      <div class="card-body" style="padding:10px 14px" id="fech-por-tipo"></div>
-    </div>
-    <div class="card consul">
-      <div class="card-hdr"><div class="card-title">Por núcleo (projetos)</div></div>
-      <div class="card-body" style="padding:10px 12px" id="fech-por-nucleo"></div>
-    </div>
-  </div>
-  <div class="card cinza">
-    <div class="card-hdr"><div class="card-title">Lista de fechamentos</div><div id="fech-lista-total" style="font-size:10px;color:#888;margin-left:auto"></div></div>
-    <div style="overflow-x:auto">
-    <table id="fech-table">
-      <thead><tr><th>Nº</th><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Cidade/UF</th><th>Fechamento</th><th>Valor total</th><th>Efetivo EXP</th></tr></thead>
-      <tbody id="fech-body"></tbody>
-    </table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ NEGATIVAS ═══════════════════════════════════════════════ -->
-<div class="page" id="tab-negativas">
-  <div class="stat-row" style="margin-bottom:14px">
-    <div class="stat tc"><div class="stat-lbl">Total de negativas</div><div class="stat-val" id="neg-s-total">—</div><div class="stat-sub" id="neg-s-total-sub"></div></div>
-    <div class="stat am"><div class="stat-lbl">Valor efetivo perdido</div><div class="stat-val" id="neg-s-valor">—</div><div class="stat-sub" id="neg-s-valor-sub"></div></div>
-    <div class="stat cinza"><div class="stat-lbl">Categoria mais frequente</div><div class="stat-val" style="font-size:14px" id="neg-s-cat">—</div><div class="stat-sub" id="neg-s-cat-sub"></div></div>
-    <div class="stat cinza"><div class="stat-lbl">Prob. retorno Alta/Média</div><div class="stat-val" id="neg-s-ret">—</div><div class="stat-sub" id="neg-s-ret-sub"></div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card tc">
-      <div class="card-hdr" style="gap:6px">
-        <div class="card-title" style="flex:1">Por categoria</div>
-        <select id="nf-ano" onchange="renderNegativas()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-          <option value="todos">Todos anos</option>
-          <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
-        </select>
-        <select id="nf-resp" onchange="renderNegativas()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-          <option value="todos">Todos resp.</option>
-        </select>
-      </div>
-      <div class="card-body" style="padding:10px 14px" id="neg-por-cat"></div>
-    </div>
-    <div class="card am">
-      <div class="card-hdr"><div class="card-title">Por núcleo</div></div>
-      <div class="card-body" style="padding:10px 14px" id="neg-por-nucleo"></div>
-    </div>
-  </div>
-  <div class="card cinza">
-    <div class="card-hdr"><div class="card-title">Lista de negativas</div><div id="neg-lista-total" style="font-size:10px;color:#888;margin-left:auto"></div></div>
-    <div style="overflow-x:auto">
-    <table id="neg-table">
-      <thead><tr><th>Nº</th><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Categoria</th><th>Observação</th><th>Retorno</th><th>Valor prop.</th></tr></thead>
-      <tbody id="neg-body"></tbody>
-    </table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ NPS ═════════════════════════════════════════════════════ -->
-<div class="page" id="tab-nps">
-  <div class="card cinza">
-    <div class="card-hdr"><div class="card-title">NPS</div></div>
-    <div class="card-body" id="nps-body"><div class="loading">Carregando...</div></div>
-  </div>
-</div>
-
-<!-- ═══ ALCANCE ════════════════════════════════════════════════ -->
-<div class="page" id="tab-alcance">
-  <div class="alc-layout">
-    <!-- sidebar -->
-    <div class="alc-side">
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="alc-modo" onchange="alcMode=this.value;renderAlcance()" style="flex:1;font-size:11px;font-weight:600;padding:7px 10px;border:1px solid var(--cinza);background:var(--branco);border-radius:var(--radius-input,6px);cursor:pointer">
-          <option value="todos">Todas as oportunidades</option>
-          <option value="op">Oportunidades ativas</option>
-          <option value="fech">Fechamentos</option>
-        </select>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="alc-resp" onchange="renderAlcance()" style="flex:1;font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px">
-          <option value="todos">Todos resp.</option>
-        </select>
-        <select id="alc-ano" onchange="renderAlcance()" style="font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px;width:80px">
-          <option value="todos">Todos</option>
-          <option value="2026">2026</option>
-          <option value="2025">2025</option>
-          <option value="2024">2024</option>
-          <option value="2023">2023</option>
-        </select>
-      </div>
-      <div id="alc-stats" style="margin-bottom:12px"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999" id="alc-list-hdr">Por cidade</div>
-        <button id="alc-list-back" onclick="renderAlcance()" style="display:none;font-size:9px;background:none;border:none;color:var(--azul);cursor:pointer;padding:0;text-decoration:underline">← todas</button>
-      </div>
-      <div id="alc-list" style="overflow-y:auto;flex:1"></div>
-    </div>
-    <!-- mapa -->
-    <div class="alc-map-wrap">
-      <svg id="alc-svg" viewBox="0 0 1427.75 1474.67" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="alc-sh" x="-8%" y="-8%" width="116%" height="116%">
-            <feDropShadow dx="0" dy="6" stdDeviation="14" flood-opacity="0.13"/>
-          </filter>
-        </defs>
-        <path id="alc-br"
-          d="M746.79,1437.15v37.53l8.34-8.34,25.02-29.19,8.34-12.51v-41.7l4.17-8.34,29.19-33.36,12.51-4.17,4.17,4.17v8.34l-29.19,33.36-4.17,8.34h4.17l41.7-41.7,4.17-8.34v-12.51l4.17-4.17,8.34-12.51v-25.02l29.19-25.02,16.68-20.85,4.17-12.51v-70.88l-4.17-8.34,20.85-16.68,4.17-8.34,8.34-4.17,8.34-8.34,37.53-37.53h12.51l12.51-4.17,8.34-4.17,12.51-8.34,8.34-16.68,8.34-4.17,14.96-8.34h64.26l25.02-4.17,16.68-16.68,12.51-16.68,4.17-12.51-4.17-8.34,8.34-4.17,12.51-12.51,8.34-8.34v-25.02c0-3.34,2.78-6.95,4.17-8.34l12.51-12.51,8.34-12.51v-29.19l-4.17-8.34h8.34l12.51-12.51,4.17-12.51v-150.1l4.17-12.51,54.2-50.03v-8.34l8.34-4.17,25.02-25.02v-8.34h12.51l41.7-41.7,8.34-12.51-8.34-8.34,8.34-8.34v-25.02l-4.17-16.68v-8.34l4.17-8.34v-16.68l-4.17-8.34v-12.51l-8.34-12.51-16.68-12.51-58.37-4.17-16.68-12.51-37.53-37.53-25.02-25.02-12.51-4.17h-87.56l-4.17-8.34-16.68-12.51h-62.54l-8.34-12.51-37.53-29.19-16.68-4.17-29.19-29.19-79.22-4.17-37.53-37.53v-16.68l-4.17-20.85h-12.51l-8.34-8.34v-50.03l-8.34-8.34-16.68-16.68-8.34,4.17-12.51,12.51-12.51,20.85-8.34,20.85-33.36,29.19-58.37-4.17h-158.44l-8.34-8.34V7l-4.17-4.17h-33.36l-8.34,8.34-12.51,12.51-16.68,16.68-12.51,4.17h-66.71l-4.17,8.34v20.85l4.17,20.85,16.68,16.68-4.17,4.17-37.53,37.53-16.68,8.34h-37.53c-3.34,0-9.73-5.56-12.51-8.34l-16.68-20.85-16.68-8.34-8.34-4.17h-62.54l-8.34,4.17v225.15l-8.34,4.17h-62.54l-16.68,4.17-41.7,41.7-16.68,20.85v62.54l12.51,16.68,8.34,12.51,4.17,16.68,8.34,8.34,12.51,4.17h50.03l8.34,4.17v16.68l4.17,12.51,4.17,4.17h75.05l16.68-4.17,16.68-16.68,8.34-4.17h75.05v33.36l25.02,25.02,20.85,16.68,8.34,4.17h29.19l8.34,4.17,12.51,12.51,29.19,25.02,8.34,4.17h37.53v50.03l4.17,12.51,25.02,25.02,12.51,8.34h16.68l25.02,4.17,4.17,4.17v50.03l4.17,16.68v4.17l-4.17,4.17v141.76l8.34,4.17h79.22l4.17,8.34v33.36l4.17,16.68,4.17,4.17h37.53l-4.17,16.68v33.36l4.17,12.51,4.17,8.34,12.51,12.51,4.17,8.34v8.34l4.17,8.34-4.17,8.34v12.51l4.17,8.34h-25.02l-12.51,4.17-87.56,91.73-8.34,8.34v8.34l29.19,29.19,12.51,8.34h16.68l8.34,4.17,16.68,16.68,41.7,41.7,16.68,20.85ZM439.4,230.78v-15.49c0-.42,1.65-3.67,2.15-4.33,5.59-7.55,17.57-3.55,25.59-4.67,2.92-.41,7.48-3.43,9.75-5.38,7.75-6.63,19.52-22.45,28.08-25.96,10.04-4.11,23.7-.37,34.22-1.8,1.99-.27,4.85-2.42,4.72-4.64-1.03-14.19,1.27-30.02,0-44-.3-3.29-2.26-4.95-5.45-5.35-6.74-.85-16.71,1.22-22.91-.14-4.46-.98-6.82-5.62-7.53-9.76l-.72-101.57c-.91-2.17-3.33-2.9-5.53-3.11-5.39-.52-16.25-.49-21.67,0-3.63.33-7.47,2.09-10.68,3.73l-34.67,34.49c-3.74,2.43-7.76,4.41-12.23,5.06l-64.9-.06c-3.24.24-5.83,2.91-6.12,6.12-.6,6.69-.63,20.05,0,26.71.33,3.51,2.47,7.75,4.69,10.44l54.08,53.99c11.24,13.5,3.91,42.55,6.25,59.3l3.45,7.36,19.47,19.08ZM692.3,120.56l1.08,2.16,93.31,92.56,4.58.27,60.99-60.76c1.57-2.09,3.07-6.24,3.43-8.82.76-5.5.7-17.99.19-23.64-.83-9.12-11.8-4.85-17.36-6.42-4.55-1.28-7.51-6.31-7.92-10.81-1.28-14.18,1.44-30.62.06-44.72-.28-2.81-1.83-5.31-3.01-7.79l-17.18-17.41c-2.15-.75-4.64-.59-6.48.76l-22.26,22.41c-6,8.94-1.04,19.63-8.02,28-10.04,8.5-19.11,21.09-29.18,29.17-1.99,1.59-8.53,5.03-10.82,5.03h-41.43ZM559.89,411.75c15.75-16.25,34.31-31.81,50.64-47.7,6.03-5.87,15.45-13.29,16.23-21.95,1.67-18.57-1.33-39.57,0-58.4-.5-3.37-1.69-6.54-3.62-9.35l-72.8-72.73c-3.82-4.81-5.48-9.86-6.45-15.88-.6-3.67.84-7.07-4.67-7.57-6.79-.62-20.69-.66-27.44,0-2.17.21-5.98,1.79-7.8,3.01-9.27,6.22-17.72,20.4-27.6,26.43-10.1,6.17-16.36,2.34-26.54,3.73-2.38.32-5.08,3.04-5.4,5.4-.59,4.32.95,12.15-.1,15.74-.13.43-2.35,2.78-2.77,2.99-1.73.89-4.63,0-6.17-1.07-3.21-2.23-15.64-15-18.35-18.39-2.5-3.12-5.43-9-5.78-12.95-1.24-13.75,1.31-29.54.06-43.28-.36-3.93-2.14-8.18-4.69-11.16l-33.26-33.02-5.32.25-41.4,41.45c-4.15,3.05-9.2,5.35-14.39,5.78-8.86.74-25.07.74-33.92,0-4.08-.34-10.39-2.58-13.67-5.06-10.53-7.95-20.41-22.53-30.96-31-2.35-1.89-5.2-3.28-8.08-4.17l-68.68.2c-1.46,1.32-2.9,2.89-2.9,5.03l.06,218.33c-.61,5.02-4.15,8.66-9.06,9.68h-69.18c-3.67.68-7.14,2.02-10.07,4.33l-56.21,56.18c-2.23,2.84-4.19,6.04-4.69,9.71l.37,52.27c1.32,1.46,2.89,2.9,5.03,2.9l182.16.13c4.18.91,8.1,2.58,11.7,4.87l60.85,60.9c2.69,2.23,6.92,4.36,10.44,4.69,6.22.59,21.35.73,27.39-.05,2.03-.26,6.28-2.3,7.96-3.57l74.91-74.94c5.3-3.99,10.16-3.29,15.15.72,8.43,6.79,16.04,17.87,24.48,24.51,2.06,1.62,4.27,2.39,6.61,3.47l119.14-.23c1.47-1.33,2.9-2.89,2.9-5.03v-72.76c.35-3.13,3.71-10.21,5.9-12.47ZM554.47,119.27c-3.6.72-5.23,3.06-5.58,6.67,1.38,19.53-1.73,41.31,0,60.57.34,3.83,2.41,7.54,4.34,10.79l72.8,72.73c2.71,3.39,5.39,9.35,5.78,13.67,1.69,18.54-1.34,39.59,0,58.4-1.05,7.43-4.46,12.6-9.74,17.63-16.95,16.12-34.37,32-51.18,48.24-4.91,4.75-10.38,9.22-11.86,16.24.79,11.09-1.12,23.7-.05,34.59.29,2.93,1.98,5.67,3.29,8.23l68.42,68.47,7.36,3.44,218.2.17,8.24-3.29c7.79-9.49,20.97-18.55,28.14-28.06,1.98-2.62,3.35-7.55,3.62-10.79,1.24-14.74-1.1-31.07.12-45.99,3.1-13.84,18.71-18.67,22.17-31.86,1.17-16.48-1.49-34.92,0-51.15.39-4.32,3.07-10.28,5.78-13.67,10.45-13.05,26.84-24.81,37.82-37.83,1.09-2.29,2.92-5.05,3.24-7.56,1.73-13.48-3.9-29.4,5.77-41.05l35.69-35.63v-5.79l-27.38-27.37-7.36-3.44-66.89-.12c-4.93-.98-9.4-2.17-13.32-5.41-9.87-8.18-19.26-21.7-29.15-29.21-3.62-2.75-5.78-2.74-9.39,0l-59.06,59.09c-3.97,2.97-10.68,1.69-14.08-1.8l-91.15-91.13-4.15-5.22-9.5-2.75-120.93.18ZM1019.42,556.38v-70.96c0-2.28,3.44-8.83,5.03-10.81l83.19-83.23c9.16-11.97-.47-34.08,6.73-48.02,6.18-11.97,24.32-23.43,32.59-34.41,4.3-5.71,4.56-13.1,1.32-19.36-1.66-3.22-7.99-10.29-10.67-13.1-2.66-2.78-8.83-5.09-12.61-5.4-16.81-1.38-35.99,1.63-52.66.06-3.5-.33-8.76-2.85-11.51-5.06-10.33-8.29-19.6-21.19-29.91-29.88-3.35-1.67-7.91-4.55-11.73-3.85-2.75.51-6.61,2.42-8.8,4.18-12.67,10.19-24.15,26-36.71,36.77-7.04,9.93-.4,29.17-4.87,41.24-1.1,2.98-3.17,6.04-5.23,8.46-10.5,12.33-26.1,23.58-36.06,35.98-4.28,5.33-4.85,13.92-3.94,20.54,1.04,7.6,15,3.63,20.4,4.81,3.34.73,6.48,4.45,7.57,7.56l.1,49.61c1.36,15.11,24.77,25.37,29.94,39.23,3.83,10.28.71,23.45,1.77,34.25.82,8.39,12.94,17.67,18.77,23.73.66.69.99,1.74,1.77,2.55,5.01,5.17,10.18,10.28,15.51,15.11ZM1159.69,292.85c-1.52.33-3.29,1.95-3.76,3.44-.49,1.53-.09,2.74-.35,3.98-.89,4.24-2.52,8.16-4.68,11.89-8.24,10.21-22.21,19.74-29.89,29.9-10.39,13.74,1.9,37.42-9.03,51.48l-82.84,82.86c-2.57,2.95-3.96,6.6-4.69,10.44l.05,69.88c1.04,7.46,7.02,14.07,14.72,14.82,7.67.75,17.67.61,23.82-4.34,5.73-4.61,17.6-16.6,22.34-22.32,6.83-8.24,3.33-13.1,4.81-21.84.8-4.72,4.88-8,9.55-8.46,16.83-1.65,36.45,1.58,53.37.06,4.38-.39,8.91-3.01,12.23-5.78,8.05-6.73,21.99-20.77,28.83-28.81,3.12-3.66,5.52-7.74,6.13-12.6l-.17-108.66c-3.31-15.38-22.91-20.7-24.38-36.85-.69-7.56.74-16.26.06-23.83-.24-2.67-1.97-4.99-4.72-5.37-2.18-.3-9.37-.33-11.4.12ZM1184.9,292.85c-2.16.72-3.64,2.3-4.08,4.56.99,10.36-2.59,23.16,2.98,32.31,6.48,10.66,20.07,15.37,21.49,29.66l.37,83.91,3.6,2.88,63.8-.36c4.61-3,2.3-7.66,2.89-12.24.35-2.71,2.71-6.53,5.04-7.93,3.84-2.3,10.94.21,11.54-6.47.84-9.25-1.38-21.32.11-30.14.47-2.75,2.73-5.82,3.84-8.41l15.37-16.33c1.17-1.78,1.17-3.78,0-5.56l-61.13-61.35c-2.95-2.57-6.61-3.96-10.44-4.69l-55.38.15ZM1297.54,407.26c4.2-3.04,7.06-7.83,11.73-10.24,10.14-5.22,23.22-4.38,24.32,9.13.35,4.3-1.73,15.76,2.63,17.54,3.12,1.28,10.56,1.36,13.22-.92,1.11-.96.96-4.6,1.77-6.15.87-1.67,4.65-4.6,6.64-4.89l49.55-.17c6.32-1.24,6.21-5.38,4.13-10.57-2.16-5.38-14.4-18.09-19.22-21.84-2.34-1.82-7.12-4.06-10.07-4.34-14.75-1.39-32.25,1.66-46.84,0-2.97-.34-7.39-2.16-10-3.69-4.21-2.48-5.57-6.42-10.58-2.42-3.54,2.82-13.28,12.72-15.25,16.45-3.75,7.06-2.99,14.48-2.02,22.11ZM845.18,647.02c.51.51,3.57,1.51,4.53,1.6h147.77c2.35-.32,5.42-1.59,5.97-4.12l-.03-91.2c-1.79-12.91-19.64-20.4-24-32.91-2.84-8.16-.17-22.2-1.09-31.33-1.9-18.96-29.91-27.16-31.71-46.82l.02-48.28c-.19-1.43-2.04-4.21-3.33-4.59-1.59-.46-13.67-.39-15.75-.09-.93.13-1.74.6-2.53,1.07-1,1-1.35,2.2-1.47,3.57-.96,10.51,2.1,22.92-2.48,32.82-4.71,10.2-18.51,16.03-20.41,27.14-1.29,14.84,1.22,31.35-.11,45.99-.37,4.04-2.53,9.07-5.06,12.23-7.82,9.73-29.61,24.77-30.97,36.75-.9,7.92,1.39,13.41-2.34,21.43-4.78,10.27-17.41,13.72-18.61,26.78-1.32,14.43,1.06,30.79,0,45.44.09.96,1.08,4.01,1.6,4.53ZM1318.24,399.5c-6.85.99-16.92,9.44-19.63,15.68-1.75,4.02-.72,8.35-4.3,11.55-3.9,3.49-9.43,1.9-11.93,4.65-2.5,2.75-1.57,12.03-.35,15.54,1.59,4.57,9.38,13.92,14.81,11.16,1.71-.87,5.49-5.95,7.54-7.59,5.69-4.55,12.9-6.65,20.16-5.73,4.72.6,8.49,5.9,9,10.45.57,5.06-2.32,13.42,4.68,14.05,6.15.56,20.72.72,26.67-.05,12.19-1.57,21.18-23.33,35.47-25.77,4.74-.81,11.85,1.59,12.5-5.52.5-5.51-.44-11.73-.01-17.33l-3.96-3.96-49.72.02c-4.76.68-3.19,4.71-4.79,7.46-4.33,7.45-19.48,7.55-24.41.83-4.14-5.64-1.01-16.11-2.49-22.72-2.43-3.15-5.47-3.25-9.22-2.71ZM1401.08,448.47c-13.81,2.36-21.45,24.36-36.86,25.82-6.8.64-20.63.63-27.44,0-4.22-.39-8.14-4.37-8.83-8.46-.81-4.8,1.63-12.17-2.64-15.37-2.39-1.79-9.54-.54-12.42.61-8.67,3.46-10.41,13.8-21.45,12.37-4.4-.57-6.53-4.98-9.78-7.51-2.42-1.88-5.31-3.22-8.27-3.98l-64.7.1c-6.31,1.38-3.47,13.34-4.11,18.23-.32,2.46-2.76,8.1-4.29,10.12-3.19,4.22-9.73,8.4-12.6,12.62-1.68,2.46-1.59,5.27.32,7.55,7,5.61,13.58,15.34,20.53,20.53,3.2,2.39,6,1.89,8.98-.41,4.8-3.7,8.51-10.18,13.47-13.19,9.22-5.6,25.92-5.56,34.5,1.33,3.79,3.04,7.8,9.01,11.49,11.56,1.25.87,3.48,1.63,4.95,1.31,2.96-.65,11.56-11.3,14.94-13.91,9.3-7.2,26.38-7.85,35.64-.41,3.67,2.95,8.56,11.07,13.56,9.98,2.86-.62,9.71-9.36,12.77-11.73,11.95-9.28,34.75-4.08,49.35-5.41,1.37-.12,2.57-.48,3.57-1.47l1.11-3.21-.16-43.84-1.31-2.29c-1.74-1.53-7.92-1.35-10.3-.94ZM579.18,848.12l34.93-34.59c3.35-2.76,6.75-4.47,10.96-5.61l113.73-.11c2.36-.5,5.06-.93,7.07-2.29,1.62-1.1,1.8-2.31,2.97-3.52,28.19-29.17,57.81-57.01,86.13-86.05l3.62-8.63v-110.94c.66-2.34.9-4.55,1.77-6.87,3.87-10.39,18.09-16.38,19.13-26.98.22-2.25.26-14.28-.37-15.53-.87-1.73-3.87-2.71-5.75-2.9l-215.31-.13c-4.08-.88-7.68-2.29-10.98-4.87l-68.08-67.72v27.73c0,.19-1.25,3.04-1.53,3.51-1.15,1.94-4.52,4.44-6.76,4.77l-87.93-.02c-4.28.41-6.43,2.57-6.84,6.84,1.36,18.05-1.72,38.49,0,56.25.38,3.96,2.26,6.14,6.17,6.79l38.02.17c3.93.95,6.63,4.4,7.57,8.28l.12,65.38c-1.71,15.03-18.01,19.45-19.4,31.75.97,14.35-1.39,30.55-.05,44.66.33,3.51,2.47,7.75,4.69,10.44,9.06,10.92,22.2,20.89,31.82,31.58,2.98,1.48,6.68,3.3,10.01,3.68,11.44,1.3,24.92-1.02,36.6.15,2.06.88,4.17,1.99,5.54,3.83.5.67,2.15,3.91,2.15,4.33v66.63ZM390.88,476.54c-.96.21-1.95.98-2.66,1.66l-73.08,73.17c-2.36,3.04-4.4,7.99-4.75,11.82-.81,8.82-.66,20.29,5.06,27.41,9.97,12.41,25.51,23.68,36.06,35.99,14.31,9.67,37.8-2.06,51.15,8.65,11.56,9.28,21.92,24.07,33.48,33.52,2.74,2.24,7.24,4.73,10.79,5.06,7.97.75,24.51.75,32.48,0,8.72-.82,22.24-14.13,23.37-22.74l-.31-65.92c-.73-2.39-4.3-3.29-6.54-3.54-11.45-1.29-25.03.91-36.71-.03-3.93-1.02-6.55-3.66-7.57-7.56l.02-59.81c-.93-9.93-12.12-6.05-19.1-6.84-9.58-1.08-22.85-15.95-29.59-23.01-3.56-3.73-5.65-9.26-12.11-7.82ZM262.15,552.06l-61.59-61.96c-.93-.7-6.53-3.59-7.22-3.59H8.52c6.04,7.95,16.36,13.53,19.3,23.57,1.57,5.37.04,9.77,2.18,15.11,2.9,7.26,10.26,11.39,17.77,12.49l56.94-.02c3.38,1.08,7.03,3.87,7.57,7.56,1.07,7.33-.92,16.98.03,24.47.36,2.83,2.07,5.06,4.79,6.02l79.83.1c12.94-1.76,18.66-16.78,29.43-21.72.75-.34,4.91-2.02,5.18-2.02h30.62ZM1008.61,554.22v174.69c0,1.4,3.11,3.74,4.69,3.96,3.76.51,13.42.42,17.31.03,2.48-.24,6.63-2.1,8.63-3.62,10.4-7.88,22.93-28.24,36.17-30.11,12.87.63,27.55-1.38,40.22-.19,4.12.39,8.07,2.97,11.51,5.06l49.08,48.9c2.63,1.39,5.5,2.74,8.52,3.01,10.62.96,23.53-1.34,33.87,0,4.06.52,7.21,3.45,8.7,7.15l.35,66.64c.92,4.25,2.25,8.13,5.01,11.56,3.13,3.9,7.59,8.44,12.63,4.69,2.02-1.51,9.33-8.82,10.77-10.84,1.47-2.06,2.49-5.14,3.24-7.56v-151.28c1.34-14.83,18.28-26.26,28.14-35.97,10.16-10.01,20.07-20.28,30.26-30.26,2.11-2.58,1.95-5.33,0-7.95-6.56-8.79-19.76-14.93-20.94-27.33-1.31-13.85,3.54-22.26-6.8-34.26-5.38-6.25-23.39-24.88-29.66-28.7-7.45-4.53-19.36-4.22-26.7.48-8.53,5.46-14.69,21.34-26.86,14.17-7.5-5.99-14.54-16.42-21.98-21.96-1.83-1.36-3.34-1.82-5.66-1.3-3.25.73-10.05,10.03-13.47,12.46-4.38,3.11-9.58,3.99-14.72,4.73l-52.53.07c-5.44,3.62-2.63,11.24-3.36,16.81-.29,2.22-2.64,7.86-3.97,9.72-10.4,8.25-23.14,28.7-36.75,30.25-3.74.43-12.86.49-16.53,0-11.87-1.55-18.68-15-27.04-21.95-.73-.61-.92-1.38-2.16-1.08ZM1288.18,525.4h24.14c1.61,0,8.51,3.76,10.1,5.03l33.82,33.9c2.85,1.97,5.29,1.12,7.97-.74l45.75-45.74c1.84-2.29,4.28-8.8,2.03-11.06-.44-.45-4.31-1.49-5.26-1.58-8.42-.8-24.7-.7-33.2,0-3.37.28-8.34,2.04-11.12,4.01-4.82,3.43-9.67,12.14-15.66,13.16-9.73,1.65-13.31-9.61-21.1-13.19-5.37-2.47-14.54-2.67-19.97-.49-4.83,1.94-13.6,9.98-16.81,14.17-.7.92-.88,1.34-.7,2.54ZM1287.45,529.72c4.54,5.41,10.27,9.5,12.81,16.37,4.22,11.4-1.76,24.6,4.58,35.04,2.36,3.89,11.66,13.32,15.38,16.32,3.09,2.49,5.97,3.28,9.39.72,6.47-7.47,15.37-14.12,21.62-21.61,2.59-3.1,3.78-5.4,1.08-9.04l-33.5-33.5c-1.4-1.06-7.98-4.31-9.38-4.31h-21.98ZM978.35,758.8l21.63-21.24,3.45-8.08-.18-73.01-3.24-3.24h-152.83c-2.25.95-3.37,2.65-3.59,5.05-1.43,15.68,1.76,34.22,0,49.71-1.17,10.34-12.61,18.81-19.44,25.95-12.96,13.55-26.09,27.35-39.24,40.73-11.78,11.99-24.01,23.54-35.54,35.78-1.88,3.71-.26,5.96-.11,9.19.47,10.23-.51,20.64.09,30.89.82,1.23,1.06,2.76,1.72,4.04,2.6,5.06,16.04,18.34,20.85,22.38,2.87,2.41,6.98,4.7,10.79,5.06,16.29,1.54,35.85-.55,52.66-.06,6.15.18,10.36.18,16.51,0,19.68-.57,39.45.47,59.14.06,2.17-.21,5.98-1.79,7.8-3.01,5.67-3.81,15.24-15.05,20.62-20.45,1.91-1.92,3.87-3.83,5.77-5.76,5.44-5.53,12.21-10.29,13.01-18.69,1.44-15.27-1.15-32.75,0-48.27,1.61-7.33,5.67-12.49,10.79-17.67h-32.78c-.19,0-2.79-1.5-3.22-1.82-1.89-1.39-4.03-4.88-4.33-7.2-.46-3.53-.45-12.99,0-16.53.56-4.34,4.48-8.64,8.96-9.05,10.28-.95,22,.76,32.45.04,2,.6,4.08,1.6,5.42,3.22.61.74,2.87,5.23,2.87,5.78v16.21ZM1075.4,704.2c-16.59,5.66-26.93,31.65-44.84,33.69-6.93.79-15.35-1.28-21.97,1.09-4.18,1.49-7.82,4.76-10.8,7.93-8.02,11.38-22.84,20.89-30.98,31.69-1.34,1.78-3.29,6.5-3.57,8.68-1.91,14.63,1.36,33.2,0,48.27-.36,4-2.85,9.5-5.41,12.6-11.91,10.08-22.65,24.96-34.59,34.57-3.41,2.74-7.97,4.23-12.23,5.06l-60.58-.06c-2.23-.13-4.37,2.73-4.65,4.72.68,10-.93,21.16-.04,31,.22,2.47,1.98,5.34,4.68,5.4l107.42-.06c4.54.55,9.93,2.78,11.02,7.72,1.22,5.56-.73,14.17.13,20.04,1.06,7.21,6.91,4.79,11.86,5.43,3.85.49,8.69,4.22,9.06,8.24.78,8.67-.96,18.78,0,27.38.43,3.86,2.1,6.34,6.12,6.85,13.84,1.76,31.14-1.25,45.35,0,7.5-.95,4.42-7.49,7.95-11.5,1.06-1.21,5.01-3.19,6.63-3.46l62.57-.12c3.94-.72,7.36-2.15,10.44-4.69,4.46-3.69,12.56-11.91,14.54-17.16,2.82-7.44-1.45-15.96,5.64-21.02,3.85-2.75,6.29-1.29,10.28-1.97,1.79-.3,6.18-2.06,7.69-3.12,3.94-2.79,13.11-13.85,14.8-18.34.48-1.29.97-2.55,1.1-3.94,1.74-17.73-1.56-38.34-.06-56.25.93-11.11,13.68-26.22,24.91-27.69,4.55-.59,12.06,1.68,14.62-3.4.98-1.95.1-2.98.11-4.87.1-20.87.07-41.74-.07-62.6-1.01-1.53-2.73-3.08-4.59-3.33-12.75-1.74-33.78,3.53-44.56-3.71l-48.72-48.54c-2.27-1.88-6.79-4.42-9.72-4.69-12.46-1.16-26.85.81-39.51.17ZM937.76,738.75c-1.64.57-3.21,1.74-3.76,3.44-.68,2.1-.67,13.65-.32,16.24.25,1.8,1.6,3.17,2.86,4.34h33.89c1.85-1.42,2.67-3.43,2.9-5.75.3-3.1.3-9.2,0-12.3-.34-3.48-1.69-5.79-5.4-6.12-9.54-.87-20.48.6-30.17.15ZM627.25,812.98c-3.88.85-7.56,2.68-10.63,5.22-11.47,9.53-21.71,23.24-33.14,33.14-2.17,2.64-3.15,5.58-4.17,8.8l-.02,135.16c.72,2.16,2.3,3.64,4.57,4.08l77.12-.02c3.33-.1,8.55,4.49,8.97,7.6l-.02,49.01c.7,3.6,1.24,6.47,5.4,6.85,9.07.82,19.49-.55,28.71-.17l7.36-3.44c41.54-40.81,81.87-82.89,123.54-123.57.8-.78,1.93-1.08,2.54-1.78.92-1.05,3.04-6.13,3.22-7.58l-.11-35.15-1.31-2.29-2.53-1.07-55.45-.03c-4.25-.92-8.14-2.25-11.56-5.01-5.38-4.32-17.64-16.59-21.98-21.97-2.47-3.07-4.7-9.01-5.06-12.95-.92-10.07.73-21.51.04-31.74-.24-1.7-1.95-2.53-3.38-3.1l-112.12.04ZM1210.16,839.64c-9.03,1.26-21.27,12.64-22.16,21.78-1.76,17.93,1.8,38.94,0,56.91-.74,7.4-4.74,12.7-9.33,18.05-3.61,4.21-10.54,8.03-5.79,14.41,2.06,2.76,12,12.7,14.77,14.77,1.89,1.41,3.85,2.01,6.15,1.08l17.18-17.4c6.12-9.15,2.61-18.08,3.73-27.97,1.81-16.01,22.86-21.61,24.45-37.51.56-5.62.57-16.69.05-22.33-.33-3.66-2.05-7.94-4.34-10.79-6.58-8.18-13.79-12.52-24.71-11ZM762.19,1015.96h87.54c.1,0,.68.65,1.44.72,1.86.18,3.7-.18,5.63.14,7.31,1.23,17.25,10.35,20.82,16.65,6.37,11.26,2.36,29.11,3.43,41.95.19,2.25,1.69,3.2,3.37,4.55,9.16,1.1,26.19-3.64,29.05,8.41.86,3.6.88,6.3,3.3,9.67l20.14,21.65c1.57,1.33,3.49,1.94,5.46,1.11l46.81-46.12c10.63-8.33,24.03-.82,34.21-9.02,4.7-3.78,15.32-14.39,19.09-19.09,2-2.49,3.51-5.58,4.29-8.67-.73-7.58,1.06-17.15.01-24.47-.37-2.61-2.12-3.77-4.65-4-14.88-1.35-31.74,1.08-46.84.01-4.24-.91-9.05-3.58-9.74-8.27-1.19-8.13.84-18.94.02-27.4-.27-2.81-1.87-6.04-4.84-6.69-4.78-1.05-8.96,1.38-13.19-2.66-6.31-6.03-2.5-18.77-3.63-26.63-.35-2.47-2.17-3.92-4.65-4h-110.3s-8.63,3.62-8.63,3.62l-78.16,78.53ZM1051.84,1036.13c1.24.3,1.43-.47,2.16-1.08,5.8-4.83,9.15-9.45,17.68-10.42h77.82c3.23-.32,8.24-3.01,10.79-5.06,5.65-4.52,18.89-17.76,23.42-23.41,5.81-7.25,7.28-17.54,1.44-25.24-2.46-3.25-14.84-15.68-18.05-17.97-3.38-2.42-13.15-5.28-16.19-1.82-3.09,3.51-1.26,9.73-1.82,14.03-1.4,10.69-19.04,28.25-29.85,29.22l-61.99-.02c-1.56.23-5.41,2.38-5.41,3.96v37.82ZM738.54,1168.55c.51.51,3.57,1.51,4.53,1.6l70.61-.06c13.95-2.72,18.7-19.67,33.31-22.16,20.08-1.5,42,1.51,61.85-.11,11.7-.96,17.58-9.77,24.73-17.78,2.61-4.68-.99-6.26-3.51-9.25-7.54-8.94-19.1-17.84-21.57-29.58-.18-.86.12-1.88-.11-2.77-.26-.91-3.54-2.44-4.61-2.59-5.87-.86-14.48,1.09-20.05-.13-4.13-.91-7.31-5.46-7.72-9.57-.98-10.01.96-21.68.06-31.75-.26-2.89-1.86-7.03-3.62-9.35-4.03-5.32-12.25-12.7-19.08-13.34l-91.51.05-8.69,3.56-37.83,37.82-3.57,7.96.13,53.14c4.12,13.87,23.25,20.38,25.05,35.47.22,1.83-.25,3.83.15,5.61.08.36,1.32,3.11,1.45,3.24ZM864.51,1285.37c.81.15,1.44-.05,2.2-.31,6.43-2.26,13.57-12.14,18.31-16.99,7.4-7.57,19.64-17.64,25.61-25.54,1.91-2.53,4.06-7.66,4.34-10.79l-.35-75.34-3.24-3.24-63.06-.3c-14.23,3.1-19.06,20.6-33.91,22.29l-73.86.35c-1.8.73-3.29,2.39-3.56,4.37-.4,2.92-.4,11.47,0,14.39.25,1.8,1.59,3.17,2.86,4.34,13.6,2.24,35.21-3.7,46.5,5.38,13.81,11.12,26.19,28.57,39.96,40.01,10,8.31,16.73,3.99,27.74,5.4,3.97.51,8.43,4.25,9.02,8.27.97,6.65-.67,15.43-.02,22.35.18,1.94,1.18,3.5,1.48,5.37ZM745.62,1434.13v34.22l2.16-1.08c9.79-11.5,24.22-21.93,33.52-33.48,2.06-2.56,3.68-7.17,3.98-10.43,1.19-13.06-1.67-29.1,0-41.79.41-3.14,3.01-8.33,5.01-10.83,10.79-8.29,23.83-28.3,36.03-33.13,3.85-1.53,6.87-2.27,10.84-.74,2.78,1.07,5.56,4.18,5.76,7.27.1,1.51-1.51,6.26-2.29,7.78-6.3,12.27-28.43,25.17-33.18,36.7-.29.71-1.2,2.16-.22,2.66l42.77-43.68c4.84-7.65,1.31-16.04,4.78-24.03,2.92-6.72,10.93-11.01,11.87-18.38.31-2.4.37-9.88-.11-12.1-.63-2.91-4.8-3.44-6.69-6.27-3.42-5.12-1.22-20.9-1.79-27.74-.19-2.25-1.69-3.2-3.37-4.55-9.32-.51-17.88,1.42-26.46-3.08-3.29-1.73-4.31-3.68-6.56-5.68-10.81-9.62-20.79-20.31-31.02-30.22-5.85-5.66-8.96-10.74-17.97-11.56-18.06,1.52-39.24-1.96-56.92.05-4.01.46-8.84,2.78-11.93,5.36l-96.55,96.53c-2.32,3.11-2.32,5.56,0,8.67,10.93,9.44,20.73,22.61,31.7,31.7,11.18,9.26,25.92.11,37.13,10.42,21.77,22.39,44.85,43.66,65.82,66.74,1.33,2.27,3.4,8.16,3.7,10.7Z"
-          fill="#d0cece" stroke="#aeabab" stroke-width="2.5" stroke-linejoin="round" filter="url(#alc-sh)"/>
-      </svg>
-    </div>
-  </div>
-  <div id="alc-tip" style="position:fixed;background:var(--grafite);color:var(--branco);font-size:10px;padding:5px 10px;border-radius:5px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;line-height:1.5"></div>
-</div>
-
-<!-- ═══ RELATÓRIOS ═══════════════════════════════════════════════ -->
-<div class="page" id="tab-relatorios">
-  <div class="card cinza" style="margin-bottom:10px">
-    <div class="card-hdr" style="gap:8px">
-      <div class="card-title" style="flex:1">Relatório consolidado</div>
-      <select id="rf-ano" onchange="renderRelatorios()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-        <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="todos">Todos</option>
-      </select>
-      <select id="rf-resp" onchange="renderRelatorios()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-        <option value="todos">Todos resp.</option>
-      </select>
-    </div>
-    <div class="card-body" style="padding:12px 16px" id="rel-resumo"></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card verde">
-      <div class="card-hdr"><div class="card-title">Fechamentos por responsável</div></div>
-      <div class="card-body" style="padding:10px 14px" id="rel-por-resp"></div>
-    </div>
-    <div class="card consul">
-      <div class="card-hdr"><div class="card-title">Eficiência (fechado / orçado)</div></div>
-      <div class="card-body" style="padding:10px 14px" id="rel-eficiencia"></div>
-    </div>
-  </div>
-  <div class="card am">
-    <div class="card-hdr"><div class="card-title">Evolução mensal — Efetivo EXP</div></div>
-    <div class="card-body" style="padding:8px 14px">
-      <canvas id="chart-relatorio-mensal" height="80"></canvas>
-    </div>
-  </div>
-
-  <!-- R1/R2/R3 — Tabela de métricas mensais por coorte -->
-  <div class="card az" style="margin-bottom:10px">
-    <div class="card-hdr" style="gap:8px;flex-wrap:wrap">
-      <div class="card-title" style="flex:1">Métricas mensais por coorte</div>
-      <div style="font-size:9px;color:#888;font-style:italic">Win Rate = % das opps originadas no mês que foram fechadas &nbsp;·&nbsp; <span style="color:#bbb">~ = algumas ainda em aberto</span></div>
-    </div>
-    <div style="overflow-x:auto" id="rel-mensal-tabela"></div>
-  </div>
-
-  <!-- R4 — Origem dos leads do período -->
-  <div class="card am">
-    <div class="card-hdr"><div class="card-title" id="rel-orig-title">Origem dos leads</div></div>
-    <div class="card-body" style="padding:10px 14px" id="rel-origens"></div>
-  </div>
-</div>
-
-</div><!-- /#crm-body -->
-  </div><!-- /#app-main -->
-</div><!-- /#app-shell -->
-</div><!-- /#conteudo -->
-
-<!-- ═══════════ MODAL: NOVA / EDITAR OPORTUNIDADE ═══════════════════ -->
-<div class="modal-bg" id="modal-opp">
-  <div class="modal lg">
-    <div class="modal-hd">
-      <div class="modal-title" id="opp-modal-title">Nova Oportunidade</div>
-      <span class="modal-x" onclick="closeM('modal-opp')">×</span>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="opp-id">
-      <input type="hidden" id="opp-cliente-id">
-
-      <!-- Importar da calculadora -->
-      <div class="fgroup" style="margin-bottom:14px">
-        <label>Proposta EXP.calc</label>
-        <select id="opp-calc-id" onchange="onCalcPropostaChange()">
-          <option value="">— Nenhuma proposta vinculada —</option>
-        </select>
-        <div id="opp-calc-autofill-wrap" style="display:none;margin-top:4px">
-          <a href="#" style="font-size:10px;color:var(--azul);font-weight:500" onclick="autofillFromProposta();return false">← Aplicar dados da proposta (projeto, cidade, UF)</a>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <div style="flex:1;height:1px;background:var(--cinza2)"></div>
-        <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc">ou preencha manualmente</span>
-        <div style="flex:1;height:1px;background:var(--cinza2)"></div>
-      </div>
-
-      <!-- Painel novo cliente -->
-      <div id="opp-novo-cliente-wrap" style="display:none;background:var(--off);border:1px solid var(--cinza);padding:12px;margin-bottom:14px">
-        <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Novo cliente</div>
-        <div class="fg mb8" style="grid-template-columns:1fr 88px 1fr">
-          <div class="fgroup"><label>Nome da empresa / cliente *</label><input type="text" id="nc-nome" placeholder="Ex: Construtora Brasil"></div>
-          <div class="fgroup"><label title="2–6 letras usadas no chat e na identificação dos projetos">Sigla</label><input type="text" id="nc-sigla" placeholder="CPB" maxlength="6" style="text-transform:uppercase;font-weight:600;letter-spacing:.4px"></div>
-          <div class="fgroup"><label>Tipo</label>
-            <select id="nc-tipo">
-              <option value="construtora">Construtora</option>
-              <option value="incorporadora">Incorporadora</option>
-              <option value="pessoa_fisica">Pessoa Física</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-        </div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup"><label>Cidade</label><input type="text" id="nc-cidade"></div>
-          <div class="fgroup"><label>UF</label>
-            <select id="nc-uf">
-              <option value="">— (exterior)</option>
-              <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
-              <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
-              <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-              <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
-              <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
-              <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-              <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-            </select>
-          </div>
-        </div>
-        <div class="fgroup mb8"><label>Obs</label><textarea id="nc-obs" style="min-height:40px"></textarea></div>
-        <button class="btn verde sm" onclick="criarNovoClienteInline()">Criar cliente e continuar</button>
-        <button class="btn sm" style="margin-left:6px" onclick="cancelarNovoCliente()">Cancelar</button>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup" style="position:relative">
-          <label>Cliente *</label>
-          <input type="text" id="opp-cliente-text" placeholder="Digite para buscar..." oninput="filtrarClientes()" autocomplete="off">
-          <div id="opp-cliente-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--branco);border:1px solid var(--cinza);border-top:none;z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
-          <div id="opp-cliente-selecionado" style="display:none;margin-top:4px;font-size:10px;color:var(--verde);font-weight:600"></div>
-        </div>
-        <div class="fgroup"><label>Projeto / Empreendimento</label><input type="text" id="opp-projeto" placeholder="Ex: Residencial Torres"></div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Cidade</label><input type="text" id="opp-cidade"></div>
-        <div class="fgroup"><label>UF</label>
-          <select id="opp-uf">
-            <option value="">— (exterior)</option>
-            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
-            <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
-            <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
-            <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
-            <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-            <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-          </select>
-        </div>
-      </div>
-
-      <div id="opp-num-legado-wrap" style="display:none" class="fg fg2 mb8">
-        <div class="fgroup"><label>Número legado</label><input type="text" id="opp-num-legado" maxlength="10" style="font-family:var(--font-mono);text-transform:uppercase" placeholder="Ex: 26O0001"></div>
-        <div></div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Responsável EXP *</label>
-          <select id="opp-resp">
-            <option value="22d1fd51-8cd6-49ac-8875-4948eb216993">Carlos Corrêa (CC)</option>
-            <option value="4e55a296-6307-4e8a-a8f9-ae7bffac091b">Gabriela Budel (GB)</option>
-            <option value="508e4763-070a-431d-a0aa-aaa8faf207e2">Thayssa Christensen (TC)</option>
-            <option value="76e68332-0d77-4488-ae5c-a3c1d4bb6b05">Laís de Andrade (LA)</option>
-          </select>
-        </div>
-        <div class="fgroup">
-          <label>Estágio inicial</label>
-          <select id="opp-stage">
-            <option value="prospecção">Lead</option>
-            <option value="enviada">Orçamento ativo</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="fg fg3 mb8">
-        <div class="fgroup"><label>Resp. cliente — Nome</label><input type="text" id="opp-rc-nome" placeholder="Nome do contato no cliente"></div>
-        <div class="fgroup"><label>Telefone / WhatsApp</label><input type="text" id="opp-rc-tel" placeholder="(xx) xxxxx-xxxx"></div>
-        <div class="fgroup"><label>E-mail</label><input type="email" id="opp-rc-email" placeholder="nome@empresa.com"></div>
-      </div>
-      <div class="mb8" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <button class="btn sm" type="button" onclick="salvarRespClienteComoContato()">Salvar em Contatos</button>
-        <div style="font-size:10px;color:#888">Reaproveita o responsável do orçamento como contato comercial, sem redigitação e evitando duplicidade.</div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Origem do lead</label>
-          <select id="opp-origem" onchange="onOrigemChange()">
-            <option value="Captação">Captação</option>
-            <option value="Indicação de sócio">Indicação de sócio</option>
-            <option value="Indicação de cliente">Indicação de cliente</option>
-            <option value="Parceria">Parceria</option>
-            <option value="Evento">Evento</option>
-            <option value="Site">Site</option>
-            <option value="Instagram">Instagram</option>
-            <option value="Cliente recorrente">Cliente recorrente</option>
-            <option value="Outro">Outro</option>
-          </select>
-        </div>
-        <div class="fgroup" id="opp-indicou-wrap" style="display:none">
-          <label id="opp-indicou-label">Quem indicou</label>
-          <input type="text" id="opp-indicou" placeholder="Nome de quem indicou" list="indicou-list" autocomplete="off">
-          <datalist id="indicou-list"></datalist>
-        </div>
-        <div class="fgroup" id="opp-evento-wrap" style="display:none">
-          <label>Nome do evento</label>
-          <input type="text" id="opp-evento" placeholder="Nome do evento">
-        </div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Data de entrada *</label><input type="date" id="opp-data-entrada"></div>
-        <div></div>
-      </div>
-
-      <div class="fgroup"><label>Observações</label><textarea id="opp-obs" style="min-height:60px"></textarea></div>
-      <div style="margin-top:10px;padding:8px 10px;background:var(--am-bg);border:1px solid var(--esp);display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="opp-destaque" style="width:14px;height:14px;cursor:pointer;accent-color:var(--ouro)">
-        <label for="opp-destaque" style="cursor:pointer;font-size:11px;font-weight:500;color:var(--ouro);user-select:none">Destacar esta oportunidade no dashboard (máx. 3)</label>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="closeM('modal-opp')">Cancelar</button>
-      <button class="btn verde" onclick="salvarOpp()">Salvar oportunidade</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: NOVO / EDITAR PRODUTO ═══════════════════════ -->
-<div class="modal-bg" id="modal-prod">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-title" id="prod-modal-title">Novo Produto</div>
-      <span class="modal-x" onclick="closeM('modal-prod')">×</span>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="prod-id">
-      <input type="hidden" id="prod-opp-id">
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Núcleo *</label>
-          <select id="prod-nucleo" onchange="updateSubtipos()">
-            <option value="PAIS">Paisagismo</option>
-            <option value="URB">Urbanismo</option>
-            <option value="CONSUL">Consultorias</option>
-            <option value="ESP">Proj. Especiais</option>
-          </select>
-        </div>
-        <div class="fgroup">
-          <label>Subtipo *</label>
-          <select id="prod-subtipo"></select>
-        </div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Valor proposto (R$)</label><input type="number" id="prod-valor" step="100" min="0" placeholder="0"></div>
-        <div class="fgroup"><label>Área (m²)</label><input type="number" id="prod-area" step="1" min="0" placeholder="0"></div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Status</label>
-          <select id="prod-status">
-            <option value="ativo" selected>Ativo</option>
-            <option value="negociacao">Em negociação</option>
-            <option value="fechado">Fechado</option>
-            <option value="negado">Negado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-        <div class="fgroup">
-          <label>Probabilidade (1–5)</label>
-          <select id="prod-prob">
-            <option value="1">1 — Muito baixa</option>
-            <option value="2">2 — Baixa</option>
-            <option value="3" selected>3 — Média</option>
-            <option value="4">4 — Alta</option>
-            <option value="5">5 — Muito alta</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Data de envio</label><input type="date" id="prod-data-envio"></div>
-        <div class="fgroup"><label>Data de previsão</label><input type="date" id="prod-data-prev"></div>
-      </div>
-
-      <div class="fgroup"><label>Observações</label><textarea id="prod-obs" style="min-height:50px"></textarea></div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="closeM('modal-prod')">Cancelar</button>
-      <button class="btn verde" onclick="salvarProd()">Salvar produto</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: AÇÃO DE ESTÁGIO (fechar/negar opp/prod) ═══════ -->
-<div class="modal-bg" id="modal-acao">
-  <div class="modal" style="width:480px">
-    <div class="modal-hd">
-      <div class="modal-title" id="acao-title">Confirmar ação</div>
-      <span class="modal-x" onclick="closeM('modal-acao')">×</span>
-    </div>
-    <div class="modal-body" id="acao-body"></div>
-    <div class="modal-ft">
-      <button class="btn" onclick="closeM('modal-acao')">Cancelar</button>
-      <button class="btn verde" id="acao-confirm-btn" onclick="confirmarAcao()">Confirmar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: DETALHE DA PROPOSTA ════════════════════════ -->
-<div class="modal-bg" id="modal-detail">
-  <div class="modal lg">
-    <div class="modal-hd">
-      <div class="modal-title" id="det-title">Proposta</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn sm" id="det-edit-btn" onclick="editarOpp()" style="display:none">Editar</button>
-        <button class="btn sm verde" id="det-fu-btn" onclick="openFollowUpModal()" style="display:none">+ Follow-up</button>
-        <span class="modal-x" onclick="closeM('modal-detail')">×</span>
-      </div>
-    </div>
-    <div class="modal-body" id="det-body"></div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: NOVO CONTATO ════════════════════════════════ -->
-<div class="modal-bg" id="modal-contato">
-  <div class="modal" style="width:500px">
-    <div class="modal-hd">
-      <div class="modal-title" id="contato-modal-title">Novo contato</div>
-      <span class="modal-x" onclick="closeM('modal-contato')">×</span>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="contato-cliente-id">
-      <div class="fgroup mb8"><label>Nome *</label><input type="text" id="contato-nome" placeholder="Nome completo"></div>
-      <div class="fgroup mb8"><label>Cargo <span style="font-weight:300;text-transform:none">(opcional)</span></label><input type="text" id="contato-cargo" placeholder="Ex: Diretor Comercial"></div>
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Telefone</label><input type="text" id="contato-tel" placeholder="(xx) xxxxx-xxxx"></div>
-        <div class="fgroup"><label>E-mail</label><input type="email" id="contato-email" placeholder="nome@empresa.com"></div>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="closeM('modal-contato')">Cancelar</button>
-      <button class="btn verde" onclick="salvarContato()">Salvar contato</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: FOLLOW-UP ══════════════════════════════════ -->
-<div class="modal-bg" id="modal-fu">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-title" id="fu-title">Registrar Follow-up</div>
-      <span class="modal-x" onclick="closeM('modal-fu')">×</span>
-    </div>
-    <div class="modal-body">
-      <div id="fu-hist" style="margin-bottom:14px"></div>
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Data do contato</label><input type="date" id="fu-data"></div>
-        <div class="fgroup"><label>Próximo contato</label><input type="date" id="fu-next"></div>
-      </div>
-      <div class="fgroup"><label>Observação</label><textarea id="fu-obs" placeholder="O que foi discutido, próximos passos..." style="min-height:80px"></textarea></div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="closeM('modal-fu')">Cancelar</button>
-      <button class="btn verde" onclick="salvarFU()">Salvar follow-up</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: BOAS VINDAS ════════════════════════════════ -->
-<div class="modal-bg" id="modal-bv">
-  <div class="modal bv-modal">
-    <div class="modal-hd">
-      <div class="modal-title" id="bv-title">Bem-vindo</div>
-      <span class="modal-x" onclick="closeM('modal-bv')">×</span>
-    </div>
-    <div class="modal-body" id="bv-body"></div>
-    <div class="modal-ft"><button class="btn filled" onclick="closeM('modal-bv')">Entendido</button></div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: APROVAÇÃO DE SUBCONTRATAÇÕES (C13) ══════════ -->
-<div class="modal-bg" id="modal-subs-aprov">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-title">Subcontratações — Aprovar ou rejeitar</div>
-      <span class="modal-x" onclick="closeM('modal-subs-aprov')">×</span>
-    </div>
-    <div class="modal-body">
-      <div style="font-size:11px;color:#666;margin-bottom:12px;padding:8px 10px;background:var(--cinza2)">
-        O produto foi fechado. As subcontratações abaixo estão vinculadas à proposta EXP.calc. Confirme o status de cada uma.
-      </div>
-      <div id="subs-aprov-list"></div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn ghost" onclick="closeM('modal-subs-aprov')">Fechar sem registrar</button>
-      <button class="btn verde" onclick="finalizarAprovacaoSubs()">Salvar decisões</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════ MODAL: FECHAR OPORTUNIDADE (Fase 5) ════════════════ -->
-<div class="modal-bg" id="modal-fechar-opp">
-  <div class="modal" style="max-width:680px;width:96%">
-    <div class="modal-hd">
-      <div class="modal-title" id="fech-opp-title">Fechar Oportunidade</div>
-      <span class="modal-x" onclick="closeM('modal-fechar-opp')">×</span>
-    </div>
-    <div class="modal-body" style="padding:0">
-
-      <!-- Cabeçalho explicativo -->
-      <div style="padding:10px 16px;background:var(--off);border-bottom:1px solid var(--cinza2);font-size:11px;color:#666">
-        Revise cada item. Desmarque os que <strong>não farão parte do fechamento</strong> (ex: despesa absorvida pelo cliente, serviço cancelado). Ajuste o valor final quando necessário.
-      </div>
-
-      <!-- Tabela de itens de fechamento -->
-      <div style="overflow-y:auto;max-height:55vh;padding:12px 16px" id="fech-itens-wrap">
-        <!-- preenchido por abrirFechamento() -->
-      </div>
-
-      <!-- Data de fechamento (única para todos os produtos incluídos) -->
-      <div style="padding:10px 16px;border-top:1px solid var(--cinza2);display:flex;align-items:center;gap:10px">
-        <label style="font-size:11px;font-weight:600;white-space:nowrap">Data de fechamento</label>
-        <input type="date" id="fech-data" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--font-ui)"
-          value="">
-        <span style="font-size:10px;color:#aaa;margin-left:4px">aplicada a todos os serviços incluídos</span>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn ghost" onclick="closeM('modal-fechar-opp')">Cancelar</button>
-      <button class="btn verde" id="fech-confirm-btn" onclick="confirmarFechamento()">✓ Confirmar fechamento</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
 const { createClient } = supabase;
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.sb = sb;
 
-// ═══ SCHEMA REAL DO BANCO ═══════════════════════════
+// --- SCHEMA REAL DO BANCO ---------------------------
 // oportunidades: id, num_legado, cliente_id, projeto, cidade, uf,
-//   resp_id (UUID→usuarios), pipeline_stage, origem, indicou,
+//   resp_id (UUID?usuarios), pipeline_stage, origem, indicou,
 //   destaque, obs, data_entrada, created_at, updated_at
-// pipeline_stage valores: 'prospecção','enviada','negociacao','fechada','negada','cancelada'
+// pipeline_stage valores: 'prospec��o','enviada','negociacao','fechada','negada','cancelada'
 //
 // produtos: id, oportunidade_id, nucleo, subtipo, area,
 //   valor_calculado, valor_proposto, valor_fechado, status,
 //   prob, calc_id, data_envio, data_previsao, data_fechamento,
 //   motivo_negativa, prob_retorno, cancel_note, obs, versao_atual,
 //   created_at, updated_at
-// status valores: 'prospecção','ativo','enviado','negociacao','fechado','negado','cancelado'
+// status valores: 'prospec��o','ativo','enviado','negociacao','fechado','negado','cancelado'
 //
 // clientes: id, nome, tipo, cidade, uf, obs, created_at
 // usuarios: id, nome, iniciais, email, role, cor, viewer_only, auth_id
 // followups_produto: tabela existe mas sem dados ainda
 // contatos: id, cliente_id, nome, cargo, email, telefone
 
-// ═══ ESTADO GLOBAL ══════════════════════════════════
+// --- ESTADO GLOBAL ----------------------------------
 let currentUser = null;
-let _rtChannel  = null; // referência ao canal Realtime para cleanup
+let _rtChannel  = null; // refer�ncia ao canal Realtime para cleanup
 let allOps    = [];  // oportunidades enriquecidas
 let allProds  = [];  // produtos (todas as opps)
 // COM-5: alertas descartados persistidos em localStorage
@@ -1303,11 +44,11 @@ let orcSortDir  = -1;
 let alcMode     = 'op';
 let origMode    = 'resumido';
 
-// Mapa de pipeline_stage → label amigável
+// Mapa de pipeline_stage ? label amig�vel
 const STAGE_LABEL = {
-  'prospecção':'Lead','prospeccao':'Lead',
-  'enviada':'Orçamento ativo','ativo':'Orçamento ativo',
-  'negociacao':'Negociação','negociação':'Negociação',
+  'prospec��o':'Lead','prospeccao':'Lead',
+  'enviada':'Or�amento ativo','ativo':'Or�amento ativo',
+  'negociacao':'Negocia��o','negocia��o':'Negocia��o',
   'fechada':'Fechado','fechado':'Fechado',
   'negada':'Negado','negado':'Negado',
   'cancelada':'Cancelado','cancelado':'Cancelado',
@@ -1315,25 +56,25 @@ const STAGE_LABEL = {
 };
 // Agrupamento para filtros kanban
 const STAGE_GROUP = {
-  'prospecção':'Lead','prospeccao':'Lead',
-  'enviada':'Orçamento ativo','ativo':'Orçamento ativo',
-  'negociacao':'Negociação','negociação':'Negociação',
+  'prospec��o':'Lead','prospeccao':'Lead',
+  'enviada':'Or�amento ativo','ativo':'Or�amento ativo',
+  'negociacao':'Negocia��o','negocia��o':'Negocia��o',
   'fechada':'Fechado','fechado':'Fechado',
   'negada':'Negado','negado':'Negado',
   'cancelada':'Cancelado','cancelado':'Cancelado',
   'perdida':'Negado/Cancelado',
 };
 const NUCLEO_LABEL = {PAIS:'PAIS',URB:'URB',CONSUL:'CONS',ESP:'ESP'};
-const NEG_CATEGORIAS_PADRAO = ['Preço','Prazo','Escopo','Concorrência','Orçamento interno','Projeto cancelado','Sem resposta'];
+const NEG_CATEGORIAS_PADRAO = ['Pre�o','Prazo','Escopo','Concorr�ncia','Or�amento interno','Projeto cancelado','Sem resposta'];
 function normNegCat(cat){ return cat && NEG_CATEGORIAS_PADRAO.includes(cat) ? cat : 'Outros'; }
 const NUCLEO_GRUPO = {PAIS:'Paisagismo',URB:'Urbanismo',CONSUL:'Consultorias',ESP:'Projetos Especiais'};
 const SUBTIPO_LABEL = {
-  PAIS_TERREO:'Térreo / Passeios',PAIS_CONDO:'Condominial / Ático',
+  PAIS_TERREO:'T�rreo / Passeios',PAIS_CONDO:'Condominial / �tico',
   PAIS_FLOREIRA:'Floreiras',PAIS_STREET:'Streetscape',
-  PAIS_ARB:'Arborização Viária',PAIS_PARQUE:'Parque / Espaço Público',
+  PAIS_ARB:'Arboriza��o Vi�ria',PAIS_PARQUE:'Parque / Espa�o P�blico',
   PAIS_PARQUE_BAIXO:'Parque Baixo Impacto',PAIS_PF:'Residencial / PF',
-  URB_CONCEITO:'Conceituação',URB_VIAB:'Est. Viabilidade',
-  URB_MASTER:'Masterplan',URB_PROJETO:'Projeto Urbanístico',
+  URB_CONCEITO:'Conceitua��o',URB_VIAB:'Est. Viabilidade',
+  URB_MASTER:'Masterplan',URB_PROJETO:'Projeto Urban�stico',
   URB_DESM:'Desmembramento',URB_IMG:'Imagens',URB_CHARRETE:'Charrete',
   CONSUL_HORA:'Consultoria / Hora',CONSUL_MENSAL:'Consultoria / Mensal',
   ESP_LIVRE:'Proj. Especial',
@@ -1343,15 +84,15 @@ const TIPO_BADGE = {
   'Projetos Especiais':'b-esp',
 };
 const ESTAGIO_BADGE = {
-  'Prospecção':'b-az','Orçamento ativo':'b-am','Negociação':'b-am',
+  'Prospec��o':'b-az','Or�amento ativo':'b-am','Negocia��o':'b-am',
   'Fechado':'b-vd','Negado':'b-tc','Cancelado':'b-tc','Expirado':'b-exp','Perdida':'b-tc',
 };
 const ESTAGIO_BADGE_PROD = {
-  'ativo':'b-am','negociacao':'b-am','negociação':'b-am',
+  'ativo':'b-am','negociacao':'b-am','negocia��o':'b-am',
   'fechado':'b-vd','negado':'b-tc','cancelado':'b-tc',
   'inativo':'b-gr','pausado':'b-gr',
 };
-// Cores canônicas para gráficos — fonte única de verdade
+// Cores can�nicas para gr�ficos � fonte �nica de verdade
 const CHART_CORES = {
   Urbanismo:      '#5280CA',
   Paisagismo:     '#45865D',
@@ -1360,10 +101,10 @@ const CHART_CORES = {
   Total:          '#1D4FA0',
 };
 
-// ═══ UTILITÁRIOS ════════════════════════════════════
-function fmt(v){if(!v&&v!==0)return'—';return'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function fmtD(d){if(!d)return'—';try{const[y,m,dd]=(d.slice(0,10)).split('-');return`${dd}/${m}/${y}`;}catch{return d;}}
-// Label legível de versão: 0 → 'Original', 1 → 'R1', 2 → 'R2' ...
+// --- UTILIT�RIOS ------------------------------------
+function fmt(v){if(!v&&v!==0)return'�';return'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtD(d){if(!d)return'�';try{const[y,m,dd]=(d.slice(0,10)).split('-');return`${dd}/${m}/${y}`;}catch{return d;}}
+// Label leg�vel de vers�o: 0 ? 'Original', 1 ? 'R1', 2 ? 'R2' ...
 function _verLabel(v){ return (v===0||v==null)?'Original':'R'+v; }
 function diasDesde(d){if(!d)return null;return Math.floor((new Date()-new Date(d))/86400000);}
 function escHtml(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -1373,24 +114,24 @@ function toast(m,dur=2800){const t=document.getElementById('toast');t.textConten
 function closeM(id){document.getElementById(id).classList.remove('open');}
 function openM(id){document.getElementById(id).classList.add('open');}
 
-// Normaliza stage para label amigável
-function stageLabel(s){return STAGE_LABEL[s?.toLowerCase()]||s||'—';}
+// Normaliza stage para label amig�vel
+function stageLabel(s){return STAGE_LABEL[s?.toLowerCase()]||s||'�';}
 function stageGroup(s){
   const sl=(s||'').toLowerCase();
-  if(['prospecção','prospeccao'].includes(sl))return'Lead';
-  if(['enviada','ativo'].includes(sl))return'Orçamento ativo';
-  if(['negociacao','negociação'].includes(sl))return'Negociação';
+  if(['prospec��o','prospeccao'].includes(sl))return'Lead';
+  if(['enviada','ativo'].includes(sl))return'Or�amento ativo';
+  if(['negociacao','negocia��o'].includes(sl))return'Negocia��o';
   if(['fechada','fechado'].includes(sl))return'Fechado';
   return'Negado/Cancelado';
 }
 
 function isExpiredProd(prod){
   if(!prod.data_envio)return false;
-  if(!['ativo','negociacao','negociação'].includes((prod.status||'').toLowerCase()))return false;
+  if(!['ativo','negociacao','negocia��o'].includes((prod.status||'').toLowerCase()))return false;
   return diasDesde(prod.data_envio)>90;
 }
 
-// Retorna o "estágio efetivo" de uma oportunidade baseado nos produtos
+// Retorna o "est�gio efetivo" de uma oportunidade baseado nos produtos
 function oppStageLabel(op){
   return stageLabel(op.pipeline_stage);
 }
@@ -1404,20 +145,20 @@ function tempClass(fus){
 }
 
 // Usuario por resp_id
-function userById(uid){return allUsers[uid]||{nome:'—',iniciais:'?',cor:'#ccc',viewer_only:true};}
+function userById(uid){return allUsers[uid]||{nome:'�',iniciais:'?',cor:'#ccc',viewer_only:true};}
 function userNome(uid){return userById(uid).nome.split(' ')[0];}
 
 function tipoBadgeProd(nucleo){
   const grupo=NUCLEO_GRUPO[nucleo]||'';
   const cls=TIPO_BADGE[grupo]||'b-gr';
-  return`<span class="badge ${cls}">${NUCLEO_LABEL[nucleo]||nucleo||'—'}</span>`;
+  return`<span class="badge ${cls}">${NUCLEO_LABEL[nucleo]||nucleo||'�'}</span>`;
 }
 function estagBadge(s){
   const lbl=stageLabel(s);
   return`<span class="badge ${ESTAGIO_BADGE[lbl]||'b-gr'}">${lbl}</span>`;
 }
 function estagBadgeProd(s){
-  return`<span class="badge ${ESTAGIO_BADGE_PROD[(s||'').toLowerCase()]||'b-gr'}">${s||'—'}</span>`;
+  return`<span class="badge ${ESTAGIO_BADGE_PROD[(s||'').toLowerCase()]||'b-gr'}">${s||'�'}</span>`;
 }
 function respBadge(uid){
   const u=userById(uid);
@@ -1433,11 +174,11 @@ function probDots(p){
   return[1,2,3,4,5].map(i=>`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:2px;background:${i<=p?'var(--ouro)':'var(--cinza)'}"></span>`).join('');
 }
 function origGroup(o){
-  if(!o)return'—';const lo=o.toLowerCase();
-  if(lo.startsWith('sócio')||lo.startsWith('socio'))return'Sócio';
-  if(lo.startsWith('indica'))return'Indicação';
+  if(!o)return'�';const lo=o.toLowerCase();
+  if(lo.startsWith('s�cio')||lo.startsWith('socio'))return'S�cio';
+  if(lo.startsWith('indica'))return'Indica��o';
   if(lo.startsWith('parce'))return'Parceria';
-  if(lo.startsWith('capta'))return'Captação';
+  if(lo.startsWith('capta'))return'Capta��o';
   if(lo.startsWith('evento'))return'Evento';
   if(lo.startsWith('cliente'))return'Recorrente';
   return o;
@@ -1450,7 +191,7 @@ function renderOrigensChart(fechadas, anoStr){
   if(!document.getElementById('dash-origens'))return;
   const origMapRs={}, origMapQtd={};
   fechadas.forEach(op=>{
-    const g = origMode==='completo' ? (op.origem||'—') : origGroup(op.origem);
+    const g = origMode==='completo' ? (op.origem||'�') : origGroup(op.origem);
     origMapQtd[g]=(origMapQtd[g]||0)+1;
     op._produtos.filter(p=>p.data_fechamento?.startsWith(anoStr)&&p.status==='fechado').forEach(p=>{
       origMapRs[g]=(origMapRs[g]||0)+(+p.valor_fechado||0);
@@ -1481,7 +222,7 @@ function toggleOrigValMode(){
   renderOrigensChart(_origFechadas, _origAnoStr);
 }
 
-// ═══ VALOR DE PROPOSTAS (D2) ══════════════════════════
+// --- VALOR DE PROPOSTAS (D2) --------------------------
 let vpNucleo='todos';
 function setVpNucleo(btn, n){
   vpNucleo=n;
@@ -1507,7 +248,7 @@ function renderValorPropostas(){
   const encerradas=fechadas.length+negadas.length;
   const winRate=encerradas?Math.round(fechadas.length/encerradas*100):0;
 
-  // Tempo médio
+  // Tempo m�dio
   const tempos=fechadas.filter(op=>oppDataFechamento(op)&&op.data_entrada)
     .map(op=>Math.round((new Date(oppDataFechamento(op))-new Date(op.data_entrada))/86400000));
   const mediaT=tempos.length?Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length):null;
@@ -1522,14 +263,14 @@ function renderValorPropostas(){
   const vMin=vArr.length?Math.min(...vArr):0;
   const vMax=vArr.length?Math.max(...vArr):0;
 
-  // D4 — recontratação
+  // D4 � recontrata��o
   const clientesFech={};
   fechadas.forEach(op=>{if(op.cliente_id)clientesFech[op.cliente_id]=(clientesFech[op.cliente_id]||0)+1;});
   const totalClientes=Object.keys(clientesFech).length;
   const recontr=Object.values(clientesFech).filter(n=>n>1).length;
   const txRecontr=totalClientes?Math.round(recontr/totalClientes*100):0;
 
-  // D4 — indicação
+  // D4 � indica��o
   const indic=ops.filter(o=>(o.origem||'').toLowerCase().startsWith('indica')).length;
   const txIndic=ops.length?Math.round(indic/ops.length*100):0;
 
@@ -1548,11 +289,11 @@ function renderValorPropostas(){
   const maxRs=Math.max(...origEntries.map(e=>e.rs),1);
   const maxQtd=Math.max(...origEntries.map(e=>e.qtd),1);
 
-  // D5 — CLV histórico (usa allOps para mostrar histórico completo independente do filtro)
+  // D5 � CLV hist�rico (usa allOps para mostrar hist�rico completo independente do filtro)
   const clvMap={};
   allOps.filter(o=>isFechada(o)).forEach(op=>{
     if(!op.cliente_id)return;
-    if(!clvMap[op.cliente_id])clvMap[op.cliente_id]={nome:op._cliente?.nome||'—',val:0,count:0};
+    if(!clvMap[op.cliente_id])clvMap[op.cliente_id]={nome:op._cliente?.nome||'�',val:0,count:0};
     clvMap[op.cliente_id].val+=oppValorFechado(op);
     clvMap[op.cliente_id].count+=1;
   });
@@ -1568,22 +309,22 @@ function renderValorPropostas(){
       <div class="vp-metric">
         <div class="vp-metric-lbl">Ativas</div>
         <div class="vp-metric-val">${ativas.length}<span style="font-size:12px;font-weight:400;color:#aaa"> / ${ops.length}</span></div>
-        <div class="vp-metric-sub">de ${ops.length} total histórico</div>
+        <div class="vp-metric-sub">de ${ops.length} total hist�rico</div>
       </div>
       <div class="vp-metric">
         <div class="vp-metric-lbl">Win Rate</div>
         <div class="vp-metric-val" style="color:${wrColor}">${winRate}%</div>
-        <div class="vp-metric-sub">${fechadas.length} fechadas · ${negadas.length} negadas</div>
+        <div class="vp-metric-sub">${fechadas.length} fechadas � ${negadas.length} negadas</div>
       </div>
       <div class="vp-metric">
-        <div class="vp-metric-lbl">Tempo médio fechamento</div>
-        <div class="vp-metric-val sm">${mediaT?mediaT+' dias':'—'}</div>
+        <div class="vp-metric-lbl">Tempo m�dio fechamento</div>
+        <div class="vp-metric-val sm">${mediaT?mediaT+' dias':'�'}</div>
         <div class="vp-metric-sub">${tempos.length} opp. com data completa</div>
       </div>
       <div class="vp-metric">
         <div class="vp-metric-lbl">Projetos fechados</div>
         <div class="vp-metric-val">${fechadas.length}</div>
-        <div class="vp-metric-sub">${negadas.length} negadas · ${ativas.length} em aberto</div>
+        <div class="vp-metric-sub">${negadas.length} negadas � ${ativas.length} em aberto</div>
       </div>
     </div>
 
@@ -1592,24 +333,24 @@ function renderValorPropostas(){
       <div class="vp-metric">
         <div class="vp-metric-lbl">Pipeline ativo</div>
         <div class="vp-metric-val sm">${fmt(vAtivo)}</div>
-        <div class="vp-metric-sub">média ${fmt(vMedioAtivo)}</div>
+        <div class="vp-metric-sub">m�dia ${fmt(vMedioAtivo)}</div>
       </div>
       <div class="vp-metric">
-        <div class="vp-metric-lbl">Total histórico</div>
+        <div class="vp-metric-lbl">Total hist�rico</div>
         <div class="vp-metric-val sm">${fmt(vTotal)}</div>
         <div class="vp-metric-sub">${ops.length} oportunidades</div>
       </div>
       <div class="vp-metric">
         <div class="vp-metric-lbl">Efetivo EXP (fechados)</div>
         <div class="vp-metric-val sm">${fmt(vEfetivoFech)}</div>
-        <div class="vp-metric-sub">média ${fmt(vMedioEfetivo)}</div>
+        <div class="vp-metric-sub">m�dia ${fmt(vMedioEfetivo)}</div>
       </div>
       <div class="vp-metric">
-        <div class="vp-metric-lbl">Mín · Máx (pipeline ativo)</div>
+        <div class="vp-metric-lbl">M�n � M�x (pipeline ativo)</div>
         <div class="vp-metric-val xs" style="display:flex;gap:8px;align-items:baseline;margin-top:2px">
-          <span style="color:var(--terracota)">${vMin?fmt(vMin):'—'}</span>
-          <span style="font-size:9px;color:#ccc">·</span>
-          <span style="color:var(--verde)">${vMax?fmt(vMax):'—'}</span>
+          <span style="color:var(--terracota)">${vMin?fmt(vMin):'�'}</span>
+          <span style="font-size:9px;color:#ccc">�</span>
+          <span style="color:var(--verde)">${vMax?fmt(vMax):'�'}</span>
         </div>
         <div class="vp-metric-sub">${vArr.length} proposta${vArr.length!==1?'s':''} com valor</div>
       </div>
@@ -1618,14 +359,14 @@ function renderValorPropostas(){
     <div class="vp-sec-title">Relacionamento</div>
     <div class="vp-grid g2" style="margin-bottom:4px">
       <div class="vp-metric">
-        <div class="vp-metric-lbl">Taxa de recontratação</div>
+        <div class="vp-metric-lbl">Taxa de recontrata��o</div>
         <div class="vp-metric-val" style="color:${rtColor}">${txRecontr}%</div>
         <div class="vp-metric-sub">${recontr} de ${totalClientes} clientes c/ >1 fechamento</div>
       </div>
       <div class="vp-metric">
-        <div class="vp-metric-lbl">Taxa de indicação</div>
+        <div class="vp-metric-lbl">Taxa de indica��o</div>
         <div class="vp-metric-val" style="color:${tiColor}">${txIndic}%</div>
-        <div class="vp-metric-sub">${indic} de ${ops.length} opp. via indicação</div>
+        <div class="vp-metric-sub">${indic} de ${ops.length} opp. via indica��o</div>
       </div>
     </div>
 
@@ -1636,7 +377,7 @@ function renderValorPropostas(){
         <div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-bottom:6px">Por valor R$ <span style="font-weight:400;text-transform:none">(fechados)</span></div>
         ${origEntries.map(({k,rs})=>`<div style="margin-bottom:7px">
           <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
-            <span>${escHtml(k)}</span><span style="font-family:var(--font-mono);font-size:9px">${rs?fmt(rs):'—'}</span>
+            <span>${escHtml(k)}</span><span style="font-family:var(--font-mono);font-size:9px">${rs?fmt(rs):'�'}</span>
           </div>
           <div style="height:3px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(rs/maxRs*100)}%;background:var(--ouro)"></div></div>
         </div>`).join('')}
@@ -1652,7 +393,7 @@ function renderValorPropostas(){
       </div>
     </div>`:'<div style="font-size:11px;color:#aaa;margin-bottom:8px">Sem dados de origem registrados.</div>'}
 
-    <div class="vp-sec-title">CLV histórico — top clientes</div>
+    <div class="vp-sec-title">CLV hist�rico � top clientes</div>
     ${topClientes.length?`<div>${topClientes.map((c,i)=>`
       <div class="vp-clv-row">
         <div class="vp-clv-pos">${i+1}</div>
@@ -1663,19 +404,19 @@ function renderValorPropostas(){
   `;
 }
 
-// ═══ INIT ════════════════════════════════════════════
+// --- INIT --------------------------------------------
 window.addEventListener('DOMContentLoaded', async()=>{
   const {data:{session}} = await sb.auth.getSession();
   if(!session){window.location.href='index.html';return;}
 
   const {data:u, error:uErr} = await sb.from('usuarios').select('*').eq('auth_id',session.user.id).maybeSingle();
-  if(uErr) console.error('Erro ao carregar usuário:', uErr.message);
+  if(uErr) console.error('Erro ao carregar usu�rio:', uErr.message);
   if(!u || !canAccessCrmRole(u.role)){
-    alert('O módulo comercial está disponível apenas para sócios e sócios administradores.');
+    alert('O m�dulo comercial est� dispon�vel apenas para s�cios e s�cios administradores.');
     window.location.href='app.html';
     return;
   }
-  currentUser = u||{nome:'Usuário',iniciais:'?',cor:'#888',viewer_only:true};
+  currentUser = u||{nome:'Usu�rio',iniciais:'?',cor:'#888',viewer_only:true};
   sessionStorage.setItem('exp_usuario', JSON.stringify(currentUser));
 
   ExpNav.init({
@@ -1690,14 +431,14 @@ window.addEventListener('DOMContentLoaded', async()=>{
   renderOrc();
   renderContatos();
   calcAlertas();
-  // Bell global — também exibe alertas de follow-up no painel unificado
+  // Bell global � tamb�m exibe alertas de follow-up no painel unificado
   AppNotif.init({ userId: currentUser.id });
   if(!currentUser?.viewer_only){
     document.getElementById('btn-nova-opp').style.display='inline-flex';
   }
   setTimeout(()=>showBoasVindas(), 600);
 
-  // Infra — Realtime: atualiza CRM quando calc salva nova proposta
+  // Infra � Realtime: atualiza CRM quando calc salva nova proposta
   if(_rtChannel) sb.removeChannel(_rtChannel);
   _rtChannel = sb.channel('exp_proposals_rt')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'exp_proposals' }, async () => {
@@ -1708,7 +449,7 @@ window.addEventListener('DOMContentLoaded', async()=>{
       await carregarDados();
       renderDash(); renderPipe(); renderOrc();
       // Se o detalhe de uma opp vinculada estiver aberto, atualiza o painel
-      // (inclui casos em que a nova revisão é de uma família vinculada)
+      // (inclui casos em que a nova revis�o � de uma fam�lia vinculada)
       if (detailOppId) {
         const op = allOps.find(o=>o.id===detailOppId);
         if (op?.proposta_calc_id) {
@@ -1775,7 +516,7 @@ async function carregarDados(){
   allProds     = prodsRes.data||[];
   allPesquisasSat = pesquisasRes.data || [];
   allFinAtivosResumo = finAtivosRes.data || [];
-  // Todas as propostas (sem filtro de status — inclui Original, R1, R2, etc.)
+  // Todas as propostas (sem filtro de status � inclui Original, R1, R2, etc.)
   const proposalsAll = proposalsRes.data||[];
   allProposals = proposalsAll;
 
@@ -1788,7 +529,7 @@ async function carregarDados(){
     prodOppMap[p.id]=p.oportunidade_id;
   });
 
-  // followups_produto e produto-cêntrica; normaliza para a UI por oportunidade
+  // followups_produto e produto-c�ntrica; normaliza para a UI por oportunidade
   const fusMap={};
   (fusRes.data||[]).forEach(f=>{
     const oppId=prodOppMap[f.produto_id];
@@ -1808,7 +549,7 @@ async function carregarDados(){
   const clientMap={};
   allClients.forEach(c=>clientMap[c.id]=c);
 
-  // Mapa proposal_id → proposal (todas as versões)
+  // Mapa proposal_id ? proposal (todas as vers�es)
   const proposalMap={};
   proposalsAll.forEach(p=>{ proposalMap[p.proposal_id]=p; });
   const pesquisaMap={};
@@ -1840,18 +581,18 @@ function oppValorProposto(op){
   return op._produtos.reduce((s,p)=>s+(+p.valor_proposto||0),0);
 }
 function oppValorFechado(op){
-  // Produtos DB com valor_fechado têm prioridade absoluta
+  // Produtos DB com valor_fechado t�m prioridade absoluta
   const prodFech=op._produtos.filter(p=>+p.valor_fechado>0);
   if(prodFech.length) return prodFech.reduce((s,p)=>s+(+p.valor_fechado),0);
-  // Opp calc-vinculada fechada: usa valor_fechado salvo na opp, senão total da proposta
+  // Opp calc-vinculada fechada: usa valor_fechado salvo na opp, sen�o total da proposta
   if(op._proposal?.items?.length && isFechada(op))
     return +op.valor_fechado||oppValorProposto(op);
   return 0;
 }
-// Valor efetivo EXP = valor que compete à EXP (exclui repasses, subcontratações e despesas)
-// Se a opp tem proposta vinculada: usa `total` da proposta calculadora (já é o valor EXP líquido)
+// Valor efetivo EXP = valor que compete � EXP (exclui repasses, subcontrata��es e despesas)
+// Se a opp tem proposta vinculada: usa `total` da proposta calculadora (j� � o valor EXP l�quido)
 // Fallback: soma valor_calculado dos produtos (campo preenchido pela calc ao importar)
-// Último fallback: igual ao valor_proposto (sem dedução — exibe sem asterisco)
+// �ltimo fallback: igual ao valor_proposto (sem dedu��o � exibe sem asterisco)
 function oppValorEfetivo(op, fechado=false){
   if(fechado){
     return op._produtos
@@ -1885,14 +626,14 @@ function isNegada(op){
 }
 function isAtiva(op){
   const s=(op.pipeline_stage||'').toLowerCase();
-  return['prospecção','prospeccao','enviada','ativo','negociacao','negociação'].includes(s);
+  return['prospec��o','prospeccao','enviada','ativo','negociacao','negocia��o'].includes(s);
 }
 function normTextKey(v){
   return String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
 function isProjetoConcluidoStatus(v){
   const s=normTextKey(v);
-  return s==='concluido' || s==='concluida' || s==='concluído' || s==='concluída';
+  return s==='concluido' || s==='concluida' || s==='conclu�do' || s==='conclu�da';
 }
 function pesquisaSatBadge(status){
   const s=normTextKey(status)||'pendente';
@@ -1946,7 +687,7 @@ function isExpiredOp(op){
   return op._produtos.some(p=>isExpiredProd(p));
 }
 
-// ═══ DASHBOARD ══════════════════════════════════════
+// --- DASHBOARD --------------------------------------
 let chartMensal=null, chartTipo=null, dashTipoMode='nucleo';
 function setDashTipoMode(m){dashTipoMode=m;renderDash();}
 
@@ -1971,7 +712,7 @@ function renderDashFu(){
   });
   items.sort((a,b)=>a.date.localeCompare(b.date));
   if(!items.length){
-    el.innerHTML='<div class="empty-note">Nenhum follow-up agendado'+(dashFuMode==='meus'?' para você':'')+'.</div>';
+    el.innerHTML='<div class="empty-note">Nenhum follow-up agendado'+(dashFuMode==='meus'?' para voc�':'')+'.</div>';
     return;
   }
   const in3d=new Date();in3d.setDate(in3d.getDate()+3);
@@ -1983,15 +724,15 @@ function renderDashFu(){
     const cls=past?'fu-past':soon?'fu-soon':'';
     const dateCls=past?'fu-past':soon?'fu-soon':'';
     const parts=fu.proximo_contato.split('-');
-    const obs=fu.observacao?(fu.observacao.length>65?fu.observacao.slice(0,65)+'…':fu.observacao):'';
+    const obs=fu.observacao?(fu.observacao.length>65?fu.observacao.slice(0,65)+'�':fu.observacao):'';
     return`<div class="fu-item ${cls}" onclick="abrirDetail('${escJsStr(op.id)}')">
       <div class="fu-date ${dateCls}">
         <span class="fu-date-day">${parts[2]}</span>
         <span>${MESES_ABR[parseInt(parts[1])-1]}</span>
-        ${past?'<span style="font-size:8px">⚠</span>':''}
+        ${past?'<span style="font-size:8px">?</span>':''}
       </div>
       <div class="fu-body">
-        <div class="fu-client">${escHtml(op._cliente?.nome||'—')}</div>
+        <div class="fu-client">${escHtml(op._cliente?.nome||'�')}</div>
         ${op.projeto?`<div class="fu-proj">${escHtml(op.projeto)}</div>`:''}
         ${obs?`<div class="fu-obs">${escHtml(obs)}</div>`:''}
       </div>
@@ -2014,8 +755,8 @@ function renderDash(){
       destaques.map(o=>{
         const val=oppValorProposto(o);
         return`<div class="destaque-card" onclick="abrirDetail('${escJsStr(o.id)}')">
-          <div class="destaque-card-lbl">★ Destaque</div>
-          <div class="destaque-card-cliente">${escHtml(o._cliente?.nome||'—')}</div>
+          <div class="destaque-card-lbl">? Destaque</div>
+          <div class="destaque-card-cliente">${escHtml(o._cliente?.nome||'�')}</div>
           ${o.projeto?`<div class="destaque-card-proj">${escHtml(o.projeto)}</div>`:''}
           <div class="destaque-card-footer">
             <div style="display:flex;align-items:center;gap:5px">${tipoBadgeProd(o._produtos[0]?.nucleo)}${estagBadge(o.pipeline_stage)}</div>
@@ -2051,7 +792,7 @@ function renderDash(){
       .filter(p=>p.data_fechamento&&p.data_fechamento.startsWith(anoStr)&&p.status==='fechado')
       .reduce((s,p)=>s+(+p.valor_fechado||0),0);
   },0);
-  // valor efetivo faturado = usando helper por opp (deduz repasses/subs quando há proposta calc)
+  // valor efetivo faturado = usando helper por opp (deduz repasses/subs quando h� proposta calc)
   const fatEfetivo = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||'').startsWith(anoStr))
     .reduce((s,o)=>s+oppValorEfetivo(o,true),0);
 
@@ -2060,26 +801,26 @@ function renderDash(){
   const vPipeTotal = ops.reduce((s,op)=>s+oppValorProposto(op),0);
   const fatTotal = ops.reduce((sum,op)=>sum+op._produtos.filter(p=>p.status==='fechado').reduce((s,p)=>s+(+p.valor_fechado||0),0),0);
 
-  // 2B — conversão correta: opps abertas em anoStr que têm ao menos 1 produto fechado
+  // 2B � convers�o correta: opps abertas em anoStr que t�m ao menos 1 produto fechado
   const ops2026 = ops.filter(o=>(o.data_entrada||'').startsWith(anoStr));
   const fechadas2026 = ops2026.filter(o=>o._produtos.some(p=>p.status==='fechado'));
   const conv = ops2026.length ? Math.round(fechadas2026.length/ops2026.length*100) : 0;
 
   // sub-texto: contar produtos ativos nas oportunidades ativas
-  const nProdsAtivos = ativas.reduce((s,op)=>s+op._produtos.filter(p=>['ativo','negociacao','negociação'].includes((p.status||'').toLowerCase())).length,0);
+  const nProdsAtivos = ativas.reduce((s,op)=>s+op._produtos.filter(p=>['ativo','negociacao','negocia��o'].includes((p.status||'').toLowerCase())).length,0);
 
   document.getElementById('s-fat').textContent=fmt(fatAno);
   document.getElementById('s-fat-sub').innerHTML=`${fechadas.filter(o=>{
     const d=oppDataFechamento(o); return d&&d.startsWith(anoStr);
   }).length} projetos fechados em ${anoStr}<br><span style="font-size:9px;color:var(--verde)">Efetivo EXP: ${fmt(fatEfetivo)}</span><br><span style="font-size:9px;color:#aaa">Total acumulado: ${fmt(fatTotal)}</span>`;
   document.getElementById('s-pipe').textContent=fmt(vPipe);
-  document.getElementById('s-pipe-sub').innerHTML=`${ativas.length} oportunidades ativas<br><span style="font-size:9px;color:var(--azul)">Efetivo EXP: ${fmt(vPipeEfetivo)}</span><br><span style="font-size:9px;color:#aaa">Total histórico: ${fmt(vPipeTotal)}</span>`;
+  document.getElementById('s-pipe-sub').innerHTML=`${ativas.length} oportunidades ativas<br><span style="font-size:9px;color:var(--azul)">Efetivo EXP: ${fmt(vPipeEfetivo)}</span><br><span style="font-size:9px;color:#aaa">Total hist�rico: ${fmt(vPipeTotal)}</span>`;
   // D1: hierarquia ativo / total
   document.getElementById('s-ativas').innerHTML=`${ativas.length}<span style="font-size:14px;font-weight:400;color:#aaa"> / ${ops.length}</span>`;
-  document.getElementById('s-ativas-sub').textContent=`ativas de ${ops.length} total · ${nProdsAtivos} produtos`;
+  document.getElementById('s-ativas-sub').textContent=`ativas de ${ops.length} total � ${nProdsAtivos} produtos`;
   document.getElementById('s-conv').textContent=conv+'%';
   document.getElementById('s-conv-sub').textContent=`${fechadas2026.length} de ${ops2026.length} opp. abertas em ${anoStr}`;
-  // 2E — gráfico mensal: por núcleo quando resp='todos', por usuário quando resp filtrado
+  // 2E � gr�fico mensal: por n�cleo quando resp='todos', por usu�rio quando resp filtrado
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const uMap={};
   const nucMap={};
@@ -2091,11 +832,11 @@ function renderDash(){
       const m=parseInt(p.data_fechamento.slice(5,7))-1;
       if(m<0||m>11)return;
       const val=+p.valor_fechado||0;
-      // por usuário
+      // por usu�rio
       const uid=op.resp_id;
       if(!uMap[uid])uMap[uid]=Array(12).fill(0);
       uMap[uid][m]+=val;
-      // por núcleo
+      // por n�cleo
       const grp=NUCLEO_GRUPO[p.nucleo]||p.nucleo||'Outros';
       if(!nucMap[grp])nucMap[grp]=Array(12).fill(0);
       nucMap[grp][m]+=val;
@@ -2111,7 +852,7 @@ function renderDash(){
       const cor=CHART_CORES[grp]||'#aaa';
       return{label:grp,data:nucMap[grp],borderColor:cor,backgroundColor:cor+'18',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false};
     });
-    // Linha de soma total — sempre visível quando há mais de um núcleo
+    // Linha de soma total � sempre vis�vel quando h� mais de um n�cleo
     if(nucFil==='todos' && datasets.length>0){
       const total=Array(12).fill(0);
       nucs.forEach(n=>nucMap[n].forEach((v,i)=>total[i]+=v));
@@ -2133,8 +874,8 @@ function renderDash(){
   const ctx1=document.getElementById('chart-mensal').getContext('2d');
   chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8,usePointStyle:true}}},scales:{x:{ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{font:{size:9},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(0,0,0,.04)'}}}}});
 
-  // S4-02 — donut com toggle: por núcleo / pipeline stage / responsável
-  // Atualiza estado visual dos botões
+  // S4-02 � donut com toggle: por n�cleo / pipeline stage / respons�vel
+  // Atualiza estado visual dos bot�es
   ['nucleo','stage','resp'].forEach(m=>{
     const b=document.getElementById('dtm-'+m);
     if(b){b.className=m===dashTipoMode?'btn xs':'btn xs ghost';}
@@ -2148,7 +889,7 @@ function renderDash(){
       if(dashTipoMode==='nucleo'){
         key=NUCLEO_GRUPO[p.nucleo]||p.nucleo||'Outros';
       } else if(dashTipoMode==='stage'){
-        key=STAGE_LABEL[op.pipeline_stage]||op.pipeline_stage||'—';
+        key=STAGE_LABEL[op.pipeline_stage]||op.pipeline_stage||'�';
       } else {
         const u=allUsers[op.resp_id];
         key=u?u.nome.split(' ')[0]:'Sem resp.';
@@ -2156,8 +897,8 @@ function renderDash(){
       tipoMap[key]=(tipoMap[key]||0)+(+p.valor_fechado||0);
     });
   });
-  // Cores: núcleo usa CHART_CORES, outros usam cor do usuário ou paleta fixa
-  const STAGE_CORES={'Fechado Ganho':'#1D9E75','Negada':'#E53935','Perdida':'#FF7043','Cancelada':'#9E9E9E','Fechada':'#2563EB','Em negociação':'#F5A623','Enviada':'#8E44AD','Prospecção':'#607D8B'};
+  // Cores: n�cleo usa CHART_CORES, outros usam cor do usu�rio ou paleta fixa
+  const STAGE_CORES={'Fechado Ganho':'#1D9E75','Negada':'#E53935','Perdida':'#FF7043','Cancelada':'#9E9E9E','Fechada':'#2563EB','Em negocia��o':'#F5A623','Enviada':'#8E44AD','Prospec��o':'#607D8B'};
   const RESP_PALETA=['#5280CA','#45865D','#C36247','#D19931','#8E44AD','#607D8B','#E53935','#FF7043'];
   if(chartTipo)chartTipo.destroy();
   const ctx2=document.getElementById('chart-tipo').getContext('2d');
@@ -2168,7 +909,7 @@ function renderDash(){
   } else if(dashTipoMode==='stage'){
     tCores=tLabels.map(l=>STAGE_CORES[l]||'#aaa');
   } else {
-    // por responsável: usa cor do usuário
+    // por respons�vel: usa cor do usu�rio
     tCores=tLabels.map((l,i)=>{
       const u=Object.values(allUsers).find(u=>u.nome.split(' ')[0]===l);
       return u?.cor||RESP_PALETA[i%RESP_PALETA.length];
@@ -2188,10 +929,10 @@ function renderDash(){
       <div style="font-size:9px;font-family:var(--font-mono);color:#999;min-width:28px;text-align:right">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
     </div>`).join(''):'<div style="font-size:10px;color:#aaa;padding:4px 0">Sem fechamentos em '+anoStr+'</div>';
   const elTipoTitle=document.getElementById('chart-tipo-title');
-  if(elTipoTitle)elTipoTitle.textContent=`Por tipo · ${anoStr}`;
+  if(elTipoTitle)elTipoTitle.textContent=`Por tipo � ${anoStr}`;
 
 
-  // fechamentos e negativas — 45 dias
+  // fechamentos e negativas � 45 dias
   const cut=new Date();cut.setDate(cut.getDate()-45);
   const recFech=allOps.filter(o=>{
     if(!isFechada(o))return false;
@@ -2204,27 +945,27 @@ function renderDash(){
     return d&&new Date(d)>=cut;
   }).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
 
-  const tblFech = `<table><thead><tr><th>Nº</th><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead><tbody>
+  const tblFech = `<table><thead><tr><th>N�</th><th>Cliente</th><th>N�cleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead><tbody>
     ${recFech.map(o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <td class="num-tag">${escHtml(o.num_legado||'—')}</td>
-      <td><strong>${escHtml(o._cliente?.nome||'—')}</strong></td>
+      <td class="num-tag">${escHtml(o.num_legado||'�')}</td>
+      <td><strong>${escHtml(o._cliente?.nome||'�')}</strong></td>
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td>
       <td style="font-weight:700;font-family:var(--font-mono)">${fmt(oppValorFechado(o))}</td>
     </tr>`).join('')}</tbody></table>`;
-  const tblNeg = `<table><thead><tr><th>Nº</th><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor prop.</th></tr></thead><tbody>
+  const tblNeg = `<table><thead><tr><th>N�</th><th>Cliente</th><th>N�cleo</th><th>Resp.</th><th>Data</th><th>Valor prop.</th></tr></thead><tbody>
     ${recNeg.map(o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <td class="num-tag">${escHtml(o.num_legado||'—')}</td>
-      <td><strong>${escHtml(o._cliente?.nome||'—')}</strong></td>
+      <td class="num-tag">${escHtml(o.num_legado||'�')}</td>
+      <td><strong>${escHtml(o._cliente?.nome||'�')}</strong></td>
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(o.updated_at)}</td>
       <td style="font-family:var(--font-mono);color:var(--terracota)">${fmt(oppValorProposto(o))}</td>
     </tr>`).join('')}</tbody></table>`;
 
-  document.getElementById('dash-fechamentos').innerHTML=recFech.length?tblFech:`<div class="empty-note">Nenhum fechamento nos últimos 45 dias.</div>`;
-  document.getElementById('dash-negativas').innerHTML=recNeg.length?tblNeg:`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
+  document.getElementById('dash-fechamentos').innerHTML=recFech.length?tblFech:`<div class="empty-note">Nenhum fechamento nos �ltimos 45 dias.</div>`;
+  document.getElementById('dash-negativas').innerHTML=recNeg.length?tblNeg:`<div class="empty-note">Nenhuma negativa nos �ltimos 45 dias.</div>`;
   renderDashFu();
   renderValorPropostas();
 }
@@ -2236,13 +977,13 @@ function renderDashPesquisaSatisfacao(){
     return;
   }
   const st=getPesquisaSatStats();
-  const notaMedia = st.notaMedia==null ? '—' : st.notaMedia.toFixed(1).replace('.',',');
+  const notaMedia = st.notaMedia==null ? '�' : st.notaMedia.toFixed(1).replace('.',',');
   const ultimas = st.ultimas.length ? `
     <div style="display:flex;flex-direction:column;gap:6px">
       ${st.ultimas.map(r=>`
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r._op?._cliente?.nome||r.cliente_nome||'—')}</div>
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r._op?._cliente?.nome||r.cliente_nome||'�')}</div>
             <div style="font-size:10px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r._op?.projeto||'Pesquisa respondida')}</div>
           </div>
           <div style="font-family:var(--font-mono);font-weight:700">${Number(r.nota||0)}/5</div>
@@ -2261,13 +1002,13 @@ function renderDashPesquisaSatisfacao(){
   `;
 }
 
-// ═══ PIPELINE ═══════════════════════════════════════
+// --- PIPELINE ---------------------------------------
 function renderPipe(){
   const respFil=document.getElementById('pf-resp').value;
   const nucFil=document.getElementById('pf-nucleo').value;
   const ordemFil=document.getElementById('pf-ordem')?.value||'recentes';
 
-  // 3B — função de ordenação aplicada a todos os grupos de cards
+  // 3B � fun��o de ordena��o aplicada a todos os grupos de cards
   function sortCards(arr){
     if(ordemFil==='valor')
       return arr.slice().sort((a,b)=>oppValorProposto(b)-oppValorProposto(a));
@@ -2285,9 +1026,9 @@ function renderPipe(){
 
   const cut45=new Date();cut45.setDate(cut45.getDate()-45);
 
-  const prosp   = ops.filter(o=>['prospecção','prospeccao'].includes((o.pipeline_stage||'').toLowerCase()));
+  const prosp   = ops.filter(o=>['prospec��o','prospeccao'].includes((o.pipeline_stage||'').toLowerCase()));
   const orcAtiv = ops.filter(o=>['enviada','ativo'].includes((o.pipeline_stage||'').toLowerCase()));
-  const negoc   = ops.filter(o=>['negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase()));
+  const negoc   = ops.filter(o=>['negociacao','negocia��o'].includes((o.pipeline_stage||'').toLowerCase()));
   const fech    = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||o.updated_at)&&new Date(oppDataFechamento(o)||o.updated_at)>=cut45);
   const negado  = ops.filter(o=>isNegada(o));
 
@@ -2315,20 +1056,20 @@ function renderPipe(){
     const prop=op._proposal;
     const code=prop?.prop_code
       ? `EXP-${String(prop.prop_code).padStart(3,'0')}`
-      : (op.num_legado||'—');
+      : (op.num_legado||'�');
     const locStr=[op.cidade,op.uf].filter(Boolean).join('/');
-    const neg=['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase());
+    const neg=['negociacao','negocia��o'].includes((op.pipeline_stage||'').toLowerCase());
     const fech=isFechada(op);
     const cls=`pcard${exp?' pcard-exp':fech?' pcard-fech':neg?' pcard-neg':dest?' pcard-dest':''}`;
     return`<div class="${cls}" draggable="true" data-id="${op.id}" onclick="abrirDetail('${escJsStr(op.id)}')">
       <div class="pcard-top">
         <span class="pcard-code">${code}</span>
         <div style="display:flex;align-items:center;gap:4px">
-          ${dest?'<span style="font-size:8px;color:#C4831A;font-weight:700">★</span>':''}
+          ${dest?'<span style="font-size:8px;color:#C4831A;font-weight:700">?</span>':''}
           <div class="temp ${tc}"></div>
         </div>
       </div>
-      <div class="pcard-client">${escHtml(op._cliente?.nome||'—')}</div>
+      <div class="pcard-client">${escHtml(op._cliente?.nome||'�')}</div>
       ${op.projeto?`<div class="pcard-proj">${escHtml(op.projeto)}</div>`:''}
       ${locStr?`<div class="pcard-loc">${escHtml(locStr)}</div>`:''}
       <div class="pcard-meta">
@@ -2340,7 +1081,7 @@ function renderPipe(){
     </div>`;
   }
 
-  const empty='<div style="font-size:10px;color:#aaa;padding:8px">—</div>';
+  const empty='<div style="font-size:10px;color:#aaa;padding:8px">�</div>';
   document.getElementById('k-prosp').innerHTML=sortCards(prosp).map(card).join('')||empty;
   document.getElementById('k-orc').innerHTML=sortCards(orcAtiv).map(card).join('')||empty;
   document.getElementById('k-negoc').innerHTML=sortCards(negoc).map(card).join('')||empty;
@@ -2350,7 +1091,7 @@ function renderPipe(){
 }
 
 function setupPipelineDrag(){
-  const STAGE_MAP={'k-prosp':'prospecção','k-orc':'enviada','k-negoc':'negociacao','k-fech':'fechada','k-neg':'negada'};
+  const STAGE_MAP={'k-prosp':'prospec��o','k-orc':'enviada','k-negoc':'negociacao','k-fech':'fechada','k-neg':'negada'};
   let dragId=null, srcCol=null;
 
   document.querySelectorAll('.pcard[data-id]').forEach(el=>{
@@ -2384,7 +1125,7 @@ function setupPipelineDrag(){
       const id=dragId; dragId=null; srcCol=null;
       const newStage=STAGE_MAP[colId];
       if(newStage==='fechada'){
-        // Abre modal de fechamento; carregarDados reseta posição visual do card
+        // Abre modal de fechamento; carregarDados reseta posi��o visual do card
         await carregarDados(); renderPipe();
         abrirFechamento(id);
         return;
@@ -2396,7 +1137,7 @@ function setupPipelineDrag(){
   });
 }
 
-// ═══ ORÇAMENTOS ═════════════════════════════════════
+// --- OR�AMENTOS -------------------------------------
 function sortOrc(key){
   if(orcSortKey===key)orcSortDir*=-1;else{orcSortKey=key;orcSortDir=-1;}
   renderOrc();
@@ -2413,7 +1154,7 @@ function renderOrc(){
   if(ano!=='todos')ops=ops.filter(o=>(o.data_entrada||'').startsWith(ano)||(oppDataFechamento(o)||'').startsWith(ano));
   if(nucleo!=='todos')ops=ops.filter(o=>o._produtos.some(p=>NUCLEO_GRUPO[p.nucleo]===nucleo));
   if(status!=='todos'){
-    const slMap={'Prospecção':['prospecção','prospeccao'],'Orçamento ativo':['enviada','ativo'],'Negociação':['negociacao','negociação'],'Fechado':['fechada','fechado'],'Negado':['negada','negado','perdida'],'Cancelado':['cancelada','cancelado'],'Expirado':'exp'};
+    const slMap={'Prospec��o':['prospec��o','prospeccao'],'Or�amento ativo':['enviada','ativo'],'Negocia��o':['negociacao','negocia��o'],'Fechado':['fechada','fechado'],'Negado':['negada','negado','perdida'],'Cancelado':['cancelada','cancelado'],'Expirado':'exp'};
     const sl=slMap[status];
     if(sl==='exp')ops=ops.filter(o=>isExpiredOp(o));
     else if(sl)ops=ops.filter(o=>sl.includes((o.pipeline_stage||'').toLowerCase()));
@@ -2442,43 +1183,43 @@ function renderOrc(){
     const nucleos=[...new Set(o._produtos.map(p=>p.nucleo))];
     const tc=tempClass(o._followups);
     const exp=isExpiredOp(o);
-    // 3F — data_envio e dias_envio do produto principal (maior valor)
+    // 3F � data_envio e dias_envio do produto principal (maior valor)
     const prodPrincipal=o._produtos.slice().sort((a,b)=>(+b.valor_proposto||0)-(+a.valor_proposto||0))[0];
     const dataEnvio=prodPrincipal?.data_envio||null;
     const diasEnvio=dataEnvio?diasDesde(dataEnvio):null;
-    const tempTooltip='Hot: contato <30d · Warm: 30-60d · Cold: >60d';
-    const _orcNeg=['negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase());
+    const tempTooltip='Hot: contato <30d � Warm: 30-60d � Cold: >60d';
+    const _orcNeg=['negociacao','negocia��o'].includes((o.pipeline_stage||'').toLowerCase());
     const _orcFech=isFechada(o);
     const _orcCls=exp?' expired':_orcFech?' orc-fech':(_orcNeg||o.destaque)?' orc-neg':'';
     return`<tr class="click${_orcCls}" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <td class="num-tag">${escHtml(o.num_legado||'—')}</td>
-      <td><strong>${escHtml(o._cliente?.nome||'—')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td>
+      <td class="num-tag">${escHtml(o.num_legado||'�')}</td>
+      <td><strong>${escHtml(o._cliente?.nome||'�')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td>
       <td>${nucleos.map(n=>tipoBadgeProd(n)).join(' ')}</td>
       <td>${respBadge(o.resp_id)}</td>
-      <td style="font-size:11px">${escHtml(o.cidade||'—')}${o.uf?'/'+escHtml(o.uf):''}</td>
+      <td style="font-size:11px">${escHtml(o.cidade||'�')}${o.uf?'/'+escHtml(o.uf):''}</td>
       <td class="dtag">${fmtD(o.data_entrada)}</td>
       <td class="dtag">${fmtD(dataEnvio)}</td>
       <td style="font-weight:600;font-family:var(--font-mono)">${fmt(vProp)}</td>
       <td style="font-family:var(--font-mono);color:var(--azul);font-size:10px" title="Valor efetivo EXP (exclui repasses/subs)">${fmt(oppValorEfetivo(o,false))}</td>
-      <td style="font-weight:600;font-family:var(--font-mono);color:${vFch?'var(--verde)':'inherit'}">${vFch?fmt(vFch):'—'}</td>
+      <td style="font-weight:600;font-family:var(--font-mono);color:${vFch?'var(--verde)':'inherit'}">${vFch?fmt(vFch):'�'}</td>
       <td style="white-space:nowrap">${probDots(prodPrincipal?.prob)}</td>
-      <td class="dtag">${diasEnvio!==null?diasEnvio+' d':'—'}</td>
+      <td class="dtag">${diasEnvio!==null?diasEnvio+' d':'�'}</td>
       <td>${estagBadge(o.pipeline_stage)}</td>
       <td title="${escAttr(tempTooltip)}"><div class="temp ${tc}" style="cursor:help"></div></td>
     </tr>`;
   }).join('');
 }
 
-// ═══ CONTATOS ═══════════════════════════════════════
+// --- CONTATOS ---------------------------------------
 function contactStatus(clienteId){
   const ops=allOps.filter(o=>o.cliente_id===clienteId);
-  if(!ops.length)return'Prospecção';
+  if(!ops.length)return'Prospec��o';
   const dates=[...ops.map(o=>o.updated_at||o.data_entrada)].filter(Boolean).sort((a,b)=>b.localeCompare(a));
-  if(!dates.length)return'Prospecção';
+  if(!dates.length)return'Prospec��o';
   const d=diasDesde(dates[0]);
   if(d<=90)return'Ativo';if(d<=360)return'Sem atividade';return'Inativo';
 }
-function statusDotColor(s){return{Ativo:'#1D6A4A','Sem atividade':'#C4831A',Inativo:'#B84C3A','Prospecção':'#aaa'}[s]||'#aaa';}
+function statusDotColor(s){return{Ativo:'#1D6A4A','Sem atividade':'#C4831A',Inativo:'#B84C3A','Prospec��o':'#aaa'}[s]||'#aaa';}
 
 function renderContatos(){
   const q=document.getElementById('ct-busca').value.toLowerCase();
@@ -2488,7 +1229,7 @@ function renderContatos(){
   if(q)clientes=clientes.filter(c=>(c.nome||'').toLowerCase().includes(q)||(c.tipo==='pessoa_fisica'&&('pfi '+c.nome).toLowerCase().includes(q)));
   if(sf!=='todos')clientes=clientes.filter(c=>contactStatus(c.id)===sf);
 
-  // PF vêm depois, ambos em ordem alfabética
+  // PF v�m depois, ambos em ordem alfab�tica
   const pj=clientes.filter(c=>c.tipo!=='pessoa_fisica').sort((a,b)=>a.nome.localeCompare(b.nome));
   const pf=clientes.filter(c=>c.tipo==='pessoa_fisica').sort((a,b)=>a.nome.localeCompare(b.nome));
   clientes=[...pj,...pf];
@@ -2505,7 +1246,7 @@ function renderContatos(){
     const canEdit=!currentUser?.viewer_only;
     const contatosHtml=contatos.length?contatos.map(p=>`
       <div class="pessoa-row">
-        <div style="flex:1"><div style="font-weight:500">${escHtml(p.nome||'â€”')}</div><div style="font-size:10px;color:#888">${escHtml(p.cargo||'')}</div></div>
+        <div style="flex:1"><div style="font-weight:500">${escHtml(p.nome||'—')}</div><div style="font-size:10px;color:#888">${escHtml(p.cargo||'')}</div></div>
         <div style="font-size:10px;color:#888;text-align:right">
           ${p.email?`<div>${escHtml(p.email)}</div>`:''}${p.telefone?`<div>${escHtml(p.telefone)}</div>`:''}
         </div>
@@ -2516,14 +1257,14 @@ function renderContatos(){
       const opsList=opsC.length?opsC:[null];
       opsList.forEach((o,oi)=>{
         const cardId='ce-'+c.id.replace(/-/g,'')+'-'+oi;
-        const proj=o?(o.projeto||o.cidade||o.num_legado||'Sem título'):'Sem proposta';
+        const proj=o?(o.projeto||o.cidade||o.num_legado||'Sem t�tulo'):'Sem proposta';
         const nomeExib=`<span style="font-size:9px;font-weight:700;color:#888;margin-right:4px;letter-spacing:.4px">PFI |</span>${escHtml(c.nome)}`;
         const stDot=o?estagBadge(o.pipeline_stage):'';
         cards.push(`<div class="cont-empresa">
           <div class="cont-hd" onclick="toggleContato('${cardId}')">
             <div>
               <div class="cont-nome">${nomeExib}</div>
-              <div style="font-size:10px;color:#888;margin-top:2px">${proj}${o?` · ${stDot}`:''}</div>
+              <div style="font-size:10px;color:#888;margin-top:2px">${proj}${o?` � ${stDot}`:''}</div>
             </div>
             <div class="cont-status">
               <div class="status-dot" style="background:${o?'#1D6A4A':'#aaa'}"></div>
@@ -2536,8 +1277,8 @@ function renderContatos(){
             </div>`:''}
             ${contatosHtml}
             ${o?`<div style="margin-top:8px;border-top:1px solid var(--cinza2);padding-top:8px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:8px" onclick="abrirDetail('${escJsStr(o.id)}')">
-              <span class="num-tag">${escHtml(o.num_legado||'—')}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
-              <span style="flex:1;color:#888">${escHtml(o.projeto||o.cidade||'—')}</span>
+              <span class="num-tag">${escHtml(o.num_legado||'�')}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
+              <span style="flex:1;color:#888">${escHtml(o.projeto||o.cidade||'�')}</span>
               <span style="font-family:var(--font-mono)">${fmt(oppValorProposto(o))}</span>${estagBadge(o.pipeline_stage)}
             </div>`:''}
           </div>
@@ -2551,7 +1292,7 @@ function renderContatos(){
         <div class="cont-hd" onclick="toggleContato('${id}')">
           <div style="min-width:0;flex:1">
             <div class="cont-nome" style="display:flex;align-items:center;gap:0">${escHtml(c.nome)}${siglaTag}</div>
-            <div style="font-size:10px;color:#888;margin-top:2px">${c.cidade||''}${c.uf?', '+c.uf:''} · ${opsC.length} proposta${opsC.length!==1?'s':''}</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">${c.cidade||''}${c.uf?', '+c.uf:''} � ${opsC.length} proposta${opsC.length!==1?'s':''}</div>
           </div>
           <div class="cont-status">
             <div class="status-dot" style="background:${statusDotColor(st)}"></div>
@@ -2561,14 +1302,14 @@ function renderContatos(){
         <div class="cont-body" id="${id}">
           ${canEdit?`<div style="padding:8px 0 6px;border-bottom:1px solid var(--cinza2);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <button class="btn sm" onclick="abrirNovoContato('${escJsStr(c.id)}')">+ Adicionar contato</button>
-            <button class="btn sm" onclick="editarSiglaCliente(event,'${escJsStr(c.id)}','${escJsStr(c.sigla||'')}')">✎ Sigla${c.sigla?': '+escHtml(c.sigla):''}</button>
+            <button class="btn sm" onclick="editarSiglaCliente(event,'${escJsStr(c.id)}','${escJsStr(c.sigla||'')}')">? Sigla${c.sigla?': '+escHtml(c.sigla):''}</button>
           </div>`:''}
           ${contatosHtml}
           ${opsC.length?`<div style="margin-top:8px;border-top:1px solid var(--cinza2);padding-top:8px">
             <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:6px">Propostas</div>
             ${opsC.slice(0,5).map(o=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:11px" onclick="abrirDetail('${escJsStr(o.id)}')">
-              <span class="num-tag">${escHtml(o.num_legado||'—')}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
-              <span style="flex:1;color:#888">${escHtml(o.projeto||o.cidade||'—')}</span>
+              <span class="num-tag">${escHtml(o.num_legado||'�')}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
+              <span style="flex:1;color:#888">${escHtml(o.projeto||o.cidade||'�')}</span>
               <span style="font-family:var(--font-mono)">${fmt(oppValorProposto(o))}</span>${estagBadge(o.pipeline_stage)}
             </div>`).join('')}
           </div>`:''}
@@ -2590,8 +1331,8 @@ function editarSiglaCliente(e, clienteId, siglaAtual){
   wrap.style.cssText='display:inline-flex;align-items:center;gap:4px;margin-left:4px';
   wrap.innerHTML=`<input id="sigla-inp-${clienteId.slice(0,8)}" type="text" value="${escAttr(siglaAtual)}" maxlength="6"
     placeholder="CPB" style="width:58px;padding:2px 6px;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;border:1px solid var(--grafite);border-radius:var(--radius-badge,4px);font-family:var(--font-mono)">
-    <button class="btn sm verde" style="padding:2px 8px">✓</button>
-    <button class="btn sm" style="padding:2px 8px">✕</button>`;
+    <button class="btn sm verde" style="padding:2px 8px">?</button>
+    <button class="btn sm" style="padding:2px 8px">?</button>`;
   btn.insertAdjacentElement('afterend', wrap);
   btn.style.display='none';
   const inp=wrap.querySelector('input');
@@ -2610,9 +1351,9 @@ function editarSiglaCliente(e, clienteId, siglaAtual){
   inp.onkeydown=ev=>{if(ev.key==='Enter')salvar();else if(ev.key==='Escape'){wrap.remove();btn.style.display='';delete btn.dataset.editing;}};
 }
 
-// ═══ DETALHE DA PROPOSTA — definido abaixo com botões de ação ════════
+// --- DETALHE DA PROPOSTA � definido abaixo com bot�es de a��o --------
 
-// ═══ FOLLOW-UP ══════════════════════════════════════
+// --- FOLLOW-UP --------------------------------------
 async function openFollowUpModal(){
   let op=allOps.find(o=>o.id===detailOppId);
   if(!op)return;
@@ -2622,18 +1363,18 @@ async function openFollowUpModal(){
   }
   const fus=op._followups||[];
   if(fus.length>=5){toast('Limite de 5 follow-ups atingido.');return;}
-  document.getElementById('fu-title').textContent=`Follow-up — ${op._cliente?.nome||''} (${op.num_legado||''})`;
+  document.getElementById('fu-title').textContent=`Follow-up � ${op._cliente?.nome||''} (${op.num_legado||''})`;
   document.getElementById('fu-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('fu-next').value='';
   document.getElementById('fu-obs').value='';
   document.getElementById('fu-hist').innerHTML=fus.length?
-    `<div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:6px">Histórico</div>`+
-    fus.map(f=>`<div class="follow-row"><div style="min-width:75px;font-size:9px;font-weight:700;color:#999">${fmtD(f.data_contato)}</div><div style="flex:1">${escHtml(f.observacao||'—')}</div>${f.proximo_contato?`<div style="font-size:9px;color:var(--ouro)">→ ${fmtD(f.proximo_contato)}</div>`:''}</div>`).join(''):'';
+    `<div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:6px">Hist�rico</div>`+
+    fus.map(f=>`<div class="follow-row"><div style="min-width:75px;font-size:9px;font-weight:700;color:#999">${fmtD(f.data_contato)}</div><div style="flex:1">${escHtml(f.observacao||'�')}</div>${f.proximo_contato?`<div style="font-size:9px;color:var(--ouro)">? ${fmtD(f.proximo_contato)}</div>`:''}</div>`).join(''):'';
   closeM('modal-detail');
   openM('modal-fu');
 }
 
-async function garantirProdutosCalcMaterializados(oppId, contexto='operação'){
+async function garantirProdutosCalcMaterializados(oppId, contexto='opera��o'){
   let op=allOps.find(o=>o.id===oppId);
   if(!op)return null;
   if(op._produtos.length || !op._proposal?.items?.length)return op;
@@ -2646,9 +1387,9 @@ async function garantirProdutosCalcMaterializados(oppId, contexto='operação'){
     valor_calculado: +it.valorCalc || 0,
     valor_proposto: it.valorProposto != null ? +it.valorProposto : (+it.valorCalc || 0),
     status: 'ativo',
-    prob: ['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase()) ? 4 : 3,
+    prob: ['negociacao','negocia��o'].includes((op.pipeline_stage||'').toLowerCase()) ? 4 : 3,
     calc_id: op.proposta_calc_id || null,
-    obs: [it.subLabel, it.desc, it.id ? `ref ${it.id}` : '', `calc item ${idx+1}`].filter(Boolean).join(' · ') || null,
+    obs: [it.subLabel, it.desc, it.id ? `ref ${it.id}` : '', `calc item ${idx+1}`].filter(Boolean).join(' � ') || null,
     updated_at: new Date().toISOString(),
   }));
 
@@ -2657,12 +1398,12 @@ async function garantirProdutosCalcMaterializados(oppId, contexto='operação'){
 
   await carregarDados();
   op=allOps.find(o=>o.id===oppId)||null;
-  if(op) toast('Itens da proposta da calculadora sincronizados no CRM para continuar a operação.');
+  if(op) toast('Itens da proposta da calculadora sincronizados no CRM para continuar a opera��o.');
   return op;
 }
 
 async function salvarFU(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   let op=allOps.find(o=>o.id===detailOppId);
   if(op && !op._produtos.length && op._proposal?.items?.length){
     op = await garantirProdutosCalcMaterializados(op.id, 'follow-up');
@@ -2670,8 +1411,8 @@ async function salvarFU(){
   }
   const prodId=op?._produtos?.[0]?.id||null;
   const obs=document.getElementById('fu-obs').value.trim();
-  if(!obs){toast('Informe a observação.');return;}
-  if(!prodId){toast('Esta oportunidade ainda não possui produto vinculado para registrar follow-up.');return;}
+  if(!obs){toast('Informe a observa��o.');return;}
+  if(!prodId){toast('Esta oportunidade ainda n�o possui produto vinculado para registrar follow-up.');return;}
   const {error}=await sb.from('followups_produto').insert({
     produto_id: prodId,
     data: document.getElementById('fu-data').value||null,
@@ -2687,7 +1428,7 @@ async function salvarFU(){
   calcAlertas();
 }
 
-// ═══ ALERTAS — integrados no bell global (AppNotif) ══════════
+// --- ALERTAS � integrados no bell global (AppNotif) ----------
 function calcAlertas(){
   // COM-5: monta lista completa, filtra descartados, limita a 50
   const todos=[];
@@ -2703,7 +1444,7 @@ function calcAlertas(){
       label: 'Comercial',
       items: ativos.map(a => ({
         key:      a.key,
-        icon:     a.tipo === 'exp' ? '⚡' : '⏰',
+        icon:     a.tipo === 'exp' ? '?' : '?',
         titulo:   a.tipo === 'exp' ? 'Proposta expirada' : 'Sem follow-up 30d',
         corpo:    a.msg,
         onClick:  () => { abrirDetail(a.op.id); },
@@ -2716,7 +1457,7 @@ function calcAlertas(){
 function descartarAlerta(key){
   alertasDescartados.add(key);
   localStorage.setItem('exp_alertas_ok',JSON.stringify([...alertasDescartados]));
-  calcAlertas(); // re-sincroniza seção "comercial" no AppNotif
+  calcAlertas(); // re-sincroniza se��o "comercial" no AppNotif
 }
 
 function limparTodosAlertas(){
@@ -2730,7 +1471,7 @@ function limparTodosAlertas(){
 
 function toggleAlertas(){ _appNotifToggle?.(); }
 
-// ═══ BOAS VINDAS ════════════════════════════════════
+// --- BOAS VINDAS ------------------------------------
 function showBoasVindas(){
   if(!currentUser)return;
   const nome=currentUser.nome?.split(' ')[0]||'';
@@ -2746,16 +1487,16 @@ function showBoasVindas(){
     const ativas=allOps.filter(o=>isAtiva(o)&&o.resp_id===currentUser.id);
     html+=`<div class="bv-section"><div class="bv-title">Suas oportunidades ativas</div>
       ${ativas.slice(0,5).map(o=>`<div class="bv-item">
-        <span class="num-tag">${escHtml(o.num_legado||'—')} ${escHtml(o._cliente?.nome||'—')}</span>
+        <span class="num-tag">${escHtml(o.num_legado||'�')} ${escHtml(o._cliente?.nome||'�')}</span>
         <span style="font-family:var(--font-mono)">${fmt(oppValorProposto(o))}</span>
       </div>`).join('')||'<div style="font-size:11px;color:#aaa">Nenhuma ativa.</div>'}
     </div>`;
   }
-  html+=`<div class="bv-section"><div class="bv-title">Fechamentos e negativas — 45 dias</div>
+  html+=`<div class="bv-section"><div class="bv-title">Fechamentos e negativas � 45 dias</div>
     ${rec45.slice(0,6).map(o=>`<div class="bv-item">
-      <span>${escHtml(o._cliente?.nome||'—')} <span class="badge ${isFechada(o)?'b-vd':'b-tc'}" style="font-size:7px">${stageLabel(o.pipeline_stage)}</span></span>
+      <span>${escHtml(o._cliente?.nome||'�')} <span class="badge ${isFechada(o)?'b-vd':'b-tc'}" style="font-size:7px">${stageLabel(o.pipeline_stage)}</span></span>
       <span style="font-family:var(--font-mono);color:${isFechada(o)?'var(--verde)':'var(--terracota)'}">${fmt(isFechada(o)?oppValorFechado(o):oppValorProposto(o))}</span>
-    </div>`).join('')||'<div style="font-size:11px;color:#aaa">Nenhum no período.</div>'}
+    </div>`).join('')||'<div style="font-size:11px;color:#aaa">Nenhum no per�odo.</div>'}
     <div class="bv-item" style="margin-top:4px;padding-top:8px;border-top:1px solid var(--cinza2)">
       <span style="font-weight:600">Total fechado</span>
       <span style="font-family:var(--font-mono);font-weight:700;color:var(--verde)">${fmt(vF45)}</span>
@@ -2765,7 +1506,7 @@ function showBoasVindas(){
   openM('modal-bv');
 }
 
-// ═══ NAV ════════════════════════════════════════════
+// --- NAV --------------------------------------------
 function goTab(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.crm-tab').forEach(t=>t.classList.remove('active'));
@@ -2781,12 +1522,12 @@ function goTab(id, btn){
   if(id==='relatorios')renderRelatorios();
 }
 
-// ═══════════════════════════════════════════════════
-// NOVA / EDITAR OPORTUNIDADE — autocomplete cliente
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
+// NOVA / EDITAR OPORTUNIDADE � autocomplete cliente
+// ---------------------------------------------------
 
 async function abrirNovaOpp(){
-  if(currentUser?.viewer_only){toast('Sem permissão para criar.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o para criar.');return;}
   document.getElementById('opp-id').value='';
   document.getElementById('opp-cliente-id').value='';
   document.getElementById('opp-cliente-text').value='';
@@ -2803,8 +1544,8 @@ async function abrirNovaOpp(){
   document.getElementById('opp-indicou').value='';
   document.getElementById('opp-evento').value='';
   document.getElementById('opp-data-entrada').value=new Date().toISOString().slice(0,10);
-  document.getElementById('opp-stage').value='prospecção';
-  document.getElementById('opp-origem').value='Captação';
+  document.getElementById('opp-stage').value='prospec��o';
+  document.getElementById('opp-origem').value='Capta��o';
   document.getElementById('opp-num-legado-wrap').style.display='none';
   document.getElementById('opp-num-legado').value='';
   document.getElementById('opp-indicou-wrap').style.display='none';
@@ -2825,7 +1566,7 @@ async function abrirNovaOpp(){
 function editarOpp(){
   const op=allOps.find(o=>o.id===detailOppId);
   if(!op)return;
-  if(currentUser?.viewer_only){toast('Sem permissão para editar.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o para editar.');return;}
   document.getElementById('opp-id').value=op.id;
   document.getElementById('opp-modal-title').textContent='Editar Oportunidade';
   document.getElementById('opp-projeto').value=op.projeto||'';
@@ -2842,7 +1583,7 @@ function editarOpp(){
   document.getElementById('opp-data-entrada').value=op.data_entrada||'';
   document.getElementById('opp-destaque').checked=!!op.destaque;
   populateCalcDropdown(op.proposta_calc_id||'');
-  document.getElementById('opp-stage').value=op.pipeline_stage||'prospecção';
+  document.getElementById('opp-stage').value=op.pipeline_stage||'prospec��o';
   document.getElementById('opp-novo-cliente-wrap').style.display='none';
   document.getElementById('opp-cliente-id').value=op.cliente_id||'';
   const cli=allClients.find(c=>c.id===op.cliente_id);
@@ -2850,7 +1591,7 @@ function editarOpp(){
   document.getElementById('opp-cliente-dropdown').style.display='none';
   if(cli){
     const sd=document.getElementById('opp-cliente-selecionado');
-    sd.textContent='✓ '+cli.nome; sd.style.display='block';
+    sd.textContent='? '+cli.nome; sd.style.display='block';
   }else{
     document.getElementById('opp-cliente-selecionado').style.display='none';
   }
@@ -2890,7 +1631,7 @@ function selecionarCliente(id,nome){
   document.getElementById('opp-cliente-text').value=nome;
   document.getElementById('opp-cliente-dropdown').style.display='none';
   const sd=document.getElementById('opp-cliente-selecionado');
-  sd.textContent='✓ '+nome; sd.style.display='block';
+  sd.textContent='? '+nome; sd.style.display='block';
 }
 
 function mostrarFormNovoCliente(){
@@ -2911,12 +1652,12 @@ function onClienteChange(){}
 
 function onOrigemChange(){
   const v=document.getElementById('opp-origem').value;
-  const isIndic=v.startsWith('Indicação');
+  const isIndic=v.startsWith('Indica��o');
   const isEvento=v==='Evento';
   document.getElementById('opp-indicou-wrap').style.display=isIndic?'block':'none';
   document.getElementById('opp-evento-wrap').style.display=isEvento?'block':'none';
   if(isIndic){
-    document.getElementById('opp-indicou-label').textContent=v==='Indicação de sócio'?'Nome do sócio':'Quem indicou';
+    document.getElementById('opp-indicou-label').textContent=v==='Indica��o de s�cio'?'Nome do s�cio':'Quem indicou';
   }
 }
 
@@ -2926,9 +1667,9 @@ function popularIndicouDatalist(){
 }
 
 async function criarNovoClienteInline(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   const nome=document.getElementById('nc-nome').value.trim();
-  if(!nome){toast('Nome do cliente é obrigatório.');return;}
+  if(!nome){toast('Nome do cliente � obrigat�rio.');return;}
   const payload={
     nome,
     sigla:document.getElementById('nc-sigla').value.trim().toUpperCase()||null,
@@ -2946,7 +1687,7 @@ async function criarNovoClienteInline(){
   toast('Cliente criado!');
 }
 
-// Gerar número sequencial 26O0001
+// Gerar n�mero sequencial 26O0001
 async function gerarNumLegado(){
   const ano=String(new Date().getFullYear()).slice(-2);
   const prefix=`${ano}O`;
@@ -2961,31 +1702,31 @@ async function gerarNumLegado(){
 }
 
 async function salvarOpp(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   const id=document.getElementById('opp-id').value;
   const clienteId=document.getElementById('opp-cliente-id').value;
   if(!clienteId){toast('Selecione ou crie um cliente.');return;}
 
   const origem=document.getElementById('opp-origem').value;
-  const isIndic=origem.startsWith('Indicação');
+  const isIndic=origem.startsWith('Indica��o');
   const isEvento=origem==='Evento';
   let indicou=null;
   if(isIndic)indicou=document.getElementById('opp-indicou').value.trim()||null;
   if(isEvento)indicou=document.getElementById('opp-evento').value.trim()||null;
 
-  // C6: validação de num_legado ao editar
+  // C6: valida��o de num_legado ao editar
   const numLegadoNovo = id ? document.getElementById('opp-num-legado').value.trim().toUpperCase() || null : null;
   if(id && numLegadoNovo){
     const {data:dup}=await sb.from('oportunidades').select('id').eq('num_legado',numLegadoNovo).neq('id',id).maybeSingle();
-    if(dup){toast('Número legado já existe em outra oportunidade.');return;}
+    if(dup){toast('N�mero legado j� existe em outra oportunidade.');return;}
   }
 
-  // COM-3: validação de vínculo único — uma proposta só pode estar ligada a uma oportunidade
+  // COM-3: valida��o de v�nculo �nico � uma proposta s� pode estar ligada a uma oportunidade
   const calcIdSelecionado = document.getElementById('opp-calc-id').value.trim() || null;
   if (calcIdSelecionado) {
     const jaVinculada = allOps.find(o => o.proposta_calc_id === calcIdSelecionado && (!id || o.id !== id));
     if (jaVinculada) {
-      toast(`Esta proposta já está vinculada à oportunidade ${jaVinculada.num_legado || '#'+jaVinculada.id}. Cada proposta pode ser vinculada a apenas uma oportunidade.`);
+      toast(`Esta proposta j� est� vinculada � oportunidade ${jaVinculada.num_legado || '#'+jaVinculada.id}. Cada proposta pode ser vinculada a apenas uma oportunidade.`);
       return;
     }
   }
@@ -3018,16 +1759,16 @@ async function salvarOpp(){
     ({data,error}=await sb.from('oportunidades').insert(payload).select().maybeSingle());
   }
   if(error){toast('Erro: '+error.message);return;}
-  toast(id?'Oportunidade atualizada!':'Oportunidade criada! Nº '+(payload.num_legado||''));
+  toast(id?'Oportunidade atualizada!':'Oportunidade criada! N� '+(payload.num_legado||''));
   closeM('modal-opp');
   await carregarDados();
   renderDash();renderPipe();renderOrc();renderContatos();calcAlertas();
   if(data?.id)abrirDetail(data.id);
 }
 
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
 // NOVO / EDITAR PRODUTO
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
 
 const SUBTIPOS_POR_NUCLEO={
   PAIS:['PAIS_TERREO','PAIS_CONDO','PAIS_FLOREIRA','PAIS_STREET','PAIS_ARB','PAIS_PARQUE','PAIS_PARQUE_BAIXO','PAIS_PF'],
@@ -3044,7 +1785,7 @@ function updateSubtipos(selectedVal){
 }
 
 function abrirNovoProd(oppId){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   document.getElementById('prod-id').value='';
   document.getElementById('prod-opp-id').value=oppId;
   document.getElementById('prod-modal-title').textContent='Novo Produto';
@@ -3063,7 +1804,7 @@ function abrirNovoProd(oppId){
 }
 
 function editarProd(prodId){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   const p=allProds.find(x=>x.id===prodId);
   if(!p)return;
   document.getElementById('prod-id').value=p.id;
@@ -3083,7 +1824,7 @@ function editarProd(prodId){
 }
 
 async function salvarProd(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   const id=document.getElementById('prod-id').value;
   const oppId=document.getElementById('prod-opp-id').value;
   const payload={
@@ -3104,9 +1845,9 @@ async function salvarProd(){
   else{
     ({error}=await sb.from('produtos').insert(payload));
     if(!error){
-      // C8: ao adicionar produto, opp passa para "Orçamento ativo"
+      // C8: ao adicionar produto, opp passa para "Or�amento ativo"
       const op=allOps.find(o=>o.id===oppId);
-      if(op&&['prospecção','prospeccao'].includes((op.pipeline_stage||'').toLowerCase())){
+      if(op&&['prospec��o','prospeccao'].includes((op.pipeline_stage||'').toLowerCase())){
         await sb.from('oportunidades').update({pipeline_stage:'enviada',updated_at:new Date().toISOString()}).eq('id',oppId);
       }
     }
@@ -3119,24 +1860,24 @@ async function salvarProd(){
   abrirDetail(oppId);
 }
 
-// ═══════════════════════════════════════════════════
-// AÇÕES DE ESTÁGIO / PRODUTO
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
+// A��ES DE EST�GIO / PRODUTO
+// ---------------------------------------------------
 
 let _acaoTipo=null,_acaoOppId=null,_acaoProdId=null;
 
 function abrirAcaoOpp(tipo){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   _acaoTipo=tipo;_acaoOppId=detailOppId;_acaoProdId=null;
-  const titles={prospeccao:'← Voltar para Prospecção',enviada:'Marcar como Orçamento ativo',negociacao:'Mover para Negociação',negada:'Registrar Negativa'};
+  const titles={prospeccao:'? Voltar para Prospec��o',enviada:'Marcar como Or�amento ativo',negociacao:'Mover para Negocia��o',negada:'Registrar Negativa'};
   document.getElementById('acao-title').textContent=titles[tipo]||'Confirmar';
   let html='';
   if(tipo==='negada'){
     html=`<div class="fgroup mb8"><label>Motivo da negativa *</label><textarea id="acao-motivo" style="min-height:60px" placeholder="Descreva o motivo..."></textarea></div>
-    <div class="fgroup"><label>Probabilidade de retorno</label><select id="acao-prob-retorno"><option value="">—</option><option>Alta</option><option>Média</option><option>Baixa</option><option>Nenhuma</option></select></div>`;
+    <div class="fgroup"><label>Probabilidade de retorno</label><select id="acao-prob-retorno"><option value="">�</option><option>Alta</option><option>M�dia</option><option>Baixa</option><option>Nenhuma</option></select></div>`;
     document.getElementById('acao-confirm-btn').className='btn tc';
   } else {
-    html=`<p style="font-size:12px;color:#555;padding:4px 0">Confirmar mudança de estágio para <strong>${titles[tipo]}</strong>?</p>`;
+    html=`<p style="font-size:12px;color:#555;padding:4px 0">Confirmar mudan�a de est�gio para <strong>${titles[tipo]}</strong>?</p>`;
     document.getElementById('acao-confirm-btn').className='btn verde';
   }
   document.getElementById('acao-body').innerHTML=html;
@@ -3144,16 +1885,16 @@ function abrirAcaoOpp(tipo){
 }
 
 function abrirAcaoProd(prodId,tipo){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   _acaoTipo='prod_'+tipo;_acaoProdId=prodId;_acaoOppId=detailOppId;
   const p=allProds.find(x=>x.id===prodId);
   const label=SUBTIPO_LABEL[p?.subtipo]||p?.subtipo||'Produto';
   if(tipo==='negociacao'){
-    document.getElementById('acao-title').textContent='Mover para Negociação — '+label;
-    document.getElementById('acao-body').innerHTML=`<p style="font-size:12px;color:#555;padding:4px 0">Confirmar mudança de estágio para <strong>Em negociação</strong>?</p>`;
+    document.getElementById('acao-title').textContent='Mover para Negocia��o � '+label;
+    document.getElementById('acao-body').innerHTML=`<p style="font-size:12px;color:#555;padding:4px 0">Confirmar mudan�a de est�gio para <strong>Em negocia��o</strong>?</p>`;
     document.getElementById('acao-confirm-btn').className='btn verde';
   } else if(tipo==='fechado'){
-    document.getElementById('acao-title').textContent='Fechar — '+label;
+    document.getElementById('acao-title').textContent='Fechar � '+label;
     document.getElementById('acao-body').innerHTML=`
       <div class="fg fg2 mb8">
         <div class="fgroup"><label>Valor fechado (R$) *</label><input type="number" id="acao-vf" step="100" min="0" value="${escAttr(p?.valor_proposto||'')}"></div>
@@ -3161,34 +1902,34 @@ function abrirAcaoProd(prodId,tipo){
       </div>`;
     document.getElementById('acao-confirm-btn').className='btn verde';
   } else if(tipo==='cancelado'){
-    document.getElementById('acao-title').textContent='Cancelar — '+label;
+    document.getElementById('acao-title').textContent='Cancelar � '+label;
     document.getElementById('acao-body').innerHTML=`
       <div class="fgroup mb8"><label>Motivo do cancelamento</label><textarea id="acao-cn" style="min-height:50px" placeholder="Opcional..."></textarea></div>`;
     document.getElementById('acao-confirm-btn').className='btn tc';
   } else {
-    document.getElementById('acao-title').textContent='Negar — '+label;
+    document.getElementById('acao-title').textContent='Negar � '+label;
     document.getElementById('acao-body').innerHTML=`
       <div class="fgroup mb8"><label>Categoria da negativa</label>
         <select id="acao-cat">
-          <option value="">— Selecionar —</option>
-          <option value="Preço / Honorários">Preço / Honorários altos</option>
-          <option value="Concorrência">Concorrência (menor preço)</option>
+          <option value="">� Selecionar �</option>
+          <option value="Pre�o / Honor�rios">Pre�o / Honor�rios altos</option>
+          <option value="Concorr�ncia">Concorr�ncia (menor pre�o)</option>
           <option value="Prazo / Cronograma">Prazo ou cronograma</option>
-          <option value="Decisão interna">Decisão interna (desistência)</option>
+          <option value="Decis�o interna">Decis�o interna (desist�ncia)</option>
           <option value="Budget cancelado">Budget cancelado</option>
           <option value="Sem retorno">Inatividade / sem retorno</option>
-          <option value="Escopo">Mudança de escopo</option>
+          <option value="Escopo">Mudan�a de escopo</option>
           <option value="Outro">Outro</option>
         </select>
       </div>
-      <div class="fgroup mb8"><label>Observação (opcional)</label><textarea id="acao-mn" style="min-height:50px" placeholder="Detalhes adicionais..."></textarea></div>
-      <div class="fgroup"><label>Prob. de retorno</label><select id="acao-pr"><option value="">—</option><option>Alta</option><option>Média</option><option>Baixa</option><option>Nenhuma</option></select></div>`;
+      <div class="fgroup mb8"><label>Observa��o (opcional)</label><textarea id="acao-mn" style="min-height:50px" placeholder="Detalhes adicionais..."></textarea></div>
+      <div class="fgroup"><label>Prob. de retorno</label><select id="acao-pr"><option value="">�</option><option>Alta</option><option>M�dia</option><option>Baixa</option><option>Nenhuma</option></select></div>`;
     document.getElementById('acao-confirm-btn').className='btn tc';
   }
   openM('modal-acao');
 }
 
-// C4: deriva estágio da opp a partir dos produtos após cada ação
+// C4: deriva est�gio da opp a partir dos produtos ap�s cada a��o
 async function autoUpdateOppStage(oppId){
   const {data:prods, error:pErr}=await sb.from('produtos').select('status').eq('oportunidade_id',oppId);
   if(pErr){ console.error('autoUpdateOppStage:', pErr.message); return; }
@@ -3197,18 +1938,18 @@ async function autoUpdateOppStage(oppId){
   let newStage;
   if(st.some(s=>s==='fechado'))newStage='fechada';
   else if(st.every(s=>['negado','cancelado'].includes(s)))newStage='negada';
-  else if(st.some(s=>s==='negociacao'||s==='negociação'))newStage='negociacao';
+  else if(st.some(s=>s==='negociacao'||s==='negocia��o'))newStage='negociacao';
   else newStage='enviada';
   await sb.from('oportunidades').update({pipeline_stage:newStage,updated_at:new Date().toISOString()}).eq('id',oppId);
 }
 
 async function confirmarAcao(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   if(_acaoTipo==='prod_negociacao'){
     const {error}=await sb.from('produtos').update({status:'negociacao',updated_at:new Date().toISOString()}).eq('id',_acaoProdId);
     if(error){toast('Erro: '+error.message);return;}
     await autoUpdateOppStage(_acaoOppId);
-    toast('Produto em negociação!');
+    toast('Produto em negocia��o!');
   } else if(_acaoTipo==='prod_fechado'){
     const vf=parseFloat(document.getElementById('acao-vf')?.value)||null;
     const df=document.getElementById('acao-df')?.value||null;
@@ -3217,7 +1958,7 @@ async function confirmarAcao(){
     if(error){toast('Erro: '+error.message);return;}
     await autoUpdateOppStage(_acaoOppId);
     toast('Produto fechado!');
-    // C13: verifica subcontratações vinculadas à proposta calc
+    // C13: verifica subcontrata��es vinculadas � proposta calc
     verificarSubsAposFechamento(_acaoOppId, 'fechado');
   } else if(_acaoTipo==='prod_negado'){
     const mn=document.getElementById('acao-mn')?.value.trim()||null;
@@ -3228,7 +1969,7 @@ async function confirmarAcao(){
     if(error){toast('Erro: '+error.message);return;}
     await autoUpdateOppStage(_acaoOppId);
     toast('Produto marcado como negado.');
-    // C13: subs caem automaticamente quando produto é negado
+    // C13: subs caem automaticamente quando produto � negado
     verificarSubsAposFechamento(_acaoOppId, 'negado');
   } else if(_acaoTipo==='prod_cancelado'){
     const cn=document.getElementById('acao-cn')?.value.trim()||null;
@@ -3237,7 +1978,7 @@ async function confirmarAcao(){
     await autoUpdateOppStage(_acaoOppId);
     toast('Produto cancelado.');
   } else {
-    // ação no nível da oportunidade (apenas 'enviada' restante)
+    // a��o no n�vel da oportunidade (apenas 'enviada' restante)
     const {error}=await sb.from('oportunidades').update({pipeline_stage:_acaoTipo,updated_at:new Date().toISOString()}).eq('id',_acaoOppId);
     if(error){toast('Erro: '+error.message);return;}
     toast('Oportunidade atualizada!');
@@ -3248,10 +1989,10 @@ async function confirmarAcao(){
   abrirDetail(_acaoOppId);
 }
 
-// ═══════════════════════════════════════════════════
-// C13 — APROVAÇÃO DE SUBCONTRATAÇÕES
-// ═══════════════════════════════════════════════════
-let _subsParaAprovacao = [];   // cópia das subs com campo status_aprov
+// ---------------------------------------------------
+// C13 � APROVA��O DE SUBCONTRATA��ES
+// ---------------------------------------------------
+let _subsParaAprovacao = [];   // c�pia das subs com campo status_aprov
 let _subsProposalId    = null; // proposal_id do exp_proposals a atualizar
 
 async function verificarSubsAposFechamento(oppId, acao) {
@@ -3267,16 +2008,16 @@ async function verificarSubsAposFechamento(oppId, acao) {
     if (!subs.length) return;
 
     if (acao === 'negado') {
-      // Produto negado → todas as subs caem automaticamente
+      // Produto negado ? todas as subs caem automaticamente
       const updated = subs.map(s=>({...s, status_aprov:'negada'}));
       await sb.from('exp_proposals')
         .update({ subs: updated, updated_at: new Date().toISOString() })
         .eq('proposal_id', op.proposta_calc_id);
-      toast('Subcontratações marcadas como negadas automaticamente.');
+      toast('Subcontrata��es marcadas como negadas automaticamente.');
       return;
     }
 
-    // Produto fechado → abre modal para aprovação manual
+    // Produto fechado ? abre modal para aprova��o manual
     _subsProposalId = op.proposta_calc_id;
     _subsParaAprovacao = subs.map(s=>({
       ...s,
@@ -3289,22 +2030,22 @@ async function verificarSubsAposFechamento(oppId, acao) {
 
 function renderSubAprovacao() {
   const el = document.getElementById('subs-aprov-list');
-  if (!_subsParaAprovacao.length) { el.innerHTML='<div style="color:#aaa;font-size:11px">Nenhuma subcontratação.</div>'; return; }
+  if (!_subsParaAprovacao.length) { el.innerHTML='<div style="color:#aaa;font-size:11px">Nenhuma subcontrata��o.</div>'; return; }
   el.innerHTML = _subsParaAprovacao.map((s,i)=>{
     const st = s.status_aprov || 'pendente';
     const cor = st==='aprovada'?'var(--verde)':st==='negada'?'var(--terracota)':'#999';
     return `<div style="border:1px solid var(--cinza2);padding:9px 12px;margin-bottom:7px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
         <div style="flex:1">
-          <div style="font-weight:600;font-size:12px">${s.serv||'—'}</div>
-          <div style="font-size:10px;color:#888">${s.emp||''}${s.data?' · '+s.data:''}</div>
+          <div style="font-weight:600;font-size:12px">${s.serv||'�'}</div>
+          <div style="font-size:10px;color:#888">${s.emp||''}${s.data?' � '+s.data:''}</div>
         </div>
         <div style="font-family:var(--font-mono);font-weight:700;font-size:13px">${fmt(s.valComBit||0)}</div>
       </div>
       <div style="display:flex;gap:5px;align-items:center">
         <span style="font-size:9px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.5px;margin-right:4px">${st}</span>
-        <button class="btn xs ${st==='aprovada'?'verde':'ghost'}" onclick="_subsParaAprovacao[${i}].status_aprov='aprovada';renderSubAprovacao()">✓ Aprovar</button>
-        <button class="btn xs ${st==='negada'?'tc':'ghost'}" onclick="_subsParaAprovacao[${i}].status_aprov='negada';renderSubAprovacao()">✗ Negar</button>
+        <button class="btn xs ${st==='aprovada'?'verde':'ghost'}" onclick="_subsParaAprovacao[${i}].status_aprov='aprovada';renderSubAprovacao()">? Aprovar</button>
+        <button class="btn xs ${st==='negada'?'tc':'ghost'}" onclick="_subsParaAprovacao[${i}].status_aprov='negada';renderSubAprovacao()">? Negar</button>
       </div>
     </div>`;
   }).join('');
@@ -3316,20 +2057,20 @@ async function finalizarAprovacaoSubs() {
     .update({ subs: _subsParaAprovacao, updated_at: new Date().toISOString() })
     .eq('proposal_id', _subsProposalId);
   if (error) { toast('Erro ao salvar: ' + error.message); return; }
-  toast('Decisões sobre subcontratações registradas!');
+  toast('Decis�es sobre subcontrata��es registradas!');
   closeM('modal-subs-aprov');
   _subsParaAprovacao = []; _subsProposalId = null;
 }
 
-// ═══════════════════════════════════════════════════
-// FASE 5 — FECHAMENTO UNIFICADO DE OPORTUNIDADE
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
+// FASE 5 � FECHAMENTO UNIFICADO DE OPORTUNIDADE
+// ---------------------------------------------------
 
 let _fechOppId = null;          // opp em processo de fechamento
 let _fechCustos = [];           // opp_custos carregados para o fechamento
 
 async function abrirFechamento(oppId) {
-  if (currentUser?.viewer_only) { toast('Sem permissão.'); return; }
+  if (currentUser?.viewer_only) { toast('Sem permiss�o.'); return; }
   let op = allOps.find(o => o.id === oppId);
   if (!op) return;
   if (!op._produtos.length && op._proposal?.items?.length) {
@@ -3339,7 +2080,7 @@ async function abrirFechamento(oppId) {
   _fechOppId = oppId;
 
   document.getElementById('fech-opp-title').textContent =
-    `Fechar oportunidade — ${op.projeto || op._cliente?.nome || oppId}`;
+    `Fechar oportunidade � ${op.projeto || op._cliente?.nome || oppId}`;
   document.getElementById('fech-data').value = new Date().toISOString().slice(0, 10);
 
   // Carrega opp_custos desta oportunidade (subs/desps/repasse)
@@ -3360,14 +2101,14 @@ function _renderFechItens(op) {
   if (!wrap) return;
   let html = '';
 
-  // ── Serviços via vínculo direto calc (sem produtos no DB) ──
+  // -- Servi�os via v�nculo direto calc (sem produtos no DB) --
   const _calcFechItens = !op._produtos.length && op._proposal?.items?.length
     ? op._proposal.items : null;
   if (_calcFechItens) {
     const totalProp = _calcFechItens.reduce((s,it)=>s+(it.valorProposto!=null?+it.valorProposto:(+it.valorCalc||0)),0);
-    html += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:8px">Serviços (EXP.calc)</div>`;
+    html += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:8px">Servi�os (EXP.calc)</div>`;
     _calcFechItens.forEach(it => {
-      const label = it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Serviço';
+      const label = it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Servi�o';
       const val = it.valorProposto != null ? +it.valorProposto : (+it.valorCalc || 0);
       html += `<div style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;display:flex;align-items:center;gap:8px">
         ${tipoBadgeProd(it.nucleo || 'PAIS')}
@@ -3385,11 +2126,11 @@ function _renderFechItens(op) {
     </div>`;
   }
 
-  // ── Serviços (produtos DB) ──
+  // -- Servi�os (produtos DB) --
   if (op._produtos.length) {
-    html += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:8px">Serviços</div>`;
+    html += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:8px">Servi�os</div>`;
     op._produtos.forEach(p => {
-      const label = SUBTIPO_LABEL[p.subtipo] || p.subtipo || 'Serviço';
+      const label = SUBTIPO_LABEL[p.subtipo] || p.subtipo || 'Servi�o';
       const valRef = p.valor_proposto || p.valor_calculado || 0;
       const isFech = p.status === 'fechado';
       const valFch = p.valor_fechado || valRef;
@@ -3400,7 +2141,7 @@ function _renderFechItens(op) {
             style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
           ${tipoBadgeProd(p.nucleo)}
           <span style="font-size:12px;font-weight:500;flex:1">${escHtml(label)}</span>
-          ${isFech ? `<span class="badge b-vd" style="font-size:9px">já fechado</span>` : ''}
+          ${isFech ? `<span class="badge b-vd" style="font-size:9px">j� fechado</span>` : ''}
           <span style="font-size:11px;color:#888">Proposta: <strong>${fmt(valRef)}</strong></span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="frow-p-${p.id}-fields">
@@ -3410,7 +2151,7 @@ function _renderFechItens(op) {
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%;font-family:var(--font-mono)">
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
-            <label style="font-size:9px">Observação (opcional)</label>
+            <label style="font-size:9px">Observa��o (opcional)</label>
             <input type="text" id="fch-obs-p-${p.id}" value="${escAttr(p.obs||'')}"
               placeholder="Ex: desconto negociado, parcela 1..."
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%">
@@ -3420,8 +2161,8 @@ function _renderFechItens(op) {
     });
   }
 
-  // ── Custos (opp_custos: subs, desps, repasse) ──
-  const TIPO_LABEL = { subcontratacao: 'Subcontratação', despesa_indireta: 'Despesa', repasse: 'Repasse' };
+  // -- Custos (opp_custos: subs, desps, repasse) --
+  const TIPO_LABEL = { subcontratacao: 'Subcontrata��o', despesa_indireta: 'Despesa', repasse: 'Repasse' };
   if (_fechCustos.length) {
     html += `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin:12px 0 8px">Custos (subs / despesas / repasse)</div>`;
     _fechCustos.forEach(c => {
@@ -3434,7 +2175,7 @@ function _renderFechItens(op) {
           <input type="checkbox" id="fch-incl-c-${c.id}" ${incl?'checked':''} onchange="_fechToggleRow('c','${escJsStr(c.id)}',this.checked)"
             style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
           <span style="font-size:9px;background:#f0f0f0;padding:1px 6px;border-radius:3px;color:#666;font-weight:600">${escHtml(tipoLabel)}</span>
-          <span style="font-size:12px;font-weight:500;flex:1">${escHtml(c.descricao||'—')}</span>
+          <span style="font-size:12px;font-weight:500;flex:1">${escHtml(c.descricao||'�')}</span>
           <span style="font-size:11px;color:#888">Calculado: <strong>${fmt(valRef)}</strong></span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="frow-c-${c.id}-fields">
@@ -3444,7 +2185,7 @@ function _renderFechItens(op) {
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%;font-family:var(--font-mono)">
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
-            <label style="font-size:9px">Observação (opcional)</label>
+            <label style="font-size:9px">Observa��o (opcional)</label>
             <input type="text" id="fch-obs-c-${c.id}" value="${escAttr(c.obs_fechamento||'')}"
               placeholder="Ex: absorvida pelo cliente, cortada..."
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%">
@@ -3483,16 +2224,16 @@ function _fechToggleCheckbox(tipo, id, ev) {
 
 async function confirmarFechamento() {
   if (!_fechOppId) return;
-  if (currentUser?.viewer_only) { toast('Sem permissão.'); return; }
+  if (currentUser?.viewer_only) { toast('Sem permiss�o.'); return; }
   const op = allOps.find(o => o.id === _fechOppId);
   if (!op) return;
 
   const dataFech = document.getElementById('fech-data').value || new Date().toISOString().slice(0, 10);
   const erros = [];
   let algumFechado = false;
-  const _produtosFechados = []; // coleta para integração financeira
+  const _produtosFechados = []; // coleta para integra��o financeira
 
-  // ── Salva produtos ──
+  // -- Salva produtos --
   for (const p of op._produtos) {
     const inclEl   = document.getElementById(`fch-incl-p-${p.id}`);
     const vfEl     = document.getElementById(`fch-vf-p-${p.id}`);
@@ -3517,14 +2258,14 @@ async function confirmarFechamento() {
     } else {
       const { error } = await sb.from('produtos').update({
         status:          'negado',
-        motivo_negativa: obs || 'Excluído do fechamento',
+        motivo_negativa: obs || 'Exclu�do do fechamento',
         updated_at:      new Date().toISOString(),
       }).eq('id', p.id);
       if (error) erros.push('Erro ao salvar produto: ' + error.message);
     }
   }
 
-  // ── Salva opp_custos ──
+  // -- Salva opp_custos --
   for (const c of _fechCustos) {
     const inclEl = document.getElementById(`fch-incl-c-${c.id}`);
     const vfEl   = document.getElementById(`fch-vf-c-${c.id}`);
@@ -3546,7 +2287,7 @@ async function confirmarFechamento() {
 
   if (erros.length) { toast(erros[0]); return; }
 
-  // Opp calc-vinculada sem produtos DB → salva valor e atualiza estágio
+  // Opp calc-vinculada sem produtos DB ? salva valor e atualiza est�gio
   if (op._proposal?.items?.length && !op._produtos.length) {
     const vfTotal = parseFloat(document.getElementById('fch-vf-total')?.value) || oppValorProposto(op);
     await sb.from('oportunidades').update({
@@ -3559,7 +2300,7 @@ async function confirmarFechamento() {
     await autoUpdateOppStage(_fechOppId);
   }
 
-  // ── Integração com Financeiro ──
+  // -- Integra��o com Financeiro --
   let _finRascunhoCriado = false;
   if (algumFechado) {
     _finRascunhoCriado = await criarRascunhoFinanceiro(op, _produtosFechados, dataFech);
@@ -3572,17 +2313,17 @@ async function confirmarFechamento() {
 
   if (algumFechado) {
     const finMsg = _finRascunhoCriado
-      ? ` · Rascunho criado em <a href="financeiro.html" style="color:#A78BFA">EXP.financeiro ↗</a>`
+      ? ` � Rascunho criado em <a href="financeiro.html" style="color:#A78BFA">EXP.financeiro ?</a>`
       : '';
-    toast(`✓ Fechamento registrado em ${fmtD(dataFech)}!${finMsg}`, _finRascunhoCriado ? 5000 : 2800);
+    toast(`? Fechamento registrado em ${fmtD(dataFech)}!${finMsg}`, _finRascunhoCriado ? 5000 : 2800);
   } else {
-    toast('Itens marcados como negados. Nenhum serviço fechado.');
+    toast('Itens marcados como negados. Nenhum servi�o fechado.');
   }
 }
 
-// ═══════════════════════════════════════════════════
-// CRM → FINANCEIRO: cria rascunho ao fechar
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
+// CRM ? FINANCEIRO: cria rascunho ao fechar
+// ---------------------------------------------------
 async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
   try {
     const clienteNome = op._cliente?.nome
@@ -3591,16 +2332,16 @@ async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
     const _lp = op._proposal;
     const ativosIds = []; // {id, lp}
 
-    // ── CASO 1: Proposta Calc vinculada (sem produtos individuais no DB) ──
+    // -- CASO 1: Proposta Calc vinculada (sem produtos individuais no DB) --
     if (_lp?.items?.length && !op._produtos.length) {
       const vfTotal = parseFloat(document.getElementById('fch-vf-total')?.value) || +(_lp.total) || 0;
-      // Núcleo principal = item de maior valor
+      // N�cleo principal = item de maior valor
       const primaryItem = _lp.items.slice().sort(
         (a, b) => (b.valorProposto || b.valorCalc || 0) - (a.valorProposto || a.valorCalc || 0)
       )[0];
       const propCode = _lp.prop_code ? `EXP-${String(_lp.prop_code).padStart(3, '0')}` : null;
 
-      // Valor efetivo EXP = total cliente − repasse comercial − custo bruto de subcontratações
+      // Valor efetivo EXP = total cliente - repasse comercial - custo bruto de subcontrata��es
       const _repVal  = +(_lp.repasse?.valorRep) || 0;
       const _subsVal = (_lp.subs||[]).reduce((s,x) => s + (+(x.val)||0), 0);
       const _efetivo = (+(_lp.total)||0) - _repVal - _subsVal;
@@ -3625,11 +2366,11 @@ async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
       if (ae) throw new Error(ae.message);
       ativosIds.push({ id: ad.id, lp: _lp });
 
-    // ── CASO 2: Produtos individuais fechados ──
+    // -- CASO 2: Produtos individuais fechados --
     } else if (produtosFechados.length) {
       for (const p of produtosFechados) {
-        const descr = (SUBTIPO_LABEL?.[p.subtipo] || p.subtipo || 'Serviço')
-          + (op.projeto ? ` — ${op.projeto}` : '');
+        const descr = (SUBTIPO_LABEL?.[p.subtipo] || p.subtipo || 'Servi�o')
+          + (op.projeto ? ` � ${op.projeto}` : '');
         const payload = {
           produto_id:        p.id,
           oportunidade_id:   op.id,
@@ -3653,18 +2394,18 @@ async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
 
     if (!ativosIds.length) return false;
 
-    // ── Subcontratações e Repasse (apenas para ativos com proposta Calc) ──
+    // -- Subcontrata��es e Repasse (apenas para ativos com proposta Calc) --
     for (const { id: ativoId, lp } of ativosIds) {
       if (!lp) continue;
 
-      // Subcontratações
+      // Subcontrata��es
       if (lp.subs?.length) {
         const subsPayload = lp.subs.map(s => {
           const valComBit = (+(s.val)||0) * (1 + (+(s.bit)||0) / 100);
           const ganhoExp  = valComBit * ((+(s.ret)||0) / 100);
           return {
             ativo_id:              ativoId,
-            servico:               s.serv || 'Serviço',
+            servico:               s.serv || 'Servi�o',
             empresa:               s.emp  || null,
             custo_cotado:          +(s.val) || 0,
             bitributacao_pct:      +(s.bit) || 0,
@@ -3698,19 +2439,19 @@ async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
   }
 }
 
-// ═══════════════════════════════════════════════════
-// CONTATOS — cadastrar contato
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
+// CONTATOS � cadastrar contato
+// ---------------------------------------------------
 
 function abrirNovoContato(clienteId){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   document.getElementById('contato-cliente-id').value=clienteId;
   document.getElementById('contato-nome').value='';
   document.getElementById('contato-cargo').value='';
   document.getElementById('contato-tel').value='';
   document.getElementById('contato-email').value='';
   const cli=allClients.find(c=>c.id===clienteId);
-  document.getElementById('contato-modal-title').textContent=`Novo contato — ${cli?.nome||''}`;
+  document.getElementById('contato-modal-title').textContent=`Novo contato � ${cli?.nome||''}`;
   openM('modal-contato');
 }
 
@@ -3743,9 +2484,9 @@ function encontrarContatoClienteExistente(clienteId, nome, email, telefone){
 }
 
 async function salvarContato(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   const nome=document.getElementById('contato-nome').value.trim();
-  if(!nome){toast('Nome é obrigatório.');return;}
+  if(!nome){toast('Nome � obrigat�rio.');return;}
   const clienteId=document.getElementById('contato-cliente-id').value;
   const payload={
     cliente_id:clienteId,
@@ -3758,7 +2499,7 @@ async function salvarContato(){
   const {data:ctData, error}=await sb.from('contatos').insert(payload).select('id');
   if(error){toast('Erro ao salvar contato: '+error.message);return;}
   if(!ctData||ctData.length===0){
-    toast('Contato não foi salvo. Execute o SQL de permissões RLS na tabela contatos (ver SQL_RLS_SPRINT_A.sql).');
+    toast('Contato n�o foi salvo. Execute o SQL de permiss�es RLS na tabela contatos (ver SQL_RLS_SPRINT_A.sql).');
     return;
   }
   toast('Contato adicionado!');
@@ -3768,7 +2509,7 @@ async function salvarContato(){
 }
 
 async function salvarRespClienteComoContato(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   const clienteId = document.getElementById('opp-cliente-id').value;
   if(!clienteId){toast('Selecione um cliente antes de salvar o contato.');return;}
 
@@ -3777,11 +2518,11 @@ async function salvarRespClienteComoContato(){
   const email = document.getElementById('opp-rc-email').value.trim();
 
   if(!nome && !telefone && !email){
-    toast('Preencha ao menos nome, telefone ou e-mail do responsável do cliente.');
+    toast('Preencha ao menos nome, telefone ou e-mail do respons�vel do cliente.');
     return;
   }
   if(!nome){
-    toast('Informe o nome do responsável do cliente para salvar em contatos.');
+    toast('Informe o nome do respons�vel do cliente para salvar em contatos.');
     return;
   }
 
@@ -3806,10 +2547,10 @@ async function salvarRespClienteComoContato(){
     const { data: ctData, error } = await sb.from('contatos').insert(payload).select('id');
     if (error) { toast('Erro ao salvar contato: ' + error.message); return; }
     if (!ctData || ctData.length === 0) {
-      toast('Contato não foi salvo. Verifique as permissões da tabela contatos.');
+      toast('Contato n�o foi salvo. Verifique as permiss�es da tabela contatos.');
       return;
     }
-    toast('Contato comercial criado a partir do responsável do orçamento.');
+    toast('Contato comercial criado a partir do respons�vel do or�amento.');
   }
 
   await carregarDados();
@@ -3817,10 +2558,10 @@ async function salvarRespClienteComoContato(){
 }
 
 async function salvarPesquisaSatisfacao(oppId){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   if(!pesquisaSatDisponivel){toast('Rode o SQL do DEV-19 antes de registrar a pesquisa.');return;}
   const op=allOps.find(o=>o.id===oppId);
-  if(!op){toast('Oportunidade não encontrada.');return;}
+  if(!op){toast('Oportunidade n�o encontrada.');return;}
   const notaEl=document.getElementById(`sat-nota-${oppId}`);
   const respEl=document.getElementById(`sat-resposta-${oppId}`);
   const contEl=document.getElementById(`sat-contato-${oppId}`);
@@ -3859,10 +2600,10 @@ async function salvarPesquisaSatisfacao(oppId){
 }
 
 async function marcarPesquisaSatisfacaoStatus(oppId,status){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  if(currentUser?.viewer_only){toast('Sem permiss�o.');return;}
   if(!pesquisaSatDisponivel){toast('Rode o SQL do DEV-19 antes de registrar a pesquisa.');return;}
   const op=allOps.find(o=>o.id===oppId);
-  if(!op){toast('Oportunidade não encontrada.');return;}
+  if(!op){toast('Oportunidade n�o encontrada.');return;}
   const existente=getPesquisaSat(oppId);
   const payload={
     oportunidade_id: op.id,
@@ -3888,9 +2629,9 @@ async function marcarPesquisaSatisfacaoStatus(oppId,status){
   abrirDetail(oppId);
 }
 
-// ═══════════════════════════════════════════════════
-// DETALHE — cabeçalho correto, sem "fechar oportunidade"
-// ═══════════════════════════════════════════════════
+// ---------------------------------------------------
+// DETALHE � cabe�alho correto, sem "fechar oportunidade"
+// ---------------------------------------------------
 
 function abrirDetail(oppId){
   const op=allOps.find(o=>o.id===oppId);
@@ -3899,9 +2640,9 @@ function abrirDetail(oppId){
   const canEdit=!currentUser?.viewer_only;
   document.getElementById('det-fu-btn').style.display=canEdit?'inline-flex':'none';
   document.getElementById('det-edit-btn').style.display=canEdit?'inline-flex':'none';
-  // Cabeçalho: número · cliente · projeto
+  // Cabe�alho: n�mero � cliente � projeto
   const hdrParts=[op.num_legado,op._cliente?.nome,op.projeto].filter(Boolean);
-  document.getElementById('det-title').textContent=hdrParts.join(' · ');
+  document.getElementById('det-title').textContent=hdrParts.join(' � ');
 
   const vProp=oppValorProposto(op);
   const vFch=oppValorFechado(op);
@@ -3912,12 +2653,12 @@ function abrirDetail(oppId){
 
   let html='';
 
-  // Barra de ações: mostra todos os 4 estágios exceto o atual
+  // Barra de a��es: mostra todos os 4 est�gios exceto o atual
   if(canEdit && isOpen){
     const _pipeStages=[
-      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Lead'},
-      {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo'},
-      {key:'negociacao',vals:['negociacao','negociação'],label:'Negociação'},
+      {key:'prospeccao',vals:['prospec��o','prospeccao'],label:'? Lead'},
+      {key:'enviada',vals:['enviada','ativo'],label:'Or�amento ativo'},
+      {key:'negociacao',vals:['negociacao','negocia��o'],label:'Negocia��o'},
     ];
     html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
       <span style="font-size:9px;color:#bbb;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Mover para:</span>`;
@@ -3926,14 +2667,14 @@ function abrirDetail(oppId){
       html+=`<button class="btn sm" onclick="abrirAcaoOpp('${s.key}')">${s.label}</button>`;
     });
     if(op._produtos.length>0||op._proposal?.items?.length>0)
-      html+=`<button class="btn sm verde" onclick="abrirFechamento('${escJsStr(oppId)}')">✓ Fechar oportunidade</button>`;
+      html+=`<button class="btn sm verde" onclick="abrirFechamento('${escJsStr(oppId)}')">? Fechar oportunidade</button>`;
     html+=`</div>`;
   }
 
-  html+=`<div class="ms"><div class="ms-title">Identificação</div>
-    <div class="dr"><div class="dk">Número</div><div class="dv" style="font-family:var(--font-mono);font-weight:700">${escHtml(op.num_legado||'—')}</div></div>
-    <div class="dr"><div class="dk">Responsável</div><div class="dv">${respBadge(op.resp_id)} ${escHtml(u.nome)}</div></div>
-    <div class="dr"><div class="dk">Estágio</div><div class="dv">${estagBadge(op.pipeline_stage)}</div></div>
+  html+=`<div class="ms"><div class="ms-title">Identifica��o</div>
+    <div class="dr"><div class="dk">N�mero</div><div class="dv" style="font-family:var(--font-mono);font-weight:700">${escHtml(op.num_legado||'�')}</div></div>
+    <div class="dr"><div class="dk">Respons�vel</div><div class="dv">${respBadge(op.resp_id)} ${escHtml(u.nome)}</div></div>
+    <div class="dr"><div class="dk">Est�gio</div><div class="dv">${estagBadge(op.pipeline_stage)}</div></div>
     ${op.proposta_calc_id?(()=>{
       const lp = allProposals.find(p=>p.proposal_id===op.proposta_calc_id);
       const codDisp = lp?.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : `#${op.proposta_calc_id}`;
@@ -3946,10 +2687,10 @@ function abrirDetail(oppId){
   </div>`;
 
   html+=`<div class="ms"><div class="ms-title">Cliente e projeto</div>
-    <div class="dr"><div class="dk">Cliente</div><div class="dv"><strong>${escHtml(op._cliente?.nome||'—')}</strong></div></div>
+    <div class="dr"><div class="dk">Cliente</div><div class="dv"><strong>${escHtml(op._cliente?.nome||'�')}</strong></div></div>
     ${op.projeto?`<div class="dr"><div class="dk">Projeto</div><div class="dv">${escHtml(op.projeto)}</div></div>`:''}
-    <div class="dr"><div class="dk">Cidade</div><div class="dv">${escHtml(op.cidade||'—')}${op.uf?' / '+escHtml(op.uf):''}</div></div>
-    ${op.origem?`<div class="dr"><div class="dk">Origem</div><div class="dv"><strong>${escHtml(op.origem)}</strong>${op.indicou?' — '+escHtml(op.indicou):''}</div></div>`:''}
+    <div class="dr"><div class="dk">Cidade</div><div class="dv">${escHtml(op.cidade||'�')}${op.uf?' / '+escHtml(op.uf):''}</div></div>
+    ${op.origem?`<div class="dr"><div class="dk">Origem</div><div class="dv"><strong>${escHtml(op.origem)}</strong>${op.indicou?' � '+escHtml(op.indicou):''}</div></div>`:''}
     ${(op.resp_cliente_nome||op.resp_cliente_tel||op.resp_cliente_email)?`<div class="dr"><div class="dk">Resp. cliente</div><div class="dv" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       ${op.resp_cliente_nome?`<span style="font-weight:600">${escHtml(op.resp_cliente_nome)}</span>`:''}
       ${op.resp_cliente_tel?`<span style="font-family:var(--font-mono);font-size:10px">${escHtml(op.resp_cliente_tel)}</span>`:''}
@@ -3957,14 +2698,14 @@ function abrirDetail(oppId){
     </div></div>`:''}
   </div>`;
 
-  // Produtos / Serviços — vínculo direto com exp_proposals (sem copiar para tabela produtos)
+  // Produtos / Servi�os � v�nculo direto com exp_proposals (sem copiar para tabela produtos)
   const _lp = op._proposal;
   const _calcItens = _lp?.items?.length ? _lp.items.map((it,idx)=>({
     _virtual: true,
     id: `calc-${op.proposta_calc_id}-${idx}`,
     nucleo: it.nucleo || 'PAIS',
     subtipo: it.subK || null,
-    subLabel: it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Serviço',
+    subLabel: it.subLabel || SUBTIPO_LABEL?.[it.subK] || it.subK || 'Servi�o',
     valor_calculado: +it.valorCalc || 0,
     valor_proposto: it.valorProposto != null ? +it.valorProposto : (+it.valorCalc || 0),
   })) : null;
@@ -3975,26 +2716,26 @@ function abrirDetail(oppId){
   const _oppUpdAt  = op.updated_at   ? new Date(op.updated_at)  : null;
   const _calcNovo  = _calcUpdAt && _oppUpdAt && _calcUpdAt > _oppUpdAt;
   const _calcBadge = _useCalc
-    ? `<span style="margin-left:4px;font-size:8px;padding:2px 6px;color:var(--verde);font-weight:600;white-space:nowrap" title="Atualizada ${_lp.updated_at?fmtD(_lp.updated_at):''}">⟳ calc vinculada${_calcNovo?` · <span style="color:var(--ouro)">atualizada</span>`:''}</span>`
+    ? `<span style="margin-left:4px;font-size:8px;padding:2px 6px;color:var(--verde);font-weight:600;white-space:nowrap" title="Atualizada ${_lp.updated_at?fmtD(_lp.updated_at):''}">? calc vinculada${_calcNovo?` � <span style="color:var(--ouro)">atualizada</span>`:''}</span>`
     : (op.proposta_calc_id ? `<span style="margin-left:4px;font-size:8px;color:#aaa">calc vinculada</span>` : '');
   const _resetBtn = canEdit && op.proposta_calc_id
-    ? `<button class="btn sm" style="margin-left:auto;font-size:8px;padding:2px 8px;color:#888;border-color:#ddd" onclick="resetVinculoCalc('${escJsStr(oppId)}')" title="Limpa produtos importados e reconecta com a calculadora">↺ Atualizar vínculo</button>`
+    ? `<button class="btn sm" style="margin-left:auto;font-size:8px;padding:2px 8px;color:#888;border-color:#ddd" onclick="resetVinculoCalc('${escJsStr(oppId)}')" title="Limpa produtos importados e reconecta com a calculadora">? Atualizar v�nculo</button>`
     : '';
-  const prodSecHdr=`<div class="ms-title" style="display:flex;align-items:center">Produtos / Serviços ${_calcBadge}${_resetBtn}</div>`;
+  const prodSecHdr=`<div class="ms-title" style="display:flex;align-items:center">Produtos / Servi�os ${_calcBadge}${_resetBtn}</div>`;
 
   if(_prodItems.length){
     html+=`<div class="ms">${prodSecHdr}`;
     _prodItems.forEach(p=>{
-      const subLabel=_useCalc?(p.subLabel||'—'):(SUBTIPO_LABEL[p.subtipo]||p.subtipo||'—');
+      const subLabel=_useCalc?(p.subLabel||'�'):(SUBTIPO_LABEL[p.subtipo]||p.subtipo||'�');
       const pSt=(p.status||'').toLowerCase();
       let acaoBtns='';
       if(canEdit && !_useCalc){
         if(pSt==='ativo')
-          acaoBtns=`<button class="btn sm" onclick="abrirAcaoProd('${escJsStr(p.id)}','negociacao')">→ Negociação</button><button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','negado')">✗ Negar</button>`;
-        else if(pSt==='negociacao'||pSt==='negociação')
-          acaoBtns=`<button class="btn sm verde" onclick="abrirAcaoProd('${escJsStr(p.id)}','fechado')">✓ Fechar</button><button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','negado')">✗ Negar</button>`;
+          acaoBtns=`<button class="btn sm" onclick="abrirAcaoProd('${escJsStr(p.id)}','negociacao')">? Negocia��o</button><button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','negado')">? Negar</button>`;
+        else if(pSt==='negociacao'||pSt==='negocia��o')
+          acaoBtns=`<button class="btn sm verde" onclick="abrirAcaoProd('${escJsStr(p.id)}','fechado')">? Fechar</button><button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','negado')">? Negar</button>`;
         else if(pSt==='fechado')
-          acaoBtns=`<button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','cancelado')">⊗ Cancelar</button>`;
+          acaoBtns=`<button class="btn sm tc" onclick="abrirAcaoProd('${escJsStr(p.id)}','cancelado')">? Cancelar</button>`;
       }
       html+=`<div style="border:1px solid var(--cinza2);padding:6px 10px;margin-bottom:5px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
@@ -4002,7 +2743,7 @@ function abrirDetail(oppId){
           <span style="font-size:11px;font-weight:500">${escHtml(subLabel)}</span>
           ${!_useCalc?`<span style="margin-left:auto;display:flex;gap:5px;align-items:center">
             ${estagBadgeProd(p.status)}
-            ${canEdit?`<button class="btn sm ghost" onclick="editarProd('${escJsStr(p.id)}')" style="padding:1px 6px" title="Editar">✎</button>`:''}
+            ${canEdit?`<button class="btn sm ghost" onclick="editarProd('${escJsStr(p.id)}')" style="padding:1px 6px" title="Editar">?</button>`:''}
           </span>`:''}
         </div>
         <div style="display:flex;gap:14px;font-size:10px;color:#888;flex-wrap:wrap">
@@ -4020,20 +2761,20 @@ function abrirDetail(oppId){
     html+=`<div class="dr" style="margin-top:4px"><div class="dk">Total proposta</div><div class="dv" style="font-weight:700;font-family:var(--font-mono)">${fmt(_totalProp)}</div></div>`;
     if(!_useCalc&&vFch)html+=`<div class="dr"><div class="dk">Total fechado</div><div class="dv" style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmt(vFch)}</div></div>`;
     html+=`</div>`;
-    // Custos vinculados (subs/desps/repasse) — inline, sem async
+    // Custos vinculados (subs/desps/repasse) � inline, sem async
     if(_useCalc){
       const _subs=_lp.subs||[], _desps=_lp.desps||[], _rep=_lp.repasse||null;
       if(_subs.length||_desps.length||(_rep&&(_rep.nome||_rep.valorRep))){
         let ch=`<div class="ms"><div class="ms-title">Custos da proposta (EXP.calc)</div>`;
         if(_subs.length){
-          ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Subcontratações</div>`;
+          ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Subcontrata��es</div>`;
           _subs.forEach(s=>{
             const tot=(s.val||0)*(1+(s.bit||0)/100)*(1+(s.ret||0)/100);
             const aprov=s.status_aprov||'pendente';
             const apCor=aprov==='aprovada'?'var(--verde)':aprov==='negada'?'var(--terracota)':'var(--ouro)';
             ch+=`<div style="border:1px solid var(--cinza2);padding:5px 8px;margin-bottom:4px;font-size:10px">
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-                <span style="font-weight:600">${s.serv||'—'}</span>
+                <span style="font-weight:600">${s.serv||'�'}</span>
                 ${s.emp?`<span style="color:#888">${s.emp}</span>`:''}
                 <span style="margin-left:auto;font-size:9px;font-weight:700;color:${apCor};text-transform:uppercase">${aprov}</span>
               </div>
@@ -4050,7 +2791,7 @@ function abrirDetail(oppId){
           ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Despesas Indiretas</div>`;
           _desps.forEach(d=>{
             ch+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
-              <span style="flex:1">${d.desc||'—'}</span>
+              <span style="flex:1">${d.desc||'�'}</span>
               ${d.bit?`<span style="color:#888">Bit.: ${d.bit}%</span>`:''}
               <span style="font-family:var(--font-mono);font-weight:600">${fmt(d.valComBit||d.val||0)}</span>
             </div>`;
@@ -4059,7 +2800,7 @@ function abrirDetail(oppId){
         if(_rep&&(_rep.nome||_rep.valorRep)){
           ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Repasse Comercial</div>
             <div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:10px">
-              <span style="flex:1"><strong>${_rep.nome||'—'}</strong>${_rep.tipo==='pct'?` · ${_rep.val}% sobre serviços`:' · valor fixo'}</span>
+              <span style="flex:1"><strong>${_rep.nome||'�'}</strong>${_rep.tipo==='pct'?` � ${_rep.val}% sobre servi�os`:' � valor fixo'}</span>
               <span style="font-family:var(--font-mono);font-weight:600">${fmt(_rep.valorRep||0)}</span>
             </div>`;
         }
@@ -4076,7 +2817,7 @@ function abrirDetail(oppId){
   // linha do tempo
   const eventos=[];
   if(op.data_entrada)eventos.push({d:op.data_entrada,lbl:'Entrada',cls:'az'});
-  fus.forEach(f=>{if(f.data_contato)eventos.push({d:f.data_contato,lbl:`Follow-up${f.observacao?' — '+f.observacao.slice(0,60):''}`,cls:'',obs:f.proximo_contato?'Próximo: '+fmtD(f.proximo_contato):''});});
+  fus.forEach(f=>{if(f.data_contato)eventos.push({d:f.data_contato,lbl:`Follow-up${f.observacao?' � '+f.observacao.slice(0,60):''}`,cls:'',obs:f.proximo_contato?'Pr�ximo: '+fmtD(f.proximo_contato):''});});
   const fd=oppDataFechamento(op);
   if(fd)eventos.push({d:fd,lbl:isFechada(op)?'Fechamento':'Negativa',cls:isFechada(op)?'verde':'tc'});
   eventos.sort((a,b)=>a.d.localeCompare(b.d));
@@ -4148,16 +2889,16 @@ function abrirDetail(oppId){
   }
   html+=`</div>`;
 
-  if(op.obs)html+=`<div class="ms"><div class="ms-title">Observações</div><div style="font-size:11px;color:#555;padding:4px 0">${escHtml(op.obs)}</div></div>`;
+  if(op.obs)html+=`<div class="ms"><div class="ms-title">Observa��es</div><div style="font-size:11px;color:#555;padding:4px 0">${escHtml(op.obs)}</div></div>`;
 
   document.getElementById('det-body').innerHTML=html;
   openM('modal-detail');
 
-  // C12: carrega info da proposta calc vinculada (async, não bloqueia abertura do modal)
+  // C12: carrega info da proposta calc vinculada (async, n�o bloqueia abertura do modal)
   if (op.proposta_calc_id) carregarInfoPropostaCalc(op.proposta_calc_id, oppId);
 }
 
-// ═══ FECHAMENTOS ═════════════════════════════════════
+// --- FECHAMENTOS -------------------------------------
 let chartRelMensal = null;
 function renderFechamentos(){
   const anoFil = document.getElementById('ff-ano')?.value||'todos';
@@ -4186,13 +2927,13 @@ function renderFechamentos(){
   document.getElementById('fech-s-fat').textContent = fmt(fatTotal);
   document.getElementById('fech-s-fat-sub').textContent = `valor total fechado ${anoLabel}`;
   document.getElementById('fech-s-efetivo').textContent = fmt(fatEfetivo);
-  document.getElementById('fech-s-efetivo-sub').textContent = `valor que compete à EXP`;
+  document.getElementById('fech-s-efetivo-sub').textContent = `valor que compete � EXP`;
   document.getElementById('fech-s-qtd').textContent = qtd;
   document.getElementById('fech-s-qtd-sub').textContent = `oportunidades fechadas`;
   document.getElementById('fech-s-ticket').textContent = fmt(ticket);
-  document.getElementById('fech-s-ticket-sub').textContent = `ticket médio efetivo EXP`;
+  document.getElementById('fech-s-ticket-sub').textContent = `ticket m�dio efetivo EXP`;
 
-  // Por tipo — valor efetivo + quantidade
+  // Por tipo � valor efetivo + quantidade
   const tipoMap = {};
   ops.forEach(o=>{
     const t = oppTipo(o)||'Outros';
@@ -4207,13 +2948,13 @@ function renderFechamentos(){
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
           <span style="font-weight:500">${escHtml(t)}</span>
-          <span style="font-family:var(--font-mono);font-size:10px">${fmt(v)} <span style="color:#aaa">(${Math.round(v/totalEf*100)}% · ${n} proj.)</span></span>
+          <span style="font-family:var(--font-mono);font-size:10px">${fmt(v)} <span style="color:#aaa">(${Math.round(v/totalEf*100)}% � ${n} proj.)</span></span>
         </div>
         <div style="height:5px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(v/totalEf*100)}%;background:${CHART_CORES[t]||'var(--verde)'}"></div></div>
       </div>`).join('')
-    : '<div class="empty-note">Sem fechamentos no período.</div>';
+    : '<div class="empty-note">Sem fechamentos no per�odo.</div>';
 
-  // Por núcleo — contagem
+  // Por n�cleo � contagem
   const nucMap = {};
   ops.forEach(o=>o._produtos.filter(p=>p.status==='fechado').forEach(p=>{
     const n = NUCLEO_GRUPO[p.nucleo]||p.nucleo||'Outros';
@@ -4226,26 +2967,26 @@ function renderFechamentos(){
         <div style="font-size:11px;flex:1">${escHtml(n)}</div>
         <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(c/maxN*100)}%;background:${CHART_CORES[n]||'var(--verde)'}"></div></div>
         <div style="font-size:11px;font-weight:700;font-family:var(--font-mono);min-width:20px;text-align:right">${c}</div>
-      </div>`).join('') || '<div class="empty-note">—</div>';
+      </div>`).join('') || '<div class="empty-note">�</div>';
 
   // Lista
   document.getElementById('fech-lista-total').textContent = `${ops.length} fechamentos`;
   const sorted = ops.slice().sort((a,b)=>(oppDataFechamento(b)||'').localeCompare(oppDataFechamento(a)||''));
   document.getElementById('fech-body').innerHTML = sorted.length
     ? sorted.map(o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-        <td class="num-tag">${escHtml(o.num_legado||'—')}</td>
-        <td><strong>${escHtml(o._cliente?.nome||'—')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td>
+        <td class="num-tag">${escHtml(o.num_legado||'�')}</td>
+        <td><strong>${escHtml(o._cliente?.nome||'�')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td>
         <td>${o._produtos.filter(p=>p.status==='fechado').map(p=>tipoBadgeProd(p.nucleo)).join(' ')}</td>
         <td>${respBadge(o.resp_id)}</td>
-        <td style="font-size:11px">${escHtml(o.cidade||'—')}${o.uf?'/'+escHtml(o.uf):''}</td>
+        <td style="font-size:11px">${escHtml(o.cidade||'�')}${o.uf?'/'+escHtml(o.uf):''}</td>
         <td class="dtag">${fmtD(oppDataFechamento(o))}</td>
         <td style="font-family:var(--font-mono);font-weight:600">${fmt(oppValorFechado(o))}</td>
         <td style="font-family:var(--font-mono);color:var(--azul)">${fmt(oppValorEfetivo(o,true))}</td>
       </tr>`).join('')
-    : '<tr><td colspan="8" class="empty-note">Sem fechamentos no período.</td></tr>';
+    : '<tr><td colspan="8" class="empty-note">Sem fechamentos no per�odo.</td></tr>';
 }
 
-// ═══ NEGATIVAS ════════════════════════════════════════
+// --- NEGATIVAS ----------------------------------------
 function renderNegativas(){
   const anoFil = document.getElementById('nf-ano')?.value||'todos';
   const rs = document.getElementById('nf-resp');
@@ -4274,14 +3015,14 @@ function renderNegativas(){
   const topCat = catSorted[0];
 
   // prob retorno
-  const comRetorno = ops.filter(o=>o._produtos.some(p=>['Alta','Média'].includes(p.prob_retorno)));
+  const comRetorno = ops.filter(o=>o._produtos.some(p=>['Alta','M�dia'].includes(p.prob_retorno)));
 
   document.getElementById('neg-s-total').textContent = total;
-  document.getElementById('neg-s-total-sub').textContent = anoFil==='todos'?'em todo o histórico':`em ${anoFil}`;
+  document.getElementById('neg-s-total-sub').textContent = anoFil==='todos'?'em todo o hist�rico':`em ${anoFil}`;
   document.getElementById('neg-s-valor').textContent = fmt(valorPerdido);
   document.getElementById('neg-s-valor-sub').textContent = 'valor efetivo EXP perdido';
-  document.getElementById('neg-s-cat').textContent = topCat?topCat[0]:'—';
-  document.getElementById('neg-s-cat-sub').textContent = topCat?`${topCat[1]} ocorrências`:'sem categorias registradas';
+  document.getElementById('neg-s-cat').textContent = topCat?topCat[0]:'�';
+  document.getElementById('neg-s-cat-sub').textContent = topCat?`${topCat[1]} ocorr�ncias`:'sem categorias registradas';
   document.getElementById('neg-s-ret').textContent = comRetorno.length;
   document.getElementById('neg-s-ret-sub').textContent = `opp. com chance de retorno`;
 
@@ -4298,7 +3039,7 @@ function renderNegativas(){
       </div>`).join('')
     : '<div style="font-size:11px;color:#aaa;padding:4px 0">Nenhuma categoria registrada ainda.<br>Categorize as negativas no fluxo de produto.</div>';
 
-  // Por núcleo
+  // Por n�cleo
   const nucNeg = {};
   ops.forEach(o=>o._produtos.filter(p=>p.status==='negado').forEach(p=>{
     const n = NUCLEO_GRUPO[p.nucleo]||p.nucleo||'Outros';
@@ -4311,7 +3052,7 @@ function renderNegativas(){
         <div style="font-size:11px;flex:1">${escHtml(n)}</div>
         <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(c/maxNuc*100)}%;background:var(--terracota)"></div></div>
         <div style="font-size:11px;font-weight:700;font-family:var(--font-mono);min-width:20px;text-align:right">${c}</div>
-      </div>`).join('') || '<div class="empty-note">—</div>';
+      </div>`).join('') || '<div class="empty-note">�</div>';
 
   // Lista
   document.getElementById('neg-lista-total').textContent = `${total} negativas`;
@@ -4321,74 +3062,74 @@ function renderNegativas(){
     ? sorted.map(o=>{
         const p = prodNegado(o);
         return`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-          <td class="num-tag">${escHtml(o.num_legado||'—')}</td>
-          <td><strong>${escHtml(o._cliente?.nome||'—')}</strong></td>
+          <td class="num-tag">${escHtml(o.num_legado||'�')}</td>
+          <td><strong>${escHtml(o._cliente?.nome||'�')}</strong></td>
           <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
           <td>${respBadge(o.resp_id)}</td>
           <td class="dtag">${fmtD(o.updated_at)}</td>
-          <td>${p?.motivo_categoria?`<span class="badge b-tc">${escHtml(normNegCat(p.motivo_categoria))}</span>`:'<span style="color:#aaa;font-size:10px">—</span>'}</td>
-          <td style="font-size:10px;color:#888;max-width:180px;white-space:normal">${escHtml(p?.motivo_negativa||'—')}</td>
-          <td>${p?.prob_retorno?`<span class="badge ${p.prob_retorno==='Alta'?'b-vd':p.prob_retorno==='Média'?'b-am':'b-gr'}">${escHtml(p.prob_retorno)}</span>`:'—'}</td>
+          <td>${p?.motivo_categoria?`<span class="badge b-tc">${escHtml(normNegCat(p.motivo_categoria))}</span>`:'<span style="color:#aaa;font-size:10px">�</span>'}</td>
+          <td style="font-size:10px;color:#888;max-width:180px;white-space:normal">${escHtml(p?.motivo_negativa||'�')}</td>
+          <td>${p?.prob_retorno?`<span class="badge ${p.prob_retorno==='Alta'?'b-vd':p.prob_retorno==='M�dia'?'b-am':'b-gr'}">${escHtml(p.prob_retorno)}</span>`:'�'}</td>
           <td style="font-family:var(--font-mono);color:var(--terracota)">${fmt(oppValorEfetivo(o,false))}</td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="9" class="empty-note">Sem negativas no período.</td></tr>';
+    : '<tr><td colspan="9" class="empty-note">Sem negativas no per�odo.</td></tr>';
 }
 
-// ═══ ALCANCE ══════════════════════════════════════════
-// ── coordenadas lat/lng de cidades brasileiras ───────────────────────
+// --- ALCANCE ------------------------------------------
+// -- coordenadas lat/lng de cidades brasileiras -----------------------
 const CITY_COORDS = {
-  'São Paulo':[-23.55,-46.63],'Campinas':[-22.90,-47.06],'Santos':[-23.96,-46.33],
-  'São José dos Campos':[-23.22,-45.90],'Ribeirão Preto':[-21.17,-47.81],
-  'Sorocaba':[-23.50,-47.45],'Bauru':[-22.32,-49.07],'Jundiaí':[-23.19,-46.89],
-  'Piracicaba':[-22.73,-47.65],'Limeira':[-22.56,-47.40],'São Carlos':[-21.99,-47.89],
-  'Franca':[-20.54,-47.40],'Marília':[-22.22,-49.95],'Araraquara':[-21.79,-48.17],
-  'Presidente Prudente':[-22.12,-51.39],'São Bernardo do Campo':[-23.69,-46.56],
-  'Guarulhos':[-23.46,-46.53],'Osasco':[-23.53,-46.79],'Santo André':[-23.66,-46.54],
-  'Rio de Janeiro':[-22.91,-43.17],'Niterói':[-22.89,-43.10],'Nova Iguaçu':[-22.76,-43.45],
-  'Petrópolis':[-22.51,-43.18],'Volta Redonda':[-22.52,-44.10],
-  'Campos dos Goytacazes':[-21.76,-41.33],'Macaé':[-22.37,-41.79],
+  'S�o Paulo':[-23.55,-46.63],'Campinas':[-22.90,-47.06],'Santos':[-23.96,-46.33],
+  'S�o Jos� dos Campos':[-23.22,-45.90],'Ribeir�o Preto':[-21.17,-47.81],
+  'Sorocaba':[-23.50,-47.45],'Bauru':[-22.32,-49.07],'Jundia�':[-23.19,-46.89],
+  'Piracicaba':[-22.73,-47.65],'Limeira':[-22.56,-47.40],'S�o Carlos':[-21.99,-47.89],
+  'Franca':[-20.54,-47.40],'Mar�lia':[-22.22,-49.95],'Araraquara':[-21.79,-48.17],
+  'Presidente Prudente':[-22.12,-51.39],'S�o Bernardo do Campo':[-23.69,-46.56],
+  'Guarulhos':[-23.46,-46.53],'Osasco':[-23.53,-46.79],'Santo Andr�':[-23.66,-46.54],
+  'Rio de Janeiro':[-22.91,-43.17],'Niter�i':[-22.89,-43.10],'Nova Igua�u':[-22.76,-43.45],
+  'Petr�polis':[-22.51,-43.18],'Volta Redonda':[-22.52,-44.10],
+  'Campos dos Goytacazes':[-21.76,-41.33],'Maca�':[-22.37,-41.79],
   'Angra dos Reis':[-23.01,-44.32],'Cabo Frio':[-22.89,-42.02],'Resende':[-22.47,-44.45],
-  'Belo Horizonte':[-19.92,-43.94],'Uberlândia':[-18.92,-48.28],
+  'Belo Horizonte':[-19.92,-43.94],'Uberl�ndia':[-18.92,-48.28],
   'Juiz de Fora':[-21.76,-43.35],'Montes Claros':[-16.73,-43.87],
   'Governador Valadares':[-18.85,-41.95],'Ipatinga':[-19.47,-42.54],
   'Contagem':[-19.93,-44.05],'Uberaba':[-19.75,-47.93],'Betim':[-19.97,-44.20],
-  'Divinópolis':[-20.14,-44.89],'Sete Lagoas':[-19.46,-44.25],
-  'Curitiba':[-25.43,-49.27],'Londrina':[-23.31,-51.16],'Maringá':[-23.42,-51.94],
-  'Cascavel':[-24.96,-53.46],'Foz do Iguaçu':[-25.52,-54.58],'Ponta Grossa':[-25.10,-50.16],
-  'São José dos Pinhais':[-25.54,-49.21],'Colombo':[-25.29,-49.22],
-  'Florianópolis':[-27.59,-48.55],'Joinville':[-26.30,-48.85],'Blumenau':[-26.92,-49.07],
-  'Chapecó':[-27.10,-52.62],'Criciúma':[-28.68,-49.37],'Itajaí':[-26.91,-48.67],
-  'Balneário Camboriú':[-26.99,-48.63],'Jaraguá do Sul':[-26.49,-49.07],
+  'Divin�polis':[-20.14,-44.89],'Sete Lagoas':[-19.46,-44.25],
+  'Curitiba':[-25.43,-49.27],'Londrina':[-23.31,-51.16],'Maring�':[-23.42,-51.94],
+  'Cascavel':[-24.96,-53.46],'Foz do Igua�u':[-25.52,-54.58],'Ponta Grossa':[-25.10,-50.16],
+  'S�o Jos� dos Pinhais':[-25.54,-49.21],'Colombo':[-25.29,-49.22],
+  'Florian�polis':[-27.59,-48.55],'Joinville':[-26.30,-48.85],'Blumenau':[-26.92,-49.07],
+  'Chapec�':[-27.10,-52.62],'Crici�ma':[-28.68,-49.37],'Itaja�':[-26.91,-48.67],
+  'Balne�rio Cambori�':[-26.99,-48.63],'Jaragu� do Sul':[-26.49,-49.07],
   'Porto Alegre':[-30.03,-51.23],'Caxias do Sul':[-29.17,-51.17],
   'Pelotas':[-31.77,-52.34],'Santa Maria':[-29.69,-53.81],'Novo Hamburgo':[-29.69,-51.13],
-  'Canoas':[-29.92,-51.18],'Gravataí':[-29.94,-50.99],'Viamão':[-30.08,-51.02],
-  'Brasília':[-15.78,-47.93],
-  'Goiânia':[-16.69,-49.26],'Aparecida de Goiânia':[-16.82,-49.24],'Anápolis':[-16.33,-48.95],
-  'Campo Grande':[-20.44,-54.65],'Dourados':[-22.22,-54.81],'Três Lagoas':[-20.75,-51.69],
-  'Cuiabá':[-15.60,-56.10],'Várzea Grande':[-15.65,-56.13],'Sinop':[-11.86,-55.51],
-  'Rondonópolis':[-16.47,-54.64],
+  'Canoas':[-29.92,-51.18],'Gravata�':[-29.94,-50.99],'Viam�o':[-30.08,-51.02],
+  'Bras�lia':[-15.78,-47.93],
+  'Goi�nia':[-16.69,-49.26],'Aparecida de Goi�nia':[-16.82,-49.24],'An�polis':[-16.33,-48.95],
+  'Campo Grande':[-20.44,-54.65],'Dourados':[-22.22,-54.81],'Tr�s Lagoas':[-20.75,-51.69],
+  'Cuiab�':[-15.60,-56.10],'V�rzea Grande':[-15.65,-56.13],'Sinop':[-11.86,-55.51],
+  'Rondon�polis':[-16.47,-54.64],
   'Salvador':[-12.97,-38.51],'Feira de Santana':[-12.27,-38.97],
-  'Vitória da Conquista':[-14.87,-40.84],'Ilhéus':[-14.79,-39.04],
-  'Porto Seguro':[-16.43,-39.08],'Camaçari':[-12.70,-38.33],'Lauro de Freitas':[-12.90,-38.33],
-  'Aracaju':[-10.91,-37.07],'Maceió':[-9.67,-35.74],
+  'Vit�ria da Conquista':[-14.87,-40.84],'Ilh�us':[-14.79,-39.04],
+  'Porto Seguro':[-16.43,-39.08],'Cama�ari':[-12.70,-38.33],'Lauro de Freitas':[-12.90,-38.33],
+  'Aracaju':[-10.91,-37.07],'Macei�':[-9.67,-35.74],
   'Recife':[-8.05,-34.88],'Caruaru':[-8.28,-35.97],'Petrolina':[-9.39,-40.50],
-  'Olinda':[-8.01,-34.85],'Jaboatão dos Guararapes':[-8.11,-35.01],'Caruaru':[-8.28,-35.97],
-  'João Pessoa':[-7.12,-34.86],'Campina Grande':[-7.22,-35.88],
-  'Natal':[-5.79,-35.21],'Mossoró':[-5.19,-37.34],
+  'Olinda':[-8.01,-34.85],'Jaboat�o dos Guararapes':[-8.11,-35.01],'Caruaru':[-8.28,-35.97],
+  'Jo�o Pessoa':[-7.12,-34.86],'Campina Grande':[-7.22,-35.88],
+  'Natal':[-5.79,-35.21],'Mossor�':[-5.19,-37.34],
   'Fortaleza':[-3.72,-38.54],'Sobral':[-3.69,-40.35],'Juazeiro do Norte':[-7.21,-39.31],
-  'Crato':[-7.23,-39.41],'Caucaia':[-3.74,-38.65],'Maracanaú':[-3.88,-38.63],
-  'Teresina':[-5.09,-42.80],'Parnaíba':[-2.91,-41.77],
-  'São Luís':[-2.53,-44.30],'Imperatriz':[-5.52,-47.49],
-  'Belém':[-1.45,-48.50],'Santarém':[-2.44,-54.71],'Marabá':[-5.37,-49.12],
+  'Crato':[-7.23,-39.41],'Caucaia':[-3.74,-38.65],'Maracana�':[-3.88,-38.63],
+  'Teresina':[-5.09,-42.80],'Parna�ba':[-2.91,-41.77],
+  'S�o Lu�s':[-2.53,-44.30],'Imperatriz':[-5.52,-47.49],
+  'Bel�m':[-1.45,-48.50],'Santar�m':[-2.44,-54.71],'Marab�':[-5.37,-49.12],
   'Castanhal':[-1.29,-47.93],'Ananindeua':[-1.37,-48.37],
-  'Macapá':[0.03,-51.07],
+  'Macap�':[0.03,-51.07],
   'Manaus':[-3.10,-60.03],'Parintins':[-2.63,-56.74],
   'Boa Vista':[2.82,-60.67],
-  'Porto Velho':[-8.76,-63.90],'Ji-Paraná':[-10.88,-61.94],
+  'Porto Velho':[-8.76,-63.90],'Ji-Paran�':[-10.88,-61.94],
   'Rio Branco':[-9.97,-67.81],
-  'Palmas':[-10.24,-48.36],'Araguaína':[-7.19,-48.20],
-  'Vitória':[-20.32,-40.34],'Vila Velha':[-20.34,-40.29],'Serra':[-20.13,-40.31],
+  'Palmas':[-10.24,-48.36],'Aragua�na':[-7.19,-48.20],
+  'Vit�ria':[-20.32,-40.34],'Vila Velha':[-20.34,-40.29],'Serra':[-20.13,-40.31],
   'Cariacica':[-20.26,-40.41],'Cachoeiro de Itapemirim':[-20.85,-41.11],
 };
 const UF_CENTROIDS = {
@@ -4422,7 +3163,7 @@ function _latlngToSvg(lat, lng) {
 
 function _initBrazilPath(){
   const el=document.getElementById('alc-br');
-  if(!el||el.tagName.toLowerCase()==='path') return; // já convertido
+  if(!el||el.tagName.toLowerCase()==='path') return; // j� convertido
   const pts=[
     [161,0],[166,19],[260,18],[280,48],[287,68],[305,87],[348,100],
     [415,115],[454,142],[460,159],[459,171],[450,192],[433,207],
@@ -4509,7 +3250,7 @@ function renderAlcance(){
   const groups={};
   ops.forEach(o=>{
     const key=(o.cidade||'').trim().toLowerCase()+'/'+(o.uf||'').toLowerCase();
-    if(!groups[key]) groups[key]={cidade:o.cidade||'—',uf:o.uf||'',ops:[]};
+    if(!groups[key]) groups[key]={cidade:o.cidade||'�',uf:o.uf||'',ops:[]};
     groups[key].ops.push(o);
   });
 
@@ -4523,7 +3264,7 @@ function _renderAlcanceMap(groupArr){
   svg.querySelectorAll('.alc-dot').forEach(e=>e.remove());
   const tip=document.getElementById('alc-tip');
 
-  // Ler tokens canônicos em runtime — adapta light/dark mode automaticamente
+  // Ler tokens can�nicos em runtime � adapta light/dark mode automaticamente
   const rs=getComputedStyle(document.documentElement);
   const COR_OP   = rs.getPropertyValue('--azul').trim();
   const COR_FECH = rs.getPropertyValue('--verde').trim();
@@ -4591,7 +3332,7 @@ function _renderAlcanceList(sorted){
     ? sorted.map((g,i)=>`
       <div class="alc-city-card" onclick="_alcanceDrillCity(_alcGroups[${i}])">
         <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <div style="font-weight:600;font-size:11px">${escHtml(g.cidade)}${g.uf?` <span style="color:#aaa;font-weight:400">· ${escHtml(g.uf)}</span>`:''}</div>
+          <div style="font-weight:600;font-size:11px">${escHtml(g.cidade)}${g.uf?` <span style="color:#aaa;font-weight:400">� ${escHtml(g.uf)}</span>`:''}</div>
           <div style="font-size:10px;font-family:var(--font-mono);color:#888">${g.ops.length}</div>
         </div>
       </div>`).join('')
@@ -4599,12 +3340,12 @@ function _renderAlcanceList(sorted){
 }
 
 function _alcanceDrillCity(g){
-  document.getElementById('alc-list-hdr').textContent=g.cidade+(g.uf?' · '+g.uf:'');
+  document.getElementById('alc-list-hdr').textContent=g.cidade+(g.uf?' � '+g.uf:'');
   document.getElementById('alc-list-back').style.display='block';
   document.getElementById('alc-list').innerHTML=g.ops.map(o=>`
     <div class="alc-city-card" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <div style="font-weight:600;font-size:11px;margin-bottom:2px">${escHtml(o._cliente?.nome||'—')}</div>
-      <div style="font-size:10px;color:#888">${escHtml(o.projeto||'—')}</div>
+      <div style="font-weight:600;font-size:11px;margin-bottom:2px">${escHtml(o._cliente?.nome||'�')}</div>
+      <div style="font-size:10px;color:#888">${escHtml(o.projeto||'�')}</div>
       <div style="display:flex;justify-content:space-between;margin-top:4px">
         ${estagBadge(o.pipeline_stage)}
         <span style="font-family:var(--font-mono);font-size:11px;font-weight:600">${fmt(alcMode==='fech'?oppValorFechado(o):oppValorProposto(o))}</span>
@@ -4612,7 +3353,7 @@ function _alcanceDrillCity(g){
     </div>`).join('');
 }
 
-// ═══ RELATÓRIOS ═══════════════════════════════════════
+// --- RELAT�RIOS ---------------------------------------
 function renderRelatorios(){
   const anoFil = document.getElementById('rf-ano')?.value||String(new Date().getFullYear());
   const rs = document.getElementById('rf-resp');
@@ -4654,13 +3395,13 @@ function renderRelatorios(){
       </div>
       <div>
         <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Indicadores</div>
-        <div style="font-size:11px;margin-bottom:4px">Conversão: <strong style="font-family:var(--font-mono)">${taxaConv}%</strong> <span style="color:#aaa">(${fechadas.length}/${novas.length} opps)</span></div>
-        <div style="font-size:11px;margin-bottom:4px">Ticket médio: <strong style="font-family:var(--font-mono)">${fmt(ticket)}</strong></div>
-        <div style="font-size:11px">Novas opps: <strong>${novas.length}</strong> · Fechadas: <strong style="color:var(--verde)">${fechadas.length}</strong> · Negadas: <strong style="color:var(--terracota)">${negadas.length}</strong></div>
+        <div style="font-size:11px;margin-bottom:4px">Convers�o: <strong style="font-family:var(--font-mono)">${taxaConv}%</strong> <span style="color:#aaa">(${fechadas.length}/${novas.length} opps)</span></div>
+        <div style="font-size:11px;margin-bottom:4px">Ticket m�dio: <strong style="font-family:var(--font-mono)">${fmt(ticket)}</strong></div>
+        <div style="font-size:11px">Novas opps: <strong>${novas.length}</strong> � Fechadas: <strong style="color:var(--verde)">${fechadas.length}</strong> � Negadas: <strong style="color:var(--terracota)">${negadas.length}</strong></div>
       </div>
     </div>`;
 
-  // Por responsável
+  // Por respons�vel
   const byResp={};
   fechadas.forEach(o=>{
     const uid=o.resp_id;
@@ -4682,15 +3423,15 @@ function renderRelatorios(){
           <div style="height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(efetivo/maxResp*100)}%;background:${u.cor||'var(--verde)'}"></div></div>
         </div>`;
       }).join('')
-    : '<div class="empty-note">Sem fechamentos no período.</div>';
+    : '<div class="empty-note">Sem fechamentos no per�odo.</div>';
 
-  // Eficiência: efetivo fechado / efetivo orçado (nesse período)
+  // Efici�ncia: efetivo fechado / efetivo or�ado (nesse per�odo)
   const orcado = ops.filter(o=>!isFechada(o)||true).reduce((s,o)=>s+oppValorEfetivo(o,false),0);
   const eficiencia = orcado ? Math.round(fatEfetivo/orcado*100) : 0;
   const perdidoPct = orcado ? Math.round(perdidoEf/orcado*100) : 0;
   document.getElementById('rel-eficiencia').innerHTML=`
     <div style="margin-bottom:14px">
-      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Efetivo orçado no período</div>
+      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Efetivo or�ado no per�odo</div>
       <div style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${fmt(orcado)}</div>
     </div>
     <div style="margin-bottom:10px">
@@ -4706,25 +3447,25 @@ function renderRelatorios(){
       <div style="height:6px;background:var(--cinza2)"><div style="height:100%;width:${Math.min(perdidoPct,100)}%;background:var(--terracota)"></div></div>
     </div>`;
 
-  // S4-03 — gráfico mensal: barras de Efetivo EXP + linha de novas opps
+  // S4-03 � gr�fico mensal: barras de Efetivo EXP + linha de novas opps
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const dadosMensal=Array(12).fill(0);
   const dadosNovas=Array(12).fill(0);
   const dadosNegadas=Array(12).fill(0);
   if(anoFil!=='todos'){
-    // fechadas: efetivo EXP por mês de fechamento
+    // fechadas: efetivo EXP por m�s de fechamento
     fechadas.forEach(o=>{
       const d=oppDataFechamento(o); if(!d||!d.startsWith(anoFil))return;
       const m=parseInt(d.slice(5,7))-1;
       if(m>=0&&m<12) dadosMensal[m]+=oppValorEfetivo(o,true);
     });
-    // novas: por mês de entrada
+    // novas: por m�s de entrada
     novas.forEach(o=>{
       const d=o.data_entrada; if(!d||!d.startsWith(anoFil))return;
       const m=parseInt(d.slice(5,7))-1;
       if(m>=0&&m<12) dadosNovas[m]++;
     });
-    // negadas: por mês de updated_at
+    // negadas: por m�s de updated_at
     negadas.forEach(o=>{
       const d=o.updated_at; if(!d||!d.startsWith(anoFil))return;
       const m=parseInt(d.slice(5,7))-1;
@@ -4749,7 +3490,7 @@ function renderRelatorios(){
     });
   }
 
-  // ── R1/R2/R3: Tabela de métricas mensais por coorte ──────────────
+  // -- R1/R2/R3: Tabela de m�tricas mensais por coorte --------------
   const relMensalEl=document.getElementById('rel-mensal-tabela');
   if(anoFil!=='todos'&&relMensalEl){
     const mesesNomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -4803,18 +3544,18 @@ function renderRelatorios(){
 
       const wrCell=wr!==null
         ?`<span style="font-family:var(--font-mono);font-weight:700;color:${wr>=50?'var(--verde)':wr<25?'var(--terracota)':'var(--ouro)'}">${wr}%</span>${fA?`<sup style="font-size:8px;color:#bbb" title="${fA} ainda em aberto"> ~</sup>`:''}`
-        :'—';
+        :'�';
 
       rows+=`<tr${isCur?' style="background:var(--az-bg)"':''}>
-        <td style="font-weight:${isCur?700:400};white-space:nowrap">${lbl}${isCur?' ◂':''}</td>
-        <td style="font-family:var(--font-mono)">${novasM.length||'—'}</td>
-        <td style="color:var(--verde)">${by.PAIS||'—'}</td>
-        <td style="color:var(--urb)">${by.URB||'—'}</td>
-        <td style="color:var(--consul)">${by.CONSUL||'—'}</td>
-        <td style="color:var(--esp)">${by.ESP||'—'}</td>
-        <td style="font-family:var(--font-mono)">${fechM.length||'—'}</td>
+        <td style="font-weight:${isCur?700:400};white-space:nowrap">${lbl}${isCur?' ?':''}</td>
+        <td style="font-family:var(--font-mono)">${novasM.length||'�'}</td>
+        <td style="color:var(--verde)">${by.PAIS||'�'}</td>
+        <td style="color:var(--urb)">${by.URB||'�'}</td>
+        <td style="color:var(--consul)">${by.CONSUL||'�'}</td>
+        <td style="color:var(--esp)">${by.ESP||'�'}</td>
+        <td style="font-family:var(--font-mono)">${fechM.length||'�'}</td>
         <td>${wrCell}</td>
-        <td style="font-family:var(--font-mono);font-size:10px">${tickM?fmt(tickM):'—'}</td>
+        <td style="font-family:var(--font-mono);font-size:10px">${tickM?fmt(tickM):'�'}</td>
       </tr>`;
     });
 
@@ -4824,37 +3565,37 @@ function renderRelatorios(){
 
     relMensalEl.innerHTML=`<table id="rel-mensal-table">
       <thead><tr>
-        <th>Mês</th>
-        <th title="Oportunidades com data de entrada neste mês">Novas</th>
+        <th>M�s</th>
+        <th title="Oportunidades com data de entrada neste m�s">Novas</th>
         <th style="color:var(--verde)" title="Paisagismo">PAI</th>
         <th style="color:var(--urb)" title="Urbanismo">URB</th>
         <th style="color:var(--consul)" title="Consultorias">CNS</th>
         <th style="color:var(--esp)" title="Projetos Especiais">ESP</th>
-        <th title="Oportunidades fechadas neste mês (por data de fechamento)">Fechamentos</th>
-        <th title="% das opps originadas no mês que foram fechadas (coorte)">Win Rate ⓘ</th>
-        <th title="Valor médio das opps fechadas no mês">Ticket médio</th>
+        <th title="Oportunidades fechadas neste m�s (por data de fechamento)">Fechamentos</th>
+        <th title="% das opps originadas no m�s que foram fechadas (coorte)">Win Rate ?</th>
+        <th title="Valor m�dio das opps fechadas no m�s">Ticket m�dio</th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr style="border-top:2px solid var(--cinza);background:var(--off)">
         <td><strong>Total ${anoFil}</strong></td>
-        <td style="font-family:var(--font-mono);font-weight:700">${tot.n||'—'}</td>
-        <td style="color:var(--verde);font-weight:700">${tot.PAIS||'—'}</td>
-        <td style="color:var(--urb);font-weight:700">${tot.URB||'—'}</td>
-        <td style="color:var(--consul);font-weight:700">${tot.CONSUL||'—'}</td>
-        <td style="color:var(--esp);font-weight:700">${tot.ESP||'—'}</td>
-        <td style="font-family:var(--font-mono);font-weight:700">${tot.fech||'—'}</td>
-        <td>${totWr!==null?`<span style="font-family:var(--font-mono);font-weight:700;color:${totWr>=50?'var(--verde)':totWr<25?'var(--terracota)':'var(--ouro)'}">${totWr}%</span>`:'—'}</td>
-        <td style="font-family:var(--font-mono);font-weight:700">${avgTick?fmt(avgTick):'—'}</td>
+        <td style="font-family:var(--font-mono);font-weight:700">${tot.n||'�'}</td>
+        <td style="color:var(--verde);font-weight:700">${tot.PAIS||'�'}</td>
+        <td style="color:var(--urb);font-weight:700">${tot.URB||'�'}</td>
+        <td style="color:var(--consul);font-weight:700">${tot.CONSUL||'�'}</td>
+        <td style="color:var(--esp);font-weight:700">${tot.ESP||'�'}</td>
+        <td style="font-family:var(--font-mono);font-weight:700">${tot.fech||'�'}</td>
+        <td>${totWr!==null?`<span style="font-family:var(--font-mono);font-weight:700;color:${totWr>=50?'var(--verde)':totWr<25?'var(--terracota)':'var(--ouro)'}">${totWr}%</span>`:'�'}</td>
+        <td style="font-family:var(--font-mono);font-weight:700">${avgTick?fmt(avgTick):'�'}</td>
       </tr></tfoot>
     </table>`;
   } else if(relMensalEl){
-    relMensalEl.innerHTML='<div style="font-size:10px;color:#aaa;padding:12px 16px">Selecione um ano específico para ver a tabela mensal.</div>';
+    relMensalEl.innerHTML='<div style="font-size:10px;color:#aaa;padding:12px 16px">Selecione um ano espec�fico para ver a tabela mensal.</div>';
   }
 
-  // ── R4: Origem dos leads do período ──────────────────────────────
+  // -- R4: Origem dos leads do per�odo ------------------------------
   const origMap2={};
   novas.forEach(o=>{
-    const grp=o.origem||'Não informado';
+    const grp=o.origem||'N�o informado';
     if(!origMap2[grp])origMap2[grp]={n:0,v:0};
     origMap2[grp].n++;
     origMap2[grp].v+=oppValorProposto(o);
@@ -4863,24 +3604,24 @@ function renderRelatorios(){
   const maxN2=origSorted2[0]?.[1].n||1;
   const relOrigEl=document.getElementById('rel-origens');
   const relOrigTitle=document.getElementById('rel-orig-title');
-  if(relOrigTitle)relOrigTitle.textContent=`Origem dos leads${anoFil!=='todos'?' · '+anoFil:''}`;
+  if(relOrigTitle)relOrigTitle.textContent=`Origem dos leads${anoFil!=='todos'?' � '+anoFil:''}`;
   if(relOrigEl){
     relOrigEl.innerHTML=origSorted2.length
       ?origSorted2.map(([k,{n,v}])=>`
         <div style="margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;margin-bottom:3px">
             <span style="font-weight:600">${escHtml(k)}</span>
-            <span style="font-family:var(--font-mono);color:#666">${n} opp${n!==1?'s':''}&nbsp;·&nbsp;${fmt(v)}</span>
+            <span style="font-family:var(--font-mono);color:#666">${n} opp${n!==1?'s':''}&nbsp;�&nbsp;${fmt(v)}</span>
           </div>
           <div style="height:5px;background:var(--cinza2);border-radius:2px">
             <div style="height:100%;width:${Math.round(n/maxN2*100)}%;background:var(--ouro);border-radius:2px"></div>
           </div>
         </div>`).join('')
-      :'<div style="font-size:10px;color:#aaa">Sem dados para o período.</div>';
+      :'<div style="font-size:10px;color:#aaa">Sem dados para o per�odo.</div>';
   }
 }
 
-// ═══ INTEGRAÇÃO CALC ═════════════════════════════════
+// --- INTEGRA��O CALC ---------------------------------
 async function recarregarProposals() {
   try {
     let r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at,data_json').order('created_at',{ascending:false});
@@ -4905,7 +3646,7 @@ function populateCalcDropdown(selectedId) {
   const selectedProposal = allProposals.find(p => p.proposal_id === selectedId);
   const selectedFamilyRoot = selectedProposal ? (selectedProposal.parent_id || selectedProposal.proposal_id) : selectedId;
 
-  // Raízes de família já vinculadas a OUTRAS oportunidades
+  // Ra�zes de fam�lia j� vinculadas a OUTRAS oportunidades
   const linkedFamilyRoots = new Set();
   allOps.filter(o => o.proposta_calc_id && o.id !== currentOppId).forEach(o => {
     const linkedProp = allProposals.find(p => p.proposal_id === o.proposta_calc_id);
@@ -4913,14 +3654,14 @@ function populateCalcDropdown(selectedId) {
     linkedFamilyRoots.add(froot);
   });
 
-  // Agrupa propostas por família
+  // Agrupa propostas por fam�lia
   const familyMap = {};
   allProposals.forEach(p => {
     const fid = p.parent_id || p.proposal_id;
     if (!familyMap[fid]) familyMap[fid] = [];
     familyMap[fid].push(p);
   });
-  // Ordena cada família: versão mais alta primeiro
+  // Ordena cada fam�lia: vers�o mais alta primeiro
   const families = Object.values(familyMap).map(fam => {
     fam.sort((a,b) => (b.version||0) - (a.version||0));
     return fam;
@@ -4935,7 +3676,7 @@ function populateCalcDropdown(selectedId) {
   const famFinalizadas = families.filter(f => f[0].status === 'finalizada');
   const famOutras      = families.filter(f => f[0].status !== 'finalizada');
 
-  const opts = ['<option value="">— Nenhuma proposta vinculada —</option>'];
+  const opts = ['<option value="">� Nenhuma proposta vinculada �</option>'];
 
   const _renderFamily = fam => {
     const latest  = fam[0];
@@ -4945,39 +3686,39 @@ function populateCalcDropdown(selectedId) {
     const codStr  = latest.prop_code
       ? `EXP-${String(latest.prop_code).padStart(3,'0')}`
       : `#${latest.proposal_id}`;
-    const famLbl  = [latest.projeto||'Sem título', latest.cliente||''].filter(Boolean).join(' · ');
-    const finTag  = latest.status === 'finalizada' ? ' ✓' : '';
+    const famLbl  = [latest.projeto||'Sem t�tulo', latest.cliente||''].filter(Boolean).join(' � ');
+    const finTag  = latest.status === 'finalizada' ? ' ?' : '';
 
     if (fam.length === 1) {
       const p      = fam[0];
       const verLbl = _verLabel(p.version||0);
-      const lbl    = `${codStr}${finTag} · ${famLbl} — ${fmt(+p.total)} [${verLbl}]`;
+      const lbl    = `${codStr}${finTag} � ${famLbl} � ${fmt(+p.total)} [${verLbl}]`;
       const isSel  = p.proposal_id === selectedId ? ' selected' : '';
       opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}>${lbl}</option>`);
     } else {
-      opts.push(`<option disabled style="color:#aaa;font-size:10px">— ${codStr}${finTag} · ${famLbl}</option>`);
+      opts.push(`<option disabled style="color:#aaa;font-size:10px">� ${codStr}${finTag} � ${famLbl}</option>`);
       fam.forEach((p, i) => {
         const verLbl = _verLabel(p.version||0);
         const isSel  = p.proposal_id === selectedId ? ' selected' : '';
-        const star   = i === 0 ? ' ★' : '';
-        const lbl    = `    ${verLbl} — ${fmt(+p.total)}${star}`;
+        const star   = i === 0 ? ' ?' : '';
+        const lbl    = `    ${verLbl} � ${fmt(+p.total)}${star}`;
         opts.push(`<option value="${escAttr(p.proposal_id)}"${isSel}>${lbl}</option>`);
       });
     }
   };
 
   if (famFinalizadas.length) {
-    opts.push(`<option disabled style="font-size:10px;color:#2d8a4e;font-weight:700">── Propostas finalizadas ──────────────</option>`);
+    opts.push(`<option disabled style="font-size:10px;color:#2d8a4e;font-weight:700">-- Propostas finalizadas --------------</option>`);
     famFinalizadas.forEach(_renderFamily);
   }
   if (famOutras.length) {
-    opts.push(`<option disabled style="font-size:10px;color:#aaa">── Em andamento ───────────────────────</option>`);
+    opts.push(`<option disabled style="font-size:10px;color:#aaa">-- Em andamento -----------------------</option>`);
     famOutras.forEach(_renderFamily);
   }
 
   sel.innerHTML = opts.join('');
 
-  // Se selectedId não está em allProposals, adiciona como "arquivada"
+  // Se selectedId n�o est� em allProposals, adiciona como "arquivada"
   if (selectedId && !allProposals.find(p => p.proposal_id === selectedId)) {
     const extra = document.createElement('option');
     extra.value = selectedId;
@@ -5012,7 +3753,7 @@ function autofillFromProposta() {
       document.getElementById('opp-cliente-id').value = match.id;
       document.getElementById('opp-cliente-text').value = match.nome;
       const sd = document.getElementById('opp-cliente-selecionado');
-      sd.textContent = '✓ ' + match.nome; sd.style.display = 'block';
+      sd.textContent = '? ' + match.nome; sd.style.display = 'block';
     } else if (!document.getElementById('opp-cliente-text').value) {
       document.getElementById('opp-cliente-text').value = p.cliente;
     }
@@ -5022,14 +3763,14 @@ function autofillFromProposta() {
   toast(`Dados da proposta aplicados! (${verLblAf})`);
 }
 
-// importarProdutosFromProposta removida — vinculação agora é direta (sem cópia para tabela produtos)
+// importarProdutosFromProposta removida � vincula��o agora � direta (sem c�pia para tabela produtos)
 async function importarProdutosFromProposta(oppId, calcId) {
-  toast('Vinculação direta ativa — os itens da calculadora aparecem automaticamente.');
+  toast('Vincula��o direta ativa � os itens da calculadora aparecem automaticamente.');
 }
 
 async function resetVinculoCalc(oppId) {
   if (!confirm('Isso vai remover os produtos importados anteriormente e recarregar os dados direto da calculadora. Continuar?')) return;
-  // Remove produtos e custos antigos que vieram de importação manual
+  // Remove produtos e custos antigos que vieram de importa��o manual
   const [delProd, delCusto] = await Promise.all([
     sb.from('produtos').delete().eq('oportunidade_id', oppId),
     sb.from('opp_custos').delete().eq('oportunidade_id', oppId).not('calc_ref', 'is', null),
@@ -5040,7 +3781,7 @@ async function resetVinculoCalc(oppId) {
   await carregarDados();
   renderPipe(); renderOrc();
   abrirDetail(oppId);
-  toast('Vínculo atualizado — itens agora vêm direto da calculadora.');
+  toast('V�nculo atualizado � itens agora v�m direto da calculadora.');
 }
 
 
@@ -5055,25 +3796,25 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
     if (error || !data) {
       const mem = allProposals.find(p => p.proposal_id === calcId);
       if (mem) {
-        el.textContent = `${mem.projeto || '—'} · ${fmt(mem.total)} · ${_verLabel(mem.version||0)}`;
+        el.textContent = `${mem.projeto || '�'} � ${fmt(mem.total)} � ${_verLabel(mem.version||0)}`;
         el.style.color = 'var(--ouro)';
         el.title = 'Abra a calculadora para sincronizar';
       } else {
-        el.textContent = '(proposta não sincronizada — abra a calculadora)';
+        el.textContent = '(proposta n�o sincronizada � abra a calculadora)';
         el.style.color = '#aaa';
       }
       return;
     }
-    el.textContent = `${data.projeto || '—'} · ${fmt(data.total)} · ${_verLabel(data.version||0)}`;
+    el.textContent = `${data.projeto || '�'} � ${fmt(data.total)} � ${_verLabel(data.version||0)}`;
     el.style.color = 'var(--verde)';
-    // Avisa se existe revisão mais nova na família
+    // Avisa se existe revis�o mais nova na fam�lia
     if (allProposals.length) {
       const froot = data.parent_id || data.proposal_id;
       const maisRecente = allProposals
         .filter(p => (p.parent_id || p.proposal_id) === froot)
         .sort((a,b) => (b.version||0) - (a.version||0))[0];
       if (maisRecente && (maisRecente.version||0) > (data.version||0)) {
-        el.innerHTML += ` <span style="font-size:9px;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:700">↑ ${_verLabel(maisRecente.version)} disponível</span>`;
+        el.innerHTML += ` <span style="font-size:9px;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:700">? ${_verLabel(maisRecente.version)} dispon�vel</span>`;
       }
     }
   } catch(e) { el.textContent = '(erro ao carregar)'; }
@@ -5102,7 +3843,7 @@ async function abrirLembretePopup() {
         ${opts}
       </select>
       <label style="${_ls}">Mensagem</label>
-      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
+      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal at� sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
         <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
@@ -5116,7 +3857,7 @@ async function _enviarLembrete() {
   const para = document.getElementById('lemb-para')?.value;
   if (!msg) return;
   const btn = document.querySelector('#popup-lembrete button:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando�'; }
   const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
   const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true);
   const targets = para === 'todos'
@@ -5135,17 +3876,4 @@ async function _enviarLembrete() {
   document.getElementById('popup-lembrete')?.remove();
 }
 
-</script>
-
-<!-- EXP · Chat Widget -->
-<script src="chat.js"></script>
-<!-- EXP · Timer Widget -->
-<script src="timer.js"></script>
-<style>
-  #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:34px!important;z-index:9998!important}
-</style>
-<!-- EXP · Nav lateral compartilhada -->
-<script src="shared/exp-nav.js"></script>
-</body>
-</html>
 

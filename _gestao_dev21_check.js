@@ -1,4431 +1,12 @@
-﻿<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP · Gestão</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="shared/app-notif.js"></script>
-<script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
-<link rel="stylesheet" href="exp-design-system.css">
-<link rel="stylesheet" href="shared/exp-nav.css">
 
-<!-- EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES -->
-
-<style>
-/* ── RESET & ROOT ─────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  /* núcleos de projeto — locais, sem equivalente no design system */
-  --urb:       #5280CA;
-  --urb-bg:    #ECF1FA;
-  --pai:       #45865D;
-  --pai-bg:    var(--verde-bg);
-  --consul:    #C36247;
-  --consul-bg: var(--tc-bg);
-  --esp:       #D19931;
-  --esp-bg:    var(--am-bg);
-  --nav-active: var(--ouro);
-  /* foco de input — gestão usa ouro */
-  --mod-focus:      var(--ouro);
-  --mod-focus-soft: var(--ouro-soft);
-}
-
-body {
-  font-family: var(--font-ui);
-  background: var(--off);
-  color: var(--grafite);
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  font-size: var(--text-body);
-  font-weight: 300;
-}
-
-/* ── LAYOUT SHELL — card flutuante ──────────────────────── */
-/* #app envolve todo o conteúdo autenticado */
-#app {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-}
-
-/* Card principal do módulo — flutua no background off-white */
-#gestao-card {
-  flex: 1;
-  background: var(--branco);
-  border: 1px solid var(--cinza2);
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-width: 0;
-}
-[data-theme="dark"] #gestao-card { background: #1E1E1D; border-color: #2E2D2B; }
-
-/* Header do card: tabs internas + ações à direita */
-.gestao-card-hd {
-  height: 48px;
-  background: var(--branco);
-  border-bottom: 1px solid var(--cinza2);
-  display: flex;
-  align-items: center;
-  padding: 0 8px 0 4px;
-  flex-shrink: 0;
-  gap: 0;
-}
-[data-theme="dark"] .gestao-card-hd { background: #1E1E1D; border-bottom-color: #2A2926; }
-
-/* Tabs do módulo — estilo CRM com cor do módulo (--verde) */
-.gestao-card-hd .ntab {
-  font-size: 11px;
-  text-transform: none;
-  letter-spacing: 0;
-  padding: 0 12px;
-  height: 48px;
-}
-.gestao-card-hd .ntab.active { color: var(--verde); border-bottom-color: var(--verde); }
-[data-theme="dark"] .gestao-card-hd .ntab:hover { color: #D0CFC9; }
-[data-theme="dark"] .gestao-card-hd .ntab.active { color: #5FAD7E; border-bottom-color: #5FAD7E; }
-
-/* Ações do header (notif, feedback, user) — à direita */
-.gestao-hd-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  padding-left: 10px;
-}
-
-/* Corpo scrollável do card */
-.gestao-card-body {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-/* body::before — padrão de linhas convergentes definido em exp-design-system.css */
-
-/* ── SCROLLBAR GLOBAL SUTIL ───────────────────────────────── */
-/* Firefox */
-* { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.18) transparent; }
-[data-theme="dark"] * { scrollbar-color: rgba(255,255,255,.14) transparent; }
-
-/* Webkit (Chrome, Safari, Edge) */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,.16); border-radius: 4px;
-  transition: background .15s;
-}
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.28); }
-::-webkit-scrollbar-corner { background: transparent; }
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); }
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.26); }
-
-/* ── LOADING ─────────────────────────────────────────────── */
-#loading {
-  position: fixed; inset: 0;
-  background: var(--off);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9999;
-  flex-direction: column; gap: 14px;
-}
-.ld-logo { height: 30px; display: block; mix-blend-mode: multiply; }
-[data-theme="dark"] .ld-logo { filter: invert(1) brightness(0.85); mix-blend-mode: screen; }
-.ld-sub { font-size: 9px; color: #999; letter-spacing: 1.5px; text-transform: uppercase; }
-.ld-bar { width: 120px; height: 2px; background: var(--cinza); border-radius: 2px; overflow: hidden; position: relative; margin-top: 4px; }
-.ld-bar::after { content: ''; position: absolute; top: 0; left: 0; width: 40%; height: 100%; background: var(--grafite); border-radius: 2px; animation: ldbar 1.4s ease-in-out infinite; }
-@keyframes ldbar { 0%{transform:translateX(-150%)} 100%{transform:translateX(350%)} }
-
-.btn-back {
-  padding: 4px 10px; border: 1px solid var(--cinza); background: var(--branco);
-  font-family: var(--font-ui); font-size: 8px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; cursor: pointer; color: #888; transition: all .12s;
-  text-decoration: none; display: flex; align-items: center; gap: 4px;
-}
-.btn-back:hover { border-color: var(--grafite); color: var(--grafite); }
-.notif-item{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
-.notif-item:last-child{border-bottom:none}
-.notif-item.nova{background:#eef3fb}
-.notif-item:hover{background:var(--off)}
-.notif-item.nova:hover{background:#e1ecff}
-.notif-item-row{display:flex;align-items:flex-start;gap:8px}
-.notif-icon{font-size:13px;flex-shrink:0;margin-top:1px}
-.notif-titulo{font-size:11px;font-weight:600;flex:1;line-height:1.4}
-.notif-check-btn{width:20px;height:20px;border:1px solid var(--cinza);border-radius:50%;background:var(--branco);font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#888;font-family:inherit;padding:0;line-height:1}
-.notif-check-btn:hover{border-color:var(--verde);color:var(--verde)}
-.notif-corpo{font-size:10px;color:#666;line-height:1.4;padding-left:21px;white-space:pre-wrap;word-break:break-word}
-.notif-ts{font-size:9px;color:#bbb;padding-left:21px}
-/* feedback-popover — estilos canônicos em exp-design-system.css */
-
-/* ── Feedback icon — padrão app.html ────────────────────── */
-#feedback-icon-btn {
-  width: 24px; height: 24px;
-  border: none; background: none;
-  color: #bbb;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0;
-  transition: color .12s;
-  padding: 0;
-}
-#feedback-icon-btn:hover { color: var(--grafite); }
-[data-theme="dark"] #feedback-icon-btn { color: #555; }
-[data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
-
-#feedback-icon-wrap .nav-feedback-pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0; left: auto; bottom: auto;
-  width: 300px;
-}
-
-/* ── User chip no header do gestao ──────────────────────── */
-.gestao-hd-right .user-pill-wrap { min-width: 100px; max-width: 170px; }
-.gestao-hd-right .user-chip { background: transparent; }
-.gestao-hd-right .user-dropdown {
-  left: auto;
-  right: 0;
-  width: 290px;
-  min-width: 290px;
-  max-width: min(320px, calc(100vw - 32px));
-}
-.gestao-hd-right .user-dropdown-note:empty { display: none; }
-.gestao-hd-right .notif-plus { background: transparent; }
-[data-theme="dark"] .gestao-hd-right .user-chip { background: transparent; border-color: rgba(255,255,255,.12); }
-[data-theme="dark"] .gestao-hd-right .user-chip:hover { border-color: rgba(255,255,255,.28); }
-/* @ Mention autocomplete */
-.mencao-dd{position:fixed;background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.13);z-index:9000;max-height:180px;overflow-y:auto;min-width:190px}
-.mencao-it{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-size:11px;font-family:var(--font-ui)}
-.mencao-it:hover,.mencao-it.sel{background:var(--off)}
-.mencao-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0}
-/* Chips de menção confirmada abaixo dos inputs */
-.mencao-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;min-height:0}
-.mencao-chip{display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border:1px solid #b3caea;border-radius:10px;padding:2px 8px 2px 4px;font-size:10px;color:var(--azul);font-weight:600;line-height:1.4}
-.mencao-chip-av{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:#fff;flex-shrink:0}
-.mencao-chip-del{background:none;border:none;cursor:pointer;font-size:11px;color:#93b4d6;padding:0 0 0 2px;line-height:1;font-family:inherit}
-.mencao-chip-del:hover{color:var(--terracota)}
-/* @mention destacado no texto exibido */
-.mencao-hl{color:var(--azul);font-weight:600;background:#e8f0fc;border-radius:3px;padding:1px 3px}
-/* Deletar comentário */
-.btn-coment-del{background:none;border:none;cursor:pointer;font-size:11px;color:#ccc;padding:0 0 0 6px;font-family:inherit;line-height:1}
-.btn-coment-del:hover{color:var(--terracota)}
-/* ── CHECKLIST ───────────────────────────────────────────────── */
-.ck-section{margin-bottom:20px}
-.ck-section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
-.ck-section-title{font-size:10px;font-weight:700;letter-spacing:.4px}
-.ck-card{background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;margin-bottom:5px;overflow:hidden}
-.ck-card-hd{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;background:var(--cinza2);}
-.ck-card-hd:hover{background:var(--off)}
-.ck-card-title{font-size:10px;font-weight:600;flex:1}
-.ck-card-meta{font-size:10px;color:#888;flex-shrink:0}
-.ck-card-body{display:none;border-top:1px solid var(--cinza2);padding:8px 10px}
-.ck-card-body.open{display:block}
-.ck-prog{font-size:10px;font-weight:700;color:var(--verde);flex-shrink:0}
-.ck-prog.parcial{color:var(--ouro)}
-.ck-prog.zero{color:#bbb}
-.ck-secao-blk{margin:10px -10px 6px;padding:0 10px}
-.ck-secao{font-size:10px;font-weight:700;color:var(--azul);background:var(--az-bg);border-radius:5px;padding:4px 10px;display:block;margin-bottom:6px}
-.ck-secao-intro{font-size:10px;color:#777;line-height:1.4;margin-bottom:6px;font-style:italic;white-space:pre-wrap;padding-left:2px}
-.ck-item{display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2)}
-.ck-item:last-child{border-bottom:none}
-.ck-cb{width:14px;height:14px;border:1.5px solid var(--cinza);border-radius:3px;cursor:pointer;flex-shrink:0;margin-top:1px;appearance:none;-webkit-appearance:none;background:#fff;transition:background .12s,border-color .12s;background-size:10px;background-repeat:no-repeat;background-position:center}
-.ck-cb:checked{background-color:var(--verde);border-color:var(--verde);background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 7L5.5 10.5L12 4' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
-.ck-cb:disabled{cursor:default;opacity:.5}
-.ck-item-txt{font-size:11px;flex:1;line-height:1.4}
-.ck-item-txt.done{text-decoration:line-through;color:#bbb}
-.ck-item-who{font-size:9px;color:#aaa;flex-shrink:0}
-.ck-item-act{background:none;border:none;cursor:pointer;font-size:11px;color:#ccc;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s}
-.ck-item-act:hover{color:#666}
-.ck-item-act.tc{color:#ccc}
-.ck-item-act.tc:hover{color:var(--terracota)}
-.ck-item-act.tm{font-size:13px;color:#c2c8d1;padding:0 1px}
-.ck-item-act.tm:hover{color:#9aa4b2}
-.ck-item-act.tm.is-empty{opacity:.22}
-.ck-item-act.tm.has-media{opacity:1;color:var(--azul)}
-.ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--azul);outline:none;padding:0;background:transparent;font-family:var(--font-ui);color:inherit;line-height:1.5}
-.ck-empty{font-size:10px;color:#ccc;padding:4px 0}
-.ck-atrib{display:flex;align-items:center;gap:5px;font-size:9px;color:#666;padding:3px 10px;background:var(--off);border-top:1px solid var(--cinza2)}
-.ck-av{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0}
-.ck-tag-fechado{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:#f0ede8;color:#999;border-radius:4px;padding:2px 7px}
-.ck-outros-toggle{text-align:center;padding:4px 0}
-.ck-outros-wrap{margin-top:4px}
-/* ── CHECKLIST INLINE FORM ───────────────────────────────── */
-.ckt-form-card {
-  background: var(--branco); border: 1.5px solid var(--azul); border-radius: 12px;
-  padding: 16px 18px; margin-bottom: 14px;
-}
-.ckt-form-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-.ckt-form-title { font-size:13px; font-weight:700; }
-.ckt-form-row { margin-bottom:10px; }
-.ckt-form-label { font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#999; display:block; margin-bottom:4px; }
-.ckt-form-input { width:100%; border:1px solid var(--cinza); border-radius:8px; padding:7px 10px; font-size:12px; font-family:var(--font-ui); outline:none; background:var(--branco); color:var(--grafite); box-sizing:border-box; }
-.ckt-form-input:focus { border-color:var(--mod-focus); box-shadow:0 0 0 3px var(--mod-focus-soft); }
-.ckt-secao-blk { border:1px solid var(--cinza2); border-radius:10px; margin-bottom:10px; overflow:hidden; }
-.ckt-secao-hd { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--off); border-bottom:1px solid var(--cinza); }
-.ckt-secao-nome-inp { flex:1; border:none; background:transparent; font-size:12px; font-weight:600; font-family:var(--font-ui); color:var(--grafite); outline:none; }
-.ckt-secao-nome-inp::placeholder { color:#bbb; font-weight:400; }
-.ckt-secao-body { padding:10px 12px; display:flex; flex-direction:column; gap:4px; }
-.ckt-item-row { display:flex; align-items:center; gap:6px; padding:3px 0; }
-.ckt-item-txt-disp { font-size:12px; flex:1; color:var(--grafite); }
-.ckt-item-add-row { display:flex; gap:6px; margin-top:6px; }
-.ckt-item-add-inp { flex:1; border:1px dashed var(--cinza); border-radius:5px; padding:5px 9px; font-size:11px; font-family:var(--font-ui); background:transparent; color:var(--grafite); outline:none; }
-.ckt-item-add-inp:focus { border-color:var(--mod-focus); border-style:solid; box-shadow:0 0 0 3px var(--mod-focus-soft); }
-.ckt-form-ft { display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px solid var(--cinza2); }
-
-/* Preset admin (sócios) */
-.preset-card{background:var(--branco);border:1px solid var(--cinza2);border-radius:10px;padding:14px 16px;margin-bottom:10px}
-.preset-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.preset-card-title{font-size:13px;font-weight:700;flex:1}
-.preset-card-meta{font-size:10px;color:#999;margin-bottom:8px}
-.preset-secao-blk{border-left:3px solid var(--azul);padding:6px 10px;margin:6px 0;background:#f7f9fd;border-radius:0 5px 5px 0}
-.preset-secao-titulo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--azul);margin-bottom:3px}
-.preset-secao-intro{font-size:10px;color:#888;font-style:italic;margin-bottom:5px;white-space:pre-wrap}
-.preset-item-row{display:flex;align-items:center;gap:6px;padding:2px 0;font-size:11px;color:#555}
-/* Preset form */
-.pre-secao-block{border:1px solid var(--cinza2);border-radius:10px;padding:14px 16px;margin-bottom:12px;background:#fafafa}
-.pre-secao-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.pre-secao-items{padding-left:4px}
-
-/* ── MAIN ────────────────────────────────────────────────── */
-.main {
-  padding: 14px 16px;
-  position: relative; z-index: 1;
-}
-
-/* â”€â”€ PÃGINAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-.page { display: none; }
-.page.active { display: block; }
-
-/* ── BOTÕES ──────────────────────────────────────────────── */
-.btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 12px; font-family: var(--font-ui); font-size: 9px;
-  font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  border: 1px solid var(--cinza); background: var(--branco); color: #888;
-  cursor: pointer; transition: all .12s; white-space: nowrap;
-  border-radius: 8px;
-}
-.btn:hover { border-color: var(--grafite); color: var(--grafite); }
-.btn.filled { background: var(--grafite); color: #fff; border-color: var(--grafite); }
-.btn.filled:hover { background: #333; }
-.btn.verde { background: var(--verde); color: #fff; border-color: var(--verde); }
-.btn.verde:hover { background: var(--verde-l); border-color: var(--verde-l); }
-.btn.tc { background: var(--terracota); color: #fff; border-color: var(--terracota); }
-.btn.am { background: var(--ouro); color: #fff; border-color: var(--ouro); }
-.btn.sm { padding: 3px 8px; font-size: 8px; }
-.btn.ghost { background: transparent; border-color: transparent; color: #999; }
-.btn.ghost:hover { border-color: var(--cinza); color: var(--grafite); }
-.btn:disabled { opacity: .4; cursor: not-allowed; }
-.btn.concluir { background: var(--branco); color: #999; border-color: var(--cinza2); }
-.btn.concluir:hover { background: var(--verde); color: #fff; border-color: var(--verde); }
-
-/* ── ICON-BTN ─────────────────────────────────────────────
-   Botão quadrado de ícone — usado em cabeçalhos de card,
-   toolbars internas e ações rápidas inline.
-   Alinhado ao padrão visual do chat-fullpage (fp-sb-icon-btn).
-────────────────────────────────────────────────────────── */
-.icon-btn {
-  width: 28px; height: 28px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border: none; border-radius: 8px;
-  background: var(--off);
-  color: var(--grafite);
-  cursor: pointer; flex-shrink: 0;
-  transition: background .12s, color .12s;
-  font-size: 13px; line-height: 1;
-  font-family: var(--font-ui);
-  padding: 0;
-}
-.icon-btn:hover { background: var(--cinza2); }
-.icon-btn.sm { width: 24px; height: 24px; font-size: 11px; border-radius: 7px; }
-.icon-btn.lg { width: 32px; height: 32px; font-size: 15px; border-radius: 9px; }
-.icon-btn:disabled { opacity: .35; cursor: not-allowed; }
-[data-theme="dark"] .icon-btn { background: #252523; color: #C8C3BA; }
-[data-theme="dark"] .icon-btn:hover { background: #2E2D2B; }
-
-/* ── BADGES ──────────────────────────────────────────────── */
-.badge {
-  display: inline-flex; align-items: center;
-  padding: 2px 7px; font-size: 8px; font-weight: 700;
-  letter-spacing: .5px; text-transform: uppercase; white-space: nowrap;
-  border-radius: 4px;
-}
-.b-vd { background: var(--verde-bg); color: var(--verde); }
-.b-az { background: var(--az-bg); color: var(--azul); }
-.b-am { background: var(--am-bg); color: var(--ouro); }
-.b-tc { background: var(--tc-bg); color: var(--terracota); }
-.b-gr { background: var(--cinza2); color: #777; }
-.b-urb { background: var(--urb-bg); color: var(--urb); }
-.b-pai { background: var(--pai-bg); color: var(--pai); }
-.b-consul { background: var(--consul-bg); color: var(--consul); }
-.b-esp { background: var(--esp-bg); color: var(--esp); }
-
-/* ── CARDS ───────────────────────────────────────────────── */
-.card {
-  background: var(--branco); border: 1px solid var(--cinza2);
-  position: relative; overflow: hidden;
-  border-radius: 10px;
-}
-.card::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 3px; height: 100%;
-}
-.card.c-vd::before { background: var(--verde); }
-.card.c-az::before { background: var(--azul); }
-.card.c-am::before { background: var(--ouro); }
-.card.c-tc::before { background: var(--terracota); }
-.card.c-gr::before { background: var(--cinza); }
-.card.c-urb::before { background: var(--urb); }
-.card.c-pai::before { background: var(--pai); }
-.card.c-consul::before { background: var(--consul); }
-.card.c-esp::before { background: var(--esp); }
-.card-hd {
-  padding: 9px 14px 9px 17px; border-bottom: 1px solid var(--cinza2);
-  display: flex; align-items: center; gap: 8px;
-  background: var(--cinza2);
-}
-.card-title { font-size: 9px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
-.card-body { padding: 12px 14px 12px 17px; }
-
-/* ── STATS ───────────────────────────────────────────────── */
-.stat-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 10px; margin-bottom: 14px; }
-.stat {
-  background: var(--branco); border: 1px solid var(--cinza2);
-  padding: 14px 16px 14px 19px; position: relative;
-  border-radius: 10px; overflow: hidden;
-}
-.stat::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 3px; height: 100%;
-}
-.stat.s-vd::before { background: var(--verde); }
-.stat.s-az::before { background: var(--azul); }
-.stat.s-am::before { background: var(--ouro); }
-.stat.s-tc::before { background: var(--terracota); }
-.stat.s-gr::before { background: var(--cinza); }
-.stat-lbl { font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #999; margin-bottom: 6px; }
-.stat-val { font-size: 26px; font-weight: 700; font-family: var(--font-ui); letter-spacing: -1px; line-height: 1; }
-.stat-sub { font-size: 10px; color: #888; margin-top: 2px; }
-/* Stat compacto para dash integrado */
-.stat-mini {
-  background: var(--branco); border: 1px solid var(--cinza2);
-  padding: 10px 16px 10px 19px; position: relative; flex: 1;
-  border-radius: 10px; overflow: hidden; min-width: 80px;
-}
-.stat-mini::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 3px; height: 100%;
-}
-.stat-mini.s-vd::before { background: var(--verde); }
-.stat-mini.s-az::before { background: var(--azul); }
-.stat-mini.s-am::before { background: var(--ouro); }
-.stat-mini.s-tc::before { background: var(--terracota); }
-.stat-mini.s-gr::before { background: var(--cinza); }
-.stat-mini-val { font-size: 22px; font-weight: 700; font-family: var(--font-ui); letter-spacing: -1px; line-height: 1.1; }
-.stat-mini-lbl { font-size: 8px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: #999; margin-top: 4px; }
-
-/* â”€â”€ SEÃ‡ÃƒO TÃTULOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-.sec-title {
-  font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
-  text-transform: uppercase; color: #999;
-  margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
-}
-.sec-title::after { content: ''; flex: 1; height: 1px; background: var(--cinza); }
-
-/* ── INPUTS / FORMS ──────────────────────────────────────── */
-.fgroup { display: flex; flex-direction: column; gap: 4px; }
-.fgroup label { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #999; }
-.fgroup input, .fgroup select, .fgroup textarea {
-  font-family: var(--font-ui); font-size: 12px; font-weight: 300;
-  border: 1px solid var(--cinza); background: var(--branco); color: var(--grafite);
-  padding: 5px 9px; outline: none; transition: border-color .12s;
-  width: 100%; border-radius: 8px;
-}
-.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus {
-  border-color: var(--grafite);
-}
-.fgroup textarea { resize: vertical; min-height: 60px; }
-.fgroup select { cursor: pointer; }
-.fg { display: grid; gap: 10px; }
-.fg2 { grid-template-columns: 1fr 1fr; }
-.fg3 { grid-template-columns: 1fr 1fr 1fr; }
-.fg4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-.mb8 { margin-bottom: 8px; }
-.mb14 { margin-bottom: 14px; }
-.mb20 { margin-bottom: 20px; }
-
-/* ── TABELAS ─────────────────────────────────────────────── */
-.tbl { width: 100%; border-collapse: collapse; }
-.tbl th {
-  padding: 6px 10px; font-size: 8px; font-weight: 700; letter-spacing: .6px;
-  text-transform: uppercase; color: #999; border-bottom: 1px solid var(--cinza);
-  background: var(--branco); text-align: left; cursor: pointer; white-space: nowrap;
-}
-.tbl th:hover { color: var(--grafite); }
-.tbl td {
-  padding: 7px 10px; font-size: 12px; border-bottom: 1px solid var(--cinza2);
-  vertical-align: middle;
-}
-.tbl tr.click { cursor: pointer; }
-.tbl tr.click:hover td { background: var(--off); }
-.dtag { font-size: 10px; color: #888; font-family: var(--font-mono); }
-.num-tag { font-size: 10px; font-weight: 700; font-family: var(--font-mono); color: #555; }
-
-/* ── MODAIS ──────────────────────────────────────────────── */
-.modal-bg {
-  position: fixed; inset: 0; background: rgba(0,0,0,.45);
-  z-index: 200; display: flex; align-items: center; justify-content: center;
-  padding: 40px 16px; overflow-y: auto;
-}
-.modal {
-  background: var(--branco); border: 1px solid var(--cinza2);
-  width: 100%; max-width: 640px;
-  max-height: calc(100vh - 80px); display: flex; flex-direction: column;
-  animation: mIn .2s ease both;
-  border-radius: 12px; overflow: hidden;
-}
-.modal.lg { max-width: 860px; }
-.modal.xl { max-width: 1060px; }
-@keyframes mIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-.modal-hd {
-  padding: 12px 16px; border-bottom: 1px solid var(--cinza2);
-  display: flex; justify-content: space-between; align-items: center;
-  position: sticky; top: 0; background: var(--cinza2); z-index: 5;
-}
-.modal-hd-title { font-size: 11px; font-weight: 500; letter-spacing: .5px; text-transform: uppercase; }
-.modal-close {
-  font-size: 20px; color: #999; cursor: pointer; padding: 2px 6px;
-  background: none; border: none; font-family: var(--font-ui); transition: color .12s;
-}
-.modal-close:hover { color: var(--grafite); }
-.modal-body { padding: 16px; overflow-y: auto; flex: 1; }
-.modal-ft {
-  padding: 10px 16px; border-top: 1px solid var(--cinza2);
-  display: flex; gap: 7px; justify-content: flex-end; background: var(--branco);
-}
-/* Modal tabs */
-.modal-tabs { display: flex; border-bottom: 1px solid var(--cinza2); margin-bottom: 16px; }
-.modal-tab {
-  padding: 8px 14px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; color: #999; border-bottom: 2px solid transparent;
-  cursor: pointer; transition: all .12s; background: none; border-top: none;
-  border-left: none; border-right: none; font-family: var(--font-ui);
-}
-.modal-tab:hover { color: var(--grafite); }
-.modal-tab.active { color: var(--grafite); border-bottom-color: var(--grafite); }
-.mtab-panel { display: none; }
-.mtab-panel.active { display: block; }
-
-/* ── SEÇÃO INTERNA MODAL ─────────────────────────────────── */
-.ms { margin-bottom: 16px; }
-#mp-visao-grid > .ms { margin-bottom: 0; }
-.ms-title {
-  font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
-  color: #999; margin-bottom: 8px; padding-bottom: 5px;
-  border-bottom: 1px solid var(--cinza2);
-}
-.dr { display: flex; border-bottom: 1px solid var(--cinza2); }
-.dk { font-size: 8px; color: #999; padding: 3px 8px; min-width: 100px; background: var(--off); border-right: 1px solid var(--cinza2); letter-spacing: .1px; }
-.dv { font-size: 10px; padding: 3px 8px; flex: 1; }
-
-/* ── BARRA SEGMENTADA DE ETAPAS ──────────────────────────── */
-.etapas-seg-bar {
-  display: flex; gap: 3px; margin-bottom: 10px; height: 6px;
-}
-.etapas-seg-bar .seg {
-  flex: 1; border-radius: 3px; transition: opacity .15s;
-}
-.etapas-seg-bar .seg:hover { opacity: .75; cursor: default; }
-.etapas-seg-label {
-  font-size: 9px; color: #aaa; font-family: var(--font-mono);
-  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
-}
-/* ── TIMELINE ────────────────────────────────────────────── */
-.timeline { position: relative; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
-.timeline::before {
-  content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px;
-  width: 1px; background: var(--cinza2);
-}
-.tl-item { position: relative; padding-left: 14px; }
-.tl-dot {
-  position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--cinza); border: 1.5px solid #fff;
-  box-shadow: 0 0 0 1px var(--cinza);
-}
-.tl-dot.d-vd { background: var(--verde); box-shadow: 0 0 0 1px var(--verde); }
-.tl-dot.d-az { background: var(--azul); box-shadow: 0 0 0 1px var(--azul); }
-.tl-dot.d-am { background: var(--ouro); box-shadow: 0 0 0 1px var(--ouro); }
-.tl-dot.d-tc { background: var(--terracota); box-shadow: 0 0 0 1px var(--terracota); }
-.tl-label { font-size: 10px; font-weight: 600; color: var(--grafite); margin-bottom: 1px; }
-.tl-text { font-size: 10px; }
-.tl-date { font-size: 9px; font-family: var(--font-mono); color: #aaa; margin-top: 1px; }
-/* Botão agendar inline na timeline */
-.tl-agendar-btn {
-  font-size: 9px; font-weight: 500; color: #bbb; background: none;
-  border: 1px solid var(--cinza2); border-radius: 4px; padding: 1px 5px;
-  cursor: pointer; white-space: nowrap; transition: all .12s; font-family: var(--font-ui);
-}
-.tl-agendar-btn:hover { background: #4285f40d; border-color: #4285f466; color: #4285f4; }
-.tl-reuniao-badge {
-  font-size: 9px; color: #4285f4; font-family: var(--font-mono); white-space: nowrap;
-}
-.tl-reuniao-badge.passada { color: #aaa; }
-
-/* ── TOAST ───────────────────────────────────────────────── */
-.toast {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: var(--grafite); color: #fff; padding: 10px 20px;
-  font-size: 11px; font-weight: 600; z-index: 999;
-  opacity: 0; transition: opacity .2s; pointer-events: none;
-  border-radius: 20px;
-}
-.toast.show { opacity: 1; }
-
-/* ── EMPTY / LOADING STATES ──────────────────────────────── */
-.empty-note { padding: 32px; text-align: center; color: #aaa; font-size: 11px; }
-.loading-state { padding: 40px; text-align: center; color: #aaa; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; }
-
-/* ── SKELETON ────────────────────────────────────────────── */
-.skel {
-  background: linear-gradient(90deg, var(--cinza2) 25%, #f0efeb 50%, var(--cinza2) 75%);
-  background-size: 200% 100%;
-  animation: skel 1.4s ease infinite;
-}
-@keyframes skel { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-.skel-line { height: 12px; margin-bottom: 8px; }
-.skel-card { height: 80px; margin-bottom: 10px; }
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   DASHBOARD
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.dash-grid {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 14px;
-  align-items: start;
-}
-.dash-left { display: flex; flex-direction: column; gap: 14px; }
-.dash-right { display: flex; flex-direction: column; gap: 14px; }
-
-/* Boas vindas */
-.bv { margin-bottom: 16px; }
-.bv-hora { font-family: var(--font-mono); font-size: 10px; color: #999; letter-spacing: 1px; margin-bottom: 4px; }
-.bv-titulo { font-size: 24px; font-weight: 700; letter-spacing: -.5px; line-height: 1.1; margin-bottom: 4px; }
-.bv-sub { font-size: 12px; font-weight: 300; color: #777; }
-
-/* Cards de projeto no dashboard */
-.proj-card {
-  background: var(--branco); border: 1px solid var(--cinza2);
-  padding: 0;
-  cursor: pointer; transition: all .12s;
-  position: relative; overflow: hidden; margin-bottom: 5px;
-  border-radius: 8px;
-}
-.proj-card::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 3px; height: 100%;
-}
-.proj-card.n-urb::before { background: var(--urb); }
-.proj-card.n-pai::before { background: var(--pai); }
-.proj-card.n-esp::before { background: var(--esp); }
-.proj-card.n-consul::before { background: var(--consul); }
-.proj-card:hover { border-color: #bbb; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,.06); }
-.proj-card-hd {
-  background: var(--cinza2); border-bottom: 1px solid var(--cinza2);
-  padding: 4px 12px 4px 15px;
-  display: flex; align-items: center; justify-content: space-between; gap: 6px;
-}
-.proj-card-body {
-  padding: 7px 12px 7px 15px;
-}
-.proj-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; margin-bottom: 5px; }
-.proj-card-nome {
-  font-family: var(--font-ui); font-size: 10px; font-weight: 700;
-  letter-spacing: -.1px; line-height: 1.3;
-}
-.proj-card-cliente { font-size: 9px; color: #888; margin-bottom: 4px; }
-.proj-card-mid { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 5px; }
-.proj-card-bot { display: flex; align-items: center; justify-content: space-between; }
-.proj-card-avs { display: flex; gap: 3px; }
-.proj-card-av {
-  width: 18px; height: 18px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 7px; font-weight: 700; color: #fff;
-}
-.data-chip {
-  font-family: var(--font-mono); font-size: 9px; font-weight: 500;
-  padding: 2px 7px; border: 1px solid var(--cinza); border-radius: 5px;
-}
-.data-chip.urgente { border-color: var(--ouro); color: var(--ouro); background: var(--am-bg); }
-.data-chip.atrasado { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
-.proj-card-acoes { display: flex; gap: 5px; }
-
-/* Ãrea de coord */
-.coord-strip {
-  background: var(--branco); border: 1px solid var(--cinza2);
-  border-left: 3px solid var(--azul);
-  padding: 8px 12px; margin-bottom: 6px;
-  display: flex; align-items: center; justify-content: space-between;
-  cursor: pointer; transition: all .12s; border-radius: 8px; overflow: hidden;
-}
-.coord-strip:hover { border-color: #bbb; border-left-color: var(--azul); }
-.coord-strip-nome { font-size: 12px; font-weight: 500; }
-.coord-strip-info { font-size: 10px; color: #888; margin-top: 1px; }
-.coord-strip-badge { display: flex; gap: 5px; align-items: center; }
-
-/* Tarefas livres — botão "ver recentes" e popup histórico */
-.task-recentes-btn {
-  background: none; border: none; cursor: pointer;
-  font-size: 9px; font-weight: 600; letter-spacing: .04em;
-  color: #bbb; padding: 0 2px; line-height: 1;
-  transition: color .12s;
-}
-.task-recentes-btn:hover { color: #888; }
-.task-recentes-pop {
-  position: absolute; top: calc(100% + 6px); right: 0;
-  z-index: 400;
-  width: min(320px, calc(100vw - 24px));
-  background: var(--branco);
-  border: 1px solid var(--cinza2);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.12);
-  padding: 10px 12px;
-  display: none; flex-direction: column; gap: 8px;
-}
-.task-recentes-pop.open { display: flex; }
-.task-recentes-pop::before {
-  content:''; position:absolute; top:-6px; right:12px;
-  width:12px; height:12px; transform:rotate(45deg);
-  background:var(--branco); border-top:1px solid var(--cinza); border-left:1px solid var(--cinza);
-}
-.task-rec-title {
-  font-size: 9px; font-weight: 700; letter-spacing: .07em;
-  text-transform: uppercase; color: #999;
-}
-.task-rec-item {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 5px 0; border-bottom: 1px solid var(--cinza2);
-  font-size: 10px;
-}
-.task-rec-item:last-child { border-bottom: none; }
-.task-rec-desc { flex: 1; min-width: 0; color: #666; line-height: 1.45; }
-.task-rec-desc.done { text-decoration: line-through; color: #aaa; }
-.task-rec-action { font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--verde); cursor: pointer; flex-shrink: 0; margin-top: 2px; white-space: nowrap; }
-.task-rec-action:hover { opacity: .75; }
-.task-rec-empty { font-size: 10px; color: #bbb; text-align: center; padding: 8px 0; }
-[data-theme="dark"] .task-recentes-pop { background: var(--branco); border-color: var(--cinza); }
-[data-theme="dark"] .task-recentes-pop::before { background: var(--branco); border-color: var(--cinza); }
-[data-theme="dark"] .task-rec-desc { color: #888; }
-
-/* Tarefas livres */
-.task-item {
-  display: flex; align-items: flex-start; gap: 7px;
-  padding: 5px 0; border-bottom: 1px solid var(--cinza2);
-}
-.task-edit-btn {
-  flex-shrink: 0; margin-top: 1px; background: none; border: none;
-  color: #d0d5de; cursor: pointer; padding: 0 2px; font-size: 12px; line-height: 1;
-  transition: color .12s; opacity: 0;
-}
-.task-item:hover .task-edit-btn { opacity: 1; }
-.task-edit-btn:hover { color: var(--grafite); }
-.task-item:last-child { border-bottom: none; }
-.task-check {
-  width: 13px; height: 13px; border: 1px solid var(--cinza); border-radius: 3px;
-  flex-shrink: 0; cursor: pointer; margin-top: 2px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all .12s; background: var(--branco);
-}
-.task-check:hover { border-color: var(--verde); }
-.task-check.done { background: var(--verde); border-color: var(--verde); }
-.task-check.done::after { content: '✓'; font-size: 8px; color: #fff; font-weight: 700; }
-.task-desc { font-size: 10px; line-height: 1.4; }
-.task-desc.done { text-decoration: line-through; color: #aaa; }
-.task-meta { display: flex; align-items: center; gap: 5px; margin-top: 2px; flex-wrap: wrap; }
-.task-prazo { font-size: 9px; font-family: var(--font-mono); color: #aaa; }
-.task-prazo.vencida { color: var(--terracota); font-weight: 700; }
-.task-prazo.hoje { color: var(--ouro); font-weight: 700; }
-.task-inicio { font-size: 9px; color: #c0c0c0; font-style: italic; }
-.task-de-chip { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; color: #fff; flex-shrink: 0; }
-.task-status-chip {
-  font-size: 8px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
-  padding: 1px 5px; background: var(--cinza2); color: #777; border-radius: 4px;
-}
-.task-status-chip.ok { background: rgba(69,134,93,.12); color: var(--verde); }
-.task-status-chip.pend { background: rgba(209,153,49,.12); color: #8f650d; }
-.task-status-chip.info { background: rgba(82,128,202,.12); color: var(--azul); }
-.task-tipo-chip {
-  font-size: 7px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
-  padding: 1px 5px; background: var(--cinza2); color: #777; border-radius: 4px;
-}
-.task-input-row { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
-.task-input-row input[type="text"] {
-  width: 100%; padding: 4px 9px; border: 1px solid var(--cinza); border-radius: 6px;
-  font-family: var(--font-ui); font-size: 11px; font-weight: 300; outline: none; box-sizing: border-box;
-}
-.task-input-row input[type="text"]:focus { border-color: var(--mod-focus); box-shadow: 0 0 0 3px var(--mod-focus-soft); }
-.task-input-row .task-row2 { display: flex; gap: 5px; }
-.task-input-row .task-row2 select,
-.task-input-row .task-row2 input[type="date"] { flex: 1; }
-.task-input-row .task-row3 { display: flex; gap: 5px; }
-.task-input-row .task-row3 button { flex: 1; }
-
-/* Agenda */
-.agenda-item {
-  padding: 7px 10px; border-radius: 6px; cursor: pointer;
-  border: 1px solid var(--cinza2); border-left: 3px solid var(--azul);
-  margin-bottom: 4px; background: var(--branco);
-  transition: box-shadow .12s, border-color .12s;
-}
-.agenda-item:hover { box-shadow: 0 2px 6px rgba(0,0,0,.07); border-color: #bbb; }
-.agenda-item:last-child { margin-bottom: 0; }
-.agenda-hora { font-family: var(--font-mono); font-size: 9px; color: #888; margin-bottom: 2px; }
-.agenda-titulo { font-size: 11px; font-weight: 600; line-height: 1.3; }
-.agenda-subtag { font-size: 9px; color: #aaa; margin-top: 2px; }
-.agenda-dia-sep {
-  font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
-  color: #ccc; padding: 8px 0 5px; display: flex; align-items: center; gap: 6px;
-}
-.agenda-dia-sep:first-child { padding-top: 0; }
-.agenda-dia-sep::after { content: ''; flex: 1; height: 1px; background: var(--cinza2); }
-.agenda-dia-sep.hoje { color: var(--azul); }
-.agenda-vazio { text-align: center; padding: 20px 0; font-size: 11px; color: #bbb; }
-.agenda-sem-gcal { font-size: 10px; color: #bbb; padding: 8px 0 2px; text-align: center; }
-.agenda-mais { font-size: 9px; color: #bbb; text-align: center; padding: 6px 0 0; font-family: var(--font-mono); }
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   PROJETOS — LISTA
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.proj-toolbar {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 14px; flex-wrap: nowrap;
-}
-.proj-filters {
-  display: flex; align-items: center; gap: 6px;
-  flex-wrap: nowrap; flex: 1; min-width: 0;
-}
-#fil-busca        { flex: 1 1 0; min-width: 100px; max-width: 210px; }
-#fil-nucleo       { width: 114px; flex-shrink: 0; }
-#fil-gestao       { width: 96px;  flex-shrink: 0; }
-#fil-status       { width: 106px; flex-shrink: 0; }
-#fil-coord        { width: 158px; flex-shrink: 0; }
-#fil-participante { width: 152px; flex-shrink: 0; }
-.proj-toolbar-action {
-  margin-left: auto; display: flex; align-items: center;
-}
-.proj-view-toggle { display: flex; border: 1px solid var(--cinza2); border-radius: 8px; overflow: hidden; }
-.pvt-btn {
-  padding: 5px 14px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; border: none; background: var(--branco); color: #888;
-  cursor: pointer; font-family: var(--font-ui); transition: all .12s;
-  display: flex; align-items: center; justify-content: center; text-align: center;
-}
-.pvt-btn + .pvt-btn { border-left: 1px solid var(--cinza2); }
-.pvt-btn.active { background: var(--grafite); color: #fff; }
-.filter-select {
-  padding: 5px 9px; border: 1px solid var(--cinza2); background: var(--branco);
-  font-family: var(--font-ui); font-size: 11px; font-weight: 300; cursor: pointer;
-  outline: none; color: var(--grafite); border-radius: 8px;
-}
-
-/* Grupo cliente/oportunidade */
-.cliente-grupo { margin-bottom: 20px; }
-.cliente-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px; background: var(--cinza2);
-  border: 1px solid var(--cinza2); margin-bottom: 4px;
-  cursor: pointer; border-radius: 10px;
-}
-.cliente-nome { font-size: 11px; font-weight: 700; }
-.cliente-cidade { font-size: 10px; color: #888; }
-.opp-grupo { border: 1px solid var(--cinza2); margin-bottom: 8px; border-radius: 10px; overflow: hidden; }
-.opp-header {
-  display: flex; align-items: center; gap: 8px; padding: 7px 14px;
-  border-bottom: 1px solid var(--cinza2); background: rgba(236, 234, 228, 0.45);
-}
-[data-theme="dark"] .opp-header { background: rgba(37, 37, 35, 0.45); }
-.opp-nome { font-size: 11px; font-weight: 600; }
-.prod-row {
-  display: flex; align-items: center; gap: 0;
-  padding: 9px 14px 9px 28px;
-  border: 1px solid var(--cinza2); border-radius: 6px;
-  margin-bottom: 3px;
-  cursor: pointer; transition: background .12s;
-  background: var(--branco);
-}
-.prod-row:hover { background: var(--off); }
-.prod-row-nome { font-size: 12px; font-weight: 500; flex: 0 0 auto; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
-.prod-row-tipo   { width: 110px; flex-shrink: 0; padding: 0 10px; }
-.prod-row-status { width: 100px; flex-shrink: 0; padding: 0 10px; }
-.prod-row-etapa  { font-size: 11px; color: #888; flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
-.prod-row-coord { min-width: 54px; flex-shrink: 0; }
-.prod-row-datas { min-width: 76px; text-align: right; flex-shrink: 0; }
-.prod-row-horas { font-size: 10px; color: #aaa; min-width: 60px; text-align: right; white-space: nowrap; flex-shrink: 0; }
-.prod-bullet {
-  width: 6px; height: 6px; border-radius: 50%;
-  flex-shrink: 0; margin-right: 10px;
-}
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   GANTT
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-/* ─── KANBAN PROJETOS ───────────────────────────────────── */
-.proj-kanban { display:flex; gap:0; border:1px solid var(--cinza2); border-radius:10px; overflow:hidden; height:calc(100vh - 120px); background:var(--off); }
-.pk-col { flex:1; min-width:0; border-right:1px solid var(--cinza2); display:flex; flex-direction:column; overflow:hidden; background:var(--off); }
-.pk-col:last-child { border-right:none; }
-.pk-col-hd { padding:8px 12px; border-bottom:1px solid var(--cinza2); background:var(--cinza2); flex-shrink:0; display:flex; align-items:center; gap:7px; }
-.pk-col-stripe { width:3px; height:14px; border-radius:2px; flex-shrink:0; }
-.pk-col-title { font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; flex:1; color:var(--grafite); }
-.pk-col-cnt { font-size:10px; font-family:var(--font-mono); color:#aaa; }
-.pk-items { padding:8px; display:flex; flex-direction:column; gap:6px; overflow-y:auto; flex:1; background:var(--off); }
-.pk-card { background:var(--branco); border:1px solid var(--cinza2); border-left-width:4px; border-radius:9px; padding:9px 11px; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
-.pk-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
-.pk-card-client { font-size:11px; font-weight:700; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; }
-.pk-card-proj { font-size:10px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; }
-.pk-card-prod { font-size:9px; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:5px; }
-.pk-card-etapa { font-size:9px; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px; }
-.pk-card-meta { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
-.pk-empty { color:#bbb; font-size:11px; text-align:center; padding:20px 8px; }
-[data-theme="dark"] .proj-kanban { border-color:#2E2D2B; }
-[data-theme="dark"] .pk-col { border-color:#2E2D2B; }
-[data-theme="dark"] .pk-col-hd { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .pk-card { background:#1E1E1D; border-color:#2E2D2B; }
-
-/* Kanban — scrollbar fina e sutil */
-.pk-items::-webkit-scrollbar { width:4px; }
-.pk-items::-webkit-scrollbar-track { background:transparent; }
-.pk-items::-webkit-scrollbar-thumb { background:rgba(0,0,0,.14); border-radius:2px; }
-[data-theme="dark"] .pk-items::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); }
-
-/* Horas — scrollbar sutil nos painéis de resumo */
-.mh-panel-body::-webkit-scrollbar { width:4px; }
-.mh-panel-body::-webkit-scrollbar-track { background:transparent; }
-.mh-panel-body::-webkit-scrollbar-thumb { background:rgba(0,0,0,.14); border-radius:2px; }
-[data-theme="dark"] .mh-panel-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); }
-.mh-day-chart::-webkit-scrollbar { height:4px; }
-.mh-day-chart::-webkit-scrollbar-track { background:transparent; }
-.mh-day-chart::-webkit-scrollbar-thumb { background:rgba(0,0,0,.14); border-radius:2px; }
-[data-theme="dark"] .mh-day-chart::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); }
-/* Garante que o kanban fica acima do padrão de fundo */
-.proj-kanban { isolation:isolate; }
-
-.gantt-wrap {
-  border: 1px solid var(--cinza2);
-  background: var(--branco);
-  overflow: hidden; border-radius: 10px;
-}
-.gantt-toolbar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-bottom: 1px solid var(--cinza2);
-  background: var(--cinza2); flex-wrap: wrap;
-}
-.gantt-nav { display: flex; align-items: center; gap: 6px; }
-.gantt-toolbar-meta {
-  margin-left: auto; display: flex; align-items: center;
-}
-.gantt-nav-btn {
-  width: 28px; height: 28px; border: none; background: rgba(0,0,0,.06);
-  cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center;
-  transition: background .12s; font-family: var(--font-ui); border-radius: 8px;
-  color: var(--grafite);
-}
-.gantt-nav-btn:hover { background: rgba(0,0,0,.12); }
-[data-theme="dark"] .gantt-nav-btn { background: rgba(255,255,255,.08); color: #C8C3BA; }
-[data-theme="dark"] .gantt-nav-btn:hover { background: rgba(255,255,255,.14); }
-.gantt-periodo {
-  font-family: var(--font-ui); font-size: 10px; font-weight: 600;
-  letter-spacing: .5px; text-transform: uppercase; color: #999;
-  min-width: 160px; text-align: center;
-}
-.gantt-hoje-btn {
-  height: 28px; padding: 0 10px; font-size: 8px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; border: 1px solid var(--cinza2); background: var(--branco);
-  cursor: pointer; font-family: var(--font-ui); color: #888; transition: all .12s;
-  display: flex; align-items: center; border-radius: 8px;
-}
-.gantt-hoje-btn:hover { border-color: var(--cinza); color: var(--grafite); }
-
-/* Gantt table */
-.gantt-container { overflow-x: auto; }
-.gantt-table { border-collapse: collapse; width: 100%; min-width: 900px; }
-.gantt-table th {
-  font-size: 8px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  color: #999; background: var(--branco); border-bottom: 1px solid var(--cinza);
-  padding: 0; white-space: nowrap; position: sticky; top: 0; z-index: 10;
-}
-.gantt-th-info { min-width: 260px; width: 260px; padding: 7px 10px; border-right: 1px solid var(--cinza); text-align: left; }
-.gantt-th-week {
-  min-width: 90px; text-align: center; padding: 7px 4px;
-  border-right: 1px solid var(--cinza2);
-  cursor: pointer;
-}
-.gantt-th-week.atual { background: var(--az-bg); color: var(--azul); }
-
-/* Grupo no gantt */
-.gantt-grupo-row td {
-  background: var(--cinza2); padding: 6px 10px;
-  font-size: 11px; font-weight: 700;
-  color: var(--grafite); border-bottom: 1px solid var(--cinza);
-}
-.gantt-prod-row td { border-bottom: 1px solid var(--cinza2); vertical-align: middle; height: 44px; max-height: 44px; }
-.gantt-prod-row:hover td { background: var(--off); }
-.gantt-prod-row.pausado td.info-cell { opacity: 0.4; }
-.gantt-prod-row td.info-cell {
-  padding: 6px 10px 6px 14px; border-right: 1px solid var(--cinza);
-  min-width: 260px; width: 260px; overflow: hidden; position: relative;
-}
-.gantt-type-accent {
-  position: absolute; left: 0; top: 8px; bottom: 8px;
-  width: 3px; border-radius: 0 3px 3px 0;
-}
-.gantt-prod-nome { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
-.gantt-prod-coord { font-size: 10px; color: #888; }
-.gantt-cell { padding: 6px 4px; height: 44px; border-right: 1px solid var(--cinza2); position: relative; }
-.gantt-cell.hoje { background: rgba(29,79,160,.04); }
-
-/* Barras de etapa */
-.gantt-bar {
-  height: 16px; position: absolute;
-  top: 50%; transform: translateY(-50%);
-  display: flex; align-items: center; overflow: hidden;
-  cursor: pointer; transition: filter .12s; z-index: 2; border-radius: 4px;
-}
-.gantt-bar:hover { filter: brightness(.9); z-index: 5; }
-.gantt-bar.pausado { opacity: .4; }
-.gantt-bar.atrasado { outline: 1px solid var(--terracota); }
-.gantt-bar-label {
-  font-size: 8px; font-weight: 600; color: #fff;
-  padding: 0 4px; white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; letter-spacing: .2px;
-}
-/* Cores de barra por status de etapa */
-.gb-andamento { background: var(--azul); }
-.gb-revisao { background: var(--ouro); }
-.gb-concluida { background: var(--verde); opacity: 0.45; }
-.gb-nao-iniciada { background: var(--cinza); }
-.gb-pausada { background: var(--terracota); }
-/* por núcleo */
-.gb-urb { background: var(--urb); }
-.gb-pai { background: var(--pai); }
-.gb-esp { background: var(--esp); }
-.gb-consul { background: var(--consul); }
-
-/* Tooltip gantt */
-.gantt-tooltip {
-  position: fixed; z-index: 300;
-  background: var(--grafite); color: #fff;
-  padding: 8px 12px; font-size: 11px;
-  pointer-events: none; opacity: 0; transition: opacity .15s;
-  max-width: 220px; border-radius: 6px;
-}
-.gantt-tooltip.show { opacity: 1; }
-.gt-nome { font-weight: 700; margin-bottom: 3px; }
-.gt-info { font-size: 10px; color: #ccc; line-height: 1.5; }
-
-/* Legenda Gantt */
-.gantt-legenda {
-  display: flex; align-items: center; gap: 14px;
-  padding: 8px 10px; border-top: 1px solid var(--cinza);
-  background: var(--branco); flex-wrap: wrap;
-}
-.gantt-leg-item { display: flex; align-items: center; gap: 6px; font-size: 9px; color: #888; }
-.gantt-leg-cor { width: 20px; height: 10px; border-radius: 4px; }
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   HORAS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.horas-layout { display: grid; grid-template-columns: 1fr 280px; gap: 14px; align-items: start; }
-.mh-head {
-  display:flex; align-items:flex-end; justify-content:space-between;
-  gap:12px; margin-bottom:14px; flex-wrap:wrap;
-}
-.mh-sub { font-size:11px; color:#888; margin-top:3px; }
-.mh-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.mh-overview {
-  display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(300px, .9fr);
-  gap:14px; margin-bottom:14px; align-items:stretch;
-}
-.mh-chart-card { min-height:260px; display:flex; flex-direction:column; }
-.mh-day-chart {
-  flex:1; display:flex; align-items:flex-end; gap:4px;
-  min-height:180px; padding:6px 2px 0; overflow-x:auto;
-}
-.mh-day-col {
-  min-width:18px; display:flex; flex-direction:column; align-items:center; gap:6px;
-}
-.mh-day-bar-wrap {
-  width:100%; height:150px; display:flex; align-items:flex-end;
-}
-.mh-day-bar {
-  width:100%; min-height:2px; border-radius:6px 6px 2px 2px;
-  background:var(--azul, #1D4FA0);
-}
-.mh-day-bar.zero { background:var(--cinza2); opacity:.65; }
-.mh-day-lbl {
-  font-size:9px; color:#999; font-family:var(--font-mono); white-space:nowrap;
-}
-.mh-stats {
-  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:12px;
-}
-.mh-stat {
-  border:1px solid var(--cinza2); border-radius:10px; background:var(--branco);
-  padding:12px 14px; min-height:122px; display:flex; flex-direction:column;
-}
-.mh-stat-k {
-  font-size:9px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#999;
-}
-.mh-stat-v {
-  font-size:24px; line-height:1; font-family:var(--font-ui); font-weight:700;
-  color:var(--grafite); margin-top:auto; padding-top:18px;
-}
-.mh-stat-s { font-size:10px; color:#888; margin-top:8px; }
-.mh-card {
-  border:1px solid var(--cinza); border-radius:10px; background:var(--branco);
-  padding:14px;
-}
-.mh-card-hd {
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-  margin-bottom:12px;
-}
-.mh-card-t {
-  font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#999;
-}
-.mh-card-sub { font-size:10px; color:#888; }
-.mh-type-bars { display:flex; flex-direction:column; gap:14px; }
-.mh-type-row {
-  display:grid; grid-template-columns:140px minmax(0,1fr) auto;
-  gap:10px; align-items:center;
-}
-.mh-type-copy { min-width:0; }
-.mh-type-name {
-  font-size:9px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#888;
-}
-.mh-type-sub {
-  font-size:10px; color:#aaa; margin-top:2px;
-}
-.mh-type-track {
-  height:18px; border-radius:999px; overflow:hidden; display:flex; background:var(--cinza2);
-}
-.mh-type-seg {
-  height:100%; min-width:1px; border-right:1px solid rgba(255,255,255,.9);
-}
-.mh-type-seg:last-child { border-right:none; }
-.mh-type-total {
-  font-size:11px; font-family:var(--font-mono); white-space:nowrap; color:var(--grafite);
-}
-.mh-summary-panels {
-  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;
-}
-.mh-summary-panels.colab { grid-template-columns:repeat(3,minmax(0,1fr)); }
-.mh-panel {
-  border:1px solid var(--cinza2); border-radius:10px; overflow:hidden; background:var(--off);
-  min-height:220px; max-height:380px; display:flex; flex-direction:column;
-}
-.mh-panel.projects-wide { grid-column:span 2; }
-.mh-panel-hd {
-  padding:11px 12px; border-bottom:1px solid var(--cinza2); background:var(--cinza2);
-}
-.mh-panel-k {
-  font-size:9px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#999;
-}
-.mh-panel-v {
-  font-size:11px; color:#888; margin-top:3px;
-}
-.mh-panel-body {
-  padding:10px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1;
-}
-.mh-summary-list { display:flex; flex-direction:column; gap:8px; }
-.mh-summary-row {
-  border:1px solid var(--cinza2); border-radius:8px; padding:10px 12px; background:var(--off);
-}
-.mh-summary-top {
-  display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:7px;
-}
-.mh-summary-label {
-  font-size:12px; font-weight:600; color:var(--grafite); line-height:1.35;
-}
-.mh-summary-val {
-  font-size:11px; font-family:var(--font-mono); color:var(--grafite); white-space:nowrap;
-}
-.mh-summary-meta {
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-  font-size:10px; color:#888; margin-bottom:7px;
-}
-.mh-summary-bar { height:6px; background:var(--cinza2); border-radius:999px; overflow:hidden; }
-.mh-summary-bar > span {
-  display:block; height:100%; border-radius:inherit;
-  background:linear-gradient(90deg, var(--ouro), #E7BF72);
-}
-.mh-day-groups { display:flex; flex-direction:column; gap:12px; }
-.mh-day-block {
-  border:1px solid var(--cinza2); border-radius:10px; overflow:hidden; background:var(--branco);
-}
-.mh-day-hd {
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:5px 12px; background:var(--cinza2); border-bottom:1px solid var(--cinza);
-}
-.mh-day-title { font-size:10px; font-weight:700; color:var(--grafite); letter-spacing:.2px; }
-.mh-day-total {
-  font-size:10px; font-family:var(--font-mono); white-space:nowrap; color:var(--grafite);
-}
-.mh-day-body { display:flex; flex-direction:column; }
-.mh-day-cols-hd {
-  display:grid; grid-template-columns:80px 82px minmax(0,.9fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,1fr) 60px;
-  gap:8px; align-items:center; padding:4px 12px;
-  background:var(--off); border-bottom:1px solid var(--cinza2);
-  font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#aaa;
-}
-.mh-day-entry {
-  display:grid; grid-template-columns:80px 82px minmax(0,.9fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,1fr) 60px;
-  gap:8px; align-items:center; padding:4px 12px; border-bottom:1px solid var(--cinza2);
-}
-.mh-day-entry:last-child { border-bottom:none; }
-.mh-day-time { font-size:10px; color:#999; font-family:var(--font-mono); white-space:nowrap; font-weight:400; }
-.mh-day-col-data { min-width:0; }
-.mh-day-main-1 {
-  font-size:10px; font-weight:400; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.mh-day-main-proj {
-  font-size:10px; font-weight:400; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.mh-day-comment {
-  font-size:10px; font-weight:400; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
-}
-.mh-day-dur { text-align:right; font-size:10px; font-family:var(--font-mono); white-space:nowrap; color:#999; }
-.mh-badge {
-  display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px;
-  font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
-  background:var(--cinza2); color:#777;
-}
-.mh-badge.projeto { background:rgba(29,79,160,.12); color:#1D4FA0; }
-.mh-badge.organizacao { background:rgba(29,106,74,.12); color:#1D6A4A; }
-.mh-badge.sociedade { background:rgba(196,131,26,.14); color:#A66A12; }
-[data-theme="dark"] .mh-badge.projeto { background:rgba(96,137,204,.18); color:var(--azul); }
-[data-theme="dark"] .mh-badge.organizacao { background:rgba(82,166,118,.18); color:var(--verde); }
-[data-theme="dark"] .mh-badge.sociedade { background:rgba(212,170,55,.18); color:var(--ouro); }
-/* Blocos de tempo na grade — menos vivos em dark mode */
-[data-theme="dark"] .hb-projeto { background:rgba(96,137,204,.42); }
-[data-theme="dark"] .hb-organizacao { background:rgba(82,166,118,.42); }
-[data-theme="dark"] .hb-sociedade { background:rgba(212,170,55,.42); }
-[data-theme="dark"] .cb-projeto { background:rgba(96,137,204,.52); }
-[data-theme="dark"] .cb-organizacao { background:rgba(82,166,118,.52); }
-[data-theme="dark"] .cb-sociedade { background:rgba(212,170,55,.52); }
-.semana-nav {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
-  background: var(--branco); border: 1px solid var(--cinza2); border-radius: 10px; padding: 8px 12px;
-}
-.semana-label { font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; flex: 1; text-align: center; color: #999; }
-.semana-nav-btn {
-  width: 28px; height: 28px; border: none; background: var(--off);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: 14px; transition: background .12s; border-radius: 8px; flex-shrink: 0;
-  color: var(--grafite);
-}
-.semana-nav-btn:hover { background: var(--cinza2); }
-.semana-hoje-btn {
-  height: 28px; padding: 0 10px; border: 1px solid var(--cinza2); background: var(--branco);
-  border-radius: 8px; font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: .5px;
-  text-transform: uppercase; color: #999; cursor: pointer; white-space: nowrap; transition: all .12s; flex-shrink: 0;
-}
-.semana-hoje-btn:hover { border-color: var(--cinza); background: var(--off); }
-[data-theme="dark"] .semana-nav { background: rgba(255,255,255,.04); border-color: #2E2D2B; }
-
-/* Grade semanal */
-.grade-semana {
-  display: grid; grid-template-columns: 60px repeat(7, 1fr);
-  border: 1px solid var(--cinza); background: var(--branco); margin-bottom: 14px;
-}
-.grade-header {
-  padding: 6px 4px; text-align: center;
-  font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #999;
-  border-bottom: 1px solid var(--cinza); border-right: 1px solid var(--cinza2);
-  background: var(--branco);
-}
-.grade-header.hoje-col { background: var(--az-bg); color: var(--azul); }
-.grade-hora-label {
-  font-family: var(--font-mono); font-size: 9px; color: #bbb;
-  padding: 2px 4px; text-align: right; border-right: 1px solid var(--cinza2);
-  border-bottom: 1px solid var(--cinza2); background: var(--branco);
-}
-.grade-cell {
-  border-right: 1px solid var(--cinza2); border-bottom: 1px solid var(--cinza2);
-  min-height: 20px; position: relative;
-}
-.grade-cell.hoje-col { background: rgba(29,79,160,.02); }
-
-/* Bloco de hora na grade */
-.hora-bloco {
-  position: absolute; left: 1px; right: 1px;
-  border-radius: 2px; font-size: 8px; color: #fff;
-  padding: 1px 3px; overflow: hidden; cursor: pointer;
-  font-weight: 600; letter-spacing: .2px;
-}
-.hb-projeto { background: var(--azul); }
-.hb-organizacao { background: var(--verde); }
-.hb-sociedade { background: var(--ouro); }
-
-/* Barra de progresso semanal */
-.prog-semana {
-  margin-bottom: 14px; padding: 10px 14px;
-  background: var(--branco); border: 1px solid var(--cinza); border-radius: 8px;
-}
-.prog-bar-wrap {
-  height: 6px; background: var(--cinza2); position: relative; margin: 6px 0;
-}
-.prog-bar-fill {
-  height: 100%; transition: width .3s, background .3s;
-  background: var(--verde);
-}
-.prog-bar-fill.am { background: var(--ouro); }
-.prog-bar-fill.tc { background: var(--terracota); }
-.prog-bar-mark40 {
-  position: absolute; right: 0; top: -4px; bottom: -4px; width: 1px;
-  background: var(--terracota);
-}
-.prog-info { display: flex; justify-content: space-between; font-size: 10px; color: #888; }
-.prog-total { font-family: var(--font-mono); font-size: 16px; font-weight: 700; }
-
-/* Form lançamento */
-.lanc-form { background: var(--branco); border: 1px solid var(--cinza2); padding: 14px; border-radius: 10px; }
-.lanc-lista-box { background: var(--branco); border: 1px solid var(--cinza2); border-radius: 10px; overflow: hidden; }
-.lanc-form-title { font-size: 9px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: #999; margin-bottom: 12px; }
-
-/* Lista de lançamentos */
-.lanc-lista { }
-.lanc-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px; border-bottom: 1px solid var(--cinza2);
-  background: var(--branco);
-}
-.lanc-item:last-child { border-bottom: none; }
-.lanc-tipo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.lanc-hora { font-family: var(--font-ui); font-size: 10px; color: #888; min-width: 75px; font-weight: 400; }
-.lanc-desc { font-size: 10px; flex: 1; min-width: 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lanc-desc-cli { font-weight: 400; color: #aaa; }
-.lanc-desc-main { font-weight: 700; color: var(--grafite); }
-.lanc-desc-sep { color: #ddd; font-weight: 300; margin: 0 3px; }
-.lanc-desc-sub { color: #bbb; font-weight: 400; }
-.lanc-desc-nota { color: #bbb; font-style: italic; }
-.lanc-dur { font-family: var(--font-ui); font-size: 10px; font-weight: 600; color: #555; }
-.lanc-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
-.lanc-edit {
-  background:none; border:none; color:#888; cursor:pointer; font-size:10px;
-  text-transform:uppercase; letter-spacing:.4px; font-weight:700; transition:color .12s;
-}
-.lanc-edit:hover { color: var(--azul); }
-.lanc-edit.disabled,
-.lanc-edit.disabled:hover { color:#d9d9d9; cursor:not-allowed; }
-.lanc-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; transition: color .12s; }
-.lanc-del:hover { color: var(--terracota); }
-.lanc-del.disabled,
-.lanc-del.disabled:hover { color: #e1e1e1; cursor: not-allowed; }
-
-/* Banner semana travada */
-.semana-travada {
-  background: var(--cinza2); border: 1px solid var(--cinza);
-  padding: 10px 14px; font-size: 11px; color: #777;
-  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
-  border-radius: 8px;
-}
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   REVISÕES
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.rev-layout { display: grid; grid-template-columns: 280px 1fr; gap: 14px; align-items: start; }
-.rev-lista-item {
-  padding: 6px 10px; border: 1px solid var(--cinza); background: var(--branco);
-  cursor: pointer; margin-bottom: 4px; transition: all .12s;
-  position: relative; overflow: hidden; border-radius: 8px;
-}
-.rev-lista-item::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 3px; height: 100%;
-}
-.rev-lista-item.aberta::before { background: var(--ouro); }
-.rev-lista-item.concluida::before { background: var(--verde); }
-.rev-lista-item.concluida { opacity: 0.52; background: var(--branco); }
-.rev-lista-item.concluida:hover { opacity: 0.75; border-color: #999; }
-.rev-lista-item:hover { border-color: #999; }
-.rev-add-inline-btn {
-  width: 30px; height: 30px; border-radius: 50%; border: 1.5px dashed var(--cinza);
-  background: none; color: #bbb; font-size: 17px; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: all .12s; line-height: 1; margin: 2px auto 8px;
-}
-.rev-add-inline-btn:hover { border-color: var(--grafite); color: var(--grafite); background: var(--cinza2); }
-.rev-lista-item.selected { border-color: var(--grafite); }
-.rev-proj-nome { font-size: 11px; font-weight: 600; margin-bottom: 1px; }
-.rev-etapa-nome { font-size: 10px; color: #888; margin-bottom: 3px; }
-.rev-extra { font-size: 9px; color: #aaa; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rev-prog { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; }
-.rev-prog-bar { flex: 1; height: 3px; background: var(--cinza2); }
-.rev-prog-fill { height: 100%; background: var(--verde); transition: width .3s; }
-
-/* Revisões — pill toggle */
-.rev-toggle-wrap { margin-bottom: 10px; }
-.rev-toggle-pill {
-  display: inline-flex; align-items: center;
-  border: 1px solid var(--cinza); border-radius: 100px;
-  background: var(--cinza2); padding: 2px;
-  cursor: pointer; user-select: none; gap: 1px;
-}
-.rev-toggle-opt {
-  padding: 4px 13px; border-radius: 100px;
-  font-size: 10px; font-weight: 600; letter-spacing: .3px;
-  color: #888; transition: all .15s;
-}
-.rev-toggle-opt.active {
-  background: var(--grafite); color: var(--branco);
-}
-[data-theme="dark"] .rev-toggle-opt.active { color: var(--off); }
-
-/* Revisões — FAB */
-.rev-fab {
-  position: fixed; bottom: 28px; right: 28px;
-  height: 46px; min-width: 46px;
-  border-radius: 23px;
-  background: var(--terracota); color: #fff;
-  border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0 13px; gap: 0;
-  box-shadow: 0 4px 16px rgba(0,0,0,.22);
-  z-index: 900; white-space: nowrap;
-  transition: gap .18s, padding .18s, box-shadow .15s;
-}
-.rev-fab:hover { gap: 8px; padding: 0 18px; box-shadow: 0 6px 20px rgba(0,0,0,.28); }
-.rev-fab-icon { font-size: 22px; font-weight: 300; line-height: 1; flex-shrink: 0; }
-.rev-fab-text {
-  font-size: 12px; font-weight: 600; letter-spacing: .2px;
-  max-width: 0; overflow: hidden; opacity: 0;
-  transition: max-width .18s ease, opacity .14s;
-}
-.rev-fab:hover .rev-fab-text { max-width: 120px; opacity: 1; }
-.rev-fab.hidden { display: none; }
-
-/* Revisões — prancha collapsed/expanded */
-.prancha-card { cursor: default; }
-.prancha-hd-click { cursor: pointer; }
-.prancha-preview {
-  padding: 8px 14px 6px; border-top: 1px solid var(--cinza2);
-  display: flex; flex-direction: column; gap: 3px;
-}
-.prancha-preview-task {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 11px; color: var(--grafite); padding: 2px 0;
-}
-.prancha-preview-check {
-  width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
-  border: 1.5px solid #ccc; display: flex; align-items: center; justify-content: center;
-}
-.prancha-preview-check.done { background: var(--verde); border-color: var(--verde); }
-.prancha-preview-check.done::after { content: '✓'; font-size: 8px; color: #fff; font-weight: 700; }
-.prancha-preview-more { font-size: 10px; color: #aaa; padding: 2px 0 0; }
-.prancha-forum-preview {
-  padding: 6px 14px 8px; font-size: 10px; color: #888;
-  border-top: 1px solid var(--cinza2);
-}
-.prancha-forum-has-comment {
-  background: var(--az-bg, rgba(74,114,181,.06));
-  border-top-color: rgba(74,114,181,.35);
-  color: var(--azul);
-}
-.prancha-forum-badge { font-weight: 700; }
-.prancha-forum-snippet {
-  display: block; margin-top: 3px;
-  font-size: 10px; font-weight: 300; color: #555;
-  font-style: italic;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-[data-theme="dark"] .prancha-forum-has-comment { color: var(--azul); }
-[data-theme="dark"] .prancha-forum-snippet { color: #888; }
-.prancha-expand-hint {
-  text-align: center; font-size: 9px; color: #bbb; letter-spacing: .5px; text-transform: uppercase;
-  padding: 5px 0 7px; cursor: pointer;
-  transition: color .12s;
-}
-.prancha-expand-hint:hover { color: #888; }
-.prancha-body-full { display: none; }
-.prancha-card.expanded .prancha-preview { display: none; }
-.prancha-card.expanded .prancha-forum-preview { display: none; }
-.prancha-card.expanded .prancha-expand-hint { display: none; }
-.prancha-card.expanded .prancha-body-full { display: block; }
-
-/* Carga da equipe — subcards */
-.carga-subcard {
-  background: var(--branco); border: 1px solid var(--cinza);
-  border-radius: 8px; padding: 14px;
-}
-
-/* Processos */
-.proc-layout { display: grid; grid-template-columns: 280px 1fr; gap: 14px; align-items: start; }
-.proc-lista-item {
-  padding: 8px 10px; border: 1px solid var(--cinza); background: var(--branco);
-  cursor: pointer; margin-bottom: 4px; transition: all .12s;
-  position: relative; overflow: hidden; border-radius: 8px;
-}
-.proc-lista-item::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 3px; height: 100%; background: var(--azul);
-}
-.proc-lista-item.proc-done::before { background: var(--verde); }
-.proc-lista-item:hover { border-color: #999; }
-.proc-lista-item.selected { border-color: var(--grafite); }
-.proc-nome { font-size: 11px; font-weight: 600; margin-bottom: 0; }
-.proc-desc { font-size: 10px; color: #888; margin-bottom: 0; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.proc-prog { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; margin-top: 6px; }
-.proc-prog-bar { flex: 1; height: 3px; background: var(--cinza2); border-radius: 2px; }
-.proc-prog-fill { height: 100%; background: var(--azul); border-radius: 2px; transition: width .3s; }
-.proc-prog-fill.done { background: var(--verde); }
-
-/* Prancha */
-.prancha-card {
-  background: var(--branco); border: 1px solid var(--cinza); margin-bottom: 10px;
-  border-radius: 8px; overflow: hidden;
-}
-.prancha-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 14px; border-bottom: 1px solid var(--cinza2);
-  background: var(--cinza2);
-}
-.prancha-header.concluida-bg { background: var(--verde-bg); border-bottom-color: #c5e6d0; }
-.prancha-nome { font-size: 11px; font-weight: 700; }
-.prancha-prog { font-family: var(--font-mono); font-size: 10px; color: #888; }
-.prancha-bar-wrap { height: 3px; background: var(--cinza2); }
-.prancha-bar-fill { height: 100%; background: var(--verde); transition: width .3s; }
-.rev-summary-bars { margin-top: 14px; padding: 12px 14px; background: var(--off); border: 1px solid var(--cinza); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
-.rev-summary-bar-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #888; }
-.rev-summary-bar-label { flex-shrink: 0; min-width: 130px; }
-.rev-summary-bar-track { flex: 1; height: 4px; background: var(--cinza2); border-radius: 2px; }
-.rev-summary-bar-fill { height: 100%; background: var(--verde); border-radius: 2px; transition: width .3s; }
-.rev-summary-bar-fill.amarelo { background: var(--ouro); }
-.rev-summary-count { flex-shrink: 0; font-family: var(--font-mono); font-size: 10px; color: #888; }
-.prancha-body { padding: 10px 14px; }
-.prancha-actions { display:flex; align-items:center; gap:6px; }
-.prancha-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--cinza2); }
-.prancha-comments-title { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #999; margin-bottom: 8px; }
-.prancha-comment { padding: 9px 10px; border: 1px solid var(--cinza2); background: #fafaf8; margin-bottom: 8px; border-radius: 6px; }
-.prancha-comment:last-child { margin-bottom: 0; }
-.prancha-comment-meta { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-.prancha-comment-text { font-size: 11px; line-height: 1.45; color: var(--grafite); white-space: pre-wrap; }
-.prancha-thread-actions { display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap; }
-.prancha-thread-list { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
-.prancha-thread-msg { margin-left:18px; padding:8px 10px; border-left:2px solid var(--cinza2); background:var(--branco); border-radius: 0 4px 4px 0; }
-.prancha-thread-msg-meta { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-.prancha-thread-msg.legacy { border-left-style:dashed; background:#fcfcfb; }
-.prancha-reply-label { font-size: 9px; font-weight: 700; color: #888; margin-bottom: 4px; }
-.tarefa-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 0; border-bottom: 1px solid var(--cinza2);
-}
-.tarefa-item:last-child { border-bottom: none; }
-.tarefa-check {
-  width: 15px; height: 15px; border: 1.5px solid var(--cinza);
-  border-radius: 4px; flex-shrink: 0; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all .12s;
-}
-.tarefa-check:hover { border-color: var(--verde); background: var(--verde-bg); }
-.tarefa-check.done { background: var(--verde); border-color: var(--verde); }
-.tarefa-check.done::after { content: '✓'; font-size: 9px; color: #fff; font-weight: 700; }
-.tarefa-check.readonly { cursor: default; }
-.tarefa-check.readonly:hover { border-color: var(--cinza); background: transparent; }
-.tarefa-desc { font-size: 12px; flex: 1; }
-.tarefa-desc.done { text-decoration: line-through; color: #aaa; }
-.tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0;width:46px;justify-content:flex-end}
-.tarefa-tool-btn{
-  background:none;border:none;color:#c2c8d1;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;transition:color .15s,opacity .15s;flex-shrink:0;padding:0;font-size:14px;line-height:1;opacity:.8
-}
-.tarefa-tool-btn:hover{color:#9aa4b2;opacity:1}
-.tarefa-tool-btn:disabled{opacity:.5;cursor:default}
-.tarefa-tool-btn.is-empty{opacity:.22}
-.tarefa-tool-btn.has-media{opacity:1;color:var(--azul)}
-.tm-view-link{
-  background:none;border:none;padding:0;color:var(--azul);font-size:11px;font-weight:700;
-  cursor:pointer;display:inline-flex;align-items:center;gap:5px
-}
-.tm-view-link:hover{color:var(--verde)}
-.tm-count-badge{
-  min-width:16px;height:16px;border-radius:999px;background:var(--az-bg);color:var(--azul);
-  display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;padding:0 4px
-}
-.tarefa-inline-form { padding: 6px 0 4px; }
-.tarefa-inline-ta { width: 100%; box-sizing: border-box; border: 1px solid var(--cinza); border-radius: 6px; padding: 7px 10px; font-size: 12px; font-family: var(--font-ui); resize: none; outline: none; line-height: 1.5; }
-.tarefa-inline-ta:focus { border-color: var(--mod-focus); box-shadow: 0 0 0 3px var(--mod-focus-soft); }
-.tarefa-inline-actions { display: flex; gap: 6px; margin-top: 6px; }
-.tm-upload-area{
-  border:1px dashed var(--cinza);border-radius:10px;background:var(--off);
-  padding:18px 16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start
-}
-.tm-upload-status{font-size:11px;color:#666;min-height:16px}
-.tm-upload-hint{font-size:11px;color:#888;line-height:1.5}
-.tm-view-stage{min-height:320px;display:flex;align-items:center;justify-content:center;background:var(--off);border-radius:10px;border:1px solid var(--cinza2);overflow:hidden;position:relative}
-.tm-view-stage img{max-width:100%;max-height:70vh;display:block}
-.tm-view-meta{font-size:11px;color:#777}
-.tm-view-del{
-  position:absolute;top:10px;right:10px;width:28px;height:28px;border:none;border-radius:999px;
-  background:rgba(0,0,0,.52);color:#fff;display:flex;align-items:center;justify-content:center;
-  font-size:16px;cursor:pointer;z-index:2
-}
-.tm-view-del:hover{background:rgba(0,0,0,.72)}
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   VISÃO SÓCIOS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.socio-tabs { display: flex; border-bottom: 1px solid var(--cinza); margin-bottom: 14px; }
-.socio-tab {
-  padding: 8px 14px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; color: #999; border-bottom: 2px solid transparent;
-  cursor: pointer; transition: all .12s; background: none; border-top: none;
-  border-left: none; border-right: none; font-family: var(--font-ui);
-}
-.socio-tab:hover { color: var(--grafite); }
-.socio-tab.active { color: var(--grafite); border-bottom-color: var(--grafite); }
-.socio-panel { display: none; }
-.socio-panel.active { display: block; }
-
-/* Barras de carga colaborador */
-.carga-item { padding: 10px 0; border-bottom: 1px solid var(--cinza2); }
-.carga-item:last-child { border-bottom: none; }
-.carga-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.carga-av { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; }
-.carga-nome { font-size: 12px; font-weight: 500; flex: 1; }
-.carga-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
-.carga-horas { font-size: 10px; color: #888; }
-.carga-bar-wrap { height: 8px; background: var(--cinza2); display: flex; overflow: hidden; border-radius: 4px; }
-.carga-seg { height: 100%; transition: width .3s; }
-.carga-seg:first-child { border-radius: 4px 0 0 4px; }
-.carga-seg:last-child  { border-radius: 0 4px 4px 0; }
-.cb-proj { background: var(--azul); }
-.cb-int { background: var(--verde); }
-.cb-soc { background: var(--ouro); }
-.carga-legend { display: flex; gap: 10px; margin-top: 4px; }
-.carga-leg { font-size: 9px; color: #888; display: flex; align-items: center; gap: 3px; }
-.carga-leg-dot { width: 6px; height: 6px; border-radius: 50%; }
-.carga-status { font-size: 9px; font-weight: 700; letter-spacing: .3px; padding: 1px 6px; }
-.cs-ok { background: var(--verde-bg); color: var(--verde); }
-.cs-pend { background: var(--tc-bg); color: var(--terracota); }
-.cs-none { background: var(--cinza2); color: #888; }
-.carga-horas.over { color: var(--terracota); font-weight: 800; }
-.carga-pct.over { color: var(--terracota); font-weight: 800; }
-.subm-item { padding: 12px 14px; border-bottom: 1px solid var(--cinza2); }
-.subm-item:last-child { border-bottom: none; }
-.subm-top { display: flex; align-items: center; gap: 10px; }
-.subm-user { display:flex; align-items:center; gap:8px; flex:1; min-width:0; flex-wrap:wrap; }
-.subm-status { margin-left: auto; border-radius: 999px; white-space: nowrap; }
-.subm-comment {
-  font-size: 10px; color: #888; margin-top: 6px; padding-left: 34px;
-  line-height: 1.45; max-width: calc(100% - 34px);
-}
-.subm-overload { font-size: 10px; font-weight: 700; color: var(--terracota); }
-.rb-grupo { margin-bottom: 10px; }
-.rb-grupo:last-child { margin-bottom: 0; }
-
-/* ── ETAPA EDIT ROW ─────────────────────────────────────── */
-.etapa-edit-row {
-  background: var(--off); border: 1px solid var(--cinza); border-radius: 6px;
-  padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; cursor: default;
-}
-.etapa-edit-row input,
-.etapa-edit-row select {
-  background: var(--branco); color: var(--grafite);
-  border: 1px solid var(--cinza); font-family: var(--font-ui); outline: none;
-}
-.etapa-edit-row input[readonly] { background: var(--off); color: #888; cursor: default; }
-.etapa-edit-row label { font-size: 8px; color: #aaa; letter-spacing: .3px; text-transform: uppercase; }
-
-/* ── RESULTADO / ANALYTICS POR ETAPA ────────────────── */
-.res-sumario {
-  background:var(--branco); border:1px solid var(--cinza); border-radius:10px;
-  padding:16px 18px; margin-bottom:14px;
-}
-.res-kpi-row { display:flex; gap:10px; flex-wrap:wrap; }
-.res-kpi {
-  flex:1; min-width:110px; background:var(--off); border:1px solid var(--cinza);
-  border-radius:8px; padding:10px 14px;
-}
-.res-kpi-label { font-size:8px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#999; margin-bottom:4px; }
-.res-kpi-val { font-size:20px; font-weight:700; letter-spacing:-1px; line-height:1; }
-.res-kpi-sub { font-size:10px; color:#888; margin-top:3px; }
-.res-chart {
-  margin-top:14px; padding-top:12px; border-top:1px solid var(--cinza2);
-  display:grid; gap:8px;
-}
-.res-chart-head {
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  font-size:9px; color:#888; text-transform:uppercase; letter-spacing:.5px;
-}
-.res-chart-legend { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.res-chart-legend span { display:inline-flex; align-items:center; gap:4px; }
-.res-chart-dot {
-  width:8px; height:8px; border-radius:50%;
-  display:inline-block; flex-shrink:0;
-}
-.res-chart-dot.prev { background:rgba(82,128,202,.35); }
-.res-chart-dot.real { background:var(--azul); }
-.res-chart-row {
-  display:grid; grid-template-columns:minmax(72px, 108px) 1fr auto; gap:10px;
-  align-items:center;
-}
-.res-chart-name {
-  font-size:10px; font-weight:600; color:var(--grafite);
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-.res-chart-track {
-  position:relative; height:12px; background:var(--cinza2);
-  border-radius:999px; overflow:hidden;
-}
-.res-chart-prev,
-.res-chart-real {
-  position:absolute; left:0; top:0; height:100%; border-radius:999px;
-}
-.res-chart-prev { background:rgba(82,128,202,.22); }
-.res-chart-real { background:var(--azul); min-width:2px; }
-.res-chart-real.pos { background:var(--verde); }
-.res-chart-real.neg { background:var(--terracota); }
-.res-chart-values {
-  font-size:10px; color:#666; text-align:right; white-space:nowrap;
-}
-.res-chart-values strong { color:var(--grafite); font-weight:700; }
-.res-etapa-card {
-  background:var(--branco); border:1px solid var(--cinza); border-radius:8px;
-  padding:10px 12px; margin-bottom:6px;
-}
-.res-etapa-hd {
-  display:flex; align-items:center; gap:6px; margin-bottom:8px;
-}
-.res-etapa-nome { font-size:11px; font-weight:600; flex:1; }
-.res-pct-badge {
-  font-size:8px; font-weight:700; letter-spacing:.3px; text-transform:uppercase;
-  background:var(--off); color:#aaa; border:1px solid var(--cinza);
-  border-radius:3px; padding:1px 5px; flex-shrink:0;
-}
-.res-compare {
-  display:grid; grid-template-columns:repeat(3, minmax(0, 1fr));
-  gap:10px; margin-bottom:8px;
-}
-.res-val-blk { min-width:0; }
-.res-val-label { font-size:8px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#aaa; margin-bottom:2px; }
-.res-val-num { font-size:13px; font-weight:700; line-height:1; letter-spacing:-.3px; }
-.res-detail-row {
-  display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding-top:8px;
-  border-top:1px solid var(--cinza2);
-}
-.res-detail-meta {
-  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-  font-size:10px; color:#888;
-}
-.res-detail-meta strong { color:var(--grafite); font-weight:700; }
-.res-resultado-inline {
-  font-size:10px; font-weight:700; white-space:nowrap;
-}
-.res-resultado-inline.pos { color:var(--verde); }
-.res-resultado-inline.neg { color:var(--terracota); }
-.res-resultado-inline.neutro { color:#888; }
-.res-sem-pct { font-size:11px; color:#aaa; font-style:italic; padding:8px 0; }
-/* Contador de % alocado no form de edição */
-.ep-pct-total { font-size:10px; color:#888; text-align:right; padding:6px 2px 0; }
-/* Resultado — layout 2 painéis */
-.res-layout { display:grid; grid-template-columns:270px 1fr; gap:14px; align-items:start; }
-.res-painel-esq { background:var(--azul); color:#fff; border-radius:12px; padding:18px; position:sticky; top:0; }
-.res-pe-row { display:flex; justify-content:space-between; gap:8px; font-size:10px; margin-bottom:6px; opacity:.9; }
-.res-pe-row.sm { font-size:9px; opacity:.72; margin-bottom:3px; }
-.res-pe-div { border-top:1px solid rgba(255,255,255,.2); margin:10px 0; }
-.res-painel-dir { overflow-y:auto; max-height:560px; display:flex; flex-direction:column; gap:6px; padding-right:2px; }
-.res-card-etapa { border-radius:8px; padding:12px 14px; border:1px solid; }
-.res-card-etapa.nao-iniciada { background:#fff; border-color:var(--cinza); }
-.res-card-etapa.default { background:#fdf0f4; border-color:#f0c8d4; }
-.res-card-etapa.concluida-verde { background:var(--verde-bg,#eaf5ee); border-color:rgba(45,158,107,.3); }
-.res-card-etapa.concluida-amarelo { background:#fffbeb; border-color:rgba(212,170,55,.4); }
-.res-card-etapa.concluida-neg { background:#fdecea; border-color:rgba(195,68,59,.25); }
-.res-card-hd { display:flex; align-items:center; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
-.res-card-valores { display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:10px; margin-bottom:8px; }
-.res-card-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:10px; color:#888; padding-top:8px; border-top:1px solid rgba(0,0,0,.07); }
-.res-card-meta strong { color:var(--grafite); }
-.res-card-prazo { margin-top:10px; padding-top:10px; border-top:1px solid rgba(0,0,0,.07); }
-.res-prazo-hd { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#bbb; margin-bottom:6px; }
-.res-prazo-inline { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11px; }
-.res-prazo-seg { display:flex; align-items:baseline; gap:3px; font-weight:600; color:var(--grafite); }
-.res-prazo-label { font-size:8px; color:#bbb; font-weight:600; letter-spacing:.3px; text-transform:uppercase; }
-.res-prazo-sep { font-size:9px; color:#ccc; }
-.res-prazo-dias { font-size:9px; font-weight:400; color:#aaa; }
-.res-prazo-result { font-size:11px; font-weight:700; margin-left:4px; }
-.ep-pct-total.completo { color:var(--verde); font-weight:600; }
-.ep-pct-total.excesso { color:var(--terracota); font-weight:700; }
-
-/* ── PRIORIDADES (dashboard) ─────────────────────────── */
-.prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--branco); border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; border-radius:8px; }
-.prio-card:hover { border-color:#aaa; box-shadow:0 2px 8px rgba(0,0,0,.05); }
-.prio-card.concluida { background:var(--verde-bg); border-color:rgba(62,120,88,.40); }
-.prio-card.concluida .prio-num { background:#bbb !important; color:#fff !important; }
-.prio-card.concluida .prio-info * { color:#aaa !important; background:transparent !important; border-color:transparent !important; }
-.prio-card.concluida .prio-check.done { background:var(--verde) !important; border-color:var(--verde) !important; color:#fff !important; }
-.prio-card.hoje { background:var(--ouro-bg); border-color:var(--ouro); border-width:1.5px; }
-.prio-card.atrasada { background:#FBF0EE; border-color:var(--terracota); border-width:1.5px; }
-[data-theme="dark"] .prio-card.concluida { background:var(--verde-bg); border-color:rgba(82,166,118,.35); }
-[data-theme="dark"] .prio-card.hoje { background:var(--ouro-bg); border-color:var(--ouro); }
-[data-theme="dark"] .prio-card.atrasada { background:rgba(192,88,77,.14); border-color:rgba(192,88,77,.55); }
-.prio-comment { margin-top:6px; background:rgba(0,0,0,.04); border-left:3px solid var(--cinza); border-radius:0 5px 5px 0; padding:5px 9px; font-size:10px; color:#888; font-style:italic; line-height:1.4; }
-.prazo-chip-normal { background:#FFF8E7; border:1px solid #F0D080; color:#8A6010; }
-[data-theme="dark"] .prazo-chip-normal { background:var(--am-bg); border-color:rgba(212,170,55,.4); color:var(--ouro); }
-.prio-num { width:22px; height:22px; border-radius:50%; background:var(--grafite); color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:var(--font-mono); flex-shrink:0; margin-top:1px; }
-.prio-num.p1 { background:var(--terracota); }
-.prio-num.p2 { background:var(--ouro); }
-.prio-num.p3 { background:var(--azul); }
-.prio-num.p4 { background:var(--verde); }
-.prio-num.p5 { background:var(--roxo); }
-.prio-num.p6 { background:var(--grafite); }
-.prio-info { flex:1; min-width:0; }
-.prio-nome { font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.prio-sub { font-size:10px; color:#888; margin-top:1px; }
-.prio-check { width:16px; height:16px; border:1.5px solid var(--cinza); border-radius:3px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; transition:all .12s; margin-top:2px; }
-.prio-check:hover { border-color:var(--verde); }
-.prio-check.done { background:var(--verde); border-color:var(--verde); color:#fff; }
-/* ── FLUXO DE TRABALHO (painel sócios) ──────────────── */
-.fluxo-user-card { background:var(--branco); border:1px solid var(--cinza); border-radius:10px; padding:10px 14px; margin-bottom:10px; }
-.fluxo-user-hd { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-.fluxo-cols { display:flex; gap:8px; padding-bottom:4px; }
-.fluxo-col-wrap { flex:1; min-width:0; border:1px solid var(--cinza); border-radius:6px; padding:8px 9px; background:#fafafa; display:flex; flex-direction:column; gap:6px; transition:opacity .15s, background .15s; }
-.fluxo-col-wrap[data-empty="true"] { opacity:0.35; }
-.fluxo-col-wrap[data-conc="true"] { opacity:0.72; background:var(--verde-bg); border-color:rgba(29,106,74,.4); }
-.fluxo-col-wrap.drag-over { border-color:var(--azul); background:#EEF4FF; opacity:1; }
-.fluxo-col-wrap.dragging { opacity:.2; }
-.fluxo-col-num-row { display:flex; align-items:center; gap:5px; }
-.fluxo-drag-handle { font-size:13px; color:#ccc; cursor:grab; user-select:none; line-height:1; }
-.fluxo-drag-handle:hover { color:#888; }
-.fluxo-slot-num { width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; flex-shrink:0; }
-.fluxo-slot-num.s1 { background:var(--ouro); }
-.fluxo-slot-num.s2 { background:var(--azul); }
-.fluxo-slot-num.s3 { background:var(--verde); }
-.fluxo-slot-num.s4 { background:#6B4FA0; }
-.fluxo-slot-num.s5 { background:#B84C3A; }
-.fluxo-slot-num.s6 { background:#3D7A5C; }
-.fluxo-col-select { width:100%; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:3px 4px; background:var(--branco); color:#333; outline:none; font-family:var(--font-ui); }
-.fluxo-col-select:focus { border-color:var(--mod-focus); }
-.fluxo-col-date-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
-.fluxo-col-date { flex:1; min-width:0; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:2px 4px; background:var(--branco); outline:none; color:#666; font-family:var(--font-ui); }
-.fluxo-col-date:focus { border-color:var(--mod-focus); }
-.fluxo-dates-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
-.fluxo-date-label { font-size:8px; color:#bbb; margin-bottom:2px; font-family:var(--font-ui); }
-.fluxo-date-wrap { position:relative; cursor:pointer; }
-.fluxo-date-wrap input[type="date"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; box-sizing:border-box; }
-.fluxo-date-display { display:block; font-size:10px; color:#666; border:1px solid var(--cinza); border-radius:4px; padding:2px 6px; min-height:19px; line-height:15px; background:var(--branco); font-family:var(--font-ui); }
-.fluxo-date-wrap:hover .fluxo-date-display { border-color:#999; }
-.fluxo-conc-tag { font-size:9px; font-weight:600; cursor:pointer; padding:2px 7px; border-radius:12px; border:1px solid var(--cinza); background:var(--branco); color:#bbb; white-space:nowrap; flex-shrink:0; font-family:var(--font-ui); }
-.fluxo-conc-tag.done { color:var(--verde); border-color:rgba(29,106,74,.3); background:var(--verde-bg); }
-.fluxo-col-textarea { width:100%; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:4px 6px; background:var(--branco); color:#555; resize:vertical; outline:none; font-family:var(--font-ui); line-height:1.5; box-sizing:border-box; }
-.fluxo-col-textarea::placeholder { color:#ccc; }
-.fluxo-col-textarea:focus { border-color:var(--mod-focus); }
-
-/* Usuários / cores */
-.usu-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--cinza2); }
-.usu-swatches { display:flex; gap:4px; }
-.usu-swatch { width:20px; height:20px; border-radius:3px; cursor:pointer; border:2px solid transparent; transition:border-color .15s, transform .1s; flex-shrink:0; }
-.usu-swatch.sel { border-color:#222; transform:scale(1.15); }
-.usu-swatch:hover:not(.sel) { opacity:.8; transform:scale(1.08); }
-
-/* Valor/hora form */
-.vh-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-bottom: 1px solid var(--cinza2);
-}
-
-/* Valor/hora — simulador */
-.vhs-card {
-  background: var(--off); border: 1px solid var(--cinza); border-radius: 8px;
-  padding: 16px 20px; margin-top: 16px;
-}
-.vhs-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-@media (max-width: 680px) { .vhs-inputs { grid-template-columns: 1fr 1fr; } }
-.vhs-result {
-  background: var(--branco); border: 1px solid var(--cinza2); border-radius: 8px;
-  padding: 14px 18px; display: flex; align-items: flex-start; gap: 28px; flex-wrap: wrap;
-}
-.vhs-value-box { text-align: center; min-width: 140px; }
-.vhs-value-big { font-size: 26px; font-weight: 700; font-family: var(--font-mono); color: var(--grafite); }
-.vhs-breakdown { flex: 1; min-width: 200px; }
-.vhs-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; padding: 3px 0; }
-.vhs-row + .vhs-row { border-top: 1px solid var(--cinza2); }
-.vhs-row.total { font-weight: 700; padding-top: 6px; border-top: 1px solid var(--cinza) !important; }
-.vhs-hint { font-size: 9px; color: #bbb; margin-top: 3px; line-height: 1.4; }
-.vhs-inp { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
-[data-theme="dark"] .vhs-card { background: var(--branco); }
-[data-theme="dark"] .vhs-result { background: var(--off); border-color: var(--cinza); }
-
-/* Admin clientes — inputs */
-.cli-admin-inp {
-  border: 1px solid var(--cinza); border-radius: 6px; padding: 5px 8px;
-  font-size: 11px; font-family: var(--font-ui); outline: none;
-  box-sizing: border-box; width: 100%;
-  background: var(--branco); color: var(--grafite);
-}
-.vh-av { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; }
-.vh-nome { font-size: 12px; flex: 1; }
-.vh-valor { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--verde); min-width: 80px; }
-.vh-vigencia { font-size: 10px; color: #888; font-family: var(--font-mono); min-width: 80px; }
-.vh-input { width: 100px; padding: 5px 9px; border: 1px solid var(--cinza); font-family: var(--font-ui); font-size: 12px; outline: none; border-radius: 6px; background: var(--branco); color: var(--grafite); }
-.vh-input::placeholder { color: #bbb; font-weight: 400; }
-.vh-input:focus { border-color: var(--mod-focus); box-shadow: 0 0 0 3px var(--mod-focus-soft); }
-
-/* Espelho financeiro */
-.ef-filtros { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MODAL PROJETO
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.etapa-linha {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border: 1px solid var(--cinza2);
-  margin-bottom: 4px; background: var(--branco);
-  cursor: pointer; transition: background .12s;
-}
-.etapa-linha:hover { background: var(--off); }
-.etapa-num { font-family: var(--font-mono); font-size: 9px; color: #aaa; min-width: 20px; }
-.etapa-nome-txt { font-size: 12px; flex: 1; }
-.etapa-resp { font-size: 10px; color: #888; min-width: 80px; }
-.etapa-data { font-family: var(--font-mono); font-size: 10px; color: #888; min-width: 80px; text-align: right; }
-
-/* Drag handle */
-.drag-handle { cursor: grab; color: #ccc; font-size: 14px; padding: 0 2px; }
-.drag-handle:hover { color: #999; }
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MODAL CADASTRO PROJETO
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.step-indicator { display: flex; gap: 6px; margin-bottom: 20px; }
-.step-item {
-  flex: 1; padding: 8px 12px; text-align: center;
-  font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  background: var(--cinza2); color: #999; border: 1px solid var(--cinza);
-  border-radius: 6px; position: relative;
-}
-.step-item.active { background: var(--grafite); color: #fff; border-color: var(--grafite); }
-.step-item.done { background: var(--verde-bg); color: var(--verde); border-color: rgba(62,120,88,.35); }
-.step-panel { display: none; }
-.step-panel.active { display: block; }
-
-.etapa-preset-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border: 1px solid var(--cinza2); margin-bottom: 4px;
-  background: var(--branco); border-radius: 6px;
-}
-.etapa-preset-nome { font-size: 12px; flex: 1; }
-.ep-input { padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--font-ui); font-size: 11px; outline: none; width: 60px; border-radius: 5px; }
-.ep-input:focus { border-color: var(--grafite); }
-.ep-select { padding: 4px 7px; border: 1px solid var(--cinza); font-family: var(--font-ui); font-size: 11px; cursor: pointer; outline: none; border-radius: 5px; }
-.ep-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 0 2px; transition: color .12s; }
-.ep-del:hover { color: var(--terracota); }
-
-/* ── AVATARES (cor dinâmica) ─────────────────────────────── */
-/* Definidas via JS com .style */
-.av-cc { background: #1D4FA0; }
-.av-gb { background: #C4831A; }
-.av-tc-usr { background: #B84C3A; }
-.av-la { background: #1D6A4A; }
-
-/* ── RESPONSIVO ──────────────────────────────────────────── */
-@media(max-width: 900px) {
-  .dash-grid { grid-template-columns: 1fr; }
-  .horas-layout { grid-template-columns: 1fr; }
-  .mh-overview { grid-template-columns:1fr; }
-  .mh-stats { grid-template-columns:1fr 1fr; }
-  .mh-summary-panels,
-  .mh-summary-panels.colab { grid-template-columns:1fr; }
-  .mh-panel.projects-wide { grid-column:auto; }
-  .mh-type-row { grid-template-columns:1fr; }
-  .mh-day-entry { grid-template-columns:1fr; }
-  .rev-layout { grid-template-columns: 1fr; }
-  .proc-layout { grid-template-columns: 1fr; }
-  .stat-row { grid-template-columns: repeat(4, 1fr); }
-}
-@media(max-width: 600px) {
-  .stat-row { grid-template-columns: 1fr; }
-  .fg2, .fg3, .fg4 { grid-template-columns: 1fr; }
-  .gantt-th-info { min-width: 160px; width: 160px; }
-}
-
-/* ── ENTRADA ANIMADA ─────────────────────────────────────── */
-.page.active { animation: pageIn .3s ease both; }
-@keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-
-/* ── CALENDARÁRIO SEMANAL DE HORAS ─────────────────────────── */
-.cal-semana { background:var(--branco); border:1px solid var(--cinza); overflow:hidden; border-radius:8px; }
-.cal-grid { display:grid; grid-template-columns:44px repeat(7,1fr); }
-.cal-dia-header {
-  padding:6px 4px; text-align:center; border-right:1px solid var(--cinza2);
-  border-bottom:1px solid var(--cinza); cursor:pointer; transition:background .1s;
-}
-.cal-dia-header:hover { background:var(--off); }
-.cal-dia-header.fim-semana { background:var(--cinza2); }
-.cal-dia-header.hoje { background:var(--az-bg); }
-.cal-dia-nome { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#999; }
-.cal-dia-header.hoje .cal-dia-nome { color:var(--azul); }
-.cal-dia-header.fim-semana .cal-dia-nome { color:#bbb; }
-.cal-dia-num { font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--grafite); line-height:1.2; }
-.cal-dia-header.hoje .cal-dia-num { color:var(--azul); }
-.cal-dia-header.fim-semana .cal-dia-num { color:#bbb; }
-.cal-dia-total { font-family:var(--font-ui); font-size:9px; color:var(--verde); font-weight:700; margin-top:1px; min-height:12px; }
-.cal-aniv-wrap { display:flex; flex-direction:column; gap:2px; margin-top:3px; }
-.cal-aniv { display:inline-flex; align-items:center; gap:2px; font-size:8px; font-weight:700; background:#fff0f5; color:#c0396a; border-radius:4px; padding:1px 4px; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
-.cal-hora-label { font-family:var(--font-ui); font-size:8px; color:#ddd; text-align:right; padding:0 4px 0 0; line-height:1; height:26px; display:flex; align-items:flex-start; justify-content:flex-end; padding-top:2px; border-right:1px solid var(--cinza2); }
-.cal-celula { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza2); height:26px; position:relative; }
-.cal-celula.fim-semana { background:#fafaf8; }
-.cal-celula.hoje-col { background:rgba(29,79,160,.03); }
-.cal-bloco {
-  position:absolute; left:1px; right:1px; border-radius:2px;
-  font-family:var(--font-ui); font-size:8px; font-weight:600; color:#fff; padding:2px 3px;
-  overflow:hidden; cursor:pointer; letter-spacing:.1px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-  bottom:1px; line-height:1.3;
-  z-index:2;
-}
-.cal-bloco-linha1 { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; }
-.cal-bloco-linha2 { font-weight:400; opacity:.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; font-size:7px; }
-.cal-bloco:hover { filter:brightness(.88); z-index:5; }
-.cb-projeto { background:var(--azul); }
-.cb-organizacao { background:var(--verde); }
-.cb-sociedade { background:var(--ouro); }
-.cal-totais-row {
-  display:grid; grid-template-columns:44px repeat(7,1fr);
-  border-top:1px solid var(--cinza); background:var(--cinza2);
-}
-.cal-total-label { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#bbb; padding:5px 4px; text-align:right; border-right:1px solid var(--cinza); }
-.cal-total-dia { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--grafite); padding:5px 4px; text-align:center; border-right:1px solid var(--cinza2); }
-.cal-total-dia.zero { color:#ccc; }
-.cal-total-dia.fim-semana { color:#aaa; }
-.cal-resumo {
-  display:flex; align-items:center; gap:14px; padding:8px 12px;
-  border-top:1px solid var(--cinza); background:var(--branco);
-}
-.cal-total-semana { font-family:var(--font-mono); font-size:20px; font-weight:700; }
-.cal-total-semana.over { color:var(--terracota); font-weight:800; }
-.cal-meta-bar-wrap { height:5px; background:var(--cinza2); width:100%; }
-.cal-meta-bar { height:100%; background:var(--verde); transition:width .3s; }
-.cal-meta-bar.am { background:var(--ouro); }
-.cal-meta-bar.tc { background:var(--terracota); }
-.cal-meta-txt { font-size:9px; color:#888; }
-.cal-breakdown { display:flex; flex-direction:column; align-items:flex-start; gap:4px; flex-shrink:0; }
-.cal-bd-item { font-size:9px; color:#888; display:flex; align-items:center; gap:4px; }
-.cal-bd-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-.cal-header-vazio { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza); }
-
-/* ── SELETOR DE DIA ──────────────────────────────────────── */
-.dia-selector { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top:2px; }
-.dia-btn {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  padding:5px 2px; border:1px solid var(--cinza); background:var(--branco);
-  cursor:pointer; transition:all .1s; font-family:var(--font-ui); border-radius:6px;
-}
-.dia-btn:hover { border-color:var(--grafite); }
-.dia-btn.selected { background:var(--grafite); border-color:var(--grafite); }
-.dia-btn.fim-semana { background:var(--cinza2); }
-.dia-btn.fim-semana.selected { background:var(--grafite); }
-.dia-btn-nome { font-size:7px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:#999; }
-.dia-btn.selected .dia-btn-nome { color:rgba(255,255,255,.7); }
-.dia-btn.fim-semana .dia-btn-nome { color:#bbb; }
-.dia-btn-num { font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--grafite); line-height:1.2; }
-.dia-btn.selected .dia-btn-num { color:#fff; }
-.dia-btn.fim-semana .dia-btn-num { color:#aaa; }
-.dia-btn-hrs { font-family:var(--font-mono); font-size:8px; color:var(--verde); font-weight:700; }
-.dia-btn.selected .dia-btn-hrs { color:rgba(255,255,255,.8); }
-
-/* ── GANTT AVATARES ──────────────────────────────────────── */
-.gantt-avs { display:flex; flex-direction:row; gap:2px; align-items:center; justify-content:flex-end; flex-shrink:0; }
-.gantt-av {
-  width:18px; height:18px; border-radius:50%; display:flex; align-items:center;
-  justify-content:center; font-size:7px; font-weight:700; color:#fff;
-  border:1.5px solid #fff; flex-shrink:0;
-}
-
-/* ── REGISTROS ──────────────────────────────────────────────── */
-.reg-entrada{border:1px solid var(--cinza);border-radius:8px;background:var(--branco);margin-bottom:12px;overflow:hidden}
-.reg-entrada-head{padding:10px 12px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--cinza2)}
-.reg-av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0}
-.reg-meta-nome{font-size:11px;font-weight:700}
-.reg-meta-ts{font-size:9px;color:#aaa}
-.reg-etapa-tag{font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;background:var(--az-bg);color:var(--azul);padding:1px 7px;border-radius:4px;white-space:nowrap}
-.reg-titulo{font-size:13px;font-weight:700;padding:10px 12px 4px}
-.reg-participantes{font-size:10px;color:#888;padding:2px 12px 6px}
-.reg-corpo{font-size:12px;color:#444;line-height:1.7;padding:6px 12px 12px;white-space:pre-wrap}
-.reg-footer{display:flex;border-top:1px solid var(--cinza2)}
-.reg-toggle{flex:1;display:flex;align-items:center;gap:7px;padding:8px 12px;font-size:10px;font-weight:600;color:#888;cursor:pointer;background:none;border:none;border-right:1px solid var(--cinza2);font-family:var(--font-ui);text-align:left;transition:background .1s}
-.reg-toggle:last-child{border-right:none}
-.reg-toggle:hover{background:var(--off);color:var(--grafite)}
-.reg-toggle-count{background:var(--cinza2);border-radius:20px;padding:1px 7px;font-size:9px;font-weight:700;color:#666}
-.reg-toggle-count.done{background:var(--verde-bg);color:var(--verde)}
-.reg-expand-panel{display:none;border-top:1px solid var(--cinza2);padding:10px 12px;background:#fafaf8}
-.reg-expand-panel.open{display:block}
-.reg-check-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2)}
-.reg-check-item:last-child{border-bottom:none}
-.reg-check-cb{cursor:pointer;margin-top:2px;flex-shrink:0;accent-color:var(--verde);width:14px;height:14px}
-.reg-check-txt{font-size:11px;flex:1;line-height:1.4}
-.reg-check-txt.done{text-decoration:line-through;color:#bbb}
-.reg-check-who{font-size:9px;color:#aaa;margin-top:2px}
-.reg-check-add{display:flex;gap:6px;margin-top:8px}
-.reg-check-add input{flex:1;padding:4px 8px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);border-radius:4px;outline:none}
-.reg-check-add input:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.reg-check-edit-btn{background:none;border:none;cursor:pointer;color:transparent;font-size:12px;padding:0 2px;line-height:1;transition:color .12s;flex-shrink:0}
-.reg-check-item:hover .reg-check-edit-btn{color:#bbb}
-.reg-check-edit-btn:hover{color:var(--grafite) !important}
-.reg-check-inline-input{flex:1;padding:1px 5px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--grafite);border-radius:3px;outline:none;background:var(--branco);color:var(--grafite)}
-.reg-coment-item{display:flex;gap:8px;margin-bottom:10px}
-.reg-coment-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
-.reg-coment-bubble{flex:1}
-.reg-coment-meta{font-size:9px;font-weight:700;color:#555;margin-bottom:3px}
-.reg-coment-meta span{font-weight:400;color:#aaa;margin-left:5px}
-.reg-coment-txt{font-size:11px;color:#333;line-height:1.5}
-.reg-coment-responder{font-size:9px;color:#aaa;cursor:pointer;margin-top:4px;display:inline-block}
-.reg-coment-responder:hover{color:var(--grafite)}
-.reg-replies{margin-left:30px;margin-top:6px}
-.reg-coment-add{display:flex;gap:7px;margin-top:10px;align-items:flex-start}
-.reg-coment-add textarea{flex:1;padding:6px 8px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--cinza);border-radius:6px;outline:none;resize:none;min-height:32px;line-height:1.4}
-.reg-coment-add textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.reg-form{background:var(--off);border:1px solid var(--cinza);border-radius:8px;padding:14px;margin-bottom:14px}
-.reg-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.reg-form-grid .full{grid-column:1/-1}
-.reg-form-field{display:flex;flex-direction:column;gap:4px}
-.reg-form-field label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888}
-.reg-form-field input,.reg-form-field select,.reg-form-field textarea{padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:12px;color:var(--grafite);background:var(--branco);outline:none;transition:border-color .15s}
-.reg-form-field input:focus,.reg-form-field select:focus,.reg-form-field textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.reg-form-field textarea{resize:vertical;min-height:100px;line-height:1.6}
-.reg-type-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:700;letter-spacing:.45px;text-transform:uppercase}
-.reg-type-badge.ata{background:#eef7eb;color:#2f7b48}
-.reg-type-badge.visita{background:#f8efe4;color:#9a6431}
-.reg-visit-meta{display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:8px;font-size:10px;color:#777}
-.reg-visit-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border:1px solid var(--cinza2);border-radius:999px;background:var(--off)}
-.reg-encs-list{margin-top:6px}
-.reg-enc-pill{display:flex;align-items:center;gap:6px;background:var(--branco);border:1px solid var(--cinza2);border-radius:4px;padding:4px 8px;margin-bottom:5px;font-size:11px}
-.reg-enc-del{background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;line-height:1;padding:0 2px}
-.reg-enc-del:hover{color:var(--terracota)}
-.projhist-shell{display:flex;flex-direction:column;gap:12px}
-.projhist-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.projhist-intro{font-size:11px;color:#888;line-height:1.5;max-width:580px}
-.projhist-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.projhist-tab{border:1px solid var(--cinza);background:var(--branco);color:#888;border-radius:999px;padding:5px 11px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;font-family:var(--font-ui);transition:all .12s}
-.projhist-tab:hover{border-color:var(--grafite);color:var(--grafite)}
-.projhist-tab.active{background:var(--grafite);border-color:var(--grafite);color:#fff}
-.projhist-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.projhist-pane{display:none}
-.projhist-pane.active{display:block}
-.projhist-search{display:none;gap:8px;align-items:center;flex-wrap:wrap}
-.projhist-search.active{display:flex}
-.projhist-search input{flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--cinza);border-radius:8px;font-family:var(--font-ui);font-size:12px;background:var(--branco);color:var(--grafite);outline:none}
-.projhist-search input:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.projhist-feed{display:flex;flex-direction:column;gap:10px}
-.projhist-item{border:1px solid var(--cinza);border-radius:10px;background:var(--branco);padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
-.projhist-item-main{flex:1;min-width:0}
-.projhist-item-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
-.projhist-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:8px;font-weight:700;letter-spacing:.45px;text-transform:uppercase}
-.projhist-badge.chat{background:#e9f2ff;color:#285da8}
-.projhist-badge.ata{background:#eef7eb;color:#2f7b48}
-.projhist-badge.ata_comentario{background:#f8efe4;color:#9a6431}
-.projhist-item-author{font-size:11px;font-weight:700;color:var(--grafite)}
-.projhist-item-time{font-size:9px;color:#aaa}
-.projhist-item-title{font-size:12px;font-weight:700;color:var(--grafite);margin-bottom:4px}
-.projhist-item-excerpt{font-size:11px;color:#555;line-height:1.6;white-space:pre-wrap;word-break:break-word}
-.projhist-item-side{flex-shrink:0}
-.projhist-chat-meta{font-size:10px;color:#888;flex:1}
-.projhist-chat-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-/* Edição de nome: oculta por padrão, expande ao clicar em "renomear" */
-.projhist-chat-title-edit{display:none;align-items:flex-end;gap:8px;flex-wrap:wrap;width:100%;margin-top:6px;padding-top:8px;border-top:1px solid var(--cinza2)}
-.projhist-chat-title-edit.visible{display:flex}
-.projhist-chat-title-field{display:flex;flex-direction:column;gap:4px;min-width:240px}
-.projhist-chat-title-field label{font-size:9px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:#888}
-.projhist-chat-title-field input{padding:7px 9px;border:1px solid var(--cinza);border-radius:8px;font-family:var(--font-ui);font-size:11px;background:var(--branco);color:var(--grafite);outline:none}
-.projhist-chat-title-field input:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.projhist-chat-title-hint{font-size:9px;color:#999;line-height:1.4;max-width:280px}
-.projhist-chat-rename-btn{background:none;border:none;font-size:10px;color:var(--azul);cursor:pointer;padding:0;font-family:var(--font-ui);flex-shrink:0;text-decoration:underline;text-underline-offset:2px}
-/* Lista de mensagens: altura fixa para evitar double-scroll dentro do modal */
-.projhist-chat-list{display:flex;flex-direction:column;gap:10px;height:360px;overflow-y:auto;padding-right:4px}
-.projhist-chat-empty{border:1px dashed var(--cinza);border-radius:10px;padding:26px 18px;text-align:center;font-size:11px;color:#999;background:var(--off)}
-.projhist-chat-row{display:flex}
-.projhist-chat-row.mine{justify-content:flex-end}
-.projhist-chat-bubble{max-width:min(720px,84%);border:1px solid var(--cinza);border-radius:14px;background:var(--branco);padding:10px 12px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
-.projhist-chat-row.mine .projhist-chat-bubble{background:#f4f8f4;border-color:#cfe1d2}
-.projhist-chat-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
-.projhist-chat-author{font-size:10px;font-weight:700;color:var(--grafite)}
-.projhist-chat-time{font-size:9px;color:#aaa}
-.projhist-chat-text{font-size:12px;color:#444;line-height:1.65;white-space:pre-wrap;word-break:break-word}
-.projhist-chat-reactions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.projhist-react-btn{border:1px solid var(--cinza2);background:var(--off);color:#777;border-radius:999px;padding:3px 8px;font-size:10px;cursor:pointer;font-family:var(--font-ui);transition:all .12s}
-.projhist-react-btn:hover{border-color:var(--grafite);color:var(--grafite)}
-.projhist-react-btn.active{background:#fff4de;border-color:#efcf8a;color:#9a6a10}
-.projhist-compose{margin-top:12px;border:1px solid var(--cinza);border-radius:12px;background:var(--off);padding:12px}
-.projhist-compose textarea{width:100%;min-height:84px;border:1px solid var(--cinza);border-radius:8px;padding:9px 10px;resize:vertical;font-family:var(--font-ui);font-size:12px;background:var(--branco);color:var(--grafite);outline:none;line-height:1.5}
-.projhist-compose textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.projhist-compose-ft{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px}
-.projhist-compose-tip{font-size:9px;color:#999}
-.projhist-jump{box-shadow:0 0 0 2px rgba(74,114,181,.2);border-color:var(--azul)!important;animation:projhistPulse 1.4s ease}
-@keyframes projhistPulse{
-  0%{transform:translateY(0)}
-  35%{transform:translateY(-2px)}
-  100%{transform:translateY(0)}
-}
-@media (max-width: 720px){
-  .projhist-toolbar{align-items:flex-start}
-  .projhist-search input{min-width:0;width:100%}
-  .projhist-item{flex-direction:column}
-  .projhist-item-side{width:100%}
-  .projhist-item-side .btn{width:100%;justify-content:center}
-  .projhist-chat-title-field{min-width:0;width:100%}
-  .projhist-chat-bubble{max-width:100%}
-  .projhist-compose-ft{align-items:flex-start}
-}
-
-/* ══ DARK MODE ══════════════════════════════════════════════ */
-[data-theme="dark"] body { background:#161615; color:var(--grafite); }
-/* [data-theme="dark"] body::before — tratado em exp-design-system.css */
-
-/* Nav */
-[data-theme="dark"] .notif-panel { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .notif-item.nova { background:rgba(74,114,181,.13); }
-[data-theme="dark"] .notif-item:hover { background:#252523; }
-[data-theme="dark"] .notif-item.nova:hover { background:rgba(74,114,181,.2); }
-[data-theme="dark"] .notif-panel-hd { border-color:#2E2D2B; }
-
-/* Cards / Stats / Surfaces */
-[data-theme="dark"] .card { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .card-hd { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .stat { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .stat-mini { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .proj-card { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .proj-card:hover { border-color:#444; }
-[data-theme="dark"] .proj-card-hd { background:rgba(255,255,255,.06); border-color:#2E2D2B; }
-[data-theme="dark"] .coord-strip { background:#1E1E1D; border-color:#2E2D2B; }
-
-/* Prioridades dark mode */
-[data-theme="dark"] .prio-card { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .prio-card:hover { border-color:#444; }
-[data-theme="dark"] .prio-card.concluida { background:var(--verde-bg); border-color:rgba(82,166,118,.35); }
-[data-theme="dark"] .prio-card.concluida .prio-num { background:#444 !important; color:#666 !important; }
-[data-theme="dark"] .prio-card.concluida .prio-info * { color:#555 !important; background:transparent !important; border-color:transparent !important; }
-[data-theme="dark"] .prio-card.hoje { background:var(--ouro-bg); border-color:var(--ouro); }
-[data-theme="dark"] .prio-card.atrasada { background:rgba(184,86,56,.1); border-color:var(--terracota); }
-[data-theme="dark"] .prio-comment { background:rgba(255,255,255,.04); border-color:#444; color:#888; }
-
-/* Buttons */
-[data-theme="dark"] .btn { background:#252523; border-color:#3A3836; color:#888; }
-[data-theme="dark"] .btn:hover { border-color:var(--grafite); color:var(--grafite); }
-[data-theme="dark"] .btn.filled { background:var(--grafite); color:var(--off); border-color:var(--grafite); }
-[data-theme="dark"] .pvt-btn { background:#252523; color:#888; }
-[data-theme="dark"] .pvt-btn.active { background:var(--grafite); color:var(--off); }
-[data-theme="dark"] .filter-select { background:#252523; color:var(--grafite); border-color:#3A3836; }
-
-/* Inputs / Forms */
-[data-theme="dark"] .fgroup input,
-[data-theme="dark"] .fgroup select,
-[data-theme="dark"] .fgroup textarea { background:#252523; border-color:#3A3836; color:var(--grafite); color-scheme:dark; }
-[data-theme="dark"] .cli-admin-inp { background:#252523; border-color:#3A3836; color:var(--grafite); color-scheme:dark; }
-[data-theme="dark"] .task-check { background:#252523; border-color:#3A3836; }
-/* Novo projeto — inputs em etapa-preset-item */
-[data-theme="dark"] .etapa-preset-item input,
-[data-theme="dark"] .ep-input,
-[data-theme="dark"] .ep-select { background:#252523; border-color:#3A3836; color:var(--grafite); color-scheme:dark; }
-/* Processos — checkboxes nativos */
-[data-theme="dark"] input[type="checkbox"].proc-ck { color-scheme:dark; }
-/* Popup edit-custo — inputs */
-[data-theme="dark"] #popup-edit-custo input,
-[data-theme="dark"] #popup-edit-custo select { background:#252523; border-color:#3A3836; color:var(--grafite); color-scheme:dark; }
-[data-theme="dark"] .tarefa-inline-ta { border-color:#3A3836; background:#252523; color:var(--grafite); }
-[data-theme="dark"] .task-input-row input[type="text"],
-[data-theme="dark"] .task-input-row input[type="date"] { background:#252523; color:var(--grafite); border-color:#3A3836; color-scheme:dark; }
-[data-theme="dark"] #mh-mes::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: .92;
-}
-[data-theme="dark"] #page-socios input[type="date"]::-webkit-calendar-picker-indicator,
-[data-theme="dark"] #page-socios input[type="month"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: .92;
-}
-
-/* Tables */
-[data-theme="dark"] .tbl th { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .tbl td { border-color:#2E2D2B; }
-[data-theme="dark"] .tbl tr.click:hover td { background:#252523; }
-
-/* Modal produto: header igual ao proj-card-hd */
-#modal-produto .modal-hd { background:var(--cinza2); }
-#modal-produto .modal-hd-title { font-family:var(--font-ui); font-size:14px; font-weight:700; letter-spacing:-.2px; text-transform:none; }
-[data-theme="dark"] #modal-produto .modal-hd { background:#2A2927; }
-
-/* Modals */
-[data-theme="dark"] .modal { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .modal-hd { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .modal-ft { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .modal-tabs { border-color:#2E2D2B; }
-[data-theme="dark"] .ms-title { border-color:#2E2D2B; }
-[data-theme="dark"] .dk { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .dr { border-color:#2E2D2B; }
-
-/* Loading */
-[data-theme="dark"] #loading { background:#161615; }
-
-/* Toast */
-[data-theme="dark"] .toast { background:#141414; }
-
-/* Gantt */
-[data-theme="dark"] .gantt-wrap { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .gantt-toolbar { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .gantt-table th { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .gantt-grupo-row td { background:rgba(255,255,255,.04); color:#999; border-color:#2E2D2B; }
-[data-theme="dark"] .gantt-prod-row td { border-color:#2E2D2B; }
-[data-theme="dark"] .gantt-prod-row:hover td { background:rgba(255,255,255,.03); }
-[data-theme="dark"] .gantt-legenda { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .gantt-tooltip { background:#141414; }
-[data-theme="dark"] .gantt-hoje-btn { background:#252523; border-color:#3A3836; color:#999; }
-
-[data-theme="dark"] .lanc-form { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .lanc-lista-box { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .lanc-item { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .grade-semana { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .grade-header { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .grade-hora-label { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .cal-dia-header.fim-semana { background:#22211F; }
-[data-theme="dark"] .cal-celula.fim-semana { background:#22211F; }
-[data-theme="dark"] .cal-total-dia.fim-semana { background:#22211F; color:#8F897F; }
-[data-theme="dark"] .prog-semana { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .semana-nav-btn { background:#252523; color:#C8C3BA; }
-
-/* Revisões / Processos */
-[data-theme="dark"] .rev-lista-item { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .proc-lista-item { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .prancha-card { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .prancha-header { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .prancha-comment { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .carga-subcard { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .rev-toggle-pill { background:#252523; border-color:#3A3836; }
-[data-theme="dark"] .prancha-preview { border-color:#2E2D2B; }
-[data-theme="dark"] .prancha-forum-preview { border-color:#2E2D2B; color:#888; }
-[data-theme="dark"] .prancha-preview-check { border-color:#2E2D2B; }
-
-/* Registros */
-[data-theme="dark"] .reg-entrada { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .reg-expand-panel { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .reg-form { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .reg-form-field input,
-[data-theme="dark"] .reg-form-field select,
-[data-theme="dark"] .reg-form-field textarea { background:#252523; border-color:#3A3836; color:var(--grafite); }
-[data-theme="dark"] .reg-check-add input { background:#252523; border-color:#3A3836; color:var(--grafite); }
-
-/* Checklist */
-[data-theme="dark"] .ck-card { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .ck-card-hd:hover { background:#252523; }
-[data-theme="dark"] .ck-card-body { border-color:#2E2D2B; }
-[data-theme="dark"] .ck-edit-input { background:transparent; }
-
-/* Painel Sócios / Fluxo */
-[data-theme="dark"] .fluxo-user-card { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .fluxo-col-wrap { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .fluxo-col-wrap[data-conc="true"] { background:var(--verde-bg); border-color:rgba(82,166,118,.35); }
-[data-theme="dark"] .fluxo-col-select,
-[data-theme="dark"] .fluxo-col-date,
-[data-theme="dark"] .fluxo-col-textarea { background:#252523; border-color:#3A3836; color:var(--grafite); }
-[data-theme="dark"] .fluxo-conc-tag { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .fluxo-conc-tag.done { background:var(--verde-bg); border-color:rgba(82,166,118,.35); color:var(--verde); }
-[data-theme="dark"] .preset-card { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .pre-secao-block { background:#252523; border-color:#2E2D2B; }
-
-/* Grupo cliente / Opp */
-[data-theme="dark"] .cliente-header { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .opp-grupo { border-color:#2E2D2B; }
-[data-theme="dark"] .opp-header { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .prod-row { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .prod-row:hover { background:#252523; }
-
-/* Steps */
-[data-theme="dark"] .step-item { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .step-item.active { background:var(--grafite); border-color:var(--grafite); }
-
-/* Dia selector */
-[data-theme="dark"] .dia-btn { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .dia-btn.selected { background:var(--grafite); border-color:var(--grafite); }
-[data-theme="dark"] .dia-btn.selected .dia-btn-nome,
-[data-theme="dark"] .dia-btn.selected .dia-btn-num { color:var(--off); }
-[data-theme="dark"] .dia-btn.selected .dia-btn-hrs { color:var(--verde); }
-[data-theme="dark"] .dia-btn.fim-semana { background:rgba(255,255,255,.03); }
-[data-theme="dark"] .dia-btn.fim-semana .dia-btn-nome,
-[data-theme="dark"] .dia-btn.fim-semana .dia-btn-num { color:#666; }
-
-/* Mencao */
-[data-theme="dark"] .mencao-dd { background:#1E1E1D; border-color:#2E2D2B; }
-[data-theme="dark"] .mencao-it:hover,
-[data-theme="dark"] .mencao-it.sel { background:#252523; }
-
-/* Semana travada */
-[data-theme="dark"] .semana-travada { background:#252523; border-color:#2E2D2B; }
-
-/* Horas / Detalhamento — bordas finas em dark mode */
-[data-theme="dark"] .mh-panel { border-color:#2E2D2B; }
-[data-theme="dark"] .mh-panel-hd { background:#252523; border-color:#2E2D2B; }
-[data-theme="dark"] .mh-day-block { border-color:#2E2D2B; }
-[data-theme="dark"] .mh-day-hd { border-color:#2E2D2B; }
-[data-theme="dark"] .mh-day-entry { border-color:#2E2D2B; }
-[data-theme="dark"] .mh-day-cols-hd { border-color:#2E2D2B; }
-[data-theme="dark"] .mh-summary-row { border-color:#2E2D2B; }
-
-
-[data-theme="dark"] .modal-tab:hover { color:var(--grafite); }
-[data-theme="dark"] .modal-tab.active { color:var(--grafite); border-bottom-color:var(--grafite); }
-[data-theme="dark"] .socio-tab:hover { color:var(--grafite); }
-[data-theme="dark"] .socio-tab.active { color:var(--grafite); border-bottom-color:var(--grafite); }
-
-.stab-bar {
-  display: flex; align-items: center; gap: 0;
-  border-bottom: 1px solid var(--cinza2); margin-bottom: 16px;
-}
-.stab {
-  padding: 8px 18px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; color: #999; border-bottom: 2px solid transparent;
-  cursor: pointer; transition: all .12s; background: none;
-  border-top: none; border-left: none; border-right: none; font-family: var(--font-ui);
-}
-.stab:hover { color: var(--grafite); }
-.stab.active { color: var(--grafite); border-bottom-color: var(--grafite); }
-.stab-panel { display: none; }
-.stab-panel.active { display: block; }
-
-/* ── GOOGLE CALENDAR ─────────────────────────────────────── */
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 10px; border-radius: 8px; border: 1px solid var(--cinza);
-  background: var(--branco); cursor: pointer; font-size: 10px;
-  font-family: var(--font-ui); color: var(--grafite); white-space: nowrap;
-  transition: border-color .12s;
-}
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 14px; height: 14px; border-radius: 3px; font-size: 8px;
-  font-weight: 700; background: #4285f4; color: #fff; flex-shrink: 0;
-  line-height: 1; font-family: var(--font-ui);
-}
-  position: fixed; inset: 0; background: rgba(0,0,0,.35);
-  z-index: 1100; display: flex; align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none; transition: opacity .15s;
-}
-  background: var(--branco); border-radius: 12px; width: 420px; max-width: 96vw;
-  max-height: 80vh; overflow-y: auto; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
-}
-  font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
-  color: #999; margin-bottom: 6px; display: block;
-}
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 0; border-bottom: 1px solid var(--cinza2);
-}
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 0; border-bottom: 1px solid var(--cinza2);
-}
-  position: absolute; inset: 0; background: var(--cinza); border-radius: 18px;
-  cursor: pointer; transition: background .2s;
-}
-  content: ''; position: absolute; width: 14px; height: 14px;
-  left: 2px; top: 2px; background: #fff; border-radius: 50%;
-  transition: transform .2s;
-}
-.cb-google { background: #4285f4; }
-
-/* ── Modal Agendar Reunião ───────────────────────────────── */
-  display: block; font-size: 8px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; color: #aaa; margin-bottom: 3px;
-}
-  width: 100%; border: 1px solid var(--cinza); border-radius: 6px;
-  padding: 5px 8px; font-size: 11px; font-family: var(--font-ui);
-  outline: none; box-sizing: border-box; background: var(--branco); color: var(--grafite);
-  transition: border-color .12s;
-}
-  font-size: 9px; font-weight: 700; letter-spacing: .3px; padding: 4px 12px;
-  cursor: pointer; background: var(--branco); color: #999; transition: all .12s;
-  border: none; font-family: var(--font-ui); text-transform: uppercase;
-}
-  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
-  border: 1px solid var(--cinza); border-radius: 7px; padding: 5px 8px;
-  min-height: 36px; cursor: text; transition: border-color .12s;
-  background: var(--branco); position: relative;
-}
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--cinza2); border-radius: 20px;
-  padding: 2px 8px 2px 4px; font-size: 11px; max-width: 200px;
-}
-  width: 18px; height: 18px; border-radius: 50%; display: flex;
-  align-items: center; justify-content: center; font-size: 7px;
-  font-weight: 700; color: #fff; flex-shrink: 0;
-}
-  font-size: 12px; color: #aaa; cursor: pointer; line-height: 1;
-  flex-shrink: 0; padding: 0 1px;
-}
-  border: none; outline: none; font-size: 12px; font-family: var(--font-ui);
-  background: transparent; min-width: 140px; flex: 1; color: var(--grafite);
-}
-  position: absolute; top: calc(100% + 3px); left: 0; right: 0;
-  background: var(--branco); border: 1px solid var(--cinza); border-radius: 8px;
-  z-index: 200; max-height: 180px; overflow-y: auto;
-  box-shadow: 0 4px 14px rgba(0,0,0,.1);
-}
-  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
-  cursor: pointer; font-size: 11px; transition: background .1s;
-}
-  width: 22px; height: 22px; border-radius: 50%; display: flex;
-  align-items: center; justify-content: center; font-size: 8px;
-  font-weight: 700; color: #fff; flex-shrink: 0;
-}
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 0; border-bottom: 1px solid var(--cinza2);
-}
-  display: inline-flex; align-items: center; gap: 5px; font-size: 10px;
-  color: #1a73e8; background: #e8f0fe; border-radius: 4px; padding: 2px 7px;
-  margin-top: 6px;
-}
-  background: var(--cinza2); border-radius: 7px; padding: 10px 12px;
-  margin-top: 8px; display: flex; align-items: center; gap: 8px;
-}
-  font-size: 10px; padding: 3px 8px; border: 1px solid var(--cinza);
-  border-radius: 5px; background: var(--branco); cursor: pointer;
-  white-space: nowrap; font-family: var(--font-ui);
-}
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  background: var(--branco); border: 1px solid var(--cinza);
-  border-radius: var(--radius-card); padding: 4px 10px;
-}
-  width: 26px; height: 26px; border: 1px solid var(--cinza);
-  background: var(--off); border-radius: 6px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: var(--grafite); transition: all .12s; font-family: var(--font-ui);
-}
-  font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
-  color: #999; min-width: 120px; text-align: center;
-}
-  font-size: 11px; font-weight: 300; letter-spacing: 0;
-  border: 1px solid var(--cinza); background: var(--off); color: var(--grafite);
-  padding: 0 10px; height: 26px; border-radius: 6px; cursor: pointer;
-  transition: all .12s; font-family: var(--font-ui); white-space: nowrap;
-}
-  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
-  background: var(--branco); border: 1px solid var(--cinza);
-  border-radius: var(--radius-card); padding: 5px 10px;
-}
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
-  font-size: 7px; font-weight: 700; color: #fff; cursor: pointer;
-  transition: opacity .15s, transform .12s, box-shadow .15s;
-  border: 2px solid transparent; position: relative;
-}
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 700; cursor: pointer;
-  border: 1.5px dashed var(--cinza); color: #aaa; background: var(--off);
-  transition: all .12s;
-}
-  width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--cinza);
-  background: var(--branco); color: #aaa; cursor: pointer; font-size: 13px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all .12s; margin-left: auto; flex-shrink: 0;
-}
-  font-size: 8px; font-weight: 700; letter-spacing: .4px; padding: 2px 9px; border-radius: 20px;
-  border: 1px solid var(--cinza); background: var(--branco); color: #888; text-transform: uppercase;
-  cursor: pointer; transition: all .12s; font-family: var(--font-ui);
-}
-  padding: 5px 14px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase; border: none; background: var(--branco); color: #888;
-  cursor: pointer; font-family: var(--font-ui); transition: all .12s;
-}
-  font-size: 8px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
-  color: #aaa; padding: 8px 0 3px; border-bottom: 1px solid var(--cinza2); margin-bottom: 3px;
-}
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  border-radius: 6px; background: var(--branco); border: 1px solid var(--cinza2);
-  cursor: pointer; transition: all .12s; border-left: 3px solid transparent;
-}
-  min-height: 90px; padding: 5px 4px; border-right: 1px solid var(--cinza2);
-  border-bottom: 1px solid var(--cinza2); display: flex; flex-direction: column; gap: 2px;
-  cursor: pointer; transition: background .1s; overflow: hidden;
-}
-  font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  display: block; width: 100%; line-height: 1.5; cursor: pointer;
-  transition: opacity .1s;
-}
-.pp-ausencia    { background: var(--az-bg);    color: var(--azul); }
-.pp-feriado     { background: var(--tc-bg);    color: var(--terracota); }
-.pp-reuniao     { background: var(--am-bg);    color: var(--ouro); }
-.pp-aniversario { background: var(--am-bg);    color: var(--ouro); }
-/* Modal calendário */
-
-
-/* ── Cal Mes (grade mensal de eventos) ─────────────────── */
-
-</style>
-<body>
-
-<!-- Stubs de compatibilidade JS — elementos da nav antiga referenciados no código -->
-<div id="nav-av"   style="display:none"></div>
-<div id="nav-nome" style="display:none"></div>
-<div id="nav-role" style="display:none"></div>
-<div id="nav-mod-wrap" style="display:none"></div>
-<div id="nav-dropdown" style="display:none"></div>
-<!-- user-dropdown agora está dentro do user-pill-wrap no gestao-hd-right -->
-
-<!-- LOADING -->
-<div id="loading">
-  <img class="ld-logo" src="exp.png" alt="EXP">
-  <div class="ld-sub">Gestão de Projetos</div>
-  <div class="ld-bar"></div>
-</div>
-
-<!-- TOAST -->
-<div class="toast" id="toast"></div>
-
-<!-- GANTT TOOLTIP -->
-<div class="gantt-tooltip" id="gantt-tooltip">
-  <div class="gt-nome" id="gt-nome"></div>
-  <div class="gt-info" id="gt-info"></div>
-</div>
-
-<div id="app" style="display:none">
-<div id="app-shell" class="exp-app-shell">
-
-<!-- Nav lateral — injetada por shared/exp-nav.js -->
-
-<!-- ── Card principal do módulo ── -->
-<div id="gestao-card">
-
-  <!-- Header: tabs internas + ações -->
-  <div class="gestao-card-hd">
-    <div class="nav-tabs">
-      <button class="ntab active" data-tab="dashboard">Dashboard</button>
-      <button class="ntab" data-tab="projetos">Projetos</button>
-      <button class="ntab" data-tab="revisoes">Revisões</button>
-      <button class="ntab" data-tab="processos">Processos</button>
-      <button class="ntab" data-tab="horas">Horas/Custos</button>
-      <button class="ntab socio-only" data-tab="socios" style="display:none" id="ntab-socios">Sócios</button>
-    </div>
-    <div class="gestao-hd-right" id="app-topbar-right">
-      <!-- Toggle tema -->
-      <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema claro/escuro">
-        <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      </button>
-      <!-- Bandeira (feedback) — primeiro -->
-      <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-        <button id="feedback-icon-btn" onclick="toggleToolFeedbackPop(event)" title="Reportar problema ou sugestão">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-        </button>
-        <div class="nav-feedback-pop" id="tool-feedback-pop">
-          <div class="nav-feedback-title">Problema ou sugestão</div>
-          <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-          <div class="fgroup">
-            <label>Tipo</label>
-            <select id="tool-feedback-type">
-              <option value="problema">Problema</option>
-              <option value="sugestao">Sugestão</option>
-            </select>
-          </div>
-          <div class="fgroup">
-            <label>Mensagem</label>
-            <textarea id="tool-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
-          </div>
-          <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
-          <div class="nav-feedback-actions">
-            <button class="btn" onclick="fecharToolFeedbackPop()">Fechar</button>
-            <button class="btn filled" onclick="enviarToolFeedback()">Enviar</button>
-          </div>
-        </div>
-      </div>
-      <!-- Lembrete (+) — segundo -->
-      <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
-        <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">＋</button>
-        <div class="nav-feedback-pop" id="lemb-popdown">
-          <div class="nav-feedback-title">Lembrete para a equipe</div>
-          <div id="lemb-para-wrap" class="fgroup">
-            <label>Para</label>
-            <select id="lemb-para"><option value="">Carregando…</option></select>
-          </div>
-          <div class="fgroup">
-            <label>Mensagem</label>
-            <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="resize:vertical"></textarea>
-          </div>
-          <div class="nav-feedback-status" id="lemb-status"></div>
-          <div class="nav-feedback-actions">
-            <button class="btn" onclick="fecharLembretePopdown()">Fechar</button>
-            <button class="btn filled" style="background:var(--ouro);border-color:var(--ouro)" onclick="enviarLembrete()">Enviar lembrete</button>
-          </div>
-        </div>
-      </div>
-      <!-- User chip -->
-      <div class="user-pill-wrap" id="user-pill-wrap" style="position:relative">
-        <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
-          <div class="user-av" id="user-av"></div>
-          <div>
-            <div class="u-nome" id="user-nome">—</div>
-            <div class="u-role" id="user-cargo">—</div>
-          </div>
-          <span class="user-chip-arrow">▾</span>
-        </div>
-        <div class="user-dropdown" id="user-dropdown">
-          <div class="user-dropdown-summary">
-            <div class="ud-summary-name" id="user-dropdown-nome-completo">—</div>
-            <div class="ud-summary-role" id="user-dropdown-role-completo">—</div>
-            <div class="ud-summary-email" id="user-dropdown-email">—</div>
-          </div>
-          <div class="user-dropdown-sep"></div>
-          <button type="button" onclick="abrirMeusDados()">Meus dados</button>
-          <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataforma()">Gestão de plataforma</button>
-          <div class="user-dropdown-sep"></div>
-          <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.()">
-            <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
-            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
-            <span class="term-state-hover">ver termo →</span>
-          </div>
-          <div class="user-dropdown-note" id="user-dropdown-note"></div>
-          <div class="user-dropdown-sep"></div>
-          <button onclick="sair()">Sair do sistema</button>
-          <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
-            <div class="conn-dot" id="conn-dot" title="Verificando conexão…" style="width:7px;height:7px;border-radius:50%;background:#ccc"></div>
-            <span style="font-size:10px;color:#bbb" id="conn-label">conectando…</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div><!-- /gestao-card-hd -->
-
-  <!-- Corpo scrollável -->
-  <div class="gestao-card-body">
-<div class="main">
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     DASHBOARD
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-<div class="page active" id="page-dashboard">
-
-  <div class="bv">
-    <div class="bv-hora" id="bv-hora">—</div>
-    <div class="bv-titulo" id="bv-titulo">Olá —</div>
-    <div class="bv-sub" id="bv-sub">Crie com propósito.</div>
-  </div>
-
-  <!-- Stats integrados ao grid: projetos no dash-left, horas no dash-right -->
-  <div id="dash-stats" style="display:none">
-    <div class="stat-val" id="st-total">—</div>
-    <div class="stat-val" id="st-ativos">—</div>
-    <div class="stat-val" id="st-pausados">—</div>
-    <div class="stat-val" id="st-encerrados">—</div>
-    <div class="stat-val" id="st-rev">—</div>
-    <div class="stat-val" id="st-horas">—</div>
-    <div id="st-horas-sub"></div>
-  </div>
-
-  <div class="dash-grid">
-    <div class="dash-left">
-
-      <!-- Stats de projetos -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:2px" id="dash-stats-proj">
-        <div class="stat-mini s-gr"><div class="stat-mini-val" id="st-total-v">—</div><div class="stat-mini-lbl">Total</div></div>
-        <div class="stat-mini s-vd"><div class="stat-mini-val" id="st-ativos-v">—</div><div class="stat-mini-lbl">Ativos</div></div>
-        <div class="stat-mini s-am"><div class="stat-mini-val" id="st-pausados-v">—</div><div class="stat-mini-lbl">Pausados</div></div>
-        <div class="stat-mini s-tc"><div class="stat-mini-val" id="st-encerrados-v">—</div><div class="stat-mini-lbl">Encerrados</div></div>
-        <div class="stat-mini s-az"><div class="stat-mini-val" id="st-rev-v">—</div><div class="stat-mini-lbl">Em revisão</div></div>
-      </div>
-
-      <!-- Prioridades da equipe (G3) -->
-      <div id="bloco-prioridades" style="display:none">
-        <div class="sec-title">Minhas prioridades</div>
-        <div id="dash-prioridades"></div>
-      </div>
-
-      <!-- Projetos em desenvolvimento -->
-      <div>
-        <div class="sec-title">Meus projetos em desenvolvimento</div>
-        <div id="dash-projetos">
-          <div class="loading-state">Carregando projetos...</div>
-        </div>
-      </div>
-
-      <!-- Coordenação -->
-      <div id="bloco-coord" style="display:none">
-        <div class="sec-title">Projetos em coordenação</div>
-        <div id="dash-coord">
-          <div class="loading-state">Carregando...</div>
-        </div>
-      </div>
-
-    </div>
-    <div class="dash-right">
-
-      <!-- Horas da semana — alinhado horizontalmente com tasks -->
-      <div class="stat-mini s-gr" style="margin-bottom:8px;width:100%;box-sizing:border-box">
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <div class="stat-mini-val" id="st-horas-v" style="font-size:20px">—</div>
-          <div class="stat-mini-lbl" id="st-horas-sub-v" style="font-size:10px;color:#aaa">de 40h</div>
-        </div>
-        <div class="stat-mini-lbl">Horas esta semana</div>
-      </div>
-
-      <!-- Tarefas livres -->
-      <div class="card c-vd">
-        <div class="card-hd" style="position:relative">
-          <div class="card-title">Lista de tarefas</div>
-          <button class="task-recentes-btn" id="task-recentes-btn" onclick="toggleTaskRecentesPop(event)" title="Histórico e tarefas excluídas" style="position:absolute;left:50%;transform:translateX(-50%)">↺ recentes</button>
-          <div class="task-recentes-pop" id="task-recentes-pop"></div>
-          <div id="st-tasks" style="font-size:10px;color:#bbb;font-weight:500;letter-spacing:.02em;margin-left:auto;padding-left:24px">—</div>
-        </div>
-        <div class="card-body">
-          <div id="tasks-lista">
-            <div class="loading-state" style="padding:16px">Carregando...</div>
-          </div>
-          <div class="task-input-row">
-            <input type="text" id="task-nova-desc" placeholder="Nova tarefa...">
-            <div class="task-row2">
-              <select id="task-nova-tipo" class="filter-select">
-                <option value="projeto">Projeto</option>
-                <option value="organizacao">Org. Interna</option>
-                <option value="sociedade">Sociedade</option>
-              </select>
-              <input type="date" id="task-nova-data" class="filter-select" title="Data limite (opcional)">
-            </div>
-            <div class="task-row3">
-              <button class="btn sm verde" onclick="adicionarTarefa()">Salvar</button>
-              <button class="btn sm" id="btn-atribuir-tarefa" onclick="abrirDropdownAtribuir(this)">Atribuir →</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Entregas da semana -->
-      <div class="card c-gr">
-        <div class="card-hd">
-          <div class="card-title">Entregas da semana</div>
-          <span id="entregas-semana-label" style="font-size:9px;color:#aaa;margin-left:auto"></span>
-        </div>
-        <div class="card-body" id="entregas-semana-lista">
-          <div class="loading-state" style="padding:12px">Carregando...</div>
-        </div>
-      </div>
-
-      <!-- Agenda semana -->
-      <div class="card c-az">
-        <div class="card-hd">
-          <div class="card-title">Agenda da semana</div>
-        </div>
-        <div class="card-body" id="agenda-body">
-          <div class="agenda-vazio">Carregando eventos…</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     PROJETOS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-<div class="page" id="page-projetos">
-
-  <div class="proj-toolbar">
-    <div class="proj-view-toggle">
-      <button class="pvt-btn active" id="pvt-lista" onclick="setProjetosView('lista')">Lista</button>
-      <button class="pvt-btn" id="pvt-gantt" onclick="setProjetosView('gantt')">Gantt</button>
-      <button class="pvt-btn" id="pvt-kanban" onclick="setProjetosView('kanban')">Kanban</button>
-    </div>
-    <div class="proj-filters" id="lista-filters">
-      <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto">
-      <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
-        <option value="">Todos os núcleos</option>
-        <option value="urbanismo">Urbanismo</option>
-        <option value="paisagismo">Paisagismo</option>
-        <option value="especiais">Proj. Especiais</option>
-        <option value="consultorias">Consultorias</option>
-      </select>
-      <select class="filter-select" id="fil-gestao" onchange="filtrarProjetos()">
-        <option value="visiveis">Na gestão</option>
-        <option value="todos">Todos</option>
-        <option value="ocultos">Ocultos da gestão</option>
-      </select>
-      <select class="filter-select" id="fil-status" onchange="filtrarProjetos()">
-        <option value="">Todos os status</option>
-        <option value="ativo">Ativos</option>
-        <option value="inativo">Inativos</option>
-        <option value="pausado">Pausados</option>
-        <option value="encerrado">Encerrados</option>
-      </select>
-      <select class="filter-select" id="fil-coord" onchange="filtrarProjetos()">
-        <option value="">Todos os coordenadores</option>
-      </select>
-      <select class="filter-select" id="fil-participante" onchange="filtrarProjetos()">
-        <option value="">Todos os participantes</option>
-      </select>
-    </div>
-    <div class="proj-toolbar-action">
-      <button class="btn filled socio-only" id="btn-novo-proj" style="display:none" onclick="abrirModalCadastroProjeto()">+ Novo projeto</button>
-    </div>
-  </div>
-
-  <!-- LISTA -->
-  <div id="view-lista">
-    <div id="lista-projetos-wrap">
-      <div class="loading-state">Carregando projetos...</div>
-    </div>
-  </div>
-
-  <!-- KANBAN -->
-  <div id="view-kanban" style="display:none">
-    <div class="proj-kanban" id="proj-kanban-board">
-      <div class="loading-state">Carregando...</div>
-    </div>
-  </div>
-
-  <!-- GANTT -->
-  <div id="view-gantt" style="display:none">
-    <div class="gantt-wrap">
-      <div class="gantt-toolbar">
-        <div class="gantt-nav">
-          <button class="gantt-nav-btn" onclick="ganttNavegar(-1)">‹</button>
-          <div class="gantt-periodo" id="gantt-periodo">—</div>
-          <button class="gantt-nav-btn" onclick="ganttNavegar(1)">›</button>
-          <button class="gantt-hoje-btn" onclick="ganttHoje()">Hoje</button>
-        </div>
-        <div class="gantt-toolbar-meta">
-          <div class="gantt-legenda" style="border:none;padding:0">
-            <div class="gantt-leg-item"><div class="gantt-leg-cor gb-andamento"></div> Em andamento</div>
-            <div class="gantt-leg-item"><div class="gantt-leg-cor gb-revisao"></div> Em revisão</div>
-            <div class="gantt-leg-item"><div class="gantt-leg-cor gb-concluida"></div> Concluída</div>
-            <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--cinza)"></div> Não iniciada</div>
-          </div>
-        </div>
-      </div>
-      <div class="gantt-container">
-        <table class="gantt-table" id="gantt-table">
-          <thead id="gantt-thead"></thead>
-          <tbody id="gantt-tbody">
-            <tr><td colspan="20"><div class="loading-state">Carregando Gantt...</div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     HORAS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-<div class="page" id="page-horas">
-
-  <!-- Sub-abas Horas/Custos -->
-  <div class="stab-bar">
-    <button class="stab active" id="stab-horas-cadastro"   onclick="switchHorasTab('cadastro')">Cadastro</button>
-    <button class="stab"        id="stab-horas-visualizacao" onclick="switchHorasTab('visualizacao')">Visualização</button>
-  </div>
-
-  <!-- Painel: Cadastro (lançamento semanal) -->
-  <div class="stab-panel active" id="stp-horas-cadastro">
-
-  <div class="semana-nav">
-    <button class="semana-nav-btn" onclick="navegarSemana(-1)">‹</button>
-    <div class="semana-label" id="semana-label">—</div>
-    <button class="semana-nav-btn" onclick="navegarSemana(1)">›</button>
-    <button class="semana-hoje-btn" onclick="semanaHoje()">Esta semana</button>
-  </div>
-
-  <div id="semana-travada-banner" class="semana-travada" style="display:none">
-    🔒 Semana finalizada em <span id="semana-travada-data">—</span> — <em id="semana-travada-comentario"></em>
-    <span class="socio-only" id="btn-desbloquear-wrap" style="display:none;margin-left:auto">
-      <button class="btn sm tc" onclick="desbloquearSemana()">Desbloquear</button>
-    </span>
-  </div>
-
-  <div class="horas-layout">
-    <!-- Col 1: calendário + lançamentos empilhados -->
-    <div>
-      <div class="cal-semana" id="cal-semana-wrap">
-        <div class="loading-state">Carregando calendário...</div>
-      </div>
-      <div style="margin-top:14px">
-        <div class="sec-title">Lançamentos da semana</div>
-        <div id="lanc-lista-wrap">
-          <div class="loading-state">Carregando lançamentos...</div>
-        </div>
-      </div>
-
-      <div style="margin-top:14px" id="custo-lista-section">
-        <div class="sec-title">Custos da semana</div>
-        <div id="custo-lista-wrap">
-          <div class="loading-state">Carregando...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Col 2: formulário -->
-    <div>
-
-      <!-- Formulário -->
-      <div id="lanc-form-wrap" class="lanc-form">
-        <div class="lanc-form-title">Lançar horas</div>
-
-        <!-- Seletor de dia derivado da semana -->
-        <div class="fgroup mb8">
-          <label>Dia da semana</label>
-          <div class="dia-selector" id="dia-selector"></div>
-        </div>
-
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Hora início</label>
-            <input type="time" id="lf-inicio" value="09:00">
-          </div>
-          <div class="fgroup">
-            <label>Hora fim</label>
-            <input type="time" id="lf-fim" value="12:00">
-          </div>
-        </div>
-
-        <div class="fg mb8">
-          <div class="fgroup">
-            <label>Tipo</label>
-            <select id="lf-tipo" onchange="atualizarFormLancamento()">
-              <option value="projeto">Projeto</option>
-              <option value="organizacao">Org. Interna</option>
-              <option value="sociedade">Sociedade</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="fg mb8" id="lf-subtipo-wrap" style="display:none">
-          <div class="fgroup">
-            <label>Subcategoria</label>
-            <select id="lf-subtipo"></select>
-          </div>
-        </div>
-
-        <div class="fg mb8" id="lf-projeto-wrap">
-          <div class="fgroup">
-            <label>Cliente</label>
-            <select id="lf-cliente" onchange="lfFiltrarOpps()"><option value="">Selecionar cliente...</option></select>
-          </div>
-          <div class="fgroup" id="lf-opp-wrap" style="display:none">
-            <label>Oportunidade</label>
-            <select id="lf-oportunidade" onchange="lfFiltrarProdutos()"><option value="">Selecionar oportunidade...</option></select>
-          </div>
-          <div class="fgroup" id="lf-prod-wrap" style="display:none">
-            <label>Produto</label>
-            <select id="lf-produto" onchange="lfFiltrarEtapas()"><option value="">Selecionar produto...</option></select>
-          </div>
-          <div class="fgroup" id="lf-etapa-wrap" style="display:none">
-            <label>Etapa</label>
-            <select id="lf-etapa" onchange="renderSugestoesSubtarefasGestao('novo')"><option value="">Selecionar...</option></select>
-          </div>
-        </div>
-
-        <div class="fgroup mb8" id="lf-subtarefas-wrap">
-          <label>Subtarefas (opcional)</label>
-          <input type="text" id="lf-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao" oninput="renderSugestoesSubtarefasGestao('novo')" onfocus="renderSugestoesSubtarefasGestao('novo')">
-          <div id="lf-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
-        </div>
-
-        <div class="fgroup mb14">
-          <label>Descrição (opcional)</label>
-          <input type="text" id="lf-desc" placeholder="O que foi feito...">
-        </div>
-
-        <button class="btn verde" style="width:100%" onclick="lancarHoras()">Registrar horas</button>
-      </div>
-
-      <!-- Formulário de custos -->
-      <div style="margin-top:14px" id="custo-form-wrap" class="lanc-form">
-        <div class="lanc-form-title">Lançar custo</div>
-
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Valor (R$)</label>
-            <input type="number" id="cf-valor" step="0.01" min="0" placeholder="0,00">
-          </div>
-          <div class="fgroup">
-            <label>Data</label>
-            <input type="date" id="cf-data">
-          </div>
-        </div>
-
-        <div class="fgroup mb8" id="cf-area-wrap">
-          <label>Área</label>
-          <select id="cf-area-reembolso" onchange="onAreaReembolsoChange('cf')">
-            <option value="">Selecionar área...</option>
-          </select>
-        </div>
-
-        <div class="fgroup mb8" id="cf-detalhe-wrap" style="display:none">
-          <label>Detalhe</label>
-          <select id="cf-detalhe-reembolso">
-            <option value="">—</option>
-          </select>
-        </div>
-
-        <div class="fgroup mb8" id="cf-tipo-wrap" style="display:none">
-          <label>Vinculado a</label>
-          <select id="cf-tipo" onchange="atualizarFormCusto()">
-            <option value="projeto">Projeto</option>
-            <option value="organizacao">Org. Interna</option>
-            <option value="sociedade">Sociedade</option>
-          </select>
-        </div>
-
-        <div id="cf-projeto-wrap" style="display:none">
-          <div class="fgroup mb8">
-            <label>Cliente</label>
-            <select id="cf-cliente" onchange="cfFiltrarOpps()"><option value="">Selecionar cliente...</option></select>
-          </div>
-          <div class="fgroup mb8" id="cf-opp-wrap" style="display:none">
-            <label>Projeto</label>
-            <select id="cf-oportunidade" onchange="cfFiltrarProdutos()"><option value="">Selecionar...</option></select>
-          </div>
-          <div class="fg fg2 mb8">
-            <div class="fgroup" id="cf-prod-wrap" style="display:none">
-              <label>Produto</label>
-              <select id="cf-produto" onchange="cfFiltrarEtapas()"><option value="">Selecionar...</option></select>
-            </div>
-            <div class="fgroup" id="cf-etapa-wrap" style="display:none">
-              <label>Etapa (opcional)</label>
-              <select id="cf-etapa"><option value="">—</option></select>
-            </div>
-          </div>
-        </div>
-
-        <div class="fgroup mb8" id="cf-evento-proj-wrap" style="display:none">
-          <label id="cf-evento-proj-label">Evento</label>
-          <input type="text" id="cf-evento-proj" list="cf-evento-proj-dl" placeholder="Selecionar ou digitar novo..." autocomplete="off">
-          <datalist id="cf-evento-proj-dl"></datalist>
-        </div>
-
-        <div class="fgroup mb8" id="cf-evento-soc-wrap" style="display:none">
-          <label id="cf-evento-soc-label">Evento</label>
-          <input type="text" id="cf-evento-soc" list="cf-evento-soc-dl" placeholder="Selecionar ou digitar novo..." autocomplete="off">
-          <datalist id="cf-evento-soc-dl"></datalist>
-        </div>
-
-        <div class="fgroup mb14">
-          <label>Descrição (opcional)</label>
-          <input type="text" id="cf-desc" placeholder="Detalhe do custo...">
-        </div>
-
-        <button class="btn verde" style="width:100%" onclick="lancarCusto()">Registrar custo</button>
-      </div>
-
-      <!-- Finalizar semana — aparece após os custos -->
-      <div style="margin-top:10px" id="finalizar-wrap">
-        <button class="btn filled" style="width:100%" onclick="abrirFinalizarSemana()">Finalizar semana</button>
-      </div>
-
-    </div>
-  </div>
-
-  </div><!-- /stp-horas-cadastro -->
-
-  <!-- Painel: Visualização (resumo mensal) -->
-  <div class="stab-panel" id="stp-horas-visualizacao">
-  <div class="mh-head">
-    <div>
-      <div class="sec-title" style="margin-bottom:0">Minhas horas</div>
-      <div class="mh-sub">Resumo mensal individual com base nos seus lançamentos registrados na plataforma.</div>
-    </div>
-    <div class="mh-actions">
-      <button class="semana-nav-btn" onclick="navegarMinhasHoras(-1)">‹</button>
-      <input type="month" id="mh-mes" class="filter-select" style="font-size:11px" onchange="carregarMinhasHoras()">
-      <button class="semana-nav-btn" onclick="navegarMinhasHoras(1)">›</button>
-      <button class="btn sm" onclick="minhasHorasMesAtual()">Este mês</button>
-      <button class="btn sm" onclick="exportarMinhasHorasPDF()">Gerar PDF</button>
-    </div>
-  </div>
-
-  <div class="mh-overview">
-    <div class="mh-card mh-chart-card">
-      <div class="mh-card-hd">
-        <div class="mh-card-t">Volume diário no mês</div>
-        <div class="mh-card-sub" id="mh-chart-sub">—</div>
-      </div>
-      <div class="mh-day-chart" id="mh-day-chart">
-        <div class="loading-state">Carregando…</div>
-      </div>
-    </div>
-    <div class="mh-stats">
-      <div class="mh-stat">
-        <div class="mh-stat-k">Total do período</div>
-        <div class="mh-stat-v" id="mh-total-geral">—</div>
-        <div class="mh-stat-s" id="mh-total-geral-sub">—</div>
-      </div>
-      <div class="mh-stat">
-        <div class="mh-stat-k">Projetos / frentes</div>
-        <div class="mh-stat-v" id="mh-total-projetos">0</div>
-        <div class="mh-stat-s">Agrupamentos com horas no mês</div>
-      </div>
-      <div class="mh-stat">
-        <div class="mh-stat-k">Dias lançados</div>
-        <div class="mh-stat-v" id="mh-total-dias">0</div>
-        <div class="mh-stat-s">Dias com pelo menos um registro</div>
-      </div>
-      <div class="mh-stat">
-        <div class="mh-stat-k">Média por dia</div>
-        <div class="mh-stat-v" id="mh-media-dia">—</div>
-        <div class="mh-stat-s">Considerando apenas dias lançados</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="mh-card">
-    <div class="mh-card-hd">
-      <div class="mh-card-t">Composição por tipo de entrada</div>
-      <div class="mh-card-sub">Fatiamento proporcional do mês por oportunidade, organização interna e sociedade.</div>
-    </div>
-    <div style="display:flex;gap:24px;align-items:flex-start">
-      <div class="mh-type-bars" id="mh-type-bars" style="flex:1">
-        <div class="loading-state">Carregando…</div>
-      </div>
-      <div id="mh-pie-wrap" style="flex-shrink:0;display:flex;flex-direction:row;align-items:center;gap:16px"></div>
-    </div>
-  </div>
-
-  <div class="mh-card" style="margin-top:14px">
-    <div class="mh-card-hd">
-      <div class="mh-card-t">Resumo de frentes por tempo</div>
-      <div class="mh-card-sub" id="mh-projetos-sub">—</div>
-    </div>
-    <div class="mh-summary-panels" id="mh-summary-panels">
-      <div class="loading-state">Carregando…</div>
-    </div>
-  </div>
-
-  <div class="mh-card" style="margin-top:14px">
-    <div class="mh-card-hd">
-      <div class="mh-card-t">Detalhamento do período</div>
-      <div class="mh-card-sub" id="mh-periodo-faixa">—</div>
-    </div>
-    <div class="mh-day-groups" id="mh-detalhe-lista">
-      <div class="loading-state">Carregando…</div>
-    </div>
-  </div>
-  </div><!-- /stp-horas-visualizacao -->
-
-</div><!-- /page-horas -->
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     REVISÕES
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-<div class="page" id="page-revisoes">
-
-  <div style="margin-bottom:14px">
-    <div class="sec-title" style="margin-bottom:0">Revisões</div>
-  </div>
-
-  <div class="rev-layout">
-    <div>
-      <!-- Toggle + solicitar/nova revisão na mesma linha -->
-      <div class="rev-toggle-wrap" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div class="proj-view-toggle" id="rev-toggle-pill">
-          <button class="pvt-btn active" id="rev-pill-todas" onclick="if(G._revMinhasOnly){toggleFiltroMinhasRevisoes()}">Todas</button>
-          <button class="pvt-btn" id="rev-pill-minhas" onclick="if(!G._revMinhasOnly){toggleFiltroMinhasRevisoes()}">Minhas</button>
-        </div>
-        <button class="btn sm verde" id="btn-rev-top" onclick="revFabAction()" style="margin-left:auto;white-space:nowrap">+ Solicitar revisão</button>
-      </div>
-      <div id="rev-lista">
-        <div class="loading-state">Carregando...</div>
-      </div>
-    </div>
-    <div>
-      <div id="rev-detalhe">
-        <div class="empty-note">Selecione uma revisão para ver os detalhes</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- FAB removido — nova revisão via botão interno no produto -->
-
-</div>
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     VISÃO SÓCIOS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-<!-- ══════════════════════════════════════════════════════════════
-     PROCESSOS
-══════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-processos">
-
-  <div style="margin-bottom:14px">
-    <div class="sec-title" style="margin-bottom:0">Processos</div>
-  </div>
-
-  <div class="proc-layout">
-    <div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <button class="btn sm verde socio-only" id="btn-novo-proc" onclick="abrirNovoChecklist()" style="display:none;margin-left:auto">+ Novo checklist</button>
-      </div>
-      <div id="proc-lista">
-        <div class="loading-state">Carregando...</div>
-      </div>
-    </div>
-    <div>
-      <div id="proc-detalhe">
-        <div class="empty-note">Selecione um checklist para ver os detalhes</div>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<div class="page" id="page-socios">
-
-  <div class="socio-tabs">
-    <button class="socio-tab active" data-panel="fluxo">Fluxo de trabalho</button>
-    <button class="socio-tab" data-panel="submissao">Submissão</button>
-    <button class="socio-tab" data-panel="carga">Carga da equipe</button>
-    <button class="socio-tab" data-panel="carga-mensal">Carga mensal</button>
-    <button class="socio-tab" data-panel="valorhora">Valor / hora</button>
-    <button class="socio-tab" data-panel="reembolso">Reembolso</button>
-    <button class="socio-tab" data-panel="entregas">Entregas</button>
-    <button class="socio-tab billing-only" data-panel="espelho" id="socio-tab-espelho" style="display:none">Faturamento</button>
-    <button class="socio-tab" data-panel="clientes">Clientes</button>
-    <button class="socio-tab" data-panel="usuarios" style="display:none">Usuários</button>
-    <button class="socio-tab" data-panel="presets">Presets Checklist</button>
-  </div>
-
-  <!-- CARGA MENSAL -->
-  <div class="socio-panel" id="sp-carga-mensal">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Carga mensal por colaborador</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div style="display:flex;gap:0;border:1px solid var(--cinza);border-radius:6px;overflow:hidden;background:var(--branco)">
-          <button id="cm-btn-individual" onclick="setCmView('individual')"
-            style="font-size:10px;font-weight:600;padding:4px 12px;border:none;background:var(--grafite);color:#fff;cursor:pointer;font-family:var(--font-ui);transition:background .15s,color .15s">Individual</button>
-          <button id="cm-btn-coletivo" onclick="setCmView('coletivo')"
-            style="font-size:10px;font-weight:600;padding:4px 12px;border:none;background:var(--branco);color:#888;cursor:pointer;font-family:var(--font-ui);transition:background .15s,color .15s">Coletivo</button>
-        </div>
-        <label style="font-size:10px;color:#888">Mês:</label>
-        <input type="month" id="cm-mes" class="filter-select" style="font-size:11px" onchange="carregarCargaMensal()">
-        <button class="btn sm" onclick="exportarHorasExcel()">↓ Excel</button>
-        <button class="btn sm" onclick="exportarHorasPDF()">↓ PDF</button>
-      </div>
-    </div>
-    <div id="cm-lista">
-      <div class="loading-state">Selecione um mês para carregar.</div>
-    </div>
-  </div>
-
-  <!-- REEMBOLSO -->
-  <div class="socio-panel" id="sp-reembolso">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Reembolso de custos</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <label style="font-size:10px;color:#888">Mês:</label>
-        <input type="month" id="rb-mes" class="filter-select" style="font-size:11px" onchange="carregarReembolso()">
-        <button class="btn sm" onclick="exportarReembolsoExcel()">↓ Excel</button>
-        <button class="btn sm" onclick="exportarReembolsoPDF()">↓ PDF</button>
-      </div>
-    </div>
-    <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--cinza)">
-      <button id="rb-tab-membro" class="modal-tab active" onclick="setReembolsoView('membro')">Por membro</button>
-      <button id="rb-tab-evento" class="modal-tab" onclick="setReembolsoView('evento')">Por evento</button>
-      <button id="rb-tab-reclassificacao" class="modal-tab" onclick="setReembolsoView('reclassificacao')" style="display:none">Reclassificação</button>
-    </div>
-    <div id="rb-lista"><div class="loading-state">Selecione um mês para carregar.</div></div>
-  </div>
-
-  <!-- CARGA -->
-  <div class="socio-panel" id="sp-carga">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Ocupação semanal</div>
-      <div class="semana-nav" style="margin-bottom:0">
-        <button class="semana-nav-btn" onclick="socioNavSemana(-1)" style="width:24px;height:24px">‹</button>
-        <div style="font-family:var(--font-mono);font-size:11px;min-width:140px;text-align:center" id="socio-semana-label">—</div>
-        <button class="semana-nav-btn" onclick="socioNavSemana(1)" style="width:24px;height:24px">›</button>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div class="carga-subcard">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:10px">Sócios</div>
-        <div id="carga-donut-socios" style="display:flex;align-items:center;gap:12px;margin-bottom:14px"></div>
-        <div id="carga-lista-socios" style="display:flex;flex-direction:column;gap:8px"><div class="loading-state">Carregando...</div></div>
-      </div>
-      <div class="carga-subcard">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:10px">Colaboradores</div>
-        <div id="carga-donut-colab" style="display:flex;align-items:center;gap:12px;margin-bottom:14px"></div>
-        <div id="carga-lista-colab" style="display:flex;flex-direction:column;gap:8px"><div class="loading-state">Carregando...</div></div>
-      </div>
-    </div>
-    <div style="border-top:1px solid var(--cinza2);padding-top:18px;margin-top:4px">
-      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Horas por atividade</div>
-      <div id="carga-atividades"></div>
-    </div>
-    <div style="border-top:1px solid var(--cinza2);padding-top:14px;margin-top:14px">
-      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:8px">Custos da semana</div>
-      <div id="carga-custos"><div class="loading-state">—</div></div>
-    </div>
-  </div>
-
-  <!-- SUBMISSÃO -->
-  <div class="socio-panel" id="sp-submissao">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Status de submissão semanal</div>
-      <div class="semana-nav" style="margin-bottom:0">
-        <button class="semana-nav-btn" onclick="socioNavSemana(-1)">‹</button>
-        <div class="semana-label" id="submissao-semana-label">—</div>
-        <button class="semana-nav-btn" onclick="socioNavSemana(1)">›</button>
-      </div>
-    </div>
-    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden" id="submissao-lista">
-      <div class="loading-state">Carregando...</div>
-    </div>
-  </div>
-
-  <!-- ESPELHO FINANCEIRO -->
-  <div class="socio-panel" id="sp-espelho">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Espelho financeiro</div>
-      <button class="btn sm" onclick="exportarEspelho()">⬇ Exportar</button>
-    </div>
-    <!-- Abas: Por etapa / Por projeto -->
-    <div class="socio-tabs" style="margin-bottom:12px">
-      <button id="ef-tab-etapa" class="socio-tab active" onclick="setEspelhoTab('etapa')">Por etapa</button>
-      <button id="ef-tab-projeto" class="socio-tab" onclick="setEspelhoTab('projeto')">Por projeto</button>
-    </div>
-    <!-- Filtros (só visíveis na aba Por etapa) -->
-    <div class="ef-filtros" id="ef-filtros-wrap">
-      <select class="filter-select" id="ef-fil-status" onchange="carregarEspelho()">
-        <option value="">Todos os status</option>
-        <option value="pendente">Pendente</option>
-        <option value="faturado">Faturado</option>
-        <option value="pago">Pago</option>
-      </select>
-      <select class="filter-select" id="ef-fil-cliente" onchange="carregarEspelho()">
-        <option value="">Todos os clientes</option>
-      </select>
-      <input type="date" id="ef-fil-de" class="filter-select" onchange="carregarEspelho()" placeholder="De">
-      <input type="date" id="ef-fil-ate" class="filter-select" onchange="carregarEspelho()" placeholder="Até">
-    </div>
-    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden" id="espelho-card-wrap">
-      <div id="espelho-wrap">
-        <div class="loading-state">Carregando...</div>
-      </div>
-    </div>
-    <div id="espelho-proj-wrap" style="display:none"></div>
-  </div>
-
-  <!-- VALOR / HORA -->
-  <div class="socio-panel" id="sp-valorhora">
-    <div class="sec-title">Configurações de equipe — Valor / hora</div>
-    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden" id="vh-lista">
-      <div class="loading-state">Carregando...</div>
-    </div>
-
-    <!-- Simulador de Valor/Hora -->
-    <div class="sec-title" style="margin-top:22px;margin-bottom:8px">Simulação de valor/hora</div>
-    <div class="vhs-card">
-      <div class="vhs-inputs">
-        <div class="fgroup">
-          <label>Honorário mensal (R$)</label>
-          <input type="number" id="vhs-honorario" class="vhs-inp" value="5000" min="0" step="100" oninput="calcularVH()">
-          <span class="vhs-hint">Salário/pró-labore bruto do membro</span>
-        </div>
-        <div class="fgroup">
-          <label>Bônus quadrimestral (%)</label>
-          <input type="number" id="vhs-bonus-q" class="vhs-inp" value="20" min="0" max="200" step="1" oninput="calcularVH()">
-          <span class="vhs-hint">% do honorário por quadrimestre (base 20%)</span>
-        </div>
-        <div class="fgroup">
-          <label>Bônus anual (Nº de salários)</label>
-          <input type="number" id="vhs-bonus-a" class="vhs-inp" value="1" min="0" max="12" step="0.5" oninput="calcularVH()">
-          <span class="vhs-hint">Salários extras ÷ 12 avos/mês (base 1)</span>
-        </div>
-        <div class="fgroup">
-          <label>Folha / Receita bruta (%)</label>
-          <input type="number" id="vhs-relacao" class="vhs-inp" value="50" min="1" max="100" step="1" oninput="calcularVH()">
-          <span class="vhs-hint">% da receita destinada à folha (base 50%)</span>
-        </div>
-        <div class="fgroup">
-          <label>Horas rentáveis (%)</label>
-          <input type="number" id="vhs-rentaveis" class="vhs-inp" value="75" min="1" max="100" step="1" oninput="calcularVH()">
-          <span class="vhs-hint">% das horas efetivamente faturáveis (base 75%)</span>
-        </div>
-        <div class="fgroup">
-          <label>Horas médias no mês</label>
-          <input type="number" id="vhs-horas" class="vhs-inp" value="180" min="1" max="300" step="5" oninput="calcularVH()">
-          <span class="vhs-hint">Total de horas trabalhadas/mês (base 180h)</span>
-        </div>
-      </div>
-      <div class="vhs-result" id="vhs-resultado">
-        <div class="vhs-value-box">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:6px">Valor / hora</div>
-          <div class="vhs-value-big" id="vhs-valor">—</div>
-          <div style="font-size:10px;color:#aaa;margin-top:4px">por hora faturada</div>
-        </div>
-        <div class="vhs-breakdown" id="vhs-breakdown"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ENTREGAS DA SEMANA — EQUIPE (G-S1/G-S4) -->
-  <div class="socio-panel" id="sp-entregas">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Acompanhamento semanal de entregas</div>
-      <div class="semana-nav" style="margin-bottom:0">
-        <button class="semana-nav-btn" onclick="entregasNavSemana(-1)" style="width:24px;height:24px">‹</button>
-        <div style="font-family:var(--font-mono);font-size:11px;min-width:160px;text-align:center" id="entregas-semana-nav-label">—</div>
-        <button class="semana-nav-btn" onclick="entregasNavSemana(1)" style="width:24px;height:24px">›</button>
-        <button class="semana-nav-btn" onclick="entregasNavHoje()" style="font-size:9px;width:auto;padding:0 8px">Hoje</button>
-      </div>
-    </div>
-    <!-- Filtro de núcleo -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <select class="filter-select" id="entregas-fil-nucleo" onchange="carregarEntregasEquipe()" style="width:auto">
-        <option value="">Todos os núcleos</option>
-        <option value="urbanismo">Urbanismo</option>
-        <option value="paisagismo">Paisagismo</option>
-        <option value="especiais">Proj. Especiais</option>
-        <option value="consultorias">Consultorias</option>
-      </select>
-      <select class="filter-select" id="entregas-fil-status" onchange="carregarEntregasEquipe()" style="width:auto">
-        <option value="">Todos os status</option>
-        <option value="nao_iniciada">Não iniciada</option>
-        <option value="em_andamento">Em andamento</option>
-        <option value="em_revisao">Em revisão</option>
-        <option value="concluida">Concluída</option>
-        <option value="pausada">Pausada</option>
-      </select>
-      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;cursor:pointer">
-        <input type="checkbox" id="entregas-mostrar-atrasadas" onchange="carregarEntregasEquipe()">
-        Incluir atrasadas (semanas anteriores)
-      </label>
-    </div>
-    <!-- Grid de cards por pessoa -->
-    <div id="entregas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px">
-      <div class="loading-state">Carregando...</div>
-    </div>
-  </div>
-
-  <!-- FLUXO DE TRABALHO (G11) -->
-  <div class="socio-panel active" id="sp-fluxo">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Fluxo de trabalho da equipe</div>
-      <span style="font-size:9px;color:#aaa">Defina até 6 projetos por pessoa. Previsão e comentário aparecem no dashboard do colaborador atribuído.</span>
-    </div>
-    <div id="fluxo-grid" style="display:flex;flex-direction:column;gap:0">
-      <div class="loading-state">Carregando...</div>
-    </div>
-  </div>
-
-  <!-- USUÃRIOS -->
-  <div class="socio-panel" id="sp-usuarios">
-    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;padding:18px">
-      <div class="sec-title" style="margin-bottom:10px">Administração de usuários migrada</div>
-      <div style="font-size:11px;line-height:1.7;color:#666">
-        A manutenção de usuários, papéis, avatar, status de acesso e termo de compromisso foi migrada para
-        <strong>Gestão de plataforma</strong> no shell principal. Esta aba permanece apenas como referência transitória
-        durante a Fase 2 e deixa de ser o ponto oficial de administração dentro de <strong>EXP.projetos</strong>.
-      </div>
-    </div>
-  </div>
-
-  <!-- CLIENTES -->
-  <div class="socio-panel" id="sp-clientes">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Cadastro de clientes</div>
-      <span style="font-size:10px;color:#aaa">Edite nome, sigla, cidade e UF. Alterações refletem em todos os projetos.</span>
-    </div>
-    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden" id="cli-admin-lista">
-      <div class="loading-state">Carregando...</div>
-    </div>
-  </div>
-
-  <!-- PRESETS CHECKLIST (sócios) -->
-  <div class="socio-panel" id="sp-presets">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0;flex:1">Presets de Checklist — Entrega de Etapa</div>
-      <button class="btn sm verde" onclick="abrirFormPreset(null)">+ Novo preset</button>
-    </div>
-    <div style="font-size:10px;color:#888;margin-bottom:12px">Defina os itens de verificação que aparecem em cada etapa de entrega dos projetos. Cada preset pode ser vinculado a um núcleo específico ou ser genérico.</div>
-    <div id="presets-lista"><div class="loading-state">Carregando…</div></div>
-  </div>
-
-</div>
-
-</div><!-- /main -->
-  </div><!-- /gestao-card-body -->
-</div><!-- /gestao-card -->
-</div><!-- /exp-app-shell -->
-</div><!-- /app -->
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     MODAIS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-
-<!-- Modal detalhe evento agenda -->
-<!-- Modal: Detalhe do Produto -->
-<div class="modal-bg" id="modal-produto" style="display:none">
-  <div class="modal xl">
-    <div class="modal-hd">
-      <div>
-        <div class="modal-hd-title" id="mp-titulo">Projeto</div>
-        <div id="mp-subtipo-hd" style="font-size:10px;color:#aaa;margin-top:1px"></div>
-      </div>
-      <button class="modal-close" onclick="fecharModal('modal-produto')">×</button>
-    </div>
-    <div class="modal-body" style="padding:0">
-      <div class="modal-tabs" style="padding:0 16px;margin-bottom:0">
-        <button class="modal-tab active" data-modal="modal-produto" data-panel="mp-visao">Visão Geral</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-registros">Registros</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-chk-rev" id="mp-tab-chk-rev">Checklists & Revisões</button>
-        <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas" style="display:none">Horas</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos" style="display:none">Custos</button>
-        <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-resultado" id="mp-tab-resultado" style="display:none">Resultado</button>
-      </div>
-      <div style="padding:16px">
-        <!-- Visão Geral -->
-        <div class="mtab-panel active" id="mp-visao">
-          <div class="fg mb8" id="mp-visao-grid">
-            <!-- Col 1: Dados do produto -->
-            <div class="ms">
-              <div class="ms-title">Dados do produto</div>
-              <div class="dr"><div class="dk">Cliente</div><div class="dv" id="mp-cliente">—</div></div>
-              <div class="dr"><div class="dk">Oportunidade</div><div class="dv" id="mp-opp">—</div></div>
-              <div class="dr"><div class="dk">Cidade / UF</div><div class="dv" id="mp-cidade-uf">—</div></div>
-              <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">—</div></div>
-              <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">—</div></div>
-              <div class="dr"><div class="dk">Início</div><div class="dv" id="mp-inicio">—</div></div>
-            </div>
-            <!-- Col 2: Dados do projeto -->
-            <div class="ms">
-              <div class="ms-title">Dados do projeto</div>
-              <div class="dr"><div class="dk">Endereço</div><div class="dv" id="mp-proj-endereco">—</div></div>
-              <div class="dr"><div class="dk">CNPJ</div><div class="dv" id="mp-proj-cnpj">—</div></div>
-              <div class="dr"><div class="dk">Escritório | Arquitetura</div><div class="dv" id="mp-proj-esc-arq">—</div></div>
-              <div class="dr"><div class="dk">Escritório | Interiores</div><div class="dv" id="mp-proj-esc-int">—</div></div>
-              <div class="dr"><div class="dk">Gestão</div><div class="dv" id="mp-proj-gestao">—</div></div>
-              <div class="dr"><div class="dk">Prev. orçamentária</div><div class="dv" id="mp-proj-prev-orc">—</div></div>
-            </div>
-            <!-- Col 3: Dados financeiros e contratuais (sócios) -->
-            <div class="ms socio-only" id="mp-financeiro-wrap">
-              <div class="ms-title">Dados financeiros e contratuais</div>
-              <div class="dr"><div class="dk">Valor contratado</div><div class="dv" id="mp-valor">—</div></div>
-              <div class="dr"><div class="dk">Horas totais</div><div class="dv" id="mp-horas-total">—</div></div>
-              <div class="dr"><div class="dk">Custo execução</div><div class="dv" id="mp-custo">—</div></div>
-              <div class="dr"><div class="dk">Margem</div><div class="dv" id="mp-margem">—</div></div>
-              <div class="dr" id="mp-contrato-status-row" style="display:none"><div class="dk">Contrato</div><div class="dv" id="mp-contrato-status">—</div></div>
-              <div class="dr" id="mp-contrato-elab-row" style="display:none"><div class="dk">Elaborado por</div><div class="dv" id="mp-contrato-elab">—</div></div>
-              <div class="dr" id="mp-contrato-assin-row" style="display:none"><div class="dk">Assinado em</div><div class="dv" id="mp-contrato-assin">—</div></div>
-            </div>
-          </div>
-          <!-- Links do projeto (visível para todos se preenchido) -->
-          <div class="ms mb14" id="mp-links-wrap" style="display:none">
-            <div class="ms-title">Links do projeto</div>
-            <div id="mp-links-body" style="display:flex;gap:20px;flex-wrap:wrap;padding:6px 0;font-size:12px"></div>
-          </div>
-          <div class="ms">
-            <div class="ms-title" style="display:flex;justify-content:space-between">
-              Etapas
-              <button class="btn sm socio-only" id="btn-edit-etapas" onclick="editarEtapas()">Editar etapas</button>
-            </div>
-            <div id="mp-etapas-seg" style="display:none">
-              <div class="etapas-seg-bar" id="mp-seg-bar"></div>
-              <div class="etapas-seg-label" id="mp-seg-label"></div>
-            </div>
-            <div class="timeline" id="mp-etapas-timeline"></div>
-          </div>
-          <div class="ms" id="mp-pausas-wrap" style="display:none">
-            <div class="ms-title">Histórico de pausas</div>
-            <div id="mp-pausas-lista"></div>
-          </div>
-        </div>
-        <!-- Checklists & Revisões (aba unificada) -->
-        <div class="mtab-panel" id="mp-chk-rev">
-          <!-- Checklist de Etapa -->
-          <div class="ck-section" id="mp-ck-etapa-sec">
-            <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
-              <span class="ck-section-title">Checklist de Etapa</span>
-            </div>
-            <div id="ck-etapa-lista"><div class="empty-note">Carregando…</div></div>
-          </div>
-          <!-- Revisões -->
-          <div class="ck-section" id="mp-revisoes-sec" style="margin-top:4px">
-            <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
-              <span class="ck-section-title">Revisões</span>
-              <button class="btn sm verde" id="mp-btn-rev-action" onclick="abrirRevisaoProdutoAtivo()">+ Nova revisão</button>
-            </div>
-            <div id="mp-revisao-ativa-wrap" style="margin-bottom:6px"></div>
-            <div id="mp-revisoes-lista"></div>
-          </div>
-          <!-- Checklists de Tarefas -->
-          <div class="ck-section" id="mp-ck-tarefas-sec">
-            <div class="ck-section-hd" style="display:flex;align-items:center;justify-content:space-between">
-              <span class="ck-section-title">Checklists de Tarefas</span>
-              <button class="btn sm verde socio-only" id="btn-novo-ck-tarefa" onclick="novoChecklistTarefa()" style="display:none">+ Novo checklist</button>
-            </div>
-            <div id="ck-tarefas-form-wrap"></div>
-            <div id="ck-tarefas-lista"><div class="empty-note">Carregando…</div></div>
-          </div>
-        </div>
-
-        <!-- Custos e Reembolsos -->
-        <div class="mtab-panel" id="mp-custos">
-          <div id="mp-custos-lista">
-            <div class="loading-state">Carregando custos...</div>
-          </div>
-        </div>
-
-        <!-- Horas (sócios) -->
-        <div class="mtab-panel" id="mp-horas">
-          <div id="mp-horas-wrap"></div>
-        </div>
-
-        <!-- Resultado por etapa (sócios) -->
-        <div class="mtab-panel" id="mp-resultado">
-          <div id="mp-resultado-wrap"><div class="loading-state">Carregando…</div></div>
-        </div>
-
-        <div class="modal-bg" id="modal-competencia-real" style="display:none">
-          <div class="modal" style="max-width:620px">
-            <div class="modal-hd">
-              <div class="modal-hd-title">Competência real / receita produzida</div>
-              <button class="modal-close" onclick="fecharModal('modal-competencia-real')">×</button>
-            </div>
-            <div class="modal-body">
-              <div style="font-size:11px;color:#666;margin-bottom:12px">Lançamento manual do percentual produzido por etapa no mês. O acumulado da etapa não pode ultrapassar 100%.</div>
-              <div class="fg fg2 mb8">
-                <div class="fgroup">
-                  <label>Etapa</label>
-                  <select id="comp-etapa" onchange="updateCompetenciaSaldoInfo()"></select>
-                </div>
-                <div class="fgroup">
-                  <label>Mês de competência</label>
-                  <input type="month" id="comp-mes">
-                </div>
-              </div>
-              <div class="fg fg2 mb8">
-                <div class="fgroup">
-                  <label>Percentual do mês</label>
-                  <input type="number" id="comp-percentual" min="0" max="100" step="0.1" placeholder="Ex: 20">
-                </div>
-                <div class="fgroup">
-                  <label>Saldo restante da etapa</label>
-                  <div id="comp-saldo-info" style="padding:8px 10px;border:1px solid var(--cinza);border-radius:6px;background:var(--off);font-size:12px">—</div>
-                </div>
-              </div>
-              <div class="fgroup mb8">
-                <label>Observação</label>
-                <input type="text" id="comp-obs" placeholder="Motivo, contexto ou ajuste do mês">
-              </div>
-              <div id="comp-alerta" style="display:none;padding:10px 12px;border-radius:8px;background:var(--tc-bg);border:1px solid var(--terracota);color:var(--terracota);font-size:11px"></div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn" onclick="fecharModal('modal-competencia-real')">Cancelar</button>
-              <button class="btn verde" onclick="salvarCompetenciaReal()">Salvar competência</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Registros e Atas -->
-        <div class="mtab-panel" id="mp-registros">
-          <div class="projhist-shell">
-            <div class="projhist-toolbar">
-              <div>
-                <div id="projhist-intro" class="projhist-intro">Atas formais e conversa operacional do projeto no mesmo lugar, sem misturar os registros.</div>
-                <div class="projhist-tabs" style="margin-top:10px">
-                  <button class="projhist-tab active" id="projhist-tab-atas" onclick="setProjectHistoryMode('atas')">Atas</button>
-                  <button class="projhist-tab" id="projhist-tab-visitas" onclick="setProjectHistoryMode('visitas')">Visitas</button>
-                  <button class="projhist-tab" id="projhist-tab-conversa" onclick="setProjectHistoryMode('conversa')">Conversa</button>
-                  <button class="projhist-tab" id="projhist-tab-tudo" onclick="setProjectHistoryMode('tudo')">Tudo</button>
-                  <button class="projhist-tab" id="projhist-tab-buscar" onclick="setProjectHistoryMode('buscar')">Buscar</button>
-                </div>
-              </div>
-              <div class="projhist-actions">
-                <button class="btn sm verde" id="mp-btn-nova-ata" onclick="toggleFormRegistro(null)">+ Nova entrada</button>
-                <button class="btn sm" onclick="refreshProjectHistoryMode()">Atualizar</button>
-              </div>
-            </div>
-
-            <div id="projhist-search-wrap" class="projhist-search">
-              <input type="text" id="projhist-search-input" placeholder="Pesquisar palavra, decisão, pessoa ou encaminhamento" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarHistoricoProjeto()}">
-              <button class="btn sm" onclick="limparBuscaHistoricoProjeto()">Limpar</button>
-              <button class="btn sm verde" onclick="buscarHistoricoProjeto()">Pesquisar</button>
-            </div>
-
-            <div id="projhist-pane-atas" class="projhist-pane active">
-              <div id="reg-form-wrap" style="display:none"></div>
-              <div id="reg-lista"></div>
-            </div>
-
-            <div id="projhist-pane-conversa" class="projhist-pane">
-              <div class="projhist-chat-top">
-                <div id="projchat-meta" class="projhist-chat-meta"></div>
-                <button class="btn sm" onclick="abrirChatProjetoNoWidget()" id="projchat-open-widget-btn" title="Abrir esta mesma conversa no chat geral">Abrir no chat</button>
-                <button class="projhist-chat-rename-btn" onclick="toggleChatTitleEdit()" id="projchat-rename-btn" title="Renomear conversa">✎ renomear</button>
-              </div>
-              <div class="projhist-chat-title-edit" id="projhist-chat-title-edit">
-                <div class="projhist-chat-title-field">
-                  <label for="projchat-title-input">Nome da conversa no chat</label>
-                  <input type="text" id="projchat-title-input" placeholder="Sigla-oportunidade">
-                </div>
-                <button class="btn sm" id="projchat-title-save-btn" onclick="salvarTituloChatProjeto()">Salvar nome</button>
-                <button class="btn sm" onclick="toggleChatTitleEdit()">Cancelar</button>
-                <div class="projhist-chat-title-hint" id="projchat-title-hint"></div>
-              </div>
-              <div id="projchat-list" class="projhist-chat-list"></div>
-              <div class="projhist-compose">
-                <textarea id="projchat-input" placeholder="Escreva uma mensagem para a conversa do projeto" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMensagemProjeto()}"></textarea>
-                <div class="projhist-compose-ft">
-                  <div class="projhist-compose-tip">Use o chat para decisões rápidas e alinhamentos operacionais. As atas continuam separadas.</div>
-                  <button class="btn sm verde" id="projchat-send-btn" onclick="enviarMensagemProjeto()">Enviar</button>
-                </div>
-              </div>
-            </div>
-
-            <div id="projhist-pane-tudo" class="projhist-pane">
-              <div id="projhist-combined-list" class="projhist-feed"></div>
-            </div>
-
-            <div id="projhist-pane-buscar" class="projhist-pane">
-              <div id="projhist-search-results" class="projhist-feed">
-                <div class="empty-note">Pesquise por uma palavra para cruzar conversa e atas deste projeto.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn tc socio-only" id="mp-btn-pausar" onclick="pausarProduto()" style="margin-right:auto">Pausar produto</button>
-      <button class="btn" onclick="fecharModal('modal-produto')">Fechar</button>
-      <button class="btn filled socio-only" id="mp-btn-editar" onclick="editarProduto()">Editar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Cadastro de Projeto -->
-<div class="modal-bg" id="modal-cadastro" style="display:none">
-  <div class="modal lg">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Novo projeto</div>
-      <button class="modal-close" onclick="fecharModal('modal-cadastro')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="step-indicator mb20">
-        <div class="step-item active" id="step-ind-1">1 · Cliente / Oportunidade / Produto</div>
-        <div class="step-item" id="step-ind-2">2 · Etapas</div>
-      </div>
-
-      <!-- Step 1 -->
-      <div class="step-panel active" id="step-1">
-        <div class="ms">
-          <div class="ms-title">Cliente</div>
-          <div class="fgroup mb8">
-            <label>Selecionar cliente existente ou criar novo</label>
-            <select id="cad-cliente-sel" onchange="onClienteChange()">
-              <option value="">Novo cliente...</option>
-            </select>
-          </div>
-          <div id="cad-cliente-novo-wrap" style="display:none">
-            <div class="fg fg4 mb8">
-              <div class="fgroup">
-                <label>Nome do cliente</label>
-                <input type="text" id="cad-cli-nome" placeholder="Nome completo">
-              </div>
-              <div class="fgroup">
-                <label>Sigla (3 letras)</label>
-                <input type="text" id="cad-cli-sigla" maxlength="3" placeholder="EXP" style="text-transform:uppercase">
-              </div>
-              <div class="fgroup">
-                <label>Cidade</label>
-                <input type="text" id="cad-cli-cidade">
-              </div>
-              <div class="fgroup">
-                <label>UF</label>
-                <input type="text" id="cad-cli-uf" maxlength="2" style="text-transform:uppercase">
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="ms">
-          <div class="ms-title">Oportunidade</div>
-          <div class="fgroup mb8">
-            <label>Selecionar oportunidade existente ou criar nova</label>
-            <select id="cad-opp-sel" onchange="onOppChange()">
-              <option value="">Nova oportunidade...</option>
-            </select>
-          </div>
-          <div id="cad-opp-novo-wrap">
-            <div class="fg fg2 mb8">
-              <div class="fgroup">
-                <label>Nome da oportunidade</label>
-                <input type="text" id="cad-opp-nome" placeholder="Ex.: UDI-11, Parque Central...">
-              </div>
-              <div class="fgroup">
-                <label>Cidade</label>
-                <input type="text" id="cad-opp-cidade">
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="ms">
-          <div class="ms-title">Produto</div>
-          <div class="fg fg2 mb8">
-            <div class="fgroup">
-              <label>Nome do produto</label>
-              <input type="text" id="cad-prod-nome" list="cad-prod-nome-list" placeholder="Ex.: Projeto Urbanístico, Paisagismo..." autocomplete="off">
-              <datalist id="cad-prod-nome-list"></datalist>
-            </div>
-            <div class="fgroup">
-              <label>Núcleo</label>
-              <select id="cad-prod-nucleo">
-                <option value="urbanismo">Urbanismo</option>
-                <option value="paisagismo">Paisagismo</option>
-                <option value="especiais">Projetos Especiais</option>
-                <option value="consultorias">Consultorias</option>
-              </select>
-            </div>
-          </div>
-          <div class="fg fg3 mb8">
-            <div class="fgroup">
-              <label>Coordenador</label>
-              <select id="cad-prod-coord">
-                <option value="">Selecionar...</option>
-              </select>
-            </div>
-            <div class="fgroup">
-              <label>Data de início</label>
-              <input type="date" id="cad-prod-inicio">
-            </div>
-            <div class="fgroup socio-only">
-              <label>Valor contratado (R$)</label>
-              <input type="number" id="cad-prod-valor" placeholder="0,00">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2 -->
-      <div class="step-panel" id="step-2">
-        <div class="ms">
-          <div class="ms-title" style="display:flex;justify-content:space-between;align-items:center">
-            Etapas do produto
-            <button class="btn sm" onclick="adicionarEtapaPreset()">+ Etapa</button>
-          </div>
-          <div style="font-size:10px;color:#888;margin-bottom:10px">
-            Etapas padrão pré-carregadas. Ajuste prazos, responsáveis e remova as que não se aplicam.
-          </div>
-          <div id="etapas-preset-lista"></div>
-        </div>
-        <div class="ms">
-          <div class="ms-title">Datas estimadas</div>
-          <div style="font-size:11px;color:#888;margin-bottom:8px">
-            Preencha a data de liberação da primeira etapa para calcular as demais automaticamente.
-          </div>
-          <div class="fgroup mb8">
-            <label>Data de liberação — Etapa 1</label>
-            <input type="date" id="cad-data-lib-1" onchange="calcularDatasEstimadas()">
-          </div>
-          <div id="datas-estimadas-preview"></div>
-        </div>
-      </div>
-
-    </div>
-    <div class="modal-ft">
-      <button class="btn" id="cad-btn-back" style="display:none" onclick="cadStep(1)">‹ Voltar</button>
-      <button class="btn" onclick="fecharModal('modal-cadastro')">Cancelar</button>
-      <button class="btn filled" id="cad-btn-next" onclick="cadStep(2)">Próximo →</button>
-      <button class="btn verde" id="cad-btn-salvar" style="display:none" onclick="salvarProjeto()">Criar projeto</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Finalizar Semana -->
-<div class="modal-bg" id="modal-finalizar" style="display:none">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Finalizar semana</div>
-      <button class="modal-close" onclick="fecharModal('modal-finalizar')">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="margin-bottom:14px">
-        <div style="font-size:22px;font-weight:700;font-family:var(--font-mono);margin-bottom:4px" id="fin-total-horas">0h</div>
-        <div style="font-size:11px;color:#888">horas registradas nesta semana</div>
-      </div>
-      <div class="fgroup">
-        <label>Comentário da semana</label>
-        <textarea id="fin-comentario" placeholder="Como foi a semana? Principais entregas, bloqueios, observações..." style="min-height:100px"></textarea>
-      </div>
-      <!-- Alertas de pendências -->
-      <div id="fin-alert" style="display:none;background:var(--am-bg);border:1px solid #E8C07A;border-left:3px solid var(--ouro);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#8a5a00;line-height:1.7"></div>
-      <div style="font-size:11px;color:var(--ouro);margin-top:10px">
-        ⚠ Ação irreversível. A semana será travada e não poderá mais ser editada por você.
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="fecharModal('modal-finalizar')">Cancelar</button>
-      <button class="btn verde" onclick="confirmarFinalizarSemana()">Confirmar e finalizar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Editar lançamento -->
-<div class="modal-bg" id="modal-editar-lancamento" style="display:none">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Editar lançamento</div>
-      <button class="modal-close" onclick="fecharModal('modal-editar-lancamento')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Tipo</label>
-          <select id="el-tipo" onchange="elOnTipoChange()">
-            <option value="projeto">Projeto</option>
-            <option value="organizacao">Org. Interna</option>
-            <option value="sociedade">Sociedade</option>
-          </select>
-        </div>
-        <div class="fgroup">
-          <label>Dia da semana</label>
-          <select id="el-dia"></select>
-        </div>
-      </div>
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Hora início</label>
-          <input type="time" id="el-inicio">
-        </div>
-        <div class="fgroup">
-          <label>Hora fim</label>
-          <input type="time" id="el-fim">
-        </div>
-      </div>
-      <div class="fgroup mb8" id="el-subtipo-wrap" style="display:none">
-        <label>Subcategoria</label>
-        <select id="el-subtipo"></select>
-      </div>
-      <div class="fgroup mb8" id="el-produto-wrap" style="display:none">
-        <label>Produto</label>
-        <select id="el-produto" onchange="elOnProdutoChange()"></select>
-      </div>
-      <div class="fgroup mb8" id="el-etapa-wrap" style="display:none">
-        <label>Etapa</label>
-        <select id="el-etapa" onchange="renderSugestoesSubtarefasGestao('edicao')"></select>
-      </div>
-      <div class="fgroup mb8" id="el-subtarefas-wrap">
-        <label>Subtarefas (opcional)</label>
-        <input type="text" id="el-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao" oninput="renderSugestoesSubtarefasGestao('edicao')" onfocus="renderSugestoesSubtarefasGestao('edicao')">
-        <div id="el-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
-      </div>
-      <div class="fgroup">
-        <label>Descrição</label>
-        <input type="text" id="el-desc" placeholder="O que foi feito...">
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn tc" onclick="deletarLancamento(G._editLancamentoId)" style="margin-right:auto">Excluir</button>
-      <button class="btn" onclick="fecharModal('modal-editar-lancamento')">Cancelar</button>
-      <button class="btn verde" onclick="salvarEdicaoLancamento()">Salvar alterações</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Revisão input -->
-<div class="modal-bg" id="modal-revisao-input" style="display:none">
-  <div class="modal" id="ri-modal-card" style="max-width:460px">
-    <div class="modal-hd">
-      <div class="modal-hd-title" id="ri-titulo">Revisão</div>
-      <button class="modal-close" onclick="fecharModalRevisaoInput()">×</button>
-    </div>
-    <div class="modal-body">
-      <div id="ri-contexto" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--off);border:1px solid var(--cinza2);font-size:11px;color:#666;line-height:1.5"></div>
-      <div class="fgroup mb8" id="ri-input-wrap" style="display:none">
-        <label id="ri-input-label">Título</label>
-        <input type="text" id="ri-input" placeholder="">
-      </div>
-      <div class="fgroup" id="ri-textarea-wrap" style="display:none">
-        <label id="ri-textarea-label">Descrição</label>
-        <textarea id="ri-textarea" placeholder="" style="min-height:120px"></textarea>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="fecharModalRevisaoInput()">Cancelar</button>
-      <button class="btn verde" id="ri-btn-salvar" onclick="confirmarModalRevisaoInput()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Pausar Produto -->
-<div class="modal-bg" id="modal-pausar" style="display:none">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Pausar produto</div>
-      <button class="modal-close" onclick="fecharModal('modal-pausar')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="fg fg2 mb14">
-        <div class="fgroup">
-          <label>Data de início da pausa</label>
-          <input type="date" id="pausa-data-inicio">
-        </div>
-      </div>
-      <div class="fgroup">
-        <label>Motivo</label>
-        <textarea id="pausa-motivo" placeholder="Motivo da pausa..." style="min-height:80px"></textarea>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="fecharModal('modal-pausar')">Cancelar</button>
-      <button class="btn tc" onclick="confirmarPausa()">Pausar produto</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Atribuir Tarefa -->
-<div class="modal-bg" id="modal-atribuir-tarefa" style="display:none">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Atribuir tarefa</div>
-      <button class="modal-close" onclick="fecharModal('modal-atribuir-tarefa')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="fgroup mb8">
-        <label>Descrição</label>
-        <input type="text" id="at-desc" placeholder="Descrição da tarefa...">
-      </div>
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Para</label>
-          <select id="at-para" class="filter-select">
-            <option value="">Selecionar pessoa...</option>
-          </select>
-        </div>
-        <div class="fgroup">
-          <label>Tipo</label>
-          <select id="at-tipo" class="filter-select">
-            <option value="projeto">Projeto</option>
-            <option value="organizacao">Org. Interna</option>
-            <option value="sociedade">Sociedade</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Liberação / início (opcional)</label>
-          <input type="date" id="at-inicio">
-        </div>
-        <div class="fgroup">
-          <label>Data limite (opcional)</label>
-          <input type="date" id="at-data">
-        </div>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="fecharModal('modal-atribuir-tarefa')">Cancelar</button>
-      <button class="btn verde" onclick="confirmarAtribuirTarefa()">Atribuir</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Nova Revisão -->
-<div class="modal-bg" id="modal-nova-revisao" style="display:none">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Nova revisão</div>
-      <button class="modal-close" onclick="fecharModal('modal-nova-revisao')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="fgroup mb14">
-        <label>Etapa</label>
-        <select id="nr-etapa">
-          <option value="">Selecionar etapa...</option>
-        </select>
-      </div>
-      <div id="nr-pranchas">
-        <div class="ms-title" style="display:flex;justify-content:space-between;align-items:center">
-          Pranchas
-          <button class="btn sm" onclick="addPranchaForm()">+ Prancha</button>
-        </div>
-        <div id="nr-pranchas-lista"></div>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="fecharModal('modal-nova-revisao')">Cancelar</button>
-      <button class="btn verde" onclick="salvarNovaRevisao()">Criar revisão</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Editar Produto -->
-<!-- Modal: editar prazo de prioridade -->
-<div class="modal-bg" id="modal-editar-prazo" style="display:none">
-  <div class="modal" style="max-width:320px">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Alterar prazo</div>
-      <button class="modal-close" onclick="fecharModal('modal-editar-prazo')">×</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:12px;color:#888;margin-bottom:12px">Selecione a nova data de prazo para esta prioridade:</p>
-      <input type="date" id="ep-nova-data" style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-family:var(--font-ui);font-size:12px">
-      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn sm" onclick="fecharModal('modal-editar-prazo')">Cancelar</button>
-        <button class="btn sm verde" onclick="confirmarAlteracaoData()">Confirmar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: validar data com coordenação / aceitar-recusar solicitação -->
-<div class="modal-bg" id="modal-validar-data" style="display:none">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-hd">
-      <div class="modal-hd-title" id="vd-titulo">Alinhar com coordenação</div>
-      <button class="modal-close" onclick="fecharModal('modal-validar-data')">×</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:12px;color:#555;margin-bottom:18px;line-height:1.6" id="vd-msg"></p>
-      <div style="display:flex;gap:8px;justify-content:flex-end" id="vd-btns">
-        <button class="btn sm" onclick="solicitarDataCoord(false)">Cancelar</button>
-        <button class="btn sm verde" onclick="solicitarDataCoord(true)">Sim, enviar</button>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;display:none" id="vd-btns-resp">
-        <button class="btn sm tc" onclick="responderSolicitacaoData(false)">Recusar</button>
-        <button class="btn sm verde" onclick="responderSolicitacaoData(true)">Aceitar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-editar-produto" style="display:none">
-  <div class="modal xl">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Editar projeto</div>
-      <button class="modal-close" onclick="fecharModal('modal-editar-produto')">×</button>
-    </div>
-    <div class="modal-body">
-
-      <!-- Dados do produto -->
-      <div class="ms mb14">
-        <div class="ms-title">Dados do produto</div>
-        <!-- Oportunidade / cliente primeiro -->
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Nome da oportunidade</label>
-            <input type="text" id="ep-opp">
-          </div>
-          <div class="fgroup">
-            <label>Cliente vinculado</label>
-            <select id="ep-cliente"></select>
-          </div>
-        </div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Cidade da oportunidade</label>
-            <input type="text" id="ep-opp-cidade">
-          </div>
-          <div class="fgroup">
-            <label>Exibição no módulo de gestão</label>
-            <select id="ep-em-gestao">
-              <option value="true">Exibir na gestão</option>
-              <option value="false">Ocultar da gestão</option>
-            </select>
-          </div>
-        </div>
-        <!-- Dados do produto -->
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Nome do produto</label>
-            <input type="text" id="ep-nome">
-          </div>
-          <div class="fgroup">
-            <label>Coordenador</label>
-            <select id="ep-coord"></select>
-          </div>
-        </div>
-        <div class="fg fg3 mb8">
-          <div class="fgroup">
-            <label>Núcleo</label>
-            <select id="ep-nucleo">
-              <option value="urbanismo">Urbanismo</option>
-              <option value="paisagismo">Paisagismo</option>
-              <option value="especiais">Proj. Especiais</option>
-              <option value="consultorias">Consultorias</option>
-            </select>
-          </div>
-          <div class="fgroup">
-            <label>Status</label>
-            <select id="ep-status">
-              <option value="ativo">Ativo</option>
-              <option value="pausado">Pausado</option>
-              <option value="encerrado">Encerrado</option>
-              <option value="inativo">Inativo</option>
-            </select>
-          </div>
-          <div class="fgroup">
-            <label>Data início</label>
-            <input type="date" id="ep-inicio">
-          </div>
-        </div>
-        <div style="font-size:10px;color:#888;margin-bottom:8px">
-          Ocultar da gestão remove o projeto desta tela sem apagar o cadastro nem alterar o CRM.
-        </div>
-        <div class="fgroup socio-only" id="ep-valor-wrap" style="display:none">
-          <label>Valor contratado (R$)</label>
-          <input type="number" id="ep-valor" step="0.01" placeholder="0,00">
-        </div>
-      </div>
-
-      <!-- Contrato (apenas sócios) -->
-      <div class="ms mb14 socio-only" id="ep-contrato-wrap" style="display:none">
-        <div class="ms-title">Contrato</div>
-        <div class="fg fg3 mb8">
-          <div class="fgroup">
-            <label>Status do contrato</label>
-            <select id="ep-contrato-status">
-              <option value="">—</option>
-              <option value="pendente">Pendente</option>
-              <option value="em_elaboracao">Em elaboração</option>
-              <option value="assinado">Assinado</option>
-            </select>
-          </div>
-          <div class="fgroup">
-            <label>Elaborado por</label>
-            <input type="text" id="ep-contrato-elaborado" placeholder="Nome do responsável">
-          </div>
-          <div class="fgroup">
-            <label>Data de assinatura</label>
-            <input type="date" id="ep-contrato-assinatura">
-          </div>
-        </div>
-      </div>
-
-      <!-- Dados do projeto -->
-      <div class="ms mb14" id="ep-proj-wrap">
-        <div class="ms-title">Dados do projeto</div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Endereço</label>
-            <input type="text" id="ep-proj-endereco" placeholder="Endereço do projeto">
-          </div>
-          <div class="fgroup">
-            <label>CNPJ do cliente</label>
-            <input type="text" id="ep-proj-cnpj" placeholder="00.000.000/0000-00">
-          </div>
-        </div>
-        <div class="fg fg3 mb8">
-          <div class="fgroup">
-            <label>Escritório resp. | Arquitetura</label>
-            <input type="text" id="ep-proj-esc-arq" placeholder="Nome do escritório">
-          </div>
-          <div class="fgroup">
-            <label>Escritório resp. | Interiores</label>
-            <input type="text" id="ep-proj-esc-int" placeholder="Nome do escritório">
-          </div>
-          <div class="fgroup">
-            <label>Gestão</label>
-            <input type="text" id="ep-proj-gestao" placeholder="Responsável pela gestão">
-          </div>
-        </div>
-      </div>
-
-      <!-- Links do projeto (sócios) -->
-      <div class="ms mb14 socio-only" id="ep-links-wrap" style="display:none">
-        <div class="ms-title">Links do projeto</div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Plataforma de arquivos</label>
-            <input type="url" id="ep-link-arquivo" placeholder="https://">
-          </div>
-          <div class="fgroup">
-            <label>Planilha de trabalho</label>
-            <input type="url" id="ep-link-planilha" placeholder="https://">
-          </div>
-        </div>
-      </div>
-
-      <!-- Etapas -->
-      <div class="ms">
-        <div class="ms-title" style="display:flex;justify-content:space-between;align-items:center">
-          Etapas
-          <button class="btn sm verde" onclick="adicionarEtapaEdicao()">+ Etapa</button>
-        </div>
-        <div id="ep-etapas-lista" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
-        <div class="ep-pct-total" id="ep-pct-total"></div>
-      </div>
-
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="fecharModal('modal-editar-produto')">Cancelar</button>
-      <button class="btn filled" onclick="salvarEdicaoProduto()">Salvar alterações</button>
-    </div>
-  </div>
-</div>
-
-<input
-  type="file"
-  id="temp-media-input"
-  accept="image/png,image/jpeg,image/webp"
-  onchange="processarArquivoTempMediaInput(this)"
-  style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none"
->
-
-<div class="modal-bg" id="modal-temp-media-upload" style="display:none">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Anexar imagem de apoio</div>
-      <button class="modal-close" onclick="fecharTempMediaUpload()">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="font-size:12px;font-weight:700;margin-bottom:4px" id="tm-upload-title">Anexo temporário</div>
-      <div style="font-size:11px;color:#777;margin-bottom:12px" id="tm-upload-context">Use Anexar ou Ctrl+V para colar um print de tela.</div>
-      <div class="tm-upload-area">
-        <button class="btn filled" type="button" onclick="escolherArquivoTempMedia()">Anexar imagem</button>
-        <div class="tm-upload-hint">
-          Prints apenas. O sistema redimensiona e comprime antes do upload para manter a gestão leve.
-        </div>
-        <div class="tm-upload-status" id="tm-upload-status">Pronto para receber imagem.</div>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" type="button" onclick="fecharTempMediaUpload()">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-temp-media-viewer" style="display:none">
-  <div class="modal lg">
-    <div class="modal-hd">
-      <div class="modal-hd-title">Imagem de apoio</div>
-      <button class="modal-close" onclick="fecharTempMediaViewer()">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="font-size:12px;font-weight:700;margin-bottom:4px" id="tm-view-title">Anexo</div>
-      <div class="tm-view-meta" id="tm-view-meta">Carregando anexo…</div>
-      <div class="tm-view-stage" style="margin-top:12px">
-        <button class="tm-view-del" type="button" id="tm-view-del-btn" onclick="excluirTempMediaAtual()" title="Excluir imagem" style="display:none">×</button>
-        <img id="tm-view-image" alt="Imagem de apoio" style="display:none">
-        <div id="tm-view-empty" style="font-size:11px;color:#999">Carregando imagem…</div>
-      </div>
-    </div>
-    <div class="modal-ft" style="justify-content:space-between">
-      <div style="display:flex;gap:8px">
-        <button class="btn sm" type="button" id="tm-prev-btn" onclick="moverTempMediaViewer(-1)">Anterior</button>
-        <button class="btn sm" type="button" id="tm-next-btn" onclick="moverTempMediaViewer(1)">Próxima</button>
-      </div>
-      <button class="btn" type="button" onclick="fecharTempMediaViewer()">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   CONFIGURAÇÃO SUPABASE
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   CONFIGURA��O SUPABASE
+// ══════════════════════════════════════════════════════════
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ── Estado global ──────────────────────────────────────────
+// -- Estado global ------------------------------------------
 let G = {
   usuario: null,
   todosProdutos: [],
@@ -4479,7 +60,7 @@ let G = {
   _tempMediaObjectUrl: null,
 };
 
-// ── Configurações ───────────────────────────────────────────
+// -- Configura��es -------------------------------------------
 const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
 
 function toggleTheme() {
@@ -4488,11 +69,11 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('exp-theme', next);
   const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀︎';
+  if (btn) btn.textContent = next === 'dark' ? '??' : '??';
 }
 function syncThemeBtn() {
   const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '🌙' : '☀︎';
+  if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '??' : '??';
 }
 function toggleNavDropdown() {
   document.getElementById('nav-dropdown').classList.toggle('open');
@@ -4526,18 +107,18 @@ function renderUserDropdown(usr) {
   const cargoEl = document.getElementById('user-dropdown-role-completo');
   const emailEl = document.getElementById('user-dropdown-email');
   const noteEl  = document.getElementById('user-dropdown-note');
-  const roleLabel = ROLES_LABEL[usr.role] || usr.role || '—';
+  const roleLabel = ROLES_LABEL[usr.role] || usr.role || '�';
   const email = usr.email_login || usr.email || '';
 
-  if (nomeEl)  nomeEl.textContent  = usr.nome || '—';
+  if (nomeEl)  nomeEl.textContent  = usr.nome || '�';
   if (cargoEl) cargoEl.textContent = roleLabel;
   if (emailEl) emailEl.textContent = email || 'Sem e-mail institucional cadastrado';
 
   const meta = [];
-  if (usr.viewer_only)        meta.push('Modo visualização');
+  if (usr.viewer_only)        meta.push('Modo visualiza��o');
   if (usr.is_platform_manager) meta.push('Gestor de plataforma');
   if (usr.apelido)             meta.push('Apelido: ' + usr.apelido);
-  if (noteEl) noteEl.textContent = meta.join(' · ');
+  if (noteEl) noteEl.textContent = meta.join(' � ');
 }
 
 function renderTermState(usr) {
@@ -4550,12 +131,12 @@ function renderTermState(usr) {
   el.classList.remove('pending', 'ok');
   if (isOk) {
     el.classList.add('ok');
-    if (ico) ico.textContent = '✓';
-    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais assinado.';
+    if (ico) ico.textContent = '?';
+    if (txt) txt.textContent = 'Termo de uso e prote��o de dados pessoais assinado.';
   } else {
     el.classList.add('pending');
-    if (ico) ico.textContent = '⚠';
-    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+    if (ico) ico.textContent = '?';
+    if (txt) txt.textContent = 'Termo de uso e prote��o de dados pessoais pendente.';
   }
 }
 
@@ -4570,7 +151,7 @@ function renderUserChip(usr) {
   const el = document.getElementById('user-nome');
   if (el) el.textContent = parts.length <= 2 ? parts.join(' ') : parts[0] + ' ' + parts[parts.length - 1];
   const cargo = document.getElementById('user-cargo');
-  if (cargo) cargo.textContent = ROLES_LABEL[usr.role] || usr.role || '—';
+  if (cargo) cargo.textContent = ROLES_LABEL[usr.role] || usr.role || '�';
   const platformBtn = document.getElementById('user-menu-platform');
   if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || usr.role === 'socio_admin' || usr.role === 'socio_adm');
   renderUserDropdown(usr);
@@ -4610,11 +191,11 @@ function toolFeedbackContext(){
   };
 }
 async function enviarToolFeedback(){
-  if (!G.usuario?.id) { toast('Sessão indisponível para registrar feedback'); return; }
+  if (!G.usuario?.id) { toast('Sess�o indispon�vel para registrar feedback'); return; }
   const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
   const mensagem = document.getElementById('tool-feedback-message')?.value.trim() || '';
   if (!mensagem) {
-    setToolFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.');
+    setToolFeedbackStatus('Descreva o problema ou a sugest�o antes de enviar.');
     return;
   }
   const ctx = toolFeedbackContext();
@@ -4630,11 +211,11 @@ async function enviarToolFeedback(){
     atualizado_em: new Date().toISOString()
   });
   if (error) {
-    setToolFeedbackStatus('Não foi possível enviar. Rode o SQL da estrutura de feedback, se necessário.');
+    setToolFeedbackStatus('N�o foi poss�vel enviar. Rode o SQL da estrutura de feedback, se necess�rio.');
     return;
   }
   document.getElementById('tool-feedback-message').value = '';
-  setToolFeedbackStatus('Registro enviado para a Gestão de plataforma.');
+  setToolFeedbackStatus('Registro enviado para a Gest�o de plataforma.');
   toast('Feedback enviado');
 }
 document.addEventListener('click', e => {
@@ -4652,7 +233,7 @@ document.addEventListener('click', e => {
     if (p) p.style.display = 'none';
   }
 });
-// ── EXP ROOM PRESENCE ───────────────────────────────────────
+// -- EXP ROOM PRESENCE ---------------------------------------
 // Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
 async function checkExpRoomStatus() {
   try {
@@ -4662,8 +243,8 @@ async function checkExpRoomStatus() {
     if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
       btn.classList.add('active');
       const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
-      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
-      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
+      const quem = (data.value && data.value !== 'true') ? data.value : 'Algu�m';
+      btn.setAttribute('data-tooltip', `${quem} � ${mins === 0 ? 'agora mesmo' : `h� ${mins} min`}`);
     } else {
       btn.classList.remove('active');
       btn.removeAttribute('data-tooltip');
@@ -4681,7 +262,7 @@ function initExpRoom(userId, userName) {
   btn.addEventListener('click', () => {
     registrarExpRoomClick(userId, userName);
     btn.classList.add('active');
-    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
+    btn.setAttribute('data-tooltip', `${userName||'Voc�'} � agora mesmo`);
   });
   checkExpRoomStatus();
   setInterval(checkExpRoomStatus, 60000);
@@ -4689,7 +270,7 @@ function initExpRoom(userId, userName) {
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
   if (!dot) return;
-  const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conexão'; };
+  const update = () => { dot.className='conn-dot '+(navigator.onLine?'online':'offline'); dot.title=navigator.onLine?'Conectado':'Sem conex�o'; };
   update(); window.addEventListener('online',update); window.addEventListener('offline',update);
 }
 const isSocioRole = (role) => ['socio', 'socio_adm', 'socio_admin'].includes((role || '').toLowerCase());
@@ -4703,7 +284,7 @@ async function sair() {
   window.location.href = 'index.html';
 }
 
-// ── Constantes ─────────────────────────────────────────────
+// -- Constantes ---------------------------------------------
 const NUCLEO_COR = {
   urbanismo:   { cls: 'b-urb',    bar: 'gb-urb',    dot: '#5280CA', label: 'Urbanismo' },
   paisagismo:  { cls: 'b-pai',    bar: 'gb-pai',     dot: '#45865D', label: 'Paisagismo' },
@@ -4711,10 +292,10 @@ const NUCLEO_COR = {
   consultorias:{ cls: 'b-consul', bar: 'gb-consul',  dot: '#C36247', label: 'Consultorias' },
 };
 const STATUS_ETAPA = {
-  nao_iniciada: { cls: 'b-gr',  dot: 'd-gr',  label: 'Não iniciada' },
+  nao_iniciada: { cls: 'b-gr',  dot: 'd-gr',  label: 'N�o iniciada' },
   em_andamento: { cls: 'b-az',  dot: 'd-az',  label: 'Em andamento' },
-  em_revisao:   { cls: 'b-am',  dot: 'd-am',  label: 'Em revisão'   },
-  concluida:    { cls: 'b-vd',  dot: 'd-vd',  label: 'Concluída'    },
+  em_revisao:   { cls: 'b-am',  dot: 'd-am',  label: 'Em revis�o'   },
+  concluida:    { cls: 'b-vd',  dot: 'd-vd',  label: 'Conclu�da'    },
   pausada:      { cls: 'b-tc',  dot: 'd-tc',  label: 'Pausada'      },
 };
 const STATUS_PROD = {
@@ -4728,49 +309,49 @@ const ETAPAS_PRESET = [
   'Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'
 ];
 const SUBTIPOS = {
-  organizacao: ['Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
-  sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
+  organizacao: ['Capacita��o','Reuni�o Semanal','Feedback','Reuni�o Interna'],
+  sociedade:   ['Marketing','Prospec��o','Administrativo','Jur�dico','Reuni�o Societ�ria','Consultoria','RH e Pessoas','Gest�o','Outros'],
 };
 const SUBTIPOS_CUSTO = {
-  projeto:     ['Alimentação','Hospedagem','Translado','Passagem','Transporte','Aluguel de carro','Gasolina','Impressão','Outro'],
+  projeto:     ['Alimenta��o','Hospedagem','Translado','Passagem','Transporte','Aluguel de carro','Gasolina','Impress�o','Outro'],
   organizacao: ['HH','Encontro presencial','Deslocamento','Outro'],
-  sociedade:   ['Operações','Marketing','Estratégia','Endomarketing','Financeiro','Jurídico','Outro'],
+  sociedade:   ['Opera��es','Marketing','Estrat�gia','Endomarketing','Financeiro','Jur�dico','Outro'],
 };
-// Detalhe por área do plano de contas (subconta → opções granulares)
+// Detalhe por �rea do plano de contas (subconta ? op��es granulares)
 const REEMBOLSO_DETALHES = {
   // CUSTOS DIRETOS (Projeto)
-  'Visitas Técnicas':
-    ['Alimentação','Transporte','Hospedagem','Aluguel de carro','Pedágio','Gasolina','Estacionamento','Outro'],
+  'Visitas T�cnicas':
+    ['Alimenta��o','Transporte','Hospedagem','Aluguel de carro','Ped�gio','Gasolina','Estacionamento','Outro'],
   'Plotagem':
     [],
   // DESPESAS COM PESSOAL
-  'Treinamentos e Capacitação':
+  'Treinamentos e Capacita��o':
     [],
-  'Cultura e Integração':
-    ['HH','Endomarketing','Presente de aniversário','Presente aniversário EXP','Presente de fim de ano','Outro'],
+  'Cultura e Integra��o':
+    ['HH','Endomarketing','Presente de anivers�rio','Presente anivers�rio EXP','Presente de fim de ano','Outro'],
   'Trabalho Presencial':
-    ['Alimentação','Transporte','Coworking','Outro'],
+    ['Alimenta��o','Transporte','Coworking','Outro'],
   // DESPESAS ADMINISTRATIVAS
   'Taxas e Anuidades Profissionais (CAU)':
     [],
-  'Certificações (Renovações)':
+  'Certifica��es (Renova��es)':
     [],
-  // DESPESAS COM OPERAÇÃO
+  // DESPESAS COM OPERA��O
   'Softwares de projetos':
     ['Autodesk','Adobe','SketchUp','Outro'],
-  'Softwares de gestão e nuvem':
+  'Softwares de gest�o e nuvem':
     ['Google Drive','Office 365','Slack','Outro'],
-  'Manutenções à TI':
+  'Manuten��es � TI':
     [],
-  'Inteligência Artificial':
+  'Intelig�ncia Artificial':
     [],
-  'Segurança Técnica':
+  'Seguran�a T�cnica':
     [],
   // DESPESAS COM MARKETING
-  'Mídias pagas (Digital)':
+  'M�dias pagas (Digital)':
     [],
   'Congressos e Eventos':
-    ['Entrada','Coquetel','Alimentação','Transporte','Passagem','Estacionamento','Outro'],
+    ['Entrada','Coquetel','Alimenta��o','Transporte','Passagem','Estacionamento','Outro'],
   'Relacionamento e Brindes':
     ['Brindes de fim de ano','Revista EXP','Presente individualizado','Outro'],
   // INVESTIMENTOS
@@ -4778,52 +359,52 @@ const REEMBOLSO_DETALHES = {
     [],
 };
 
-// Áreas válidas para lançamento de custo na Gestão (set de subcontas)
+// �reas v�lidas para lan�amento de custo na Gest�o (set de subcontas)
 const GESTAO_CUSTOS_AREAS = new Set([
-  'Visitas Técnicas','Plotagem',
-  'Treinamentos e Capacitação','Cultura e Integração','Trabalho Presencial',
-  'Taxas e Anuidades Profissionais (CAU)','Certificações (Renovações)',
-  'Softwares de projetos','Softwares de gestão e nuvem','Manutenções à TI','Inteligência Artificial','Segurança Técnica',
-  'Mídias pagas (Digital)','Congressos e Eventos','Relacionamento e Brindes',
+  'Visitas T�cnicas','Plotagem',
+  'Treinamentos e Capacita��o','Cultura e Integra��o','Trabalho Presencial',
+  'Taxas e Anuidades Profissionais (CAU)','Certifica��es (Renova��es)',
+  'Softwares de projetos','Softwares de gest�o e nuvem','Manuten��es � TI','Intelig�ncia Artificial','Seguran�a T�cnica',
+  'M�dias pagas (Digital)','Congressos e Eventos','Relacionamento e Brindes',
   'Computadores',
 ]);
 
-// Regras por área: requer_evento, requer_projeto, especial
+// Regras por �rea: requer_evento, requer_projeto, especial
 const GESTAO_AREA_RULES = {
-  'Visitas Técnicas':                      { requer_evento: true,  requer_projeto: true },
+  'Visitas T�cnicas':                      { requer_evento: true,  requer_projeto: true },
   'Plotagem':                              { requer_evento: false, requer_projeto: true },
-  'Treinamentos e Capacitação':            { requer_evento: true  },
-  'Cultura e Integração':                  { requer_evento: true  },
+  'Treinamentos e Capacita��o':            { requer_evento: true  },
+  'Cultura e Integra��o':                  { requer_evento: true  },
   'Trabalho Presencial':                   { requer_evento: true  },
   'Taxas e Anuidades Profissionais (CAU)': { requer_evento: false },
-  'Certificações (Renovações)':            { requer_evento: false },
+  'Certifica��es (Renova��es)':            { requer_evento: false },
   'Softwares de projetos':                 { requer_evento: false },
-  'Softwares de gestão e nuvem':           { requer_evento: false },
-  'Manutenções à TI':                      { requer_evento: true  },
-  'Inteligência Artificial':               { requer_evento: true  },
-  'Segurança Técnica':                     { requer_evento: false },
-  'Mídias pagas (Digital)':               { requer_evento: false },
+  'Softwares de gest�o e nuvem':           { requer_evento: false },
+  'Manuten��es � TI':                      { requer_evento: true  },
+  'Intelig�ncia Artificial':               { requer_evento: true  },
+  'Seguran�a T�cnica':                     { requer_evento: false },
+  'M�dias pagas (Digital)':               { requer_evento: false },
   'Congressos e Eventos':                  { requer_evento: true  },
   'Relacionamento e Brindes':              { requer_evento: true  },
   'Computadores':                          { requer_evento: false, especial: 'computador' },
 };
-const ROLES_LABEL = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
+const ROLES_LABEL = { socio:'S�cio', socio_adm:'S�cio-administrador', socio_admin:'S�cio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   INIT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { window.location.href = 'index.html'; return; }
 
-  // Busca usuário
+  // Busca usu�rio
   const { data: usr } = await sb.from('usuarios')
     .select('*').eq('auth_id', session.user.id).single();
   if (!usr) { window.location.href = 'index.html'; return; }
   G.usuario = usr;
   if (!G.usuario.auth_id) G.usuario.auth_id = session.user.id;
 
-  // Persiste sessão para shared/exp-nav.js
+  // Persiste sess�o para shared/exp-nav.js
   try {
     sessionStorage.setItem('exp_usuario', JSON.stringify(usr));
     window.dispatchEvent(new CustomEvent('exp:session-ready', { detail: usr }));
@@ -4838,20 +419,20 @@ async function init() {
     ExpNav.init({ module: 'gestao' });
   }
 
-  // Agenda room link (calendário interno)
+  // Agenda room link (calend�rio interno)
   const _al = document.getElementById('agenda-room-link'); if (_al) _al.href = EXP_ROOM_URL;
   initNavDropdown(usr.role);
 
-  // Aba sócios
+  // Aba s�cios
   if (isSocioRole(usr.role)) {
     document.querySelectorAll('.socio-only').forEach(el => el.style.display = '');
-    // Aba reclassificação visível apenas para sócio-administrador
+    // Aba reclassifica��o vis�vel apenas para s�cio-administrador
     if (['socio_adm','socio_admin'].includes((usr.role||'').toLowerCase())) {
       const tabRcl = document.getElementById('rb-tab-reclassificacao');
       if (tabRcl) tabRcl.style.display = '';
     }
   } else {
-    // Colaboradores: ocultar filtros avançados de projetos
+    // Colaboradores: ocultar filtros avan�ados de projetos
     ['fil-nucleo', 'fil-gestao', 'fil-coord'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
@@ -4863,7 +444,7 @@ async function init() {
   if (G.hasBillingAccess) {
     document.querySelectorAll('.billing-only').forEach(el => el.style.display = '');
     document.getElementById('ntab-socios').style.display = '';
-    // Billing sem role sócio: oculta sub-abas irrelevantes e ativa Faturamento
+    // Billing sem role s�cio: oculta sub-abas irrelevantes e ativa Faturamento
     if (!isSocioRole(usr.role)) {
       document.querySelectorAll('.socio-tab:not([data-panel="espelho"])').forEach(el => el.style.display = 'none');
       document.querySelectorAll('.socio-tab').forEach(b => b.classList.remove('active'));
@@ -4879,7 +460,7 @@ async function init() {
   const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
   document.getElementById('bv-hora').textContent =
     agora.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }) +
-    ' · ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    ' � ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
   document.getElementById('bv-titulo').textContent = `${saudacao}, ${usr.apelido || usr.nome.split(' ')[0]}.`;
 
   // Carrega dados base
@@ -4890,7 +471,7 @@ async function init() {
     carregarReembolsoAreas(),
   ]);
 
-  // Notificações + registro push desktop
+  // Notifica��es + registro push desktop
   iniciarNotificacoes();
   initPushDesktop();
 
@@ -4902,7 +483,7 @@ async function init() {
   G.semanaAtual = getSemanaAtual();
   renderSemana();
 
-  // Navegação
+  // Navega��o
   document.querySelectorAll('.ntab').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
@@ -4949,8 +530,8 @@ async function init() {
     if (e.key === 'Enter') adicionarTarefa();
   });
 
-  // Cascata: Cliente → Oportunidade → Produto → Etapa
- // CLIENTE → OPORTUNIDADES
+  // Cascata: Cliente ? Oportunidade ? Produto ? Etapa
+ // CLIENTE ? OPORTUNIDADES
 window.lfFiltrarOpps = function () {
   const cliId = document.getElementById('lf-cliente').value;
 
@@ -4989,7 +570,7 @@ window.lfFiltrarOpps = function () {
   selOpp.innerHTML =
     '<option value="">Selecionar oportunidade...</option>' +
     opps.map(o => {
-      const loc = o.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      const loc = o.cidade ? ` � ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
       return `<option value="${o.id}">${o.projeto || '(sem nome)'}${loc}</option>`;
     }).join('');
 
@@ -4997,7 +578,7 @@ window.lfFiltrarOpps = function () {
 };
 
 
-// OPORTUNIDADE → PRODUTOS
+// OPORTUNIDADE ? PRODUTOS
 window.lfFiltrarProdutos = function () {
   const oppId = document.getElementById('lf-oportunidade').value;
 
@@ -5021,7 +602,7 @@ window.lfFiltrarProdutos = function () {
 };
 
 
-// PRODUTO → ETAPAS
+// PRODUTO ? ETAPAS
 window.lfFiltrarEtapas = function () {
   const prodId = document.getElementById('lf-produto').value;
 
@@ -5047,9 +628,9 @@ window.lfFiltrarEtapas = function () {
   renderSugestoesSubtarefasGestao('novo').catch(() => {});
 };
 
-  // Formulário lançamento — init
+  // Formul�rio lan�amento � init
   atualizarFormLancamento();
-  G.diaSelecionado = null;  // será definido ao renderizar semana
+  G.diaSelecionado = null;  // ser� definido ao renderizar semana
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
@@ -5069,7 +650,7 @@ function onTabChange(tab) {
   }
 }
 
-// ── Sub-abas Horas ─────────────────────────────────────────
+// -- Sub-abas Horas -----------------------------------------
 function switchHorasTab(sub) {
   document.querySelectorAll('#page-horas .stab').forEach(b => b.classList.toggle('active', b.id === 'stab-horas-' + sub));
   document.querySelectorAll('#page-horas .stab-panel').forEach(p => p.classList.toggle('active', p.id === 'stp-horas-' + sub));
@@ -5079,7 +660,7 @@ function switchHorasTab(sub) {
 function onSocioPanel(panel) {
   if (panel === 'carga') carregarCarga();
   if (panel === 'carga-mensal') {
-    // Pré-seleciona o mês atual se ainda não tiver
+    // Pr�-seleciona o m�s atual se ainda n�o tiver
     const el = document.getElementById('cm-mes');
     if (el && !el.value) {
       const now = new Date();
@@ -5105,9 +686,9 @@ function onSocioPanel(panel) {
   if (panel === 'clientes') carregarClientesAdmin();
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   ENTREGAS DA SEMANA — EQUIPE (G-S1/G-S4)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   ENTREGAS DA SEMANA � EQUIPE (G-S1/G-S4)
+// ══════════════════════════════════════════════════════════
 function entregasNavSemana(d) { G.entregasOffset = (G.entregasOffset || 0) + d; carregarEntregasEquipe(); }
 function entregasNavHoje()    { G.entregasOffset = 0; carregarEntregasEquipe(); }
 
@@ -5118,7 +699,7 @@ async function carregarEntregasEquipe() {
   const fimD = new Date(fim + 'T23:59:59');
 
   const label = document.getElementById('entregas-semana-nav-label');
-  if (label) label.textContent = `${fmtDate(ini)} – ${fmtDate(fim)}`;
+  if (label) label.textContent = `${fmtDate(ini)} � ${fmtDate(fim)}`;
 
   const filNucleo  = document.getElementById('entregas-fil-nucleo')?.value  || '';
   const filStatus  = document.getElementById('entregas-fil-status')?.value  || '';
@@ -5149,15 +730,15 @@ async function carregarEntregasEquipe() {
     return;
   }
 
-  // Monta mapa: usuário → etapas (como dev ou coord)
-  const userEtapas = {}; // userId → [{etapa, papel}]
+  // Monta mapa: usu�rio ? etapas (como dev ou coord)
+  const userEtapas = {}; // userId ? [{etapa, papel}]
   etapas.forEach(e => {
     const devs = G.etapaDevs[e.id] || [];
     const resp = [...new Set([...devs, e.coordenador_id].filter(Boolean))];
     if (resp.length === 0) {
-      // sem responsável → coloca em bucket "Sem responsável"
+      // sem respons�vel ? coloca em bucket "Sem respons�vel"
       if (!userEtapas['__none']) userEtapas['__none'] = [];
-      userEtapas['__none'].push({ e, papel: '—' });
+      userEtapas['__none'].push({ e, papel: '�' });
     } else {
       resp.forEach(uid => {
         if (!userEtapas[uid]) userEtapas[uid] = [];
@@ -5168,7 +749,7 @@ async function carregarEntregasEquipe() {
     }
   });
 
-  // Ordena: sócios primeiro, depois por nome
+  // Ordena: s�cios primeiro, depois por nome
   const ordenados = G.todosUsuarios
     .filter(u => userEtapas[u.id])
     .sort((a, b) => {
@@ -5208,7 +789,7 @@ async function carregarEntregasEquipe() {
             </div>
           </div>
           <div style="flex-shrink:0;text-align:right">
-            <div style="font-size:9px;color:${atrasada?'var(--terracota)':'#888'};font-weight:${atrasada?'600':'400'};font-family:var(--font-mono);letter-spacing:.2px">${fmtDate(e.data_estimada)}${atrasada?' ⚠':''}</div>
+            <div style="font-size:9px;color:${atrasada?'var(--terracota)':'#888'};font-weight:${atrasada?'600':'400'};font-family:var(--font-mono);letter-spacing:.2px">${fmtDate(e.data_estimada)}${atrasada?' ?':''}</div>
             <span class="badge ${st.cls}" style="font-size:7px">${st.label}</span>
           </div>
         </div>`;
@@ -5219,9 +800,9 @@ async function carregarEntregasEquipe() {
         ${_avImg(u, 24, 8)}
         <div style="flex:1">
           <div style="font-size:12px;font-weight:600">${u.nome}</div>
-          <div style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||u.role} · ${concluidas}/${total} entregue${total!==1?'s':''}</div>
+          <div style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||u.role} � ${concluidas}/${total} entregue${total!==1?'s':''}</div>
         </div>
-        ${atrasadas > 0 ? `<span class="badge b-tc" style="font-size:8px">⚠ ${atrasadas} atrasada${atrasadas>1?'s':''}</span>` : ''}
+        ${atrasadas > 0 ? `<span class="badge b-tc" style="font-size:8px">? ${atrasadas} atrasada${atrasadas>1?'s':''}</span>` : ''}
       </div>
       <div style="height:4px;background:var(--cinza2);border-radius:2px;margin-bottom:10px">
         <div style="height:4px;width:${pct}%;background:${corBarra};border-radius:2px;transition:width .3s"></div>
@@ -5236,12 +817,12 @@ async function carregarEntregasEquipe() {
         const st = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
         const info = getProjetoHierarquia(e.produto_id, e.id);
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2)">
-        <span style="font-size:11px">${info.cliente} · ${info.oportunidade} <span style="font-size:9px;color:#aaa">${truncarTexto(info.etapa, 26)}</span></span>
+        <span style="font-size:11px">${info.cliente} � ${info.oportunidade} <span style="font-size:9px;color:#aaa">${truncarTexto(info.etapa, 26)}</span></span>
         <span class="badge ${st.cls}" style="font-size:7px">${st.label}</span>
       </div>`;
     }).join('');
     cards.push(`<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;padding:12px">
-      <div style="font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px">Sem responsável atribuído</div>
+      <div style="font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px">Sem respons�vel atribu�do</div>
       ${rows}
     </div>`);
   }
@@ -5252,9 +833,9 @@ async function carregarEntregasEquipe() {
 
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   DADOS BASE — CORRIGIDO
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   DADOS BASE � CORRIGIDO
+// ══════════════════════════════════════════════════════════
 async function carregarUsuarios() {
   const { data } = await sb.from('usuarios').select('*').eq('ativo', true).order('nome');
   G.todosUsuarios = data || [];
@@ -5306,8 +887,8 @@ async function carregarHorasGlobal() {
 }
 
 async function carregarProdutos() {
-  // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
-  // Tenta query completa (com colunas novas); fallback sem elas se ainda não existirem
+  // 1. Produtos j� cadastrados no m�dulo de gest�o (com opp vinculada)
+  // Tenta query completa (com colunas novas); fallback sem elas se ainda n�o existirem
   let { data: prodsGestao, error: _pgErr } = await sb.from('produtos')
     .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, sigla, cidade, uf))`)
     .order('created_at', { ascending: false });
@@ -5318,7 +899,7 @@ async function carregarProdutos() {
     prodsGestao = _pgFallback;
   }
 
-  // 2. Propostas fechadas do CRM (fonte de visualização)
+  // 2. Propostas fechadas do CRM (fonte de visualiza��o)
   const STAGES_FECHADOS = [
     'fechado_ganho','Fechado/Ganho','fechado','Fechado',
     'ganho','Ganho','won','closed_won','Fechado/ganho'
@@ -5327,19 +908,19 @@ async function carregarProdutos() {
     .select('proposal_id, parent_id, version, projeto, cliente, cidade, uf, main_nucleo, total, status')
     .in('status', STAGES_FECHADOS);
 
-  // 3. Para propostas CRM, mantém só versão mais recente de cada parent
+  // 3. Para propostas CRM, mant�m s� vers�o mais recente de cada parent
   const byParent = {};
   (proposals || []).forEach(p => {
     const key = p.parent_id || p.proposal_id;
     if (!byParent[key] || (p.version || 0) > (byParent[key].version || 0)) byParent[key] = p;
   });
 
-  // 4. IDs de propostas já importadas para gestão
+  // 4. IDs de propostas j� importadas para gest�o
   const importados = new Set(
     (prodsGestao || []).map(p => p.proposta_origem_id).filter(Boolean)
   );
 
-  // 5. Propostas CRM ainda não importadas → aparecem como "pendente importação"
+  // 5. Propostas CRM ainda n�o importadas ? aparecem como "pendente importa��o"
   const prodsVirtCrm = Object.values(byParent)
     .filter(p => !importados.has(p.parent_id || p.proposal_id))
     .map(p => ({
@@ -5356,16 +937,16 @@ async function carregarProdutos() {
       }
     }));
 
-  // 6. Filtra produtos gerenciados: em_gestao = TRUE (ou null, antes da migração SQL)
-  // Produtos com em_gestao = FALSE vieram do CRM sem oportunidade fechada → não exibir na Gestão
+  // 6. Filtra produtos gerenciados: em_gestao = TRUE (ou null, antes da migra��o SQL)
+  // Produtos com em_gestao = FALSE vieram do CRM sem oportunidade fechada ? n�o exibir na Gest�o
   const prodsAtivos = (prodsGestao || []).filter(p => p.em_gestao !== false);
 
   // Corrige mojibake em cidades/nomes vindos do banco
   const fm = s => !s ? s : s
-    .replace(/Ã§/g,'ç').replace(/Ã£/g,'ã').replace(/Ã©/g,'é').replace(/Ã³/g,'ó')
-    .replace(/Ã´/g,'ô').replace(/Ãµ/g,'õ').replace(/Ã¢/g,'â').replace(/Ã­/g,'í')
-    .replace(/Ãº/g,'ú').replace(/Ã /g,'à').replace(/Ã¡/g,'á').replace(/Ãª/g,'ê')
-    .replace(/Ã±/g,'ñ').replace(/Ã¼/g,'ü').replace(/Ã\u00a3/g,'ã');
+    .replace(/ç/g,'�').replace(/ã/g,'�').replace(/é/g,'�').replace(/ó/g,'�')
+    .replace(/ô/g,'�').replace(/õ/g,'�').replace(/â/g,'�').replace(/í/g,'�')
+    .replace(/ú/g,'�').replace(/� /g,'�').replace(/á/g,'�').replace(/ê/g,'�')
+    .replace(/ñ/g,'�').replace(/ü/g,'�').replace(/�\u00a3/g,'�');
   const fixProd = arr => (arr||[]).map(p => {
     if (p.oportunidades) {
       p.oportunidades.projeto = fm(p.oportunidades.projeto);
@@ -5404,7 +985,7 @@ async function carregarProdutos() {
     G.etapaDevs[d.etapa_id].push(d.usuario_id);
   });
 
-  // 9. Preenche selects de cliente nos forms de horas e custos (cascata: cliente → opp → produto)
+  // 9. Preenche selects de cliente nos forms de horas e custos (cascata: cliente ? opp ? produto)
   const ativos = Array.isArray(G._prodsGestao)
     ? G._prodsGestao.filter(p => p.status === 'ativo' && p.em_gestao !== false)
     : [];
@@ -5417,7 +998,7 @@ async function carregarProdutos() {
     [...clientesMap.entries()]
       .sort((a, b) => a[1].nome.localeCompare(b[1].nome, 'pt-BR'))
       .map(([id, cd]) => {
-        const loc = cd.cidade ? ` — ${cd.cidade}${cd.uf ? `/${cd.uf}` : ''}` : '';
+        const loc = cd.cidade ? ` � ${cd.cidade}${cd.uf ? `/${cd.uf}` : ''}` : '';
         return `<option value="${id}">${cd.nome}${loc}</option>`;
       }).join('');
 
@@ -5437,11 +1018,11 @@ async function carregarProdutos() {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   DASHBOARD
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ─────────────────────────────────────────────────────────────────────────────
-// AGENDA DA SEMANA — dashboard
+// ══════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
+// AGENDA DA SEMANA � dashboard
 
 
 
@@ -5449,16 +1030,16 @@ async function carregarDashboard() {
   const uid = G.usuario.id;
   const role = G.usuario.role;
 
-  // "Em desenvolvimento" = etapas onde é membro (etapa_desenvolvedores)
+  // "Em desenvolvimento" = etapas onde � membro (etapa_desenvolvedores)
   const { data: devs } = await sb.from('etapa_desenvolvedores')
     .select('etapas(produto_id)').eq('usuario_id', uid);
   const devPids = [...new Set((devs || []).map(d => d.etapas?.produto_id).filter(Boolean))];
   const meusProdutos = G._prodsGestao.filter(p => devPids.includes(p.id) && p.status === 'ativo');
 
-  // "Em coordenação" = produtos onde é coordenador_id
+  // "Em coordena��o" = produtos onde � coordenador_id
   const coordProds = G._prodsGestao.filter(p => p.coordenador_id === uid && p.status === 'ativo');
 
-  // Stats de projetos do escritório (todos)
+  // Stats de projetos do escrit�rio (todos)
   const todos = G._prodsGestao;
   const setStatV = (base, val) => {
     const el = document.getElementById(base); if (el) el.textContent = val;
@@ -5482,7 +1063,7 @@ async function carregarDashboard() {
   setStatV('st-horas', horasH);
   const subV = document.getElementById('st-horas-sub-v'); if (subV) subV.textContent = 'de 40h';
 
-  // S4-04: horas realizadas por produto (todos os lançamentos de todos os usuários)
+  // S4-04: horas realizadas por produto (todos os lan�amentos de todos os usu�rios)
   const pidsAtivos = meusProdutos.map(p => p.id);
   let horasPorProd = {};
   if (pidsAtivos.length) {
@@ -5512,7 +1093,7 @@ async function carregarDashboard() {
 function renderDashProjetos(prods, horasPorProd = {}) {
   const wrap = document.getElementById('dash-projetos');
   if (!prods.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhum projeto ativo atribuído a você.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhum projeto ativo atribu�do a voc�.</div>';
     return;
   }
   const ordenados = prods.slice().sort((a, b) => {
@@ -5540,7 +1121,7 @@ function renderDashProjetos(prods, horasPorProd = {}) {
     const produtoIdJs = _sqN(p.id);
     const etapaIdJs = etapaAtiva ? _sqN(etapaAtiva.id) : null;
     const projetoDisp = _escN(opp?.projeto || p.nome);
-    const clienteDisp = _escN(cli?.nome || '—');
+    const clienteDisp = _escN(cli?.nome || '�');
     const produtoDisp = _escN(p.nome || '');
     const coordNomeDisp = _escN(coord?.nome || '');
     const coordIniciaisDisp = _escN(coord?.iniciais || '');
@@ -5553,7 +1134,7 @@ function renderDashProjetos(prods, horasPorProd = {}) {
         <span class="badge ${nc.cls}">${nucleoLabelDisp}</span>
       </div>
       <div class="proj-card-body">
-        <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
+        <div class="proj-card-cliente">${produtoDisp} � ${clienteDisp}</div>
         <div class="proj-card-mid">
           ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
           ${dataChip(etapaAtiva?.data_estimada)}
@@ -5567,14 +1148,14 @@ function renderDashProjetos(prods, horasPorProd = {}) {
             ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : ''}
           </div>
           <div class="proj-card-acoes" onclick="event.stopPropagation()">
-            ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao(${etapaIdJs})">Solicitar revisão</button>` : ''}
+            ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao(${etapaIdJs})">Solicitar revis�o</button>` : ''}
             ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
           </div>
         </div>
       </div>
     </div>`;
   }).join('');
-  // contador é atualizado em renderTarefas
+  // contador � atualizado em renderTarefas
 }
 
 function renderDashCoord(prods, horasPorProd = {}) {
@@ -5600,7 +1181,7 @@ function renderDashCoord(prods, horasPorProd = {}) {
     const produtoIdJs = _sqN(p.id);
     const etapaIdJs = etapaAtiva ? _sqN(etapaAtiva.id) : null;
     const projetoDisp = _escN(opp?.projeto || p.nome);
-    const clienteDisp = _escN(cli?.nome || '—');
+    const clienteDisp = _escN(cli?.nome || '�');
     const produtoDisp = _escN(p.nome || '');
     const etapaNomeDisp = _escN(etapaAtiva?.nome || '');
     const nucleoLabelDisp = _escN(nc.label);
@@ -5610,10 +1191,10 @@ function renderDashCoord(prods, horasPorProd = {}) {
         <span class="badge ${nc.cls}">${nucleoLabelDisp}</span>
       </div>
       <div class="proj-card-body">
-        <div class="proj-card-cliente">${produtoDisp} · ${clienteDisp}</div>
+        <div class="proj-card-cliente">${produtoDisp} � ${clienteDisp}</div>
         <div class="proj-card-mid">
           ${etapaAtiva ? `<span class="badge ${st?.cls || 'b-gr'}">${etapaNomeDisp}</span>` : ''}
-          ${emRevisao ? `<span class="badge b-am" onclick="event.stopPropagation();abrirProduto(${produtoIdJs},'mp-chk-rev')" style="cursor:pointer" title="Abrir revisões">${emRevisao} em revisão</span>` : ''}
+          ${emRevisao ? `<span class="badge b-am" onclick="event.stopPropagation();abrirProduto(${produtoIdJs},'mp-chk-rev')" style="cursor:pointer" title="Abrir revis�es">${emRevisao} em revis�o</span>` : ''}
           ${dataChip(etapaAtiva?.data_estimada)}
         </div>
         ${hStr ? `<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;font-size:10px;color:#888">
@@ -5631,12 +1212,12 @@ function renderDashCoord(prods, horasPorProd = {}) {
   }).join('');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   TAREFAS LIVRES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 function truncarTexto(txt, max = 28) {
-  if (!txt) return '—';
-  return txt.length > max ? txt.slice(0, Math.max(0, max - 1)).trimEnd() + '…' : txt;
+  if (!txt) return '�';
+  return txt.length > max ? txt.slice(0, Math.max(0, max - 1)).trimEnd() + '�' : txt;
 }
 
 function getProjetoHierarquia(prodId, etapaId = null) {
@@ -5649,7 +1230,7 @@ function getProjetoHierarquia(prodId, etapaId = null) {
   return {
     cliente: cli?.nome || 'Sem cliente',
     oportunidade: opp?.projeto || prod?.nome || 'Sem oportunidade',
-    produto: prod?.nome || '—',
+    produto: prod?.nome || '�',
     etapa: etapa?.nome || 'Sem etapa',
     prod,
     opp,
@@ -5662,15 +1243,15 @@ function getProjetoHierarquiaLinha(prodId, etapaId = null, maxEtapa = 28) {
   const info = getProjetoHierarquia(prodId, etapaId);
   return {
     ...info,
-    principal: `${info.cliente} · ${info.oportunidade} · ${truncarTexto(info.etapa, maxEtapa)}`,
-    completa: `${info.cliente} · ${info.oportunidade} · ${info.etapa}`,
+    principal: `${info.cliente} � ${info.oportunidade} � ${truncarTexto(info.etapa, maxEtapa)}`,
+    completa: `${info.cliente} � ${info.oportunidade} � ${info.etapa}`,
   };
 }
 
 function getRotuloAtividadeLancamento(l) {
-  if (l.tipo !== 'projeto') return l.subtipo || l.tipo || '—';
+  if (l.tipo !== 'projeto') return l.subtipo || l.tipo || '�';
   const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
-  return `${info.oportunidade} · ${info.etapa}`;
+  return `${info.oportunidade} � ${info.etapa}`;
 }
 
 function normBusca(txt) {
@@ -5719,7 +1300,7 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
   const TIPO_LABEL = { projeto:'Proj.', organizacao:'Org.', sociedade:'Soc.' };
   const totalPendentes = pendentes.length + acompanhando.filter(t => !t.concluida).length;
 
-  // Cache para edição inline
+  // Cache para edi��o inline
   G._tarefasCache = {};
   [...pendentes, ...acompanhando].forEach(t => { G._tarefasCache[t.id] = t; });
   const stEl = document.getElementById('st-tasks');
@@ -5743,10 +1324,10 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
       : null;
     const acompanhada = modo === 'acompanhando';
     const prazoHtml = t.data_limite
-      ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' ⚠':''}</span>`
+      ? `<span class="task-prazo ${vencida?'vencida':ehHoje?'hoje':''}">${fmtDate(t.data_limite)}${vencida?' ?':''}</span>`
       : '';
     const deHtml = criador
-      ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribuída por ${_escN(criador.nome||'')}">${_escN(criador.iniciais||'')}</div>`
+      ? `<div class="task-de-chip" style="background:${criador.cor||'#888'}" title="Atribu�da por ${_escN(criador.nome||'')}">${_escN(criador.iniciais||'')}</div>`
       : '';
     const deLabel = criador ? `<span style="font-size:9px;color:#bbb">de ${_escN((criador.nome||'').split(' ')[0]||'')}</span>` : '';
     const taskIdJs = _sqN(t.id);
@@ -5758,9 +1339,9 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
         ? `<div class="task-de-chip" style="background:${destino.cor||'#888'};width:18px;height:18px;font-size:8px" title="${_escN(destino.nome||'')}">${_escN(destino.iniciais||'')}</div>
            <span style="font-size:9px;color:#888">para ${_escN((destino.nome||'').split(' ')[0]||'')}</span>`
         : '';
-      const statusChip = `<span class="task-status-chip ${t.concluida ? 'ok' : 'pend'}">${t.concluida ? 'Concluída' : 'Pendente'}</span>`;
+      const statusChip = `<span class="task-status-chip ${t.concluida ? 'ok' : 'pend'}">${t.concluida ? 'Conclu�da' : 'Pendente'}</span>`;
       return `<div class="task-item">
-        <div class="task-check" style="border-color:#ddd;color:#ccc;font-size:10px;cursor:pointer" onclick="confirmarExcluirTarefa(${taskIdJs})" title="Excluir tarefa">✕</div>
+        <div class="task-check" style="border-color:#ddd;color:#ccc;font-size:10px;cursor:pointer" onclick="confirmarExcluirTarefa(${taskIdJs})" title="Excluir tarefa">?</div>
         <div style="flex:1;min-width:0">
           <div class="task-desc ${t.concluida?'done':''}">${descDisp}</div>
           <div class="task-meta" style="justify-content:space-between;flex-wrap:nowrap">
@@ -5774,7 +1355,7 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
             </div>
           </div>
         </div>
-        <button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">✎</button>
+        <button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">?</button>
       </div>`;
     }
 
@@ -5791,20 +1372,20 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
           ${prazoHtml ? `<div style="flex-shrink:0;margin-left:auto">${prazoHtml}</div>` : ''}
         </div>
       </div>
-      ${podeEditar ? `<button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">✎</button>` : ''}
+      ${podeEditar ? `<button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">?</button>` : ''}
     </div>`;
   }).join('');
 
   const secoes = [];
   if (pendentes.length) {
     secoes.push(`
-      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:6px">Pendentes para você</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin-bottom:6px">Pendentes para voc�</div>
       ${renderRows(pendentes, 'acao')}
     `);
   }
   if (acompanhando.length) {
     secoes.push(`
-      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin:${pendentes.length ? '10px' : '0'} 0 6px">Atribuídas por você</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin:${pendentes.length ? '10px' : '0'} 0 6px">Atribu�das por voc�</div>
       ${renderRows(acompanhando, 'acompanhando')}
     `);
   }
@@ -5838,7 +1419,7 @@ function abrirDropdownAtribuir(btn) {
   drop.style.left = rect.left + 'px';
   drop.style.top  = '-9999px'; // posiciona fora da tela para medir altura
   if (!outros.length) {
-    drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:#aaa">Nenhum usuário</div>';
+    drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:#aaa">Nenhum usu�rio</div>';
   } else {
     drop.innerHTML = outros.map((u, i) => {
       const nome = u.apelido || u.nome.split(' ')[0];
@@ -5857,7 +1438,7 @@ function abrirDropdownAtribuir(btn) {
     };
   }
   document.body.appendChild(drop);
-  // Abre para cima, calculando após render para conhecer a altura real
+  // Abre para cima, calculando ap�s render para conhecer a altura real
   const dropH = drop.offsetHeight;
   const topAcima = rect.top - dropH - 6;
   drop.style.top = (topAcima >= 8 ? topAcima : rect.bottom + 4) + 'px';
@@ -5886,9 +1467,9 @@ async function atribuirParaPessoa(userId, primeiroNome) {
   document.getElementById('task-nova-desc').value = '';
   document.getElementById('task-nova-data').value = '';
   carregarTarefas();
-  toast('Tarefa atribuída para ' + primeiroNome);
+  toast('Tarefa atribu�da para ' + primeiroNome);
   criarNotificacao(userId, 'tarefa',
-    `${G.usuario.nome.split(' ')[0]} atribuiu uma tarefa para você`,
+    `${G.usuario.nome.split(' ')[0]} atribuiu uma tarefa para voc�`,
     desc, { tipo: 'tarefa' });
 }
 
@@ -5909,7 +1490,7 @@ async function confirmarAtribuirTarefa() {
   const tipo = document.getElementById('at-tipo').value;
   const data_inicio = document.getElementById('at-inicio').value || null;
   const data_limite = document.getElementById('at-data').value || null;
-  if (!desc) { toast('Informe a descrição'); return; }
+  if (!desc) { toast('Informe a descri��o'); return; }
   if (!para) { toast('Selecione a pessoa'); return; }
   const { error } = await sb.from('tarefas_livres').insert({
     usuario_id: para, atribuido_para: para, criado_por: G.usuario.id,
@@ -5921,10 +1502,10 @@ async function confirmarAtribuirTarefa() {
   document.getElementById('task-nova-data').value = '';
   carregarTarefas();
   const dest = G.todosUsuarios.find(u => u.id === para);
-  toast('Tarefa atribuída para ' + (dest?.nome.split(' ')[0] || 'destinatário'));
-  // Notifica o destinatário
+  toast('Tarefa atribu�da para ' + (dest?.nome.split(' ')[0] || 'destinat�rio'));
+  // Notifica o destinat�rio
   criarNotificacao(para, 'tarefa',
-    `${G.usuario.nome.split(' ')[0]} atribuiu uma tarefa para você`,
+    `${G.usuario.nome.split(' ')[0]} atribuiu uma tarefa para voc�`,
     desc, { tipo: 'tarefa' });
 }
 
@@ -5938,7 +1519,7 @@ async function toggleTarefa(id, atual) {
   carregarTarefas();
 }
 
-// ── Histórico de tarefas (últimas 20 atividades + excluídas recuperáveis) ──
+// -- Hist�rico de tarefas (�ltimas 20 atividades + exclu�das recuper�veis) --
 const TASK_HIST_KEY = 'exp_task_hist';
 const TASK_HIST_MAX = 20;
 
@@ -5970,13 +1551,13 @@ function toggleTaskRecentesPop(e) {
 
 function renderTaskRecentesPop(pop) {
   const hist = (() => { try { return JSON.parse(localStorage.getItem(TASK_HIST_KEY) || '[]'); } catch { return []; } })();
-  const EVENTO_LABEL = { criada:'criada', concluida:'concluída', excluida:'excluída', editada:'editada' };
+  const EVENTO_LABEL = { criada:'criada', concluida:'conclu�da', excluida:'exclu�da', editada:'editada' };
   const fmtTs = ts => {
     const d = new Date(ts);
     return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   };
   if (!hist.length) {
-    pop.innerHTML = '<div class="task-rec-title">Histórico</div><div class="task-rec-empty">Nenhuma atividade recente.</div>';
+    pop.innerHTML = '<div class="task-rec-title">Hist�rico</div><div class="task-rec-empty">Nenhuma atividade recente.</div>';
     return;
   }
   pop.innerHTML = '<div class="task-rec-title">Atividade recente</div>'
@@ -5987,7 +1568,7 @@ function renderTaskRecentesPop(pop) {
         return `<div class="task-rec-item">
           <div class="task-rec-desc ${h.concluida ? 'done' : ''}" title="${_escN(h.descricao)}">
             ${_escN(h.descricao)}
-            <div style="font-size:8px;color:#bbb;margin-top:2px">${EVENTO_LABEL[h.evento]||h.evento} · ${fmtTs(h.ts)}</div>
+            <div style="font-size:8px;color:#bbb;margin-top:2px">${EVENTO_LABEL[h.evento]||h.evento} � ${fmtTs(h.ts)}</div>
           </div>
           ${restoreBtn}
         </div>`;
@@ -6002,7 +1583,7 @@ async function restaurarTarefa(histIdx) {
   try {
     const { error } = await sb.from('tarefas_livres').insert({ ...resto, concluida: false, concluida_em: null });
     if (error) { toast('Erro ao restaurar: ' + error.message); return; }
-    // Remove do histórico após restaurar
+    // Remove do hist�rico ap�s restaurar
     hist.splice(histIdx, 1);
     localStorage.setItem(TASK_HIST_KEY, JSON.stringify(hist));
     toast('Tarefa restaurada');
@@ -6016,7 +1597,7 @@ function confirmarExcluirTarefa(id) {
   const t = G._tarefasCache?.[id];
   abrirPopupConfirm(
     'Excluir tarefa?',
-    'Esta tarefa atribuída será removida permanentemente.',
+    'Esta tarefa atribu�da ser� removida permanentemente.',
     async () => {
       if (t) _taskHistSalvar(t, 'excluida');
       await sb.from('tarefas_livres').delete().eq('id', id);
@@ -6044,7 +1625,7 @@ function abrirEditarTarefa(id) {
       <div style="font-size:13px;font-weight:700;color:var(--grafite);margin-bottom:16px">Editar tarefa</div>
 
       <div style="margin-bottom:12px">
-        <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:5px">Descrição</label>
+        <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:5px">Descri��o</label>
         <textarea id="tarefa-edit-desc" rows="3"
           style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;font-size:12px;font-family:var(--font-ui);resize:vertical;background:var(--branco);color:var(--grafite);outline:none;transition:border-color .12s"
           onfocus="this.style.borderColor='var(--azul)'" onblur="this.style.borderColor='var(--cinza)'"
@@ -6057,7 +1638,7 @@ function abrirEditarTarefa(id) {
           style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);background:var(--branco);color:var(--grafite);outline:none;transition:border-color .12s"
           onfocus="this.style.borderColor='var(--azul)'" onblur="this.style.borderColor='var(--cinza)'"
         >
-        ${dataVal ? `<button onclick="document.getElementById('tarefa-edit-data').value=''" style="margin-top:5px;background:none;border:none;font-size:9px;color:#bbb;cursor:pointer;padding:0;font-family:var(--font-ui)">✕ Limpar data</button>` : ''}
+        ${dataVal ? `<button onclick="document.getElementById('tarefa-edit-data').value=''" style="margin-top:5px;background:none;border:none;font-size:9px;color:#bbb;cursor:pointer;padding:0;font-family:var(--font-ui)">? Limpar data</button>` : ''}
       </div>
 
       <div style="display:flex;justify-content:flex-end;gap:8px">
@@ -6079,10 +1660,10 @@ function abrirEditarTarefa(id) {
 async function salvarEditarTarefa(id) {
   const desc  = document.getElementById('tarefa-edit-desc')?.value.trim();
   const data_limite = document.getElementById('tarefa-edit-data')?.value || null;
-  if (!desc) { toast('A descrição não pode ser vazia.'); return; }
+  if (!desc) { toast('A descri��o n�o pode ser vazia.'); return; }
 
   const btn = document.querySelector('#tarefa-edit-overlay button:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando�'; }
 
   const { error } = await sb.from('tarefas_livres').update({ descricao: desc, data_limite }).eq('id', id);
   if (error) {
@@ -6122,9 +1703,9 @@ function abrirPopupConfirm(titulo, mensagem, onConfirm, btnLabel = 'Excluir') {
   popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   PROJETOS — LISTA
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   PROJETOS � LISTA
+// ══════════════════════════════════════════════════════════
 function setProjetosView(v) {
   document.getElementById('pvt-lista').classList.toggle('active', v === 'lista');
   document.getElementById('pvt-gantt').classList.toggle('active', v === 'gantt');
@@ -6143,7 +1724,7 @@ function filtrarProjetos() {
   else renderListaProjetos();
 }
 
-// ── Tint de fundo por núcleo para cards "envolvido" ────────────────────────────
+// -- Tint de fundo por n�cleo para cards "envolvido" ----------------------------
 const PK_NUCLEO_TINT = {
   urbanismo:    'rgba(82,128,202,.09)',
   paisagismo:   'rgba(69,134,93,.09)',
@@ -6213,9 +1794,9 @@ function renderKanbanProjetos() {
   const prods = pkFiltrarProds();
 
   const cols = {
-    fila:      { title: 'Fila (não iniciados)', cor: '#aaa',  items: [] },
+    fila:      { title: 'Fila (n�o iniciados)', cor: '#aaa',  items: [] },
     andamento: { title: 'Em andamento', cor: '#4A90D9',       items: [] },
-    revisao:   { title: 'Em revisão',   cor: '#D19931',       items: [] },
+    revisao:   { title: 'Em revis�o',   cor: '#D19931',       items: [] },
     encerrado: { title: 'Encerrado',    cor: 'var(--verde)',  items: [] },
   };
 
@@ -6287,7 +1868,7 @@ function renderKanbanProjetos() {
         <div class="pk-col-cnt">${col.items.length}</div>
       </div>
       <div class="pk-items">
-        ${items || `<div class="pk-empty">—</div>`}
+        ${items || `<div class="pk-empty">�</div>`}
       </div>
     </div>`;
   }).join('');
@@ -6299,7 +1880,7 @@ function renderEntregasSemana() {
   const iniD = new Date(ini + 'T00:00:00');
   const fimD = new Date(fim + 'T23:59:59');
 
-  // Etapas com data_estimada na semana atual (não encerradas)
+  // Etapas com data_estimada na semana atual (n�o encerradas)
   const prodAtivos = new Set(G._prodsGestao.filter(p => p.status !== 'encerrado').map(p => p.id));
   const etapas = G.todasEtapas.filter(e => {
     if (!e.data_estimada || !prodAtivos.has(e.produto_id)) return false;
@@ -6309,14 +1890,14 @@ function renderEntregasSemana() {
 
   const wrap = document.getElementById('entregas-semana-lista');
   const label = document.getElementById('entregas-semana-label');
-  if (label) label.textContent = ini === fim ? ini : `${fmtDate(ini)} – ${fmtDate(fim)}`;
+  if (label) label.textContent = ini === fim ? ini : `${fmtDate(ini)} � ${fmtDate(fim)}`;
 
   if (!etapas.length) {
     wrap.innerHTML = '<div style="padding:10px 0;color:#bbb;font-size:11px;text-align:center">Nenhuma entrega prevista esta semana</div>';
     return;
   }
 
-  // Ordenar: primeiro as do usuário atual, depois por data
+  // Ordenar: primeiro as do usu�rio atual, depois por data
   etapas.sort((a, b) => {
     const aMeu = (G.etapaDevs[a.id] || []).includes(uid) || a.coordenador_id === uid ? 0 : 1;
     const bMeu = (G.etapaDevs[b.id] || []).includes(uid) || b.coordenador_id === uid ? 0 : 1;
@@ -6402,14 +1983,14 @@ function renderListaProjetos() {
               <div class="prod-row-nome" title="${nomeProdDisp}">${nomeProdDisp}${p._crm ? ' <span style="font-size:9px;color:#bbb;font-weight:400">(CRM)</span>' : ''}</div>
               <div class="prod-row-tipo"><span class="badge ${nc.cls}">${nucleoLabelDisp}</span>${p.em_gestao === false ? ` <span class="badge b-gr">Oculto</span>` : ''}</div>
               <div class="prod-row-status"><span class="badge ${stProd.cls}">${stProd.label}</span></div>
-              <div class="prod-row-etapa">${etapaAtiva ? etapaNomeDisp : '—'}</div>
+              <div class="prod-row-etapa">${etapaAtiva ? etapaNomeDisp : '�'}</div>
               <div class="prod-row-coord">
-                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : '—'}
+                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:7px" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : '�'}
               </div>
               <div class="prod-row-datas">
-                ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '—'}
+                ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '�'}
               </div>
-              <div class="prod-row-horas">${hProd > 0 ? fmtH(hProd) : '—'}</div>
+              <div class="prod-row-horas">${hProd > 0 ? fmtH(hProd) : '�'}</div>
             </div>`;
           }).join('')}
         </div>
@@ -6419,9 +2000,9 @@ function renderListaProjetos() {
     }).join('');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   GANTT — CORRIGIDO (com avatares coord+devs)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   GANTT � CORRIGIDO (com avatares coord+devs)
+// ══════════════════════════════════════════════════════════
 const SEMANAS_VIS = 6;
 
 function ganttNavegar(d) { G.ganttOffset += d; renderGantt(); }
@@ -6441,7 +2022,7 @@ function renderGantt() {
   }
 
   document.getElementById('gantt-periodo').textContent =
-    fmtDate(semanas[0].ini) + ' — ' + fmtDate(semanas[semanas.length-1].fim);
+    fmtDate(semanas[0].ini) + ' � ' + fmtDate(semanas[semanas.length-1].fim);
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   document.getElementById('gantt-thead').innerHTML = `<tr>
@@ -6484,7 +2065,7 @@ function renderGantt() {
       const nc = NUCLEO_COR[nucleo] || { cls:'b-gr', bar:'gb-andamento', label: nucleo };
       const pausado = p.status === 'pausado';
 
-      // Devs únicos de todas as etapas deste produto
+      // Devs �nicos de todas as etapas deste produto
       const devIds = new Set();
       etapas.forEach(e => (G.etapaDevs[e.id] || []).forEach(id => devIds.add(id)));
       const devs = [...devIds]
@@ -6492,7 +2073,7 @@ function renderGantt() {
         .filter(Boolean)
         .filter(u => u.id !== coord?.id);
 
-      // Bolinhas: devs primeiro, coord à direita (máx 4 total). Coord fica mais à direita.
+      // Bolinhas: devs primeiro, coord � direita (m�x 4 total). Coord fica mais � direita.
       const todos = [...devs.slice(0, 3), coord].filter(Boolean);
       const avsHtml = todos.map(u =>
         `<div class="gantt-av" style="background:${u.cor||'#888'};${u.id===coord?.id?'border-color:#aaa':''}" title="${_escAttrN(u.nome)} (${u.id===coord?.id?'coord':'dev'})">${_escN(u.iniciais)}</div>`
@@ -6552,10 +2133,10 @@ function renderGantt() {
 
 function showGanttTooltip(event, prod, etapa, status, data, dias) {
   const tt = document.getElementById('gantt-tooltip');
-  document.getElementById('gt-nome').textContent = prod + ' · ' + etapa;
+  document.getElementById('gt-nome').textContent = prod + ' � ' + etapa;
   const diasN = parseInt(dias);
   const diasTxt = isNaN(diasN) ? '' : diasN < 0
-    ? `⚠ ${Math.abs(diasN)} dias em atraso`
+    ? `? ${Math.abs(diasN)} dias em atraso`
     : diasN === 0 ? 'Entrega hoje'
     : `${diasN} dias restantes`;
   document.getElementById('gt-info').innerHTML = `Status: ${status}<br>Estimado: ${data}<br>${diasTxt}`;
@@ -6567,15 +2148,15 @@ function hideGanttTooltip() {
   document.getElementById('gantt-tooltip').classList.remove('show');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   HORAS — CORRIGIDO
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   HORAS � CORRIGIDO
+// ══════════════════════════════════════════════════════════
 function getSemanaAtual() { return { offset: 0 }; }
 function navegarSemana(d) { G.semanaOffset += d; G.diaSelecionado = null; renderSemana(); }
 function semanaHoje()     { G.semanaOffset = 0;  G.diaSelecionado = null; renderSemana(); }
 
-// Retorna o índice 0-6 (seg→dom) de um lançamento dentro dos dias da semana.
-// Usa data_lancamento como fonte primária (sempre confiável); dia_semana como fallback.
+// Retorna o �ndice 0-6 (seg?dom) de um lan�amento dentro dos dias da semana.
+// Usa data_lancamento como fonte prim�ria (sempre confi�vel); dia_semana como fallback.
 function getLancIdx(l, dias) {
   const iso = l.data_lancamento?.slice(0, 10);
   if (iso) {
@@ -6585,7 +2166,7 @@ function getLancIdx(l, dias) {
   return (parseInt(l.dia_semana) || 1) - 1;
 }
 
-// Retorna array de 7 Date (seg→dom) para o offset dado
+// Retorna array de 7 Date (seg?dom) para o offset dado
 function getDiasSemana(offset) {
   const { ini } = semanaRangeOffset(offset);
   const d0 = new Date(ini + 'T12:00:00');
@@ -6598,17 +2179,17 @@ function renderDiaSelector(lancs) {
   const wrap = document.getElementById('dia-selector');
   if (!wrap) return;
   const dias = getDiasSemana(G.semanaOffset);
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','S�b','Dom'];
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-  // Horas por dia para mostrar no botão
+  // Horas por dia para mostrar no bot�o
   const hPorDia = Array(7).fill(0);
   (lancs || []).forEach(l => {
     const idx = getLancIdx(l, dias);
     if (idx >= 0 && idx < 7) hPorDia[idx] += diffHoras(l.hora_inicio, l.hora_fim);
   });
 
-  // Auto-seleciona hoje se não houver seleção
+  // Auto-seleciona hoje se n�o houver sele��o
   if (G.diaSelecionado === null || G.diaSelecionado === undefined) {
     const todayISO = hoje.toISOString().split('T')[0];
     const idx = dias.findIndex(d => d.toISOString().split('T')[0] === todayISO);
@@ -6665,7 +2246,7 @@ async function renderSemana() {
     if (custoForm) custoForm.style.display = 'block';
     if (finWrap)   finWrap.style.display   = 'block';
     if (btnDesbloquearWrap) btnDesbloquearWrap.style.display = 'none';
-    // Pré-preenche data do custo com hoje
+    // Pr�-preenche data do custo com hoje
     const cfDataEl = document.getElementById('cf-data');
     if (cfDataEl && !cfDataEl.value) {
       cfDataEl.value = new Date().toISOString().split('T')[0];
@@ -6696,7 +2277,7 @@ function renderCalendarioSemana(lancs) {
   if (!wrap) return;
   const dias = getDiasSemana(G.semanaOffset);
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','S�b','Dom'];
   const COR_CLS = { projeto:'cb-projeto', organizacao:'cb-organizacao', sociedade:'cb-sociedade' };
 
   const hPorDia = Array(7).fill(0);
@@ -6714,7 +2295,7 @@ function renderCalendarioSemana(lancs) {
   const porTipo = {projeto:0, organizacao:0, sociedade:0};
   lancs.forEach(l => { const d = diffHoras(l.hora_inicio,l.hora_fim); if (l.tipo in porTipo) porTipo[l.tipo] += d; });
 
-  // Faixa horária: 0h–24h, slots de 30min (altura 26px)
+  // Faixa hor�ria: 0h�24h, slots de 30min (altura 26px)
   const HORA_INI = 0, HORA_FIM = 24, SLOT_H = 26;
   const SLOTS = (HORA_FIM - HORA_INI) * 2;
 
@@ -6730,13 +2311,13 @@ function renderCalendarioSemana(lancs) {
         const mesdia = `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const anivs  = (G.todosUsuarios||[]).filter(u => u.data_aniversario && u.data_aniversario.slice(5,10) === mesdia);
         const anivHtml = anivs.length
-          ? `<div class="cal-aniv-wrap">${anivs.map(u=>`<div class="cal-aniv">🎂 ${u.nome.split(' ')[0]}</div>`).join('')}</div>`
+          ? `<div class="cal-aniv-wrap">${anivs.map(u=>`<div class="cal-aniv">?? ${u.nome.split(' ')[0]}</div>`).join('')}</div>`
           : '';
         return `<div class="cal-dia-header ${fds?'fim-semana':''} ${isHoje?'hoje':''} ${hPorDia[i]>0?'tem-horas':''}"
           onclick="selecionarDia(${i})">
           <div class="cal-dia-nome">${NOMES[i]}</div>
           <div class="cal-dia-num">${d.getDate()}</div>
-          <div class="cal-dia-total">${hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·'}</div>
+          <div class="cal-dia-total">${hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '�'}</div>
           ${anivHtml}
         </div>`;
       }).join('')}
@@ -6770,8 +2351,8 @@ function renderCalendarioSemana(lancs) {
         const linha1 = l.tipo === 'projeto' ? projetoInfo.oportunidade : (l.subtipo || l.tipo);
         const linha2 = l.tipo === 'projeto' ? projetoInfo.etapa : '';
         const titleTxt = l.tipo === 'projeto'
-          ? `${projetoInfo.cliente} · ${projetoInfo.oportunidade} · ${projetoInfo.etapa} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' · Semana bloqueada' : ''}`
-          : `${linha1} ${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' · Semana bloqueada' : ''}`;
+          ? `${projetoInfo.cliente} � ${projetoInfo.oportunidade} � ${projetoInfo.etapa} ${l.hora_inicio?.slice(0,5)}�${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' � Semana bloqueada' : ''}`
+          : `${linha1} ${l.hora_inicio?.slice(0,5)}�${l.hora_fim?.slice(0,5)} (${fmtH(diffHoras(l.hora_inicio,l.hora_fim))})${G._semanaTravada ? ' � Semana bloqueada' : ''}`;
         const acao = G._semanaTravada ? '' : `onclick="event.stopPropagation();abrirEditarLancamento('${l.id}')"`;
         blocoHtml += `<div class="cal-bloco ${cls}"
           style="top:${topOff}px;height:${height}px"
@@ -6786,12 +2367,12 @@ function renderCalendarioSemana(lancs) {
   }
   html += `</div></div>`;
 
-  // Rodapé: totais por dia
+  // Rodap�: totais por dia
   html += `<div class="cal-totais-row">
     <div class="cal-total-label">Total</div>
     ${hPorDia.map((h, i) => {
       const fds = i >= 5;
-      return `<div class="cal-total-dia ${h===0?'zero':''} ${fds?'fim-semana':''}">${h>0?fmtH(h):'—'}</div>`;
+      return `<div class="cal-total-dia ${h===0?'zero':''} ${fds?'fim-semana':''}">${h>0?fmtH(h):'�'}</div>`;
     }).join('')}
   </div>`;
 
@@ -6806,7 +2387,7 @@ function renderCalendarioSemana(lancs) {
       <div class="cal-meta-bar-wrap">
         <div class="cal-meta-bar ${totalSemana>40?'tc':totalSemana>32?'am':''}" style="width:${pct.toFixed(1)}%"></div>
       </div>
-      <div class="cal-meta-txt">${totalSemana > 0 ? `${(40 - Math.min(totalSemana,40)).toFixed(1).replace('.',',')}h restantes` : 'Nenhuma hora lançada'}</div>
+      <div class="cal-meta-txt">${totalSemana > 0 ? `${(40 - Math.min(totalSemana,40)).toFixed(1).replace('.',',')}h restantes` : 'Nenhuma hora lan�ada'}</div>
     </div>
     <div class="cal-breakdown">
       <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div>Proj: ${fmtH(porTipo.projeto)}${pctTipo('projeto')>0?` <span style="color:#bbb">(${pctTipo('projeto')}%)</span>`:''}</div>
@@ -6827,10 +2408,10 @@ function renderCalendarioSemana(lancs) {
 function renderLancamentos(lancs) {
   const wrap = document.getElementById('lanc-lista-wrap');
   if (!lancs.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhum lançamento nesta semana.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhum lan�amento nesta semana.</div>';
     return;
   }
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','S�b','Dom'];
   const COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
   const dias = getDiasSemana(G.semanaOffset);
 
@@ -6841,7 +2422,7 @@ function renderLancamentos(lancs) {
     if (idx >= 0 && idx < 7) lancPorDia[idx].push(l);
   });
 
-  // Detecta sobreposições em um array já ordenado por hora_inicio
+  // Detecta sobreposi��es em um array j� ordenado por hora_inicio
   function detectarSobrepostos(arr) {
     const sobrepostos = new Set();
     for (let a = 0; a < arr.length; a++) {
@@ -6870,28 +2451,28 @@ function renderLancamentos(lancs) {
       if (l.tipo === 'projeto') {
         const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
         descMain = info.cliente;
-        descSub = [info.oportunidade, info.etapa, l.descricao].filter(Boolean).join(' · ');
+        descSub = [info.oportunidade, info.etapa, l.descricao].filter(Boolean).join(' � ');
       } else {
-        const TIPO_PT = { organizacao: 'Organização', sociedade: 'Sociedade', gestao: 'Gestão' };
+        const TIPO_PT = { organizacao: 'Organiza��o', sociedade: 'Sociedade', gestao: 'Gest�o' };
         descMain = l.subtipo || TIPO_PT[l.tipo] || l.tipo;
         descSub = l.descricao || '';
       }
       const incompleto = l.tipo === 'projeto' && (!l.produto_id || !l.etapa_id);
       let alertas = '';
-      if (sobreposto) alertas += `<span title="Horário sobrepõe outro lançamento — verifique e corrija" style="color:#C0392B;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`;
-      else if (incompleto) alertas += `<span title="${!l.produto_id ? 'Produto não definido' : 'Etapa não definida'} — clique para corrigir" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`;
+      if (sobreposto) alertas += `<span title="Hor�rio sobrep�e outro lan�amento � verifique e corrija" style="color:#C0392B;font-size:11px;flex-shrink:0;cursor:default">?</span>`;
+      else if (incompleto) alertas += `<span title="${!l.produto_id ? 'Produto n�o definido' : 'Etapa n�o definida'} � clique para corrigir" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">?</span>`;
       const lancClick = G._semanaTravada ? '' : `onclick="abrirEditarLancamento('${l.id}')"`;
-      const lancTitle = G._semanaTravada ? 'title="Semana bloqueada"' : `title="${sobreposto ? 'Sobreposição de horário — clique para corrigir' : 'Clique para editar'}"`;
+      const lancTitle = G._semanaTravada ? 'title="Semana bloqueada"' : `title="${sobreposto ? 'Sobreposi��o de hor�rio � clique para corrigir' : 'Clique para editar'}"`;
       const borderStyle = sobreposto ? 'border-left:2px solid #C0392B;' : incompleto ? 'border-left:2px solid #C4831A;' : '';
       const horaStyle = sobreposto ? 'color:#C0392B;font-weight:600;' : '';
       html += `<div class="lanc-item" style="${borderStyle}cursor:${G._semanaTravada ? 'default' : 'pointer'}" ${lancClick} ${lancTitle}>
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
-        <div class="lanc-hora" style="${horaStyle}">${l.hora_inicio?.slice(0,5)}–${l.hora_fim?.slice(0,5)}</div>
+        <div class="lanc-hora" style="${horaStyle}">${l.hora_inicio?.slice(0,5)}�${l.hora_fim?.slice(0,5)}</div>
         <div class="lanc-desc">${l.tipo === 'projeto' ? (() => {
   const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
   const clr = sobreposto ? 'color:#C0392B;' : '';
-  return `<span class="lanc-desc-main" style="${clr}">${info.cliente}</span><span class="lanc-desc-sep">|</span><span class="lanc-desc-main" style="${clr}">${info.oportunidade}</span><span class="lanc-desc-sep">|</span><span class="lanc-desc-main" style="${clr}">${info.etapa}</span>${l.descricao ? `<span class="lanc-desc-sep">·</span><span class="lanc-desc-nota">${l.descricao}</span>` : ''}`;
-})() : `<span class="lanc-desc-main" style="${sobreposto?'color:#C0392B;':''}">${descMain}</span>${descSub ? `<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">${descSub}</span>` : ''}`
+  return `<span class="lanc-desc-main" style="${clr}">${info.cliente}</span><span class="lanc-desc-sep">|</span><span class="lanc-desc-main" style="${clr}">${info.oportunidade}</span><span class="lanc-desc-sep">|</span><span class="lanc-desc-main" style="${clr}">${info.etapa}</span>${l.descricao ? `<span class="lanc-desc-sep">�</span><span class="lanc-desc-nota">${l.descricao}</span>` : ''}`;
+})() : `<span class="lanc-desc-main" style="${sobreposto?'color:#C0392B;':''}">${descMain}</span>${descSub ? `<span class="lanc-desc-sep">�</span><span class="lanc-desc-sub">${descSub}</span>` : ''}`
 }</div>
         ${alertas}
         <div class="lanc-dur">${fmtH(dur)}</div>
@@ -6969,7 +2550,7 @@ async function salvarSubtarefasLancamentoHora(lancId, raw, totalHoras, ctx = {})
     if (isTabelaSubtarefasAusente(delError)) {
       if (!G._subtarefasHorasWarned) {
         G._subtarefasHorasWarned = true;
-        toast('Subtarefas ainda indisponíveis: execute o SQL do DEV-21.');
+        toast('Subtarefas ainda indispon�veis: execute o SQL do DEV-21.');
       }
       return false;
     }
@@ -6992,7 +2573,7 @@ async function salvarSubtarefasLancamentoHora(lancId, raw, totalHoras, ctx = {})
     if (isTabelaSubtarefasAusente(insError)) {
       if (!G._subtarefasHorasWarned) {
         G._subtarefasHorasWarned = true;
-        toast('Subtarefas ainda indisponíveis: execute o SQL do DEV-21.');
+        toast('Subtarefas ainda indispon�veis: execute o SQL do DEV-21.');
       }
       return false;
     }
@@ -7127,8 +2708,8 @@ async function lancarHoras() {
   const desc    = document.getElementById('lf-desc').value.trim();
   const subtarefasRaw = tipo === 'projeto' ? (document.getElementById('lf-subtarefas').value || '').trim() : '';
 
-  if (!ini || !fim) { toast('Preencha os horários'); return; }
-  if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
+  if (!ini || !fim) { toast('Preencha os hor�rios'); return; }
+  if (ini >= fim)   { toast('Hora fim deve ser maior que in�cio'); return; }
   if (G.diaSelecionado == null) { toast('Selecione o dia'); return; }
   if (tipo === 'projeto' && !prodId) { toast('Selecione o produto'); return; }
   if (tipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
@@ -7147,11 +2728,11 @@ async function lancarHoras() {
     .maybeSingle();
 
   if (semDb?.finalizada) {
-    toast('Semana já finalizada');
+    toast('Semana j� finalizada');
     return;
   }
 
-  // cria semana se não existir
+  // cria semana se n�o existir
   if (!semDb) {
     const semanaInfo = isoWeekInfo(new Date(semIni + 'T12:00:00'));
     const payloadSemana = {
@@ -7191,7 +2772,7 @@ async function lancarHoras() {
   dupQuery = etapaId ? dupQuery.eq('etapa_id', etapaId) : dupQuery.is('etapa_id', null);
   const { data: lancDup } = await dupQuery.limit(1);
   if (lancDup?.length) {
-    toast('Já existe um lançamento idêntico neste horário.');
+    toast('J� existe um lan�amento id�ntico neste hor�rio.');
     return;
   }
 
@@ -7233,34 +2814,34 @@ async function lancarHoras() {
 
 async function deletarLancamento(id) {
   if (G._semanaTravada) {
-    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lan�amentos.');
     return;
   }
   abrirPopupConfirm(
-    'Excluir lançamento?',
-    'Este lançamento de horas será removido permanentemente.',
+    'Excluir lan�amento?',
+    'Este lan�amento de horas ser� removido permanentemente.',
     async () => {
       fecharModal('modal-editar-lancamento');
       try { await sb.from('horas_lancadas_subtarefas').delete().eq('hora_lancada_id', String(id)); } catch (_) {}
       await sb.from('horas_lancadas').delete().eq('id', id);
       renderSemana();
-      toast('Lançamento removido');
+      toast('Lan�amento removido');
     }
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-//   LANÇAMENTOS DE CUSTO
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
+//   LAN�AMENTOS DE CUSTO
+// --------------------------------------------------------------
 
 async function carregarReembolsoAreas() {
   const { data } = await sb.from('fin_plano_contas')
     .select('id,grupo,subconta,ordem')
     .eq('ativo', true)
     .order('ordem');
-  // Filtra apenas as áreas válidas para lançamento de custo na Gestão
+  // Filtra apenas as �reas v�lidas para lan�amento de custo na Gest�o
   G._reembolsoAreas = (data || []).filter(pc => GESTAO_CUSTOS_AREAS.has(pc.subconta));
-  const opts = '<option value="">Selecionar área...</option>' +
+  const opts = '<option value="">Selecionar �rea...</option>' +
     G._reembolsoAreas.map(pc => `<option value="${pc.id}">${_escN(pc.subconta)}</option>`).join('');
   const sel = document.getElementById('cf-area-reembolso');
   if (sel) { sel.innerHTML = opts; onAreaReembolsoChange('cf'); }
@@ -7341,7 +2922,7 @@ function cfResetProjetoCascade() {
   const etapaSel = document.getElementById('cf-etapa');
   if (oppSel) oppSel.innerHTML = '<option value="">Selecionar...</option>';
   if (prodSel) prodSel.innerHTML = '<option value="">Selecionar...</option>';
-  if (etapaSel) etapaSel.innerHTML = '<option value="">—</option>';
+  if (etapaSel) etapaSel.innerHTML = '<option value="">�</option>';
   if (oppWrap) oppWrap.style.display = 'none';
   if (prodWrap) prodWrap.style.display = 'none';
   if (etapaWrap) etapaWrap.style.display = 'none';
@@ -7427,7 +3008,7 @@ window.cfFiltrarEtapas = function() {
   if (!prodId) return;
   const etapas = G.todasEtapas.filter(e => e.produto_id === prodId).sort((a,b) => a.ordem - b.ordem);
   document.getElementById('cf-etapa').innerHTML =
-    '<option value="">—</option>' +
+    '<option value="">�</option>' +
     etapas.map(e => `<option value="${e.id}">${_escN(e.nome)}</option>`).join('');
   etapaWrap.style.display = 'block';
   cfSyncEventFields().catch(() => {});
@@ -7493,12 +3074,12 @@ async function lancarCusto() {
   const subtipo = document.getElementById('cf-detalhe-reembolso').value || null;
 
   if (!valor || valor <= 0) { toast('Informe o valor do custo'); return; }
-  if (!pcId) { toast('Selecione a área do custo'); return; }
+  if (!pcId) { toast('Selecione a �rea do custo'); return; }
 
   let prodId      = null;
   let etapaId     = null;
-  let eventoId    = null; // → eventos_custo (projeto)
-  let eventoSocId = null; // → eventos_sociedade (sociedade)
+  let eventoId    = null; // ? eventos_custo (projeto)
+  let eventoSocId = null; // ? eventos_sociedade (sociedade)
 
   if (tipo === 'projeto') {
     prodId   = document.getElementById('cf-produto').value || null;
@@ -7511,7 +3092,7 @@ async function lancarCusto() {
   const evtSocNome  = document.getElementById('cf-evento-soc')?.value?.trim() || '';
   if (rules.requer_evento) {
     const evtNome = tipo === 'sociedade' ? evtSocNome : evtProjNome;
-    if (!evtNome) { toast('Informe o evento para esta área'); return; }
+    if (!evtNome) { toast('Informe o evento para esta �rea'); return; }
   }
 
   try {
@@ -7527,7 +3108,7 @@ async function lancarCusto() {
     return;
   }
 
-  // Data: usa o campo cf-data ou, como fallback, o dia selecionado / início da semana
+  // Data: usa o campo cf-data ou, como fallback, o dia selecionado / in�cio da semana
   const cfDataEl = document.getElementById('cf-data');
   const dataISO = cfDataEl?.value ||
     (G.diaSelecionado != null
@@ -7537,7 +3118,7 @@ async function lancarCusto() {
   const { ini: semIni, fim: semFim } = semanaRangeOffset(G.semanaOffset);
   let { data: semDb } = await sb.from('semanas')
     .select('id,finalizada').eq('usuario_id', G.usuario.id).eq('data_inicio', semIni).maybeSingle();
-  if (semDb?.finalizada) { toast('Semana já finalizada'); return; }
+  if (semDb?.finalizada) { toast('Semana j� finalizada'); return; }
   if (!semDb) {
     const semanaInfo = isoWeekInfo(new Date(semIni + 'T12:00:00'));
     const { data: nova, error: eSem } = await sb.from('semanas')
@@ -7576,7 +3157,7 @@ async function lancarCusto() {
       situacao: 'realizado',
       data_competencia: dataISO,
       data_vencimento: dataISO,
-      observacao: [subtipo, desc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso',
+      observacao: [subtipo, desc].filter(Boolean).join(' � ') || area?.subconta || 'Reembolso',
       origem: 'reembolso',
       origem_id: inserted.id,
     });
@@ -7639,7 +3220,7 @@ async function renderCustosLancados() {
   Object.keys(porData).sort((a,b)=>a.localeCompare(b)).forEach(d => {
     const dFmt = d.split('-').reverse().join('/');
     const dow = new Date(d + 'T12:00:00').getDay();
-    const NOMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const NOMES = ['Dom','Seg','Ter','Qua','Qui','Sex','S�b'];
     const fds = dow === 0 || dow === 6;
     html += `<div style="padding:4px 10px 2px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;background:${fds?'var(--cinza2)':'var(--off)'}">${NOMES[dow]} ${dFmt}</div>`;
     porData[d].forEach(c => {
@@ -7647,7 +3228,7 @@ async function renderCustosLancados() {
       const cli  = c.produtos?.oportunidades?.clientes?.nome || '';
       const op   = c.produtos?.oportunidades?.projeto || '';
       const evt  = evNomes[c.evento_id] || evNomes[c.evento_soc_id] || '';
-      const TIPO_PT = { organizacao: 'Organização', sociedade: 'Sociedade', gestao: 'Gestão' };
+      const TIPO_PT = { organizacao: 'Organiza��o', sociedade: 'Sociedade', gestao: 'Gest�o' };
 
       // Build bold header (similar structure for all types)
       let cabecalho = '';
@@ -7658,25 +3239,25 @@ async function renderCustosLancados() {
         const tipoLabel = TIPO_PT[c.tipo] || c.tipo;
         cabecalho = `<span style="font-weight:700">${tipoLabel}</span>`;
       }
-      // Secondary: área · detalhe · descrição (thin, muted)
+      // Secondary: �rea � detalhe � descri��o (thin, muted)
       const areaLabel = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id)?.subconta || '';
-      const cat = [areaLabel, c.subtipo].filter(Boolean).join(' › ');
-      const detalhe = [cat, c.descricao].filter(Boolean).join(' · ');
+      const cat = [areaLabel, c.subtipo].filter(Boolean).join(' � ');
+      const detalhe = [cat, c.descricao].filter(Boolean).join(' � ');
       const descFull = detalhe
-        ? `${cabecalho}<span style="color:#ddd;margin:0 4px">·</span><span style="font-weight:300;color:#aaa">${detalhe}</span>`
+        ? `${cabecalho}<span style="color:#ddd;margin:0 4px">�</span><span style="font-weight:300;color:#aaa">${detalhe}</span>`
         : cabecalho;
 
       const travada = G._semanaTravada;
       const semArea = !c.plano_contas_id;
       const alertaEvt = semArea
-        ? `<span title="Sem área financeira — clique em Editar para classificar" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">⚠</span>`
+        ? `<span title="Sem �rea financeira � clique em Editar para classificar" style="color:#C4831A;font-size:11px;flex-shrink:0;cursor:default">?</span>`
         : '';
       const custoClick = travada ? '' : `onclick="editarCustoLancado('${c.id}')"`;
       const custoTitle = travada ? 'title="Semana bloqueada"' : 'title="Clique para editar"';
       html += `<div class="lanc-item" style="${semArea ? 'border-left:2px solid #C4831A;' : ''}cursor:${travada ? 'default' : 'pointer'}" ${custoClick} ${custoTitle}>
         <div class="lanc-tipo-dot" style="background:${cor}"></div>
         <div class="lanc-hora" style="min-width:75px;font-family:var(--font-ui);font-size:10px;font-weight:400;color:#555">R$ ${fmtNum(c.valor)}</div>
-        <div class="lanc-desc" style="font-size:10px;line-height:1.4">${descFull || cat || '—'}</div>
+        <div class="lanc-desc" style="font-size:10px;line-height:1.4">${descFull || cat || '�'}</div>
         ${alertaEvt}
       </div>`;
     });
@@ -7708,9 +3289,9 @@ async function editarCustoLancado(id) {
     evtNome = ev?.nome || '';
   }
 
-  const TIPO_PT = { projeto: 'Projeto', organizacao: 'Organização', sociedade: 'Sociedade', gestao: 'Gestão' };
+  const TIPO_PT = { projeto: 'Projeto', organizacao: 'Organiza��o', sociedade: 'Sociedade', gestao: 'Gest�o' };
   const tipoLabel = TIPO_PT[c.tipo] || c.tipo;
-  // Area/detalhe para o modal de edição
+  // Area/detalhe para o modal de edi��o
   const areaOpts = (G._reembolsoAreas||[]).map(pc =>
     `<option value="${pc.id}" ${pc.id===c.plano_contas_id?'selected':''}>${pc.subconta}</option>`).join('');
   const curArea = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id);
@@ -7723,9 +3304,9 @@ async function editarCustoLancado(id) {
     const cli = c.produtos?.oportunidades?.clientes?.nome || '';
     const op  = c.produtos?.oportunidades?.projeto || c.produtos?.nome || '';
     const eta = c.etapas?.nome || '';
-    vinculoHtml = [cli, op, eta, evtNome].filter(Boolean).join(' · ');
+    vinculoHtml = [cli, op, eta, evtNome].filter(Boolean).join(' � ');
   } else {
-    vinculoHtml = [tipoLabel, evtNome].filter(Boolean).join(' · ');
+    vinculoHtml = [tipoLabel, evtNome].filter(Boolean).join(' � ');
   }
 
   // Date formatted for input[type=date]
@@ -7743,7 +3324,7 @@ async function editarCustoLancado(id) {
   });
   const cliOptsHtml = '<option value="">Selecionar cliente...</option>' +
     [...clientesMap2.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR'))
-      .map(([cid, cd]) => `<option value="${cid}" ${cid===c.produtos?.oportunidades?.cliente_id?'selected':''}>${cd.nome}${cd.cidade?` — ${cd.cidade}`:''}${cd.uf?`/${cd.uf}`:''}</option>`).join('');
+      .map(([cid, cd]) => `<option value="${cid}" ${cid===c.produtos?.oportunidades?.cliente_id?'selected':''}>${cd.nome}${cd.cidade?` � ${cd.cidade}`:''}${cd.uf?`/${cd.uf}`:''}</option>`).join('');
 
   // Opp e produto a partir do custo atual
   const curProd = todosProds.find(p => p.id === c.produto_id);
@@ -7754,7 +3335,7 @@ async function editarCustoLancado(id) {
     : [];
   const oppOptsHtml = '<option value="">Selecionar oportunidade...</option>' +
     oppsForCli.map(([oid, o]) => {
-      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      const loc = o?.cidade ? ` � ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
       return `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}${loc}</option>`;
     }).join('');
   const prodsForOpp = curProd?.oportunidade_id
@@ -7765,7 +3346,7 @@ async function editarCustoLancado(id) {
   const etapasForProd = c.produto_id
     ? (G.todasEtapas||[]).filter(e=>e.produto_id===c.produto_id).sort((a,b)=>(a.ordem||0)-(b.ordem||0))
     : [];
-  const etapaOptsHtml = '<option value="">—</option>' +
+  const etapaOptsHtml = '<option value="">�</option>' +
     etapasForProd.map(e=>`<option value="${e.id}" ${e.id===c.etapa_id?'selected':''}>${e.nome}</option>`).join('');
 
   // Busca eventos direto do banco para garantir lista atualizada
@@ -7776,10 +3357,10 @@ async function editarCustoLancado(id) {
   const todosEventosCusto = _evCusto || [];
   const todosEventosSoc   = _evSoc   || [];
   // Eventos para o select de projeto/organizacao (eventos_custo)
-  const evtsHtml = '<option value="">— sem evento —</option>' +
+  const evtsHtml = '<option value="">� sem evento �</option>' +
     todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${e.id}" ${e.id===c.evento_id?'selected':''}>${e.nome}</option>`).join('');
   // Eventos para o select de sociedade (eventos_sociedade)
-  const evtsSocHtml = '<option value="">— sem evento —</option>' +
+  const evtsSocHtml = '<option value="">� sem evento �</option>' +
     todosEventosSoc.map(e=>`<option value="${e.id}" ${e.id===c.evento_soc_id?'selected':''}>${e.nome}</option>`).join('');
 
   let popup = document.getElementById('popup-edit-custo');
@@ -7792,7 +3373,7 @@ async function editarCustoLancado(id) {
     <div class="modal" style="max-width:480px">
       <div class="modal-hd">
         <div class="modal-hd-title">Editar custo</div>
-        <button class="modal-close" onclick="document.getElementById('popup-edit-custo').remove()">×</button>
+        <button class="modal-close" onclick="document.getElementById('popup-edit-custo').remove()">�</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
         <!-- Data + Valor -->
@@ -7815,9 +3396,9 @@ async function editarCustoLancado(id) {
             <option value="sociedade" ${c.tipo==='sociedade'?'selected':''}>Sociedade</option>
           </select>
         </div>
-        <!-- Área e detalhe -->
+        <!-- �rea e detalhe -->
         <div class="fgroup">
-          <label>Área</label>
+          <label>�rea</label>
           <select id="ec-area-reembolso" onchange="onAreaReembolsoChange('ec')">${areaOpts}</select>
         </div>
         <div class="fgroup">
@@ -7845,7 +3426,7 @@ async function editarCustoLancado(id) {
             </div>
             <div id="ec-evt-wrap" class="fgroup">
               <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
-              <input id="ec-evt" type="text" list="ec-evt-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+              <input id="ec-evt" type="text" list="ec-evt-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo�" autocomplete="off">
               <datalist id="ec-evt-dl">${todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
             </div>
           </div>
@@ -7854,13 +3435,13 @@ async function editarCustoLancado(id) {
         <div id="ec-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
           <div id="ec-evt-orgsoc-wrap" class="fgroup">
             <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
-            <input id="ec-evt-soc" type="text" list="ec-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+            <input id="ec-evt-soc" type="text" list="ec-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo�" autocomplete="off">
             <datalist id="ec-evt-soc-dl">${(c.tipo==='sociedade' ? todosEventosSoc : todosEventosCusto.filter(e=>!e.produto_id)).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
           </div>
         </div>
-        <!-- Observação -->
+        <!-- Observa��o -->
         <div class="fgroup">
-          <label>Observação</label>
+          <label>Observa��o</label>
           <input id="ec-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}" placeholder="Opcional">
         </div>
       </div>
@@ -7892,7 +3473,7 @@ async function editarCustoLancado(id) {
     const opps = [...new Map(todosP.filter(p=>p.oportunidades?.clientes?.id===cliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()];
     const sel = document.getElementById('ec-opp');
     sel.innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>{
-      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      const loc = o?.cidade ? ` � ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
       return `<option value="${oid}">${o?.projeto||oid}${loc}</option>`;
     }).join('');
     document.getElementById('ec-opp-wrap').style.display  = cliId ? '' : 'none';
@@ -7912,7 +3493,7 @@ async function editarCustoLancado(id) {
     const prodId = document.getElementById('ec-prod').value;
     const etapas = (G.todasEtapas||[]).filter(e=>e.produto_id===prodId).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
     const selEtapa = document.getElementById('ec-etapa');
-    selEtapa.innerHTML = '<option value="">—</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+    selEtapa.innerHTML = '<option value="">�</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
     document.getElementById('ec-etapa-wrap').style.display = prodId ? '' : 'none';
     // Filtra datalist de eventos pelo produto selecionado
     const dl = document.getElementById('ec-evt-dl');
@@ -7922,7 +3503,7 @@ async function editarCustoLancado(id) {
     }
   };
 
-  // Helper: resolve nome de evento → ID (cria novo se necessário)
+  // Helper: resolve nome de evento ? ID (cria novo se necess�rio)
   async function _ecResolveEvento(nome, tipo, produtoId) {
     const n = (nome || '').trim();
     if (!n) return null;
@@ -7952,7 +3533,7 @@ async function editarCustoLancado(id) {
     const novaData  = document.getElementById('ec-data').value || c.data_lancamento;
     const novoTipo  = document.getElementById('ec-tipo').value;
     const novaDesc  = document.getElementById('ec-desc').value.trim() || null;
-    if (isNaN(novoValor) || novoValor <= 0) { toast('Valor inválido'); return; }
+    if (isNaN(novoValor) || novoValor <= 0) { toast('Valor inv�lido'); return; }
 
     const novoPcId  = document.getElementById('ec-area-reembolso')?.value || c.plano_contas_id || null;
     const novoSubtipo = document.getElementById('ec-detalhe-reembolso')?.value || null;
@@ -7986,7 +3567,7 @@ async function editarCustoLancado(id) {
     // Sincroniza fin_lancamentos
     if (novoPcId) {
       const area = (G._reembolsoAreas||[]).find(a => a.id === novoPcId);
-      const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso';
+      const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' � ') || area?.subconta || 'Reembolso';
       const { data: existFin } = await sb.from('fin_lancamentos')
         .select('id').eq('origem','reembolso').eq('origem_id', id).maybeSingle();
       if (existFin?.id) {
@@ -8024,7 +3605,7 @@ async function excluirCustoLancado(id) {
   if (G._semanaTravada) { toast('Semana bloqueada'); return; }
   abrirPopupConfirm(
     'Excluir custo?',
-    'Este lançamento de custo será removido permanentemente.',
+    'Este lan�amento de custo ser� removido permanentemente.',
     async () => {
       await sb.from('fin_lancamentos').delete().eq('origem','reembolso').eq('origem_id', id);
       await sb.from('lancamentos_custo').delete().eq('id', id);
@@ -8038,10 +3619,10 @@ function popularDiasEdicaoLancamento(selectedDia = 1) {
   const sel = document.getElementById('el-dia');
   if (!sel) return;
   const dias = getDiasSemana(G.semanaOffset);
-  const NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const NOMES = ['Seg','Ter','Qua','Qui','Sex','S�b','Dom'];
   sel.innerHTML = dias.map((d, idx) => {
     const diaNum = idx + 1;
-    const label = `${NOMES[idx]} · ${d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })}`;
+    const label = `${NOMES[idx]} � ${d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })}`;
     return `<option value="${diaNum}" ${diaNum === selectedDia ? 'selected' : ''}>${label}</option>`;
   }).join('');
 }
@@ -8068,22 +3649,22 @@ function popularEtapasEdicaoLancamento(prodId, etapaId = null) {
 
 async function abrirEditarLancamento(id) {
   if (G._semanaTravada) {
-    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lan�amentos.');
     return;
   }
 
   const lanc = (G._lancAtivos || []).find(l => l.id === id);
-  if (!lanc) { toast('Lançamento não encontrado'); return; }
+  if (!lanc) { toast('Lan�amento n�o encontrado'); return; }
 
   G._editLancamentoId = id;
 
   // Preenche tipo
   document.getElementById('el-tipo').value = lanc.tipo || 'projeto';
 
-  // Determina o dia correto via data_lancamento (fonte primária), com fallback em dia_semana
+  // Determina o dia correto via data_lancamento (fonte prim�ria), com fallback em dia_semana
   const _diasEdit = getDiasSemana(G.semanaOffset);
   const _diaIdxEdit = getLancIdx(lanc, _diasEdit);
-  popularDiasEdicaoLancamento(_diaIdxEdit + 1); // converte índice 0-6 → valor 1-7 do select
+  popularDiasEdicaoLancamento(_diaIdxEdit + 1); // converte �ndice 0-6 ? valor 1-7 do select
   document.getElementById('el-inicio').value = lanc.hora_inicio?.slice(0,5) || '';
   document.getElementById('el-fim').value   = lanc.hora_fim?.slice(0,5)    || '';
   document.getElementById('el-desc').value  = lanc.descricao || '';
@@ -8098,7 +3679,7 @@ async function abrirEditarLancamento(id) {
       prods.map(p => {
         const cli = p.oportunidades?.clientes?.nome || '';
         const opp = p.oportunidades?.projeto || '';
-        const label = [cli, opp, p.nome].filter(Boolean).join(' · ');
+        const label = [cli, opp, p.nome].filter(Boolean).join(' � ');
         return `<option value="${p.id}" ${p.id === lanc.produto_id ? 'selected' : ''}>${label}</option>`;
       }).join('');
     document.getElementById('el-produto-wrap').style.display = 'block';
@@ -8150,7 +3731,7 @@ function elOnTipoChange() {
       prods.map(p => {
         const cli = p.oportunidades?.clientes?.nome || '';
         const opp = p.oportunidades?.projeto || '';
-        const label = [cli, opp, p.nome].filter(Boolean).join(' · ');
+        const label = [cli, opp, p.nome].filter(Boolean).join(' � ');
         return `<option value="${p.id}">${label}</option>`;
       }).join('');
   }
@@ -8159,14 +3740,14 @@ function elOnTipoChange() {
 
 async function salvarEdicaoLancamento() {
   if (G._semanaTravada) {
-    toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
+    toast('Semana bloqueada. Desbloqueie antes de alterar os lan�amentos.');
     return;
   }
 
   const id = G._editLancamentoId;
   const lanc = (G._lancAtivos || []).find(l => l.id === id);
   if (!id || !lanc) {
-    toast('Lançamento não encontrado');
+    toast('Lan�amento n�o encontrado');
     return;
   }
 
@@ -8180,8 +3761,8 @@ async function salvarEdicaoLancamento() {
   const subtipo = novoTipo !== 'projeto' ? (document.getElementById('el-subtipo').value || null) : null;
   const subtarefasRaw = novoTipo === 'projeto' ? (document.getElementById('el-subtarefas').value || '').trim() : '';
 
-  if (!ini || !fim) { toast('Preencha os horários'); return; }
-  if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
+  if (!ini || !fim) { toast('Preencha os hor�rios'); return; }
+  if (ini >= fim)   { toast('Hora fim deve ser maior que in�cio'); return; }
   if (novoTipo === 'projeto' && !etapaId) { toast('Selecione a etapa'); return; }
 
   const dias    = getDiasSemana(G.semanaOffset);
@@ -8201,7 +3782,7 @@ async function salvarEdicaoLancamento() {
   }).eq('id', id);
 
   if (error) {
-    toast('Erro ao salvar edição: ' + error.message);
+    toast('Erro ao salvar edi��o: ' + error.message);
     return;
   }
 
@@ -8218,7 +3799,7 @@ async function salvarEdicaoLancamento() {
 
   fecharModal('modal-editar-lancamento');
   G._editLancamentoId = null;
-  toast(subtarefasOk ? 'Lançamento atualizado' : 'Lancamento atualizado, mas subtarefas ainda nao estao disponiveis');
+  toast(subtarefasOk ? 'Lan�amento atualizado' : 'Lancamento atualizado, mas subtarefas ainda nao estao disponiveis');
   renderSemana();
 }
 
@@ -8229,7 +3810,7 @@ async function abrirFinalizarSemana() {
   const elTotal = document.getElementById('fin-total-horas');
   if (elTotal) elTotal.textContent = fmtH(totalH);
 
-  // Verifica pendências
+  // Verifica pend�ncias
   const horasInc = lancs.filter(l => l.tipo === 'projeto' && (!l.produto_id || !l.etapa_id));
 
   const { ini, fim } = semanaRangeOffset(G.semanaOffset);
@@ -8242,10 +3823,10 @@ async function abrirFinalizarSemana() {
   const alertEl = document.getElementById('fin-alert');
   if (alertEl) {
     let msgs = [];
-    if (horasInc.length) msgs.push(`<div>⚠ <strong>${horasInc.length}</strong> lançamento(s) de horas sem produto ou etapa definidos</div>`);
-    if (custosInc.length) msgs.push(`<div>⚠ <strong>${custosInc.length}</strong> custo(s) lançado(s) sem evento associado</div>`);
+    if (horasInc.length) msgs.push(`<div>? <strong>${horasInc.length}</strong> lan�amento(s) de horas sem produto ou etapa definidos</div>`);
+    if (custosInc.length) msgs.push(`<div>? <strong>${custosInc.length}</strong> custo(s) lan�ado(s) sem evento associado</div>`);
     if (msgs.length) {
-      alertEl.innerHTML = `<div style="font-weight:700;margin-bottom:4px">Pendências encontradas:</div>${msgs.join('')}<div style="margin-top:6px;font-size:10px;color:#a07000">Corrija antes de finalizar ou confirme assim mesmo.</div>`;
+      alertEl.innerHTML = `<div style="font-weight:700;margin-bottom:4px">Pend�ncias encontradas:</div>${msgs.join('')}<div style="margin-top:6px;font-size:10px;color:#a07000">Corrija antes de finalizar ou confirme assim mesmo.</div>`;
       alertEl.style.display = 'block';
     } else {
       alertEl.style.display = 'none';
@@ -8263,7 +3844,7 @@ async function confirmarFinalizarSemana() {
   const semana = semanaInfo.week;
 
   // Busca por data_inicio (mesma chave que renderSemana usa) para garantir
-  // que ambas as funções operam na mesma row, independente do valor de semana.
+  // que ambas as fun��es operam na mesma row, independente do valor de semana.
   const { data: semDb } = await sb.from('semanas')
     .select('id')
     .eq('usuario_id', G.usuario.id)
@@ -8360,7 +3941,7 @@ function getFaixaMes(ym) {
 }
 
 function mhTipoLabel(tipo) {
-  return ({ projeto:'Projeto', organizacao:'Org. Interna', sociedade:'Sociedade' }[tipo] || (tipo || '—'));
+  return ({ projeto:'Projeto', organizacao:'Org. Interna', sociedade:'Sociedade' }[tipo] || (tipo || '�'));
 }
 
 function mhTipoColor(tipo) {
@@ -8369,14 +3950,14 @@ function mhTipoColor(tipo) {
 
 function mhProjetoResumoLabel(l) {
   const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
-  return [info.oportunidade, info.cliente].filter(Boolean).join(' · ') || info.produto || 'Projeto';
+  return [info.oportunidade, info.cliente].filter(Boolean).join(' � ') || info.produto || 'Projeto';
 }
 
 function mhProjetoDetalhe(l) {
   const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
   return {
     projeto: info.oportunidade || info.produto || 'Projeto',
-    produto: info.produto || '—',
+    produto: info.produto || '�',
     etapa: info.etapa || l.etapas?.nome || 'Sem etapa',
     cliente: info.cliente || 'Sem cliente',
   };
@@ -8513,7 +4094,7 @@ function renderMhDayChart(dataset) {
   return dias.map(d => {
     const pct = max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5;
     const zeroCls = d.horas <= 0 ? 'zero' : '';
-    const title = `${fmtDate(d.iso)} · ${fmtHClock(d.horas)}`;
+    const title = `${fmtDate(d.iso)} � ${fmtHClock(d.horas)}`;
     return `<div class="mh-day-col" title="${_escAttrN(title)}">
       <div class="mh-day-bar-wrap" style="background-image:linear-gradient(to top, transparent calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% + 1px), transparent calc(${refPct}% + 1px));background-repeat:no-repeat">
         <div class="mh-day-bar ${zeroCls}" style="height:${pct}%"></div>
@@ -8545,7 +4126,7 @@ function renderMhPieChart(resumo) {
     cumLen += len;
     segs.push({ ...t, h, pct, len, offset });
   });
-  // Ajusta o último segmento para cobrir exatamente (evita gap)
+  // Ajusta o �ltimo segmento para cobrir exatamente (evita gap)
   if (segs.length > 0) {
     segs[segs.length - 1].len = CIRCUMF - (cumLen - segs[segs.length - 1].len);
   }
@@ -8563,7 +4144,7 @@ function renderMhPieChart(resumo) {
     `<div style="display:flex;align-items:center;gap:6px">
        <div style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0"></div>
        <div>
-         <div style="font-size:9px;font-weight:700;color:var(--grafite)">${(t.pct*100).toFixed(0)}% · ${fmtHMin(t.h)}</div>
+         <div style="font-size:9px;font-weight:700;color:var(--grafite)">${(t.pct*100).toFixed(0)}%���${fmtHMin(t.h)}</div>
          <div style="font-size:8px;color:#aaa;letter-spacing:.3px">${t.label}</div>
        </div>
      </div>`
@@ -8582,7 +4163,7 @@ function renderMhTypeBars(resumo) {
   const tipos = ['projeto', 'organizacao', 'sociedade']
     .map(tipo => resumo.porTipo[tipo])
     .filter(bucket => bucket && bucket.total > 0);
-  if (!tipos.length) return '<div class="empty-note">Sem horas lançadas no período.</div>';
+  if (!tipos.length) return '<div class="empty-note">Sem horas lan�adas no per�odo.</div>';
 
   return tipos.map(bucket => `
     <div class="mh-type-row">
@@ -8594,7 +4175,7 @@ function renderMhTypeBars(resumo) {
         ${bucket.items.map((item, idx) => `
           <div class="mh-type-seg"
             style="width:${Math.max(item.pct, item.horas > 0 ? 2 : 0)}%;background:${bucket.color};opacity:${Math.max(.45, 1 - idx * .06)}"
-            title="${_escAttrN(item.label)} · ${fmtHClock(item.horas)} · ${mhPct(item.horas, bucket.total)}"></div>
+            title="${_escAttrN(item.label)} � ${fmtHClock(item.horas)} � ${mhPct(item.horas, bucket.total)}"></div>
         `).join('')}
       </div>
     </div>
@@ -8620,9 +4201,9 @@ function renderMhSummaryPanels(resumo) {
           <div class="mh-panel-k">${_escN(titulo)}</div>
           <div style="display:flex;gap:10px;align-items:baseline">
             <span style="font-size:12px;font-weight:500;font-family:var(--font-mono);color:var(--grafite)">${fmtHMin(bucket.total)}</span>
-            <span style="font-size:10px;color:#bbb">·</span>
+            <span style="font-size:10px;color:#bbb">�</span>
             <span style="font-size:11px;font-weight:400;color:#999">${bucket.items.length} frente${bucket.items.length !== 1 ? 's' : ''}</span>
-            <span style="font-size:10px;color:#bbb">·</span>
+            <span style="font-size:10px;color:#bbb">�</span>
             <span style="font-size:11px;font-weight:500;color:${cor}">${pct}%</span>
           </div>
         </div>
@@ -8639,40 +4220,40 @@ function renderMhSummaryPanels(resumo) {
     classes: 'mh-summary-panels',
     html: `
       ${panel('Projetos', proj, 'projeto')}
-      ${panel('Organização interna', org, 'organizacao')}
+      ${panel('Organiza��o interna', org, 'organizacao')}
       ${temSoc ? panel('Sociedade', soc, 'sociedade') : ''}
     `
   };
 }
 
 function renderMhDetalhe(dias = []) {
-  if (!dias.length) return '<div class="empty-note">Nenhum lançamento encontrado para este mês.</div>';
+  if (!dias.length) return '<div class="empty-note">Nenhum lan�amento encontrado para este m�s.</div>';
   return dias.map(dia => `
     <div class="mh-day-block">
       <div class="mh-day-hd">
-        <div class="mh-day-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
+        <div class="mh-day-title">${fmtDate(dia.data)} � ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
         <div class="mh-day-total">${fmtHClock(dia.total)}</div>
       </div>
       <div class="mh-day-body">
         <div class="mh-day-cols-hd">
-          <div>Horário</div>
+          <div>Hor�rio</div>
           <div>Tipo</div>
           <div>Cliente</div>
           <div>Projeto / Bloco</div>
           <div>Etapa / Subtipo</div>
-          <div>Comentário</div>
+          <div>Coment�rio</div>
           <div style="text-align:right">Dur.</div>
         </div>
         ${dia.itens.map(item => {
           const projNome = item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo));
-          const etapaNome = item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—');
+          const etapaNome = item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '�');
           const comentario = item.tipo === 'projeto' ? _escN(item.descricao || '') : '';
           return `
           <div class="mh-day-entry">
-            <div class="mh-day-time">${_escN((item.inicio || '').slice(0,5))} — ${_escN((item.fim || '').slice(0,5))}</div>
+            <div class="mh-day-time">${_escN((item.inicio || '').slice(0,5))} � ${_escN((item.fim || '').slice(0,5))}</div>
             <div><span class="mh-badge ${_escN(item.tipo)}">${_escN(item.tipoLabel)}</span></div>
             <div class="mh-day-col-data">
-              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.cliente || '—') : '—'}</div>
+              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.cliente || '�') : '�'}</div>
             </div>
             <div class="mh-day-col-data">
               <div class="mh-day-main-proj">${projNome}</div>
@@ -8680,7 +4261,7 @@ function renderMhDetalhe(dias = []) {
             <div class="mh-day-col-data">
               <div class="mh-day-main-1">${etapaNome}</div>
             </div>
-            <div class="mh-day-comment" title="${comentario}">${comentario || '—'}</div>
+            <div class="mh-day-comment" title="${comentario}">${comentario || '�'}</div>
             <div class="mh-day-dur">${fmtHClock(item.dur)}</div>
           </div>`;
         }).join('')}
@@ -8692,13 +4273,13 @@ function renderMhDetalhe(dias = []) {
 function renderMinhasHorasResumo(dataset) {
   const { ini, fim, mesNome, resumo } = dataset;
   document.getElementById('mh-total-geral').textContent = fmtHMin(resumo.total);
-  document.getElementById('mh-total-geral-sub').textContent = `${fmtHLong(resumo.total)} · ${mesNome}`;
+  document.getElementById('mh-total-geral-sub').textContent = `${fmtHLong(resumo.total)} � ${mesNome}`;
   document.getElementById('mh-total-projetos').textContent = String(resumo.totalFrentes).padStart(2, '0');
   document.getElementById('mh-total-dias').textContent = String(resumo.diasAtivos).padStart(2, '0');
-  document.getElementById('mh-media-dia').textContent = resumo.diasAtivos ? fmtHMin(resumo.mediaDia) : '—';
-  document.getElementById('mh-projetos-sub').textContent = `${resumo.lancamentos} lançamento(s) no período`;
-  document.getElementById('mh-periodo-faixa').textContent = `${fmtDate(ini)} — ${fmtDate(fim)}`;
-  document.getElementById('mh-chart-sub').textContent = `${resumo.diasAtivos} dia(s) lançados · pico diário ${fmtHClock(Math.max(...(resumo.detalhesPorDia || []).map(d => d.total), 0))}`;
+  document.getElementById('mh-media-dia').textContent = resumo.diasAtivos ? fmtHMin(resumo.mediaDia) : '�';
+  document.getElementById('mh-projetos-sub').textContent = `${resumo.lancamentos} lan�amento(s) no per�odo`;
+  document.getElementById('mh-periodo-faixa').textContent = `${fmtDate(ini)} � ${fmtDate(fim)}`;
+  document.getElementById('mh-chart-sub').textContent = `${resumo.diasAtivos} dia(s) lan�ados � pico di�rio ${fmtHClock(Math.max(...(resumo.detalhesPorDia || []).map(d => d.total), 0))}`;
   document.getElementById('mh-day-chart').innerHTML = renderMhDayChart(dataset);
   document.getElementById('mh-type-bars').innerHTML = renderMhTypeBars(resumo);
   const _pw = document.getElementById('mh-pie-wrap'); if (_pw) _pw.innerHTML = renderMhPieChart(resumo);
@@ -8732,11 +4313,11 @@ async function obterMinhasHorasMes(ym) {
 
 async function carregarMinhasHoras() {
   const ym = garantirMesMinhasHoras();
-  document.getElementById('mh-day-chart').innerHTML = '<div class="loading-state">Carregando…</div>';
-  document.getElementById('mh-type-bars').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('mh-day-chart').innerHTML = '<div class="loading-state">Carregando�</div>';
+  document.getElementById('mh-type-bars').innerHTML = '<div class="loading-state">Carregando�</div>';
   const _pieWrap = document.getElementById('mh-pie-wrap'); if (_pieWrap) _pieWrap.innerHTML = '';
-  document.getElementById('mh-summary-panels').innerHTML = '<div class="loading-state">Carregando…</div>';
-  document.getElementById('mh-detalhe-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('mh-summary-panels').innerHTML = '<div class="loading-state">Carregando�</div>';
+  document.getElementById('mh-detalhe-lista').innerHTML = '<div class="loading-state">Carregando�</div>';
   try {
     const dataset = await obterMinhasHorasMes(ym);
     G._minhasHorasMes = dataset;
@@ -8802,7 +4383,7 @@ async function exportarMinhasHorasPDF() {
     <div class="panel">
       <div class="panel-hd">${_escN(titulo)}</div>
       <table>
-        <thead><tr><th>Item</th><th class="n">Duração</th><th class="n">%</th></tr></thead>
+        <thead><tr><th>Item</th><th class="n">Dura��o</th><th class="n">%</th></tr></thead>
         <tbody>
           ${bucket.items.length
             ? bucket.items.map(item => `<tr><td>${_escN(item.label)}</td><td class="n">${fmtHClock(item.horas)}</td><td class="n">${mhPct(item.horas, bucket.total)}</td></tr>`).join('')
@@ -8815,19 +4396,19 @@ async function exportarMinhasHorasPDF() {
   const org = resumo.porTipo.organizacao || { total:0, items:[] };
   const soc = resumo.porTipo.sociedade || { total:0, items:[] };
   const resumoHtml = soc.items.length
-    ? `<div class="summary-grid">${bucketTable('Projetos', proj)}${bucketTable('Organização interna', org)}${bucketTable('Sociedade', soc)}</div>`
-    : `<div class="summary-grid colab">${bucketTable('Projetos', proj)}${bucketTable('Organização interna', org)}</div>`;
+    ? `<div class="summary-grid">${bucketTable('Projetos', proj)}${bucketTable('Organiza��o interna', org)}${bucketTable('Sociedade', soc)}</div>`
+    : `<div class="summary-grid colab">${bucketTable('Projetos', proj)}${bucketTable('Organiza��o interna', org)}</div>`;
 
   const blocos = resumo.detalhesPorDia.length
     ? resumo.detalhesPorDia.map(dia => `
       <div class="block">
         <div class="block-hd">
-          <div class="block-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
+          <div class="block-title">${fmtDate(dia.data)} � ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
           <div class="block-total">${fmtHClock(dia.total)}</div>
         </div>
         <table class="detail">
           <thead>
-            <tr><th>Início</th><th>Fim</th><th>Tipo</th><th>Cliente</th><th>Oportunidade</th><th>Etapa / subtipo</th><th class="n">Duração</th></tr>
+            <tr><th>In�cio</th><th>Fim</th><th>Tipo</th><th>Cliente</th><th>Oportunidade</th><th>Etapa / subtipo</th><th class="n">Dura��o</th></tr>
           </thead>
           <tbody>
             ${dia.itens.map(item => `
@@ -8835,9 +4416,9 @@ async function exportarMinhasHorasPDF() {
                 <td>${_escN((item.inicio || '').slice(0,5))}</td>
                 <td>${_escN((item.fim || '').slice(0,5))}</td>
                 <td>${_escN(item.tipoLabel)}</td>
-                <td>${item.tipo === 'projeto' ? _escN(item.cliente || '—') : '—'}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.cliente || '�') : '�'}</td>
                 <td>${item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo))}</td>
-                <td>${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '�')}</td>
                 <td class="n">${fmtHClock(item.dur)}</td>
               </tr>
             `).join('')}
@@ -8845,10 +4426,10 @@ async function exportarMinhasHorasPDF() {
         </table>
       </div>
     `).join('')
-    : '<div class="empty">Sem horas lançadas no período.</div>';
+    : '<div class="empty">Sem horas lan�adas no per�odo.</div>';
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
-  <title>Minhas horas — ${mesNome}</title><style>
+  <title>Minhas horas � ${mesNome}</title><style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#262626;padding:28px 32px;background:#fff}
   .brand{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;padding-bottom:16px;border-bottom:3px solid #C4831A}
@@ -8902,34 +4483,34 @@ async function exportarMinhasHorasPDF() {
     <div>
       <div class="brand-mark">EXP</div>
       <div class="collab-name">${_escN(G.usuario?.nome || '')}</div>
-      <div class="brand-sub">Relatório mensal individual de horas</div>
+      <div class="brand-sub">Relat�rio mensal individual de horas</div>
     </div>
-    <div class="brand-sub">Período: ${fmtDate(ini)} — ${fmtDate(fim)}<br>Gerado em ${generatedAt}</div>
+    <div class="brand-sub">Per�odo: ${fmtDate(ini)} � ${fmtDate(fim)}<br>Gerado em ${generatedAt}</div>
   </div>
   <div class="hero">
     <div class="hero-card">
-      <div class="hero-k">Volume diário no mês</div>
-      <div class="hero-s">${resumo.diasAtivos} dia(s) com registros · ${mesNome}</div>
+      <div class="hero-k">Volume di�rio no m�s</div>
+      <div class="hero-s">${resumo.diasAtivos} dia(s) com registros � ${mesNome}</div>
       <div class="day-chart">${dayBars}</div>
     </div>
     <div class="hero-total">
-      <div class="hero-k">Total do período</div>
+      <div class="hero-k">Total do per�odo</div>
       <div class="hero-v">${fmtHClock(resumo.total)}</div>
-      <div class="hero-s">${fmtHLong(resumo.total)} · gerado em ${generatedAt}</div>
+      <div class="hero-s">${fmtHLong(resumo.total)} � gerado em ${generatedAt}</div>
       <div class="hero-grid">
         <div class="mini"><div class="k">Projetos / frentes</div><div class="v">${String(resumo.totalFrentes).padStart(2,'0')}</div></div>
-        <div class="mini"><div class="k">Dias lançados</div><div class="v">${String(resumo.diasAtivos).padStart(2,'0')}</div></div>
-        <div class="mini"><div class="k">Média por dia</div><div class="v">${resumo.diasAtivos ? fmtHClock(resumo.mediaDia) : '—'}</div></div>
+        <div class="mini"><div class="k">Dias lan�ados</div><div class="v">${String(resumo.diasAtivos).padStart(2,'0')}</div></div>
+        <div class="mini"><div class="k">M�dia por dia</div><div class="v">${resumo.diasAtivos ? fmtHClock(resumo.mediaDia) : '�'}</div></div>
       </div>
     </div>
   </div>
   <div class="type-box">
-    <div class="hero-k">Composição por tipo de entrada</div>
-    <div class="hero-s" style="margin-bottom:12px">Fatiamento proporcional por oportunidade, organização interna e sociedade.</div>
-    ${tipoRows || '<div class="empty">Sem horas lançadas no período.</div>'}
+    <div class="hero-k">Composi��o por tipo de entrada</div>
+    <div class="hero-s" style="margin-bottom:12px">Fatiamento proporcional por oportunidade, organiza��o interna e sociedade.</div>
+    ${tipoRows || '<div class="empty">Sem horas lan�adas no per�odo.</div>'}
   </div>
   ${resumoHtml}
-  <div class="section-title">Detalhamento do período</div>
+  <div class="section-title">Detalhamento do per�odo</div>
   ${blocos}
   body></html>`;
 
@@ -8939,9 +4520,9 @@ async function exportarMinhasHorasPDF() {
   setTimeout(() => win.print(), 450);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   REVISÕES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   REVIS�ES
+// ══════════════════════════════════════════════════════════
 async function carregarRevisoesProduto(prodId) {
   if (!prodId) return;
   const ativaWrap = document.getElementById('mp-revisao-ativa-wrap');
@@ -8961,7 +4542,7 @@ async function carregarRevisoesProduto(prodId) {
     .order('created_at', { ascending: false });
 
   if (!revs?.length) {
-    if (ativaWrap) ativaWrap.innerHTML = '<div class="ck-empty">Nenhuma revisão encontrada para este produto.</div>';
+    if (ativaWrap) ativaWrap.innerHTML = '<div class="ck-empty">Nenhuma revis�o encontrada para este produto.</div>';
     return;
   }
 
@@ -8978,9 +4559,9 @@ async function carregarRevisoesProduto(prodId) {
       ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:8px" title="${revisor.nome}">${revisor.iniciais}</div>` : '';
     return `<div class="rev-lista-item ${r.status}${destacar?' selected':''}" style="cursor:pointer" onclick="fecharModal('modal-produto');document.querySelector('.ntab[data-tab=\\'revisoes\\']')?.click();setTimeout(()=>selecionarRevisao('${r.id}'),400)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-        <div style="font-size:10px;font-weight:600">${etapa?.nome || '—'} · Revisão #${r.numero}</div>
+        <div style="font-size:10px;font-weight:600">${etapa?.nome || '�'} � Revis�o #${r.numero}</div>
         <div style="display:flex;align-items:center;gap:4px">${chip}
-          <span class="badge ${r.status === 'aberta' ? 'b-az' : 'b-vd'}">${r.status === 'aberta' ? 'Ativa' : 'Concluída'}</span>
+          <span class="badge ${r.status === 'aberta' ? 'b-az' : 'b-vd'}">${r.status === 'aberta' ? 'Ativa' : 'Conclu�da'}</span>
         </div>
       </div>
       <div class="rev-prog" style="margin-top:4px">
@@ -8991,11 +4572,11 @@ async function carregarRevisoesProduto(prodId) {
     </div>`;
   }
 
-  // Todas as revisões em ordem cronológica inversa (mais recente primeiro)
+  // Todas as revis�es em ordem cronol�gica inversa (mais recente primeiro)
   if (ativaWrap) {
     ativaWrap.innerHTML = revs.length
       ? revs.map(r => _revCard(r, r.status === 'aberta')).join('')
-      : '<div class="empty-note" style="margin-bottom:0">Nenhuma revisão encontrada.</div>';
+      : '<div class="empty-note" style="margin-bottom:0">Nenhuma revis�o encontrada.</div>';
   }
   if (lista) lista.innerHTML = '';
 }
@@ -9007,7 +4588,7 @@ async function carregarRevisoes() {
 
   const lista = document.getElementById('rev-lista');
   if (!revs?.length) {
-    lista.innerHTML = '<div class="empty-note">Nenhuma revisão encontrada.</div>';
+    lista.innerHTML = '<div class="empty-note">Nenhuma revis�o encontrada.</div>';
     return;
   }
 
@@ -9025,16 +4606,16 @@ async function carregarRevisoes() {
     const isMeu   = r.aberta_por === uid;
     const revisorChip = revisor
       ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:8px"
-              title="${isMeu ? 'Você abriu esta revisão' : 'Aberta por '+revisor.nome}">${revisor.iniciais}</div>` : '';
+              title="${isMeu ? 'Voc� abriu esta revis�o' : 'Aberta por '+revisor.nome}">${revisor.iniciais}</div>` : '';
     const revisorLabel = revisor
-      ? `<span style="font-size:9px;color:#aaa">${isMeu ? 'por você' : revisor.nome.split(' ')[0]}</span>` : '';
+      ? `<span style="font-size:9px;color:#aaa">${isMeu ? 'por voc�' : revisor.nome.split(' ')[0]}</span>` : '';
     return `<div class="rev-lista-item ${r.status}" onclick="selecionarRevisao('${r.id}')">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-        <div class="rev-proj-nome" style="margin-bottom:0">${cli?.nome || '—'}</div>
+        <div class="rev-proj-nome" style="margin-bottom:0">${cli?.nome || '�'}</div>
         <div style="display:flex;align-items:center;gap:4px">${revisorChip}${revisorLabel}</div>
       </div>
-      <div class="rev-etapa-nome">${opp?.projeto || prod?.nome || '—'}</div>
-      <div style="font-size:10px;color:#aaa;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${etapa?.nome || '—'}</div>
+      <div class="rev-etapa-nome">${opp?.projeto || prod?.nome || '�'}</div>
+      <div style="font-size:10px;color:#aaa;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${etapa?.nome || '�'}</div>
       <div class="rev-prog">
         <span>${conc}/${total} tarefas</span>
         <div class="rev-prog-bar"><div class="rev-prog-fill" style="width:${pct}%"></div></div>
@@ -9076,21 +4657,21 @@ async function carregarRevisoes() {
   const outrasAtivas = revsVisiveis.filter(r => !_isCompleta(r) && !_isMinhaRev(r));
   const finalizadas  = revsVisiveis.filter(r => _isCompleta(r));
 
-  const addInlineBtn = `<div style="display:flex;justify-content:center"><button class="rev-add-inline-btn" onclick="revFabAction()" title="Nova revisão">+</button></div>`;
+  const addInlineBtn = `<div style="display:flex;justify-content:center"><button class="rev-add-inline-btn" onclick="revFabAction()" title="Nova revis�o">+</button></div>`;
 
   let html = '';
   if (minhasAtivas.length)
-    html += grpLabel('Minhas revisões ativas', minhasAtivas.length) + minhasAtivas.map(_revCard).join('');
+    html += grpLabel('Minhas revis�es ativas', minhasAtivas.length) + minhasAtivas.map(_revCard).join('');
   if (outrasAtivas.length)
-    html += grpLabel('Revisões ativas', outrasAtivas.length) + outrasAtivas.map(_revCard).join('');
+    html += grpLabel('Revis�es ativas', outrasAtivas.length) + outrasAtivas.map(_revCard).join('');
   // Inline "+" always after active revisions (above finalizadas)
   html += addInlineBtn;
   if (finalizadas.length)
-    html += grpLabel('Revisões finalizadas', finalizadas.length) + finalizadas.map(_revCard).join('');
+    html += grpLabel('Revis�es finalizadas', finalizadas.length) + finalizadas.map(_revCard).join('');
   const hasContent = minhasAtivas.length || outrasAtivas.length || finalizadas.length;
   if (!hasContent) html = addInlineBtn + (G._revMinhasOnly
-    ? '<div class="empty-note">Nenhuma revisão sua encontrada.</div>'
-    : '<div class="empty-note">Nenhuma revisão encontrada.</div>');
+    ? '<div class="empty-note">Nenhuma revis�o sua encontrada.</div>'
+    : '<div class="empty-note">Nenhuma revis�o encontrada.</div>');
 
   lista.innerHTML = html;
   G._revisoes = revs;
@@ -9102,32 +4683,32 @@ function toggleFiltroMinhasRevisoes() {
   carregarRevisoes();
 }
 
-// FAB: inicializa label conforme role e executa ação correta
+// FAB: inicializa label conforme role e executa a��o correta
 function initRevFab() {
   const fab = document.getElementById('rev-fab-btn');
   const lbl = document.getElementById('rev-fab-label');
   const isSocio = isSocioRole(G.usuario?.role);
-  const label = isSocio ? 'Nova revisão' : 'Solicitar revisão';
+  const label = isSocio ? 'Nova revis�o' : 'Solicitar revis�o';
   if (fab) { fab.title = label; }
   if (lbl) { lbl.textContent = label; }
-  // Botão topo da lista de revisões
+  // Bot�o topo da lista de revis�es
   const topBtn = document.getElementById('btn-rev-top');
   if (topBtn) topBtn.textContent = '+ ' + label;
-  // Botão dentro do card de produto (aba Revisões)
+  // Bot�o dentro do card de produto (aba Revis�es)
   const mpBtn = document.getElementById('mp-btn-rev-action');
   if (mpBtn) mpBtn.textContent = '+ ' + label;
 }
 
-// Roteador do botão de revisão dentro do card de produto
+// Roteador do bot�o de revis�o dentro do card de produto
 function abrirRevisaoProdutoAtivo() {
   if (isSocioRole(G.usuario?.role)) {
-    abrirNovaRevisao(); // já usa G.produtoAtivo como contexto
+    abrirNovaRevisao(); // j� usa G.produtoAtivo como contexto
   } else {
     abrirSolicitarRevisaoColabProd(G.produtoAtivo);
   }
 }
 
-// Versão de solicitar revisão pré-filtrada para um produto específico
+// Vers�o de solicitar revis�o pr�-filtrada para um produto espec�fico
 function abrirSolicitarRevisaoColabProd(prodId) {
   const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
   const lblStyle = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
@@ -9146,18 +4727,18 @@ function abrirSolicitarRevisaoColabProd(prodId) {
   pop.innerHTML = `<div style="background:var(--branco);border-radius:12px;padding:24px 26px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <div>
-        <div style="font-size:13px;font-weight:700">Solicitar revisão</div>
-        <div style="font-size:10px;color:#999;margin-top:2px">${_escN(projNome)} · O coordenador será notificado</div>
+        <div style="font-size:13px;font-weight:700">Solicitar revis�o</div>
+        <div style="font-size:10px;color:#999;margin-top:2px">${_escN(projNome)} � O coordenador ser� notificado</div>
       </div>
-      <button onclick="document.getElementById('popup-sol-rev-prod').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa">×</button>
+      <button onclick="document.getElementById('popup-sol-rev-prod').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa">�</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div><label style="${lblStyle}">Etapa</label>
         <select id="srp-etapa" style="${fldStyle}">${etapaOpts}</select>
       </div>
       <div id="srp-obs-wrap">
-        <label style="${lblStyle}">Observação <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
-        <textarea id="srp-obs" placeholder="Descreva o que foi feito ou o que precisa ser revisado…"
+        <label style="${lblStyle}">Observa��o <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+        <textarea id="srp-obs" placeholder="Descreva o que foi feito ou o que precisa ser revisado�"
           style="${fldStyle};resize:vertical;min-height:72px"></textarea>
       </div>
     </div>
@@ -9179,8 +4760,8 @@ function abrirSolicitarRevisaoColabProd(prodId) {
       const coordId = prod?.coordenador_id;
       if (coordId) {
         const obs = document.getElementById('srp-obs')?.value.trim();
-        const msg = `${G.usuario.nome} solicitou revisão de "${etapa?.nome || 'etapa'}" em "${projNome}"` +
-          (obs ? ` — "${obs}"` : '');
+        const msg = `${G.usuario.nome} solicitou revis�o de "${etapa?.nome || 'etapa'}" em "${projNome}"` +
+          (obs ? ` � "${obs}"` : '');
         await sb.from('notificacoes').insert({
           para_usuario: coordId, de_usuario: G.usuario.id,
           tipo: 'revisao_solicitada', mensagem: msg,
@@ -9196,7 +4777,7 @@ function abrirSolicitarRevisaoColabProd(prodId) {
       });
       await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
       pop.remove();
-      toast('Revisão solicitada — coordenador notificado');
+      toast('Revis�o solicitada � coordenador notificado');
       await carregarProdutos();
       carregarDashboard();
     } catch(e) { toast('Erro: ' + e.message); }
@@ -9221,7 +4802,7 @@ function abrirSolicitarRevisaoColab() {
   todosProds.forEach(p => { const c = p.oportunidades?.clientes; if (c?.id) cliMap.set(c.id, c); });
   const cliOpts = '<option value="">Selecionar cliente...</option>' +
     [...cliMap.values()].sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'))
-      .map(c => `<option value="${c.id}">${c.nome}${c.cidade?' — '+c.cidade:''}${c.uf?'/'+c.uf:''}</option>`).join('');
+      .map(c => `<option value="${c.id}">${c.nome}${c.cidade?' � '+c.cidade:''}${c.uf?'/'+c.uf:''}</option>`).join('');
 
   let pop = document.getElementById('popup-sol-rev-colab');
   if (pop) pop.remove();
@@ -9231,10 +4812,10 @@ function abrirSolicitarRevisaoColab() {
   pop.innerHTML = `<div style="background:var(--branco);border-radius:12px;padding:24px 26px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <div>
-        <div style="font-size:13px;font-weight:700">Solicitar revisão</div>
-        <div style="font-size:10px;color:#999;margin-top:2px">O coordenador do projeto será notificado</div>
+        <div style="font-size:13px;font-weight:700">Solicitar revis�o</div>
+        <div style="font-size:10px;color:#999;margin-top:2px">O coordenador do projeto ser� notificado</div>
       </div>
-      <button onclick="document.getElementById('popup-sol-rev-colab').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa">×</button>
+      <button onclick="document.getElementById('popup-sol-rev-colab').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa">�</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div><label style="${lblStyle}">Cliente</label>
@@ -9286,10 +4867,10 @@ function abrirSolicitarRevisaoColab() {
       const prod  = todosProds.find(p => p.id === etapa?.produto_id);
       const coordId = prod?.coordenador_id;
 
-      // Notifica via tabela de notificações
+      // Notifica via tabela de notifica��es
       if (coordId) {
         const solicitante = G.usuario;
-        const msg = `${solicitante.nome} solicitou revisão de "${etapa?.nome || 'etapa'}" em "${prod?.oportunidades?.projeto || prod?.nome || 'projeto'}"`;
+        const msg = `${solicitante.nome} solicitou revis�o de "${etapa?.nome || 'etapa'}" em "${prod?.oportunidades?.projeto || prod?.nome || 'projeto'}"`;
         await sb.from('notificacoes').insert({
           para_usuario: coordId,
           de_usuario: solicitante.id,
@@ -9300,7 +4881,7 @@ function abrirSolicitarRevisaoColab() {
         });
       }
 
-      // Cria revisão vazia (aparece na lista, coordenador preenche as pranchas)
+      // Cria revis�o vazia (aparece na lista, coordenador preenche as pranchas)
       const { count } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
       await sb.from('revisoes').insert({
         etapa_id: etapaId,
@@ -9313,7 +4894,7 @@ function abrirSolicitarRevisaoColab() {
       await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
 
       pop.remove();
-      toast('Revisão solicitada — coordenador notificado');
+      toast('Revis�o solicitada � coordenador notificado');
       carregarRevisoes();
     } catch(e) { toast('Erro: ' + e.message); }
     finally { btn.disabled = false; btn.textContent = 'Solicitar'; }
@@ -9341,8 +4922,8 @@ async function selecionarRevisao(id) {
       .order('created_at', { ascending: true })
   ]);
 
-  // Se a query direta de pranchas falhar ou retornar vazio (RLS bloqueou para não-participante),
-  // usa dados já carregados via join em G._revisoes como fallback somente-leitura
+  // Se a query direta de pranchas falhar ou retornar vazio (RLS bloqueou para n�o-participante),
+  // usa dados j� carregados via join em G._revisoes como fallback somente-leitura
   const pranchas = (respPranchas.data?.length)
     ? respPranchas.data
     : (rev.pranchas || []).map(pr => ({
@@ -9378,12 +4959,12 @@ async function selecionarRevisao(id) {
   const opp = prod?.oportunidades;
   const cli = opp?.clientes;
 
-  // Pode preencher: sócio, coordenador do produto, ou desenvolvedor da etapa
+  // Pode preencher: s�cio, coordenador do produto, ou desenvolvedor da etapa
   const podePreencher = isSocioRole(G.usuario.role)
     || prod?.coordenador_id === G.usuario.id
     || (G.etapaDevs[etapa?.id] || []).includes(G.usuario.id);
 
-  // Avatares dos envolvidos na revisão
+  // Avatares dos envolvidos na revis�o
   const _envIds = new Set();
   if(prod?.coordenador_id) _envIds.add(prod.coordenador_id);
   if(etapa?.coordenador_id) _envIds.add(etapa.coordenador_id);
@@ -9397,17 +4978,17 @@ async function selecionarRevisao(id) {
         const role = u.id === prod?.coordenador_id ? 'Coord. projeto'
                    : u.id === etapa?.coordenador_id ? 'Coord. etapa'
                    : 'Desenvolvedor';
-        return `<div class="task-de-chip" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:8px" title="${u.nome} · ${role}">${u.iniciais}</div>`;
+        return `<div class="task-de-chip" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:8px" title="${u.nome} � ${role}">${u.iniciais}</div>`;
       }).join('')}
     </div>` : '';
 
-  // Preserva quais pranchas estavam expandidas para restaurar após re-render
+  // Preserva quais pranchas estavam expandidas para restaurar ap�s re-render
   const _expandidas = new Set(
     [...document.querySelectorAll('.prancha-card.expanded')]
       .map(el => el.id.replace('prancha-', ''))
   );
 
-  // Calcula resumo geral para as barras de progresso da revisão
+  // Calcula resumo geral para as barras de progresso da revis�o
   const _totalTarefas = pranchas.reduce((s, pr) => s + (pr.tarefas_revisao?.length || 0), 0);
   const _concTarefas  = pranchas.reduce((s, pr) => s + (pr.tarefas_revisao?.filter(t => t.concluida).length || 0), 0);
   const _totalPranchas = pranchas.length;
@@ -9421,7 +5002,7 @@ async function selecionarRevisao(id) {
   const summaryBarsHtml = _totalPranchas > 0 ? `
     <div class="rev-summary-bars">
       <div class="rev-summary-bar-row">
-        <span class="rev-summary-bar-label">Tarefas concluídas</span>
+        <span class="rev-summary-bar-label">Tarefas conclu�das</span>
         <div class="rev-summary-bar-track"><div class="rev-summary-bar-fill" style="width:${_pctTarefas}%"></div></div>
         <span class="rev-summary-count">${_concTarefas}/${_totalTarefas}</span>
       </div>
@@ -9437,32 +5018,32 @@ async function selecionarRevisao(id) {
     <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:10px;padding:20px 22px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:2px">${cli?.nome || '—'}</div>
-          <div style="font-size:11px;color:#666">${opp?.projeto || prod?.nome || '—'}</div>
-          <div style="font-size:10px;color:#999">${etapa?.nome || '—'} · Revisão #${rev.numero}</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">${cli?.nome || '�'}</div>
+          <div style="font-size:11px;color:#666">${opp?.projeto || prod?.nome || '�'}</div>
+          <div style="font-size:10px;color:#999">${etapa?.nome || '�'} � Revis�o #${rev.numero}</div>
           ${envolvidosHtml}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           ${podePreencher ? `<button class="btn sm verde" onclick="addPranchaRevisao('${id}')">+ Prancha</button>` : ''}
-          <button class="btn sm" onclick="notificarRevisao('${id}')" title="Notificar coordenador que revisão está pronta">📢 Notificar</button>
+          <button class="btn sm" onclick="notificarRevisao('${id}')" title="Notificar coordenador que revis�o est� pronta">?? Notificar</button>
           ${isSocioRole(G.usuario.role) ? `
             ${rev.status === 'concluida'
-              ? `<button class="btn sm az" onclick="reabrirRevisao('${id}')" title="Reabrir revisão">↺ Reabrir</button>`
-              : `<button class="btn sm" style="color:var(--verde);border-color:var(--verde)" onclick="fecharRevisao('${id}')" title="Marcar revisão como concluída">✓ Fechar</button>`
+              ? `<button class="btn sm az" onclick="reabrirRevisao('${id}')" title="Reabrir revis�o">? Reabrir</button>`
+              : `<button class="btn sm" style="color:var(--verde);border-color:var(--verde)" onclick="fecharRevisao('${id}')" title="Marcar revis�o como conclu�da">? Fechar</button>`
             }
-            <button class="btn sm" style="color:var(--terracota);border-color:var(--terracota)" onclick="excluirRevisao('${id}')" title="Excluir revisão permanentemente">🗑 Excluir</button>
+            <button class="btn sm" style="color:var(--terracota);border-color:var(--terracota)" onclick="excluirRevisao('${id}')" title="Excluir revis�o permanentemente">?? Excluir</button>
           ` : ''}
         </div>
       </div>
       ${!podePreencher ? `
         <div class="hint az" style="margin-bottom:12px">
-          Você pode acompanhar esta revisão em modo leitura, mas apenas participantes e coordenadores podem marcar as tarefas.
+          Voc� pode acompanhar esta revis�o em modo leitura, mas apenas participantes e coordenadores podem marcar as tarefas.
         </div>` : ''
       }
       ${summaryBarsHtml}
       <div id="pranchas-wrap" style="margin-top:${_totalPranchas > 0 ? '14px' : '0'}">
         ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
-        ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
+        ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revis�o.</div>' : ''}
       </div>
     </div>
   `;
@@ -9472,7 +5053,7 @@ async function selecionarRevisao(id) {
     if (!card) return;
     card.classList.add('expanded');
     const hint = card.querySelector('.prancha-expand-hint');
-    if (hint) hint.textContent = '▴ recolher';
+    if (hint) hint.textContent = '? recolher';
   });
 
   G._revisaoAtiva = id;
@@ -9487,12 +5068,12 @@ function renderPrancha(pr, isSocioOrCoord) {
   const prId = pr.id;
   const prIdJs = _sqN(prId);
 
-  // Checklist full (dentro de prancha-body-full) — ordenado por data de criação
+  // Checklist full (dentro de prancha-body-full) � ordenado por data de cria��o
   const tarefasOrdenadas = [...(pr.tarefas_revisao || [])].sort((a, b) =>
     (a.created_at || '').localeCompare(b.created_at || ''));
   const tarefasHtml = tarefasOrdenadas.map(t => {
     const tarefaIdJs = _sqN(t.id);
-    const tarefaTituloJs = _sqN(`Tarefa de revisão · ${t.descricao}`);
+    const tarefaTituloJs = _sqN(`Tarefa de revis�o � ${t.descricao}`);
     const mediaCount = tempMediaCount('revisao_tarefa', t.id);
     const mediaViewBtn = mediaCount
       ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs}, ${isSocioOrCoord ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
@@ -9500,22 +5081,22 @@ function renderPrancha(pr, isSocioOrCoord) {
     const camClass = mediaCount ? 'has-media' : 'is-empty';
     return `<div class="tarefa-item" data-tarefa-id="${t.id}">
       <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
-           ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Acompanhe o progresso — apenas participantes do projeto podem marcar"'}></div>
+           ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Acompanhe o progresso � apenas participantes do projeto podem marcar"'}></div>
       <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${t.descricao}</div>
       ${mediaViewBtn}
       <div class="tarefa-item-tools">
-        ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">📷</button>` : ''}
-        ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">✎</button>` : ''}
-        ${isSocioOrCoord ? `<button class="ck-item-act tc" type="button" title="Excluir tarefa" onclick="excluirTarefaRevisao('${t.id}', '${prId}')">✕</button>` : ''}
+        ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">??</button>` : ''}
+        ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">?</button>` : ''}
+        ${isSocioOrCoord ? `<button class="ck-item-act tc" type="button" title="Excluir tarefa" onclick="excluirTarefaRevisao('${t.id}', '${prId}')">?</button>` : ''}
       </div>
     </div>`;
   }).join('');
 
   const comentariosHtml = (pr.comentarios || []).length
     ? (pr.comentarios || []).map(c => renderTopicoComentario(c, podeExcluirTopico)).join('')
-    : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem comentários nesta prancha.</div>';
+    : '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem coment�rios nesta prancha.</div>';
 
-  // Preview: até 3 tarefas (mesma ordem)
+  // Preview: at� 3 tarefas (mesma ordem)
   const previewTarefas = tarefasOrdenadas.slice(0, 3);
   const restante = total - previewTarefas.length;
   const previewHtml = previewTarefas.length
@@ -9534,9 +5115,9 @@ function renderPrancha(pr, isSocioOrCoord) {
     ? (() => {
         const snippet = pr.comentarios[0]?.comentario || '';
         const autor = pr.comentarios[0]?.criado_por_usuario?.nome?.split(' ')[0] || '';
-        const snippetTrunc = snippet.length > 80 ? snippet.slice(0, 80) + '…' : snippet;
+        const snippetTrunc = snippet.length > 80 ? snippet.slice(0, 80) + '�' : snippet;
         return `<div class="prancha-forum-preview prancha-forum-has-comment">
-          <span class="prancha-forum-badge">💬 ${nComentarios} comentário${nComentarios>1?'s':''}</span>
+          <span class="prancha-forum-badge">?? ${nComentarios} coment�rio${nComentarios>1?'s':''}</span>
           ${snippet ? `<span class="prancha-forum-snippet">${autor ? autor + ': ' : ''}${_escN(snippetTrunc)}</span>` : ''}
         </div>`;
       })()
@@ -9545,27 +5126,27 @@ function renderPrancha(pr, isSocioOrCoord) {
   return `<div class="prancha-card" id="prancha-${prId}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''} prancha-hd-click" onclick="togglePranchaExpand(${prIdJs})">
       <div>
-        <div class="prancha-nome">${pr.nome}${concluida100 ? ' ✓' : ''}</div>
+        <div class="prancha-nome">${pr.nome}${concluida100 ? ' ?' : ''}</div>
       </div>
       <div class="prancha-actions">
         <span class="prancha-prog">${conc}/${total}</span>
-        <button class="btn sm" onclick="event.stopPropagation();addComentarioPrancha('${prId}')">+ Comentário</button>
+        <button class="btn sm" onclick="event.stopPropagation();addComentarioPrancha('${prId}')">+ Coment�rio</button>
         ${isSocioOrCoord ? `<button class="btn sm" onclick="event.stopPropagation();addTarefaPrancha('${prId}')">+ Tarefa</button>` : ''}
-        ${podeGerirPrancha ? `<button class="btn sm" onclick="event.stopPropagation();editarNomePrancha('${prId}',${_sqN(pr.nome)})" title="Renomear prancha">✎</button>` : ''}
-        ${podeGerirPrancha ? `<button class="btn sm" style="color:var(--terracota);border-color:var(--terracota)" onclick="event.stopPropagation();excluirPrancha('${prId}','${G._revisaoAtiva}')" title="Excluir prancha">✕</button>` : ''}
+        ${podeGerirPrancha ? `<button class="btn sm" onclick="event.stopPropagation();editarNomePrancha('${prId}',${_sqN(pr.nome)})" title="Renomear prancha">?</button>` : ''}
+        ${podeGerirPrancha ? `<button class="btn sm" style="color:var(--terracota);border-color:var(--terracota)" onclick="event.stopPropagation();excluirPrancha('${prId}','${G._revisaoAtiva}')" title="Excluir prancha">?</button>` : ''}
       </div>
     </div>
     <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${pct}%"></div></div>
     ${previewHtml}
     ${forumPreviewHtml}
-    <div class="prancha-expand-hint" onclick="togglePranchaExpand(${prIdJs})">▾ clique para expandir</div>
+    <div class="prancha-expand-hint" onclick="togglePranchaExpand(${prIdJs})">? clique para expandir</div>
     <div class="prancha-body-full">
       <div class="prancha-body">
         ${tarefasHtml}
         ${!pr.tarefas_revisao?.length ? '<div style="color:#bbb;font-size:11px;padding:6px 0">Sem tarefas nesta prancha.</div>' : ''}
         <div id="tarefa-inline-${prId}"></div>
         <div class="prancha-comments">
-          <div class="prancha-comments-title">Comentários</div>
+          <div class="prancha-comments-title">Coment�rios</div>
           ${comentariosHtml}
         </div>
       </div>
@@ -9578,10 +5159,10 @@ function togglePranchaExpand(pranchaId) {
   if (!card) return;
   card.classList.toggle('expanded');
   const hint = card.querySelector('.prancha-expand-hint');
-  if (hint) hint.textContent = card.classList.contains('expanded') ? '▴ recolher' : '▾ clique para expandir';
+  if (hint) hint.textContent = card.classList.contains('expanded') ? '? recolher' : '? clique para expandir';
 }
 
-// ── Renomear prancha (inline) ──────────────────────────────────────────────
+// -- Renomear prancha (inline) ----------------------------------------------
 function editarNomePrancha(pranchaId, nomeAtual) {
   const card = document.getElementById('prancha-' + pranchaId);
   if (!card) return;
@@ -9599,32 +5180,32 @@ function editarNomePrancha(pranchaId, nomeAtual) {
 
 async function salvarNomePrancha(pranchaId, novoNome) {
   const nome = novoNome.trim();
-  if (!nome) { toast('Nome não pode ficar vazio'); return; }
+  if (!nome) { toast('Nome n�o pode ficar vazio'); return; }
   const { error } = await sb.from('pranchas').update({ nome }).eq('id', pranchaId);
   if (error) { toast('Erro ao renomear: ' + error.message); return; }
   toast('Prancha renomeada');
   if (G._revisaoAtiva) await selecionarRevisao(G._revisaoAtiva);
 }
 
-// ── Excluir prancha ────────────────────────────────────────────────────────
+// -- Excluir prancha --------------------------------------------------------
 async function excluirPrancha(pranchaId, revisaoId) {
-  if (!confirm('Excluir esta prancha e todas as suas tarefas e comentários?')) return;
-  // Delete cascade: tarefas → mensagens → comentários → prancha
+  if (!confirm('Excluir esta prancha e todas as suas tarefas e coment�rios?')) return;
+  // Delete cascade: tarefas ? mensagens ? coment�rios ? prancha
   await sb.from('tarefas_revisao').delete().eq('prancha_id', pranchaId);
   await sb.from('prancha_comentario_mensagens').delete().eq('prancha_id', pranchaId);
   await sb.from('prancha_comentarios').delete().eq('prancha_id', pranchaId);
   const { error } = await sb.from('pranchas').delete().eq('id', pranchaId);
   if (error) { toast('Erro ao excluir prancha: ' + error.message); return; }
-  toast('Prancha excluída');
+  toast('Prancha exclu�da');
   if (revisaoId) await selecionarRevisao(revisaoId);
   carregarRevisoes();
 }
 
-// ── Fechar / Reabrir revisão ───────────────────────────────────────────────
+// -- Fechar / Reabrir revis�o -----------------------------------------------
 async function fecharRevisao(id) {
   const { error } = await sb.from('revisoes').update({ status: 'concluida' }).eq('id', id);
   if (error) { toast('Erro: ' + error.message); return; }
-  toast('Revisão marcada como concluída');
+  toast('Revis�o marcada como conclu�da');
   await selecionarRevisao(id);
   carregarRevisoes();
 }
@@ -9632,15 +5213,15 @@ async function fecharRevisao(id) {
 async function reabrirRevisao(id) {
   const { error } = await sb.from('revisoes').update({ status: 'aberta' }).eq('id', id);
   if (error) { toast('Erro: ' + error.message); return; }
-  toast('Revisão reaberta');
+  toast('Revis�o reaberta');
   await selecionarRevisao(id);
   carregarRevisoes();
 }
 
-// ── Excluir revisão completa ───────────────────────────────────────────────
+// -- Excluir revis�o completa -----------------------------------------------
 async function excluirRevisao(id) {
-  if (!confirm('Excluir esta revisão permanentemente? Todas as pranchas, tarefas e comentários serão removidos.')) return;
-  // Busca IDs das pranchas desta revisão
+  if (!confirm('Excluir esta revis�o permanentemente? Todas as pranchas, tarefas e coment�rios ser�o removidos.')) return;
+  // Busca IDs das pranchas desta revis�o
   const { data: pranchasRev } = await sb.from('pranchas').select('id').eq('revisao_id', id);
   const prIds = (pranchasRev || []).map(p => p.id);
   if (prIds.length) {
@@ -9650,12 +5231,12 @@ async function excluirRevisao(id) {
     await sb.from('pranchas').delete().in('id', prIds);
   }
   const { error } = await sb.from('revisoes').delete().eq('id', id);
-  if (error) { toast('Erro ao excluir revisão: ' + error.message); return; }
+  if (error) { toast('Erro ao excluir revis�o: ' + error.message); return; }
   // Limpa painel de detalhe
   const detalhe = document.getElementById('rev-detalhe');
   if (detalhe) detalhe.innerHTML = '';
   G._revisaoAtiva = null;
-  toast('Revisão excluída');
+  toast('Revis�o exclu�da');
   carregarRevisoes();
 }
 
@@ -9663,7 +5244,7 @@ function renderMensagemThread(msg) {
   return `<div class="prancha-thread-msg ${msg.legacy ? 'legacy' : ''}">
     <div class="prancha-thread-msg-meta">
       ${msg.criado_por_usuario ? `<div class="task-de-chip" style="background:${msg.criado_por_usuario.cor||'#888'}">${msg.criado_por_usuario.iniciais}</div>` : ''}
-      <span style="font-size:10px;color:#888">${msg.criado_por_usuario?.nome || 'Equipe'} · ${fmtDate((msg.created_at || '').split('T')[0] || '')}${msg.legacy ? ' · resposta anterior' : ''}</span>
+      <span style="font-size:10px;color:#888">${msg.criado_por_usuario?.nome || 'Equipe'} � ${fmtDate((msg.created_at || '').split('T')[0] || '')}${msg.legacy ? ' � resposta anterior' : ''}</span>
     </div>
     <div class="prancha-comment-text">${msg.mensagem}</div>
   </div>`;
@@ -9674,13 +5255,13 @@ function renderTopicoComentario(c, podeExcluirTopico) {
   return `<div class="prancha-comment">
     <div class="prancha-comment-meta">
       ${c.criado_por_usuario ? `<div class="task-de-chip" style="background:${c.criado_por_usuario.cor||'#888'}">${c.criado_por_usuario.iniciais}</div>` : ''}
-      <span style="font-size:10px;color:#888">${c.criado_por_usuario?.nome || 'Equipe'} · ${fmtDate(c.created_at?.split('T')[0])}</span>
+      <span style="font-size:10px;color:#888">${c.criado_por_usuario?.nome || 'Equipe'} � ${fmtDate(c.created_at?.split('T')[0])}</span>
     </div>
     <div class="prancha-comment-text">${c.comentario}</div>
     ${mensagens.length ? `<div class="prancha-thread-list">${mensagens.map(renderMensagemThread).join('')}</div>` : ''}
     <div class="prancha-thread-actions">
       <button class="btn sm" onclick="responderComentarioPrancha('${c.id}')">Responder</button>
-      ${podeExcluirTopico ? `<button class="btn sm" onclick="excluirTopicoComentario('${c.id}')">Excluir tópico</button>` : ''}
+      ${podeExcluirTopico ? `<button class="btn sm" onclick="excluirTopicoComentario('${c.id}')">Excluir t�pico</button>` : ''}
     </div>
   </div>`;
 }
@@ -9700,7 +5281,7 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
     const conc = pr?.tarefas_revisao?.filter(t => t.concluida).length || 0;
     if (total > 0 && conc === total) {
       // Slack placeholder
-      console.log('[SLACK] Prancha concluída:', pr?.nome);
+      console.log('[SLACK] Prancha conclu�da:', pr?.nome);
     }
   }
 
@@ -9709,14 +5290,14 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
 }
 
 async function excluirTarefaRevisao(id, pranchaId) {
-  abrirPopupConfirm('Excluir tarefa', 'Excluir esta tarefa de revisão?', async () => {
+  abrirPopupConfirm('Excluir tarefa', 'Excluir esta tarefa de revis�o?', async () => {
     try {
       const anexos = await carregarTempMediaLista('revisao_tarefa', id, true);
       if (anexos.length) {
         const paths = anexos.map(item => item.storage_path).filter(Boolean);
         if (paths.length) {
           const { error: storageError } = await sb.storage.from('gestao-anexos-temp').remove(paths);
-          if (storageError) console.warn('Falha ao limpar anexos da tarefa de revisão:', storageError.message);
+          if (storageError) console.warn('Falha ao limpar anexos da tarefa de revis�o:', storageError.message);
         }
         const { error: mediaError } = await sb
           .from('gestao_anexos_temporarios')
@@ -9740,7 +5321,7 @@ async function excluirTarefaRevisao(id, pranchaId) {
       delete G._tempMediaCounts[tempMediaKey('revisao_tarefa', id)];
       if (G._revisaoAtiva) await selecionarRevisao(G._revisaoAtiva);
       carregarRevisoes();
-      toast('Tarefa de revisão excluída.');
+      toast('Tarefa de revis�o exclu�da.');
     } catch (err) {
       toast('Erro ao excluir tarefa: ' + (err?.message || err));
     }
@@ -9753,16 +5334,16 @@ function editarTarefaRevisao(id, pranchaId) {
   const descEl = item.querySelector('.tarefa-desc');
   if (!descEl) return;
   const textoAtual = descEl.textContent;
-  // UUIDs só têm hex+hífen — aspas simples são seguras aqui
+  // UUIDs s� t�m hex+h�fen � aspas simples s�o seguras aqui
   item.innerHTML = `
     <textarea class="tarefa-edit-ta" rows="2"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();salvarEdicaoTarefaRevisao('${id}','${pranchaId}',this)}else if(event.key==='Escape'){cancelarEdicaoTarefaRevisao('${id}','${pranchaId}')}"
       style="flex:1;resize:none;padding:3px 6px;font-family:var(--font-ui);font-size:11px;border:1px solid var(--grafite);border-radius:4px;outline:none;background:var(--branco);color:var(--grafite);line-height:1.4">${textoAtual}</textarea>
     <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
       <button onclick="salvarEdicaoTarefaRevisao('${id}','${pranchaId}',this.closest('.tarefa-item').querySelector('textarea'))"
-        class="btn sm verde" style="padding:2px 8px;font-size:11px" title="Salvar">✓</button>
+        class="btn sm verde" style="padding:2px 8px;font-size:11px" title="Salvar">?</button>
       <button onclick="cancelarEdicaoTarefaRevisao('${id}','${pranchaId}')"
-        class="btn sm" style="padding:2px 8px;font-size:11px" title="Cancelar">✕</button>
+        class="btn sm" style="padding:2px 8px;font-size:11px" title="Cancelar">?</button>
     </div>`;
   item.style.alignItems = 'flex-start';
   item.querySelector('textarea').focus();
@@ -9830,14 +5411,14 @@ function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLab
     const comentario = (G._comentariosRevisao || []).find(c => c.id === targetId);
     if (comentario?.comentario) {
       contexto.style.display = 'block';
-      contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Respondendo este comentário</div>${comentario.comentario}`;
+      contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Respondendo este coment�rio</div>${comentario.comentario}`;
     }
   }
 
   if (action === 'excluir_topico') {
     const comentario = (G._comentariosRevisao || []).find(c => c.id === targetId);
     contexto.style.display = 'block';
-    contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Excluir tópico inteiro</div>Este tópico e todas as respostas serão removidos da prancha.<div style="margin-top:8px;color:#111">${comentario?.comentario || ''}</div>`;
+    contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Excluir t�pico inteiro</div>Este t�pico e todas as respostas ser�o removidos da prancha.<div style="margin-top:8px;color:#111">${comentario?.comentario || ''}</div>`;
   }
 
   document.getElementById('modal-revisao-input').style.display = 'flex';
@@ -9861,10 +5442,10 @@ function addComentarioPrancha(pranchaId) {
   abrirModalRevisaoInput({
     action: 'comentario',
     targetId: pranchaId,
-    title: 'Novo comentário',
-    buttonLabel: 'Salvar comentário',
-    textareaLabel: 'Comentário / dúvida',
-    textareaPlaceholder: 'Descreva a dúvida ou observação desta prancha...',
+    title: 'Novo coment�rio',
+    buttonLabel: 'Salvar coment�rio',
+    textareaLabel: 'Coment�rio / d�vida',
+    textareaPlaceholder: 'Descreva a d�vida ou observa��o desta prancha...',
     multiline: true
   });
 }
@@ -9873,10 +5454,10 @@ function responderComentarioPrancha(comentarioId) {
   abrirModalRevisaoInput({
     action: 'resposta',
     targetId: comentarioId,
-    title: 'Responder comentário',
+    title: 'Responder coment�rio',
     buttonLabel: 'Salvar resposta',
     textareaLabel: 'Resposta',
-    textareaPlaceholder: 'Escreva a resposta para este comentário...',
+    textareaPlaceholder: 'Escreva a resposta para este coment�rio...',
     multiline: true
   });
 }
@@ -9885,21 +5466,21 @@ function excluirTopicoComentario(comentarioId) {
   abrirModalRevisaoInput({
     action: 'excluir_topico',
     targetId: comentarioId,
-    title: 'Excluir tópico',
-    buttonLabel: 'Excluir tópico',
+    title: 'Excluir t�pico',
+    buttonLabel: 'Excluir t�pico',
     multiline: false
   });
 }
 
 function addTarefaPrancha(pranchaId) {
-  // Garante que o card está expandido antes de mostrar o input
+  // Garante que o card est� expandido antes de mostrar o input
   const card = document.getElementById('prancha-' + pranchaId);
   if (card && !card.classList.contains('expanded')) {
     togglePranchaExpand(pranchaId);
   }
   const wrap = document.getElementById(`tarefa-inline-${pranchaId}`);
   if(!wrap || wrap.querySelector('.tarefa-inline-form')) {
-    // Já aberto — só foca no textarea
+    // J� aberto � s� foca no textarea
     document.getElementById(`ti-${pranchaId}`)?.focus();
     return;
   }
@@ -9930,7 +5511,7 @@ async function salvarTarefaInline(pranchaId) {
   if(!valor) { cancelarTarefaInline(pranchaId); return; }
   const { error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor });
   if(error) { toast('Erro ao adicionar tarefa'); return; }
-  // Captura quais pranchas estão expandidas antes do re-render
+  // Captura quais pranchas est�o expandidas antes do re-render
   const expandidas = new Set(
     [...document.querySelectorAll('.prancha-card.expanded')].map(el => el.id.replace('prancha-', ''))
   );
@@ -9976,7 +5557,7 @@ async function confirmarModalRevisaoInput() {
       comentario: valor,
       criado_por: G.usuario.id
     }));
-    if (!error) toast('Comentário registrado');
+    if (!error) toast('Coment�rio registrado');
   }
 
   if (action === 'resposta') {
@@ -10015,12 +5596,12 @@ async function confirmarModalRevisaoInput() {
 
   if (action === 'excluir_topico') {
     ({ error } = await sb.from('prancha_comentarios').delete().eq('id', targetId));
-    if (!error) toast('Tópico removido');
+    if (!error) toast('T�pico removido');
   }
 
   if (error) {
     if ((error.message || '').includes('prancha_comentario_mensagens')) {
-      toast('Erro ao salvar: falta aplicar o SQL da thread de comentários no Supabase');
+      toast('Erro ao salvar: falta aplicar o SQL da thread de coment�rios no Supabase');
     } else {
       toast('Erro ao salvar: ' + error.message);
     }
@@ -10033,9 +5614,9 @@ async function confirmarModalRevisaoInput() {
   carregarRevisoes();
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   MODAL PRODUTO
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 async function abrirProduto(id, targetPanel = null) {
   G.produtoAtivo = id;
   const prod = G.todosProdutos.find(p => p.id === id) || G._todosProdutosGestao.find(p => p.id === id);
@@ -10048,61 +5629,61 @@ async function abrirProduto(id, targetPanel = null) {
   const stProd = STATUS_PROD[prod.status] || STATUS_PROD.inativo;
   const isSocio = isSocioRole(G.usuario.role);
 
-  document.getElementById('mp-titulo').textContent = (cli?.nome || '—') + ' | ' + (opp?.projeto || prod.nome);
+  document.getElementById('mp-titulo').textContent = (cli?.nome || '�') + ' | ' + (opp?.projeto || prod.nome);
   document.getElementById('mp-subtipo-hd').textContent = prod.nome;
-  document.getElementById('mp-cliente').textContent = cli?.nome || '—';
-  document.getElementById('mp-opp').textContent = opp?.projeto || '—';
+  document.getElementById('mp-cliente').textContent = cli?.nome || '�';
+  document.getElementById('mp-opp').textContent = opp?.projeto || '�';
   const _cidadeUF = [cli?.cidade, cli?.uf].filter(Boolean).join(' / ');
-  document.getElementById('mp-cidade-uf').textContent = _cidadeUF || '—';
+  document.getElementById('mp-cidade-uf').textContent = _cidadeUF || '�';
   document.getElementById('mp-status').innerHTML = `<span class="badge ${stProd.cls}">${stProd.label}</span>`;
   document.getElementById('mp-coord').innerHTML = coord
     ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${coord.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:#fff;flex-shrink:0">${coord.iniciais}</div>${coord.nome}</div>`
-    : '—';
-  document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
+    : '�';
+  document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '�';
 
   // Dados do projeto (novos campos na oportunidade)
-  document.getElementById('mp-proj-endereco').textContent = opp?.endereco || '—';
-  document.getElementById('mp-proj-cnpj').textContent     = opp?.cnpj || '—';
-  document.getElementById('mp-proj-esc-arq').textContent  = opp?.escritorio_arq || '—';
-  document.getElementById('mp-proj-esc-int').textContent  = opp?.escritorio_int || '—';
-  document.getElementById('mp-proj-gestao').textContent   = opp?.gestao_empresa || '—';
-  document.getElementById('mp-proj-prev-orc').textContent = opp?.previsao_orcamentaria ? 'R$ ' + fmtNum(opp.previsao_orcamentaria) : '—';
+  document.getElementById('mp-proj-endereco').textContent = opp?.endereco || '�';
+  document.getElementById('mp-proj-cnpj').textContent     = opp?.cnpj || '�';
+  document.getElementById('mp-proj-esc-arq').textContent  = opp?.escritorio_arq || '�';
+  document.getElementById('mp-proj-esc-int').textContent  = opp?.escritorio_int || '�';
+  document.getElementById('mp-proj-gestao').textContent   = opp?.gestao_empresa || '�';
+  document.getElementById('mp-proj-prev-orc').textContent = opp?.previsao_orcamentaria ? 'R$ ' + fmtNum(opp.previsao_orcamentaria) : '�';
 
   // Links do projeto
   const mpLinksWrap = document.getElementById('mp-links-wrap');
   const mpLinksBody = document.getElementById('mp-links-body');
   const links = [];
-  if (opp?.link_arquivo)  links.push(`<a href="${opp.link_arquivo}"  target="_blank" rel="noopener" style="color:var(--azul);text-decoration:none;display:flex;align-items:center;gap:4px">📁 Plataforma de arquivos</a>`);
-  if (opp?.link_planilha) links.push(`<a href="${opp.link_planilha}" target="_blank" rel="noopener" style="color:var(--azul);text-decoration:none;display:flex;align-items:center;gap:4px">📊 Planilha de trabalho</a>`);
+  if (opp?.link_arquivo)  links.push(`<a href="${opp.link_arquivo}"  target="_blank" rel="noopener" style="color:var(--azul);text-decoration:none;display:flex;align-items:center;gap:4px">?? Plataforma de arquivos</a>`);
+  if (opp?.link_planilha) links.push(`<a href="${opp.link_planilha}" target="_blank" rel="noopener" style="color:var(--azul);text-decoration:none;display:flex;align-items:center;gap:4px">?? Planilha de trabalho</a>`);
   if (links.length) { mpLinksBody.innerHTML = links.join(''); mpLinksWrap.style.display = ''; }
   else              { mpLinksWrap.style.display = 'none'; }
 
   // Controle de acesso do modal por role
   const isSocioOrCoord = isSocio || G.usuario.role === 'coordenador';
 
-  // Sócios e coordenadores: edição de etapas e dados gerais
+  // S�cios e coordenadores: edi��o de etapas e dados gerais
   document.getElementById('btn-edit-etapas').style.display  = isSocioOrCoord ? '' : 'none';
   document.getElementById('mp-btn-editar').style.display    = isSocioOrCoord ? '' : 'none';
 
-  // Sócios e coordenadores: custos
+  // S�cios e coordenadores: custos
   document.getElementById('mp-tab-custos').style.display = isSocioOrCoord ? '' : 'none';
 
-  // Sócios apenas: financeiro, horas, resultado, pausar
+  // S�cios apenas: financeiro, horas, resultado, pausar
   document.getElementById('mp-financeiro-wrap').style.display  = isSocio ? 'block' : 'none';
   document.getElementById('mp-tab-horas').style.display        = isSocio ? '' : 'none';
   document.getElementById('mp-tab-resultado').style.display    = isSocio ? '' : 'none';
-  // Grid: 3 cols para sócios, 2 para os demais
+  // Grid: 3 cols para s�cios, 2 para os demais
   const visaoGrid = document.getElementById('mp-visao-grid');
   if (visaoGrid) visaoGrid.className = `fg mb8 ${isSocio ? 'fg3' : 'fg2'}`;
-  // Dados de contrato na visão geral (sócios)
+  // Dados de contrato na vis�o geral (s�cios)
   if (isSocio) {
     const cSt   = prod.contrato_status;
     const cElab = prod.contrato_elaborado_por;
     const cAssin = prod.contrato_data_assinatura;
-    const CSTLBL = { pendente:'Pendente', em_elaboracao:'Em elaboração', assinado:'Assinado' };
+    const CSTLBL = { pendente:'Pendente', em_elaboracao:'Em elabora��o', assinado:'Assinado' };
     if (cSt)    { document.getElementById('mp-contrato-status').textContent = CSTLBL[cSt] || cSt; document.getElementById('mp-contrato-status-row').style.display = ''; }
     if (cElab)  { document.getElementById('mp-contrato-elab').textContent   = cElab;                document.getElementById('mp-contrato-elab-row').style.display   = ''; }
-    // Data de assinatura só aparece quando o contrato está assinado
+    // Data de assinatura s� aparece quando o contrato est� assinado
     if (cAssin && cSt === 'assinado') { document.getElementById('mp-contrato-assin').textContent = fmtDate(cAssin); document.getElementById('mp-contrato-assin-row').style.display = ''; }
     else { document.getElementById('mp-contrato-assin-row').style.display = 'none'; }
   } else {
@@ -10111,16 +5692,16 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-btn-pausar').style.display       = (isSocio && prod.status === 'ativo') ? '' : 'none';
   if (isSocio) {
     document.getElementById('mp-valor').textContent = prod.valor_contratado
-      ? 'R$ ' + fmtNum(prod.valor_contratado) : '—';
+      ? 'R$ ' + fmtNum(prod.valor_contratado) : '�';
   }
 
-  // Novo checklist de tarefa: só sócios
+  // Novo checklist de tarefa: s� s�cios
   const btnNovoCk = document.getElementById('btn-novo-ck-tarefa');
   if (btnNovoCk) btnNovoCk.style.display = isSocio ? '' : 'none';
 
-  // Botão de revisão no card: label conforme role
+  // Bot�o de revis�o no card: label conforme role
   const mpBtnRev = document.getElementById('mp-btn-rev-action');
-  if (mpBtnRev) mpBtnRev.textContent = '+ ' + (isSocio ? 'Nova revisão' : 'Solicitar revisão');
+  if (mpBtnRev) mpBtnRev.textContent = '+ ' + (isSocio ? 'Nova revis�o' : 'Solicitar revis�o');
 
   // Etapas timeline + progress bar
   const etapas = G.todasEtapas.filter(e => e.produto_id === id).sort((a,b) => a.ordem - b.ordem);
@@ -10137,10 +5718,10 @@ async function abrirProduto(id, targetPanel = null) {
     };
     const _pct = Math.round(_etConc / _etTotal * 100);
     document.getElementById('mp-seg-bar').innerHTML = etapas.map(e =>
-      `<div class="seg" style="background:${_stColors[e.status] || 'var(--cinza2)'}" title="${e.nome} · ${(STATUS_ETAPA[e.status]||{}).label||e.status}"></div>`
+      `<div class="seg" style="background:${_stColors[e.status] || 'var(--cinza2)'}" title="${e.nome} � ${(STATUS_ETAPA[e.status]||{}).label||e.status}"></div>`
     ).join('');
     document.getElementById('mp-seg-label').innerHTML =
-      `<span>${_etConc}/${_etTotal} concluídas · ${_pct}%</span>`
+      `<span>${_etConc}/${_etTotal} conclu�das � ${_pct}%</span>`
       + Object.entries(_stColors).map(([st,c]) => {
           const n = etapas.filter(e => e.status === st).length;
           if (!n) return '';
@@ -10157,24 +5738,24 @@ async function abrirProduto(id, targetPanel = null) {
     const coord  = G.todosUsuarios.find(u => u.id === e.coordenador_id);
     const prodNome = G.todosProdutos?.find(p => p.id === e.produto_id)?.nome || '';
 
-    // Badge de reunião já agendada
+    // Badge de reuni�o j� agendada
     let reuniaoBadge = '';
     if (e.data_reuniao) {
       const passada = e.data_reuniao < hoje;
       const meetLink = e.reuniao_link
-        ? `<a href="${e.reuniao_link}" target="_blank" style="color:#4285f4;font-size:9px;text-decoration:none;margin-right:2px">🎥</a>`
+        ? `<a href="${e.reuniao_link}" target="_blank" style="color:#4285f4;font-size:9px;text-decoration:none;margin-right:2px">??</a>`
         : '';
-      reuniaoBadge = `<span class="tl-reuniao-badge${passada ? ' passada' : ''}">${meetLink}📅 ${fmtDate(e.data_reuniao)}</span>`;
+      reuniaoBadge = `<span class="tl-reuniao-badge${passada ? ' passada' : ''}">${meetLink}?? ${fmtDate(e.data_reuniao)}</span>`;
     }
 
-    const agendarBtn = `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})" title="Agendar reunião no Google Calendar">📅 ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
+    const agendarBtn = `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})" title="Agendar reuni�o no Google Calendar">?? ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
 
     const dataPartes = [];
     if (e.data_liberacao) dataPartes.push(`Lib: ${fmtDate(e.data_liberacao)}`);
     if (e.data_estimada)  dataPartes.push(`Est: ${fmtDate(e.data_estimada)}`);
-    if (e.data_conclusao) dataPartes.push(`<span style="color:var(--verde)">✓ ${fmtDate(e.data_conclusao)}</span>`);
+    if (e.data_conclusao) dataPartes.push(`<span style="color:var(--verde)">? ${fmtDate(e.data_conclusao)}</span>`);
     const datasHtml = dataPartes.length
-      ? `<div class="tl-date" style="white-space:nowrap">${dataPartes.join(' · ')}</div>`
+      ? `<div class="tl-date" style="white-space:nowrap">${dataPartes.join(' � ')}</div>`
       : '';
 
     return `<div class="tl-item">
@@ -10202,7 +5783,7 @@ async function abrirProduto(id, targetPanel = null) {
   const _openTabBtn = document.querySelector(`#modal-produto .modal-tab[data-panel="${_openPanel}"]`);
   (_openTabBtn || document.querySelector('#modal-produto .modal-tab[data-panel="mp-visao"]')).classList.add('active');
   document.getElementById(_openPanel).classList.add('active');
-  // Limpa lista de registros para forçar reload na próxima vez que a aba for aberta
+  // Limpa lista de registros para for�ar reload na pr�xima vez que a aba for aberta
   G._registros = [];
   G._projHistProductId = null;
   G._projHistThreadId = null;
@@ -10232,7 +5813,7 @@ function pausarProduto() {
 async function confirmarPausa() {
   const dataInicio = document.getElementById('pausa-data-inicio').value;
   const motivo = document.getElementById('pausa-motivo').value.trim();
-  if (!dataInicio) { toast('Informe a data de início da pausa'); return; }
+  if (!dataInicio) { toast('Informe a data de in�cio da pausa'); return; }
   await sb.from('pausas_produto').insert({
     produto_id: G.produtoAtivo, data_inicio: dataInicio,
     motivo, registrado_por: G.usuario.id
@@ -10246,19 +5827,19 @@ async function confirmarPausa() {
 }
 
 async function concluirEtapa(etapaId) {
-  abrirPopupConfirm('Concluir etapa', 'Marcar esta etapa como concluída?', async () => {
+  abrirPopupConfirm('Concluir etapa', 'Marcar esta etapa como conclu�da?', async () => {
   const etapa = G.todasEtapas.find(e => e.id === etapaId);
   const hoje = new Date().toISOString().split('T')[0];
   await sb.from('etapas').update({ status: 'concluida', data_conclusao: hoje }).eq('id', etapaId);
 
-  // Espelho financeiro — sócios e coordenadores
+  // Espelho financeiro � s�cios e coordenadores
   if (etapa && (isSocioRole(G.usuario.role) || G.usuario.role === 'coordenador')) {
     const prod = G.todosProdutos.find(p => p.id === etapa.produto_id);
     const opp = prod?.oportunidades;
     const cli = opp?.clientes;
     const coord = G.todosUsuarios.find(u => u.id === etapa.coordenador_id);
 
-    // S4-05: buscar lançamentos da etapa para calcular horas_totais e custo_execucao
+    // S4-05: buscar lan�amentos da etapa para calcular horas_totais e custo_execucao
     const { data: lancsEtapa } = await sb.from('horas_lancadas')
       .select('usuario_id, hora_inicio, hora_fim')
       .eq('etapa_id', etapaId);
@@ -10267,7 +5848,7 @@ async function concluirEtapa(etapaId) {
     let custoExecucao = 0;
 
     if (lancsEtapa && lancsEtapa.length) {
-      // Agrupa horas por usuário
+      // Agrupa horas por usu�rio
       const horasPorUser = {};
       lancsEtapa.forEach(l => {
         if (!horasPorUser[l.usuario_id]) horasPorUser[l.usuario_id] = 0;
@@ -10275,7 +5856,7 @@ async function concluirEtapa(etapaId) {
       });
       horasTotais = Object.values(horasPorUser).reduce((s, h) => s + h, 0);
 
-      // Busca valor/hora vigente de cada usuário na data de conclusão
+      // Busca valor/hora vigente de cada usu�rio na data de conclus�o
       const uids = Object.keys(horasPorUser);
       const { data: vhs } = await sb.from('historico_valor_hora')
         .select('usuario_id, valor_hora, data_vigencia')
@@ -10283,7 +5864,7 @@ async function concluirEtapa(etapaId) {
         .lte('data_vigencia', hoje)
         .order('data_vigencia', { ascending: false });
 
-      // Pega o valor/hora mais recente por usuário
+      // Pega o valor/hora mais recente por usu�rio
       const vhPorUser = {};
       (vhs || []).forEach(vh => {
         if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
@@ -10307,7 +5888,7 @@ async function concluirEtapa(etapaId) {
     });
   }
 
-  toast('Etapa concluída');
+  toast('Etapa conclu�da');
   await carregarProdutos();
   fecharModal('modal-produto');
   }, 'Concluir');
@@ -10322,8 +5903,8 @@ async function solicitarRevisao(etapaId) {
     status: 'aberta'
   });
   await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
-  console.log('[SLACK] Revisão solicitada para etapa', etapaId);
-  toast('Revisão solicitada — coordenador notificado');
+  console.log('[SLACK] Revis�o solicitada para etapa', etapaId);
+  toast('Revis�o solicitada � coordenador notificado');
   await carregarProdutos();
   carregarDashboard();
 }
@@ -10346,7 +5927,7 @@ function addPranchaForm() {
   div.innerHTML = `<input type="text" placeholder="Nome (ex.: Prancha 0${idx})"
     style="flex:1;padding:5px 9px;border:1px solid var(--cinza);font-family:var(--font-ui);font-size:12px;outline:none"
     class="nr-prancha-nome">
-    <button class="btn sm tc" onclick="this.parentElement.remove()">×</button>`;
+    <button class="btn sm tc" onclick="this.parentElement.remove()">�</button>`;
   wrap.appendChild(div);
 }
 
@@ -10358,7 +5939,7 @@ async function salvarNovaRevisao() {
   if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
 
   try {
-    // Número da revisão
+    // N�mero da revis�o
     const { count } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
 
     // Encontra produto_id via etapa
@@ -10372,7 +5953,7 @@ async function salvarNovaRevisao() {
     }).select().single();
 
     if (errRev || !rev) {
-      toast('Erro ao criar revisão: ' + (errRev?.message || 'resposta vazia'));
+      toast('Erro ao criar revis�o: ' + (errRev?.message || 'resposta vazia'));
       return;
     }
 
@@ -10384,19 +5965,19 @@ async function salvarNovaRevisao() {
     }
 
     fecharModal('modal-nova-revisao');
-    toast('Revisão criada');
+    toast('Revis�o criada');
     carregarRevisoes();
   } catch (e) {
     toast('Erro inesperado: ' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Criar revisão'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Criar revis�o'; }
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   CADASTRO PROJETO
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ── Nova revisão global (aba Revisões) ───────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// -- Nova revis�o global (aba Revis�es) ---------------------------------------
 function abrirNovaRevisaoGlobal() {
   const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
   const lblStyle = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
@@ -10405,7 +5986,7 @@ function abrirNovaRevisaoGlobal() {
   todosProds.forEach(p => { const c = p.oportunidades?.clientes; if (c?.id) cliMap.set(c.id, c); });
   const cliOpts = '<option value="">Selecionar cliente...</option>' +
     [...cliMap.values()].sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'))
-      .map(c => `<option value="${c.id}">${c.nome}${c.cidade?' — '+c.cidade:''}${c.uf?'/'+c.uf:''}</option>`).join('');
+      .map(c => `<option value="${c.id}">${c.nome}${c.cidade?' � '+c.cidade:''}${c.uf?'/'+c.uf:''}</option>`).join('');
 
   let pop = document.getElementById('popup-nova-rev-global');
   if (pop) pop.remove();
@@ -10414,8 +5995,8 @@ function abrirNovaRevisaoGlobal() {
   pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
   pop.innerHTML = `<div style="background:var(--branco);border-radius:12px;padding:24px 26px;max-width:440px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700">Nova revisão</div>
-      <button onclick="document.getElementById('popup-nova-rev-global').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa">×</button>
+      <div style="font-size:13px;font-weight:700">Nova revis�o</div>
+      <button onclick="document.getElementById('popup-nova-rev-global').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa">�</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div><label style="${lblStyle}">Cliente</label><select id="nrg-cli" style="${fldStyle}" onchange="nrgOnCli()">${cliOpts}</select></div>
@@ -10432,7 +6013,7 @@ function abrirNovaRevisaoGlobal() {
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:22px">
       <button onclick="document.getElementById('popup-nova-rev-global').remove()" style="padding:8px 18px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);font-family:var(--font-ui)">Cancelar</button>
-      <button id="nrg-salvar-btn" style="padding:8px 18px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:var(--verde);color:#fff;font-family:var(--font-ui);font-weight:700">Criar revisão</button>
+      <button id="nrg-salvar-btn" style="padding:8px 18px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:var(--verde);color:#fff;font-family:var(--font-ui);font-weight:700">Criar revis�o</button>
     </div>
   </div>`;
   document.body.appendChild(pop);
@@ -10463,7 +6044,7 @@ function abrirNovaRevisaoGlobal() {
     const idx = lista.children.length + 1;
     const div = document.createElement('div'); div.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
     div.innerHTML = `<input type="text" placeholder="Prancha 0${idx}" class="nrg-prancha-nome" style="${fldStyle}">
-      <button onclick="this.parentElement.remove()" style="padding:4px 8px;border:1px solid var(--cinza);border-radius:6px;cursor:pointer;background:#fff">×</button>`;
+      <button onclick="this.parentElement.remove()" style="padding:4px 8px;border:1px solid var(--cinza);border-radius:6px;cursor:pointer;background:#fff">�</button>`;
     lista.appendChild(div);
   };
   document.getElementById('nrg-salvar-btn').onclick = async () => {
@@ -10477,9 +6058,9 @@ function abrirNovaRevisaoGlobal() {
       if (errRev || !rev) { toast('Erro: '+(errRev?.message||'falha')); return; }
       const nomes = [...document.querySelectorAll('.nrg-prancha-nome')].map(i => i.value.trim()).filter(Boolean);
       for (let i = 0; i < nomes.length; i++) await sb.from('pranchas').insert({ revisao_id: rev.id, nome: nomes[i], ordem: i });
-      pop.remove(); toast('Revisão criada'); carregarRevisoes();
+      pop.remove(); toast('Revis�o criada'); carregarRevisoes();
     } catch(e) { toast('Erro: '+e.message); }
-    finally { btn.disabled = false; btn.textContent = 'Criar revisão'; }
+    finally { btn.disabled = false; btn.textContent = 'Criar revis�o'; }
   };
 }
 
@@ -10491,10 +6072,10 @@ async function abrirModalCadastroProjeto() {
     (clientes || []).map(c => {
       const local = [c.cidade, c.uf].filter(Boolean).join('/');
       const sigla = c.sigla ? ` [${_escN(c.sigla)}]` : '';
-      return `<option value="${c.id}">${_escN(c.nome)}${sigla}${local ? ` — ${_escN(local)}` : ''}</option>`;
+      return `<option value="${c.id}">${_escN(c.nome)}${sigla}${local ? ` � ${_escN(local)}` : ''}</option>`;
     }).join('');
 
-  // PROJ-2: inicializar estado do form (exibe campos "novo cliente" pois select começa vazio)
+  // PROJ-2: inicializar estado do form (exibe campos "novo cliente" pois select come�a vazio)
   onClienteChange();
   const cadCliSigla = document.getElementById('cad-cli-sigla');
   if (cadCliSigla && !cadCliSigla.dataset.boundUpper) {
@@ -10524,12 +6105,12 @@ function renderEtapasPreset() {
   const wrap = document.getElementById('etapas-preset-lista');
   wrap.innerHTML = ETAPAS_PRESET.map((nome, i) => `
     <div class="etapa-preset-item" data-idx="${i}">
-      <span class="drag-handle">⠿</span>
+      <span class="drag-handle">?</span>
       <input type="text" class="ep-nome" value="${nome}" style="flex:1;padding:4px 7px;border:1px solid var(--cinza);font-family:var(--font-ui);font-size:12px;outline:none">
       <input type="number" class="ep-input ep-prazo" value="15" min="1" placeholder="Dias">
       <select class="ep-select ep-tipo">
         <option value="corridos">Corridos</option>
-        <option value="uteis">Úteis</option>
+        <option value="uteis">�teis</option>
       </select>
       <select class="ep-select ep-dev" style="width:120px" title="Dev 1">
         <option value="">Dev 1...</option>
@@ -10539,7 +6120,7 @@ function renderEtapasPreset() {
         <option value="">Dev 2...</option>
         ${_epDevsHtml()}
       </select>
-      <button class="ep-del" onclick="this.parentElement.remove();calcularDatasEstimadas()">×</button>
+      <button class="ep-del" onclick="this.parentElement.remove();calcularDatasEstimadas()">�</button>
     </div>
   `).join('');
 }
@@ -10549,12 +6130,12 @@ function adicionarEtapaPreset() {
   const div = document.createElement('div');
   div.className = 'etapa-preset-item';
   div.innerHTML = `
-    <span class="drag-handle">⠿</span>
+    <span class="drag-handle">?</span>
     <input type="text" class="ep-nome" placeholder="Nome da etapa" style="flex:1;padding:4px 7px;border:1px solid var(--cinza);font-family:var(--font-ui);font-size:12px;outline:none">
     <input type="number" class="ep-input ep-prazo" value="15" min="1" placeholder="Dias">
     <select class="ep-select ep-tipo">
       <option value="corridos">Corridos</option>
-      <option value="uteis">Úteis</option>
+      <option value="uteis">�teis</option>
     </select>
     <select class="ep-select ep-dev" style="width:120px" title="Dev 1">
       <option value="">Dev 1...</option>
@@ -10564,7 +6145,7 @@ function adicionarEtapaPreset() {
       <option value="">Dev 2...</option>
       ${_epDevsHtml()}
     </select>
-    <button class="ep-del" onclick="this.parentElement.remove()">×</button>`;
+    <button class="ep-del" onclick="this.parentElement.remove()">�</button>`;
   wrap.appendChild(div);
 }
 
@@ -10583,7 +6164,7 @@ function calcularDatasEstimadas() {
     const dataEst = addDias(dataAtual, prazo, tipo);
     html += `<div class="dr">
       <div class="dk">${nome}</div>
-      <div class="dv"><span class="dtag">${fmtDate(dataLib1)} → ${fmtDate(dataEst.toISOString().split('T')[0])}</span></div>
+      <div class="dv"><span class="dtag">${fmtDate(dataLib1)} ? ${fmtDate(dataEst.toISOString().split('T')[0])}</span></div>
     </div>`;
     dataAtual = new Date(dataEst);
   });
@@ -10612,7 +6193,7 @@ async function carregarOppsDoCliente(cliId) {
   const sel = document.getElementById('cad-opp-sel');
   sel.innerHTML = '<option value="">Nova oportunidade...</option>' +
     filtradas.map(o => {
-      const loc = o.cidade ? ` — ${_escN(o.cidade)}${o.uf ? `/${_escN(o.uf)}` : ''}` : '';
+      const loc = o.cidade ? ` � ${_escN(o.cidade)}${o.uf ? `/${_escN(o.uf)}` : ''}` : '';
       return `<option value="${o.id}">${_escN(o.projeto || '(sem nome)')}${loc}</option>`;
     }).join('');
 }
@@ -10650,7 +6231,7 @@ async function salvarProjeto() {
 
     if (!prodNome) { toast('Informe o nome do produto'); return; }
 
-    // ── Cliente ──────────────────────────────────────────
+    // -- Cliente ------------------------------------------
     let cliId = cliSel || null;
     if (!cliId) {
       const nome = document.getElementById('cad-cli-nome').value.trim();
@@ -10667,7 +6248,7 @@ async function salvarProjeto() {
       cliId = cli.id;
     }
 
-    // ── Oportunidade ─────────────────────────────────────
+    // -- Oportunidade -------------------------------------
     let oppId = oppSel || null;
     if (!oppId) {
       const oppNome = document.getElementById('cad-opp-nome').value.trim();
@@ -10684,7 +6265,7 @@ async function salvarProjeto() {
       oppId = opp.id;
     }
 
-    // ── Produto ──────────────────────────────────────────
+    // -- Produto ------------------------------------------
     const { data: prod, error: eProd } = await sb.from('produtos').insert({
       oportunidade_id: oppId,
       nome: prodNome,
@@ -10698,7 +6279,7 @@ async function salvarProjeto() {
 
     if (eProd) { toast('Erro ao criar produto: ' + eProd.message); return; }
 
-    // ── Etapas ───────────────────────────────────────────
+    // -- Etapas -------------------------------------------
     const items    = document.querySelectorAll('.etapa-preset-item');
     const dataLib1 = document.getElementById('cad-data-lib-1').value;
     let dataAtual  = dataLib1 ? new Date(dataLib1 + 'T12:00:00') : null;
@@ -10744,9 +6325,9 @@ async function salvarProjeto() {
     if (btn) { btn.disabled = false; btn.textContent = 'Criar projeto'; }
   }
 }
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   VISÃO SÓCIOS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   VIS�O S�CIOS
+// ══════════════════════════════════════════════════════════
 function socioNavSemana(d) {
   G.socioSemanaOffset += d;
   carregarCarga();
@@ -10771,7 +6352,7 @@ function _cargaDonut(totais) {
   </div>`;
 }
 
-// ── Avatar helper: photo if available, initials fallback ────────────────────
+// -- Avatar helper: photo if available, initials fallback --------------------
 function _avImg(u, size = 24, fontSize = 8) {
   if (u?.avatar_url) {
     return `<img src="${u.avatar_url}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0" title="${u.nome||''}">`;
@@ -10811,12 +6392,12 @@ async function carregarCarga() {
     .gte('data_lancamento', ini).lte('data_lancamento', fim);
 
   if (!G.todosUsuarios.length) {
-    document.getElementById('carga-lista-socios').innerHTML = '<div class="empty-note">Sem usuários.</div>';
+    document.getElementById('carga-lista-socios').innerHTML = '<div class="empty-note">Sem usu�rios.</div>';
     document.getElementById('carga-lista-colab').innerHTML = '';
     return;
   }
 
-  // Agrupa por usuário
+  // Agrupa por usu�rio
   const porUser = {};
   G.todosUsuarios.forEach(u => { porUser[u.id] = { u, porTipo: { projeto:0, organizacao:0, sociedade:0 } }; });
   // Agrupa por produto/atividade para ranking
@@ -10846,10 +6427,10 @@ async function carregarCarga() {
   document.getElementById('carga-donut-colab').innerHTML  = _cargaDonut(groupTotals(colabs));
   document.getElementById('carga-lista-socios').innerHTML = socios.length
     ? socios.map(u => _cargaUserCard(porUser[u.id])).join('')
-    : '<div class="empty-note">—</div>';
+    : '<div class="empty-note">�</div>';
   document.getElementById('carga-lista-colab').innerHTML = colabs.length
     ? colabs.map(u => _cargaUserCard(porUser[u.id])).join('')
-    : '<div class="empty-note">—</div>';
+    : '<div class="empty-note">�</div>';
 
   // Ranking de atividades por volume
   const maxAtiv = Math.max(...Object.values(porAtiv), 1);
@@ -10861,7 +6442,7 @@ async function carregarCarga() {
         <div style="height:100%;width:${Math.round(v/maxAtiv*100)}%;background:var(--azul);border-radius:3px"></div>
       </div>
       <div style="font-size:10px;font-family:var(--font-mono);color:#888;min-width:32px;text-align:right">${fmtH(v)}</div>
-    </div>`).join('') || '<div class="empty-note">Sem lançamentos na semana.</div>';
+    </div>`).join('') || '<div class="empty-note">Sem lan�amentos na semana.</div>';
 
   // Custos da semana (equipe)
   const custosEl = document.getElementById('carga-custos');
@@ -10904,7 +6485,7 @@ async function carregarCarga() {
             const av = u ? _avImg(u, 18, 7) : '';
             return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
               ${av}
-              <span style="flex:1;color:#555">${c.subtipo||c.tipo||'—'}${c.descricao?' · '+c.descricao:''}</span>
+              <span style="flex:1;color:#555">${c.subtipo||c.tipo||'�'}${c.descricao?' � '+c.descricao:''}</span>
               <span style="font-family:var(--font-mono);font-weight:600;flex-shrink:0">R$ ${fmtNum(c.valor||0)}</span>
             </div>`;
           }).join('');
@@ -11038,7 +6619,7 @@ async function carregarSubmissao() {
   } catch (err) {
     console.error('Erro em carregarSubmissao:', err);
     const wrap = document.getElementById('submissao-lista');
-    if (wrap) wrap.innerHTML = `<div class="empty-note">Erro ao carregar submissões: ${err.message || err}</div>`;
+    if (wrap) wrap.innerHTML = `<div class="empty-note">Erro ao carregar submiss�es: ${err.message || err}</div>`;
   }
 }
 
@@ -11051,7 +6632,7 @@ function mostrarResumoMembro(uid, nome) {
   const totalH= G._submissaoHorasPorUsuario?.[uid] || 0;
   const sobrecarga = totalH > 40 ? totalH - 40 : 0;
 
-  // ── Status badge ──
+  // -- Status badge --
   const fin = sem?.finalizada === true;
   const emPreenchi = sem && !fin;
   const statusLabel = fin ? 'Finalizado' : (emPreenchi ? 'Em preenchimento' : 'Sem envio');
@@ -11069,12 +6650,12 @@ function mostrarResumoMembro(uid, nome) {
 
   const comentarioHtml = sem?.comentario
     ? `<div style="background:var(--cinza2);border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:11px;color:#555;font-style:italic;line-height:1.5">
-        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#bbb;display:block;margin-bottom:3px;font-style:normal">Comentário da semana</span>
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#bbb;display:block;margin-bottom:3px;font-style:normal">Coment�rio da semana</span>
         "${sem.comentario}"
       </div>`
     : '';
 
-  // ── Horas por tipo ──
+  // -- Horas por tipo --
   const tipoRows = [
     { label:'Projetos',     h: hpT.projeto    || 0, cor:'var(--azul)'  },
     { label:'Org. Interna', h: hpT.organizacao|| 0, cor:'var(--verde)' },
@@ -11083,7 +6664,7 @@ function mostrarResumoMembro(uid, nome) {
 
   const tipoHtml = tipoRows.length
     ? `<div style="margin-bottom:14px">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:8px">Horas por área</div>
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:8px">Horas por �rea</div>
         ${tipoRows.map(r => {
           const pct = total > 0 ? Math.round(r.h / total * 100) : 0;
           return `<div style="margin-bottom:8px">
@@ -11097,9 +6678,9 @@ function mostrarResumoMembro(uid, nome) {
           </div>`;
         }).join('')}
       </div>`
-    : '<div class="empty-note" style="margin-bottom:14px">Sem horas lançadas nesta semana.</div>';
+    : '<div class="empty-note" style="margin-bottom:14px">Sem horas lan�adas nesta semana.</div>';
 
-  // ── Horas por projeto ──
+  // -- Horas por projeto --
   const prodEntries = Object.entries(hpP).sort((a,b)=>b[1]-a[1]);
   const prodHtml = prodEntries.length
     ? `<div style="padding-top:12px;border-top:1px solid var(--cinza2)">
@@ -11107,7 +6688,7 @@ function mostrarResumoMembro(uid, nome) {
         ${prodEntries.map(([pid, h]) => {
           const prod = (G._prodsGestao || G.todosProdutos || []).find(p => p.id === pid);
           const projNome = prod?.oportunidades?.projeto || prod?.nome || pid;
-          const etapaNome = prod?.nome && prod?.oportunidades?.projeto ? ` · ${truncarTexto(prod.nome, 22)}` : '';
+          const etapaNome = prod?.nome && prod?.oportunidades?.projeto ? ` � ${truncarTexto(prod.nome, 22)}` : '';
           const pct = total > 0 ? Math.round(h / total * 100) : 0;
           return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
             <div style="flex:1;min-width:0">
@@ -11132,7 +6713,7 @@ function mostrarResumoMembro(uid, nome) {
   const avHtml = u ? _avImg(u, 36, 12) : '';
 
   ov.innerHTML = `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:12px;padding:24px;width:min(520px,95vw);max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.16)">
-    <button onclick="document.getElementById('resumo-membro-ov').remove()" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;line-height:1">×</button>
+    <button onclick="document.getElementById('resumo-membro-ov').remove()" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;color:#bbb;cursor:pointer;line-height:1">�</button>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
       ${avHtml}
       <div style="flex:1;min-width:0">
@@ -11149,7 +6730,7 @@ function mostrarResumoMembro(uid, nome) {
   document.body.appendChild(ov);
 }
 
-// ── CARGA MENSAL ─────────────────────────────────────────────────────────────
+// -- CARGA MENSAL -------------------------------------------------------------
 let _cmView = 'individual';
 let _cmData = null;
 
@@ -11167,7 +6748,7 @@ async function carregarCargaMensal() {
   if (!wrap) return;
   const mesEl = document.getElementById('cm-mes');
   const mes = mesEl?.value; // YYYY-MM
-  if (!mes) { wrap.innerHTML = '<div class="empty-note">Selecione um mês.</div>'; return; }
+  if (!mes) { wrap.innerHTML = '<div class="empty-note">Selecione um m�s.</div>'; return; }
   wrap.innerHTML = '<div class="loading-state">Carregando...</div>';
 
   const [ano, m] = mes.split('-').map(Number);
@@ -11183,7 +6764,7 @@ async function carregarCargaMensal() {
 
   if (!horas || !usuarios) { wrap.innerHTML = '<div class="empty-note">Erro ao carregar.</div>'; return; }
 
-  // Agrupa horas por usuário e por tipo
+  // Agrupa horas por usu�rio e por tipo
   const porUser = {};
   horas.forEach(h => {
     const dh = diffHoras(h.hora_inicio, h.hora_fim);
@@ -11205,8 +6786,8 @@ function renderCargaMensal({ porUser, usuarios, semNome }) {
   const ativos = usuarios.filter(u => porUser[u.id]?.total > 0);
 
   if (_cmView === 'coletivo') {
-    // ── VISÃO COLETIVA: gráfico de barras horizontal por colaborador ──
-    if (!ativos.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lançada neste mês.</div>'; return; }
+    // -- VIS�O COLETIVA: gr�fico de barras horizontal por colaborador --
+    if (!ativos.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lan�ada neste m�s.</div>'; return; }
 
     const maxHoras = Math.max(...ativos.map(u => porUser[u.id].total));
     const totalGeral = ativos.reduce((s, u) => s + porUser[u.id].total, 0);
@@ -11256,7 +6837,7 @@ function renderCargaMensal({ porUser, usuarios, semNome }) {
     wrap.innerHTML = html;
 
   } else {
-    // ── VISÃO INDIVIDUAL: cards por pessoa (original) ──
+    // -- VIS�O INDIVIDUAL: cards por pessoa (original) --
     let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
 
     ativos.forEach(u => {
@@ -11283,7 +6864,7 @@ function renderCargaMensal({ porUser, usuarios, semNome }) {
           ${_avImg(u, 32, 11)}
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600">${u.nome}</div>
-            <div style="font-size:10px;color:#888">${semNome} · <strong style="font-family:var(--font-mono)">${fmtH(d.total)}</strong> totais</div>
+            <div style="font-size:10px;color:#888">${semNome} � <strong style="font-family:var(--font-mono)">${fmtH(d.total)}</strong> totais</div>
           </div>
         </div>
         <div style="margin-bottom:12px;display:flex;flex-direction:column;gap:7px">
@@ -11307,13 +6888,13 @@ function renderCargaMensal({ porUser, usuarios, semNome }) {
       </div>`;
     });
 
-    if (!ativos.length) html += '<div class="empty-note">Nenhuma hora lançada neste mês.</div>';
+    if (!ativos.length) html += '<div class="empty-note">Nenhuma hora lan�ada neste m�s.</div>';
     html += '</div>';
     wrap.innerHTML = html;
   }
 }
 
-// ── REEMBOLSO ─────────────────────────────────────────────────────────────────
+// -- REEMBOLSO -----------------------------------------------------------------
 let _rbView = 'membro';
 let _rbData = null; // cache for export
 
@@ -11336,7 +6917,7 @@ function setReembolsoView(v) {
   });
   if (v === 'reclassificacao') {
     if (_rbData) renderReclassificacao(_rbData);
-    else document.getElementById('rb-lista').innerHTML = '<div class="empty-note">Selecione um mês para carregar.</div>';
+    else document.getElementById('rb-lista').innerHTML = '<div class="empty-note">Selecione um m�s para carregar.</div>';
   } else {
     if (_rbData) renderReembolso(_rbData);
   }
@@ -11403,14 +6984,14 @@ async function reatribuirEvento(evId, tipo) {
     ov.innerHTML = `
       <div style="background:var(--branco);border-radius:12px;padding:28px 24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
         <div style="font-size:14px;font-weight:700;margin-bottom:6px">Reatribuir Evento</div>
-        <div style="font-size:11px;color:#888;margin-bottom:16px">Todos os lançamentos deste evento serão movidos para o evento selecionado abaixo.</div>
+        <div style="font-size:11px;color:#888;margin-bottom:16px">Todos os lan�amentos deste evento ser�o movidos para o evento selecionado abaixo.</div>
         <select id="_reattr-sel" style="width:100%;padding:10px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--font-ui);outline:none">
-          <option value="">— Selecione o evento destino —</option>
+          <option value="">� Selecione o evento destino �</option>
           ${opts}
         </select>
         <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
           <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_cancel'))" style="padding:8px 18px;border-radius:6px;border:1px solid var(--cinza);background:var(--branco);cursor:pointer;font-family:var(--font-ui);font-size:12px">Cancelar</button>
-          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--grafite);color:#fff;cursor:pointer;font-family:var(--font-ui);font-size:12px;font-weight:600">Mover lançamentos</button>
+          <button onclick="this.closest('div[style*=position]').dispatchEvent(new CustomEvent('_ok'))" style="padding:8px 18px;border-radius:6px;border:none;background:var(--grafite);color:#fff;cursor:pointer;font-family:var(--font-ui);font-size:12px;font-weight:600">Mover lan�amentos</button>
         </div>
       </div>`;
     ov.addEventListener('_cancel', () => { document.body.removeChild(ov); resolve(null); });
@@ -11432,7 +7013,7 @@ async function reatribuirEvento(evId, tipo) {
   if (campoAlvo !== campoOrigem) upd[campoOrigem] = null;
   const { error } = await sb.from('lancamentos_custo').update(upd).eq(campoOrigem, evId);
   if (error) { toast('Erro ao reatribuir: ' + error.message); return; }
-  toast('Lançamentos movidos para o novo evento');
+  toast('Lan�amentos movidos para o novo evento');
   carregarReembolso();
 }
 
@@ -11462,7 +7043,7 @@ async function atribuirEventoACusto(custoId) {
         <div style="font-size:13px;font-weight:700;margin-bottom:4px">Atribuir Evento</div>
         <div style="font-size:11px;color:#999;margin-bottom:14px">Selecione um evento existente ou digite um nome novo para criar.</div>
         <input id="_ev-atrib-inp" type="text" list="_ev-atrib-dl" autocomplete="off"
-          placeholder="Nome do evento…"
+          placeholder="Nome do evento�"
           style="width:100%;padding:9px 12px;border:1px solid var(--cinza);border-radius:8px;font-size:13px;font-family:var(--font-ui);outline:none;box-sizing:border-box">
         <datalist id="_ev-atrib-dl">${dlOpts}</datalist>
         <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
@@ -11501,11 +7082,11 @@ async function atribuirEventoACusto(custoId) {
   } else if (matchSoc && !matchCusto) {
     evId = matchSoc.id; campo = 'evento_soc_id';
   } else if (matchCusto && matchSoc) {
-    // Both exist — choose by tipo
+    // Both exist � choose by tipo
     if (isSocTipo) { evId = matchSoc.id; campo = 'evento_soc_id'; }
     else           { evId = matchCusto.id; campo = 'evento_id'; }
   } else {
-    // Novo evento — criar na tabela correta pelo tipo do lançamento
+    // Novo evento � criar na tabela correta pelo tipo do lan�amento
     const tabela = isSocTipo ? 'eventos_sociedade' : 'eventos_custo';
     const { data: novo, error: errEv } = await sb.from(tabela).insert({ nome: nomeEscolhido }).select('id').single();
     if (errEv) { toast('Erro ao criar evento: ' + errEv.message); return; }
@@ -11516,7 +7097,7 @@ async function atribuirEventoACusto(custoId) {
 
   const { error } = await sb.from('lancamentos_custo').update({ [campo]: evId }).eq('id', custoId);
   if (error) { toast('Erro ao atribuir: ' + error.message); return; }
-  toast('Evento atribuído');
+  toast('Evento atribu�do');
   carregarReembolso();
 }
 
@@ -11525,7 +7106,7 @@ async function carregarReembolso() {
   if (!wrap) return;
   const mesEl = document.getElementById('rb-mes');
   const mes = mesEl?.value;
-  if (!mes) { wrap.innerHTML = '<div class="empty-note">Selecione um mês.</div>'; return; }
+  if (!mes) { wrap.innerHTML = '<div class="empty-note">Selecione um m�s.</div>'; return; }
   wrap.innerHTML = '<div class="loading-state">Carregando...</div>';
 
   const [ano, m] = mes.split('-').map(Number);
@@ -11564,10 +7145,10 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
   const wrap = document.getElementById('rb-lista');
   if (!wrap) return;
   const fmtR = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
-  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '�';
 
   if (_rbView === 'membro') {
-    // Agrupa por usuário
+    // Agrupa por usu�rio
     const porUser = {};
     custos.forEach(c => {
       if (!porUser[c.usuario_id]) porUser[c.usuario_id] = { total:0, itens:[] };
@@ -11585,7 +7166,7 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
       d.itens.forEach(c => {
         const cli = c.produtos?.oportunidades?.clientes?.nome || '';
         const op = c.produtos?.oportunidades?.projeto || '';
-        const chave = cli && op ? `${cli} | ${op}` : (c.subtipo || c.tipo || 'Sem vínculo');
+        const chave = cli && op ? `${cli} | ${op}` : (c.subtipo || c.tipo || 'Sem v�nculo');
         if (!porProjeto[chave]) porProjeto[chave] = [];
         porProjeto[chave].push(c);
       });
@@ -11598,13 +7179,13 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
           const semEvento = !evId;
           const evTag = evNome
             ? `<span style="font-size:9px;background:var(--cinza2);border-radius:3px;padding:1px 5px;color:#555;margin-left:4px">${evNome}</span>`
-            : `<span title="Este lançamento não está vinculado a nenhum evento" style="font-size:9px;background:#fff3cd;border:1px solid #ffc107;border-radius:3px;padding:1px 5px;color:#856404;margin-left:4px">⚠ sem evento</span>`;
+            : `<span title="Este lan�amento n�o est� vinculado a nenhum evento" style="font-size:9px;background:#fff3cd;border:1px solid #ffc107;border-radius:3px;padding:1px 5px;color:#856404;margin-left:4px">? sem evento</span>`;
           return `
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
-                <span style="font-size:10px;color:#555">${c.subtipo||'—'}</span>
-                ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
+                <span style="font-size:10px;color:#555">${c.subtipo||'�'}</span>
+                ${c.descricao ? `<span style="font-size:10px;color:#999"> � ${c.descricao}</span>` : ''}
                 ${evTag}
               </div>
             </div>
@@ -11631,7 +7212,7 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
       </div>`;
     });
 
-    if (!alguem) html += '<div class="empty-note">Nenhum custo lançado neste mês.</div>';
+    if (!alguem) html += '<div class="empty-note">Nenhum custo lan�ado neste m�s.</div>';
     html += '</div>';
     wrap.innerHTML = html;
 
@@ -11642,7 +7223,7 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
       const evId   = c.evento_id || c.evento_soc_id || null;
       const evTipo = c.evento_id ? 'custo' : (c.evento_soc_id ? 'soc' : null);
       const evNome = evNomes[evId] || null;
-      const chave  = evNome || '— Sem evento —';
+      const chave  = evNome || '� Sem evento �';
       if (!porEvento[chave]) porEvento[chave] = { total:0, itens:[], semEvento: !evNome, evId, evTipo };
       porEvento[chave].total += Number(c.valor||0);
       porEvento[chave].itens.push(c);
@@ -11662,15 +7243,15 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
         const uu = uFind(c.usuario_id);
         const cli = c.produtos?.oportunidades?.clientes?.nome || '';
         const op  = c.produtos?.oportunidades?.projeto || '';
-        const vinculo = [cli, op].filter(Boolean).join(' · ') || (c.subtipo || c.tipo || '');
+        const vinculo = [cli, op].filter(Boolean).join(' � ') || (c.subtipo || c.tipo || '');
         const sqId = "'" + c.id + "'";
         return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2)">
           ${uu ? _avImg(uu, 22, 9) : ''}
           <div style="flex:1;min-width:0">
             ${vinculo ? `<span style="font-size:10px;font-weight:600;color:#444">${vinculo}</span>` : ''}
-            ${c.subtipo ? `<span style="font-size:10px;color:#777"> · ${c.subtipo}</span>` : ''}
-            ${c.descricao ? `<span style="font-size:10px;color:#999"> · ${c.descricao}</span>` : ''}
-            ${uu ? `<span style="font-size:9px;color:#bbb"> — ${uu.nome}</span>` : ''}
+            ${c.subtipo ? `<span style="font-size:10px;color:#777"> � ${c.subtipo}</span>` : ''}
+            ${c.descricao ? `<span style="font-size:10px;color:#999"> � ${c.descricao}</span>` : ''}
+            ${uu ? `<span style="font-size:9px;color:#bbb"> � ${uu.nome}</span>` : ''}
           </div>
           <div style="font-size:10px;color:#888;flex-shrink:0">${fmtDate(c.data_lancamento)}</div>
           <div style="font-size:11px;font-family:var(--font-mono);font-weight:600;flex-shrink:0">${fmtR(c.valor)}</div>
@@ -11681,8 +7262,8 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
       const headerCor = grp.semEvento ? '#aaa' : 'var(--grafite)';
       const headerBg  = grp.semEvento ? 'var(--cinza2)' : '';
       const acaoBtns = !grp.semEvento && grp.evId
-        ? `<button style="${_bs}" onclick="event.stopPropagation();editarNomeEvento('${grp.evId}','${grp.evTipo}')">✏ Renomear</button>
-           <button style="${_bs}" onclick="event.stopPropagation();reatribuirEvento('${grp.evId}','${grp.evTipo}')">↔ Reatribuir</button>`
+        ? `<button style="${_bs}" onclick="event.stopPropagation();editarNomeEvento('${grp.evId}','${grp.evTipo}')">? Renomear</button>
+           <button style="${_bs}" onclick="event.stopPropagation();reatribuirEvento('${grp.evId}','${grp.evTipo}')">? Reatribuir</button>`
         : '';
       html += `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;background:${headerBg}">
@@ -11694,7 +7275,7 @@ function renderReembolso({ custos, usuarios, mes, evNomes = {} }) {
       </div>`;
     });
 
-    if (!algum) html += '<div class="empty-note">Nenhum custo lançado neste mês.</div>';
+    if (!algum) html += '<div class="empty-note">Nenhum custo lan�ado neste m�s.</div>';
     html += '</div>';
     wrap.innerHTML = html;
   }
@@ -11704,7 +7285,7 @@ function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
   const wrap = document.getElementById('rb-lista');
   if (!wrap) return;
   const fmtR    = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
-  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '�';
 
   const isSocAdmin = ['socio_adm','socio_admin'].includes((G.usuario?.role||'').toLowerCase());
 
@@ -11719,19 +7300,19 @@ function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
     const evNome  = evId ? (evNomes[evId] || '') : '';
     const cli     = c.produtos?.oportunidades?.clientes?.nome || '';
     const op      = c.produtos?.oportunidades?.projeto || '';
-    const vinculo = [cli, op].filter(Boolean).join(' · ') || c.tipo || '';
-    const cat     = [area?.subconta, c.subtipo].filter(Boolean).join(' › ');
+    const vinculo = [cli, op].filter(Boolean).join(' � ') || c.tipo || '';
+    const cat     = [area?.subconta, c.subtipo].filter(Boolean).join(' � ');
     const cor     = semAlerta ? 'var(--grafite)' : '#D32F2F';
     const cursor  = isSocAdmin ? 'pointer' : 'default';
     const onclick = isSocAdmin ? `onclick="abrirReclassificacaoCusto('${c.id}')"` : '';
-    const title   = isSocAdmin ? (semAlerta ? 'Clique para editar' : 'Clique para reclassificar') : (semAlerta ? '' : 'Requer reclassificação — apenas sócio-administrador');
+    const title   = isSocAdmin ? (semAlerta ? 'Clique para editar' : 'Clique para reclassificar') : (semAlerta ? '' : 'Requer reclassifica��o � apenas s�cio-administrador');
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--cinza2);cursor:${cursor}" ${onclick} title="${title}">
       ${u ? _avImg(u, 22, 9) : ''}
       <div style="flex:1;min-width:0">
-        <span style="font-size:11px;font-weight:600;color:${cor}">${u?.nome || '—'}</span>
-        ${vinculo ? `<span style="font-size:10px;color:#888"> · ${vinculo}</span>` : ''}
+        <span style="font-size:11px;font-weight:600;color:${cor}">${u?.nome || '�'}</span>
+        ${vinculo ? `<span style="font-size:10px;color:#888"> � ${vinculo}</span>` : ''}
         ${evNome  ? `<span style="font-size:9px;background:var(--cinza2);border-radius:3px;padding:1px 5px;color:#555;margin-left:4px">${evNome}</span>` : ''}
-        ${cat     ? `<div style="font-size:9px;color:#aaa;margin-top:1px">${cat}</div>` : '<div style="font-size:9px;color:#D32F2F;margin-top:1px">Sem classificação</div>'}
+        ${cat     ? `<div style="font-size:9px;color:#aaa;margin-top:1px">${cat}</div>` : '<div style="font-size:9px;color:#D32F2F;margin-top:1px">Sem classifica��o</div>'}
         ${c.descricao ? `<div style="font-size:9px;color:#bbb">${c.descricao}</div>` : ''}
       </div>
       <div style="font-size:10px;color:#888;flex-shrink:0">${fmtDate(c.data_lancamento)}</div>
@@ -11744,8 +7325,8 @@ function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
   if (incorretos.length) {
     html += `<div style="background:var(--branco);border:1px solid #D32F2F;border-radius:8px;overflow:hidden;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fff5f5;border-bottom:1px solid #ffd0d0">
-        <span style="font-size:11px;font-weight:700;color:#D32F2F;flex:1">⚠ Requerem reclassificação (${incorretos.length})</span>
-        ${!isSocAdmin ? `<span style="font-size:9px;color:#D32F2F">Apenas sócio-administrador pode reclassificar</span>` : ''}
+        <span style="font-size:11px;font-weight:700;color:#D32F2F;flex:1">? Requerem reclassifica��o (${incorretos.length})</span>
+        ${!isSocAdmin ? `<span style="font-size:9px;color:#D32F2F">Apenas s�cio-administrador pode reclassificar</span>` : ''}
       </div>
       ${incorretos.map(c => renderLinha(c, false)).join('')}
     </div>`;
@@ -11754,14 +7335,14 @@ function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
   if (corretos.length) {
     html += `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden">
       <div style="padding:10px 14px;border-bottom:1px solid var(--cinza2)">
-        <span style="font-size:11px;font-weight:700;color:#2E7D32">✓ Classificados corretamente (${corretos.length})</span>
+        <span style="font-size:11px;font-weight:700;color:#2E7D32">? Classificados corretamente (${corretos.length})</span>
       </div>
       ${corretos.map(c => renderLinha(c, true)).join('')}
     </div>`;
   }
 
   if (!incorretos.length && !corretos.length) {
-    html = '<div class="empty-note">Nenhum custo lançado neste mês.</div>';
+    html = '<div class="empty-note">Nenhum custo lan�ado neste m�s.</div>';
   }
 
   wrap.innerHTML = html;
@@ -11769,12 +7350,12 @@ function renderReclassificacao({ custos, usuarios, evNomes = {} }) {
 
 async function abrirReclassificacaoCusto(id) {
   const isSocAdmin = ['socio_adm','socio_admin'].includes((G.usuario?.role||'').toLowerCase());
-  if (!isSocAdmin) { toast('Apenas sócio-administrador pode reclassificar'); return; }
+  if (!isSocAdmin) { toast('Apenas s�cio-administrador pode reclassificar'); return; }
 
-  // Garante que as áreas estejam carregadas (pode falhar se RLS não foi configurado)
+  // Garante que as �reas estejam carregadas (pode falhar se RLS n�o foi configurado)
   if (!G._reembolsoAreas?.length) await carregarReembolsoAreas();
   if (!G._reembolsoAreas?.length) {
-    toast('Não foi possível carregar o plano de contas. Verifique as permissões do banco de dados.');
+    toast('N�o foi poss�vel carregar o plano de contas. Verifique as permiss�es do banco de dados.');
     return;
   }
 
@@ -11802,7 +7383,7 @@ async function abrirReclassificacaoCusto(id) {
   const fldStyle = 'width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box;color:var(--grafite);background:var(--branco);color-scheme:light dark';
   const lblStyle = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
 
-  // Opções de área agrupadas por grupo do plano de contas
+  // Op��es de �rea agrupadas por grupo do plano de contas
   const gruposMap = {};
   (G._reembolsoAreas||[]).forEach(pc => {
     if (!gruposMap[pc.grupo]) gruposMap[pc.grupo] = [];
@@ -11816,7 +7397,7 @@ async function abrirReclassificacaoCusto(id) {
   const curDetalhes = curArea ? (REEMBOLSO_DETALHES[curArea.subconta]||[]) : [];
   const detalheOpts = curDetalhes.length
     ? curDetalhes.map(d => `<option value="${d}" ${d===c.subtipo?'selected':''}>${d}</option>`).join('')
-    : `<option value="${c.subtipo||''}">${c.subtipo||'—'}</option>`;
+    : `<option value="${c.subtipo||''}">${c.subtipo||'�'}</option>`;
 
   // Cascata de projeto
   const todosProds = G._prodsGestao || G.todosProdutos || [];
@@ -11827,7 +7408,7 @@ async function abrirReclassificacaoCusto(id) {
   });
   const cliOptsHtml = '<option value="">Selecionar cliente...</option>' +
     [...clientesMap2.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR'))
-      .map(([cid,cd]) => `<option value="${cid}" ${cid===c.produtos?.oportunidades?.cliente_id?'selected':''}>${cd.nome}${cd.cidade?` — ${cd.cidade}`:''}${cd.uf?`/${cd.uf}`:''}</option>`).join('');
+      .map(([cid,cd]) => `<option value="${cid}" ${cid===c.produtos?.oportunidades?.cliente_id?'selected':''}>${cd.nome}${cd.cidade?` � ${cd.cidade}`:''}${cd.uf?`/${cd.uf}`:''}</option>`).join('');
 
   const curProd = todosProds.find(p => p.id === c.produto_id);
   const curCli  = curProd?.oportunidades?.clientes;
@@ -11837,7 +7418,7 @@ async function abrirReclassificacaoCusto(id) {
     : [];
   const oppOptsHtml = '<option value="">Selecionar oportunidade...</option>' +
     oppsForCli.map(([oid,o]) => {
-      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      const loc = o?.cidade ? ` � ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
       return `<option value="${oid}" ${oid===curProd?.oportunidade_id?'selected':''}>${o?.projeto||oid}${loc}</option>`;
     }).join('');
   const prodsForOpp = curProd?.oportunidade_id
@@ -11848,19 +7429,19 @@ async function abrirReclassificacaoCusto(id) {
   const etapasForProd = c.produto_id
     ? (G.todasEtapas||[]).filter(e=>e.produto_id===c.produto_id).sort((a,b)=>(a.ordem||0)-(b.ordem||0))
     : [];
-  const etapaOptsHtml = '<option value="">—</option>' +
+  const etapaOptsHtml = '<option value="">�</option>' +
     etapasForProd.map(e=>`<option value="${e.id}" ${e.id===c.etapa_id?'selected':''}>${e.nome}</option>`).join('');
 
-  const evtsHtml = '<option value="">— sem evento —</option>' +
+  const evtsHtml = '<option value="">� sem evento �</option>' +
     todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${_escN(e.nome)}">`).join('');
-  const evtsSocHtml = '<option value="">— sem evento —</option>' +
+  const evtsSocHtml = '<option value="">� sem evento �</option>' +
     todosEventosSoc.map(e=>`<option value="${_escN(e.nome)}">`).join('');
 
   const dataVal = c.data_lancamento?.slice(0,10) || '';
   const classificado = isClassificacaoCorreta(c);
   const statusHtml = classificado
-    ? `<div style="font-size:10px;color:#2E7D32;margin-bottom:4px">✓ Classificado corretamente</div>`
-    : `<div style="font-size:10px;color:#D32F2F;margin-bottom:4px">⚠ Requer reclassificação</div>`;
+    ? `<div style="font-size:10px;color:#2E7D32;margin-bottom:4px">? Classificado corretamente</div>`
+    : `<div style="font-size:10px;color:#D32F2F;margin-bottom:4px">? Requer reclassifica��o</div>`;
 
   let popup = document.getElementById('popup-reclassificacao');
   if (popup) popup.remove();
@@ -11872,7 +7453,7 @@ async function abrirReclassificacaoCusto(id) {
     <div class="modal" style="max-width:500px">
       <div class="modal-hd">
         <div class="modal-hd-title">Reclassificar custo</div>
-        <button class="modal-close" onclick="document.getElementById('popup-reclassificacao').remove()">×</button>
+        <button class="modal-close" onclick="document.getElementById('popup-reclassificacao').remove()">�</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
         ${statusHtml}
@@ -11896,11 +7477,11 @@ async function abrirReclassificacaoCusto(id) {
             <option value="sociedade"   ${c.tipo==='sociedade'  ?'selected':''}>Sociedade</option>
           </select>
         </div>
-        <!-- Área (agrupada por grupo do plano de contas) -->
+        <!-- �rea (agrupada por grupo do plano de contas) -->
         <div class="fgroup">
-          <label>Área (Plano de Contas) *</label>
+          <label>�rea (Plano de Contas) *</label>
           <select id="rcl-area" onchange="rclOnAreaChange()">
-            <option value="">Selecionar área…</option>
+            <option value="">Selecionar �rea�</option>
             ${areaOpts}
           </select>
         </div>
@@ -11909,9 +7490,9 @@ async function abrirReclassificacaoCusto(id) {
           <label>Detalhe</label>
           <select id="rcl-detalhe">${detalheOpts}</select>
         </div>
-        <!-- Descrição (opcional em todos) -->
+        <!-- Descri��o (opcional em todos) -->
         <div class="fgroup">
-          <label>Descrição <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(opcional)</span></label>
+          <label>Descri��o <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(opcional)</span></label>
           <input id="rcl-desc" type="text" value="${(c.descricao||'').replace(/"/g,'&quot;')}" placeholder="Opcional">
         </div>
         <!-- Cascade projeto -->
@@ -11934,7 +7515,7 @@ async function abrirReclassificacaoCusto(id) {
           </div>
           <div id="rcl-evt-proj-wrap" class="fgroup">
             <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
-            <input id="rcl-evt-proj" type="text" list="rcl-evt-proj-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+            <input id="rcl-evt-proj" type="text" list="rcl-evt-proj-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo�" autocomplete="off">
             <datalist id="rcl-evt-proj-dl">${todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===c.produto_id).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
           </div>
         </div>
@@ -11942,7 +7523,7 @@ async function abrirReclassificacaoCusto(id) {
         <div id="rcl-orgsoc-wrap" style="${c.tipo==='projeto'?'display:none':''}">
           <div class="fgroup">
             <label>Evento <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(ou novo)</span></label>
-            <input id="rcl-evt-soc" type="text" list="rcl-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo…" autocomplete="off">
+            <input id="rcl-evt-soc" type="text" list="rcl-evt-soc-dl" value="${evtNome}" placeholder="Selecionar ou digitar novo�" autocomplete="off">
             <datalist id="rcl-evt-soc-dl">${(c.tipo==='sociedade'?todosEventosSoc:todosEventosCusto.filter(e=>!e.produto_id)).map(e=>`<option value="${_escN(e.nome)}">`).join('')}</datalist>
           </div>
         </div>
@@ -11951,7 +7532,7 @@ async function abrirReclassificacaoCusto(id) {
         <div id="rcl-erro" style="display:none;font-size:11px;color:#D32F2F;padding:6px 10px;background:#fff5f5;border-radius:6px;border:1px solid #ffd0d0"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button onclick="document.getElementById('popup-reclassificacao').remove()" class="btn">Cancelar</button>
-          <button id="rcl-salvar-btn" class="btn verde">Salvar reclassificação</button>
+          <button id="rcl-salvar-btn" class="btn verde">Salvar reclassifica��o</button>
         </div>
       </div>
     </div>`;
@@ -11988,7 +7569,7 @@ async function abrirReclassificacaoCusto(id) {
     const todosP = G._prodsGestao || G.todosProdutos || [];
     const opps = [...new Map(todosP.filter(p=>p.oportunidades?.clientes?.id===cliId).map(p=>[p.oportunidade_id, p.oportunidades])).entries()];
     document.getElementById('rcl-opp').innerHTML = '<option value="">Selecionar oportunidade...</option>' + opps.map(([oid,o])=>{
-      const loc = o?.cidade ? ` — ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
+      const loc = o?.cidade ? ` � ${o.cidade}${o.uf ? `/${o.uf}` : ''}` : '';
       return `<option value="${oid}">${o?.projeto||oid}${loc}</option>`;
     }).join('');
     document.getElementById('rcl-opp-wrap').style.display  = cliId ? '' : 'none';
@@ -12006,7 +7587,7 @@ async function abrirReclassificacaoCusto(id) {
   window.rclOnProdChange = () => {
     const prodId = document.getElementById('rcl-prod').value;
     const etapas = (G.todasEtapas||[]).filter(e=>e.produto_id===prodId).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
-    document.getElementById('rcl-etapa').innerHTML = '<option value="">—</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+    document.getElementById('rcl-etapa').innerHTML = '<option value="">�</option>' + etapas.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
     document.getElementById('rcl-etapa-wrap').style.display = prodId ? '' : 'none';
     const dl = document.getElementById('rcl-evt-proj-dl');
     if (dl) dl.innerHTML = todosEventosCusto.filter(e=>!e.produto_id||e.produto_id===prodId).map(e=>`<option value="${_escN(e.nome)}">`).join('');
@@ -12020,7 +7601,7 @@ async function abrirReclassificacaoCusto(id) {
       if (ex) return { socId: ex.id, evtId: null };
       const { data, error: insErr } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
       if (data) { todosEventosSoc.push({ id: data.id, nome: n }); return { socId: data.id, evtId: null }; }
-      // Insert pode falhar por unique constraint — tenta buscar pelo nome no banco
+      // Insert pode falhar por unique constraint � tenta buscar pelo nome no banco
       const { data: found } = await sb.from('eventos_sociedade').select('id').ilike('nome', n).maybeSingle();
       if (found) { todosEventosSoc.push({ id: found.id, nome: n }); return { socId: found.id, evtId: null }; }
       return { _err: insErr?.message || 'Falha ao criar evento de sociedade' };
@@ -12030,7 +7611,7 @@ async function abrirReclassificacaoCusto(id) {
       if (ex) return { evtId: ex.id, socId: null };
       const { data, error: insErr } = await sb.from('eventos_custo').insert({ nome: n, produto_id: produtoId||null }).select('id').single();
       if (data) { todosEventosCusto.push({ id: data.id, nome: n, produto_id: produtoId||null }); return { evtId: data.id, socId: null }; }
-      // Insert pode falhar por unique constraint — tenta buscar pelo nome no banco
+      // Insert pode falhar por unique constraint � tenta buscar pelo nome no banco
       let q = sb.from('eventos_custo').select('id').ilike('nome', n);
       if (produtoId) q = q.eq('produto_id', produtoId); else q = q.is('produto_id', null);
       const { data: found } = await q.maybeSingle();
@@ -12054,41 +7635,41 @@ async function abrirReclassificacaoCusto(id) {
     const novoPcId    = document.getElementById('rcl-area').value || null;
     const novoSubtipo = document.getElementById('rcl-detalhe')?.value || null;
 
-    if (isNaN(novoValor) || novoValor <= 0) { _rclErro('Informe um valor válido.'); return; }
-    if (!novoPcId) { _rclErro('Selecione uma área do plano de contas.'); return; }
+    if (isNaN(novoValor) || novoValor <= 0) { _rclErro('Informe um valor v�lido.'); return; }
+    if (!novoPcId) { _rclErro('Selecione uma �rea do plano de contas.'); return; }
 
     const area  = (G._reembolsoAreas||[]).find(a => a.id === novoPcId);
     const rules = GESTAO_AREA_RULES[area?.subconta || ''] || {};
 
-    // Valida evento obrigatório ANTES de salvar
+    // Valida evento obrigat�rio ANTES de salvar
     const evtProjInput = document.getElementById('rcl-evt-proj')?.value?.trim() || '';
     const evtSocInput  = document.getElementById('rcl-evt-soc')?.value?.trim()  || '';
     const evtInput = novoTipo === 'sociedade' ? evtSocInput
                    : (novoTipo === 'projeto'   ? evtProjInput : evtSocInput);
     if (rules.requer_evento && !evtInput) {
-      _rclErro('Esta área exige um evento. Preencha o campo Evento.');
+      _rclErro('Esta �rea exige um evento. Preencha o campo Evento.');
       return;
     }
 
-    // Valida projeto obrigatório
+    // Valida projeto obrigat�rio
     const prodId = document.getElementById('rcl-prod')?.value || c.produto_id || null;
     if (rules.requer_projeto && !prodId) {
-      _rclErro('Esta área exige vínculo a um projeto. Selecione o produto.');
+      _rclErro('Esta �rea exige v�nculo a um projeto. Selecione o produto.');
       return;
     }
 
     const btn = document.getElementById('rcl-salvar-btn');
-    btn.disabled = true; btn.textContent = 'Salvando…';
+    btn.disabled = true; btn.textContent = 'Salvando�';
 
     const upd = { valor: novoValor, descricao: novaDesc, data_lancamento: novaData, tipo: novoTipo,
                   plano_contas_id: novoPcId, subtipo: novoSubtipo };
 
     if (novoTipo === 'projeto') {
       const evtRes = evtProjInput ? await _rclResolveEvento(evtProjInput, 'projeto', prodId) : null;
-      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return; }
+      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassifica��o'; return; }
       if (rules.requer_evento && !evtRes?.evtId) {
-        _rclErro('Esta área exige um evento válido. Preencha o campo Evento.');
-        btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
+        _rclErro('Esta �rea exige um evento v�lido. Preencha o campo Evento.');
+        btn.disabled = false; btn.textContent = 'Salvar reclassifica��o'; return;
       }
       upd.produto_id    = prodId;
       upd.etapa_id      = document.getElementById('rcl-etapa')?.value || null;
@@ -12096,20 +7677,20 @@ async function abrirReclassificacaoCusto(id) {
       upd.evento_soc_id = null;
     } else if (novoTipo === 'sociedade') {
       const evtRes = evtSocInput ? await _rclResolveEvento(evtSocInput, 'sociedade', null) : null;
-      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return; }
+      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassifica��o'; return; }
       if (rules.requer_evento && !evtRes?.socId) {
-        _rclErro('Esta área exige um evento válido. Preencha o campo Evento.');
-        btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
+        _rclErro('Esta �rea exige um evento v�lido. Preencha o campo Evento.');
+        btn.disabled = false; btn.textContent = 'Salvar reclassifica��o'; return;
       }
       upd.evento_soc_id = evtRes?.socId || null;
       upd.evento_id     = null;
       upd.produto_id    = null; upd.etapa_id = null;
     } else {
       const evtRes = evtSocInput ? await _rclResolveEvento(evtSocInput, 'organizacao', null) : null;
-      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return; }
+      if (evtRes?._err) { _rclErro('Evento: ' + evtRes._err); btn.disabled = false; btn.textContent = 'Salvar reclassifica��o'; return; }
       if (rules.requer_evento && !evtRes?.evtId) {
-        _rclErro('Esta área exige um evento válido. Preencha o campo Evento.');
-        btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
+        _rclErro('Esta �rea exige um evento v�lido. Preencha o campo Evento.');
+        btn.disabled = false; btn.textContent = 'Salvar reclassifica��o'; return;
       }
       upd.evento_id     = evtRes?.evtId || null;
       upd.evento_soc_id = null;
@@ -12119,11 +7700,11 @@ async function abrirReclassificacaoCusto(id) {
     const { error } = await sb.from('lancamentos_custo').update(upd).eq('id', id);
     if (error) {
       _rclErro('Erro ao salvar: ' + error.message);
-      btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
+      btn.disabled = false; btn.textContent = 'Salvar reclassifica��o'; return;
     }
 
     // Sincroniza fin_lancamentos
-    const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso';
+    const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' � ') || area?.subconta || 'Reembolso';
     const { data: existFin } = await sb.from('fin_lancamentos')
       .select('id').eq('origem','reembolso').eq('origem_id', id).maybeSingle();
     if (existFin?.id) {
@@ -12142,19 +7723,19 @@ async function abrirReclassificacaoCusto(id) {
 
     popup.remove();
     toast('Reclassificado com sucesso');
-    // Recarrega áreas junto com os dados para garantir consistência
+    // Recarrega �reas junto com os dados para garantir consist�ncia
     await Promise.all([carregarReembolsoAreas(), carregarReembolso()]);
   };
   popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
 }
 
 function exportarReembolsoExcel() {
-  if (!_rbData) { toast('Carregue um mês primeiro.'); return; }
+  if (!_rbData) { toast('Carregue um m�s primeiro.'); return; }
   const { custos, usuarios, mes, evNomes = {} } = _rbData;
   const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '';
 
   const linhas = [
-    ['Membro','Data','Tipo','Área (Plano de Contas)','Detalhe','Evento','Cliente','Oportunidade','Produto','Etapa','Descrição','Valor (R$)']
+    ['Membro','Data','Tipo','�rea (Plano de Contas)','Detalhe','Evento','Cliente','Oportunidade','Produto','Etapa','Descri��o','Valor (R$)']
   ];
   custos.forEach(c => {
     const u    = usuarios.find(u => u.id === c.usuario_id);
@@ -12193,7 +7774,7 @@ function exportarReembolsoExcel() {
 }
 
 function exportarReembolsoPDF() {
-  if (!_rbData) { toast('Carregue um mês primeiro.'); return; }
+  if (!_rbData) { toast('Carregue um m�s primeiro.'); return; }
   const { custos, usuarios, mes, evNomes = {} } = _rbData;
   const mesNome = new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date(mes+'-01T12:00:00'));
   const fmtR    = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
@@ -12215,24 +7796,24 @@ function exportarReembolsoPDF() {
       const area    = (G._reembolsoAreas||[]).find(a => a.id === c.plano_contas_id)?.subconta || '';
       const cli     = c.produtos?.oportunidades?.clientes?.nome || '';
       const proj    = c.produtos?.oportunidades?.projeto || '';
-      const projStr = [cli,proj].filter(Boolean).join(' · ') ||
-                      ({ projeto:'Projeto', organizacao:'Organização', sociedade:'Sociedade' }[c.tipo] || '');
+      const projStr = [cli,proj].filter(Boolean).join(' � ') ||
+                      ({ projeto:'Projeto', organizacao:'Organiza��o', sociedade:'Sociedade' }[c.tipo] || '');
       return `<tr>
         <td>${fmtDate(c.data_lancamento)}</td>
         <td>${area}</td><td>${c.subtipo||''}</td>
-        <td>${evId?(evNomes[evId]||'—'):'—'}</td>
+        <td>${evId?(evNomes[evId]||'�'):'�'}</td>
         <td>${projStr}</td>
         <td>${c.descricao||''}</td>
         <td class="val">${fmtR(c.valor)}</td></tr>`;
     }).join('');
     body += `<div class="ms">
       <div class="mhd"><span>${u.nome}</span><span class="mt">${fmtR(d.total)}</span></div>
-      <table><thead><tr><th>Data</th><th>Área</th><th>Detalhe</th><th>Evento</th><th>Projeto</th><th>Descrição</th><th>Valor</th></tr></thead>
+      <table><thead><tr><th>Data</th><th>�rea</th><th>Detalhe</th><th>Evento</th><th>Projeto</th><th>Descri��o</th><th>Valor</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   });
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
-  <title>Reembolsos — ${mesNome}</title><style>
+  <title>Reembolsos � ${mesNome}</title><style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}
   h1{font-size:15px;font-weight:700;margin-bottom:3px}
@@ -12248,9 +7829,9 @@ function exportarReembolsoPDF() {
   td.val{text-align:right;font-family:monospace;white-space:nowrap}
   @media print{body{padding:16px 20px}.ms{page-break-inside:avoid}}
   </style></head><body>
-  <h1>Reembolso de custos — ${mesNome}</h1>
-  <div class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} · EXP Plataforma</div>
-  <div class="tg">Total do período: ${fmtR(totalGeral)}</div>
+  <h1>Reembolso de custos � ${mesNome}</h1>
+  <div class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} � EXP Plataforma</div>
+  <div class="tg">Total do per�odo: ${fmtR(totalGeral)}</div>
   ${body}</body></html>`;
 
   const win = window.open('','_blank','width=920,height=720');
@@ -12260,7 +7841,7 @@ function exportarReembolsoPDF() {
 
 async function exportarHorasExcel() {
   const mes = document.getElementById('cm-mes')?.value;
-  if (!mes) { toast('Selecione um mês primeiro.'); return; }
+  if (!mes) { toast('Selecione um m�s primeiro.'); return; }
   const [ano, m] = mes.split('-').map(Number);
   const ini = `${ano}-${String(m).padStart(2,'0')}-01`;
   const fim = `${ano}-${String(m).padStart(2,'0')}-${String(new Date(ano,m,0).getDate()).padStart(2,'0')}`;
@@ -12274,13 +7855,13 @@ async function exportarHorasExcel() {
   ]);
   if (!horas) { toast('Erro ao carregar dados.'); return; }
 
-  const DIAS   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const DIAS   = ['Dom','Seg','Ter','Qua','Qui','Sex','S�b'];
   const TIPOPT = { projeto:'Projeto', organizacao:'Org. Interna', sociedade:'Sociedade' };
   const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '';
   const fmtDia  = d => d ? DIAS[new Date(d+'T12:00:00').getDay()] : '';
 
   const linhas = [
-    ['Membro','Data','Dia','Início','Fim','Horas','Tipo','Subtipo','Cliente','Oportunidade','Produto','Etapa','Descrição']
+    ['Membro','Data','Dia','In�cio','Fim','Horas','Tipo','Subtipo','Cliente','Oportunidade','Produto','Etapa','Descri��o']
   ];
   horas.forEach(h => {
     const u  = (usuarios||[]).find(u => u.id === h.usuario_id);
@@ -12331,7 +7912,7 @@ async function exportarHorasExcel() {
 
 async function exportarHorasPDF() {
   const mes = document.getElementById('cm-mes')?.value;
-  if (!mes) { toast('Selecione um mês primeiro.'); return; }
+  if (!mes) { toast('Selecione um m�s primeiro.'); return; }
   const [ano, m] = mes.split('-').map(Number);
   const ini = `${ano}-${String(m).padStart(2,'0')}-01`;
   const fim = `${ano}-${String(m).padStart(2,'0')}-${String(new Date(ano,m,0).getDate()).padStart(2,'0')}`;
@@ -12375,23 +7956,23 @@ async function exportarHorasPDF() {
     const d    = porUser[u.id];
     const rows = d.itens.map(h => {
       const dh   = diffHoras(h.hora_inicio, h.hora_fim);
-      const proj = [h.produtos?.oportunidades?.clientes?.nome, h.produtos?.nome].filter(Boolean).join(' · ');
+      const proj = [h.produtos?.oportunidades?.clientes?.nome, h.produtos?.nome].filter(Boolean).join(' � ');
       return `<tr>
         <td>${fmtDate(h.data_lancamento)}</td>
-        <td>${h.hora_inicio?.slice(0,5)||''}–${h.hora_fim?.slice(0,5)||''}</td>
+        <td>${h.hora_inicio?.slice(0,5)||''}�${h.hora_fim?.slice(0,5)||''}</td>
         <td class="n">${fmtH(dh)}</td>
         <td>${TIPOPT[h.tipo]||h.tipo||''}</td>
-        <td>${[proj,h.etapas?.nome].filter(Boolean).join(' › ')}</td>
+        <td>${[proj,h.etapas?.nome].filter(Boolean).join(' � ')}</td>
         <td>${h.descricao||''}</td></tr>`;
     }).join('');
     body += `<div class="ms">
       <div class="mhd"><span>${u.nome}</span><span class="mt">${fmtH(d.total)}</span></div>
-      <table><thead><tr><th>Data</th><th>Horário</th><th>Dur.</th><th>Tipo</th><th>Projeto / Etapa</th><th>Descrição</th></tr></thead>
+      <table><thead><tr><th>Data</th><th>Hor�rio</th><th>Dur.</th><th>Tipo</th><th>Projeto / Etapa</th><th>Descri��o</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   });
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
-  <title>Horas — ${mesNome}</title><style>
+  <title>Horas � ${mesNome}</title><style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}
   h1{font-size:15px;font-weight:700;margin-bottom:3px}
@@ -12411,8 +7992,8 @@ async function exportarHorasPDF() {
   .bold{font-weight:700}
   @media print{body{padding:16px 20px}.ms{page-break-inside:avoid}table.resumo{page-break-after:always}}
   </style></head><body>
-  <h1>Relatório de horas — ${mesNome}</h1>
-  <div class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} · EXP Plataforma · Total: ${fmtH(totalGeral)}</div>
+  <h1>Relat�rio de horas � ${mesNome}</h1>
+  <div class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} � EXP Plataforma � Total: ${fmtH(totalGeral)}</div>
   ${body}</body></html>`;
 
   const win = window.open('','_blank','width=920,height=720');
@@ -12456,7 +8037,7 @@ async function carregarEspelhoPorProjeto() {
   }
 
   if (!data?.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa concluída registrada.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa conclu�da registrada.</div>';
     return;
   }
 
@@ -12475,7 +8056,7 @@ async function carregarEspelhoPorProjeto() {
     g.etapas.push(ef.etapa_nome);
     g.horas += ef.horas_totais || 0;
     g.custo += ef.custo_execucao || 0;
-    // valor_contratado é por produto, pega o mais recente
+    // valor_contratado � por produto, pega o mais recente
     g.contratado = ef.valor_contratado || g.contratado;
     if (ef.status_faturamento === 'pago') g.pago += ef.custo_execucao || 0;
     else if (ef.status_faturamento === 'faturado') g.faturado += ef.custo_execucao || 0;
@@ -12494,15 +8075,15 @@ async function carregarEspelhoPorProjeto() {
     return `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;padding:12px 14px;margin-bottom:8px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
         <div>
-          <div style="font-size:12px;font-weight:600">${p.oportunidade_nome || p.produto_nome || '—'}</div>
-          <div style="font-size:10px;color:#888">${p.produto_nome || ''} · ${p.cliente_nome || '—'}</div>
+          <div style="font-size:12px;font-weight:600">${p.oportunidade_nome || p.produto_nome || '�'}</div>
+          <div style="font-size:10px;color:#888">${p.produto_nome || ''} � ${p.cliente_nome || '�'}</div>
         </div>
         ${margem !== null ? `<div style="font-size:13px;font-weight:700;font-family:var(--font-mono);${margemCls}">${margem}% margem</div>` : ''}
       </div>
       <!-- Barra custo/contratado -->
       <div style="margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:#888;margin-bottom:3px">
-          <span>Custo execução: <strong style="color:var(--grafite);font-family:var(--font-mono)">R$ ${fmtNum(p.custo)}</strong></span>
+          <span>Custo execu��o: <strong style="color:var(--grafite);font-family:var(--font-mono)">R$ ${fmtNum(p.custo)}</strong></span>
           <span>Contratado: <strong style="font-family:var(--font-mono)">R$ ${fmtNum(p.contratado)}</strong></span>
         </div>
         <div style="height:6px;background:var(--cinza2);border-radius:3px">
@@ -12512,7 +8093,7 @@ async function carregarEspelhoPorProjeto() {
       <!-- Stats: horas + etapas + status faturamento -->
       <div style="display:flex;gap:16px;font-size:10px;color:#888">
         <span>${fmtH(p.horas)} registradas</span>
-        <span>${p.etapas.length} etapa(s) concluída(s)</span>
+        <span>${p.etapas.length} etapa(s) conclu�da(s)</span>
         ${p.pago > 0 ? `<span style="color:var(--verde)">Pago: R$ ${fmtNum(p.pago)}</span>` : ''}
         ${p.faturado > 0 ? `<span style="color:var(--azul)">Faturado: R$ ${fmtNum(p.faturado)}</span>` : ''}
         ${p.pendente > 0 ? `<span style="color:var(--ouro)">Pendente: R$ ${fmtNum(p.pendente)}</span>` : ''}
@@ -12537,7 +8118,7 @@ async function carregarEspelho() {
   const wrap = document.getElementById('espelho-wrap');
 
   if (!data?.length) {
-    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa concluída encontrada.</div>';
+    wrap.innerHTML = '<div class="empty-note">Nenhuma etapa conclu�da encontrada.</div>';
     return;
   }
 
@@ -12551,7 +8132,7 @@ async function carregarEspelho() {
     <thead>
       <tr>
         <th>Cliente</th><th>Produto</th><th>Etapa</th>
-        <th>Conclusão</th><th>Coord.</th><th>Horas</th>
+        <th>Conclus�o</th><th>Coord.</th><th>Horas</th>
         <th>Custo</th><th>Valor contrat.</th><th>Status fat.</th><th>Atualizado</th><th></th>
       </tr>
     </thead>
@@ -12559,16 +8140,16 @@ async function carregarEspelho() {
       ${data.map(ef => {
         const st = STATUS_EF[ef.status_faturamento] || STATUS_EF.pendente;
         return `<tr>
-          <td>${ef.cliente_nome || '—'}<br><span class="dtag">${ef.oportunidade_nome || ''}</span></td>
-          <td>${ef.produto_nome || '—'}</td>
-          <td>${ef.etapa_nome || '—'}</td>
-          <td><span class="dtag">${ef.data_conclusao ? fmtDate(ef.data_conclusao) : '—'}</span></td>
-          <td>${ef.coordenador_nome || '—'}</td>
+          <td>${ef.cliente_nome || '�'}<br><span class="dtag">${ef.oportunidade_nome || ''}</span></td>
+          <td>${ef.produto_nome || '�'}</td>
+          <td>${ef.etapa_nome || '�'}</td>
+          <td><span class="dtag">${ef.data_conclusao ? fmtDate(ef.data_conclusao) : '�'}</span></td>
+          <td>${ef.coordenador_nome || '�'}</td>
           <td><span class="num-tag">${fmtH(ef.horas_totais || 0)}</span></td>
           <td><span class="num-tag">R$ ${fmtNum(ef.custo_execucao || 0)}</span></td>
           <td><span class="num-tag">R$ ${fmtNum(ef.valor_contratado || 0)}</span></td>
           <td><span class="badge ${st.cls}">${st.label}</span></td>
-          <td style="font-size:9px;color:#888;white-space:nowrap">${ef.updated_at ? new Date(ef.updated_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+          <td style="font-size:9px;color:#888;white-space:nowrap">${ef.updated_at ? new Date(ef.updated_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '�'}</td>
           <td>
             <select class="filter-select" style="font-size:9px;padding:2px 5px" onchange="atualizarStatusFat('${ef.id}', this.value)">
               <option value="pendente" ${ef.status_faturamento === 'pendente' ? 'selected' : ''}>Pendente</option>
@@ -12588,17 +8169,17 @@ async function atualizarStatusFat(id, status) {
 }
 
 function exportarEspelho() {
-  toast('Exportação disponível em breve');
+  toast('Exporta��o dispon�vel em breve');
 }
 
 async function carregarValorHora() {
   const wrap = document.getElementById('vh-lista');
-  // Busca todo o histórico — S5-05: exibe linha do tempo por usuário
+  // Busca todo o hist�rico � S5-05: exibe linha do tempo por usu�rio
   const { data: hist } = await sb.from('historico_valor_hora')
     .select('*, registrado_por_usuario:registrado_por(nome)')
     .order('data_vigencia', { ascending: false });
 
-  // Agrupa por usuário
+  // Agrupa por usu�rio
   const porUser = {};
   (hist || []).forEach(h => {
     if (!porUser[h.usuario_id]) porUser[h.usuario_id] = [];
@@ -12613,7 +8194,7 @@ async function carregarValorHora() {
           `<div style="display:flex;justify-content:space-between;font-size:9px;color:#aaa;padding:2px 0;border-bottom:1px solid var(--cinza2)">
             <span>${fmtDate(h.data_vigencia)}</span>
             <span style="font-family:var(--font-mono)">R$ ${fmtNum(h.valor_hora)}</span>
-            <span>${h.registrado_por_usuario?.nome?.split(' ')[0] || '—'}</span>
+            <span>${h.registrado_por_usuario?.nome?.split(' ')[0] || '�'}</span>
           </div>`
         ).join('')
       : '';
@@ -12624,9 +8205,9 @@ async function carregarValorHora() {
         <div style="flex:1">
           <div class="vh-nome" style="margin-bottom:2px">${u.nome} <span style="font-size:9px;color:#aaa">${ROLES_LABEL[u.role]||''}</span></div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="vh-valor" style="font-size:13px">${atual ? 'R$ '+fmtNum(atual.valor_hora) : '—'}</span>
-            ${atual ? `<span class="vh-vigencia">desde ${fmtDate(atual.data_vigencia)}</span>` : '<span style="font-size:10px;color:#aaa">Não cadastrado</span>'}
-            ${registros.length > 1 ? `<button class="btn xs ghost" style="font-size:9px" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent==='+ histórico'?'– histórico':'+ histórico'">+ histórico</button>
+            <span class="vh-valor" style="font-size:13px">${atual ? 'R$ '+fmtNum(atual.valor_hora) : '�'}</span>
+            ${atual ? `<span class="vh-vigencia">desde ${fmtDate(atual.data_vigencia)}</span>` : '<span style="font-size:10px;color:#aaa">N�o cadastrado</span>'}
+            ${registros.length > 1 ? `<button class="btn xs ghost" style="font-size:9px" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent==='+ hist�rico'?'� hist�rico':'+ hist�rico'">+ hist�rico</button>
             <div style="display:none;width:100%;margin-top:4px">${histHtml}</div>` : ''}
           </div>
         </div>
@@ -12639,9 +8220,9 @@ async function carregarValorHora() {
   }).join('');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   PRIORIDADES (G3/G4/G11)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 async function carregarPrioridades() {
   const uid = G.usuario.id;
   const { data } = await sb.from('prioridades_usuario')
@@ -12651,7 +8232,7 @@ async function carregarPrioridades() {
   if (!data?.length) { bloco.style.display = 'none'; return; }
   bloco.style.display = 'block';
   const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
-  // Pendentes primeiro, concluídas no fim (mantendo ordem interna de cada grupo)
+  // Pendentes primeiro, conclu�das no fim (mantendo ordem interna de cada grupo)
   const sorted = [...data].sort((a,b) => (a.concluida?1:0) - (b.concluida?1:0));
   wrap.innerHTML = sorted.map((pr, idx) => {
     const prod = G.todosProdutos.find(p => p.id === pr.produto_id);
@@ -12661,14 +8242,14 @@ async function carregarPrioridades() {
     const opp  = prod.oportunidades;
     const cli  = opp?.clientes;
 
-    // Hierarquia de informações
+    // Hierarquia de informa��es
     const titulo = [cli?.nome, opp?.projeto].filter(Boolean).join(' | ') || prod.nome;
     const cidade = opp?.cidade || cli?.cidade || '';
     const cidadeUf = [cidade, cli?.uf].filter(Boolean).join('/');
     const etapaNome = etapa?.nome || '';
     const tipoProd = prod.nome || '';
 
-    // Estado do card (calcular antes do prazoChip para usá-lo na cor)
+    // Estado do card (calcular antes do prazoChip para us�-lo na cor)
     const _hoje = new Date(); _hoje.setHours(0,0,0,0);
     let estadoCard = '';
     if (pr.concluida) {
@@ -12679,7 +8260,7 @@ async function carregarPrioridades() {
       else if (+_prazoD === +_hoje)  estadoCard = 'hoje';
     }
 
-    // Previsão formatada com dia da semana
+    // Previs�o formatada com dia da semana
     const prazoFmt = pr.prazo_texto ? formatPrazoFluxo(pr.prazo_texto) : '';
     const prazoChipStyle = estadoCard === 'atrasada'
       ? 'background:var(--tc-bg);border:1px solid var(--terracota);color:var(--terracota)'
@@ -12690,14 +8271,14 @@ async function carregarPrioridades() {
     const prazoExtraClass = estadoCard ? '' : ' prazo-chip-normal';
     const prazoChip = prazoFmt
       ? `<span class="${prazoExtraClass.trim()}" style="display:inline-flex;align-items:center;gap:3px;font-size:9px;${prazoChipStyle ? prazoChipStyle+';' : ''}border-radius:4px;padding:1px 7px;font-weight:600;cursor:pointer"
-           onclick="event.stopPropagation();editarPrazoPrioridade('${pr.id}','${pr.prazo_texto||''}','${prod.id}','${coordId}')">📅 ${prazoFmt}</span>`
+           onclick="event.stopPropagation();editarPrazoPrioridade('${pr.id}','${pr.prazo_texto||''}','${prod.id}','${coordId}')">?? ${prazoFmt}</span>`
       : '';
 
     const comentHtml = pr.comentario
       ? `<div class="prio-comment">${pr.comentario}</div>`
       : '';
 
-    // Número de ordem real (posição no array retornado, 1-based)
+    // N�mero de ordem real (posi��o no array retornado, 1-based)
     const ord = pr.ordem || (idx + 1);
     const numCls = NUM_CLS[ord] || 'p6';
 
@@ -12706,7 +8287,7 @@ async function carregarPrioridades() {
       <div class="prio-info" style="flex:1;min-width:0">
         <div class="prio-nome" style="font-size:13px;font-weight:700">${titulo}</div>
         ${cidadeUf ? `<div style="font-size:10px;color:#666;margin-top:2px;font-weight:500">${cidadeUf}</div>` : ''}
-        ${etapaNome ? `<div style="font-size:10px;color:#888;margin-top:2px">↳ ${etapaNome}</div>` : ''}
+        ${etapaNome ? `<div style="font-size:10px;color:#888;margin-top:2px">? ${etapaNome}</div>` : ''}
         ${tipoProd ? `<div style="font-size:9px;color:#aaa;margin-top:1px;text-transform:uppercase;letter-spacing:.4px">${tipoProd}</div>` : ''}
         ${prazoChip ? `<div style="margin-top:5px">${prazoChip}</div>` : ''}
         ${pr.data_inicio ? `<div style="margin-top:4px"><span class="task-inicio">${fmtDataInicio(pr.data_inicio)}</span></div>` : ''}
@@ -12714,7 +8295,7 @@ async function carregarPrioridades() {
       </div>
       <div class="prio-check ${pr.concluida?'done':''}"
            onclick="event.stopPropagation();togglePrioridade('${pr.id}',${pr.concluida})"
-           title="${pr.concluida?'Marcar pendente':'Marcar concluída'}">${pr.concluida?'✓':''}</div>
+           title="${pr.concluida?'Marcar pendente':'Marcar conclu�da'}">${pr.concluida?'?':''}</div>
     </div>`;
   }).filter(Boolean).join('');
 }
@@ -12727,15 +8308,15 @@ async function togglePrioridade(id, atual) {
   carregarPrioridades();
 }
 
-// Formata ISO date para exibição no dashboard: "12/05 · quarta-feira"
+// Formata ISO date para exibi��o no dashboard: "12/05 � quarta-feira"
 function formatPrazoFluxo(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T12:00:00');
   if (isNaN(d)) return iso;
-  const dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const dias = ['domingo','segunda-feira','ter�a-feira','quarta-feira','quinta-feira','sexta-feira','s�bado'];
   const dd = String(d.getDate()).padStart(2,'0');
   const mm = String(d.getMonth()+1).padStart(2,'0');
-  return `${dd}/${mm} · ${dias[d.getDay()]}`;
+  return `${dd}/${mm} � ${dias[d.getDay()]}`;
 }
 
 async function carregarFluxo() {
@@ -12748,7 +8329,7 @@ async function carregarFluxo() {
     byUser[p.usuario_id][p.ordem] = p;
   });
 
-  // Opções agrupadas: cliente (optgroup) → oportunidade · tipo
+  // Op��es agrupadas: cliente (optgroup) ? oportunidade � tipo
   const produtos = G._prodsGestao.filter(p => p.status === 'ativo');
   const cliMap = new Map();
   produtos.forEach(p => {
@@ -12757,7 +8338,7 @@ async function carregarFluxo() {
     if (!cliMap.has(key)) cliMap.set(key, { nome: cli?.nome || 'Sem cliente', prods: [] });
     cliMap.get(key).prods.push(p);
   });
-  const baseProdOpts = '<option value="">— sem projeto —</option>' +
+  const baseProdOpts = '<option value="">� sem projeto �</option>' +
     [...cliMap.entries()]
       .sort((a,b) => (a[1].nome||'').localeCompare(b[1].nome||'','pt-BR'))
       .map(([, {nome: cliNome, prods: ps}]) => {
@@ -12767,7 +8348,7 @@ async function carregarFluxo() {
         return `<optgroup label="${cliNome.replace(/"/g,'&quot;')}">${
           sorted.map(p => {
             const op = p.oportunidades?.projeto || 'Sem oportunidade';
-            const tp = p.nome ? ` · ${truncarTexto(p.nome,22)}` : '';
+            const tp = p.nome ? ` � ${truncarTexto(p.nome,22)}` : '';
             return `<option value="${p.id}">${op}${tp}</option>`;
           }).join('')}</optgroup>`;
       }).join('');
@@ -12792,37 +8373,37 @@ async function carregarFluxo() {
       const opts   = baseProdOpts.replace(`value="${val}"`, `value="${val}" selected`);
 
       const concTag = pr
-        ? `<span class="fluxo-conc-tag ${conc?'done':''}" onclick="toggleFluxoPrio('${u.id}','${pr.id}')">${conc?'✓ Concluída':'Pendente'}</span>`
+        ? `<span class="fluxo-conc-tag ${conc?'done':''}" onclick="toggleFluxoPrio('${u.id}','${pr.id}')">${conc?'? Conclu�da':'Pendente'}</span>`
         : '';
       const datesSection = pr ? `<div class="fluxo-dates-grid">
           <div>
-            <div class="fluxo-date-label">Liberação</div>
+            <div class="fluxo-date-label">Libera��o</div>
             <div class="fluxo-date-wrap" onclick="this.querySelector('input').showPicker?.()">
-              <span class="fluxo-date-display">${inicio ? fmtFluxoDate(inicio) : '—'}</span>
+              <span class="fluxo-date-display">${inicio ? fmtFluxoDate(inicio) : '�'}</span>
               <input class="fluxo-col-date-inicio" type="date" value="${inicio}"
-                onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'—';debFluxo('${pr.id}','inicio',this.value);marcarFluxoDirty('${u.id}')">
+                onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'�';debFluxo('${pr.id}','inicio',this.value);marcarFluxoDirty('${u.id}')">
             </div>
           </div>
           <div>
-            <div class="fluxo-date-label">Conclusão</div>
+            <div class="fluxo-date-label">Conclus�o</div>
             <div class="fluxo-date-wrap" onclick="this.querySelector('input').showPicker?.()">
-              <span class="fluxo-date-display">${prazo ? fmtFluxoDate(prazo) : '—'}</span>
+              <span class="fluxo-date-display">${prazo ? fmtFluxoDate(prazo) : '�'}</span>
               <input class="fluxo-col-date" type="date" value="${prazo}"
-                onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'—';debFluxo('${pr.id}','prazo',this.value);marcarFluxoDirty('${u.id}')">
+                onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'�';debFluxo('${pr.id}','prazo',this.value);marcarFluxoDirty('${u.id}')">
             </div>
           </div>
         </div>` : '';
       const cmtArea = pr ? `<textarea class="fluxo-col-textarea" rows="3"
-          placeholder="Comentário para o colaborador..."
+          placeholder="Coment�rio para o colaborador..."
           oninput="marcarFluxoDirty('${u.id}')"
           onblur="debFluxo('${pr.id}','comentario',this.value)"
           >${coment}</textarea>` : '';
 
       const clearBtn = pr
         ? `<button onclick="event.stopPropagation();limparFluxoPrio('${pr.id}')"
-             title="Limpar cartão"
+             title="Limpar cart�o"
              style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:13px;color:#bbb;line-height:1;padding:0 2px;border-radius:3px"
-             onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#bbb'">×</button>`
+             onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#bbb'">�</button>`
         : '';
 
       return `<div class="fluxo-col-wrap"
@@ -12833,7 +8414,7 @@ async function carregarFluxo() {
           ondragstart="fluxoDragStart(event)" ondragover="fluxoDragOver(event)"
           ondrop="fluxoDrop(event)" ondragend="fluxoDragEnd(event)">
         <div class="fluxo-col-num-row">
-          <span class="fluxo-drag-handle">⠿</span>
+          <span class="fluxo-drag-handle">?</span>
           <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
           ${concTag}
           ${clearBtn}
@@ -12857,7 +8438,7 @@ async function carregarFluxo() {
         </div>
         <button id="btn-sf-${u.id}" onclick="salvarFluxoUsuario('${u.id}')"
           class="btn sm"
-          title="Salvar todas as alterações deste colaborador">Salvar</button>
+          title="Salvar todas as altera��es deste colaborador">Salvar</button>
       </div>
       <div class="fluxo-cols" data-uid="${u.id}">${cols}</div>
     </div>`;
@@ -12865,12 +8446,12 @@ async function carregarFluxo() {
 }
 
 function fmtFluxoDate(iso) {
-  if (!iso) return '—';
+  if (!iso) return '�';
   const p = iso.split('-');
   return p.length < 3 ? iso : p[2] + '.' + p[1];
 }
 
-// ── Debounce por ID do registro (não por userId+ordem) ────────────────────────
+// -- Debounce por ID do registro (n�o por userId+ordem) ------------------------
 const _fluxoDebTimers = {};
 function debFluxo(pioId, campo, valor) {
   const key = `${pioId}_${campo}`;
@@ -12881,7 +8462,7 @@ function debFluxo(pioId, campo, valor) {
   }, 600);
 }
 
-// ── Salvar seleção de projeto ─────────────────────────────────────────────────
+// -- Salvar sele��o de projeto -------------------------------------------------
 async function salvarFluxoPrio(userId, produtoId, colEl) {
   const prodId  = produtoId || null;
   const colWrap = colEl?.closest('.fluxo-col-wrap');
@@ -12891,7 +8472,7 @@ async function salvarFluxoPrio(userId, produtoId, colEl) {
     const allCols = container ? [...container.querySelectorAll('.fluxo-col-wrap')] : [];
     const idx  = allCols.indexOf(colWrap);
     const ordem = idx >= 0 ? idx + 1 : 9;
-    // Deleta registro antigo nessa posição
+    // Deleta registro antigo nessa posi��o
     await sb.from('prioridades_usuario').delete()
       .eq('usuario_id', userId).eq('ordem', ordem);
     const { data: novo, error } = await sb.from('prioridades_usuario').insert({
@@ -12906,7 +8487,7 @@ async function salvarFluxoPrio(userId, produtoId, colEl) {
       colWrap.dataset.conc   = 'false';
       colWrap.dataset.empty  = 'false';
     }
-    // Marca botão Salvar como pendente (para prazo/comentário do novo card)
+    // Marca bot�o Salvar como pendente (para prazo/coment�rio do novo card)
     marcarFluxoDirty(userId);
   } else {
     const recId = colWrap?.dataset?.id;
@@ -12920,7 +8501,7 @@ async function salvarFluxoPrio(userId, produtoId, colEl) {
       colWrap.dataset.empty  = 'true';
     }
   }
-  // Não recarrega o DOM todo — usuário continua editando sem perder dados
+  // N�o recarrega o DOM todo � usu�rio continua editando sem perder dados
 }
 
 async function toggleFluxoPrio(userId, recId) {
@@ -12939,19 +8520,19 @@ async function limparFluxoPrio(recId) {
   carregarFluxo();
 }
 
-// ── Dirty state: destaca botão Salvar quando há alterações ───────────────────
+// -- Dirty state: destaca bot�o Salvar quando h� altera��es -------------------
 function marcarFluxoDirty(userId) {
   const btn = document.getElementById('btn-sf-' + userId);
   if (!btn) return;
   btn.style.background   = 'var(--ouro)';
   btn.style.color        = '#fff';
   btn.style.borderColor  = 'var(--ouro)';
-  btn.textContent        = '● Salvar';
+  btn.textContent        = '? Salvar';
 }
 
-// ── Salva tudo de um usuário de uma vez ──────────────────────────────────────
+// -- Salva tudo de um usu�rio de uma vez --------------------------------------
 async function salvarFluxoUsuario(userId) {
-  // Cancela debounces pendentes — capturamos ao vivo
+  // Cancela debounces pendentes � capturamos ao vivo
   Object.keys(_fluxoDebTimers).forEach(k => clearTimeout(_fluxoDebTimers[k]));
 
   const container = document.querySelector(`.fluxo-cols[data-uid="${userId}"]`);
@@ -12977,9 +8558,9 @@ async function salvarFluxoUsuario(userId) {
   }
 
   const nome = G.todosUsuarios.find(u => u.id === userId)?.nome?.split(' ')[0] || 'colaborador';
-  toast(`Fluxo de ${nome} salvo ✓`);
+  toast(`Fluxo de ${nome} salvo ?`);
 
-  // Recarrega em background preservando a posição de scroll
+  // Recarrega em background preservando a posi��o de scroll
   const wrap = document.getElementById('fluxo-grid');
   const scrollEl = wrap?.closest('.page') || document.documentElement;
   const scrollY = scrollEl.scrollTop;
@@ -12987,7 +8568,7 @@ async function salvarFluxoUsuario(userId) {
   requestAnimationFrame(() => { scrollEl.scrollTop = scrollY; });
 }
 
-// ── Drag-and-drop reordenação ─────────────────────────────────────────────────
+// -- Drag-and-drop reordena��o -------------------------------------------------
 let _fluxoDragSrc = null;
 
 function fluxoDragStart(e) {
@@ -13053,14 +8634,14 @@ async function fluxoSalvarReorder(userId, slots) {
   }));
   const { error } = await sb.from('prioridades_usuario').insert(rows);
   if (error) toast('Erro ao salvar ordem: ' + error.message);
-  // Não recarrega — DOM já está na nova ordem; reseta o botão Salvar
+  // N�o recarrega � DOM j� est� na nova ordem; reseta o bot�o Salvar
   const btn = document.getElementById('btn-sf-' + userId);
   if (btn) { btn.style.background=''; btn.style.color='#aaa'; btn.style.borderColor=''; btn.textContent='Salvar'; }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//   USUÃRIOS â€” CORES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+//   USUÁRIOS — CORES
+// ══════════════════════════════════════════════════════════
 const PALETA_EXP    = ['#45865D','#5280CA','#D19931','#C36247','#7A6E9E','#6A8C8C','#8A7355','#9C7B8E','#6E818E','#8A8A56'];
 const PALETA_SOCIO  = ['#45865D','#5280CA','#D19931','#C36247'];
 const PALETA_COLAB  = ['#1D6A4A','#1D4FA0','#B84C3A','#6B4FA0'];
@@ -13068,7 +8649,7 @@ const PALETA_COLAB  = ['#1D6A4A','#1D4FA0','#B84C3A','#6B4FA0'];
 function carregarUsuariosAdmin() {
   const wrap = document.getElementById('usu-lista');
   const usuarios = G.todosUsuarios;
-  if (!usuarios.length) { wrap.innerHTML = '<div class="loading-state">Nenhum usuário encontrado</div>'; return; }
+  if (!usuarios.length) { wrap.innerHTML = '<div class="loading-state">Nenhum usu�rio encontrado</div>'; return; }
 
   if (!document.getElementById('usu-foto-input')) {
     const inp = document.createElement('input');
@@ -13096,16 +8677,16 @@ function carregarUsuariosAdmin() {
       ${avEl}
       <div class="vh-nome" style="min-width:140px">${u.nome}</div>
       <select class="filter-select" style="font-size:9px;padding:2px 6px;min-width:110px" onchange="salvarRoleUsuario('${u.id}',this.value)">
-        <option value="socio" ${u.role==='socio'?'selected':''}>Sócio</option>
+        <option value="socio" ${u.role==='socio'?'selected':''}>S�cio</option>
         <option value="coordenador" ${u.role==='coordenador'?'selected':''}>Coordenador</option>
         <option value="colaborador" ${u.role==='colaborador'?'selected':''}>Colaborador</option>
       </select>
       <div class="usu-swatches">${swatches}</div>
       <div style="display:flex;align-items:center;gap:5px;margin-left:auto">
-        <span style="font-size:10px;color:#bbb" title="Aniversário">🎂</span>
+        <span style="font-size:10px;color:#bbb" title="Anivers�rio">??</span>
         <input type="date" value="${anivVal}"
           style="border:1px solid var(--cinza);border-radius:5px;padding:3px 6px;font-size:10px;font-family:var(--font-ui);outline:none;color:#555;cursor:pointer"
-          title="Data de aniversário"
+          title="Data de anivers�rio"
           onchange="salvarAniversarioUsuario('${u.id}',this.value)">
       </div>
     </div>`;
@@ -13429,14 +9010,14 @@ async function otimizarTempMediaImagem(file, cfg) {
   if (!result.blob) {
     result = await rasterizarTempMedia(source, larguraMax, qualidade, 'image/jpeg');
   }
-  if (!result.blob) throw new Error('Não foi possível preparar a imagem.');
+  if (!result.blob) throw new Error('N�o foi poss�vel preparar a imagem.');
 
   if (result.blob.size > maxBytes) {
     result = await rasterizarTempMedia(source, Math.min(larguraMax, 1280), Math.min(qualidade, 0.72), 'image/jpeg');
   }
-  if (!result.blob) throw new Error('Não foi possível comprimir a imagem.');
+  if (!result.blob) throw new Error('N�o foi poss�vel comprimir a imagem.');
   if (result.blob.size > maxBytes) {
-    throw new Error(`A imagem ficou maior que ${(maxBytes / 1024).toFixed(0)} KB após compressão.`);
+    throw new Error(`A imagem ficou maior que ${(maxBytes / 1024).toFixed(0)} KB ap�s compress�o.`);
   }
 
   return {
@@ -13458,7 +9039,7 @@ function carregarImagemTempMedia(file) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('Arquivo de imagem inválido.'));
+      reject(new Error('Arquivo de imagem inv�lido.'));
     };
     img.src = url;
   });
@@ -13517,7 +9098,7 @@ function fecharTempMediaViewer() {
     img.style.display = 'none';
   }
   if (delBtn) delBtn.style.display = 'none';
-  if (empty) empty.textContent = 'Carregando imagem…';
+  if (empty) empty.textContent = 'Carregando imagem�';
   const modal = document.getElementById('modal-temp-media-viewer');
   if (modal) modal.style.display = 'none';
 }
@@ -13544,11 +9125,11 @@ async function renderTempMediaViewer() {
   const nextBtn = document.getElementById('tm-next-btn');
 
   if (titleEl) titleEl.textContent = viewer.titulo;
-  if (metaEl) metaEl.textContent = `Imagem ${viewer.index + 1} de ${viewer.items.length} · enviada em ${fmtDate((item.created_at || '').split('T')[0])}`;
+  if (metaEl) metaEl.textContent = `Imagem ${viewer.index + 1} de ${viewer.items.length} � enviada em ${fmtDate((item.created_at || '').split('T')[0])}`;
   if (prevBtn) prevBtn.disabled = viewer.index === 0;
   if (nextBtn) nextBtn.disabled = viewer.index >= viewer.items.length - 1;
   if (delBtn) delBtn.style.display = viewer.canManage ? 'flex' : 'none';
-  if (emptyEl) emptyEl.textContent = 'Carregando imagem…';
+  if (emptyEl) emptyEl.textContent = 'Carregando imagem�';
   if (imgEl) imgEl.style.display = 'none';
 
   if (G._tempMediaObjectUrl) {
@@ -13558,7 +9139,7 @@ async function renderTempMediaViewer() {
 
   const { data, error } = await sb.storage.from('gestao-anexos-temp').download(item.storage_path);
   if (error || !data) {
-    if (emptyEl) emptyEl.textContent = 'Não foi possível carregar esta imagem.';
+    if (emptyEl) emptyEl.textContent = 'N�o foi poss�vel carregar esta imagem.';
     return;
   }
 
@@ -13609,7 +9190,7 @@ async function excluirTempMediaAtual() {
     } else if (viewer.contextoTipo === 'checklist_tarefa_item') {
       _renderCkTarefas();
     }
-    toast('Imagem excluída.');
+    toast('Imagem exclu�da.');
   });
 }
 
@@ -13640,16 +9221,16 @@ async function salvarAniversarioUsuario(uid, val) {
   await sb.from('usuarios').update({ data_aniversario }).eq('id', uid);
   const u = G.todosUsuarios.find(u => u.id === uid);
   if(u) u.data_aniversario = data_aniversario;
-  toast(data_aniversario ? '🎂 Aniversário salvo' : 'Aniversário removido');
+  toast(data_aniversario ? '?? Anivers�rio salvo' : 'Anivers�rio removido');
 }
 
 async function salvarRoleUsuario(uid, role) {
   const { error } = await sb.from('usuarios').update({ role }).eq('id', uid);
-  if (error) { toast('Erro ao salvar função: ' + error.message); return; }
+  if (error) { toast('Erro ao salvar fun��o: ' + error.message); return; }
   const u = G.todosUsuarios.find(u => u.id === uid);
   if (u) u.role = role;
   if (uid === G.usuario.id) G.usuario.role = role;
-  toast('Função atualizada');
+  toast('Fun��o atualizada');
 }
 
 async function salvarCorUsuario(uid, cor, el) {
@@ -13657,7 +9238,7 @@ async function salvarCorUsuario(uid, cor, el) {
   const { data, error } = await sb.from('usuarios').update({ cor }).eq('id', uid).select('id');
   if (error) { toast('Erro ao salvar cor: ' + error.message); return; }
   if (!data || data.length === 0) {
-    toast('Sem permissão para alterar esta cor. Execute o SQL de permissões no Supabase (ver DIRECIONAMENTO_TECNICO.md).');
+    toast('Sem permiss�o para alterar esta cor. Execute o SQL de permiss�es no Supabase (ver DIRECIONAMENTO_TECNICO.md).');
     return;
   }
   const row = document.getElementById('usu-row-' + uid);
@@ -13692,20 +9273,20 @@ async function aplicarPaletaPadrao() {
     }
   }
   if (bloqueados > 0) {
-    toast(`${bloqueados} cor(es) não foram salvas por falta de permissão. Execute o SQL de RLS no Supabase (ver DIRECIONAMENTO_TECNICO.md).`);
+    toast(`${bloqueados} cor(es) n�o foram salvas por falta de permiss�o. Execute o SQL de RLS no Supabase (ver DIRECIONAMENTO_TECNICO.md).`);
   } else {
     if (G.usuario) {
       const me = updates.find(x => x.id === G.usuario.id);
       if (me) { document.getElementById('nav-av').style.background = me.cor; G.usuario.cor = me.cor; }
     }
-    toast('Paleta padrão aplicada');
+    toast('Paleta padr�o aplicada');
   }
   carregarUsuariosAdmin();
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// ------------------------------------------------------------------------------
 //   ADMIN CLIENTES
-// ──────────────────────────────────────────────────────────────────────────────
+// ------------------------------------------------------------------------------
 async function carregarClientesAdmin() {
   const wrap = document.getElementById('cli-admin-lista');
   if (!wrap) return;
@@ -13742,7 +9323,7 @@ async function carregarClientesAdmin() {
     });
     const elSigla = document.getElementById(`cli-sigla-${c.id}`);
     if (elSigla) elSigla.addEventListener('input', () => { elSigla.value = elSigla.value.toUpperCase().slice(0, 3); });
-    // UF uppercase automático
+    // UF uppercase autom�tico
     const elUf = document.getElementById(`cli-uf-${c.id}`);
     if (elUf) elUf.addEventListener('input', () => { elUf.value = elUf.value.toUpperCase(); });
   });
@@ -13754,7 +9335,7 @@ async function salvarEdicaoClienteAdmin(id) {
   const cidade = document.getElementById(`cli-cidade-${id}`)?.value.trim();
   const uf     = document.getElementById(`cli-uf-${id}`)?.value.trim().toUpperCase();
   const btn    = document.getElementById(`cli-btn-${id}`);
-  if (!nome) { toast('Nome não pode ser vazio'); return; }
+  if (!nome) { toast('Nome n�o pode ser vazio'); return; }
   if (sigla && sigla.length !== 3) { toast('A sigla deve ter 3 letras'); return; }
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   const { error } = await sb.from('clientes').update({ nome, sigla: sigla || null, cidade: cidade||null, uf: uf||null }).eq('id', id);
@@ -13776,7 +9357,7 @@ async function salvarEdicaoClienteAdmin(id) {
 
 async function salvarValorHora(uid) {
   const val = parseFloat(document.getElementById('vh-input-'+uid)?.value);
-  if (!val || val <= 0) { toast('Informe um valor válido'); return; }
+  if (!val || val <= 0) { toast('Informe um valor v�lido'); return; }
   const { error: eVH } = await sb.from('historico_valor_hora').insert({
     usuario_id: uid, valor_hora: val,
     data_vigencia: new Date().toISOString().split('T')[0],
@@ -13787,7 +9368,7 @@ async function salvarValorHora(uid) {
   carregarValorHora();
 }
 
-// ── Simulador de valor/hora ────────────────────────────────────
+// -- Simulador de valor/hora ------------------------------------
 function calcularVH() {
   const honorario      = Math.max(0, parseFloat(document.getElementById('vhs-honorario')?.value)  || 0);
   const bonusQ_pct     = Math.max(0, parseFloat(document.getElementById('vhs-bonus-q')?.value)    || 0);
@@ -13796,15 +9377,15 @@ function calcularVH() {
   const horasRent      = Math.max(1, parseFloat(document.getElementById('vhs-rentaveis')?.value)  || 75);
   const horasMes       = Math.max(1, parseFloat(document.getElementById('vhs-horas')?.value)      || 180);
 
-  // Provisões mensais
-  const bonus_q = honorario * (bonusQ_pct / 100) / 4;        // quadrimestral ÷ 4 meses
-  const bonus_a = honorario * bonusA_salario / 12;            // N salários ÷ 12 avos
+  // Provis�es mensais
+  const bonus_q = honorario * (bonusQ_pct / 100) / 4;        // quadrimestral � 4 meses
+  const bonus_a = honorario * bonusA_salario / 12;            // N sal�rios � 12 avos
   const custo_total = honorario + bonus_q + bonus_a;
 
-  // Custo ajustado pela relação folha/receita (empresa precisa faturar custo ÷ relação)
+  // Custo ajustado pela rela��o folha/receita (empresa precisa faturar custo � rela��o)
   const custo_ajustado = custo_total / (relacaoFolha / 100);
 
-  // Horas efetivamente faturáveis
+  // Horas efetivamente fatur�veis
   const horas_efetivas = horasMes * (horasRent / 100);
 
   const vh = horas_efetivas > 0 ? custo_ajustado / horas_efetivas : 0;
@@ -13820,14 +9401,14 @@ function calcularVH() {
   if (!bd) return;
 
   bd.innerHTML = `
-    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:8px">Composição</div>
-    <div class="vhs-row"><span style="color:#777">Honorário base</span><span style="font-family:var(--font-mono)">${fR(honorario)}</span></div>
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-bottom:8px">Composi��o</div>
+    <div class="vhs-row"><span style="color:#777">Honor�rio base</span><span style="font-family:var(--font-mono)">${fR(honorario)}</span></div>
     <div class="vhs-row">
-      <span style="color:#777">Provisão bônus quadrimestral <span style="font-size:9px;color:#bbb">(${fP(bonusQ_pct/4)}/mês)</span></span>
+      <span style="color:#777">Provis�o b�nus quadrimestral <span style="font-size:9px;color:#bbb">(${fP(bonusQ_pct/4)}/m�s)</span></span>
       <span style="font-family:var(--font-mono)">${fR(bonus_q)}</span>
     </div>
     <div class="vhs-row">
-      <span style="color:#777">Provisão bônus anual <span style="font-size:9px;color:#bbb">(${bonusA_salario}/12 avos)</span></span>
+      <span style="color:#777">Provis�o b�nus anual <span style="font-size:9px;color:#bbb">(${bonusA_salario}/12 avos)</span></span>
       <span style="font-family:var(--font-mono)">${fR(bonus_a)}</span>
     </div>
     <div class="vhs-row total">
@@ -13835,18 +9416,18 @@ function calcularVH() {
       <span style="font-family:var(--font-mono)">${fR(custo_total)}</span>
     </div>
     <div class="vhs-row">
-      <span style="color:#777">Receita necessária <span style="font-size:9px;color:#bbb">(÷ ${fP(relacaoFolha)} folha/receita)</span></span>
+      <span style="color:#777">Receita necess�ria <span style="font-size:9px;color:#bbb">(� ${fP(relacaoFolha)} folha/receita)</span></span>
       <span style="font-family:var(--font-mono)">${fR(custo_ajustado)}</span>
     </div>
     <div class="vhs-row">
-      <span style="color:#777">Horas faturáveis/mês <span style="font-size:9px;color:#bbb">(${fH(horasMes)} × ${fP(horasRent)})</span></span>
+      <span style="color:#777">Horas fatur�veis/m�s <span style="font-size:9px;color:#bbb">(${fH(horasMes)} � ${fP(horasRent)})</span></span>
       <span style="font-family:var(--font-mono)">${fH(horas_efetivas)}</span>
     </div>`;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   HELPERS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 function fecharModal(id) {
   if (id === 'modal-produto') _projHistStopRealtime();
   document.getElementById(id).style.display = 'none';
@@ -13860,7 +9441,7 @@ function toast(msg, dur = 2500) {
 }
 
 function fmtDate(d, curto = false) {
-  if (!d) return '—';
+  if (!d) return '�';
   const dt = typeof d === 'string' ? new Date(d + (d.length === 10 ? 'T12:00:00' : '')) : d;
   const day = String(dt.getDate()).padStart(2,'0');
   const mon = String(dt.getMonth()+1).padStart(2,'0');
@@ -13870,7 +9451,7 @@ function fmtDate(d, curto = false) {
 
 function fmtDataInicio(d) {
   if (!d) return '';
-  const DIAS = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const DIAS = ['domingo','segunda-feira','ter�a-feira','quarta-feira','quinta-feira','sexta-feira','s�bado'];
   const dt = new Date(d + 'T12:00:00');
   const data = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
   return `material liberado em ${data} - ${DIAS[dt.getDay()]}`;
@@ -13881,7 +9462,7 @@ function fmtNum(n) {
 }
 
 function fmtH(h) {
-  if (!h && h !== 0) return '—';
+  if (!h && h !== 0) return '�';
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
   return mm > 0 ? `${hh}h${mm.toString().padStart(2,'0')}` : `${hh}h`;
@@ -13896,7 +9477,7 @@ function fmtHLong(h) {
 }
 
 function fmtHMin(h) {
-  if (!h && h !== 0) return '—';
+  if (!h && h !== 0) return '�';
   const totalMin = Math.round(h * 60);
   const hh = Math.floor(totalMin / 60);
   const mm = totalMin % 60;
@@ -13946,7 +9527,7 @@ function semanaRangeOffset(offset = 0) {
   const d1 = new Date(ini + 'T12:00:00');
   const d2 = new Date(fim + 'T12:00:00');
   const ms = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const label = `${d1.getDate()} ${ms[d1.getMonth()]} — ${d2.getDate()} ${ms[d2.getMonth()]} de ${d2.getFullYear()}`;
+  const label = `${d1.getDate()} ${ms[d1.getMonth()]} � ${d2.getDate()} ${ms[d2.getMonth()]} de ${d2.getFullYear()}`;
   return { ini, fim, label };
 }
 
@@ -13971,8 +9552,8 @@ function isoWeek(d) {
   return isoWeekInfo(d).week;
 }
 
-// Recalcula "data estimada" a partir de liberação + prazo + tipo de prazo
-// ── Etapa edit: excluir e reordenar ─────────────────────────────────────────
+// Recalcula "data estimada" a partir de libera��o + prazo + tipo de prazo
+// -- Etapa edit: excluir e reordenar -----------------------------------------
 function deletarEtapaRow(btn) {
   const row = btn.closest('.etapa-edit-row');
   const etapaId = row.dataset.etapaId;
@@ -14037,7 +9618,7 @@ function addDias(dataBase, n, tipo = 'corridos') {
     d.setDate(d.getDate() + n);
     return d;
   }
-  // Dias úteis
+  // Dias �teis
   let count = 0;
   while (count < n) {
     d.setDate(d.getDate() + 1);
@@ -14052,22 +9633,22 @@ function dataChip(data) {
   const d = new Date(data + 'T12:00:00');
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const dias = Math.round((d - hoje) / (1000*3600*24));
-  if (dias < 0) return `<span class="data-chip atrasado">⚠ ${Math.abs(dias)}d atrasado</span>`;
-  if (dias <= 7) return `<span class="data-chip urgente">⏱ ${dias}d restantes</span>`;
+  if (dias < 0) return `<span class="data-chip atrasado">? ${Math.abs(dias)}d atrasado</span>`;
+  if (dias <= 7) return `<span class="data-chip urgente">? ${dias}d restantes</span>`;
   return `<span class="data-chip">${fmtDate(data)}</span>`;
 }
 
 function editarEtapas() { abrirEditarProduto(); }
 function editarProduto() { abrirEditarProduto(); }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 //   CUSTOS E REEMBOLSOS (G-P4)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
 const CUSTO_TIPO_LABEL = {
   deslocamento:   'Deslocamento',
   hospedagem:     'Hospedagem',
   reembolso:      'Reembolso',
-  subcontratacao: 'Subcontratação',
+  subcontratacao: 'Subcontrata��o',
   material:       'Material',
   outro:          'Outro',
 };
@@ -14114,7 +9695,7 @@ async function carregarCustosProduto(prodId) {
 
   let html = '';
 
-  // ── Seção: Custos previstos ──────────────────────────────
+  // -- Se��o: Custos previstos ------------------------------
   const totPrev = custosPrevAll.reduce((s,c) => s + (c.valor_negociado || c.valor_calculado || 0), 0);
   html += `<div style="margin-bottom:20px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
@@ -14127,14 +9708,14 @@ async function carregarCustosProduto(prodId) {
   } else {
     custosPrevAll.forEach(c => {
       const st = CUSTO_STATUS[c.status] || CUSTO_STATUS.pendente;
-      const tipoLabel = _escN(CUSTO_TIPO_LABEL[c.tipo] || c.tipo || '—');
+      const tipoLabel = _escN(CUSTO_TIPO_LABEL[c.tipo] || c.tipo || '�');
       const valExib = c.valor_negociado || c.valor_calculado || 0;
       const descDisp = _escN(c.descricao || '');
       const obsDisp = _escN(c.obs || '');
       const custoIdJs = _sqN(c.id);
       html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--cinza2);background:var(--branco)">
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:600;color:var(--grafite)">${tipoLabel}${c.descricao ? ` · ${descDisp}` : ''}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--grafite)">${tipoLabel}${c.descricao ? ` � ${descDisp}` : ''}</div>
           ${c.obs ? `<div style="font-size:9px;color:#aaa">${obsDisp}</div>` : ''}
         </div>
         ${isSocio
@@ -14143,13 +9724,13 @@ async function carregarCustosProduto(prodId) {
              </select>`
           : `<span class="badge ${st.cls}">${st.label}</span>`}
         ${isSocio ? `<div style="font-size:11px;font-weight:700;min-width:70px;text-align:right">R$ ${fmtNum(valExib)}</div>` : ''}
-        ${isSocio ? `<button class="btn sm tc" style="font-size:9px;padding:2px 6px;flex-shrink:0" onclick="excluirCusto(${custoIdJs})">×</button>` : ''}
+        ${isSocio ? `<button class="btn sm tc" style="font-size:9px;padding:2px 6px;flex-shrink:0" onclick="excluirCusto(${custoIdJs})">�</button>` : ''}
       </div>`;
     });
   }
   html += '</div>';
 
-  // ── Seção: Custos operacionais por etapa > evento ───────
+  // -- Se��o: Custos operacionais por etapa > evento -------
   if (custosOp.length) {
     const totalOp = custosOp.reduce((s,c) => s + (c.valor || 0), 0);
 
@@ -14193,7 +9774,7 @@ async function carregarCustosProduto(prodId) {
       });
 
       const eventosHtml = Object.entries(porEvento).map(([, grp], evIdx) => {
-        const titulo   = _escN(grp.nome || '— Sem evento —');
+        const titulo   = _escN(grp.nome || '� Sem evento �');
         const evBodyId = `co-ev-${etIdx}-${evIdx}`;
         const linhas   = grp.itens.map(c => {
           const u  = c.usuarios || {};
@@ -14201,15 +9782,15 @@ async function carregarCustosProduto(prodId) {
             ? `<span style="width:18px;height:18px;border-radius:50%;background:${u.cor||'#ccc'};color:#fff;font-size:7px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${_escN(u.iniciais || '?')}</span>`
             : '';
           const dataFmt = c.data_lancamento ? c.data_lancamento.slice(5).replace('-','/') : '';
-          const cat = _escN(c.subtipo || c.tipo || '—');
+          const cat = _escN(c.subtipo || c.tipo || '�');
           const descDisp = _escN(c.descricao || '');
           const userDisp = _escN((u.nome || '').split(' ')[0] || '?');
           return `<div style="display:flex;align-items:center;gap:7px;padding:5px 12px 5px 28px;border-bottom:1px solid var(--cinza2)">
             ${av}
             <div style="flex:1;min-width:0">
               <span style="font-size:10px;color:#888">${cat}</span>
-              ${c.descricao ? `<span style="font-size:10px;color:#bbb"> · ${descDisp}</span>` : ''}
-              ${u.nome ? `<span style="font-size:9px;color:#ccc"> · ${userDisp}</span>` : ''}
+              ${c.descricao ? `<span style="font-size:10px;color:#bbb"> � ${descDisp}</span>` : ''}
+              ${u.nome ? `<span style="font-size:9px;color:#ccc"> � ${userDisp}</span>` : ''}
             </div>
             <span style="font-size:9px;color:#bbb;flex-shrink:0">${dataFmt}</span>
             <span style="font-size:10px;font-weight:700;flex-shrink:0;min-width:55px;text-align:right">R$ ${fmtNum(c.valor||0)}</span>
@@ -14218,7 +9799,7 @@ async function carregarCustosProduto(prodId) {
         return `<div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(evBodyId)})">
             <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:11px;color:#bbb" id="${evBodyId}-arr">▸</span>
+              <span style="font-size:11px;color:#bbb" id="${evBodyId}-arr">?</span>
               <span style="font-size:11px;font-weight:600">${titulo}</span>
               <span style="font-size:9px;color:#bbb">(${grp.itens.length})</span>
             </div>
@@ -14231,7 +9812,7 @@ async function carregarCustosProduto(prodId) {
       html += `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:8px;overflow:hidden;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(etBodyId)})">
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">▸</span>
+            <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">?</span>
             <span style="font-size:12px;font-weight:700">${nomeEtapa}</span>
           </div>
           <span style="font-size:13px;font-weight:700">R$ ${fmtNum(etapaGrp.total)}</span>
@@ -14254,7 +9835,7 @@ async function carregarCustosProduto(prodId) {
   lista.innerHTML = html || '<div class="empty-note">Nenhum custo registrado para este produto.</div>';
 }
 
-// ── ABA HORAS DO PRODUTO ──────────────────────────────────────────────────────
+// -- ABA HORAS DO PRODUTO ------------------------------------------------------
 async function carregarHorasProduto(prodId) {
   if (!prodId) return;
   const wrap = document.getElementById('mp-horas-wrap');
@@ -14263,13 +9844,13 @@ async function carregarHorasProduto(prodId) {
 
   const isSocio = isSocioRole(G.usuario.role);
 
-  // 1. Lançamentos de horas vinculados ao produto
+  // 1. Lan�amentos de horas vinculados ao produto
   const { data: lancs, error } = await sb.from('horas_lancadas').select('usuario_id, etapa_id, hora_inicio, hora_fim').eq('produto_id', prodId);
 
   if (error) { wrap.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
-  if (!lancs?.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lançada neste produto.</div>'; return; }
+  if (!lancs?.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lan�ada neste produto.</div>'; return; }
 
-  // 2. Para sócios: busca valor/hora vigente
+  // 2. Para s�cios: busca valor/hora vigente
   let vhPorUser = {};
   if (isSocio) {
     const uids = [...new Set(lancs.map(l => l.usuario_id))];
@@ -14312,12 +9893,12 @@ async function carregarHorasProduto(prodId) {
   const horasTotalEl = document.getElementById('mp-horas-total');
   if (horasTotalEl) horasTotalEl.textContent = fmtH(totalGeral);
   const custoEl = document.getElementById('mp-custo');
-  if (custoEl) custoEl.textContent = isSocio ? `R$ ${fmtNum(custoEstimadoTotal)}` : '—';
+  if (custoEl) custoEl.textContent = isSocio ? `R$ ${fmtNum(custoEstimadoTotal)}` : '�';
   const margemEl = document.getElementById('mp-margem');
   if (margemEl) {
     margemEl.textContent = isSocio && margemAbs !== null
-      ? `R$ ${fmtNum(margemAbs)}${margemPct !== null ? ` · ${margemPct.toFixed(1)}%` : ''}`
-      : '—';
+      ? `R$ ${fmtNum(margemAbs)}${margemPct !== null ? ` � ${margemPct.toFixed(1)}%` : ''}`
+      : '�';
   }
 
   // 4. Header de totais compactos
@@ -14332,7 +9913,7 @@ async function carregarHorasProduto(prodId) {
     </div>` : ''}
   </div>`;
 
-  // 5. Distribuição % por etapa
+  // 5. Distribui��o % por etapa
   const etapasOrdem = Object.keys(etapaMap).sort((a,b) => {
     if (a === '__sem_etapa__') return 1;
     if (b === '__sem_etapa__') return -1;
@@ -14343,7 +9924,7 @@ async function carregarHorasProduto(prodId) {
 
   if (etapasOrdem.length > 1) {
     let distHtml = `<div style="margin-bottom:10px;background:var(--branco);border:1px solid var(--cinza);border-radius:7px;padding:10px 12px">
-      <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa;margin-bottom:8px">Distribuição por etapa</div>`;
+      <div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa;margin-bottom:8px">Distribui��o por etapa</div>`;
     etapasOrdem.forEach(eid => {
       const etapa = G.todasEtapas.find(e => e.id === eid);
       const nomeEt = etapa?.nome || '(sem etapa)';
@@ -14354,7 +9935,7 @@ async function carregarHorasProduto(prodId) {
       distHtml += `<div style="margin-bottom:7px">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
           <span style="font-size:10px;font-weight:500">${nomeEt}</span>
-          <span style="font-size:9px;color:#999">${fmtH(totalEt)} · ${pctH.toFixed(1)}%${isSocio ? ` · R$ ${fmtNum(custoEt)}` : ''}</span>
+          <span style="font-size:9px;color:#999">${fmtH(totalEt)} � ${pctH.toFixed(1)}%${isSocio ? ` � R$ ${fmtNum(custoEt)}` : ''}</span>
         </div>
         <div style="background:var(--cinza2);border-radius:2px;height:4px;overflow:hidden">
           <div style="background:var(--azul);height:4px;border-radius:2px;width:${pctH.toFixed(1)}%"></div>
@@ -14365,7 +9946,7 @@ async function carregarHorasProduto(prodId) {
     html += distHtml;
   }
 
-  // 6. Cards colapsáveis por etapa
+  // 6. Cards colaps�veis por etapa
   etapasOrdem.forEach((eid, etIdx) => {
     const etapa = G.todasEtapas.find(e => e.id === eid);
     const nomeEtapa = _escN(etapa?.nome || '(sem etapa)');
@@ -14398,7 +9979,7 @@ async function carregarHorasProduto(prodId) {
     html += `<div style="margin-bottom:10px;border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:var(--branco)">
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--off)" onclick="toggleEl(${_sqN(etBodyId)})">
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">▸</span>
+          <span style="font-size:12px;color:#bbb" id="${etBodyId}-arr">?</span>
           <span style="font-size:12px;font-weight:700">${nomeEtapa}</span>
         </div>
         <div style="display:flex;gap:14px;align-items:baseline">
@@ -14426,7 +10007,7 @@ async function adicionarCusto() {
   const ref       = document.getElementById('nc-ref').value.trim() || null;
   const obs       = document.getElementById('nc-obs').value.trim() || null;
 
-  if (!descricao) { toast('Informe a descrição do custo'); return; }
+  if (!descricao) { toast('Informe a descri��o do custo'); return; }
 
   const { error } = await sb.from('opp_custos').insert({
     produto_id:      prod.id,
@@ -14466,7 +10047,7 @@ async function excluirCusto(id) {
 }
 
 function _epUserOpts(selectedId) {
-  return '<option value="">—</option>' +
+  return '<option value="">�</option>' +
     G.todosUsuarios.map(u =>
       `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.nome}</option>`
     ).join('');
@@ -14479,31 +10060,31 @@ function _renderEtapaEdicaoRow(e, devIds) {
   return `<div class="etapa-edit-row" data-etapa-id="${e.id || ''}" draggable="true"
     ondragstart="eeDragStart(event)" ondragover="eeDragOver(event)" ondrop="eeDrop(event)" ondragend="eeDragEnd()">
     <div style="display:flex;gap:6px;align-items:center">
-      <span style="cursor:grab;font-size:12px;color:#ccc;flex-shrink:0;user-select:none" title="Arrastar para reordenar">⠿</span>
+      <span style="cursor:grab;font-size:12px;color:#ccc;flex-shrink:0;user-select:none" title="Arrastar para reordenar">?</span>
       <input type="text" class="ee-nome" value="${e.nome || ''}" placeholder="Nome da etapa" style="flex:1;padding:3px 6px;font-size:11px;${!isNova ? 'font-weight:500' : ''}">
       <select class="ee-status" style="padding:3px 6px;font-size:10px">
-        <option value="nao_iniciada" ${e.status==='nao_iniciada'?'selected':''}>Não iniciada</option>
+        <option value="nao_iniciada" ${e.status==='nao_iniciada'?'selected':''}>N�o iniciada</option>
         <option value="em_andamento" ${e.status==='em_andamento'?'selected':''}>Em andamento</option>
-        <option value="em_revisao"   ${e.status==='em_revisao'  ?'selected':''}>Em revisão</option>
-        <option value="concluida"    ${e.status==='concluida'   ?'selected':''}>Concluída</option>
+        <option value="em_revisao"   ${e.status==='em_revisao'  ?'selected':''}>Em revis�o</option>
+        <option value="concluida"    ${e.status==='concluida'   ?'selected':''}>Conclu�da</option>
         <option value="pausada"      ${e.status==='pausada'     ?'selected':''}>Pausada</option>
       </select>
-      <button onclick="deletarEtapaRow(this)" title="Remover etapa" style="background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#ccc'">×</button>
+      <button onclick="deletarEtapaRow(this)" title="Remover etapa" style="background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#ccc'">�</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:flex-end">
       <div style="display:flex;flex-direction:column;gap:1px">
-        <label>Liberação</label>
+        <label>Libera��o</label>
         <input type="date" class="ee-lib" value="${e.data_liberacao||''}" oninput="recalcEstimada(this)" style="padding:2px 5px;font-size:10px;width:112px">
       </div>
       <div style="display:flex;flex-direction:column;gap:1px">
         <label>Prazo</label>
-        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="—" min="1" oninput="recalcEstimada(this)" style="width:52px;padding:2px 5px;font-family:var(--font-mono);font-size:10px">
+        <input type="number" class="ee-prazo" value="${e.prazo_dias||''}" placeholder="�" min="1" oninput="recalcEstimada(this)" style="width:52px;padding:2px 5px;font-family:var(--font-mono);font-size:10px">
       </div>
       <div style="display:flex;flex-direction:column;gap:1px">
         <label>Tipo</label>
         <select class="ee-ptipo" onchange="recalcEstimada(this)" style="padding:2px 5px;font-size:10px;width:76px">
           <option value="corridos" ${(e.prazo_tipo||'corridos')==='corridos'?'selected':''}>Corridos</option>
-          <option value="uteis"    ${e.prazo_tipo==='uteis'?'selected':''}>Úteis</option>
+          <option value="uteis"    ${e.prazo_tipo==='uteis'?'selected':''}>�teis</option>
         </select>
       </div>
       <div style="display:flex;flex-direction:column;gap:1px">
@@ -14511,7 +10092,7 @@ function _renderEtapaEdicaoRow(e, devIds) {
         <input type="date" class="ee-est" value="${e.data_estimada||''}" readonly style="padding:2px 5px;font-size:10px;width:112px">
       </div>
       <div style="display:flex;flex-direction:column;gap:1px">
-        <label style="color:var(--verde)">Concluída</label>
+        <label style="color:var(--verde)">Conclu�da</label>
         <input type="date" class="ee-conclusao" value="${e.data_conclusao||''}" style="padding:2px 5px;font-size:10px;width:112px;${e.data_conclusao ? 'border-color:var(--verde);color:var(--verde)' : ''}">
       </div>
       <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
@@ -14525,7 +10106,7 @@ function _renderEtapaEdicaoRow(e, devIds) {
       <div style="display:flex;flex-direction:column;gap:1px">
         <label>% custo</label>
         <div style="display:flex;align-items:center;gap:2px">
-          <input type="number" class="ee-pct" value="${e.percentual_custo != null ? e.percentual_custo : ''}" placeholder="—" min="0" max="100" step="0.1"
+          <input type="number" class="ee-pct" value="${e.percentual_custo != null ? e.percentual_custo : ''}" placeholder="�" min="0" max="100" step="0.1"
             oninput="_recalcPctTotal()" style="width:48px;padding:2px 5px;font-family:var(--font-mono);font-size:10px">
           <span style="font-size:10px;color:#aaa">%</span>
         </div>
@@ -14535,7 +10116,7 @@ function _renderEtapaEdicaoRow(e, devIds) {
 }
 
 async function abrirEditarProduto() {
-  if (G.usuario.role === 'colaborador') return; // colaboradores não editam
+  if (G.usuario.role === 'colaborador') return; // colaboradores n�o editam
   const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo)
     || G._todosProdutosGestao.find(p => p.id === G.produtoAtivo);
   if (!prod || prod._crm) return;
@@ -14566,14 +10147,14 @@ async function abrirEditarProduto() {
   document.getElementById('ep-proj-gestao').value    = prod.oportunidades?.gestao_empresa  || '';
 
   const coordSel = document.getElementById('ep-coord');
-  coordSel.innerHTML = '<option value="">—</option>' +
+  coordSel.innerHTML = '<option value="">�</option>' +
     G.todosUsuarios.map(u => `<option value="${u.id}" ${u.id === prod.coordenador_id ? 'selected' : ''}>${u.nome}</option>`).join('');
 
   const clienteSel = document.getElementById('ep-cliente');
   clienteSel.innerHTML = '<option value="">Selecionar cliente...</option>' +
     (clientes || []).map(c => {
       const suffix = [c.cidade, c.uf].filter(Boolean).join('/');
-      const label = `${c.nome}${c.sigla ? ` [${c.sigla}]` : ''}${suffix ? ' — ' + suffix : ''} · ${String(c.id).slice(0, 8)}`;
+      const label = `${c.nome}${c.sigla ? ` [${c.sigla}]` : ''}${suffix ? ' � ' + suffix : ''} � ${String(c.id).slice(0, 8)}`;
       return `<option value="${c.id}" ${c.id === prod.oportunidades?.cliente_id ? 'selected' : ''}>${label}</option>`;
     }).join('');
 
@@ -14581,7 +10162,7 @@ async function abrirEditarProduto() {
   document.getElementById('ep-valor-wrap').style.display = isSocio ? 'block' : 'none';
   if (isSocio) document.getElementById('ep-valor').value = prod.valor_contratado || '';
 
-  // Links do projeto (sócios)
+  // Links do projeto (s�cios)
   const epLinksWrap = document.getElementById('ep-links-wrap');
   if (epLinksWrap) {
     epLinksWrap.style.display = isSocio ? 'block' : 'none';
@@ -14591,7 +10172,7 @@ async function abrirEditarProduto() {
     }
   }
 
-  // PROJ-10: campos de contrato (apenas sócios)
+  // PROJ-10: campos de contrato (apenas s�cios)
   const contratoWrap = document.getElementById('ep-contrato-wrap');
   if (isSocio) {
     contratoWrap.style.display = 'block';
@@ -14664,7 +10245,7 @@ async function salvarEdicaoProduto() {
       updated_at: new Date().toISOString()
     };
     if (isSocio && valor !== undefined) updProd.valor_contratado = valor;
-    // PROJ-10: salva campos de contrato (sócios)
+    // PROJ-10: salva campos de contrato (s�cios)
     if (isSocio) {
       updProd.contrato_status          = document.getElementById('ep-contrato-status').value || null;
       updProd.contrato_elaborado_por   = document.getElementById('ep-contrato-elaborado').value.trim() || null;
@@ -14689,12 +10270,12 @@ async function salvarEdicaoProduto() {
         .maybeSingle());
 
       if (!eProd) {
-        toast('Projeto salvo. Campos de contrato foram ignorados porque ainda não existem no banco.');
+        toast('Projeto salvo. Campos de contrato foram ignorados porque ainda n�o existem no banco.');
       }
     }
 
     if (eProd) { toast('Erro ao salvar produto: ' + eProd.message); return; }
-    if (!prodSalvo) { toast('O produto não foi atualizado. Verifique as permissões no Supabase.'); return; }
+    if (!prodSalvo) { toast('O produto n�o foi atualizado. Verifique as permiss�es no Supabase.'); return; }
 
     if (prod.oportunidade_id) {
       const oppPayload = {
@@ -14713,16 +10294,16 @@ async function salvarEdicaoProduto() {
       }
       let { data: oppSalva, error: eOpp } = await sb.from('oportunidades')
         .update(oppPayload).eq('id', prod.oportunidade_id).select('id').maybeSingle();
-      // Fallback: se colunas novas não existirem no banco ainda, salva sem elas
+      // Fallback: se colunas novas n�o existirem no banco ainda, salva sem elas
       if (eOpp) {
         const { data: oppSalva2, error: eOpp2 } = await sb.from('oportunidades')
           .update({ cliente_id: clienteId, projeto: oppNome, cidade: oppCidade })
           .eq('id', prod.oportunidade_id).select('id').maybeSingle();
         if (eOpp2) { toast('Erro ao salvar oportunidade: ' + eOpp2.message); return; }
-        if (!eOpp2) toast('Projeto salvo. Dados do projeto foram ignorados porque as colunas ainda não existem no banco.');
+        if (!eOpp2) toast('Projeto salvo. Dados do projeto foram ignorados porque as colunas ainda n�o existem no banco.');
         oppSalva = oppSalva2;
       }
-      if (!oppSalva) { toast('A oportunidade não foi atualizada. Verifique as permissões no Supabase.'); return; }
+      if (!oppSalva) { toast('A oportunidade n�o foi atualizada. Verifique as permiss�es no Supabase.'); return; }
     }
 
     // Salva etapas
@@ -14758,14 +10339,14 @@ async function salvarEdicaoProduto() {
           updated_at: new Date().toISOString()
         }).eq('id', etapaId).select('id').maybeSingle();
         if (eEtapa) { toast('Erro ao salvar etapa "' + eNome + '": ' + eEtapa.message); return; }
-        if (!etapaSalva) { toast('A etapa "' + eNome + '" não foi atualizada.'); return; }
+        if (!etapaSalva) { toast('A etapa "' + eNome + '" n�o foi atualizada.'); return; }
 
         // Recria devs
         const { error: eDelDevs } = await sb.from('etapa_desenvolvedores').delete().eq('etapa_id', etapaId);
-        if (eDelDevs) { toast('Erro ao atualizar responsáveis da etapa "' + eNome + '": ' + eDelDevs.message); return; }
+        if (eDelDevs) { toast('Erro ao atualizar respons�veis da etapa "' + eNome + '": ' + eDelDevs.message); return; }
         for (const uid of [eDev1, eDev2].filter(Boolean)) {
           const { error: eDev } = await sb.from('etapa_desenvolvedores').insert({ etapa_id: etapaId, usuario_id: uid });
-          if (eDev) { toast('Erro ao salvar responsáveis da etapa "' + eNome + '": ' + eDev.message); return; }
+          if (eDev) { toast('Erro ao salvar respons�veis da etapa "' + eNome + '": ' + eDev.message); return; }
         }
       } else {
         // Nova etapa
@@ -14786,13 +10367,13 @@ async function salvarEdicaoProduto() {
         if (novaEtapa) {
           for (const uid of [eDev1, eDev2].filter(Boolean)) {
             const { error: eDev } = await sb.from('etapa_desenvolvedores').insert({ etapa_id: novaEtapa.id, usuario_id: uid });
-            if (eDev) { toast('Erro ao salvar responsáveis da nova etapa "' + eNome + '": ' + eDev.message); return; }
+            if (eDev) { toast('Erro ao salvar respons�veis da nova etapa "' + eNome + '": ' + eDev.message); return; }
           }
         }
       }
     }
 
-    // Deleta etapas marcadas para remoção
+    // Deleta etapas marcadas para remo��o
     if (G._etapasParaDeletar?.length) {
       for (const eid of G._etapasParaDeletar) {
         await sb.from('etapa_desenvolvedores').delete().eq('etapa_id', eid);
@@ -14809,11 +10390,11 @@ async function salvarEdicaoProduto() {
     carregarDashboard();
 
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Salvar alterações'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar altera��es'; }
   }
 }
 
-// ── Contador de % alocado no form de edição ──────────────────
+// -- Contador de % alocado no form de edi��o ------------------
 function _recalcPctTotal() {
   const rows = document.querySelectorAll('#ep-etapas-lista .etapa-edit-row');
   let total = 0;
@@ -14826,7 +10407,7 @@ function _recalcPctTotal() {
   if (rows.length === 0) { el.textContent = ''; return; }
   const t = total.toFixed(1).replace(/\.0$/, '');
   el.className = 'ep-pct-total' + (total > 100 ? ' excesso' : total === 100 ? ' completo' : '');
-  el.textContent = `% custo alocado: ${t}%${total === 100 ? ' ✓' : total > 100 ? ' — excede 100%' : ` — faltam ${(100 - total).toFixed(1).replace(/\.0$/, '')}%`}`;
+  el.textContent = `% custo alocado: ${t}%${total === 100 ? ' ?' : total > 100 ? ' � excede 100%' : ` � faltam ${(100 - total).toFixed(1).replace(/\.0$/, '')}%`}`;
 }
 
 function compMesKey(value) {
@@ -14840,7 +10421,7 @@ function compMesToDate(value) {
 
 function compMesLabel(value) {
   const key = compMesKey(value);
-  if (!key) return '—';
+  if (!key) return '�';
   const [ano, mes] = key.split('-');
   const dt = new Date(`${ano}-${mes}-01T12:00:00`);
   return dt.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -14856,7 +10437,7 @@ async function carregarCompetenciaRealProduto(prodId) {
     return { rows: data || [], unavailable: false, error: null };
   } catch (error) {
     const msg = String(error?.message || error || '');
-    const unavailable = /competencia_real_etapas|42P01|does not exist|não existe/i.test(msg);
+    const unavailable = /competencia_real_etapas|42P01|does not exist|n�o existe/i.test(msg);
     return { rows: [], unavailable, error };
   }
 }
@@ -14901,7 +10482,7 @@ function abrirModalCompetenciaReal(prodId) {
   if (!sel) return;
   sel.innerHTML = etapas.map(e => {
     const resumo = getCompetenciaResumoEtapa(e.id);
-    return `<option value="${e.id}">${_escN(e.nome)} — saldo ${resumo.saldo.toFixed(1).replace(/\.0$/, '')}%</option>`;
+    return `<option value="${e.id}">${_escN(e.nome)} � saldo ${resumo.saldo.toFixed(1).replace(/\.0$/, '')}%</option>`;
   }).join('');
   document.getElementById('comp-mes').value = new Date().toISOString().slice(0, 7);
   document.getElementById('comp-percentual').value = '';
@@ -14918,11 +10499,11 @@ async function salvarCompetenciaReal() {
   const observacao = document.getElementById('comp-obs')?.value.trim() || null;
   const alertaEl = document.getElementById('comp-alerta');
   if (!etapaId || !mes || !percentual) {
-    toast('Informe etapa, mês e percentual.');
+    toast('Informe etapa, m�s e percentual.');
     return;
   }
   if (percentual < 0) {
-    toast('Percentual inválido.');
+    toast('Percentual inv�lido.');
     return;
   }
   const competenciaMes = compMesToDate(mes);
@@ -14933,7 +10514,7 @@ async function salvarCompetenciaReal() {
   if (acumuladoSemMes + percentual > 100.0001) {
     if (alertaEl) {
       alertaEl.style.display = 'block';
-      alertaEl.textContent = `O acumulado da etapa ficaria em ${(acumuladoSemMes + percentual).toFixed(1)}%. Ajuste o percentual do mês para respeitar o limite total de 100%.`;
+      alertaEl.textContent = `O acumulado da etapa ficaria em ${(acumuladoSemMes + percentual).toFixed(1)}%. Ajuste o percentual do m�s para respeitar o limite total de 100%.`;
     }
     return;
   }
@@ -14957,14 +10538,14 @@ async function salvarCompetenciaReal() {
     G._competenciaRealRows = carga.rows || [];
     fecharModal('modal-competencia-real');
     await carregarResultado(prodId);
-    toast('Competência real salva.');
+    toast('Compet�ncia real salva.');
   } catch (error) {
     const msg = String(error?.message || error || '');
-    if (/competencia_real_etapas|42P01|does not exist|não existe/i.test(msg)) {
-      toast('Tabela de competência real ainda não existe. Execute o SQL do DEV-12 primeiro.');
+    if (/competencia_real_etapas|42P01|does not exist|n�o existe/i.test(msg)) {
+      toast('Tabela de compet�ncia real ainda n�o existe. Execute o SQL do DEV-12 primeiro.');
       return;
     }
-    toast('Erro ao salvar competência: ' + msg);
+    toast('Erro ao salvar compet�ncia: ' + msg);
   }
 }
 
@@ -15075,12 +10656,12 @@ function resultadoCalcularEfetividadeEtapa(ctx) {
   return { score, ...resultadoClassificarEfetividade(score), motivos, prazo };
 }
 
-// ── Analytics: Resultado por etapa ───────────────────────────
+// -- Analytics: Resultado por etapa ---------------------------
 async function carregarResultado(prodId) {
   if (!prodId) return;
   const wrap = document.getElementById('mp-resultado-wrap');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="loading-state">Calculando…</div>';
+  wrap.innerHTML = '<div class="loading-state">Calculando�</div>';
 
   const prod = G.todosProdutos.find(p => p.id === prodId) || G._todosProdutosGestao.find(p => p.id === prodId);
   const valorContratado = prod?.valor_contratado || 0;
@@ -15120,14 +10701,14 @@ async function carregarResultado(prodId) {
   G._competenciaRealRows = competenciaCarga.rows || [];
   const competenciaUnavailable = !!competenciaCarga.unavailable;
 
-  // Valor/hora mais recente por usuário
+  // Valor/hora mais recente por usu�rio
   const vhPorUser = {};
   (vhs || []).forEach(vh => {
     if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
   });
 
   // Agrupa horas por etapa
-  const horasPorEtapa = {};  // etapaId → { horas: num, custo: num }
+  const horasPorEtapa = {};  // etapaId ? { horas: num, custo: num }
   (horas || []).forEach(l => {
     const h = diffHoras(l.hora_inicio, l.hora_fim);
     if (!horasPorEtapa[l.etapa_id]) horasPorEtapa[l.etapa_id] = { horas: 0, custo: 0 };
@@ -15135,7 +10716,7 @@ async function carregarResultado(prodId) {
     horasPorEtapa[l.etapa_id].custo += h * (vhPorUser[l.usuario_id] || 0);
   });
 
-  // Agrupa custos lançados por etapa
+  // Agrupa custos lan�ados por etapa
   const custosPorEtapa = {};
   (custos || []).forEach(c => {
     if (!custosPorEtapa[c.etapa_id]) custosPorEtapa[c.etapa_id] = 0;
@@ -15145,7 +10726,7 @@ async function carregarResultado(prodId) {
   // Verifica se alguma etapa tem % configurado
   const temPct = etapas.some(e => e.percentual_custo != null);
 
-  // Totais para sumário
+  // Totais para sum�rio
   let totalPrevisto = 0, totalRealizado = 0, totalCompetenciaMes = 0, totalCompetenciaAcumulada = 0;
   const etapasDados = etapas.map(e => {
     const pct       = e.percentual_custo != null ? parseFloat(e.percentual_custo) : null;
@@ -15172,7 +10753,7 @@ async function carregarResultado(prodId) {
   const totalResultado = temPct ? totalPrevisto - totalRealizado : null;
   const margemPct = totalPrevisto > 0 ? ((totalResultado / totalPrevisto) * 100) : null;
 
-  // ── Render ────────────────────────────────────────────────
+  // -- Render ------------------------------------------------
   const fR = v => 'R$ ' + fmtNum(v);
 
   // Totais detalhados
@@ -15180,7 +10761,7 @@ async function carregarResultado(prodId) {
   const totalCustoH = etapasDados.reduce((s, d) => s + d.custoH, 0);
   const totalCustoL = etapasDados.reduce((s, d) => s + d.custoL, 0);
 
-  // Margem realizada: apenas etapas concluídas com previsto definido
+  // Margem realizada: apenas etapas conclu�das com previsto definido
   const etapasConcluidas = etapasDados.filter(d => d.etapa.status === 'concluida' && d.previsto != null && d.previsto > 0);
   const totalPrevistoConc  = etapasConcluidas.reduce((s, d) => s + d.previsto,   0);
   const totalRealizadoConc = etapasConcluidas.reduce((s, d) => s + d.realizado,  0);
@@ -15191,15 +10772,15 @@ async function carregarResultado(prodId) {
   // Avisos
   const semValor = !valorContratado ? `
     <div style="background:rgba(212,170,55,.1);border:1px solid rgba(212,170,55,.4);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#8A6010">
-      ⚠ Valor contratado não informado. Configure-o na edição do projeto para ver os valores previstos.
+      ? Valor contratado n�o informado. Configure-o na edi��o do projeto para ver os valores previstos.
     </div>` : '';
   const semPctAviso = !temPct ? `
     <div style="background:var(--az-bg);border:1px solid rgba(82,128,202,.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--azul)">
-      ℹ Nenhuma etapa tem % de custo configurado. Edite o projeto e defina <strong>% custo</strong> em cada etapa para ver o comparativo.
+      ? Nenhuma etapa tem % de custo configurado. Edite o projeto e defina <strong>% custo</strong> em cada etapa para ver o comparativo.
     </div>` : '';
   const semTabelaCompetenciaAviso = competenciaUnavailable ? `
     <div style="background:rgba(212,170,55,.1);border:1px solid rgba(212,170,55,.35);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#8A6010">
-      ⚠ A tabela de competência real ainda não existe no banco. Execute <strong>revisão/sql-dev-12-competencia-real.sql</strong> para habilitar esta frente.
+      ? A tabela de compet�ncia real ainda n�o existe no banco. Execute <strong>revis�o/sql-dev-12-competencia-real.sql</strong> para habilitar esta frente.
     </div>` : '';
   const etapasRiscoCompetencia = etapasDados.filter(d => d.riscoCompetencia);
   const etapasEfetivas = etapasDados.filter(d => d.efetividade?.score != null);
@@ -15214,12 +10795,12 @@ async function carregarResultado(prodId) {
     : null;
   const riscoCompetenciaResumo = etapasRiscoCompetencia.length ? `
     <div style="background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.35);border-radius:10px;padding:12px 14px;margin-bottom:12px;color:#8A6010">
-      <div style="font-size:11px;font-weight:700;margin-bottom:4px">⚠ Risco de competência detectado</div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:4px">? Risco de compet�ncia detectado</div>
       <div style="font-size:10px;line-height:1.5">
-        ${etapasRiscoCompetencia.length} etapa(s) já consumiram <strong>100%</strong> da competência e continuam com custo acima de <strong>R$ 1.000</strong>.
+        ${etapasRiscoCompetencia.length} etapa(s) j� consumiram <strong>100%</strong> da compet�ncia e continuam com custo acima de <strong>R$ 1.000</strong>.
       </div>
       <div style="font-size:10px;margin-top:6px;opacity:.9">
-        ${etapasRiscoCompetencia.map(d => `${_regEsc(d.etapa.nome)} (${fR(d.realizado)})`).join(' · ')}
+        ${etapasRiscoCompetencia.map(d => `${_regEsc(d.etapa.nome)} (${fR(d.realizado)})`).join(' � ')}
       </div>
     </div>` : '';
 
@@ -15253,13 +10834,13 @@ async function carregarResultado(prodId) {
     <div class="res-painel-esq">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
         <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;opacity:.65">Resultado do Projeto</div>
-        <button class="btn sm" onclick="abrirModalCompetenciaReal('${prodId}')">+ Competência</button>
+        <button class="btn sm" onclick="abrirModalCompetenciaReal('${prodId}')">+ Compet�ncia</button>
       </div>
       ${valorContratado ? `<div class="res-pe-row"><span>Contratado</span><span>${fR(valorContratado)}</span></div>` : ''}
       ${temPct && totalPrevisto > 0 ? `<div class="res-pe-row"><span>Previsto <span style="opacity:.6">(${etapas.filter(e=>e.percentual_custo!=null).length}/${etapas.length})</span></span><span>${fR(totalPrevisto)}</span></div>` : ''}
       <div class="res-pe-row"><span>Realizado</span><span>${fR(totalRealizado)}</span></div>
-      ${totalCompetenciaMes > 0 ? `<div class="res-pe-row"><span>Competência do mês</span><span>${fR(totalCompetenciaMes)}</span></div>` : ''}
-      ${totalCompetenciaAcumulada > 0 ? `<div class="res-pe-row"><span>Competência acumulada</span><span>${fR(totalCompetenciaAcumulada)}</span></div>` : ''}
+      ${totalCompetenciaMes > 0 ? `<div class="res-pe-row"><span>Compet�ncia do m�s</span><span>${fR(totalCompetenciaMes)}</span></div>` : ''}
+      ${totalCompetenciaAcumulada > 0 ? `<div class="res-pe-row"><span>Compet�ncia acumulada</span><span>${fR(totalCompetenciaAcumulada)}</span></div>` : ''}
       <div class="res-pe-div"></div>
       ${totalResultado != null ? `
       <div style="margin-bottom:8px">
@@ -15267,34 +10848,34 @@ async function carregarResultado(prodId) {
         <div style="font-size:18px;font-weight:800;letter-spacing:-.8px;color:${resPos ? '#6fcf97' : '#f2994a'}">${resPos ? '+' : ''}${fR(totalResultado)}</div>
       </div>` : ''}
       <div style="margin-bottom:4px">
-        <div style="font-size:9px;opacity:.65;margin-bottom:2px">Margem de lucro realizada${etapasConcluidas.length ? ` <span style="opacity:.7">(${etapasConcluidas.length} etapa${etapasConcluidas.length > 1 ? 's' : ''} concluída${etapasConcluidas.length > 1 ? 's' : ''})</span>` : ''}</div>
-        <div style="font-size:30px;font-weight:800;letter-spacing:-1.5px;color:${resPosReal ? '#6fcf97' : margemRealizada != null ? '#f2994a' : 'rgba(255,255,255,.4)'};line-height:1.1">${margemRealizadaSinal ?? '—'}</div>
-        ${!etapasConcluidas.length ? `<div style="font-size:9px;opacity:.55;margin-top:4px">Nenhuma etapa concluída ainda.</div>` : ''}
+        <div style="font-size:9px;opacity:.65;margin-bottom:2px">Margem de lucro realizada${etapasConcluidas.length ? ` <span style="opacity:.7">(${etapasConcluidas.length} etapa${etapasConcluidas.length > 1 ? 's' : ''} conclu�da${etapasConcluidas.length > 1 ? 's' : ''})</span>` : ''}</div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-1.5px;color:${resPosReal ? '#6fcf97' : margemRealizada != null ? '#f2994a' : 'rgba(255,255,255,.4)'};line-height:1.1">${margemRealizadaSinal ?? '�'}</div>
+        ${!etapasConcluidas.length ? `<div style="font-size:9px;opacity:.55;margin-top:4px">Nenhuma etapa conclu�da ainda.</div>` : ''}
       </div>
       ${!totalResultado && !margemRealizada ? `
       <div style="font-size:10px;opacity:.6;font-style:italic;line-height:1.4">Configure % de custo nas etapas para ver o resultado.</div>` : ''}
       <div class="res-pe-div"></div>
       <div style="font-size:9px;opacity:.65;margin-bottom:6px;font-weight:600">Efetividade gerencial</div>
-      <div class="res-pe-row sm"><span>Media das etapas</span><span>${efetividadeMedia != null ? Math.round(efetividadeMedia) + '/100' : '—'}</span></div>
+      <div class="res-pe-row sm"><span>Media das etapas</span><span>${efetividadeMedia != null ? Math.round(efetividadeMedia) + '/100' : '�'}</span></div>
       <div class="res-pe-row sm"><span>Saudaveis</span><span>${etapasEfSaudavel}</span></div>
       <div class="res-pe-row sm"><span>Em atencao</span><span>${etapasEfAtencao}</span></div>
       <div class="res-pe-row sm"><span>Criticas</span><span>${etapasEfCritica}</span></div>
       <div style="font-size:9px;opacity:.55;line-height:1.45;margin-top:6px">Leitura gerencial baseada em saldo, consumo, prazo e coerencia da competencia.</div>
       <div class="res-pe-div"></div>
       ${etapasRiscoCompetencia.length ? `<div style="background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.28);border-radius:8px;padding:8px 10px;margin-bottom:10px">
-        <div style="font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Risco de competência</div>
+        <div style="font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Risco de compet�ncia</div>
         <div style="font-size:16px;font-weight:800;color:#8A6010;line-height:1">${etapasRiscoCompetencia.length}</div>
-        <div style="font-size:9px;opacity:.85;margin-top:3px">etapa(s) encerrada(s) com custo posterior acima da tolerância</div>
+        <div style="font-size:9px;opacity:.85;margin-top:3px">etapa(s) encerrada(s) com custo posterior acima da toler�ncia</div>
       </div>` : ''}
-      <div style="font-size:9px;opacity:.65;margin-bottom:6px;font-weight:600">Composição</div>
-      <div class="res-pe-row sm"><span>Horas lançadas</span><span>${fmtH(totalHorasH)}</span></div>
+      <div style="font-size:9px;opacity:.65;margin-bottom:6px;font-weight:600">Composi��o</div>
+      <div class="res-pe-row sm"><span>Horas lan�adas</span><span>${fmtH(totalHorasH)}</span></div>
       <div class="res-pe-row sm"><span>Custo horas</span><span>${fR(totalCustoH)}</span></div>
       <div class="res-pe-row sm"><span>Custos diretos</span><span>${fR(totalCustoL)}</span></div>
       ${miniChart}
     </div>`;
 
-  // Calcula prazo de execução de cada etapa
-  // "Execução" = data_liberacao → data_conclusao (real) ou data_estimada (prev)
+  // Calcula prazo de execu��o de cada etapa
+  // "Execu��o" = data_liberacao ? data_conclusao (real) ou data_estimada (prev)
   // Cards por etapa (painel direito rosa/verde/vermelho)
   const cardsEtapas = etapasDados.map(({ etapa, pct, previsto, realizado, resultado, custoH, horasH, custoL, compResumo, compValorMes, compValorAcumulado, riscoCompetencia, utilPct, margemEtapa, efetividade }) => {
     const isConcluida  = etapa.status === 'concluida';
@@ -15312,7 +10893,7 @@ async function carregarResultado(prodId) {
     }
     const semHorasAlert = horasH === 0 && !isNaoIniciada ? `
       <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:#8A6010;background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.3);border-radius:5px;padding:4px 8px;margin-bottom:8px">
-        ⚠ Nenhuma hora lançada — dados podem estar imprecisos.
+        ? Nenhuma hora lan�ada � dados podem estar imprecisos.
       </div>` : '';
     return `
       <div class="res-card-etapa ${cardCls}">
@@ -15329,7 +10910,7 @@ async function carregarResultado(prodId) {
         <div class="res-card-valores">
           <div class="res-val-blk">
             <div class="res-val-label">Previsto</div>
-            <div class="res-val-num">${previsto != null ? fR(previsto) : '—'}</div>
+            <div class="res-val-num">${previsto != null ? fR(previsto) : '�'}</div>
           </div>
           <div class="res-val-blk">
             <div class="res-val-label">Realizado</div>
@@ -15338,49 +10919,49 @@ async function carregarResultado(prodId) {
           <div class="res-val-blk">
             <div class="res-val-label">Saldo</div>
             <div class="res-val-num" style="color:${saldoCor}">
-              ${resultado == null ? '—' : (resultado >= 0 ? '+' : '') + fR(Math.abs(resultado))}
+              ${resultado == null ? '�' : (resultado >= 0 ? '+' : '') + fR(Math.abs(resultado))}
             </div>
           </div>
           <div class="res-val-blk">
             <div class="res-val-label">Margem</div>
             <div class="res-val-num" style="color:${margemCor}">
-              ${margemEtapa != null ? (margemEtapa >= 0 ? '+' : '') + margemEtapa.toFixed(1) + '%' : '—'}
+              ${margemEtapa != null ? (margemEtapa >= 0 ? '+' : '') + margemEtapa.toFixed(1) + '%' : '�'}
             </div>
           </div>
         </div>
         ${(horasH > 0 || custoL > 0) ? `
         <div class="res-card-meta">
-          ${horasH > 0 ? `<span>${fmtH(horasH)} lançadas</span>` : ''}
+          ${horasH > 0 ? `<span>${fmtH(horasH)} lan�adas</span>` : ''}
           ${custoH > 0 ? `<span>${fR(custoH)} em horas</span>` : ''}
           ${custoL > 0 ? `<span>${fR(custoL)} custos diretos</span>` : ''}
           ${utilPct != null ? `<span><strong>${utilPct.toFixed(0)}%</strong> consumido</span>` : ''}
         </div>` : ''}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;font-size:10px">
-          <div><div style="opacity:.6;text-transform:uppercase;letter-spacing:.4px;font-size:8px">Competência acum.</div><div style="font-weight:700">${compResumo.acumulado.toFixed(1).replace(/\.0$/, '')}%</div></div>
+          <div><div style="opacity:.6;text-transform:uppercase;letter-spacing:.4px;font-size:8px">Compet�ncia acum.</div><div style="font-weight:700">${compResumo.acumulado.toFixed(1).replace(/\.0$/, '')}%</div></div>
           <div><div style="opacity:.6;text-transform:uppercase;letter-spacing:.4px;font-size:8px">Saldo restante</div><div style="font-weight:700">${compResumo.saldo.toFixed(1).replace(/\.0$/, '')}%</div></div>
-          <div><div style="opacity:.6;text-transform:uppercase;letter-spacing:.4px;font-size:8px">Valor do mês</div><div style="font-weight:700">${compValorMes != null && compValorMes > 0 ? fR(compValorMes) : '—'}</div></div>
-          <div><div style="opacity:.6;text-transform:uppercase;letter-spacing:.4px;font-size:8px">Valor acumulado</div><div style="font-weight:700">${compValorAcumulado != null && compValorAcumulado > 0 ? fR(compValorAcumulado) : '—'}</div></div>
+          <div><div style="opacity:.6;text-transform:uppercase;letter-spacing:.4px;font-size:8px">Valor do m�s</div><div style="font-weight:700">${compValorMes != null && compValorMes > 0 ? fR(compValorMes) : '�'}</div></div>
+          <div><div style="opacity:.6;text-transform:uppercase;letter-spacing:.4px;font-size:8px">Valor acumulado</div><div style="font-weight:700">${compValorAcumulado != null && compValorAcumulado > 0 ? fR(compValorAcumulado) : '�'}</div></div>
         </div>
-        ${riscoCompetencia ? `<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#8A6010;background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.3);border-radius:6px;padding:6px 8px;margin-top:10px">⚠ Etapa já fechada em 100% de competência e com custo superior a R$ 1.000.</div>` : ''}
+        ${riscoCompetencia ? `<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#8A6010;background:rgba(212,170,55,.12);border:1px solid rgba(212,170,55,.3);border-radius:6px;padding:6px 8px;margin-top:10px">? Etapa j� fechada em 100% de compet�ncia e com custo superior a R$ 1.000.</div>` : ''}
         ${(() => {
           const p = resultadoPrazoResumoEtapa(etapa);
           if (!p) return '';
-          const fmtD = iso => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '—';
+          const fmtD = iso => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '�';
           const atrasoBase = p.atrasoConcluido;
           const atrasoCor  = atrasoBase == null ? '#aaa' : atrasoBase > 0 ? 'var(--terracota)' : 'var(--verde)';
-          const atrasoIcon = atrasoBase == null ? '' : atrasoBase > 0 ? '⚠ ' : '✓ ';
-          const atrasoTxt  = atrasoBase == null ? '—'
+          const atrasoIcon = atrasoBase == null ? '' : atrasoBase > 0 ? '? ' : '? ';
+          const atrasoTxt  = atrasoBase == null ? '�'
             : atrasoBase === 0 ? 'No prazo'
             : atrasoBase > 0  ? `+${atrasoBase}d de atraso`
             : `${Math.abs(atrasoBase)}d adiantado`;
           return `
           <div class="res-card-prazo">
-            <div class="res-prazo-hd">Prazo de execução</div>
+            <div class="res-prazo-hd">Prazo de execu��o</div>
             <div class="res-prazo-inline">
               <span class="res-prazo-seg"><span class="res-prazo-label">Lib</span> ${fmtD(p.lib)}</span>
-              <span class="res-prazo-sep">→</span>
+              <span class="res-prazo-sep">?</span>
               <span class="res-prazo-seg"><span class="res-prazo-label">Prev</span> ${fmtD(p.prev)}${p.diasPrev != null ? ` <span class="res-prazo-dias">${p.diasPrev}d</span>` : ''}</span>
-              <span class="res-prazo-sep">→</span>
+              <span class="res-prazo-sep">?</span>
               <span class="res-prazo-seg"><span class="res-prazo-label">Conc</span> ${fmtD(p.conc)}${p.diasReal != null ? ` <span class="res-prazo-dias">${p.diasReal}d</span>` : ''}</span>
               <span class="res-prazo-result" style="color:${atrasoCor}">${atrasoIcon}${atrasoTxt}</span>
             </div>
@@ -15388,7 +10969,7 @@ async function carregarResultado(prodId) {
         })()}
         <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(0,0,0,.12);font-size:10px;color:#666;line-height:1.45">
           <strong style="font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:#888">Leitura de efetividade</strong><br>
-          ${_regEsc((efetividade.motivos || []).slice(0, 2).join(' · '))}
+          ${_regEsc((efetividade.motivos || []).slice(0, 2).join(' � '))}
         </div>
       </div>`;
   }).join('');
@@ -15417,13 +10998,13 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
   });
 });
 
-// ── HISTÓRICO DO PROJETO ───────────────────────────────────
+// -- HIST�RICO DO PROJETO -----------------------------------
 const PROJHIST_MODE_COPY = {
   atas: 'Atas formais, registros e encaminhamentos estruturados do projeto.',
   visitas: 'Registros formais de visita de obra ou campo, separados das atas gerais.',
   conversa: 'Conversa operacional do projeto, separada das atas formais.',
-  tudo: 'Linha do tempo unificada com conversa, atas e comentários formais.',
-  buscar: 'Busca única nas atas e no chat do projeto, sem duplicar os dados.',
+  tudo: 'Linha do tempo unificada com conversa, atas e coment�rios formais.',
+  buscar: 'Busca �nica nas atas e no chat do projeto, sem duplicar os dados.',
 };
 
 function _projHistPaneKey(mode) {
@@ -15431,10 +11012,10 @@ function _projHistPaneKey(mode) {
 }
 
 function _projHistFmtDateTime(ts) {
-  if (!ts) return '—';
+  if (!ts) return '�';
   const dt = new Date(ts);
   return dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) +
-    ' · ' +
+    ' � ' +
     dt.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
@@ -15563,7 +11144,7 @@ function _projHistClienteSigla(nome) {
 function sugerirTituloChatProjeto(prodId) {
   const prod = G.todosProdutos.find(p => p.id === prodId) || G._todosProdutosGestao.find(p => p.id === prodId);
   const cliObj = prod?.oportunidades?.clientes;
-  // Prefere sigla salva no cadastro; cai no gerador automático se não tiver
+  // Prefere sigla salva no cadastro; cai no gerador autom�tico se n�o tiver
   const sigla = cliObj?.sigla?.trim() || _projHistClienteSigla(cliObj?.nome || '');
   const oportunidade = prod?.oportunidades?.projeto || prod?.nome || 'Projeto';
   return `${sigla}-${oportunidade}`;
@@ -15606,7 +11187,7 @@ async function _projHistLoadThreadMeta(threadId, prodId) {
     input.value = G._projHistThreadTitle || sugestao;
     input.placeholder = sugestao;
   }
-  if (hint) hint.textContent = `Sugestão: ${sugestao}`;
+  if (hint) hint.textContent = `Sugest�o: ${sugestao}`;
   return data;
 }
 
@@ -15744,7 +11325,7 @@ async function abrirChatProjetoNoWidget() {
       window.expChat.openChannel(`project:${threadId}`, title);
       return;
     }
-    toast('Chat geral ainda não está disponível nesta tela.');
+    toast('Chat geral ainda n�o est� dispon�vel nesta tela.');
   } catch (err) {
     toast('Erro ao abrir conversa no chat: ' + (err.message || err));
   }
@@ -15760,7 +11341,7 @@ function _renderChatProjeto(options = {}) {
   if (!list) return;
   const authId = G.usuario?.auth_id || null;
   if (!G._projHistMessages.length) {
-    list.innerHTML = '<div class="projhist-chat-empty">Nenhuma mensagem ainda. Use a conversa para alinhamentos rápidos do projeto.</div>';
+    list.innerHTML = '<div class="projhist-chat-empty">Nenhuma mensagem ainda. Use a conversa para alinhamentos r�pidos do projeto.</div>';
     return;
   }
 
@@ -15779,8 +11360,8 @@ function _renderChatProjeto(options = {}) {
           </div>
           <div class="projhist-chat-text">${_hlMencao(msg.content || '')}</div>
           <div class="projhist-chat-reactions">
-            <button class="projhist-react-btn${likeActive ? ' active' : ''}" onclick="alternarReacaoMensagemProjeto(${_sqReg(msg.id)},'like')">👍 ${likeUsers.length}</button>
-            <button class="projhist-react-btn${loveActive ? ' active' : ''}" onclick="alternarReacaoMensagemProjeto(${_sqReg(msg.id)},'love')">❤️ ${loveUsers.length}</button>
+            <button class="projhist-react-btn${likeActive ? ' active' : ''}" onclick="alternarReacaoMensagemProjeto(${_sqReg(msg.id)},'like')">?? ${likeUsers.length}</button>
+            <button class="projhist-react-btn${loveActive ? ' active' : ''}" onclick="alternarReacaoMensagemProjeto(${_sqReg(msg.id)},'love')">?? ${loveUsers.length}</button>
           </div>
         </div>
       </div>`;
@@ -15838,7 +11419,7 @@ async function alternarReacaoMensagemProjeto(messageId, reaction) {
       await carregarChatProjeto(G.produtoAtivo, { force: true });
     }
   } catch (err) {
-    toast('Erro ao atualizar reação: ' + (err.message || err));
+    toast('Erro ao atualizar rea��o: ' + (err.message || err));
   }
 }
 
@@ -15854,15 +11435,15 @@ async function carregarTimelineProjeto(prodId) {
     });
     if (error) throw error;
     G._projHistFeed = data || [];
-    _renderProjectHistoryItems('projhist-combined-list', G._projHistFeed, 'Nenhum item histórico encontrado para este projeto.');
+    _renderProjectHistoryItems('projhist-combined-list', G._projHistFeed, 'Nenhum item hist�rico encontrado para este projeto.');
   } catch (err) {
-    wrap.innerHTML = `<div class="empty-note">Erro ao carregar histórico: ${_regEsc(err.message || err)}</div>`;
+    wrap.innerHTML = `<div class="empty-note">Erro ao carregar hist�rico: ${_regEsc(err.message || err)}</div>`;
   }
 }
 
 function _projHistBadgeLabel(type) {
   if (type === 'chat') return 'Conversa';
-  if (type === 'ata_comentario') return 'Comentário de ata';
+  if (type === 'ata_comentario') return 'Coment�rio de ata';
   return 'Ata';
 }
 
@@ -15880,7 +11461,7 @@ function _renderProjectHistoryItems(targetId, items, emptyText) {
   wrap.innerHTML = items.map(item => {
     const refId = item.source_type === 'chat' ? item.source_id : (item.entry_id || item.source_id);
     const title = item.title ? `<div class="projhist-item-title">${_regEsc(item.title)}</div>` : '';
-    const excerpt = item.excerpt ? `<div class="projhist-item-excerpt">${_hlMencao(item.excerpt)}</div>` : '<div class="projhist-item-excerpt">Sem conteúdo resumido.</div>';
+    const excerpt = item.excerpt ? `<div class="projhist-item-excerpt">${_hlMencao(item.excerpt)}</div>` : '<div class="projhist-item-excerpt">Sem conte�do resumido.</div>';
     return `
       <div class="projhist-item${(G._projHistTargetEntryId && G._projHistTargetEntryId === refId) ? ' projhist-jump' : ''}" id="projhist-item-${item.source_type}-${item.source_id}">
         <div class="projhist-item-main">
@@ -15910,7 +11491,7 @@ async function buscarHistoricoProjeto() {
     wrap.innerHTML = '<div class="empty-note">Digite uma palavra para pesquisar nas atas e na conversa do projeto.</div>';
     return;
   }
-  wrap.innerHTML = '<div class="loading-state">Pesquisando histórico...</div>';
+  wrap.innerHTML = '<div class="loading-state">Pesquisando hist�rico...</div>';
   try {
     const { data, error } = await sb.rpc('search_project_history', {
       p_produto_id: G.produtoAtivo,
@@ -15922,7 +11503,7 @@ async function buscarHistoricoProjeto() {
     G._projHistSearch = data || [];
     _renderProjectHistoryItems('projhist-search-results', G._projHistSearch, 'Nenhum resultado encontrado para esta busca.');
   } catch (err) {
-    wrap.innerHTML = `<div class="empty-note">Erro ao pesquisar histórico: ${_regEsc(err.message || err)}</div>`;
+    wrap.innerHTML = `<div class="empty-note">Erro ao pesquisar hist�rico: ${_regEsc(err.message || err)}</div>`;
   }
 }
 
@@ -15958,11 +11539,11 @@ function _projHistApplyRegistroJump() {
   G._projHistTargetEntryId = null;
 }
 
-// ── REGISTROS ──────────────────────────────────────────────
+// -- REGISTROS ----------------------------------------------
 function _regEsc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function _regAttr(s) { return String(s||'').replace(/"/g,'&quot;'); }
 function _sqReg(s)   { return "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'"; }
-// Escapa e destaca @menções no texto exibido
+// Escapa e destaca @men��es no texto exibido
 function _hlMencao(s) {
   return _regEsc(s).replace(
     /@([\w\u00C0-\u024F]+(?:\s[\w\u00C0-\u024F]+)?)/g,
@@ -16000,7 +11581,7 @@ async function _regPersistEntrada(entradaId, payload) {
     delete fallback.local_visita;
     delete fallback.data_visita;
     const second = await sb.from('reg_entrada').insert(fallback).select().single();
-    if (!second.error) toast('SQL do DEV-16 ainda não aplicado: registro salvo sem tipagem de visita.');
+    if (!second.error) toast('SQL do DEV-16 ainda n�o aplicado: registro salvo sem tipagem de visita.');
     return second;
   }
 
@@ -16012,7 +11593,7 @@ async function _regPersistEntrada(entradaId, payload) {
   delete fallback.local_visita;
   delete fallback.data_visita;
   const second = await sb.from('reg_entrada').update(fallback).eq('id', entradaId);
-  if (!second.error) toast('SQL do DEV-16 ainda não aplicado: registro salvo sem tipagem de visita.');
+  if (!second.error) toast('SQL do DEV-16 ainda n�o aplicado: registro salvo sem tipagem de visita.');
   return second;
 }
 
@@ -16022,7 +11603,7 @@ async function carregarRegistrosProduto(prodId, options = {}) {
   if(!wrap) return;
   const tipoFiltro = String(options?.tipoFiltro || 'ata').toLowerCase() === 'visita' ? 'visita' : 'ata';
   const isVisitasMode = tipoFiltro === 'visita';
-  wrap.innerHTML = '<div class="loading-state">Carregando registros…</div>';
+  wrap.innerHTML = '<div class="loading-state">Carregando registros�</div>';
   G._regAbertos = {};
 
   const { data, error } = await sb
@@ -16033,7 +11614,7 @@ async function carregarRegistrosProduto(prodId, options = {}) {
 
   if(error) { wrap.innerHTML = '<div class="empty-note">Erro ao carregar registros.</div>'; return; }
   if(!data?.length) {
-    wrap.innerHTML = `<div class="empty-note">${isVisitasMode ? 'Nenhum registro de visita ainda.' : 'Nenhum registro ainda.'} Crie a primeira entrada usando o botão acima.</div>`;
+    wrap.innerHTML = `<div class="empty-note">${isVisitasMode ? 'Nenhum registro de visita ainda.' : 'Nenhum registro ainda.'} Crie a primeira entrada usando o bot�o acima.</div>`;
     return;
   }
 
@@ -16048,7 +11629,7 @@ async function carregarRegistrosProduto(prodId, options = {}) {
   }));
   G._registros = registrosFiltrados;
   if(!G._registros.length) {
-    wrap.innerHTML = `<div class="empty-note">${isVisitasMode ? 'Nenhum registro de visita ainda.' : 'Nenhum registro geral ainda.'} Crie a primeira entrada usando o botão acima.</div>`;
+    wrap.innerHTML = `<div class="empty-note">${isVisitasMode ? 'Nenhum registro de visita ainda.' : 'Nenhum registro geral ainda.'} Crie a primeira entrada usando o bot�o acima.</div>`;
     return;
   }
   wrap.innerHTML = G._registros.map((r, i) => _renderEntrada(r, i > 0)).join('');
@@ -16084,14 +11665,14 @@ function _renderEntrada(r, collapsed) {
       <div class="reg-entrada-head" style="cursor:pointer" onclick="expandirEntrada(${_sqReg(r.id)})">
         <div class="reg-av" style="background:${_regAttr(r.criado_por_cor||'#888')}">${_regEsc(r.criado_por_iniciais||'?')}</div>
         <div style="flex:1;min-width:0">
-          <div class="reg-meta-nome">${_regEsc(r.criado_por_nome||'—')}</div>
-          <div class="reg-meta-ts">${dtStr}${r.atualizado_em?' · editado':''}</div>
+          <div class="reg-meta-nome">${_regEsc(r.criado_por_nome||'�')}</div>
+          <div class="reg-meta-ts">${dtStr}${r.atualizado_em?' � editado':''}</div>
           ${r.titulo?`<div style="font-size:12px;font-weight:600;color:var(--grafite);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_regEsc(r.titulo)}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <span class="reg-type-badge ${_regTipoClass(tipoRegistro)}">${_regTipoLabel(tipoRegistro)}</span>
           ${etapa?`<span class="reg-etapa-tag">${_regEsc(etapa.nome)}</span>`:''}
-          <span style="font-size:11px;color:#bbb">▸</span>
+          <span style="font-size:11px;color:#bbb">?</span>
         </div>
       </div>
       <div id="re-body-${r.id}" style="display:none">${bodyHtml}</div>
@@ -16099,12 +11680,12 @@ function _renderEntrada(r, collapsed) {
         <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'check')" id="rt-check-${r.id}">
           <span>Encaminhamentos</span>
           <span class="reg-toggle-count${nDone===nEncs&&nEncs>0?' done':''}" id="rc-count-${r.id}">${nDone}/${nEncs}</span>
-          <span style="font-size:9px;color:#ccc;margin-left:auto" id="rc-chev-${r.id}">▼</span>
+          <span style="font-size:9px;color:#ccc;margin-left:auto" id="rc-chev-${r.id}">?</span>
         </button>
         <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'coment')" id="rt-coment-${r.id}">
-          <span>Comentários</span>
+          <span>Coment�rios</span>
           <span class="reg-toggle-count" id="rn-count-${r.id}">${nComts}</span>
-          <span style="font-size:9px;color:#ccc;margin-left:auto" id="rn-chev-${r.id}">▼</span>
+          <span style="font-size:9px;color:#ccc;margin-left:auto" id="rn-chev-${r.id}">?</span>
         </button>
       </div>
       <div class="reg-expand-panel" id="rp-check-${r.id}"></div>
@@ -16117,14 +11698,14 @@ function _renderEntrada(r, collapsed) {
     <div class="reg-entrada-head">
       <div class="reg-av" style="background:${_regAttr(r.criado_por_cor||'#888')}">${_regEsc(r.criado_por_iniciais||'?')}</div>
       <div style="flex:1">
-        <div class="reg-meta-nome">${_regEsc(r.criado_por_nome||'—')}</div>
-        <div class="reg-meta-ts">${dtStr}${r.atualizado_em?' · editado':''}</div>
+        <div class="reg-meta-nome">${_regEsc(r.criado_por_nome||'�')}</div>
+        <div class="reg-meta-ts">${dtStr}${r.atualizado_em?' � editado':''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         <span class="reg-type-badge ${_regTipoClass(tipoRegistro)}">${_regTipoLabel(tipoRegistro)}</span>
         ${etapa?`<span class="reg-etapa-tag">${_regEsc(etapa.nome)}</span>`:''}
-        ${isAutor||canModerate?`<button class="btn sm" onclick="editarEntradaReg(${_sqReg(r.id)})">✎</button>`:''}
-        ${isAutor||canModerate?`<button class="btn sm tc" onclick="deletarEntradaReg(${_sqReg(r.id)})">✕</button>`:''}
+        ${isAutor||canModerate?`<button class="btn sm" onclick="editarEntradaReg(${_sqReg(r.id)})">?</button>`:''}
+        ${isAutor||canModerate?`<button class="btn sm tc" onclick="deletarEntradaReg(${_sqReg(r.id)})">?</button>`:''}
       </div>
     </div>
     ${r.titulo?`<div class="reg-titulo">${_regEsc(r.titulo)}</div>`:''}
@@ -16133,12 +11714,12 @@ function _renderEntrada(r, collapsed) {
       <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'check')" id="rt-check-${r.id}">
         <span>Encaminhamentos</span>
         <span class="reg-toggle-count${nDone===nEncs&&nEncs>0?' done':''}" id="rc-count-${r.id}">${nDone}/${nEncs}</span>
-        <span style="font-size:9px;color:#ccc;margin-left:auto" id="rc-chev-${r.id}">▼</span>
+        <span style="font-size:9px;color:#ccc;margin-left:auto" id="rc-chev-${r.id}">?</span>
       </button>
       <button class="reg-toggle" onclick="toggleRegPanel(${_sqReg(r.id)},'coment')" id="rt-coment-${r.id}">
-        <span>Comentários</span>
+        <span>Coment�rios</span>
         <span class="reg-toggle-count" id="rn-count-${r.id}">${nComts}</span>
-        <span style="font-size:9px;color:#ccc;margin-left:auto" id="rn-chev-${r.id}">▼</span>
+        <span style="font-size:9px;color:#ccc;margin-left:auto" id="rn-chev-${r.id}">?</span>
       </button>
     </div>
     <div class="reg-expand-panel" id="rp-check-${r.id}"></div>
@@ -16160,12 +11741,12 @@ function _renderEncsPanel(r) {
   return encs.map(enc => {
     const checked = enc.concluido;
     const who = checked && enc.concluido_por_nome
-      ? `<div class="reg-check-who">✓ ${_regEsc(enc.concluido_por_nome)} · ${fmtDate(enc.concluido_em, true)}</div>` : '';
+      ? `<div class="reg-check-who">? ${_regEsc(enc.concluido_por_nome)} � ${fmtDate(enc.concluido_em, true)}</div>` : '';
     return `
       <div class="reg-check-item" data-enc-id="${enc.id}">
         <input type="checkbox" class="reg-check-cb" ${checked?'checked':''} onchange="toggleEncaminhamento(${_sqReg(enc.id)},this.checked,${_sqReg(r.id)})">
         <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:4px">${_regAtribAvatar(enc)}<span class="reg-check-txt${checked?' done':''}">${_regEsc(enc.texto)}</span><button class="reg-check-edit-btn" onclick="editarEncaminhamento(${_sqReg(enc.id)},${_sqReg(r.id)})" title="Editar">✎</button></div>
+          <div style="display:flex;align-items:center;gap:4px">${_regAtribAvatar(enc)}<span class="reg-check-txt${checked?' done':''}">${_regEsc(enc.texto)}</span><button class="reg-check-edit-btn" onclick="editarEncaminhamento(${_sqReg(enc.id)},${_sqReg(r.id)})" title="Editar">?</button></div>
           ${who}
         </div>
       </div>`;
@@ -16179,7 +11760,7 @@ function expandirEntrada(id) {
   const open = body.style.display !== 'none';
   body.style.display = open ? 'none' : '';
   const arr = card.querySelector('.reg-entrada-head span[style*="color:#bbb"]');
-  if (arr) arr.textContent = open ? '▸' : '▾';
+  if (arr) arr.textContent = open ? '?' : '?';
 }
 
 async function toggleRegPanel(entradaId, tipo) {
@@ -16193,12 +11774,12 @@ async function toggleRegPanel(entradaId, tipo) {
 
   if(wasOpen) {
     panelEl.classList.remove('open');
-    if(chevEl) chevEl.textContent = '▼';
+    if(chevEl) chevEl.textContent = '?';
     return;
   }
 
   panelEl.classList.add('open');
-  if(chevEl) chevEl.textContent = '▲';
+  if(chevEl) chevEl.textContent = '?';
 
   const r = G._registros.find(x => x.id === entradaId);
   if(!r) return;
@@ -16209,15 +11790,15 @@ async function toggleRegPanel(entradaId, tipo) {
       _renderEncsPanel(r);
   } else {
     panelEl.innerHTML = `
-      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#bbb;margin-bottom:8px">Comentários</div>
-      <div id="rc-lista-${entradaId}"><div style="font-size:11px;color:#ccc;padding:4px 0">Carregando…</div></div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#bbb;margin-bottom:8px">Coment�rios</div>
+      <div id="rc-lista-${entradaId}"><div style="font-size:11px;color:#ccc;padding:4px 0">Carregando�</div></div>
       <div class="reg-coment-add" style="margin-top:10px">
-        <textarea id="rc-inp-${entradaId}" rows="1" placeholder="Adicionar comentário…"
+        <textarea id="rc-inp-${entradaId}" rows="1" placeholder="Adicionar coment�rio�"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();postarComentario(${_sqReg(entradaId)},null)}"></textarea>
         <button class="btn sm verde" onclick="postarComentario(${_sqReg(entradaId)},null)" style="flex-shrink:0">Enviar</button>
       </div>`;
     await carregarComentariosReg(entradaId);
-    // Ativa @mention no campo principal de comentários
+    // Ativa @mention no campo principal de coment�rios
     const mainInp = document.getElementById(`rc-inp-${entradaId}`);
     if(mainInp) ativarMencao(mainInp);
   }
@@ -16230,7 +11811,7 @@ async function carregarComentariosReg(entradaId) {
   const lista = document.getElementById(`rc-lista-${entradaId}`);
   if(!lista) return;
   if(error || !data?.length) {
-    lista.innerHTML = '<div style="font-size:11px;color:#ccc;padding:4px 0">Nenhum comentário ainda.</div>';
+    lista.innerHTML = '<div style="font-size:11px;color:#ccc;padding:4px 0">Nenhum coment�rio ainda.</div>';
     return;
   }
   const top   = data.filter(c => !c.parent_id);
@@ -16247,13 +11828,13 @@ function _renderComent(c, allRepls) {
   <div class="reg-coment-item">
     <div class="reg-coment-av" style="background:${_regAttr(c.autor_cor||'#888')}">${_regEsc(c.autor_iniciais||'?')}</div>
     <div class="reg-coment-bubble">
-      <div class="reg-coment-meta">${_regEsc(c.autor_nome||'—')} <span>${dtStr}</span>${(c.autor_id===G.usuario.id||canModerate)?`<button class="btn-coment-del" onclick="deletarComentarioReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">×</button>`:''}</div>
+      <div class="reg-coment-meta">${_regEsc(c.autor_nome||'�')} <span>${dtStr}</span>${(c.autor_id===G.usuario.id||canModerate)?`<button class="btn-coment-del" onclick="deletarComentarioReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">�</button>`:''}</div>
       <div class="reg-coment-txt">${_hlMencao(c.texto)}</div>
-      <span class="reg-coment-responder" onclick="toggleReplyFormReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">↩ responder</span>
+      <span class="reg-coment-responder" onclick="toggleReplyFormReg(${_sqReg(c.id)},${_sqReg(c.entrada_id)})">? responder</span>
       ${repls.length?`<div class="reg-replies">${repls.map(r=>_renderComent(r,allRepls)).join('')}</div>`:''}
       <div id="rc-reply-${c.id}" style="display:none;margin-top:6px">
         <div class="reg-coment-add">
-          <textarea id="rr-inp-${c.id}" rows="1" placeholder="Responder…"
+          <textarea id="rr-inp-${c.id}" rows="1" placeholder="Responder�"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();postarComentario(${_sqReg(c.entrada_id)},${_sqReg(c.id)})}"></textarea>
           <button class="btn sm verde" onclick="postarComentario(${_sqReg(c.entrada_id)},${_sqReg(c.id)})" style="flex-shrink:0">Enviar</button>
         </div>
@@ -16289,8 +11870,8 @@ async function postarComentario(entradaId, parentId) {
     autor_cor:      u.cor,
     criado_em:      new Date().toISOString(),
   });
-  if(error) { toast('Erro ao postar comentário.'); return; }
-  // Notifica @menções antes de limpar o campo
+  if(error) { toast('Erro ao postar coment�rio.'); return; }
+  // Notifica @men��es antes de limpar o campo
   if(inp) notificarMencoes(text, inp, { tipo:'registro', produto_id: G.produtoAtivo, entrada_id: entradaId });
   if(inp) inp.value = '';
   if(parentId) { const f = document.getElementById(`rc-reply-${parentId}`); if(f) f.style.display='none'; }
@@ -16341,7 +11922,7 @@ async function toggleEncaminhamento(encId, checked, entradaId) {
   }
 }
 
-// ── Edição inline de item de checklist ──────────────────────
+// -- Edi��o inline de item de checklist ----------------------
 function editarEncaminhamento(encId, entradaId) {
   const item = document.querySelector(`.reg-check-item[data-enc-id="${encId}"]`);
   if (!item) return;
@@ -16354,8 +11935,8 @@ function editarEncaminhamento(encId, entradaId) {
   row.innerHTML =
     `<input class="reg-check-inline-input" value="${_regAttr(textoAtual)}"
       onkeydown="if(event.key==='Enter'){event.preventDefault();salvarEdicaoEnc(${eId},${rId},this)}else if(event.key==='Escape'){cancelarEdicaoEnc(${eId},${rId})}">
-    <button onclick="salvarEdicaoEnc(${eId},${rId},this.previousElementSibling)" style="background:none;border:none;color:var(--verde);font-size:13px;cursor:pointer;padding:0 3px" title="Salvar">✓</button>
-    <button onclick="cancelarEdicaoEnc(${eId},${rId})" style="background:none;border:none;color:#ccc;font-size:13px;cursor:pointer;padding:0 3px" title="Cancelar">✕</button>`;
+    <button onclick="salvarEdicaoEnc(${eId},${rId},this.previousElementSibling)" style="background:none;border:none;color:var(--verde);font-size:13px;cursor:pointer;padding:0 3px" title="Salvar">?</button>
+    <button onclick="cancelarEdicaoEnc(${eId},${rId})" style="background:none;border:none;color:#ccc;font-size:13px;cursor:pointer;padding:0 3px" title="Cancelar">?</button>`;
   const inp = row.querySelector('input');
   inp.focus(); inp.select();
 }
@@ -16386,7 +11967,7 @@ function _reRenderEncPanel(entradaId) {
   panel.innerHTML = hdrHtml + (r ? _renderEncsPanel(r) : '');
 }
 
-// ── Form de nova/editar entrada ─────────────────────────────
+// -- Form de nova/editar entrada -----------------------------
 function toggleFormRegistro(editId) {
   const wrap   = document.getElementById('reg-form-wrap');
   const isOpen = wrap.style.display !== 'none';
@@ -16407,7 +11988,7 @@ function editarEntradaReg(id) { toggleFormRegistro(id); }
 function _renderFormRegistro(entrada) {
   const wrap   = document.getElementById('reg-form-wrap');
   const etapas = G.todasEtapas.filter(e => e.produto_id === G.produtoAtivo);
-  const etapaOpts = '<option value="">— sem etapa —</option>' +
+  const etapaOpts = '<option value="">� sem etapa �</option>' +
     etapas.map(e=>`<option value="${_regAttr(e.id)}"${entrada?.etapa_id===e.id?' selected':''}>${_regEsc(e.nome)}</option>`).join('');
   const modoAtual = _projHistCurrentMode();
   const tipoRegistro = (entrada?.tipo_registro || (modoAtual === 'visitas' ? 'visita' : 'ata')).toLowerCase() === 'visita' ? 'visita' : 'ata';
@@ -16416,7 +11997,7 @@ function _renderFormRegistro(entrada) {
   const encsHtml = G._regEncsForms.map((enc,i)=>`
     <div class="reg-enc-pill">
       <span style="flex:1">${_regEsc(enc.texto)}</span>
-      <button class="reg-enc-del" onclick="removerEncForm(${i})">×</button>
+      <button class="reg-enc-del" onclick="removerEncForm(${i})">�</button>
     </div>`).join('');
   wrap.innerHTML = `
   <div class="reg-form">
@@ -16433,8 +12014,8 @@ function _renderFormRegistro(entrada) {
         <select id="rf-etapa">${etapaOpts}</select>
       </div>
       <div class="reg-form-field">
-        <label>Título</label>
-        <input type="text" id="rf-titulo" value="${_regAttr(entrada?.titulo||'')}" placeholder="Ex: Reunião de briefing">
+        <label>T�tulo</label>
+        <input type="text" id="rf-titulo" value="${_regAttr(entrada?.titulo||'')}" placeholder="Ex: Reuni�o de briefing">
       </div>
       <div class="reg-form-field" id="rf-data-visita-wrap" style="${tipoRegistro==='visita'?'':'display:none'}">
         <label>Data da visita</label>
@@ -16442,25 +12023,25 @@ function _renderFormRegistro(entrada) {
       </div>
       <div class="reg-form-field full" id="rf-local-visita-wrap" style="${tipoRegistro==='visita'?'':'display:none'}">
         <label>Local da visita</label>
-        <input type="text" id="rf-local-visita" value="${_regAttr(localVisita)}" placeholder="Ex: Obra, stand, lote, endereço ou referência">
+        <input type="text" id="rf-local-visita" value="${_regAttr(localVisita)}" placeholder="Ex: Obra, stand, lote, endere�o ou refer�ncia">
       </div>
       <div class="reg-form-field full">
         <label>Participantes</label>
-        <input type="text" id="rf-participantes" value="${_regAttr(entrada?.participantes||'')}" placeholder="Nomes dos participantes separados por vírgula">
+        <input type="text" id="rf-participantes" value="${_regAttr(entrada?.participantes||'')}" placeholder="Nomes dos participantes separados por v�rgula">
       </div>
       <div class="reg-form-field full">
         <label>Registro / Ata</label>
-        <textarea id="rf-corpo" style="min-height:120px" placeholder="Conteúdo da reunião, decisões, observações…">${_regEsc(entrada?.corpo||'')}</textarea>
+        <textarea id="rf-corpo" style="min-height:120px" placeholder="Conte�do da reuni�o, decis�es, observa��es�">${_regEsc(entrada?.corpo||'')}</textarea>
       </div>
       <div class="reg-form-field full">
         <label>Encaminhamentos</label>
         <div class="reg-encs-list" id="rf-encs-lista">${encsHtml}</div>
         <div class="reg-check-add" style="margin-top:6px">
-          <input type="text" id="rf-enc-nova" placeholder="Encaminhamento…"
+          <input type="text" id="rf-enc-nova" placeholder="Encaminhamento�"
             onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarEncForm()}"
             style="flex:2">
           <select id="rf-enc-user" style="flex:1;font-size:10px;border:1px solid var(--cinza);border-radius:4px;padding:3px 4px;font-family:var(--font-ui);min-width:0;color:#555">
-            <option value="">— atribuir —</option>
+            <option value="">� atribuir �</option>
             ${G.todosUsuarios.map(u=>`<option value="${_regAttr(u.id)}" data-nome="${_regAttr(u.nome)}" data-ini="${_regAttr(u.iniciais||'?')}" data-cor="${_regAttr(u.cor||'#888')}">${_regEsc(u.nome.split(' ')[0])}</option>`).join('')}
           </select>
           <button class="btn sm" onclick="adicionarEncForm()">+ Add</button>
@@ -16469,7 +12050,7 @@ function _renderFormRegistro(entrada) {
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
       <button class="btn sm" onclick="cancelarFormRegistro()">Cancelar</button>
-      <button class="btn sm verde" onclick="salvarEntradaReg()">${entrada?'Salvar alterações':'Salvar registro'}</button>
+      <button class="btn sm verde" onclick="salvarEntradaReg()">${entrada?'Salvar altera��es':'Salvar registro'}</button>
     </div>
   </div>`;
   // Ativa @mention no campo de corpo
@@ -16498,7 +12079,7 @@ function _syncEncsLista() {
     <div class="reg-enc-pill">
       ${av}
       <span style="flex:1">${_regEsc(enc.texto)}</span>
-      <button class="reg-enc-del" onclick="removerEncForm(${i})">×</button>
+      <button class="reg-enc-del" onclick="removerEncForm(${i})">�</button>
     </div>`;
   }).join('');
 }
@@ -16541,7 +12122,7 @@ async function salvarEntradaReg() {
   const dataVisita    = document.getElementById('rf-data-visita')?.value || null;
   const localVisita   = document.getElementById('rf-local-visita')?.value.trim() || '';
   const participantes = document.getElementById('rf-participantes')?.value.trim();
-  if(!titulo && !corpo) { toast('Informe um título ou o conteúdo do registro.'); return; }
+  if(!titulo && !corpo) { toast('Informe um t�tulo ou o conte�do do registro.'); return; }
   const u   = G.usuario;
   const now = new Date().toISOString();
   try {
@@ -16591,14 +12172,14 @@ async function salvarEntradaReg() {
       );
       if(error) throw error;
     }
-    // Cria tarefas automáticas para usuários atribuídos (1 tarefa por pessoa por entrada)
+    // Cria tarefas autom�ticas para usu�rios atribu�dos (1 tarefa por pessoa por entrada)
     const atribUsers = [...new Map(
       G._regEncsForms.filter(e=>e.atrib_id).map(e=>[e.atrib_id,e])
     ).values()];
     if(atribUsers.length > 0) {
       const prod = G.todosProdutos.find(p=>p.id===G.produtoAtivo);
-      const descTarefa = `Encaminhamentos: "${titulo||'Registro'}" — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`;
-      // Remove tarefas antigas desta entrada para esses usuários (evita duplicatas em re-edição)
+      const descTarefa = `Encaminhamentos: "${titulo||'Registro'}" � ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`;
+      // Remove tarefas antigas desta entrada para esses usu�rios (evita duplicatas em re-edi��o)
       await sb.from('tarefas_livres').delete().eq('reg_entrada_id', entradaId);
       const tarefas = atribUsers.map(e=>({
         usuario_id:     e.atrib_id,
@@ -16610,16 +12191,16 @@ async function salvarEntradaReg() {
         created_at:     now,
       }));
       await sb.from('tarefas_livres').insert(tarefas);
-      // Notifica cada usuário atribuído
+      // Notifica cada usu�rio atribu�do
       for(const e of atribUsers) {
         criarNotificacao(e.atrib_id, 'tarefa',
-          `${u.nome.split(' ')[0]} atribuiu encaminhamentos para você`,
+          `${u.nome.split(' ')[0]} atribuiu encaminhamentos para voc�`,
           descTarefa,
           { tipo:'registro', produto_id: G.produtoAtivo, entrada_id: entradaId }
         );
       }
     }
-    // Notifica @menções no corpo do registro
+    // Notifica @men��es no corpo do registro
     const corpoEl = document.getElementById('rf-corpo');
     if(corpoEl && corpo) {
       notificarMencoes(corpo, corpoEl,
@@ -16636,13 +12217,13 @@ async function salvarEntradaReg() {
 function deletarEntradaReg(id) {
   abrirPopupConfirm(
     'Excluir registro?',
-    'Esta entrada, seus encaminhamentos e comentários serão removidos permanentemente.',
+    'Esta entrada, seus encaminhamentos e coment�rios ser�o removidos permanentemente.',
     async () => {
       try {
-        // Deleta filhos primeiro (evita violação de FK)
+        // Deleta filhos primeiro (evita viola��o de FK)
         await sb.from('reg_comentario').delete().eq('entrada_id', id);
         await sb.from('reg_encaminhamento').delete().eq('entrada_id', id);
-        // Tarefas automáticas (coluna opcional)
+        // Tarefas autom�ticas (coluna opcional)
         await sb.from('tarefas_livres').delete().eq('reg_entrada_id', id);
         const { error, count } = await sb.from('reg_entrada').delete()
           .eq('id', id).select('id');
@@ -16654,38 +12235,38 @@ function deletarEntradaReg(id) {
         G._registros = (G._registros || []).filter(r => r.id !== id);
         const wrap = document.getElementById('reg-lista');
         if(wrap && !G._registros.length)
-          wrap.innerHTML = '<div class="empty-note">Nenhum registro ainda. Crie a primeira entrada usando o botão acima.</div>';
-        toast('Registro excluído.');
+          wrap.innerHTML = '<div class="empty-note">Nenhum registro ainda. Crie a primeira entrada usando o bot�o acima.</div>';
+        toast('Registro exclu�do.');
       } catch(err) { toast('Erro ao excluir: ' + (err.message||err)); }
     }
   );
 }
 
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
 //   CHECKLIST
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
 
-// ── Helpers ───────────────────────────────────────────────────
+// -- Helpers ---------------------------------------------------
 const _ckE  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const _ckA  = s => String(s||'').replace(/"/g,'&quot;');
 const _sqCk = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,' ') + "'";
 const isSocioUser = () => isSocioRole(G.usuario.role);
 
-// ── Estado ────────────────────────────────────────────────────
+// -- Estado ----------------------------------------------------
 G._ckEtapas   = [];
 G._ckTarefas  = [];
 G._ckPresets  = [];
 
-// ═════════════════════════════════════════════════════════════
+// -------------------------------------------------------------
 // CARREGAR / RENDERIZAR CHECKLIST DO PRODUTO
-// ═════════════════════════════════════════════════════════════
+// -------------------------------------------------------------
 
 async function carregarChecklist(prodId) {
   if(!prodId) return;
-  document.getElementById('ck-etapa-lista').innerHTML  = '<div class="loading-state">Carregando…</div>';
-  document.getElementById('ck-tarefas-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('ck-etapa-lista').innerHTML  = '<div class="loading-state">Carregando�</div>';
+  document.getElementById('ck-tarefas-lista').innerHTML = '<div class="loading-state">Carregando�</div>';
 
-  // Checklists de etapa exec (inclui seções e itens)
+  // Checklists de etapa exec (inclui se��es e itens)
   const { data: execs } = await sb.from('checklist_etapa_exec')
     .select('*, checklist_etapa_exec_item(*), checklist_etapa_exec_secao(*)')
     .eq('produto_id', prodId);
@@ -16719,17 +12300,17 @@ function _ckEtapaCard(etapa, defaultOpen) {
   const secoes  = exec ? (exec.checklist_etapa_exec_secao||[]).sort((a,b)=>a.ordem-b.ordem) : [];
   const nDone   = items.filter(i=>i.concluido).length;
   const nTotal  = items.length;
-  const prog    = nTotal ? `${nDone}/${nTotal}` : '—';
+  const prog    = nTotal ? `${nDone}/${nTotal}` : '�';
   const progCls = nTotal===0?'ck-prog zero':nDone===nTotal?'ck-prog':nDone>0?'ck-prog parcial':'ck-prog zero';
   const atrib   = exec?.atribuido_nome
-    ? `<div class="ck-atrib"><div class="ck-av" style="background:${_ckA(exec.atribuido_cor||'#888')}">${_ckE(exec.atribuido_iniciais||'?')}</div>Atribuído a ${_ckE(exec.atribuido_nome)}</div>`
+    ? `<div class="ck-atrib"><div class="ck-av" style="background:${_ckA(exec.atribuido_cor||'#888')}">${_ckE(exec.atribuido_iniciais||'?')}</div>Atribu�do a ${_ckE(exec.atribuido_nome)}</div>`
     : '';
   const bodyItems = (items.length || secoes.length)
     ? _ckRenderItems(items, secoes, isTrav, 'etapa', canEdit)
     : '<div class="ck-empty">Sem itens no checklist.</div>';
   const config = isSocioUser()
     ? `<button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();configurarCkEtapa(${_sqCk(etapa.id)})">${exec?'Reconfigurar':'Configurar'}</button>`
-    : (!exec ? '<span style="font-size:10px;color:#bbb">Aguardando configuração</span>' : '');
+    : (!exec ? '<span style="font-size:10px;color:#bbb">Aguardando configura��o</span>' : '');
   return `<div class="ck-card">
     <div class="ck-card-hd" onclick="toggleCkCard('ck-e-${etapa.id}')">
       <span class="badge ${stBadge.cls}" style="font-size:8px">${stBadge.label}</span>
@@ -16760,7 +12341,7 @@ function _renderCkEtapas(prodId) {
   if(ativa) {
     html += _ckEtapaCard(ativa, true);
   } else {
-    // Sem etapa ativa — mostra a primeira aberta, oculta o resto
+    // Sem etapa ativa � mostra a primeira aberta, oculta o resto
     const first = sorted[0];
     const rest  = sorted.slice(1);
     let h = _ckEtapaCard(first, true);
@@ -16793,7 +12374,7 @@ function toggleCkOutras() {
   if(!wrap) return;
   const open = wrap.style.display !== 'none';
   wrap.style.display = open ? 'none' : '';
-  if(btn) btn.textContent = open ? `+ ${wrap.children.length} etapa${wrap.children.length>1?'s':''}` : '− Recolher';
+  if(btn) btn.textContent = open ? `+ ${wrap.children.length} etapa${wrap.children.length>1?'s':''}` : '- Recolher';
 }
 
 function _ckItemHtml(it, readonly, tipo, canEdit) {
@@ -16803,14 +12384,14 @@ function _ckItemHtml(it, readonly, tipo, canEdit) {
   const mediaCount = tempMediaCount(contextoTipo, it.id);
   const camClass = mediaCount ? 'has-media' : 'is-empty';
   const attachBtn = !readonly && (tipo === 'etapa' || tipo === 'tarefa')
-    ? `<button class="ck-item-act tm ${camClass}" onclick="abrirTempMediaUpload('${contextoTipo}',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)})" title="Anexar">📷</button>`
+    ? `<button class="ck-item-act tm ${camClass}" onclick="abrirTempMediaUpload('${contextoTipo}',${_sqCk(it.id)},${_sqCk(`Item do checklist � ${it.texto}`)})" title="Anexar">??</button>`
     : '';
   const viewBtn = mediaCount
-    ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('${contextoTipo}',${_sqCk(it.id)},${_sqCk(`Item do checklist · ${it.texto}`)}, ${!readonly ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
+    ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('${contextoTipo}',${_sqCk(it.id)},${_sqCk(`Item do checklist � ${it.texto}`)}, ${!readonly ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
     : '';
   const editBtns = canEdit ? `
-    <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Editar">✏</button>
-    <button class="ck-item-act tc" onclick="excluirCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Excluir">✕</button>
+    <button class="ck-item-act" onclick="editarCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Editar">?</button>
+    <button class="ck-item-act tc" onclick="excluirCkItem('${tipo}',${_sqCk(it.id)},${_sqCk(it.checklist_id)})" title="Excluir">?</button>
   ` : '';
   return `<div class="ck-item">
     <input type="checkbox" class="ck-cb" ${it.concluido?'checked':''} ${readonly?'disabled':''}
@@ -16823,17 +12404,17 @@ function _ckItemHtml(it, readonly, tipo, canEdit) {
   </div>`;
 }
 
-// secoes = array de {id, titulo, intro, ordem} — se vazio usa fallback por texto
+// secoes = array de {id, titulo, intro, ordem} � se vazio usa fallback por texto
 function _ckRenderItems(items, secoes, readonly, tipo, canEdit) {
   tipo = tipo || 'etapa';
   let html = '';
 
   if(secoes && secoes.length) {
-    // Itens sem seção (secao_id nulo)
+    // Itens sem se��o (secao_id nulo)
     const sem = items.filter(it => !it.secao_id).sort((a,b)=>a.ordem-b.ordem);
     sem.forEach(it => { html += _ckItemHtml(it, readonly, tipo, canEdit); });
 
-    // Itens agrupados por seção
+    // Itens agrupados por se��o
     secoes.sort((a,b)=>a.ordem-b.ordem).forEach(s => {
       const sit = items.filter(it => it.secao_id === s.id).sort((a,b)=>a.ordem-b.ordem);
       html += `<div class="ck-secao-blk">
@@ -16864,11 +12445,11 @@ function _renderCkTarefas() {
     const items  = (cl.checklist_tarefa_item||[]).sort((a,b)=>a.ordem-b.ordem);
     const nDone  = items.filter(i=>i.concluido).length;
     const nTotal = items.length;
-    const prog   = nTotal ? `${nDone}/${nTotal}` : '—';
+    const prog   = nTotal ? `${nDone}/${nTotal}` : '�';
     const fechado = cl.status === 'fechado';
     const progCls = nTotal===0?'zero':nDone===nTotal?'ck-prog':nDone>0?'ck-prog parcial':'ck-prog zero';
     const atrib  = cl.atribuido_nome
-      ? `<div class="ck-atrib"><div class="ck-av" style="background:${_ckA(cl.atribuido_cor||'#888')}">${_ckE(cl.atribuido_iniciais||'?')}</div>Atribuído a ${_ckE(cl.atribuido_nome)}</div>`
+      ? `<div class="ck-atrib"><div class="ck-av" style="background:${_ckA(cl.atribuido_cor||'#888')}">${_ckE(cl.atribuido_iniciais||'?')}</div>Atribu�do a ${_ckE(cl.atribuido_nome)}</div>`
       : '';
     const socioAcoes = isSocioUser()
       ? `<button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();toggleStatusCkTarefa(${_sqCk(cl.id)})">${fechado?'Reabrir':'Fechar'}</button>`
@@ -16901,10 +12482,10 @@ function toggleEl(id) {
   const open = el.style.display !== 'none';
   el.style.display = open ? 'none' : '';
   const arr = document.getElementById(id + '-arr');
-  if (arr) arr.textContent = open ? '▸' : '▾';
+  if (arr) arr.textContent = open ? '?' : '?';
 }
 
-// ── Toggle item (etapa ou tarefa) ─────────────────────────────
+// -- Toggle item (etapa ou tarefa) -----------------------------
 async function toggleCkItem(tipo, itemId, checked, ckId) {
   const u   = G.usuario;
   const now = new Date().toISOString();
@@ -16938,7 +12519,7 @@ async function toggleCkItem(tipo, itemId, checked, ckId) {
   }
 }
 
-// ── Toggle status checklist tarefa (sócios) ───────────────────
+// -- Toggle status checklist tarefa (s�cios) -------------------
 async function toggleStatusCkTarefa(id) {
   const cl = G._ckTarefas.find(x => x.id === id);
   if(!cl) return;
@@ -16948,7 +12529,7 @@ async function toggleStatusCkTarefa(id) {
   _renderCkTarefas();
 }
 
-// ── Excluir item do checklist (criador ou sócio) ───────────────
+// -- Excluir item do checklist (criador ou s�cio) ---------------
 async function excluirCkItem(tipo, itemId, ckId) {
   abrirPopupConfirm('Excluir item', 'Excluir este item do checklist?', async () => {
     const tbl = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
@@ -16963,11 +12544,11 @@ async function excluirCkItem(tipo, itemId, ckId) {
       if(idx > -1) items.splice(idx, 1);
     }
     tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.();
-    toast('Item excluído');
+    toast('Item exclu�do');
   });
 }
 
-// ── Editar item do checklist inline (criador ou sócio) ─────────
+// -- Editar item do checklist inline (criador ou s�cio) ---------
 function editarCkItem(tipo, itemId, ckId) {
   const span = document.getElementById(`ck-txt-${itemId}`);
   if(!span) return;
@@ -17005,7 +12586,7 @@ async function confirmarEditCkItem(tipo, itemId, ckId, novoTexto) {
   tipo === 'tarefa' ? _renderCkTarefas() : _renderCkEtapas?.();
 }
 
-// ── Configurar checklist de etapa (sócios) ────────────────────
+// -- Configurar checklist de etapa (s�cios) --------------------
 async function configurarCkEtapa(etapaId) {
   if(!isSocioUser()) return;
   const { data: presets } = await sb.from('checklist_etapa_preset')
@@ -17022,13 +12603,13 @@ async function configurarCkEtapa(etapaId) {
   // Agrupamento de presets por tipo_produto
   const grupos = {};
   (presets||[]).forEach(p => {
-    const g = p.tipo_produto || 'Genérico';
+    const g = p.tipo_produto || 'Gen�rico';
     if(!grupos[g]) grupos[g] = [];
     grupos[g].push(p);
   });
   const optsHtml = Object.entries(grupos).map(([g, ps]) =>
     `<optgroup label="${_ckE(g)}">${ps.map(p =>
-      `<option value="${p.id}" ${exec?.preset_id===p.id?'selected':''}>${_ckE(p.nome)}${p.etapa_tipo?' — '+p.etapa_tipo:''}</option>`
+      `<option value="${p.id}" ${exec?.preset_id===p.id?'selected':''}>${_ckE(p.nome)}${p.etapa_tipo?' � '+p.etapa_tipo:''}</option>`
     ).join('')}</optgroup>`
   ).join('');
 
@@ -17040,7 +12621,7 @@ async function configurarCkEtapa(etapaId) {
   pop.innerHTML = `
     <div style="background:var(--branco);border-radius:12px;padding:28px 32px;max-width:600px;width:95%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto">
       <div style="font-size:15px;font-weight:700;margin-bottom:4px">Configurar checklist de etapa</div>
-      <div style="font-size:12px;color:#888;margin-bottom:18px">Etapa: <strong>${_ckE(etapa?.nome||'—')}</strong> · ${_ckE(prod?.nome||'')}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:18px">Etapa: <strong>${_ckE(etapa?.nome||'�')}</strong> � ${_ckE(prod?.nome||'')}</div>
 
       <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--cinza)">
         <button id="ck-mode-preset" onclick="_ckModeSwitch('preset')" style="font-size:11px;font-weight:600;padding:6px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid var(--azul);color:var(--azul)">Usar preset</button>
@@ -17050,7 +12631,7 @@ async function configurarCkEtapa(etapaId) {
       <div id="ck-pane-preset">
         <label style="${_l}">Preset de checklist</label>
         <select id="pop-ck-preset" style="${_f};margin-bottom:6px" onchange="_atualizarPreviewPreset(this.value)">
-          <option value="">— sem checklist —</option>
+          <option value="">� sem checklist �</option>
           ${optsHtml}
         </select>
         <div id="pop-ck-preview" style="margin-bottom:18px;font-size:11px;color:#888"></div>
@@ -17058,18 +12639,18 @@ async function configurarCkEtapa(etapaId) {
 
       <div id="ck-pane-zero" style="display:none;margin-bottom:18px">
         <div id="ck-manual-form"></div>
-        <button onclick="_ckAddSecao()" style="margin-top:8px;${_b};font-size:11px;width:100%">+ Adicionar seção</button>
+        <button onclick="_ckAddSecao()" style="margin-top:8px;${_b};font-size:11px;width:100%">+ Adicionar se��o</button>
       </div>
 
       <label style="${_l}">Atribuir a</label>
       <select id="pop-ck-user" style="${_f};margin-bottom:26px">
-        <option value="">— sem atribuição —</option>
+        <option value="">� sem atribui��o �</option>
         ${G.todosUsuarios.map(u=>`<option value="${u.id}" ${exec?.atribuido_para===u.id?'selected':''}>${_ckE(u.nome)}</option>`).join('')}
       </select>
 
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button onclick="document.getElementById('popup-ck-etapa').remove()" style="${_b}">Cancelar</button>
-        <button onclick="salvarCkEtapa(${_sqCk(etapaId)})" style="${_b};background:var(--verde);color:#fff;border-color:var(--verde);font-weight:700">Salvar configuração</button>
+        <button onclick="salvarCkEtapa(${_sqCk(etapaId)})" style="${_b};background:var(--verde);color:#fff;border-color:var(--verde);font-weight:700">Salvar configura��o</button>
       </div>
     </div>`;
   pop._presets = presets || [];
@@ -17078,7 +12659,7 @@ async function configurarCkEtapa(etapaId) {
   pop.addEventListener('click', e => { if(e.target===pop) pop.remove(); });
   document.body.appendChild(pop);
   _ckRenderManualForm();
-  // Dispara preview do preset já selecionado
+  // Dispara preview do preset j� selecionado
   const sel = document.getElementById('pop-ck-preset');
   if(sel?.value) _atualizarPreviewPreset(sel.value);
 }
@@ -17095,13 +12676,13 @@ function _atualizarPreviewPreset(presetId) {
   const semSec = items.filter(it => !it.secao_id);
   let html = `<div style="background:#f7f9fd;border-radius:8px;padding:12px 14px;margin-top:4px">
     <div style="font-weight:700;font-size:11px;margin-bottom:6px;color:#555">${_ckE(p.nome)}</div>`;
-  if(semSec.length) html += semSec.map(it=>`<div style="padding:2px 0">· ${_ckE(it.texto)}</div>`).join('');
+  if(semSec.length) html += semSec.map(it=>`<div style="padding:2px 0">� ${_ckE(it.texto)}</div>`).join('');
   secoes.forEach(s => {
     const sit = items.filter(it => it.secao_id === s.id).sort((a,b)=>a.ordem-b.ordem);
     html += `<div style="border-left:3px solid var(--azul);padding-left:8px;margin:6px 0">
       <div style="font-weight:700;text-transform:uppercase;font-size:9px;color:var(--azul);letter-spacing:.4px">${_ckE(s.titulo)}</div>
       ${s.intro?`<div style="font-style:italic;color:#999;font-size:10px;margin:2px 0">${_ckE(s.intro)}</div>`:''}
-      ${sit.map(it=>`<div style="padding:2px 0">· ${_ckE(it.texto)}</div>`).join('')}
+      ${sit.map(it=>`<div style="padding:2px 0">� ${_ckE(it.texto)}</div>`).join('')}
     </div>`;
   });
   html += `</div>`;
@@ -17129,18 +12710,18 @@ function _ckRenderManualForm() {
     <div style="border:1px solid var(--cinza);border-radius:8px;padding:14px 16px;margin-bottom:10px;background:#fafafa">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
         <span class="ck-secao" style="width:10px;height:10px;padding:0;margin:0;display:inline-block"></span>
-        <input value="${_ckE(sec.titulo)}" placeholder="Título da seção…" oninput="_ckSecaoTitulo(${si},this.value)"
+        <input value="${_ckE(sec.titulo)}" placeholder="T�tulo da se��o�" oninput="_ckSecaoTitulo(${si},this.value)"
           style="flex:1;border:none;border-bottom:1px solid var(--cinza);font-size:12px;font-weight:700;color:var(--azul);background:transparent;padding:2px 4px;font-family:var(--font-ui);outline:none">
-        <button onclick="_ckRemoveSecao(${si})" style="${_b2};color:var(--terracota);border-color:var(--terracota)">× Remover</button>
+        <button onclick="_ckRemoveSecao(${si})" style="${_b2};color:var(--terracota);border-color:var(--terracota)">� Remover</button>
       </div>
-      <input value="${_ckE(sec.intro)}" placeholder="Instrução / intro (opcional)…" oninput="_ckSecaoIntro(${si},this.value)"
+      <input value="${_ckE(sec.intro)}" placeholder="Instru��o / intro (opcional)�" oninput="_ckSecaoIntro(${si},this.value)"
         style="width:100%;border:1px solid var(--cinza2);border-radius:6px;font-size:11px;font-style:italic;color:#777;padding:5px 8px;margin-bottom:10px;font-family:var(--font-ui);box-sizing:border-box;outline:none;background:#fff">
       ${sec.items.map((txt, ii) => `
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <span style="color:#bbb;font-size:10px">·</span>
-          <input value="${_ckE(txt)}" placeholder="Texto do item…" oninput="_ckItemTxt(${si},${ii},this.value)"
+          <span style="color:#bbb;font-size:10px">�</span>
+          <input value="${_ckE(txt)}" placeholder="Texto do item�" oninput="_ckItemTxt(${si},${ii},this.value)"
             style="flex:1;border:none;border-bottom:1px solid var(--cinza2);font-size:11px;padding:3px 4px;font-family:var(--font-ui);outline:none;background:transparent">
-          <button onclick="_ckRemoveItem(${si},${ii})" style="border:none;background:none;color:#bbb;cursor:pointer;font-size:13px;line-height:1;padding:0 2px">✕</button>
+          <button onclick="_ckRemoveItem(${si},${ii})" style="border:none;background:none;color:#bbb;cursor:pointer;font-size:13px;line-height:1;padding:0 2px">?</button>
         </div>`).join('')}
       <button onclick="_ckAddItem(${si})" style="margin-top:6px;${_b2};font-size:10px">+ Item</button>
     </div>`).join('');
@@ -17187,7 +12768,7 @@ async function salvarCkEtapa(etapaId) {
   const now      = new Date().toISOString();
   pop?.remove();
 
-  // Apaga exec existente (seções e itens cascadeiam)
+  // Apaga exec existente (se��es e itens cascadeiam)
   const old = G._ckEtapas.find(x => x.etapa_id === etapaId);
   if(old) {
     await sb.from('checklist_etapa_exec_item').delete().eq('checklist_id', old.id);
@@ -17225,8 +12806,8 @@ async function salvarCkEtapa(etapaId) {
       const etapa = G.todasEtapas.find(e => e.id === etapaId);
       const prod  = G.todosProdutos.find(p => p.id === G.produtoAtivo);
       criarNotificacao(userId, 'tarefa',
-        `${G.usuario.nome.split(' ')[0]} atribuiu uma entrega de etapa para você`,
-        `Etapa: ${etapa?.nome||'—'} — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
+        `${G.usuario.nome.split(' ')[0]} atribuiu uma entrega de etapa para voc�`,
+        `Etapa: ${etapa?.nome||'�'} � ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
         { tipo:'registro', produto_id: G.produtoAtivo }
       );
     }
@@ -17250,10 +12831,10 @@ async function salvarCkEtapa(etapaId) {
   }).select().single();
   if(e1) { toast('Erro: '+e1.message); return; }
 
-  // Copia seções do preset → exec_secao (mantém mapeamento de ids)
+  // Copia se��es do preset ? exec_secao (mant�m mapeamento de ids)
   const { data: presetSecoes } = await sb.from('checklist_etapa_preset_secao')
     .select('*').eq('preset_id', presetId).order('ordem');
-  const secaoMap = {}; // preset_secao.id → exec_secao.id
+  const secaoMap = {}; // preset_secao.id ? exec_secao.id
   if(presetSecoes?.length) {
     const { data: execSecoes } = await sb.from('checklist_etapa_exec_secao').insert(
       presetSecoes.map(s => ({
@@ -17266,7 +12847,7 @@ async function salvarCkEtapa(etapaId) {
     (execSecoes||[]).forEach((es, i) => { secaoMap[presetSecoes[i].id] = es.id; });
   }
 
-  // Copia itens do preset → exec_item (mapeia secao_id)
+  // Copia itens do preset ? exec_item (mapeia secao_id)
   const { data: presetItems } = await sb.from('checklist_etapa_preset_item')
     .select('*').eq('preset_id', presetId).order('ordem');
   if(presetItems?.length) {
@@ -17281,13 +12862,13 @@ async function salvarCkEtapa(etapaId) {
     );
   }
 
-  // Notifica usuário atribuído
+  // Notifica usu�rio atribu�do
   if(userId) {
     const etapa = G.todasEtapas.find(e => e.id === etapaId);
     const prod  = G.todosProdutos.find(p => p.id === G.produtoAtivo);
     criarNotificacao(userId, 'tarefa',
-      `${G.usuario.nome.split(' ')[0]} atribuiu uma entrega de etapa para você`,
-      `Etapa: ${etapa?.nome||'—'} — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
+      `${G.usuario.nome.split(' ')[0]} atribuiu uma entrega de etapa para voc�`,
+      `Etapa: ${etapa?.nome||'�'} � ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
       { tipo:'registro', produto_id: G.produtoAtivo }
     );
   }
@@ -17295,48 +12876,48 @@ async function salvarCkEtapa(etapaId) {
   toast('Checklist de etapa configurado.');
 }
 
-// ── Novo checklist de tarefas (sócios) ────────────────────────
-// ── Estado do formulário inline de checklist ─────────────────
+// -- Novo checklist de tarefas (s�cios) ------------------------
+// -- Estado do formul�rio inline de checklist -----------------
 let _cktState = null;
 
 function novoChecklistTarefa() {
   if(!isSocioUser()) return;
   const wrap = document.getElementById('ck-tarefas-form-wrap');
   if(!wrap) return;
-  // Toggle: se já está aberto, fecha
+  // Toggle: se j� est� aberto, fecha
   if(_cktState) { _cktState = null; wrap.innerHTML = ''; return; }
   _cktState = { titulo: '', userId: '', secoes: [] };
-  _cktAddSecao(); // começa com uma seção vazia
+  _cktAddSecao(); // come�a com uma se��o vazia
   _cktRenderForm();
 }
 
 function _cktRenderForm() {
   const wrap = document.getElementById('ck-tarefas-form-wrap');
   if(!wrap || !_cktState) return;
-  const userOpts = '<option value="">— sem atribuição —</option>' +
+  const userOpts = '<option value="">� sem atribui��o �</option>' +
     G.todosUsuarios.map(u => `<option value="${_ckE(u.id)}" ${u.id===_cktState.userId?'selected':''}>${_ckE(u.nome)}</option>`).join('');
 
   const secoesHtml = _cktState.secoes.map((sec, si) => `
     <div class="ckt-secao-blk" id="ckt-sec-${si}">
       <div class="ckt-secao-hd">
-        <span style="font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#aaa;flex-shrink:0">Seção</span>
-        <input class="ckt-secao-nome-inp" type="text" placeholder="Nome da seção (ex: Prancha 01)"
+        <span style="font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#aaa;flex-shrink:0">Se��o</span>
+        <input class="ckt-secao-nome-inp" type="text" placeholder="Nome da se��o (ex: Prancha 01)"
           value="${_ckE(sec.nome)}" oninput="_cktSecNome(${si},this.value)">
         <button style="background:none;border:none;cursor:pointer;font-size:13px;color:#ccc;padding:0 2px;line-height:1"
           onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#ccc'"
-          onclick="_cktRemSecao(${si})" title="Remover seção">×</button>
+          onclick="_cktRemSecao(${si})" title="Remover se��o">�</button>
       </div>
       <div class="ckt-secao-body">
         ${sec.items.length ? sec.items.map((it, ii) => `
           <div class="ckt-item-row">
-            <span style="font-size:11px;color:#bbb;flex-shrink:0">○</span>
+            <span style="font-size:11px;color:#bbb;flex-shrink:0">?</span>
             <span class="ckt-item-txt-disp">${_ckE(it)}</span>
             <button style="background:none;border:none;cursor:pointer;font-size:12px;color:#ccc;padding:0 2px;line-height:1"
               onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#ccc'"
-              onclick="_cktRemItem(${si},${ii})">×</button>
+              onclick="_cktRemItem(${si},${ii})">�</button>
           </div>`).join('') : ''}
         <div class="ckt-item-add-row">
-          <input class="ckt-item-add-inp" type="text" placeholder="Adicionar item…" id="ckt-add-inp-${si}"
+          <input class="ckt-item-add-inp" type="text" placeholder="Adicionar item�" id="ckt-add-inp-${si}"
             onkeydown="if(event.key==='Enter'){event.preventDefault();_cktAddItem(${si})}">
           <button class="btn sm" onclick="_cktAddItem(${si})">+</button>
         </div>
@@ -17350,8 +12931,8 @@ function _cktRenderForm() {
         <button class="btn sm" onclick="novoChecklistTarefa()" style="color:#999">Cancelar</button>
       </div>
       <div class="ckt-form-row">
-        <label class="ckt-form-label">Título do checklist</label>
-        <input class="ckt-form-input" type="text" id="ckt-titulo" placeholder="Ex: Entregáveis do anteprojeto"
+        <label class="ckt-form-label">T�tulo do checklist</label>
+        <input class="ckt-form-input" type="text" id="ckt-titulo" placeholder="Ex: Entreg�veis do anteprojeto"
           value="${_ckE(_cktState.titulo)}" oninput="_cktState.titulo=this.value">
       </div>
       <div class="ckt-form-row">
@@ -17359,12 +12940,12 @@ function _cktRenderForm() {
         <select class="ckt-form-input" id="ckt-user" onchange="_cktState.userId=this.value">${userOpts}</select>
       </div>
       <div style="margin-bottom:8px">
-        <label class="ckt-form-label" style="margin-bottom:8px">Seções e itens</label>
+        <label class="ckt-form-label" style="margin-bottom:8px">Se��es e itens</label>
         ${secoesHtml}
-        <button class="btn sm" onclick="_cktAddSecao()" style="margin-top:4px">+ Nova seção</button>
+        <button class="btn sm" onclick="_cktAddSecao()" style="margin-top:4px">+ Nova se��o</button>
       </div>
       <div class="ckt-form-ft">
-        <div style="font-size:10px;color:#bbb">${_cktContarItens()} ${_cktContarItens()===1?'item':'itens'} em ${_cktState.secoes.length} ${_cktState.secoes.length===1?'seção':'seções'}</div>
+        <div style="font-size:10px;color:#bbb">${_cktContarItens()} ${_cktContarItens()===1?'item':'itens'} em ${_cktState.secoes.length} ${_cktState.secoes.length===1?'se��o':'se��es'}</div>
         <button class="btn filled verde" onclick="salvarChecklistTarefa()">Criar checklist</button>
       </div>
     </div>`;
@@ -17380,7 +12961,7 @@ function _cktAddSecao() {
   if(!_cktState) return;
   _cktState.secoes.push({ nome: '', items: [] });
   _cktRenderForm();
-  // Focus no novo nome de seção
+  // Focus no novo nome de se��o
   const idx = _cktState.secoes.length - 1;
   setTimeout(() => document.getElementById(`ckt-sec-${idx}`)?.querySelector('.ckt-secao-nome-inp')?.focus(), 30);
 }
@@ -17396,7 +12977,7 @@ function _cktAddItem(si) {
   if(!txt) return;
   _cktState.secoes[si].items.push(txt);
   _cktRenderForm();
-  // Re-focus no campo de adicionar da mesma seção
+  // Re-focus no campo de adicionar da mesma se��o
   setTimeout(() => document.getElementById(`ckt-add-inp-${si}`)?.focus(), 30);
 }
 function _cktRemItem(si, ii) {
@@ -17409,7 +12990,7 @@ async function salvarChecklistTarefa() {
   if(!_cktState) return;
   const titulo = (_cktState.titulo || document.getElementById('ckt-titulo')?.value || '').trim();
   const userId = _cktState.userId || document.getElementById('ckt-user')?.value || null;
-  if(!titulo) { toast('Informe o título do checklist'); document.getElementById('ckt-titulo')?.focus(); return; }
+  if(!titulo) { toast('Informe o t�tulo do checklist'); document.getElementById('ckt-titulo')?.focus(); return; }
   const totalItens = _cktContarItens();
   if(!totalItens) { toast('Adicione ao menos um item ao checklist'); return; }
 
@@ -17429,7 +13010,7 @@ async function salvarChecklistTarefa() {
   }).select().single();
   if(error) { toast('Erro: '+error.message); return; }
 
-  // Flatten: todos os itens de todas as seções, campo secao = nome da seção
+  // Flatten: todos os itens de todas as se��es, campo secao = nome da se��o
   const allItems = [];
   let ordem = 0;
   _cktState.secoes.forEach(sec => {
@@ -17446,12 +13027,12 @@ async function salvarChecklistTarefa() {
   if(allItems.length) {
     await sb.from('checklist_tarefa_item').insert(allItems);
   }
-  // Notifica atribuído
+  // Notifica atribu�do
   if(userId) {
     const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo);
     criarNotificacao(userId, 'tarefa',
-      `${u.nome.split(' ')[0]} atribuiu um checklist de tarefas para você`,
-      `"${titulo}" — ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
+      `${u.nome.split(' ')[0]} atribuiu um checklist de tarefas para voc�`,
+      `"${titulo}" � ${prod?.oportunidades?.projeto||prod?.nome||'Projeto'}`,
       { tipo:'registro', produto_id: G.produtoAtivo }
     );
   }
@@ -17463,9 +13044,9 @@ async function salvarChecklistTarefa() {
   toast('Checklist criado.');
 }
 
-// ═════════════════════════════════════════════════════════════
-// PRESETS (painel sócios)
-// ═════════════════════════════════════════════════════════════
+// -------------------------------------------------------------
+// PRESETS (painel s�cios)
+// -------------------------------------------------------------
 
 async function carregarPresetsAdmin() {
   const { data } = await sb.from('checklist_etapa_preset')
@@ -17485,7 +13066,7 @@ function _renderPresetsAdmin() {
   // Agrupa por tipo_produto
   const grupos = {};
   G._ckPresets.forEach(p => {
-    const g = p.tipo_produto || 'Genérico';
+    const g = p.tipo_produto || 'Gen�rico';
     if(!grupos[g]) grupos[g] = [];
     grupos[g].push(p);
   });
@@ -17500,15 +13081,15 @@ function _renderPresetsAdmin() {
           ${p.etapa_tipo?`<span style="font-size:10px;color:#888;background:var(--cinza2);padding:2px 7px;border-radius:4px">${_ckE(p.etapa_tipo)}</span>`:''}
           <span style="flex:1"></span>
           <button class="btn sm" onclick="abrirFormPreset(${_sqCk(p.id)})">Editar</button>
-          <button class="btn sm tc" onclick="deletarPreset(${_sqCk(p.id)})">×</button>
+          <button class="btn sm tc" onclick="deletarPreset(${_sqCk(p.id)})">�</button>
         </div>
-        ${semSec.map(it=>`<div class="preset-item-row"><span style="color:#ccc;margin-right:4px">·</span>${_ckE(it.texto)}</div>`).join('')}
+        ${semSec.map(it=>`<div class="preset-item-row"><span style="color:#ccc;margin-right:4px">�</span>${_ckE(it.texto)}</div>`).join('')}
         ${secoes.map(s => {
           const sit = (s.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem);
           return `<div class="preset-secao-blk">
             <div class="preset-secao-titulo">${_ckE(s.titulo)}</div>
             ${s.intro?`<div class="preset-secao-intro">${_ckE(s.intro)}</div>`:''}
-            ${sit.map(it=>`<div class="preset-item-row"><span style="color:#ccc;margin-right:4px">·</span>${_ckE(it.texto)}</div>`).join('')}
+            ${sit.map(it=>`<div class="preset-item-row"><span style="color:#ccc;margin-right:4px">�</span>${_ckE(it.texto)}</div>`).join('')}
           </div>`;
         }).join('')}
       </div>`;
@@ -17533,7 +13114,7 @@ function abrirFormPreset(id) {
     <div class="modal" style="max-width:600px;width:95%;margin:32px auto">
       <div class="modal-hd">
         <span class="modal-hd-title">${preset?'Editar preset':'Novo preset de checklist'}</span>
-        <button class="modal-close" onclick="document.getElementById('popup-preset').remove()">×</button>
+        <button class="modal-close" onclick="document.getElementById('popup-preset').remove()">�</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
         <div class="fg fg2">
@@ -17543,13 +13124,13 @@ function abrirFormPreset(id) {
           </div>
           <div class="fgroup">
             <label>Tipo de etapa alvo</label>
-            <input id="pre-etapa-tipo" type="text" value="${_ckA(preset?.etapa_tipo||'')}" placeholder="Ex: Projeto Executivo, EP, Definitivo…">
+            <input id="pre-etapa-tipo" type="text" value="${_ckA(preset?.etapa_tipo||'')}" placeholder="Ex: Projeto Executivo, EP, Definitivo�">
           </div>
         </div>
         <div class="fgroup">
           <label>Tipo de produto</label>
           <select id="pre-tipo-produto">
-            <option value="">Genérico (todos os tipos)</option>
+            <option value="">Gen�rico (todos os tipos)</option>
             <option value="urbanismo"    ${preset?.tipo_produto==='urbanismo'?'selected':''}>Urbanismo</option>
             <option value="paisagismo"   ${preset?.tipo_produto==='paisagismo'?'selected':''}>Paisagismo</option>
             <option value="especiais"    ${preset?.tipo_produto==='especiais'?'selected':''}>Especiais</option>
@@ -17558,8 +13139,8 @@ function abrirFormPreset(id) {
         </div>
         <div style="border-top:1px solid var(--cinza2);padding-top:12px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999">Seções e itens</span>
-            <button onclick="_addPreSecao()" class="btn sm">+ Nova seção</button>
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999">Se��es e itens</span>
+            <button onclick="_addPreSecao()" class="btn sm">+ Nova se��o</button>
           </div>
           <div id="pre-secoes-lista"></div>
         </div>
@@ -17601,49 +13182,49 @@ function _renderPreForm() {
 
   let html = '';
 
-  // Itens sem seção
+  // Itens sem se��o
   html += `<div style="margin-bottom:12px">
-    <div style="font-size:9px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Itens sem seção (aparecem no topo do checklist)</div>
+    <div style="font-size:9px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Itens sem se��o (aparecem no topo do checklist)</div>
     <div id="pre-sem-sec-lista">
       ${data.semSecao.map((it,i)=>`
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
-          <input type="text" value="${_ckA(it.texto)}" placeholder="Descrição do item…"
+          <input type="text" value="${_ckA(it.texto)}" placeholder="Descri��o do item�"
             style="${_fi}" onchange="_preUpdateSemSec(${i},this.value)">
-          <button onclick="_remPreSemSec(${i})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;line-height:1;padding:2px 4px">×</button>
+          <button onclick="_remPreSemSec(${i})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;line-height:1;padding:2px 4px">�</button>
         </div>`).join('')}
     </div>
     <div style="display:flex;gap:6px;margin-top:5px">
-      <input id="pre-sem-sec-novo" type="text" style="${_fi}" placeholder="Novo item…">
+      <input id="pre-sem-sec-novo" type="text" style="${_fi}" placeholder="Novo item�">
       <button onclick="_addPreSemSec()" class="btn sm" style="flex-shrink:0">+ Add</button>
     </div>
   </div>`;
 
-  // Seções
+  // Se��es
   html += data.secoes.map((s,si)=>`
     <div class="pre-secao-block" id="pre-sec-${si}">
       <div class="pre-secao-hd">
-        <input type="text" value="${_ckA(s.titulo)}" placeholder="Título da seção…"
+        <input type="text" value="${_ckA(s.titulo)}" placeholder="T�tulo da se��o�"
           style="flex:1;border:none;border-bottom:1px solid var(--azul);padding:4px 2px;font-size:11px;font-weight:700;font-family:var(--font-ui);outline:none;color:var(--azul);background:transparent"
           onchange="_preUpdateSecao(${si},'titulo',this.value)">
-        <button onclick="_remPreSecao(${si})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;padding:2px 4px" title="Remover seção">×</button>
+        <button onclick="_remPreSecao(${si})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;padding:2px 4px" title="Remover se��o">�</button>
       </div>
       <div class="fgroup" style="margin-bottom:8px">
-        <label>Texto introdutório (instrução geral — não é um item marcável)</label>
-        <textarea rows="2" placeholder="Descreva o objetivo desta seção, critérios de entrega…"
+        <label>Texto introdut�rio (instru��o geral � n�o � um item marc�vel)</label>
+        <textarea rows="2" placeholder="Descreva o objetivo desta se��o, crit�rios de entrega�"
           onchange="_preUpdateSecao(${si},'intro',this.value)">${_ckA(s.intro||'')}</textarea>
       </div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#aaa;margin-bottom:5px">Itens desta seção</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#aaa;margin-bottom:5px">Itens desta se��o</div>
       <div id="pre-sec-items-${si}">
         ${s.items.map((it,ii)=>`
           <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
-            <span style="color:#aaa;font-size:10px;flex-shrink:0">·</span>
-            <input type="text" value="${_ckA(it.texto)}" placeholder="Descrição do item…"
+            <span style="color:#aaa;font-size:10px;flex-shrink:0">�</span>
+            <input type="text" value="${_ckA(it.texto)}" placeholder="Descri��o do item�"
               style="${_fi}" onchange="_preUpdateSecaoItem(${si},${ii},this.value)">
-            <button onclick="_remPreSecaoItem(${si},${ii})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;padding:2px 4px">×</button>
+            <button onclick="_remPreSecaoItem(${si},${ii})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;flex-shrink:0;padding:2px 4px">�</button>
           </div>`).join('')}
       </div>
       <div style="display:flex;gap:6px;margin-top:4px">
-        <input id="pre-sec-novo-${si}" type="text" style="${_fi}" placeholder="Novo item para esta seção…"
+        <input id="pre-sec-novo-${si}" type="text" style="${_fi}" placeholder="Novo item para esta se��o�"
           onkeydown="if(event.key==='Enter'){event.preventDefault();_addPreSecaoItem(${si})}">
         <button onclick="_addPreSecaoItem(${si})" class="btn sm" style="flex-shrink:0">+ Add</button>
       </div>
@@ -17677,7 +13258,7 @@ function _addPreSecao() {
   if(!pop) return;
   pop._data.secoes.push({ titulo:'', intro:'', items:[] });
   _renderPreForm();
-  // Foca no título da nova seção
+  // Foca no t�tulo da nova se��o
   const idx = pop._data.secoes.length - 1;
   setTimeout(()=> document.querySelector(`#pre-sec-${idx} input`)?.focus(), 50);
 }
@@ -17715,7 +13296,7 @@ async function salvarPreset(id) {
   let presetId = id || null;
   if(presetId) {
     await sb.from('checklist_etapa_preset').update({ nome, tipo_produto: tipoProduto, etapa_tipo: etapaTipo }).eq('id', presetId);
-    // Apaga seções e itens antigos (CASCADE nos itens)
+    // Apaga se��es e itens antigos (CASCADE nos itens)
     await sb.from('checklist_etapa_preset_secao').delete().eq('preset_id', presetId);
     await sb.from('checklist_etapa_preset_item').delete().eq('preset_id', presetId);
   } else {
@@ -17726,20 +13307,20 @@ async function salvarPreset(id) {
     presetId = pNew.id;
   }
 
-  // Insere itens sem seção
+  // Insere itens sem se��o
   if(data.semSecao.length) {
     await sb.from('checklist_etapa_preset_item').insert(
       data.semSecao.map((it,i) => ({ preset_id: presetId, secao_id: null, texto: it.texto, ordem: i }))
     );
   }
 
-  // Insere seções + seus itens
+  // Insere se��es + seus itens
   for(let si=0; si<data.secoes.length; si++) {
     const s = data.secoes[si];
     if(!s.titulo.trim() && !s.items.length) continue;
     const { data: secRow } = await sb.from('checklist_etapa_preset_secao').insert({
       preset_id: presetId,
-      titulo:    s.titulo || 'Sem título',
+      titulo:    s.titulo || 'Sem t�tulo',
       intro:     s.intro  || null,
       ordem:     si,
     }).select().single();
@@ -17756,21 +13337,21 @@ async function salvarPreset(id) {
 }
 
 async function deletarPreset(id) {
-  abrirPopupConfirm('Excluir preset?', 'O preset será removido. Checklists já instanciados não são afetados.', async () => {
+  abrirPopupConfirm('Excluir preset?', 'O preset ser� removido. Checklists j� instanciados n�o s�o afetados.', async () => {
     await sb.from('checklist_etapa_preset_item').delete().eq('preset_id', id);
     await sb.from('checklist_etapa_preset_secao').delete().eq('preset_id', id);
     await sb.from('checklist_etapa_preset').delete().eq('id', id);
     await carregarPresetsAdmin();
-    toast('Preset excluído.');
+    toast('Preset exclu�do.');
   });
 }
 
-// ═════════════════════════════════════════════════════════════
-// DELETE COMENTÁRIO REGISTRO
-// ═════════════════════════════════════════════════════════════
+// -------------------------------------------------------------
+// DELETE COMENT�RIO REGISTRO
+// -------------------------------------------------------------
 
 function deletarComentarioReg(id, entradaId) {
-  abrirPopupConfirm('Excluir comentário?', 'Este comentário será removido permanentemente.', async () => {
+  abrirPopupConfirm('Excluir coment�rio?', 'Este coment�rio ser� removido permanentemente.', async () => {
     // Apaga respostas primeiro
     await sb.from('reg_comentario').delete().eq('parent_id', id);
     const { error } = await sb.from('reg_comentario').delete().eq('id', id);
@@ -17783,27 +13364,27 @@ function deletarComentarioReg(id, entradaId) {
       if(el) el.textContent = String(r.reg_comentario.length);
     }
     await carregarComentariosReg(entradaId);
-    toast('Comentário removido.');
+    toast('Coment�rio removido.');
   });
 }
 
-// ══════════════════════════════════════════════════════════════
-//   NOTIFICAÇÕES + @ MENTION
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
+//   NOTIFICA��ES + @ MENTION
+// --------------------------------------------------------------
 
 // Helpers de escape (independentes dos de registro)
 const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
 const _sqN  = s => "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,' ') + "'";
 
-// ── Agendar reunião por etapa (abre Google Calendar pré-preenchido) ───────────
+// -- Agendar reuni�o por etapa (abre Google Calendar pr�-preenchido) -----------
 async function gcalAbrirReuniaoEtapa(etapaId, etapaNome, produtoNome) {
   const titulo = encodeURIComponent(`EXP | ${etapaNome} | ${produtoNome}`);
-  // Abre Google Calendar na criação de evento com título pré-preenchido
+  // Abre Google Calendar na cria��o de evento com t�tulo pr�-preenchido
   window.open(`https://calendar.google.com/calendar/r/eventedit?text=${titulo}`, '_blank');
 
-  // Pergunta se quer registrar a data da reunião na etapa
-  const dataStr = prompt(`Data da reunião para "${etapaNome}" (AAAA-MM-DD):`);
+  // Pergunta se quer registrar a data da reuni�o na etapa
+  const dataStr = prompt(`Data da reuni�o para "${etapaNome}" (AAAA-MM-DD):`);
   if (!dataStr || !/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) return;
 
   const { error } = await sb.from('etapas').update({ data_reuniao: dataStr, reuniao_link: null }).eq('id', etapaId);
@@ -17814,12 +13395,12 @@ async function gcalAbrirReuniaoEtapa(etapaId, etapaNome, produtoNome) {
   if (document.getElementById('modal-produto')?.style.display !== 'none') {
     abrirModalProduto(G.produtoAtivo);
   }
-  toast('Data da reunião registrada!');
+  toast('Data da reuni�o registrada!');
 }
 
-// ── Estado (notifs e tarefas gerenciados pelo AppNotif) ───────
+// -- Estado (notifs e tarefas gerenciados pelo AppNotif) -------
 
-// ── Push Desktop — registro do Service Worker ─────────────────────────
+// -- Push Desktop � registro do Service Worker -------------------------
 const _VAPID_PUB = 'BCRHUrgL16XzJCyEPvkujum8zkDiRpoLbpd5NRUmeeC8wRJM9GvMxxiNkoCRUWokj3JJmIl6ucciYUz_y-n7UK0';
 
 function _vapidB64ToUint8(b64) {
@@ -17853,8 +13434,8 @@ async function initPushDesktop() {
   }
 }
 
-// ── Criar notificação no DB (não notifica a si mesmo) ─────────
-// ── Push ─ fire-and-forget ───────────────────────────────────────────
+// -- Criar notifica��o no DB (n�o notifica a si mesmo) ---------
+// -- Push - fire-and-forget -------------------------------------------
 function enviarPush(usuarioId, titulo, corpo, url) {
   if (!usuarioId || usuarioId === G.usuario?.id) return;
   sb.functions.invoke('send-push', {
@@ -17890,17 +13471,17 @@ async function criarNotificacao(usuarioId, tipo, titulo, corpo, link = {}) {
   } catch(e) { console.warn('criarNotificacao:', e.message); }
 }
 
-// ══════════════════════════════════════════════════════════════
-//   SININHO — delegado ao AppNotif global (shared/app-notif.js)
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
+//   SININHO � delegado ao AppNotif global (shared/app-notif.js)
+// --------------------------------------------------------------
 
-// ── Registra navegação ao clicar em notificação deste módulo ──
+// -- Registra navega��o ao clicar em notifica��o deste m�dulo --
 function iniciarNotificacoes() {
-  // AppNotif.init já foi chamado pelo ExpNav; apenas registra o listener de navegação
+  // AppNotif.init j� foi chamado pelo ExpNav; apenas registra o listener de navega��o
   window.addEventListener('exp:notif-open', e => _onNotifOpen(e.detail));
 }
 
-// ── Conclui tarefa direto do painel ───────────────────────────
+// -- Conclui tarefa direto do painel ---------------------------
 async function concluirTarefaSino(id) {
   await sb.from('tarefas_livres').update({
     concluida: true, concluida_em: new Date().toISOString()
@@ -17909,13 +13490,13 @@ async function concluirTarefaSino(id) {
   carregarTarefas();
 }
 
-// ── Navega para aba de tarefas ────────────────────────────────
+// -- Navega para aba de tarefas --------------------------------
 function irParaTarefas() {
   AppNotif.close();
   document.querySelector('.ntab[data-tab="dashboard"]')?.click();
 }
 
-// ── Navegação ao abrir notificação do módulo gestão ───────────
+// -- Navega��o ao abrir notifica��o do m�dulo gest�o -----------
 // Acionado via evento 'exp:notif-open' emitido pelo AppNotif
 function _onNotifOpen(n) {
   if (!n || n.modulo !== 'gestao') return;
@@ -17925,14 +13506,14 @@ function _onNotifOpen(n) {
       const d = JSON.parse(n.corpo);
       _prazoEdit._pendingRequest = d;
       _prazoEdit._pendingNotifId = n.id;
-      document.getElementById('vd-titulo').textContent = 'Solicitação de alteração de prazo';
+      document.getElementById('vd-titulo').textContent = 'Solicita��o de altera��o de prazo';
       document.getElementById('vd-msg').textContent =
-        `${d.solicitanteNome?.split(' ')[0] || 'Colaborador'} solicitou alteração de prazo: ` +
+        `${d.solicitanteNome?.split(' ')[0] || 'Colaborador'} solicitou altera��o de prazo: ` +
         `de ${d.dataAntiga ? fmtDate(d.dataAntiga) : '(sem data)'} para ${fmtDate(d.novaData)}.`;
       document.getElementById('vd-btns').style.display = 'none';
       document.getElementById('vd-btns-resp').style.display = 'flex';
       document.getElementById('modal-validar-data').style.display = 'flex';
-    } catch { toast('Erro ao abrir solicitação.'); }
+    } catch { toast('Erro ao abrir solicita��o.'); }
     return;
   }
   if (n.link_tipo === 'registro' && n.link_produto_id) {
@@ -17960,25 +13541,25 @@ function _onNotifOpen(n) {
   }
 }
 
-// ── Encerrar notif individual (chamado externamente, ex: prazo) ─
+// -- Encerrar notif individual (chamado externamente, ex: prazo) -
 async function encerrarNotif(id) {
   await AppNotif._encerrarNotif(id);
 }
 
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
 //   @ MENTION AUTOCOMPLETE
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
 
 let _mencaoDD   = null;  // dropdown DOM element
 let _mencaoTa   = null;  // textarea alvo
-let _mencaoPos  = -1;    // posição do @ no texto
+let _mencaoPos  = -1;    // posi��o do @ no texto
 
 // Ativa @mention em um textarea
 function ativarMencao(ta) {
   if(!ta || ta._mencaoOk) return;
   ta._mencaoOk  = true;
   ta._mencaoSet = new Set();
-  // Insere o container de chips logo após o bloco pai (.reg-coment-add ou o próprio ta)
+  // Insere o container de chips logo ap�s o bloco pai (.reg-coment-add ou o pr�prio ta)
   const anchor = ta.closest('.reg-coment-add') || ta.closest('.reg-form-field') || ta.parentNode;
   let chips = anchor._mencaoChips;
   if(!chips) {
@@ -18072,8 +13653,8 @@ function _atualizarMencaoChips(ta) {
     return `<span class="mencao-chip" data-uid="${uid}">
       <span class="mencao-chip-av" style="background:${u.cor||'#888'}">${u.iniciais||'?'}</span>
       @${_escN(u.nome.split(' ')[0])}
-      <button class="mencao-chip-del" title="Remover menção"
-        onclick="_removerMencaoChip(this.closest('.mencao-chip'))">×</button>
+      <button class="mencao-chip-del" title="Remover men��o"
+        onclick="_removerMencaoChip(this.closest('.mencao-chip'))">�</button>
     </span>`;
   }).join('');
 }
@@ -18089,7 +13670,7 @@ function _fecharMencaoDD() {
   if(_mencaoDD) { _mencaoDD.remove(); _mencaoDD = null; }
 }
 
-// Notifica todos os usuários mencionados no texto
+// Notifica todos os usu�rios mencionados no texto
 async function notificarMencoes(texto, ta, link) {
   const uids = ta?._mencaoSet ? [...ta._mencaoSet] : [];
   // Fallback: parse @Nome no texto
@@ -18103,8 +13684,8 @@ async function notificarMencoes(texto, ta, link) {
   const unique = [...new Set(uids)];
   for(const uid of unique) {
     await criarNotificacao(uid, 'mencao',
-      `${G.usuario.nome.split(' ')[0]} mencionou você`,
-      texto.slice(0, 100) + (texto.length > 100 ? '…' : ''),
+      `${G.usuario.nome.split(' ')[0]} mencionou voc�`,
+      texto.slice(0, 100) + (texto.length > 100 ? '�' : ''),
       link
     );
   }
@@ -18114,9 +13695,9 @@ async function notificarMencoes(texto, ta, link) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-//   LEMBRETE — popdown ancorado no botão +
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
+//   LEMBRETE � popdown ancorado no bot�o +
+// --------------------------------------------------------------
 
 function toggleLembretePopdown(e) {
   e?.stopPropagation();
@@ -18126,7 +13707,7 @@ function toggleLembretePopdown(e) {
   // Fecha outros popdowns abertos
   document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
   if (isOpen) return;
-  // Preenche select de usuários
+  // Preenche select de usu�rios
   const sel = document.getElementById('lemb-para');
   if (sel && sel.options.length <= 1) {
     sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
@@ -18158,7 +13739,7 @@ async function enviarLembrete() {
   const targets = para === 'todos'
     ? (G.todosUsuarios||[]).filter(u => u.id !== G.usuario.id)
     : [(G.todosUsuarios||[]).find(u => u.id === para)].filter(Boolean);
-  if (status) status.textContent = 'Enviando…';
+  if (status) status.textContent = 'Enviando�';
   for (const u of targets) {
     await criarNotificacao(u.id, 'lembrete',
       `Lembrete de ${G.usuario.nome.split(' ')[0]}`,
@@ -18170,42 +13751,42 @@ async function enviarLembrete() {
   toast(`Lembrete enviado para ${targets.length === 1 ? targets[0].nome.split(' ')[0] : 'toda a equipe'}`);
 }
 
-// ══════════════════════════════════════════════════════════════
-//   NOTIFICAR REVISÃO (botão na revisão)
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
+//   NOTIFICAR REVIS�O (bot�o na revis�o)
+// --------------------------------------------------------------
 
 async function notificarRevisao(revisaoId) {
   const rev = G._revisoes?.find(r => r.id === revisaoId);
-  if(!rev) { toast('Revisão não encontrada'); return; }
+  if(!rev) { toast('Revis�o n�o encontrada'); return; }
   const etapa = G.todasEtapas.find(e => e.id === rev.etapa_id);
   const prod  = etapa ? G.todosProdutos.find(p => p.id === etapa.produto_id) : null;
   const coord = prod?.coordenador_id;
   const opp   = prod?.oportunidades;
   const nomeProjeto = opp?.projeto || prod?.nome || 'Projeto';
-  // Coleta pranchas disponíveis (já carregadas via selecionarRevisao)
+  // Coleta pranchas dispon�veis (j� carregadas via selecionarRevisao)
   const pranchasEl = document.querySelectorAll('#pranchas-wrap .prancha-card');
   const nPranchas  = pranchasEl.length;
   const corpo = nPranchas > 1
-    ? `Novas pranchas cadastradas no projeto ${nomeProjeto}, etapa ${etapa?.nome||'—'}.`
-    : `Revisão #${rev.numero} do projeto ${nomeProjeto} está pronta para análise.`;
+    ? `Novas pranchas cadastradas no projeto ${nomeProjeto}, etapa ${etapa?.nome||'�'}.`
+    : `Revis�o #${rev.numero} do projeto ${nomeProjeto} est� pronta para an�lise.`;
   const destinos = new Set();
   if(coord) destinos.add(coord);
-  // Notifica também o coordenador da etapa se existir
+  // Notifica tamb�m o coordenador da etapa se existir
   if(etapa?.coordenador_id) destinos.add(etapa.coordenador_id);
   // Notifica todos os desenvolvedores da etapa
   (G.etapaDevs[etapa?.id] || []).forEach(id => destinos.add(id));
   if(destinos.size === 0) { toast('Nenhum coordenador ou desenvolvedor definido na etapa'); return; }
   for(const uid of destinos) {
     await criarNotificacao(uid, 'revisao',
-      `Revisão #${rev.numero} pronta — ${nomeProjeto}`,
+      `Revis�o #${rev.numero} pronta � ${nomeProjeto}`,
       corpo,
       { tipo:'revisao', produto_id: prod?.id, etapa_id: etapa?.id, revisao_id: revisaoId }
     );
   }
-  toast(`Notificação enviada para ${destinos.size} ${destinos.size === 1 ? 'pessoa' : 'pessoas'}`);
+  toast(`Notifica��o enviada para ${destinos.size} ${destinos.size === 1 ? 'pessoa' : 'pessoas'}`);
 }
 
-// ── PRAZO PRIORIDADE ──────────────────────────────────────────
+// -- PRAZO PRIORIDADE ------------------------------------------
 let _prazoEdit = {}; // {prioId, prodId, coordId, dataAntiga}
 
 function editarPrazoPrioridade(prioId, prazoAtual, prodId, coordId) {
@@ -18224,15 +13805,15 @@ async function confirmarAlteracaoData() {
   const euSouCoord = coordId === G.usuario.id || isSocioRole(G.usuario.role);
 
   if (euSouCoord) {
-    // Coordenador/sócio: altera diretamente
+    // Coordenador/s�cio: altera diretamente
     await sb.from('prioridades_usuario').update({ prazo_texto: novadata }).eq('id', prioId);
     carregarPrioridades();
     toast('Prazo atualizado.');
   } else {
-    // Colaborador: pergunta se quer alinhar com coordenação
+    // Colaborador: pergunta se quer alinhar com coordena��o
     _prazoEdit.novaData = novadata;
     document.getElementById('vd-msg').textContent =
-      `Você deseja alinhar a nova data (${fmtDate(novadata)}) com a coordenação do projeto?`;
+      `Voc� deseja alinhar a nova data (${fmtDate(novadata)}) com a coordena��o do projeto?`;
     document.getElementById('modal-validar-data').style.display = 'flex';
   }
 }
@@ -18240,18 +13821,18 @@ async function confirmarAlteracaoData() {
 async function solicitarDataCoord(alinhar) {
   fecharModal('modal-validar-data');
   const { prioId, prodId, coordId, dataAntiga, novaData } = _prazoEdit;
-  if (!alinhar) { toast('Data não alterada.'); return; }
-  if (!coordId) { toast('Coordenador não identificado para este projeto.'); return; }
+  if (!alinhar) { toast('Data n�o alterada.'); return; }
+  if (!coordId) { toast('Coordenador n�o identificado para este projeto.'); return; }
 
   const dataAntigaFmt = dataAntiga ? fmtDate(dataAntiga) : '(sem data)';
   const novaFmt = fmtDate(novaData);
   await criarNotificacao(coordId, 'solicitacao_data',
-    `${G.usuario.nome.split(' ')[0]} solicitou alteração de prazo`,
+    `${G.usuario.nome.split(' ')[0]} solicitou altera��o de prazo`,
     `De ${dataAntigaFmt} para ${novaFmt}`,
     JSON.stringify({ prioId, prodId, dataAntiga, novaData,
       solicitanteId: G.usuario.id, solicitanteNome: G.usuario.nome }),
     'solicitacao_data', prodId);
-  toast('Solicitação enviada para o coordenador.');
+  toast('Solicita��o enviada para o coordenador.');
 }
 
 async function responderSolicitacaoData(aceitar) {
@@ -18263,25 +13844,25 @@ async function responderSolicitacaoData(aceitar) {
   if (aceitar) {
     await sb.from('prioridades_usuario').update({ prazo_texto: novaData }).eq('id', prioId);
     await criarNotificacao(solicitanteId, 'lembrete',
-      'Alteração de prazo aceita ✓',
-      `${G.usuario.nome.split(' ')[0]} aceitou sua solicitação. Novo prazo: ${fmtDate(novaData)}.`,
+      'Altera��o de prazo aceita ?',
+      `${G.usuario.nome.split(' ')[0]} aceitou sua solicita��o. Novo prazo: ${fmtDate(novaData)}.`,
       null, null, null);
     toast('Data atualizada e colaborador notificado.');
     carregarPrioridades();
   } else {
     await criarNotificacao(solicitanteId, 'lembrete',
-      'Alteração de prazo recusada',
-      `${G.usuario.nome.split(' ')[0]} recusou a alteração. Prazo mantido: ${dataAntiga ? fmtDate(dataAntiga) : '(sem data)'}.`,
+      'Altera��o de prazo recusada',
+      `${G.usuario.nome.split(' ')[0]} recusou a altera��o. Prazo mantido: ${dataAntiga ? fmtDate(dataAntiga) : '(sem data)'}.`,
       null, null, null);
-    toast('Solicitação recusada. Colaborador notificado.');
+    toast('Solicita��o recusada. Colaborador notificado.');
   }
-  // Encerra a notificação original
+  // Encerra a notifica��o original
   if (_prazoEdit._pendingNotifId) encerrarNotif(_prazoEdit._pendingNotifId);
 }
 
-// ══════════════════════════════════════════════════════════════
-//   PROCESSOS — CHECKLISTS DE PROCESSO
-// ══════════════════════════════════════════════════════════════
+// --------------------------------------------------------------
+//   PROCESSOS � CHECKLISTS DE PROCESSO
+// --------------------------------------------------------------
 
 G._processos       = [];
 G._procStatus      = {};   // { tarefa_id: { usuario_id: bool } }
@@ -18393,7 +13974,7 @@ function renderProcLista() {
     return `<div class="proc-lista-item${done?' proc-done':''}${selected}" onclick="selecionarChecklist(${_sqN(c.id)})">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div class="proc-nome">${_escN(c.nome)}</div>
-        <div style="display:flex;align-items:center;gap:3px">${chips}${moreChips}${!atrib.length ? '<span style="font-size:9px;color:#ccc;font-style:italic">—</span>' : ''}</div>
+        <div style="display:flex;align-items:center;gap:3px">${chips}${moreChips}${!atrib.length ? '<span style="font-size:9px;color:#ccc;font-style:italic">�</span>' : ''}</div>
       </div>
       ${c.descricao ? `<div class="proc-desc">${_escN(c.descricao)}</div>` : ''}
       <div class="proc-prog">
@@ -18431,7 +14012,7 @@ function procExpandirTema(temaId, checklistId) {
 function renderProcDetalhe(id) {
   const detalhe = document.getElementById('proc-detalhe');
   const c = G._processos.find(c => c.id === id);
-  if (!c) { detalhe.innerHTML = '<div class="empty-note">Checklist não encontrado</div>'; return; }
+  if (!c) { detalhe.innerHTML = '<div class="empty-note">Checklist n�o encontrado</div>'; return; }
 
   const uid      = G.usuario.id;
   const isSoc    = isSocioUser();
@@ -18466,8 +14047,8 @@ function renderProcDetalhe(id) {
         onclick="${canCheck?`toggleTarefaProcesso(${tarefaIdJs},${checklistIdJs},${!myDone})`:''}">
         ${_escN(tr.descricao)}
       </span>
-      ${doneByStr ? `<span style="font-size:9px;color:#bbb;flex-shrink:0">✓ ${doneByStr}</span>` : ''}
-      ${isSoc ? `<button onclick="procExcluirTarefa(${tarefaIdJs},${checklistIdJs})" title="Excluir" style="font-size:10px;border:none;background:none;color:#ddd;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1">✕</button>` : ''}
+      ${doneByStr ? `<span style="font-size:9px;color:#bbb;flex-shrink:0">? ${doneByStr}</span>` : ''}
+      ${isSoc ? `<button onclick="procExcluirTarefa(${tarefaIdJs},${checklistIdJs})" title="Excluir" style="font-size:10px;border:none;background:none;color:#ddd;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1">?</button>` : ''}
     </div>`;
   };
 
@@ -18510,7 +14091,7 @@ function renderProcDetalhe(id) {
         <div style="display:flex;align-items:center;gap:8px">
           <span class="prancha-prog">${tConc}/${tTotal}</span>
           ${isSoc ? `<button onclick="event.stopPropagation();procAdicionarTarefaInline(${temaIdJs},${checklistIdJs})" class="btn sm">+ Tarefa</button>` : ''}
-          ${isSoc ? `<button onclick="event.stopPropagation();procExcluirTema(${temaIdJs},${checklistIdJs})" class="btn sm" title="Excluir tema">✕</button>` : ''}
+          ${isSoc ? `<button onclick="event.stopPropagation();procExcluirTema(${temaIdJs},${checklistIdJs})" class="btn sm" title="Excluir tema">?</button>` : ''}
         </div>
       </div>
       <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${tPct}%"></div></div>
@@ -18535,13 +14116,13 @@ function renderProcDetalhe(id) {
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           ${chips}
-          ${isSoc ? `<button onclick="procEditarChecklist(${_sqN(id)})" class="btn sm" title="Editar">✎</button>` : ''}
-          ${isSoc ? `<button onclick="abrirAtribuirChecklist(${_sqN(id)})" class="btn sm">Atribuir ▾</button>` : ''}
-          ${isSoc ? `<button onclick="procArquivar(${_sqN(id)})" class="btn sm">${arquivado?'↺ Restaurar':'Arquivar'}</button>` : ''}
+          ${isSoc ? `<button onclick="procEditarChecklist(${_sqN(id)})" class="btn sm" title="Editar">?</button>` : ''}
+          ${isSoc ? `<button onclick="abrirAtribuirChecklist(${_sqN(id)})" class="btn sm">Atribuir ?</button>` : ''}
+          ${isSoc ? `<button onclick="procArquivar(${_sqN(id)})" class="btn sm">${arquivado?'? Restaurar':'Arquivar'}</button>` : ''}
         </div>
       </div>
       <div class="rev-summary-bar-row" style="margin-top:10px">
-        <span class="rev-summary-bar-label">Tarefas concluídas</span>
+        <span class="rev-summary-bar-label">Tarefas conclu�das</span>
         <div class="rev-summary-bar-track"><div class="rev-summary-bar-fill" style="width:${pct}%"></div></div>
         <span class="rev-summary-count">${conc}/${total}</span>
       </div>
@@ -18573,7 +14154,7 @@ async function toggleTarefaProcesso(tarefaId, checklistId, concluida) {
   renderProcDetalhe(checklistId);
 }
 
-// ── Novo checklist (popup) ────────────────────────────────────
+// -- Novo checklist (popup) ------------------------------------
 function abrirNovoChecklist() {
   let pop = document.getElementById('_proc-novo-pop');
   if (pop) { pop.remove(); return; }
@@ -18597,12 +14178,12 @@ function abrirNovoChecklist() {
       <div style="font-size:13px;font-weight:700;margin-bottom:16px">Novo Checklist de Processo</div>
 
       <label style="${_l}">Nome do checklist</label>
-      <input id="_proc-nome" type="text" placeholder="Ex: Processo de aprovação na prefeitura" style="${_f};margin-bottom:12px">
+      <input id="_proc-nome" type="text" placeholder="Ex: Processo de aprova��o na prefeitura" style="${_f};margin-bottom:12px">
 
-      <label style="${_l}">Descrição <span style="font-weight:400;font-size:9px;text-transform:none;letter-spacing:0">(opcional)</span></label>
-      <textarea id="_proc-desc" rows="2" placeholder="Descreva brevemente o objetivo deste checklist…" style="${_f};resize:none;margin-bottom:12px"></textarea>
+      <label style="${_l}">Descri��o <span style="font-weight:400;font-size:9px;text-transform:none;letter-spacing:0">(opcional)</span></label>
+      <textarea id="_proc-desc" rows="2" placeholder="Descreva brevemente o objetivo deste checklist�" style="${_f};resize:none;margin-bottom:12px"></textarea>
 
-      <label style="${_l}">Responsáveis</label>
+      <label style="${_l}">Respons�veis</label>
       <div style="border:1px solid var(--cinza);border-radius:6px;padding:4px 10px;max-height:130px;overflow-y:auto;margin-bottom:16px">
         ${userOpts}
       </div>
@@ -18632,13 +14213,13 @@ async function confirmarNovoChecklist() {
     .select().single();
   if (errCl) { toast('Erro ao criar: ' + errCl.message); return; }
 
-  // 2. Atribuições
+  // 2. Atribui��es
   if (responsaveis.length) {
     const { error: errAtr } = await sb.from('processos_atribuicao')
       .insert(responsaveis.map(uid => ({ checklist_id: cl.id, usuario_id: uid })));
     if (errAtr) {
       await sb.from('processos_checklist').delete().eq('id', cl.id);
-      toast('Erro ao atribuir responsáveis: ' + errAtr.message);
+      toast('Erro ao atribuir respons�veis: ' + errAtr.message);
       return;
     }
   }
@@ -18648,7 +14229,7 @@ async function confirmarNovoChecklist() {
   selecionarChecklist(cl.id);
 }
 
-// ── Atribuir responsáveis a um checklist existente ────────────
+// -- Atribuir respons�veis a um checklist existente ------------
 function abrirAtribuirChecklist(id) {
   const c = G._processos.find(c => c.id === id);
   if (!c) return;
@@ -18671,7 +14252,7 @@ function abrirAtribuirChecklist(id) {
 
   pop.innerHTML = `
     <div style="background:var(--branco);border-radius:10px;padding:24px 28px;max-width:360px;width:95%;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:13px;font-weight:700;margin-bottom:14px">Atribuir Responsáveis</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px">Atribuir Respons�veis</div>
       <div style="overflow-y:auto;flex:1;margin-bottom:14px">${opts}</div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('_proc-atrib-pop').remove()" style="${_b}">Cancelar</button>
@@ -18702,15 +14283,15 @@ async function confirmarAtribuicaoChecklist(id) {
       .delete()
       .eq('checklist_id', id)
       .eq('usuario_id', uid);
-    if (error) { toast('Erro ao remover responsável: ' + error.message); return; }
+    if (error) { toast('Erro ao remover respons�vel: ' + error.message); return; }
   }
 
-  toast('Responsáveis atualizados');
+  toast('Respons�veis atualizados');
   await carregarProcessos();
   selecionarChecklist(id);
 }
 
-// ── Editar nome/descrição do checklist ───────────────────────
+// -- Editar nome/descri��o do checklist -----------------------
 function procEditarChecklist(id) {
   const c = G._processos.find(c => c.id === id);
   if (!c) return;
@@ -18726,7 +14307,7 @@ function procEditarChecklist(id) {
     <div class="modal" style="max-width:440px">
       <div class="modal-hd">
         <div class="modal-hd-title">Editar checklist</div>
-        <button class="modal-close" onclick="document.getElementById('_proc-edit-pop').remove()">×</button>
+        <button class="modal-close" onclick="document.getElementById('_proc-edit-pop').remove()">�</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
         <div>
@@ -18734,8 +14315,8 @@ function procEditarChecklist(id) {
           <input id="_proc-edit-nome" type="text" value="${_escN(c.nome)}" style="${_f}">
         </div>
         <div>
-          <label style="${_l}">Descrição <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(opcional)</span></label>
-          <input id="_proc-edit-desc" type="text" value="${_escN(c.descricao||'')}" placeholder="Sub-descrição do checklist…" style="${_f}">
+          <label style="${_l}">Descri��o <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(opcional)</span></label>
+          <input id="_proc-edit-desc" type="text" value="${_escN(c.descricao||'')}" placeholder="Sub-descri��o do checklist�" style="${_f}">
         </div>
       </div>
       <div class="modal-ft">
@@ -18754,7 +14335,7 @@ function procEditarChecklist(id) {
 async function _procSalvarEditChecklist(id) {
   const nome = document.getElementById('_proc-edit-nome')?.value?.trim();
   const desc = document.getElementById('_proc-edit-desc')?.value?.trim() || null;
-  if (!nome) { toast('Nome obrigatório'); return; }
+  if (!nome) { toast('Nome obrigat�rio'); return; }
   const { error } = await sb.from('processos_checklist').update({ nome, descricao: desc }).eq('id', id);
   if (error) { toast('Erro: ' + error.message); return; }
   document.getElementById('_proc-edit-pop')?.remove();
@@ -18765,7 +14346,7 @@ async function _procSalvarEditChecklist(id) {
   selecionarChecklist(id);
 }
 
-// ── Adicionar tema inline ─────────────────────────────────────
+// -- Adicionar tema inline -------------------------------------
 function procAdicionarTema(checklistId) {
   const wrap = document.getElementById('proc-tema-inline-wrap');
   if (!wrap) return;
@@ -18774,8 +14355,8 @@ function procAdicionarTema(checklistId) {
   wrap.innerHTML = `
     <div style="display:flex;gap:6px;margin-bottom:4px;align-items:stretch">
       <div style="flex:1;display:flex;flex-direction:column;gap:4px">
-        <input id="_proc-tema-nome-il" type="text" placeholder="Nome do tema…" style="${_fi}">
-        <input id="_proc-tema-desc-il" type="text" placeholder="Sub-descrição do tema (opcional)…" style="${_fi};font-size:11px;color:#666">
+        <input id="_proc-tema-nome-il" type="text" placeholder="Nome do tema�" style="${_fi}">
+        <input id="_proc-tema-desc-il" type="text" placeholder="Sub-descri��o do tema (opcional)�" style="${_fi};font-size:11px;color:#666">
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
         <button onclick="_procConfirmarTemaInline('${checklistId}')"
@@ -18818,13 +14399,13 @@ async function procExcluirTema(temaId, checklistId) {
   abrirPopupConfirm('Excluir tema', 'Excluir este tema e todas as suas tarefas?', async () => {
     const { error } = await sb.from('processos_tema').delete().eq('id', temaId);
     if (error) { toast('Erro: ' + error.message); return; }
-    toast('Tema excluído');
+    toast('Tema exclu�do');
     await carregarProcessos();
     selecionarChecklist(checklistId);
   });
 }
 
-// ── Adicionar tarefa inline em tema ───────────────────────────
+// -- Adicionar tarefa inline em tema ---------------------------
 function procAdicionarTarefaInline(temaId, checklistId) {
   const wrap = document.getElementById(`proc-tarefa-inline-${temaId}`);
   if (!wrap) return;
@@ -18832,14 +14413,14 @@ function procAdicionarTarefaInline(temaId, checklistId) {
   const inpId = `_proc-tar-il-${temaId}`;
   wrap.innerHTML = `
     <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-      <input id="${inpId}" type="text" placeholder="Descrever tarefa…"
+      <input id="${inpId}" type="text" placeholder="Descrever tarefa�"
         style="flex:1;border:1px solid var(--cinza);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font-ui);outline:none;min-width:0;background:var(--branco);color:var(--grafite);color-scheme:light dark">
       <button onclick="_procConfirmarTarefaInline('${temaId}','${checklistId}')"
         style="padding:6px 12px;border:1px solid var(--grafite);border-radius:6px;background:var(--grafite);color:#fff;font-size:11px;cursor:pointer;font-family:var(--font-ui);white-space:nowrap">
         + Add
       </button>
       <button onclick="document.getElementById('proc-tarefa-inline-${temaId}').innerHTML=''"
-        style="border:none;background:none;color:#ccc;cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0;line-height:1">✕</button>
+        style="border:none;background:none;color:#ccc;cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0;line-height:1">?</button>
     </div>`;
   const inp = document.getElementById(inpId);
   inp?.focus();
@@ -18862,7 +14443,7 @@ async function _procConfirmarTarefaInline(temaId, checklistId) {
   G._procTemasExp.add(temaId); // garante que o tema fica expandido ao adicionar
   await carregarProcessos();
   renderProcDetalhe(checklistId);
-  // Reabre o input automaticamente para adicionar a próxima tarefa
+  // Reabre o input automaticamente para adicionar a pr�xima tarefa
   procAdicionarTarefaInline(temaId, checklistId);
 }
 
@@ -18871,7 +14452,7 @@ async function procExcluirTarefa(tarefaId, checklistId) {
     const { error } = await sb.from('processos_tarefa').delete().eq('id', tarefaId);
     if (error) { toast('Erro: ' + error.message); return; }
     delete G._procStatus[tarefaId];
-    toast('Tarefa excluída');
+    toast('Tarefa exclu�da');
     await carregarProcessos();
     selecionarChecklist(checklistId);
   });
@@ -18893,7 +14474,7 @@ async function procArquivar(id) {
   }
 }
 
-// ── START ──────────────────────────────────────────────────
+// -- START --------------------------------------------------
 
 // Utilitario: primeiro + ultimo nome
 function primeiroUltimo(nome) {
@@ -18902,27 +14483,10 @@ function primeiroUltimo(nome) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  FIM DO MÓDULO DE GESTÃO
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+//  FIM DO M�DULO DE GEST�O
+// -----------------------------------------------------------------------------
 
 
 init();
-</script>
 
-<!-- EXP · Chat Widget -->
-<script src="chat.js"></script>
-<!-- EXP · Timer Widget -->
-<script src="timer.js"></script>
-<style>
-  #exp-timer-widget {
-    left:   calc(72px + (66px / 2) - 23px) !important;
-    bottom: 34px !important;
-    z-index: 9998 !important;
-  }
-</style>
-
-
-<script src="shared/exp-nav.js"></script>
-</body>
-</html>

@@ -371,6 +371,7 @@
       '<div id="tmr-cf-subtarefas-wrap">',
         '<div class="tmr-sel-lbl">Subtarefas (opcional)</div>',
         '<input type="text" class="tmr-input" id="tmr-cf-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">',
+        '<div id="tmr-cf-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>',
       '</div>',
       '<div class="tmr-btns">',
         '<button class="tmr-btn-cf-sec" onclick="_tmr.backToExpanded()">&#8592; Voltar</button>',
@@ -496,6 +497,7 @@
       }
       throw delRes.error;
     }
+    _loadTimerSubtarefasSuggestions._cache = {};
     if (!items.length) return true;
     var rows = _splitSubtarefasHoras(totalHoras, items).map(function (item) {
       return {
@@ -520,7 +522,101 @@
       }
       throw insRes.error;
     }
+    _loadTimerSubtarefasSuggestions._cache = {};
     return true;
+  }
+  async function _loadTimerSubtarefasSuggestions(client, ctx) {
+    ctx = ctx || {};
+    var produtoId = ctx.produtoId || null;
+    var etapaId = ctx.etapaId || null;
+    if (!produtoId && !etapaId) return [];
+    _loadTimerSubtarefasSuggestions._cache = _loadTimerSubtarefasSuggestions._cache || {};
+    var cacheKey = (etapaId || 'sem-etapa') + '|' + (produtoId || 'sem-produto');
+    if (_loadTimerSubtarefasSuggestions._cache[cacheKey]) return _loadTimerSubtarefasSuggestions._cache[cacheKey];
+    function mergeRows(rows, base) {
+      var seen = {};
+      base.forEach(function (item) { seen[_trunc(item, 300).toLowerCase()] = true; });
+      (rows || []).forEach(function (row) {
+        var nome = String((row && row.subtarefa) || '').trim();
+        var key = nome.toLowerCase();
+        if (!nome || seen[key]) return;
+        seen[key] = true;
+        base.push(nome);
+      });
+      return base;
+    }
+    async function pull(query) {
+      var res = await query;
+      if (res.error) {
+        if (_isSubtarefasTableMissing(res.error)) return [];
+        throw res.error;
+      }
+      return res.data || [];
+    }
+    var sugestoes = [];
+    if (etapaId) {
+      sugestoes = mergeRows(await pull(
+        client.from('horas_lancadas_subtarefas')
+          .select('subtarefa,created_at')
+          .eq('etapa_id', etapaId)
+          .order('created_at', { ascending: false })
+          .limit(20)
+      ), sugestoes);
+    }
+    if (produtoId && sugestoes.length < 8) {
+      sugestoes = mergeRows(await pull(
+        client.from('horas_lancadas_subtarefas')
+          .select('subtarefa,created_at')
+          .eq('produto_id', produtoId)
+          .order('created_at', { ascending: false })
+          .limit(20)
+      ), sugestoes);
+    }
+    _loadTimerSubtarefasSuggestions._cache[cacheKey] = sugestoes.slice(0, 12);
+    return _loadTimerSubtarefasSuggestions._cache[cacheKey];
+  }
+  function _applyTimerSubtarefasSuggestion(sugestao) {
+    var input = document.getElementById('tmr-cf-subtarefas');
+    if (!input) return;
+    var raw = input.value || '';
+    var match = raw.match(/^(.*?)([^,;\n]*)$/);
+    var prefix = match ? match[1] : '';
+    input.value = prefix + sugestao + ', ';
+    input.focus();
+  }
+  async function _renderTimerSubtarefasSuggestions() {
+    var wrap = document.getElementById('tmr-cf-subtarefas-sugestoes');
+    var input = document.getElementById('tmr-cf-subtarefas');
+    var state = _loadState();
+    if (!wrap || !input || (state.tipo || 'projeto') !== 'projeto' || !state.produtoId) {
+      if (wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
+      return;
+    }
+    var client = _getSb();
+    if (!client) return;
+    var sugestoes = [];
+    try {
+      sugestoes = await _loadTimerSubtarefasSuggestions(client, { produtoId: state.produtoId, etapaId: state.etapaId || null });
+    } catch (e) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    var termoAtual = String((input.value || '').split(/[,;\n]/).pop() || '').trim().toLowerCase();
+    var usadas = {};
+    _parseSubtarefas(input.value).forEach(function (item) { usadas[item.toLowerCase()] = true; });
+    sugestoes = sugestoes.filter(function (item) { return !usadas[item.toLowerCase()]; });
+    if (termoAtual) sugestoes = sugestoes.filter(function (item) { return item.toLowerCase().indexOf(termoAtual) >= 0; });
+    sugestoes = sugestoes.slice(0, 8);
+    if (!sugestoes.length) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = sugestoes.map(function (item) {
+      return '<button type="button" class="tmr-btn-cf-sec" style="padding:4px 8px" onclick="_applyTimerSubtarefasSuggestion(' + JSON.stringify(item).replace(/"/g, '&quot;') + ');_renderTimerSubtarefasSuggestions()">' + item + '</button>';
+    }).join('');
   }
   function _getIsoWeekInfo(dateObj) {
     var target = new Date(dateObj);
@@ -1145,8 +1241,14 @@
       setVal('tmr-cf-subtarefas', '');
       var subtWrap = document.getElementById('tmr-cf-subtarefas-wrap');
       if (subtWrap) subtWrap.style.display = ((state.tipo || 'projeto') === 'projeto') ? '' : 'none';
+      var subtInput = document.getElementById('tmr-cf-subtarefas');
+      if (subtInput) {
+        subtInput.oninput = function () { _renderTimerSubtarefasSuggestions().catch(function () {}); };
+        subtInput.onfocus = function () { _renderTimerSubtarefasSuggestions().catch(function () {}); };
+      }
       var btn = document.getElementById('tmr-save-btn');
       if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+      _renderTimerSubtarefasSuggestions().catch(function () {});
       _showPanel('confirm');
     },
 
@@ -1457,6 +1559,7 @@
       _ctxt('tmr-info-opp', state.nomeOpp || state.nomeProjeto || '—');
       _ctxt('tmr-info-prd', state.nomeProduto || '');
       _ctxt('tmr-info-eta', state.nomeEtapa || '');
+      _renderTimerSubtarefasSuggestions().catch(function () {});
 
       _tmr.cancelCfEdit();
     },

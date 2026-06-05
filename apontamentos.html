@@ -484,6 +484,7 @@ body{
             <div class="apo-field" id="apo-subtarefas-wrap">
               <label for="apo-subtarefas">Subtarefas (opcional)</label>
               <input type="text" id="apo-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">
+              <div id="apo-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
             </div>
 
             <div class="apo-row">
@@ -1916,6 +1917,7 @@ body{
         return '<option value="'+esc(s)+'">'+esc(s)+'</option>';
       }).join('')||'<option value="">—</option>';
     }
+    renderSubtarefasSuggestions().catch(function(){});
     updateClassUI();
   }
 
@@ -1992,6 +1994,7 @@ body{
       }
       throw new Error(delRes.error.message);
     }
+    AP.subtarefasCache = {};
     if (!items.length) return true;
     var rows = splitSubtarefasHoras(totalHoras, items).map(function(item){
       return {
@@ -2016,18 +2019,122 @@ body{
       }
       throw new Error(insRes.error.message);
     }
+    AP.subtarefasCache = {};
     return true;
+  }
+
+  async function loadSubtarefasSuggestions(ctx) {
+    ctx = ctx || {};
+    var productId = ctx.productId || null;
+    var stageId = ctx.stageId || null;
+    if (!productId && !stageId) return [];
+    AP.subtarefasCache = AP.subtarefasCache || {};
+    var cacheKey = (stageId || 'sem-etapa') + '|' + (productId || 'sem-produto');
+    if (AP.subtarefasCache[cacheKey]) return AP.subtarefasCache[cacheKey];
+    function mergeRows(rows, base) {
+      var seen = {};
+      base.forEach(function(item){ seen[norm(item)] = true; });
+      (rows || []).forEach(function(row){
+        var nome = String((row && row.subtarefa) || '').trim();
+        var key = norm(nome);
+        if (!nome || seen[key]) return;
+        seen[key] = true;
+        base.push(nome);
+      });
+      return base;
+    }
+    async function pull(query) {
+      var res = await query;
+      if (res.error) {
+        if (subtarefasTableMissing(res.error)) return [];
+        throw new Error(res.error.message);
+      }
+      return res.data || [];
+    }
+    var sugestoes = [];
+    if (stageId) {
+      sugestoes = mergeRows(await pull(
+        window.sb.from('horas_lancadas_subtarefas')
+          .select('subtarefa,created_at')
+          .eq('etapa_id', stageId)
+          .order('created_at', { ascending:false })
+          .limit(20)
+      ), sugestoes);
+    }
+    if (productId && sugestoes.length < 8) {
+      sugestoes = mergeRows(await pull(
+        window.sb.from('horas_lancadas_subtarefas')
+          .select('subtarefa,created_at')
+          .eq('produto_id', productId)
+          .order('created_at', { ascending:false })
+          .limit(20)
+      ), sugestoes);
+    }
+    AP.subtarefasCache[cacheKey] = sugestoes.slice(0, 12);
+    return AP.subtarefasCache[cacheKey];
+  }
+
+  function applySubtarefasSuggestion(inputId, sugestao) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var raw = input.value || '';
+    var match = raw.match(/^(.*?)([^,;\n]*)$/);
+    var prefix = match ? match[1] : '';
+    input.value = prefix + sugestao + ', ';
+    input.focus();
+  }
+
+  async function renderSubtarefasSuggestions() {
+    var wrap = document.getElementById('apo-subtarefas-sugestoes');
+    var input = document.getElementById('apo-subtarefas');
+    var type = document.getElementById('apo-type').value;
+    if (!wrap || !input || type !== 'projeto') {
+      if (wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
+      return;
+    }
+    var productId = document.getElementById('apo-project').value || null;
+    var stageId = document.getElementById('apo-stage').value || null;
+    if (!productId) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    var sugestoes = [];
+    try {
+      sugestoes = await loadSubtarefasSuggestions({ productId: productId, stageId: stageId });
+    } catch (e) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    var termoAtual = String((input.value || '').split(/[,;\n]/).pop() || '').trim();
+    var termoKey = norm(termoAtual);
+    var usadas = {};
+    parseSubtarefas(input.value).forEach(function(item){ usadas[norm(item)] = true; });
+    sugestoes = sugestoes.filter(function(item){ return !usadas[norm(item)]; });
+    if (termoKey) sugestoes = sugestoes.filter(function(item){ return norm(item).indexOf(termoKey) >= 0; });
+    sugestoes = sugestoes.slice(0, 8);
+    if (!sugestoes.length) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = sugestoes.map(function(item){
+      return '<button type="button" class="apo-btn apo-btn-ghost" style="padding:6px 10px" onclick="applySubtarefasSuggestion(\'apo-subtarefas\', '+JSON.stringify(item).replace(/"/g,'&quot;')+');renderSubtarefasSuggestions()">'+esc(item)+'</button>';
+    }).join('');
   }
 
   async function onProjectChange() {
     var pid = document.getElementById('apo-project').value;
     var sel = document.getElementById('apo-stage');
     sel.innerHTML = '<option value="">Selecionar etapa…</option>';
-    if (!pid) { updateClassUI(); return; }
+    if (!pid) { renderSubtarefasSuggestions().catch(function(){}); updateClassUI(); return; }
     var stages = await loadStages(pid);
     sel.innerHTML = '<option value="">Selecionar etapa…</option>' + stages.map(function(s){
       return '<option value="'+s.id+'">'+esc(s.nome)+'</option>';
     }).join('');
+    renderSubtarefasSuggestions().catch(function(){});
     updateClassUI();
   }
 
@@ -2106,6 +2213,8 @@ body{
     document.getElementById('apo-project').value = '';
     document.getElementById('apo-stage').innerHTML = '<option value="">Selecionar etapa…</option>';
     document.getElementById('apo-subtarefas').value = '';
+    var sug = document.getElementById('apo-subtarefas-sugestoes');
+    if (sug) { sug.innerHTML = ''; sug.style.display = 'none'; }
     updateSelectedDayUI(today);
     updateDuration(); setFb('apo-feedback','','');
   }
@@ -2269,7 +2378,16 @@ body{
     document.getElementById('apo-project').addEventListener('change',function(){
       onProjectChange().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
     });
-    document.getElementById('apo-stage').addEventListener('change',updateClassUI);
+    document.getElementById('apo-stage').addEventListener('change',function(){
+      updateClassUI();
+      renderSubtarefasSuggestions().catch(function(){});
+    });
+    document.getElementById('apo-subtarefas').addEventListener('input',function(){
+      renderSubtarefasSuggestions().catch(function(){});
+    });
+    document.getElementById('apo-subtarefas').addEventListener('focus',function(){
+      renderSubtarefasSuggestions().catch(function(){});
+    });
     document.getElementById('apo-start').addEventListener('input',updateDuration);
     document.getElementById('apo-end').addEventListener('input',updateDuration);
     document.getElementById('apo-hours-form').addEventListener('submit',submitHoras);

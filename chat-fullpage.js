@@ -239,9 +239,14 @@
     var tone        = dark ? TONES_DARK[fontToneIdx]         : TONES_LIGHT[fontToneIdx];
     var tonePreview = dark ? TONES_PREVIEW_DARK[fontToneIdx] : TONES_PREVIEW_LIGHT[fontToneIdx];
 
+    /* Escala toda a página — override dos tokens DS no root */
+    document.documentElement.style.setProperty('--fp-msg-size', size + 'px');
+    document.documentElement.style.setProperty('--text-body', size + 'px');
+    document.body.style.fontSize = size + 'px';
+
+    /* Cor de mensagem — scoped ao container de mensagens */
     var $msgs = document.getElementById('fp-messages');
     if ($msgs) {
-      $msgs.style.setProperty('--fp-msg-size', size + 'px');
       $msgs.style.setProperty('--fp-msg-color', tone);
     }
 
@@ -3083,11 +3088,12 @@
     }).catch(function() {});
   }
 
-  /* toggleTheme — mesmo padrão dos outros módulos */
+  /* toggleTheme — troca o tema e re-aplica o tom de fonte para a paleta oposta */
   window.toggleTheme = function() {
     var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('exp-theme', next);
+    applyViewPrefs(); /* mantém o índice de tom mas recalcula a cor para o novo tema */
   };
 
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);

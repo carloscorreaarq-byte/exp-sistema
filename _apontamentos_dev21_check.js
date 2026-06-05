@@ -1,0 +1,1765 @@
+(function () {
+  'use strict';
+
+  // ── Estado ──────────────────────────────────────────────────────
+  var AP = {
+    user: null,
+    products: [],
+    stageCache: {},
+    costAreas: [],
+    weekInfo: null,
+    weekHours: [],
+    weekCosts: [],
+    bankSummary: null,
+    bankRequests: [],
+    bankPending: [],
+    bankSqlReady: true,
+    tabLoaded: {},
+    eventsBound: false,
+    timerRequested: false,
+  };
+
+  var SUBTIPOS = {
+    organizacao: ['Capacitação','Reunião semanal','Feedback','Reunião interna'],
+    sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião societária','Consultoria','RH e pessoas','Gestão','Outros'],
+  };
+  var TIPO_PT = { projeto:'Projeto', organizacao:'Org. interna', sociedade:'Societária' };
+  var COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
+
+  var REEMBOLSO_DETALHES = {
+    'Visitas Tecnicas':['Uber','Combustivel','Pedagio','Alimentacao','Estacionamento','Outro'],
+    'Plotagem':['Impressao','Encadernacao','Outro'],
+    'Treinamentos e Capacitacao':['Curso','Evento','Certificacao','Outro'],
+    'Cultura e Integracao':['Alimentacao','Atividade de equipe','Outro'],
+    'Trabalho Presencial':['Alimentacao','Transporte','Estacionamento','Outro'],
+    'Taxas e Anuidades Profissionais (CAU)':['Taxa','Anuidade','Outro'],
+    'Certificacoes (Renovacoes)':['Renovacao','Taxa','Outro'],
+    'Softwares de projetos':['Licenca','Assinatura','Outro'],
+    'Softwares de gestao e nuvem':['Licenca','Assinatura','Outro'],
+    'Manutencoes a TI':['Equipamento','Servico','Outro'],
+    'Inteligencia Artificial':['Assinatura','Credito','Outro'],
+    'Seguranca Tecnica':['Servico','Taxa','Outro'],
+    'Midias pagas (Digital)':['Campanha','Impulsionamento','Outro'],
+    'Congressos e Eventos':['Inscricao','Passagem','Hospedagem','Outro'],
+    'Relacionamento e Brindes':['Brinde','Presente','Outro'],
+    'Computadores':['Acessorio','Manutencao','Equipamento'],
+  };
+  var GESTAO_AREA_RULES = {
+    'Visitas Tecnicas':{ requer_projeto:true },
+    'Plotagem':{ requer_projeto:true },
+  };
+
+  // ── Helpers ──────────────────────────────────────────────────────
+
+  function uid() { return AP.user ? (AP.user.id || AP.user.app_user_id || null) : null; }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function setText(id, v) { var e = document.getElementById(id); if (e) e.textContent = v || ''; }
+  function setFb(id, msg, cls) {
+    var e = document.getElementById(id); if (!e) return;
+    e.textContent = msg || ''; e.className = 'apo-feedback' + (cls ? ' ' + cls : '');
+  }
+  function norm(s) { return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
+  function areaKey(s) { return norm(s); }
+
+  function diffH(ini, fim) {
+    if (!ini || !fim) return 0;
+    var a = ini.split(':').map(Number), b = fim.split(':').map(Number);
+    var mins = (b[0]*60+b[1]) - (a[0]*60+a[1]);
+    return mins > 0 ? mins/60 : 0;
+  }
+  function fmtH(h) {
+    h = Number(h)||0;
+    if (h <= 0) return '0h';
+    var hrs = Math.floor(h), min = Math.round((h-hrs)*60);
+    return min === 0 ? hrs+'h' : hrs+'h'+String(min).padStart(2,'0');
+  }
+  function round1(n) { return Math.round((Number(n)||0) * 10) / 10; }
+  function isSocioAdmRole(role) {
+    return ['socio_adm','socio_admin'].includes(String(role||'').toLowerCase());
+  }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso+'T12:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  }
+  function fmtDateFull(iso) {
+    if (!iso) return '';
+    var d = new Date(iso+'T12:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString('pt-BR');
+  }
+  function fmtDia(iso) {
+    if (!iso) return '';
+    var d = new Date(iso+'T12:00:00');
+    return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()] || '';
+  }
+  function dayLblShort(iso) {
+    if (!iso) return '';
+    var d = new Date(iso+'T12:00:00');
+    return d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
+  }
+  function isStageNonBillable(name) {
+    var n = norm(name);
+    return n.indexOf('ajustes remanescentes') >= 0 || (n.indexOf('ajuste') >= 0 && n.indexOf('remanesc') >= 0);
+  }
+  function getClass(tipo, stageName) {
+    if (tipo === 'projeto') {
+      if (!stageName) return { label:'Aguardando etapa', cls:'', billable:null };
+      if (isStageNonBillable(stageName)) return { label:'Não billable', cls:'warn', billable:false };
+      return { label:'Billable', cls:'good', billable:true };
+    }
+    return { label:'Não billable', cls:'warn', billable:false };
+  }
+
+  // ── Semana ────────────────────────────────────────────────────────
+
+  var NOMES_SEMANA = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+
+  function getWeekInfo(iso) {
+    var d = new Date(iso+'T12:00:00');
+    var isoDay = d.getDay() || 7;
+    var mon = new Date(d); mon.setDate(d.getDate() - (isoDay-1));
+    var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    return { start:mon.toISOString().slice(0,10), end:sun.toISOString().slice(0,10), mon:mon };
+  }
+
+  function getDiasSemana(info) {
+    var days = [];
+    var cur = new Date(info.start+'T12:00:00');
+    for (var i=0; i<7; i++) { days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+    return days;
+  }
+
+  function updateNavLabel(info) {
+    setText('apo-week-range', fmtDate(info.start) + ' — ' + fmtDate(info.end));
+  }
+
+  function calcExcessoBruto(total, jornada) {
+    return round1(Math.max((Number(total)||0) - (Number(jornada)||0), 0));
+  }
+  function calcExcessoElegivel(total, jornada) {
+    var excesso = calcExcessoBruto(total, jornada);
+    return excesso >= 1 ? Math.floor(excesso) : 0;
+  }
+  function formatBhStatus(status) {
+    return {
+      pendente:'Pendente',
+      aprovado_integralmente:'Aprovado integralmente',
+      aprovado_parcialmente:'Aprovado parcialmente',
+      recusado:'Recusado',
+      cancelado:'Cancelado',
+    }[status] || (status || '—');
+  }
+  function formatBhDestino(dest) {
+    return {
+      compensacao:'Compensação',
+      pagamento_extraordinario:'Pagamento extraordinário',
+      misto:'Misto',
+    }[dest] || '—';
+  }
+  function formatBhDestinoStatus(status) {
+    return {
+      aguardando_definicao:'Aguardando definição',
+      saldo_para_compensacao:'Saldo para compensação',
+      aguardando_pagamento_extraordinario:'Aguardando pagamento extraordinário',
+      encerrado:'Encerrado',
+    }[status] || '—';
+  }
+
+  function shiftWeek(offset) {
+    var base = document.getElementById('apo-date').value || new Date().toISOString().slice(0,10);
+    var d = new Date(base+'T12:00:00');
+    d.setDate(d.getDate() + offset*7);
+    setSelectedDate(d.toISOString().slice(0,10));
+  }
+
+  function setSelectedDate(iso) {
+    if (!iso) return;
+    AP.weekInfo = getWeekInfo(iso);
+    document.getElementById('apo-date').value = iso;
+    document.getElementById('apo-cost-date').value = iso;
+    updateNavLabel(AP.weekInfo);
+    updateSelectedDayUI(iso);
+    var tab = activeTab();
+    if (tab === 'horas') loadHorasData().catch(function(){});
+    else if (tab === 'custos') loadCustosData().catch(function(){});
+    else if (tab === 'banco') loadBancoData().catch(function(){});
+  }
+
+  function updateSelectedDayUI(iso) {
+    var el = document.getElementById('apo-selected-day');
+    if (!el) return;
+    el.textContent = iso ? (fmtDate(iso) + ' · ' + dayLblShort(iso)) : 'Clique em um dia no calendário';
+    el.style.color = iso ? 'var(--grafite)' : '#aaa';
+  }
+
+  // ── Calendário: cópia exata de gestao.html::renderCalendarioSemana ──
+
+  function renderCalendario(lancs) {
+    var wrap = document.getElementById('cal-semana-wrap');
+    if (!wrap || !AP.weekInfo) return;
+
+    // dias da semana como objetos Date (igual ao gestao)
+    var diasDate = [];
+    var cur = new Date(AP.weekInfo.start + 'T12:00:00');
+    for (var d = 0; d < 7; d++) { diasDate.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    var NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    var COR_CLS = { projeto:'cb-projeto', organizacao:'cb-organizacao', sociedade:'cb-sociedade' };
+
+    var hPorDia = [0,0,0,0,0,0,0];
+    var lancPorDia = [[],[],[],[],[],[],[]];
+    (lancs||[]).forEach(function(l) {
+      var iso = l.data_lancamento;
+      for (var i = 0; i < 7; i++) {
+        if (diasDate[i].toISOString().slice(0,10) === iso) {
+          hPorDia[i] += diffH(l.hora_inicio, l.hora_fim);
+          lancPorDia[i].push(l);
+          break;
+        }
+      }
+    });
+
+    var totalSemana = hPorDia.reduce(function(s,h){ return s+h; }, 0);
+    var pct = Math.min(totalSemana / 40 * 100, 100);
+    var porTipo = { projeto:0, organizacao:0, sociedade:0 };
+    (lancs||[]).forEach(function(l) {
+      var dh = diffH(l.hora_inicio, l.hora_fim);
+      if (l.tipo in porTipo) porTipo[l.tipo] += dh;
+    });
+
+    var HORA_INI = 7, HORA_FIM = 21, SLOT_H = 26;
+    var SLOTS = (HORA_FIM - HORA_INI) * 2;
+
+    var html = '';
+
+    // Header sticky
+    html += '<div id="cal-scroll-wrap" style="max-height:430px;overflow-y:scroll">' +
+      '<div class="cal-grid" style="position:sticky;top:0;z-index:3;background:var(--branco);border-bottom:1px solid var(--cinza2)">' +
+      '<div class="cal-header-vazio" style="background:var(--branco)"></div>';
+
+    diasDate.forEach(function(d, i) {
+      var fds = i >= 5;
+      var isHoje = d.toISOString().slice(0,10) === hoje.toISOString().slice(0,10);
+      html += '<div class="cal-dia-header ' + (fds?'fim-semana ':'') + (isHoje?'hoje ':'') + (hPorDia[i]>0?'tem-horas':'') + '"' +
+        ' onclick="calSelecionarDia(\'' + d.toISOString().slice(0,10) + '\')">' +
+        '<div class="cal-dia-nome">' + NOMES[i] + '</div>' +
+        '<div class="cal-dia-num">' + d.getDate() + '</div>' +
+        '<div class="cal-dia-total">' + (hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·') + '</div>' +
+        '</div>';
+    });
+
+    html += '</div><div class="cal-grid">';
+
+    for (var s = 0; s < SLOTS; s++) {
+      var h = HORA_INI + Math.floor(s / 2);
+      var m = s % 2 === 0 ? '00' : '30';
+      html += '<div class="cal-hora-label">' + (m === '00' ? h + 'h' : '') + '</div>';
+
+      for (var i = 0; i < 7; i++) {
+        var fds = i >= 5;
+        var isHoje = diasDate[i].toISOString().slice(0,10) === hoje.toISOString().slice(0,10);
+        var slotH = HORA_INI + Math.floor(s / 2);
+        var slotM = s % 2 === 0 ? 0 : 30;
+
+        var blocos = lancPorDia[i].filter(function(l) {
+          var parts = (l.hora_inicio || '00:00').split(':').map(Number);
+          return parts[0] === slotH && parts[1] >= slotM && parts[1] < slotM + 30;
+        });
+
+        var blocoHtml = '';
+        blocos.forEach(function(l) {
+          var lParts = (l.hora_inicio || '00:00').split(':').map(Number);
+          var fParts = (l.hora_fim || '00:00').split(':').map(Number);
+          var durMin = (fParts[0]*60+fParts[1]) - (lParts[0]*60+lParts[1]);
+          var height = Math.max(16, durMin / 30 * SLOT_H - 2);
+          var topOff = ((lParts[1] % 30) / 30) * SLOT_H;
+          var cls = COR_CLS[l.tipo] || 'cb-projeto';
+          // descrição inline (sem getProjetoHierarquia — usa dados do join)
+          var opp = (l.produtos||{}).oportunidades || {};
+          var cli = ((opp.clientes||{}).nome) || '';
+          var proj = opp.projeto || '';
+          var etapa = (l.etapas||{}).nome || '';
+          var linha1 = l.tipo === 'projeto' ? (proj || cli) : (l.subtipo || l.tipo);
+          var linha2 = l.tipo === 'projeto' ? etapa : '';
+          var titleTxt = l.tipo === 'projeto'
+            ? esc([cli, proj, etapa].filter(Boolean).join(' · ') + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')')
+            : esc(linha1 + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')');
+          blocoHtml += '<div class="cal-bloco ' + cls + '" style="top:' + topOff + 'px;height:' + height + 'px" title="' + titleTxt + '">' +
+            '<span class="cal-bloco-linha1">' + esc(linha1) + '</span>' +
+            (linha2 && height > 22 ? '<span class="cal-bloco-linha2">' + esc(linha2) + '</span>' : '') +
+            '</div>';
+        });
+
+        html += '<div class="cal-celula ' + (fds?'fim-semana ':'') + (isHoje?'hoje-col':'') + '">' + blocoHtml + '</div>';
+      }
+    }
+
+    html += '</div></div>';
+
+    // Rodapé: totais por dia
+    html += '<div class="cal-totais-row"><div class="cal-total-label">Total</div>';
+    hPorDia.forEach(function(h, i) {
+      var fds = i >= 5;
+      html += '<div class="cal-total-dia ' + (h===0?'zero ':'') + (fds?'fim-semana':'') + '">' + (h>0?fmtH(h):'—') + '</div>';
+    });
+    html += '</div>';
+
+    // Resumo
+    var pctTipo = function(t) { return totalSemana > 0 ? Math.round(porTipo[t] / totalSemana * 100) : 0; };
+    var semCor = totalSemana > 40 ? 'var(--terracota)' : totalSemana > 32 ? 'var(--ouro)' : 'var(--grafite)';
+    html += '<div class="cal-resumo">' +
+      '<div style="flex-shrink:0">' +
+        '<div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:2px">Semana</div>' +
+        '<div class="cal-total-semana ' + (totalSemana>40?'over':'') + '" style="color:' + semCor + '">' + fmtH(totalSemana) + '</div>' +
+        '<div style="font-size:9px;color:#aaa;margin-top:1px">' + pct.toFixed(0) + '% de 40h</div>' +
+      '</div>' +
+      '<div style="flex:1">' +
+        '<div class="cal-meta-bar-wrap"><div class="cal-meta-bar ' + (totalSemana>40?'tc':totalSemana>32?'am':'') + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+        '<div class="cal-meta-txt">' + (totalSemana > 0 ? (40 - Math.min(totalSemana,40)).toFixed(1).replace('.',',') + 'h restantes' : 'Nenhuma hora lançada') + '</div>' +
+      '</div>' +
+      '<div class="cal-breakdown">' +
+        '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div>Proj: ' + fmtH(porTipo.projeto) + (pctTipo('projeto')>0?' <span style="color:#bbb">('+pctTipo('projeto')+'%)</span>':'') + '</div>' +
+        '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--verde)"></div>Org: ' + fmtH(porTipo.organizacao) + (pctTipo('organizacao')>0?' <span style="color:#bbb">('+pctTipo('organizacao')+'%)</span>':'') + '</div>' +
+        '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--ouro)"></div>Soc: ' + fmtH(porTipo.sociedade) + (pctTipo('sociedade')>0?' <span style="color:#bbb">('+pctTipo('sociedade')+'%)</span>':'') + '</div>' +
+      '</div>' +
+    '</div>';
+
+    wrap.innerHTML = html;
+
+    // Auto-scroll para 8h (igual ao gestao)
+    requestAnimationFrame(function() {
+      var sw = document.getElementById('cal-scroll-wrap');
+      if (sw) sw.scrollTop = 0;
+    });
+  }
+
+  // Clique no header do dia seleciona a data no formulário
+  window.calSelecionarDia = function(iso) { setSelectedDate(iso); };
+
+  // ── Renderização: lista de lançamentos (estilo gestao) ───────────
+
+  function renderLancamentos(rows) {
+    var wrap = document.getElementById('lanc-lista-wrap');
+    var info = AP.weekInfo;
+    if (!info) return;
+    if (!(rows||[]).length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="lanc-vazio">Nenhum lançamento nesta semana.</div></div>';
+      return;
+    }
+    var dias = getDiasSemana(info);
+    var porDia = {};
+    dias.forEach(function(iso) { porDia[iso] = []; });
+    rows.forEach(function(l) {
+      if (porDia[l.data_lancamento]) porDia[l.data_lancamento].push(l);
+    });
+
+    function detectSobrepostos(arr) {
+      var set = new Set();
+      for (var a=0; a<arr.length; a++) {
+        for (var b=a+1; b<arr.length; b++) {
+          var iniA=arr[a].hora_inicio||'', fimA=arr[a].hora_fim||'';
+          var iniB=arr[b].hora_inicio||'', fimB=arr[b].hora_fim||'';
+          if (iniB < fimA && fimB > iniA) { set.add(arr[a].id); set.add(arr[b].id); }
+        }
+      }
+      return set;
+    }
+
+    var html = '<div class="lanc-lista-box">';
+    dias.forEach(function(iso, i) {
+      var dayRows = porDia[iso] || [];
+      if (!dayRows.length) return;
+      var sorted = dayRows.slice().sort(function(a,b){ return (a.hora_inicio||'').localeCompare(b.hora_inicio||''); });
+      var sobrepostos = detectSobrepostos(sorted);
+      var fds = i >= 5;
+      html += '<div class="lanc-dia-hdr' + (fds ? ' fds' : '') + '">' +
+        esc(NOMES_SEMANA[i]) + ' ' + esc(fmtDate(iso)) + '</div>';
+      sorted.forEach(function(l) {
+        var dur = diffH(l.hora_inicio, l.hora_fim);
+        var cor = COR_TIPO[l.tipo] || '#888';
+        var sobr = sobrepostos.has(l.id);
+        var horaStyle = sobr ? 'color:#C0392B;font-weight:600;' : '';
+        var borderStyle = sobr ? 'border-left:2px solid #C0392B;' : '';
+        var incompleto = l.tipo === 'projeto' && (!l.produto_id || !l.etapa_id);
+        if (!sobr && incompleto) borderStyle = 'border-left:2px solid #C4831A;';
+
+        var descHtml = '';
+        if (l.tipo === 'projeto') {
+          var opp = (l.produtos||{}).oportunidades || {};
+          var cli = ((opp.clientes||{}).nome || '');
+          var proj = opp.projeto || '';
+          var etapa = (l.etapas||{}).nome || '';
+          var nota = l.descricao || '';
+          descHtml = '<span class="lanc-desc-main">' + esc(cli) + '</span>';
+          if (proj) descHtml += '<span class="lanc-desc-sep">|</span><span class="lanc-desc-main">' + esc(proj) + '</span>';
+          if (etapa) descHtml += '<span class="lanc-desc-sep">|</span><span class="lanc-desc-main">' + esc(etapa) + '</span>';
+          if (nota) descHtml += '<span class="lanc-desc-sep">·</span><span class="lanc-desc-nota">' + esc(nota) + '</span>';
+        } else {
+          var main = l.subtipo || TIPO_PT[l.tipo] || l.tipo || '';
+          var sub2 = l.descricao || '';
+          descHtml = '<span class="lanc-desc-main">' + esc(main) + '</span>';
+          if (sub2) descHtml += '<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">' + esc(sub2) + '</span>';
+        }
+        html += '<div class="lanc-item" style="' + borderStyle + '">' +
+          '<div class="lanc-dot" style="background:' + cor + '"></div>' +
+          '<div class="lanc-hora" style="' + horaStyle + '">' +
+            esc((l.hora_inicio||'').slice(0,5)) + '–' + esc((l.hora_fim||'').slice(0,5)) +
+          '</div>' +
+          '<div class="lanc-desc">' + descHtml + '</div>' +
+          (sobr ? '<span title="Sobreposição" style="color:#C0392B;font-size:11px;flex-shrink:0">⚠</span>' :
+           incompleto ? '<span title="Incompleto" style="color:#C4831A;font-size:11px;flex-shrink:0">⚠</span>' : '') +
+          '<div class="lanc-dur">' + esc(fmtH(dur)) + '</div>' +
+          '</div>';
+      });
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+  }
+
+  // ── Renderização: lista de custos ────────────────────────────────
+
+  function renderCustos(rows) {
+    var wrap = document.getElementById('custo-lista-wrap');
+    var info = AP.weekInfo;
+    if (!info) return;
+    if (!(rows||[]).length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="lanc-vazio">Nenhum custo nesta semana.</div></div>';
+      return;
+    }
+    var dias = getDiasSemana(info);
+    var porDia = {};
+    dias.forEach(function(iso) { porDia[iso] = []; });
+    rows.forEach(function(c) { if (porDia[c.data_lancamento]) porDia[c.data_lancamento].push(c); });
+
+    var html = '<div class="lanc-lista-box">';
+    dias.forEach(function(iso, i) {
+      var dayRows = porDia[iso]||[];
+      if (!dayRows.length) return;
+      var fds = i >= 5;
+      html += '<div class="lanc-dia-hdr' + (fds?' fds':'') + '">' + esc(NOMES_SEMANA[i]) + ' ' + esc(fmtDate(iso)) + '</div>';
+      dayRows.forEach(function(c) {
+        var area = c.area_nome || '';
+        var detalhe = c.subtipo || '';
+        var cli = ((c.produtos||{}).oportunidades||{}).clientes ? ((c.produtos||{}).oportunidades.clientes.nome||'') : '';
+        var proj = ((c.produtos||{}).oportunidades||{}).projeto || '';
+        var mainText = area || TIPO_PT[c.tipo] || c.tipo || 'Custo';
+        var subText = [cli, proj, detalhe, c.descricao].filter(Boolean).join(' · ');
+        var valor = 'R$ ' + Number(c.valor||0).toFixed(2).replace('.',',');
+        html += '<div class="lanc-item">' +
+          '<div class="lanc-dot" style="background:var(--terracota)"></div>' +
+          '<div class="lanc-hora">' + esc(fmtDate(c.data_lancamento)) + '</div>' +
+          '<div class="lanc-desc"><span class="lanc-desc-main">' + esc(mainText) + '</span>' +
+          (subText ? '<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">' + esc(subText) + '</span>' : '') +
+          '</div>' +
+          '<div class="custo-val">' + esc(valor) + '</div>' +
+          '</div>';
+      });
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+  }
+
+  // ── Carregamento de dados ────────────────────────────────────────
+
+  async function loadHorasData() {
+    var u = uid(), info = AP.weekInfo;
+    if (!u || !info) return;
+    var res = await window.sb
+      .from('horas_lancadas')
+      .select('id,data_lancamento,hora_inicio,hora_fim,tipo,subtipo,descricao,produto_id,etapa_id,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+      .eq('usuario_id', u)
+      .gte('data_lancamento', info.start)
+      .lte('data_lancamento', info.end)
+      .order('data_lancamento')
+      .order('hora_inicio');
+    if (res.error) throw new Error(res.error.message);
+    AP.weekHours = res.data || [];
+    renderCalendario(AP.weekHours);
+    renderLancamentos(AP.weekHours);
+  }
+
+  async function loadCustosData() {
+    var u = uid(), info = AP.weekInfo;
+    if (!u || !info) return;
+    var res = await window.sb
+      .from('lancamentos_custo')
+      .select('id,data_lancamento,valor,tipo,subtipo,descricao,plano_contas_id,produto_id,etapa_id,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+      .eq('usuario_id', u)
+      .gte('data_lancamento', info.start)
+      .lte('data_lancamento', info.end)
+      .order('data_lancamento');
+    if (res.error) throw new Error(res.error.message);
+    var rows = res.data || [];
+    rows.forEach(function(r) {
+      var area = AP.costAreas.find(function(a){ return String(a.id)===String(r.plano_contas_id); });
+      r.area_nome = area ? area.subconta : '';
+    });
+    AP.weekCosts = rows;
+    renderCustos(AP.weekCosts);
+  }
+
+  // ── Histórico por mês ────────────────────────────────────────────
+
+  function renderBancoResumo() {
+    var sum = AP.bankSummary;
+    if (!sum) return;
+    setText('bh-kpi-jornada', fmtH(sum.jornadaSemanalH));
+    setText('bh-kpi-registradas', fmtH(sum.horasRegistradasH));
+    setText('bh-kpi-excesso', fmtH(sum.excessoBrutoH));
+    setText('bh-kpi-elegivel', fmtH(sum.excessoElegivelH));
+    setText('bh-kpi-saldo', fmtH(sum.saldoDisponivelH));
+    setText('bh-pill-elegivel', fmtH(sum.excessoElegivelH));
+    setText('bh-pill-solicitadas', fmtH(sum.jaSolicitadoH));
+    setText('bh-pill-disponivel', fmtH(sum.disponivelSolicitarH));
+    setText('bh-kpi-jornada-sub', sum.jornadaDefaulted ? 'Sem cadastro em Pessoas; usando 40h' : 'Meta contratada');
+    setText('bh-kpi-elegivel-sub', sum.excessoElegivelH > 0 ? 'Horas inteiras reconhecíveis' : 'Sem horas reconhecíveis nesta semana');
+    setText('bh-week-note',
+      'Nesta semana, foram registradas ' + fmtH(sum.horasRegistradasH) +
+      ' para uma jornada de ' + fmtH(sum.jornadaSemanalH) +
+      '. O excesso bruto é ' + fmtH(sum.excessoBrutoH) +
+      ', mas somente ' + fmtH(sum.excessoElegivelH) +
+      ' entram como horas reconhecíveis. Já existem ' + fmtH(sum.jaSolicitadoH) +
+      ' em solicitações abertas para esta semana, deixando ' + fmtH(sum.disponivelSolicitarH) +
+      ' ainda disponíveis para pedir.'
+    );
+    var qty = document.getElementById('apo-bh-qty');
+    if (qty) qty.max = String(Math.max(sum.disponivelSolicitarH, 0));
+    setText('bh-qty-note',
+      sum.disponivelSolicitarH > 0
+        ? 'Somente horas inteiras reconhecíveis. Restam ' + fmtH(sum.disponivelSolicitarH) + ' disponíveis nesta semana.'
+        : 'Não há horas inteiras elegíveis disponíveis para solicitar nesta semana.'
+    );
+  }
+
+  function renderBancoRequests() {
+    var wrap = document.getElementById('bh-requests-wrap');
+    if (!wrap) return;
+    var rows = AP.bankRequests || [];
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Nenhuma solicitação registrada ainda.</div></div>';
+      return;
+    }
+    var html = '<div class="lanc-lista-box">';
+    rows.forEach(function(r) {
+      var canCancel = r.status_solicitacao === 'pendente';
+      var statusCls = r.status_solicitacao === 'pendente' ? 'am' : (String(r.status_solicitacao || '').indexOf('aprovado') === 0 ? 'ok' : 'warn');
+      html += '<div class="bh-item">' +
+        '<div class="bh-item-top">' +
+          '<div class="bh-item-main">' +
+            '<div class="bh-item-title">' + esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim)) + '</div>' +
+            '<div class="bh-item-meta">Solicitado em ' + esc(new Date(r.created_at || Date.now()).toLocaleDateString('pt-BR')) +
+            ' · pedido: ' + esc(fmtH(r.quantidade_solicitada_h)) +
+            ' · pretendido: ' + esc(formatBhDestino(r.destino_solicitado)) + '</div>' +
+          '</div>' +
+          '<div class="bh-item-badges">' +
+            '<span class="bh-mini-pill ' + statusCls + '">' + esc(formatBhStatus(r.status_solicitacao)) + '</span>' +
+            '<span class="bh-mini-pill">' + esc(formatBhDestinoStatus(r.status_destino || 'aguardando_definicao')) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="bh-item-meta">Jornada: ' + esc(fmtH(r.jornada_semanal_h || 0)) +
+        ' · registradas: ' + esc(fmtH(r.horas_registradas_h || 0)) +
+        ' · excesso elegível: ' + esc(fmtH(r.excesso_elegivel_h || 0)) +
+        ' · aprovado: ' + esc(fmtH(r.quantidade_aprovada_h || 0)) + '</div>' +
+        (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+        (r.observacao_decisao ? '<div class="bh-item-meta"><strong>Decisão:</strong> ' + esc(r.observacao_decisao) + '</div>' : '') +
+        (canCancel ? '<div class="apo-actions"><button type="button" class="apo-btn apo-btn-sm" data-bh-cancel="' + esc(r.id) + '">Cancelar pedido</button></div>' : '') +
+      '</div>';
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-cancel]'), function(btn) {
+      btn.addEventListener('click', function() {
+        cancelBancoRequest(this.getAttribute('data-bh-cancel')).catch(function(e){
+          setFb('apo-bh-feedback', e.message, 'err');
+        });
+      });
+    });
+  }
+
+  function renderBancoAdmin() {
+    var wrapBox = document.getElementById('bh-admin-wrap');
+    var wrap = document.getElementById('bh-admin-list-wrap');
+    if (!wrapBox || !wrap) return;
+    var admin = isSocioAdmRole(AP.user && AP.user.role);
+    wrapBox.style.display = admin ? '' : 'none';
+    if (!admin) return;
+    var rows = AP.bankPending || [];
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Sem solicitações pendentes.</div></div>';
+      return;
+    }
+    var html = '<div class="lanc-lista-box">';
+    rows.forEach(function(r) {
+      html += '<div class="bh-item">' +
+        '<div class="bh-item-top">' +
+          '<div class="bh-item-main">' +
+            '<div class="bh-item-title">' + esc(r.usuario_nome || 'Usuário') + ' · ' + esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim)) + '</div>' +
+            '<div class="bh-item-meta">Pedido: ' + esc(fmtH(r.quantidade_solicitada_h)) +
+            ' · elegível: ' + esc(fmtH(r.excesso_elegivel_h || 0)) +
+            ' · jornada: ' + esc(fmtH(r.jornada_semanal_h || 0)) +
+            ' · registradas: ' + esc(fmtH(r.horas_registradas_h || 0)) + '</div>' +
+          '</div>' +
+          '<div class="bh-item-badges"><span class="bh-mini-pill am">Pendente</span></div>' +
+        '</div>' +
+        (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+        '<div class="bh-admin-actions">' +
+          '<div class="apo-field"><label for="bh-approve-' + esc(r.id) + '">Aprovar</label><input type="number" id="bh-approve-' + esc(r.id) + '" min="0" step="1" value="' + esc(String(r.quantidade_solicitada_h || 0)) + '"></div>' +
+          '<div class="apo-field"><label for="bh-comp-' + esc(r.id) + '">Compensação</label><input type="number" id="bh-comp-' + esc(r.id) + '" min="0" step="1" value="' + esc(String(r.quantidade_solicitada_h || 0)) + '"></div>' +
+          '<div class="apo-field"><label for="bh-pay-' + esc(r.id) + '">Pagamento</label><input type="number" id="bh-pay-' + esc(r.id) + '" min="0" step="1" value="0"></div>' +
+          '<div class="apo-field"><label for="bh-note-' + esc(r.id) + '">Observação</label><input type="text" id="bh-note-' + esc(r.id) + '" placeholder="Observação da decisão"></div>' +
+        '</div>' +
+        '<div class="apo-actions">' +
+          '<button type="button" class="apo-btn apo-btn-primary apo-btn-sm" data-bh-approve="' + esc(r.id) + '">Decidir</button>' +
+          '<button type="button" class="apo-btn apo-btn-sm" data-bh-refuse="' + esc(r.id) + '">Recusar</button>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-approve]'), function(btn) {
+      btn.addEventListener('click', function() {
+        approveBancoRequest(this.getAttribute('data-bh-approve')).catch(function(e){
+          setFb('apo-bh-feedback', e.message, 'err');
+        });
+      });
+    });
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-refuse]'), function(btn) {
+      btn.addEventListener('click', function() {
+        refuseBancoRequest(this.getAttribute('data-bh-refuse')).catch(function(e){
+          setFb('apo-bh-feedback', e.message, 'err');
+        });
+      });
+    });
+  }
+
+  async function loadBancoData() {
+    var u = uid(), info = AP.weekInfo;
+    if (!u || !info) return;
+    AP.bankSqlReady = true;
+    try {
+      var horasRes = await window.sb
+        .from('horas_lancadas')
+        .select('data_lancamento,hora_inicio,hora_fim')
+        .eq('usuario_id', u)
+        .gte('data_lancamento', info.start)
+        .lte('data_lancamento', info.end);
+      if (horasRes.error) throw horasRes.error;
+
+      var [jornadaRes, saldoRes, reqRes, pendingRes] = await Promise.all([
+        window.sb.from('usuarios_jornada').select('jornada_semanal_h').eq('usuario_id', u).maybeSingle(),
+        window.sb.from('banco_horas_saldo').select('horas_disponiveis,horas_pagamento_pendente').eq('usuario_id', u).maybeSingle(),
+        window.sb.from('banco_horas_solicitacoes').select('*').eq('usuario_id', u).order('created_at', { ascending:false }).limit(30),
+        isSocioAdmRole(AP.user && AP.user.role)
+          ? window.sb.from('banco_horas_solicitacoes').select('*').eq('status_solicitacao', 'pendente').order('created_at', { ascending:true }).limit(30)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (jornadaRes.error) throw jornadaRes.error;
+      if (saldoRes.error && saldoRes.error.code !== 'PGRST116') throw saldoRes.error;
+      if (reqRes.error) throw reqRes.error;
+      if (pendingRes && pendingRes.error) throw pendingRes.error;
+
+      var horas = horasRes.data || [];
+      var jornada = Number((jornadaRes.data && jornadaRes.data.jornada_semanal_h) || 40);
+      var total = round1(horas.reduce(function(sum, row) {
+        return sum + diffH(row.hora_inicio, row.hora_fim);
+      }, 0));
+      var excessoBruto = calcExcessoBruto(total, jornada);
+      var excessoElegivel = calcExcessoElegivel(total, jornada);
+      var reqs = reqRes.data || [];
+      var jaSolicitado = reqs
+        .filter(function(r) {
+          return r.semana_inicio === info.start &&
+            r.status_solicitacao !== 'recusado' &&
+            r.status_solicitacao !== 'cancelado';
+        })
+        .reduce(function(sum, r) { return sum + Number(r.quantidade_solicitada_h || 0); }, 0);
+      var saldo = saldoRes.data || {};
+      AP.bankSummary = {
+        jornadaSemanalH: jornada,
+        jornadaDefaulted: !(jornadaRes.data && jornadaRes.data.jornada_semanal_h != null),
+        horasRegistradasH: total,
+        excessoBrutoH: excessoBruto,
+        excessoElegivelH: excessoElegivel,
+        jaSolicitadoH: Number(jaSolicitado || 0),
+        disponivelSolicitarH: Math.max(excessoElegivel - Number(jaSolicitado || 0), 0),
+        saldoDisponivelH: Number(saldo.horas_disponiveis || 0),
+        saldoPagamentoPendenteH: Number(saldo.horas_pagamento_pendente || 0),
+      };
+      AP.bankRequests = reqs;
+      AP.bankPending = pendingRes && pendingRes.data ? pendingRes.data : [];
+      renderBancoResumo();
+      renderBancoRequests();
+      renderBancoAdmin();
+    } catch(e) {
+      AP.bankSqlReady = false;
+      document.getElementById('bh-week-note').textContent = 'Banco de horas indisponível. Execute primeiro o SQL da DEV-08 no Supabase.';
+      document.getElementById('bh-requests-wrap').innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Execute o SQL da DEV-08 para habilitar solicitações e saldo.</div></div>';
+      document.getElementById('bh-admin-list-wrap').innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Execute o SQL da DEV-08 para habilitar aprovação.</div></div>';
+      setFb('apo-bh-feedback', e.message || 'Banco de horas indisponível.', 'err');
+    }
+  }
+
+  async function submitBancoHoras(ev) {
+    ev.preventDefault();
+    setFb('apo-bh-feedback', '', '');
+    var btn = document.getElementById('apo-bh-submit');
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+    try {
+      if (!AP.bankSummary) await loadBancoData();
+      if (!AP.bankSqlReady) throw new Error('Execute o SQL da DEV-08 antes de solicitar horas adicionais.');
+      var sum = AP.bankSummary;
+      var qty = parseInt(document.getElementById('apo-bh-qty').value || '0', 10);
+      var destino = document.getElementById('apo-bh-destino').value;
+      var justificativa = document.getElementById('apo-bh-justificativa').value.trim();
+      if (!qty || qty <= 0) throw new Error('Informe uma quantidade inteira válida.');
+      if (qty > sum.disponivelSolicitarH) throw new Error('A solicitação não pode ultrapassar o saldo elegível disponível da semana.');
+      var ins = await window.sb.from('banco_horas_solicitacoes').insert({
+        usuario_id: uid(),
+        usuario_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+        semana_inicio: AP.weekInfo.start,
+        semana_fim: AP.weekInfo.end,
+        jornada_semanal_h: sum.jornadaSemanalH,
+        horas_registradas_h: sum.horasRegistradasH,
+        excesso_bruto_h: sum.excessoBrutoH,
+        excesso_elegivel_h: sum.excessoElegivelH,
+        quantidade_solicitada_h: qty,
+        destino_solicitado: destino,
+        status_solicitacao: 'pendente',
+        status_destino: 'aguardando_definicao',
+        justificativa: justificativa || null,
+      });
+      if (ins.error) throw ins.error;
+      document.getElementById('apo-bh-form').reset();
+      document.getElementById('apo-bh-destino').value = 'compensacao';
+      setFb('apo-bh-feedback', 'Solicitação registrada.', 'ok');
+      await loadBancoData();
+    } catch(e) {
+      setFb('apo-bh-feedback', e.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Solicitar';
+    }
+  }
+
+  async function cancelBancoRequest(id) {
+    var res = await window.sb.from('banco_horas_solicitacoes')
+      .update({ status_solicitacao:'cancelado', cancelado_em:new Date().toISOString(), updated_at:new Date().toISOString() })
+      .eq('id', id)
+      .eq('usuario_id', uid())
+      .eq('status_solicitacao', 'pendente');
+    if (res.error) throw new Error(res.error.message);
+    setFb('apo-bh-feedback', 'Solicitação cancelada.', 'ok');
+    await loadBancoData();
+  }
+
+  async function applyBancoSaldo(usuarioId, compHoras, payHoras) {
+    var cur = await window.sb.from('banco_horas_saldo')
+      .select('usuario_id,horas_disponiveis,horas_pagamento_pendente')
+      .eq('usuario_id', usuarioId)
+      .maybeSingle();
+    if (cur.error && cur.error.code !== 'PGRST116') throw cur.error;
+    var row = cur.data || { usuario_id: usuarioId, horas_disponiveis: 0, horas_pagamento_pendente: 0 };
+    var upd = await window.sb.from('banco_horas_saldo').upsert({
+      usuario_id: usuarioId,
+      horas_disponiveis: Number(row.horas_disponiveis || 0) + Number(compHoras || 0),
+      horas_pagamento_pendente: Number(row.horas_pagamento_pendente || 0) + Number(payHoras || 0),
+      updated_at: new Date().toISOString(),
+    }, { onConflict:'usuario_id' });
+    if (upd.error) throw upd.error;
+  }
+
+  async function approveBancoRequest(id) {
+    if (!isSocioAdmRole(AP.user && AP.user.role)) throw new Error('A aprovação é restrita a sócios administrativos.');
+    var base = (AP.bankPending || []).find(function(r){ return String(r.id) === String(id); });
+    if (!base) throw new Error('Solicitação não encontrada.');
+    var aprov = parseInt(document.getElementById('bh-approve-' + id).value || '0', 10);
+    var comp = parseInt(document.getElementById('bh-comp-' + id).value || '0', 10);
+    var pay = parseInt(document.getElementById('bh-pay-' + id).value || '0', 10);
+    var obs = (document.getElementById('bh-note-' + id).value || '').trim();
+    if (aprov < 0 || comp < 0 || pay < 0) throw new Error('Valores de decisão não podem ser negativos.');
+    if (aprov > Number(base.quantidade_solicitada_h || 0)) throw new Error('A aprovação não pode ultrapassar a quantidade solicitada.');
+    if ((comp + pay) !== aprov) throw new Error('Compensação e pagamento devem somar exatamente o total aprovado.');
+    var status = aprov === 0 ? 'recusado' : (aprov === Number(base.quantidade_solicitada_h || 0) ? 'aprovado_integralmente' : 'aprovado_parcialmente');
+    var destino = comp > 0 && pay > 0 ? 'misto' : (comp > 0 ? 'compensacao' : (pay > 0 ? 'pagamento_extraordinario' : null));
+    var statusDestino = comp > 0 && pay === 0 ? 'saldo_para_compensacao'
+      : (pay > 0 && comp === 0 ? 'aguardando_pagamento_extraordinario'
+      : (aprov > 0 ? 'aguardando_definicao' : 'encerrado'));
+    await applyBancoSaldo(base.usuario_id, comp, pay);
+    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+      quantidade_aprovada_h: aprov,
+      horas_para_compensacao_h: comp,
+      horas_para_pagamento_h: pay,
+      destino_aprovado: destino,
+      status_solicitacao: status,
+      status_destino: statusDestino,
+      observacao_decisao: obs || null,
+      aprovado_por: uid(),
+      aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+      aprovado_em: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', id).eq('status_solicitacao', 'pendente');
+    if (upd.error) throw new Error(upd.error.message);
+    setFb('apo-bh-feedback', 'Solicitação decidida.', 'ok');
+    await loadBancoData();
+  }
+
+  async function refuseBancoRequest(id) {
+    if (!isSocioAdmRole(AP.user && AP.user.role)) throw new Error('A recusa é restrita a sócios administrativos.');
+    var obs = (document.getElementById('bh-note-' + id).value || '').trim();
+    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+      quantidade_aprovada_h: 0,
+      horas_para_compensacao_h: 0,
+      horas_para_pagamento_h: 0,
+      destino_aprovado: null,
+      status_solicitacao: 'recusado',
+      status_destino: 'encerrado',
+      observacao_decisao: obs || null,
+      aprovado_por: uid(),
+      aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+      aprovado_em: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', id).eq('status_solicitacao', 'pendente');
+    if (upd.error) throw new Error(upd.error.message);
+    setFb('apo-bh-feedback', 'Solicitação recusada.', 'ok');
+    await loadBancoData();
+  }
+
+  async function loadHistoricoMes(mes) {
+    if (!mes) return;
+    var u = uid();
+    var parts = mes.split('-').map(Number);
+    var ano = parts[0], m = parts[1];
+    var ini = ano + '-' + String(m).padStart(2,'0') + '-01';
+    var fim = ano + '-' + String(m).padStart(2,'0') + '-' + String(new Date(ano,m,0).getDate()).padStart(2,'0');
+
+    setFb('exp-feedback','Carregando…','');
+    try {
+      var [hRes, cRes] = await Promise.all([
+        window.sb.from('horas_lancadas')
+          .select('id,data_lancamento,hora_inicio,hora_fim,tipo,subtipo,descricao,produto_id,etapa_id,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+          .eq('usuario_id', u).gte('data_lancamento',ini).lte('data_lancamento',fim)
+          .order('data_lancamento').order('hora_inicio'),
+        window.sb.from('lancamentos_custo')
+          .select('id,data_lancamento,valor,tipo,subtipo,descricao,plano_contas_id,produto_id,etapa_id,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+          .eq('usuario_id', u).gte('data_lancamento',ini).lte('data_lancamento',fim)
+          .order('data_lancamento'),
+      ]);
+      var horas = hRes.data || [];
+      var custos = (cRes.data || []).map(function(r) {
+        var area = AP.costAreas.find(function(a){ return String(a.id)===String(r.plano_contas_id); });
+        r.area_nome = area ? area.subconta : '';
+        return r;
+      });
+      renderHistHoras(horas);
+      renderHistCustos(custos);
+      setFb('exp-feedback','','');
+    } catch(e) {
+      setFb('exp-feedback', e.message, 'err');
+    }
+  }
+
+  function renderHistHoras(rows) {
+    var wrap = document.getElementById('hist-horas-wrap');
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="lanc-vazio">Sem horas neste mês.</div></div>';
+      return;
+    }
+    var porDia = {};
+    rows.forEach(function(l) {
+      if (!porDia[l.data_lancamento]) porDia[l.data_lancamento] = [];
+      porDia[l.data_lancamento].push(l);
+    });
+    var html = '<div class="lanc-lista-box">';
+    Object.keys(porDia).sort().forEach(function(iso) {
+      var d = new Date(iso+'T12:00:00');
+      var diaNome = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()];
+      var fds = d.getDay() === 0 || d.getDay() === 6;
+      html += '<div class="lanc-dia-hdr'+(fds?' fds':'')+'">'+esc(diaNome)+' '+esc(fmtDate(iso))+'</div>';
+      porDia[iso].forEach(function(l) {
+        var cor = COR_TIPO[l.tipo]||'#888';
+        var opp = (l.produtos||{}).oportunidades||{};
+        var cli = ((opp.clientes||{}).nome||'');
+        var etapa = (l.etapas||{}).nome||'';
+        var main = l.tipo==='projeto' ? ([cli, opp.projeto, etapa].filter(Boolean).join(' · ') || 'Projeto') : (l.subtipo||TIPO_PT[l.tipo]||l.tipo);
+        html += '<div class="lanc-item">'+
+          '<div class="lanc-dot" style="background:'+cor+'"></div>'+
+          '<div class="lanc-hora">'+esc((l.hora_inicio||'').slice(0,5))+'–'+esc((l.hora_fim||'').slice(0,5))+'</div>'+
+          '<div class="lanc-desc"><span class="lanc-desc-main">'+esc(main)+'</span>'+
+          (l.descricao?'<span class="lanc-desc-sep">·</span><span class="lanc-desc-nota">'+esc(l.descricao)+'</span>':'')+'</div>'+
+          '<div class="lanc-dur">'+esc(fmtH(diffH(l.hora_inicio,l.hora_fim)))+'</div>'+
+          '</div>';
+      });
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+  }
+
+  function renderHistCustos(rows) {
+    var wrap = document.getElementById('hist-custos-wrap');
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="lanc-lista-box"><div class="lanc-vazio">Sem custos neste mês.</div></div>';
+      return;
+    }
+    var porDia = {};
+    rows.forEach(function(c) {
+      if (!porDia[c.data_lancamento]) porDia[c.data_lancamento] = [];
+      porDia[c.data_lancamento].push(c);
+    });
+    var html = '<div class="lanc-lista-box">';
+    Object.keys(porDia).sort().forEach(function(iso) {
+      var d = new Date(iso+'T12:00:00');
+      var diaNome = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()];
+      var fds = d.getDay()===0||d.getDay()===6;
+      html += '<div class="lanc-dia-hdr'+(fds?' fds':'')+'">'+esc(diaNome)+' '+esc(fmtDate(iso))+'</div>';
+      porDia[iso].forEach(function(c) {
+        var main = c.area_nome || TIPO_PT[c.tipo] || 'Custo';
+        var sub = [c.subtipo, c.descricao].filter(Boolean).join(' · ');
+        html += '<div class="lanc-item">'+
+          '<div class="lanc-dot" style="background:var(--terracota)"></div>'+
+          '<div class="lanc-hora">'+esc(fmtDate(c.data_lancamento))+'</div>'+
+          '<div class="lanc-desc"><span class="lanc-desc-main">'+esc(main)+'</span>'+
+          (sub?'<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">'+esc(sub)+'</span>':'')+'</div>'+
+          '<div class="custo-val">R$ '+esc(Number(c.valor||0).toFixed(2).replace('.',','))+'</div>'+
+          '</div>';
+      });
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+  }
+
+  // ── Exportar Horas CSV ───────────────────────────────────────────
+
+  async function exportarHorasCSV() {
+    var mes = document.getElementById('exp-mes').value;
+    if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
+    var u = uid();
+    var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
+    var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
+    var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
+    setFb('exp-feedback','Gerando…','');
+    try {
+      var res = await window.sb.from('horas_lancadas')
+        .select('*,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+        .eq('usuario_id', u).gte('data_lancamento',ini).lte('data_lancamento',fim)
+        .order('data_lancamento').order('hora_inicio');
+      var horas = res.data || [];
+      var linhas = [['Data','Dia','Início','Fim','Horas','Tipo','Subtipo','Cliente','Oportunidade','Produto','Etapa','Descrição']];
+      horas.forEach(function(h) {
+        linhas.push([
+          fmtDateFull(h.data_lancamento), fmtDia(h.data_lancamento),
+          (h.hora_inicio||'').slice(0,5), (h.hora_fim||'').slice(0,5),
+          diffH(h.hora_inicio,h.hora_fim).toFixed(2).replace('.',','),
+          ({projeto:'Projeto',organizacao:'Org. Interna',sociedade:'Sociedade'}[h.tipo]||h.tipo||''),
+          h.subtipo||'',
+          ((h.produtos||{}).oportunidades||{}).clientes ? (h.produtos.oportunidades.clientes.nome||'') : '',
+          ((h.produtos||{}).oportunidades||{}).projeto||'',
+          (h.produtos||{}).nome||'', (h.etapas||{}).nome||'', h.descricao||''
+        ]);
+      });
+      var csv = linhas.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(';'); }).join('\n');
+      var blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'horas_'+mes+'.csv'; a.click();
+      setFb('exp-feedback','CSV exportado.','ok');
+    } catch(e) { setFb('exp-feedback',e.message,'err'); }
+  }
+
+  // ── Exportar Horas PDF ───────────────────────────────────────────
+
+  async function exportarHorasPDF() {
+    var mes = document.getElementById('exp-mes').value;
+    if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
+    var u = uid();
+    var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
+    var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
+    var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
+    var mesNome = new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date(ano,m-1,1));
+    setFb('exp-feedback','Gerando…','');
+    try {
+      var res = await window.sb.from('horas_lancadas')
+        .select('*,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+        .eq('usuario_id', u).gte('data_lancamento',ini).lte('data_lancamento',fim)
+        .order('data_lancamento').order('hora_inicio');
+      var horas = res.data || [];
+      var totalH = horas.reduce(function(s,h){ return s+diffH(h.hora_inicio,h.hora_fim); },0);
+      var TIPOPT = {projeto:'Projeto',organizacao:'Org. Interna',sociedade:'Sociedade'};
+      var rows = horas.map(function(h) {
+        var dh = diffH(h.hora_inicio,h.hora_fim);
+        var cli = (((h.produtos||{}).oportunidades||{}).clientes||{}).nome||'';
+        var proj = ((h.produtos||{}).oportunidades||{}).projeto||'';
+        var etapa = (h.etapas||{}).nome||'';
+        return '<tr><td>'+esc(fmtDate(h.data_lancamento))+'</td><td>'+esc(fmtDia(h.data_lancamento))+'</td>'+
+          '<td>'+esc((h.hora_inicio||'').slice(0,5))+'–'+esc((h.hora_fim||'').slice(0,5))+'</td>'+
+          '<td class="n">'+esc(fmtH(dh))+'</td><td>'+esc(TIPOPT[h.tipo]||h.tipo||'')+'</td>'+
+          '<td>'+esc([cli,proj,etapa].filter(Boolean).join(' · '))+'</td><td>'+esc(h.descricao||'')+'</td></tr>';
+      }).join('');
+      var nome = (AP.user&&(AP.user.nome||AP.user.apelido))||'';
+      var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Horas — '+mesNome+'</title><style>'+
+        '*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}'+
+        'h1{font-size:15px;font-weight:700;margin-bottom:3px}.sub{font-size:10px;color:#888;margin-bottom:18px}'+
+        '.ms{margin-bottom:18px;page-break-inside:avoid}.mhd{font-size:11px;font-weight:700;padding:5px 0 4px;border-bottom:2px solid #222;margin-bottom:5px;display:flex;justify-content:space-between}.mt{font-weight:400;color:#555}'+
+        'table{width:100%;border-collapse:collapse}th{background:#f4f4f4;text-align:left;padding:3px 6px;font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #ddd}'+
+        'td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top}tr:last-child td{border-bottom:none}.n{text-align:right;font-family:monospace;white-space:nowrap}'+
+        '@media print{body{padding:16px 20px}.ms{page-break-inside:avoid}}'+
+        '</style></head><body>'+
+        '<h1>Relatório de horas — '+mesNome+'</h1>'+
+        '<div class="sub">'+esc(nome)+' · Gerado em '+new Date().toLocaleDateString('pt-BR')+' · Total: '+fmtH(totalH)+'</div>'+
+        '<div class="ms"><div class="mhd"><span>Lançamentos</span><span class="mt">'+fmtH(totalH)+'</span></div>'+
+        '<table><thead><tr><th>Data</th><th>Dia</th><th>Horário</th><th>Dur.</th><th>Tipo</th><th>Projeto / Etapa</th><th>Descrição</th></tr></thead>'+
+        '<tbody>'+rows+'</tbody></table></div>'+
+        '</body></html>';
+      var win = window.open('','_blank','width=920,height=720');
+      win.document.write(html); win.document.close();
+      setTimeout(function(){ win.print(); },450);
+      setFb('exp-feedback','PDF aberto.','ok');
+    } catch(e) { setFb('exp-feedback',e.message,'err'); }
+  }
+
+  // ── Exportar Custos CSV ──────────────────────────────────────────
+
+  async function exportarCustosCSV() {
+    var mes = document.getElementById('exp-mes').value;
+    if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
+    var u = uid();
+    var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
+    var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
+    var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
+    setFb('exp-feedback','Gerando…','');
+    try {
+      var res = await window.sb.from('lancamentos_custo')
+        .select('*,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+        .eq('usuario_id', u).gte('data_lancamento',ini).lte('data_lancamento',fim)
+        .order('data_lancamento');
+      var custos = res.data || [];
+      var linhas = [['Data','Dia','Tipo','Área','Detalhe','Cliente','Projeto','Produto','Etapa','Descrição','Valor (R$)']];
+      custos.forEach(function(c) {
+        var area = AP.costAreas.find(function(a){ return String(a.id)===String(c.plano_contas_id); });
+        var cli = (((c.produtos||{}).oportunidades||{}).clientes||{}).nome||'';
+        var proj = ((c.produtos||{}).oportunidades||{}).projeto||'';
+        linhas.push([
+          fmtDateFull(c.data_lancamento), fmtDia(c.data_lancamento),
+          ({projeto:'Projeto',organizacao:'Org. Interna',sociedade:'Sociedade'}[c.tipo]||c.tipo||''),
+          area?area.subconta:'', c.subtipo||'', cli, proj,
+          (c.produtos||{}).nome||'', (c.etapas||{}).nome||'', c.descricao||'',
+          Number(c.valor||0).toFixed(2).replace('.',',')
+        ]);
+      });
+      var csv = linhas.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(';'); }).join('\n');
+      var blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'custos_'+mes+'.csv'; a.click();
+      setFb('exp-feedback','CSV exportado.','ok');
+    } catch(e) { setFb('exp-feedback',e.message,'err'); }
+  }
+
+  // ── Exportar Custos PDF ──────────────────────────────────────────
+
+  async function exportarCustosPDF() {
+    var mes = document.getElementById('exp-mes').value;
+    if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
+    var u = uid();
+    var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
+    var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
+    var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
+    var mesNome = new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date(ano,m-1,1));
+    setFb('exp-feedback','Gerando…','');
+    try {
+      var res = await window.sb.from('lancamentos_custo')
+        .select('*,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+        .eq('usuario_id', u).gte('data_lancamento',ini).lte('data_lancamento',fim)
+        .order('data_lancamento');
+      var custos = res.data || [];
+      var totalV = custos.reduce(function(s,c){ return s+Number(c.valor||0); },0);
+      var fmtR = function(v){ return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2}); };
+      var rows = custos.map(function(c) {
+        var area = AP.costAreas.find(function(a){ return String(a.id)===String(c.plano_contas_id); });
+        var cli = (((c.produtos||{}).oportunidades||{}).clientes||{}).nome||'';
+        var proj = ((c.produtos||{}).oportunidades||{}).projeto||'';
+        return '<tr><td>'+esc(fmtDate(c.data_lancamento))+'</td><td>'+esc(fmtDia(c.data_lancamento))+'</td>'+
+          '<td>'+(area?esc(area.subconta):'')+'</td><td>'+esc(c.subtipo||'')+'</td>'+
+          '<td>'+esc([cli,proj].filter(Boolean).join(' · '))+'</td><td>'+esc(c.descricao||'')+'</td>'+
+          '<td class="val">'+esc(fmtR(c.valor))+'</td></tr>';
+      }).join('');
+      var nome = (AP.user&&(AP.user.nome||AP.user.apelido))||'';
+      var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Custos — '+mesNome+'</title><style>'+
+        '*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}'+
+        'h1{font-size:15px;font-weight:700;margin-bottom:3px}.sub{font-size:10px;color:#888;margin-bottom:18px}'+
+        'table{width:100%;border-collapse:collapse}th{background:#f4f4f4;text-align:left;padding:3px 6px;font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #ddd}'+
+        'td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top}tr:last-child td{border-bottom:none}.val{text-align:right;font-family:monospace;white-space:nowrap}'+
+        '@media print{body{padding:16px 20px}}'+
+        '</style></head><body>'+
+        '<h1>Relatório de custos — '+mesNome+'</h1>'+
+        '<div class="sub">'+esc(nome)+' · Gerado em '+new Date().toLocaleDateString('pt-BR')+' · Total: '+esc(fmtR(totalV))+'</div>'+
+        '<table><thead><tr><th>Data</th><th>Dia</th><th>Área</th><th>Detalhe</th><th>Projeto</th><th>Descrição</th><th>Valor</th></tr></thead>'+
+        '<tbody>'+rows+'</tbody></table>'+
+        '</body></html>';
+      var win = window.open('','_blank','width=920,height=720');
+      win.document.write(html); win.document.close();
+      setTimeout(function(){ win.print(); },450);
+      setFb('exp-feedback','PDF aberto.','ok');
+    } catch(e) { setFb('exp-feedback',e.message,'err'); }
+  }
+
+  // ── Produtos e áreas ─────────────────────────────────────────────
+
+  function prodLabel(p) {
+    var opp = p.oportunidades||{}, cli = opp.clientes||{};
+    return [cli.nome, opp.projeto, p.nome||p.subtipo||'(sem nome)'].filter(Boolean).join(' · ');
+  }
+
+  async function loadProducts() {
+    var res = await window.sb.from('produtos')
+      .select('id,nome,subtipo,oportunidade_id,status,em_gestao,oportunidades(id,projeto,clientes(id,nome))')
+      .eq('status','ativo').eq('em_gestao',true);
+    if (res.error) throw new Error(res.error.message);
+    AP.products = res.data || [];
+    var opts = '<option value="">Selecionar projeto…</option>' + AP.products.map(function(p){
+      return '<option value="'+p.id+'">'+esc(prodLabel(p))+'</option>';
+    }).join('');
+    document.getElementById('apo-project').innerHTML = opts;
+    document.getElementById('apo-cost-project').innerHTML = opts;
+  }
+
+  async function loadStages(productId) {
+    if (!productId) return [];
+    if (AP.stageCache[productId]) return AP.stageCache[productId];
+    var res = await window.sb.from('etapas').select('id,nome,ordem').eq('produto_id',productId).order('ordem');
+    if (res.error) throw new Error(res.error.message);
+    AP.stageCache[productId] = res.data || [];
+    return AP.stageCache[productId];
+  }
+
+  async function loadCostAreas() {
+    var NOMES = Object.keys(REEMBOLSO_DETALHES);
+    var res = await window.sb.from('fin_plano_contas').select('id,grupo,subconta,ordem').eq('ativo',true).order('ordem');
+    if (res.error) throw new Error(res.error.message);
+    AP.costAreas = (res.data||[]).filter(function(a){
+      return NOMES.some(function(n){ return areaKey(n)===areaKey(a.subconta); });
+    });
+    fillCostAreas();
+  }
+
+  async function ensureWeek(iso) {
+    var d = new Date(iso+'T12:00:00');
+    var isoDay = d.getDay()||7;
+    var mon = new Date(d); mon.setDate(d.getDate()-(isoDay-1));
+    var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    var ws = mon.toISOString().slice(0,10), we = sun.toISOString().slice(0,10);
+    var ft = new Date(Date.UTC(mon.getUTCFullYear(),mon.getUTCMonth(),mon.getUTCDate()+3));
+    var ys = new Date(Date.UTC(ft.getUTCFullYear(),0,1));
+    var week = Math.ceil(((ft-ys)/86400000+1)/7);
+    var u = uid();
+    var res = await window.sb.from('semanas').select('id,finalizada').eq('usuario_id',u).eq('data_inicio',ws).maybeSingle();
+    if (res.error) throw new Error(res.error.message);
+    var row = res.data;
+    if (row&&row.finalizada) throw new Error('A semana já está finalizada.');
+    if (!row) {
+      var cr = await window.sb.from('semanas').upsert(
+        {usuario_id:u,ano:ft.getUTCFullYear(),semana:week,data_inicio:ws,data_fim:we,finalizada:false},
+        {onConflict:'usuario_id,ano,semana'}
+      ).select('id').single();
+      if (cr.error) throw new Error(cr.error.message);
+      row = cr.data;
+    }
+    return { id:row.id, isoDay:isoDay };
+  }
+
+  // ── UI: formulário horas ─────────────────────────────────────────
+
+  function fillTypeOptions() {
+    var opts = [{value:'projeto',label:'Projeto'},{value:'organizacao',label:'Organização interna'}];
+    if (window.isSocioRole&&window.isSocioRole((AP.user||{}).role)) opts.push({value:'sociedade',label:'Societária'});
+    document.getElementById('apo-type').innerHTML = opts.map(function(o){
+      return '<option value="'+o.value+'">'+esc(o.label)+'</option>';
+    }).join('');
+  }
+
+  function updateTypeUI() {
+    var type = document.getElementById('apo-type').value;
+    var isProj = type==='projeto';
+    document.getElementById('apo-project-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-stage-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-subtarefas-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-category-wrap').style.display = isProj?'none':'';
+    if (!isProj) {
+      document.getElementById('apo-subtarefas').value = '';
+      document.getElementById('apo-category').innerHTML = (SUBTIPOS[type]||[]).map(function(s){
+        return '<option value="'+esc(s)+'">'+esc(s)+'</option>';
+      }).join('')||'<option value="">—</option>';
+    }
+    renderSubtarefasSuggestions().catch(function(){});
+    updateClassUI();
+  }
+
+  function getStageName() {
+    var sel = document.getElementById('apo-stage');
+    return sel&&sel.value ? ((sel.options[sel.selectedIndex]||{}).text||'') : '';
+  }
+
+  function updateClassUI() {
+    var type = document.getElementById('apo-type').value;
+    var cls = getClass(type, getStageName());
+    var pill = document.getElementById('apo-class-pill');
+    if (pill) pill.className = 'apo-pill'+(cls.cls?' '+cls.cls:'');
+    setText('apo-classification', cls.label);
+    var note = document.getElementById('apo-stage-note');
+    if (note) {
+      note.className = 'apo-note'+(cls.billable===false?' warn':'');
+      note.textContent = cls.billable===null?'Selecione a etapa para definir a classificação.':
+        cls.billable?'Hora com potencial de cobrança ao cliente.':'Não entra em cobrança ao cliente.';
+    }
+  }
+
+  function updateDuration() {
+    setText('apo-duration', fmtH(diffH(document.getElementById('apo-start').value, document.getElementById('apo-end').value)));
+  }
+
+  function parseSubtarefas(raw) {
+    var seen = {};
+    return String(raw||'')
+      .split(/[\n,;]+/g)
+      .map(function(item){ return item.trim(); })
+      .filter(Boolean)
+      .filter(function(item){
+        var key = item.toLowerCase();
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+      });
+  }
+
+  function splitSubtarefasHoras(totalHoras, items) {
+    var totalMin = Math.round((Number(totalHoras)||0) * 60);
+    if (!items.length || totalMin <= 0) return [];
+    var baseMin = Math.floor(totalMin / items.length);
+    var rest = totalMin - (baseMin * items.length);
+    return items.map(function(item, idx){
+      var mins = baseMin + (rest > 0 ? 1 : 0);
+      if (rest > 0) rest -= 1;
+      return {
+        subtarefa: item,
+        ordem: idx + 1,
+        horas_alocadas: Number((mins / 60).toFixed(2))
+      };
+    });
+  }
+
+  function subtarefasTableMissing(error) {
+    var msg = String((error && error.message) || '').toLowerCase();
+    return !!error && (error.code === '42P01' || msg.indexOf('horas_lancadas_subtarefas') >= 0 || msg.indexOf('does not exist') >= 0);
+  }
+
+  async function saveHorasSubtarefas(hourId, raw, totalHoras, ctx) {
+    if (!hourId || !window.sb) return true;
+    ctx = ctx || {};
+    var items = parseSubtarefas(raw);
+    var delRes = await window.sb.from('horas_lancadas_subtarefas').delete().eq('hora_lancada_id', String(hourId));
+    if (delRes.error) {
+      if (subtarefasTableMissing(delRes.error)) {
+        if (!AP.subtarefasWarned) {
+          AP.subtarefasWarned = true;
+          setFb('apo-feedback','Horas registradas, mas o SQL do DEV-21 ainda nao foi executado.','err');
+        }
+        return false;
+      }
+      throw new Error(delRes.error.message);
+    }
+    AP.subtarefasCache = {};
+    if (!items.length) return true;
+    var rows = splitSubtarefasHoras(totalHoras, items).map(function(item){
+      return {
+        hora_lancada_id: String(hourId),
+        subtarefa: item.subtarefa,
+        horas_alocadas: item.horas_alocadas,
+        ordem: item.ordem,
+        usuario_id: uid(),
+        produto_id: ctx.productId || null,
+        etapa_id: ctx.stageId || null,
+        data_lancamento: ctx.date || null
+      };
+    });
+    var insRes = await window.sb.from('horas_lancadas_subtarefas').insert(rows);
+    if (insRes.error) {
+      if (subtarefasTableMissing(insRes.error)) {
+        if (!AP.subtarefasWarned) {
+          AP.subtarefasWarned = true;
+          setFb('apo-feedback','Horas registradas, mas o SQL do DEV-21 ainda nao foi executado.','err');
+        }
+        return false;
+      }
+      throw new Error(insRes.error.message);
+    }
+    AP.subtarefasCache = {};
+    return true;
+  }
+
+  async function loadSubtarefasSuggestions(ctx) {
+    ctx = ctx || {};
+    var productId = ctx.productId || null;
+    var stageId = ctx.stageId || null;
+    if (!productId && !stageId) return [];
+    AP.subtarefasCache = AP.subtarefasCache || {};
+    var cacheKey = (stageId || 'sem-etapa') + '|' + (productId || 'sem-produto');
+    if (AP.subtarefasCache[cacheKey]) return AP.subtarefasCache[cacheKey];
+    function mergeRows(rows, base) {
+      var seen = {};
+      base.forEach(function(item){ seen[norm(item)] = true; });
+      (rows || []).forEach(function(row){
+        var nome = String((row && row.subtarefa) || '').trim();
+        var key = norm(nome);
+        if (!nome || seen[key]) return;
+        seen[key] = true;
+        base.push(nome);
+      });
+      return base;
+    }
+    async function pull(query) {
+      var res = await query;
+      if (res.error) {
+        if (subtarefasTableMissing(res.error)) return [];
+        throw new Error(res.error.message);
+      }
+      return res.data || [];
+    }
+    var sugestoes = [];
+    if (stageId) {
+      sugestoes = mergeRows(await pull(
+        window.sb.from('horas_lancadas_subtarefas')
+          .select('subtarefa,created_at')
+          .eq('etapa_id', stageId)
+          .order('created_at', { ascending:false })
+          .limit(20)
+      ), sugestoes);
+    }
+    if (productId && sugestoes.length < 8) {
+      sugestoes = mergeRows(await pull(
+        window.sb.from('horas_lancadas_subtarefas')
+          .select('subtarefa,created_at')
+          .eq('produto_id', productId)
+          .order('created_at', { ascending:false })
+          .limit(20)
+      ), sugestoes);
+    }
+    AP.subtarefasCache[cacheKey] = sugestoes.slice(0, 12);
+    return AP.subtarefasCache[cacheKey];
+  }
+
+  function applySubtarefasSuggestion(inputId, sugestao) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var raw = input.value || '';
+    var match = raw.match(/^(.*?)([^,;\n]*)$/);
+    var prefix = match ? match[1] : '';
+    input.value = prefix + sugestao + ', ';
+    input.focus();
+  }
+
+  async function renderSubtarefasSuggestions() {
+    var wrap = document.getElementById('apo-subtarefas-sugestoes');
+    var input = document.getElementById('apo-subtarefas');
+    var type = document.getElementById('apo-type').value;
+    if (!wrap || !input || type !== 'projeto') {
+      if (wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
+      return;
+    }
+    var productId = document.getElementById('apo-project').value || null;
+    var stageId = document.getElementById('apo-stage').value || null;
+    if (!productId) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    var sugestoes = [];
+    try {
+      sugestoes = await loadSubtarefasSuggestions({ productId: productId, stageId: stageId });
+    } catch (e) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    var termoAtual = String((input.value || '').split(/[,;\n]/).pop() || '').trim();
+    var termoKey = norm(termoAtual);
+    var usadas = {};
+    parseSubtarefas(input.value).forEach(function(item){ usadas[norm(item)] = true; });
+    sugestoes = sugestoes.filter(function(item){ return !usadas[norm(item)]; });
+    if (termoKey) sugestoes = sugestoes.filter(function(item){ return norm(item).indexOf(termoKey) >= 0; });
+    sugestoes = sugestoes.slice(0, 8);
+    if (!sugestoes.length) {
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = sugestoes.map(function(item){
+      return '<button type="button" class="apo-btn apo-btn-ghost" style="padding:6px 10px" onclick="applySubtarefasSuggestion(\'apo-subtarefas\', '+JSON.stringify(item).replace(/"/g,'&quot;')+');renderSubtarefasSuggestions()">'+esc(item)+'</button>';
+    }).join('');
+  }
+
+  async function onProjectChange() {
+    var pid = document.getElementById('apo-project').value;
+    var sel = document.getElementById('apo-stage');
+    sel.innerHTML = '<option value="">Selecionar etapa…</option>';
+    if (!pid) { renderSubtarefasSuggestions().catch(function(){}); updateClassUI(); return; }
+    var stages = await loadStages(pid);
+    sel.innerHTML = '<option value="">Selecionar etapa…</option>' + stages.map(function(s){
+      return '<option value="'+s.id+'">'+esc(s.nome)+'</option>';
+    }).join('');
+    renderSubtarefasSuggestions().catch(function(){});
+    updateClassUI();
+  }
+
+  // ── UI: formulário custos ────────────────────────────────────────
+
+  function fillCostTypeOptions() {
+    var opts = [{value:'projeto',label:'Projeto'},{value:'organizacao',label:'Organização interna'}];
+    if (window.isSocioRole&&window.isSocioRole((AP.user||{}).role)) opts.push({value:'sociedade',label:'Societária'});
+    document.getElementById('apo-cost-type').innerHTML = opts.map(function(o){
+      return '<option value="'+o.value+'">'+esc(o.label)+'</option>';
+    }).join('');
+  }
+
+  function fillCostAreas() {
+    document.getElementById('apo-cost-area').innerHTML = '<option value="">Selecionar área…</option>' +
+      AP.costAreas.map(function(a){ return '<option value="'+a.id+'">'+esc(a.subconta)+'</option>'; }).join('');
+  }
+
+  function getCurrArea() {
+    var id = document.getElementById('apo-cost-area').value;
+    return AP.costAreas.find(function(a){ return String(a.id)===String(id); })||null;
+  }
+
+  function getCostRules(area) {
+    if (!area) return {};
+    var key = areaKey(area.subconta);
+    var match = Object.keys(GESTAO_AREA_RULES).find(function(k){ return areaKey(k)===key; });
+    return match?GESTAO_AREA_RULES[match]:{};
+  }
+
+  function fillCostDetails() {
+    var area = getCurrArea();
+    var key = area?areaKey(area.subconta):'';
+    var matchKey = Object.keys(REEMBOLSO_DETALHES).find(function(k){ return areaKey(k)===key; });
+    var details = matchKey?REEMBOLSO_DETALHES[matchKey]:['Outro'];
+    document.getElementById('apo-cost-detail').innerHTML = details.map(function(d){
+      return '<option value="'+esc(d)+'">'+esc(d)+'</option>';
+    }).join('');
+  }
+
+  function updateCostUI() {
+    var type = document.getElementById('apo-cost-type').value;
+    var area = getCurrArea(); var rules = getCostRules(area);
+    if (rules.requer_projeto&&type!=='projeto') { document.getElementById('apo-cost-type').value='projeto'; type='projeto'; }
+    var isProj = type==='projeto';
+    document.getElementById('apo-cost-project-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-cost-stage-wrap').style.display = isProj?'':'none';
+    fillCostDetails();
+    var areaId = document.getElementById('apo-cost-area').value;
+    var st = areaId&&area?'Enviado ao financeiro':'Registrado';
+    setText('apo-cost-status-text', st);
+    var pill = document.getElementById('apo-cost-status-pill');
+    if (pill) pill.className = 'apo-pill'+(st==='Enviado ao financeiro'?' good':'');
+  }
+
+  async function onCostProjectChange() {
+    var pid = document.getElementById('apo-cost-project').value;
+    var sel = document.getElementById('apo-cost-stage');
+    sel.innerHTML = '<option value="">Selecionar etapa…</option>';
+    if (!pid) return;
+    var stages = await loadStages(pid);
+    sel.innerHTML = '<option value="">Selecionar etapa…</option>' + stages.map(function(s){
+      return '<option value="'+s.id+'">'+esc(s.nome)+'</option>';
+    }).join('');
+  }
+
+  // ── Reset forms ───────────────────────────────────────────────────
+
+  function resetHorasForm() {
+    var today = new Date().toISOString().slice(0,10);
+    document.getElementById('apo-hours-form').reset();
+    document.getElementById('apo-date').value = today;
+    document.getElementById('apo-start').value = '09:00';
+    document.getElementById('apo-end').value = '10:00';
+    fillTypeOptions(); updateTypeUI();
+    document.getElementById('apo-project').value = '';
+    document.getElementById('apo-stage').innerHTML = '<option value="">Selecionar etapa…</option>';
+    document.getElementById('apo-subtarefas').value = '';
+    var sug = document.getElementById('apo-subtarefas-sugestoes');
+    if (sug) { sug.innerHTML = ''; sug.style.display = 'none'; }
+    updateSelectedDayUI(today);
+    updateDuration(); setFb('apo-feedback','','');
+  }
+
+  function resetCostForm() {
+    document.getElementById('apo-costs-form').reset();
+    document.getElementById('apo-cost-date').value = document.getElementById('apo-date').value || new Date().toISOString().slice(0,10);
+    document.getElementById('apo-cost-value').value = '';
+    fillCostTypeOptions(); fillCostAreas();
+    document.getElementById('apo-cost-project').value = '';
+    document.getElementById('apo-cost-stage').innerHTML = '<option value="">Selecionar etapa…</option>';
+    updateCostUI(); setFb('apo-cost-feedback','','');
+  }
+
+  // ── Submit horas ──────────────────────────────────────────────────
+
+  async function submitHoras(ev) {
+    ev.preventDefault(); setFb('apo-feedback','','');
+    var btn = document.getElementById('apo-submit');
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    try {
+      var type = document.getElementById('apo-type').value;
+      var date = document.getElementById('apo-date').value;
+      var start = document.getElementById('apo-start').value;
+      var end = document.getElementById('apo-end').value;
+      var desc = document.getElementById('apo-desc').value.trim();
+      var productId = type==='projeto'?(document.getElementById('apo-project').value||null):null;
+      var stageId   = type==='projeto'?(document.getElementById('apo-stage').value||null):null;
+      var subtipo   = type!=='projeto'?(document.getElementById('apo-category').value||null):null;
+      var subtarefas = type==='projeto'?(document.getElementById('apo-subtarefas').value||'').trim():'';
+      if (!date) throw new Error('Selecione a data.');
+      if (!start||!end) throw new Error('Preencha início e fim.');
+      if (start>=end) throw new Error('Hora final deve ser maior que a inicial.');
+      if (type==='projeto'&&!productId) throw new Error('Selecione o projeto.');
+      if (type==='projeto'&&!stageId) throw new Error('Selecione a etapa.');
+      var week = await ensureWeek(date);
+      var dupQuery = window.sb.from('horas_lancadas')
+        .select('id')
+        .eq('usuario_id', uid())
+        .eq('data_lancamento', date)
+        .eq('hora_inicio', start)
+        .eq('hora_fim', end)
+        .eq('tipo', type);
+      dupQuery = subtipo ? dupQuery.eq('subtipo', subtipo) : dupQuery.is('subtipo', null);
+      dupQuery = productId ? dupQuery.eq('produto_id', productId) : dupQuery.is('produto_id', null);
+      dupQuery = stageId ? dupQuery.eq('etapa_id', stageId) : dupQuery.is('etapa_id', null);
+      var dupRes = await dupQuery.limit(1);
+      if (dupRes.data && dupRes.data.length) throw new Error('Já existe um lançamento idêntico neste horário.');
+      var res = await window.sb.from('horas_lancadas').insert({
+        usuario_id:uid(), semana_id:week.id, data_lancamento:date,
+        dia_semana:week.isoDay, hora_inicio:start, hora_fim:end,
+        tipo:type, subtipo:subtipo, produto_id:productId, etapa_id:stageId, descricao:desc||null,
+      }).select('id').single();
+      if (res.error) throw new Error(res.error.message);
+      var subtSaved = await saveHorasSubtarefas(res.data && res.data.id, subtarefas, diffH(start, end), {
+        productId: productId,
+        stageId: stageId,
+        date: date
+      });
+      document.getElementById('apo-desc').value = '';
+      document.getElementById('apo-subtarefas').value = '';
+      setFb('apo-feedback', subtSaved ? 'Horas registradas.' : 'Horas registradas, mas subtarefas ainda nao estao disponiveis.', subtSaved ? 'ok' : 'err');
+      loadHorasData().catch(function(){});
+    } catch(e) { setFb('apo-feedback',e.message,'err'); }
+    finally { btn.disabled=false; btn.textContent='Registrar'; }
+  }
+
+  // ── Submit custos ─────────────────────────────────────────────────
+
+  async function submitCustos(ev) {
+    ev.preventDefault(); setFb('apo-cost-feedback','','');
+    var btn = document.getElementById('apo-cost-submit');
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    try {
+      var type = document.getElementById('apo-cost-type').value;
+      var date = document.getElementById('apo-cost-date').value;
+      var value = parseFloat(document.getElementById('apo-cost-value').value)||0;
+      var areaId = document.getElementById('apo-cost-area').value||null;
+      var detail = document.getElementById('apo-cost-detail').value||null;
+      var desc = document.getElementById('apo-cost-desc').value.trim();
+      var productId = type==='projeto'?(document.getElementById('apo-cost-project').value||null):null;
+      var stageId   = type==='projeto'?(document.getElementById('apo-cost-stage').value||null):null;
+      var area = getCurrArea(); var rules = getCostRules(area);
+      if (!date) throw new Error('Selecione a data.');
+      if (!value||value<=0) throw new Error('Informe um valor válido.');
+      if (!areaId) throw new Error('Selecione a área financeira.');
+      if (type==='projeto'&&!productId) throw new Error('Selecione o projeto.');
+      if (rules.requer_projeto&&!productId) throw new Error('Esta área exige um projeto.');
+      var week = await ensureWeek(date);
+      var ins = await window.sb.from('lancamentos_custo').insert({
+        usuario_id:uid(), semana_id:week.id, data_lancamento:date, valor:value,
+        tipo:type, subtipo:detail, plano_contas_id:areaId,
+        produto_id:productId, etapa_id:stageId, descricao:desc||null,
+      }).select('id').single();
+      if (ins.error) throw new Error(ins.error.message);
+      var finRes = await window.sb.from('fin_lancamentos').insert({
+        plano_contas_id:areaId, valor:Math.abs(value), tipo:'despesa', situacao:'realizado',
+        data_competencia:date, data_vencimento:date,
+        observacao:[detail,desc].filter(Boolean).join(' · ')||(area?area.subconta:'Gasto'),
+        origem:'reembolso', origem_id:ins.data?ins.data.id:null,
+      });
+      resetCostForm();
+      loadCustosData().catch(function(){});
+      if (finRes&&finRes.error) setFb('apo-cost-feedback','Custo registrado, mas envio ao Financeiro falhou.','err');
+      else setFb('apo-cost-feedback','Custo registrado.','ok');
+    } catch(e) { setFb('apo-cost-feedback',e.message,'err'); }
+    finally { btn.disabled=false; btn.textContent='Registrar'; }
+  }
+
+  // ── Navegação entre abas ──────────────────────────────────────────
+
+  function activeTab() {
+    var a = document.querySelector('.stab.active');
+    return a ? a.id.replace('stab-','') : 'horas';
+  }
+
+  function switchTab(tab) {
+    ['horas','custos','banco','historico'].forEach(function(t) {
+      document.getElementById('stab-'+t).classList.toggle('active',t===tab);
+      document.getElementById('stp-'+t).classList.toggle('active',t===tab);
+    });
+    document.getElementById('semana-nav-wrap').style.display = tab==='historico'?'none':'';
+    if (tab==='horas' && !AP.tabLoaded.horas) {
+      AP.tabLoaded.horas = true;
+      loadHorasData().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+    } else if (tab==='custos' && !AP.tabLoaded.custos) {
+      AP.tabLoaded.custos = true;
+      loadCustosData().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
+    } else if (tab==='banco' && !AP.tabLoaded.banco) {
+      AP.tabLoaded.banco = true;
+      loadBancoData().catch(function(e){ setFb('apo-bh-feedback',e.message,'err'); });
+    } else if (tab==='historico' && !AP.tabLoaded.historico) {
+      AP.tabLoaded.historico = true;
+      var mes = document.getElementById('exp-mes').value;
+      if (mes) loadHistoricoMes(mes);
+    } else if (tab==='banco') {
+      loadBancoData().catch(function(e){ setFb('apo-bh-feedback',e.message,'err'); });
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────
+
+  function revealApp() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app-shell').style.display = 'flex';
+  }
+
+  function bindEvents() {
+    if (AP.eventsBound) return;
+    AP.eventsBound = true;
+
+    document.getElementById('stab-horas').addEventListener('click',function(){ switchTab('horas'); });
+    document.getElementById('stab-custos').addEventListener('click',function(){ switchTab('custos'); });
+    document.getElementById('stab-banco').addEventListener('click',function(){ switchTab('banco'); });
+    document.getElementById('stab-historico').addEventListener('click',function(){ switchTab('historico'); });
+    document.getElementById('apo-week-prev').addEventListener('click',function(){ shiftWeek(-1); });
+    document.getElementById('apo-week-next').addEventListener('click',function(){ shiftWeek(1); });
+    document.getElementById('apo-week-today').addEventListener('click',function(){ setSelectedDate(new Date().toISOString().slice(0,10)); });
+
+    document.getElementById('apo-type').addEventListener('change',updateTypeUI);
+    document.getElementById('apo-project').addEventListener('change',function(){
+      onProjectChange().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+    });
+    document.getElementById('apo-stage').addEventListener('change',function(){
+      updateClassUI();
+      renderSubtarefasSuggestions().catch(function(){});
+    });
+    document.getElementById('apo-subtarefas').addEventListener('input',function(){
+      renderSubtarefasSuggestions().catch(function(){});
+    });
+    document.getElementById('apo-subtarefas').addEventListener('focus',function(){
+      renderSubtarefasSuggestions().catch(function(){});
+    });
+    document.getElementById('apo-start').addEventListener('input',updateDuration);
+    document.getElementById('apo-end').addEventListener('input',updateDuration);
+    document.getElementById('apo-hours-form').addEventListener('submit',submitHoras);
+    document.getElementById('apo-reset').addEventListener('click',resetHorasForm);
+
+    document.getElementById('apo-cost-type').addEventListener('change',updateCostUI);
+    document.getElementById('apo-cost-area').addEventListener('change',updateCostUI);
+    document.getElementById('apo-cost-project').addEventListener('change',function(){
+      onCostProjectChange().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
+    });
+    document.getElementById('apo-costs-form').addEventListener('submit',submitCustos);
+    document.getElementById('apo-cost-reset').addEventListener('click',resetCostForm);
+    document.getElementById('apo-bh-form').addEventListener('submit',submitBancoHoras);
+    document.getElementById('apo-bh-reset').addEventListener('click',function(){
+      document.getElementById('apo-bh-form').reset();
+      document.getElementById('apo-bh-destino').value = 'compensacao';
+      setFb('apo-bh-feedback','','');
+    });
+
+    document.getElementById('btn-exp-horas-csv').addEventListener('click',exportarHorasCSV);
+    document.getElementById('btn-exp-horas-pdf').addEventListener('click',exportarHorasPDF);
+    document.getElementById('btn-exp-custos-csv').addEventListener('click',exportarCustosCSV);
+    document.getElementById('btn-exp-custos-pdf').addEventListener('click',exportarCustosPDF);
+    document.getElementById('exp-mes').addEventListener('change',function(){
+      loadHistoricoMes(this.value);
+    });
+  }
+
+  function runAfterFirstPaint(fn) {
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(function() {
+        window.setTimeout(fn, 0);
+      });
+      return;
+    }
+    window.setTimeout(fn, 0);
+  }
+
+  function loadTimerWidgetDeferred() {
+    if (AP.timerRequested || window._expTimerRequested) return;
+    AP.timerRequested = true;
+    window._expTimerRequested = true;
+    window.setTimeout(function() {
+      var script = document.createElement('script');
+      script.src = 'timer.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }, 120);
+  }
+
+  async function init() {
+    try {
+      var boot = await window.appShellInit();
+      AP.user = boot.usuario;
+
+      if (!uid()) throw new Error('Sessão inválida. Faça login novamente.');
+
+      var today = new Date().toISOString().slice(0,10);
+      AP.weekInfo = getWeekInfo(today);
+      updateNavLabel(AP.weekInfo);
+
+      fillTypeOptions(); fillCostTypeOptions();
+      resetHorasForm(); resetCostForm();
+
+      // Mês padrão no seletor de exportação
+      document.getElementById('exp-mes').value = today.slice(0,7);
+
+      window.ExpNav.init({ module:'apontamentos' });
+
+      bindEvents();
+      revealApp();
+
+      // Eventos de navegação
+
+      // Eventos formulário horas
+
+      // Eventos formulário custos
+
+      // Eventos exportação
+
+      // Carregamento paralelo: produtos + áreas + horas da semana
+      runAfterFirstPaint(function() {
+        AP.tabLoaded.horas = true;
+        loadProducts().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+        loadCostAreas().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
+        loadHorasData().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+        loadTimerWidgetDeferred();
+      });
+
+      // Pré-carrega histórico do mês atual em background
+
+    } catch(e) {
+      document.getElementById('loading').innerHTML = '<div class="ld-sub">Falha ao carregar</div>';
+      console.error(e);
+    }
+  }
+
+  init();
+})();

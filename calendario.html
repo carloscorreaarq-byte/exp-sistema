@@ -398,9 +398,11 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 }
 .cal-disp-bar.compensado { background: #6f942e; }
 .cal-disp-bar.feriado    { background: var(--terracota); opacity: .5; }
+.cal-disp-bar.ausente    { background: var(--azul); }
 [data-theme="dark"] .cal-disp-bar { background: rgba(255,255,255,.08); }
 [data-theme="dark"] .cal-disp-bar.compensado { background: #8aa855; }
 [data-theme="dark"] .cal-disp-bar.feriado    { background: var(--terracota); opacity: .4; }
+[data-theme="dark"] .cal-disp-bar.ausente    { background: var(--azul); opacity: .8; }
 
 /* ── Dark mode overrides ───────────────────────────────── */
 [data-theme="dark"]{--cinza2:rgba(255,255,255,.07);--verde-bg:rgba(76,163,102,.13);--az-bg:rgba(74,114,181,.13);--am-bg:rgba(226,174,82,.13);--tc-bg:rgba(204,104,72,.13)}
@@ -1029,6 +1031,7 @@ const CAL = {
   view: 'lista',
   semanaOffset: 0,
   eventos: [],
+  compensacoes: {},
   saldo: 10,
   usados: 0,
   filtroNucleo: '',
@@ -1092,11 +1095,94 @@ async function calCarregarBancoHoras() {
   }
 }
 
+function calAnexarCompensacoesEventos() {
+  CAL.eventos = (CAL.eventos || []).map(ev => {
+    const comp = CAL.compensacoes[String(ev.id)];
+    if (!comp) return ev;
+    return {
+      ...ev,
+      bh_horas: Number(comp.horas_consumidas || 0),
+      bh_saldo_antes: Number(comp.saldo_antes || 0),
+      bh_saldo_depois: Number(comp.saldo_depois || 0),
+      bh_observacao: comp.observacao || null,
+    };
+  });
+}
+
+async function calCarregarCompensacoes() {
+  try {
+    const { data, error } = await sb.from('banco_horas_compensacoes').select('*');
+    if (error) throw error;
+    CAL.compensacoes = {};
+    (data || []).forEach(row => {
+      CAL.compensacoes[String(row.calendar_event_id)] = row;
+    });
+    calAnexarCompensacoesEventos();
+  } catch(e) {
+    CAL.compensacoes = {};
+  }
+}
+
+async function calBhConsultarSaldo(usuarioId) {
+  const { data, error } = await sb
+    .from('banco_horas_saldo')
+    .select('usuario_id,horas_disponiveis,horas_compensadas')
+    .eq('usuario_id', usuarioId)
+    .maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || { usuario_id: usuarioId, horas_disponiveis: 0, horas_compensadas: 0 };
+}
+
+async function calAplicarCompensacaoSaldo(usuarioId, deltaHoras) {
+  const row = await calBhConsultarSaldo(usuarioId);
+  const saldoAntes = Number(row.horas_disponiveis || 0);
+  const compensadasAntes = Number(row.horas_compensadas || 0);
+  const saldoDepois = saldoAntes - Number(deltaHoras || 0);
+  const compensadasDepois = compensadasAntes + Number(deltaHoras || 0);
+  if (saldoDepois < -0.001) throw new Error('Saldo insuficiente de banco de horas para esta compensação.');
+  if (compensadasDepois < -0.001) throw new Error('Inconsistência ao recalcular horas compensadas.');
+  const { error } = await sb.from('banco_horas_saldo').upsert({
+    usuario_id: usuarioId,
+    horas_disponiveis: Math.max(0, Number(saldoDepois.toFixed(2))),
+    horas_compensadas: Math.max(0, Number(compensadasDepois.toFixed(2))),
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'usuario_id' });
+  if (error) throw error;
+  return {
+    saldoAntes: Number(saldoAntes.toFixed(2)),
+    saldoDepois: Math.max(0, Number(saldoDepois.toFixed(2))),
+  };
+}
+
+async function calAtualizarCompensacaoUI() {
+  const campo = document.getElementById('cal-campo-bh');
+  const input = document.getElementById('cal-inp-bh-horas');
+  const aviso = document.getElementById('cal-aviso-bh');
+  if (!campo || !input || !aviso) return;
+  if (CAL.tipoSelecionado !== 'compensacao_bh') {
+    campo.style.display = 'none';
+    return;
+  }
+  campo.style.display = 'block';
+  const usuarioId = document.getElementById('cal-inp-usuario')?.value || G.usuario?.id;
+  const horas = Number(input.value || 0);
+  try {
+    const row = await calBhConsultarSaldo(usuarioId);
+    const disponivel = Number(row.horas_disponiveis || 0);
+    const restante = Number((disponivel - horas).toFixed(2));
+    aviso.style.display = 'block';
+    aviso.textContent = `Saldo disponível: ${disponivel}h. Esta compensação consumirá ${horas || 0}h e deixará ${restante >= 0 ? restante : 0}h restantes.`;
+  } catch(e) {
+    aviso.style.display = 'block';
+    aviso.textContent = 'Não foi possível consultar o saldo de banco de horas. Verifique se o SQL da DEV-09 já foi executado.';
+  }
+}
+
 async function calInit() {
   if (CAL.iniciado) return;
   CAL.iniciado = true;
   await calCarregarEventos();
-  await Promise.all([calCarregarSaldo(), calCarregarBancoHoras()]);
+  await Promise.all([calCarregarSaldo(), calCarregarBancoHoras(), calCarregarCompensacoes()]);
   calAtualizarTopbar();
   try { calRender(); } catch(e) { console.error('calRender error', e); }
   calRenderAvatarFiltros();
@@ -1116,6 +1202,7 @@ async function calCarregarEventos() {
       dia_todo:    e.dia_inteiro,
       nucleo:      e.nucleo_id,
     }));
+    calAnexarCompensacoesEventos();
   } catch(e) { console.error('calCarregarEventos', e); CAL.eventos = []; }
 }
 
@@ -1413,12 +1500,27 @@ function calRenderDisp() {
       const key   = d.toISOString().slice(0,10);
       const fds   = d.getDay()===0||d.getDay()===6;
       const ehFer = feriados.has(key);
-      const comp  = merged.some(ev=>ev.data_inicio.slice(0,10)===key&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
-      const barCls= ehFer?'feriado':comp?'compensado':'';
+      const comp    = merged.some(ev=>ev.data_inicio.slice(0,10)===key&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
+      // Ausências do usuário neste dia
+      const ausDs   = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_aniv')&&ev.data_inicio.slice(0,10)===key&&(ev.scope==='todos'||ev.usuario_id===u.id));
+      const baseCls = ehFer?'feriado':comp?'compensado':'';
+      let manhaCls  = baseCls, tardeCls = baseCls;
+      // Colore barras individualmente conforme período da ausência
+      if (!baseCls && ausDs.length) {
+        ausDs.forEach(ev=>{
+          const h=ev.inicio?new Date(ev.inicio).getUTCHours():12;
+          const p=h<=10?'manha':h>=13?'tarde':'todo';
+          if (p==='manha'||p==='todo') manhaCls='ausente';
+          if (p==='tarde'||p==='todo') tardeCls='ausente';
+        });
+      }
+      const tBase   = ehFer?'Feriado/Recesso':comp?'Compensação BH':'';
+      const tManha  = fds?'Fim de semana':tBase||(manhaCls==='ausente'?'Ausência – manhã':'Disponível – manhã');
+      const tTarde  = fds?'Fim de semana':tBase||(tardeCls==='ausente'?'Ausência – tarde':'Disponível – tarde');
       html+=`<td class="cal-disp-cell${fds?' cal-fds':''}">
         <div class="cal-disp-bars">
-          <div class="cal-disp-bar ${barCls}" title="${fds?'Fim de semana':ehFer?'Feriado/Recesso':comp?'Compensação BH':'Disponível'}"></div>
-          <div class="cal-disp-bar ${barCls}" title="${fds?'Fim de semana':ehFer?'Feriado/Recesso':comp?'Compensação BH':'Disponível'}"></div>
+          <div class="cal-disp-bar ${manhaCls}" title="${tManha}"></div>
+          <div class="cal-disp-bar ${tardeCls}" title="${tTarde}"></div>
         </div>
       </td>`;
     });
@@ -1482,8 +1584,10 @@ function calRenderModalBody(tipos, dataIni) {
     <div id="cal-standard-form">
       <div class="fgroup"><label>Título</label><input id="cal-inp-titulo" type="text" placeholder="Título do evento"></div>
       <div class="fg fg2"><div class="fgroup"><label>Data início</label><input id="cal-inp-ini" type="date" value="${dataIni}"></div><div class="fgroup"><label>Data fim</label><input id="cal-inp-fim" type="date" value="${dataIni}"></div></div>
+      <div class="fgroup" id="cal-campo-periodo" style="display:none"><label>Período do dia</label><select id="cal-inp-periodo"><option value="todo">Dia todo</option><option value="manha">Manhã</option><option value="tarde">Tarde</option></select></div>
       <div class="fgroup" id="cal-campo-nucleo" style="display:none"><label>Núcleo</label><select id="cal-inp-nucleo"><option value="todos">Todos</option>${nucleos.map(n=>`<option value="${n}">${n.charAt(0).toUpperCase()+n.slice(1)}</option>`).join('')}</select></div>
       <div class="fgroup" id="cal-campo-usuario" style="display:none"><label>Usuário</label><select id="cal-inp-usuario"><option value="${G.usuario?.id}">${G.usuario?.nome} (eu)</option>${outrosUsuarios.map(u=>`<option value="${u.id}">${u.nome}</option>`).join('')}</select></div>
+      <div class="fgroup" id="cal-campo-bh" style="display:none"><label>Horas a compensar</label><input id="cal-inp-bh-horas" type="number" min="0.5" step="0.5" value="8"><div id="cal-aviso-bh" class="cal-aviso" style="display:none"></div></div>
       <div class="fgroup"><label>Descrição (opcional)</label><textarea id="cal-inp-desc" rows="2" placeholder="Detalhes..."></textarea></div>
       ${gcalSyncHtml}
       <div id="cal-aviso-ausencia" class="cal-aviso" style="display:none"></div>
@@ -1507,14 +1611,22 @@ function calSelTipo(tipo) {
   if (tipo==='compensacao_bh' && !isSocioAdmRole(G.usuario?.role)) { toast('A compensação manual é restrita a sócios administrativos.', 'erro'); return; }
   const ehGlobal=['recesso','feriado','feriado_local','agenda_exp'].includes(tipo);
   const ehPessoal=['ausencia_rem','ausencia_aniv','reuniao','compensacao_bh'].includes(tipo);
-  const cnucleo=document.getElementById('cal-campo-nucleo'), cusuario=document.getElementById('cal-campo-usuario'), aviso=document.getElementById('cal-aviso-ausencia');
+  const cnucleo=document.getElementById('cal-campo-nucleo'), cusuario=document.getElementById('cal-campo-usuario'), aviso=document.getElementById('cal-aviso-ausencia'), cbh=document.getElementById('cal-campo-bh');
   if (cnucleo)  cnucleo.style.display =ehGlobal ?'block':'none';
   if (cusuario) cusuario.style.display=ehPessoal?'block':'none';
+  if (cbh) cbh.style.display=tipo==='compensacao_bh'?'block':'none';
+  const cperiodo=document.getElementById('cal-campo-periodo');
+  if (cperiodo) cperiodo.style.display=['ausencia_rem','ausencia_aniv'].includes(tipo)?'block':'none';
   if (aviso) { if (tipo==='ausencia_rem') { aviso.style.display='block'; aviso.textContent=`Saldo: ${CAL.usados} de ${CAL.saldo} dias usados — restam ${CAL.saldo-CAL.usados} dias.`; } else aviso.style.display='none'; }
   if (tipo==='compensacao_bh' && aviso) {
     aviso.style.display='block';
     aviso.textContent='Use esta entrada apenas para consumo aprovado de banco de horas. Ela não substitui ausência remunerada individual.';
   }
+  const bhInput=document.getElementById('cal-inp-bh-horas');
+  const usuSel=document.getElementById('cal-inp-usuario');
+  if (bhInput) bhInput.oninput=()=>{ calAtualizarCompensacaoUI(); };
+  if (usuSel) usuSel.onchange=()=>{ if (CAL.tipoSelecionado==='compensacao_bh') calAtualizarCompensacaoUI(); };
+  if (tipo==='compensacao_bh') calAtualizarCompensacaoUI();
 }
 
 function calRenderGcalInlineForm() {
@@ -1528,6 +1640,61 @@ function calSalvarAuto() {
   if (CAL.tipoSelecionado==='gcal_ev') calSalvarGcalInline(); else calSalvar();
 }
 
+async function calPersistirCompensacaoBh(calendarEventId, usuarioId, dataUso, horas, observacao, prevLog) {
+  const payloadBase = {
+    calendar_event_id: String(calendarEventId),
+    usuario_id: usuarioId,
+    data_uso: dataUso,
+    horas_consumidas: Number(horas),
+    observacao: observacao || null,
+    criado_por: G.usuario?.id || null,
+    updated_at: new Date().toISOString(),
+  };
+  if (!prevLog) {
+    const saldo = await calAplicarCompensacaoSaldo(usuarioId, Number(horas));
+    const { error } = await sb.from('banco_horas_compensacoes').insert({
+      ...payloadBase,
+      saldo_antes: saldo.saldoAntes,
+      saldo_depois: saldo.saldoDepois,
+    });
+    if (error) throw error;
+    return;
+  }
+  if (prevLog.usuario_id !== usuarioId) {
+    await calAplicarCompensacaoSaldo(prevLog.usuario_id, -Number(prevLog.horas_consumidas || 0));
+    const saldoNovo = await calAplicarCompensacaoSaldo(usuarioId, Number(horas));
+    const { error } = await sb.from('banco_horas_compensacoes').update({
+      ...payloadBase,
+      saldo_antes: saldoNovo.saldoAntes,
+      saldo_depois: saldoNovo.saldoDepois,
+    }).eq('calendar_event_id', String(calendarEventId));
+    if (error) throw error;
+    return;
+  }
+  const delta = Number(horas) - Number(prevLog.horas_consumidas || 0);
+  let saldoAntes = Number(prevLog.saldo_antes || 0);
+  let saldoDepois = Number(prevLog.saldo_depois || 0);
+  if (Math.abs(delta) > 0.001) {
+    const saldo = await calAplicarCompensacaoSaldo(usuarioId, delta);
+    saldoAntes = saldo.saldoAntes;
+    saldoDepois = saldo.saldoDepois;
+  }
+  const { error } = await sb.from('banco_horas_compensacoes').update({
+    ...payloadBase,
+    saldo_antes: saldoAntes,
+    saldo_depois: saldoDepois,
+  }).eq('calendar_event_id', String(calendarEventId));
+  if (error) throw error;
+}
+
+async function calReverterCompensacaoBh(calendarEventId, prevLog) {
+  const log = prevLog || CAL.compensacoes[String(calendarEventId)];
+  if (!log) return;
+  await calAplicarCompensacaoSaldo(log.usuario_id, -Number(log.horas_consumidas || 0));
+  const { error } = await sb.from('banco_horas_compensacoes').delete().eq('calendar_event_id', String(calendarEventId));
+  if (error) throw error;
+}
+
 function calFecharModalNovo() {
   const m=document.getElementById('cal-modal-novo'); if (m) m.classList.remove('open');
 }
@@ -1535,17 +1702,34 @@ function calFecharModalNovo() {
 async function calSalvar() {
   const tipo=CAL.tipoSelecionado, titulo=document.getElementById('cal-inp-titulo')?.value.trim(), ini=document.getElementById('cal-inp-ini')?.value, fim=document.getElementById('cal-inp-fim')?.value||ini, desc=document.getElementById('cal-inp-desc')?.value.trim(), nucleo=document.getElementById('cal-inp-nucleo')?.value||'todos', usuId=document.getElementById('cal-inp-usuario')?.value||G.usuario?.id;
   if (!titulo||!ini) { toast('Preencha título e data.'); return; }
+  const bhHoras = tipo==='compensacao_bh' ? Number(document.getElementById('cal-inp-bh-horas')?.value || 0) : 0;
+  if (tipo==='compensacao_bh' && (!bhHoras || bhHoras <= 0)) { toast('Informe a quantidade de horas a compensar.'); return; }
   const ehGlobal=['recesso','feriado','feriado_local','agenda_exp'].includes(tipo);
   const _calCat=t=>{for (const [c,ts] of Object.entries(CAL_CAT_MAP)){if(ts.includes(t))return c;}return t;};
-  const payload={tipo,categoria:_calCat(tipo),titulo,inicio:ini+'T12:00:00+00:00',fim:(fim||ini)+'T12:00:00+00:00',dia_inteiro:true,descricao:desc||null,scope:ehGlobal?(nucleo==='todos'?'todos':'nucleo'):'usuario',nucleo_id:ehGlobal?(nucleo==='todos'?null:nucleo):(G.usuario?.nucleo||null),user_id:ehGlobal?null:usuId,criado_por:G.usuario?.id};
+  const ehAusencia=['ausencia_rem','ausencia_aniv'].includes(tipo);
+  const periodo=document.getElementById('cal-inp-periodo')?.value||'todo';
+  const horaStr=ehAusencia?({todo:'T12:00:00',manha:'T09:00:00',tarde:'T14:00:00'}[periodo]||'T12:00:00'):'T12:00:00';
+  const payload={tipo,categoria:_calCat(tipo),titulo,inicio:ini+horaStr+'+00:00',fim:(fim||ini)+horaStr+'+00:00',dia_inteiro:true,descricao:desc||null,scope:ehGlobal?(nucleo==='todos'?'todos':'nucleo'):'usuario',nucleo_id:ehGlobal?(nucleo==='todos'?null:nucleo):(G.usuario?.nucleo||null),user_id:ehGlobal?null:usuId,criado_por:G.usuario?.id};
   try {
-    let err;
-    if (CAL.editId) { ({error:err}=await sb.from('calendar_events').update(payload).eq('id',CAL.editId)); }
-    else            { ({error:err}=await sb.from('calendar_events').insert(payload)); }
+    let err, savedRow = null;
+    const prevEvent = CAL.editId ? CAL.eventos.find(e=>String(e.id)===String(CAL.editId)) : null;
+    const prevLog = CAL.editId ? CAL.compensacoes[String(CAL.editId)] : null;
+    if (CAL.editId) { ({error:err}=await sb.from('calendar_events').update(payload).eq('id',CAL.editId)); savedRow = { id: CAL.editId }; }
+    else            { ({data:savedRow,error:err}=await sb.from('calendar_events').insert(payload).select('id').single()); }
     if (err) throw err;
+    if (prevEvent?.tipo === 'compensacao_bh' && tipo !== 'compensacao_bh') {
+      await calReverterCompensacaoBh(CAL.editId, prevLog);
+    }
+    if (tipo === 'compensacao_bh') {
+      await calPersistirCompensacaoBh(savedRow.id, usuId, ini, bhHoras, desc || null, prevLog || null);
+    }
     const gcalCk=document.getElementById('cal-gcal-sync-ck');
     if (GCAL.token&&gcalCk?.checked&&!CAL.editId) { const prefs=gcalGetPrefs(); if ((tipo==='reuniao'&&prefs.reuniao)||(tipo==='agenda_exp'&&prefs.agenda)||gcalCk.checked) await gcalCriarEvento(titulo,ini,fim||ini,desc||''); }
-    calFecharModalNovo(); await calCarregarEventos(); if (tipo==='ausencia_rem') await calCarregarSaldo(); calAtualizarTopbar(); calRender();
+    calFecharModalNovo();
+    await Promise.all([calCarregarEventos(), calCarregarCompensacoes()]);
+    if (tipo==='ausencia_rem') await calCarregarSaldo();
+    await calCarregarBancoHoras();
+    calAtualizarTopbar(); calRender();
   } catch(e) { toast('Erro ao salvar: '+(e.message||e)); }
 }
 
@@ -1590,6 +1774,7 @@ function calAbrirDetalhe(id) {
     ${ev.local?`<div class="cal-detalhe-campo"><b>Local</b> ${_escN(ev.local)}</div>`:''}
     ${ev.descricao?`<div class="cal-detalhe-campo"><b>Descrição</b> ${_escN(ev.descricao)}</div>`:''}
     ${ev.tipo==='compensacao_bh'?`<div class="cal-detalhe-campo"><b>Origem</b> Uso de saldo aprovado de banco de horas</div>`:''}
+    ${ev.tipo==='compensacao_bh'&&ev.bh_horas!=null?`<div class="cal-detalhe-campo"><b>Horas consumidas</b> ${ev.bh_horas}h${ev.bh_saldo_depois!=null?` · saldo após uso: ${ev.bh_saldo_depois}h`:''}</div>`:''}
     ${ev.meet_link?`<div class="cal-detalhe-campo"><b>Link</b> <a href="${ev.meet_link}" target="_blank" style="color:var(--azul)">${ev.meet_link}</a></div>`:''}
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       ${pode&&!ev._synthetic&&!ev._gcal?`<button class="btn filled sm" onclick="calEditar('${ev.id}')">Editar</button>`:''}
@@ -1611,17 +1796,34 @@ function calEditar(id) {
   const modal=document.getElementById('cal-modal-novo'); if (!modal) return;
   modal.querySelector('.cal-modal-body').innerHTML=calRenderModalBody(tipos,ev.data_inicio);
   modal.classList.add('open'); calSelTipo(ev.tipo);
+  // Restaura período do dia a partir da hora armazenada no evento
+  const pSel=document.getElementById('cal-inp-periodo');
+  if (pSel && ['ausencia_rem','ausencia_aniv'].includes(ev.tipo)) {
+    const h=ev.inicio?new Date(ev.inicio).getUTCHours():12;
+    pSel.value=h<=10?'manha':h>=13?'tarde':'todo';
+  }
   const t=document.getElementById('cal-inp-titulo'); if(t) t.value=ev.titulo;
   const i=document.getElementById('cal-inp-ini');    if(i) i.value=ev.data_inicio;
   const f=document.getElementById('cal-inp-fim');    if(f) f.value=ev.data_fim||ev.data_inicio;
   const d=document.getElementById('cal-inp-desc');   if(d) d.value=ev.descricao||'';
   const n=document.getElementById('cal-inp-nucleo'); if(n&&ev.nucleo) n.value=ev.nucleo;
   const u=document.getElementById('cal-inp-usuario');if(u&&ev.usuario_id) u.value=ev.usuario_id;
+  const bh=document.getElementById('cal-inp-bh-horas'); if (bh && ev.tipo==='compensacao_bh') bh.value = ev.bh_horas != null ? ev.bh_horas : 8;
+  if (ev.tipo==='compensacao_bh') calAtualizarCompensacaoUI();
 }
 
 async function calExcluir(id) {
   abrirPopupConfirm('Excluir evento','Excluir este evento?',async()=>{
-    try { const{error}=await sb.from('calendar_events').delete().eq('id',id); if(error) throw error; calFecharDetalhe(); await calCarregarEventos(); calAtualizarTopbar(); calRender(); } catch(e){toast('Erro: '+(e.message||e));}
+    try {
+      const ev=CAL.eventos.find(e=>String(e.id)===String(id));
+      if (ev?.tipo === 'compensacao_bh') await calReverterCompensacaoBh(id);
+      const{error}=await sb.from('calendar_events').delete().eq('id',id);
+      if(error) throw error;
+      calFecharDetalhe();
+      await Promise.all([calCarregarEventos(), calCarregarCompensacoes()]);
+      await calCarregarBancoHoras();
+      calAtualizarTopbar(); calRender();
+    } catch(e){toast('Erro: '+(e.message||e));}
   });
 }
 
