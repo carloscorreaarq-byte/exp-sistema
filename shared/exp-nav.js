@@ -18,7 +18,6 @@ window.ExpNav = (() => {
   'use strict';
 
   /* ── Constantes ──────────────────────────────────────────── */
-  const SOCIO_ROLES  = ['socio','socio_adm','socio_admin'];
   const ROOM_URL     = 'https://meet.google.com/mqe-cgge-maz';
   const ROOM_TIMEOUT = 5; /* minutos */
 
@@ -62,8 +61,19 @@ window.ExpNav = (() => {
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  function _normalizeRole(role) {
+    if (typeof window.normalizeExpRole === 'function') {
+      return window.normalizeExpRole(role);
+    }
+    var normalized = String(role || '').toLowerCase().trim();
+    return normalized === 'socio_adm' ? 'socio_admin' : normalized;
+  }
+
   function _isSocio(role) {
-    return SOCIO_ROLES.includes((role || '').toLowerCase());
+    if (typeof window.isSocioRole === 'function') {
+      return window.isSocioRole(role);
+    }
+    return ['socio', 'socio_admin'].includes(_normalizeRole(role));
   }
 
   function _sb() { return window.sb || null; }
@@ -806,7 +816,8 @@ window.ExpNav = (() => {
       $nome.textContent = nomes.length <= 2 ? nomes.join(' ') : nomes[0] + ' ' + nomes[nomes.length-1];
     }
     var ROLE_PT = { socio:'Sócio', socio_adm:'Sócio Administrador', socio_admin:'Sócio Administrador', colaborador:'Colaborador', coordenador:'Coordenador', estagio:'Estagiário' };
-    if ($role) $role.textContent = ROLE_PT[user.role] || user.role || '';
+    var normalizedRole = _normalizeRole(user.role);
+    if ($role) $role.textContent = ROLE_PT[normalizedRole] || ROLE_PT[user.role] || user.role || '';
     /* Callback do módulo (para compatibilidade) */
     if (typeof _config.onUserMenu === 'function' && $av) {
       $av.onclick = _config.onUserMenu;

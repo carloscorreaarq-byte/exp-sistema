@@ -21,12 +21,20 @@
     return window.sb;
   }
 
+  function normalizeRole(role) {
+    if (typeof window.normalizeExpRole === 'function') {
+      return window.normalizeExpRole(role);
+    }
+    const normalized = String(role || '').toLowerCase().trim();
+    return normalized === 'socio_adm' ? 'socio_admin' : normalized;
+  }
+
   function isSocioRole(role) {
-    return ['socio', 'socio_adm', 'socio_admin'].includes(String(role || '').toLowerCase());
+    return ['socio', 'socio_admin'].includes(normalizeRole(role));
   }
 
   function isSocioAdminRole(role) {
-    return ['socio_adm', 'socio_admin'].includes(String(role || '').toLowerCase());
+    return normalizeRole(role) === 'socio_admin';
   }
 
   function buildExpUsuarioPayload(authId, usuario) {
@@ -40,7 +48,7 @@
       cor: usuario?.cor || '#888',
       avatar_url: usuario?.avatar_url || null,
       email_login: usuario?.email_login || usuario?.email || null,
-      role: usuario?.role || '',
+      role: normalizeRole(usuario?.role || ''),
       viewer_only: !!usuario?.viewer_only,
       is_platform_manager: !!usuario?.is_platform_manager,
       can_coordinate_projects: !!usuario?.can_coordinate_projects,
