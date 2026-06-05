@@ -1752,7 +1752,7 @@ async function carregarDados(){
     sb.from('usuarios').select('*'),
     sb.from('contatos').select('*'),
     sb.from('followups_produto').select('*'),
-    sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at').order('created_at',{ascending:false}).then(r => r.error ? sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at').order('created_at',{ascending:false}) : r),
+    sb.from('exp_proposals').select('proposal_id,projeto,cliente,cliente_id,cidade,uf,total,total_efetivo,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at,data_json').order('created_at',{ascending:false}).then(r => r.error ? sb.from('exp_proposals').select('proposal_id,projeto,cliente,cliente_id,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at,data_json').order('created_at',{ascending:false}).then(r2 => r2.error ? sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at').order('created_at',{ascending:false}) : r2) : r),
     sb.from('crm_pesquisa_satisfacao').select('*').then(r=>r.error ? { data: [], error: r.error } : r),
     sb.from('fin_ativos').select('id,oportunidade_id,situacao_financeira').then(r=>r.error ? { data: [], error: r.error } : r),
   ]);
@@ -4888,7 +4888,8 @@ function renderRelatorios(){
 // ═══ INTEGRAÇÃO CALC ═════════════════════════════════
 async function recarregarProposals() {
   try {
-    let r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at,data_json').order('created_at',{ascending:false});
+    let r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cliente_id,cidade,uf,total,total_efetivo,status,version,parent_id,prop_code,items,subs,desps,repasse,despbit,updated_at,data_json').order('created_at',{ascending:false});
+    if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cliente_id,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at,data_json').order('created_at',{ascending:false});
     if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at,data_json').order('created_at',{ascending:false});
     if (!r.error && r.data) {
       allProposals = r.data.map(p => {
@@ -4896,7 +4897,7 @@ async function recarregarProposals() {
         try { parsed = p?.data_json ? JSON.parse(p.data_json) : {}; } catch(e) {}
         return {
           ...p,
-          clienteId: parsed?.clienteId || parsed?.cliente_id || null
+          clienteId: p?.cliente_id || parsed?.clienteId || parsed?.cliente_id || null
         };
       });
     }

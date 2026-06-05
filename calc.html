@@ -65,7 +65,7 @@ body.can-delete .del-col{display:table-cell}
 
 /* LAYOUT */
 .page{display:none}.page.active{display:block}
-.cols{display:grid;grid-template-columns:2fr 3fr;gap:var(--gap-md);align-items:start}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap-md);align-items:start}
 .cols.cols-eq{grid-template-columns:1fr 1fr}
 
 /* CARD */
@@ -738,13 +738,15 @@ select option[disabled]{color:#bbb}
 <!-- COLUNA DIREITA — RESUMO -->
 <div>
   <div style="position:sticky;top:14px;display:flex;flex-direction:column;height:calc(100vh - 132px)">
-    <div class="card-hdr" style="background:var(--branco);border:1px solid var(--cinza);margin-bottom:0">
+    <div style="border:1px solid var(--cinza);border-radius:var(--radius-card);overflow:hidden;display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="card-hdr" style="background:var(--branco);border-bottom:1px solid var(--cinza);margin-bottom:0">
       <div class="card-title" id="resumo-title">Resumo da proposta</div>
       <div style="font-size:9px;color:#999" id="i-count">0 itens</div>
     </div>
-    <div id="resumo-body" style="background:var(--branco);border:1px solid var(--cinza);border-top:none;padding:12px;flex:1;overflow-y:auto;min-height:0">
+    <div id="resumo-body" style="background:var(--branco);padding:12px;flex:1;overflow-y:auto;min-height:0">
       <div class="empty">Adicione serviços para ver o resumo</div>
     </div>
+    </div><!-- /resumo-wrapper -->
     <div style="display:flex;gap:6px;margin-top:8px">
       <button class="btn verde" style="flex:1;font-size:9px" onclick="salvarProposta()">💾 Salvar</button>
       <button class="btn az" style="flex:1;font-size:9px" onclick="exportarPDF()">📄 PDF</button>
@@ -1164,6 +1166,7 @@ let S = {
   clientes: [],
   cidades: [],
   crmClients: [],
+  calcResponsaveis: [],
   crmLinkedProposalRoots: [],
   calcParamsId: null,
   sbUrl: '',
@@ -1182,6 +1185,131 @@ let editingProposalId = null;
 // C12/K4 — link CRM
 let linkedOppInfo  = null;   // { id, projeto, prods: [{nucleo, subtipo, status}] }
 let lockedNucleos  = new Set(); // nucleos travados (prod fechado/negado)
+const DEFAULT_CALC_RESPONSAVEIS = [
+  { codigo:'CC', nome:'Carlos Corrêa' },
+  { codigo:'GB', nome:'Gabriela Budel' },
+  { codigo:'TC', nome:'Thayssa Christensen' },
+  { codigo:'LA', nome:'Laís de Andrade' }
+];
+
+function generateProposalId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `prop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getProposalSortStamp(proposal) {
+  const created = proposal?.createdAt || proposal?.created_at || proposal?.data || '';
+  const stamp = created ? new Date(created).getTime() : 0;
+  return Number.isFinite(stamp) ? stamp : 0;
+}
+
+function getCalcResponsaveis() {
+  const rows = Array.isArray(S.calcResponsaveis) && S.calcResponsaveis.length
+    ? S.calcResponsaveis
+    : DEFAULT_CALC_RESPONSAVEIS;
+  return rows
+    .filter(r => r && (r.codigo || r.value) && (r.nome || r.label))
+    .map(r => ({
+      id: r.id || r.userId || null,
+      codigo: r.codigo || r.value,
+      nome: r.nome || r.label
+    }));
+}
+
+function getCurrentCalcRespId() {
+  try {
+    const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
+    const id = String(u.app_user_id || u.id || '').trim();
+    if (id && getCalcResponsaveis().some(r => String(r.id || '') === id)) return id;
+  } catch(e) {}
+  return '';
+}
+
+function getCurrentCalcRespCode() {
+  try {
+    const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
+    const code = (u.iniciais || '').trim();
+    if (code && getCalcResponsaveis().some(r => r.codigo === code)) return code;
+  } catch(e) {}
+  return getDefaultCalcRespCode();
+}
+
+function getDefaultCalcRespCode() {
+  return getCalcResponsaveis()[0]?.codigo || 'CC';
+}
+
+function getRespLabelMap() {
+  const map = {};
+  getCalcResponsaveis().forEach(r => {
+    if (r.id) map[String(r.id)] = (r.nome || '').trim().split(/\s+/)[0] || r.codigo;
+    map[r.codigo] = (r.nome || '').trim().split(/\s+/)[0] || r.codigo;
+  });
+  return map;
+}
+
+function resolveCalcRespSelectValue(respId, respCodigo) {
+  const rows = getCalcResponsaveis();
+  if (respId) {
+    const matchById = rows.find(r => String(r.id || '') === String(respId));
+    if (matchById) return String(matchById.id);
+  }
+  if (respCodigo) {
+    const matchByCode = rows.find(r => r.codigo === respCodigo);
+    if (matchByCode?.id) return String(matchByCode.id);
+  }
+  return getCurrentCalcRespId() || getDefaultCalcRespCode();
+}
+
+function ensureCalcResponsavelOption(selectEl, codigo, nome, userId) {
+  if (!selectEl || !(codigo || userId)) return;
+  const optionValue = String(userId || codigo);
+  if ([...selectEl.options].some(opt => opt.value === optionValue)) return;
+  const opt = document.createElement('option');
+  opt.value = optionValue;
+  if (userId) opt.dataset.userId = userId;
+  if (codigo) opt.dataset.codigo = codigo;
+  opt.textContent = nome || codigo;
+  selectEl.appendChild(opt);
+}
+
+function getSelectedCalcResponsavel() {
+  const selectEl = document.getElementById('f-resp');
+  if (!selectEl) return { codigo: getCurrentCalcRespCode(), id: getCurrentCalcRespId() || null, nome: getCurrentCalcRespCode() };
+  const value = selectEl.value || getCurrentCalcRespId() || getCurrentCalcRespCode();
+  const option = selectEl.options[selectEl.selectedIndex];
+  return {
+    codigo: option?.dataset?.codigo || getCurrentCalcRespCode(),
+    id: option?.dataset?.userId || value || null,
+    nome: option?.textContent?.trim() || option?.dataset?.codigo || value
+  };
+}
+
+function renderCalcResponsavelSelects() {
+  const currentResp = document.getElementById('f-resp')?.value || getCurrentCalcRespId() || getCurrentCalcRespCode();
+  const currentHist = document.getElementById('hf-resp')?.value || 'todos';
+  const responsaveis = getCalcResponsaveis();
+  const formSelect = document.getElementById('f-resp');
+  const histSelect = document.getElementById('hf-resp');
+  if (formSelect) {
+    formSelect.innerHTML = responsaveis.map(r =>
+      `<option value="${escHtml(String(r.id || r.codigo))}" data-user-id="${escHtml(String(r.id || ''))}" data-codigo="${escHtml(r.codigo)}">${escHtml(r.nome)}</option>`
+    ).join('');
+    const resolvedValue = resolveCalcRespSelectValue('', currentResp);
+    ensureCalcResponsavelOption(formSelect, currentResp);
+    formSelect.value = resolvedValue;
+  }
+  if (histSelect) {
+    histSelect.innerHTML = `<option value="todos">Todos responsáveis</option>` + responsaveis.map(r =>
+      `<option value="${escHtml(String(r.id || r.codigo))}" data-user-id="${escHtml(String(r.id || ''))}" data-codigo="${escHtml(r.codigo)}">${escHtml(r.nome)}</option>`
+    ).join('');
+    if (currentHist !== 'todos') ensureCalcResponsavelOption(histSelect, currentHist);
+    histSelect.value = currentHist;
+  }
+}
+
+function getProposalRespLabel(proposal) {
+  return proposal?.respNome || getRespLabelMap()[proposal?.respId] || getRespLabelMap()[proposal?.resp] || proposal?.resp || '';
+}
 
 // ════════════════════════════════════════════════════════
 // STORAGE LOCAL
@@ -1220,13 +1348,12 @@ function refreshProposalCaches() {
     return Number.isFinite(code) ? Math.max(max, code) : max;
   }, 0);
   S.propCodeSeq = Math.max(Number(S.propCodeSeq) || 0, maxPropCode);
-  S.proposals.sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
+  S.proposals.sort((a, b) => getProposalSortStamp(b) - getProposalSortStamp(a));
   const allClientes = S.proposals.map(p => p?.cliente).filter(Boolean);
   const allCidades = S.proposals.map(p => p?.cidade).filter(Boolean);
   const crmClientes = (S.crmClients || []).map(c => c?.nome).filter(Boolean);
-  const crmCidades = (S.crmClients || []).map(c => c?.cidade).filter(Boolean);
   S.clientes = [...new Set([...S.clientes, ...crmClientes, ...allClientes])].sort();
-  S.cidades = [...new Set([...S.cidades, ...crmCidades, ...allCidades])].sort();
+  S.cidades = [...new Set(allCidades)].sort();
 }
 
 function normalizeProposalFromRow(row) {
@@ -1237,21 +1364,26 @@ function normalizeProposalFromRow(row) {
 
   const normalized = {
     ...parsed,
-    id: row?.proposal_id ?? parsed.id ?? Date.now(),
+    id: row?.proposal_id ?? parsed.id ?? generateProposalId(),
     version: row?.version ?? parsed.version ?? 0,
     propCode: row?.prop_code ?? parsed.propCode ?? null,
     parentId: row?.parent_id ?? parsed.parentId ?? null,
     status: row?.status ?? parsed.status ?? 'ativa',
     cliente: row?.cliente ?? parsed.cliente ?? '',
-    clienteId: parsed.clienteId ?? parsed.cliente_id ?? null,
+    clienteId: row?.cliente_id ?? parsed.clienteId ?? parsed.cliente_id ?? null,
     projeto: row?.projeto ?? parsed.projeto ?? '',
     resp: row?.resp ?? parsed.resp ?? '',
+    respId: row?.resp_id ?? parsed.respId ?? parsed.resp_id ?? null,
+    respNome: row?.resp_nome ?? parsed.respNome ?? parsed.resp_nome ?? '',
     cidade: row?.cidade ?? parsed.cidade ?? '',
     uf: row?.uf ?? parsed.uf ?? '',
     obs: row?.obs ?? parsed.obs ?? '',
     data: row?.data_proposta ?? parsed.data ?? '',
     mainNucleo: row?.main_nucleo ?? parsed.mainNucleo ?? '',
     total: row?.total ?? parsed.total ?? 0,
+    totalEfetivo: row?.total_efetivo ?? parsed.totalEfetivo ?? null,
+    cubSnap: row?.cub_snap ?? parsed.cubSnap ?? null,
+    cubMes: row?.cub_mes ?? parsed.cubMes ?? null,
     createdAt: row?.created_at ?? parsed.createdAt ?? null,
     _sbUpdatedAt: row?.updated_at ?? parsed._sbUpdatedAt ?? null,
   };
@@ -1386,6 +1518,19 @@ function getProposalFamilyId(proposal) {
   return String(proposal?.parentId || proposal?.id || '');
 }
 
+function getProposalFamilyMembers(proposalOrId) {
+  const proposal = typeof proposalOrId === 'object'
+    ? proposalOrId
+    : S.proposals.find(p => String(p.id) === String(proposalOrId));
+  if (!proposal) return [];
+  const familyId = getProposalFamilyId(proposal);
+  return S.proposals.filter(p => getProposalFamilyId(p) === familyId);
+}
+
+function getProposalFamilyProposalIds(proposalOrId) {
+  return [...new Set(getProposalFamilyMembers(proposalOrId).map(p => String(p.id)).filter(Boolean))];
+}
+
 async function fetchLatestCalcParamsRow() {
   if (!S.sbUrl || !S.sbKey) return null;
   const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?select=*&order=updated_at.desc,id.desc&limit=1`, {
@@ -1481,7 +1626,10 @@ async function syncProposalToSupabase(proposal) {
     // Atenção: despbit em minúsculo para corresponder ao nome PostgreSQL (unquoted → lowercase)
     const extPayload = {
       ...corePayload,
+      cliente_id:    proposal.clienteId   || null,
       resp:          proposal.resp        || '',
+      resp_id:       proposal.respId      || null,
+      resp_nome:     proposal.respNome    || '',
       obs:           proposal.obs         || '',
       data_proposta: proposal.data        || null,
       main_nucleo:   proposal.mainNucleo  || '',
@@ -1490,6 +1638,9 @@ async function syncProposalToSupabase(proposal) {
       subs:          proposal.subs        || [],
       repasse:       proposal.repasse     || null,
       despbit:       proposal.despBit     ?? 0,
+      total_efetivo: proposal.totalEfetivo ?? null,
+      cub_snap:      proposal.cubSnap     ?? null,
+      cub_mes:       proposal.cubMes      ?? null,
       prop_code:     proposal.propCode    || null,
     };
 
@@ -1518,8 +1669,8 @@ async function syncProposalToSupabase(proposal) {
     if (!r.ok && (r.status === 400 || r.status === 422)) {
       const errText2 = r.bodyUsed ? '' : await r.text();
       if (errText2) console.warn('Supabase sync 400 fallback detalhe:', errText2);
-      payload = corePayload;
-      r = await trySync(payload);
+      setSyncStatus('err', 'erro sync');
+      return false;
     }
 
     if (r.ok || r.status === 201 || r.status === 200 || r.status === 204) {
@@ -1548,7 +1699,7 @@ async function loadProposalsFromSupabase() {
   if (!S.sbUrl || !S.sbKey) return;
   setSyncStatus('sync', 'buscando...');
   try {
-    const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?order=created_at.desc&limit=500', { headers: getSBHeaders() });
+    const r = await fetch(S.sbUrl + '/rest/v1/exp_proposals?order=created_at.desc&limit=5000', { headers: getSBHeaders() });
     if (!r.ok) { setSyncStatus('err','erro sync'); return; }
     const rows = await r.json();
     // Merge: banco é fonte primária — atualiza existentes e adiciona novos
@@ -1593,12 +1744,28 @@ async function syncClientesFromCRM() {
     if (!Array.isArray(rows) || !rows.length) return;
     S.crmClients = rows.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
     const nomescrm  = rows.map(c => c.nome).filter(Boolean);
-    const cidadescrm = rows.map(c => c.cidade).filter(Boolean);
-    const antesC = S.clientes.length, antesD = S.cidades.length;
+    const antesC = S.clientes.length;
     S.clientes = [...new Set([...S.clientes, ...nomescrm])].sort();
-    S.cidades  = [...new Set([...S.cidades,  ...cidadescrm])].sort();
-    if (S.clientes.length !== antesC || S.cidades.length !== antesD) save();
+    if (S.clientes.length !== antesC) save();
   } catch(e) {}
+}
+
+async function syncCalcResponsaveisFromUsuarios() {
+  try {
+    const { data } = await sbNav
+      .from('usuarios')
+      .select('id,nome,iniciais,role,ativo,viewer_only')
+      .eq('ativo', true)
+      .order('nome');
+    const rows = (data || [])
+      .filter(u => u && u.iniciais && !u.viewer_only && canAccessCalcRole(u.role))
+      .map(u => ({ id: u.id, codigo: u.iniciais, nome: u.nome || u.iniciais }));
+    if (rows.length) {
+      S.calcResponsaveis = rows;
+      save();
+    }
+  } catch(e) {}
+  renderCalcResponsavelSelects();
 }
 
 // ════════════════════════════════════════════════════════
@@ -1609,19 +1776,21 @@ async function checkCRMLinkStatus(proposalId) {
   lockedNucleos = new Set();
   if (!S.sbUrl || !S.sbKey || !proposalId) return;
   try {
-    // Busca oportunidade vinculada a esta proposta
+    const familyIds = getProposalFamilyProposalIds(proposalId);
+    if (!familyIds.length) return;
+    // Busca oportunidade vinculada a qualquer versao da familia
     const rOpp = await fetch(
-      S.sbUrl + '/rest/v1/oportunidades?proposta_calc_id=eq.' + proposalId + '&limit=1',
-      { headers: getSBHeaders() }
+      S.sbUrl + '/rest/v1/oportunidades?select=id,projeto,proposta_calc_id&proposta_calc_id=not.is.null',
+      { headers: getSBHeaders(true) }
     );
     if (!rOpp.ok) return;
     const opps = await rOpp.json();
-    if (!opps.length) return;
-    const opp = opps[0];
+    const opp = (opps || []).find(o => familyIds.includes(String(o.proposta_calc_id || '')));
+    if (!opp) return;
     // Busca produtos desta oportunidade
     const rProd = await fetch(
       S.sbUrl + '/rest/v1/produtos?oportunidade_id=eq.' + opp.id + '&select=id,nucleo,subtipo,status',
-      { headers: getSBHeaders() }
+      { headers: getSBHeaders(true) }
     );
     if (!rProd.ok) return;
     const prods = await rProd.json();
@@ -2581,7 +2750,7 @@ function calcResumo() {
 
   // Banner de edição ativa
   if (editingProposalId !== null) {
-    const orig = S.proposals.find(p=>p.id===editingProposalId);
+    const orig = S.proposals.find(p => String(p.id) === String(editingProposalId));
     if (orig) {
       const cod = orig.propCode ? `EXP-${String(orig.propCode).padStart(3,'0')}` : `#${orig.id}`;
       const projetoOrig = escHtml(orig.projeto||'');
@@ -2866,7 +3035,7 @@ async function salvarProposta() {
 
   // Se estamos revisando uma proposta existente
   if (editingProposalId !== null) {
-    const orig = S.proposals.find(p=>p.id===editingProposalId);
+    const orig = S.proposals.find(p => String(p.id) === String(editingProposalId));
     if (orig) {
       version  = (orig.version || 0) + 1;
       propCode = orig.propCode || null;
@@ -2883,8 +3052,10 @@ async function salvarProposta() {
     propCode = S.propCodeSeq;
   }
 
+  const selectedResp = getSelectedCalcResponsavel();
+  if (!selectedResp.id) { showBlocked('Selecione um responsável societário válido'); return; }
   const p = {
-    id:          Date.now(),
+    id:          generateProposalId(),
     version,
     propCode,
     parentId,
@@ -2892,7 +3063,9 @@ async function salvarProposta() {
     cliente:     document.getElementById('f-cliente').value.trim(),
     clienteId:   document.getElementById('f-cliente').dataset.clienteId || null,
     projeto:     proj,
-    resp:        document.getElementById('f-resp').value,
+    resp:        selectedResp.codigo || getCurrentCalcRespCode(),
+    respId:      selectedResp.id || null,
+    respNome:    selectedResp.nome || selectedResp.codigo || '',
     cidade:      document.getElementById('f-cidade').value.trim(),
     uf:          document.getElementById('f-uf').value,
     obs:         document.getElementById('f-obs').value.trim(),
@@ -2918,12 +3091,11 @@ async function salvarProposta() {
 
   // Sincroniza com Supabase
   const synced = await syncProposalToSupabase(p);
-  const syncMsg = synced ? ' · sincronizado na nuvem ✓' : '';
-  showToast('Proposta salva' + syncMsg);
+  showToast(synced ? 'Proposta salva · sincronizada na nuvem ✓' : 'Proposta salva localmente · revisar sincronização');
 
   document.getElementById('sync-status-bar').textContent = synced
     ? 'Proposta registrada na nuvem — consultável por qualquer login da equipe.'
-    : (S.sbUrl ? 'Salva localmente. Configure o Supabase para sincronizar.' : 'Salva localmente.');
+    : (S.sbUrl ? 'Salva localmente. A proposta não estruturou no banco e precisa de revisão.' : 'Salva localmente.');
 
   // Limpa formulário após salvar
   cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null; editingProposalId=null;
@@ -2933,6 +3105,7 @@ async function salvarProposta() {
   });
   clearClienteSelectionMeta();
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-resp').value=resolveCalcRespSelectValue(getCurrentCalcRespId(), getCurrentCalcRespCode());
   document.getElementById('repasse-form').style.display='none';
   document.getElementById('repasse-preview').style.display='none';
   document.getElementById('repasse-empty').style.display='block';
@@ -2953,6 +3126,7 @@ function limpar() {
   });
   clearClienteSelectionMeta();
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-resp').value=resolveCalcRespSelectValue(getCurrentCalcRespId(), getCurrentCalcRespCode());
   document.getElementById('repasse-form').style.display='none';
   document.getElementById('repasse-preview').style.display='none';
   document.getElementById('repasse-empty').style.display='block';
@@ -2988,7 +3162,7 @@ function exportarPDF() {
   // Tenta obter propCode/version da proposta em edição ou usa defaults
   let propCode = null, version = 0;
   if (editingProposalId !== null) {
-    const orig = S.proposals.find(p=>p.id===editingProposalId);
+    const orig = S.proposals.find(p => String(p.id) === String(editingProposalId));
     if (orig) { propCode = orig.propCode; version = (orig.version||0)+1; }
   } else {
     // Busca pela proposta de maior versão com este projeto/cliente
@@ -3288,9 +3462,6 @@ function atualizarFiltroPeriodo() {
   renderHist();
 }
 
-const RESP_LABEL={CC:'Carlos',GB:'Gabriela',TC:'Thayssa',LA:'Laís'};
-window.RESP_LABEL=RESP_LABEL;
-
 function renderHist() {
   const nucFil    = document.getElementById('hf-nucleo').value;
   const respFil   = document.getElementById('hf-resp').value;
@@ -3302,7 +3473,16 @@ function renderHist() {
   // Filtra por núcleo, responsável, busca e período — sem filtrar por status
   const fps = S.proposals.filter(p=>{
     if(nucFil!=='todos'&&p.mainNucleo!==nucFil&&p.mainNucleo!=='MISTO')return false;
-    if(respFil!=='todos'&&p.resp!==respFil)return false;
+    if (respFil !== 'todos') {
+      const selectedRespCode = document.getElementById('hf-resp')?.selectedOptions?.[0]?.dataset?.codigo || '';
+      const proposalRespId = String(p.respId || '');
+      const selectedRespId = String(respFil || '');
+      if (proposalRespId) {
+        if (proposalRespId !== selectedRespId) return false;
+      } else if (selectedRespCode && p.resp !== selectedRespCode) {
+        return false;
+      }
+    }
     if(q&&!p.projeto.toLowerCase().includes(q)&&!(p.cliente||'').toLowerCase().includes(q))return false;
     if(tipo!=='todos' && periodoV) {
       const data = p.data||'';
@@ -3353,7 +3533,7 @@ function renderHist() {
     }
   });
 
-  const RESP_LABEL=window.RESP_LABEL;
+  const RESP_LABEL = getRespLabelMap();
 
   document.getElementById('hist-body').innerHTML = rows.length
     ? rows.map(({p, isLatest, famSize})=>{
@@ -3377,13 +3557,13 @@ function renderHist() {
           ? `<span style="font-size:8px;background:var(--az-bg);color:var(--azul);padding:1px 5px;border-radius:3px;font-weight:700">${famSize}v</span>`
           : '';
         const clienteDisp = escHtml(p.cliente||'');
-        const respDisp = escHtml(RESP_LABEL[p.resp]||p.resp||'');
+        const respDisp = escHtml(getProposalRespLabel(p));
         const semVinculoCRM = !isProposalFamilyLinkedToCRM(p);
         const crmBadge = semVinculoCRM ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:var(--tc-bg);color:var(--terracota);border:1px solid var(--terracota);border-radius:4px;padding:2px 7px">Sem CRM</span>` : '';
         const deleteBtn = semVinculoCRM
-          ? `<button class="btn xs danger" onclick="event.stopPropagation();excluirProposta(${p.id})" title="Excluir proposta calculada">Excluir</button>`
+          ? `<button class="btn xs danger" onclick="event.stopPropagation();excluirProposta('${escJsStr(String(p.id))}')" title="Excluir proposta calculada">Excluir</button>`
           : `<button class="btn xs ghost" disabled title="Propostas vinculadas ao CRM não podem ser excluídas pela calculadora" style="opacity:.5;cursor:not-allowed">Vinculada</button>`;
-        return `<tr class="click" style="${rowStyle}" onclick="abrirProposta(${p.id})">
+        return `<tr class="click" style="${rowStyle}" onclick="abrirProposta('${escJsStr(String(p.id))}')">
           <td>${cod} ${famIndicator}</td>
           <td>${versBadge}</td>
           <td style="font-weight:500">${clienteDisp||'—'}</td>
@@ -3418,12 +3598,14 @@ function renderHist() {
 }
 
 function abrirProposta(id) {
-  const p = S.proposals.find(x=>x.id===id);
+  const p = S.proposals.find(x => String(x.id) === String(id));
   if (!p) return;
 
   // Encontra versões relacionadas
   const familyId = p.parentId || p.id;
-  const family = S.proposals.filter(x=>(x.parentId===familyId||x.id===familyId)).sort((a,b)=>a.id-b.id);
+  const family = S.proposals
+    .filter(x => String(x.parentId || x.id) === String(familyId))
+    .sort((a, b) => (a.version || 0) - (b.version || 0));
 
   // Modal de detalhe
   const codDisp = p.propCode ? `EXP-${String(p.propCode).padStart(3,'0')}` : `#${p.id}`;
@@ -3434,7 +3616,7 @@ function abrirProposta(id) {
 
   // Info
   const clienteDetail = escHtml(p.cliente||'');
-  const respDetail = escHtml(RESP_LABEL[p.resp]||p.resp||'');
+  const respDetail = escHtml(getProposalRespLabel(p));
   const cidadeDetail = escHtml(p.cidade||'');
   const ufDetail = escHtml(p.uf||'');
   html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
@@ -3533,7 +3715,7 @@ function abrirProposta(id) {
       : 'Finalizar esta proposta? Ela ficará marcada como "Finalizada" e poderá ser vinculada a uma oportunidade no CRM.';
     const btnLabel = _isFinalizada ? 'Reabrir' : 'Finalizar';
     abrirPopupConfirm(titulo, msg, async () => {
-      const idx = S.proposals.findIndex(x => x.id === p.id);
+      const idx = S.proposals.findIndex(x => String(x.id) === String(p.id));
       if (idx !== -1) {
         S.proposals[idx].status = novoStatus;
         save();
@@ -3571,7 +3753,8 @@ function carregarPropostaParaRevisao(p) {
   if (p.clienteId) document.getElementById('f-cliente').dataset.clienteId = p.clienteId;
   else clearClienteSelectionMeta();
   document.getElementById('f-projeto').value = p.projeto||'';
-  document.getElementById('f-resp').value    = p.resp||'CC';
+  ensureCalcResponsavelOption(document.getElementById('f-resp'), p.resp || getDefaultCalcRespCode(), p.respNome, p.respId);
+  document.getElementById('f-resp').value    = resolveCalcRespSelectValue(p.respId, p.resp);
   document.getElementById('f-data').value    = p.data||new Date().toISOString().slice(0,10);
   document.getElementById('f-cidade').value  = p.cidade||'';
   document.getElementById('f-uf').value      = p.uf||'';
@@ -3602,7 +3785,7 @@ function carregarPropostaParaRevisao(p) {
   calcResumo(); updateCardBars(); save();
 
   // C12/K4: verifica status CRM (async, atualiza resumo quando pronto)
-  checkCRMLinkStatus(p.id).then(() => calcResumo());
+  checkCRMLinkStatus(p).then(() => calcResumo());
 
   // Vai para aba calc
   goTab('calc');
@@ -3625,7 +3808,8 @@ function exportarPDFFromProposal(p) {
   editingProposalId = p.id; // para que exportarPDF use o propCode/version corretos
   document.getElementById('f-cliente').value = p.cliente||'';
   document.getElementById('f-projeto').value = p.projeto||'';
-  document.getElementById('f-resp').value    = p.resp||'CC';
+  ensureCalcResponsavelOption(document.getElementById('f-resp'), p.resp || getDefaultCalcRespCode(), p.respNome, p.respId);
+  document.getElementById('f-resp').value    = resolveCalcRespSelectValue(p.respId, p.resp);
   document.getElementById('f-data').value    = p.data||'';
   document.getElementById('f-cidade').value  = p.cidade||'';
   document.getElementById('f-uf').value      = p.uf||'';
@@ -4041,7 +4225,7 @@ function initConnDot() {
 }
 
 function excluirProposta(id) {
-  const proposal = S.proposals.find(p => p.id === id);
+  const proposal = S.proposals.find(p => String(p.id) === String(id));
   if (!proposal) return;
   if (isProposalFamilyLinkedToCRM(proposal)) {
     showToast('Propostas vinculadas ao CRM não podem ser excluídas pela calculadora.');
@@ -4106,6 +4290,7 @@ document.body.style.visibility = 'hidden';
 
 function _initCalc() {
 initNavUserFromSession();
+renderCalcResponsavelSelects();
 initConnDot();
 updateCubDisplay();
 selNucleo('PAIS');
@@ -4150,6 +4335,8 @@ if (S.sbUrl && S.sbKey) {
 } else {
   setSyncStatus('', 'local');
 }
+
+syncCalcResponsaveisFromUsuarios();
 
 // Restaura estado de edição ativa no banner
 if (editingProposalId !== null) {
