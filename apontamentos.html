@@ -481,6 +481,11 @@ body{
               <div class="apo-note" id="apo-stage-note"></div>
             </div>
 
+            <div class="apo-field" id="apo-subtarefas-wrap">
+              <label for="apo-subtarefas">Subtarefas (opcional)</label>
+              <input type="text" id="apo-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">
+            </div>
+
             <div class="apo-row">
               <div class="apo-field">
                 <label for="apo-start">Início</label>
@@ -1903,8 +1908,10 @@ body{
     var isProj = type==='projeto';
     document.getElementById('apo-project-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-stage-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-subtarefas-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-category-wrap').style.display = isProj?'none':'';
     if (!isProj) {
+      document.getElementById('apo-subtarefas').value = '';
       document.getElementById('apo-category').innerHTML = (SUBTIPOS[type]||[]).map(function(s){
         return '<option value="'+esc(s)+'">'+esc(s)+'</option>';
       }).join('')||'<option value="">—</option>';
@@ -1933,6 +1940,83 @@ body{
 
   function updateDuration() {
     setText('apo-duration', fmtH(diffH(document.getElementById('apo-start').value, document.getElementById('apo-end').value)));
+  }
+
+  function parseSubtarefas(raw) {
+    var seen = {};
+    return String(raw||'')
+      .split(/[\n,;]+/g)
+      .map(function(item){ return item.trim(); })
+      .filter(Boolean)
+      .filter(function(item){
+        var key = item.toLowerCase();
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+      });
+  }
+
+  function splitSubtarefasHoras(totalHoras, items) {
+    var totalMin = Math.round((Number(totalHoras)||0) * 60);
+    if (!items.length || totalMin <= 0) return [];
+    var baseMin = Math.floor(totalMin / items.length);
+    var rest = totalMin - (baseMin * items.length);
+    return items.map(function(item, idx){
+      var mins = baseMin + (rest > 0 ? 1 : 0);
+      if (rest > 0) rest -= 1;
+      return {
+        subtarefa: item,
+        ordem: idx + 1,
+        horas_alocadas: Number((mins / 60).toFixed(2))
+      };
+    });
+  }
+
+  function subtarefasTableMissing(error) {
+    var msg = String((error && error.message) || '').toLowerCase();
+    return !!error && (error.code === '42P01' || msg.indexOf('horas_lancadas_subtarefas') >= 0 || msg.indexOf('does not exist') >= 0);
+  }
+
+  async function saveHorasSubtarefas(hourId, raw, totalHoras, ctx) {
+    if (!hourId || !window.sb) return true;
+    ctx = ctx || {};
+    var items = parseSubtarefas(raw);
+    var delRes = await window.sb.from('horas_lancadas_subtarefas').delete().eq('hora_lancada_id', String(hourId));
+    if (delRes.error) {
+      if (subtarefasTableMissing(delRes.error)) {
+        if (!AP.subtarefasWarned) {
+          AP.subtarefasWarned = true;
+          setFb('apo-feedback','Horas registradas, mas o SQL do DEV-21 ainda nao foi executado.','err');
+        }
+        return false;
+      }
+      throw new Error(delRes.error.message);
+    }
+    if (!items.length) return true;
+    var rows = splitSubtarefasHoras(totalHoras, items).map(function(item){
+      return {
+        hora_lancada_id: String(hourId),
+        subtarefa: item.subtarefa,
+        horas_alocadas: item.horas_alocadas,
+        ordem: item.ordem,
+        usuario_id: uid(),
+        produto_id: ctx.productId || null,
+        etapa_id: ctx.stageId || null,
+        data_lancamento: ctx.date || null
+      };
+    });
+    var insRes = await window.sb.from('horas_lancadas_subtarefas').insert(rows);
+    if (insRes.error) {
+      if (subtarefasTableMissing(insRes.error)) {
+        if (!AP.subtarefasWarned) {
+          AP.subtarefasWarned = true;
+          setFb('apo-feedback','Horas registradas, mas o SQL do DEV-21 ainda nao foi executado.','err');
+        }
+        return false;
+      }
+      throw new Error(insRes.error.message);
+    }
+    return true;
   }
 
   async function onProjectChange() {
@@ -2021,6 +2105,7 @@ body{
     fillTypeOptions(); updateTypeUI();
     document.getElementById('apo-project').value = '';
     document.getElementById('apo-stage').innerHTML = '<option value="">Selecionar etapa…</option>';
+    document.getElementById('apo-subtarefas').value = '';
     updateSelectedDayUI(today);
     updateDuration(); setFb('apo-feedback','','');
   }
@@ -2050,6 +2135,7 @@ body{
       var productId = type==='projeto'?(document.getElementById('apo-project').value||null):null;
       var stageId   = type==='projeto'?(document.getElementById('apo-stage').value||null):null;
       var subtipo   = type!=='projeto'?(document.getElementById('apo-category').value||null):null;
+      var subtarefas = type==='projeto'?(document.getElementById('apo-subtarefas').value||'').trim():'';
       if (!date) throw new Error('Selecione a data.');
       if (!start||!end) throw new Error('Preencha início e fim.');
       if (start>=end) throw new Error('Hora final deve ser maior que a inicial.');
@@ -2072,10 +2158,16 @@ body{
         usuario_id:uid(), semana_id:week.id, data_lancamento:date,
         dia_semana:week.isoDay, hora_inicio:start, hora_fim:end,
         tipo:type, subtipo:subtipo, produto_id:productId, etapa_id:stageId, descricao:desc||null,
-      });
+      }).select('id').single();
       if (res.error) throw new Error(res.error.message);
+      var subtSaved = await saveHorasSubtarefas(res.data && res.data.id, subtarefas, diffH(start, end), {
+        productId: productId,
+        stageId: stageId,
+        date: date
+      });
       document.getElementById('apo-desc').value = '';
-      setFb('apo-feedback','Horas registradas.','ok');
+      document.getElementById('apo-subtarefas').value = '';
+      setFb('apo-feedback', subtSaved ? 'Horas registradas.' : 'Horas registradas, mas subtarefas ainda nao estao disponiveis.', subtSaved ? 'ok' : 'err');
       loadHorasData().catch(function(){});
     } catch(e) { setFb('apo-feedback',e.message,'err'); }
     finally { btn.disabled=false; btn.textContent='Registrar'; }

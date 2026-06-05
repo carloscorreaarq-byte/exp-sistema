@@ -368,6 +368,10 @@
         '<div class="tmr-sel-lbl">Descri&#231;&#227;o</div>',
         '<textarea class="tmr-textarea" id="tmr-cf-desc" placeholder="O que foi feito&#8230;"></textarea>',
       '</div>',
+      '<div id="tmr-cf-subtarefas-wrap">',
+        '<div class="tmr-sel-lbl">Subtarefas (opcional)</div>',
+        '<input type="text" class="tmr-input" id="tmr-cf-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">',
+      '</div>',
       '<div class="tmr-btns">',
         '<button class="tmr-btn-cf-sec" onclick="_tmr.backToExpanded()">&#8592; Voltar</button>',
         '<button class="tmr-btn-cf-sec" onclick="_tmr.descartar()">Descartar</button>',
@@ -445,6 +449,79 @@
   function _fmtDate(d)  { return d.getFullYear() + '-' + _pad(d.getMonth() + 1) + '-' + _pad(d.getDate()); }
   function _trunc(s, n) { n = n || 34; return s && s.length > n ? s.slice(0, n - 1) + '…' : (s || ''); }
   function _isTimeRangeValid(ini, fim) { return !!ini && !!fim && ini < fim; }
+  function _parseSubtarefas(raw) {
+    var seen = {};
+    return String(raw || '')
+      .split(/[\n,;]+/g)
+      .map(function (item) { return item.trim(); })
+      .filter(Boolean)
+      .filter(function (item) {
+        var key = item.toLowerCase();
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+      });
+  }
+  function _splitSubtarefasHoras(totalHoras, items) {
+    var totalMin = Math.round((Number(totalHoras) || 0) * 60);
+    if (!items.length || totalMin <= 0) return [];
+    var baseMin = Math.floor(totalMin / items.length);
+    var rest = totalMin - (baseMin * items.length);
+    return items.map(function (item, idx) {
+      var mins = baseMin + (rest > 0 ? 1 : 0);
+      if (rest > 0) rest -= 1;
+      return {
+        subtarefa: item,
+        ordem: idx + 1,
+        horas_alocadas: Number((mins / 60).toFixed(2))
+      };
+    });
+  }
+  function _isSubtarefasTableMissing(error) {
+    var msg = String((error && error.message) || '').toLowerCase();
+    return !!error && (error.code === '42P01' || msg.indexOf('horas_lancadas_subtarefas') >= 0 || msg.indexOf('does not exist') >= 0);
+  }
+  async function _saveTimerSubtarefas(client, hourId, raw, totalHoras, ctx) {
+    if (!client || !hourId) return true;
+    ctx = ctx || {};
+    var items = _parseSubtarefas(raw);
+    var delRes = await client.from('horas_lancadas_subtarefas').delete().eq('hora_lancada_id', String(hourId));
+    if (delRes.error) {
+      if (_isSubtarefasTableMissing(delRes.error)) {
+        if (!_saveTimerSubtarefas._warned) {
+          _saveTimerSubtarefas._warned = true;
+          _toast('Subtarefas ainda indisponiveis: execute o SQL do DEV-21.');
+        }
+        return false;
+      }
+      throw delRes.error;
+    }
+    if (!items.length) return true;
+    var rows = _splitSubtarefasHoras(totalHoras, items).map(function (item) {
+      return {
+        hora_lancada_id: String(hourId),
+        subtarefa: item.subtarefa,
+        horas_alocadas: item.horas_alocadas,
+        ordem: item.ordem,
+        usuario_id: ctx.userId || null,
+        produto_id: ctx.produtoId || null,
+        etapa_id: ctx.etapaId || null,
+        data_lancamento: ctx.dataISO || null
+      };
+    });
+    var insRes = await client.from('horas_lancadas_subtarefas').insert(rows);
+    if (insRes.error) {
+      if (_isSubtarefasTableMissing(insRes.error)) {
+        if (!_saveTimerSubtarefas._warned) {
+          _saveTimerSubtarefas._warned = true;
+          _toast('Subtarefas ainda indisponiveis: execute o SQL do DEV-21.');
+        }
+        return false;
+      }
+      throw insRes.error;
+    }
+    return true;
+  }
   function _getIsoWeekInfo(dateObj) {
     var target = new Date(dateObj);
     target.setHours(12, 0, 0, 0);
@@ -1065,6 +1142,9 @@
       setVal('tmr-cf-ini',  _fmtTime(startDate));
       setVal('tmr-cf-fim',  _fmtTime(endDate));
       setVal('tmr-cf-desc', '');
+      setVal('tmr-cf-subtarefas', '');
+      var subtWrap = document.getElementById('tmr-cf-subtarefas-wrap');
+      if (subtWrap) subtWrap.style.display = ((state.tipo || 'projeto') === 'projeto') ? '' : 'none';
       var btn = document.getElementById('tmr-save-btn');
       if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
       _showPanel('confirm');
@@ -1103,6 +1183,7 @@
       var ini     = (document.getElementById('tmr-cf-ini')  || {}).value || '';
       var fim     = (document.getElementById('tmr-cf-fim')  || {}).value || '';
       var desc    = ((document.getElementById('tmr-cf-desc') || {}).value || '').trim();
+      var subtarefas = ((document.getElementById('tmr-cf-subtarefas') || {}).value || '').trim();
 
       if (!dataISO || !ini || !fim) {
         _toast('Preencha data, início e fim');
@@ -1193,7 +1274,7 @@
         produto_id:      state.produtoId || null,
         etapa_id:        state.etapaId   || null,
         descricao:       desc || null,
-      });
+      }).select('id').single();
 
       if (lancRes.error) {
         _toast('Erro: ' + lancRes.error.message);
@@ -1201,12 +1282,24 @@
         return;
       }
 
+      var subtarefasOk = true;
+      try {
+        subtarefasOk = await _saveTimerSubtarefas(client, lancRes.data && lancRes.data.id, subtarefas, (new Date('2000-01-01T' + fim + ':00') - new Date('2000-01-01T' + ini + ':00')) / 3600000, {
+          userId: user.id,
+          produtoId: state.produtoId || null,
+          etapaId: state.etapaId || null,
+          dataISO: dataISO
+        });
+      } catch (subError) {
+        _toast('Horas salvas, mas subtarefas falharam: ' + subError.message);
+      }
+
       /* Sucesso */
       _clearState();
       _recentItems = null;  // invalida cache de recentes
       _hideAll();
       _renderFab();
-      _toast('Horas registradas ✓');
+      _toast(subtarefasOk ? 'Horas registradas ✓' : 'Horas registradas, mas subtarefas ainda nao estao disponiveis');
       if (window.renderSemana) window.renderSemana();
     },
 

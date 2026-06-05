@@ -3023,6 +3023,11 @@ body {
           </div>
         </div>
 
+        <div class="fgroup mb8" id="lf-subtarefas-wrap">
+          <label>Subtarefas (opcional)</label>
+          <input type="text" id="lf-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">
+        </div>
+
         <div class="fgroup mb14">
           <label>Descrição (opcional)</label>
           <input type="text" id="lf-desc" placeholder="O que foi feito...">
@@ -4005,6 +4010,10 @@ body {
       <div class="fgroup mb8" id="el-etapa-wrap" style="display:none">
         <label>Etapa</label>
         <select id="el-etapa"></select>
+      </div>
+      <div class="fgroup mb8" id="el-subtarefas-wrap">
+        <label>Subtarefas (opcional)</label>
+        <input type="text" id="el-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">
       </div>
       <div class="fgroup">
         <label>Descrição</label>
@@ -6891,10 +6900,102 @@ function atualizarFormLancamento() {
   const tipo = document.getElementById('lf-tipo').value;
   document.getElementById('lf-subtipo-wrap').style.display = tipo !== 'projeto' ? 'block' : 'none';
   document.getElementById('lf-projeto-wrap').style.display = tipo === 'projeto' ? 'block' : 'none';
+  document.getElementById('lf-subtarefas-wrap').style.display = tipo === 'projeto' ? 'block' : 'none';
   if (tipo !== 'projeto') {
     document.getElementById('lf-subtipo').innerHTML =
       SUBTIPOS[tipo].map(s => `<option value="${s}">${s}</option>`).join('');
+    document.getElementById('lf-subtarefas').value = '';
   }
+}
+
+function normalizarSubtarefasTexto(valor) {
+  const partes = String(valor || '')
+    .split(/[\n,;]+/g)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const vistos = new Set();
+  return partes.filter(item => {
+    const chave = item.toLowerCase();
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+}
+
+function repartirHorasSubtarefas(totalHoras, itens) {
+  const totalMin = Math.round((Number(totalHoras) || 0) * 60);
+  if (!itens.length || totalMin <= 0) return [];
+  const baseMin = Math.floor(totalMin / itens.length);
+  let resto = totalMin - (baseMin * itens.length);
+  return itens.map((subtarefa, idx) => {
+    const mins = baseMin + (resto > 0 ? 1 : 0);
+    if (resto > 0) resto -= 1;
+    return {
+      subtarefa,
+      ordem: idx + 1,
+      horas_alocadas: Number((mins / 60).toFixed(2))
+    };
+  });
+}
+
+function isTabelaSubtarefasAusente(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  return !!error && (error.code === '42P01' || msg.includes('horas_lancadas_subtarefas') || msg.includes('does not exist'));
+}
+
+async function salvarSubtarefasLancamentoHora(lancId, raw, totalHoras, ctx = {}) {
+  const subtarefas = normalizarSubtarefasTexto(raw);
+  const client = sb;
+  if (!client || !lancId) return true;
+  const { error: delError } = await client.from('horas_lancadas_subtarefas')
+    .delete()
+    .eq('hora_lancada_id', String(lancId));
+  if (delError) {
+    if (isTabelaSubtarefasAusente(delError)) {
+      if (!G._subtarefasHorasWarned) {
+        G._subtarefasHorasWarned = true;
+        toast('Subtarefas ainda indisponíveis: execute o SQL do DEV-21.');
+      }
+      return false;
+    }
+    throw delError;
+  }
+  if (!subtarefas.length) return true;
+  const rows = repartirHorasSubtarefas(totalHoras, subtarefas).map(item => ({
+    hora_lancada_id: String(lancId),
+    subtarefa: item.subtarefa,
+    horas_alocadas: item.horas_alocadas,
+    ordem: item.ordem,
+    usuario_id: G.usuario?.id || null,
+    produto_id: ctx.produtoId || null,
+    etapa_id: ctx.etapaId || null,
+    data_lancamento: ctx.dataISO || null
+  }));
+  const { error: insError } = await client.from('horas_lancadas_subtarefas').insert(rows);
+  if (insError) {
+    if (isTabelaSubtarefasAusente(insError)) {
+      if (!G._subtarefasHorasWarned) {
+        G._subtarefasHorasWarned = true;
+        toast('Subtarefas ainda indisponíveis: execute o SQL do DEV-21.');
+      }
+      return false;
+    }
+    throw insError;
+  }
+  return true;
+}
+
+async function carregarSubtarefasLancamentoTexto(lancId) {
+  if (!lancId) return '';
+  const { data, error } = await sb.from('horas_lancadas_subtarefas')
+    .select('subtarefa,ordem')
+    .eq('hora_lancada_id', String(lancId))
+    .order('ordem', { ascending: true });
+  if (error) {
+    if (isTabelaSubtarefasAusente(error)) return '';
+    throw error;
+  }
+  return (data || []).map(row => row.subtarefa).filter(Boolean).join(', ');
 }
 
 async function lancarHoras() {
@@ -6905,6 +7006,7 @@ async function lancarHoras() {
   const ini     = document.getElementById('lf-inicio').value;
   const fim     = document.getElementById('lf-fim').value;
   const desc    = document.getElementById('lf-desc').value.trim();
+  const subtarefasRaw = tipo === 'projeto' ? (document.getElementById('lf-subtarefas').value || '').trim() : '';
 
   if (!ini || !fim) { toast('Preencha os horários'); return; }
   if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
@@ -6974,7 +7076,7 @@ async function lancarHoras() {
     return;
   }
 
-  const { error } = await sb.from('horas_lancadas').insert({
+  const { data: lancInserido, error } = await sb.from('horas_lancadas').insert({
     usuario_id: G.usuario.id,
     semana_id: semDb.id,
     data_lancamento: dataISO,
@@ -6986,15 +7088,27 @@ async function lancarHoras() {
     produto_id: prodId,
     etapa_id: etapaId,
     descricao: desc || null
-  });
+  }).select('id').single();
 
   if (error) {
     toast('Erro ao registrar: ' + error.message);
     return;
   }
 
-  toast('Horas registradas');
+  let subtarefasOk = true;
+  try {
+    subtarefasOk = await salvarSubtarefasLancamentoHora(lancInserido?.id, subtarefasRaw, diffHoras(ini, fim), {
+      produtoId: prodId,
+      etapaId,
+      dataISO
+    });
+  } catch (subError) {
+    toast('Horas registradas, mas subtarefas falharam: ' + subError.message);
+  }
+
+  toast(subtarefasOk ? 'Horas registradas' : 'Horas registradas, mas subtarefas ainda nao estao disponiveis');
   document.getElementById('lf-desc').value = '';
+  document.getElementById('lf-subtarefas').value = '';
   renderSemana();
 }
 
@@ -7008,6 +7122,7 @@ async function deletarLancamento(id) {
     'Este lançamento de horas será removido permanentemente.',
     async () => {
       fecharModal('modal-editar-lancamento');
+      try { await sb.from('horas_lancadas_subtarefas').delete().eq('hora_lancada_id', String(id)); } catch (_) {}
       await sb.from('horas_lancadas').delete().eq('id', id);
       renderSemana();
       toast('Lançamento removido');
@@ -7832,7 +7947,7 @@ function popularEtapasEdicaoLancamento(prodId, etapaId = null) {
   wrap.style.display = 'block';
 }
 
-function abrirEditarLancamento(id) {
+async function abrirEditarLancamento(id) {
   if (G._semanaTravada) {
     toast('Semana bloqueada. Desbloqueie antes de alterar os lançamentos.');
     return;
@@ -7850,9 +7965,11 @@ function abrirEditarLancamento(id) {
   document.getElementById('el-inicio').value = lanc.hora_inicio?.slice(0,5) || '';
   document.getElementById('el-fim').value   = lanc.hora_fim?.slice(0,5)    || '';
   document.getElementById('el-desc').value  = lanc.descricao || '';
+  document.getElementById('el-subtarefas').value = '';
 
   if (lanc.tipo === 'projeto') {
     document.getElementById('el-subtipo-wrap').style.display = 'none';
+    document.getElementById('el-subtarefas-wrap').style.display = 'block';
     const prods = (G._prodsGestao || G.todosProdutos || []).filter(p => p.status === 'ativo');
     const selProd = document.getElementById('el-produto');
     selProd.innerHTML = '<option value="">Selecionar produto...</option>' +
@@ -7864,9 +7981,15 @@ function abrirEditarLancamento(id) {
       }).join('');
     document.getElementById('el-produto-wrap').style.display = 'block';
     popularEtapasEdicaoLancamento(lanc.produto_id, lanc.etapa_id || null);
+    try {
+      document.getElementById('el-subtarefas').value = await carregarSubtarefasLancamentoTexto(id);
+    } catch (subError) {
+      toast('Nao foi possivel carregar subtarefas: ' + subError.message);
+    }
   } else {
     document.getElementById('el-produto-wrap').style.display  = 'none';
     document.getElementById('el-etapa-wrap').style.display = 'none';
+    document.getElementById('el-subtarefas-wrap').style.display = 'none';
     // Popula subcategorias
     const selSub = document.getElementById('el-subtipo');
     const opts = (SUBTIPOS[lanc.tipo] || []);
@@ -7887,8 +8010,10 @@ function elOnTipoChange() {
   const isProjeto = tipo === 'projeto';
   document.getElementById('el-subtipo-wrap').style.display = isProjeto ? 'none' : 'block';
   document.getElementById('el-produto-wrap').style.display = isProjeto ? 'block' : 'none';
+  document.getElementById('el-subtarefas-wrap').style.display = isProjeto ? 'block' : 'none';
   if (!isProjeto) {
     document.getElementById('el-etapa-wrap').style.display = 'none';
+    document.getElementById('el-subtarefas').value = '';
     const selSub = document.getElementById('el-subtipo');
     selSub.innerHTML = (SUBTIPOS[tipo] || []).map(s => `<option value="${s}">${s}</option>`).join('');
   } else {
@@ -7928,6 +8053,7 @@ async function salvarEdicaoLancamento() {
   const prodId  = novoTipo === 'projeto' ? (document.getElementById('el-produto').value || null) : null;
   const etapaId = novoTipo === 'projeto' ? (document.getElementById('el-etapa').value || null) : null;
   const subtipo = novoTipo !== 'projeto' ? (document.getElementById('el-subtipo').value || null) : null;
+  const subtarefasRaw = novoTipo === 'projeto' ? (document.getElementById('el-subtarefas').value || '').trim() : '';
 
   if (!ini || !fim) { toast('Preencha os horários'); return; }
   if (ini >= fim)   { toast('Hora fim deve ser maior que início'); return; }
@@ -7954,9 +8080,20 @@ async function salvarEdicaoLancamento() {
     return;
   }
 
+  let subtarefasOk = true;
+  try {
+    subtarefasOk = await salvarSubtarefasLancamentoHora(id, subtarefasRaw, diffHoras(ini, fim), {
+      produtoId: prodId,
+      etapaId,
+      dataISO
+    });
+  } catch (subError) {
+    toast('Lancamento atualizado, mas subtarefas falharam: ' + subError.message);
+  }
+
   fecharModal('modal-editar-lancamento');
   G._editLancamentoId = null;
-  toast('Lançamento atualizado');
+  toast(subtarefasOk ? 'Lançamento atualizado' : 'Lancamento atualizado, mas subtarefas ainda nao estao disponiveis');
   renderSemana();
 }
 
