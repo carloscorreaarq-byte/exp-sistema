@@ -574,6 +574,9 @@ body {
 .dash-field input, .dash-field select { height: 32px; padding: 0 9px; }
 .dash-field textarea { min-height: 72px; padding: 8px 10px; resize: vertical; line-height: 1.5; }
 .dash-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dash-field input[type="number"]::-webkit-outer-spin-button,
+.dash-field input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.dash-field input[type="number"] { -moz-appearance: textfield; }
 
 /* ── DARK MODE — novos elementos ─────────────────────────── */
 [data-theme="dark"] .dash-card { background: var(--branco); }
@@ -1521,8 +1524,8 @@ body {
           </div>
           <div class="nav-feedback-status" id="lemb-status"></div>
           <div class="nav-feedback-actions">
-            <button class="btn" onclick="fecharLembretePopdown()">Fechar</button>
-            <button class="btn filled" style="background:var(--ouro,#C4831A);border-color:var(--ouro,#C4831A)" onclick="_enviarLembrete()">Enviar lembrete</button>
+            <button class="shell-btn" onclick="fecharLembretePopdown()">Fechar</button>
+            <button class="shell-btn primary" onclick="_enviarLembrete()">Enviar lembrete</button>
           </div>
         </div>
       </div>
@@ -2273,7 +2276,13 @@ const ROLES = {
   admin:       'Administrador',
 };
 
-const isSocioRole = (role) => ['socio','socio_adm','socio_admin'].includes((role || '').toLowerCase());
+const normalizeRole = (role) => {
+  if (typeof window.normalizeExpRole === 'function') return window.normalizeExpRole(role);
+  const normalized = (role || '').toLowerCase().trim();
+  return normalized === 'socio_adm' ? 'socio_admin' : normalized;
+};
+const isSocioRole = (role) => ['socio', 'socio_admin'].includes(normalizeRole(role));
+const isSocioAdminRole = (role) => normalizeRole(role) === 'socio_admin';
 function buildExpUsuarioPayload(authId, usuario) {
   const nome = (usuario && usuario.nome) || '';
   return {
@@ -2285,7 +2294,7 @@ function buildExpUsuarioPayload(authId, usuario) {
     cor: (usuario && usuario.cor) || '#888',
     avatar_url: (usuario && usuario.avatar_url) || null,
     email_login: (usuario && (usuario.email_login || usuario.email)) || null,
-    role: (usuario && usuario.role) || '',
+    role: normalizeRole((usuario && usuario.role) || ''),
     viewer_only: !!(usuario && usuario.viewer_only),
     is_platform_manager: !!(usuario && usuario.is_platform_manager),
     can_coordinate_projects: !!(usuario && usuario.can_coordinate_projects),
@@ -2416,8 +2425,8 @@ function renderShellIdentity(usuario) {
   av.textContent = usuario.iniciais || (usuario.nome || '??').substring(0, 2).toUpperCase();
   const _nomeParts = (usuario.nome || '').trim().split(/\s+/).filter(Boolean);
   document.getElementById('user-nome').textContent = _nomeParts.length <= 2 ? (_nomeParts.join(' ') || '—') : _nomeParts[0] + ' ' + _nomeParts[_nomeParts.length - 1];
-  document.getElementById('user-cargo').textContent = usuario.role === 'socio_admin' ? 'Socio administrador' : (ROLES[usuario.role] || usuario.role);
-  if (usuario.role === 'socio_admin') {
+  document.getElementById('user-cargo').textContent = isSocioAdminRole(usuario.role) ? 'Socio administrador' : (ROLES[normalizeRole(usuario.role)] || ROLES[usuario.role] || usuario.role);
+  if (isSocioAdminRole(usuario.role)) {
     document.getElementById('user-cargo').textContent = 'S\u00f3cio administrador';
   }
 
@@ -2433,7 +2442,7 @@ function renderShellIdentity(usuario) {
 
   const platformBtn = document.getElementById('user-menu-platform');
   if (platformBtn) {
-    platformBtn.hidden = !(usuario.is_platform_manager || usuario.role === 'socio_admin');
+    platformBtn.hidden = !(usuario.is_platform_manager || isSocioAdminRole(usuario.role));
   }
 
   renderTermState(usuario);
@@ -2566,7 +2575,7 @@ function fillMeusDadosForm(usuario, dados = {}, profissionais = {}, empresariais
     avatar.textContent = usuario.iniciais || initialsFromNome(usuario.nome);
   }
   document.getElementById('meus-dados-hero-nome').textContent = dados.nome_completo || usuario.nome || '-';
-  document.getElementById('meus-dados-hero-resumo').textContent = `${usuario.role === 'socio_admin' ? 'Sócio administrador' : (ROLES[usuario.role] || usuario.role || 'Usuário')} · ${usuario.email_login || usuario.email || 'sem email institucional registrado'}`;
+  document.getElementById('meus-dados-hero-resumo').textContent = `${isSocioAdminRole(usuario.role) ? 'Sócio administrador' : (ROLES[normalizeRole(usuario.role)] || ROLES[usuario.role] || usuario.role || 'Usuário')} · ${usuario.email_login || usuario.email || 'sem email institucional registrado'}`;
 }
 
 async function abrirMeusDados() {
@@ -4530,7 +4539,10 @@ async function toggleLembretePopdown(e) {
   const isOpen = pop.classList.contains('open');
   document.querySelectorAll('.nav-feedback-pop.open').forEach(p => closePopdown(p));
   if (isOpen) return;
-  // Carrega usuários na primeira abertura
+  // Abre imediatamente — carrega usuários em seguida para evitar race condition
+  document.getElementById('lemb-msg').value = '';
+  document.getElementById('lemb-status').textContent = '';
+  pop.classList.add('open');
   const sel = document.getElementById('lemb-para');
   if (sel && _lembUsuarios.length === 0) {
     const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
@@ -4539,9 +4551,6 @@ async function toggleLembretePopdown(e) {
     sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
       _lembUsuarios.map(u => optionHtml(u.id, (u.nome||'').split(' ')[0])).join('');
   }
-  document.getElementById('lemb-msg').value = '';
-  document.getElementById('lemb-status').textContent = '';
-  pop.classList.add('open');
 }
 
 function fecharLembretePopdown() {
