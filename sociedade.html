@@ -415,6 +415,9 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 
 #app-topbar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 #app-topbar-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding-top: 2px; }
+/* user chip — override do DS para uso inline na topbar (sem width:100%) */
+#app-topbar-right .user-pill-wrap { min-width: auto; max-width: 180px; }
+#app-topbar-right .user-chip { width: auto; border-color: var(--cinza2); }
 
 /* Título da seção na topbar */
 .topbar-modulo-titulo {
@@ -432,7 +435,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 }
 [data-theme="dark"] .app-tabs-bar { border-bottom-color: #2A2926; }
 .app-tab {
-  padding: 10px 16px; font-size: 9px; font-weight: 700;
+  padding: 10px 16px; font-size: 9px; font-weight: var(--weight-semibold);
   letter-spacing: .5px; text-transform: uppercase; color: #aaa;
   border-bottom: 2px solid transparent; cursor: pointer;
   transition: all var(--transition-fast); background: none;
@@ -474,7 +477,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 
 /* ── LEMBRETE POPDOWN ────────────────────────────────────────── */
 #lemb-wrap { position: relative; display: flex; align-items: center; }
-#lemb-popdown { display: flex; flex-direction: column; gap: 10px; }
+#lemb-popdown { flex-direction: column; gap: 10px; }
 
 /* Feedback popover — posicionamento */
 #feedback-icon-wrap .nav-feedback-pop {
@@ -1229,6 +1232,7 @@ async function init() {
     G.usuario = usr;
     sessionStorage.setItem('exp_usuario', JSON.stringify({
       id: usr.id,
+      app_user_id: usr.id,
       auth_id: usr.auth_id,
       nome: usr.nome,
       apelido: usr.apelido,
@@ -1238,6 +1242,8 @@ async function init() {
       cargo: usr.cargo,
       avatar_url: usr.avatar_url || null,
     }));
+    /* dispara exp:session-ready para que ExpNav e AppNotif inicializem */
+    window.dispatchEvent(new CustomEvent('exp:session-ready', { detail: G.usuario }));
 
     // User chip — topbar
     const nav_av = document.getElementById('nav-av');
