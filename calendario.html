@@ -368,6 +368,35 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 [data-theme="dark"] .cal-tab:hover { color: #D0CFC9; }
 [data-theme="dark"] .cal-tab.active { color: #6B9FE8; border-bottom-color: #6B9FE8; }
 #cal-action-bar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+/* ── Nav de semana — pílula (padrão apontamentos) ──────── */
+.cal-semana-nav {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px;
+  background: var(--branco); border: 1px solid var(--cinza2); border-radius: 999px;
+  flex-shrink: 0;
+}
+.cal-semana-nav-btn {
+  width: 26px; height: 26px; border: 0; background: transparent;
+  color: var(--grafite); font-size: 15px; line-height: 1; font-weight: 700;
+  cursor: pointer; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-semana-nav-btn:hover { background: var(--off); }
+.cal-semana-hoje-btn {
+  min-height: 26px; padding: 0 10px; border: 0; background: transparent;
+  color: var(--grafite); font-family: inherit; font-size: 10px; font-weight: 700;
+  cursor: pointer; border-radius: 999px; white-space: nowrap;
+}
+.cal-semana-hoje-btn:hover { background: var(--off); }
+.cal-semana-label {
+  min-width: 160px; text-align: center;
+  font-family: var(--font-mono); font-size: 11px; color: #666;
+}
+[data-theme="dark"] .cal-semana-nav { background: var(--branco); border-color: #3A3836; }
+[data-theme="dark"] .cal-semana-nav-btn,
+[data-theme="dark"] .cal-semana-hoje-btn { color: #C8C3BA; }
+[data-theme="dark"] .cal-semana-nav-btn:hover,
+[data-theme="dark"] .cal-semana-hoje-btn:hover { background: rgba(255,255,255,.06); }
+
 /* Disponibilidade — grid semanal */
 .cal-disp-topbar { display: flex; align-items: center; gap: 8px; padding: 10px 0 12px; flex-wrap: wrap; }
 .cal-disp-bh-info { display: flex; align-items: center; gap: 6px; margin-left: auto; }
@@ -389,9 +418,9 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 }
 .cal-disp-cell { padding: 2px 3px; vertical-align: middle; }
 .cal-disp-cell.cal-fds { opacity: .25; }
-.cal-disp-bars { display: flex; flex-direction: column; gap: 2px; }
+.cal-disp-bars { display: flex; flex-direction: row; gap: 2px; }
 .cal-disp-bar {
-  height: 8px; border-radius: 3px;
+  flex: 1; height: 8px; border-radius: 3px;
   background: var(--cinza2);
   transition: background .12s;
 }
@@ -467,9 +496,12 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
       <!-- Área direita: tema, lembretes, feedback, user chip -->
       <div id="cal-action-bar-right">
       <div id="app-topbar-right" style="display:contents">
-      <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema"></button>
+      <button id="cal-theme-toggle" onclick="toggleTheme()" title="Alternar tema claro/escuro" style="width:24px;height:24px;border:none;background:none;color:#bbb;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:color .12s;padding:0">
+        <svg id="cal-theme-ico-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="cal-theme-ico-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
       <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
-        <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">＋</button>
+        <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
         <div class="nav-feedback-pop" id="lemb-popdown">
           <div class="nav-feedback-title">Lembrete para a equipe</div>
           <div class="fgroup">
@@ -483,7 +515,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
           <div class="nav-feedback-status" id="lemb-status"></div>
           <div class="nav-feedback-actions">
             <button class="btn" onclick="fecharLembretePopdown()">Fechar</button>
-            <button class="btn filled" style="background:var(--ouro,#C4831A);border-color:var(--ouro,#C4831A)" onclick="_enviarLembrete()">Enviar lembrete</button>
+            <button class="btn filled" style="background:var(--ouro,#C4831A);border-color:var(--ouro,#C4831A);color:#fff" onclick="_enviarLembrete()">Enviar lembrete</button>
           </div>
         </div>
       </div>
@@ -519,12 +551,6 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
           <span class="user-chip-arrow">▾</span>
         </div>
         <div class="user-dropdown" id="user-dropdown">
-          <div class="user-dropdown-summary">
-            <div class="ud-summary-name" id="user-dropdown-nome-completo">—</div>
-            <div class="ud-summary-role" id="user-dropdown-role-completo">—</div>
-            <div class="ud-summary-email" id="user-dropdown-email">—</div>
-          </div>
-          <div class="user-dropdown-sep"></div>
           <button type="button" onclick="abrirMeusDados()">Meus dados</button>
           <button type="button" id="user-menu-platform" hidden onclick="abrirGestaoPlataforma()">Gestão de plataforma</button>
           <div class="user-dropdown-sep"></div>
@@ -551,11 +577,11 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
         <div class="stab-panel active" id="stp-cal-agenda">
           <div class="cal-shell">
             <div class="cal-topbar">
-              <div style="display:flex;align-items:center;gap:6px">
-                <button class="cal-nav-btn" onclick="calNavMes(-1)">&#8249;</button>
-                <span class="cal-nav-label" id="cal-nav-label">&#8212;</span>
-                <button class="cal-nav-btn" onclick="calNavMes(1)">&#8250;</button>
-                <button class="cal-today-btn" onclick="calIrHoje()">Hoje</button>
+              <div class="cal-semana-nav">
+                <button class="cal-semana-nav-btn" onclick="calNavMes(-1)">&#8249;</button>
+                <div class="cal-semana-label" id="cal-nav-label">&#8212;</div>
+                <button class="cal-semana-nav-btn" onclick="calNavMes(1)">&#8250;</button>
+                <button class="cal-semana-hoje-btn" onclick="calIrHoje()">Esta semana</button>
               </div>
               <div style="width:1px;height:28px;background:var(--cinza2);margin:0 6px"></div>
               <div class="cal-counter-group">
@@ -617,10 +643,12 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
         <div class="stab-panel" id="stp-cal-disp">
           <div class="cal-shell">
             <div class="cal-disp-topbar">
-              <button class="cal-nav-btn" onclick="calNavSemana(-1)">&#8249;</button>
-              <span class="cal-nav-label" id="cal-disp-label">&#8212;</span>
-              <button class="cal-nav-btn" onclick="calNavSemana(1)">&#8250;</button>
-              <button class="cal-today-btn" onclick="calIrHojePessoas()">Esta semana</button>
+              <div class="cal-semana-nav">
+                <button class="cal-semana-nav-btn" onclick="calNavSemana(-1)">&#8249;</button>
+                <div class="cal-semana-label" id="cal-disp-label">&#8212;</div>
+                <button class="cal-semana-nav-btn" onclick="calNavSemana(1)">&#8250;</button>
+                <button class="cal-semana-hoje-btn" onclick="calIrHojePessoas()">Esta semana</button>
+              </div>
               <div style="width:1px;height:20px;background:var(--cinza2);margin:0 4px"></div>
               <button class="cal-chip active" data-pnucleo="" onclick="calSetPNucleo(this,'')">Todos</button>
               <button class="cal-chip" data-pnucleo="urbanismo"    onclick="calSetPNucleo(this,'urbanismo')">Urb.</button>
@@ -837,6 +865,21 @@ async function enviarToolFeedback() {
   if (!error) setTimeout(fecharToolFeedbackPop, 1800);
 }
 const ROLES_LABEL = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('exp-theme', isDark ? '' : 'dark');
+  _syncCalThemeToggle();
+}
+function _syncCalThemeToggle() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const sun  = document.getElementById('cal-theme-ico-sun');
+  const moon = document.getElementById('cal-theme-ico-moon');
+  if (sun)  sun.style.display  = dark ? 'none' : '';
+  if (moon) moon.style.display = dark ? ''     : 'none';
+}
+document.addEventListener('DOMContentLoaded', _syncCalThemeToggle);
 
 function toggleUserMenu() {
   document.getElementById('user-dropdown')?.classList.toggle('open');
