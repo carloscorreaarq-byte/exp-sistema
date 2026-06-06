@@ -252,6 +252,17 @@
         return null;
       }
 
+      // Cache-first: se já temos o usuário desta sessão em sessionStorage,
+      // retorna imediatamente e atualiza o cache em background (sem bloquear).
+      const cachedFast = tryUseCachedUsuario(session.user.id);
+      if (cachedFast) {
+        // Refresh silencioso em background — mantém o cache sempre fresco
+        fetchCurrentUsuario(session.user.id).then(function(fresh) {
+          if (fresh) applySessionUsuario(session.user.id, fresh);
+        }).catch(function() { /* silencioso — cache continua válido */ });
+        return cachedFast;
+      }
+
       try {
         const usuario = await fetchCurrentUsuario(session.user.id);
         if (!usuario) {
