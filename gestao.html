@@ -1891,21 +1891,25 @@ body {
 .fluxo-detail-hd { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--cinza); border-radius:10px 10px 0 0; background:var(--off); }
 .fluxo-detail-hd-nome { font-size:13px; font-weight:700; color:var(--grafite); }
 .fluxo-detail-hd-role { font-size:9px; color:#999; margin-top:1px; }
-.fluxo-prio-list { display:flex; flex-direction:column; }
-.fluxo-prio-item { border:1px solid var(--cinza); border-top:none; padding:10px 14px; background:var(--branco); display:flex; flex-direction:column; gap:8px; }
-.fluxo-prio-item.conc { background:var(--verde-bg); }
-.fluxo-prio-item:last-child { border-radius:0 0 10px 10px; }
-.fluxo-prio-item-top { display:flex; align-items:center; gap:8px; }
-.fluxo-prio-select { flex:1; font-size:10px; border:1px solid var(--cinza); border-radius:5px; padding:4px 7px; background:var(--branco); color:var(--grafite); outline:none; font-family:var(--font-ui); }
+.fluxo-prio-list { display:flex; flex-direction:column; gap:6px; }
+.fluxo-prio-item { border:1px solid var(--cinza); border-radius:8px; padding:10px 12px; background:var(--branco); display:flex; flex-direction:column; gap:7px; cursor:grab; }
+.fluxo-prio-item.conc { background:var(--verde-bg); border-color:rgba(29,106,74,.25); }
+.fluxo-prio-item.dragging { opacity:.25; cursor:grabbing; }
+.fluxo-prio-item-top { display:flex; align-items:center; gap:6px; }
+.fluxo-prio-select { flex:1; min-width:0; font-size:10px; border:1px solid var(--cinza); border-radius:5px; padding:4px 7px; background:var(--branco); color:var(--grafite); outline:none; font-family:var(--font-ui); }
 .fluxo-prio-select:focus { border-color:var(--mod-focus); }
-.fluxo-prio-dates { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.fluxo-prio-date-field { display:flex; flex-direction:column; gap:2px; }
+.fluxo-prio-date-inline { width:96px; flex-shrink:0; font-size:9px; border:1px solid var(--cinza); border-radius:4px; padding:3px 5px; background:var(--branco); outline:none; font-family:var(--font-ui); color:#666; }
+.fluxo-prio-date-inline:focus { border-color:var(--mod-focus); }
 .fluxo-prio-textarea { width:100%; font-size:10px; border:1px solid var(--cinza); border-radius:5px; padding:5px 7px; background:var(--branco); color:#555; resize:vertical; outline:none; font-family:var(--font-ui); line-height:1.5; box-sizing:border-box; }
 .fluxo-prio-textarea::placeholder { color:#ccc; }
 .fluxo-prio-textarea:focus { border-color:var(--mod-focus); }
-.fluxo-prio-add-btn { border:1px dashed var(--cinza); border-top:none; border-radius:0 0 10px 10px; padding:9px; display:flex; justify-content:center; background:transparent; cursor:pointer; color:#bbb; font-size:11px; transition:all .12s; width:100%; font-family:var(--font-ui); }
+.fluxo-prio-add-btn { border:1px dashed var(--cinza); border-radius:8px; padding:9px; display:flex; justify-content:center; background:transparent; cursor:pointer; color:#bbb; font-size:11px; transition:all .12s; width:100%; font-family:var(--font-ui); box-sizing:border-box; }
 .fluxo-prio-add-btn:hover { background:var(--off); color:var(--grafite); border-color:#aaa; }
-.fluxo-detail-empty { padding:14px; text-align:center; border:1px solid var(--cinza); border-top:none; border-radius:0 0 10px 10px; color:#ccc; font-size:10px; font-style:italic; }
+.fluxo-detail-empty { padding:14px 12px; text-align:center; color:#ccc; font-size:10px; font-style:italic; }
+/* view mode — tooltip de comentário ao hover */
+.fluxo-view-slot { position:relative; }
+.fluxo-view-tooltip { display:none; position:absolute; bottom:calc(100% + 6px); left:0; min-width:180px; max-width:260px; background:#2A2926; color:#F0EDE6; font-size:9px; line-height:1.5; padding:6px 9px; border-radius:7px; z-index:20; pointer-events:none; white-space:pre-wrap; word-break:break-word; box-shadow:0 4px 14px rgba(0,0,0,.25); }
+.fluxo-view-slot:hover .fluxo-view-tooltip { display:block; }
 .fluxo-no-selection { padding:40px; text-align:center; color:#ccc; font-size:11px; border:1px solid var(--cinza); border-radius:10px; background:var(--off); }
 
 /* ── Fluxo — modo visualizar ────────────────────────────── */
@@ -12885,8 +12889,7 @@ let _fluxoPriosData   = {}; // { uid: [prio, ...] }
 
 function _fluxoRoleOrder(role) {
   const r = normalizeRole(role);
-  if (r === 'socio_admin') return 2;
-  if (r === 'socio')       return 1;
+  if (r === 'socio_admin' || r === 'socio') return 1;
   return 0;
 }
 
@@ -12964,7 +12967,7 @@ function renderFluxoUserList() {
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
   let html = '';
   let lastGroup = -1;
-  const groupLabels = ['Colaboradores', 'Sócios', 'Sócios administradores'];
+  const groupLabels = ['Colaboradores', 'Sócios'];
   users.forEach(u => {
     const grp = _fluxoRoleOrder(u.role);
     if (grp !== lastGroup) {
@@ -13000,44 +13003,38 @@ function renderFluxoDetail(uid) {
   const u = G.todosUsuarios.find(u => u.id === uid);
   if (!u) return;
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
-  const prios = (_fluxoPriosData[uid]||[]).filter(p => p.produto_id);
+  // Mostra TODOS os registros (incluindo os recém-adicionados com produto_id null)
+  const prios = _fluxoPriosData[uid] || [];
   const canAdd = prios.length < 6;
 
   const itemsHtml = prios.map((pr, idx) => {
-    const ord   = idx + 1;
-    const conc  = !!pr.concluida;
+    const ord    = idx + 1;
+    const conc   = !!pr.concluida;
     const inicio = pr.data_inicio || '';
     const prazo  = pr.prazo_texto || '';
     const coment = (pr.comentario||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const opts   = _fluxoProdOpts(pr.produto_id);
-    return `<div class="fluxo-prio-item${conc?' conc':''}">
+    return `<div class="fluxo-prio-item${conc?' conc':''}"
+        data-prid="${pr.id}" data-uid="${uid}"
+        draggable="true"
+        ondragstart="_fluxoItemDragStart(event)"
+        ondragover="_fluxoItemDragOver(event)"
+        ondrop="_fluxoItemDrop(event)"
+        ondragend="_fluxoItemDragEnd(event)">
       <div class="fluxo-prio-item-top">
-        <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
+        <span class="fluxo-drag-handle" style="cursor:grab;color:#ccc;font-size:13px;user-select:none">⠿</span>
+        <div class="fluxo-slot-num ${NUM_CLS[ord]}" style="flex-shrink:0">${ord}</div>
         <select class="fluxo-prio-select"
           onchange="atualizarFluxoProduto('${uid}','${pr.id}',this.value)">${opts}</select>
-        <span class="fluxo-conc-tag ${conc?'done':''}"
+        <input type="date" class="fluxo-prio-date-inline" value="${inicio}" title="Liberação"
+          onchange="debFluxo('${pr.id}','inicio',this.value)">
+        <input type="date" class="fluxo-prio-date-inline" value="${prazo}" title="Conclusão"
+          onchange="debFluxo('${pr.id}','prazo',this.value)">
+        <span class="fluxo-conc-tag ${conc?'done':''}" style="white-space:nowrap;flex-shrink:0"
           onclick="toggleFluxoPrio('${uid}','${pr.id}')">${conc?'✓ Concluída':'Pendente'}</span>
         <button onclick="event.stopPropagation();limparFluxoPrio('${uid}','${pr.id}')" title="Remover"
-          style="background:none;border:none;cursor:pointer;font-size:14px;color:#bbb;padding:0 2px;border-radius:3px;flex-shrink:0"
-          onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#bbb'">×</button>
-      </div>
-      <div class="fluxo-prio-dates">
-        <div class="fluxo-prio-date-field">
-          <div class="fluxo-date-label">Liberação</div>
-          <div class="fluxo-date-wrap" onclick="this.querySelector('input').showPicker?.()">
-            <span class="fluxo-date-display">${inicio ? fmtFluxoDate(inicio) : '—'}</span>
-            <input class="fluxo-col-date-inicio" type="date" value="${inicio}"
-              onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'—';debFluxo('${pr.id}','inicio',this.value)">
-          </div>
-        </div>
-        <div class="fluxo-prio-date-field">
-          <div class="fluxo-date-label">Conclusão</div>
-          <div class="fluxo-date-wrap" onclick="this.querySelector('input').showPicker?.()">
-            <span class="fluxo-date-display">${prazo ? fmtFluxoDate(prazo) : '—'}</span>
-            <input class="fluxo-col-date" type="date" value="${prazo}"
-              onchange="this.previousElementSibling.textContent=this.value?fmtFluxoDate(this.value):'—';debFluxo('${pr.id}','prazo',this.value)">
-          </div>
-        </div>
+          style="background:none;border:none;cursor:pointer;font-size:14px;color:#ccc;padding:0;flex-shrink:0"
+          onmouseover="this.style.color='var(--terracota)'" onmouseout="this.style.color='#ccc'">×</button>
       </div>
       <textarea class="fluxo-prio-textarea" rows="2"
         placeholder="Comentário para o colaborador..."
@@ -13046,11 +13043,9 @@ function renderFluxoDetail(uid) {
   }).join('');
 
   const emptyMsg = !prios.length
-    ? `<div class="fluxo-detail-empty">Nenhuma prioridade definida.</div>`
-    : '';
+    ? `<div class="fluxo-detail-empty">Nenhuma prioridade definida.</div>` : '';
   const addBtn = canAdd
-    ? `<button class="fluxo-prio-add-btn" onclick="adicionarFluxoPrio('${uid}')">+ Adicionar prioridade</button>`
-    : '';
+    ? `<button class="fluxo-prio-add-btn" onclick="adicionarFluxoPrio('${uid}')">+ Adicionar prioridade</button>` : '';
 
   wrap.innerHTML = `<div class="fluxo-detail-panel">
     <div class="fluxo-detail-hd">
@@ -13060,9 +13055,58 @@ function renderFluxoDetail(uid) {
         <div class="fluxo-detail-hd-role">${ROLES_LABEL[u.role]||u.role||''}</div>
       </div>
     </div>
-    <div class="fluxo-prio-list">${itemsHtml}${emptyMsg}</div>
+    <div class="fluxo-prio-list" id="fluxo-prio-list-${uid}">${itemsHtml}${emptyMsg}</div>
     ${addBtn}
   </div>`;
+}
+
+// ── Drag-and-drop vertical das prioridades ───────────────────────────────────
+let _fluxoDragItem = null;
+let _fluxoDragUid  = null;
+
+function _fluxoItemDragStart(e) {
+  _fluxoDragItem = e.currentTarget;
+  _fluxoDragUid  = _fluxoDragItem.dataset.uid;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', '');
+  setTimeout(() => _fluxoDragItem?.classList.add('dragging'), 0);
+}
+
+function _fluxoItemDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const target = e.currentTarget;
+  if (!_fluxoDragItem || target === _fluxoDragItem) return;
+  if (target.dataset.uid !== _fluxoDragUid) return;
+  const mid = target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+  const parent = target.parentNode;
+  if (e.clientY < mid) parent.insertBefore(_fluxoDragItem, target);
+  else                 parent.insertBefore(_fluxoDragItem, target.nextSibling);
+}
+
+async function _fluxoItemDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!_fluxoDragItem || !_fluxoDragUid) return;
+  const uid  = _fluxoDragUid;
+  const list = document.getElementById('fluxo-prio-list-' + uid);
+  if (!list) return;
+  const newOrder = [...list.querySelectorAll('.fluxo-prio-item')].map(el => el.dataset.prid);
+  const priosMap = {};
+  (_fluxoPriosData[uid]||[]).forEach(p => { priosMap[p.id] = p; });
+  newOrder.forEach((id, i) => { if (priosMap[id]) priosMap[id].ordem = i + 1; });
+  _fluxoPriosData[uid] = newOrder.map(id => priosMap[id]).filter(Boolean);
+  await Promise.all(newOrder.map((id, i) =>
+    sb.from('prioridades_usuario').update({ ordem: i + 1 }).eq('id', id)
+  ));
+  renderFluxoDetail(uid);
+  renderFluxoUserList();
+}
+
+function _fluxoItemDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  _fluxoDragItem = null;
+  _fluxoDragUid  = null;
 }
 
 async function adicionarFluxoPrio(uid) {
@@ -13137,7 +13181,10 @@ function renderFluxoView() {
             prazo  ? `Conc. ${prazo}` : null,
             conc   ? '<span style="color:var(--verde);font-weight:600">✓ Concluída</span>' : null,
           ].filter(Boolean);
+          const comentEsc = (pr.comentario||'').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          const tooltip = comentEsc ? `<div class="fluxo-view-tooltip">${comentEsc}</div>` : '';
           return `<div class="fluxo-view-slot${conc?' conc':''}">
+            ${tooltip}
             <div class="fluxo-slot-num ${NUM_CLS[ord]}" style="flex-shrink:0">${ord}</div>
             <div class="fluxo-view-slot-body">
               <div class="fluxo-view-proj" title="${_escN(nome)}">${_escN(nome)}</div>
