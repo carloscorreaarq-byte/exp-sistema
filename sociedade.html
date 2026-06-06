@@ -392,7 +392,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 
 /* timer override movido para após timer.js no body */
 
-/* ── ÁREA PRINCIPAL ──────────────────────────────────────────── */
+/* ── CARD PRINCIPAL ──────────────────────────────────────────── */
 #app-main {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column;
@@ -403,47 +403,30 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 }
 [data-theme="dark"] #app-main { background: #1E1E1D; border-color: #2E2D2B; }
 
-/* ── TOP BAR ─────────────────────────────────────────────────── */
-#app-topbar {
-  display: flex; align-items: flex-start;
-  justify-content: space-between;
-  padding: 18px 24px 14px;
+/* ── HEADER DO CARD — tabs + ações ──────────────────────────── */
+.soc-card-hd {
+  height: 48px;
+  background: var(--branco);
   border-bottom: 1px solid var(--cinza2);
-  flex-shrink: 0; gap: 8px;
+  display: flex; align-items: center;
+  padding: 0 8px 0 4px;
+  flex-shrink: 0; gap: 0;
 }
-[data-theme="dark"] #app-topbar { border-bottom-color: #2A2926; }
+[data-theme="dark"] .soc-card-hd { background: #1E1E1D; border-bottom-color: #2A2926; }
 
-#app-topbar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-#app-topbar-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding-top: 2px; }
-/* user chip — override do DS para uso inline na topbar (sem width:100%) */
-#app-topbar-right .user-pill-wrap { min-width: auto; max-width: 180px; }
-#app-topbar-right .user-chip { width: auto; border-color: var(--cinza2); }
+/* Tabs — alinhados ao padrão gestão, cor acento --soc via --nav-active */
+.soc-card-hd .ntab {
+  font-size: 11px; text-transform: none; letter-spacing: 0;
+  padding: 0 12px; height: 48px;
+}
+[data-theme="dark"] .soc-card-hd .ntab:hover { color: #D0CFC9; }
 
-/* Título da seção na topbar */
-.topbar-modulo-titulo {
-  font-size: 13px; font-weight: 700; letter-spacing: -.2px;
-  color: var(--grafite);
+/* Ações à direita */
+.soc-hd-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 2px;
+  flex-shrink: 0; padding-left: 10px;
 }
-[data-theme="dark"] .topbar-modulo-titulo { color: #D8D5CE; }
-
-/* ── ABAS INLINE (dentro do app-main) ───────────────────────── */
-.app-tabs-bar {
-  display: flex; align-items: center; gap: 0;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--cinza2);
-  flex-shrink: 0;
-}
-[data-theme="dark"] .app-tabs-bar { border-bottom-color: #2A2926; }
-.app-tab {
-  padding: 10px 16px; font-size: 9px; font-weight: var(--weight-semibold);
-  letter-spacing: .5px; text-transform: uppercase; color: #aaa;
-  border-bottom: 2px solid transparent; cursor: pointer;
-  transition: all var(--transition-fast); background: none;
-  border-top: none; border-left: none; border-right: none;
-  font-family: var(--font-ui);
-}
-.app-tab:hover { color: var(--grafite); }
-.app-tab.active { color: var(--soc); border-bottom-color: var(--soc); }
 
 /* ── SCROLL BODY ─────────────────────────────────────────────── */
 #app-body {
@@ -475,42 +458,15 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .shell-btn.primary { background: var(--grafite); color: var(--branco); border-color: var(--grafite); }
 .shell-btn.primary:hover { opacity: .88; }
 
-/* ── LEMBRETE POPDOWN ────────────────────────────────────────── */
+/* ── LEMBRETE / FEEDBACK — posicionamento dos popovers ──────── */
 #lemb-wrap { position: relative; display: flex; align-items: center; }
 #lemb-popdown { flex-direction: column; gap: 10px; }
-
-/* Feedback popover — posicionamento */
-#feedback-icon-wrap .nav-feedback-pop {
-  position: absolute; top: calc(100% + 8px);
-  right: 0; left: auto; bottom: auto; width: 300px;
-}
+#feedback-icon-wrap { position: relative; display: flex; align-items: center; }
+#feedback-icon-wrap .nav-feedback-pop,
 #lemb-wrap .nav-feedback-pop {
   position: absolute; top: calc(100% + 8px);
   right: 0; left: auto; bottom: auto; width: 300px;
 }
-
-/* Dark mode btn inline — sociedade */
-#soc-theme-btn { flex-shrink:0; }
-[data-theme="dark"] #soc-theme-btn { color:#555; }
-[data-theme="dark"] #soc-theme-btn:hover { color:#C8C3BA !important; }
-#soc-theme-sun  { display:block; }
-#soc-theme-moon { display:none; }
-[data-theme="dark"] #soc-theme-sun  { display:none; }
-[data-theme="dark"] #soc-theme-moon { display:block; }
-
-/* Feedback icon — padrão app.html */
-#feedback-icon-btn {
-  width: 24px; height: 24px;
-  border: none; background: none;
-  color: #bbb;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0;
-  transition: color var(--transition-fast);
-  padding: 0;
-}
-#feedback-icon-btn:hover { color: var(--grafite, #111110); }
-[data-theme="dark"] #feedback-icon-btn { color: #555; }
-[data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
 
 </style>
 </head>
@@ -534,23 +490,25 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
   <!-- ── Área principal ── -->
   <div id="app-main">
 
-    <!-- Top bar: título do módulo + controles -->
-    <div id="app-topbar">
-      <div id="app-topbar-left">
-        <span class="topbar-modulo-titulo">EXP · Sociedade</span>
+    <!-- Header: tabs internas + ações -->
+    <div class="soc-card-hd">
+      <div class="nav-tabs">
+        <button class="ntab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+        <button class="ntab" data-tab="pautas"    onclick="switchTab('pautas')">Pautas <span class="ntab-badge" id="badge-pautas" style="display:none">0</span></button>
+        <button class="ntab" data-tab="projetos"  onclick="switchTab('projetos')">Projetos</button>
+        <button class="ntab" data-tab="produtos"  onclick="switchTab('produtos')">Produtos</button>
+        <button class="ntab" data-tab="atas"      onclick="switchTab('atas')">Atas</button>
       </div>
-      <div id="app-topbar-right">
-
-        <!-- Dark mode — inline, padrão dos demais módulos -->
-        <button id="soc-theme-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro" style="width:24px;height:24px;border:none;background:none;color:#bbb;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0;transition:color .12s" onmouseenter="this.style.color='var(--grafite)'" onmouseleave="this.style.color='#bbb'">
-          <svg id="soc-theme-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg id="soc-theme-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <div class="soc-hd-right" id="app-topbar-right">
+        <!-- Toggle tema -->
+        <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema claro/escuro">
+          <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
-
         <!-- Feedback -->
-        <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-          <button id="feedback-icon-btn" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        <div id="feedback-icon-wrap">
+          <button class="exp-tr-btn" id="exp-tr-feedback" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
           </button>
           <div class="nav-feedback-pop" id="nav-feedback-pop">
             <div class="nav-feedback-title">Problema ou sugestão</div>
@@ -570,10 +528,11 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
             </div>
           </div>
         </div>
-
         <!-- Lembrete -->
         <div id="lemb-wrap">
-          <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">＋</button>
+          <button class="exp-tr-btn" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
           <div class="nav-feedback-pop" id="lemb-popdown">
             <div class="nav-feedback-title">Lembrete para a equipe</div>
             <div class="shell-field">
@@ -591,38 +550,28 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
             </div>
           </div>
         </div>
-
-        <!-- User chip + dropdown -->
-        <div class="user-pill-wrap" style="position:relative">
-          <div class="user-chip" id="user-chip" onclick="toggleUserMenu()">
-            <div class="user-av" id="nav-av"></div>
-            <div>
-              <div class="u-nome" id="nav-nome">—</div>
-              <div class="u-role" id="nav-role"></div>
-            </div>
-            <span class="user-chip-arrow">▾</span>
+        <!-- User chip — padrão ExpNav -->
+        <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
+          <div class="exp-nav-user" id="exp-nav-user"></div>
+          <div class="exp-user-info">
+            <div class="exp-user-nome" id="exp-user-nome">—</div>
+            <div class="exp-user-role" id="exp-user-role"></div>
           </div>
-          <div class="user-dropdown" id="user-dropdown">
-            <button type="button" onclick="fazerLogout()">Sair do sistema</button>
-            <div class="user-dropdown-sep"></div>
-            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
-              <div class="conn-dot" id="conn-dot" title="Verificando conexão…" style="width:7px;height:7px;border-radius:50%;background:#ccc"></div>
-              <span style="font-size:10px;color:#bbb" id="conn-label">conectando…</span>
+          <span class="exp-user-caret">▾</span>
+          <div class="exp-user-dropdown" id="exp-user-dropdown">
+            <button onclick="window.location.href='app.html'">Meus dados</button>
+            <div class="exp-user-dropdown-sep"></div>
+            <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
+            <div class="exp-user-dropdown-sep"></div>
+            <button onclick="ExpNav._sair()">Sair</button>
+            <div class="exp-user-dropdown-footer">
+              <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
+              <span id="exp-conn-label" style="font-size:10px">conectando…</span>
             </div>
           </div>
         </div>
-
-      </div><!-- /#app-topbar-right -->
-    </div><!-- /#app-topbar -->
-
-    <!-- Abas de seção -->
-    <div class="app-tabs-bar">
-      <button class="app-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
-      <button class="app-tab" data-tab="pautas"     onclick="switchTab('pautas')">Pautas <span class="ntab-badge" id="badge-pautas" style="display:none">0</span></button>
-      <button class="app-tab" data-tab="projetos"   onclick="switchTab('projetos')">Projetos</button>
-      <button class="app-tab" data-tab="produtos"   onclick="switchTab('produtos')">Produtos</button>
-      <button class="app-tab" data-tab="atas"       onclick="switchTab('atas')">Atas</button>
-    </div>
+      </div><!-- /.soc-hd-right -->
+    </div><!-- /.soc-card-hd -->
 
     <!-- Corpo rolável -->
     <div id="app-body">
@@ -1251,23 +1200,7 @@ async function init() {
     /* dispara exp:session-ready para que ExpNav e AppNotif inicializem */
     window.dispatchEvent(new CustomEvent('exp:session-ready', { detail: G.usuario }));
 
-    // User chip — topbar
-    const nav_av = document.getElementById('nav-av');
-    if (nav_av) {
-      nav_av.style.cssText = `width:28px;height:28px;border-radius:50%;background:${usr.cor||'#888'};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
-      nav_av.textContent = usr.iniciais || '?';
-    }
-    const nomeCurto = usr.apelido || usr.nome?.split(' ')[0] || '—';
-    const el_nome = document.getElementById('nav-nome');
-    if (el_nome) el_nome.textContent = nomeCurto;
-    const el_role = document.getElementById('nav-role');
-    if (el_role) el_role.textContent = usr.cargo || usr.role || '';
-
-    // Conn dot + label
-    const dot = document.getElementById('conn-dot');
-    if (dot) { dot.style.background = '#22c55e'; dot.title = 'Conectado'; }
-    const connLabel = document.getElementById('conn-label');
-    if (connLabel) connLabel.textContent = 'conectado';
+    // User chip e conn dot são preenchidos pelo ExpNav via exp:session-ready
 
     // Carregar base
     await Promise.all([carregarUsuarios(), carregarTemas()]);
@@ -1300,36 +1233,11 @@ async function carregarUsuarios() {
 /* ── NAV / ABAS ─────────────────────────────────────────────── */
 function switchTab(tab) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.app-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ntab[data-tab]').forEach(b => b.classList.remove('active'));
   const pg = document.getElementById('page-' + tab);
-  const bt = document.querySelector(`.app-tab[data-tab="${tab}"]`);
+  const bt = document.querySelector(`.ntab[data-tab="${tab}"]`);
   if (pg) pg.classList.add('active');
   if (bt) bt.classList.add('active');
-}
-
-function toggleTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const next   = isDark ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('exp-theme', next);
-}
-
-/* ── USER CHIP / DROPDOWN ───────────────────────────────────── */
-function toggleUserMenu() {
-  const dd = document.getElementById('user-dropdown');
-  if (!dd) return;
-  dd.classList.toggle('open');
-}
-document.addEventListener('click', e => {
-  const wrap = document.querySelector('.user-pill-wrap');
-  if (wrap && !wrap.contains(e.target)) {
-    document.getElementById('user-dropdown')?.classList.remove('open');
-  }
-});
-
-async function fazerLogout() {
-  await sb.auth.signOut();
-  window.location = 'index.html';
 }
 
 /* ── POPDOWNS (feedback + lembrete) ────────────────────────── */

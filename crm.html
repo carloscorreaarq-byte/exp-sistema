@@ -988,6 +988,7 @@ textarea{resize:vertical;min-height:60px}
             <option value="prospecção">Lead</option>
             <option value="enviada">Orçamento ativo</option>
           </select>
+          <div id="opp-stage-help" style="display:none;font-size:10px;color:#888;margin-top:5px">Com produtos vinculados, o estágio da oportunidade passa a seguir automaticamente o status dos produtos.</div>
         </div>
       </div>
 
@@ -1396,6 +1397,47 @@ function oppStageLabel(op){
   return stageLabel(op.pipeline_stage);
 }
 
+function normalizeProposalRecord(p){
+  let parsed = {};
+  try { parsed = p?.data_json ? JSON.parse(p.data_json) : {}; } catch(e) {}
+  return {
+    ...p,
+    clienteId: p?.cliente_id || parsed?.clienteId || parsed?.cliente_id || null,
+    totalEfetivo: p?.total_efetivo ?? parsed?.totalEfetivo ?? null,
+  };
+}
+
+function getProposalFamilyRoot(proposalId){
+  const prop = allProposals.find(p => String(p.proposal_id) === String(proposalId));
+  return String(prop ? (prop.parent_id || prop.proposal_id) : (proposalId || ''));
+}
+
+function getProposalFamilyMembers(proposalId){
+  const familyRoot = getProposalFamilyRoot(proposalId);
+  if (!familyRoot) return [];
+  return allProposals
+    .filter(p => String(p.parent_id || p.proposal_id) === familyRoot)
+    .sort((a,b) => (b.version||0) - (a.version||0));
+}
+
+function getPreferredProposalLinkId(proposalId){
+  const family = getProposalFamilyMembers(proposalId);
+  return family[0]?.proposal_id || proposalId || null;
+}
+
+function hasProdutosVinculadosNaOpp(oppId){
+  return allProds.some(p => String(p.oportunidade_id||'') === String(oppId||''));
+}
+
+function deriveOppStageFromProdutos(prods, fallbackStage='prospecção'){
+  if(!prods || !prods.length) return fallbackStage;
+  const st = prods.map(p => (p.status||'').toLowerCase());
+  if(st.some(s => s === 'fechado')) return 'fechada';
+  if(st.every(s => ['negado','cancelado'].includes(s))) return 'negada';
+  if(st.some(s => s === 'negociacao' || s === 'negociação')) return 'negociacao';
+  return 'enviada';
+}
+
 function tempClass(fus){
   if(!fus||!fus.length)return'none';
   const last=fus[fus.length-1];
@@ -1782,7 +1824,7 @@ async function carregarDados(){
   allPesquisasSat = pesquisasRes.data || [];
   allFinAtivosResumo = finAtivosRes.data || [];
   // Todas as propostas (sem filtro de status — inclui Original, R1, R2, etc.)
-  const proposalsAll = proposalsRes.data||[];
+  const proposalsAll = (proposalsRes.data||[]).map(normalizeProposalRecord);
   allProposals = proposalsAll;
 
   // Mapeia produtos por oportunidade_id
@@ -2817,13 +2859,11 @@ async function abrirNovaOpp(){
   document.getElementById('opp-evento-wrap').style.display='none';
   document.getElementById('opp-novo-cliente-wrap').style.display='none';
   document.getElementById('opp-destaque').checked=false;
+  renderOppResponsavelOptions(currentUser?.id || '');
+  syncOppStageFieldState(null);
   // Rebusca propostas frescas do Supabase antes de popular o dropdown
   await recarregarProposals();
   populateCalcDropdown('');
-  if(currentUser?.id){
-    const sel=document.getElementById('opp-resp');
-    for(let opt of sel.options){if(opt.value===currentUser.id){opt.selected=true;break;}}
-  }
   popularIndicouDatalist();
   openM('modal-opp');
 }
@@ -2860,8 +2900,7 @@ function editarOpp(){
   }else{
     document.getElementById('opp-cliente-selecionado').style.display='none';
   }
-  const respSel=document.getElementById('opp-resp');
-  for(let opt of respSel.options){if(opt.value===op.resp_id){opt.selected=true;break;}}
+  renderOppResponsavelOptions(op.resp_id || '');
   const origSel=document.getElementById('opp-origem');
   let foundOrig=false;
   for(let opt of origSel.options){if(opt.value===op.origem){opt.selected=true;foundOrig=true;break;}}
@@ -2869,6 +2908,7 @@ function editarOpp(){
   onOrigemChange();
   if(op.origem==='Evento')document.getElementById('opp-evento').value=op.indicou||'';
   popularIndicouDatalist();
+  syncOppStageFieldState(op.id);
   closeM('modal-detail');
   openM('modal-opp');
 }
@@ -2915,6 +2955,53 @@ function cancelarNovoCliente(){
 
 function onClienteChange(){}
 
+function findExistingClientByName(nome){
+  const nomeKey = normTextKey(nome);
+  if (!nomeKey) return null;
+  return allClients.find(c => normTextKey(c.nome) === nomeKey) || null;
+}
+
+function buildClienteEnrichmentPayload(existing, payload){
+  const next = {};
+  if (!existing) return next;
+  if (!existing.sigla && payload.sigla) next.sigla = payload.sigla;
+  if (!existing.tipo && payload.tipo) next.tipo = payload.tipo;
+  if (!existing.cidade && payload.cidade) next.cidade = payload.cidade;
+  if (!existing.uf && payload.uf) next.uf = payload.uf;
+  if (!existing.obs && payload.obs) next.obs = payload.obs;
+  return next;
+}
+
+function renderOppResponsavelOptions(selectedId){
+  const sel = document.getElementById('opp-resp');
+  if (!sel) return;
+  const normalizedSelected = String(selectedId || currentUser?.id || '');
+  const users = Object.values(allUsers)
+    .filter(u => u && u.ativo !== false && !u.viewer_only)
+    .sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+  sel.innerHTML = users.length
+    ? users.map(u => {
+        const firstName = (u.nome||'').trim();
+        const initials = u.iniciais ? ` (${u.iniciais})` : '';
+        const selected = String(u.id) === normalizedSelected ? ' selected' : '';
+        return `<option value="${escAttr(u.id)}"${selected}>${escHtml(firstName)}${escHtml(initials)}</option>`;
+      }).join('')
+    : '<option value="">Nenhum responsável ativo</option>';
+}
+
+function syncOppStageFieldState(oppId){
+  const sel = document.getElementById('opp-stage');
+  const help = document.getElementById('opp-stage-help');
+  if (!sel || !help) return;
+  const hasProdutos = oppId ? hasProdutosVinculadosNaOpp(oppId) : false;
+  sel.disabled = hasProdutos;
+  help.style.display = hasProdutos ? 'block' : 'none';
+  if (hasProdutos) {
+    const prodsDaOpp = allProds.filter(p => String(p.oportunidade_id||'') === String(oppId));
+    sel.value = deriveOppStageFromProdutos(prodsDaOpp, sel.value);
+  }
+}
+
 function onOrigemChange(){
   const v=document.getElementById('opp-origem').value;
   const isIndic=v.startsWith('Indicação');
@@ -2943,6 +3030,21 @@ async function criarNovoClienteInline(){
     uf:document.getElementById('nc-uf').value||null,
     obs:document.getElementById('nc-obs').value.trim()||null,
   };
+  const existente = findExistingClientByName(nome);
+  if (existente) {
+    const enrichment = buildClienteEnrichmentPayload(existente, payload);
+    let merged = existente;
+    if (Object.keys(enrichment).length) {
+      const { data: updated, error: updateErr } = await sb.from('clientes').update(enrichment).eq('id', existente.id).select().maybeSingle();
+      if (updateErr) { toast('Erro ao enriquecer cliente existente: ' + updateErr.message); return; }
+      merged = updated || { ...existente, ...enrichment };
+      allClients = allClients.map(c => String(c.id) === String(existente.id) ? merged : c);
+    }
+    selecionarCliente(merged.id, merged.nome);
+    document.getElementById('opp-novo-cliente-wrap').style.display='none';
+    toast('Cliente já existia e foi reaproveitado.');
+    return;
+  }
   const {data,error}=await sb.from('clientes').insert(payload).select().maybeSingle();
   if(error){toast('Erro ao criar cliente: '+error.message);return;}
   allClients.push(data);
@@ -2988,12 +3090,23 @@ async function salvarOpp(){
 
   // COM-3: validação de vínculo único — uma proposta só pode estar ligada a uma oportunidade
   const calcIdSelecionado = document.getElementById('opp-calc-id').value.trim() || null;
-  if (calcIdSelecionado) {
-    const jaVinculada = allOps.find(o => o.proposta_calc_id === calcIdSelecionado && (!id || o.id !== id));
+  const calcIdCanonico = calcIdSelecionado ? getPreferredProposalLinkId(calcIdSelecionado) : null;
+  const calcFamilyRootSelecionado = calcIdCanonico ? getProposalFamilyRoot(calcIdCanonico) : '';
+  if (calcIdCanonico) {
+    const jaVinculada = allOps.find(o => {
+      if (!o.proposta_calc_id || (id && o.id === id)) return false;
+      return getProposalFamilyRoot(o.proposta_calc_id) === calcFamilyRootSelecionado;
+    });
     if (jaVinculada) {
       toast(`Esta proposta já está vinculada à oportunidade ${jaVinculada.num_legado || '#'+jaVinculada.id}. Cada proposta pode ser vinculada a apenas uma oportunidade.`);
       return;
     }
+  }
+
+  let stageValue = document.getElementById('opp-stage').value;
+  if (id && hasProdutosVinculadosNaOpp(id)) {
+    const prodsDaOpp = allProds.filter(p => String(p.oportunidade_id||'') === String(id));
+    stageValue = deriveOppStageFromProdutos(prodsDaOpp, stageValue);
   }
 
   const payload={
@@ -3002,7 +3115,7 @@ async function salvarOpp(){
     cidade:document.getElementById('opp-cidade').value.trim()||null,
     uf:document.getElementById('opp-uf').value||null,
     resp_id:document.getElementById('opp-resp').value,
-    pipeline_stage:document.getElementById('opp-stage').value,
+    pipeline_stage:stageValue,
     origem,
     indicou,
     data_entrada:document.getElementById('opp-data-entrada').value||null,
@@ -3011,7 +3124,7 @@ async function salvarOpp(){
     resp_cliente_tel:document.getElementById('opp-rc-tel').value.trim()||null,
     resp_cliente_email:document.getElementById('opp-rc-email').value.trim()||null,
     destaque:document.getElementById('opp-destaque').checked,
-    proposta_calc_id:document.getElementById('opp-calc-id').value.trim()||null,
+    proposta_calc_id:calcIdCanonico,
     updated_at:new Date().toISOString(),
   };
   if(id && numLegadoNovo) payload.num_legado=numLegadoNovo;
@@ -3213,12 +3326,7 @@ async function autoUpdateOppStage(oppId){
   const {data:prods, error:pErr}=await sb.from('produtos').select('status').eq('oportunidade_id',oppId);
   if(pErr){ console.error('autoUpdateOppStage:', pErr.message); return; }
   if(!prods||!prods.length)return;
-  const st=prods.map(p=>(p.status||'').toLowerCase());
-  let newStage;
-  if(st.some(s=>s==='fechado'))newStage='fechada';
-  else if(st.every(s=>['negado','cancelado'].includes(s)))newStage='negada';
-  else if(st.some(s=>s==='negociacao'||s==='negociação'))newStage='negociacao';
-  else newStage='enviada';
+  const newStage = deriveOppStageFromProdutos(prods);
   await sb.from('oportunidades').update({pipeline_stage:newStage,updated_at:new Date().toISOString()}).eq('id',oppId);
 }
 
@@ -3277,10 +3385,11 @@ let _subsProposalId    = null; // proposal_id do exp_proposals a atualizar
 async function verificarSubsAposFechamento(oppId, acao) {
   const op = allOps.find(o=>o.id===oppId);
   if (!op?.proposta_calc_id) return;
+  const linkedProposalId = getPreferredProposalLinkId(op.proposta_calc_id);
   try {
     const {data, error} = await sb.from('exp_proposals')
       .select('proposal_id, subs')
-      .eq('proposal_id', op.proposta_calc_id)
+      .eq('proposal_id', linkedProposalId)
       .maybeSingle();
     if (error || !data) return;
     const subs = data.subs || [];
@@ -3291,13 +3400,13 @@ async function verificarSubsAposFechamento(oppId, acao) {
       const updated = subs.map(s=>({...s, status_aprov:'negada'}));
       await sb.from('exp_proposals')
         .update({ subs: updated, updated_at: new Date().toISOString() })
-        .eq('proposal_id', op.proposta_calc_id);
+        .eq('proposal_id', linkedProposalId);
       toast('Subcontratações marcadas como negadas automaticamente.');
       return;
     }
 
     // Produto fechado → abre modal para aprovação manual
-    _subsProposalId = op.proposta_calc_id;
+    _subsProposalId = linkedProposalId;
     _subsParaAprovacao = subs.map(s=>({
       ...s,
       status_aprov: s.status_aprov || 'pendente'
@@ -3956,8 +4065,9 @@ function abrirDetail(oppId){
     <div class="dr"><div class="dk">Responsável</div><div class="dv">${respBadge(op.resp_id)} ${escHtml(u.nome)}</div></div>
     <div class="dr"><div class="dk">Estágio</div><div class="dv">${estagBadge(op.pipeline_stage)}</div></div>
     ${op.proposta_calc_id?(()=>{
-      const lp = allProposals.find(p=>p.proposal_id===op.proposta_calc_id);
-      const codDisp = lp?.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : `#${op.proposta_calc_id}`;
+      const linkedProposalId = getPreferredProposalLinkId(op.proposta_calc_id);
+      const lp = allProposals.find(p=>String(p.proposal_id)===String(linkedProposalId));
+      const codDisp = lp?.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : `#${linkedProposalId}`;
       const verDisp = lp ? _verLabel(lp.version||0) : '';
       return `<div class="dr"><div class="dk">Proposta calc</div><div class="dv" style="font-family:var(--font-mono);font-size:11px">
         <span style="font-weight:700">${escHtml(codDisp)}</span>${verDisp?` <span style="color:var(--azul);font-weight:700">${escHtml(verDisp)}</span>`:''}
@@ -4908,14 +5018,7 @@ async function recarregarProposals() {
     if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cliente_id,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at,data_json').order('created_at',{ascending:false});
     if (r.error) r = await sb.from('exp_proposals').select('proposal_id,projeto,cliente,cidade,uf,total,status,version,parent_id,items,subs,desps,repasse,updated_at,data_json').order('created_at',{ascending:false});
     if (!r.error && r.data) {
-      allProposals = r.data.map(p => {
-        let parsed = {};
-        try { parsed = p?.data_json ? JSON.parse(p.data_json) : {}; } catch(e) {}
-        return {
-          ...p,
-          clienteId: p?.cliente_id || parsed?.clienteId || parsed?.cliente_id || null
-        };
-      });
+      allProposals = r.data.map(normalizeProposalRecord);
     }
   } catch(e) {}
 }
@@ -5069,13 +5172,14 @@ async function resetVinculoCalc(oppId) {
 async function carregarInfoPropostaCalc(calcId, oppId) {
   const el = document.getElementById('det-calc-info-' + oppId);
   if (!el) return;
+  const linkedProposalId = getPreferredProposalLinkId(calcId);
   try {
     const {data, error} = await sb.from('exp_proposals')
       .select('proposal_id, projeto, total, status, version, parent_id, updated_at')
-      .eq('proposal_id', calcId)
+      .eq('proposal_id', linkedProposalId)
       .maybeSingle();
     if (error || !data) {
-      const mem = allProposals.find(p => p.proposal_id === calcId);
+      const mem = allProposals.find(p => String(p.proposal_id) === String(linkedProposalId));
       if (mem) {
         el.textContent = `${mem.projeto || '—'} · ${fmt(mem.total)} · ${_verLabel(mem.version||0)}`;
         el.style.color = 'var(--ouro)';

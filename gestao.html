@@ -1767,6 +1767,27 @@ body {
 .ep-pct-total.completo { color:var(--verde); font-weight:600; }
 .ep-pct-total.excesso { color:var(--terracota); font-weight:700; }
 
+/* ── RESULTADO — dark mode ───────────────────────────── */
+[data-theme="dark"] .res-sumario { background:var(--branco); border-color:var(--cinza); }
+[data-theme="dark"] .res-kpi { background:#1E1D1B; border-color:#3A3836; }
+[data-theme="dark"] .res-kpi-val { color:var(--grafite); }
+[data-theme="dark"] .res-chart-values { color:#aaa; }
+[data-theme="dark"] .res-chart-values strong { color:var(--grafite); }
+[data-theme="dark"] .res-chart-track { background:#2E2D2A; }
+[data-theme="dark"] .res-etapa-card { background:#1E1D1B; border-color:#3A3836; }
+[data-theme="dark"] .res-card-etapa.nao-iniciada { background:#1E1D1B; border-color:#3A3836; }
+[data-theme="dark"] .res-card-etapa.default { background:#2A1F22; border-color:#5A3040; }
+[data-theme="dark"] .res-card-etapa.concluida-verde { background:#152218; border-color:rgba(45,158,107,.35); }
+[data-theme="dark"] .res-card-etapa.concluida-amarelo { background:#231E0E; border-color:rgba(212,170,55,.35); }
+[data-theme="dark"] .res-card-etapa.concluida-neg { background:#2A1715; border-color:rgba(195,68,59,.3); }
+[data-theme="dark"] .res-card-meta { border-top-color:rgba(255,255,255,.08); }
+[data-theme="dark"] .res-card-meta strong { color:var(--grafite); }
+[data-theme="dark"] .res-card-prazo { border-top-color:rgba(255,255,255,.08); }
+[data-theme="dark"] .res-prazo-seg { color:var(--grafite); }
+[data-theme="dark"] .res-pct-badge { background:#252523; border-color:#3A3836; color:#888; }
+[data-theme="dark"] .res-detail-meta { color:#888; }
+[data-theme="dark"] .res-detail-meta strong { color:var(--grafite); }
+
 /* ── PRIORIDADES (dashboard) ─────────────────────────── */
 .prio-card { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--branco); border:1px solid var(--cinza); margin-bottom:6px; cursor:pointer; transition:all .12s; border-radius:8px; }
 .prio-card:hover { border-color:#aaa; box-shadow:0 2px 8px rgba(0,0,0,.05); }
@@ -2221,6 +2242,9 @@ body {
 [data-theme="dark"] .btn { background:#252523; border-color:#3A3836; color:#888; }
 [data-theme="dark"] .btn:hover { border-color:var(--grafite); color:var(--grafite); }
 [data-theme="dark"] .btn.filled { background:var(--grafite); color:var(--off); border-color:var(--grafite); }
+[data-theme="dark"] .btn.verde { background:var(--verde); color:#fff; border-color:var(--verde); }
+[data-theme="dark"] .btn.verde:hover { background:var(--verde-l); border-color:var(--verde-l); }
+[data-theme="dark"] .btn.tc { background:var(--terracota); color:#fff; border-color:var(--terracota); }
 [data-theme="dark"] .pvt-btn { background:#252523; color:#888; }
 [data-theme="dark"] .pvt-btn.active { background:var(--grafite); color:var(--off); }
 [data-theme="dark"] .filter-select { background:#252523; color:var(--grafite); border-color:#3A3836; }
@@ -5691,11 +5715,18 @@ function normBusca(txt) {
 
 async function carregarTarefas() {
   const uid = G.usuario.id;
-  const [{ data: proprias }, { data: recebidas }, { data: delegadas }] = await Promise.all([
-    sb.from('tarefas_livres').select('*').eq('usuario_id', uid).is('atribuido_para', null).eq('concluida', false),
-    sb.from('tarefas_livres').select('*').eq('atribuido_para', uid).eq('concluida', false),
-    sb.from('tarefas_livres').select('*').eq('criado_por', uid).not('atribuido_para', 'is', null)
-  ]);
+  let proprias, recebidas, delegadas;
+  try {
+    [{ data: proprias }, { data: recebidas }, { data: delegadas }] = await Promise.all([
+      sb.from('tarefas_livres').select('*').eq('usuario_id', uid).is('atribuido_para', null).eq('concluida', false),
+      sb.from('tarefas_livres').select('*').eq('atribuido_para', uid).eq('concluida', false),
+      sb.from('tarefas_livres').select('*').eq('criado_por', uid).not('atribuido_para', 'is', null)
+    ]);
+  } catch(e) {
+    const wrap = document.getElementById('tasks-lista');
+    if (wrap) wrap.innerHTML = `<div style="padding:8px 0;color:var(--terracota);font-size:11px">Erro ao carregar tarefas: ${e.message}</div>`;
+    return;
+  }
 
   const ordenar = (a, b) => {
     if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
@@ -5941,7 +5972,7 @@ async function toggleTarefa(id, atual) {
   await sb.from('tarefas_livres').update({
     concluida: !atual, concluida_em: atual ? null : new Date().toISOString()
   }).eq('id', id);
-  AppNotif.refreshTarefas();
+  ExpNav.refreshTarefas();
   carregarTarefas();
 }
 
@@ -12681,7 +12712,7 @@ async function carregarPrioridades() {
     // Hierarquia de informações
     const titulo = [cli?.nome, opp?.projeto].filter(Boolean).join(' | ') || prod.nome;
     const cidade = opp?.cidade || cli?.cidade || '';
-    const cidadeUf = [cidade, cli?.uf].filter(Boolean).join('/');
+    const cidadeUf = [cidade, opp?.uf].filter(Boolean).join('/');
     const etapaNome = etapa?.nome || '';
     const tipoProd = prod.nome || '';
 
@@ -17922,7 +17953,7 @@ async function concluirTarefaSino(id) {
   await sb.from('tarefas_livres').update({
     concluida: true, concluida_em: new Date().toISOString()
   }).eq('id', id);
-  AppNotif.refreshTarefas();
+  ExpNav.refreshTarefas();
   carregarTarefas();
 }
 

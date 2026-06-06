@@ -36,20 +36,59 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 
 /* container principal — exp-nav.css (via .exp-app-shell) aplica display:flex+row */
 #conteudo{flex:1;min-height:0;display:none;}
-/* timer posicionado dentro do exp-app-shell de pessoas */
-/* timer override movido para após timer.js no body */
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── LAYOUT ─── */
-.ps-wrap{flex:1;min-width:0;padding:20px 24px;position:relative;z-index:1;overflow-y:auto;min-height:0;}
-.ps-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-.ps-header-left{flex:1}
-.ps-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
-.ps-sub{font-size:11px;color:#999;margin-top:2px}
-.ps-page-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.ps-page-tab{padding:6px 14px;border:1px solid var(--cinza2);border-radius:999px;background:var(--branco);font-family:var(--font-ui);font-size:var(--text-sub);font-weight:var(--weight-semibold);color:#888;cursor:pointer;transition:border-color var(--transition-fast),color var(--transition-fast),background var(--transition-fast)}
-.ps-page-tab:hover{border-color:var(--terracota);color:var(--terracota)}
-.ps-page-tab.ativo{background:var(--terracota);border-color:var(--terracota);color:#fff}
+/* ── CARD PRINCIPAL ─── */
+#pessoas-card{
+  flex:1;
+  background:var(--branco);
+  border:1px solid var(--cinza2);
+  border-radius:14px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  min-width:0;
+}
+[data-theme="dark"] #pessoas-card{background:#1E1E1D;border-color:#2E2D2B;}
+
+/* ── HEADER DO CARD — tabs + ações ─── */
+.pessoas-card-hd{
+  height:48px;
+  background:var(--branco);
+  border-bottom:1px solid var(--cinza2);
+  display:flex;
+  align-items:center;
+  padding:0 8px 0 4px;
+  flex-shrink:0;
+  gap:0;
+}
+[data-theme="dark"] .pessoas-card-hd{background:#1E1E1D;border-bottom-color:#2A2926;}
+
+/* Tabs — estilo alinhado ao gestão, cor acento --terracota via --nav-active */
+.pessoas-card-hd .ntab{
+  font-size:11px;
+  text-transform:none;
+  letter-spacing:0;
+  padding:0 12px;
+  height:48px;
+}
+[data-theme="dark"] .pessoas-card-hd .ntab:hover{color:#D0CFC9;}
+
+/* Ações à direita */
+.pessoas-hd-right{
+  margin-left:auto;
+  display:flex;align-items:center;gap:2px;
+  flex-shrink:0;padding-left:10px;
+}
+
+/* ── CORPO ROLÁVEL ─── */
+.pessoas-card-body{flex:1;overflow-y:auto;min-height:0;background:var(--off);}
+[data-theme="dark"] .pessoas-card-body{background:#181816;}
+.pessoas-card-body::-webkit-scrollbar{width:4px;}
+.pessoas-card-body::-webkit-scrollbar-thumb{background:var(--cinza);border-radius:2px;}
+
+/* ── LAYOUT INTERNO ─── */
+.ps-wrap{padding:20px 24px;position:relative;z-index:1;}
 .ps-layout{display:grid;grid-template-columns:290px 1fr;gap:14px;align-items:start}
 .ps-view{display:none}
 .ps-view.ativo{display:block}
@@ -245,12 +284,9 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 [data-theme="dark"] .ps-search-wrap,[data-theme="dark"] .ps-filtros{border-color:var(--cinza);}
 [data-theme="dark"] .ps-modal{background:var(--branco);border-color:var(--cinza);}
 [data-theme="dark"] .ps-field-modal select,[data-theme="dark"] .ps-field-modal textarea,[data-theme="dark"] .ps-field-modal input{background:#222220;border-color:var(--cinza);color:var(--grafite);}
-[data-theme="dark"] .ps-page-tab{background:var(--branco);border-color:var(--cinza);color:#888;}
-[data-theme="dark"] .ps-page-tab.ativo{background:var(--terracota);border-color:var(--terracota);color:#fff;}
-[data-theme="dark"] .ps-page-tab:hover:not(.ativo){border-color:var(--terracota);color:var(--terracota);}
 [data-theme="dark"] .ps-det-header,[data-theme="dark"] .ps-tab-bar{border-color:var(--cinza);}
 [data-theme="dark"] .ps-tab{border-color:var(--cinza);color:#888;}
-[data-theme="dark"] .ps-tab.ativo{background:var(--grafite);color:var(--off);}
+[data-theme="dark"] .ps-tab.ativo{color:var(--terracota);border-bottom-color:var(--terracota);}
 [data-theme="dark"] .pm-sidebar,[data-theme="dark"] .pm-main{background:var(--branco);border-color:var(--cinza);}
 [data-theme="dark"] .pm-cat-card{background:#222220;border-color:var(--cinza);}
 [data-theme="dark"] .pm-cat-card.ativo{background:rgba(184,86,56,.12);border-color:rgba(184,86,56,.4);}
@@ -538,54 +574,97 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 </div>
 
 <div id="conteudo" class="exp-app-shell">
-<div class="ps-wrap">
 
-  <div class="ps-header">
-    <div class="ps-header-left">
-      <div class="ps-title">Pessoas</div>
-      <div class="ps-sub" id="ps-sub">Carregando colaboradores…</div>
+<!-- Nav lateral — injetada por shared/exp-nav.js -->
+
+<!-- ── Card principal do módulo ── -->
+<div id="pessoas-card">
+
+  <!-- Header: tabs internas + ações -->
+  <div class="pessoas-card-hd">
+    <div class="nav-tabs">
+      <button class="ntab active" id="ntab-colaboradores" onclick="setPageView('colaboradores')">Colaboradores</button>
+      <button class="ntab" id="ntab-matriz" onclick="setPageView('matriz')">Matriz</button>
+      <button class="ntab" id="ntab-clima" onclick="abrirClimaModal()">Pesquisa de Clima</button>
     </div>
-  </div>
-  <div class="ps-page-tabs">
-    <button class="ps-page-tab ativo" id="ntab-colaboradores" onclick="setPageView('colaboradores')">Colaboradores</button>
-    <button class="ps-page-tab" id="ntab-matriz" onclick="setPageView('matriz')">Matriz</button>
-    <button class="ps-page-tab" id="ntab-clima" onclick="abrirClimaModal()">Pesquisa de Clima</button>
-  </div>
-
-<div class="ps-view ativo" id="ps-view-colaboradores">
-  <div class="ps-layout">
-
-    <!-- SIDEBAR -->
-    <div class="ps-sidebar">
-      <div class="ps-search-wrap">
-        <input class="ps-search" type="text" id="ps-busca" placeholder="Buscar…" oninput="filtrarLista()">
+    <div class="pessoas-hd-right" id="app-topbar-right">
+      <!-- Toggle tema -->
+      <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema claro/escuro">
+        <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <!-- Feedback -->
+      <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      </button>
+      <!-- Lembrete -->
+      <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <!-- User chip -->
+      <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
+        <div class="exp-nav-user" id="exp-nav-user"></div>
+        <div class="exp-user-info">
+          <div class="exp-user-nome" id="exp-user-nome">—</div>
+          <div class="exp-user-role" id="exp-user-role"></div>
+        </div>
+        <span class="exp-user-caret">▾</span>
+        <div class="exp-user-dropdown" id="exp-user-dropdown">
+          <button onclick="window.location.href='app.html'">Meus dados</button>
+          <div class="exp-user-dropdown-sep"></div>
+          <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
+          <div class="exp-user-dropdown-sep"></div>
+          <button onclick="ExpNav._sair()">Sair</button>
+          <div class="exp-user-dropdown-footer">
+            <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
+            <span id="exp-conn-label" style="font-size:10px">conectando…</span>
+          </div>
+        </div>
       </div>
-      <div class="ps-filtros">
-        <button class="ps-filtro ativo" onclick="setFiltro(this,'todos')">Todos</button>
-        <button class="ps-filtro" onclick="setFiltro(this,'ativo')">Ativos</button>
-        <button class="ps-filtro" onclick="setFiltro(this,'inativo')">Inativos</button>
-      </div>
-      <div class="ps-lista" id="ps-lista">
-        <div class="ps-lista-empty">Carregando…</div>
+    </div>
+  </div><!-- /.pessoas-card-hd -->
+
+  <!-- Corpo rolável -->
+  <div class="pessoas-card-body">
+  <div class="ps-wrap">
+
+    <div class="ps-view ativo" id="ps-view-colaboradores">
+      <div class="ps-layout">
+
+        <!-- SIDEBAR -->
+        <div class="ps-sidebar">
+          <div class="ps-search-wrap">
+            <input class="ps-search" type="text" id="ps-busca" placeholder="Buscar…" oninput="filtrarLista()">
+          </div>
+          <div class="ps-filtros">
+            <button class="ps-filtro ativo" onclick="setFiltro(this,'todos')">Todos</button>
+            <button class="ps-filtro" onclick="setFiltro(this,'ativo')">Ativos</button>
+            <button class="ps-filtro" onclick="setFiltro(this,'inativo')">Inativos</button>
+          </div>
+          <div class="ps-lista" id="ps-lista">
+            <div class="ps-lista-empty">Carregando…</div>
+          </div>
+        </div>
+
+        <!-- PAINEL DETALHE -->
+        <div class="ps-detalhe" id="ps-detalhe">
+          <div class="ps-empty" style="padding:60px 20px">
+            <div class="ps-empty-icon">👥</div>
+            <div class="ps-empty-text">Selecione um colaborador para ver os detalhes.</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <!-- PAINEL DETALHE -->
-    <div class="ps-detalhe" id="ps-detalhe">
-      <div class="ps-empty" style="padding:60px 20px">
-        <div class="ps-empty-icon">👥</div>
-        <div class="ps-empty-text">Selecione um colaborador para ver os detalhes.</div>
-      </div>
+    <div class="ps-view" id="ps-view-matriz">
+      <div id="pm-root"></div>
     </div>
 
   </div>
-  </div>
+  </div><!-- /.pessoas-card-body -->
 
-  <div class="ps-view" id="ps-view-matriz">
-    <div id="pm-root"></div>
-  </div>
-
-</div>
+</div><!-- /#pessoas-card -->
 
 <!-- MODAL REGISTRO -->
 <div class="ps-modal-overlay" id="modal-reg" onclick="fecharModal('modal-reg',event)">
@@ -1294,22 +1373,7 @@ function slugify(v) {
 }
 
 function syncPageChrome() {
-  const titleEl = document.querySelector('.ps-header .ps-title');
-  const subEl = document.getElementById('ps-sub');
-  if (!titleEl || !subEl) return;
-
-  if (G.pageView === 'matriz') {
-    titleEl.textContent = 'Base da Matriz de Responsabilidades';
-    subEl.textContent = 'Cadastre categorias, campos e programe a evolucao de cada nivel E1–S3.';
-    return;
-  }
-
-  const total = G.usuarios.length;
-  const ativos = G.usuarios.filter(u => u.ativo !== false).length;
-  titleEl.textContent = 'Pessoas';
-  subEl.textContent = total
-    ? `${total} membro${total !== 1 ? 's' : ''} · ${ativos} ativo${ativos !== 1 ? 's' : ''}`
-    : 'Carregando membros...';
+  /* título removido do layout — sem ps-header visível */
 }
 
 function setPageView(view) {
@@ -1317,9 +1381,8 @@ function setPageView(view) {
   const isMatriz = G.pageView === 'matriz';
   document.getElementById('ps-view-colaboradores')?.classList.toggle('ativo', !isMatriz);
   document.getElementById('ps-view-matriz')?.classList.toggle('ativo', isMatriz);
-  document.getElementById('ntab-colaboradores')?.classList.toggle('ativo', !isMatriz);
-  document.getElementById('ntab-matriz')?.classList.toggle('ativo', isMatriz);
-  syncPageChrome();
+  document.getElementById('ntab-colaboradores')?.classList.toggle('active', !isMatriz);
+  document.getElementById('ntab-matriz')?.classList.toggle('active', isMatriz);
   if (isMatriz) carregarBaseMatriz();
 }
 
@@ -2016,16 +2079,6 @@ async function carregarUsuarios() {
   }
 
   G.usuarios = data;
-  if (G.pageView === 'matriz') {
-    syncPageChrome();
-    renderLista();
-    return;
-  }
-  const total = data.length;
-  const ativos = data.filter(u => u.ativo !== false).length;
-  document.getElementById('ps-sub').textContent =
-    `${total} colaborador${total !== 1 ? 'es' : ''} · ${ativos} ativo${ativos !== 1 ? 's' : ''}`;
-
   renderLista();
 }
 

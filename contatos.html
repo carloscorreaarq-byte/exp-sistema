@@ -351,9 +351,31 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
           <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
-        <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-        </button>
+        <div id="ct-feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
+          <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </button>
+          <div class="nav-feedback-pop" id="nav-feedback-pop">
+            <div class="nav-feedback-title">Problema ou sugestão</div>
+            <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+            <div class="fgroup" style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888">Tipo</label>
+              <select id="ct-feedback-type" style="padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:11px;background:var(--branco);color:var(--grafite);outline:none">
+                <option value="problema">Problema</option>
+                <option value="sugestao">Sugestão</option>
+              </select>
+            </div>
+            <div class="fgroup" style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888">Mensagem</label>
+              <textarea id="ct-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria." style="padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:11px;resize:vertical;outline:none"></textarea>
+            </div>
+            <div class="nav-feedback-status" id="ct-feedback-status"></div>
+            <div class="nav-feedback-actions">
+              <button class="btn sm outline" onclick="ExpNav.toggleFeedbackPop(event)">Fechar</button>
+              <button class="btn sm verde" onclick="enviarFeedback()">Enviar</button>
+            </div>
+          </div>
+        </div>
         <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
@@ -1180,61 +1202,6 @@ function toggleTheme() {
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 function toggleNavDropdown() {
   document.getElementById('nav-dropdown').classList.toggle('open');
-}
-async function abrirLembretePopup() {
-  let pop = document.getElementById('popup-lembrete');
-  if (pop) { pop.remove(); return; }
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
-  const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
-  const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
-  const opts = (usuarios || []).filter(u => u.id !== _me.id).map(u =>
-    `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`
-  ).join('');
-  pop = document.createElement('div');
-  pop.id = 'popup-lembrete';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-  pop.innerHTML = `
-    <div style="background:var(--branco,#fff);border-radius:10px;padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
-      <label style="${_ls}">Para</label>
-      <select id="lemb-para" style="${_fs};margin-bottom:10px">
-        <option value="todos">Toda a equipe</option>
-        ${opts}
-      </select>
-      <label style="${_ls}">Mensagem</label>
-      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
-        <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
-      </div>
-    </div>`;
-  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
-}
-async function _enviarLembrete() {
-  const msg = document.getElementById('lemb-msg')?.value.trim();
-  const para = document.getElementById('lemb-para')?.value;
-  if (!msg) return;
-  const btn = document.querySelector('#popup-lembrete button:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true);
-  const targets = para === 'todos'
-    ? (usuarios || []).filter(u => u.id !== _me.id)
-    : [(usuarios || []).find(u => u.id === para)].filter(Boolean);
-  for (const u of targets) {
-    await sb.from('notificacoes').insert({
-      usuario_id: u.id, tipo: 'lembrete',
-      titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
-      corpo: msg, link_tipo: 'lembrete',
-      modulo: location.pathname.split('/').pop().replace('.html',''),
-      criado_por: _me.id, criado_por_nome: _me.nome,
-      created_at: new Date().toISOString(),
-    }).catch(() => {});
-  }
-  document.getElementById('popup-lembrete')?.remove();
 }
 document.addEventListener('click', e => {
   const nw = document.getElementById('nav-mod-wrap');
