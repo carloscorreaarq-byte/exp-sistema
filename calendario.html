@@ -126,7 +126,9 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .gcr-link-url{font-size:11px;color:#1a73e8;flex:1;word-break:break-all}
 .gcr-copy-btn{font-size:10px;padding:3px 8px;border:1px solid var(--cinza);border-radius:5px;background:var(--branco);cursor:pointer;white-space:nowrap;font-family:var(--f)}
 .cal-shell{display:flex;flex-direction:column;gap:7px}
-.cal-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-card);padding:4px 10px}
+.cal-topbar{display:flex;flex-direction:column;gap:0;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-card);padding:10px 14px}
+.cal-topbar-row{display:flex;align-items:center;gap:8px;width:100%}
+.cal-topbar-row+.cal-topbar-row{margin-top:10px;padding-top:10px;border-top:1px solid var(--cinza2)}
 .cal-nav-btn{width:26px;height:26px;border:1px solid var(--cinza);background:var(--off);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--grafite);transition:all .12s;font-family:var(--f)}
 .cal-nav-btn:hover{border-color:var(--grafite);background:var(--cinza2)}
 .cal-nav-label{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#999;min-width:120px;text-align:center}
@@ -140,7 +142,8 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-saldo-track{width:70px;height:5px;background:var(--cinza2);border-radius:3px;overflow:hidden}
 .cal-saldo-fill{height:100%;background:var(--azul);border-radius:3px;transition:width .3s}
 .cal-saldo-lbl{font-size:9px;color:#888}
-.cal-topbar-actions{margin-left:auto;display:flex;gap:6px;align-items:center}
+.cal-topbar-actions{margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0}
+#cal-standard-form{display:flex;flex-direction:column;gap:10px}
 .cal-filters{display:flex;align-items:center;gap:5px;flex-wrap:wrap;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-card);padding:5px 10px}
 .cal-filter-sep{width:1px;height:16px;background:var(--cinza2);margin:0 3px;flex-shrink:0;align-self:center}
 .cal-filter-lbl{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#bbb;margin-right:1px;white-space:nowrap}
@@ -324,6 +327,20 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 [data-theme="dark"] .cal-people-cell.feriado{background:rgba(204,104,72,.08)}
 [data-theme="dark"] .cal-modal-box{background:var(--branco)}
 .cat-google.active{background:#4285f4;color:#fff;border-color:#4285f4}
+/* Botão + lembrete — padrão app.html */
+#notif-plus-btn {
+  width: 24px; height: 24px;
+  border: none; background: none;
+  -webkit-appearance: none; appearance: none;
+  outline: none; padding: 0;
+  color: #bbb;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: color .12s;
+}
+#notif-plus-btn:hover { color: var(--grafite); }
+[data-theme="dark"] #notif-plus-btn { color: #555; }
+[data-theme="dark"] #notif-plus-btn:hover { color: #C8C3BA; }
 /* Feedback icon — padrão app.html */
 #feedback-icon-btn {
   width: 24px; height: 24px;
@@ -577,45 +594,53 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
         <div class="stab-panel active" id="stp-cal-agenda">
           <div class="cal-shell">
             <div class="cal-topbar">
-              <div class="cal-semana-nav">
-                <button class="cal-semana-nav-btn" onclick="calNavMes(-1)">&#8249;</button>
-                <div class="cal-semana-label" id="cal-nav-label">&#8212;</div>
-                <button class="cal-semana-nav-btn" onclick="calNavMes(1)">&#8250;</button>
-                <button class="cal-semana-hoje-btn" onclick="calIrHoje()">Esta semana</button>
-              </div>
-              <div style="width:1px;height:28px;background:var(--cinza2);margin:0 6px"></div>
-              <div class="cal-counter-group">
-                <div class="cal-counter-item">
-                  <span class="cal-counter-val" id="cal-du-mes">&#8212;</span>
-                  <span class="cal-counter-lbl">dias &uacute;teis no m&ecirc;s</span>
+              <!-- Linha 1: Navegação + alternador de visualização -->
+              <div class="cal-topbar-row">
+                <div class="cal-semana-nav">
+                  <button class="cal-semana-nav-btn" onclick="calNavMes(-1)">&#8249;</button>
+                  <div class="cal-semana-label" id="cal-nav-label">&#8212;</div>
+                  <button class="cal-semana-nav-btn" onclick="calNavMes(1)">&#8250;</button>
+                  <button class="cal-semana-hoje-btn" onclick="calIrHoje()">Esta semana</button>
                 </div>
-                <div style="width:1px;height:28px;background:var(--cinza2)"></div>
-                <div class="cal-counter-item">
-                  <span class="cal-counter-val" id="cal-du-ano">&#8212;</span>
-                  <span class="cal-counter-lbl">dias &uacute;teis no ano</span>
-                </div>
-                <div class="cal-saldo-bar" id="cal-saldo-bar" style="display:none;margin-left:12px">
-                  <div style="display:flex;flex-direction:column;gap:1px">
-                    <span class="cal-counter-lbl">aus&ecirc;ncia remunerada</span>
-                    <div style="display:flex;align-items:center;gap:6px">
-                      <div class="cal-saldo-track"><div class="cal-saldo-fill" id="cal-saldo-fill" style="width:0%"></div></div>
-                      <span class="cal-saldo-lbl" id="cal-saldo-txt">&#8212;</span>
-                    </div>
+                <div class="cal-topbar-actions">
+                  <div class="cal-subview-bar">
+                    <button class="cal-sv-btn active" id="sv-lista"  onclick="calSetView('lista')">Lista</button>
+                    <button class="cal-sv-btn"        id="sv-semana" onclick="calSetView('semana')">Semana</button>
+                    <button class="cal-sv-btn"        id="sv-mes"    onclick="calSetView('mes')">M&ecirc;s</button>
                   </div>
                 </div>
               </div>
-              <div class="cal-topbar-actions">
-                <div class="cal-subview-bar">
-                  <button class="cal-sv-btn active" id="sv-lista"  onclick="calSetView('lista')">Lista</button>
-                  <button class="cal-sv-btn"        id="sv-semana" onclick="calSetView('semana')">Semana</button>
-                  <button class="cal-sv-btn"        id="sv-mes"    onclick="calSetView('mes')">M&ecirc;s</button>
+              <!-- Linha 2: Contadores + botões de ação -->
+              <div class="cal-topbar-row">
+                <div class="cal-counter-group">
+                  <div class="cal-counter-item">
+                    <span class="cal-counter-val" id="cal-du-mes">&#8212;</span>
+                    <span class="cal-counter-lbl">dias &uacute;teis no m&ecirc;s</span>
+                  </div>
+                  <div style="width:1px;height:28px;background:var(--cinza2)"></div>
+                  <div class="cal-counter-item">
+                    <span class="cal-counter-val" id="cal-du-ano">&#8212;</span>
+                    <span class="cal-counter-lbl">dias &uacute;teis no ano</span>
+                  </div>
+                  <div class="cal-saldo-bar" id="cal-saldo-bar" style="display:none;margin-left:8px">
+                    <div style="width:1px;height:28px;background:var(--cinza2);margin-right:8px"></div>
+                    <div style="display:flex;flex-direction:column;gap:1px">
+                      <span class="cal-counter-lbl">aus&ecirc;ncia remunerada</span>
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <div class="cal-saldo-track"><div class="cal-saldo-fill" id="cal-saldo-fill" style="width:0%"></div></div>
+                        <span class="cal-saldo-lbl" id="cal-saldo-txt">&#8212;</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <button class="gcal-btn" id="gcal-topbar-btn" onclick="gcalAbrirConfig()">
-                  <svg class="gcal-logo" viewBox="0 0 24 24" fill="none"><path d="M18.316 5.684H5.684v12.632h12.632V5.684z" fill="#fff"/><path d="M18.316 21L21 18.316l-2.684-1.79-8.526 1.79-1.79 2.684L10.79 21h7.526z" fill="#EA4335"/><path d="M3 18.316L5.684 21V18.316H3z" fill="#FBBC04"/><path d="M21 5.684L18.316 3H5.684L3 5.684h18z" fill="#4285F4" opacity=".4"/><path d="M18.316 3L21 5.684v12.632L18.316 21V3z" fill="#34A853"/><path d="M3 5.684v12.632L5.684 21V5.684H3z" fill="#FBBC04"/><path d="M3 5.684L5.684 3h12.632L21 5.684H3z" fill="#4285F4"/><path d="M12.053 9.382c.926 0 1.643.42 2.033 1.04l1.09-.712c-.601-.9-1.607-1.55-3.123-1.55-2.23 0-3.953 1.72-3.953 3.84s1.723 3.84 3.953 3.84c2.1 0 3.663-1.46 3.663-3.79 0-.25-.023-.49-.06-.7h-3.603v1.22h2.25c-.15.83-.84 1.5-2.25 1.5-1.374 0-2.492-1.12-2.492-2.07 0-.95 1.118-2.618 2.492-2.618z" fill="#4285F4"/></svg>
-                  <span id="gcal-topbar-lbl">Google Calendar</span>
-                </button>
-                <button class="btn" id="cal-btn-compensacao" style="display:none" onclick="calAbrirModalCompensacao(null)">+ Compensação</button>
-                <button class="btn filled" onclick="calAbrirModalNovo(null)">+ Novo evento</button>
+                <div class="cal-topbar-actions">
+                  <button class="gcal-btn" id="gcal-topbar-btn" onclick="gcalAbrirConfig()">
+                    <svg class="gcal-logo" viewBox="0 0 24 24" fill="none"><path d="M18.316 5.684H5.684v12.632h12.632V5.684z" fill="#fff"/><path d="M18.316 21L21 18.316l-2.684-1.79-8.526 1.79-1.79 2.684L10.79 21h7.526z" fill="#EA4335"/><path d="M3 18.316L5.684 21V18.316H3z" fill="#FBBC04"/><path d="M21 5.684L18.316 3H5.684L3 5.684h18z" fill="#4285F4" opacity=".4"/><path d="M18.316 3L21 5.684v12.632L18.316 21V3z" fill="#34A853"/><path d="M3 5.684v12.632L5.684 21V5.684H3z" fill="#FBBC04"/><path d="M3 5.684L5.684 3h12.632L21 5.684H3z" fill="#4285F4"/><path d="M12.053 9.382c.926 0 1.643.42 2.033 1.04l1.09-.712c-.601-.9-1.607-1.55-3.123-1.55-2.23 0-3.953 1.72-3.953 3.84s1.723 3.84 3.953 3.84c2.1 0 3.663-1.46 3.663-3.79 0-.25-.023-.49-.06-.7h-3.603v1.22h2.25c-.15.83-.84 1.5-2.25 1.5-1.374 0-2.492-1.12-2.492-2.07 0-.95 1.118-2.618 2.492-2.618z" fill="#4285F4"/></svg>
+                    <span id="gcal-topbar-lbl">Google Calendar</span>
+                  </button>
+                  <button class="btn" id="cal-btn-compensacao" style="display:none" onclick="calAbrirModalCompensacao(null)">+ Compensação</button>
+                  <button class="btn filled" onclick="calAbrirModalNovo(null)">+ Novo evento</button>
+                </div>
               </div>
             </div>
             <div class="cal-filters">
@@ -633,8 +658,6 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
               <button class="cal-chip" data-nucleo="paisagismo"   onclick="calSetNucleo(this,'paisagismo')">Pais.</button>
               <button class="cal-chip" data-nucleo="consultorias" onclick="calSetNucleo(this,'consultorias')">Cons.</button>
               <button class="cal-chip" data-nucleo="especiais"    onclick="calSetNucleo(this,'especiais')">Esp.</button>
-              <div class="cal-filter-sep"></div>
-              <button class="cal-cfg-btn" onclick="gcalAbrirConfig()" title="Configurar agendas Google">&#9881;</button>
             </div>
             <div id="cal-content"></div>
           </div>
@@ -1813,15 +1836,21 @@ function calAbrirDetalhe(id) {
   const dtFmt=new Date(ev.data_inicio+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   const horaStr=ev.hora_inicio?`${ev.hora_inicio}${ev.hora_fim?' – '+ev.hora_fim:''}`:'' ;
   modal.querySelector('.cal-modal-body').innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><span style="font-size:28px">${meta.icon}</span><div><div style="font-weight:700;font-size:16px">${ev.titulo}</div><div style="font-size:12px;color:var(--cinza)">${meta.label}</div></div></div>
+    <div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
+      <span style="font-size:26px;line-height:1;flex-shrink:0">${meta.icon}</span>
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:15px;line-height:1.2;margin-bottom:3px">${_escN(ev.titulo)}</div>
+        <div style="font-size:11px;color:#888;font-weight:500">${meta.label}</div>
+      </div>
+    </div>
     <div class="cal-detalhe-campo"><b>Data</b> ${dtFmt}${ev.data_fim&&ev.data_fim!==ev.data_inicio?' → '+new Date(ev.data_fim+'T12:00:00').toLocaleDateString('pt-BR'):''}${horaStr?' · '+horaStr:''}</div>
-    ${ev.projeto_nome?`<div class="cal-detalhe-campo"><b>Projeto</b> ${ev.projeto_nome}</div>`:''}
+    ${ev.projeto_nome?`<div class="cal-detalhe-campo"><b>Projeto</b> ${_escN(ev.projeto_nome)}</div>`:''}
     ${ev.local?`<div class="cal-detalhe-campo"><b>Local</b> ${_escN(ev.local)}</div>`:''}
-    ${ev.descricao?`<div class="cal-detalhe-campo"><b>Descrição</b> ${_escN(ev.descricao)}</div>`:''}
+    ${ev.descricao?`<div class="cal-detalhe-campo"><b>Descrição</b> <span style="white-space:pre-line">${_escN(ev.descricao)}</span></div>`:''}
     ${ev.tipo==='compensacao_bh'?`<div class="cal-detalhe-campo"><b>Origem</b> Uso de saldo aprovado de banco de horas</div>`:''}
     ${ev.tipo==='compensacao_bh'&&ev.bh_horas!=null?`<div class="cal-detalhe-campo"><b>Horas consumidas</b> ${ev.bh_horas}h${ev.bh_saldo_depois!=null?` · saldo após uso: ${ev.bh_saldo_depois}h`:''}</div>`:''}
-    ${ev.meet_link?`<div class="cal-detalhe-campo"><b>Link</b> <a href="${ev.meet_link}" target="_blank" style="color:var(--azul)">${ev.meet_link}</a></div>`:''}
-    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+    ${ev.meet_link?`<div class="cal-detalhe-campo"><b>Link Meet</b> <a href="${ev.meet_link}" target="_blank" style="color:var(--azul);word-break:break-all">${ev.meet_link}</a></div>`:''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
       ${pode&&!ev._synthetic&&!ev._gcal?`<button class="btn filled sm" onclick="calEditar('${ev.id}')">Editar</button>`:''}
       ${pode&&!ev._synthetic&&!ev._gcal?`<button class="btn tc sm" onclick="calExcluir('${ev.id}')">Excluir</button>`:''}
       <button class="btn sm" onclick="calFecharDetalhe()">Fechar</button>

@@ -4657,41 +4657,33 @@ function formatUserAccessStatus(usr) {
   return '';
 }
 
-function renderUserDropdown(usr) {
-  const nomeEl  = document.getElementById('user-dropdown-nome-completo');
-  const cargoEl = document.getElementById('user-dropdown-role-completo');
-  const emailEl = document.getElementById('user-dropdown-email');
-  const noteEl  = document.getElementById('user-dropdown-note');
-  const roleLabel = ROLES_LABEL[usr.role] || usr.role || '—';
-  const email = usr.email_login || usr.email || '';
-
-  if (nomeEl)  nomeEl.textContent  = usr.nome || '—';
-  if (cargoEl) cargoEl.textContent = roleLabel;
-  if (emailEl) emailEl.textContent = email || 'Sem e-mail institucional cadastrado';
-
-  const meta = [];
-  if (usr.viewer_only)        meta.push('Modo visualização');
-  if (usr.is_platform_manager) meta.push('Gestor de plataforma');
-  if (usr.apelido)             meta.push('Apelido: ' + usr.apelido);
-  if (noteEl) noteEl.textContent = meta.join(' · ');
+function formatTermDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('pt-BR');
 }
 
 function renderTermState(usr) {
-  const el  = document.getElementById('user-term-state');
-  const txt = document.getElementById('user-term-state-text');
-  const ico = document.getElementById('user-term-state-icon');
-  if (!el) return;
-  const status = (usr?.termo_status || '').toLowerCase();
-  const isOk   = ['assinado','vigente','ok','signed'].includes(status);
-  el.classList.remove('pending', 'ok');
+  const dropdown     = document.getElementById('user-term-state');
+  const dropdownText = document.getElementById('user-term-state-text');
+  const dropdownIcon = document.getElementById('user-term-state-icon');
+  const note         = document.getElementById('user-dropdown-note');
+  if (!dropdown || !dropdownText) return;
+  const status   = (usr?.termo_status || '').toLowerCase();
+  const signedAt = formatTermDate(usr?.termo_assinado_em);
+  const isOk     = ['assinado','vigente','ok','signed'].includes(status);
+  dropdown.classList.remove('pending', 'ok');
+  if (note) note.textContent = '';
   if (isOk) {
-    el.classList.add('ok');
-    if (ico) ico.textContent = '✓';
-    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais assinado.';
+    const dateStr = signedAt || 'data não registrada';
+    dropdown.classList.add('ok');
+    if (dropdownIcon) dropdownIcon.textContent = '✓';
+    dropdownText.textContent = 'Termo de uso e proteção de dados pessoais assinado em ' + dateStr;
   } else {
-    el.classList.add('pending');
-    if (ico) ico.textContent = '⚠';
-    if (txt) txt.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+    dropdown.classList.add('pending');
+    if (dropdownIcon) dropdownIcon.textContent = '⚠';
+    dropdownText.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
   }
 }
 
@@ -4709,7 +4701,6 @@ function renderUserChip(usr) {
   if (cargo) cargo.textContent = ROLES_LABEL[usr.role] || usr.role || '—';
   const platformBtn = document.getElementById('user-menu-platform');
   if (platformBtn) platformBtn.hidden = !(usr.is_platform_manager || normalizeRole(usr.role) === 'socio_admin');
-  renderUserDropdown(usr);
   renderTermState(usr);
 }
 

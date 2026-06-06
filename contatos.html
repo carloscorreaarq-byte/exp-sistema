@@ -82,6 +82,21 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
 [data-theme="dark"] #feedback-icon-btn { color: #555; }
 [data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
 
+/* fgroup — campos de formulário nos popdowns */
+.fgroup { display: flex; flex-direction: column; gap: 4px; }
+.fgroup label { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #999; }
+.fgroup input, .fgroup select, .fgroup textarea {
+  font-family: var(--f); font-size: 12px; font-weight: 300;
+  border: 1px solid var(--cinza); background: var(--branco); color: var(--preto);
+  padding: 5px 9px; outline: none; transition: border-color .12s;
+  width: 100%; border-radius: 8px; box-sizing: border-box;
+}
+.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus { border-color: var(--mod-focus); box-shadow: 0 0 0 3px var(--mod-focus-soft); }
+.fgroup textarea { resize: vertical; min-height: 60px; }
+[data-theme="dark"] .fgroup input,
+[data-theme="dark"] .fgroup select,
+[data-theme="dark"] .fgroup textarea { background: #252523; border-color: #3A3836; color: var(--grafite); color-scheme: dark; }
+
 .ct-header-right {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
 }
@@ -89,8 +104,8 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
 /* ct-card-hd: alinha o exp-topbar-right à direita */
 .ct-card-hd { justify-content: flex-end; }
 
-#ct-feedback-float .nav-feedback-pop,
-#feedback-icon-wrap .nav-feedback-pop {
+#feedback-icon-wrap .nav-feedback-pop,
+#lemb-wrap .nav-feedback-pop {
   position: absolute;
   top: calc(100% + 8px);
   right: 0; left: auto; bottom: auto;
@@ -351,35 +366,53 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
           <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
-        <div id="ct-feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-          <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
+        <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
+          <button class="exp-tr-btn" id="feedback-icon-btn" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
           </button>
           <div class="nav-feedback-pop" id="nav-feedback-pop">
             <div class="nav-feedback-title">Problema ou sugestão</div>
             <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
-            <div class="fgroup" style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888">Tipo</label>
-              <select id="ct-feedback-type" style="padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:11px;background:var(--branco);color:var(--grafite);outline:none">
+            <div class="fgroup">
+              <label for="tool-feedback-type">Tipo</label>
+              <select id="tool-feedback-type">
                 <option value="problema">Problema</option>
                 <option value="sugestao">Sugestão</option>
               </select>
             </div>
-            <div class="fgroup" style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888">Mensagem</label>
-              <textarea id="ct-feedback-message" rows="4" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria." style="padding:6px 8px;border:1px solid var(--cinza);border-radius:6px;font-family:var(--font-ui);font-size:11px;resize:vertical;outline:none"></textarea>
+            <div class="fgroup">
+              <label for="tool-feedback-message">Mensagem</label>
+              <textarea id="tool-feedback-message" rows="3" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
             </div>
-            <div class="nav-feedback-status" id="ct-feedback-status"></div>
+            <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
             <div class="nav-feedback-actions">
-              <button class="btn sm outline" onclick="ExpNav.toggleFeedbackPop(event)">Fechar</button>
-              <button class="btn sm verde" onclick="enviarFeedback()">Enviar</button>
+              <button type="button" class="btn outline" onclick="fecharToolFeedbackPopover()">Fechar</button>
+              <button type="button" class="btn verde" onclick="enviarToolFeedback()">Enviar</button>
             </div>
           </div>
         </div>
-        <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </button>
-        <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
+        <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
+          <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="nav-feedback-pop" id="lemb-popdown">
+            <div class="nav-feedback-title">Lembrete para a equipe</div>
+            <div class="fgroup">
+              <label>Para</label>
+              <select id="lemb-para"><option value="">Carregando…</option></select>
+            </div>
+            <div class="fgroup">
+              <label>Mensagem</label>
+              <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira."></textarea>
+            </div>
+            <div class="nav-feedback-status" id="lemb-status"></div>
+            <div class="nav-feedback-actions">
+              <button class="btn outline" onclick="fecharLembretePopdown()">Fechar</button>
+              <button class="btn verde" style="background:var(--ouro);border-color:var(--ouro)" onclick="_enviarLembrete()">Enviar lembrete</button>
+            </div>
+          </div>
+        </div>
+        <div class="exp-user-chip" id="exp-user-chip" onclick="toggleUserMenu()">
           <div class="exp-nav-user" id="exp-nav-user"></div>
           <div class="exp-user-info">
             <div class="exp-user-nome" id="exp-user-nome">—</div>
@@ -387,11 +420,17 @@ body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;
           </div>
           <span class="exp-user-caret">▾</span>
           <div class="exp-user-dropdown" id="exp-user-dropdown">
-            <button onclick="window.location.href='app.html'">Meus dados</button>
+            <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+            <button type="button" id="exp-user-platform" hidden onclick="window.location.href='app.html'">Gestão de plataforma</button>
             <div class="exp-user-dropdown-sep"></div>
-            <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
+            <div class="user-term-state pending" id="exp-user-term-state" onclick="window.abrirTermoCompromisso?.()">
+              <span id="exp-user-term-state-icon" class="user-term-state-icon">ℹ</span>
+              <span class="term-state-normal" id="exp-user-term-state-text">Termo de compromisso pendente.</span>
+              <span class="term-state-hover">ver termo →</span>
+            </div>
+            <div class="user-dropdown-note" id="exp-user-dropdown-note"></div>
             <div class="exp-user-dropdown-sep"></div>
-            <button onclick="ExpNav._sair()">Sair</button>
+            <button onclick="ExpNav._sair()">Sair do sistema</button>
             <div class="exp-user-dropdown-footer">
               <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
               <span id="exp-conn-label" style="font-size:10px">conectando…</span>
@@ -1205,40 +1244,131 @@ function toggleNavDropdown() {
   document.getElementById('nav-dropdown').classList.toggle('open');
 }
 document.addEventListener('click', e => {
-  const nw = document.getElementById('nav-mod-wrap');
-  if(nw && !nw.contains(e.target)) document.getElementById('nav-dropdown')?.classList.remove('open');
-  if(!document.getElementById('feedback-icon-wrap')?.contains(e.target))
+  if (!document.getElementById('feedback-icon-wrap')?.contains(e.target))
     document.getElementById('nav-feedback-pop')?.classList.remove('open');
+  if (!document.getElementById('lemb-wrap')?.contains(e.target))
+    document.getElementById('lemb-popdown')?.classList.remove('open');
+  if (!document.getElementById('exp-user-chip')?.contains(e.target))
+    document.getElementById('exp-user-dropdown')?.classList.remove('open');
 });
 
-function toggleFeedbackPop(ev) {
-  ev?.stopPropagation?.();
-  document.getElementById('nav-feedback-pop')?.classList.toggle('open');
+/* ── FEEDBACK ────────────────────────────────────────────────── */
+function toggleToolFeedbackPopover(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('nav-feedback-pop');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (!isOpen) pop.classList.add('open');
 }
-function fecharFeedbackPop() {
+function fecharToolFeedbackPopover() {
   document.getElementById('nav-feedback-pop')?.classList.remove('open');
 }
-function setFeedbackStatus(msg) {
-  const el = document.getElementById('ct-feedback-status');
-  if(el) el.textContent = msg;
-}
-async function enviarFeedback() {
-  const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
-  const userId = u?.app_user_id || u?.id || null;
-  if(!userId) { setFeedbackStatus('Sessão indisponível. Faça login para enviar feedback.'); return; }
-  const tipo = document.getElementById('ct-feedback-type')?.value || 'problema';
-  const mensagem = document.getElementById('ct-feedback-message')?.value?.trim() || '';
-  if(!mensagem) { setFeedbackStatus('Descreva o problema ou a sugestão antes de enviar.'); return; }
-  setFeedbackStatus('Enviando...');
+async function enviarToolFeedback() {
+  const tipo     = document.getElementById('tool-feedback-type')?.value || 'problema';
+  const mensagem = document.getElementById('tool-feedback-message')?.value?.trim() || '';
+  const statusEl = document.getElementById('tool-feedback-status');
+  if (!mensagem) { if (statusEl) statusEl.textContent = 'Escreva uma mensagem antes de enviar.'; return; }
+  if (statusEl) statusEl.textContent = 'Enviando…';
   const { error } = await sb.from('plataforma_feedback').insert({
-    usuario_id: userId, tipo, mensagem, status: 'novo',
+    usuario_id: G.usuario?.id, tipo, mensagem, status: 'novo',
     origem_modulo: 'Contatos', url_origem: 'contatos.html',
     criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString()
   });
-  if(error) { setFeedbackStatus('Não foi possível enviar. Tente novamente.'); return; }
-  document.getElementById('ct-feedback-message').value = '';
-  setFeedbackStatus('Registro enviado para a Gestão de plataforma.');
+  if (error) { if (statusEl) statusEl.textContent = 'Não foi possível enviar. Tente novamente.'; return; }
+  document.getElementById('tool-feedback-message').value = '';
+  if (statusEl) statusEl.textContent = 'Enviado! Obrigado pelo registro.';
+  setTimeout(fecharToolFeedbackPopover, 1800);
 }
+
+/* ── LEMBRETE ────────────────────────────────────────────────── */
+let _lembUsuarios = [];
+async function toggleLembretePopdown(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('lemb-popdown');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  document.getElementById('lemb-msg').value = '';
+  document.getElementById('lemb-status').textContent = '';
+  pop.classList.add('open');
+  const sel = document.getElementById('lemb-para');
+  if (sel && _lembUsuarios.length === 0) {
+    const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+    const { data } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
+    _lembUsuarios = (data || []).filter(u => u.id !== (_me.app_user_id || _me.id));
+    sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
+      _lembUsuarios.map(u => `<option value="${esc(u.id)}">${esc((u.nome||'').split(' ')[0])}</option>`).join('');
+  }
+}
+function fecharLembretePopdown() {
+  document.getElementById('lemb-popdown')?.classList.remove('open');
+}
+async function _enviarLembrete() {
+  const msg    = document.getElementById('lemb-msg')?.value.trim();
+  const para   = document.getElementById('lemb-para')?.value;
+  const status = document.getElementById('lemb-status');
+  if (!msg) { if (status) status.textContent = 'Escreva a mensagem do lembrete.'; return; }
+  if (status) status.textContent = 'Enviando…';
+  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+  const targets = para === 'todos' ? _lembUsuarios : _lembUsuarios.filter(u => u.id === para);
+  for (const u of targets) {
+    await sb.from('notificacoes').insert({
+      usuario_id: u.id, tipo: 'lembrete',
+      titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
+      corpo: msg, link_tipo: 'lembrete', modulo: 'contatos',
+      criado_por: _me.app_user_id || _me.id, criado_por_nome: _me.nome,
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+  }
+  fecharLembretePopdown();
+}
+
+/* ── USER MENU (dropdown com position:fixed para escapar do overflow:hidden) */
+function toggleUserMenu() {
+  const dd   = document.getElementById('exp-user-dropdown');
+  const chip = document.getElementById('exp-user-chip');
+  if (!dd || !chip) return;
+  const isOpen = dd.classList.contains('open');
+  dd.classList.toggle('open');
+  if (!isOpen) {
+    const rect = chip.getBoundingClientRect();
+    dd.style.position = 'fixed';
+    dd.style.top      = (rect.bottom + 6) + 'px';
+    dd.style.right    = (window.innerWidth - rect.right) + 'px';
+    dd.style.left     = 'auto';
+    dd.style.bottom   = 'auto';
+  }
+}
+
+/* ── TERM STATE (dropdown do user chip) ──────────────────────── */
+function renderTermState(usuario) {
+  const el   = document.getElementById('exp-user-term-state');
+  const text = document.getElementById('exp-user-term-state-text');
+  const icon = document.getElementById('exp-user-term-state-icon');
+  const note = document.getElementById('exp-user-dropdown-note');
+  if (!el || !text) return;
+  const status = (usuario.termo_status || '').toLowerCase();
+  const isOk   = ['assinado','vigente','ok','signed'].includes(status);
+  el.classList.remove('pending', 'ok');
+  if (note) note.textContent = '';
+  if (isOk) {
+    el.classList.add('ok');
+    if (icon) icon.textContent = '✓';
+    const dateStr = usuario.termo_assinado_em
+      ? new Date(usuario.termo_assinado_em).toLocaleDateString('pt-BR')
+      : 'data não registrada';
+    text.textContent = 'Termo de uso e proteção de dados pessoais assinado em ' + dateStr;
+  } else {
+    el.classList.add('pending');
+    if (icon) icon.textContent = '⚠';
+    text.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+  }
+  const platform = document.getElementById('exp-user-platform');
+  if (platform) platform.hidden = !usuario.is_platform_manager;
+}
+
 document.addEventListener('keydown', e => { if(e.key==='Escape') fecharModal(); });
 
 // ─── AUTH & INIT ──────────────────────────────────────────────────────────────
@@ -1278,6 +1408,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   G.usuario = u;
   sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, u)));
+  renderTermState(u);
   if ((typeof window.isSocioRole === 'function' ? window.isSocioRole(u.role) : ['socio', 'socio_adm', 'socio_admin'].includes((u.role || '').toLowerCase()))) {
     document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   }

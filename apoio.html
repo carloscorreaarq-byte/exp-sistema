@@ -1037,8 +1037,9 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 [data-theme="dark"] #loading{background:var(--off)}
 
-/* Feedback pop: usa position:fixed para escapar do overflow:hidden do sidebar */
-#nav-feedback-pop {
+/* Feedback e lembrete pops: position:fixed para escapar do overflow:hidden do sidebar */
+#nav-feedback-pop,
+#lemb-popdown {
   position: fixed !important;
   right: auto;
 }
@@ -1291,9 +1292,27 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </button>
           <!-- Lembrete -->
-          <button id="exp-lembrete-btn" class="ap-sb-icon-btn exp-sb-icon-btn" onclick="abrirLembreteSidebar(event)" title="Enviar lembrete para a equipe">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+          <div id="ap-lemb-wrap" style="position:relative;display:flex;align-items:center">
+            <button id="exp-lembrete-btn" class="ap-sb-icon-btn exp-sb-icon-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="nav-feedback-pop" id="lemb-popdown">
+              <div class="nav-feedback-title">Lembrete para a equipe</div>
+              <div class="fgroup">
+                <label>Para</label>
+                <select id="lemb-para"><option value="">Carregando…</option></select>
+              </div>
+              <div class="fgroup">
+                <label>Mensagem</label>
+                <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira."></textarea>
+              </div>
+              <div class="nav-feedback-status" id="lemb-status"></div>
+              <div class="nav-feedback-actions">
+                <button class="btn" onclick="fecharLembretePopdown()">Fechar</button>
+                <button class="btn filled" style="background:var(--ouro);border-color:var(--ouro);color:#fff" onclick="_enviarLembrete()">Enviar lembrete</button>
+              </div>
+            </div>
+          </div>
           <!-- Dark mode -->
           <button class="ap-sb-icon-btn exp-sb-icon-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro" id="ap-theme-toggle">
             <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -2703,6 +2722,8 @@ document.addEventListener('click', e => {
     document.getElementById('user-dropdown')?.classList.remove('open');
   if (!document.getElementById('nav-feedback-wrap')?.contains(e.target))
     document.getElementById('nav-feedback-pop')?.classList.remove('open');
+  if (!document.getElementById('ap-lemb-wrap')?.contains(e.target))
+    document.getElementById('lemb-popdown')?.classList.remove('open');
 });
 
 function toggleToolFeedbackPopover(e) {
@@ -2725,17 +2746,56 @@ function abrirNotifSidebar(e) {
   ExpNav?.toggleNotifPanel();
 }
 
-function abrirLembreteSidebar(e) {
+let _lembUsuarios = [];
+
+async function toggleLembretePopdown(e) {
   e?.stopPropagation();
-  ExpNav?.abrirLembrete();
-  const pop = document.getElementById('exp-lembrete-pop');
+  const pop = document.getElementById('lemb-popdown');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  document.getElementById('lemb-msg').value = '';
+  document.getElementById('lemb-status').textContent = '';
+  pop.classList.add('open');
   const btn = document.getElementById('exp-lembrete-btn');
-  if (pop && btn && pop.style.display === 'flex') {
+  if (btn) {
     const rect = btn.getBoundingClientRect();
-    pop.style.bottom = '';
     pop.style.top  = (rect.bottom + 8) + 'px';
-    pop.style.left = (rect.right + 8) + 'px';
+    pop.style.left = Math.max(8, rect.right - 300) + 'px';
   }
+  if (_lembUsuarios.length === 0) {
+    const me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+    const { data } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
+    _lembUsuarios = (data || []).filter(u => u.id !== me.id);
+    const sel = document.getElementById('lemb-para');
+    if (sel) sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
+      _lembUsuarios.map(u => `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`).join('');
+  }
+}
+
+function fecharLembretePopdown() {
+  document.getElementById('lemb-popdown')?.classList.remove('open');
+}
+
+async function _enviarLembrete() {
+  const msg    = document.getElementById('lemb-msg')?.value.trim();
+  const para   = document.getElementById('lemb-para')?.value;
+  const status = document.getElementById('lemb-status');
+  if (!msg) { if (status) status.textContent = 'Escreva a mensagem do lembrete.'; return; }
+  if (status) status.textContent = 'Enviando…';
+  const me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+  const targets = para === 'todos' ? _lembUsuarios : _lembUsuarios.filter(u => u.id === para);
+  for (const u of targets) {
+    await sb.from('notificacoes').insert({
+      usuario_id: u.id, tipo: 'lembrete',
+      titulo: `Lembrete de ${(me.nome||'').split(' ')[0]}`,
+      corpo: msg, link_tipo: 'lembrete', modulo: 'apoio',
+      criado_por: me.id, criado_por_nome: me.nome,
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+  }
+  fecharLembretePopdown();
 }
 function fecharToolFeedbackPopover() {
   document.getElementById('nav-feedback-pop').classList.remove('open');
@@ -7980,10 +8040,22 @@ Ela agora passa a ser gerida a partir do módulo de pessoas, permitindo atualiza
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
 <style>
+  /* Timer centralizado nos 84px reservados: (84-46)/2 = 19px acima do card bottom = viewport-39px */
   #exp-timer-widget {
     left:   calc(72px + (66px / 2) - 23px) !important;
-    bottom: 34px !important;
+    bottom: 39px !important;
     z-index: 9998 !important;
+  }
+
+  /* Padding assimétrico compensa visual da nav: menos em cima (sem topbar), mais embaixo (timer) */
+  #ap-app {
+    padding-top: 14px !important;
+    padding-bottom: 24px !important;
+  }
+
+  /* Agrupa bell/prio/tarefas junto ao timer — último separador empurra o cluster para baixo */
+  #exp-nav .exp-nav-sep:last-of-type {
+    margin-top: auto;
   }
 </style>
 <!-- EXP · Nav compartilhada -->

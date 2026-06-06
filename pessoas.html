@@ -81,6 +81,20 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
   flex-shrink:0;padding-left:10px;
 }
 
+/* ── Popdowns feedback e lembrete — igual ao app.html ──────── */
+#feedback-icon-wrap .nav-feedback-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0; left: auto; bottom: auto;
+  width: 300px;
+}
+#lemb-wrap .nav-feedback-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0; left: auto; bottom: auto;
+  width: 300px;
+}
+
 /* ── CORPO ROLÁVEL ─── */
 .pessoas-card-body{flex:1;overflow-y:auto;min-height:0;background:var(--off);}
 [data-theme="dark"] .pessoas-card-body{background:#181816;}
@@ -607,14 +621,51 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
         <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
       <!-- Feedback -->
-      <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      </button>
+      <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
+        <button class="exp-tr-btn" id="exp-tr-feedback" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </button>
+        <div class="nav-feedback-pop" id="nav-feedback-pop">
+          <div class="nav-feedback-title">Problema ou sugestão</div>
+          <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+          <div class="fgroup">
+            <label for="tool-feedback-type">Tipo</label>
+            <select id="tool-feedback-type"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select>
+          </div>
+          <div class="fgroup">
+            <label for="tool-feedback-message">Mensagem</label>
+            <textarea id="tool-feedback-message" rows="3" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+          </div>
+          <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+          <div class="nav-feedback-actions">
+            <button type="button" class="btn" onclick="fecharToolFeedbackPopover()">Fechar</button>
+            <button type="button" class="btn filled" onclick="enviarToolFeedback()">Enviar</button>
+          </div>
+        </div>
+      </div>
       <!-- Lembrete -->
-      <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <!-- User chip -->
+      <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
+        <button class="exp-tr-btn" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="nav-feedback-pop" id="lemb-popdown">
+          <div class="nav-feedback-title">Lembrete para a equipe</div>
+          <div class="fgroup">
+            <label>Para</label>
+            <select id="lemb-para"><option value="">Carregando…</option></select>
+          </div>
+          <div class="fgroup">
+            <label>Mensagem</label>
+            <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira."></textarea>
+          </div>
+          <div class="nav-feedback-status" id="lemb-status"></div>
+          <div class="nav-feedback-actions">
+            <button class="btn" onclick="fecharLembretePopdown()">Fechar</button>
+            <button class="btn filled" style="background:var(--ouro);border-color:var(--ouro);color:#fff" onclick="_enviarLembrete()">Enviar lembrete</button>
+          </div>
+        </div>
+      </div>
+      <!-- User chip + dropdown -->
       <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
         <div class="exp-nav-user" id="exp-nav-user"></div>
         <div class="exp-user-info">
@@ -623,12 +674,18 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
         </div>
         <span class="exp-user-caret">▾</span>
         <div class="exp-user-dropdown" id="exp-user-dropdown">
-          <button onclick="window.location.href='app.html'">Meus dados</button>
-          <div class="exp-user-dropdown-sep"></div>
-          <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
-          <div class="exp-user-dropdown-sep"></div>
-          <button onclick="ExpNav._sair()">Sair</button>
-          <div class="exp-user-dropdown-footer">
+          <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+          <button type="button" id="user-menu-platform" hidden onclick="window.location.href='app.html'">Gestão de plataforma</button>
+          <div class="user-dropdown-sep"></div>
+          <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">
+            <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
+            <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
+            <span class="term-state-hover">ver termo →</span>
+          </div>
+          <div class="user-dropdown-note" id="user-dropdown-note"></div>
+          <div class="user-dropdown-sep"></div>
+          <button onclick="sair()">Sair do sistema</button>
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
             <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
             <span id="exp-conn-label" style="font-size:10px">conectando…</span>
           </div>
@@ -4400,37 +4457,40 @@ function toggleTheme() {
 function toggleNavDropdown() {
   document.getElementById('nav-dropdown').classList.toggle('open');
 }
-function toggleUserMenu() {
-  document.getElementById('user-dropdown').classList.toggle('open');
-}
 document.addEventListener('click', e => {
   if (!document.getElementById('nav-mod-wrap')?.contains(e.target))
     document.getElementById('nav-dropdown')?.classList.remove('open');
-  if (!document.getElementById('user-pill-wrap')?.contains(e.target))
-    document.getElementById('user-dropdown')?.classList.remove('open');
+  if (!document.getElementById('exp-user-chip')?.contains(e.target))
+    document.getElementById('exp-user-dropdown')?.classList.remove('open');
   if (!document.getElementById('feedback-icon-wrap')?.contains(e.target))
     document.getElementById('nav-feedback-pop')?.classList.remove('open');
+  if (!document.getElementById('lemb-wrap')?.contains(e.target))
+    document.getElementById('lemb-popdown')?.classList.remove('open');
 });
-function toggleFeedbackPop(ev) {
-  ev?.stopPropagation?.();
+
+/* ── Feedback (alerta/problema) — igual ao app.html ───────── */
+function toggleToolFeedbackPopover(e) {
+  e?.stopPropagation();
   document.getElementById('nav-feedback-pop')?.classList.toggle('open');
 }
-function fecharFeedbackPop() {
+window.toggleFeedbackPop = toggleToolFeedbackPopover;
+function fecharToolFeedbackPopover() {
   document.getElementById('nav-feedback-pop')?.classList.remove('open');
 }
 function setFeedbackStatus(msg) {
   const el = document.getElementById('tool-feedback-status');
   if (el) el.textContent = msg;
 }
-async function enviarFeedback() {
+async function enviarToolFeedback() {
   const u = JSON.parse(sessionStorage.getItem('exp_usuario') || '{}');
-  if (!u?.id) { setFeedbackStatus('Sessão indisponível. Faça login para enviar.'); return; }
+  const uid = u?.app_user_id || u?.id;
+  if (!uid) { setFeedbackStatus('Sessão indisponível. Faça login para enviar.'); return; }
   const tipo = document.getElementById('tool-feedback-type')?.value || 'problema';
   const mensagem = document.getElementById('tool-feedback-message')?.value?.trim() || '';
   if (!mensagem) { setFeedbackStatus('Descreva o problema ou sugestão antes de enviar.'); return; }
   setFeedbackStatus('Enviando...');
   const { error } = await sb.from('plataforma_feedback').insert({
-    usuario_id: u.id, tipo, mensagem, status: 'novo',
+    usuario_id: uid, tipo, mensagem, status: 'novo',
     origem_modulo: 'Pessoas', url_origem: 'pessoas.html',
     criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString()
   });
@@ -4438,6 +4498,57 @@ async function enviarFeedback() {
   document.getElementById('tool-feedback-message').value = '';
   setFeedbackStatus('Registro enviado para a Gestão de plataforma.');
 }
+
+/* ── Lembrete (popdown inline) — igual ao app.html ─────────── */
+let _lembUsuariosCarregados = false;
+async function toggleLembretePopdown(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('lemb-popdown');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  document.getElementById('lemb-msg').value = '';
+  document.getElementById('lemb-status').textContent = '';
+  pop.classList.add('open');
+  if (!_lembUsuariosCarregados) {
+    const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
+    const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
+    const sel = document.getElementById('lemb-para');
+    if (sel) {
+      sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
+        (usuarios || []).filter(u => u.id !== (_me.app_user_id || _me.id))
+          .map(u => `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`).join('');
+      _lembUsuariosCarregados = true;
+    }
+  }
+}
+function fecharLembretePopdown() {
+  document.getElementById('lemb-popdown')?.classList.remove('open');
+}
+
+/* ── Term state — igual ao app.html ─────────────────────────── */
+function renderTermState(usuario) {
+  const dropdown = document.getElementById('user-term-state');
+  const dropdownText = document.getElementById('user-term-state-text');
+  const dropdownIcon = document.getElementById('user-term-state-icon');
+  const note = document.getElementById('user-dropdown-note');
+  if (!dropdown) return;
+  const status = (usuario.termo_status || '').toLowerCase();
+  const isOk = ['assinado', 'vigente', 'ok', 'signed'].includes(status);
+  dropdown.classList.remove('pending', 'ok');
+  if (note) note.textContent = '';
+  if (isOk) {
+    dropdown.classList.add('ok');
+    if (dropdownIcon) dropdownIcon.textContent = '✓';
+    if (dropdownText) dropdownText.textContent = 'Termo de compromisso assinado.';
+  } else {
+    dropdown.classList.add('pending');
+    if (dropdownIcon) dropdownIcon.textContent = '⚠';
+    if (dropdownText) dropdownText.textContent = 'Termo de compromisso pendente.';
+  }
+}
+
 async function sair() {
   await sb.auth.signOut();
   sessionStorage.removeItem('exp_usuario');
@@ -4485,48 +4596,17 @@ function initExpRoom(userId, userName) {
 /* ── START ────────────────────────────────────────────────── */
 init();
 
-async function abrirLembretePopup() {
-  let pop = document.getElementById('popup-lembrete');
-  if (pop) { pop.remove(); return; }
-  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
-  const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
-  const _ls = 'font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;display:block;margin-bottom:4px';
-  const _fs = 'width:100%;border:1px solid var(--cinza,#D0CFC9);border-radius:var(--radius-input,6px);padding:7px 10px;font-size:12px;font-family:var(--font-ui);outline:none;box-sizing:border-box';
-  const _bs = 'padding:6px 16px;border:1px solid var(--cinza,#D0CFC9);border-radius:var(--radius-input,6px);font-size:12px;cursor:pointer;background:var(--branco,#fff);font-family:var(--font-ui)';
-  const opts = (usuarios || []).filter(u => u.id !== _me.id).map(u =>
-    `<option value="${u.id}">${(u.nome||'').split(' ')[0]}</option>`
-  ).join('');
-  pop = document.createElement('div');
-  pop.id = 'popup-lembrete';
-  pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
-  pop.innerHTML = `
-    <div style="background:var(--branco,#fff);border-radius:var(--radius-shell,14px);padding:24px 28px;max-width:380px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enviar lembrete para a equipe</div>
-      <label style="${_ls}">Para</label>
-      <select id="lemb-para" style="${_fs};margin-bottom:10px">
-        <option value="todos">Toda a equipe</option>
-        ${opts}
-      </select>
-      <label style="${_ls}">Mensagem</label>
-      <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
-        <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
-      </div>
-    </div>`;
-  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
-  document.body.appendChild(pop);
-}
 async function _enviarLembrete() {
-  const msg = document.getElementById('lemb-msg')?.value.trim();
-  const para = document.getElementById('lemb-para')?.value;
-  if (!msg) return;
-  const btn = document.querySelector('#popup-lembrete button:last-child');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  const msg    = document.getElementById('lemb-msg')?.value.trim();
+  const para   = document.getElementById('lemb-para')?.value;
+  const status = document.getElementById('lemb-status');
+  if (!msg) { if (status) status.textContent = 'Escreva a mensagem do lembrete.'; return; }
+  if (status) status.textContent = 'Enviando…';
   const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch(e) { return {}; } })();
+  const meId = _me.app_user_id || _me.id;
   const { data: usuarios } = await sb.from('usuarios').select('id,nome').eq('ativo', true);
   const targets = para === 'todos'
-    ? (usuarios || []).filter(u => u.id !== _me.id)
+    ? (usuarios || []).filter(u => u.id !== meId)
     : [(usuarios || []).find(u => u.id === para)].filter(Boolean);
   for (const u of targets) {
     await sb.from('notificacoes').insert({
@@ -4534,11 +4614,12 @@ async function _enviarLembrete() {
       titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
       corpo: msg, link_tipo: 'lembrete',
       modulo: location.pathname.split('/').pop().replace('.html',''),
-      criado_por: _me.id, criado_por_nome: _me.nome,
+      criado_por: meId, criado_por_nome: _me.nome,
       created_at: new Date().toISOString(),
     }).catch(() => {});
   }
-  document.getElementById('popup-lembrete')?.remove();
+  if (status) status.textContent = 'Lembrete enviado!';
+  setTimeout(() => fecharLembretePopdown(), 900);
 }
 </script>
 <script src="shared/exp-nav.js"></script>

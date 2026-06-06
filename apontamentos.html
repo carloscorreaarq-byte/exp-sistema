@@ -430,10 +430,10 @@ body{
           <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
         <button class="exp-tr-btn" id="exp-tr-feedback" onclick="ExpNav.toggleFeedbackPop(event)" title="Feedback">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
         </button>
         <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
         <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
           <div class="exp-nav-user" id="exp-nav-user"></div>
@@ -444,10 +444,16 @@ body{
           <span class="exp-user-caret">▾</span>
           <div class="exp-user-dropdown" id="exp-user-dropdown">
             <button onclick="window.location.href='app.html'">Meus dados</button>
+            <button id="user-menu-platform" hidden onclick="window.location.href='app.html'">Gestão de plataforma</button>
             <div class="exp-user-dropdown-sep"></div>
-            <button id="exp-user-term" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">Termo de compromisso</button>
+            <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">
+              <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
+              <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
+              <span class="term-state-hover">ver termo →</span>
+            </div>
+            <div class="user-dropdown-note" id="user-dropdown-note"></div>
             <div class="exp-user-dropdown-sep"></div>
-            <button onclick="ExpNav._sair()">Sair</button>
+            <button onclick="ExpNav._sair()">Sair do sistema</button>
             <div class="exp-user-dropdown-footer">
               <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
               <span id="exp-conn-label" style="font-size:10px">conectando…</span>
@@ -845,6 +851,28 @@ body{
   function round1(n) { return Math.round((Number(n)||0) * 10) / 10; }
   function isSocioAdmRole(role) {
     return ['socio_adm','socio_admin'].includes(String(role||'').toLowerCase());
+  }
+
+  function renderTermState(usuario) {
+    var dropdown     = document.getElementById('user-term-state');
+    var dropdownText = document.getElementById('user-term-state-text');
+    var dropdownIcon = document.getElementById('user-term-state-icon');
+    var note         = document.getElementById('user-dropdown-note');
+    if (!dropdown || !dropdownText) return;
+    var status   = (usuario.termo_status || '').toLowerCase();
+    var signedAt = usuario.termo_assinado_em ? new Date(usuario.termo_assinado_em).toLocaleDateString('pt-BR') : null;
+    var isOk     = status === 'assinado' || status === 'vigente' || status === 'ok' || status === 'signed';
+    dropdown.classList.remove('pending', 'ok');
+    if (note) note.textContent = '';
+    if (isOk) {
+      dropdown.classList.add('ok');
+      if (dropdownIcon) dropdownIcon.textContent = '✓';
+      dropdownText.textContent = 'Termo de uso e proteção de dados pessoais assinado em ' + (signedAt || 'data não registrada');
+    } else {
+      dropdown.classList.add('pending');
+      if (dropdownIcon) dropdownIcon.textContent = '⚠';
+      dropdownText.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+    }
   }
   function fmtDate(iso) {
     if (!iso) return '';
@@ -2503,6 +2531,10 @@ body{
       AP.user = boot.usuario;
 
       if (!uid()) throw new Error('Sessão inválida. Faça login novamente.');
+
+      renderTermState(AP.user);
+      var platBtn = document.getElementById('user-menu-platform');
+      if (platBtn) platBtn.hidden = !isSocioAdmRole(AP.user && AP.user.role);
 
       var today = new Date().toISOString().slice(0,10);
       AP.weekInfo = getWeekInfo(today);
