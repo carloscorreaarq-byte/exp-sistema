@@ -1150,7 +1150,7 @@ window.ExpNav = (() => {
     var sb = _sb(); if (!sb || !_user) return;
     var uid = _user.app_user_id || _user.id;
     sb.from('prioridades_usuario')
-      .select('id,produto_id,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
+      .select('id,produto_id,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,uf,clientes(nome)),etapas(nome,status,ordem))')
       .eq('usuario_id', uid).eq('concluida', false).order('ordem').limit(1).maybeSingle()
       .then(function(r) { _prioLoaded = true; _prioData = r.data || null; _renderPrioBanner(); })
       .catch(function()  { _prioLoaded = true; _renderPrioBanner(); });
@@ -1169,7 +1169,7 @@ window.ExpNav = (() => {
     var opp  = prod.oportunidades || {};
     var cli  = opp.clientes || {};
     var titulo   = [cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto';
-    var cidadeUf = [opp.cidade, cli.uf].filter(Boolean).join('/');
+    var cidadeUf = [opp.cidade, opp.uf].filter(Boolean).join('/');
     var etapas   = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
     var etapa    = etapas.find(function(e){ return e.status==='em_andamento'; });
     var estado = '';
@@ -1482,6 +1482,7 @@ window.ExpNav = (() => {
     toggleApoioPanel,   closeApoioPanel,   apoioSearchInput,   apoioClear,
     toggleContatosPanel, closeContatosPanel, contatosSearchInput, contatosClear,
     toggleTarefasPanel,
+    refreshTarefas: _fetchTarefas,
     toggleTarefa,
     addTarefa,
     showClimaBanner, hideClimaBanner,
