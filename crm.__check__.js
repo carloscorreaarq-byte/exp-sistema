@@ -201,7 +201,7 @@ function renderOrigensChart(fechadas, anoStr){
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
         <span>${k}</span><span style="font-family:var(--font-mono);font-size:9px">${origValMode==='qtd'?v+' opp':fmt(v)}</span>
       </div>
-      <div style="height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(v/maxO*100)}%;background:${barColor}"></div></div>
+      <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.round(v/maxO*100)}%;background:${barColor};border-radius:3px"></div></div>
     </div>`).join('')||'<div style="font-size:11px;color:#aaa">Sem dados</div>';
 }
 function toggleOrigMode(){
@@ -792,7 +792,7 @@ function renderDash(){
   }
   if(chartMensal)chartMensal.destroy();
   const ctx1=document.getElementById('chart-mensal').getContext('2d');
-  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8,usePointStyle:true}}},scales:{x:{ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{font:{size:9},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(0,0,0,.04)'}}}}});
+  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8,usePointStyle:true}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10}},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(0,0,0,.06)'}}}}});
 
   // S4-02 — donut com toggle: por núcleo / pipeline stage / responsável
   // Atualiza estado visual dos botões
@@ -842,11 +842,11 @@ function renderDash(){
     borderWidth:1,borderColor:'#fff'
   }]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.parsed)} (${Math.round(ctx.parsed/total_tipo*100)}%)`}}}}});
   document.getElementById('chart-tipo-legenda').innerHTML=tLabels.length?tLabels.map((l,i)=>`
-    <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-      <div style="width:8px;height:8px;border-radius:2px;background:${tCores[i]};flex-shrink:0"></div>
-      <div style="font-size:9px;flex:1;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(l)}">${escHtml(l)}</div>
-      <div style="font-size:9px;font-family:var(--font-mono);color:#555;font-weight:600">${fmt(tipoMap[l])}</div>
-      <div style="font-size:9px;font-family:var(--font-mono);color:#999;min-width:28px;text-align:right">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+      <div style="width:9px;height:9px;border-radius:3px;background:${tCores[i]};flex-shrink:0"></div>
+      <div style="font-size:10px;flex:1;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(l)}">${escHtml(l)}</div>
+      <div style="font-size:10px;font-family:var(--font-mono);color:#444;font-weight:600">${fmt(tipoMap[l])}</div>
+      <div style="font-size:10px;font-family:var(--font-mono);color:#888;min-width:30px;text-align:right">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
     </div>`).join(''):'<div style="font-size:10px;color:#aaa;padding:4px 0">Sem fechamentos em '+anoStr+'</div>';
   const elTipoTitle=document.getElementById('chart-tipo-title');
   if(elTipoTitle)elTipoTitle.textContent=`Por tipo · ${anoStr}`;
@@ -2704,7 +2704,7 @@ function renderFechamentos(){
           <span style="font-weight:500">${escHtml(t)}</span>
           <span style="font-family:var(--font-mono);font-size:10px">${fmt(v)} <span style="color:#aaa">(${Math.round(v/totalEf*100)}% · ${n} proj.)</span></span>
         </div>
-        <div style="height:5px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(v/totalEf*100)}%;background:${CHART_CORES[t]||'var(--verde)'}"></div></div>
+        <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.round(v/totalEf*100)}%;background:${CHART_CORES[t]||'var(--verde)'};border-radius:3px"></div></div>
       </div>`).join('')
     : '<div class="empty-note">Sem fechamentos no período.</div>';
 
@@ -2719,7 +2719,7 @@ function renderFechamentos(){
     .map(([n,c])=>`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <div style="font-size:11px;flex:1">${escHtml(n)}</div>
-        <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(c/maxN*100)}%;background:${CHART_CORES[n]||'var(--verde)'}"></div></div>
+        <div style="width:90px;height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.round(c/maxN*100)}%;background:${CHART_CORES[n]||'var(--verde)'};border-radius:3px"></div></div>
         <div style="font-size:11px;font-weight:700;font-family:var(--font-mono);min-width:20px;text-align:right">${c}</div>
       </div>`).join('') || '<div class="empty-note">—</div>';
 
@@ -2789,7 +2789,7 @@ function renderNegativas(){
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
           <span>${escHtml(cat)}</span><span style="font-family:var(--font-mono);font-size:10px;font-weight:700">${n}</span>
         </div>
-        <div style="height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(n/maxCat*100)}%;background:${catCores[i%catCores.length]}"></div></div>
+        <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.round(n/maxCat*100)}%;background:${catCores[i%catCores.length]};border-radius:3px"></div></div>
       </div>`).join('')
     : '<div style="font-size:11px;color:#aaa;padding:4px 0">Nenhuma categoria registrada ainda.<br>Categorize as negativas no fluxo de produto.</div>';
 
@@ -2804,7 +2804,7 @@ function renderNegativas(){
     .map(([n,c])=>`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <div style="font-size:11px;flex:1">${escHtml(n)}</div>
-        <div style="width:80px;height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(c/maxNuc*100)}%;background:var(--terracota)"></div></div>
+        <div style="width:90px;height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.round(c/maxNuc*100)}%;background:var(--terracota);border-radius:3px"></div></div>
         <div style="font-size:11px;font-weight:700;font-family:var(--font-mono);min-width:20px;text-align:right">${c}</div>
       </div>`).join('') || '<div class="empty-note">—</div>';
 
@@ -3174,7 +3174,7 @@ function renderRelatorios(){
             <span style="display:flex;align-items:center;gap:6px">${respAvatar(uid,18)}<strong>${escHtml(u.nome?.split(' ')[0]||'?')}</strong> <span style="color:#aaa">${n} proj.</span></span>
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--azul)">${fmt(efetivo)}</span>
           </div>
-          <div style="height:4px;background:var(--cinza2)"><div style="height:100%;width:${Math.round(efetivo/maxResp*100)}%;background:${u.cor||'var(--verde)'}"></div></div>
+          <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.round(efetivo/maxResp*100)}%;background:${u.cor||'var(--verde)'};border-radius:3px"></div></div>
         </div>`;
       }).join('')
     : '<div class="empty-note">Sem fechamentos no período.</div>';
@@ -3192,13 +3192,13 @@ function renderRelatorios(){
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
         <span style="color:var(--verde)">Fechado</span><span style="font-family:var(--font-mono)">${fmt(fatEfetivo)} (${eficiencia}%)</span>
       </div>
-      <div style="height:6px;background:var(--cinza2)"><div style="height:100%;width:${Math.min(eficiencia,100)}%;background:var(--verde)"></div></div>
+      <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.min(eficiencia,100)}%;background:var(--verde);border-radius:3px"></div></div>
     </div>
     <div>
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
         <span style="color:var(--terracota)">Perdido (negativas)</span><span style="font-family:var(--font-mono)">${fmt(perdidoEf)} (${perdidoPct}%)</span>
       </div>
-      <div style="height:6px;background:var(--cinza2)"><div style="height:100%;width:${Math.min(perdidoPct,100)}%;background:var(--terracota)"></div></div>
+      <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.min(perdidoPct,100)}%;background:var(--terracota);border-radius:3px"></div></div>
     </div>`;
 
   // S4-03 — gráfico mensal: barras de Efetivo EXP + linha de novas opps
@@ -3236,10 +3236,10 @@ function renderRelatorios(){
         {label:'Novas opps',data:dadosNovas,type:'line',borderColor:'#45865D',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,yAxisID:'y2'},
         {label:'Negadas',data:dadosNegadas,type:'line',borderColor:'#E53935',backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,tension:.3,borderDash:[3,3],yAxisID:'y2'},
       ]},
-      options:{responsive:true,plugins:{legend:{labels:{font:{size:9},boxWidth:10,padding:8}}},scales:{
-        x:{ticks:{font:{size:9}}},
-        y:{position:'left',ticks:{font:{size:9},callback:v=>v>=1000?Math.round(v/1000)+'k':v}},
-        y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9},stepSize:1,callback:v=>Number.isInteger(v)?v:''}},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>ctx.dataset.yAxisID==='y'?`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`:`${ctx.dataset.label}: ${ctx.parsed.y}`}}},scales:{
+        x:{ticks:{font:{size:10}}},
+        y:{position:'left',ticks:{font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(0,0,0,.06)'}},
+        y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''}},
       }}
     });
   }

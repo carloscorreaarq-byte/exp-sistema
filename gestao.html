@@ -2242,8 +2242,8 @@ body {
 [data-theme="dark"] .btn { background:#252523; border-color:#3A3836; color:#888; }
 [data-theme="dark"] .btn:hover { border-color:var(--grafite); color:var(--grafite); }
 [data-theme="dark"] .btn.filled { background:var(--grafite); color:var(--off); border-color:var(--grafite); }
-[data-theme="dark"] .btn.verde { background:var(--verde); color:#fff; border-color:var(--verde); }
-[data-theme="dark"] .btn.verde:hover { background:var(--verde-l); border-color:var(--verde-l); }
+[data-theme="dark"] .btn.verde { background:rgba(82,166,118,.12); color:var(--verde); border-color:rgba(82,166,118,.35); }
+[data-theme="dark"] .btn.verde:hover { background:var(--verde); color:#fff; border-color:var(--verde); }
 [data-theme="dark"] .btn.tc { background:var(--terracota); color:#fff; border-color:var(--terracota); }
 [data-theme="dark"] .pvt-btn { background:#252523; color:#888; }
 [data-theme="dark"] .pvt-btn.active { background:var(--grafite); color:var(--off); }
@@ -3877,20 +3877,23 @@ body {
         <div class="ms">
           <div class="ms-title">Oportunidade</div>
           <div class="fgroup mb8">
-            <label>Selecionar oportunidade existente ou criar nova</label>
+            <label>Selecionar oportunidade existente</label>
             <select id="cad-opp-sel" onchange="onOppChange()">
-              <option value="">Nova oportunidade...</option>
+              <option value="">Selecione uma oportunidade do CRM...</option>
             </select>
           </div>
           <div id="cad-opp-novo-wrap">
+            <div style="font-size:10px;color:#888;margin:2px 0 8px">
+              A oportunidade comercial deve existir primeiro no CRM. A Gestão não cria mais oportunidade nova neste fluxo.
+            </div>
             <div class="fg fg2 mb8">
               <div class="fgroup">
                 <label>Nome da oportunidade</label>
-                <input type="text" id="cad-opp-nome" placeholder="Ex.: UDI-11, Parque Central...">
+                <input type="text" id="cad-opp-nome" placeholder="Crie a oportunidade no CRM" disabled>
               </div>
               <div class="fgroup">
                 <label>Cidade</label>
-                <input type="text" id="cad-opp-cidade">
+                <input type="text" id="cad-opp-cidade" placeholder="Defina a cidade no CRM" disabled>
               </div>
             </div>
           </div>
@@ -4259,6 +4262,9 @@ body {
             </select>
           </div>
         </div>
+        <div id="ep-opp-lock-note" style="display:none;font-size:10px;color:#888;margin:-2px 0 10px">
+          Cliente, nome e cidade da oportunidade ficam governados pelo CRM quando o projeto já está vinculado a uma oportunidade ativa.
+        </div>
         <!-- Dados do produto -->
         <div class="fg fg2 mb8">
           <div class="fgroup">
@@ -4452,6 +4458,7 @@ body {
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.sb = sb;
 
 // ── Estado global ──────────────────────────────────────────
 let G = {
@@ -4724,6 +4731,29 @@ const normalizeRole = (role) => typeof window.normalizeExpRole === 'function'
   ? window.normalizeExpRole(role)
   : (((role || '').toLowerCase().trim() === 'socio_adm') ? 'socio_admin' : (role || '').toLowerCase().trim());
 const isSocioRole = (role) => ['socio', 'socio_admin'].includes(normalizeRole(role));
+const isSocioAdminRole = (role) => normalizeRole(role) === 'socio_admin';
+
+function canEditCompetenciaReal() {
+  return isSocioAdminRole(G.usuario?.role);
+}
+
+function setGestaoFinanceReflexInfoOnce(msg = 'O reflexo financeiro final deve ser tratado no módulo Financeiro.') {
+  if (G._financeReflexWarned === msg) return;
+  G._financeReflexWarned = msg;
+  toast(msg);
+}
+
+function toggleOportunidadeBaseFieldsLocked(locked) {
+  ['ep-opp', 'ep-cliente', 'ep-opp-cidade', 'ep-proj-endereco', 'ep-proj-cnpj', 'ep-proj-esc-arq', 'ep-proj-esc-int', 'ep-proj-gestao', 'ep-link-arquivo', 'ep-link-planilha']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.disabled = !!locked;
+      el.title = locked ? 'Edite este dado no CRM.' : '';
+    });
+  const note = document.getElementById('ep-opp-lock-note');
+  if (note) note.style.display = locked ? 'block' : 'none';
+}
 function initNavDropdown(role) {
   if (isSocioRole(role)) document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
   initConnDot();
@@ -7614,20 +7644,8 @@ async function lancarCusto() {
 
   if (error) { toast('Erro ao registrar: ' + error.message); return; }
 
-  // Sincroniza com fin_lancamentos para aparecer no DRE
   if (inserted?.id && pcId) {
-    const area = (G._reembolsoAreas||[]).find(a => a.id === pcId);
-    await sb.from('fin_lancamentos').insert({
-      plano_contas_id: pcId,
-      valor: Math.abs(valor),
-      tipo: 'despesa',
-      situacao: 'realizado',
-      data_competencia: dataISO,
-      data_vencimento: dataISO,
-      observacao: [subtipo, desc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso',
-      origem: 'reembolso',
-      origem_id: inserted.id,
-    });
+    setGestaoFinanceReflexInfoOnce('Custo operacional registrado. O reflexo financeiro final deve ser tratado no módulo Financeiro.');
   }
 
   document.getElementById('cf-valor').value = '';
@@ -8031,7 +8049,7 @@ async function editarCustoLancado(id) {
     const { error } = await sb.from('lancamentos_custo').update(upd).eq('id', id);
     if (error) { toast('Erro: ' + error.message); return; }
 
-    // Sincroniza fin_lancamentos
+    // Mantém apenas limpeza de sombra legada já criada pela própria Gestão.
     if (novoPcId) {
       const area = (G._reembolsoAreas||[]).find(a => a.id === novoPcId);
       const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso';
@@ -8045,19 +8063,8 @@ async function editarCustoLancado(id) {
           data_vencimento: novaData,
           observacao: finObs,
         }).eq('id', existFin.id);
-      } else {
-        await sb.from('fin_lancamentos').insert({
-          plano_contas_id: novoPcId,
-          valor: Math.abs(novoValor),
-          tipo: 'despesa',
-          situacao: 'realizado',
-          data_competencia: novaData,
-          data_vencimento: novaData,
-          observacao: finObs,
-          origem: 'reembolso',
-          origem_id: id,
-        });
       }
+      setGestaoFinanceReflexInfoOnce('Reclassificação operacional salva. Novos reflexos financeiros devem ser tratados no módulo Financeiro.');
     }
 
     popup.remove();
@@ -10648,7 +10655,7 @@ function onClienteChange() {
     // Carrega oportunidades do cliente
     carregarOppsDoCliente(val);
   } else {
-    document.getElementById('cad-opp-sel').innerHTML = '<option value="">Nova oportunidade...</option>';
+    document.getElementById('cad-opp-sel').innerHTML = '<option value="">Selecione uma oportunidade do CRM...</option>';
     document.getElementById('cad-opp-novo-wrap').style.display = 'block';
   }
 }
@@ -10658,7 +10665,7 @@ async function carregarOppsDoCliente(cliId) {
   const { data: opps } = await sb.from('oportunidades').select('*').eq('cliente_id', cliId);
   const filtradas = (opps || []).filter(o => !stagesNeg.includes((o.pipeline_stage || '').toLowerCase()));
   const sel = document.getElementById('cad-opp-sel');
-  sel.innerHTML = '<option value="">Nova oportunidade...</option>' +
+  sel.innerHTML = '<option value="">Selecione uma oportunidade do CRM...</option>' +
     filtradas.map(o => {
       const loc = o.cidade ? ` — ${_escN(o.cidade)}${o.uf ? `/${_escN(o.uf)}` : ''}` : '';
       return `<option value="${o.id}">${_escN(o.projeto || '(sem nome)')}${loc}</option>`;
@@ -10716,20 +10723,10 @@ async function salvarProjeto() {
     }
 
     // ── Oportunidade ─────────────────────────────────────
-    let oppId = oppSel || null;
+    const oppId = oppSel || null;
     if (!oppId) {
-      const oppNome = document.getElementById('cad-opp-nome').value.trim();
-      if (!oppNome) { toast('Informe o nome da oportunidade'); return; }
-      const { data: opp, error: eOpp } = await sb.from('oportunidades').insert({
-        cliente_id: cliId,
-        projeto: oppNome,
-        cidade: document.getElementById('cad-opp-cidade').value.trim() || null,
-        pipeline_stage: 'fechado_ganho',
-        resp_id: G.usuario?.id || null,
-        data_entrada: new Date().toISOString().split('T')[0]
-      }).select().single();
-      if (eOpp) { toast('Erro ao criar oportunidade: ' + eOpp.message); return; }
-      oppId = opp.id;
+      toast('Selecione primeiro uma oportunidade já cadastrada no CRM.');
+      return;
     }
 
     // ── Produto ──────────────────────────────────────────
@@ -12170,7 +12167,7 @@ async function abrirReclassificacaoCusto(id) {
       btn.disabled = false; btn.textContent = 'Salvar reclassificação'; return;
     }
 
-    // Sincroniza fin_lancamentos
+    // Mantém apenas alinhamento de sombra legada já criada pela própria Gestão.
     const finObs = [novoSubtipo, novaDesc].filter(Boolean).join(' · ') || area?.subconta || 'Reembolso';
     const { data: existFin } = await sb.from('fin_lancamentos')
       .select('id').eq('origem','reembolso').eq('origem_id', id).maybeSingle();
@@ -12179,14 +12176,8 @@ async function abrirReclassificacaoCusto(id) {
         plano_contas_id: novoPcId, valor: Math.abs(novoValor),
         data_competencia: novaData, data_vencimento: novaData, observacao: finObs,
       }).eq('id', existFin.id);
-    } else {
-      await sb.from('fin_lancamentos').insert({
-        plano_contas_id: novoPcId, valor: Math.abs(novoValor),
-        tipo: 'despesa', situacao: 'realizado',
-        data_competencia: novaData, data_vencimento: novaData,
-        observacao: finObs, origem: 'reembolso', origem_id: id,
-      });
     }
+    setGestaoFinanceReflexInfoOnce('Reclassificação operacional salva. Novos reflexos financeiros devem ser tratados no módulo Financeiro.');
 
     popup.remove();
     toast('Reclassificado com sucesso');
@@ -14587,6 +14578,7 @@ async function abrirEditarProduto() {
   const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo)
     || G._todosProdutosGestao.find(p => p.id === G.produtoAtivo);
   if (!prod || prod._crm) return;
+  const oppVinculada = !!prod.oportunidade_id;
 
   const { data: clientes } = await sb.from('clientes').select('id, nome, sigla, cidade, uf').order('nome');
 
@@ -14598,13 +14590,6 @@ async function abrirEditarProduto() {
   document.getElementById('ep-opp').value     = prod.oportunidades?.projeto || '';
   document.getElementById('ep-opp-cidade').value = prod.oportunidades?.cidade || '';
   document.getElementById('ep-em-gestao').value = prod.em_gestao === false ? 'false' : 'true';
-
-  // Dados do projeto
-  document.getElementById('ep-proj-endereco').value  = prod.oportunidades?.endereco       || '';
-  document.getElementById('ep-proj-cnpj').value      = prod.oportunidades?.cnpj            || '';
-  document.getElementById('ep-proj-esc-arq').value   = prod.oportunidades?.escritorio_arq  || '';
-  document.getElementById('ep-proj-esc-int').value   = prod.oportunidades?.escritorio_int  || '';
-  document.getElementById('ep-proj-gestao').value    = prod.oportunidades?.gestao_empresa  || '';
 
   // Dados do projeto
   document.getElementById('ep-proj-endereco').value  = prod.oportunidades?.endereco       || '';
@@ -14658,6 +14643,8 @@ async function abrirEditarProduto() {
     return _renderEtapaEdicaoRow(e, devIds);
   }).join('');
 
+  toggleOportunidadeBaseFieldsLocked(oppVinculada);
+
   fecharModal('modal-produto');
   document.getElementById('modal-editar-produto').style.display = 'flex';
   _recalcPctTotal();
@@ -14690,16 +14677,17 @@ async function salvarEdicaoProduto() {
     const status     = document.getElementById('ep-status').value;
     const coordId    = document.getElementById('ep-coord').value || null;
     const dataInicio = document.getElementById('ep-inicio').value || null;
-    const clienteId  = document.getElementById('ep-cliente').value || null;
-    const oppNome    = document.getElementById('ep-opp').value.trim();
-    const oppCidade  = document.getElementById('ep-opp-cidade').value.trim() || null;
+    const oppVinculada = !!prod.oportunidade_id;
+    const clienteId  = oppVinculada ? (prod.oportunidades?.cliente_id || null) : (document.getElementById('ep-cliente').value || null);
+    const oppNome    = oppVinculada ? (prod.oportunidades?.projeto || '') : document.getElementById('ep-opp').value.trim();
+    const oppCidade  = oppVinculada ? (prod.oportunidades?.cidade || null) : (document.getElementById('ep-opp-cidade').value.trim() || null);
     const emGestao   = document.getElementById('ep-em-gestao').value !== 'false';
     const isSocio    = isSocioRole(G.usuario.role);
     const valor      = isSocio ? (parseFloat(document.getElementById('ep-valor').value) || null) : undefined;
 
     if (!nome) { toast('Informe o nome do produto'); return; }
-    if (!clienteId) { toast('Selecione o cliente vinculado'); return; }
-    if (!oppNome) { toast('Informe o nome da oportunidade'); return; }
+    if (!oppVinculada && !clienteId) { toast('Selecione o cliente vinculado'); return; }
+    if (!oppVinculada && !oppNome) { toast('Informe o nome da oportunidade'); return; }
 
     // Atualiza produto
     const updProd = {
@@ -14743,35 +14731,6 @@ async function salvarEdicaoProduto() {
 
     if (eProd) { toast('Erro ao salvar produto: ' + eProd.message); return; }
     if (!prodSalvo) { toast('O produto não foi atualizado. Verifique as permissões no Supabase.'); return; }
-
-    if (prod.oportunidade_id) {
-      const oppPayload = {
-        cliente_id: clienteId,
-        projeto: oppNome,
-        cidade: oppCidade,
-        endereco:       document.getElementById('ep-proj-endereco').value.trim() || null,
-        cnpj:           document.getElementById('ep-proj-cnpj').value.trim()     || null,
-        escritorio_arq: document.getElementById('ep-proj-esc-arq').value.trim()  || null,
-        escritorio_int: document.getElementById('ep-proj-esc-int').value.trim()  || null,
-        gestao_empresa: document.getElementById('ep-proj-gestao').value.trim()   || null,
-      };
-      if (isSocio) {
-        oppPayload.link_arquivo  = document.getElementById('ep-link-arquivo').value.trim()  || null;
-        oppPayload.link_planilha = document.getElementById('ep-link-planilha').value.trim() || null;
-      }
-      let { data: oppSalva, error: eOpp } = await sb.from('oportunidades')
-        .update(oppPayload).eq('id', prod.oportunidade_id).select('id').maybeSingle();
-      // Fallback: se colunas novas não existirem no banco ainda, salva sem elas
-      if (eOpp) {
-        const { data: oppSalva2, error: eOpp2 } = await sb.from('oportunidades')
-          .update({ cliente_id: clienteId, projeto: oppNome, cidade: oppCidade })
-          .eq('id', prod.oportunidade_id).select('id').maybeSingle();
-        if (eOpp2) { toast('Erro ao salvar oportunidade: ' + eOpp2.message); return; }
-        if (!eOpp2) toast('Projeto salvo. Dados do projeto foram ignorados porque as colunas ainda não existem no banco.');
-        oppSalva = oppSalva2;
-      }
-      if (!oppSalva) { toast('A oportunidade não foi atualizada. Verifique as permissões no Supabase.'); return; }
-    }
 
     // Salva etapas
     const rows = document.querySelectorAll('#ep-etapas-lista .etapa-edit-row');
@@ -14941,6 +14900,10 @@ function updateCompetenciaSaldoInfo() {
 
 function abrirModalCompetenciaReal(prodId) {
   if (!prodId) return;
+  if (!canEditCompetenciaReal()) {
+    toast('A competência real pode ser editada apenas por sócio administrador.');
+    return;
+  }
   G._competenciaRealProdId = prodId;
   const etapas = G.todasEtapas
     .filter(e => e.produto_id === prodId)
@@ -14959,6 +14922,10 @@ function abrirModalCompetenciaReal(prodId) {
 }
 
 async function salvarCompetenciaReal() {
+  if (!canEditCompetenciaReal()) {
+    toast('A competência real pode ser editada apenas por sócio administrador.');
+    return;
+  }
   const prodId = G._competenciaRealProdId || G.produtoAtivo;
   const etapaId = document.getElementById('comp-etapa')?.value || '';
   const mes = document.getElementById('comp-mes')?.value || '';
@@ -15301,7 +15268,7 @@ async function carregarResultado(prodId) {
     <div class="res-painel-esq">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
         <div style="font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;opacity:.65">Resultado do Projeto</div>
-        <button class="btn sm" onclick="abrirModalCompetenciaReal('${prodId}')">+ Competência</button>
+        ${canEditCompetenciaReal() ? `<button class="btn sm" onclick="abrirModalCompetenciaReal('${prodId}')">+ Competência</button>` : ''}
       </div>
       ${valorContratado ? `<div class="res-pe-row"><span>Contratado</span><span>${fR(valorContratado)}</span></div>` : ''}
       ${temPct && totalPrevisto > 0 ? `<div class="res-pe-row"><span>Previsto <span style="opacity:.6">(${etapas.filter(e=>e.percentual_custo!=null).length}/${etapas.length})</span></span><span>${fR(totalPrevisto)}</span></div>` : ''}
