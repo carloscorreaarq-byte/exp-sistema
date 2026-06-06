@@ -2357,22 +2357,28 @@ body{
       if (type==='projeto'&&!productId) throw new Error('Selecione o projeto.');
       if (rules.requer_projeto&&!productId) throw new Error('Esta área exige um projeto.');
       var week = await ensureWeek(date);
+      var dupQ = window.sb.from('lancamentos_custo').select('id').eq('usuario_id', uid()).eq('data_lancamento', date).eq('valor', value).eq('tipo', type).eq('plano_contas_id', areaId).limit(1);
+      dupQ = detail ? dupQ.eq('subtipo', detail) : dupQ.is('subtipo', null);
+      dupQ = productId ? dupQ.eq('produto_id', productId) : dupQ.is('produto_id', null);
+      dupQ = stageId ? dupQ.eq('etapa_id', stageId) : dupQ.is('etapa_id', null);
+      dupQ = desc ? dupQ.eq('descricao', desc) : dupQ.is('descricao', null);
+      var dupRes = await dupQ.maybeSingle();
+      if (dupRes.error) throw new Error(dupRes.error.message);
+      if (dupRes.data && dupRes.data.id) throw new Error('Ja existe um custo igual registrado para voce nesta data.');
       var ins = await window.sb.from('lancamentos_custo').insert({
         usuario_id:uid(), semana_id:week.id, data_lancamento:date, valor:value,
         tipo:type, subtipo:detail, plano_contas_id:areaId,
         produto_id:productId, etapa_id:stageId, descricao:desc||null,
       }).select('id').single();
       if (ins.error) throw new Error(ins.error.message);
-      var finRes = await window.sb.from('fin_lancamentos').insert({
-        plano_contas_id:areaId, valor:Math.abs(value), tipo:'despesa', situacao:'realizado',
-        data_competencia:date, data_vencimento:date,
+      /* legacy finance reflex removed
         observacao:[detail,desc].filter(Boolean).join(' · ')||(area?area.subconta:'Gasto'),
-        origem:'reembolso', origem_id:ins.data?ins.data.id:null,
-      });
       resetCostForm();
       loadCustosData().catch(function(){});
-      if (finRes&&finRes.error) setFb('apo-cost-feedback','Custo registrado, mas envio ao Financeiro falhou.','err');
-      else setFb('apo-cost-feedback','Custo registrado.','ok');
+      */
+      resetCostForm();
+      loadCustosData().catch(function(){});
+      setFb('apo-cost-feedback','Custo operacional registrado. O reflexo financeiro final deve ser tratado no modulo Financeiro.','ok');
     } catch(e) { setFb('apo-cost-feedback',e.message,'err'); }
     finally { btn.disabled=false; btn.textContent='Registrar'; }
   }
