@@ -786,7 +786,21 @@ window.ExpNav = (() => {
   /* ── Topbar-right: toggle dropdown ──────────────────────── */
   function _toggleUserDropdown() {
     var dd = document.getElementById('exp-user-dropdown');
-    if (dd) dd.classList.toggle('open');
+    if (!dd) return;
+    var isOpen = dd.classList.contains('open');
+    if (!isOpen) {
+      /* posiciona via fixed para escapar de containers overflow:hidden */
+      var chip = document.getElementById('exp-user-chip');
+      if (chip) {
+        var rect = chip.getBoundingClientRect();
+        dd.style.position = 'fixed';
+        dd.style.top      = (rect.bottom + 6) + 'px';
+        dd.style.right    = (window.innerWidth - rect.right) + 'px';
+        dd.style.left     = 'auto';
+        dd.style.bottom   = 'auto';
+      }
+    }
+    dd.classList.toggle('open');
   }
 
   /* ── Topbar-right: sair ──────────────────────────────────── */
@@ -1508,12 +1522,13 @@ window.ExpNav = (() => {
     if (!pop) return;
     _lembreteOpen = true;
     pop.style.display = 'flex';
-    /* posiciona acima do botão */
-    var btn = document.getElementById('exp-lembrete-btn');
+    /* posiciona acima/ao lado do botão — tenta exp-lembrete-btn (nav) ou exp-tr-lembrete (topbar) */
+    var btn = document.getElementById('exp-lembrete-btn') || document.getElementById('exp-tr-lembrete');
     if (btn) {
       var rect = btn.getBoundingClientRect();
       pop.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
-      pop.style.left = (rect.right + 8) + 'px';
+      pop.style.left   = 'auto';
+      pop.style.right  = (window.innerWidth - rect.right) + 'px';
     }
     /* carrega usuários se necessário */
     if (!_lembreteUsuarios) _carregarUsuariosLembrete();
