@@ -433,12 +433,12 @@
         (genShow && (channelUnread['general']||0)>0) || (socShow && (channelUnread['socios']||0)>0);
 
       if (genShow && !(showOnlyUnread && !(channelUnread['general']||0)) && !(showOnlyFlagged)) {
-        html += buildConvItemHtml('general', '# geral', '#', null, null, 'Toda a equipe',
+        html += buildConvItemHtml('general', 'geral', '#', null, null, 'Toda a equipe',
           msgs.find(function(m){return m.channel==='general';}),
           channelUnread['general']||0, 'hash-verde');
       }
       if (socShow && !(showOnlyUnread && !(channelUnread['socios']||0)) && !(showOnlyFlagged)) {
-        html += buildConvItemHtml('socios', '# sócios', '#', null, null, 'Canal privado',
+        html += buildConvItemHtml('socios', 'sócios', '#', null, null, 'Canal privado',
           msgs.find(function(m){return m.channel==='socios';}),
           channelUnread['socios']||0, 'hash-ouro');
       }

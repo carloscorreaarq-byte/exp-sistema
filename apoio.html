@@ -632,8 +632,9 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column}
 [data-theme="dark"] .ap-sb-head{border-bottom-color:#2E2D2B}
 .ap-sb-head-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 
-.ap-sb-logo{height:auto;max-height:20px;width:auto;object-fit:contain;opacity:.5;mix-blend-mode:multiply;display:block;margin-right:auto}
-[data-theme="dark"] .ap-sb-logo{filter:invert(1) brightness(.7);mix-blend-mode:screen;opacity:.45}
+.ap-sb-logo-wrap{display:block;margin-right:auto;line-height:0}
+.ap-sb-logo{height:20px;width:auto;object-fit:contain;display:block;mix-blend-mode:multiply}
+[data-theme="dark"] .ap-sb-logo{filter:invert(1) brightness(0.85);mix-blend-mode:screen}
 #ap-theme-toggle .exp-tr-moon{display:none}
 [data-theme="dark"] #ap-theme-toggle .exp-tr-sun{display:none}
 [data-theme="dark"] #ap-theme-toggle .exp-tr-moon{display:block}
@@ -1036,6 +1037,12 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 [data-theme="dark"] #loading{background:var(--off)}
 
+/* Feedback pop: usa position:fixed para escapar do overflow:hidden do sidebar */
+#nav-feedback-pop {
+  position: fixed !important;
+  right: auto;
+}
+
 /* sidebar — superfície mais escura que card, por isso override explícito */
 [data-theme="dark"] .apoio-sidebar{background:var(--off);border-color:var(--cinza)}
 [data-theme="dark"] .sb-search input{background:var(--branco);color:var(--grafite)}
@@ -1274,17 +1281,17 @@ body{height:100vh;overflow:hidden;display:flex;flex-direction:column}
     <!-- Cabeçalho: logo + botões -->
     <div class="ap-sb-head">
       <div class="ap-sb-head-row">
-        <img src="exp.png" alt="EXP" class="ap-sb-logo" onerror="this.style.display='none'">
+        <span class="ap-sb-logo-wrap"><img src="exp.png" alt="EXP" class="ap-sb-logo" onerror="this.parentElement.style.display='none'"></span>
         <!-- conn-dot separado dos botões com margem -->
         <div class="conn-dot" id="conn-dot" style="flex-shrink:0;margin-left:auto;margin-right:10px"></div>
         <!-- Botões de ação: alerta, lembrete, dark mode, feedback -->
         <div style="display:flex;align-items:center;gap:4px">
           <!-- Alerta / Notificações -->
-          <button id="exp-nav-bell" class="ap-sb-icon-btn exp-sb-icon-btn" onclick="ExpNav?.toggleNotifPanel()" title="Notificações" style="position:relative">
+          <button id="ap-bell-btn" class="ap-sb-icon-btn exp-sb-icon-btn" onclick="abrirNotifSidebar(event)" title="Notificações" style="position:relative">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </button>
           <!-- Lembrete -->
-          <button id="exp-lembrete-btn" class="ap-sb-icon-btn exp-sb-icon-btn" onclick="ExpNav?.abrirLembrete()" title="Enviar lembrete para a equipe">
+          <button id="exp-lembrete-btn" class="ap-sb-icon-btn exp-sb-icon-btn" onclick="abrirLembreteSidebar(event)" title="Enviar lembrete para a equipe">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
           <!-- Dark mode -->
@@ -2700,7 +2707,35 @@ document.addEventListener('click', e => {
 
 function toggleToolFeedbackPopover(e) {
   e?.stopPropagation();
-  document.getElementById('nav-feedback-pop').classList.toggle('open');
+  const pop = document.getElementById('nav-feedback-pop');
+  const isOpen = pop.classList.contains('open');
+  pop.classList.toggle('open');
+  if (!isOpen) {
+    const btn = document.getElementById('nav-feedback-btn');
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      pop.style.top = (rect.bottom + 8) + 'px';
+      pop.style.left = Math.max(8, rect.right - 360) + 'px';
+    }
+  }
+}
+
+function abrirNotifSidebar(e) {
+  e?.stopPropagation();
+  ExpNav?.toggleNotifPanel();
+}
+
+function abrirLembreteSidebar(e) {
+  e?.stopPropagation();
+  ExpNav?.abrirLembrete();
+  const pop = document.getElementById('exp-lembrete-pop');
+  const btn = document.getElementById('exp-lembrete-btn');
+  if (pop && btn && pop.style.display === 'flex') {
+    const rect = btn.getBoundingClientRect();
+    pop.style.bottom = '';
+    pop.style.top  = (rect.bottom + 8) + 'px';
+    pop.style.left = (rect.right + 8) + 'px';
+  }
 }
 function fecharToolFeedbackPopover() {
   document.getElementById('nav-feedback-pop').classList.remove('open');
@@ -7959,6 +7994,46 @@ Ela agora passa a ser gerida a partir do módulo de pessoas, permitindo atualiza
     module: 'apoio',
     onUserMenu: function() { window.location.href = 'app.html'; },
   });
+
+  /* Em apoio o sidebar ocupa 340px junto da nav, então os banners/painéis
+     seriam posicionados atrás do sidebar. Aqui reposicionamos todos para
+     aparecer à direita do sidebar. */
+  (function() {
+    function sidebarRight() {
+      var sb = document.getElementById('ap-sidebar');
+      return sb ? sb.getBoundingClientRect().right + 8 : 508;
+    }
+
+    function wrapBanner(fnName, panelId) {
+      var orig = ExpNav[fnName];
+      ExpNav[fnName] = function(event) {
+        orig.call(ExpNav, event);
+        var b = document.getElementById(panelId);
+        if (b && b.style.display !== 'none') b.style.left = sidebarRight() + 'px';
+      };
+    }
+
+    wrapBanner('showPrioBanner',  'exp-prio-banner');
+    wrapBanner('showCalBanner',   'exp-cal-banner');
+    wrapBanner('showCrmBanner',   'exp-crm-banner');
+    wrapBanner('showClimaBanner', 'exp-clima-banner');
+
+    /* Notif panel — também reposicionado (nav bar bell fica na mesma área) */
+    var _origToggleNotif = ExpNav.toggleNotifPanel;
+    ExpNav.toggleNotifPanel = function() {
+      _origToggleNotif.call(ExpNav);
+      var panel = document.getElementById('exp-notif-panel');
+      if (panel && panel.style.display === 'flex') {
+        var sb = document.getElementById('ap-sidebar');
+        if (sb) {
+          var r = sb.getBoundingClientRect();
+          var panelH = panel.offsetHeight || 360;
+          panel.style.left = (r.right + 8) + 'px';
+          panel.style.top  = Math.max(16, r.bottom - panelH) + 'px';
+        }
+      }
+    };
+  })();
 </script>
 </body>
 </html>
