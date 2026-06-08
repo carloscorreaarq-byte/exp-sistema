@@ -619,8 +619,8 @@
           if (seen[m.channel]) return;
           seen[m.channel] = true;
           var ch = m.channel;
-          /* Verificar acesso: general, socios (se sócio), ou canal com uid */
-          if (ch !== 'general' && !(ch === 'socios' && isSocioLikeRole(user.role)) && ch.indexOf(uid) === -1) return;
+          /* Verificar acesso: general, projetos (todos), socios (se sócio), ou canal com uid */
+          if (ch !== 'general' && !isProjectChannel(ch) && !(ch === 'socios' && isSocioLikeRole(user.role)) && ch.indexOf(uid) === -1) return;
           results.push(m);
         });
 
