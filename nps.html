@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EXP · Pesquisa de Satisfação</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="exp-design-system.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+/* ── FUNDO — gradiente levíssimo de marca ───────────────── */
+body{
+  font-family:var(--font-ui);
+  background: linear-gradient(160deg, #ebf3ee 0%, #f4f3ef 55%, #f7f6f3 100%);
+  color:var(--grafite);
+  font-size:14px;
+  line-height:1.6;
+  font-weight:400;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:0 16px 72px;
+}
+
+/* ── WRAPPER ──────────────────────────────────────────────── */
+#nps-wrap{
+  width:100%;
+  max-width:540px;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── HEADER / MARCA ───────────────────────────────────────── */
+#nps-header{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px 0 32px;
+  gap:10px;
+  flex-direction:column;
+}
+.nps-brand{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.nps-brand-dot{
+  width:8px;height:8px;
+  border-radius:50%;
+  background:var(--verde);
+}
+.nps-brand-name{
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:0.22em;
+  color:var(--verde);
+  text-transform:uppercase;
+}
+.nps-brand-sub{
+  font-size:10px;
+  color:#aaa;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  font-weight:500;
+}
+
+/* ── PROGRESSO ────────────────────────────────────────────── */
+#progress-bar-wrap{
+  margin-bottom:18px;
+  display:none;
+  animation:fadeIn .3s ease both;
+}
+#progress-bar-wrap.visible{display:block}
+.progress-meta{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:10px;color:#aaa;
+  margin-bottom:7px;
+  font-weight:600;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+}
+.progress-track{
+  height:3px;
+  background:rgba(62,120,88,.15);
+  border-radius:3px;
+  overflow:hidden;
+}
+.progress-fill{
+  height:100%;
+  background:var(--verde);
+  border-radius:3px;
+  transition:width .5s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── TELAS ────────────────────────────────────────────────── */
+.screen{display:none}
+.screen.active{display:flex;flex-direction:column}
+
+/* Animações direcionais */
+@keyframes slideInRight{
+  from{opacity:0;transform:translateX(28px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes slideInLeft{
+  from{opacity:0;transform:translateX(-28px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes fadeIn{
+  from{opacity:0} to{opacity:1}
+}
+
+.screen.active .nps-card,
+.screen.active .nps-card-dark{
+  animation:slideInRight .32s cubic-bezier(.4,0,.2,1) both;
+}
+.screen.going-back.active .nps-card,
+.screen.going-back.active .nps-card-dark{
+  animation:slideInLeft .32s cubic-bezier(.4,0,.2,1) both;
+}
+
+/* ── CARD CLARO ───────────────────────────────────────────── */
+.nps-card{
+  background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:16px;
+  padding:40px 40px 36px;
+  box-shadow:0 2px 20px rgba(62,120,88,.07), 0 1px 4px rgba(0,0,0,.05);
+}
+
+/* ── CARD ESCURO (monocromático) ──────────────────────────── */
+.nps-card-dark{
+  background:var(--grafite);
+  border-radius:16px;
+  padding:40px 40px 36px;
+  box-shadow:0 4px 32px rgba(0,0,0,.18);
+  color:#fff;
+}
+
+@media(max-width:520px){
+  .nps-card,
+  .nps-card-dark{padding:30px 24px 28px}
+}
+
+/* ── TELA 1 — IDENTIFICAÇÃO (card claro) ──────────────────── */
+.client-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:var(--verde-bg);
+  color:var(--verde);
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.07em;
+  padding:5px 12px;
+  border-radius:20px;
+  margin-bottom:22px;
+  text-transform:uppercase;
+}
+#screen-id h1{
+  font-size:24px;
+  font-weight:600;
+  line-height:1.25;
+  margin-bottom:10px;
+  letter-spacing:-.01em;
+}
+#screen-id .subtitle{
+  font-size:13px;
+  color:#888;
+  font-weight:300;
+  margin-bottom:28px;
+  line-height:1.65;
+}
+
+/* Campos */
+.nps-field{margin-bottom:16px}
+.nps-field label{
+  display:block;
+  font-size:10px;font-weight:700;
+  letter-spacing:0.09em;text-transform:uppercase;
+  color:#aaa;margin-bottom:6px;
+}
+.nps-field input{
+  width:100%;height:44px;
+  border:1.5px solid #e0dfd9;
+  border-radius:8px;
+  padding:0 14px;
+  font-family:var(--font-ui);
+  font-size:14px;font-weight:400;
+  color:var(--grafite);background:#fff;
+  transition:border-color .18s, box-shadow .18s;
+  outline:none;
+}
+.nps-field input:focus{
+  border-color:var(--verde);
+  box-shadow:0 0 0 3px rgba(62,120,88,.1);
+}
+.nps-field input.error{border-color:var(--terracota)}
+.field-error{font-size:11px;color:var(--terracota);margin-top:4px;display:none}
+.field-error.show{display:block}
+
+/* ── TELA 2 — BOAS-VINDAS (card ESCURO) ───────────────────── */
+#screen-welcome .nps-card-dark .eyebrow{
+  font-size:10px;font-weight:700;
+  letter-spacing:0.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.4);
+  margin-bottom:14px;
+}
+#screen-welcome .nps-card-dark h2{
+  font-size:26px;font-weight:600;
+  line-height:1.2;letter-spacing:-.02em;
+  color:#fff;
+  margin-bottom:6px;
+}
+#screen-welcome .nps-card-dark .welcome-name{
+  font-size:26px;font-weight:700;
+  color:var(--verde-hover);
+  letter-spacing:-.02em;
+  margin-bottom:20px;
+  display:block;
+}
+.welcome-divider{
+  width:36px;height:2px;
+  background:rgba(255,255,255,.12);
+  border-radius:2px;
+  margin:20px 0;
+}
+#screen-welcome .welcome-body{
+  font-size:14px;font-weight:300;
+  color:rgba(255,255,255,.7);
+  line-height:1.75;
+}
+#screen-welcome .welcome-body strong{
+  color:#fff;font-weight:600;
+}
+.welcome-meta{
+  display:flex;align-items:center;gap:8px;
+  margin-top:20px;
+  font-size:11px;color:rgba(255,255,255,.4);
+  font-weight:500;
+}
+.welcome-meta svg{flex-shrink:0;opacity:.5}
+
+/* ── TELA 3 — INTRO SEÇÃO (card ESCURO) ───────────────────── */
+#screen-section-intro .nps-card-dark .sec-eyebrow{
+  font-family:var(--font-mono);
+  font-size:11px;color:var(--verde-hover);
+  letter-spacing:0.08em;margin-bottom:20px;
+  display:flex;align-items:center;gap:8px;
+}
+#screen-section-intro .nps-card-dark .sec-eyebrow::before{
+  content:'';
+  display:inline-block;
+  width:20px;height:1px;
+  background:var(--verde-hover);
+  opacity:.6;
+}
+#screen-section-intro .nps-card-dark h2{
+  font-size:24px;font-weight:600;
+  color:#fff;line-height:1.25;
+  letter-spacing:-.01em;
+  margin-bottom:14px;
+}
+#screen-section-intro .nps-card-dark .sec-desc{
+  font-size:14px;font-weight:300;
+  color:rgba(255,255,255,.65);
+  line-height:1.7;
+}
+
+/* ── TELA 4 — PERGUNTAS (card claro) ─────────────────────── */
+#screen-questions .section-header{margin-bottom:24px}
+.sec-label{
+  font-size:10px;font-weight:700;
+  letter-spacing:0.09em;text-transform:uppercase;
+  color:var(--verde);margin-bottom:4px;
+}
+#screen-questions h3{
+  font-size:17px;font-weight:600;
+  letter-spacing:-.01em;
+}
+
+.question-block{
+  margin-bottom:28px;padding-bottom:28px;
+  border-bottom:1px solid #f0efeb;
+  transition:outline .15s;
+  border-radius:4px;
+}
+.question-block:last-child{
+  border-bottom:none;margin-bottom:0;padding-bottom:0;
+}
+.question-text{
+  font-size:14px;font-weight:500;
+  line-height:1.5;margin-bottom:14px;
+  color:var(--grafite);
+}
+.question-required{color:var(--terracota);margin-left:2px}
+
+/* rating 0–10 com gradiente de cor */
+.rating-grid{
+  display:grid;
+  grid-template-columns:repeat(11,1fr);
+  gap:4px;
+}
+@media(max-width:440px){
+  .rating-grid{grid-template-columns:repeat(6,1fr);gap:5px}
+}
+.rating-btn{
+  aspect-ratio:1;
+  border:1.5px solid #e0dfd9;
+  border-radius:7px;
+  background:#fff;
+  font-family:var(--font-ui);
+  font-size:12px;font-weight:700;
+  color:#aaa;cursor:pointer;
+  transition:all .13s;
+  display:flex;align-items:center;justify-content:center;
+}
+/* Hover */
+.rating-btn:hover{transform:scale(1.08);z-index:1;position:relative}
+/* Selecionado — cor por faixa */
+.rating-btn.sel-low{background:#C0392B;border-color:#C0392B;color:#fff}
+.rating-btn.sel-mid{background:var(--ouro);border-color:var(--ouro);color:#fff}
+.rating-btn.sel-high{background:var(--verde);border-color:var(--verde);color:#fff}
+/* Preview hover por faixa */
+.rating-btn[data-range="low"]:hover{border-color:#C0392B;color:#C0392B}
+.rating-btn[data-range="mid"]:hover{border-color:var(--ouro);color:var(--ouro)}
+.rating-btn[data-range="high"]:hover{border-color:var(--verde);color:var(--verde)}
+
+.rating-labels{
+  display:flex;justify-content:space-between;
+  margin-top:7px;
+  font-size:10px;color:#bbb;font-weight:500;
+}
+
+/* yes/no */
+.yn-row{display:flex;gap:10px}
+.yn-btn{
+  flex:1;height:48px;
+  border:1.5px solid #e0dfd9;border-radius:8px;
+  background:#fff;
+  font-family:var(--font-ui);
+  font-size:13px;font-weight:600;color:#888;
+  cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.yn-btn:hover{border-color:var(--verde);color:var(--verde)}
+.yn-btn.selected-yes{background:var(--verde-bg);border-color:var(--verde);color:var(--verde)}
+.yn-btn.selected-no{background:#fdf0ee;border-color:var(--terracota);color:var(--terracota)}
+
+/* scale 1–5 */
+.scale-row{display:flex;gap:7px}
+.scale-btn{
+  flex:1;height:48px;
+  border:1.5px solid #e0dfd9;border-radius:8px;
+  background:#fff;
+  font-family:var(--font-ui);
+  font-size:14px;font-weight:700;color:#aaa;
+  cursor:pointer;transition:all .13s;
+  display:flex;align-items:center;justify-content:center;
+}
+.scale-btn:hover{border-color:var(--verde);color:var(--verde);transform:scale(1.04)}
+.scale-btn.selected{background:var(--verde);border-color:var(--verde);color:#fff;transform:scale(1.04)}
+.scale-labels{
+  display:flex;justify-content:space-between;
+  margin-top:6px;font-size:10px;color:#bbb;font-weight:500;
+}
+
+/* text */
+.nps-input-text{
+  width:100%;
+  border:1.5px solid #e0dfd9;border-radius:8px;
+  padding:11px 14px;
+  font-family:var(--font-ui);
+  font-size:13px;font-weight:400;color:var(--grafite);background:#fff;
+  transition:border-color .18s,box-shadow .18s;
+  outline:none;resize:none;
+}
+.nps-input-text:focus{
+  border-color:var(--verde);
+  box-shadow:0 0 0 3px rgba(62,120,88,.1);
+}
+textarea.nps-input-text{min-height:96px;line-height:1.6}
+
+/* collaborator chips */
+.collab-grid{display:flex;flex-wrap:wrap;gap:8px}
+.collab-chip{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 14px;
+  border:1.5px solid #e0dfd9;border-radius:24px;
+  background:#fff;
+  font-size:12px;font-weight:600;color:#777;
+  cursor:pointer;transition:all .15s;user-select:none;
+}
+.collab-chip:hover{border-color:var(--verde);color:var(--verde)}
+.collab-chip.selected{
+  background:var(--verde-bg);border-color:var(--verde);color:var(--verde);
+}
+.collab-chip .chip-dot{
+  width:7px;height:7px;border-radius:50%;
+  border:1.5px solid currentColor;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:7px;transition:background .13s;
+}
+.collab-chip.selected .chip-dot{background:var(--verde)}
+
+/* ── TELA 5 — AGRADECIMENTO (card ESCURO) ─────────────────── */
+#screen-thanks .nps-card-dark{
+  text-align:center;
+}
+.thanks-mark{
+  width:64px;height:64px;
+  border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.12);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 24px;
+  animation:popIn .5s cubic-bezier(.34,1.56,.64,1) both .1s;
+}
+@keyframes popIn{
+  from{opacity:0;transform:scale(.6)}
+  to{opacity:1;transform:scale(1)}
+}
+#screen-thanks h2{
+  font-size:24px;font-weight:600;
+  line-height:1.2;letter-spacing:-.02em;
+  color:#fff;margin-bottom:6px;
+}
+.thanks-client{
+  font-size:24px;font-weight:700;
+  color:var(--verde-hover);
+  letter-spacing:-.02em;
+  margin-bottom:0;
+}
+.thanks-divider{
+  width:36px;height:2px;
+  background:rgba(255,255,255,.1);
+  border-radius:2px;
+  margin:22px auto;
+}
+.thanks-text{
+  font-size:14px;font-weight:300;
+  color:rgba(255,255,255,.65);
+  line-height:1.8;margin-bottom:28px;
+}
+.thanks-hashtag{
+  display:inline-block;
+  font-family:var(--font-mono);
+  font-size:12px;letter-spacing:0.08em;
+  color:var(--verde-hover);
+  margin-bottom:32px;
+}
+
+/* Links finais */
+.thanks-links{
+  display:flex;gap:10px;justify-content:center;
+  flex-wrap:wrap;
+}
+.thanks-link{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:10px 20px;
+  border-radius:8px;
+  font-size:12px;font-weight:700;
+  letter-spacing:0.04em;
+  text-decoration:none;
+  transition:all .18s;
+}
+.thanks-link-ig{
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);
+  color:rgba(255,255,255,.8);
+}
+.thanks-link-ig:hover{
+  background:rgba(255,255,255,.14);
+  color:#fff;
+}
+.thanks-link-site{
+  background:var(--verde);
+  border:1px solid var(--verde);
+  color:#fff;
+}
+.thanks-link-site:hover{
+  background:var(--verde-hover);
+  border-color:var(--verde-hover);
+}
+
+/* ── BOTÕES DE AÇÃO ───────────────────────────────────────── */
+.nps-actions{
+  display:flex;align-items:center;
+  justify-content:space-between;
+  margin-top:28px;gap:10px;
+}
+/* Botão primário sobre card claro */
+.btn-nps-primary{
+  height:46px;padding:0 28px;
+  background:var(--verde);color:#fff;border:none;
+  border-radius:8px;
+  font-family:var(--font-ui);font-size:13px;font-weight:700;
+  letter-spacing:0.04em;cursor:pointer;
+  transition:background .18s,transform .1s,box-shadow .18s;
+  display:flex;align-items:center;gap:8px;
+  box-shadow:0 2px 12px rgba(62,120,88,.25);
+}
+.btn-nps-primary:hover{
+  background:var(--verde-hover);
+  box-shadow:0 4px 18px rgba(62,120,88,.35);
+}
+.btn-nps-primary:active{transform:scale(.97)}
+.btn-nps-primary:disabled{background:#ccc;box-shadow:none;cursor:not-allowed}
+
+/* Botão primário sobre card escuro */
+.btn-nps-primary-dark{
+  height:46px;padding:0 28px;
+  background:#fff;color:var(--grafite);border:none;
+  border-radius:8px;
+  font-family:var(--font-ui);font-size:13px;font-weight:700;
+  letter-spacing:0.04em;cursor:pointer;
+  transition:all .18s;
+  display:flex;align-items:center;gap:8px;
+}
+.btn-nps-primary-dark:hover{background:#f0efeb}
+.btn-nps-primary-dark:active{transform:scale(.97)}
+
+/* Botão ghost sobre card claro */
+.btn-nps-ghost{
+  height:46px;padding:0 18px;
+  background:transparent;color:#aaa;
+  border:1.5px solid #e0dfd9;border-radius:8px;
+  font-family:var(--font-ui);font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .18s;
+  display:flex;align-items:center;gap:6px;
+}
+.btn-nps-ghost:hover{border-color:#bbb;color:var(--grafite)}
+
+/* Botão ghost sobre card escuro */
+.btn-nps-ghost-dark{
+  height:46px;padding:0 18px;
+  background:transparent;color:rgba(255,255,255,.4);
+  border:1.5px solid rgba(255,255,255,.12);border-radius:8px;
+  font-family:var(--font-ui);font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .18s;
+  display:flex;align-items:center;gap:6px;
+}
+.btn-nps-ghost-dark:hover{
+  border-color:rgba(255,255,255,.3);
+  color:rgba(255,255,255,.7);
+}
+
+/* ── LOADER ───────────────────────────────────────────────── */
+#nps-loader{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:80px 0;gap:16px;
+  color:#bbb;font-size:13px;
+}
+.loader-ring{
+  width:36px;height:36px;
+  border:2px solid rgba(62,120,88,.15);
+  border-top-color:var(--verde);
+  border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── ERRO ─────────────────────────────────────────────────── */
+#nps-error{
+  display:none;flex-direction:column;
+  align-items:center;text-align:center;
+  padding:60px 20px;gap:12px;
+}
+#nps-error.show{display:flex}
+#nps-error h3{font-size:18px;font-weight:600}
+#nps-error p{font-size:13px;color:#999;font-weight:300;line-height:1.65;max-width:320px}
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+#nps-footer{
+  text-align:center;padding:28px 0 0;
+  font-size:10px;color:#c0bfba;
+  letter-spacing:0.06em;font-weight:500;
+  text-transform:uppercase;
+}
+
+/* ── TOAST ────────────────────────────────────────────────── */
+#nps-toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--grafite);color:#fff;
+  padding:10px 22px;border-radius:24px;
+  font-size:12px;font-weight:600;
+  opacity:0;pointer-events:none;
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  white-space:nowrap;z-index:999;
+  box-shadow:0 4px 20px rgba(0,0,0,.2);
+}
+#nps-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div id="nps-wrap">
+
+  <!-- MARCA -->
+  <div id="nps-header">
+    <div class="nps-brand">
+      <div class="nps-brand-dot"></div>
+      <div class="nps-brand-name">EXP Arquitetura</div>
+    </div>
+    <div class="nps-brand-sub">Pesquisa de Satisfação</div>
+  </div>
+
+  <!-- PROGRESSO -->
+  <div id="progress-bar-wrap">
+    <div class="progress-meta">
+      <span id="progress-label">Seção 1 de 1</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- LOADER -->
+  <div id="nps-loader">
+    <div class="loader-ring"></div>
+    <span>Carregando…</span>
+  </div>
+
+  <!-- ERRO -->
+  <div id="nps-error">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#D0CFC9" stroke-width="1.5" stroke-linecap="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+      <circle cx="12" cy="16" r=".5" fill="#D0CFC9"/>
+    </svg>
+    <h3 id="error-title">Link inválido</h3>
+    <p id="error-msg">Este link de pesquisa não foi encontrado ou já foi encerrado.</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TELA 1 — IDENTIFICAÇÃO  (card claro)
+  ═══════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-id">
+    <div class="nps-card">
+      <div class="client-badge">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span id="client-name-badge">Cliente</span>
+      </div>
+
+      <h1>Olá! Antes de começar,<br>nos diga quem é você.</h1>
+      <p class="subtitle" style="margin-top:10px">Seu nome e e-mail ficam registrados junto com as respostas — nada além disso.</p>
+
+      <div style="margin-top:24px">
+        <div class="nps-field">
+          <label>Seu nome</label>
+          <input type="text" id="input-name" placeholder="Como prefere ser chamado?" autocomplete="name">
+          <div class="field-error" id="err-name">Por favor, informe seu nome.</div>
+        </div>
+        <div class="nps-field">
+          <label>Seu e-mail</label>
+          <input type="email" id="input-email" placeholder="seu@email.com" autocomplete="email">
+          <div class="field-error" id="err-email">Informe um e-mail válido.</div>
+        </div>
+      </div>
+
+      <div class="nps-actions" style="margin-top:20px">
+        <span style="font-size:11px;color:#bbb;max-width:160px;line-height:1.5;font-weight:300">Leva menos de 5 minutos.</span>
+        <button class="btn-nps-primary" id="btn-id-next">
+          Vamos lá
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TELA 2 — BOAS-VINDAS  (card escuro)
+  ═══════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-welcome">
+    <div class="nps-card-dark">
+      <div class="eyebrow">Para você, de nós</div>
+      <h2>Sua opinião</h2>
+      <span class="welcome-name" id="welcome-name-display">faz toda a diferença.</span>
+
+      <div class="welcome-divider"></div>
+
+      <p class="welcome-body" id="welcome-body">
+        Esta pesquisa foi criada para ouvirmos você de verdade — o que funcionou, o que pode melhorar e como foi a experiência de trabalhar com a gente.<br><br>
+        Serão <strong id="welcome-sections-count">algumas seções</strong>, cada uma com tema próprio. Não há resposta certa ou errada. O que importa é o que você viveu e sentiu.<br><br>
+        Obrigado por esse tempo. Ele importa muito pra nós.
+      </p>
+
+      <div class="welcome-meta">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Menos de 5 minutos · Suas respostas são confidenciais
+      </div>
+
+      <div class="nps-actions" style="margin-top:28px">
+        <button class="btn-nps-ghost-dark" id="btn-welcome-back">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Voltar
+        </button>
+        <button class="btn-nps-primary-dark" id="btn-welcome-start">
+          Iniciar
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TELA 3 — INTRO DA SEÇÃO  (card escuro)
+  ═══════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-section-intro">
+    <div class="nps-card-dark">
+      <div class="sec-eyebrow" id="sec-counter">01 / 01</div>
+      <h2 id="sec-intro-title">Título da Seção</h2>
+      <p class="sec-desc" id="sec-intro-desc"></p>
+
+      <div class="nps-actions" style="margin-top:32px">
+        <button class="btn-nps-ghost-dark" id="btn-sec-back">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Voltar
+        </button>
+        <button class="btn-nps-primary-dark" id="btn-sec-start">
+          Responder
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TELA 4 — PERGUNTAS  (card claro)
+  ═══════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-questions">
+    <div class="nps-card">
+      <div class="section-header">
+        <div class="sec-label" id="q-sec-label">Seção 01</div>
+        <h3 id="q-sec-title">Título</h3>
+      </div>
+      <div id="questions-container"></div>
+      <div class="nps-actions" id="q-actions">
+        <button class="btn-nps-ghost" id="btn-q-back">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Voltar
+        </button>
+        <button class="btn-nps-primary" id="btn-q-next">
+          Próxima seção
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TELA 5 — AGRADECIMENTO  (card escuro)
+  ═══════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-thanks">
+    <div class="nps-card-dark">
+      <div class="thanks-mark">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--verde-hover)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+
+      <h2>Muito obrigado,</h2>
+      <div class="thanks-client" id="thanks-name-display">pela sua participação.</div>
+
+      <div class="thanks-divider"></div>
+
+      <p class="thanks-text">
+        Estamos sempre motivados em manter uma relação próxima com nossos clientes e parceiros — entregar projetos de qualidade que gerem valor e transformem o olhar e a relação das pessoas com os espaços.<br><br>
+        Obrigado por confiar no nosso trabalho e por dedicar esse tempo a nós.
+      </p>
+
+      <div class="thanks-hashtag">#SomosEXP</div>
+
+      <div class="thanks-links">
+        <a class="thanks-link thanks-link-ig"
+           href="https://www.instagram.com/somos.exp"
+           target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+          </svg>
+          @somos.exp
+        </a>
+        <a class="thanks-link thanks-link-site"
+           href="https://www.somosexp.com.br"
+           target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          somosexp.com.br
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div id="nps-footer">EXP Arquitetura · Pesquisa de Satisfação</div>
+
+</div><!-- /nps-wrap -->
+
+<div id="nps-toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────
+const SUPA_URL = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ─────────────────────────────────────────────────────────
+// ESTADO
+// ─────────────────────────────────────────────────────────
+let state = {
+  token: null,
+  campaign: null,
+  survey: null,
+  sections: [],
+  respondent: { name:'', email:'' },
+  responseId: null,
+  currentSectionIdx: 0,
+  answers: {},
+  cacheKey: null,
+  goingBack: false,
+};
+
+// ─────────────────────────────────────────────────────────
+// UTILIDADES
+// ─────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function showScreen(id, back = false){
+  state.goingBack = back;
+  document.querySelectorAll('.screen').forEach(s =>{
+    s.classList.remove('active','going-back');
+  });
+  const el = $(id);
+  if(back) el.classList.add('going-back');
+  el.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function showLoader(v){ $('nps-loader').style.display = v ? 'flex' : 'none' }
+
+function showError(title, msg){
+  showLoader(false);
+  $('error-title').textContent = title;
+  $('error-msg').textContent   = msg;
+  $('nps-error').classList.add('show');
+}
+
+function toast(msg, duration=3000){
+  const t = $('nps-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), duration);
+}
+
+const validateEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+function firstName(name){ return name ? name.trim().split(' ')[0] : ''; }
+
+function updateProgress(){
+  const total = state.sections.length;
+  const done  = state.currentSectionIdx;
+  const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+  $('progress-fill').style.width  = pct + '%';
+  $('progress-pct').textContent   = pct + '%';
+  $('progress-label').textContent = `Seção ${done} de ${total}`;
+}
+
+function saveCache(){
+  if(!state.cacheKey) return;
+  localStorage.setItem(state.cacheKey, JSON.stringify({
+    respondent:  state.respondent,
+    responseId:  state.responseId,
+    answers:     state.answers,
+    currentSectionIdx: state.currentSectionIdx,
+  }));
+}
+
+function loadCache(){
+  try{ return JSON.parse(localStorage.getItem(state.cacheKey)) }
+  catch{ return null }
+}
+
+function clearCache(){
+  if(state.cacheKey) localStorage.removeItem(state.cacheKey);
+}
+
+// ─────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────
+async function init(){
+  const params = new URLSearchParams(location.search);
+  state.token  = params.get('t');
+
+  if(!state.token){
+    showError('Link incompleto', 'O link acessado não contém um identificador de pesquisa válido.');
+    return;
+  }
+
+  const { data: camp, error: campErr } = await sb
+    .from('nps_campaigns')
+    .select('*')
+    .eq('token', state.token)
+    .eq('status', 'active')
+    .single();
+
+  if(campErr || !camp){
+    showError('Pesquisa não encontrada', 'Este link é inválido ou a pesquisa já foi encerrada. Entre em contato com a EXP se acreditar que isso é um erro.');
+    return;
+  }
+
+  state.campaign = camp;
+  state.cacheKey = `nps_${state.token}`;
+
+  const { data: survey, error: sErr } = await sb
+    .from('nps_surveys')
+    .select('*')
+    .eq('id', camp.survey_id)
+    .single();
+
+  if(sErr || !survey){
+    showError('Pesquisa indisponível', 'Não foi possível carregar este formulário.');
+    return;
+  }
+  state.survey = survey;
+
+  const { data: sections, error: secErr } = await sb
+    .from('nps_sections')
+    .select('*, nps_questions(*)')
+    .eq('survey_id', survey.id)
+    .order('order', {ascending:true});
+
+  if(secErr){
+    showError('Erro ao carregar', 'Não foi possível carregar as seções da pesquisa.');
+    return;
+  }
+
+  state.sections = (sections || []).map(s => ({
+    ...s,
+    questions: (s.nps_questions || []).sort((a,b) => a.order - b.order),
+  }));
+
+  const cached = loadCache();
+  if(cached?.responseId){
+    state.respondent         = cached.respondent || state.respondent;
+    state.responseId         = cached.responseId;
+    state.answers            = cached.answers || {};
+    state.currentSectionIdx  = cached.currentSectionIdx || 0;
+  }
+
+  showLoader(false);
+  setupUI();
+  renderIdScreen();
+}
+
+// ─────────────────────────────────────────────────────────
+// SETUP ESTÁTICO
+// ─────────────────────────────────────────────────────────
+function setupUI(){
+  $('client-name-badge').textContent = state.campaign.cliente_nome;
+  if(state.survey.description) $('welcome-body').innerHTML = state.survey.description;
+  const n = state.sections.length;
+  $('welcome-sections-count').textContent = n === 1 ? 'uma seção' : `${n} seções`;
+}
+
+// ─────────────────────────────────────────────────────────
+// TELA 1 — IDENTIFICAÇÃO
+// ─────────────────────────────────────────────────────────
+function renderIdScreen(back = false){
+  showScreen('screen-id', back);
+  $('progress-bar-wrap').classList.remove('visible');
+  if(state.respondent.name)  $('input-name').value  = state.respondent.name;
+  if(state.respondent.email) $('input-email').value = state.respondent.email;
+}
+
+$('btn-id-next').addEventListener('click', async ()=>{
+  const name  = $('input-name').value.trim();
+  const email = $('input-email').value.trim();
+  let ok = true;
+
+  if(!name){
+    $('input-name').classList.add('error');
+    $('err-name').classList.add('show'); ok = false;
+  } else {
+    $('input-name').classList.remove('error');
+    $('err-name').classList.remove('show');
+  }
+  if(!validateEmail(email)){
+    $('input-email').classList.add('error');
+    $('err-email').classList.add('show'); ok = false;
+  } else {
+    $('input-email').classList.remove('error');
+    $('err-email').classList.remove('show');
+  }
+  if(!ok) return;
+
+  state.respondent = { name, email };
+
+  const btn = $('btn-id-next');
+  btn.disabled = true;
+  btn.textContent = 'Aguarde…';
+
+  if(!state.responseId){
+    const { data: existing } = await sb
+      .from('nps_responses')
+      .select('id, status')
+      .eq('campaign_id', state.campaign.id)
+      .eq('respondent_email', email)
+      .maybeSingle();
+
+    if(existing){
+      if(existing.status === 'completed'){
+        btn.disabled = false;
+        btn.innerHTML = 'Vamos lá <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+        toast('Você já respondeu esta pesquisa com este e-mail.');
+        return;
+      }
+      state.responseId = existing.id;
+    } else {
+      const { data: newResp, error } = await sb
+        .from('nps_responses')
+        .insert({
+          campaign_id:      state.campaign.id,
+          respondent_name:  name,
+          respondent_email: email,
+          status:           'in_progress',
+        })
+        .select('id').single();
+
+      if(error){
+        btn.disabled = false;
+        btn.innerHTML = 'Vamos lá <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+        toast('Erro ao registrar. Tente novamente.');
+        return;
+      }
+      state.responseId = newResp.id;
+    }
+    saveCache();
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Vamos lá <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+  goToWelcome();
+});
+
+// ─────────────────────────────────────────────────────────
+// TELA 2 — BOAS-VINDAS
+// ─────────────────────────────────────────────────────────
+function goToWelcome(back = false){
+  // Personaliza com o primeiro nome
+  const fn = firstName(state.respondent.name);
+  $('welcome-name-display').textContent = fn ? `faz toda a diferença, ${fn}.` : 'faz toda a diferença.';
+  showScreen('screen-welcome', back);
+  $('progress-bar-wrap').classList.remove('visible');
+}
+
+$('btn-welcome-back').addEventListener('click', ()=> renderIdScreen(true));
+$('btn-welcome-start').addEventListener('click', ()=>{
+  state.currentSectionIdx = 0;
+  goToSectionIntro(0);
+});
+
+// ─────────────────────────────────────────────────────────
+// TELA 3 — INTRO DA SEÇÃO
+// ─────────────────────────────────────────────────────────
+function goToSectionIntro(idx, back = false){
+  state.currentSectionIdx = idx;
+  updateProgress();
+  $('progress-bar-wrap').classList.add('visible');
+
+  const sec   = state.sections[idx];
+  const total = state.sections.length;
+  const num   = String(idx + 1).padStart(2,'0');
+  const tot   = String(total).padStart(2,'0');
+
+  $('sec-counter').textContent    = `${num} / ${tot}`;
+  $('sec-intro-title').textContent = sec.title;
+  $('sec-intro-desc').textContent  = sec.description || '';
+
+  showScreen('screen-section-intro', back);
+}
+
+$('btn-sec-back').addEventListener('click', ()=>{
+  if(state.currentSectionIdx === 0) goToWelcome(true);
+  else goToQuestions(state.currentSectionIdx - 1, true);
+});
+$('btn-sec-start').addEventListener('click', ()=> goToQuestions(state.currentSectionIdx));
+
+// ─────────────────────────────────────────────────────────
+// TELA 4 — PERGUNTAS
+// ─────────────────────────────────────────────────────────
+function goToQuestions(idx, back = false){
+  state.currentSectionIdx = idx;
+  const sec   = state.sections[idx];
+  const total = state.sections.length;
+  const num   = String(idx + 1).padStart(2,'0');
+
+  $('q-sec-label').textContent = `Seção ${num} / ${String(total).padStart(2,'0')}`;
+  $('q-sec-title').textContent = sec.title;
+
+  renderQuestions(sec.questions);
+
+  const isLast = idx === total - 1;
+  $('btn-q-next').innerHTML = isLast
+    ? `Finalizar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+    : `Próxima seção <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+
+  showScreen('screen-questions', back);
+  updateProgress();
+}
+
+$('btn-q-back').addEventListener('click', ()=> goToSectionIntro(state.currentSectionIdx, true));
+
+$('btn-q-next').addEventListener('click', async ()=>{
+  const sec = state.sections[state.currentSectionIdx];
+  let missing = false;
+  sec.questions.forEach(q =>{
+    if(q.required && state.answers[q.id] === undefined){
+      missing = true;
+      const block = document.querySelector(`[data-qid="${q.id}"]`);
+      if(block){
+        block.style.outline = '2px solid var(--terracota)';
+        block.style.outlineOffset = '4px';
+        block.style.borderRadius = '6px';
+      }
+    }
+  });
+  if(missing){ toast('Responda as perguntas obrigatórias antes de continuar.'); return; }
+
+  const btn = $('btn-q-next');
+  btn.disabled = true;
+  await saveAnswers(sec.questions);
+  saveCache();
+  btn.disabled = false;
+
+  const isLast = state.currentSectionIdx === state.sections.length - 1;
+  if(isLast) await finishSurvey();
+  else goToSectionIntro(state.currentSectionIdx + 1);
+});
+
+// ─────────────────────────────────────────────────────────
+// RENDERIZA PERGUNTAS
+// ─────────────────────────────────────────────────────────
+function renderQuestions(questions){
+  const container = $('questions-container');
+  container.innerHTML = '';
+  questions.forEach(q =>{
+    const block = document.createElement('div');
+    block.className = 'question-block';
+    block.setAttribute('data-qid', q.id);
+
+    const qtxt = document.createElement('div');
+    qtxt.className = 'question-text';
+    qtxt.innerHTML = q.question_text + (q.required ? '<span class="question-required"> *</span>' : '');
+    block.appendChild(qtxt);
+    block.appendChild(buildQuestionField(q));
+    block.addEventListener('click', ()=>{
+      block.style.outline = '';
+      block.style.outlineOffset = '';
+    });
+    container.appendChild(block);
+  });
+}
+
+function buildQuestionField(q){
+  const saved = state.answers[q.id];
+
+  switch(q.question_type){
+
+    case 'rating': {
+      const wrap   = document.createElement('div');
+      const grid   = document.createElement('div');
+      grid.className = 'rating-grid';
+
+      for(let i = 0; i <= 10; i++){
+        const range = i <= 6 ? 'low' : i <= 8 ? 'mid' : 'high';
+        const selClass = i <= 6 ? 'sel-low' : i <= 8 ? 'sel-mid' : 'sel-high';
+        const btn = document.createElement('button');
+        btn.className = 'rating-btn' + (saved === i ? ' ' + selClass : '');
+        btn.textContent = i;
+        btn.dataset.range = range;
+        btn.addEventListener('click', ()=>{
+          grid.querySelectorAll('.rating-btn').forEach(b =>
+            b.classList.remove('sel-low','sel-mid','sel-high'));
+          btn.classList.add(selClass);
+          state.answers[q.id] = i;
+        });
+        grid.appendChild(btn);
+      }
+      const labels = document.createElement('div');
+      labels.className = 'rating-labels';
+      labels.innerHTML = '<span>Muito insatisfeito</span><span>Muito satisfeito</span>';
+      wrap.appendChild(grid);
+      wrap.appendChild(labels);
+      return wrap;
+    }
+
+    case 'yes_no': {
+      const row = document.createElement('div');
+      row.className = 'yn-row';
+      ['Sim','Não'].forEach(label =>{
+        const isYes = label === 'Sim';
+        const btn   = document.createElement('button');
+        btn.className = 'yn-btn';
+        if(saved === isYes) btn.classList.add(isYes ? 'selected-yes' : 'selected-no');
+        btn.innerHTML = (isYes
+          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+          : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+        ) + label;
+        btn.addEventListener('click', ()=>{
+          row.querySelectorAll('.yn-btn').forEach(b =>
+            b.classList.remove('selected-yes','selected-no'));
+          btn.classList.add(isYes ? 'selected-yes' : 'selected-no');
+          state.answers[q.id] = isYes;
+        });
+        row.appendChild(btn);
+      });
+      return row;
+    }
+
+    case 'scale': {
+      const opts = q.options || {};
+      const wrap = document.createElement('div');
+      const row  = document.createElement('div');
+      row.className = 'scale-row';
+      for(let i = 1; i <= 5; i++){
+        const btn = document.createElement('button');
+        btn.className = 'scale-btn' + (saved === i ? ' selected' : '');
+        btn.textContent = i;
+        btn.addEventListener('click', ()=>{
+          row.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          state.answers[q.id] = i;
+        });
+        row.appendChild(btn);
+      }
+      const labels = document.createElement('div');
+      labels.className = 'scale-labels';
+      labels.innerHTML = `<span>${opts.min_label||'Discordo totalmente'}</span><span>${opts.max_label||'Concordo totalmente'}</span>`;
+      wrap.appendChild(row);
+      wrap.appendChild(labels);
+      return wrap;
+    }
+
+    case 'short_text': {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'nps-input-text';
+      inp.placeholder = 'Sua resposta…';
+      if(saved) inp.value = saved;
+      inp.addEventListener('input', ()=>{ state.answers[q.id] = inp.value || undefined; });
+      return inp;
+    }
+
+    case 'long_text': {
+      const ta = document.createElement('textarea');
+      ta.className = 'nps-input-text';
+      ta.placeholder = 'Sua resposta…';
+      ta.rows = 4;
+      if(saved) ta.value = saved;
+      ta.addEventListener('input', ()=>{ state.answers[q.id] = ta.value || undefined; });
+      return ta;
+    }
+
+    case 'collaborator_select': {
+      const opts  = q.options || {};
+      const names = opts.names || [];
+      const grid  = document.createElement('div');
+      grid.className = 'collab-grid';
+      const selectedArr = saved || [];
+      names.forEach(name =>{
+        const chip = document.createElement('div');
+        chip.className = 'collab-chip' + (selectedArr.includes(name) ? ' selected' : '');
+        const dot = document.createElement('span');
+        dot.className = 'chip-dot';
+        chip.appendChild(dot);
+        chip.appendChild(document.createTextNode(name));
+        chip.addEventListener('click', ()=>{
+          chip.classList.toggle('selected');
+          const arr = state.answers[q.id] || [];
+          if(chip.classList.contains('selected')){
+            if(!arr.includes(name)) arr.push(name);
+          } else {
+            const idx = arr.indexOf(name);
+            if(idx > -1) arr.splice(idx,1);
+          }
+          state.answers[q.id] = arr.length ? arr : undefined;
+        });
+        grid.appendChild(chip);
+      });
+      return grid;
+    }
+
+    default: {
+      const p = document.createElement('p');
+      p.style.cssText = 'font-size:12px;color:#bbb';
+      p.textContent = `Tipo de pergunta desconhecido: ${q.question_type}`;
+      return p;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// SALVAR RESPOSTAS
+// ─────────────────────────────────────────────────────────
+async function saveAnswers(questions){
+  const rows = [];
+  questions.forEach(q =>{
+    const val = state.answers[q.id];
+    if(val === undefined) return;
+    const row = { response_id: state.responseId, question_id: q.id };
+    switch(q.question_type){
+      case 'rating': case 'scale':       row.answer_number  = val; break;
+      case 'yes_no':                     row.answer_boolean = val; break;
+      case 'short_text': case 'long_text': row.answer_text  = val; break;
+      case 'collaborator_select':        row.answer_json    = val; break;
+    }
+    rows.push(row);
+  });
+  if(!rows.length) return;
+  await sb.from('nps_answers').upsert(rows, { onConflict: 'response_id,question_id' });
+}
+
+// ─────────────────────────────────────────────────────────
+// FINALIZAR
+// ─────────────────────────────────────────────────────────
+async function finishSurvey(){
+  await sb.from('nps_responses').update({
+    status:       'completed',
+    completed_at: new Date().toISOString(),
+  }).eq('id', state.responseId);
+
+  clearCache();
+
+  // Personaliza tela de agradecimento com o nome
+  const fn = firstName(state.respondent.name);
+  $('thanks-name-display').textContent = fn
+    ? `obrigado, ${fn}.`
+    : 'pela sua participação.';
+
+  showScreen('screen-thanks');
+  $('progress-bar-wrap').classList.remove('visible');
+}
+
+// ─────────────────────────────────────────────────────────
+// START
+// ─────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

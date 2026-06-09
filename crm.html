@@ -381,7 +381,7 @@ textarea{resize:vertical;min-height:60px}
 [data-theme="dark"] .pessoa-row{border-color:var(--cinza2)}
 
 /* Alcance map */
-[data-theme="dark"] #alc-svg{}
+[data-theme="dark"] #alc-svg #alc-br{fill:#2a2926;stroke:#3d3b37}
 [data-theme="dark"] .alc-city-card{background:var(--branco);border-color:var(--cinza)}
 [data-theme="dark"] .alc-city-card:hover{border-color:var(--azul)}
 [data-theme="dark"] .alc-city-opp{border-color:var(--cinza2)}
@@ -393,20 +393,20 @@ textarea{resize:vertical;min-height:60px}
 [data-theme="dark"] .toast{background:var(--grafite)}
 
 /* FOLLOW-UP TASK LIST */
-.fu-item{display:flex;align-items:flex-start;gap:10px;padding:7px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
+.fu-item{display:flex;align-items:center;gap:9px;padding:5px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
 .fu-item:last-child{border-bottom:none}
 .fu-item:hover{background:var(--off)}
 .fu-item.fu-past{background:var(--tc-bg)}
 .fu-item.fu-soon{background:var(--am-bg)}
-.fu-date{min-width:46px;display:flex;flex-direction:column;align-items:center;padding:3px 6px;border-radius:5px;background:var(--cinza2);font-size:8px;font-family:var(--font-mono);font-weight:700;color:#888;text-align:center;flex-shrink:0;line-height:1.2}
+.fu-date{min-width:42px;display:flex;flex-direction:column;align-items:center;padding:2px 5px;border-radius:5px;background:var(--cinza2);font-size:8px;font-family:var(--font-mono);font-weight:700;color:#888;text-align:center;flex-shrink:0;line-height:1.2}
 .fu-date.fu-past{background:var(--tc-bg);color:var(--terracota)}
 .fu-date.fu-soon{background:var(--am-bg);color:var(--ouro)}
-.fu-date-day{font-size:15px;font-weight:700;display:block}
+.fu-date-day{font-size:13px;font-weight:700;display:block}
 .fu-body{flex:1;min-width:0}
-.fu-client{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fu-proj{font-size:9px;color:#999;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fu-obs{font-size:10px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fu-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.fu-client-row{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.fu-proj-inline{font-weight:400;color:#999;font-size:10px;margin-left:4px}
+.fu-obs{font-size:9px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.fu-right{display:flex;flex-direction:row;align-items:center;gap:3px;flex-shrink:0}
 
 /* VALOR DE PROPOSTAS (D2) */
 .vp-sec-title{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#999;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--cinza2)}
@@ -508,7 +508,7 @@ textarea{resize:vertical;min-height:60px}
     <div style="display:flex;flex-direction:column;gap:10px">
 
       <!-- Stats primários: 2 grandes -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch">
         <div class="stat verde">
           <div class="stat-lbl">Faturamento no ano</div>
           <div class="stat-val" id="s-fat">—</div>
@@ -610,8 +610,8 @@ textarea{resize:vertical;min-height:60px}
         <span id="dash-fech-count" style="font-size:9px;color:#aaa"></span>
       </div>
       <div id="dash-fechamentos-preview"></div>
-      <div style="padding:6px 12px 10px">
-        <button class="btn xs ghost" style="font-size:9px;width:100%" onclick="toggleDash45d('fech')">Ver mais — últimos 45 dias ↓</button>
+      <div style="padding:4px 12px 8px">
+        <button id="dash-btn-ver-fech" class="btn xs ghost" style="font-size:9px;width:100%;display:none" onclick="toggleDash45d('fech')">Ver mais ↓</button>
       </div>
     </div>
     <div class="card cinza">
@@ -620,26 +620,9 @@ textarea{resize:vertical;min-height:60px}
         <span id="dash-neg-count" style="font-size:9px;color:#aaa"></span>
       </div>
       <div id="dash-negativas-preview"></div>
-      <div style="padding:6px 12px 10px">
-        <button class="btn xs ghost" style="font-size:9px;width:100%" onclick="toggleDash45d('neg')">Ver mais — últimos 45 dias ↓</button>
+      <div style="padding:4px 12px 8px">
+        <button id="dash-btn-ver-neg" class="btn xs ghost" style="font-size:9px;width:100%;display:none" onclick="toggleDash45d('neg')">Ver mais ↓</button>
       </div>
-    </div>
-  </div>
-
-  <!-- EXPANSÃO 45 DIAS (oculta por padrão) -->
-  <div id="dash-45d" style="display:none;margin-top:10px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="card cinza">
-        <div class="card-hdr"><div class="card-title">Fechamentos — últimos 45 dias</div></div>
-        <div id="dash-fechamentos"></div>
-      </div>
-      <div class="card cinza">
-        <div class="card-hdr"><div class="card-title">Negativas — últimos 45 dias</div></div>
-        <div id="dash-negativas"></div>
-      </div>
-    </div>
-    <div style="text-align:center;padding:10px 0 2px">
-      <button class="btn xs ghost" style="font-size:9px" onclick="toggleDash45d()">Recolher ↑</button>
     </div>
   </div>
 
@@ -724,9 +707,14 @@ textarea{resize:vertical;min-height:60px}
       <option value="Gabriela">Gabriela</option>
     </select>
     <input id="of-busca" type="text" placeholder="Buscar cliente, nº, cidade..." oninput="renderOrc()" style="font-size:10px;padding:4px 7px;min-width:140px;flex:1;max-width:240px;border:1px solid var(--cinza)">
+    <div style="margin-left:auto;flex-shrink:0;font-size:10px;color:#888;white-space:nowrap;padding:0 4px">
+      <span id="orc-soma" style="font-family:var(--font-mono);font-weight:700;color:var(--grafite)">—</span>
+      &nbsp;·&nbsp;
+      <span id="orc-cnt" style="font-weight:600">—</span> propostas
+    </div>
   </div>
   <div class="card cinza">
-    <div class="soma-bar">Total filtrado: <span id="orc-soma" style="font-family:var(--font-mono)">—</span> &nbsp;·&nbsp; <span id="orc-cnt">—</span> propostas &nbsp;<span style="color:#bbb;font-weight:400">· ↕ cabeçalho ordena</span></div>
+    <div class="soma-bar" style="display:none"></div>
     <div style="overflow-x:auto">
     <table id="orc-table">
       <thead><tr>
@@ -845,10 +833,43 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ NPS ═════════════════════════════════════════════════════ -->
 <div class="page" id="tab-nps">
-  <div class="card cinza">
-    <div class="card-hdr"><div class="card-title">NPS</div></div>
-    <div class="card-body" id="nps-body"><div class="loading">Carregando...</div></div>
+
+  <!-- TOPBAR NPS -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:1px">Pesquisas NPS</div>
+      <div style="font-size:10px;color:#999">Gerencie campanhas de satisfação por cliente e projeto</div>
+    </div>
+    <button class="btn verde sm" onclick="abrirNovaCampanhaNPS()">+ Nova campanha</button>
   </div>
+
+  <!-- STATS -->
+  <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px">
+    <div class="stat az"    style="margin-bottom:0"><div class="stat-lbl">Campanhas ativas</div><div class="stat-val" id="nps-st-ativas">—</div></div>
+    <div class="stat verde" style="margin-bottom:0"><div class="stat-lbl">Concluídas</div><div class="stat-val" id="nps-st-concluidas">—</div></div>
+    <div class="stat am"    style="margin-bottom:0"><div class="stat-lbl">Em andamento</div><div class="stat-val" id="nps-st-andamento">—</div></div>
+    <div class="stat cinza" style="margin-bottom:0"><div class="stat-lbl">Pendentes</div><div class="stat-val" id="nps-st-pendentes">—</div></div>
+  </div>
+
+  <!-- TABELA DE CAMPANHAS -->
+  <div class="card cinza">
+    <div class="card-hdr">
+      <div class="card-title">Campanhas</div>
+      <div style="margin-left:auto">
+        <select id="nps-filtro-status" onchange="renderNPS()" style="font-size:10px;padding:3px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:4px;font-family:var(--font-ui)">
+          <option value="todos">Todas</option>
+          <option value="active">Ativas</option>
+          <option value="closed">Encerradas</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div id="nps-campanhas-wrap">
+        <div style="padding:20px;text-align:center;font-size:11px;color:#bbb">Carregando…</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══ ALCANCE ════════════════════════════════════════════════ -->
@@ -909,7 +930,7 @@ textarea{resize:vertical;min-height:60px}
 <div class="page" id="tab-relatorios">
 
   <!-- FILTROS -->
-  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--cinza2)">
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--cinza2)">
     <select id="rf-tipo" onchange="onRfTipoChange()" style="font-size:10px;font-weight:600;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
       <option value="anual">Anual</option>
       <option value="semestral">Semestral</option>
@@ -1401,6 +1422,95 @@ textarea{resize:vertical;min-height:60px}
     <div class="modal-ft">
       <button class="btn ghost" onclick="closeM('modal-fechar-opp')">Cancelar</button>
       <button class="btn verde" id="fech-confirm-btn" onclick="confirmarFechamento()">✓ Confirmar fechamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL: NOVA CAMPANHA NPS ════════════════════════ -->
+<div class="modal-bg" id="modal-nps-campanha">
+  <div class="modal" style="max-width:500px;width:96%">
+    <div class="modal-hd">
+      <div class="modal-title">Nova Campanha NPS</div>
+      <span class="modal-x" onclick="closeM('modal-nps-campanha')">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="fg fg2" style="margin-bottom:10px">
+        <div class="fgroup" style="grid-column:1/-1">
+          <label>Cliente</label>
+          <div style="position:relative">
+            <input type="text" id="nps-c-cliente-text" placeholder="Digite o nome do cliente…" autocomplete="off" oninput="npsClienteSearch()">
+            <div id="nps-c-cliente-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input);max-height:180px;overflow-y:auto;z-index:200;box-shadow:var(--shadow-modal)"></div>
+          </div>
+          <input type="hidden" id="nps-c-cliente-id">
+          <div id="nps-c-cliente-sel" style="display:none;margin-top:4px;font-size:11px;font-weight:600;color:var(--verde);padding:5px 8px;background:var(--verde-bg);border-radius:4px"></div>
+        </div>
+      </div>
+      <div class="fg fg2" style="margin-bottom:10px">
+        <div class="fgroup">
+          <label>Projeto (opcional)</label>
+          <input type="text" id="nps-c-projeto" placeholder="Nome do projeto…">
+        </div>
+        <div class="fgroup">
+          <label>Survey</label>
+          <select id="nps-c-survey">
+            <option value="">Carregando surveys…</option>
+          </select>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#aaa;padding:6px 8px;background:var(--off);border-radius:4px">
+        Após criar, um link único será gerado para compartilhar com o cliente.
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn ghost" onclick="closeM('modal-nps-campanha')">Cancelar</button>
+      <button class="btn verde" onclick="criarCampanhaNPS()">Criar campanha</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL: VER CAMPANHA NPS ════════════════════════ -->
+<div class="modal-bg" id="modal-nps-ver">
+  <div class="modal" style="max-width:640px;width:96%">
+    <div class="modal-hd">
+      <div class="modal-title" id="nps-ver-title">Campanha NPS</div>
+      <span class="modal-x" onclick="closeM('modal-nps-ver')">×</span>
+    </div>
+    <div class="modal-body">
+
+      <!-- Info + Link -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+        <div id="nps-ver-meta" style="font-size:11px;color:#777;line-height:1.7"></div>
+        <div id="nps-ver-status-badge"></div>
+      </div>
+
+      <!-- Link de compartilhamento -->
+      <div style="display:flex;gap:6px;margin-bottom:16px;align-items:center">
+        <input type="text" id="nps-ver-link" readonly style="flex:1;font-size:11px;font-family:var(--font-mono);background:var(--off);color:#555;cursor:text">
+        <button class="btn sm" onclick="copiarLinkNPS()" id="btn-copiar-link-nps">Copiar link</button>
+      </div>
+
+      <!-- Stats mini -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px" id="nps-ver-stats"></div>
+
+      <!-- Tabela de respondentes -->
+      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Respondentes</div>
+      <div style="max-height:260px;overflow-y:auto;border:1px solid var(--cinza2);border-radius:var(--radius-card)">
+        <table id="nps-ver-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Status</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody id="nps-ver-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn ghost" onclick="closeM('modal-nps-ver')">Fechar</button>
+      <button class="btn tc sm" id="btn-nps-encerrar" onclick="encerrarCampanhaNPS()">Encerrar campanha</button>
     </div>
   </div>
 </div>
@@ -2145,6 +2255,7 @@ function isExpiredOp(op){
 
 // ═══ DASHBOARD ══════════════════════════════════════
 let chartMensal=null, chartTipo=null, dashTipoMode='nucleo';
+let _dashRecFech=[], _dashRecNeg=[], _dashFechExpanded=false, _dashNegExpanded=false;
 function setDashTipoMode(m){dashTipoMode=m;renderDash();}
 
 let dashFuMode='todos';
@@ -2185,11 +2296,10 @@ function renderDashFu(){
       <div class="fu-date ${dateCls}">
         <span class="fu-date-day">${parts[2]}</span>
         <span>${MESES_ABR[parseInt(parts[1])-1]}</span>
-        ${past?'<span style="font-size:8px">⚠</span>':''}
+        ${past?'<span style="font-size:7px">⚠</span>':''}
       </div>
       <div class="fu-body">
-        <div class="fu-client">${escHtml(op._cliente?.nome||'—')}</div>
-        ${op.projeto?`<div class="fu-proj">${escHtml(op.projeto)}</div>`:''}
+        <div class="fu-client-row">${escHtml(op._cliente?.nome||'—')}${op.projeto?`<span class="fu-proj-inline">· ${escHtml(op.projeto)}</span>`:''}</div>
         ${obs?`<div class="fu-obs">${escHtml(obs)}</div>`:''}
       </div>
       <div class="fu-right">
@@ -2391,11 +2501,13 @@ function renderDash(){
     borderWidth:0
   }]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.parsed)} (${Math.round(ctx.parsed/total_tipo*100)}%)`}}}}});
   document.getElementById('chart-tipo-legenda').innerHTML=tLabels.length?tLabels.map((l,i)=>`
-    <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
-      <div style="width:9px;height:9px;border-radius:3px;background:${tCores[i]};flex-shrink:0"></div>
-      <div style="font-size:10px;flex:1;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(l)}">${escHtml(l)}</div>
-      <div style="font-size:10px;font-family:var(--font-mono);color:#444;font-weight:600">${fmt(tipoMap[l])}</div>
-      <div style="font-size:10px;font-family:var(--font-mono);color:#888;min-width:30px;text-align:right">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+      <div style="width:8px;height:8px;border-radius:2px;background:${tCores[i]};flex-shrink:0"></div>
+      <div style="font-size:10px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(l)}">${escHtml(l)}</div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:10px;font-family:var(--font-mono);font-weight:700;color:var(--grafite)">${fmt(tipoMap[l])}</div>
+        <div style="font-size:9px;font-family:var(--font-mono);color:#aaa">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
+      </div>
     </div>`).join(''):'<div style="font-size:10px;color:#aaa;padding:4px 0">Sem fechamentos em '+anoStr+'</div>';
   const elTipoTitle=document.getElementById('chart-tipo-title');
   if(elTipoTitle)elTipoTitle.textContent=`Por tipo · ${anoStr}`;
@@ -2435,6 +2547,9 @@ function renderDash(){
   const thFech=`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead>`;
   const thNeg =`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Proposto</th></tr></thead>`;
 
+  // Guarda globalmente para uso no expand
+  _dashRecFech=recFech; _dashRecNeg=recNeg;
+  _dashFechExpanded=false; _dashNegExpanded=false;
   // preview: 5 mais recentes
   const prevFech=recFech.slice(0,5);
   const prevNeg =recNeg.slice(0,5);
@@ -2446,58 +2561,302 @@ function renderDash(){
     :`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
   const elFC=document.getElementById('dash-fech-count');
   const elNC=document.getElementById('dash-neg-count');
-  if(elFC)elFC.textContent=recFech.length>5?`+${recFech.length-5} nos últimos 45 dias`:'';
-  if(elNC)elNC.textContent=recNeg.length>5?`+${recNeg.length-5} nos últimos 45 dias`:'';
-
-  // tabela completa 45 dias (renderizada para o painel expandido)
-  document.getElementById('dash-fechamentos').innerHTML=recFech.length
-    ?`<table>${thFech}<tbody>${recFech.map(rowFech).join('')}</tbody></table>`
-    :`<div class="empty-note">Nenhum fechamento nos últimos 45 dias.</div>`;
-  document.getElementById('dash-negativas').innerHTML=recNeg.length
-    ?`<table>${thNeg}<tbody>${recNeg.map(rowNeg).join('')}</tbody></table>`
-    :`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
+  if(elFC)elFC.textContent=recFech.length>5?`${recFech.length} nos últimos 45d`:'';
+  if(elNC)elNC.textContent=recNeg.length>5?`${recNeg.length} nos últimos 45d`:'';
+  // botões de expand
+  const bF=document.getElementById('dash-btn-ver-fech');
+  const bN=document.getElementById('dash-btn-ver-neg');
+  if(bF)bF.style.display=recFech.length>5?'block':'none';
+  if(bN)bN.style.display=recNeg.length>5?'block':'none';
   renderDashFu();
 }
 function toggleDash45d(foco){
-  const el=document.getElementById('dash-45d');
-  const aberto=el.style.display!=='none';
-  if(aberto&&!foco){el.style.display='none';return;}
-  el.style.display='block';
-  setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50);
+  const thFech=`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead>`;
+  const thNeg =`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Proposto</th></tr></thead>`;
+  const _rF=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td><td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o))}</td></tr>`;
+  const _rN=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(o.updated_at)}</td><td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorProposto(o))}</td></tr>`;
+  if(foco==='fech'){
+    _dashFechExpanded=!_dashFechExpanded;
+    const items=_dashFechExpanded?_dashRecFech:_dashRecFech.slice(0,5);
+    document.getElementById('dash-fechamentos-preview').innerHTML=items.length
+      ?`<table>${thFech}<tbody>${items.map(_rF).join('')}</tbody></table>`
+      :`<div class="empty-note">Nenhum fechamento nos últimos 45 dias.</div>`;
+    const btn=document.getElementById('dash-btn-ver-fech');
+    if(btn)btn.textContent=_dashFechExpanded?'Ver menos ↑':`Ver mais — todos os ${_dashRecFech.length} ↓`;
+  } else if(foco==='neg'){
+    _dashNegExpanded=!_dashNegExpanded;
+    const items=_dashNegExpanded?_dashRecNeg:_dashRecNeg.slice(0,5);
+    document.getElementById('dash-negativas-preview').innerHTML=items.length
+      ?`<table>${thNeg}<tbody>${items.map(_rN).join('')}</tbody></table>`
+      :`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
+    const btn=document.getElementById('dash-btn-ver-neg');
+    if(btn)btn.textContent=_dashNegExpanded?'Ver menos ↑':`Ver mais — todos os ${_dashRecNeg.length} ↓`;
+  }
 }
 
-function renderDashPesquisaSatisfacao(){
-  const el=document.getElementById('nps-body');
-  if(!el)return;
-  if(!pesquisaSatDisponivel){
-    el.innerHTML=`<div class="empty-note">Pesquisa de satisfacao ainda indisponivel. Rode o SQL do DEV-19 para habilitar a base.</div>`;
+// ═══ NPS — SISTEMA COMPLETO ═══════════════════════════════════
+
+let npsCampanhas     = [];
+let npsSurveys       = [];
+let npsCurrentCampId = null;
+
+// ── Render principal ────────────────────────────────────────
+async function renderDashPesquisaSatisfacao(){
+  await loadNPSData();
+  renderNPS();
+}
+
+async function loadNPSData(){
+  const { data: camps } = await sb
+    .from('nps_campaigns')
+    .select('*, nps_responses(*)')
+    .order('created_at', {ascending:false});
+  npsCampanhas = camps || [];
+
+  const { data: surveys } = await sb
+    .from('nps_surveys')
+    .select('id, title')
+    .eq('active', true);
+  npsSurveys = surveys || [];
+}
+
+function renderNPS(){
+  const filtro = document.getElementById('nps-filtro-status')?.value || 'todos';
+  let lista = npsCampanhas;
+  if(filtro === 'active')  lista = lista.filter(c => c.status === 'active');
+  if(filtro === 'closed')  lista = lista.filter(c => c.status === 'closed');
+
+  let totalAtivas=0, totalConcluidas=0, totalAndamento=0, totalPendentes=0;
+  npsCampanhas.forEach(c =>{
+    if(c.status === 'active') totalAtivas++;
+    (c.nps_responses||[]).forEach(r =>{
+      if(r.status === 'completed')        totalConcluidas++;
+      else if(r.status === 'in_progress') totalAndamento++;
+      else                                totalPendentes++;
+    });
+  });
+
+  const el = id => document.getElementById(id);
+  if(el('nps-st-ativas'))     el('nps-st-ativas').textContent     = totalAtivas;
+  if(el('nps-st-concluidas')) el('nps-st-concluidas').textContent = totalConcluidas;
+  if(el('nps-st-andamento'))  el('nps-st-andamento').textContent  = totalAndamento;
+  if(el('nps-st-pendentes'))  el('nps-st-pendentes').textContent  = totalPendentes;
+
+  const wrap = el('nps-campanhas-wrap');
+  if(!wrap) return;
+
+  if(!lista.length){
+    wrap.innerHTML = '<div style="padding:24px;text-align:center;font-size:11px;color:#bbb">Nenhuma campanha encontrada.</div>';
     return;
   }
-  const st=getPesquisaSatStats();
-  const notaMedia = st.notaMedia==null ? '—' : st.notaMedia.toFixed(1).replace('.',',');
-  const ultimas = st.ultimas.length ? `
-    <div style="display:flex;flex-direction:column;gap:6px">
-      ${st.ultimas.map(r=>`
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r._op?._cliente?.nome||r.cliente_nome||'—')}</div>
-            <div style="font-size:10px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r._op?.projeto||'Pesquisa respondida')}</div>
-          </div>
-          <div style="font-family:var(--font-mono);font-weight:700">${Number(r.nota||0)}/5</div>
-        </div>
-      `).join('')}
-    </div>` : `<div class="empty-note">Nenhuma resposta registrada ainda.</div>`;
-  el.innerHTML=`
-    <div class="g4" style="margin-bottom:10px">
-      <div class="stat cinza" style="margin-bottom:0"><div class="stat-lbl">Elegiveis</div><div class="stat-val" style="font-size:18px">${st.elegiveis}</div><div class="stat-sub">oportunidades / projetos finalizados</div></div>
-      <div class="stat verde" style="margin-bottom:0"><div class="stat-lbl">Respondidas</div><div class="stat-val" style="font-size:18px">${st.respondidas}</div><div class="stat-sub">pesquisas com retorno</div></div>
-      <div class="stat am" style="margin-bottom:0"><div class="stat-lbl">Pendentes</div><div class="stat-val" style="font-size:18px">${st.pendentes}</div><div class="stat-sub">ainda sem resposta fechada</div></div>
-      <div class="stat az" style="margin-bottom:0"><div class="stat-lbl">Nota media</div><div class="stat-val" style="font-size:18px">${notaMedia}</div><div class="stat-sub">base aberta, sem retroalimentacao</div></div>
-    </div>
-    <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Ultimas respostas</div>
-    ${ultimas}
-  `;
+
+  const STATUS_LABEL = {
+    active:  '<span class="badge b-vd">Ativa</span>',
+    closed:  '<span class="badge b-gr">Encerrada</span>',
+  };
+
+  const rows = lista.map(c =>{
+    const resps = c.nps_responses || [];
+    const nConc = resps.filter(r=>r.status==='completed').length;
+    const total = resps.length;
+    const pillResps = total === 0
+      ? '<span style="color:#bbb;font-size:10px">sem respostas</span>'
+      : `<span style="font-size:10px"><span style="color:var(--verde);font-weight:600">${nConc}</span> <span style="color:#aaa">/ ${total}</span></span>`;
+    const dataFmt = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
+    return `<tr class="click" onclick="abrirVerCampanhaNPS('${c.id}')">
+      <td style="font-weight:600;font-size:11px">${escHtml(c.cliente_nome)}</td>
+      <td style="font-size:11px;color:#666">${escHtml(c.projeto_nome||'—')}</td>
+      <td>${STATUS_LABEL[c.status]||c.status}</td>
+      <td>${pillResps}</td>
+      <td class="dtag">${dataFmt}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn xs ghost" onclick="copiarLinkNPSRapido('${c.token}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          link
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>Cliente</th><th>Projeto</th><th>Status</th>
+      <th>Respostas</th><th>Criada em</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
+
+// ── Nova campanha ────────────────────────────────────────────
+async function abrirNovaCampanhaNPS(){
+  const sel = document.getElementById('nps-c-survey');
+  if(!npsSurveys.length) await loadNPSData();
+  sel.innerHTML = npsSurveys.length
+    ? npsSurveys.map(s=>`<option value="${s.id}">${escHtml(s.title)}</option>`).join('')
+    : '<option value="">Nenhum survey cadastrado</option>';
+
+  document.getElementById('nps-c-cliente-text').value = '';
+  document.getElementById('nps-c-cliente-id').value   = '';
+  document.getElementById('nps-c-cliente-sel').style.display = 'none';
+  document.getElementById('nps-c-cliente-dropdown').style.display = 'none';
+  document.getElementById('nps-c-projeto').value = '';
+  openM('modal-nps-campanha');
+}
+
+function npsClienteSearch(){
+  const q  = document.getElementById('nps-c-cliente-text').value.trim().toLowerCase();
+  const dd = document.getElementById('nps-c-cliente-dropdown');
+  document.getElementById('nps-c-cliente-id').value = '';
+  document.getElementById('nps-c-cliente-sel').style.display = 'none';
+  if(q.length < 2){ dd.style.display='none'; return; }
+  const hits = allClients.filter(c=>c.nome.toLowerCase().includes(q)).slice(0,8);
+  if(!hits.length){ dd.style.display='none'; return; }
+  dd.innerHTML = hits.map(c=>`
+    <div onclick="npsSelectCliente('${c.id}','${c.nome.replace(/'/g,"\\\'")}')"
+      style="padding:7px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--cinza2)"
+      onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background=''">
+      ${escHtml(c.nome)}
+    </div>`).join('');
+  dd.style.display = 'block';
+}
+
+function npsSelectCliente(id, nome){
+  document.getElementById('nps-c-cliente-id').value   = id;
+  document.getElementById('nps-c-cliente-text').value = nome;
+  document.getElementById('nps-c-cliente-dropdown').style.display = 'none';
+  const sel = document.getElementById('nps-c-cliente-sel');
+  sel.textContent   = '✓ ' + nome;
+  sel.style.display = 'block';
+}
+
+async function criarCampanhaNPS(){
+  const clienteId   = document.getElementById('nps-c-cliente-id').value;
+  const clienteNome = document.getElementById('nps-c-cliente-text').value.trim();
+  const projetoNome = document.getElementById('nps-c-projeto').value.trim();
+  const surveyId    = document.getElementById('nps-c-survey').value;
+
+  if(!clienteId || !clienteNome){ toast('Selecione um cliente.'); return; }
+  if(!surveyId){                  toast('Selecione um survey.');   return; }
+
+  const { data, error } = await sb.from('nps_campaigns').insert({
+    survey_id:    surveyId,
+    cliente_id:   clienteId,
+    cliente_nome: clienteNome,
+    projeto_nome: projetoNome || null,
+    status:       'active',
+    created_by:   currentUser?.id || null,
+  }).select('*').single();
+
+  if(error){ toast('Erro ao criar campanha.'); console.error(error); return; }
+
+  toast('Campanha criada!');
+  closeM('modal-nps-campanha');
+  await loadNPSData();
+  renderNPS();
+  abrirVerCampanhaNPS(data.id);
+}
+
+// ── Ver campanha ─────────────────────────────────────────────
+async function abrirVerCampanhaNPS(campId){
+  npsCurrentCampId = campId;
+
+  const { data: camp } = await sb
+    .from('nps_campaigns')
+    .select('*, nps_responses(*)')
+    .eq('id', campId)
+    .single();
+
+  if(!camp){ toast('Campanha não encontrada.'); return; }
+
+  const idx = npsCampanhas.findIndex(c=>c.id===campId);
+  if(idx>=0) npsCampanhas[idx] = camp;
+
+  const resps = camp.nps_responses || [];
+  const link  = `${location.origin}${location.pathname.replace('crm.html','')}nps.html?t=${camp.token}`;
+
+  document.getElementById('nps-ver-title').textContent =
+    escHtml(camp.cliente_nome) + (camp.projeto_nome ? ' — ' + camp.projeto_nome : '');
+  document.getElementById('nps-ver-link').value = link;
+  document.getElementById('nps-ver-status-badge').innerHTML =
+    camp.status === 'active'
+      ? '<span class="badge b-vd">Ativa</span>'
+      : '<span class="badge b-gr">Encerrada</span>';
+
+  document.getElementById('nps-ver-meta').innerHTML =
+    `<b>Cliente:</b> ${escHtml(camp.cliente_nome)}<br>` +
+    (camp.projeto_nome ? `<b>Projeto:</b> ${escHtml(camp.projeto_nome)}<br>` : '') +
+    `<b>Criada em:</b> ${new Date(camp.created_at).toLocaleDateString('pt-BR')}`;
+
+  const nConc = resps.filter(r=>r.status==='completed').length;
+  const nAndm = resps.filter(r=>r.status==='in_progress').length;
+  const nPend = resps.filter(r=>r.status==='pending').length;
+
+  document.getElementById('nps-ver-stats').innerHTML = `
+    <div style="text-align:center;padding:10px;background:var(--verde-bg);border-radius:6px">
+      <div style="font-size:20px;font-weight:700;font-family:var(--font-mono);color:var(--verde)">${nConc}</div>
+      <div style="font-size:9px;color:var(--verde);font-weight:700;letter-spacing:.5px;text-transform:uppercase">Concluídas</div>
+    </div>
+    <div style="text-align:center;padding:10px;background:var(--ouro-bg);border-radius:6px">
+      <div style="font-size:20px;font-weight:700;font-family:var(--font-mono);color:var(--ouro)">${nAndm}</div>
+      <div style="font-size:9px;color:var(--ouro);font-weight:700;letter-spacing:.5px;text-transform:uppercase">Em andamento</div>
+    </div>
+    <div style="text-align:center;padding:10px;background:var(--cinza2);border-radius:6px">
+      <div style="font-size:20px;font-weight:700;font-family:var(--font-mono);color:#888">${nPend}</div>
+      <div style="font-size:9px;color:#888;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Pendentes</div>
+    </div>`;
+
+  const STATUS_ICON = {
+    completed:   '<span style="color:var(--verde)">✓ Concluída</span>',
+    in_progress: '<span style="color:var(--ouro)">⏳ Em andamento</span>',
+    pending:     '<span style="color:#bbb">○ Pendente</span>',
+  };
+
+  const tbody = document.getElementById('nps-ver-tbody');
+  tbody.innerHTML = resps.length
+    ? resps.map(r=>`<tr>
+        <td style="font-size:11px;font-weight:600">${escHtml(r.respondent_name)}</td>
+        <td style="font-size:11px;color:#777">${escHtml(r.respondent_email)}</td>
+        <td style="font-size:11px">${STATUS_ICON[r.status]||r.status}</td>
+        <td class="dtag">${r.completed_at
+          ? new Date(r.completed_at).toLocaleDateString('pt-BR')
+          : r.started_at ? new Date(r.started_at).toLocaleDateString('pt-BR') : '—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:#bbb;padding:16px;font-size:11px">Nenhum respondente ainda.</td></tr>';
+
+  document.getElementById('btn-nps-encerrar').style.display = camp.status==='active' ? '' : 'none';
+  openM('modal-nps-ver');
+}
+
+async function encerrarCampanhaNPS(){
+  if(!npsCurrentCampId) return;
+  if(!confirm('Encerrar esta campanha? O link deixará de funcionar.')) return;
+  await sb.from('nps_campaigns').update({status:'closed'}).eq('id', npsCurrentCampId);
+  toast('Campanha encerrada.');
+  closeM('modal-nps-ver');
+  await loadNPSData();
+  renderNPS();
+}
+
+function copiarLinkNPS(){
+  const link = document.getElementById('nps-ver-link').value;
+  navigator.clipboard.writeText(link).then(()=>{
+    const btn = document.getElementById('btn-copiar-link-nps');
+    btn.textContent = 'Copiado!';
+    setTimeout(()=>{ btn.textContent='Copiar link'; }, 2200);
+  });
+}
+
+function copiarLinkNPSRapido(token){
+  const base = `${location.origin}${location.pathname.replace('crm.html','')}nps.html?t=${token}`;
+  navigator.clipboard.writeText(base).then(()=> toast('Link copiado!'));
+}
+
+document.addEventListener('click', e=>{
+  const dd = document.getElementById('nps-c-cliente-dropdown');
+  if(dd && !dd.contains(e.target) && e.target.id !== 'nps-c-cliente-text')
+    dd.style.display = 'none';
+});
+
 
 // ═══ PIPELINE ═══════════════════════════════════════
 function renderPipe(){
@@ -4886,14 +5245,14 @@ function renderAlcance(){
   const pipeVal=ativas.reduce((s,o)=>s+oppValorProposto(o),0);
   const fechVal=fechadas.reduce((s,o)=>s+oppValorFechado(o),0);
   document.getElementById('alc-stats').innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:2px">
-      <div style="text-align:center;padding:8px 4px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px)">
-        <div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${ops.length}</div>
-        <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">oportunidades</div>
+    <div style="display:flex;gap:6px;margin-bottom:2px">
+      <div style="display:flex;align-items:baseline;gap:6px;padding:5px 10px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);flex:0 0 auto">
+        <span style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${ops.length}</span>
+        <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">oportunidades</span>
       </div>
-      <div style="text-align:center;padding:8px 4px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px)">
-        <div style="font-size:12px;font-weight:700;font-family:var(--font-mono)">${fmt(alcMode==='fech'?fechVal:pipeVal)}</div>
-        <div style="font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${alcMode==='fech'?'valor fechado':'pipeline'}</div>
+      <div style="display:flex;align-items:baseline;gap:6px;padding:5px 10px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);flex:1;min-width:0">
+        <span style="font-size:12px;font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(alcMode==='fech'?fechVal:pipeVal)}</span>
+        <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">${alcMode==='fech'?'fechado':'pipeline'}</span>
       </div>
     </div>`;
 
@@ -5345,7 +5704,7 @@ function renderRelatorios(){
   const topMap={};
   fechadas.forEach(o=>{
     const cid=o.cliente_id||o.cliente||'?';
-    const cnome=o.cliente||cid;
+    const cnome=o._cliente?.nome||o.cliente||cid;
     if(!topMap[cid])topMap[cid]={nome:cnome,fat:0,n:0};
     topMap[cid].fat+=oppValorEfetivo(o,true);
     topMap[cid].n++;

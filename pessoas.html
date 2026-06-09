@@ -367,11 +367,11 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .pm-table{width:100%;min-width:940px;border-collapse:separate;border-spacing:0}
 .pm-table th{position:sticky;top:0;z-index:1;background:var(--branco);padding:10px 8px;border-bottom:1px solid var(--cinza2);font-size:9px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:#999;text-align:center}
 .pm-table th:first-child,.pm-table td:first-child{text-align:left}
-.pm-table td{padding:8px;border-bottom:1px solid #efeee8;vertical-align:top}
+.pm-table td{padding:5px 6px;border-bottom:1px solid #efeee8;vertical-align:top}
 .pm-table tr:last-child td{border-bottom:none}
-.pm-field-input{width:100%;min-width:220px;padding:8px 10px;border:1px solid var(--cinza2);border-radius:7px;font-family:var(--font-ui);font-size:11px;color:var(--grafite);background:var(--off);outline:none}
+.pm-field-input{width:100%;min-width:220px;padding:5px 8px;border:1px solid var(--cinza2);border-radius:7px;font-family:var(--font-ui);font-size:10px;color:var(--grafite);background:var(--off);outline:none}
 .pm-field-input:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft);background:var(--branco)}
-.pm-level-select{width:44px;min-width:44px;padding:7px 4px;border:1px solid var(--cinza2);border-radius:7px;background:var(--off);font-family:var(--font-ui);font-size:10px;font-weight:600;color:var(--grafite);outline:none;text-align:center}
+.pm-level-select{width:44px;min-width:44px;padding:5px 4px;border:1px solid var(--cinza2);border-radius:7px;background:var(--off);font-family:var(--font-ui);font-size:10px;font-weight:600;color:var(--grafite);outline:none;text-align:center}
 .pm-level-select:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft);background:var(--branco)}
 .pm-row-actions{display:flex;gap:6px;justify-content:flex-end}
 .pm-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -622,7 +622,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
       </button>
       <!-- Feedback -->
       <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
-        <button class="exp-tr-btn" id="exp-tr-feedback" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
+        <button id="feedback-icon-btn" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
         </button>
         <div class="nav-feedback-pop" id="nav-feedback-pop">
@@ -645,7 +645,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
       </div>
       <!-- Lembrete -->
       <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
-        <button class="exp-tr-btn" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">
+        <button class="notif-plus" id="notif-plus-btn" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
         <div class="nav-feedback-pop" id="lemb-popdown">
@@ -949,6 +949,10 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
           <option value="partnership">Partnership</option>
           <option value="pj">PJ</option>
         </select>
+      </div>
+      <div class="ps-field-modal">
+        <label>Jornada semanal (horas)</label>
+        <input id="vinculo-jornada" type="number" min="1" max="80" step="0.5" placeholder="Ex: 40">
       </div>
       <div class="ps-modal-status" id="vinculo-modal-status"></div>
     </div>
@@ -3280,9 +3284,10 @@ async function renderBeneficios(u, body) {
 async function abrirModalVinculo() {
   if (!G.selecionado || !isSocio(G.usuarioLogado?.role)) return;
   const u = G.selecionado;
-  const { data: prof } = await sb.from('usuarios_dados_profissionais')
-    .select('posicao_matriz,data_entrada,tipo_contrato')
-    .eq('usuario_id', u.id).maybeSingle();
+  const [{ data: prof }, { data: jornadaRow }] = await Promise.all([
+    sb.from('usuarios_dados_profissionais').select('posicao_matriz,data_entrada,tipo_contrato').eq('usuario_id', u.id).maybeSingle(),
+    sb.from('usuarios_jornada').select('jornada_semanal_h').eq('usuario_id', u.id).maybeSingle(),
+  ]);
   const profissional = prof || {};
 
   const posicaoSelect = document.getElementById('vinculo-posicao');
@@ -3296,6 +3301,8 @@ async function abrirModalVinculo() {
   if (dataInput) dataInput.value = profissional.data_entrada?.slice(0, 10) || '';
   const tipoSelect = document.getElementById('vinculo-tipo-contrato');
   if (tipoSelect) tipoSelect.value = profissional.tipo_contrato || '';
+  const jornadaInput = document.getElementById('vinculo-jornada');
+  if (jornadaInput) jornadaInput.value = jornadaRow?.jornada_semanal_h ?? 40;
 
   const statusEl = document.getElementById('vinculo-modal-status');
   if (statusEl) { statusEl.textContent = ''; statusEl.className = 'ps-modal-status'; }
@@ -3310,9 +3317,11 @@ async function salvarVinculo() {
   const posicao = document.getElementById('vinculo-posicao')?.value || null;
   const dataEntrada = document.getElementById('vinculo-data-entrada')?.value || null;
   const tipoContrato = document.getElementById('vinculo-tipo-contrato')?.value || null;
+  const jornadaVal = parseFloat(document.getElementById('vinculo-jornada')?.value) || 40;
 
-  const { data: existing } = await sb.from('usuarios_dados_profissionais')
-    .select('id').eq('usuario_id', u.id).maybeSingle();
+  const [{ data: existing }] = await Promise.all([
+    sb.from('usuarios_dados_profissionais').select('id').eq('usuario_id', u.id).maybeSingle(),
+  ]);
 
   const base = {
     posicao_matriz: posicao || null,
@@ -3327,6 +3336,13 @@ async function salvarVinculo() {
     ({ error } = await sb.from('usuarios_dados_profissionais').update(base).eq('usuario_id', u.id));
   } else {
     ({ error } = await sb.from('usuarios_dados_profissionais').insert({ usuario_id: u.id, ...base }));
+  }
+
+  if (!error) {
+    await sb.from('usuarios_jornada').upsert(
+      { usuario_id: u.id, jornada_semanal_h: jornadaVal, atualizado_por: G.usuarioLogado?.id || null },
+      { onConflict: 'usuario_id' }
+    );
   }
 
   if (error) {
@@ -4648,7 +4664,7 @@ async function _enviarLembrete() {
 <script src="shared/exp-nav.js"></script>
 <script src="timer.js"></script>
 <style>
-  #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:24px!important;z-index:9998!important}
+  #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:34px!important;z-index:9998!important}
 </style>
 </body>
 </html>
