@@ -1066,15 +1066,17 @@ $('btn-id-next').addEventListener('click', async ()=>{
       }
       state.responseId = existing.id;
     } else {
-      const { data: newResp, error } = await sb
+      // Gera UUID no cliente — evita ?select=id no POST (RETURNING bloqueado por anon)
+      const newId = crypto.randomUUID();
+      const { error } = await sb
         .from('nps_responses')
         .insert({
+          id:               newId,
           campaign_id:      state.campaign.id,
           respondent_name:  name,
           respondent_email: email,
           status:           'in_progress',
-        })
-        .select('id').single();
+        });
 
       if(error){
         btn.disabled = false;
@@ -1082,7 +1084,7 @@ $('btn-id-next').addEventListener('click', async ()=>{
         toast('Erro ao registrar. Tente novamente.');
         return;
       }
-      state.responseId = newResp.id;
+      state.responseId = newId;
     }
     saveCache();
   }
