@@ -288,6 +288,22 @@ body{
   letter-spacing:-.01em;
 }
 
+/* Sub-header de seção dentro do card de tema */
+.section-subheader{
+  display:flex;align-items:center;gap:10px;
+  margin:32px 0 20px;
+  font-size:10px;font-weight:700;
+  letter-spacing:0.09em;text-transform:uppercase;
+  color:#bbb;
+}
+.section-subheader::before{
+  content:'';flex:1;height:1px;background:#f0efeb;
+}
+.section-subheader::after{
+  content:'';flex:1;height:1px;background:#f0efeb;
+}
+.section-subheader:first-child{margin-top:0}
+
 .question-block{
   margin-bottom:28px;padding-bottom:28px;
   border-bottom:1px solid #f0efeb;
@@ -827,10 +843,10 @@ let state = {
   token: null,
   campaign: null,
   survey: null,
-  sections: [],
+  themes: [],           // [{id, title, description, order, sections:[{...questions:[]}]}]
   respondent: { name:'', email:'' },
   responseId: null,
-  currentSectionIdx: 0,
+  currentThemeIdx: 0,
   answers: {},
   cacheKey: null,
   goingBack: false,
@@ -843,9 +859,8 @@ const $ = id => document.getElementById(id);
 
 function showScreen(id, back = false){
   state.goingBack = back;
-  document.querySelectorAll('.screen').forEach(s =>{
-    s.classList.remove('active','going-back');
-  });
+  document.querySelectorAll('.screen').forEach(s =>
+    s.classList.remove('active','going-back'));
   const el = $(id);
   if(back) el.classList.add('going-back');
   el.classList.add('active');
@@ -872,22 +887,28 @@ const validateEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 function firstName(name){ return name ? name.trim().split(' ')[0] : ''; }
 
+// Todas as perguntas do tema atual (todas as suas seções)
+function allQuestionsInTheme(theme){
+  return theme.sections.flatMap(s => s.questions);
+}
+
 function updateProgress(){
-  const total = state.sections.length;
-  const done  = state.currentSectionIdx;
+  const total = state.themes.length;
+  const done  = state.currentThemeIdx;
   const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
   $('progress-fill').style.width  = pct + '%';
   $('progress-pct').textContent   = pct + '%';
-  $('progress-label').textContent = `Seção ${done} de ${total}`;
+  $('progress-label').textContent =
+    `Tema ${String(done + 1).padStart(2,'0')} de ${String(total).padStart(2,'0')}`;
 }
 
 function saveCache(){
   if(!state.cacheKey) return;
   localStorage.setItem(state.cacheKey, JSON.stringify({
-    respondent:  state.respondent,
-    responseId:  state.responseId,
-    answers:     state.answers,
-    currentSectionIdx: state.currentSectionIdx,
+    respondent:      state.respondent,
+    responseId:      state.responseId,
+    answers:         state.answers,
+    currentThemeIdx: state.currentThemeIdx,
   }));
 }
 
@@ -920,47 +941,58 @@ async function init(){
     .single();
 
   if(campErr || !camp){
-    showError('Pesquisa não encontrada', 'Este link é inválido ou a pesquisa já foi encerrada. Entre em contato com a EXP se acreditar que isso é um erro.');
+    showError('Pesquisa não encontrada',
+      'Este link é inválido ou a pesquisa já foi encerrada. Entre em contato com a EXP se acreditar que isso é um erro.');
     return;
   }
 
   state.campaign = camp;
   state.cacheKey = `nps_${state.token}`;
 
-  const { data: survey, error: sErr } = await sb
+  // Carrega survey + temas + seções + perguntas em uma query só
+  const { data: themesRaw, error: tErr } = await sb
+    .from('nps_themes')
+    .select(`
+      id, title, description, "order",
+      nps_sections (
+        id, title, "order",
+        nps_questions (
+          id, question_text, question_type, required, "order", options
+        )
+      )
+    `)
+    .eq('survey_id', camp.survey_id)
+    .order('order', { ascending: true });
+
+  if(tErr || !themesRaw){
+    showError('Erro ao carregar', 'Não foi possível carregar a pesquisa.');
+    return;
+  }
+
+  state.themes = themesRaw.map(t => ({
+    ...t,
+    sections: (t.nps_sections || [])
+      .sort((a,b) => a.order - b.order)
+      .map(s => ({
+        ...s,
+        questions: (s.nps_questions || []).sort((a,b) => a.order - b.order),
+      })),
+  }));
+
+  // Carrega survey para usar a descrição de boas-vindas
+  const { data: survey } = await sb
     .from('nps_surveys')
-    .select('*')
+    .select('title, description')
     .eq('id', camp.survey_id)
     .single();
-
-  if(sErr || !survey){
-    showError('Pesquisa indisponível', 'Não foi possível carregar este formulário.');
-    return;
-  }
-  state.survey = survey;
-
-  const { data: sections, error: secErr } = await sb
-    .from('nps_sections')
-    .select('*, nps_questions(*)')
-    .eq('survey_id', survey.id)
-    .order('order', {ascending:true});
-
-  if(secErr){
-    showError('Erro ao carregar', 'Não foi possível carregar as seções da pesquisa.');
-    return;
-  }
-
-  state.sections = (sections || []).map(s => ({
-    ...s,
-    questions: (s.nps_questions || []).sort((a,b) => a.order - b.order),
-  }));
+  state.survey = survey || {};
 
   const cached = loadCache();
   if(cached?.responseId){
-    state.respondent         = cached.respondent || state.respondent;
-    state.responseId         = cached.responseId;
-    state.answers            = cached.answers || {};
-    state.currentSectionIdx  = cached.currentSectionIdx || 0;
+    state.respondent     = cached.respondent    || state.respondent;
+    state.responseId     = cached.responseId;
+    state.answers        = cached.answers       || {};
+    state.currentThemeIdx = cached.currentThemeIdx || 0;
   }
 
   showLoader(false);
@@ -973,9 +1005,10 @@ async function init(){
 // ─────────────────────────────────────────────────────────
 function setupUI(){
   $('client-name-badge').textContent = state.campaign.cliente_nome;
-  if(state.survey.description) $('welcome-body').innerHTML = state.survey.description;
-  const n = state.sections.length;
-  $('welcome-sections-count').textContent = n === 1 ? 'uma seção' : `${n} seções`;
+  if(state.survey?.description) $('welcome-body').innerHTML = state.survey.description;
+  const n = state.themes.length;
+  $('welcome-sections-count').textContent =
+    n === 1 ? 'um bloco de perguntas' : `${n} blocos temáticos`;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1062,81 +1095,83 @@ $('btn-id-next').addEventListener('click', async ()=>{
 // TELA 2 — BOAS-VINDAS
 // ─────────────────────────────────────────────────────────
 function goToWelcome(back = false){
-  // Personaliza com o primeiro nome
   const fn = firstName(state.respondent.name);
-  $('welcome-name-display').textContent = fn ? `faz toda a diferença, ${fn}.` : 'faz toda a diferença.';
+  $('welcome-name-display').textContent =
+    fn ? `faz toda a diferença, ${fn}.` : 'faz toda a diferença.';
   showScreen('screen-welcome', back);
   $('progress-bar-wrap').classList.remove('visible');
 }
 
 $('btn-welcome-back').addEventListener('click', ()=> renderIdScreen(true));
 $('btn-welcome-start').addEventListener('click', ()=>{
-  state.currentSectionIdx = 0;
-  goToSectionIntro(0);
+  state.currentThemeIdx = 0;
+  goToThemeIntro(0);
 });
 
 // ─────────────────────────────────────────────────────────
-// TELA 3 — INTRO DA SEÇÃO
+// TELA 3 — INTRO DO TEMA
 // ─────────────────────────────────────────────────────────
-function goToSectionIntro(idx, back = false){
-  state.currentSectionIdx = idx;
+function goToThemeIntro(idx, back = false){
+  state.currentThemeIdx = idx;
   updateProgress();
   $('progress-bar-wrap').classList.add('visible');
 
-  const sec   = state.sections[idx];
-  const total = state.sections.length;
+  const theme = state.themes[idx];
+  const total = state.themes.length;
   const num   = String(idx + 1).padStart(2,'0');
   const tot   = String(total).padStart(2,'0');
 
-  $('sec-counter').textContent    = `${num} / ${tot}`;
-  $('sec-intro-title').textContent = sec.title;
-  $('sec-intro-desc').textContent  = sec.description || '';
+  $('sec-counter').textContent     = `${num} / ${tot}`;
+  $('sec-intro-title').textContent = theme.title;
+  $('sec-intro-desc').textContent  = theme.description || '';
 
   showScreen('screen-section-intro', back);
 }
 
 $('btn-sec-back').addEventListener('click', ()=>{
-  if(state.currentSectionIdx === 0) goToWelcome(true);
-  else goToQuestions(state.currentSectionIdx - 1, true);
+  if(state.currentThemeIdx === 0) goToWelcome(true);
+  else goToQuestions(state.currentThemeIdx - 1, true);
 });
-$('btn-sec-start').addEventListener('click', ()=> goToQuestions(state.currentSectionIdx));
+$('btn-sec-start').addEventListener('click', ()=> goToQuestions(state.currentThemeIdx));
 
 // ─────────────────────────────────────────────────────────
-// TELA 4 — PERGUNTAS
+// TELA 4 — PERGUNTAS DO TEMA (todas as seções)
 // ─────────────────────────────────────────────────────────
 function goToQuestions(idx, back = false){
-  state.currentSectionIdx = idx;
-  const sec   = state.sections[idx];
-  const total = state.sections.length;
+  state.currentThemeIdx = idx;
+  const theme = state.themes[idx];
+  const total = state.themes.length;
   const num   = String(idx + 1).padStart(2,'0');
 
-  $('q-sec-label').textContent = `Seção ${num} / ${String(total).padStart(2,'0')}`;
-  $('q-sec-title').textContent = sec.title;
+  $('q-sec-label').textContent = `Tema ${num} / ${String(total).padStart(2,'0')}`;
+  $('q-sec-title').textContent = theme.title;
 
-  renderQuestions(sec.questions);
+  renderThemeQuestions(theme);
 
   const isLast = idx === total - 1;
   $('btn-q-next').innerHTML = isLast
     ? `Finalizar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
-    : `Próxima seção <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+    : `Próximo tema <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
 
   showScreen('screen-questions', back);
   updateProgress();
 }
 
-$('btn-q-back').addEventListener('click', ()=> goToSectionIntro(state.currentSectionIdx, true));
+$('btn-q-back').addEventListener('click', ()=> goToThemeIntro(state.currentThemeIdx, true));
 
 $('btn-q-next').addEventListener('click', async ()=>{
-  const sec = state.sections[state.currentSectionIdx];
+  const theme = state.themes[state.currentThemeIdx];
+  const allQ  = allQuestionsInTheme(theme);
   let missing = false;
-  sec.questions.forEach(q =>{
+
+  allQ.forEach(q =>{
     if(q.required && state.answers[q.id] === undefined){
       missing = true;
       const block = document.querySelector(`[data-qid="${q.id}"]`);
       if(block){
-        block.style.outline = '2px solid var(--terracota)';
+        block.style.outline       = '2px solid var(--terracota)';
         block.style.outlineOffset = '4px';
-        block.style.borderRadius = '6px';
+        block.style.borderRadius  = '6px';
       }
     }
   });
@@ -1144,36 +1179,49 @@ $('btn-q-next').addEventListener('click', async ()=>{
 
   const btn = $('btn-q-next');
   btn.disabled = true;
-  await saveAnswers(sec.questions);
+  await saveAnswers(allQ);
   saveCache();
   btn.disabled = false;
 
-  const isLast = state.currentSectionIdx === state.sections.length - 1;
+  const isLast = state.currentThemeIdx === state.themes.length - 1;
   if(isLast) await finishSurvey();
-  else goToSectionIntro(state.currentSectionIdx + 1);
+  else goToThemeIntro(state.currentThemeIdx + 1);
 });
 
 // ─────────────────────────────────────────────────────────
-// RENDERIZA PERGUNTAS
+// RENDERIZA PERGUNTAS DE UM TEMA (com sub-headers de seção)
 // ─────────────────────────────────────────────────────────
-function renderQuestions(questions){
+function renderThemeQuestions(theme){
   const container = $('questions-container');
   container.innerHTML = '';
-  questions.forEach(q =>{
-    const block = document.createElement('div');
-    block.className = 'question-block';
-    block.setAttribute('data-qid', q.id);
 
-    const qtxt = document.createElement('div');
-    qtxt.className = 'question-text';
-    qtxt.innerHTML = q.question_text + (q.required ? '<span class="question-required"> *</span>' : '');
-    block.appendChild(qtxt);
-    block.appendChild(buildQuestionField(q));
-    block.addEventListener('click', ()=>{
-      block.style.outline = '';
-      block.style.outlineOffset = '';
+  // Mostra sub-header apenas quando há mais de uma seção no tema
+  const showSubheaders = theme.sections.length > 1;
+
+  theme.sections.forEach(sec =>{
+    if(showSubheaders){
+      const sub = document.createElement('div');
+      sub.className = 'section-subheader';
+      sub.textContent = sec.title;
+      container.appendChild(sub);
+    }
+
+    sec.questions.forEach(q =>{
+      const block = document.createElement('div');
+      block.className = 'question-block';
+      block.setAttribute('data-qid', q.id);
+
+      const qtxt = document.createElement('div');
+      qtxt.className = 'question-text';
+      qtxt.innerHTML = q.question_text + (q.required ? '<span class="question-required"> *</span>' : '');
+      block.appendChild(qtxt);
+      block.appendChild(buildQuestionField(q));
+      block.addEventListener('click', ()=>{
+        block.style.outline       = '';
+        block.style.outlineOffset = '';
+      });
+      container.appendChild(block);
     });
-    container.appendChild(block);
   });
 }
 
@@ -1183,12 +1231,12 @@ function buildQuestionField(q){
   switch(q.question_type){
 
     case 'rating': {
-      const wrap   = document.createElement('div');
-      const grid   = document.createElement('div');
+      const wrap = document.createElement('div');
+      const grid = document.createElement('div');
       grid.className = 'rating-grid';
 
       for(let i = 0; i <= 10; i++){
-        const range = i <= 6 ? 'low' : i <= 8 ? 'mid' : 'high';
+        const range    = i <= 6 ? 'low' : i <= 8 ? 'mid' : 'high';
         const selClass = i <= 6 ? 'sel-low' : i <= 8 ? 'sel-mid' : 'sel-high';
         const btn = document.createElement('button');
         btn.className = 'rating-btn' + (saved === i ? ' ' + selClass : '');
@@ -1296,8 +1344,8 @@ function buildQuestionField(q){
           if(chip.classList.contains('selected')){
             if(!arr.includes(name)) arr.push(name);
           } else {
-            const idx = arr.indexOf(name);
-            if(idx > -1) arr.splice(idx,1);
+            const i = arr.indexOf(name);
+            if(i > -1) arr.splice(i, 1);
           }
           state.answers[q.id] = arr.length ? arr : undefined;
         });
@@ -1309,7 +1357,7 @@ function buildQuestionField(q){
     default: {
       const p = document.createElement('p');
       p.style.cssText = 'font-size:12px;color:#bbb';
-      p.textContent = `Tipo de pergunta desconhecido: ${q.question_type}`;
+      p.textContent = `Tipo desconhecido: ${q.question_type}`;
       return p;
     }
   }
@@ -1325,10 +1373,12 @@ async function saveAnswers(questions){
     if(val === undefined) return;
     const row = { response_id: state.responseId, question_id: q.id };
     switch(q.question_type){
-      case 'rating': case 'scale':       row.answer_number  = val; break;
-      case 'yes_no':                     row.answer_boolean = val; break;
-      case 'short_text': case 'long_text': row.answer_text  = val; break;
-      case 'collaborator_select':        row.answer_json    = val; break;
+      case 'rating':
+      case 'scale':        row.answer_number  = val; break;
+      case 'yes_no':       row.answer_boolean = val; break;
+      case 'short_text':
+      case 'long_text':    row.answer_text    = val; break;
+      case 'collaborator_select': row.answer_json = val; break;
     }
     rows.push(row);
   });
@@ -1347,7 +1397,6 @@ async function finishSurvey(){
 
   clearCache();
 
-  // Personaliza tela de agradecimento com o nome
   const fn = firstName(state.respondent.name);
   $('thanks-name-display').textContent = fn
     ? `obrigado, ${fn}.`
