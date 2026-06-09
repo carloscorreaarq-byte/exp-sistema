@@ -1819,21 +1819,13 @@
      PUSH NOTIFICATION â€” DM direto ou menÃ§Ã£o
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function _shouldPush(msg) {
-    // Foco: silÃªncio total
     if (userStatus === 'foco') return false;
-
     var ch  = msg.channel;
     var uid = user.auth_id;
-
-    // DM 1:1 ou grupo direcionado ao usuÃ¡rio
     if ((ch.startsWith('dm:') || ch.startsWith('group:')) && ch.includes(uid)) return true;
     if (isProjectChannel(ch)) return true;
-
-    // MenÃ§Ã£o pelo nome no canal geral ou sÃ³cios
-    var fn      = (user.nome || '').split(' ')[0].toLowerCase();
-    var content = (msg.content || '').toLowerCase();
-    if (content.includes('@' + fn)) return true;
-
+    if (ch === 'general') return true;
+    if (ch === 'socios' && isSocioLikeRole(user.role)) return true;
     return false;
   }
 
@@ -1841,10 +1833,16 @@
     if (!_shouldPush(msg)) return;
     var appUserId = user.app_user_id || user.id;
     if (!appUserId) return;
-    var isDM     = msg.channel.startsWith('dm:') || msg.channel.startsWith('group:');
+    var isDM      = msg.channel.startsWith('dm:') || msg.channel.startsWith('group:');
     var isProject = isProjectChannel(msg.channel);
-    var sender   = (msg.sender_name || '').split(' ')[0];
-    var title    = isProject ? sender + ' atualizou um projeto' : (isDM ? sender + ' enviou uma mensagem' : sender + ' mencionou vocÃª');
+    var isGeneral = msg.channel === 'general';
+    var isSocios  = msg.channel === 'socios';
+    var sender    = (msg.sender_name || '').split(' ')[0];
+    var title     = isProject ? sender + ' atualizou um projeto'
+      : isDM      ? sender + ' enviou uma mensagem'
+      : isGeneral ? sender + ' no #geral'
+      : isSocios  ? sender + ' no #sócios'
+      : sender + ' mencionou você';
     var body     = (msg.content || '').length > 80
       ? msg.content.substring(0, 80) + '...'
       : msg.content;

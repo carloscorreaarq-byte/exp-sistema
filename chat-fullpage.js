@@ -1627,14 +1627,16 @@
   function _sendChatPush(msg){
     if(userStatus==='foco') return;
     var ch=msg.channel, uid=user.auth_id;
-    if (!((ch.startsWith('dm:')||ch.startsWith('group:'))&&ch.includes(uid)) && !isProjectChannel(ch)) {
-      var fn=(user.nome||'').split(' ')[0].toLowerCase();
-      if (!(msg.content||'').toLowerCase().includes('@'+fn)) return;
-    }
-    var appUserId=user.app_user_id||user.id; if(!appUserId) return;
     var isDM=ch.startsWith('dm:')||ch.startsWith('group:');
+    var isGeneral=ch==='general';
+    var isSocios=ch==='socios'&&isSocioLikeRole(user.role);
+    if(!(isDM&&ch.includes(uid))&&!isProjectChannel(ch)&&!isGeneral&&!isSocios) return;
+    var appUserId=user.app_user_id||user.id; if(!appUserId) return;
     var sender=(msg.sender_name||'').split(' ')[0];
-    var title=isProjectChannel(ch)?sender+' atualizou um projeto':(isDM?sender+' enviou uma mensagem':sender+' mencionou você');
+    var title=isProjectChannel(ch)?sender+' atualizou um projeto'
+      :isDM?sender+' enviou uma mensagem'
+      :isGeneral?sender+' no #geral'
+      :sender+' no #sócios';
     var body=(msg.content||'').length>80?msg.content.substring(0,80)+'...':msg.content;
     sb.functions.invoke('send-push',{body:{usuario_id:appUserId,title:title,body:body,url:window.location.href,tag:'exp-chat-'+ch}}).catch(function(){});
   }
