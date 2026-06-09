@@ -60,10 +60,12 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-
 }
 
 /* SCROLL da área principal */
-#crm-body{flex:1;overflow-y:auto;padding:16px}
+#crm-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;min-height:0}
 #crm-body::-webkit-scrollbar{width:4px}
 #crm-body::-webkit-scrollbar-thumb{background:var(--cinza);border-radius:2px}
+#crm-body.pipe-mode{overflow:hidden;padding-bottom:0}
 .page{display:none}.page.active{display:block}
+#tab-pipe.active{display:flex;flex-direction:column;flex:1;min-height:0;height:100%}
 
 /* CARD */
 .card{background:var(--branco);border:1px solid var(--cinza);margin-bottom:10px;position:relative;border-radius:var(--radius-card,8px);overflow:hidden}
@@ -177,7 +179,7 @@ textarea{resize:vertical;min-height:60px}
 .mb14{margin-bottom:14px}
 
 /* KANBAN */
-.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:var(--radius-card,8px);overflow:hidden;height:calc(100vh - 114px)}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--cinza);border-radius:var(--radius-card,8px);overflow:hidden;flex:1;min-height:0}
 .kcol{border-right:1px solid var(--cinza);display:flex;flex-direction:column;overflow:hidden;height:100%}
 .kcol:last-child{border-right:none}
 .kcol-hd{padding:8px 10px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;gap:6px;background:var(--branco);position:sticky;top:0;z-index:5;flex-shrink:0}
@@ -202,6 +204,16 @@ textarea{resize:vertical;min-height:60px}
 .pcard-fech{border-left:5px solid var(--verde);background:var(--verde-bg)}
 .pcard.dragging{opacity:.35;pointer-events:none}
 .kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--azul);outline-offset:-4px;border-radius:var(--radius-input,6px)}
+.pcard-actions{position:absolute;top:7px;right:7px;opacity:0;transition:opacity .15s}
+.pcard:hover .pcard-actions{opacity:1}
+.pcard-act-btn{background:none;border:none;cursor:pointer;color:#aaa;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px}
+.pcard-act-btn:hover{background:var(--cinza);color:var(--grafite)}
+.pcard-menu{position:fixed;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);z-index:9999;min-width:160px;padding:4px 0;display:none}
+.pcard-menu.open{display:block}
+.pcard-menu-item{display:block;width:100%;text-align:left;background:none;border:none;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--grafite);white-space:nowrap}
+.pcard-menu-item:hover{background:var(--cinza-bg,#f5f5f5)}
+.pcard-menu-item.danger{color:var(--terracota)}
+.pcard-menu-sep{height:1px;background:var(--cinza);margin:4px 0}
 .kcol-dupla{flex-direction:column}
 .kcol-sec{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .kcol-sep{height:1px;background:var(--cinza);flex-shrink:0}
@@ -289,7 +301,7 @@ textarea{resize:vertical;min-height:60px}
 .loading{padding:40px;text-align:center;color:#aaa;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
 
 /* ALCANCE MAP */
-.alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 114px)}
+.alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 148px)}
 .alc-side{display:flex;flex-direction:column;overflow:hidden}
 .alc-map-wrap{display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px}
 #alc-svg{width:100%;height:auto;max-height:calc(100vh - 160px);display:block}
@@ -369,13 +381,13 @@ textarea{resize:vertical;min-height:60px}
 [data-theme="dark"] .pessoa-row{border-color:var(--cinza2)}
 
 /* Alcance map */
-[data-theme="dark"] #alc-svg{background:var(--cinza2);opacity:.82}
+[data-theme="dark"] #alc-svg{}
 [data-theme="dark"] .alc-city-card{background:var(--branco);border-color:var(--cinza)}
 [data-theme="dark"] .alc-city-card:hover{border-color:var(--azul)}
 [data-theme="dark"] .alc-city-opp{border-color:var(--cinza2)}
 
 /* Destaque card */
-[data-theme="dark"] .destaque-card{background:var(--branco)}
+[data-theme="dark"] .destaque-card{background:rgba(209,153,49,.10);border-color:rgba(209,153,49,.45)}
 
 /* Toast */
 [data-theme="dark"] .toast{background:var(--grafite)}
@@ -436,13 +448,13 @@ textarea{resize:vertical;min-height:60px}
       <button class="crm-tab" onclick="goTab('pipe',this)">Pipeline</button>
       <button class="crm-tab" onclick="goTab('orc',this)">Orçamentos</button>
       <button class="crm-tab" onclick="goTab('alcance',this)">Alcance</button>
+      <button class="crm-tab" onclick="goTab('relatorios',this)">Relatórios</button>
       <button class="crm-tab" onclick="goTab('fechamentos',this)">Fechamentos</button>
       <button class="crm-tab" onclick="goTab('negativas',this)">Negativas</button>
       <button class="crm-tab" onclick="goTab('nps',this)">NPS</button>
-      <button class="crm-tab" onclick="goTab('relatorios',this)">Relatórios</button>
       <button class="crm-tab" onclick="goTab('contatos',this)">Contatos</button>
       <div id="crm-topbar-right">
-        <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none;margin-right:4px">+ Nova oportunidade</button>
+        <button class="btn verde sm" id="btn-nova-opp" onclick="abrirNovaOpp()" style="display:none;margin-right:4px;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase">+ Nova oportunidade</button>
 
         <!-- Controles padrão da plataforma — populados pelo ExpNav -->
         <div id="exp-topbar-right">
@@ -485,93 +497,152 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ DASHBOARD ═══════════════════════════════════════════════ -->
 <div class="page active" id="tab-dash">
-  <div id="dash-destaques" style="display:none;margin-bottom:14px"></div>
-  <div class="stat-row" id="dash-stats">
-    <div class="stat verde"><div class="stat-lbl">Faturamento no ano</div><div class="stat-val" id="s-fat">—</div><div class="stat-sub" id="s-fat-sub"></div></div>
-    <div class="stat az"><div class="stat-lbl">Pipeline ativo</div><div class="stat-val" id="s-pipe">—</div><div class="stat-sub" id="s-pipe-sub"></div></div>
-    <div class="stat am"><div class="stat-lbl">Propostas ativas</div><div class="stat-val" id="s-ativas">—</div><div class="stat-sub" id="s-ativas-sub"></div></div>
-    <div class="stat tc"><div class="stat-lbl">Taxa de conversão</div><div class="stat-val" id="s-conv">—</div><div class="stat-sub" id="s-conv-sub"></div></div>
-  </div>
 
-  <!-- Linha 1: gráfico mensal (largo) + distribuição (compacto) — 3fr 1fr alinha com stat-row -->
-  <div style="display:grid;grid-template-columns:3fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card az">
-      <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
-        <div class="card-title" style="flex:1;min-width:120px">Faturamento mensal — ano corrente</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <select id="dash-nucleo" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px)">
-            <option value="todos">Todos núcleos</option>
-            <option value="Paisagismo">Paisagismo</option>
-            <option value="Urbanismo">Urbanismo</option>
-            <option value="Consultorias">Consultorias</option>
-            <option value="Projetos Especiais">Proj. Especiais</option>
-          </select>
-          <select id="dash-resp" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px)">
-            <option value="todos">Todos resp.</option>
-          </select>
+  <!-- DESTAQUES -->
+  <div id="dash-destaques" style="display:none;margin-bottom:12px"></div>
+
+  <!-- LAYOUT PRINCIPAL: coluna esquerda (análise) + coluna direita (operacional) -->
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;align-items:start;margin-bottom:10px">
+
+    <!-- ── COLUNA ESQUERDA ── -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <!-- Stats primários: 2 grandes -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="stat verde">
+          <div class="stat-lbl">Faturamento no ano</div>
+          <div class="stat-val" id="s-fat">—</div>
+          <div class="stat-sub" id="s-fat-sub"></div>
+        </div>
+        <div class="stat az">
+          <div class="stat-lbl">Pipeline ativo</div>
+          <div class="stat-val" id="s-pipe">—</div>
+          <div class="stat-sub" id="s-pipe-sub"></div>
         </div>
       </div>
-      <div class="card-body" style="padding:8px 14px">
-        <div style="position:relative;height:120px">
-          <canvas id="chart-mensal"></canvas>
+
+      <!-- Stats secundários: 3 menores -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="stat tc">
+          <div class="stat-lbl">Conversão</div>
+          <div class="stat-val" id="s-conv" style="font-size:18px">—</div>
+          <div class="stat-sub" id="s-conv-sub"></div>
+        </div>
+        <div class="stat cinza">
+          <div class="stat-lbl">Ticket médio</div>
+          <div class="stat-val" id="s-ticket" style="font-size:18px">—</div>
+          <div class="stat-sub" id="s-ticket-sub"></div>
+        </div>
+        <div class="stat cinza">
+          <div class="stat-lbl">NPS médio</div>
+          <div class="stat-val" id="s-nps" style="font-size:18px">—</div>
+          <div class="stat-sub" id="s-nps-sub"></div>
         </div>
       </div>
-    </div>
-    <div class="card consul" style="margin-bottom:0">
-      <div class="card-hdr" style="flex-direction:column;align-items:flex-start;gap:6px">
-        <div class="card-title" id="chart-tipo-title">Por tipo</div>
-        <div style="display:flex;gap:4px">
-          <button id="dtm-nucleo" class="btn xs" onclick="setDashTipoMode('nucleo')" style="font-size:9px;padding:2px 8px">Núcleo</button>
-          <button id="dtm-stage" class="btn xs ghost" onclick="setDashTipoMode('stage')" style="font-size:9px;padding:2px 8px">Pipeline</button>
-          <button id="dtm-resp" class="btn xs ghost" onclick="setDashTipoMode('resp')" style="font-size:9px;padding:2px 8px">Resp.</button>
+
+      <!-- Gráfico mensal -->
+      <div class="card az" style="margin-bottom:0">
+        <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
+          <div class="card-title" style="flex:1;min-width:120px">Faturamento mensal — ano corrente</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <select id="dash-nucleo" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px);background:var(--branco)">
+              <option value="todos">Todos núcleos</option>
+              <option value="Paisagismo">Paisagismo</option>
+              <option value="Urbanismo">Urbanismo</option>
+              <option value="Consultorias">Consultorias</option>
+              <option value="Projetos Especiais">Proj. Especiais</option>
+            </select>
+            <select id="dash-resp" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px);background:var(--branco)">
+              <option value="todos">Todos resp.</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body" style="padding:8px 14px 14px">
+          <div style="position:relative;height:180px">
+            <canvas id="chart-mensal"></canvas>
+          </div>
         </div>
       </div>
-      <div class="card-body" style="padding:10px 14px;display:flex;flex-direction:column;align-items:center;gap:10px">
-        <div style="width:165px;height:165px;position:relative;flex-shrink:0;margin:0 auto">
-          <canvas id="chart-tipo"></canvas>
+
+    </div><!-- /coluna esquerda -->
+
+    <!-- ── COLUNA DIREITA ── -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <!-- Follow-ups -->
+      <div class="card am" style="margin-bottom:0">
+        <div class="card-hdr" style="gap:8px">
+          <div class="card-title" style="flex:1">Próximos follow-ups</div>
+          <div style="display:flex;gap:3px">
+            <button id="dash-fu-btn-todos" class="btn xs" onclick="setDashFuMode('todos')">Todos</button>
+            <button id="dash-fu-btn-meus" class="btn xs ghost" onclick="setDashFuMode('meus')">Meus</button>
+          </div>
         </div>
-        <div id="chart-tipo-legenda" style="width:100%;margin:0 auto"></div>
+        <div id="dash-fu-list" style="padding:0 0 4px"><div class="loading">Carregando...</div></div>
       </div>
-    </div>
-  </div>
 
-  <div class="card am" style="margin-bottom:10px">
-    <div class="card-hdr" style="gap:8px">
-      <div class="card-title" style="flex:1">Próximos follow-ups</div>
-      <div style="display:flex;gap:3px">
-        <button id="dash-fu-btn-todos" class="btn xs" onclick="setDashFuMode('todos')">Todos</button>
-        <button id="dash-fu-btn-meus" class="btn xs ghost" onclick="setDashFuMode('meus')">Meus</button>
+      <!-- Donut por tipo -->
+      <div class="card consul" style="margin-bottom:0">
+        <div class="card-hdr" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <div class="card-title" id="chart-tipo-title">Por tipo</div>
+          <div style="display:flex;gap:4px">
+            <button id="dtm-nucleo" class="btn xs" onclick="setDashTipoMode('nucleo')" style="font-size:9px;padding:2px 8px">Núcleo</button>
+            <button id="dtm-stage" class="btn xs ghost" onclick="setDashTipoMode('stage')" style="font-size:9px;padding:2px 8px">Pipeline</button>
+            <button id="dtm-resp" class="btn xs ghost" onclick="setDashTipoMode('resp')" style="font-size:9px;padding:2px 8px">Resp.</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding:10px 14px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center">
+          <div style="width:120px;height:120px;position:relative;flex-shrink:0">
+            <canvas id="chart-tipo"></canvas>
+          </div>
+          <div id="chart-tipo-legenda"></div>
+        </div>
       </div>
-    </div>
-    <div id="dash-fu-list" style="padding:0 0 4px"><div class="loading">Carregando...</div></div>
-  </div>
 
-  <div class="card az" style="margin-bottom:10px">
-    <div class="card-hdr" style="flex-wrap:wrap;gap:6px">
-      <div class="card-title" style="flex:1">Valor de propostas</div>
-      <div style="display:flex;gap:3px;flex-wrap:wrap">
-        <button class="btn vp-f xs" data-nucleo="todos" onclick="setVpNucleo(this,'todos')">Todas</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Paisagismo" onclick="setVpNucleo(this,'Paisagismo')">PAI</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Urbanismo" onclick="setVpNucleo(this,'Urbanismo')">URB</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Consultorias" onclick="setVpNucleo(this,'Consultorias')">CNS</button>
-        <button class="btn vp-f xs ghost" data-nucleo="Projetos Especiais" onclick="setVpNucleo(this,'Projetos Especiais')">ESP</button>
-      </div>
-    </div>
-    <div class="card-body" style="padding:12px 14px 14px 17px" id="vp-body">
-      <div class="loading">Carregando...</div>
-    </div>
-  </div>
+    </div><!-- /coluna direita -->
+  </div><!-- /layout principal -->
 
-  <div class="g2" style="gap:10px;margin-bottom:10px">
+  <!-- ATIVIDADE RECENTE: 2 colunas -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
     <div class="card cinza">
-      <div class="card-hdr"><div class="card-title">Fechamentos — últimos 45 dias</div></div>
-      <div id="dash-fechamentos"><div class="loading">Carregando...</div></div>
+      <div class="card-hdr">
+        <div class="card-title" style="flex:1">Fechamentos recentes</div>
+        <span id="dash-fech-count" style="font-size:9px;color:#aaa"></span>
+      </div>
+      <div id="dash-fechamentos-preview"></div>
+      <div style="padding:6px 12px 10px">
+        <button class="btn xs ghost" style="font-size:9px;width:100%" onclick="toggleDash45d('fech')">Ver mais — últimos 45 dias ↓</button>
+      </div>
     </div>
     <div class="card cinza">
-      <div class="card-hdr"><div class="card-title">Negativas — últimos 45 dias</div></div>
-      <div id="dash-negativas"><div class="loading">Carregando...</div></div>
+      <div class="card-hdr">
+        <div class="card-title" style="flex:1">Negativas recentes</div>
+        <span id="dash-neg-count" style="font-size:9px;color:#aaa"></span>
+      </div>
+      <div id="dash-negativas-preview"></div>
+      <div style="padding:6px 12px 10px">
+        <button class="btn xs ghost" style="font-size:9px;width:100%" onclick="toggleDash45d('neg')">Ver mais — últimos 45 dias ↓</button>
+      </div>
     </div>
   </div>
+
+  <!-- EXPANSÃO 45 DIAS (oculta por padrão) -->
+  <div id="dash-45d" style="display:none;margin-top:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="card cinza">
+        <div class="card-hdr"><div class="card-title">Fechamentos — últimos 45 dias</div></div>
+        <div id="dash-fechamentos"></div>
+      </div>
+      <div class="card cinza">
+        <div class="card-hdr"><div class="card-title">Negativas — últimos 45 dias</div></div>
+        <div id="dash-negativas"></div>
+      </div>
+    </div>
+    <div style="text-align:center;padding:10px 0 2px">
+      <button class="btn xs ghost" style="font-size:9px" onclick="toggleDash45d()">Recolher ↑</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══ PIPELINE ═══════════════════════════════════════════════ -->
@@ -807,7 +878,13 @@ textarea{resize:vertical;min-height:60px}
       <div id="alc-stats" style="margin-bottom:12px"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999" id="alc-list-hdr">Por cidade</div>
-        <button id="alc-list-back" onclick="renderAlcance()" style="display:none;font-size:9px;background:none;border:none;color:var(--azul);cursor:pointer;padding:0;text-decoration:underline">← todas</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div id="alc-agrup-btns" style="display:flex;gap:3px">
+            <button id="alc-agrup-cidade" class="btn xs" onclick="setAlcAgrup('cidade')" style="font-size:8px;padding:2px 7px">Cidade</button>
+            <button id="alc-agrup-estado" class="btn xs ghost" onclick="setAlcAgrup('estado')" style="font-size:8px;padding:2px 7px">Estado</button>
+          </div>
+          <button id="alc-list-back" onclick="renderAlcance()" style="display:none;font-size:9px;background:none;border:none;color:var(--azul);cursor:pointer;padding:0;text-decoration:underline">← todas</button>
+        </div>
       </div>
       <div id="alc-list" style="overflow-y:auto;flex:1"></div>
     </div>
@@ -830,51 +907,109 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ RELATÓRIOS ═══════════════════════════════════════════════ -->
 <div class="page" id="tab-relatorios">
-  <div class="card cinza" style="margin-bottom:10px">
-    <div class="card-hdr" style="gap:8px">
-      <div class="card-title" style="flex:1">Relatório consolidado</div>
-      <select id="rf-ano" onchange="renderRelatorios()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-        <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="todos">Todos</option>
-      </select>
-      <select id="rf-resp" onchange="renderRelatorios()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-        <option value="todos">Todos resp.</option>
-      </select>
-    </div>
-    <div class="card-body" style="padding:12px 16px" id="rel-resumo"></div>
+
+  <!-- FILTROS -->
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--cinza2)">
+    <select id="rf-tipo" onchange="onRfTipoChange()" style="font-size:10px;font-weight:600;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
+      <option value="anual">Anual</option>
+      <option value="semestral">Semestral</option>
+      <option value="quadrimestral">Quadrimestral</option>
+      <option value="mensal">Mensal</option>
+    </select>
+    <select id="rf-ano" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
+      <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
+    </select>
+    <select id="rf-mes-ini" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco);display:none">
+      <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option>
+      <option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+      <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
+      <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+    </select>
+    <select id="rf-nucleo" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
+      <option value="todos">Todos núcleos</option>
+      <option value="Paisagismo">Paisagismo</option>
+      <option value="Urbanismo">Urbanismo</option>
+      <option value="Consultorias">Consultorias</option>
+      <option value="Projetos Especiais">Proj. Especiais</option>
+    </select>
+    <select id="rf-resp" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
+      <option value="todos">Todos resp.</option>
+    </select>
+    <div id="rel-periodo-label" style="margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--azul)"></div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-    <div class="card verde">
-      <div class="card-hdr"><div class="card-title">Fechamentos por responsável</div></div>
-      <div class="card-body" style="padding:10px 14px" id="rel-por-resp"></div>
+
+  <!-- STATS PRIMÁRIOS -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
+    <div class="stat verde"><div class="stat-lbl">Faturamento efetivo</div><div class="stat-val" id="rs-fat" style="font-size:20px">—</div><div class="stat-sub" id="rs-fat-sub"></div></div>
+    <div class="stat az"><div class="stat-lbl">Projetos fechados</div><div class="stat-val" id="rs-n" style="font-size:20px">—</div><div class="stat-sub" id="rs-n-sub"></div></div>
+    <div class="stat tc"><div class="stat-lbl">Taxa de conversão</div><div class="stat-val" id="rs-conv" style="font-size:20px">—</div><div class="stat-sub" id="rs-conv-sub"></div></div>
+    <div class="stat cinza"><div class="stat-lbl">Ciclo médio</div><div class="stat-val" id="rs-ciclo" style="font-size:20px">—</div><div class="stat-sub" id="rs-ciclo-sub"></div></div>
+  </div>
+
+  <!-- COMPARAÇÕES -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px" id="rel-comp-row">
+    <div class="card cinza" style="margin-bottom:0">
+      <div class="card-hdr"><div class="card-title" id="rel-comp-prev-title">vs período anterior</div></div>
+      <div class="card-body" style="padding:10px 16px" id="rel-comp-prev"></div>
     </div>
-    <div class="card consul">
-      <div class="card-hdr"><div class="card-title">Eficiência (fechado / orçado)</div></div>
-      <div class="card-body" style="padding:10px 14px" id="rel-eficiencia"></div>
+    <div class="card cinza" style="margin-bottom:0">
+      <div class="card-hdr"><div class="card-title" id="rel-comp-yoy-title">vs mesmo período ano anterior</div></div>
+      <div class="card-body" style="padding:10px 16px" id="rel-comp-yoy"></div>
     </div>
   </div>
-  <div class="card am">
+
+  <!-- BREAKDOWN NÚCLEO + CLIENTES NOVOS/RECORRENTES -->
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;margin-bottom:10px">
+    <div class="card verde" style="margin-bottom:0">
+      <div class="card-hdr"><div class="card-title">Breakdown por núcleo</div></div>
+      <div class="card-body" style="padding:10px 14px" id="rel-nucleo"></div>
+    </div>
+    <div class="card az" style="margin-bottom:0">
+      <div class="card-hdr"><div class="card-title">Clientes novos vs recorrentes</div></div>
+      <div class="card-body" style="padding:10px 14px" id="rel-clientes-tipo"></div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO EVOLUÇÃO -->
+  <div class="card am" style="margin-bottom:10px">
     <div class="card-hdr"><div class="card-title">Evolução mensal — Efetivo EXP</div></div>
-    <div class="card-body" style="padding:8px 14px">
-      <div style="position:relative;height:110px">
+    <div class="card-body" style="padding:8px 14px 14px">
+      <div style="position:relative;height:160px">
         <canvas id="chart-relatorio-mensal"></canvas>
       </div>
     </div>
   </div>
 
-  <!-- R1/R2/R3 — Tabela de métricas mensais por coorte -->
-  <div class="card az" style="margin-bottom:10px">
-    <div class="card-hdr" style="gap:8px;flex-wrap:wrap">
-      <div class="card-title" style="flex:1">Métricas mensais por coorte</div>
-      <div style="font-size:9px;color:#888;font-style:italic">Win Rate = % das opps originadas no mês que foram fechadas &nbsp;·&nbsp; <span style="color:#bbb">~ = algumas ainda em aberto</span></div>
+  <!-- ORIGENS: LEADS vs CONVERSÕES -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="card cinza" style="margin-bottom:0">
+      <div class="card-hdr"><div class="card-title">Origem dos leads</div><div style="font-size:9px;color:#aaa">por quantidade de novas opps</div></div>
+      <div class="card-body" style="padding:10px 14px" id="rel-orig-leads"></div>
     </div>
-    <div style="overflow-x:auto" id="rel-mensal-tabela"></div>
+    <div class="card cinza" style="margin-bottom:0">
+      <div class="card-hdr"><div class="card-title">Origem das conversões</div><div style="font-size:9px;color:#aaa">por valor fechado</div></div>
+      <div class="card-body" style="padding:10px 14px" id="rel-orig-conv"></div>
+    </div>
   </div>
 
-  <!-- R4 — Origem dos leads do período -->
-  <div class="card am">
-    <div class="card-hdr"><div class="card-title" id="rel-orig-title">Origem dos leads</div></div>
-    <div class="card-body" style="padding:10px 14px" id="rel-origens"></div>
+  <!-- TOP CLIENTES -->
+  <div class="card consul" style="margin-bottom:10px">
+    <div class="card-hdr"><div class="card-title" id="rel-top-title">Top clientes do período</div></div>
+    <div class="card-body" style="padding:10px 14px" id="rel-top-clientes"></div>
   </div>
+
+  <!-- TABELA COORTE (expansível) -->
+  <div class="card az" style="margin-bottom:0">
+    <div class="card-hdr" style="cursor:pointer" onclick="toggleRelCoorte()">
+      <div class="card-title" style="flex:1">Métricas mensais por coorte</div>
+      <span id="rel-coorte-toggle" style="font-size:10px;color:#aaa">▶ expandir</span>
+    </div>
+    <div id="rel-coorte-wrap" style="display:none">
+      <div style="padding:4px 14px 6px;font-size:9px;color:#888;font-style:italic">Win Rate = % das opps originadas no mês que foram fechadas · <span style="color:#bbb">~ = algumas ainda em aberto</span></div>
+      <div style="overflow-x:auto" id="rel-mensal-tabela"></div>
+    </div>
+  </div>
+
 </div>
 
 </div><!-- /#crm-body -->
@@ -1118,6 +1253,16 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
+<!-- MENU FLUTUANTE DE CARD DO KANBAN -->
+<div class="pcard-menu" id="pcard-menu">
+  <button class="pcard-menu-item" id="pcm-prosp"   onclick="moverCardStage('prospecção')">← Prospecção</button>
+  <button class="pcard-menu-item" id="pcm-enviada"  onclick="moverCardStage('enviada')">Orçamento ativo</button>
+  <button class="pcard-menu-item" id="pcm-negoc"    onclick="moverCardStage('negociacao')">Negociação</button>
+  <button class="pcard-menu-item" id="pcm-fechada"  onclick="moverCardStage('fechada')">✓ Fechar</button>
+  <div class="pcard-menu-sep"></div>
+  <button class="pcard-menu-item danger" id="pcm-negar" onclick="moverCardStage('negada')">✗ Negar</button>
+</div>
+
 <!-- ═══════════ MODAL: AÇÃO DE ESTÁGIO (fechar/negar opp/prod) ═══════ -->
 <div class="modal-bg" id="modal-acao">
   <div class="modal" style="width:480px">
@@ -1306,6 +1451,7 @@ let detailOppId = null;
 let orcSortKey  = 'data_entrada';
 let orcSortDir  = -1;
 let alcMode     = 'op';
+let alcAgrup    = 'cidade';
 let origMode    = 'resumido';
 
 // Mapa de pipeline_stage → label amigável
@@ -2119,17 +2265,27 @@ function renderDash(){
   // sub-texto: contar produtos ativos nas oportunidades ativas
   const nProdsAtivos = ativas.reduce((s,op)=>s+op._produtos.filter(p=>['ativo','negociacao','negociação'].includes((p.status||'').toLowerCase())).length,0);
 
+  // Ticket médio e tempo médio de ciclo
+  const fechAno = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||'').startsWith(anoStr));
+  const ticket = fechAno.length ? Math.round(fechAno.reduce((s,o)=>s+oppValorEfetivo(o,true),0)/fechAno.length) : 0;
+  const ciclos = fechAno.filter(o=>o.data_entrada&&oppDataFechamento(o))
+    .map(o=>Math.round((new Date(oppDataFechamento(o))-new Date(o.data_entrada))/86400000));
+  const cicloMedio = ciclos.length ? Math.round(ciclos.reduce((a,b)=>a+b,0)/ciclos.length) : null;
+
+  // NPS médio
+  const npsStats = getPesquisaSatStats();
+  const npsMedia = npsStats.notaMedia;
+
   document.getElementById('s-fat').textContent=fmt(fatAno);
-  document.getElementById('s-fat-sub').innerHTML=`${fechadas.filter(o=>{
-    const d=oppDataFechamento(o); return d&&d.startsWith(anoStr);
-  }).length} projetos fechados em ${anoStr}<br><span style="font-size:9px;color:var(--verde)">Efetivo EXP: ${fmt(fatEfetivo)}</span><br><span style="font-size:9px;color:#aaa">Total acumulado: ${fmt(fatTotal)}</span>`;
-  document.getElementById('s-pipe').textContent=fmt(vPipe);
-  document.getElementById('s-pipe-sub').innerHTML=`${ativas.length} oportunidades ativas<br><span style="font-size:9px;color:var(--azul)">Efetivo EXP: ${fmt(vPipeEfetivo)}</span><br><span style="font-size:9px;color:#aaa">Total histórico: ${fmt(vPipeTotal)}</span>`;
-  // D1: hierarquia ativo / total
-  document.getElementById('s-ativas').innerHTML=`${ativas.length}<span style="font-size:14px;font-weight:400;color:#aaa"> / ${ops.length}</span>`;
-  document.getElementById('s-ativas-sub').textContent=`ativas de ${ops.length} total · ${nProdsAtivos} produtos`;
+  document.getElementById('s-fat-sub').innerHTML=`${fechAno.length} proj. fechados em ${anoStr}<br><span style="font-size:9px;color:var(--verde)">Efetivo EXP: ${fmt(fatEfetivo)}</span>`;
+  document.getElementById('s-pipe').textContent=fmt(vPipeEfetivo);
+  document.getElementById('s-pipe-sub').innerHTML=`${ativas.length} oportunidades ativas<br><span style="font-size:9px;color:#aaa">Total proposto: ${fmt(vPipe)}</span>`;
   document.getElementById('s-conv').textContent=conv+'%';
-  document.getElementById('s-conv-sub').textContent=`${fechadas2026.length} de ${ops2026.length} opp. abertas em ${anoStr}`;
+  document.getElementById('s-conv-sub').textContent=`${fechadas2026.length}/${ops2026.length} opps em ${anoStr}`;
+  document.getElementById('s-ticket').textContent=ticket?fmt(ticket).replace('R$','').trim():'—';
+  document.getElementById('s-ticket-sub').textContent=cicloMedio?`ciclo médio: ${cicloMedio} dias`:`${fechAno.length} proj. no ano`;
+  document.getElementById('s-nps').textContent=npsMedia!=null?npsMedia.toFixed(1).replace('.',','):'—';
+  document.getElementById('s-nps-sub').textContent=npsMedia!=null?`de 5,0 · ${npsStats.respondidas} respostas`:'sem respostas';
   // 2E — gráfico mensal: por núcleo quando resp='todos', por usuário quando resp filtrado
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const uMap={};
@@ -2182,7 +2338,10 @@ function renderDash(){
   }
   if(chartMensal)chartMensal.destroy();
   const ctx1=document.getElementById('chart-mensal').getContext('2d');
-  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8,usePointStyle:true}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10}},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(0,0,0,.06)'}}}}});
+  const isDark=document.documentElement.dataset.theme==='dark';
+  const gridColor=isDark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';
+  const tickColor=isDark?'#888':'#666';
+  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:8}},plugins:{legend:{position:'top',align:'end',labels:{font:{size:10},boxWidth:10,padding:12,usePointStyle:true,color:tickColor}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10},color:tickColor},grid:{color:gridColor},border:{display:false}},y:{ticks:{font:{size:10},color:tickColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColor},border:{display:false}}}}});
 
   // S4-02 — donut com toggle: por núcleo / pipeline stage / responsável
   // Atualiza estado visual dos botões
@@ -2229,7 +2388,7 @@ function renderDash(){
   chartTipo=new Chart(ctx2,{type:'doughnut',data:{labels:tLabels,datasets:[{
     data:tLabels.map(l=>tipoMap[l]),
     backgroundColor:tCores,
-    borderWidth:1,borderColor:'#fff'
+    borderWidth:0
   }]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.parsed)} (${Math.round(ctx.parsed/total_tipo*100)}%)`}}}}});
   document.getElementById('chart-tipo-legenda').innerHTML=tLabels.length?tLabels.map((l,i)=>`
     <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
@@ -2255,30 +2414,58 @@ function renderDash(){
     return d&&new Date(d)>=cut;
   }).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
 
-  const tblFech = `<table><thead><tr><th>Nº</th><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead><tbody>
-    ${recFech.map(o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <td class="num-tag">${escHtml(o.num_legado||'—')}</td>
-      <td><strong>${escHtml(o._cliente?.nome||'—')}</strong></td>
+  function rowFech(o){
+    return`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
+      <td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td>
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td>
-      <td style="font-weight:700;font-family:var(--font-mono)">${fmt(oppValorFechado(o))}</td>
-    </tr>`).join('')}</tbody></table>`;
-  const tblNeg = `<table><thead><tr><th>Nº</th><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor prop.</th></tr></thead><tbody>
-    ${recNeg.map(o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <td class="num-tag">${escHtml(o.num_legado||'—')}</td>
-      <td><strong>${escHtml(o._cliente?.nome||'—')}</strong></td>
+      <td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o))}</td>
+    </tr>`;
+  }
+  function rowNeg(o){
+    return`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
+      <td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td>
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(o.updated_at)}</td>
-      <td style="font-family:var(--font-mono);color:var(--terracota)">${fmt(oppValorProposto(o))}</td>
-    </tr>`).join('')}</tbody></table>`;
+      <td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorProposto(o))}</td>
+    </tr>`;
+  }
+  const thFech=`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead>`;
+  const thNeg =`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Proposto</th></tr></thead>`;
 
-  document.getElementById('dash-fechamentos').innerHTML=recFech.length?tblFech:`<div class="empty-note">Nenhum fechamento nos últimos 45 dias.</div>`;
-  document.getElementById('dash-negativas').innerHTML=recNeg.length?tblNeg:`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
+  // preview: 5 mais recentes
+  const prevFech=recFech.slice(0,5);
+  const prevNeg =recNeg.slice(0,5);
+  document.getElementById('dash-fechamentos-preview').innerHTML=prevFech.length
+    ?`<table>${thFech}<tbody>${prevFech.map(rowFech).join('')}</tbody></table>`
+    :`<div class="empty-note">Nenhum fechamento nos últimos 45 dias.</div>`;
+  document.getElementById('dash-negativas-preview').innerHTML=prevNeg.length
+    ?`<table>${thNeg}<tbody>${prevNeg.map(rowNeg).join('')}</tbody></table>`
+    :`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
+  const elFC=document.getElementById('dash-fech-count');
+  const elNC=document.getElementById('dash-neg-count');
+  if(elFC)elFC.textContent=recFech.length>5?`+${recFech.length-5} nos últimos 45 dias`:'';
+  if(elNC)elNC.textContent=recNeg.length>5?`+${recNeg.length-5} nos últimos 45 dias`:'';
+
+  // tabela completa 45 dias (renderizada para o painel expandido)
+  document.getElementById('dash-fechamentos').innerHTML=recFech.length
+    ?`<table>${thFech}<tbody>${recFech.map(rowFech).join('')}</tbody></table>`
+    :`<div class="empty-note">Nenhum fechamento nos últimos 45 dias.</div>`;
+  document.getElementById('dash-negativas').innerHTML=recNeg.length
+    ?`<table>${thNeg}<tbody>${recNeg.map(rowNeg).join('')}</tbody></table>`
+    :`<div class="empty-note">Nenhuma negativa nos últimos 45 dias.</div>`;
   renderDashFu();
-  renderValorPropostas();
 }
+function toggleDash45d(foco){
+  const el=document.getElementById('dash-45d');
+  const aberto=el.style.display!=='none';
+  if(aberto&&!foco){el.style.display='none';return;}
+  el.style.display='block';
+  setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50);
+}
+
 function renderDashPesquisaSatisfacao(){
   const el=document.getElementById('nps-body');
   if(!el)return;
@@ -2371,7 +2558,11 @@ function renderPipe(){
     const neg=['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase());
     const fech=isFechada(op);
     const cls=`pcard${exp?' pcard-exp':fech?' pcard-fech':neg?' pcard-neg':dest?' pcard-dest':''}`;
+    const curStage=(op.pipeline_stage||'').toLowerCase();
     return`<div class="${cls}" draggable="true" data-id="${op.id}" onclick="abrirDetail('${escJsStr(op.id)}')">
+      <div class="pcard-actions" onclick="event.stopPropagation()">
+        <button class="pcard-act-btn" title="Ações" onclick="toggleCardMenu(event,'${escJsStr(op.id)}')">⋯</button>
+      </div>
       <div class="pcard-top">
         <span class="pcard-code">${code}</span>
         <div style="display:flex;align-items:center;gap:4px">
@@ -2446,6 +2637,72 @@ function setupPipelineDrag(){
     });
   });
 }
+
+// ═══ MENU DE AÇÕES DO CARD KANBAN ═══════════════════
+let _cardMenuOppId=null;
+
+function toggleCardMenu(e,oppId){
+  const menu=document.getElementById('pcard-menu');
+  const btn=e.currentTarget;
+  const rect=btn.getBoundingClientRect();
+
+  if(menu.classList.contains('open')&&_cardMenuOppId===oppId){
+    closeCardMenu(); return;
+  }
+  _cardMenuOppId=oppId;
+
+  // Mostra/oculta itens conforme estágio atual
+  const op=allOps.find(o=>String(o.id)===String(oppId));
+  const cur=(op?.pipeline_stage||'').toLowerCase();
+  const SHOW={
+    'pcm-prosp':  cur!=='prospecção'&&cur!=='prospeccao',
+    'pcm-enviada':cur!=='enviada',
+    'pcm-negoc':  cur!=='negociacao'&&cur!=='negociação',
+    'pcm-fechada':!isFechada(op),
+    'pcm-negar':  !isNegada(op),
+  };
+  Object.entries(SHOW).forEach(([id,show])=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=show?'block':'none';
+  });
+
+  // Posiciona o menu
+  menu.style.top=(rect.bottom+window.scrollY+4)+'px';
+  menu.style.left=(rect.left+window.scrollX)+'px';
+  menu.classList.add('open');
+}
+
+function closeCardMenu(){
+  document.getElementById('pcard-menu').classList.remove('open');
+  _cardMenuOppId=null;
+}
+
+async function moverCardStage(novoStage){
+  const id=_cardMenuOppId;
+  closeCardMenu();
+  if(!id)return;
+  if(novoStage==='fechada'){
+    await carregarDados(); renderPipe();
+    abrirFechamento(id);
+    return;
+  }
+  if(novoStage==='negada'){
+    // Reutiliza modal de ação existente
+    detailOppId=id;
+    abrirAcaoOpp('negada');
+    return;
+  }
+  await sb.from('oportunidades').update({pipeline_stage:novoStage,updated_at:new Date().toISOString()}).eq('id',id);
+  await carregarDados();
+  renderPipe(); renderOrc();
+}
+
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('pcard-menu');
+  if(menu?.classList.contains('open')&&!menu.contains(e.target)&&!e.target.classList.contains('pcard-act-btn')){
+    closeCardMenu();
+  }
+});
 
 // ═══ ORÇAMENTOS ═════════════════════════════════════
 function sortOrc(key){
@@ -2822,6 +3079,7 @@ function goTab(id, btn){
   document.querySelectorAll('.crm-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
+  document.getElementById('crm-body').classList.toggle('pipe-mode', id==='pipe');
   if(id==='pipe')renderPipe();
   if(id==='orc')renderOrc();
   if(id==='contatos')renderContatos();
@@ -4648,8 +4906,7 @@ function renderAlcance(){
   });
 
   _renderAlcanceMap(Object.values(groups));
-  _renderAlcanceList(Object.values(groups).sort((a,b)=>
-    (a.cidade||'').localeCompare(b.cidade||'','pt-BR')));
+  _renderAlcanceList(Object.values(groups));
 }
 
 function _renderAlcanceMap(groupArr){
@@ -4717,19 +4974,83 @@ function _renderAlcanceMap(groupArr){
 
 let _alcGroups = [];
 
-function _renderAlcanceList(sorted){
-  _alcGroups = sorted;
-  document.getElementById('alc-list-hdr').textContent='Por cidade';
+function setAlcAgrup(modo){
+  alcAgrup=modo;
+  document.getElementById('alc-agrup-cidade').className='btn xs'+(modo==='cidade'?'':' ghost');
+  document.getElementById('alc-agrup-estado').className='btn xs'+(modo==='estado'?'':' ghost');
+  renderAlcance();
+}
+
+function _renderAlcanceList(cityGroups){
+  _alcGroups = cityGroups;
   document.getElementById('alc-list-back').style.display='none';
-  document.getElementById('alc-list').innerHTML=sorted.length
-    ? sorted.map((g,i)=>`
-      <div class="alc-city-card" onclick="_alcanceDrillCity(_alcGroups[${i}])">
-        <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <div style="font-weight:600;font-size:11px">${escHtml(g.cidade)}${g.uf?` <span style="color:#aaa;font-weight:400">· ${escHtml(g.uf)}</span>`:''}</div>
-          <div style="font-size:10px;font-family:var(--font-mono);color:#888">${g.ops.length}</div>
-        </div>
-      </div>`).join('')
-    : '<div class="empty-note">Sem dados com cidade cadastrada.</div>';
+
+  if(alcAgrup==='estado'){
+    // agrupa os cityGroups por UF
+    const byUF={};
+    cityGroups.forEach(g=>{
+      const uf=(g.uf||'—').toUpperCase();
+      if(!byUF[uf])byUF[uf]={uf,ops:[],cidades:[]};
+      byUF[uf].ops.push(...g.ops);
+      byUF[uf].cidades.push(g.cidade);
+    });
+    const sorted=Object.values(byUF).sort((a,b)=>b.ops.length-a.ops.length);
+    document.getElementById('alc-list-hdr').textContent='Por estado';
+    document.getElementById('alc-list').innerHTML=sorted.length
+      ? sorted.map((g,i)=>`
+        <div class="alc-city-card" onclick="_alcanceDrillEstado(${i},${JSON.stringify(g.uf)})">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div style="font-weight:700;font-size:12px">${escHtml(g.uf)}</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:#888">${g.ops.length}</div>
+          </div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.cidades.slice(0,4).map(c=>escHtml(c)).join(', ')}${g.cidades.length>4?'…':''}</div>
+        </div>`).join('')
+      : '<div class="empty-note">Sem dados com estado cadastrado.</div>';
+    // guarda para drill
+    window._alcUFGroups=sorted;
+  } else {
+    const sorted=cityGroups.slice().sort((a,b)=>(a.cidade||'').localeCompare(b.cidade||'','pt-BR'));
+    _alcGroups=sorted;
+    document.getElementById('alc-list-hdr').textContent='Por cidade';
+    document.getElementById('alc-list').innerHTML=sorted.length
+      ? sorted.map((g,i)=>`
+        <div class="alc-city-card" onclick="_alcanceDrillCity(_alcGroups[${i}])">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div style="font-weight:600;font-size:11px">${escHtml(g.cidade)}${g.uf?` <span style="color:#aaa;font-weight:400">· ${escHtml(g.uf)}</span>`:''}</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:#888">${g.ops.length}</div>
+          </div>
+        </div>`).join('')
+      : '<div class="empty-note">Sem dados com cidade cadastrada.</div>';
+  }
+}
+
+function _alcanceDrillEstado(idx, uf){
+  const g=window._alcUFGroups?.[idx];
+  if(!g)return;
+  document.getElementById('alc-list-hdr').textContent=g.uf;
+  document.getElementById('alc-list-back').style.display='block';
+  // lista cidades dentro do estado
+  const cidadesUF={};
+  g.ops.forEach(o=>{
+    const key=(o.cidade||'—').trim();
+    if(!cidadesUF[key])cidadesUF[key]={cidade:key,ops:[]};
+    cidadesUF[key].ops.push(o);
+  });
+  const sorted=Object.values(cidadesUF).sort((a,b)=>b.ops.length-a.ops.length);
+  document.getElementById('alc-list').innerHTML=sorted.map((c,i)=>`
+    <div class="alc-city-card" onclick="_alcanceDrillCityInline(${i},${JSON.stringify(c.cidade)},${JSON.stringify(uf)})">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-weight:600;font-size:11px">${escHtml(c.cidade)}</div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:#888">${c.ops.length}</div>
+      </div>
+    </div>`).join('');
+  window._alcCidadeGroups=sorted;
+}
+
+function _alcanceDrillCityInline(idx){
+  const g=window._alcCidadeGroups?.[idx];
+  if(!g)return;
+  _alcanceDrillCity(g);
 }
 
 function _alcanceDrillCity(g){
@@ -4747,8 +5068,35 @@ function _alcanceDrillCity(g){
 }
 
 // ═══ RELATÓRIOS ═══════════════════════════════════════
+function onRfTipoChange(){
+  const tipo = document.getElementById('rf-tipo')?.value||'anual';
+  const mesIniEl = document.getElementById('rf-mes-ini');
+  if(mesIniEl) mesIniEl.style.display = tipo==='anual' ? 'none' : 'inline-block';
+  renderRelatorios();
+}
+
+function _rfPeriodo(){
+  const tipo  = document.getElementById('rf-tipo')?.value||'anual';
+  const ano   = parseInt(document.getElementById('rf-ano')?.value||new Date().getFullYear());
+  const mesIni= parseInt(document.getElementById('rf-mes-ini')?.value||1); // 1-based
+  const dur   = tipo==='mensal'?1:tipo==='quadrimestral'?4:tipo==='semestral'?6:12;
+  // mes 1-based
+  let m0 = tipo==='anual' ? 1 : mesIni;
+  let mF = Math.min(m0+dur-1, 12);
+  // datas ISO
+  const dtIni = `${ano}-${String(m0).padStart(2,'0')}-01`;
+  const lastDay = new Date(ano, mF, 0).getDate();
+  const dtFim   = `${ano}-${String(mF).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  // label
+  const MESES_ABREV=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  let label;
+  if(tipo==='anual') label=`Ano ${ano}`;
+  else if(tipo==='mensal') label=`${MESES_ABREV[m0]} ${ano}`;
+  else label=`${MESES_ABREV[m0]}–${MESES_ABREV[mF]} ${ano}`;
+  return {tipo,ano,m0,mF,dtIni,dtFim,label,dur};
+}
+
 function renderRelatorios(){
-  const anoFil = document.getElementById('rf-ano')?.value||String(new Date().getFullYear());
   const rs = document.getElementById('rf-resp');
   if(rs){
     const cur = rs.value;
@@ -4756,146 +5104,284 @@ function renderRelatorios(){
       Object.values(allUsers).filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
         .map(u=>`<option value="${escHtml(u.id)}"${u.id===cur?' selected':''}>${escHtml(u.nome.split(' ')[0])}</option>`).join('');
   }
-  const respFil = rs?.value||'todos';
+  const respFil   = rs?.value||'todos';
+  const nucleoFil = document.getElementById('rf-nucleo')?.value||'todos';
+  const per       = _rfPeriodo();
+  const lblEl = document.getElementById('rel-periodo-label');
+  if(lblEl) lblEl.textContent = per.label;
 
+  const MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // ── Helpers de período ────────────────────────────────────────────
+  function inRange(dateStr,dIni,dFim){ return dateStr&&dateStr>=dIni&&dateStr<=dFim; }
+  function inPer(dateStr){ return inRange(dateStr,per.dtIni,per.dtFim); }
+
+  // Calcula dtIni/dtFim de um período relativo
+  function calcPeriodo(ano,m0,mF){
+    const lastDay=new Date(ano,mF,0).getDate();
+    return {dtIni:`${ano}-${String(m0).padStart(2,'0')}-01`,
+            dtFim:`${ano}-${String(mF).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`};
+  }
+  // Período anterior imediato (mesmo tamanho)
+  let prevM0=per.m0-per.dur, prevMF=per.mF-per.dur, prevAno=per.ano;
+  if(prevM0<1){ prevAno--; prevM0=per.m0-per.dur+12; prevMF=per.mF-per.dur+12; }
+  const perPrev = calcPeriodo(prevAno,Math.max(1,prevM0),Math.min(12,prevMF));
+  const perPrevLabel= per.dur===1?`${MESES_ABR[prevM0-1]}/${prevAno}`:`${MESES_ABR[prevM0-1]}–${MESES_ABR[Math.min(prevMF,12)-1]}/${prevAno}`;
+  // Mesmo período ano anterior
+  const perYoY = calcPeriodo(per.ano-1,per.m0,per.mF);
+  const perYoYLabel= per.dur===1?`${MESES_ABR[per.m0-1]}/${per.ano-1}`:`${MESES_ABR[per.m0-1]}–${MESES_ABR[per.mF-1]}/${per.ano-1}`;
+
+  // ── Filtragem ─────────────────────────────────────────────────────
   let ops = allOps;
-  if(anoFil!=='todos') ops = ops.filter(o=>(o.data_entrada||'').startsWith(anoFil)||(oppDataFechamento(o)||'').startsWith(anoFil));
   if(respFil!=='todos') ops = ops.filter(o=>o.resp_id===respFil);
+  if(nucleoFil!=='todos') ops = ops.filter(o=>(o._produtos||[]).some(p=>(NUCLEO_GRUPO[p.nucleo]||p.nucleo)===nucleoFil));
 
-  const ativas   = ops.filter(o=>isAtiva(o));
-  const fechadas  = ops.filter(o=>isFechada(o));
-  const negadas   = ops.filter(o=>isNegada(o));
-  const novas     = anoFil!=='todos' ? allOps.filter(o=>(o.data_entrada||'').startsWith(anoFil)&&(respFil==='todos'||o.resp_id===respFil)) : ops;
+  function opsStats(dIni,dFim){
+    const _inR=d=>inRange(d,dIni,dFim);
+    const fech = ops.filter(o=>isFechada(o)&&_inR(oppDataFechamento(o)||''));
+    const neg  = ops.filter(o=>isNegada(o)&&_inR(o.updated_at||''));
+    const nov  = ops.filter(o=>_inR(o.data_entrada||''));
+    const fat  = fech.reduce((s,o)=>s+oppValorEfetivo(o,true),0);
+    const conv = nov.length?fech.filter(o=>nov.includes(o)).length/nov.length*100:0;
+    const ciclos= fech.map(o=>{
+      const d1=o.data_entrada; const d2=oppDataFechamento(o);
+      if(!d1||!d2)return null;
+      return (new Date(d2)-new Date(d1))/(1000*60*60*24);
+    }).filter(d=>d!==null&&d>=0);
+    const ciclo = ciclos.length?Math.round(ciclos.reduce((a,b)=>a+b,0)/ciclos.length):null;
+    return {fech,neg,nov,fat,conv,ciclo,nFech:fech.length,nNov:nov.length};
+  }
 
-  const fatTotal   = fechadas.reduce((s,o)=>s+oppValorFechado(o),0);
-  const fatEfetivo = fechadas.reduce((s,o)=>s+oppValorEfetivo(o,true),0);
-  const pipeEfetivo= ativas.reduce((s,o)=>s+oppValorEfetivo(o,false),0);
-  const perdidoEf  = negadas.reduce((s,o)=>s+oppValorEfetivo(o,false),0);
-  const taxaConv   = novas.length ? Math.round(fechadas.filter(o=>novas.includes(o)).length/novas.length*100) : 0;
-  const ticket     = fechadas.length ? Math.round(fatEfetivo/fechadas.length) : 0;
+  const curr = opsStats(per.dtIni,per.dtFim);
+  const prev = opsStats(perPrev.dtIni,perPrev.dtFim);
+  const yoy  = opsStats(perYoY.dtIni,perYoY.dtFim);
 
-  document.getElementById('rel-resumo').innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-      <div>
-        <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Faturamento ${anoFil}</div>
-        <div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${fmt(fatTotal)}</div>
-        <div style="font-size:11px;color:var(--azul);margin-top:2px">Efetivo EXP: <strong>${fmt(fatEfetivo)}</strong></div>
-      </div>
-      <div>
-        <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Pipeline efetivo</div>
-        <div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${fmt(pipeEfetivo)}</div>
-        <div style="font-size:11px;color:var(--terracota);margin-top:2px">Perdido: <strong>${fmt(perdidoEf)}</strong></div>
-      </div>
-      <div>
-        <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Indicadores</div>
-        <div style="font-size:11px;margin-bottom:4px">Conversão: <strong style="font-family:var(--font-mono)">${taxaConv}%</strong> <span style="color:#aaa">(${fechadas.length}/${novas.length} opps)</span></div>
-        <div style="font-size:11px;margin-bottom:4px">Ticket médio: <strong style="font-family:var(--font-mono)">${fmt(ticket)}</strong></div>
-        <div style="font-size:11px">Novas opps: <strong>${novas.length}</strong> · Fechadas: <strong style="color:var(--verde)">${fechadas.length}</strong> · Negadas: <strong style="color:var(--terracota)">${negadas.length}</strong></div>
-      </div>
-    </div>`;
+  const fechadas = curr.fech;
+  const novas    = curr.nov;
 
-  // Por responsável
-  const byResp={};
+  // ── Stats primários ───────────────────────────────────────────────
+  function delta(now,old,isMoney){
+    if(!old||old===0)return'';
+    const pct=Math.round((now-old)/Math.abs(old)*100);
+    const clr=pct>=0?'var(--verde)':'var(--terracota)';
+    const arr=pct>=0?'↑':'↓';
+    return `<span style="font-size:9px;color:${clr};font-weight:600">${arr}${Math.abs(pct)}%</span>`;
+  }
+  const ticket = fechadas.length?Math.round(curr.fat/fechadas.length):0;
+
+  const setS=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
+  setS('rs-fat', `<span style="font-family:var(--font-mono)">${fmt(curr.fat)}</span>`);
+  setS('rs-fat-sub', `Ticket médio: <strong>${fmt(ticket)}</strong>`);
+  setS('rs-n', `<strong>${curr.nFech}</strong>`);
+  setS('rs-n-sub', `de ${curr.nNov} novas opps`);
+  setS('rs-conv', `${Math.round(curr.conv)}%`);
+  setS('rs-conv-sub', `${curr.nFech}/${curr.nNov} convertidas`);
+  setS('rs-ciclo', curr.ciclo!==null?`${curr.ciclo}d`:'—');
+  setS('rs-ciclo-sub', curr.ciclo!==null?`média até fechamento`:'sem fechamentos');
+
+  // ── Comparações ───────────────────────────────────────────────────
+  function compCard(cur,cmp,cmpLabel){
+    const rows=[
+      {lbl:'Faturamento efetivo',cur:cur.fat,cmp:cmp.fat,fmt:fmt},
+      {lbl:'Projetos fechados',cur:cur.nFech,cmp:cmp.nFech,fmt:v=>v},
+      {lbl:'Taxa de conversão',cur:cur.conv,cmp:cmp.conv,fmt:v=>`${Math.round(v)}%`},
+      {lbl:'Ciclo médio',cur:cur.ciclo??0,cmp:cmp.ciclo??0,fmt:v=>v?`${Math.round(v)}d`:'—',inv:true},
+    ];
+    return rows.map(r=>{
+      const diff=r.cmp?Math.round((r.cur-(r.cmp))/(Math.abs(r.cmp)||1)*100):null;
+      const up=r.inv?diff<=0:diff>=0;
+      const clr=diff===null?'#aaa':diff===0?'#aaa':up?'var(--verde)':'var(--terracota)';
+      const arr=diff===null?'':(diff>0?'↑':diff<0?'↓':'=');
+      return`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+        <span style="color:#888">${r.lbl}</span>
+        <span style="display:flex;align-items:baseline;gap:6px">
+          <span style="font-family:var(--font-mono);font-weight:600">${r.fmt(r.cur)}</span>
+          ${diff!==null&&r.cmp?`<span style="font-size:9px;color:${clr};font-weight:700">${arr}${Math.abs(diff)}%</span>`:'<span style="font-size:9px;color:#bbb">—</span>'}
+        </span>
+      </div>`;
+    }).join('')+`<div style="font-size:9px;color:#aaa;margin-top:6px">Comparado com ${escHtml(cmpLabel)}</div>`;
+  }
+  document.getElementById('rel-comp-prev-title').textContent=`vs ${perPrevLabel}`;
+  document.getElementById('rel-comp-yoy-title').textContent=`vs ${perYoYLabel}`;
+  document.getElementById('rel-comp-prev').innerHTML=compCard(curr,prev,perPrevLabel);
+  document.getElementById('rel-comp-yoy').innerHTML=compCard(curr,yoy,perYoYLabel);
+
+  // ── Breakdown por núcleo ─────────────────────────────────────────
+  const NUCLEOS=[
+    {key:'Paisagismo',abr:'PAI',cor:'var(--verde)'},
+    {key:'Urbanismo',abr:'URB',cor:'var(--urb,#4A90D9)'},
+    {key:'Consultorias',abr:'CNS',cor:'var(--consul,#8E44AD)'},
+    {key:'Projetos Especiais',abr:'ESP',cor:'var(--esp,#E67E22)'},
+  ];
+  const nucMap={};
+  NUCLEOS.forEach(n=>nucMap[n.key]={n:0,fat:0,pipe:0,cor:n.cor,abr:n.abr});
   fechadas.forEach(o=>{
-    const uid=o.resp_id;
-    if(!byResp[uid])byResp[uid]={fat:0,efetivo:0,n:0};
-    byResp[uid].fat+=oppValorFechado(o);
-    byResp[uid].efetivo+=oppValorEfetivo(o,true);
-    byResp[uid].n++;
+    (o._produtos||[]).forEach(p=>{
+      const k=NUCLEO_GRUPO[p.nucleo]||p.nucleo;
+      if(nucMap[k]){nucMap[k].n++;nucMap[k].fat+=oppValorEfetivo(o,true);}
+    });
   });
-  const respSorted=Object.entries(byResp).sort((a,b)=>b[1].efetivo-a[1].efetivo);
-  const maxResp=respSorted[0]?.[1].efetivo||1;
-  document.getElementById('rel-por-resp').innerHTML=respSorted.length
-    ? respSorted.map(([uid,{fat,efetivo,n}])=>{
-        const u=allUsers[uid]||{};
-        return`<div style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-            <span style="display:flex;align-items:center;gap:6px">${respAvatar(uid,18)}<strong>${escHtml(u.nome?.split(' ')[0]||'?')}</strong> <span style="color:#aaa">${n} proj.</span></span>
-            <span style="font-family:var(--font-mono);font-size:10px;color:var(--azul)">${fmt(efetivo)}</span>
-          </div>
-          <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.round(efetivo/maxResp*100)}%;background:${u.cor||'var(--verde)'};border-radius:3px"></div></div>
-        </div>`;
-      }).join('')
-    : '<div class="empty-note">Sem fechamentos no período.</div>';
+  novas.filter(o=>isAtiva(o)).forEach(o=>{
+    (o._produtos||[]).forEach(p=>{
+      const k=NUCLEO_GRUPO[p.nucleo]||p.nucleo;
+      if(nucMap[k]) nucMap[k].pipe+=oppValorEfetivo(o,false);
+    });
+  });
+  const nucArr=Object.entries(nucMap).sort((a,b)=>b[1].fat-a[1].fat);
+  const maxNuc=nucArr.reduce((m,[,v])=>Math.max(m,v.fat),1);
+  const totalNucFat=nucArr.reduce((s,[,v])=>s+v.fat,0)||1;
+  document.getElementById('rel-nucleo').innerHTML=nucArr.length?nucArr.map(([k,{n,fat,pipe,cor}])=>`
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:4px">
+        <span style="font-weight:700;color:${cor}">${k}</span>
+        <span style="display:flex;gap:12px;align-items:baseline">
+          <span style="color:#aaa;font-size:10px">${n} proj · ${Math.round(fat/totalNucFat*100)}%</span>
+          <span style="font-family:var(--font-mono);font-weight:700">${fmt(fat)}</span>
+        </span>
+      </div>
+      <div style="height:6px;background:var(--cinza2);border-radius:3px">
+        <div style="height:100%;width:${Math.round(fat/maxNuc*100)}%;background:${cor};border-radius:3px;opacity:.85"></div>
+      </div>
+      ${pipe?`<div style="font-size:9px;color:#aaa;margin-top:2px">Pipeline: ${fmt(pipe)}</div>`:''}
+    </div>`).join('')
+  :'<div class="empty-note">Sem fechamentos no período.</div>';
 
-  // Eficiência: efetivo fechado / efetivo orçado (nesse período)
-  const orcado = ops.filter(o=>!isFechada(o)||true).reduce((s,o)=>s+oppValorEfetivo(o,false),0);
-  const eficiencia = orcado ? Math.round(fatEfetivo/orcado*100) : 0;
-  const perdidoPct = orcado ? Math.round(perdidoEf/orcado*100) : 0;
-  document.getElementById('rel-eficiencia').innerHTML=`
-    <div style="margin-bottom:14px">
-      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:6px">Efetivo orçado no período</div>
-      <div style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${fmt(orcado)}</div>
-    </div>
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-        <span style="color:var(--verde)">Fechado</span><span style="font-family:var(--font-mono)">${fmt(fatEfetivo)} (${eficiencia}%)</span>
+  // ── Clientes novos vs recorrentes ────────────────────────────────
+  const clientesFech=fechadas.filter(o=>o.cliente_id||o.cliente);
+  const clienteIdsFech=new Set(clientesFech.map(o=>o.cliente_id||o.cliente));
+  const historico=allOps.filter(o=>isFechada(o)&&(oppDataFechamento(o)||'')<per.dtIni);
+  const clientesHist=new Set(historico.map(o=>o.cliente_id||o.cliente));
+  let nNovos=0,nRec=0;
+  clienteIdsFech.forEach(cid=>{ if(clientesHist.has(cid))nRec++; else nNovos++; });
+  const totalCli=nNovos+nRec||1;
+  const pctNovos=Math.round(nNovos/totalCli*100);
+  const pctRec=Math.round(nRec/totalCli*100);
+  document.getElementById('rel-clientes-tipo').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span style="color:var(--azul);font-weight:600">Novos</span>
+          <span style="font-family:var(--font-mono);font-weight:700">${nNovos} <span style="font-weight:400;color:#aaa">${pctNovos}%</span></span>
+        </div>
+        <div style="height:8px;background:var(--cinza2);border-radius:4px">
+          <div style="height:100%;width:${pctNovos}%;background:var(--azul);border-radius:4px;opacity:.8"></div>
+        </div>
+        <div style="font-size:9px;color:#aaa;margin-top:2px">Primeiro projeto com a EXP</div>
       </div>
-      <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.min(eficiencia,100)}%;background:var(--verde);border-radius:3px"></div></div>
-    </div>
-    <div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-        <span style="color:var(--terracota)">Perdido (negativas)</span><span style="font-family:var(--font-mono)">${fmt(perdidoEf)} (${perdidoPct}%)</span>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span style="color:var(--verde);font-weight:600">Recorrentes</span>
+          <span style="font-family:var(--font-mono);font-weight:700">${nRec} <span style="font-weight:400;color:#aaa">${pctRec}%</span></span>
+        </div>
+        <div style="height:8px;background:var(--cinza2);border-radius:4px">
+          <div style="height:100%;width:${pctRec}%;background:var(--verde);border-radius:4px;opacity:.8"></div>
+        </div>
+        <div style="font-size:9px;color:#aaa;margin-top:2px">Já fecharam projeto anteriormente</div>
       </div>
-      <div style="height:6px;background:var(--cinza2);border-radius:3px"><div style="height:100%;width:${Math.min(perdidoPct,100)}%;background:var(--terracota);border-radius:3px"></div></div>
+      <div style="margin-top:2px;padding-top:10px;border-top:1px solid var(--cinza2);font-size:10px;color:#888;text-align:center">${totalCli===1?'1 cliente único':''+clienteIdsFech.size+' clientes únicos'} com fechamentos</div>
     </div>`;
 
-  // S4-03 — gráfico mensal: barras de Efetivo EXP + linha de novas opps
-  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const dadosMensal=Array(12).fill(0);
-  const dadosNovas=Array(12).fill(0);
-  const dadosNegadas=Array(12).fill(0);
-  if(anoFil!=='todos'){
-    // fechadas: efetivo EXP por mês de fechamento
-    fechadas.forEach(o=>{
-      const d=oppDataFechamento(o); if(!d||!d.startsWith(anoFil))return;
-      const m=parseInt(d.slice(5,7))-1;
-      if(m>=0&&m<12) dadosMensal[m]+=oppValorEfetivo(o,true);
-    });
-    // novas: por mês de entrada
-    novas.forEach(o=>{
-      const d=o.data_entrada; if(!d||!d.startsWith(anoFil))return;
-      const m=parseInt(d.slice(5,7))-1;
-      if(m>=0&&m<12) dadosNovas[m]++;
-    });
-    // negadas: por mês de updated_at
-    negadas.forEach(o=>{
-      const d=o.updated_at; if(!d||!d.startsWith(anoFil))return;
-      const m=parseInt(d.slice(5,7))-1;
-      if(m>=0&&m<12) dadosNegadas[m]++;
-    });
+  // ── Gráfico evolução mensal ────────────────────────────────────────
+  const grafMeses=[],dadosMensal=[],dadosNovas=[],dadosNegadas=[];
+  for(let m=per.m0;m<=per.mF;m++){
+    grafMeses.push(MESES_ABR[m-1]);
+    dadosMensal.push(fechadas.filter(o=>{const d=oppDataFechamento(o)||'';return parseInt(d.slice(5,7))===m;}).reduce((s,o)=>s+oppValorEfetivo(o,true),0));
+    dadosNovas.push(novas.filter(o=>parseInt((o.data_entrada||'').slice(5,7))===m).length);
+    dadosNegadas.push(curr.neg.filter(o=>parseInt((o.updated_at||'').slice(5,7))===m).length);
   }
   if(chartRelMensal)chartRelMensal.destroy();
   const ctx=document.getElementById('chart-relatorio-mensal')?.getContext('2d');
+  const isDarkR=document.documentElement.dataset.theme==='dark';
+  const gridColorR=isDarkR?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';
+  const tickColorR=isDarkR?'#888':'#666';
   if(ctx){
-    chartRelMensal=new Chart(ctx,{
-      type:'bar',
-      data:{labels:meses,datasets:[
-        {label:'Efetivo EXP (R$)',data:dadosMensal,backgroundColor:CHART_CORES.Total+'88',borderColor:CHART_CORES.Total,borderWidth:1,yAxisID:'y'},
-        {label:'Novas opps',data:dadosNovas,type:'line',borderColor:'#45865D',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,yAxisID:'y2'},
-        {label:'Negadas',data:dadosNegadas,type:'line',borderColor:'#E53935',backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,tension:.3,borderDash:[3,3],yAxisID:'y2'},
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>ctx.dataset.yAxisID==='y'?`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`:`${ctx.dataset.label}: ${ctx.parsed.y}`}}},scales:{
-        x:{ticks:{font:{size:10}}},
-        y:{position:'left',ticks:{font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(0,0,0,.06)'}},
-        y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''}},
-      }}
-    });
+    chartRelMensal=new Chart(ctx,{type:'bar',data:{labels:grafMeses,datasets:[
+      {label:'Efetivo EXP (R$)',data:dadosMensal,backgroundColor:CHART_CORES.Total+'88',borderColor:CHART_CORES.Total,borderWidth:1,yAxisID:'y'},
+      {label:'Novas opps',data:dadosNovas,type:'line',borderColor:'#45865D',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,yAxisID:'y2'},
+      {label:'Negadas',data:dadosNegadas,type:'line',borderColor:'#E53935',backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,tension:.3,borderDash:[3,3],yAxisID:'y2'},
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8,color:tickColorR}},tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y'?`${c.dataset.label}: ${fmt(c.parsed.y)}`:`${c.dataset.label}: ${c.parsed.y}`}}},scales:{
+      x:{ticks:{font:{size:10},color:tickColorR},grid:{color:gridColorR},border:{display:false}},
+      y:{position:'left',ticks:{font:{size:10},color:tickColorR,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColorR},border:{display:false}},
+      y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:10},color:tickColorR,stepSize:1,callback:v=>Number.isInteger(v)?v:''},border:{display:false}},
+    }}});
   }
 
-  // ── R1/R2/R3: Tabela de métricas mensais por coorte ──────────────
+  // ── Origens: leads (qtd) vs conversões (valor) ───────────────────
+  function renderOrigemBar(el,items,maxVal,valFn,lblFn,cor){
+    if(!el)return;
+    el.innerHTML=items.length
+      ?items.map(([k,d])=>{const v=valFn(d);return`
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+            <span style="font-weight:600">${escHtml(k)}</span>
+            <span style="font-family:var(--font-mono);color:#666">${lblFn(d)}</span>
+          </div>
+          <div style="height:5px;background:var(--cinza2);border-radius:2px">
+            <div style="height:100%;width:${Math.round(v/maxVal*100)}%;background:${cor};border-radius:2px"></div>
+          </div>
+        </div>`;}).join('')
+      :'<div style="font-size:10px;color:#aaa">Sem dados.</div>';
+  }
+  const origLeadsMap={}, origConvMap={};
+  novas.forEach(o=>{
+    const g=o.origem||'Não informado';
+    if(!origLeadsMap[g])origLeadsMap[g]={n:0};
+    origLeadsMap[g].n++;
+  });
+  fechadas.forEach(o=>{
+    const g=o.origem||'Não informado';
+    if(!origConvMap[g])origConvMap[g]={v:0,n:0};
+    origConvMap[g].v+=oppValorEfetivo(o,true);
+    origConvMap[g].n++;
+  });
+  const origLeads=Object.entries(origLeadsMap).sort((a,b)=>b[1].n-a[1].n);
+  const origConv=Object.entries(origConvMap).sort((a,b)=>b[1].v-a[1].v);
+  const maxLead=origLeads[0]?.[1].n||1;
+  const maxConv=origConv[0]?.[1].v||1;
+  renderOrigemBar(document.getElementById('rel-orig-leads'),origLeads,maxLead,d=>d.n,d=>`${d.n} opp${d.n!==1?'s':''}`,`var(--ouro)`);
+  renderOrigemBar(document.getElementById('rel-orig-conv'),origConv,maxConv,d=>d.v,d=>`${fmt(d.v)} (${d.n})`,`var(--verde)`);
+
+  // ── Top clientes ─────────────────────────────────────────────────
+  const topMap={};
+  fechadas.forEach(o=>{
+    const cid=o.cliente_id||o.cliente||'?';
+    const cnome=o.cliente||cid;
+    if(!topMap[cid])topMap[cid]={nome:cnome,fat:0,n:0};
+    topMap[cid].fat+=oppValorEfetivo(o,true);
+    topMap[cid].n++;
+  });
+  const topArr=Object.values(topMap).sort((a,b)=>b.fat-a.fat).slice(0,8);
+  const maxTop=topArr[0]?.fat||1;
+  document.getElementById('rel-top-title').textContent=`Top clientes · ${per.label}`;
+  document.getElementById('rel-top-clientes').innerHTML=topArr.length
+    ?topArr.map((c,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <div style="font-size:9px;font-weight:700;color:#bbb;width:16px;text-align:right">${i+1}</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+            <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${escHtml(c.nome)}</span>
+            <span style="font-family:var(--font-mono);font-size:10px;flex-shrink:0;margin-left:8px">${fmt(c.fat)}</span>
+          </div>
+          <div style="height:4px;background:var(--cinza2);border-radius:2px">
+            <div style="height:100%;width:${Math.round(c.fat/maxTop*100)}%;background:var(--consul,#8E44AD);border-radius:2px;opacity:.75"></div>
+          </div>
+          <div style="font-size:9px;color:#aaa;margin-top:1px">${c.n} projeto${c.n!==1?'s':''}</div>
+        </div>
+      </div>`).join('')
+    :'<div class="empty-note">Sem fechamentos no período.</div>';
+
+  // ── Tabela coorte (colapsável) ────────────────────────────────────
   const relMensalEl=document.getElementById('rel-mensal-tabela');
-  if(anoFil!=='todos'&&relMensalEl){
-    const mesesNomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  if(relMensalEl){
     const hoje=new Date();
-    const mesAtual=String(hoje.getFullYear())===anoFil?hoje.getMonth():13;
+    const mesAtual=hoje.getFullYear()===per.ano?hoje.getMonth():-1;
 
     function mainNucleoKey(op){
       const items=op._proposal?.items?.length?op._proposal.items:op._produtos;
-      if(!items.length)return null;
+      if(!items||!items.length)return null;
       const best=items.reduce((b,p)=>{
-        const v=(+p.valor_proposto||+p.valorProposto||+p.valorCalc||0);
-        const bv=(+b.valor_proposto||+b.valorProposto||+b.valorCalc||0);
+        const v=+p.valor_proposto||+p.valorProposto||+p.valorCalc||0;
+        const bv=+b.valor_proposto||+b.valorProposto||+b.valorCalc||0;
         return v>bv?p:b;
       },items[0]);
       const grp=NUCLEO_GRUPO[best.nucleo]||'';
@@ -4905,113 +5391,72 @@ function renderRelatorios(){
       if(grp==='Projetos Especiais')return'ESP';
       return null;
     }
-
     let tot={n:0,PAIS:0,URB:0,CONSUL:0,ESP:0,fech:0,tickets:[]};
     let rows='';
-
-    mesesNomes.forEach((lbl,m)=>{
-      const novasM=novas.filter(o=>{
-        const d=o.data_entrada||'';
-        return d.startsWith(anoFil)&&parseInt(d.slice(5,7))-1===m;
-      });
+    for(let m=per.m0-1;m<=per.mF-1;m++){
+      const novasM=novas.filter(o=>parseInt((o.data_entrada||'').slice(5,7))-1===m);
       const by={PAIS:0,URB:0,CONSUL:0,ESP:0};
       novasM.forEach(o=>{const k=mainNucleoKey(o);if(k&&by[k]!==undefined)by[k]++;});
-
-      const fechM=fechadas.filter(o=>{
-        const d=oppDataFechamento(o)||'';
-        return d.startsWith(anoFil)&&parseInt(d.slice(5,7))-1===m;
-      });
-
+      const fechM=fechadas.filter(o=>parseInt((oppDataFechamento(o)||'').slice(5,7))-1===m);
       const fC=novasM.filter(o=>isFechada(o)).length;
       const fA=novasM.filter(o=>isAtiva(o)).length;
       const wr=novasM.length?Math.round(fC/novasM.length*100):null;
       const vFechM=fechM.reduce((s,o)=>s+oppValorFechado(o),0);
       const tickM=fechM.length?Math.round(vFechM/fechM.length):null;
-
       tot.n+=novasM.length;tot.PAIS+=by.PAIS;tot.URB+=by.URB;
       tot.CONSUL+=by.CONSUL;tot.ESP+=by.ESP;tot.fech+=fechM.length;
       if(tickM)tot.tickets.push(tickM);
-
-      if(novasM.length===0&&fechM.length===0&&m>mesAtual)return;
+      if(novasM.length===0&&fechM.length===0&&m>mesAtual)continue;
       const isCur=m===mesAtual;
-
       const wrCell=wr!==null
-        ?`<span style="font-family:var(--font-mono);font-weight:700;color:${wr>=50?'var(--verde)':wr<25?'var(--terracota)':'var(--ouro)'}">${wr}%</span>${fA?`<sup style="font-size:8px;color:#bbb" title="${fA} ainda em aberto"> ~</sup>`:''}`
+        ?`<span style="font-family:var(--font-mono);font-weight:700;color:${wr>=50?'var(--verde)':wr<25?'var(--terracota)':'var(--ouro)'}">${wr}%</span>${fA?`<sup style="font-size:8px;color:#bbb"> ~</sup>`:''}`
         :'—';
-
       rows+=`<tr${isCur?' style="background:var(--az-bg)"':''}>
-        <td style="font-weight:${isCur?700:400};white-space:nowrap">${lbl}${isCur?' ◂':''}</td>
+        <td style="font-weight:${isCur?700:400};white-space:nowrap">${MESES_ABR[m]}${isCur?' ◂':''}</td>
         <td style="font-family:var(--font-mono)">${novasM.length||'—'}</td>
         <td style="color:var(--verde)">${by.PAIS||'—'}</td>
-        <td style="color:var(--urb)">${by.URB||'—'}</td>
-        <td style="color:var(--consul)">${by.CONSUL||'—'}</td>
-        <td style="color:var(--esp)">${by.ESP||'—'}</td>
+        <td style="color:var(--urb,#4A90D9)">${by.URB||'—'}</td>
+        <td style="color:var(--consul,#8E44AD)">${by.CONSUL||'—'}</td>
+        <td style="color:var(--esp,#E67E22)">${by.ESP||'—'}</td>
         <td style="font-family:var(--font-mono)">${fechM.length||'—'}</td>
         <td>${wrCell}</td>
         <td style="font-family:var(--font-mono);font-size:10px">${tickM?fmt(tickM):'—'}</td>
       </tr>`;
-    });
-
+    }
     const avgTick=tot.tickets.length?Math.round(tot.tickets.reduce((a,b)=>a+b,0)/tot.tickets.length):null;
     const totFechDasCoorte=fechadas.filter(o=>novas.some(n=>n.id===o.id)).length;
     const totWr=tot.n?Math.round(totFechDasCoorte/tot.n*100):null;
-
     relMensalEl.innerHTML=`<table id="rel-mensal-table">
       <thead><tr>
-        <th>Mês</th>
-        <th title="Oportunidades com data de entrada neste mês">Novas</th>
-        <th style="color:var(--verde)" title="Paisagismo">PAI</th>
-        <th style="color:var(--urb)" title="Urbanismo">URB</th>
-        <th style="color:var(--consul)" title="Consultorias">CNS</th>
-        <th style="color:var(--esp)" title="Projetos Especiais">ESP</th>
-        <th title="Oportunidades fechadas neste mês (por data de fechamento)">Fechamentos</th>
-        <th title="% das opps originadas no mês que foram fechadas (coorte)">Win Rate ⓘ</th>
-        <th title="Valor médio das opps fechadas no mês">Ticket médio</th>
+        <th>Mês</th><th title="Novas opps">Novas</th>
+        <th style="color:var(--verde)">PAI</th>
+        <th style="color:var(--urb,#4A90D9)">URB</th>
+        <th style="color:var(--consul,#8E44AD)">CNS</th>
+        <th style="color:var(--esp,#E67E22)">ESP</th>
+        <th>Fechamentos</th><th>Win Rate</th><th>Ticket médio</th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr style="border-top:2px solid var(--cinza);background:var(--off)">
-        <td><strong>Total ${anoFil}</strong></td>
+        <td><strong>Total ${per.label}</strong></td>
         <td style="font-family:var(--font-mono);font-weight:700">${tot.n||'—'}</td>
         <td style="color:var(--verde);font-weight:700">${tot.PAIS||'—'}</td>
-        <td style="color:var(--urb);font-weight:700">${tot.URB||'—'}</td>
-        <td style="color:var(--consul);font-weight:700">${tot.CONSUL||'—'}</td>
-        <td style="color:var(--esp);font-weight:700">${tot.ESP||'—'}</td>
+        <td style="color:var(--urb,#4A90D9);font-weight:700">${tot.URB||'—'}</td>
+        <td style="color:var(--consul,#8E44AD);font-weight:700">${tot.CONSUL||'—'}</td>
+        <td style="color:var(--esp,#E67E22);font-weight:700">${tot.ESP||'—'}</td>
         <td style="font-family:var(--font-mono);font-weight:700">${tot.fech||'—'}</td>
         <td>${totWr!==null?`<span style="font-family:var(--font-mono);font-weight:700;color:${totWr>=50?'var(--verde)':totWr<25?'var(--terracota)':'var(--ouro)'}">${totWr}%</span>`:'—'}</td>
         <td style="font-family:var(--font-mono);font-weight:700">${avgTick?fmt(avgTick):'—'}</td>
       </tr></tfoot>
     </table>`;
-  } else if(relMensalEl){
-    relMensalEl.innerHTML='<div style="font-size:10px;color:#aaa;padding:12px 16px">Selecione um ano específico para ver a tabela mensal.</div>';
   }
+}
 
-  // ── R4: Origem dos leads do período ──────────────────────────────
-  const origMap2={};
-  novas.forEach(o=>{
-    const grp=o.origem||'Não informado';
-    if(!origMap2[grp])origMap2[grp]={n:0,v:0};
-    origMap2[grp].n++;
-    origMap2[grp].v+=oppValorProposto(o);
-  });
-  const origSorted2=Object.entries(origMap2).sort((a,b)=>b[1].n-a[1].n);
-  const maxN2=origSorted2[0]?.[1].n||1;
-  const relOrigEl=document.getElementById('rel-origens');
-  const relOrigTitle=document.getElementById('rel-orig-title');
-  if(relOrigTitle)relOrigTitle.textContent=`Origem dos leads${anoFil!=='todos'?' · '+anoFil:''}`;
-  if(relOrigEl){
-    relOrigEl.innerHTML=origSorted2.length
-      ?origSorted2.map(([k,{n,v}])=>`
-        <div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;margin-bottom:3px">
-            <span style="font-weight:600">${escHtml(k)}</span>
-            <span style="font-family:var(--font-mono);color:#666">${n} opp${n!==1?'s':''}&nbsp;·&nbsp;${fmt(v)}</span>
-          </div>
-          <div style="height:5px;background:var(--cinza2);border-radius:2px">
-            <div style="height:100%;width:${Math.round(n/maxN2*100)}%;background:var(--ouro);border-radius:2px"></div>
-          </div>
-        </div>`).join('')
-      :'<div style="font-size:10px;color:#aaa">Sem dados para o período.</div>';
-  }
+function toggleRelCoorte(){
+  const wrap=document.getElementById('rel-coorte-wrap');
+  const tog=document.getElementById('rel-coorte-toggle');
+  const aberto=wrap.style.display!=='none';
+  wrap.style.display=aberto?'none':'block';
+  tog.textContent=aberto?'▶ expandir':'▼ recolher';
 }
 
 // ═══ INTEGRAÇÃO CALC ═════════════════════════════════

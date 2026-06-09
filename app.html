@@ -3078,17 +3078,37 @@ const climaApp = {
 
 async function verificarPesquisaPendente(usuarioId) {
   try {
+    // Busca qualquer disparo ativo para o usuário (não filtra por status pois o update pode falhar por RLS)
     const { data, error } = await sb
       .from('pessoas_pesquisa_clima_disparos')
-      .select('id, campanha_id, status, campanha:pessoas_pesquisa_clima_campanhas(titulo)')
+      .select('id, campanha_id, status, campanha:pessoas_pesquisa_clima_campanhas(titulo, status)')
       .eq('usuario_id', usuarioId)
-      .eq('status', 'pendente')
-      .limit(1)
-      .maybeSingle();
-    if (error || !data) return;
-    climaApp.disparoId    = data.id;
-    climaApp.campanhaId   = data.campanha_id;
-    climaApp.campanhaTitle = data.campanha?.titulo || 'Pesquisa de Clima';
+      .in('status', ['pendente', 'respondido'])
+      .limit(5);
+    if (error || !data?.length) return;
+
+    // Busca respostas já submetidas pelo usuário para qualquer campanha
+    const campanhaIds = data.map(d => d.campanha_id).filter(Boolean);
+    const { data: respostas } = await sb
+      .from('pessoas_pesquisa_clima_respostas')
+      .select('campanha_id')
+      .eq('usuario_id', usuarioId)
+      .in('campanha_id', campanhaIds);
+    const campanhasRespondidas = new Set((respostas || []).map(r => r.campanha_id));
+
+    // Mostra apenas o primeiro disparo cuja campanha ainda está ativa e não foi respondida
+    const pendente = data.find(d =>
+      d.campanha?.status === 'ativa' && !campanhasRespondidas.has(d.campanha_id)
+    );
+    if (!pendente) return;
+
+    // Marca como respondido em background caso o status ainda seja 'pendente' mas já existe resposta
+    // (corrige disparos presos por falha de RLS anterior)
+    if (pendente.status === 'respondido') return; // já marcado, mas sem resposta — não deve ocorrer
+
+    climaApp.disparoId     = pendente.id;
+    climaApp.campanhaId    = pendente.campanha_id;
+    climaApp.campanhaTitle = pendente.campanha?.titulo || 'Pesquisa de Clima';
     const sub = document.getElementById('clima-banner-sub');
     if (sub) sub.textContent = `Rodada: ${climaApp.campanhaTitle}`;
     document.getElementById('clima-survey-banner')?.classList.add('visible');

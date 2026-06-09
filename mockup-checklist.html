@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Checklist Aberto</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #f0ede8; color: #2a2825; min-height: 100vh; padding: 32px 24px; }
+
+  h1 { font-size: 13px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-bottom: 28px; text-align: center; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto; align-items: start; }
+
+  .col-label { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #bbb; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .col-label .badge { background: #2a2825; color: #fff; border-radius: 20px; padding: 2px 9px; font-size: 9px; }
+  .col-label .rec { background: #2d9e6b; color: #fff; border-radius: 20px; padding: 2px 9px; font-size: 9px; }
+
+  /* ── SHARED PANEL SHELL ────────────────────────── */
+  .panel { background: #fff; border-radius: 14px; border: 1px solid #e2ddd8; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+  .panel-hd { background: #f5f3f0; border-bottom: 1px solid #e2ddd8; padding: 10px 14px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #999; display: flex; align-items: center; justify-content: space-between; }
+  .panel-hd span { color: #666; }
+  .panel-body { padding: 14px; }
+
+  /* ── BUTTONS ───────────────────────────────────── */
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; border: 1px solid #ddd; background: #fff; color: #888; cursor: default; border-radius: 8px; white-space: nowrap; }
+  .btn.verde { background: #2d9e6b; color: #fff; border-color: #2d9e6b; }
+  .btn.sm { padding: 4px 9px; font-size: 8px; }
+  .btn.ghost { background: none; border: none; color: #aaa; padding: 3px 6px; font-size: 11px; }
+
+  /* ── SECTION HEADER ────────────────────────────── */
+  .ck-sec-hd { display: flex; align-items: center; justify-content: space-between; padding-bottom: 6px; border-bottom: 1px solid #ede9e4; margin-bottom: 10px; }
+  .ck-sec-title { font-size: 10px; font-weight: 700; letter-spacing: .4px; color: #555; }
+
+  /* ── EXISTING CARDS (context) ──────────────────── */
+  .ck-card { border: 1px solid #e8e4df; border-radius: 10px; margin-bottom: 6px; overflow: hidden; opacity: .5; }
+  .ck-card-hd { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f5f3f0; font-size: 10px; font-weight: 600; color: #888; }
+  .ck-prog { font-size: 9px; color: #2d9e6b; margin-left: auto; font-weight: 700; }
+
+  /* ══════════════════════════════════════════════════
+     OPÇÃO A — Card vivo
+  ══════════════════════════════════════════════════ */
+  .live-card { border: 1.5px solid #5280ca; border-radius: 12px; padding: 0; overflow: hidden; margin-bottom: 10px; box-shadow: 0 0 0 4px rgba(82,128,202,.08); }
+  .live-title-row { padding: 12px 14px 6px; border-bottom: 1px solid #edf0f7; }
+  .live-title { font-size: 15px; font-weight: 700; color: #2a2825; outline: none; border: none; width: 100%; background: transparent; letter-spacing: -.2px; }
+  .live-title::placeholder { color: #ccc; font-weight: 500; }
+
+  .live-section-hd { display: flex; align-items: center; gap: 6px; padding: 8px 14px 4px; }
+  .live-section-label { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #5280ca; background: #eef2fb; border-radius: 4px; padding: 2px 7px; }
+  .live-section-add { font-size: 9px; color: #bbb; cursor: default; margin-left: auto; }
+
+  .live-item { display: flex; align-items: center; gap: 9px; padding: 5px 14px; border-bottom: 1px solid #f2f0ec; }
+  .live-item:last-of-type { border-bottom: none; }
+  .live-cb { width: 14px; height: 14px; border: 1.5px solid #d0ccc8; border-radius: 3px; flex-shrink: 0; background: #fff; }
+  .live-cb.done { background: #2d9e6b; border-color: #2d9e6b; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 9px; font-weight: 700; }
+  .live-item-txt { font-size: 12px; flex: 1; color: #2a2825; }
+  .live-item-txt.placeholder { color: #bbb; }
+  .live-item-txt.done { text-decoration: line-through; color: #bbb; }
+
+  .live-add-section-row { display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-top: 1px dashed #e8e4df; cursor: default; }
+  .live-add-section-row span { font-size: 11px; color: #bbb; }
+  .live-add-section-row .hint { font-size: 9px; color: #ddd; margin-left: auto; font-family: monospace; background: #f5f3f0; padding: 1px 5px; border-radius: 4px; }
+
+  .live-footer { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fafaf8; border-top: 1px solid #ede9e4; }
+  .live-footer-label { font-size: 9px; color: #aaa; flex: 1; }
+  .av-row { display: flex; gap: 4px; align-items: center; }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; flex-shrink: 0; border: 2px solid #fff; cursor: default; }
+  .av.sel { box-shadow: 0 0 0 2px #5280ca; }
+  .av.unsel { opacity: .35; }
+  .av-hint { font-size: 9px; color: #bbb; }
+
+  /* ══════════════════════════════════════════════════
+     OPÇÃO B — Drawer lateral
+  ══════════════════════════════════════════════════ */
+  .drawer-shell { display: flex; gap: 0; border: 1px solid #e2ddd8; border-radius: 14px; overflow: hidden; background: #fff; min-height: 460px; }
+  .drawer-main { flex: 1; padding: 14px; border-right: 1px solid #ede9e4; opacity: .55; }
+  .drawer-panel { width: 230px; flex-shrink: 0; background: #fafaf8; display: flex; flex-direction: column; }
+  .drawer-hd { padding: 12px 14px 10px; border-bottom: 1px solid #ede9e4; display: flex; align-items: center; justify-content: space-between; }
+  .drawer-hd-title { font-size: 13px; font-weight: 700; }
+  .drawer-body { flex: 1; padding: 12px 14px; overflow-y: auto; }
+  .drawer-field { margin-bottom: 12px; }
+  .drawer-label { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; margin-bottom: 4px; display: block; }
+  .drawer-input { width: 100%; border: 1px solid #e0dbd5; border-radius: 8px; padding: 7px 10px; font-size: 12px; font-family: inherit; color: #2a2825; background: #fff; outline: none; }
+  .drawer-input:focus { border-color: #5280ca; }
+
+  .drawer-sec-blk { border: 1px solid #e8e4df; border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+  .drawer-sec-hd { background: #f5f3f0; padding: 6px 10px; font-size: 10px; font-weight: 700; color: #888; display: flex; align-items: center; gap: 6px; }
+  .drag-handle { color: #ccc; font-size: 12px; cursor: default; }
+  .drawer-sec-item { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-top: 1px solid #f0ece8; }
+  .drawer-sec-item-txt { font-size: 11px; flex: 1; color: #555; }
+  .drawer-add-item { display: flex; align-items: center; gap: 7px; padding: 5px 10px; }
+  .drawer-add-item span { font-size: 11px; color: #bbb; }
+
+  .drawer-av-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .drawer-av-chip { display: flex; align-items: center; gap: 5px; border: 1px solid #e0dbd5; border-radius: 20px; padding: 3px 8px 3px 4px; cursor: default; }
+  .drawer-av-chip.sel { border-color: #5280ca; background: #eef2fb; }
+  .drawer-av-chip span { font-size: 10px; color: #555; }
+  .drawer-av-chip.sel span { color: #5280ca; font-weight: 600; }
+  .check-mini { width: 12px; height: 12px; border: 1.5px solid #5280ca; border-radius: 3px; background: #5280ca; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 8px; font-weight: 700; flex-shrink: 0; }
+  .check-mini.empty { background: #fff; border-color: #d0ccc8; }
+
+  .drawer-ft { padding: 10px 14px; border-top: 1px solid #ede9e4; display: flex; flex-direction: column; gap: 6px; }
+  .drawer-counter { font-size: 9px; color: #bbb; text-align: center; }
+
+  /* ══════════════════════════════════════════════════
+     OPÇÃO C — Inline leve / duas fases
+  ══════════════════════════════════════════════════ */
+  .phase-label { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #5280ca; background: #eef2fb; border-radius: 5px; padding: 2px 8px; display: inline-block; margin-bottom: 8px; }
+  .quick-card { border: 1.5px solid #5280ca; border-radius: 11px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 0 0 4px rgba(82,128,202,.07); }
+  .quick-title-row { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #edf0f7; }
+  .quick-title { font-size: 14px; font-weight: 700; flex: 1; border: none; background: transparent; outline: none; color: #2a2825; }
+  .quick-title::placeholder { color: #ccc; font-weight: 400; }
+
+  .quick-items { padding: 6px 0; }
+  .quick-item { display: flex; align-items: center; gap: 8px; padding: 5px 12px; }
+  .quick-item-txt { font-size: 12px; flex: 1; border: none; background: transparent; outline: none; color: #2a2825; }
+  .quick-item-txt::placeholder { color: #bbb; }
+  .quick-item-dot { width: 5px; height: 5px; border-radius: 50%; background: #d0ccc8; flex-shrink: 0; margin-top: 1px; }
+  .quick-item-dot.active { background: #5280ca; }
+  .quick-add-row { display: flex; align-items: center; gap: 8px; padding: 5px 12px; border-top: 1px dashed #ede9e4; }
+  .quick-add-row span { font-size: 11px; color: #bbb; }
+  .quick-hint { font-size: 9px; color: #ddd; font-family: monospace; background: #f5f3f0; padding: 1px 5px; border-radius: 4px; }
+  .quick-footer { padding: 7px 12px; background: #fafaf8; border-top: 1px solid #ede9e4; display: flex; align-items: center; justify-content: space-between; }
+  .quick-footer-note { font-size: 9px; color: #bbb; }
+
+  /* Fase 2 */
+  .phase2-card { border: 1px solid #e8e4df; border-radius: 11px; overflow: hidden; margin-bottom: 8px; }
+  .phase2-hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f5f3f0; cursor: default; }
+  .phase2-title { font-size: 12px; font-weight: 700; flex: 1; }
+  .phase2-prog { font-size: 10px; font-weight: 700; color: #2d9e6b; }
+  .phase2-body { padding: 8px 12px; }
+  .phase2-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f0ece8; }
+  .phase2-item:last-child { border-bottom: none; }
+  .phase2-cb { width: 13px; height: 13px; border: 1.5px solid #d0ccc8; border-radius: 3px; flex-shrink: 0; }
+  .phase2-cb.done { background: #2d9e6b; border-color: #2d9e6b; }
+  .phase2-item-txt { font-size: 11px; flex: 1; }
+  .phase2-item-txt.done { text-decoration: line-through; color: #bbb; }
+  .phase2-sec-label { font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #5280ca; background: #eef2fb; border-radius: 4px; padding: 1px 6px; margin: 6px 0 3px; display: block; }
+  .organize-row { display: flex; align-items: center; gap: 6px; padding: 6px 0 0; border-top: 1px dashed #ede9e4; margin-top: 4px; }
+  .organize-row span { font-size: 10px; color: #bbb; }
+  .phase2-footer { padding: 6px 12px; background: #fafaf8; border-top: 1px solid #ede9e4; display: flex; align-items: center; gap: 6px; }
+  .phase2-footer span { font-size: 9px; color: #aaa; flex: 1; }
+
+  /* ── SHARED UTILS ─────────────────────────── */
+  .tag { font-size: 8px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; border-radius: 4px; padding: 2px 7px; }
+  .tag-az { background: #eef2fb; color: #5280ca; }
+  .tag-gr { background: #eaf5ee; color: #2d9e6b; }
+  .sep { height: 1px; background: #ede9e4; margin: 10px 0; }
+  .empty-row { font-size: 10px; color: #ccc; padding: 6px 0; }
+
+  /* ── ANNOTATION ───────────────────────────── */
+  .annotation { font-size: 10px; color: #999; line-height: 1.5; margin-top: 10px; padding: 8px 10px; background: #fafaf8; border-radius: 8px; border: 1px solid #ede9e4; }
+  .annotation strong { color: #666; }
+</style>
+</head>
+<body>
+
+<h1>Mockup · Checklist Aberto — 3 abordagens</h1>
+
+<div class="grid">
+
+  <!-- ══ COLUNA A ══════════════════════════════════════════════ -->
+  <div>
+    <div class="col-label"><span class="badge">A</span> Card vivo <span class="rec">Recomendado</span></div>
+
+    <div class="panel">
+      <div class="panel-hd">Checklists & Revisões <span>Checklist Aberto</span></div>
+      <div class="panel-body">
+        <div class="ck-sec-hd">
+          <span class="ck-sec-title">Checklist Aberto</span>
+          <div class="btn verde sm">+ Novo checklist</div>
+        </div>
+
+        <!-- card vivo -->
+        <div class="live-card">
+          <div class="live-title-row">
+            <div class="live-title" placeholder="Título do checklist…">Entregáveis — Pré-lançamento</div>
+          </div>
+
+          <!-- seção 1 -->
+          <div class="live-section-hd">
+            <span class="live-section-label">Prancha 01</span>
+            <span class="live-section-add">+ item</span>
+          </div>
+          <div class="live-item">
+            <div class="live-cb done">✓</div>
+            <span class="live-item-txt done">Planta baixa revisada</span>
+          </div>
+          <div class="live-item">
+            <div class="live-cb"></div>
+            <span class="live-item-txt">Corte longitudinal</span>
+          </div>
+          <div class="live-item">
+            <div class="live-cb"></div>
+            <span class="live-item-txt">Fachada principal</span>
+          </div>
+
+          <!-- seção 2 -->
+          <div class="live-section-hd">
+            <span class="live-section-label">Arquivos</span>
+            <span class="live-section-add">+ item</span>
+          </div>
+          <div class="live-item">
+            <div class="live-cb"></div>
+            <span class="live-item-txt">PDF comprimido</span>
+          </div>
+          <div class="live-item">
+            <div class="live-cb"></div>
+            <span class="live-item-txt placeholder">Novo item… (cursor aqui)</span>
+          </div>
+
+          <!-- linha de ação: adicionar seção -->
+          <div class="live-add-section-row">
+            <span style="font-size:13px;color:#ccc">⊕</span>
+            <span>Nova seção</span>
+            <span class="hint">/ seção</span>
+          </div>
+
+          <!-- footer: quem pode editar -->
+          <div class="live-footer">
+            <span class="live-footer-label">Podem editar:</span>
+            <div class="av-row">
+              <div class="av sel" style="background:#5280ca" title="Ana (você)">AN</div>
+              <div class="av sel" style="background:#c34a3b" title="Renata — autorizada">RE</div>
+              <div class="av unsel" style="background:#888" title="Lucas — não autorizado">LU</div>
+              <div class="av unsel" style="background:#2d9e6b" title="Bia — não autorizada">BI</div>
+            </div>
+            <span class="av-hint" style="font-size:9px;color:#bbb">clique para autorizar</span>
+          </div>
+        </div>
+
+        <!-- contexto: card existente (apagado) -->
+        <div class="ck-card">
+          <div class="ck-card-hd">Revisão pré-entrega <span class="ck-prog" style="margin-left:auto">3/5</span></div>
+        </div>
+
+        <div class="annotation">
+          <strong>Interação:</strong> título editável inline · Enter = novo item · <code style="font-size:9px;background:#f0ede8;padding:1px 4px;border-radius:3px">/ seção</code> cria seção · avatares no rodapé para autorizar edição · salva ao clicar fora ou via botão
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COLUNA B ══════════════════════════════════════════════ -->
+  <div>
+    <div class="col-label"><span class="badge">B</span> Drawer lateral</div>
+
+    <div class="panel" style="padding:0">
+      <div class="panel-hd" style="padding:10px 14px">Checklists & Revisões <span>Checklist Aberto</span></div>
+      <div style="padding:10px 14px 0">
+        <div class="ck-sec-hd">
+          <span class="ck-sec-title">Checklist Aberto</span>
+          <div class="btn verde sm">+ Novo checklist</div>
+        </div>
+        <div class="ck-card" style="margin-bottom:8px">
+          <div class="ck-card-hd">Revisão pré-entrega <span class="ck-prog">3/5</span></div>
+        </div>
+      </div>
+      <div class="drawer-shell" style="border:none;border-radius:0;border-top:1px solid #ede9e4;min-height:380px">
+        <!-- main apagado -->
+        <div class="drawer-main">
+          <div style="font-size:10px;color:#ccc;text-align:center;padding-top:40px">painel principal<br>(checklist existente)</div>
+        </div>
+        <!-- drawer -->
+        <div class="drawer-panel">
+          <div class="drawer-hd">
+            <span class="drawer-hd-title">Novo checklist</span>
+            <div class="btn ghost">×</div>
+          </div>
+          <div class="drawer-body">
+            <div class="drawer-field">
+              <label class="drawer-label">Título</label>
+              <div class="drawer-input" style="font-weight:600;color:#2a2825">Entregáveis — Pré-lançamento</div>
+            </div>
+
+            <div class="drawer-field">
+              <label class="drawer-label">Seções e itens</label>
+              <div class="drawer-sec-blk">
+                <div class="drawer-sec-hd">
+                  <span class="drag-handle">⠿</span>
+                  Prancha 01
+                  <span class="btn ghost" style="margin-left:auto;font-size:10px;color:#ddd">×</span>
+                </div>
+                <div class="drawer-sec-item">
+                  <div class="live-cb" style="width:12px;height:12px"></div>
+                  <span class="drawer-sec-item-txt">Planta baixa revisada</span>
+                </div>
+                <div class="drawer-sec-item">
+                  <div class="live-cb" style="width:12px;height:12px"></div>
+                  <span class="drawer-sec-item-txt">Corte longitudinal</span>
+                </div>
+                <div class="drawer-add-item">
+                  <span>+ item</span>
+                </div>
+              </div>
+              <div class="drawer-sec-blk">
+                <div class="drawer-sec-hd">
+                  <span class="drag-handle">⠿</span>
+                  Arquivos
+                </div>
+                <div class="drawer-sec-item">
+                  <div class="live-cb" style="width:12px;height:12px"></div>
+                  <span class="drawer-sec-item-txt">PDF comprimido</span>
+                </div>
+                <div class="drawer-add-item">
+                  <span>+ item</span>
+                </div>
+              </div>
+              <div class="btn sm" style="width:100%;justify-content:center;margin-top:2px">+ Nova seção</div>
+            </div>
+
+            <div class="drawer-field">
+              <label class="drawer-label">Autorizar edição</label>
+              <div class="drawer-av-grid">
+                <div class="drawer-av-chip sel">
+                  <div class="av" style="background:#c34a3b;width:18px;height:18px;font-size:7px">RE</div>
+                  <span>Renata</span>
+                  <div class="check-mini">✓</div>
+                </div>
+                <div class="drawer-av-chip">
+                  <div class="av" style="background:#888;width:18px;height:18px;font-size:7px">LU</div>
+                  <span>Lucas</span>
+                  <div class="check-mini empty"></div>
+                </div>
+                <div class="drawer-av-chip">
+                  <div class="av" style="background:#2d9e6b;width:18px;height:18px;font-size:7px">BI</div>
+                  <span>Bia</span>
+                  <div class="check-mini empty"></div>
+                </div>
+              </div>
+              <div style="font-size:9px;color:#bbb;margin-top:5px">Todos visualizam · só autorizados editam</div>
+            </div>
+          </div>
+          <div class="drawer-ft">
+            <div class="drawer-counter">4 itens · 2 seções</div>
+            <div class="btn verde" style="width:100%;justify-content:center">Criar checklist</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Interação:</strong> drawer desliza da direita · seções reordenáveis com drag · formulário clássico estruturado · bom para checklists com muitas seções · ocupa menos espaço vertical
+    </div>
+  </div>
+
+  <!-- ══ COLUNA C ══════════════════════════════════════════════ -->
+  <div>
+    <div class="col-label"><span class="badge">C</span> Inline leve — duas fases</div>
+
+    <div class="panel">
+      <div class="panel-hd">Checklists & Revisões <span>Checklist Aberto</span></div>
+      <div class="panel-body">
+        <div class="ck-sec-hd">
+          <span class="ck-sec-title">Checklist Aberto</span>
+          <div class="btn verde sm">+ Novo checklist</div>
+        </div>
+
+        <!-- FASE 1 -->
+        <div class="phase-label">Fase 1 — Criação rápida</div>
+        <div class="quick-card">
+          <div class="quick-title-row">
+            <div class="quick-title">Entregáveis — Pré-lançamento</div>
+          </div>
+          <div class="quick-items">
+            <div class="quick-item">
+              <div class="quick-item-dot active"></div>
+              <span class="quick-item-txt">Planta baixa revisada</span>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-dot active"></div>
+              <span class="quick-item-txt">Corte longitudinal</span>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-dot active"></div>
+              <span class="quick-item-txt">Fachada principal</span>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-dot"></div>
+              <span class="quick-item-txt" style="color:#bbb">Novo item… (Enter para adicionar)</span>
+            </div>
+          </div>
+          <div class="quick-add-row">
+            <span>+ item</span>
+            <span class="quick-hint">Enter</span>
+          </div>
+          <div class="quick-footer">
+            <span class="quick-footer-note">3 itens · visível para toda a equipe</span>
+            <div class="btn verde sm">Salvar rascunho</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- FASE 2 -->
+        <div class="phase-label">Fase 2 — Depois de salvo</div>
+        <div class="phase2-card">
+          <div class="phase2-hd">
+            <span class="phase2-title">Entregáveis — Pré-lançamento</span>
+            <span class="phase2-prog">1/3</span>
+          </div>
+          <div class="phase2-body">
+            <span class="phase2-sec-label">Prancha 01</span>
+            <div class="phase2-item">
+              <div class="phase2-cb done"></div>
+              <span class="phase2-item-txt done">Planta baixa revisada</span>
+            </div>
+            <div class="phase2-item">
+              <div class="phase2-cb"></div>
+              <span class="phase2-item-txt">Corte longitudinal</span>
+            </div>
+            <span class="phase2-sec-label">Arquivos</span>
+            <div class="phase2-item">
+              <div class="phase2-cb"></div>
+              <span class="phase2-item-txt">PDF comprimido</span>
+            </div>
+            <div class="organize-row">
+              <span>⊞</span>
+              <span>Organizar em seções</span>
+              <span style="margin-left:auto;font-size:9px;color:#bbb">Autorizar editores →</span>
+            </div>
+          </div>
+          <div class="phase2-footer">
+            <div class="av-row">
+              <div class="av" style="background:#c34a3b;width:18px;height:18px;font-size:7px;border:2px solid #fff">RE</div>
+            </div>
+            <span>1 editor autorizado</span>
+            <div class="btn sm">Fechar</div>
+          </div>
+        </div>
+
+        <div class="annotation">
+          <strong>Interação:</strong> Fase 1 sem fricção — só título + itens soltos, salva como rascunho · Fase 2 revela organização em seções e autorização de editores após salvar · menor comprometimento inicial
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

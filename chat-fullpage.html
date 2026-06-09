@@ -1304,6 +1304,113 @@ body {
 @keyframes fpBannerIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
 
 /* ══════════════════════════════════════════════════
+   FIXAR PROJETOS
+══════════════════════════════════════════════════ */
+
+/* Indicador de pin no item da sidebar */
+.fp-conv-pin-ico {
+  width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ca); flex-shrink: 0; margin-top: 3px; opacity: .65;
+}
+
+/* Botão de pin no header — estado ativo */
+.fp-chat-icon-btn.pin-active {
+  background: var(--ca-bg);
+  color: var(--ca);
+}
+[data-theme="dark"] .fp-chat-icon-btn.pin-active {
+  background: var(--ca-mid);
+  color: var(--ca);
+}
+
+/* Botão de pin na sidebar toolbar — estado ativo */
+.fp-sb-icon-btn.pin-active {
+  background: var(--ca-bg);
+  color: var(--ca);
+}
+[data-theme="dark"] .fp-sb-icon-btn.pin-active {
+  background: var(--ca-mid);
+  color: var(--ca);
+}
+
+/* Popdown de projetos fixados (toolbar) */
+#fp-pin-pop {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 11px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.16);
+  width: 268px;
+  max-height: 380px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 500;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-pin-pop { background: #1E1E1D; border-color: #2E2D2B; }
+#fp-pin-pop-head {
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+  font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--cinza, #D0CFC9);
+}
+[data-theme="dark"] #fp-pin-pop-head { border-bottom-color: #2E2D2B; }
+#fp-pin-pop-list { flex: 1; overflow-y: auto; padding: 5px; }
+#fp-pin-pop-list::-webkit-scrollbar { width: 3px; }
+#fp-pin-pop-list::-webkit-scrollbar-thumb { background: var(--cinza2, #ECEAE4); border-radius: 2px; }
+#fp-pin-pop-empty {
+  padding: 16px 12px;
+  font-size: 11px; color: var(--cinza, #D0CFC9); text-align: center;
+}
+.fp-pin-pop-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px; border-radius: 8px;
+  cursor: pointer; transition: background .1s;
+}
+.fp-pin-pop-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-pin-pop-item:hover { background: rgba(255,255,255,.05); }
+.fp-pin-pop-check {
+  width: 17px; height: 17px; border-radius: 50%;
+  border: 1.5px solid var(--cinza2, #ECEAE4); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, border-color .12s;
+}
+.fp-pin-pop-check.on { background: var(--ca); border-color: var(--ca); }
+.fp-pin-pop-check.on::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+.fp-pin-pop-label { font-size: 12px; font-weight: 600; color: var(--grafite, #111110); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme="dark"] .fp-pin-pop-label { color: #F0EDE6; }
+
+/* Menu de contexto (botão direito) */
+#fp-ctx-menu {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 9px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.14);
+  padding: 4px;
+  display: none;
+  flex-direction: column;
+  min-width: 168px;
+  z-index: 1000;
+  animation: fpBannerIn .1s ease-out;
+}
+[data-theme="dark"] #fp-ctx-menu { background: #1E1E1D; border-color: #2E2D2B; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+.fp-ctx-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 11px; border-radius: 6px;
+  cursor: pointer; transition: background .1s;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  color: var(--grafite, #111110); border: none; background: none;
+  width: 100%; text-align: left;
+}
+.fp-ctx-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-ctx-item { color: #C8C3BA; }
+[data-theme="dark"] .fp-ctx-item:hover { background: rgba(255,255,255,.06); }
+
+/* ══════════════════════════════════════════════════
    APOIO — seta de atalho: estilos base em shared/exp-nav.css
    (.exp-nav-apoio-wrap / .exp-apoio-go-btn)
 ══════════════════════════════════════════════════ */
@@ -1986,6 +2093,10 @@ body {
         <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-new-dm-btn" onclick="fpChat.openNewDM(event)" title="Nova mensagem">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
+        <!-- Fixar projetos -->
+        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-pin-btn" onclick="fpChat.openPinPop(event)" title="Fixar projetos">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+        </button>
         <!-- Tema claro/escuro -->
         <button id="fp-theme-toggle" class="fp-sb-icon-btn exp-sb-icon-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">
             <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -2062,6 +2173,10 @@ body {
           <div class="fp-hdr-title" id="fp-hdr-title">—</div>
           <div class="fp-hdr-sub"   id="fp-hdr-sub"></div>
         </div>
+        <!-- Fixar projeto (visível só em canais de projeto) -->
+        <button class="fp-chat-icon-btn" id="fp-hdr-pin-btn" onclick="fpChat.togglePinCurrent()" title="Fixar projeto" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+        </button>
         <!-- Botão de busca dentro da conversa -->
         <button class="fp-chat-icon-btn" onclick="fpChat.toggleInSearch(event)" id="fp-in-search-btn" title="Buscar nesta conversa">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
@@ -2105,6 +2220,20 @@ body {
   </main>
 
 </div><!-- /#fp-app -->
+
+<!-- ── Popdown fixar projetos (toolbar) ── -->
+<div id="fp-pin-pop">
+  <div id="fp-pin-pop-head">Fixar projetos</div>
+  <div id="fp-pin-pop-list"></div>
+</div>
+
+<!-- ── Menu de contexto (botão direito em conv item) ── -->
+<div id="fp-ctx-menu">
+  <button class="fp-ctx-item" id="fp-ctx-pin-btn" onclick="fpChat.ctxTogglePin()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+    <span id="fp-ctx-pin-label">Fixar projeto</span>
+  </button>
+</div>
 
 <!-- Overlay do projeto (abre sobre o chat) -->
 <div id="fp-proj-overlay" style="display:none">

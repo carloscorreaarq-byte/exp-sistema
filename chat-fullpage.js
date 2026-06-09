@@ -13,6 +13,7 @@
   var SOUND_KEY  = 'exp_chat_sound';
   var COLOR_KEY  = 'exp_chat_color';
   var FLAGS_KEY  = 'exp_chat_flags';
+  var PINS_KEY   = 'exp_chat_pins';
   var BRAND_AVATAR_COLORS = ['#1D6A4A','#1D4FA0','#C4831A','#B84C3A','#6D7D8A','#4A72B5','#7A9E7E'];
   var TEMP_MEDIA_BUCKET   = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
@@ -49,6 +50,9 @@
   var soundEnabled      = localStorage.getItem(SOUND_KEY) !== 'false';
   var chatColor         = localStorage.getItem(COLOR_KEY) || 'verde';
   var flaggedMessages   = loadFlags();
+  var pinnedProjects    = loadPins();
+  var ctxMenuChannel    = null;
+  var pinPopOpen        = false;
   var filterQuery       = '';
   var showOnlyUnread    = false;
   var showOnlyFlagged   = false;
@@ -70,6 +74,171 @@
     var idx = flaggedMessages.indexOf(id);
     if (idx === -1) flaggedMessages.push(id); else flaggedMessages.splice(idx, 1);
     saveFlags();
+  }
+
+  /* ── Pins ── */
+  function loadPins() {
+    try { return JSON.parse(localStorage.getItem(PINS_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function savePins() { localStorage.setItem(PINS_KEY, JSON.stringify(pinnedProjects)); }
+  function isPinned(channel) { return pinnedProjects.indexOf(channel) !== -1; }
+  function pinChannel(channel) {
+    if (!isPinned(channel)) { pinnedProjects.push(channel); savePins(); }
+  }
+  function unpinChannel(channel) {
+    var idx = pinnedProjects.indexOf(channel);
+    if (idx !== -1) { pinnedProjects.splice(idx, 1); savePins(); }
+  }
+  function togglePin(channel) {
+    isPinned(channel) ? unpinChannel(channel) : pinChannel(channel);
+  }
+
+  /* ── Pin: canal atual (botão no header) ── */
+  function togglePinCurrent() {
+    if (!currentChannel || !isProjectChannel(currentChannel)) return;
+    togglePin(currentChannel);
+    updateHeaderPinBtn();
+    updateSidebarPinBtn();
+    renderConvList();
+  }
+
+  /* Sincroniza estado visual do botão no header do chat */
+  function updateHeaderPinBtn() {
+    var btn = document.getElementById('fp-hdr-pin-btn');
+    if (!btn) return;
+    var isProj = currentChannel && isProjectChannel(currentChannel);
+    btn.style.display = isProj ? '' : 'none';
+    btn.classList.toggle('pin-active', isProj && isPinned(currentChannel));
+    btn.title = isProj && isPinned(currentChannel) ? 'Desafixar projeto' : 'Fixar projeto';
+  }
+
+  /* Sincroniza estado visual do botão na toolbar do sidebar */
+  function updateSidebarPinBtn() {
+    var btn = document.getElementById('fp-pin-btn');
+    if (!btn) return;
+    btn.classList.toggle('pin-active', pinnedProjects.length > 0);
+  }
+
+  /* ── Popdown de fixar projetos (toolbar) ── */
+  function openPinPop(event) {
+    event.stopPropagation();
+    var pop = document.getElementById('fp-pin-pop');
+    if (!pop) return;
+    if (pinPopOpen) { closePinPop(); return; }
+    pinPopOpen = true;
+
+    /* Posicionar abaixo do botão */
+    var btn = document.getElementById('fp-pin-btn');
+    if (btn) {
+      var rect = btn.getBoundingClientRect();
+      pop.style.top  = (rect.bottom + 6) + 'px';
+      pop.style.left = Math.max(8, rect.left - 200 + rect.width) + 'px';
+    }
+    pop.style.display = 'flex';
+    renderPinPop();
+
+    setTimeout(function() {
+      function handler(e) {
+        var p = document.getElementById('fp-pin-pop');
+        var b = document.getElementById('fp-pin-btn');
+        if (!p) return;
+        if (!p.contains(e.target) && !(b && b.contains(e.target))) {
+          closePinPop();
+          document.removeEventListener('click', handler);
+        }
+      }
+      document.addEventListener('click', handler);
+    }, 0);
+  }
+
+  function closePinPop() {
+    pinPopOpen = false;
+    var pop = document.getElementById('fp-pin-pop');
+    if (pop) pop.style.display = 'none';
+  }
+
+  function renderPinPop() {
+    var $list = document.getElementById('fp-pin-pop-list');
+    if (!$list) return;
+    var threads = projectThreads || [];
+    if (!threads.length) {
+      $list.innerHTML = '<div id="fp-pin-pop-empty">Nenhum projeto disponível.</div>';
+      return;
+    }
+    var sorted = threads.slice().sort(function(a, b) {
+      var la = (a.title || 'Projeto').toLowerCase();
+      var lb = (b.title || 'Projeto').toLowerCase();
+      return la < lb ? -1 : la > lb ? 1 : 0;
+    });
+    $list.innerHTML = sorted.map(function(t) {
+      var ch  = 'project:' + t.id;
+      var on  = isPinned(ch);
+      var meta = projectThreadMeta[ch];
+      var label = (meta && meta.label) || t.title || 'Projeto';
+      var cor   = (meta && meta.cor) || brandColorForKey(ch + ':' + label);
+      var ini   = (meta && meta.iniciais) || initialsFromLabel(label, 'PRJ');
+      var r16 = parseInt((cor.slice(1,3)||'1D'),16);
+      var g16 = parseInt((cor.slice(3,5)||'6A'),16);
+      var b16 = parseInt((cor.slice(5,7)||'4A'),16);
+      var pbg = 'rgba('+r16+','+g16+','+b16+',.15)';
+      var avHtml = '<div style="width:26px;height:26px;border-radius:7px;background:'+escHtml(pbg)+';color:'+escHtml(cor)+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0">'+escHtml(ini)+'</div>';
+      return '<div class="fp-pin-pop-item" onclick="fpChat.pinPopToggle(\''+escHtml(ch)+'\')">' +
+        avHtml +
+        '<span class="fp-pin-pop-label">'+escHtml(label)+'</span>' +
+        '<div class="fp-pin-pop-check'+(on?' on':'')+'" id="fp-ppc-'+escHtml(ch.replace(/:/g,'-'))+'"></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function pinPopToggle(channel) {
+    togglePin(channel);
+    renderPinPop();
+    updateSidebarPinBtn();
+    updateHeaderPinBtn();
+    renderConvList();
+  }
+
+  /* ── Menu de contexto (botão direito em item de projeto) ── */
+  function openCtxMenu(event, channel) {
+    if (!isProjectChannel(channel)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    ctxMenuChannel = channel;
+
+    var $ctx = document.getElementById('fp-ctx-menu');
+    var $lbl = document.getElementById('fp-ctx-pin-label');
+    if (!$ctx) return;
+    if ($lbl) $lbl.textContent = isPinned(channel) ? 'Desafixar projeto' : 'Fixar projeto';
+
+    /* Posicionar no cursor */
+    var x = event.clientX, y = event.clientY;
+    $ctx.style.display = 'flex';
+    var w = $ctx.offsetWidth || 170, h = $ctx.offsetHeight || 48;
+    $ctx.style.left = Math.min(x, window.innerWidth  - w - 8) + 'px';
+    $ctx.style.top  = Math.min(y, window.innerHeight - h - 8) + 'px';
+
+    setTimeout(function() {
+      function handler(e) {
+        var ctx = document.getElementById('fp-ctx-menu');
+        if (!ctx || !ctx.contains(e.target)) { closeCtxMenu(); document.removeEventListener('click', handler); }
+      }
+      document.addEventListener('click', handler);
+    }, 0);
+  }
+
+  function closeCtxMenu() {
+    ctxMenuChannel = null;
+    var $ctx = document.getElementById('fp-ctx-menu');
+    if ($ctx) $ctx.style.display = 'none';
+  }
+
+  function ctxTogglePin() {
+    if (!ctxMenuChannel) return;
+    togglePin(ctxMenuChannel);
+    closeCtxMenu();
+    updateSidebarPinBtn();
+    updateHeaderPinBtn();
+    renderConvList();
   }
 
   /* ── DOM refs ────────────────────────────────────────────────────── */
@@ -135,6 +304,7 @@
     initExpRoom();
     preloadTasksCount();
     applyViewPrefs();
+    updateSidebarPinBtn();
 
     /* Scroll tracking */
     if ($msgs) $msgs.addEventListener('scroll', function() {
@@ -179,6 +349,8 @@
         if ($proj && $proj.style.display === 'flex') { e.preventDefault(); closeProjectOverlay(); return; }
         if (mediaViewerState) { e.preventDefault(); closeMediaViewer(); return; }
         if (inSearchOpen) { e.preventDefault(); closeInSearch(); return; }
+        closeCtxMenu();
+        closePinPop();
       }
       if (!mediaViewerState) return;
       if (e.key === 'ArrowLeft')  { e.preventDefault(); mvPrev(); }
@@ -429,9 +601,6 @@
       var genShow = !q || 'geral'.indexOf(q)!==-1;
       var socShow = isSocioLikeRole(user.role) && (!q || 'sócios'.indexOf(q)!==-1 || 'socios'.indexOf(q)!==-1);
 
-      var hasFixed = (!showOnlyFlagged && !showOnlyUnread) ? (genShow || socShow) :
-        (genShow && (channelUnread['general']||0)>0) || (socShow && (channelUnread['socios']||0)>0);
-
       if (genShow && !(showOnlyUnread && !(channelUnread['general']||0)) && !(showOnlyFlagged)) {
         html += buildConvItemHtml('general', 'geral', '#', null, null, 'Toda a equipe',
           msgs.find(function(m){return m.channel==='general';}),
@@ -441,6 +610,26 @@
         html += buildConvItemHtml('socios', 'sócios', '#', null, null, 'Canal privado',
           msgs.find(function(m){return m.channel==='socios';}),
           channelUnread['socios']||0, 'hash-ouro');
+      }
+
+      /* ── Projetos fixados (sempre visíveis, acima dos demais) ── */
+      var sortedP = projectItems.slice().sort(function(a,b){
+        var ud = (b.unread||0)-(a.unread||0);
+        if (ud) return ud;
+        return new Date(b.lastCreatedAt||0)-new Date(a.lastCreatedAt||0);
+      });
+      var projFiltered = sortedP.filter(function(i){ return !q || i.label.toLowerCase().indexOf(q)!==-1; });
+      /* projectItems já vem pré-filtrado pelos toggles (showOnlyFlagged / showOnlyUnread) */
+      var pinnedFiltered   = projFiltered.filter(function(i){ return isPinned(i.channel); });
+      var unpinnedFiltered = projFiltered.filter(function(i){ return !isPinned(i.channel); });
+
+      if (pinnedFiltered.length) {
+        if (!q && !showOnlyUnread && !showOnlyFlagged)
+          html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Fixados</button>';
+        pinnedFiltered.forEach(function(item) {
+          html += buildConvItemHtml(item.channel, item.label, item.iniciais, null, item.cor,
+            item.preview, null, channelUnread[item.channel]||item.unread||0, '', '', null, true);
+        });
       }
 
       /* ── DMs / Grupos ── */
@@ -466,27 +655,21 @@
         });
       }
 
-      /* ── Projetos ── */
-      var sortedP = projectItems.slice().sort(function(a,b){
-        var ud = (b.unread||0)-(a.unread||0);
-        if (ud) return ud;
-        return new Date(b.lastCreatedAt||0)-new Date(a.lastCreatedAt||0);
-      });
-      var projFiltered = sortedP.filter(function(i){ return !q || i.label.toLowerCase().indexOf(q)!==-1; });
-      if (projFiltered.length) {
+      /* ── Projetos (não fixados) ── */
+      if (unpinnedFiltered.length) {
         if (!q && !showOnlyUnread && !showOnlyFlagged) {
           html += '<button class="fp-section-hdr" onclick="fpChat.toggleProjectSection()">' +
             '<span>Projetos</span>' +
             '<span>' + (projectSectionCollapsed?'▶':'▾') + '</span>' +
             '</button>';
         }
-        var toShow = (q||showOnlyUnread||showOnlyFlagged) ? projFiltered :
+        var toShow = (q||showOnlyUnread||showOnlyFlagged) ? unpinnedFiltered :
           (projectSectionCollapsed
-            ? projFiltered.filter(function(i){return (channelUnread[i.channel]||i.unread||0)>0;}).slice(0,4)
-            : projFiltered);
+            ? unpinnedFiltered.filter(function(i){return (channelUnread[i.channel]||i.unread||0)>0;}).slice(0,4)
+            : unpinnedFiltered);
         toShow.forEach(function(item) {
           html += buildConvItemHtml(item.channel, item.label, item.iniciais, null, item.cor,
-            item.preview, null, channelUnread[item.channel]||item.unread||0, '');
+            item.preview, null, channelUnread[item.channel]||item.unread||0, '', '', null, false);
         });
       }
 
@@ -496,7 +679,7 @@
     });
   }
 
-  function buildConvItemHtml(channel, label, iniciais, avatarUrl, cor, previewText, lastMsg, unread, avVariant, presenceStatus, members) {
+  function buildConvItemHtml(channel, label, iniciais, avatarUrl, cor, previewText, lastMsg, unread, avVariant, presenceStatus, members, pinned) {
     var chanJson = channel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var labelEsc = escHtml(label);
     var isUnread = unread > 0;
@@ -551,7 +734,15 @@
         '</div>';
     }
 
-    return '<div class="fp-conv-item' + (isUnread?' unread':'') + '" data-channel="' + escHtml(channel) + '" onclick="fpChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+    var isProj = isProjectChannel(channel);
+    var ctxAttr = isProj
+      ? ' oncontextmenu="fpChat.openCtxMenu(event,\'' + chanJson + '\')"'
+      : '';
+    var pinIco = pinned
+      ? '<div class="fp-conv-pin-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg></div>'
+      : '';
+
+    return '<div class="fp-conv-item' + (isUnread?' unread':'') + '" data-channel="' + escHtml(channel) + '" onclick="fpChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')"' + ctxAttr + '>' +
       avHtml +
       '<div class="fp-conv-body">' +
         '<div class="fp-conv-top">' +
@@ -560,6 +751,7 @@
         '</div>' +
         '<div class="fp-conv-preview">' + escHtml(preview) + '</div>' +
       '</div>' +
+      pinIco +
       (unread > 0 ? '<div class="fp-conv-badge">' + unread + '</div>' : '') +
       '</div>';
   }
@@ -678,6 +870,7 @@
     if ($ca) $ca.style.display = 'flex';
 
     updateChannelSubtitle();
+    updateHeaderPinBtn();
     messages = [];
     loadMessages();
     markRead();
@@ -1843,6 +2036,9 @@
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
+    /* fixar projetos */
+    togglePinCurrent, openPinPop, closePinPop, pinPopToggle,
+    openCtxMenu, closeCtxMenu, ctxTogglePin,
     /* busca dentro da conversa */
     toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev,
     /* tarefas */

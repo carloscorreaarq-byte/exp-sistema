@@ -4089,6 +4089,23 @@ async function dispararPesquisaClima() {
 }
 
 /* ── Tab: Resultados ── */
+async function encerrarCampanha(id) {
+  if (!confirm('Encerrar esta pesquisa? Os colaboradores não verão mais a notificação, mas as respostas existentes são mantidas.')) return;
+  const { error } = await sb.from('pessoas_pesquisa_clima_campanhas').update({ status: 'encerrada' }).eq('id', id);
+  if (error) { alert('Erro ao encerrar: ' + error.message); return; }
+  G.climaCampanhas = G.climaCampanhas.map(c => c.id === id ? { ...c, status: 'encerrada' } : c);
+  renderClimaTabResultados(document.getElementById('clima-modal-body'));
+}
+
+async function excluirCampanha(id, titulo) {
+  if (!confirm(`Excluir a pesquisa "${titulo}"?\n\nIsso remove a campanha e todos os disparos e respostas associados. Esta ação não pode ser desfeita.`)) return;
+  const { error } = await sb.from('pessoas_pesquisa_clima_campanhas').delete().eq('id', id);
+  if (error) { alert('Erro ao excluir: ' + error.message); return; }
+  G.climaCampanhas = G.climaCampanhas.filter(c => c.id !== id);
+  if (G.climaResultadoCampanha === id) G.climaResultadoCampanha = null;
+  renderClimaTabResultados(document.getElementById('clima-modal-body'));
+}
+
 async function renderClimaTabResultados(body) {
   if (!G.climaCampanhas.length) {
     body.innerHTML = `<div class="ps-empty" style="padding:48px 0"><div class="ps-empty-icon">📊</div><div class="ps-empty-text">Nenhuma rodada disparada ainda.</div></div>`;
@@ -4102,14 +4119,20 @@ async function renderClimaTabResultados(body) {
 
   const lista = G.climaCampanhas.map(c => {
     const modelo = G.climaModelos.find(m => m.id === c.modelo_id);
+    const encerrarBtn = c.status === 'ativa'
+      ? `<button class="ps-btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--cinza2);color:#999" onclick="event.stopPropagation();encerrarCampanha('${c.id}')" title="Encerrar pesquisa">Encerrar</button>`
+      : '';
+    const excluirBtn = `<button class="ps-btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--cinza2);color:var(--terracota)" onclick="event.stopPropagation();excluirCampanha('${c.id}','${escHtml(c.titulo).replace(/'/g,"\\'")}')">Excluir</button>`;
     return `
       <div class="clima-camp-card" onclick="G.climaResultadoCampanha='${c.id}';renderClimaTabResultados(document.getElementById('clima-modal-body'))">
-        <div>
+        <div style="min-width:0;flex:1">
           <div class="clima-camp-card-titulo">${escHtml(c.titulo)}</div>
           <div class="clima-camp-card-meta">${c.anonima?'🔒 Anônima':'👁 Pública'} · ${modelo?escHtml(modelo.titulo):'Modelo removido'} · ${fmtData(c.criado_em?.slice(0,10))}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <span class="badge ${c.status==='ativa'?'ativo':'inativo'}">${c.status}</span>
+          ${encerrarBtn}
+          ${excluirBtn}
           <span style="color:#bbb;font-size:12px">›</span>
         </div>
       </div>`;
