@@ -154,7 +154,7 @@ body.can-delete .del-col{display:table-cell}
 .rg-stripe{width:3px;height:10px;flex-shrink:0}
 .rg-label{font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;flex:1}
 .rg-sub{font-size:var(--text-sub);font-weight:var(--weight-label);margin-left:auto}
-.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr 22px;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:var(--branco);font-size:var(--text-sub);font-weight:300;min-width:0}
+.rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr auto;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:var(--branco);font-size:var(--text-sub);font-weight:300;min-width:0}
 .rg-item>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rg-item:hover{background:var(--off)}
 .rg-val{font-weight:var(--weight-label);text-align:right}
@@ -572,9 +572,9 @@ select option[disabled]{color:#bbb}
               <button class="sbt" onclick="stepCoef(1)">+</button>
             </div>
           </div>
-          <div class="fgroup">
+          <div class="fgroup" style="border-left:2px solid var(--cinza2);padding-left:10px">
             <label>Preview</label>
-            <div style="font-size:18px;font-weight:700;padding:4px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev">—</div>
+            <div style="font-size:16px;font-weight:700;padding:4px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev">—</div>
           </div>
         </div>
         <div class="fgroup"><label>Descrição / observação</label><input type="text" id="i-desc" placeholder="Ex: Torre A, área comum..."></div>
@@ -591,9 +591,9 @@ select option[disabled]{color:#bbb}
               <button class="sbt" onclick="stepCubQty(1)">+</button>
             </div>
           </div>
-          <div class="fgroup">
+          <div class="fgroup" style="border-left:2px solid var(--cinza2);padding-left:10px">
             <label>Preview</label>
-            <div style="font-size:18px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev-fl">—</div>
+            <div style="font-size:16px;font-weight:700;padding:4px 0;font-family:var(--font-mono);color:var(--verde)" id="i-prev-fl">—</div>
           </div>
         </div>
         <div class="fgroup"><label>Descrição</label><input type="text" id="i-desc-fl" placeholder="Ex: Fachada torre A, 18 andares"></div>
@@ -621,8 +621,8 @@ select option[disabled]{color:#bbb}
         </div>
         <div class="fg fg2 mb8">
           <div class="fgroup"><label>Valor por hora (R$)</label><input type="number" id="i-consul-hora-val" min="0" step="50" oninput="calcConsulPrev()"></div>
-          <div class="fgroup"><label>Preview</label>
-            <div style="font-size:16px;font-weight:700;padding:7px 0;font-family:var(--font-mono);color:var(--terracota)" id="i-prev-consul">—</div>
+          <div class="fgroup" style="border-left:2px solid var(--cinza2);padding-left:10px"><label>Preview</label>
+            <div style="font-size:16px;font-weight:700;padding:4px 0;font-family:var(--font-mono);color:var(--terracota)" id="i-prev-consul">—</div>
           </div>
         </div>
       </div>
@@ -698,20 +698,8 @@ select option[disabled]{color:#bbb}
         <button class="btn-add-item" style="background:var(--ouro);margin-top:8px" onclick="confirmarRepasse()">+ Adicionar repasse</button>
       </div>
     </div>
-    <div id="repasse-preview" style="display:none">
-      <div class="card-body" style="padding-top:8px;padding-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-size:12px;font-weight:600" id="rep-preview-nome"></div>
-            <div style="font-size:10px;color:#888" id="rep-preview-desc"></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-size:14px;font-weight:700;color:var(--ouro);font-family:var(--font-mono)" id="rep-preview-val"></div>
-            <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
-            <button class="btn xs danger" onclick="remRepasse()">✕</button>
-          </div>
-        </div>
-      </div>
+    <div id="repasse-list" style="display:none">
+      <!-- renderizado por renderRepasseList() -->
     </div>
     <!-- Estado vazio -->
     <div id="repasse-empty" class="card-body" style="padding-top:8px;padding-bottom:8px">
@@ -1205,7 +1193,7 @@ let S = {
   histSoAativas: false,
 };
 
-let cItems = [], cDesps = [], cSubs = [], cRepasse = null;
+let cItems = [], cDesps = [], cSubs = [], cRepasse = [];
 let currentNucleo = 'PAIS';
 let evItemId = null;
 let editEtapaNucleo = 'PAIS', editEtapaChave = 'default';
@@ -1363,7 +1351,11 @@ function load() {
     if (d.cItems) cItems = d.cItems;
     if (d.cDesps) cDesps = d.cDesps;
     if (d.cSubs)  cSubs  = d.cSubs;
-    if (d.cRepasse !== undefined) cRepasse = d.cRepasse;
+    if (d.cRepasse !== undefined) {
+      if (Array.isArray(d.cRepasse)) cRepasse = d.cRepasse;
+      else if (d.cRepasse) cRepasse = [d.cRepasse];
+      else cRepasse = [];
+    }
     if (d.editingProposalId !== undefined) editingProposalId = d.editingProposalId;
     refreshProposalCaches();
   } catch(e) {}
@@ -2267,6 +2259,60 @@ function remItem(id) {
 }
 
 // ════════════════════════════════════════════════════════
+// EDITAR ITEM COMPLETO (recarrega no formulário)
+// ════════════════════════════════════════════════════════
+function editarItemCompleto(id) {
+  const it = cItems.find(i=>i.itemId===id); if(!it)return;
+  // Remove da lista
+  cItems = cItems.filter(i=>i.itemId!==id);
+  calcResumo(); updateCardBars(); save();
+
+  // Seleciona o núcleo correto
+  selNucleo(it.nucleo);
+
+  // Seleciona sub1 (tipo/subtipo)
+  const s1 = document.getElementById('i-sub1');
+  if (it.nucleo === 'PAIS') {
+    const tipo = it.subLabel?.split(' · ')[0] || '';
+    if ([...s1.options].some(o=>o.value===tipo)) s1.value = tipo;
+    updateSub2();
+    const s2 = document.getElementById('i-sub2');
+    const sub = it.subLabel?.split(' · ')[1] || '';
+    if ([...s2.options].some(o=>o.value===sub)) s2.value = sub;
+  } else {
+    const sub = it.subLabel || '';
+    if ([...s1.options].some(o=>o.value===sub)) s1.value = sub;
+  }
+  updateItemForm();
+
+  // Preenche campos conforme mode
+  if (it.mode==='calc') {
+    const aEl = document.getElementById('i-area'); if(aEl) aEl.value = it.area||'';
+    const cEl = document.getElementById('i-coef'); if(cEl) cEl.value = it.coef||'';
+    const dEl = document.getElementById('i-desc'); if(dEl) dEl.value = it.desc||'';
+  } else if (it.mode==='floreira') {
+    const qEl = document.getElementById('i-cub-qty'); if(qEl) qEl.value = it.area||'2.00';
+    const dEl = document.getElementById('i-desc-fl'); if(dEl) dEl.value = it.desc||'';
+  } else if (it.mode==='esp') {
+    const iEl = document.getElementById('i-esp-id'); if(iEl) iEl.value = it.id||'';
+    const vEl = document.getElementById('i-esp-val'); if(vEl) vEl.value = it.vFix||'';
+  } else if (it.mode==='consul') {
+    const iEl = document.getElementById('i-consul-id'); if(iEl) iEl.value = it.id||'';
+    const tEl = document.getElementById('i-consul-tipo'); if(tEl) tEl.value = it.tipoCobranca||'total';
+    const hEl = document.getElementById('i-consul-horas'); if(hEl) hEl.value = it.horas||'';
+    const hvEl = document.getElementById('i-consul-hora-val'); if(hvEl) hvEl.value = it.horaVal||'';
+  } else if (it.mode==='livre') {
+    const iEl = document.getElementById('i-livre-id'); if(iEl) iEl.value = it.id||'';
+    const vEl = document.getElementById('i-livre-val'); if(vEl) vEl.value = it.vFix||'';
+  }
+  calcPrev();
+
+  // Scroll até o formulário de serviço
+  document.getElementById('card-servicos')?.scrollIntoView({behavior:'smooth', block:'start'});
+  showToast('Item carregado para edição');
+}
+
+// ════════════════════════════════════════════════════════
 // EDITAR VALOR
 // ════════════════════════════════════════════════════════
 let _evBase = 0; // valor calculado base do item em edição
@@ -2362,8 +2408,15 @@ function toggleRepasse() {
   const empty = document.getElementById('repasse-empty');
   const isOpen = f.style.display !== 'none';
   f.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) empty.style.display = 'none';
-  else if (!cRepasse) empty.style.display = 'block';
+  if (!isOpen) {
+    document.getElementById('rep-nome').value = '';
+    document.getElementById('rep-val').value  = '';
+    document.getElementById('rep-tipo').value = 'pct';
+    onRepTipoChange();
+    empty.style.display = 'none';
+  } else if (!cRepasse.length) {
+    empty.style.display = 'block';
+  }
 }
 function onRepTipoChange() {
   const t = document.getElementById('rep-tipo').value;
@@ -2380,42 +2433,64 @@ function confirmarRepasse() {
   if (!val)  { showBlocked('Informe o valor do repasse'); return; }
   const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc), 0);
   const valorRep = tipo==='pct' ? totI*val/100 : val;
-  cRepasse = { nome, tipo, val, valorRep };
+  cRepasse.push({ nome, tipo, val, valorRep });
+  document.getElementById('rep-nome').value = '';
+  document.getElementById('rep-val').value  = '';
   document.getElementById('repasse-form').style.display = 'none';
-  document.getElementById('repasse-empty').style.display = 'none';
-  document.getElementById('repasse-preview').style.display = 'block';
-  document.getElementById('rep-preview-nome').textContent = nome;
-  document.getElementById('rep-preview-desc').textContent = tipo==='pct' ? `${val}% sobre serviços` : 'Valor fixo';
-  document.getElementById('rep-preview-val').textContent = fmt(valorRep);
+  renderRepasseList();
   updateCardBars(); calcResumo(); save();
   showToast('Repasse adicionado');
 }
-function editarRepasse() {
-  if (!cRepasse) return;
-  document.getElementById('rep-nome').value = cRepasse.nome;
-  document.getElementById('rep-tipo').value = cRepasse.tipo;
-  document.getElementById('rep-val').value  = cRepasse.val;
+function editarRepasse(idx) {
+  if (idx < 0 || idx >= cRepasse.length) return;
+  const r = cRepasse[idx];
+  document.getElementById('rep-nome').value = r.nome;
+  document.getElementById('rep-tipo').value = r.tipo;
+  document.getElementById('rep-val').value  = r.val;
   onRepTipoChange();
-  document.getElementById('repasse-preview').style.display = 'none';
-  document.getElementById('repasse-empty').style.display   = 'none';
-  document.getElementById('repasse-form').style.display    = 'block';
-  cRepasse = null;
+  cRepasse.splice(idx, 1);
+  renderRepasseList();
+  document.getElementById('repasse-form').style.display = 'block';
   updateCardBars(); calcResumo(); save();
   document.getElementById('card-repasse').scrollIntoView({behavior:'smooth', block:'start'});
 }
 function getRepasseCalc(totServicos) {
-  if (!cRepasse) return null;
-  const valorRep = cRepasse.tipo==='pct' ? totServicos*cRepasse.val/100 : cRepasse.val;
-  return { ...cRepasse, valorRep };
+  if (!cRepasse.length) return null;
+  return cRepasse.map(r => ({ ...r, valorRep: r.tipo==='pct' ? totServicos*r.val/100 : r.val }));
 }
-function remRepasse() {
-  cRepasse = null;
-  document.getElementById('rep-nome').value = '';
-  document.getElementById('rep-val').value  = '';
-  document.getElementById('repasse-preview').style.display = 'none';
-  document.getElementById('repasse-form').style.display    = 'none';
-  document.getElementById('repasse-empty').style.display   = 'block';
+function remRepasse(idx) {
+  cRepasse.splice(idx, 1);
+  renderRepasseList();
   updateCardBars(); calcResumo(); save();
+}
+function renderRepasseList() {
+  const listEl = document.getElementById('repasse-list');
+  const emptyEl = document.getElementById('repasse-empty');
+  if (!cRepasse.length) {
+    listEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc), 0);
+  let html = '<div class="card-body" style="padding-top:8px;padding-bottom:8px;display:flex;flex-direction:column;gap:6px">';
+  cRepasse.forEach((r, idx) => {
+    const valorRep = r.tipo==='pct' ? totI*r.val/100 : r.val;
+    html += `<div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:12px;font-weight:600">${escHtml(r.nome)}</div>
+        <div style="font-size:10px;color:#888">${r.tipo==='pct' ? `${r.val}% sobre serviços` : 'Valor fixo'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-size:14px;font-weight:700;color:var(--ouro);font-family:var(--font-mono)">${fmt(valorRep)}</div>
+        <button class="btn xs ghost" onclick="editarRepasse(${idx})">✎</button>
+        <button class="btn xs danger" onclick="remRepasse(${idx})">✕</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  listEl.innerHTML = html;
+  listEl.style.display = 'block';
+  emptyEl.style.display = 'none';
 }
 
 // ════════════════════════════════════════════════════════
@@ -2431,7 +2506,7 @@ function updateCardBars() {
   setCardBar('card-id',       (clienteFilled && projetoFilled) ? 'verde'  : 'neutro');
   setCardBar('card-servicos', cItems.length  > 0               ? 'verde'  : 'neutro');
   setCardBar('card-subs',     cSubs.length   > 0               ? 'tc'     : 'neutro');
-  setCardBar('card-repasse',  cRepasse !== null                 ? 'am'     : 'neutro');
+  setCardBar('card-repasse',  cRepasse.length > 0               ? 'am'     : 'neutro');
   setCardBar('card-desps',    cDesps.some(d=>d.confirmada)      ? 'az'     : 'neutro');
 }
 
@@ -2750,13 +2825,8 @@ function calcResumo() {
 
   const totI     = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const totICalc = cItems.reduce((s,i)=>s+i.valorCalc,0);
-  const rep      = getRepasseCalc(totI);
-  const totRep   = rep ? rep.valorRep : 0;
-
-  // Atualiza preview do repasse com valor recalculado
-  if (cRepasse) {
-    document.getElementById('rep-preview-val').textContent = fmt(totRep);
-  }
+  const reps     = getRepasseCalc(totI);
+  const totRep   = reps ? reps.reduce((s,r) => s + r.valorRep, 0) : 0;
 
   const totSub   = cSubs.reduce((s,c)=>s+c.valComBit,0);
   const ganhoSubs= cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
@@ -2855,9 +2925,12 @@ function calcResumo() {
           <div style="display:flex;gap:3px">
             ${isLocked
               ? `<span style="font-size:10px;color:var(--terracota);padding:2px 5px">🔒</span>`
-              : `<button class="btn xs ghost" onclick="openEdit(${it.itemId})" title="Ajustar valor">✎</button>
-                 ${isEd ? `<button class="btn xs ghost" style="color:var(--terracota)" onclick="event.stopPropagation();_restaurarDireto(${it.itemId})" title="Restaurar valor calculado">↺</button>` : ''}
-                 <button class="btn xs danger" onclick="remItem(${it.itemId})">✕</button>`
+              : `<div style="display:flex;gap:3px;flex-shrink:0">
+                   <button class="btn xs ghost" onclick="editarItemCompleto(${it.itemId})" title="Editar parâmetros do item" style="white-space:nowrap">✎ Editar</button>
+                   <button class="btn xs ghost" onclick="openEdit(${it.itemId})" title="Ajustar valor proposto" style="white-space:nowrap">R$</button>
+                   ${isEd ? `<button class="btn xs ghost" style="color:var(--terracota)" onclick="event.stopPropagation();_restaurarDireto(${it.itemId})" title="Restaurar valor calculado">↺</button>` : ''}
+                   <button class="btn xs danger" onclick="remItem(${it.itemId})" title="Remover item">✕</button>
+                 </div>`
             }
           </div>
         </div>`;
@@ -2901,26 +2974,27 @@ function calcResumo() {
   }
 
   // REPASSE
-  if (rep) {
-    const repNome = escHtml(rep.nome||'');
+  if (reps && reps.length) {
     html+=`<div class="rg">
       <div class="rg-head">
         <div class="rg-stripe" style="background:var(--ouro)"></div>
         <span class="rg-label">Repasse comercial</span>
         <span class="rg-sub" style="color:var(--ouro)">${fmt(totRep)}</span>
-      </div>
-      <div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px;display:flex;align-items:center;justify-content:space-between">
+      </div>`;
+    reps.forEach((r, idx) => {
+      html+=`<div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px;display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:11px;font-weight:600">${repNome}</div>
-          <div style="font-size:10px;color:#888">${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}</div>
+          <div style="font-size:11px;font-weight:600">${escHtml(r.nome||'')}</div>
+          <div style="font-size:10px;color:#888">${r.tipo==='pct'?`${r.val}% sobre serviços`:'Valor fixo'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="font-weight:700;color:var(--ouro);font-family:var(--font-mono);font-size:13px">${fmt(totRep)}</div>
-          <button class="btn xs ghost" onclick="editarRepasse()">✎</button>
-          <button class="btn xs danger" onclick="remRepasse()">✕</button>
+          <div style="font-weight:700;color:var(--ouro);font-family:var(--font-mono);font-size:13px">${fmt(r.valorRep)}</div>
+          <button class="btn xs ghost" onclick="editarRepasse(${idx})">✎</button>
+          <button class="btn xs danger" onclick="remRepasse(${idx})">✕</button>
         </div>
-      </div>
-    </div>`;
+      </div>`;
+    });
+    html+=`</div>`;
   }
 
   // DESPESAS — com cada item + bitributação total
@@ -3052,7 +3126,8 @@ async function salvarProposta() {
   if (!cItems.length) { showBlocked('Adicione ao menos um serviço'); return; }
   const totI  = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const rep   = getRepasseCalc(totI);
-  const total = totI+(rep?rep.valorRep:0)+cSubs.reduce((s,c)=>s+c.valComBit,0)+getTotDesp();
+  const totRep_ = rep ? rep.reduce((s,r)=>s+r.valorRep,0) : 0;
+  const total = totI+totRep_+cSubs.reduce((s,c)=>s+c.valComBit,0)+getTotDesp();
   const ganhoSubsVal = cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
   const ganhoTecVal  = cDesps.filter(d=>d.tipo==='horasTec'&&d.confirmada).reduce((s,d)=>s+calcDesp(d),0);
   const totalEfetivo = totI + ganhoSubsVal + ganhoTecVal;
@@ -3128,7 +3203,7 @@ async function salvarProposta() {
     : (S.sbUrl ? 'Salva localmente. A proposta não estruturou no banco e precisa de revisão.' : 'Salva localmente.');
 
   // Limpa formulário após salvar
-  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null; editingProposalId=null;
+  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=[]; editingProposalId=null;
   linkedOppInfo=null; lockedNucleos=new Set();
   ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
     const e=document.getElementById(id); if(e)e.value='';
@@ -3137,10 +3212,9 @@ async function salvarProposta() {
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('f-resp').value=resolveCalcRespSelectValue(getCurrentCalcRespId(), getCurrentCalcRespCode());
   document.getElementById('repasse-form').style.display='none';
-  document.getElementById('repasse-preview').style.display='none';
-  document.getElementById('repasse-empty').style.display='block';
   document.getElementById('rep-nome').value='';
   document.getElementById('rep-val').value='';
+  renderRepasseList();
   document.getElementById('sub-form').style.display='none';
   renderDesps(); renderSubList();
   updateDespVisibility(); updateSubVisibility();
@@ -3149,7 +3223,7 @@ async function salvarProposta() {
 }
 
 function limpar() {
-  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=null; editingProposalId=null;
+  cItems=[]; cDesps=[]; cSubs=[]; cRepasse=[]; editingProposalId=null;
   linkedOppInfo=null; lockedNucleos=new Set();
   ['f-cliente','f-projeto','f-cidade','f-obs','f-uf'].forEach(id=>{
     const e=document.getElementById(id);if(e)e.value='';
@@ -3158,10 +3232,9 @@ function limpar() {
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('f-resp').value=resolveCalcRespSelectValue(getCurrentCalcRespId(), getCurrentCalcRespCode());
   document.getElementById('repasse-form').style.display='none';
-  document.getElementById('repasse-preview').style.display='none';
-  document.getElementById('repasse-empty').style.display='block';
   document.getElementById('rep-nome').value='';
   document.getElementById('rep-val').value='';
+  renderRepasseList();
   document.getElementById('sub-form').style.display='none';
   renderDesps(); renderSubList();
   updateDespVisibility(); updateSubVisibility();
@@ -3205,7 +3278,7 @@ function exportarPDF() {
 
   const totI    = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const rep     = getRepasseCalc(totI);
-  const totRep  = rep ? rep.valorRep : 0;
+  const totRep  = rep ? rep.reduce((s,r)=>s+r.valorRep,0) : 0;
   const totSub  = cSubs.reduce((s,c)=>s+c.valComBit,0);
   const ganhoSubs = cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
   const totDesp = getTotDesp();
@@ -3299,16 +3372,20 @@ function exportarPDF() {
   });
 
   // S5-01 — REPASSE (movido para antes de Subcontratações)
-  if (rep) {
+  if (rep && rep.length) {
     chkPage(10);
     doc.setFillColor(251,243,232); doc.rect(M,y-3,TW,7,'F');
     doc.setTextColor(...CL.am); doc.setFont('helvetica','bold'); doc.setFontSize(8);
     doc.text('REPASSE COMERCIAL', M+3, y+1);
     doc.text(fmt(totRep), W-M-2, y+1, {align:'right'}); y+=9;
     doc.setTextColor(...CL.black); doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    doc.text(`${rep.nome}  ·  ${rep.tipo==='pct'?`${rep.val}% sobre serviços`:'Valor fixo'}`, M+3, y);
-    doc.setFont('helvetica','bold'); doc.text(fmt(totRep), W-M-2, y, {align:'right'});
-    doc.setDrawColor(...CL.lgray); doc.line(M,y+4,W-M,y+4); y+=8;
+    rep.forEach((r, ri) => {
+      if (ri > 0) { chkPage(8); }
+      doc.text(`${r.nome}  ·  ${r.tipo==='pct'?`${r.val}% sobre serviços`:'Valor fixo'}`, M+3, y);
+      doc.setFont('helvetica','bold'); doc.text(fmt(r.valorRep), W-M-2, y, {align:'right'});
+      doc.setFont('helvetica','normal');
+      doc.setDrawColor(...CL.lgray); doc.line(M,y+4,W-M,y+4); y+=8;
+    });
   }
 
   // S5-01+S5-02 — SUBCONTRATAÇÕES (layout corrigido: 2 linhas por item, sem overflow)
@@ -3791,19 +3868,12 @@ function carregarPropostaParaRevisao(p) {
   document.getElementById('f-obs').value     = p.obs||'';
 
   if (p.repasse) {
-    cRepasse = { ...p.repasse };
-    const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
-    const valorRep = cRepasse.tipo==='pct' ? totI*cRepasse.val/100 : cRepasse.val;
-    document.getElementById('rep-preview-nome').textContent = cRepasse.nome;
-    document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviços` : 'Valor fixo';
-    document.getElementById('rep-preview-val').textContent  = fmt(valorRep);
-    document.getElementById('repasse-preview').style.display = 'block';
-    document.getElementById('repasse-empty').style.display   = 'none';
-    document.getElementById('repasse-form').style.display    = 'none';
+    cRepasse = Array.isArray(p.repasse) ? [...p.repasse] : [{ ...p.repasse }];
+    renderRepasseList();
+    document.getElementById('repasse-form').style.display = 'none';
   } else {
-    cRepasse = null;
-    document.getElementById('repasse-preview').style.display = 'none';
-    document.getElementById('repasse-empty').style.display   = 'block';
+    cRepasse = [];
+    renderRepasseList();
   }
   if (p.despBit !== undefined) {
     document.getElementById('desp-bit').value = p.despBit;
@@ -4337,18 +4407,7 @@ renderSubList(); updateSubVisibility();
 renderDesps(); updateDespVisibility();
 
 // Restaura visibilidade do repasse
-if (cRepasse) {
-  const totI = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
-  const valorRep = cRepasse.tipo==='pct' ? totI*cRepasse.val/100 : cRepasse.val;
-  document.getElementById('rep-preview-nome').textContent = cRepasse.nome;
-  document.getElementById('rep-preview-desc').textContent = cRepasse.tipo==='pct' ? `${cRepasse.val}% sobre serviços` : 'Valor fixo';
-  document.getElementById('rep-preview-val').textContent  = fmt(valorRep);
-  document.getElementById('repasse-preview').style.display = 'block';
-  document.getElementById('repasse-empty').style.display   = 'none';
-} else {
-  document.getElementById('repasse-preview').style.display = 'none';
-  document.getElementById('repasse-empty').style.display   = 'block';
-}
+renderRepasseList();
 
 calcResumo();
 updateCardBars();

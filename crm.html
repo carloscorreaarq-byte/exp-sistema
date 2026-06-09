@@ -4350,7 +4350,8 @@ async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
       const propCode = _lp.prop_code ? `EXP-${String(_lp.prop_code).padStart(3, '0')}` : null;
 
       // Valor efetivo EXP = total cliente − repasse comercial − custo bruto de subcontratações
-      const _repVal  = +(_lp.repasse?.valorRep) || 0;
+      const _repArr  = Array.isArray(_lp.repasse) ? _lp.repasse : (_lp.repasse ? [_lp.repasse] : []);
+      const _repVal  = _repArr.reduce((s, r) => s + (+(r.valorRep) || 0), 0);
       const _subsVal = (_lp.subs||[]).reduce((s,x) => s + (+(x.val)||0), 0);
       const _efetivo = (+(_lp.total)||0) - _repVal - _subsVal;
 
@@ -4425,18 +4426,20 @@ async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
         await sb.from('fin_subcontratacoes').insert(subsPayload);
       }
 
-      // Repasse comercial
-      const rep = lp.repasse;
-      if (rep && (rep.nome || rep.valorRep)) {
-        await sb.from('fin_repasses').insert({
-          ativo_id:          ativoId,
-          beneficiario_nome: rep.nome || 'Repasse',
-          tipo:              rep.tipo === 'pct' ? 'percentual' : 'fixo',
-          percentual:        rep.tipo === 'pct' ? +(rep.val) : null,
-          valor:             +(rep.valorRep) || null,
-          origem:            'calc',
-          prop_code:         lp.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : null,
-        });
+      // Repasse comercial (suporta array ou objeto legado)
+      const repArr = Array.isArray(lp.repasse) ? lp.repasse : (lp.repasse ? [lp.repasse] : []);
+      for (const rep of repArr) {
+        if (rep && (rep.nome || rep.valorRep)) {
+          await sb.from('fin_repasses').insert({
+            ativo_id:          ativoId,
+            beneficiario_nome: rep.nome || 'Repasse',
+            tipo:              rep.tipo === 'pct' ? 'percentual' : 'fixo',
+            percentual:        rep.tipo === 'pct' ? +(rep.val) : null,
+            valor:             +(rep.valorRep) || null,
+            origem:            'calc',
+            prop_code:         lp.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : null,
+          });
+        }
       }
     }
 
@@ -4773,8 +4776,10 @@ function abrirDetail(oppId){
     html+=`</div>`;
     // Custos vinculados (subs/desps/repasse) — inline, sem async
     if(_useCalc){
-      const _subs=_lp.subs||[], _desps=_lp.desps||[], _rep=_lp.repasse||null;
-      if(_subs.length||_desps.length||(_rep&&(_rep.nome||_rep.valorRep))){
+      const _subs=_lp.subs||[], _desps=_lp.desps||[];
+      const _repArr2=Array.isArray(_lp.repasse)?_lp.repasse:(_lp.repasse?[_lp.repasse]:[]);
+      const _rep=_repArr2.filter(r=>r&&(r.nome||r.valorRep));
+      if(_subs.length||_desps.length||_rep.length){
         let ch=`<div class="ms"><div class="ms-title">Custos da proposta (EXP.calc)</div>`;
         if(_subs.length){
           ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Subcontratações</div>`;
@@ -4807,12 +4812,14 @@ function abrirDetail(oppId){
             </div>`;
           });
         }
-        if(_rep&&(_rep.nome||_rep.valorRep)){
-          ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Repasse Comercial</div>
-            <div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:10px">
-              <span style="flex:1"><strong>${_rep.nome||'—'}</strong>${_rep.tipo==='pct'?` · ${_rep.val}% sobre serviços`:' · valor fixo'}</span>
-              <span style="font-family:var(--font-mono);font-weight:600">${fmt(_rep.valorRep||0)}</span>
+        if(_rep.length){
+          ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Repasse Comercial</div>`;
+          _rep.forEach(r=>{
+            ch+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:10px">
+              <span style="flex:1"><strong>${r.nome||'—'}</strong>${r.tipo==='pct'?` · ${r.val}% sobre serviços`:' · valor fixo'}</span>
+              <span style="font-family:var(--font-mono);font-weight:600">${fmt(r.valorRep||0)}</span>
             </div>`;
+          });
         }
         ch+=`</div>`;
         html+=ch;
