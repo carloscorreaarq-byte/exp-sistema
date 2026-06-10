@@ -312,7 +312,8 @@ body {
 .ckt-live-item { display:flex; align-items:center; gap:8px; padding:4px 12px; border-bottom: 1px solid var(--cinza2); }
 .ckt-live-item:last-of-type { border-bottom:none; }
 .ckt-live-cb-mock { width:13px; height:13px; border:1.5px solid var(--cinza); border-radius:3px; flex-shrink:0; background:var(--branco); }
-.ckt-live-item-txt { font-size:11px; flex:1; color:var(--grafite); line-height:1.4; }
+.ckt-live-item-txt { font-size:11px; flex:1; color:var(--grafite); line-height:1.4; background:none; border:none; outline:none; padding:0; font-family:inherit; min-width:0; }
+.ckt-live-item-txt:focus { background:var(--off); border-radius:3px; padding:0 4px; }
 .ckt-live-item-rem { background:none; border:none; cursor:pointer; font-size:12px; color:#ddd; line-height:1; padding:0 2px; opacity:0; transition:opacity .12s, color .12s; }
 .ckt-live-item:hover .ckt-live-item-rem { opacity:1; }
 .ckt-live-item-rem:hover { color:var(--terracota); }
@@ -323,6 +324,13 @@ body {
 .ckt-live-item-img-btn.has-img { opacity:1; color:var(--azul); }
 .ckt-live-item-thumb { width:28px; height:20px; object-fit:cover; border-radius:3px; cursor:pointer; border:1px solid var(--cinza2); flex-shrink:0; }
 [data-theme="dark"] .ckt-live-item-thumb { border-color:#3A3836; }
+/* drag handle por item de preset */
+.ckt-live-drag-handle { display:flex; align-items:center; cursor:grab; color:#ddd; font-size:11px; padding:0 3px 0 0; opacity:0; transition:opacity .12s, color .12s; user-select:none; flex-shrink:0; }
+.ckt-live-item:hover .ckt-live-drag-handle { opacity:1; }
+.ckt-live-drag-handle:hover { color:#aaa; }
+.ckt-live-drag-handle:active { cursor:grabbing; }
+.ckt-live-item.drag-over { border-top:2px solid var(--azul); }
+.ckt-live-item.dragging { opacity:.35; }
 /* ghost item */
 .ckt-live-ghost { display:flex; align-items:center; gap:8px; padding:4px 12px; opacity:.38; transition:opacity .15s; }
 .ckt-live-ghost:focus-within { opacity:1; }
@@ -387,11 +395,27 @@ body {
 .pre-live-meta-inp::placeholder{color:#ccc}
 /* seção no form — herda ckt-live-sec mas com intro */
 .pre-live-sec{border-bottom:1px solid var(--cinza2)}
-.pre-live-sec-hd{display:flex;align-items:center;gap:8px;padding:9px 15px 5px}
-.pre-live-sec-inp{flex:1;border:none;outline:none;background:transparent;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--azul)}
+.pre-live-sec-hd{display:flex;align-items:center;gap:8px;padding:9px 15px 5px;cursor:pointer;user-select:none}
+.pre-live-sec-hd:hover{background:var(--off)}
+.pre-live-sec-drag{cursor:grab;color:#ccc;font-size:12px;padding:0 3px 0 0;flex-shrink:0;transition:color .12s}
+.pre-live-sec-drag:hover{color:#888}
+.pre-live-sec-drag:active{cursor:grabbing}
+.pre-live-sec.sec-dragging{opacity:.35}
+.pre-live-sec.sec-drag-over{border-top:2px solid var(--azul)}
+.pre-live-sec-chevron{font-size:9px;color:#bbb;transition:transform .18s;flex-shrink:0;margin-right:2px}
+.pre-live-sec.open .pre-live-sec-chevron{transform:rotate(90deg)}
+.pre-live-sec-body{display:none}
+.pre-live-sec.open .pre-live-sec-body{display:block}
+.pre-live-sec-inp{flex:1;border:none;outline:none;background:transparent;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--azul);cursor:pointer}
 .pre-live-sec-inp::placeholder{color:#bbb;text-transform:none;letter-spacing:0;font-weight:400;font-size:11px}
 .pre-live-sec-rem{background:none;border:none;cursor:pointer;font-size:13px;color:#ddd;padding:0 2px;line-height:1;transition:color .12s}
 .pre-live-sec-rem:hover{color:var(--terracota)}
+/* visualização — seções recolhíveis */
+.preset-secao-blk{cursor:pointer}
+.preset-secao-blk .preset-secao-body{display:none}
+.preset-secao-blk.open .preset-secao-body{display:block}
+.preset-secao-chevron{font-size:9px;color:#bbb;transition:transform .18s;margin-right:4px;display:inline-block}
+.preset-secao-blk.open .preset-secao-chevron{transform:rotate(90deg)}
 .pre-live-intro-inp{display:block;width:100%;border:none;outline:none;resize:none;background:transparent;font-family:var(--font-ui);font-size:10px;color:#777;font-style:italic;line-height:1.5;padding:2px 12px 5px;box-sizing:border-box}
 .pre-live-intro-inp::placeholder{color:#ddd;font-style:normal}
 /* footer */
@@ -17986,10 +18010,16 @@ function _renderPresetsAdmin() {
         ${semSec.map(it=>`<div class="preset-item-row"><span style="color:#ccc;margin-right:4px">·</span>${_ckE(it.texto)}</div>`).join('')}
         ${secoes.map(s => {
           const sit = (s.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem);
-          return `<div class="preset-secao-blk">
-            <div class="preset-secao-titulo">${_ckE(s.titulo)}</div>
-            ${s.intro?`<div class="preset-secao-intro">${_ckE(s.intro)}</div>`:''}
-            ${sit.map(it=>`<div class="preset-item-row"><span style="color:#ccc;margin-right:4px">·</span>${_ckE(it.texto)}</div>`).join('')}
+          const sid = `psec-${p.id}-${s.id}`;
+          return `<div class="preset-secao-blk" id="${sid}" onclick="_preToggleViewSec('${sid}')">
+            <div class="preset-secao-titulo">
+              <span class="preset-secao-chevron">▶</span>${_ckE(s.titulo)}
+              <span style="font-size:9px;color:#bbb;font-weight:400;margin-left:6px">${sit.length} ${sit.length===1?'item':'itens'}</span>
+            </div>
+            <div class="preset-secao-body">
+              ${s.intro?`<div class="preset-secao-intro">${_ckE(s.intro)}</div>`:''}
+              ${sit.map(it=>`<div class="preset-item-row"><span style="color:#ccc;margin-right:4px">·</span>${_ckE(it.texto)}</div>`).join('')}
+            </div>
           </div>`;
         }).join('')}
       </div>`;
@@ -18015,7 +18045,17 @@ function _preAbsorverDireto(baseId) {
   toast(`Base "${base.nome}" absorvida.`);
 }
 
-let _preState = null;
+let _preState   = null;
+let _preOpenSec = 0; // índice da seção aberta (-1 = todas fechadas)
+
+function _preToggleSec(si) {
+  _preOpenSec = (_preOpenSec === si) ? -1 : si;
+  _renderPreForm();
+  // foca no input do título da seção se estiver abrindo
+  if(_preOpenSec === si) {
+    setTimeout(() => document.querySelector(`#pre-sec-${si} .pre-live-sec-inp`)?.focus(), 30);
+  }
+}
 
 const PRE_NUCLEOS = ['Urbanismo','Paisagismo','Especiais','Consultorias'];
 
@@ -18083,14 +18123,25 @@ function _renderPreForm() {
   }).join('');
 
   // Seções
-  const secoesHtml = _preState.secoes.map((s, si) => `
-    <div class="pre-live-sec" id="pre-sec-${si}">
-      <div class="pre-live-sec-hd">
+  const secoesHtml = _preState.secoes.map((s, si) => {
+    const isOpen = _preOpenSec === si;
+    return `
+    <div class="pre-live-sec${isOpen?' open':''}" id="pre-sec-${si}" draggable="true"
+      ondragstart="_preSecDragStart(event,${si})"
+      ondragover="_preSecDragOver(event,${si})"
+      ondragleave="_preSecDragLeave(event)"
+      ondrop="_preSecDrop(event,${si})"
+      ondragend="_preSecDragEnd(event)">
+      <div class="pre-live-sec-hd" onclick="_preToggleSec(${si})">
+        <span class="pre-live-sec-drag" title="Arrastar para reordenar seção" onclick="event.stopPropagation()">⠿</span>
+        <span class="pre-live-sec-chevron">▶</span>
         <input class="pre-live-sec-inp" type="text" placeholder="Nome da seção…"
           value="${_ckE(s.titulo)}" oninput="_preState.secoes[${si}].titulo=this.value"
+          onclick="event.stopPropagation()"
           onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pre-intro-${si}')?.focus()}">
-        <button class="pre-live-sec-rem" onclick="_remPreSecao(${si})">×</button>
+        <button class="pre-live-sec-rem" onclick="event.stopPropagation();_remPreSecao(${si})">×</button>
       </div>
+      <div class="pre-live-sec-body">
       <textarea class="pre-live-intro-inp" id="pre-intro-${si}" rows="2"
         placeholder="Instrução geral desta seção (não é item marcável)…"
         oninput="_preState.secoes[${si}].intro=this.value"
@@ -18102,9 +18153,18 @@ function _renderPreForm() {
           ? `<img class="ckt-live-item-thumb" src="${_ckE(it._imgLocal || it.imagem_url)}" onclick="_preItemVerImagem(${si},${ii})" title="Ver imagem">`
           : '';
         return `
-        <div class="ckt-live-item">
+        <div class="ckt-live-item" draggable="true"
+          ondragstart="_preDragStart(event,${si},${ii})"
+          ondragover="_preDragOver(event,${si},${ii})"
+          ondragleave="_preDragLeave(event)"
+          ondrop="_preDrop(event,${si},${ii})"
+          ondragend="_preDragEnd(event)">
+          <span class="ckt-live-drag-handle" title="Arrastar para reordenar">⠿</span>
           <div class="ckt-live-cb-mock"></div>
-          <span class="ckt-live-item-txt">${_ckE(it.texto)}</span>
+          <input class="ckt-live-item-txt" type="text" value="${_ckE(it.texto)}"
+            oninput="_preState.secoes[${si}].items[${ii}].texto=this.value"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pre-ghost-${si}')?.focus()}"
+            placeholder="Texto do item…">
           ${thumbHtml}
           <button class="ckt-live-item-img-btn ${hasImg?'has-img':''}" onclick="_preItemPickImage(${si},${ii})" title="${hasImg?'Trocar imagem':'Adicionar imagem'}">🖼</button>
           <button class="ckt-live-item-rem" onclick="_remPreSecaoItem(${si},${ii})">×</button>
@@ -18116,7 +18176,9 @@ function _renderPreForm() {
           onkeydown="if(event.key==='Enter'){event.preventDefault();_preGhostAdd(${si},this)}"
           onblur="_preGhostAdd(${si},this)">
       </div>
-    </div>`).join('');
+      </div>
+    </div>`;
+  }).join('');
 
   const nItens = _preState.secoes.reduce((s,sec)=>s+sec.items.length,0) + _preState.semSecao.length;
   const nSec   = _preState.secoes.length;
@@ -18201,9 +18263,9 @@ function _preGhostAdd(si, inp) {
 function _preAddSecao() {
   if(!_preState) return;
   _preState.secoes.push({ titulo:'', intro:'', items:[] });
+  _preOpenSec = _preState.secoes.length - 1;
   _renderPreForm();
-  const idx = _preState.secoes.length - 1;
-  setTimeout(() => document.querySelector(`#pre-sec-${idx} .pre-live-sec-inp`)?.focus(), 30);
+  setTimeout(() => document.querySelector(`#pre-sec-${_preOpenSec} .pre-live-sec-inp`)?.focus(), 30);
 }
 function _remPreSecao(si) {
   if(!_preState) return;
@@ -18216,6 +18278,17 @@ function _remPreSecaoItem(si, ii) {
   _renderPreForm();
   setTimeout(() => document.getElementById(`pre-ghost-${si}`)?.focus(), 30);
 }
+// ── Accordion de seções na visualização ─────────────────────
+function _preToggleViewSec(sid) {
+  const el = document.getElementById(sid);
+  if(!el) return;
+  const isOpen = el.classList.contains('open');
+  // fecha todas do mesmo card
+  const card = el.closest('.preset-card');
+  if(card) card.querySelectorAll('.preset-secao-blk.open').forEach(s => s.classList.remove('open'));
+  if(!isOpen) el.classList.add('open');
+}
+
 // ── Imagem por item de preset ─────────────────────────────────
 let _preImgCfgCache = null;
 
@@ -18270,6 +18343,96 @@ function _preItemVerImagem(si, ii) {
   img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)';
   modal.appendChild(img);
   document.body.appendChild(modal);
+}
+
+// ── Drag & drop para reordenar seções de preset ──────────────
+let _preSecDrag = null; // índice da seção sendo arrastada
+
+function _preSecDragStart(e, si) {
+  _preSecDrag = si;
+  e.currentTarget.classList.add('sec-dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(si));
+  e.stopPropagation();
+}
+
+function _preSecDragOver(e, si) {
+  if(_preSecDrag === null || _preSecDrag === si) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('sec-drag-over');
+}
+
+function _preSecDragLeave(e) {
+  e.currentTarget.classList.remove('sec-drag-over');
+}
+
+function _preSecDrop(e, si) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.currentTarget.classList.remove('sec-drag-over');
+  if(_preSecDrag === null || _preSecDrag === si) return;
+
+  const secoes = _preState.secoes;
+  const [moved] = secoes.splice(_preSecDrag, 1);
+  const dest = _preSecDrag < si ? si - 1 : si;
+  secoes.splice(dest, 0, moved);
+
+  // mantém a seção movida aberta
+  _preOpenSec = dest;
+  _preSecDrag = null;
+  _renderPreForm();
+}
+
+function _preSecDragEnd(e) {
+  e.currentTarget.classList.remove('sec-dragging');
+  document.querySelectorAll('.pre-live-sec').forEach(el => el.classList.remove('sec-drag-over', 'sec-dragging'));
+  _preSecDrag = null;
+}
+
+// ── Drag & drop para reordenar itens de preset ───────────────
+let _preDrag = null; // { si, ii }
+
+function _preDragStart(e, si, ii) {
+  _preDrag = { si, ii };
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', `${si}:${ii}`);
+}
+
+function _preDragOver(e, si, ii) {
+  if(!_preDrag) return;
+  // só aceita drop na mesma seção
+  if(_preDrag.si !== si) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function _preDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function _preDrop(e, si, ii) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!_preDrag || _preDrag.si !== si || _preDrag.ii === ii) return;
+
+  const items = _preState.secoes[si].items;
+  const [moved] = items.splice(_preDrag.ii, 1);
+  // ajusta índice de destino após remoção
+  const dest = _preDrag.ii < ii ? ii - 1 : ii;
+  items.splice(dest, 0, moved);
+
+  _preDrag = null;
+  _renderPreForm();
+}
+
+function _preDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.ckt-live-item').forEach(el => el.classList.remove('drag-over', 'dragging'));
+  _preDrag = null;
 }
 
 // mantidas para compatibilidade com possíveis chamadas externas
