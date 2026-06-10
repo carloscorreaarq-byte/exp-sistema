@@ -306,8 +306,8 @@ window.AppNotif = (() => {
         .select('id, num_legado, pipeline_stage, clientes(nome)')
         .in('pipeline_stage', ['prospecção','prospeccao','enviada','ativo','negociacao','negociação']),
       window.sb.from('followups_produto')
-        .select('produto_id, data_contato, created_at')
-        .order('data_contato', { ascending: false }),
+        .select('produto_id, data, created_at')
+        .order('data', { ascending: false }),
       window.sb.from('produtos')
         .select('id, oportunidade_id, status, data_envio')
         .in('status', ['ativo','negociacao','negociação']),
