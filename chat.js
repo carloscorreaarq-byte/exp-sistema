@@ -1135,6 +1135,7 @@
 
         var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
         var isOwn    = msg.sender_id === uid;
+        console.log('[EXP Chat] msg recebida', { ch, uid, sender_id: msg.sender_id, isOwn, isActive, isOpen, currentView, currentChannel, soundEnabled, userStatus, visibility: document.visibilityState });
 
         if (isActive) {
           upsertMessage(msg);
