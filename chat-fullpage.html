@@ -1044,6 +1044,35 @@ body {
 .fp-task-assign-btn:hover { border-color: var(--ca); color: var(--ca); }
 [data-theme="dark"] .fp-task-assign-btn { background: rgba(var(--ca-rgb-vals), .18); border-color: rgba(var(--ca-rgb-vals), .3); color: #F0EDE6; }
 
+/* ── Listas: tab bar ── */
+.fp-lists-tabs { display:flex; padding:8px 10px 0; gap:3px; flex-shrink:0; border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.12); }
+.fp-lists-tab { padding:5px 9px; border-radius:7px 7px 0 0; border:none; background:none; font-family:var(--font-ui); font-size:10px; font-weight:600; color:var(--cinza,#D0CFC9); cursor:pointer; transition:background .12s,color .12s; white-space:nowrap; }
+.fp-lists-tab:hover { color:var(--ca); }
+.fp-lists-tab.active { background:rgba(var(--ca-rgb-vals,29,106,74),.12); color:var(--ca); }
+/* Checklist view dentro do painel */
+#fp-ck-view { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+.fp-ck-selector { padding:8px 10px 6px; flex-shrink:0; }
+.fp-ck-select { width:100%; border:1px solid var(--cinza2,#ECEAE4); border-radius:8px; padding:7px 10px; font-family:var(--font-ui); font-size:11px; background:#fff; color:var(--grafite,#111110); outline:none; transition:border-color .15s; }
+.fp-ck-select:focus { border-color:var(--ca); }
+[data-theme="dark"] .fp-ck-select { background:rgba(var(--ca-rgb-vals),.18); border-color:rgba(var(--ca-rgb-vals),.3); color:#F0EDE6; }
+#fp-ck-items { flex:1; overflow-y:auto; padding:4px 10px 8px; }
+.fp-ck-item { display:flex; align-items:flex-start; gap:8px; padding:5px 4px; border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.09); }
+.fp-ck-item:last-child { border-bottom:none; }
+.fp-ck-cb { width:14px; height:14px; border:1.5px solid var(--cinza,#D0CFC9); border-radius:3px; cursor:pointer; flex-shrink:0; margin-top:1px; appearance:none; -webkit-appearance:none; background:#fff; transition:background .12s,border-color .12s; background-size:10px; background-repeat:no-repeat; background-position:center; }
+.fp-ck-cb:checked { background-color:var(--ca); border-color:var(--ca); background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 7L5.5 10.5L12 4' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.fp-ck-txt { font-size:11px; flex:1; line-height:1.4; color:#333; }
+[data-theme="dark"] .fp-ck-txt { color:#C8C3BA; }
+.fp-ck-txt.done { text-decoration:line-through; color:#bbb; }
+.fp-ck-secao { font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--cinza,#D0CFC9); padding:8px 4px 3px; }
+.fp-ck-prog { font-size:10px; font-family:var(--font-mono); color:var(--ca); font-weight:700; }
+.fp-ck-prog-hdr { padding:4px 4px 8px; display:flex; align-items:center; justify-content:space-between; }
+.fp-ck-prog-label { font-size:10px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+.fp-ck-add { display:flex; align-items:center; gap:8px; padding:6px 4px; }
+.fp-ck-cb-mock { width:14px; height:14px; border:1.5px solid var(--cinza,#D0CFC9); border-radius:3px; flex-shrink:0; opacity:.3; }
+.fp-ck-add-inp { flex:1; border:none; border-bottom:1px solid var(--cinza2,#ECEAE4); outline:none; font-family:var(--font-ui); font-size:11px; padding:2px 0; background:transparent; color:var(--grafite,#111110); }
+.fp-ck-add-inp::placeholder { color:var(--cinza,#D0CFC9); }
+.fp-ck-empty { font-size:11px; color:#aaa; text-align:center; padding:24px; }
+
 /* ── Painel de prioridades (sobrepõe sidebar, mesmo tamanho) ── */
 #fp-prio-panel {
   width: 340px; flex-shrink: 0;
@@ -1924,7 +1953,7 @@ body {
     </button>
 
     <!-- Lista de tarefas (abre painel no lugar da sidebar) -->
-    <button class="exp-nav-item" id="fp-nav-tasks" title="Minhas tarefas" onclick="fpChat.toggleTasksPanel()" style="position:relative">
+    <button class="exp-nav-item" id="fp-nav-tasks" title="Minhas listas" onclick="fpChat.toggleTasksPanel()" style="position:relative">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       <span id="fp-tasks-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca);color:#fff;font-size:8px;font-weight:700;font-family:var(--font-mono);min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
     </button>
@@ -2030,8 +2059,8 @@ body {
 
   <!-- ── Painel de tarefas (substitui sidebar) ── -->
   <aside id="fp-tasks-panel" style="display:none">
-    <div style="padding:12px 14px 10px;border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.18);display:flex;align-items:center;flex-shrink:0">
-      <span style="font-size:14px;font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Tarefas</span>
+    <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+      <span style="font-size:14px;font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
       <span id="fp-tasks-panel-count" style="font-size:10px;font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
       <button onclick="fpChat.toggleTasksPanel()" title="Fechar"
         style="width:24px;height:24px;border:none;background:none;color:var(--ca);opacity:.6;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
@@ -2039,13 +2068,29 @@ body {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
       </button>
     </div>
+    <div class="fp-lists-tabs">
+      <button class="fp-lists-tab active" data-tab="tarefas"   onclick="fpChat.switchListsTab('tarefas')">Tarefas</button>
+      <button class="fp-lists-tab"        data-tab="abertos"   onclick="fpChat.switchListsTab('abertos')">Ck. Abertos</button>
+      <button class="fp-lists-tab"        data-tab="etapa"     onclick="fpChat.switchListsTab('etapa')">Ck. Etapa</button>
+      <button class="fp-lists-tab"        data-tab="revisao"   onclick="fpChat.switchListsTab('revisao')">Revisão</button>
+    </div>
+
     <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
       <div class="fp-loading" style="padding:24px">
         <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
       </div>
     </div>
 
-    <!-- Área de criar/atribuir tarefa -->
+    <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="fp-ck-selector">
+        <select class="fp-ck-select" id="fp-ck-select" onchange="fpChat.selectCkByIndex(fpChat._listsActiveTab, this.value)">
+          <option value="">— selecionar —</option>
+        </select>
+      </div>
+      <div id="fp-ck-items"></div>
+    </div>
+
+    <!-- Área de criar/atribuir tarefa (só na aba Tarefas) -->
     <div id="fp-task-form">
       <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="fpChat.taskDescInput(this)"></textarea>
       <div class="fp-task-form-row">

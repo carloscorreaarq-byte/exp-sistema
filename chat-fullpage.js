@@ -389,9 +389,11 @@
 
     window.addEventListener('beforeunload', function() { if (presenceCh) presenceCh.untrack(); });
 
-    /* Reconecta o realtime ao voltar para a aba (browser suspende WS em background) */
+    /* Reconecta o realtime ao voltar para a aba SOMENTE se o canal não estiver ativo */
     document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible') subscribeIncoming();
+      if (document.visibilityState !== 'visible') return;
+      var state = msgCh && msgCh.state;
+      if (state !== 'joined' && state !== 'joining') subscribeIncoming();
     });
 
     renderConvList();
@@ -1169,9 +1171,14 @@
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'gestao_anexos_temporarios'}, function(p){ handleChatTempMediaRealtime(p.new); })
       .subscribe(function(status, err) {
         console.log('[EXP ChatFP] realtime status:', status, err || '');
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[EXP ChatFP] reconectando em 3s...');
-          setTimeout(subscribeIncoming, 3000);
+        if (status === 'SUBSCRIBED') {
+          console.log('[EXP ChatFP] realtime conectado ✓');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[EXP ChatFP] reconectando em 4s...');
+          setTimeout(function () {
+            var s = msgCh && msgCh.state;
+            if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+          }, 4000);
         }
       });
   }
@@ -1663,20 +1670,34 @@
   /* ═══════════════════════════════════════════════════════════════════
      SOM + PUSH
   ═══════════════════════════════════════════════════════════════════ */
+  var _audioCtx = null;
+  function _getAudioCtx() {
+    if (_audioCtx && _audioCtx.state !== 'closed') return _audioCtx;
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    _audioCtx = new Ctx();
+    return _audioCtx;
+  }
+  document.addEventListener('click', function () { _getAudioCtx(); }, { once: true });
+
   function playNotificationSound(){
     if(!soundEnabled) return;
     try {
-      var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return;
-      var ctx=new Ctx();
-      [{f:1046.5,t:0,d:0.18},{f:1318.5,t:0.13,d:0.22}].forEach(function(n){
-        var osc=ctx.createOscillator(), gain=ctx.createGain();
-        osc.type='sine'; osc.frequency.value=n.f;
-        gain.gain.setValueAtTime(0,ctx.currentTime+n.t);
-        gain.gain.linearRampToValueAtTime(0.07,ctx.currentTime+n.t+0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+n.t+n.d);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(ctx.currentTime+n.t); osc.stop(ctx.currentTime+n.t+n.d+0.02);
-      });
+      var ctx = _getAudioCtx();
+      if (!ctx) return;
+      function _play() {
+        [{f:1046.5,t:0,d:0.18},{f:1318.5,t:0.13,d:0.22}].forEach(function(n){
+          var osc=ctx.createOscillator(), gain=ctx.createGain();
+          osc.type='sine'; osc.frequency.value=n.f;
+          gain.gain.setValueAtTime(0,ctx.currentTime+n.t);
+          gain.gain.linearRampToValueAtTime(0.07,ctx.currentTime+n.t+0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+n.t+n.d);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(ctx.currentTime+n.t); osc.stop(ctx.currentTime+n.t+n.d+0.02);
+        });
+      }
+      if (ctx.state === 'suspended') ctx.resume().then(_play);
+      else _play();
     } catch(e){}
   }
   function _sendChatPush(msg){
@@ -2104,8 +2125,10 @@
     openCtxMenu, closeCtxMenu, ctxTogglePin,
     /* busca dentro da conversa */
     toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev,
-    /* tarefas */
+    /* tarefas / listas */
     toggleTasksPanel, checkTask, addTask, openAssignDrop, taskDescInput, toggleDelegadas, _assignTo: window._assignTo,
+    switchListsTab, selectCkByIndex, fpToggleCkItem, fpAddCkItem, fpAddCkItemBlur,
+    get _listsActiveTab() { return _listsActiveTab; },
     /* prioridade */
     checkPrio,
     /* calendário hover */
@@ -2422,6 +2445,289 @@
         tasksCache = tasksCache.filter(function(t) { return String(t.id) !== String(taskId); });
         setTimeout(function() { renderTasks(tasksCache); }, 400);
       });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     PAINEL DE LISTAS — abas: Tarefas / Ck. Abertos / Ck. Etapa / Revisão
+  ═══════════════════════════════════════════════════════════════════ */
+  var _listsActiveTab = 'tarefas';
+  var _ckAbertosAll   = [];
+  var _ckEtapaAll     = [];
+  var _ckRevisaoAll   = [];
+
+  function switchListsTab(tab) {
+    _listsActiveTab = tab;
+    document.querySelectorAll('.fp-lists-tab').forEach(function(el) {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    var $list  = document.getElementById('fp-tasks-list');
+    var $form  = document.getElementById('fp-task-form');
+    var $ckView = document.getElementById('fp-ck-view');
+    if (tab === 'tarefas') {
+      if ($list)   { $list.style.display = ''; }
+      if ($form)   { $form.style.display = ''; }
+      if ($ckView) { $ckView.style.display = 'none'; }
+      loadTasks();
+    } else {
+      if ($list)   { $list.style.display = 'none'; }
+      if ($form)   { $form.style.display = 'none'; }
+      if ($ckView) { $ckView.style.display = 'flex'; }
+      _loadCkTab(tab);
+    }
+  }
+
+  function _loadCkTab(tab) {
+    var $items = document.getElementById('fp-ck-items');
+    var $sel   = document.getElementById('fp-ck-select');
+    if ($items) $items.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+    if ($sel)   $sel.innerHTML   = '<option value="">— carregando… —</option>';
+    var uid = user.id || user.app_user_id;
+    if (tab === 'abertos')  _loadCkAbertos(uid);
+    else if (tab === 'etapa')   _loadCkEtapa(uid);
+    else if (tab === 'revisao') _loadCkRevisao(uid);
+  }
+
+  function _loadCkAbertos(uid) {
+    sb.from('checklist_tarefa')
+      .select('id,titulo,status,produto_id,criado_por,editores_ids,checklist_tarefa_item(id,texto,secao,ordem,concluido,concluido_por_nome,concluido_em),produtos(nome,oportunidades(projeto))')
+      .eq('status', 'aberto')
+      .then(function(r) {
+        var all = (r.data || []).filter(function(cl) {
+          return cl.criado_por === uid || (Array.isArray(cl.editores_ids) && cl.editores_ids.indexOf(uid) > -1);
+        });
+        _ckAbertosAll = all;
+        _renderCkSelector('abertos', all, function(cl) {
+          return (cl.produtos && (cl.produtos.oportunidades && cl.produtos.oportunidades.projeto || cl.produtos.nome) || 'Projeto') + ' — ' + (cl.titulo || '');
+        });
+      });
+  }
+
+  function _loadCkEtapa(uid) {
+    sb.from('etapa_desenvolvedores')
+      .select('etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)),checklist_etapa_exec(id,checklist_id,checklist_etapa_preset(nome),checklist_etapa_exec_item(id,texto,secao,secao_id,ordem,concluido,concluido_por_nome,concluido_em),checklist_etapa_exec_secao(id,titulo,ordem)))')
+      .eq('usuario_id', uid)
+      .then(function(r) {
+        var items = [];
+        (r.data || []).forEach(function(d) {
+          var etapa = d.etapas;
+          if (!etapa || !etapa.checklist_etapa_exec) return;
+          etapa.checklist_etapa_exec.forEach(function(exec) {
+            exec._etapaNome = etapa.nome || '';
+            exec._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+            items.push(exec);
+          });
+        });
+        _ckEtapaAll = items;
+        _renderCkSelector('etapa', items, function(exec) {
+          var base = exec._prodNome ? exec._prodNome + ' — ' : '';
+          var preset = exec.checklist_etapa_preset && exec.checklist_etapa_preset.nome ? ' · ' + exec.checklist_etapa_preset.nome : '';
+          return base + (exec._etapaNome || '') + preset;
+        });
+      });
+  }
+
+  function _loadCkRevisao(uid) {
+    sb.from('etapa_desenvolvedores')
+      .select('etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)),revisoes(id,created_at,pranchas(id,nome,ordem,tarefas_revisao(id,descricao,concluida,created_at))))')
+      .eq('usuario_id', uid)
+      .then(function(r) {
+        var items = [];
+        (r.data || []).forEach(function(d) {
+          var etapa = d.etapas;
+          if (!etapa || !etapa.revisoes) return;
+          etapa.revisoes.forEach(function(rev, i) {
+            rev._etapaNome = etapa.nome || '';
+            rev._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+            rev._num = i + 1;
+            items.push(rev);
+          });
+        });
+        _ckRevisaoAll = items;
+        _renderCkSelector('revisao', items, function(rev) {
+          var base = rev._prodNome ? rev._prodNome + ' — ' : '';
+          return base + (rev._etapaNome || '') + ' · Rev. ' + rev._num;
+        });
+      });
+  }
+
+  function _renderCkSelector(tipo, items, labelFn) {
+    var $sel   = document.getElementById('fp-ck-select');
+    var $items = document.getElementById('fp-ck-items');
+    if (!$sel) return;
+    if (!items.length) {
+      $sel.innerHTML = '<option value="">— nenhum checklist —</option>';
+      if ($items) $items.innerHTML = '<div class="fp-ck-empty">Nenhum checklist encontrado.</div>';
+      return;
+    }
+    $sel.innerHTML = '<option value="">— selecionar —</option>' + items.map(function(it, i) {
+      return '<option value="' + i + '">' + escHtml(labelFn(it)) + '</option>';
+    }).join('');
+    if ($items) $items.innerHTML = '';
+    if (items.length === 1) { $sel.value = '0'; selectCkByIndex(tipo, '0'); }
+  }
+
+  function selectCkByIndex(tipo, idx) {
+    var $items = document.getElementById('fp-ck-items');
+    if (!$items) return;
+    if (idx === '' || idx === null || idx === undefined) { $items.innerHTML = ''; return; }
+    var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
+    var ck   = list[parseInt(idx)];
+    if (!ck) return;
+    _renderCkItems(tipo, ck);
+  }
+
+  function _renderCkItems(tipo, ck) {
+    var $items = document.getElementById('fp-ck-items');
+    if (!$items) return;
+    var html = '';
+
+    if (tipo === 'abertos') {
+      var its  = (ck.checklist_tarefa_item || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
+      var done = its.filter(function(i){ return i.concluido; }).length;
+      html += _fpCkProgHdr(ck.titulo, done, its.length);
+      var lastSec = '__NONE__'; var inSec = false;
+      its.forEach(function(it) {
+        var sec = it.secao || '';
+        if (sec !== lastSec) {
+          if (inSec) html += '</div>';
+          lastSec = sec;
+          if (sec) { html += '<div><div class="fp-ck-secao">' + escHtml(sec) + '</div>'; inSec = true; }
+          else inSec = false;
+        }
+        html += _fpCkItemHtml(it, tipo, ck.id);
+      });
+      if (inSec) html += '</div>';
+      html += _fpCkAddRow(tipo, ck.id);
+
+    } else if (tipo === 'etapa') {
+      var its    = (ck.checklist_etapa_exec_item || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
+      var secoes = (ck.checklist_etapa_exec_secao || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
+      var done   = its.filter(function(i){ return i.concluido; }).length;
+      var label  = (ck.checklist_etapa_preset && ck.checklist_etapa_preset.nome) || ck._etapaNome || '';
+      html += _fpCkProgHdr(label, done, its.length);
+      if (secoes.length) {
+        its.filter(function(it){ return !it.secao_id; }).forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+        secoes.forEach(function(s) {
+          html += '<div class="fp-ck-secao">' + escHtml(s.titulo) + '</div>';
+          its.filter(function(it){ return it.secao_id === s.id; }).forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+        });
+      } else {
+        its.forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+      }
+
+    } else if (tipo === 'revisao') {
+      var pranchas  = (ck.pranchas || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
+      var allTar    = pranchas.reduce(function(acc,pr){ return acc.concat(pr.tarefas_revisao||[]); }, []);
+      var done      = allTar.filter(function(t){ return t.concluida; }).length;
+      html += _fpCkProgHdr(ck._etapaNome + ' · Rev.' + ck._num, done, allTar.length);
+      pranchas.forEach(function(pr) {
+        html += '<div class="fp-ck-secao">' + escHtml(pr.nome || '') + '</div>';
+        (pr.tarefas_revisao || []).forEach(function(t){ html += _fpCkItemHtml(t, tipo, ck.id); });
+      });
+    }
+
+    $items.innerHTML = html;
+  }
+
+  function _fpCkProgHdr(label, done, total) {
+    return '<div class="fp-ck-prog-hdr"><span class="fp-ck-prog-label">' + escHtml(label||'') + '</span>' +
+      '<span class="fp-ck-prog" id="fp-ck-prog">' + done + '/' + total + '</span></div>';
+  }
+
+  function _fpCkItemHtml(it, tipo, ckId) {
+    var checked = tipo === 'revisao' ? it.concluida : it.concluido;
+    var id  = escHtml(String(it.id));
+    var cid = escHtml(String(ckId));
+    var txt = escHtml(it.descricao || it.texto || '');
+    return '<div class="fp-ck-item" id="fp-ck-it-' + id + '">' +
+      '<input type="checkbox" class="fp-ck-cb"' + (checked ? ' checked' : '') +
+      ' onchange="fpChat.fpToggleCkItem(\'' + tipo + '\',\'' + id + '\',this.checked,\'' + cid + '\')">' +
+      '<span class="fp-ck-txt' + (checked ? ' done' : '') + '">' + txt + '</span>' +
+      '</div>';
+  }
+
+  function _fpCkAddRow(tipo, ckId) {
+    var cid = escHtml(String(ckId));
+    return '<div class="fp-ck-add">' +
+      '<div class="fp-ck-cb-mock"></div>' +
+      '<input class="fp-ck-add-inp" id="fp-ck-new-inp" type="text" placeholder="+ Novo item…"' +
+      ' onkeydown="if(event.key===\'Enter\'){fpChat.fpAddCkItem(\'' + tipo + '\',\'' + cid + '\',this)}"' +
+      ' onblur="fpChat.fpAddCkItemBlur(\'' + tipo + '\',\'' + cid + '\',this)">' +
+      '</div>';
+  }
+
+  function fpToggleCkItem(tipo, itemId, checked, ckId) {
+    var now = new Date().toISOString();
+    var uid = user.id || user.app_user_id;
+    var tbl = tipo === 'abertos' ? 'checklist_tarefa_item' : tipo === 'etapa' ? 'checklist_etapa_exec_item' : 'tarefas_revisao';
+    var upd = tipo === 'revisao'
+      ? { concluida: checked }
+      : { concluido: checked, concluido_por: checked ? uid : null, concluido_por_nome: checked ? (user.nome||'') : null, concluido_em: checked ? now : null };
+    sb.from(tbl).update(upd).eq('id', itemId).then(function(r) {
+      if (r.error) return;
+      // update local cache
+      var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
+      list.forEach(function(ck) {
+        if (String(ck.id) !== String(ckId)) return;
+        var field = tipo === 'abertos' ? 'checklist_tarefa_item' : tipo === 'etapa' ? 'checklist_etapa_exec_item' : null;
+        if (field) {
+          var it = (ck[field]||[]).find(function(x){ return String(x.id)===String(itemId); });
+          if (it) it[tipo==='revisao'?'concluida':'concluido'] = checked;
+        } else {
+          (ck.pranchas||[]).forEach(function(pr){
+            var t = (pr.tarefas_revisao||[]).find(function(x){ return String(x.id)===String(itemId); });
+            if (t) t.concluida = checked;
+          });
+        }
+      });
+      // update DOM
+      var $span = document.querySelector('#fp-ck-it-' + itemId + ' .fp-ck-txt');
+      if ($span) $span.className = 'fp-ck-txt' + (checked ? ' done' : '');
+      // update progress
+      var list2 = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
+      var ck2   = list2.find(function(c){ return String(c.id)===String(ckId); });
+      if (ck2) {
+        var its, done;
+        if (tipo === 'abertos')  { its = ck2.checklist_tarefa_item||[];    done = its.filter(function(i){ return i.concluido; }).length; }
+        else if (tipo === 'etapa')    { its = ck2.checklist_etapa_exec_item||[]; done = its.filter(function(i){ return i.concluido; }).length; }
+        else { its = (ck2.pranchas||[]).reduce(function(a,p){ return a.concat(p.tarefas_revisao||[]); },[]); done = its.filter(function(t){ return t.concluida; }).length; }
+        var $prog = document.getElementById('fp-ck-prog');
+        if ($prog) $prog.textContent = done + '/' + its.length;
+      }
+    });
+  }
+
+  function fpAddCkItem(tipo, ckId, inp) {
+    var txt = (inp.value || '').trim();
+    if (!txt) return;
+    inp.value = '';
+    var uid = user.id || user.app_user_id;
+    var list = tipo === 'abertos' ? _ckAbertosAll : _ckEtapaAll;
+    var ck   = list.find(function(c){ return String(c.id) === String(ckId); });
+    if (!ck) return;
+    var tbl  = tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    var field = tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    var ordem = (ck[field] || []).length;
+    sb.from(tbl).insert({ checklist_id: ckId, texto: txt, ordem: ordem, concluido: false })
+      .select().single()
+      .then(function(r) {
+        if (r.error || !r.data) return;
+        if (!ck[field]) ck[field] = [];
+        ck[field].push(r.data);
+        var $addRow = document.querySelector('#fp-ck-items .fp-ck-add');
+        if ($addRow) {
+          var tmp = document.createElement('div');
+          tmp.innerHTML = _fpCkItemHtml(r.data, tipo, ckId);
+          $addRow.parentNode.insertBefore(tmp.firstChild, $addRow);
+        }
+        var $prog = document.getElementById('fp-ck-prog');
+        if ($prog) { var p = $prog.textContent.split('/'); $prog.textContent = p[0] + '/' + (parseInt(p[1]||0)+1); }
+        setTimeout(function(){ inp.focus(); }, 20);
+      });
+  }
+
+  function fpAddCkItemBlur(tipo, ckId, inp) {
+    if ((inp.value||'').trim()) fpAddCkItem(tipo, ckId, inp);
   }
 
   /* ═══════════════════════════════════════════════════════════════════
