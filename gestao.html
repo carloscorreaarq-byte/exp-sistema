@@ -17130,6 +17130,7 @@ function _renderCkAbertos() {
     const podeFechar = isSocioUser() || cl.criado_por === G.usuario.id;
     const acoes = podeFechar ? `
       <button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();editarChecklistAberto(${_sqCk(cl.id)})" title="Editar checklist">✏</button>
+      <button class="btn sm vermelho" style="flex-shrink:0" onclick="event.stopPropagation();excluirChecklistAberto(${_sqCk(cl.id)})" title="Excluir checklist">✕</button>
       <button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();toggleStatusCkAberto(${_sqCk(cl.id)})">${fechado?'Reabrir':'Fechar'}</button>
     ` : '';
     // Rodapé: criador + editores autorizados
@@ -17205,6 +17206,17 @@ async function toggleCkItem(tipo, itemId, checked, ckId) {
 }
 
 // ── Toggle status checklist tarefa (sócios) ───────────────────
+async function excluirChecklistAberto(id) {
+  abrirPopupConfirm('Excluir checklist', 'Excluir este checklist e todos os seus itens? Esta ação não pode ser desfeita.', async () => {
+    await sb.from('checklist_tarefa_item').delete().eq('checklist_id', id);
+    const { error } = await sb.from('checklist_tarefa').delete().eq('id', id);
+    if(error) { toast('Erro ao excluir: ' + error.message); return; }
+    G._ckAbertos = G._ckAbertos.filter(x => x.id !== id);
+    _renderCkAbertos();
+    toast('Checklist excluído.');
+  });
+}
+
 async function toggleStatusCkAberto(id) {
   const cl = G._ckAbertos.find(x => x.id === id);
   if(!cl) return;
@@ -17588,10 +17600,11 @@ function editarChecklistAberto(ckId) {
     const nome = it.secao || '';
     if(!(nome in secoesIdx)) {
       secoesIdx[nome] = secoesMap.length;
-      secoesMap.push({ nome, items: [], itemIds: [] });
+      secoesMap.push({ nome, items: [], itemIds: [], itemConcluido: [] });
     }
     secoesMap[secoesIdx[nome]].items.push(it.texto);
     secoesMap[secoesIdx[nome]].itemIds.push(it.id);
+    secoesMap[secoesIdx[nome]].itemConcluido.push({ concluido: it.concluido, concluido_por: it.concluido_por, concluido_por_nome: it.concluido_por_nome, concluido_em: it.concluido_em });
   });
   if(!secoesMap.length) secoesMap.push({ nome: '', items: [], itemIds: [] });
   _cktState = {
@@ -17757,13 +17770,23 @@ async function salvarChecklistAberto() {
     }).eq('id', ckId);
     if(error) { toast('Erro: '+error.message); return; }
 
-    // Recria todos os itens: apaga os existentes e insere os novos
+    // Recria todos os itens preservando concluido dos itens existentes
     await sb.from('checklist_tarefa_item').delete().eq('checklist_id', ckId);
     const allItems = [];
     let ordem = 0;
     _cktState.secoes.forEach(sec => {
-      sec.items.forEach(txt => {
-        allItems.push({ checklist_id: ckId, texto: txt, secao: sec.nome || null, ordem: ordem++, concluido: false });
+      sec.items.forEach((txt, ii) => {
+        const prev = sec.itemConcluido?.[ii] || {};
+        allItems.push({
+          checklist_id:       ckId,
+          texto:              txt,
+          secao:              sec.nome || null,
+          ordem:              ordem++,
+          concluido:          prev.concluido          || false,
+          concluido_por:      prev.concluido_por      || null,
+          concluido_por_nome: prev.concluido_por_nome || null,
+          concluido_em:       prev.concluido_em       || null,
+        });
       });
     });
     if(allItems.length) await sb.from('checklist_tarefa_item').insert(allItems);

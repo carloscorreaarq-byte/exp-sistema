@@ -12,8 +12,9 @@
   var STATUS_KEY = 'exp_chat_status';
   var SOUND_KEY  = 'exp_chat_sound';
   var COLOR_KEY  = 'exp_chat_color';
-  var FLAGS_KEY  = 'exp_chat_flags';
-  var PINS_KEY   = 'exp_chat_pins';
+  var FLAGS_KEY   = 'exp_chat_flags';
+  var PINS_KEY    = 'exp_chat_pins';
+  var PINNED_KEY  = 'exp_chat_pinned';
   var BRAND_AVATAR_COLORS = ['#1D6A4A','#1D4FA0','#C4831A','#B84C3A','#6D7D8A','#4A72B5','#7A9E7E'];
   var TEMP_MEDIA_BUCKET   = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
@@ -51,6 +52,7 @@
   var chatColor         = localStorage.getItem(COLOR_KEY) || 'verde';
   var flaggedMessages   = loadFlags();
   var pinnedProjects    = loadPins();
+  var pinnedChannels    = (function(){ try { return new Set(JSON.parse(localStorage.getItem(PINNED_KEY)||'[]')); } catch(e){ return new Set(); } }());
   var ctxMenuChannel    = null;
   var pinPopOpen        = false;
   var filterQuery       = '';
@@ -91,6 +93,26 @@
   }
   function togglePin(channel) {
     isPinned(channel) ? unpinChannel(channel) : pinChannel(channel);
+  }
+
+  /* ── Pin: DMs fixadas pelo usuário ── */
+  function toggleDmPin(channel) {
+    if (pinnedChannels.has(channel)) pinnedChannels.delete(channel);
+    else pinnedChannels.add(channel);
+    try { localStorage.setItem(PINNED_KEY, JSON.stringify(Array.from(pinnedChannels))); } catch(e) {}
+    renderConvList();
+  }
+
+  /* ── Som seletivo por canal ── */
+  function _shouldPlaySound(ch) {
+    if (!soundEnabled) return false;
+    if (userStatus === 'foco') return false;
+    if (ch === 'general') return true;
+    if (ch === 'socios' && isSocioLikeRole(user.role)) return true;
+    if (isDynamicChannel(ch) && channelHasUser(ch, user.auth_id)) return true;
+    if (pinnedChannels.has(ch)) return true;
+    if (isPinned(ch)) return true;
+    return false;
   }
 
   /* ── Pin: canal atual (botão no header) ── */
@@ -637,22 +659,43 @@
         if (!q) return true;
         return getConversationMeta(dm,uid).label.toLowerCase().indexOf(q)!==-1;
       });
+      var pinnedDms   = dmFiltered.filter(function(dm){ return pinnedChannels.has(dm.channel); });
+      var regularDms  = dmFiltered.filter(function(dm){ return !pinnedChannels.has(dm.channel); });
+
+      function buildDmRow(dm) {
+        var meta = getConversationMeta(dm, uid);
+        var dmU  = channelUnread[dm.channel]||0;
+        var pStatus = 'offline';
+        if (dm.channel.startsWith('dm:')) {
+          var parts = dm.channel.replace('dm:','').split(':');
+          var oUid  = parts.find(function(p){ return p!==uid; });
+          var pres  = oUid ? onlinePresence[oUid] : null;
+          if (pres) pStatus = pres.status;
+        }
+        var isPinnedDm  = pinnedChannels.has(dm.channel);
+        var chanJson    = dm.channel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        var pinBtn      = '<button class="fp-dm-pin-btn' + (isPinnedDm ? ' is-pinned' : '') + '" ' +
+          'title="' + (isPinnedDm ? 'Desafixar' : 'Fixar conversa') + '" ' +
+          'onclick="event.stopPropagation();fpChat.toggleDmPin(\'' + chanJson + '\')">' +
+          '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (isPinnedDm ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
+          '</button>';
+        var baseHtml = buildConvItemHtml(dm.channel, meta.label, meta.iniciais, meta.avatarUrl, meta.cor,
+          dm.content, dm, dmU, '', pStatus, meta.members);
+        /* Injeta o botão de pin antes do fechamento do item */
+        return baseHtml.replace('</div>', pinBtn + '</div>');
+      }
+
       if (dmFiltered.length) {
-        if (!q && !showOnlyUnread && !showOnlyFlagged)
-          html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Mensagens diretas</button>';
-        dmFiltered.forEach(function(dm) {
-          var meta = getConversationMeta(dm, uid);
-          var dmU  = channelUnread[dm.channel]||0;
-          var pStatus = 'offline';
-          if (dm.channel.startsWith('dm:')) {
-            var parts = dm.channel.replace('dm:','').split(':');
-            var oUid  = parts.find(function(p){return p!==uid;});
-            var pres  = oUid ? onlinePresence[oUid] : null;
-            if (pres) pStatus = pres.status;
-          }
-          html += buildConvItemHtml(dm.channel, meta.label, meta.iniciais, meta.avatarUrl, meta.cor,
-            dm.content, dm, dmU, '', pStatus, meta.members);
-        });
+        if (pinnedDms.length && !q && !showOnlyUnread && !showOnlyFlagged)
+          html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Fixados</button>';
+        pinnedDms.forEach(function(dm){ html += buildDmRow(dm); });
+
+        if (regularDms.length) {
+          if (!q && !showOnlyUnread && !showOnlyFlagged)
+            html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Mensagens diretas</button>';
+          regularDms.forEach(function(dm){ html += buildDmRow(dm); });
+        }
       }
 
       /* ── Projetos (não fixados) ── */
@@ -1081,6 +1124,7 @@
         var isSocios = ch==='socios' && isSocioLikeRole(user.role);
         if (ch!=='general' && !isSocios && ch.indexOf(uid)===-1) return;
         var isActive=(currentChannel===ch), isOwn=(msg.sender_id===uid);
+        console.log('[EXP ChatFP] msg recebida', { ch, uid, sender_id: msg.sender_id, isOwn, isActive, soundEnabled, userStatus, visibility: document.visibilityState });
         if (isActive) {
           upsertMessage(msg); renderMessages();
           if (scrolledToEnd) scrollBottom(); else if (!isOwn) showNewMsgToast();
@@ -1088,7 +1132,7 @@
         } else if (!isOwn) {
           channelUnread[ch]=(channelUnread[ch]||0)+1;
           updatePageTitle(); renderConvList();
-          playNotificationSound(); _sendChatPush(msg);
+          if (_shouldPlaySound(ch)) playNotificationSound(); _sendChatPush(msg);
         }
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'chat_messages'}, function(payload){
@@ -1107,7 +1151,7 @@
         } else if (!isOwn) {
           channelUnread[ch]=(channelUnread[ch]||0)+1;
           updatePageTitle(); renderConvList();
-          playNotificationSound(); _sendChatPush(msg);
+          if (_shouldPlaySound(ch)) playNotificationSound(); _sendChatPush(msg);
         }
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'chat_thread_messages'}, function(payload){
@@ -1638,7 +1682,13 @@
       :isGeneral?sender+' no #geral'
       :sender+' no #sócios';
     var body=(msg.content||'').length>80?msg.content.substring(0,80)+'...':msg.content;
-    sb.functions.invoke('send-push',{body:{usuario_id:appUserId,title:title,body:body,url:window.location.href,tag:'exp-chat-'+ch}}).catch(function(){});
+    var tag='exp-chat-'+ch;
+    var icon='/files/assets/icon-192.png';
+    if(document.visibilityState==='visible'&&Notification.permission==='granted'){
+      try{ new Notification(title,{body:body,icon:icon,tag:tag,silent:true}); }catch(e){}
+    }
+    sb.functions.invoke('send-push',{body:{usuario_id:appUserId,title:title,body:body,url:window.location.href,tag:tag}})
+      .catch(function(e){ console.warn('[EXP ChatFP Push]',e); });
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -2030,7 +2080,7 @@
   ═══════════════════════════════════════════════════════════════════ */
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
-    toggleStatusPop, setStatus, toggleSound,
+    toggleStatusPop, setStatus, toggleSound, toggleDmPin,
     setColor, toggleViewPicker, changeFontSize, setFontTone,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM,
