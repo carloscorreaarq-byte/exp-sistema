@@ -148,6 +148,12 @@
     '.tmr-icon-btn:hover{color:#888}',
     '.tmr-icon-btn.off{color:#c9a0a0}',
 
+    /* ── Chips de sugestão de subtarefas ── */
+    '.tmr-sub-chip{display:inline-flex;align-items:center;padding:3px 9px;border:1px solid ' + CINZA + ';border-radius:20px;background:' + OFF + ';font-family:"Raleway",sans-serif;font-size:9px;color:#666;cursor:pointer;transition:border-color .12s,color .12s,background .12s;white-space:nowrap;line-height:1.4}',
+    '.tmr-sub-chip:hover{border-color:' + GRAFITE + ';color:' + GRAFITE + ';background:#EEECEA}',
+    '[data-theme="dark"] .tmr-sub-chip{background:#141412;color:#888;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-sub-chip:hover{border-color:#C8C3BA;color:#F0EFEC;background:#2A2A28}',
+
     /* ── Confirm info view (clicável para editar) ── */
     '.tmr-cf-info-view{cursor:pointer;border-radius:5px;padding:2px 5px;margin:-2px -5px;transition:background .12s;position:relative}',
     '.tmr-cf-info-view:hover{background:' + OFF + '}',
@@ -367,14 +373,14 @@
           '<input type="time" class="tmr-input" id="tmr-cf-fim">',
         '</div>',
       '</div>',
-      '<div>',
-        '<div class="tmr-sel-lbl">Descri&#231;&#227;o</div>',
-        '<textarea class="tmr-textarea" id="tmr-cf-desc" placeholder="O que foi feito&#8230;"></textarea>',
-      '</div>',
       '<div id="tmr-cf-subtarefas-wrap">',
-        '<div class="tmr-sel-lbl">Subtarefas (opcional)</div>',
-        '<input type="text" class="tmr-input" id="tmr-cf-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">',
-        '<div id="tmr-cf-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>',
+        '<div class="tmr-sel-lbl">Subtarefas <span style="font-weight:400;text-transform:none;font-size:7px">(opcional)</span></div>',
+        '<input type="text" class="tmr-input" id="tmr-cf-subtarefas" placeholder="Ex: lan&#231;amento, montagem&#8230;">',
+        '<div id="tmr-cf-subtarefas-sugestoes" style="display:none;gap:5px;flex-wrap:wrap;margin-top:5px"></div>',
+      '</div>',
+      '<div>',
+        '<div class="tmr-sel-lbl">Descri&#231;&#227;o <span style="font-weight:400;text-transform:none;font-size:7px">(opcional)</span></div>',
+        '<textarea class="tmr-textarea" id="tmr-cf-desc" placeholder="O que foi feito&#8230;"></textarea>',
       '</div>',
       '<div class="tmr-btns">',
         '<button class="tmr-btn-cf-sec" onclick="_tmr.backToExpanded()">&#8592; Voltar</button>',
@@ -618,7 +624,7 @@
     }
     wrap.style.display = 'flex';
     wrap.innerHTML = sugestoes.map(function (item) {
-      return '<button type="button" class="tmr-btn-cf-sec" style="padding:4px 8px" onclick="_applyTimerSubtarefasSuggestion(' + JSON.stringify(item).replace(/"/g, '&quot;') + ');_renderTimerSubtarefasSuggestions()">' + item + '</button>';
+      return '<button type="button" class="tmr-sub-chip" onclick="_applyTimerSubtarefasSuggestion(' + JSON.stringify(item).replace(/"/g, '&quot;') + ');_renderTimerSubtarefasSuggestions()">' + item + '</button>';
     }).join('');
   }
   function _getIsoWeekInfo(dateObj) {
@@ -645,6 +651,7 @@
   ═══════════════════════════════════════════════════════════════ */
   function _getSb() {
     if (_sb) return _sb;
+    if (window.sb) { _sb = window.sb; return _sb; }
     if (window.supabase) _sb = window.supabase.createClient(SB_URL, SB_KEY);
     return _sb;
   }

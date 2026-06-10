@@ -2491,11 +2491,19 @@
     else if (tab === 'revisao') _loadCkRevisao(uid);
   }
 
+  function _ckShowErr(msg) {
+    var $w = document.getElementById('fp-ck-selector');
+    var $i = document.getElementById('fp-ck-items');
+    if ($w) $w.innerHTML = '<div style="font-size:10px;color:#B84C3A;padding:4px 0">Erro: ' + escHtml(msg) + '</div>';
+    if ($i) $i.innerHTML = '';
+  }
+
   function _loadCkAbertos(uid) {
     sb.from('checklist_tarefa')
       .select('id,titulo,status,produto_id,criado_por,editores_ids,checklist_tarefa_item(id,texto,secao,ordem,concluido,concluido_por_nome,concluido_em),produtos(nome,oportunidades(projeto))')
       .eq('status', 'aberto')
       .then(function(r) {
+        if (r.error) { _ckShowErr(r.error.message); return; }
         var all = (r.data || []).filter(function(cl) {
           return cl.criado_por === uid || (Array.isArray(cl.editores_ids) && cl.editores_ids.indexOf(uid) > -1);
         });
@@ -3062,7 +3070,7 @@
         .limit(5),
       /* Seção 2: próximos follow-ups */
       sb.from('followups_produto')
-        .select('id,next_date,observacao,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
+        .select('id,next_date,obs,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
         .not('next_date', 'is', null)
         .gte('next_date', hoje)
         .order('next_date', { ascending: true })
