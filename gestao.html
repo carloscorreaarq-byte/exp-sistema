@@ -316,6 +316,13 @@ body {
 .ckt-live-item-rem { background:none; border:none; cursor:pointer; font-size:12px; color:#ddd; line-height:1; padding:0 2px; opacity:0; transition:opacity .12s, color .12s; }
 .ckt-live-item:hover .ckt-live-item-rem { opacity:1; }
 .ckt-live-item-rem:hover { color:var(--terracota); }
+/* botão de imagem por item de preset */
+.ckt-live-item-img-btn { background:none; border:none; cursor:pointer; font-size:12px; color:#ccc; line-height:1; padding:0 2px; opacity:0; transition:opacity .12s, color .12s; }
+.ckt-live-item:hover .ckt-live-item-img-btn { opacity:1; }
+.ckt-live-item-img-btn:hover { color:var(--azul); }
+.ckt-live-item-img-btn.has-img { opacity:1; color:var(--azul); }
+.ckt-live-item-thumb { width:28px; height:20px; object-fit:cover; border-radius:3px; cursor:pointer; border:1px solid var(--cinza2); flex-shrink:0; }
+[data-theme="dark"] .ckt-live-item-thumb { border-color:#3A3836; }
 /* ghost item */
 .ckt-live-ghost { display:flex; align-items:center; gap:8px; padding:4px 12px; opacity:.38; transition:opacity .15s; }
 .ckt-live-ghost:focus-within { opacity:1; }
@@ -17057,8 +17064,28 @@ function _ckItemHtml(it, readonly, tipo, canEdit) {
 }
 
 // secoes = array de {id, titulo, intro, ordem} — se vazio usa fallback por texto
-function _ckRenderItems(items, secoes, readonly, tipo, canEdit) {
+function _secSlug(s) { return String(s||'').replace(/[^a-zA-Z0-9]/g,'_').slice(0,32); }
+
+function _ckAddRowHtml(ckId, secao) {
+  const inputId = secao ? `${ckId}-s-${_secSlug(secao)}` : String(ckId);
+  const secAttr = secao ? ` data-secao="${_ckA(secao)}"` : '';
+  return `<div class="ck-inline-add" id="ck-add-wrap-${inputId}">
+    <div class="ck-item ck-item-ghost" onclick="ckAbertoFocarInput('${inputId}')">
+      <div class="ck-cb-mock"></div>
+      <span class="ck-add-placeholder">+ Adicionar item</span>
+    </div>
+    <div class="ck-item" id="ck-add-row-${inputId}" style="display:none">
+      <div class="ck-cb-mock"></div>
+      <input class="ck-inline-inp" id="ck-add-inp-${inputId}" type="text" placeholder="Novo item…"${secAttr}
+        onkeydown="ckAbertoInpKey(event,'${ckId}','${inputId}')"
+        onblur="ckAbertoInpBlur('${inputId}')">
+    </div>
+  </div>`;
+}
+
+function _ckRenderItems(items, secoes, readonly, tipo, canEdit, ckId) {
   tipo = tipo || 'etapa';
+  const showAdd = !readonly && canEdit && tipo === 'tarefa' && ckId;
   let html = '';
 
   if(secoes && secoes.length) {
@@ -17073,76 +17100,79 @@ function _ckRenderItems(items, secoes, readonly, tipo, canEdit) {
         <div class="ck-secao">${_ckE(s.titulo)}</div>
         ${s.intro ? `<div class="ck-secao-intro">${_ckE(s.intro)}</div>` : ''}
         ${sit.map(it => _ckItemHtml(it, readonly, tipo, canEdit)).join('')}
+        ${showAdd ? _ckAddRowHtml(ckId, s.titulo) : ''}
       </div>`;
     });
   } else {
     // Fallback: agrupamento por campo texto 'secao'
     let lastSecao = '__NONE__';
-    let inSecao = false;
+    let curSecao  = '';
+    let inSecao   = false;
     items.sort((a,b)=>a.ordem-b.ordem).forEach(it => {
       if((it.secao||'') !== lastSecao) {
-        if(inSecao) html += `</div>`;
+        if(inSecao) { html += (showAdd ? _ckAddRowHtml(ckId, curSecao) : '') + `</div>`; }
         lastSecao = it.secao || '';
+        curSecao  = lastSecao;
         if(lastSecao) { html += `<div class="ck-secao-blk"><div class="ck-secao">${_ckE(lastSecao)}</div>`; inSecao = true; }
         else inSecao = false;
       }
       html += _ckItemHtml(it, readonly, tipo, canEdit);
     });
-    if(inSecao) html += `</div>`;
+    if(inSecao) { html += (showAdd ? _ckAddRowHtml(ckId, curSecao) : '') + `</div>`; }
   }
   return html || '<div class="ck-empty">Sem itens.</div>';
 }
 
-function ckAbertoFocarInput(ckId) {
-  const row = document.getElementById(`ck-add-row-${ckId}`);
-  const ghost = document.querySelector(`#ck-add-wrap-${ckId} .ck-item-ghost`);
+function ckAbertoFocarInput(inputId) {
+  const row   = document.getElementById(`ck-add-row-${inputId}`);
+  const ghost = document.querySelector(`#ck-add-wrap-${inputId} .ck-item-ghost`);
   if(!row) return;
   row.style.display = '';
   if(ghost) ghost.style.display = 'none';
-  setTimeout(() => document.getElementById(`ck-add-inp-${ckId}`)?.focus(), 20);
+  setTimeout(() => document.getElementById(`ck-add-inp-${inputId}`)?.focus(), 20);
 }
 
-function ckAbertoInpBlur(ckId) {
-  // Pequeno delay para não cancelar antes de processar Enter
+function ckAbertoInpBlur(inputId) {
   setTimeout(() => {
-    const inp = document.getElementById(`ck-add-inp-${ckId}`);
-    if(!inp || inp.value.trim()) return; // tem texto: aguarda Enter
-    const row = document.getElementById(`ck-add-row-${ckId}`);
-    const ghost = document.querySelector(`#ck-add-wrap-${ckId} .ck-item-ghost`);
-    if(row) row.style.display = 'none';
+    const inp   = document.getElementById(`ck-add-inp-${inputId}`);
+    if(!inp || inp.value.trim()) return;
+    const row   = document.getElementById(`ck-add-row-${inputId}`);
+    const ghost = document.querySelector(`#ck-add-wrap-${inputId} .ck-item-ghost`);
+    if(row)   row.style.display = 'none';
     if(ghost) ghost.style.display = '';
   }, 150);
 }
 
-async function ckAbertoInpKey(e, ckId) {
+async function ckAbertoInpKey(e, ckId, inputId) {
+  inputId = inputId || ckId;
   if(e.key === 'Escape') {
-    const inp = document.getElementById(`ck-add-inp-${ckId}`);
+    const inp = document.getElementById(`ck-add-inp-${inputId}`);
     if(inp) inp.value = '';
-    ckAbertoInpBlur(ckId);
+    ckAbertoInpBlur(inputId);
     return;
   }
   if(e.key !== 'Enter') return;
   e.preventDefault();
-  const inp = document.getElementById(`ck-add-inp-${ckId}`);
-  const txt = inp?.value?.trim();
+  const inp   = document.getElementById(`ck-add-inp-${inputId}`);
+  const txt   = inp?.value?.trim();
   if(!txt) return;
   inp.value = '';
-  const cl = G._ckAbertos.find(x => x.id === ckId);
+  const secao = inp?.dataset?.secao || null;
+  const cl    = G._ckAbertos.find(x => x.id === ckId);
   if(!cl) return;
-  const ordem = (cl.checklist_tarefa_item||[]).length;
-  const { data: it, error } = await sb.from('checklist_tarefa_item').insert({
-    checklist_id: ckId, texto: txt, ordem, concluido: false
-  }).select().single();
+  const ordem   = (cl.checklist_tarefa_item||[]).length;
+  const payload = { checklist_id: ckId, texto: txt, ordem, concluido: false };
+  if(secao) payload.secao = secao;
+  const { data: it, error } = await sb.from('checklist_tarefa_item').insert(payload).select().single();
   if(error) { toast('Erro: '+error.message); return; }
   if(!cl.checklist_tarefa_item) cl.checklist_tarefa_item = [];
   cl.checklist_tarefa_item.push(it);
-  // Atualiza só o wrapper de itens, sem tocar no input
   const itemsWrap = document.getElementById(`ck-items-${ckId}`);
   if(itemsWrap) {
     const items = (cl.checklist_tarefa_item||[]).sort((a,b)=>a.ordem-b.ordem);
-    itemsWrap.innerHTML = _ckRenderItems(items, null, false, 'tarefa', _ckPodeEditar(cl));
+    itemsWrap.innerHTML = _ckRenderItems(items, null, false, 'tarefa', _ckPodeEditar(cl), ckId);
   }
-  setTimeout(() => document.getElementById(`ck-add-inp-${ckId}`)?.focus(), 20);
+  setTimeout(() => document.getElementById(`ck-add-inp-${inputId}`)?.focus(), 20);
 }
 
 function _ckPodeEditar(cl) {
@@ -17194,17 +17224,17 @@ function _renderCkAbertos() {
         ${acoes}
       </div>
       <div class="ck-card-body" id="ck-t-${cl.id}">
-        <div id="ck-items-${cl.id}">${items.length ? _ckRenderItems(items, null, fechado, 'tarefa', podeEditar) : '<div class="ck-empty">Sem itens.</div>'}</div>
-        ${podeEditar && !fechado ? `<div class="ck-inline-add" id="ck-add-wrap-${cl.id}">
-          <div class="ck-item ck-item-ghost" onclick="ckAbertoFocarInput(${_sqCk(cl.id)})">
+        <div id="ck-items-${cl.id}">${_ckRenderItems(items, null, fechado, 'tarefa', podeEditar, cl.id)}</div>
+        ${podeEditar && !fechado && !items.some(i=>i.secao) ? `<div class="ck-inline-add" id="ck-add-wrap-${cl.id}">
+          <div class="ck-item ck-item-ghost" onclick="ckAbertoFocarInput('${cl.id}')">
             <div class="ck-cb-mock"></div>
             <span class="ck-add-placeholder">+ Adicionar item</span>
           </div>
           <div class="ck-item" id="ck-add-row-${cl.id}" style="display:none">
             <div class="ck-cb-mock"></div>
             <input class="ck-inline-inp" id="ck-add-inp-${cl.id}" type="text" placeholder="Novo item…"
-              onkeydown="ckAbertoInpKey(event,${_sqCk(cl.id)})"
-              onblur="ckAbertoInpBlur(${_sqCk(cl.id)})">
+              onkeydown="ckAbertoInpKey(event,'${cl.id}','${cl.id}')"
+              onblur="ckAbertoInpBlur('${cl.id}')">
           </div>
         </div>` : ''}
         ${rodape}
@@ -18001,9 +18031,9 @@ function _preSetFromPreset(preset) {
     secoes: secoes.map(s => ({
       titulo: s.titulo || '',
       intro:  s.intro  || '',
-      items:  (s.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto })),
+      items:  (s.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto, imagem_url: it.imagem_url||null, _imgBlob:null, _imgLocal:null })),
     })),
-    semSecao: allItems.filter(it=>!it.secao_id).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto })),
+    semSecao: allItems.filter(it=>!it.secao_id).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto, imagem_url: it.imagem_url||null, _imgBlob:null, _imgLocal:null })),
   };
 }
 
@@ -18066,12 +18096,20 @@ function _renderPreForm() {
         oninput="_preState.secoes[${si}].intro=this.value"
         onkeydown="if(event.key==='Tab'&&!event.shiftKey){event.preventDefault();document.getElementById('pre-ghost-${si}')?.focus()}"
       >${_ckE(s.intro)}</textarea>
-      ${s.items.map((it,ii) => `
+      ${s.items.map((it,ii) => {
+        const hasImg = !!(it._imgLocal || it.imagem_url);
+        const thumbHtml = hasImg
+          ? `<img class="ckt-live-item-thumb" src="${_ckE(it._imgLocal || it.imagem_url)}" onclick="_preItemVerImagem(${si},${ii})" title="Ver imagem">`
+          : '';
+        return `
         <div class="ckt-live-item">
           <div class="ckt-live-cb-mock"></div>
           <span class="ckt-live-item-txt">${_ckE(it.texto)}</span>
+          ${thumbHtml}
+          <button class="ckt-live-item-img-btn ${hasImg?'has-img':''}" onclick="_preItemPickImage(${si},${ii})" title="${hasImg?'Trocar imagem':'Adicionar imagem'}">🖼</button>
           <button class="ckt-live-item-rem" onclick="_remPreSecaoItem(${si},${ii})">×</button>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
       <div class="ckt-live-ghost">
         <div class="ckt-live-cb-mock"></div>
         <input class="ckt-live-ghost-inp" id="pre-ghost-${si}" type="text" placeholder="Novo item…"
@@ -18178,6 +18216,62 @@ function _remPreSecaoItem(si, ii) {
   _renderPreForm();
   setTimeout(() => document.getElementById(`pre-ghost-${si}`)?.focus(), 30);
 }
+// ── Imagem por item de preset ─────────────────────────────────
+let _preImgCfgCache = null;
+
+async function _preCarregarConfigImagem() {
+  if(_preImgCfgCache) return _preImgCfgCache;
+  const { data } = await sb.from('plataforma_preset_imagem_config').select('*').eq('id', true).maybeSingle();
+  _preImgCfgCache = data || {};
+  return _preImgCfgCache;
+}
+
+function _preItemPickImage(si, ii) {
+  if(!_preState) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if(!file) return;
+    try {
+      const cfg = await _preCarregarConfigImagem();
+      const result = await otimizarTempMediaImagem(file, {
+        qualidade_upload: cfg.qualidade_upload ?? 0.85,
+        largura_max_px:   cfg.largura_max_px   ?? 1200,
+        tamanho_max_kb:   cfg.tamanho_max_kb   ?? 500,
+      });
+      const localUrl = URL.createObjectURL(result.blob);
+      const item = _preState.secoes[si]?.items[ii];
+      if(!item) return;
+      // revoga objectURL antigo se houver
+      if(item._imgLocal) URL.revokeObjectURL(item._imgLocal);
+      item._imgBlob  = result.blob;
+      item._imgLocal = localUrl;
+      item.imagem_url = null; // será substituída pelo upload no salvar
+      _renderPreForm();
+    } catch(e) {
+      toast('Erro ao processar imagem: ' + (e?.message || e));
+    }
+  };
+  input.click();
+}
+
+function _preItemVerImagem(si, ii) {
+  const it = _preState?.secoes[si]?.items[ii];
+  if(!it) return;
+  const src = it._imgLocal || it.imagem_url;
+  if(!src) return;
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  modal.onclick = () => modal.remove();
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)';
+  modal.appendChild(img);
+  document.body.appendChild(modal);
+}
+
 // mantidas para compatibilidade com possíveis chamadas externas
 function _addPreSecao()          { _preAddSecao(); }
 function _addPreSemSec()         {}
@@ -18209,10 +18303,29 @@ async function salvarPreset(id) {
     presetId = pNew.id;
   }
 
+  // Faz upload dos blobs de imagem novos antes de gravar os itens
+  const cfg = await _preCarregarConfigImagem();
+  async function _uploadPresetItemImg(blob, ext, si, ii) {
+    const path = `${presetId}/${si}-${ii}-${Date.now()}.${ext}`;
+    const { error } = await sb.storage.from('preset-assets').upload(path, blob, { contentType: blob.type, upsert: true });
+    if(error) throw error;
+    return sb.storage.from('preset-assets').getPublicUrl(path).data.publicUrl;
+  }
+  async function resolveItemUrl(it, si, ii) {
+    if(it._imgBlob) {
+      const ext = it._imgBlob.type === 'image/webp' ? 'webp' : 'jpg';
+      return await _uploadPresetItemImg(it._imgBlob, ext, si, ii);
+    }
+    return it.imagem_url || null;
+  }
+
   if(data.semSecao.length) {
-    await sb.from('checklist_etapa_preset_item').insert(
-      data.semSecao.map((it,i) => ({ preset_id: presetId, secao_id: null, texto: it.texto, ordem: i }))
-    );
+    const rows = [];
+    for(let i=0; i<data.semSecao.length; i++) {
+      const it = data.semSecao[i];
+      rows.push({ preset_id: presetId, secao_id: null, texto: it.texto, ordem: i, imagem_url: await resolveItemUrl(it, 0, i) });
+    }
+    await sb.from('checklist_etapa_preset_item').insert(rows);
   }
 
   for(let si=0; si<data.secoes.length; si++) {
@@ -18225,9 +18338,12 @@ async function salvarPreset(id) {
       ordem:     si,
     }).select().single();
     if(secRow && s.items.length) {
-      await sb.from('checklist_etapa_preset_item').insert(
-        s.items.map((it,ii) => ({ preset_id: presetId, secao_id: secRow.id, texto: it.texto, ordem: ii }))
-      );
+      const rows = [];
+      for(let ii=0; ii<s.items.length; ii++) {
+        const it = s.items[ii];
+        rows.push({ preset_id: presetId, secao_id: secRow.id, texto: it.texto, ordem: ii, imagem_url: await resolveItemUrl(it, si, ii) });
+      }
+      await sb.from('checklist_etapa_preset_item').insert(rows);
     }
   }
 

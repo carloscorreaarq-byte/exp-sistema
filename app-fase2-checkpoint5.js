@@ -603,10 +603,10 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
 
     if (statsWrap) {
       const cards = [
-        { label: 'Anexos ativos', value: String(total) },
-        { label: 'Volume ativo', value: (totalBytes / (1024 * 1024)).toFixed(2) + ' MB' },
-        { label: 'Media por anexo', value: (avgBytes / 1024).toFixed(1) + ' KB' },
-        { label: 'Expirando em 7 dias', value: String(expiringSoon) }
+        { label: 'Anexos ativos',      value: String(total) },
+        { label: 'Volume total',        value: (totalBytes / (1024 * 1024)).toFixed(2) + ' MB' },
+        { label: 'Média por anexo',     value: (avgBytes / 1024).toFixed(1) + ' KB' },
+        { label: 'Expiram em 7 dias',   value: String(expiringSoon) }
       ];
       const LIMIT_BYTES = 524288000; // 500 MB = 50% do free tier Supabase (1 GB)
       const usedMB = (totalBytes / (1024 * 1024)).toFixed(2);
@@ -624,8 +624,8 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       ).join('')
       + '<div style="margin-top:14px;padding:0 2px">'
       + '  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'
-      + '    <span style="font-size:11px;font-weight:600;color:#333">Uso de mídia temporária</span>'
-      + '    <span style="font-size:10px;color:#888">' + escapeHtml(usedMB) + ' MB / ' + escapeHtml(limitMB) + ' MB &nbsp;(' + escapeHtml(pctStr) + '%) — 50% do armazenamento gratuito Supabase</span>'
+      + '    <span style="font-size:11px;font-weight:600;color:#333">Cota de armazenamento temporário</span>'
+      + '    <span style="font-size:10px;color:#888">' + escapeHtml(usedMB) + ' MB usados de ' + escapeHtml(limitMB) + ' MB &nbsp;(' + escapeHtml(pctStr) + '%)</span>'
       + '  </div>'
       + '  <div style="width:100%;height:8px;background:#e8e8e8;border-radius:4px;overflow:hidden">'
       + '    <div style="height:100%;width:' + escapeHtml(pct.toFixed(2)) + '%;background:' + escapeHtml(barColor) + ';border-radius:4px;transition:width .4s"></div>'
@@ -646,12 +646,11 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         contextsWrap.innerHTML = '<div class="platform-empty">Nenhum anexo temporario ativo.</div>';
       } else {
         contextsWrap.innerHTML = entries.map(([contexto, info]) => ''
-          + '<div class="platform-feedback-item">'
-          + '  <div class="platform-feedback-head">'
+          + '<div class="platform-user-card">'
+          + '  <div class="platform-user-ident">'
           + '    <strong>' + escapeHtml(mediaContextLabel(contexto)) + '</strong>'
-          + '    <span>' + escapeHtml(String(info.total)) + ' anexos</span>'
+          + '    <span>' + escapeHtml(String(info.total)) + ' anexos · ' + escapeHtml((info.bytes / (1024 * 1024)).toFixed(2)) + ' MB</span>'
           + '  </div>'
-          + '  <div class="platform-feedback-body">Volume ativo: ' + escapeHtml((info.bytes / (1024 * 1024)).toFixed(2) + ' MB') + '</div>'
           + '</div>'
         ).join('');
       }
@@ -664,7 +663,11 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     if (statsWrap) statsWrap.innerHTML = '<div class="platform-empty">Carregando uso atual...</div>';
     if (contextsWrap) contextsWrap.innerHTML = '<div class="platform-empty">Carregando distribuicao...</div>';
 
-    const [{ data: config, error: configError }, { data: rows, error: rowsError }] = await Promise.all([
+    const [
+      { data: config,       error: configError },
+      { data: rows,         error: rowsError },
+      { data: presetConfig, error: presetConfigError }
+    ] = await Promise.all([
       window.sb
         .from('plataforma_midia_temporaria_config')
         .select('*')
@@ -674,7 +677,12 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         .from('gestao_anexos_temporarios')
         .select('id, contexto_tipo, size_bytes, expires_at, removido_em')
         .order('created_at', { ascending: false })
-        .limit(5000)
+        .limit(5000),
+      window.sb
+        .from('plataforma_preset_imagem_config')
+        .select('*')
+        .eq('id', true)
+        .maybeSingle()
     ]);
 
     if (configError || rowsError) {
@@ -689,6 +697,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     platformTempMediaConfigCache = config || null;
     platformTempMediaUsageCache = rows || [];
     fillPlatformTempMediaConfig(platformTempMediaConfigCache);
+    fillPlatformPresetImageConfig(presetConfigError ? null : (presetConfig || null));
     renderPlatformTempMediaUsage(platformTempMediaUsageCache);
     setPlataformaStatus('Painel de mídia temporária carregado.');
   }
@@ -1517,6 +1526,46 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     setPlataformaDirty(false);
     setPlataformaStatus('Política de mídia temporária atualizada.');
     await carregarMidiaTemporariaPlataforma();
+  };
+
+  function fillPlatformPresetImageConfig(config) {
+    const current = config || {};
+    const width   = document.getElementById('gp-preset-max-width');
+    const kb      = document.getElementById('gp-preset-max-kb');
+    const quality = document.getElementById('gp-preset-quality');
+    if (width)   width.value   = current.largura_max_px   ?? 1200;
+    if (kb)      kb.value      = current.tamanho_max_kb   ?? 500;
+    if (quality) quality.value = current.qualidade_upload ?? 0.85;
+  }
+
+  window.salvarPresetImagemPlataforma = async function salvarPresetImagemPlataforma() {
+    const sessionUser = currentSessionUsuario();
+    if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
+      setPlataformaStatus('A edição da configuração de preset exige acesso administrativo de plataforma.');
+      return;
+    }
+
+    const payload = {
+      id: true,
+      largura_max_px:   Number(document.getElementById('gp-preset-max-width')?.value  || 1200),
+      tamanho_max_kb:   Number(document.getElementById('gp-preset-max-kb')?.value     || 500),
+      qualidade_upload: Number(document.getElementById('gp-preset-quality')?.value    || 0.85),
+      updated_at: isoNow(),
+      updated_by: sessionUser.app_user_id || null
+    };
+
+    setPlataformaStatus('Salvando configuração de imagens de preset...');
+    const { error } = await window.sb
+      .from('plataforma_preset_imagem_config')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (error) {
+      setPlataformaStatus('Não foi possível salvar a configuração de preset. Rode o SQL da estrutura se necessário.');
+      return;
+    }
+
+    setPlataformaDirty(false);
+    setPlataformaStatus('Configuração de imagens de preset atualizada.');
   };
 
   window.verDadosUsuarioPlataforma = async function verDadosUsuarioPlataforma(userId) {

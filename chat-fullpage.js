@@ -2662,22 +2662,30 @@
 
     if (tipo === 'abertos') {
       var its = (ck.checklist_tarefa_item || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
-      // Agrupa por seção para calcular seções completas
-      var secsMap = {};
-      its.forEach(function(it) { var s = it.secao || '__sem__'; if (!secsMap[s]) secsMap[s] = []; secsMap[s].push(it); });
-      var lastSec = '__NONE__'; var inSec = false;
-      its.forEach(function(it) {
-        var sec = it.secao || '';
-        if (sec !== lastSec) {
-          if (inSec) html += '</div>';
-          lastSec = sec;
-          if (sec) { html += '<div><div class="fp-ck-secao">' + escHtml(sec) + '</div>'; inSec = true; }
-          else inSec = false;
-        }
-        html += _fpCkItemHtml(it, tipo, ck.id);
-      });
-      if (inSec) html += '</div>';
-      html += _fpCkAddRow(tipo, ck.id);
+      // Detecta se há seções
+      var hasSec = its.some(function(it){ return !!it.secao; });
+      if (!hasSec) {
+        // Lista plana — add row único no fim
+        its.forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+        html += _fpCkAddRow(tipo, ck.id, '');
+      } else {
+        // Itens sem seção primeiro
+        its.filter(function(it){ return !it.secao; }).forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+        // Agrupa seções em ordem de aparição
+        var seenSecs = []; var secGroups = {};
+        its.forEach(function(it) {
+          if (!it.secao) return;
+          if (seenSecs.indexOf(it.secao) === -1) seenSecs.push(it.secao);
+          if (!secGroups[it.secao]) secGroups[it.secao] = [];
+          secGroups[it.secao].push(it);
+        });
+        seenSecs.forEach(function(sec) {
+          html += '<div><div class="fp-ck-secao">' + escHtml(sec) + '</div>';
+          secGroups[sec].forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+          html += _fpCkAddRow(tipo, ck.id, sec);
+          html += '</div>';
+        });
+      }
       $items.innerHTML = html;
       _renderCkFooter(tipo, ck);
 
@@ -2687,11 +2695,14 @@
       if (secoes.length) {
         its.filter(function(it){ return !it.secao_id; }).forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
         secoes.forEach(function(s) {
-          html += '<div class="fp-ck-secao">' + escHtml(s.titulo) + '</div>';
+          html += '<div><div class="fp-ck-secao">' + escHtml(s.titulo) + '</div>';
           its.filter(function(it){ return it.secao_id === s.id; }).forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+          html += _fpCkAddRow(tipo, ck.id, s.titulo);
+          html += '</div>';
         });
       } else {
         its.forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
+        html += _fpCkAddRow(tipo, ck.id, '');
       }
       $items.innerHTML = html;
       _renderCkFooter(tipo, ck);
@@ -2768,11 +2779,13 @@
       '</div>';
   }
 
-  function _fpCkAddRow(tipo, ckId) {
-    var cid = escHtml(String(ckId));
+  function _fpCkAddRow(tipo, ckId, secao) {
+    var cid      = escHtml(String(ckId));
+    var secAttr  = secao ? ' data-secao="' + escHtml(String(secao)) + '"' : '';
     return '<div class="fp-ck-add">' +
       '<div class="fp-ck-cb-mock"></div>' +
-      '<input class="fp-ck-add-inp" id="fp-ck-new-inp" type="text" placeholder="+ Novo item…"' +
+      '<input class="fp-ck-add-inp" type="text" placeholder="+ Novo item…"' +
+      secAttr +
       ' onkeydown="if(event.key===\'Enter\'){fpChat.fpAddCkItem(\'' + tipo + '\',\'' + cid + '\',this)}"' +
       ' onblur="fpChat.fpAddCkItemBlur(\'' + tipo + '\',\'' + cid + '\',this)">' +
       '</div>';
@@ -2824,27 +2837,30 @@
     var txt = (inp.value || '').trim();
     if (!txt) return;
     inp.value = '';
-    var uid = user.id || user.app_user_id;
-    var list = tipo === 'abertos' ? _ckAbertosAll : _ckEtapaAll;
-    var ck   = list.find(function(c){ return String(c.id) === String(ckId); });
+    var secao   = (inp.dataset && inp.dataset.secao)   || null;
+    var secaoId = (inp.dataset && inp.dataset.secaoId) || null;
+    var list  = tipo === 'abertos' ? _ckAbertosAll : _ckEtapaAll;
+    var ck    = list.find(function(c){ return String(c.id) === String(ckId); });
     if (!ck) return;
-    var tbl  = tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
-    var field = tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    var tbl   = tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    var field = tbl;
     var ordem = (ck[field] || []).length;
-    sb.from(tbl).insert({ checklist_id: ckId, texto: txt, ordem: ordem, concluido: false })
-      .select().single()
+    var payload = { checklist_id: ckId, texto: txt, ordem: ordem, concluido: false };
+    if (tipo === 'abertos' && secao)   payload.secao    = secao;
+    if (tipo === 'etapa'   && secaoId) payload.secao_id = secaoId;
+    sb.from(tbl).insert(payload).select().single()
       .then(function(r) {
         if (r.error || !r.data) return;
         if (!ck[field]) ck[field] = [];
         ck[field].push(r.data);
-        var $addRow = document.querySelector('#fp-ck-items .fp-ck-add');
+        // Insere o item antes do add-row da MESMA seção
+        var $addRow = inp.closest('.fp-ck-add');
         if ($addRow) {
           var tmp = document.createElement('div');
           tmp.innerHTML = _fpCkItemHtml(r.data, tipo, ckId);
           $addRow.parentNode.insertBefore(tmp.firstChild, $addRow);
         }
-        var $prog = document.getElementById('fp-ck-prog');
-        if ($prog) { var p = $prog.textContent.split('/'); $prog.textContent = p[0] + '/' + (parseInt(p[1]||0)+1); }
+        _renderCkFooter(tipo, ck);
         setTimeout(function(){ inp.focus(); }, 20);
       });
   }
