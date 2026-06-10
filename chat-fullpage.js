@@ -2517,63 +2517,52 @@
   }
 
   function _loadCkEtapa(uid) {
-    // Dois passos: primeiro busca etapa_ids do usuário, depois carrega os checklists
-    sb.from('etapa_desenvolvedores').select('etapa_id').eq('usuario_id', uid)
-      .then(function(devR) {
-        if (devR.error) { _ckShowErr(devR.error.message); return; }
-        var etapaIds = (devR.data || []).map(function(d){ return d.etapa_id; });
-        if (!etapaIds.length) { _renderCkSelector('etapa', [], function(){ return ''; }); return; }
-        sb.from('checklist_etapa_exec')
-          .select('id,checklist_id,etapa_id,checklist_etapa_preset(nome),checklist_etapa_exec_item(id,texto,secao,secao_id,ordem,concluido,concluido_por_nome,concluido_em),checklist_etapa_exec_secao(id,titulo,ordem),etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)))')
-          .in('etapa_id', etapaIds)
-          .then(function(r) {
-            if (r.error) { _ckShowErr(r.error.message); return; }
-            var items = (r.data || []).map(function(exec) {
-              var etapa = exec.etapas || {};
-              exec._etapaNome = etapa.nome || '';
-              exec._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
-              return exec;
-            });
-            _ckEtapaAll = items;
-            _renderCkSelector('etapa', items, function(exec) {
-              var base   = exec._prodNome ? exec._prodNome + ' — ' : '';
-              var preset = exec.checklist_etapa_preset && exec.checklist_etapa_preset.nome ? ' · ' + exec.checklist_etapa_preset.nome : '';
-              return base + (exec._etapaNome || '') + preset;
-            });
+    sb.from('etapa_desenvolvedores')
+      .select('etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)),checklist_etapa_exec(id,checklist_id,checklist_etapa_preset(nome),checklist_etapa_exec_item(id,texto,secao,secao_id,ordem,concluido,concluido_por_nome,concluido_em),checklist_etapa_exec_secao(id,titulo,ordem)))')
+      .eq('usuario_id', uid)
+      .then(function(r) {
+        if (r.error) { _ckShowErr(r.error.message); return; }
+        var items = [];
+        (r.data || []).forEach(function(d) {
+          var etapa = d.etapas;
+          if (!etapa || !etapa.checklist_etapa_exec) return;
+          etapa.checklist_etapa_exec.forEach(function(exec) {
+            exec._etapaNome = etapa.nome || '';
+            exec._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+            items.push(exec);
           });
+        });
+        _ckEtapaAll = items;
+        _renderCkSelector('etapa', items, function(exec) {
+          var base   = exec._prodNome ? exec._prodNome + ' — ' : '';
+          var preset = exec.checklist_etapa_preset && exec.checklist_etapa_preset.nome ? ' · ' + exec.checklist_etapa_preset.nome : '';
+          return base + (exec._etapaNome || '') + preset;
+        });
       });
   }
 
   function _loadCkRevisao(uid) {
-    sb.from('etapa_desenvolvedores').select('etapa_id,etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)))').eq('usuario_id', uid)
-      .then(function(devR) {
-        if (devR.error) { _ckShowErr(devR.error.message); return; }
-        var etapaIds = (devR.data || []).map(function(d){ return d.etapa_id; });
-        if (!etapaIds.length) { _renderCkSelector('revisao', [], function(){ return ''; }); return; }
-        var etapaMap = {};
-        (devR.data || []).forEach(function(d){ if (d.etapas) etapaMap[d.etapa_id] = d.etapas; });
-        sb.from('revisoes')
-          .select('id,etapa_id,created_at,pranchas(id,nome,ordem,tarefas_revisao(id,descricao,concluida,created_at))')
-          .in('etapa_id', etapaIds)
-          .order('created_at')
-          .then(function(r) {
-            if (r.error) { _ckShowErr(r.error.message); return; }
-            // Agrupa por etapa para numerar revisões
-            var contadores = {};
-            var items = (r.data || []).map(function(rev) {
-              contadores[rev.etapa_id] = (contadores[rev.etapa_id] || 0) + 1;
-              var etapa = etapaMap[rev.etapa_id] || {};
-              rev._etapaNome = etapa.nome || '';
-              rev._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
-              rev._num = contadores[rev.etapa_id];
-              return rev;
-            });
-            _ckRevisaoAll = items;
-            _renderCkSelector('revisao', items, function(rev) {
-              var base = rev._prodNome ? rev._prodNome + ' — ' : '';
-              return base + (rev._etapaNome || '') + ' · Rev. ' + rev._num;
-            });
+    sb.from('etapa_desenvolvedores')
+      .select('etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)),revisoes(id,created_at,pranchas(id,nome,ordem,tarefas_revisao(id,descricao,concluida,created_at))))')
+      .eq('usuario_id', uid)
+      .then(function(r) {
+        if (r.error) { _ckShowErr(r.error.message); return; }
+        var items = [];
+        (r.data || []).forEach(function(d) {
+          var etapa = d.etapas;
+          if (!etapa || !etapa.revisoes) return;
+          etapa.revisoes.forEach(function(rev, i) {
+            rev._etapaNome = etapa.nome || '';
+            rev._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+            rev._num = i + 1;
+            items.push(rev);
           });
+        });
+        _ckRevisaoAll = items;
+        _renderCkSelector('revisao', items, function(rev) {
+          var base = rev._prodNome ? rev._prodNome + ' — ' : '';
+          return base + (rev._etapaNome || '') + ' · Rev. ' + rev._num;
+        });
       });
   }
 
