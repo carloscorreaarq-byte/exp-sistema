@@ -2527,22 +2527,39 @@
         var etapaMap = {};
         (devR.data || []).forEach(function(d){ if (d.etapas) etapaMap[d.etapa_id] = d.etapas; });
         sb.from('checklist_etapa_exec')
-          .select('id,checklist_id,etapa_id,checklist_etapa_preset(nome),checklist_etapa_exec_item(id,texto,secao,secao_id,ordem,concluido,concluido_por_nome,concluido_em),checklist_etapa_exec_secao(id,titulo,ordem)')
+          .select('id,checklist_id,etapa_id,checklist_etapa_preset(nome),checklist_etapa_exec_item(id,texto,secao,secao_id,ordem,concluido,concluido_por_nome,concluido_em)')
           .in('etapa_id', etapaIds)
           .then(function(r) {
             if (r.error) { _ckShowErr(r.error.message); return; }
-            var items = (r.data || []).map(function(exec) {
+            var execList = (r.data || []).map(function(exec) {
               var etapa = etapaMap[exec.etapa_id] || {};
               exec._etapaNome = etapa.nome || '';
               exec._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+              exec.checklist_etapa_exec_secao = [];
               return exec;
             });
-            _ckEtapaAll = items;
-            _renderCkSelector('etapa', items, function(exec) {
-              var base   = exec._prodNome ? exec._prodNome + ' — ' : '';
-              var preset = exec.checklist_etapa_preset && exec.checklist_etapa_preset.nome ? ' · ' + exec.checklist_etapa_preset.nome : '';
-              return base + (exec._etapaNome || '') + preset;
-            });
+            var execIds = execList.map(function(e){ return e.id; });
+            sb.from('checklist_etapa_exec_secao')
+              .select('id,exec_id,titulo,ordem')
+              .in('exec_id', execIds)
+              .then(function(secR) {
+                if (!secR.error) {
+                  var secMap = {};
+                  (secR.data || []).forEach(function(s){
+                    if (!secMap[s.exec_id]) secMap[s.exec_id] = [];
+                    secMap[s.exec_id].push(s);
+                  });
+                  execList.forEach(function(exec){
+                    exec.checklist_etapa_exec_secao = secMap[exec.id] || [];
+                  });
+                }
+                _ckEtapaAll = execList;
+                _renderCkSelector('etapa', execList, function(exec) {
+                  var base   = exec._prodNome ? exec._prodNome + ' — ' : '';
+                  var preset = exec.checklist_etapa_preset && exec.checklist_etapa_preset.nome ? ' · ' + exec.checklist_etapa_preset.nome : '';
+                  return base + (exec._etapaNome || '') + preset;
+                });
+              });
           });
       });
   }
