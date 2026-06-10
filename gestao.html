@@ -261,6 +261,12 @@ body {
 .ck-item-act.tm{font-size:13px;color:#c2c8d1;padding:0 1px}
 .ck-item-act.tm:hover{color:#9aa4b2}
 .ck-item-act.tm.is-empty{opacity:.22}
+.ck-cb-mock{width:14px;height:14px;border:1.5px solid var(--cinza);border-radius:3px;flex-shrink:0;margin-top:1px;opacity:.35}
+.ck-item-ghost{cursor:pointer;opacity:.5;border-bottom:none}
+.ck-item-ghost:hover{opacity:.8}
+.ck-add-placeholder{font-size:11px;color:#aaa}
+.ck-inline-inp{border:none;outline:none;font-size:11px;flex:1;background:transparent;font-family:inherit;line-height:1.4;padding:0}
+.ck-inline-add .ck-item{border-bottom:none}
 .ck-item-act.tm.has-media{opacity:1;color:var(--azul)}
 .ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--azul);outline:none;padding:0;background:transparent;font-family:var(--font-ui);color:inherit;line-height:1.5}
 .ck-empty{font-size:10px;color:#ccc;padding:4px 0}
@@ -17083,21 +17089,56 @@ function _ckRenderItems(items, secoes, readonly, tipo, canEdit) {
   return html || '<div class="ck-empty">Sem itens.</div>';
 }
 
-async function ckAbertoAddItem(ckId) {
+function ckAbertoFocarInput(ckId) {
+  const row = document.getElementById(`ck-add-row-${ckId}`);
+  const ghost = document.querySelector(`#ck-add-wrap-${ckId} .ck-item-ghost`);
+  if(!row) return;
+  row.style.display = '';
+  if(ghost) ghost.style.display = 'none';
+  setTimeout(() => document.getElementById(`ck-add-inp-${ckId}`)?.focus(), 20);
+}
+
+function ckAbertoInpBlur(ckId) {
+  // Pequeno delay para não cancelar antes de processar Enter
+  setTimeout(() => {
+    const inp = document.getElementById(`ck-add-inp-${ckId}`);
+    if(!inp || inp.value.trim()) return; // tem texto: aguarda Enter
+    const row = document.getElementById(`ck-add-row-${ckId}`);
+    const ghost = document.querySelector(`#ck-add-wrap-${ckId} .ck-item-ghost`);
+    if(row) row.style.display = 'none';
+    if(ghost) ghost.style.display = '';
+  }, 150);
+}
+
+async function ckAbertoInpKey(e, ckId) {
+  if(e.key === 'Escape') {
+    const inp = document.getElementById(`ck-add-inp-${ckId}`);
+    if(inp) inp.value = '';
+    ckAbertoInpBlur(ckId);
+    return;
+  }
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const inp = document.getElementById(`ck-add-inp-${ckId}`);
+  const txt = inp?.value?.trim();
+  if(!txt) return;
+  inp.value = '';
   const cl = G._ckAbertos.find(x => x.id === ckId);
-  if(!cl || !_ckPodeEditar(cl)) return;
-  const txt = prompt('Novo item:');
-  if(!txt?.trim()) return;
+  if(!cl) return;
   const ordem = (cl.checklist_tarefa_item||[]).length;
   const { data: it, error } = await sb.from('checklist_tarefa_item').insert({
-    checklist_id: ckId, texto: txt.trim(), ordem, concluido: false
+    checklist_id: ckId, texto: txt, ordem, concluido: false
   }).select().single();
   if(error) { toast('Erro: '+error.message); return; }
   if(!cl.checklist_tarefa_item) cl.checklist_tarefa_item = [];
   cl.checklist_tarefa_item.push(it);
-  _renderCkAbertos();
-  // reabrir o card
-  setTimeout(() => { const b = document.getElementById(`ck-t-${ckId}`); if(b && !b.classList.contains('open')) b.classList.add('open'); }, 50);
+  // Atualiza só o wrapper de itens, sem tocar no input
+  const itemsWrap = document.getElementById(`ck-items-${ckId}`);
+  if(itemsWrap) {
+    const items = (cl.checklist_tarefa_item||[]).sort((a,b)=>a.ordem-b.ordem);
+    itemsWrap.innerHTML = _ckRenderItems(items, null, false, 'tarefa', _ckPodeEditar(cl));
+  }
+  setTimeout(() => document.getElementById(`ck-add-inp-${ckId}`)?.focus(), 20);
 }
 
 function _ckPodeEditar(cl) {
@@ -17149,8 +17190,19 @@ function _renderCkAbertos() {
         ${acoes}
       </div>
       <div class="ck-card-body" id="ck-t-${cl.id}">
-        ${items.length ? _ckRenderItems(items, null, fechado, 'tarefa', podeEditar) : '<div class="ck-empty">Sem itens.</div>'}
-        ${podeEditar && !fechado ? `<div style="padding:6px 0 2px"><button class="btn sm" onclick="ckAbertoAddItem(${_sqCk(cl.id)})">+ Adicionar item</button></div>` : ''}
+        <div id="ck-items-${cl.id}">${items.length ? _ckRenderItems(items, null, fechado, 'tarefa', podeEditar) : '<div class="ck-empty">Sem itens.</div>'}</div>
+        ${podeEditar && !fechado ? `<div class="ck-inline-add" id="ck-add-wrap-${cl.id}">
+          <div class="ck-item ck-item-ghost" onclick="ckAbertoFocarInput(${_sqCk(cl.id)})">
+            <div class="ck-cb-mock"></div>
+            <span class="ck-add-placeholder">+ Adicionar item</span>
+          </div>
+          <div class="ck-item" id="ck-add-row-${cl.id}" style="display:none">
+            <div class="ck-cb-mock"></div>
+            <input class="ck-inline-inp" id="ck-add-inp-${cl.id}" type="text" placeholder="Novo item…"
+              onkeydown="ckAbertoInpKey(event,${_sqCk(cl.id)})"
+              onblur="ckAbertoInpBlur(${_sqCk(cl.id)})">
+          </div>
+        </div>` : ''}
         ${rodape}
       </div>
     </div>`;

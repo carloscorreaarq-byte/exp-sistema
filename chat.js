@@ -380,6 +380,11 @@
       if (presenceCh) presenceCh.untrack();
     });
 
+    /* Reconecta o realtime ao voltar para a aba (browser suspende WS em background) */
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') subscribeIncoming();
+    });
+
     // Fechar popover ao clicar fora
     document.addEventListener('click', function (e) {
       if (!statusPopOpen) return;
@@ -1198,7 +1203,13 @@
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'gestao_anexos_temporarios' }, function (payload) {
         handleChatTempMediaRealtime(payload.new);
       })
-      .subscribe();
+      .subscribe(function (status, err) {
+        console.log('[EXP Chat] realtime status:', status, err || '');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[EXP Chat] reconectando em 3s...');
+          setTimeout(subscribeIncoming, 3000);
+        }
+      });
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

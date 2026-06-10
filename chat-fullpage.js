@@ -389,6 +389,11 @@
 
     window.addEventListener('beforeunload', function() { if (presenceCh) presenceCh.untrack(); });
 
+    /* Reconecta o realtime ao voltar para a aba (browser suspende WS em background) */
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') subscribeIncoming();
+    });
+
     renderConvList();
   }
 
@@ -1162,7 +1167,13 @@
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'gestao_anexos_temporarios'}, function(p){ handleChatTempMediaRealtime(p.new); })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'gestao_anexos_temporarios'}, function(p){ handleChatTempMediaRealtime(p.new); })
-      .subscribe();
+      .subscribe(function(status, err) {
+        console.log('[EXP ChatFP] realtime status:', status, err || '');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[EXP ChatFP] reconectando em 3s...');
+          setTimeout(subscribeIncoming, 3000);
+        }
+      });
   }
 
   /* ═══════════════════════════════════════════════════════════════════
