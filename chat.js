@@ -1897,6 +1897,7 @@
     }
 
     /* Push via SW para quando a página está em background */
+    console.log('[EXP Chat Push] enviando para usuario_id:', appUserId, '| user.id:', user.id, '| user.app_user_id:', user.app_user_id);
     sb.functions.invoke('send-push', {
       body: {
         usuario_id: appUserId,
@@ -1905,7 +1906,9 @@
         url:        window.location.href,
         tag:        tag,
       }
-    }).catch(function (e) { console.warn('[EXP Chat Push]', e); });
+    }).then(function (r) {
+      console.log('[EXP Chat Push] resposta edge function:', r.data, r.error || '');
+    }).catch(function (e) { console.warn('[EXP Chat Push] erro:', e); });
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
