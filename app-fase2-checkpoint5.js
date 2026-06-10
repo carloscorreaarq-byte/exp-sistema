@@ -157,14 +157,24 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   }
 
   async function enviarPushFeedbackResolvido(item) {
-    const current = currentSessionUsuario();
     const usuarioId = item?.usuario_id || null;
-    if (!usuarioId || usuarioId === current?.app_user_id) return;
+    if (!usuarioId) return;
     const tipo = String(item?.tipo || '').toLowerCase();
     const title = tipo === 'sugestao' ? 'Sugestao implementada' : 'Ajuste realizado';
     const body = tipo === 'sugestao'
       ? 'A plataforma foi adaptada conforme sua sugestao, obrigado pela contribuicao!'
       : 'A plataforma foi ajustada conforme o problema reportado, obrigado pela contribuicao!';
+    try {
+      await window.sb.from('notificacoes').insert({
+        usuario_id: usuarioId,
+        tipo: 'lembrete',
+        titulo: title,
+        corpo: body,
+        link_tipo: 'lembrete',
+        modulo: 'app',
+        created_at: new Date().toISOString(),
+      }).catch(() => {});
+    } catch (_) {}
     try {
       await window.sb.functions.invoke('send-push', {
         body: {

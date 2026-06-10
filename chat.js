@@ -12,8 +12,9 @@
   /* â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   var SB_URL     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
   var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
-  var STATUS_KEY = 'exp_chat_status';
-  var SOUND_KEY  = 'exp_chat_sound';
+  var STATUS_KEY  = 'exp_chat_status';
+  var SOUND_KEY   = 'exp_chat_sound';
+  var PINNED_KEY  = 'exp_chat_pinned';
 
   var STATUS_COLORS = {
     online:  '#1D6A4A',
@@ -94,6 +95,10 @@
     '.chat-conv-name{font-size:12px;font-weight:600;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-conv-preview{font-size:10px;color:var(--cinza,#D0CFC9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}',
     '.chat-conv-badge{background:#B84C3A;color:#fff;font-size:9px;font-weight:700;font-family:"DM Mono",monospace;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
+    '.chat-conv-pin-btn{display:none;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:3px;color:var(--cinza,#D0CFC9);border-radius:4px;flex-shrink:0;transition:color .15s}',
+    '.chat-conv-pin-btn:hover{color:var(--verde,#1D6A4A)}',
+    '.chat-conv-pin-btn.is-pinned{display:flex;color:var(--verde,#1D6A4A)}',
+    '.chat-conv-item:hover .chat-conv-pin-btn{display:flex}',
     '.chat-search-wrap{padding:10px;border-bottom:1px solid var(--cinza2,#ECEAE4);background:#fff}',
     '.chat-search-input{width:100%;border:1px solid var(--cinza2,#ECEAE4);border-radius:10px;padding:8px 10px;font-family:"Raleway",sans-serif;font-size:12px;background:var(--off,#F7F6F3);color:var(--preto,#111110);outline:none}',
     '.chat-search-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
@@ -240,6 +245,8 @@
     '[data-theme="dark"] .chat-composer-status.warn{color:#E58C7D}',
     '[data-theme="dark"] .chat-conv-list,.chat-member-list,[data-theme="dark"] .chat-conv-item,[data-theme="dark"] .chat-member-item{background:transparent}',
     '[data-theme="dark"] .chat-conv-item:hover,[data-theme="dark"] .chat-member-item:hover{background:rgba(255,255,255,.05)}',
+    '[data-theme="dark"] .chat-conv-pin-btn{color:#6B6762}',
+    '[data-theme="dark"] .chat-conv-pin-btn:hover,[data-theme="dark"] .chat-conv-pin-btn.is-pinned{color:#B7E2C8}',
     '[data-theme="dark"] .chat-conv-name{color:#F0EDE6}',
     '[data-theme="dark"] .chat-conv-preview{color:#8C8A85}',
     '[data-theme="dark"] .chat-conv-section{color:#8C8A85}',
@@ -313,6 +320,9 @@
   var onlinePresence   = {};        // { auth_id: { status, nome, ... } }
   var userStatus     = localStorage.getItem(STATUS_KEY) || 'online';
   var soundEnabled   = localStorage.getItem(SOUND_KEY) !== 'false';
+  var pinnedChannels = (function () {
+    try { return new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')); } catch (e) { return new Set(); }
+  }());
 
   /* â”€â”€ DOM refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   var $panel, $msgs, $input, $badge, $toggle;
@@ -792,23 +802,36 @@
         projectHtml += buildProjectHomeRow(item);
       });
 
-      /* Linhas de DMs e grupos */
-      dmList.forEach(function (dm) {
-        var meta = getConversationMeta(dm, uid);
+      /* Linhas de DMs e grupos — fixadas primeiro */
+      var pinnedDms = dmList.filter(function (dm) { return pinnedChannels.has(dm.channel); });
+      var regularDms = dmList.filter(function (dm) { return !pinnedChannels.has(dm.channel); });
+
+      function buildDmRow(dm) {
+        var meta     = getConversationMeta(dm, uid);
         var preview  = compactPreviewText(dm.content, 34, 'Nova mensagem');
         var dmU      = channelUnread[dm.channel] || 0;
         var chanJson = dm.channel.replace(/'/g, "\\'");
         var nameEsc  = escHtml(meta.label);
-
-        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
+        var isPinned = pinnedChannels.has(dm.channel);
+        var pinBtn   = '<button class="chat-conv-pin-btn' + (isPinned ? ' is-pinned' : '') + '" ' +
+          'title="' + (isPinned ? 'Desafixar' : 'Fixar conversa') + '" ' +
+          'onclick="event.stopPropagation();expChat.togglePin(\'' + chanJson + '\')">' +
+          '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (isPinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
+          '</button>';
+        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
           softAvHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + nameEsc + '</div>' +
             '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
           '</div>' +
           (dmU > 0 ? '<div class="chat-conv-badge">' + dmU + '</div>' : '') +
+          pinBtn +
           '</div>';
-      });
+      }
+
+      pinnedDms.forEach(function (dm) { html += buildDmRow(dm); });
+      regularDms.forEach(function (dm) { html += buildDmRow(dm); });
 
       highlightedProjectItems.forEach(function (item) {
         html += buildProjectHomeRow(item);
@@ -1124,7 +1147,7 @@
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
-          playNotificationSound();
+          if (_shouldPlaySound(ch)) playNotificationSound();
           _sendChatPush(msg);
         }
       })
@@ -1157,7 +1180,7 @@
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
-          playNotificationSound();
+          if (_shouldPlaySound(ch)) playNotificationSound();
           _sendChatPush(msg);
         }
       })
@@ -1846,13 +1869,22 @@
     var body     = (msg.content || '').length > 80
       ? msg.content.substring(0, 80) + '...'
       : msg.content;
+    var tag      = 'exp-chat-' + msg.channel;
+    var icon     = '/files/assets/icon-192.png';
+
+    /* Notificação direta quando a página está visível */
+    if (document.visibilityState === 'visible' && Notification.permission === 'granted') {
+      try { new Notification(title, { body: body, icon: icon, tag: tag, silent: true }); } catch (e) {}
+    }
+
+    /* Push via SW para quando a página está em background */
     sb.functions.invoke('send-push', {
       body: {
         usuario_id: appUserId,
         title:      title,
         body:       body,
         url:        window.location.href,
-        tag:        'exp-chat-' + msg.channel,
+        tag:        tag,
       }
     }).catch(function (e) { console.warn('[EXP Chat Push]', e); });
   }
@@ -1860,6 +1892,26 @@
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      SOM DE NOTIFICAÃ‡ÃƒO (Web Audio API â€” sem arquivo externo)
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  /* ══════════════════════════════════════════════════════════════════
+     CANAIS FIXADOS
+  ══════════════════════════════════════════════════════════════════ */
+  function togglePin(channel) {
+    if (pinnedChannels.has(channel)) pinnedChannels.delete(channel);
+    else pinnedChannels.add(channel);
+    try { localStorage.setItem(PINNED_KEY, JSON.stringify(Array.from(pinnedChannels))); } catch (e) {}
+    if (isOpen && currentView === 'home') renderHome();
+  }
+
+  function _shouldPlaySound(ch) {
+    if (!soundEnabled) return false;
+    if (userStatus === 'foco') return false;
+    if (ch === 'general') return true;
+    if (ch === 'socios' && isSocioLikeRole(user.role)) return true;
+    if (isDynamicChannel(ch) && channelHasUser(ch, user.auth_id)) return true;
+    if (pinnedChannels.has(ch)) return true;
+    return false;
+  }
+
   function playNotificationSound() {
     if (!soundEnabled) return;
     try {
@@ -2952,6 +3004,7 @@
     toggleMember:    toggleMember,
     confirmGroup:    confirmGroup,
     toggleSound:     toggleSound,
+    togglePin:       togglePin,
     refreshHome:     function () { renderHome(); },
     refreshProjectThreadTitle: function (threadId, title) {
       applyProjectThreadTitle(threadId, title);
