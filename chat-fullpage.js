@@ -2540,14 +2540,14 @@
             });
             var execIds = execList.map(function(e){ return e.id; });
             sb.from('checklist_etapa_exec_secao')
-              .select('id,exec_id,titulo,ordem')
-              .in('exec_id', execIds)
+              .select('id,checklist_id,titulo,intro,ordem')
+              .in('checklist_id', execIds)
               .then(function(secR) {
                 if (!secR.error) {
                   var secMap = {};
                   (secR.data || []).forEach(function(s){
-                    if (!secMap[s.exec_id]) secMap[s.exec_id] = [];
-                    secMap[s.exec_id].push(s);
+                    if (!secMap[s.checklist_id]) secMap[s.checklist_id] = [];
+                    secMap[s.checklist_id].push(s);
                   });
                   execList.forEach(function(exec){
                     exec.checklist_etapa_exec_secao = secMap[exec.id] || [];
