@@ -1075,7 +1075,7 @@ window.ExpNav = (() => {
         .or('data_fechamento.gte.' + cutoff7 + ',and(status.eq.negado,updated_at.gte.' + cutoff7 + ')')
         .order('updated_at', { ascending: false }).limit(5),
       sb.from('followups_produto')
-        .select('id,next_date,observacao,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
+        .select('id,next_date,obs,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
         .not('next_date','is',null)
         .gte('next_date', hoje)
         .order('next_date', { ascending: true }).limit(5)
