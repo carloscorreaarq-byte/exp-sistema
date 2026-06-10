@@ -2527,7 +2527,7 @@
         var etapaMap = {};
         (devR.data || []).forEach(function(d){ if (d.etapas) etapaMap[d.etapa_id] = d.etapas; });
         sb.from('checklist_etapa_exec')
-          .select('id,checklist_id,etapa_id,checklist_etapa_preset(nome),checklist_etapa_exec_item(id,texto,secao,secao_id,ordem,concluido,concluido_por_nome,concluido_em)')
+          .select('id,preset_id,etapa_id,checklist_etapa_preset!preset_id(nome),checklist_etapa_exec_item(id,texto,secao,secao_id,ordem,concluido,concluido_por_nome,concluido_em)')
           .in('etapa_id', etapaIds)
           .then(function(r) {
             if (r.error) { _ckShowErr(r.error.message); return; }
