@@ -17127,9 +17127,11 @@ function _renderCkAbertos() {
     const progCls = nTotal===0?'ck-prog zero':nDone===nTotal?'ck-prog':nDone>0?'ck-prog parcial':'ck-prog zero';
     const podeEditar = _ckPodeEditar(cl);
     const tagFechado = fechado ? '<span class="ck-tag-fechado">Fechado</span>' : '';
-    const acoes = (isSocioUser() || cl.criado_por === G.usuario.id)
-      ? `<button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();toggleStatusCkAberto(${_sqCk(cl.id)})">${fechado?'Reabrir':'Fechar'}</button>`
-      : '';
+    const podeFechar = isSocioUser() || cl.criado_por === G.usuario.id;
+    const acoes = podeFechar ? `
+      <button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();editarChecklistAberto(${_sqCk(cl.id)})" title="Editar checklist">✏</button>
+      <button class="btn sm" style="flex-shrink:0" onclick="event.stopPropagation();toggleStatusCkAberto(${_sqCk(cl.id)})">${fechado?'Reabrir':'Fechar'}</button>
+    ` : '';
     // Rodapé: criador + editores autorizados
     const eds = Array.isArray(cl.editores_ids) ? cl.editores_ids : [];
     const edChips = eds.map(eid => {
@@ -17573,6 +17575,35 @@ function novoChecklistAberto() {
   _cktRenderForm();
 }
 
+function editarChecklistAberto(ckId) {
+  const cl = G._ckAbertos.find(x => x.id === ckId);
+  if(!cl) return;
+  const wrap = document.getElementById('ck-aberto-form-wrap');
+  if(!wrap) return;
+  // Reconstrói secoes agrupando itens pelo campo `secao`
+  const itens = (cl.checklist_tarefa_item || []).slice().sort((a, b) => a.ordem - b.ordem);
+  const secoesMap = [];
+  const secoesIdx = {};
+  itens.forEach(it => {
+    const nome = it.secao || '';
+    if(!(nome in secoesIdx)) {
+      secoesIdx[nome] = secoesMap.length;
+      secoesMap.push({ nome, items: [], itemIds: [] });
+    }
+    secoesMap[secoesIdx[nome]].items.push(it.texto);
+    secoesMap[secoesIdx[nome]].itemIds.push(it.id);
+  });
+  if(!secoesMap.length) secoesMap.push({ nome: '', items: [], itemIds: [] });
+  _cktState = {
+    editandoId:  cl.id,
+    titulo:      cl.titulo,
+    editoresIds: Array.isArray(cl.editores_ids) ? [...cl.editores_ids] : [],
+    secoes:      secoesMap,
+  };
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  _cktRenderForm();
+}
+
 function _cktRenderForm() {
   const wrap = document.getElementById('ck-aberto-form-wrap');
   if(!wrap || !_cktState) return;
@@ -17631,7 +17662,7 @@ function _cktRenderForm() {
         <div class="ckt-live-av-row">${avs || '<span style="font-size:11px;color:#ccc">—</span>'}</div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <span style="font-size:10px;color:#bbb">${nItens} ${nItens===1?'item':'itens'}${nSec?' · '+nSec+' '+(nSec===1?'seção':'seções'):''}</span>
-          <button class="btn filled verde sm" onclick="salvarChecklistAberto()">Criar</button>
+          <button class="btn filled verde sm" onclick="salvarChecklistAberto()">${_cktState.editandoId ? 'Salvar' : 'Criar'}</button>
         </div>
       </div>
     </div>`;
@@ -17716,6 +17747,36 @@ async function salvarChecklistAberto() {
 
   const u = G.usuario;
   const editoresIds = _cktState.editoresIds || [];
+
+  if(_cktState.editandoId) {
+    // ── Edição ──────────────────────────────────────────────────
+    const ckId = _cktState.editandoId;
+    const { error } = await sb.from('checklist_tarefa').update({
+      titulo,
+      editores_ids: editoresIds.length ? editoresIds : null,
+    }).eq('id', ckId);
+    if(error) { toast('Erro: '+error.message); return; }
+
+    // Recria todos os itens: apaga os existentes e insere os novos
+    await sb.from('checklist_tarefa_item').delete().eq('checklist_id', ckId);
+    const allItems = [];
+    let ordem = 0;
+    _cktState.secoes.forEach(sec => {
+      sec.items.forEach(txt => {
+        allItems.push({ checklist_id: ckId, texto: txt, secao: sec.nome || null, ordem: ordem++, concluido: false });
+      });
+    });
+    if(allItems.length) await sb.from('checklist_tarefa_item').insert(allItems);
+
+    _cktState = null;
+    const wrap = document.getElementById('ck-aberto-form-wrap');
+    if(wrap) wrap.innerHTML = '';
+    await carregarChecklist(G.produtoAtivo);
+    toast('Checklist atualizado.');
+    return;
+  }
+
+  // ── Criação ─────────────────────────────────────────────────
   const { data: cl, error } = await sb.from('checklist_tarefa').insert({
     produto_id:      G.produtoAtivo,
     titulo,
