@@ -380,9 +380,11 @@
       if (presenceCh) presenceCh.untrack();
     });
 
-    /* Reconecta o realtime ao voltar para a aba (browser suspende WS em background) */
+    /* Reconecta o realtime ao voltar para a aba SOMENTE se o canal não estiver ativo */
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') subscribeIncoming();
+      if (document.visibilityState !== 'visible') return;
+      var state = msgCh && msgCh.state;
+      if (state !== 'joined' && state !== 'joining') subscribeIncoming();
     });
 
     // Fechar popover ao clicar fora
@@ -1205,9 +1207,14 @@
       })
       .subscribe(function (status, err) {
         console.log('[EXP Chat] realtime status:', status, err || '');
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[EXP Chat] reconectando em 3s...');
-          setTimeout(subscribeIncoming, 3000);
+        if (status === 'SUBSCRIBED') {
+          console.log('[EXP Chat] realtime conectado ✓');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[EXP Chat] reconectando em 4s...');
+          setTimeout(function () {
+            var s = msgCh && msgCh.state;
+            if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+          }, 4000);
         }
       });
   }
@@ -1924,26 +1931,40 @@
     return false;
   }
 
+  var _audioCtx = null;
+  function _getAudioCtx() {
+    if (_audioCtx && _audioCtx.state !== ‘closed’) return _audioCtx;
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    _audioCtx = new Ctx();
+    return _audioCtx;
+  }
+  /* Desbloqueia o AudioContext na primeira interação do usuário */
+  document.addEventListener(‘click’, function () { _getAudioCtx(); }, { once: true });
+
   function playNotificationSound() {
     if (!soundEnabled) return;
     try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      var ctx = new Ctx();
-      /* Dois tons suaves: C6 (1047 Hz) â†’ E6 (1319 Hz) */
-      [{ f: 1046.5, t: 0, d: 0.18 }, { f: 1318.5, t: 0.13, d: 0.22 }].forEach(function (n) {
-        var osc  = ctx.createOscillator();
-        var gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = n.f;
-        gain.gain.setValueAtTime(0, ctx.currentTime + n.t);
-        gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + n.t + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.t + n.d);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + n.t);
-        osc.stop(ctx.currentTime + n.t + n.d + 0.02);
-      });
+      var ctx = _getAudioCtx();
+      if (!ctx) return;
+      function _play() {
+        /* Dois tons suaves: C6 (1047 Hz) → E6 (1319 Hz) */
+        [{ f: 1046.5, t: 0, d: 0.18 }, { f: 1318.5, t: 0.13, d: 0.22 }].forEach(function (n) {
+          var osc  = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = ‘sine’;
+          osc.frequency.value = n.f;
+          gain.gain.setValueAtTime(0, ctx.currentTime + n.t);
+          gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + n.t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.t + n.d);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + n.t);
+          osc.stop(ctx.currentTime + n.t + n.d + 0.02);
+        });
+      }
+      if (ctx.state === ‘suspended’) ctx.resume().then(_play);
+      else _play();
     } catch (e) {}
   }
 

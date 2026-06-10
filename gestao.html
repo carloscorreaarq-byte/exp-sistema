@@ -17078,13 +17078,17 @@ function _ckRenderItems(items, secoes, readonly, tipo, canEdit) {
   } else {
     // Fallback: agrupamento por campo texto 'secao'
     let lastSecao = '__NONE__';
+    let inSecao = false;
     items.sort((a,b)=>a.ordem-b.ordem).forEach(it => {
       if((it.secao||'') !== lastSecao) {
+        if(inSecao) html += `</div>`;
         lastSecao = it.secao || '';
-        if(lastSecao) html += `<div class="ck-secao-blk"><div class="ck-secao">${_ckE(lastSecao)}</div>`;
+        if(lastSecao) { html += `<div class="ck-secao-blk"><div class="ck-secao">${_ckE(lastSecao)}</div>`; inSecao = true; }
+        else inSecao = false;
       }
       html += _ckItemHtml(it, readonly, tipo, canEdit);
     });
+    if(inSecao) html += `</div>`;
   }
   return html || '<div class="ck-empty">Sem itens.</div>';
 }
@@ -17312,27 +17316,35 @@ function editarCkItem(tipo, itemId, ckId) {
     if(e.key === 'Escape') { cancelado = true; inp.blur(); }
   });
   inp.addEventListener('blur', () => {
-    if(cancelado) { tipo === 'tarefa' ? _renderCkAbertos() : _renderCkEtapas?.(); return; }
-    confirmarEditCkItem(tipo, itemId, ckId, inp.value);
+    if(cancelado) { inp.replaceWith(span); return; }
+    confirmarEditCkItem(tipo, itemId, ckId, inp.value, span);
   });
   span.replaceWith(inp);
   inp.focus();
   inp.select();
 }
 
-async function confirmarEditCkItem(tipo, itemId, ckId, novoTexto) {
+async function confirmarEditCkItem(tipo, itemId, ckId, novoTexto, span) {
   novoTexto = (novoTexto || '').trim();
-  if(!novoTexto) { tipo === 'tarefa' ? _renderCkAbertos() : _renderCkEtapas?.(); return; }
+  if(!novoTexto) { if(span) { const inp = document.getElementById(`ck-edit-${itemId}`); inp?.replaceWith(span); } return; }
   const tbl = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
   const { error } = await sb.from(tbl).update({ texto: novoTexto }).eq('id', itemId);
   if(error) { toast('Erro ao salvar'); return; }
+  // Atualiza estado local
   const arr = tipo === 'tarefa' ? G._ckAbertos : G._ckEtapas;
   for(const ck of arr) {
     const field = tipo === 'tarefa' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
     const it = (ck[field] || []).find(i => i.id === itemId);
     if(it) { it.texto = novoTexto; break; }
   }
-  tipo === 'tarefa' ? _renderCkAbertos() : _renderCkEtapas?.();
+  // Atualiza só o span no DOM, sem re-renderizar o card
+  const inp = document.getElementById(`ck-edit-${itemId}`);
+  if(inp) {
+    if(span) { span.textContent = novoTexto; inp.replaceWith(span); }
+    else { inp.replaceWith(document.createTextNode(novoTexto)); }
+  } else if(tipo !== 'tarefa') {
+    _renderCkEtapas?.();
+  }
 }
 
 // ── Configurar checklist de etapa (sócios) ────────────────────

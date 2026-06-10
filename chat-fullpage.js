@@ -2455,23 +2455,27 @@
   var _ckEtapaAll     = [];
   var _ckRevisaoAll   = [];
 
+  var _ckLabelFns = {};
+
   function switchListsTab(tab) {
     _listsActiveTab = tab;
     document.querySelectorAll('.fp-lists-tab').forEach(function(el) {
       el.classList.toggle('active', el.dataset.tab === tab);
     });
-    var $list  = document.getElementById('fp-tasks-list');
-    var $form  = document.getElementById('fp-task-form');
+    var $list   = document.getElementById('fp-tasks-list');
+    var $form   = document.getElementById('fp-task-form');
     var $ckView = document.getElementById('fp-ck-view');
+    var $count  = document.getElementById('fp-tasks-panel-count');
+    if ($count) $count.style.display = tab === 'tarefas' ? '' : 'none';
     if (tab === 'tarefas') {
-      if ($list)   { $list.style.display = ''; }
-      if ($form)   { $form.style.display = ''; }
-      if ($ckView) { $ckView.style.display = 'none'; }
+      if ($list)   $list.style.display = '';
+      if ($form)   $form.style.display = '';
+      if ($ckView) $ckView.style.display = 'none';
       loadTasks();
     } else {
-      if ($list)   { $list.style.display = 'none'; }
-      if ($form)   { $form.style.display = 'none'; }
-      if ($ckView) { $ckView.style.display = 'flex'; }
+      if ($list)   $list.style.display = 'none';
+      if ($form)   $form.style.display = 'none';
+      if ($ckView) $ckView.style.display = 'flex';
       _loadCkTab(tab);
     }
   }
@@ -2550,31 +2554,62 @@
       });
   }
 
+  function _ckIsDone(tipo, ck) {
+    var its;
+    if (tipo === 'abertos') its = (ck.checklist_tarefa_item || []);
+    else if (tipo === 'etapa') its = (ck.checklist_etapa_exec_item || []);
+    else its = (ck.pranchas || []).reduce(function(a,p){ return a.concat(p.tarefas_revisao||[]); }, []);
+    return its.length > 0 && its.every(function(i){ return i.concluido || i.concluida; });
+  }
+
   function _renderCkSelector(tipo, items, labelFn) {
-    var $sel   = document.getElementById('fp-ck-select');
+    _ckLabelFns[tipo] = labelFn;
+    var $wrap  = document.getElementById('fp-ck-selector');
     var $items = document.getElementById('fp-ck-items');
-    if (!$sel) return;
+    if (!$wrap) return;
     if (!items.length) {
-      $sel.innerHTML = '<option value="">— nenhum checklist —</option>';
-      if ($items) $items.innerHTML = '<div class="fp-ck-empty">Nenhum checklist encontrado.</div>';
+      $wrap.innerHTML = '<div class="fp-ck-empty" style="padding:6px 0">Nenhum checklist encontrado.</div>';
+      if ($items) $items.innerHTML = '';
       return;
     }
-    $sel.innerHTML = '<option value="">— selecionar —</option>' + items.map(function(it, i) {
-      return '<option value="' + i + '">' + escHtml(labelFn(it)) + '</option>';
+    // Ordena: pendentes primeiro, concluídos por último
+    var pending = items.filter(function(it, i){ it._idx = i; return !_ckIsDone(tipo, it); });
+    var done    = items.filter(function(it, i){ it._idx = i; return  _ckIsDone(tipo, it); });
+    var sorted  = pending.concat(done);
+    var opts = '<option value="">— selecionar —</option>' + sorted.map(function(it) {
+      var lbl = escHtml(labelFn(it));
+      var cls = _ckIsDone(tipo, it) ? ' class="fp-ck-opt-done"' : '';
+      return '<option value="' + it._idx + '"' + cls + '>' + lbl + '</option>';
     }).join('');
+    $wrap.innerHTML = '<select class="fp-ck-select" id="fp-ck-select" onchange="fpChat.selectCkByIndex(\'' + tipo + '\',this.value)">' + opts + '</select>';
     if ($items) $items.innerHTML = '';
-    if (items.length === 1) { $sel.value = '0'; selectCkByIndex(tipo, '0'); }
+    if (items.length === 1) { selectCkByIndex(tipo, '0'); }
   }
 
   function selectCkByIndex(tipo, idx) {
+    var $wrap  = document.getElementById('fp-ck-selector');
     var $items = document.getElementById('fp-ck-items');
+    var $foot  = document.getElementById('fp-ck-footer');
     if (!$items) return;
-    if (idx === '' || idx === null || idx === undefined) { $items.innerHTML = ''; return; }
+    if (idx === '' || idx === null || idx === undefined) {
+      $items.innerHTML = '';
+      if ($foot) { $foot.innerHTML = ''; $foot.style.display = 'none'; }
+      _renderCkSelector(tipo, tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll, _ckLabelFns[tipo] || function(){ return ''; });
+      return;
+    }
     var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
     var ck   = list[parseInt(idx)];
     if (!ck) return;
+    // Transforma seletor em título negrito
+    var label = (_ckLabelFns[tipo] || function(){ return ''; })(ck);
+    if ($wrap) $wrap.innerHTML =
+      '<div class="fp-ck-sel-title">' +
+        '<span class="fp-ck-sel-title-txt">' + escHtml(label) + '</span>' +
+        '<button class="fp-ck-sel-back" onclick="fpChat.selectCkByIndex(\'' + tipo + '\',\'\')" title="Trocar">↩ trocar</button>' +
+      '</div>';
     _renderCkItems(tipo, ck);
   }
+
 
   function _renderCkItems(tipo, ck) {
     var $items = document.getElementById('fp-ck-items');
@@ -2582,9 +2617,10 @@
     var html = '';
 
     if (tipo === 'abertos') {
-      var its  = (ck.checklist_tarefa_item || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
-      var done = its.filter(function(i){ return i.concluido; }).length;
-      html += _fpCkProgHdr(ck.titulo, done, its.length);
+      var its = (ck.checklist_tarefa_item || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
+      // Agrupa por seção para calcular seções completas
+      var secsMap = {};
+      its.forEach(function(it) { var s = it.secao || '__sem__'; if (!secsMap[s]) secsMap[s] = []; secsMap[s].push(it); });
       var lastSec = '__NONE__'; var inSec = false;
       its.forEach(function(it) {
         var sec = it.secao || '';
@@ -2598,13 +2634,12 @@
       });
       if (inSec) html += '</div>';
       html += _fpCkAddRow(tipo, ck.id);
+      $items.innerHTML = html;
+      _renderCkFooter(tipo, ck);
 
     } else if (tipo === 'etapa') {
       var its    = (ck.checklist_etapa_exec_item || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
       var secoes = (ck.checklist_etapa_exec_secao || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
-      var done   = its.filter(function(i){ return i.concluido; }).length;
-      var label  = (ck.checklist_etapa_preset && ck.checklist_etapa_preset.nome) || ck._etapaNome || '';
-      html += _fpCkProgHdr(label, done, its.length);
       if (secoes.length) {
         its.filter(function(it){ return !it.secao_id; }).forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
         secoes.forEach(function(s) {
@@ -2614,25 +2649,68 @@
       } else {
         its.forEach(function(it){ html += _fpCkItemHtml(it, tipo, ck.id); });
       }
+      $items.innerHTML = html;
+      _renderCkFooter(tipo, ck);
 
     } else if (tipo === 'revisao') {
-      var pranchas  = (ck.pranchas || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
-      var allTar    = pranchas.reduce(function(acc,pr){ return acc.concat(pr.tarefas_revisao||[]); }, []);
-      var done      = allTar.filter(function(t){ return t.concluida; }).length;
-      html += _fpCkProgHdr(ck._etapaNome + ' · Rev.' + ck._num, done, allTar.length);
+      var pranchas = (ck.pranchas || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
       pranchas.forEach(function(pr) {
         html += '<div class="fp-ck-secao">' + escHtml(pr.nome || '') + '</div>';
         (pr.tarefas_revisao || []).forEach(function(t){ html += _fpCkItemHtml(t, tipo, ck.id); });
       });
+      $items.innerHTML = html;
+      _renderCkFooter(tipo, ck);
     }
-
-    $items.innerHTML = html;
   }
 
-  function _fpCkProgHdr(label, done, total) {
-    return '<div class="fp-ck-prog-hdr"><span class="fp-ck-prog-label">' + escHtml(label||'') + '</span>' +
-      '<span class="fp-ck-prog" id="fp-ck-prog">' + done + '/' + total + '</span></div>';
+  function _ckCalcStats(tipo, ck) {
+    var its, secs, secsDone, tasksTotal, tasksDone;
+    if (tipo === 'abertos') {
+      its = (ck.checklist_tarefa_item || []);
+      tasksTotal = its.length; tasksDone = its.filter(function(i){ return i.concluido; }).length;
+      var secsMap = {};
+      its.forEach(function(it){ var s = it.secao || '__sem__'; if (!secsMap[s]) secsMap[s] = []; secsMap[s].push(it); });
+      secs = Object.keys(secsMap).filter(function(k){ return k !== '__sem__'; });
+      secsDone = secs.filter(function(s){ return secsMap[s].every(function(i){ return i.concluido; }); }).length;
+    } else if (tipo === 'etapa') {
+      its = (ck.checklist_etapa_exec_item || []);
+      tasksTotal = its.length; tasksDone = its.filter(function(i){ return i.concluido; }).length;
+      var secoes = (ck.checklist_etapa_exec_secao || []);
+      secs = secoes.map(function(s){ return s.id; });
+      secsDone = secs.filter(function(sid){
+        var sitems = its.filter(function(i){ return i.secao_id === sid; });
+        return sitems.length > 0 && sitems.every(function(i){ return i.concluido; });
+      }).length;
+    } else {
+      var pranchas = (ck.pranchas || []);
+      its = pranchas.reduce(function(a,p){ return a.concat(p.tarefas_revisao||[]); }, []);
+      tasksTotal = its.length; tasksDone = its.filter(function(t){ return t.concluida; }).length;
+      secs = pranchas.map(function(p){ return p.id; });
+      secsDone = pranchas.filter(function(p){ return (p.tarefas_revisao||[]).length > 0 && (p.tarefas_revisao||[]).every(function(t){ return t.concluida; }); }).length;
+    }
+    return { tasksTotal: tasksTotal, tasksDone: tasksDone, secsTotal: secs.length, secsDone: secsDone };
   }
+
+  function _renderCkFooter(tipo, ck) {
+    var $foot = document.getElementById('fp-ck-footer');
+    if (!$foot) return;
+    $foot.style.display = '';
+    var s = _ckCalcStats(tipo, ck);
+    var taskPct = s.tasksTotal ? Math.round(s.tasksDone / s.tasksTotal * 100) : 0;
+    var secPct  = s.secsTotal  ? Math.round(s.secsDone  / s.secsTotal  * 100) : 0;
+    $foot.innerHTML =
+      (s.secsTotal > 0 ? '<div class="fp-ck-bar-row">' +
+        '<span class="fp-ck-bar-label">Seções</span>' +
+        '<div class="fp-ck-bar"><div class="fp-ck-bar-fill" id="fp-ck-bar-sec" style="width:' + secPct + '%"></div></div>' +
+        '<span class="fp-ck-bar-count" id="fp-ck-cnt-sec">' + s.secsDone + '/' + s.secsTotal + '</span>' +
+      '</div>' : '') +
+      '<div class="fp-ck-bar-row">' +
+        '<span class="fp-ck-bar-label">Tarefas</span>' +
+        '<div class="fp-ck-bar"><div class="fp-ck-bar-fill" id="fp-ck-bar-tasks" style="width:' + taskPct + '%"></div></div>' +
+        '<span class="fp-ck-bar-count" id="fp-ck-cnt-tasks">' + s.tasksDone + '/' + s.tasksTotal + '</span>' +
+      '</div>';
+  }
+
 
   function _fpCkItemHtml(it, tipo, ckId) {
     var checked = tipo === 'revisao' ? it.concluida : it.concluido;
@@ -2680,19 +2758,20 @@
           });
         }
       });
-      // update DOM
+      // update DOM item
       var $span = document.querySelector('#fp-ck-it-' + itemId + ' .fp-ck-txt');
       if ($span) $span.className = 'fp-ck-txt' + (checked ? ' done' : '');
-      // update progress
+      // update footer bars
       var list2 = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
       var ck2   = list2.find(function(c){ return String(c.id)===String(ckId); });
       if (ck2) {
-        var its, done;
-        if (tipo === 'abertos')  { its = ck2.checklist_tarefa_item||[];    done = its.filter(function(i){ return i.concluido; }).length; }
-        else if (tipo === 'etapa')    { its = ck2.checklist_etapa_exec_item||[]; done = its.filter(function(i){ return i.concluido; }).length; }
-        else { its = (ck2.pranchas||[]).reduce(function(a,p){ return a.concat(p.tarefas_revisao||[]); },[]); done = its.filter(function(t){ return t.concluida; }).length; }
-        var $prog = document.getElementById('fp-ck-prog');
-        if ($prog) $prog.textContent = done + '/' + its.length;
+        var s = _ckCalcStats(tipo, ck2);
+        var taskPct = s.tasksTotal ? Math.round(s.tasksDone / s.tasksTotal * 100) : 0;
+        var secPct  = s.secsTotal  ? Math.round(s.secsDone  / s.secsTotal  * 100) : 0;
+        var $bt = document.getElementById('fp-ck-bar-tasks'); if ($bt) $bt.style.width = taskPct + '%';
+        var $ct = document.getElementById('fp-ck-cnt-tasks'); if ($ct) $ct.textContent = s.tasksDone + '/' + s.tasksTotal;
+        var $bs = document.getElementById('fp-ck-bar-sec');   if ($bs) $bs.style.width = secPct + '%';
+        var $cs = document.getElementById('fp-ck-cnt-sec');   if ($cs) $cs.textContent = s.secsDone + '/' + s.secsTotal;
       }
     });
   }
