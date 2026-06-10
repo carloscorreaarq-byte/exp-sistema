@@ -1,0 +1,2373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP · Chat</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="shared/exp-nav.css">
+<script>
+(function(){
+  var saved = localStorage.getItem('exp-theme');
+  var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if(saved === 'dark' || (!saved && sys))
+    document.documentElement.setAttribute('data-theme','dark');
+  else
+    document.documentElement.setAttribute('data-theme','light');
+  /* cor de acento do chat */
+  var color = localStorage.getItem('exp_chat_color') || 'verde';
+  document.documentElement.setAttribute('data-chat-color', color);
+})();
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ══════════════════════════════════════════════════
+   VARIÁVEIS DE ACENTO — aplicadas sobre light/dark
+══════════════════════════════════════════════════ */
+:root {
+  --ca:          var(--verde);        /* acento dinâmico — padrão verde canônico */
+  --ca-bg:       var(--verde-bg);
+  --ca-mid:      var(--verde-soft);
+  --ca-viv:      rgba(62,120,88,.22);
+  --ca-rgb-vals: 62,120,88;
+  /* foco de input — segue o acento dinâmico do chat */
+  --mod-focus:      var(--ca);
+  --mod-focus-soft: var(--ca-mid);
+}
+[data-chat-color="azul"] {
+  --ca:          var(--azul);
+  --ca-bg:       var(--azul-bg);
+  --ca-mid:      var(--azul-soft);
+  --ca-viv:      rgba(74,114,181,.22);
+  --ca-rgb-vals: 74,114,181;
+}
+[data-chat-color="ouro"] {
+  --ca:          var(--ouro);
+  --ca-bg:       var(--ouro-bg);
+  --ca-mid:      var(--ouro-soft);
+  --ca-viv:      rgba(196,154,39,.22);
+  --ca-rgb-vals: 196,154,39;
+}
+[data-chat-color="terracota"] {
+  --ca:          var(--terracota);
+  --ca-bg:       var(--terracota-bg);
+  --ca-mid:      var(--terracota-soft);
+  --ca-viv:      rgba(184,86,56,.22);
+  --ca-rgb-vals: 184,86,56;
+}
+
+/* ══════════════════════════════════════════════════
+   BASE
+══════════════════════════════════════════════════ */
+body {
+  font-family: var(--font-ui);
+  background: var(--off, #F7F6F3);
+  color: var(--grafite, #111110);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+[data-theme="dark"] body { background: #161615; }
+
+/* ── Loading ── */
+#fp-loading {
+  position: fixed; inset: 0;
+  background: var(--off, #F7F6F3);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999; flex-direction: column; gap: 10px;
+}
+[data-theme="dark"] #fp-loading { background: #161615; }
+.fp-loading-logo { height: 26px; display: block; mix-blend-mode: multiply; }
+[data-theme="dark"] .fp-loading-logo { filter: invert(1) brightness(.85); mix-blend-mode: screen; }
+.fp-loading-bar { width: 110px; height: 2px; background: var(--cinza, #D0CFC9); border-radius: 2px; overflow: hidden; position: relative; margin-top: 4px; }
+.fp-loading-bar::after { content: ''; position: absolute; top: 0; left: 0; width: 40%; height: 100%; background: var(--grafite, #111110); border-radius: 2px; animation: fpldbar 1.4s ease-in-out infinite; }
+@keyframes fpldbar { 0%{transform:translateX(-150%)} 100%{transform:translateX(350%)} }
+
+/* ══════════════════════════════════════════════════
+   LAYOUT PRINCIPAL — cards flutuando no background
+══════════════════════════════════════════════════ */
+#fp-app {
+  display: none;
+  flex: 1;
+  padding: 20px 72px 20px 72px;
+  gap: 11px;
+  min-height: 0;
+  height: 100vh;
+  align-items: stretch;
+  position: relative;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════
+   NAV LATERAL — estilos base em shared/exp-nav.css
+   Override: padding-bottom extra para o timer
+══════════════════════════════════════════════════ */
+#exp-nav {
+  padding-bottom: 84px !important;
+}
+
+/* Timer: centrado na nav */
+#exp-timer-widget {
+  left: calc(72px + (66px / 2) - 23px) !important;
+  bottom: 34px !important;
+  z-index: 9998 !important;
+}
+
+/* ══════════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════════ */
+#fp-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+[data-theme="dark"] #fp-sidebar { background: #1E1E1D; border-color: #2E2D2B; }
+
+/* Cabeçalho sidebar */
+.fp-sb-head {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-sb-head { border-bottom-color: #2E2D2B; }
+
+.fp-sb-head-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.fp-sb-logo {
+  height: auto;
+  max-height: 20px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  mix-blend-mode: multiply;
+  margin-right: auto;  /* alinha à esquerda */
+}
+[data-theme="dark"] .fp-sb-logo {
+  filter: invert(1) brightness(0.85);
+  mix-blend-mode: screen;
+}
+
+.fp-sb-icon-btn {
+  width: 28px; height: 28px; border-radius: 7px; border: none;
+  background: var(--off, #F7F6F3); color: var(--grafite, #111110);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s;
+  flex-shrink: 0;
+}
+.fp-sb-icon-btn:hover { background: var(--cinza2, #ECEAE4); }
+[data-theme="dark"] .fp-sb-icon-btn { background: #252523; color: #F0EDE6; }
+[data-theme="dark"] .fp-sb-icon-btn:hover { background: #2E2D2B; }
+
+/* Status — apenas bolinha clicável */
+.fp-sb-status {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 50%;
+  border: none; background: none;
+  user-select: none; transition: background .12s;
+  position: relative; flex-shrink: 0;
+}
+.fp-sb-status:hover { background: var(--cinza2, #ECEAE4); }
+[data-theme="dark"] .fp-sb-status:hover { background: rgba(255,255,255,.08); }
+.fp-status-dot {
+  width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--branco, #fff);
+  transition: background .25s;
+}
+[data-theme="dark"] .fp-status-dot { box-shadow: 0 0 0 2px #1E1E1D; }
+.fp-status-dot.online  { background: #2D9E6B; }
+.fp-status-dot.foco    { background: #1D4FA0; }
+.fp-status-dot.ausente { background: #C4831A; }
+
+/* Status popover */
+#fp-status-pop {
+  position: absolute; top: calc(100% + 8px); left: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  padding: 5px 5px 5px;
+  display: none; flex-direction: column; gap: 1px;
+  min-width: 152px; z-index: 300;
+}
+[data-theme="dark"] #fp-status-pop { background: #1E1E1D; border-color: #2E2D2B; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+.fp-sopt-hdr {
+  font-family: var(--font-ui);
+  font-size: 11px; font-weight: 600; color: #888;
+  padding: 5px 10px 7px;
+}
+.fp-sopt {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 10px; border-radius: 7px;
+  border: none; background: none; cursor: pointer;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  width: 100%; text-align: left; transition: background .1s;
+  color: var(--grafite, #111110);
+  -webkit-font-smoothing: antialiased;
+}
+[data-theme="dark"] .fp-sopt { color: #C8C3BA; }
+.fp-sopt:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-sopt:hover { background: rgba(255,255,255,.05); }
+.fp-sopt.active { background: var(--off, #F7F6F3); font-weight: 700; color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-sopt.active { background: rgba(255,255,255,.07); color: #F0EDE6; }
+.fp-sopt-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* Busca */
+.fp-sb-search {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px;
+  background: var(--off, #F7F6F3);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 9px;
+  margin-bottom: 8px;
+}
+[data-theme="dark"] .fp-sb-search { background: #252523; border-color: #2E2D2B; }
+.fp-sb-search svg { color: var(--cinza, #D0CFC9); flex-shrink: 0; }
+.fp-search-input {
+  flex: 1; border: none; background: none;
+  font-family: var(--font-ui); font-size: 12px;
+  color: var(--grafite, #111110); outline: none;
+}
+[data-theme="dark"] .fp-search-input { color: #F0EDE6; }
+.fp-search-input::placeholder { color: var(--cinza, #D0CFC9); }
+
+/* Toggles */
+.fp-sb-toggles {
+  display: flex; gap: 6px;
+}
+.fp-toggle-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 5px 8px; border-radius: 8px; border: 1px solid var(--cinza2, #ECEAE4);
+  background: none; cursor: pointer;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 600;
+  color: var(--cinza, #D0CFC9);
+  transition: all .12s; user-select: none;
+}
+.fp-toggle-btn:hover { border-color: var(--ca); color: var(--ca); }
+.fp-toggle-btn.active { background: var(--ca-bg); border-color: var(--ca); color: var(--ca); }
+[data-theme="dark"] .fp-toggle-btn { border-color: #2E2D2B; color: #6B6860; }
+[data-theme="dark"] .fp-toggle-btn.active { background: var(--ca-mid); border-color: var(--ca); color: var(--ca); }
+
+/* Lista de conversas */
+#fp-conv-list {
+  flex: 1; overflow-y: auto; padding: 6px 8px 12px;
+}
+#fp-conv-list::-webkit-scrollbar { width: 3px; }
+#fp-conv-list::-webkit-scrollbar-thumb { background: var(--cinza, #D0CFC9); border-radius: 2px; }
+
+.fp-section-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 6px 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: .65px;
+  text-transform: uppercase; color: var(--cinza, #D0CFC9);
+  cursor: pointer; border: none; background: none; width: 100%;
+  font-family: var(--font-ui); text-align: left; transition: color .12s;
+}
+.fp-section-hdr:hover { color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-section-hdr { color: #4A4845; }
+[data-theme="dark"] .fp-section-hdr:hover { color: #C8C3BA; }
+
+/* Item de conversa */
+.fp-conv-item {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 8px; border-radius: 9px;
+  cursor: pointer; transition: background .1s;
+  position: relative;
+}
+.fp-conv-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-conv-item:hover { background: rgba(255,255,255,.04); }
+.fp-conv-item.active { background: var(--ca-bg); }
+[data-theme="dark"] .fp-conv-item.active { background: var(--ca-mid); }
+.fp-conv-item.unread .fp-conv-name { font-weight: 700; color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-conv-item.unread .fp-conv-name { color: #F0EDE6; }
+
+/* Avatar na sidebar */
+.fp-conv-av-wrap { position: relative; flex-shrink: 0; width: 36px; height: 36px; }
+.fp-av-circle {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+  font-family: var(--font-mono);
+}
+.fp-av-hash {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+  /* semi-transparente: funciona em light e dark sem cor fixa */
+  background: rgba(var(--ca-rgb, 29,106,74), .15);
+  color: var(--ca);
+}
+.fp-av-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: block; }
+.fp-presence-dot-sm {
+  width: 10px; height: 10px; border-radius: 50%;
+  position: absolute; bottom: -1px; right: -1px;
+  border: 2px solid var(--branco, #fff);
+}
+[data-theme="dark"] .fp-presence-dot-sm { border-color: #1E1E1D; }
+.fp-presence-dot-sm.online  { background: #2D9E6B; }
+.fp-presence-dot-sm.foco    { background: #1D4FA0; }
+.fp-presence-dot-sm.ausente { background: #C4831A; }
+
+/* Avatares empilhados (grupos) */
+.fp-av-stack { position: relative; width: 36px; height: 36px; flex-shrink: 0; }
+.fp-av-stack .fp-av-s {
+  position: absolute;
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700; color: #fff;
+  font-family: var(--font-mono);
+  border: 2px solid var(--branco, #fff);
+}
+[data-theme="dark"] .fp-av-stack .fp-av-s { border-color: #1E1E1D; }
+.fp-av-stack .fp-av-s:nth-child(1) { top: 0;    left: 0; z-index: 3; }
+.fp-av-stack .fp-av-s:nth-child(2) { top: 10px; left: 10px; z-index: 2; }
+.fp-av-stack .fp-av-s:nth-child(3) { display: none; }
+.fp-av-stack.trio .fp-av-s:nth-child(2) { top: 6px;  left: 12px; z-index: 2; }
+.fp-av-stack.trio .fp-av-s:nth-child(3) { top: 14px; left: 2px;  z-index: 1; display: flex; }
+
+/* Info da conversa */
+.fp-conv-body { flex: 1; min-width: 0; }
+.fp-conv-top {
+  display: flex; align-items: baseline; gap: 5px;
+  margin-bottom: 1px;
+}
+.fp-conv-name {
+  font-size: 12px; font-weight: 600;
+  color: var(--fp-conv-name-color, #3A3836);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; min-width: 0;
+}
+[data-theme="dark"] .fp-conv-name { color: var(--fp-conv-name-color, #C8C3BA); }
+.fp-conv-ts {
+  font-size: 9px; font-family: var(--font-mono);
+  color: var(--cinza, #D0CFC9); flex-shrink: 0;
+  white-space: nowrap;
+}
+.fp-conv-preview {
+  font-size: 11px;
+  color: var(--fp-preview-color, #888);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+[data-theme="dark"] .fp-conv-preview { color: var(--fp-preview-color, #6B6860); }
+.fp-conv-item.unread .fp-conv-preview { color: #555; }
+[data-theme="dark"] .fp-conv-item.unread .fp-conv-preview { color: #9A9590; }
+.fp-conv-badge {
+  background: var(--ca); color: #fff;
+  font-size: 9px; font-weight: 700; font-family: var(--font-mono);
+  min-width: 16px; height: 16px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 3px; flex-shrink: 0; margin-top: 2px;
+}
+.fp-conv-flag-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ca); flex-shrink: 0; margin-top: 4px;
+  opacity: .7;
+}
+
+/* (color trigger removido — agora dentro do popover de visualização) */
+
+/* Popover de visualização */
+#fp-view-pop {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.15);
+  padding: 8px 10px 10px;
+  display: none; flex-direction: column; gap: 6px;
+  z-index: 200; min-width: 160px;
+}
+[data-theme="dark"] #fp-view-pop { background: #1E1E1D; border-color: #2E2D2B; }
+.fp-view-pop-section {
+  font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--cinza, #D0CFC9);
+  margin-top: 4px;
+}
+.fp-view-pop-colors { display: flex; gap: 6px; }
+.fp-view-pop-tones  { display: flex; gap: 6px; }
+.fp-view-pop-sizes  { display: flex; align-items: center; gap: 6px; }
+.fp-color-pop-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform .12s, border-color .12s; flex-shrink: 0;
+}
+.fp-color-pop-dot:hover { transform: scale(1.2); }
+.fp-color-pop-dot.active { border-color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-color-pop-dot.active { border-color: #F0EDE6; }
+.fp-tone-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform .12s, border-color .12s; flex-shrink: 0;
+}
+.fp-tone-dot:hover { transform: scale(1.2); }
+.fp-tone-dot.active { border-color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-tone-dot.active { border-color: #F0EDE6; }
+.fp-view-size-btn {
+  padding: 3px 8px; border-radius: 6px; border: 1px solid var(--cinza2, #ECEAE4);
+  background: var(--off, #F7F6F3); cursor: pointer;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  color: var(--grafite, #111110); transition: border-color .12s;
+}
+.fp-view-size-btn:hover { border-color: var(--ca); }
+[data-theme="dark"] .fp-view-size-btn { background: #252523; border-color: #2E2D2B; color: #C8C3BA; }
+
+/* ══════════════════════════════════════════════════
+   MAIN — área de chat
+══════════════════════════════════════════════════ */
+#fp-main {
+  flex: 1;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0;
+}
+[data-theme="dark"] #fp-main { background: #1E1E1D; border-color: #2E2D2B; }
+[data-theme="dark"] #fp-chat-area { background: #1E1E1D !important; }
+
+/* Header do canal */
+#fp-chat-header {
+  padding: 0 16px;
+  height: 52px;
+  background: #ECEAE4;              /* cinza2 — opaco, bem diferente do branco */
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #D8D6D0;
+}
+[data-theme="dark"] #fp-chat-header { background: #2A2927; border-bottom-color: #3A3836; }
+/* Avatar do header com status sobreposto */
+.fp-hdr-av {
+  flex-shrink: 0;
+  position: relative;
+}
+/* Status dot: canto inferior-esquerdo do avatar, alinhado com o nome */
+.fp-hdr-status-dot {
+  position: absolute;
+  bottom: -1px; left: -1px;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid #ECEAE4;  /* mesma cor do header */
+  display: none;
+}
+[data-theme="dark"] .fp-hdr-status-dot { border-color: #2A2927; }
+.fp-hdr-status-dot.online  { background: #2D9E6B; display: block; }
+.fp-hdr-status-dot.foco    { background: #1D4FA0; display: block; }
+.fp-hdr-status-dot.ausente { background: #C4831A; display: block; }
+
+.fp-hdr-info { flex: 1; min-width: 0; }
+.fp-hdr-title {
+  font-size: 14px; font-weight: 700; color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-hdr-title { color: #F0EDE6; }
+/* sub agora só mostra texto de status ou tipo de canal — sem ícone inline */
+.fp-hdr-sub {
+  font-size: 10px; color: #888; margin-top: 1px;
+  display: none; align-items: center; gap: 5px;
+}
+/* mostrar sub apenas para grupos/projetos (status textual) */
+.fp-hdr-sub.visible { display: flex; }
+.fp-hdr-presence { display: none; } /* substituído pelo dot sobreposto no avatar */
+.fp-chat-icon-btn {
+  width: 30px; height: 30px; border-radius: 8px; border: none;
+  background: rgba(0,0,0,.06); color: var(--grafite, #111110);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s;
+}
+.fp-chat-icon-btn:hover { background: rgba(0,0,0,.12); }
+[data-theme="dark"] .fp-chat-icon-btn { background: rgba(255,255,255,.08); color: #F0EDE6; }
+[data-theme="dark"] .fp-chat-icon-btn:hover { background: rgba(255,255,255,.14); }
+
+/* Placeholder */
+#fp-placeholder {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  color: var(--cinza, #D0CFC9);
+}
+#fp-placeholder svg { opacity: .25; }
+.fp-placeholder-text { font-size: 13px; font-weight: 500; color: #aaa; }
+
+/* Área de mensagens */
+#fp-messages {
+  flex: 1; overflow-y: auto;
+  padding: 16px 20px 8px;
+  display: flex; flex-direction: column; gap: 0;
+  scroll-behavior: smooth;
+  position: relative;
+  background: var(--branco, #fff);
+}
+[data-theme="dark"] #fp-messages { background: #1E1E1D; }
+#fp-messages::-webkit-scrollbar { width: 4px; }
+#fp-messages::-webkit-scrollbar-thumb { background: var(--cinza2, #ECEAE4); border-radius: 2px; }
+
+/* Empty / loading */
+.fp-empty {
+  text-align: center; color: var(--cinza, #D0CFC9);
+  font-size: 12px; line-height: 1.7; margin: auto; padding: 24px;
+}
+.fp-empty-icon { font-size: 28px; margin-bottom: 8px; opacity: .4; }
+.fp-loading {
+  display: flex; align-items: center; justify-content: center;
+  gap: 5px; margin: auto; padding: 24px;
+}
+.fp-loading-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cinza, #D0CFC9);
+  animation: fpPulse 1.2s ease-in-out infinite;
+}
+.fp-loading-dot:nth-child(2) { animation-delay: .2s; }
+.fp-loading-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes fpPulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+/* Separador de data */
+.fp-date-sep {
+  display: flex; align-items: center; gap: 8px;
+  margin: 14px 0 6px;
+  color: var(--cinza, #D0CFC9); font-size: 9px;
+  font-family: var(--font-mono); letter-spacing: .5px;
+}
+.fp-date-sep::before, .fp-date-sep::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--cinza2, #ECEAE4);
+}
+[data-theme="dark"] .fp-date-sep::before,
+[data-theme="dark"] .fp-date-sep::after { background: #2A2927; }
+
+/* ── Bloco de mensagem ────────────────────────────── */
+.fp-msg-block {
+  display: flex; gap: 10px;
+  padding: 4px 6px; border-radius: 8px;
+  transition: background .1s;
+  margin-bottom: 2px;
+}
+.fp-msg-block:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-msg-block:hover { background: rgba(255,255,255,.03); }
+
+/* Não lidas: 15% opacidade */
+.fp-msg-block.unread {
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .15) !important;
+}
+
+/* Sinalizadas: estilo prio-card — borda esquerda grossa + fundo semitransparente */
+.fp-msg-block.flagged {
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .13) !important;
+  border-left: 3px solid var(--ca);
+  border-radius: 0 8px 8px 0;
+  padding-left: 9px;   /* compensa a borda para manter alinhamento visual */
+  margin-left: 2px;    /* pequeno recuo para a borda não encostar na borda do container */
+}
+[data-theme="dark"] .fp-msg-block.flagged {
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .18) !important;
+}
+
+/* Avatar da mensagem */
+.fp-msg-av {
+  flex-shrink: 0; width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+.fp-msg-av img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; display: block; }
+
+/* Mensagem agrupada (mesmo sender, sem cabeçalho) */
+.fp-msg-block.grouped { padding-top: 1px; padding-bottom: 1px; }
+.fp-msg-block.grouped .fp-msg-av { visibility: hidden; }
+
+/* Mensagens próprias — alinhadas à direita */
+.fp-msg-block.own { flex-direction: row-reverse; }
+.fp-msg-block.own .fp-msg-content { align-items: flex-end; display: flex; flex-direction: column; }
+.fp-msg-block.own .fp-msg-header  { flex-direction: row-reverse; }
+.fp-msg-block.own .fp-msg-text    { text-align: right; }
+.fp-msg-block.own .fp-msg-reactions { justify-content: flex-end; }
+.fp-msg-block.own .fp-msg-actions  { margin-left: 0; margin-right: auto; }
+
+/* Conteúdo da mensagem */
+.fp-msg-content { flex: 1; min-width: 0; }
+.fp-msg-header {
+  display: flex; align-items: baseline; gap: 7px;
+  margin-bottom: 3px;
+}
+.fp-msg-name {
+  font-size: 13px; font-weight: 700; color: var(--grafite, #111110);
+}
+[data-theme="dark"] .fp-msg-name { color: #F0EDE6; }
+.fp-msg-ts {
+  font-size: 8px; font-family: var(--font-mono);
+  color: #aaa; letter-spacing: .2px;
+}
+.fp-msg-text {
+  font-size: var(--fp-msg-size, 12px);
+  line-height: 1.55;
+  color: var(--fp-msg-color, #333);
+  word-break: break-word;
+}
+[data-theme="dark"] .fp-msg-text { color: var(--fp-msg-color, #C8C3BA); }
+.fp-link { color: var(--ca); text-decoration: underline; word-break: break-all; }
+.fp-link:hover { opacity: .8; }
+
+/* Imagem inline */
+.fp-media-thumb {
+  display: inline-block; max-width: min(400px, 60vw);
+  border-radius: 10px; overflow: hidden;
+  border: 1px solid rgba(0,0,0,.07);
+  cursor: pointer; margin-top: 6px;
+  background: var(--off, #F7F6F3);
+}
+[data-theme="dark"] .fp-media-thumb { background: #252523; border-color: #3A3836; }
+.fp-media-thumb img { display: block; width: 100%; height: auto; max-height: 260px; object-fit: cover; }
+.fp-media-expired {
+  padding: 10px 14px; font-size: 11px; font-weight: 600; color: #999;
+  background: var(--off, #F7F6F3); border: 1px dashed var(--cinza2, #ECEAE4);
+  border-radius: 10px; margin-top: 6px; display: inline-block;
+}
+
+/* Barra de reações */
+.fp-msg-reactions {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 5px; flex-wrap: wrap;
+}
+.fp-rxn-btn {
+  display: flex; align-items: center; gap: 3px;
+  padding: 3px 8px; border-radius: 20px;
+  border: 1px solid var(--cinza2, #ECEAE4);
+  background: var(--off, #F7F6F3); cursor: pointer;
+  font-size: 11px; transition: border-color .1s, background .1s;
+}
+[data-theme="dark"] .fp-rxn-btn { background: #252523; border-color: #2E2D2B; }
+.fp-rxn-btn:hover { border-color: var(--ca); }
+.fp-rxn-btn.active { background: var(--ca-bg); border-color: var(--ca); }
+[data-theme="dark"] .fp-rxn-btn.active { background: var(--ca-mid); }
+.fp-rxn-count { font-size: 10px; font-family: var(--font-mono); color: #888; }
+.fp-rxn-btn.active .fp-rxn-count { color: var(--ca); font-weight: 700; }
+
+/* Botões de ação (aparecem no hover do bloco) */
+.fp-msg-actions {
+  display: none; align-items: center; gap: 2px;
+  margin-left: auto; flex-shrink: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 8px; padding: 2px 3px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.08);
+  position: relative; top: -2px;
+  height: 28px;
+}
+[data-theme="dark"] .fp-msg-actions { background: #252523; border-color: #2E2D2B; }
+.fp-msg-block:hover .fp-msg-actions { display: flex; }
+.fp-action-btn {
+  width: 24px; height: 24px; border-radius: 6px; border: none;
+  background: none; color: #888;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .1s, color .1s;
+  flex-shrink: 0; padding: 0;
+}
+.fp-action-btn:hover { background: var(--off, #F7F6F3); color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-action-btn:hover { background: rgba(255,255,255,.07); color: #F0EDE6; }
+.fp-action-btn.flag-active { color: var(--ca); }
+
+/* ── Busca dentro da conversa (flutuante, não muda layout) ── */
+#fp-in-search-bar {
+  position: fixed;
+  display: none;
+  align-items: center; gap: 6px;
+  padding: 6px 8px;
+  /* light: mesmo tom da área de mensagens — sutil, não destoa */
+  background: var(--cinza2, #ECEAE4);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  z-index: 200;
+  animation: fpBannerIn .14s ease-out;
+}
+/* dark: tom de fundo discreto */
+[data-theme="dark"] #fp-in-search-bar { background: #252523; border-color: #2E2D2B; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+#fp-in-search-bar.open { display: flex; }
+
+.fp-in-search-wrap {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.6);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 8px; padding: 5px 10px;
+}
+[data-theme="dark"] .fp-in-search-wrap { background: #1E1E1D; border-color: #3A3836; }
+.fp-in-search-wrap:focus-within { border-color: var(--ca); background: #fff; }
+[data-theme="dark"] .fp-in-search-wrap:focus-within { background: #252523; }
+.fp-in-search-input {
+  flex: 1; border: none; background: none; outline: none;
+  font-family: var(--font-ui); font-size: 12px;
+  color: var(--grafite, #111110);
+}
+[data-theme="dark"] .fp-in-search-input { color: #F0EDE6; }
+.fp-in-search-input::placeholder { color: var(--cinza, #D0CFC9); }
+
+.fp-in-search-count {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--cinza, #D0CFC9); white-space: nowrap; flex-shrink: 0;
+}
+.fp-in-search-count.found { color: var(--ca); font-weight: 600; }
+
+.fp-in-search-nav {
+  width: 26px; height: 26px; border-radius: 7px; border: none;
+  background: none; color: #888; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s; padding: 0; flex-shrink: 0;
+}
+.fp-in-search-nav:hover { background: var(--cinza2, #ECEAE4); color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-in-search-nav:hover { background: rgba(255,255,255,.08); color: #F0EDE6; }
+.fp-in-search-close {
+  width: 26px; height: 26px; border-radius: 7px; border: none;
+  background: none; color: #888; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s; padding: 0; flex-shrink: 0;
+}
+.fp-in-search-close:hover { background: rgba(184,76,58,.1); color: #B84C3A; }
+
+/* Highlight de resultado — cinza neutro */
+.fp-search-highlight {
+  background: rgba(0,0,0,.12);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+[data-theme="dark"] .fp-search-highlight { background: rgba(255,255,255,.18); }
+.fp-search-highlight.current {
+  background: rgba(0,0,0,.28);
+  border-radius: 2px;
+}
+[data-theme="dark"] .fp-search-highlight.current { background: rgba(255,255,255,.35); }
+/* Toast nova mensagem */
+.fp-new-msg-toast {
+  position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
+  background: var(--ca); color: #fff;
+  font-size: 11px; font-weight: 600;
+  padding: 5px 14px; border-radius: 20px;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2);
+  animation: fpToastIn .2s ease-out; z-index: 50;
+}
+@keyframes fpToastIn { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+/* ── Input area ── */
+#fp-input-area {
+  padding: 10px 16px 12px;
+  border-top: 1px solid #D8D6D0;
+  display: flex; gap: 8px; align-items: flex-end;
+  background: #ECEAE4;              /* mesmo tom do header — opaco */
+  flex-shrink: 0;
+}
+[data-theme="dark"] #fp-input-area { background: #2A2927; border-top-color: #3A3836; }
+.fp-attach-btn {
+  width: 34px; height: 34px;
+  background: var(--off, #F7F6F3); border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 8px; color: var(--grafite, #111110);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: border-color .15s; padding: 0;
+}
+.fp-attach-btn:hover { border-color: var(--ca); }
+[data-theme="dark"] .fp-attach-btn { background: #252523; border-color: #2E2D2B; color: #F0EDE6; }
+#fp-input {
+  flex: 1; border: 1px solid #D0CFC9; border-radius: 10px;
+  padding: 8px 12px; font-family: var(--font-ui); font-size: 13px;
+  resize: none; outline: none; max-height: 120px; min-height: 34px;
+  color: var(--grafite, #111110); background: #fff;
+  line-height: 1.45; transition: border-color .15s; overflow-y: auto;
+}
+#fp-input::placeholder { color: #B0AEA8; }
+#fp-input:focus { border-color: var(--ca); }
+[data-theme="dark"] #fp-input { background: #1E1E1D; border-color: #3A3836; color: #F0EDE6; }
+[data-theme="dark"] #fp-input:focus { border-color: var(--ca); }
+.fp-send-btn {
+  width: 34px; height: 34px;
+  background: var(--ca); border: none; border-radius: 8px;
+  color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: opacity .15s; padding: 0;
+}
+.fp-send-btn:hover { opacity: .85; }
+.fp-send-btn:active { opacity: .7; }
+
+#fp-composer-status {
+  padding: 0 16px 8px; font-size: 10px; color: #888;
+  background: var(--branco, #fff); display: none;
+}
+[data-theme="dark"] #fp-composer-status { background: #1E1E1D; }
+#fp-composer-status.ok { color: var(--ca); }
+#fp-composer-status.warn { color: #B84C3A; }
+
+/* ══════════════════════════════════════════════════
+   POPOVER NOVO DM (posicionado pelo JS)
+══════════════════════════════════════════════════ */
+#fp-members-panel {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: 290px; max-height: 520px;  /* mais alto para evitar scroll */
+  display: none; flex-direction: column; overflow: hidden;
+  z-index: 400;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-members-panel { background: #1E1E1D; border-color: #2E2D2B; }
+.fp-members-head {
+  padding: 10px 12px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4); flex-shrink: 0;
+}
+[data-theme="dark"] .fp-members-head { border-bottom-color: #2E2D2B; }
+.fp-members-title { flex: 1; font-size: 12px; font-weight: 700; color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-members-title { color: #F0EDE6; }
+.fp-members-close {
+  width: 28px; height: 28px; border-radius: 7px; border: none;
+  background: rgba(0,0,0,.07); color: var(--grafite, #111110);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  padding: 0;
+}
+[data-theme="dark"] .fp-members-close { background: rgba(255,255,255,.08); color: #F0EDE6; }
+.fp-members-list { flex: 1; overflow-y: auto; padding: 8px; }
+.fp-member-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 9px; cursor: pointer; transition: background .1s;
+}
+.fp-member-item:hover     { background: var(--off, #F7F6F3); }
+.fp-member-item.sel       { background: var(--ca-bg); }
+[data-theme="dark"] .fp-member-item:hover { background: rgba(255,255,255,.05); }
+[data-theme="dark"] .fp-member-item.sel   { background: var(--ca-mid); }
+.fp-member-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--cinza2, #ECEAE4); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, border-color .12s;
+}
+.fp-member-check.sel { background: var(--ca); border-color: var(--ca); }
+.fp-member-check.sel::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+.fp-member-name { font-size: 12px; font-weight: 600; color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-member-name { color: #F0EDE6; }
+.fp-member-role { font-size: 10px; color: #999; margin-top: 1px; }
+.fp-members-footer {
+  padding: 10px 14px; border-top: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+[data-theme="dark"] .fp-members-footer { border-top-color: #2E2D2B; }
+.fp-members-info { font-size: 11px; color: #999; }
+.fp-members-confirm {
+  background: var(--ca); color: #fff; border: none;
+  border-radius: 8px; padding: 7px 16px;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.fp-members-confirm:hover { opacity: .8; }
+
+/* ══════════════════════════════════════════════════
+   MEDIA VIEWER
+══════════════════════════════════════════════════ */
+#fp-media-viewer {
+  position: fixed; inset: 0;
+  background: rgba(17,17,16,.65);
+  display: none; align-items: center; justify-content: center;
+  z-index: 500; padding: 24px;
+}
+.fp-mv-card {
+  width: min(900px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  background: var(--branco, #fff); border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.28);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+[data-theme="dark"] .fp-mv-card { background: #1E1E1D; }
+.fp-mv-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; background: var(--off, #F7F6F3); flex-shrink: 0;
+}
+[data-theme="dark"] .fp-mv-head { background: #252523; }
+.fp-mv-copy { flex: 1; min-width: 0; }
+.fp-mv-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-mv-title { color: #F0EDE6; }
+.fp-mv-meta { font-family: var(--font-mono); font-size: 10px; color: #999; }
+.fp-mv-tools { display: flex; align-items: center; gap: 5px; }
+.fp-mv-zoombtn {
+  width: 28px; height: 28px; border-radius: 8px;
+  border: 1px solid var(--cinza2, #ECEAE4); background: var(--branco, #fff);
+  color: var(--grafite, #111110); font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.fp-mv-zoombtn:hover { border-color: var(--ca); color: var(--ca); }
+[data-theme="dark"] .fp-mv-zoombtn { background: #2A2927; border-color: #3A3937; color: #F0EDE6; }
+.fp-mv-zoomlabel { min-width: 42px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: #999; }
+.fp-mv-count { min-width: 40px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: #999; }
+.fp-mv-close {
+  width: 28px; height: 28px; border-radius: 7px; border: none;
+  background: rgba(0,0,0,.07); color: var(--grafite, #111110);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s; padding: 0;
+}
+[data-theme="dark"] .fp-mv-close { background: rgba(255,255,255,.08); color: #F0EDE6; }
+.fp-mv-close:hover { background: rgba(0,0,0,.14); }
+.fp-mv-body {
+  flex: 1; padding: 16px; background: var(--off, #F7F6F3);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 260px; overflow: auto;
+}
+[data-theme="dark"] .fp-mv-body { background: #252523; }
+.fp-mv-stage {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: 360px; width: 100%;
+}
+.fp-mv-body img { max-width: 100%; max-height: calc(100vh - 200px); border-radius: 10px; display: block; box-shadow: 0 10px 24px rgba(0,0,0,.12); }
+.fp-mv-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid rgba(17,17,16,.08); background: rgba(255,255,255,.94);
+  color: var(--grafite, #111110); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+}
+[data-theme="dark"] .fp-mv-nav { background: rgba(42,41,39,.94); border-color: #3A3937; color: #F0EDE6; }
+.fp-mv-nav:hover { border-color: var(--ca); color: var(--ca); }
+.fp-mv-nav.prev { left: 8px; }
+.fp-mv-nav.next { right: 8px; }
+.fp-mv-nav[disabled] { opacity: .3; cursor: default; pointer-events: none; }
+.fp-mv-empty { font-size: 11px; color: #999; text-align: center; padding: 30px; }
+
+/* ── Painel de tarefas (monocromático, cor do tema) ── */
+#fp-tasks-panel {
+  width: 340px; flex-shrink: 0;
+  background: var(--ca-bg);
+  border: 1px solid rgba(var(--ca-rgb-vals, 29,106,74), .18);
+  border-radius: 12px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: fpSlideIn .18s ease-out;
+}
+[data-theme="dark"] #fp-tasks-panel { background: var(--ca-mid); border-color: rgba(var(--ca-rgb-vals, 29,106,74), .25); }
+@keyframes fpSlideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+
+/* Tarefa individual */
+.fp-task-item {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 6px; border-radius: 8px;
+  cursor: pointer; transition: background .1s;
+  border-bottom: 1px solid rgba(var(--ca-rgb-vals, 29,106,74), .12);
+}
+.fp-task-item:last-child { border-bottom: none; }
+.fp-task-item:hover { background: rgba(var(--ca-rgb-vals, 29,106,74), .10); }
+[data-theme="dark"] .fp-task-item { border-bottom-color: rgba(var(--ca-rgb-vals, 29,106,74), .18); }
+[data-theme="dark"] .fp-task-item:hover { background: rgba(var(--ca-rgb-vals, 29,106,74), .15); }
+.fp-task-check {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--cinza, #D0CFC9);
+  flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s, border-color .12s;
+}
+.fp-task-check:hover { border-color: var(--ca); }
+.fp-task-check.done  { background: var(--ca); border-color: var(--ca); }
+.fp-task-check.done::after { content:''; width:6px; height:6px; border-radius:50%; background:#fff; }
+.fp-task-body  { flex: 1; min-width: 0; }
+.fp-task-desc  { font-size: 12px; color: #333; line-height: 1.4; word-break: break-word; }
+[data-theme="dark"] .fp-task-desc { color: #C8C3BA; }
+.fp-task-meta  { font-size: 10px; color: #999; margin-top: 3px; display: flex; align-items: center; gap: 6px; }
+.fp-task-prazo { font-family: var(--font-mono); font-size: 9px; font-weight: 600; }
+.fp-task-prazo.vencida { color: #B84C3A; }
+.fp-task-prazo.hoje    { color: #C4831A; }
+.fp-task-section { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--cinza, #D0CFC9); padding: 10px 6px 4px; }
+[data-theme="dark"] .fp-task-section { color: rgba(255,255,255,.5); }
+.fp-delegadas-toggle { transition: color .12s; }
+.fp-delegadas-toggle:hover { color: var(--grafite, #111110) !important; }
+[data-theme="dark"] .fp-delegadas-toggle:hover { color: rgba(255,255,255,.75) !important; }
+.fp-task-delegada { opacity: .9; }
+.fp-task-done { opacity: .5; }
+.fp-task-done .fp-task-desc { text-decoration: line-through; color: #aaa; }
+
+/* ── Formulário de tarefas ── */
+#fp-task-form {
+  padding: 10px 10px 12px;
+  border-top: 1px solid rgba(var(--ca-rgb-vals, 29,106,74), .18);
+  background: rgba(var(--ca-rgb-vals, 29,106,74), .08);
+  flex-shrink: 0;
+}
+[data-theme="dark"] #fp-task-form { background: rgba(var(--ca-rgb-vals, 29,106,74), .12); border-top-color: rgba(var(--ca-rgb-vals, 29,106,74), .25); }
+#fp-task-desc {
+  width: 100%; border: 1px solid var(--cinza2, #ECEAE4); border-radius: 8px;
+  padding: 7px 10px; font-family: var(--font-ui); font-size: 12px;
+  resize: none; outline: none; background: #fff; color: var(--grafite, #111110);
+  line-height: 1.4; transition: border-color .15s; margin-bottom: 7px;
+}
+#fp-task-desc::placeholder { color: var(--cinza, #D0CFC9); }
+#fp-task-desc:focus { border-color: var(--ca); }
+[data-theme="dark"] #fp-task-desc { background: rgba(var(--ca-rgb-vals), .18); border-color: rgba(var(--ca-rgb-vals), .3); color: #F0EDE6; }
+.fp-task-form-row {
+  display: flex; gap: 5px; align-items: center;
+}
+#fp-task-tipo, #fp-task-data {
+  border: 1px solid var(--cinza2, #ECEAE4); border-radius: 7px;
+  padding: 5px 7px; font-family: var(--font-ui); font-size: 10px;
+  background: #fff; color: var(--grafite, #111110); outline: none;
+  transition: border-color .15s;
+}
+#fp-task-tipo { flex: 1; }
+#fp-task-data { width: 110px; flex-shrink: 0; }
+#fp-task-tipo:focus, #fp-task-data:focus { border-color: var(--ca); }
+[data-theme="dark"] #fp-task-tipo, [data-theme="dark"] #fp-task-data { background: rgba(var(--ca-rgb-vals), .18); border-color: rgba(var(--ca-rgb-vals), .3); color: #F0EDE6; }
+.fp-task-add-btn {
+  padding: 5px 10px; border-radius: 7px; border: none;
+  background: var(--ca); color: #fff;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.fp-task-add-btn:hover { opacity: .85; }
+.fp-task-assign-btn {
+  width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--cinza2, #ECEAE4);
+  background: #fff; color: var(--grafite, #111110);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: border-color .15s;
+  padding: 0;
+}
+.fp-task-assign-btn:hover { border-color: var(--ca); color: var(--ca); }
+[data-theme="dark"] .fp-task-assign-btn { background: rgba(var(--ca-rgb-vals), .18); border-color: rgba(var(--ca-rgb-vals), .3); color: #F0EDE6; }
+
+/* ── Listas: tab bar ── */
+.fp-lists-tabs { display:flex; padding:8px 10px 0; gap:3px; flex-shrink:0; border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.12); }
+.fp-lists-tab { padding:5px 9px; border-radius:7px 7px 0 0; border:none; background:none; font-family:var(--font-ui); font-size:10px; font-weight:600; color:var(--cinza,#D0CFC9); cursor:pointer; transition:background .12s,color .12s; white-space:nowrap; }
+.fp-lists-tab:hover { color:var(--ca); }
+.fp-lists-tab.active { background:rgba(var(--ca-rgb-vals,29,106,74),.12); color:var(--ca); }
+/* Checklist view dentro do painel */
+#fp-ck-view { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+.fp-ck-selector { padding:8px 10px 6px; flex-shrink:0; }
+.fp-ck-select { width:100%; border:1px solid var(--cinza2,#ECEAE4); border-radius:8px; padding:7px 10px; font-family:var(--font-ui); font-size:11px; background:#fff; color:var(--grafite,#111110); outline:none; transition:border-color .15s; }
+.fp-ck-select:focus { border-color:var(--ca); }
+[data-theme="dark"] .fp-ck-select { background:rgba(var(--ca-rgb-vals),.18); border-color:rgba(var(--ca-rgb-vals),.3); color:#F0EDE6; }
+#fp-ck-items { flex:1; overflow-y:auto; padding:4px 10px 8px; }
+.fp-ck-item { display:flex; align-items:flex-start; gap:8px; padding:5px 4px; border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.09); }
+.fp-ck-item:last-child { border-bottom:none; }
+.fp-ck-cb { width:14px; height:14px; border:1.5px solid var(--cinza,#D0CFC9); border-radius:3px; cursor:pointer; flex-shrink:0; margin-top:1px; appearance:none; -webkit-appearance:none; background:#fff; transition:background .12s,border-color .12s; background-size:10px; background-repeat:no-repeat; background-position:center; }
+.fp-ck-cb:checked { background-color:var(--ca); border-color:var(--ca); background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 7L5.5 10.5L12 4' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.fp-ck-txt { font-size:11px; flex:1; line-height:1.4; color:#333; }
+[data-theme="dark"] .fp-ck-txt { color:#C8C3BA; }
+.fp-ck-txt.done { text-decoration:line-through; color:#bbb; }
+.fp-ck-secao { font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--cinza,#D0CFC9); padding:8px 4px 3px; }
+.fp-ck-prog { font-size:10px; font-family:var(--font-mono); color:var(--ca); font-weight:700; }
+.fp-ck-prog-hdr { padding:4px 4px 8px; display:flex; align-items:center; justify-content:space-between; }
+.fp-ck-prog-label { font-size:10px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+.fp-ck-add { display:flex; align-items:center; gap:8px; padding:6px 4px; }
+.fp-ck-cb-mock { width:14px; height:14px; border:1.5px solid var(--cinza,#D0CFC9); border-radius:3px; flex-shrink:0; opacity:.3; }
+.fp-ck-add-inp { flex:1; border:none; border-bottom:1px solid var(--cinza2,#ECEAE4); outline:none; font-family:var(--font-ui); font-size:11px; padding:2px 0; background:transparent; color:var(--grafite,#111110); }
+.fp-ck-add-inp::placeholder { color:var(--cinza,#D0CFC9); }
+.fp-ck-empty { font-size:11px; color:#aaa; text-align:center; padding:24px; }
+
+/* ── Painel de prioridades (sobrepõe sidebar, mesmo tamanho) ── */
+#fp-prio-panel {
+  width: 340px; flex-shrink: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: fpSlideIn .18s ease-out;
+}
+[data-theme="dark"] #fp-prio-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+#fp-prio-panel-head {
+  display: flex; align-items: center;
+  padding: 0 14px;
+  height: 44px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+  gap: 8px;
+}
+[data-theme="dark"] #fp-prio-panel-head { border-bottom-color: #2E2D2B; }
+#fp-prio-panel-title {
+  font-size: 14px; font-weight: 800; letter-spacing: -.2px;
+  color: var(--grafite, #111110); flex: 1;
+}
+[data-theme="dark"] #fp-prio-panel-title { color: #F0EDE6; }
+#fp-prio-panel-count {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--cinza, #D0CFC9);
+}
+#fp-prio-panel-list {
+  flex: 1; overflow-y: auto; padding: 8px 10px 12px;
+}
+#fp-prio-panel-list::-webkit-scrollbar { width: 3px; }
+#fp-prio-panel-list::-webkit-scrollbar-thumb { background: var(--cinza, #D0CFC9); border-radius: 2px; }
+
+/* Card de prioridade dentro do painel */
+.fp-pp-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  margin-bottom: 6px;
+  cursor: pointer; transition: filter .1s;
+  border-left: 3px solid transparent;
+}
+.fp-pp-card:hover { filter: brightness(.97); }
+.fp-pp-card          { background: #EAF0FB; border-left-color: #1D4FA0; }
+.fp-pp-card.hoje     { background: #FBF3E8; border-left-color: #C4831A; }
+.fp-pp-card.atrasada { background: #F5E0DD; border-left-color: #B84C3A; }
+[data-theme="dark"] .fp-pp-card          { background: rgba(29,79,160,.15);  border-left-color: #4A72B5; }
+[data-theme="dark"] .fp-pp-card.hoje     { background: rgba(196,131,26,.15); border-left-color: #C4831A; }
+[data-theme="dark"] .fp-pp-card.atrasada { background: rgba(184,76,58,.18);  border-left-color: #B84C3A; }
+
+.fp-pp-info { flex: 1; min-width: 0; }
+.fp-pp-done {
+  background: var(--off, #F7F6F3) !important;
+  border-left-color: var(--cinza2, #ECEAE4) !important;
+  opacity: .55;
+}
+[data-theme="dark"] .fp-pp-done {
+  background: rgba(255,255,255,.04) !important;
+  border-left-color: #3A3836 !important;
+}
+.fp-pp-done .fp-pp-nome {
+  text-decoration: line-through;
+  color: var(--cinza, #D0CFC9) !important;
+}
+.fp-pp-nome {
+  font-size: 12px; font-weight: 700; line-height: 1.35;
+  color: #1D4FA0; word-break: break-word;
+}
+.fp-pp-card.hoje     .fp-pp-nome { color: #C4831A; }
+.fp-pp-card.atrasada .fp-pp-nome { color: #B84C3A; }
+[data-theme="dark"] .fp-pp-nome               { color: #7AA3D4; }
+[data-theme="dark"] .fp-pp-card.hoje     .fp-pp-nome { color: #E5A84A; }
+[data-theme="dark"] .fp-pp-card.atrasada .fp-pp-nome { color: #E07B6B; }
+
+.fp-pp-cidade { font-size: 10px; color: #666; margin-top: 2px; }
+[data-theme="dark"] .fp-pp-cidade { color: #8C8A85; }
+.fp-pp-etapa  { font-size: 10px; color: #888; margin-top: 1px; }
+.fp-pp-prod   { font-size: 9px; color: #aaa; margin-top: 1px; text-transform: uppercase; letter-spacing: .4px; }
+.fp-pp-coment { font-size: 10px; margin-top: 4px; font-style: italic; color: #999; }
+.fp-pp-chips  { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.fp-pp-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 600;
+  border-radius: 4px; padding: 1px 7px;
+  border: 1px solid var(--cinza2, #ECEAE4); color: #888;
+}
+.fp-pp-chip.atrasada { background: #FBF0EE; border-color: #B84C3A; color: #B84C3A; }
+.fp-pp-chip.hoje     { background: #FBF3E8; border-color: #C4831A; color: #C4831A; }
+
+.fp-pp-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid currentColor; flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 10px;
+  opacity: .35; transition: opacity .15s;
+}
+.fp-pp-card          .fp-pp-check { color: #1D4FA0; }
+.fp-pp-card.hoje     .fp-pp-check { color: #C4831A; }
+.fp-pp-card.atrasada .fp-pp-check { color: #B84C3A; }
+.fp-pp-check:hover { opacity: 1; }
+
+/* ── Hover banners: calendário e comercial ── */
+#fp-cal-banner, #fp-crm-banner {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: 360px;
+  display: none;
+  z-index: 600;
+  overflow: hidden;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-cal-banner,
+[data-theme="dark"] #fp-crm-banner { background: #1E1E1D; border-color: #2E2D2B; }
+
+.fp-hov-hdr {
+  display: flex; align-items: center;
+  padding: 8px 14px 7px;
+  background: var(--off, #F7F6F3);
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-hov-hdr { background: #252523; border-bottom-color: #2E2D2B; }
+.fp-hov-hdr-title {
+  font-size: 9px; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--grafite, #111110); flex: 1;
+}
+[data-theme="dark"] .fp-hov-hdr-title { color: #F0EDE6; }
+.fp-hov-hdr-sub {
+  font-size: 10px; font-family: var(--font-mono); color: var(--cinza, #D0CFC9);
+}
+
+/* item de evento */
+.fp-cal-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  transition: background .1s; cursor: default;
+}
+.fp-cal-item:last-child { border-bottom: none; }
+[data-theme="dark"] .fp-cal-item { border-bottom-color: #2A2927; }
+.fp-cal-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+}
+.fp-cal-info { flex: 1; min-width: 0; }
+.fp-cal-titulo {
+  font-size: 12px; font-weight: 600; color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-cal-titulo { color: #F0EDE6; }
+.fp-cal-meta {
+  font-size: 10px; color: #888; margin-top: 2px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.fp-cal-meet {
+  font-size: 9px; font-weight: 600; color: var(--ca);
+  text-decoration: none; background: var(--ca-bg);
+  padding: 1px 6px; border-radius: 4px; white-space: nowrap;
+}
+.fp-cal-meet:hover { opacity: .8; }
+
+/* item de follow-up */
+.fp-fu-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 14px; border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  transition: background .1s;
+}
+.fp-fu-item:last-child { border-bottom: none; }
+[data-theme="dark"] .fp-fu-item { border-bottom-color: #2A2927; }
+.fp-fu-item.hoje     { background: rgba(196,131,26,.10); }
+.fp-fu-item.atrasado { background: rgba(184,76,58,.12); }
+[data-theme="dark"] .fp-fu-item.hoje     { background: rgba(196,131,26,.18); }
+[data-theme="dark"] .fp-fu-item.atrasado { background: rgba(184,76,58,.20); }
+.fp-fu-info { flex: 1; min-width: 0; }
+.fp-fu-cliente {
+  font-size: 11px; font-weight: 700; color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-fu-cliente { color: #F0EDE6; }
+.fp-fu-proj {
+  font-size: 10px; color: #888; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fp-fu-date {
+  font-size: 9px; font-family: var(--font-mono); font-weight: 600;
+  flex-shrink: 0; margin-top: 2px; padding: 2px 7px; border-radius: 4px;
+  color: #888; background: var(--off, #F7F6F3);
+  border: 1px solid var(--cinza2, #ECEAE4);
+}
+.fp-fu-item.hoje     .fp-fu-date { color: #C4831A; background: #FBF3E8; border-color: #C4831A; }
+.fp-fu-item.atrasado .fp-fu-date { color: #B84C3A; background: #FBF0EE; border-color: #B84C3A; }
+
+/* Seção de fechamentos/negados — estilo prio-card */
+.fp-crm-sec-hdr {
+  padding: 6px 14px 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: #aaa; flex-shrink: 0;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+}
+[data-theme="dark"] .fp-crm-sec-hdr { color: #555; border-bottom-color: #2A2927; }
+
+.fp-crm-fech-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  border-left: 3px solid transparent;
+  transition: background .1s;
+}
+.fp-crm-fech-item:last-child { border-bottom: none; }
+[data-theme="dark"] .fp-crm-fech-item { border-bottom-color: #2A2927; }
+
+.fp-crm-fech-item.fechado {
+  border-left-color: #1D6A4A;
+  background: rgba(29,106,74,.08);
+}
+.fp-crm-fech-item.negado {
+  border-left-color: #B84C3A;
+  background: rgba(184,76,58,.08);
+}
+[data-theme="dark"] .fp-crm-fech-item.fechado { background: rgba(29,106,74,.14); }
+[data-theme="dark"] .fp-crm-fech-item.negado  { background: rgba(184,76,58,.14); }
+
+.fp-crm-fech-info { flex: 1; min-width: 0; }
+.fp-crm-fech-cliente {
+  font-size: 11px; font-weight: 700; color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-crm-fech-cliente { color: #F0EDE6; }
+.fp-crm-fech-opp {
+  font-size: 10px; color: #888; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fp-crm-fech-valor {
+  font-size: 10px; font-family: var(--font-mono); font-weight: 600;
+  flex-shrink: 0; margin-top: 2px; padding: 2px 7px; border-radius: 4px;
+  border: 1px solid;
+}
+.fp-crm-fech-item.fechado .fp-crm-fech-valor { color: #1D6A4A; background: rgba(29,106,74,.10); border-color: rgba(29,106,74,.25); }
+.fp-crm-fech-item.negado  .fp-crm-fech-valor { color: #B84C3A; background: rgba(184,76,58,.10); border-color: rgba(184,76,58,.25); }
+
+/* ── Banner de prioridade — estilo prio-card do dashboard ── */
+#fp-prio-banner {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: 360px;
+  display: none;
+  z-index: 600;
+  overflow: hidden;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-prio-banner { background: #1E1E1D; border-color: #2E2D2B; }
+@keyframes fpBannerIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+
+/* ══════════════════════════════════════════════════
+   FIXAR PROJETOS
+══════════════════════════════════════════════════ */
+
+/* Indicador de pin no item da sidebar */
+.fp-conv-pin-ico {
+  width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ca); flex-shrink: 0; margin-top: 3px; opacity: .65;
+}
+
+/* Botão de pin hover em DMs */
+.fp-dm-pin-btn {
+  display: none; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  padding: 3px; color: var(--cinza, #9A9590);
+  border-radius: 4px; flex-shrink: 0; transition: color .15s;
+}
+.fp-dm-pin-btn:hover { color: var(--ca); }
+.fp-dm-pin-btn.is-pinned { display: flex; color: var(--ca); }
+.fp-conv-item:hover .fp-dm-pin-btn { display: flex; }
+[data-theme="dark"] .fp-dm-pin-btn { color: #6B6762; }
+[data-theme="dark"] .fp-dm-pin-btn:hover,
+[data-theme="dark"] .fp-dm-pin-btn.is-pinned { color: var(--ca); }
+
+/* Botão de pin no header — estado ativo */
+.fp-chat-icon-btn.pin-active {
+  background: var(--ca-bg);
+  color: var(--ca);
+}
+[data-theme="dark"] .fp-chat-icon-btn.pin-active {
+  background: var(--ca-mid);
+  color: var(--ca);
+}
+
+/* Botão de pin na sidebar toolbar — estado ativo */
+.fp-sb-icon-btn.pin-active {
+  background: var(--ca-bg);
+  color: var(--ca);
+}
+[data-theme="dark"] .fp-sb-icon-btn.pin-active {
+  background: var(--ca-mid);
+  color: var(--ca);
+}
+
+/* Popdown de projetos fixados (toolbar) */
+#fp-pin-pop {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 11px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.16);
+  width: 268px;
+  max-height: 380px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 500;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-pin-pop { background: #1E1E1D; border-color: #2E2D2B; }
+#fp-pin-pop-head {
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+  font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--cinza, #D0CFC9);
+}
+[data-theme="dark"] #fp-pin-pop-head { border-bottom-color: #2E2D2B; }
+#fp-pin-pop-list { flex: 1; overflow-y: auto; padding: 5px; }
+#fp-pin-pop-list::-webkit-scrollbar { width: 3px; }
+#fp-pin-pop-list::-webkit-scrollbar-thumb { background: var(--cinza2, #ECEAE4); border-radius: 2px; }
+#fp-pin-pop-empty {
+  padding: 16px 12px;
+  font-size: 11px; color: var(--cinza, #D0CFC9); text-align: center;
+}
+.fp-pin-pop-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px; border-radius: 8px;
+  cursor: pointer; transition: background .1s;
+}
+.fp-pin-pop-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-pin-pop-item:hover { background: rgba(255,255,255,.05); }
+.fp-pin-pop-check {
+  width: 17px; height: 17px; border-radius: 50%;
+  border: 1.5px solid var(--cinza2, #ECEAE4); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, border-color .12s;
+}
+.fp-pin-pop-check.on { background: var(--ca); border-color: var(--ca); }
+.fp-pin-pop-check.on::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+.fp-pin-pop-label { font-size: 12px; font-weight: 600; color: var(--grafite, #111110); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme="dark"] .fp-pin-pop-label { color: #F0EDE6; }
+
+/* Menu de contexto (botão direito) */
+#fp-ctx-menu {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 9px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.14);
+  padding: 4px;
+  display: none;
+  flex-direction: column;
+  min-width: 168px;
+  z-index: 1000;
+  animation: fpBannerIn .1s ease-out;
+}
+[data-theme="dark"] #fp-ctx-menu { background: #1E1E1D; border-color: #2E2D2B; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+.fp-ctx-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 11px; border-radius: 6px;
+  cursor: pointer; transition: background .1s;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  color: var(--grafite, #111110); border: none; background: none;
+  width: 100%; text-align: left;
+}
+.fp-ctx-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-ctx-item { color: #C8C3BA; }
+[data-theme="dark"] .fp-ctx-item:hover { background: rgba(255,255,255,.06); }
+
+/* ══════════════════════════════════════════════════
+   APOIO — seta de atalho: estilos base em shared/exp-nav.css
+   (.exp-nav-apoio-wrap / .exp-apoio-go-btn)
+══════════════════════════════════════════════════ */
+
+/* ── Painel de busca Apoio ── */
+#fp-apoio-panel {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.16);
+  width: 360px;
+  display: none;
+  z-index: 600;
+  overflow: hidden;
+  animation: fpBannerIn .15s ease-out;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+}
+[data-theme="dark"] #fp-apoio-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+.fp-apoio-search-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-apoio-search-row { border-bottom-color: #2E2D2B; }
+
+.fp-apoio-search-input {
+  flex: 1; border: none; background: none;
+  font-family: var(--font-ui); font-size: 12px;
+  color: var(--grafite, #111110); outline: none;
+}
+[data-theme="dark"] .fp-apoio-search-input { color: #F0EDE6; }
+.fp-apoio-search-input::placeholder { color: var(--cinza, #D0CFC9); }
+
+.fp-apoio-clear-btn {
+  width: 18px; height: 18px; border-radius: 50%; border: none;
+  background: var(--cinza2, #ECEAE4); color: #888;
+  font-size: 10px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+  padding: 0;
+}
+.fp-apoio-clear-btn:hover { background: var(--cinza, #D0CFC9); color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-apoio-clear-btn { background: #2E2D2B; color: #888; }
+[data-theme="dark"] .fp-apoio-clear-btn:hover { background: #3A3937; color: #C8C3BA; }
+
+#fp-apoio-body {
+  flex: 1; overflow-y: auto;
+  min-height: 60px; max-height: 380px;
+}
+
+.fp-apoio-group-hdr {
+  padding: 8px 14px 3px;
+  font-size: 8px; font-weight: 700; letter-spacing: .7px;
+  text-transform: uppercase; color: #bbb;
+}
+[data-theme="dark"] .fp-apoio-group-hdr { color: #555; }
+
+.fp-apoio-result {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 14px; cursor: pointer;
+  transition: background .1s; text-decoration: none;
+}
+.fp-apoio-result:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-apoio-result:hover { background: rgba(255,255,255,.05); }
+
+.fp-apoio-result-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.fp-apoio-result-info { flex: 1; min-width: 0; }
+.fp-apoio-result-title {
+  font-size: 12px; font-weight: 600;
+  color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-apoio-result-title { color: #F0EDE6; }
+.fp-apoio-result-sub {
+  font-size: 10px; color: #888; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.fp-apoio-empty {
+  padding: 24px 14px;
+  font-size: 11px; color: var(--cinza, #D0CFC9);
+  text-align: center; line-height: 1.5;
+}
+
+.fp-apoio-footer {
+  padding: 9px 14px;
+  border-top: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-apoio-footer { border-top-color: #2E2D2B; }
+
+.fp-apoio-full-link {
+  display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  font-size: 10px; font-weight: 600; color: #999;
+  text-decoration: none; transition: color .12s;
+}
+.fp-apoio-full-link:hover { color: var(--grafite, #111110); }
+[data-theme="dark"] .fp-apoio-full-link { color: #555; }
+[data-theme="dark"] .fp-apoio-full-link:hover { color: #F0EDE6; }
+
+/* ══════════════════════════════════════════════════
+   CONTATOS — seta de atalho: estilos base em shared/exp-nav.css
+   (.exp-nav-contatos-wrap / .exp-contatos-go-btn)
+══════════════════════════════════════════════════ */
+
+#fp-contatos-panel {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.16);
+  width: 380px;
+  display: none;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+  z-index: 600;
+  overflow: hidden;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #fp-contatos-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+.fp-contatos-search-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-contatos-search-row { border-bottom-color: #2E2D2B; }
+
+#fp-contatos-body {
+  flex: 1; overflow-y: auto;
+  min-height: 60px; max-height: 420px;
+}
+
+.fp-contatos-footer {
+  padding: 9px 14px;
+  border-top: 1px solid var(--cinza2, #ECEAE4);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .fp-contatos-footer { border-top-color: #2E2D2B; }
+
+/* Card de resultado — 3 linhas de info */
+.fp-contatos-result {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 14px;
+  text-decoration: none; color: inherit;
+  transition: background .1s;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+}
+.fp-contatos-result:last-child { border-bottom: none; }
+.fp-contatos-result:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-contatos-result { border-bottom-color: #2A2927; }
+[data-theme="dark"] .fp-contatos-result:hover { background: rgba(255,255,255,.05); }
+
+.fp-contatos-result-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0; margin-top: 5px;
+}
+.fp-contatos-result-info { flex: 1; min-width: 0; }
+.fp-contatos-result-name {
+  font-size: 13px; font-weight: 600; color: var(--grafite, #111110);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .fp-contatos-result-name { color: #F0EDE6; }
+.fp-contatos-result-sub {
+  font-size: 11px; color: #888; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fp-contatos-result-meta {
+  font-size: 10.5px; color: #aaa; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 6px;
+}
+.fp-contatos-result-tag {
+  display: inline-block;
+  background: var(--cinza2, #ECEAE4);
+  color: #666;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .3px;
+  padding: 1px 5px; border-radius: 4px;
+  text-transform: uppercase;
+}
+[data-theme="dark"] .fp-contatos-result-tag { background: #2E2D2B; color: #888; }
+
+.fp-prio-hdr {
+  padding: 8px 14px 7px;
+  font-size: 9px; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase;
+  /* cor e borda injetadas inline pelo JS conforme estado */
+}
+
+/* prio-card fiel ao gestão */
+.fp-prio-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer; transition: background .1s;
+  border-left: 3px solid transparent;
+}
+.fp-prio-card:hover { filter: brightness(.97); }
+/* Normal (tempo sobrando) → fundo azul suave */
+.fp-prio-card         { background: #EAF0FB; border-left-color: #1D4FA0; }
+/* Hoje → fundo ouro */
+.fp-prio-card.hoje    { background: #FBF3E8; border-left-color: #C4831A; }
+/* Atrasada → fundo terracota mais intenso */
+.fp-prio-card.atrasada { background: #F5E0DD; border-left-color: #B84C3A; }
+
+[data-theme="dark"] .fp-prio-card          { background: rgba(29,79,160,.18);  border-left-color: #4A72B5; }
+[data-theme="dark"] .fp-prio-card.hoje     { background: rgba(196,131,26,.18); border-left-color: #C4831A; }
+[data-theme="dark"] .fp-prio-card.atrasada { background: rgba(184,76,58,.22);  border-left-color: #B84C3A; }
+
+.fp-prio-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  flex-shrink: 0; margin-top: 1px;
+}
+.fp-prio-num.p1 { background: #1D6A4A; }
+.fp-prio-num.p2 { background: #1D4FA0; }
+.fp-prio-num.p3 { background: #C4831A; }
+.fp-prio-num.p4 { background: #B84C3A; }
+.fp-prio-num.p5 { background: #6D7D8A; }
+.fp-prio-num.p6 { background: #aaa; }
+
+.fp-prio-info { flex: 1; min-width: 0; }
+.fp-prio-nome { font-size: 13px; font-weight: 700; line-height: 1.3; color: #1D4FA0; }
+.fp-prio-card.hoje     .fp-prio-nome { color: #C4831A; }
+.fp-prio-card.atrasada .fp-prio-nome { color: #B84C3A; }
+[data-theme="dark"] .fp-prio-nome               { color: #7AA3D4; }
+[data-theme="dark"] .fp-prio-card.hoje     .fp-prio-nome { color: #E5A84A; }
+[data-theme="dark"] .fp-prio-card.atrasada .fp-prio-nome { color: #E07B6B; }
+
+/* Botão de check na prioridade */
+.fp-prio-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid currentColor; flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .15s, border-color .15s;
+  font-size: 11px; color: rgba(0,0,0,.25);
+}
+.fp-prio-card.atrasada .fp-prio-check { color: #B84C3A; }
+.fp-prio-card.hoje     .fp-prio-check { color: #C4831A; }
+.fp-prio-card          .fp-prio-check { color: #1D4FA0; }
+.fp-prio-check:hover { background: rgba(0,0,0,.07); color: var(--grafite, #111110); }
+.fp-prio-cidade { font-size: 10px; color: #666; margin-top: 2px; font-weight: 500; }
+[data-theme="dark"] .fp-prio-cidade { color: #8C8A85; }
+.fp-prio-etapa  { font-size: 10px; color: #888; margin-top: 2px; }
+.fp-prio-prod   { font-size: 9px; color: #aaa; margin-top: 1px; text-transform: uppercase; letter-spacing: .4px; }
+.fp-prio-prazo-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 600;
+  border-radius: 4px; padding: 1px 7px;
+  margin-top: 5px;
+  border: 1px solid var(--cinza2, #ECEAE4);
+  color: #888;
+}
+.fp-prio-prazo-chip.atrasada { background: #FBF0EE; border-color: #B84C3A; color: #B84C3A; }
+.fp-prio-prazo-chip.hoje     { background: #FBF3E8; border-color: #C4831A; color: #C4831A; }
+
+.fp-prio-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--cinza2, #ECEAE4);
+  background: var(--off, #F7F6F3);
+}
+[data-theme="dark"] .fp-prio-footer { background: #252523; border-top-color: #2E2D2B; }
+.fp-prio-abrir {
+  width: 100%; padding: 6px; border-radius: 7px;
+  border: none; background: var(--ca); color: #fff;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.fp-prio-abrir:hover { opacity: .85; }
+
+/* ── Painel de notificações (usa #notif-panel e #notif-lista do AppNotif) ── */
+#notif-panel {
+  position: fixed;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: 360px;
+  max-height: 480px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 600;
+  animation: fpBannerIn .15s ease-out;
+}
+[data-theme="dark"] #notif-panel { background: #1E1E1D; border-color: #2E2D2B; }
+
+
+#notif-lista { flex: 1; overflow-y: auto; }
+#notif-lista::-webkit-scrollbar { width: 3px; }
+#notif-lista::-webkit-scrollbar-thumb { background: var(--cinza, #D0CFC9); border-radius: 2px; }
+
+/* .fp-notif-* — estilos herdados do exp-design-system.css via .notif-* */
+/* Apenas overrides específicos do chat fullpage abaixo */
+#notif-panel .notif-sec-hd { top: 0; }
+
+
+/* ── Overlay do projeto (sobre o chat) ── */
+#fp-proj-overlay {
+  position: fixed; inset: 0;
+  background: rgba(17,17,16,.4);
+  z-index: 450;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 40px 24px;
+  overflow-y: auto;
+}
+#fp-proj-card {
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.22);
+  width: min(640px, 100%);
+  overflow: hidden;
+  animation: fpSlideIn .18s ease-out;
+}
+[data-theme="dark"] #fp-proj-card { background: #1E1E1D; border-color: #2E2D2B; }
+#fp-proj-card-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  background: var(--cinza2, #ECEAE4);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+[data-theme="dark"] #fp-proj-card-head { background: #2A2927; border-bottom-color: #3A3836; }
+#fp-proj-card-title-wrap { flex: 1; min-width: 0; }
+#fp-proj-card-label { font-size: 14px; font-weight: 700; color: var(--grafite, #111110); }
+[data-theme="dark"] #fp-proj-card-label { color: #F0EDE6; }
+#fp-proj-card-sub  { font-size: 11px; color: #888; margin-top: 2px; }
+.fp-proj-card-action {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; color: var(--ca);
+  text-decoration: none; padding: 5px 10px;
+  border: 1px solid var(--ca); border-radius: 8px;
+  white-space: nowrap; transition: background .12s;
+}
+.fp-proj-card-action:hover { background: var(--ca-bg); }
+.fp-proj-card-close {
+  width: 28px; height: 28px; border-radius: 7px; border: none;
+  background: rgba(0,0,0,.07); color: var(--grafite, #111110);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; padding: 0;
+}
+[data-theme="dark"] .fp-proj-card-close { background: rgba(255,255,255,.08); color: #F0EDE6; }
+#fp-proj-card-body { padding: 16px 18px 20px; }
+.fp-proj-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 8px 0; border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  font-size: 12px;
+}
+[data-theme="dark"] .fp-proj-row { border-bottom-color: #2A2927; }
+.fp-proj-row:last-child { border-bottom: none; }
+.fp-proj-row-lbl { width: 100px; flex-shrink: 0; font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .4px; padding-top: 1px; }
+.fp-proj-row-val { flex: 1; color: var(--grafite, #111110); line-height: 1.45; }
+[data-theme="dark"] .fp-proj-row-val { color: #C8C3BA; }
+.fp-etapa-pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 10px; font-weight: 600;
+  background: var(--ca-bg); color: var(--ca);
+  border: 1px solid rgba(0,0,0,.06);
+  margin: 2px 4px 2px 0;
+}
+
+/* Toggle dark/light — padrão SVG igual aos outros módulos */
+#fp-theme-toggle .exp-tr-moon { display: none; }
+[data-theme="dark"] #fp-theme-toggle .exp-tr-sun  { display: none; }
+[data-theme="dark"] #fp-theme-toggle .exp-tr-moon { display: block; }
+
+/* EXP Room — ativo: ícone pisca em verde */
+#fp-room-btn.active { color: #2D9E6B !important; }
+#fp-room-btn.active #fp-room-icon {
+  stroke: #2D9E6B;
+  animation: fpRoomPulse 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 3px rgba(45,158,107,.6));
+}
+@keyframes fpRoomPulse {
+  0%, 100% { opacity: 1;   stroke-width: 2;   }
+  50%       { opacity: .45; stroke-width: 2.5; }
+}
+/* tooltip "quem está lá" */
+#fp-room-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%; transform: translateY(-50%);
+  background: #2D9E6B;
+  color: #fff;
+  font-size: 10px; font-weight: 600;
+  padding: 4px 9px; border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 500;
+}
+
+/* Resultados de busca — cinza neutro */
+.fp-msg-block.search-match   { background: rgba(0,0,0,.05) !important; }
+.fp-msg-block.search-current { background: rgba(0,0,0,.10) !important; outline: 2px solid rgba(0,0,0,.2); outline-offset: -2px; border-radius: 8px; }
+[data-theme="dark"] .fp-msg-block.search-match   { background: rgba(255,255,255,.06) !important; }
+[data-theme="dark"] .fp-msg-block.search-current { background: rgba(255,255,255,.12) !important; outline-color: rgba(255,255,255,.25); }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="fp-loading">
+  <img class="fp-loading-logo" src="exp.png" alt="EXP" onerror="this.style.display='none'">
+  <div class="fp-loading-bar"></div>
+</div>
+
+<!-- App -->
+<div id="fp-app">
+
+  <!-- ── Nav lateral de módulos ── -->
+  <nav id="exp-nav">
+
+    <a href="app.html"        class="exp-nav-item" title="Hub">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </a>
+    <a href="gestao.html"     class="exp-nav-item" title="Projetos">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+    </a>
+    <div class="exp-nav-apoio-wrap" id="fp-nav-apoio-wrap">
+      <!-- Seta: espia pela esquerda da nav no hover, leva direto para apoio.html -->
+      <a href="apoio.html" class="exp-apoio-go-btn" id="fp-apoio-go-btn" title="Abrir módulo Apoio">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </a>
+      <!-- Botão principal: abre painel de busca -->
+      <button class="exp-nav-item" id="fp-nav-apoio" onclick="fpChat.toggleApoioPanel(event)" title="Apoio">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </button>
+    </div>
+    <div class="exp-nav-contatos-wrap" id="fp-nav-contatos-wrap">
+      <!-- Seta: espia pela esquerda da nav no hover, leva direto para contatos.html -->
+      <a href="contatos.html" class="exp-contatos-go-btn" id="fp-contatos-go-btn" title="Abrir módulo Contatos">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </a>
+      <!-- Botão principal: abre painel de busca -->
+      <button class="exp-nav-item" id="fp-nav-contatos" onclick="fpChat.toggleContatosPanel(event)" title="Contatos">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+    </div>
+    <a href="calendario.html" class="exp-nav-item" title="Calendário" id="fp-nav-cal"
+       onmouseenter="fpChat.showCalBanner(event)" onmouseleave="fpChat.hideCalBanner()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8"  y1="2" x2="8"  y2="6"/><line x1="3"  y1="10" x2="21" y2="10"/></svg>
+    </a>
+    <div class="exp-nav-sep" id="fp-nav-sep-soc" style="display:none"></div>
+    <a href="calc.html" class="exp-nav-item fp-nav-soc" title="Calculadora" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
+    </a>
+    <a href="crm.html"        class="exp-nav-item fp-nav-soc" title="Comercial" style="display:none" id="fp-nav-crm"
+       onmouseenter="fpChat.showCrmBanner(event)" onmouseleave="fpChat.hideCrmBanner()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </a>
+    <a href="financeiro.html" class="exp-nav-item fp-nav-soc" title="Financeiro" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </a>
+    <a href="analise.html"    class="exp-nav-item fp-nav-soc" title="Análise" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6"  y1="20" x2="6"  y2="14"/></svg>
+    </a>
+    <a href="pessoas.html"    class="exp-nav-item fp-nav-soc" title="Pessoas" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </a>
+    <a href="sociedade.html"  class="exp-nav-item fp-nav-soc" title="Sociedade" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    </a>
+
+    <div class="exp-nav-spacer"></div>
+    <div class="exp-nav-sep"></div>
+
+    <!-- EXP Room -->
+    <a id="fp-room-btn" href="https://meet.google.com/mqe-cgge-maz" target="_blank"
+       class="exp-nav-item" title="EXP Room" onclick="fpChat.roomClick()">
+      <svg id="fp-room-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="23 7 16 12 23 17 23 7"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+    </a>
+
+    <!-- Sininho de notificações -->
+    <button class="exp-nav-item" id="fp-nav-bell" title="Notificações" onclick="fpChat.toggleNotifPanel()" style="position:relative">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:var(--font-mono);min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
+    </button>
+
+    <!-- Prioridade do projeto (hover = banner rápido, click = painel completo) -->
+    <button class="exp-nav-item" id="fp-nav-prio" title="Minha prioridade"
+            onclick="fpChat.togglePrioPanel()"
+            onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>
+
+    <!-- Lista de tarefas (abre painel no lugar da sidebar) -->
+    <button class="exp-nav-item" id="fp-nav-tasks" title="Minhas tarefas" onclick="fpChat.toggleTasksPanel()" style="position:relative">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span id="fp-tasks-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca);color:#fff;font-size:8px;font-weight:700;font-family:var(--font-mono);min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>
+    </button>
+
+  </nav>
+
+  <!-- Hover banner: calendário -->
+  <div id="fp-cal-banner"
+       onmouseenter="fpChat.showCalBanner()" onmouseleave="fpChat.hideCalBanner()">
+    <div class="fp-hov-hdr">
+      <span class="fp-hov-hdr-title">Próximos eventos</span>
+      <span class="fp-hov-hdr-sub" id="fp-cal-banner-sub"></span>
+    </div>
+    <div id="fp-cal-banner-body"></div>
+  </div>
+
+  <!-- Hover banner: comercial / follow-ups -->
+  <div id="fp-crm-banner"
+       onmouseenter="fpChat.showCrmBanner()" onmouseleave="fpChat.hideCrmBanner()">
+    <div class="fp-hov-hdr">
+      <span class="fp-hov-hdr-title">Atualizações comerciais</span>
+      <span class="fp-hov-hdr-sub" id="fp-crm-banner-sub"></span>
+    </div>
+    <div id="fp-crm-banner-body"></div>
+  </div>
+
+  <!-- ── Painel de busca Apoio (abre ao clicar no ícone Apoio da nav) ── -->
+  <div id="fp-apoio-panel">
+    <div class="fp-hov-hdr">
+      <span class="fp-hov-hdr-title">Apoio</span>
+      <span class="fp-hov-hdr-sub" id="fp-apoio-hdr-sub"></span>
+    </div>
+    <div class="fp-apoio-search-row">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cinza,#D0CFC9);flex-shrink:0"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+      <input class="fp-apoio-search-input" id="fp-apoio-input" type="text"
+             placeholder="Buscar normas, vegetação, conhecimento…"
+             oninput="fpChat.apoioSearchInput(this.value)"
+             onkeydown="if(event.key==='Escape')fpChat.closeApoioPanel()"
+             autocomplete="off">
+      <button class="fp-apoio-clear-btn" id="fp-apoio-clear"
+              onclick="fpChat.apoioClear()" title="Limpar" style="display:none">
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-apoio-body">
+      <div class="fp-apoio-empty">Digite para buscar no módulo de Apoio</div>
+    </div>
+    <div class="fp-apoio-footer">
+      <a href="apoio.html" class="fp-apoio-full-link">
+        Abrir módulo completo
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- Painel de busca — Contatos -->
+  <div id="fp-contatos-panel">
+    <div class="fp-hov-hdr">
+      <span class="fp-hov-hdr-title">Contatos</span>
+      <span class="fp-hov-hdr-sub" id="fp-contatos-hdr-sub"></span>
+    </div>
+    <div class="fp-contatos-search-row">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#aaa"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="fp-apoio-search-input" id="fp-contatos-input" type="text"
+             placeholder="Buscar por nome, empresa, produto…"
+             oninput="fpChat.contatosSearchInput(this.value)"
+             onkeydown="if(event.key==='Escape')fpChat.closeContatosPanel()"
+             autocomplete="off" style="flex:1">
+      <button class="fp-apoio-clear-btn" id="fp-contatos-clear"
+              onclick="fpChat.contatosClear()" title="Limpar" style="display:none">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-contatos-body">
+      <div class="fp-apoio-empty">Digite para buscar contatos</div>
+    </div>
+    <div class="fp-contatos-footer">
+      <a href="contatos.html" class="fp-apoio-full-link">
+        Abrir módulo completo
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- Banner flutuante de prioridade (hover no ícone ⭐) -->
+  <div id="fp-prio-banner"
+       onmouseenter="fpChat.showPrioBanner()" onmouseleave="fpChat.hidePrioBanner()">
+    <div id="fp-prio-banner-inner"></div>
+  </div>
+
+  <!-- Painel de notificações (clique no sininho) -->
+  <div id="notif-panel" style="display:none">
+    <div class="fp-hov-hdr">
+      <span class="fp-hov-hdr-title" style="flex:1">Notificações</span>
+      <button onclick="fpChat.toggleNotifPanel()" title="Fechar"
+        style="border:none;background:none;cursor:pointer;color:var(--cinza,#D0CFC9);display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;padding:0;transition:color .12s"
+        onmouseenter="this.style.color='var(--grafite,#111110)'" onmouseleave="this.style.color='var(--cinza,#D0CFC9)'">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="notif-lista"></div>
+  </div>
+
+  <!-- ── Painel de tarefas (substitui sidebar) ── -->
+  <aside id="fp-tasks-panel" style="display:none">
+    <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+      <span style="font-size:14px;font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
+      <span id="fp-tasks-panel-count" style="font-size:10px;font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+      <button onclick="fpChat.toggleTasksPanel()" title="Fechar"
+        style="width:24px;height:24px;border:none;background:none;color:var(--ca);opacity:.6;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
+        onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.6'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fp-lists-tabs">
+      <button class="fp-lists-tab active" data-tab="tarefas"   onclick="fpChat.switchListsTab('tarefas')">Tarefas</button>
+      <button class="fp-lists-tab"        data-tab="abertos"   onclick="fpChat.switchListsTab('abertos')">Ck. Abertos</button>
+      <button class="fp-lists-tab"        data-tab="etapa"     onclick="fpChat.switchListsTab('etapa')">Ck. Etapa</button>
+      <button class="fp-lists-tab"        data-tab="revisao"   onclick="fpChat.switchListsTab('revisao')">Revisão</button>
+    </div>
+
+    <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
+      <div class="fp-loading" style="padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
+
+    <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="fp-ck-selector">
+        <select class="fp-ck-select" id="fp-ck-select" onchange="fpChat.selectCkByIndex(fpChat._listsActiveTab, this.value)">
+          <option value="">— selecionar —</option>
+        </select>
+      </div>
+      <div id="fp-ck-items"></div>
+    </div>
+
+    <!-- Área de criar/atribuir tarefa (só na aba Tarefas) -->
+    <div id="fp-task-form">
+      <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="fpChat.taskDescInput(this)"></textarea>
+      <div class="fp-task-form-row">
+        <select id="fp-task-tipo">
+          <option value="">Tipo…</option>
+          <option value="projeto">Projeto</option>
+          <option value="organizacao">Organização</option>
+          <option value="sociedade">Sociedade</option>
+        </select>
+        <input id="fp-task-data" type="date" title="Prazo">
+        <button class="fp-task-add-btn" onclick="fpChat.addTask()" title="Adicionar para mim">+ Adicionar</button>
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="fpChat.openAssignDrop(this)" title="Atribuir para alguém">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Painel de prioridades (sobrepõe sidebar) ── -->
+  <aside id="fp-prio-panel" style="display:none">
+    <div id="fp-prio-panel-head">
+      <span id="fp-prio-panel-title">Prioridades</span>
+      <span id="fp-prio-panel-count"></span>
+      <button onclick="fpChat.closePrioPanel()" title="Fechar"
+        style="border:none;background:none;cursor:pointer;color:var(--cinza,#D0CFC9);display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;padding:0;transition:color .12s;flex-shrink:0"
+        onmouseenter="this.style.color='var(--grafite,#111110)'" onmouseleave="this.style.color='var(--cinza,#D0CFC9)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-prio-panel-list">
+      <div class="fp-loading" style="padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Sidebar ── -->
+  <aside id="fp-sidebar">
+    <div class="fp-sb-head">
+      <div class="fp-sb-head-row">
+        <!-- Logo EXP (mais clara) -->
+        <img src="exp.png" alt="EXP" class="fp-sb-logo" onerror="this.style.display='none'">
+        <!-- Status -->
+        <div class="fp-sb-status" id="fp-status-btn" onclick="fpChat.toggleStatusPop()" title="Meu status">
+          <span class="fp-status-dot online" id="fp-status-dot"></span>
+          <!-- Popover -->
+          <div id="fp-status-pop">
+            <div class="fp-sopt-hdr" id="fp-sopt-name"></div>
+            <button class="fp-sopt" data-status="online"  onclick="fpChat.setStatus('online')"><span class="fp-sopt-dot" style="background:#2D9E6B"></span>Online</button>
+            <button class="fp-sopt" data-status="foco"    onclick="fpChat.setStatus('foco')"><span class="fp-sopt-dot" style="background:#1D4FA0"></span>Foco</button>
+            <button class="fp-sopt" data-status="ausente" onclick="fpChat.setStatus('ausente')"><span class="fp-sopt-dot" style="background:#C4831A"></span>Ausente</button>
+          </div>
+        </div>
+        <!-- Som -->
+        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-sound-btn" onclick="fpChat.toggleSound()" title="Som">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <!-- Nova mensagem -->
+        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-new-dm-btn" onclick="fpChat.openNewDM(event)" title="Nova mensagem">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <!-- Fixar projetos -->
+        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-pin-btn" onclick="fpChat.openPinPop(event)" title="Fixar projetos">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+        </button>
+        <!-- Tema claro/escuro -->
+        <button id="fp-theme-toggle" class="fp-sb-icon-btn exp-sb-icon-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro">
+            <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+      </div>
+
+      <!-- Busca -->
+      <div class="fp-sb-search">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+        <input class="fp-search-input" id="fp-search-input" type="text" placeholder="Buscar conversas…" oninput="fpChat.filterConvs(this.value)">
+      </div>
+
+      <!-- Toggles + editar visualização (mesma linha) -->
+      <div class="fp-sb-toggles">
+        <button class="fp-toggle-btn" id="fp-toggle-unread" onclick="fpChat.toggleUnreads()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="4"/></svg>
+          Não lidas
+        </button>
+        <button class="fp-toggle-btn" id="fp-toggle-flagged" onclick="fpChat.toggleFlagged()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          Sinalizadas
+        </button>
+        <!-- Editar visualização: wrapper div para poder conter o popover (button não aceita div filha) -->
+        <div id="fp-view-trigger" style="position:relative;display:flex">
+          <button class="fp-toggle-btn" onclick="fpChat.toggleViewPicker(event)" title="Editar visualização" style="padding:0 8px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <!-- Popover de visualização -->
+          <div id="fp-view-pop" style="display:none">
+            <div class="fp-view-pop-section">Cor</div>
+            <div class="fp-view-pop-colors">
+              <div class="fp-color-pop-dot" data-color="verde"     style="background:#1D6A4A" onclick="event.stopPropagation();fpChat.setColor('verde')"></div>
+              <div class="fp-color-pop-dot" data-color="azul"      style="background:#1D4FA0" onclick="event.stopPropagation();fpChat.setColor('azul')"></div>
+              <div class="fp-color-pop-dot" data-color="ouro"      style="background:#C4831A" onclick="event.stopPropagation();fpChat.setColor('ouro')"></div>
+              <div class="fp-color-pop-dot" data-color="terracota" style="background:#B84C3A" onclick="event.stopPropagation();fpChat.setColor('terracota')"></div>
+            </div>
+            <div class="fp-view-pop-section">Tom de fonte</div>
+            <div class="fp-view-pop-tones" id="fp-tone-dots"></div>
+            <div class="fp-view-pop-section">Tamanho</div>
+            <div class="fp-view-pop-sizes">
+              <button class="fp-view-size-btn" onclick="event.stopPropagation();fpChat.changeFontSize(-1)">A−</button>
+              <span id="fp-font-size-label" style="font-size:10px;color:#888;min-width:28px;text-align:center"></span>
+              <button class="fp-view-size-btn" onclick="event.stopPropagation();fpChat.changeFontSize(+1)">A+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de conversas -->
+    <div id="fp-conv-list">
+      <div class="fp-loading" style="padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main chat ── -->
+  <main id="fp-main">
+    <!-- Placeholder -->
+    <div id="fp-placeholder">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="fp-placeholder-text">Selecione uma conversa</span>
+    </div>
+
+    <!-- Chat área -->
+    <div id="fp-chat-area" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0;min-width:0;background:var(--branco,#fff)">
+      <div id="fp-chat-header">
+        <div class="fp-hdr-av" id="fp-hdr-av">
+          <span id="fp-hdr-status-dot" class="fp-hdr-status-dot"></span>
+        </div>
+        <div class="fp-hdr-info">
+          <div class="fp-hdr-title" id="fp-hdr-title">—</div>
+          <div class="fp-hdr-sub"   id="fp-hdr-sub"></div>
+        </div>
+        <!-- Fixar projeto (visível só em canais de projeto) -->
+        <button class="fp-chat-icon-btn" id="fp-hdr-pin-btn" onclick="fpChat.togglePinCurrent()" title="Fixar projeto" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+        </button>
+        <!-- Botão de busca dentro da conversa -->
+        <button class="fp-chat-icon-btn" onclick="fpChat.toggleInSearch(event)" id="fp-in-search-btn" title="Buscar nesta conversa">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </div>
+
+      <!-- Busca flutuante (posicionada à esquerda do botão pelo JS) -->
+      <div id="fp-in-search-bar">
+        <div class="fp-in-search-wrap">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cinza,#D0CFC9);flex-shrink:0"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+          <input class="fp-in-search-input" id="fp-in-search-input" type="text" placeholder="Buscar nesta conversa…" oninput="fpChat.inSearchInput(this.value)" onkeydown="fpChat.inSearchKey(event)">
+          <span class="fp-in-search-count" id="fp-in-search-count"></span>
+        </div>
+        <button class="fp-in-search-nav" onclick="fpChat.inSearchPrev()" title="Anterior">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="fp-in-search-nav" onclick="fpChat.inSearchNext()" title="Próximo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </button>
+        <button class="fp-in-search-close" onclick="fpChat.closeInSearch()" title="Fechar">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="fp-messages">
+        <div class="fp-loading">
+          <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+        </div>
+      </div>
+      <div id="fp-input-area">
+        <input id="fp-media-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="fpChat.handleMediaInput(this)">
+        <button class="fp-attach-btn" onclick="fpChat.pickMedia()" title="Anexar print">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 0 1-7.78-7.78l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.5 8.49a1.5 1.5 0 0 1-2.12-2.12l7.78-7.78"/></svg>
+        </button>
+        <textarea id="fp-input" placeholder="Mensagem…" rows="1" onkeydown="fpChat.handleKey(event)" oninput="fpChat.autoResize(this)"></textarea>
+        <button class="fp-send-btn" onclick="fpChat.send()" title="Enviar (Enter)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div id="fp-composer-status"></div>
+    </div>
+  </main>
+
+</div><!-- /#fp-app -->
+
+<!-- ── Popdown fixar projetos (toolbar) ── -->
+<div id="fp-pin-pop">
+  <div id="fp-pin-pop-head">Fixar projetos</div>
+  <div id="fp-pin-pop-list"></div>
+</div>
+
+<!-- ── Menu de contexto (botão direito em conv item) ── -->
+<div id="fp-ctx-menu">
+  <button class="fp-ctx-item" id="fp-ctx-pin-btn" onclick="fpChat.ctxTogglePin()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+    <span id="fp-ctx-pin-label">Fixar projeto</span>
+  </button>
+</div>
+
+<!-- Overlay do projeto (abre sobre o chat) -->
+<div id="fp-proj-overlay" style="display:none">
+  <div id="fp-proj-card">
+    <div id="fp-proj-card-head">
+      <div id="fp-proj-card-title-wrap">
+        <div id="fp-proj-card-label"></div>
+        <div id="fp-proj-card-sub"></div>
+      </div>
+      <a id="fp-proj-card-link" href="gestao.html" target="_blank" class="fp-proj-card-action" title="Abrir em Projetos">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 0 1 0h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Abrir Projetos
+      </a>
+      <button onclick="fpChat.closeProjectOverlay()" class="fp-proj-card-close">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fp-proj-card-body"></div>
+  </div>
+</div>
+
+<!-- Popover novo DM (abre a partir do botão) -->
+<div id="fp-members-panel">
+  <div class="fp-members-head">
+    <span class="fp-members-title">Nova mensagem</span>
+    <button class="fp-sb-icon-btn exp-sb-icon-btn" onclick="fpChat.closeNewDM()" style="width:22px;height:22px">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="fp-members-list" id="fp-members-list">
+    <div class="fp-loading" style="padding:16px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>
+  </div>
+  <div class="fp-members-footer">
+    <span class="fp-members-info" id="fp-members-info">Selecione membros</span>
+    <button class="fp-members-confirm" onclick="fpChat.confirmNewDM()">Enviar</button>
+  </div>
+</div>
+
+<!-- Media viewer -->
+<div id="fp-media-viewer">
+  <div class="fp-mv-card">
+    <div class="fp-mv-head">
+      <div class="fp-mv-copy">
+        <div class="fp-mv-title" id="fp-mv-title">Print do chat</div>
+        <div class="fp-mv-meta"  id="fp-mv-meta"></div>
+      </div>
+      <div class="fp-mv-tools">
+        <span class="fp-mv-count" id="fp-mv-count">1/1</span>
+        <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomOut()">−</button>
+        <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomReset()"><span id="fp-mv-zoom-label">100%</span></button>
+        <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomIn()">+</button>
+      </div>
+      <button class="fp-mv-close" onclick="fpChat.closeMediaViewer()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fp-mv-body">
+      <div class="fp-mv-stage">
+        <button class="fp-mv-nav prev" id="fp-mv-prev" onclick="fpChat.mvPrev()">&#8249;</button>
+        <img id="fp-mv-img" style="display:none" alt="Print">
+        <div class="fp-mv-empty" id="fp-mv-empty">Carregando…</div>
+        <button class="fp-mv-nav next" id="fp-mv-next" onclick="fpChat.mvNext()">&#8250;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/app-notif.js"></script>
+<script src="chat-fullpage.js"></script>
+<script src="timer.js"></script>
+
+<!-- Timer na posição padrão (left:24px, bottom:24px) — fica no padding esquerdo -->
+<!-- A nav tem padding-bottom:80px para não sobrepor o FAB do timer -->
+<style>
+  #exp-timer-widget { z-index: 9998 !important; }
+</style>
+</body>
+</html>
