@@ -2320,7 +2320,7 @@
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
     toggleStatusPop, setStatus, toggleSound, toggleDmPin,
-    setColor, toggleViewPicker, changeFontSize, setFontTone,
+    setColor, toggleViewPicker, setFontScale, setFontTone,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM,
     send, handleKey, autoResize,
