@@ -429,8 +429,9 @@
   }
 
   /* ── Visualização: cor, tom de fonte, tamanho ── */
-  var FONT_SIZES  = [10, 11, 12, 13, 14];
-  var fontSizeIdx = parseInt(localStorage.getItem('exp_chat_font_size') || '2', 10); // default: 12px
+  var FONT_SCALES  = [0.90, 0.95, 1.00, 1.05, 1.10];
+  var FONT_LABELS  = ['90%', '95%', '100%', '105%', '110%'];
+  var fontSizeIdx = parseInt(localStorage.getItem('exp_chat_font_size') || '2', 10); // default: 100%
 
   /* Tons de texto — escala de cinza com maior amplitude entre opções */
   var TONES_LIGHT = ['#AAA', '#777', '#333', '#000'];   /* muito claro → preto */
@@ -442,16 +443,14 @@
   var TONES_PREVIEW_DARK  = ['#3A3836', '#555', '#8C8A85', '#B4AEA4'];
 
   function applyViewPrefs() {
-    var size = FONT_SIZES[Math.max(0, Math.min(fontSizeIdx, FONT_SIZES.length-1))];
+    var idx  = Math.max(0, Math.min(fontSizeIdx, FONT_SCALES.length - 1));
+    var scale = FONT_SCALES[idx];
     var dark = document.documentElement.getAttribute('data-theme') === 'dark';
     var tone        = dark ? TONES_DARK[fontToneIdx]         : TONES_LIGHT[fontToneIdx];
     var tonePreview = dark ? TONES_PREVIEW_DARK[fontToneIdx] : TONES_PREVIEW_LIGHT[fontToneIdx];
 
-    /* Escala toda a página — override dos tokens DS no root */
-    document.documentElement.style.setProperty('--fp-msg-size', size + 'px');
-    document.documentElement.style.setProperty('--text-body', size + 'px');
-    document.documentElement.style.setProperty('--fp-lists-scale', (size / 12).toFixed(4));
-    document.body.style.fontSize = size + 'px';
+    /* Escala toda a página proporcionalmente via zoom */
+    document.body.style.zoom = String(scale);
 
     /* Cor de mensagem — scoped ao container de mensagens */
     var $msgs = document.getElementById('fp-messages');
@@ -462,17 +461,18 @@
     /* Aplicar nos previews da sidebar via CSS custom property no root */
     document.documentElement.style.setProperty('--fp-preview-color', tonePreview);
     document.documentElement.style.setProperty('--fp-conv-name-color', tone);
+    document.documentElement.style.setProperty('--fp-lists-tone', tone);
 
-    /* atualizar label de tamanho */
-    var $lbl = document.getElementById('fp-font-size-label');
-    if ($lbl) $lbl.textContent = size + 'px';
+    /* atualizar chips de tamanho */
+    var $chips = document.querySelectorAll('.fp-view-size-btn');
+    $chips.forEach(function(c, i) { c.classList.toggle('active', i === idx); });
     /* atualizar tom dots */
     var $dots = document.querySelectorAll('.fp-tone-dot');
     $dots.forEach(function(d, i) { d.classList.toggle('active', i === fontToneIdx); });
   }
 
-  function changeFontSize(delta) {
-    fontSizeIdx = Math.max(0, Math.min(fontSizeIdx + delta, FONT_SIZES.length - 1));
+  function setFontScale(idx) {
+    fontSizeIdx = Math.max(0, Math.min(idx, FONT_SCALES.length - 1));
     localStorage.setItem('exp_chat_font_size', String(fontSizeIdx));
     applyViewPrefs();
   }

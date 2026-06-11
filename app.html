@@ -379,7 +379,7 @@ body {
 .dash-event-meet { font-size: var(--text-sub); font-weight: 600; color: var(--azul); text-decoration: none; flex-shrink: 0; }
 .dash-event-meet:hover { text-decoration: underline; }
 
-/* ── CARDS DE PRIORIDADE — monocromatico sem suavizado ───── */
+/* ── CARDS DE PRIORIDADE — cores via inline style (semafórico) */
 .prio-hub-card {
   background: var(--branco);
   border: 1px solid var(--cinza2);
@@ -392,19 +392,6 @@ body {
 }
 .prio-hub-card:last-child { margin-bottom: 0; }
 .prio-hub-card:hover { transform: translateX(2px); box-shadow: var(--shadow-card); }
-/* Coloração por número — monocromatica saturada */
-.prio-hub-card.p1 { border-left-color: var(--verde);     background: rgba(29,106,74,.07); }
-.prio-hub-card.p2 { border-left-color: var(--azul);      background: rgba(29,79,160,.07); }
-.prio-hub-card.p3 { border-left-color: var(--ouro);      background: rgba(196,131,26,.07); }
-.prio-hub-card.p4,
-.prio-hub-card.p5,
-.prio-hub-card.p6 { border-left-color: var(--terracota); background: rgba(184,76,58,.07); }
-[data-theme="dark"] .prio-hub-card.p1 { background: rgba(29,106,74,.14); }
-[data-theme="dark"] .prio-hub-card.p2 { background: rgba(29,79,160,.14); }
-[data-theme="dark"] .prio-hub-card.p3 { background: rgba(196,131,26,.14); }
-[data-theme="dark"] .prio-hub-card.p4,
-[data-theme="dark"] .prio-hub-card.p5,
-[data-theme="dark"] .prio-hub-card.p6 { background: rgba(184,76,58,.14); }
 
 .prio-hub-head { display: flex; align-items: flex-start; }
 .prio-hub-num  { display: none; } /* número removido — cor da borda já indica prioridade */
@@ -441,11 +428,7 @@ body {
 }
 .prio-hub-prazo.vencida { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
 .prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
-/* Card inteiro muda de cor quando atrasado ou vence hoje */
-.prio-hub-card.vencida:not(.prio-done) { border-left-color: var(--terracota) !important; background: rgba(184,76,58,.09) !important; }
-.prio-hub-card.hoje:not(.prio-done)    { border-left-color: var(--ouro)      !important; background: rgba(196,131,26,.09) !important; }
-[data-theme="dark"] .prio-hub-card.vencida:not(.prio-done) { background: rgba(184,76,58,.18) !important; }
-[data-theme="dark"] .prio-hub-card.hoje:not(.prio-done)    { background: rgba(196,131,26,.18) !important; }
+/* cores do card definidas via inline style no buildCard (semafórico) */
 
 /* ── EMPTY STATE INLINE ──────────────────────────────────── */
 .dash-empty { padding: 18px 14px; font-size: var(--text-sub); color: #bbb; text-align: center; }
@@ -3630,7 +3613,14 @@ function renderPriosSection(prios) {
   function buildCard(pr, idx, done) {
     const ord  = pr.ordem || (idx + 1);
     const prazo = !done && _fmtPrazo(pr.prazo_texto);
-    const cls  = done ? 'prio-done' : [(NUM_CLS[Math.min(ord, 6)] || 'p6'), prazo?.cls].filter(Boolean).join(' ');
+    const cls  = done ? 'prio-done' : '';
+    // Paleta semafórica inline — verde=futuro, amarelo=hoje, vermelho=atrasada
+    const _cor = done ? null
+      : prazo?.cls === 'vencida' ? { bg:'#FDECEA', border:'#C0392B', text:'#C0392B' }
+      : prazo?.cls === 'hoje'    ? { bg:'#FFFBEA', border:'#D4AC0D', text:'#B8860B' }
+      :                            { bg:'#EAF5EC', border:'#27AE60', text:'#1E8449' };
+    const cardStyle = _cor ? `background:${_cor.bg};border-left-color:${_cor.border}` : '';
+    const nomeStyle = _cor ? `color:${_cor.text}` : '';
     const nome  = pr.produtos?.oportunidades
       ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
       : pr.produtos?.nome || '—';
@@ -3643,10 +3633,10 @@ function renderPriosSection(prios) {
            >✓</button>`
       : `<span style="font-size:9px;font-weight:700;color:#2D9E6B;opacity:.6">✓</span>`;
     return `
-      <div class="prio-hub-card ${cls}" data-nav-href="gestao.html">
+      <div class="prio-hub-card ${cls}" style="${cardStyle}" data-nav-href="gestao.html">
         <div class="prio-hub-head">
           <div class="prio-hub-body">
-            <div class="prio-hub-nome">${escHtml(nome)}</div>
+            <div class="prio-hub-nome" style="${nomeStyle}">${escHtml(nome)}</div>
             ${etapa ? `<div class="prio-hub-etapa">↳ ${escHtml(etapa.nome)}</div>` : ''}
             ${coment ? `<div class="prio-hub-sub">${escHtml(coment)}</div>` : ''}
             ${prazoHtml ? `<div style="margin-top:5px">${prazoHtml}</div>` : ''}
