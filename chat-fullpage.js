@@ -2851,6 +2851,7 @@
     var $foot  = document.getElementById('fp-ck-footer');
     if (!$items) return;
     if (idx === '' || idx === null || idx === undefined) {
+      localStorage.removeItem('exp_ck_last_' + tipo);
       $items.innerHTML = '';
       if ($foot) { $foot.innerHTML = ''; $foot.style.display = 'none'; }
       _renderCkSelector(tipo, tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll, _ckLabelFns[tipo] || function(){ return ''; });
