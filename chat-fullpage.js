@@ -367,6 +367,10 @@
       closeMediaViewer();
     });
 
+    /* Clique no print com ferramenta de marcador ativa */
+    var $mvCanvas = document.getElementById('fp-mv-canvas');
+    if ($mvCanvas) $mvCanvas.addEventListener('click', mvCanvasClick);
+
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
         /* fechar overlay do projeto primeiro */
@@ -1672,7 +1676,7 @@
     var ct=mediaContextTypeForMessage(msg), cm=getMessageMedia(msg)||{};
     assignMessageMedia(ct,msg.id,Object.assign({},cm,{pending:true,failed_load:false})); renderMessages();
     try {
-      var mr=await sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at').eq('contexto_tipo',ct).eq('contexto_id',msg.id).is('removido_em',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:true}).limit(1).maybeSingle();
+      var mr=await sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores').eq('contexto_tipo',ct).eq('contexto_id',msg.id).is('removido_em',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:true}).limit(1).maybeSingle();
       if (mr.error||!mr.data) throw mr.error||new Error('Print não encontrado.');
       var down=await sb.storage.from(TEMP_MEDIA_BUCKET).download(mr.data.storage_path);
       if (down.error||!down.data) throw down.error||new Error('Falha ao carregar.');
@@ -1710,19 +1714,32 @@
     if ($zoom)  $zoom.textContent=Math.round(mvZoom*100)+'%';
     if ($title) $title.textContent=msg?firstName(msg.sender_name||'')+' · print':'Print do chat';
     if ($meta&&msg&&msg.created_at) { var dt=new Date(msg.created_at); $meta.textContent=dt.toLocaleDateString('pt-BR')+' · '+fmtTime(dt); }
+    var $canvas=document.getElementById('fp-mv-canvas');
     if (media&&media.objectUrl&&$img) {
-      $img.src=media.objectUrl; $img.style.display='block';
-      $img.style.transform='scale('+mvZoom+')'; $img.style.transformOrigin='center center';
+      $img.src=media.objectUrl;
+      if ($canvas) $canvas.style.display='block';
+      /* Zoom por largura: a imagem cresce de verdade e o stage (overflow:auto) ganha scroll */
+      if (mvZoom === 1) {
+        $img.style.width=''; $img.style.maxWidth=''; $img.style.maxHeight='';
+      } else {
+        /* o canvas embrulha a imagem, então o % precisa vir do stage (pai) em px */
+        var stageW = $canvas && $canvas.parentNode ? $canvas.parentNode.clientWidth - 32 : 0;
+        $img.style.maxWidth='none'; $img.style.maxHeight='none';
+        $img.style.width=Math.round(mvZoom*stageW)+'px';
+      }
       if ($empty) $empty.style.display='none';
+      renderMvMarkers();
     } else {
-      if ($img){ $img.style.display='none'; $img.src=''; }
+      if ($canvas) $canvas.style.display='none';
+      if ($img) $img.src='';
       if ($empty){ $empty.style.display='block'; $empty.textContent='Imagem não disponível'; }
     }
   }
   function closeMediaViewer() {
-    mediaViewerState=null; mvZoom=1;
+    mediaViewerState=null; mvZoom=1; mvSelectTool(null);
     document.getElementById('fp-media-viewer').style.display='none';
-    var $img=document.getElementById('fp-mv-img'); if($img){ $img.src=''; $img.style.display='none'; }
+    var $canvas=document.getElementById('fp-mv-canvas'); if($canvas) $canvas.style.display='none';
+    var $img=document.getElementById('fp-mv-img'); if($img) $img.src='';
   }
   function mvPrev(){ if(mediaViewerState&&mediaViewerState.idx>0){ mediaViewerState.idx--; mvZoom=1; renderMediaViewer(); } }
   function mvNext(){ if(mediaViewerState&&mediaViewerState.idx<mediaViewerState.keys.length-1){ mediaViewerState.idx++; mvZoom=1; renderMediaViewer(); } }
@@ -1731,6 +1748,97 @@
   function mvZoomReset(){ mvZoom=1; renderMediaViewer(); }
   function getMediaViewerGalleryKeys(){ return messages.map(function(m){ var md=getMessageMedia(m); return md&&md.objectUrl?mediaKeyForMessage(m):null; }).filter(Boolean); }
   function getMessageByMediaKey(k){ return messages.find(function(m){ return mediaKeyForMessage(m)===k; })||null; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     MARCADORES SOBRE O PRINT
+     Salvos na coluna `marcadores` (jsonb) de gestao_anexos_temporarios:
+     vivem e morrem com a imagem. Posições em % — acompanham o zoom.
+  ═══════════════════════════════════════════════════════════════════ */
+  var mvTool = null;
+  var MV_MARK_SVGS = {
+    seta:    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+    alerta:  '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FBF3E8" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    x:       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+    circulo: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6"><circle cx="12" cy="12" r="9"/></svg>'
+  };
+
+  function mvSelectTool(tool) {
+    mvTool = (mvTool === tool) ? null : tool;
+    ['seta','alerta','x','circulo'].forEach(function (t) {
+      var btn = document.getElementById('fp-mv-tool-' + t);
+      if (btn) btn.classList.toggle('active', mvTool === t);
+    });
+    var $canvas = document.getElementById('fp-mv-canvas');
+    if ($canvas) $canvas.classList.toggle('tool-active', !!mvTool);
+  }
+
+  function _mvCurrentMedia() {
+    if (!mediaViewerState) return null;
+    var msg = getMessageByMediaKey(mediaViewerState.keys[mediaViewerState.idx]);
+    return msg ? { msg: msg, media: getMessageMedia(msg) } : null;
+  }
+
+  function renderMvMarkers() {
+    var $marks = document.getElementById('fp-mv-marks');
+    if (!$marks) return;
+    var cur = _mvCurrentMedia();
+    var list = (cur && cur.media && cur.media.marcadores) || [];
+    $marks.innerHTML = list.map(function (mk) {
+      var svg = MV_MARK_SVGS[mk.t] || '';
+      var own = mk.uid === user.auth_id;
+      return '<div class="fp-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%"' +
+        (own ? ' ondblclick="fpChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')" title="Clique duplo para remover"' : '') + '>' +
+        svg +
+        '<span class="fp-mark-ini">' + escHtml(mk.ini || '?') + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function mvCanvasClick(e) {
+    if (!mvTool || !mediaViewerState) return;
+    var $img = document.getElementById('fp-mv-img');
+    if (!$img || !$img.src) return;
+    var cur = _mvCurrentMedia();
+    if (!cur || !cur.media) return;
+    var r = $img.getBoundingClientRect();
+    var x = ((e.clientX - r.left) / r.width)  * 100;
+    var y = ((e.clientY - r.top)  / r.height) * 100;
+    if (x < 0 || x > 100 || y < 0 || y > 100) return;
+    var mk = {
+      id:  newUuid(),
+      t:   mvTool,
+      x:   Math.round(x * 100) / 100,
+      y:   Math.round(y * 100) / 100,
+      ini: user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),
+      uid: user.auth_id,
+      ts:  new Date().toISOString()
+    };
+    cur.media.marcadores = (cur.media.marcadores || []).concat([mk]);
+    renderMvMarkers();
+    _saveMvMarkers(cur.msg, cur.media.marcadores);
+  }
+
+  function mvRemoveMark(markId) {
+    var cur = _mvCurrentMedia();
+    if (!cur || !cur.media) return;
+    cur.media.marcadores = (cur.media.marcadores || []).filter(function (mk) {
+      return !(String(mk.id) === String(markId) && mk.uid === user.auth_id);
+    });
+    renderMvMarkers();
+    _saveMvMarkers(cur.msg, cur.media.marcadores);
+  }
+
+  function _saveMvMarkers(msg, marcadores) {
+    var ct = mediaContextTypeForMessage(msg);
+    sb.from('gestao_anexos_temporarios')
+      .update({ marcadores: marcadores })
+      .eq('contexto_tipo', ct)
+      .eq('contexto_id', msg.id)
+      .is('removido_em', null)
+      .then(function (r) {
+        if (r.error) console.warn('[EXP ChatFP] falha ao salvar marcadores:', r.error.message);
+      });
+  }
 
   /* ═══════════════════════════════════════════════════════════════════
      UI HELPERS
@@ -1912,7 +2020,7 @@
     var ids=messages.map(function(m){return m.id;}).filter(function(id){return !!id&&String(id).indexOf('pending:')!==0;});
     if(!ids.length) return Promise.resolve();
     var seq=++mediaRequestSeq;
-    return sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at').eq('contexto_tipo',ct).in('contexto_id',ids).is('removido_em',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:true})
+    return sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores').eq('contexto_tipo',ct).in('contexto_id',ids).is('removido_em',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:true})
       .then(function(r){
         if(seq!==mediaRequestSeq||r.error) return;
         return Promise.all((r.data||[]).map(function(row){
@@ -1934,7 +2042,15 @@
     var et=isProjectChannel(currentChannel)?'chat_thread_message':'chat_message';
     if(String(row.contexto_tipo||'').toLowerCase()!==et) return;
     if(!messages.some(function(m){return m.id===row.contexto_id;})) return;
-    if(messageMediaMap[mediaKeyFor(et,row.contexto_id)]) return;
+    var _exKey=mediaKeyFor(et,row.contexto_id), _ex=messageMediaMap[_exKey];
+    if(_ex){
+      /* mídia já carregada: sincroniza apenas os marcadores */
+      if(JSON.stringify(_ex.marcadores||[])!==JSON.stringify(row.marcadores||[])){
+        _ex.marcadores=row.marcadores||[];
+        if(mediaViewerState&&mediaViewerState.keys[mediaViewerState.idx]===_exKey) renderMvMarkers();
+      }
+      return;
+    }
     if(!row.storage_path||failedStoragePaths[row.storage_path]){
       assignMessageMedia(et,row.contexto_id,Object.assign({},row,{objectUrl:null,pending:false,failed_load:true}));
       renderMessages(); return;
@@ -2208,6 +2324,7 @@
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
+    mvSelectTool, mvRemoveMark,
     /* fixar projetos */
     togglePinCurrent, openPinPop, closePinPop, pinPopToggle,
     openCtxMenu, closeCtxMenu, ctxTogglePin,

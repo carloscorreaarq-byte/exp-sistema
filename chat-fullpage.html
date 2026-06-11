@@ -900,17 +900,34 @@ body {
 .fp-mv-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--grafite, #111110); }
 [data-theme="dark"] .fp-mv-title { color: #F0EDE6; }
 .fp-mv-meta { font-family: var(--font-mono); font-size: 10px; color: #999; }
-.fp-mv-tools { display: flex; align-items: center; gap: 5px; }
-.fp-mv-zoombtn {
-  width: 28px; height: 28px; border-radius: 8px;
-  border: 1px solid var(--cinza2, #ECEAE4); background: var(--branco, #fff);
-  color: var(--grafite, #111110); font-size: 14px; font-weight: 700;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+.fp-mv-tools { display: flex; align-items: center; gap: 8px; }
+.fp-mv-zoomgroup {
+  display: flex; align-items: center; height: 26px;
+  border: 1px solid var(--cinza2, #ECEAE4); border-radius: 999px;
+  background: var(--branco, #fff); overflow: hidden;
 }
-.fp-mv-zoombtn:hover { border-color: var(--ca); color: var(--ca); }
-[data-theme="dark"] .fp-mv-zoombtn { background: #2A2927; border-color: #3A3937; color: #F0EDE6; }
-.fp-mv-zoomlabel { min-width: 42px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: #999; }
-.fp-mv-count { min-width: 40px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: #999; }
+[data-theme="dark"] .fp-mv-zoomgroup { background: #2A2927; border-color: #3A3937; }
+.fp-mv-zoombtn {
+  width: 26px; height: 100%; border: none; background: none;
+  color: #9A9590; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  transition: color .12s, background .12s;
+}
+.fp-mv-zoombtn:hover { color: var(--ca); background: var(--ca-bg, rgba(29,106,74,.08)); }
+.fp-mv-zoomreset {
+  height: 100%; border: none; background: none; cursor: pointer; padding: 0 7px;
+  border-left: 1px solid var(--cinza2, #ECEAE4);
+  border-right: 1px solid var(--cinza2, #ECEAE4);
+  transition: background .12s;
+}
+.fp-mv-zoomreset:hover { background: var(--ca-bg, rgba(29,106,74,.08)); }
+[data-theme="dark"] .fp-mv-zoomreset { border-color: #3A3937; }
+#fp-mv-zoom-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  color: var(--grafite, #111110); min-width: 32px; display: inline-block; text-align: center;
+}
+[data-theme="dark"] #fp-mv-zoom-label { color: #F0EDE6; }
+.fp-mv-count { font-family: var(--font-mono); font-size: 10px; color: #9A9590; letter-spacing: .4px; }
 .fp-mv-close {
   width: 28px; height: 28px; border-radius: 7px; border: none;
   background: rgba(0,0,0,.07); color: var(--grafite, #111110);
@@ -920,16 +937,49 @@ body {
 [data-theme="dark"] .fp-mv-close { background: rgba(255,255,255,.08); color: #F0EDE6; }
 .fp-mv-close:hover { background: rgba(0,0,0,.14); }
 .fp-mv-body {
-  flex: 1; padding: 16px; background: var(--off, #F7F6F3);
-  display: flex; align-items: center; justify-content: center;
-  min-height: 260px; overflow: auto;
+  flex: 1; background: var(--off, #F7F6F3);
+  position: relative; display: flex;
+  min-height: 260px; overflow: hidden;
 }
 [data-theme="dark"] .fp-mv-body { background: #252523; }
 .fp-mv-stage {
-  position: relative; display: flex; align-items: center; justify-content: center;
-  min-height: 360px; width: 100%;
+  flex: 1; display: flex; overflow: auto;
+  padding: 16px; min-height: 360px;
 }
+/* margin:auto centra quando cabe e mantém o scroll alcançável quando excede */
+.fp-mv-canvas { margin: auto; position: relative; line-height: 0; }
+.fp-mv-canvas.tool-active { cursor: crosshair; }
 .fp-mv-body img { max-width: 100%; max-height: calc(100vh - 200px); border-radius: 10px; display: block; box-shadow: 0 10px 24px rgba(0,0,0,.12); }
+
+/* ── Toolbar de marcadores ── */
+.fp-mv-toolbar {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 8px; flex-shrink: 0; align-self: flex-start;
+}
+.fp-mv-tool {
+  width: 30px; height: 30px; border-radius: 9px;
+  border: 1px solid var(--cinza2, #ECEAE4); background: var(--branco, #fff);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+  transition: border-color .12s, box-shadow .12s;
+}
+.fp-mv-tool:hover { border-color: var(--ca); }
+.fp-mv-tool.active { border-color: var(--ca); box-shadow: 0 0 0 2px var(--ca-bg, rgba(29,106,74,.15)); }
+[data-theme="dark"] .fp-mv-tool { background: #2A2927; border-color: #3A3937; }
+
+/* ── Marcadores sobre a imagem ── */
+.fp-mv-marks { position: absolute; inset: 0; pointer-events: none; }
+.fp-mark {
+  position: absolute; transform: translate(-50%, -50%);
+  pointer-events: auto; display: flex; align-items: center; gap: 3px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.3));
+}
+.fp-mark-ini {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: rgba(255,255,255,.72); color: rgba(17,17,16,.55);
+  font-family: var(--font-mono); font-size: 7px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  letter-spacing: .2px; user-select: none;
+}
 .fp-mv-nav {
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 38px; height: 38px; border-radius: 50%;
@@ -2360,18 +2410,41 @@ body {
       </div>
       <div class="fp-mv-tools">
         <span class="fp-mv-count" id="fp-mv-count">1/1</span>
-        <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomOut()">−</button>
-        <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomReset()"><span id="fp-mv-zoom-label">100%</span></button>
-        <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomIn()">+</button>
+        <div class="fp-mv-zoomgroup">
+          <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomOut()" title="Diminuir zoom">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="fp-mv-zoomreset" onclick="fpChat.mvZoomReset()" title="Restaurar zoom"><span id="fp-mv-zoom-label">100%</span></button>
+          <button class="fp-mv-zoombtn" onclick="fpChat.mvZoomIn()" title="Aumentar zoom">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
       </div>
       <button class="fp-mv-close" onclick="fpChat.closeMediaViewer()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
       </button>
     </div>
     <div class="fp-mv-body">
+      <div class="fp-mv-toolbar">
+        <button class="fp-mv-tool" id="fp-mv-tool-seta" onclick="fpChat.mvSelectTool('seta')" title="Seta">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>
+        </button>
+        <button class="fp-mv-tool" id="fp-mv-tool-alerta" onclick="fpChat.mvSelectTool('alerta')" title="Alerta">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </button>
+        <button class="fp-mv-tool" id="fp-mv-tool-x" onclick="fpChat.mvSelectTool('x')" title="Marcar com X">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+        </button>
+        <button class="fp-mv-tool" id="fp-mv-tool-circulo" onclick="fpChat.mvSelectTool('circulo')" title="Círculo">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>
+        </button>
+      </div>
       <div class="fp-mv-stage">
         <button class="fp-mv-nav prev" id="fp-mv-prev" onclick="fpChat.mvPrev()">&#8249;</button>
-        <img id="fp-mv-img" style="display:none" alt="Print">
+        <div class="fp-mv-canvas" id="fp-mv-canvas" style="display:none">
+          <img id="fp-mv-img" alt="Print">
+          <div class="fp-mv-marks" id="fp-mv-marks"></div>
+        </div>
         <div class="fp-mv-empty" id="fp-mv-empty">Carregando…</div>
         <button class="fp-mv-nav next" id="fp-mv-next" onclick="fpChat.mvNext()">&#8250;</button>
       </div>
