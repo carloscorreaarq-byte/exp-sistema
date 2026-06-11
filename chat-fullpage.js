@@ -53,6 +53,7 @@
   var flaggedMessages   = loadFlags();
   var pinnedProjects    = loadPins();
   var pinnedChannels    = (function(){ try { return new Set(JSON.parse(localStorage.getItem(PINNED_KEY)||'[]')); } catch(e){ return new Set(); } }());
+  var _realtimeDropped  = false;
   var ctxMenuChannel    = null;
   var pinPopOpen        = false;
   var filterQuery       = '';
@@ -321,6 +322,7 @@
     setupPresence();
     fetchAllUnread();
     subscribeIncoming();
+    startPolling();
     loadTeamMembers();
     initNotif();
     initExpRoom();
@@ -360,6 +362,7 @@
       var v = document.getElementById('fp-media-viewer');
       var c = v && v.querySelector('.fp-mv-card');
       if (!v || v.style.display !== 'flex') return;
+      if (e.target && e.target.closest && e.target.closest('.fp-media-thumb')) return;
       if (c && c.contains(e.target)) return;
       closeMediaViewer();
     });
@@ -1130,6 +1133,8 @@
         var msg=payload.new, ch=msg.channel, uid=user.auth_id;
         var isSocios = ch==='socios' && isSocioLikeRole(user.role);
         if (ch!=='general' && !isSocios && ch.indexOf(uid)===-1) return;
+        if (_wasSeen(msg.id)) return;
+        _markSeen(msg.id);
         var isActive=(currentChannel===ch), isOwn=(msg.sender_id===uid);
         console.log('[EXP ChatFP] msg recebida', { ch, uid, sender_id: msg.sender_id, isOwn, isActive, soundEnabled, userStatus, visibility: document.visibilityState });
         if (isActive) {
@@ -1147,7 +1152,10 @@
         upsertMessage(up); renderMessages();
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_thread_messages'}, function(payload){
-        var raw=payload.new, msg=normalizeProjectMessage(raw), ch=msg.channel;
+        var raw=payload.new;
+        if (_wasSeen('t:'+raw.id)) return;
+        _markSeen('t:'+raw.id);
+        var msg=normalizeProjectMessage(raw), ch=msg.channel;
         if (!projectThreadMeta[ch]) projectThreadMeta[ch]=buildProjectThreadMeta(raw.thread_id,null,raw.content,raw.created_at,raw.sender_auth_id);
         updateProjectThreadSnapshot(raw.thread_id,raw.content,raw.created_at,raw.sender_auth_id);
         var isActive=(currentChannel===ch), isOwn=(raw.sender_auth_id===user.auth_id);
@@ -1173,14 +1181,92 @@
         console.log('[EXP ChatFP] realtime status:', status, err || '');
         if (status === 'SUBSCRIBED') {
           console.log('[EXP ChatFP] realtime conectado ✓');
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[EXP ChatFP] reconectando em 4s...');
-          setTimeout(function () {
-            var s = msgCh && msgCh.state;
-            if (s !== 'joined' && s !== 'joining') subscribeIncoming();
-          }, 4000);
+          /* Após uma queda, busca o que chegou enquanto estava offline */
+          if (_realtimeDropped) {
+            _realtimeDropped = false;
+            console.log('[EXP ChatFP] recuperando mensagens perdidas...');
+            fetchAllUnread();
+            renderConvList();
+            if (currentChannel) loadMessages();
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          _realtimeDropped = true;
+          if (status !== 'CLOSED') {
+            console.warn('[EXP ChatFP] reconectando em 4s...');
+            setTimeout(function () {
+              var s = msgCh && msgCh.state;
+              if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+            }, 4000);
+          }
         }
       });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     POLLING FALLBACK — pega mensagens perdidas quando o realtime cai.
+     Timer num Web Worker (não sofre throttling de aba em background);
+     dedup por id evita som/push duplicado com o realtime.
+  ═══════════════════════════════════════════════════════════════════ */
+  var POLL_INTERVAL_MS = 30000;
+  var _lastPollTs = new Date().toISOString();
+  var _seenMsgIds = {};
+  function _markSeen(id) { if (id != null) _seenMsgIds[String(id)] = true; }
+  function _wasSeen(id)  { return id != null && !!_seenMsgIds[String(id)]; }
+
+  function _processMissedMessage(msg) {
+    var ch  = msg.channel;
+    var uid = user.auth_id;
+    var isSocios = ch === 'socios' && isSocioLikeRole(user.role);
+    if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
+    if (msg.sender_id === uid) return;
+    console.log('[EXP ChatFP] msg recuperada via polling', { ch: ch, id: msg.id });
+
+    if (currentChannel === ch) {
+      upsertMessage(msg); renderMessages();
+      if (scrolledToEnd) scrollBottom(); else showNewMsgToast();
+      markRead();
+      return;
+    }
+    channelUnread[ch] = (channelUnread[ch] || 0) + 1;
+    updatePageTitle(); renderConvList();
+    if (_shouldPlaySound(ch)) playNotificationSound();
+    _sendChatPush(msg);
+  }
+
+  function _pollMissed() {
+    if (!sb || !user || !user.auth_id) return;
+    var since = _lastPollTs;
+    Promise.all([
+      sb.from('chat_messages').select('*').gt('created_at', since).order('created_at'),
+      sb.from('chat_thread_messages').select('*').gt('created_at', since).order('created_at')
+    ]).then(function (res) {
+      (res[0].data || []).forEach(function (m) {
+        if (m.created_at > _lastPollTs) _lastPollTs = m.created_at;
+        if (_wasSeen(m.id)) return;
+        _markSeen(m.id);
+        _processMissedMessage(m);
+      });
+      (res[1].data || []).forEach(function (raw) {
+        if (raw.created_at > _lastPollTs) _lastPollTs = raw.created_at;
+        if (_wasSeen('t:' + raw.id)) return;
+        _markSeen('t:' + raw.id);
+        updateProjectThreadSnapshot(raw.thread_id, raw.content, raw.created_at, raw.sender_auth_id);
+        var m = normalizeProjectMessage(raw);
+        m.sender_id = raw.sender_auth_id;
+        _processMissedMessage(m);
+      });
+    }).catch(function () {});
+  }
+
+  function startPolling() {
+    try {
+      /* Timer num Web Worker: não sofre throttling de aba em background */
+      var blob = new Blob(['setInterval(function(){postMessage(1)},' + POLL_INTERVAL_MS + ')'], { type: 'text/javascript' });
+      var w = new Worker(URL.createObjectURL(blob));
+      w.onmessage = _pollMissed;
+    } catch (e) {
+      setInterval(_pollMissed, POLL_INTERVAL_MS);
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════
