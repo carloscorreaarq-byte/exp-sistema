@@ -52,7 +52,7 @@ window.ExpNav = (() => {
   let _contatosPanelOpen = false, _contatosSearchTimer = null;
   /* EXP Room */
   let _roomBlinkTimer = null;
-  const ROOM_BLINK_SECS = 120;
+  const ROOM_BLINK_SECS = 180;
 
   /* ── Helpers ──────────────────────────────────────────────── */
   function _esc(s) {
@@ -1195,16 +1195,20 @@ window.ExpNav = (() => {
       if (pdt < hoje) estado = 'atrasada'; else if (+pdt===+hoje) estado = 'hoje';
       chipHtml = '<div><span class="exp-prio-chip ' + estado + '">📅 ' + _esc(dtFmt) + '</span></div>';
     }
-    var hdrStyle = estado === 'atrasada'
-      ? 'background:#F5E0DD;color:#B84C3A;border-bottom:1px solid rgba(184,76,58,.2)'
+    // Paleta semafórica: verde=futuro, amarelo=hoje, vermelho=atrasada
+    var _cor = estado === 'atrasada'
+      ? { bg:'#FDECEA', border:'#C0392B', text:'#C0392B', hdrBg:'#FDECEA', hdrBorder:'rgba(192,57,43,.2)' }
       : estado === 'hoje'
-        ? 'background:#FBF3E8;color:#C4831A;border-bottom:1px solid rgba(196,131,26,.2)'
-        : 'background:#EAF0FB;color:#1D4FA0;border-bottom:1px solid rgba(29,79,160,.2)';
+        ? { bg:'#FFFBEA', border:'#D4AC0D', text:'#B8860B', hdrBg:'#FFFBEA', hdrBorder:'rgba(212,172,13,.2)' }
+        : { bg:'#EAF5EC', border:'#27AE60', text:'#1E8449', hdrBg:'#EAF5EC', hdrBorder:'rgba(39,174,96,.2)' };
+    var hdrStyle = 'background:' + _cor.hdrBg + ';color:' + _cor.text + ';border-bottom:1px solid ' + _cor.hdrBorder;
+    var cardStyle = 'background:' + _cor.bg + ';border-left-color:' + _cor.border;
+    var nomeStyle = 'color:' + _cor.text;
     $inner.innerHTML =
       '<div class="exp-prio-hdr" style="' + hdrStyle + '">Minha prioridade</div>' +
-      '<div class="exp-prio-card ' + estado + '">' +
+      '<div class="exp-prio-card" style="' + cardStyle + '">' +
         '<div class="exp-prio-info">' +
-          '<div class="exp-prio-nome">' + _esc(titulo) + '</div>' +
+          '<div class="exp-prio-nome" style="' + nomeStyle + '">' + _esc(titulo) + '</div>' +
           (cidadeUf ? '<div class="exp-prio-cidade">' + _esc(cidadeUf) + '</div>' : '') +
           (etapa    ? '<div class="exp-prio-etapa">↳ ' + _esc(etapa.nome||'') + '</div>' : '') +
           chipHtml +
@@ -1446,7 +1450,7 @@ window.ExpNav = (() => {
 
       /* EXP Room */
       _checkRoomStatus();
-      setInterval(_checkRoomStatus, 15000);
+      setInterval(_checkRoomStatus, 10000);
 
       /* Clima ativa — para todos os perfis */
       _checkClimaAtiva(user.id || user.app_user_id, _isSocio(role));
