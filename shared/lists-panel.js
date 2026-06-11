@@ -51,7 +51,7 @@
   function toggle() {
     var $panel = document.getElementById('fp-tasks-panel');
     var $btn   = document.getElementById('fp-nav-lists');
-    if (!$panel) return;
+    if (!$panel || !_cfg) return;
     _open = !_open;
     $panel.style.display = _open ? 'flex' : 'none';
     if ($btn) $btn.classList.toggle('active', _open);
@@ -87,6 +87,11 @@
       if ($list)   $list.style.display   = 'none';
       if ($form)   $form.style.display   = 'none';
       if ($ckView) $ckView.style.display = 'flex';
+      /* limpa itens e footer do tab anterior antes de carregar o novo */
+      var $ckItems = document.getElementById('fp-ck-items');
+      var $foot    = document.getElementById('fp-ck-footer');
+      if ($ckItems) $ckItems.innerHTML = '';
+      if ($foot)  { $foot.innerHTML = ''; $foot.style.display = 'none'; }
       _loadCkTab(tab);
     }
   }
@@ -241,7 +246,12 @@
     var outros  = _members().filter(function(m) { return m.id !== uid; });
     var drop    = document.createElement('div');
     drop.id     = 'fp-assign-drop';
-    drop.style.cssText = 'position:fixed;z-index:700;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.16);padding:4px 0;min-width:160px;font-family:Raleway,sans-serif';
+    var _dark    = document.documentElement.getAttribute('data-theme') === 'dark';
+    var _dropBg  = _dark ? '#2A2926' : '#fff';
+    var _dropBdr = _dark ? 'rgba(255,255,255,.1)' : '#ECEAE4';
+    var _dropTxt = _dark ? '#F0EDE6' : '#111110';
+    var _hoverBg = _dark ? '#3A3936' : '#F7F6F3';
+    drop.style.cssText = 'position:fixed;z-index:700;background:' + _dropBg + ';border:1px solid ' + _dropBdr + ';border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.22);padding:4px 0;min-width:160px;font-family:Raleway,sans-serif;color:' + _dropTxt;
     if (!outros.length) {
       drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:#aaa">Nenhum membro</div>';
     } else {
@@ -249,8 +259,8 @@
         var nome = m.apelido || _firstName(m.nome || '');
         var cor  = m.cor || '#888';
         var ini  = m.iniciais || (m.nome || '').substring(0,2).toUpperCase();
-        return '<div data-i="' + i + '" style="padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px"' +
-          ' onmouseenter="this.style.background=\'#F7F6F3\'" onmouseleave="this.style.background=\'\'"' +
+        return '<div data-i="' + i + '" style="padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px;color:' + _dropTxt + '"' +
+          ' onmouseenter="this.style.background=\'' + _hoverBg + '\'" onmouseleave="this.style.background=\'\'"' +
           ' onclick="listsPanel._doAssign(' + i + ')">' +
           '<span style="width:20px;height:20px;border-radius:50%;background:' + _esc(cor) + ';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + _esc(ini) + '</span>' +
           _esc(nome) + '</div>';
@@ -324,7 +334,7 @@
 
   function _loadCkAbertos(uid) {
     _sb().from('checklist_tarefa')
-      .select('id,titulo,status,produto_id,criado_por,editores_ids,checklist_tarefa_item(id,texto,secao,ordem,concluido,concluido_por_nome,concluido_em),produtos(nome,oportunidades(projeto))')
+      .select('id,titulo,status,produto_id,criado_por,editores_ids,checklist_tarefa_item(id,texto,secao,ordem,concluido,concluido_por_nome,concluido_em),produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome)))')
       .eq('status', 'aberto')
       .then(function(r) {
         if (r.error) { _ckShowErr(r.error.message); return; }
@@ -340,7 +350,7 @@
 
   function _loadCkEtapa(uid) {
     _sb().from('etapa_desenvolvedores')
-      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)))')
+      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome))))')
       .eq('usuario_id', uid)
       .then(function(devR) {
         if (devR.error) { _ckShowErr(devR.error.message); return; }
@@ -355,8 +365,12 @@
             if (r.error) { _ckShowErr(r.error.message); return; }
             var execList = (r.data || []).map(function(exec) {
               var etapa = etapaMap[exec.etapa_id] || {};
-              exec._etapaNome = etapa.nome || '';
-              exec._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+              var prod  = etapa.produtos || {};
+              var opp   = prod.oportunidades || {};
+              exec._etapaNome   = etapa.nome || '';
+              exec._prodNome    = (opp.projeto || prod.nome) || '';
+              exec._clienteNome = (opp.clientes && opp.clientes.nome) || '';
+              exec._coordId     = prod.coordenador_id || null;
               exec.checklist_etapa_exec_secao = [];
               return exec;
             });
@@ -388,7 +402,7 @@
 
   function _loadCkRevisao(uid) {
     _sb().from('etapa_desenvolvedores')
-      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)))')
+      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome))))')
       .eq('usuario_id', uid)
       .then(function(devR) {
         if (devR.error) { _ckShowErr(devR.error.message); return; }
@@ -406,8 +420,12 @@
             var items = (r.data || []).map(function(rev) {
               contadores[rev.etapa_id] = (contadores[rev.etapa_id] || 0) + 1;
               var etapa = etapaMap[rev.etapa_id] || {};
-              rev._etapaNome = etapa.nome || '';
-              rev._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+              var prod  = etapa.produtos || {};
+              var opp   = prod.oportunidades || {};
+              rev._etapaNome   = etapa.nome || '';
+              rev._prodNome    = (opp.projeto || prod.nome) || '';
+              rev._clienteNome = (opp.clientes && opp.clientes.nome) || '';
+              rev._coordId     = prod.coordenador_id || null;
               rev._num = contadores[rev.etapa_id];
               return rev;
             });
@@ -418,6 +436,36 @@
             });
           });
       });
+  }
+
+  /* ── detalhe estruturado por tipo ───────────────────────── */
+  function _ckGetDetail(tipo, ck) {
+    if (tipo === 'abertos') {
+      var p = ck.produtos || {}, o = p.oportunidades || {};
+      return {
+        cliente : (o.clientes && o.clientes.nome) || '',
+        proj    : o.projeto || p.nome || '',
+        etapa   : '',
+        nome    : ck.titulo || '',
+        coordId : p.coordenador_id || null,
+      };
+    }
+    if (tipo === 'etapa') {
+      return {
+        cliente : ck._clienteNome || '',
+        proj    : ck._prodNome    || '',
+        etapa   : ck._etapaNome   || '',
+        nome    : (ck.checklist_etapa_preset && ck.checklist_etapa_preset.nome) || '',
+        coordId : ck._coordId || null,
+      };
+    }
+    return {
+      cliente : ck._clienteNome || '',
+      proj    : ck._prodNome    || '',
+      etapa   : ck._etapaNome   || '',
+      nome    : 'Rev. ' + (ck._num || ''),
+      coordId : ck._coordId || null,
+    };
   }
 
   /* ── seletor ─────────────────────────────────────────────── */
@@ -468,6 +516,7 @@
     var $foot  = document.getElementById('fp-ck-footer');
     if (!$items) return;
     if (idx === '' || idx === null || idx === undefined) {
+      localStorage.removeItem('exp_ck_last_' + tipo);
       $items.innerHTML = '';
       if ($foot) { $foot.innerHTML = ''; $foot.style.display = 'none'; }
       var list0 = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
@@ -479,10 +528,16 @@
     if (!ck) return;
     /* Salva última seleção */
     localStorage.setItem('exp_ck_last_' + tipo, String(ck.id));
-    var label = (_ckLabelFns[tipo] || function(){ return ''; })(ck);
+    var d = _ckGetDetail(tipo, ck);
+    var projLine  = _esc(d.cliente ? d.cliente + ' | ' + d.proj : d.proj);
+    var etapaLine = d.etapa ? '<div class="fp-ck-sel-sub">' + _esc(d.etapa) + '</div>' : '';
+    var nomeLine  = d.nome  ? '<div class="fp-ck-sel-sub">' + _esc(d.nome)  + '</div>' : '';
     if ($wrap) $wrap.innerHTML =
       '<div class="fp-ck-sel-title">' +
-        '<span class="fp-ck-sel-title-txt">' + _esc(label) + '</span>' +
+        '<div class="fp-ck-sel-info">' +
+          '<div class="fp-ck-sel-proj">' + projLine + '</div>' +
+          etapaLine + nomeLine +
+        '</div>' +
         '<button class="fp-ck-sel-back" onclick="listsPanel.selectCkByIndex(\'' + tipo + '\',\'\')" title="Trocar">↩ trocar</button>' +
       '</div>';
     _renderCkItems(tipo, ck);
@@ -606,6 +661,27 @@
     var s = _ckCalcStats(tipo, ck);
     var taskPct = s.tasksTotal ? Math.round(s.tasksDone / s.tasksTotal * 100) : 0;
     var secPct  = s.secsTotal  ? Math.round(s.secsDone  / s.secsTotal  * 100) : 0;
+
+    /* coordenadores */
+    var d = _ckGetDetail(tipo, ck);
+    var coords = [];
+    if (d.coordId) {
+      var m = _members().find(function(u){ return u.id === d.coordId; });
+      if (m) coords.push(m);
+    }
+    /* subcoordenador_id — suportado quando existir no dado */
+    if (ck._subcoordId) {
+      var m2 = _members().find(function(u){ return u.id === ck._subcoordId; });
+      if (m2) coords.push(m2);
+    }
+    var coordsHtml = coords.length
+      ? '<div class="fp-ck-coords">' + coords.map(function(u) {
+          var ini = u.iniciais || (u.nome||'').substring(0,2).toUpperCase();
+          var cor = u.cor || '#888';
+          return '<div class="fp-ck-coord-av" style="background:' + _esc(cor) + '" title="' + _esc(u.nome||'') + '">' + _esc(ini) + '</div>';
+        }).join('') + '</div>'
+      : '';
+
     $foot.innerHTML =
       (s.secsTotal > 0 ?
         '<div class="fp-ck-bar-row">' +
@@ -617,7 +693,8 @@
         '<span class="fp-ck-bar-label">Tarefas</span>' +
         '<div class="fp-ck-bar"><div class="fp-ck-bar-fill" id="fp-ck-bar-tasks" style="width:' + taskPct + '%"></div></div>' +
         '<span class="fp-ck-bar-count" id="fp-ck-cnt-tasks">' + s.tasksDone + '/' + s.tasksTotal + '</span>' +
-      '</div>';
+      '</div>' +
+      coordsHtml;
   }
 
   /* ── toggle e add de item ─────────────────────────────────── */
