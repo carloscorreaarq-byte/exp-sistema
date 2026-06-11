@@ -450,6 +450,7 @@
     /* Escala toda a página — override dos tokens DS no root */
     document.documentElement.style.setProperty('--fp-msg-size', size + 'px');
     document.documentElement.style.setProperty('--text-body', size + 'px');
+    document.documentElement.style.setProperty('--fp-lists-scale', (size / 12).toFixed(4));
     document.body.style.fontSize = size + 'px';
 
     /* Cor de mensagem — scoped ao container de mensagens */
@@ -2832,6 +2833,15 @@
     }).join('');
     $wrap.innerHTML = '<select class="fp-ck-select" id="fp-ck-select" onchange="fpChat.selectCkByIndex(\'' + tipo + '\',this.value)">' + opts + '</select>';
     if ($items) $items.innerHTML = '';
+    /* Restaura última seleção ou auto-seleciona se só houver um */
+    var lastId = localStorage.getItem('exp_ck_last_' + tipo);
+    if (lastId) {
+      var lastItem = items.find(function(it){ return String(it.id) === String(lastId); });
+      if (lastItem && lastItem._idx !== undefined) {
+        selectCkByIndex(tipo, String(lastItem._idx));
+        return;
+      }
+    }
     if (items.length === 1) { selectCkByIndex(tipo, '0'); }
   }
 
@@ -2849,6 +2859,7 @@
     var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
     var ck   = list[parseInt(idx)];
     if (!ck) return;
+    localStorage.setItem('exp_ck_last_' + tipo, String(ck.id));
     // Transforma seletor em título negrito
     var label = (_ckLabelFns[tipo] || function(){ return ''; })(ck);
     if ($wrap) $wrap.innerHTML =

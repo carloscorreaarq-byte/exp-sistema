@@ -12,6 +12,7 @@
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 <link rel="stylesheet" href="shared/exp-nav.css">
+<link rel="stylesheet" href="shared/lists-panel.css">
 
 <!-- EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES -->
 
@@ -33,6 +34,11 @@
   /* foco de input — gestão usa ouro */
   --mod-focus:      var(--ouro);
   --mod-focus-soft: var(--ouro-soft);
+  /* alias do painel de listas — gestão usa verde */
+  --ca:          var(--verde);
+  --ca-bg:       var(--verde-bg);
+  --ca-mid:      var(--verde-soft);
+  --ca-rgb-vals: 29,106,74;
 }
 
 body {
@@ -1720,6 +1726,18 @@ body {
 }
 .tm-view-del:hover{background:rgba(0,0,0,.72)}
 
+/* ── Marcadores sobre imagens (checklists + presets) ── */
+.gm-mv-wrap{display:flex;gap:0;margin-top:12px}
+.gm-mv-toolbar{display:flex;flex-direction:column;gap:6px;padding:10px 8px 10px 0;flex-shrink:0;align-self:flex-start}
+.gm-mv-tool{width:30px;height:30px;border-radius:9px;border:1px solid var(--cinza2);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:border-color .12s,box-shadow .12s}
+.gm-mv-tool:hover{border-color:var(--verde)}
+.gm-mv-tool.active{border-color:var(--verde);box-shadow:0 0 0 2px rgba(29,106,74,.15)}
+.gm-mv-canvas{margin:auto;position:relative;line-height:0}
+.gm-mv-canvas.tool-active{cursor:crosshair}
+.gm-mv-marks{position:absolute;inset:0;pointer-events:none}
+.gm-mv-mark{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;display:flex;align-items:center;gap:3px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+.gm-mv-mark-ini{width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.72);color:rgba(17,17,16,.55);font-family:var(--font-mono,monospace);font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:.2px;user-select:none}
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    VISÃO SÓCIOS
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
@@ -2834,6 +2852,58 @@ body {
 <div id="app-shell" class="exp-app-shell">
 
 <!-- Nav lateral — injetada por shared/exp-nav.js -->
+
+<!-- ── Painel de Listas ── -->
+<aside id="fp-tasks-panel" style="display:none">
+  <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+    <span style="font-size:calc(14px * var(--fp-lists-scale,1));font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
+    <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+    <button onclick="listsPanel.toggle()" title="Fechar"
+      style="width:24px;height:24px;border:none;background:none;color:var(--grafite,#111110);opacity:.4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
+      onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="fp-lists-tabs">
+    <button class="fp-lists-tab active" data-tab="tarefas"  onclick="listsPanel.switchListsTab('tarefas')">Tarefas</button>
+    <button class="fp-lists-tab"        data-tab="abertos"  onclick="listsPanel.switchListsTab('abertos')">Checklists</button>
+    <button class="fp-lists-tab"        data-tab="etapa"    onclick="listsPanel.switchListsTab('etapa')">Guidelines</button>
+    <button class="fp-lists-tab"        data-tab="revisao"  onclick="listsPanel.switchListsTab('revisao')">Revisões</button>
+  </div>
+
+  <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
+    <div class="fp-loading-dot"></div>
+  </div>
+
+  <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="fp-ck-selector" id="fp-ck-selector">
+      <select class="fp-ck-select" id="fp-ck-select" onchange="listsPanel.selectCkByIndex(listsPanel._listsActiveTab, this.value)">
+        <option value="">— selecionar —</option>
+      </select>
+    </div>
+    <div id="fp-ck-items" style="flex:1;overflow-y:auto;padding:8px 10px 4px"></div>
+    <div id="fp-ck-footer" style="display:none;padding:6px 10px 8px;flex-shrink:0"></div>
+  </div>
+
+  <div id="fp-task-form">
+    <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="listsPanel.taskDescInput(this)"></textarea>
+    <div class="fp-task-form-row">
+      <select id="fp-task-tipo">
+        <option value="">Tipo…</option>
+        <option value="design">Design</option>
+        <option value="comercial">Comercial</option>
+        <option value="financeiro">Financeiro</option>
+        <option value="sociedade">Sociedade</option>
+      </select>
+      <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
+      <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
+      <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" title="Atribuir para alguém">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </button>
+    </div>
+    <div id="fp-assign-drop" style="display:none"></div>
+  </div>
+</aside>
 
 <!-- ── Card principal do módulo ── -->
 <div id="gestao-card">
@@ -4663,10 +4733,23 @@ body {
     <div class="modal-body">
       <div style="font-size:12px;font-weight:700;margin-bottom:4px" id="tm-view-title">Anexo</div>
       <div class="tm-view-meta" id="tm-view-meta">Carregando anexo…</div>
-      <div class="tm-view-stage" style="margin-top:12px">
-        <button class="tm-view-del" type="button" id="tm-view-del-btn" onclick="excluirTempMediaAtual()" title="Excluir imagem" style="display:none">×</button>
-        <img id="tm-view-image" alt="Imagem de apoio" style="display:none">
-        <div id="tm-view-empty" style="font-size:11px;color:#999">Carregando imagem…</div>
+      <div class="gm-mv-wrap">
+        <div class="gm-mv-toolbar">
+          <button class="gm-mv-tool" id="gm-mv-tool-seta" onclick="gmMvSelectTool('seta')" title="Seta azul"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg></button>
+          <button class="gm-mv-tool" id="gm-mv-tool-seta_verde" onclick="gmMvSelectTool('seta_verde')" title="Seta verde"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg></button>
+          <button class="gm-mv-tool" id="gm-mv-tool-alerta" onclick="gmMvSelectTool('alerta')" title="Alerta"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+          <button class="gm-mv-tool" id="gm-mv-tool-x" onclick="gmMvSelectTool('x')" title="Marcar com X"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
+          <button class="gm-mv-tool" id="gm-mv-tool-circulo" onclick="gmMvSelectTool('circulo')" title="Círculo azul"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg></button>
+          <button class="gm-mv-tool" id="gm-mv-tool-circulo_verde" onclick="gmMvSelectTool('circulo_verde')" title="Círculo verde"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg></button>
+        </div>
+        <div class="tm-view-stage" style="flex:1">
+          <button class="tm-view-del" type="button" id="tm-view-del-btn" onclick="excluirTempMediaAtual()" title="Excluir imagem" style="display:none">×</button>
+          <div class="gm-mv-canvas" id="tm-view-canvas" style="display:none" onclick="gmMvCanvasClick(event)">
+            <img id="tm-view-image" alt="Imagem de apoio">
+            <div class="gm-mv-marks" id="tm-view-marks"></div>
+          </div>
+          <div id="tm-view-empty" style="font-size:11px;color:#999">Carregando imagem…</div>
+        </div>
       </div>
     </div>
     <div class="modal-ft" style="justify-content:space-between">
@@ -5121,6 +5204,40 @@ async function init() {
   if (window.ExpNav) {
     ExpNav.init({ module: 'gestao' });
   }
+
+  /* ── Substitui botão exp-nav-tarefas pelo painel de Listas ── */
+  (function() {
+    var oldBtn = document.getElementById('exp-nav-tarefas');
+    if (oldBtn) {
+      var nav = oldBtn.parentNode;
+      var btn = document.createElement('button');
+      btn.id        = 'fp-nav-lists';
+      btn.className = 'exp-nav-item';
+      btn.title     = 'Minhas listas';
+      btn.style.cssText = 'position:relative';
+      btn.innerHTML =
+        '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>' +
+          '<line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>' +
+        '</svg>' +
+        '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
+      btn.onclick = function() { listsPanel.toggle(); };
+      nav.replaceChild(btn, oldBtn);
+    }
+
+    listsPanel.init({
+      getSb: function() { return window.sb; },
+      getUser: function() {
+        try { return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); } catch(e) { return null; }
+      },
+      getMembers: function() { return window._listsMembersCache || []; },
+      escHtml: window.escHtml,
+    });
+
+    /* pré-carrega membros para atribuição de tarefas */
+    sb.from('usuarios').select('id,nome,iniciais,cor,apelido').eq('ativo', true)
+      .then(function(r) { window._listsMembersCache = r.data || []; });
+  })();
 
   // Agenda room link (calendário interno)
   const _al = document.getElementById('agenda-room-link'); if (_al) _al.href = EXP_ROOM_URL;
@@ -13547,7 +13664,7 @@ async function carregarTempMediaLista(contextoTipo, contextoId, force = false) {
 
   const { data, error } = await sb
     .from('gestao_anexos_temporarios')
-    .select('id,storage_path,created_at,mime_type')
+    .select('id,storage_path,created_at,mime_type,marcadores')
     .eq('contexto_tipo', contextoTipo)
     .eq('contexto_id', contextoId)
     .is('removido_em', null)
@@ -13797,6 +13914,9 @@ function fecharTempMediaViewer() {
     G._tempMediaObjectUrl = null;
   }
   G._tempMediaViewer = null;
+  gmMvSelectTool(null);
+  const canvas = document.getElementById('tm-view-canvas');
+  if (canvas) canvas.style.display = 'none';
   const img = document.getElementById('tm-view-image');
   const empty = document.getElementById('tm-view-empty');
   const delBtn = document.getElementById('tm-view-del-btn');
@@ -13838,6 +13958,8 @@ async function renderTempMediaViewer() {
   if (delBtn) delBtn.style.display = viewer.canManage ? 'flex' : 'none';
   if (emptyEl) emptyEl.textContent = 'Carregando imagem…';
   if (imgEl) imgEl.style.display = 'none';
+  const canvasLoading = document.getElementById('tm-view-canvas');
+  if (canvasLoading) canvasLoading.style.display = 'none';
 
   if (G._tempMediaObjectUrl) {
     URL.revokeObjectURL(G._tempMediaObjectUrl);
@@ -13855,7 +13977,99 @@ async function renderTempMediaViewer() {
     imgEl.src = G._tempMediaObjectUrl;
     imgEl.style.display = 'block';
   }
+  const canvasEl = document.getElementById('tm-view-canvas');
+  if (canvasEl) canvasEl.style.display = 'block';
   if (emptyEl) emptyEl.textContent = '';
+  gmMvRenderMarks();
+}
+
+// ═════════════════════════════════════════════════════════════
+//   MARCADORES SOBRE IMAGENS DE APOIO (checklists/revisões)
+//   Salvos na coluna `marcadores` (jsonb) de gestao_anexos_temporarios:
+//   vivem e morrem com a imagem. Posições em % da imagem.
+// ═════════════════════════════════════════════════════════════
+let gmMvTool = null;
+const GM_MARK_SVGS = {
+  seta:          '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+  seta_verde:    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+  alerta:        '<svg width="26" height="26" viewBox="0 0 24 24" fill="#FBF3E8" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  x:             '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+  circulo:       '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>',
+  circulo_verde: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>'
+};
+const GM_MARK_TOOLS = ['seta','seta_verde','alerta','x','circulo','circulo_verde'];
+
+function gmMvSelectTool(tool) {
+  gmMvTool = (gmMvTool === tool) ? null : tool;
+  GM_MARK_TOOLS.forEach(t => {
+    const btn = document.getElementById('gm-mv-tool-' + t);
+    if (btn) btn.classList.toggle('active', gmMvTool === t);
+  });
+  const canvas = document.getElementById('tm-view-canvas');
+  if (canvas) canvas.classList.toggle('tool-active', !!gmMvTool);
+}
+
+function gmMarksHtml(list, ownerCheck) {
+  return (list || []).map(mk => {
+    const svg = GM_MARK_SVGS[mk.t] || '';
+    const removable = ownerCheck(mk);
+    return `<div class="gm-mv-mark" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%"` +
+      (removable ? ` ondblclick="${ownerCheck.removeCall}('${String(mk.id)}')" title="Clique duplo para remover"` : '') + `>` +
+      svg + `<span class="gm-mv-mark-ini">${(mk.ini || '?').replace(/[<>&"]/g,'')}</span></div>`;
+  }).join('');
+}
+
+function gmMvRenderMarks() {
+  const marks = document.getElementById('tm-view-marks');
+  const viewer = G._tempMediaViewer;
+  if (!marks || !viewer) return;
+  const item = viewer.items[viewer.index];
+  const check = mk => mk.uid === G.usuario?.id;
+  check.removeCall = 'gmMvRemoveMark';
+  marks.innerHTML = gmMarksHtml(item?.marcadores, check);
+}
+
+function gmMvCanvasClick(e) {
+  if (!gmMvTool || !G._tempMediaViewer) return;
+  const img = document.getElementById('tm-view-image');
+  if (!img || !img.src) return;
+  const viewer = G._tempMediaViewer;
+  const item = viewer.items[viewer.index];
+  if (!item) return;
+  const r = img.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width)  * 100;
+  const y = ((e.clientY - r.top)  / r.height) * 100;
+  if (x < 0 || x > 100 || y < 0 || y > 100) return;
+  const mk = {
+    id:  crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
+    t:   gmMvTool,
+    x:   Math.round(x * 100) / 100,
+    y:   Math.round(y * 100) / 100,
+    ini: G.usuario?.iniciais || (G.usuario?.nome || '').substring(0, 2).toUpperCase(),
+    uid: G.usuario?.id,
+    ts:  new Date().toISOString()
+  };
+  item.marcadores = (item.marcadores || []).concat([mk]);
+  gmMvRenderMarks();
+  gmMvSaveMarks(item);
+}
+
+function gmMvRemoveMark(markId) {
+  const viewer = G._tempMediaViewer;
+  if (!viewer) return;
+  const item = viewer.items[viewer.index];
+  if (!item) return;
+  item.marcadores = (item.marcadores || []).filter(mk =>
+    !(String(mk.id) === String(markId) && mk.uid === G.usuario?.id));
+  gmMvRenderMarks();
+  gmMvSaveMarks(item);
+}
+
+async function gmMvSaveMarks(item) {
+  const { error } = await sb.from('gestao_anexos_temporarios')
+    .update({ marcadores: item.marcadores || [] })
+    .eq('id', item.id);
+  if (error) console.warn('[EXP] falha ao salvar marcadores:', error.message);
 }
 
 async function excluirTempMediaAtual() {
@@ -18071,9 +18285,9 @@ function _preSetFromPreset(preset) {
     secoes: secoes.map(s => ({
       titulo: s.titulo || '',
       intro:  s.intro  || '',
-      items:  (s.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto, imagem_url: it.imagem_url||null, _imgBlob:null, _imgLocal:null })),
+      items:  (s.checklist_etapa_preset_item||[]).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto, imagem_url: it.imagem_url||null, marcadores: it.marcadores||[], _imgBlob:null, _imgLocal:null })),
     })),
-    semSecao: allItems.filter(it=>!it.secao_id).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto, imagem_url: it.imagem_url||null, _imgBlob:null, _imgLocal:null })),
+    semSecao: allItems.filter(it=>!it.secao_id).sort((a,b)=>a.ordem-b.ordem).map(it=>({ texto: it.texto, imagem_url: it.imagem_url||null, marcadores: it.marcadores||[], _imgBlob:null, _imgLocal:null })),
   };
 }
 
@@ -18322,6 +18536,7 @@ function _preItemPickImage(si, ii) {
       item._imgBlob  = result.blob;
       item._imgLocal = localUrl;
       item.imagem_url = null; // será substituída pelo upload no salvar
+      item.marcadores = [];   // marcadores morrem com a imagem anterior
       _renderPreForm();
     } catch(e) {
       toast('Erro ao processar imagem: ' + (e?.message || e));
@@ -18335,13 +18550,87 @@ function _preItemVerImagem(si, ii) {
   if(!it) return;
   const src = it._imgLocal || it.imagem_url;
   if(!src) return;
+
+  let preTool = null;
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
-  modal.onclick = () => modal.remove();
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;padding:20px';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  /* Toolbar de marcadores (mesmas ferramentas do chat/checklists) */
+  const toolbar = document.createElement('div');
+  toolbar.className = 'gm-mv-toolbar';
+  toolbar.style.cssText = 'background:rgba(255,255,255,.94);border-radius:12px;padding:10px 8px';
+  toolbar.innerHTML = GM_MARK_TOOLS.map(t => {
+    const btn = document.createElement('div');
+    const svgs = {
+      seta:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+      seta_verde:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+      alerta:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      x:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+      circulo:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>',
+      circulo_verde:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>'
+    };
+    return `<button class="gm-mv-tool" data-pretool="${t}">${svgs[t]}</button>`;
+  }).join('');
+
+  /* Canvas: imagem + overlay de marcadores */
+  const canvas = document.createElement('div');
+  canvas.className = 'gm-mv-canvas';
+  canvas.style.cssText = 'max-width:calc(90vw - 70px);max-height:90vh';
   const img = document.createElement('img');
   img.src = src;
-  img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)';
-  modal.appendChild(img);
+  img.style.cssText = 'max-width:100%;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5);display:block';
+  const marks = document.createElement('div');
+  marks.className = 'gm-mv-marks';
+  canvas.appendChild(img);
+  canvas.appendChild(marks);
+
+  function renderPreMarks() {
+    marks.innerHTML = (it.marcadores || []).map(mk =>
+      `<div class="gm-mv-mark" data-markid="${String(mk.id)}" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%" title="Clique duplo para remover">` +
+      (GM_MARK_SVGS[mk.t] || '') +
+      `<span class="gm-mv-mark-ini">${(mk.ini || '?').replace(/[<>&"]/g,'')}</span></div>`
+    ).join('');
+  }
+
+  toolbar.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-pretool]');
+    if (!btn) return;
+    const t = btn.dataset.pretool;
+    preTool = (preTool === t) ? null : t;
+    toolbar.querySelectorAll('.gm-mv-tool').forEach(b => b.classList.toggle('active', b.dataset.pretool === preTool));
+    canvas.classList.toggle('tool-active', !!preTool);
+  });
+
+  canvas.addEventListener('click', (e) => {
+    if (!preTool) return;
+    const r = img.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width)  * 100;
+    const y = ((e.clientY - r.top)  / r.height) * 100;
+    if (x < 0 || x > 100 || y < 0 || y > 100) return;
+    it.marcadores = (it.marcadores || []).concat([{
+      id:  crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
+      t:   preTool,
+      x:   Math.round(x * 100) / 100,
+      y:   Math.round(y * 100) / 100,
+      ini: G.usuario?.iniciais || (G.usuario?.nome || '').substring(0, 2).toUpperCase(),
+      uid: G.usuario?.id,
+      ts:  new Date().toISOString()
+    }]);
+    renderPreMarks();
+  });
+
+  /* No editor de preset qualquer editor pode remover (dblclick) */
+  marks.addEventListener('dblclick', (e) => {
+    const el = e.target.closest('[data-markid]');
+    if (!el) return;
+    it.marcadores = (it.marcadores || []).filter(mk => String(mk.id) !== el.dataset.markid);
+    renderPreMarks();
+  });
+
+  renderPreMarks();
+  modal.appendChild(toolbar);
+  modal.appendChild(canvas);
   document.body.appendChild(modal);
 }
 
@@ -19708,6 +19997,7 @@ init();
 </style>
 
 
+<script src="shared/lists-panel.js"></script>
 <script src="shared/exp-nav.js"></script>
 </body>
 </html>

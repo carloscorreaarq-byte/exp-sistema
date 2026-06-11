@@ -201,9 +201,19 @@
     '.chat-media-viewer-zoombtn:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
     '.chat-media-viewer-zoomlabel{min-width:44px;text-align:center;font-family:"DM Mono",monospace;font-size:10px;color:#666}',
     '.chat-media-viewer-count{min-width:42px;text-align:center;font-family:"DM Mono",monospace;font-size:10px;color:#666}',
-    '.chat-media-viewer-body{padding:14px;background:#F7F6F3;display:flex;align-items:center;justify-content:center;min-height:260px;overflow:auto}',
-    '.chat-media-viewer-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 180px);width:100%}',
+    '.chat-media-viewer-body{background:#F7F6F3;position:relative;display:flex;min-height:260px;overflow:hidden}',
+    '.chat-media-viewer-stage{flex:1;display:flex;overflow:auto;padding:14px;min-height:calc(100vh - 180px)}',
+    '.chat-mv-canvas{margin:auto;position:relative;line-height:0}',
+    '.chat-mv-canvas.tool-active{cursor:crosshair}',
     '.chat-media-viewer-body img{max-width:100%;max-height:calc(100vh - 180px);border-radius:12px;display:block;box-shadow:0 12px 28px rgba(0,0,0,.12)}',
+    '.chat-mv-toolbar{display:flex;flex-direction:column;gap:6px;padding:12px 8px;flex-shrink:0;align-self:flex-start}',
+    '.chat-mv-tool{width:30px;height:30px;border-radius:9px;border:1px solid rgba(17,17,16,.08);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:border-color .12s,box-shadow .12s}',
+    '.chat-mv-tool:hover{border-color:var(--verde,#1D6A4A)}',
+    '.chat-mv-tool.active{border-color:var(--verde,#1D6A4A);box-shadow:0 0 0 2px rgba(29,106,74,.15)}',
+    '.chat-mv-marks{position:absolute;inset:0;pointer-events:none}',
+    '.chat-mv-mark{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;display:flex;align-items:center;gap:3px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}',
+    '.chat-mv-mark-ini{width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.72);color:rgba(17,17,16,.55);font-family:"DM Mono",monospace;font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:.2px;user-select:none}',
+    '[data-theme="dark"] .chat-mv-tool{background:#2A2927;border-color:#3A3937}',
     '.chat-media-viewer-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid rgba(17,17,16,.08);background:rgba(255,255,255,.94);color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.12)}',
     '.chat-media-viewer-nav:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
     '.chat-media-viewer-nav.prev{left:8px}',
@@ -418,6 +428,10 @@
       }, Promise.resolve());
     });
 
+    /* Clique no print com ferramenta de marcador ativa */
+    var _mvCanvas = document.getElementById('exp-chat-mv-canvas');
+    if (_mvCanvas) _mvCanvas.addEventListener('click', mvCanvasClick);
+
     document.addEventListener('click', function (e) {
       var viewer = document.getElementById('exp-chat-media-viewer');
       var card = viewer ? viewer.querySelector('.chat-media-viewer-card') : null;
@@ -566,9 +580,32 @@
             '<button class="chat-close" onclick="expChat.closeMediaViewer()">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-media-viewer-body">' +
+            '<div class="chat-mv-toolbar">' +
+              '<button class="chat-mv-tool" id="exp-chat-mv-tool-seta" onclick="expChat.mvSelectTool(\'seta\')" title="Seta azul">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>' +
+              '</button>' +
+              '<button class="chat-mv-tool" id="exp-chat-mv-tool-seta_verde" onclick="expChat.mvSelectTool(\'seta_verde\')" title="Seta verde">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>' +
+              '</button>' +
+              '<button class="chat-mv-tool" id="exp-chat-mv-tool-alerta" onclick="expChat.mvSelectTool(\'alerta\')" title="Alerta">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+              '</button>' +
+              '<button class="chat-mv-tool" id="exp-chat-mv-tool-x" onclick="expChat.mvSelectTool(\'x\')" title="Marcar com X">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>' +
+              '</button>' +
+              '<button class="chat-mv-tool" id="exp-chat-mv-tool-circulo" onclick="expChat.mvSelectTool(\'circulo\')" title="Círculo azul">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>' +
+              '</button>' +
+              '<button class="chat-mv-tool" id="exp-chat-mv-tool-circulo_verde" onclick="expChat.mvSelectTool(\'circulo_verde\')" title="Círculo verde">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>' +
+              '</button>' +
+            '</div>' +
             '<div class="chat-media-viewer-stage">' +
               '<button class="chat-media-viewer-nav prev" id="exp-chat-media-viewer-prev" onclick="expChat.prevMediaViewer()" title="Imagem anterior">&#8249;</button>' +
-              '<img id="exp-chat-media-viewer-img" style="display:none" alt="Print do chat">' +
+              '<div class="chat-mv-canvas" id="exp-chat-mv-canvas" style="display:none">' +
+                '<img id="exp-chat-media-viewer-img" alt="Print do chat">' +
+                '<div class="chat-mv-marks" id="exp-chat-mv-marks"></div>' +
+              '</div>' +
               '<div class="chat-media-viewer-empty" id="exp-chat-media-viewer-empty">Carregando imagem…</div>' +
               '<button class="chat-media-viewer-nav next" id="exp-chat-media-viewer-next" onclick="expChat.nextMediaViewer()" title="Próxima imagem">&#8250;</button>' +
             '</div>' +
@@ -1764,7 +1801,7 @@
     renderMessages();
     try {
       var metaRes = await sb.from('gestao_anexos_temporarios')
-        .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at')
+        .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores')
         .eq('contexto_tipo', contextType)
         .eq('contexto_id', msg.id)
         .is('removido_em', null)
@@ -2025,14 +2062,14 @@
 
   var _audioCtx = null;
   function _getAudioCtx() {
-    if (_audioCtx && _audioCtx.state !== ‘closed’) return _audioCtx;
+    if (_audioCtx && _audioCtx.state !== 'closed') return _audioCtx;
     var Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return null;
     _audioCtx = new Ctx();
     return _audioCtx;
   }
   /* Desbloqueia o AudioContext na primeira interação do usuário */
-  document.addEventListener(‘click’, function () { _getAudioCtx(); }, { once: true });
+  document.addEventListener('click', function () { _getAudioCtx(); }, { once: true });
 
   function playNotificationSound() {
     if (!soundEnabled) return;
@@ -2044,7 +2081,7 @@
         [{ f: 1046.5, t: 0, d: 0.18 }, { f: 1318.5, t: 0.13, d: 0.22 }].forEach(function (n) {
           var osc  = ctx.createOscillator();
           var gain = ctx.createGain();
-          osc.type = ‘sine’;
+          osc.type = 'sine';
           osc.frequency.value = n.f;
           gain.gain.setValueAtTime(0, ctx.currentTime + n.t);
           gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + n.t + 0.02);
@@ -2055,7 +2092,7 @@
           osc.stop(ctx.currentTime + n.t + n.d + 0.02);
         });
       }
-      if (ctx.state === ‘suspended’) ctx.resume().then(_play);
+      if (ctx.state === 'suspended') ctx.resume().then(_play);
       else _play();
     } catch (e) {}
   }
@@ -2544,7 +2581,7 @@
     if (!ids.length) return Promise.resolve();
     var requestSeq = ++mediaRequestSeq;
     return sb.from('gestao_anexos_temporarios')
-      .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at')
+      .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores')
       .eq('contexto_tipo', contextType)
       .in('contexto_id', ids)
       .is('removido_em', null)
@@ -2592,7 +2629,16 @@
     var expectedType = isProjectChannel(currentChannel) ? 'chat_thread_message' : 'chat_message';
     if (String(row.contexto_tipo || '').toLowerCase() !== expectedType) return;
     if (!messages.some(function (msg) { return msg.id === row.contexto_id; })) return;
-    if (messageMediaMap[mediaKeyFor(expectedType, row.contexto_id)]) return;
+    var _exKey = mediaKeyFor(expectedType, row.contexto_id);
+    var _ex = messageMediaMap[_exKey];
+    if (_ex) {
+      /* mídia já carregada: sincroniza apenas os marcadores */
+      if (JSON.stringify(_ex.marcadores || []) !== JSON.stringify(row.marcadores || [])) {
+        _ex.marcadores = row.marcadores || [];
+        if (mediaViewerState && mediaViewerState.mediaKey === _exKey) renderViewerMarkers();
+      }
+      return;
+    }
     if (!row.storage_path || failedStoragePaths[row.storage_path]) {
       assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
         objectUrl: null,
@@ -2642,6 +2688,100 @@
     return when ? (author + ' · ' + when) : author;
   }
 
+  /* ══════════════════════════════════════════════════════════════════
+     MARCADORES SOBRE O PRINT
+     Salvos na coluna `marcadores` (jsonb) de gestao_anexos_temporarios:
+     vivem e morrem com a imagem. Posições em % — acompanham o zoom.
+  ══════════════════════════════════════════════════════════════════ */
+  var mvTool = null;
+  var MV_MARK_SVGS = {
+    seta:          '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+    seta_verde:    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+    alerta:        '<svg width="26" height="26" viewBox="0 0 24 24" fill="#FBF3E8" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    x:             '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+    circulo:       '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>',
+    circulo_verde: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>'
+  };
+
+  function mvSelectTool(tool) {
+    mvTool = (mvTool === tool) ? null : tool;
+    ['seta','seta_verde','alerta','x','circulo','circulo_verde'].forEach(function (t) {
+      var btn = document.getElementById('exp-chat-mv-tool-' + t);
+      if (btn) btn.classList.toggle('active', mvTool === t);
+    });
+    var canvas = document.getElementById('exp-chat-mv-canvas');
+    if (canvas) canvas.classList.toggle('tool-active', !!mvTool);
+  }
+
+  function _mvCurrentMedia() {
+    if (!mediaViewerState || !mediaViewerState.mediaKey) return null;
+    var msg = getMessageByMediaKey(mediaViewerState.mediaKey);
+    var media = messageMediaMap[mediaViewerState.mediaKey] || null;
+    return (msg && media) ? { msg: msg, media: media } : null;
+  }
+
+  function renderViewerMarkers() {
+    var marks = document.getElementById('exp-chat-mv-marks');
+    if (!marks) return;
+    var cur = _mvCurrentMedia();
+    var list = (cur && cur.media && cur.media.marcadores) || [];
+    marks.innerHTML = list.map(function (mk) {
+      var svg = MV_MARK_SVGS[mk.t] || '';
+      var own = mk.uid === user.auth_id;
+      return '<div class="chat-mv-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%"' +
+        (own ? ' ondblclick="expChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')" title="Clique duplo para remover"' : '') + '>' +
+        svg +
+        '<span class="chat-mv-mark-ini">' + escHtml(mk.ini || '?') + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function mvCanvasClick(e) {
+    if (!mvTool || !mediaViewerState) return;
+    var img = document.getElementById('exp-chat-media-viewer-img');
+    if (!img || !img.src) return;
+    var cur = _mvCurrentMedia();
+    if (!cur) return;
+    var r = img.getBoundingClientRect();
+    var x = ((e.clientX - r.left) / r.width)  * 100;
+    var y = ((e.clientY - r.top)  / r.height) * 100;
+    if (x < 0 || x > 100 || y < 0 || y > 100) return;
+    var mk = {
+      id:  newUuid(),
+      t:   mvTool,
+      x:   Math.round(x * 100) / 100,
+      y:   Math.round(y * 100) / 100,
+      ini: user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),
+      uid: user.auth_id,
+      ts:  new Date().toISOString()
+    };
+    cur.media.marcadores = (cur.media.marcadores || []).concat([mk]);
+    renderViewerMarkers();
+    _saveMvMarkers(cur.msg, cur.media.marcadores);
+  }
+
+  function mvRemoveMark(markId) {
+    var cur = _mvCurrentMedia();
+    if (!cur) return;
+    cur.media.marcadores = (cur.media.marcadores || []).filter(function (mk) {
+      return !(String(mk.id) === String(markId) && mk.uid === user.auth_id);
+    });
+    renderViewerMarkers();
+    _saveMvMarkers(cur.msg, cur.media.marcadores);
+  }
+
+  function _saveMvMarkers(msg, marcadores) {
+    var ct = mediaContextTypeForMessage(msg);
+    sb.from('gestao_anexos_temporarios')
+      .update({ marcadores: marcadores })
+      .eq('contexto_tipo', ct)
+      .eq('contexto_id', msg.id)
+      .is('removido_em', null)
+      .then(function (r) {
+        if (r.error) console.warn('[EXP Chat] falha ao salvar marcadores:', r.error.message);
+      });
+  }
+
   function syncMediaViewerFrame() {
     var viewer = document.getElementById('exp-chat-media-viewer');
     var img = document.getElementById('exp-chat-media-viewer-img');
@@ -2671,13 +2811,17 @@
       nextBtn.style.display = gallery.length > 1 ? 'flex' : 'none';
       nextBtn.disabled = index >= gallery.length - 1;
     }
-    img.style.display = media && media.objectUrl ? 'block' : 'none';
-    if (media && media.objectUrl) img.src = media.objectUrl;
+    var canvas = document.getElementById('exp-chat-mv-canvas');
+    var hasImg = !!(media && media.objectUrl);
+    if (canvas) canvas.style.display = hasImg ? 'block' : 'none';
+    img.style.display = hasImg ? 'block' : 'none';
+    if (hasImg) img.src = media.objectUrl;
     else img.removeAttribute('src');
-    empty.style.display = media && media.objectUrl ? 'none' : 'block';
-    empty.textContent = media && media.objectUrl ? '' : 'Não foi possível carregar este print.';
+    empty.style.display = hasImg ? 'none' : 'block';
+    empty.textContent = hasImg ? '' : 'Não foi possível carregar este print.';
     viewer.style.display = 'flex';
     updateMediaViewerZoom();
+    renderViewerMarkers();
   }
 
   function openMediaViewer(mediaKey) {
@@ -2701,6 +2845,9 @@
 
   function closeMediaViewer() {
     mediaViewerState = null;
+    mvSelectTool(null);
+    var canvas = document.getElementById('exp-chat-mv-canvas');
+    if (canvas) canvas.style.display = 'none';
     var viewer = document.getElementById('exp-chat-media-viewer');
     var img = document.getElementById('exp-chat-media-viewer-img');
     var empty = document.getElementById('exp-chat-media-viewer-empty');
@@ -3124,6 +3271,8 @@
     zoomInMediaViewer: zoomInMediaViewer,
     zoomOutMediaViewer: zoomOutMediaViewer,
     resetMediaViewerZoom: resetMediaViewerZoom,
+    mvSelectTool:    mvSelectTool,
+    mvRemoveMark:    mvRemoveMark,
     toggleProjectSection: toggleProjectSection,
     startDM:         startDM,
     toggleMember:    toggleMember,

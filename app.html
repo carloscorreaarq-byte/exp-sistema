@@ -10,6 +10,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css">
 <link rel="stylesheet" href="shared/exp-nav.css">
+<link rel="stylesheet" href="shared/lists-panel.css">
 <script>
   (function(){
     var saved = localStorage.getItem('exp-theme');
@@ -39,6 +40,11 @@
   /* foco de input — hub usa azul (informacional) */
   --mod-focus:      var(--azul);
   --mod-focus-soft: var(--azul-soft);
+  /* acento do painel de Listas — usa verde canônico */
+  --ca:          var(--verde);
+  --ca-bg:       var(--verde-bg);
+  --ca-mid:      var(--verde-soft);
+  --ca-rgb-vals: 29,106,74;
 }
 
 body {
@@ -1493,6 +1499,58 @@ body {
 <div id="app-shell" class="exp-app-shell">
 
   <!-- ── Nav lateral — injetada por shared/exp-nav.js ── -->
+
+  <!-- ── Painel de Listas ── -->
+  <aside id="fp-tasks-panel" style="display:none">
+    <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+      <span style="font-size:calc(14px * var(--fp-lists-scale,1));font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
+      <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+      <button onclick="listsPanel.toggle()" title="Fechar"
+        style="width:24px;height:24px;border:none;background:none;color:var(--grafite,#111110);opacity:.4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
+        onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fp-lists-tabs">
+      <button class="fp-lists-tab active" data-tab="tarefas"  onclick="listsPanel.switchListsTab('tarefas')">Tarefas</button>
+      <button class="fp-lists-tab"        data-tab="abertos"  onclick="listsPanel.switchListsTab('abertos')">Checklists</button>
+      <button class="fp-lists-tab"        data-tab="etapa"    onclick="listsPanel.switchListsTab('etapa')">Guidelines</button>
+      <button class="fp-lists-tab"        data-tab="revisao"  onclick="listsPanel.switchListsTab('revisao')">Revisões</button>
+    </div>
+
+    <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
+
+    <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="fp-ck-selector" id="fp-ck-selector">
+        <select class="fp-ck-select" id="fp-ck-select" onchange="listsPanel.selectCkByIndex(listsPanel._listsActiveTab, this.value)">
+          <option value="">— selecionar —</option>
+        </select>
+      </div>
+      <div id="fp-ck-items"></div>
+      <div id="fp-ck-footer" class="fp-ck-footer" style="display:none"></div>
+    </div>
+
+    <div id="fp-task-form">
+      <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="listsPanel.taskDescInput(this)"></textarea>
+      <div class="fp-task-form-row">
+        <select id="fp-task-tipo">
+          <option value="">Tipo…</option>
+          <option value="projeto">Projeto</option>
+          <option value="organizacao">Organização</option>
+          <option value="sociedade">Sociedade</option>
+        </select>
+        <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
+        <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" title="Atribuir para alguém">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
 
   <!-- ── Área principal ── -->
   <div id="app-main">
@@ -4613,6 +4671,43 @@ init().then(() => {
     module: 'app',
     onUserMenu: function() { if (window.toggleUserMenu) toggleUserMenu(); },
   });
+
+  /* ── Botão de Listas na nav ── */
+  (function() {
+    var nav = document.getElementById('exp-nav');
+    if (!nav) return;
+    var btn = document.createElement('button');
+    btn.id        = 'fp-nav-lists';
+    btn.className = 'exp-nav-item';
+    btn.title     = 'Minhas listas';
+    btn.style.cssText = 'position:relative';
+    btn.innerHTML =
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>' +
+        '<line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>' +
+      '</svg>' +
+      '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
+    btn.onclick = function() { listsPanel.toggle(); };
+    /* insere antes do separador de ferramentas (spacer) */
+    var spacer = nav.querySelector('.exp-nav-spacer');
+    spacer ? nav.insertBefore(btn, spacer) : nav.appendChild(btn);
+  })();
+
+  /* ── Init do painel de Listas ── */
+  listsPanel.init({
+    getSb: function() { return window.sb; },
+    getUser: function() {
+      try { return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); } catch(e) { return null; }
+    },
+    getMembers: function() { return window._listsMembersCache || []; },
+    escHtml: window.escHtml,
+  });
+
+  /* pré-carrega membros para atribuição de tarefas */
+  (function() {
+    sb.from('usuarios').select('id,nome,iniciais,cor,apelido').eq('ativo', true)
+      .then(function(r) { window._listsMembersCache = r.data || []; });
+  })();
 </script>
 <script>
 let _lembUsuarios = [];
@@ -4663,6 +4758,8 @@ async function _enviarLembrete() {
   fecharLembretePopdown();
 }
 </script>
+<!-- EXP · Painel de Listas -->
+<script src="shared/lists-panel.js"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
 </body>
