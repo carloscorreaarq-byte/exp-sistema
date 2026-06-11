@@ -450,8 +450,10 @@
     var tone        = dark ? TONES_DARK[fontToneIdx]         : TONES_LIGHT[fontToneIdx];
     var tonePreview = dark ? TONES_PREVIEW_DARK[fontToneIdx] : TONES_PREVIEW_LIGHT[fontToneIdx];
 
-    /* Escala toda a página proporcionalmente via zoom */
-    document.body.style.zoom = String(scale);
+    /* Escala somente as fontes (não os ícones nem a dimensão dos cards) */
+    document.body.style.zoom = '';
+    document.documentElement.style.setProperty('--fp-fz', String(scale));
+    document.documentElement.style.setProperty('--fp-lists-scale', String(scale));
 
     /* Cor de mensagem — scoped ao container de mensagens */
     var $msgs = document.getElementById('fp-messages');
@@ -464,9 +466,13 @@
     document.documentElement.style.setProperty('--fp-conv-name-color', tone);
     document.documentElement.style.setProperty('--fp-lists-tone', tone);
 
-    /* atualizar chips de tamanho */
-    var $chips = document.querySelectorAll('.fp-view-size-btn');
-    $chips.forEach(function(c, i) { c.classList.toggle('active', i === idx); });
+    /* atualizar stepper de tamanho */
+    var $lbl = document.getElementById('fp-fz-label');
+    if ($lbl) $lbl.textContent = FONT_LABELS[idx];
+    var $minus = document.getElementById('fp-fz-minus');
+    var $plus  = document.getElementById('fp-fz-plus');
+    if ($minus) $minus.disabled = (idx <= 0);
+    if ($plus)  $plus.disabled  = (idx >= FONT_SCALES.length - 1);
     /* atualizar tom dots */
     var $dots = document.querySelectorAll('.fp-tone-dot');
     $dots.forEach(function(d, i) { d.classList.toggle('active', i === fontToneIdx); });
@@ -487,6 +493,11 @@
     fontSizeIdx = Math.max(0, Math.min(idx, FONT_SCALES.length - 1));
     localStorage.setItem('exp_chat_font_size', String(fontSizeIdx));
     applyViewPrefs();
+  }
+
+  function stepFont(delta, e) {
+    if (e) e.stopPropagation();
+    setFontScale(fontSizeIdx + delta);
   }
 
   function setFontTone(idx) {
@@ -511,13 +522,6 @@
         $td.innerHTML = tones.map(function(c, i) {
           return '<div class="fp-tone-dot' + (i === fontToneIdx ? ' active' : '') + '" ' +
             'style="background:' + c + '" onclick="event.stopPropagation();fpChat.setFontTone(' + i + ')"></div>';
-        }).join('');
-      }
-      var $sc = document.getElementById('fp-size-chips');
-      if ($sc) {
-        $sc.innerHTML = FONT_LABELS.map(function(lbl, i) {
-          return '<button class="fp-view-size-btn' + (i === fontSizeIdx ? ' active' : '') + '" ' +
-            'onclick="event.stopPropagation();fpChat.setFontScale(' + i + ')">' + lbl + '</button>';
         }).join('');
       }
       applyViewPrefs();
@@ -2339,7 +2343,7 @@
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
     toggleStatusPop, setStatus, toggleSound, toggleDmPin,
-    setColor, toggleViewPicker, setFontScale, setFontTone, toggleMonoMode,
+    setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM,
     send, handleKey, autoResize,
@@ -3041,11 +3045,11 @@
     var d = _ckGetDetail(tipo, ck);
     var coords = [];
     if (d.coordId) {
-      var m = teamMembers.find(function(u){ return u.id === d.coordId; });
+      var m = allMembers.find(function(u){ return u.id === d.coordId; });
       if (m) coords.push(m);
     }
     if (ck._subcoordId) {
-      var m2 = teamMembers.find(function(u){ return u.id === ck._subcoordId; });
+      var m2 = allMembers.find(function(u){ return u.id === ck._subcoordId; });
       if (m2) coords.push(m2);
     }
     var coordsHtml = coords.length
