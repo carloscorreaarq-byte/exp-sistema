@@ -428,7 +428,7 @@
     });
   }
 
-  /* ── Visualização: cor, tom de fonte, tamanho ── */
+  /* ── Visualização: cor, tom de fonte, tamanho, mono ── */
   var FONT_SCALES  = [0.90, 0.95, 1.00, 1.05, 1.10];
   var FONT_LABELS  = ['90%', '95%', '100%', '105%', '110%'];
   var fontSizeIdx = parseInt(localStorage.getItem('exp_chat_font_size') || '2', 10); // default: 100%
@@ -437,6 +437,7 @@
   var TONES_LIGHT = ['#AAA', '#777', '#333', '#000'];   /* muito claro → preto */
   var TONES_DARK  = ['#555', '#8C8A85', '#C8C3BA', '#F0EDE6']; /* muito escuro → quase branco */
   var fontToneIdx = parseInt(localStorage.getItem('exp_chat_font_tone') || '1', 10);
+  var _monoMode   = localStorage.getItem('exp_chat_mono') === '1';
 
   /* Tons de preview da sidebar — um passo mais claro que o texto de mensagem */
   var TONES_PREVIEW_LIGHT = ['#CCC', '#AAA', '#777', '#444'];
@@ -469,6 +470,17 @@
     /* atualizar tom dots */
     var $dots = document.querySelectorAll('.fp-tone-dot');
     $dots.forEach(function(d, i) { d.classList.toggle('active', i === fontToneIdx); });
+    /* mono mode */
+    document.documentElement.setAttribute('data-chat-mono', _monoMode ? '1' : '0');
+    var $mb = document.getElementById('fp-mono-btn');
+    if ($mb) $mb.classList.toggle('active', _monoMode);
+  }
+
+  function toggleMonoMode(e) {
+    if (e) e.stopPropagation();
+    _monoMode = !_monoMode;
+    localStorage.setItem('exp_chat_mono', _monoMode ? '1' : '0');
+    applyViewPrefs();
   }
 
   function setFontScale(idx) {
@@ -499,6 +511,13 @@
         $td.innerHTML = tones.map(function(c, i) {
           return '<div class="fp-tone-dot' + (i === fontToneIdx ? ' active' : '') + '" ' +
             'style="background:' + c + '" onclick="event.stopPropagation();fpChat.setFontTone(' + i + ')"></div>';
+        }).join('');
+      }
+      var $sc = document.getElementById('fp-size-chips');
+      if ($sc) {
+        $sc.innerHTML = FONT_LABELS.map(function(lbl, i) {
+          return '<button class="fp-view-size-btn' + (i === fontSizeIdx ? ' active' : '') + '" ' +
+            'onclick="event.stopPropagation();fpChat.setFontScale(' + i + ')">' + lbl + '</button>';
         }).join('');
       }
       applyViewPrefs();
@@ -2320,7 +2339,7 @@
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
     toggleStatusPop, setStatus, toggleSound, toggleDmPin,
-    setColor, toggleViewPicker, setFontScale, setFontTone,
+    setColor, toggleViewPicker, setFontScale, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM,
     send, handleKey, autoResize,
@@ -2579,7 +2598,12 @@
     var outros = teamMembers.filter(function(m) { return m.id !== (user.id || user.app_user_id); });
     var drop = document.createElement('div');
     drop.id = 'fp-assign-drop';
-    drop.style.cssText = 'position:fixed;z-index:700;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.16);padding:4px 0;min-width:160px;font-family:Raleway,sans-serif';
+    var _dark    = document.documentElement.getAttribute('data-theme') === 'dark';
+    var _dropBg  = _dark ? '#2A2926' : '#fff';
+    var _dropBdr = _dark ? 'rgba(255,255,255,.1)' : '#ECEAE4';
+    var _dropTxt = _dark ? '#F0EDE6' : '#111110';
+    var _hoverBg = _dark ? '#3A3936' : '#F7F6F3';
+    drop.style.cssText = 'position:fixed;z-index:700;background:' + _dropBg + ';border:1px solid ' + _dropBdr + ';border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.22);padding:4px 0;min-width:160px;font-family:Raleway,sans-serif;color:' + _dropTxt;
 
     if (!outros.length) {
       drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:#aaa">Nenhum membro</div>';
@@ -2588,8 +2612,8 @@
         var nome = (u.apelido || (u.nome||'').split(' ')[0]);
         var cor  = u.cor || '#888';
         var ini  = u.iniciais || (u.nome||'').substring(0,2).toUpperCase();
-        return '<div data-i="'+i+'" style="padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px" ' +
-          'onmouseenter="this.style.background=\'#F7F6F3\'" onmouseleave="this.style.background=\'\'" ' +
+        return '<div data-i="'+i+'" style="padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px;color:' + _dropTxt + '" ' +
+          'onmouseenter="this.style.background=\'' + _hoverBg + '\'" onmouseleave="this.style.background=\'\'" ' +
           'onclick="fpChat._assignTo('+i+')">' +
           '<span style="width:20px;height:20px;border-radius:50%;background:'+escHtml(cor)+';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+escHtml(ini)+'</span>' +
           escHtml(nome) + '</div>';
@@ -2708,7 +2732,7 @@
 
   function _loadCkAbertos(uid) {
     sb.from('checklist_tarefa')
-      .select('id,titulo,status,produto_id,criado_por,editores_ids,checklist_tarefa_item(id,texto,secao,ordem,concluido,concluido_por_nome,concluido_em),produtos(nome,oportunidades(projeto))')
+      .select('id,titulo,status,produto_id,criado_por,editores_ids,checklist_tarefa_item(id,texto,secao,ordem,concluido,concluido_por_nome,concluido_em),produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome)))')
       .eq('status', 'aberto')
       .then(function(r) {
         if (r.error) { _ckShowErr(r.error.message); return; }
@@ -2717,14 +2741,15 @@
         });
         _ckAbertosAll = all;
         _renderCkSelector('abertos', all, function(cl) {
-          return (cl.produtos && (cl.produtos.oportunidades && cl.produtos.oportunidades.projeto || cl.produtos.nome) || 'Projeto') + ' — ' + (cl.titulo || '');
+          var p = cl.produtos || {}, o = p.oportunidades || {};
+          return ((o.clientes && o.clientes.nome) ? o.clientes.nome + ' | ' : '') + (o.projeto || p.nome || 'Projeto') + ' — ' + (cl.titulo || '');
         });
       });
   }
 
   function _loadCkEtapa(uid) {
     sb.from('etapa_desenvolvedores')
-      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)))')
+      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome))))')
       .eq('usuario_id', uid)
       .then(function(devR) {
         if (devR.error) { _ckShowErr(devR.error.message); return; }
@@ -2739,8 +2764,11 @@
             if (r.error) { _ckShowErr(r.error.message); return; }
             var execList = (r.data || []).map(function(exec) {
               var etapa = etapaMap[exec.etapa_id] || {};
-              exec._etapaNome = etapa.nome || '';
-              exec._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+              var prod  = etapa.produtos || {}, opp = prod.oportunidades || {};
+              exec._etapaNome   = etapa.nome || '';
+              exec._prodNome    = (opp.projeto || prod.nome) || '';
+              exec._clienteNome = (opp.clientes && opp.clientes.nome) || '';
+              exec._coordId     = prod.coordenador_id || null;
               exec.checklist_etapa_exec_secao = [];
               return exec;
             });
@@ -2772,7 +2800,7 @@
 
   function _loadCkRevisao(uid) {
     sb.from('etapa_desenvolvedores')
-      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,oportunidades(projeto)))')
+      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome))))')
       .eq('usuario_id', uid)
       .then(function(devR) {
         if (devR.error) { _ckShowErr(devR.error.message); return; }
@@ -2790,8 +2818,11 @@
             var items = (r.data || []).map(function(rev) {
               contadores[rev.etapa_id] = (contadores[rev.etapa_id] || 0) + 1;
               var etapa = etapaMap[rev.etapa_id] || {};
-              rev._etapaNome = etapa.nome || '';
-              rev._prodNome  = (etapa.produtos && (etapa.produtos.oportunidades && etapa.produtos.oportunidades.projeto || etapa.produtos.nome)) || '';
+              var prod  = etapa.produtos || {}, opp = prod.oportunidades || {};
+              rev._etapaNome   = etapa.nome || '';
+              rev._prodNome    = (opp.projeto || prod.nome) || '';
+              rev._clienteNome = (opp.clientes && opp.clientes.nome) || '';
+              rev._coordId     = prod.coordenador_id || null;
               rev._num = contadores[rev.etapa_id];
               return rev;
             });
@@ -2845,6 +2876,36 @@
     if (items.length === 1) { selectCkByIndex(tipo, '0'); }
   }
 
+  /* ── detalhe estruturado por tipo ───────────────────────── */
+  function _ckGetDetail(tipo, ck) {
+    if (tipo === 'abertos') {
+      var p = ck.produtos || {}, o = p.oportunidades || {};
+      return {
+        cliente : (o.clientes && o.clientes.nome) || '',
+        proj    : o.projeto || p.nome || '',
+        etapa   : '',
+        nome    : ck.titulo || '',
+        coordId : p.coordenador_id || null,
+      };
+    }
+    if (tipo === 'etapa') {
+      return {
+        cliente : ck._clienteNome || '',
+        proj    : ck._prodNome    || '',
+        etapa   : ck._etapaNome   || '',
+        nome    : (ck.checklist_etapa_preset && ck.checklist_etapa_preset.nome) || '',
+        coordId : ck._coordId || null,
+      };
+    }
+    return {
+      cliente : ck._clienteNome || '',
+      proj    : ck._prodNome    || '',
+      etapa   : ck._etapaNome   || '',
+      nome    : 'Rev. ' + (ck._num || ''),
+      coordId : ck._coordId || null,
+    };
+  }
+
   function selectCkByIndex(tipo, idx) {
     var $wrap  = document.getElementById('fp-ck-selector');
     var $items = document.getElementById('fp-ck-items');
@@ -2861,11 +2922,16 @@
     var ck   = list[parseInt(idx)];
     if (!ck) return;
     localStorage.setItem('exp_ck_last_' + tipo, String(ck.id));
-    // Transforma seletor em título negrito
-    var label = (_ckLabelFns[tipo] || function(){ return ''; })(ck);
+    var d = _ckGetDetail(tipo, ck);
+    var projLine  = escHtml(d.cliente ? d.cliente + ' | ' + d.proj : d.proj);
+    var etapaLine = d.etapa ? '<div class="fp-ck-sel-sub">' + escHtml(d.etapa) + '</div>' : '';
+    var nomeLine  = d.nome  ? '<div class="fp-ck-sel-sub">' + escHtml(d.nome)  + '</div>' : '';
     if ($wrap) $wrap.innerHTML =
       '<div class="fp-ck-sel-title">' +
-        '<span class="fp-ck-sel-title-txt">' + escHtml(label) + '</span>' +
+        '<div class="fp-ck-sel-info">' +
+          '<div class="fp-ck-sel-proj">' + projLine + '</div>' +
+          etapaLine + nomeLine +
+        '</div>' +
         '<button class="fp-ck-sel-back" onclick="fpChat.selectCkByIndex(\'' + tipo + '\',\'\')" title="Trocar">↩ trocar</button>' +
       '</div>';
     _renderCkItems(tipo, ck);
@@ -2970,6 +3036,26 @@
     var s = _ckCalcStats(tipo, ck);
     var taskPct = s.tasksTotal ? Math.round(s.tasksDone / s.tasksTotal * 100) : 0;
     var secPct  = s.secsTotal  ? Math.round(s.secsDone  / s.secsTotal  * 100) : 0;
+
+    /* coordenadores */
+    var d = _ckGetDetail(tipo, ck);
+    var coords = [];
+    if (d.coordId) {
+      var m = teamMembers.find(function(u){ return u.id === d.coordId; });
+      if (m) coords.push(m);
+    }
+    if (ck._subcoordId) {
+      var m2 = teamMembers.find(function(u){ return u.id === ck._subcoordId; });
+      if (m2) coords.push(m2);
+    }
+    var coordsHtml = coords.length
+      ? '<div class="fp-ck-coords">' + coords.map(function(u) {
+          var ini = u.iniciais || (u.nome||'').substring(0,2).toUpperCase();
+          var cor = u.cor || '#888';
+          return '<div class="fp-ck-coord-av" style="background:' + escHtml(cor) + '" title="' + escHtml(u.nome||'') + '">' + escHtml(ini) + '</div>';
+        }).join('') + '</div>'
+      : '';
+
     $foot.innerHTML =
       (s.secsTotal > 0 ? '<div class="fp-ck-bar-row">' +
         '<span class="fp-ck-bar-label">Seções</span>' +
@@ -2980,7 +3066,8 @@
         '<span class="fp-ck-bar-label">Tarefas</span>' +
         '<div class="fp-ck-bar"><div class="fp-ck-bar-fill" id="fp-ck-bar-tasks" style="width:' + taskPct + '%"></div></div>' +
         '<span class="fp-ck-bar-count" id="fp-ck-cnt-tasks">' + s.tasksDone + '/' + s.tasksTotal + '</span>' +
-      '</div>';
+      '</div>' +
+      coordsHtml;
   }
 
 
