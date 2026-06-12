@@ -1545,6 +1545,13 @@
         prevSender=null;
       }
 
+      /* Mensagem automática de anotações — renderiza como faixa-sistema central */
+      if (isAnnotSentinel(msg.content)) {
+        html += renderAnnotMessageHtml(msg);
+        prevSender=null; prevTime=dt;
+        return;
+      }
+
       var gap     = prevTime ? (dt-prevTime) : Infinity;
       var grouped = msg.sender_id===prevSender && gap < 5*60*1000;
 
@@ -1606,8 +1613,14 @@
 
       /* Mídia */
       if (media && media.objectUrl) {
+        var nMarks = (media.marcadores && media.marcadores.length) || 0;
+        var annotBadge = nMarks
+          ? '<span class="fp-thumb-annot" title="'+nMarks+' anota'+(nMarks>1?'ções':'ção')+' neste print">' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+              nMarks + '</span>'
+          : '';
         html += '<div class="fp-media-thumb" onclick="fpChat.openMediaViewer(\''+escHtml(mediaKeyForMessage(msg))+'\')">' +
-          '<img src="'+escHtml(media.objectUrl)+'" alt="Print"></div>';
+          '<img src="'+escHtml(media.objectUrl)+'" alt="Print" onload="fpChat._thumbLoaded()">' + annotBadge + '</div>';
       } else if (media && media.pending) {
         html += '<div class="fp-media-thumb" style="padding:14px;font-size:11px;color:#999">Enviando print…</div>';
       } else if (showLoadFailed) {
@@ -1785,6 +1798,7 @@
   function openMediaViewer(mediaKey) {
     var keys=getMediaViewerGalleryKeys();
     var idx=keys.indexOf(mediaKey); if(idx===-1&&keys.length) idx=0;
+    mvDirtyKeys={};
     mediaViewerState={keys:keys,idx:idx}; mvZoom=1;
     renderMediaViewer();
     document.getElementById('fp-media-viewer').style.display='flex';
@@ -1826,10 +1840,46 @@
     }
   }
   function closeMediaViewer() {
+    /* Imagens que ganharam marcas nesta sessão → 1 mensagem automática cada.
+       Capturado ANTES de zerar o estado (vale também ao trocar de canal). */
+    var dirtyPrints = mediaViewerState
+      ? Object.keys(mvDirtyKeys).map(getMessageByMediaKey).filter(Boolean)
+      : [];
+    mvDirtyKeys={};
     mediaViewerState=null; mvZoom=1; mvSelectTool(null);
     document.getElementById('fp-media-viewer').style.display='none';
     var $canvas=document.getElementById('fp-mv-canvas'); if($canvas) $canvas.style.display='none';
     var $img=document.getElementById('fp-mv-img'); if($img) $img.src='';
+    dirtyPrints.forEach(postAnnotationMessage);
+    if (dirtyPrints.length) renderMessages();   /* atualiza o badge do thumbnail */
+  }
+
+  /* Publica a faixa-sistema "fez anotações sobre uma imagem anexada",
+     referenciando o print original para reabri-lo ao clicar. */
+  function postAnnotationMessage(printMsg) {
+    if (!printMsg || !printMsg.id) return;
+    var channel = printMsg.channel || currentChannel;
+    var content = '[anotacoes:' + printMsg.id + ']';
+    var pm = buildPendingMessage(content, { channel: channel });
+    upsertMessage(pm);
+    if (currentChannel === channel) { renderMessages(); scrollBottom(); }
+    if (isProjectChannel(channel)) {
+      sb.from('chat_thread_messages')
+        .insert({ thread_id: channel.replace('project:',''), sender_auth_id: user.auth_id, content: content })
+        .select('*').single().then(function(r){
+          if (r.error){ removeMessageById(pm.id); if(currentChannel===channel) renderMessages(); return; }
+          upsertMessage(normalizeProjectMessage(r.data)); if(currentChannel===channel) renderMessages();
+        });
+      return;
+    }
+    sb.from('chat_messages').insert({
+      channel: channel, sender_id: user.auth_id, sender_name: user.nome,
+      sender_iniciais: user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),
+      sender_cor: user.cor||'#1D6A4A', content: content
+    }).select('*').single().then(function(r){
+      if (r.error){ removeMessageById(pm.id); if(currentChannel===channel) renderMessages(); return; }
+      upsertMessage(r.data); if(currentChannel===channel) renderMessages();
+    });
   }
   function mvPrev(){ if(mediaViewerState&&mediaViewerState.idx>0){ mediaViewerState.idx--; mvZoom=1; renderMediaViewer(); } }
   function mvNext(){ if(mediaViewerState&&mediaViewerState.idx<mediaViewerState.keys.length-1){ mediaViewerState.idx++; mvZoom=1; renderMediaViewer(); } }
@@ -1845,6 +1895,8 @@
      vivem e morrem com a imagem. Posições em % — acompanham o zoom.
   ═══════════════════════════════════════════════════════════════════ */
   var mvTool = null;
+  /* chaves de mídia que receberam marcas NOVAS nesta sessão do visualizador */
+  var mvDirtyKeys = {};
   var MV_MARK_SVGS = {
     seta:          '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
     seta_verde:    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
@@ -1906,6 +1958,7 @@
       ts:  new Date().toISOString()
     };
     cur.media.marcadores = (cur.media.marcadores || []).concat([mk]);
+    mvDirtyKeys[mediaViewerState.keys[mediaViewerState.idx]] = true;
     renderMvMarkers();
     _saveMvMarkers(cur.msg, cur.media.marcadores);
   }
@@ -2141,6 +2194,7 @@
       if(JSON.stringify(_ex.marcadores||[])!==JSON.stringify(row.marcadores||[])){
         _ex.marcadores=row.marcadores||[];
         if(mediaViewerState&&mediaViewerState.keys[mediaViewerState.idx]===_exKey) renderMvMarkers();
+        renderMessages();   /* mantém o badge de anotações do thumbnail em sincronia */
       }
       return;
     }
@@ -2279,6 +2333,32 @@
   function newUuid(){ if(window.crypto&&typeof window.crypto.randomUUID==='function') return window.crypto.randomUUID(); return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);}); }
   function addDaysIso(d){ var dt=new Date(); dt.setDate(dt.getDate()+d); return dt.toISOString(); }
   function isImageOnlySentinel(c){ return String(c||'').trim()===CHAT_IMAGE_SENTINEL; }
+
+  /* ── Mensagem automática de anotações sobre print ──
+     Conteúdo-sentinel: [anotacoes:<id-da-mensagem-do-print>] */
+  function isAnnotSentinel(c){ return /^\[anotacoes:.+\]$/.test(String(c||'').trim()); }
+  function annotRefFromContent(c){ var m=String(c||'').trim().match(/^\[anotacoes:(.+)\]$/); return m?m[1]:null; }
+  function renderAnnotMessageHtml(msg){
+    var fn = firstName(msg.sender_name||'') || 'Alguém';
+    var printId = annotRefFromContent(msg.content);
+    return '<div class="fp-annot-row">'+
+      '<button type="button" class="fp-annot-pill" title="Ver imagem anotada" onclick="fpChat.openAnnotatedPrint(\''+escHtml(String(printId))+'\')">'+
+        '<span class="fp-annot-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>'+
+        escHtml(fn)+' fez anotações sobre uma imagem anexada'+
+        '<svg class="fp-annot-eye" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'+
+      '</button>'+
+    '</div>';
+  }
+  function openAnnotatedPrint(printId){
+    var msg = messages.find(function(m){ return String(m.id)===String(printId); });
+    var media = msg ? getMessageMedia(msg) : null;
+    if (media && media.objectUrl) { openMediaViewer(mediaKeyForMessage(msg)); }
+    else { console.warn('[EXP ChatFP] print anotado indisponível:', printId); }
+  }
+
+  /* Re-fixa o scroll no fim quando um print termina de carregar (e o usuário
+     ainda estava no fim) — corrige o "travar acima do print" ao abrir conversa. */
+  function _thumbLoaded(){ if (scrolledToEnd) scrollBottom(); }
   function isChatMediaExpired(msg){ if(!msg||!msg.created_at) return false; return Date.now()-new Date(msg.created_at).getTime()>(7*24*60*60*1000); }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -2417,7 +2497,7 @@
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
-    mvSelectTool, mvRemoveMark,
+    mvSelectTool, mvRemoveMark, openAnnotatedPrint, _thumbLoaded,
     /* fixar projetos */
     togglePinCurrent, openPinPop, closePinPop, pinPopToggle,
     openCtxMenu, closeCtxMenu, ctxTogglePin,
