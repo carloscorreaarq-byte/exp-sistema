@@ -1217,9 +1217,9 @@ drop policy if exists "auth_modify" on public.pessoas_beneficios_recorrentes;
 drop policy if exists "auth_select" on public.pessoas_beneficios_eventos;
 drop policy if exists "auth_modify" on public.pessoas_beneficios_eventos;
 
-create policy "auth_select" on public.pessoas_beneficios_recorrentes for select to authenticated using (true);
+create policy "auth_select" on public.pessoas_beneficios_recorrentes for select to authenticated using (private.is_socio());
 create policy "auth_modify" on public.pessoas_beneficios_recorrentes for all to authenticated using (private.is_socio()) with check (private.is_socio());
-create policy "auth_select" on public.pessoas_beneficios_eventos for select to authenticated using (true);
+create policy "auth_select" on public.pessoas_beneficios_eventos for select to authenticated using (private.is_socio());
 create policy "auth_modify" on public.pessoas_beneficios_eventos for all to authenticated using (private.is_socio()) with check (private.is_socio());
 
 commit;`;
@@ -1332,9 +1332,9 @@ create policy "auth_select" on public.pessoas_pesquisa_clima_perguntas for selec
 create policy "auth_modify" on public.pessoas_pesquisa_clima_perguntas for all to authenticated using (private.is_socio()) with check (private.is_socio());
 create policy "auth_select" on public.pessoas_pesquisa_clima_campanhas for select to authenticated using (true);
 create policy "auth_modify" on public.pessoas_pesquisa_clima_campanhas for all to authenticated using (private.is_socio()) with check (private.is_socio());
-create policy "auth_select" on public.pessoas_pesquisa_clima_disparos for select to authenticated using (true);
+create policy "auth_select" on public.pessoas_pesquisa_clima_disparos for select to authenticated using (private.is_socio() or usuario_id = (select id from public.usuarios where auth_id = auth.uid()));
 create policy "auth_modify" on public.pessoas_pesquisa_clima_disparos for all to authenticated using (private.is_socio()) with check (private.is_socio());
-create policy "auth_select" on public.pessoas_pesquisa_clima_respostas for select to authenticated using (true);
+create policy "auth_select" on public.pessoas_pesquisa_clima_respostas for select to authenticated using (private.is_socio() or usuario_id = (select id from public.usuarios where auth_id = auth.uid()));
 create policy "auth_modify" on public.pessoas_pesquisa_clima_respostas for all to authenticated using (true) with check (true);
 
 commit;`;
