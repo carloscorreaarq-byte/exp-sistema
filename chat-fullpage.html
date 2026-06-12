@@ -261,6 +261,58 @@ body {
 [data-theme="dark"] .fp-toggle-btn { border-color: #2E2D2B; color: #6B6860; }
 [data-theme="dark"] .fp-toggle-btn.active { background: var(--ca-mid); border-color: var(--ca); color: var(--ca); }
 
+/* ── Faixa "Online agora" — presença ao vivo, fixa acima da lista ── */
+#fp-presence-bar {
+  display: none;                 /* JS exibe só quando há alguém online */
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  background: rgba(var(--ca-rgb-vals), .06);
+}
+#fp-presence-bar.has-online { display: block; }
+[data-theme="dark"] #fp-presence-bar { border-bottom-color: #2E2D2B; }
+.fp-presence-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: calc(9px * var(--fp-fz, 1)); font-weight: 700; letter-spacing: .65px;
+  text-transform: uppercase; color: var(--cinza, #D0CFC9);
+  margin-bottom: 8px;
+}
+[data-theme="dark"] .fp-presence-label { color: #6B6860; }
+.fp-presence-count { font-family: var(--font-mono); color: var(--ca); letter-spacing: 0; }
+.fp-presence-avs { display: flex; align-items: center; }
+.fp-presence-av {
+  position: relative; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid var(--branco, #fff);
+  margin-right: -8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: calc(11px * var(--fp-fz, 1));
+  font-weight: 700; color: #fff;
+  cursor: pointer; transition: transform .12s;
+}
+[data-theme="dark"] .fp-presence-av { border-color: #1E1E1D; }
+.fp-presence-av:hover { transform: translateY(-2px); z-index: 20; }
+.fp-presence-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.fp-presence-dot {
+  position: absolute; bottom: -1px; right: -1px;
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid var(--branco, #fff);
+}
+[data-theme="dark"] .fp-presence-dot { border-color: #1E1E1D; }
+.fp-presence-dot.online  { background: #2D9E6B; }
+.fp-presence-dot.foco    { background: #1D4FA0; }
+.fp-presence-dot.ausente { background: #C4831A; }
+.fp-presence-more {
+  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid var(--branco, #fff);
+  background: var(--off, #F7F6F3); color: var(--cinza, #D0CFC9);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: calc(11px * var(--fp-fz, 1)); font-weight: 700;
+  cursor: default;
+}
+[data-theme="dark"] .fp-presence-more { border-color: #1E1E1D; background: #252523; color: #9A9590; }
+
 /* Lista de conversas */
 #fp-conv-list {
   flex: 1; overflow-y: auto; padding: 6px 8px 12px;
@@ -1128,6 +1180,65 @@ body {
 .fp-task-delegada { opacity: .9; }
 .fp-task-done { opacity: .5; }
 .fp-task-done .fp-task-desc { text-decoration: line-through; color: #aaa; }
+
+/* ── Cabeçalho Pendentes + botão recentes ── */
+.fp-task-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fp-task-recentes-btn {
+  border: none; background: none; cursor: pointer; font-family: var(--font-ui);
+  font-size: calc(9px * var(--fp-lists-scale, 1)); font-weight: 700; letter-spacing: .3px;
+  color: var(--ca); opacity: .75; padding: 2px 4px; border-radius: 5px; transition: opacity .12s, background .12s;
+}
+.fp-task-recentes-btn:hover { opacity: 1; background: rgba(var(--ca-rgb-vals, 29,106,74), .1); }
+
+/* ── Lápis de edição (tarefa e item de checklist) ── */
+.fp-task-edit, .fp-ck-edit {
+  border: none; background: none; cursor: pointer; color: var(--cinza, #D0CFC9);
+  padding: 2px; border-radius: 5px; flex-shrink: 0; opacity: 0;
+  transition: opacity .12s, color .12s, background .12s;
+  display: flex; align-items: center; justify-content: center; margin-top: 1px;
+}
+.fp-task-item:hover .fp-task-edit,
+.fp-ck-item:hover .fp-ck-edit { opacity: .6; }
+.fp-task-edit:hover, .fp-ck-edit:hover { opacity: 1 !important; color: var(--ca); background: rgba(var(--ca-rgb-vals, 29,106,74), .1); }
+
+/* ── Editor inline de tarefa ── */
+.fp-task-editing { background: rgba(var(--ca-rgb-vals, 29,106,74), .06); }
+.fp-task-edit-desc, .fp-task-edit-data {
+  border: 1px solid var(--cinza2, #ECEAE4); border-radius: 6px; padding: 5px 8px;
+  font-family: var(--font-ui); font-size: calc(11px * var(--fp-lists-scale, 1)); outline: none;
+  background: #fff; color: var(--grafite, #111110); transition: border-color .15s;
+}
+.fp-task-edit-desc { width: 100%; margin-bottom: 5px; }
+.fp-task-edit-desc:focus, .fp-task-edit-data:focus { border-color: var(--ca); }
+[data-theme="dark"] .fp-task-edit-desc,
+[data-theme="dark"] .fp-task-edit-data { background: #2A2926; border-color: rgba(var(--ca-rgb-vals, 29,106,74), .35); color: #F0EDE6; color-scheme: dark; }
+.fp-task-edit-row { display: flex; align-items: center; gap: 5px; }
+.fp-task-edit-data { flex: 1; min-width: 0; }
+.fp-task-edit-save, .fp-task-edit-cancel {
+  border: none; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-family: var(--font-ui);
+  font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 600; flex-shrink: 0;
+}
+.fp-task-edit-save { background: var(--ca); color: #fff; }
+.fp-task-edit-save:hover { opacity: .85; }
+.fp-task-edit-cancel { background: none; color: #888; }
+.fp-task-edit-cancel:hover { color: var(--grafite, #111110); }
+
+/* ── Botão restaurar ── */
+.fp-task-restore {
+  border: 1px solid var(--cinza2, #ECEAE4); background: none; cursor: pointer; font-family: var(--font-ui);
+  font-size: calc(9px * var(--fp-lists-scale, 1)); font-weight: 600; color: var(--ca);
+  padding: 3px 7px; border-radius: 6px; flex-shrink: 0; align-self: center; white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.fp-task-restore:hover { background: rgba(var(--ca-rgb-vals, 29,106,74), .1); border-color: var(--ca); }
+[data-theme="dark"] .fp-task-restore { border-color: rgba(var(--ca-rgb-vals, 29,106,74), .35); }
+
+/* ── Editor inline de item de checklist ── */
+.fp-ck-edit-inp {
+  flex: 1; border: 1px solid var(--ca); border-radius: 5px; padding: 2px 6px; font-family: var(--font-ui);
+  font-size: calc(11px * var(--fp-lists-scale, 1)); outline: none; background: #fff; color: var(--grafite, #111110); min-width: 0;
+}
+[data-theme="dark"] .fp-ck-edit-inp { background: #2A2926; color: #F0EDE6; color-scheme: dark; }
 
 /* ── Formulário de tarefas ── */
 #fp-task-form {
@@ -2263,6 +2374,7 @@ body {
         <select id="fp-task-tipo">
           <option value="">Tipo…</option>
           <option value="projeto">Projeto</option>
+          <option value="organizacao">Organização</option>
           <option value="comercial">Comercial</option>
           <option value="financeiro">Financeiro</option>
           <option value="sociedade">Sociedade</option>
@@ -2378,6 +2490,9 @@ body {
         </div>
       </div>
     </div>
+
+    <!-- Online agora — presença ao vivo (preenchida pelo JS) -->
+    <div id="fp-presence-bar"></div>
 
     <!-- Lista de conversas -->
     <div id="fp-conv-list">
