@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP · Sistema</title>
+<title>EXP · Hub</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -407,6 +407,13 @@ body {
   opacity: .55;
 }
 [data-theme="dark"] .prio-hub-card.prio-done { background: rgba(255,255,255,.03) !important; }
+/* Semafórico em dark mode — fundos semi-transparentes (sobrepõem o inline claro) */
+[data-theme="dark"] .prio-hub-card.prio-sem-futuro  { background: rgba(39,174,96,.12) !important; }
+[data-theme="dark"] .prio-hub-card.prio-sem-hoje    { background: rgba(212,172,13,.13) !important; }
+[data-theme="dark"] .prio-hub-card.prio-sem-vencida { background: rgba(192,57,43,.15) !important; }
+[data-theme="dark"] .prio-hub-card.prio-sem-futuro  .prio-hub-nome { color: #5FCF8C !important; }
+[data-theme="dark"] .prio-hub-card.prio-sem-hoje    .prio-hub-nome { color: #E3C04A !important; }
+[data-theme="dark"] .prio-hub-card.prio-sem-vencida .prio-hub-nome { color: #E8847A !important; }
 .prio-hub-card.prio-done .prio-hub-nome { text-decoration: line-through; color: #aaa; }
 /* Botão de check */
 .prio-hub-check {
@@ -1523,7 +1530,8 @@ body {
         <select id="fp-task-tipo">
           <option value="">Tipo…</option>
           <option value="projeto">Projeto</option>
-          <option value="organizacao">Organização</option>
+          <option value="comercial">Comercial</option>
+          <option value="financeiro">Financeiro</option>
           <option value="sociedade">Sociedade</option>
         </select>
         <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
@@ -3615,6 +3623,7 @@ function renderPriosSection(prios) {
     const prazo = !done && _fmtPrazo(pr.prazo_texto);
     const cls  = done ? 'prio-done' : '';
     // Paleta semafórica inline — verde=futuro, amarelo=hoje, vermelho=atrasada
+    const _estado = done ? '' : prazo?.cls === 'vencida' ? 'vencida' : prazo?.cls === 'hoje' ? 'hoje' : 'futuro';
     const _cor = done ? null
       : prazo?.cls === 'vencida' ? { bg:'#FDECEA', border:'#C0392B', text:'#C0392B' }
       : prazo?.cls === 'hoje'    ? { bg:'#FFFBEA', border:'#D4AC0D', text:'#B8860B' }
@@ -3633,7 +3642,7 @@ function renderPriosSection(prios) {
            >✓</button>`
       : `<span style="font-size:9px;font-weight:700;color:#2D9E6B;opacity:.6">✓</span>`;
     return `
-      <div class="prio-hub-card ${cls}" style="${cardStyle}" data-nav-href="gestao.html">
+      <div class="prio-hub-card ${cls} ${_estado ? 'prio-sem-' + _estado : ''}" style="${cardStyle}" data-nav-href="gestao.html">
         <div class="prio-hub-head">
           <div class="prio-hub-body">
             <div class="prio-hub-nome" style="${nomeStyle}">${escHtml(nome)}</div>

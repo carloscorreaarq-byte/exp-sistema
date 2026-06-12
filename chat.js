@@ -2015,7 +2015,7 @@
       ? msg.content.substring(0, 80) + '...'
       : msg.content;
     var tag      = 'exp-chat-' + msg.channel;
-    var icon     = '/files/assets/icon-192.png';
+    var icon     = '/favicon.png';
 
     /* Notificação direta quando a página está visível */
     if (document.visibilityState === 'visible' && Notification.permission === 'granted') {
@@ -2077,19 +2077,19 @@
       var ctx = _getAudioCtx();
       if (!ctx) return;
       function _play() {
-        /* Dois tons suaves: C6 (1047 Hz) → E6 (1319 Hz) */
-        [{ f: 1046.5, t: 0, d: 0.18 }, { f: 1318.5, t: 0.13, d: 0.22 }].forEach(function (n) {
+        /* Sino suave: G5 + B5 simultâneos, ataque rápido, decay longo */
+        [{ f: 784, vol: 0.032 }, { f: 987.8, vol: 0.022 }].forEach(function (n) {
           var osc  = ctx.createOscillator();
           var gain = ctx.createGain();
           osc.type = 'sine';
           osc.frequency.value = n.f;
-          gain.gain.setValueAtTime(0, ctx.currentTime + n.t);
-          gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + n.t + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.t + n.d);
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(n.vol, ctx.currentTime + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55);
           osc.connect(gain);
           gain.connect(ctx.destination);
-          osc.start(ctx.currentTime + n.t);
-          osc.stop(ctx.currentTime + n.t + n.d + 0.02);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.57);
         });
       }
       if (ctx.state === 'suspended') ctx.resume().then(_play);

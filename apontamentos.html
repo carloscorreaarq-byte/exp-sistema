@@ -13,12 +13,18 @@
 <link rel="preload" href="shared/exp-nav.js" as="script">
 <link rel="stylesheet" href="exp-design-system.css">
 <link rel="stylesheet" href="shared/exp-nav.css">
+<link rel="stylesheet" href="shared/lists-panel.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;}
 :root{
   /* foco de input — apontamentos usa verde */
   --mod-focus:      var(--verde);
   --mod-focus-soft: var(--verde-soft);
+  /* Painel de Listas (identidade verde global) */
+  --ca:          var(--verde);
+  --ca-bg:       var(--verde-bg);
+  --ca-mid:      var(--verde-soft);
+  --ca-rgb-vals: 29,106,74;
 }
 
 body{
@@ -415,6 +421,60 @@ body{
 </div>
 
 <div id="app-shell" class="exp-app-shell">
+
+  <!-- ── Painel de Listas ── -->
+  <aside id="fp-tasks-panel" style="display:none">
+    <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+      <span style="font-size:calc(14px * var(--fp-lists-scale,1));font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
+      <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+      <button onclick="listsPanel.toggle()" title="Fechar"
+        style="width:24px;height:24px;border:none;background:none;color:var(--grafite,#111110);opacity:.4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
+        onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fp-lists-tabs">
+      <button class="fp-lists-tab active" data-tab="tarefas"  onclick="listsPanel.switchListsTab('tarefas')">Tarefas</button>
+      <button class="fp-lists-tab"        data-tab="abertos"  onclick="listsPanel.switchListsTab('abertos')">Checklists</button>
+      <button class="fp-lists-tab"        data-tab="etapa"    onclick="listsPanel.switchListsTab('etapa')">Guidelines</button>
+      <button class="fp-lists-tab"        data-tab="revisao"  onclick="listsPanel.switchListsTab('revisao')">Revisões</button>
+    </div>
+
+    <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
+
+    <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="fp-ck-selector" id="fp-ck-selector">
+        <select class="fp-ck-select" id="fp-ck-select" onchange="listsPanel.selectCkByIndex(listsPanel._listsActiveTab, this.value)">
+          <option value="">— selecionar —</option>
+        </select>
+      </div>
+      <div id="fp-ck-items"></div>
+      <div id="fp-ck-footer" class="fp-ck-footer" style="display:none"></div>
+    </div>
+
+    <div id="fp-task-form">
+      <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="listsPanel.taskDescInput(this)"></textarea>
+      <div class="fp-task-form-row">
+        <select id="fp-task-tipo">
+          <option value="">Tipo…</option>
+          <option value="projeto">Projeto</option>
+          <option value="comercial">Comercial</option>
+          <option value="financeiro">Financeiro</option>
+          <option value="sociedade">Sociedade</option>
+        </select>
+        <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
+        <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" title="Atribuir para alguém">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
   <main class="apo-main">
 
     <!-- Cabeçalho + topbar -->
@@ -435,28 +495,30 @@ body{
         <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="ExpNav.abrirLembrete()" title="Enviar lembrete">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
-        <div class="exp-user-chip" id="exp-user-chip" onclick="ExpNav._toggleUserDropdown()">
-          <div class="exp-nav-user" id="exp-nav-user"></div>
-          <div class="exp-user-info">
-            <div class="exp-user-nome" id="exp-user-nome">—</div>
-            <div class="exp-user-role" id="exp-user-role"></div>
+        <div class="user-pill-wrap" style="position:relative">
+          <div class="user-chip" onclick="toggleUserMenu()">
+            <div class="user-av" id="exp-nav-user"></div>
+            <div>
+              <div class="u-nome" id="exp-user-nome">—</div>
+              <div class="u-role" id="exp-user-role"></div>
+            </div>
+            <span class="user-chip-arrow">▾</span>
           </div>
-          <span class="exp-user-caret">▾</span>
-          <div class="exp-user-dropdown" id="exp-user-dropdown">
-            <button onclick="window.location.href='app.html'">Meus dados</button>
-            <button id="user-menu-platform" hidden onclick="window.location.href='app.html'">Gestão de plataforma</button>
-            <div class="exp-user-dropdown-sep"></div>
+          <div class="user-dropdown" id="user-dropdown">
+            <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+            <button type="button" id="user-menu-platform" hidden onclick="window.location.href='app.html'">Gestão de plataforma</button>
+            <div class="user-dropdown-sep"></div>
             <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.() || window.location.assign('app.html')">
               <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
               <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
               <span class="term-state-hover">ver termo →</span>
             </div>
             <div class="user-dropdown-note" id="user-dropdown-note"></div>
-            <div class="exp-user-dropdown-sep"></div>
+            <div class="user-dropdown-sep"></div>
             <button onclick="ExpNav._sair()">Sair do sistema</button>
-            <div class="exp-user-dropdown-footer">
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
               <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
-              <span id="exp-conn-label" style="font-size:10px">conectando…</span>
+              <span id="exp-conn-label" style="font-size:10px;color:#bbb">conectando…</span>
             </div>
           </div>
         </div>
@@ -768,6 +830,7 @@ body{
 </div>
 
 <script src="shared/app-shell.js"></script>
+<script src="shared/lists-panel.js"></script>
 <script src="shared/exp-nav.js"></script>
 <script>
 (function () {
@@ -852,6 +915,14 @@ body{
   function isSocioAdmRole(role) {
     return ['socio_adm','socio_admin'].includes(String(role||'').toLowerCase());
   }
+
+  function toggleUserMenu() {
+    document.getElementById('user-dropdown')?.classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.user-pill-wrap'))
+      document.getElementById('user-dropdown')?.classList.remove('open');
+  }, true);
 
   function renderTermState(usuario) {
     var dropdown     = document.getElementById('user-term-state');
@@ -2547,6 +2618,40 @@ body{
       document.getElementById('exp-mes').value = today.slice(0,7);
 
       window.ExpNav.init({ module:'apontamentos' });
+
+      /* ── Substitui botão exp-nav-tarefas pelo painel de Listas ── */
+      (function() {
+        var oldBtn = document.getElementById('exp-nav-tarefas');
+        if (oldBtn) {
+          var nav = oldBtn.parentNode;
+          var btn = document.createElement('button');
+          btn.id        = 'fp-nav-lists';
+          btn.className = 'exp-nav-item';
+          btn.title     = 'Minhas listas';
+          btn.style.cssText = 'position:relative';
+          btn.innerHTML =
+            '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>' +
+              '<line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>' +
+            '</svg>' +
+            '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
+          btn.onclick = function() { listsPanel.toggle(); };
+          nav.replaceChild(btn, oldBtn);
+        }
+
+        listsPanel.init({
+          getSb: function() { return window.sb; },
+          getUser: function() {
+            try { return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); } catch(e) { return null; }
+          },
+          getMembers: function() { return window._listsMembersCache || []; },
+          escHtml: window.escHtml,
+        });
+
+        /* pré-carrega membros para atribuição de tarefas */
+        window.sb.from('usuarios').select('id,nome,iniciais,cor,apelido').eq('ativo', true)
+          .then(function(r) { window._listsMembersCache = r.data || []; });
+      })();
 
       bindEvents();
       revealApp();

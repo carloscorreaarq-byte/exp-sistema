@@ -10,10 +10,10 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(d.title ?? 'EXP', {
       body:    d.body  ?? '',
-      icon:    d.icon  ?? '/files/assets/icon-192.png',
-      badge:   '/files/assets/badge-72.png',
+      icon:    d.icon  ?? '/favicon.png',
+      badge:   '/favicon.png',
       tag:     d.tag   ?? 'exp-notif',
-      data:    { url: d.url ?? '/files/gestao.html' },
+      data:    { url: d.url ?? '/gestao.html' },
       vibrate: [150, 75, 150],
       requireInteraction: false,
     })
@@ -23,7 +23,7 @@ self.addEventListener('push', e => {
 // Clique na notificação
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const target = e.notification.data?.url ?? '/files/gestao.html';
+  const target = e.notification.data?.url ?? '/gestao.html';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) {

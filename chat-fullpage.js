@@ -1906,14 +1906,14 @@
       var ctx = _getAudioCtx();
       if (!ctx) return;
       function _play() {
-        [{f:1046.5,t:0,d:0.18},{f:1318.5,t:0.13,d:0.22}].forEach(function(n){
+        [{f:784,vol:0.032},{f:987.8,vol:0.022}].forEach(function(n){
           var osc=ctx.createOscillator(), gain=ctx.createGain();
           osc.type='sine'; osc.frequency.value=n.f;
-          gain.gain.setValueAtTime(0,ctx.currentTime+n.t);
-          gain.gain.linearRampToValueAtTime(0.07,ctx.currentTime+n.t+0.02);
-          gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+n.t+n.d);
+          gain.gain.setValueAtTime(0,ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(n.vol,ctx.currentTime+0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.55);
           osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(ctx.currentTime+n.t); osc.stop(ctx.currentTime+n.t+n.d+0.02);
+          osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.57);
         });
       }
       if (ctx.state === 'suspended') ctx.resume().then(_play);
@@ -1935,7 +1935,7 @@
       :sender+' no #sócios';
     var body=(msg.content||'').length>80?msg.content.substring(0,80)+'...':msg.content;
     var tag='exp-chat-'+ch;
-    var icon='/files/assets/icon-192.png';
+    var icon='/favicon.png';
     if(document.visibilityState==='visible'&&Notification.permission==='granted'){
       try{ new Notification(title,{body:body,icon:icon,tag:tag,silent:true}); }catch(e){}
     }
