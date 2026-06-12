@@ -28,6 +28,7 @@ window.AppNotif = (() => {
   let _computed  = {};   // { [key]: { label, items[] } }
   let _sub       = null;
   let _userId    = null;
+  let _role      = null;
   let _panelOpen = false;
 
   const _DISMISSED_KEY = 'exp_alertas_ok'; // compartilhado com crm.html
@@ -39,6 +40,47 @@ window.AppNotif = (() => {
     comercial:  'Comercial',
     financeiro: 'Financeiro',
   };
+
+  /* ── visibilidade por papel ──────────────────────────────────
+     Colaboradores NÃO recebem notificações dos módulos "societários"
+     (comercial, financeiro, sociedade, calculadora, análise). O módulo
+     "pessoas" só pode enviar lembretes e pesquisa de clima a eles. */
+  const COLAB_BLOCKED_MODULOS = new Set([
+    'comercial', 'crm',
+    'financeiro',
+    'sociedade',
+    'calc', 'calculadora',
+    'analise', 'análise',
+  ]);
+  const PESSOAS_TIPOS_PERMITIDOS = new Set([
+    'lembrete', 'clima', 'pesquisa_clima', 'clima_survey',
+  ]);
+
+  function _currentRole() {
+    if (_role != null) return _role;
+    try {
+      const u = JSON.parse(sessionStorage.getItem('exp_usuario') || 'null');
+      const r = u?.role || '';
+      _role = window.normalizeExpRole ? window.normalizeExpRole(r)
+                                      : String(r).toLowerCase().trim();
+    } catch { _role = ''; }
+    return _role;
+  }
+
+  function _isColaborador() {
+    return _currentRole() === 'colaborador';
+  }
+
+  // true se o colaborador pode ver esta notificação (modulo/tipo)
+  function _notifVisivel(n) {
+    if (!_isColaborador()) return true;
+    const modulo = String(n?.modulo || '').toLowerCase().trim();
+    if (COLAB_BLOCKED_MODULOS.has(modulo)) return false;
+    if (modulo === 'pessoas') {
+      return PESSOAS_TIPOS_PERMITIDOS.has(String(n?.tipo || '').toLowerCase().trim());
+    }
+    return true;
+  }
 
   /* ── helpers ─────────────────────────────────────────────── */
   function _esc(s) {
@@ -385,9 +427,10 @@ window.AppNotif = (() => {
 
   /* ── carrega todas as seções computadas ──────────────────── */
   async function _fetchAllComputed(userId) {
-    await Promise.allSettled([
-      _fetchCrmAlerts(),
-    ]);
+    // Colaboradores não recebem alertas do Comercial (módulo societário)
+    const tasks = [];
+    if (!_isColaborador()) tasks.push(_fetchCrmAlerts());
+    if (tasks.length) await Promise.allSettled(tasks);
     _renderBadge();
     if (_panelOpen) _renderPanel();
   }
@@ -402,7 +445,7 @@ window.AppNotif = (() => {
       .neq('tipo', 'tarefa')
       .order('created_at', { ascending: false })
       .limit(50);
-    _notifs = data || [];
+    _notifs = (data || []).filter(_notifVisivel);
     _renderBadge();
     if (_panelOpen) _renderPanel();
   }
@@ -417,6 +460,7 @@ window.AppNotif = (() => {
           filter: `usuario_id=eq.${userId}`
         }, payload => {
           if (payload.new.tipo === 'tarefa') return;
+          if (!_notifVisivel(payload.new)) return;
           _notifs.unshift(payload.new);
           if (_notifs.length > 50) _notifs = _notifs.slice(0, 50);
           _renderBadge();
@@ -447,6 +491,8 @@ window.AppNotif = (() => {
   async function init({ userId } = {}) {
     async function _boot(uid) {
       _userId = uid;
+      _role   = null;        // força releitura do papel da sessão atual
+      _currentRole();
       if (!_userId || !window.sb) return;
       // Notificações da tabela + seções computadas em paralelo
       await Promise.all([
@@ -480,6 +526,13 @@ window.AppNotif = (() => {
 
   // setComputedSection — módulo com dados locais mais ricos sobrescreve
   function setComputedSection(key, { label, items = [] } = {}) {
+    // Colaboradores não recebem seções de módulos societários (ex.: comercial)
+    if (_isColaborador() && COLAB_BLOCKED_MODULOS.has(String(key).toLowerCase().trim())) {
+      delete _computed[key];
+      _renderBadge();
+      if (_panelOpen) _renderPanel();
+      return;
+    }
     _computed[key] = { label: label || MODULE_LABELS[key] || key, items };
     _renderBadge();
     if (_panelOpen) _renderPanel();
@@ -487,6 +540,7 @@ window.AppNotif = (() => {
 
   // refreshCrmAlerts — chamar após dispensar alerta (quando crm.html não gerencia)
   async function refreshCrmAlerts() {
+    if (_isColaborador()) return;
     await _fetchCrmAlerts();
     _renderBadge();
     if (_panelOpen) _renderPanel();
