@@ -1144,11 +1144,77 @@
         });
         updateChannelSubtitle();
         renderConvList();
+        renderPresenceBar();
       })
       .subscribe(function(s){ if(s==='SUBSCRIBED') presenceCh.track(presencePayload(userStatus)); });
   }
   function presencePayload(status) {
     return { user_id:user.auth_id, nome:user.nome, iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(), cor:user.cor||'#1D6A4A', status:status };
+  }
+
+  /* Faixa "Online agora" — renderiza quem está presente, exceto o próprio usuário.
+     Inclui online/foco/ausente (todos conectados), cada um com sua bolinha. */
+  function renderPresenceBar() {
+    var $bar = document.getElementById('fp-presence-bar');
+    if (!$bar || !user) return;
+    var MAX = 6;
+    var rank = { online:0, foco:1, ausente:2 };
+    var statusLabel = { online:'Online', foco:'Foco', ausente:'Ausente' };
+
+    var others = Object.keys(onlinePresence)
+      .filter(function(uid){ return uid && uid !== user.auth_id; })
+      .map(function(uid){
+        var p   = onlinePresence[uid] || {};
+        var mem = allMembers.find(function(m){ return m.auth_id === uid; });
+        var nome = (mem && mem.nome) || p.nome || '';
+        return {
+          uid: uid,
+          nome: nome,
+          iniciais: (((mem && mem.iniciais) || p.iniciais || nome.substring(0,2)) || '?').toUpperCase(),
+          cor: (mem && mem.cor) || p.cor || '#1D6A4A',
+          avatar_url: (mem && mem.avatar_url) || null,
+          status: p.status || 'online'
+        };
+      });
+
+    others.sort(function(a,b){
+      var r = (rank[a.status]||9) - (rank[b.status]||9);
+      return r !== 0 ? r : a.nome.localeCompare(b.nome);
+    });
+
+    if (!others.length) { $bar.className = ''; $bar.innerHTML = ''; return; }
+
+    var shown = others.slice(0, MAX);
+    var extra = others.length - shown.length;
+
+    var avs = shown.map(function(o){
+      var inner = o.avatar_url ? '<img src="'+escHtml(o.avatar_url)+'" alt="">' : escHtml(o.iniciais||'?');
+      var bg    = o.avatar_url ? '' : 'background:'+escHtml(o.cor)+';';
+      return '<div class="fp-presence-av" style="'+bg+'" title="'+escHtml(o.nome)+' · '+(statusLabel[o.status]||'Online')+'"'+
+        ' onclick="fpChat.openDMWith(\''+escHtml(o.uid)+'\')">'+
+        inner +
+        '<span class="fp-presence-dot '+escHtml(o.status)+'"></span>'+
+      '</div>';
+    }).join('');
+
+    if (extra > 0) {
+      var moreNames = others.slice(MAX).map(function(o){ return o.nome; }).join(', ');
+      avs += '<div class="fp-presence-more" title="'+escHtml(moreNames)+'">+'+extra+'</div>';
+    }
+
+    $bar.className = 'has-online';
+    $bar.innerHTML =
+      '<div class="fp-presence-label">Online agora <span class="fp-presence-count">· '+others.length+'</span></div>'+
+      '<div class="fp-presence-avs">'+avs+'</div>';
+  }
+
+  /* Abre (ou cria) o DM direto com a pessoa clicada na faixa de presença */
+  function openDMWith(authId) {
+    if (!authId || authId === user.auth_id) return;
+    var mem  = allMembers.find(function(m){ return m.auth_id === authId; });
+    var p    = onlinePresence[authId] || {};
+    var nome = (mem && mem.nome) || p.nome || '';
+    openChannel(dmChannel(user.auth_id, authId), firstName(nome));
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -1955,6 +2021,7 @@
         allMembers=all;
         teamMembers=all.filter(function(m){ return m.auth_id!==user.auth_id&&m.id!==user.id; });
         renderConvList();
+        renderPresenceBar();
       });
   }
 
@@ -2345,7 +2412,7 @@
     toggleStatusPop, setStatus, toggleSound, toggleDmPin,
     setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
-    openNewDM, closeNewDM, toggleMember, confirmNewDM,
+    openNewDM, closeNewDM, toggleMember, confirmNewDM, openDMWith,
     send, handleKey, autoResize,
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
@@ -2358,6 +2425,7 @@
     toggleInSearch, closeInSearch, inSearchInput, inSearchKey, inSearchNext, inSearchPrev,
     /* tarefas / listas */
     toggleTasksPanel, checkTask, addTask, openAssignDrop, taskDescInput, toggleDelegadas, _assignTo: window._assignTo,
+    editTask, saveTaskEdit, cancelTaskEdit, toggleRecentes, restoreTask, editCkItem,
     switchListsTab, selectCkByIndex, fpToggleCkItem, fpAddCkItem, fpAddCkItemBlur,
     get _listsActiveTab() { return _listsActiveTab; },
     /* prioridade */
@@ -2386,6 +2454,15 @@
   var tasksCache          = [];
   var delegadasCache      = [];
   var delegadasExpanded   = false;
+  var recentesOpen        = false;
+  var _PENCIL = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
+  function _fmtDateTime(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d)) return '';
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) + ' ' +
+           d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  }
 
   function updateTasksBadge(count) {
     var $badge = document.getElementById('fp-tasks-badge');
@@ -2445,6 +2522,7 @@
   function loadTasks() {
     var uid = user.id || user.app_user_id;
     if (!uid) return;
+    recentesOpen = false;
     var $list = document.getElementById('fp-tasks-list');
     if ($list) $list.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
 
@@ -2512,17 +2590,22 @@
     var html = '';
 
     /* ── Pendentes ── */
+    html += '<div class="fp-task-section fp-task-sec-head">' +
+      '<span>Pendentes — ' + tasks.length + '</span>' +
+      '<button class="fp-task-recentes-btn" onclick="fpChat.toggleRecentes(event)" title="Ver realizadas recentemente e restaurar">↺ recentes</button>' +
+      '</div>';
     if (!tasks.length) {
       html += '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma tarefa pendente ✓</div>';
     } else {
-      html += '<div class="fp-task-section">Pendentes — ' + tasks.length + '</div>';
       tasks.forEach(function(t) {
-        html += '<div class="fp-task-item">' +
-          '<div class="fp-task-check" onclick="fpChat.checkTask(event,\'' + escHtml(String(t.id)) + '\')" title="Concluir"></div>' +
+        var tid = escHtml(String(t.id));
+        html += '<div class="fp-task-item" id="fp-task-' + tid + '">' +
+          '<div class="fp-task-check" onclick="fpChat.checkTask(event,\'' + tid + '\')" title="Concluir"></div>' +
           '<div class="fp-task-body">' +
             '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
             '<div class="fp-task-meta">' + taskPrazoHtml(t) + tipoHtml(t) + '</div>' +
           '</div>' +
+          '<button class="fp-task-edit" title="Editar tarefa" onclick="fpChat.editTask(event,\'' + tid + '\')">' + _PENCIL + '</button>' +
           '</div>';
       });
     }
@@ -2675,11 +2758,116 @@
     event.stopPropagation();
     var btn = event.currentTarget;
     btn.classList.add('done');
-    sb.from('tarefas_livres').update({ concluida: true }).eq('id', taskId)
+    sb.from('tarefas_livres').update({ concluida: true, concluida_em: new Date().toISOString() }).eq('id', taskId)
       .then(function(r) {
         if (r.error) { btn.classList.remove('done'); return; }
         tasksCache = tasksCache.filter(function(t) { return String(t.id) !== String(taskId); });
         setTimeout(function() { renderTasks(tasksCache); }, 400);
+      });
+  }
+
+  /* ── editar tarefa própria (inline) ─────────────────────── */
+  function editTask(event, taskId) {
+    if (event) event.stopPropagation();
+    var t = tasksCache.find(function(x) { return String(x.id) === String(taskId); });
+    if (!t) return;
+    var row = document.getElementById('fp-task-' + taskId);
+    if (!row) return;
+    var body = row.querySelector('.fp-task-body');
+    if (!body || body.querySelector('.fp-task-edit-desc')) return;
+    row.classList.add('fp-task-editing');
+    body.innerHTML =
+      '<input class="fp-task-edit-desc" type="text" value="' + escHtml(t.descricao || '') + '" placeholder="Descrição…">' +
+      '<div class="fp-task-edit-row">' +
+        '<input class="fp-task-edit-data" type="date" value="' + escHtml(t.data_limite || '') + '">' +
+        '<button class="fp-task-edit-save" onclick="fpChat.saveTaskEdit(event,\'' + escHtml(String(taskId)) + '\')">Salvar</button>' +
+        '<button class="fp-task-edit-cancel" onclick="fpChat.cancelTaskEdit(event)">Cancelar</button>' +
+      '</div>';
+    var di = body.querySelector('.fp-task-edit-desc');
+    if (di) {
+      di.focus(); di.setSelectionRange(di.value.length, di.value.length);
+      di.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); saveTaskEdit(null, taskId); }
+        else if (e.key === 'Escape') { cancelTaskEdit(null); }
+      });
+    }
+  }
+
+  function cancelTaskEdit(event) {
+    if (event) event.stopPropagation();
+    renderTasks(tasksCache);
+  }
+
+  function saveTaskEdit(event, taskId) {
+    if (event) event.stopPropagation();
+    var row = document.getElementById('fp-task-' + taskId);
+    if (!row) return;
+    var di = row.querySelector('.fp-task-edit-desc');
+    var da = row.querySelector('.fp-task-edit-data');
+    var desc = di ? (di.value || '').trim() : '';
+    var data = da ? (da.value || null) : null;
+    if (!desc) { if (di) di.focus(); return; }
+    sb.from('tarefas_livres').update({ descricao: desc, data_limite: data }).eq('id', taskId)
+      .then(function(r) {
+        if (r.error) return;
+        var t = tasksCache.find(function(x) { return String(x.id) === String(taskId); });
+        if (t) { t.descricao = desc; t.data_limite = data; }
+        renderTasks(tasksCache);
+      });
+  }
+
+  /* ── realizadas recentemente + restaurar ────────────────── */
+  function toggleRecentes(event) {
+    if (event) event.stopPropagation();
+    recentesOpen = !recentesOpen;
+    if (recentesOpen) loadRecentes();
+    else renderTasks(tasksCache);
+  }
+
+  function loadRecentes() {
+    var uid = user.id || user.app_user_id;
+    if (!uid) return;
+    var $list = document.getElementById('fp-tasks-list');
+    if ($list) $list.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+    sb.from('tarefas_livres').select('*')
+      .eq('usuario_id', uid).eq('concluida', true)
+      .order('concluida_em', { ascending: false, nullsFirst: false })
+      .limit(15)
+      .then(function(r) {
+        if (r.error) { if ($list) $list.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center">Erro ao carregar realizadas.</div>'; return; }
+        renderRecentes(r.data || []);
+      });
+  }
+
+  function renderRecentes(items) {
+    var $list = document.getElementById('fp-tasks-list');
+    if (!$list) return;
+    var html = '<button class="fp-task-section fp-delegadas-toggle" onclick="fpChat.toggleRecentes(event)" ' +
+      'style="cursor:pointer;width:100%;text-align:left;border:none;background:none;font-family:Raleway,sans-serif">↩ Voltar às pendentes</button>' +
+      '<div class="fp-task-section">Realizadas recentemente</div>';
+    if (!items.length) {
+      html += '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma tarefa realizada.</div>';
+    } else {
+      items.forEach(function(t) {
+        var tid = escHtml(String(t.id));
+        html += '<div class="fp-task-item fp-task-done">' +
+          '<div class="fp-task-body">' +
+            '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
+            '<div class="fp-task-meta">' + (t.concluida_em ? '<span style="font-size:9px;color:#bbb">' + escHtml(_fmtDateTime(t.concluida_em)) + '</span>' : '') + '</div>' +
+          '</div>' +
+          '<button class="fp-task-restore" title="Restaurar para pendentes" onclick="fpChat.restoreTask(event,\'' + tid + '\')">↺ restaurar</button>' +
+          '</div>';
+      });
+    }
+    $list.innerHTML = html;
+  }
+
+  function restoreTask(event, taskId) {
+    if (event) event.stopPropagation();
+    sb.from('tarefas_livres').update({ concluida: false, concluida_em: null }).eq('id', taskId)
+      .then(function(r) {
+        if (r.error) return;
+        loadRecentes();
       });
   }
 
@@ -3080,11 +3268,77 @@
     var id  = escHtml(String(it.id));
     var cid = escHtml(String(ckId));
     var txt = escHtml(it.descricao || it.texto || '');
+    var editBtn = isSocioLikeRole(user.role)
+      ? '<button class="fp-ck-edit" title="Editar item" onclick="fpChat.editCkItem(\'' + tipo + '\',\'' + id + '\',\'' + cid + '\')">' + _PENCIL + '</button>'
+      : '';
     return '<div class="fp-ck-item" id="fp-ck-it-' + id + '">' +
       '<input type="checkbox" class="fp-ck-cb"' + (checked ? ' checked' : '') +
       ' onchange="fpChat.fpToggleCkItem(\'' + tipo + '\',\'' + id + '\',this.checked,\'' + cid + '\')">' +
       '<span class="fp-ck-txt' + (checked ? ' done' : '') + '">' + txt + '</span>' +
+      editBtn +
       '</div>';
+  }
+
+  /* ── editar item de checklist (apenas sócio) ────────────── */
+  function _findCkItem(tipo, ckId, itemId) {
+    var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
+    var ck = list.find(function(c) { return String(c.id) === String(ckId); });
+    if (!ck) return null;
+    if (tipo === 'revisao') {
+      var found = null;
+      (ck.pranchas || []).forEach(function(pr) {
+        (pr.tarefas_revisao || []).forEach(function(t) { if (String(t.id) === String(itemId)) found = t; });
+      });
+      return found;
+    }
+    var field = tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    return (ck[field] || []).find(function(x) { return String(x.id) === String(itemId); }) || null;
+  }
+
+  function editCkItem(tipo, itemId, ckId) {
+    if (!isSocioLikeRole(user.role)) return;
+    var it = _findCkItem(tipo, ckId, itemId);
+    if (!it) return;
+    var row = document.getElementById('fp-ck-it-' + itemId);
+    if (!row) return;
+    var span = row.querySelector('.fp-ck-txt');
+    if (!span || row.querySelector('.fp-ck-edit-inp')) return;
+    var cur = tipo === 'revisao' ? (it.descricao || '') : (it.texto || '');
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'fp-ck-edit-inp';
+    inp.value = cur;
+    span.style.display = 'none';
+    span.parentNode.insertBefore(inp, span.nextSibling);
+    inp.focus(); inp.setSelectionRange(cur.length, cur.length);
+    var done = false;
+    function cancel() {
+      if (done) return; done = true;
+      if (inp.parentNode) inp.parentNode.removeChild(inp);
+      span.style.display = '';
+    }
+    function save() {
+      if (done) return;
+      var nv = (inp.value || '').trim();
+      if (!nv || nv === cur) { cancel(); return; }
+      done = true;
+      var tbl = tipo === 'abertos' ? 'checklist_tarefa_item' : tipo === 'etapa' ? 'checklist_etapa_exec_item' : 'tarefas_revisao';
+      var col = tipo === 'revisao' ? 'descricao' : 'texto';
+      var upd = {}; upd[col] = nv;
+      sb.from(tbl).update(upd).eq('id', itemId).then(function(r) {
+        if (!r.error) {
+          if (tipo === 'revisao') it.descricao = nv; else it.texto = nv;
+          span.textContent = nv;
+        }
+        if (inp.parentNode) inp.parentNode.removeChild(inp);
+        span.style.display = '';
+      });
+    }
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      else if (e.key === 'Escape') { cancel(); }
+    });
+    inp.addEventListener('blur', save);
   }
 
   function _fpCkAddRow(tipo, ckId, secao) {
