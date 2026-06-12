@@ -535,6 +535,39 @@ body {
 [data-chat-mono="1"] .fp-msg-ts    { color: rgba(0,0,0,.4) !important; }
 [data-chat-mono="1"] .fp-msg-block:hover { background: rgba(var(--ca-rgb-vals), .12) !important; }
 [data-chat-mono="1"] .fp-date-sep-line { opacity: .25; }
+/* Pill de anotação — fundo branco para contrastar com área colorida */
+[data-chat-mono="1"] .fp-annot-pill {
+  background: rgba(255,255,255,.88) !important;
+  border-color: rgba(255,255,255,.55) !important;
+  color: #111110 !important;
+}
+[data-chat-mono="1"] .fp-annot-pill:hover {
+  background: #fff !important;
+  border-color: var(--ca) !important;
+}
+/* Reações — fundo branco para contrastar com área colorida */
+[data-chat-mono="1"] .fp-rxn-btn {
+  background: rgba(255,255,255,.88) !important;
+  border-color: rgba(255,255,255,.5) !important;
+}
+[data-chat-mono="1"] .fp-rxn-btn:hover { border-color: var(--ca) !important; }
+[data-chat-mono="1"] .fp-rxn-btn.active {
+  background: var(--ca) !important;
+  border-color: var(--ca) !important;
+}
+[data-chat-mono="1"] .fp-rxn-btn.active .fp-rxn-count { color: #fff !important; font-weight: 700; }
+/* Barra de busca — fundo branco opaco para contrastar com header colorido */
+[data-chat-mono="1"] #fp-in-search-bar {
+  background: rgba(255,255,255,.96) !important;
+  border-color: rgba(255,255,255,.6) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.12) !important;
+}
+[data-chat-mono="1"] .fp-in-search-wrap {
+  background: var(--off, #F7F6F3) !important;
+}
+[data-chat-mono="1"] .fp-in-search-wrap:focus-within {
+  background: #fff !important;
+}
 /* Input bar: cor sólida da marca */
 [data-chat-mono="1"] #fp-input-area {
   background: var(--ca) !important;
@@ -685,6 +718,7 @@ body {
 
 /* ── Bloco de mensagem ────────────────────────────── */
 .fp-msg-block {
+  position: relative;
   display: flex; gap: 10px;
   padding: 4px 6px; border-radius: 8px;
   transition: background .1s;
@@ -723,7 +757,8 @@ body {
 
 /* Mensagem agrupada (mesmo sender, sem cabeçalho) */
 .fp-msg-block.grouped { padding-top: 1px; padding-bottom: 1px; }
-.fp-msg-block.grouped .fp-msg-av { visibility: hidden; }
+/* Avatar oculto NÃO deve reservar altura — só o recuo horizontal (largura) */
+.fp-msg-block.grouped .fp-msg-av { visibility: hidden; height: 0; margin-top: 0; overflow: hidden; }
 
 /* Mensagens próprias — alinhadas à direita */
 .fp-msg-block.own { flex-direction: row-reverse; }
@@ -731,7 +766,7 @@ body {
 .fp-msg-block.own .fp-msg-header  { flex-direction: row-reverse; }
 .fp-msg-block.own .fp-msg-text    { text-align: right; }
 .fp-msg-block.own .fp-msg-reactions { justify-content: flex-end; }
-.fp-msg-block.own .fp-msg-actions  { margin-left: 0; margin-right: auto; }
+.fp-msg-block.own .fp-msg-actions  { right: auto; left: 8px; }
 
 /* Conteúdo da mensagem */
 .fp-msg-content { flex: 1; min-width: 0; }
@@ -773,9 +808,10 @@ body {
 .fp-thumb-annot {
   position: absolute; top: 7px; right: 7px;
   display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(17,17,16,.74); color: #fff;
+  background: var(--ca); color: #fff;
   font-family: var(--font-mono); font-size: calc(10px * var(--fp-fz, 1)); font-weight: 700;
   padding: 3px 7px 3px 6px; border-radius: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
   pointer-events: none;
 }
 .fp-thumb-annot svg { display: block; }
@@ -828,12 +864,11 @@ body {
 /* Botões de ação (aparecem no hover do bloco) */
 .fp-msg-actions {
   display: none; align-items: center; gap: 2px;
-  margin-left: auto; flex-shrink: 0;
+  position: absolute; top: -6px; right: 8px; z-index: 5;
   background: var(--branco, #fff);
   border: 1px solid var(--cinza2, #ECEAE4);
   border-radius: 8px; padding: 2px 3px;
   box-shadow: 0 1px 6px rgba(0,0,0,.08);
-  position: relative; top: -2px;
   height: 28px;
 }
 [data-theme="dark"] .fp-msg-actions { background: #252523; border-color: #2E2D2B; }
@@ -1120,33 +1155,163 @@ body {
 
 /* ── Toolbar de marcadores ── */
 .fp-mv-toolbar {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 4px;
   padding: 12px 8px; flex-shrink: 0; align-self: flex-start;
+  border-right: 1px solid var(--cinza2, #ECEAE4);
 }
+.fp-mv-tool-sec {
+  font-size: 8px; font-weight: 700; color: #B0ADA8; text-transform: uppercase;
+  letter-spacing: .06em; padding: 4px 4px 0; display: block; user-select: none;
+}
+.fp-mv-tool-div { height: 1px; background: var(--cinza2, #ECEAE4); margin: 4px 0; }
 .fp-mv-tool {
-  width: 30px; height: 30px; border-radius: 9px;
+  width: 36px; height: 40px; border-radius: 9px;
   border: 1px solid var(--cinza2, #ECEAE4); background: var(--branco, #fff);
-  cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+  cursor: pointer; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; padding: 0;
   transition: border-color .12s, box-shadow .12s;
 }
 .fp-mv-tool:hover { border-color: var(--ca); }
 .fp-mv-tool.active { border-color: var(--ca); box-shadow: 0 0 0 2px var(--ca-bg, rgba(29,106,74,.15)); }
+.fp-mv-tool-lbl { font-size: 7px; font-weight: 600; color: #B0ADA8; line-height: 1; user-select: none; }
+.fp-mv-tool.active .fp-mv-tool-lbl { color: var(--ca); }
 [data-theme="dark"] .fp-mv-tool { background: #2A2927; border-color: #3A3937; }
+.fp-mv-tool-nota-icon { font-size: 13px; font-weight: 700; color: #666;
+  font-family: var(--font-mono, 'DM Mono', monospace); line-height: 1; }
+#fp-mv-tool-nota.active { background: var(--ca); border-color: var(--ca); }
+#fp-mv-tool-nota.active .fp-mv-tool-lbl { color: rgba(255,255,255,.75); }
+#fp-mv-tool-nota.active .fp-mv-tool-nota-icon { color: #fff; }
 
 /* ── Marcadores sobre a imagem ── */
 .fp-mv-marks { position: absolute; inset: 0; pointer-events: none; }
-.fp-mark {
-  position: absolute; transform: translate(-50%, -50%);
-  pointer-events: auto; display: flex; align-items: center; gap: 3px;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,.3));
-}
-.fp-mark-ini {
-  width: 15px; height: 15px; border-radius: 50%;
-  background: rgba(255,255,255,.72); color: rgba(17,17,16,.55);
-  font-family: var(--font-mono); font-size: calc(7px * var(--fp-fz, 1)); font-weight: 700;
+.fp-mark { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; }
+/* Marcadores de ícone — container circular com fundo semitransparente */
+.fp-mark-icon {
+  width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  letter-spacing: .2px; user-select: none;
+  box-shadow: 0 1px 5px rgba(0,0,0,.28);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  transition: transform .1s;
 }
+.fp-mark-icon:hover { transform: scale(1.18); }
+.fp-mark-icon.seta    { background: rgba(29,79,160,.18);  border: 1.5px solid rgba(29,79,160,.7); }
+.fp-mark-icon.alerta  { background: rgba(196,131,26,.18); border: 1.5px solid rgba(196,131,26,.7); }
+.fp-mark-icon.x       { background: rgba(184,76,58,.18);  border: 1.5px solid rgba(184,76,58,.7); }
+.fp-mark-icon.circulo { width: 34px; height: 34px; background: rgba(29,79,160,.08); border: 2px solid rgba(29,79,160,.7); }
+/* Marcador Nota — círculo sólido com número */
+.fp-mark-nota {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--ca); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  box-shadow: 0 2px 7px rgba(0,0,0,.3);
+  transition: transform .1s; cursor: default;
+}
+.fp-mark-nota:hover { transform: scale(1.18); }
+/* Tooltip da nota — aparece no hover sobre o número */
+.fp-mark-nota-tip {
+  position: absolute; left: 32px; top: 50%; transform: translateY(-50%);
+  background: #111110; color: #fff;
+  font-size: 10px; line-height: 1.45; padding: 5px 9px;
+  border-radius: 7px; white-space: pre-wrap; max-width: 180px; min-width: 80px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.3);
+  pointer-events: none; z-index: 20;
+  opacity: 0; transition: opacity .12s;
+}
+.fp-mark-nota-tip::before {
+  content: ''; position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+  border: 5px solid transparent; border-right-color: #111110;
+}
+.fp-mark:hover .fp-mark-nota-tip { opacity: 1; }
+
+/* ── Painel de notas (sidebar direita do viewer) ── */
+.fp-mv-notes {
+  width: 0; flex-shrink: 0; display: flex; flex-direction: column;
+  overflow: hidden; border-left: 0 solid var(--cinza2, #ECEAE4);
+  transition: width .18s;
+}
+.fp-mv-notes.has-notas { width: 210px; border-left-width: 1px; }
+[data-theme="dark"] .fp-mv-notes.has-notas { border-color: #3A3937; }
+.fp-mv-notes-hdr {
+  padding: 10px 14px; font-size: 11px; font-weight: 700; color: #555;
+  border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; gap: 7px; flex-shrink: 0;
+}
+[data-theme="dark"] .fp-mv-notes-hdr { color: #C8C3BA; border-color: #3A3937; }
+.fp-mv-notes-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--ca); color: #fff; font-size: 9px; font-weight: 700;
+}
+.fp-mv-notes-list { flex: 1; overflow-y: auto; padding: 8px; }
+.fp-mv-note-item {
+  display: flex; gap: 8px; padding: 7px 8px; border-radius: 8px;
+  cursor: default; transition: background .1s; align-items: flex-start;
+}
+.fp-mv-note-item:hover { background: var(--off, #F7F6F3); }
+[data-theme="dark"] .fp-mv-note-item:hover { background: rgba(255,255,255,.05); }
+.fp-mv-note-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--ca); color: #fff; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  font-family: var(--font-mono, 'DM Mono', monospace); margin-top: 1px;
+}
+.fp-mv-note-body { flex: 1; min-width: 0; }
+.fp-mv-note-text { font-size: 11px; color: var(--grafite, #111110); line-height: 1.45; word-break: break-word; }
+[data-theme="dark"] .fp-mv-note-text { color: #C8C3BA; }
+.fp-mv-note-meta { font-size: 9px; color: #999; margin-top: 2px; }
+.fp-mv-note-del {
+  width: 18px; height: 18px; border-radius: 5px; border: none; background: none;
+  align-items: center; justify-content: center; color: #B84C3A;
+  cursor: pointer; padding: 0; display: none; flex-shrink: 0; margin-top: 1px;
+}
+.fp-mv-note-item:hover .fp-mv-note-del { display: flex; }
+
+/* ── Input flutuante para criar nota numerada ── */
+#fp-nota-float {
+  position: fixed; z-index: 10500; display: none;
+}
+.fp-nota-float-card {
+  background: var(--branco, #fff); border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 11px; padding: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.16);
+  width: 214px;
+}
+[data-theme="dark"] .fp-nota-float-card { background: #1E1E1D; border-color: #3A3937; }
+.fp-nota-float-hdr {
+  display: flex; align-items: center; gap: 7px; margin-bottom: 9px;
+  font-size: 11px; font-weight: 700; color: #333;
+}
+[data-theme="dark"] .fp-nota-float-hdr { color: #C8C3BA; }
+.fp-nota-float-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ca); color: #fff; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; font-family: var(--font-mono, 'DM Mono', monospace);
+}
+.fp-nota-float-txt {
+  width: 100%; border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 7px; padding: 6px 8px;
+  font-size: 11px; color: var(--grafite, #111110);
+  background: var(--off, #F7F6F3);
+  resize: none; font-family: inherit; outline: none; display: block;
+}
+[data-theme="dark"] .fp-nota-float-txt { background: #252523; border-color: #3A3937; color: #C8C3BA; }
+.fp-nota-float-txt:focus { border-color: var(--ca); }
+.fp-nota-float-btns { display: flex; gap: 6px; margin-top: 8px; }
+.fp-nota-float-ok {
+  flex: 1; background: var(--ca); color: #fff; border: none;
+  border-radius: 7px; font-size: 11px; font-weight: 700; padding: 6px 0;
+  cursor: pointer; transition: opacity .1s;
+}
+.fp-nota-float-ok:hover { opacity: .88; }
+.fp-nota-float-cancel {
+  flex: 1; background: var(--off, #F7F6F3); color: #555;
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 7px; font-size: 11px; padding: 6px 0; cursor: pointer;
+}
+[data-theme="dark"] .fp-nota-float-cancel { background: #2A2927; color: #C8C3BA; border-color: #3A3937; }
 .fp-mv-nav {
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 38px; height: 38px; border-radius: 50%;
@@ -2678,23 +2843,28 @@ body {
     </div>
     <div class="fp-mv-body">
       <div class="fp-mv-toolbar">
-        <button class="fp-mv-tool" id="fp-mv-tool-seta" onclick="fpChat.mvSelectTool('seta')" title="Seta azul">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>
-        </button>
-        <button class="fp-mv-tool" id="fp-mv-tool-seta_verde" onclick="fpChat.mvSelectTool('seta_verde')" title="Seta verde">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>
+        <span class="fp-mv-tool-sec">Ícones</span>
+        <button class="fp-mv-tool" id="fp-mv-tool-seta" onclick="fpChat.mvSelectTool('seta')" title="Seta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>
+          <span class="fp-mv-tool-lbl">seta</span>
         </button>
         <button class="fp-mv-tool" id="fp-mv-tool-alerta" onclick="fpChat.mvSelectTool('alerta')" title="Alerta">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span class="fp-mv-tool-lbl">alerta</span>
         </button>
         <button class="fp-mv-tool" id="fp-mv-tool-x" onclick="fpChat.mvSelectTool('x')" title="Marcar com X">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="2.8" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+          <span class="fp-mv-tool-lbl">erro</span>
         </button>
-        <button class="fp-mv-tool" id="fp-mv-tool-circulo" onclick="fpChat.mvSelectTool('circulo')" title="Círculo azul">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>
+        <button class="fp-mv-tool" id="fp-mv-tool-circulo" onclick="fpChat.mvSelectTool('circulo')" title="Área (círculo)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>
+          <span class="fp-mv-tool-lbl">área</span>
         </button>
-        <button class="fp-mv-tool" id="fp-mv-tool-circulo_verde" onclick="fpChat.mvSelectTool('circulo_verde')" title="Círculo verde">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>
+        <div class="fp-mv-tool-div"></div>
+        <span class="fp-mv-tool-sec">Nota</span>
+        <button class="fp-mv-tool" id="fp-mv-tool-nota" onclick="fpChat.mvSelectTool('nota')" title="Nota numerada — clique para posicionar, escreva o texto">
+          <span class="fp-mv-tool-nota-icon">1</span>
+          <span class="fp-mv-tool-lbl">nota</span>
         </button>
       </div>
       <div class="fp-mv-stage">
@@ -2706,6 +2876,24 @@ body {
         <div class="fp-mv-empty" id="fp-mv-empty">Carregando…</div>
         <button class="fp-mv-nav next" id="fp-mv-next" onclick="fpChat.mvNext()">&#8250;</button>
       </div>
+      <div class="fp-mv-notes" id="fp-mv-notes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Input flutuante para nota numerada -->
+<div id="fp-nota-float">
+  <div class="fp-nota-float-card" onclick="event.stopPropagation()">
+    <div class="fp-nota-float-hdr">
+      <span class="fp-nota-float-num" id="fp-nota-float-num">1</span>
+      <span>Nova nota</span>
+    </div>
+    <textarea id="fp-nota-float-txt" class="fp-nota-float-txt" rows="3"
+      placeholder="Descreva o que observou neste ponto…"
+      onkeydown="fpChat._notaKeydown(event)"></textarea>
+    <div class="fp-nota-float-btns">
+      <button class="fp-nota-float-ok" onclick="fpChat._confirmNota()">Confirmar</button>
+      <button class="fp-nota-float-cancel" onclick="fpChat._cancelNota()">Cancelar</button>
     </div>
   </div>
 </div>

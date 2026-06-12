@@ -364,6 +364,9 @@
       if (!v || v.style.display !== 'flex') return;
       if (e.target && e.target.closest && e.target.closest('.fp-media-thumb')) return;
       if (c && c.contains(e.target)) return;
+      /* não fechar se o clique foi dentro do float de nota */
+      var $nf = document.getElementById('fp-nota-float');
+      if ($nf && $nf.contains(e.target)) return;
       closeMediaViewer();
     });
 
@@ -376,6 +379,9 @@
         /* fechar overlay do projeto primeiro */
         var $proj = document.getElementById('fp-proj-overlay');
         if ($proj && $proj.style.display === 'flex') { e.preventDefault(); closeProjectOverlay(); return; }
+        /* cancelar nota pendente antes de fechar o viewer */
+        var $nf = document.getElementById('fp-nota-float');
+        if ($nf && $nf.style.display !== 'none') { e.preventDefault(); _cancelNota(); return; }
         if (mediaViewerState) { e.preventDefault(); closeMediaViewer(); return; }
         if (inSearchOpen) { e.preventDefault(); closeInSearch(); return; }
         closeCtxMenu();
@@ -764,8 +770,11 @@
     var chanJson = channel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var labelEsc = escHtml(label);
     var isUnread = unread > 0;
-    var preview  = compactPreviewText(typeof previewText === 'object' && previewText && previewText.content
-      ? previewText.content : String(previewText||''), 80, '');
+    var rawPv    = (typeof previewText === 'object' && previewText && previewText.content)
+      ? previewText.content : String(previewText||'');
+    var preview  = isAnnotSentinel(rawPv)
+      ? ((lastMsg && lastMsg.sender_name ? firstName(lastMsg.sender_name) + ' ' : '') + 'revisou uma imagem')
+      : compactPreviewText(rawPv, 80, '');
     var ts = '';
     if (lastMsg && lastMsg.created_at) {
       ts = fmtConvTs(new Date(lastMsg.created_at));
@@ -1840,6 +1849,7 @@
     }
   }
   function closeMediaViewer() {
+    _cancelNota();
     /* Imagens que ganharam marcas nesta sessão → 1 mensagem automática cada.
        Capturado ANTES de zerar o estado (vale também ao trocar de canal). */
     var dirtyPrints = mediaViewerState
@@ -1897,23 +1907,24 @@
   var mvTool = null;
   /* chaves de mídia que receberam marcas NOVAS nesta sessão do visualizador */
   var mvDirtyKeys = {};
+  /* nota pendente de texto (enquanto o float está aberto) */
+  var _mvNotaPending = null;
   var MV_MARK_SVGS = {
-    seta:          '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
-    seta_verde:    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
-    alerta:        '<svg width="26" height="26" viewBox="0 0 24 24" fill="#FBF3E8" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-    x:             '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
-    circulo:       '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>',
-    circulo_verde: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>'
+    seta:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+    alerta: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    x:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+    circulo: ''  /* o container circular já é o marcador visual */
   };
 
   function mvSelectTool(tool) {
     mvTool = (mvTool === tool) ? null : tool;
-    ['seta','seta_verde','alerta','x','circulo','circulo_verde'].forEach(function (t) {
+    ['seta','alerta','x','circulo','nota'].forEach(function (t) {
       var btn = document.getElementById('fp-mv-tool-' + t);
       if (btn) btn.classList.toggle('active', mvTool === t);
     });
     var $canvas = document.getElementById('fp-mv-canvas');
     if ($canvas) $canvas.classList.toggle('tool-active', !!mvTool);
+    if (!mvTool) _cancelNota();
   }
 
   function _mvCurrentMedia() {
@@ -1928,14 +1939,64 @@
     var cur = _mvCurrentMedia();
     var list = (cur && cur.media && cur.media.marcadores) || [];
     $marks.innerHTML = list.map(function (mk) {
-      var svg = MV_MARK_SVGS[mk.t] || '';
       var own = mk.uid === user.auth_id;
-      return '<div class="fp-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%"' +
-        (own ? ' ondblclick="fpChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')" title="Clique duplo para remover"' : '') + '>' +
-        svg +
-        '<span class="fp-mark-ini">' + escHtml(mk.ini || '?') + '</span>' +
+      var dbl = own ? ' ondblclick="fpChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')"' : '';
+      var style = 'left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%';
+
+      if (mk.t === 'nota') {
+        var tip = mk.texto
+          ? '<span class="fp-mark-nota-tip">' + escHtml(mk.texto) + '</span>'
+          : '';
+        return '<div class="fp-mark" style="' + style + '"' + dbl + '>' +
+          '<div class="fp-mark-nota">' + escHtml(String(mk.n || '?')) + '</div>' +
+          tip + '</div>';
+      }
+
+      /* backward compat: seta_verde → seta, circulo_verde → circulo */
+      var t = mk.t === 'seta_verde' ? 'seta' : mk.t === 'circulo_verde' ? 'circulo' : mk.t;
+      var svg = MV_MARK_SVGS[t] || '';
+      var authorTitle = escHtml((mk.ini || '?') + (own ? ' · duplo-clique para remover' : ''));
+      return '<div class="fp-mark" style="' + style + '"' + dbl + '>' +
+        '<div class="fp-mark-icon ' + escHtml(t) + '" title="' + authorTitle + '">' + svg + '</div>' +
         '</div>';
     }).join('');
+
+    renderMvNotesPanel();
+  }
+
+  function renderMvNotesPanel() {
+    var $panel = document.getElementById('fp-mv-notes');
+    if (!$panel) return;
+    var cur = _mvCurrentMedia();
+    var list = (cur && cur.media && cur.media.marcadores) || [];
+    var notas = list.filter(function (mk) { return mk.t === 'nota'; });
+
+    if (!notas.length) { $panel.className = 'fp-mv-notes'; $panel.innerHTML = ''; return; }
+
+    $panel.className = 'fp-mv-notes has-notas';
+    $panel.innerHTML =
+      '<div class="fp-mv-notes-hdr">Notas <span class="fp-mv-notes-count">' + notas.length + '</span></div>' +
+      '<div class="fp-mv-notes-list">' +
+      notas.map(function (mk) {
+        var own = mk.uid === user.auth_id;
+        var mem = allMembers.find(function (m) { return m.auth_id === mk.uid; });
+        var autor = (mem && mem.nome) ? firstName(mem.nome) : (mk.ini || '?');
+        var ts = mk.ts ? fmtTime(new Date(mk.ts)) : '';
+        var delBtn = own
+          ? '<button class="fp-mv-note-del" onclick="fpChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')" title="Remover">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>' +
+            '</button>'
+          : '';
+        return '<div class="fp-mv-note-item">' +
+          '<div class="fp-mv-note-num">' + escHtml(String(mk.n || '?')) + '</div>' +
+          '<div class="fp-mv-note-body">' +
+            '<div class="fp-mv-note-text">' + escHtml(mk.texto || '') + '</div>' +
+            '<div class="fp-mv-note-meta">' + escHtml(autor) + (ts ? ' · ' + ts : '') + '</div>' +
+          '</div>' +
+          delBtn +
+          '</div>';
+      }).join('') +
+      '</div>';
   }
 
   function mvCanvasClick(e) {
@@ -1948,6 +2009,18 @@
     var x = ((e.clientX - r.left) / r.width)  * 100;
     var y = ((e.clientY - r.top)  / r.height) * 100;
     if (x < 0 || x > 100 || y < 0 || y > 100) return;
+
+    if (mvTool === 'nota') {
+      var existingNotas = (cur.media.marcadores || []).filter(function (mk) { return mk.t === 'nota'; });
+      showNotaInput(
+        Math.round(x * 100) / 100,
+        Math.round(y * 100) / 100,
+        e.clientX, e.clientY,
+        existingNotas.length + 1
+      );
+      return;
+    }
+
     var mk = {
       id:  newUuid(),
       t:   mvTool,
@@ -1963,11 +2036,72 @@
     _saveMvMarkers(cur.msg, cur.media.marcadores);
   }
 
+  function showNotaInput(x, y, screenX, screenY, n) {
+    var $f   = document.getElementById('fp-nota-float');
+    var $num = document.getElementById('fp-nota-float-num');
+    var $txt = document.getElementById('fp-nota-float-txt');
+    if (!$f || !$num || !$txt) return;
+    _mvNotaPending = { x: x, y: y, n: n };
+    $num.textContent = String(n);
+    $txt.value = '';
+    var cardW = 222, cardH = 162;
+    var left = Math.min(screenX + 14, window.innerWidth  - cardW - 12);
+    var top  = Math.min(screenY - 24, window.innerHeight - cardH - 12);
+    if (top < 8) top = 8;
+    $f.style.left = left + 'px';
+    $f.style.top  = top  + 'px';
+    $f.style.display = 'block';
+    setTimeout(function () { $txt.focus(); }, 40);
+  }
+
+  function _confirmNota() {
+    var $f   = document.getElementById('fp-nota-float');
+    var $txt = document.getElementById('fp-nota-float-txt');
+    if (!$txt || !_mvNotaPending) return;
+    var texto = ($txt.value || '').trim();
+    if (!texto) { $txt.focus(); return; }
+    var cur = _mvCurrentMedia();
+    if (!cur || !cur.media) { _cancelNota(); return; }
+    var mk = {
+      id:    newUuid(),
+      t:     'nota',
+      n:     _mvNotaPending.n,
+      texto: texto,
+      x:     _mvNotaPending.x,
+      y:     _mvNotaPending.y,
+      ini:   user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),
+      uid:   user.auth_id,
+      ts:    new Date().toISOString()
+    };
+    cur.media.marcadores = (cur.media.marcadores || []).concat([mk]);
+    mvDirtyKeys[mediaViewerState.keys[mediaViewerState.idx]] = true;
+    _mvNotaPending = null;
+    if ($f) $f.style.display = 'none';
+    renderMvMarkers();
+    _saveMvMarkers(cur.msg, cur.media.marcadores);
+  }
+
+  function _cancelNota() {
+    var $f = document.getElementById('fp-nota-float');
+    if ($f) $f.style.display = 'none';
+    _mvNotaPending = null;
+  }
+
+  function _notaKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _confirmNota(); }
+    if (e.key === 'Escape') { e.preventDefault(); _cancelNota(); }
+  }
+
   function mvRemoveMark(markId) {
     var cur = _mvCurrentMedia();
     if (!cur || !cur.media) return;
     cur.media.marcadores = (cur.media.marcadores || []).filter(function (mk) {
       return !(String(mk.id) === String(markId) && mk.uid === user.auth_id);
+    });
+    /* renumerar notas sequencialmente após remoção */
+    var nSeq = 0;
+    cur.media.marcadores.forEach(function (mk) {
+      if (mk.t === 'nota') { nSeq++; mk.n = nSeq; }
     });
     renderMvMarkers();
     _saveMvMarkers(cur.msg, cur.media.marcadores);
@@ -2302,7 +2436,9 @@
     return {label:msg.sender_name||ch,iniciais:msg.sender_iniciais||(msg.sender_name||'??').substring(0,2).toUpperCase(),cor:msg.sender_cor||'#1D6A4A',avatarUrl:null,members:null};
   }
   function compactPreviewText(text,maxLen,fb){
-    var raw=String(text||'').trim(); if(isImageOnlySentinel(raw)) return 'Print anexado';
+    var raw=String(text||'').trim();
+    if(isImageOnlySentinel(raw)) return 'Print anexado';
+    if(isAnnotSentinel(raw)) return 'Revisou uma imagem';
     var c=raw.replace(/\n/g,' '); if(!c) return fb||'';
     return c.length>maxLen?c.substring(0,maxLen)+'…':c;
   }
@@ -2341,10 +2477,19 @@
   function renderAnnotMessageHtml(msg){
     var fn = firstName(msg.sender_name||'') || 'Alguém';
     var printId = annotRefFromContent(msg.content);
+    /* contagem de notas textuais da imagem referenciada (se já carregada) */
+    var printMsg = messages.find(function(m){ return String(m.id)===String(printId); });
+    var media = printMsg ? getMessageMedia(printMsg) : null;
+    var notaCount = media
+      ? (media.marcadores||[]).filter(function(mk){ return mk.t==='nota'; }).length
+      : 0;
+    var notaStr = notaCount > 0
+      ? ' · ' + notaCount + (notaCount === 1 ? ' nota' : ' notas')
+      : '';
     return '<div class="fp-annot-row">'+
-      '<button type="button" class="fp-annot-pill" title="Ver imagem anotada" onclick="fpChat.openAnnotatedPrint(\''+escHtml(String(printId))+'\')">'+
+      '<button type="button" class="fp-annot-pill" title="Ver imagem anotada" onclick="event.stopPropagation();fpChat.openAnnotatedPrint(\''+escHtml(String(printId))+'\')">'+
         '<span class="fp-annot-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>'+
-        escHtml(fn)+' fez anotações sobre uma imagem anexada'+
+        escHtml(fn)+' revisou uma imagem'+escHtml(notaStr)+
         '<svg class="fp-annot-eye" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'+
       '</button>'+
     '</div>';
@@ -2498,6 +2643,7 @@
     react, flagMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
     mvSelectTool, mvRemoveMark, openAnnotatedPrint, _thumbLoaded,
+    showNotaInput, _confirmNota, _cancelNota, _notaKeydown, renderMvNotesPanel,
     /* fixar projetos */
     togglePinCurrent, openPinPop, closePinPop, pinPopToggle,
     openCtxMenu, closeCtxMenu, ctxTogglePin,
