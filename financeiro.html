@@ -908,6 +908,7 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
       <button class="ntab" data-tab="planejamento">Planejamento</button>
       <button class="ntab" data-tab="dre">DRE</button>
       <button class="ntab socio-only" data-tab="analise" id="ntab-analise" style="display:none">Análise</button>
+      <button class="ntab socio-only" data-tab="contabilidade" id="ntab-contabilidade" style="display:none">Contabilidade</button>
       <button class="ntab socio-only" data-tab="config" id="ntab-config">Config</button>
     </div>
 
@@ -1791,6 +1792,103 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
   </div>
 </div>
 
+<!-- ════════════════ CONTABILIDADE ════════════════ -->
+<div class="page" id="page-contabilidade">
+  <div class="page-hd">
+    <div class="page-title">Contabilidade</div>
+  </div>
+
+  <!-- Sub-abas -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--cinza);margin-bottom:18px;flex-wrap:wrap">
+    <button class="ntab active" data-cbtab="dados" onclick="setContabTab('dados')" style="border-bottom-color:var(--fin)">Dados</button>
+    <button class="ntab" data-cbtab="contatos" onclick="setContabTab('contatos')">Registros de Contato</button>
+    <button class="ntab" data-cbtab="procedimentos" onclick="setContabTab('procedimentos')">Procedimentos</button>
+    <button class="ntab" data-cbtab="forum" onclick="setContabTab('forum')">Fórum</button>
+  </div>
+
+  <!-- DADOS -->
+  <div id="cbtab-dados">
+    <div class="page-hd" style="margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;font-weight:700">Dados da Contabilidade</div>
+        <div style="font-size:10px;color:#888">Cotrim Contabilidade · Tel. (24) 3322-1333 · WhatsApp (21) 99602-1333 / (11) 99740-1333</div>
+      </div>
+      <button class="btn btn-pri btn-sm" onclick="abrirModalDepto()">+ Novo departamento</button>
+    </div>
+    <div id="cb-deptos-lista">
+      <div class="empty-state"><div class="empty-state-icon">🏢</div><div class="empty-state-title">Carregando…</div></div>
+    </div>
+  </div>
+
+  <!-- REGISTROS DE CONTATO -->
+  <div id="cbtab-contatos" style="display:none">
+    <div class="page-hd" style="margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;font-weight:700">Registros de Contato</div>
+        <div style="font-size:10px;color:#888">Histórico de interações com a contabilidade</div>
+      </div>
+      <button class="btn btn-pri btn-sm" onclick="abrirModalContato()">+ Novo registro</button>
+    </div>
+    <div class="filtro-bar" style="margin-bottom:14px">
+      <input type="text" id="cb-ct-q" placeholder="Buscar assunto, pessoa…" oninput="renderContatos()">
+      <select id="cb-ct-status" onchange="renderContatos()">
+        <option value="">Todos os status</option>
+        <option value="Aberto">Aberto</option>
+        <option value="Aguardando contabilidade">Aguardando contabilidade</option>
+        <option value="Aguardando EXP">Aguardando EXP</option>
+        <option value="Resolvido">Resolvido</option>
+      </select>
+    </div>
+    <div id="cb-contatos-lista">
+      <div class="empty-state"><div class="empty-state-icon">📇</div><div class="empty-state-title">Carregando…</div></div>
+    </div>
+  </div>
+
+  <!-- PROCEDIMENTOS -->
+  <div id="cbtab-procedimentos" style="display:none">
+    <div class="page-hd" style="margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;font-weight:700">Procedimentos e Obrigações</div>
+        <div style="font-size:10px;color:#888">Guias recorrentes e como proceder</div>
+      </div>
+      <button class="btn btn-pri btn-sm" onclick="abrirModalProc()">+ Novo procedimento</button>
+    </div>
+    <div id="cb-procs-lista">
+      <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Carregando…</div></div>
+    </div>
+  </div>
+
+  <!-- FÓRUM -->
+  <div id="cbtab-forum" style="display:none">
+    <div class="page-hd" style="margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;font-weight:700">Fórum</div>
+        <div style="font-size:10px;color:#888">Dúvidas, alterações e alinhamentos com a contabilidade</div>
+      </div>
+      <button class="btn btn-pri btn-sm" onclick="abrirModalTopico()">+ Novo tópico</button>
+    </div>
+    <div class="filtro-bar" style="margin-bottom:14px">
+      <input type="text" id="cb-fr-q" placeholder="Buscar tópico…" oninput="renderForum()">
+      <select id="cb-fr-tipo" onchange="renderForum()">
+        <option value="">Todos os tipos</option>
+        <option value="Dúvida">Dúvida</option>
+        <option value="Alteração">Alteração</option>
+        <option value="Alinhamento">Alinhamento</option>
+        <option value="Solicitação">Solicitação</option>
+      </select>
+      <select id="cb-fr-status" onchange="renderForum()">
+        <option value="">Todos os status</option>
+        <option value="Aberto">Aberto</option>
+        <option value="Em andamento">Em andamento</option>
+        <option value="Resolvido">Resolvido</option>
+      </select>
+    </div>
+    <div id="cb-forum-lista">
+      <div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-title">Carregando…</div></div>
+    </div>
+  </div>
+</div>
+
   </div><!-- /main -->
   </div><!-- /#fin-body -->
 </div><!-- /#fin-main -->
@@ -2398,6 +2496,135 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
   </div>
 </div>
 
+<!-- ════════════════ MODAIS CONTABILIDADE ════════════════ -->
+<div class="modal-bg" id="modal-cb-depto">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-titulo" id="cb-depto-titulo">Novo Departamento</span>
+      <button class="modal-close" onclick="fecharModal('modal-cb-depto')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cb-depto-id">
+      <div class="form-row">
+        <div class="form-group w2"><label>Departamento *</label><input type="text" id="cb-depto-nome" placeholder="Ex: Fiscal"></div>
+        <div class="form-group"><label>Ramal</label><input type="text" id="cb-depto-ramal" placeholder="Ex: 30"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Responsável</label><input type="text" id="cb-depto-resp" placeholder="Nome"></div>
+        <div class="form-group"><label>E-mail</label><input type="text" id="cb-depto-email" placeholder="contato@…"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full"><label>Observações</label><input type="text" id="cb-depto-obs" placeholder="Ex: Apuração de impostos, DAS"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-cb-depto')">Cancelar</button>
+      <button class="btn btn-pri" onclick="salvarDepto()" id="cb-depto-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-cb-contato">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-titulo" id="cb-contato-titulo">Novo Registro de Contato</span>
+      <button class="modal-close" onclick="fecharModal('modal-cb-contato')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cb-contato-id">
+      <div class="form-row">
+        <div class="form-group"><label>Data</label><input type="date" id="cb-contato-data"></div>
+        <div class="form-group"><label>Canal</label>
+          <select id="cb-contato-canal">
+            <option>E-mail</option><option>WhatsApp</option><option>Telefone</option><option>Reunião</option><option>Presencial</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Quem contatou (EXP)</label><input type="text" id="cb-contato-quem" placeholder="Seu nome"></div>
+        <div class="form-group"><label>Falou com</label><input type="text" id="cb-contato-falou" placeholder="Ex: Andressa (Financeiro)"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group w2"><label>Assunto *</label><input type="text" id="cb-contato-assunto" placeholder="Ex: Confirmação honorário"></div>
+        <div class="form-group"><label>Status</label>
+          <select id="cb-contato-status">
+            <option>Aberto</option><option>Aguardando contabilidade</option><option>Aguardando EXP</option><option>Resolvido</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full"><label>Resumo / Encaminhamento</label><textarea id="cb-contato-resumo" rows="3" placeholder="O que foi tratado…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-cb-contato')">Cancelar</button>
+      <button class="btn btn-pri" onclick="salvarContato()" id="cb-contato-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-cb-proc">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-titulo" id="cb-proc-titulo">Novo Procedimento</span>
+      <button class="modal-close" onclick="fecharModal('modal-cb-proc')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cb-proc-id">
+      <div class="form-row">
+        <div class="form-group w2"><label>Procedimento / Guia *</label><input type="text" id="cb-proc-nome" placeholder="Ex: DAS — Simples Nacional"></div>
+        <div class="form-group"><label>Frequência / Prazo</label><input type="text" id="cb-proc-freq" placeholder="Ex: Mensal — dia 20"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full"><label>Responsável</label><input type="text" id="cb-proc-resp" placeholder="Ex: Fiscal (Bianca)"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full"><label>Como fazer / Observações</label><textarea id="cb-proc-instr" rows="3" placeholder="Instruções…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-cb-proc')">Cancelar</button>
+      <button class="btn btn-pri" onclick="salvarProc()" id="cb-proc-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-cb-topico">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-titulo">Novo Tópico</span>
+      <button class="modal-close" onclick="fecharModal('modal-cb-topico')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Tipo</label>
+          <select id="cb-topico-tipo">
+            <option>Dúvida</option><option>Alteração</option><option>Alinhamento</option><option>Solicitação</option>
+          </select>
+        </div>
+        <div class="form-group w2"><label>Assunto *</label><input type="text" id="cb-topico-assunto" placeholder="Resumo do tópico"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group full"><label>Descrição</label><textarea id="cb-topico-desc" rows="4" placeholder="Detalhe a dúvida/alteração/alinhamento…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModal('modal-cb-topico')">Cancelar</button>
+      <button class="btn btn-pri" onclick="salvarTopico()" id="cb-topico-save">Criar tópico</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-cb-detalhe">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-hd">
+      <span class="modal-titulo" id="cb-det-titulo">Tópico</span>
+      <button class="modal-close" onclick="fecharModal('modal-cb-detalhe')">×</button>
+    </div>
+    <div class="modal-body" id="cb-det-body"></div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════════
 //   SUPABASE INIT
@@ -2888,6 +3115,402 @@ function onTabChange(tab) {
   if (tab === 'planejamento') carregarPlanejamento();
   if (tab === 'dre')          carregarDRE();
   if (tab === 'analise')      carregarAnalise();
+  if (tab === 'contabilidade') carregarContabilidade();
+}
+
+// ══════════════════════════════════════════════════════════
+//   CONTABILIDADE
+// ══════════════════════════════════════════════════════════
+const CB = { deptos: [], contatos: [], procs: [], topicos: [], respCount: {}, loaded: false };
+
+function cbEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function cbInjectStyle() {
+  if (document.getElementById('cb-style')) return;
+  const st = document.createElement('style');
+  st.id = 'cb-style';
+  st.textContent = `
+    #page-contabilidade .cb-tbl{width:100%;border-collapse:collapse;font-size:12px}
+    #page-contabilidade .cb-tbl th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700;padding:7px 10px;border-bottom:1px solid var(--cinza)}
+    #page-contabilidade .cb-tbl td{padding:9px 10px;border-bottom:1px solid var(--cinza);color:var(--grafite);vertical-align:top}
+    #page-contabilidade .cb-tbl tr:hover td{background:var(--off)}
+    #page-contabilidade .cb-act{display:inline-flex;gap:6px}
+    #page-contabilidade .cb-ico{cursor:pointer;opacity:.55;font-size:13px;background:none;border:none;padding:2px}
+    #page-contabilidade .cb-ico:hover{opacity:1}
+    #page-contabilidade .cb-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+    #page-contabilidade .cb-card{border:1px solid var(--cinza);border-radius:10px;padding:13px 15px;margin-bottom:10px;cursor:pointer;transition:.12s}
+    #page-contabilidade .cb-card:hover{border-color:var(--fin);background:var(--off)}
+    #page-contabilidade .cb-reply{border-left:2px solid var(--cinza);padding:6px 0 6px 12px;margin:10px 0}
+  `;
+  document.head.appendChild(st);
+}
+function cbBadge(status) {
+  const map = {
+    'Aberto':                  ['#92400e', '#fef3c7'],
+    'Em andamento':            ['#1e40af', '#dbeafe'],
+    'Aguardando contabilidade':['#1e40af', '#dbeafe'],
+    'Aguardando EXP':          ['#9a3412', '#ffedd5'],
+    'Resolvido':               ['#166534', '#dcfce7'],
+  };
+  const [c, b] = map[status] || ['#555', '#eee'];
+  return `<span class="cb-badge" style="color:${c};background:${b}">${cbEsc(status)}</span>`;
+}
+
+async function carregarContabilidade() {
+  cbInjectStyle();
+  setContabTab('dados');
+  const [d, c, p, t, r] = await Promise.all([
+    sb.from('contab_departamentos').select('*').order('ordem'),
+    sb.from('contab_contatos').select('*').order('data', { ascending: false }),
+    sb.from('contab_procedimentos').select('*').order('ordem'),
+    sb.from('contab_forum_topicos').select('*').order('updated_at', { ascending: false }),
+    sb.from('contab_forum_respostas').select('topico_id'),
+  ]);
+  CB.deptos = d.data || [];
+  CB.contatos = c.data || [];
+  CB.procs = p.data || [];
+  CB.topicos = t.data || [];
+  CB.respCount = {};
+  (r.data || []).forEach(x => { CB.respCount[x.topico_id] = (CB.respCount[x.topico_id] || 0) + 1; });
+  CB.loaded = true;
+  renderDeptos(); renderContatos(); renderProcs(); renderForum();
+}
+
+function setContabTab(tab) {
+  document.querySelectorAll('#page-contabilidade .ntab[data-cbtab]').forEach(b => {
+    const on = b.dataset.cbtab === tab;
+    b.classList.toggle('active', on);
+    b.style.borderBottomColor = on ? 'var(--fin)' : 'transparent';
+  });
+  ['dados', 'contatos', 'procedimentos', 'forum'].forEach(t => {
+    const el = document.getElementById('cbtab-' + t);
+    if (el) el.style.display = (t === tab) ? '' : 'none';
+  });
+}
+
+// ── DADOS / DEPARTAMENTOS ──
+function renderDeptos() {
+  const box = document.getElementById('cb-deptos-lista');
+  if (!box) return;
+  if (!CB.deptos.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏢</div><div class="empty-state-title">Nenhum departamento cadastrado</div></div>';
+    return;
+  }
+  let h = '<table class="cb-tbl"><thead><tr><th>Departamento</th><th>Responsável</th><th>Ramal</th><th>E-mail</th><th>Observações</th><th></th></tr></thead><tbody>';
+  for (const d of CB.deptos) {
+    h += `<tr>
+      <td style="font-weight:600">${cbEsc(d.departamento)}</td>
+      <td>${cbEsc(d.responsavel)}</td>
+      <td>${cbEsc(d.ramal)}</td>
+      <td>${d.email ? `<a href="mailto:${cbEsc(d.email)}" style="color:var(--fin)">${cbEsc(d.email)}</a>` : ''}</td>
+      <td style="color:#777">${cbEsc(d.observacoes)}</td>
+      <td><div class="cb-act">
+        <button class="cb-ico" title="Editar" onclick="abrirModalDepto('${d.id}')">✏️</button>
+        <button class="cb-ico" title="Excluir" onclick="excluirDepto('${d.id}')">🗑️</button>
+      </div></td></tr>`;
+  }
+  box.innerHTML = h + '</tbody></table>';
+}
+function abrirModalDepto(id) {
+  const d = id ? CB.deptos.find(x => x.id === id) : null;
+  document.getElementById('cb-depto-titulo').textContent = d ? 'Editar Departamento' : 'Novo Departamento';
+  document.getElementById('cb-depto-id').value = d ? d.id : '';
+  document.getElementById('cb-depto-nome').value = d ? (d.departamento || '') : '';
+  document.getElementById('cb-depto-resp').value = d ? (d.responsavel || '') : '';
+  document.getElementById('cb-depto-ramal').value = d ? (d.ramal || '') : '';
+  document.getElementById('cb-depto-email').value = d ? (d.email || '') : '';
+  document.getElementById('cb-depto-obs').value = d ? (d.observacoes || '') : '';
+  abrirModal('modal-cb-depto');
+}
+async function salvarDepto() {
+  const nome = document.getElementById('cb-depto-nome').value.trim();
+  if (!nome) { toast('Informe o departamento', 'erro'); return; }
+  const id = document.getElementById('cb-depto-id').value;
+  const reg = {
+    departamento: nome,
+    responsavel: document.getElementById('cb-depto-resp').value.trim() || null,
+    ramal: document.getElementById('cb-depto-ramal').value.trim() || null,
+    email: document.getElementById('cb-depto-email').value.trim() || null,
+    observacoes: document.getElementById('cb-depto-obs').value.trim() || null,
+  };
+  const btn = document.getElementById('cb-depto-save'); btn.disabled = true;
+  let err;
+  if (id) ({ error: err } = await sb.from('contab_departamentos').update(reg).eq('id', id));
+  else { reg.ordem = CB.deptos.length + 1; ({ error: err } = await sb.from('contab_departamentos').insert(reg)); }
+  btn.disabled = false;
+  if (err) { toast('Erro ao salvar', 'erro'); return; }
+  fecharModal('modal-cb-depto');
+  const { data } = await sb.from('contab_departamentos').select('*').order('ordem');
+  CB.deptos = data || []; renderDeptos(); toast('Salvo', 'ok');
+}
+async function excluirDepto(id) {
+  if (!confirm('Excluir este departamento?')) return;
+  const { error } = await sb.from('contab_departamentos').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir', 'erro'); return; }
+  CB.deptos = CB.deptos.filter(x => x.id !== id); renderDeptos(); toast('Excluído', 'ok');
+}
+
+// ── REGISTROS DE CONTATO ──
+function renderContatos() {
+  const box = document.getElementById('cb-contatos-lista');
+  if (!box) return;
+  const q = (document.getElementById('cb-ct-q')?.value || '').toLowerCase();
+  const fs = document.getElementById('cb-ct-status')?.value || '';
+  let lista = CB.contatos.filter(c => {
+    if (fs && c.status !== fs) return false;
+    if (q && !`${c.assunto || ''} ${c.quem_contatou || ''} ${c.falou_com || ''} ${c.resumo || ''}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (!lista.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📇</div><div class="empty-state-title">Nenhum registro</div></div>';
+    return;
+  }
+  let h = '<table class="cb-tbl"><thead><tr><th>Data</th><th>Quem contatou</th><th>Falou com</th><th>Canal</th><th>Assunto</th><th>Status</th><th>Resumo</th><th></th></tr></thead><tbody>';
+  for (const c of lista) {
+    h += `<tr>
+      <td style="white-space:nowrap">${fmtData(c.data)}</td>
+      <td>${cbEsc(c.quem_contatou)}</td>
+      <td>${cbEsc(c.falou_com)}</td>
+      <td>${cbEsc(c.canal)}</td>
+      <td style="font-weight:600">${cbEsc(c.assunto)}</td>
+      <td>${cbBadge(c.status)}</td>
+      <td style="color:#777;max-width:240px">${cbEsc(c.resumo)}</td>
+      <td><div class="cb-act">
+        <button class="cb-ico" title="Editar" onclick="abrirModalContato('${c.id}')">✏️</button>
+        <button class="cb-ico" title="Excluir" onclick="excluirContato('${c.id}')">🗑️</button>
+      </div></td></tr>`;
+  }
+  box.innerHTML = h + '</tbody></table>';
+}
+function abrirModalContato(id) {
+  const c = id ? CB.contatos.find(x => x.id === id) : null;
+  document.getElementById('cb-contato-titulo').textContent = c ? 'Editar Registro' : 'Novo Registro de Contato';
+  document.getElementById('cb-contato-id').value = c ? c.id : '';
+  document.getElementById('cb-contato-data').value = c ? (c.data || '') : new Date().toISOString().slice(0, 10);
+  document.getElementById('cb-contato-canal').value = c ? (c.canal || 'E-mail') : 'E-mail';
+  document.getElementById('cb-contato-quem').value = c ? (c.quem_contatou || '') : (G.usuario?.nome || '');
+  document.getElementById('cb-contato-falou').value = c ? (c.falou_com || '') : '';
+  document.getElementById('cb-contato-assunto').value = c ? (c.assunto || '') : '';
+  document.getElementById('cb-contato-status').value = c ? (c.status || 'Aberto') : 'Aberto';
+  document.getElementById('cb-contato-resumo').value = c ? (c.resumo || '') : '';
+  abrirModal('modal-cb-contato');
+}
+async function salvarContato() {
+  const assunto = document.getElementById('cb-contato-assunto').value.trim();
+  if (!assunto) { toast('Informe o assunto', 'erro'); return; }
+  const id = document.getElementById('cb-contato-id').value;
+  const reg = {
+    data: document.getElementById('cb-contato-data').value || new Date().toISOString().slice(0, 10),
+    canal: document.getElementById('cb-contato-canal').value,
+    quem_contatou: document.getElementById('cb-contato-quem').value.trim() || null,
+    falou_com: document.getElementById('cb-contato-falou').value.trim() || null,
+    assunto,
+    status: document.getElementById('cb-contato-status').value,
+    resumo: document.getElementById('cb-contato-resumo').value.trim() || null,
+  };
+  const btn = document.getElementById('cb-contato-save'); btn.disabled = true;
+  let err;
+  if (id) ({ error: err } = await sb.from('contab_contatos').update(reg).eq('id', id));
+  else { reg.quem_contatou_id = G.usuario?.id || null; ({ error: err } = await sb.from('contab_contatos').insert(reg)); }
+  btn.disabled = false;
+  if (err) { toast('Erro ao salvar', 'erro'); return; }
+  fecharModal('modal-cb-contato');
+  const { data } = await sb.from('contab_contatos').select('*').order('data', { ascending: false });
+  CB.contatos = data || []; renderContatos(); toast('Salvo', 'ok');
+}
+async function excluirContato(id) {
+  if (!confirm('Excluir este registro?')) return;
+  const { error } = await sb.from('contab_contatos').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir', 'erro'); return; }
+  CB.contatos = CB.contatos.filter(x => x.id !== id); renderContatos(); toast('Excluído', 'ok');
+}
+
+// ── PROCEDIMENTOS ──
+function renderProcs() {
+  const box = document.getElementById('cb-procs-lista');
+  if (!box) return;
+  if (!CB.procs.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Nenhum procedimento</div></div>';
+    return;
+  }
+  let h = '<table class="cb-tbl"><thead><tr><th>Procedimento / Guia</th><th>Frequência / Prazo</th><th>Responsável</th><th>Como fazer / Observações</th><th></th></tr></thead><tbody>';
+  for (const p of CB.procs) {
+    h += `<tr>
+      <td style="font-weight:600">${cbEsc(p.procedimento)}</td>
+      <td style="white-space:nowrap">${cbEsc(p.frequencia)}</td>
+      <td>${cbEsc(p.responsavel)}</td>
+      <td style="color:#777">${cbEsc(p.instrucoes)}</td>
+      <td><div class="cb-act">
+        <button class="cb-ico" title="Editar" onclick="abrirModalProc('${p.id}')">✏️</button>
+        <button class="cb-ico" title="Excluir" onclick="excluirProc('${p.id}')">🗑️</button>
+      </div></td></tr>`;
+  }
+  box.innerHTML = h + '</tbody></table>';
+}
+function abrirModalProc(id) {
+  const p = id ? CB.procs.find(x => x.id === id) : null;
+  document.getElementById('cb-proc-titulo').textContent = p ? 'Editar Procedimento' : 'Novo Procedimento';
+  document.getElementById('cb-proc-id').value = p ? p.id : '';
+  document.getElementById('cb-proc-nome').value = p ? (p.procedimento || '') : '';
+  document.getElementById('cb-proc-freq').value = p ? (p.frequencia || '') : '';
+  document.getElementById('cb-proc-resp').value = p ? (p.responsavel || '') : '';
+  document.getElementById('cb-proc-instr').value = p ? (p.instrucoes || '') : '';
+  abrirModal('modal-cb-proc');
+}
+async function salvarProc() {
+  const nome = document.getElementById('cb-proc-nome').value.trim();
+  if (!nome) { toast('Informe o procedimento', 'erro'); return; }
+  const id = document.getElementById('cb-proc-id').value;
+  const reg = {
+    procedimento: nome,
+    frequencia: document.getElementById('cb-proc-freq').value.trim() || null,
+    responsavel: document.getElementById('cb-proc-resp').value.trim() || null,
+    instrucoes: document.getElementById('cb-proc-instr').value.trim() || null,
+  };
+  const btn = document.getElementById('cb-proc-save'); btn.disabled = true;
+  let err;
+  if (id) ({ error: err } = await sb.from('contab_procedimentos').update(reg).eq('id', id));
+  else { reg.ordem = CB.procs.length + 1; ({ error: err } = await sb.from('contab_procedimentos').insert(reg)); }
+  btn.disabled = false;
+  if (err) { toast('Erro ao salvar', 'erro'); return; }
+  fecharModal('modal-cb-proc');
+  const { data } = await sb.from('contab_procedimentos').select('*').order('ordem');
+  CB.procs = data || []; renderProcs(); toast('Salvo', 'ok');
+}
+async function excluirProc(id) {
+  if (!confirm('Excluir este procedimento?')) return;
+  const { error } = await sb.from('contab_procedimentos').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir', 'erro'); return; }
+  CB.procs = CB.procs.filter(x => x.id !== id); renderProcs(); toast('Excluído', 'ok');
+}
+
+// ── FÓRUM ──
+function renderForum() {
+  const box = document.getElementById('cb-forum-lista');
+  if (!box) return;
+  const q = (document.getElementById('cb-fr-q')?.value || '').toLowerCase();
+  const ft = document.getElementById('cb-fr-tipo')?.value || '';
+  const fst = document.getElementById('cb-fr-status')?.value || '';
+  let lista = CB.topicos.filter(t => {
+    if (ft && t.tipo !== ft) return false;
+    if (fst && t.status !== fst) return false;
+    if (q && !`${t.assunto || ''} ${t.descricao || ''} ${t.aberto_por || ''}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (!lista.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-title">Nenhum tópico</div></div>';
+    return;
+  }
+  let h = '';
+  for (const t of lista) {
+    const n = CB.respCount[t.id] || 0;
+    h += `<div class="cb-card" onclick="abrirDetalheTopico('${t.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="font-weight:700;font-size:13px">${cbEsc(t.assunto)}</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <span class="cb-badge" style="color:#444;background:var(--off)">${cbEsc(t.tipo)}</span>${cbBadge(t.status)}
+        </div>
+      </div>
+      <div style="font-size:11px;color:#777;margin-top:5px">${cbEsc((t.descricao || '').slice(0, 120))}${(t.descricao || '').length > 120 ? '…' : ''}</div>
+      <div style="font-size:10px;color:#999;margin-top:7px">${cbEsc(t.aberto_por)} · ${fmtData(t.data)} · 💬 ${n} ${n === 1 ? 'resposta' : 'respostas'}</div>
+    </div>`;
+  }
+  box.innerHTML = h;
+}
+function abrirModalTopico() {
+  document.getElementById('cb-topico-tipo').value = 'Dúvida';
+  document.getElementById('cb-topico-assunto').value = '';
+  document.getElementById('cb-topico-desc').value = '';
+  abrirModal('modal-cb-topico');
+}
+async function salvarTopico() {
+  const assunto = document.getElementById('cb-topico-assunto').value.trim();
+  if (!assunto) { toast('Informe o assunto', 'erro'); return; }
+  const reg = {
+    tipo: document.getElementById('cb-topico-tipo').value,
+    assunto,
+    descricao: document.getElementById('cb-topico-desc').value.trim() || null,
+    status: 'Aberto',
+    aberto_por: G.usuario?.nome || null,
+    aberto_por_id: G.usuario?.id || null,
+  };
+  const btn = document.getElementById('cb-topico-save'); btn.disabled = true;
+  const { error } = await sb.from('contab_forum_topicos').insert(reg);
+  btn.disabled = false;
+  if (error) { toast('Erro ao criar', 'erro'); return; }
+  fecharModal('modal-cb-topico');
+  const { data } = await sb.from('contab_forum_topicos').select('*').order('updated_at', { ascending: false });
+  CB.topicos = data || []; renderForum(); toast('Tópico criado', 'ok');
+}
+async function abrirDetalheTopico(id) {
+  const t = CB.topicos.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('cb-det-titulo').textContent = t.assunto;
+  const body = document.getElementById('cb-det-body');
+  body.innerHTML = '<div style="color:#999;font-size:12px">Carregando…</div>';
+  abrirModal('modal-cb-detalhe');
+  const { data: resp } = await sb.from('contab_forum_respostas').select('*').eq('topico_id', id).order('created_at');
+  const statusSel = ['Aberto', 'Em andamento', 'Resolvido']
+    .map(s => `<option ${s === t.status ? 'selected' : ''}>${s}</option>`).join('');
+  let h = `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <span class="cb-badge" style="color:#444;background:var(--off)">${cbEsc(t.tipo)}</span>
+      <select onchange="mudarStatusTopico('${t.id}', this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--cinza);border-radius:6px;background:var(--branco);color:var(--grafite)">${statusSel}</select>
+      <span style="font-size:10px;color:#999;margin-left:auto">${cbEsc(t.aberto_por)} · ${fmtData(t.data)}</span>
+    </div>
+    <div style="font-size:13px;color:var(--grafite);white-space:pre-wrap;margin-bottom:6px">${cbEsc(t.descricao) || '<span style=\"color:#aaa\">Sem descrição</span>'}</div>
+    <div style="border-top:1px solid var(--cinza);margin:12px 0 4px;padding-top:8px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700">Respostas (${(resp || []).length})</div>`;
+  for (const r of (resp || [])) {
+    h += `<div class="cb-reply">
+      <div style="font-size:12px;white-space:pre-wrap">${cbEsc(r.mensagem)}</div>
+      <div style="font-size:10px;color:#999;margin-top:3px">${cbEsc(r.autor)} · ${fmtData(r.created_at)} <button class="cb-ico" title="Excluir" onclick="excluirResposta('${r.id}','${t.id}')">🗑️</button></div>
+    </div>`;
+  }
+  h += `
+    <div style="margin-top:12px">
+      <textarea id="cb-resp-msg" rows="2" placeholder="Escreva uma resposta…" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--cinza);border-radius:8px;font-family:var(--font-ui);font-size:12px;resize:vertical;background:var(--branco);color:var(--grafite)"></textarea>
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <button class="btn btn-ghost btn-sm" onclick="excluirTopico('${t.id}')" style="color:#b91c1c">Excluir tópico</button>
+        <button class="btn btn-pri btn-sm" onclick="enviarResposta('${t.id}')">Responder</button>
+      </div>
+    </div>`;
+  body.innerHTML = h;
+}
+async function enviarResposta(topicoId) {
+  const ta = document.getElementById('cb-resp-msg');
+  const msg = (ta?.value || '').trim();
+  if (!msg) return;
+  const { error } = await sb.from('contab_forum_respostas').insert({
+    topico_id: topicoId, mensagem: msg,
+    autor: G.usuario?.nome || null, autor_id: G.usuario?.id || null,
+  });
+  if (error) { toast('Erro ao responder', 'erro'); return; }
+  await sb.from('contab_forum_topicos').update({ updated_at: new Date().toISOString() }).eq('id', topicoId);
+  CB.respCount[topicoId] = (CB.respCount[topicoId] || 0) + 1;
+  abrirDetalheTopico(topicoId); renderForum();
+}
+async function excluirResposta(id, topicoId) {
+  if (!confirm('Excluir esta resposta?')) return;
+  const { error } = await sb.from('contab_forum_respostas').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir', 'erro'); return; }
+  CB.respCount[topicoId] = Math.max(0, (CB.respCount[topicoId] || 1) - 1);
+  abrirDetalheTopico(topicoId); renderForum();
+}
+async function mudarStatusTopico(id, status) {
+  const { error } = await sb.from('contab_forum_topicos').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { toast('Erro ao atualizar', 'erro'); return; }
+  const t = CB.topicos.find(x => x.id === id); if (t) t.status = status;
+  renderForum(); toast('Status atualizado', 'ok');
+}
+async function excluirTopico(id) {
+  if (!confirm('Excluir este tópico e todas as respostas?')) return;
+  const { error } = await sb.from('contab_forum_topicos').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir', 'erro'); return; }
+  CB.topicos = CB.topicos.filter(x => x.id !== id);
+  fecharModal('modal-cb-detalhe'); renderForum(); toast('Excluído', 'ok');
 }
 
 // ══════════════════════════════════════════════════════════

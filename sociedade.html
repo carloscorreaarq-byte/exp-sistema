@@ -177,6 +177,24 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .ho-ct-nome { font-size: 12.5px; font-weight: 700; color: var(--grafite); }
 .ho-ct-ctx { font-size: 11.5px; line-height: 1.5; color: #777; margin-bottom: 6px; }
 .ho-ct-meta { font-size: 10.5px; color: #999; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ho-pj-arq { font-size: 11px; line-height: 1.45; color: #777; background: var(--off); border-radius: 6px; padding: 6px 9px; margin-bottom: 6px; }
+.ho-pj-arq b { color: var(--grafite); }
+
+/* ── HAND-OFF · KANBAN ──────────────────────────────────────── */
+.ho-kb { display: flex; gap: 10px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
+.ho-kb-col { flex: 1 0 168px; min-width: 168px; background: var(--off); border: 1px solid var(--cinza); border-radius: 10px; padding: 9px; }
+.ho-kb-col-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.ho-kb-cnt { font-size: 11px; font-weight: 700; color: #999; }
+.ho-kb-body { display: flex; flex-direction: column; gap: 7px; }
+.ho-kb-empty { font-size: 11px; color: #ccc; text-align: center; padding: 10px 0; }
+.ho-kb-card { background: var(--branco); border: 1px solid var(--cinza); border-radius: 8px; padding: 9px 10px; }
+.ho-kb-tag { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--soc); margin-bottom: 3px; }
+.ho-kb-tit { font-size: 11.5px; font-weight: 600; color: var(--grafite); line-height: 1.35; }
+.ho-kb-sub { font-size: 10.5px; color: #999; line-height: 1.4; margin-top: 3px; }
+.ho-kb-act { display: flex; justify-content: flex-end; gap: 5px; margin-top: 8px; }
+.ho-kb-mv { width: 22px; height: 22px; border: 1px solid var(--cinza); background: var(--branco); border-radius: 6px; cursor: pointer; color: var(--grafite); font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; transition: all var(--transition-fast); }
+.ho-kb-mv:hover:not(:disabled) { background: var(--soc); color: #fff; border-color: var(--soc); }
+.ho-kb-mv:disabled { opacity: .3; cursor: default; }
 .ho-chip { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 7px; border-radius: 20px; }
 .ho-chip-parceiro   { background: #f3effe; color: #6B4FA0; }
 .ho-chip-fornecedor { background: #eaf5ee; color: #3E7858; }
@@ -678,6 +696,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
       <button class="stab active" id="stab-proj-planejamento" onclick="projSwitch('planejamento')">Planejamento</button>
       <button class="stab"        id="stab-proj-aprovacao"    onclick="projSwitch('aprovacao')">Aprovação</button>
       <button class="stab"        id="stab-proj-avaliacao"    onclick="projSwitch('avaliacao')">Avaliação</button>
+      <button class="stab"        id="stab-proj-handoff"      onclick="projSwitch('handoff')">Hand-off</button>
     </div>
 
     <!-- PLANEJAMENTO -->
@@ -717,6 +736,12 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
           <div class="empty-note" style="padding:60px 0">Selecione um projeto aprovado</div>
         </div></div>
       </div>
+    </div>
+
+    <!-- HAND-OFF — visão exclusiva societária -->
+    <div class="stab-panel" id="stp-proj-handoff">
+      <div class="empty-note" style="text-align:left;padding:0 0 14px">Status de projetos registrados no processo de hand-off — visão exclusiva da sociedade. Para registrar, use <b>Hand-off › Status de Projetos</b>.</div>
+      <div id="proj-handoff-lista"><div class="empty-note">Carregando…</div></div>
     </div>
 
   </div>
@@ -932,31 +957,150 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
       </div>
     </div>
 
-    <!-- ── STATUS DE PROJETOS (stub — Etapa 4) ────────────────── -->
+    <!-- ── STATUS DE PROJETOS ─────────────────────────────────── -->
     <div class="stab-panel" id="stp-ho-projetos">
-      <div class="stub-placeholder">
-        <div class="sp-icon">📁</div>
-        <div class="sp-txt">Status de projetos</div>
-        <div class="sp-sub">Formulário com referência a cliente + oportunidade — próxima etapa.</div>
+      <div class="rev-layout">
+
+        <!-- Formulário -->
+        <div>
+          <div class="ho-form-card">
+            <div class="ho-form-tit">Registrar status de projeto</div>
+
+            <div class="fg fg2 mb14">
+              <div class="fgroup">
+                <label>Cliente *</label>
+                <select id="ho-pj-cliente" onchange="hoProjOnCliente()"><option value="">Carregando…</option></select>
+              </div>
+              <div class="fgroup">
+                <label>Oportunidade</label>
+                <select id="ho-pj-opp"><option value="">— selecione o cliente —</option></select>
+              </div>
+            </div>
+
+            <div class="fgroup mb14">
+              <label>Situação real do projeto *</label>
+              <textarea id="ho-pj-status" rows="4" placeholder="Status real, pendências, combinados informais, manhas do cliente, riscos…"></textarea>
+            </div>
+
+            <div class="fgroup mb14">
+              <label>Arquivos de hand-off — descrição e onde estão</label>
+              <textarea id="ho-pj-arquivos" rows="3" placeholder="Liste e descreva os arquivos salvos (pasta do projeto no Drive + pasta de hand-off em EXP Sociedade)."></textarea>
+            </div>
+
+            <div class="fgroup mb14">
+              <label>Conhecimento tácito adicional</label>
+              <textarea id="ho-pj-contexto" rows="2" placeholder="Contexto que não cabe no status acima."></textarea>
+            </div>
+
+            <div class="fgroup mb14">
+              <label>Sucessor — quem assume</label>
+              <select id="ho-pj-sucessor"><option value="">—</option></select>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end">
+              <button class="btn sm verde" id="ho-pj-save" onclick="hoSalvarProjeto()">Registrar status</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de registrados -->
+        <div>
+          <div class="ho-lista-tit">Status registrados</div>
+          <div id="ho-pj-lista"><div class="empty-note">Carregando…</div></div>
+        </div>
+
       </div>
     </div>
 
-    <!-- ── PIPELINE & PROPOSTAS (stub — Etapa 5) ──────────────── -->
+    <!-- ── PIPELINE & PROPOSTAS ───────────────────────────────── -->
     <div class="stab-panel" id="stp-ho-pipeline">
-      <div class="stub-placeholder">
-        <div class="sp-icon">📈</div>
-        <div class="sp-txt">Pipeline &amp; propostas</div>
-        <div class="sp-sub">Atalhos para o CRM e lista de propostas em aberto — próxima etapa.</div>
+
+      <div class="ho-form-card" style="margin-bottom:16px">
+        <div class="ho-form-tit">Criar lead no CRM</div>
+        <p style="font-size:11.5px;line-height:1.55;color:var(--grafite);margin:0 0 12px">
+          Para todo contato comercial <b>pendente</b> de apresentação de empresa, reunião, ou com possibilidade de proposta (atual ou futura), crie um <b>lead no CRM</b> — com ou sem oportunidade vinculada — e coloque <b>você mesma como responsável</b>. Assim o sucessor enxerga tudo que está em aberto sob seu nome.
+        </p>
+        <a class="btn sm verde" href="crm.html" target="_blank" rel="noopener">Abrir CRM ↗</a>
       </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="ho-lista-tit" style="margin:0">Propostas em aberto <span id="ho-pp-count" class="ho-chip ho-chip-dest"></span></div>
+        <label style="font-size:10.5px;color:#999;display:flex;align-items:center;gap:5px;cursor:pointer">
+          <input type="checkbox" id="ho-pp-minhas" onchange="hoRenderPropostas()" style="width:13px;height:13px;accent-color:var(--soc);cursor:pointer"> Só as da sócia
+        </label>
+      </div>
+      <div class="empty-note" style="text-align:left;padding:0 0 12px">Oportunidades em estágio <b>Enviada</b> ou <b>Em negociação</b>. Revise e atualize cada uma na plataforma (abra o CRM acima).</div>
+      <div id="ho-pp-lista"><div class="empty-note">Carregando…</div></div>
+
     </div>
 
-    <!-- ── ACOMPANHAMENTO (stub — Etapa 6) ────────────────────── -->
+    <!-- ── ACOMPANHAMENTO ─────────────────────────────────────── -->
     <div class="stab-panel" id="stp-ho-acompanhamento">
-      <div class="stub-placeholder">
-        <div class="sp-icon">📊</div>
-        <div class="sp-txt">Acompanhamento</div>
-        <div class="sp-sub">Painel de status (a documentar → validado) — próxima etapa.</div>
+
+      <!-- Cabeçalho do processo -->
+      <div class="ho-form-card" style="margin-bottom:14px">
+        <div class="ho-form-tit">Processo de hand-off</div>
+        <div class="fg fg2 mb14">
+          <div class="fgroup">
+            <label>Sócia que está saindo</label>
+            <select id="ho-hd-socia"><option value="">—</option></select>
+          </div>
+          <div class="fgroup"><label>Data de saída</label><input type="date" id="ho-hd-data"></div>
+        </div>
+        <div class="fg fg2">
+          <div class="fgroup">
+            <label>Status geral</label>
+            <select id="ho-hd-status">
+              <option value="em_andamento">Em andamento</option>
+              <option value="concluido">Concluído</option>
+            </select>
+          </div>
+          <div class="fgroup" style="display:flex;align-items:flex-end;justify-content:flex-end">
+            <button class="btn sm verde" id="ho-hd-save" onclick="hoSalvarHeader()">Salvar</button>
+          </div>
+        </div>
       </div>
+
+      <!-- Adicionar item de acompanhamento -->
+      <details class="ho-tema" style="margin-bottom:16px;max-width:none">
+        <summary><span class="ho-tema-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span><span class="ho-tema-tit">Adicionar item de acompanhamento</span></summary>
+        <div class="ho-tema-body">
+          <div class="fg fg2 mb14">
+            <div class="fgroup">
+              <label>Categoria</label>
+              <select id="ho-it-cat">
+                <option value="senha">Senha / acesso</option>
+                <option value="arquivo">Arquivo</option>
+                <option value="agenda">Agenda / reunião</option>
+                <option value="proposta">Proposta</option>
+                <option value="pipeline">Pipeline / lead</option>
+                <option value="processo">Processo / prática</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div class="fgroup"><label>Título *</label><input type="text" id="ho-it-titulo" placeholder="Ex: Senha do portal X"></div>
+          </div>
+          <div class="fgroup mb14"><label>Descrição</label><textarea id="ho-it-desc" rows="2" placeholder="Detalhes, onde está, o que falta…"></textarea></div>
+          <div class="fg fg2 mb14">
+            <div class="fgroup"><label>Sucessor</label><select id="ho-it-sucessor"><option value="">—</option></select></div>
+            <div class="fgroup">
+              <label>Criticidade</label>
+              <select id="ho-it-crit"><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select>
+            </div>
+          </div>
+          <div class="fg fg2">
+            <div class="fgroup"><label>Prazo</label><input type="date" id="ho-it-prazo"></div>
+            <div class="fgroup" style="display:flex;align-items:flex-end;justify-content:flex-end">
+              <button class="btn sm verde" id="ho-it-save" onclick="hoSalvarItem()">Adicionar item</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Painel kanban -->
+      <div class="ho-lista-tit">Painel de acompanhamento</div>
+      <div class="ho-kb" id="ho-kb"><div class="empty-note">Carregando…</div></div>
+
     </div>
 
   </div>
@@ -3326,6 +3470,15 @@ function projSwitch(sub) {
   if (sub === 'aprovacao' && !document.getElementById('proj-aprov-lista')?.querySelector('.proj-soc-card')) {
     renderProjLista('aprovacao');
   }
+  if (sub === 'handoff') hoLoadProjetosSoc();
+}
+
+/* Carrega a visão societária de hand-off dentro da aba Projetos */
+async function hoLoadProjetosSoc() {
+  if (!(G.todosUsuarios || []).length) await carregarUsuarios?.();
+  await hoEnsure();
+  if (HO.projetos) hoRenderProjetosSoc();
+  else await hoCarregarProjetos();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3341,9 +3494,9 @@ const HO_STATUS_LABEL = {
 async function hoEnsure() {
   if (HO.id) return HO.id;
   const { data } = await sb.from('soc_handoff')
-    .select('id').eq('status', 'em_andamento')
+    .select('id,socia_id').eq('status', 'em_andamento')
     .order('created_at', { ascending: false }).limit(1);
-  if (data && data.length) { HO.id = data[0].id; return HO.id; }
+  if (data && data.length) { HO.id = data[0].id; HO.socia_id = data[0].socia_id; return HO.id; }
   const { data: novo, error } = await sb.from('soc_handoff')
     .insert({ status: 'em_andamento', criado_por: G.usuario?.id }).select('id').single();
   if (error) { toast('Erro ao iniciar hand-off: ' + error.message); return null; }
@@ -3366,7 +3519,9 @@ function handoffSwitch(sub) {
   document.getElementById(`stab-ho-${sub}`)?.classList.add('active');
   document.getElementById(`stp-ho-${sub}`)?.classList.add('active');
   if (sub === 'contatos') hoInitContatos();
-  // projetos/pipeline/acompanhamento — próximas etapas.
+  if (sub === 'projetos') hoInitProjetos();
+  if (sub === 'pipeline') hoInitPipeline();
+  if (sub === 'acompanhamento') hoInitAcompanhamento();
 }
 
 /* ── CONTATOS ────────────────────────────────────────────────── */
@@ -3381,13 +3536,17 @@ async function hoInitContatos() {
 }
 
 async function hoCarregarClientes() {
-  if (HO.clientes) return;
-  const { data, error } = await sb.from('clientes').select('id,nome').order('nome');
-  if (error) { console.warn('clientes:', error.message); HO.clientes = []; }
-  else HO.clientes = data || [];
-  const sel = document.getElementById('ho-ct-cliente');
-  if (sel) sel.innerHTML = '<option value="">Selecione…</option>' +
+  if (!HO.clientes) {
+    const { data, error } = await sb.from('clientes').select('id,nome').order('nome');
+    if (error) { console.warn('clientes:', error.message); HO.clientes = []; }
+    else HO.clientes = data || [];
+  }
+  const opts = '<option value="">Selecione…</option>' +
     HO.clientes.map(c => `<option value="${c.id}">${_esc(c.nome)}</option>`).join('');
+  ['ho-ct-cliente', 'ho-pj-cliente'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (sel) sel.innerHTML = opts;
+  });
 }
 
 function hoCtOnTipo() {
@@ -3502,6 +3661,335 @@ function hoRenderContatos() {
       </div>
     </div>`;
   }).join('');
+}
+
+/* ── STATUS DE PROJETOS ──────────────────────────────────────── */
+async function hoInitProjetos() {
+  if (HO._pjReady) return;
+  HO._pjReady = true;
+  if (!(G.todosUsuarios || []).length) await carregarUsuarios?.();
+  hoFillSucessores(document.getElementById('ho-pj-sucessor'));
+  await hoEnsure();
+  await Promise.all([hoCarregarClientes(), hoCarregarOportunidades()]);
+  await hoCarregarProjetos();
+}
+
+async function hoCarregarOportunidades() {
+  if (HO.oportunidades) return;
+  const { data, error } = await sb.from('oportunidades')
+    .select('id,num_legado,cliente_id,projeto,cidade,uf')
+    .not('excluida', 'is', true);
+  if (error) { console.warn('oportunidades:', error.message); HO.oportunidades = []; }
+  else HO.oportunidades = data || [];
+}
+
+function hoOppLabel(o) {
+  const desc = o.projeto || o.cidade || '';
+  return `${o.num_legado || '—'}${desc ? ' · ' + desc : ''}`;
+}
+
+function hoProjOnCliente() {
+  const cid = document.getElementById('ho-pj-cliente').value;
+  const sel = document.getElementById('ho-pj-opp');
+  if (!sel) return;
+  if (!cid) { sel.innerHTML = '<option value="">— selecione o cliente —</option>'; return; }
+  const lista = (HO.oportunidades || []).filter(o => String(o.cliente_id) === String(cid));
+  sel.innerHTML = '<option value="">— sem oportunidade —</option>' +
+    lista.map(o => `<option value="${o.id}">${_esc(hoOppLabel(o))}</option>`).join('');
+}
+
+async function hoSalvarProjeto() {
+  const clienteId = document.getElementById('ho-pj-cliente').value;
+  const oppId     = document.getElementById('ho-pj-opp').value || null;
+  const status    = document.getElementById('ho-pj-status').value.trim();
+  const arquivos  = document.getElementById('ho-pj-arquivos').value.trim();
+  const contexto  = document.getElementById('ho-pj-contexto').value.trim();
+  const sucessor  = document.getElementById('ho-pj-sucessor').value || null;
+  if (!clienteId) { toast('Selecione o cliente.'); return; }
+  if (!status)    { toast('Descreva a situação real do projeto.'); return; }
+
+  const hid = await hoEnsure();
+  if (!hid) return;
+
+  const cli = (HO.clientes || []).find(c => String(c.id) === String(clienteId));
+  const opp = (HO.oportunidades || []).find(o => String(o.id) === String(oppId));
+
+  const btn = document.getElementById('ho-pj-save');
+  btn.disabled = true; const lbl = btn.textContent; btn.textContent = 'Salvando…';
+  try {
+    const { error } = await sb.from('soc_handoff_projeto').insert({
+      handoff_id: hid,
+      cliente_id: clienteId, cliente_nome: cli?.nome || null,
+      oportunidade_id: oppId, oportunidade_nome: opp ? hoOppLabel(opp) : null,
+      status_texto: status, arquivos_desc: arquivos || null,
+      contexto: contexto || null, sucessor_id: sucessor,
+      visivel_societaria: true, criado_por: G.usuario.id,
+    }).select('id');
+    if (error) throw error;
+
+    ['ho-pj-status','ho-pj-arquivos','ho-pj-contexto'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('ho-pj-cliente').value = '';
+    document.getElementById('ho-pj-opp').innerHTML = '<option value="">— selecione o cliente —</option>';
+    document.getElementById('ho-pj-sucessor').value = '';
+
+    toast('Status de projeto registrado', 'ok');
+    await hoCarregarProjetos();
+  } catch (err) {
+    toast('Falha ao registrar status: ' + (err.message || err));
+  } finally {
+    btn.disabled = false; btn.textContent = lbl;
+  }
+}
+
+async function hoCarregarProjetos() {
+  const hid = HO.id || await hoEnsure();
+  const { data } = await sb.from('soc_handoff_projeto')
+    .select('*').eq('handoff_id', hid).order('created_at', { ascending: false });
+  HO.projetos = data || [];
+  hoRenderProjetos();
+  hoRenderProjetosSoc();
+}
+
+function hoProjCardHtml(p) {
+  const suc = (G.todosUsuarios || []).find(u => u.id === p.sucessor_id);
+  return `<div class="ho-ct-card">
+    <div class="ho-ct-card-hd">
+      <span class="ho-ct-nome">${_esc(p.cliente_nome || 'Cliente')}</span>
+      ${p.oportunidade_nome ? `<span class="ho-chip ho-chip-dest">${_esc(p.oportunidade_nome)}</span>` : ''}
+    </div>
+    <div class="ho-ct-ctx">${_esc(p.status_texto || '')}</div>
+    ${p.arquivos_desc ? `<div class="ho-pj-arq"><b>Arquivos:</b> ${_esc(p.arquivos_desc)}</div>` : ''}
+    ${p.contexto ? `<div class="ho-ct-ctx" style="font-style:italic">${_esc(p.contexto)}</div>` : ''}
+    <div class="ho-ct-meta">
+      ${suc ? `Sucessor: <b>${_esc(suc.nome)}</b> · ` : ''}
+      <span class="ho-st ho-st-${p.status}">${HO_STATUS_LABEL[p.status] || p.status}</span>
+    </div>
+  </div>`;
+}
+
+function hoRenderProjetos() {
+  const wrap = document.getElementById('ho-pj-lista');
+  if (!wrap) return;
+  wrap.innerHTML = HO.projetos.length
+    ? HO.projetos.map(hoProjCardHtml).join('')
+    : '<div class="empty-note">Nenhum status registrado ainda.</div>';
+}
+
+/* Visão exclusiva societária — espelhada na aba Projetos Societários */
+function hoRenderProjetosSoc() {
+  const wrap = document.getElementById('proj-handoff-lista');
+  if (!wrap) return;
+  const lista = (HO.projetos || []).filter(p => p.visivel_societaria);
+  wrap.innerHTML = lista.length
+    ? lista.map(hoProjCardHtml).join('')
+    : '<div class="empty-note">Nenhum status de hand-off registrado.</div>';
+}
+
+/* ── PIPELINE & PROPOSTAS ────────────────────────────────────── */
+async function hoInitPipeline() {
+  if (HO._ppReady) return;
+  HO._ppReady = true;
+  if (!(G.todosUsuarios || []).length) await carregarUsuarios?.();
+  await hoEnsure();
+  await hoCarregarPropostas();
+}
+
+async function hoCarregarPropostas() {
+  if (!HO.clientes) await hoCarregarClientes();
+  const { data, error } = await sb.from('oportunidades')
+    .select('id,num_legado,cliente_id,projeto,cidade,uf,pipeline_stage,resp_id')
+    .in('pipeline_stage', ['enviada', 'negociacao'])
+    .not('excluida', 'is', true);
+  if (error) { console.warn('propostas:', error.message); HO.propostas = []; }
+  else HO.propostas = data || [];
+  hoRenderPropostas();
+}
+
+function hoClienteNome(id) {
+  return (HO.clientes || []).find(c => String(c.id) === String(id))?.nome || '—';
+}
+
+function hoRenderPropostas() {
+  const wrap = document.getElementById('ho-pp-lista');
+  if (!wrap) return;
+  let lista = HO.propostas || [];
+  const minhas = document.getElementById('ho-pp-minhas')?.checked;
+  const socId = HO.socia_id || G.usuario?.id;
+  if (minhas) lista = lista.filter(p => String(p.resp_id) === String(socId));
+  const cnt = document.getElementById('ho-pp-count');
+  if (cnt) cnt.textContent = lista.length;
+  if (!lista.length) {
+    wrap.innerHTML = '<div class="empty-note">Nenhuma proposta em aberto.</div>';
+    return;
+  }
+  wrap.innerHTML = lista.map(p => {
+    const resp = (G.todosUsuarios || []).find(u => u.id === p.resp_id);
+    const stageLbl = { enviada: 'Enviada', negociacao: 'Em negociação' }[p.pipeline_stage] || p.pipeline_stage;
+    const stageCls = p.pipeline_stage === 'enviada' ? 'documentado' : 'em_transferencia';
+    return `<div class="ho-ct-card">
+      <div class="ho-ct-card-hd">
+        <span class="ho-ct-nome">${_esc(hoClienteNome(p.cliente_id))}</span>
+        <span class="ho-chip ho-chip-dest">${_esc(p.num_legado || '—')}</span>
+        <span class="ho-st ho-st-${stageCls}">${stageLbl}</span>
+      </div>
+      ${p.projeto ? `<div class="ho-ct-ctx">${_esc(p.projeto)}${p.cidade ? ' · ' + _esc(p.cidade) : ''}</div>` : ''}
+      <div class="ho-ct-meta">${resp ? `Responsável: <b>${_esc(resp.nome)}</b>` : 'Sem responsável'}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ── ACOMPANHAMENTO ──────────────────────────────────────────── */
+const HO_STATUS_ORDER = ['a_documentar','documentado','em_transferencia','transferido','validado'];
+const HO_CAT_LABEL = {
+  parceiro:'Parceiro', fornecedor:'Fornecedor', comercial:'Comercial', projeto:'Projeto',
+  senha:'Senha', arquivo:'Arquivo', agenda:'Agenda', proposta:'Proposta',
+  pipeline:'Pipeline', processo:'Processo', outro:'Outro'
+};
+
+async function hoInitAcompanhamento() {
+  if (!HO._acReady) {
+    HO._acReady = true;
+    if (!(G.todosUsuarios || []).length) await carregarUsuarios?.();
+    hoFillSucessores(document.getElementById('ho-it-sucessor'));
+    hoFillSocias();
+    await hoEnsure();
+    await hoLoadHeader();
+  }
+  await hoLoadBoard();
+}
+
+function hoFillSocias() {
+  const sel = document.getElementById('ho-hd-socia');
+  if (!sel) return;
+  const us = G.todosUsuarios || [];
+  sel.innerHTML = '<option value="">—</option>' +
+    us.map(u => `<option value="${u.id}">${_esc(u.nome || u.apelido || '—')}</option>`).join('');
+}
+
+async function hoLoadHeader() {
+  const { data } = await sb.from('soc_handoff')
+    .select('socia_id,data_saida,status').eq('id', HO.id).maybeSingle();
+  if (!data) return;
+  const s = document.getElementById('ho-hd-socia');   if (s) s.value = data.socia_id || '';
+  const d = document.getElementById('ho-hd-data');     if (d) d.value = data.data_saida || '';
+  const st = document.getElementById('ho-hd-status');  if (st) st.value = data.status || 'em_andamento';
+}
+
+async function hoSalvarHeader() {
+  const hid = await hoEnsure();
+  if (!hid) return;
+  const sociaId = document.getElementById('ho-hd-socia').value || null;
+  const socia = (G.todosUsuarios || []).find(u => u.id === sociaId);
+  const btn = document.getElementById('ho-hd-save');
+  btn.disabled = true; const lbl = btn.textContent; btn.textContent = 'Salvando…';
+  try {
+    const { error } = await sb.from('soc_handoff').update({
+      socia_id: sociaId, socia_nome: socia?.nome || null,
+      data_saida: document.getElementById('ho-hd-data').value || null,
+      status: document.getElementById('ho-hd-status').value,
+      updated_at: new Date().toISOString(),
+    }).eq('id', hid);
+    if (error) throw error;
+    HO.socia_id = sociaId;
+    toast('Processo atualizado', 'ok');
+  } catch (err) {
+    toast('Falha ao salvar: ' + (err.message || err));
+  } finally {
+    btn.disabled = false; btn.textContent = lbl;
+  }
+}
+
+async function hoSalvarItem() {
+  const titulo = document.getElementById('ho-it-titulo').value.trim();
+  if (!titulo) { toast('Informe o título do item.'); return; }
+  const hid = await hoEnsure();
+  if (!hid) return;
+  const btn = document.getElementById('ho-it-save');
+  btn.disabled = true; const lbl = btn.textContent; btn.textContent = 'Salvando…';
+  try {
+    const { error } = await sb.from('soc_handoff_item').insert({
+      handoff_id: hid,
+      categoria:   document.getElementById('ho-it-cat').value,
+      titulo,
+      descricao:   document.getElementById('ho-it-desc').value.trim() || null,
+      sucessor_id: document.getElementById('ho-it-sucessor').value || null,
+      criticidade: document.getElementById('ho-it-crit').value,
+      prazo:       document.getElementById('ho-it-prazo').value || null,
+      criado_por:  G.usuario.id,
+    }).select('id');
+    if (error) throw error;
+    ['ho-it-titulo','ho-it-desc','ho-it-prazo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('ho-it-sucessor').value = '';
+    toast('Item adicionado', 'ok');
+    await hoLoadBoard();
+  } catch (err) {
+    toast('Falha ao adicionar item: ' + (err.message || err));
+  } finally {
+    btn.disabled = false; btn.textContent = lbl;
+  }
+}
+
+async function hoLoadBoard() {
+  const hid = HO.id || await hoEnsure();
+  const [ct, pj, it] = await Promise.all([
+    sb.from('soc_handoff_contato').select('*').eq('handoff_id', hid),
+    sb.from('soc_handoff_projeto').select('*').eq('handoff_id', hid),
+    sb.from('soc_handoff_item').select('*').eq('handoff_id', hid),
+  ]);
+  HO._board = [
+    ...(ct.data || []).map(x => ({ table:'soc_handoff_contato', id:x.id, status:x.status, titulo:x.nome, tag:x.tipo, sub:x.destino === 'crm' ? 'Contato comercial (CRM)' : 'Contato (módulo Contatos)' })),
+    ...(pj.data || []).map(x => ({ table:'soc_handoff_projeto', id:x.id, status:x.status, titulo:x.cliente_nome || 'Projeto', tag:'projeto', sub:x.oportunidade_nome || '' })),
+    ...(it.data || []).map(x => ({ table:'soc_handoff_item',    id:x.id, status:x.status, titulo:x.titulo, tag:x.categoria, sub:x.descricao || '' })),
+  ];
+  hoRenderBoard();
+}
+
+function hoRenderBoard() {
+  const wrap = document.getElementById('ho-kb');
+  if (!wrap) return;
+  const board = HO._board || [];
+  if (!board.length) {
+    wrap.innerHTML = '<div class="empty-note">Nada registrado ainda. Use as abas Contatos, Status de Projetos e o formulário acima.</div>';
+    return;
+  }
+  wrap.innerHTML = HO_STATUS_ORDER.map(st => {
+    const items = board.filter(b => b.status === st);
+    return `<div class="ho-kb-col">
+      <div class="ho-kb-col-hd"><span class="ho-st ho-st-${st}">${HO_STATUS_LABEL[st]}</span><span class="ho-kb-cnt">${items.length}</span></div>
+      <div class="ho-kb-body">
+        ${items.length ? items.map(hoBoardCard).join('') : '<div class="ho-kb-empty">—</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function hoBoardCard(b) {
+  const idx = HO_STATUS_ORDER.indexOf(b.status);
+  return `<div class="ho-kb-card">
+    <div class="ho-kb-tag">${_esc(HO_CAT_LABEL[b.tag] || b.tag)}</div>
+    <div class="ho-kb-tit">${_esc(b.titulo)}</div>
+    ${b.sub ? `<div class="ho-kb-sub">${_esc(b.sub)}</div>` : ''}
+    <div class="ho-kb-act">
+      <button class="ho-kb-mv" ${idx <= 0 ? 'disabled' : ''} onclick="hoMoveStatus('${b.table}','${b.id}',-1)" title="Voltar status">‹</button>
+      <button class="ho-kb-mv" ${idx >= 4 ? 'disabled' : ''} onclick="hoMoveStatus('${b.table}','${b.id}',1)" title="Avançar status">›</button>
+    </div>
+  </div>`;
+}
+
+async function hoMoveStatus(table, id, dir) {
+  const b = (HO._board || []).find(x => x.table === table && String(x.id) === String(id));
+  if (!b) return;
+  const ni = HO_STATUS_ORDER.indexOf(b.status) + dir;
+  if (ni < 0 || ni > 4) return;
+  const novo = HO_STATUS_ORDER[ni];
+  const { error } = await sb.from(table).update({ status: novo, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { toast('Erro ao mover: ' + error.message); return; }
+  b.status = novo;
+  hoRenderBoard();
 }
 
 /* ── CARREGAR ATAS QUANDO A ABA É ABERTA ────────────────────── */
