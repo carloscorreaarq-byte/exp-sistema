@@ -75,6 +75,14 @@ function analiseSetShellReady() {
   if (typeof ExpNav !== 'undefined' && typeof ExpNav.init === 'function') {
     ExpNav.init({ module: 'analise' });
   }
+  if (typeof listsPanel !== 'undefined') {
+    listsPanel.mount({
+      getSb: function() { return window.sb; },
+      getUser: function() { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); } catch (e) { return null; } },
+      getMembers: function() { return window._listsMembersCache || []; },
+      escHtml: window.escHtml,
+    });
+  }
 }
 
 function analiseValidarAcesso() {
