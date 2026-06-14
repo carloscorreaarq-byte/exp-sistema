@@ -149,6 +149,23 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .stab-panel { display: none; }
 .stab-panel.active { display: block; }
 
+/* ── HAND-OFF · MANUAL (accordion temático) ─────────────────── */
+.ho-manual { max-width: 760px; display: flex; flex-direction: column; gap: 10px; }
+.ho-tema { border: 1px solid var(--cinza); border-radius: 10px; background: var(--branco); overflow: hidden; }
+.ho-tema > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 11px; padding: 14px 16px; font-family: var(--font-ui); user-select: none; }
+.ho-tema > summary::-webkit-details-marker { display: none; }
+.ho-tema > summary::after { content: '▾'; margin-left: auto; color: #bbb; font-size: 11px; transition: transform var(--transition-fast); }
+.ho-tema[open] > summary::after { transform: rotate(180deg); }
+.ho-tema[open] > summary { border-bottom: 1px solid var(--cinza2); }
+.ho-tema-ic { width: 30px; height: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 15px; background: color-mix(in srgb, var(--ho-c) 14%, transparent); }
+.ho-tema-tit { font-size: 13px; font-weight: 700; color: var(--grafite); }
+.ho-tema-body { padding: 14px 16px 16px; font-size: 12.5px; line-height: 1.6; color: var(--grafite); }
+.ho-tema-body p { margin: 0 0 9px; }
+.ho-tema-body ul, .ho-tema-body ol { margin: 0 0 9px; padding-left: 20px; }
+.ho-tema-body li { margin-bottom: 4px; }
+.ho-tema-body .ho-dica { background: var(--off); border-left: 3px solid var(--soc); padding: 8px 11px; border-radius: 0 6px 6px 0; font-size: 12px; }
+.ho-tema-body .btn, .ho-tema-body a.btn { margin-top: 4px; text-decoration: none; display: inline-block; }
+
 /* ── EMPTY STATE ────────────────────────────────────────────── */
 .empty-note { font-size: 12px; color: #ccc; padding: 28px 0; text-align: center; }
 
@@ -498,6 +515,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
         <button class="ntab" data-tab="projetos"  onclick="switchTab('projetos')">Projetos</button>
         <button class="ntab" data-tab="produtos"  onclick="switchTab('produtos')">Produtos</button>
         <button class="ntab" data-tab="atas"      onclick="switchTab('atas')">Atas</button>
+        <button class="ntab" data-tab="handoff"   onclick="switchTab('handoff')">Hand-off</button>
       </div>
       <div class="soc-hd-right" id="app-topbar-right">
         <!-- Toggle tema -->
@@ -719,6 +737,136 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
       </div>
 
     </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       HAND-OFF DE SÓCIA
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-handoff">
+
+    <div style="margin-bottom:14px">
+      <div class="sec-title" style="margin-bottom:0">Hand-off de Sócia</div>
+      <div class="empty-note" style="text-align:left;padding:4px 0 0">Registro e transferência estruturada do conhecimento, contatos e projetos antes da saída.</div>
+    </div>
+
+    <div class="stab-bar" id="stab-bar-ho">
+      <button class="stab active" id="stab-ho-manual"        onclick="handoffSwitch('manual')">Manual</button>
+      <button class="stab"        id="stab-ho-contatos"      onclick="handoffSwitch('contatos')">Contatos</button>
+      <button class="stab"        id="stab-ho-projetos"      onclick="handoffSwitch('projetos')">Status de Projetos</button>
+      <button class="stab"        id="stab-ho-pipeline"      onclick="handoffSwitch('pipeline')">Pipeline &amp; Propostas</button>
+      <button class="stab"        id="stab-ho-acompanhamento" onclick="handoffSwitch('acompanhamento')">Acompanhamento</button>
+    </div>
+
+    <!-- ── MANUAL ─────────────────────────────────────────────── -->
+    <div class="stab-panel active" id="stp-ho-manual">
+      <div class="ho-manual">
+
+        <details class="ho-tema" open>
+          <summary><span class="ho-tema-ic" style="--ho-c:#6B4FA0">👥</span><span class="ho-tema-tit">Contatos — parceiros, fornecedores e comerciais</span></summary>
+          <div class="ho-tema-body">
+            <p>Cadastre cada contato relevante antes de sair. O destino depende do tipo:</p>
+            <ul>
+              <li><b>Parceiro / Fornecedor</b> → vai para o módulo <b>Contatos</b> (base institucional da EXP).</li>
+              <li><b>Comercial</b> (lead, prospect, relação de evento) → vai para a área <b>Contatos do Comercial (CRM)</b>.</li>
+            </ul>
+            <p class="ho-dica">Sempre preencha o <b>contexto da relação</b> — origem, histórico, com quem falar. Nome solto sem contexto não se aproveita.</p>
+            <button class="btn sm verde" onclick="handoffSwitch('contatos')">Registrar contato →</button>
+          </div>
+        </details>
+
+        <details class="ho-tema">
+          <summary><span class="ho-tema-ic" style="--ho-c:#4A72B5">📁</span><span class="ho-tema-tit">Status de projetos</span></summary>
+          <div class="ho-tema-body">
+            <p>Para cada projeto que você conduz, registre a <b>situação real</b> referenciando o <b>cliente</b> e a <b>oportunidade</b>. A entrada aparece nos Projetos Societários com visão exclusiva da sociedade.</p>
+            <p>Inclua pendências, combinados informais, manhas do cliente e os <b>arquivos de hand-off</b> salvos (ver bloco Arquivos).</p>
+            <button class="btn sm verde" onclick="handoffSwitch('projetos')">Registrar status de projeto →</button>
+          </div>
+        </details>
+
+        <details class="ho-tema">
+          <summary><span class="ho-tema-ic" style="--ho-c:#C99A2E">🔑</span><span class="ho-tema-tit">Senhas e acessos</span></summary>
+          <div class="ho-tema-body">
+            <p>Não anote senhas aqui. Cadastre todas em <b>Apoio › Senhas</b>, o cofre oficial da plataforma, e atribua o acesso ao sucessor.</p>
+            <a class="btn sm" href="apoio.html" target="_blank" rel="noopener">Abrir Apoio › Senhas ↗</a>
+          </div>
+        </details>
+
+        <details class="ho-tema">
+          <summary><span class="ho-tema-ic" style="--ho-c:#3E7858">🗂️</span><span class="ho-tema-tit">Arquivos de hand-off</span></summary>
+          <div class="ho-tema-body">
+            <p>Salve cada arquivo de hand-off em <b>duplicidade</b>:</p>
+            <ol>
+              <li>Na <b>pasta do projeto no Drive</b>, no local correto.</li>
+              <li>Em uma <b>pasta adicional de hand-off</b> em <i>EXP Sociedade</i>.</li>
+            </ol>
+            <p class="ho-dica">Depois de salvar, <b>mencione e descreva</b> os arquivos no registro de Status do Projeto correspondente.</p>
+          </div>
+        </details>
+
+        <details class="ho-tema">
+          <summary><span class="ho-tema-ic" style="--ho-c:#B5564A">📈</span><span class="ho-tema-tit">Pipeline comercial</span></summary>
+          <div class="ho-tema-body">
+            <p>Para todo contato comercial <b>pendente</b> de apresentação de empresa, reunião, ou com possibilidade de proposta (atual ou futura), crie um <b>lead no CRM</b> — com ou sem oportunidade vinculada.</p>
+            <p class="ho-dica">Coloque <b>você mesma como responsável</b> do lead, para que o sucessor enxergue tudo que está em aberto sob seu nome.</p>
+            <button class="btn sm verde" onclick="handoffSwitch('pipeline')">Ver pipeline &amp; propostas →</button>
+          </div>
+        </details>
+
+        <details class="ho-tema">
+          <summary><span class="ho-tema-ic" style="--ho-c:#B5564A">⚠️</span><span class="ho-tema-tit">Agendas — reuniões de vídeo (URGENTE)</span></summary>
+          <div class="ho-tema-body">
+            <p><b>Prioridade máxima:</b> efetive e associe agora as reuniões de vídeo de transição, sempre <b>em conjunto com o cliente + outro sócio</b>. É a apresentação que transfere a relação — não deixe para a última semana.</p>
+            <a class="btn sm" href="calendario.html" target="_blank" rel="noopener">Abrir Calendário ↗</a>
+          </div>
+        </details>
+
+        <details class="ho-tema">
+          <summary><span class="ho-tema-ic" style="--ho-c:#C99A2E">📝</span><span class="ho-tema-tit">Propostas em aberto</span></summary>
+          <div class="ho-tema-body">
+            <p>Revise e <b>atualize na plataforma todas as propostas em aberto</b> sob sua responsabilidade — status, valores, próximos passos.</p>
+            <button class="btn sm verde" onclick="handoffSwitch('pipeline')">Ver propostas em aberto →</button>
+          </div>
+        </details>
+
+      </div>
+    </div>
+
+    <!-- ── CONTATOS (stub — Etapa 3) ──────────────────────────── -->
+    <div class="stab-panel" id="stp-ho-contatos">
+      <div class="stub-placeholder">
+        <div class="sp-icon">👥</div>
+        <div class="sp-txt">Registro de contatos</div>
+        <div class="sp-sub">Formulário com roteamento para Contatos / CRM — próxima etapa.</div>
+      </div>
+    </div>
+
+    <!-- ── STATUS DE PROJETOS (stub — Etapa 4) ────────────────── -->
+    <div class="stab-panel" id="stp-ho-projetos">
+      <div class="stub-placeholder">
+        <div class="sp-icon">📁</div>
+        <div class="sp-txt">Status de projetos</div>
+        <div class="sp-sub">Formulário com referência a cliente + oportunidade — próxima etapa.</div>
+      </div>
+    </div>
+
+    <!-- ── PIPELINE & PROPOSTAS (stub — Etapa 5) ──────────────── -->
+    <div class="stab-panel" id="stp-ho-pipeline">
+      <div class="stub-placeholder">
+        <div class="sp-icon">📈</div>
+        <div class="sp-txt">Pipeline &amp; propostas</div>
+        <div class="sp-sub">Atalhos para o CRM e lista de propostas em aberto — próxima etapa.</div>
+      </div>
+    </div>
+
+    <!-- ── ACOMPANHAMENTO (stub — Etapa 6) ────────────────────── -->
+    <div class="stab-panel" id="stp-ho-acompanhamento">
+      <div class="stub-placeholder">
+        <div class="sp-icon">📊</div>
+        <div class="sp-txt">Acompanhamento</div>
+        <div class="sp-sub">Painel de status (a documentar → validado) — próxima etapa.</div>
+      </div>
+    </div>
+
   </div>
 
     </div><!-- /#app-body -->
@@ -3086,6 +3234,15 @@ function projSwitch(sub) {
   if (sub === 'aprovacao' && !document.getElementById('proj-aprov-lista')?.querySelector('.proj-soc-card')) {
     renderProjLista('aprovacao');
   }
+}
+
+/* ── SWITCH STAB HAND-OFF ────────────────────────────────────── */
+function handoffSwitch(sub) {
+  document.querySelectorAll('#stab-bar-ho .stab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#page-handoff .stab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`stab-ho-${sub}`)?.classList.add('active');
+  document.getElementById(`stp-ho-${sub}`)?.classList.add('active');
+  // Loaders por sub-aba serão ligados nas próximas etapas (contatos/projetos/pipeline/acompanhamento).
 }
 
 /* ── CARREGAR ATAS QUANDO A ABA É ABERTA ────────────────────── */
