@@ -19,6 +19,7 @@
 </script>
 <link rel="stylesheet" href="exp-design-system.css">
 <link rel="stylesheet" href="shared/exp-nav.css">
+<link rel="stylesheet" href="shared/lists-panel.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -202,6 +203,12 @@ textarea{resize:vertical;min-height:60px}
 .pcard-dest{border-left:5px solid var(--esp);background:var(--am-bg)}
 .pcard-neg{border-left:5px solid var(--esp);background:var(--am-bg)}
 .pcard-fech{border-left:5px solid var(--verde);background:var(--verde-bg)}
+/* lead sem oportunidade — cinza neutro */
+.pcard-lead-puro{border-left:5px solid var(--cinza);opacity:.85}
+.pcard-lead-puro .pcard-client{color:#888;font-weight:500}
+/* badge reunião pendente */
+.badge-reuniao{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:700;letter-spacing:.4px;padding:1px 5px;border-radius:3px;background:rgba(209,153,49,.15);color:var(--esp);border:1px solid rgba(209,153,49,.3)}
+.badge-reuniao.agendada{background:rgba(66,133,244,.1);color:var(--azul);border-color:rgba(66,133,244,.3)}
 .pcard.dragging{opacity:.35;pointer-events:none}
 .kitems.drag-over{background:rgba(66,133,244,.06);outline:2px dashed var(--azul);outline-offset:-4px;border-radius:var(--radius-input,6px)}
 .pcard-actions{position:absolute;top:7px;right:7px;opacity:0;transition:opacity .15s}
@@ -362,6 +369,7 @@ textarea{resize:vertical;min-height:60px}
 [data-theme="dark"] .pcard-exp{background:rgba(184,86,56,.1)}
 [data-theme="dark"] .pcard-dest,[data-theme="dark"] .pcard-neg{background:rgba(196,154,39,.08)}
 [data-theme="dark"] .pcard-fech{background:rgba(62,120,88,.08)}
+[data-theme="dark"] .pcard-lead-puro{border-left-color:#444}
 [data-theme="dark"] .kitems.drag-over{outline-color:var(--azul)}
 [data-theme="dark"] .soma-bar{background:var(--cinza2)}
 
@@ -440,6 +448,57 @@ textarea{resize:vertical;min-height:60px}
 <div id="app-shell" class="exp-app-shell">
 
   <!-- Nav lateral — injetada por shared/exp-nav.js -->
+
+  <!-- ── Painel de Listas (modelo compartilhado) ── -->
+  <aside id="fp-tasks-panel" style="display:none">
+    <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+      <span style="font-size:calc(14px * var(--fp-lists-scale,1));font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
+      <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+      <button onclick="listsPanel.toggle()" title="Fechar"
+        style="width:24px;height:24px;border:none;background:none;color:var(--grafite,#111110);opacity:.4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
+        onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fp-lists-tabs">
+      <button class="fp-lists-tab active" data-tab="tarefas"  onclick="listsPanel.switchListsTab('tarefas')">Tarefas</button>
+      <button class="fp-lists-tab"        data-tab="abertos"  onclick="listsPanel.switchListsTab('abertos')">Checklists</button>
+      <button class="fp-lists-tab"        data-tab="etapa"    onclick="listsPanel.switchListsTab('etapa')">Guidelines</button>
+      <button class="fp-lists-tab"        data-tab="revisao"  onclick="listsPanel.switchListsTab('revisao')">Revisões</button>
+    </div>
+    <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
+    <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="fp-ck-selector" id="fp-ck-selector">
+        <select class="fp-ck-select" id="fp-ck-select" onchange="listsPanel.selectCkByIndex(listsPanel._listsActiveTab, this.value)">
+          <option value="">— selecionar —</option>
+        </select>
+      </div>
+      <div id="fp-ck-items"></div>
+      <div id="fp-ck-footer" class="fp-ck-footer" style="display:none"></div>
+    </div>
+    <div id="fp-task-form">
+      <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="listsPanel.taskDescInput(this)"></textarea>
+      <div class="fp-task-form-row">
+        <select id="fp-task-tipo">
+          <option value="">Tipo…</option>
+          <option value="projeto">Projeto</option>
+          <option value="organizacao">Organização</option>
+          <option value="comercial">Comercial</option>
+          <option value="financeiro">Financeiro</option>
+          <option value="sociedade">Sociedade</option>
+        </select>
+        <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
+        <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" title="Atribuir para alguém">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
 
   <div id="app-main">
 
@@ -649,6 +708,10 @@ textarea{resize:vertical;min-height:60px}
       <option value="valor">Maior valor</option>
       <option value="contato">Último contato</option>
     </select>
+    <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:#888;cursor:pointer;white-space:nowrap;user-select:none">
+      <input type="checkbox" id="pf-com-opp" onchange="renderPipe()" style="accent-color:var(--azul);width:12px;height:12px">
+      Com oportunidade
+    </label>
     <div style="margin-left:auto;font-size:10px;color:#888;white-space:nowrap" id="pipe-total"></div>
   </div>
   <div class="kanban" id="kanban-board" style="grid-template-columns:repeat(4,1fr)">
@@ -1049,118 +1112,53 @@ textarea{resize:vertical;min-height:60px}
       <input type="hidden" id="opp-id">
       <input type="hidden" id="opp-cliente-id">
 
-      <!-- Importar da calculadora -->
-      <div class="fgroup" style="margin-bottom:14px">
-        <label>Proposta EXP.calc</label>
-        <select id="opp-calc-id" onchange="onCalcPropostaChange()">
-          <option value="">— Nenhuma proposta vinculada —</option>
-        </select>
-        <div id="opp-calc-autofill-wrap" style="display:none;margin-top:4px">
-          <a href="#" style="font-size:10px;color:var(--azul);font-weight:500" onclick="autofillFromProposta();return false">← Aplicar dados da proposta (projeto, cidade, UF)</a>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <div style="flex:1;height:1px;background:var(--cinza2)"></div>
-        <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc">ou preencha manualmente</span>
-        <div style="flex:1;height:1px;background:var(--cinza2)"></div>
-      </div>
-
-      <!-- Painel novo cliente -->
-      <div id="opp-novo-cliente-wrap" style="display:none;background:var(--off);border:1px solid var(--cinza);padding:12px;margin-bottom:14px">
-        <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Novo cliente</div>
-        <div class="fg mb8" style="grid-template-columns:1fr 88px 1fr">
-          <div class="fgroup"><label>Nome da empresa / cliente *</label><input type="text" id="nc-nome" placeholder="Ex: Construtora Brasil"></div>
-          <div class="fgroup"><label title="2–6 letras usadas no chat e na identificação dos projetos">Sigla</label><input type="text" id="nc-sigla" placeholder="CPB" maxlength="6" style="text-transform:uppercase;font-weight:600;letter-spacing:.4px"></div>
-          <div class="fgroup"><label>Tipo</label>
-            <select id="nc-tipo">
-              <option value="construtora">Construtora</option>
-              <option value="incorporadora">Incorporadora</option>
-              <option value="pessoa_fisica">Pessoa Física</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-        </div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup"><label>Cidade</label><input type="text" id="nc-cidade"></div>
-          <div class="fgroup"><label>UF</label>
-            <select id="nc-uf">
-              <option value="">— (exterior)</option>
-              <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
-              <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
-              <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-              <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
-              <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
-              <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-              <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-            </select>
-          </div>
-        </div>
-        <div class="fgroup mb8"><label>Obs</label><textarea id="nc-obs" style="min-height:40px"></textarea></div>
-        <button class="btn verde sm" onclick="criarNovoClienteInline()">Criar cliente e continuar</button>
-        <button class="btn sm" style="margin-left:6px" onclick="cancelarNovoCliente()">Cancelar</button>
-      </div>
-
+      <!-- ── SEÇÃO: CONTATO ──────────────────────────────── -->
+      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Contato</div>
       <div class="fg fg2 mb8">
-        <div class="fgroup" style="position:relative">
-          <label>Cliente *</label>
-          <input type="text" id="opp-cliente-text" placeholder="Digite para buscar..." oninput="filtrarClientes()" autocomplete="off">
-          <div id="opp-cliente-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--branco);border:1px solid var(--cinza);border-top:none;z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
-          <div id="opp-cliente-selecionado" style="display:none;margin-top:4px;font-size:10px;color:var(--verde);font-weight:600"></div>
-        </div>
-        <div class="fgroup"><label>Projeto / Empreendimento</label><input type="text" id="opp-projeto" placeholder="Ex: Residencial Torres"></div>
+        <div class="fgroup"><label>Nome *</label><input type="text" id="opp-rc-nome" placeholder="Nome da pessoa"></div>
+        <div class="fgroup"><label>Cargo</label><input type="text" id="opp-rc-cargo" placeholder="Ex: Diretor de incorporação"></div>
       </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Cidade</label><input type="text" id="opp-cidade"></div>
-        <div class="fgroup"><label>UF</label>
-          <select id="opp-uf">
-            <option value="">— (exterior)</option>
-            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
-            <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
-            <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
-            <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
-            <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-            <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-          </select>
-        </div>
-      </div>
-
-      <div id="opp-num-legado-wrap" style="display:none" class="fg fg2 mb8">
-        <div class="fgroup"><label>Número legado</label><input type="text" id="opp-num-legado" maxlength="10" style="font-family:var(--font-mono);text-transform:uppercase" placeholder="Ex: 26O0001"></div>
-        <div></div>
-      </div>
-
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Responsável EXP *</label>
-          <select id="opp-resp">
-            <option value="22d1fd51-8cd6-49ac-8875-4948eb216993">Carlos Corrêa (CC)</option>
-            <option value="4e55a296-6307-4e8a-a8f9-ae7bffac091b">Gabriela Budel (GB)</option>
-            <option value="508e4763-070a-431d-a0aa-aaa8faf207e2">Thayssa Christensen (TC)</option>
-            <option value="76e68332-0d77-4488-ae5c-a3c1d4bb6b05">Laís de Andrade (LA)</option>
-          </select>
-        </div>
-        <div class="fgroup">
-          <label>Estágio inicial</label>
-          <select id="opp-stage">
-            <option value="prospecção">Lead</option>
-            <option value="enviada">Orçamento ativo</option>
-          </select>
-          <div id="opp-stage-help" style="display:none;font-size:10px;color:#888;margin-top:5px">Com produtos vinculados, o estágio da oportunidade passa a seguir automaticamente o status dos produtos.</div>
-        </div>
-      </div>
-
       <div class="fg fg3 mb8">
-        <div class="fgroup"><label>Resp. cliente — Nome</label><input type="text" id="opp-rc-nome" placeholder="Nome do contato no cliente"></div>
+        <div class="fgroup"><label>Empresa / organização</label><input type="text" id="opp-rc-empresa" placeholder="Nome da empresa (se não for cliente formal)"></div>
         <div class="fgroup"><label>Telefone / WhatsApp</label><input type="text" id="opp-rc-tel" placeholder="(xx) xxxxx-xxxx"></div>
         <div class="fgroup"><label>E-mail</label><input type="email" id="opp-rc-email" placeholder="nome@empresa.com"></div>
       </div>
       <div class="mb8" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <button class="btn sm" type="button" onclick="salvarRespClienteComoContato()">Salvar em Contatos</button>
-        <div style="font-size:10px;color:#888">Reaproveita o responsável do orçamento como contato comercial, sem redigitação e evitando duplicidade.</div>
+        <div style="font-size:10px;color:#888">Salva esse contato no diretório comercial.</div>
       </div>
 
+      <!-- ── SEÇÃO: CONTEXTO DO CONTATO ─────────────────── -->
+      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin:14px 0 8px">Contexto do contato</div>
+      <div class="fgroup mb8">
+        <textarea id="opp-contexto" style="min-height:70px" placeholder="Descreva como conheceu esse contato, o contexto da conversa, interesses mencionados e possibilidades identificadas."></textarea>
+      </div>
+
+      <!-- ── SEÇÃO: REUNIÃO ──────────────────────────────── -->
+      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin:14px 0 8px">Reunião</div>
+      <div class="fg fg2 mb8" style="align-items:end">
+        <div class="fgroup">
+          <label>Status da reunião</label>
+          <select id="opp-reuniao-status" onchange="onReuniaoStatusChange()">
+            <option value="">Nenhuma</option>
+            <option value="pendente">Pendente — a agendar</option>
+            <option value="agendada">Agendada</option>
+          </select>
+        </div>
+        <div class="fgroup" id="opp-reuniao-data-wrap" style="display:none">
+          <label>Data da reunião</label>
+          <input type="datetime-local" id="opp-reuniao-data">
+        </div>
+      </div>
+      <div id="opp-gcal-wrap" style="display:none;margin-bottom:12px">
+        <button class="btn sm" type="button" onclick="abrirGoogleAgenda()" style="display:flex;align-items:center;gap:5px">
+          <span>📅</span> Adicionar ao Google Agenda
+        </button>
+        <div style="font-size:10px;color:#888;margin-top:4px" id="opp-gcal-preview"></div>
+      </div>
+
+      <!-- ── SEÇÃO: ORIGEM + RESPONSÁVEL ────────────────── -->
+      <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin:14px 0 8px">Origem e responsável</div>
       <div class="fg fg2 mb8">
         <div class="fgroup">
           <label>Origem do lead</label>
@@ -1186,21 +1184,133 @@ textarea{resize:vertical;min-height:60px}
           <input type="text" id="opp-evento" placeholder="Nome do evento">
         </div>
       </div>
-
       <div class="fg fg2 mb8">
+        <div class="fgroup">
+          <label>Responsável EXP *</label>
+          <select id="opp-resp">
+            <option value="22d1fd51-8cd6-49ac-8875-4948eb216993">Carlos Corrêa (CC)</option>
+            <option value="4e55a296-6307-4e8a-a8f9-ae7bffac091b">Gabriela Budel (GB)</option>
+            <option value="508e4763-070a-431d-a0aa-aaa8faf207e2">Thayssa Christensen (TC)</option>
+            <option value="76e68332-0d77-4488-ae5c-a3c1d4bb6b05">Laís de Andrade (LA)</option>
+          </select>
+        </div>
         <div class="fgroup"><label>Data de entrada *</label><input type="date" id="opp-data-entrada"></div>
-        <div></div>
       </div>
+      <div class="fgroup mb8"><label>Observações</label><textarea id="opp-obs" style="min-height:48px"></textarea></div>
 
-      <div class="fgroup"><label>Observações</label><textarea id="opp-obs" style="min-height:60px"></textarea></div>
-      <div style="margin-top:10px;padding:8px 10px;background:var(--am-bg);border:1px solid var(--esp);display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="opp-destaque" style="width:14px;height:14px;cursor:pointer;accent-color:var(--ouro)">
-        <label for="opp-destaque" style="cursor:pointer;font-size:11px;font-weight:500;color:var(--ouro);user-select:none">Destacar esta oportunidade no dashboard (máx. 3)</label>
+      <!-- ── SEÇÃO: OPORTUNIDADE (COLAPSÍVEL) ───────────── -->
+      <div style="border:1px solid var(--cinza);border-radius:var(--radius-card,8px);margin-top:10px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;background:var(--off)" onclick="toggleOppSection()">
+          <input type="checkbox" id="opp-tem-opp" onclick="event.stopPropagation();toggleOppSection()" style="accent-color:var(--azul);width:13px;height:13px;cursor:pointer">
+          <label for="opp-tem-opp" style="cursor:pointer;font-size:11px;font-weight:600;color:var(--grafite);user-select:none">Vincular a uma oportunidade de projeto</label>
+          <span style="font-size:10px;color:#aaa;margin-left:auto" id="opp-tem-opp-caret">▾</span>
+        </div>
+        <div id="opp-section-opp" style="display:none;padding:12px;border-top:1px solid var(--cinza)">
+
+          <!-- Importar da calculadora -->
+          <div class="fgroup" style="margin-bottom:12px">
+            <label>Proposta EXP.calc</label>
+            <select id="opp-calc-id" onchange="onCalcPropostaChange()">
+              <option value="">— Nenhuma proposta vinculada —</option>
+            </select>
+            <div id="opp-calc-autofill-wrap" style="display:none;margin-top:4px">
+              <a href="#" style="font-size:10px;color:var(--azul);font-weight:500" onclick="autofillFromProposta();return false">← Aplicar dados da proposta (projeto, cidade, UF)</a>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div style="flex:1;height:1px;background:var(--cinza2)"></div>
+            <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc">ou preencha manualmente</span>
+            <div style="flex:1;height:1px;background:var(--cinza2)"></div>
+          </div>
+
+          <!-- Painel novo cliente -->
+          <div id="opp-novo-cliente-wrap" style="display:none;background:var(--off);border:1px solid var(--cinza);padding:12px;margin-bottom:12px">
+            <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Novo cliente</div>
+            <div class="fg mb8" style="grid-template-columns:1fr 88px 1fr">
+              <div class="fgroup"><label>Nome da empresa / cliente *</label><input type="text" id="nc-nome" placeholder="Ex: Construtora Brasil"></div>
+              <div class="fgroup"><label title="2–6 letras usadas no chat e na identificação dos projetos">Sigla</label><input type="text" id="nc-sigla" placeholder="CPB" maxlength="6" style="text-transform:uppercase;font-weight:600;letter-spacing:.4px"></div>
+              <div class="fgroup"><label>Tipo</label>
+                <select id="nc-tipo">
+                  <option value="construtora">Construtora</option>
+                  <option value="incorporadora">Incorporadora</option>
+                  <option value="pessoa_fisica">Pessoa Física</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+            </div>
+            <div class="fg fg2 mb8">
+              <div class="fgroup"><label>Cidade</label><input type="text" id="nc-cidade"></div>
+              <div class="fgroup"><label>UF</label>
+                <select id="nc-uf">
+                  <option value="">— (exterior)</option>
+                  <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
+                  <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
+                  <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                  <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
+                  <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
+                  <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                  <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                </select>
+              </div>
+            </div>
+            <div class="fgroup mb8"><label>Obs</label><textarea id="nc-obs" style="min-height:40px"></textarea></div>
+            <button class="btn verde sm" onclick="criarNovoClienteInline()">Criar cliente e continuar</button>
+            <button class="btn sm" style="margin-left:6px" onclick="cancelarNovoCliente()">Cancelar</button>
+          </div>
+
+          <div class="fg fg2 mb8">
+            <div class="fgroup" style="position:relative">
+              <label>Cliente</label>
+              <input type="text" id="opp-cliente-text" placeholder="Digite para buscar..." oninput="filtrarClientes()" autocomplete="off">
+              <div id="opp-cliente-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--branco);border:1px solid var(--cinza);border-top:none;z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+              <div id="opp-cliente-selecionado" style="display:none;margin-top:4px;font-size:10px;color:var(--verde);font-weight:600"></div>
+            </div>
+            <div class="fgroup"><label>Projeto / Empreendimento</label><input type="text" id="opp-projeto" placeholder="Ex: Residencial Torres"></div>
+          </div>
+
+          <div class="fg fg2 mb8">
+            <div class="fgroup"><label>Cidade</label><input type="text" id="opp-cidade"></div>
+            <div class="fgroup"><label>UF</label>
+              <select id="opp-uf">
+                <option value="">— (exterior)</option>
+                <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
+                <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
+                <option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option>
+                <option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option>
+                <option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="opp-num-legado-wrap" style="display:none" class="fg fg2 mb8">
+            <div class="fgroup"><label>Número legado</label><input type="text" id="opp-num-legado" maxlength="10" style="font-family:var(--font-mono);text-transform:uppercase" placeholder="Ex: 26O0001"></div>
+            <div></div>
+          </div>
+
+          <div class="fg fg2 mb8">
+            <div class="fgroup">
+              <label>Estágio inicial</label>
+              <select id="opp-stage">
+                <option value="prospecção">Lead</option>
+                <option value="enviada">Orçamento ativo</option>
+              </select>
+              <div id="opp-stage-help" style="display:none;font-size:10px;color:#888;margin-top:5px">Com produtos vinculados, o estágio da oportunidade passa a seguir automaticamente o status dos produtos.</div>
+            </div>
+            <div></div>
+          </div>
+
+          <div style="padding:8px 10px;background:var(--am-bg);border:1px solid var(--esp);display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="opp-destaque" style="width:14px;height:14px;cursor:pointer;accent-color:var(--ouro)">
+            <label for="opp-destaque" style="cursor:pointer;font-size:11px;font-weight:500;color:var(--ouro);user-select:none">Destacar esta oportunidade no dashboard (máx. 3)</label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-ft">
       <button class="btn" onclick="closeM('modal-opp')">Cancelar</button>
-      <button class="btn verde" onclick="salvarOpp()">Salvar oportunidade</button>
+      <button class="btn verde" onclick="salvarOpp()">Salvar lead</button>
     </div>
   </div>
 </div>
@@ -1987,6 +2097,12 @@ window.addEventListener('DOMContentLoaded', async()=>{
     module: 'crm',
     forceInitials: true,
     onUserMenu: function() { window.location.href = 'app.html'; },
+  });
+  listsPanel.mount({
+    getSb: function() { return window.sb; },
+    getUser: function() { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); } catch (e) { return null; } },
+    getMembers: function() { return window._listsMembersCache || []; },
+    escHtml: window.escHtml,
   });
 
   await carregarDados();
@@ -2876,9 +2992,12 @@ function renderPipe(){
     return arr.slice().sort((a,b)=>(b.data_entrada||'').localeCompare(a.data_entrada||''));
   }
 
+  const comOppFil=document.getElementById('pf-com-opp')?.checked||false;
+
   let ops=allOps;
   if(respFil!=='todos')ops=ops.filter(o=>userNome(o.resp_id)===respFil);
   if(nucFil!=='todos')ops=ops.filter(o=>o._produtos.some(p=>NUCLEO_GRUPO[p.nucleo]===nucFil));
+  if(comOppFil)ops=ops.filter(o=>!!o.cliente_id||!['prospecção','prospeccao'].includes((o.pipeline_stage||'').toLowerCase()));
 
   const cut45=new Date();cut45.setDate(cut45.getDate()-45);
 
@@ -2916,23 +3035,28 @@ function renderPipe(){
     const locStr=[op.cidade,op.uf].filter(Boolean).join('/');
     const neg=['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase());
     const fech=isFechada(op);
-    const cls=`pcard${exp?' pcard-exp':fech?' pcard-fech':neg?' pcard-neg':dest?' pcard-dest':''}`;
+    const isLeadPuro=['prospecção','prospeccao'].includes((op.pipeline_stage||'').toLowerCase())&&!op.cliente_id;
+    const cls=`pcard${exp?' pcard-exp':fech?' pcard-fech':neg?' pcard-neg':dest?' pcard-dest':isLeadPuro?' pcard-lead-puro':''}`;
     const curStage=(op.pipeline_stage||'').toLowerCase();
+    const reunBadge=op.reuniao_status==='pendente'?'<span class="badge-reuniao">⏳ Reunião a agendar</span>'
+      :op.reuniao_status==='agendada'?'<span class="badge-reuniao agendada">📅 Reunião agendada</span>':'';
+    const nomeDisplay=isLeadPuro?(op.resp_cliente_nome||'Lead sem oportunidade'):( op._cliente?.nome||'—');
     return`<div class="${cls}" draggable="true" data-id="${op.id}" onclick="abrirDetail('${escJsStr(op.id)}')">
       <div class="pcard-actions" onclick="event.stopPropagation()">
         <button class="pcard-act-btn" title="Ações" onclick="toggleCardMenu(event,'${escJsStr(op.id)}')">⋯</button>
       </div>
       <div class="pcard-top">
-        <span class="pcard-code">${code}</span>
+        <span class="pcard-code">${isLeadPuro?'LEAD':code}</span>
         <div style="display:flex;align-items:center;gap:4px">
           ${dest?'<span style="font-size:8px;color:#C4831A;font-weight:700">★</span>':''}
           <div class="temp ${tc}"></div>
         </div>
       </div>
-      <div class="pcard-client">${escHtml(op._cliente?.nome||'—')}</div>
+      <div class="pcard-client">${escHtml(nomeDisplay)}</div>
       ${op.projeto?`<div class="pcard-proj">${escHtml(op.projeto)}</div>`:''}
       ${locStr?`<div class="pcard-loc">${escHtml(locStr)}</div>`:''}
       <div class="pcard-meta">
+        ${reunBadge}
         ${nucleos.map(n=>tipoBadgeProd(n)).join('')}
         ${respBadge(op.resp_id)}
         ${exp?'<span class="badge b-exp" style="font-size:7px">EXP</span>':''}
@@ -3459,14 +3583,21 @@ async function abrirNovaOpp(){
   document.getElementById('opp-cliente-text').value='';
   document.getElementById('opp-cliente-selecionado').style.display='none';
   document.getElementById('opp-cliente-dropdown').style.display='none';
-  document.getElementById('opp-modal-title').textContent='Nova Oportunidade';
+  document.getElementById('opp-modal-title').textContent='Novo Lead';
   document.getElementById('opp-projeto').value='';
   document.getElementById('opp-cidade').value='';
   document.getElementById('opp-uf').value='';
   document.getElementById('opp-obs').value='';
   document.getElementById('opp-rc-nome').value='';
+  document.getElementById('opp-rc-cargo').value='';
+  document.getElementById('opp-rc-empresa').value='';
   document.getElementById('opp-rc-tel').value='';
   document.getElementById('opp-rc-email').value='';
+  document.getElementById('opp-contexto').value='';
+  document.getElementById('opp-reuniao-status').value='';
+  document.getElementById('opp-reuniao-data').value='';
+  document.getElementById('opp-reuniao-data-wrap').style.display='none';
+  document.getElementById('opp-gcal-wrap').style.display='none';
   document.getElementById('opp-indicou').value='';
   document.getElementById('opp-evento').value='';
   document.getElementById('opp-data-entrada').value=new Date().toISOString().slice(0,10);
@@ -3478,6 +3609,9 @@ async function abrirNovaOpp(){
   document.getElementById('opp-evento-wrap').style.display='none';
   document.getElementById('opp-novo-cliente-wrap').style.display='none';
   document.getElementById('opp-destaque').checked=false;
+  document.getElementById('opp-tem-opp').checked=false;
+  document.getElementById('opp-section-opp').style.display='none';
+  document.getElementById('opp-tem-opp-caret').textContent='▾';
   renderOppResponsavelOptions(currentUser?.id || '');
   syncOppStageFieldState(null);
   // Rebusca propostas frescas do Supabase antes de popular o dropdown
@@ -3492,20 +3626,34 @@ function editarOpp(){
   if(!op)return;
   if(currentUser?.viewer_only){toast('Sem permissão para editar.');return;}
   document.getElementById('opp-id').value=op.id;
-  document.getElementById('opp-modal-title').textContent='Editar Oportunidade';
-  document.getElementById('opp-projeto').value=op.projeto||'';
-  document.getElementById('opp-cidade').value=op.cidade||'';
-  document.getElementById('opp-uf').value=op.uf||'';
-  document.getElementById('opp-num-legado-wrap').style.display='grid';
-  document.getElementById('opp-num-legado').value=op.num_legado||'';
-  document.getElementById('opp-obs').value=op.obs||'';
+  document.getElementById('opp-modal-title').textContent='Editar Lead';
   document.getElementById('opp-rc-nome').value=op.resp_cliente_nome||'';
+  document.getElementById('opp-rc-cargo').value=op.contato_cargo||'';
+  document.getElementById('opp-rc-empresa').value=op.contato_empresa||'';
   document.getElementById('opp-rc-tel').value=op.resp_cliente_tel||'';
   document.getElementById('opp-rc-email').value=op.resp_cliente_email||'';
+  document.getElementById('opp-contexto').value=op.contexto_contato||'';
+  const rStatus=op.reuniao_status||'';
+  document.getElementById('opp-reuniao-status').value=rStatus;
+  document.getElementById('opp-reuniao-data').value=rStatus==='agendada'&&op.reuniao_data?op.reuniao_data.slice(0,16):'';
+  document.getElementById('opp-reuniao-data-wrap').style.display=rStatus==='agendada'?'block':'none';
+  document.getElementById('opp-gcal-wrap').style.display=rStatus==='agendada'?'block':'none';
+  atualizarGCalPreview(op);
+  document.getElementById('opp-obs').value=op.obs||'';
   document.getElementById('opp-indicou').value=op.indicou||'';
   document.getElementById('opp-evento').value='';
   document.getElementById('opp-data-entrada').value=op.data_entrada||'';
   document.getElementById('opp-destaque').checked=!!op.destaque;
+  // Seção oportunidade
+  const temOpp=!!op.cliente_id;
+  document.getElementById('opp-tem-opp').checked=temOpp;
+  document.getElementById('opp-section-opp').style.display=temOpp?'block':'none';
+  document.getElementById('opp-tem-opp-caret').textContent=temOpp?'▴':'▾';
+  document.getElementById('opp-projeto').value=op.projeto||'';
+  document.getElementById('opp-cidade').value=op.cidade||'';
+  document.getElementById('opp-uf').value=op.uf||'';
+  document.getElementById('opp-num-legado-wrap').style.display=temOpp?'grid':'none';
+  document.getElementById('opp-num-legado').value=op.num_legado||'';
   populateCalcDropdown(op.proposta_calc_id||'');
   document.getElementById('opp-stage').value=op.pipeline_stage||'prospecção';
   document.getElementById('opp-novo-cliente-wrap').style.display='none';
@@ -3621,6 +3769,52 @@ function syncOppStageFieldState(oppId){
   }
 }
 
+function toggleOppSection(){
+  const cb=document.getElementById('opp-tem-opp');
+  const sec=document.getElementById('opp-section-opp');
+  const caret=document.getElementById('opp-tem-opp-caret');
+  const open=cb.checked;
+  sec.style.display=open?'block':'none';
+  caret.textContent=open?'▴':'▾';
+  if(!open){
+    // limpa cliente ao fechar
+    document.getElementById('opp-cliente-id').value='';
+    document.getElementById('opp-cliente-text').value='';
+    document.getElementById('opp-cliente-selecionado').style.display='none';
+  }
+}
+
+function onReuniaoStatusChange(){
+  const v=document.getElementById('opp-reuniao-status').value;
+  document.getElementById('opp-reuniao-data-wrap').style.display=v==='agendada'?'block':'none';
+  document.getElementById('opp-gcal-wrap').style.display=v==='agendada'?'block':'none';
+  if(v==='agendada') atualizarGCalPreview(null);
+}
+
+function atualizarGCalPreview(op){
+  const el=document.getElementById('opp-gcal-preview');
+  if(!el)return;
+  const cli=op?.cliente_id?allClients.find(c=>c.id===op.cliente_id):null;
+  const sigla=cli?.sigla||document.getElementById('opp-rc-nome').value.trim().split(' ')[0]||'Contato';
+  el.textContent=`Evento: EXP | ${sigla} | Reunião comercial`;
+}
+
+function abrirGoogleAgenda(){
+  const dataEl=document.getElementById('opp-reuniao-data').value;
+  const op=allOps.find(o=>o.id===document.getElementById('opp-id').value)||null;
+  const cli=op?.cliente_id?allClients.find(c=>c.id===op.cliente_id):null;
+  const sigla=cli?.sigla||document.getElementById('opp-rc-nome').value.trim().split(' ')[0]||'Contato';
+  const titulo=encodeURIComponent(`EXP | ${sigla} | Reunião comercial`);
+  let datesParam='';
+  if(dataEl){
+    const d=new Date(dataEl);
+    const fmt=dt=>dt.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+    const end=new Date(d.getTime()+60*60*1000);
+    datesParam=`&dates=${fmt(d)}/${fmt(end)}`;
+  }
+  window.open(`https://calendar.google.com/calendar/r/eventedit?text=${titulo}${datesParam}`,'_blank');
+}
+
 function onOrigemChange(){
   const v=document.getElementById('opp-origem').value;
   const isIndic=v.startsWith('Indicação');
@@ -3690,8 +3884,11 @@ async function gerarNumLegado(){
 async function salvarOpp(){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
   const id=document.getElementById('opp-id').value;
-  const clienteId=document.getElementById('opp-cliente-id').value;
-  if(!clienteId){toast('Selecione ou crie um cliente.');return;}
+  const rcNome=document.getElementById('opp-rc-nome').value.trim();
+  if(!rcNome){toast('Informe o nome do contato.');return;}
+  const clienteId=document.getElementById('opp-cliente-id').value||null;
+  const temOpp=document.getElementById('opp-tem-opp').checked;
+  if(temOpp&&!clienteId){toast('Com oportunidade vinculada, selecione ou crie um cliente.');return;}
 
   const origem=document.getElementById('opp-origem').value;
   const isIndic=origem.startsWith('Indicação');
@@ -3728,8 +3925,11 @@ async function salvarOpp(){
     stageValue = deriveOppStageFromProdutos(prodsDaOpp, stageValue);
   }
 
+  const reunStatus=document.getElementById('opp-reuniao-status').value||null;
+  const reunData=document.getElementById('opp-reuniao-data').value||null;
+
   const payload={
-    cliente_id:clienteId,
+    cliente_id:clienteId||null,
     projeto:document.getElementById('opp-projeto').value.trim()||null,
     cidade:document.getElementById('opp-cidade').value.trim()||null,
     uf:document.getElementById('opp-uf').value||null,
@@ -3739,9 +3939,14 @@ async function salvarOpp(){
     indicou,
     data_entrada:document.getElementById('opp-data-entrada').value||null,
     obs:document.getElementById('opp-obs').value.trim()||null,
-    resp_cliente_nome:document.getElementById('opp-rc-nome').value.trim()||null,
+    resp_cliente_nome:rcNome||null,
     resp_cliente_tel:document.getElementById('opp-rc-tel').value.trim()||null,
     resp_cliente_email:document.getElementById('opp-rc-email').value.trim()||null,
+    contato_cargo:document.getElementById('opp-rc-cargo').value.trim()||null,
+    contato_empresa:document.getElementById('opp-rc-empresa').value.trim()||null,
+    contexto_contato:document.getElementById('opp-contexto').value.trim()||null,
+    reuniao_status:reunStatus||null,
+    reuniao_data:reunStatus==='agendada'&&reunData?new Date(reunData).toISOString():null,
     destaque:document.getElementById('opp-destaque').checked,
     proposta_calc_id:calcIdCanonico,
     updated_at:new Date().toISOString(),
@@ -6084,6 +6289,7 @@ async function _enviarLembrete() {
   #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:34px!important;z-index:9998!important}
 </style>
 <!-- EXP · Nav lateral compartilhada -->
+<script src="shared/lists-panel.js"></script>
 <script src="shared/exp-nav.js"></script>
 </body>
 </html>
