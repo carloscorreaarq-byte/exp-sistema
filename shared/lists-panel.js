@@ -30,6 +30,19 @@
       .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
   function _firstName(n) { return n ? n.split(' ')[0] : ''; }
+  function _isSocio() {
+    var u = _user() || {};
+    var r = String(u.role || '').toLowerCase().trim();
+    return r === 'socio' || r === 'socio_adm' || r === 'socio_admin';
+  }
+  function _fmtDateTime(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d)) return '';
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) + ' ' +
+           d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  }
+  var _PENCIL = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
 
   /* ── estado do painel ───────────────────────────────────── */
   var _open            = false;
@@ -37,6 +50,7 @@
   var _tasksCache      = [];
   var _delegadasCache  = [];
   var _delegadasExpanded = false;
+  var _recentesOpen      = false;
   var _ckAbertosAll    = [];
   var _ckEtapaAll      = [];
   var _ckRevisaoAll    = [];
@@ -103,6 +117,7 @@
     var u   = _user();
     var uid = u && (u.id || u.app_user_id);
     if (!uid) return;
+    _recentesOpen = false;
     var $list = document.getElementById('fp-tasks-list');
     if ($list) $list.innerHTML = _loadingHtml();
 
@@ -162,17 +177,23 @@
       return t.tipo ? '<span style="font-size:9px;color:#bbb;text-transform:capitalize">' + _esc(t.tipo) + '</span>' : '';
     }
 
-    var html = '<div class="fp-task-section">Pendentes — ' + tasks.length + '</div>';
+    var html = '<div class="fp-task-section fp-task-sec-head">' +
+      '<span>Pendentes — ' + tasks.length + '</span>' +
+      '<button class="fp-task-recentes-btn" onclick="listsPanel.toggleRecentes(event)" title="Ver realizadas recentemente e restaurar">↺ recentes</button>' +
+      '</div>';
     if (!tasks.length) {
       html += '<div class="fp-ck-empty">Nenhuma tarefa pendente ✓</div>';
     } else {
       tasks.forEach(function(t) {
-        html += '<div class="fp-task-item">' +
-          '<div class="fp-task-check" onclick="listsPanel.checkTask(event,\'' + _esc(String(t.id)) + '\')" title="Concluir"></div>' +
+        var tid = _esc(String(t.id));
+        html += '<div class="fp-task-item" id="fp-task-' + tid + '">' +
+          '<div class="fp-task-check" onclick="listsPanel.checkTask(event,\'' + tid + '\')" title="Concluir"></div>' +
           '<div class="fp-task-body">' +
             '<div class="fp-task-desc">' + _esc(t.descricao || '(sem descrição)') + '</div>' +
             '<div class="fp-task-meta">' + prazoHtml(t) + tipoHtml(t) + '</div>' +
-          '</div></div>';
+          '</div>' +
+          '<button class="fp-task-edit" title="Editar tarefa" onclick="listsPanel.editTask(event,\'' + tid + '\')">' + _PENCIL + '</button>' +
+          '</div>';
       });
     }
 
@@ -231,11 +252,116 @@
     event.stopPropagation();
     var btn = event.currentTarget;
     btn.classList.add('done');
-    _sb().from('tarefas_livres').update({ concluida: true }).eq('id', taskId)
+    _sb().from('tarefas_livres').update({ concluida: true, concluida_em: new Date().toISOString() }).eq('id', taskId)
       .then(function(r) {
         if (r.error) { btn.classList.remove('done'); return; }
         _tasksCache = _tasksCache.filter(function(t) { return String(t.id) !== String(taskId); });
         setTimeout(function() { _renderTasks(_tasksCache); }, 400);
+      });
+  }
+
+  /* ── editar tarefa própria (inline) ─────────────────────── */
+  function editTask(event, taskId) {
+    if (event) event.stopPropagation();
+    var t = _tasksCache.find(function(x) { return String(x.id) === String(taskId); });
+    if (!t) return;
+    var row = document.getElementById('fp-task-' + taskId);
+    if (!row) return;
+    var body = row.querySelector('.fp-task-body');
+    if (!body || body.querySelector('.fp-task-edit-desc')) return;
+    row.classList.add('fp-task-editing');
+    body.innerHTML =
+      '<input class="fp-task-edit-desc" type="text" value="' + _esc(t.descricao || '') + '" placeholder="Descrição…">' +
+      '<div class="fp-task-edit-row">' +
+        '<input class="fp-task-edit-data" type="date" value="' + _esc(t.data_limite || '') + '">' +
+        '<button class="fp-task-edit-save" onclick="listsPanel.saveTaskEdit(event,\'' + _esc(String(taskId)) + '\')">Salvar</button>' +
+        '<button class="fp-task-edit-cancel" onclick="listsPanel.cancelTaskEdit(event)">Cancelar</button>' +
+      '</div>';
+    var di = body.querySelector('.fp-task-edit-desc');
+    if (di) {
+      di.focus(); di.setSelectionRange(di.value.length, di.value.length);
+      di.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); saveTaskEdit(null, taskId); }
+        else if (e.key === 'Escape') { cancelTaskEdit(null); }
+      });
+    }
+  }
+
+  function cancelTaskEdit(event) {
+    if (event) event.stopPropagation();
+    _renderTasks(_tasksCache);
+  }
+
+  function saveTaskEdit(event, taskId) {
+    if (event) event.stopPropagation();
+    var row = document.getElementById('fp-task-' + taskId);
+    if (!row) return;
+    var di = row.querySelector('.fp-task-edit-desc');
+    var da = row.querySelector('.fp-task-edit-data');
+    var desc = di ? (di.value || '').trim() : '';
+    var data = da ? (da.value || null) : null;
+    if (!desc) { if (di) di.focus(); return; }
+    _sb().from('tarefas_livres').update({ descricao: desc, data_limite: data }).eq('id', taskId)
+      .then(function(r) {
+        if (r.error) return;
+        var t = _tasksCache.find(function(x) { return String(x.id) === String(taskId); });
+        if (t) { t.descricao = desc; t.data_limite = data; }
+        _renderTasks(_tasksCache);
+      });
+  }
+
+  /* ── realizadas recentemente + restaurar ────────────────── */
+  function toggleRecentes(event) {
+    if (event) event.stopPropagation();
+    _recentesOpen = !_recentesOpen;
+    if (_recentesOpen) _loadRecentes();
+    else _renderTasks(_tasksCache);
+  }
+
+  function _loadRecentes() {
+    var u = _user(); var uid = u && (u.id || u.app_user_id);
+    if (!uid) return;
+    var $list = document.getElementById('fp-tasks-list');
+    if ($list) $list.innerHTML = _loadingHtml();
+    _sb().from('tarefas_livres').select('*')
+      .eq('usuario_id', uid).eq('concluida', true)
+      .order('concluida_em', { ascending: false, nullsFirst: false })
+      .limit(15)
+      .then(function(r) {
+        if (r.error) { if ($list) $list.innerHTML = '<div class="fp-ck-empty">Erro ao carregar realizadas.</div>'; return; }
+        _renderRecentes(r.data || []);
+      });
+  }
+
+  function _renderRecentes(items) {
+    var $list = document.getElementById('fp-tasks-list');
+    if (!$list) return;
+    var html = '<button class="fp-task-section fp-delegadas-toggle" onclick="listsPanel.toggleRecentes(event)" ' +
+      'style="cursor:pointer;width:100%;text-align:left;border:none;background:none;font-family:inherit">↩ Voltar às pendentes</button>' +
+      '<div class="fp-task-section">Realizadas recentemente</div>';
+    if (!items.length) {
+      html += '<div class="fp-ck-empty">Nenhuma tarefa realizada.</div>';
+    } else {
+      items.forEach(function(t) {
+        var tid = _esc(String(t.id));
+        html += '<div class="fp-task-item fp-task-done">' +
+          '<div class="fp-task-body">' +
+            '<div class="fp-task-desc">' + _esc(t.descricao || '(sem descrição)') + '</div>' +
+            '<div class="fp-task-meta">' + (t.concluida_em ? '<span style="font-size:9px;color:#bbb">' + _esc(_fmtDateTime(t.concluida_em)) + '</span>' : '') + '</div>' +
+          '</div>' +
+          '<button class="fp-task-restore" title="Restaurar para pendentes" onclick="listsPanel.restoreTask(event,\'' + tid + '\')">↺ restaurar</button>' +
+          '</div>';
+      });
+    }
+    $list.innerHTML = html;
+  }
+
+  function restoreTask(event, taskId) {
+    if (event) event.stopPropagation();
+    _sb().from('tarefas_livres').update({ concluida: false, concluida_em: null }).eq('id', taskId)
+      .then(function(r) {
+        if (r.error) return;
+        _loadRecentes();
       });
   }
 
@@ -605,11 +731,77 @@
     var id  = _esc(String(it.id));
     var cid = _esc(String(ckId));
     var txt = _esc(it.descricao || it.texto || '');
+    var editBtn = _isSocio()
+      ? '<button class="fp-ck-edit" title="Editar item" onclick="listsPanel.editCkItem(\'' + tipo + '\',\'' + id + '\',\'' + cid + '\')">' + _PENCIL + '</button>'
+      : '';
     return '<div class="fp-ck-item" id="fp-ck-it-' + id + '">' +
       '<input type="checkbox" class="fp-ck-cb"' + (checked ? ' checked' : '') +
       ' onchange="listsPanel.fpToggleCkItem(\'' + tipo + '\',\'' + id + '\',this.checked,\'' + cid + '\')">' +
       '<span class="fp-ck-txt' + (checked ? ' done' : '') + '">' + txt + '</span>' +
+      editBtn +
       '</div>';
+  }
+
+  /* ── editar item de checklist (apenas sócio) ────────────── */
+  function _findCkItem(tipo, ckId, itemId) {
+    var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
+    var ck = list.find(function(c) { return String(c.id) === String(ckId); });
+    if (!ck) return null;
+    if (tipo === 'revisao') {
+      var found = null;
+      (ck.pranchas || []).forEach(function(pr) {
+        (pr.tarefas_revisao || []).forEach(function(t) { if (String(t.id) === String(itemId)) found = t; });
+      });
+      return found;
+    }
+    var field = tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item';
+    return (ck[field] || []).find(function(x) { return String(x.id) === String(itemId); }) || null;
+  }
+
+  function editCkItem(tipo, itemId, ckId) {
+    if (!_isSocio()) return;
+    var it = _findCkItem(tipo, ckId, itemId);
+    if (!it) return;
+    var row = document.getElementById('fp-ck-it-' + itemId);
+    if (!row) return;
+    var span = row.querySelector('.fp-ck-txt');
+    if (!span || row.querySelector('.fp-ck-edit-inp')) return;
+    var cur = tipo === 'revisao' ? (it.descricao || '') : (it.texto || '');
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'fp-ck-edit-inp';
+    inp.value = cur;
+    span.style.display = 'none';
+    span.parentNode.insertBefore(inp, span.nextSibling);
+    inp.focus(); inp.setSelectionRange(cur.length, cur.length);
+    var done = false;
+    function cancel() {
+      if (done) return; done = true;
+      if (inp.parentNode) inp.parentNode.removeChild(inp);
+      span.style.display = '';
+    }
+    function save() {
+      if (done) return;
+      var nv = (inp.value || '').trim();
+      if (!nv || nv === cur) { cancel(); return; }
+      done = true;
+      var tbl = tipo === 'abertos' ? 'checklist_tarefa_item' : tipo === 'etapa' ? 'checklist_etapa_exec_item' : 'tarefas_revisao';
+      var col = tipo === 'revisao' ? 'descricao' : 'texto';
+      var upd = {}; upd[col] = nv;
+      _sb().from(tbl).update(upd).eq('id', itemId).then(function(r) {
+        if (!r.error) {
+          if (tipo === 'revisao') it.descricao = nv; else it.texto = nv;
+          span.textContent = nv;
+        }
+        if (inp.parentNode) inp.parentNode.removeChild(inp);
+        span.style.display = '';
+      });
+    }
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      else if (e.key === 'Escape') { cancel(); }
+    });
+    inp.addEventListener('blur', save);
   }
 
   function _ckAddRow(tipo, ckId, secao) {
@@ -780,8 +972,41 @@
   }
 
   /* ── API pública ─────────────────────────────────────────── */
+  /* ── mount: init + injeta o botão na nav + pré-carrega membros ──
+     Conveniência para módulos que adotam o Painel de Listas no lugar
+     do antigo ícone de Tarefas da nav (calc, financeiro, crm, …). */
+  function mount(cfg) {
+    init(cfg);
+    var nav = document.getElementById('exp-nav');
+    if (nav && !document.getElementById('fp-nav-lists')) {
+      var btn = document.createElement('button');
+      btn.id        = 'fp-nav-lists';
+      btn.className = 'exp-nav-item';
+      btn.title     = 'Minhas listas';
+      btn.style.cssText = 'position:relative';
+      btn.innerHTML =
+        '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>' +
+          '<line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>' +
+        '</svg>' +
+        '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
+      btn.onclick = function() { toggle(); };
+      /* fim da nav — mesmo lugar do antigo ícone de Tarefas (cluster de ferramentas) */
+      nav.appendChild(btn);
+    }
+    /* pré-carrega membros para atribuição de tarefas */
+    try {
+      var sb = _sb();
+      if (sb && !global._listsMembersCache) {
+        sb.from('usuarios').select('id,nome,iniciais,cor,apelido').eq('ativo', true)
+          .then(function(r) { global._listsMembersCache = r.data || []; });
+      }
+    } catch (e) {}
+  }
+
   global.listsPanel = {
     init            : init,
+    mount           : mount,
     toggle          : toggle,
     switchListsTab  : switchListsTab,
     selectCkByIndex : selectCkByIndex,
@@ -791,6 +1016,12 @@
     addTask         : addTask,
     taskDescInput   : taskDescInput,
     checkTask       : checkTask,
+    editTask        : editTask,
+    saveTaskEdit    : saveTaskEdit,
+    cancelTaskEdit  : cancelTaskEdit,
+    toggleRecentes  : toggleRecentes,
+    restoreTask     : restoreTask,
+    editCkItem      : editCkItem,
     openAssignDrop  : openAssignDrop,
     _doAssign       : _doAssign,
     toggleDelegadas : toggleDelegadas,

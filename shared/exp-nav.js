@@ -229,8 +229,8 @@ window.ExpNav = (() => {
       ico.star +
     '</button>' +
 
-    /* tarefas — não aparece no módulo app */
-    (module !== 'app'
+    /* tarefas (modelo antigo) — substituído pelo novo Painel de Listas */
+    (['app', 'calc', 'financeiro', 'crm', 'analise', 'pessoas', 'sociedade'].indexOf(module) === -1
       ? '<button class="exp-nav-item" id="exp-nav-tarefas" title="Tarefas e Atribuições"' +
         ' onclick="ExpNav.toggleTarefasPanel()" style="position:relative">' +
           ico.tarefas +
