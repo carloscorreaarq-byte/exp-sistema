@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>EXP — Entrar</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+</head>
+<body>
+
+  <div class="login-page">
+
+    <!-- Logo -->
+    <div style="text-align:center; margin-bottom: var(--s-xl)">
+      <div class="login-logo">EXP</div>
+      <div class="login-tagline">Plataforma de Gestão</div>
+    </div>
+
+    <!-- Formulário de login -->
+    <form class="login-form" id="login-form" onsubmit="handleLogin(event)" novalidate>
+
+      <div class="form-group">
+        <label class="form-label" for="email">E-mail</label>
+        <input
+          id="email"
+          type="email"
+          class="form-input"
+          placeholder="seu@email.com"
+          autocomplete="email"
+          inputmode="email"
+          required
+        >
+      </div>
+
+      <div class="form-group" style="margin-top: var(--s-md)">
+        <label class="form-label" for="password">Senha</label>
+        <div style="position: relative">
+          <input
+            id="password"
+            type="password"
+            class="form-input"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+            style="padding-right: 48px"
+          >
+          <button
+            type="button"
+            class="icon-btn"
+            style="position:absolute; right:0; top:0; height:44px; width:44px"
+            onclick="togglePwd()"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" id="eye-icon">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="login-error" style="display:none; margin-top: var(--s-sm); color: var(--critico); font-size: 13px; text-align: center; font-weight: 600"></div>
+
+      <div style="margin-top: var(--s-lg)">
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+          Entrar
+        </button>
+      </div>
+
+      <div style="text-align: center; margin-top: var(--s-md)">
+        <button type="button" class="btn btn-ghost" onclick="showForgot()" style="font-size: 13px; color: var(--text-2)">
+          Esqueceu sua senha?
+        </button>
+      </div>
+    </form>
+
+    <!-- Formulário de recuperação de senha (oculto) -->
+    <form class="login-form" id="forgot-form" style="display: none" onsubmit="handleForgot(event)" novalidate>
+
+      <div style="text-align: center; margin-bottom: var(--s-lg)">
+        <div style="font-size: 16px; font-weight: 800; margin-bottom: 6px">Redefinir senha</div>
+        <div style="font-size: 13px; color: var(--text-2)">Enviaremos um link para seu e-mail</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="forgot-email">E-mail</label>
+        <input
+          id="forgot-email"
+          type="email"
+          class="form-input"
+          placeholder="seu@email.com"
+          inputmode="email"
+          autocomplete="email"
+          required
+        >
+      </div>
+
+      <div id="forgot-msg" style="display:none; margin-top: var(--s-sm); font-size: 13px; text-align: center; font-weight: 600"></div>
+
+      <div style="margin-top: var(--s-lg)">
+        <button type="submit" class="btn btn-primary btn-full" id="forgot-btn">Enviar link</button>
+      </div>
+
+      <div style="text-align: center; margin-top: var(--s-md)">
+        <button type="button" class="btn btn-ghost" onclick="showLogin()" style="font-size: 13px; color: var(--text-2)">
+          Voltar ao login
+        </button>
+      </div>
+    </form>
+
+  </div>
+
+  <script>
+    // Redireciona se já autenticado
+    (async () => {
+      if (sessionStorage.getItem('exp_usuario')) {
+        window.location.href = './app.html';
+        return;
+      }
+      const sb = initSupabase();
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return;
+
+      // Valida que o perfil existe antes de redirecionar
+      const { data: usuario } = await sb
+        .from('usuarios')
+        .select('id')
+        .eq('auth_id', session.user.id)
+        .maybeSingle();
+
+      if (usuario) {
+        window.location.href = './app.html';
+      } else {
+        // Sessão órfã — limpa para evitar loop
+        await sb.auth.signOut();
+      }
+    })();
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn  = document.getElementById('login-btn');
+      const errEl = document.getElementById('login-error');
+
+      btn.textContent = 'Entrando…';
+      btn.disabled = true;
+      errEl.style.display = 'none';
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const sb = initSupabase();
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        const { data: usuario, error: err2 } = await sb
+          .from('usuarios')
+          .select('id, nome, iniciais, role, cor, viewer_only')
+          .eq('auth_id', data.user.id)
+          .maybeSingle();
+
+        if (err2) throw err2;
+        sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(data.user.id, usuario)));
+        window.location.href = './app.html';
+
+      } catch (err) {
+        errEl.textContent = (err.message?.toLowerCase().includes('invalid') || err.message?.toLowerCase().includes('credentials'))
+          ? 'E-mail ou senha incorretos'
+          : 'Erro ao entrar. Tente novamente.';
+        errEl.style.display = 'block';
+        btn.textContent = 'Entrar';
+        btn.disabled = false;
+      }
+    }
+
+    async function handleForgot(e) {
+      e.preventDefault();
+      const btn  = document.getElementById('forgot-btn');
+      const msg  = document.getElementById('forgot-msg');
+
+      btn.textContent = 'Enviando…';
+      btn.disabled = true;
+
+      const email = document.getElementById('forgot-email').value.trim();
+
+      try {
+        const { error } = await initSupabase().auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.href,
+        });
+        if (error) throw error;
+
+        msg.textContent  = '✓ Link enviado! Verifique sua caixa de entrada.';
+        msg.style.color  = 'var(--sucesso)';
+        msg.style.display = 'block';
+        btn.textContent  = 'Enviado';
+
+      } catch {
+        msg.textContent  = 'Não foi possível enviar. Verifique o e-mail.';
+        msg.style.color  = 'var(--critico)';
+        msg.style.display = 'block';
+        btn.textContent  = 'Enviar link';
+        btn.disabled = false;
+      }
+    }
+
+    function showForgot() {
+      document.getElementById('login-form').style.display  = 'none';
+      document.getElementById('forgot-form').style.display = 'block';
+    }
+
+    function showLogin() {
+      document.getElementById('forgot-form').style.display = 'none';
+      document.getElementById('login-form').style.display  = 'block';
+    }
+
+    function togglePwd() {
+      const input = document.getElementById('password');
+      const icon  = document.getElementById('eye-icon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerHTML = `
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        `;
+      } else {
+        input.type = 'password';
+        icon.innerHTML = `
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        `;
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>EXP · Revisões</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+  <style>
+    .filter-row {
+      display: flex;
+      gap: var(--gap-xs);
+      margin-bottom: var(--gap-md);
+    }
+    .filter-pill {
+      height: 30px;
+      border-radius: var(--m-radius-pill);
+      padding: 0 var(--gap-sm);
+      font-family: var(--font-ui);
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      letter-spacing: var(--label-spacing);
+      text-transform: uppercase;
+      background: color-mix(in srgb, var(--m-border) 18%, transparent);
+      color: var(--m-text-2);
+      border: none;
+      cursor: pointer;
+      transition: all var(--m-transition);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .filter-pill.active { background: var(--verde-soft); color: var(--verde); }
+
+    /* Revisão card (accordion) */
+    .rev-card {
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      margin-bottom: var(--gap-sm);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .rev-header {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      padding: 12px var(--gap-md);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .rev-header:active { background: color-mix(in srgb, var(--m-border) 8%, transparent); }
+
+    .rev-nucleo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .rev-info { flex: 1; min-width: 0; }
+    .rev-projeto {
+      font-size: var(--mt-body);
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rev-sub {
+      font-size: var(--mt-caption);
+      color: var(--m-text-2);
+      margin-top: 2px;
+    }
+    .rev-right {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      flex-shrink: 0;
+    }
+    .rev-pct {
+      font-size: var(--mt-caption);
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+    .rev-chevron {
+      width: 16px; height: 16px;
+      stroke-width: 2.2;
+      color: var(--m-text-3);
+      transition: transform var(--m-transition);
+      flex-shrink: 0;
+    }
+
+    .rev-body {
+      border-top: 1px solid color-mix(in srgb, var(--m-border) 18%, transparent);
+      padding: var(--gap-sm) var(--gap-md) var(--gap-md);
+    }
+
+    /* Barra de progresso dentro do card */
+    .rev-prog-bar {
+      height: 3px;
+      background: color-mix(in srgb, var(--m-border) 30%, transparent);
+      border-radius: 2px;
+      margin: 0 var(--gap-md) 0;
+      overflow: hidden;
+    }
+    .rev-prog-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--verde);
+      transition: width 0.3s ease;
+    }
+
+    /* Prancha dentro do accordion */
+    .prancha-section { margin-bottom: var(--gap-sm); }
+    .prancha-label {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      text-transform: uppercase;
+      letter-spacing: var(--label-spacing);
+      color: var(--m-text-3);
+      margin-bottom: var(--gap-xs);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .prancha-prog-text {
+      font-family: var(--font-mono);
+      font-size: var(--mt-label);
+    }
+
+    /* Tarefa de revisão */
+    .tarefa-rev-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gap-sm);
+      padding: 9px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 15%, transparent);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tarefa-rev-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .tarefa-rev-check {
+      width: 20px; height: 20px;
+      border-radius: 4px;
+      border: 2px solid color-mix(in srgb, var(--m-border) 55%, transparent);
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--m-transition);
+    }
+    .tarefa-rev-item.done .tarefa-rev-check {
+      background: var(--verde);
+      border-color: var(--verde);
+    }
+    .tarefa-rev-check svg { width: 11px; height: 11px; stroke: var(--branco); stroke-width: 3; display: none; }
+    .tarefa-rev-item.done .tarefa-rev-check svg { display: block; }
+    .tarefa-rev-desc {
+      font-size: var(--mt-body);
+      line-height: 1.3;
+      flex: 1;
+    }
+    .tarefa-rev-item.done .tarefa-rev-desc {
+      text-decoration: line-through;
+      color: var(--m-text-3);
+    }
+
+    /* Badge "Concluída" para revisões encerradas */
+    .rev-badge {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+    .rev-badge.aberta   { background: var(--azul-soft);  color: var(--azul); }
+    .rev-badge.concluida { background: var(--verde-soft); color: var(--verde); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <a href="./gestao.html" class="header-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+      Gestão
+    </a>
+    <div class="header-title">Revisões</div>
+  </header>
+
+  <div class="page">
+    <div class="page-content" id="page-content">
+      <div class="loader-page"><div class="loader"></div></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script>
+    const NUCLEO_COR = {
+      urbanismo:    'var(--azul)',
+      paisagismo:   'var(--verde)',
+      especiais:    'var(--ouro)',
+      consultorias: 'var(--terracota)',
+    };
+
+    let G = { usuario: null, revisoes: [], filtro: 'abertas' };
+
+    // ── Render ────────────────────────────────────
+    function renderAll() {
+      const { revisoes, filtro } = G;
+      const mostrarConcluidas = filtro === 'concluidas';
+
+      const lista = revisoes.filter(r =>
+        mostrarConcluidas ? r.status === 'concluida' : r.status === 'aberta'
+      );
+
+      document.getElementById('page-content').innerHTML = `
+        <div class="filter-row">
+          <button class="filter-pill ${filtro === 'abertas' ? 'active' : ''}" onclick="setFiltro('abertas')">Abertas</button>
+          <button class="filter-pill ${filtro === 'concluidas' ? 'active' : ''}" onclick="setFiltro('concluidas')">Concluídas</button>
+        </div>
+
+        ${lista.length === 0 ? `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <div class="empty-state-title">${mostrarConcluidas ? 'Nenhuma revisão concluída' : 'Nenhuma revisão aberta'}</div>
+            <div class="empty-state-desc">${mostrarConcluidas ? '' : 'Tudo em ordem por aqui'}</div>
+          </div>
+        ` : lista.map(r => renderRevCard(r)).join('')}
+      `;
+    }
+
+    function renderRevCard(r) {
+      const etapa = r.etapas;
+      const produto = etapa?.produtos;
+      const nucleo = produto?.nucleo ?? 'urbanismo';
+      const cor = NUCLEO_COR[nucleo] ?? 'var(--m-text-3)';
+
+      const pranchas = r.pranchas ?? [];
+      const total = pranchas.reduce((s, p) => s + (p.tarefas_revisao?.length ?? 0), 0);
+      const conc  = pranchas.reduce((s, p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length ?? 0), 0);
+      const pct   = total > 0 ? Math.round((conc / total) * 100) : 0;
+      const completa = total > 0 && conc === total;
+
+      return `
+        <div class="rev-card" id="rev-${r.id}">
+          <div class="rev-header" onclick="toggleRev('${r.id}')">
+            <div class="rev-nucleo-dot" style="background:${cor}"></div>
+            <div class="rev-info">
+              <div class="rev-projeto">${produto?.nome ?? '—'}</div>
+              <div class="rev-sub">${etapa?.nome ?? '—'} · Revisão #${r.numero}</div>
+            </div>
+            <div class="rev-right">
+              <span class="rev-pct" style="color:${completa ? 'var(--verde)' : 'var(--m-text-3)'}">${pct}%</span>
+              <svg class="rev-chevron" id="chevron-${r.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+          ${total > 0 ? `<div class="rev-prog-bar"><div class="rev-prog-fill" style="width:${pct}%"></div></div>` : ''}
+          <div id="rev-body-${r.id}" style="display:none">
+            <div class="rev-body">
+              ${pranchas.length === 0 ? `
+                <div style="font-size:var(--mt-caption);color:var(--m-text-3);text-align:center;padding:var(--gap-sm) 0">Sem pranchas nesta revisão</div>
+              ` : pranchas.map(p => renderPrancha(p, r.id, r.status)).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPrancha(p, revId, revStatus) {
+      const itens = p.tarefas_revisao ?? [];
+      const conc  = itens.filter(t => t.concluida).length;
+      const total = itens.length;
+      const bloqueada = revStatus === 'concluida';
+
+      return `
+        <div class="prancha-section">
+          <div class="prancha-label">
+            <span>${p.nome}</span>
+            ${total > 0 ? `<span class="prancha-prog-text" style="color:${conc===total&&total>0?'var(--verde)':'var(--m-text-3)'}">${conc}/${total}</span>` : ''}
+          </div>
+          ${itens.length === 0 ? `
+            <div style="font-size:var(--mt-caption);color:var(--m-text-3);padding:2px 0">Sem tarefas</div>
+          ` : itens.map(t => `
+            <div class="tarefa-rev-item ${t.concluida ? 'done' : ''}"
+                 onclick="${bloqueada ? '' : `toggleTarefaRev('${t.id}', '${p.id}', '${revId}', ${t.concluida})`}">
+              <div class="tarefa-rev-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="tarefa-rev-desc">${t.descricao}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // ── Toggle accordion ──────────────────────────
+    function toggleRev(id) {
+      const body = document.getElementById(`rev-body-${id}`);
+      const chev = document.getElementById(`chevron-${id}`);
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      chev.style.transform = open ? '' : 'rotate(90deg)';
+    }
+
+    function setFiltro(f) { G.filtro = f; renderAll(); }
+
+    // ── Toggle tarefa ─────────────────────────────
+    async function toggleTarefaRev(tarefaId, pranchaId, revId, concluida) {
+      const sb = getSB();
+      const nova = !concluida;
+      const { error } = await sb.from('tarefas_revisao').update({
+        concluida: nova,
+        concluida_por: nova ? G.usuario.id : null,
+        concluida_em:  nova ? new Date().toISOString() : null,
+      }).eq('id', tarefaId);
+
+      if (error) { showToast('Erro ao atualizar tarefa', 'error'); return; }
+
+      // Atualiza estado local
+      G.revisoes = G.revisoes.map(r => {
+        if (r.id !== revId) return r;
+        return {
+          ...r,
+          pranchas: r.pranchas.map(p => {
+            if (p.id !== pranchaId) return p;
+            return {
+              ...p,
+              tarefas_revisao: p.tarefas_revisao.map(t =>
+                t.id === tarefaId ? { ...t, concluida: nova } : t
+              ),
+            };
+          }),
+        };
+      });
+
+      // Re-render mantendo accordion aberto
+      renderAll();
+      // Reabre o accordion que estava aberto
+      const body = document.getElementById(`rev-body-${revId}`);
+      const chev = document.getElementById(`chevron-${revId}`);
+      if (body) { body.style.display = 'block'; }
+      if (chev) { chev.style.transform = 'rotate(90deg)'; }
+    }
+
+    // ── Init ──────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', async () => {
+      const u = await requireAuth('./index.html');
+      if (!u) return;
+      G.usuario = u;
+
+      buildBottomNav('gestao', isSocio(u));
+
+      const sb = getSB();
+      const { data: revisoes } = await sb
+        .from('revisoes')
+        .select(`
+          id, numero, status, created_at,
+          etapas (
+            id, nome,
+            produtos ( id, nome, nucleo )
+          ),
+          pranchas (
+            id, nome, ordem,
+            tarefas_revisao ( id, descricao, concluida, concluida_em )
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      G.revisoes = (revisoes ?? []).map(r => ({
+        ...r,
+        pranchas: (r.pranchas ?? [])
+          .sort((a, b) => a.ordem - b.ordem)
+          .map(p => ({
+            ...p,
+            tarefas_revisao: p.tarefas_revisao ?? [],
+          })),
+      }));
+
+      renderAll();
+    });
+  </script>
+
+</body>
+</html>

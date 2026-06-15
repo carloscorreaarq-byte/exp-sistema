@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>EXP · Gestão</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+  <style>
+    .notif-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gap-sm);
+      padding: 11px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 18%, transparent);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--verde);
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+    .notif-dot.lida { background: transparent; border: 1.5px solid color-mix(in srgb, var(--m-border) 40%, transparent); }
+    .notif-content { flex: 1; }
+    .notif-title   { font-size: var(--mt-body); font-weight: 600; line-height: 1.3; }
+    .notif-body    { font-size: var(--mt-caption); color: var(--m-text-2); margin-top: 2px; line-height: 1.4; }
+    .notif-time    { font-size: 11px; color: var(--m-text-3); white-space: nowrap; flex-shrink: 0; }
+
+    .section-nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-md);
+      padding: 14px var(--gap-md);
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      margin-bottom: var(--gap-sm);
+      box-shadow: var(--shadow-card);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform var(--m-transition);
+    }
+    .section-nav-item:active { transform: scale(0.98); }
+    .section-nav-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--m-radius-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-nav-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
+    .section-nav-text { flex: 1; }
+    .section-nav-name { font-size: var(--mt-body); font-weight: 700; }
+    .section-nav-desc { font-size: var(--mt-caption); color: var(--m-text-3); margin-top: 1px; }
+    .section-nav-arrow { color: var(--m-text-3); }
+    .section-nav-arrow svg { width: 16px; height: 16px; stroke-width: 2.2; }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <a href="./app.html" class="header-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <div style="flex:1">
+      <div class="header-title">EXP.gestão</div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="bell-btn" onclick="toggleNotifs()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="nav-badge" id="notif-badge" style="display:none"></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="page-content" id="page-content">
+      <div class="loader-page"><div class="loader"></div></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <!-- Sheet: Notificações -->
+  <div class="sheet-overlay" id="notifs-overlay" onclick="closeSheet('notifs')"></div>
+  <div class="sheet" id="notifs-sheet" style="max-height:80dvh">
+    <div class="sheet-handle"></div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--gap-md)">
+      <div class="sheet-title" style="margin-bottom:0">Notificações</div>
+      <button class="btn btn-ghost btn-sm" onclick="marcarTodasLidas()">Marcar todas lidas</button>
+    </div>
+    <div id="notifs-list"><div class="loader-page"><div class="loader"></div></div></div>
+  </div>
+
+  <script>
+    const NUCLEO_INFO = {
+      urbanismo:    { label: 'Urbanismo',    color: 'var(--azul)',      soft: 'var(--azul-soft)' },
+      paisagismo:   { label: 'Paisagismo',   color: 'var(--verde)',     soft: 'var(--verde-soft)' },
+      especiais:    { label: 'Especiais',    color: 'var(--ouro)',      soft: 'var(--ouro-soft)' },
+      consultorias: { label: 'Consultorias', color: 'var(--terracota)', soft: 'var(--terracota-soft)' },
+    };
+
+    const SECTIONS = [
+      {
+        href: './projetos.html',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+        name: 'Projetos',
+        desc: 'Lista e Gantt de projetos ativos',
+        bg: 'var(--verde-soft)', color: 'var(--verde)'
+      },
+      {
+        href: './tarefas.html',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+        name: 'Minhas Tarefas',
+        desc: 'Tarefas e checklists atribuídos a você',
+        bg: 'var(--azul-soft)', color: 'var(--azul)'
+      },
+      {
+        href: './horas.html',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+        name: 'Horas',
+        desc: 'Lançamento e edição de horas por semana',
+        bg: 'var(--ouro-soft)', color: 'var(--ouro)'
+      },
+      {
+        href: './custos.html',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+        name: 'Custos',
+        desc: 'Lançamento de custos operacionais',
+        bg: 'var(--terracota-soft)', color: 'var(--terracota)'
+      },
+      {
+        href: './revisoes.html',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+        name: 'Revisões',
+        desc: 'Revisões abertas e tarefas de prancha',
+        bg: 'var(--verde-soft)', color: 'var(--verde)'
+      },
+    ];
+
+    let G = { usuario: null, notifs: [], realtimeSub: null };
+
+    function calcHoras(semanaEntries) {
+      return semanaEntries.reduce((acc, e) => {
+        if (!e.hora_inicio || !e.hora_fim) return acc;
+        const [h1, m1] = e.hora_inicio.split(':').map(Number);
+        const [h2, m2] = e.hora_fim.split(':').map(Number);
+        return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+      }, 0);
+    }
+
+    function formatHoras(h) {
+      const hrs = Math.floor(h);
+      const min = Math.round((h - hrs) * 60);
+      return min === 0 ? `${hrs}h` : `${hrs}h${String(min).padStart(2,'0')}`;
+    }
+
+    function getWeekRange() {
+      const d = new Date();
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1);
+      const start = d.toISOString().split('T')[0];
+      d.setDate(d.getDate() + 6);
+      const end = d.toISOString().split('T')[0];
+      return { start, end };
+    }
+
+    function unreadCount(notifs) {
+      return notifs.filter(n => !n.lido_em && !n.encerrado_em).length;
+    }
+
+    function renderPage(stats) {
+      const { projetosAtivos, tarefasPendentes, horasSemana, notifs } = stats;
+      const unread = unreadCount(notifs);
+
+      // Atualiza badge do sino
+      const badge = document.getElementById('notif-badge');
+      if (unread > 0) {
+        badge.textContent = unread > 9 ? '9+' : unread;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      document.getElementById('page-content').innerHTML = `
+        <!-- Stats -->
+        <div class="stat-row" style="margin-bottom: var(--gap-lg)">
+          <div class="stat-card">
+            <div class="stat-value">${projetosAtivos}</div>
+            <div class="stat-label">Ativos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" style="color:${tarefasPendentes > 0 ? 'var(--atencao)' : 'var(--verde)'}">${tarefasPendentes}</div>
+            <div class="stat-label">Tarefas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${formatHoras(horasSemana)}</div>
+            <div class="stat-label">Esta semana</div>
+          </div>
+        </div>
+
+        <!-- Notificações recentes -->
+        ${unread > 0 ? `
+          <div style="margin-bottom: var(--gap-lg)">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: var(--gap-sm)">
+              <p class="section-label" style="margin-bottom:0">Notificações</p>
+              <button class="btn btn-ghost btn-sm" onclick="toggleNotifs()">Ver todas</button>
+            </div>
+            <div class="card" style="padding: 0 var(--gap-md)">
+              ${notifs.filter(n => !n.lido_em).slice(0,3).map(n => `
+                <div class="notif-item" onclick="abrirNotif('${n.id}', '${n.link_produto_id || ''}')">
+                  <div class="notif-dot"></div>
+                  <div class="notif-content">
+                    <div class="notif-title">${n.titulo}</div>
+                    ${n.corpo ? `<div class="notif-body">${n.corpo}</div>` : ''}
+                  </div>
+                  <div class="notif-time">${relativeDate(n.created_at)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Seções do módulo -->
+        <p class="section-label">Seções</p>
+        ${SECTIONS.map(s => `
+          <a href="${s.href}" class="section-nav-item">
+            <div class="section-nav-icon" style="background:${s.bg}; color:${s.color}">${s.icon}</div>
+            <div class="section-nav-text">
+              <div class="section-nav-name">${s.name}</div>
+              <div class="section-nav-desc">${s.desc}</div>
+            </div>
+            <div class="section-nav-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </a>
+        `).join('')}
+      `;
+    }
+
+    function renderNotifSheet(notifs) {
+      const el = document.getElementById('notifs-list');
+      if (!notifs.length) {
+        el.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><div class="empty-state-title">Sem notificações</div></div>`;
+        return;
+      }
+      el.innerHTML = `<div style="padding-bottom: var(--gap-sm)">` +
+        notifs.map(n => `
+          <div class="notif-item" onclick="abrirNotif('${n.id}', '${n.link_produto_id || ''}')">
+            <div class="notif-dot ${n.lido_em ? 'lida' : ''}"></div>
+            <div class="notif-content">
+              <div class="notif-title" style="${n.lido_em ? 'font-weight:500;color:var(--m-text-2)' : ''}">${n.titulo}</div>
+              ${n.corpo ? `<div class="notif-body">${n.corpo}</div>` : ''}
+              <div style="font-size:11px;color:var(--m-text-3);margin-top:3px">${relativeDate(n.created_at)}</div>
+            </div>
+          </div>
+        `).join('') + `</div>`;
+    }
+
+    async function abrirNotif(id, produtoId) {
+      const sb = getSB();
+      await sb.from('notificacoes').update({ lido_em: new Date().toISOString() }).eq('id', id);
+      G.notifs = G.notifs.map(n => n.id === id ? { ...n, lido_em: new Date().toISOString() } : n);
+
+      closeSheet('notifs');
+      if (produtoId) {
+        window.location.href = `./projeto.html?id=${produtoId}`;
+      }
+    }
+
+    async function marcarTodasLidas() {
+      const sb = getSB();
+      const ids = G.notifs.filter(n => !n.lido_em).map(n => n.id);
+      if (!ids.length) return;
+      await sb.from('notificacoes').update({ lido_em: new Date().toISOString() }).in('id', ids);
+      G.notifs = G.notifs.map(n => ({ ...n, lido_em: n.lido_em ?? new Date().toISOString() }));
+
+      document.getElementById('notif-badge').style.display = 'none';
+      renderNotifSheet(G.notifs);
+      showToast('Notificações marcadas como lidas');
+    }
+
+    function toggleNotifs() {
+      renderNotifSheet(G.notifs);
+      openSheet('notifs');
+    }
+
+    function subscribeNotificacoes(usuarioId) {
+      const sb = getSB();
+      G.realtimeSub = sb.channel('notificacoes-gestao')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notificacoes',
+          filter: `usuario_id=eq.${usuarioId}`
+        }, (payload) => {
+          G.notifs.unshift(payload.new);
+          const badge = document.getElementById('notif-badge');
+          const count = unreadCount(G.notifs);
+          if (count > 0) {
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.style.display = 'flex';
+          }
+          showToast(payload.new.titulo);
+        })
+        .subscribe();
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const u = await requireAuth('./index.html');
+      if (!u) return;
+      G.usuario = u;
+
+      buildBottomNav('gestao', isSocio(u));
+
+      const sb = getSB();
+      const { start, end } = getWeekRange();
+
+      const [
+        { count: projetosAtivos },
+        { data: tarefas },
+        { data: horasData },
+        { data: notifs },
+      ] = await Promise.all([
+        sb.from('produtos').select('id', { count: 'exact', head: true }).eq('status', 'ativo'),
+        sb.from('tarefas_livres').select('id').eq('atribuido_para', u.id).eq('concluida', false),
+        sb.from('horas_lancadas').select('hora_inicio, hora_fim').eq('usuario_id', u.id).gte('data_lancamento', start).lte('data_lancamento', end),
+        sb.from('notificacoes').select('*').eq('usuario_id', u.id).is('encerrado_em', null).order('created_at', { ascending: false }).limit(20),
+      ]);
+
+      G.notifs = notifs ?? [];
+
+      renderPage({
+        projetosAtivos: projetosAtivos ?? 0,
+        tarefasPendentes: tarefas?.length ?? 0,
+        horasSemana: calcHoras(horasData ?? []),
+        notifs: G.notifs,
+      });
+
+      subscribeNotificacoes(u.id);
+    });
+
+    window.addEventListener('beforeunload', () => {
+      G.realtimeSub?.unsubscribe();
+    });
+  </script>
+
+</body>
+</html>

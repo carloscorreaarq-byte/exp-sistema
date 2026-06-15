@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>EXP · Contatos</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+  <style>
+    /* Barra de busca + filtros sticky abaixo do header */
+    .search-bar {
+      position: sticky;
+      top: calc(var(--header-h) + var(--safe-t));
+      z-index: 50;
+      background: var(--m-bg);
+      padding: var(--gap-sm) var(--gap-md) 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 18%, transparent);
+    }
+    .search-input-wrap {
+      position: relative;
+      margin-bottom: var(--gap-sm);
+    }
+    .search-input-wrap svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px; height: 16px;
+      stroke: var(--m-text-3);
+      stroke-width: 2;
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      height: 40px;
+      border-radius: var(--m-radius-card);
+      border: 1px solid color-mix(in srgb, var(--m-border) 30%, transparent);
+      background: var(--m-surface);
+      padding: 0 12px 0 36px;
+      font-family: var(--font-ui);
+      font-size: var(--mt-callout);
+      color: var(--m-text);
+      outline: none;
+      transition: border-color var(--m-transition);
+    }
+    .search-input:focus { border-color: var(--verde); }
+    .search-input::placeholder { color: var(--m-text-3); }
+
+    .filter-scroll {
+      display: flex;
+      gap: var(--gap-xs);
+      overflow-x: auto;
+      padding-bottom: var(--gap-sm);
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+    .filter-pill {
+      height: 28px;
+      border-radius: var(--m-radius-pill);
+      padding: 0 var(--gap-sm);
+      font-family: var(--font-ui);
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      letter-spacing: var(--label-spacing);
+      text-transform: uppercase;
+      background: color-mix(in srgb, var(--m-border) 18%, transparent);
+      color: var(--m-text-2);
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all var(--m-transition);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .filter-pill.active { background: var(--verde-soft); color: var(--verde); }
+
+    /* Contador de resultados */
+    .results-count {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      letter-spacing: var(--label-spacing);
+      text-transform: uppercase;
+      color: var(--m-text-3);
+      margin-bottom: var(--gap-sm);
+      padding: 0 var(--gap-xs);
+    }
+
+    /* Card de contato */
+    .contato-card {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      padding: 12px var(--gap-md);
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      margin-bottom: var(--gap-xs);
+      box-shadow: var(--shadow-card);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform var(--m-transition);
+    }
+    .contato-card:active { transform: scale(0.98); }
+
+    .contato-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+      letter-spacing: -0.5px;
+    }
+    .contato-info { flex: 1; min-width: 0; }
+    .contato-nome {
+      font-size: var(--mt-body);
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .contato-empresa {
+      font-size: var(--mt-caption);
+      color: var(--m-text-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+    .contato-tipo-badge {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+
+    /* Sheet de detalhe */
+    .detalhe-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700;
+      color: #fff;
+      margin: 0 auto var(--gap-md);
+    }
+    .detalhe-nome {
+      font-size: var(--mt-title);
+      font-weight: 800;
+      text-align: center;
+    }
+    .detalhe-empresa {
+      font-size: var(--mt-caption);
+      color: var(--m-text-2);
+      text-align: center;
+      margin-top: 4px;
+    }
+    .detalhe-badge-row {
+      display: flex;
+      justify-content: center;
+      gap: var(--gap-xs);
+      margin-top: var(--gap-sm);
+      flex-wrap: wrap;
+    }
+    .detalhe-actions {
+      display: flex;
+      gap: var(--gap-sm);
+      margin-top: var(--gap-md);
+    }
+    .detalhe-action-btn {
+      flex: 1;
+      height: 48px;
+      border-radius: var(--m-radius-card);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      border: 1px solid color-mix(in srgb, var(--m-border) 30%, transparent);
+      background: var(--m-surface);
+      text-decoration: none;
+      color: var(--m-text);
+      font-size: 10px;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: all var(--m-transition);
+    }
+    .detalhe-action-btn:active { opacity: 0.7; }
+    .detalhe-action-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+    .detalhe-action-btn.verde { background: var(--verde-soft); color: var(--verde); border-color: transparent; }
+    .detalhe-action-btn.azul  { background: var(--azul-soft);  color: var(--azul);  border-color: transparent; }
+    .detalhe-action-btn.disabled { opacity: 0.35; pointer-events: none; }
+
+    .detalhe-section { margin-top: var(--gap-md); }
+    .detalhe-section-title {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      text-transform: uppercase;
+      letter-spacing: var(--label-spacing);
+      color: var(--m-text-3);
+      margin-bottom: var(--gap-xs);
+    }
+    .detalhe-field {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gap-sm);
+      padding: 10px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 15%, transparent);
+    }
+    .detalhe-field:last-child { border-bottom: none; }
+    .detalhe-field-icon { color: var(--m-text-3); flex-shrink: 0; margin-top: 1px; }
+    .detalhe-field-icon svg { width: 15px; height: 15px; stroke-width: 2; }
+    .detalhe-field-body { flex: 1; min-width: 0; }
+    .detalhe-field-label { font-size: var(--mt-label); color: var(--m-text-3); margin-bottom: 1px; }
+    .detalhe-field-value { font-size: var(--mt-body); font-weight: 500; word-break: break-word; }
+    .detalhe-field-value a { color: var(--verde); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <a href="./app.html" class="header-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <div class="header-title">Contatos</div>
+  </header>
+
+  <!-- Busca + filtros sticky -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" type="search" id="busca" placeholder="Buscar nome, empresa, produto…"
+             oninput="filtrar()" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="filter-scroll" id="filter-row"></div>
+  </div>
+
+  <div class="page page--no-header" style="padding-top:0">
+    <div class="page-content" id="page-content" style="padding-top:var(--gap-md)">
+      <div class="loader-page"><div class="loader"></div></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <!-- Sheet: detalhe do contato -->
+  <div class="sheet-overlay" id="detalhe-overlay" onclick="closeSheet('detalhe')"></div>
+  <div class="sheet" id="detalhe-sheet" style="max-height:88dvh;overflow-y:auto">
+    <div class="sheet-handle"></div>
+    <div id="detalhe-content"></div>
+  </div>
+
+  <script>
+    const TIPO_INFO = {
+      fornecedor: { label: 'Fornecedor', color: 'var(--verde)',     bg: 'var(--verde-soft)' },
+      cliente:    { label: 'Cliente',    color: 'var(--azul)',      bg: 'var(--azul-soft)' },
+      parceiro:   { label: 'Parceiro',   color: '#6B4FA0',          bg: '#f3effe' },
+      arquiteto:  { label: 'Arquiteto',  color: 'var(--ouro)',      bg: 'var(--ouro-soft)' },
+      projetista: { label: 'Projetista', color: 'var(--terracota)', bg: 'var(--terracota-soft)' },
+      consultor:  { label: 'Consultor',  color: 'var(--m-text-2)',  bg: 'color-mix(in srgb, var(--m-border) 25%, transparent)' },
+    };
+
+    const FILTROS = [
+      { key: '', label: 'Todos' },
+      { key: 'fornecedor', label: 'Fornecedores' },
+      { key: 'cliente',    label: 'Clientes' },
+      { key: 'parceiro',   label: 'Parceiros' },
+      { key: 'arquiteto',  label: 'Arquitetos' },
+      { key: 'projetista', label: 'Projetistas' },
+      { key: 'consultor',  label: 'Consultores' },
+    ];
+
+    let G = { contatos: [], filtroTipo: '', busca: '' };
+
+    // ── Avatar ────────────────────────────────────
+    function iniciais(nome) {
+      return (nome || '').trim().split(' ').filter(Boolean)
+        .slice(0, 2).map(p => p[0]).join('').toUpperCase() || '?';
+    }
+    function avatarColor(nome) {
+      const colors = ['#4A72B5','#3E7858','#C49A27','#B85638','#6B4FA0','#4A9B8A','#B54A72'];
+      let h = 0;
+      for (const c of (nome || '')) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+      return colors[Math.abs(h) % colors.length];
+    }
+
+    // ── Filtro + busca ────────────────────────────
+    function filtrar() {
+      G.busca = document.getElementById('busca').value.trim().toLowerCase();
+      renderLista();
+    }
+
+    function setFiltroTipo(tipo) {
+      G.filtroTipo = tipo;
+      document.querySelectorAll('.filter-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.tipo === tipo);
+      });
+      renderLista();
+    }
+
+    function contatosFiltrados() {
+      return G.contatos.filter(c => {
+        if (G.filtroTipo && c.tipo !== G.filtroTipo) return false;
+        if (G.busca) {
+          const haystack = [c.nome, c.empresa, c.tipo_produto, c.cidade, c.estado, c.telefone, c.email]
+            .filter(Boolean).join(' ').toLowerCase();
+          return G.busca.split(/\s+/).every(t => haystack.includes(t));
+        }
+        return true;
+      });
+    }
+
+    // ── Render ─────────────────────────────────────
+    function buildFilterRow() {
+      const el = document.getElementById('filter-row');
+      el.innerHTML = FILTROS.map(f => `
+        <button class="filter-pill ${f.key === '' ? 'active' : ''}" data-tipo="${f.key}" onclick="setFiltroTipo('${f.key}')">
+          ${f.label}
+        </button>
+      `).join('');
+    }
+
+    function renderLista() {
+      const lista = contatosFiltrados();
+      const el = document.getElementById('page-content');
+
+      if (lista.length === 0) {
+        el.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <div class="empty-state-title">Nenhum contato encontrado</div>
+            <div class="empty-state-desc">Tente ajustar a busca ou o filtro</div>
+          </div>`;
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="results-count">${lista.length} contato${lista.length !== 1 ? 's' : ''}</div>
+        ${lista.map(c => renderCard(c)).join('')}
+      `;
+    }
+
+    function renderCard(c) {
+      const ti   = TIPO_INFO[c.tipo] ?? { label: c.tipo ?? '—', color: 'var(--m-text-2)', bg: 'var(--m-border)' };
+      const cor  = avatarColor(c.nome);
+      const loc  = [c.cidade, c.estado].filter(Boolean).join(' · ');
+      return `
+        <div class="contato-card" onclick="abrirDetalhe('${c.id}')">
+          <div class="contato-avatar" style="background:${cor}">${iniciais(c.nome)}</div>
+          <div class="contato-info">
+            <div class="contato-nome">${c.nome}</div>
+            <div class="contato-empresa">${[c.empresa, loc].filter(Boolean).join(' — ') || '—'}</div>
+          </div>
+          <span class="contato-tipo-badge" style="background:${ti.bg};color:${ti.color}">${ti.label}</span>
+        </div>
+      `;
+    }
+
+    // ── Detalhe ───────────────────────────────────
+    function abrirDetalhe(id) {
+      const c = G.contatos.find(x => x.id === id);
+      if (!c) return;
+      const ti  = TIPO_INFO[c.tipo] ?? { label: c.tipo ?? '—', color: 'var(--m-text-2)', bg: 'transparent' };
+      const cor = avatarColor(c.nome);
+      const tags = (c.tipo_produto || '').split(',').map(t => t.trim()).filter(Boolean);
+
+      const temTel   = Boolean(c.telefone);
+      const temEmail = Boolean(c.email);
+      const temSite  = Boolean(c.site);
+
+      document.getElementById('detalhe-content').innerHTML = `
+        <div class="detalhe-avatar" style="background:${cor}">${iniciais(c.nome)}</div>
+        <div class="detalhe-nome">${c.nome}</div>
+        ${c.empresa ? `<div class="detalhe-empresa">${c.empresa}</div>` : ''}
+
+        <div class="detalhe-badge-row">
+          <span class="contato-tipo-badge" style="background:${ti.bg};color:${ti.color}">${ti.label}</span>
+          ${tags.map(t => `<span class="contato-tipo-badge" style="background:color-mix(in srgb,var(--m-border) 22%,transparent);color:var(--m-text-2)">${t}</span>`).join('')}
+        </div>
+
+        <!-- Botões de ação -->
+        <div class="detalhe-actions">
+          <a class="detalhe-action-btn verde ${temTel ? '' : 'disabled'}" href="${temTel ? `tel:${c.telefone.replace(/\D/g,'')}` : '#'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l1.41-1.41a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Ligar
+          </a>
+          <a class="detalhe-action-btn azul ${temEmail ? '' : 'disabled'}" href="${temEmail ? `mailto:${c.email}` : '#'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            E-mail
+          </a>
+          ${temSite ? `
+            <a class="detalhe-action-btn" href="${c.site.startsWith('http') ? c.site : 'https://'+c.site}" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              Site
+            </a>
+          ` : ''}
+        </div>
+
+        <!-- Informações detalhadas -->
+        <div class="detalhe-section">
+          <div class="detalhe-section-title">Informações</div>
+
+          ${temTel ? `
+            <div class="detalhe-field">
+              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l1.41-1.41a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="detalhe-field-body">
+                <div class="detalhe-field-label">Telefone</div>
+                <div class="detalhe-field-value"><a href="tel:${c.telefone.replace(/\D/g,'')}">${c.telefone}</a></div>
+              </div>
+            </div>
+          ` : ''}
+
+          ${temEmail ? `
+            <div class="detalhe-field">
+              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+              <div class="detalhe-field-body">
+                <div class="detalhe-field-label">E-mail</div>
+                <div class="detalhe-field-value"><a href="mailto:${c.email}">${c.email}</a></div>
+              </div>
+            </div>
+          ` : ''}
+
+          ${c.cidade || c.estado ? `
+            <div class="detalhe-field">
+              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+              <div class="detalhe-field-body">
+                <div class="detalhe-field-label">Localização</div>
+                <div class="detalhe-field-value">${[c.cidade, c.estado].filter(Boolean).join(', ')}</div>
+              </div>
+            </div>
+          ` : ''}
+
+          ${temSite ? `
+            <div class="detalhe-field">
+              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+              <div class="detalhe-field-body">
+                <div class="detalhe-field-label">Site</div>
+                <div class="detalhe-field-value"><a href="${c.site.startsWith('http') ? c.site : 'https://'+c.site}" target="_blank" rel="noopener">${c.site}</a></div>
+              </div>
+            </div>
+          ` : ''}
+
+          ${c.observacao ? `
+            <div class="detalhe-field">
+              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+              <div class="detalhe-field-body">
+                <div class="detalhe-field-label">Observação</div>
+                <div class="detalhe-field-value" style="white-space:pre-wrap">${c.observacao}</div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      openSheet('detalhe');
+    }
+
+    // ── Init ──────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', async () => {
+      const u = await requireAuth('./index.html');
+      if (!u) return;
+
+      buildBottomNav('contatos', isSocio(u));
+      buildFilterRow();
+
+      const sb = getSB();
+      const { data, error } = await sb
+        .from('exp_contatos')
+        .select('id,nome,empresa,tipo_produto,cidade,estado,telefone,email,site,tipo,observacao,validado_em')
+        .eq('desativado', false)
+        .order('nome');
+
+      if (error) {
+        document.getElementById('page-content').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-title">Erro ao carregar</div>
+            <div class="empty-state-desc">${error.message}</div>
+          </div>`;
+        return;
+      }
+
+      G.contatos = data ?? [];
+      renderLista();
+    });
+  </script>
+
+</body>
+</html>

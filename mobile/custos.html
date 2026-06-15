@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>EXP · Custos</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+  <style>
+    .week-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--gap-sm) var(--gap-md);
+      background: var(--m-surface);
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 20%, transparent);
+      position: sticky;
+      top: calc(var(--header-h) + var(--safe-t));
+      z-index: 50;
+    }
+    .week-label { font-size: var(--mt-body); font-weight: 700; text-align: center; }
+    .week-sub   { font-size: var(--mt-caption); color: var(--m-text-3); text-align: center; margin-top: 1px; }
+    .week-nav-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--m-text-2);
+      transition: background var(--m-transition);
+      -webkit-tap-highlight-color: transparent;
+      border: none; background: none; cursor: pointer;
+    }
+    .week-nav-btn:active { background: color-mix(in srgb, var(--m-border) 20%, transparent); }
+    .week-nav-btn svg { width: 18px; height: 18px; stroke-width: 2.2; }
+    .week-nav-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+    .day-group { margin-bottom: var(--gap-md); }
+    .day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--gap-xs);
+      padding: 0 var(--gap-xs);
+    }
+    .day-label {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      text-transform: uppercase;
+      letter-spacing: var(--label-spacing);
+      color: var(--m-text-3);
+    }
+    .day-total {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      color: var(--atencao);
+      font-family: var(--font-mono);
+    }
+
+    .custo-item {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      padding: 11px var(--gap-md);
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      margin-bottom: var(--gap-xs);
+      box-shadow: var(--shadow-card);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform var(--m-transition);
+    }
+    .custo-item:active { transform: scale(0.98); }
+    .custo-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--atencao) 12%, transparent);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .custo-icon svg { width: 16px; height: 16px; stroke: var(--atencao); stroke-width: 2; }
+    .custo-body { flex: 1; min-width: 0; }
+    .custo-titulo {
+      font-size: var(--mt-body);
+      font-weight: var(--weight-semibold);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .custo-sub {
+      font-size: var(--mt-caption);
+      color: var(--m-text-2);
+      margin-top: 2px;
+    }
+    .custo-valor {
+      font-size: var(--mt-body);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--atencao);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .fab {
+      position: fixed;
+      right: var(--gap-md);
+      bottom: calc(var(--nav-h) + var(--safe-b) + var(--gap-md));
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: var(--verde);
+      color: var(--branco);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--verde) 35%, transparent);
+      z-index: 90;
+      border: none; cursor: pointer;
+      transition: transform var(--m-transition), opacity var(--m-transition);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fab:active { transform: scale(0.93); opacity: 0.85; }
+    .fab svg { width: 24px; height: 24px; stroke-width: 2.2; }
+    .fab.hidden { pointer-events: none; opacity: 0; }
+
+    /* valor input group */
+    .valor-wrap { position: relative; }
+    .valor-wrap .prefix {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      font-size: var(--mt-callout); color: var(--m-text-2); font-family: var(--font-mono); pointer-events: none;
+    }
+    .valor-wrap input { padding-left: 36px; font-family: var(--font-mono); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <a href="./gestao.html" class="header-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+      Gestão
+    </a>
+    <div class="header-title">Custos</div>
+  </header>
+
+  <!-- Navegação de semana (sticky) -->
+  <div class="week-nav">
+    <button class="week-nav-btn" id="btn-prev" onclick="navSemana(-1)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div>
+      <div class="week-label" id="week-label">…</div>
+      <div class="week-sub" id="week-sub"></div>
+    </div>
+    <button class="week-nav-btn" id="btn-next" onclick="navSemana(1)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+
+  <div class="page page--no-header" style="padding-top:0">
+    <div class="page-content" id="page-content" style="padding-bottom:calc(var(--nav-h) + var(--safe-b) + 72px)">
+      <div class="loader-page"><div class="loader"></div></div>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" onclick="abrirNovo()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <!-- Sheet: novo / editar custo -->
+  <div class="sheet-overlay" id="form-overlay" onclick="fecharForm()"></div>
+  <div class="sheet" id="form-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="form-titulo">Novo custo</div>
+
+    <div class="form-group">
+      <label class="form-label">Dia</label>
+      <select class="form-input" id="f-dia"></select>
+    </div>
+
+    <div class="form-group" style="margin-top:var(--gap-md)">
+      <label class="form-label">Tipo</label>
+      <select class="form-input" id="f-tipo" onchange="onTipoChange()">
+        <option value="projeto">Projeto</option>
+        <option value="organizacao">Organização Interna</option>
+        <option value="sociedade">Sociedade</option>
+      </select>
+    </div>
+
+    <div class="form-group" style="margin-top:var(--gap-md)">
+      <label class="form-label">Subtipo</label>
+      <select class="form-input" id="f-subtipo"></select>
+    </div>
+
+    <div id="f-produto-wrap" class="form-group" style="margin-top:var(--gap-md)">
+      <label class="form-label">Projeto</label>
+      <select class="form-input" id="f-produto" onchange="onProdutoChange()">
+        <option value="">Selecionar projeto…</option>
+      </select>
+    </div>
+
+    <div id="f-etapa-wrap" class="form-group" style="display:none;margin-top:var(--gap-md)">
+      <label class="form-label">Etapa</label>
+      <select class="form-input" id="f-etapa">
+        <option value="">Selecionar etapa…</option>
+      </select>
+    </div>
+
+    <div class="form-group" style="margin-top:var(--gap-md)">
+      <label class="form-label">Valor</label>
+      <div class="valor-wrap">
+        <span class="prefix">R$</span>
+        <input type="number" class="form-input" id="f-valor" placeholder="0,00" min="0" step="0.01" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:var(--gap-md)">
+      <label class="form-label">Descrição</label>
+      <input type="text" class="form-input" id="f-desc" placeholder="Detalhe do gasto…">
+    </div>
+
+    <div style="margin-top:var(--gap-lg);display:flex;gap:var(--gap-sm)">
+      <button class="btn btn-danger btn-sm" id="f-btn-excluir" style="display:none;margin-right:auto" onclick="excluirCusto()">Excluir</button>
+      <button class="btn btn-secondary" onclick="fecharForm()">Cancelar</button>
+      <button class="btn btn-primary" style="flex:1" onclick="salvarCusto()">Salvar</button>
+    </div>
+  </div>
+
+  <script>
+    const DIAS_FULL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+    const SUBTIPOS = {
+      projeto:      ['Alimentação','Hospedagem','Translado','Impressão','Material','Maquete','Outros'],
+      organizacao:  ['HH','Encontro Presencial','Material de Escritório','Software / Assinatura','Outros'],
+      sociedade:    ['Operações','Marketing','Prospecção','Jurídico','Contabilidade','RH e Pessoas','Outros'],
+    };
+
+    let G = {
+      usuario: null,
+      custos: [],
+      produtos: [],
+      semanaOffset: 0,
+      editId: null,
+      semanaRange: null,
+    };
+
+    // ── Date helpers ──────────────────────────────
+    function getMondayOf(date) {
+      const d = new Date(date);
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+    function toISO(d) { return d.toISOString().split('T')[0]; }
+    function getSemanaRange(offset = 0) {
+      const base = new Date();
+      base.setDate(base.getDate() + offset * 7);
+      const seg = getMondayOf(base);
+      const dom = addDays(seg, 6);
+      return { seg, dom, start: toISO(seg), end: toISO(dom) };
+    }
+
+    // ── Load ──────────────────────────────────────
+    async function loadSemana() {
+      const sb = getSB();
+      const range = getSemanaRange(G.semanaOffset);
+      G.semanaRange = range;
+
+      document.getElementById('week-label').textContent =
+        `${range.seg.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})} – ${range.dom.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}`;
+      document.getElementById('week-sub').textContent =
+        G.semanaOffset === 0 ? 'Semana atual' :
+        G.semanaOffset === -1 ? 'Semana passada' :
+        `${Math.abs(G.semanaOffset)} semanas atrás`;
+      document.getElementById('btn-next').disabled = G.semanaOffset >= 0;
+      document.getElementById('page-content').innerHTML = `<div class="loader-page"><div class="loader"></div></div>`;
+
+      const { data: custos } = await sb
+        .from('lancamentos_custo')
+        .select('id, data_lancamento, tipo, subtipo, valor, descricao, produto_id, etapa_id, produtos(nome), etapas(nome)')
+        .eq('usuario_id', G.usuario.id)
+        .gte('data_lancamento', range.start)
+        .lte('data_lancamento', range.end)
+        .order('data_lancamento');
+
+      G.custos = custos ?? [];
+      renderSemana();
+    }
+
+    function renderSemana() {
+      const { custos } = G;
+
+      const porDia = {};
+      custos.forEach(c => {
+        if (!porDia[c.data_lancamento]) porDia[c.data_lancamento] = [];
+        porDia[c.data_lancamento].push(c);
+      });
+
+      const totalGeral = custos.reduce((a, c) => a + (c.valor ?? 0), 0);
+
+      const dias = [];
+      for (let i = 0; i < 7; i++) dias.push(toISO(addDays(G.semanaRange.seg, i)));
+
+      const el = document.getElementById('page-content');
+      el.innerHTML = `
+        <div class="stat-row" style="margin-bottom:var(--gap-lg)">
+          <div class="stat-card" style="grid-column:span 3">
+            <div class="stat-value" style="color:var(--atencao)">${formatBRL(totalGeral)}</div>
+            <div class="stat-label">Total da semana</div>
+          </div>
+        </div>
+
+        ${dias.map(iso => {
+          const itens = porDia[iso] ?? [];
+          if (!itens.length) return '';
+          const d = new Date(iso + 'T12:00:00');
+          const diaLabel = DIAS_FULL[d.getDay()] + ', ' + d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+          const totalDia = itens.reduce((a, c) => a + (c.valor ?? 0), 0);
+          return `
+            <div class="day-group">
+              <div class="day-header">
+                <span class="day-label">${diaLabel}</span>
+                <span class="day-total">${formatBRL(totalDia)}</span>
+              </div>
+              ${itens.map(c => {
+                const titulo = c.subtipo || c.tipo;
+                const sub = [c.produtos?.nome, c.etapas?.nome, c.descricao].filter(Boolean).join(' · ');
+                return `
+                  <div class="custo-item" onclick="abrirEditar('${c.id}')">
+                    <div class="custo-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div class="custo-body">
+                      <div class="custo-titulo">${titulo}</div>
+                      ${sub ? `<div class="custo-sub">${sub}</div>` : ''}
+                    </div>
+                    <div class="custo-valor">${formatBRL(c.valor ?? 0)}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }).join('')}
+
+        ${custos.length === 0 ? `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <div class="empty-state-title">Sem custos esta semana</div>
+            <div class="empty-state-desc">Toque + para registrar um gasto</div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    function navSemana(dir) {
+      G.semanaOffset += dir;
+      loadSemana();
+    }
+
+    // ── Form helpers ──────────────────────────────
+    function populaDias() {
+      const sel = document.getElementById('f-dia');
+      const { seg } = G.semanaRange;
+      sel.innerHTML = '';
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(seg, i);
+        const opt = document.createElement('option');
+        opt.value = toISO(d);
+        opt.textContent = DIAS_FULL[d.getDay()] + ', ' + d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+        if (toISO(d) === toISO(new Date())) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    function populaSubtipos(tipo) {
+      const sel = document.getElementById('f-subtipo');
+      sel.innerHTML = '';
+      (SUBTIPOS[tipo] ?? []).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        sel.appendChild(opt);
+      });
+    }
+
+    function populaProdutos() {
+      const sel = document.getElementById('f-produto');
+      sel.innerHTML = '<option value="">Selecionar projeto…</option>';
+      G.produtos.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id; opt.textContent = p.nome;
+        sel.appendChild(opt);
+      });
+    }
+
+    function onTipoChange() {
+      const tipo = document.getElementById('f-tipo').value;
+      populaSubtipos(tipo);
+      const isProj = tipo === 'projeto';
+      document.getElementById('f-produto-wrap').style.display = isProj ? '' : 'none';
+      document.getElementById('f-etapa-wrap').style.display = 'none';
+    }
+
+    async function onProdutoChange() {
+      const sb = getSB();
+      const prodId = document.getElementById('f-produto').value;
+      const etapaWrap = document.getElementById('f-etapa-wrap');
+      const etapaSel = document.getElementById('f-etapa');
+      if (!prodId) { etapaWrap.style.display = 'none'; return; }
+      const { data: etapas } = await sb.from('etapas').select('id, nome, ordem').eq('produto_id', prodId).order('ordem');
+      etapaSel.innerHTML = '<option value="">Selecionar etapa…</option>';
+      (etapas ?? []).forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id; opt.textContent = e.nome;
+        etapaSel.appendChild(opt);
+      });
+      etapaWrap.style.display = '';
+    }
+
+    function abrirNovo() {
+      G.editId = null;
+      document.getElementById('form-titulo').textContent = 'Novo custo';
+      document.getElementById('f-btn-excluir').style.display = 'none';
+      document.getElementById('f-tipo').value = 'projeto';
+      document.getElementById('f-valor').value = '';
+      document.getElementById('f-desc').value = '';
+      document.getElementById('f-produto').value = '';
+      document.getElementById('f-etapa-wrap').style.display = 'none';
+      document.getElementById('f-produto-wrap').style.display = '';
+      populaDias();
+      onTipoChange();
+      openSheet('form');
+    }
+
+    function abrirEditar(id) {
+      const c = G.custos.find(x => x.id === id);
+      if (!c) return;
+      G.editId = id;
+      document.getElementById('form-titulo').textContent = 'Editar custo';
+      document.getElementById('f-btn-excluir').style.display = '';
+      populaDias();
+      document.getElementById('f-dia').value = c.data_lancamento;
+      document.getElementById('f-tipo').value = c.tipo ?? 'projeto';
+      onTipoChange();
+      // set subtipo after populating
+      document.getElementById('f-subtipo').value = c.subtipo ?? '';
+      document.getElementById('f-valor').value = c.valor ?? '';
+      document.getElementById('f-desc').value = c.descricao ?? '';
+      populaProdutos();
+      document.getElementById('f-produto').value = c.produto_id ?? '';
+      if (c.produto_id) onProdutoChange().then(() => {
+        document.getElementById('f-etapa').value = c.etapa_id ?? '';
+      });
+      openSheet('form');
+    }
+
+    function fecharForm() { closeSheet('form'); }
+
+    async function salvarCusto() {
+      const data_lancamento = document.getElementById('f-dia').value;
+      const tipo = document.getElementById('f-tipo').value;
+      const subtipo = document.getElementById('f-subtipo').value || null;
+      const valorRaw = parseFloat(document.getElementById('f-valor').value);
+      const descricao = document.getElementById('f-desc').value.trim();
+      const produto_id = document.getElementById('f-produto').value || null;
+      const etapa_id = document.getElementById('f-etapa').value || null;
+
+      if (!data_lancamento) { showToast('Selecione o dia', 'error'); return; }
+      if (isNaN(valorRaw) || valorRaw <= 0) { showToast('Informe um valor válido', 'error'); return; }
+
+      const payload = {
+        usuario_id: G.usuario.id,
+        data_lancamento,
+        tipo,
+        subtipo,
+        valor: valorRaw,
+        descricao: descricao || null,
+        produto_id: tipo === 'projeto' ? produto_id : null,
+        etapa_id: tipo === 'projeto' ? etapa_id : null,
+      };
+
+      const sb = getSB();
+      let error;
+      if (G.editId) {
+        ({ error } = await sb.from('lancamentos_custo').update(payload).eq('id', G.editId));
+      } else {
+        ({ error } = await sb.from('lancamentos_custo').insert(payload));
+      }
+
+      if (error) { showToast('Erro ao salvar', 'error'); return; }
+      fecharForm();
+      loadSemana();
+      showToast(G.editId ? 'Custo atualizado' : 'Custo registrado', 'success');
+    }
+
+    async function excluirCusto() {
+      if (!G.editId) return;
+      const sb = getSB();
+      const { error } = await sb.from('lancamentos_custo').delete().eq('id', G.editId);
+      if (error) { showToast('Erro ao excluir', 'error'); return; }
+      fecharForm();
+      loadSemana();
+      showToast('Custo excluído');
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const u = await requireAuth('./index.html');
+      if (!u) return;
+      G.usuario = u;
+
+      buildBottomNav('gestao', isSocio(u));
+
+      const sb = getSB();
+      const { data: produtos } = await sb
+        .from('produtos').select('id, nome').eq('status','ativo').order('nome');
+      G.produtos = produtos ?? [];
+
+      loadSemana();
+    });
+  </script>
+
+</body>
+</html>

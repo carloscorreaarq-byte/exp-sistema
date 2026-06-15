@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>EXP · Tarefas</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+  <style>
+    .filter-row {
+      display: flex;
+      gap: var(--gap-xs);
+      margin-bottom: var(--gap-md);
+    }
+    .filter-pill {
+      height: 30px;
+      border-radius: var(--m-radius-pill);
+      padding: 0 var(--gap-sm);
+      font-family: var(--font-ui);
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      letter-spacing: var(--label-spacing);
+      text-transform: uppercase;
+      background: color-mix(in srgb, var(--m-border) 18%, transparent);
+      color: var(--m-text-2);
+      border: none;
+      cursor: pointer;
+      transition: all var(--m-transition);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .filter-pill.active { background: var(--verde-soft); color: var(--verde); }
+
+    .tarefa-group { margin-bottom: var(--gap-md); }
+    .tarefa-group-title {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      text-transform: uppercase;
+      letter-spacing: var(--label-spacing);
+      color: var(--m-text-3);
+      margin-bottom: var(--gap-xs);
+      padding: 0 var(--gap-xs);
+    }
+    .tarefa-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gap-sm);
+      padding: 11px var(--gap-md);
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      margin-bottom: var(--gap-xs);
+      box-shadow: var(--shadow-card);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform var(--m-transition);
+    }
+    .tarefa-item:active { transform: scale(0.98); }
+    .tarefa-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      border: 2px solid color-mix(in srgb, var(--m-border) 55%, transparent);
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--m-transition);
+    }
+    .tarefa-item.done .tarefa-check { background: var(--verde); border-color: var(--verde); }
+    .tarefa-check svg { width: 12px; height: 12px; stroke: var(--branco); stroke-width: 3; display: none; }
+    .tarefa-item.done .tarefa-check svg { display: block; }
+    .tarefa-body { flex: 1; min-width: 0; }
+    .tarefa-desc {
+      font-size: var(--mt-body);
+      font-weight: var(--weight-semibold);
+      line-height: 1.3;
+    }
+    .tarefa-item.done .tarefa-desc { text-decoration: line-through; color: var(--m-text-3); font-weight: 400; }
+    .tarefa-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .tarefa-meta-item {
+      font-size: var(--mt-label);
+      color: var(--m-text-3);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .tarefa-meta-item svg { width: 11px; height: 11px; stroke-width: 2; }
+    .tarefa-vencida { color: var(--critico) !important; }
+
+    .checklist-group {
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      margin-bottom: var(--gap-xs);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+    .checklist-group-header {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      padding: 11px var(--gap-md);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .checklist-group-header:active { background: color-mix(in srgb, var(--m-border) 8%, transparent); }
+    .checklist-group-info { flex: 1; min-width: 0; }
+    .checklist-group-title { font-size: var(--mt-body); font-weight: 700; }
+    .checklist-group-sub   { font-size: var(--mt-caption); color: var(--m-text-2); margin-top: 2px; }
+    .checklist-group-body  { padding: 0 var(--gap-md) var(--gap-sm); border-top: 1px solid color-mix(in srgb, var(--m-border) 18%, transparent); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <a href="./gestao.html" class="header-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+      Gestão
+    </a>
+    <div class="header-title">Minhas Tarefas</div>
+  </header>
+
+  <div class="page">
+    <div class="page-content" id="page-content">
+      <div class="loader-page"><div class="loader"></div></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script>
+    let G = { usuario: null, tarefasLivres: [], checklists: [], filtro: 'abertas' };
+
+    function isVencida(data) {
+      if (!data) return false;
+      return new Date(data) < new Date(new Date().toDateString());
+    }
+
+    function renderAll() {
+      const { tarefasLivres, checklists, filtro } = G;
+      const mostrarConcluidas = filtro === 'concluidas';
+
+      const livresFiltradas = tarefasLivres.filter(t =>
+        mostrarConcluidas ? t.concluida : !t.concluida
+      );
+
+      const checklistsFiltrados = checklists.filter(c => {
+        const total = c.itens?.length ?? 0;
+        const feitos = c.itens?.filter(i => i.concluido).length ?? 0;
+        return mostrarConcluidas ? feitos === total && total > 0 : feitos < total || total === 0;
+      });
+
+      const total = livresFiltradas.length + checklistsFiltrados.length;
+
+      document.getElementById('page-content').innerHTML = `
+        <div class="filter-row">
+          <button class="filter-pill ${filtro === 'abertas' ? 'active' : ''}" onclick="setFiltro('abertas')">Abertas</button>
+          <button class="filter-pill ${filtro === 'concluidas' ? 'active' : ''}" onclick="setFiltro('concluidas')">Concluídas</button>
+        </div>
+
+        ${total === 0 ? `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <div class="empty-state-title">${mostrarConcluidas ? 'Nada concluído ainda' : 'Sem tarefas pendentes'}</div>
+            <div class="empty-state-desc">${mostrarConcluidas ? '' : 'Você está em dia!'}</div>
+          </div>
+        ` : `
+          ${livresFiltradas.length > 0 ? `
+            <div class="tarefa-group">
+              <div class="tarefa-group-title">Tarefas (${livresFiltradas.length})</div>
+              ${livresFiltradas.map(t => renderTarefaItem(t)).join('')}
+            </div>
+          ` : ''}
+
+          ${checklistsFiltrados.length > 0 ? `
+            <div class="tarefa-group">
+              <div class="tarefa-group-title">Checklists de etapa (${checklistsFiltrados.length})</div>
+              ${checklistsFiltrados.map(c => renderChecklistGroup(c)).join('')}
+            </div>
+          ` : ''}
+        `}
+      `;
+    }
+
+    function renderTarefaItem(t) {
+      const vencida = isVencida(t.data_limite);
+      return `
+        <div class="tarefa-item ${t.concluida ? 'done' : ''}" onclick="toggleTarefa('${t.id}', ${t.concluida})">
+          <div class="tarefa-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="tarefa-body">
+            <div class="tarefa-desc">${t.descricao}</div>
+            <div class="tarefa-meta">
+              ${t.produto_nome ? `<span class="tarefa-meta-item">${t.produto_nome}</span>` : ''}
+              ${t.data_limite ? `
+                <span class="tarefa-meta-item ${vencida && !t.concluida ? 'tarefa-vencida' : ''}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  ${formatDateFull(t.data_limite)}
+                </span>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderChecklistGroup(c) {
+      const total = c.itens?.length ?? 0;
+      const feitos = c.itens?.filter(i => i.concluido).length ?? 0;
+      const pct = total > 0 ? Math.round((feitos / total) * 100) : 0;
+      return `
+        <div class="checklist-group">
+          <div class="checklist-group-header" onclick="toggleChecklistGroup('${c.id}')">
+            <div class="checklist-group-info">
+              <div class="checklist-group-title">${c.preset_nome ?? 'Checklist'}</div>
+              <div class="checklist-group-sub">${c.produto_nome} · ${feitos}/${total} itens</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:var(--gap-sm)">
+              <div style="font-size:var(--mt-caption);font-weight:700;color:${pct===100?'var(--verde)':'var(--m-text-3)'};">${pct}%</div>
+              <svg id="chevron-${c.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;stroke-width:2.2;color:var(--m-text-3);transition:transform var(--m-transition)"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+          <div id="checklist-body-${c.id}" style="display:none">
+            <div class="checklist-group-body">
+              ${c.itens?.map(item => `
+                <div class="checklist-item ${item.concluido ? 'done' : ''}" onclick="toggleChecklistItem('${item.id}', '${c.id}', ${item.concluido})">
+                  <div class="check-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <span class="checklist-text">${item.texto}</span>
+                </div>
+              `).join('') ?? ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleChecklistGroup(id) {
+      const body = document.getElementById(`checklist-body-${id}`);
+      const chevron = document.getElementById(`chevron-${id}`);
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      chevron.style.transform = open ? '' : 'rotate(90deg)';
+    }
+
+    function setFiltro(filtro) {
+      G.filtro = filtro;
+      renderAll();
+    }
+
+    async function toggleTarefa(id, concluida) {
+      const sb = getSB();
+      const nova = !concluida;
+      const { error } = await sb.from('tarefas_livres').update({
+        concluida: nova,
+        concluida_em: nova ? new Date().toISOString() : null,
+      }).eq('id', id);
+      if (error) { showToast('Erro ao atualizar tarefa', 'error'); return; }
+      G.tarefasLivres = G.tarefasLivres.map(t => t.id === id ? { ...t, concluida: nova } : t);
+      renderAll();
+    }
+
+    async function toggleChecklistItem(itemId, checklistId, concluido) {
+      const sb = getSB();
+      const nova = !concluido;
+      const { error } = await sb.from('checklist_etapa_exec_item').update({
+        concluido: nova,
+        concluido_por: nova ? G.usuario.id : null,
+        concluido_por_nome: nova ? G.usuario.nome : null,
+        concluido_em: nova ? new Date().toISOString() : null,
+      }).eq('id', itemId);
+      if (error) { showToast('Erro ao atualizar item', 'error'); return; }
+      G.checklists = G.checklists.map(c => {
+        if (c.id !== checklistId) return c;
+        return { ...c, itens: c.itens.map(i => i.id === itemId ? { ...i, concluido: nova } : i) };
+      });
+      renderAll();
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const u = await requireAuth('./index.html');
+      if (!u) return;
+      G.usuario = u;
+
+      buildBottomNav('gestao', isSocio(u));
+
+      const sb = getSB();
+      const [
+        { data: tarefas },
+        { data: checklistsRaw },
+      ] = await Promise.all([
+        sb.from('tarefas_livres')
+          .select('id, descricao, data_limite, tipo, concluida, produto_id, produtos(nome)')
+          .eq('atribuido_para', u.id)
+          .order('data_limite', { ascending: true, nullsFirst: false }),
+        sb.from('checklist_etapa_exec')
+          .select('id, produto_id, etapa_id, checklist_etapa_preset(nome), produtos(nome), checklist_etapa_exec_item(id, texto, concluido, ordem)')
+          .eq('atribuido_para', u.id)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      G.tarefasLivres = (tarefas ?? []).map(t => ({
+        ...t,
+        produto_nome: t.produtos?.nome ?? null,
+      }));
+
+      G.checklists = (checklistsRaw ?? []).map(c => ({
+        ...c,
+        preset_nome: c.checklist_etapa_preset?.nome ?? 'Checklist',
+        produto_nome: c.produtos?.nome ?? '',
+        itens: (c.checklist_etapa_exec_item ?? []).sort((a, b) => a.ordem - b.ordem),
+      }));
+
+      renderAll();
+    });
+  </script>
+
+</body>
+</html>

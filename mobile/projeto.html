@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>EXP · Projeto</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+  <style>
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 9px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 16%, transparent);
+      gap: var(--gap-sm);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      text-transform: uppercase;
+      letter-spacing: var(--label-spacing);
+      color: var(--m-text-3);
+      flex-shrink: 0;
+    }
+    .info-value {
+      font-size: var(--mt-body);
+      font-weight: var(--weight-semibold);
+      text-align: right;
+      color: var(--m-text);
+    }
+
+    .etapa-card {
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      margin-bottom: var(--gap-sm);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+    .etapa-header {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      padding: 12px var(--gap-md);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .etapa-header:active { background: color-mix(in srgb, var(--m-border) 6%, transparent); }
+    .etapa-status-bar {
+      width: 3px;
+      height: 32px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .etapa-info { flex: 1; min-width: 0; }
+    .etapa-nome {
+      font-size: var(--mt-body);
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .etapa-meta {
+      font-size: var(--mt-caption);
+      color: var(--m-text-2);
+      margin-top: 2px;
+    }
+    .etapa-body {
+      border-top: 1px solid color-mix(in srgb, var(--m-border) 16%, transparent);
+      padding: var(--gap-sm) var(--gap-md);
+    }
+    .etapa-devs {
+      display: flex;
+      gap: var(--gap-xs);
+      flex-wrap: wrap;
+      margin-bottom: var(--gap-sm);
+    }
+    .dev-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: color-mix(in srgb, var(--m-border) 14%, transparent);
+      border-radius: var(--m-radius-pill);
+      padding: 3px 8px 3px 4px;
+      font-size: var(--mt-caption);
+      font-weight: var(--weight-semibold);
+    }
+
+    .tab-row {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      margin: 0 calc(-1 * var(--gap-md));
+      padding: 0 var(--gap-md);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tab-row::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex-shrink: 0;
+      height: 36px;
+      padding: 0 var(--gap-sm);
+      font-family: var(--font-ui);
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      letter-spacing: var(--label-spacing);
+      text-transform: uppercase;
+      color: var(--m-text-3);
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: none;
+      cursor: pointer;
+      margin-bottom: -1px;
+      white-space: nowrap;
+      transition: color var(--m-transition);
+    }
+    .tab-btn.active { color: var(--verde); border-bottom-color: var(--verde); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <a href="./projetos.html" class="header-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+      Projetos
+    </a>
+    <div style="flex:1; overflow:hidden">
+      <div class="header-title" id="header-nome">…</div>
+      <div class="header-subtitle" id="header-nucleo"></div>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="page-content" id="page-content">
+      <div class="loader-page"><div class="loader"></div></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script>
+    const NUCLEO = {
+      urbanismo:    { color: 'var(--azul)',      label: 'Urbanismo' },
+      paisagismo:   { color: 'var(--verde)',     label: 'Paisagismo' },
+      especiais:    { color: 'var(--ouro)',      label: 'Especiais' },
+      consultorias: { color: 'var(--terracota)', label: 'Consultorias' },
+    };
+    const ETAPA_STATUS = {
+      nao_iniciada: { color: 'var(--m-text-3)', label: 'Não iniciada' },
+      em_andamento: { color: 'var(--azul)',     label: 'Em andamento' },
+      em_revisao:   { color: 'var(--ouro)',     label: 'Em revisão' },
+      concluida:    { color: 'var(--verde)',    label: 'Concluída' },
+      pausada:      { color: 'var(--terracota)', label: 'Pausada' },
+    };
+
+    let G = { produto: null, usuario: null, produtoId: null, tabAtiva: 'etapas' };
+
+    const params = new URLSearchParams(window.location.search);
+    G.produtoId = params.get('id');
+
+    // ── Render ───────────────────────────────────
+    function renderPage() {
+      const p = G.produto;
+      const n = NUCLEO[p.nucleo] ?? { color: 'var(--m-text-3)', label: p.nucleo };
+      const etapas = p.etapas ?? [];
+      const concluidas = etapas.filter(e => e.status === 'concluida').length;
+      const pct = etapas.length ? Math.round((concluidas / etapas.length) * 100) : 0;
+
+      document.getElementById('header-nome').textContent = p.nome;
+      document.getElementById('header-nucleo').textContent = n.label;
+      document.getElementById('header-nucleo').style.color = n.color;
+
+      document.getElementById('page-content').innerHTML = `
+        <!-- Resumo do projeto -->
+        <div class="card" style="margin-bottom:var(--gap-md)">
+          <div class="info-row">
+            <span class="info-label">Status</span>
+            <span class="tag tag-${p.status}">${p.status}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Área</span>
+            <span class="info-value" style="color:${n.color}">${n.label}</span>
+          </div>
+          ${p.coordenador_nome ? `
+            <div class="info-row">
+              <span class="info-label">Coordenador</span>
+              <span class="info-value">${p.coordenador_nome}</span>
+            </div>
+          ` : ''}
+          ${p.data_inicio ? `
+            <div class="info-row">
+              <span class="info-label">Início</span>
+              <span class="info-value">${formatDateFull(p.data_inicio)}</span>
+            </div>
+          ` : ''}
+          <div style="margin-top:var(--gap-sm)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:var(--mt-caption);color:var(--m-text-3)">${concluidas}/${etapas.length} etapas concluídas</span>
+              <span style="font-size:var(--mt-caption);font-weight:700;color:${n.color}">${pct}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${pct}%;background:${n.color}"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs: Etapas | Observações -->
+        <div class="tab-row" style="margin-bottom:var(--gap-md)">
+          <button class="tab-btn ${G.tabAtiva==='etapas'?'active':''}" onclick="setTab('etapas')">Etapas</button>
+          ${p.obs ? `<button class="tab-btn ${G.tabAtiva==='obs'?'active':''}" onclick="setTab('obs')">Observações</button>` : ''}
+        </div>
+
+        <!-- Conteúdo por tab -->
+        <div id="tab-content">
+          ${G.tabAtiva === 'etapas' ? renderEtapas(etapas, n) : `
+            <div class="card">
+              <p style="font-size:var(--mt-body);line-height:1.6;color:var(--m-text-2)">${p.obs}</p>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function renderEtapas(etapas, n) {
+      if (!etapas.length) {
+        return `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><div class="empty-state-title">Sem etapas cadastradas</div></div>`;
+      }
+      return etapas.map((e, idx) => {
+        const es = ETAPA_STATUS[e.status] ?? ETAPA_STATUS.nao_iniciada;
+        const devs = e.desenvolvedores ?? [];
+        const checklist = e.checklist ?? null;
+        const clTotal = checklist?.itens?.length ?? 0;
+        const clFeitos = checklist?.itens?.filter(i => i.concluido).length ?? 0;
+        return `
+          <div class="etapa-card">
+            <div class="etapa-header" onclick="toggleEtapa('etapa-${e.id}', 'chev-${e.id}')">
+              <div class="etapa-status-bar" style="background:${es.color}"></div>
+              <div class="etapa-info">
+                <div class="etapa-nome">${e.nome}</div>
+                <div class="etapa-meta">
+                  <span style="color:${es.color}">${es.label}</span>
+                  ${e.data_estimada ? ` · até ${formatDate(e.data_estimada)}` : ''}
+                  ${clTotal > 0 ? ` · ${clFeitos}/${clTotal} itens` : ''}
+                </div>
+              </div>
+              <svg id="chev-${e.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                style="width:16px;height:16px;stroke-width:2.2;color:var(--m-text-3);transition:transform var(--m-transition);flex-shrink:0">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </div>
+            <div id="etapa-${e.id}" style="display:none">
+              <div class="etapa-body">
+                ${devs.length ? `
+                  <div class="etapa-devs">
+                    ${devs.map(d => `
+                      <div class="dev-chip">
+                        <div class="avatar avatar-xs" style="background:${d.cor ?? 'var(--verde)'}">${d.iniciais ?? '?'}</div>
+                        ${d.nome.split(' ')[0]}
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+                ${e.entregaveis ? `
+                  <div style="margin-bottom:var(--gap-sm)">
+                    <div class="section-label">Entregáveis</div>
+                    <p style="font-size:var(--mt-caption);color:var(--m-text-2);line-height:1.5">${e.entregaveis}</p>
+                  </div>
+                ` : ''}
+                ${checklist && clTotal > 0 ? `
+                  <div>
+                    <div class="section-label">Checklist</div>
+                    ${checklist.itens.map(item => `
+                      <div class="checklist-item ${item.concluido ? 'done' : ''}"
+                        onclick="toggleItem('${item.id}', '${e.id}', ${item.concluido})">
+                        <div class="check-box">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <span class="checklist-text">${item.texto}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setTab(tab) {
+      G.tabAtiva = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().includes(tab === 'etapas' ? 'etapa' : 'obs')));
+      const n = NUCLEO[G.produto.nucleo] ?? { color: 'var(--m-text-3)' };
+      document.getElementById('tab-content').innerHTML =
+        tab === 'etapas' ? renderEtapas(G.produto.etapas, n) : `<div class="card"><p style="font-size:var(--mt-body);line-height:1.6;color:var(--m-text-2)">${G.produto.obs}</p></div>`;
+    }
+
+    function toggleEtapa(bodyId, chevId) {
+      const body = document.getElementById(bodyId);
+      const chev = document.getElementById(chevId);
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      chev.style.transform = open ? '' : 'rotate(90deg)';
+    }
+
+    async function toggleItem(itemId, etapaId, concluido) {
+      const sb = getSB();
+      const nova = !concluido;
+      const { error } = await sb.from('checklist_etapa_exec_item').update({
+        concluido: nova,
+        concluido_por: nova ? G.usuario.id : null,
+        concluido_por_nome: nova ? G.usuario.nome : null,
+        concluido_em: nova ? new Date().toISOString() : null,
+      }).eq('id', itemId);
+
+      if (error) { showToast('Erro ao atualizar item', 'error'); return; }
+
+      // Atualiza estado local
+      G.produto.etapas = G.produto.etapas.map(e => {
+        if (e.id !== etapaId) return e;
+        const cl = e.checklist;
+        if (!cl) return e;
+        return { ...e, checklist: { ...cl, itens: cl.itens.map(i => i.id === itemId ? { ...i, concluido: nova } : i) } };
+      });
+
+      renderPage();
+      // Reabre a etapa que estava aberta
+      setTimeout(() => {
+        const body = document.getElementById(`etapa-${etapaId}`);
+        const chev = document.getElementById(`chev-${etapaId}`);
+        if (body) { body.style.display = 'block'; chev.style.transform = 'rotate(90deg)'; }
+      }, 0);
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (!G.produtoId) { window.location.href = './projetos.html'; return; }
+
+      const u = await requireAuth('./index.html');
+      if (!u) return;
+      G.usuario = u;
+
+      buildBottomNav('gestao', isSocio(u));
+
+      const sb = getSB();
+      const [
+        { data: produto },
+        { data: etapas },
+      ] = await Promise.all([
+        sb.from('produtos')
+          .select('id, nome, nucleo, status, data_inicio, obs, coordenador_id, usuarios!produtos_coordenador_id_fkey(nome)')
+          .eq('id', G.produtoId)
+          .single(),
+        sb.from('etapas')
+          .select(`
+            id, nome, status, ordem, data_liberacao, data_estimada, data_conclusao, entregaveis,
+            etapa_desenvolvedores(usuarios(id, nome, iniciais, cor)),
+            checklist_etapa_exec(id, atribuido_para,
+              checklist_etapa_exec_item(id, texto, concluido, ordem)
+            )
+          `)
+          .eq('produto_id', G.produtoId)
+          .order('ordem'),
+      ]);
+
+      if (!produto) { window.location.href = './projetos.html'; return; }
+
+      G.produto = {
+        ...produto,
+        coordenador_nome: produto.usuarios?.nome ?? null,
+        etapas: (etapas ?? []).map(e => {
+          const devs = (e.etapa_desenvolvedores ?? []).map(ed => ed.usuarios).filter(Boolean);
+          const checklistRaw = (e.checklist_etapa_exec ?? [])[0] ?? null;
+          const checklist = checklistRaw ? {
+            id: checklistRaw.id,
+            itens: (checklistRaw.checklist_etapa_exec_item ?? []).sort((a, b) => a.ordem - b.ordem),
+          } : null;
+          return { ...e, desenvolvedores: devs, checklist };
+        }),
+      };
+
+      renderPage();
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E7858">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>EXP</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-core.js"></script>
+  <style>
+    /* ── Header ── */
+    .user-info     { flex: 1; min-width: 0; }
+    .user-name     { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-role-tag { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+    .greeting-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: var(--s-md);
+      display: flex;
+      align-items: center;
+      gap: var(--s-sm);
+      margin-bottom: var(--s-md);
+    }
+    .greeting-text  { flex: 1; }
+    .greeting-title { font-size: 16px; font-weight: 800; }
+    .greeting-sub   { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+    .viewer-banner {
+      background: var(--ouro-dim);
+      border: 1px solid var(--ouro);
+      border-radius: var(--radius-sm);
+      padding: var(--s-sm) var(--s-md);
+      font-size: 12px;
+      color: var(--ouro);
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: var(--s-md);
+    }
+
+    /* ── Seções do hub ── */
+    .hub-section {
+      margin-bottom: var(--s-lg);
+    }
+    .hub-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--s-xs);
+    }
+    .hub-section-title {
+      font-size: var(--mt-label);
+      font-weight: var(--weight-label);
+      text-transform: uppercase;
+      letter-spacing: var(--label-spacing);
+      color: var(--m-text-3);
+    }
+    .hub-section-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--s-xs);
+    }
+    .hub-action-btn {
+      height: 26px;
+      border-radius: var(--m-radius-pill);
+      padding: 0 var(--s-sm);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid color-mix(in srgb, var(--m-border) 40%, transparent);
+      background: transparent;
+      color: var(--m-text-2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      -webkit-tap-highlight-color: transparent;
+      transition: all var(--m-transition);
+    }
+    .hub-action-btn:active { background: color-mix(in srgb, var(--m-border) 20%, transparent); }
+    .hub-action-btn svg { width: 13px; height: 13px; stroke-width: 2.2; flex-shrink: 0; }
+    .hub-action-btn.accent {
+      background: var(--verde-soft);
+      border-color: transparent;
+      color: var(--verde);
+    }
+
+    /* ── Card base ── */
+    .hub-card {
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      border-radius: var(--m-radius-card);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+
+    /* ── Horas ── */
+    .hours-card {
+      padding: var(--s-md);
+      display: flex;
+      align-items: center;
+      gap: var(--s-md);
+    }
+    .hours-left { flex: 1; min-width: 0; }
+    .hours-big {
+      font-size: 32px;
+      font-weight: 900;
+      font-family: var(--font-mono);
+      letter-spacing: -1px;
+      line-height: 1;
+      color: var(--m-text-1);
+    }
+    .hours-meta {
+      font-size: 11px;
+      color: var(--m-text-3);
+      margin-top: 4px;
+    }
+    .hours-pct {
+      font-weight: 700;
+      color: var(--verde);
+    }
+    .hours-bar-wrap { flex: 1; min-width: 0; }
+    .hours-bar {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 6px;
+    }
+    .hours-bar-seg {
+      flex: 1;
+      height: 6px;
+      border-radius: 99px;
+      background: color-mix(in srgb, var(--m-border) 30%, transparent);
+    }
+    .hours-bar-seg.past  { background: var(--verde); }
+    .hours-bar-seg.today { background: var(--ouro); }
+    .hours-bar-days {
+      display: flex;
+      gap: 3px;
+    }
+    .hours-bar-day-lbl {
+      flex: 1;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      color: var(--m-text-3);
+    }
+    .hours-bar-day-lbl.past  { color: var(--verde); }
+    .hours-bar-day-lbl.today { color: var(--ouro); }
+
+    /* ── Tarefas ── */
+    .hub-task-item {
+      display: flex;
+      align-items: center;
+      gap: var(--s-sm);
+      padding: 11px var(--s-md);
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 14%, transparent);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background var(--m-transition);
+    }
+    .hub-task-item:last-child { border-bottom: none; }
+    .hub-task-item:active { background: color-mix(in srgb, var(--m-border) 8%, transparent); }
+    .hub-task-check {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      border: 2px solid color-mix(in srgb, var(--m-border) 55%, transparent);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--m-transition);
+    }
+    .hub-task-check svg { width: 11px; height: 11px; stroke: var(--branco); stroke-width: 3; display: none; }
+    .hub-task-item.done .hub-task-check { background: var(--verde); border-color: var(--verde); }
+    .hub-task-item.done .hub-task-check svg { display: block; }
+    .hub-task-body { flex: 1; min-width: 0; }
+    .hub-task-desc {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hub-task-item.done .hub-task-desc { text-decoration: line-through; color: var(--m-text-3); font-weight: 400; }
+    .hub-task-meta {
+      font-size: 11px;
+      color: var(--m-text-3);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hub-task-meta.vencida { color: var(--critico); }
+
+    /* ── Eventos ── */
+    .hub-event-item {
+      display: flex;
+      align-items: center;
+      gap: var(--s-sm);
+      padding: 11px var(--s-md);
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 14%, transparent);
+    }
+    .hub-event-item:last-child { border-bottom: none; }
+    .hub-event-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--azul);
+      flex-shrink: 0;
+    }
+    .hub-event-dot.reuniao { background: var(--azul); }
+    .hub-event-dot.agenda_exp { background: var(--verde); }
+    .hub-event-dot.feriado,
+    .hub-event-dot.recesso { background: var(--ouro); }
+    .hub-event-body { flex: 1; min-width: 0; }
+    .hub-event-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hub-event-when {
+      font-size: 11px;
+      color: var(--m-text-3);
+      margin-top: 2px;
+    }
+    .hub-event-meet {
+      color: var(--azul);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    /* ── Prioridades ── */
+    .hub-prio-item {
+      display: flex;
+      align-items: center;
+      gap: var(--s-sm);
+      padding: 11px var(--s-md);
+      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 14%, transparent);
+    }
+    .hub-prio-item:last-child { border-bottom: none; }
+    .hub-prio-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--m-border) 22%, transparent);
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--m-text-2);
+    }
+    .hub-prio-num.p1 { background: var(--verde-soft); color: var(--verde); }
+    .hub-prio-num.p2 { background: var(--azul-soft); color: var(--azul); }
+    .hub-prio-num.p3 { background: var(--ouro-soft); color: var(--ouro); }
+    .hub-prio-body { flex: 1; min-width: 0; }
+    .hub-prio-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hub-prio-sub {
+      font-size: 11px;
+      color: var(--m-text-3);
+      margin-top: 2px;
+    }
+    .hub-prio-prazo {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--m-text-3);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .hub-prio-prazo.vencida { color: var(--critico); }
+    .hub-prio-prazo.hoje    { color: var(--ouro); }
+
+    /* ── Empty state inline ── */
+    .hub-empty {
+      padding: 20px var(--s-md);
+      text-align: center;
+      font-size: 12px;
+      color: var(--m-text-3);
+    }
+
+    /* ── Sheet: nova tarefa ── */
+    .sheet-field {
+      margin-bottom: var(--s-md);
+    }
+    .sheet-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--m-text-3);
+      margin-bottom: 6px;
+    }
+    .sheet-field input,
+    .sheet-field select,
+    .sheet-field textarea {
+      width: 100%;
+      background: color-mix(in srgb, var(--m-border) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--m-border) 35%, transparent);
+      border-radius: var(--m-radius-sm);
+      padding: 10px 12px;
+      font-family: var(--font-ui);
+      font-size: 15px;
+      color: var(--m-text-1);
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color var(--m-transition);
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .sheet-field input:focus,
+    .sheet-field select:focus,
+    .sheet-field textarea:focus {
+      border-color: var(--verde);
+    }
+    .sheet-field textarea { resize: none; min-height: 72px; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-logo">EXP</div>
+    <div class="user-info" id="header-user">
+      <div class="user-name" id="header-name">…</div>
+      <div class="user-role-tag" id="header-role"></div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
+      <button class="icon-btn" onclick="openSheet('signout')" title="Sair">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Conteúdo -->
+  <div class="page">
+    <div class="page-content" id="page-content">
+      <div class="loader-page"><div class="loader"></div></div>
+    </div>
+  </div>
+
+  <!-- Nav inferior -->
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <!-- Sheet: confirmar saída -->
+  <div class="sheet-overlay" id="signout-overlay" onclick="closeSheet('signout')"></div>
+  <div class="sheet" id="signout-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Sair da plataforma?</div>
+    <p style="font-size:13px; color:var(--text-2); margin-bottom:var(--s-lg)">
+      Você precisará fazer login novamente.
+    </p>
+    <button class="btn btn-danger btn-full" onclick="signOut()">Sair</button>
+    <button class="btn btn-secondary btn-full" style="margin-top:8px" onclick="closeSheet('signout')">Cancelar</button>
+  </div>
+
+  <!-- Sheet: nova tarefa -->
+  <div class="sheet-overlay" id="new-task-overlay" onclick="closeSheet('new-task')"></div>
+  <div class="sheet" id="new-task-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Nova tarefa</div>
+    <div class="sheet-field">
+      <label>Descrição</label>
+      <textarea id="nt-desc" placeholder="O que precisa ser feito?" rows="3"></textarea>
+    </div>
+    <div class="sheet-field">
+      <label>Atribuir para</label>
+      <select id="nt-atribuir">
+        <option value="">Carregando…</option>
+      </select>
+    </div>
+    <div class="sheet-field">
+      <label>Data limite (opcional)</label>
+      <input type="date" id="nt-data">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveNewTask()">Salvar tarefa</button>
+    <button class="btn btn-secondary btn-full" style="margin-top:8px" onclick="closeSheet('new-task')">Cancelar</button>
+  </div>
+
+  <!-- Sheet: novo evento -->
+  <div class="sheet-overlay" id="new-event-overlay" onclick="closeSheet('new-event')"></div>
+  <div class="sheet" id="new-event-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Novo evento</div>
+    <div class="sheet-field">
+      <label>Título</label>
+      <input type="text" id="ne-titulo" placeholder="Nome do evento ou reunião">
+    </div>
+    <div class="sheet-field">
+      <label>Data</label>
+      <input type="date" id="ne-data">
+    </div>
+    <div style="display:flex; gap:var(--s-sm)">
+      <div class="sheet-field" style="flex:1">
+        <label>Início</label>
+        <input type="time" id="ne-ini">
+      </div>
+      <div class="sheet-field" style="flex:1">
+        <label>Fim</label>
+        <input type="time" id="ne-fim">
+      </div>
+    </div>
+    <div class="sheet-field">
+      <label>Tipo</label>
+      <select id="ne-tipo">
+        <option value="reuniao">Reunião</option>
+        <option value="agenda_exp">Agenda EXP</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveNewEvent()">Salvar evento</button>
+    <button class="btn btn-secondary btn-full" style="margin-top:8px" onclick="closeSheet('new-event')">Cancelar</button>
+  </div>
+
+  <script>
+    let G = { usuario: null, tarefas: [], eventos: [], prios: [] };
+
+    /* ── Helpers de data/hora ───────────────────── */
+    function getWeekRange() {
+      const d = new Date();
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1);
+      const start = d.toISOString().split('T')[0];
+      d.setDate(d.getDate() + 6);
+      const end = d.toISOString().split('T')[0];
+      return { start, end };
+    }
+
+    function calcHoras(entries) {
+      return entries.reduce((acc, e) => {
+        if (!e.hora_inicio || !e.hora_fim) return acc;
+        const [h1, m1] = e.hora_inicio.split(':').map(Number);
+        const [h2, m2] = e.hora_fim.split(':').map(Number);
+        return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+      }, 0);
+    }
+
+    function formatHoras(h) {
+      const hrs = Math.floor(h);
+      const min = Math.round((h - hrs) * 60);
+      return min === 0 ? `${hrs}h` : `${hrs}h${String(min).padStart(2,'0')}`;
+    }
+
+    function greetingText(nome) {
+      const h = new Date().getHours();
+      const name = nome.split(' ')[0];
+      if (h < 12) return `Bom dia, ${name}`;
+      if (h < 18) return `Boa tarde, ${name}`;
+      return `Boa noite, ${name}`;
+    }
+
+    function weekDays() {
+      // Retorna [{label, isoDate, status:'past'|'today'|'future'}] para Seg–Sex da semana atual
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const day = today.getDay() || 7; // 1=seg, 7=dom
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - day + 1);
+      const LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+      return LABELS.map((label, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const diff = d - today;
+        const status = diff < 0 ? 'past' : diff === 0 ? 'today' : 'future';
+        return { label, isoDate: d.toISOString().split('T')[0], status };
+      });
+    }
+
+    function formatEventDate(inicio, diaInteiro) {
+      if (!inicio) return '';
+      const d = new Date(inicio);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diff = Math.round((new Date(d.toDateString()) - today) / 86400000);
+      const dayLabel = diff === 0 ? 'Hoje' : diff === 1 ? 'Amanhã' :
+        d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+      if (diaInteiro) return dayLabel;
+      const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return `${dayLabel} · ${time}`;
+    }
+
+    function formatPrazo(iso) {
+      if (!iso) return '';
+      const d = new Date(iso + 'T12:00:00');
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diff = Math.round((d - today) / 86400000);
+      if (diff < 0) return { label: `${Math.abs(diff)}d atrás`, cls: 'vencida' };
+      if (diff === 0) return { label: 'Hoje', cls: 'hoje' };
+      if (diff === 1) return { label: 'Amanhã', cls: '' };
+      return { label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), cls: '' };
+    }
+
+    function isVencida(data) {
+      if (!data) return false;
+      return new Date(data) < new Date(new Date().toDateString());
+    }
+
+    /* ── Renders ────────────────────────────────── */
+    function renderHoursCard(horasSemana) {
+      const pct = Math.round((horasSemana / 40) * 100);
+      const days = weekDays();
+      return `
+        <div class="hub-card hours-card">
+          <div class="hours-left">
+            <div class="hours-big">${formatHoras(horasSemana)}</div>
+            <div class="hours-meta">
+              <span class="hours-pct">${pct}%</span> da semana (40h)
+            </div>
+          </div>
+          <div class="hours-bar-wrap">
+            <div class="hours-bar">
+              ${days.map(d => `<div class="hours-bar-seg ${d.status}"></div>`).join('')}
+            </div>
+            <div class="hours-bar-days">
+              ${days.map(d => `<div class="hours-bar-day-lbl ${d.status}">${d.label}</div>`).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTasksSection(tarefas) {
+      const slice = tarefas.slice(0, 5);
+      const items = slice.length === 0
+        ? `<div class="hub-empty">Sem tarefas pendentes 🎉</div>`
+        : slice.map(t => {
+            const vencida = isVencida(t.data_limite);
+            const metaParts = [
+              t.produto_nome,
+              t.data_limite
+                ? (vencida
+                    ? `<span style="color:var(--critico)">${formatDateFull(t.data_limite)}</span>`
+                    : formatDateFull(t.data_limite))
+                : null
+            ].filter(Boolean).join(' · ');
+            return `
+              <div class="hub-task-item ${t.concluida ? 'done' : ''}"
+                   onclick="toggleTarefaHub('${t.id}', ${t.concluida})">
+                <div class="hub-task-check">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="hub-task-body">
+                  <div class="hub-task-desc">${t.descricao}</div>
+                  ${metaParts ? `<div class="hub-task-meta">${metaParts}</div>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      const verTodas = tarefas.length > 0
+        ? `<button class="hub-action-btn" onclick="location.href='./tarefas.html'">Ver todas (${tarefas.length})</button>`
+        : '';
+
+      return `
+        <div class="hub-section">
+          <div class="hub-section-header">
+            <div class="hub-section-title">Tarefas</div>
+            <div class="hub-section-actions">
+              ${verTodas}
+              <button class="hub-action-btn accent" onclick="openNewTask()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Atribuir
+              </button>
+            </div>
+          </div>
+          <div class="hub-card">${items}</div>
+        </div>
+      `;
+    }
+
+    function renderEventsSection(eventos) {
+      const slice = eventos.slice(0, 5);
+      const items = slice.length === 0
+        ? `<div class="hub-empty">Sem eventos próximos</div>`
+        : slice.map(ev => {
+            const dotClass = ev.tipo || 'reuniao';
+            const when = formatEventDate(ev.inicio, ev.dia_inteiro);
+            const meetLink = ev.meet_link
+              ? `<a href="${ev.meet_link}" target="_blank" class="hub-event-meet">Meet</a>`
+              : '';
+            return `
+              <div class="hub-event-item">
+                <div class="hub-event-dot ${dotClass}"></div>
+                <div class="hub-event-body">
+                  <div class="hub-event-title">${ev.titulo}</div>
+                  <div class="hub-event-when">${when}</div>
+                </div>
+                ${meetLink}
+              </div>
+            `;
+          }).join('');
+
+      return `
+        <div class="hub-section">
+          <div class="hub-section-header">
+            <div class="hub-section-title">Próximos eventos</div>
+            <div class="hub-section-actions">
+              <button class="hub-action-btn" onclick="location.href='./gestao.html'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Calendário
+              </button>
+              <button class="hub-action-btn accent" onclick="openNewEvent()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Novo
+              </button>
+            </div>
+          </div>
+          <div class="hub-card">${items}</div>
+        </div>
+      `;
+    }
+
+    function renderPriosSection(prios) {
+      const NUM_CLS = ['', 'p1', 'p2', 'p3'];
+      const slice = prios.slice(0, 5);
+      const items = slice.length === 0
+        ? `<div class="hub-empty">Sem prioridades definidas</div>`
+        : slice.map((pr, idx) => {
+            const ord = pr.ordem || (idx + 1);
+            const numCls = NUM_CLS[Math.min(ord, 3)] || '';
+            const prazo = pr.prazo_texto ? formatPrazo(pr.prazo_texto) : null;
+            const nomeProjeto = pr.produtos?.oportunidades
+              ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
+              : pr.produtos?.nome || '—';
+            const etapaNome = pr.etapa_nome || '';
+            return `
+              <div class="hub-prio-item">
+                <div class="hub-prio-num ${numCls}">${ord}</div>
+                <div class="hub-prio-body">
+                  <div class="hub-prio-name">${nomeProjeto}</div>
+                  ${etapaNome ? `<div class="hub-prio-sub">${etapaNome}</div>` : ''}
+                </div>
+                ${prazo ? `<div class="hub-prio-prazo ${prazo.cls}">${prazo.label}</div>` : ''}
+              </div>
+            `;
+          }).join('');
+
+      return `
+        <div class="hub-section">
+          <div class="hub-section-header">
+            <div class="hub-section-title">Prioridades</div>
+            <div class="hub-section-actions">
+              <button class="hub-action-btn" onclick="location.href='./gestao.html'">Ver gestão</button>
+            </div>
+          </div>
+          <div class="hub-card">${items}</div>
+        </div>
+      `;
+    }
+
+    function renderPage(data) {
+      const { usuario, horasSemana, tarefas, eventos, prios } = data;
+      document.getElementById('page-content').innerHTML = `
+        ${usuario.viewer_only ? `<div class="viewer-banner">Modo visualização — edição desabilitada</div>` : ''}
+
+        <div class="greeting-bar">
+          <div class="avatar avatar-lg" style="background:${usuario.cor ?? 'var(--verde)'}">${usuario.iniciais ?? '??'}</div>
+          <div class="greeting-text">
+            <div class="greeting-title">${greetingText(usuario.nome)}</div>
+            <div class="greeting-sub">${roleLabel(usuario.role)}</div>
+          </div>
+        </div>
+
+        <!-- Horas da semana -->
+        <div class="hub-section">
+          <div class="hub-section-header">
+            <div class="hub-section-title">Horas esta semana</div>
+            <div class="hub-section-actions">
+              <button class="hub-action-btn" onclick="location.href='./horas.html'">Lançar horas</button>
+            </div>
+          </div>
+          ${renderHoursCard(horasSemana)}
+        </div>
+
+        ${renderTasksSection(tarefas)}
+        ${renderEventsSection(eventos)}
+        ${renderPriosSection(prios)}
+      `;
+    }
+
+    /* ── Ações de tarefas ───────────────────────── */
+    async function toggleTarefaHub(id, concluida) {
+      const sb = getSB();
+      const nova = !concluida;
+      const { error } = await sb.from('tarefas_livres').update({
+        concluida: nova,
+        concluida_em: nova ? new Date().toISOString() : null,
+      }).eq('id', id);
+      if (error) { showToast('Erro ao atualizar', 'error'); return; }
+      G.tarefas = G.tarefas.map(t => t.id === id ? { ...t, concluida: nova } : t);
+      // Atualizar apenas a seção de tarefas
+      const wrap = document.querySelector('.hub-section:has(.hub-task-item), .hub-section:has(.hub-empty)');
+      if (wrap) wrap.outerHTML = renderTasksSection(G.tarefas.filter(t => !t.concluida));
+      showToast(nova ? 'Tarefa concluída' : 'Tarefa reaberta');
+    }
+
+    /* ── Nova tarefa ────────────────────────────── */
+    async function openNewTask() {
+      // Carrega usuários para o select
+      const sel = document.getElementById('nt-atribuir');
+      if (sel.options[0]?.value === '') {
+        const sb = getSB();
+        const { data: users } = await sb.from('usuarios')
+          .select('id, nome').eq('ativo', true).order('nome');
+        sel.innerHTML = (users ?? []).map(u =>
+          `<option value="${u.id}"${u.id === G.usuario?.id ? ' selected' : ''}>${u.nome}</option>`
+        ).join('');
+      }
+      // Pré-preencher data com hoje
+      document.getElementById('nt-data').value = new Date().toISOString().split('T')[0];
+      document.getElementById('nt-desc').value = '';
+      openSheet('new-task');
+    }
+
+    async function saveNewTask() {
+      const desc = document.getElementById('nt-desc').value.trim();
+      const atrib = document.getElementById('nt-atribuir').value;
+      const data = document.getElementById('nt-data').value || null;
+      if (!desc) { showToast('Informe a descrição', 'error'); return; }
+      const sb = getSB();
+      const { error } = await sb.from('tarefas_livres').insert({
+        descricao: desc,
+        atribuido_para: atrib || G.usuario.id,
+        atribuido_por: G.usuario.id,
+        data_limite: data || null,
+        concluida: false,
+        tipo: 'livre',
+      });
+      if (error) { showToast('Erro ao salvar tarefa', 'error'); return; }
+
+      // Notifica o destinatário (sininho + push), igual ao desktop. Pula se for você mesmo.
+      const destino = atrib || G.usuario.id;
+      if (destino !== G.usuario.id) {
+        criarNotificacao(destino, 'tarefa',
+          `${G.usuario.nome.split(' ')[0]} atribuiu uma tarefa para você`,
+          desc, { tipo: 'tarefa' });
+      }
+
+      showToast('Tarefa criada!');
+      closeSheet('new-task');
+      // Recarregar tarefas
+      await reloadTarefas();
+    }
+
+    async function reloadTarefas() {
+      const sb = getSB();
+      const { data } = await sb.from('tarefas_livres')
+        .select('id, descricao, data_limite, concluida, produto_id, produtos(nome)')
+        .eq('atribuido_para', G.usuario.id)
+        .eq('concluida', false)
+        .order('data_limite', { ascending: true, nullsFirst: false });
+      G.tarefas = (data ?? []).map(t => ({ ...t, produto_nome: t.produtos?.nome ?? null }));
+      // Re-render seção — encontra pelo section title
+      const sections = document.querySelectorAll('.hub-section');
+      sections.forEach(sec => {
+        if (sec.querySelector('.hub-section-title')?.textContent.trim() === 'Tarefas') {
+          sec.outerHTML = renderTasksSection(G.tarefas);
+        }
+      });
+    }
+
+    /* ── Novo evento ────────────────────────────── */
+    function openNewEvent() {
+      document.getElementById('ne-titulo').value = '';
+      document.getElementById('ne-data').value = new Date().toISOString().split('T')[0];
+      document.getElementById('ne-ini').value = '';
+      document.getElementById('ne-fim').value = '';
+      document.getElementById('ne-tipo').value = 'reuniao';
+      openSheet('new-event');
+    }
+
+    async function saveNewEvent() {
+      const titulo = document.getElementById('ne-titulo').value.trim();
+      const data   = document.getElementById('ne-data').value;
+      const ini    = document.getElementById('ne-ini').value;
+      const fim    = document.getElementById('ne-fim').value;
+      const tipo   = document.getElementById('ne-tipo').value;
+      if (!titulo || !data) { showToast('Informe título e data', 'error'); return; }
+
+      const diaInteiro = !ini;
+      const inicioISO  = ini ? `${data}T${ini}:00+00:00` : `${data}T12:00:00+00:00`;
+      const fimISO     = fim ? `${data}T${fim}:00+00:00` : inicioISO;
+
+      const sb = getSB();
+      const { error } = await sb.from('calendar_events').insert({
+        titulo,
+        tipo,
+        categoria: tipo,
+        inicio: inicioISO,
+        fim: fimISO,
+        dia_inteiro: diaInteiro,
+        scope: 'usuario',
+        user_id: G.usuario.id,
+        criado_por: G.usuario.id,
+      });
+      if (error) { showToast('Erro ao salvar evento', 'error'); return; }
+      showToast('Evento criado!');
+      closeSheet('new-event');
+      await reloadEventos();
+    }
+
+    async function reloadEventos() {
+      const sb = getSB();
+      const todayISO = new Date().toISOString().split('T')[0];
+      const { data } = await sb.from('calendar_events')
+        .select('id, titulo, tipo, inicio, fim, dia_inteiro, meet_link')
+        .gte('inicio', todayISO)
+        .or(`scope.eq.todos,user_id.eq.${G.usuario.id}`)
+        .order('inicio')
+        .limit(5);
+      G.eventos = data ?? [];
+      const sections = document.querySelectorAll('.hub-section');
+      sections.forEach(sec => {
+        if (sec.querySelector('.hub-section-title')?.textContent.trim() === 'Próximos eventos') {
+          sec.outerHTML = renderEventsSection(G.eventos);
+        }
+      });
+    }
+
+    /* ── Init ───────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', async () => {
+      const usuario = await requireAuth('./index.html');
+      if (!usuario) return;
+      G.usuario = usuario;
+
+      // Header
+      document.getElementById('header-name').textContent = usuario.nome;
+      document.getElementById('header-role').textContent = roleLabel(usuario.role);
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.getElementById('theme-btn').innerHTML = themeIcon(isDark ? 'dark' : 'light');
+
+      buildBottomNav('app', isSocio(usuario));
+
+      const sb = getSB();
+      const { start, end } = getWeekRange();
+      const todayISO = new Date().toISOString().split('T')[0];
+
+      const [
+        { data: horasData },
+        { data: tarefasRaw },
+        { data: eventosRaw },
+        { data: priosRaw },
+      ] = await Promise.all([
+        sb.from('horas_lancadas')
+          .select('hora_inicio, hora_fim, data_lancamento')
+          .eq('usuario_id', usuario.id)
+          .gte('data_lancamento', start)
+          .lte('data_lancamento', end),
+
+        sb.from('tarefas_livres')
+          .select('id, descricao, data_limite, concluida, produto_id, produtos(nome)')
+          .eq('atribuido_para', usuario.id)
+          .eq('concluida', false)
+          .order('data_limite', { ascending: true, nullsFirst: false }),
+
+        sb.from('calendar_events')
+          .select('id, titulo, tipo, inicio, fim, dia_inteiro, meet_link')
+          .gte('inicio', todayISO)
+          .or(`scope.eq.todos,user_id.eq.${usuario.id}`)
+          .order('inicio')
+          .limit(5),
+
+        sb.from('prioridades_usuario')
+          .select('id, ordem, prazo_texto, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)))')
+          .eq('usuario_id', usuario.id)
+          .eq('concluida', false)
+          .order('ordem'),
+      ]);
+
+      G.tarefas = (tarefasRaw ?? []).map(t => ({ ...t, produto_nome: t.produtos?.nome ?? null }));
+      G.eventos = eventosRaw ?? [];
+      G.prios   = priosRaw ?? [];
+
+      renderPage({
+        usuario,
+        horasSemana: calcHoras(horasData ?? []),
+        tarefas:     G.tarefas,
+        eventos:     G.eventos,
+        prios:       G.prios,
+      });
+
+      // Push: re-salva a inscrição deste dispositivo se já houver permissão.
+      // O pedido de permissão é contextual (banner no Chat), sem prompt automático.
+      ensurePushSubscribed();
+    });
+  </script>
+
+</body>
+</html>
