@@ -360,6 +360,54 @@ body {
 .dash-task-meta .vencida { color: var(--terracota); font-weight: 600; }
 .dash-task-atrib { font-size: 10px; color: #aaa; margin-top: 1px; }
 
+/* ── Ações por tarefa (editar / excluir) — aparecem no hover ── */
+.dash-task-actions {
+  display: flex; align-items: center; gap: 2px;
+  flex-shrink: 0; margin-top: 1px;
+  opacity: 0; transition: opacity .12s;
+}
+.dash-task-item:hover .dash-task-actions { opacity: 1; }
+.dash-task-act {
+  width: 22px; height: 22px; padding: 0; border: none; background: none;
+  border-radius: 5px; cursor: pointer; color: #aaa;
+  display: flex; align-items: center; justify-content: center;
+}
+.dash-task-act svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.dash-task-act:hover { background: var(--off); color: var(--grafite); }
+.dash-task-act-del:hover { background: rgba(217,79,61,.12); color: var(--terracota); }
+[data-theme="dark"] .dash-task-act:hover { background: rgba(255,255,255,.06); color: #D8D5CE; }
+
+/* ── Popup "recentes" — histórico de tarefas e lixeira ── */
+#dash-recentes-popdown {
+  position: fixed;
+  background: var(--branco);
+  border: 1px solid var(--cinza);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  width: 300px; max-height: 70vh; display: none; flex-direction: column;
+  overflow: hidden; z-index: 400; animation: dashPopIn .15s ease-out;
+}
+[data-theme="dark"] #dash-recentes-popdown { background: #1E1E1D; border-color: #3A3836; }
+#dash-recentes-popdown.open { display: flex; }
+.dash-rec-body { padding: 6px 0; overflow-y: auto; }
+.dash-rec-empty { padding: 18px 16px; font-size: 11px; color: #999; text-align: center; }
+.dash-rec-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 14px; border-bottom: 1px solid var(--cinza2);
+}
+.dash-rec-item:last-child { border-bottom: none; }
+[data-theme="dark"] .dash-rec-item { border-bottom-color: #2A2926; }
+.dash-rec-desc { flex: 1; min-width: 0; font-size: 11px; color: var(--grafite); line-height: 1.35; }
+[data-theme="dark"] .dash-rec-desc { color: #D8D5CE; }
+.dash-rec-desc.done { text-decoration: line-through; color: #bbb; }
+.dash-rec-meta { font-size: 9px; color: #bbb; margin-top: 2px; }
+.dash-rec-action {
+  flex-shrink: 0; font-size: 10px; font-weight: 600; color: var(--azul);
+  cursor: pointer; padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+}
+.dash-rec-action:hover { background: var(--azul-soft, rgba(46,108,164,.1)); }
+.dash-lbl-add.is-recentes { font-size: 13px; }
+
 /* ── ITEM DE EVENTO ──────────────────────────────────────── */
 .dash-event-item {
   display: flex; align-items: center; gap: 9px;
@@ -1780,6 +1828,15 @@ body {
     <button class="btn" onclick="closeDashTaskPop()">Cancelar</button>
     <button class="btn filled" onclick="saveDashTask()">Salvar</button>
   </div>
+</div>
+
+<!-- POPUP: RECENTES / TAREFAS EXCLUÍDAS -->
+<div id="dash-recentes-popdown">
+  <div class="dash-pop-head">
+    <strong>Atividade recente</strong>
+    <button class="dash-pop-close" onclick="closeDashRecentesPop()">&times;</button>
+  </div>
+  <div class="dash-rec-body" id="dash-recentes-body"></div>
 </div>
 
 <!-- MODAL: NOVO EVENTO -->
@@ -3531,6 +3588,14 @@ function _renderTaskItem(t, showAtrib) {
         ${meta ? `<div class="dash-task-meta">${meta}</div>` : ''}
         ${atribLine}
       </div>
+      <div class="dash-task-actions">
+        <button class="dash-task-act dash-task-act-edit" data-task-act="edit" title="Editar tarefa">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        </button>
+        <button class="dash-task-act dash-task-act-del" data-task-act="del" title="Excluir tarefa">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
     </div>`;
 }
 
@@ -3562,6 +3627,7 @@ function renderTasksSection(tarefas, tarefasAtribuidas) {
   return `
     <div class="dash-sec">
       <div class="dash-lbl">Tarefas
+        <button class="dash-lbl-add is-recentes" onclick="toggleDashRecentesPop(this)" title="Histórico e tarefas excluídas">↺</button>
         <button class="dash-lbl-add" onclick="openDashTaskPop(this)" title="Nova tarefa">+</button>
       </div>
       <div class="dash-card">
@@ -3797,6 +3863,17 @@ function wireDashboardDom() {
       return;
     }
 
+    const actBtn = event.target.closest('.dash-task-act[data-task-act]');
+    if (actBtn && dash.contains(actBtn)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = actBtn.closest('.dash-task-item')?.dataset.taskId;
+      if (!id) return;
+      if (actBtn.dataset.taskAct === 'edit') abrirEditarTarefaDash(id);
+      else if (actBtn.dataset.taskAct === 'del') confirmarExcluirTarefaDash(id);
+      return;
+    }
+
     const taskItem = event.target.closest('.dash-task-item[data-task-id]');
     if (taskItem && dash.contains(taskItem)) {
       event.preventDefault();
@@ -4003,6 +4080,228 @@ async function toggleDashTask(id, concluida) {
     d.tarefas.filter(t => !t.concluida),
     _filtrarAtribuidas(d.tarefasAtribuidas)
   );
+}
+
+// ── Toast (fallback caso shared/app-utils.js não esteja carregado) ──────────
+if (typeof window.toast !== 'function') {
+  window.toast = function(message, duration = 2200) {
+    let host = document.getElementById('toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'toast-host';
+      host.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center';
+      document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    el.textContent = message;
+    el.style.cssText = 'background:#2A2926;color:#fff;font-family:var(--font-ui);font-size:12px;padding:9px 16px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:opacity .15s';
+    host.appendChild(el);
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
+    setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }, duration);
+  };
+}
+
+// ── Editar / excluir / restaurar tarefas (dashboard) ────────────────────────
+function _dashFindTask(id) {
+  const d = window._dashData; if (!d) return null;
+  return [...(d.tarefas || []), ...(d.tarefasAtribuidas || [])]
+    .find(t => String(t.id) === String(id)) || null;
+}
+
+function abrirEditarTarefaDash(id) {
+  const t = _dashFindTask(id);
+  if (!t) return;
+
+  document.getElementById('tarefa-edit-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'tarefa-edit-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui)';
+
+  const descEsc = escHtml(t.descricao || '');
+  const dataVal = t.data_limite || '';
+  const idEsc   = String(id).replace(/'/g, "\\'");
+
+  overlay.innerHTML = `
+    <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:12px;padding:22px 22px 18px;width:360px;max-width:94vw;box-shadow:0 8px 36px rgba(0,0,0,.22)">
+      <div style="font-size:13px;font-weight:700;color:var(--grafite);margin-bottom:16px">Editar tarefa</div>
+
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:5px">Descrição</label>
+        <textarea id="tarefa-edit-desc" rows="3"
+          style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:8px 10px;font-size:12px;font-family:var(--font-ui);resize:vertical;background:var(--branco);color:var(--grafite);outline:none;transition:border-color .12s"
+          onfocus="this.style.borderColor='var(--azul)'" onblur="this.style.borderColor='var(--cinza)'"
+        >${descEsc}</textarea>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:5px">Data limite <span style="font-weight:400;color:#bbb">(opcional)</span></label>
+        <input type="date" id="tarefa-edit-data" value="${dataVal}"
+          style="width:100%;border:1px solid var(--cinza);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font-ui);background:var(--branco);color:var(--grafite);outline:none;transition:border-color .12s"
+          onfocus="this.style.borderColor='var(--azul)'" onblur="this.style.borderColor='var(--cinza)'"
+        >
+        ${dataVal ? `<button onclick="document.getElementById('tarefa-edit-data').value=''" style="margin-top:5px;background:none;border:none;font-size:9px;color:#bbb;cursor:pointer;padding:0;font-family:var(--font-ui)">✕ Limpar data</button>` : ''}
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="document.getElementById('tarefa-edit-overlay').remove()"
+          style="font-size:11px;font-weight:600;padding:6px 14px;border:1px solid var(--cinza);border-radius:6px;background:none;color:#888;cursor:pointer;font-family:var(--font-ui)">Cancelar</button>
+        <button onclick="salvarEditarTarefaDash('${idEsc}')"
+          style="font-size:11px;font-weight:600;padding:6px 16px;border:none;border-radius:6px;background:var(--grafite);color:var(--branco);cursor:pointer;font-family:var(--font-ui)">Salvar</button>
+      </div>
+    </div>`;
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => {
+    const ta = document.getElementById('tarefa-edit-desc');
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  });
+}
+
+async function salvarEditarTarefaDash(id) {
+  const desc        = document.getElementById('tarefa-edit-desc')?.value.trim();
+  const data_limite = document.getElementById('tarefa-edit-data')?.value || null;
+  if (!desc) { toast('A descrição não pode ser vazia.'); return; }
+
+  const btn = document.querySelector('#tarefa-edit-overlay button:last-child');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+
+  const { error } = await sb.from('tarefas_livres').update({ descricao: desc, data_limite }).eq('id', id);
+  if (error) {
+    toast('Erro ao salvar: ' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+    return;
+  }
+
+  document.getElementById('tarefa-edit-overlay')?.remove();
+  if (_dashUsuario) await loadDashboard(_dashUsuario);
+  toast('Tarefa atualizada');
+}
+
+function confirmarExcluirTarefaDash(id) {
+  const t = _dashFindTask(id);
+  abrirPopupConfirmDash(
+    'Excluir tarefa?',
+    'A tarefa será removida. Você pode restaurá-la em ↺ recentes.',
+    async () => {
+      if (t) _taskHistSalvar(t, 'excluida');
+      const { error } = await sb.from('tarefas_livres').delete().eq('id', id);
+      if (error) { toast('Erro ao excluir: ' + error.message); return; }
+      if (_dashUsuario) await loadDashboard(_dashUsuario);
+      toast('Tarefa excluída');
+    }
+  );
+}
+
+function abrirPopupConfirmDash(titulo, mensagem, onConfirm, btnLabel = 'Excluir') {
+  document.getElementById('popup-confirm-overlay')?.remove();
+  const popup = document.createElement('div');
+  popup.id = 'popup-confirm-overlay';
+  popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui)';
+  const btnBg = btnLabel === 'Excluir' ? '#D94F3D' : 'var(--verde)';
+  popup.innerHTML = `
+    <div style="background:var(--branco);border-radius:10px;padding:24px 28px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:14px;font-weight:600;color:var(--grafite);margin-bottom:8px">${titulo}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px;line-height:1.5">${mensagem}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('popup-confirm-overlay').remove()"
+          style="padding:6px 16px;border:1px solid var(--cinza);border-radius:6px;font-size:12px;cursor:pointer;background:var(--branco);color:#888;font-family:var(--font-ui)">Cancelar</button>
+        <button id="popup-confirm-btn"
+          style="padding:6px 16px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:${btnBg};color:#fff;font-family:var(--font-ui);font-weight:600">${btnLabel}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+  document.getElementById('popup-confirm-btn').onclick = async () => { popup.remove(); await onConfirm(); };
+  popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
+}
+
+// ── Histórico de tarefas (compartilhado com gestao.html via localStorage) ───
+const DASH_TASK_HIST_KEY = 'exp_task_hist';
+const DASH_TASK_HIST_MAX = 20;
+
+function _taskHistSalvar(tarefa, evento) {
+  // evento: 'criada' | 'concluida' | 'excluida' | 'editada'
+  try {
+    const hist = JSON.parse(localStorage.getItem(DASH_TASK_HIST_KEY) || '[]');
+    hist.unshift({
+      id:        tarefa.id,
+      descricao: tarefa.descricao,
+      tipo:      tarefa.tipo,
+      concluida: tarefa.concluida,
+      evento,
+      payload:   evento === 'excluida' ? { ...tarefa } : null,
+      ts:        Date.now(),
+    });
+    localStorage.setItem(DASH_TASK_HIST_KEY, JSON.stringify(hist.slice(0, DASH_TASK_HIST_MAX)));
+  } catch {}
+}
+
+function toggleDashRecentesPop(btn) {
+  const pop = document.getElementById('dash-recentes-popdown');
+  if (!pop) return;
+  if (pop.classList.contains('open')) { closeDashRecentesPop(); return; }
+  renderDashRecentesPop();
+  if (btn) {
+    const rect = btn.getBoundingClientRect();
+    const popW = 300;
+    let left = rect.left - popW + rect.width;
+    if (left < 8) left = 8;
+    pop.style.top  = (rect.bottom + 6) + 'px';
+    pop.style.left = left + 'px';
+  }
+  pop.classList.add('open');
+  setTimeout(() => bindPopdownDocHandler(pop, e => !pop.contains(e.target) && e.target !== btn), 0);
+}
+
+function closeDashRecentesPop() {
+  closePopdown(document.getElementById('dash-recentes-popdown'));
+}
+
+function renderDashRecentesPop() {
+  const body = document.getElementById('dash-recentes-body');
+  if (!body) return;
+  const hist = (() => { try { return JSON.parse(localStorage.getItem(DASH_TASK_HIST_KEY) || '[]'); } catch { return []; } })();
+  const EVENTO_LABEL = { criada: 'criada', concluida: 'concluída', excluida: 'excluída', editada: 'editada' };
+  const fmtTs = ts => {
+    const d = new Date(ts);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' +
+           d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+  if (!hist.length) {
+    body.innerHTML = '<div class="dash-rec-empty">Nenhuma atividade recente.</div>';
+    return;
+  }
+  body.innerHTML = hist.map((h, i) => {
+    const restoreBtn = h.evento === 'excluida' && h.payload
+      ? `<span class="dash-rec-action" onclick="restaurarTarefaDash(${i})">Restaurar</span>`
+      : '';
+    return `<div class="dash-rec-item">
+        <div class="dash-rec-desc ${h.concluida ? 'done' : ''}" title="${escAttr(h.descricao)}">
+          ${escHtml(h.descricao)}
+          <div class="dash-rec-meta">${EVENTO_LABEL[h.evento] || h.evento} · ${fmtTs(h.ts)}</div>
+        </div>
+        ${restoreBtn}
+      </div>`;
+  }).join('');
+}
+
+async function restaurarTarefaDash(histIdx) {
+  const hist = (() => { try { return JSON.parse(localStorage.getItem(DASH_TASK_HIST_KEY) || '[]'); } catch { return []; } })();
+  const entry = hist[histIdx];
+  if (!entry?.payload) return;
+  const { id: _oldId, created_at: _ca, produto_nome: _pn, atribuido_nome: _an, ...resto } = entry.payload;
+  try {
+    const { error } = await sb.from('tarefas_livres').insert({
+      ...resto, tipo: resto.tipo || 'livre', concluida: false, concluida_em: null,
+    });
+    if (error) { toast('Erro ao restaurar: ' + error.message); return; }
+    hist.splice(histIdx, 1);
+    localStorage.setItem(DASH_TASK_HIST_KEY, JSON.stringify(hist));
+    toast('Tarefa restaurada');
+    if (_dashUsuario) await loadDashboard(_dashUsuario);
+    renderDashRecentesPop();
+  } catch (e) { toast('Erro: ' + e.message); }
 }
 
 // ── Modais ────────────────────────────────────────────────────────
@@ -4691,9 +4990,8 @@ init().then(() => {
       '</svg>' +
       '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
     btn.onclick = function() { listsPanel.toggle(); };
-    /* insere antes do separador de ferramentas (spacer) */
-    var spacer = nav.querySelector('.exp-nav-spacer');
-    spacer ? nav.insertBefore(btn, spacer) : nav.appendChild(btn);
+    /* insere no cluster de ferramentas (após o separador horizontal) */
+    nav.appendChild(btn);
   })();
 
   /* ── Init do painel de Listas ── */
