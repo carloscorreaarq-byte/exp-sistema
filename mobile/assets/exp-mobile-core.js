@@ -23,9 +23,11 @@ function initSupabase() {
 window.getSB = initSupabase;
 function buildExpUsuarioPayload(authId, usuario) {
   const nome = (usuario && usuario.nome) || '';
+  const appId = usuario && typeof usuario.id !== 'undefined' ? usuario.id : null;
   return {
+    id: appId,                 // id do app (usuarios.id) — usado nas queries do hub/horas/push
     auth_id: authId || null,
-    app_user_id: usuario && typeof usuario.id !== 'undefined' ? usuario.id : null,
+    app_user_id: appId,
     nome,
     apelido: (usuario && usuario.apelido) || (nome ? nome.split(' ')[0] : ''),
     iniciais: (usuario && usuario.iniciais) || '',
@@ -45,7 +47,12 @@ function buildExpUsuarioPayload(authId, usuario) {
 async function getUsuario() {
   const raw = sessionStorage.getItem('exp_usuario');
   if (raw) {
-    try { return JSON.parse(raw); } catch { sessionStorage.removeItem('exp_usuario'); }
+    try {
+      const cached = JSON.parse(raw);
+      // Backfill para payloads antigos (gravados sem `id`)
+      if (cached && cached.id == null && cached.app_user_id != null) cached.id = cached.app_user_id;
+      return cached;
+    } catch { sessionStorage.removeItem('exp_usuario'); }
   }
 
   const sb = initSupabase();

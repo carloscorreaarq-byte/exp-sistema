@@ -16,7 +16,37 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="./assets/exp-mobile-core.js"></script>
   <style>
-    /* ── Header ── */
+    /* ── Controles flutuantes do hub (tema + sair) ── */
+    .hub-controls {
+      position: fixed;
+      top: calc(var(--safe-t) + 36px);
+      right: var(--gap-md);
+      display: flex;
+      gap: var(--s-sm);
+      z-index: 60;
+    }
+    .hub-ctrl-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--m-surface);
+      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
+      box-shadow: var(--shadow-card);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--m-text-2);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hub-ctrl-btn svg { width: 19px; height: 19px; stroke-width: 2; }
+    .hub-ctrl-btn:active { background: color-mix(in srgb, var(--m-border) 12%, transparent); }
+
+    /* Respiros do hub */
+    #page-content {
+      padding-top: calc(var(--safe-t) + var(--s-md));
+      padding-left: var(--gap-md);
+      padding-right: var(--gap-md);
+      padding-bottom: var(--gap-lg);
+    }
+
+    /* ── Header (legado, oculto no hub) ── */
     .user-info     { flex: 1; min-width: 0; }
     .user-name     { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .user-role-tag { font-size: 11px; color: var(--text-3); margin-top: 1px; }
@@ -26,10 +56,11 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: var(--s-md);
+      padding-right: 96px;
       display: flex;
       align-items: center;
       gap: var(--s-sm);
-      margin-bottom: var(--s-md);
+      margin-bottom: var(--s-lg);
     }
     .greeting-text  { flex: 1; }
     .greeting-title { font-size: 16px; font-weight: 800; }
@@ -341,23 +372,16 @@
 </head>
 <body>
 
-  <!-- Header -->
-  <header class="app-header">
-    <div class="header-logo">EXP</div>
-    <div class="user-info" id="header-user">
-      <div class="user-name" id="header-name">…</div>
-      <div class="user-role-tag" id="header-role"></div>
-    </div>
-    <div class="header-actions">
-      <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
-      <button class="icon-btn" onclick="openSheet('signout')" title="Sair">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-      </button>
-    </div>
-  </header>
+  <!-- Controles flutuantes (tema + sair) — alinhados à saudação -->
+  <div class="hub-controls">
+    <button class="hub-ctrl-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
+    <button class="hub-ctrl-btn" onclick="openSheet('signout')" title="Sair">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+    </button>
+  </div>
 
   <!-- Conteúdo -->
-  <div class="page">
+  <div class="page page--no-header">
     <div class="page-content" id="page-content">
       <div class="loader-page"><div class="loader"></div></div>
     </div>
@@ -767,7 +791,7 @@
       const sb = getSB();
       const { data } = await sb.from('tarefas_livres')
         .select('id, descricao, data_limite, concluida, produto_id, produtos(nome)')
-        .eq('atribuido_para', G.usuario.id)
+        .or(`and(usuario_id.eq.${G.usuario.id},atribuido_para.is.null),atribuido_para.eq.${G.usuario.id}`)
         .eq('concluida', false)
         .order('data_limite', { ascending: true, nullsFirst: false });
       G.tarefas = (data ?? []).map(t => ({ ...t, produto_nome: t.produtos?.nome ?? null }));
@@ -844,9 +868,7 @@
       if (!usuario) return;
       G.usuario = usuario;
 
-      // Header
-      document.getElementById('header-name').textContent = usuario.nome;
-      document.getElementById('header-role').textContent = roleLabel(usuario.role);
+      // Ícone do botão de tema (controle flutuante)
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       document.getElementById('theme-btn').innerHTML = themeIcon(isDark ? 'dark' : 'light');
 
@@ -870,7 +892,7 @@
 
         sb.from('tarefas_livres')
           .select('id, descricao, data_limite, concluida, produto_id, produtos(nome)')
-          .eq('atribuido_para', usuario.id)
+          .or(`and(usuario_id.eq.${usuario.id},atribuido_para.is.null),atribuido_para.eq.${usuario.id}`)
           .eq('concluida', false)
           .order('data_limite', { ascending: true, nullsFirst: false }),
 
