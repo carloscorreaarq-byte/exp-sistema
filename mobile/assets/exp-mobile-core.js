@@ -118,12 +118,11 @@ function buildBottomNav(currentPage, socio = false) {
   const nav = document.getElementById('bottom-nav');
   if (!nav) return;
 
+  // v1 — nav enxuta: Início · Horas · Chat
   const items = [
-    { id: 'app',      href: './app.html',      label: 'Início',   icon: icons.grid },
-    { id: 'gestao',   href: './gestao.html',    label: 'Gestão',   icon: icons.clipboard },
-    { id: 'contatos', href: './contatos.html',  label: 'Contatos', icon: icons.person },
-    { id: 'chat',     href: './chat.html',      label: 'Chat',     icon: icons.chat, badge: true },
-    ...(socio ? [{ id: 'calc', href: './calc.html', label: 'Calc', icon: icons.calc }] : []),
+    { id: 'app',   href: './app.html',   label: 'Início', icon: icons.grid },
+    { id: 'horas', href: './horas.html', label: 'Horas',  icon: icons.clock },
+    { id: 'chat',  href: './chat.html',  label: 'Chat',   icon: icons.chat, badge: true },
   ];
 
   nav.innerHTML = items.map(it => `
@@ -386,6 +385,270 @@ const icons = {
   close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
 };
 
+// ── Timer global de horas (iniciar/parar) ─────
+// Componente compartilhado: aparece em todas as páginas (menos onde
+// window.EXP_NO_TIMER = true). Estado persiste em localStorage e o
+// lançamento é gravado em horas_lancadas ao parar (espelha o timer desktop).
+const MTIMER_KEY = 'exp-mtimer';
+let _mtmrTick = null;
+let _mtmrProdutos = null;
+
+function _mtmrLoad()  { try { return JSON.parse(localStorage.getItem(MTIMER_KEY)) || null; } catch { return null; } }
+function _mtmrSave(s) { localStorage.setItem(MTIMER_KEY, JSON.stringify(s)); }
+function _mtmrClear() { localStorage.removeItem(MTIMER_KEY); }
+
+function _mtmrFmt(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
+
+// Semana ISO (ano/semana/seg/dom) — mesmo cálculo do timer desktop.
+function _mtmrIsoWeek(dateObj) {
+  const t = new Date(dateObj); t.setHours(12, 0, 0, 0);
+  const isoDia = t.getDay() || 7;
+  const ini = new Date(t); ini.setDate(t.getDate() - isoDia + 1);
+  const fim = new Date(ini); fim.setDate(ini.getDate() + 6);
+  const thu = new Date(ini); thu.setDate(ini.getDate() + 3);
+  const year = thu.getFullYear();
+  const jan4 = new Date(year, 0, 4, 12, 0, 0, 0);
+  const w1 = new Date(jan4); w1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+  const week = Math.floor((ini - w1) / (7 * 24 * 3600 * 1000)) + 1;
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { isoDia, year, week, start: fmt(ini), end: fmt(fim) };
+}
+
+function mountTimer() {
+  if (document.getElementById('mtmr-fab')) return;
+  getUsuario().then(u => { if (!u) return; _mtmrInject(); _mtmrRender(); });
+}
+
+function _mtmrInject() {
+  if (!document.getElementById('mtmr-style')) {
+    const st = document.createElement('style');
+    st.id = 'mtmr-style';
+    st.textContent = `
+      .mtmr-fab{position:fixed;right:var(--gap-md);bottom:calc(var(--nav-h) + var(--safe-b) + var(--gap-md));height:52px;min-width:52px;border-radius:26px;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;padding:0;box-shadow:0 4px 16px color-mix(in srgb,var(--verde) 35%,transparent);z-index:95;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--m-transition)}
+      .mtmr-fab:active{transform:scale(.95)}
+      .mtmr-fab svg{width:24px;height:24px;stroke-width:2.2}
+      .mtmr-fab-idle{display:flex;align-items:center;justify-content:center}
+      .mtmr-fab-run{display:none;align-items:center;gap:8px;padding:0 16px 0 15px}
+      .mtmr-fab.running{background:var(--critico);min-width:0}
+      .mtmr-fab.running .mtmr-fab-idle{display:none}
+      .mtmr-fab.running .mtmr-fab-run{display:flex}
+      .mtmr-time{font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:.5px}
+      .mtmr-dot{width:9px;height:9px;border-radius:50%;background:#fff;animation:mtmrPulse 1.3s infinite}
+      @keyframes mtmrPulse{0%,100%{opacity:1}50%{opacity:.3}}
+      .mtmr-row{display:flex;gap:var(--gap-sm)}.mtmr-row>*{flex:1}
+    `;
+    document.head.appendChild(st);
+  }
+  const wrap = document.createElement('div');
+  wrap.id = 'mtmr-root';
+  wrap.innerHTML = `
+    <button id="mtmr-fab" class="mtmr-fab" onclick="_mtmrFabClick()" aria-label="Timer de horas">
+      <span class="mtmr-fab-idle">${icons.clock}</span>
+      <span class="mtmr-fab-run"><span class="mtmr-dot"></span><span class="mtmr-time" id="mtmr-time">00:00:00</span></span>
+    </button>
+
+    <div class="sheet-overlay" id="mtmr-start-overlay" onclick="closeSheet('mtmr-start')"></div>
+    <div class="sheet" id="mtmr-start-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Iniciar timer</div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-input" id="mtmr-tipo" onchange="_mtmrOnTipo()">
+          <option value="projeto">Projeto</option>
+          <option value="organizacao">Organização Interna</option>
+          <option value="sociedade">Sociedade</option>
+        </select>
+      </div>
+      <div class="form-group" id="mtmr-produto-wrap" style="margin-top:var(--gap-md)">
+        <label class="form-label">Projeto</label>
+        <select class="form-input" id="mtmr-produto" onchange="_mtmrOnProduto()"><option value="">Selecionar projeto…</option></select>
+      </div>
+      <div class="form-group" id="mtmr-etapa-wrap" style="display:none;margin-top:var(--gap-md)">
+        <label class="form-label">Etapa</label>
+        <select class="form-input" id="mtmr-etapa"><option value="">Selecionar etapa…</option></select>
+      </div>
+      <div style="margin-top:var(--gap-lg);display:flex;gap:var(--gap-sm)">
+        <button class="btn btn-secondary" onclick="closeSheet('mtmr-start')">Cancelar</button>
+        <button class="btn btn-primary" style="flex:1" onclick="startTimer()">Iniciar</button>
+      </div>
+    </div>
+
+    <div class="sheet-overlay" id="mtmr-stop-overlay" onclick="closeSheet('mtmr-stop')"></div>
+    <div class="sheet" id="mtmr-stop-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Parar timer</div>
+      <div id="mtmr-stop-label" style="font-size:var(--mt-caption);color:var(--m-text-2);margin-bottom:var(--gap-md)"></div>
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" class="form-input" id="mtmr-data">
+      </div>
+      <div class="mtmr-row" style="margin-top:var(--gap-md)">
+        <div class="form-group"><label class="form-label">Início</label><input type="time" class="form-input" id="mtmr-ini"></div>
+        <div class="form-group"><label class="form-label">Fim</label><input type="time" class="form-input" id="mtmr-fim"></div>
+      </div>
+      <div class="form-group" style="margin-top:var(--gap-md)">
+        <label class="form-label">Descrição</label>
+        <input type="text" class="form-input" id="mtmr-stop-desc" placeholder="O que foi feito…">
+      </div>
+      <div style="margin-top:var(--gap-lg);display:flex;gap:var(--gap-sm)">
+        <button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="discardTimer()">Descartar</button>
+        <button class="btn btn-secondary" onclick="closeSheet('mtmr-stop')">Continuar</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveTimerEntry()">Salvar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+}
+
+function _mtmrFabClick() {
+  const s = _mtmrLoad();
+  if (s && s.startedAt) openTimerStop(); else openTimerStart();
+}
+
+function _mtmrRender() {
+  const fab = document.getElementById('mtmr-fab');
+  if (!fab) return;
+  const s = _mtmrLoad();
+  if (s && s.startedAt) { fab.classList.add('running'); _mtmrUpdateTime(); _mtmrStartTick(); }
+  else { fab.classList.remove('running'); _mtmrStopTick(); }
+}
+function _mtmrUpdateTime() {
+  const s = _mtmrLoad(); if (!s) return;
+  const el = document.getElementById('mtmr-time');
+  if (el) el.textContent = _mtmrFmt(Date.now() - s.startedAt);
+}
+function _mtmrStartTick() { if (!_mtmrTick) _mtmrTick = setInterval(_mtmrUpdateTime, 1000); }
+function _mtmrStopTick()  { if (_mtmrTick) { clearInterval(_mtmrTick); _mtmrTick = null; } }
+
+async function _mtmrLoadProdutos() {
+  if (_mtmrProdutos) return _mtmrProdutos;
+  const { data } = await initSupabase().from('produtos').select('id,nome').eq('status', 'ativo').order('nome');
+  _mtmrProdutos = data ?? [];
+  return _mtmrProdutos;
+}
+
+async function openTimerStart() {
+  document.getElementById('mtmr-tipo').value = 'projeto';
+  _mtmrOnTipo();
+  const sel = document.getElementById('mtmr-produto');
+  sel.innerHTML = '<option value="">Selecionar projeto…</option>';
+  (await _mtmrLoadProdutos()).forEach(p => {
+    const o = document.createElement('option'); o.value = p.id; o.textContent = p.nome; sel.appendChild(o);
+  });
+  document.getElementById('mtmr-etapa-wrap').style.display = 'none';
+  openSheet('mtmr-start');
+}
+
+function _mtmrOnTipo() {
+  const t = document.getElementById('mtmr-tipo').value;
+  document.getElementById('mtmr-produto-wrap').style.display = t === 'projeto' ? '' : 'none';
+  document.getElementById('mtmr-etapa-wrap').style.display = 'none';
+}
+
+async function _mtmrOnProduto() {
+  const id = document.getElementById('mtmr-produto').value;
+  const wrap = document.getElementById('mtmr-etapa-wrap');
+  const sel = document.getElementById('mtmr-etapa');
+  if (!id) { wrap.style.display = 'none'; return; }
+  const { data } = await initSupabase().from('etapas').select('id,nome,ordem').eq('produto_id', id).order('ordem');
+  sel.innerHTML = '<option value="">Selecionar etapa…</option>';
+  (data ?? []).forEach(e => { const o = document.createElement('option'); o.value = e.id; o.textContent = e.nome; sel.appendChild(o); });
+  wrap.style.display = '';
+}
+
+function startTimer() {
+  const tipo = document.getElementById('mtmr-tipo').value;
+  const prod = document.getElementById('mtmr-produto');
+  const etapa = document.getElementById('mtmr-etapa');
+  if (tipo === 'projeto' && !prod.value)  { showToast('Selecione o projeto', 'error'); return; }
+  if (tipo === 'projeto' && !etapa.value) { showToast('Selecione a etapa', 'error'); return; }
+  _mtmrSave({
+    startedAt:  Date.now(),
+    tipo,
+    produtoId:  tipo === 'projeto' ? prod.value : null,
+    produtoNome:tipo === 'projeto' ? (prod.options[prod.selectedIndex]?.text || '') : null,
+    etapaId:    tipo === 'projeto' ? etapa.value : null,
+    etapaNome:  tipo === 'projeto' ? (etapa.options[etapa.selectedIndex]?.text || '') : null,
+  });
+  closeSheet('mtmr-start');
+  _mtmrRender();
+  showToast('Timer iniciado', 'success');
+}
+
+function openTimerStop() {
+  const s = _mtmrLoad(); if (!s) return;
+  const start = new Date(s.startedAt), now = new Date();
+  const hhmm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const iso  = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  document.getElementById('mtmr-stop-label').textContent = s.tipo === 'projeto'
+    ? `${s.produtoNome || 'Projeto'}${s.etapaNome ? ' · ' + s.etapaNome : ''}`
+    : (s.tipo === 'organizacao' ? 'Organização Interna' : 'Sociedade');
+  document.getElementById('mtmr-data').value = iso(now);
+  document.getElementById('mtmr-ini').value  = hhmm(start);
+  document.getElementById('mtmr-fim').value  = hhmm(now);
+  document.getElementById('mtmr-stop-desc').value = '';
+  openSheet('mtmr-stop');
+}
+
+async function saveTimerEntry() {
+  const s = _mtmrLoad(); if (!s) return;
+  const u = await getUsuario(); if (!u) return;
+  const dataISO = document.getElementById('mtmr-data').value;
+  const ini = document.getElementById('mtmr-ini').value;
+  const fim = document.getElementById('mtmr-fim').value;
+  const desc = document.getElementById('mtmr-stop-desc').value.trim();
+  if (!dataISO || !ini || !fim) { showToast('Preencha data, início e fim', 'error'); return; }
+  if (fim <= ini) { showToast('Fim deve ser após o início', 'error'); return; }
+
+  const sb = initSupabase();
+  const wk = _mtmrIsoWeek(new Date(dataISO + 'T12:00:00'));
+
+  let { data: sem } = await sb.from('semanas').select('id, finalizada')
+    .eq('usuario_id', u.id).eq('data_inicio', wk.start).maybeSingle();
+  if (sem && sem.finalizada) { showToast('Semana finalizada — bloqueada', 'error'); return; }
+  if (!sem) {
+    const r = await sb.from('semanas').upsert(
+      { usuario_id: u.id, ano: wk.year, semana: wk.week, data_inicio: wk.start, data_fim: wk.end, finalizada: false },
+      { onConflict: 'usuario_id,ano,semana' }
+    ).select('id').single();
+    if (r.error) { showToast('Erro na semana', 'error'); return; }
+    sem = r.data;
+  }
+
+  const d = new Date(dataISO + 'T12:00:00');
+  const { error } = await sb.from('horas_lancadas').insert({
+    usuario_id:      u.id,
+    semana_id:       sem.id,
+    data_lancamento: dataISO,
+    dia_semana:      d.getDay() === 0 ? 7 : d.getDay(),
+    hora_inicio:     ini,
+    hora_fim:        fim,
+    tipo:            s.tipo,
+    produto_id:      s.tipo === 'projeto' ? s.produtoId : null,
+    etapa_id:        s.tipo === 'projeto' ? s.etapaId : null,
+    descricao:       desc || null,
+  });
+  if (error) { showToast('Erro ao salvar', 'error'); return; }
+
+  _mtmrClear();
+  closeSheet('mtmr-stop');
+  _mtmrRender();
+  showToast('Horas lançadas ✓', 'success');
+  if (typeof window.loadSemana === 'function') { try { window.loadSemana(); } catch (_) {} }
+}
+
+function discardTimer() {
+  _mtmrClear();
+  closeSheet('mtmr-stop');
+  _mtmrRender();
+  showToast('Timer descartado');
+}
+
 // ── Init automático ───────────────────────────
 initTheme();
 registerSW();
+document.addEventListener('DOMContentLoaded', () => { if (!window.EXP_NO_TIMER) mountTimer(); });
