@@ -247,8 +247,8 @@
         <div class="push-banner-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </div>
-        <div class="push-banner-txt"><b>Ative as notificações</b> para receber novas mensagens.</div>
-        <button class="push-banner-btn" onclick="enablePush()">Ativar</button>
+        <div class="push-banner-txt" id="push-banner-txt"><b>Ative as notificações</b> para receber novas mensagens.</div>
+        <button class="push-banner-btn" id="push-banner-btn" onclick="enablePush()">Ativar</button>
         <button class="push-banner-x" onclick="dismissPushBanner()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
@@ -710,10 +710,25 @@
 
     // ── Push contextual ──
     function maybeShowPushBanner() {
-      if (!('Notification' in window) || !('PushManager' in window)) return;
+      if (!('Notification' in window)) return;
+      const banner = document.getElementById('push-banner');
+      const text = document.getElementById('push-banner-txt');
+      const btn = document.getElementById('push-banner-btn');
+      const ctx = window._pushContextReady?.();
+      if (ctx && ctx.reason === 'ios-standalone-required') {
+        text.innerHTML = '<b>Instale o app no iPhone/iPad</b> e abra pelo ícone da Tela de Início antes de ativar notificações.';
+        btn.textContent = 'Entendi';
+        btn.onclick = () => dismissPushBanner();
+        banner.classList.add('show');
+        return;
+      }
+      if (!('PushManager' in window)) return;
       if (Notification.permission !== 'default') return;
       if (localStorage.getItem('exp-push-dismissed') === '1') return;
-      document.getElementById('push-banner').classList.add('show');
+      text.innerHTML = '<b>Ative as notificações</b> para receber novas mensagens.';
+      btn.textContent = 'Ativar';
+      btn.onclick = () => enablePush();
+      banner.classList.add('show');
     }
     function dismissPushBanner() { localStorage.setItem('exp-push-dismissed', '1'); document.getElementById('push-banner').classList.remove('show'); }
     async function enablePush() { const ok = await requestPushPermission(); document.getElementById('push-banner').classList.remove('show'); showToast(ok ? 'Notificações ativadas ✓' : 'Não ativadas', ok ? 'success' : 'error'); }

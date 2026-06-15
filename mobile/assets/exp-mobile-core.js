@@ -291,6 +291,27 @@ function showToast(msg, type = 'default', duration = 3000) {
 // ── Push Notifications ────────────────────────
 // Salva a inscrição no banco (mesma tabela/colunas do desktop: conflito composto
 // usuario_id,endpoint → suporta vários dispositivos por usuário).
+function _isIosLike() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  return /iPad|iPhone|iPod/.test(ua)
+    || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function _isStandaloneApp() {
+  return window.matchMedia?.('(display-mode: standalone)')?.matches
+    || window.navigator.standalone === true;
+}
+
+function _pushContextReady() {
+  if (!('Notification' in window)) return { ok: false, reason: 'notification-api' };
+  if (!('serviceWorker' in navigator)) return { ok: false, reason: 'service-worker' };
+  if (!('PushManager' in window)) return { ok: false, reason: 'push-manager' };
+  if (!VAPID_PUBLIC_KEY) return { ok: false, reason: 'vapid-missing' };
+  if (_isIosLike() && !_isStandaloneApp()) return { ok: false, reason: 'ios-standalone-required' };
+  return { ok: true, reason: null };
+}
+
 async function _savePushSub(sub) {
   const u = await getUsuario();
   if (!u || !sub) return false;
@@ -306,8 +327,13 @@ async function _savePushSub(sub) {
 // Garante a inscrição SEM pedir permissão — só age se o usuário já concedeu antes.
 // Use no carregamento das páginas para (re)salvar a inscrição do dispositivo.
 async function ensurePushSubscribed() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-  if (!VAPID_PUBLIC_KEY) return false;
+  const ctx = _pushContextReady();
+  if (!ctx.ok) {
+    if (ctx.reason === 'ios-standalone-required') {
+      console.warn('[EXP Push] iPhone/iPad exige app aberto pela Tela de Inicio para push.');
+    }
+    return false;
+  }
   if (Notification.permission !== 'granted') return false;
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -327,8 +353,15 @@ async function ensurePushSubscribed() {
 
 // Pede permissão explicitamente (chamar a partir de um gesto/botão contextual).
 async function requestPushPermission() {
-  if (!('Notification' in window)) return false;
-  if (!VAPID_PUBLIC_KEY) return false; // chave não configurada
+  const ctx = _pushContextReady();
+  if (!ctx.ok) {
+    if (ctx.reason === 'ios-standalone-required') {
+      showToast('No iPhone/iPad, instale o EXP na Tela de Inicio e abra pelo icone antes de ativar notificacoes.', 'error', 5000);
+    } else {
+      showToast('Este dispositivo ou navegador nao oferece suporte completo a push.', 'error', 4500);
+    }
+    return false;
+  }
 
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') return false;
