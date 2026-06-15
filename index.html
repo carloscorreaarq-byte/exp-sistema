@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Redireciona celular para a versão mobile (PWA). Roda antes de carregar o resto.
+     Saída de emergência: abrir com ?desktop=1 fixa o desktop neste aparelho; ?mobile=1 desfaz. -->
+<script>
+(function(){
+  try {
+    var p = new URLSearchParams(location.search);
+    if (p.get('desktop') === '1') localStorage.setItem('exp-force-desktop','1');
+    if (p.get('mobile')  === '1') localStorage.removeItem('exp-force-desktop');
+    if (localStorage.getItem('exp-force-desktop') === '1') return;
+    var isPhone = /Android|iPhone|iPod|Windows Phone|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+    if (isPhone) location.replace('/mobile/');
+  } catch (e) {}
+})();
+</script>
 <title>EXP · Acesso</title>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
