@@ -1,5 +1,5 @@
-// EXP Mobile — Service Worker v4.0
-const CACHE = 'exp-mobile-v4';
+// EXP Mobile — Service Worker v5.0
+const CACHE = 'exp-mobile-v5';
 
 // Apenas assets estáticos que não mudam com frequência
 const STATIC = [

@@ -125,7 +125,7 @@ function buildBottomNav(currentPage, socio = false) {
   const nav = document.getElementById('bottom-nav');
   if (!nav) return;
 
-  // v1 — nav enxuta: Início · Horas · Chat
+  // v1 — nav enxuta: Início · Horas · Chat · Módulos
   const items = [
     { id: 'app',   href: './app.html',   label: 'Início', icon: icons.grid },
     { id: 'horas', href: './horas.html', label: 'Horas',  icon: icons.clock },
@@ -138,10 +138,95 @@ function buildBottomNav(currentPage, socio = false) {
       <span>${it.label}</span>
       ${it.badge ? `<span class="nav-badge" id="chat-badge" style="display:none"></span>` : ''}
     </a>
-  `).join('');
+  `).join('') + `
+    <button class="nav-item" data-page="modulos" onclick="openModulesSheet()">
+      ${MOD_ICONS.apps}
+      <span>Módulos</span>
+    </button>
+  `;
 
+  _injectModulesSheet();
   if (currentPage !== 'chat') _loadChatBadge();
 }
+
+// ── Menu de Módulos (preset; só os com navegação ficam liberados) ──
+// Ícones espelham a plataforma (shared/exp-nav.js).
+const MOD_ICONS = {
+  apps:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>`,
+  projetos:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
+  contatos:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  calendario:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  apoio:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  crm:       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+  financeiro:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+  analise:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+  pessoas:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  apontamentos:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+  calc:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>`,
+  sociedade: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  lock:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+};
+
+const MODULES = [
+  { icon: 'projetos',   label: 'Gestão',       desc: 'Projetos, tarefas, horas, custos', href: './gestao.html',   on: true },
+  { icon: 'contatos',   label: 'Contatos',     desc: 'Diretório da equipe e clientes',   href: './contatos.html', on: true },
+  { icon: 'calendario', label: 'Calendário',   desc: 'Agenda e eventos',                 on: false },
+  { icon: 'apoio',      label: 'Apoio',        desc: 'Normas, vegetação, indicações',    on: false },
+  { icon: 'crm',        label: 'Comercial',    desc: 'Funil e oportunidades',            on: false },
+  { icon: 'financeiro', label: 'Financeiro',   desc: 'Receitas e despesas',              on: false },
+  { icon: 'analise',    label: 'Análise',      desc: 'Indicadores e relatórios',         on: false },
+  { icon: 'pessoas',    label: 'Pessoas',      desc: 'Clima e gestão de pessoas',        on: false },
+  { icon: 'apontamentos',label:'Apontamentos', desc: 'Registros e apontamentos',         on: false },
+  { icon: 'calc',       label: 'Calculadora',  desc: 'Simulações de proposta',           on: false },
+  { icon: 'sociedade',  label: 'Sociedade',    desc: 'Área societária',                  on: false },
+];
+
+function _injectModulesSheet() {
+  if (document.getElementById('modulos-sheet')) return;
+  if (!document.getElementById('mod-style')) {
+    const st = document.createElement('style');
+    st.id = 'mod-style';
+    st.textContent = `
+      .mod-row{display:flex;align-items:center;gap:var(--gap-md);padding:12px var(--gap-md);background:var(--m-surface);border:1px solid color-mix(in srgb,var(--m-border) 22%,transparent);border-radius:var(--m-radius-card);margin-bottom:var(--gap-sm);box-shadow:var(--shadow-card);-webkit-tap-highlight-color:transparent;color:inherit}
+      .mod-row.on:active{transform:scale(.98)}
+      .mod-row.off{opacity:.55}
+      .mod-ico{width:40px;height:40px;border-radius:var(--m-radius-card);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--verde-soft);color:var(--verde)}
+      .mod-row.off .mod-ico{background:color-mix(in srgb,var(--m-border) 18%,transparent);color:var(--m-text-3)}
+      .mod-ico svg{width:20px;height:20px;stroke-width:1.8}
+      .mod-txt{flex:1;min-width:0}
+      .mod-name{font-size:var(--mt-body);font-weight:700}
+      .mod-desc{font-size:var(--mt-caption);color:var(--m-text-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .mod-right{flex-shrink:0;color:var(--m-text-3)}
+      .mod-right svg{width:16px;height:16px;stroke-width:2.2}
+      .mod-soon{flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--m-text-3);background:color-mix(in srgb,var(--m-border) 16%,transparent);padding:3px 8px;border-radius:var(--m-radius-pill)}
+    `;
+    document.head.appendChild(st);
+  }
+  const chevron = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg>`;
+  const rows = MODULES.map(m => {
+    const inner = `
+      <div class="mod-ico">${MOD_ICONS[m.icon]}</div>
+      <div class="mod-txt"><div class="mod-name">${m.label}</div><div class="mod-desc">${m.desc}</div></div>
+      ${m.on ? `<div class="mod-right">${chevron}</div>` : `<div class="mod-soon">Em breve</div>`}
+    `;
+    return m.on
+      ? `<a class="mod-row on" href="${m.href}">${inner}</a>`
+      : `<div class="mod-row off">${inner}</div>`;
+  }).join('');
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="sheet-overlay" id="modulos-overlay" onclick="closeSheet('modulos')"></div>
+    <div class="sheet" id="modulos-sheet" style="max-height:86dvh">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Módulos</div>
+      ${rows}
+    </div>
+  `;
+  document.body.appendChild(wrap);
+}
+
+function openModulesSheet() { _injectModulesSheet(); openSheet('modulos'); }
 
 async function _loadChatBadge() {
   const badge = document.getElementById('chat-badge');
@@ -459,25 +544,44 @@ function _mtmrInject() {
     </button>
 
     <div class="sheet-overlay" id="mtmr-start-overlay" onclick="closeSheet('mtmr-start')"></div>
-    <div class="sheet" id="mtmr-start-sheet">
+    <div class="sheet" id="mtmr-start-sheet" style="max-height:88dvh">
       <div class="sheet-handle"></div>
       <div class="sheet-title">Iniciar timer</div>
+
       <div class="form-group">
         <label class="form-label">Tipo</label>
         <select class="form-input" id="mtmr-tipo" onchange="_mtmrOnTipo()">
           <option value="projeto">Projeto</option>
           <option value="organizacao">Organização Interna</option>
-          <option value="sociedade">Sociedade</option>
         </select>
       </div>
-      <div class="form-group" id="mtmr-produto-wrap" style="margin-top:var(--gap-md)">
-        <label class="form-label">Projeto</label>
-        <select class="form-input" id="mtmr-produto" onchange="_mtmrOnProduto()"><option value="">Selecionar projeto…</option></select>
+
+      <!-- Categoria (organização / sociedade) -->
+      <div class="form-group" id="mtmr-sub-wrap" style="display:none;margin-top:var(--gap-md)">
+        <label class="form-label">Categoria</label>
+        <select class="form-input" id="mtmr-sub"></select>
       </div>
-      <div class="form-group" id="mtmr-etapa-wrap" style="display:none;margin-top:var(--gap-md)">
-        <label class="form-label">Etapa</label>
-        <select class="form-input" id="mtmr-etapa"><option value="">Selecionar etapa…</option></select>
+
+      <!-- Cascata de projeto: Cliente → Oportunidade → Produto → Etapa -->
+      <div id="mtmr-proj-wrap">
+        <div class="form-group" style="margin-top:var(--gap-md)">
+          <label class="form-label">Cliente</label>
+          <select class="form-input" id="mtmr-cli" onchange="_mtmrChangeCli()"><option value="">Selecionar cliente…</option></select>
+        </div>
+        <div class="form-group" id="mtmr-opp-wrap" style="display:none;margin-top:var(--gap-md)">
+          <label class="form-label">Projeto / oportunidade</label>
+          <select class="form-input" id="mtmr-opp" onchange="_mtmrChangeOpp()"><option value="">Selecionar…</option></select>
+        </div>
+        <div class="form-group" id="mtmr-prod-wrap" style="display:none;margin-top:var(--gap-md)">
+          <label class="form-label">Produto</label>
+          <select class="form-input" id="mtmr-prod" onchange="_mtmrChangeProd()"><option value="">Selecionar…</option></select>
+        </div>
+        <div class="form-group" id="mtmr-etapa-wrap" style="display:none;margin-top:var(--gap-md)">
+          <label class="form-label">Etapa</label>
+          <select class="form-input" id="mtmr-etapa"><option value="">Selecionar…</option></select>
+        </div>
       </div>
+
       <div style="margin-top:var(--gap-lg);display:flex;gap:var(--gap-sm)">
         <button class="btn btn-secondary" onclick="closeSheet('mtmr-start')">Cancelar</button>
         <button class="btn btn-primary" style="flex:1" onclick="startTimer()">Iniciar</button>
@@ -531,56 +635,124 @@ function _mtmrUpdateTime() {
 function _mtmrStartTick() { if (!_mtmrTick) _mtmrTick = setInterval(_mtmrUpdateTime, 1000); }
 function _mtmrStopTick()  { if (_mtmrTick) { clearInterval(_mtmrTick); _mtmrTick = null; } }
 
+// Subtipos espelham o gestao.html/timer.js
+const MTIMER_SUBTIPOS = {
+  organizacao: ['Capacitação', 'Reunião Semanal', 'Feedback', 'Reunião Interna'],
+  sociedade:   ['Marketing', 'Prospecção', 'Administrativo', 'Jurídico', 'Reunião Societária', 'Consultoria', 'RH e Pessoas', 'Gestão', 'Outros'],
+};
+
+// Produtos com a cadeia oportunidade → cliente (igual ao timer desktop)
 async function _mtmrLoadProdutos() {
   if (_mtmrProdutos) return _mtmrProdutos;
-  const { data } = await initSupabase().from('produtos').select('id,nome').eq('status', 'ativo').order('nome');
+  const { data } = await initSupabase().from('produtos')
+    .select('id, nome, subtipo, oportunidade_id, oportunidades(id, projeto, cidade, uf, clientes(id, nome, cidade, uf))')
+    .eq('status', 'ativo').order('nome');
   _mtmrProdutos = data ?? [];
   return _mtmrProdutos;
 }
+function _mtmrClientes(prods) {
+  const map = {};
+  prods.forEach(p => {
+    const c = (p.oportunidades && p.oportunidades.clientes) || {};
+    if (c.id && !map[c.id]) { let l = c.nome || '(sem nome)'; if (c.cidade) l += ' · ' + c.cidade; map[c.id] = { id: c.id, label: l }; }
+  });
+  return Object.values(map).sort((a, b) => a.label.localeCompare(b.label, 'pt'));
+}
+function _mtmrOpps(prods, cliId) {
+  const map = {};
+  prods.forEach(p => {
+    const o = p.oportunidades || {}, c = o.clientes || {};
+    if (String(c.id) === String(cliId) && o.id && !map[o.id]) {
+      let l = o.projeto || '(sem nome)'; if (o.cidade) l += ' · ' + o.cidade + (o.uf ? '/' + o.uf : '');
+      map[o.id] = { id: o.id, label: l };
+    }
+  });
+  return Object.values(map);
+}
+function _mtmrProdsByOpp(prods, oppId) {
+  return prods.filter(p => String(p.oportunidade_id) === String(oppId))
+    .map(p => ({ id: p.id, label: p.nome || p.subtipo || '(sem nome)' }));
+}
 
 async function openTimerStart() {
-  document.getElementById('mtmr-tipo').value = 'projeto';
+  const u = await getUsuario();
+  const tipoSel = document.getElementById('mtmr-tipo');
+  if (isSocio(u) && !tipoSel.querySelector('option[value="sociedade"]')) {
+    const o = document.createElement('option'); o.value = 'sociedade'; o.textContent = 'Sociedade'; tipoSel.appendChild(o);
+  }
+  tipoSel.value = 'projeto';
   _mtmrOnTipo();
-  const sel = document.getElementById('mtmr-produto');
-  sel.innerHTML = '<option value="">Selecionar projeto…</option>';
-  (await _mtmrLoadProdutos()).forEach(p => {
-    const o = document.createElement('option'); o.value = p.id; o.textContent = p.nome; sel.appendChild(o);
-  });
-  document.getElementById('mtmr-etapa-wrap').style.display = 'none';
+
+  const prods = await _mtmrLoadProdutos();
+  const selCli = document.getElementById('mtmr-cli');
+  selCli.innerHTML = '<option value="">Selecionar cliente…</option>';
+  _mtmrClientes(prods).forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.label; selCli.appendChild(o); });
+  ['mtmr-opp-wrap', 'mtmr-prod-wrap', 'mtmr-etapa-wrap'].forEach(id => document.getElementById(id).style.display = 'none');
   openSheet('mtmr-start');
 }
 
 function _mtmrOnTipo() {
   const t = document.getElementById('mtmr-tipo').value;
-  document.getElementById('mtmr-produto-wrap').style.display = t === 'projeto' ? '' : 'none';
-  document.getElementById('mtmr-etapa-wrap').style.display = 'none';
+  const isProj = t === 'projeto';
+  document.getElementById('mtmr-proj-wrap').style.display = isProj ? '' : 'none';
+  const subWrap = document.getElementById('mtmr-sub-wrap');
+  if (isProj) { subWrap.style.display = 'none'; }
+  else {
+    document.getElementById('mtmr-sub').innerHTML = (MTIMER_SUBTIPOS[t] || []).map(s => `<option value="${s}">${s}</option>`).join('');
+    subWrap.style.display = '';
+  }
 }
 
-async function _mtmrOnProduto() {
-  const id = document.getElementById('mtmr-produto').value;
-  const wrap = document.getElementById('mtmr-etapa-wrap');
-  const sel = document.getElementById('mtmr-etapa');
-  if (!id) { wrap.style.display = 'none'; return; }
-  const { data } = await initSupabase().from('etapas').select('id,nome,ordem').eq('produto_id', id).order('ordem');
-  sel.innerHTML = '<option value="">Selecionar etapa…</option>';
-  (data ?? []).forEach(e => { const o = document.createElement('option'); o.value = e.id; o.textContent = e.nome; sel.appendChild(o); });
-  wrap.style.display = '';
+async function _mtmrChangeCli() {
+  const cliId = document.getElementById('mtmr-cli').value;
+  const oppWrap = document.getElementById('mtmr-opp-wrap'), oppSel = document.getElementById('mtmr-opp');
+  document.getElementById('mtmr-prod-wrap').style.display = 'none';
+  document.getElementById('mtmr-etapa-wrap').style.display = 'none';
+  if (!cliId) { oppWrap.style.display = 'none'; return; }
+  const prods = await _mtmrLoadProdutos();
+  oppSel.innerHTML = '<option value="">Selecionar…</option>';
+  _mtmrOpps(prods, cliId).forEach(o => { const op = document.createElement('option'); op.value = o.id; op.textContent = o.label; oppSel.appendChild(op); });
+  oppWrap.style.display = '';
+}
+
+async function _mtmrChangeOpp() {
+  const oppId = document.getElementById('mtmr-opp').value;
+  const prodWrap = document.getElementById('mtmr-prod-wrap'), prodSel = document.getElementById('mtmr-prod');
+  document.getElementById('mtmr-etapa-wrap').style.display = 'none';
+  if (!oppId) { prodWrap.style.display = 'none'; return; }
+  const prods = await _mtmrLoadProdutos();
+  prodSel.innerHTML = '<option value="">Selecionar…</option>';
+  _mtmrProdsByOpp(prods, oppId).forEach(p => { const op = document.createElement('option'); op.value = p.id; op.textContent = p.label; prodSel.appendChild(op); });
+  prodWrap.style.display = '';
+}
+
+async function _mtmrChangeProd() {
+  const prodId = document.getElementById('mtmr-prod').value;
+  const etWrap = document.getElementById('mtmr-etapa-wrap'), etSel = document.getElementById('mtmr-etapa');
+  if (!prodId) { etWrap.style.display = 'none'; return; }
+  const { data } = await initSupabase().from('etapas').select('id,nome,ordem').eq('produto_id', prodId).order('ordem');
+  etSel.innerHTML = '<option value="">Selecionar…</option>';
+  (data ?? []).forEach(e => { const op = document.createElement('option'); op.value = e.id; op.textContent = e.nome; etSel.appendChild(op); });
+  etWrap.style.display = '';
 }
 
 function startTimer() {
   const tipo = document.getElementById('mtmr-tipo').value;
-  const prod = document.getElementById('mtmr-produto');
-  const etapa = document.getElementById('mtmr-etapa');
-  if (tipo === 'projeto' && !prod.value)  { showToast('Selecione o projeto', 'error'); return; }
-  if (tipo === 'projeto' && !etapa.value) { showToast('Selecione a etapa', 'error'); return; }
-  _mtmrSave({
-    startedAt:  Date.now(),
-    tipo,
-    produtoId:  tipo === 'projeto' ? prod.value : null,
-    produtoNome:tipo === 'projeto' ? (prod.options[prod.selectedIndex]?.text || '') : null,
-    etapaId:    tipo === 'projeto' ? etapa.value : null,
-    etapaNome:  tipo === 'projeto' ? (etapa.options[etapa.selectedIndex]?.text || '') : null,
-  });
+  if (tipo === 'projeto') {
+    const prod = document.getElementById('mtmr-prod'), etapa = document.getElementById('mtmr-etapa');
+    if (!prod.value)  { showToast('Selecione o produto', 'error'); return; }
+    if (!etapa.value) { showToast('Selecione a etapa', 'error'); return; }
+    _mtmrSave({
+      startedAt: Date.now(), tipo: 'projeto', subtipo: null,
+      produtoId: prod.value, produtoNome: prod.options[prod.selectedIndex]?.text || '',
+      etapaId: etapa.value, etapaNome: etapa.options[etapa.selectedIndex]?.text || '',
+    });
+  } else {
+    _mtmrSave({
+      startedAt: Date.now(), tipo, subtipo: document.getElementById('mtmr-sub').value || null,
+      produtoId: null, produtoNome: null, etapaId: null, etapaNome: null,
+    });
+  }
   closeSheet('mtmr-start');
   _mtmrRender();
   showToast('Timer iniciado', 'success');
@@ -593,7 +765,7 @@ function openTimerStop() {
   const iso  = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   document.getElementById('mtmr-stop-label').textContent = s.tipo === 'projeto'
     ? `${s.produtoNome || 'Projeto'}${s.etapaNome ? ' · ' + s.etapaNome : ''}`
-    : (s.tipo === 'organizacao' ? 'Organização Interna' : 'Sociedade');
+    : ((s.tipo === 'organizacao' ? 'Organização Interna' : 'Sociedade') + (s.subtipo ? ' · ' + s.subtipo : ''));
   document.getElementById('mtmr-data').value = iso(now);
   document.getElementById('mtmr-ini').value  = hhmm(start);
   document.getElementById('mtmr-fim').value  = hhmm(now);
@@ -635,6 +807,7 @@ async function saveTimerEntry() {
     hora_inicio:     ini,
     hora_fim:        fim,
     tipo:            s.tipo,
+    subtipo:         s.subtipo || null,
     produto_id:      s.tipo === 'projeto' ? s.produtoId : null,
     etapa_id:        s.tipo === 'projeto' ? s.etapaId : null,
     descricao:       desc || null,

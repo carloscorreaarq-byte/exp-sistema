@@ -14,736 +14,734 @@
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/exp-mobile.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script>window.EXP_NO_TIMER = true; /* chat tem composer próprio no rodapé */</script>
+  <script>window.EXP_NO_TIMER = true; /* chat tem layout próprio no rodapé */</script>
   <script src="./assets/exp-mobile-core.js"></script>
   <style>
-    /* ── Channel switch no header (só sócios) ── */
-    .chan-switch {
-      display: flex;
-      gap: 2px;
-      background: color-mix(in srgb, var(--m-border) 16%, transparent);
-      border-radius: var(--m-radius-pill);
-      padding: 2px;
-    }
-    .chan-tab {
-      padding: 4px 12px;
-      border-radius: var(--m-radius-pill);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--m-text-3);
-      background: transparent;
-      transition: all var(--m-transition);
-    }
-    .chan-tab.active { background: var(--m-surface); color: var(--verde); box-shadow: var(--shadow-card); }
-
-    /* ── Banner contextual de notificações ── */
-    #push-banner {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      padding: 10px var(--gap-md);
-      background: var(--verde-soft);
-      border-bottom: 1px solid color-mix(in srgb, var(--verde) 30%, transparent);
-    }
-    #push-banner.show { display: flex; }
-    .push-banner-ico {
-      flex-shrink: 0;
-      width: 32px; height: 32px; border-radius: 50%;
-      background: var(--verde); color: #fff;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .push-banner-ico svg { width: 17px; height: 17px; stroke-width: 2; }
-    .push-banner-txt { flex: 1; min-width: 0; font-size: 12px; color: var(--m-text-2); line-height: 1.35; }
-    .push-banner-txt b { color: var(--m-text); font-weight: 700; }
-    .push-banner-btn {
-      flex-shrink: 0;
-      padding: 7px 13px;
-      border-radius: var(--m-radius-pill);
-      background: var(--verde); color: #fff;
-      font-size: 12px; font-weight: 700;
-    }
-    .push-banner-x {
-      flex-shrink: 0; width: 28px; height: 28px;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--m-text-3);
-    }
-    .push-banner-x svg { width: 16px; height: 16px; stroke-width: 2.2; }
-
-    /* ── Layout do chat: entre header e nav fixos ── */
+    /* ════ LAYOUT BASE — duas telas (lista / conversa) ════ */
     .chat-wrap {
       position: fixed;
       top: calc(var(--header-h) + var(--safe-t));
       bottom: calc(var(--nav-h) + var(--safe-b));
       left: 0; right: 0;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
+      display: flex; flex-direction: column; min-height: 0;
     }
 
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding: 10px var(--gap-md) 14px;
-      display: flex;
-      flex-direction: column;
-    }
-    #messages::-webkit-scrollbar { width: 0; }
-
-    .chat-loading, .chat-empty {
-      margin: auto;
-      text-align: center;
-      color: var(--m-text-3);
-      font-size: var(--mt-caption);
-      padding: 24px;
-    }
-
-    /* Separador de data */
-    .date-sep {
-      align-self: center;
-      margin: 10px 0 8px;
-      font-size: 11px;
-      font-weight: 700;
-      font-family: var(--font-mono);
-      letter-spacing: .3px;
-      color: var(--m-text-3);
-      background: color-mix(in srgb, var(--m-border) 14%, transparent);
-      padding: 3px 12px;
+    /* ════ TELA DE LISTA (sidebar) ════ */
+    #view-list { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+    .clist-search {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px;
+      margin: 10px var(--gap-md);
+      padding: 8px 12px;
+      background: color-mix(in srgb, var(--m-border) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--m-border) 28%, transparent);
       border-radius: var(--m-radius-pill);
     }
-
-    /* Bloco de mensagem */
-    .msg {
-      display: flex;
-      gap: 8px;
-      max-width: 86%;
-      margin-top: 8px;
+    .clist-search svg { width: 16px; height: 16px; color: var(--m-text-3); flex-shrink: 0; }
+    .clist-search input {
+      flex: 1; border: none; background: none; outline: none;
+      font-size: var(--mt-callout); color: var(--m-text);
     }
+    #clist-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 var(--gap-md) 16px; }
+    #clist-scroll::-webkit-scrollbar { width: 0; }
+
+    /* Online agora */
+    .pbar { padding: 6px 2px 12px; }
+    .pbar-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--m-text-3); margin-bottom: 8px;
+    }
+    .pbar-avs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px; }
+    .pbar-avs::-webkit-scrollbar { display: none; }
+    .pav { flex-shrink: 0; width: 46px; text-align: center; -webkit-tap-highlight-color: transparent; }
+    .pav-circle {
+      position: relative; width: 46px; height: 46px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: #fff;
+      margin-bottom: 3px;
+    }
+    .pav-circle img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .pav-dot {
+      position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--m-bg);
+    }
+    .pav-dot.online { background: #2D9E6B; }
+    .pav-dot.foco { background: #1D4FA0; }
+    .pav-dot.ausente { background: var(--ouro); }
+    .pav-name {
+      font-size: 10px; color: var(--m-text-3);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .clist-sec {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--m-text-3); margin: 14px 2px 6px;
+      display: flex; align-items: center; justify-content: space-between;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .conv-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 6px;
+      border-radius: var(--m-radius-card);
+      -webkit-tap-highlight-color: transparent;
+      transition: background var(--m-transition);
+      cursor: pointer;
+    }
+    .conv-item:active { background: color-mix(in srgb, var(--m-border) 10%, transparent); }
+    .conv-av {
+      flex-shrink: 0; position: relative;
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: #fff;
+    }
+    .conv-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .conv-av.hash {
+      border-radius: 13px; font-size: 18px;
+    }
+    .conv-av.hash.geral { background: var(--verde-soft); color: var(--verde); }
+    .conv-av.hash.socios { background: var(--ouro-soft); color: var(--ouro); }
+    .conv-av.hash.proj { background: var(--azul-soft); color: var(--azul); border-radius: 13px; }
+    .conv-av-dot {
+      position: absolute; bottom: -1px; right: -1px; width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--m-bg);
+    }
+    .conv-av-dot.online { background: #2D9E6B; }
+    .conv-av-dot.foco { background: #1D4FA0; }
+    .conv-av-dot.ausente { background: var(--ouro); }
+    .conv-body { flex: 1; min-width: 0; }
+    .conv-top { display: flex; align-items: baseline; gap: 6px; }
+    .conv-name { flex: 1; min-width: 0; font-size: var(--mt-body); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-item.unread .conv-name { font-weight: 800; }
+    .conv-ts { font-size: 10px; font-family: var(--font-mono); color: var(--m-text-3); flex-shrink: 0; }
+    .conv-preview { font-size: var(--mt-caption); color: var(--m-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .conv-item.unread .conv-preview { color: var(--m-text-2); }
+    .conv-badge {
+      flex-shrink: 0; min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: var(--m-radius-pill); background: var(--verde); color: #fff;
+      font-size: 10px; font-weight: 800; font-family: var(--font-mono);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .clist-empty { text-align: center; color: var(--m-text-3); font-size: var(--mt-caption); padding: 30px 16px; }
+
+    /* FAB nova conversa */
+    .newconv-fab {
+      position: fixed;
+      right: var(--gap-md);
+      bottom: calc(var(--nav-h) + var(--safe-b) + var(--gap-md));
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--verde); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--verde) 35%, transparent);
+      z-index: 70; border: none;
+    }
+    .newconv-fab svg { width: 24px; height: 24px; stroke-width: 2.2; }
+
+    /* lista de membros (sheet nova conversa) */
+    .member-item { display: flex; align-items: center; gap: 12px; padding: 11px 4px; -webkit-tap-highlight-color: transparent; border-bottom: 1px solid color-mix(in srgb, var(--m-border) 12%, transparent); }
+    .member-item:active { background: color-mix(in srgb, var(--m-border) 10%, transparent); }
+    .member-av { flex-shrink:0; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:13px; font-weight:700; color:#fff; }
+    .member-av img { width:100%; height:100%; border-radius:50%; object-fit:cover; }
+    .member-name { font-size: var(--mt-body); font-weight: 600; }
+    .member-role { font-size: var(--mt-caption); color: var(--m-text-3); }
+
+    /* ════ TELA DE CONVERSA ════ */
+    #view-conv { display: none; flex-direction: column; min-height: 0; flex: 1; }
+    #view-conv.active { display: flex; }
+    #view-list.hidden { display: none; }
+
+    #messages {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 10px var(--gap-md) 14px; display: flex; flex-direction: column;
+    }
+    #messages::-webkit-scrollbar { width: 0; }
+    .chat-loading, .chat-empty { margin: auto; text-align: center; color: var(--m-text-3); font-size: var(--mt-caption); padding: 24px; }
+
+    .date-sep {
+      align-self: center; margin: 10px 0 8px;
+      font-size: 11px; font-weight: 700; font-family: var(--font-mono); letter-spacing: .3px;
+      color: var(--m-text-3); background: color-mix(in srgb, var(--m-border) 14%, transparent);
+      padding: 3px 12px; border-radius: var(--m-radius-pill);
+    }
+    .msg { display: flex; gap: 8px; max-width: 86%; margin-top: 8px; }
     .msg.grouped { margin-top: 2px; }
     .msg.own { align-self: flex-end; flex-direction: row-reverse; }
-
-    .msg-av {
-      flex-shrink: 0;
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: #fff;
-      font-family: var(--font-mono);
-      margin-top: 14px;
-    }
+    .msg-av { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; font-family: var(--font-mono); margin-top: 14px; }
     .msg.grouped .msg-av { visibility: hidden; height: 0; margin-top: 0; }
-
     .msg-col { min-width: 0; display: flex; flex-direction: column; }
     .msg.own .msg-col { align-items: flex-end; }
-
-    .msg-head {
-      display: flex; align-items: baseline; gap: 6px;
-      margin: 0 4px 2px;
-    }
+    .msg-head { display: flex; align-items: baseline; gap: 6px; margin: 0 4px 2px; }
     .msg.grouped .msg-head { display: none; }
     .msg-name { font-size: 12px; font-weight: 700; color: var(--m-text-2); }
     .msg-time { font-size: 9px; font-family: var(--font-mono); color: var(--m-text-3); }
-
-    .bubble {
-      padding: 8px 11px;
-      border-radius: 14px;
-      background: var(--m-surface);
-      border: 1px solid color-mix(in srgb, var(--m-border) 20%, transparent);
-      font-size: var(--mt-body);
-      line-height: 1.4;
-      color: var(--m-text);
-      word-break: break-word;
-      white-space: pre-wrap;
-      box-shadow: var(--shadow-card);
-    }
-    .msg.own .bubble {
-      background: var(--verde);
-      border-color: transparent;
-      color: #fff;
-    }
+    .bubble { padding: 8px 11px; border-radius: 14px; background: var(--m-surface); border: 1px solid color-mix(in srgb, var(--m-border) 20%, transparent); font-size: var(--mt-body); line-height: 1.4; color: var(--m-text); word-break: break-word; white-space: pre-wrap; box-shadow: var(--shadow-card); }
+    .msg.own .bubble { background: var(--verde); border-color: transparent; color: #fff; }
     .msg.own .bubble a { color: #fff; }
     .bubble a { color: var(--verde); text-decoration: underline; word-break: break-all; }
-    .bubble.media-only { padding: 4px; background: var(--m-surface); }
-    .msg.own .bubble.media-only { background: var(--verde); }
-
-    /* Imagem (print) */
-    .bubble-img {
-      display: block;
-      max-width: 100%;
-      width: 230px;
-      max-height: 300px;
-      object-fit: cover;
-      border-radius: 11px;
-      background: color-mix(in srgb, var(--m-border) 14%, transparent);
-    }
-    .bubble-img.loading { height: 160px; }
+    .bubble.media-only { padding: 4px; }
+    .bubble-img { display: block; max-width: 100%; width: 230px; max-height: 300px; object-fit: cover; border-radius: 11px; background: color-mix(in srgb, var(--m-border) 14%, transparent); }
     .bubble-cap { margin-top: 6px; padding: 0 5px 2px; }
-    .media-state {
-      width: 230px; max-width: 100%;
-      padding: 18px 10px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--m-text-3);
-      border: 1px dashed color-mix(in srgb, var(--m-border) 35%, transparent);
-      border-radius: 11px;
-    }
-
-    /* Mensagem de sistema (anotações) */
+    .media-state { width: 230px; max-width: 100%; padding: 18px 10px; text-align: center; font-size: 12px; color: var(--m-text-3); border: 1px dashed color-mix(in srgb, var(--m-border) 35%, transparent); border-radius: 11px; }
     .sys-row { align-self: center; margin: 8px 0; }
-    .sys-pill {
-      display: inline-flex; align-items: center; gap: 7px;
-      background: var(--verde-soft);
-      color: var(--verde);
-      border-radius: var(--m-radius-pill);
-      padding: 6px 13px;
-      font-size: 12px; font-weight: 600;
-    }
+    .sys-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--verde-soft); color: var(--verde); border-radius: var(--m-radius-pill); padding: 6px 13px; font-size: 12px; font-weight: 600; }
     .sys-pill svg { width: 14px; height: 14px; }
 
-    /* Composer */
-    .composer {
-      flex-shrink: 0;
-      display: flex;
-      align-items: flex-end;
-      gap: 7px;
-      padding: 8px var(--gap-md);
-      padding-bottom: 8px;
-      background: var(--m-surface);
-      border-top: 1px solid color-mix(in srgb, var(--m-border) 25%, transparent);
-    }
-    .composer-btn {
-      flex-shrink: 0;
-      width: 38px; height: 38px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--m-text-2);
-      background: color-mix(in srgb, var(--m-border) 14%, transparent);
-    }
+    .composer { flex-shrink: 0; display: flex; align-items: flex-end; gap: 7px; padding: 8px var(--gap-md); background: var(--m-surface); border-top: 1px solid color-mix(in srgb, var(--m-border) 25%, transparent); }
+    .composer-btn { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--m-text-2); background: color-mix(in srgb, var(--m-border) 14%, transparent); }
     .composer-btn svg { width: 20px; height: 20px; stroke-width: 2; }
     .composer-btn.send { background: var(--verde); color: #fff; }
     .composer-btn:disabled { opacity: .45; }
-
-    #chat-input {
-      flex: 1;
-      min-height: 38px;
-      max-height: 120px;
-      resize: none;
-      border: 1px solid color-mix(in srgb, var(--m-border) 30%, transparent);
-      border-radius: 20px;
-      padding: 9px 14px;
-      background: color-mix(in srgb, var(--m-border) 8%, transparent);
-      color: var(--m-text);
-      font-size: var(--mt-callout);
-      line-height: 1.3;
-      outline: none;
-      -webkit-appearance: none;
-    }
+    #chat-input { flex: 1; min-height: 38px; max-height: 120px; resize: none; border: 1px solid color-mix(in srgb, var(--m-border) 30%, transparent); border-radius: 20px; padding: 9px 14px; background: color-mix(in srgb, var(--m-border) 8%, transparent); color: var(--m-text); font-size: var(--mt-callout); line-height: 1.3; outline: none; -webkit-appearance: none; }
     #chat-input:focus { border-color: var(--verde); }
 
-    .composer-status {
-      position: absolute;
-      bottom: calc(var(--nav-h) + var(--safe-b) + 56px);
-      left: 50%; transform: translateX(-50%);
-      background: var(--grafite);
-      color: var(--off);
-      font-size: 12px; font-weight: 600;
-      padding: 6px 14px;
-      border-radius: var(--m-radius-pill);
-      box-shadow: var(--shadow-card);
-      display: none;
-      z-index: 60;
-    }
+    .composer-status { position: absolute; bottom: calc(var(--nav-h) + var(--safe-b) + 56px); left: 50%; transform: translateX(-50%); background: var(--grafite); color: var(--off); font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: var(--m-radius-pill); box-shadow: var(--shadow-card); display: none; z-index: 60; }
     .composer-status.show { display: block; }
     .composer-status.warn { background: var(--critico); color: #fff; }
 
-    /* Visualizador de imagem */
-    .viewer {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.92);
-      display: none;
-      align-items: center; justify-content: center;
-      z-index: 500;
-      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
-    }
+    .viewer { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 500; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
     .viewer.open { display: flex; }
     .viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .viewer-close {
-      position: absolute;
-      top: calc(env(safe-area-inset-top) + 12px); right: 14px;
-      width: 40px; height: 40px; border-radius: 50%;
-      background: rgba(255,255,255,.15); color: #fff;
-      display: flex; align-items: center; justify-content: center;
-    }
+    .viewer-close { position: absolute; top: calc(env(safe-area-inset-top) + 12px); right: 14px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.15); color: #fff; display: flex; align-items: center; justify-content: center; }
     .viewer-close svg { width: 22px; height: 22px; stroke-width: 2.4; }
+
+    .push-banner { display: none; align-items: center; gap: 10px; padding: 10px var(--gap-md); background: var(--verde-soft); border-bottom: 1px solid color-mix(in srgb, var(--verde) 30%, transparent); }
+    .push-banner.show { display: flex; }
+    .push-banner-ico { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--verde); color: #fff; display: flex; align-items: center; justify-content: center; }
+    .push-banner-ico svg { width: 17px; height: 17px; stroke-width: 2; }
+    .push-banner-txt { flex: 1; min-width: 0; font-size: 12px; color: var(--m-text-2); line-height: 1.35; }
+    .push-banner-txt b { color: var(--m-text); font-weight: 700; }
+    .push-banner-btn { flex-shrink: 0; padding: 7px 13px; border-radius: var(--m-radius-pill); background: var(--verde); color: #fff; font-size: 12px; font-weight: 700; }
+    .push-banner-x { flex-shrink: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--m-text-3); }
+    .push-banner-x svg { width: 16px; height: 16px; stroke-width: 2.2; }
   </style>
 </head>
 <body>
 
+  <!-- Header (muda conforme a tela) -->
   <header class="app-header">
-    <a href="./app.html" class="header-back">
+    <a href="./app.html" class="header-back" id="hdr-home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
     </a>
-    <div style="flex:1; min-width:0">
-      <div class="header-title" id="chat-title"># geral</div>
-    </div>
-    <div class="header-actions" id="header-actions">
-      <div class="chan-switch" id="chan-switch" style="display:none">
-        <button class="chan-tab active" data-ch="general" onclick="switchChannel('general')">geral</button>
-        <button class="chan-tab" data-ch="socios" onclick="switchChannel('socios')">sócios</button>
-      </div>
-    </div>
+    <button class="header-back" id="hdr-back" style="display:none" onclick="showList()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="header-title" id="hdr-title">Chat</div>
   </header>
 
   <div class="chat-wrap">
-    <div id="push-banner">
-      <div class="push-banner-ico">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+
+    <!-- ░░ TELA 1: LISTA ░░ -->
+    <div id="view-list">
+      <div class="clist-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="clist-q" type="text" placeholder="Buscar conversa…" oninput="onSearch(this.value)">
       </div>
-      <div class="push-banner-txt"><b>Ative as notificações</b> para receber novas mensagens no celular.</div>
-      <button class="push-banner-btn" onclick="enablePush()">Ativar</button>
-      <button class="push-banner-x" onclick="dismissPushBanner()" aria-label="Dispensar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <div id="clist-scroll">
+        <div class="clist-empty">Carregando…</div>
+      </div>
     </div>
 
-    <div id="messages">
-      <div class="chat-loading">Carregando mensagens…</div>
+    <!-- ░░ TELA 2: CONVERSA ░░ -->
+    <div id="view-conv">
+      <div id="push-banner" class="push-banner">
+        <div class="push-banner-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="push-banner-txt"><b>Ative as notificações</b> para receber novas mensagens.</div>
+        <button class="push-banner-btn" onclick="enablePush()">Ativar</button>
+        <button class="push-banner-x" onclick="dismissPushBanner()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+
+      <div id="messages"><div class="chat-loading">Carregando…</div></div>
+
+      <div class="composer">
+        <input type="file" id="file-input" accept="image/*" style="display:none" onchange="onPickImage(event)">
+        <button class="composer-btn" id="attach-btn" onclick="document.getElementById('file-input').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <textarea id="chat-input" rows="1" placeholder="Mensagem…" oninput="autoResize(this)" onkeydown="onKey(event)"></textarea>
+        <button class="composer-btn send" onclick="sendText()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
     </div>
 
-    <div class="composer">
-      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="onPickImage(event)">
-      <button class="composer-btn" id="attach-btn" onclick="document.getElementById('file-input').click()" title="Enviar print">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-      </button>
-      <textarea id="chat-input" rows="1" placeholder="Mensagem…"
-        oninput="autoResize(this)" onkeydown="onKey(event)"></textarea>
-      <button class="composer-btn send" id="send-btn" onclick="sendText()" title="Enviar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
-    </div>
   </div>
 
-  <div class="composer-status" id="composer-status"></div>
+  <!-- FAB nova conversa (só na lista) -->
+  <button class="newconv-fab" id="newconv-fab" onclick="openNewConv()" title="Nova conversa">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="7" x2="12" y2="13"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+  </button>
 
   <nav class="bottom-nav" id="bottom-nav"></nav>
 
+  <!-- Sheet: nova conversa -->
+  <div class="sheet-overlay" id="newconv-overlay" onclick="closeSheet('newconv')"></div>
+  <div class="sheet" id="newconv-sheet" style="max-height:80dvh">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Nova conversa</div>
+    <div id="member-list"><div class="clist-empty">Carregando equipe…</div></div>
+  </div>
+
   <!-- Visualizador de print -->
   <div class="viewer" id="viewer" onclick="closeViewer()">
-    <button class="viewer-close" onclick="closeViewer()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
+    <button class="viewer-close" onclick="closeViewer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <img id="viewer-img" src="" alt="">
   </div>
 
   <script>
-    // ── Constantes (espelham o chat desktop) ──────────────
-    const IMG_SENTINEL  = '[print]';
-    const MEDIA_BUCKET  = 'gestao-anexos-temp';
-    const CONTEXT_TYPE  = 'chat_message';
-    const MEDIA_LIMITS  = { largura_max_px: 1280, tamanho_max_kb: 500, qualidade_upload: 0.76, qualidade_fallback: 0.70 };
-    const WINDOW_MS     = 72 * 60 * 60 * 1000; // mensagens das últimas 72h (igual ao desktop)
+    const IMG_SENTINEL = '[print]';
+    const MEDIA_BUCKET = 'gestao-anexos-temp';
+    const MEDIA_LIMITS = { largura_max_px: 1280, tamanho_max_kb: 500, qualidade_upload: 0.76, qualidade_fallback: 0.70 };
+    const WINDOW_MS = 72 * 60 * 60 * 1000;
 
     let G = {
       usuario: null,
-      channel: 'general',
-      messages: [],
-      media: {},        // { [messageId]: { objectUrl, marcadores, failed, expired } }
-      msgCh: null,
-      mediaCh: null,
-      mediaConfig: null,
-      uploading: false,
+      view: 'list',
+      channel: null, channelType: null, threadId: null,
+      messages: [], media: {},
+      members: [], membersByAuth: {},
+      online: {},
+      filter: '',
+      msgCh: null, threadCh: null, mediaCh: null, presenceCh: null,
+      mediaConfig: null, uploading: false,
+      readMap: {},
     };
 
-    // ── Helpers ───────────────────────────────────────────
     const escHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const firstName = n => (n ? n.split(' ')[0] : '');
     const fmtTime = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
-      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = Math.random()*16|0, v = c==='x'?r:(r&0x3|0x8); return v.toString(16);
-      }));
-
+    const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0, v = c==='x'?r:(r&0x3|0x8); return v.toString(16); }));
     const isImageOnly = c => String(c ?? '').trim() === IMG_SENTINEL;
-    const isAnnot     = c => /^\[anotacoes:/.test(String(c ?? '').trim());
+    const isAnnot = c => /^\[anotacoes:/.test(String(c ?? '').trim());
+    const dmChannel = (a, b) => 'dm:' + [a, b].sort().join(':');
+    const isProjectCh = ch => ch && ch.startsWith('project:');
+    const ctxType = () => (G.channelType === 'project' ? 'chat_thread_message' : 'chat_message');
 
     function fmtDateSep(d) {
       const today = new Date(), yest = new Date(today); yest.setDate(yest.getDate()-1);
       if (d.toDateString() === today.toDateString()) return 'Hoje';
-      if (d.toDateString() === yest.toDateString())  return 'Ontem';
+      if (d.toDateString() === yest.toDateString()) return 'Ontem';
       return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
     }
-
-    function linkify(text) {
-      return escHtml(text).replace(/(https?:\/\/[^\s<]+)/g,
-        '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    function fmtConvTs(d) {
+      const today = new Date();
+      if (d.toDateString() === today.toDateString()) return fmtTime(d);
+      const y = new Date(today); y.setDate(y.getDate()-1);
+      if (d.toDateString() === y.toDateString()) return 'Ontem';
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    }
+    function linkify(text) { return escHtml(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>'); }
+    function previewOf(content) {
+      const r = String(content ?? '').trim();
+      if (isImageOnly(r)) return '📷 Print';
+      if (isAnnot(r)) return 'Anotou um print';
+      return r.replace(/\n/g, ' ');
     }
 
-    function channelLabel(ch) { return ch === 'socios' ? '# sócios' : '# geral'; }
+    // ───────────────────────── LISTA ─────────────────────────
+    async function loadList() {
+      const sb = getSB(), uid = G.usuario.auth_id;
+      const since = new Date(Date.now() - WINDOW_MS).toISOString();
+      const [msgsRes, readsRes, threadsRes] = await Promise.all([
+        sb.from('chat_messages').select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id').gte('created_at', since).order('created_at', { ascending: false }),
+        sb.from('chat_read_status').select('channel,last_read_at').eq('user_id', uid),
+        sb.from('chat_threads').select('id,title,last_message_at').eq('type', 'project').is('archived_at', null).order('last_message_at', { ascending: false, nullsFirst: false }).limit(40),
+      ]);
+      const msgs = msgsRes.data || [];
+      G.readMap = {}; (readsRes.data || []).forEach(r => { G.readMap[r.channel] = r.last_read_at; });
 
-    // ── Render ────────────────────────────────────────────
-    function nearBottom() {
-      const el = document.getElementById('messages');
-      return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      // DMs: canais dm: que me incluem
+      const dmSeen = {}, dms = [];
+      msgs.forEach(m => {
+        if (!m.channel.startsWith('dm:')) return;
+        if (m.channel.replace('dm:','').split(':').indexOf(uid) === -1) return;
+        if (!dmSeen[m.channel]) { dmSeen[m.channel] = true; dms.push(m); }
+      });
+
+      const unreadOf = ch => {
+        const lr = G.readMap[ch] || since;
+        return msgs.filter(m => m.channel === ch && m.created_at > lr && m.sender_id !== uid).length;
+      };
+
+      G.projects = (threadsRes.data || []).map(t => ({ id: t.id, title: t.title || 'Projeto', last_message_at: t.last_message_at }));
+
+      renderList(msgs, dms, unreadOf);
     }
-    function scrollBottom(smooth) {
-      const el = document.getElementById('messages');
-      el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+
+    function avatarHtml(cls, bg, content, dotStatus) {
+      const dot = dotStatus ? `<span class="conv-av-dot ${dotStatus}"></span>` : '';
+      return `<div class="conv-av ${cls}" style="${bg ? 'background:' + bg : ''}">${content}${dot}</div>`;
+    }
+
+    function convRow(channel, avHtml, name, preview, ts, unread) {
+      return `<div class="conv-item ${unread > 0 ? 'unread' : ''}" onclick="openChannelFromList('${channel.replace(/'/g, "\\'")}')">
+        ${avHtml}
+        <div class="conv-body">
+          <div class="conv-top"><span class="conv-name">${escHtml(name)}</span>${ts ? `<span class="conv-ts">${ts}</span>` : ''}</div>
+          <div class="conv-preview">${escHtml(preview || '')}</div>
+        </div>
+        ${unread > 0 ? `<span class="conv-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
+      </div>`;
+    }
+
+    function renderList(msgs, dms, unreadOf) {
+      const uid = G.usuario.auth_id, q = (G.filter || '').toLowerCase().trim();
+      const isSocio_ = isSocio(G.usuario);
+      let html = '';
+
+      // Online agora
+      const others = Object.keys(G.online).filter(a => a && a !== uid).map(a => {
+        const p = G.online[a] || {}, m = G.membersByAuth[a] || {};
+        return { uid: a, nome: m.nome || p.nome || '', iniciais: (m.iniciais || p.iniciais || (m.nome || p.nome || '?').substring(0,2)).toUpperCase(), cor: m.cor || p.cor || 'var(--verde)', avatar: m.avatar_url || null, status: p.status || 'online' };
+      });
+      if (others.length && !q) {
+        html += `<div class="pbar"><div class="pbar-label">Online agora · ${others.length}</div><div class="pbar-avs">` +
+          others.slice(0, 12).map(o => `<div class="pav" onclick="openDMWith('${o.uid}')">
+            <div class="pav-circle" style="background:${o.cor}">${o.avatar ? `<img src="${escHtml(o.avatar)}">` : escHtml(o.iniciais)}<span class="pav-dot ${o.status}"></span></div>
+            <div class="pav-name">${escHtml(firstName(o.nome))}</div>
+          </div>`).join('') + `</div></div>`;
+      }
+
+      // Canais
+      const lastOf = ch => msgs.find(m => m.channel === ch);
+      let canais = '';
+      if (!q || 'geral'.includes(q)) {
+        const lm = lastOf('general'), u = unreadOf('general');
+        canais += convRow('general', avatarHtml('hash geral', '', '#'), '# geral', lm ? `${firstName(lm.sender_name)}: ${previewOf(lm.content)}` : 'Toda a equipe', lm ? fmtConvTs(new Date(lm.created_at)) : '', u);
+      }
+      if (isSocio_ && (!q || 'sócios'.includes(q) || 'socios'.includes(q))) {
+        const lm = lastOf('socios'), u = unreadOf('socios');
+        canais += convRow('socios', avatarHtml('hash socios', '', '#'), '# sócios', lm ? `${firstName(lm.sender_name)}: ${previewOf(lm.content)}` : 'Canal privado', lm ? fmtConvTs(new Date(lm.created_at)) : '', u);
+      }
+      if (canais) html += `<div class="clist-sec">Canais</div>${canais}`;
+
+      // Mensagens diretas
+      const dmRows = dms.map(dm => {
+        const other = dm.channel.replace('dm:','').split(':').find(p => p !== uid);
+        const m = G.membersByAuth[other] || {};
+        const name = firstName(m.nome || dm.sender_name || 'Conversa');
+        if (q && !name.toLowerCase().includes(q)) return '';
+        const pres = G.online[other];
+        const av = avatarHtml('', m.cor || dm.sender_cor || 'var(--verde)', m.avatar_url ? `<img src="${escHtml(m.avatar_url)}">` : escHtml((m.iniciais || (m.nome || '?').substring(0,2)).toUpperCase()), pres ? pres.status : '');
+        return convRow(dm.channel, av, name, `${dm.sender_id === uid ? 'Você: ' : ''}${previewOf(dm.content)}`, fmtConvTs(new Date(dm.created_at)), unreadOf(dm.channel));
+      }).filter(Boolean).join('');
+      if (dmRows) html += `<div class="clist-sec">Mensagens diretas</div>${dmRows}`;
+
+      // Projetos
+      const projRows = (G.projects || []).filter(p => !q || p.title.toLowerCase().includes(q)).map(p => {
+        return convRow('project:' + p.id, avatarHtml('hash proj', '', p.title.substring(0,2).toUpperCase()), p.title, 'Chat do projeto', p.last_message_at ? fmtConvTs(new Date(p.last_message_at)) : '', 0);
+      }).join('');
+      if (projRows) html += `<div class="clist-sec">Projetos</div>${projRows}`;
+
+      if (!html) html = `<div class="clist-empty">Nenhuma conversa.<br>Toque no botão para iniciar.</div>`;
+      document.getElementById('clist-scroll').innerHTML = html;
+    }
+
+    function onSearch(v) { G.filter = v; loadList(); }
+
+    // ───────────────────────── NAVEGAÇÃO ENTRE TELAS ─────────────────────────
+    function showList() {
+      G.view = 'list';
+      document.getElementById('view-list').classList.remove('hidden');
+      document.getElementById('view-conv').classList.remove('active');
+      document.getElementById('hdr-back').style.display = 'none';
+      document.getElementById('hdr-home').style.display = '';
+      document.getElementById('newconv-fab').style.display = '';
+      document.getElementById('hdr-title').textContent = 'Chat';
+      loadList();
+    }
+
+    function openChannelFromList(channel) {
+      let type = 'team', label = channel, threadId = null;
+      if (channel === 'general') label = '# geral';
+      else if (channel === 'socios') label = '# sócios';
+      else if (channel.startsWith('dm:')) {
+        type = 'dm';
+        const other = channel.replace('dm:','').split(':').find(p => p !== G.usuario.auth_id);
+        const m = G.membersByAuth[other] || {};
+        label = firstName(m.nome || 'Conversa');
+      } else if (channel.startsWith('project:')) {
+        type = 'project'; threadId = channel.replace('project:','');
+        const p = (G.projects || []).find(x => String(x.id) === String(threadId));
+        label = p ? p.title : 'Projeto';
+      }
+      openConversation(channel, type, label, threadId);
+    }
+
+    function openDMWith(authId) {
+      if (!authId || authId === G.usuario.auth_id) return;
+      const m = G.membersByAuth[authId] || {};
+      closeSheet('newconv');
+      openConversation(dmChannel(G.usuario.auth_id, authId), 'dm', firstName(m.nome || 'Conversa'), null);
+    }
+
+    function openConversation(channel, type, label, threadId) {
+      G.view = 'conv'; G.channel = channel; G.channelType = type; G.threadId = threadId;
+      G.messages = []; G.media = {};
+      document.getElementById('view-list').classList.add('hidden');
+      document.getElementById('view-conv').classList.add('active');
+      document.getElementById('hdr-home').style.display = 'none';
+      document.getElementById('hdr-back').style.display = '';
+      document.getElementById('newconv-fab').style.display = 'none';
+      document.getElementById('hdr-title').textContent = label;
+      document.getElementById('messages').innerHTML = `<div class="chat-loading">Carregando…</div>`;
+      maybeShowPushBanner();
+      loadMessages();
+    }
+
+    // ───────────────────────── CONVERSA ─────────────────────────
+    function nearBottom() { const el = document.getElementById('messages'); return el.scrollHeight - el.scrollTop - el.clientHeight < 120; }
+    function scrollBottom(s) { const el = document.getElementById('messages'); el.scrollTo({ top: el.scrollHeight, behavior: s ? 'smooth' : 'auto' }); }
+
+    function normProj(m) {
+      return { id: m.id, channel: 'project:' + m.thread_id, thread_id: m.thread_id, sender_id: m.sender_auth_id, sender_name: m.sender_nome, sender_iniciais: m.sender_iniciais, sender_cor: m.sender_cor, content: m.content, created_at: m.created_at };
+    }
+
+    async function loadMessages() {
+      const sb = getSB();
+      if (G.channelType === 'project') {
+        const { data, error } = await sb.from('chat_thread_messages').select('*').eq('thread_id', G.threadId).order('created_at', { ascending: true }).limit(300);
+        if (error) { document.getElementById('messages').innerHTML = `<div class="chat-empty">Erro ao carregar.</div>`; return; }
+        G.messages = (data || []).map(normProj);
+      } else {
+        const since = new Date(Date.now() - WINDOW_MS).toISOString();
+        const { data, error } = await sb.from('chat_messages').select('*').eq('channel', G.channel).gte('created_at', since).order('created_at', { ascending: true });
+        if (error) { document.getElementById('messages').innerHTML = `<div class="chat-empty">Erro ao carregar.</div>`; return; }
+        G.messages = data || [];
+      }
+      renderMessages(); scrollBottom(); markRead(); loadMediaForMessages();
     }
 
     function renderMessages() {
       const el = document.getElementById('messages');
-      if (!G.messages.length) {
-        el.innerHTML = `<div class="chat-empty">Nenhuma mensagem ainda.<br>Diga olá 👋</div>`;
-        return;
-      }
+      if (!G.messages.length) { el.innerHTML = `<div class="chat-empty">Nenhuma mensagem ainda.<br>Diga olá 👋</div>`; return; }
       const uid = G.usuario.auth_id;
-      let html = '';
-      let lastDate = '', lastSender = '', lastTs = 0;
-
+      let html = '', lastDate = '', lastSender = '', lastTs = 0;
       for (const m of G.messages) {
-        const d = new Date(m.created_at);
-        const dateKey = d.toDateString();
-        if (dateKey !== lastDate) {
-          html += `<div class="date-sep">${fmtDateSep(d)}</div>`;
-          lastDate = dateKey; lastSender = '';
-        }
-
-        // Mensagem de sistema (anotações sobre print)
+        const d = new Date(m.created_at), dk = d.toDateString();
+        if (dk !== lastDate) { html += `<div class="date-sep">${fmtDateSep(d)}</div>`; lastDate = dk; lastSender = ''; }
+        const mem = G.membersByAuth[m.sender_id] || {};
+        const sName = m.sender_name || mem.nome || '';
+        const sIni = m.sender_iniciais || mem.iniciais || (sName || '??').substring(0,2).toUpperCase();
+        const sCor = m.sender_cor || mem.cor || 'var(--verde)';
         if (isAnnot(m.content)) {
-          html += `<div class="sys-row"><div class="sys-pill">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            ${escHtml(firstName(m.sender_name))} anotou sobre um print</div></div>`;
-          lastSender = '';
-          continue;
+          html += `<div class="sys-row"><div class="sys-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>${escHtml(firstName(sName))} anotou sobre um print</div></div>`;
+          lastSender = ''; continue;
         }
-
         const own = m.sender_id === uid;
         const grouped = m.sender_id === lastSender && (d.getTime() - lastTs) < 5*60*1000;
         lastSender = m.sender_id; lastTs = d.getTime();
-
-        const media = G.media[m.id];
-        const onlyImg = isImageOnly(m.content);
-        let bodyHtml = '';
-
+        const media = G.media[m.id], onlyImg = isImageOnly(m.content);
+        let body = '';
         if (media || onlyImg) {
-          if (media && media.objectUrl) {
-            bodyHtml += `<img class="bubble-img" src="${media.objectUrl}" onclick="openViewer('${media.objectUrl}')" alt="print">`;
-          } else if (media && media.expired) {
-            bodyHtml += `<div class="media-state">Print expirado</div>`;
-          } else if (media && media.failed) {
-            bodyHtml += `<div class="media-state">Falha ao carregar o print</div>`;
-          } else {
-            bodyHtml += `<div class="media-state">Carregando print…</div>`;
-          }
-          if (!onlyImg && m.content) {
-            bodyHtml += `<div class="bubble-cap">${linkify(m.content)}</div>`;
-          }
-        } else {
-          bodyHtml = linkify(m.content);
-        }
-
-        const bubbleCls = (media || onlyImg) ? 'bubble media-only' : 'bubble';
-        const av = own
-          ? ''
-          : `<div class="msg-av" style="background:${m.sender_cor || 'var(--verde)'}">${escHtml(m.sender_iniciais || '??')}</div>`;
-        const headHtml = own ? '' :
-          `<div class="msg-head"><span class="msg-name">${escHtml(m.sender_name || '')}</span><span class="msg-time">${fmtTime(d)}</span></div>`;
-
-        html += `<div class="msg ${own ? 'own' : ''} ${grouped ? 'grouped' : ''}">
-          ${own ? '' : av}
-          <div class="msg-col">
-            ${headHtml}
-            <div class="${bubbleCls}">${bodyHtml}</div>
-          </div>
-        </div>`;
+          if (media && media.objectUrl) body += `<img class="bubble-img" src="${media.objectUrl}" onclick="openViewer('${media.objectUrl}')">`;
+          else if (media && media.expired) body += `<div class="media-state">Print expirado</div>`;
+          else if (media && media.failed) body += `<div class="media-state">Falha ao carregar</div>`;
+          else body += `<div class="media-state">Carregando print…</div>`;
+          if (!onlyImg && m.content) body += `<div class="bubble-cap">${linkify(m.content)}</div>`;
+        } else body = linkify(m.content);
+        const bcls = (media || onlyImg) ? 'bubble media-only' : 'bubble';
+        const av = own ? '' : `<div class="msg-av" style="background:${sCor}">${escHtml(sIni)}</div>`;
+        const head = own ? '' : `<div class="msg-head"><span class="msg-name">${escHtml(sName)}</span><span class="msg-time">${fmtTime(d)}</span></div>`;
+        html += `<div class="msg ${own ? 'own' : ''} ${grouped ? 'grouped' : ''}">${av}<div class="msg-col">${head}<div class="${bcls}">${body}</div></div></div>`;
       }
       el.innerHTML = html;
     }
 
-    // ── Carregar mensagens ────────────────────────────────
-    async function loadMessages() {
-      const sb = getSB();
-      const since = new Date(Date.now() - WINDOW_MS).toISOString();
-      const { data, error } = await sb.from('chat_messages').select('*')
-        .eq('channel', G.channel).gte('created_at', since)
-        .order('created_at', { ascending: true });
-      if (error) {
-        document.getElementById('messages').innerHTML =
-          `<div class="chat-empty">Erro ao carregar o chat.</div>`;
-        return;
-      }
-      G.messages = data || [];
-      renderMessages();
-      scrollBottom();
-      markRead();
-      loadMediaForMessages();
-    }
-
     function upsertMessage(row) {
       const i = G.messages.findIndex(m => m.id === row.id);
-      if (i === -1) {
-        G.messages.push(row);
-        G.messages.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+      if (i === -1) { G.messages.push(row); G.messages.sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }
+      else G.messages[i] = { ...G.messages[i], ...row };
+    }
+
+    async function markRead() {
+      const sb = getSB(), now = new Date().toISOString();
+      if (G.channelType === 'project') {
+        await sb.from('chat_thread_reads').upsert({ user_auth_id: G.usuario.auth_id, thread_id: G.threadId, last_read_at: now }, { onConflict: 'user_auth_id,thread_id' });
       } else {
-        G.messages[i] = { ...G.messages[i], ...row };
+        await sb.from('chat_read_status').upsert({ user_id: G.usuario.auth_id, channel: G.channel, last_read_at: now }, { onConflict: 'user_id,channel' });
       }
     }
-    function removeMessage(id) { G.messages = G.messages.filter(m => m.id !== id); }
 
-    // ── Não lidas ─────────────────────────────────────────
-    async function markRead() {
-      const sb = getSB();
-      await sb.from('chat_read_status').upsert(
-        { user_id: G.usuario.auth_id, channel: G.channel, last_read_at: new Date().toISOString() },
-        { onConflict: 'user_id,channel' }
-      );
-    }
-
-    // ── Enviar texto ──────────────────────────────────────
     async function sendText() {
       const input = document.getElementById('chat-input');
-      const content = input.value.trim();
-      if (!content) return;
+      const content = input.value.trim(); if (!content) return;
       input.value = ''; autoResize(input);
-
-      const sb = getSB();
-      const u = G.usuario;
-      const { data, error } = await sb.from('chat_messages').insert({
-        channel: G.channel,
-        sender_id: u.auth_id,
-        sender_name: u.nome,
-        sender_iniciais: u.iniciais || (u.nome || '').substring(0, 2).toUpperCase(),
-        sender_cor: u.cor || '#3E7858',
-        content,
-      }).select('*').single();
-
-      if (error) { input.value = content; autoResize(input); showToast('Erro ao enviar', 'error'); return; }
-      upsertMessage(data); renderMessages(); scrollBottom(true);
+      const sb = getSB(), u = G.usuario;
+      if (G.channelType === 'project') {
+        const { data, error } = await sb.from('chat_thread_messages').insert({ thread_id: G.threadId, sender_auth_id: u.auth_id, content }).select('*').single();
+        if (error) { input.value = content; showToast('Erro ao enviar', 'error'); return; }
+        const row = normProj(data); row.sender_name = row.sender_name || u.nome; row.sender_iniciais = row.sender_iniciais || u.iniciais; row.sender_cor = row.sender_cor || u.cor;
+        upsertMessage(row);
+      } else {
+        const { data, error } = await sb.from('chat_messages').insert({ channel: G.channel, sender_id: u.auth_id, sender_name: u.nome, sender_iniciais: u.iniciais || (u.nome || '').substring(0,2).toUpperCase(), sender_cor: u.cor || '#3E7858', content }).select('*').single();
+        if (error) { input.value = content; showToast('Erro ao enviar', 'error'); return; }
+        upsertMessage(data);
+      }
+      renderMessages(); scrollBottom(true);
     }
+    function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } }
+    function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
 
-    function onKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
-    }
-    function autoResize(el) {
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-    }
-
-    // ── Enviar print (imagem) ─────────────────────────────
-    function status(msg, cls) {
-      const el = document.getElementById('composer-status');
-      el.textContent = msg;
-      el.className = 'composer-status show' + (cls ? ' ' + cls : '');
-    }
-    function clearStatus(delay) {
-      setTimeout(() => { document.getElementById('composer-status').className = 'composer-status'; }, delay || 0);
-    }
-
+    // ── Prints ──
+    function status(m, c) { const el = document.getElementById('composer-status'); el.textContent = m; el.className = 'composer-status show' + (c ? ' ' + c : ''); }
+    function clearStatus(d) { setTimeout(() => { document.getElementById('composer-status').className = 'composer-status'; }, d || 0); }
     async function onPickImage(e) {
-      const file = e.target.files && e.target.files[0];
-      e.target.value = '';
+      const file = e.target.files && e.target.files[0]; e.target.value = '';
       if (!file || G.uploading) return;
-      G.uploading = true;
-      document.getElementById('attach-btn').disabled = true;
+      G.uploading = true; document.getElementById('attach-btn').disabled = true;
       try {
         status('Otimizando print…');
-        const cfg = await loadMediaConfig();
-        const opt = await optimizeImage(file, cfg);
-
+        const cfg = await loadMediaConfig(), opt = await optimizeImage(file, cfg);
         status('Enviando print…');
-        const path = `${CONTEXT_TYPE}/${G.usuario.auth_id}/${new Date().getFullYear()}/${String(new Date().getMonth()+1).padStart(2,'0')}/${uuid()}.${opt.ext}`;
+        const ct = ctxType();
+        const path = `${ct}/${G.usuario.auth_id}/${new Date().getFullYear()}/${String(new Date().getMonth()+1).padStart(2,'0')}/${uuid()}.${opt.ext}`;
         const up = await getSB().storage.from(MEDIA_BUCKET).upload(path, opt.blob, { contentType: opt.mimeType, upsert: false });
         if (up.error) throw up.error;
-
-        const rpc = await getSB().rpc('send_chat_message_with_temp_media', {
-          p_channel: G.channel, p_content: '', p_storage_path: path,
-          p_mime_type: opt.mimeType, p_arquivo_ext: opt.ext, p_size_bytes: opt.blob.size,
-          p_width_px: opt.width, p_height_px: opt.height,
-        });
+        const rpcName = ct === 'chat_thread_message' ? 'send_chat_thread_message_with_temp_media' : 'send_chat_message_with_temp_media';
+        const payload = ct === 'chat_thread_message'
+          ? { p_thread_id: G.threadId, p_content: '', p_storage_path: path, p_mime_type: opt.mimeType, p_arquivo_ext: opt.ext, p_size_bytes: opt.blob.size, p_width_px: opt.width, p_height_px: opt.height }
+          : { p_channel: G.channel, p_content: '', p_storage_path: path, p_mime_type: opt.mimeType, p_arquivo_ext: opt.ext, p_size_bytes: opt.blob.size, p_width_px: opt.width, p_height_px: opt.height };
+        const rpc = await getSB().rpc(rpcName, payload);
         if (rpc.error) { try { await getSB().storage.from(MEDIA_BUCKET).remove([path]); } catch (_) {} throw rpc.error; }
-
         const saved = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data;
         if (saved && saved.id) {
-          upsertMessage(saved);
+          upsertMessage(ct === 'chat_thread_message' ? normProj(saved) : saved);
           G.media[saved.id] = { objectUrl: URL.createObjectURL(opt.blob) };
           renderMessages(); scrollBottom(true);
         }
         status('Print enviado ✓'); clearStatus(1600);
-      } catch (err) {
-        console.error('[chat print]', err);
-        status('Falha ao enviar print', 'warn'); clearStatus(2600);
-      } finally {
-        G.uploading = false;
-        document.getElementById('attach-btn').disabled = false;
-      }
+      } catch (err) { console.error('[print]', err); status('Falha ao enviar print', 'warn'); clearStatus(2600); }
+      finally { G.uploading = false; document.getElementById('attach-btn').disabled = false; }
     }
-
     async function loadMediaConfig() {
       if (G.mediaConfig) return G.mediaConfig;
       const fb = { ...MEDIA_LIMITS };
-      try {
-        const { data } = await getSB().from('plataforma_midia_temporaria_config')
-          .select('largura_max_px,tamanho_max_kb,qualidade_upload').eq('id', true).maybeSingle();
-        G.mediaConfig = { ...fb, ...(data || {}) };
-      } catch (_) { G.mediaConfig = fb; }
+      try { const { data } = await getSB().from('plataforma_midia_temporaria_config').select('largura_max_px,tamanho_max_kb,qualidade_upload').eq('id', true).maybeSingle(); G.mediaConfig = { ...fb, ...(data || {}) }; }
+      catch (_) { G.mediaConfig = fb; }
       return G.mediaConfig;
     }
-
-    function loadImg(file) {
-      return new Promise((res, rej) => {
-        const img = new Image(), url = URL.createObjectURL(file);
-        img.onload = () => { URL.revokeObjectURL(url); res(img); };
-        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Arquivo inválido')); };
-        img.src = url;
-      });
-    }
-    function rasterize(img, wmax, q, mime) {
-      return new Promise(res => {
-        const r = img.width > wmax ? (wmax / img.width) : 1;
-        const w = Math.max(1, Math.round(img.width * r)), h = Math.max(1, Math.round(img.height * r));
-        const c = document.createElement('canvas'); c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        c.toBlob(b => res({ blob: b, width: w, height: h, mimeType: b ? mime : null }), mime, q);
-      });
-    }
+    function loadImg(file) { return new Promise((res, rej) => { const img = new Image(), url = URL.createObjectURL(file); img.onload = () => { URL.revokeObjectURL(url); res(img); }; img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('inv')); }; img.src = url; }); }
+    function rasterize(img, wmax, q, mime) { return new Promise(res => { const r = img.width > wmax ? wmax/img.width : 1, w = Math.max(1, Math.round(img.width*r)), h = Math.max(1, Math.round(img.height*r)), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); c.toBlob(b => res({ blob: b, width: w, height: h, mimeType: b ? mime : null }), mime, q); }); }
     async function optimizeImage(file, cfg) {
       const img = await loadImg(file);
-      const q = Number(cfg.qualidade_upload || MEDIA_LIMITS.qualidade_upload);
-      const wmax = Number(cfg.largura_max_px || MEDIA_LIMITS.largura_max_px);
-      const maxB = Number(cfg.tamanho_max_kb || MEDIA_LIMITS.tamanho_max_kb) * 1024;
+      const q = +(cfg.qualidade_upload || MEDIA_LIMITS.qualidade_upload), wmax = +(cfg.largura_max_px || MEDIA_LIMITS.largura_max_px), maxB = +(cfg.tamanho_max_kb || MEDIA_LIMITS.tamanho_max_kb)*1024;
       let r = await rasterize(img, wmax, q, 'image/webp');
       if (!r.blob) r = await rasterize(img, wmax, q, 'image/jpeg');
-      if (!r.blob) throw new Error('Não foi possível preparar o print');
+      if (!r.blob) throw new Error('prep');
       if (r.blob.size > maxB) r = await rasterize(img, Math.min(wmax, 1120), Math.min(q, MEDIA_LIMITS.qualidade_fallback), 'image/jpeg');
-      if (!r.blob || r.blob.size > maxB) throw new Error('Print muito pesado');
+      if (!r.blob || r.blob.size > maxB) throw new Error('big');
       return { blob: r.blob, width: r.width, height: r.height, mimeType: r.mimeType, ext: r.mimeType === 'image/webp' ? 'webp' : 'jpg' };
     }
-
-    // ── Carregar mídia das mensagens visíveis ─────────────
     async function loadMediaForMessages() {
-      const ids = G.messages
-        .filter(m => (isImageOnly(m.content) || G.media[m.id]) && !String(m.id).startsWith('pending'))
-        .map(m => m.id);
-      const pend = G.messages.filter(m => isImageOnly(m.content) && !(G.media[m.id] && G.media[m.id].objectUrl)).map(m => m.id);
-      const targets = pend.length ? pend : ids;
+      const ct = ctxType();
+      const targets = G.messages.filter(m => isImageOnly(m.content) && !(G.media[m.id] && G.media[m.id].objectUrl)).map(m => m.id);
       if (!targets.length) return;
-
       const sb = getSB();
-      const { data, error } = await sb.from('gestao_anexos_temporarios')
-        .select('contexto_id,storage_path,marcadores,expires_at')
-        .eq('contexto_tipo', CONTEXT_TYPE)
-        .in('contexto_id', targets)
-        .is('removido_em', null)
-        .gt('expires_at', new Date().toISOString());
+      const { data, error } = await sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,marcadores,expires_at').eq('contexto_tipo', ct).in('contexto_id', targets).is('removido_em', null).gt('expires_at', new Date().toISOString());
       if (error || !data) return;
-
       await Promise.all(data.map(async row => {
         if (G.media[row.contexto_id] && G.media[row.contexto_id].objectUrl) return;
         if (!row.storage_path) { G.media[row.contexto_id] = { failed: true }; return; }
         const dl = await sb.storage.from(MEDIA_BUCKET).download(row.storage_path);
         if (dl.error || !dl.data) { G.media[row.contexto_id] = { failed: true }; return; }
-        G.media[row.contexto_id] = { objectUrl: URL.createObjectURL(dl.data), marcadores: row.marcadores || [] };
+        G.media[row.contexto_id] = { objectUrl: URL.createObjectURL(dl.data) };
       }));
       renderMessages();
     }
 
-    // ── Realtime ──────────────────────────────────────────
+    // ───────────────────────── REALTIME + PRESENÇA ─────────────────────────
     function subscribe() {
       const sb = getSB();
       G.msgCh = sb.channel('exp:mobile:chat')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
           const m = payload.new;
-          if (m.channel !== G.channel) return;
-          const wasBottom = nearBottom();
-          upsertMessage(m);
-          renderMessages();
-          if (wasBottom || m.sender_id === G.usuario.auth_id) scrollBottom(true);
-          if (isImageOnly(m.content)) loadMediaForMessages();
-          if (document.visibilityState === 'visible') markRead();
+          if (G.view === 'conv' && G.channelType !== 'project' && m.channel === G.channel) {
+            const wb = nearBottom(); upsertMessage(m); renderMessages();
+            if (wb || m.sender_id === G.usuario.auth_id) scrollBottom(true);
+            if (isImageOnly(m.content)) loadMediaForMessages();
+            if (document.visibilityState === 'visible') markRead();
+          } else if (G.view === 'list') { loadList(); }
         })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, payload => {
-          if (payload.new.channel !== G.channel) return;
-          upsertMessage(payload.new); renderMessages();
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_thread_messages' }, payload => {
+          if (G.view === 'conv' && G.channelType === 'project' && String(payload.new.thread_id) === String(G.threadId)) {
+            const wb = nearBottom(); const row = normProj(payload.new); upsertMessage(row); renderMessages();
+            if (wb || row.sender_id === G.usuario.auth_id) scrollBottom(true);
+            if (isImageOnly(row.content)) loadMediaForMessages();
+            if (document.visibilityState === 'visible') markRead();
+          }
         })
-        .subscribe();
-
-      // Prints chegando (de quem usa o desktop, etc.)
-      G.mediaCh = sb.channel('exp:mobile:chat-media')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gestao_anexos_temporarios' }, payload => {
           const row = payload.new;
-          if ((row.contexto_tipo || '').toLowerCase() !== CONTEXT_TYPE) return;
-          if (!G.messages.some(m => m.id === row.contexto_id)) return;
-          loadMediaForMessages();
+          if (G.view === 'conv' && (row.contexto_tipo || '').toLowerCase() === ctxType() && G.messages.some(m => m.id === row.contexto_id)) loadMediaForMessages();
         })
         .subscribe();
     }
 
-    // ── Trocar de canal (sócios) ──────────────────────────
-    async function switchChannel(ch) {
-      if (ch === G.channel) return;
-      G.channel = ch;
-      document.querySelectorAll('.chan-tab').forEach(t =>
-        t.classList.toggle('active', t.dataset.ch === ch));
-      document.getElementById('chat-title').textContent = channelLabel(ch);
-      G.messages = []; G.media = {};
-      document.getElementById('messages').innerHTML = `<div class="chat-loading">Carregando…</div>`;
-      await loadMessages();
+    function setupPresence() {
+      const sb = getSB();
+      G.presenceCh = sb.channel('exp:chat:presence');
+      G.presenceCh.on('presence', { event: 'sync' }, () => {
+        const state = G.presenceCh.presenceState(); G.online = {};
+        Object.keys(state).forEach(k => state[k].forEach(p => { if (p.user_id) G.online[p.user_id] = p; }));
+        if (G.view === 'list') loadList();
+      }).subscribe(s => {
+        if (s === 'SUBSCRIBED') {
+          const u = G.usuario;
+          G.presenceCh.track({ user_id: u.auth_id, nome: u.nome, iniciais: u.iniciais || (u.nome || '').substring(0,2).toUpperCase(), cor: u.cor || '#3E7858', status: 'online' });
+        }
+      });
     }
 
-    // ── Push (permissão contextual) ───────────────────────
+    // ───────────────────────── NOVA CONVERSA ─────────────────────────
+    function openNewConv() {
+      const list = document.getElementById('member-list');
+      const others = G.members.filter(m => m.auth_id && m.auth_id !== G.usuario.auth_id);
+      list.innerHTML = others.length ? others.map(m => {
+        const pres = G.online[m.auth_id];
+        return `<div class="member-item" onclick="openDMWith('${m.auth_id}')">
+          <div class="member-av" style="background:${m.cor || 'var(--verde)'}">${m.avatar_url ? `<img src="${escHtml(m.avatar_url)}">` : escHtml((m.iniciais || (m.nome || '?').substring(0,2)).toUpperCase())}</div>
+          <div style="flex:1;min-width:0"><div class="member-name">${escHtml(m.nome || '')}</div><div class="member-role">${pres ? 'Online agora' : roleLabel(m.role)}</div></div>
+        </div>`;
+      }).join('') : `<div class="clist-empty">Nenhum membro.</div>`;
+      openSheet('newconv');
+    }
+
+    // ── Push contextual ──
     function maybeShowPushBanner() {
       if (!('Notification' in window) || !('PushManager' in window)) return;
-      if (Notification.permission !== 'default') return;        // já decidiu
+      if (Notification.permission !== 'default') return;
       if (localStorage.getItem('exp-push-dismissed') === '1') return;
       document.getElementById('push-banner').classList.add('show');
     }
-    function dismissPushBanner() {
-      localStorage.setItem('exp-push-dismissed', '1');
-      document.getElementById('push-banner').classList.remove('show');
-    }
-    async function enablePush() {
-      const ok = await requestPushPermission();
-      document.getElementById('push-banner').classList.remove('show');
-      showToast(ok ? 'Notificações ativadas ✓' : 'Notificações não ativadas',
-        ok ? 'success' : 'error');
-    }
+    function dismissPushBanner() { localStorage.setItem('exp-push-dismissed', '1'); document.getElementById('push-banner').classList.remove('show'); }
+    async function enablePush() { const ok = await requestPushPermission(); document.getElementById('push-banner').classList.remove('show'); showToast(ok ? 'Notificações ativadas ✓' : 'Não ativadas', ok ? 'success' : 'error'); }
 
-    // ── Viewer ────────────────────────────────────────────
-    function openViewer(url) {
-      document.getElementById('viewer-img').src = url;
-      document.getElementById('viewer').classList.add('open');
-    }
+    function openViewer(url) { document.getElementById('viewer-img').src = url; document.getElementById('viewer').classList.add('open'); }
     function closeViewer() { document.getElementById('viewer').classList.remove('open'); }
 
-    // ── Init ──────────────────────────────────────────────
+    // ───────────────────────── INIT ─────────────────────────
     window.addEventListener('DOMContentLoaded', async () => {
       const usuario = await requireAuth('./index.html');
       if (!usuario) return;
       G.usuario = usuario;
-
       buildBottomNav('chat', isSocio(usuario));
 
-      // Canal de sócios só aparece para sócios
-      if (isSocio(usuario)) {
-        document.getElementById('chan-switch').style.display = 'flex';
-      }
+      // Equipe
+      const { data: mem } = await getSB().from('usuarios').select('id,auth_id,nome,iniciais,cor,role,avatar_url').eq('ativo', true).order('nome');
+      G.members = mem || [];
+      G.membersByAuth = {}; G.members.forEach(m => { if (m.auth_id) G.membersByAuth[m.auth_id] = m; });
 
-      await loadMessages();
+      await loadList();
       subscribe();
-
-      // Push: re-salva inscrição se já concedida; senão, mostra banner contextual
+      setupPresence();
       ensurePushSubscribed();
-      maybeShowPushBanner();
 
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') markRead();
-      });
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && G.view === 'conv') markRead(); });
     });
 
-    window.addEventListener('beforeunload', () => {
-      G.msgCh?.unsubscribe();
-      G.mediaCh?.unsubscribe();
-    });
+    window.addEventListener('beforeunload', () => { try { G.presenceCh?.untrack(); } catch(e){} G.msgCh?.unsubscribe(); G.presenceCh?.unsubscribe(); });
   </script>
 
 </body>
