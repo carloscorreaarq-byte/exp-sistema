@@ -1166,7 +1166,6 @@
   function renderPresenceBar() {
     var $bar = document.getElementById('fp-presence-bar');
     if (!$bar || !user) return;
-    var MAX = 6;
     var rank = { online:0, foco:1, ausente:2 };
     var statusLabel = { online:'Online', foco:'Foco', ausente:'Ausente' };
 
@@ -1193,10 +1192,7 @@
 
     if (!others.length) { $bar.className = ''; $bar.innerHTML = ''; return; }
 
-    var shown = others.slice(0, MAX);
-    var extra = others.length - shown.length;
-
-    var avs = shown.map(function(o){
+    var avs = others.map(function(o){
       var inner = o.avatar_url ? '<img src="'+escHtml(o.avatar_url)+'" alt="">' : escHtml(o.iniciais||'?');
       var bg    = o.avatar_url ? '' : 'background:'+escHtml(o.cor)+';';
       return '<div class="fp-presence-av" style="'+bg+'" title="'+escHtml(o.nome)+' · '+(statusLabel[o.status]||'Online')+'"'+
@@ -1205,11 +1201,6 @@
         '<span class="fp-presence-dot '+escHtml(o.status)+'"></span>'+
       '</div>';
     }).join('');
-
-    if (extra > 0) {
-      var moreNames = others.slice(MAX).map(function(o){ return o.nome; }).join(', ');
-      avs += '<div class="fp-presence-more" title="'+escHtml(moreNames)+'">+'+extra+'</div>';
-    }
 
     $bar.className = 'has-online';
     $bar.innerHTML =
@@ -2174,6 +2165,9 @@
     } catch(e){}
   }
   function _sendChatPush(msg){
+    /* Push de chat agora nasce no backend (chat-fanout).
+       O cliente fica responsavel apenas por UI local, som e unread. */
+    return;
     if(userStatus==='foco') return;
     var ch=msg.channel, uid=user.auth_id;
     var isDM=ch.startsWith('dm:')||ch.startsWith('group:');

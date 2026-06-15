@@ -1998,6 +1998,9 @@
   }
 
   function _sendChatPush(msg) {
+    /* Push de chat agora nasce no backend (chat-fanout).
+       O cliente fica responsavel apenas por UI local, som e unread. */
+    return;
     if (!_shouldPush(msg)) return;
     var appUserId = user.app_user_id || user.id;
     if (!appUserId) return;
