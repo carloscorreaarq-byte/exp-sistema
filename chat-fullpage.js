@@ -2209,9 +2209,10 @@
     } catch(e){}
   }
   function _sendChatPush(msg){
-    /* Push de chat agora nasce no backend (chat-fanout).
-       O cliente fica responsavel apenas por UI local, som e unread. */
-    return;
+    /* chat-fanout (backend) nao esta deployado — o push de chat e disparado
+       aqui no cliente: cada recebedor notifica a si mesmo via send-push.
+       Funciona com a aba viva, inclusive com o navegador em segundo plano.
+       So e chamado no ramo "mensagem de outro, canal nao-ativo". */
     if(userStatus==='foco') return;
     var ch=msg.channel, uid=user.auth_id;
     var isDM=ch.startsWith('dm:')||ch.startsWith('group:');
@@ -2219,20 +2220,25 @@
     var isSocios=ch==='socios'&&isSocioLikeRole(user.role);
     if(!(isDM&&ch.includes(uid))&&!isProjectChannel(ch)&&!isGeneral&&!isSocios) return;
     var appUserId=user.app_user_id||user.id; if(!appUserId) return;
+    var raw=(msg.content||'').trim();
+    if(/^\[anotacoes:.+\]$/.test(raw)) return; /* anotacao sobre print: nao notifica */
     var sender=(msg.sender_name||'').split(' ')[0];
     var title=isProjectChannel(ch)?sender+' atualizou um projeto'
       :isDM?sender+' enviou uma mensagem'
       :isGeneral?sender+' no #geral'
       :sender+' no #sócios';
-    var body=(msg.content||'').length>80?msg.content.substring(0,80)+'...':msg.content;
+    var body=raw==='[print]'?'📷 Enviou um print'
+      :(raw.length>80?raw.substring(0,80)+'...':raw)||'Nova mensagem no chat';
     var tag='exp-chat-'+ch;
-    var icon='/favicon.png';
-    if(document.visibilityState==='visible'&&Notification.permission==='granted'){
-      try{ new Notification(title,{body:body,icon:icon,tag:tag,silent:true}); }catch(e){}
+    /* Aba visivel: o Notification local ja avisa — nao precisa do push. */
+    if(document.visibilityState==='visible'){
+      if(Notification.permission==='granted'){
+        try{ new Notification(title,{body:body,icon:'/favicon.png',tag:tag,silent:true}); }catch(e){}
+      }
+      return;
     }
-    console.log('[EXP ChatFP Push] enviando para usuario_id:', appUserId, '| user.id:', user.id, '| user.app_user_id:', user.app_user_id);
+    /* Navegador em segundo plano: dispara push pra si mesmo via send-push. */
     sb.functions.invoke('send-push',{body:{usuario_id:appUserId,title:title,body:body,url:window.location.href,tag:tag}})
-      .then(function(r){ console.log('[EXP ChatFP Push] resposta edge function:', r.data, r.error||''); })
       .catch(function(e){ console.warn('[EXP ChatFP Push] erro:', e); });
   }
 

@@ -3819,10 +3819,16 @@ function onOrigemChange(){
   const v=document.getElementById('opp-origem').value;
   const isIndic=v.startsWith('Indicação');
   const isEvento=v==='Evento';
-  document.getElementById('opp-indicou-wrap').style.display=isIndic?'block':'none';
+  const isParceria=v==='Parceria';
+  const indicouWrap=document.getElementById('opp-indicou-wrap');
+  indicouWrap.style.display=(isIndic||isParceria)?'block':'none';
   document.getElementById('opp-evento-wrap').style.display=isEvento?'block':'none';
   if(isIndic){
     document.getElementById('opp-indicou-label').textContent=v==='Indicação de sócio'?'Nome do sócio':'Quem indicou';
+    document.getElementById('opp-indicou').placeholder='Nome de quem indicou';
+  } else if(isParceria){
+    document.getElementById('opp-indicou-label').textContent='De qual parceria';
+    document.getElementById('opp-indicou').placeholder='Nome do parceiro / de onde veio';
   }
 }
 
@@ -3893,9 +3899,11 @@ async function salvarOpp(){
   const origem=document.getElementById('opp-origem').value;
   const isIndic=origem.startsWith('Indicação');
   const isEvento=origem==='Evento';
+  const isParceria=origem==='Parceria';
   let indicou=null;
   if(isIndic)indicou=document.getElementById('opp-indicou').value.trim()||null;
   if(isEvento)indicou=document.getElementById('opp-evento').value.trim()||null;
+  if(isParceria)indicou=document.getElementById('opp-indicou').value.trim()||null;
 
   // C6: validação de num_legado ao editar
   const numLegadoNovo = id ? document.getElementById('opp-num-legado').value.trim().toUpperCase() || null : null;

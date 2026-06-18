@@ -9582,10 +9582,8 @@ function abrirSolicitarRevisaoColabProd(prodId) {
         const obs = document.getElementById('srp-obs')?.value.trim();
         const msg = `${G.usuario.nome} solicitou revisão de "${etapa?.nome || 'etapa'}" em "${projNome}"` +
           (obs ? ` — "${obs}"` : '');
-        await sb.from('notificacoes').insert({
-          para_usuario: coordId, de_usuario: G.usuario.id,
-          tipo: 'revisao_solicitada', mensagem: msg,
-          referencia_id: etapaId, lida: false
+        await criarNotificacao(coordId, 'revisao_solicitada', 'Revisão solicitada', msg, {
+          etapa_id: etapaId, produto_id: prod?.id
         });
       }
       const { count: cntP } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
@@ -9691,13 +9689,8 @@ function abrirSolicitarRevisaoColab() {
       if (coordId) {
         const solicitante = G.usuario;
         const msg = `${solicitante.nome} solicitou revisão de "${etapa?.nome || 'etapa'}" em "${prod?.oportunidades?.projeto || prod?.nome || 'projeto'}"`;
-        await sb.from('notificacoes').insert({
-          para_usuario: coordId,
-          de_usuario: solicitante.id,
-          tipo: 'revisao_solicitada',
-          mensagem: msg,
-          referencia_id: etapaId,
-          lida: false
+        await criarNotificacao(coordId, 'revisao_solicitada', 'Revisão solicitada', msg, {
+          etapa_id: etapaId, produto_id: prod?.id
         });
       }
 

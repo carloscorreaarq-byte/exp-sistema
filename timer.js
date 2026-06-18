@@ -26,7 +26,7 @@
 
   var _sb, _tickInterval, _collapseTimer, _isHovering = false;
   var _allProds = null, _etapaCache = {}, _cachedUser = null, _recentItems = null;
-  var _audioCtx = null, _tickCount = 0;
+  var _audioCtx = null;
   var _soundMuted       = localStorage.getItem('exp_tmr_sound_muted') === 'true';
   var _pushMuted        = localStorage.getItem('exp_tmr_push_muted')  === 'true';
   var _lastPushSentMark = 0;
@@ -458,6 +458,10 @@
   function _fmtTime(d)  { return _pad(d.getHours()) + ':' + _pad(d.getMinutes()); }
   function _fmtDate(d)  { return d.getFullYear() + '-' + _pad(d.getMonth() + 1) + '-' + _pad(d.getDate()); }
   function _trunc(s, n) { n = n || 34; return s && s.length > n ? s.slice(0, n - 1) + '…' : (s || ''); }
+  function _escHtml(s) {
+    if (s == null || s === '') return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
   function _isTimeRangeValid(ini, fim) { return !!ini && !!fim && ini < fim; }
   function _parseSubtarefas(raw) {
     var seen = {};
@@ -624,7 +628,7 @@
     }
     wrap.style.display = 'flex';
     wrap.innerHTML = sugestoes.map(function (item) {
-      return '<button type="button" class="tmr-sub-chip" onclick="_applyTimerSubtarefasSuggestion(' + JSON.stringify(item).replace(/"/g, '&quot;') + ');_renderTimerSubtarefasSuggestions()">' + item + '</button>';
+      return '<button type="button" class="tmr-sub-chip" onclick="_tmr.applySubtarefa(' + JSON.stringify(item).replace(/"/g, '&quot;') + ')">' + _escHtml(item) + '</button>';
     }).join('');
   }
   function _getIsoWeekInfo(dateObj) {
@@ -740,6 +744,9 @@
     clearInterval(_tickInterval);
     var BURST_INTERVAL_MS = 20 * 60 * 1000; // a cada 20 minutos
     var BURST_DURATION_MS = 6 * 1000;        // durante 6 segundos (3 tic-tac)
+    /* Semeia com a marca atual para não disparar push ao recarregar/retomar no
+       meio de um intervalo — só ao cruzar a próxima marca de 20 min. */
+    _lastPushSentMark = Math.floor(_elapsedMs(_loadState()) / BURST_INTERVAL_MS);
     _tickInterval = setInterval(function () {
       var state = _loadState();
       if (!state.running) { clearInterval(_tickInterval); return; }
@@ -755,8 +762,10 @@
           var beatIdx = Math.floor(msIntoInterval / 1000);
           _playTick(beatIdx % 2 === 1); // tic, tac, tic, tac
         }
-        // Push: uma vez por marca, nos primeiros 5s
-        if (markNumber > 0 && msIntoInterval < 5000 && markNumber !== _lastPushSentMark) {
+        // Push: uma vez por marca. Dispara ao cruzar para uma marca nova em vez
+        // de exigir os primeiros 5s — em aba de segundo plano o setInterval é
+        // estrangulado (~1 tick/min) e a janela curta seria perdida.
+        if (markNumber > 0 && markNumber > _lastPushSentMark) {
           _lastPushSentMark = markNumber;
           if (!_pushMuted) _sendTimerPush(state);
         }
@@ -811,7 +820,7 @@
     /* ── reutiliza G._prodsGestao quando disponível ── */
     if (window.G && Array.isArray(window.G._prodsGestao) && window.G._prodsGestao.length) {
       return window.G._prodsGestao.filter(function (p) {
-        return p.status === 'ativo' && p.em_gestao !== false;
+        return p.status === 'ativo' && p.em_gestao === true;
       });
     }
     /* ── cache próprio ── */
@@ -929,7 +938,7 @@
     var list  = document.getElementById('tmr-recent-list');
     if (!block || !list || !items.length) { if (block) block.style.display = 'none'; return; }
     list.innerHTML = items.map(function (item, i) {
-      return '<button class="tmr-recent-btn" onclick="_tmr.useRecent(' + i + ')">&#128337; ' + item.label + '</button>';
+      return '<button class="tmr-recent-btn" onclick="_tmr.useRecent(' + i + ')">&#128337; ' + _escHtml(item.label) + '</button>';
     }).join('');
     block.style.display = '';
   }
@@ -970,7 +979,7 @@
       var prods = await _getActiveProds();
       var clis  = _getClientes(prods);
       selCli.innerHTML = '<option value="">&#8212; selecionar cliente &#8212;</option>' +
-        clis.map(function (c) { return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
+        clis.map(function (c) { return '<option value="' + c.id + '">' + _escHtml(c.label) + '</option>'; }).join('');
       /* Oculta downstream */
       ['tmr-opp-block','tmr-prod-block','tmr-etapa-block'].forEach(function (id) {
         var el = document.getElementById(id); if (el) el.style.display = 'none';
@@ -1015,7 +1024,7 @@
       var selOpp = document.getElementById('tmr-sel-opp');
       if (selOpp) {
         selOpp.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-          opps.map(function (o) { return '<option value="' + o.id + '">' + o.label + '</option>'; }).join('');
+          opps.map(function (o) { return '<option value="' + o.id + '">' + _escHtml(o.label) + '</option>'; }).join('');
       }
       if (oppBlock) oppBlock.style.display = '';
     },
@@ -1034,7 +1043,7 @@
       var selProd = document.getElementById('tmr-sel-prod');
       if (selProd) {
         selProd.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-          ps.map(function (p) { return '<option value="' + p.id + '">' + p.label + '</option>'; }).join('');
+          ps.map(function (p) { return '<option value="' + p.id + '">' + _escHtml(p.label) + '</option>'; }).join('');
       }
       if (prodBlock) prodBlock.style.display = '';
 
@@ -1056,7 +1065,7 @@
       var selEtapa = document.getElementById('tmr-sel-etapa');
       if (selEtapa) {
         selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-          etapas.map(function (e) { return '<option value="' + e.id + '">' + _trunc(e.nome, 36) + '</option>'; }).join('');
+          etapas.map(function (e) { return '<option value="' + e.id + '">' + _escHtml(_trunc(e.nome, 36)) + '</option>'; }).join('');
       }
       if (etapaBlock && etapas.length) etapaBlock.style.display = '';
     },
@@ -1075,7 +1084,7 @@
 
       if (item.tipo === 'projeto' && item.produtoId) {
         var prods   = await _getActiveProds();
-        var prod    = prods.find(function (p) { return p.id === item.produtoId; });
+        var prod    = prods.find(function (p) { return String(p.id) === String(item.produtoId); });
         var opp     = prod && prod.oportunidades;
         var cli     = opp && opp.clientes;
         nomeCliente = cli  ? (cli.nome  || '') : '';
@@ -1085,7 +1094,7 @@
 
         if (item.etapaId) {
           var ets = await _getEtapas(item.produtoId);
-          var et  = ets.find(function (e) { return e.id === item.etapaId; });
+          var et  = ets.find(function (e) { return String(e.id) === String(item.etapaId); });
           nomeEtapa = et ? et.nome : '';
         }
       } else if (item.tipo === 'organizacao') {
@@ -1205,7 +1214,6 @@
         state.running   = true;
         state.startedAt = new Date().toISOString();
         state.pausedAt  = null;
-        _tickCount      = 0;
         _startTick();
         _scheduleCollapse();
       }
@@ -1223,6 +1231,9 @@
       var cfEdit = document.getElementById('tmr-cf-edit');
       if (cfView) cfView.style.display = '';
       if (cfEdit) cfEdit.style.display = 'none';
+      /* Lembra se estava rodando para o "Voltar" só retomar nesse caso —
+         uma pausa manual anterior ao Encerrar deve ser preservada. */
+      state._resumeOnBack = !!state.running;
       /* Congela tempo */
       if (state.running && state.startedAt) {
         var elapsed    = Date.now() - new Date(state.startedAt).getTime();
@@ -1230,9 +1241,9 @@
         state.running   = false;
         state.startedAt = null;
         state.pausedAt  = new Date().toISOString();
-        _saveState(state);
-        _renderFab();
       }
+      _saveState(state);
+      _renderFab();
       var endDate   = state.pausedAt ? new Date(state.pausedAt) : new Date();
       var startDate = state.originalStart ? new Date(state.originalStart) : new Date(endDate.getTime() - (state.pausedMs || 0));
 
@@ -1262,11 +1273,15 @@
       _showPanel('confirm');
     },
 
-    /* ── Volta ao expanded e retoma ── */
+    /* ── Volta ao expanded ── */
     backToExpanded: function () {
       var state = _loadState();
       if (!state.originalStart) return;
-      if (!state.running) {
+      /* Só retoma se estava rodando ao abrir o confirm; se o usuário havia
+         pausado manualmente, mantém pausado. */
+      var resume = state._resumeOnBack !== false;
+      delete state._resumeOnBack;
+      if (resume && !state.running) {
         state.running   = true;
         state.startedAt = new Date().toISOString();
         state.pausedAt  = null;
@@ -1274,6 +1289,8 @@
         _renderFab();
         _startTick();
         _scheduleCollapse();
+      } else {
+        _saveState(state);
       }
       _renderExpanded();
     },
@@ -1328,7 +1345,7 @@
       /* ── Calcula semana ──────────────────────────────────────── */
       var dateObj = new Date(dataISO + 'T12:00:00');
       var weekInfo = _getIsoWeekInfo(dateObj);
-      var isoDia  = weekInfo.isoDia;
+      var isoDia  = weekInfo.isoDay;
       var weekIni = _fmtDate(weekInfo.start);
       var weekFim = _fmtDate(weekInfo.end);
 
@@ -1601,7 +1618,7 @@
       var prods = await _getActiveProds();
       var clis  = _getClientes(prods);
       selCli.innerHTML = '<option value="">&#8212; selecionar cliente &#8212;</option>' +
-        clis.map(function (c) { return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
+        clis.map(function (c) { return '<option value="' + c.id + '">' + _escHtml(c.label) + '</option>'; }).join('');
       ['tmr-cfe-opp-block','tmr-cfe-prod-block','tmr-cfe-etapa-block'].forEach(function (id) {
         var el = document.getElementById(id); if (el) el.style.display = 'none';
       });
@@ -1621,7 +1638,7 @@
       var selOpp = document.getElementById('tmr-cfe-opp');
       if (selOpp) {
         selOpp.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-          opps.map(function (o) { return '<option value="' + o.id + '">' + o.label + '</option>'; }).join('');
+          opps.map(function (o) { return '<option value="' + o.id + '">' + _escHtml(o.label) + '</option>'; }).join('');
       }
       if (oppBlock) oppBlock.style.display = '';
     },
@@ -1638,7 +1655,7 @@
       var selProd = document.getElementById('tmr-cfe-prod');
       if (selProd) {
         selProd.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-          ps.map(function (p) { return '<option value="' + p.id + '">' + p.label + '</option>'; }).join('');
+          ps.map(function (p) { return '<option value="' + p.id + '">' + _escHtml(p.label) + '</option>'; }).join('');
       }
       if (prodBlock) prodBlock.style.display = '';
       if (ps.length === 1 && selProd) { selProd.value = ps[0].id; _tmr.changeProdCfe(); }
@@ -1653,9 +1670,15 @@
       var selEtapa = document.getElementById('tmr-cfe-etapa');
       if (selEtapa) {
         selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
-          etapas.map(function (e) { return '<option value="' + e.id + '">' + _trunc(e.nome, 36) + '</option>'; }).join('');
+          etapas.map(function (e) { return '<option value="' + e.id + '">' + _escHtml(_trunc(e.nome, 36)) + '</option>'; }).join('');
       }
       if (etapaBlock && etapas.length) etapaBlock.style.display = '';
+    },
+
+    /* ── Clique num chip de subtarefa sugerida ── */
+    applySubtarefa: function (sugestao) {
+      _applyTimerSubtarefasSuggestion(sugestao);
+      _renderTimerSubtarefasSuggestions().catch(function () {});
     },
 
     /* ── Toggles de alerta ── */
