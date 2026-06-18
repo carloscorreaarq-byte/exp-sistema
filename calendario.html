@@ -64,8 +64,13 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 #lemb-wrap .nav-feedback-pop { position:absolute; top:calc(100% + 8px); right:0; left:auto; bottom:auto; width:300px; }
 .fg.fg2>*{flex:1}
 .mb8{margin-bottom:8px}
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--grafite);color:#fff;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;opacity:0;pointer-events:none;transition:all .22s;z-index:9999;white-space:nowrap}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--grafite);color:#fff;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;opacity:0;pointer-events:none;transition:all .22s;z-index:9999;max-width:min(90vw,420px);text-align:center;line-height:1.35}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.toast-erro{background:var(--terracota)}
+#toast.toast-sucesso{background:var(--verde)}
+#toast.toast-aviso{background:var(--ouro)}
+#toast.toast-top{top:24px;bottom:auto;transform:translateX(-50%) translateY(-8px)}
+#toast.toast-top.show{transform:translateX(-50%) translateY(0)}
 @keyframes mIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
 .stab-bar{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--cinza2);margin-bottom:16px}
 .stab{padding:8px 18px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;border-bottom:2px solid transparent;cursor:pointer;transition:all .12s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--f)}
@@ -259,11 +264,15 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-modal-body{padding:18px;display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto}
 .cal-modal-ft{padding:12px 18px;border-top:1px solid var(--cinza2);display:flex;justify-content:flex-end;gap:8px}
 .cal-tipo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:5px}
+.cal-tipos-wrap{display:flex;flex-direction:column;gap:12px}
+.cal-tipo-grupo{display:flex;flex-direction:column;gap:6px}
+.cal-tipo-grupo-lbl{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#aaa}
 .cal-tipo-btn{display:flex;flex-direction:row;align-items:center;gap:8px;padding:7px 11px;border:1px solid var(--cinza);border-radius:7px;background:var(--branco);cursor:pointer;transition:border-color .12s,background .12s;text-align:left;font-family:var(--f);width:100%}
 .cal-tipo-btn:hover{border-color:var(--grafite)}
 .cal-tipo-btn.sel{border-color:var(--azul);background:var(--az-bg)}
 .cal-tipo-btn:disabled{opacity:.35;cursor:not-allowed}
-.cal-tipo-icon{font-size:14px;flex-shrink:0;line-height:1}
+.cal-tipo-icon{font-size:15px;flex-shrink:0;line-height:1;display:inline-flex}
+.cal-ico{width:1em;height:1em;vertical-align:-.15em;flex-shrink:0}
 .cal-tipo-name{font-size:11px;font-weight:600;color:var(--grafite)}
 .cal-aviso{background:var(--am-bg);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--ouro)}
 .cal-gcal-option-btn{display:flex;flex-direction:row;align-items:center;gap:10px;padding:11px 14px;border:1.5px solid #dadce0;border-radius:8px;background:var(--branco);cursor:pointer;font-family:var(--f);width:100%;transition:border-color .15s,background .15s}
@@ -665,9 +674,9 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
                 </div>
                 <div class="cal-topbar-actions">
                   <div class="cal-subview-bar">
-                    <button class="cal-sv-btn active" id="sv-lista"  onclick="calSetView('lista')">Lista</button>
+                    <button class="cal-sv-btn active" id="sv-mes"    onclick="calSetView('mes')">M&ecirc;s</button>
                     <button class="cal-sv-btn"        id="sv-semana" onclick="calSetView('semana')">Semana</button>
-                    <button class="cal-sv-btn"        id="sv-mes"    onclick="calSetView('mes')">M&ecirc;s</button>
+                    <button class="cal-sv-btn"        id="sv-lista"  onclick="calSetView('lista')">Lista</button>
                   </div>
                 </div>
               </div>
@@ -861,12 +870,21 @@ const normalizeRole = (role) => typeof window.normalizeExpRole === 'function'
 const isSocioRole = (role) => ['socio','socio_admin'].includes(normalizeRole(role));
 const isSocioAdmRole = (role) => normalizeRole(role) === 'socio_admin';
 
-function toast(msg, dur = 2500) {
+function toast(msg, opt) {
   const el = document.getElementById('toast');
   if (!el) return;
+  // opt pode ser número (duração em ms) ou string de severidade: 'erro' | 'sucesso' | 'aviso'
+  let tipo = 'neutro', dur = 2500;
+  if (typeof opt === 'number') dur = opt;
+  else if (typeof opt === 'string' && opt) { tipo = opt; dur = tipo === 'erro' ? 4500 : tipo === 'aviso' ? 5500 : 3000; }
+  // Quando há um modal aberto, mostra o toast no topo (perto do foco do usuário)
+  const modalAberto = !!document.querySelector('.cal-modal-overlay.open, .gcal-modal-overlay.open');
+  el.className = 'toast-' + tipo + (modalAberto ? ' toast-top' : '');
   el.textContent = msg;
+  void el.offsetWidth; // reinicia a transição se já estiver visível
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), dur);
 }
 
 function fmtDate(d, curto = false) {
@@ -1157,7 +1175,7 @@ function renderAgendaSemana() {}
 const CAL = {
   mes: new Date().getMonth(),
   ano: new Date().getFullYear(),
-  view: 'lista',
+  view: 'mes',
   semanaOffset: 0,
   eventos: [],
   compensacoes: {},
@@ -1178,39 +1196,62 @@ const CAL_CAT_MAP = {
   reuniao:     ['reuniao'],
   feriado:     ['feriado', 'recesso', 'feriado_local'],
   agenda:      ['agenda_exp'],
-  aniversario: ['ausencia_aniv', 'ausencia_rem'],
+  aniversario: ['ausencia_aniv', 'ausencia_rem', 'ausencia_nrem'],
   compensacao: ['compensacao_bh'],
   google:      ['google'],
 };
 
+// Ícones de traço (Feather) — identidade da plataforma; herdam cor (currentColor) e tamanho (1em)
+const _ic = p => `<svg class="cal-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const CAL_ICONS = {
+  compensacao_bh: _ic('<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>'),
+  recesso:        _ic('<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>'),
+  feriado:        _ic('<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>'),
+  feriado_local:  _ic('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'),
+  ausencia_rem:   _ic('<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>'),
+  ausencia_nrem:  _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/>'),
+  ausencia_aniv:  _ic('<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>'),
+  entrega:        _ic('<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'),
+  agenda_exp:     _ic('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'),
+  reuniao:        _ic('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  google:         _ic('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'),
+};
 const CAL_TIPOS_META = {
-  compensacao_bh:{ icon: '🕒',  label: 'Compensacao de banco de horas' },
-  recesso:      { icon: '🏖️',  label: 'Recesso' },
-  feriado:      { icon: '🇧🇷', label: 'Feriado nacional' },
-  feriado_local:{ icon: '📍',  label: 'Feriado local' },
-  ausencia_rem: { icon: '💼',  label: 'Ausência remunerada' },
-  ausencia_aniv:{ icon: '🎂',  label: 'Aniversário' },
-  entrega:      { icon: '📦',  label: 'Entrega' },
-  agenda_exp:   { icon: '📅',  label: 'Agenda EXP' },
-  reuniao:      { icon: '🤝',  label: 'Reunião' },
-  google:       { icon: '📆',  label: 'Google Calendar' },
+  compensacao_bh:{ icon: CAL_ICONS.compensacao_bh, label: 'Compensacao de banco de horas' },
+  recesso:      { icon: CAL_ICONS.recesso,       label: 'Recesso' },
+  feriado:      { icon: CAL_ICONS.feriado,       label: 'Feriado nacional' },
+  feriado_local:{ icon: CAL_ICONS.feriado_local, label: 'Feriado local' },
+  ausencia_rem: { icon: CAL_ICONS.ausencia_rem,  label: 'Ausência remunerada' },
+  ausencia_nrem:{ icon: CAL_ICONS.ausencia_nrem, label: 'Ausência não remunerada' },
+  ausencia_aniv:{ icon: CAL_ICONS.ausencia_aniv, label: 'Aniversário' },
+  entrega:      { icon: CAL_ICONS.entrega,       label: 'Entrega' },
+  agenda_exp:   { icon: CAL_ICONS.agenda_exp,    label: 'Agenda EXP' },
+  reuniao:      { icon: CAL_ICONS.reuniao,       label: 'Reunião' },
+  google:       { icon: CAL_ICONS.google,        label: 'Google Calendar' },
 };
 
-function calMeta(tipo) { return CAL_TIPOS_META[tipo] || { icon: '📌', label: tipo }; }
+// Agrupamento dos tipos no pop-up de novo evento (a ordem define a exibição)
+const CAL_TIPO_GRUPOS = [
+  { nome: 'Pessoal',       tipos: ['ausencia_rem','ausencia_nrem','ausencia_aniv','compensacao_bh'] },
+  { nome: 'Equipe',        tipos: ['reuniao','entrega'] },
+  { nome: 'Institucional', tipos: ['feriado','feriado_local','recesso','agenda_exp'] },
+];
+
+function calMeta(tipo) { return CAL_TIPOS_META[tipo] || { icon: _ic('<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'), label: tipo }; }
 
 function isDark(){return document.documentElement.getAttribute('data-theme')==='dark';}
 function calEvBg(tipo, ev) {
   if (tipo === 'google') return ev?._gcalColor ? ev._gcalColor+(isDark()?'18':'22') : (isDark()?'rgba(66,133,244,.12)':'rgba(66,133,244,.1)');
-  if (isDark()) return {recesso:'rgba(204,104,72,.14)',feriado:'rgba(204,104,72,.14)',feriado_local:'rgba(226,174,82,.13)',ausencia_rem:'rgba(74,114,181,.14)',ausencia_aniv:'rgba(226,174,82,.13)',compensacao_bh:'rgba(102,133,67,.18)',entrega:'rgba(76,163,102,.14)',agenda_exp:'rgba(255,255,255,.05)',reuniao:'rgba(74,114,181,.14)'}[tipo]||'rgba(255,255,255,.05)';
-  return { recesso:'var(--tc-bg)', feriado:'var(--tc-bg)', feriado_local:'var(--am-bg)', ausencia_rem:'var(--az-bg)', ausencia_aniv:'var(--am-bg)', compensacao_bh:'rgba(138,168,85,.16)', entrega:'var(--verde-bg)', agenda_exp:'var(--cinza2)', reuniao:'var(--az-bg)' }[tipo] || 'var(--cinza2)';
+  if (isDark()) return {recesso:'rgba(204,104,72,.14)',feriado:'rgba(204,104,72,.14)',feriado_local:'rgba(226,174,82,.13)',ausencia_rem:'rgba(74,114,181,.14)',ausencia_nrem:'rgba(136,136,136,.16)',ausencia_aniv:'rgba(226,174,82,.13)',compensacao_bh:'rgba(102,133,67,.18)',entrega:'rgba(76,163,102,.14)',agenda_exp:'rgba(255,255,255,.05)',reuniao:'rgba(74,114,181,.14)'}[tipo]||'rgba(255,255,255,.05)';
+  return { recesso:'var(--tc-bg)', feriado:'var(--tc-bg)', feriado_local:'var(--am-bg)', ausencia_rem:'var(--az-bg)', ausencia_nrem:'var(--cinza2)', ausencia_aniv:'var(--am-bg)', compensacao_bh:'rgba(138,168,85,.16)', entrega:'var(--verde-bg)', agenda_exp:'var(--cinza2)', reuniao:'var(--az-bg)' }[tipo] || 'var(--cinza2)';
 }
 function calEvColor(tipo, ev) {
   if (tipo === 'google') return ev?._gcalColor || '#4285f4';
-  return { recesso:'var(--terracota)', feriado:'var(--terracota)', feriado_local:'var(--ouro)', ausencia_rem:'var(--azul)', ausencia_aniv:'var(--ouro)', compensacao_bh:'#6f942e', entrega:'var(--verde)', agenda_exp:'var(--grafite)', reuniao:'var(--azul)' }[tipo] || 'var(--grafite)';
+  return { recesso:'var(--terracota)', feriado:'var(--terracota)', feriado_local:'var(--ouro)', ausencia_rem:'var(--azul)', ausencia_nrem:'var(--grafite)', ausencia_aniv:'var(--ouro)', compensacao_bh:'#6f942e', entrega:'var(--verde)', agenda_exp:'var(--grafite)', reuniao:'var(--azul)' }[tipo] || 'var(--grafite)';
 }
 function calEvBorder(tipo, ev) {
   if (tipo === 'google') return ev?._gcalColor || '#4285f4';
-  return { recesso:'var(--terracota)', feriado:'var(--terracota)', feriado_local:'var(--ouro)', ausencia_rem:'var(--azul)', ausencia_aniv:'var(--ouro)', compensacao_bh:'#6f942e', entrega:'var(--verde)', agenda_exp:'#888', reuniao:'var(--azul)' }[tipo] || '#ccc';
+  return { recesso:'var(--terracota)', feriado:'var(--terracota)', feriado_local:'var(--ouro)', ausencia_rem:'var(--azul)', ausencia_nrem:'#bbb', ausencia_aniv:'var(--ouro)', compensacao_bh:'#6f942e', entrega:'var(--verde)', agenda_exp:'#888', reuniao:'var(--azul)' }[tipo] || '#ccc';
 }
 
 async function calCarregarBancoHoras() {
@@ -1545,7 +1586,7 @@ function calRenderLista() {
       const gBadge  = ev._gcal ? `<span class="gcal-badge" title="Google Calendar">G</span>` : '';
       return `<div class="cal-lista-item" style="border-left:4px solid ${calEvBorder(ev.tipo,ev)};background:${calEvBg(ev.tipo,ev)}" onclick="calAbrirDetalhe('${ev.id}')">
         <div class="cal-lista-data">${dtFmt}${horaStr}</div>
-        <div class="cal-lista-body">${gBadge}<span class="cal-lista-icon">${meta.icon}</span><span class="cal-lista-titulo">${ev.titulo}</span>${ev.projeto_nome?`<span class="cal-lista-proj"> | ${ev.projeto_nome}</span>`:''}</div>
+        <div class="cal-lista-body">${gBadge}<span class="cal-lista-icon" style="color:${calEvColor(ev.tipo,ev)}">${meta.icon}</span><span class="cal-lista-titulo">${ev.titulo}</span>${ev.projeto_nome?`<span class="cal-lista-proj"> | ${ev.projeto_nome}</span>`:''}</div>
       </div>`;
     }).join('')}</div>`;
 }
@@ -1631,7 +1672,7 @@ function calRenderDisp() {
       const ehFer = feriados.has(key);
       const comp    = merged.some(ev=>ev.data_inicio.slice(0,10)===key&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
       // Ausências do usuário neste dia
-      const ausDs   = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_aniv')&&ev.data_inicio.slice(0,10)===key&&(ev.scope==='todos'||ev.usuario_id===u.id));
+      const ausDs   = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem'||ev.tipo==='ausencia_aniv')&&ev.data_inicio.slice(0,10)===key&&(ev.scope==='todos'||ev.usuario_id===u.id));
       const baseCls = ehFer?'feriado':comp?'compensado':'';
       let manhaCls  = baseCls, tardeCls = baseCls;
       // Colore barras individualmente conforme período da ausência
@@ -1661,6 +1702,9 @@ function calRenderDisp() {
   if (el) el.innerHTML=html;
 }
 
+// Alias: a aba Pessoas/disponibilidade é renderizada por calRenderDisp
+function calRenderPessoas(){ calRenderDisp(); }
+
 function calRender() {
   if (CAL.view==='lista')  return calRenderLista();
   if (CAL.view==='semana') return calRenderSemana();
@@ -1676,11 +1720,12 @@ function calAbrirModalNovo(dataPreenchida) {
   CAL.editId=null;
   const hoje=dataPreenchida||new Date().toISOString().slice(0,10);
   const ehSocio=isSocioRole(G.usuario?.role);
-  const tipos=ehSocio?Object.keys(CAL_TIPOS_META).filter(t=>t!=='compensacao_bh'):['ausencia_rem','ausencia_aniv','reuniao'];
+  const tipos=ehSocio?Object.keys(CAL_TIPOS_META).filter(t=>t!=='compensacao_bh'):['ausencia_rem','ausencia_nrem','ausencia_aniv','reuniao'];
   const ttl=document.getElementById('cal-modal-novo-titulo'); if (ttl) ttl.textContent='Novo Evento';
   modal.querySelector('.cal-modal-body').innerHTML=calRenderModalBody(tipos,hoje);
   modal.classList.add('open');
   if (GCAL.token) calSelTipo('gcal_ev'); else calSelTipo(tipos[0]);
+  (GCAL.token ? document.getElementById('gcr-titulo') : document.getElementById('cal-inp-titulo'))?.focus();
 }
 
 function calAbrirModalCompensacao(dataPreenchida) {
@@ -1708,11 +1753,22 @@ function calRenderModalBody(tipos, dataIni) {
     const _calOpts=GCAL.calendarios.map(c=>`<option value="${c.id}">${c.summary}</option>`).join('');
     return `<div style="margin-top:4px;padding-top:10px;border-top:1px solid var(--cinza2)"><div class="gcal-sync-row" style="border:none;padding:0 0 6px"><div><div class="gcal-sync-lbl">Adicionar ao Google Calendar</div></div><label class="gcal-toggle"><input type="checkbox" id="cal-gcal-sync-ck" checked onchange="document.getElementById('gcal-novo-agenda-wrap').style.display=this.checked?'block':'none'"><span class="gcal-toggle-slider"></span></label></div><div id="gcal-novo-agenda-wrap"><select id="gcal-novo-agenda" class="gcr-input" style="font-size:11px;padding:5px 8px">${_calOpts}</select></div></div>`;
   })():'';
-  return `${gcalOptionHtml}<div class="cal-tipo-sep"><span>ou outro evento</span></div><div class="cal-tipo-grid">${tipos.map(t=>{const m=calMeta(t);return `<button class="cal-tipo-btn" id="cal-tipo-${t}" onclick="calSelTipo('${t}')"><span class="cal-tipo-icon">${m.icon}</span><span class="cal-tipo-name">${m.label}</span></button>`;}).join('')}</div>
+  const _btnTipo=t=>{const m=calMeta(t);return `<button class="cal-tipo-btn" id="cal-tipo-${t}" onclick="calSelTipo('${t}')"><span class="cal-tipo-icon" style="color:${calEvColor(t)}">${m.icon}</span><span class="cal-tipo-name">${m.label}</span></button>`;};
+  const _agrupados=new Set(CAL_TIPO_GRUPOS.flatMap(g=>g.tipos));
+  const _multiGrupo=CAL_TIPO_GRUPOS.filter(g=>g.tipos.some(t=>tipos.includes(t))).length>1;
+  const gruposHtml=CAL_TIPO_GRUPOS.map(g=>{
+    const ts=g.tipos.filter(t=>tipos.includes(t));
+    if (!ts.length) return '';
+    const lbl=_multiGrupo?`<div class="cal-tipo-grupo-lbl">${g.nome}</div>`:'';
+    return `<div class="cal-tipo-grupo">${lbl}<div class="cal-tipo-grid">${ts.map(_btnTipo).join('')}</div></div>`;
+  }).join('');
+  const _resto=tipos.filter(t=>!_agrupados.has(t));
+  const restoHtml=_resto.length?`<div class="cal-tipo-grupo"><div class="cal-tipo-grid">${_resto.map(_btnTipo).join('')}</div></div>`:'';
+  return `${gcalOptionHtml}<div class="cal-tipo-sep"><span>ou outro evento</span></div><div class="cal-tipos-wrap">${gruposHtml}${restoHtml}</div>
     <div id="cal-gcal-inline" style="display:none"></div>
     <div id="cal-standard-form">
       <div class="fgroup"><label>Título</label><input id="cal-inp-titulo" type="text" placeholder="Título do evento"></div>
-      <div class="fg fg2"><div class="fgroup"><label>Data início</label><input id="cal-inp-ini" type="date" value="${dataIni}"></div><div class="fgroup"><label>Data fim</label><input id="cal-inp-fim" type="date" value="${dataIni}"></div></div>
+      <div class="fg fg2"><div class="fgroup"><label>Data início</label><input id="cal-inp-ini" type="date" value="${dataIni}" onchange="calSyncDataFim();calAtualizarAvisoAusencia()"></div><div class="fgroup"><label>Data fim</label><input id="cal-inp-fim" type="date" value="${dataIni}" min="${dataIni}" onchange="calAtualizarAvisoAusencia()"></div></div>
       <div class="fgroup" id="cal-campo-periodo" style="display:none"><label>Período do dia</label><select id="cal-inp-periodo"><option value="todo">Dia todo</option><option value="manha">Manhã</option><option value="tarde">Tarde</option></select></div>
       <div class="fgroup" id="cal-campo-nucleo" style="display:none"><label>Núcleo</label><select id="cal-inp-nucleo"><option value="todos">Todos</option>${nucleos.map(n=>`<option value="${n}">${n.charAt(0).toUpperCase()+n.slice(1)}</option>`).join('')}</select></div>
       <div class="fgroup" id="cal-campo-usuario" style="display:none"><label>Usuário</label><select id="cal-inp-usuario"><option value="${G.usuario?.id}">${G.usuario?.nome} (eu)</option>${outrosUsuarios.map(u=>`<option value="${u.id}">${u.nome}</option>`).join('')}</select></div>
@@ -1738,15 +1794,14 @@ function calSelTipo(tipo) {
   if (stdForm) stdForm.style.display='block';
   if (ftBtn) ftBtn.textContent='Salvar';
   if (tipo==='compensacao_bh' && !isSocioAdmRole(G.usuario?.role)) { toast('A compensação manual é restrita a sócios administrativos.', 'erro'); return; }
-  const ehGlobal=['recesso','feriado','feriado_local','agenda_exp'].includes(tipo);
-  const ehPessoal=['ausencia_rem','ausencia_aniv','reuniao','compensacao_bh'].includes(tipo);
+  const ehGlobal=['recesso','feriado','agenda_exp'].includes(tipo);
+  const ehPessoal=['ausencia_rem','ausencia_nrem','ausencia_aniv','reuniao','compensacao_bh'].includes(tipo);
   const cnucleo=document.getElementById('cal-campo-nucleo'), cusuario=document.getElementById('cal-campo-usuario'), aviso=document.getElementById('cal-aviso-ausencia'), cbh=document.getElementById('cal-campo-bh');
   if (cnucleo)  cnucleo.style.display =ehGlobal ?'block':'none';
   if (cusuario) cusuario.style.display=ehPessoal?'block':'none';
   if (cbh) cbh.style.display=tipo==='compensacao_bh'?'block':'none';
   const cperiodo=document.getElementById('cal-campo-periodo');
-  if (cperiodo) cperiodo.style.display=['ausencia_rem','ausencia_aniv'].includes(tipo)?'block':'none';
-  if (aviso) { if (tipo==='ausencia_rem') { aviso.style.display='block'; aviso.textContent=`Saldo: ${CAL.usados} de ${CAL.saldo} dias usados — restam ${CAL.saldo-CAL.usados} dias.`; } else aviso.style.display='none'; }
+  if (cperiodo) cperiodo.style.display=['ausencia_nrem','ausencia_aniv'].includes(tipo)?'block':'none';
   if (tipo==='compensacao_bh' && aviso) {
     aviso.style.display='block';
     aviso.textContent='Use esta entrada apenas para consumo aprovado de banco de horas. Ela não substitui ausência remunerada individual.';
@@ -1754,8 +1809,63 @@ function calSelTipo(tipo) {
   const bhInput=document.getElementById('cal-inp-bh-horas');
   const usuSel=document.getElementById('cal-inp-usuario');
   if (bhInput) bhInput.oninput=()=>{ calAtualizarCompensacaoUI(); };
-  if (usuSel) usuSel.onchange=()=>{ if (CAL.tipoSelecionado==='compensacao_bh') calAtualizarCompensacaoUI(); };
+  if (usuSel) usuSel.onchange=()=>{ if (CAL.tipoSelecionado==='compensacao_bh') calAtualizarCompensacaoUI(); else calAtualizarAvisoAusencia(); };
   if (tipo==='compensacao_bh') calAtualizarCompensacaoUI();
+  calAtualizarAvisoAusencia();
+}
+
+// Conta dias úteis (seg–sex) no intervalo, descontando feriado/recesso nacional
+// e feriado local da própria pessoa — espelha o trigger sync_ausencia_saldo.
+function calDiasUteisAusencia(iniStr, fimStr, usuarioId) {
+  if (!iniStr) return 0;
+  const fmt = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  const ini = new Date(iniStr+'T12:00:00'), fim = new Date((fimStr||iniStr)+'T12:00:00');
+  if (isNaN(ini)||isNaN(fim)||fim<ini) return 0;
+  const feriados = new Set();
+  (CAL.eventos||[]).forEach(ev => {
+    const ehNacional = ev.tipo==='feriado' || ev.tipo==='recesso';
+    const ehLocalDaPessoa = ev.tipo==='feriado_local' && (ev.criado_por===usuarioId || ev.user_id===usuarioId || ev.usuario_id===usuarioId);
+    if (!ehNacional && !ehLocalDaPessoa) return;
+    const hi = new Date((ev.data_inicio)+'T12:00:00'), hf = new Date((ev.data_fim||ev.data_inicio)+'T12:00:00');
+    if (isNaN(hi)) return;
+    for (let d=new Date(hi); d<=hf; d.setDate(d.getDate()+1)) feriados.add(fmt(d));
+  });
+  let n=0;
+  for (let d=new Date(ini); d<=fim; d.setDate(d.getDate()+1)) {
+    const dow=d.getDay();
+    if (dow===0||dow===6) continue;
+    if (feriados.has(fmt(d))) continue;
+    n++;
+  }
+  return n;
+}
+
+// Atualiza o aviso do modal conforme o tipo de ausência e o consumo previsto
+function calAtualizarAvisoAusencia() {
+  const aviso=document.getElementById('cal-aviso-ausencia');
+  if (!aviso) return;
+  const tipo=CAL.tipoSelecionado;
+  if (tipo==='ausencia_rem') {
+    const ini=document.getElementById('cal-inp-ini')?.value;
+    const fim=document.getElementById('cal-inp-fim')?.value||ini;
+    const usuId=document.getElementById('cal-inp-usuario')?.value||G.usuario?.id;
+    const restam=CAL.saldo-CAL.usados;
+    let txt=`Saldo: ${CAL.usados} de ${CAL.saldo} dias usados — restam ${restam} dia${restam!==1?'s':''}.`;
+    if (ini) {
+      const dias=calDiasUteisAusencia(ini,fim,usuId);
+      const diasTxt = dias===1?'1 dia útil':`${dias} dias úteis`;
+      const depois=restam-dias;
+      txt += ` Esta ausência consome ${diasTxt}`;
+      txt += dias>0 ? (depois>=0 ? `, deixando ${depois} restante${depois!==1?'s':''}.` : ` — ${Math.abs(depois)} além do limite.`) : '.';
+    }
+    aviso.style.display='block';
+    aviso.textContent=txt;
+  } else if (tipo==='ausencia_nrem') {
+    aviso.style.display='block';
+    aviso.textContent='Ausência não remunerada — não desconta do saldo de 10 dias. Permite meio período.';
+  } else if (tipo!=='compensacao_bh') {
+    aviso.style.display='none';
+  }
 }
 
 function calRenderGcalInlineForm() {
@@ -1828,15 +1938,24 @@ function calFecharModalNovo() {
   const m=document.getElementById('cal-modal-novo'); if (m) m.classList.remove('open');
 }
 
+// Garante data fim >= data início: ajusta o mínimo e empurra a data fim se ficou para trás
+function calSyncDataFim() {
+  const ini=document.getElementById('cal-inp-ini'), fim=document.getElementById('cal-inp-fim');
+  if (!ini||!fim) return;
+  fim.min=ini.value||'';
+  if (fim.value && ini.value && fim.value < ini.value) fim.value=ini.value;
+}
+
 async function calSalvar() {
   const tipo=CAL.tipoSelecionado, titulo=document.getElementById('cal-inp-titulo')?.value.trim(), ini=document.getElementById('cal-inp-ini')?.value, fim=document.getElementById('cal-inp-fim')?.value||ini, desc=document.getElementById('cal-inp-desc')?.value.trim(), nucleo=document.getElementById('cal-inp-nucleo')?.value||'todos', usuId=document.getElementById('cal-inp-usuario')?.value||G.usuario?.id;
-  if (!titulo||!ini) { toast('Preencha título e data.'); return; }
+  if (!titulo||!ini) { toast('Preencha título e data.', 'erro'); return; }
+  if (fim < ini) { toast('A data fim deve ser igual ou posterior à data início.', 'erro'); return; }
   const bhHoras = tipo==='compensacao_bh' ? Number(document.getElementById('cal-inp-bh-horas')?.value || 0) : 0;
-  if (tipo==='compensacao_bh' && (!bhHoras || bhHoras <= 0)) { toast('Informe a quantidade de horas a compensar.'); return; }
-  const ehGlobal=['recesso','feriado','feriado_local','agenda_exp'].includes(tipo);
+  if (tipo==='compensacao_bh' && (!bhHoras || bhHoras <= 0)) { toast('Informe a quantidade de horas a compensar.', 'erro'); return; }
+  const ehGlobal=['recesso','feriado','agenda_exp'].includes(tipo);
   const _calCat=t=>{for (const [c,ts] of Object.entries(CAL_CAT_MAP)){if(ts.includes(t))return c;}return t;};
-  const ehAusencia=['ausencia_rem','ausencia_aniv'].includes(tipo);
-  const periodo=document.getElementById('cal-inp-periodo')?.value||'todo';
+  const ehAusencia=['ausencia_rem','ausencia_nrem','ausencia_aniv'].includes(tipo);
+  const periodo=tipo==='ausencia_rem'?'todo':(document.getElementById('cal-inp-periodo')?.value||'todo');
   const horaStr=ehAusencia?({todo:'T12:00:00',manha:'T09:00:00',tarde:'T14:00:00'}[periodo]||'T12:00:00'):'T12:00:00';
   const payload={tipo,categoria:_calCat(tipo),titulo,inicio:ini+horaStr+'+00:00',fim:(fim||ini)+horaStr+'+00:00',dia_inteiro:true,descricao:desc||null,scope:ehGlobal?(nucleo==='todos'?'todos':'nucleo'):'usuario',nucleo_id:ehGlobal?(nucleo==='todos'?null:nucleo):(G.usuario?.nucleo||null),user_id:ehGlobal?null:usuId,criado_por:G.usuario?.id};
   try {
@@ -1856,20 +1975,24 @@ async function calSalvar() {
     if (GCAL.token&&gcalCk?.checked&&!CAL.editId) { const prefs=gcalGetPrefs(); if ((tipo==='reuniao'&&prefs.reuniao)||(tipo==='agenda_exp'&&prefs.agenda)||gcalCk.checked) await gcalCriarEvento(titulo,ini,fim||ini,desc||''); }
     calFecharModalNovo();
     await Promise.all([calCarregarEventos(), calCarregarCompensacoes()]);
-    if (tipo==='ausencia_rem') await calCarregarSaldo();
+    if (tipo==='ausencia_rem'||prevEvent?.tipo==='ausencia_rem') {
+      await calCarregarSaldo();
+      if (tipo==='ausencia_rem' && CAL.usados > CAL.saldo)
+        toast(`Saldo de ausência remunerada excedido: ${CAL.usados} de ${CAL.saldo} dias usados (${CAL.usados-CAL.saldo} além do limite). O lançamento foi salvo.`, 'aviso');
+    }
     await calCarregarBancoHoras();
     calAtualizarTopbar(); calRender();
-  } catch(e) { toast('Erro ao salvar: '+(e.message||e)); }
+  } catch(e) { toast('Erro ao salvar: '+(e.message||e), 'erro'); }
 }
 
 async function calSalvarGcalInline() {
-  if (!GCAL.token) { toast('Google Calendar não conectado.'); return; }
+  if (!GCAL.token) { toast('Google Calendar não conectado.', 'erro'); return; }
   const titulo=document.getElementById('gcr-titulo')?.value.trim(), data=document.getElementById('gcr-data')?.value, hIni=document.getElementById('gcr-hora-ini')?.value, hFim=document.getElementById('gcr-hora-fim')?.value, desc=document.getElementById('gcr-desc')?.value.trim()||'', meet=document.getElementById('gcr-meet-ck')?.checked!==false, tbEXP=document.getElementById('gcr-exp')?.checked??true, agendaId=document.getElementById('gcr-agenda')?.value||GCAL.calendarios.find(c=>c.primary)?.id||GCAL.calendarios[0]?.id;
-  if (!titulo) { toast('Digite o título do evento.'); return; }
-  if (!data) { toast('Selecione a data.'); return; }
-  if (!hIni||!hFim) { toast('Defina hora de início e fim.'); return; }
-  if (hFim<=hIni) { toast('Hora de fim deve ser após o início.'); return; }
-  if (!agendaId) { toast('Nenhuma agenda Google disponível.'); return; }
+  if (!titulo) { toast('Digite o título do evento.', 'erro'); return; }
+  if (!data) { toast('Selecione a data.', 'erro'); return; }
+  if (!hIni||!hFim) { toast('Defina hora de início e fim.', 'erro'); return; }
+  if (hFim<=hIni) { toast('Hora de fim deve ser após o início.', 'erro'); return; }
+  if (!agendaId) { toast('Nenhuma agenda Google disponível.', 'erro'); return; }
   const ftBtn=document.querySelector('#cal-modal-novo .cal-modal-ft .btn.filled');
   if (ftBtn) { ftBtn.disabled=true; ftBtn.textContent='Agendando...'; }
   try {
@@ -1884,8 +2007,8 @@ async function calSalvarGcalInline() {
     if (tbEXP) { await sb.from('calendar_events').insert({tipo:'reuniao',categoria:'reuniao',titulo,inicio:startDT,fim:endDT,dia_inteiro:false,descricao:[desc,meetLink?'🔗 '+meetLink:''].filter(Boolean).join('\n')||null,meet_link:meetLink||null,scope:'todos',nucleo_id:null,user_id:null,criado_por:G.usuario?.id}); await calCarregarEventos(); }
     await gcalCarregarEventos(); calRender(); calFecharModalNovo();
     if (meetLink) gcalMostrarResultadoReuniao(titulo,data,hIni,hFim,meetLink,GCAL._reuniaoConvidados.length);
-    else toast('Evento agendado!');
-  } catch(e) { toast('Erro: '+(e.message||e)); }
+    else toast('Evento agendado!', 'sucesso');
+  } catch(e) { toast('Erro: '+(e.message||e), 'erro'); }
   finally { if (ftBtn) { ftBtn.disabled=false; ftBtn.textContent='Agendar'; } }
 }
 
@@ -1898,7 +2021,7 @@ function calAbrirDetalhe(id) {
   const horaStr=ev.hora_inicio?`${ev.hora_inicio}${ev.hora_fim?' – '+ev.hora_fim:''}`:'' ;
   modal.querySelector('.cal-modal-body').innerHTML=`
     <div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
-      <span style="font-size:26px;line-height:1;flex-shrink:0">${meta.icon}</span>
+      <span style="font-size:24px;line-height:1;flex-shrink:0;color:${calEvColor(ev.tipo,ev)}">${meta.icon}</span>
       <div style="min-width:0">
         <div style="font-weight:700;font-size:15px;line-height:1.2;margin-bottom:3px">${_escN(ev.titulo)}</div>
         <div style="font-size:11px;color:#888;font-weight:500">${meta.label}</div>
@@ -1926,20 +2049,22 @@ function calEditar(id) {
   const ev=CAL.eventos.find(e=>String(e.id)===String(id)); if (!ev) return;
   CAL.editId=id;
   const ehSocio=isSocioRole(G.usuario?.role);
-  const tiposBase=ehSocio?Object.keys(CAL_TIPOS_META).filter(t=>t!=='compensacao_bh'):['ausencia_rem','ausencia_aniv','reuniao'];
+  const tiposBase=ehSocio?Object.keys(CAL_TIPOS_META).filter(t=>t!=='compensacao_bh'):['ausencia_rem','ausencia_nrem','ausencia_aniv','reuniao'];
   const tipos=ev.tipo==='compensacao_bh'?[ev.tipo, ...tiposBase]:tiposBase;
   const modal=document.getElementById('cal-modal-novo'); if (!modal) return;
   modal.querySelector('.cal-modal-body').innerHTML=calRenderModalBody(tipos,ev.data_inicio);
   modal.classList.add('open'); calSelTipo(ev.tipo);
   // Restaura período do dia a partir da hora armazenada no evento
   const pSel=document.getElementById('cal-inp-periodo');
-  if (pSel && ['ausencia_rem','ausencia_aniv'].includes(ev.tipo)) {
+  if (pSel && ['ausencia_nrem','ausencia_aniv'].includes(ev.tipo)) {
     const h=ev.inicio?new Date(ev.inicio).getUTCHours():12;
     pSel.value=h<=10?'manha':h>=13?'tarde':'todo';
   }
   const t=document.getElementById('cal-inp-titulo'); if(t) t.value=ev.titulo;
   const i=document.getElementById('cal-inp-ini');    if(i) i.value=ev.data_inicio;
   const f=document.getElementById('cal-inp-fim');    if(f) f.value=ev.data_fim||ev.data_inicio;
+  calSyncDataFim();
+  calAtualizarAvisoAusencia();
   const d=document.getElementById('cal-inp-desc');   if(d) d.value=ev.descricao||'';
   const n=document.getElementById('cal-inp-nucleo'); if(n&&ev.nucleo) n.value=ev.nucleo;
   const u=document.getElementById('cal-inp-usuario');if(u&&ev.usuario_id) u.value=ev.usuario_id;
@@ -1956,11 +2081,20 @@ async function calExcluir(id) {
       if(error) throw error;
       calFecharDetalhe();
       await Promise.all([calCarregarEventos(), calCarregarCompensacoes()]);
+      if (ev?.tipo === 'ausencia_rem') await calCarregarSaldo();
       await calCarregarBancoHoras();
       calAtualizarTopbar(); calRender();
-    } catch(e){toast('Erro: '+(e.message||e));}
+    } catch(e){toast('Erro: '+(e.message||e), 'erro');}
   });
 }
+
+// Esc fecha qualquer modal aberto (novo evento, detalhe, reunião, config Google)
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const abertos = document.querySelectorAll('.cal-modal-overlay.open, .gcal-modal-overlay.open');
+  if (!abertos.length) return;
+  abertos.forEach(m => m.classList.remove('open'));
+});
 
 // ── Avatar filtros ────────────────────────────────────────
 CAL.filtroUsuarios = new Set(['all']);
@@ -2069,9 +2203,9 @@ function gcalHandleToken(resp) {
 }
 
 function gcalConectar() {
-  if (!GCAL_CLIENT_ID) { toast('Configure o GCAL_CLIENT_ID.'); return; }
+  if (!GCAL_CLIENT_ID) { toast('Configure o GCAL_CLIENT_ID.', 'erro'); return; }
   if (!GCAL.tokenClient) gcalInitClient();
-  if (!GCAL.tokenClient) { toast('Google Identity Services ainda não carregou.'); return; }
+  if (!GCAL.tokenClient) { toast('Google Identity Services ainda não carregou.', 'erro'); return; }
   GCAL.tokenClient.requestAccessToken({prompt:''});
 }
 
@@ -2081,7 +2215,7 @@ function gcalDesconectar() {
   gcalLimparToken(); gcalAtualizarUI();
   CAL.filtroCats.delete('google');
   const chip=document.getElementById('cal-chip-google'); if (chip) { chip.style.display='none'; chip.classList.remove('active'); }
-  calRender(); toast('Google Calendar desconectado.');
+  calRender(); toast('Google Calendar desconectado.', 'sucesso');
 }
 
 async function gcalCarregarCalendarios() {
@@ -2122,7 +2256,7 @@ async function gcalCarregarEventosEAtualizarUI(mostraToast) {
   CAL.filtroCats.add('google');
   const chip=document.getElementById('cal-chip-google'); if (chip) { chip.style.display=''; chip.classList.add('active'); }
   calRender(); renderAgendaSemana();
-  if (mostraToast) toast('Google Calendar conectado! '+GCAL.eventos.length+' eventos carregados.');
+  if (mostraToast) toast('Google Calendar conectado! '+GCAL.eventos.length+' eventos carregados.', 'sucesso');
 }
 
 function gcalAtualizarUI() {
@@ -2164,7 +2298,7 @@ function gcalToggleCal(calId,ativo) {
 
 function gcalSalvarShared() {
   const v=document.getElementById('gcal-shared-id')?.value?.trim()||''; gcalSetSharedId(v);
-  gcalCarregarEventos().then(()=>{ calRender(); toast(v?'Calendário compartilhado salvo!':'Calendário compartilhado removido.'); });
+  gcalCarregarEventos().then(()=>{ calRender(); toast(v?'Calendário compartilhado salvo!':'Calendário compartilhado removido.', 'sucesso'); });
 }
 
 function gcalSalvarPrefs() { gcalSetPrefs({reuniao:document.getElementById('gcal-sync-reuniao')?.checked??true}); }
@@ -2185,7 +2319,7 @@ function gcalRenderAgendaChips() {
 }
 
 function gcalAbrirReuniao(dateOverride) {
-  if (!GCAL.token) { toast('Conecte o Google Calendar primeiro.'); gcalAbrirConfig(); return; }
+  if (!GCAL.token) { toast('Conecte o Google Calendar primeiro.', 'erro'); gcalAbrirConfig(); return; }
   GCAL._reuniaoConvidados=[];
   if (G.usuario?.email) GCAL._reuniaoConvidados.push({email:G.usuario.email,nome:G.usuario.nome,cor:G.usuario.cor||'#888',iniciais:G.usuario.iniciais||'?',isExp:true});
   const hoje=dateOverride||new Date().toISOString().slice(0,10), hIni='10:00', hFim='11:00';
@@ -2262,10 +2396,10 @@ document.addEventListener('click',e=>{
 
 async function gcalSalvarReuniao() {
   const titulo=document.getElementById('gcr-titulo')?.value.trim(), data=document.getElementById('gcr-data')?.value, hIni=document.getElementById('gcr-hora-ini')?.value, hFim=document.getElementById('gcr-hora-fim')?.value, local=document.getElementById('gcr-local-addr')?.value.trim()||'', desc=document.getElementById('gcr-desc')?.value.trim(), meet=(document.getElementById('gcr-meet')?.value??'1')==='1', tbEXP=document.getElementById('gcr-exp')?.checked??true;
-  if (!titulo) { toast('Digite o título da reunião.'); return; }
-  if (!data)   { toast('Selecione a data.'); return; }
-  if (!hIni||!hFim) { toast('Defina hora de início e fim.'); return; }
-  if (hFim<=hIni)   { toast('Hora de fim deve ser após o início.'); return; }
+  if (!titulo) { toast('Digite o título da reunião.', 'erro'); return; }
+  if (!data)   { toast('Selecione a data.', 'erro'); return; }
+  if (!hIni||!hFim) { toast('Defina hora de início e fim.', 'erro'); return; }
+  if (hFim<=hIni)   { toast('Hora de fim deve ser após o início.', 'erro'); return; }
   const btn=document.getElementById('gcr-salvar-btn'); if (btn) { btn.disabled=true; btn.textContent='Agendando...'; }
   try {
     const tz='America/Sao_Paulo', startDT=`${data}T${hIni}:00`, endDT=`${data}T${hFim}:00`;
@@ -2280,14 +2414,14 @@ async function gcalSalvarReuniao() {
     if (tbEXP) { await sb.from('calendar_events').insert({tipo:'reuniao',categoria:'reuniao',titulo,inicio:startDT,fim:endDT,dia_inteiro:false,descricao:[desc,local?'📍 '+local:'',meetLink?'🔗 '+meetLink:''].filter(Boolean).join('\n')||null,meet_link:meetLink||null,scope:'todos',nucleo_id:null,user_id:null,criado_por:G.usuario?.id}); await calCarregarEventos(); }
     await gcalCarregarEventos(); calRender(); gcalFecharReuniao();
     if (meetLink) gcalMostrarResultadoReuniao(titulo,data,hIni,hFim,meetLink,GCAL._reuniaoConvidados.length);
-    else toast('Reunião agendada! Convites enviados.');
-  } catch(e) { toast('Erro: '+(e.message||e)); }
+    else toast('Reunião agendada! Convites enviados.', 'sucesso');
+  } catch(e) { toast('Erro: '+(e.message||e), 'erro'); }
   finally { if (btn) { btn.disabled=false; btn.textContent='Agendar'; } }
 }
 
 function gcalMostrarResultadoReuniao(titulo,data,hIni,hFim,meetLink,nConvidados) {
   const dtFmt=new Date(data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
-  document.getElementById('gcal-reuniao-body').innerHTML=`<div style="text-align:center;padding:8px 0 16px"><div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">${_escN(titulo)}</div><div style="font-size:11px;color:#888;margin-bottom:16px">${dtFmt} · ${hIni}–${hFim} · ${nConvidados} convidado${nConvidados!==1?'s':''}</div><div style="font-size:10px;font-weight:700;color:#34a853;margin-bottom:8px;letter-spacing:.3px">LINK GOOGLE MEET GERADO</div><div class="gcr-link-box"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 8L15 12l4 4V8z" fill="#1a73e8"/><rect x="2" y="7" width="13" height="10" rx="2" fill="#1a73e8"/></svg><a class="gcr-link-url" href="${meetLink}" target="_blank">${meetLink}</a><button class="gcr-copy-btn" onclick="navigator.clipboard.writeText('${meetLink}').then(()=>toast('Link copiado!'))">Copiar</button></div><div style="font-size:10px;color:#aaa;margin-top:10px">Convites com o link foram enviados a todos os convidados.</div></div>`;
+  document.getElementById('gcal-reuniao-body').innerHTML=`<div style="text-align:center;padding:8px 0 16px"><div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">${_escN(titulo)}</div><div style="font-size:11px;color:#888;margin-bottom:16px">${dtFmt} · ${hIni}–${hFim} · ${nConvidados} convidado${nConvidados!==1?'s':''}</div><div style="font-size:10px;font-weight:700;color:#34a853;margin-bottom:8px;letter-spacing:.3px">LINK GOOGLE MEET GERADO</div><div class="gcr-link-box"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M19 8L15 12l4 4V8z" fill="#1a73e8"/><rect x="2" y="7" width="13" height="10" rx="2" fill="#1a73e8"/></svg><a class="gcr-link-url" href="${meetLink}" target="_blank">${meetLink}</a><button class="gcr-copy-btn" onclick="navigator.clipboard.writeText('${meetLink}').then(()=>toast('Link copiado!', 'sucesso'))">Copiar</button></div><div style="font-size:10px;color:#aaa;margin-top:10px">Convites com o link foram enviados a todos os convidados.</div></div>`;
   document.getElementById('gcal-reuniao-modal').querySelector('.cal-modal-ft').innerHTML=`<a href="${meetLink}" target="_blank" class="btn filled sm" style="text-decoration:none">Entrar no Meet</a><button class="btn sm" onclick="gcalFecharReuniao()">Fechar</button>`;
 }
 

@@ -47,6 +47,7 @@
   var selectedMembers   = [];
   var channelUnread     = {};
   var onlinePresence    = {};
+  var initialRouteHandled = false;
   var userStatus        = localStorage.getItem(STATUS_KEY) || 'online';
   var soundEnabled      = localStorage.getItem(SOUND_KEY) !== 'false';
   var chatColor         = localStorage.getItem(COLOR_KEY) || 'verde';
@@ -410,6 +411,48 @@
     });
 
     renderConvList();
+  }
+
+  function getChatRouteTarget() {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var threadId = params.get('thread');
+      if (threadId) return { channel: 'project:' + threadId, threadId: threadId };
+      var channel = params.get('channel');
+      if (channel) return { channel: channel, threadId: null };
+    } catch (e) {}
+    return null;
+  }
+
+  function syncChatRoute(channel) {
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete('channel');
+      url.searchParams.delete('thread');
+      if (isProjectChannel(channel)) url.searchParams.set('thread', projectThreadIdFromChannel(channel));
+      else if (channel) url.searchParams.set('channel', channel);
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {}
+  }
+
+  function routeDisplayLabel(channel) {
+    if (channel === 'general') return '# geral';
+    if (channel === 'socios') return '# sócios';
+    if (isProjectChannel(channel)) {
+      return (projectThreadMeta[channel] && projectThreadMeta[channel].label)
+        || ((projectThreads || []).find(function(t){ return 'project:' + t.id === channel; }) || {}).title
+        || 'Projeto';
+    }
+    var meta = getConversationMeta({ channel: channel }, user && user.auth_id);
+    return (meta && meta.label) || getChannelLabel(channel);
+  }
+
+  function applyInitialRouteChannel() {
+    if (initialRouteHandled) return;
+    var target = getChatRouteTarget();
+    if (!target || !target.channel) return;
+    initialRouteHandled = true;
+    openChannel(target.channel, routeDisplayLabel(target.channel));
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -948,6 +991,7 @@
 
     currentChannel = channel;
     currentLabel   = displayName || getChannelLabel(channel);
+    syncChatRoute(channel);
 
     var $hdrTitle = document.getElementById('fp-hdr-title');
     var $hdrAv    = document.getElementById('fp-hdr-av');
@@ -2203,6 +2247,7 @@
         teamMembers=all.filter(function(m){ return m.auth_id!==user.auth_id&&m.id!==user.id; });
         renderConvList();
         renderPresenceBar();
+        applyInitialRouteChannel();
       });
   }
 

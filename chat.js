@@ -175,9 +175,6 @@
     '.chat-presence-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}',
     '.chat-presence-dot.online{background:#2D9E6B}.chat-presence-dot.foco{background:#1D4FA0}.chat-presence-dot.ausente{background:#C4831A}',
     '.chat-presence-dot.offline{background:var(--cinza,#D0CFC9)}',
-    '.chat-rbtn{width:21px;height:21px;border-radius:50%;background:#fff;border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:transform .1s,background .1s;padding:0;line-height:1;flex-shrink:0}',
-    '.chat-rbtn:hover{transform:scale(1.15)}',
-    '.chat-rbtn.active{border-color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE)}',
     /* â”€â”€ Input â”€â”€ */
     '.chat-input-area{padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0}',
     '.chat-attach{width:33px;height:33px;background:var(--off,#F7F6F3);border:1px solid var(--cinza2,#ECEAE4);border-radius:9px;color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .15s,background .15s,transform .08s}',
@@ -798,10 +795,11 @@
 
       function buildProjectHomeRow(item) {
         var unread = channelUnread[item.channel] || item.unread || 0;
-        var chanJson = item.channel.replace(/'/g, "\\'");
+        var chanArg = attrJsStr(item.channel);
         var labelEsc = escHtml(item.label);
+        var labelArg = attrJsStr(item.label);
         var preview = escHtml(compactPreviewText(item.preview || 'Chat do projeto', 42, 'Chat do projeto'));
-        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + labelArg + '\')">' +
           softAvHtml(item.iniciais, item.cor, null, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + labelEsc + '</div>' +
@@ -856,16 +854,17 @@
         var meta     = getConversationMeta(dm, uid);
         var preview  = compactPreviewText(dm.content, 34, 'Nova mensagem');
         var dmU      = channelUnread[dm.channel] || 0;
-        var chanJson = dm.channel.replace(/'/g, "\\'");
+        var chanArg  = attrJsStr(dm.channel);
         var nameEsc  = escHtml(meta.label);
+        var nameArg  = attrJsStr(meta.label);
         var isPinned = pinnedChannels.has(dm.channel);
         var pinBtn   = '<button class="chat-conv-pin-btn' + (isPinned ? ' is-pinned' : '') + '" ' +
           'title="' + (isPinned ? 'Desafixar' : 'Fixar conversa') + '" ' +
-          'onclick="event.stopPropagation();expChat.togglePin(\'' + chanJson + '\')">' +
+          'onclick="event.stopPropagation();expChat.togglePin(\'' + chanArg + '\')">' +
           '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (isPinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
           '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
           '</button>';
-        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + nameEsc + '\')">' +
+        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + nameArg + '\')">' +
           softAvHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + nameEsc + '</div>' +
@@ -924,9 +923,10 @@
       if (convs.length) {
         html += '<div class="chat-search-group">Conversas</div>';
         html += convs.map(function (item) {
-          var chanJson = item.channel.replace(/'/g, "\\'");
+          var chanArg = attrJsStr(item.channel);
           var labelEsc = escHtml(item.label);
-          return '<div class="chat-search-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+          var labelArg = attrJsStr(item.label);
+          return '<div class="chat-search-item" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + labelArg + '\')">' +
             softAvHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
             '<div class="chat-search-body">' +
               '<div class="chat-search-title">' + labelEsc + '</div>' +
@@ -938,9 +938,10 @@
       if (msgs.length) {
         html += '<div class="chat-search-group">Mensagens</div>';
         html += msgs.map(function (item) {
-          var chanJson = item.channel.replace(/'/g, "\\'");
+          var chanArg = attrJsStr(item.channel);
           var labelEsc = escHtml(item.label);
-          return '<div class="chat-search-item" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+          var labelArg = attrJsStr(item.label);
+          return '<div class="chat-search-item" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + labelArg + '\')">' +
             softAvHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
             '<div class="chat-search-body">' +
               '<div class="chat-search-title">' + labelEsc + '</div>' +
@@ -1184,7 +1185,6 @@
 
         var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
         var isOwn    = msg.sender_id === uid;
-        console.log('[EXP Chat] msg recebida', { ch, uid, sender_id: msg.sender_id, isOwn, isActive, isOpen, currentView, currentChannel, soundEnabled, userStatus, visibility: document.visibilityState });
 
         if (isActive) {
           upsertMessage(msg);
@@ -1198,7 +1198,6 @@
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
           if (_shouldPlaySound(ch)) playNotificationSound();
-          _sendChatPush(msg);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, function (payload) {
@@ -1233,7 +1232,6 @@
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
           if (_shouldPlaySound(ch)) playNotificationSound();
-          _sendChatPush(msg);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_thread_messages' }, function (payload) {
@@ -1282,7 +1280,20 @@
   var POLL_INTERVAL_MS = 30000;
   var _lastPollTs = new Date().toISOString();
   var _seenMsgIds = {};
-  function _markSeen(id) { if (id != null) _seenMsgIds[String(id)] = true; }
+  var _seenMsgOrder = [];
+  var SEEN_MSG_CAP = 5000;
+  function _markSeen(id) {
+    if (id == null) return;
+    var key = String(id);
+    if (_seenMsgIds[key]) return;
+    _seenMsgIds[key] = true;
+    _seenMsgOrder.push(key);
+    /* Evita crescimento ilimitado numa sessão longa: descarta os ids mais antigos. */
+    if (_seenMsgOrder.length > SEEN_MSG_CAP) {
+      var drop = _seenMsgOrder.splice(0, _seenMsgOrder.length - SEEN_MSG_CAP);
+      drop.forEach(function (k) { delete _seenMsgIds[k]; });
+    }
+  }
   function _wasSeen(id)  { return id != null && !!_seenMsgIds[String(id)]; }
 
   function _processMissedMessage(msg) {
@@ -1291,7 +1302,6 @@
     var isSocios = ch === 'socios' && isSocioLikeRole(user.role);
     if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
     if (msg.sender_id === uid) return;
-    console.log('[EXP Chat] msg recuperada via polling', { ch: ch, id: msg.id });
 
     var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
     if (isActive) {
@@ -1306,7 +1316,6 @@
     if (isOpen && currentView === 'channel') addConversationAlert(msg);
     if (isOpen && currentView === 'home') renderHome();
     if (_shouldPlaySound(ch)) playNotificationSound();
-    _sendChatPush(msg);
   }
 
   function _pollMissed() {
@@ -1338,7 +1347,10 @@
     try {
       /* Timer num Web Worker: não sofre throttling de aba em background */
       var blob = new Blob(['setInterval(function(){postMessage(1)},' + POLL_INTERVAL_MS + ')'], { type: 'text/javascript' });
-      var w = new Worker(URL.createObjectURL(blob));
+      var blobUrl = URL.createObjectURL(blob);
+      var w = new Worker(blobUrl);
+      /* O worker já mantém sua própria referência ao script após criado. */
+      URL.revokeObjectURL(blobUrl);
       w.onmessage = _pollMissed;
     } catch (e) {
       setInterval(_pollMissed, POLL_INTERVAL_MS);
@@ -1407,15 +1419,18 @@
       if (isOpen && currentView === 'home') renderHome();
     });
 
+    /* Canais fixos contam não lidas além da janela de 72h, então são apurados
+       à parte. O fetch geral (DMs/grupos) preserva esses valores em vez de
+       recalculá-los — assim as duas consultas não disputam channelUnread. */
+    var fixedChannels = ['general'];
+    if (isSocioLikeRole(user.role)) fixedChannels.push('socios');
+    var isFixedChannel = function (ch) { return fixedChannels.indexOf(ch) !== -1; };
+
     sb.from('chat_read_status').select('channel,last_read_at').eq('user_id', uid)
       .then(function (r) {
         if (r.error) return;
         var readMap = {};
         (r.data || []).forEach(function (row) { readMap[row.channel] = row.last_read_at; });
-
-        /* Contar nÃ£o lidas por canal fixo */
-        var fixedChannels = ['general'];
-        if (isSocioLikeRole(user.role)) fixedChannels.push('socios');
 
         fixedChannels.forEach(function (ch) {
           var lastRead = readMap[ch] || since;
@@ -1425,8 +1440,9 @@
             .gt('created_at', lastRead)
             .neq('sender_id', uid)
             .then(function (r2) {
-              if (r2.count) channelUnread[ch] = r2.count;
+              channelUnread[ch] = r2.count || 0;
               updateBadge();
+              if (isOpen && currentView === 'home') renderHome();
             });
         });
 
@@ -1436,19 +1452,21 @@
           .order('created_at', { ascending: false })
           .then(function (r2) {
             if (r2.error) return;
-            var preservedProjectUnread = {};
+            /* Preserva canais fixos (apurados acima) e de projeto (apurados em
+               fetchProjectUnreadMap) — o fetch geral cuida só de DMs/grupos. */
+            var preserved = {};
             Object.keys(channelUnread).forEach(function (key) {
-              if (isProjectChannel(key)) preservedProjectUnread[key] = channelUnread[key];
+              if (isProjectChannel(key) || isFixedChannel(key)) preserved[key] = channelUnread[key];
             });
             var nextUnread = {};
             (r2.data || []).forEach(function (msg) {
-              if (msg.sender_id === uid) return;
+              if (msg.sender_id === uid || isFixedChannel(msg.channel)) return;
               var lastRead = readMap[msg.channel] || since;
               if (msg.created_at > lastRead) nextUnread[msg.channel] = (nextUnread[msg.channel] || 0) + 1;
             });
             channelUnread = nextUnread;
-            Object.keys(preservedProjectUnread).forEach(function (key) {
-              channelUnread[key] = preservedProjectUnread[key];
+            Object.keys(preserved).forEach(function (key) {
+              channelUnread[key] = preserved[key];
             });
             updateBadge();
             if (isOpen && currentView === 'home') renderHome();
@@ -1719,9 +1737,7 @@
           expires_at: addDaysIso(7)
         });
       }
-      if (uploaded && storagePath) {
-        try { await sb.storage.from(TEMP_MEDIA_BUCKET).remove([storagePath]); } catch (e) {}
-      }
+      /* O upload (quando chegou a ocorrer) já é removido dentro de persistPreparedMedia. */
       console.warn('[EXP Chat] Erro ao anexar print:', error && error.message ? error.message : error);
       setComposerStatus('Falha ao enviar print: ' + failMsg, 'warn', true);
       renderMessages();
@@ -1895,7 +1911,7 @@
 
       var gap     = prevTime ? (dt - prevTime) : Infinity;
       var grouped = msg.sender_id === prevSender && gap < 5 * 60 * 1000;
-      var iniciais= msg.sender_iniciais || msg.sender_name.substring(0, 2).toUpperCase();
+      var iniciais= msg.sender_iniciais || (msg.sender_name || '').substring(0, 2).toUpperCase();
       var cor     = msg.sender_cor || '#1D6A4A';
       var fn      = firstName(msg.sender_name);
       var msgMember = allMembers.find(function (m) { return m.auth_id === msg.sender_id; });
@@ -1978,7 +1994,9 @@
      LINKIFY â€” URLs viram hiperlinks
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function linkify(html) {
-    return html.replace(/(https?:\/\/[^\s&"<>]+)/g, function (url) {
+    /* O texto já passou por escHtml, então & virou &amp;. Aceitamos &amp; dentro
+       da URL para não truncar links com query string (?a=1&b=2). */
+    return html.replace(/(https?:\/\/(?:&amp;|[^\s&"<>])+)/g, function (url) {
       return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="chat-link">' + url + '</a>';
     });
   }
@@ -1986,59 +2004,8 @@
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      PUSH NOTIFICATION â€” DM direto ou menÃ§Ã£o
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-  function _shouldPush(msg) {
-    if (userStatus === 'foco') return false;
-    var ch  = msg.channel;
-    var uid = user.auth_id;
-    if ((ch.startsWith('dm:') || ch.startsWith('group:')) && ch.includes(uid)) return true;
-    if (isProjectChannel(ch)) return true;
-    if (ch === 'general') return true;
-    if (ch === 'socios' && isSocioLikeRole(user.role)) return true;
-    return false;
-  }
-
-  function _sendChatPush(msg) {
-    /* Push de chat agora nasce no backend (chat-fanout).
-       O cliente fica responsavel apenas por UI local, som e unread. */
-    return;
-    if (!_shouldPush(msg)) return;
-    var appUserId = user.app_user_id || user.id;
-    if (!appUserId) return;
-    var isDM      = msg.channel.startsWith('dm:') || msg.channel.startsWith('group:');
-    var isProject = isProjectChannel(msg.channel);
-    var isGeneral = msg.channel === 'general';
-    var isSocios  = msg.channel === 'socios';
-    var sender    = (msg.sender_name || '').split(' ')[0];
-    var title     = isProject ? sender + ' atualizou um projeto'
-      : isDM      ? sender + ' enviou uma mensagem'
-      : isGeneral ? sender + ' no #geral'
-      : isSocios  ? sender + ' no #sócios'
-      : sender + ' mencionou você';
-    var body     = (msg.content || '').length > 80
-      ? msg.content.substring(0, 80) + '...'
-      : msg.content;
-    var tag      = 'exp-chat-' + msg.channel;
-    var icon     = '/favicon.png';
-
-    /* Notificação direta quando a página está visível */
-    if (document.visibilityState === 'visible' && Notification.permission === 'granted') {
-      try { new Notification(title, { body: body, icon: icon, tag: tag, silent: true }); } catch (e) {}
-    }
-
-    /* Push via SW para quando a página está em background */
-    console.log('[EXP Chat Push] enviando para usuario_id:', appUserId, '| user.id:', user.id, '| user.app_user_id:', user.app_user_id);
-    sb.functions.invoke('send-push', {
-      body: {
-        usuario_id: appUserId,
-        title:      title,
-        body:       body,
-        url:        window.location.href,
-        tag:        tag,
-      }
-    }).then(function (r) {
-      console.log('[EXP Chat Push] resposta edge function:', r.data, r.error || '');
-    }).catch(function (e) { console.warn('[EXP Chat Push] erro:', e); });
-  }
+  /* Push de chat nasce no backend (edge function chat-fanout). O cliente cuida
+     apenas de UI local, som e contagem de não lidas — não dispara push. */
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      SOM DE NOTIFICAÃ‡ÃƒO (Web Audio API â€” sem arquivo externo)
@@ -2224,9 +2191,10 @@
       return;
     }
     wrap.innerHTML = recentConversationAlerts.map(function (item) {
-      var chanJson = item.channel.replace(/'/g, "\\'");
+      var chanArg = attrJsStr(item.channel);
       var labelEsc = escHtml(item.label);
-      return '<div class="chat-alert-card" onclick="expChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')">' +
+      var labelArg = attrJsStr(item.label);
+      return '<div class="chat-alert-card" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + labelArg + '\')">' +
         '<div class="chat-alert-top">' +
           softAvHtml(item.iniciais, item.cor, null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
           '<div class="chat-conv-info"><div class="chat-alert-title">' + labelEsc + '</div></div>' +
@@ -3155,7 +3123,7 @@
     if (!isOwn) {
       return {
         label: firstName(conv.sender_name),
-        iniciais: conv.sender_iniciais || conv.sender_name.substring(0, 2).toUpperCase(),
+        iniciais: conv.sender_iniciais || (conv.sender_name || '').substring(0, 2).toUpperCase(),
         cor: conv.sender_cor || '#1D6A4A',
         avatarUrl: senderMember ? senderMember.avatar_url : null,
         preview: conv.content
@@ -3202,8 +3170,16 @@
   }
 
   function escHtml(s) {
-    if (!s) return '';
+    if (s == null || s === '') return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  /* Escapa um valor para uso como argumento string (entre aspas simples) dentro de
+     um atributo onclick="..." em HTML. Faz o escape JS (\\ e ') e depois o escape de
+     atributo HTML, nessa ordem — o navegador decodifica as entidades antes do JS,
+     então labels com apóstrofo (ex.: "D'Angelo") deixam de quebrar o handler. */
+  function attrJsStr(s) {
+    return escHtml(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
   }
 
   function previewNoiseScore(text) {
