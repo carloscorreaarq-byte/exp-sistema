@@ -1472,7 +1472,30 @@ function calDiasUteisAno(ano) {
 }
 
 function _calFeriados() {
-  return new Set(CAL.eventos.filter(e => (e.tipo==='feriado'||e.tipo==='recesso') && e.scope==='todos').map(e => e.data_inicio?.slice(0,10)));
+  const dias = new Set();
+  CAL.eventos
+    .filter(e => (e.tipo==='feriado'||e.tipo==='recesso') && e.scope==='todos')
+    .forEach(e => calIterarDatasEvento(e, dia => dias.add(dia)));
+  return dias;
+}
+
+function calIterarDatasEvento(ev, cb) {
+  const ini = ev?.data_inicio?.slice(0,10);
+  const fim = (ev?.data_fim || ev?.data_inicio || '').slice(0,10);
+  if (!ini || !fim) return;
+  const dIni = new Date(ini + 'T12:00:00');
+  const dFim = new Date(fim + 'T12:00:00');
+  if (isNaN(dIni) || isNaN(dFim) || dFim < dIni) return;
+  for (let d = new Date(dIni); d <= dFim; d.setDate(d.getDate() + 1)) {
+    cb(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+  }
+}
+
+function calEventoOcorreNoDia(ev, key) {
+  const ini = ev?.data_inicio?.slice(0,10);
+  const fim = (ev?.data_fim || ev?.data_inicio || '').slice(0,10);
+  if (!ini || !fim || !key) return false;
+  return key >= ini && key <= fim;
 }
 
 function calDiasRestantesMes(ano, mes) {
@@ -1605,7 +1628,11 @@ function calRenderLista() {
   const mesIni = new Date(CAL.ano, CAL.mes, 1);
   const ini = mesIni > hoje ? mesIni : hoje;
   const fim = new Date(CAL.ano, CAL.mes+1, 0);
-  const evts = filtrado.filter(e => { const d = new Date(e.data_inicio+'T12:00:00'); return d >= ini && d <= fim; }).sort((a,b) => a.data_inicio.localeCompare(b.data_inicio));
+  const evts = filtrado.filter(e => {
+    const dIni = new Date((e.data_inicio || '') + 'T12:00:00');
+    const dFim = new Date((e.data_fim || e.data_inicio || '') + 'T12:00:00');
+    return !isNaN(dIni) && !isNaN(dFim) && dFim >= ini && dIni <= fim;
+  }).sort((a,b) => (a.data_inicio || '').localeCompare(b.data_inicio || ''));
   const el = document.getElementById('cal-content');
   if (!el) return;
   el.innerHTML = evts.length === 0 ? '<p class="cal-empty">Nenhum evento a partir de hoje neste período.</p>' :
@@ -1627,7 +1654,11 @@ function calRenderMes() {
   const dow0 = primDia.getDay();
   const inicioGrid = new Date(primDia); inicioGrid.setDate(1-(dow0===0?6:dow0-1));
   const evByDate = {};
-  filtrado.forEach(ev => { const d = ev.data_inicio.slice(0,10); (evByDate[d]=evByDate[d]||[]).push(ev); });
+  filtrado.forEach(ev => {
+    calIterarDatasEvento(ev, d => {
+      (evByDate[d] = evByDate[d] || []).push(ev);
+    });
+  });
   const dias = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
   let html = `<div class="cal-mes"><div class="cal-mes-head">${dias.map(d=>`<div class="cal-mes-dow">${d}</div>`).join('')}</div><div class="cal-mes-body">`;
   const cur = new Date(inicioGrid);
@@ -1658,7 +1689,11 @@ function calRenderSemana() {
   const lb = document.getElementById('cal-nav-label');
   if (lb) lb.textContent = dias[0].toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+' – '+dias[6].toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
   const evByDate = {};
-  filtrado.forEach(ev=>{const d=ev.data_inicio.slice(0,10);(evByDate[d]=evByDate[d]||[]).push(ev);});
+  filtrado.forEach(ev => {
+    calIterarDatasEvento(ev, d => {
+      (evByDate[d] = evByDate[d] || []).push(ev);
+    });
+  });
   const nomes = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
   let html = `<div class="cal-semana">`;
   dias.forEach((d,i)=>{
@@ -1679,7 +1714,7 @@ function calRenderDisp() {
   base.setDate(base.getDate()-dow+CAL.semanaOffset*7);
   const dias    = Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(base.getDate()+i);return d;});
   const nomes   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  const feriados= new Set(CAL.eventos.filter(e=>(e.tipo==='feriado'||e.tipo==='recesso')&&e.scope==='todos').map(e=>e.data_inicio?.slice(0,10)));
+  const feriados= _calFeriados();
   const usuarios= CAL.filtroPNucleo?(G.todosUsuarios||[]).filter(u=>u.nucleo===CAL.filtroPNucleo):(G.todosUsuarios||[]);
 
   // cabeçalho
@@ -1700,9 +1735,9 @@ function calRenderDisp() {
       const key   = d.toISOString().slice(0,10);
       const fds   = d.getDay()===0||d.getDay()===6;
       const ehFer = feriados.has(key);
-      const comp    = merged.some(ev=>ev.data_inicio.slice(0,10)===key&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
+      const comp    = merged.some(ev=>calEventoOcorreNoDia(ev,key)&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
       // Ausências do usuário neste dia
-      const ausDs   = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem'||ev.tipo==='ausencia_aniv')&&ev.data_inicio.slice(0,10)===key&&(ev.scope==='todos'||ev.usuario_id===u.id));
+      const ausDs   = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem'||ev.tipo==='ausencia_aniv')&&calEventoOcorreNoDia(ev,key)&&(ev.scope==='todos'||ev.usuario_id===u.id));
       const baseCls = ehFer?'feriado':comp?'compensado':'';
       let manhaCls  = baseCls, tardeCls = baseCls;
       // Colore barras individualmente conforme período da ausência
