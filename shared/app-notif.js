@@ -17,7 +17,7 @@
 //   AppNotif.setComputedSection('comercial', { label, items })
 //
 // Após mutações chamar:
-//   AppNotif.refreshTarefas()    — gestao.html ao concluir tarefa
+//   ExpNav.refreshTarefas()      — gestao.html ao concluir tarefa (tarefas vivem na nav)
 //   AppNotif.refreshCrmAlerts()  — crm.html ao dispensar alerta
 //
 // ══════════════════════════════════════════════════════════════
