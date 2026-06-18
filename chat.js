@@ -15,11 +15,21 @@
   var STATUS_KEY  = 'exp_chat_status';
   var SOUND_KEY   = 'exp_chat_sound';
   var PINNED_KEY  = 'exp_chat_pinned';
+  var COLOR_KEY   = 'exp_chat_color';   // tema de cor — mesma chave do chat full
+  var FLAGS_KEY   = 'exp_chat_flags';   // mensagens sinalizadas — mesma chave do chat full
 
   var STATUS_COLORS = {
     online:  '#1D6A4A',
     foco:    '#1D4FA0',
     ausente: '#C4831A'
+  };
+  /* Temas de cor (acento) — espelham o chat full: verde, azul, ouro, terracota.
+     Aplicados sobrescrevendo as vars de marca (--verde*) no root do widget. */
+  var CHAT_COLOR_THEMES = {
+    verde:     { v: '#1D6A4A', l: '#2D9E6B', bg: '#EAF5EE' },
+    azul:      { v: '#1D4FA0', l: '#4A72B5', bg: '#EAF0FA' },
+    ouro:      { v: '#C4831A', l: '#D9A23E', bg: '#FBF3E3' },
+    terracota: { v: '#B84C3A', l: '#D06B58', bg: '#FBEEEB' }
   };
   var BRAND_AVATAR_COLORS = ['#1D6A4A', '#1D4FA0', '#C4831A', '#B84C3A', '#6D7D8A', '#4A72B5', '#7A9E7E'];
   var TEMP_MEDIA_BUCKET = 'gestao-anexos-temp';
@@ -288,7 +298,44 @@
     '[data-theme="dark"] .chat-media-viewer-body{background:#252523}',
     '[data-theme="dark"] .chat-media-viewer-nav{background:rgba(42,41,39,.94);border-color:#3A3937;color:#F0EDE6}',
     '[data-theme="dark"] .chat-media-viewer-nav:hover{border-color:#B7E2C8;color:#B7E2C8}',
-    '[data-theme="dark"] .chat-media-viewer-empty{color:#B4AEA4}'
+    '[data-theme="dark"] .chat-media-viewer-empty{color:#B4AEA4}',
+    /* â”€â”€ Popover de personalização (tema de cor) â”€â”€ */
+    '.chat-color-pop{position:absolute;top:42px;right:10px;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.16);padding:10px 11px;z-index:10006;display:none;flex-direction:column;gap:8px;min-width:150px}',
+    '.chat-color-pop-hdr{font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--cinza,#D0CFC9)}',
+    '.chat-color-dots{display:flex;gap:9px}',
+    '.chat-color-dot{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;display:flex;align-items:center;justify-content:center;transition:transform .1s;padding:0}',
+    '.chat-color-dot:hover{transform:scale(1.12)}',
+    '.chat-color-dot.active{border-color:var(--grafite,#111110)}',
+    '.chat-color-dot.active::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}',
+    '[data-theme="dark"] .chat-color-pop{background:#252523;border-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-color-pop-hdr{color:#8C8A85}',
+    '[data-theme="dark"] .chat-color-dot.active{border-color:#F0EDE6}',
+    /* â”€â”€ Header toggle ativo (filtro sinalizadas) â”€â”€ */
+    '.chat-icon-btn.active{background:var(--verde,#1D6A4A);color:#fff}',
+    '.chat-icon-btn.active:hover{background:var(--verde-l,#2D9E6B)}',
+    '[data-theme="dark"] .chat-icon-btn.active{background:var(--verde,#1D6A4A);color:#fff}',
+    /* â”€â”€ Botão de sinalizar mensagem (junto às reações) â”€â”€ */
+    '.chat-rbtn.flag.active{color:var(--ouro,#C4831A);border-color:var(--ouro,#C4831A);background:#FBF3E3}',
+    '[data-theme="dark"] .chat-rbtn.flag.active{background:rgba(196,131,26,.18)}',
+    /* Indicador permanente na mensagem sinalizada */
+    '.chat-msg.flagged .chat-msg-bubble-wrap::before{content:"";position:absolute;top:2px;left:-12px;width:3px;height:calc(100% - 4px);border-radius:2px;background:var(--ouro,#C4831A)}',
+    '.chat-msg.flagged.own .chat-msg-bubble-wrap::before{left:auto;right:-12px}',
+    /* â”€â”€ Busca dentro da conversa â”€â”€ */
+    '.chat-insearch{display:none;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--cinza2,#ECEAE4);background:#fff;flex-shrink:0}',
+    '.chat-insearch.open{display:flex}',
+    '.chat-insearch-input{flex:1;border:1px solid var(--cinza2,#ECEAE4);border-radius:8px;padding:6px 9px;font-family:"Raleway",sans-serif;font-size:12px;background:var(--off,#F7F6F3);color:var(--preto,#111110);outline:none}',
+    '.chat-insearch-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
+    '.chat-insearch-count{font-family:"DM Mono",monospace;font-size:10px;color:var(--cinza,#D0CFC9);min-width:34px;text-align:center}',
+    '.chat-insearch-nav{width:24px;height:24px;border-radius:6px;border:none;background:rgba(0,0,0,.06);color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .12s}',
+    '.chat-insearch-nav:hover{background:rgba(0,0,0,.12)}',
+    '.chat-insearch-nav:disabled{opacity:.35;cursor:default}',
+    '.chat-msg.in-hit .chat-msg-text{box-shadow:0 0 0 1.5px var(--ouro,#C4831A) inset}',
+    '.chat-msg.in-current .chat-msg-text{box-shadow:0 0 0 2px var(--verde,#1D6A4A) inset;background:var(--verde-bg,#EAF5EE)!important}',
+    '[data-theme="dark"] .chat-insearch{background:#1C1C1B;border-bottom-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-insearch-input{background:#252523;border-color:#2E2D2B;color:#F0EDE6}',
+    '[data-theme="dark"] .chat-insearch-input:focus{background:#2A2927}',
+    '[data-theme="dark"] .chat-insearch-nav{background:rgba(255,255,255,.08);color:#F0EDE6}',
+    '[data-theme="dark"] .chat-insearch-nav:hover{background:rgba(255,255,255,.14)}'
   ].join('\n');
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -330,6 +377,19 @@
   var pinnedChannels = (function () {
     try { return new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')); } catch (e) { return new Set(); }
   }());
+  /* â”€â”€ Personalização visual â”€â”€ */
+  var chatColor    = localStorage.getItem(COLOR_KEY) || 'verde';
+  var colorPopOpen = false;
+  /* â”€â”€ Mensagens sinalizadas (salvas) â”€â”€ */
+  var flaggedMessages = (function () {
+    try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || '[]'); } catch (e) { return []; }
+  }());
+  var showOnlyFlagged = false;
+  /* â”€â”€ Busca dentro da conversa â”€â”€ */
+  var inSearchOpen    = false;
+  var inSearchQuery   = '';
+  var inSearchResults = [];   // ids de mensagens que casam
+  var inSearchCurrent = 0;
   var _realtimeDropped = false;
 
   /* â”€â”€ DOM refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -378,6 +438,7 @@
     injectCSS();
     injectHTML();
     cacheRefs();
+    applyChatColor(chatColor, false);
     applyStatus(userStatus, false);
     setupPresence();
     fetchAllUnread();
@@ -394,6 +455,16 @@
       if (document.visibilityState !== 'visible') return;
       var state = msgCh && msgCh.state;
       if (state !== 'joined' && state !== 'joining') subscribeIncoming();
+    });
+
+    // Fechar popover de cor ao clicar fora
+    document.addEventListener('click', function (e) {
+      if (!colorPopOpen) return;
+      var pop = document.getElementById('exp-chat-color-pop');
+      var btn = document.getElementById('exp-chat-color-btn');
+      if (pop && pop.contains(e.target)) return;
+      if (btn && btn.contains(e.target)) return;
+      closeColorPop();
     });
 
     // Fechar popover ao clicar fora
@@ -506,10 +577,20 @@
           '<div class="chat-header">' +
             '<div class="chat-header-info"><div class="chat-header-title" onclick="window.location.href=\'chat-fullpage.html\'" style="cursor:pointer;user-select:none" title="Abrir chat em tela cheia">EXP.chat ↗</div></div>' +
             '<div class="chat-header-acts">' +
+              '<button class="chat-icon-btn" id="exp-chat-color-btn" onclick="expChat.toggleColorPop(event)" title="Personalizar cor">' + icoPalette() + '</button>' +
               '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSound()" title="Som de notificaÃ§Ã£o">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.openSearch()" title="Pesquisar">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="chat-color-pop" id="exp-chat-color-pop">' +
+            '<div class="chat-color-pop-hdr">Tema de cor</div>' +
+            '<div class="chat-color-dots">' +
+              colorDot('verde',     '#1D6A4A') +
+              colorDot('azul',      '#1D4FA0') +
+              colorDot('ouro',      '#C4831A') +
+              colorDot('terracota', '#B84C3A') +
             '</div>' +
           '</div>' +
           '<div class="chat-conv-list" id="exp-chat-convlist"><div class="chat-loading">' + ldots() + '</div></div>' +
@@ -532,7 +613,18 @@
           '<div class="chat-header">' +
             '<button class="chat-back-btn" onclick="expChat.goHome()">' + icoBack() + '</button>' +
             '<div class="chat-header-info"><div class="chat-header-title" id="exp-chat-chan-title"># geral</div><div class="chat-header-sub" id="exp-chat-chan-sub" style="display:none"></div></div>' +
-            '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
+            '<div class="chat-header-acts">' +
+              '<button class="chat-icon-btn" id="exp-chat-insearch-btn" onclick="expChat.openInSearch()" title="Buscar na conversa">' + icoSearch() + '</button>' +
+              '<button class="chat-icon-btn" id="exp-chat-flagfilter-btn" onclick="expChat.toggleFlaggedFilter()" title="Mostrar só sinalizadas">' + icoFlag() + '</button>' +
+              '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="chat-insearch" id="exp-chat-insearch">' +
+            '<input class="chat-insearch-input" id="exp-chat-insearch-input" type="text" placeholder="Buscar nesta conversa" oninput="expChat.inSearchInput(this.value)" onkeydown="expChat.inSearchKey(event)">' +
+            '<span class="chat-insearch-count" id="exp-chat-insearch-count">0/0</span>' +
+            '<button class="chat-insearch-nav" id="exp-chat-insearch-prev" onclick="expChat.inSearchPrev()" title="Anterior">' + icoChevUp() + '</button>' +
+            '<button class="chat-insearch-nav" id="exp-chat-insearch-next" onclick="expChat.inSearchNext()" title="Próxima">' + icoChevDown() + '</button>' +
+            '<button class="chat-insearch-nav" onclick="expChat.closeInSearch()" title="Fechar">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-messages" id="exp-chat-msgs"><div class="chat-loading">' + ldots() + '</div></div>' +
           '<div class="chat-input-area">' +
@@ -666,6 +758,14 @@
   function icoLike()    { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>'; }
   function icoHeart()   { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'; }
   function icoEmpty()   { return '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'; }
+  function icoPalette() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12.5" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2C6.5 2 2 6 2 11c0 4.4 3.6 8 8 8 .9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H14c3.3 0 6-2.7 6-6 0-3.9-3.6-6.5-8-6.5z"/></svg>'; }
+  function icoFlag()    { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>'; }
+  function icoChevUp()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'; }
+  function icoChevDown(){ return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'; }
+  function colorDot(key, hex) {
+    return '<button class="chat-color-dot' + (chatColor === key ? ' active' : '') + '" data-color="' + key + '" ' +
+      'style="background:' + hex + '" onclick="expChat.setChatColor(\'' + key + '\')" title="' + key + '"></button>';
+  }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      STATUS
@@ -751,6 +851,7 @@
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function showView(view) {
     currentView = view;
+    if (view !== 'home') closeColorPop();
     var map = { home: $viewHome, channel: $viewChan, members: $viewMembers, search: $viewSearch };
     Object.keys(map).forEach(function (k) {
       if (map[k]) map[k].style.display = k === view ? 'flex' : 'none';
@@ -970,6 +1071,11 @@
     currentLabel   = displayName || getChannelLabel(channel);
     if ($chanTitle) $chanTitle.textContent = currentLabel;
     messages = [];
+    /* Reseta busca interna e filtro de sinalizadas ao trocar de conversa */
+    closeInSearch();
+    showOnlyFlagged = false;
+    var flagBtn = document.getElementById('exp-chat-flagfilter-btn');
+    if (flagBtn) flagBtn.classList.remove('active');
     showView('channel');
     updateChannelStatus();
     loadMessages();
@@ -1894,12 +2000,21 @@
       $msgs.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">' + icoEmpty() + '</div>Nenhuma mensagem ainda.</div>';
       return;
     }
+    /* Filtro "sÃ³ sinalizadas" */
+    var toRender = showOnlyFlagged
+      ? messages.filter(function (m) { return isMessageFlagged(m.id); })
+      : messages;
+    if (!toRender.length) {
+      $msgs.innerHTML = '<div class="chat-empty"><div class="chat-empty-icon">' + icoFlag() + '</div>Nenhuma mensagem sinalizada nesta conversa.</div>';
+      return;
+    }
     var uid = user.auth_id;
     var html = '';
     var prevSender = null, prevTime = null, lastDate = null;
 
-    messages.forEach(function (msg) {
+    toRender.forEach(function (msg) {
       var isOwn   = msg.sender_id === uid;
+      var flagged = isMessageFlagged(msg.id);
       var dt      = new Date(msg.created_at);
       var dateStr = dt.toDateString();
 
@@ -1933,7 +2048,7 @@
       var loveN   = loveArr.length;
       var hasRxn  = likeN > 0 || loveN > 0;
 
-      html += '<div class="chat-msg' + (isOwn ? ' own' : '') + '" data-id="' + msg.id + '">';
+      html += '<div class="chat-msg' + (isOwn ? ' own' : '') + (flagged ? ' flagged' : '') + '" data-id="' + msg.id + '">';
 
       if (!grouped) {
         html += '<div class="chat-msg-meta">' +
@@ -1979,6 +2094,7 @@
         '<div class="chat-msg-react-btns">' +
           '<button class="chat-rbtn like' + (liked ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'like\')" title="Curtir">' + icoLike() + '</button>' +
           '<button class="chat-rbtn heart' + (loved ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'love\')" title="Amei">' + icoHeart() + '</button>' +
+          '<button class="chat-rbtn flag' + (flagged ? ' active' : '') + '" onclick="expChat.flagMessage(\'' + msg.id + '\')" title="' + (flagged ? 'Remover marcação' : 'Sinalizar / salvar') + '">' + icoFlag() + '</button>' +
         '</div>' +
       '</div>';
 
@@ -1988,6 +2104,7 @@
     });
 
     $msgs.innerHTML = html;
+    if (inSearchOpen) highlightInSearch();
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -3222,6 +3339,146 @@
   function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 80) + 'px'; }
   function handleKey(e)   { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
 
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     PERSONALIZAÃ‡ÃƒO VISUAL â€” tema de cor (acento)
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  function applyChatColor(color, persist) {
+    if (!CHAT_COLOR_THEMES[color]) color = 'verde';
+    chatColor = color;
+    if (persist !== false) { try { localStorage.setItem(COLOR_KEY, color); } catch (e) {} }
+    var wrap = document.getElementById('exp-chat-widget');
+    if (wrap) {
+      var t = CHAT_COLOR_THEMES[color];
+      wrap.style.setProperty('--verde',    t.v);
+      wrap.style.setProperty('--verde-l',  t.l);
+      wrap.style.setProperty('--verde-bg', t.bg);
+    }
+    document.querySelectorAll('.chat-color-dot').forEach(function (d) {
+      d.classList.toggle('active', d.getAttribute('data-color') === color);
+    });
+  }
+  function setChatColor(color) { applyChatColor(color, true); }
+  function toggleColorPop(event) {
+    if (event) event.stopPropagation();
+    var pop = document.getElementById('exp-chat-color-pop');
+    if (!pop) return;
+    colorPopOpen = !colorPopOpen;
+    pop.style.display = colorPopOpen ? 'flex' : 'none';
+  }
+  function closeColorPop() {
+    colorPopOpen = false;
+    var pop = document.getElementById('exp-chat-color-pop');
+    if (pop) pop.style.display = 'none';
+  }
+
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     MENSAGENS SINALIZADAS (salvas) â€” mesma chave localStorage do chat full
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(flaggedMessages)); } catch (e) {} }
+  function isMessageFlagged(id) { return flaggedMessages.indexOf(String(id)) !== -1; }
+  function flagMessage(msgId) {
+    var id = String(msgId);
+    var i = flaggedMessages.indexOf(id);
+    if (i === -1) flaggedMessages.push(id); else flaggedMessages.splice(i, 1);
+    saveFlags();
+    renderMessages();
+  }
+  function toggleFlaggedFilter() {
+    showOnlyFlagged = !showOnlyFlagged;
+    var btn = document.getElementById('exp-chat-flagfilter-btn');
+    if (btn) btn.classList.toggle('active', showOnlyFlagged);
+    renderMessages();
+  }
+
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     BUSCA DENTRO DA CONVERSA
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  function openInSearch() {
+    var bar = document.getElementById('exp-chat-insearch');
+    if (!bar) return;
+    inSearchOpen = true;
+    bar.classList.add('open');
+    var inp = document.getElementById('exp-chat-insearch-input');
+    if (inp) { inp.value = inSearchQuery; setTimeout(function () { inp.focus(); }, 50); }
+    runInSearch();
+  }
+  function closeInSearch() {
+    inSearchOpen = false;
+    inSearchQuery = '';
+    inSearchResults = [];
+    inSearchCurrent = 0;
+    var bar = document.getElementById('exp-chat-insearch');
+    if (bar) bar.classList.remove('open');
+    var inp = document.getElementById('exp-chat-insearch-input');
+    if (inp) inp.value = '';
+    clearInSearchHighlight();
+    updateInSearchCount();
+  }
+  function inSearchInput(value) {
+    inSearchQuery = String(value || '');
+    inSearchCurrent = 0;
+    runInSearch();
+  }
+  function inSearchKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? inSearchPrev() : inSearchNext(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeInSearch(); }
+  }
+  function inSearchNext() {
+    if (!inSearchResults.length) return;
+    inSearchCurrent = (inSearchCurrent + 1) % inSearchResults.length;
+    highlightInSearch();
+    updateInSearchCount();
+  }
+  function inSearchPrev() {
+    if (!inSearchResults.length) return;
+    inSearchCurrent = (inSearchCurrent - 1 + inSearchResults.length) % inSearchResults.length;
+    highlightInSearch();
+    updateInSearchCount();
+  }
+  function runInSearch() {
+    inSearchResults = [];
+    var q = (inSearchQuery || '').trim().toLowerCase();
+    if (q) {
+      messages.forEach(function (m) {
+        var c = String(m.content || '');
+        if (isImageOnlySentinel(c)) return;
+        if (c.toLowerCase().indexOf(q) !== -1) inSearchResults.push(String(m.id));
+      });
+    }
+    if (inSearchCurrent >= inSearchResults.length) inSearchCurrent = 0;
+    highlightInSearch();
+    updateInSearchCount();
+  }
+  function clearInSearchHighlight() {
+    if (!$msgs) return;
+    $msgs.querySelectorAll('.chat-msg.in-hit, .chat-msg.in-current').forEach(function (el) {
+      el.classList.remove('in-hit', 'in-current');
+    });
+  }
+  function _cssEsc(v) { return (window.CSS && CSS.escape) ? CSS.escape(v) : String(v).replace(/"/g, '\\"'); }
+  function highlightInSearch() {
+    if (!$msgs || !inSearchOpen) return;
+    clearInSearchHighlight();
+    inSearchResults.forEach(function (id, i) {
+      var el = $msgs.querySelector('[data-id="' + _cssEsc(id) + '"]');
+      if (!el) return;
+      el.classList.add('in-hit');
+      if (i === inSearchCurrent) {
+        el.classList.add('in-current');
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+  function updateInSearchCount() {
+    var $c = document.getElementById('exp-chat-insearch-count');
+    if ($c) $c.textContent = (inSearchResults.length ? (inSearchCurrent + 1) : 0) + '/' + inSearchResults.length;
+    var $p = document.getElementById('exp-chat-insearch-prev');
+    var $n = document.getElementById('exp-chat-insearch-next');
+    var none = inSearchResults.length === 0;
+    if ($p) $p.disabled = none;
+    if ($n) $n.disabled = none;
+  }
+
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      API PÃšBLICA
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
@@ -3258,6 +3515,16 @@
     confirmGroup:    confirmGroup,
     toggleSound:     toggleSound,
     togglePin:       togglePin,
+    setChatColor:    setChatColor,
+    toggleColorPop:  toggleColorPop,
+    flagMessage:     flagMessage,
+    toggleFlaggedFilter: toggleFlaggedFilter,
+    openInSearch:    openInSearch,
+    closeInSearch:   closeInSearch,
+    inSearchInput:   inSearchInput,
+    inSearchKey:     inSearchKey,
+    inSearchNext:    inSearchNext,
+    inSearchPrev:    inSearchPrev,
     refreshHome:     function () { renderHome(); },
     refreshProjectThreadTitle: function (threadId, title) {
       applyProjectThreadTitle(threadId, title);

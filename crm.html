@@ -2211,10 +2211,11 @@ async function carregarDados(){
     prodOppMap[p.id]=p.oportunidade_id;
   });
 
-  // followups_produto e produto-cêntrica; normaliza para a UI por oportunidade
+  // followups_produto: agora é centrada na oportunidade (oportunidade_id); produto_id é vínculo opcional.
+  // Fallback em prodOppMap para registros legados que só tinham produto_id.
   const fusMap={};
   (fusRes.data||[]).forEach(f=>{
-    const oppId=prodOppMap[f.produto_id];
+    const oppId=f.oportunidade_id||prodOppMap[f.produto_id];
     if(!oppId)return;
     if(!fusMap[oppId])fusMap[oppId]=[];
     fusMap[oppId].push({
@@ -3461,8 +3462,10 @@ async function salvarFU(){
   const prodId=op?._produtos?.[0]?.id||null;
   const obs=document.getElementById('fu-obs').value.trim();
   if(!obs){toast('Informe a observação.');return;}
-  if(!prodId){toast('Esta oportunidade ainda não possui produto vinculado para registrar follow-up.');return;}
+  if(!op){toast('Oportunidade não encontrada para registrar follow-up.');return;}
+  // O follow-up é o andamento da OPORTUNIDADE; o produto é só um vínculo opcional (pode ser null)
   const {error}=await sb.from('followups_produto').insert({
+    oportunidade_id: op.id,
     produto_id: prodId,
     data: document.getElementById('fu-data').value||null,
     next_date: document.getElementById('fu-next').value||null,
@@ -6180,6 +6183,8 @@ async function importarProdutosFromProposta(oppId, calcId) {
 
 async function resetVinculoCalc(oppId) {
   if (!confirm('Isso vai remover os produtos importados anteriormente e recarregar os dados direto da calculadora. Continuar?')) return;
+  // Os follow-ups pertencem à oportunidade (oportunidade_id) e sobrevivem: o FK produto_id é ON DELETE SET NULL,
+  // então ao apagar os produtos o histórico de andamento permanece, apenas desvinculado do produto antigo.
   // Remove produtos e custos antigos que vieram de importação manual
   const [delProd, delCusto] = await Promise.all([
     sb.from('produtos').delete().eq('oportunidade_id', oppId),
