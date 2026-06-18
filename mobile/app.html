@@ -9,11 +9,9 @@
   <title>EXP</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./assets/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/exp-mobile.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-supabase-fallback.js"></script>
   <script src="./assets/exp-mobile-core.js"></script>
   <style>
     /* ── Controles flutuantes do hub (tema + sair) ── */
@@ -463,13 +461,36 @@
     let G = { usuario: null, tarefas: [], eventos: [], prios: [] };
 
     /* ── Helpers de data/hora ───────────────────── */
+    function localISODate(date = new Date()) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function localTimezoneOffsetISO(date = new Date()) {
+      const off = date.getTimezoneOffset();
+      const h = String(Math.floor(Math.abs(off) / 60)).padStart(2, '0');
+      const m = String(Math.abs(off) % 60).padStart(2, '0');
+      return `${off <= 0 ? '+' : '-'}${h}:${m}`;
+    }
+
+    function buildTimedEventISO(dateISO, timeHHMM) {
+      const localDate = new Date(`${dateISO}T${timeHHMM}:00`);
+      return `${dateISO}T${timeHHMM}:00${localTimezoneOffsetISO(localDate)}`;
+    }
+
+    function buildAllDayEventISO(dateISO) {
+      return `${dateISO}T12:00:00+00:00`;
+    }
+
     function getWeekRange() {
       const d = new Date();
       const day = d.getDay() || 7;
       d.setDate(d.getDate() - day + 1);
-      const start = d.toISOString().split('T')[0];
+      const start = localISODate(d);
       d.setDate(d.getDate() + 6);
-      const end = d.toISOString().split('T')[0];
+      const end = localISODate(d);
       return { start, end };
     }
 
@@ -509,7 +530,7 @@
         d.setDate(monday.getDate() + i);
         const diff = d - today;
         const status = diff < 0 ? 'past' : diff === 0 ? 'today' : 'future';
-        return { label, isoDate: d.toISOString().split('T')[0], status };
+        return { label, isoDate: localISODate(d), status };
       });
     }
 
@@ -694,6 +715,136 @@
       `;
     }
 
+    function getPushStatusMeta() {
+      const ctx = typeof _pushContextReady === 'function'
+        ? _pushContextReady()
+        : { ok: false, reason: 'unknown' };
+
+      if (ctx.reason === 'ios-standalone-required') {
+        return {
+          title: 'Instale o app para ativar notificações',
+          body: 'No iPhone/iPad, abra o EXP pela Tela de Início antes de receber pushes.',
+          cta: 'Entendi',
+          disabled: false,
+          action: 'dismiss',
+        };
+      }
+
+      if (!ctx.ok) {
+        return {
+          title: 'Notificações indisponíveis',
+          body: 'Este navegador ou dispositivo não oferece suporte completo a push.',
+          cta: 'Indisponível',
+          disabled: true,
+          action: 'none',
+        };
+      }
+
+      if (Notification.permission === 'granted') {
+        return {
+          title: 'Notificações ativas',
+          body: 'Você receberá avisos de novas mensagens e atividades importantes.',
+          cta: 'Ativado',
+          disabled: true,
+          action: 'none',
+        };
+      }
+
+      if (Notification.permission === 'denied') {
+        return {
+          title: 'Notificações bloqueadas',
+          body: 'Libere a permissão nas configurações do navegador para voltar a receber avisos.',
+          cta: 'Bloqueado',
+          disabled: true,
+          action: 'none',
+        };
+      }
+
+      return {
+        title: 'Ative as notificações',
+        body: 'Receba avisos de novas mensagens sem depender apenas do chat aberto.',
+        cta: 'Ativar',
+        disabled: false,
+        action: 'enable',
+      };
+    }
+
+    function renderNotificationsSection() {
+      const meta = getPushStatusMeta();
+      return `
+        <div class="hub-section">
+          <div class="hub-section-header">
+            <div class="hub-section-title">Notificações</div>
+          </div>
+          <div class="hub-card" style="padding:var(--s-md)">
+            <div style="font-size:13px;font-weight:700">${meta.title}</div>
+            <div style="font-size:12px;color:var(--m-text-3);margin-top:4px;line-height:1.45">${meta.body}</div>
+            <button
+              class="hub-action-btn${meta.action === 'enable' ? ' accent' : ''}"
+              style="margin-top:12px"
+              onclick="handleHubPushAction('${meta.action}')"
+              ${meta.disabled ? 'disabled' : ''}>
+              ${meta.cta}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderInstallSection() {
+      const meta = getInstallMeta();
+      return `
+        <div class="hub-section" data-hub-section="install">
+          <div class="hub-section-header">
+            <div class="hub-section-title">Instalar app</div>
+          </div>
+          <div class="hub-card" style="padding:var(--s-md)">
+            <div style="font-size:13px;font-weight:700">${meta.title}</div>
+            <div style="font-size:12px;color:var(--m-text-3);margin-top:4px;line-height:1.45">${meta.body}</div>
+            <button
+              class="hub-action-btn${meta.action === 'prompt' ? ' accent' : ''}"
+              style="margin-top:12px"
+              onclick="handleHubInstallAction('${meta.action}')"
+              ${meta.disabled ? 'disabled' : ''}>
+              ${meta.cta}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function refreshHubSection(sectionName, renderer) {
+      const sec = document.querySelector(`[data-hub-section="${sectionName}"]`);
+      if (sec) sec.outerHTML = renderer();
+    }
+
+    async function handleHubPushAction(action) {
+      if (action === 'dismiss') {
+        showToast('Abra o EXP pela Tela de Início para ativar notificações.', 'success', 3500);
+        return;
+      }
+      if (action !== 'enable') return;
+      const ok = await requestPushPermission();
+      showToast(ok ? 'Notificações ativadas ✓' : 'Não foi possível ativar', ok ? 'success' : 'error');
+      const sections = document.querySelectorAll('.hub-section');
+      sections.forEach(sec => {
+        if (sec.querySelector('.hub-section-title')?.textContent.trim() === 'Notificações') {
+          sec.outerHTML = renderNotificationsSection();
+        }
+      });
+    }
+
+    async function handleHubInstallAction(action) {
+      if (action === 'none') return;
+      const result = await triggerInstallPrompt();
+      if (result.installed) {
+        showToast('EXP instalado neste dispositivo.', 'success');
+      } else if (result.reason === 'dismissed') {
+        showToast('Instalacao cancelada por enquanto.', 'default');
+      }
+      refreshHubSection('install', renderInstallSection);
+    }
+
     function renderPage(data) {
       const { usuario, horasSemana, tarefas, eventos, prios } = data;
       document.getElementById('page-content').innerHTML = `
@@ -718,7 +869,10 @@
         </div>
 
         ${renderTasksSection(tarefas)}
+        ${renderEventsSection(eventos)}
         ${renderPriosSection(prios)}
+        ${renderInstallSection()}
+        ${renderNotificationsSection()}
       `;
     }
 
@@ -751,7 +905,7 @@
         ).join('');
       }
       // Pré-preencher data com hoje
-      document.getElementById('nt-data').value = new Date().toISOString().split('T')[0];
+      document.getElementById('nt-data').value = localISODate();
       document.getElementById('nt-desc').value = '';
       openSheet('new-task');
     }
@@ -806,7 +960,7 @@
     /* ── Novo evento ────────────────────────────── */
     function openNewEvent() {
       document.getElementById('ne-titulo').value = '';
-      document.getElementById('ne-data').value = new Date().toISOString().split('T')[0];
+      document.getElementById('ne-data').value = localISODate();
       document.getElementById('ne-ini').value = '';
       document.getElementById('ne-fim').value = '';
       document.getElementById('ne-tipo').value = 'reuniao';
@@ -822,8 +976,8 @@
       if (!titulo || !data) { showToast('Informe título e data', 'error'); return; }
 
       const diaInteiro = !ini;
-      const inicioISO  = ini ? `${data}T${ini}:00+00:00` : `${data}T12:00:00+00:00`;
-      const fimISO     = fim ? `${data}T${fim}:00+00:00` : inicioISO;
+      const inicioISO  = diaInteiro ? buildAllDayEventISO(data) : buildTimedEventISO(data, ini);
+      const fimISO     = diaInteiro ? inicioISO : buildTimedEventISO(data, fim || ini);
 
       const sb = getSB();
       const { error } = await sb.from('calendar_events').insert({
@@ -845,7 +999,7 @@
 
     async function reloadEventos() {
       const sb = getSB();
-      const todayISO = new Date().toISOString().split('T')[0];
+      const todayISO = localISODate();
       const { data } = await sb.from('calendar_events')
         .select('id, titulo, tipo, inicio, fim, dia_inteiro, meet_link')
         .gte('inicio', todayISO)
@@ -875,7 +1029,7 @@
 
       const sb = getSB();
       const { start, end } = getWeekRange();
-      const todayISO = new Date().toISOString().split('T')[0];
+      const todayISO = localISODate();
 
       const [
         { data: horasData },
@@ -923,6 +1077,7 @@
 
       // Push: re-salva a inscrição deste dispositivo se já houver permissão.
       // O pedido de permissão é contextual (banner no Chat), sem prompt automático.
+      document.addEventListener('exp:install-state', () => refreshHubSection('install', renderInstallSection));
       ensurePushSubscribed();
     });
   </script>

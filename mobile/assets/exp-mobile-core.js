@@ -12,11 +12,88 @@ const VAPID_PUBLIC_KEY = 'BCRHUrgL16XzJCyEPvkujum8zkDiRpoLbpd5NRUmeeC8wRJM9GvMxx
 
 // ── Supabase ─────────────────────────────────
 let _sb = null;
+const EXP_OFFLINE_NOTICE_ID = 'exp-offline-notice';
+let _deferredInstallPrompt = null;
 
 function initSupabase() {
   if (_sb) return _sb;
   _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return _sb;
+}
+
+function isOfflineBackendMode() {
+  return !!window.__EXP_SUPABASE_STUB__;
+}
+
+function getMobileBasePath() {
+  const path = window.location.pathname || '/mobile/';
+  return path.endsWith('/index.html')
+    ? path.slice(0, -'index.html'.length)
+    : path.slice(0, path.lastIndexOf('/') + 1);
+}
+
+function getSafeRedirectTarget(rawTarget) {
+  if (!rawTarget) return './app.html';
+  try {
+    const candidate = new URL(rawTarget, window.location.href);
+    const here = new URL(window.location.href);
+    const mobileBase = getMobileBasePath();
+    if (candidate.origin !== here.origin) return './app.html';
+    if (!candidate.pathname.startsWith(mobileBase)) return './app.html';
+    const relPath = candidate.pathname.slice(mobileBase.length) || 'app.html';
+    if (relPath.startsWith('/')) return './app.html';
+    return './' + relPath + candidate.search + candidate.hash;
+  } catch (_) {
+    return './app.html';
+  }
+}
+
+function getPostLoginTarget(defaultTarget = './app.html') {
+  const params = new URLSearchParams(window.location.search || '');
+  return getSafeRedirectTarget(params.get('redirect') || defaultTarget);
+}
+
+function buildLoginRedirectUrl(loginPath = './index.html', targetPath) {
+  const safeTarget = getSafeRedirectTarget(targetPath || (window.location.pathname + window.location.search + window.location.hash));
+  const url = new URL(loginPath, window.location.href);
+  url.searchParams.set('redirect', safeTarget);
+  return url.toString();
+}
+
+function syncOfflineNotice() {
+  const shouldShow = !navigator.onLine || isOfflineBackendMode();
+  let el = document.getElementById(EXP_OFFLINE_NOTICE_ID);
+
+  if (!shouldShow) {
+    if (el) el.remove();
+    return;
+  }
+
+  if (!el) {
+    el = document.createElement('div');
+    el.id = EXP_OFFLINE_NOTICE_ID;
+    el.style.cssText = [
+      'position:fixed',
+      'top:calc(var(--safe-t) + 8px)',
+      'left:var(--gap-md)',
+      'right:var(--gap-md)',
+      'z-index:350',
+      'padding:10px 12px',
+      'border-radius:var(--m-radius-input)',
+      'background:color-mix(in srgb, var(--ouro) 12%, var(--m-surface))',
+      'border:1px solid color-mix(in srgb, var(--ouro) 28%, transparent)',
+      'box-shadow:var(--shadow-card)',
+      'font-size:12px',
+      'font-weight:700',
+      'line-height:1.4',
+      'color:var(--m-text)'
+    ].join(';');
+    document.body.appendChild(el);
+  }
+
+  el.textContent = !navigator.onLine
+    ? 'Sem conexão. O app está em modo offline e alguns dados podem não aparecer.'
+    : 'Recursos de rede limitados. O shell mobile abriu com fallback local.';
 }
 
 // Alias global para acesso rápido nos módulos
@@ -78,7 +155,7 @@ async function getUsuario() {
 
 async function requireAuth(loginPath = './index.html') {
   const u = await getUsuario();
-  if (!u) { window.location.href = loginPath; return null; }
+  if (!u) { window.location.href = buildLoginRedirectUrl(loginPath); return null; }
   return u;
 }
 
@@ -125,11 +202,14 @@ function buildBottomNav(currentPage, socio = false) {
   const nav = document.getElementById('bottom-nav');
   if (!nav) return;
 
-  // v1 — nav enxuta: Início · Horas · Chat · Módulos
+  // v2 — nav principal: Início · Gestão · Horas · Chat/Contatos
   const items = [
-    { id: 'app',   href: './app.html',   label: 'Início', icon: icons.grid },
-    { id: 'horas', href: './horas.html', label: 'Horas',  icon: icons.clock },
-    { id: 'chat',  href: './chat.html',  label: 'Chat',   icon: icons.chat, badge: true },
+    { id: 'app', href: './app.html', label: 'Início', icon: icons.grid },
+    { id: 'gestao', href: './gestao.html', label: 'Gestão', icon: MOD_ICONS.projetos },
+    { id: 'horas', href: './horas.html', label: 'Horas', icon: icons.clock },
+    currentPage === 'contatos'
+      ? { id: 'contatos', href: './contatos.html', label: 'Contatos', icon: MOD_ICONS.contatos }
+      : { id: 'chat', href: './chat.html', label: 'Chat', icon: icons.chat, badge: true },
   ];
 
   nav.innerHTML = items.map(it => `
@@ -303,6 +383,73 @@ function _isStandaloneApp() {
     || window.navigator.standalone === true;
 }
 
+function _emitInstallState() {
+  document.dispatchEvent(new CustomEvent('exp:install-state'));
+}
+
+function getInstallMeta() {
+  if (_isStandaloneApp()) {
+    return {
+      state: 'installed',
+      title: 'App instalado',
+      body: 'O EXP já está funcionando como app neste dispositivo.',
+      cta: 'Instalado',
+      action: 'none',
+      disabled: true,
+    };
+  }
+
+  if (_isIosLike()) {
+    return {
+      state: 'ios-manual',
+      title: 'Instale pela Tela de Início',
+      body: 'No iPhone/iPad, use Compartilhar > Adicionar à Tela de Início para abrir o EXP como app.',
+      cta: 'Como instalar',
+      action: 'ios-help',
+      disabled: false,
+    };
+  }
+
+  if (_deferredInstallPrompt) {
+    return {
+      state: 'prompt',
+      title: 'Instale o app',
+      body: 'Abra o EXP em modo app para ter acesso rápido, layout dedicado e melhor suporte a notificações.',
+      cta: 'Instalar app',
+      action: 'prompt',
+      disabled: false,
+    };
+  }
+
+  return {
+    state: 'unavailable',
+    title: 'Instalação indisponível',
+    body: 'Se o navegador permitir, a opção de instalar aparecerá no menu do próprio navegador.',
+    cta: 'Indisponível',
+    action: 'none',
+    disabled: true,
+  };
+}
+
+async function triggerInstallPrompt() {
+  const meta = getInstallMeta();
+  if (meta.action === 'ios-help') {
+    showToast('No iPhone/iPad: Compartilhar > Adicionar à Tela de Início.', 'success', 5000);
+    return { installed: false, reason: 'ios-manual' };
+  }
+  if (meta.action !== 'prompt' || !_deferredInstallPrompt) {
+    if (meta.state === 'installed') showToast('O app já está instalado neste dispositivo.', 'success', 3200);
+    return { installed: false, reason: meta.state };
+  }
+
+  const promptEvent = _deferredInstallPrompt;
+  _deferredInstallPrompt = null;
+  promptEvent.prompt();
+  const choice = await promptEvent.userChoice.catch(() => ({ outcome: 'dismissed' }));
+  _emitInstallState();
+  return { installed: choice?.outcome === 'accepted', reason: choice?.outcome || 'dismissed' };
+}
+
 function _pushContextReady() {
   if (!('Notification' in window)) return { ok: false, reason: 'notification-api' };
   if (!('serviceWorker' in navigator)) return { ok: false, reason: 'service-worker' };
@@ -384,6 +531,17 @@ function _b64ToUint8(b64) {
   const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  _emitInstallState();
+});
+
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  _emitInstallState();
+});
 
 // ── Notificações + push (espelha gestao.html do desktop) ──────
 // Dispara o push para UM destinatário via a Edge Function send-push.
@@ -864,4 +1022,9 @@ function discardTimer() {
 // ── Init automático ───────────────────────────
 initTheme();
 registerSW();
-document.addEventListener('DOMContentLoaded', () => { if (!window.EXP_NO_TIMER) mountTimer(); });
+window.addEventListener('online', syncOfflineNotice);
+window.addEventListener('offline', syncOfflineNotice);
+document.addEventListener('DOMContentLoaded', () => {
+  syncOfflineNotice();
+  if (!window.EXP_NO_TIMER) mountTimer();
+});

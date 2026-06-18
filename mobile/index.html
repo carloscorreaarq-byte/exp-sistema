@@ -9,11 +9,9 @@
   <title>EXP · Acesso</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./assets/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/exp-mobile.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-supabase-fallback.js"></script>
   <script src="./assets/exp-mobile-core.js"></script>
   <style>
     body {
@@ -177,6 +175,42 @@
       color: var(--m-text-2); background: none; border: none;
     }
     .foot-theme svg { width: 18px; height: 18px; stroke-width: 2; }
+    .install-card {
+      margin-top: var(--gap-md);
+      background: color-mix(in srgb, var(--verde-soft) 62%, var(--branco));
+      border: 1px solid color-mix(in srgb, var(--verde) 20%, transparent);
+      border-radius: var(--m-radius-card);
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+    }
+    .install-card[hidden] { display: none; }
+    .install-title {
+      font-size: 11px; font-weight: 800; letter-spacing: .6px;
+      text-transform: uppercase; color: var(--verde);
+    }
+    .install-body {
+      margin-top: 6px;
+      font-size: 12px; line-height: 1.45; color: var(--m-text-2);
+    }
+    .install-btn {
+      margin-top: 12px;
+      width: 100%;
+      min-height: 44px;
+      border-radius: var(--m-radius-btn);
+      border: 1px solid color-mix(in srgb, var(--verde) 22%, transparent);
+      background: var(--branco);
+      color: var(--verde);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      font-family: var(--font-ui);
+    }
+    .install-btn:disabled {
+      opacity: .7;
+      color: var(--m-text-3);
+      border-color: color-mix(in srgb, var(--m-border) 35%, transparent);
+    }
   </style>
 </head>
 <body>
@@ -243,6 +277,7 @@
       <button class="foot-theme" id="theme-toggle" onclick="toggleTheme()" aria-label="Tema"></button>
     </div>
 
+    <div class="install-card" id="install-cta" hidden></div>
   </div>
 
   <script>
@@ -256,15 +291,43 @@
     const _origToggle = toggleTheme;
     window.toggleTheme = function () { _origToggle(); _refreshThemeIcon(); };
 
+    function refreshInstallCta() {
+      const wrap = document.getElementById('install-cta');
+      if (!wrap) return;
+      const meta = getInstallMeta();
+      wrap.hidden = false;
+      wrap.innerHTML = `
+        <div class="install-title">${meta.title}</div>
+        <div class="install-body">${meta.body}</div>
+        <button class="install-btn" onclick="handleInstallCta()" ${meta.disabled ? 'disabled' : ''}>
+          ${meta.cta}
+        </button>
+      `;
+    }
+
+    async function handleInstallCta() {
+      const result = await triggerInstallPrompt();
+      if (result.installed) {
+        showToast('EXP instalado neste dispositivo.', 'success');
+      } else if (result.reason === 'dismissed') {
+        showToast('Instalacao cancelada por enquanto.', 'default');
+      }
+      refreshInstallCta();
+    }
+
+    document.addEventListener('exp:install-state', refreshInstallCta);
+    refreshInstallCta();
+
     // Redireciona se já autenticado
     (async () => {
-      if (sessionStorage.getItem('exp_usuario')) { window.location.href = './app.html'; return; }
+      const postLoginTarget = getPostLoginTarget('./app.html');
+      if (sessionStorage.getItem('exp_usuario')) { window.location.href = postLoginTarget; return; }
       const sb = initSupabase();
       const { data: { session } } = await sb.auth.getSession();
       if (!session) return;
       const { data: usuario } = await sb.from('usuarios').select('id')
         .eq('auth_id', session.user.id).maybeSingle();
-      if (usuario) window.location.href = './app.html';
+      if (usuario) window.location.href = postLoginTarget;
       else await sb.auth.signOut();
     })();
 
@@ -287,7 +350,7 @@
           .eq('auth_id', data.user.id).maybeSingle();
         if (err2) throw err2;
         sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(data.user.id, usuario)));
-        window.location.href = './app.html';
+        window.location.href = getPostLoginTarget('./app.html');
       } catch (err) {
         errEl.textContent = (err.message?.toLowerCase().includes('invalid') || err.message?.toLowerCase().includes('credentials'))
           ? 'E-mail ou senha incorretos' : 'Erro ao entrar. Tente novamente.';

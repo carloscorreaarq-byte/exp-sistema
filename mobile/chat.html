@@ -9,11 +9,9 @@
   <title>EXP · Chat</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./assets/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/exp-mobile.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./assets/exp-mobile-supabase-fallback.js"></script>
   <script>window.EXP_NO_TIMER = true; /* chat tem layout próprio no rodapé */</script>
   <script src="./assets/exp-mobile-core.js"></script>
   <style>
@@ -317,6 +315,16 @@
     const dmChannel = (a, b) => 'dm:' + [a, b].sort().join(':');
     const isProjectCh = ch => ch && ch.startsWith('project:');
     const ctxType = () => (G.channelType === 'project' ? 'chat_thread_message' : 'chat_message');
+    const chatRouteParams = () => new URLSearchParams(window.location.search);
+
+    function syncChatRoute(params = {}) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('channel');
+      url.searchParams.delete('thread');
+      if (params.channel) url.searchParams.set('channel', params.channel);
+      if (params.thread) url.searchParams.set('thread', params.thread);
+      window.history.replaceState({}, '', url);
+    }
 
     function fmtDateSep(d) {
       const today = new Date(), yest = new Date(today); yest.setDate(yest.getDate()-1);
@@ -443,6 +451,7 @@
     // ───────────────────────── NAVEGAÇÃO ENTRE TELAS ─────────────────────────
     function showList() {
       G.view = 'list';
+      syncChatRoute();
       document.getElementById('view-list').classList.remove('hidden');
       document.getElementById('view-conv').classList.remove('active');
       document.getElementById('hdr-back').style.display = 'none';
@@ -478,6 +487,10 @@
 
     function openConversation(channel, type, label, threadId) {
       G.view = 'conv'; G.channel = channel; G.channelType = type; G.threadId = threadId;
+      syncChatRoute({
+        channel: type === 'project' ? null : channel,
+        thread: type === 'project' ? threadId : null,
+      });
       G.messages = []; G.media = {};
       document.getElementById('view-list').classList.add('hidden');
       document.getElementById('view-conv').classList.add('active');
@@ -488,6 +501,21 @@
       document.getElementById('messages').innerHTML = `<div class="chat-loading">Carregando…</div>`;
       maybeShowPushBanner();
       loadMessages();
+    }
+
+    function openConversationFromRoute() {
+      const params = chatRouteParams();
+      const threadId = params.get('thread');
+      const channel = params.get('channel');
+      if (threadId) {
+        openChannelFromList('project:' + threadId);
+        return true;
+      }
+      if (channel) {
+        openChannelFromList(channel);
+        return true;
+      }
+      return false;
     }
 
     // ───────────────────────── CONVERSA ─────────────────────────
@@ -749,6 +777,7 @@
       G.membersByAuth = {}; G.members.forEach(m => { if (m.auth_id) G.membersByAuth[m.auth_id] = m; });
 
       await loadList();
+      openConversationFromRoute();
       subscribe();
       setupPresence();
       ensurePushSubscribed();
