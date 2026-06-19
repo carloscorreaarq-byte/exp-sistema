@@ -211,7 +211,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-day-cell.has-feriado{background:var(--tc-bg)}
 .cal-day-num{font-size:11px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;flex-shrink:0}
 .cal-day-cell.today .cal-day-num{background:var(--grafite);color:#fff}
-.cal-ev-chip{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;line-height:1.5;cursor:pointer;transition:opacity .1s}
+.cal-ev-chip{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;line-height:1.5;cursor:pointer;transition:opacity .1s}
 .cal-ev-chip:hover{opacity:.8}
 .cal-day-more{font-size:8px;color:#aaa;padding:0 2px}
 .cal-week-wrap{border-radius:var(--radius-card);border:1px solid var(--cinza);background:var(--branco);overflow:hidden}
@@ -343,7 +343,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-mes-num{font-size:11px;font-weight:700;color:var(--grafite);margin-bottom:3px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .cal-mes-cell.cal-hoje .cal-mes-num{background:var(--azul);color:#fff}
 .cal-mes-cell.cal-fora-mes .cal-mes-num{color:#bbb}
-.cal-mes-evts{display:flex;flex-direction:column;gap:2px}
+.cal-mes-evts{display:flex;flex-direction:column;align-items:stretch;gap:2px;min-width:0}
 .cal-shell .cal-semana{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--cinza);border-radius:8px;overflow:hidden;background:var(--branco)}
 .cal-semana-col{border-right:1px solid var(--cinza2);min-height:200px}
 .cal-semana-col:last-child{border-right:none}
@@ -484,6 +484,24 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 [data-theme="dark"] .cal-disp-bar.compensado { background: #8aa855; }
 [data-theme="dark"] .cal-disp-bar.feriado    { background: var(--terracota); opacity: .4; }
 [data-theme="dark"] .cal-disp-bar.ausente    { background: var(--azul); opacity: .8; }
+
+/* Disponibilidade — visão de mês (faixa contínua por pessoa) */
+.cal-disp-grid--mes .cal-disp-head-day { padding: 2px 0 6px; min-width: 20px; font-size: 9px; }
+.cal-disp-grid--mes .cal-disp-head-ini { font-size: 8px; opacity: .7; }
+.cal-disp-grid--mes .cal-disp-cell { padding: 1px 0; }
+.cal-disp-grid--mes .cal-disp-bars { gap: 0; }
+.cal-disp-grid--mes .cal-disp-bar  { height: 16px; border-radius: 0; }
+.cal-disp-grid--mes tr:hover .cal-disp-bar { filter: brightness(.97); }
+
+/* Legenda de cores */
+.cal-disp-legend { display: flex; align-items: center; gap: 12px; font-size: 10px; color: #888; margin-left: auto; }
+.cal-disp-legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.cal-disp-sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; background: var(--cinza2); }
+.cal-disp-sw.ausente    { background: var(--azul); }
+.cal-disp-sw.feriado    { background: var(--terracota); opacity: .6; }
+.cal-disp-sw.compensado { background: #6f942e; }
+.cal-disp-bh-info { margin-left: 16px; }
+[data-theme="dark"] .cal-disp-legend { color: rgba(255,255,255,.45); }
 
 /* ── Dark mode overrides ───────────────────────────────── */
 [data-theme="dark"]{--cinza2:rgba(255,255,255,.07);--verde-bg:rgba(76,163,102,.13);--az-bg:rgba(74,114,181,.13);--am-bg:rgba(226,174,82,.13);--tc-bg:rgba(204,104,72,.13)}
@@ -758,10 +776,14 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
           <div class="cal-shell">
             <div class="cal-disp-topbar">
               <div class="cal-semana-nav">
-                <button class="cal-semana-nav-btn" onclick="calNavSemana(-1)">&#8249;</button>
+                <button class="cal-semana-nav-btn" onclick="calDispNav(-1)">&#8249;</button>
                 <div class="cal-semana-label" id="cal-disp-label">&#8212;</div>
-                <button class="cal-semana-nav-btn" onclick="calNavSemana(1)">&#8250;</button>
-                <button class="cal-semana-hoje-btn" onclick="calIrHojePessoas()">Esta semana</button>
+                <button class="cal-semana-nav-btn" onclick="calDispNav(1)">&#8250;</button>
+                <button class="cal-semana-hoje-btn" onclick="calDispHoje()">Hoje</button>
+              </div>
+              <div class="cal-subview-bar">
+                <button class="cal-sv-btn active" id="dsv-semana" onclick="calSetDispView('semana')">Semana</button>
+                <button class="cal-sv-btn"        id="dsv-mes"    onclick="calSetDispView('mes')">M&ecirc;s</button>
               </div>
               <div style="width:1px;height:20px;background:var(--cinza2);margin:0 4px"></div>
               <button class="cal-chip active" data-pnucleo="" onclick="calSetPNucleo(this,'')">Todos</button>
@@ -769,6 +791,11 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
               <button class="cal-chip" data-pnucleo="paisagismo"   onclick="calSetPNucleo(this,'paisagismo')">Pais.</button>
               <button class="cal-chip" data-pnucleo="consultorias" onclick="calSetPNucleo(this,'consultorias')">Cons.</button>
               <button class="cal-chip" data-pnucleo="especiais"    onclick="calSetPNucleo(this,'especiais')">Esp.</button>
+              <div class="cal-disp-legend">
+                <span><i class="cal-disp-sw ausente"></i>Ausência/Férias</span>
+                <span><i class="cal-disp-sw feriado"></i>Feriado/Recesso</span>
+                <span><i class="cal-disp-sw compensado"></i>Comp. BH</span>
+              </div>
               <div class="cal-disp-bh-info">
                 <span class="cal-disp-bh-lbl">Banco de horas</span>
                 <span class="cal-disp-bh-val" id="cal-disp-bh-val">—</span>
@@ -1197,6 +1224,7 @@ const CAL = {
   mes: new Date().getMonth(),
   ano: new Date().getFullYear(),
   view: 'mes',
+  dispView: 'semana',
   semanaOffset: 0,
   eventos: [],
   compensacoes: {},
@@ -1456,7 +1484,14 @@ function calAtualizarLabelPessoas() {
   const lb = document.getElementById('cal-pessoas-label');
   if (lb) lb.textContent = txt;
   const lb2 = document.getElementById('cal-disp-label');
-  if (lb2) lb2.textContent = txt;
+  if (lb2) {
+    if ((CAL.dispView||'semana') === 'mes') {
+      const mTxt = new Date(CAL.ano, CAL.mes, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+      lb2.textContent = mTxt.charAt(0).toUpperCase() + mTxt.slice(1);
+    } else {
+      lb2.textContent = txt;
+    }
+  }
 }
 
 function calDiasUteis(ano, mes) {
@@ -1603,6 +1638,30 @@ function calNavSemana(d) {
 
 function calIrHojePessoas() { CAL.semanaOffset = 0; calAtualizarLabelPessoas(); calRenderPessoas(); }
 
+function calSetDispView(v) {
+  CAL.dispView = v;
+  ['semana','mes'].forEach(name => { const b = document.getElementById('dsv-'+name); if (b) b.classList.toggle('active', name===v); });
+  calRenderDisp();
+}
+
+function calDispNav(d) {
+  if ((CAL.dispView||'semana') === 'mes') {
+    CAL.mes += d;
+    if (CAL.mes < 0)  { CAL.mes = 11; CAL.ano--; }
+    if (CAL.mes > 11) { CAL.mes = 0;  CAL.ano++; }
+  } else {
+    CAL.semanaOffset += d;
+  }
+  calRenderDisp();
+}
+
+function calDispHoje() {
+  const n = new Date();
+  if ((CAL.dispView||'semana') === 'mes') { CAL.mes = n.getMonth(); CAL.ano = n.getFullYear(); }
+  else CAL.semanaOffset = 0;
+  calRenderDisp();
+}
+
 function calSetNucleo(btn, val) {
   CAL.filtroNucleo = val;
   document.querySelectorAll('[data-nucleo]').forEach(b => b.classList.toggle('active', b.dataset.nucleo === val));
@@ -1712,57 +1771,74 @@ function calRenderSemana() {
   if (el) el.innerHTML = html;
 }
 
+// Calcula o estado de disponibilidade de um usuário num dia (compartilhado semana/mês)
+function _calDispDia(u, d, merged, feriados) {
+  const key   = d.toISOString().slice(0,10);
+  const fds   = d.getDay()===0||d.getDay()===6;
+  const ehFer = feriados.has(key);
+  const comp  = merged.some(ev=>calEventoOcorreNoDia(ev,key)&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
+  const ausDs = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem'||ev.tipo==='ausencia_aniv')&&calEventoOcorreNoDia(ev,key)&&(ev.scope==='todos'||ev.usuario_id===u.id));
+  const baseCls = ehFer?'feriado':comp?'compensado':'';
+  let manhaCls = baseCls, tardeCls = baseCls;
+  if (!baseCls && ausDs.length) {
+    ausDs.forEach(ev=>{
+      const h=ev.inicio?new Date(ev.inicio).getUTCHours():12;
+      const p=h<=10?'manha':h>=13?'tarde':'todo';
+      if (p==='manha'||p==='todo') manhaCls='ausente';
+      if (p==='tarde'||p==='todo') tardeCls='ausente';
+    });
+  }
+  const tBase  = ehFer?'Feriado/Recesso':comp?'Compensação BH':'';
+  const tManha = fds?'Fim de semana':tBase||(manhaCls==='ausente'?'Ausência – manhã':'Disponível – manhã');
+  const tTarde = fds?'Fim de semana':tBase||(tardeCls==='ausente'?'Ausência – tarde':'Disponível – tarde');
+  return { key, fds, manhaCls, tardeCls, tManha, tTarde };
+}
+
 function calRenderDisp() {
+  const view    = CAL.dispView || 'semana';
+  const isMes   = view === 'mes';
   calAtualizarLabelPessoas();
   const merged  = calGetMerged();
   const hoje    = new Date(); hoje.setHours(0,0,0,0);
-  const base    = new Date(hoje);
-  const dow     = base.getDay()===0?6:base.getDay()-1;
-  base.setDate(base.getDate()-dow+CAL.semanaOffset*7);
-  const dias    = Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(base.getDate()+i);return d;});
-  const nomes   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
   const feriados= _calFeriados();
   const usuarios= CAL.filtroPNucleo?(G.todosUsuarios||[]).filter(u=>u.nucleo===CAL.filtroPNucleo):(G.todosUsuarios||[]);
 
+  // Conjunto de dias a exibir
+  let dias;
+  if (isMes) {
+    const total = new Date(CAL.ano, CAL.mes+1, 0).getDate();
+    dias = Array.from({length:total},(_,i)=>new Date(CAL.ano, CAL.mes, i+1));
+  } else {
+    const base = new Date(hoje);
+    const dow  = base.getDay()===0?6:base.getDay()-1;
+    base.setDate(base.getDate()-dow+CAL.semanaOffset*7);
+    dias = Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(base.getDate()+i);return d;});
+  }
+  const nomesSem = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const inicialDow = ['D','S','T','Q','Q','S','S']; // indexado por getDay()
+
   // cabeçalho
-  let html = `<div class="cal-disp-grid"><table class="cal-disp-table"><thead><tr>
+  let html = `<div class="cal-disp-grid${isMes?' cal-disp-grid--mes':''}"><table class="cal-disp-table"><thead><tr>
     <th class="cal-disp-head-corner"></th>
     ${dias.map((d,i)=>{
       const fds=d.getDay()===0||d.getDay()===6;
       const isHoje=d.toDateString()===hoje.toDateString();
-      return `<th class="cal-disp-head-day${isHoje?' cal-hoje':''}${fds?' cal-fds':(feriados.has(d.toISOString().slice(0,10))?' cal-hoje':'')}">
-        ${nomes[i]}<br><small style="font-weight:400;font-size:9px">${d.getDate()}</small>
-      </th>`;
+      const ferCls=feriados.has(d.toISOString().slice(0,10))?' cal-hoje':'';
+      const cls=`cal-disp-head-day${isHoje?' cal-hoje':''}${fds?' cal-fds':ferCls}`;
+      return isMes
+        ? `<th class="${cls}"><span class="cal-disp-head-ini">${inicialDow[d.getDay()]}</span><br>${d.getDate()}</th>`
+        : `<th class="${cls}">${nomesSem[i]}<br><small style="font-weight:400;font-size:9px">${d.getDate()}</small></th>`;
     }).join('')}
   </tr></thead><tbody>`;
 
   usuarios.forEach(u=>{
     html+=`<tr><td class="cal-disp-nome">${primeiroUltimo(u.nome)}</td>`;
     dias.forEach(d=>{
-      const key   = d.toISOString().slice(0,10);
-      const fds   = d.getDay()===0||d.getDay()===6;
-      const ehFer = feriados.has(key);
-      const comp    = merged.some(ev=>calEventoOcorreNoDia(ev,key)&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
-      // Ausências do usuário neste dia
-      const ausDs   = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem'||ev.tipo==='ausencia_aniv')&&calEventoOcorreNoDia(ev,key)&&(ev.scope==='todos'||ev.usuario_id===u.id));
-      const baseCls = ehFer?'feriado':comp?'compensado':'';
-      let manhaCls  = baseCls, tardeCls = baseCls;
-      // Colore barras individualmente conforme período da ausência
-      if (!baseCls && ausDs.length) {
-        ausDs.forEach(ev=>{
-          const h=ev.inicio?new Date(ev.inicio).getUTCHours():12;
-          const p=h<=10?'manha':h>=13?'tarde':'todo';
-          if (p==='manha'||p==='todo') manhaCls='ausente';
-          if (p==='tarde'||p==='todo') tardeCls='ausente';
-        });
-      }
-      const tBase   = ehFer?'Feriado/Recesso':comp?'Compensação BH':'';
-      const tManha  = fds?'Fim de semana':tBase||(manhaCls==='ausente'?'Ausência – manhã':'Disponível – manhã');
-      const tTarde  = fds?'Fim de semana':tBase||(tardeCls==='ausente'?'Ausência – tarde':'Disponível – tarde');
-      html+=`<td class="cal-disp-cell${fds?' cal-fds':''}">
+      const c=_calDispDia(u, d, merged, feriados);
+      html+=`<td class="cal-disp-cell${c.fds?' cal-fds':''}">
         <div class="cal-disp-bars">
-          <div class="cal-disp-bar ${manhaCls}" title="${tManha}"></div>
-          <div class="cal-disp-bar ${tardeCls}" title="${tTarde}"></div>
+          <div class="cal-disp-bar ${c.manhaCls}" title="${c.tManha}"></div>
+          <div class="cal-disp-bar ${c.tardeCls}" title="${c.tTarde}"></div>
         </div>
       </td>`;
     });
