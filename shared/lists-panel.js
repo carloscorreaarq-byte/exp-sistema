@@ -43,6 +43,7 @@
            d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
   }
   var _PENCIL = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
+  var _IMG_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
 
   /* ── estado do painel ───────────────────────────────────── */
   var _open            = false;
@@ -716,6 +717,7 @@
 
     $items.innerHTML = html;
     _renderCkFooter(tipo, ck);
+    _injectCkItemMedia(tipo, ck);
   }
 
   function _ckItemHtml(it, tipo, ckId) {
@@ -732,6 +734,149 @@
       '<span class="fp-ck-txt' + (checked ? ' done' : '') + '">' + txt + '</span>' +
       editBtn +
       '</div>';
+  }
+
+  /* ── imagens de apoio (somente visualização) ─────────────── */
+  /* Mapeia o "tipo" da aba para o contexto usado na tabela gestao_anexos_temporarios. */
+  function _ckCtxTipo(tipo) {
+    if (tipo === 'abertos') return 'checklist_tarefa_item';
+    if (tipo === 'etapa')   return 'checklist_etapa_exec_item';
+    if (tipo === 'revisao') return 'revisao_tarefa';
+    return null;
+  }
+
+  function _ckCollectItemIds(tipo, ck) {
+    var ids = [];
+    if (tipo === 'abertos')      (ck.checklist_tarefa_item || []).forEach(function(it){ ids.push(it.id); });
+    else if (tipo === 'etapa')   (ck.checklist_etapa_exec_item || []).forEach(function(it){ ids.push(it.id); });
+    else if (tipo === 'revisao') (ck.pranchas || []).forEach(function(pr){ (pr.tarefas_revisao || []).forEach(function(t){ ids.push(t.id); }); });
+    return ids;
+  }
+
+  /* Após renderizar os itens, descobre quais têm imagem anexada e injeta o ícone. */
+  function _injectCkItemMedia(tipo, ck) {
+    var ctx = _ckCtxTipo(tipo);
+    var ids = _ckCollectItemIds(tipo, ck);
+    if (!ctx || !ids.length) return;
+    var sb = _sb();
+    if (!sb) return;
+    sb.from('gestao_anexos_temporarios')
+      .select('contexto_id')
+      .eq('contexto_tipo', ctx)
+      .in('contexto_id', ids)
+      .is('removido_em', null)
+      .gt('expires_at', new Date().toISOString())
+      .then(function(r) {
+        if (r.error || !r.data || !r.data.length) return;
+        var seen = {};
+        r.data.forEach(function(rowData) {
+          var cid = String(rowData.contexto_id);
+          if (seen[cid]) return;
+          seen[cid] = true;
+          var $row = document.getElementById('fp-ck-it-' + cid);
+          if (!$row || $row.querySelector('.fp-ck-media')) return;
+          var btn = document.createElement('button');
+          btn.className = 'fp-ck-media';
+          btn.title = 'Ver imagem anexada';
+          btn.style.cssText = 'background:none;border:none;cursor:pointer;padding:2px;margin-left:2px;display:inline-flex;align-items:center;color:#1D6A4A;flex-shrink:0';
+          btn.innerHTML = _IMG_ICON;
+          btn.setAttribute('onclick', "listsPanel.viewCkItemMedia('" + ctx + "','" + cid + "')");
+          var $txt = $row.querySelector('.fp-ck-txt');
+          if ($txt && $txt.nextSibling) $row.insertBefore(btn, $txt.nextSibling);
+          else $row.appendChild(btn);
+        });
+      });
+  }
+
+  /* Abre o pop-up de visualização das imagens anexadas a um item. */
+  function viewCkItemMedia(contextoTipo, contextoId) {
+    var sb = _sb();
+    if (!sb) return;
+    var titulo = '';
+    var $row = document.getElementById('fp-ck-it-' + contextoId);
+    if ($row) { var $t = $row.querySelector('.fp-ck-txt'); if ($t) titulo = $t.textContent || ''; }
+    sb.from('gestao_anexos_temporarios')
+      .select('id,storage_path,created_at')
+      .eq('contexto_tipo', contextoTipo)
+      .eq('contexto_id', contextoId)
+      .is('removido_em', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: true })
+      .then(function(r) {
+        if (r.error || !r.data || !r.data.length) { alert('Nenhuma imagem anexada neste item.'); return; }
+        _openMediaLightbox(titulo, r.data);
+      });
+  }
+
+  function _openMediaLightbox(titulo, items) {
+    var ex = document.getElementById('fp-media-lightbox');
+    if (ex) ex.remove();
+    var idx = 0;
+    var objUrl = null;
+    var multi = items.length > 1;
+
+    var ov = document.createElement('div');
+    ov.id = 'fp-media-lightbox';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:24px;font-family:Raleway,sans-serif';
+    ov.innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;max-width:92vw;max-height:90vh">' +
+        (titulo ? '<div style="color:#F0EDE6;font-size:12px;text-align:center;max-width:80vw">' + _esc(titulo) + '</div>' : '') +
+        '<div style="display:flex;align-items:center;justify-content:center;min-width:200px;min-height:120px">' +
+          '<div id="fp-ml-loading" style="color:#ccc;font-size:12px">Carregando imagem…</div>' +
+          '<img id="fp-ml-img" alt="Imagem anexada" style="display:none;max-width:88vw;max-height:74vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)">' +
+        '</div>' +
+        '<div id="fp-ml-counter" style="color:#bbb;font-size:11px"></div>' +
+      '</div>' +
+      '<button id="fp-ml-close" title="Fechar" style="position:absolute;top:14px;right:18px;background:none;border:none;color:#fff;font-size:30px;line-height:1;cursor:pointer">&times;</button>' +
+      (multi ?
+        '<button id="fp-ml-prev" title="Anterior" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.14);border:none;color:#fff;font-size:24px;width:44px;height:44px;border-radius:50%;cursor:pointer">&lsaquo;</button>' +
+        '<button id="fp-ml-next" title="Próxima" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.14);border:none;color:#fff;font-size:24px;width:44px;height:44px;border-radius:50%;cursor:pointer">&rsaquo;</button>'
+        : '');
+    document.body.appendChild(ov);
+
+    function cleanup() {
+      if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+      document.removeEventListener('keydown', onKey, true);
+      ov.remove();
+    }
+    function go(delta) {
+      var n = idx + delta;
+      if (n < 0 || n >= items.length) return;
+      idx = n;
+      render();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') cleanup();
+      else if (multi && e.key === 'ArrowLeft') go(-1);
+      else if (multi && e.key === 'ArrowRight') go(1);
+    }
+    function render() {
+      var item = items[idx];
+      var $img = document.getElementById('fp-ml-img');
+      var $loading = document.getElementById('fp-ml-loading');
+      var $counter = document.getElementById('fp-ml-counter');
+      if ($counter) $counter.textContent = multi ? (idx + 1) + ' de ' + items.length : '';
+      var $prev = document.getElementById('fp-ml-prev'); if ($prev) $prev.style.opacity = idx === 0 ? '.35' : '1';
+      var $next = document.getElementById('fp-ml-next'); if ($next) $next.style.opacity = idx >= items.length - 1 ? '.35' : '1';
+      if ($img) $img.style.display = 'none';
+      if ($loading) { $loading.style.display = 'block'; $loading.textContent = 'Carregando imagem…'; }
+      if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+      _sb().storage.from('gestao-anexos-temp').download(item.storage_path).then(function(r) {
+        if (r.error || !r.data) { var $l = document.getElementById('fp-ml-loading'); if ($l) $l.textContent = 'Não foi possível carregar a imagem.'; return; }
+        objUrl = URL.createObjectURL(r.data);
+        var $i = document.getElementById('fp-ml-img');
+        var $l2 = document.getElementById('fp-ml-loading');
+        if ($i) { $i.src = objUrl; $i.style.display = 'block'; }
+        if ($l2) $l2.style.display = 'none';
+      });
+    }
+
+    ov.addEventListener('click', function(e) { if (e.target === ov) cleanup(); });
+    var $close = document.getElementById('fp-ml-close'); if ($close) $close.addEventListener('click', cleanup);
+    var $prevB = document.getElementById('fp-ml-prev'); if ($prevB) $prevB.addEventListener('click', function(){ go(-1); });
+    var $nextB = document.getElementById('fp-ml-next'); if ($nextB) $nextB.addEventListener('click', function(){ go(1); });
+    document.addEventListener('keydown', onKey, true);
+    render();
   }
 
   /* ── editar item de checklist (apenas sócio) ────────────── */
@@ -1014,6 +1159,7 @@
     toggleRecentes  : toggleRecentes,
     restoreTask     : restoreTask,
     editCkItem      : editCkItem,
+    viewCkItemMedia : viewCkItemMedia,
     openAssignDrop  : openAssignDrop,
     _doAssign       : _doAssign,
     toggleDelegadas : toggleDelegadas,
