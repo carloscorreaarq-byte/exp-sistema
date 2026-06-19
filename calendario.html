@@ -276,7 +276,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-tipo-grupo-lbl{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#9a988f}
 .cal-tipo-btn{display:flex;flex-direction:row;align-items:flex-start;gap:10px;padding:14px 14px 12px;border:1px solid var(--cinza);border-radius:10px;background:var(--branco);cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s,transform .12s;text-align:left;font-family:var(--f);width:100%;min-height:72px}
 .cal-tipo-btn:hover{border-color:var(--grafite);box-shadow:var(--shadow-hover);transform:translateY(-1px)}
-.cal-tipo-btn.sel{border-color:var(--azul);background:linear-gradient(180deg, rgba(74,114,181,.12), rgba(74,114,181,.04));box-shadow:0 0 0 1px rgba(74,114,181,.18)}
+.cal-tipo-btn.sel{border-color:var(--azul);background:rgba(74,114,181,.08);box-shadow:0 0 0 1px rgba(74,114,181,.18)}
 .cal-tipo-btn:disabled{opacity:.35;cursor:not-allowed}
 .cal-tipo-icon{font-size:18px;flex-shrink:0;line-height:1;display:inline-flex;margin-top:1px}
 .cal-ico{width:1em;height:1em;vertical-align:-.15em;flex-shrink:0}
@@ -488,8 +488,8 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 /* Disponibilidade — visão de mês (faixa contínua por pessoa) */
 .cal-disp-grid--mes .cal-disp-head-day { padding: 2px 0 6px; min-width: 20px; font-size: 9px; }
 .cal-disp-grid--mes .cal-disp-head-ini { font-size: 8px; opacity: .7; }
-.cal-disp-grid--mes .cal-disp-cell { padding: 1px 0; }
-.cal-disp-grid--mes .cal-disp-bars { gap: 0; }
+.cal-disp-grid--mes .cal-disp-cell { padding: 1px 0.5px; }
+.cal-disp-grid--mes .cal-disp-bars { gap: 0; border-radius: 3px; overflow: hidden; }
 .cal-disp-grid--mes .cal-disp-bar  { height: 16px; border-radius: 0; }
 .cal-disp-grid--mes tr:hover .cal-disp-bar { filter: brightness(.97); }
 
@@ -1272,9 +1272,9 @@ const CAL_TIPOS_META = {
   recesso:      { icon: CAL_ICONS.recesso,       label: 'Recesso' },
   feriado:      { icon: CAL_ICONS.feriado,       label: 'Feriado nacional' },
   feriado_local:{ icon: CAL_ICONS.feriado_local, label: 'Feriado local' },
-  ausencia_rem: { icon: CAL_ICONS.ausencia_rem,  label: 'Ausência remunerada' },
-  ausencia_nrem:{ icon: CAL_ICONS.ausencia_nrem, label: 'Ausência não remunerada' },
-  ausencia_aniv:{ icon: CAL_ICONS.ausencia_aniv, label: 'Aniversário' },
+  ausencia_rem: { icon: CAL_ICONS.ausencia_rem,  label: 'Day-off remunerado' },
+  ausencia_nrem:{ icon: CAL_ICONS.ausencia_nrem, label: 'Day-off não-remunerado' },
+  ausencia_aniv:{ icon: CAL_ICONS.ausencia_aniv, label: 'Day-off aniversário' },
   entrega:      { icon: CAL_ICONS.entrega,       label: 'Entrega' },
   agenda_exp:   { icon: CAL_ICONS.agenda_exp,    label: 'Agenda EXP' },
   reuniao:      { icon: CAL_ICONS.reuniao,       label: 'Reunião' },
@@ -1296,8 +1296,8 @@ const CAL_TIPO_MODAL_DESC = {
 
 // Agrupamento dos tipos no pop-up de novo evento (a ordem define a exibição)
 const CAL_TIPO_GRUPOS = [
-  { nome: 'Pessoal',       tipos: ['ausencia_rem','ausencia_nrem','ausencia_aniv','compensacao_bh'] },
   { nome: 'Equipe',        tipos: ['reuniao','entrega','agenda_exp'] },
+  { nome: 'Pessoal',       tipos: ['ausencia_rem','ausencia_nrem','ausencia_aniv','compensacao_bh'] },
   { nome: 'Institucional', tipos: ['feriado','feriado_local','recesso'] },
 ];
 
@@ -1777,7 +1777,7 @@ function _calDispDia(u, d, merged, feriados) {
   const fds   = d.getDay()===0||d.getDay()===6;
   const ehFer = feriados.has(key);
   const comp  = merged.some(ev=>calEventoOcorreNoDia(ev,key)&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
-  const ausDs = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem'||ev.tipo==='ausencia_aniv')&&calEventoOcorreNoDia(ev,key)&&(ev.scope==='todos'||ev.usuario_id===u.id));
+  const ausDs = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem')&&calEventoOcorreNoDia(ev,key)&&(ev.scope==='todos'||ev.usuario_id===u.id));
   const baseCls = ehFer?'feriado':comp?'compensado':'';
   let manhaCls = baseCls, tardeCls = baseCls;
   if (!baseCls && ausDs.length) {
@@ -2378,7 +2378,7 @@ function calAtualizarAvisoAusencia() {
     aviso.textContent=txt;
   } else if (tipo==='ausencia_nrem') {
     aviso.style.display='block';
-    aviso.textContent='Ausência não remunerada — não desconta do saldo de 10 dias. Permite meio período.';
+    aviso.textContent='Day-off não-remunerado — não desconta do saldo de 10 dias. Permite meio período.';
   } else if (tipo!=='compensacao_bh') {
     aviso.style.display='none';
   }
