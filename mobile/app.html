@@ -36,6 +36,38 @@
     .hub-ctrl-btn svg { width: 19px; height: 19px; stroke-width: 2; }
     .hub-ctrl-btn:active { background: color-mix(in srgb, var(--m-border) 12%, transparent); }
 
+    /* ── Marca no hub (logo oficial, igual ao login) ── */
+    .hub-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      height: 40px;                 /* alinha com os controles flutuantes à direita */
+      margin-bottom: var(--s-md);
+    }
+    .hub-brand img {
+      height: 26px;
+      width: auto;
+      display: block;
+      mix-blend-mode: multiply;     /* funde o fundo branco do PNG com a página */
+    }
+    [data-theme="dark"] .hub-brand img {
+      filter: invert(1) brightness(.85);
+      mix-blend-mode: screen;
+    }
+    .hub-brand-sep {
+      width: 1px;
+      height: 16px;
+      background: color-mix(in srgb, var(--m-border) 45%, transparent);
+    }
+    .hub-brand-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--m-text-3);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
     /* Respiros do hub */
     #page-content {
       padding-top: calc(var(--safe-t) + var(--s-md));
@@ -82,24 +114,31 @@
     }
     .hub-section-header {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: space-between;
-      margin-bottom: var(--s-xs);
+      gap: var(--s-sm);
+      /* Respiro entre o cabeçalho e o quadro — antes os botões ficavam colados */
+      margin-bottom: var(--s-sm);
     }
+    /* O TÍTULO é o protagonista da seção: maior, mais escuro e em negrito */
     .hub-section-title {
-      font-size: var(--mt-label);
-      font-weight: var(--weight-label);
-      text-transform: uppercase;
-      letter-spacing: var(--label-spacing);
-      color: var(--m-text-3);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.1px;
+      color: var(--m-text);
     }
     .hub-section-actions {
       display: flex;
       align-items: center;
-      gap: var(--s-xs);
+      gap: var(--s-md);
+      /* Alinha o texto da ação à borda direita do quadro */
+      margin-right: -2px;
+      flex-shrink: 0;
     }
+    /* Ações do cabeçalho viram LINKS discretos — não competem com o título.
+       (A versão "caixa" só é usada como CTA dentro dos cards de Notificações/Instalar.) */
     .hub-action-btn {
-      height: 26px;
+      min-height: 30px;
       border-radius: var(--m-radius-pill);
       padding: 0 var(--s-sm);
       font-family: var(--font-ui);
@@ -121,6 +160,25 @@
       background: var(--verde-soft);
       border-color: transparent;
       color: var(--verde);
+    }
+
+    /* Rebaixa as ações QUANDO estão no cabeçalho de seção:
+       sem caixa/borda, peso menor que o título, cor da marca só na ação primária. */
+    .hub-section-actions .hub-action-btn {
+      min-height: 30px;
+      padding: 4px 0;
+      border: none;
+      background: none;
+      border-radius: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--m-text-3);
+    }
+    .hub-section-actions .hub-action-btn svg { width: 14px; height: 14px; stroke-width: 2; }
+    .hub-section-actions .hub-action-btn:active { background: none; opacity: 0.5; }
+    .hub-section-actions .hub-action-btn.accent {
+      color: var(--verde);
+      font-weight: 700;
     }
 
     /* ── Card base ── */
@@ -848,6 +906,12 @@
     function renderPage(data) {
       const { usuario, horasSemana, tarefas, eventos, prios } = data;
       document.getElementById('page-content').innerHTML = `
+        <div class="hub-brand">
+          <img src="./assets/exp.png" alt="EXP">
+          <span class="hub-brand-sep"></span>
+          <span class="hub-brand-sub">Sistema de gestão</span>
+        </div>
+
         ${usuario.viewer_only ? `<div class="viewer-banner">Modo visualização — edição desabilitada</div>` : ''}
 
         <div class="greeting-bar">

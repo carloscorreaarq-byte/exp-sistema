@@ -282,11 +282,17 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-ico{width:1em;height:1em;vertical-align:-.15em;flex-shrink:0}
 .cal-tipo-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
 .cal-tipo-name{font-size:12px;font-weight:700;line-height:1.25;color:var(--grafite)}
-.cal-tipo-desc{font-size:11px;line-height:1.35;color:#8c8a82}
+.cal-tipo-desc{font-size:10px;line-height:1.35;color:#a6a39b;font-weight:400;opacity:.9}
 .cal-aviso{background:var(--am-bg);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--ouro)}
-.cal-gcal-option-btn{display:flex;flex-direction:row;align-items:center;gap:12px;padding:15px 16px;border:1.5px solid #dadce0;border-radius:12px;background:linear-gradient(180deg, #fff, #fbfbfb);cursor:pointer;font-family:var(--f);width:100%;transition:border-color .15s,background .15s,box-shadow .15s,transform .12s}
-.cal-gcal-option-btn:hover{border-color:#4285f4;background:#f8f9ff;box-shadow:var(--shadow-hover);transform:translateY(-1px)}
-.cal-gcal-option-btn.sel{border-color:#4285f4;background:#f0f4ff;box-shadow:0 0 0 1px rgba(66,133,244,.18)}
+.cal-gcal-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid var(--cinza);border-radius:999px;background:var(--branco);color:var(--grafite);cursor:pointer;font-family:var(--f);font-size:11px;line-height:1;transition:border-color .15s,background .15s,box-shadow .12s;flex-shrink:0}
+.cal-gcal-chip:hover{border-color:#4285f4;box-shadow:var(--shadow-hover)}
+.cal-gcal-chip.sel{border-color:#4285f4;background:rgba(66,133,244,.1);box-shadow:0 0 0 1px rgba(66,133,244,.18)}
+.cal-gcal-chip-lbl{font-weight:600}
+.cal-gcal-chip-status{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#888}
+.cal-gcal-dot{width:6px;height:6px;border-radius:50%;background:#c4c8cd;flex-shrink:0}
+.cal-gcal-dot.on{background:#34a853}
+.cal-modal-section-hd--gcal{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cal-modal-section-hd-main{display:flex;flex-direction:column;gap:3px;min-width:0}
 .cal-modal-tip{border-radius:10px;padding:11px 13px;font-size:11px;line-height:1.45;border:1px solid rgba(74,114,181,.16);background:rgba(74,114,181,.07);color:var(--azul)}
 @media (max-width: 680px){
   .cal-modal-overlay{align-items:flex-start;padding:12px}
@@ -1263,8 +1269,8 @@ const CAL_TIPO_MODAL_DESC = {
 // Agrupamento dos tipos no pop-up de novo evento (a ordem define a exibição)
 const CAL_TIPO_GRUPOS = [
   { nome: 'Pessoal',       tipos: ['ausencia_rem','ausencia_nrem','ausencia_aniv','compensacao_bh'] },
-  { nome: 'Equipe',        tipos: ['reuniao','entrega'] },
-  { nome: 'Institucional', tipos: ['feriado','feriado_local','recesso','agenda_exp'] },
+  { nome: 'Equipe',        tipos: ['reuniao','entrega','agenda_exp'] },
+  { nome: 'Institucional', tipos: ['feriado','feriado_local','recesso'] },
 ];
 
 function calMeta(tipo) { return CAL_TIPOS_META[tipo] || { icon: _ic('<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'), label: tipo }; }
@@ -1537,7 +1543,8 @@ function calGetMerged() {
       if (!et.data_estimada) return;
       const prod = (G.todosProdutos||[]).find(p => p.id === et.produto_id);
       const projNome = prod?.oportunidades?.projeto || prod?.nome || '';
-      evts.push({ id:'etapa_'+et.id, tipo:'entrega', titulo:et.nome||'Entrega', data_inicio:et.data_estimada, data_fim:et.data_estimada, dia_todo:true, scope:'todos', nucleo:et.nucleo||prod?.nucleo||null, usuario_id:null, projeto_nome:projNome, source:'etapa', _synthetic:true });
+      const cliNome  = prod?.oportunidades?.clientes?.nome || '';
+      evts.push({ id:'etapa_'+et.id, tipo:'entrega', titulo:et.nome||'Entrega', data_inicio:et.data_estimada, data_fim:et.data_estimada, dia_todo:true, scope:'todos', nucleo:et.nucleo||prod?.nucleo||null, usuario_id:null, projeto_nome:projNome, cliente_nome:cliNome, source:'etapa', _synthetic:true });
     });
   }
   if (G.todosUsuarios?.length) {
@@ -1668,7 +1675,7 @@ function calRenderMes() {
       const key = cur.toISOString().slice(0,10), doMes = cur.getMonth()===CAL.mes, ehHoje = cur.toDateString()===hoje.toDateString(), ehFds = cur.getDay()===0||cur.getDay()===6, evs = evByDate[key]||[], MAX = 4;
       html += `<div class="cal-mes-cell${!doMes?' cal-fora-mes':''}${ehHoje?' cal-hoje':''}${ehFds?' cal-fds':''}" onclick="calDiaClick('${key}')">
         <div class="cal-mes-num">${cur.getDate()}</div>
-        <div class="cal-mes-evts">${evs.slice(0,MAX).map(ev=>`<div class="cal-ev-chip" style="background:${calEvBg(ev.tipo,ev)};color:${calEvColor(ev.tipo,ev)};border-left:3px solid ${calEvBorder(ev.tipo,ev)}" onclick="event.stopPropagation();calAbrirDetalhe('${ev.id}')">${calMeta(ev.tipo).icon} ${ev.titulo.length>18?ev.titulo.slice(0,16)+'…':ev.titulo}</div>`).join('')}${evs.length>MAX?`<div class="cal-mais-evts">+${evs.length-MAX} mais</div>`:''}</div>
+        <div class="cal-mes-evts">${evs.slice(0,MAX).map(ev=>{const chipTxt=ev.titulo+(ev.projeto_nome?` · ${ev.projeto_nome}`:'');const tip=[ev.titulo,ev.projeto_nome,ev.cliente_nome].filter(Boolean).join(' — ');return `<div class="cal-ev-chip" title="${_escN(tip)}" style="background:${calEvBg(ev.tipo,ev)};color:${calEvColor(ev.tipo,ev)};border-left:3px solid ${calEvBorder(ev.tipo,ev)}" onclick="event.stopPropagation();calAbrirDetalhe('${ev.id}')">${calMeta(ev.tipo).icon} ${_escN(chipTxt)}</div>`;}).join('')}${evs.length>MAX?`<div class="cal-mais-evts">+${evs.length-MAX} mais</div>`:''}</div>
       </div>`;
       cur.setDate(cur.getDate()+1);
     }
@@ -2049,13 +2056,16 @@ function calAtualizarResumoTipo(tipo) {
     box.innerHTML = '';
     return;
   }
-  const meta = calMeta(tipo);
-  const desc = CAL_TIPO_MODAL_DESC[tipo] || '';
   const extra = tipo === 'reuniao'
-    ? ' Defina horario e convidados aqui. Para Meet ou convites por e-mail, use a opcao Google Calendar acima.'
+    ? 'Defina horario e convidados aqui. Para Meet ou convites por e-mail, use a opcao Google Calendar acima.'
     : '';
+  if (!extra) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
   box.style.display = 'block';
-  box.innerHTML = `<strong style="display:block;margin-bottom:4px;color:var(--grafite)">${meta.label}</strong><span>${desc}${extra}</span>`;
+  box.innerHTML = `<span>${extra}</span>`;
 }
 
 function calAbrirModalNovo(dataPreenchida) {
@@ -2100,25 +2110,14 @@ function calRenderModalBody(tipos, dataIni) {
   const nucleos = [...new Set((G.todosUsuarios || []).map(u => u.nucleo).filter(Boolean))];
   const outrosUsuarios = (G.todosUsuarios || []).filter(u => u.id !== G.usuario?.id);
   const showGcalOption = tipos.includes('reuniao') && CAL.modalModo !== 'compensacao';
-  const gcalStatusTxt = GCAL.token
-    ? `<span style="font-size:10px;color:#34a853;font-weight:700;margin-left:auto;flex-shrink:0">conectado</span>`
-    : `<span style="font-size:10px;color:#888;margin-left:auto;flex-shrink:0">clique para conectar</span>`;
-  const gcalOptionHtml = showGcalOption ? `
-    <div class="cal-modal-section">
-      <div class="cal-modal-section-hd">
-        <div class="cal-modal-section-title">Origem do evento</div>
-        <div class="cal-modal-section-sub">Use Google para reunioes com videoconferencia, convites por e-mail e agenda externa.</div>
-      </div>
-      <button class="cal-gcal-option-btn cal-tipo-btn" id="cal-tipo-gcal_ev" onclick="calSelTipo('gcal_ev')">
-        <span class="gcal-badge" style="width:24px;height:24px;font-size:11px;flex-shrink:0">G</span>
-        <span class="cal-tipo-copy">
-          <span class="cal-tipo-name">Google Calendar</span>
-          <span class="cal-tipo-desc">Reuniao, evento, videoconferencia e envio de convites</span>
-        </span>
-        ${gcalStatusTxt}
-      </button>
-    </div>
-  ` : '';
+  const gcalStatus = GCAL.token
+    ? `<span class="cal-gcal-chip-status"><span class="cal-gcal-dot on"></span>conectado</span>`
+    : `<span class="cal-gcal-chip-status"><span class="cal-gcal-dot"></span>conectar</span>`;
+  const gcalChip = showGcalOption ? `<button class="cal-gcal-chip" id="cal-tipo-gcal_ev" onclick="calSelTipo('gcal_ev')" title="Use o Google para reunioes com videoconferencia, convites por e-mail e agenda externa.">
+        <span class="gcal-badge">G</span>
+        <span class="cal-gcal-chip-lbl">Google Calendar</span>
+        ${gcalStatus}
+      </button>` : '';
   const gcalSyncHtml = GCAL.token ? (() => {
     const _calOpts = GCAL.calendarios.map(c => `<option value="${c.id}">${c.summary}</option>`).join('');
     return `<div class="fgroup" id="cal-campo-google-sync" style="display:none"><label>Sincronizar no Google</label><div style="margin-top:4px;padding-top:10px;border-top:1px solid var(--cinza2)"><div class="gcal-sync-row" style="border:none;padding:0 0 6px"><div><div class="gcal-sync-lbl">Adicionar ao Google Calendar</div><div class="gcal-sync-desc">Cria uma copia deste evento em uma agenda Google conectada.</div></div><label class="gcal-toggle"><input type="checkbox" id="cal-gcal-sync-ck" checked onchange="document.getElementById('cal-gcal-sync-agenda-wrap').style.display=this.checked?'block':'none'"><span class="gcal-toggle-slider"></span></label></div><div id="cal-gcal-sync-agenda-wrap"><select id="cal-gcal-sync-agenda" class="gcr-input" style="font-size:11px;padding:5px 8px">${_calOpts}</select></div></div></div>`;
@@ -2138,11 +2137,14 @@ function calRenderModalBody(tipos, dataIni) {
   }).join('');
   const _resto = tipos.filter(t => !_agrupados.has(t));
   const restoHtml = _resto.length ? `<div class="cal-tipo-grupo"><div class="cal-tipo-grid">${_resto.map(_btnTipo).join('')}</div></div>` : '';
-  return `${gcalOptionHtml}
+  return `
     <div class="cal-modal-section">
-      <div class="cal-modal-section-hd">
-        <div class="cal-modal-section-title">${showGcalOption ? 'Tipo do evento no EXP' : 'Novo evento'}</div>
-        <div class="cal-modal-section-sub">${showGcalOption ? 'Escolha o formato do registro interno que vai aparecer no calendario da equipe.' : 'Selecione o tipo e preencha os dados do evento.'}</div>
+      <div class="cal-modal-section-hd${showGcalOption ? ' cal-modal-section-hd--gcal' : ''}">
+        <div class="cal-modal-section-hd-main">
+          <div class="cal-modal-section-title">${showGcalOption ? 'Tipo do evento no EXP' : 'Novo evento'}</div>
+          <div class="cal-modal-section-sub">${showGcalOption ? 'Escolha o formato do registro interno que vai aparecer no calendario da equipe.' : 'Selecione o tipo e preencha os dados do evento.'}</div>
+        </div>
+        ${gcalChip}
       </div>
       <div class="cal-tipos-wrap">${gruposHtml}${restoHtml}</div>
     </div>
@@ -2188,6 +2190,7 @@ function calRenderModalBody(tipos, dataIni) {
 
 function calSelTipo(tipo) {
   document.querySelectorAll('.cal-tipo-btn').forEach(b => b.classList.remove('sel'));
+  document.getElementById('cal-tipo-gcal_ev')?.classList.remove('sel');
   const btn = document.getElementById('cal-tipo-' + tipo);
   if (btn) btn.classList.add('sel');
   CAL.tipoSelecionado = tipo;

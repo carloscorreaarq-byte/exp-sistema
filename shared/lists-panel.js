@@ -527,40 +527,32 @@
   }
 
   function _loadCkRevisao(uid) {
-    _sb().from('etapa_desenvolvedores')
-      .select('etapa_id,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome))))')
-      .eq('usuario_id', uid)
-      .then(function(devR) {
-        if (devR.error) { _ckShowErr(devR.error.message); return; }
-        var etapaIds = (devR.data || []).map(function(d){ return d.etapa_id; });
-        if (!etapaIds.length) { _renderCkSelector('revisao', [], function(){ return ''; }); return; }
-        var etapaMap = {};
-        (devR.data || []).forEach(function(d){ if (d.etapas) etapaMap[d.etapa_id] = d.etapas; });
-        _sb().from('revisoes')
-          .select('id,etapa_id,created_at,pranchas(id,nome,ordem,tarefas_revisao(id,descricao,concluida,created_at))')
-          .in('etapa_id', etapaIds)
-          .order('created_at')
-          .then(function(r) {
-            if (r.error) { _ckShowErr(r.error.message); return; }
-            var contadores = {};
-            var items = (r.data || []).map(function(rev) {
-              contadores[rev.etapa_id] = (contadores[rev.etapa_id] || 0) + 1;
-              var etapa = etapaMap[rev.etapa_id] || {};
-              var prod  = etapa.produtos || {};
-              var opp   = prod.oportunidades || {};
-              rev._etapaNome   = etapa.nome || '';
-              rev._prodNome    = (opp.projeto || prod.nome) || '';
-              rev._clienteNome = (opp.clientes && opp.clientes.nome) || '';
-              rev._coordId     = prod.coordenador_id || null;
-              rev._num = contadores[rev.etapa_id];
-              return rev;
-            });
-            _ckRevisaoAll = items;
-            _renderCkSelector('revisao', items, function(rev) {
-              var base = rev._prodNome ? rev._prodNome + ' — ' : '';
-              return base + (rev._etapaNome || '') + ' · Rev. ' + rev._num;
-            });
-          });
+    // Mostra todas as revisões que o usuário pode acessar (mesmo critério de
+    // projetos > revisões): o RLS (exp_can_access_revisao) já libera para
+    // sócio, quem abriu, coordenador do produto e desenvolvedor da etapa.
+    _sb().from('revisoes')
+      .select('id,etapa_id,created_at,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome)))),pranchas(id,nome,ordem,tarefas_revisao(id,descricao,concluida,created_at))')
+      .order('created_at')
+      .then(function(r) {
+        if (r.error) { _ckShowErr(r.error.message); return; }
+        var contadores = {};
+        var items = (r.data || []).map(function(rev) {
+          contadores[rev.etapa_id] = (contadores[rev.etapa_id] || 0) + 1;
+          var etapa = rev.etapas || {};
+          var prod  = etapa.produtos || {};
+          var opp   = prod.oportunidades || {};
+          rev._etapaNome   = etapa.nome || '';
+          rev._prodNome    = (opp.projeto || prod.nome) || '';
+          rev._clienteNome = (opp.clientes && opp.clientes.nome) || '';
+          rev._coordId     = prod.coordenador_id || null;
+          rev._num = contadores[rev.etapa_id];
+          return rev;
+        });
+        _ckRevisaoAll = items;
+        _renderCkSelector('revisao', items, function(rev) {
+          var base = rev._prodNome ? rev._prodNome + ' — ' : '';
+          return base + (rev._etapaNome || '') + ' · Rev. ' + rev._num;
+        });
       });
   }
 
