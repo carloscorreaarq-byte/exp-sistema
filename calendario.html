@@ -506,10 +506,12 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-disp-bar.compensado { background: #6f942e; }
 .cal-disp-bar.feriado    { background: var(--terracota); opacity: .5; }
 .cal-disp-bar.ausente    { background: var(--azul); }
+.cal-disp-bar.ausente-aniv { background: var(--ouro); }
 [data-theme="dark"] .cal-disp-bar { background: rgba(255,255,255,.08); }
 [data-theme="dark"] .cal-disp-bar.compensado { background: #8aa855; }
 [data-theme="dark"] .cal-disp-bar.feriado    { background: var(--terracota); opacity: .4; }
 [data-theme="dark"] .cal-disp-bar.ausente    { background: var(--azul); opacity: .8; }
+[data-theme="dark"] .cal-disp-bar.ausente-aniv { background: var(--ouro); opacity: .85; }
 
 /* Disponibilidade — visão de mês (faixa contínua por pessoa) */
 .cal-disp-grid--mes .cal-disp-head-day { padding: 2px 0 6px; min-width: 20px; font-size: 9px; }
@@ -524,6 +526,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-disp-legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .cal-disp-sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; background: var(--cinza2); }
 .cal-disp-sw.ausente    { background: var(--azul); }
+.cal-disp-sw.aniversario { background: var(--ouro); }
 .cal-disp-sw.feriado    { background: var(--terracota); opacity: .6; }
 .cal-disp-sw.compensado { background: #6f942e; }
 .cal-disp-bh-info { margin-left: 16px; }
@@ -819,6 +822,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
               <button class="cal-chip" data-pnucleo="especiais"    onclick="calSetPNucleo(this,'especiais')">Esp.</button>
               <div class="cal-disp-legend">
                 <span><i class="cal-disp-sw ausente"></i>Ausência/Férias</span>
+                <span><i class="cal-disp-sw aniversario"></i>Aniversário</span>
                 <span><i class="cal-disp-sw feriado"></i>Feriado/Recesso</span>
                 <span><i class="cal-disp-sw compensado"></i>Comp. BH</span>
               </div>
@@ -1818,15 +1822,17 @@ function _calDispDia(u, d, merged, feriados) {
   let manhaCls = baseCls, tardeCls = baseCls;
   if (!baseCls && ausDs.length) {
     ausDs.forEach(ev=>{
+      const cls = ev.tipo==='ausencia_aniv' ? 'ausente-aniv' : 'ausente';
       const h=ev.inicio?new Date(ev.inicio).getUTCHours():12;
       const p=h<=10?'manha':h>=13?'tarde':'todo';
-      if (p==='manha'||p==='todo') manhaCls='ausente';
-      if (p==='tarde'||p==='todo') tardeCls='ausente';
+      if (p==='manha'||p==='todo') manhaCls=cls;
+      if (p==='tarde'||p==='todo') tardeCls=cls;
     });
   }
+  const rotulo = (cls, periodo) => cls==='ausente-aniv' ? `Aniversário – ${periodo}` : cls==='ausente' ? `Ausência – ${periodo}` : `Disponível – ${periodo}`;
   const tBase  = ehFer?'Feriado/Recesso':comp?'Compensação BH':'';
-  const tManha = fds?'Fim de semana':tBase||(manhaCls==='ausente'?'Ausência – manhã':'Disponível – manhã');
-  const tTarde = fds?'Fim de semana':tBase||(tardeCls==='ausente'?'Ausência – tarde':'Disponível – tarde');
+  const tManha = fds?'Fim de semana':tBase||rotulo(manhaCls,'manhã');
+  const tTarde = fds?'Fim de semana':tBase||rotulo(tardeCls,'tarde');
   return { key, fds, manhaCls, tardeCls, tManha, tTarde };
 }
 
