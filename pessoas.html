@@ -235,6 +235,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .ps-fb-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .ps-fb-data{font-size:12px;font-weight:700;letter-spacing:-.2px;color:var(--grafite)}
 .ps-fb-participantes{font-size:10px;color:#888;flex:1}
+.ps-fb-obs{font-size:11px;color:#555;font-style:italic;line-height:1.5;margin:-4px 0 12px;padding-left:10px;border-left:2px solid var(--cinza2)}
 .ps-fb-sec{margin-bottom:10px}
 .ps-fb-sec:last-child{margin-bottom:0}
 .ps-fb-sec-label{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:6px}
@@ -841,6 +842,10 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
         <input id="fb-data" type="date">
       </div>
       <div class="ps-field-modal">
+        <label>Observação</label>
+        <input id="fb-observacao" type="text" placeholder="Ex: reunião de 3 meses de experiência">
+      </div>
+      <div class="ps-field-modal">
         <label>Pontos positivos</label>
         <textarea id="fb-positivos" rows="3" placeholder="O que está indo bem…"></textarea>
       </div>
@@ -849,8 +854,8 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
         <textarea id="fb-atencao" rows="3" placeholder="O que merece atenção…"></textarea>
       </div>
       <div class="ps-field-modal">
-        <label>Pontos negativos</label>
-        <textarea id="fb-negativos" rows="3" placeholder="O que precisa melhorar…"></textarea>
+        <label>Próximos passos esperados</label>
+        <textarea id="fb-negativos" rows="3" placeholder="O que se espera para o próximo período…"></textarea>
       </div>
       <div class="ps-field-modal">
         <label>Colocações do colaborador</label>
@@ -1279,7 +1284,9 @@ commit;`;
 const VINCULO_SETUP_SQL = `alter table public.usuarios_dados_profissionais
   add column if not exists posicao_matriz text,
   add column if not exists data_entrada date,
-  add column if not exists tipo_contrato text;`;
+  add column if not exists tipo_contrato text,
+  add column if not exists atualizado_em timestamptz,
+  add column if not exists atualizado_por uuid;`;
 
 const CLIMA_SETUP_SQL = `begin;
 
@@ -3528,9 +3535,10 @@ async function renderFeedbacks(u, body) {
         <div class="ps-fb-participantes">Presentes: ${r.participantes || '—'}</div>
         <button class="ps-btn-sm danger" onclick="excluirFeedback('${r.id}')">Excluir</button>
       </div>
+      ${r.observacao ? `<div class="ps-fb-obs">${r.observacao}</div>` : ''}
       ${secFb('Pontos positivos', 'pos', r.pontos_positivos || r.texto)}
       ${secFb('Pontos de atenção', 'atenc', r.pontos_atencao)}
-      ${secFb('Pontos negativos', 'neg', r.pontos_negativos)}
+      ${secFb('Próximos passos esperados', 'neg', r.pontos_negativos)}
       ${secFb('Colocações do colaborador', 'colab', r.colocacoes_colaborador)}
     </div>`).join('');
 
@@ -3592,6 +3600,7 @@ async function salvarFeedback() {
   if (!u) return;
   const participantes       = document.getElementById('fb-participantes').value.trim();
   const dataFb              = document.getElementById('fb-data').value || null;
+  const observacao          = document.getElementById('fb-observacao').value.trim() || null;
   const pontos_positivos    = document.getElementById('fb-positivos').value.trim() || null;
   const pontos_atencao      = document.getElementById('fb-atencao').value.trim() || null;
   const pontos_negativos    = document.getElementById('fb-negativos').value.trim() || null;
@@ -3602,6 +3611,7 @@ async function salvarFeedback() {
     usuario_id: u.id,
     participantes,
     data_feedback: dataFb,
+    observacao,
     pontos_positivos,
     pontos_atencao,
     pontos_negativos,
@@ -3609,7 +3619,7 @@ async function salvarFeedback() {
     criado_por: G.usuarioLogado.id
   });
   if (error) { alert('Erro ao salvar: ' + error.message); return; }
-  ['fb-participantes','fb-data','fb-positivos','fb-atencao','fb-negativos','fb-colab']
+  ['fb-participantes','fb-data','fb-observacao','fb-positivos','fb-atencao','fb-negativos','fb-colab']
     .forEach(id => { document.getElementById(id).value = ''; });
   fecharModal('modal-fb');
   await renderTabContent('feedbacks');

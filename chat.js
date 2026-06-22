@@ -13,7 +13,10 @@
   var SB_URL     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
   var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
   var STATUS_KEY  = 'exp_chat_status';
-  var SOUND_KEY   = 'exp_chat_sound';
+  var SOUND_KEY   = 'exp_chat_sound';            /* legado: on/off */
+  var SOUND_LEVEL_KEY = 'exp_chat_sound_level';  /* off | low | med | high */
+  var SOUND_VOL   = { off:0, low:0.45, med:1, high:1.9 }; /* multiplicador do volume base */
+  var SOUND_LABELS = { off:'Desligado', low:'Volume baixo', med:'Volume médio', high:'Volume alto' };
   var PINNED_KEY  = 'exp_chat_pinned';
   var COLOR_KEY   = 'exp_chat_color';   // tema de cor — mesma chave do chat full
   var FLAGS_KEY   = 'exp_chat_flags';   // mensagens sinalizadas — mesma chave do chat full
@@ -34,6 +37,7 @@
   var BRAND_AVATAR_COLORS = ['#1D6A4A', '#1D4FA0', '#C4831A', '#B84C3A', '#6D7D8A', '#4A72B5', '#7A9E7E'];
   var TEMP_MEDIA_BUCKET = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
+  var SIGNED_URL_EXPIRES = 7 * 24 * 60 * 60; /* 7 dias — cobre toda a vida do print (expira em 7d) */
   var CHAT_MEDIA_LIMITS = {
     largura_max_px: 1280,
     tamanho_max_kb: 500,
@@ -157,6 +161,18 @@
     '.chat-msg-text.recv{background:var(--off,#F7F6F3);color:var(--preto,#111110);border-radius:2px 10px 10px 10px}',
     '.chat-msg-text.sent{background:var(--cinza2,#ECEAE4);color:var(--preto,#111110);border-radius:10px 2px 10px 10px}',
     '.chat-msg-text.media-only{display:none}',
+    '.chat-msg-edited{margin-left:5px;font-size:8px;font-style:italic;color:#b0aca3;white-space:nowrap}',
+    /* Edição inline de mensagem */
+    '.chat-msg-edit{display:flex;flex-direction:column;gap:5px;max-width:218px}',
+    '.chat-msg.own .chat-msg-edit.sent{margin-left:auto}',
+    '.chat-msg-edit-input{width:100%;min-height:32px;resize:none;font-family:inherit;font-size:11px;line-height:1.45;color:var(--preto,#111110);padding:5px 8px;border:1px solid var(--verde,#1D6A4A);border-radius:8px;background:var(--branco,#fff);outline:none;box-sizing:border-box}',
+    '[data-theme="dark"] .chat-msg-edit-input{background:#2A2927;color:#F0EDE6}',
+    '.chat-msg-edit-actions{display:flex;gap:5px}',
+    '.chat-msg.own .chat-msg-edit-actions{justify-content:flex-end}',
+    '.chat-msg-edit-save,.chat-msg-edit-cancel{font-family:inherit;font-size:10px;font-weight:600;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--cinza2,#ECEAE4);background:none;color:#888;transition:all .12s}',
+    '.chat-msg-edit-save{background:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A);color:#fff}',
+    '.chat-msg-edit-save:hover{opacity:.88}',
+    '.chat-msg-edit-cancel:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
     '.chat-media-thumb{display:block;max-width:218px;max-height:172px;border-radius:12px;overflow:hidden;border:1px solid rgba(17,17,16,.08);background:#F7F6F3;cursor:pointer;margin-top:4px}',
     '.chat-msg.own .chat-media-thumb{margin-left:auto}',
     '.chat-media-thumb img{display:block;width:100%;height:auto;max-height:172px;object-fit:cover}',
@@ -309,6 +325,19 @@
     '.chat-color-dot.active::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}',
     '[data-theme="dark"] .chat-color-pop{background:#252523;border-color:#2E2D2B}',
     '[data-theme="dark"] .chat-color-pop-hdr{color:#8C8A85}',
+    /* â”€â”€ Som: popover de volume â”€â”€ */
+    '.chat-sound-pop{position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:11px;box-shadow:0 6px 24px rgba(0,0,0,.16);padding:5px;z-index:10006;display:none;flex-direction:column;gap:1px;min-width:176px}',
+    '.chat-sopt-hdr{font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--cinza,#D0CFC9);padding:5px 9px 6px}',
+    '.chat-sopt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:7px 9px;border-radius:7px;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--grafite,#111110);transition:background .1s}',
+    '.chat-sopt:hover{background:var(--off,#F7F6F3)}',
+    '.chat-sopt.active{background:var(--off,#F7F6F3);font-weight:700}',
+    '.chat-sopt-vol{display:inline-flex;align-items:center;justify-content:center;width:16px;flex-shrink:0;color:#888}',
+    '.chat-sopt.active .chat-sopt-vol{color:var(--chat-accent,#1D6A4A)}',
+    '[data-theme="dark"] .chat-sound-pop{background:#252523;border-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-sopt{color:#C8C3BA}',
+    '[data-theme="dark"] .chat-sopt:hover{background:rgba(255,255,255,.05)}',
+    '[data-theme="dark"] .chat-sopt.active{background:rgba(255,255,255,.07);color:#F0EDE6}',
+    '[data-theme="dark"] .chat-sopt-vol{color:#9A958C}',
     '[data-theme="dark"] .chat-color-dot.active{border-color:#F0EDE6}',
     /* â”€â”€ Header toggle ativo (filtro sinalizadas) â”€â”€ */
     '.chat-icon-btn.active{background:var(--chat-head-active-bg,var(--verde,#1D6A4A));color:var(--chat-head-active-fg,#fff)}',
@@ -360,6 +389,8 @@
   var projectSectionCollapsed = true;
   var pendingMessageSeq = 0;
   var reactionLocks = {};
+  var editingMessageId = null;
+  var editingDraft = '';
   var chatMediaConfig = null;
   var mediaViewerState = null;
   var mediaObjectUrl = null;
@@ -373,13 +404,20 @@
   var channelUnread    = {};        // { channel: count }
   var onlinePresence   = {};        // { auth_id: { status, nome, ... } }
   var userStatus     = localStorage.getItem(STATUS_KEY) || 'online';
-  var soundEnabled   = localStorage.getItem(SOUND_KEY) !== 'false';
+  var soundLevel     = _loadSoundLevel();
+  var soundEnabled   = soundLevel !== 'off';
+  function _loadSoundLevel() {
+    var lv = localStorage.getItem(SOUND_LEVEL_KEY);
+    if (lv === 'off' || lv === 'low' || lv === 'med' || lv === 'high') return lv;
+    return localStorage.getItem(SOUND_KEY) === 'false' ? 'off' : 'med';
+  }
   var pinnedChannels = (function () {
     try { return new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')); } catch (e) { return new Set(); }
   }());
   /* â”€â”€ Personalização visual â”€â”€ */
   var chatColor    = localStorage.getItem(COLOR_KEY) || 'verde';
   var colorPopOpen = false;
+  var soundPopOpen = false;
   /* â”€â”€ Mensagens sinalizadas (salvas) â”€â”€ */
   var flaggedMessages = (function () {
     try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || '[]'); } catch (e) { return []; }
@@ -440,6 +478,7 @@
     cacheRefs();
     applyChatColor(chatColor, false);
     applyStatus(userStatus, false);
+    _renderSoundBtn();
     setupPresence();
     fetchAllUnread();
     subscribeIncoming();
@@ -465,6 +504,14 @@
       if (pop && pop.contains(e.target)) return;
       if (btn && btn.contains(e.target)) return;
       closeColorPop();
+    });
+
+    // Fechar popover de som ao clicar fora
+    document.addEventListener('click', function (e) {
+      if (!soundPopOpen) return;
+      var wrap = document.getElementById('exp-chat-sound-wrap');
+      if (wrap && wrap.contains(e.target)) return;
+      closeSoundPop();
     });
 
     // Fechar popover ao clicar fora
@@ -578,7 +625,16 @@
             '<div class="chat-header-info"><div class="chat-header-title" onclick="window.location.href=\'chat-fullpage.html\'" style="cursor:pointer;user-select:none" title="Abrir chat em tela cheia">EXP.chat ↗</div></div>' +
             '<div class="chat-header-acts">' +
               '<button class="chat-icon-btn" id="exp-chat-color-btn" onclick="expChat.toggleColorPop(event)" title="Personalizar cor">' + icoPalette() + '</button>' +
-              '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSound()" title="Som de notificaÃ§Ã£o">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
+              '<span id="exp-chat-sound-wrap" style="position:relative;display:inline-flex">' +
+                '<button class="chat-icon-btn" id="exp-chat-sound-btn" onclick="expChat.toggleSoundPop(event)" title="Som das notificações">' + (soundEnabled ? icoSound() : icoSoundOff()) + '</button>' +
+                '<div class="chat-sound-pop" id="exp-chat-sound-pop">' +
+                  '<div class="chat-sopt-hdr">Som das notificações</div>' +
+                  soundOpt('off',  'Desligado',    icoVolOff()) +
+                  soundOpt('low',  'Volume baixo', icoVolLow()) +
+                  soundOpt('med',  'Volume médio', icoVolMed()) +
+                  soundOpt('high', 'Volume alto',  icoVolHigh()) +
+                '</div>' +
+              '</span>' +
               '<button class="chat-icon-btn" onclick="expChat.openSearch()" title="Pesquisar">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
@@ -755,11 +811,20 @@
   function icoPencil()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'; }
   function icoSound()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'; }
   function icoSoundOff(){ return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'; }
+  function icoVolOff() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'; }
+  function icoVolLow() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'; }
+  function icoVolMed() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M18.07 5.93a9 9 0 0 1 0 12.14"/></svg>'; }
+  function icoVolHigh(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'; }
+  function soundOpt(level, label, ico) {
+    return '<button class="chat-sopt" data-level="' + level + '" onclick="expChat.setSoundLevel(\'' + level + '\')">' +
+      '<span class="chat-sopt-vol">' + ico + '</span>' + label + '</button>';
+  }
   function icoLike()    { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>'; }
   function icoHeart()   { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>'; }
   function icoEmpty()   { return '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'; }
   function icoPalette() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12.5" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2C6.5 2 2 6 2 11c0 4.4 3.6 8 8 8 .9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H14c3.3 0 6-2.7 6-6 0-3.9-3.6-6.5-8-6.5z"/></svg>'; }
   function icoFlag()    { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>'; }
+  function icoPencil()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>'; }
   function icoChevUp()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'; }
   function icoChevDown(){ return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'; }
   function colorDot(key, hex) {
@@ -1932,11 +1997,11 @@
         .limit(1)
         .maybeSingle();
       if (metaRes.error || !metaRes.data) throw metaRes.error || new Error('Print nÃ£o encontrado.');
-      var down = await sb.storage.from(TEMP_MEDIA_BUCKET).download(metaRes.data.storage_path);
-      if (down.error || !down.data) throw down.error || new Error('Falha ao carregar o print.');
+      var sres = await sb.storage.from(TEMP_MEDIA_BUCKET).createSignedUrl(metaRes.data.storage_path, SIGNED_URL_EXPIRES);
+      if (sres.error || !sres.data || !sres.data.signedUrl) throw sres.error || new Error('Falha ao carregar o print.');
       delete failedStoragePaths[metaRes.data.storage_path];
       assignMessageMedia(contextType, msg.id, Object.assign({}, metaRes.data, {
-        objectUrl: URL.createObjectURL(down.data),
+        objectUrl: sres.data.signedUrl,
         pending: false,
         failed: false,
         failed_load: false,
@@ -2069,15 +2134,29 @@
         badgeHtml += '</div>';
       }
 
+      /* Edição inline da própria mensagem */
+      if (editingMessageId === msg.id && hasText) {
+        html += '<div class="chat-msg-edit ' + side + '">' +
+          '<textarea class="chat-msg-edit-input" oninput="expChat.editMessageInput(this)" onkeydown="expChat.editMessageKey(event,\'' + msg.id + '\')">' + escHtml(editingDraft) + '</textarea>' +
+          '<div class="chat-msg-edit-actions">' +
+            '<button class="chat-msg-edit-save" onclick="expChat.saveEditMessage(\'' + msg.id + '\')">Salvar</button>' +
+            '<button class="chat-msg-edit-cancel" onclick="expChat.cancelEditMessage()">Cancelar</button>' +
+          '</div></div>';
+        html += '</div>';
+        prevSender = msg.sender_id;
+        prevTime   = dt;
+        return;
+      }
+
       /* Bolha + botÃµes de reaÃ§Ã£o lado a lado */
       html += '<div class="chat-msg-bubble-row' + (hasRxn ? ' has-rxn' : '') + '">' +
         '<div class="chat-msg-bubble-wrap">' +
           '<div class="chat-msg-text ' + side + (hasText ? '' : ' media-only') + '">' +
-            (hasText ? linkify(escHtml(msg.content).replace(/\n/g, '<br>')) : '') +
+            (hasText ? linkify(escHtml(msg.content).replace(/\n/g, '<br>')) + (msg.editado_em ? '<span class="chat-msg-edited">(editado)</span>' : '') : '') +
           '</div>' +
           (media && media.objectUrl
             ? '<div class="chat-media-thumb" onclick="expChat.openMediaViewer(\'' + mediaKeyForMessage(msg) + '\')">' +
-                '<img src="' + escHtml(media.objectUrl) + '" alt="Print do chat">' +
+                '<img src="' + escHtml(media.objectUrl) + '" alt="Print do chat" loading="lazy" decoding="async">' +
               '</div>'
             : media && media.pending
               ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Enviando print...</div></div>'
@@ -2094,6 +2173,7 @@
         '<div class="chat-msg-react-btns">' +
           '<button class="chat-rbtn like' + (liked ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'like\')" title="Curtir">' + icoLike() + '</button>' +
           '<button class="chat-rbtn heart' + (loved ? ' active' : '') + '" onclick="expChat.react(\'' + msg.id + '\',\'love\')" title="Amei">' + icoHeart() + '</button>' +
+          ((isOwn && hasText && !msg.pending && !msg.failed) ? '<button class="chat-rbtn" onclick="expChat.startEditMessage(\'' + msg.id + '\')" title="Editar">' + icoPencil() + '</button>' : '') +
           '<button class="chat-rbtn flag' + (flagged ? ' active' : '') + '" onclick="expChat.flagMessage(\'' + msg.id + '\')" title="' + (flagged ? 'Remover marcação' : 'Sinalizar / salvar') + '">' + icoFlag() + '</button>' +
         '</div>' +
       '</div>';
@@ -2105,6 +2185,55 @@
 
     $msgs.innerHTML = html;
     if (inSearchOpen) highlightInSearch();
+    if (editingMessageId) {
+      var $ed = $msgs.querySelector('.chat-msg-edit-input');
+      if ($ed) { $ed.focus(); var v = $ed.value; $ed.value = ''; $ed.value = v; autoResize($ed); }
+    }
+  }
+
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     EDITAR MENSAGEM
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  function startEditMessage(msgId) {
+    var msg = messages.find(function (m) { return m.id === msgId; });
+    if (!msg || msg.sender_id !== user.auth_id) return;
+    if (isImageOnlySentinel(msg.content) || isAnnotSentinel(msg.content)) return;
+    editingMessageId = msgId;
+    editingDraft = String(msg.content || '');
+    renderMessages();
+  }
+  function editMessageInput(el) { editingDraft = el.value; autoResize(el); }
+  function editMessageKey(e, msgId) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEditMessage(msgId); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelEditMessage(); }
+  }
+  function cancelEditMessage() { editingMessageId = null; editingDraft = ''; renderMessages(); }
+  function saveEditMessage(msgId) {
+    var msg = messages.find(function (m) { return m.id === msgId; });
+    if (!msg) { cancelEditMessage(); return; }
+    var newContent = (editingDraft || '').trim();
+    var prevContent = msg.content, prevEdit = msg.editado_em || null;
+    if (!newContent || newContent === prevContent) { cancelEditMessage(); return; }
+    var nowIso = new Date().toISOString();
+    msg.content = newContent; msg.editado_em = nowIso;
+    editingMessageId = null; editingDraft = '';
+    renderMessages();
+    var isProjectMsg = isProjectChannel(msg.channel);
+    var rpcName = isProjectMsg ? 'chat_thread_edit_message' : 'chat_edit_message';
+    sb.rpc(rpcName, { p_message_id: msgId, p_content: newContent })
+      .then(function (r) {
+        if (r.error) {
+          msg.content = prevContent; msg.editado_em = prevEdit;
+          renderMessages();
+          console.warn('[EXP Chat] Erro ao editar:', r.error.message);
+          setComposerStatus('Não foi possível editar a mensagem.', 'warn', true);
+          return;
+        }
+        var updated = Array.isArray(r.data) ? r.data[0] : r.data;
+        if (updated && updated.id) upsertMessage(isProjectMsg ? normalizeProjectMessage(updated) : updated);
+        setComposerStatus('', '', false);
+        renderMessages();
+      });
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -2159,7 +2288,8 @@
   document.addEventListener('click', function () { _getAudioCtx(); }, { once: true });
 
   function playNotificationSound() {
-    if (!soundEnabled) return;
+    if (soundLevel === 'off') return;
+    var mult = SOUND_VOL[soundLevel] || 1;
     try {
       var ctx = _getAudioCtx();
       if (!ctx) return;
@@ -2171,7 +2301,7 @@
           osc.type = 'sine';
           osc.frequency.value = n.f;
           gain.gain.setValueAtTime(0, ctx.currentTime);
-          gain.gain.linearRampToValueAtTime(n.vol, ctx.currentTime + 0.015);
+          gain.gain.linearRampToValueAtTime(n.vol * mult, ctx.currentTime + 0.015);
           gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55);
           osc.connect(gain);
           gain.connect(ctx.destination);
@@ -2184,11 +2314,39 @@
     } catch (e) {}
   }
 
-  function toggleSound() {
-    soundEnabled = !soundEnabled;
-    localStorage.setItem(SOUND_KEY, soundEnabled ? 'true' : 'false');
+  function _renderSoundBtn() {
     var btn = document.getElementById('exp-chat-sound-btn');
-    if (btn) btn.innerHTML = soundEnabled ? icoSound() : icoSoundOff();
+    if (btn) {
+      btn.innerHTML = soundLevel === 'off' ? icoSoundOff() : icoSound();
+      btn.title = 'Som das notificações: ' + (SOUND_LABELS[soundLevel] || '');
+    }
+    var pop = document.getElementById('exp-chat-sound-pop');
+    if (pop) pop.querySelectorAll('.chat-sopt').forEach(function (o) {
+      o.classList.toggle('active', o.getAttribute('data-level') === soundLevel);
+    });
+  }
+  function toggleSoundPop(event) {
+    if (event) event.stopPropagation();
+    soundPopOpen ? closeSoundPop() : openSoundPop();
+  }
+  function openSoundPop() {
+    var pop = document.getElementById('exp-chat-sound-pop');
+    if (!pop) return;
+    if (colorPopOpen) closeColorPop();
+    soundPopOpen = true; pop.style.display = 'flex'; _renderSoundBtn();
+  }
+  function closeSoundPop() {
+    soundPopOpen = false;
+    var pop = document.getElementById('exp-chat-sound-pop');
+    if (pop) pop.style.display = 'none';
+  }
+  function setSoundLevel(lv) {
+    if (!SOUND_VOL.hasOwnProperty(lv)) return;
+    soundLevel = lv; soundEnabled = lv !== 'off';
+    localStorage.setItem(SOUND_LEVEL_KEY, lv);
+    localStorage.setItem(SOUND_KEY, soundEnabled ? 'true' : 'false');
+    _renderSoundBtn(); closeSoundPop();
+    if (lv !== 'off') playNotificationSound(); /* prévia do volume escolhido */
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -2425,6 +2583,7 @@
       sender_cor: msg.sender_cor,
       content: msg.content,
       created_at: msg.created_at,
+      editado_em: msg.editado_em || null,
       reactions: normalizeReactions(msg.reactions)
     };
   }
@@ -2654,6 +2813,10 @@
     return String(content || '').trim() === CHAT_IMAGE_SENTINEL;
   }
 
+  function isAnnotSentinel(content) {
+    return /^\[anotacoes:.+\]$/.test(String(content || '').trim());
+  }
+
   function isChatMediaExpired(msg) {
     if (!msg || !msg.created_at) return false;
     var dt = new Date(msg.created_at);
@@ -2678,33 +2841,28 @@
       .then(function (r) {
         if (requestSeq !== mediaRequestSeq || r.error) return;
         var rows = r.data || [];
-        return Promise.all(rows.map(function (row) {
-          if (!row.storage_path || failedStoragePaths[row.storage_path]) {
-            return {
-              key: mediaKeyFor(contextType, row.contexto_id),
-              messageId: row.contexto_id,
-              media: Object.assign({}, row, { objectUrl: null, pending: false, failed_load: true })
-            };
-          }
-          return sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function (down) {
-            if (down.error || !down.data) {
-              failedStoragePaths[row.storage_path] = true;
-              return {
-                key: mediaKeyFor(contextType, row.contexto_id),
-                messageId: row.contexto_id,
-                media: Object.assign({}, row, { objectUrl: null, pending: false, failed_load: true })
-              };
-            }
-            return {
-              key: mediaKeyFor(contextType, row.contexto_id),
-              messageId: row.contexto_id,
-              media: Object.assign({}, row, { objectUrl: URL.createObjectURL(down.data), pending: false })
-            };
-          });
-        })).then(function (items) {
+        /* Linhas sem caminho ou já marcadas como falhas → marca falha direto */
+        rows.filter(function (row) { return !row.storage_path || failedStoragePaths[row.storage_path]; })
+            .forEach(function (row) { assignMessageMedia(contextType, row.contexto_id, Object.assign({}, row, { objectUrl: null, pending: false, failed_load: true })); });
+        var ok = rows.filter(function (row) { return row.storage_path && !failedStoragePaths[row.storage_path]; });
+        /* Reaproveita prints já assinados nesta sessão (mesma URL = cache do navegador); atualiza só os marcadores */
+        var toSign = [];
+        ok.forEach(function (row) {
+          var existing = messageMediaMap[mediaKeyFor(contextType, row.contexto_id)];
+          if (existing && existing.objectUrl) assignMessageMedia(contextType, row.contexto_id, Object.assign({}, row, { objectUrl: existing.objectUrl, pending: false, failed_load: false }));
+          else toSign.push(row);
+        });
+        if (!toSign.length) { if (isOpen && currentView === 'channel') renderMessages(); return; }
+        /* Uma única chamada gera as signed URLs que faltam; o <img loading="lazy"> baixa do CDN */
+        var paths = toSign.map(function (row) { return row.storage_path; });
+        return sb.storage.from(TEMP_MEDIA_BUCKET).createSignedUrls(paths, SIGNED_URL_EXPIRES).then(function (sres) {
           if (requestSeq !== mediaRequestSeq) return;
-          (items || []).filter(Boolean).forEach(function (item) {
-            assignMessageMedia(contextType, item.messageId, item.media);
+          var urlByPath = {};
+          (sres && sres.data || []).forEach(function (s) { if (s && s.path && s.signedUrl) urlByPath[s.path] = s.signedUrl; });
+          toSign.forEach(function (row) {
+            var url = urlByPath[row.storage_path];
+            if (url) assignMessageMedia(contextType, row.contexto_id, Object.assign({}, row, { objectUrl: url, pending: false, failed_load: false }));
+            else { failedStoragePaths[row.storage_path] = true; assignMessageMedia(contextType, row.contexto_id, Object.assign({}, row, { objectUrl: null, pending: false, failed_load: true })); }
           });
           if (isOpen && currentView === 'channel') renderMessages();
         });
@@ -2736,8 +2894,8 @@
       if (isOpen && currentView === 'channel') renderMessages();
       return;
     }
-    sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function (down) {
-      if (down.error || !down.data) {
+    sb.storage.from(TEMP_MEDIA_BUCKET).createSignedUrl(row.storage_path, SIGNED_URL_EXPIRES).then(function (sres) {
+      if (sres.error || !sres.data || !sres.data.signedUrl) {
         failedStoragePaths[row.storage_path] = true;
         assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
           objectUrl: null,
@@ -2746,7 +2904,7 @@
         }));
       } else {
         assignMessageMedia(expectedType, row.contexto_id, Object.assign({}, row, {
-          objectUrl: URL.createObjectURL(down.data),
+          objectUrl: sres.data.signedUrl,
           pending: false,
           failed_load: false
         }));
@@ -3502,6 +3660,11 @@
     setStatus:       function (s) { applyStatus(s, true); closeStatusPop(); },
     toggleStatusPop: toggleStatusPop,
     react:           toggleReaction,
+    startEditMessage: startEditMessage,
+    editMessageInput: editMessageInput,
+    editMessageKey:  editMessageKey,
+    saveEditMessage: saveEditMessage,
+    cancelEditMessage: cancelEditMessage,
     openChannel:     openChannel,
     openProjectThread: openProjectThread,
     goHome:          goHome,
@@ -3523,7 +3686,8 @@
     startDM:         startDM,
     toggleMember:    toggleMember,
     confirmGroup:    confirmGroup,
-    toggleSound:     toggleSound,
+    toggleSoundPop:  toggleSoundPop,
+    setSoundLevel:   setSoundLevel,
     togglePin:       togglePin,
     setChatColor:    setChatColor,
     toggleColorPop:  toggleColorPop,

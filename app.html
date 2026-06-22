@@ -332,7 +332,7 @@ body {
 .dash-task-item {
   display: flex; align-items: flex-start; gap: 9px;
   padding: 8px 14px; border-bottom: 1px solid var(--cinza2);
-  cursor: pointer; transition: background .1s;
+  transition: background .1s;
 }
 .dash-task-item:last-child { border-bottom: none; }
 .dash-task-item:hover { background: var(--off); }
@@ -341,7 +341,7 @@ body {
 
 .dash-task-check {
   width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #ccc;
-  flex-shrink: 0; margin-top: 2px;
+  flex-shrink: 0; margin-top: 2px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; transition: all .12s;
 }
 .dash-task-item.done .dash-task-check { background: var(--verde); border-color: var(--verde); }
@@ -3874,10 +3874,13 @@ function wireDashboardDom() {
       return;
     }
 
-    const taskItem = event.target.closest('.dash-task-item[data-task-id]');
-    if (taskItem && dash.contains(taskItem)) {
-      event.preventDefault();
-      await toggleDashTask(taskItem.dataset.taskId, taskItem.dataset.taskConcluida === 'true');
+    const taskCheck = event.target.closest('.dash-task-check');
+    if (taskCheck && dash.contains(taskCheck)) {
+      const taskItem = taskCheck.closest('.dash-task-item[data-task-id]');
+      if (taskItem) {
+        event.preventDefault();
+        await toggleDashTask(taskItem.dataset.taskId, taskItem.dataset.taskConcluida === 'true');
+      }
       return;
     }
 

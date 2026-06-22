@@ -10,7 +10,10 @@
   var SB_URL     = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
   var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
   var STATUS_KEY = 'exp_chat_status';
-  var SOUND_KEY  = 'exp_chat_sound';
+  var SOUND_KEY  = 'exp_chat_sound';           /* legado: on/off */
+  var SOUND_LEVEL_KEY = 'exp_chat_sound_level';/* off | low | med | high */
+  var SOUND_VOL  = { off:0, low:0.45, med:1, high:1.9 }; /* multiplicador do volume base */
+  var SOUND_LABELS = { off:'Desligado', low:'Volume baixo', med:'Volume médio', high:'Volume alto' };
   var COLOR_KEY  = 'exp_chat_color';
   var FLAGS_KEY   = 'exp_chat_flags';
   var PINS_KEY    = 'exp_chat_pins';
@@ -18,6 +21,7 @@
   var BRAND_AVATAR_COLORS = ['#1D6A4A','#1D4FA0','#C4831A','#B84C3A','#6D7D8A','#4A72B5','#7A9E7E'];
   var TEMP_MEDIA_BUCKET   = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
+  var SIGNED_URL_EXPIRES  = 7 * 24 * 60 * 60; /* 7 dias — cobre toda a vida do print (expira em 7d) */
   var CHAT_MEDIA_LIMITS   = { largura_max_px:1280, tamanho_max_kb:500, qualidade_upload:0.76, qualidade_fallback:0.70 };
 
   /* ── Estado ──────────────────────────────────────────────────────── */
@@ -37,6 +41,8 @@
   var projectSectionCollapsed = true;
   var pendingMessageSeq = 0;
   var reactionLocks     = {};
+  var editingMessageId  = null;
+  var editingDraft      = '';
   var chatMediaConfig   = null;
   var mediaViewerState  = null;
   var messageMediaMap   = {};
@@ -49,7 +55,14 @@
   var onlinePresence    = {};
   var initialRouteHandled = false;
   var userStatus        = localStorage.getItem(STATUS_KEY) || 'online';
-  var soundEnabled      = localStorage.getItem(SOUND_KEY) !== 'false';
+  var soundLevel        = _loadSoundLevel();
+  var soundEnabled      = soundLevel !== 'off';
+  function _loadSoundLevel() {
+    var lv = localStorage.getItem(SOUND_LEVEL_KEY);
+    if (lv === 'off' || lv === 'low' || lv === 'med' || lv === 'high') return lv;
+    /* migra do legado on/off → médio quando ligado */
+    return localStorage.getItem(SOUND_KEY) === 'false' ? 'off' : 'med';
+  }
   var chatColor         = localStorage.getItem(COLOR_KEY) || 'verde';
   var flaggedMessages   = loadFlags();
   var pinnedProjects    = loadPins();
@@ -61,6 +74,7 @@
   var showOnlyUnread    = false;
   var showOnlyFlagged   = false;
   var statusPopOpen     = false;
+  var soundPopOpen      = false;
   var mvZoom            = 1;
   /* busca dentro da conversa */
   var inSearchOpen      = false;
@@ -320,6 +334,7 @@
     syncColorUI();
 
     applyStatus(userStatus, false);
+    _renderSoundBtn();
     setupPresence();
     fetchAllUnread();
     subscribeIncoming();
@@ -342,6 +357,10 @@
         var pop = document.getElementById('fp-status-pop');
         var btn = document.getElementById('fp-status-btn');
         if (pop && !pop.contains(e.target) && btn && !btn.contains(e.target)) closeStatusPop();
+      }
+      if (soundPopOpen) {
+        var spWrap = document.getElementById('fp-sound-wrap');
+        if (spWrap && !spWrap.contains(e.target)) closeSoundPop();
       }
       /* Fechar notif panel — gerenciado pelo AppNotif via outside-click */
     });
@@ -618,13 +637,39 @@
   }
   function setStatus(s) { applyStatus(s, true); closeStatusPop(); }
 
-  function toggleSound() {
-    soundEnabled = !soundEnabled;
-    localStorage.setItem(SOUND_KEY, soundEnabled ? 'true' : 'false');
+  /* Ícone do sininho: tocado quando ligado, riscado quando desligado */
+  var SOUND_SVG_ON  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+  var SOUND_SVG_OFF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+  function _renderSoundBtn() {
+    var icon = document.getElementById('fp-sound-icon');
+    if (icon) icon.innerHTML = soundLevel === 'off' ? SOUND_SVG_OFF : SOUND_SVG_ON;
     var btn = document.getElementById('fp-sound-btn');
-    if (btn) btn.innerHTML = soundEnabled
-      ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
-      : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    if (btn) btn.title = 'Som das notificações: ' + (SOUND_LABELS[soundLevel] || '');
+    document.querySelectorAll('#fp-sound-pop .fp-sopt').forEach(function(o){
+      o.classList.toggle('active', o.getAttribute('data-level') === soundLevel);
+    });
+  }
+
+  function toggleSoundPop() { soundPopOpen ? closeSoundPop() : openSoundPop(); }
+  function openSoundPop() {
+    var pop = document.getElementById('fp-sound-pop');
+    if (!pop) return;
+    if (statusPopOpen) closeStatusPop();
+    soundPopOpen = true; pop.style.display = 'flex'; _renderSoundBtn();
+  }
+  function closeSoundPop() {
+    var pop = document.getElementById('fp-sound-pop');
+    if (!pop) return;
+    soundPopOpen = false; pop.style.display = 'none';
+  }
+  function setSoundLevel(lv) {
+    if (!SOUND_VOL.hasOwnProperty(lv)) return;
+    soundLevel = lv; soundEnabled = lv !== 'off';
+    localStorage.setItem(SOUND_LEVEL_KEY, lv);
+    localStorage.setItem(SOUND_KEY, soundEnabled ? 'true' : 'false'); /* mantém legado em sincronia */
+    _renderSoundBtn(); closeSoundPop();
+    if (lv !== 'off') playNotificationSound(); /* prévia do volume escolhido */
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -1650,9 +1695,19 @@
 
       /* Texto */
       if (hasText) {
-        var textHtml = fpLinkify(escHtml(msg.content).replace(/\n/g,'<br>'));
-        if (inSearchQuery) textHtml = highlightText(textHtml, inSearchQuery, isCurrentResult);
-        html += '<div class="fp-msg-text">'+textHtml+'</div>';
+        if (editingMessageId === msg.id) {
+          html += '<div class="fp-msg-edit">' +
+            '<textarea class="fp-msg-edit-input" oninput="fpChat.editMessageInput(this)" onkeydown="fpChat.editMessageKey(event,\''+escHtml(String(msg.id))+'\')">'+escHtml(editingDraft)+'</textarea>' +
+            '<div class="fp-msg-edit-actions">' +
+              '<button class="fp-msg-edit-save" onclick="fpChat.saveEditMessage(\''+escHtml(String(msg.id))+'\')">Salvar</button>' +
+              '<button class="fp-msg-edit-cancel" onclick="fpChat.cancelEditMessage()">Cancelar</button>' +
+            '</div></div>';
+        } else {
+          var textHtml = fpLinkify(escHtml(msg.content).replace(/\n/g,'<br>'));
+          if (inSearchQuery) textHtml = highlightText(textHtml, inSearchQuery, isCurrentResult);
+          if (msg.editado_em) textHtml += '<span class="fp-msg-edited" title="Editada">(editado)</span>';
+          html += '<div class="fp-msg-text">'+textHtml+'</div>';
+        }
       }
 
       /* Mídia */
@@ -1664,7 +1719,7 @@
               nMarks + '</span>'
           : '';
         html += '<div class="fp-media-thumb" onclick="fpChat.openMediaViewer(\''+escHtml(mediaKeyForMessage(msg))+'\')">' +
-          '<img src="'+escHtml(media.objectUrl)+'" alt="Print" onload="fpChat._thumbLoaded()">' + annotBadge + '</div>';
+          '<img src="'+escHtml(media.objectUrl)+'" alt="Print" loading="lazy" decoding="async" onload="fpChat._thumbLoaded()">' + annotBadge + '</div>';
       } else if (media && media.pending) {
         html += '<div class="fp-media-thumb" style="padding:14px;font-size:11px;color:#999">Enviando print…</div>';
       } else if (showLoadFailed) {
@@ -1692,6 +1747,7 @@
       html += '<div class="fp-msg-actions">' +
         '<button class="fp-action-btn like" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'like\')" title="Curtir">'+icoLike()+'</button>' +
         '<button class="fp-action-btn heart" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'love\')" title="Amei">'+icoHeart()+'</button>' +
+        ((isOwn && hasText && !msg.pending && !msg.failed) ? '<button class="fp-action-btn" onclick="fpChat.startEditMessage(\''+escHtml(String(msg.id))+'\')" title="Editar">'+_PENCIL+'</button>' : '') +
         '<button class="fp-action-btn'+(isFlagged?' flag-active':'')+'" onclick="fpChat.flagMessage(\''+escHtml(String(msg.id))+'\')" title="Sinalizar">'+icoFlag()+'</button>' +
         '</div>';
 
@@ -1701,6 +1757,48 @@
     });
 
     $msgs.innerHTML = html;
+
+    if (editingMessageId) {
+      var $ed = $msgs.querySelector('.fp-msg-edit-input');
+      if ($ed) { $ed.focus(); var v=$ed.value; $ed.value=''; $ed.value=v; autoResize($ed); }
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     EDITAR MENSAGEM
+  ═══════════════════════════════════════════════════════════════════ */
+  function startEditMessage(msgId) {
+    var msg = messages.find(function(m){ return m.id===msgId; });
+    if (!msg || msg.sender_id!==user.auth_id) return;
+    if (isImageOnlySentinel(msg.content) || isAnnotSentinel(msg.content)) return;
+    editingMessageId = msgId;
+    editingDraft = String(msg.content||'');
+    renderMessages();
+  }
+  function editMessageInput(el) { editingDraft = el.value; autoResize(el); }
+  function editMessageKey(e, msgId) {
+    if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); saveEditMessage(msgId); }
+    else if (e.key==='Escape') { e.preventDefault(); cancelEditMessage(); }
+  }
+  function cancelEditMessage() { editingMessageId=null; editingDraft=''; renderMessages(); }
+  function saveEditMessage(msgId) {
+    var msg = messages.find(function(m){ return m.id===msgId; });
+    if (!msg) { cancelEditMessage(); return; }
+    var newContent = (editingDraft||'').trim();
+    var prevContent = msg.content, prevEdit = msg.editado_em || null;
+    if (!newContent || newContent===prevContent) { cancelEditMessage(); return; }
+    var nowIso = new Date().toISOString();
+    msg.content = newContent; msg.editado_em = nowIso;
+    editingMessageId=null; editingDraft='';
+    renderMessages();
+    var isPrj = isProjectChannel(msg.channel);
+    sb.rpc(isPrj?'chat_thread_edit_message':'chat_edit_message', { p_message_id:msgId, p_content:newContent })
+      .then(function(r){
+        if (r.error) { msg.content=prevContent; msg.editado_em=prevEdit; renderMessages(); alert('Não foi possível editar a mensagem: '+r.error.message); return; }
+        var upd=Array.isArray(r.data)?r.data[0]:r.data;
+        if (upd&&upd.id) upsertMessage(isPrj?normalizeProjectMessage(upd):upd);
+        renderMessages();
+      });
   }
 
   function fpLinkify(html) {
@@ -1825,10 +1923,10 @@
     try {
       var mr=await sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores').eq('contexto_tipo',ct).eq('contexto_id',msg.id).is('removido_em',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:true}).limit(1).maybeSingle();
       if (mr.error||!mr.data) throw mr.error||new Error('Print não encontrado.');
-      var down=await sb.storage.from(TEMP_MEDIA_BUCKET).download(mr.data.storage_path);
-      if (down.error||!down.data) throw down.error||new Error('Falha ao carregar.');
+      var sres=await sb.storage.from(TEMP_MEDIA_BUCKET).createSignedUrl(mr.data.storage_path,SIGNED_URL_EXPIRES);
+      if (sres.error||!sres.data||!sres.data.signedUrl) throw sres.error||new Error('Falha ao carregar.');
       delete failedStoragePaths[mr.data.storage_path];
-      assignMessageMedia(ct,msg.id,Object.assign({},mr.data,{objectUrl:URL.createObjectURL(down.data),pending:false,failed:false,failed_load:false,blob:cm.blob||null}));
+      assignMessageMedia(ct,msg.id,Object.assign({},mr.data,{objectUrl:sres.data.signedUrl,pending:false,failed:false,failed_load:false,blob:cm.blob||null}));
       renderMessages();
     } catch(err) {
       assignMessageMedia(ct,msg.id,Object.assign({},cm,{pending:false,failed_load:true}));
@@ -2189,7 +2287,8 @@
   document.addEventListener('click', function () { _getAudioCtx(); }, { once: true });
 
   function playNotificationSound(){
-    if(!soundEnabled) return;
+    if(soundLevel==='off') return;
+    var mult = SOUND_VOL[soundLevel] || 1;
     try {
       var ctx = _getAudioCtx();
       if (!ctx) return;
@@ -2198,7 +2297,7 @@
           var osc=ctx.createOscillator(), gain=ctx.createGain();
           osc.type='sine'; osc.frequency.value=n.f;
           gain.gain.setValueAtTime(0,ctx.currentTime);
-          gain.gain.linearRampToValueAtTime(n.vol,ctx.currentTime+0.015);
+          gain.gain.linearRampToValueAtTime(n.vol*mult,ctx.currentTime+0.015);
           gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.55);
           osc.connect(gain); gain.connect(ctx.destination);
           osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.57);
@@ -2348,16 +2447,30 @@
     return sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores').eq('contexto_tipo',ct).in('contexto_id',ids).is('removido_em',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:true})
       .then(function(r){
         if(seq!==mediaRequestSeq||r.error) return;
-        return Promise.all((r.data||[]).map(function(row){
-          if(!row.storage_path||failedStoragePaths[row.storage_path])
-            return {messageId:row.contexto_id,media:Object.assign({},row,{objectUrl:null,pending:false,failed_load:true})};
-          return sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function(down){
-            if(down.error||!down.data){ failedStoragePaths[row.storage_path]=true; return {messageId:row.contexto_id,media:Object.assign({},row,{objectUrl:null,pending:false,failed_load:true})}; }
-            return {messageId:row.contexto_id,media:Object.assign({},row,{objectUrl:URL.createObjectURL(down.data),pending:false})};
-          });
-        })).then(function(items){
+        var rows=r.data||[];
+        /* Linhas sem caminho ou já marcadas como falhas → marca falha direto */
+        rows.filter(function(row){ return !row.storage_path||failedStoragePaths[row.storage_path]; })
+            .forEach(function(row){ assignMessageMedia(ct,row.contexto_id,Object.assign({},row,{objectUrl:null,pending:false,failed_load:true})); });
+        var ok=rows.filter(function(row){ return row.storage_path&&!failedStoragePaths[row.storage_path]; });
+        /* Reaproveita prints já assinados nesta sessão (mesma URL = cache do navegador); atualiza só os marcadores */
+        var toSign=[];
+        ok.forEach(function(row){
+          var existing=messageMediaMap[mediaKeyFor(ct,row.contexto_id)];
+          if(existing&&existing.objectUrl) assignMessageMedia(ct,row.contexto_id,Object.assign({},row,{objectUrl:existing.objectUrl,pending:false,failed_load:false}));
+          else toSign.push(row);
+        });
+        if(!toSign.length){ if(currentChannel) renderMessages(); return; }
+        /* Uma única chamada gera as signed URLs que faltam; o <img loading="lazy"> baixa do CDN */
+        var paths=toSign.map(function(row){ return row.storage_path; });
+        return sb.storage.from(TEMP_MEDIA_BUCKET).createSignedUrls(paths,SIGNED_URL_EXPIRES).then(function(sres){
           if(seq!==mediaRequestSeq) return;
-          (items||[]).filter(Boolean).forEach(function(item){ assignMessageMedia(ct,item.messageId,item.media); });
+          var urlByPath={};
+          (sres&&sres.data||[]).forEach(function(s){ if(s&&s.path&&s.signedUrl) urlByPath[s.path]=s.signedUrl; });
+          toSign.forEach(function(row){
+            var url=urlByPath[row.storage_path];
+            if(url) assignMessageMedia(ct,row.contexto_id,Object.assign({},row,{objectUrl:url,pending:false,failed_load:false}));
+            else { failedStoragePaths[row.storage_path]=true; assignMessageMedia(ct,row.contexto_id,Object.assign({},row,{objectUrl:null,pending:false,failed_load:true})); }
+          });
           if(currentChannel) renderMessages();
         });
       });
@@ -2381,9 +2494,9 @@
       assignMessageMedia(et,row.contexto_id,Object.assign({},row,{objectUrl:null,pending:false,failed_load:true}));
       renderMessages(); return;
     }
-    sb.storage.from(TEMP_MEDIA_BUCKET).download(row.storage_path).then(function(down){
-      if(down.error||!down.data){ failedStoragePaths[row.storage_path]=true; assignMessageMedia(et,row.contexto_id,Object.assign({},row,{objectUrl:null,pending:false,failed_load:true})); }
-      else assignMessageMedia(et,row.contexto_id,Object.assign({},row,{objectUrl:URL.createObjectURL(down.data),pending:false,failed_load:false}));
+    sb.storage.from(TEMP_MEDIA_BUCKET).createSignedUrl(row.storage_path,SIGNED_URL_EXPIRES).then(function(sres){
+      if(sres.error||!sres.data||!sres.data.signedUrl){ failedStoragePaths[row.storage_path]=true; assignMessageMedia(et,row.contexto_id,Object.assign({},row,{objectUrl:null,pending:false,failed_load:true})); }
+      else assignMessageMedia(et,row.contexto_id,Object.assign({},row,{objectUrl:sres.data.signedUrl,pending:false,failed_load:false}));
       renderMessages();
     });
   }
@@ -2487,7 +2600,7 @@
     var c=raw.replace(/\n/g,' '); if(!c) return fb||'';
     return c.length>maxLen?c.substring(0,maxLen)+'…':c;
   }
-  function normalizeProjectMessage(msg){ return {id:msg.id,channel:'project:'+msg.thread_id,thread_id:msg.thread_id,sender_id:msg.sender_auth_id,sender_name:msg.sender_nome,sender_iniciais:msg.sender_iniciais,sender_cor:msg.sender_cor,content:msg.content,created_at:msg.created_at,reactions:normalizeReactions(msg.reactions)}; }
+  function normalizeProjectMessage(msg){ return {id:msg.id,channel:'project:'+msg.thread_id,thread_id:msg.thread_id,sender_id:msg.sender_auth_id,sender_name:msg.sender_nome,sender_iniciais:msg.sender_iniciais,sender_cor:msg.sender_cor,content:msg.content,created_at:msg.created_at,editado_em:msg.editado_em||null,reactions:normalizeReactions(msg.reactions)}; }
   function buildProjectThreadMeta(tid,title,preview,createdAt,senderAuthId){
     var ch='project:'+tid, label=title||(projectThreadMeta[ch]&&projectThreadMeta[ch].label)||'Projeto';
     return {threadId:tid,channel:ch,label:label,iniciais:initialsFromLabel(label,'PRJ'),cor:brandColorForKey(ch+':'+label),preview:preview||'Chat do projeto',lastCreatedAt:createdAt||null,lastSenderId:senderAuthId||null,unread:projectThreadMeta[ch]?(projectThreadMeta[ch].unread||0):0};
@@ -2679,13 +2792,14 @@
   ═══════════════════════════════════════════════════════════════════ */
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
-    toggleStatusPop, setStatus, toggleSound, toggleDmPin,
+    toggleStatusPop, setStatus, toggleSoundPop, setSoundLevel, toggleDmPin,
     setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM, openDMWith,
     send, handleKey, autoResize,
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
+    startEditMessage, editMessageInput, editMessageKey, saveEditMessage, cancelEditMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
     mvSelectTool, mvRemoveMark, openAnnotatedPrint, _thumbLoaded,
     showNotaInput, _confirmNota, _cancelNota, _notaKeydown, renderMvNotesPanel,

@@ -223,6 +223,22 @@ body {
 .fp-sopt.active { background: var(--off, #F7F6F3); font-weight: 700; color: var(--grafite, #111110); }
 [data-theme="dark"] .fp-sopt.active { background: rgba(255,255,255,.07); color: #F0EDE6; }
 .fp-sopt-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.fp-sopt-vol { display: inline-flex; align-items: center; justify-content: center; width: 16px; flex-shrink: 0; color: #888; }
+[data-theme="dark"] .fp-sopt-vol { color: #9A958C; }
+.fp-sopt.active .fp-sopt-vol { color: var(--ca, #1D6A4A); }
+
+/* Som — popover de volume (mesmo visual do status) */
+#fp-sound-pop {
+  position: absolute; top: calc(100% + 8px); left: 0;
+  background: var(--branco, #fff);
+  border: 1px solid var(--cinza2, #ECEAE4);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  padding: 5px;
+  display: none; flex-direction: column; gap: 1px;
+  min-width: 176px; z-index: 300;
+}
+[data-theme="dark"] #fp-sound-pop { background: #1E1E1D; border-color: #2E2D2B; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
 
 /* Busca */
 .fp-sb-search {
@@ -810,6 +826,31 @@ body {
   word-break: break-word;
 }
 [data-theme="dark"] .fp-msg-text { color: var(--fp-msg-color, #C8C3BA); }
+.fp-msg-edited {
+  margin-left: 6px; font-size: calc(9px * var(--fp-fz, 1));
+  color: #b0aca3; font-style: italic; white-space: nowrap;
+}
+/* Edição inline de mensagem */
+.fp-msg-edit { display: flex; flex-direction: column; gap: 6px; }
+.fp-msg-edit-input {
+  width: 100%; min-height: 36px; resize: none;
+  font-family: inherit; font-size: calc(var(--fp-msg-size, 12px) * var(--fp-fz, 1));
+  line-height: 1.5; color: var(--grafite, #111110);
+  padding: 7px 9px; border: 1px solid var(--ca); border-radius: 8px;
+  background: var(--branco, #fff); outline: none; box-sizing: border-box;
+}
+[data-theme="dark"] .fp-msg-edit-input { background: #252523; color: #F0EDE6; }
+.fp-msg-edit-actions { display: flex; gap: 6px; }
+.fp-msg-block.own .fp-msg-edit-actions { justify-content: flex-end; }
+.fp-msg-edit-save, .fp-msg-edit-cancel {
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  padding: 4px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--cinza, #ECEAE4); background: none; color: #888;
+  transition: all .12s;
+}
+.fp-msg-edit-save { background: var(--ca); border-color: var(--ca); color: #fff; }
+.fp-msg-edit-save:hover { opacity: .88; }
+.fp-msg-edit-cancel:hover { border-color: var(--ca); color: var(--ca); }
 .fp-link { color: var(--ca); text-decoration: underline; word-break: break-all; }
 .fp-link:hover { opacity: .8; }
 
@@ -2645,10 +2686,19 @@ body {
             <button class="fp-sopt" data-status="ausente" onclick="fpChat.setStatus('ausente')"><span class="fp-sopt-dot" style="background:#C4831A"></span>Ausente</button>
           </div>
         </div>
-        <!-- Som -->
-        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-sound-btn" onclick="fpChat.toggleSound()" title="Som">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </button>
+        <!-- Som (popover de volume) -->
+        <div id="fp-sound-wrap" style="position:relative;display:flex">
+          <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-sound-btn" onclick="fpChat.toggleSoundPop()" title="Som das notificações">
+            <span id="fp-sound-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+          </button>
+          <div id="fp-sound-pop">
+            <div class="fp-sopt-hdr">Som das notificações</div>
+            <button class="fp-sopt" data-level="off"  onclick="fpChat.setSoundLevel('off')"><span class="fp-sopt-vol"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></span>Desligado</button>
+            <button class="fp-sopt" data-level="low"  onclick="fpChat.setSoundLevel('low')"><span class="fp-sopt-vol"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Volume baixo</button>
+            <button class="fp-sopt" data-level="med"  onclick="fpChat.setSoundLevel('med')"><span class="fp-sopt-vol"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M18.07 5.93a9 9 0 0 1 0 12.14"/></svg></span>Volume médio</button>
+            <button class="fp-sopt" data-level="high" onclick="fpChat.setSoundLevel('high')"><span class="fp-sopt-vol"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Volume alto</button>
+          </div>
+        </div>
         <!-- Nova mensagem -->
         <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-new-dm-btn" onclick="fpChat.openNewDM(event)" title="Nova mensagem">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
