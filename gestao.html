@@ -2030,6 +2030,10 @@ body {
 /* ── Fluxo — painel detalhe (editar) ───────────────────── */
 .fluxo-detail-panel { display:flex; flex-direction:column; }
 .fluxo-detail-hd { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--cinza); border-radius:10px 10px 0 0; background:var(--off); }
+.fluxo-save-btn { flex-shrink:0; border:1px solid var(--ca,#1D6A4A); border-radius:7px; padding:6px 14px; background:var(--ca,#1D6A4A); color:#fff; font-size:11px; font-weight:600; cursor:pointer; font-family:var(--font-ui); transition:opacity .12s,background .12s; }
+.fluxo-save-btn:hover { opacity:.88; }
+.fluxo-save-btn:disabled { background:var(--cinza); border-color:var(--cinza); color:#aaa; cursor:default; opacity:1; }
+.fluxo-dirty-pill { flex-shrink:0; font-size:9px; font-weight:600; color:var(--terracota,#C36247); background:rgba(195,98,71,.1); border-radius:6px; padding:3px 8px; }
 .fluxo-detail-hd-nome { font-size:13px; font-weight:700; color:var(--grafite); }
 .fluxo-detail-hd-role { font-size:9px; color:#999; margin-top:1px; }
 .fluxo-prio-list { display:flex; flex-direction:column; gap:6px; }
@@ -13225,6 +13229,13 @@ function renderFluxoUserList() {
 }
 
 function selecionarFluxoUser(uid) {
+  if (uid === _fluxoSelectedUid) return;
+  if (_fluxoSelectedUid && _fluxoDirty[_fluxoSelectedUid]) {
+    if (!confirm('Você tem alterações não salvas neste colaborador. Descartar e trocar?')) return;
+    // Descarta: recarrega os dados originais do banco antes de trocar
+    _fluxoDirty[_fluxoSelectedUid] = false;
+    carregarFluxo();
+  }
   _fluxoSelectedUid = uid;
   renderFluxoUserList();
   renderFluxoDetail(uid);
@@ -13258,11 +13269,11 @@ function renderFluxoDetail(uid) {
         <span class="fluxo-drag-handle" style="cursor:grab;color:#ccc;font-size:13px;user-select:none">⠿</span>
         <div class="fluxo-slot-num ${NUM_CLS[ord]}" style="flex-shrink:0">${ord}</div>
         <select class="fluxo-prio-select"
-          onchange="atualizarFluxoProduto('${uid}','${pr.id}',this.value)">${opts}</select>
+          onchange="setFluxoProduto('${uid}','${pr.id}',this.value)">${opts}</select>
         <input type="date" class="fluxo-prio-date-inline" value="${inicio}" title="Liberação"
-          onchange="debFluxo('${pr.id}','inicio',this.value)">
+          onchange="setFluxoCampo('${uid}','${pr.id}','inicio',this.value)">
         <input type="date" class="fluxo-prio-date-inline" value="${prazo}" title="Conclusão"
-          onchange="debFluxo('${pr.id}','prazo',this.value)">
+          onchange="setFluxoCampo('${uid}','${pr.id}','prazo',this.value)">
         <span class="fluxo-conc-tag ${conc?'done':''}" style="white-space:nowrap;flex-shrink:0"
           onclick="toggleFluxoPrio('${uid}','${pr.id}')">${conc?'✓ Concluída':'Pendente'}</span>
         <button onclick="event.stopPropagation();limparFluxoPrio('${uid}','${pr.id}')" title="Remover"
@@ -13271,7 +13282,7 @@ function renderFluxoDetail(uid) {
       </div>
       <textarea class="fluxo-prio-textarea" rows="2"
         placeholder="Comentário para o colaborador..."
-        onblur="debFluxo('${pr.id}','comentario',this.value)">${coment}</textarea>
+        oninput="setFluxoCampo('${uid}','${pr.id}','comentario',this.value)">${coment}</textarea>
     </div>`;
   }).join('');
 
@@ -13280,6 +13291,7 @@ function renderFluxoDetail(uid) {
   const addBtn = canAdd
     ? `<button class="fluxo-prio-add-btn" onclick="adicionarFluxoPrio('${uid}')">+ Adicionar prioridade</button>` : '';
 
+  const dirty = !!_fluxoDirty[uid];
   wrap.innerHTML = `<div class="fluxo-detail-panel">
     <div class="fluxo-detail-hd">
       ${_avImg(u, 36, 13)}
@@ -13287,6 +13299,9 @@ function renderFluxoDetail(uid) {
         <div class="fluxo-detail-hd-nome">${_escN(u.nome)}</div>
         <div class="fluxo-detail-hd-role">${ROLES_LABEL[u.role]||u.role||''}</div>
       </div>
+      <span class="fluxo-dirty-pill" id="fluxo-dirty-pill" style="${dirty?'':'display:none'}">alterações não salvas</span>
+      <button class="fluxo-save-btn" id="fluxo-save-btn" ${dirty?'':'disabled'}
+        onclick="salvarFluxoUsuario('${uid}')">Salvar</button>
     </div>
     <div class="fluxo-prio-list" id="fluxo-prio-list-${uid}">${itemsHtml}${emptyMsg}</div>
     ${addBtn}
@@ -13329,11 +13344,7 @@ async function _fluxoItemDrop(e) {
   (_fluxoPriosData[uid]||[]).forEach(p => { priosMap[p.id] = p; });
   newOrder.forEach((id, i) => { if (priosMap[id]) priosMap[id].ordem = i + 1; });
   _fluxoPriosData[uid] = newOrder.map(id => priosMap[id]).filter(Boolean);
-  const results = await Promise.all(newOrder.map((id, i) =>
-    sb.from('prioridades_usuario').update({ ordem: i + 1 }).eq('id', id)
-  ));
-  const erro = results.find(r => r.error);
-  if (erro) { console.error('[fluxo] reordenar', erro.error); toast('Não foi possível salvar a ordem: ' + erro.error.message, 4000); }
+  _fluxoMarkDirty(uid);
   renderFluxoDetail(uid);
   renderFluxoUserList();
 }
@@ -13359,36 +13370,81 @@ async function adicionarFluxoPrio(uid) {
   renderFluxoUserList();
 }
 
-async function atualizarFluxoProduto(uid, prid, produtoId) {
-  const prodId = produtoId || null;
-  const { data, error } = await sb.from('prioridades_usuario')
-    .update({ produto_id: prodId }).eq('id', prid).select();
-  if (error) { console.error('[fluxo] update produto', error); toast('Não foi possível salvar: ' + error.message, 4000); return; }
-  if (!data || data.length === 0) {
-    console.error('[fluxo] update produto: 0 linhas afetadas (RLS bloqueando UPDATE?)', prid);
-    toast('Sem permissão para salvar esta prioridade (RLS bloqueou o UPDATE).', 5000);
-    return;
-  }
-  const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === prid);
-  if (pr) pr.produto_id = prodId;
-  renderFluxoUserList();
+// ── Edições locais (só vão pro banco ao clicar em "Salvar") ──────────────────
+let _fluxoDirty = {};
+
+function _fluxoMarkDirty(uid) {
+  _fluxoDirty[uid] = true;
+  const btn  = document.getElementById('fluxo-save-btn');
+  const pill = document.getElementById('fluxo-dirty-pill');
+  if (btn)  btn.disabled = false;
+  if (pill) pill.style.display = '';
 }
 
-async function toggleFluxoPrio(uid, recId) {
+function setFluxoCampo(uid, prid, campo, valor) {
+  const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === prid);
+  if (!pr) return;
+  if      (campo === 'inicio')     pr.data_inicio = valor || null;
+  else if (campo === 'prazo')      pr.prazo_texto = valor || null;
+  else if (campo === 'comentario') pr.comentario  = valor;
+  _fluxoMarkDirty(uid);
+}
+
+function setFluxoProduto(uid, prid, produtoId) {
+  const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === prid);
+  if (!pr) return;
+  pr.produto_id = produtoId || null;
+  _fluxoMarkDirty(uid);
+  renderFluxoUserList(); // atualiza o badge (ativas/total) na lista lateral
+}
+
+// Grava TODAS as prioridades do usuário de uma vez e confirma o resultado
+async function salvarFluxoUsuario(uid) {
+  const prios = _fluxoPriosData[uid] || [];
+  const btn = document.getElementById('fluxo-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  let okCount = 0, failCount = 0, lastErr = '';
+  for (let i = 0; i < prios.length; i++) {
+    const pr = prios[i];
+    const payload = {
+      produto_id:   pr.produto_id || null,
+      data_inicio:  pr.data_inicio || null,
+      prazo_texto:  pr.prazo_texto || null,
+      comentario:   pr.comentario || null,
+      concluida:    !!pr.concluida,
+      concluida_em: pr.concluida ? (pr.concluida_em || new Date().toISOString()) : null,
+      ordem:        i + 1,
+    };
+    const { data, error } = await sb.from('prioridades_usuario')
+      .update(payload).eq('id', pr.id).select();
+    if (error) { failCount++; lastErr = error.message; console.error('[fluxo] salvar', pr.id, error); }
+    else if (!data || data.length === 0) { failCount++; lastErr = 'sem permissão — RLS bloqueou o UPDATE'; console.error('[fluxo] salvar: 0 linhas', pr.id); }
+    else okCount++;
+  }
+  if (btn) btn.textContent = 'Salvar';
+  if (failCount === 0) {
+    _fluxoDirty[uid] = false;
+    toast(prios.length ? '✓ Prioridades salvas' : 'Nada a salvar', 2500);
+  } else {
+    _fluxoMarkDirty(uid); // continua "sujo" — não salvou tudo
+    toast(`Falha ao salvar ${failCount} de ${prios.length}: ${lastErr}`, 6000);
+  }
+  renderFluxoUserList();
+  renderFluxoDetail(uid);
+}
+
+function toggleFluxoPrio(uid, recId) {
   const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === recId);
   if (!pr) return;
   const novoConc = !pr.concluida;
-  const { error } = await sb.from('prioridades_usuario').update({
-    concluida: novoConc,
-    concluida_em: novoConc ? new Date().toISOString() : null
-  }).eq('id', recId);
-  if (error) { console.error('[fluxo] toggle concluida', error); toast('Não foi possível salvar: ' + error.message, 4000); return; }
-  pr.concluida = novoConc;
+  pr.concluida    = novoConc;
+  pr.concluida_em = novoConc ? new Date().toISOString() : null;
   // Re-sort: concluídas vão para o fim
   if (_fluxoPriosData[uid]) _fluxoPriosData[uid].sort((a,b) => {
     if ((a.concluida?1:0) !== (b.concluida?1:0)) return (a.concluida?1:0) - (b.concluida?1:0);
     return a.ordem - b.ordem;
   });
+  _fluxoMarkDirty(uid);
   renderFluxoDetail(uid);
   renderFluxoUserList();
 }
@@ -13450,26 +13506,11 @@ function renderFluxoView() {
   }).join('');
 }
 
-// ── kept: debFluxo (debounce para datas e comentário) ────────────────────────
-const _fluxoDebTimers = {};
-function debFluxo(pioId, campo, valor) {
-  const key = `${pioId}_${campo}`;
-  clearTimeout(_fluxoDebTimers[key]);
-  _fluxoDebTimers[key] = setTimeout(async () => {
-    const col = campo === 'prazo' ? 'prazo_texto' : campo === 'inicio' ? 'data_inicio' : 'comentario';
-    const { data, error } = await sb.from('prioridades_usuario')
-      .update({ [col]: valor || null }).eq('id', pioId).select();
-    if (error) { console.error('[fluxo] update ' + campo, error); toast('Não foi possível salvar: ' + error.message, 4000); return; }
-    if (!data || data.length === 0) {
-      console.error('[fluxo] update ' + campo + ': 0 linhas afetadas (RLS bloqueando UPDATE?)', pioId);
-      toast('Sem permissão para salvar esta prioridade (RLS bloqueou o UPDATE).', 5000);
-    }
-  }, 600);
-}
+// debFluxo: legado — edições agora são locais e gravadas pelo botão "Salvar" (setFluxoCampo)
+function debFluxo() {}
 
 // (legado — mantido para não quebrar referências antigas)
 function marcarFluxoDirty() {}
-function salvarFluxoUsuario() {}
 function fluxoDragStart() {} function fluxoDragOver() {} function fluxoDrop() {} function fluxoDragEnd() {}
 async function fluxoSalvarReorder() {}
 async function salvarFluxoPrio() {}
