@@ -13329,9 +13329,11 @@ async function _fluxoItemDrop(e) {
   (_fluxoPriosData[uid]||[]).forEach(p => { priosMap[p.id] = p; });
   newOrder.forEach((id, i) => { if (priosMap[id]) priosMap[id].ordem = i + 1; });
   _fluxoPriosData[uid] = newOrder.map(id => priosMap[id]).filter(Boolean);
-  await Promise.all(newOrder.map((id, i) =>
+  const results = await Promise.all(newOrder.map((id, i) =>
     sb.from('prioridades_usuario').update({ ordem: i + 1 }).eq('id', id)
   ));
+  const erro = results.find(r => r.error);
+  if (erro) { console.error('[fluxo] reordenar', erro.error); toast('Não foi possível salvar a ordem: ' + erro.error.message, 4000); }
   renderFluxoDetail(uid);
   renderFluxoUserList();
 }
@@ -13350,7 +13352,7 @@ async function adicionarFluxoPrio(uid) {
     usuario_id: uid, produto_id: null, ordem: nextOrdem,
     concluida: false, definida_por: G.usuario.id
   }).select().single();
-  if (error) { toast('Erro ao adicionar prioridade'); return; }
+  if (error) { console.error('[fluxo] adicionar', error); toast('Não foi possível adicionar: ' + error.message, 4000); return; }
   if (!_fluxoPriosData[uid]) _fluxoPriosData[uid] = [];
   _fluxoPriosData[uid].push(data);
   renderFluxoDetail(uid);
@@ -13359,7 +13361,14 @@ async function adicionarFluxoPrio(uid) {
 
 async function atualizarFluxoProduto(uid, prid, produtoId) {
   const prodId = produtoId || null;
-  await sb.from('prioridades_usuario').update({ produto_id: prodId }).eq('id', prid);
+  const { data, error } = await sb.from('prioridades_usuario')
+    .update({ produto_id: prodId }).eq('id', prid).select();
+  if (error) { console.error('[fluxo] update produto', error); toast('Não foi possível salvar: ' + error.message, 4000); return; }
+  if (!data || data.length === 0) {
+    console.error('[fluxo] update produto: 0 linhas afetadas (RLS bloqueando UPDATE?)', prid);
+    toast('Sem permissão para salvar esta prioridade (RLS bloqueou o UPDATE).', 5000);
+    return;
+  }
   const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === prid);
   if (pr) pr.produto_id = prodId;
   renderFluxoUserList();
@@ -13369,10 +13378,11 @@ async function toggleFluxoPrio(uid, recId) {
   const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === recId);
   if (!pr) return;
   const novoConc = !pr.concluida;
-  await sb.from('prioridades_usuario').update({
+  const { error } = await sb.from('prioridades_usuario').update({
     concluida: novoConc,
     concluida_em: novoConc ? new Date().toISOString() : null
   }).eq('id', recId);
+  if (error) { console.error('[fluxo] toggle concluida', error); toast('Não foi possível salvar: ' + error.message, 4000); return; }
   pr.concluida = novoConc;
   // Re-sort: concluídas vão para o fim
   if (_fluxoPriosData[uid]) _fluxoPriosData[uid].sort((a,b) => {
@@ -13385,7 +13395,8 @@ async function toggleFluxoPrio(uid, recId) {
 
 async function limparFluxoPrio(uid, recId) {
   if (!recId) return;
-  await sb.from('prioridades_usuario').delete().eq('id', recId);
+  const { error } = await sb.from('prioridades_usuario').delete().eq('id', recId);
+  if (error) { console.error('[fluxo] remover', error); toast('Não foi possível remover: ' + error.message, 4000); return; }
   if (_fluxoPriosData[uid]) {
     _fluxoPriosData[uid] = _fluxoPriosData[uid].filter(p => p.id !== recId);
     // Re-numerar ordens localmente
@@ -13446,7 +13457,13 @@ function debFluxo(pioId, campo, valor) {
   clearTimeout(_fluxoDebTimers[key]);
   _fluxoDebTimers[key] = setTimeout(async () => {
     const col = campo === 'prazo' ? 'prazo_texto' : campo === 'inicio' ? 'data_inicio' : 'comentario';
-    await sb.from('prioridades_usuario').update({ [col]: valor || null }).eq('id', pioId);
+    const { data, error } = await sb.from('prioridades_usuario')
+      .update({ [col]: valor || null }).eq('id', pioId).select();
+    if (error) { console.error('[fluxo] update ' + campo, error); toast('Não foi possível salvar: ' + error.message, 4000); return; }
+    if (!data || data.length === 0) {
+      console.error('[fluxo] update ' + campo + ': 0 linhas afetadas (RLS bloqueando UPDATE?)', pioId);
+      toast('Sem permissão para salvar esta prioridade (RLS bloqueou o UPDATE).', 5000);
+    }
   }, 600);
 }
 
