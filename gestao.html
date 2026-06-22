@@ -13398,12 +13398,17 @@ function setFluxoProduto(uid, prid, produtoId) {
   renderFluxoUserList(); // atualiza o badge (ativas/total) na lista lateral
 }
 
-// Grava TODAS as prioridades do usuário de uma vez e confirma o resultado
+// Grava TODAS as prioridades do usuário de uma vez e confirma o resultado.
+// A coluna `ordem` tem unique (usuario_id, ordem), então a ordem é gravada em
+// duas fases (faixa temporária → final) para nunca colidir durante a reordenação.
 async function salvarFluxoUsuario(uid) {
   const prios = _fluxoPriosData[uid] || [];
   const btn = document.getElementById('fluxo-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
-  let okCount = 0, failCount = 0, lastErr = '';
+  let failCount = 0, lastErr = '';
+  const fail = (prid, msg) => { failCount++; lastErr = msg; console.error('[fluxo] salvar', prid, msg); };
+
+  // Fase 1: campos + ordem temporária (offset alto, sem colidir com 1..N)
   for (let i = 0; i < prios.length; i++) {
     const pr = prios[i];
     const payload = {
@@ -13413,21 +13418,30 @@ async function salvarFluxoUsuario(uid) {
       comentario:   pr.comentario || null,
       concluida:    !!pr.concluida,
       concluida_em: pr.concluida ? (pr.concluida_em || new Date().toISOString()) : null,
-      ordem:        i + 1,
+      ordem:        1000 + i,
     };
     const { data, error } = await sb.from('prioridades_usuario')
       .update(payload).eq('id', pr.id).select();
-    if (error) { failCount++; lastErr = error.message; console.error('[fluxo] salvar', pr.id, error); }
-    else if (!data || data.length === 0) { failCount++; lastErr = 'sem permissão — RLS bloqueou o UPDATE'; console.error('[fluxo] salvar: 0 linhas', pr.id); }
-    else okCount++;
+    if (error) fail(pr.id, error.message);
+    else if (!data || data.length === 0) fail(pr.id, 'sem permissão — RLS bloqueou o UPDATE');
   }
+
+  // Fase 2: ordem final 1..N (só prossegue se a fase 1 gravou tudo)
+  if (failCount === 0) {
+    for (let i = 0; i < prios.length; i++) {
+      const { error } = await sb.from('prioridades_usuario').update({ ordem: i + 1 }).eq('id', prios[i].id);
+      if (error) fail(prios[i].id, error.message);
+    }
+  }
+
   if (btn) btn.textContent = 'Salvar';
   if (failCount === 0) {
+    prios.forEach((p, i) => { p.ordem = i + 1; }); // re-sincroniza ordem local
     _fluxoDirty[uid] = false;
     toast(prios.length ? '✓ Prioridades salvas' : 'Nada a salvar', 2500);
   } else {
     _fluxoMarkDirty(uid); // continua "sujo" — não salvou tudo
-    toast(`Falha ao salvar ${failCount} de ${prios.length}: ${lastErr}`, 6000);
+    toast(`Falha ao salvar: ${lastErr}`, 6000);
   }
   renderFluxoUserList();
   renderFluxoDetail(uid);
