@@ -360,7 +360,7 @@ body{font-family:var(--f);background:var(--off);color:var(--grafite);height:100v
 .cal-mes-dow{text-align:center;padding:7px 4px;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#aaa}
 .cal-mes-row{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--cinza2)}
 .cal-mes-row:last-child{border-bottom:none}
-.cal-mes-cell{min-height:100px;padding:4px;border-right:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
+.cal-mes-cell{min-width:0;overflow:hidden;min-height:100px;padding:4px;border-right:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
 .cal-mes-cell.cal-fds{background:rgba(0,0,0,.025)}
 .cal-mes-cell:last-child{border-right:none}
 .cal-mes-cell:hover{background:var(--off)}
@@ -1809,7 +1809,11 @@ function _calDispDia(u, d, merged, feriados) {
   const fds   = d.getDay()===0||d.getDay()===6;
   const ehFer = feriados.has(key);
   const comp  = merged.some(ev=>calEventoOcorreNoDia(ev,key)&&ev.tipo==='compensacao_bh'&&(ev.scope==='todos'||ev.usuario_id===u.id));
-  const ausDs = merged.filter(ev=>(ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem')&&calEventoOcorreNoDia(ev,key)&&(ev.scope==='todos'||ev.usuario_id===u.id));
+  const ausDs = merged.filter(ev=>{
+    if (!calEventoOcorreNoDia(ev,key)) return false;
+    if (ev.tipo==='ausencia_aniv') return ev.usuario_id===u.id; // aniversário é day-off só de quem aniversaria (mesmo com scope 'todos')
+    return (ev.tipo==='ausencia_rem'||ev.tipo==='ausencia_nrem')&&(ev.scope==='todos'||ev.usuario_id===u.id);
+  });
   const baseCls = ehFer?'feriado':comp?'compensado':'';
   let manhaCls = baseCls, tardeCls = baseCls;
   if (!baseCls && ausDs.length) {

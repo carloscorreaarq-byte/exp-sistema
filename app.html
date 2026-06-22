@@ -4070,6 +4070,8 @@ async function checkPrioHub(prioId, btn) {
 
 async function toggleDashTask(id, concluida) {
   const nova = !concluida;
+  // Registra a conclusão no histórico (↺ recentes) antes de atualizar em memória
+  if (nova) { const t = _dashFindTask(id); if (t) _taskHistSalvar({ ...t, concluida: true }, 'concluida'); }
   const { error } = await sb.from('tarefas_livres').update({
     concluida: nova, concluida_em: nova ? new Date().toISOString() : null
   }).eq('id', id);
@@ -4278,6 +4280,8 @@ function renderDashRecentesPop() {
   body.innerHTML = hist.map((h, i) => {
     const restoreBtn = h.evento === 'excluida' && h.payload
       ? `<span class="dash-rec-action" onclick="restaurarTarefaDash(${i})">Restaurar</span>`
+      : h.evento === 'concluida'
+      ? `<span class="dash-rec-action" onclick="reabrirTarefaDash(${i})">Reabrir</span>`
       : '';
     return `<div class="dash-rec-item">
         <div class="dash-rec-desc ${h.concluida ? 'done' : ''}" title="${escAttr(h.descricao)}">
@@ -4302,6 +4306,23 @@ async function restaurarTarefaDash(histIdx) {
     hist.splice(histIdx, 1);
     localStorage.setItem(DASH_TASK_HIST_KEY, JSON.stringify(hist));
     toast('Tarefa restaurada');
+    if (_dashUsuario) await loadDashboard(_dashUsuario);
+    renderDashRecentesPop();
+  } catch (e) { toast('Erro: ' + e.message); }
+}
+
+async function reabrirTarefaDash(histIdx) {
+  const hist = (() => { try { return JSON.parse(localStorage.getItem(DASH_TASK_HIST_KEY) || '[]'); } catch { return []; } })();
+  const entry = hist[histIdx];
+  if (!entry?.id) return;
+  try {
+    const { error } = await sb.from('tarefas_livres')
+      .update({ concluida: false, concluida_em: null })
+      .eq('id', entry.id);
+    if (error) { toast('Erro ao reabrir: ' + error.message); return; }
+    hist.splice(histIdx, 1);
+    localStorage.setItem(DASH_TASK_HIST_KEY, JSON.stringify(hist));
+    toast('Tarefa reaberta');
     if (_dashUsuario) await loadDashboard(_dashUsuario);
     renderDashRecentesPop();
   } catch (e) { toast('Erro: ' + e.message); }
