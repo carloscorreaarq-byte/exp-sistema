@@ -1369,6 +1369,7 @@
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
           if (_shouldPlaySound(ch)) playNotificationSound();
+          _sendChatPush(msg);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, function (payload) {
@@ -1403,6 +1404,7 @@
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
           if (_shouldPlaySound(ch)) playNotificationSound();
+          _sendChatPush(msg);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_thread_messages' }, function (payload) {
@@ -1487,6 +1489,7 @@
     if (isOpen && currentView === 'channel') addConversationAlert(msg);
     if (isOpen && currentView === 'home') renderHome();
     if (_shouldPlaySound(ch)) playNotificationSound();
+    _sendChatPush(msg);
   }
 
   function _pollMissed() {
@@ -2264,6 +2267,35 @@
     else pinnedChannels.add(channel);
     try { localStorage.setItem(PINNED_KEY, JSON.stringify(Array.from(pinnedChannels))); } catch (e) {}
     if (isOpen && currentView === 'home') renderHome();
+  }
+
+  /* Push pra si mesmo quando a aba NÃO está em primeiro plano de fato.
+     Espelha a lógica do chat-fullpage: garante notificação do sistema operacional
+     quando a aba do Chrome está aberta mas você está em outro programa. */
+  function _sendChatPush(msg) {
+    if (userStatus === 'foco') return;
+    var ch = msg && msg.channel, uid = user.auth_id;
+    if (!ch) return;
+    var isDM = ch.indexOf('dm:') === 0 || ch.indexOf('group:') === 0;
+    var isGeneral = ch === 'general';
+    var isSocios = ch === 'socios' && isSocioLikeRole(user.role);
+    if (!(isDM && ch.indexOf(uid) !== -1) && !isProjectChannel(ch) && !isGeneral && !isSocios) return;
+    var appUserId = user.app_user_id || user.id; if (!appUserId) return;
+    var raw = (msg.content || '').trim();
+    if (/^\[anotacoes:.+\]$/.test(raw)) return; /* anotação sobre print: não notifica */
+    /* Só é "estou olhando o chat" se a aba está VISÍVEL e o Chrome EM FOCO.
+       Em outro programa (sem foco), visibilityState ainda é 'visible' — por isso
+       checamos document.hasFocus() e, sem foco, garantimos o push. */
+    if (document.visibilityState === 'visible' && document.hasFocus()) return;
+    var sender = (msg.sender_name || '').split(' ')[0];
+    var title = isProjectChannel(ch) ? sender + ' atualizou um projeto'
+      : isDM ? sender + ' enviou uma mensagem'
+      : isGeneral ? sender + ' no #geral'
+      : sender + ' no #sócios';
+    var body = raw === '[print]' ? '📷 Enviou um print'
+      : (raw.length > 80 ? raw.substring(0, 80) + '...' : raw) || 'Nova mensagem no chat';
+    sb.functions.invoke('send-push', { body: { usuario_id: appUserId, title: title, body: body, url: window.location.href, tag: 'exp-chat-' + ch } })
+      .catch(function (e) { console.warn('[EXP Chat Push] erro:', e); });
   }
 
   function _shouldPlaySound(ch) {

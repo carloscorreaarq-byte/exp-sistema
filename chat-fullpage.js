@@ -2329,14 +2329,19 @@
     var body=raw==='[print]'?'📷 Enviou um print'
       :(raw.length>80?raw.substring(0,80)+'...':raw)||'Nova mensagem no chat';
     var tag='exp-chat-'+ch;
-    /* Aba visivel: o Notification local ja avisa — nao precisa do push. */
-    if(document.visibilityState==='visible'){
+    /* Você só está "olhando o chat" se a aba está VISÍVEL *e* o Chrome está EM FOCO.
+       visibilityState continua 'visible' mesmo com o Chrome aberto atrás de outro
+       programa — por isso checamos também document.hasFocus(). Sem foco = segundo
+       plano de fato → garante a notificação via push do sistema operacional. */
+    var olhandoChat = document.visibilityState === 'visible' && document.hasFocus();
+    if(olhandoChat){
       if(Notification.permission==='granted'){
         try{ new Notification(title,{body:body,icon:'/favicon.png',tag:tag,silent:true}); }catch(e){}
       }
       return;
     }
-    /* Navegador em segundo plano: dispara push pra si mesmo via send-push. */
+    /* Aba em segundo plano OU Chrome sem foco (você está em outro programa):
+       dispara push pra si mesmo via send-push → entrega pelo service worker. */
     sb.functions.invoke('send-push',{body:{usuario_id:appUserId,title:title,body:body,url:window.location.href,tag:tag}})
       .catch(function(e){ console.warn('[EXP ChatFP Push] erro:', e); });
   }
