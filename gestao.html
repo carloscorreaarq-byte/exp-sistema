@@ -1693,8 +1693,10 @@ body {
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
 /* ── Prioridade da tarefa de revisão — P1 alerta · P2 atenção · P3 normal ── */
-.tarefa-item.prio-p1 { background: var(--tc-bg); padding-left: 8px; padding-right: 8px; border-radius: 6px; }
-.tarefa-item.prio-p2 { background: var(--am-bg); padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+/* Margem negativa compensa o padding: o fundo colorido ganha respiro sem deslocar o conteúdo */
+.tarefa-item.prio-p1, .tarefa-item.prio-p2 { margin-left: -8px; margin-right: -8px; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+.tarefa-item.prio-p1 { background: var(--tc-bg); }
+.tarefa-item.prio-p2 { background: var(--am-bg); }
 .tarefa-prio {
   flex-shrink: 0; font-size: 9px; font-weight: 800; letter-spacing: .3px;
   font-family: var(--font-ui); line-height: 1; text-align: center; width: 30px;
@@ -10113,7 +10115,7 @@ function renderMensagemThread(msg) {
       ${msg.criado_por_usuario ? `<div class="task-de-chip" style="background:${msg.criado_por_usuario.cor||'#888'}">${msg.criado_por_usuario.iniciais}</div>` : ''}
       <span style="font-size:10px;color:#888">${_escN(msg.criado_por_usuario?.nome || 'Equipe')} · ${fmtDate((msg.created_at || '').split('T')[0] || '')}${msg.legacy ? ' · resposta anterior' : ''}</span>
     </div>
-    <div class="prancha-comment-text">${_escN(msg.mensagem)}</div>
+    <div class="prancha-comment-text">${_hlMencao(msg.mensagem)}</div>
   </div>`;
 }
 
@@ -10124,7 +10126,7 @@ function renderTopicoComentario(c, podeExcluirTopico) {
       ${c.criado_por_usuario ? `<div class="task-de-chip" style="background:${c.criado_por_usuario.cor||'#888'}">${c.criado_por_usuario.iniciais}</div>` : ''}
       <span style="font-size:10px;color:#888">${_escN(c.criado_por_usuario?.nome || 'Equipe')} · ${fmtDate(c.created_at?.split('T')[0])}</span>
     </div>
-    <div class="prancha-comment-text">${_escN(c.comentario)}</div>
+    <div class="prancha-comment-text">${_hlMencao(c.comentario)}</div>
     ${mensagens.length ? `<div class="prancha-thread-list">${mensagens.map(renderMensagemThread).join('')}</div>` : ''}
     <div class="prancha-thread-actions">
       <button class="btn sm" onclick="responderComentarioPrancha('${c.id}')">Responder</button>
@@ -10292,8 +10294,15 @@ function abrirModalRevisaoInput({ action, targetId, title, buttonLabel, inputLab
     const comentario = (G._comentariosRevisao || []).find(c => c.id === targetId);
     if (comentario?.comentario) {
       contexto.style.display = 'block';
-      contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Respondendo este comentário</div>${comentario.comentario}`;
+      contexto.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:6px">Respondendo este comentário</div>${_hlMencao(comentario.comentario)}`;
     }
+  }
+
+  // Autofill de menções (@) no fórum de observações da prancha
+  if (action === 'comentario' || action === 'resposta') {
+    textarea._mencaoSet = new Set();
+    if (textarea._mencaoChips) textarea._mencaoChips.innerHTML = '';
+    ativarMencao(textarea);
   }
 
   if (action === 'excluir_topico') {
@@ -10494,6 +10503,13 @@ async function confirmarModalRevisaoInput() {
       toast('Erro ao salvar: ' + error.message);
     }
     return;
+  }
+
+  // Notifica os usuários mencionados (@) no comentário/resposta.
+  // tipo da notificação = 'mencao' (ícone @); link_tipo 'revisao' p/ o clique abrir a revisão.
+  if (action === 'comentario' || action === 'resposta') {
+    await notificarMencoes(valor, document.getElementById('ri-textarea'),
+      { tipo: 'revisao', revisao_id: G._revisaoAtiva });
   }
 
   const revisaoId = action === 'prancha' ? targetId : G._revisaoAtiva;

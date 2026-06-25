@@ -1544,6 +1544,8 @@
   function send() {
     if (!$input||!currentChannel) return;
     var content=$input.value.trim(); if(!content) return;
+    var mentionChannel=currentChannel;
+    _closeMentionDD();
     $input.value=''; $input.style.height='auto';
     var pm=buildPendingMessage(content);
     upsertMessage(pm); renderMessages(); scrollBottom();
@@ -1552,6 +1554,7 @@
         .select('*').single().then(function(r){
           if(r.error){ removeMessageById(pm.id); renderMessages(); $input.value=content; return; }
           upsertMessage(normalizeProjectMessage(r.data)); renderMessages();
+          _notifyMentions(content,mentionChannel);
         });
       return;
     }
@@ -1562,9 +1565,10 @@
     }).select('*').single().then(function(r){
       if(r.error){ removeMessageById(pm.id); renderMessages(); $input.value=content; return; }
       upsertMessage(r.data); renderMessages();
+      _notifyMentions(content,mentionChannel);
     });
   }
-  function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } }
+  function handleKey(e) { if(_mentionNavKey(e)) return; if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } }
   function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -1703,7 +1707,7 @@
               '<button class="fp-msg-edit-cancel" onclick="fpChat.cancelEditMessage()">Cancelar</button>' +
             '</div></div>';
         } else {
-          var textHtml = fpLinkify(escHtml(msg.content).replace(/\n/g,'<br>'));
+          var textHtml = fpLinkify(hlMentions(escHtml(msg.content)).replace(/\n/g,'<br>'));
           if (inSearchQuery) textHtml = highlightText(textHtml, inSearchQuery, isCurrentResult);
           if (msg.editado_em) textHtml += '<span class="fp-msg-edited" title="Editada">(editado)</span>';
           html += '<div class="fp-msg-text">'+textHtml+'</div>';
@@ -2354,6 +2358,7 @@
       .then(function(r){
         var all=r.data||[];
         allMembers=all;
+        _buildMentionRe();
         teamMembers=all.filter(function(m){ return m.auth_id!==user.auth_id&&m.id!==user.id; });
         renderConvList();
         renderPresenceBar();
@@ -2568,6 +2573,140 @@
   function isProjectChannel(ch){ return !!ch&&ch.indexOf('project:')===0; }
   function projectThreadIdFromChannel(ch){ return String(ch||'').replace('project:',''); }
   function channelHasUser(ch,uid){ if(!isDynamicChannel(ch)||!uid) return false; return ch.replace(/^dm:|^group:/,'').split(':').indexOf(uid)!==-1; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     @MENÇÃO — autofill, destaque e notificação (push + som de nova mensagem)
+  ═══════════════════════════════════════════════════════════════════ */
+  var _mDD=null, _mPos=-1, _mHlRe=null;
+  function _regEscapeTok(t){ return String(t).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
+  function _buildMentionRe(){
+    _mHlRe=null;
+    if(!allMembers||!allMembers.length) return;
+    var toks=[];
+    allMembers.forEach(function(m){
+      if(!m||!m.nome) return;
+      toks.push(m.nome);
+      var f=m.nome.split(' ')[0];
+      if(f&&f!==m.nome) toks.push(f);
+    });
+    toks=toks.filter(function(t,i){ return toks.indexOf(t)===i; })
+             .sort(function(a,b){ return b.length-a.length; });
+    if(!toks.length) return;
+    var alt=toks.map(function(t){ return _regEscapeTok(escHtml(t)); }).join('|');
+    try{ _mHlRe=new RegExp('@(?:'+alt+')(?![\\w\\u00C0-\\u024F])','g'); }catch(e){ _mHlRe=null; }
+  }
+
+  /* Destaca @menções num texto JÁ escapado (depois de escHtml, antes de fpLinkify) */
+  function hlMentions(escaped){
+    if(!_mHlRe) return escaped;
+    return escaped.replace(_mHlRe,'<span class="fp-mention">$&</span>');
+  }
+
+  function _extractMentions(text){
+    var out=[];
+    if(!allMembers||!text) return out;
+    allMembers.forEach(function(m){
+      if(!m||!m.nome) return;
+      var toks=[m.nome]; var f=m.nome.split(' ')[0]; if(f&&f!==m.nome) toks.push(f);
+      for(var i=0;i<toks.length;i++){
+        var re=new RegExp('@'+_regEscapeTok(toks[i])+'(?![\\w\\u00C0-\\u024F])','i');
+        if(re.test(text)){ out.push(m); break; }
+      }
+    });
+    return out;
+  }
+
+  function _mentionTargetOk(m,ch){
+    if(ch==='general') return true;
+    if(ch==='socios') return isSocioLikeRole(m.role);
+    if(isDynamicChannel(ch)) return channelHasUser(ch,m.auth_id);
+    return true;
+  }
+
+  /* Notifica os mencionados como NOVA MENSAGEM (push "te mencionou no chat") */
+  function _notifyMentions(content,ch){
+    var mentioned=_extractMentions(content);
+    if(!mentioned.length) return;
+    var sender=(user.nome||'').split(' ')[0]||'Alguém';
+    var body=content.length>80?content.substring(0,80)+'...':content;
+    var seen={};
+    mentioned.forEach(function(m){
+      if(!m||m.auth_id===user.auth_id) return;
+      var appId=m.id; if(!appId||seen[appId]) return;
+      if(!_mentionTargetOk(m,ch)) return;
+      seen[appId]=true;
+      sb.functions.invoke('send-push',{body:{
+        usuario_id:appId,
+        title:sender+' te mencionou no chat',
+        body:body,
+        url:window.location.href,
+        tag:'exp-chat-mention-'+ch
+      }}).catch(function(e){ console.warn('[EXP ChatFP MenÃ§Ã£o] push erro:',e); });
+    });
+  }
+
+  function composerInput(el){ autoResize(el); _mentionScan(el); }
+  function composerBlur(){ setTimeout(_closeMentionDD,150); }
+
+  function _mentionScan(ta){
+    var pos=ta.selectionStart, val=ta.value, at=-1;
+    for(var i=pos-1;i>=0;i--){ var c=val[i]; if(c==='@'){ at=i; break; } if(c===' '||c==='\n') break; }
+    if(at<0){ _closeMentionDD(); return; }
+    if(at>0){ var p=val[at-1]; if(p!==' '&&p!=='\n'){ _closeMentionDD(); return; } }
+    var q=val.slice(at+1,pos).toLowerCase();
+    _mPos=at;
+    var hits=(allMembers||[]).filter(function(m){
+      return m.auth_id!==user.auth_id&&(m.nome||'').toLowerCase().indexOf(q)!==-1;
+    }).slice(0,6);
+    if(!hits.length){ _closeMentionDD(); return; }
+    _openMentionDD(ta,hits);
+  }
+
+  function _openMentionDD(ta,members){
+    _closeMentionDD();
+    var rect=ta.getBoundingClientRect();
+    _mDD=document.createElement('div');
+    _mDD.className='fp-mention-dd';
+    _mDD.style.left=rect.left+'px';
+    _mDD.style.bottom=(window.innerHeight-rect.top+4)+'px';
+    _mDD.style.width=Math.max(rect.width,190)+'px';
+    _mDD.innerHTML=members.map(function(m,i){
+      return '<div class="fp-mention-it'+(i===0?' sel':'')+'" data-nome="'+escHtml(m.nome)+'">'+
+        '<span class="fp-mention-av" style="background:'+(m.cor||'#888')+'">'+escHtml(m.iniciais||'?')+'</span>'+
+        '<span>'+escHtml(m.nome)+'</span></div>';
+    }).join('');
+    [].slice.call(_mDD.querySelectorAll('.fp-mention-it')).forEach(function(it){
+      it.addEventListener('mousedown',function(e){ e.preventDefault(); _selectMention(it.getAttribute('data-nome')); });
+    });
+    document.body.appendChild(_mDD);
+  }
+
+  function _selectMention(nome){
+    if(!$input) return;
+    var ta=$input, pos=ta.selectionStart, val=ta.value;
+    ta.value=val.slice(0,_mPos)+'@'+nome+' '+val.slice(pos);
+    var caret=_mPos+nome.length+2;
+    ta.selectionStart=ta.selectionEnd=caret;
+    ta.focus(); autoResize(ta); _closeMentionDD();
+  }
+
+  function _closeMentionDD(){ if(_mDD){ _mDD.remove(); _mDD=null; } }
+
+  function _mentionNavKey(e){
+    if(!_mDD) return false;
+    var items=[].slice.call(_mDD.querySelectorAll('.fp-mention-it'));
+    if(!items.length) return false;
+    var sel=-1;
+    for(var k=0;k<items.length;k++){ if(items[k].classList.contains('sel')){ sel=k; break; } }
+    if(e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(sel+1,items.length-1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(sel-1,0); }
+    else if(e.key==='Enter'||e.key==='Tab'){ e.preventDefault(); _selectMention(items[sel<0?0:sel].getAttribute('data-nome')); return true; }
+    else if(e.key==='Escape'){ _closeMentionDD(); return true; }
+    else return false;
+    items.forEach(function(it,i){ it.classList.toggle('sel',i===sel); });
+    return true;
+  }
   function getChannelLabel(ch){
     if(ch==='general') return '# geral';
     if(ch==='socios')  return '# sócios';
@@ -2801,7 +2940,7 @@
     setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM, openDMWith,
-    send, handleKey, autoResize,
+    send, handleKey, autoResize, composerInput, composerBlur,
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
     startEditMessage, editMessageInput, editMessageKey, saveEditMessage, cancelEditMessage,
