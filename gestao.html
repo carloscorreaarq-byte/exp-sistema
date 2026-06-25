@@ -990,6 +990,10 @@ body {
 }
 .cliente-nome { font-size: 11px; font-weight: 700; }
 .cliente-cidade { font-size: 10px; color: #888; }
+.cliente-toggle { font-size: 10px; color: #888; transition: transform .15s; display: inline-block; flex-shrink: 0; }
+.cliente-toggle.collapsed { transform: rotate(-90deg); }
+.cliente-opp-count { font-size: 10px; color: #aaa; margin-left: auto; }
+.cliente-opps.collapsed { display: none; }
 .opp-grupo { border: 1px solid var(--cinza2); margin-bottom: 8px; border-radius: 10px; overflow: hidden; }
 .opp-header {
   display: flex; align-items: center; gap: 8px; padding: 7px 14px;
@@ -1688,6 +1692,22 @@ body {
 .tarefa-check.readonly:hover { border-color: var(--cinza); background: transparent; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: #aaa; }
+/* ── Prioridade da tarefa de revisão — P1 alerta · P2 atenção · P3 normal ── */
+.tarefa-item.prio-p1 { background: var(--tc-bg); padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+.tarefa-item.prio-p2 { background: var(--am-bg); padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+.tarefa-prio {
+  flex-shrink: 0; font-size: 9px; font-weight: 800; letter-spacing: .3px;
+  font-family: var(--font-ui); line-height: 1; text-align: center; width: 30px;
+  border-radius: 999px; padding: 3px 5px; border: 1px solid transparent;
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+.tarefa-prio:focus { outline: none; box-shadow: 0 0 0 2px var(--mod-focus-soft); }
+.tarefa-prio.p1 { background: var(--terracota); color: #fff; border-color: var(--terracota); }
+.tarefa-prio.p2 { background: var(--ouro); color: #fff; border-color: var(--ouro); }
+.tarefa-prio.p3 { background: transparent; color: #aaa; border-color: var(--cinza); }
+span.tarefa-prio { display: inline-block; cursor: default; }
+.prancha-preview-task.prio-p1 { color: var(--terracota); font-weight: 600; }
+.prancha-preview-task.prio-p2 { color: var(--ouro); font-weight: 600; }
 .tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0;width:46px;justify-content:flex-end}
 .tarefa-tool-btn{
   background:none;border:none;color:#c2c8d1;display:flex;align-items:center;justify-content:center;
@@ -6779,15 +6799,23 @@ function renderListaProjetos() {
     return;
   }
 
-  wrap.innerHTML = Object.values(grupos)
-    .sort((a,b) => (a.cli?.nome||'').localeCompare(b.cli?.nome||'','pt-BR'))
-    .map(({ cli, opps }) => {
+  if (!G._clientesRecolhidos) G._clientesRecolhidos = new Set();
+
+  wrap.innerHTML = Object.entries(grupos)
+    .sort((a,b) => (a[1].cli?.nome||'').localeCompare(b[1].cli?.nome||'','pt-BR'))
+    .map(([cliKey, { cli, opps }]) => {
       const clienteNomeDisp = _escN(cli?.nome || 'Sem cliente');
+      const recolhido = G._clientesRecolhidos.has(cliKey);
+      const nOpps = Object.keys(opps).length;
+      const cliKeyJs = _sqAttr(_sqN(cliKey));
       return `
-    <div class="cliente-grupo">
-      <div class="cliente-header">
+    <div class="cliente-grupo${recolhido ? ' is-collapsed' : ''}">
+      <div class="cliente-header" onclick="toggleClienteGrupo(this, ${cliKeyJs})">
+        <span class="cliente-toggle ${recolhido ? 'collapsed' : ''}">▾</span>
         <div class="cliente-nome">${clienteNomeDisp}</div>
+        <span class="cliente-opp-count">${nOpps} oportunidade${nOpps > 1 ? 's' : ''}</span>
       </div>
+      <div class="cliente-opps${recolhido ? ' collapsed' : ''}">
       ${Object.values(opps)
         .sort((a,b) => (a.opp?.projeto||'').localeCompare(b.opp?.projeto||'','pt-BR'))
         .map(({ opp, prods: ps }) => `
@@ -6827,9 +6855,25 @@ function renderListaProjetos() {
           }).join('')}
         </div>
       `).join('')}
+      </div>
     </div>
   `;
     }).join('');
+}
+
+// Recolhe/expande as oportunidades de um cliente na lista (estado persiste no re-render)
+function toggleClienteGrupo(headerEl, cliKey) {
+  const grupo = headerEl.closest('.cliente-grupo');
+  if (!grupo) return;
+  const opps = grupo.querySelector('.cliente-opps');
+  const toggle = headerEl.querySelector('.cliente-toggle');
+  const recolher = !grupo.classList.contains('is-collapsed');
+  grupo.classList.toggle('is-collapsed', recolher);
+  if (opps) opps.classList.toggle('collapsed', recolher);
+  if (toggle) toggle.classList.toggle('collapsed', recolher);
+  if (!G._clientesRecolhidos) G._clientesRecolhidos = new Set();
+  if (recolher) G._clientesRecolhidos.add(cliKey);
+  else G._clientesRecolhidos.delete(cliKey);
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -9891,9 +9935,20 @@ function renderPrancha(pr, isSocioOrCoord) {
       ? `<button class="tm-view-link" type="button" onclick="abrirTempMediaViewer('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs}, ${isSocioOrCoord ? 'true' : 'false'})">ver anexo <span class="tm-count-badge">${mediaCount}</span></button>`
       : '';
     const camClass = mediaCount ? 'has-media' : 'is-empty';
-    return `<div class="tarefa-item" data-tarefa-id="${t.id}">
+    const prio = (t.prioridade || 'P3').toUpperCase();
+    const prioCls = prio.toLowerCase();
+    const prioControl = isSocioOrCoord
+      ? `<select class="tarefa-prio ${prioCls}" title="Prioridade — P1 alerta · P2 atenção · P3 normal"
+             onclick="event.stopPropagation()" onchange="mudarPrioridadeTarefa(this, '${t.id}', '${prId}')">
+           <option value="P3" ${prio === 'P3' ? 'selected' : ''}>P3</option>
+           <option value="P2" ${prio === 'P2' ? 'selected' : ''}>P2</option>
+           <option value="P1" ${prio === 'P1' ? 'selected' : ''}>P1</option>
+         </select>`
+      : `<span class="tarefa-prio ${prioCls}" title="Prioridade">${prio}</span>`;
+    return `<div class="tarefa-item prio-${prioCls}" data-tarefa-id="${t.id}">
       <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
            ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Acompanhe o progresso — apenas participantes do projeto podem marcar"'}></div>
+      ${prioControl}
       <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${_escN(t.descricao)}</div>
       ${mediaViewBtn}
       <div class="tarefa-item-tools">
@@ -9913,7 +9968,7 @@ function renderPrancha(pr, isSocioOrCoord) {
   const restante = total - previewTarefas.length;
   const previewHtml = previewTarefas.length
     ? `<div class="prancha-preview">
-        ${previewTarefas.map(t => `<div class="prancha-preview-task">
+        ${previewTarefas.map(t => `<div class="prancha-preview-task prio-${(t.prioridade || 'P3').toLowerCase()}">
           <div class="prancha-preview-check ${t.concluida ? 'done' : ''}"></div>
           <span style="${t.concluida ? 'text-decoration:line-through;color:#bbb' : ''}">${_escN(t.descricao)}</span>
         </div>`).join('')}
@@ -10099,6 +10154,20 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
 
   if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
   carregarRevisoes();
+}
+
+async function mudarPrioridadeTarefa(sel, id, pranchaId) {
+  const prioridade = sel.value;
+  // Recolore localmente, sem re-render — evita recolher a prancha aberta
+  sel.classList.remove('p1', 'p2', 'p3');
+  sel.classList.add(prioridade.toLowerCase());
+  const item = sel.closest('.tarefa-item');
+  if (item) {
+    item.classList.remove('prio-p1', 'prio-p2', 'prio-p3');
+    item.classList.add('prio-' + prioridade.toLowerCase());
+  }
+  const { error } = await sb.from('tarefas_revisao').update({ prioridade }).eq('id', id);
+  if (error) toast('Erro ao alterar prioridade: ' + error.message);
 }
 
 async function excluirTarefaRevisao(id, pranchaId) {
@@ -10301,6 +10370,12 @@ function addTarefaPrancha(pranchaId) {
       placeholder="Descreva o ajuste que precisa ser feito..."
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();salvarTarefaInline('${pranchaId}');}if(event.key==='Escape')cancelarTarefaInline('${pranchaId}');"></textarea>
     <div class="tarefa-inline-actions">
+      <select id="tip-${pranchaId}" class="tarefa-prio p3" title="Prioridade — P1 alerta · P2 atenção · P3 normal"
+        onchange="this.classList.remove('p1','p2','p3');this.classList.add(this.value.toLowerCase())">
+        <option value="P3" selected>P3</option>
+        <option value="P2">P2</option>
+        <option value="P1">P1</option>
+      </select>
       <button class="btn sm verde" onclick="salvarTarefaInline('${pranchaId}')">Adicionar</button>
       <button class="btn sm" onclick="cancelarTarefaInline('${pranchaId}')">Cancelar</button>
     </div>
@@ -10321,7 +10396,8 @@ async function salvarTarefaInline(pranchaId) {
   const ta = document.getElementById(`ti-${pranchaId}`);
   const valor = ta?.value.trim();
   if(!valor) { cancelarTarefaInline(pranchaId); return; }
-  const { error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor });
+  const prioridade = document.getElementById(`tip-${pranchaId}`)?.value || 'P3';
+  const { error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor, prioridade });
   if(error) { toast('Erro ao adicionar tarefa'); return; }
   // Captura quais pranchas estão expandidas antes do re-render
   const expandidas = new Set(
