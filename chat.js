@@ -20,6 +20,7 @@
   var PINNED_KEY  = 'exp_chat_pinned';
   var COLOR_KEY   = 'exp_chat_color';   // tema de cor — mesma chave do chat full
   var FLAGS_KEY   = 'exp_chat_flags';   // mensagens sinalizadas — mesma chave do chat full
+  var MAX_KEY     = 'exp_chat_maximized'; // painel ampliado na própria janela lateral
 
   var STATUS_COLORS = {
     online:  '#1D6A4A',
@@ -79,7 +80,9 @@
     '.chat-member-check.sel{background:#111110;border-color:#111110}',
     '.chat-member-check.sel::after{content:"";width:5px;height:5px;border-radius:50%;background:#fff}',
     /* â”€â”€ Panel â”€â”€ */
-    '.chat-panel{position:absolute;bottom:58px;right:0;width:320px;height:490px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.14);display:none;flex-direction:column;overflow:hidden;animation:chatOpen .18s ease-out;border:1px solid var(--cinza2,#ECEAE4)}',
+    '.chat-panel{position:absolute;bottom:58px;right:0;width:320px;height:490px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.14);display:none;flex-direction:column;overflow:hidden;animation:chatOpen .18s ease-out;border:1px solid var(--cinza2,#ECEAE4);transition:width .2s ease,height .2s ease}',
+    /* Maximizado — amplia na própria janela lateral, sobre os módulos */
+    '.chat-panel.maximized{width:min(460px,calc(100vw - 40px));height:min(80vh,800px)}',
     '@keyframes chatOpen{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}',
     /* â”€â”€ Views â”€â”€ */
     '.chat-view{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}',
@@ -437,6 +440,7 @@
   /* â”€â”€ Personalização visual â”€â”€ */
   var chatColor    = localStorage.getItem(COLOR_KEY) || 'verde';
   var colorPopOpen = false;
+  var chatMaximized = localStorage.getItem(MAX_KEY) === '1';
   var soundPopOpen = false;
   /* â”€â”€ Mensagens sinalizadas (salvas) â”€â”€ */
   var flaggedMessages = (function () {
@@ -496,6 +500,7 @@
     injectCSS();
     injectHTML();
     cacheRefs();
+    applyMaximize();
     applyChatColor(chatColor, false);
     applyStatus(userStatus, false);
     _renderSoundBtn();
@@ -657,6 +662,7 @@
               '</span>' +
               '<button class="chat-icon-btn" onclick="expChat.openSearch()" title="Pesquisar">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
+              '<button class="chat-icon-btn chat-maxbtn" onclick="expChat.toggleMaximize(event)" title="' + (chatMaximized ? 'Restaurar tamanho' : 'Maximizar') + '">' + icoMaxBtn() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
             '</div>' +
           '</div>' +
@@ -693,6 +699,7 @@
             '<div class="chat-header-acts">' +
               '<button class="chat-icon-btn" id="exp-chat-insearch-btn" onclick="expChat.openInSearch()" title="Buscar na conversa">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" id="exp-chat-flagfilter-btn" onclick="expChat.toggleFlaggedFilter()" title="Mostrar só sinalizadas">' + icoFlag() + '</button>' +
+              '<button class="chat-icon-btn chat-maxbtn" onclick="expChat.toggleMaximize(event)" title="' + (chatMaximized ? 'Restaurar tamanho' : 'Maximizar') + '">' + icoMaxBtn() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
             '</div>' +
           '</div>' +
@@ -826,6 +833,9 @@
   function icoBack()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'; }
   function icoClose()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>'; }
   function icoSearch()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>'; }
+  function icoExpand()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
+  function icoCompress() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
+  function icoMaxBtn()   { return chatMaximized ? icoCompress() : icoExpand(); }
   function icoAttach()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 0 1-7.78-7.78l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.5 8.49a1.5 1.5 0 0 1-2.12-2.12l7.78-7.78"/></svg>'; }
   function icoPerson()  { return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'; }
   function icoChevron() { return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'; }
@@ -3797,6 +3807,25 @@
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     MAXIMIZAR — amplia o painel na própria janela lateral (não vai pro full page)
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  function applyMaximize() {
+    var panel = document.getElementById('exp-chat-panel');
+    if (panel) panel.classList.toggle('maximized', chatMaximized);
+    document.querySelectorAll('.chat-maxbtn').forEach(function (b) {
+      b.innerHTML = icoMaxBtn();
+      b.title = chatMaximized ? 'Restaurar tamanho' : 'Maximizar';
+    });
+  }
+  function toggleMaximize(event) {
+    if (event) event.stopPropagation();
+    chatMaximized = !chatMaximized;
+    try { localStorage.setItem(MAX_KEY, chatMaximized ? '1' : '0'); } catch (e) {}
+    applyMaximize();
+    if (currentView === 'channel') scrollBottom();
+  }
+
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      MENSAGENS SINALIZADAS (salvas) â€” mesma chave localStorage do chat full
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(flaggedMessages)); } catch (e) {} }
@@ -3950,6 +3979,7 @@
     togglePin:       togglePin,
     setChatColor:    setChatColor,
     toggleColorPop:  toggleColorPop,
+    toggleMaximize:  toggleMaximize,
     flagMessage:     flagMessage,
     toggleFlaggedFilter: toggleFlaggedFilter,
     openInSearch:    openInSearch,
