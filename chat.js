@@ -39,6 +39,11 @@
   var BRAND_AVATAR_COLORS = ['#1D6A4A', '#1D4FA0', '#C4831A', '#B84C3A', '#6D7D8A', '#4A72B5', '#7A9E7E'];
   var TEMP_MEDIA_BUCKET = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
+  var CHAT_ATTENTION_SENTINEL = '[atencao]'; /* "chamar a atenção" — nota de som + push */
+  var CHAT_EMOJIS = [
+    { e: '😄', t: 'Feliz' }, { e: '😂', t: 'Chorando de rir' }, { e: '😍', t: 'Apaixonado' },
+    { e: '😢', t: 'Triste' }, { e: '😠', t: 'Raiva' }
+  ];
   var SIGNED_URL_EXPIRES = 7 * 24 * 60 * 60; /* 7 dias — cobre toda a vida do print (expira em 7d) */
   var CHAT_MEDIA_LIMITS = {
     largura_max_px: 1280,
@@ -224,6 +229,18 @@
     '.chat-input-area{padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0}',
     '.chat-attach{width:33px;height:33px;background:var(--off,#F7F6F3);border:1px solid var(--cinza2,#ECEAE4);border-radius:9px;color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .15s,background .15s,transform .08s}',
     '.chat-attach:hover{background:#fff;border-color:var(--verde,#1D6A4A)}.chat-attach:active{transform:scale(.93)}',
+    /* Emoji — botão e popover */
+    '.chat-emoji-btn{font-size:16px}',
+    '.chat-emoji-pop{position:absolute;bottom:42px;left:0;display:none;gap:2px;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.16);padding:5px;z-index:10006}',
+    '[data-theme="dark"] .chat-emoji-pop{background:#252523;border-color:#2E2D2B}',
+    '.chat-emoji-opt{width:32px;height:32px;border:none;background:none;border-radius:8px;cursor:pointer;font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .12s,transform .08s}',
+    '.chat-emoji-opt:hover{background:var(--off,#F7F6F3);transform:scale(1.15)}',
+    '[data-theme="dark"] .chat-emoji-opt:hover{background:#1C1C1B}',
+    /* "Chamar a atenção" — nota central na conversa */
+    '.chat-attn-note{align-self:center;margin:7px auto;max-width:90%;text-align:center;font-size:11px;font-weight:600;color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE);border:1px solid rgba(0,0,0,.05);border-radius:999px;padding:5px 12px;display:inline-flex;align-items:center;gap:7px;animation:chatAttnPulse .5s ease-out}',
+    '[data-theme="dark"] .chat-attn-note{background:rgba(29,106,74,.22);color:#7FD0A8}',
+    '.chat-attn-time{font-family:"DM Mono",monospace;font-size:8px;opacity:.6;font-weight:400}',
+    '@keyframes chatAttnPulse{0%{transform:scale(.9);opacity:.4}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}',
     '.chat-input{flex:1;border:1px solid var(--cinza2,#ECEAE4);border-radius:9px;padding:7px 11px;font-family:"Raleway",sans-serif;font-size:12px;resize:none;outline:none;max-height:80px;min-height:33px;color:var(--preto,#111110);background:var(--off,#F7F6F3);line-height:1.45;transition:border-color .15s,background .15s;overflow-y:auto}',
     '.chat-input::placeholder{color:var(--cinza,#D0CFC9)}',
     '.chat-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
@@ -531,6 +548,14 @@
       closeColorPop();
     });
 
+    // Fechar popover de emoji ao clicar fora
+    document.addEventListener('click', function (e) {
+      if (!emojiPopOpen) return;
+      var wrap = document.querySelector('.chat-emoji-wrap');
+      if (wrap && wrap.contains(e.target)) return;
+      closeEmojiPop();
+    });
+
     // Fechar popover de som ao clicar fora
     document.addEventListener('click', function (e) {
       if (!soundPopOpen) return;
@@ -697,6 +722,7 @@
             '<button class="chat-back-btn" onclick="expChat.goHome()">' + icoBack() + '</button>' +
             '<div class="chat-header-info"><div class="chat-header-title" id="exp-chat-chan-title"># geral</div><div class="chat-header-sub" id="exp-chat-chan-sub" style="display:none"></div></div>' +
             '<div class="chat-header-acts">' +
+              '<button class="chat-icon-btn" id="exp-chat-attn-btn" onclick="expChat.chamarAtencao()" title="Chamar a atenção" style="display:none">' + icoAttention() + '</button>' +
               '<button class="chat-icon-btn" id="exp-chat-insearch-btn" onclick="expChat.openInSearch()" title="Buscar na conversa">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" id="exp-chat-flagfilter-btn" onclick="expChat.toggleFlaggedFilter()" title="Mostrar só sinalizadas">' + icoFlag() + '</button>' +
               '<button class="chat-icon-btn chat-maxbtn" onclick="expChat.toggleMaximize(event)" title="' + (chatMaximized ? 'Restaurar tamanho' : 'Maximizar') + '">' + icoMaxBtn() + '</button>' +
@@ -714,6 +740,12 @@
           '<div class="chat-input-area">' +
             '<input id="exp-chat-media-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="expChat.handleMediaInput(this)">' +
             '<button class="chat-attach" onclick="expChat.pickMedia()" title="Anexar print">' + icoAttach() + '</button>' +
+            '<span class="chat-emoji-wrap" style="position:relative;display:inline-flex">' +
+              '<button class="chat-attach chat-emoji-btn" onclick="expChat.toggleEmojiPop(event)" title="Emojis">' + icoEmoji() + '</button>' +
+              '<div class="chat-emoji-pop" id="exp-chat-emoji-pop">' +
+                CHAT_EMOJIS.map(function (it) { return '<button class="chat-emoji-opt" title="' + it.t + '" onclick="expChat.insertEmoji(\'' + it.e + '\')">' + it.e + '</button>'; }).join('') +
+              '</div>' +
+            '</span>' +
             '<textarea class="chat-input" id="exp-chat-input" placeholder="Mensagem..." rows="1"' +
               ' onkeydown="expChat.handleKey(event)" oninput="expChat.composerInput(this)" onblur="expChat.composerBlur()"></textarea>' +
             '<button class="chat-send" onclick="expChat.send()" title="Enviar (Enter)">' + icoSend() + '</button>' +
@@ -833,6 +865,8 @@
   function icoBack()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'; }
   function icoClose()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>'; }
   function icoSearch()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>'; }
+  function icoEmoji()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>'; }
+  function icoAttention(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'; }
   function icoExpand()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
   function icoCompress() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
   function icoMaxBtn()   { return chatMaximized ? icoCompress() : icoExpand(); }
@@ -1173,6 +1207,9 @@
     var flagBtn = document.getElementById('exp-chat-flagfilter-btn');
     if (flagBtn) flagBtn.classList.remove('active');
     showView('channel');
+    closeEmojiPop();
+    var attnBtn = document.getElementById('exp-chat-attn-btn');
+    if (attnBtn) attnBtn.style.display = isDMChannel(channel) ? '' : 'none';
     updateChannelStatus();
     loadMessages();
     markRead();
@@ -1388,6 +1425,10 @@
 
         var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
         var isOwn    = msg.sender_id === uid;
+        var isAttn   = isAttentionSentinel(msg.content);
+
+        /* "Chamar a atenção": som insistente sempre que chega (aba ativa ou não) */
+        if (!isOwn && isAttn) playAttentionSound();
 
         if (isActive) {
           upsertMessage(msg);
@@ -1401,8 +1442,8 @@
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
-          if (_shouldPlaySound(ch)) playNotificationSound();
-          _sendChatPush(msg);
+          if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+          if (!isAttn) _sendChatPush(msg);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, function (payload) {
@@ -1510,6 +1551,9 @@
     if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
     if (msg.sender_id === uid) return;
 
+    var isAttn = isAttentionSentinel(msg.content);
+    if (isAttn) playAttentionSound();
+
     var isActive = isOpen && currentView === 'channel' && currentChannel === ch;
     if (isActive) {
       upsertMessage(msg);
@@ -1523,8 +1567,8 @@
     updateBadge();
     if (isOpen && currentView === 'channel') addConversationAlert(msg);
     if (isOpen && currentView === 'home') renderHome();
-    if (_shouldPlaySound(ch)) playNotificationSound();
-    _sendChatPush(msg);
+    if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+    if (!isAttn) _sendChatPush(msg);
   }
 
   function _pollMissed() {
@@ -1736,6 +1780,7 @@
     if (!content) return;
     var mentionChannel = currentChannel;
     _closeMentionDD();
+    closeEmojiPop();
     $input.value = '';
     $input.style.height = 'auto';
     var pendingMsg = buildPendingMessage(content);
@@ -2171,6 +2216,17 @@
       var loveN   = loveArr.length;
       var hasRxn  = likeN > 0 || loveN > 0;
 
+      /* Mensagem "chamar a atenção" — nota central, sem bolha */
+      if (isAttentionSentinel(msg.content)) {
+        var attnTxt = isOwn
+          ? 'Você chamou a atenção 👋'
+          : '👋 ' + escHtml(fn) + ' está chamando sua atenção';
+        html += '<div class="chat-attn-note">' + attnTxt +
+          '<span class="chat-attn-time">' + fmtTime(dt) + '</span></div>';
+        prevSender = msg.sender_id; prevTime = dt;
+        return;
+      }
+
       html += '<div class="chat-msg' + (isOwn ? ' own' : '') + (flagged ? ' flagged' : '') + '" data-id="' + msg.id + '">';
 
       if (!grouped) {
@@ -2507,6 +2563,7 @@
   function previewFirstLine(text) {
     var line = normalizePreviewText(String(text || '').split(/\r?\n/)[0]).trim();
     if (isImageOnlySentinel(line)) return 'Print anexado';
+    if (isAttentionSentinel(line)) return '👋 Chamou sua atenção';
     if (line.length > 70) return line.substring(0, 70) + '...';
     return line || 'Nova mensagem';
   }
@@ -3082,6 +3139,16 @@
 
   function isAnnotSentinel(content) {
     return /^\[anotacoes:.+\]$/.test(String(content || '').trim());
+  }
+  function isAttentionSentinel(content) {
+    return String(content || '').trim() === CHAT_ATTENTION_SENTINEL;
+  }
+  function isDMChannel(ch) { return !!ch && ch.indexOf('dm:') === 0; }
+  function dmOtherMember(ch) {
+    if (!isDMChannel(ch)) return null;
+    var parts = ch.replace('dm:', '').split(':');
+    var otherUid = parts.filter(function (p) { return p !== user.auth_id; })[0];
+    return otherUid ? (allMembers.find(function (m) { return m.auth_id === otherUid; }) || null) : null;
   }
 
   function isChatMediaExpired(msg) {
@@ -3750,6 +3817,7 @@
   }
 
   function compactPreviewText(text, maxLen, fallback) {
+    if (isAttentionSentinel(text)) return '👋 Chamou sua atenção';
     var clean = normalizePreviewText(text).trim();
     var limit = Number(maxLen) > 0 ? Number(maxLen) : 34;
     if (!clean) return fallback || '';
@@ -3823,6 +3891,102 @@
     try { localStorage.setItem(MAX_KEY, chatMaximized ? '1' : '0'); } catch (e) {}
     applyMaximize();
     if (currentView === 'channel') scrollBottom();
+  }
+
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     EMOJIS — insere no texto da mensagem
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  var emojiPopOpen = false;
+  function toggleEmojiPop(event) {
+    if (event) event.stopPropagation();
+    var pop = document.getElementById('exp-chat-emoji-pop');
+    if (!pop) return;
+    emojiPopOpen = !emojiPopOpen;
+    pop.style.display = emojiPopOpen ? 'flex' : 'none';
+  }
+  function closeEmojiPop() {
+    emojiPopOpen = false;
+    var pop = document.getElementById('exp-chat-emoji-pop');
+    if (pop) pop.style.display = 'none';
+  }
+  function insertEmoji(emoji) {
+    if (!$input) return;
+    var ta = $input;
+    var start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+    var end   = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+    ta.value = ta.value.slice(0, start) + emoji + ta.value.slice(end);
+    var caret = start + emoji.length;
+    ta.selectionStart = ta.selectionEnd = caret;
+    ta.focus();
+    autoResize(ta);
+  }
+
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     CHAMAR A ATENÇÃO — nota de som + push direto (somente em DM 1:1)
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  var _attnLock = false;
+  function chamarAtencao() {
+    if (!isDMChannel(currentChannel) || _attnLock) return;
+    _attnLock = true;
+    var btn = document.getElementById('exp-chat-attn-btn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '.45'; }
+    setTimeout(function () {
+      _attnLock = false;
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+    }, 4000);
+
+    var pendingMsg = buildPendingMessage(CHAT_ATTENTION_SENTINEL);
+    upsertMessage(pendingMsg);
+    renderMessages();
+    scrollBottom();
+
+    sb.from('chat_messages').insert({
+      channel:         currentChannel,
+      sender_id:       user.auth_id,
+      sender_name:     user.nome,
+      sender_iniciais: user.iniciais || user.nome.substring(0, 2).toUpperCase(),
+      sender_cor:      user.cor || '#1D6A4A',
+      content:         CHAT_ATTENTION_SENTINEL
+    }).select('*').single().then(function (r) {
+      if (r.error) { removeMessageById(pendingMsg.id); renderMessages(); return; }
+      upsertMessage(r.data);
+      renderMessages();
+    });
+
+    var other = dmOtherMember(currentChannel);
+    if (other && other.id) {
+      sb.functions.invoke('send-push', { body: {
+        usuario_id: other.id,
+        title: firstName(user.nome) + ' quer sua atenção',
+        body: '👋 Está te chamando no chat',
+        url: window.location.href,
+        tag: 'exp-chat-attn-' + currentChannel
+      } }).catch(function (e) { console.warn('[EXP Chat Atenção] push erro:', e); });
+    }
+  }
+
+  /* Som de atenção — mais insistente que a notificação normal (tripla batida) */
+  function playAttentionSound() {
+    if (soundLevel === 'off') return;
+    var mult = SOUND_VOL[soundLevel] || 1;
+    try {
+      var ctx = _getAudioCtx();
+      if (!ctx) return;
+      function _beep(t0) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, t0);
+        osc.frequency.exponentialRampToValueAtTime(1320, t0 + 0.09);
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(0.05 * mult, t0 + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t0); osc.stop(t0 + 0.2);
+      }
+      function _play() { var t = ctx.currentTime; _beep(t); _beep(t + 0.16); _beep(t + 0.32); }
+      if (ctx.state === 'suspended') ctx.resume().then(_play); else _play();
+    } catch (e) {}
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -3980,6 +4144,9 @@
     setChatColor:    setChatColor,
     toggleColorPop:  toggleColorPop,
     toggleMaximize:  toggleMaximize,
+    toggleEmojiPop:  toggleEmojiPop,
+    insertEmoji:     insertEmoji,
+    chamarAtencao:   chamarAtencao,
     flagMessage:     flagMessage,
     toggleFlaggedFilter: toggleFlaggedFilter,
     openInSearch:    openInSearch,

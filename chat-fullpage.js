@@ -21,6 +21,11 @@
   var BRAND_AVATAR_COLORS = ['#1D6A4A','#1D4FA0','#C4831A','#B84C3A','#6D7D8A','#4A72B5','#7A9E7E'];
   var TEMP_MEDIA_BUCKET   = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
+  var CHAT_ATTENTION_SENTINEL = '[atencao]'; /* "chamar a atenção" — nota de som + push */
+  var CHAT_EMOJIS = [
+    { e: '😄', t: 'Feliz' }, { e: '😂', t: 'Chorando de rir' }, { e: '😍', t: 'Apaixonado' },
+    { e: '😢', t: 'Triste' }, { e: '😠', t: 'Raiva' }
+  ];
   var SIGNED_URL_EXPIRES  = 7 * 24 * 60 * 60; /* 7 dias — cobre toda a vida do print (expira em 7d) */
   var CHAT_MEDIA_LIMITS   = { largura_max_px:1280, tamanho_max_kb:500, qualidade_upload:0.76, qualidade_fallback:0.70 };
 
@@ -376,6 +381,14 @@
       items.reduce(function(chain, item) {
         return chain.then(function() { var f=item.getAsFile(); return f ? sendMediaFile(f) : null; });
       }, Promise.resolve());
+    });
+
+    /* Fechar popover de emoji ao clicar fora */
+    document.addEventListener('click', function(e) {
+      if (!emojiPopOpen) return;
+      var wrap = document.querySelector('.fp-emoji-wrap');
+      if (wrap && wrap.contains(e.target)) return;
+      closeEmojiPop();
     });
 
     /* Fechar media viewer clicando no overlay */
@@ -1049,6 +1062,9 @@
     if ($ph) $ph.style.display = 'none';
     if ($ca) $ca.style.display = 'flex';
 
+    closeEmojiPop();
+    var attnBtn = document.getElementById('fp-attn-btn');
+    if (attnBtn) attnBtn.style.display = isDMChannel(channel) ? '' : 'none';
     updateChannelSubtitle();
     updateHeaderPinBtn();
     messages = [];
@@ -1320,7 +1336,10 @@
         if (_wasSeen(msg.id)) return;
         _markSeen(msg.id);
         var isActive=(currentChannel===ch), isOwn=(msg.sender_id===uid);
+        var isAttn=isAttentionSentinel(msg.content);
         console.log('[EXP ChatFP] msg recebida', { ch, uid, sender_id: msg.sender_id, isOwn, isActive, soundEnabled, userStatus, visibility: document.visibilityState });
+        /* "Chamar a atenção": som insistente sempre que chega */
+        if (!isOwn && isAttn) playAttentionSound();
         if (isActive) {
           upsertMessage(msg); renderMessages();
           if (scrolledToEnd) scrollBottom(); else if (!isOwn) showNewMsgToast();
@@ -1329,7 +1348,8 @@
           channelUnread[ch]=(channelUnread[ch]||0)+1;
           if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
           updatePageTitle(); renderConvList();
-          if (_shouldPlaySound(ch)) playNotificationSound(); _sendChatPush(msg);
+          if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+          if (!isAttn) _sendChatPush(msg);
         }
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'chat_messages'}, function(payload){
@@ -1406,6 +1426,8 @@
     if (ch !== 'general' && !isSocios && ch.indexOf(uid) === -1) return;
     if (msg.sender_id === uid) return;
     console.log('[EXP ChatFP] msg recuperada via polling', { ch: ch, id: msg.id });
+    var isAttn = isAttentionSentinel(msg.content);
+    if (isAttn) playAttentionSound();
 
     if (currentChannel === ch) {
       upsertMessage(msg); renderMessages();
@@ -1416,8 +1438,8 @@
     channelUnread[ch] = (channelUnread[ch] || 0) + 1;
     if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
     updatePageTitle(); renderConvList();
-    if (_shouldPlaySound(ch)) playNotificationSound();
-    _sendChatPush(msg);
+    if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+    if (!isAttn) _sendChatPush(msg);
   }
 
   function _pollMissed() {
@@ -1556,6 +1578,7 @@
     var content=$input.value.trim(); if(!content) return;
     var mentionChannel=currentChannel;
     _closeMentionDD();
+    closeEmojiPop();
     $input.value=''; $input.style.height='auto';
     var pm=buildPendingMessage(content);
     upsertMessage(pm); renderMessages(); scrollBottom();
@@ -1651,6 +1674,15 @@
       /* Mensagem automática de anotações — renderiza como faixa-sistema central */
       if (isAnnotSentinel(msg.content)) {
         html += renderAnnotMessageHtml(msg);
+        prevSender=null; prevTime=dt;
+        return;
+      }
+
+      /* "Chamar a atenção" — nota central, sem bolha */
+      if (isAttentionSentinel(msg.content)) {
+        var _afn = firstName(msg.sender_name||'') || 'Alguém';
+        var attnTxt = isOwn ? 'Você chamou a atenção 👋' : '👋 '+escHtml(_afn)+' está chamando sua atenção';
+        html += '<div class="fp-attn-note">'+attnTxt+'<span class="fp-attn-time">'+fmtTime(dt)+'</span></div>';
         prevSender=null; prevTime=dt;
         return;
       }
@@ -2321,6 +2353,83 @@
       else _play();
     } catch(e){}
   }
+  /* Som de atenção — mais insistente (tripla batida ascendente) */
+  function playAttentionSound(){
+    if(soundLevel==='off') return;
+    var mult = SOUND_VOL[soundLevel] || 1;
+    try {
+      var ctx = _getAudioCtx();
+      if (!ctx) return;
+      function _beep(t0){
+        var osc=ctx.createOscillator(), gain=ctx.createGain();
+        osc.type='triangle';
+        osc.frequency.setValueAtTime(880,t0);
+        osc.frequency.exponentialRampToValueAtTime(1320,t0+0.09);
+        gain.gain.setValueAtTime(0,t0);
+        gain.gain.linearRampToValueAtTime(0.05*mult,t0+0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001,t0+0.18);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t0); osc.stop(t0+0.2);
+      }
+      function _play(){ var t=ctx.currentTime; _beep(t); _beep(t+0.16); _beep(t+0.32); }
+      if (ctx.state === 'suspended') ctx.resume().then(_play); else _play();
+    } catch(e){}
+  }
+
+  /* ── Emojis: insere no texto da mensagem ── */
+  var emojiPopOpen=false;
+  function toggleEmojiPop(event){
+    if(event) event.stopPropagation();
+    var pop=document.getElementById('fp-emoji-pop');
+    if(!pop) return;
+    emojiPopOpen=!emojiPopOpen;
+    pop.style.display=emojiPopOpen?'flex':'none';
+  }
+  function closeEmojiPop(){ emojiPopOpen=false; var pop=document.getElementById('fp-emoji-pop'); if(pop) pop.style.display='none'; }
+  function insertEmoji(emoji){
+    if(!$input) return;
+    var ta=$input;
+    var start=ta.selectionStart!=null?ta.selectionStart:ta.value.length;
+    var end=ta.selectionEnd!=null?ta.selectionEnd:ta.value.length;
+    ta.value=ta.value.slice(0,start)+emoji+ta.value.slice(end);
+    var caret=start+emoji.length;
+    ta.selectionStart=ta.selectionEnd=caret;
+    ta.focus(); autoResize(ta);
+  }
+
+  /* ── "Chamar a atenção" — nota de som + push direto (só DM 1:1) ── */
+  var _attnLock=false;
+  function chamarAtencao(){
+    if(!isDMChannel(currentChannel)||_attnLock) return;
+    _attnLock=true;
+    var btn=document.getElementById('fp-attn-btn');
+    if(btn){ btn.disabled=true; btn.style.opacity='.45'; }
+    setTimeout(function(){ _attnLock=false; if(btn){ btn.disabled=false; btn.style.opacity=''; } },4000);
+
+    var pm=buildPendingMessage(CHAT_ATTENTION_SENTINEL);
+    upsertMessage(pm); renderMessages(); scrollBottom();
+
+    sb.from('chat_messages').insert({
+      channel:currentChannel, sender_id:user.auth_id, sender_name:user.nome,
+      sender_iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),
+      sender_cor:user.cor||'#1D6A4A', content:CHAT_ATTENTION_SENTINEL
+    }).select('*').single().then(function(r){
+      if(r.error){ removeMessageById(pm.id); renderMessages(); return; }
+      upsertMessage(r.data); renderMessages();
+    });
+
+    var other=dmOtherMember(currentChannel);
+    if(other && other.id){
+      sb.functions.invoke('send-push',{body:{
+        usuario_id:other.id,
+        title:firstName(user.nome)+' quer sua atenção',
+        body:'👋 Está te chamando no chat',
+        url:window.location.href,
+        tag:'exp-chat-attn-'+currentChannel
+      }}).catch(function(e){ console.warn('[EXP ChatFP Atenção] push erro:',e); });
+    }
+  }
+
   function _sendChatPush(msg){
     /* chat-fanout (backend) nao esta deployado — o push de chat e disparado
        aqui no cliente: cada recebedor notifica a si mesmo via send-push.
@@ -2765,6 +2874,7 @@
   function compactPreviewText(text,maxLen,fb){
     var raw=String(text||'').trim();
     if(isImageOnlySentinel(raw)) return 'Print anexado';
+    if(isAttentionSentinel(raw)) return '👋 Chamou sua atenção';
     if(isAnnotSentinel(raw)) return 'Revisou uma imagem';
     var c=raw.replace(/\n/g,' '); if(!c) return fb||'';
     return c.length>maxLen?c.substring(0,maxLen)+'…':c;
@@ -2796,6 +2906,14 @@
   function newUuid(){ if(window.crypto&&typeof window.crypto.randomUUID==='function') return window.crypto.randomUUID(); return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);}); }
   function addDaysIso(d){ var dt=new Date(); dt.setDate(dt.getDate()+d); return dt.toISOString(); }
   function isImageOnlySentinel(c){ return String(c||'').trim()===CHAT_IMAGE_SENTINEL; }
+  function isAttentionSentinel(c){ return String(c||'').trim()===CHAT_ATTENTION_SENTINEL; }
+  function isDMChannel(ch){ return !!ch && ch.indexOf('dm:')===0; }
+  function dmOtherMember(ch){
+    if(!isDMChannel(ch)) return null;
+    var parts=ch.replace('dm:','').split(':');
+    var otherUid=parts.filter(function(p){ return p!==user.auth_id; })[0];
+    return otherUid ? (allMembers.find(function(m){ return m.auth_id===otherUid; })||null) : null;
+  }
 
   /* ── Mensagem automática de anotações sobre print ──
      Conteúdo-sentinel: [anotacoes:<id-da-mensagem-do-print>] */
@@ -2966,6 +3084,7 @@
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM, openDMWith,
     send, handleKey, autoResize, composerInput, composerBlur,
+    toggleEmojiPop, insertEmoji, chamarAtencao,
     pickMedia, handleMediaInput, retryMediaIssue,
     react, flagMessage,
     startEditMessage, editMessageInput, editMessageKey, saveEditMessage, cancelEditMessage,
