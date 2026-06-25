@@ -532,7 +532,7 @@
     // projetos > revisões): o RLS (exp_can_access_revisao) já libera para
     // sócio, quem abriu, coordenador do produto e desenvolvedor da etapa.
     _sb().from('revisoes')
-      .select('id,etapa_id,created_at,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome)))),pranchas(id,nome,ordem,tarefas_revisao(id,descricao,concluida,created_at))')
+      .select('id,etapa_id,created_at,etapas(id,nome,produto_id,produtos(nome,coordenador_id,oportunidades(projeto,clientes(nome)))),pranchas(id,nome,ordem,tarefas_revisao(id,descricao,concluida,created_at,prioridade))')
       .order('created_at')
       .then(function(r) {
         if (r.error) { _ckShowErr(r.error.message); return; }
@@ -728,9 +728,16 @@
     var editBtn = _isSocio()
       ? '<button class="fp-ck-edit" title="Editar item" onclick="listsPanel.editCkItem(\'' + tipo + '\',\'' + id + '\',\'' + cid + '\')">' + _PENCIL + '</button>'
       : '';
+    var prioBadge = '';
+    if (tipo === 'revisao') {
+      var prio = String(it.prioridade || 'P3').toUpperCase();
+      if (['P1', 'P2', 'P3'].indexOf(prio) === -1) prio = 'P3';
+      prioBadge = '<span class="fp-ck-prio ' + prio.toLowerCase() + '" title="Prioridade — P1 alerta · P2 atenção · P3 normal">' + prio + '</span>';
+    }
     return '<div class="fp-ck-item" id="fp-ck-it-' + id + '">' +
       '<input type="checkbox" class="fp-ck-cb"' + (checked ? ' checked' : '') +
       ' onchange="listsPanel.fpToggleCkItem(\'' + tipo + '\',\'' + id + '\',this.checked,\'' + cid + '\')">' +
+      prioBadge +
       '<span class="fp-ck-txt' + (checked ? ' done' : '') + '">' + txt + '</span>' +
       editBtn +
       '</div>';

@@ -52,6 +52,7 @@
   var composerStatusTimer = null;
   var selectedMembers   = [];
   var channelUnread     = {};
+  var mentionChannels   = {};   // { channel: true } — canais com mensagem NÃO LIDA que me menciona
   var onlinePresence    = {};
   var initialRouteHandled = false;
   var userStatus        = localStorage.getItem(STATUS_KEY) || 'online';
@@ -920,7 +921,7 @@
       ? '<div class="fp-conv-pin-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg></div>'
       : '';
 
-    return '<div class="fp-conv-item' + (isUnread?' unread':'') + '" data-channel="' + escHtml(channel) + '" onclick="fpChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')"' + ctxAttr + '>' +
+    return '<div class="fp-conv-item' + (isUnread?' unread':'') + _mentionCls(channel) + '" data-channel="' + escHtml(channel) + '" onclick="fpChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')"' + ctxAttr + '>' +
       avHtml +
       '<div class="fp-conv-body">' +
         '<div class="fp-conv-top">' +
@@ -1326,6 +1327,7 @@
           if (!isOwn) markRead();
         } else if (!isOwn) {
           channelUnread[ch]=(channelUnread[ch]||0)+1;
+          if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
           updatePageTitle(); renderConvList();
           if (_shouldPlaySound(ch)) playNotificationSound(); _sendChatPush(msg);
         }
@@ -1348,6 +1350,7 @@
           if (!isOwn) markRead();
         } else if (!isOwn) {
           channelUnread[ch]=(channelUnread[ch]||0)+1;
+          if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
           updatePageTitle(); renderConvList();
           if (_shouldPlaySound(ch)) playNotificationSound(); _sendChatPush(msg);
         }
@@ -1411,6 +1414,7 @@
       return;
     }
     channelUnread[ch] = (channelUnread[ch] || 0) + 1;
+    if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
     updatePageTitle(); renderConvList();
     if (_shouldPlaySound(ch)) playNotificationSound();
     _sendChatPush(msg);
@@ -1504,19 +1508,25 @@
           sb.from('chat_messages').select('*',{count:'exact',head:true}).eq('channel',ch).gt('created_at',lr).neq('sender_id',uid)
             .then(function(r2){ if(r2.count) channelUnread[ch]=r2.count; updatePageTitle(); });
         });
-        sb.from('chat_messages').select('channel,sender_id,created_at').gte('created_at',since).order('created_at',{ascending:false})
+        sb.from('chat_messages').select('channel,sender_id,created_at,content').gte('created_at',since).order('created_at',{ascending:false})
           .then(function(r2){
             if(r2.error) return;
             var preserved={};
             Object.keys(channelUnread).forEach(function(k){ if(isProjectChannel(k)) preserved[k]=channelUnread[k]; });
-            var next={};
+            var preservedMention={};
+            Object.keys(mentionChannels).forEach(function(k){ if(isProjectChannel(k)) preservedMention[k]=true; });
+            var next={}, nextMention={};
             (r2.data||[]).forEach(function(msg){
               if(msg.sender_id===uid) return;
               var lr=readMap[msg.channel]||since;
-              if(msg.created_at>lr) next[msg.channel]=(next[msg.channel]||0)+1;
+              if(msg.created_at<=lr) return;
+              if(_mentionsMe(msg.content)) nextMention[msg.channel]=true;
+              next[msg.channel]=(next[msg.channel]||0)+1;
             });
             channelUnread=next;
             Object.keys(preserved).forEach(function(k){ channelUnread[k]=preserved[k]; });
+            mentionChannels=nextMention;
+            Object.keys(preservedMention).forEach(function(k){ mentionChannels[k]=true; });
             updatePageTitle(); renderConvList();
           });
       });
@@ -1526,11 +1536,11 @@
     var channel=currentChannel;
     if (isProjectChannel(channel)) {
       sb.from('chat_thread_reads').upsert({ user_auth_id:user.auth_id, thread_id:projectThreadIdFromChannel(channel), last_read_at:new Date().toISOString() })
-        .then(function(r){ if(r.error) return; channelUnread[channel]=0; if(projectThreadMeta[channel]) projectThreadMeta[channel].unread=0; updatePageTitle(); renderConvList(); });
+        .then(function(r){ if(r.error) return; channelUnread[channel]=0; delete mentionChannels[channel]; if(projectThreadMeta[channel]) projectThreadMeta[channel].unread=0; updatePageTitle(); renderConvList(); });
       return;
     }
     sb.from('chat_read_status').upsert({ user_id:user.auth_id, channel:channel, last_read_at:new Date().toISOString() })
-      .then(function(r){ if(r.error) return; channelUnread[channel]=0; updatePageTitle(); renderConvList(); });
+      .then(function(r){ if(r.error) return; channelUnread[channel]=0; delete mentionChannels[channel]; updatePageTitle(); renderConvList(); });
   }
 
   function updatePageTitle() {
@@ -2623,6 +2633,21 @@
     if(isDynamicChannel(ch)) return channelHasUser(ch,m.auth_id);
     return true;
   }
+
+  /* Verdadeiro se o texto menciona O PRÓPRIO usuário (primeiro nome ou nome completo) */
+  function _mentionsMe(content){
+    if(!content||!user||!user.nome) return false;
+    var toks=[user.nome, user.nome.split(' ')[0]];
+    for(var i=0;i<toks.length;i++){
+      if(!toks[i]) continue;
+      var re=new RegExp('@'+_regEscapeTok(toks[i])+'(?![\\w\\u00C0-\\u024F])','i');
+      if(re.test(content)) return true;
+    }
+    return false;
+  }
+
+  /* Classe do "quadro" de menção não lida na lista de conversas */
+  function _mentionCls(ch){ return (mentionChannels[ch] && (channelUnread[ch]||0) > 0) ? ' has-mention' : ''; }
 
   /* Notifica os mencionados como NOVA MENSAGEM (push "te mencionou no chat") */
   function _notifyMentions(content,ch){

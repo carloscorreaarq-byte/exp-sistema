@@ -32,7 +32,8 @@
     verde:     { v: '#1D6A4A', l: '#2D9E6B', bg: '#EAF5EE' },
     azul:      { v: '#1D4FA0', l: '#4A72B5', bg: '#EAF0FA' },
     ouro:      { v: '#C4831A', l: '#D9A23E', bg: '#FBF3E3' },
-    terracota: { v: '#B84C3A', l: '#D06B58', bg: '#FBEEEB' }
+    terracota: { v: '#B84C3A', l: '#D06B58', bg: '#FBEEEB' },
+    pb:        { v: '#222220', l: '#5C5C58', bg: '#F1F0ED' }  /* preto e branco */
   };
   var BRAND_AVATAR_COLORS = ['#1D6A4A', '#1D4FA0', '#C4831A', '#B84C3A', '#6D7D8A', '#4A72B5', '#7A9E7E'];
   var TEMP_MEDIA_BUCKET = 'gestao-anexos-temp';
@@ -109,6 +110,11 @@
     '.chat-conv-name{font-size:12px;font-weight:600;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-conv-preview{font-size:10px;color:var(--cinza,#D0CFC9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}',
     '.chat-conv-badge{background:#B84C3A;color:#fff;font-size:9px;font-weight:700;font-family:"DM Mono",monospace;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
+    /* Quadro semi-transparente atrás da conversa quando há menção não lida a mim */
+    '.chat-conv-item.has-mention{background:rgba(184,76,58,.10);box-shadow:inset 0 0 0 1px rgba(184,76,58,.28)}',
+    '.chat-conv-item.has-mention:hover{background:rgba(184,76,58,.16)}',
+    '[data-theme="dark"] .chat-conv-item.has-mention{background:rgba(184,76,58,.20);box-shadow:inset 0 0 0 1px rgba(184,76,58,.42)}',
+    '[data-theme="dark"] .chat-conv-item.has-mention:hover{background:rgba(184,76,58,.26)}',
     '.chat-conv-pin-btn{display:none;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:3px;color:var(--cinza,#D0CFC9);border-radius:4px;flex-shrink:0;transition:color .15s}',
     '.chat-conv-pin-btn:hover{color:var(--verde,#1D6A4A)}',
     '.chat-conv-pin-btn.is-pinned{display:flex;color:var(--verde,#1D6A4A)}',
@@ -332,7 +338,10 @@
     '.chat-color-dot{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;display:flex;align-items:center;justify-content:center;transition:transform .1s;padding:0}',
     '.chat-color-dot:hover{transform:scale(1.12)}',
     '.chat-color-dot.active{border-color:var(--grafite,#111110)}',
-    '.chat-color-dot.active::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}',
+    '.chat-color-dot.active::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.18)}',
+    /* bolinha "preto e branco" — anel para a metade branca não sumir no fundo */
+    '.chat-color-dot[data-color="pb"]:not(.active){border-color:var(--cinza2,#ECEAE4)}',
+    '[data-theme="dark"] .chat-color-dot[data-color="pb"]:not(.active){border-color:#3A3836}',
     '[data-theme="dark"] .chat-color-pop{background:#252523;border-color:#2E2D2B}',
     '[data-theme="dark"] .chat-color-pop-hdr{color:#8C8A85}',
     /* â”€â”€ Som: popover de volume â”€â”€ */
@@ -412,6 +421,7 @@
   var searchQuery = '';
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var channelUnread    = {};        // { channel: count }
+  var mentionChannels  = {};        // { channel: true } — canais com mensagem NÃO LIDA que me menciona
   var onlinePresence   = {};        // { auth_id: { status, nome, ... } }
   var userStatus     = localStorage.getItem(STATUS_KEY) || 'online';
   var soundLevel     = _loadSoundLevel();
@@ -657,6 +667,7 @@
               colorDot('azul',      '#1D4FA0') +
               colorDot('ouro',      '#C4831A') +
               colorDot('terracota', '#B84C3A') +
+              colorDot('pb',        'linear-gradient(135deg,#1B1B1A 0 50%,#FFFFFF 50% 100%)', 'Preto e branco') +
             '</div>' +
           '</div>' +
           '<div class="chat-conv-list" id="exp-chat-convlist"><div class="chat-loading">' + ldots() + '</div></div>' +
@@ -837,9 +848,9 @@
   function icoPencil()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>'; }
   function icoChevUp()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'; }
   function icoChevDown(){ return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'; }
-  function colorDot(key, hex) {
+  function colorDot(key, hex, title) {
     return '<button class="chat-color-dot' + (chatColor === key ? ' active' : '') + '" data-color="' + key + '" ' +
-      'style="background:' + hex + '" onclick="expChat.setChatColor(\'' + key + '\')" title="' + key + '"></button>';
+      'style="background:' + hex + '" onclick="expChat.setChatColor(\'' + key + '\')" title="' + (title || key) + '"></button>';
   }
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -975,7 +986,7 @@
         var labelEsc = escHtml(item.label);
         var labelArg = attrJsStr(item.label);
         var preview = escHtml(compactPreviewText(item.preview || 'Chat do projeto', 42, 'Chat do projeto'));
-        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + labelArg + '\')">' +
+        return '<div class="chat-conv-item' + _mentionCls(item.channel) + '" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + labelArg + '\')">' +
           softAvHtml(item.iniciais, item.cor, null, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + labelEsc + '</div>' +
@@ -987,7 +998,7 @@
 
       /* Linha #geral */
       var genU = channelUnread['general'] || 0;
-      html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
+      html += '<div class="chat-conv-item' + _mentionCls('general') + '" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
         '<div class="chat-conv-av-hash">#</div>' +
         '<div class="chat-conv-info"><div class="chat-conv-name">geral</div><div class="chat-conv-preview">Toda a equipe</div></div>' +
         (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
@@ -996,7 +1007,7 @@
       /* Linha #sócios (apenas para role socio) */
       if (isSocioLikeRole(user.role)) {
         var socU = channelUnread['socios'] || 0;
-        html += '<div class="chat-conv-item" onclick="expChat.openChannel(\'socios\',\'# s\u00F3cios\')">' +
+        html += '<div class="chat-conv-item' + _mentionCls('socios') + '" onclick="expChat.openChannel(\'socios\',\'# s\u00F3cios\')">' +
           '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
           '<div class="chat-conv-info"><div class="chat-conv-name">s\u00F3cios</div><div class="chat-conv-preview">Canal privado</div></div>' +
           (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
@@ -1040,7 +1051,7 @@
           '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (isPinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
           '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
           '</button>';
-        return '<div class="chat-conv-item" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + nameArg + '\')">' +
+        return '<div class="chat-conv-item' + _mentionCls(dm.channel) + '" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + nameArg + '\')">' +
           softAvHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + nameEsc + '</div>' +
@@ -1376,6 +1387,7 @@
           if (!isOwn) markRead();
         } else if (!isOwn) {
           channelUnread[ch] = (channelUnread[ch] || 0) + 1;
+          if (_mentionsMe(msg.content)) mentionChannels[ch] = true;
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
@@ -1411,6 +1423,7 @@
           if (!isOwn) markRead();
         } else if (!isOwn) {
           channelUnread[ch] = (channelUnread[ch] || 0) + 1;
+          if (_mentionsMe(msg.content)) mentionChannels[ch] = true;
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
@@ -1496,6 +1509,7 @@
       return;
     }
     channelUnread[ch] = (channelUnread[ch] || 0) + 1;
+    if (_mentionsMe(msg.content)) mentionChannels[ch] = true;
     updateBadge();
     if (isOpen && currentView === 'channel') addConversationAlert(msg);
     if (isOpen && currentView === 'home') renderHome();
@@ -1632,7 +1646,7 @@
         });
 
         sb.from('chat_messages')
-          .select('channel,sender_id,created_at')
+          .select('channel,sender_id,created_at,content')
           .gte('created_at', since)
           .order('created_at', { ascending: false })
           .then(function (r2) {
@@ -1643,15 +1657,29 @@
             Object.keys(channelUnread).forEach(function (key) {
               if (isProjectChannel(key) || isFixedChannel(key)) preserved[key] = channelUnread[key];
             });
+            /* Menções não lidas de projeto vêm do caminho realtime; preserva-as */
+            var preservedMention = {};
+            Object.keys(mentionChannels).forEach(function (key) {
+              if (isProjectChannel(key)) preservedMention[key] = true;
+            });
             var nextUnread = {};
+            var nextMention = {};
             (r2.data || []).forEach(function (msg) {
-              if (msg.sender_id === uid || isFixedChannel(msg.channel)) return;
+              if (msg.sender_id === uid) return;
               var lastRead = readMap[msg.channel] || since;
-              if (msg.created_at > lastRead) nextUnread[msg.channel] = (nextUnread[msg.channel] || 0) + 1;
+              if (msg.created_at <= lastRead) return;
+              /* não lida e menciona a mim → marca o canal (inclusive geral/sócios) */
+              if (_mentionsMe(msg.content)) nextMention[msg.channel] = true;
+              if (isFixedChannel(msg.channel)) return; /* contagem de fixos apurada à parte */
+              nextUnread[msg.channel] = (nextUnread[msg.channel] || 0) + 1;
             });
             channelUnread = nextUnread;
             Object.keys(preserved).forEach(function (key) {
               channelUnread[key] = preserved[key];
+            });
+            mentionChannels = nextMention;
+            Object.keys(preservedMention).forEach(function (key) {
+              mentionChannels[key] = true;
             });
             updateBadge();
             if (isOpen && currentView === 'home') renderHome();
@@ -1669,6 +1697,7 @@
       }).then(function (r) {
         if (r.error) return;
         channelUnread[channel] = 0;
+        delete mentionChannels[channel];
         updateBadge();
         if (projectThreadMeta[channel]) projectThreadMeta[channel].unread = 0;
         removeConversationAlert(channel);
@@ -1681,6 +1710,7 @@
     }).then(function (r) {
       if (r.error) return;
       channelUnread[channel] = 0;
+      delete mentionChannels[channel];
       updateBadge();
       removeConversationAlert(channel);
       if (isOpen && currentView === 'home') renderHome();
@@ -2585,6 +2615,23 @@
   function hlMentions(escaped) {
     if (!_mHlRe) return escaped;
     return escaped.replace(_mHlRe, '<span class="chat-mention">$&</span>');
+  }
+
+  /* Verdadeiro se o texto menciona O PRÓPRIO usuário (primeiro nome ou nome completo) */
+  function _mentionsMe(content) {
+    if (!content || !user || !user.nome) return false;
+    var toks = [user.nome, user.nome.split(' ')[0]];
+    for (var i = 0; i < toks.length; i++) {
+      if (!toks[i]) continue;
+      var re = new RegExp('@' + _regEscapeTok(toks[i]) + '(?![\\w\\u00C0-\\u024F])', 'i');
+      if (re.test(content)) return true;
+    }
+    return false;
+  }
+
+  /* Classe do "quadro" de menção não lida na lista de conversas */
+  function _mentionCls(ch) {
+    return (mentionChannels[ch] && (channelUnread[ch] || 0) > 0) ? ' has-mention' : '';
   }
 
   /* Retorna os membros mencionados no texto (objetos de allMembers) */
