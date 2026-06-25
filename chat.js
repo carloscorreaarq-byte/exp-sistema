@@ -866,7 +866,7 @@
   function icoClose()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>'; }
   function icoSearch()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>'; }
   function icoEmoji()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>'; }
-  function icoAttention(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'; }
+  function icoAttention(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="6.5" x2="12" y2="13"/><line x1="12" y1="16.6" x2="12" y2="16.7"/><path d="M7.2 8.4a6 6 0 0 0 0 7.2"/><path d="M4.4 5.8a10 10 0 0 0 0 12.4"/><path d="M16.8 8.4a6 6 0 0 1 0 7.2"/><path d="M19.6 5.8a10 10 0 0 1 0 12.4"/></svg>'; }
   function icoExpand()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
   function icoCompress() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
   function icoMaxBtn()   { return chatMaximized ? icoCompress() : icoExpand(); }
@@ -2427,8 +2427,14 @@
     _audioCtx = new Ctx();
     return _audioCtx;
   }
-  /* Desbloqueia o AudioContext na primeira interação do usuário */
-  document.addEventListener('click', function () { _getAudioCtx(); }, { once: true });
+  /* Desbloqueia/retoma o AudioContext em qualquer interação (resume é no-op se já ativo) */
+  function _unlockAudio() {
+    var ctx = _getAudioCtx();
+    if (ctx && ctx.state === 'suspended' && ctx.resume) ctx.resume();
+  }
+  ['pointerdown', 'click', 'keydown', 'touchstart'].forEach(function (ev) {
+    document.addEventListener(ev, _unlockAudio, { capture: true });
+  });
 
   function playNotificationSound() {
     if (soundLevel === 'off') return;
@@ -3934,6 +3940,8 @@
       _attnLock = false;
       if (btn) { btn.disabled = false; btn.style.opacity = ''; }
     }, 4000);
+
+    playAttentionSound(); /* feedback imediato p/ quem envia (e destrava o áudio, pois é dentro do clique) */
 
     var pendingMsg = buildPendingMessage(CHAT_ATTENTION_SENTINEL);
     upsertMessage(pendingMsg);

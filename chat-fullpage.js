@@ -2330,7 +2330,9 @@
     _audioCtx = new Ctx();
     return _audioCtx;
   }
-  document.addEventListener('click', function () { _getAudioCtx(); }, { once: true });
+  /* Desbloqueia/retoma o AudioContext em qualquer interação (resume é no-op se já ativo) */
+  function _unlockAudio(){ var ctx=_getAudioCtx(); if(ctx && ctx.state==='suspended' && ctx.resume) ctx.resume(); }
+  ['pointerdown','click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, _unlockAudio, { capture: true }); });
 
   function playNotificationSound(){
     if(soundLevel==='off') return;
@@ -2405,6 +2407,8 @@
     var btn=document.getElementById('fp-attn-btn');
     if(btn){ btn.disabled=true; btn.style.opacity='.45'; }
     setTimeout(function(){ _attnLock=false; if(btn){ btn.disabled=false; btn.style.opacity=''; } },4000);
+
+    playAttentionSound(); /* feedback imediato p/ quem envia (e destrava o áudio, pois é dentro do clique) */
 
     var pm=buildPendingMessage(CHAT_ATTENTION_SENTINEL);
     upsertMessage(pm); renderMessages(); scrollBottom();
