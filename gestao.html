@@ -11089,9 +11089,12 @@ function onClienteChange() {
 }
 
 async function carregarOppsDoCliente(cliId) {
-  const stagesNeg = ['negada','negado','cancelada','cancelado','perdida','perdido'];
-  const { data: opps } = await sb.from('oportunidades').select('*').eq('cliente_id', cliId);
-  const filtradas = (opps || []).filter(o => !stagesNeg.includes((o.pipeline_stage || '').toLowerCase()));
+  // Esconde só oportunidades "mortas" (negado/cancelado/perdido/expirado), detectando
+  // pela raiz da palavra p/ pegar variantes novas do CRM (ex.: 'fechado_perdido').
+  // Mantém abertas e fechadas/ganhas — inclui 'fechado_ganho'.
+  const oppPerdida = s => ['negad','cancelad','perdid','expirad'].some(k => (s || '').toLowerCase().includes(k));
+  const { data: opps } = await sb.from('oportunidades').select('*').eq('cliente_id', cliId).not('excluida','is',true);
+  const filtradas = (opps || []).filter(o => !oppPerdida(o.pipeline_stage));
   const sel = document.getElementById('cad-opp-sel');
   sel.innerHTML = '<option value="">Selecione uma oportunidade do CRM...</option>' +
     filtradas.map(o => {
