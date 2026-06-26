@@ -1195,6 +1195,53 @@ body {
 }
 .fp-members-confirm:hover { opacity: .8; }
 
+/* ── Passo 2: configurar canal ── */
+#fp-newchan-step1 { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#fp-newchan-step2 {
+  flex: 1; flex-direction: column; display: none;
+  min-height: 0;
+}
+.fp-newchan-head {
+  padding: 10px 12px; border-bottom: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+[data-theme="dark"] .fp-newchan-head { border-bottom-color: #2E2D2B; }
+.fp-newchan-body { flex: 1; overflow-y: auto; padding: 16px 14px 8px; }
+.fp-newchan-field { margin-bottom: 16px; }
+.fp-newchan-label {
+  display: block; font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase; color: #888; margin-bottom: 6px;
+}
+.fp-newchan-input {
+  width: 100%; box-sizing: border-box; border: 1.5px solid var(--cinza2, #ECEAE4);
+  border-radius: 8px; padding: 8px 11px; font-size: 12px; font-family: inherit;
+  outline: none; background: #fff; color: var(--grafite, #111110); transition: border-color .15s;
+}
+.fp-newchan-input:focus { border-color: var(--ca, #1D6A4A); }
+[data-theme="dark"] .fp-newchan-input { background: #1C1C1B; border-color: #2E2D2B; color: #F0EDE6; }
+.fp-newchan-tgls { display: flex; gap: 6px; }
+.fp-newchan-tgl {
+  flex: 1; padding: 8px 6px; font-size: 11px; font-family: inherit;
+  border: 1.5px solid var(--cinza2, #ECEAE4); border-radius: 8px;
+  background: #fff; cursor: pointer; color: #666; transition: all .15s; font-weight: 500;
+}
+.fp-newchan-tgl.active { border-color: var(--ca, #1D6A4A); background: var(--ca, #1D6A4A); color: #fff; font-weight: 700; }
+[data-theme="dark"] .fp-newchan-tgl { background: #1C1C1B; border-color: #2E2D2B; color: #C0BDBA; }
+.fp-newchan-hint { margin-top: 7px; font-size: 10px; color: #C4831A; line-height: 1.4; }
+.fp-newchan-footer {
+  padding: 10px 14px; border-top: 1px solid var(--cinza2, #ECEAE4);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+[data-theme="dark"] .fp-newchan-footer { border-top-color: #2E2D2B; }
+.chat-chan-banner {
+  padding: 7px 14px; font-size: 11px; font-weight: 600; flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+}
+.chat-chan-banner.temp { background: #FFF8EC; color: #C4831A; border-bottom: 1px solid #F5E0B0; }
+.chat-chan-banner.expired { background: #FDECEA; color: #B84C3A; border-bottom: 1px solid #F5C8C2; }
+[data-theme="dark"] .chat-chan-banner.temp { background: #2A2215; color: #E0A04A; border-bottom-color: #3A2F1A; }
+[data-theme="dark"] .chat-chan-banner.expired { background: #281414; color: #D47060; border-bottom-color: #3A1E1C; }
+
 /* ══════════════════════════════════════════════════
    MEDIA VIEWER
 ══════════════════════════════════════════════════ */
@@ -2949,18 +2996,51 @@ body {
 
 <!-- Popover novo DM (abre a partir do botão) -->
 <div id="fp-members-panel">
-  <div class="fp-members-head">
-    <span class="fp-members-title">Nova mensagem</span>
-    <button class="fp-sb-icon-btn exp-sb-icon-btn" onclick="fpChat.closeNewDM()" style="width:22px;height:22px">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
-    </button>
+  <!-- Passo 1: seleção de membros -->
+  <div id="fp-newchan-step1">
+    <div class="fp-members-head">
+      <span class="fp-members-title">Nova mensagem</span>
+      <button class="fp-sb-icon-btn exp-sb-icon-btn" onclick="fpChat.closeNewDM()" style="width:22px;height:22px">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fp-members-list" id="fp-members-list">
+      <div class="fp-loading" style="padding:16px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>
+    </div>
+    <div class="fp-members-footer">
+      <span class="fp-members-info" id="fp-members-info">Selecione membros</span>
+      <button class="fp-members-confirm" onclick="fpChat.confirmNewDM()">Continuar →</button>
+    </div>
   </div>
-  <div class="fp-members-list" id="fp-members-list">
-    <div class="fp-loading" style="padding:16px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>
-  </div>
-  <div class="fp-members-footer">
-    <span class="fp-members-info" id="fp-members-info">Selecione membros</span>
-    <button class="fp-members-confirm" onclick="fpChat.confirmNewDM()">Enviar</button>
+  <!-- Passo 2: configurar canal -->
+  <div id="fp-newchan-step2">
+    <div class="fp-newchan-head">
+      <button class="fp-sb-icon-btn exp-sb-icon-btn" onclick="fpChat.fpBackToMembers()" style="width:22px;height:22px" title="Voltar">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="fp-members-title">Configurar canal</span>
+      <button class="fp-sb-icon-btn exp-sb-icon-btn" onclick="fpChat.closeNewDM()" style="width:22px;height:22px">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fp-newchan-body">
+      <div class="fp-newchan-field">
+        <label class="fp-newchan-label">Nome do canal <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;opacity:.6">(opcional)</span></label>
+        <input id="fp-newchan-name" class="fp-newchan-input" type="text" placeholder="Ex: projeto alfa, sprint maio…" maxlength="60" onkeydown="if(event.key==='Enter')fpChat.fpFinalizeGroup()">
+      </div>
+      <div class="fp-newchan-field">
+        <label class="fp-newchan-label">Tipo</label>
+        <div class="fp-newchan-tgls">
+          <button id="fp-newchan-fixo" class="fp-newchan-tgl active" onclick="fpChat.fpSetTempMode(false)">📌 Fixo</button>
+          <button id="fp-newchan-temp" class="fp-newchan-tgl" onclick="fpChat.fpSetTempMode(true)">⏳ Temporário · 72h</button>
+        </div>
+        <div id="fp-newchan-hint" class="fp-newchan-hint" style="display:none">Mensagens desaparecem 72h após a criação do canal.</div>
+      </div>
+    </div>
+    <div class="fp-newchan-footer">
+      <span class="fp-members-info" id="fp-newchan-label"></span>
+      <button class="fp-members-confirm" onclick="fpChat.fpFinalizeGroup()">Abrir canal →</button>
+    </div>
   </div>
 </div>
 
