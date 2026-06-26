@@ -551,12 +551,24 @@
       if (presenceCh) presenceCh.untrack();
     });
 
-    /* Reconecta o realtime ao voltar para a aba SOMENTE se o canal não estiver ativo */
-    document.addEventListener('visibilitychange', function () {
+    /* Reconecta o realtime ao voltar para a aba e busca na hora o que chegou. */
+    function _onTabActive() {
       if (document.visibilityState !== 'visible') return;
       var state = msgCh && msgCh.state;
       if (state !== 'joined' && state !== 'joining') subscribeIncoming();
-    });
+      _pollMissed(); /* resgate imediato, sem esperar o ciclo do worker */
+    }
+    document.addEventListener('visibilitychange', _onTabActive);
+    window.addEventListener('focus', _onTabActive);
+
+    /* Quando o token renova (~1h) o socket do realtime cai; re-assina na hora. */
+    if (sb.auth && sb.auth.onAuthStateChange) {
+      sb.auth.onAuthStateChange(function (event) {
+        if (event !== 'TOKEN_REFRESHED' && event !== 'SIGNED_IN') return;
+        var s = msgCh && msgCh.state;
+        if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      });
+    }
 
     // Fechar popover de cor ao clicar fora
     document.addEventListener('click', function (e) {
@@ -781,41 +793,41 @@
             '<div class="chat-header-info"><div class="chat-header-title">Nova mensagem</div></div>' +
             '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
           '</div>' +
-          ‘<div class="chat-member-list" id="exp-chat-memberlist"><div class="chat-loading">’ + ldots() + ‘</div></div>’ +
-          ‘<div class="chat-group-bar" id="exp-chat-group-bar" style="display:none">’ +
-            ‘<span class="chat-group-info" id="exp-chat-group-info"></span>’ +
-            ‘<button class="chat-group-confirm" onclick="expChat.confirmGroup()">Continuar →</button>’ +
-          ‘</div>’ +
-        ‘</div>’ +
+          '<div class="chat-member-list" id="exp-chat-memberlist"><div class="chat-loading">' + ldots() + '</div></div>' +
+          '<div class="chat-group-bar" id="exp-chat-group-bar" style="display:none">' +
+            '<span class="chat-group-info" id="exp-chat-group-info"></span>' +
+            '<button class="chat-group-confirm" onclick="expChat.confirmGroup()">Continuar →</button>' +
+          '</div>' +
+        '</div>' +
 
         /* View: Passo 2 — configurar canal (nome + tipo) */
-        ‘<div class="chat-view" id="exp-chat-newchan" style="display:none">’ +
-          ‘<div class="chat-header">’ +
-            ‘<button class="chat-back-btn" onclick="expChat.backToMembers()">’ + icoBack() + ‘</button>’ +
-            ‘<div class="chat-header-info"><div class="chat-header-title">Configurar canal</div></div>’ +
-            ‘<button class="chat-close" onclick="expChat.close()">’ + icoClose() + ‘</button>’ +
-          ‘</div>’ +
-          ‘<div class="chat-newchan-body">’ +
-            ‘<div class="chat-newchan-field">’ +
-              ‘<label class="chat-newchan-label">Nome do canal <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;opacity:.6">(opcional)</span></label>’ +
-              ‘<input id="exp-chat-newchan-name" class="chat-newchan-input" type="text" placeholder="Ex: projeto alfa, sprint maio…" maxlength="60" onkeydown="if(event.key===\’Enter\’)expChat.finalizeGroup()">’ +
-            ‘</div>’ +
-            ‘<div class="chat-newchan-field">’ +
-              ‘<label class="chat-newchan-label">Tipo</label>’ +
-              ‘<div class="chat-newchan-tgls">’ +
-                ‘<button id="exp-newchan-fixo" class="chat-newchan-tgl active" onclick="expChat.setTempMode(false)">📌 Fixo</button>’ +
-                ‘<button id="exp-newchan-temp" class="chat-newchan-tgl" onclick="expChat.setTempMode(true)">⏳ Temporário · 72h</button>’ +
-              ‘</div>’ +
-              ‘<div id="exp-newchan-hint" class="chat-newchan-hint" style="display:none">Mensagens desaparecem 72h após a criação do canal.</div>’ +
-            ‘</div>’ +
-          ‘</div>’ +
-          ‘<div class="chat-group-bar" style="display:flex">’ +
-            ‘<span class="chat-group-info" id="exp-chat-newchan-info"></span>’ +
-            ‘<button class="chat-group-confirm" onclick="expChat.finalizeGroup()">Abrir canal →</button>’ +
-          ‘</div>’ +
-        ‘</div>’ +
+        '<div class="chat-view" id="exp-chat-newchan" style="display:none">' +
+          '<div class="chat-header">' +
+            '<button class="chat-back-btn" onclick="expChat.backToMembers()">' + icoBack() + '</button>' +
+            '<div class="chat-header-info"><div class="chat-header-title">Configurar canal</div></div>' +
+            '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
+          '</div>' +
+          '<div class="chat-newchan-body">' +
+            '<div class="chat-newchan-field">' +
+              '<label class="chat-newchan-label">Nome do canal <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;opacity:.6">(opcional)</span></label>' +
+              '<input id="exp-chat-newchan-name" class="chat-newchan-input" type="text" placeholder="Ex: projeto alfa, sprint maio…" maxlength="60" onkeydown="if(event.key===\'Enter\')expChat.finalizeGroup()">' +
+            '</div>' +
+            '<div class="chat-newchan-field">' +
+              '<label class="chat-newchan-label">Tipo</label>' +
+              '<div class="chat-newchan-tgls">' +
+                '<button id="exp-newchan-fixo" class="chat-newchan-tgl active" onclick="expChat.setTempMode(false)">📌 Fixo</button>' +
+                '<button id="exp-newchan-temp" class="chat-newchan-tgl" onclick="expChat.setTempMode(true)">⏳ Temporário · 72h</button>' +
+              '</div>' +
+              '<div id="exp-newchan-hint" class="chat-newchan-hint" style="display:none">Mensagens desaparecem 72h após a criação do canal.</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="chat-group-bar" style="display:flex">' +
+            '<span class="chat-group-info" id="exp-chat-newchan-info"></span>' +
+            '<button class="chat-group-confirm" onclick="expChat.finalizeGroup()">Abrir canal →</button>' +
+          '</div>' +
+        '</div>' +
 
-      ‘</div>’ + /* fim .chat-panel */
+      '</div>' + /* fim .chat-panel */
 
       '<div class="chat-media-viewer" id="exp-chat-media-viewer" style="display:none">' +
         '<div class="chat-media-viewer-card">' +
@@ -1649,6 +1661,7 @@
         console.log('[EXP Chat] realtime status:', status, err || '');
         if (status === 'SUBSCRIBED') {
           console.log('[EXP Chat] realtime conectado ✓');
+          _reconnectDelay = 4000;
           /* Após uma queda, busca o que chegou enquanto estava offline */
           if (_realtimeDropped) {
             _realtimeDropped = false;
@@ -1658,16 +1671,28 @@
             if (isOpen && currentView === 'channel') loadMessages();
           }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          /* Reconecta em QUALQUER queda — inclusive CLOSED, que ocorre quando o
+             token expira/renova (~1h) ou a rede oscila. Sem isto, o canal ficava
+             morto e só voltava com F5. */
           _realtimeDropped = true;
-          if (status !== 'CLOSED') {
-            console.warn('[EXP Chat] reconectando em 4s...');
-            setTimeout(function () {
-              var s = msgCh && msgCh.state;
-              if (s !== 'joined' && s !== 'joining') subscribeIncoming();
-            }, 4000);
-          }
+          _scheduleReconnect();
         }
       });
+  }
+
+  /* Reconexão com backoff; o guard por estado evita assinar em duplicidade
+     quando o removeChannel() de subscribeIncoming() dispara um CLOSED. */
+  var _reconnectTimer = null;
+  var _reconnectDelay = 4000;
+  function _scheduleReconnect() {
+    if (_reconnectTimer) return;
+    console.warn('[EXP Chat] reconectando realtime em ' + (_reconnectDelay / 1000) + 's...');
+    _reconnectTimer = setTimeout(function () {
+      _reconnectTimer = null;
+      var s = msgCh && msgCh.state;
+      if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      _reconnectDelay = Math.min(_reconnectDelay * 1.5, 30000);
+    }, _reconnectDelay);
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -1675,7 +1700,7 @@
      O timer roda num Web Worker, que NÃO sofre throttling de aba em
      background; o dedup por id evita som/push duplicado com o realtime.
   ══════════════════════════════════════════════════════════════════ */
-  var POLL_INTERVAL_MS = 30000;
+  var POLL_INTERVAL_MS = 7000;
   var _lastPollTs = new Date().toISOString();
   var _seenMsgIds = {};
   var _seenMsgOrder = [];

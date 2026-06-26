@@ -439,12 +439,24 @@
 
     window.addEventListener('beforeunload', function() { if (presenceCh) presenceCh.untrack(); });
 
-    /* Reconecta o realtime ao voltar para a aba SOMENTE se o canal não estiver ativo */
-    document.addEventListener('visibilitychange', function() {
+    /* Reconecta o realtime ao voltar para a aba e busca na hora o que chegou. */
+    function _onTabActive() {
       if (document.visibilityState !== 'visible') return;
       var state = msgCh && msgCh.state;
       if (state !== 'joined' && state !== 'joining') subscribeIncoming();
-    });
+      _pollMissed(); /* resgate imediato, sem esperar o ciclo do worker */
+    }
+    document.addEventListener('visibilitychange', _onTabActive);
+    window.addEventListener('focus', _onTabActive);
+
+    /* Quando o token renova (~1h) o socket do realtime cai; re-assina na hora. */
+    if (sb.auth && sb.auth.onAuthStateChange) {
+      sb.auth.onAuthStateChange(function(event) {
+        if (event !== 'TOKEN_REFRESHED' && event !== 'SIGNED_IN') return;
+        var s = msgCh && msgCh.state;
+        if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      });
+    }
 
     renderConvList();
   }
@@ -1475,6 +1487,7 @@
         console.log('[EXP ChatFP] realtime status:', status, err || '');
         if (status === 'SUBSCRIBED') {
           console.log('[EXP ChatFP] realtime conectado ✓');
+          _reconnectDelay = 4000;
           /* Após uma queda, busca o que chegou enquanto estava offline */
           if (_realtimeDropped) {
             _realtimeDropped = false;
@@ -1484,16 +1497,28 @@
             if (currentChannel) loadMessages();
           }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          /* Reconecta em QUALQUER queda — inclusive CLOSED, que ocorre quando o
+             token expira/renova (~1h) ou a rede oscila. Sem isto, o canal ficava
+             morto e só voltava com F5. */
           _realtimeDropped = true;
-          if (status !== 'CLOSED') {
-            console.warn('[EXP ChatFP] reconectando em 4s...');
-            setTimeout(function () {
-              var s = msgCh && msgCh.state;
-              if (s !== 'joined' && s !== 'joining') subscribeIncoming();
-            }, 4000);
-          }
+          _scheduleReconnect();
         }
       });
+  }
+
+  /* Reconexão com backoff; o guard por estado evita assinar em duplicidade
+     quando o removeChannel() de subscribeIncoming() dispara um CLOSED. */
+  var _reconnectTimer = null;
+  var _reconnectDelay = 4000;
+  function _scheduleReconnect() {
+    if (_reconnectTimer) return;
+    console.warn('[EXP ChatFP] reconectando realtime em ' + (_reconnectDelay / 1000) + 's...');
+    _reconnectTimer = setTimeout(function () {
+      _reconnectTimer = null;
+      var s = msgCh && msgCh.state;
+      if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      _reconnectDelay = Math.min(_reconnectDelay * 1.5, 30000);
+    }, _reconnectDelay);
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -1501,7 +1526,7 @@
      Timer num Web Worker (não sofre throttling de aba em background);
      dedup por id evita som/push duplicado com o realtime.
   ═══════════════════════════════════════════════════════════════════ */
-  var POLL_INTERVAL_MS = 30000;
+  var POLL_INTERVAL_MS = 7000;
   var _lastPollTs = new Date().toISOString();
   var _seenMsgIds = {};
   function _markSeen(id) { if (id != null) _seenMsgIds[String(id)] = true; }
