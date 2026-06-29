@@ -13214,6 +13214,17 @@ let _fluxoMode        = 'editar';
 let _fluxoSelectedUid = null;
 let _fluxoPriosData   = {}; // { uid: [prio, ...] }
 
+// Tarefas societárias — disponíveis só para sócios e sócios-administradores.
+// A subdivisão identifica a área; o comentário da prioridade descreve a tarefa.
+const SOCIETARIA_CATS = [
+  { key: 'comercial',      label: 'Comercial' },
+  { key: 'marketing',      label: 'Marketing' },
+  { key: 'administrativo', label: 'Administrativo' },
+  { key: 'juridico',       label: 'Jurídico' },
+  { key: 'endomarketing',  label: 'Endomarketing' },
+];
+const _socCatLabel = (key) => (SOCIETARIA_CATS.find(c => c.key === key) || {}).label || key;
+
 function _fluxoRoleOrder(role) {
   const r = normalizeRole(role);
   if (r === 'socio_admin' || r === 'socio') return 1;
@@ -13236,7 +13247,14 @@ function _fluxoProdNome(prodId) {
   return proj + tipo;
 }
 
-function _fluxoProdOpts(selectedId) {
+// Nome exibido de uma prioridade — projeto ou tarefa societária
+function _fluxoPrioNome(pr) {
+  if (pr.categoria_societaria) return `Societária · ${_socCatLabel(pr.categoria_societaria)}`;
+  return _fluxoProdNome(pr.produto_id);
+}
+
+function _fluxoProdOpts(selectedId, opts = {}) {
+  const { includeSocietaria = false, selectedCategoria = null } = opts;
   const produtos = (G._prodsGestao||[]).filter(p => p.status === 'ativo');
   const cliMap = new Map();
   produtos.forEach(p => {
@@ -13245,7 +13263,14 @@ function _fluxoProdOpts(selectedId) {
     if (!cliMap.has(key)) cliMap.set(key, { nome: cli?.nome || 'Sem cliente', prods: [] });
     cliMap.get(key).prods.push(p);
   });
-  return '<option value="">— sem projeto —</option>' +
+  const socGroup = includeSocietaria
+    ? `<optgroup label="Tarefas societárias">${
+        SOCIETARIA_CATS.map(c => {
+          const sel = c.key === selectedCategoria ? ' selected' : '';
+          return `<option value="soc:${c.key}"${sel}>${c.label}</option>`;
+        }).join('')}</optgroup>`
+    : '';
+  return '<option value="">— sem projeto —</option>' + socGroup +
     [...cliMap.entries()]
       .sort((a,b) => (a[1].nome||'').localeCompare(b[1].nome||'','pt-BR'))
       .map(([, {nome: cliNome, prods: ps}]) => {
@@ -13301,7 +13326,7 @@ function renderFluxoUserList() {
       html += `<div class="fluxo-user-list-sep">${groupLabels[grp]}</div>`;
       lastGroup = grp;
     }
-    const prios = (_fluxoPriosData[u.id]||[]).filter(p => p.produto_id);
+    const prios = (_fluxoPriosData[u.id]||[]).filter(p => p.produto_id || p.categoria_societaria);
     const active = prios.filter(p => !p.concluida).length;
     const total  = prios.length;
     const sel    = _fluxoSelectedUid === u.id ? ' selected' : '';
@@ -13337,6 +13362,7 @@ function renderFluxoDetail(uid) {
   const u = G.todosUsuarios.find(u => u.id === uid);
   if (!u) return;
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
+  const isSocio = isSocioRole(u.role);
   // Mostra TODOS os registros (incluindo os recém-adicionados com produto_id null)
   const prios = _fluxoPriosData[uid] || [];
   const canAdd = prios.length < 6;
@@ -13347,7 +13373,7 @@ function renderFluxoDetail(uid) {
     const inicio = pr.data_inicio || '';
     const prazo  = pr.prazo_texto || '';
     const coment = (pr.comentario||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const opts   = _fluxoProdOpts(pr.produto_id);
+    const opts   = _fluxoProdOpts(pr.produto_id, { includeSocietaria: isSocio, selectedCategoria: pr.categoria_societaria });
     return `<div class="fluxo-prio-item${conc?' conc':''}"
         data-prid="${pr.id}" data-uid="${uid}"
         draggable="true"
@@ -13480,10 +13506,17 @@ function setFluxoCampo(uid, prid, campo, valor) {
   _fluxoMarkDirty(uid);
 }
 
-function setFluxoProduto(uid, prid, produtoId) {
+function setFluxoProduto(uid, prid, valor) {
   const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === prid);
   if (!pr) return;
-  pr.produto_id = produtoId || null;
+  if (typeof valor === 'string' && valor.startsWith('soc:')) {
+    // Tarefa societária: limpa o vínculo de projeto e grava a subdivisão
+    pr.categoria_societaria = valor.slice(4);
+    pr.produto_id = null;
+  } else {
+    pr.produto_id = valor || null;
+    pr.categoria_societaria = null;
+  }
   _fluxoMarkDirty(uid);
   renderFluxoUserList(); // atualiza o badge (ativas/total) na lista lateral
 }
@@ -13503,6 +13536,7 @@ async function salvarFluxoUsuario(uid) {
     const pr = prios[i];
     const payload = {
       produto_id:   pr.produto_id || null,
+      categoria_societaria: pr.categoria_societaria || null,
       data_inicio:  pr.data_inicio || null,
       prazo_texto:  pr.prazo_texto || null,
       comentario:   pr.comentario || null,
@@ -13572,12 +13606,12 @@ function renderFluxoView() {
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
   const users = _fluxoSortedUsers();
   grid.innerHTML = users.map(u => {
-    const prios = (_fluxoPriosData[u.id]||[]).filter(p => p.produto_id);
+    const prios = (_fluxoPriosData[u.id]||[]).filter(p => p.produto_id || p.categoria_societaria);
     const slotsHtml = prios.length
       ? prios.map((pr, idx) => {
           const ord   = idx + 1;
           const conc  = !!pr.concluida;
-          const nome  = _fluxoProdNome(pr.produto_id);
+          const nome  = _fluxoPrioNome(pr);
           const inicio = pr.data_inicio ? fmtFluxoDate(pr.data_inicio) : null;
           const prazo  = pr.prazo_texto ? fmtFluxoDate(pr.prazo_texto) : null;
           const metaParts = [

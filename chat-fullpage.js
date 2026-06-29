@@ -4288,7 +4288,7 @@
     if ($list) $list.innerHTML = '<div class="fp-loading" style="padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
 
     sb.from('prioridades_usuario')
-      .select('id,produto_id,prazo_texto,ordem,comentario,concluida,concluida_em,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
+      .select('id,produto_id,categoria_societaria,prazo_texto,ordem,comentario,concluida,concluida_em,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
       .eq('usuario_id', uid).order('ordem')
       .then(function(r) {
         allPrioLoaded = true;
@@ -4330,8 +4330,10 @@
       var prod = pr.produtos || {};
       var opp  = prod.oportunidades || {};
       var cli  = opp.clientes || {};
-      var titulo   = [cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto';
-      var cidadeUf = [opp.cidade, cli.uf].filter(Boolean).join('/');
+      var titulo   = pr.categoria_societaria
+        ? 'Societária · ' + (_SOC_CAT_LABEL[pr.categoria_societaria] || pr.categoria_societaria)
+        : ([cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto');
+      var cidadeUf = pr.categoria_societaria ? '' : [opp.cidade, cli.uf].filter(Boolean).join('/');
       var etapas   = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
       var etapa    = etapas.find(function(e){ return e.status==='em_andamento'; }) || etapas.find(function(e){ return e.status!=='concluida'; });
       var ord      = Math.min(pr.ordem || 1, 6);
@@ -4353,7 +4355,8 @@
       var produtoId = escHtml(String(pr.produto_id || ''));
       var prioId    = escHtml(String(pr.id));
 
-      html += '<div class="fp-pp-card ' + estadoCard + (concluida ? ' fp-pp-done' : '') + '" onclick="fpChat.openProjectOverlay(\'' + produtoId + '\')">' +
+      var clickAttr = produtoId ? ' onclick="fpChat.openProjectOverlay(\'' + produtoId + '\')"' : ' style="cursor:default"';
+      html += '<div class="fp-pp-card ' + estadoCard + (concluida ? ' fp-pp-done' : '') + '"' + clickAttr + '>' +
         '<div class="fp-pp-info">' +
           '<div class="fp-pp-nome">' + escHtml(titulo) + '</div>' +
           (cidadeUf  ? '<div class="fp-pp-cidade">' + escHtml(cidadeUf) + '</div>' : '') +
@@ -4905,6 +4908,7 @@
   var prioBannerTimer = null;
   var prioLoaded      = false;
   var NUM_CLS         = ['','p1','p2','p3','p4','p5','p6'];
+  var _SOC_CAT_LABEL  = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing' };
 
   function showPrioBanner() {
     if (prioBannerTimer) { clearTimeout(prioBannerTimer); prioBannerTimer = null; }
@@ -4934,7 +4938,7 @@
     var uid = user.id || user.app_user_id;
     if (!uid) return;
     sb.from('prioridades_usuario')
-      .select('id,produto_id,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
+      .select('id,produto_id,categoria_societaria,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,clientes(nome,uf)),etapas(nome,status,ordem))')
       .eq('usuario_id', uid).eq('concluida', false).order('ordem').limit(1).maybeSingle()
       .then(function(r) { prioLoaded=true; prioData=r.data||null; renderPrioBanner(); })
       .catch(function()  { prioLoaded=true; renderPrioBanner(); });
@@ -4955,8 +4959,10 @@
     var prod = pr.produtos || {};
     var opp  = prod.oportunidades || {};
     var cli  = opp.clientes || {};
-    var titulo   = [cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto';
-    var cidadeUf = [opp.cidade, cli.uf].filter(Boolean).join('/');
+    var titulo   = pr.categoria_societaria
+      ? 'Societária · ' + (_SOC_CAT_LABEL[pr.categoria_societaria] || pr.categoria_societaria)
+      : ([cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto');
+    var cidadeUf = pr.categoria_societaria ? '' : [opp.cidade, cli.uf].filter(Boolean).join('/');
     var etapas   = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
     var etapa    = etapas.find(function(e){ return e.status==='em_andamento'; }) || etapas.find(function(e){ return e.status!=='concluida'; });
     var ord      = pr.ordem || 1;

@@ -3673,6 +3673,9 @@ function renderEventsSection(eventos) {
     </div>`;
 }
 
+// Labels das subdivisões de tarefas societárias (sócios) — espelha SOCIETARIA_CATS de gestao.html
+const _SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing' };
+
 function renderPriosSection(prios) {
   const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
   const pendentes  = prios.filter(p => !p.concluida);
@@ -3698,9 +3701,11 @@ function renderPriosSection(prios) {
       :                            { bg:'#EAF5EC', border:'#27AE60', text:'#1E8449' };
     const cardStyle = _cor ? `background:${_cor.bg};border-left-color:${_cor.border}` : '';
     const nomeStyle = _cor ? `color:${_cor.text}` : '';
-    const nome  = pr.produtos?.oportunidades
-      ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
-      : pr.produtos?.nome || '—';
+    const nome  = pr.categoria_societaria
+      ? 'Societária · ' + _SOC_CAT_LABEL[pr.categoria_societaria]
+      : pr.produtos?.oportunidades
+        ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
+        : pr.produtos?.nome || '—';
     const etapas = (pr.produtos?.etapas || []).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0));
     const etapa  = etapas.find(e => e.status === 'em_andamento') || etapas.find(e => e.status !== 'concluida');
     const coment = pr.comentario || '';
@@ -3991,7 +3996,7 @@ async function loadDashboard(usuario) {
 
     // Prioridades — todas (inclusive concluídas, ordenadas: pendentes primeiro)
     sb.from('prioridades_usuario')
-      .select('id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))')
+      .select('id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, categoria_societaria, produtos(nome, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))')
       .eq('usuario_id', usuario.id)
       .order('concluida', { ascending: true })
       .order('ordem', { ascending: true }),
