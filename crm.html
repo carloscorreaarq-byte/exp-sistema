@@ -654,6 +654,7 @@ textarea{resize:vertical;min-height:60px}
           </div>
         </div>
         <div id="dash-fu-list" style="padding:0 0 4px"><div class="loading">Carregando...</div></div>
+        <button id="dash-fu-btn-vermais" class="btn xs ghost" style="font-size:9px;width:100%;display:none" onclick="toggleDashFuExpand()">Ver mais ↓</button>
       </div>
 
       <!-- Donut por tipo -->
@@ -705,7 +706,8 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ PIPELINE ═══════════════════════════════════════════════ -->
 <div class="page" id="tab-pipe">
-  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:nowrap">
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:nowrap">
+    <input id="pf-busca" type="text" placeholder="Buscar cliente, projeto, nº, cidade..." oninput="renderPipe()" style="font-size:10px;padding:4px 7px;min-width:140px;flex:1;max-width:240px;border:1px solid var(--cinza)">
     <select id="pf-resp" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="todos">Todos resp.</option>
       <option value="Carlos">Carlos</option>
@@ -728,9 +730,8 @@ textarea{resize:vertical;min-height:60px}
       <input type="checkbox" id="pf-com-opp" onchange="renderPipe()" style="accent-color:var(--azul);width:12px;height:12px">
       Com oportunidade
     </label>
-    <input id="pf-busca" type="text" placeholder="Buscar cliente, projeto, nº, cidade..." oninput="renderPipe()" style="font-size:10px;padding:4px 7px;min-width:140px;flex:1;max-width:240px;border:1px solid var(--cinza)">
-    <div style="margin-left:auto;font-size:10px;color:#888;white-space:nowrap" id="pipe-total"></div>
   </div>
+  <div style="font-size:10px;color:#888;white-space:nowrap;margin-bottom:12px" id="pipe-total"></div>
   <div class="kanban" id="kanban-board" style="grid-template-columns:repeat(4,1fr)">
     <div class="kcol">
       <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--azul)"></div><div class="kcol-title">Lead</div><div class="kcol-cnt" id="k-cnt-p">0</div><div class="kcol-sum" style="visibility:hidden">—</div></div>
@@ -1132,7 +1133,11 @@ textarea{resize:vertical;min-height:60px}
       <!-- ── SEÇÃO: CONTATO ──────────────────────────────── -->
       <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#999;margin-bottom:8px">Contato</div>
       <div class="fg fg2 mb8">
-        <div class="fgroup"><label>Nome *</label><input type="text" id="opp-rc-nome" placeholder="Nome da pessoa"></div>
+        <div class="fgroup" style="position:relative">
+          <label>Nome *</label>
+          <input type="text" id="opp-rc-nome" placeholder="Nome da pessoa" oninput="filtrarContatosRC()" autocomplete="off">
+          <div id="opp-rc-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--branco);border:1px solid var(--cinza);border-top:none;z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div>
         <div class="fgroup"><label>Cargo</label><input type="text" id="opp-rc-cargo" placeholder="Ex: Diretor de incorporação"></div>
       </div>
       <div class="fg fg3 mb8">
@@ -2167,6 +2172,10 @@ document.addEventListener('click', e => {
   const dd=document.getElementById('opp-cliente-dropdown');
   const inp=document.getElementById('opp-cliente-text');
   if(dd&&dd.style.display!=='none'&&!dd.contains(e.target)&&e.target!==inp)dd.style.display='none';
+  // Fecha dropdown de contato (autofill do responsável do cliente)
+  const ddRc=document.getElementById('opp-rc-dropdown');
+  const inpRc=document.getElementById('opp-rc-nome');
+  if(ddRc&&ddRc.style.display!=='none'&&!ddRc.contains(e.target)&&e.target!==inpRc)ddRc.style.display='none';
 });
 function canAccessCrmRole(role) {
   if (typeof window.isSocioRole === 'function') return window.isSocioRole(role);
@@ -2299,6 +2308,25 @@ function oppValorFechado(op){
     return +op.valor_fechado||oppValorProposto(op);
   return 0;
 }
+const DESP_LABELS = { alim:'Alimentação', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem', hotel:'Hospedagem', horasTec:'Horas técnicas (Ganho EXP)' };
+// Valor de uma despesa indireta da proposta calc — espelha calcDesp() do EXP.calc.
+// As desps não guardam um campo genérico "val"/"valComBit" (isso é só de subcontratações);
+// o valor depende do tipo (alim, carro, translado, passagem, hotel, horasTec).
+function calcDespValor(d){
+  if(d.tipo==='alim')      return (+d.diarias||0)*(+d.pessoas||1)*(+d.valorDiario||0);
+  if(d.tipo==='carro')     return (+d.diarias||0)*(+d.valorDiaria||0)+(+d.km||0)/Math.max(+d.kml||10,.1)*(+d.vl||0);
+  if(d.tipo==='translado') return +d.vt||0;
+  if(d.tipo==='horasTec')  return (+d.dias||0)*(+d.horasDia||0)*(+d.valorHora||0);
+  if(d.tipo==='passagem')  return +d.val||0;
+  if(d.tipo==='hotel')     return (+d.diarias||0)*(+d.valorDiaria||0);
+  return +d.valComBit||+d.val||0; // fallback para formatos legados/desconhecidos
+}
+// Total das despesas indiretas repassadas ao cliente (exclui horasTec — é Ganho EXP,
+// não é repassado — e aplica a bitributação global da proposta), espelhando getTotDesp().
+function despTotalCliente(lp){
+  const raw=(lp.desps||[]).filter(d=>d.tipo!=='horasTec').reduce((s,d)=>s+calcDespValor(d),0);
+  return raw*(1+(+lp.despbit||0)/100);
+}
 // Adicionais do fechamento (subcontratações, despesas indiretas, repasse comercial) —
 // vêm de opp_custos (produtos materializados) ou, na vinculação direta com a calc, dos
 // arrays subs/desps/repasse gravados na proposta.
@@ -2311,7 +2339,7 @@ function oppValorAdicionais(op, fechado=false){
   const lp=op._proposal;
   if(!lp)return 0;
   const subsVal=(lp.subs||[]).reduce((s,x)=>s+(+x.val||0)*(1+(+x.bit||0)/100)*(1+(+x.ret||0)/100),0);
-  const despVal=(lp.desps||[]).reduce((s,x)=>s+(+x.valComBit||+x.val||0),0);
+  const despVal=despTotalCliente(lp);
   const repArr=Array.isArray(lp.repasse)?lp.repasse:(lp.repasse?[lp.repasse]:[]);
   const repVal=repArr.reduce((s,r)=>s+(+r?.valorRep||0),0);
   return subsVal+despVal+repVal;
@@ -2420,14 +2448,21 @@ let _dashRecFech=[], _dashRecNeg=[], _dashFechExpanded=false, _dashNegExpanded=f
 function setDashTipoMode(m){dashTipoMode=m;renderDash();}
 
 let dashFuMode='todos';
+let _dashFuAll=[], dashFuExpanded=false;
 function setDashFuMode(m){
   dashFuMode=m;
+  dashFuExpanded=false;
   document.getElementById('dash-fu-btn-todos')?.classList.toggle('ghost',m!=='todos');
   document.getElementById('dash-fu-btn-meus')?.classList.toggle('ghost',m!=='meus');
   renderDashFu();
 }
+function toggleDashFuExpand(){
+  dashFuExpanded=!dashFuExpanded;
+  renderDashFu();
+}
 function renderDashFu(){
   const el=document.getElementById('dash-fu-list');
+  const btn=document.getElementById('dash-fu-btn-vermais');
   if(!el)return;
   const today=new Date().toISOString().slice(0,10);
   const items=[];
@@ -2439,14 +2474,17 @@ function renderDashFu(){
     items.push({op,fu,date:fu.proximo_contato});
   });
   items.sort((a,b)=>a.date.localeCompare(b.date));
+  _dashFuAll=items;
   if(!items.length){
     el.innerHTML='<div class="empty-note">Nenhum follow-up agendado'+(dashFuMode==='meus'?' para você':'')+'.</div>';
+    if(btn)btn.style.display='none';
     return;
   }
   const in3d=new Date();in3d.setDate(in3d.getDate()+3);
   const in3str=in3d.toISOString().slice(0,10);
   const MESES_ABR=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  el.innerHTML=items.slice(0,10).map(({op,fu})=>{
+  const visiveis=dashFuExpanded?items:items.slice(0,10);
+  el.innerHTML=visiveis.map(({op,fu})=>{
     const past=fu.proximo_contato<today;
     const soon=!past&&fu.proximo_contato<=in3str;
     const cls=past?'fu-past':soon?'fu-soon':'';
@@ -2469,6 +2507,10 @@ function renderDashFu(){
       </div>
     </div>`;
   }).join('');
+  if(btn){
+    btn.style.display=items.length>10?'block':'none';
+    btn.textContent=dashFuExpanded?'Ver menos ↑':`Ver mais — todos os ${items.length} ↓`;
+  }
 }
 
 function renderDash(){
@@ -2523,8 +2565,10 @@ function renderDash(){
   const fatEfetivo = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||'').startsWith(anoStr))
     .reduce((s,o)=>s+oppValorEfetivo(o,true),0);
 
-  const vPipe = ativas.reduce((s,op)=>s+oppValorProposto(op),0);
-  const vPipeEfetivo = ativas.reduce((s,op)=>s+oppValorEfetivo(op,false),0);
+  // Mesmo critério do total da aba Pipeline: exclui estágio Lead/Prospecção (ainda sem valor de orçamento)
+  const ativasPipe = ops.filter(o=>['enviada','ativo','negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase()));
+  const vPipe = ativasPipe.reduce((s,op)=>s+oppValorProposto(op),0);
+  const vPipeEfetivo = ativasPipe.reduce((s,op)=>s+oppValorEfetivo(op,false),0);
   const vPipeTotal = ops.reduce((s,op)=>s+oppValorProposto(op),0);
   const fatTotal = ops.reduce((sum,op)=>sum+op._produtos.filter(p=>p.status==='fechado').reduce((s,p)=>s+(+p.valor_fechado||0),0),0);
 
@@ -2550,7 +2594,7 @@ function renderDash(){
   document.getElementById('s-fat').textContent=fmt(fatAno);
   document.getElementById('s-fat-sub').innerHTML=`${fechAno.length} proj. fechados em ${anoStr}<br><span style="font-size:9px;color:var(--verde)">Efetivo EXP: ${fmt(fatEfetivo)}</span>`;
   document.getElementById('s-pipe').textContent=fmt(vPipeEfetivo);
-  document.getElementById('s-pipe-sub').innerHTML=`${ativas.length} oportunidades ativas<br><span style="font-size:9px;color:#aaa">Total proposto: ${fmt(vPipe)}</span>`;
+  document.getElementById('s-pipe-sub').innerHTML=`${ativasPipe.length} oportunidades ativas<br><span style="font-size:9px;color:#aaa">Total proposto: ${fmt(vPipe)}</span>`;
   document.getElementById('s-conv').textContent=conv+'%';
   document.getElementById('s-conv-sub').textContent=`${fechadas2026.length}/${ops2026.length} opps em ${anoStr}`;
   document.getElementById('s-ticket').textContent=ticket?fmt(ticket).replace('R$','').trim():'—';
@@ -2562,6 +2606,13 @@ function renderDash(){
   const isDark=document.documentElement.dataset.theme==='dark';
   const gridColor=isDark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';
   const tickColor=isDark?'#888':'#666';
+  // Legenda com traço colorido (linha) em vez do marcador circular padrão do Chart.js
+  const legendLineLabels={
+    font:{size:10},padding:12,color:tickColor,usePointStyle:false,boxWidth:16,boxHeight:3,
+    generateLabels(chart){
+      return Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item=>({...item,fillStyle:item.strokeStyle,lineWidth:0}));
+    }
+  };
 
   // Oportunidades captadas: todas as oportunidades criadas no ano corrente, por mês e núcleo
   // (valor proposto — ainda não fechado, então usa produtos materializados ou itens da proposta calc vinculada)
@@ -2600,7 +2651,7 @@ function renderDash(){
   }
   if(chartCaptadas)chartCaptadas.destroy();
   const ctxCap=document.getElementById('chart-captadas').getContext('2d');
-  chartCaptadas=new Chart(ctxCap,{type:'line',data:{labels:meses,datasets:datasetsCap},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:8}},plugins:{legend:{position:'top',align:'end',labels:{font:{size:10},boxWidth:10,padding:12,usePointStyle:true,color:tickColor}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10},color:tickColor},grid:{color:gridColor},border:{display:false}},y:{ticks:{font:{size:10},color:tickColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColor},border:{display:false}}}}});
+  chartCaptadas=new Chart(ctxCap,{type:'line',data:{labels:meses,datasets:datasetsCap},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:8}},plugins:{legend:{position:'top',align:'end',labels:legendLineLabels},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10},color:tickColor},grid:{color:gridColor},border:{display:false}},y:{ticks:{font:{size:10},color:tickColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColor},border:{display:false}}}}});
 
   const uMap={};
   const nucMap={};
@@ -2652,7 +2703,7 @@ function renderDash(){
   }
   if(chartMensal)chartMensal.destroy();
   const ctx1=document.getElementById('chart-mensal').getContext('2d');
-  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:8}},plugins:{legend:{position:'top',align:'end',labels:{font:{size:10},boxWidth:10,padding:12,usePointStyle:true,color:tickColor}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10},color:tickColor},grid:{color:gridColor},border:{display:false}},y:{ticks:{font:{size:10},color:tickColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColor},border:{display:false}}}}});
+  chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:8}},plugins:{legend:{position:'top',align:'end',labels:legendLineLabels},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10},color:tickColor},grid:{color:gridColor},border:{display:false}},y:{ticks:{font:{size:10},color:tickColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColor},border:{display:false}}}}});
 
   // S4-02 — donut com toggle: por núcleo / pipeline stage / responsável
   // Atualiza estado visual dos botões
@@ -3569,11 +3620,13 @@ async function garantirCustosCalcMaterializados(oppId, contexto='operação'){
   if((op._custos||[]).some(c=>c.calc_ref))return op;
 
   const subs=lp.subs||[];
-  const desps=lp.desps||[];
+  // horasTec é Ganho EXP (não repassado ao cliente) — não vira um custo a validar no fechamento
+  const desps=(lp.desps||[]).filter(d=>d.tipo!=='horasTec');
   const repArr=Array.isArray(lp.repasse)?lp.repasse:(lp.repasse?[lp.repasse]:[]);
   const rep=repArr.filter(r=>r&&(r.nome||r.valorRep));
   if(!subs.length && !desps.length && !rep.length)return op;
 
+  const despBitPct=+lp.despbit||0;
   const payload=[
     ...subs.map((s,idx)=>({
       oportunidade_id: oppId,
@@ -3586,8 +3639,8 @@ async function garantirCustosCalcMaterializados(oppId, contexto='operação'){
     ...desps.map((d,idx)=>({
       oportunidade_id: oppId,
       tipo: 'despesa_indireta',
-      descricao: d.desc || 'Despesa indireta',
-      valor_calculado: +d.valComBit||+d.val||0,
+      descricao: [DESP_LABELS[d.tipo]||d.tipo, d.desc||d.cidade].filter(Boolean).join(' — ') || 'Despesa indireta',
+      valor_calculado: calcDespValor(d)*(1+despBitPct/100),
       calc_ref: `calc:desp:${idx}`,
       status: 'pendente',
     })),
@@ -3744,6 +3797,7 @@ async function abrirNovaOpp(){
   document.getElementById('opp-cliente-text').value='';
   document.getElementById('opp-cliente-selecionado').style.display='none';
   document.getElementById('opp-cliente-dropdown').style.display='none';
+  document.getElementById('opp-rc-dropdown').style.display='none';
   document.getElementById('opp-modal-title').textContent='Novo Lead';
   document.getElementById('opp-projeto').value='';
   document.getElementById('opp-cidade').value='';
@@ -3822,6 +3876,7 @@ function editarOpp(){
   const cli=allClients.find(c=>c.id===op.cliente_id);
   document.getElementById('opp-cliente-text').value=cli?.nome||'';
   document.getElementById('opp-cliente-dropdown').style.display='none';
+  document.getElementById('opp-rc-dropdown').style.display='none';
   if(cli){
     const sd=document.getElementById('opp-cliente-selecionado');
     sd.textContent='✓ '+cli.nome; sd.style.display='block';
@@ -3865,6 +3920,39 @@ function selecionarCliente(id,nome){
   document.getElementById('opp-cliente-dropdown').style.display='none';
   const sd=document.getElementById('opp-cliente-selecionado');
   sd.textContent='✓ '+nome; sd.style.display='block';
+}
+
+// Autocomplete do contato (Resp. cliente) — se o nome digitado já existe em Contatos,
+// preenche cargo/telefone/e-mail (e empresa, se ainda vazia) automaticamente.
+function filtrarContatosRC(){
+  const q=normTextKey(document.getElementById('opp-rc-nome').value.trim());
+  const dd=document.getElementById('opp-rc-dropdown');
+  if(!q||q.length<2){dd.style.display='none';return;}
+  const matches=allContatos.filter(c=>normTextKey(c.nome||'').includes(q)).slice(0,8);
+  if(!matches.length){dd.style.display='none';return;}
+  dd.innerHTML=matches.map(c=>{
+    const cli=allClients.find(x=>x.id===c.cliente_id);
+    const sub=[c.cargo,cli?.nome].filter(Boolean).join(' · ');
+    return`<div style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--cinza2)" onmousedown="selecionarContatoRC('${escJsStr(c.id)}')">
+      <div style="font-weight:600">${escHtml(c.nome)}</div>
+      ${sub?`<div style="font-size:10px;color:#888">${escHtml(sub)}</div>`:''}
+    </div>`;
+  }).join('');
+  dd.style.display='block';
+}
+
+function selecionarContatoRC(id){
+  const c=allContatos.find(x=>String(x.id)===String(id));
+  if(!c)return;
+  document.getElementById('opp-rc-nome').value=c.nome||'';
+  document.getElementById('opp-rc-cargo').value=c.cargo||'';
+  document.getElementById('opp-rc-tel').value=c.telefone||'';
+  document.getElementById('opp-rc-email').value=c.email||'';
+  const empresaEl=document.getElementById('opp-rc-empresa');
+  const cli=allClients.find(x=>x.id===c.cliente_id);
+  if(cli?.nome && !empresaEl.value.trim())empresaEl.value=cli.nome;
+  document.getElementById('opp-rc-dropdown').style.display='none';
+  toast('Dados do contato preenchidos automaticamente.');
 }
 
 function mostrarFormNovoCliente(){
@@ -5229,14 +5317,23 @@ function abrirDetail(oppId){
           });
         }
         if(_desps.length){
+          const _despBitPct=+_lp.despbit||0;
           ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Despesas Indiretas</div>`;
           _desps.forEach(d=>{
+            const lbl=DESP_LABELS[d.tipo]||d.tipo||'Despesa';
+            const desc=d.desc||d.cidade||'';
             ch+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
-              <span style="flex:1">${d.desc||'—'}</span>
-              ${d.bit?`<span style="color:#888">Bit.: ${d.bit}%</span>`:''}
-              <span style="font-family:var(--font-mono);font-weight:600">${fmt(d.valComBit||d.val||0)}</span>
+              <span style="flex:1"><strong>${escHtml(lbl)}</strong>${desc?' — '+escHtml(desc):''}${d.tipo==='horasTec'?' <span style="color:#888">(não repassado ao cliente)</span>':''}</span>
+              <span style="font-family:var(--font-mono);font-weight:600">${fmt(calcDespValor(d))}</span>
             </div>`;
           });
+          if(_despBitPct>0){
+            const _rawDesp=_desps.filter(d=>d.tipo!=='horasTec').reduce((s,d)=>s+calcDespValor(d),0);
+            ch+=`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:10px;color:#888">
+              <span>Bruto ${fmt(_rawDesp)} + Bitrib. ${_despBitPct}%</span>
+              <span style="font-family:var(--font-mono);font-weight:600;color:var(--grafite)">${fmt(despTotalCliente(_lp))}</span>
+            </div>`;
+          }
         }
         if(_rep.length){
           ch+=`<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-top:8px;margin-bottom:6px">Repasse Comercial</div>`;
