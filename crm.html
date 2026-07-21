@@ -1536,6 +1536,10 @@ textarea{resize:vertical;min-height:60px}
       <!-- Cabeçalho explicativo -->
       <div style="padding:10px 16px;background:var(--off);border-bottom:1px solid var(--cinza2);font-size:11px;color:#666">
         Revise cada item. Desmarque os que <strong>não farão parte do fechamento</strong> (ex: despesa absorvida pelo cliente, serviço cancelado). Ajuste o valor final quando necessário.
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--cinza2)">
+          <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999">Total do fechamento</span>
+          <span id="fech-total-preview" style="font-size:16px;font-weight:700;font-family:var(--font-mono);color:var(--verde)">—</span>
+        </div>
       </div>
 
       <!-- Tabela de itens de fechamento -->
@@ -4638,7 +4642,7 @@ function _renderFechItens(op) {
       <span style="font-size:12px;color:#888">Total proposta: <strong>${fmt(totalProp)}</strong></span>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
         <label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;white-space:nowrap">Valor fechado (R$)</label>
-        <input type="number" id="fch-vf-total" value="${escAttr(totalProp)}" min="0" step="100"
+        <input type="number" id="fch-vf-total" value="${escAttr(totalProp)}" min="0" step="100" oninput="_fechAtualizarTotal()"
           style="font-size:12px;font-family:var(--font-mono);border:1px solid var(--azul);padding:4px 8px;width:140px;border-radius:var(--radius-badge,4px);font-weight:700">
       </div>
     </div>`;
@@ -4656,7 +4660,7 @@ function _renderFechItens(op) {
       html += `<div class="fech-row" id="frow-p-${p.id}" onclick="_fechToggleCheckbox('p','${escJsStr(p.id)}',event)" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" id="fch-incl-p-${p.id}" ${incl?'checked':''} onchange="_fechToggleRow('p','${escJsStr(p.id)}',this.checked)"
-            style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
+            style="width:15px;height:15px;cursor:pointer;accent-color:var(--verde)" title="Incluir no fechamento">
           ${tipoBadgeProd(p.nucleo)}
           <span style="font-size:12px;font-weight:500;flex:1">${escHtml(label)}</span>
           ${isFech ? `<span class="badge b-vd" style="font-size:9px">já fechado</span>` : ''}
@@ -4665,7 +4669,7 @@ function _renderFechItens(op) {
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="frow-p-${p.id}-fields">
           <div class="fgroup" style="flex:1;min-width:120px;margin:0">
             <label style="font-size:9px">Valor fechado (R$)</label>
-            <input type="number" id="fch-vf-p-${p.id}" value="${escAttr(valFch)}" min="0" step="100"
+            <input type="number" id="fch-vf-p-${p.id}" value="${escAttr(valFch)}" min="0" step="100" oninput="_fechAtualizarTotal()"
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%;font-family:var(--font-mono)">
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
@@ -4691,7 +4695,7 @@ function _renderFechItens(op) {
       html += `<div class="fech-row" id="frow-c-${c.id}" onclick="_fechToggleCheckbox('c','${escJsStr(c.id)}',event)" style="border:1px solid var(--cinza2);padding:8px 10px;margin-bottom:6px;border-radius:3px;border-left:3px solid #ddd;cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" id="fch-incl-c-${c.id}" ${incl?'checked':''} onchange="_fechToggleRow('c','${escJsStr(c.id)}',this.checked)"
-            style="width:15px;height:15px;cursor:pointer" title="Incluir no fechamento">
+            style="width:15px;height:15px;cursor:pointer;accent-color:var(--verde)" title="Incluir no fechamento">
           <span style="font-size:9px;background:#f0f0f0;padding:1px 6px;border-radius:3px;color:#666;font-weight:600">${escHtml(tipoLabel)}</span>
           <span style="font-size:12px;font-weight:500;flex:1">${escHtml(c.descricao||'—')}</span>
           <span style="font-size:11px;color:#888">Calculado: <strong>${fmt(valRef)}</strong></span>
@@ -4699,7 +4703,7 @@ function _renderFechItens(op) {
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="frow-c-${c.id}-fields">
           <div class="fgroup" style="flex:1;min-width:120px;margin:0">
             <label style="font-size:9px">Valor fechado (R$)</label>
-            <input type="number" id="fch-vf-c-${c.id}" value="${valFch}" min="0" step="100"
+            <input type="number" id="fch-vf-c-${c.id}" value="${valFch}" min="0" step="100" oninput="_fechAtualizarTotal()"
               style="font-size:11px;border:1px solid var(--cinza);padding:4px 7px;width:100%;font-family:var(--font-mono)">
           </div>
           <div class="fgroup" style="flex:2;min-width:160px;margin:0">
@@ -4721,6 +4725,7 @@ function _renderFechItens(op) {
   // Aplica visual inicial para itens desmarcados
   op._produtos.forEach(p => { if (p.incluso_fechamento === false) _fechToggleRow('p', p.id, false); });
   _fechCustos.forEach(c => { if (c.incluso_fechamento === false) _fechToggleRow('c', c.id, false); });
+  _fechAtualizarTotal();
 }
 
 // Atualiza visual da linha quando toggle incluso muda
@@ -4729,6 +4734,29 @@ function _fechToggleRow(tipo, id, checked) {
   const row    = document.getElementById(`frow-${tipo}-${id}`);
   if (fields) fields.style.opacity = checked ? '1' : '0.35';
   if (row)    row.style.borderColor = checked ? 'var(--cinza2)' : '#f0b8b8';
+  _fechAtualizarTotal();
+}
+
+// Soma ao vivo dos valores fechados (serviços + custos) que estão marcados/incluídos
+function _fechAtualizarTotal() {
+  const el = document.getElementById('fech-total-preview');
+  if (!el) return;
+  let total = 0;
+  const vfTotalEl = document.getElementById('fch-vf-total');
+  if (vfTotalEl) total += parseFloat(vfTotalEl.value) || 0;
+  document.querySelectorAll('[id^="fch-vf-p-"]').forEach(inp => {
+    const id = inp.id.slice('fch-vf-p-'.length);
+    const cb = document.getElementById(`fch-incl-p-${id}`);
+    if (cb && !cb.checked) return;
+    total += parseFloat(inp.value) || 0;
+  });
+  document.querySelectorAll('[id^="fch-vf-c-"]').forEach(inp => {
+    const id = inp.id.slice('fch-vf-c-'.length);
+    const cb = document.getElementById(`fch-incl-c-${id}`);
+    if (cb && !cb.checked) return;
+    total += parseFloat(inp.value) || 0;
+  });
+  el.textContent = fmt(total);
 }
 
 function _fechToggleCheckbox(tipo, id, ev) {
