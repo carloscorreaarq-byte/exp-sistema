@@ -86,17 +86,7 @@
     '.chat-newchan-label{display:block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;margin-bottom:7px}',
     '.chat-newchan-input{width:100%;box-sizing:border-box;border:1.5px solid var(--cinza2,#ECEAE4);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;outline:none;background:#fff;color:var(--preto,#111110);transition:border-color .15s}',
     '.chat-newchan-input:focus{border-color:var(--chat-accent,#1D6A4A)}',
-    '.chat-newchan-tgls{display:flex;gap:6px}',
-    '.chat-newchan-tgl{flex:1;padding:8px 6px;font-size:11px;font-family:inherit;border:1.5px solid var(--cinza2,#ECEAE4);border-radius:8px;background:#fff;cursor:pointer;color:#666;transition:all .15s;font-weight:500}',
-    '.chat-newchan-tgl.active{border-color:var(--chat-accent,#1D6A4A);background:var(--chat-accent,#1D6A4A);color:#fff;font-weight:700}',
-    '.chat-newchan-hint{margin-top:8px;font-size:10px;color:#C4831A;line-height:1.4}',
-    '.chat-chan-banner{padding:7px 12px;font-size:10px;font-weight:600;display:flex;align-items:center;gap:6px;flex-shrink:0}',
-    '.chat-chan-banner.temp{background:#FFF8EC;color:#C4831A;border-bottom:1px solid #F5E0B0}',
-    '.chat-chan-banner.expired{background:#FDECEA;color:#B84C3A;border-bottom:1px solid #F5C8C2}',
     '[data-theme="dark"] .chat-newchan-input{background:#1C1C1B;border-color:#2E2D2B;color:#F0EFE9}',
-    '[data-theme="dark"] .chat-newchan-tgl{background:#1C1C1B;border-color:#2E2D2B;color:#C0BDBA}',
-    '[data-theme="dark"] .chat-chan-banner.temp{background:#2A2215;color:#E0A04A;border-bottom-color:#3A2F1A}',
-    '[data-theme="dark"] .chat-chan-banner.expired{background:#281414;color:#D47060;border-bottom-color:#3A1E1C}',
     /* â”€â”€ Member checkbox â”€â”€ */
     '.chat-member-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--cinza2,#ECEAE4);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}',
     '.chat-member-check.sel{background:#111110;border-color:#111110}',
@@ -458,8 +448,7 @@
   var searchQuery = '';
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var pendingChan      = null;      // { ch, label } durante o passo 2 de criação
-  var newChanTemp      = false;     // toggle temporário no passo 2
-  var channelMeta      = {};        // cache: { [channel]: { name, is_temporary, expires_at } }
+  var channelMeta      = {};        // cache: { [channel]: { name } }
   var channelUnread    = {};        // { channel: count }
   var mentionChannels  = {};        // { channel: true } — canais com mensagem NÃO LIDA que me menciona
   var onlinePresence   = {};        // { auth_id: { status, nome, ... } }
@@ -812,14 +801,6 @@
               '<label class="chat-newchan-label">Nome do canal <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;opacity:.6">(opcional)</span></label>' +
               '<input id="exp-chat-newchan-name" class="chat-newchan-input" type="text" placeholder="Ex: projeto alfa, sprint maio…" maxlength="60" onkeydown="if(event.key===\'Enter\')expChat.finalizeGroup()">' +
             '</div>' +
-            '<div class="chat-newchan-field">' +
-              '<label class="chat-newchan-label">Tipo</label>' +
-              '<div class="chat-newchan-tgls">' +
-                '<button id="exp-newchan-fixo" class="chat-newchan-tgl active" onclick="expChat.setTempMode(false)">📌 Fixo</button>' +
-                '<button id="exp-newchan-temp" class="chat-newchan-tgl" onclick="expChat.setTempMode(true)">⏳ Temporário · 72h</button>' +
-              '</div>' +
-              '<div id="exp-newchan-hint" class="chat-newchan-hint" style="display:none">Mensagens desaparecem 72h após a criação do canal.</div>' +
-            '</div>' +
           '</div>' +
           '<div class="chat-group-bar" style="display:flex">' +
             '<span class="chat-group-info" id="exp-chat-newchan-info"></span>' +
@@ -1060,13 +1041,12 @@
     if (!$list) return;
 
     var uid   = user.auth_id;
-    var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
     Promise.all([
       sb.from('chat_messages')
         .select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id')
-        .gte('created_at', since)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(1000),
       fetchProjectHomeItems(uid)
     ]).then(function (res) {
       var r = res[0];
@@ -1271,44 +1251,17 @@
     if (attnBtn) attnBtn.style.display = isDMChannel(channel) ? '' : 'none';
     updateChannelStatus();
     if (isDynamicChannel(channel) && !channelMeta[channel]) {
-      sb.from('chat_channels').select('name,is_temporary,expires_at').eq('channel', channel).maybeSingle()
+      sb.from('chat_channels').select('name').eq('channel', channel).maybeSingle()
         .then(function (r) {
           if (r.data) {
             channelMeta[channel] = r.data;
             if (r.data.name && $chanTitle && currentChannel === channel) $chanTitle.textContent = r.data.name;
           }
-          _renderChanBanner(channel);
         });
-    } else {
-      _renderChanBanner(channel);
     }
     loadMessages();
     markRead();
     setTimeout(function () { if ($input) $input.focus(); }, 120);
-  }
-
-  function _renderChanBanner(channel) {
-    var $chan = document.getElementById('exp-chat-chan');
-    if (!$chan) return;
-    var existing = $chan.querySelector('.chat-chan-banner');
-    if (existing) existing.remove();
-    var meta = channelMeta[channel];
-    if (!meta || !meta.is_temporary) return;
-    var now      = Date.now();
-    var expiresAt = meta.expires_at ? new Date(meta.expires_at).getTime() : null;
-    var banner = document.createElement('div');
-    if (expiresAt && now > expiresAt) {
-      banner.className = 'chat-chan-banner expired';
-      banner.innerHTML = '⏳ Canal temporário expirado · mensagens indisponíveis';
-      var $comp = $chan.querySelector('.chat-input-area');
-      if ($comp) $comp.style.display = 'none';
-    } else if (expiresAt) {
-      var hoursLeft = Math.max(1, Math.ceil((expiresAt - now) / 3600000));
-      banner.className = 'chat-chan-banner temp';
-      banner.innerHTML = '⏳ Temporário · expira em ' + hoursLeft + 'h';
-    }
-    var $msgs2 = $chan.querySelector('.chat-messages');
-    if ($msgs2 && banner.className) $chan.insertBefore(banner, $msgs2);
   }
 
   function openProjectThread(threadId, displayName) {
@@ -1456,7 +1409,7 @@
     }
     pendingChan = { ch: ch, label: label };
     /* Se canal já foi configurado antes, abrir diretamente */
-    sb.from('chat_channels').select('name,is_temporary,expires_at').eq('channel', ch).maybeSingle()
+    sb.from('chat_channels').select('name').eq('channel', ch).maybeSingle()
       .then(function (r) {
         if (r.data) {
           channelMeta[ch] = r.data;
@@ -1471,15 +1424,8 @@
   }
 
   function _showNewChanStep(label) {
-    newChanTemp = false;
     var $nm = document.getElementById('exp-chat-newchan-name');
     if ($nm) $nm.value = '';
-    var $hint = document.getElementById('exp-newchan-hint');
-    if ($hint) $hint.style.display = 'none';
-    var $fixo = document.getElementById('exp-newchan-fixo');
-    var $temp = document.getElementById('exp-newchan-temp');
-    if ($fixo) { $fixo.classList.add('active'); }
-    if ($temp) { $temp.classList.remove('active'); }
     var $info = document.getElementById('exp-chat-newchan-info');
     if ($info) $info.textContent = label;
     showView('newchan');
@@ -1494,27 +1440,16 @@
     showView('members');
   }
 
-  function setTempMode(val) {
-    newChanTemp = !!val;
-    var $fixo = document.getElementById('exp-newchan-fixo');
-    var $temp = document.getElementById('exp-newchan-temp');
-    var $hint = document.getElementById('exp-newchan-hint');
-    if ($fixo) $fixo.classList.toggle('active', !val);
-    if ($temp) $temp.classList.toggle('active', !!val);
-    if ($hint) $hint.style.display = val ? '' : 'none';
-  }
-
   function finalizeGroup() {
     if (!pendingChan) return;
     var ch    = pendingChan.ch;
     var $nm   = document.getElementById('exp-chat-newchan-name');
     var name  = ($nm ? $nm.value.trim() : '') || null;
     var label = name || pendingChan.label;
-    var expiresAt = newChanTemp ? new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() : null;
-    var meta = { name: name, is_temporary: newChanTemp, expires_at: expiresAt };
+    var meta = { name: name };
     channelMeta[ch] = meta;
     sb.from('chat_channels')
-      .upsert({ channel: ch, name: name, is_temporary: newChanTemp, expires_at: expiresAt, created_by: user.auth_id }, { onConflict: 'channel' })
+      .upsert({ channel: ch, name: name, created_by: user.auth_id }, { onConflict: 'channel' })
       .then(function () {
         selectedMembers = [];
         pendingChan = null;
@@ -1814,21 +1749,7 @@
       return;
     }
 
-    var meta = channelMeta[channel];
-    var query = sb.from('chat_messages').select('*').eq('channel', channel);
-    if (meta && meta.is_temporary && meta.expires_at) {
-      /* Temporário: só mensagens anteriores à expiração */
-      query = query.lte('created_at', meta.expires_at);
-    } else if (!meta || !meta.is_temporary) {
-      /* Sem metadata (legado) ou fixo com metada: janela de 30 dias para fixo, 72h para legado sem config */
-      if (meta && !meta.is_temporary) {
-        /* Canal fixo configurado: carrega tudo (sem filtro de data) */
-      } else {
-        var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-        query = query.gte('created_at', since);
-      }
-    }
-    query
+    sb.from('chat_messages').select('*').eq('channel', channel)
       .order('created_at', { ascending: true })
       .then(function (r) {
         if (requestSeq !== loadRequestSeq || channel !== currentChannel) return;
@@ -3759,11 +3680,11 @@
     });
   }
 
-  function fetchLegacyConversationItems(uid, since) {
+  function fetchLegacyConversationItems(uid) {
     return sb.from('chat_messages')
       .select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id')
-      .gte('created_at', since)
       .order('created_at', { ascending: false })
+      .limit(1000)
       .then(function (r) {
         var msgs = r.data || [];
         var seen = {};
@@ -3853,10 +3774,9 @@
 
   function performSearch(term) {
     var uid = user.auth_id;
-    var since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
     var termLower = String(term || '').toLowerCase();
     return Promise.all([
-      fetchLegacyConversationItems(uid, since),
+      fetchLegacyConversationItems(uid),
       fetchProjectHomeItems(uid),
       searchLegacyMessages(term, uid),
       searchProjectMessages(term)
@@ -4332,7 +4252,6 @@
     toggleMember:    toggleMember,
     confirmGroup:    confirmGroup,
     backToMembers:   backToMembers,
-    setTempMode:     setTempMode,
     finalizeGroup:   finalizeGroup,
     toggleSoundPop:  toggleSoundPop,
     setSoundLevel:   setSoundLevel,

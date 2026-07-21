@@ -57,7 +57,6 @@
   var composerStatusTimer = null;
   var selectedMembers   = [];
   var pendingChan       = null;
-  var newChanTemp       = false;
   var channelMeta       = {};
   var channelUnread     = {};
   var mentionChannels   = {};   // { channel: true } — canais com mensagem NÃO LIDA que me menciona
@@ -743,14 +742,13 @@
     if (!$list) return;
 
     var uid   = user.auth_id;
-    var since = new Date(Date.now() - 72*60*60*1000).toISOString();
     var q     = (filterQuery||'').toLowerCase().trim();
 
     Promise.all([
       sb.from('chat_messages')
         .select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id')
-        .gte('created_at', since)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(1000),
       fetchProjectHomeItems(uid)
     ]).then(function(res) {
       var msgs         = (res[0].data||[]);
@@ -996,14 +994,12 @@
     if (!q || q.length < 2) return;
 
     var uid   = user.auth_id;
-    var since = new Date(Date.now() - 72*60*60*1000).toISOString();
     var $list = document.getElementById('fp-conv-list');
 
     /* Busca mensagens contendo o termo */
     sb.from('chat_messages')
       .select('channel,sender_name,content,created_at,sender_id,sender_iniciais,sender_cor')
       .ilike('content', '%' + q + '%')
-      .gte('created_at', since)
       .order('created_at', { ascending: false })
       .limit(40)
       .then(function(r) {
@@ -1084,7 +1080,7 @@
     updateHeaderPinBtn();
     messages = [];
     if (isDynamicChannel(channel) && !channelMeta[channel]) {
-      sb.from('chat_channels').select('name,is_temporary,expires_at').eq('channel', channel).maybeSingle()
+      sb.from('chat_channels').select('name').eq('channel', channel).maybeSingle()
         .then(function(r) {
           if (r.data) {
             channelMeta[channel] = r.data;
@@ -1093,10 +1089,7 @@
               if ($ht) $ht.textContent = r.data.name;
             }
           }
-          _renderFPChanBanner(channel);
         });
-    } else {
-      _renderFPChanBanner(channel);
     }
     loadMessages();
     markRead();
@@ -1275,7 +1268,7 @@
       label=selectedMembers.map(function(m){return firstName(m.nome);}).join(', ');
     }
     pendingChan = { ch: ch, label: label };
-    sb.from('chat_channels').select('name,is_temporary,expires_at').eq('channel', ch).maybeSingle()
+    sb.from('chat_channels').select('name').eq('channel', ch).maybeSingle()
       .then(function(r) {
         if (r.data) {
           channelMeta[ch] = r.data;
@@ -1290,7 +1283,6 @@
   }
 
   function _showNewChanStepFP(label) {
-    newChanTemp = false;
     var $panel = document.getElementById('fp-members-panel');
     var $step1 = document.getElementById('fp-newchan-step1');
     var $step2 = document.getElementById('fp-newchan-step2');
@@ -1298,12 +1290,6 @@
     if ($step2) $step2.style.display = 'flex';
     var $nm = document.getElementById('fp-newchan-name');
     if ($nm) { $nm.value = ''; setTimeout(function(){$nm.focus();}, 80); }
-    var $hint = document.getElementById('fp-newchan-hint');
-    if ($hint) $hint.style.display = 'none';
-    var $fixo = document.getElementById('fp-newchan-fixo');
-    var $temp = document.getElementById('fp-newchan-temp');
-    if ($fixo) $fixo.classList.add('active');
-    if ($temp) $temp.classList.remove('active');
     var $lbl = document.getElementById('fp-newchan-label');
     if ($lbl) $lbl.textContent = label;
     if ($panel) { $panel.style.width = '300px'; }
@@ -1319,27 +1305,16 @@
     if ($panel) { $panel.style.width = ''; }
   }
 
-  function fpSetTempMode(val) {
-    newChanTemp = !!val;
-    var $fixo = document.getElementById('fp-newchan-fixo');
-    var $temp = document.getElementById('fp-newchan-temp');
-    var $hint = document.getElementById('fp-newchan-hint');
-    if ($fixo) $fixo.classList.toggle('active', !val);
-    if ($temp) $temp.classList.toggle('active', !!val);
-    if ($hint) $hint.style.display = val ? '' : 'none';
-  }
-
   function fpFinalizeGroup() {
     if (!pendingChan) return;
     var ch    = pendingChan.ch;
     var $nm   = document.getElementById('fp-newchan-name');
     var name  = ($nm ? $nm.value.trim() : '') || null;
     var label = name || pendingChan.label;
-    var expiresAt = newChanTemp ? new Date(Date.now() + 72*60*60*1000).toISOString() : null;
-    var meta = { name: name, is_temporary: newChanTemp, expires_at: expiresAt };
+    var meta = { name: name };
     channelMeta[ch] = meta;
     sb.from('chat_channels')
-      .upsert({ channel: ch, name: name, is_temporary: newChanTemp, expires_at: expiresAt, created_by: user.auth_id }, { onConflict: 'channel' })
+      .upsert({ channel: ch, name: name, created_by: user.auth_id }, { onConflict: 'channel' })
       .then(function() { selectedMembers=[]; pendingChan=null; closeNewDM(); openChannel(ch, label); })
       .catch(function()  { selectedMembers=[]; pendingChan=null; closeNewDM(); openChannel(ch, label); });
   }
@@ -1610,17 +1585,8 @@
         });
       return;
     }
-    var meta = channelMeta[channel];
-    var query = sb.from('chat_messages').select('*').eq('channel', channel);
-    if (meta && meta.is_temporary && meta.expires_at) {
-      query = query.lte('created_at', meta.expires_at);
-    } else if (meta && !meta.is_temporary) {
-      /* Canal fixo: carrega tudo sem filtro de data */
-    } else {
-      var since = new Date(Date.now()-72*60*60*1000).toISOString();
-      query = query.gte('created_at', since);
-    }
-    query.order('created_at',{ascending:true})
+    sb.from('chat_messages').select('*').eq('channel', channel)
+      .order('created_at',{ascending:true})
       .then(function(r){
         if (seq!==loadRequestSeq||channel!==currentChannel) return;
         isLoading=false;
@@ -1628,32 +1594,6 @@
         messages=r.data||[];
         clearMessageMediaCache(); renderMessages(); loadCurrentMessageMedia(); scrollBottom();
       });
-  }
-
-  function _renderFPChanBanner(channel) {
-    var $area = document.getElementById('fp-chat-area');
-    if (!$area) return;
-    var existing = $area.querySelector('.chat-chan-banner');
-    if (existing) existing.remove();
-    var meta = channelMeta[channel];
-    if (!meta || !meta.is_temporary) return;
-    var now = Date.now();
-    var expiresAt = meta.expires_at ? new Date(meta.expires_at).getTime() : null;
-    var banner = document.createElement('div');
-    if (expiresAt && now > expiresAt) {
-      banner.className = 'chat-chan-banner expired';
-      banner.textContent = '⏳ Canal temporário expirado · mensagens indisponíveis';
-      var $comp = document.getElementById('fp-input-area');
-      if ($comp) $comp.style.display = 'none';
-    } else if (expiresAt) {
-      var hoursLeft = Math.max(1, Math.ceil((expiresAt - now) / 3600000));
-      banner.className = 'chat-chan-banner temp';
-      banner.textContent = '⏳ Temporário · expira em ' + hoursLeft + 'h';
-    }
-    if (banner.className) {
-      var $msgs = document.getElementById('fp-msgs');
-      if ($msgs) $area.insertBefore(banner, $msgs);
-    }
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -3234,7 +3174,7 @@
     setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
     openNewDM, closeNewDM, toggleMember, confirmNewDM, openDMWith,
-    fpBackToMembers, fpSetTempMode, fpFinalizeGroup,
+    fpBackToMembers, fpFinalizeGroup,
     send, handleKey, autoResize, composerInput, composerBlur,
     toggleEmojiPop, insertEmoji, chamarAtencao,
     pickMedia, handleMediaInput, retryMediaIssue,
