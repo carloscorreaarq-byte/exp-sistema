@@ -1064,24 +1064,83 @@ window.ExpNav = (() => {
     }, 220);
   }
 
+  // Agrupa os produtos por oportunidade — uma oportunidade fechada com vários produtos
+  // (serviços) deve aparecer como um único item no banner, com o valor consolidado,
+  // em vez de repetir o mesmo cliente uma vez por produto.
+  function _agruparProdutosPorOportunidade(produtos) {
+    var map = {}, order = [];
+    produtos.forEach(function(p) {
+      var oppId = p.oportunidade_id || ('_semOpp' + p.id);
+      if (!map[oppId]) {
+        map[oppId] = { oportunidade_id: p.oportunidade_id, opp: p.oportunidades || {}, produtos: [], updated_at: p.updated_at };
+        order.push(oppId);
+      }
+      map[oppId].produtos.push(p);
+      if ((p.updated_at || '') > (map[oppId].updated_at || '')) map[oppId].updated_at = p.updated_at;
+    });
+    var grupos = order.map(function(id) {
+      var g = map[id];
+      var fechados = g.produtos.filter(function(p) { return p.status === 'fechado'; });
+      var negados  = g.produtos.filter(function(p) { return p.status === 'negado'; });
+      var isFech = fechados.length > 0;
+      var valorBase = isFech
+        ? fechados.reduce(function(s, p) { return s + (+p.valor_fechado || +p.valor_proposto || 0); }, 0)
+        : negados.reduce(function(s, p) { return s + (+p.valor_proposto || 0); }, 0);
+      return {
+        oportunidade_id: g.oportunidade_id,
+        opp: g.opp,
+        isFech: isFech,
+        valorBase: valorBase,
+        custosExtra: 0,
+        updated_at: g.updated_at,
+        nome: (fechados[0] || negados[0] || {}).nome,
+      };
+    });
+    grupos.sort(function(a, b) { return (b.updated_at || '').localeCompare(a.updated_at || ''); });
+    return grupos.slice(0, 5);
+  }
+
+  // Busca subcontratações/despesas/repasse (opp_custos) das oportunidades fechadas do
+  // banner, para somar ao valor consolidado — mesmo critério de "valor integral" do CRM.
+  function _fetchOppCustosDoBanner(grupos) {
+    var sb = _sb();
+    var idsFech = grupos.filter(function(g) { return g.isFech && g.oportunidade_id; }).map(function(g) { return g.oportunidade_id; });
+    if (!sb || !idsFech.length) { _renderCrmBanner(); return; }
+    sb.from('opp_custos')
+      .select('oportunidade_id,valor_fechado,valor_calculado,incluso_fechamento')
+      .in('oportunidade_id', idsFech)
+      .then(function(r) {
+        var porOpp = {};
+        (r.data || []).forEach(function(c) {
+          if (c.incluso_fechamento === false) return;
+          porOpp[c.oportunidade_id] = (porOpp[c.oportunidade_id] || 0) + (+c.valor_fechado || +c.valor_calculado || 0);
+        });
+        grupos.forEach(function(g) { g.custosExtra = porOpp[g.oportunidade_id] || 0; });
+        _renderCrmBanner();
+      })
+      .catch(function() { _renderCrmBanner(); });
+  }
+
   function _fetchCrmData() {
     var sb = _sb(); if (!sb) return;
     var cutoff7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     var hoje    = new Date().toISOString().split('T')[0];
     Promise.all([
       sb.from('produtos')
-        .select('id,nome,status,valor_fechado,valor_proposto,data_fechamento,updated_at,oportunidades(projeto,clientes(nome))')
+        .select('id,oportunidade_id,nome,status,valor_fechado,valor_proposto,data_fechamento,updated_at,oportunidades(projeto,clientes(nome))')
         .in('status', ['fechado','negado'])
         .or('data_fechamento.gte.' + cutoff7 + ',and(status.eq.negado,updated_at.gte.' + cutoff7 + ')')
-        .order('updated_at', { ascending: false }).limit(5),
+        .order('updated_at', { ascending: false }).limit(30),
       sb.from('followups_produto')
         .select('id,next_date,obs,produto_id,produtos(nome,oportunidades(projeto,clientes(nome)))')
         .not('next_date','is',null)
         .gte('next_date', hoje)
         .order('next_date', { ascending: true }).limit(5)
     ]).then(function(res) {
-      _crmLoaded = true; _crmEncerrados = res[0].data || []; _crmData = res[1].data || [];
-      _renderCrmBanner();
+      _crmLoaded = true;
+      _crmEncerrados = _agruparProdutosPorOportunidade(res[0].data || []);
+      _crmData = res[1].data || [];
+      _fetchOppCustosDoBanner(_crmEncerrados);
     }).catch(function() {
       _crmLoaded = true; _crmEncerrados = []; _crmData = []; _renderCrmBanner();
     });
@@ -1099,17 +1158,17 @@ window.ExpNav = (() => {
 
     if (enc.length) {
       html += '<div class="exp-crm-sec-hdr">Últimos 7 dias</div>';
-      enc.forEach(function(p) {
-        var opp     = p.oportunidades || {};
+      enc.forEach(function(g) {
+        var opp     = g.opp || {};
         var cli     = opp.clientes || {};
-        var isFech  = p.status === 'fechado';
-        var cls     = isFech ? 'fechado' : 'negado';
-        var valor   = isFech ? (+p.valor_fechado || +p.valor_proposto || 0) : (+p.valor_proposto || 0);
+        var cls     = g.isFech ? 'fechado' : 'negado';
+        // Valor final do fechamento: produtos + custos vinculados (subs/despesas/repasse)
+        var valor   = g.valorBase + (g.isFech ? g.custosExtra : 0);
         var valFmt  = valor ? 'R$ ' + valor.toLocaleString('pt-BR', { minimumFractionDigits:0, maximumFractionDigits:0 }) : '—';
         html += '<div class="exp-crm-fech-item ' + cls + '">' +
           '<div class="exp-fu-info">' +
             '<div class="exp-fu-cliente">' + _esc(cli.nome||'—') + '</div>' +
-            '<div class="exp-fu-proj">' + _esc(opp.projeto||p.nome||'—') + '</div>' +
+            '<div class="exp-fu-proj">' + _esc(opp.projeto||g.nome||'—') + '</div>' +
           '</div>' +
           '<div class="exp-crm-fech-valor">' + _esc(valFmt) + '</div>' +
           '</div>';
@@ -1164,7 +1223,7 @@ window.ExpNav = (() => {
     var sb = _sb(); if (!sb || !_user) return;
     var uid = _user.app_user_id || _user.id;
     sb.from('prioridades_usuario')
-      .select('id,produto_id,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,uf,clientes(nome)),etapas(nome,status,ordem))')
+      .select('id,produto_id,categoria_societaria,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,uf,clientes(nome)),etapas(nome,status,ordem))')
       .eq('usuario_id', uid).eq('concluida', false).order('ordem').limit(1).maybeSingle()
       .then(function(r) { _prioLoaded = true; _prioData = r.data || null; _renderPrioBanner(); })
       .catch(function()  { _prioLoaded = true; _renderPrioBanner(); });
@@ -1182,8 +1241,11 @@ window.ExpNav = (() => {
     var prod = pr.produtos || {};
     var opp  = prod.oportunidades || {};
     var cli  = opp.clientes || {};
-    var titulo   = [cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto';
-    var cidadeUf = [opp.cidade, opp.uf].filter(Boolean).join('/');
+    var _SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing' };
+    var titulo   = pr.categoria_societaria
+      ? 'Societária · ' + (_SOC_CAT_LABEL[pr.categoria_societaria] || pr.categoria_societaria)
+      : ([cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto');
+    var cidadeUf = pr.categoria_societaria ? '' : [opp.cidade, opp.uf].filter(Boolean).join('/');
     var etapas   = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
     var etapa    = etapas.find(function(e){ return e.status==='em_andamento'; });
     var estado = '';
