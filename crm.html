@@ -681,9 +681,9 @@ textarea{resize:vertical;min-height:60px}
 
       <!-- Donut por tipo -->
       <div class="card consul" style="margin-bottom:0">
-        <div class="card-hdr" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div class="card-hdr">
           <div class="card-title" id="chart-tipo-title">Por tipo</div>
-          <div style="display:flex;gap:4px">
+          <div style="display:flex;gap:4px;margin-left:auto">
             <button id="dtm-nucleo" class="btn xs" onclick="setDashTipoMode('nucleo')" style="font-size:9px;padding:2px 8px">Núcleo</button>
             <button id="dtm-stage" class="btn xs ghost" onclick="setDashTipoMode('stage')" style="font-size:9px;padding:2px 8px">Pipeline</button>
             <button id="dtm-resp" class="btn xs ghost" onclick="setDashTipoMode('resp')" style="font-size:9px;padding:2px 8px">Resp.</button>
@@ -5166,6 +5166,7 @@ async function salvarRespClienteComoContato(){
   if(!clienteId){toast('Selecione um cliente antes de salvar o contato.');return;}
 
   const nome = document.getElementById('opp-rc-nome').value.trim();
+  const cargo = document.getElementById('opp-rc-cargo').value.trim();
   const telefone = document.getElementById('opp-rc-tel').value.trim();
   const email = document.getElementById('opp-rc-email').value.trim();
 
@@ -5181,9 +5182,10 @@ async function salvarRespClienteComoContato(){
   const existente = encontrarContatoClienteExistente(clienteId, nome, email, telefone);
   if (existente) {
     const payload = {
-      nome: existente.nome || nome,
-      telefone: existente.telefone || telefone || null,
-      email: existente.email || email || null
+      nome: nome || existente.nome,
+      cargo: cargo || existente.cargo || null,
+      telefone: telefone || existente.telefone || null,
+      email: email || existente.email || null
     };
     const { error } = await sb.from('contatos').update(payload).eq('id', existente.id);
     if (error) { toast('Erro ao atualizar contato existente: ' + error.message); return; }
@@ -5192,7 +5194,7 @@ async function salvarRespClienteComoContato(){
     const payload = {
       cliente_id: clienteId,
       nome,
-      cargo: null,
+      cargo: cargo || null,
       telefone: telefone || null,
       email: email || null
     };

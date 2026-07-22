@@ -256,6 +256,13 @@
     '.chat-composer-status{padding:0 10px 8px;font-size:10px;color:#666;background:#fff}',
     '.chat-composer-status.ok{color:#1D6A4A}',
     '.chat-composer-status.warn{color:#B84C3A}',
+    '.chat-attach-preview{display:none;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);background:#fff}',
+    '.chat-attach-preview img{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--cinza2,#ECEAE4)}',
+    '.chat-attach-preview-info{flex:1;min-width:0;font-size:10px;color:#777}',
+    '.chat-attach-remove{width:24px;height:24px;border-radius:50%;border:1px solid var(--cinza2,#ECEAE4);background:var(--off,#F7F6F3);color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}',
+    '.chat-attach-remove:hover{color:#B84C3A;border-color:#B84C3A}',
+    '[data-theme="dark"] .chat-attach-preview{background:#1C1C1B;border-top-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-attach-remove{background:#252523;border-color:#2E2D2B;color:#F0EDE6}',
     '.chat-media-viewer{position:fixed;inset:0;background:rgba(17,17,16,.58);display:none;align-items:center;justify-content:center;z-index:10020;padding:20px}',
     '.chat-media-viewer-card{width:min(780px, calc(100vw - 28px));max-height:calc(100vh - 36px);background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden}',
     '.chat-media-viewer-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--cinza2,#ECEAE4)}',
@@ -444,6 +451,7 @@
   var failedStoragePaths = {};
   var mediaRequestSeq = 0;
   var mediaUploadBusy = false;
+  var pendingAttachment = null;    // { blob, mimeType, ext, width, height, previewUrl } — print colado/anexado aguardando confirmação de envio
   var composerStatusTimer = null;
   var searchQuery = '';
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
@@ -600,18 +608,13 @@
 
     document.addEventListener('paste', function (event) {
       if (!isOpen || currentView !== 'channel' || mediaUploadBusy) return;
-      var imageItems = Array.from((event.clipboardData && event.clipboardData.items) || []).filter(function (item) {
+      var imageItem = Array.from((event.clipboardData && event.clipboardData.items) || []).filter(function (item) {
         return /^image\/(png|jpeg|webp)$/i.test(item.type || '');
-      });
-      if (!imageItems.length) return;
+      })[0];
+      if (!imageItem) return;
       event.preventDefault();
-      imageItems.reduce(function (chain, item) {
-        return chain.then(function () {
-          var file = item.getAsFile();
-          if (!file) return null;
-          return sendMediaFile(file);
-        });
-      }, Promise.resolve());
+      var file = imageItem.getAsFile();
+      if (file) stageMediaFile(file);
     });
 
     /* Clique no print com ferramenta de marcador ativa */
@@ -759,6 +762,7 @@
             '<button class="chat-insearch-nav" onclick="expChat.closeInSearch()" title="Fechar">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-messages" id="exp-chat-msgs"><div class="chat-loading">' + ldots() + '</div></div>' +
+          '<div class="chat-attach-preview" id="exp-chat-attach-preview"></div>' +
           '<div class="chat-input-area">' +
             '<input id="exp-chat-media-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="expChat.handleMediaInput(this)">' +
             '<button class="chat-attach" onclick="expChat.pickMedia()" title="Anexar print">' + icoAttach() + '</button>' +
@@ -1237,6 +1241,7 @@
     closeMediaViewer();
     clearMessageMediaCache();
     setComposerStatus('', '', false);
+    if (pendingAttachment) removePendingAttachment();
     currentChannel = channel;
     currentLabel   = displayName || getChannelLabel(channel);
     if ($chanTitle) $chanTitle.textContent = currentLabel;
@@ -1882,6 +1887,7 @@
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function send() {
     if (!$input) return;
+    if (pendingAttachment) { sendStagedAttachment(); return; }
     var content = $input.value.trim();
     if (!content) return;
     var mentionChannel = currentChannel;
@@ -1948,7 +1954,7 @@
     var file = input && input.files ? input.files[0] : null;
     if (!file) return;
     try {
-      await sendMediaFile(file);
+      await stageMediaFile(file);
     } finally {
       input.value = '';
     }
@@ -2030,68 +2036,118 @@
     }
   }
 
-  async function sendMediaFile(file) {
+  /* Prepara o print (colado ou anexado) e mostra uma prévia no composer — NÃO envia.
+     O envio só acontece quando o usuário confirma (Enter / botão Enviar), via
+     sendStagedAttachment(), evitando prints errados enviados sem querer. */
+  async function stageMediaFile(file) {
     if (!$input || mediaUploadBusy) return;
     if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) {
       console.warn('[EXP Chat] Tipo de imagem nÃƒÂ£o suportado.');
       setComposerStatus('Use apenas prints em PNG, JPG ou WEBP.', 'warn', true);
       return;
     }
+    if (pendingAttachment) removePendingAttachment();
+    try {
+      setComposerStatus('Otimizando print...', '', true);
+      var cfg = await loadChatMediaConfig();
+      var optimized = await optimizeChatMediaImage(file, cfg);
+      pendingAttachment = {
+        blob: optimized.blob,
+        mimeType: optimized.mimeType,
+        ext: optimized.ext,
+        width: optimized.width,
+        height: optimized.height,
+        previewUrl: URL.createObjectURL(optimized.blob)
+      };
+      setComposerStatus('', '', false);
+      renderComposerAttachment();
+      $input.focus();
+    } catch (error) {
+      console.warn('[EXP Chat] Erro ao preparar print:', error && error.message ? error.message : error);
+      setComposerStatus('Falha ao preparar o print para envio.', 'warn', true);
+    }
+  }
+
+  function removePendingAttachment() {
+    if (pendingAttachment && pendingAttachment.previewUrl) {
+      try { URL.revokeObjectURL(pendingAttachment.previewUrl); } catch (e) {}
+    }
+    pendingAttachment = null;
+    renderComposerAttachment();
+  }
+
+  function renderComposerAttachment() {
+    var $wrap = document.getElementById('exp-chat-attach-preview');
+    if (!$wrap) return;
+    if (!pendingAttachment) {
+      $wrap.style.display = 'none';
+      $wrap.innerHTML = '';
+      return;
+    }
+    $wrap.style.display = 'flex';
+    $wrap.innerHTML =
+      '<img src="' + pendingAttachment.previewUrl + '" alt="Print">' +
+      '<span class="chat-attach-preview-info">Print pronto para enviar</span>' +
+      '<button type="button" class="chat-attach-remove" onclick="expChat.removeAttachment()" title="Remover print">' + icoClose() + '</button>';
+  }
+
+  /* Envia de fato o print jÃ¡ preparado (pendingAttachment), com o texto do composer
+     como legenda opcional. Chamado pelo send() ao confirmar (Enter / botÃ£o Enviar). */
+  async function sendStagedAttachment() {
+    if (!$input || mediaUploadBusy || !pendingAttachment) return;
+    var staged = pendingAttachment;
+    pendingAttachment = null;
+    renderComposerAttachment();
 
     mediaUploadBusy = true;
     var content = ($input.value || '').trim();
     $input.value = '';
     $input.style.height = 'auto';
 
-    var optimized = null;
-    var previewUrl = null;
+    var previewUrl = staged.previewUrl;
     var pendingMsg = null;
     var contextType = isProjectChannel(currentChannel) ? 'chat_thread_message' : 'chat_message';
     var messageId = newUuid();
 
     try {
-      setComposerStatus('Otimizando print...', '', true);
-      var cfg = await loadChatMediaConfig();
-      optimized = await optimizeChatMediaImage(file, cfg);
-      previewUrl = URL.createObjectURL(optimized.blob);
       pendingMsg = buildPendingMessage(content || CHAT_IMAGE_SENTINEL, {
         id: messageId,
         temp_media: {
           objectUrl: previewUrl,
-          mime_type: optimized.mimeType,
-          arquivo_ext: optimized.ext,
-          width_px: optimized.width,
-          height_px: optimized.height,
+          mime_type: staged.mimeType,
+          arquivo_ext: staged.ext,
+          width_px: staged.width,
+          height_px: staged.height,
           expires_at: addDaysIso(7),
           pending: true,
           failed: false,
           failed_load: false,
-          blob: optimized.blob
+          blob: staged.blob
         }
       });
       upsertMessage(pendingMsg);
       assignMessageMedia(contextType, messageId, {
         storage_path: null,
         objectUrl: previewUrl,
-        mime_type: optimized.mimeType,
-        arquivo_ext: optimized.ext,
-        width_px: optimized.width,
-        height_px: optimized.height,
+        mime_type: staged.mimeType,
+        arquivo_ext: staged.ext,
+        width_px: staged.width,
+        height_px: staged.height,
         pending: true,
         failed: false,
         failed_load: false,
-        blob: optimized.blob,
+        blob: staged.blob,
         expires_at: addDaysIso(7)
       });
       renderMessages();
       scrollBottom();
 
       await persistPreparedMedia({
-        blob: optimized.blob,
-        mimeType: optimized.mimeType,
-        ext: optimized.ext,
-        width: optimized.width,
-        height: optimized.height,
+        blob: staged.blob,
+        mimeType: staged.mimeType,
+        ext: staged.ext,
+        width: staged.width,
+        height: staged.height,
         objectUrl: previewUrl
       }, mediaRpcContent(content || CHAT_IMAGE_SENTINEL), contextType, pendingMsg);
     } catch (error) {
@@ -2106,14 +2162,14 @@
         assignMessageMedia(contextType, pendingMsg ? pendingMsg.id : messageId, {
           storage_path: null,
           objectUrl: previewUrl,
-          mime_type: optimized && optimized.mimeType || null,
-          arquivo_ext: optimized && optimized.ext || null,
-          width_px: optimized && optimized.width || null,
-          height_px: optimized && optimized.height || null,
+          mime_type: staged.mimeType || null,
+          arquivo_ext: staged.ext || null,
+          width_px: staged.width || null,
+          height_px: staged.height || null,
           pending: false,
           failed: true,
           failed_load: false,
-          blob: optimized && optimized.blob || null,
+          blob: staged.blob || null,
           expires_at: addDaysIso(7)
         });
       }
@@ -2349,8 +2405,8 @@
       var badgeHtml = '';
       if (hasRxn) {
         badgeHtml = '<div class="chat-msg-rxn-badge">';
-        if (likeN > 0) badgeHtml += '&#128077;' + (likeN > 1 ? '<span class="chat-msg-rxn-count">' + likeN + '</span>' : '');
-        if (loveN > 0) badgeHtml += '&#10084;&#65039;' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '');
+        if (likeN > 0) badgeHtml += '<span class="chat-msg-rxn-item" title="' + escHtml(reactionTitle(likeArr, uid)) + '">&#128077;' + (likeN > 1 ? '<span class="chat-msg-rxn-count">' + likeN + '</span>' : '') + '</span>';
+        if (loveN > 0) badgeHtml += '<span class="chat-msg-rxn-item" title="' + escHtml(reactionTitle(loveArr, uid)) + '">&#10084;&#65039;' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '') + '</span>';
         badgeHtml += '</div>';
       }
 
@@ -2746,6 +2802,18 @@
 
   function fmtTime(d) { return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
   function firstName(name) { return name ? name.split(' ')[0] : ''; }
+  function reactionTitle(ids, currentUid) {
+    var uniq = (ids || []).filter(function (id, i) { return ids.indexOf(id) === i; });
+    var names = uniq.map(function (id) {
+      if (id === currentUid) return 'Você';
+      var m = allMembers.find(function (x) { return x.auth_id === id; });
+      return (m && firstName(m.nome)) || 'Alguém';
+    });
+    if (!names.length) return '';
+    if (names.length === 1) return names[0] + ' curtiu isso';
+    if (names.length === 2) return names[0] + ' e ' + names[1] + ' curtiram isso';
+    return names.slice(0, -1).join(', ') + ' e ' + names[names.length - 1] + ' curtiram isso';
+  }
   function isSocioLikeRole(role) {
     if (typeof window.isSocioRole === 'function') return window.isSocioRole(role);
     var normalized = (role || '').toLowerCase().trim();
@@ -4237,6 +4305,7 @@
     searchInput:     searchInput,
     pickMedia:       pickMedia,
     handleMediaInput: handleMediaInput,
+    removeAttachment: removePendingAttachment,
     retryMediaIssue: retryMediaIssue,
     openMediaViewer: openMediaViewer,
     closeMediaViewer: closeMediaViewer,

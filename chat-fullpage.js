@@ -54,6 +54,7 @@
   var failedStoragePaths= {};
   var mediaRequestSeq   = 0;
   var mediaUploadBusy   = false;
+  var pendingAttachment = null;   // { blob, mimeType, ext, width, height, previewUrl } — print aguardando confirmação de envio
   var composerStatusTimer = null;
   var selectedMembers   = [];
   var pendingChan       = null;
@@ -373,16 +374,15 @@
       /* Fechar notif panel — gerenciado pelo AppNotif via outside-click */
     });
 
-    /* Colar imagem */
+    /* Colar imagem — fica em prévia no composer, só envia quando confirmado */
     document.addEventListener('paste', function(event) {
       if (!currentChannel || mediaUploadBusy) return;
-      var items = Array.from((event.clipboardData && event.clipboardData.items)||[])
-        .filter(function(i){ return /^image\/(png|jpeg|webp)$/i.test(i.type||''); });
-      if (!items.length) return;
+      var item = Array.from((event.clipboardData && event.clipboardData.items)||[])
+        .filter(function(i){ return /^image\/(png|jpeg|webp)$/i.test(i.type||''); })[0];
+      if (!item) return;
       event.preventDefault();
-      items.reduce(function(chain, item) {
-        return chain.then(function() { var f=item.getAsFile(); return f ? sendMediaFile(f) : null; });
-      }, Promise.resolve());
+      var f = item.getAsFile();
+      if (f) stageMediaFile(f);
     });
 
     /* Fechar popover de emoji ao clicar fora */
@@ -1053,6 +1053,7 @@
     closeMediaViewer();
     clearMessageMediaCache();
     setComposerStatus('','',false);
+    if (pendingAttachment) removePendingAttachment();
 
     /* Guardar último last_read_at ANTES de marcar como lido */
     getChannelLastRead(channel).then(function(ts) {
@@ -1662,6 +1663,7 @@
   ═══════════════════════════════════════════════════════════════════ */
   function send() {
     if (!$input||!currentChannel) return;
+    if (pendingAttachment) { sendStagedAttachment(); return; }
     var content=$input.value.trim(); if(!content) return;
     var mentionChannel=currentChannel;
     _closeMentionDD();
@@ -1869,8 +1871,8 @@
       /* Reações inline */
       if (likeN>0||loveN>0) {
         html += '<div class="fp-msg-reactions">';
-        if (likeN>0) html += '<button class="fp-rxn-btn like'+(liked?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'like\')" title="Curtir">👍 <span class="fp-rxn-count">'+likeN+'</span></button>';
-        if (loveN>0) html += '<button class="fp-rxn-btn heart'+(loved?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'love\')" title="Amei">❤️ <span class="fp-rxn-count">'+loveN+'</span></button>';
+        if (likeN>0) html += '<button class="fp-rxn-btn like'+(liked?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'like\')" title="'+escHtml(reactionTitle(likeArr, uid))+'">👍 <span class="fp-rxn-count">'+likeN+'</span></button>';
+        if (loveN>0) html += '<button class="fp-rxn-btn heart'+(loved?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'love\')" title="'+escHtml(reactionTitle(loveArr, uid))+'">❤️ <span class="fp-rxn-count">'+loveN+'</span></button>';
         html += '</div>';
       }
 
@@ -1951,47 +1953,92 @@
   }
   async function handleMediaInput(input) {
     var f=input&&input.files?input.files[0]:null; if(!f) return;
-    try { await sendMediaFile(f); } finally { input.value=''; }
+    try { await stageMediaFile(f); } finally { input.value=''; }
   }
   function mediaRpcContent(c){ return isImageOnlySentinel(c)?'':String(c||''); }
 
-  async function sendMediaFile(file) {
+  /* Prepara o print (colado ou anexado) e mostra uma prévia no composer — NÃO envia.
+     O envio só acontece ao confirmar (Enter / botão Enviar), via sendStagedAttachment(). */
+  async function stageMediaFile(file) {
     if (!currentChannel||mediaUploadBusy) return;
     if (!/^image\/(png|jpeg|webp)$/i.test(file.type||'')) { setComposerStatus('Use apenas PNG, JPG ou WEBP.','warn',true); return; }
-    mediaUploadBusy=true;
-    var content=($input?($input.value||'').trim():'');
-    if ($input){ $input.value=''; $input.style.height='auto'; }
-    var optimized=null, previewUrl=null, pendingMsg=null;
-    var contextType=isProjectChannel(currentChannel)?'chat_thread_message':'chat_message';
-    var messageId=newUuid();
+    if (pendingAttachment) removePendingAttachment();
     try {
       setComposerStatus('Otimizando print...','',true);
       var cfg=await loadChatMediaConfig();
-      optimized=await optimizeChatMediaImage(file,cfg);
-      previewUrl=URL.createObjectURL(optimized.blob);
+      var optimized=await optimizeChatMediaImage(file,cfg);
+      pendingAttachment={
+        blob:optimized.blob, mimeType:optimized.mimeType, ext:optimized.ext,
+        width:optimized.width, height:optimized.height,
+        previewUrl:URL.createObjectURL(optimized.blob)
+      };
+      setComposerStatus('','',false);
+      renderComposerAttachment();
+      if ($input) $input.focus();
+    } catch(err) {
+      setComposerStatus('Falha ao preparar o print para envio.','warn',true);
+    }
+  }
+
+  function removePendingAttachment() {
+    if (pendingAttachment && pendingAttachment.previewUrl) {
+      try { URL.revokeObjectURL(pendingAttachment.previewUrl); } catch(e) {}
+    }
+    pendingAttachment=null;
+    renderComposerAttachment();
+  }
+
+  function renderComposerAttachment() {
+    var $wrap=document.getElementById('fp-attach-preview');
+    if (!$wrap) return;
+    if (!pendingAttachment) { $wrap.style.display='none'; $wrap.innerHTML=''; return; }
+    $wrap.style.display='flex';
+    $wrap.innerHTML =
+      '<img src="'+pendingAttachment.previewUrl+'" alt="Print">' +
+      '<span class="fp-attach-preview-info">Print pronto para enviar</span>' +
+      '<button type="button" class="fp-attach-remove" onclick="fpChat.removeAttachment()" title="Remover print">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>' +
+      '</button>';
+  }
+
+  /* Envia de fato o print já preparado (pendingAttachment), com o texto do composer
+     como legenda opcional. Chamado pelo send() ao confirmar (Enter / botão Enviar). */
+  async function sendStagedAttachment() {
+    if (!currentChannel||mediaUploadBusy||!pendingAttachment) return;
+    var staged=pendingAttachment;
+    pendingAttachment=null;
+    renderComposerAttachment();
+
+    mediaUploadBusy=true;
+    var content=($input?($input.value||'').trim():'');
+    if ($input){ $input.value=''; $input.style.height='auto'; }
+    var previewUrl=staged.previewUrl, pendingMsg=null;
+    var contextType=isProjectChannel(currentChannel)?'chat_thread_message':'chat_message';
+    var messageId=newUuid();
+    try {
       pendingMsg=buildPendingMessage(content||CHAT_IMAGE_SENTINEL,{
         id:messageId,
-        temp_media:{objectUrl:previewUrl,mime_type:optimized.mimeType,arquivo_ext:optimized.ext,
-          width_px:optimized.width,height_px:optimized.height,expires_at:addDaysIso(7),
-          pending:true,failed:false,failed_load:false,blob:optimized.blob}
+        temp_media:{objectUrl:previewUrl,mime_type:staged.mimeType,arquivo_ext:staged.ext,
+          width_px:staged.width,height_px:staged.height,expires_at:addDaysIso(7),
+          pending:true,failed:false,failed_load:false,blob:staged.blob}
       });
       upsertMessage(pendingMsg);
       assignMessageMedia(contextType,messageId,{
-        storage_path:null,objectUrl:previewUrl,mime_type:optimized.mimeType,
-        arquivo_ext:optimized.ext,width_px:optimized.width,height_px:optimized.height,
-        pending:true,failed:false,failed_load:false,blob:optimized.blob,expires_at:addDaysIso(7)
+        storage_path:null,objectUrl:previewUrl,mime_type:staged.mimeType,
+        arquivo_ext:staged.ext,width_px:staged.width,height_px:staged.height,
+        pending:true,failed:false,failed_load:false,blob:staged.blob,expires_at:addDaysIso(7)
       });
       renderMessages(); scrollBottom();
-      await persistPreparedMedia({blob:optimized.blob,mimeType:optimized.mimeType,ext:optimized.ext,
-        width:optimized.width,height:optimized.height,objectUrl:previewUrl},
+      await persistPreparedMedia({blob:staged.blob,mimeType:staged.mimeType,ext:staged.ext,
+        width:staged.width,height:staged.height,objectUrl:previewUrl},
         mediaRpcContent(content||CHAT_IMAGE_SENTINEL),contextType,pendingMsg);
     } catch(err) {
       var failMsg=describeChatMediaError(err);
       if (pendingMsg&&pendingMsg.id){ pendingMsg.pending=false; pendingMsg.failed=true; pendingMsg.error_message=failMsg; upsertMessage(pendingMsg); }
       if (previewUrl) assignMessageMedia(contextType,pendingMsg?pendingMsg.id:messageId,{
-        storage_path:null,objectUrl:previewUrl,mime_type:optimized&&optimized.mimeType||null,
-        arquivo_ext:optimized&&optimized.ext||null,pending:false,failed:true,failed_load:false,
-        blob:optimized&&optimized.blob||null,expires_at:addDaysIso(7)
+        storage_path:null,objectUrl:previewUrl,mime_type:staged.mimeType||null,
+        arquivo_ext:staged.ext||null,pending:false,failed:true,failed_load:false,
+        blob:staged.blob||null,expires_at:addDaysIso(7)
       });
       setComposerStatus('Falha: '+failMsg,'warn',true); renderMessages();
     } finally { mediaUploadBusy=false; }
@@ -2766,6 +2813,18 @@
   ═══════════════════════════════════════════════════════════════════ */
   function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function firstName(n){ return n?n.split(' ')[0]:''; }
+  function reactionTitle(ids, currentUid) {
+    var uniq = (ids || []).filter(function (id, i) { return ids.indexOf(id) === i; });
+    var names = uniq.map(function (id) {
+      if (id === currentUid) return 'Você';
+      var m = allMembers.find(function (x) { return x.auth_id === id; });
+      return (m && firstName(m.nome)) || 'Alguém';
+    });
+    if (!names.length) return '';
+    if (names.length === 1) return names[0] + ' curtiu isso';
+    if (names.length === 2) return names[0] + ' e ' + names[1] + ' curtiram isso';
+    return names.slice(0, -1).join(', ') + ' e ' + names[names.length - 1] + ' curtiram isso';
+  }
   function fmtTime(d){ return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
   function fmtDateSep(d){
     var today=new Date(), yest=new Date(today); yest.setDate(yest.getDate()-1);
@@ -3177,7 +3236,7 @@
     fpBackToMembers, fpFinalizeGroup,
     send, handleKey, autoResize, composerInput, composerBlur,
     toggleEmojiPop, insertEmoji, chamarAtencao,
-    pickMedia, handleMediaInput, retryMediaIssue,
+    pickMedia, handleMediaInput, removeAttachment: removePendingAttachment, retryMediaIssue,
     react, flagMessage,
     startEditMessage, editMessageInput, editMessageKey, saveEditMessage, cancelEditMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,

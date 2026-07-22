@@ -220,6 +220,13 @@ body{
 .cal-resumo { display:flex; align-items:center; gap:14px; padding:8px 12px; border-top:1px solid var(--cinza); background:var(--branco); }
 .cal-total-semana { font-family:var(--font-mono); font-size:20px; font-weight:700; }
 .cal-total-semana.over { color:var(--terracota); font-weight:800; }
+.cal-saldo-badge { display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:3px 9px; border-radius:999px; font-family:var(--font-mono); font-size:12px; font-weight:700; white-space:nowrap; }
+.cal-saldo-badge span { font-family:var(--font-ui); font-size:8px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; opacity:.75; }
+.cal-saldo-badge.positivo { background:var(--verde-bg,#EAF5EE); color:var(--verde); }
+.cal-saldo-badge.negativo { background:var(--tc-bg,#FBF0EE); color:var(--terracota); }
+.cal-saldo-badge.neutro { background:var(--cinza2); color:#888; }
+[data-theme="dark"] .cal-saldo-badge.positivo { background:rgba(82,166,118,.16); }
+[data-theme="dark"] .cal-saldo-badge.negativo { background:rgba(184,86,56,.16); }
 .cal-meta-bar-wrap { height:5px; background:var(--cinza2); width:100%; }
 .cal-meta-bar { height:100%; background:var(--verde); transition:width .3s; }
 .cal-meta-bar.am { background:var(--ouro); }
@@ -771,8 +778,23 @@ body{
             <div class="apo-field">
               <label for="apo-bh-destino">Destino pretendido</label>
               <select id="apo-bh-destino">
-                <option value="compensacao">Compensação</option>
+                <option value="compensacao">Compensação/Ausência remunerada</option>
                 <option value="pagamento_extraordinario">Pagamento extraordinário</option>
+              </select>
+            </div>
+
+            <div class="apo-field" id="apo-bh-data-wrap" style="display:none">
+              <label for="apo-bh-data">Data da ausência (opcional)</label>
+              <input type="date" id="apo-bh-data">
+              <div class="apo-note">Se preenchida, a folga já é registrada no calendário ao aprovar a solicitação.</div>
+            </div>
+
+            <div class="apo-field" id="apo-bh-periodo-wrap" style="display:none">
+              <label for="apo-bh-periodo">Período</label>
+              <select id="apo-bh-periodo">
+                <option value="todo">Dia todo</option>
+                <option value="manha">Manhã</option>
+                <option value="tarde">Tarde</option>
               </select>
             </div>
 
@@ -1020,10 +1042,13 @@ body{
   }
   function formatBhDestino(dest) {
     return {
-      compensacao:'Compensação',
+      compensacao:'Compensação/Ausência remunerada',
       pagamento_extraordinario:'Pagamento extraordinário',
       misto:'Misto',
     }[dest] || '—';
+  }
+  function formatBhPeriodo(periodo) {
+    return { todo:'Dia todo', manha:'Manhã', tarde:'Tarde' }[periodo] || 'Dia todo';
   }
   function formatBhDestinoStatus(status) {
     return {
@@ -1177,11 +1202,20 @@ body{
     // Resumo
     var pctTipo = function(t) { return totalSemana > 0 ? Math.round(porTipo[t] / totalSemana * 100) : 0; };
     var semCor = totalSemana > 40 ? 'var(--terracota)' : totalSemana > 32 ? 'var(--ouro)' : 'var(--grafite)';
+
+    // Saldo da semana para o banco de horas (acima/abaixo da jornada de 40h)
+    var saldoSemana = totalSemana - 40;
+    var saldoCls = saldoSemana > 0.0084 ? 'positivo' : saldoSemana < -0.0084 ? 'negativo' : 'neutro';
+    var saldoTxt = saldoCls === 'neutro' ? '0h' : (saldoSemana > 0 ? '+' : '-') + fmtH(Math.abs(saldoSemana));
+    var saldoBadge = '<div class="cal-saldo-badge ' + saldoCls + '" title="Saldo da semana para o banco de horas (referência: 40h)">' +
+      saldoTxt + ' <span>banco de horas</span></div>';
+
     html += '<div class="cal-resumo">' +
       '<div style="flex-shrink:0">' +
         '<div style="font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:2px">Semana</div>' +
         '<div class="cal-total-semana ' + (totalSemana>40?'over':'') + '" style="color:' + semCor + '">' + fmtH(totalSemana) + '</div>' +
         '<div style="font-size:9px;color:#aaa;margin-top:1px">' + pct.toFixed(0) + '% de 40h</div>' +
+        saldoBadge +
       '</div>' +
       '<div style="flex:1">' +
         '<div class="cal-meta-bar-wrap"><div class="cal-meta-bar ' + (totalSemana>40?'tc':totalSemana>32?'am':'') + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
@@ -1431,6 +1465,7 @@ body{
         ' · excesso elegível: ' + esc(fmtH(r.excesso_elegivel_h || 0)) +
         ' · aprovado: ' + esc(fmtH(r.quantidade_aprovada_h || 0)) + '</div>' +
         (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+        (r.data_ausencia ? '<div class="bh-item-meta"><strong>Ausência solicitada:</strong> ' + esc(fmtDate(r.data_ausencia)) + ' · ' + esc(formatBhPeriodo(r.periodo_ausencia)) + '</div>' : '') +
         (r.observacao_decisao ? '<div class="bh-item-meta"><strong>Decisão:</strong> ' + esc(r.observacao_decisao) + '</div>' : '') +
         (canCancel ? '<div class="apo-actions"><button type="button" class="apo-btn apo-btn-sm" data-bh-cancel="' + esc(r.id) + '">Cancelar pedido</button></div>' : '') +
       '</div>';
@@ -1472,6 +1507,7 @@ body{
           '<div class="bh-item-badges"><span class="bh-mini-pill am">Pendente</span></div>' +
         '</div>' +
         (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+        (r.data_ausencia ? '<div class="bh-item-meta"><strong>Ausência solicitada:</strong> ' + esc(fmtDate(r.data_ausencia)) + ' · ' + esc(formatBhPeriodo(r.periodo_ausencia)) + '</div>' : '') +
         '<div class="bh-admin-actions">' +
           '<div class="apo-field"><label for="bh-approve-' + esc(r.id) + '">Aprovar</label><input type="number" id="bh-approve-' + esc(r.id) + '" min="0" step="1" value="' + esc(String(r.quantidade_solicitada_h || 0)) + '"></div>' +
           '<div class="apo-field"><label for="bh-comp-' + esc(r.id) + '">Compensação</label><input type="number" id="bh-comp-' + esc(r.id) + '" min="0" step="1" value="' + esc(String(r.quantidade_solicitada_h || 0)) + '"></div>' +
@@ -1570,6 +1606,19 @@ body{
     }
   }
 
+  function updateBhDestinoUI() {
+    var destino = document.getElementById('apo-bh-destino').value;
+    var isComp = destino === 'compensacao';
+    var dataWrap = document.getElementById('apo-bh-data-wrap');
+    var periodoWrap = document.getElementById('apo-bh-periodo-wrap');
+    if (dataWrap) dataWrap.style.display = isComp ? 'block' : 'none';
+    if (periodoWrap) periodoWrap.style.display = isComp ? 'block' : 'none';
+    if (!isComp) {
+      var dataEl = document.getElementById('apo-bh-data');
+      if (dataEl) dataEl.value = '';
+    }
+  }
+
   async function submitBancoHoras(ev) {
     ev.preventDefault();
     setFb('apo-bh-feedback', '', '');
@@ -1583,6 +1632,8 @@ body{
       var qty = parseInt(document.getElementById('apo-bh-qty').value || '0', 10);
       var destino = document.getElementById('apo-bh-destino').value;
       var justificativa = document.getElementById('apo-bh-justificativa').value.trim();
+      var dataAusencia = destino === 'compensacao' ? (document.getElementById('apo-bh-data').value || null) : null;
+      var periodoAusencia = destino === 'compensacao' ? (document.getElementById('apo-bh-periodo').value || 'todo') : null;
       if (!qty || qty <= 0) throw new Error('Informe uma quantidade inteira válida.');
       if (qty > sum.disponivelSolicitarH) throw new Error('A solicitação não pode ultrapassar o saldo elegível disponível da semana.');
       var ins = await window.sb.from('banco_horas_solicitacoes').insert({
@@ -1599,10 +1650,13 @@ body{
         status_solicitacao: 'pendente',
         status_destino: 'aguardando_definicao',
         justificativa: justificativa || null,
+        data_ausencia: dataAusencia,
+        periodo_ausencia: periodoAusencia,
       });
       if (ins.error) throw ins.error;
       document.getElementById('apo-bh-form').reset();
       document.getElementById('apo-bh-destino').value = 'compensacao';
+      updateBhDestinoUI();
       setFb('apo-bh-feedback', 'Solicitação registrada.', 'ok');
       await loadBancoData();
     } catch(e) {
@@ -1640,6 +1694,64 @@ body{
     if (upd.error) throw upd.error;
   }
 
+  // Mesma lógica de calAplicarCompensacaoSaldo (calendario.html) — mantém o mesmo
+  // ledger (banco_horas_saldo.horas_disponiveis/horas_compensadas) usado lá.
+  async function aplicarCompensacaoSaldo(usuarioId, deltaHoras) {
+    var cur = await window.sb.from('banco_horas_saldo')
+      .select('usuario_id,horas_disponiveis,horas_compensadas')
+      .eq('usuario_id', usuarioId)
+      .maybeSingle();
+    if (cur.error && cur.error.code !== 'PGRST116') throw cur.error;
+    var row = cur.data || { usuario_id: usuarioId, horas_disponiveis: 0, horas_compensadas: 0 };
+    var saldoAntes = Number(row.horas_disponiveis || 0);
+    var compensadasAntes = Number(row.horas_compensadas || 0);
+    var saldoDepois = saldoAntes - Number(deltaHoras || 0);
+    var compensadasDepois = compensadasAntes + Number(deltaHoras || 0);
+    var upd = await window.sb.from('banco_horas_saldo').upsert({
+      usuario_id: usuarioId,
+      horas_disponiveis: Math.max(0, Number(saldoDepois.toFixed(2))),
+      horas_compensadas: Math.max(0, Number(compensadasDepois.toFixed(2))),
+      updated_at: new Date().toISOString(),
+    }, { onConflict:'usuario_id' });
+    if (upd.error) throw upd.error;
+    return { saldoAntes: Number(saldoAntes.toFixed(2)), saldoDepois: Math.max(0, Number(saldoDepois.toFixed(2))) };
+  }
+
+  // Registra a ausência no calendário (tipo compensacao_bh, igual ao fluxo manual de
+  // calendario.html) e consome o saldo recém-creditado — feito ao aprovar uma
+  // solicitação de compensação/ausência remunerada que já veio com data marcada.
+  async function registrarAusenciaCompensacaoBh(usuarioId, dataUso, periodo, horas, observacao, criadoPorId) {
+    var horaStr = ({ todo:'T12:00:00', manha:'T09:00:00', tarde:'T14:00:00' })[periodo] || 'T12:00:00';
+    var payload = {
+      tipo: 'compensacao_bh',
+      categoria: 'compensacao',
+      titulo: 'Compensação de banco de horas',
+      inicio: dataUso + horaStr + '+00:00',
+      fim: dataUso + horaStr + '+00:00',
+      dia_inteiro: true,
+      descricao: observacao || null,
+      scope: 'usuario',
+      nucleo_id: null,
+      user_id: usuarioId,
+      criado_por: criadoPorId,
+    };
+    var ins = await window.sb.from('calendar_events').insert(payload).select('id').single();
+    if (ins.error) throw ins.error;
+    var saldo = await aplicarCompensacaoSaldo(usuarioId, Number(horas));
+    var log = await window.sb.from('banco_horas_compensacoes').insert({
+      calendar_event_id: String(ins.data.id),
+      usuario_id: usuarioId,
+      data_uso: dataUso,
+      horas_consumidas: Number(horas),
+      observacao: observacao || null,
+      criado_por: criadoPorId,
+      saldo_antes: saldo.saldoAntes,
+      saldo_depois: saldo.saldoDepois,
+      updated_at: new Date().toISOString(),
+    });
+    if (log.error) throw log.error;
+  }
+
   async function approveBancoRequest(id) {
     if (!isSocioAdmRole(AP.user && AP.user.role)) throw new Error('A aprovação é restrita a sócios administrativos.');
     var base = (AP.bankPending || []).find(function(r){ return String(r.id) === String(id); });
@@ -1671,7 +1783,16 @@ body{
       updated_at: new Date().toISOString(),
     }).eq('id', id).eq('status_solicitacao', 'pendente');
     if (upd.error) throw new Error(upd.error.message);
-    setFb('apo-bh-feedback', 'Solicitação decidida.', 'ok');
+    var feedbackMsg = 'Solicitação decidida.';
+    if (comp > 0 && base.data_ausencia) {
+      try {
+        await registrarAusenciaCompensacaoBh(base.usuario_id, base.data_ausencia, base.periodo_ausencia || 'todo', comp, obs || base.justificativa || null, uid());
+        feedbackMsg = 'Solicitação decidida e ausência registrada no calendário.';
+      } catch (e) {
+        feedbackMsg = 'Solicitação decidida, mas houve um erro ao registrar a ausência no calendário: ' + e.message;
+      }
+    }
+    setFb('apo-bh-feedback', feedbackMsg, 'ok');
     await loadBancoData();
   }
 
@@ -2560,9 +2681,12 @@ body{
     document.getElementById('apo-costs-form').addEventListener('submit',submitCustos);
     document.getElementById('apo-cost-reset').addEventListener('click',resetCostForm);
     document.getElementById('apo-bh-form').addEventListener('submit',submitBancoHoras);
+    document.getElementById('apo-bh-destino').addEventListener('change',updateBhDestinoUI);
+    updateBhDestinoUI();
     document.getElementById('apo-bh-reset').addEventListener('click',function(){
       document.getElementById('apo-bh-form').reset();
       document.getElementById('apo-bh-destino').value = 'compensacao';
+      updateBhDestinoUI();
       setFb('apo-bh-feedback','','');
     });
 

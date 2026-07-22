@@ -556,7 +556,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
         + '  <div class="platform-feedback-meta">' + escapeHtml(item.url_origem || '') + '</div>'
         + '  <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'
         + '    <button type="button" class="shell-btn primary" onclick="resolverEApagarFeedbackPlataforma(\'' + item.id + '\')" title="Resolver registro, avisar o autor e remover da fila">Resolver e apagar</button>'
-        + '    <button type="button" class="shell-btn warn" onclick="recusarFeedbackPlataforma(\'' + item.id + '\')" title="Recusar registro e remover da fila sem notificar o autor">Recusar</button>'
+        + '    <button type="button" class="shell-btn danger" onclick="recusarFeedbackPlataforma(\'' + item.id + '\')" title="Recusar registro e remover da fila sem notificar o autor">Recusar</button>'
         + '  </div>'
         + '</div>'
         + '</div>';
@@ -1118,6 +1118,34 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     });
   }
 
+  function isPlatformUserInactive(user) {
+    return user.status_acesso === 'inativo' || user.status_acesso === 'bloqueado' || (!user.status_acesso && user.ativo === false);
+  }
+
+  function platformUserRowHtml(user) {
+    const current = currentSessionUsuario()?.app_user_id === user.id;
+    const termo = platformTermosCache[user.id] || null;
+    const rowClass = 'platform-user-row' + (isPlatformUserInactive(user) ? ' inactive' : '');
+    return '<div class="' + rowClass + '">'
+      + '<div class="platform-user-avatar clickable" title="Alterar avatar" onclick="subirAvatarPlataforma(\'' + user.id + '\')" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
+      + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' &middot; ' + roleLabel(user.role) + '</span></div>'
+      + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'não') + '</div>'
+      + '<div class="platform-inline">'
+      + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
+      + '<option value="colaborador"' + (user.role === 'colaborador' ? ' selected' : '') + '>Colaborador</option>'
+      + '<option value="socio"' + (user.role === 'socio' ? ' selected' : '') + '>Socio</option>'
+      + '<option value="socio_admin"' + (user.role === 'socio_admin' ? ' selected' : '') + '>Socio administrador</option>'
+      + '</select>'
+      + '<select id="platform-status-' + user.id + '" class="shell-btn" onchange="salvarStatusPlatform(\'' + user.id + '\', this.value)">'
+      + '<option value="ativo"' + ((user.status_acesso || 'ativo') === 'ativo' ? ' selected' : '') + '>Ativo</option>'
+      + '<option value="inativo"' + (user.status_acesso === 'inativo' ? ' selected' : '') + '>Inativo</option>'
+      + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
+      + '</select></div>'
+      + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuario atual</span>' : '') + '</div>'
+      + '<div class="platform-inline"><button type="button" class="shell-btn" onclick="verDadosUsuarioPlataforma(\'' + user.id + '\')" style="margin-right:6px">Ver dados</button><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
+      + '</div>';
+  }
+
   function renderPlatformUsersList(users) {
     const wrap = document.getElementById('platform-users-list');
     if (!wrap) return;
@@ -1125,28 +1153,14 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       wrap.innerHTML = '<div class="platform-empty">Nenhum usuario encontrado.</div>';
       return;
     }
-    wrap.innerHTML = users.map((user) => {
-      const current = currentSessionUsuario()?.app_user_id === user.id;
-      const termo = platformTermosCache[user.id] || null;
-      return '<div class="platform-user-row">'
-        + '<div class="platform-user-avatar clickable" title="Alterar avatar" onclick="subirAvatarPlataforma(\'' + user.id + '\')" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
-        + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' &middot; ' + roleLabel(user.role) + '</span></div>'
-        + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'não') + '</div>'
-        + '<div class="platform-inline">'
-        + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
-        + '<option value="colaborador"' + (user.role === 'colaborador' ? ' selected' : '') + '>Colaborador</option>'
-        + '<option value="socio"' + (user.role === 'socio' ? ' selected' : '') + '>Socio</option>'
-        + '<option value="socio_admin"' + (user.role === 'socio_admin' ? ' selected' : '') + '>Socio administrador</option>'
-        + '</select>'
-        + '<select id="platform-status-' + user.id + '" class="shell-btn" onchange="salvarStatusPlatform(\'' + user.id + '\', this.value)">'
-        + '<option value="ativo"' + ((user.status_acesso || 'ativo') === 'ativo' ? ' selected' : '') + '>Ativo</option>'
-        + '<option value="inativo"' + (user.status_acesso === 'inativo' ? ' selected' : '') + '>Inativo</option>'
-        + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
-        + '</select></div>'
-        + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuario atual</span>' : '') + '</div>'
-        + '<div class="platform-inline"><button type="button" class="shell-btn" onclick="verDadosUsuarioPlataforma(\'' + user.id + '\')" style="margin-right:6px">Ver dados</button><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
-        + '</div>';
-    }).join('');
+    const ativos = users.filter((user) => !isPlatformUserInactive(user));
+    const inativos = users.filter((user) => isPlatformUserInactive(user));
+    let html = ativos.map(platformUserRowHtml).join('');
+    if (inativos.length) {
+      html += '<div class="platform-users-divider">Usuários inativos ou bloqueados <span>' + inativos.length + '</span></div>'
+        + inativos.map(platformUserRowHtml).join('');
+    }
+    wrap.innerHTML = html;
   }
 
   async function carregarUsuariosPlataforma() {
@@ -1577,21 +1591,23 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
 
     function row(label, value) {
       const v = (value === null || value === undefined || value === '') ? '<em style="color:#aaa">não preenchido</em>' : escapeHtml(String(value));
-      return '<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start">'
-        + '<div style="min-width:180px;font-size:11px;color:#888;flex-shrink:0">' + escapeHtml(label) + '</div>'
-        + '<div style="font-size:12px;color:#222;word-break:break-all">' + v + '</div>'
+      return '<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid var(--cinza2);align-items:flex-start">'
+        + '<div style="min-width:180px;font-size:var(--text-sub);color:#888;flex-shrink:0">' + escapeHtml(label) + '</div>'
+        + '<div style="font-size:var(--text-body);color:var(--grafite);word-break:break-all">' + v + '</div>'
         + '</div>';
     }
 
     const u = usuario || {};
     const t = termo || {};
-    const html = '<div style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center" id="ver-dados-overlay" onclick="if(event.target===this)this.remove()">'
-      + '<div style="background:#fff;border-radius:12px;padding:28px 28px 20px;width:min(560px,96vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
-      + '  <strong style="font-size:15px">Dados do usuário</strong>'
-      + '  <button type="button" onclick="document.getElementById(\'ver-dados-overlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;padding:0 4px">&times;</button>'
+    const html = '<div class="shell-modal-overlay open" id="ver-dados-overlay" onclick="if(event.target===this)this.remove()">'
+      + '<div class="shell-modal" style="width:min(560px,96vw)" onclick="event.stopPropagation()">'
+      + '<div class="shell-modal-header">'
+      + '  <div class="shell-modal-title"><strong>Dados do usuário</strong></div>'
+      + '  <button type="button" class="shell-modal-close" onclick="document.getElementById(\'ver-dados-overlay\').remove()">&times;</button>'
       + '</div>'
-      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#aaa;margin-bottom:4px">Dados institucionais</div>'
+      + '<div class="shell-modal-body">'
+      + '<div class="meus-dados-section">'
+      + '<div class="meus-dados-section-title"><strong>Dados institucionais</strong></div>'
       + row('ID', u.id)
       + row('Auth ID', u.auth_id)
       + row('Nome completo', u.nome)
@@ -1612,7 +1628,9 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       + row('CEP', u.cep)
       + row('Criado em', u.criado_em)
       + row('Atualizado em', u.atualizado_em)
-      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#aaa;margin:14px 0 4px">Termo de compromisso</div>'
+      + '</div>'
+      + '<div class="meus-dados-section">'
+      + '<div class="meus-dados-section-title"><strong>Termo de compromisso</strong></div>'
       + (termo
         ? (row('Versão do termo', t.versao_termo)
           + row('Status', t.status_termo)
@@ -1621,7 +1639,9 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
           + row('Resetado em', t.resetado_em)
           + row('Resetado por (ID)', t.resetado_por)
           + row('Motivo do reset', t.motivo_reset))
-        : '<div style="font-size:11px;color:#aaa;padding:6px 0">Nenhum registro de termo encontrado.</div>')
+        : '<div style="font-size:var(--text-sub);color:#aaa;padding:6px 0">Nenhum registro de termo encontrado.</div>')
+      + '</div>'
+      + '</div>'
       + '</div>'
       + '</div>';
 
