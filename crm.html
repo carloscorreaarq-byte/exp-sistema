@@ -160,6 +160,12 @@ tr.orc-fech td{background:var(--verde-bg)}
 .btn.verde:hover{opacity:.88}
 .btn.tc,.btn.danger{border-color:var(--terracota);color:var(--terracota)}
 .btn.tc:hover,.btn.danger:hover{background:var(--terracota);color:#fff}
+.btn.az{border-color:var(--azul);color:var(--azul)}
+.btn.az:hover{background:var(--azul);color:#fff}
+.btn.am{border-color:var(--ouro);color:var(--ouro)}
+.btn.am:hover{background:var(--ouro);color:#fff}
+.btn.roxo{border-color:var(--roxo);color:var(--roxo)}
+.btn.roxo:hover{background:var(--roxo);color:#fff}
 .btn.sm{padding:4px 10px;font-size:var(--text-label)}
 .btn.xs{padding:2px 8px;font-size:var(--text-label);border-radius:var(--radius-badge,4px)}
 .btn.ghost{background:transparent;border-color:transparent;color:#999}
@@ -246,6 +252,22 @@ textarea{resize:vertical;min-height:60px}
 .modal{background:var(--branco);width:640px;max-width:calc(100vw - 32px);border:1px solid var(--cinza);position:relative;margin:auto;display:flex;flex-direction:column;max-height:calc(100vh - 80px);border-radius:var(--radius-card,8px);overflow:hidden}
 .modal.lg{width:860px}
 .modal.xl{width:1060px}
+/* PAINEL LATERAL (drill-down a partir de um card/stat) */
+.side-panel-bg{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:210}
+.side-panel-bg.open{display:block}
+.side-panel{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:calc(100vw - 32px);background:var(--branco);border-left:1px solid var(--cinza);box-shadow:-8px 0 24px rgba(0,0,0,.12);display:flex;flex-direction:column;transform:translateX(100%);transition:transform var(--transition-normal,.25s) ease}
+.side-panel-bg.open .side-panel{transform:translateX(0)}
+.side-panel-hd{padding:14px 16px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.side-panel-title{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.side-panel-body{padding:8px 16px 16px;overflow-y:auto;flex:1}
+.sp-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--cinza2)}
+.sp-item:last-child{border-bottom:none}
+.sp-item-cliente{font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-item-proj{font-size:10px;color:#888;margin-top:1px}
+.sp-item-data{font-size:10px;color:#888;font-family:var(--font-mono);white-space:nowrap}
+.sp-item-valor{font-size:12px;font-weight:700;font-family:var(--font-mono);color:var(--verde);white-space:nowrap}
+.stat-clicavel{cursor:pointer;transition:box-shadow var(--transition-fast),border-color var(--transition-fast)}
+.stat-clicavel:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);border-color:var(--verde)}
 .modal-hd{padding:12px 16px;border-bottom:1px solid var(--cinza);display:flex;align-items:center;justify-content:space-between;background:var(--branco);flex-shrink:0;z-index:5}
 .modal-title{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .modal-x{font-size:20px;cursor:pointer;color:#999;line-height:1;padding:2px 6px}
@@ -565,14 +587,14 @@ textarea{resize:vertical;min-height:60px}
   <div id="dash-destaques" style="display:none;margin-bottom:12px"></div>
 
   <!-- LAYOUT PRINCIPAL: coluna esquerda (análise) + coluna direita (operacional) -->
-  <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;align-items:start;margin-bottom:10px">
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;align-items:stretch;margin-bottom:10px">
 
     <!-- ── COLUNA ESQUERDA ── -->
     <div style="display:flex;flex-direction:column;gap:10px">
 
       <!-- Stats primários: 2 grandes -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch">
-        <div class="stat verde">
+        <div class="stat verde stat-clicavel" onclick="abrirPainelFechamentosAno()" title="Ver lista de fechamentos do ano">
           <div class="stat-lbl">Fechamentos no ano</div>
           <div class="stat-val" id="s-fat">—</div>
           <div class="stat-sub" id="s-fat-sub"></div>
@@ -604,7 +626,7 @@ textarea{resize:vertical;min-height:60px}
       </div>
 
       <!-- Gráfico de oportunidades captadas -->
-      <div class="card az" style="margin-bottom:0">
+      <div class="card az" style="margin-bottom:0;flex:1;display:flex;flex-direction:column">
         <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
           <div class="card-title" style="flex:1;min-width:120px">Oportunidades captadas — ano corrente</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -620,20 +642,20 @@ textarea{resize:vertical;min-height:60px}
             </select>
           </div>
         </div>
-        <div class="card-body" style="padding:8px 14px 14px">
-          <div style="position:relative;height:180px">
+        <div class="card-body" style="padding:8px 14px 14px;flex:1;display:flex;flex-direction:column">
+          <div style="position:relative;flex:1;min-height:180px">
             <canvas id="chart-captadas"></canvas>
           </div>
         </div>
       </div>
 
       <!-- Gráfico mensal -->
-      <div class="card verde" style="margin-bottom:0">
+      <div class="card verde" style="margin-bottom:0;flex:1;display:flex;flex-direction:column">
         <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
           <div class="card-title" style="flex:1;min-width:120px">Fechamentos mensais — ano corrente</div>
         </div>
-        <div class="card-body" style="padding:8px 14px 14px">
-          <div style="position:relative;height:180px">
+        <div class="card-body" style="padding:8px 14px 14px;flex:1;display:flex;flex-direction:column">
+          <div style="position:relative;flex:1;min-height:180px">
             <canvas id="chart-mensal"></canvas>
           </div>
         </div>
@@ -706,26 +728,29 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- ═══ PIPELINE ═══════════════════════════════════════════════ -->
 <div class="page" id="tab-pipe">
-  <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:nowrap">
-    <input id="pf-busca" type="text" placeholder="Buscar cliente, projeto, nº, cidade..." oninput="renderPipe()" style="font-size:10px;padding:4px 7px;min-width:140px;flex:1;max-width:240px;border:1px solid var(--cinza)">
-    <select id="pf-resp" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+  <!-- Cada campo alinhado com a coluna correspondente do kanban abaixo (mesmo grid 4x1fr) -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
+    <input id="pf-busca" type="text" placeholder="Buscar cliente, projeto, nº, cidade..." oninput="renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+    <select id="pf-resp" onchange="renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="todos">Todos resp.</option>
       <option value="Carlos">Carlos</option>
       <option value="Gabriela">Gabriela</option>
     </select>
-    <select id="pf-nucleo" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+    <select id="pf-nucleo" onchange="renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="todos">Todos núcleos</option>
       <option value="Urbanismo">Urbanismo</option>
       <option value="Paisagismo">Paisagismo</option>
       <option value="Consultorias">Consultorias</option>
       <option value="Projetos Especiais">Proj. Especiais</option>
     </select>
-    <select id="pf-ordem" onchange="renderPipe()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+    <select id="pf-ordem" onchange="renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="" disabled>Ordenar por</option>
       <option value="recentes" selected>Mais recentes</option>
       <option value="valor">Maior valor</option>
       <option value="contato">Último contato</option>
     </select>
+  </div>
+  <div style="display:flex;align-items:center;margin-bottom:6px">
     <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:#888;cursor:pointer;white-space:nowrap;user-select:none">
       <input type="checkbox" id="pf-com-opp" onchange="renderPipe()" style="accent-color:var(--azul);width:12px;height:12px">
       Com oportunidade
@@ -1437,8 +1462,8 @@ textarea{resize:vertical;min-height:60px}
     <div class="modal-hd">
       <div class="modal-title" id="det-title">Proposta</div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn sm" id="det-edit-btn" onclick="editarOpp()" style="display:none">Editar</button>
-        <button class="btn sm verde" id="det-fu-btn" onclick="openFollowUpModal()" style="display:none">+ Follow-up</button>
+        <button class="btn sm filled" id="det-edit-btn" onclick="editarOpp()" style="display:none">Editar</button>
+        <button class="btn sm az" id="det-fu-btn" onclick="openFollowUpModal()" style="display:none">+ Follow-up</button>
         <button class="btn sm tc" id="det-del-btn" onclick="excluirOpp()" style="display:none" title="Excluir oportunidade permanentemente">Excluir</button>
         <span class="modal-x" onclick="closeM('modal-detail')">×</span>
       </div>
@@ -1504,6 +1529,17 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
+<!-- ═══════════ PAINEL LATERAL: FECHAMENTOS DO ANO ══════════════════ -->
+<div class="side-panel-bg" id="sp-fechamentos-bg" onclick="if(event.target===this)fecharPainelFechamentosAno()">
+  <div class="side-panel">
+    <div class="side-panel-hd">
+      <div class="side-panel-title" id="sp-fechamentos-title">Fechamentos do ano</div>
+      <span class="modal-x" onclick="fecharPainelFechamentosAno()">×</span>
+    </div>
+    <div class="side-panel-body" id="sp-fechamentos-body"></div>
+  </div>
+</div>
+
 <!-- ═══════════ MODAL: APROVAÇÃO DE SUBCONTRATAÇÕES (C13) ══════════ -->
 <div class="modal-bg" id="modal-subs-aprov">
   <div class="modal">
@@ -1553,6 +1589,14 @@ textarea{resize:vertical;min-height:60px}
         <input type="date" id="fech-data" style="font-size:11px;border:1px solid var(--cinza);padding:4px 8px;font-family:var(--font-ui)"
           value="">
         <span style="font-size:10px;color:#aaa;margin-left:4px">aplicada a todos os serviços incluídos</span>
+      </div>
+
+      <!-- Observação geral do fechamento -->
+      <div style="padding:0 16px 12px">
+        <div class="fgroup">
+          <label>Observação do fechamento (opcional)</label>
+          <textarea id="fech-obs-geral" style="min-height:50px" placeholder="Ex: negociado com desconto de 10%, pagamento em 3x, condições especiais..."></textarea>
+        </div>
       </div>
     </div>
     <div class="modal-ft">
@@ -1663,7 +1707,7 @@ window.sb = sb;
 // ═══ SCHEMA REAL DO BANCO ═══════════════════════════
 // oportunidades: id, num_legado, cliente_id, projeto, cidade, uf,
 //   resp_id (UUID→usuarios), pipeline_stage, origem, indicou,
-//   destaque, obs, data_entrada, created_at, updated_at
+//   destaque, obs, obs_fechamento, data_entrada, created_at, updated_at
 // pipeline_stage valores: 'prospecção','enviada','negociacao','fechada','negada','cancelada'
 //
 // produtos: id, oportunidade_id, nucleo, subtipo, area,
@@ -2348,6 +2392,24 @@ function oppValorAdicionais(op, fechado=false){
   const repVal=repArr.reduce((s,r)=>s+(+r?.valorRep||0),0);
   return subsVal+despVal+repVal;
 }
+// Detalha os custos vinculados ao fechamento (subcontratações, despesas indiretas, repasse
+// comercial) já normalizados em {label,valor} — usado na área de Fechamento do detalhe.
+// Prioriza opp_custos materializados (respeita incluso_fechamento); cai para os arrays
+// brutos da proposta calc em oportunidades fechadas antes da materialização existir.
+function getCustosFechamento(op){
+  if(op._custos?.length){
+    const incluidos=op._custos.filter(c=>c.incluso_fechamento!==false);
+    const porTipo=t=>incluidos.filter(c=>c.tipo===t).map(c=>({label:c.descricao||'—',valor:+c.valor_fechado||+c.valor_calculado||0}));
+    return { subs:porTipo('subcontratacao'), despesas:porTipo('despesa_indireta'), repasses:porTipo('repasse') };
+  }
+  const lp=op._proposal;
+  if(!lp)return {subs:[],despesas:[],repasses:[]};
+  const subs=(lp.subs||[]).map(s=>({label:[s.serv,s.emp].filter(Boolean).join(' — ')||'Subcontratação',valor:(+s.val||0)*(1+(+s.bit||0)/100)*(1+(+s.ret||0)/100)}));
+  const despesas=(lp.desps||[]).filter(d=>d.tipo!=='horasTec').map(d=>({label:[DESP_LABELS[d.tipo]||d.tipo,d.desc||d.cidade].filter(Boolean).join(' — '),valor:calcDespValor(d)*(1+(+lp.despbit||0)/100)}));
+  const repArr=Array.isArray(lp.repasse)?lp.repasse:(lp.repasse?[lp.repasse]:[]);
+  const repasses=repArr.filter(r=>r&&(r.nome||r.valorRep)).map(r=>({label:r.nome||'Repasse comercial',valor:+r.valorRep||0}));
+  return {subs,despesas,repasses};
+}
 // Valor efetivo EXP = valor que compete à EXP (exclui repasses, subcontratações e despesas)
 // Se a opp tem proposta vinculada: usa `total` da proposta calculadora (já é o valor EXP líquido)
 // Fallback: soma valor_calculado dos produtos (campo preenchido pela calc ao importar)
@@ -2448,6 +2510,7 @@ function isExpiredOp(op){
 
 // ═══ DASHBOARD ══════════════════════════════════════
 let chartMensal=null, chartCaptadas=null, chartTipo=null, dashTipoMode='nucleo';
+let _dashFechAnoCache=[], _dashFechAnoCacheAno='';
 let _dashRecFech=[], _dashRecNeg=[], _dashFechExpanded=false, _dashNegExpanded=false;
 function setDashTipoMode(m){dashTipoMode=m;renderDash();}
 
@@ -2586,6 +2649,8 @@ function renderDash(){
 
   // Ticket médio e tempo médio de ciclo
   const fechAno = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||'').startsWith(anoStr));
+  // Cache para o painel lateral de drill-down do card "Fechamentos no ano"
+  _dashFechAnoCache = fechAno; _dashFechAnoCacheAno = anoStr;
   const ticket = fechAno.length ? Math.round(fechAno.reduce((s,o)=>s+oppValorEfetivo(o,true),0)/fechAno.length) : 0;
   const ciclos = fechAno.filter(o=>o.data_entrada&&oppDataFechamento(o))
     .map(o=>Math.round((new Date(oppDataFechamento(o))-new Date(o.data_entrada))/86400000));
@@ -2788,7 +2853,7 @@ function renderDash(){
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td>
-      <td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o))}</td>
+      <td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o)+oppValorAdicionais(o,true))}</td>
     </tr>`;
   }
   function rowNeg(o){
@@ -2829,7 +2894,7 @@ function renderDash(){
 function toggleDash45d(foco){
   const thFech=`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead>`;
   const thNeg =`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Proposto</th></tr></thead>`;
-  const _rF=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td><td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o))}</td></tr>`;
+  const _rF=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td><td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o)+oppValorAdicionais(o,true))}</td></tr>`;
   const _rN=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(o.updated_at)}</td><td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorProposto(o))}</td></tr>`;
   if(foco==='fech'){
     _dashFechExpanded=!_dashFechExpanded;
@@ -3747,7 +3812,9 @@ function showBoasVindas(){
 
   const cut45=new Date();cut45.setDate(cut45.getDate()-45);
   const rec45=allOps.filter(o=>(isFechada(o)||isNegada(o))&&(oppDataFechamento(o)||o.updated_at)&&new Date(oppDataFechamento(o)||o.updated_at)>=cut45);
-  const vF45=rec45.filter(o=>isFechada(o)).reduce((s,o)=>s+oppValorFechado(o),0);
+  // Valor integral do fechamento — inclui subcontratações, despesas indiretas e repasse comercial
+  const vOppFech=o=>oppValorFechado(o)+oppValorAdicionais(o,true);
+  const vF45=rec45.filter(o=>isFechada(o)).reduce((s,o)=>s+vOppFech(o),0);
 
   let html='';
   if(!currentUser.viewer_only){
@@ -3762,7 +3829,7 @@ function showBoasVindas(){
   html+=`<div class="bv-section"><div class="bv-title">Fechamentos e negativas — 45 dias</div>
     ${rec45.slice(0,6).map(o=>`<div class="bv-item">
       <span>${escHtml(o._cliente?.nome||'—')} <span class="badge ${isFechada(o)?'b-vd':'b-tc'}" style="font-size:7px">${stageLabel(o.pipeline_stage)}</span></span>
-      <span style="font-family:var(--font-mono);color:${isFechada(o)?'var(--verde)':'var(--terracota)'}">${fmt(isFechada(o)?oppValorFechado(o):oppValorProposto(o))}</span>
+      <span style="font-family:var(--font-mono);color:${isFechada(o)?'var(--verde)':'var(--terracota)'}">${fmt(isFechada(o)?vOppFech(o):oppValorProposto(o))}</span>
     </div>`).join('')||'<div style="font-size:11px;color:#aaa">Nenhum no período.</div>'}
     <div class="bv-item" style="margin-top:4px;padding-top:8px;border-top:1px solid var(--cinza2)">
       <span style="font-weight:600">Total fechado</span>
@@ -3771,6 +3838,37 @@ function showBoasVindas(){
   </div>`;
   document.getElementById('bv-body').innerHTML=html;
   openM('modal-bv');
+}
+
+// ═══ PAINEL LATERAL — FECHAMENTOS DO ANO (drill-down do card do dashboard) ═══
+function abrirPainelFechamentosAno(){
+  const lista=(_dashFechAnoCache||[]).slice().sort((a,b)=>(oppDataFechamento(b)||'').localeCompare(oppDataFechamento(a)||''));
+  document.getElementById('sp-fechamentos-title').textContent=`Fechamentos de ${_dashFechAnoCacheAno||new Date().getFullYear()}`;
+  const total=lista.reduce((s,o)=>s+oppValorFechado(o)+oppValorAdicionais(o,true),0);
+  const body=document.getElementById('sp-fechamentos-body');
+  if(!lista.length){
+    body.innerHTML='<div class="empty-note">Nenhum fechamento no ano.</div>';
+  } else {
+    body.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 12px;margin-bottom:6px;border-bottom:1px solid var(--cinza2)">
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999">${lista.length} fechamento${lista.length===1?'':'s'}</span>
+        <span style="font-size:14px;font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmt(total)}</span>
+      </div>` +
+      lista.map(o=>{
+        const valor=oppValorFechado(o)+oppValorAdicionais(o,true);
+        return`<div class="sp-item" style="cursor:pointer" onclick="fecharPainelFechamentosAno();abrirDetail('${escJsStr(o.id)}')">
+          <div style="min-width:0;flex:1">
+            <div class="sp-item-cliente">${escHtml(o._cliente?.nome||'—')}</div>
+            ${o.projeto?`<div class="sp-item-proj">${escHtml(o.projeto)}</div>`:''}
+          </div>
+          <div class="sp-item-data">${fmtD(oppDataFechamento(o))}</div>
+          <div class="sp-item-valor">${fmt(valor)}</div>
+        </div>`;
+      }).join('');
+  }
+  document.getElementById('sp-fechamentos-bg').classList.add('open');
+}
+function fecharPainelFechamentosAno(){
+  document.getElementById('sp-fechamentos-bg').classList.remove('open');
 }
 
 // ═══ NAV ════════════════════════════════════════════
@@ -4604,6 +4702,7 @@ async function abrirFechamento(oppId) {
   document.getElementById('fech-opp-title').textContent =
     `Fechar oportunidade — ${op.projeto || op._cliente?.nome || oppId}`;
   document.getElementById('fech-data').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fech-obs-geral').value = op.obs_fechamento || '';
 
   // Carrega opp_custos desta oportunidade (subs/desps/repasse)
   const { data: custos, error: cErr } = await sb.from('opp_custos')
@@ -4845,6 +4944,10 @@ async function confirmarFechamento() {
   } else {
     await autoUpdateOppStage(_fechOppId);
   }
+
+  // ── Observação geral do fechamento ──
+  const obsFechGeral = document.getElementById('fech-obs-geral')?.value.trim() || null;
+  await sb.from('oportunidades').update({ obs_fechamento: obsFechGeral }).eq('id', _fechOppId);
 
   // ── Integração com Financeiro ──
   let _finRascunhoCriado = false;
@@ -5205,16 +5308,17 @@ function abrirDetail(oppId){
 
   // Barra de ações: mostra todos os 4 estágios exceto o atual
   if(canEdit && isOpen){
+    // Cores alinhadas às tarjas do kanban: Lead=azul, Orçamento ativo=ouro, Negociação=roxo
     const _pipeStages=[
-      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Lead'},
-      {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo'},
-      {key:'negociacao',vals:['negociacao','negociação'],label:'Negociação'},
+      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Lead',cls:'az'},
+      {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo',cls:'am'},
+      {key:'negociacao',vals:['negociacao','negociação'],label:'Negociação',cls:'roxo'},
     ];
     html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
       <span style="font-size:9px;color:#bbb;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Mover para:</span>`;
     _pipeStages.forEach(s=>{
       if(s.vals.includes(stage))return;
-      html+=`<button class="btn sm" onclick="abrirAcaoOpp('${s.key}')">${s.label}</button>`;
+      html+=`<button class="btn sm ${s.cls}" onclick="abrirAcaoOpp('${s.key}')">${s.label}</button>`;
     });
     if(op._produtos.length>0||op._proposal?.items?.length>0)
       html+=`<button class="btn sm verde" onclick="abrirFechamento('${escJsStr(oppId)}')">✓ Fechar oportunidade</button>`;
@@ -5248,6 +5352,32 @@ function abrirDetail(oppId){
       ${op.resp_cliente_email?`<a href="mailto:${escAttr(op.resp_cliente_email)}" style="font-size:10px;color:var(--azul)">${escHtml(op.resp_cliente_email)}</a>`:''}
     </div></div>`:''}
   </div>`;
+
+  // ═══ ÁREA DE FECHAMENTO — só para oportunidades fechadas ═══
+  // Consolida valor total, valor por produto, despesas indiretas e repasse comercial
+  // incluídos no fechamento, além da observação registrada no momento de fechar.
+  if(isFechada(op)){
+    const _custosFech=getCustosFechamento(op);
+    const _produtosFech=op._produtos.filter(p=>p.status==='fechado');
+    const _valorTotalFech=oppValorFechado(op)+oppValorAdicionais(op,true);
+    const _fechSecao=(titulo,itens)=>!itens.length?'':`
+      <div class="ms-title" style="color:var(--verde);border-bottom-color:rgba(62,120,88,.3);margin:10px 0 5px">${titulo}</div>
+      ${itens.map(it=>`<div class="dr" style="border-color:rgba(62,120,88,.2)">
+        <div class="dk" style="background:transparent">${escHtml(it.label)}</div>
+        <div class="dv" style="font-family:var(--font-mono);font-weight:600;text-align:right">${fmt(it.valor)}</div>
+      </div>`).join('')}`;
+    html+=`<div class="ms" style="border:1px solid var(--verde);border-radius:var(--radius-card,8px);padding:12px 14px;background:var(--verde-bg,#EAF5EE)">
+      <div class="ms-title" style="color:var(--verde);border-bottom-color:rgba(62,120,88,.3)">✓ Fechamento${oppDataFechamento(op)?` — ${fmtD(oppDataFechamento(op))}`:''}</div>
+      <div class="dk" style="background:transparent;padding:0;margin-bottom:2px">Valor total do fechamento</div>
+      <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color:var(--verde);margin-bottom:8px">${fmt(_valorTotalFech)}</div>
+      ${_fechSecao('Por produto', _produtosFech.map(p=>({label:SUBTIPO_LABEL[p.subtipo]||p.subtipo||'Serviço',valor:+p.valor_fechado||0})))}
+      ${_fechSecao('Despesas indiretas', _custosFech.despesas)}
+      ${_fechSecao('Repasse comercial', _custosFech.repasses)}
+      ${_fechSecao('Subcontratações', _custosFech.subs)}
+      ${op.obs_fechamento?`<div class="ms-title" style="color:var(--verde);border-bottom-color:rgba(62,120,88,.3);margin-top:10px">Observação do fechamento</div>
+      <div class="dv" style="white-space:pre-wrap">${escHtml(op.obs_fechamento)}</div>`:''}
+    </div>`;
+  }
 
   // Produtos / Serviços — vínculo direto com exp_proposals (sem copiar para tabela produtos)
   const _lp = op._proposal;
@@ -5309,11 +5439,9 @@ function abrirDetail(oppId){
       </div>`;
     });
     const _totalProp=_useCalc?_calcItens.reduce((s,p)=>s+(+p.valor_proposto||0),0):vProp;
-    html+=`<div class="dr" style="margin-top:4px"><div class="dk">Total proposta</div><div class="dv" style="font-weight:700;font-family:var(--font-mono)">${fmt(_totalProp)}</div></div>`;
-    if(!_useCalc&&vFch){
-      const _adicFch=isFechada(op)?oppValorAdicionais(op,true):0;
+    html+=`<div class="dr" style="margin-top:4px"><div class="dk">Proposta original</div><div class="dv" style="color:#aaa;font-size:10px;font-family:var(--font-mono)">${fmt(_totalProp)}</div></div>`;
+    if(!_useCalc&&vFch&&!isFechada(op)){
       html+=`<div class="dr"><div class="dk">Total fechado (serviços)</div><div class="dv" style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmt(vFch)}</div></div>`;
-      if(_adicFch)html+=`<div class="dr"><div class="dk">Total geral (c/ adicionais)</div><div class="dv" style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmt(vFch+_adicFch)}</div></div>`;
     }
     html+=`</div>`;
     // Custos vinculados (subs/desps/repasse) — inline, sem async
@@ -5383,7 +5511,8 @@ function abrirDetail(oppId){
   }
 
   // Custos vinculados (subs/despesas/repasse materializados em opp_custos) — caso não-calc
-  if(!_useCalc && op._custos?.length){
+  // (quando já fechada, essa informação já aparece consolidada na Área de Fechamento acima)
+  if(!_useCalc && !isFechada(op) && op._custos?.length){
     const TIPO_LABEL_DET={ subcontratacao:'Subcontratação', despesa_indireta:'Despesa', repasse:'Repasse' };
     let ch=`<div class="ms"><div class="ms-title">Custos vinculados</div>`;
     op._custos.forEach(c=>{
