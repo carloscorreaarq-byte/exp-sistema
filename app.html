@@ -485,6 +485,27 @@ body {
 .prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
 .prio-hub-prazo.sem-prazo { border-style: dashed; color: #999; }
 [data-theme="dark"] .prio-hub-prazo.sem-prazo { color: #7A776E; }
+
+/* ── Prioridades coletivas — carrossel de 4 colunas ─────────── */
+.pmhub-wrap  { display: flex; align-items: stretch; gap: 8px; }
+.pmhub-track {
+  display: grid; grid-auto-flow: column; grid-auto-columns: calc(25% - 6px);
+  gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+  flex: 1; min-width: 0; padding-bottom: 2px; align-items: stretch;
+}
+.pmhub-track::-webkit-scrollbar { height: 4px; }
+.pmhub-track .prio-hub-card {
+  scroll-snap-align: start; margin-bottom: 0; min-height: 92px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.pmhub-nav {
+  flex-shrink: 0; width: 26px; align-self: center; border: 1px solid var(--cinza);
+  background: var(--branco); border-radius: 50%; cursor: pointer;
+  align-items: center; justify-content: center; color: #888; font-size: 14px;
+  transition: border-color .12s, color .12s;
+}
+.pmhub-nav:hover { border-color: var(--grafite); color: var(--grafite); }
+@media (max-width: 860px) { .pmhub-track { grid-auto-columns: calc(70% - 6px); } }
 /* cores do card definidas via inline style no buildCard (semafórico) */
 
 /* ── EMPTY STATE INLINE ──────────────────────────────────── */
@@ -3717,7 +3738,7 @@ function renderPriosSection(prios) {
   const pendentes  = prios.filter(p => !p.concluida);
   const concluidas = prios.filter(p =>  p.concluida);
   const total = prios.length;
-  const lbl = `Prioridades${total ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">${pendentes.length} em aberto</span>` : ''}`;
+  const lbl = `Prioridades pessoais${total ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">${pendentes.length} em aberto</span>` : ''}`;
 
   if (!total) return `
     <div class="dash-sec">
@@ -3779,7 +3800,8 @@ function renderPriosSection(prios) {
    visíveis para todos aqui. Concluir aqui grava direto em etapas
    (mesma fonte usada no controle de fluxo de projetos), sem estado
    de conclusão próprio. ──────────────────────────────────────── */
-const _PM_MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const _PM_MESES_ABR  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const _PM_MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function _hubPmStatus(mesISO, etapaStatus) {
   if (etapaStatus === 'concluida') return { cls: 'done', label: 'Concluída' };
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -3793,15 +3815,19 @@ function _hubPmStatus(mesISO, etapaStatus) {
 }
 
 function renderPriosMesSection(itensMes) {
-  const lbl = `Prioridades do mês${itensMes.length ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">${itensMes.length}</span>` : ''}`;
+  const mesAtualNome = _PM_MESES_FULL[new Date().getMonth()];
+  const lbl = `Prioridades coletivas <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">· ${mesAtualNome}${itensMes.length ? ` · ${itensMes.length}` : ''}</span>`;
   if (!itensMes.length) return `
-    <div class="dash-sec" style="margin-top:14px">
+    <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
-      <div class="dash-empty" style="border:1px solid var(--cinza2);border-radius:var(--radius-card)">Nenhuma prioridade do mês cadastrada</div>
+      <div class="dash-empty" style="border:1px solid var(--cinza2);border-radius:var(--radius-card)">Nenhuma prioridade coletiva cadastrada</div>
     </div>`;
 
-  const pendentes  = itensMes.filter(it => it.etapas?.status !== 'concluida');
-  const concluidas = itensMes.filter(it => it.etapas?.status === 'concluida');
+  // Concluídas ficam no fim da mesma faixa (sem divisor — não cabe num carrossel horizontal)
+  const ordenados = [
+    ...itensMes.filter(it => it.etapas?.status !== 'concluida'),
+    ...itensMes.filter(it => it.etapas?.status === 'concluida'),
+  ];
 
   function card(it) {
     const etapa = it.etapas || {};
@@ -3831,13 +3857,22 @@ function renderPriosMesSection(itensMes) {
       </div>`;
   }
 
+  const navDisplay = ordenados.length > 4 ? 'flex' : 'none';
   return `
-    <div class="dash-sec" style="margin-top:14px">
+    <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
-      ${pendentes.map(card).join('')}
-      ${concluidas.length ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc;margin:10px 0 5px">Concluídas</div>` : ''}
-      ${concluidas.map(card).join('')}
+      <div class="pmhub-wrap">
+        <button class="pmhub-nav" style="display:${navDisplay}" onclick="pmhubScroll(-1)" title="Anteriores">‹</button>
+        <div class="pmhub-track" id="pmhub-track">${ordenados.map(card).join('')}</div>
+        <button class="pmhub-nav" style="display:${navDisplay}" onclick="pmhubScroll(1)" title="Próximas">›</button>
+      </div>
     </div>`;
+}
+
+function pmhubScroll(dir) {
+  const track = document.getElementById('pmhub-track');
+  if (!track) return;
+  track.scrollBy({ left: dir * track.clientWidth, behavior: 'smooth' });
 }
 
 /* ── Calendário: estado de visualização ───────────────────── */
@@ -4009,7 +4044,8 @@ function wireDashboardDom() {
 function renderDashboard(data) {
   const { tarefas, tarefasAtribuidas, eventos, prios, priosMes, horasSemana, eventDays, taskDays, feriadoDays } = data;
 
-  const colPrio = renderPriosSection(prios) + renderPriosMesSection(priosMes || []);
+  const colPrioMes = renderPriosMesSection(priosMes || []);
+  const colPrio = renderPriosSection(prios);
   const colMain = renderTasksSection(tarefas, _filtrarAtribuidas(tarefasAtribuidas));
 
   /* Eventos compactos em view mês para dar espaço ao calendário */
@@ -4030,7 +4066,7 @@ function renderDashboard(data) {
     </div>`;
 
   document.getElementById('app-dashboard').innerHTML =
-    `<div>${colPrio}</div><div>${colMain}</div><div>${colSide}</div>`;
+    `<div style="grid-column:1/-1">${colPrioMes}</div><div>${colPrio}</div><div>${colMain}</div><div>${colSide}</div>`;
   wireDashboardDom();
 }
 
