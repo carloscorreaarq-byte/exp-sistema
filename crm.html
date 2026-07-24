@@ -226,7 +226,7 @@ textarea{resize:vertical;min-height:60px}
 .pcard-menu{position:fixed;background:var(--branco);border:1px solid var(--cinza);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);z-index:9999;min-width:160px;padding:4px 0;display:none}
 .pcard-menu.open{display:block}
 .pcard-menu-item{display:block;width:100%;text-align:left;background:none;border:none;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--grafite);white-space:nowrap}
-.pcard-menu-item:hover{background:var(--cinza-bg,#f5f5f5)}
+.pcard-menu-item:hover{background:var(--off)}
 .pcard-menu-item.danger{color:var(--terracota)}
 .pcard-menu-sep{height:1px;background:var(--cinza);margin:4px 0}
 .kcol-dupla{flex-direction:column}
@@ -302,6 +302,12 @@ textarea{resize:vertical;min-height:60px}
 .cont-body.open{display:block}
 .pessoa-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--cinza2);font-size:11px}
 .pessoa-row:last-child{border-bottom:none}
+.contato-dup-group{margin:6px 0;padding:6px 10px;border:1px solid rgba(184,86,56,.35);background:var(--tc-bg);border-radius:var(--radius-input,6px)}
+.contato-dup-group .pessoa-row{border-bottom-color:rgba(184,86,56,.2)}
+.contato-dup-hd{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;color:var(--terracota);padding:2px 0 6px}
+.ct-dup-btn{position:relative}
+.ct-dup-btn.on{background:var(--tc-bg);border-color:var(--terracota);color:var(--terracota)}
+.ct-dup-badge{font-size:9px;font-weight:700;background:var(--terracota);color:#fff;border-radius:8px;padding:0 5px;margin-left:4px}
 
 /* TOAST */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--grafite);color:#fff;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.3px;z-index:999;opacity:0;transition:opacity var(--transition-normal);border-radius:var(--radius-input,6px)}
@@ -630,14 +636,14 @@ textarea{resize:vertical;min-height:60px}
         <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
           <div class="card-title" style="flex:1;min-width:120px">Oportunidades captadas — ano corrente</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
-            <select id="dash-nucleo" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px);background:var(--branco)">
+            <select id="dash-nucleo" onchange="crmSincronizarFiltros('dash-nucleo');renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px);background:var(--branco)">
               <option value="todos">Todos núcleos</option>
               <option value="Paisagismo">Paisagismo</option>
               <option value="Urbanismo">Urbanismo</option>
               <option value="Consultorias">Consultorias</option>
               <option value="Projetos Especiais">Proj. Especiais</option>
             </select>
-            <select id="dash-resp" onchange="renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px);background:var(--branco)">
+            <select id="dash-resp" onchange="crmSincronizarFiltros('dash-resp');renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px);background:var(--branco)">
               <option value="todos">Todos resp.</option>
             </select>
           </div>
@@ -731,12 +737,12 @@ textarea{resize:vertical;min-height:60px}
   <!-- Cada campo alinhado com a coluna correspondente do kanban abaixo (mesmo grid 4x1fr) -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
     <input id="pf-busca" type="text" placeholder="Buscar cliente, projeto, nº, cidade..." oninput="renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
-    <select id="pf-resp" onchange="renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+    <select id="pf-resp" onchange="crmSincronizarFiltros('pf-resp');renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="todos">Todos resp.</option>
       <option value="Carlos">Carlos</option>
       <option value="Gabriela">Gabriela</option>
     </select>
-    <select id="pf-nucleo" onchange="renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+    <select id="pf-nucleo" onchange="crmSincronizarFiltros('pf-nucleo');renderPipe()" style="width:100%;font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="todos">Todos núcleos</option>
       <option value="Urbanismo">Urbanismo</option>
       <option value="Paisagismo">Paisagismo</option>
@@ -787,11 +793,11 @@ textarea{resize:vertical;min-height:60px}
 <!-- ═══ ORÇAMENTOS ═══════════════════════════════════════════════ -->
 <div class="page" id="tab-orc">
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:nowrap;overflow-x:auto">
-    <select id="of-ano" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;font-weight:700;border:1px solid var(--cinza)">
+    <select id="of-ano" onchange="crmSincronizarFiltros('of-ano');renderOrc()" style="font-size:10px;padding:4px 7px;font-weight:700;border:1px solid var(--cinza)">
       <option value="todos">Todos anos</option>
       <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
     </select>
-    <select id="of-nucleo" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+    <select id="of-nucleo" onchange="crmSincronizarFiltros('of-nucleo');renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="todos">Todos núcleos</option>
       <option value="Urbanismo">Urbanismo</option>
       <option value="Paisagismo">Paisagismo</option>
@@ -807,7 +813,7 @@ textarea{resize:vertical;min-height:60px}
       <option value="Cancelado">Cancelado</option>
       <option value="Expirado">Expirado</option>
     </select>
-    <select id="of-resp" onchange="renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
+    <select id="of-resp" onchange="crmSincronizarFiltros('of-resp');renderOrc()" style="font-size:10px;padding:4px 7px;border:1px solid var(--cinza)">
       <option value="todos">Todos resp.</option>
       <option value="Carlos">Carlos</option>
       <option value="Gabriela">Gabriela</option>
@@ -856,6 +862,7 @@ textarea{resize:vertical;min-height:60px}
       <option value="Inativo">Inativo</option>
       <option value="Prospecção">Prospecção</option>
     </select>
+    <button class="btn sm ghost ct-dup-btn" id="ct-dup-toggle" onclick="toggleCtDupFilter()">⚠ Duplicados<span class="ct-dup-badge" id="ct-dup-badge" style="display:none"></span></button>
     <div style="margin-left:auto;font-size:10px;color:#888" id="ct-total"></div>
   </div>
   <div id="contatos-list"><div class="loading">Carregando...</div></div>
@@ -873,11 +880,11 @@ textarea{resize:vertical;min-height:60px}
     <div class="card verde">
       <div class="card-hdr" style="gap:6px">
         <div class="card-title" style="flex:1">Fechamentos por tipo</div>
-        <select id="ff-ano" onchange="renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
+        <select id="ff-ano" onchange="crmSincronizarFiltros('ff-ano');renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
           <option value="todos">Todos anos</option>
           <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
         </select>
-        <select id="ff-resp" onchange="renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
+        <select id="ff-resp" onchange="crmSincronizarFiltros('ff-resp');renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
           <option value="todos">Todos resp.</option>
         </select>
       </div>
@@ -911,11 +918,11 @@ textarea{resize:vertical;min-height:60px}
     <div class="card tc">
       <div class="card-hdr" style="gap:6px">
         <div class="card-title" style="flex:1">Por categoria</div>
-        <select id="nf-ano" onchange="renderNegativas()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
+        <select id="nf-ano" onchange="crmSincronizarFiltros('nf-ano');renderNegativas()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
           <option value="todos">Todos anos</option>
           <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
         </select>
-        <select id="nf-resp" onchange="renderNegativas()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
+        <select id="nf-resp" onchange="crmSincronizarFiltros('nf-resp');renderNegativas()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
           <option value="todos">Todos resp.</option>
         </select>
       </div>
@@ -991,10 +998,10 @@ textarea{resize:vertical;min-height:60px}
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="alc-resp" onchange="renderAlcance()" style="flex:1;font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px">
+        <select id="alc-resp" onchange="crmSincronizarFiltros('alc-resp');renderAlcance()" style="flex:1;font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px">
           <option value="todos">Todos resp.</option>
         </select>
-        <select id="alc-ano" onchange="renderAlcance()" style="font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px;width:80px">
+        <select id="alc-ano" onchange="crmSincronizarFiltros('alc-ano');renderAlcance()" style="font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px;width:80px">
           <option value="todos">Todos</option>
           <option value="2026">2026</option>
           <option value="2025">2025</option>
@@ -1043,7 +1050,7 @@ textarea{resize:vertical;min-height:60px}
       <option value="quadrimestral">Quadrimestral</option>
       <option value="mensal">Mensal</option>
     </select>
-    <select id="rf-ano" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
+    <select id="rf-ano" onchange="crmSincronizarFiltros('rf-ano');renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
       <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
     </select>
     <select id="rf-mes-ini" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco);display:none">
@@ -1052,14 +1059,14 @@ textarea{resize:vertical;min-height:60px}
       <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
       <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
     </select>
-    <select id="rf-nucleo" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
+    <select id="rf-nucleo" onchange="crmSincronizarFiltros('rf-nucleo');renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
       <option value="todos">Todos núcleos</option>
       <option value="Paisagismo">Paisagismo</option>
       <option value="Urbanismo">Urbanismo</option>
       <option value="Consultorias">Consultorias</option>
       <option value="Projetos Especiais">Proj. Especiais</option>
     </select>
-    <select id="rf-resp" onchange="renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
+    <select id="rf-resp" onchange="crmSincronizarFiltros('rf-resp');renderRelatorios()" style="font-size:10px;padding:4px 8px;border:1px solid var(--cinza);border-radius:var(--radius-badge,4px);background:var(--branco)">
       <option value="todos">Todos resp.</option>
     </select>
     <div id="rel-periodo-label" style="margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--azul)"></div>
@@ -1504,7 +1511,17 @@ textarea{resize:vertical;min-height:60px}
     </div>
     <div class="modal-body">
       <div id="fu-hist" style="margin-bottom:14px;max-height:210px;overflow-y:auto"></div>
-      <div class="fg fg2 mb8">
+      <div class="fg fg3 mb8">
+        <div class="fgroup"><label>Tipo</label>
+          <select id="fu-tipo">
+            <option value="ligacao">📞 Ligação</option>
+            <option value="reuniao">🤝 Reunião</option>
+            <option value="email">✉️ E-mail</option>
+            <option value="whatsapp">💬 WhatsApp</option>
+            <option value="visita">📍 Visita</option>
+            <option value="outro">📝 Outro</option>
+          </select>
+        </div>
         <div class="fgroup"><label>Data do contato</label><input type="date" id="fu-data"></div>
         <div class="fgroup"><label>Próximo contato</label><input type="date" id="fu-next"></div>
       </div>
@@ -1513,6 +1530,24 @@ textarea{resize:vertical;min-height:60px}
     <div class="modal-ft">
       <button class="btn" onclick="closeM('modal-fu')">Cancelar</button>
       <button class="btn verde" onclick="salvarFU()">Salvar follow-up</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL: MESCLAR CONTATOS ═══════════════════════════ -->
+<div class="modal-bg" id="modal-merge-contato">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title">Mesclar contatos duplicados</div>
+      <span class="modal-x" onclick="closeM('modal-merge-contato')">×</span>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11px;color:#888;margin-bottom:10px">Escolha qual valor manter em cada campo. Os demais registros serão excluídos.</div>
+      <div id="merge-contato-body"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeM('modal-merge-contato')">Cancelar</button>
+      <button class="btn verde" onclick="confirmarMergeContatos()">Mesclar</button>
     </div>
   </div>
 </div>
@@ -1792,14 +1827,19 @@ const ESTAGIO_BADGE_PROD = {
   'fechado':'b-vd','negado':'b-tc','cancelado':'b-tc',
   'inativo':'b-gr','pausado':'b-gr',
 };
-// Cores canônicas para gráficos — fonte única de verdade
-const CHART_CORES = {
-  Urbanismo:      '#5280CA',
-  Paisagismo:     '#45865D',
-  Consultorias:   '#C36247',
-  'Projetos Especiais': '#D19931',
-  Total:          '#1D4FA0',
-};
+// Cores canônicas para gráficos — resolvidas a partir das variáveis CSS (:root),
+// para não duplicar hex fixo fora da identidade visual e acompanhar tema claro/escuro.
+function _cssVar(nome){ return getComputedStyle(document.documentElement).getPropertyValue(nome).trim(); }
+function getChartCores(){
+  return {
+    Urbanismo:      _cssVar('--urb')    || '#5280CA',
+    Paisagismo:     _cssVar('--pai-hor')|| '#45865D',
+    Consultorias:   _cssVar('--consul') || '#C36247',
+    'Projetos Especiais': _cssVar('--esp') || '#D19931',
+    Total:          _cssVar('--azul')   || '#4A72B5',
+  };
+}
+const CHART_CORES = new Proxy({}, { get:(_,prop)=>getChartCores()[prop] });
 
 // ═══ UTILITÁRIOS ════════════════════════════════════
 function fmt(v){if(!v&&v!==0)return'—';return'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -1934,9 +1974,12 @@ function renderOrigensChart(fechadas, anoStr){
   fechadas.forEach(op=>{
     const g = origMode==='completo' ? (op.origem||'—') : origGroup(op.origem);
     origMapQtd[g]=(origMapQtd[g]||0)+1;
-    op._produtos.filter(p=>p.data_fechamento?.startsWith(anoStr)&&p.status==='fechado').forEach(p=>{
+    const prodsFechAno=op._produtos.filter(p=>p.data_fechamento?.startsWith(anoStr)&&p.status==='fechado');
+    prodsFechAno.forEach(p=>{
       origMapRs[g]=(origMapRs[g]||0)+(+p.valor_fechado||0);
     });
+    // Adicionais (subs/despesas/repasse) contam uma única vez por oportunidade, não por produto
+    if(prodsFechAno.length) origMapRs[g]=(origMapRs[g]||0)+oppValorAdicionais(op,true);
   });
   const map = origValMode==='qtd' ? origMapQtd : origMapRs;
   const maxO=Math.max(...Object.values(map),1);
@@ -1995,12 +2038,12 @@ function renderValorPropostas(){
   const mediaT=tempos.length?Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length):null;
 
   // Valores
-  const vAtivo=ativas.reduce((s,op)=>s+oppValorProposto(op),0);
-  const vTotal=ops.reduce((s,op)=>s+oppValorProposto(op),0);
+  const vAtivo=ativas.reduce((s,op)=>s+oppValorTotal(op),0);
+  const vTotal=ops.reduce((s,op)=>s+oppValorTotal(op),0);
   const vEfetivoFech=fechadas.reduce((s,op)=>s+oppValorEfetivo(op,true),0);
   const vMedioAtivo=ativas.length?vAtivo/ativas.length:0;
   const vMedioEfetivo=fechadas.length?vEfetivoFech/fechadas.length:0;
-  const vArr=ativas.map(o=>oppValorProposto(o)).filter(v=>v>0);
+  const vArr=ativas.map(o=>oppValorTotal(o)).filter(v=>v>0);
   const vMin=vArr.length?Math.min(...vArr):0;
   const vMax=vArr.length?Math.max(...vArr):0;
 
@@ -2023,7 +2066,7 @@ function renderValorPropostas(){
   });
   fechadas.forEach(op=>{
     const g=origGroup(op.origem);
-    origRs[g]=(origRs[g]||0)+oppValorFechado(op);
+    origRs[g]=(origRs[g]||0)+oppValorFechado(op)+oppValorAdicionais(op,true);
   });
   const origKeys=[...new Set([...Object.keys(origRs),...Object.keys(origQtd)])];
   const origEntries=origKeys.map(k=>({k,rs:origRs[k]||0,qtd:origQtd[k]||0})).sort((a,b)=>b.qtd-a.qtd||b.rs-a.rs);
@@ -2035,7 +2078,7 @@ function renderValorPropostas(){
   allOps.filter(o=>isFechada(o)).forEach(op=>{
     if(!op.cliente_id)return;
     if(!clvMap[op.cliente_id])clvMap[op.cliente_id]={nome:op._cliente?.nome||'—',val:0,count:0};
-    clvMap[op.cliente_id].val+=oppValorFechado(op);
+    clvMap[op.cliente_id].val+=oppValorFechado(op)+oppValorAdicionais(op,true);
     clvMap[op.cliente_id].count+=1;
   });
   const topClientes=Object.values(clvMap).sort((a,b)=>b.val-a.val).slice(0,8);
@@ -2392,6 +2435,15 @@ function oppValorAdicionais(op, fechado=false){
   const repVal=repArr.reduce((s,r)=>s+(+r?.valorRep||0),0);
   return subsVal+despVal+repVal;
 }
+// Valor "cheio" da oportunidade — serviços + subcontratações + despesas indiretas +
+// repasse comercial. Usa o valor fechado quando já fechou, ou o proposto/calculado
+// quando ainda está aberta. Regra única de "valor total" para todo o módulo CRM —
+// use esta função (em vez de oppValorProposto/oppValorFechado isolados) em qualquer
+// lugar que mostre o valor total da oportunidade de forma breve/resumida.
+function oppValorTotal(op){
+  if(isFechada(op)) return oppValorFechado(op)+oppValorAdicionais(op,true);
+  return oppValorProposto(op)+oppValorAdicionais(op,false);
+}
 // Detalha os custos vinculados ao fechamento (subcontratações, despesas indiretas, repasse
 // comercial) já normalizados em {label,valor} — usado na área de Fechamento do detalhe.
 // Prioriza opp_custos materializados (respeita incluso_fechamento); cai para os arrays
@@ -2565,7 +2617,7 @@ function renderDashFu(){
         ${past?'<span style="font-size:7px">⚠</span>':''}
       </div>
       <div class="fu-body">
-        <div class="fu-client-row">${escHtml(op._cliente?.nome||'—')}${op.projeto?`<span class="fu-proj-inline">· ${escHtml(op.projeto)}</span>`:''}</div>
+        <div class="fu-client-row">${fuTipoIcon(fu.tipo)} ${escHtml(op._cliente?.nome||'—')}${op.projeto?`<span class="fu-proj-inline">· ${escHtml(op.projeto)}</span>`:''}</div>
         ${obs?`<div class="fu-obs">${escHtml(obs)}</div>`:''}
       </div>
       <div class="fu-right">
@@ -2589,7 +2641,7 @@ function renderDash(){
     const cols = destaques.length===1?'1fr':destaques.length===2?'1fr 1fr':'1fr 1fr 1fr';
     deDiv.innerHTML=`<div style="display:grid;grid-template-columns:${cols};gap:10px">`+
       destaques.map(o=>{
-        const val=oppValorProposto(o);
+        const val=oppValorTotal(o);
         return`<div class="destaque-card" onclick="abrirDetail('${escJsStr(o.id)}')">
           <div class="destaque-card-lbl">★ Destaque</div>
           <div class="destaque-card-cliente">${escHtml(o._cliente?.nome||'—')}</div>
@@ -2622,11 +2674,13 @@ function renderDash(){
   const fechadas = ops.filter(o=>isFechada(o));
   const ativas   = ops.filter(o=>isAtiva(o));
 
-  // fechamentos no ano = valor_fechado dos produtos fechados neste ano (não é faturamento — não reflete o que foi entregue/faturado)
+  // fechamentos no ano = valor_fechado dos produtos fechados neste ano, incluindo
+  // subcontratações/despesas/repasse (não é faturamento — não reflete o que foi entregue/faturado)
   const fatAno = ops.reduce((sum,op)=>{
-    return sum + op._produtos
-      .filter(p=>p.data_fechamento&&p.data_fechamento.startsWith(anoStr)&&p.status==='fechado')
-      .reduce((s,p)=>s+(+p.valor_fechado||0),0);
+    const prodsFechAno = op._produtos
+      .filter(p=>p.data_fechamento&&p.data_fechamento.startsWith(anoStr)&&p.status==='fechado');
+    const valProdutos = prodsFechAno.reduce((s,p)=>s+(+p.valor_fechado||0),0);
+    return sum + valProdutos + (prodsFechAno.length?oppValorAdicionais(op,true):0);
   },0);
   // valor efetivo faturado = usando helper por opp (deduz repasses/subs quando há proposta calc)
   const fatEfetivo = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||'').startsWith(anoStr))
@@ -2634,10 +2688,8 @@ function renderDash(){
 
   // Mesmo critério do total da aba Pipeline: exclui estágio Lead/Prospecção (ainda sem valor de orçamento)
   const ativasPipe = ops.filter(o=>['enviada','ativo','negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase()));
-  const vPipe = ativasPipe.reduce((s,op)=>s+oppValorProposto(op),0);
+  const vPipe = ativasPipe.reduce((s,op)=>s+oppValorTotal(op),0);
   const vPipeEfetivo = ativasPipe.reduce((s,op)=>s+oppValorEfetivo(op,false),0);
-  const vPipeTotal = ops.reduce((s,op)=>s+oppValorProposto(op),0);
-  const fatTotal = ops.reduce((sum,op)=>sum+op._produtos.filter(p=>p.status==='fechado').reduce((s,p)=>s+(+p.valor_fechado||0),0),0);
 
   // 2B — conversão correta: opps abertas em anoStr que têm ao menos 1 produto fechado
   const ops2026 = ops.filter(o=>(o.data_entrada||'').startsWith(anoStr));
@@ -2797,9 +2849,11 @@ function renderDash(){
       tipoMap[key]=(tipoMap[key]||0)+(+p.valor_fechado||0);
     });
   });
-  // Cores: núcleo usa CHART_CORES, outros usam cor do usuário ou paleta fixa
-  const STAGE_CORES={'Fechado Ganho':'#1D9E75','Negada':'#E53935','Perdida':'#FF7043','Cancelada':'#9E9E9E','Fechada':'#2563EB','Em negociação':'#F5A623','Enviada':'#8E44AD','Prospecção':'#607D8B'};
-  const RESP_PALETA=['#5280CA','#45865D','#C36247','#D19931','#8E44AD','#607D8B','#E53935','#FF7043'];
+  // Cores: núcleo usa CHART_CORES, outros usam cor do usuário ou paleta fixa.
+  // Reaproveita os tokens do design system em vez de hex duplicado; "Perdida"/
+  // "Cancelada"/"Prospecção" ficam num cinza neutro por não terem token equivalente.
+  const STAGE_CORES={'Fechado Ganho':_cssVar('--verde'),'Negada':_cssVar('--terracota'),'Perdida':'#FF7043','Cancelada':'#9E9E9E','Fechada':_cssVar('--azul'),'Em negociação':_cssVar('--ouro'),'Enviada':_cssVar('--roxo'),'Prospecção':'#9E9E9E'};
+  const RESP_PALETA=[_cssVar('--urb'),_cssVar('--pai-hor'),_cssVar('--consul'),_cssVar('--esp'),_cssVar('--roxo'),_cssVar('--terracota'),'#607D8B','#FF7043'];
   if(chartTipo)chartTipo.destroy();
   const ctx2=document.getElementById('chart-tipo').getContext('2d');
   const tLabels=Object.keys(tipoMap).sort((a,b)=>tipoMap[b]-tipoMap[a]);
@@ -2862,7 +2916,7 @@ function renderDash(){
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(o.updated_at)}</td>
-      <td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorProposto(o))}</td>
+      <td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorTotal(o))}</td>
     </tr>`;
   }
   const thFech=`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead>`;
@@ -2895,7 +2949,7 @@ function toggleDash45d(foco){
   const thFech=`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead>`;
   const thNeg =`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Proposto</th></tr></thead>`;
   const _rF=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td><td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o)+oppValorAdicionais(o,true))}</td></tr>`;
-  const _rN=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(o.updated_at)}</td><td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorProposto(o))}</td></tr>`;
+  const _rN=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(o.updated_at)}</td><td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorTotal(o))}</td></tr>`;
   if(foco==='fech'){
     _dashFechExpanded=!_dashFechExpanded;
     const items=_dashFechExpanded?_dashRecFech:_dashRecFech.slice(0,5);
@@ -3188,7 +3242,7 @@ function renderPipe(){
   // 3B — função de ordenação aplicada a todos os grupos de cards
   function sortCards(arr){
     if(ordemFil==='valor')
-      return arr.slice().sort((a,b)=>oppValorProposto(b)-oppValorProposto(a));
+      return arr.slice().sort((a,b)=>oppValorTotal(b)-oppValorTotal(a));
     if(ordemFil==='contato')
       return arr.slice().sort((a,b)=>{
         const last=op=>op._followups?.reduce((mx,f)=>f.data_contato>mx?f.data_contato:mx,op.data_entrada||'')||'';
@@ -3221,8 +3275,8 @@ function renderPipe(){
   const fech    = ops.filter(o=>isFechada(o)&&(oppDataFechamento(o)||o.updated_at)&&new Date(oppDataFechamento(o)||o.updated_at)>=cut45);
   const negado  = ops.filter(o=>isNegada(o)&&(oppDataFechamento(o)||o.updated_at)&&new Date(oppDataFechamento(o)||o.updated_at)>=cut45);
 
-  const vOrc=orcAtiv.reduce((s,o)=>s+oppValorEfetivo(o),0);
-  const vNeg=negoc.reduce((s,o)=>s+oppValorEfetivo(o),0);
+  const vOrc=orcAtiv.reduce((s,o)=>s+oppValorTotal(o),0);
+  const vNeg=negoc.reduce((s,o)=>s+oppValorTotal(o),0);
   const vFech=fech.reduce((s,o)=>s+oppValorFechado(o)+oppValorAdicionais(o,true),0);
 
   document.getElementById('k-cnt-p').textContent=prosp.length;
@@ -3236,10 +3290,9 @@ function renderPipe(){
   document.getElementById('pipe-total').textContent=`Pipeline: ${fmt(vOrc+vNeg)}`;
 
   function card(op){
-    const vEff=oppValorEfetivo(op);
-    // Valor integral do fechamento (inclui subcontratações/despesas/repasse) — evita
-    // que o card mostre um total menor do que o efetivamente cobrado do cliente.
-    const vFch=isFechada(op) ? oppValorFechado(op)+oppValorAdicionais(op,true) : oppValorFechado(op);
+    // Valor integral (serviços + subcontratações/despesas/repasse) — mesma regra de
+    // "valor total" usada em todo o CRM, aberta ou fechada.
+    const vTotalCard=oppValorTotal(op);
     const tc=tempClass(op._followups);
     const exp=isExpiredOp(op);
     const dest=op.destaque&&!exp;
@@ -3264,7 +3317,7 @@ function renderPipe(){
       <div class="pcard-top">
         <span class="pcard-code">${isLeadPuro?'LEAD':code}</span>
         <div style="display:flex;align-items:center;gap:4px">
-          ${dest?'<span style="font-size:8px;color:#C4831A;font-weight:700">★</span>':''}
+          ${dest?'<span style="font-size:8px;color:var(--ouro);font-weight:700">★</span>':''}
           <div class="temp ${tc}"></div>
         </div>
       </div>
@@ -3276,7 +3329,7 @@ function renderPipe(){
         ${nucleos.map(n=>tipoBadgeProd(n)).join('')}
         ${respBadge(op.resp_id)}
         ${exp?'<span class="badge b-exp" style="font-size:7px">EXP</span>':''}
-        <span class="pcard-val"${fech?' title="Valor integral (inclui subcontratações, despesas e repasse)"':''}>${fmt(vFch||vEff)}</span>
+        <span class="pcard-val" title="Valor integral (inclui subcontratações, despesas e repasse)">${fmt(vTotalCard)}</span>
       </div>
     </div>`;
   }
@@ -3439,21 +3492,24 @@ function renderOrc(){
 
   ops=ops.slice().sort((a,b)=>{
     let va=a[orcSortKey]||'', vb=b[orcSortKey]||'';
-    if(orcSortKey==='valor_proposto'){va=oppValorProposto(a);vb=oppValorProposto(b);}
-    if(orcSortKey==='valor_fechado'){va=oppValorFechado(a);vb=oppValorFechado(b);}
+    if(orcSortKey==='valor_proposto'){va=oppValorTotal(a);vb=oppValorTotal(b);}
+    if(orcSortKey==='valor_fechado'){
+      va=isFechada(a)?oppValorFechado(a)+oppValorAdicionais(a,true):oppValorFechado(a);
+      vb=isFechada(b)?oppValorFechado(b)+oppValorAdicionais(b,true):oppValorFechado(b);
+    }
     if(typeof va==='string')return va.localeCompare(vb)*orcSortDir;
     return(va-vb)*orcSortDir;
   });
 
-  const soma=ops.reduce((s,o)=>s+oppValorProposto(o),0);
+  const soma=ops.reduce((s,o)=>s+oppValorTotal(o),0);
   document.getElementById('orc-soma').textContent=fmt(soma);
   document.getElementById('orc-cnt').textContent=ops.length;
 
   if(!ops.length){document.getElementById('orc-body').innerHTML=`<tr><td colspan="14" class="empty-note">Nenhum resultado.</td></tr>`;return;}
 
   document.getElementById('orc-body').innerHTML=ops.map(o=>{
-    const vProp=oppValorProposto(o);
-    const vFch=oppValorFechado(o);
+    const vProp=oppValorTotal(o);
+    const vFch=isFechada(o)?oppValorFechado(o)+oppValorAdicionais(o,true):oppValorFechado(o);
     const stLbl=stageLabel(o.pipeline_stage);
     const nucleos=[...new Set(o._produtos.map(p=>p.nucleo))];
     const tc=tempClass(o._followups);
@@ -3494,15 +3550,80 @@ function contactStatus(clienteId){
   const d=diasDesde(dates[0]);
   if(d<=90)return'Ativo';if(d<=360)return'Sem atividade';return'Inativo';
 }
-function statusDotColor(s){return{Ativo:'#1D6A4A','Sem atividade':'#C4831A',Inativo:'#B84C3A','Prospecção':'#aaa'}[s]||'#aaa';}
+function statusDotColor(s){return{Ativo:_cssVar('--verde'),'Sem atividade':_cssVar('--ouro'),Inativo:_cssVar('--terracota'),'Prospecção':'#aaa'}[s]||'#aaa';}
+
+let ctDupOnly=false;
+function toggleCtDupFilter(){
+  ctDupOnly=!ctDupOnly;
+  document.getElementById('ct-dup-toggle')?.classList.toggle('on',ctDupOnly);
+  renderContatos();
+}
+
+// Agrupa contatos duplicados por cliente: mesmo nome, telefone ou e-mail (normalizados)
+// dentro do mesmo cliente_id vira um cluster candidato a mesclagem.
+let _ctDupGroupsCache={};
+function computeContatoDupGroups(){
+  const byClient={};
+  allContatos.forEach(c=>{(byClient[c.cliente_id]=byClient[c.cliente_id]||[]).push(c);});
+  const idToGroup={};
+  const groupMembers={};
+  let gid=0;
+  Object.values(byClient).forEach(list=>{
+    if(list.length<2)return;
+    const parent={};
+    list.forEach(c=>parent[c.id]=c.id);
+    const find=x=>{while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x];}return x;};
+    const union=(a,b)=>{const ra=find(a),rb=find(b);if(ra!==rb)parent[ra]=rb;};
+    for(let i=0;i<list.length;i++){
+      for(let j=i+1;j<list.length;j++){
+        const a=list[i], b=list[j];
+        const mesmoNome=normContatoKey(a.nome)&&normContatoKey(a.nome)===normContatoKey(b.nome);
+        const telA=normContatoTelefone(a.telefone), telB=normContatoTelefone(b.telefone);
+        const mesmoTel=telA&&telA===telB;
+        const emailA=normContatoKey(a.email), emailB=normContatoKey(b.email);
+        const mesmoEmail=emailA&&emailA===emailB;
+        if(mesmoNome||mesmoTel||mesmoEmail)union(a.id,b.id);
+      }
+    }
+    const clusters={};
+    list.forEach(c=>{const r=find(c.id);(clusters[r]=clusters[r]||[]).push(c);});
+    Object.values(clusters).forEach(arr=>{
+      if(arr.length<2)return;
+      gid++;
+      const key='dg'+gid;
+      arr.forEach(c=>idToGroup[c.id]=key);
+      groupMembers[key]=arr;
+    });
+  });
+  return {idToGroup,groupMembers};
+}
+
+function renderContatoRow(p){
+  return `<div class="pessoa-row">
+        <div style="flex:1"><div style="font-weight:500">${escHtml(p.nome||'—')}</div><div style="font-size:10px;color:#888">${escHtml(p.cargo||'')}</div></div>
+        <div style="font-size:10px;color:#888;text-align:right">
+          ${p.email?`<div>${escHtml(p.email)}</div>`:''}${p.telefone?`<div>${escHtml(p.telefone)}</div>`:''}
+        </div>
+      </div>`;
+}
 
 function renderContatos(){
   const q=document.getElementById('ct-busca').value.toLowerCase();
   const sf=document.getElementById('ct-status').value;
 
+  const {idToGroup,groupMembers}=computeContatoDupGroups();
+  _ctDupGroupsCache=groupMembers;
+  const totalDupGroups=Object.keys(groupMembers).length;
+  const dupBadge=document.getElementById('ct-dup-badge');
+  if(dupBadge){
+    dupBadge.style.display=totalDupGroups?'inline-block':'none';
+    dupBadge.textContent=totalDupGroups;
+  }
+
   let clientes=[...allClients];
   if(q)clientes=clientes.filter(c=>(c.nome||'').toLowerCase().includes(q)||(c.tipo==='pessoa_fisica'&&('pfi '+c.nome).toLowerCase().includes(q)));
   if(sf!=='todos')clientes=clientes.filter(c=>contactStatus(c.id)===sf);
+  if(ctDupOnly)clientes=clientes.filter(c=>allContatos.some(x=>x.cliente_id===c.id&&idToGroup[x.id]));
 
   // PF vêm depois, ambos em ordem alfabética
   const pj=clientes.filter(c=>c.tipo!=='pessoa_fisica').sort((a,b)=>a.nome.localeCompare(b.nome));
@@ -3511,7 +3632,7 @@ function renderContatos(){
 
   document.getElementById('ct-total').textContent=clientes.length+' clientes';
 
-  if(!clientes.length){document.getElementById('contatos-list').innerHTML=`<div class="empty-note">Nenhuma empresa encontrada.</div>`;return;}
+  if(!clientes.length){document.getElementById('contatos-list').innerHTML=`<div class="empty-note">${ctDupOnly?'Nenhum contato duplicado encontrado.':'Nenhuma empresa encontrada.'}</div>`;return;}
 
   const cards=[];
   clientes.forEach(c=>{
@@ -3519,13 +3640,24 @@ function renderContatos(){
     const contatos=allContatos.filter(x=>x.cliente_id===c.id);
     const opsC=allOps.filter(o=>o.cliente_id===c.id);
     const canEdit=!currentUser?.viewer_only;
-    const contatosHtml=contatos.length?contatos.map(p=>`
-      <div class="pessoa-row">
-        <div style="flex:1"><div style="font-weight:500">${escHtml(p.nome||'â€”')}</div><div style="font-size:10px;color:#888">${escHtml(p.cargo||'')}</div></div>
-        <div style="font-size:10px;color:#888;text-align:right">
-          ${p.email?`<div>${escHtml(p.email)}</div>`:''}${p.telefone?`<div>${escHtml(p.telefone)}</div>`:''}
-        </div>
-      </div>`).join(''):'<div style="font-size:11px;color:#aaa;padding:8px 0">Nenhum contato cadastrado.</div>';
+    const seenIds=new Set();
+    const pieces=[];
+    contatos.forEach(p=>{
+      if(seenIds.has(p.id))return;
+      const gid=idToGroup[p.id];
+      if(gid){
+        const members=groupMembers[gid];
+        members.forEach(m=>seenIds.add(m.id));
+        pieces.push(`<div class="contato-dup-group">
+          <div class="contato-dup-hd">⚠ Possível duplicata — ${members.length} registros${canEdit?`<button class="btn xs verde" onclick="abrirMergeContatos('${gid}')">Mesclar</button>`:''}</div>
+          ${members.map(renderContatoRow).join('')}
+        </div>`);
+      } else {
+        seenIds.add(p.id);
+        pieces.push(renderContatoRow(p));
+      }
+    });
+    const contatosHtml=pieces.length?pieces.join(''):'<div style="font-size:11px;color:#aaa;padding:8px 0">Nenhum contato cadastrado.</div>';
 
     if(isPF){
       // um card por oportunidade
@@ -3542,7 +3674,7 @@ function renderContatos(){
               <div style="font-size:10px;color:#888;margin-top:2px">${proj}${o?` · ${stDot}`:''}</div>
             </div>
             <div class="cont-status">
-              <div class="status-dot" style="background:${o?'#1D6A4A':'#aaa'}"></div>
+              <div class="status-dot" style="background:${o?'var(--verde)':'#aaa'}"></div>
               <span style="font-size:10px;color:#888">${o?'Com proposta':'Sem proposta'}</span>
             </div>
           </div>
@@ -3554,7 +3686,7 @@ function renderContatos(){
             ${o?`<div style="margin-top:8px;border-top:1px solid var(--cinza2);padding-top:8px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:8px" onclick="abrirDetail('${escJsStr(o.id)}')">
               <span class="num-tag">${escHtml(o.num_legado||'—')}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
               <span style="flex:1;color:#888">${escHtml(o.projeto||o.cidade||'—')}</span>
-              <span style="font-family:var(--font-mono)">${fmt(oppValorProposto(o))}</span>${estagBadge(o.pipeline_stage)}
+              <span style="font-family:var(--font-mono)">${fmt(oppValorTotal(o))}</span>${estagBadge(o.pipeline_stage)}
             </div>`:''}
           </div>
         </div>`);
@@ -3585,7 +3717,7 @@ function renderContatos(){
             ${opsC.slice(0,5).map(o=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:11px" onclick="abrirDetail('${escJsStr(o.id)}')">
               <span class="num-tag">${escHtml(o.num_legado||'—')}</span>${tipoBadgeProd(o._produtos[0]?.nucleo)}
               <span style="flex:1;color:#888">${escHtml(o.projeto||o.cidade||'—')}</span>
-              <span style="font-family:var(--font-mono)">${fmt(oppValorProposto(o))}</span>${estagBadge(o.pipeline_stage)}
+              <span style="font-family:var(--font-mono)">${fmt(oppValorTotal(o))}</span>${estagBadge(o.pipeline_stage)}
             </div>`).join('')}
           </div>`:''}
         </div>
@@ -3628,7 +3760,12 @@ function editarSiglaCliente(e, clienteId, siglaAtual){
 
 // ═══ DETALHE DA PROPOSTA — definido abaixo com botões de ação ════════
 
-// ═══ FOLLOW-UP ══════════════════════════════════════
+// ═══ FOLLOW-UP / INTERAÇÕES ══════════════════════════════════════
+const FU_TIPO_ICON={ligacao:'📞',reuniao:'🤝',email:'✉️',whatsapp:'💬',visita:'📍',outro:'📝'};
+const FU_TIPO_LABEL={ligacao:'Ligação',reuniao:'Reunião',email:'E-mail',whatsapp:'WhatsApp',visita:'Visita',outro:'Outro'};
+function fuTipoIcon(t){return FU_TIPO_ICON[t]||'📝';}
+function fuTipoLabel(t){return FU_TIPO_LABEL[t]||'Outro';}
+
 async function openFollowUpModal(){
   let op=allOps.find(o=>o.id===detailOppId);
   if(!op)return;
@@ -3638,12 +3775,13 @@ async function openFollowUpModal(){
   }
   const fus=op._followups||[];
   document.getElementById('fu-title').textContent=`Follow-up — ${op._cliente?.nome||''} (${op.num_legado||''})`;
+  document.getElementById('fu-tipo').value='ligacao';
   document.getElementById('fu-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('fu-next').value='';
   document.getElementById('fu-obs').value='';
   document.getElementById('fu-hist').innerHTML=fus.length?
     `<div style="font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;margin-bottom:6px">Histórico</div>`+
-    fus.map(f=>`<div class="follow-row"><div style="min-width:75px;font-size:9px;font-weight:700;color:#999">${fmtD(f.data_contato)}</div><div style="flex:1">${escHtml(f.observacao||'—')}</div>${f.proximo_contato?`<div style="font-size:9px;color:var(--ouro)">→ ${fmtD(f.proximo_contato)}</div>`:''}</div>`).join(''):'';
+    fus.map(f=>`<div class="follow-row"><div style="min-width:75px;font-size:9px;font-weight:700;color:#999" title="${fuTipoLabel(f.tipo)}">${fuTipoIcon(f.tipo)} ${fmtD(f.data_contato)}</div><div style="flex:1">${escHtml(f.observacao||'—')}</div>${f.proximo_contato?`<div style="font-size:9px;color:var(--ouro)">→ ${fmtD(f.proximo_contato)}</div>`:''}</div>`).join(''):'';
   closeM('modal-detail');
   openM('modal-fu');
 }
@@ -3746,13 +3884,14 @@ async function salvarFU(){
   const {error}=await sb.from('followups_produto').insert({
     oportunidade_id: op.id,
     produto_id: prodId,
+    tipo: document.getElementById('fu-tipo').value||'ligacao',
     data: document.getElementById('fu-data').value||null,
     next_date: document.getElementById('fu-next').value||null,
     obs: obs,
     criado_por: currentUser?.id||null,
   });
   if(error){toast('Erro ao salvar: '+error.message);return;}
-  toast('Follow-up registrado!');
+  toast('Interação registrada!');
   closeM('modal-fu');
   await carregarDados();
   abrirDetail(detailOppId);
@@ -3822,14 +3961,14 @@ function showBoasVindas(){
     html+=`<div class="bv-section"><div class="bv-title">Suas oportunidades ativas</div>
       ${ativas.slice(0,5).map(o=>`<div class="bv-item">
         <span class="num-tag">${escHtml(o.num_legado||'—')} ${escHtml(o._cliente?.nome||'—')}</span>
-        <span style="font-family:var(--font-mono)">${fmt(oppValorProposto(o))}</span>
+        <span style="font-family:var(--font-mono)">${fmt(oppValorTotal(o))}</span>
       </div>`).join('')||'<div style="font-size:11px;color:#aaa">Nenhuma ativa.</div>'}
     </div>`;
   }
   html+=`<div class="bv-section"><div class="bv-title">Fechamentos e negativas — 45 dias</div>
     ${rec45.slice(0,6).map(o=>`<div class="bv-item">
       <span>${escHtml(o._cliente?.nome||'—')} <span class="badge ${isFechada(o)?'b-vd':'b-tc'}" style="font-size:7px">${stageLabel(o.pipeline_stage)}</span></span>
-      <span style="font-family:var(--font-mono);color:${isFechada(o)?'var(--verde)':'var(--terracota)'}">${fmt(isFechada(o)?vOppFech(o):oppValorProposto(o))}</span>
+      <span style="font-family:var(--font-mono);color:${isFechada(o)?'var(--verde)':'var(--terracota)'}">${fmt(isFechada(o)?vOppFech(o):oppValorTotal(o))}</span>
     </div>`).join('')||'<div style="font-size:11px;color:#aaa">Nenhum no período.</div>'}
     <div class="bv-item" style="margin-top:4px;padding-top:8px;border-top:1px solid var(--cinza2)">
       <span style="font-weight:600">Total fechado</span>
@@ -3871,6 +4010,49 @@ function fecharPainelFechamentosAno(){
   document.getElementById('sp-fechamentos-bg').classList.remove('open');
 }
 
+// ═══ FILTROS COMPARTILHADOS ENTRE ABAS (ano / núcleo / responsável) ═══
+// Cada aba tem seus próprios selects de filtro, mas ano/núcleo/resp representam o
+// mesmo conceito em todas — sincroniza os valores para não perder o contexto ao
+// trocar de aba. "Resp." é guardado pelo NOME (não pelo id), porque Dashboard/Pipeline
+// usam selects com opções fixas por nome enquanto as demais abas populam por usuário.
+let crmFiltroGlobal={ano:'todos',nucleo:'todos',respNome:'todos'};
+const CRM_FILTRO_IDS={
+  ano:    ['of-ano','ff-ano','nf-ano','alc-ano','rf-ano'],
+  nucleo: ['dash-nucleo','pf-nucleo','of-nucleo','rf-nucleo'],
+  resp:   ['dash-resp','pf-resp','of-resp','ff-resp','nf-resp','alc-resp','rf-resp'],
+};
+function _crmRespNomeDoSelect(el){
+  if(!el||el.value==='todos')return'todos';
+  const opt=el.options[el.selectedIndex];
+  return opt?opt.textContent.trim():'todos';
+}
+function _crmAplicarRespNoSelect(el,nome){
+  if(!el)return;
+  if(nome==='todos'){el.value='todos';return;}
+  const opt=Array.prototype.find.call(el.options,o=>o.textContent.trim()===nome);
+  if(opt)el.value=opt.value;
+}
+// Chamado no onchange de cada select de filtro — guarda o valor no estado global
+function crmSincronizarFiltros(origemId){
+  if(CRM_FILTRO_IDS.ano.includes(origemId)){crmFiltroGlobal.ano=document.getElementById(origemId).value;return;}
+  if(CRM_FILTRO_IDS.nucleo.includes(origemId)){crmFiltroGlobal.nucleo=document.getElementById(origemId).value;return;}
+  if(CRM_FILTRO_IDS.resp.includes(origemId)){crmFiltroGlobal.respNome=_crmRespNomeDoSelect(document.getElementById(origemId));return;}
+}
+// Chamado ao abrir uma aba — aplica o estado global nos selects que ela tiver
+function crmAplicarFiltrosGlobais(ids){
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(CRM_FILTRO_IDS.ano.includes(id)){
+      if(Array.prototype.some.call(el.options,o=>o.value===crmFiltroGlobal.ano))el.value=crmFiltroGlobal.ano;
+    } else if(CRM_FILTRO_IDS.nucleo.includes(id)){
+      if(Array.prototype.some.call(el.options,o=>o.value===crmFiltroGlobal.nucleo))el.value=crmFiltroGlobal.nucleo;
+    } else if(CRM_FILTRO_IDS.resp.includes(id)){
+      _crmAplicarRespNoSelect(el,crmFiltroGlobal.respNome);
+    }
+  });
+}
+
 // ═══ NAV ════════════════════════════════════════════
 function goTab(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -3878,14 +4060,15 @@ function goTab(id, btn){
   document.getElementById('tab-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   document.getElementById('crm-body').classList.toggle('pipe-mode', id==='pipe');
-  if(id==='pipe')renderPipe();
-  if(id==='orc')renderOrc();
+  if(id==='dash'){crmAplicarFiltrosGlobais(['dash-nucleo','dash-resp']);renderDash();}
+  if(id==='pipe'){crmAplicarFiltrosGlobais(['pf-nucleo','pf-resp']);renderPipe();}
+  if(id==='orc'){crmAplicarFiltrosGlobais(['of-ano','of-nucleo','of-resp']);renderOrc();}
   if(id==='contatos')renderContatos();
-  if(id==='fechamentos')renderFechamentos();
-  if(id==='negativas')renderNegativas();
+  if(id==='fechamentos'){crmAplicarFiltrosGlobais(['ff-ano','ff-resp']);renderFechamentos();}
+  if(id==='negativas'){crmAplicarFiltrosGlobais(['nf-ano','nf-resp']);renderNegativas();}
   if(id==='nps')renderDashPesquisaSatisfacao();
-  if(id==='alcance')renderAlcance();
-  if(id==='relatorios')renderRelatorios();
+  if(id==='alcance'){crmAplicarFiltrosGlobais(['alc-ano','alc-resp']);renderAlcance();}
+  if(id==='relatorios'){crmAplicarFiltrosGlobais(['rf-ano','rf-nucleo','rf-resp']);renderRelatorios();}
 }
 
 // ═══════════════════════════════════════════════════
@@ -4026,18 +4209,28 @@ function selecionarCliente(id,nome){
 
 // Autocomplete do contato (Resp. cliente) — se o nome digitado já existe em Contatos,
 // preenche cargo/telefone/e-mail (e empresa, se ainda vazia) automaticamente.
+function _contatoCompletude(c){
+  return (c.cargo?1:0)+(c.telefone?1:0)+(c.email?1:0);
+}
 function filtrarContatosRC(){
   const q=normTextKey(document.getElementById('opp-rc-nome').value.trim());
   const dd=document.getElementById('opp-rc-dropdown');
   if(!q||q.length<2){dd.style.display='none';return;}
-  const matches=allContatos.filter(c=>normTextKey(c.nome||'').includes(q)).slice(0,8);
+  // Pode haver contatos duplicados com o mesmo nome (ex: um cadastro antigo incompleto
+  // e outro mais completo) — prioriza o registro com mais dados preenchidos, para não
+  // preencher o formulário com uma versão vazia por engano.
+  const matches=allContatos.filter(c=>normTextKey(c.nome||'').includes(q))
+    .sort((a,b)=>_contatoCompletude(b)-_contatoCompletude(a))
+    .slice(0,8);
   if(!matches.length){dd.style.display='none';return;}
   dd.innerHTML=matches.map(c=>{
     const cli=allClients.find(x=>x.id===c.cliente_id);
     const sub=[c.cargo,cli?.nome].filter(Boolean).join(' · ');
+    const sub2=[c.telefone,c.email].filter(Boolean).join(' · ');
     return`<div style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--cinza2)" onmousedown="selecionarContatoRC('${escJsStr(c.id)}')">
       <div style="font-weight:600">${escHtml(c.nome)}</div>
       ${sub?`<div style="font-size:10px;color:#888">${escHtml(sub)}</div>`:''}
+      ${sub2?`<div style="font-size:10px;color:#aaa">${escHtml(sub2)}</div>`:''}
     </div>`;
   }).join('');
   dd.style.display='block';
@@ -4582,6 +4775,7 @@ async function confirmarAcao(){
     if(!abertos.length){
       await sb.from('followups_produto').insert({
         oportunidade_id: _acaoOppId,
+        tipo: 'outro',
         obs: `Negativa registrada${cat?` (${cat})`:''}: ${motivo}`,
         data: new Date().toISOString().slice(0,10),
         criado_por: currentUser?.id||null,
@@ -4795,7 +4989,7 @@ function _renderFechItens(op) {
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" id="fch-incl-c-${c.id}" ${incl?'checked':''} onchange="_fechToggleRow('c','${escJsStr(c.id)}',this.checked)"
             style="width:15px;height:15px;cursor:pointer;accent-color:var(--verde)" title="Incluir no fechamento">
-          <span style="font-size:9px;background:#f0f0f0;padding:1px 6px;border-radius:3px;color:#666;font-weight:600">${escHtml(tipoLabel)}</span>
+          <span style="font-size:9px;background:var(--cinza2);padding:1px 6px;border-radius:3px;color:var(--grafite);font-weight:600">${escHtml(tipoLabel)}</span>
           <span style="font-size:12px;font-weight:500;flex:1">${escHtml(c.descricao||'—')}</span>
           <span style="font-size:11px;color:#888">Calculado: <strong>${fmt(valRef)}</strong></span>
         </div>
@@ -4832,7 +5026,7 @@ function _fechToggleRow(tipo, id, checked) {
   const fields = document.getElementById(`frow-${tipo}-${id}-fields`);
   const row    = document.getElementById(`frow-${tipo}-${id}`);
   if (fields) fields.style.opacity = checked ? '1' : '0.35';
-  if (row)    row.style.borderColor = checked ? 'var(--cinza2)' : '#f0b8b8';
+  if (row)    row.style.borderColor = checked ? 'var(--cinza2)' : 'rgba(184,86,56,.4)';
   _fechAtualizarTotal();
 }
 
@@ -4962,7 +5156,7 @@ async function confirmarFechamento() {
 
   if (algumFechado) {
     const finMsg = _finRascunhoCriado
-      ? ` · Rascunho criado em <a href="financeiro.html" style="color:#A78BFA">EXP.financeiro ↗</a>`
+      ? ` · Rascunho criado em <a href="financeiro.html" style="color:var(--roxo)">EXP.financeiro ↗</a>`
       : '';
     toast(`✓ Fechamento registrado em ${fmtD(dataFech)}!${finMsg}`, _finRascunhoCriado ? 5000 : 2800);
   } else {
@@ -5211,6 +5405,73 @@ async function salvarRespClienteComoContato(){
   renderContatos();
 }
 
+// ═══ MERGE DE CONTATOS DUPLICADOS ══════════════════════════════
+let _mergeContatoGid=null;
+function abrirMergeContatos(gid){
+  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  const members=_ctDupGroupsCache[gid];
+  if(!members||members.length<2)return;
+  _mergeContatoGid=gid;
+  const survivor=members.slice().sort((a,b)=>_contatoCompletude(b)-_contatoCompletude(a))[0];
+  const campos=[['nome','Nome'],['cargo','Cargo'],['telefone','Telefone'],['email','E-mail']];
+  let html='';
+  campos.forEach(([key,label])=>{
+    const vistos=new Set();
+    const opcoes=[];
+    members.forEach(m=>{
+      const v=(m[key]||'').trim();
+      if(v&&!vistos.has(v)){vistos.add(v);opcoes.push(v);}
+    });
+    if(!opcoes.length){
+      html+=`<div class="fgroup mb8"><label>${label}</label><div style="font-size:11px;color:#aaa">— (vazio em todos)</div><input type="hidden" name="mg-${key}" value=""></div>`;
+      return;
+    }
+    if(opcoes.length===1){
+      html+=`<div class="fgroup mb8"><label>${label}</label><div style="font-size:12px;font-weight:500">${escHtml(opcoes[0])}</div><input type="hidden" name="mg-${key}" value="${escHtml(opcoes[0])}"></div>`;
+      return;
+    }
+    const defaultVal=(survivor[key]||'').trim()||opcoes[0];
+    html+=`<div class="fgroup mb8"><label>${label}</label>`+
+      opcoes.map(v=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;font-weight:400">
+        <input type="radio" name="mg-${key}" value="${escHtml(v)}"${v===defaultVal?' checked':''}> ${escHtml(v)}
+      </label>`).join('')+
+      `</div>`;
+  });
+  html+=`<div style="font-size:10px;color:#888;margin-top:10px;padding-top:10px;border-top:1px solid var(--cinza2)">${members.length} registros serão reduzidos a 1. Os demais serão excluídos permanentemente.</div>`;
+  document.getElementById('merge-contato-body').innerHTML=html;
+  openM('modal-merge-contato');
+}
+
+async function confirmarMergeContatos(){
+  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  const members=_ctDupGroupsCache[_mergeContatoGid];
+  if(!members||members.length<2)return;
+  const survivor=members.slice().sort((a,b)=>_contatoCompletude(b)-_contatoCompletude(a))[0];
+  const form=document.getElementById('merge-contato-body');
+  const getVal=key=>{
+    const checked=form.querySelector(`input[name="mg-${key}"]:checked`);
+    if(checked)return checked.value||null;
+    const hidden=form.querySelector(`input[name="mg-${key}"][type=hidden]`);
+    return hidden?(hidden.value||null):null;
+  };
+  const payload={
+    nome: getVal('nome')||survivor.nome,
+    cargo: getVal('cargo'),
+    telefone: getVal('telefone'),
+    email: getVal('email'),
+  };
+  const {error:updErr}=await sb.from('contatos').update(payload).eq('id',survivor.id);
+  if(updErr){toast('Erro ao mesclar: '+updErr.message);return;}
+  const outrosIds=members.filter(m=>m.id!==survivor.id).map(m=>m.id);
+  const {error:delErr}=await sb.from('contatos').delete().in('id',outrosIds);
+  if(delErr){toast('Contato atualizado, mas houve erro ao remover os duplicados: '+delErr.message);}
+  else toast('Contatos mesclados!');
+  closeM('modal-merge-contato');
+  _mergeContatoGid=null;
+  await carregarDados();
+  renderContatos();
+}
+
 async function salvarPesquisaSatisfacao(oppId){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
   if(!pesquisaSatDisponivel){toast('Rode o SQL do DEV-19 antes de registrar a pesquisa.');return;}
@@ -5299,7 +5560,6 @@ function abrirDetail(oppId){
   const hdrParts=[op.num_legado,op._cliente?.nome,op.projeto].filter(Boolean);
   document.getElementById('det-title').textContent=hdrParts.join(' · ');
 
-  const vProp=oppValorProposto(op);
   const vFch=oppValorFechado(op);
   const fus=op._followups||[];
   const u=userById(op.resp_id);
@@ -5440,7 +5700,7 @@ function abrirDetail(oppId){
         ${acaoBtns?`<div style="display:flex;gap:5px;margin-top:6px">${acaoBtns}</div>`:''}
       </div>`;
     });
-    const _totalProp=_useCalc?_calcItens.reduce((s,p)=>s+(+p.valor_proposto||0),0):vProp;
+    const _totalProp=oppValorProposto(op)+oppValorAdicionais(op,false);
     html+=`<div class="dr" style="margin-top:4px"><div class="dk">Proposta original</div><div class="dv" style="color:#aaa;font-size:10px;font-family:var(--font-mono)">${fmt(_totalProp)}</div></div>`;
     if(!_useCalc&&vFch&&!isFechada(op)){
       html+=`<div class="dr"><div class="dk">Total fechado (serviços)</div><div class="dv" style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmt(vFch)}</div></div>`;
@@ -5523,7 +5783,7 @@ function abrirDetail(oppId){
       const val=c.valor_fechado||c.valor_calculado||0;
       ch+=`<div style="border:1px solid var(--cinza2);padding:6px 10px;margin-bottom:5px${incl?'':';opacity:.45'}">
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:9px;background:#f0f0f0;padding:1px 6px;border-radius:3px;color:#666;font-weight:600">${escHtml(tipoLabel)}</span>
+          <span style="font-size:9px;background:var(--cinza2);padding:1px 6px;border-radius:3px;color:var(--grafite);font-weight:600">${escHtml(tipoLabel)}</span>
           <span style="font-size:11px;font-weight:500;flex:1">${escHtml(c.descricao||'—')}</span>
           <span style="font-family:var(--font-mono);font-weight:600;font-size:11px">${fmt(val)}</span>
         </div>
@@ -5537,7 +5797,7 @@ function abrirDetail(oppId){
   // linha do tempo
   const eventos=[];
   if(op.data_entrada)eventos.push({d:op.data_entrada,lbl:'Entrada',cls:'az'});
-  fus.forEach(f=>{if(f.data_contato)eventos.push({d:f.data_contato,lbl:`Follow-up${f.observacao?' — '+f.observacao.slice(0,60):''}`,cls:'',obs:f.proximo_contato?'Próximo: '+fmtD(f.proximo_contato):''});});
+  fus.forEach(f=>{if(f.data_contato)eventos.push({d:f.data_contato,lbl:`${fuTipoIcon(f.tipo)} ${fuTipoLabel(f.tipo)}${f.observacao?' — '+f.observacao.slice(0,60):''}`,cls:'',obs:f.proximo_contato?'Próximo: '+fmtD(f.proximo_contato):''});});
   const fd=oppDataFechamento(op);
   if(fd)eventos.push({d:fd,lbl:isFechada(op)?'Fechamento':'Negativa',cls:isFechada(op)?'verde':'tc'});
   eventos.sort((a,b)=>a.d.localeCompare(b.d));
@@ -5638,7 +5898,7 @@ function renderFechamentos(){
   if(anoFil!=='todos') ops = ops.filter(o=>(oppDataFechamento(o)||'').startsWith(anoFil));
   if(respFil!=='todos') ops = ops.filter(o=>o.resp_id===respFil);
 
-  const fatTotal = ops.reduce((s,o)=>s+oppValorFechado(o),0);
+  const fatTotal = ops.reduce((s,o)=>s+oppValorFechado(o)+oppValorAdicionais(o,true),0);
   const fatEfetivo = ops.reduce((s,o)=>s+oppValorEfetivo(o,true),0);
   const qtd = ops.length;
   const ticket = qtd ? Math.round(fatEfetivo/qtd) : 0;
@@ -5700,7 +5960,7 @@ function renderFechamentos(){
         <td>${respBadge(o.resp_id)}</td>
         <td style="font-size:11px">${escHtml(o.cidade||'—')}${o.uf?'/'+escHtml(o.uf):''}</td>
         <td class="dtag">${fmtD(oppDataFechamento(o))}</td>
-        <td style="font-family:var(--font-mono);font-weight:600">${fmt(oppValorFechado(o))}</td>
+        <td style="font-family:var(--font-mono);font-weight:600">${fmt(oppValorFechado(o)+oppValorAdicionais(o,true))}</td>
         <td style="font-family:var(--font-mono);color:var(--azul)">${fmt(oppValorEfetivo(o,true))}</td>
       </tr>`).join('')
     : '<tr><td colspan="8" class="empty-note">Sem fechamentos no período.</td></tr>';
@@ -5748,7 +6008,7 @@ function renderNegativas(){
 
   // Por categoria
   const maxCat = catSorted[0]?.[1]||1;
-  const catCores = ['#B84C3A','#C36247','#D19931','#5280CA','#45865D','#6B4FA0','#C4831A','#888'];
+  const catCores = [_cssVar('--terracota'),_cssVar('--consul'),_cssVar('--esp'),_cssVar('--urb'),_cssVar('--pai-hor'),_cssVar('--roxo'),_cssVar('--ouro'),'#888'];
   document.getElementById('neg-por-cat').innerHTML = catSorted.length
     ? catSorted.map(([cat,n],i)=>`
       <div style="margin-bottom:9px">
@@ -5952,8 +6212,8 @@ function renderAlcance(){
 
   const ativas=ops.filter(o=>isAtiva(o));
   const fechadas=ops.filter(o=>isFechada(o));
-  const pipeVal=ativas.reduce((s,o)=>s+oppValorProposto(o),0);
-  const fechVal=fechadas.reduce((s,o)=>s+oppValorFechado(o),0);
+  const pipeVal=ativas.reduce((s,o)=>s+oppValorTotal(o),0);
+  const fechVal=fechadas.reduce((s,o)=>s+oppValorFechado(o)+oppValorAdicionais(o,true),0);
   document.getElementById('alc-stats').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:2px">
       <div style="display:flex;align-items:baseline;gap:6px;padding:5px 10px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);flex:0 0 auto">
@@ -6131,7 +6391,7 @@ function _alcanceDrillCity(g){
       <div style="font-size:10px;color:#888">${escHtml(o.projeto||'—')}</div>
       <div style="display:flex;justify-content:space-between;margin-top:4px">
         ${estagBadge(o.pipeline_stage)}
-        <span style="font-family:var(--font-mono);font-size:11px;font-weight:600">${fmt(alcMode==='fech'?oppValorFechado(o):oppValorProposto(o))}</span>
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:600">${fmt(oppValorTotal(o))}</span>
       </div>
     </div>`).join('');
 }
@@ -6278,9 +6538,9 @@ function renderRelatorios(){
   // ── Breakdown por núcleo ─────────────────────────────────────────
   const NUCLEOS=[
     {key:'Paisagismo',abr:'PAI',cor:'var(--verde)'},
-    {key:'Urbanismo',abr:'URB',cor:'var(--urb,#4A90D9)'},
-    {key:'Consultorias',abr:'CNS',cor:'var(--consul,#8E44AD)'},
-    {key:'Projetos Especiais',abr:'ESP',cor:'var(--esp,#E67E22)'},
+    {key:'Urbanismo',abr:'URB',cor:'var(--urb,#5280CA)'},
+    {key:'Consultorias',abr:'CNS',cor:'var(--consul,#C36247)'},
+    {key:'Projetos Especiais',abr:'ESP',cor:'var(--esp,#D19931)'},
   ];
   const nucMap={};
   NUCLEOS.forEach(n=>nucMap[n.key]={n:0,fat:0,pipe:0,cor:n.cor,abr:n.abr});
@@ -6366,8 +6626,8 @@ function renderRelatorios(){
   if(ctx){
     chartRelMensal=new Chart(ctx,{type:'bar',data:{labels:grafMeses,datasets:[
       {label:'Efetivo EXP (R$)',data:dadosMensal,backgroundColor:CHART_CORES.Total+'88',borderColor:CHART_CORES.Total,borderWidth:1,yAxisID:'y'},
-      {label:'Novas opps',data:dadosNovas,type:'line',borderColor:'#45865D',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,yAxisID:'y2'},
-      {label:'Negadas',data:dadosNegadas,type:'line',borderColor:'#E53935',backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,tension:.3,borderDash:[3,3],yAxisID:'y2'},
+      {label:'Novas opps',data:dadosNovas,type:'line',borderColor:_cssVar('--pai-hor'),backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,yAxisID:'y2'},
+      {label:'Negadas',data:dadosNegadas,type:'line',borderColor:_cssVar('--terracota'),backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,tension:.3,borderDash:[3,3],yAxisID:'y2'},
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10,padding:8,color:tickColorR}},tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y'?`${c.dataset.label}: ${fmt(c.parsed.y)}`:`${c.dataset.label}: ${c.parsed.y}`}}},scales:{
       x:{ticks:{font:{size:10},color:tickColorR},grid:{color:gridColorR},border:{display:false}},
       y:{position:'left',ticks:{font:{size:10},color:tickColorR,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColorR},border:{display:false}},
@@ -6432,7 +6692,7 @@ function renderRelatorios(){
             <span style="font-family:var(--font-mono);font-size:10px;flex-shrink:0;margin-left:8px">${fmt(c.fat)}</span>
           </div>
           <div style="height:4px;background:var(--cinza2);border-radius:2px">
-            <div style="height:100%;width:${Math.round(c.fat/maxTop*100)}%;background:var(--consul,#8E44AD);border-radius:2px;opacity:.75"></div>
+            <div style="height:100%;width:${Math.round(c.fat/maxTop*100)}%;background:var(--consul,#C36247);border-radius:2px;opacity:.75"></div>
           </div>
           <div style="font-size:9px;color:#aaa;margin-top:1px">${c.n} projeto${c.n!==1?'s':''}</div>
         </div>
@@ -6470,7 +6730,7 @@ function renderRelatorios(){
       const fC=novasM.filter(o=>isFechada(o)).length;
       const fA=novasM.filter(o=>isAtiva(o)).length;
       const wr=novasM.length?Math.round(fC/novasM.length*100):null;
-      const vFechM=fechM.reduce((s,o)=>s+oppValorFechado(o),0);
+      const vFechM=fechM.reduce((s,o)=>s+oppValorFechado(o)+oppValorAdicionais(o,true),0);
       const tickM=fechM.length?Math.round(vFechM/fechM.length):null;
       tot.n+=novasM.length;tot.PAIS+=by.PAIS;tot.URB+=by.URB;
       tot.CONSUL+=by.CONSUL;tot.ESP+=by.ESP;tot.fech+=fechM.length;
@@ -6484,9 +6744,9 @@ function renderRelatorios(){
         <td style="font-weight:${isCur?700:400};white-space:nowrap">${MESES_ABR[m]}${isCur?' ◂':''}</td>
         <td style="font-family:var(--font-mono)">${novasM.length||'—'}</td>
         <td style="color:var(--verde)">${by.PAIS||'—'}</td>
-        <td style="color:var(--urb,#4A90D9)">${by.URB||'—'}</td>
-        <td style="color:var(--consul,#8E44AD)">${by.CONSUL||'—'}</td>
-        <td style="color:var(--esp,#E67E22)">${by.ESP||'—'}</td>
+        <td style="color:var(--urb,#5280CA)">${by.URB||'—'}</td>
+        <td style="color:var(--consul,#C36247)">${by.CONSUL||'—'}</td>
+        <td style="color:var(--esp,#D19931)">${by.ESP||'—'}</td>
         <td style="font-family:var(--font-mono)">${fechM.length||'—'}</td>
         <td>${wrCell}</td>
         <td style="font-family:var(--font-mono);font-size:10px">${tickM?fmt(tickM):'—'}</td>
@@ -6499,9 +6759,9 @@ function renderRelatorios(){
       <thead><tr>
         <th>Mês</th><th title="Novas opps">Novas</th>
         <th style="color:var(--verde)">PAI</th>
-        <th style="color:var(--urb,#4A90D9)">URB</th>
-        <th style="color:var(--consul,#8E44AD)">CNS</th>
-        <th style="color:var(--esp,#E67E22)">ESP</th>
+        <th style="color:var(--urb,#5280CA)">URB</th>
+        <th style="color:var(--consul,#C36247)">CNS</th>
+        <th style="color:var(--esp,#D19931)">ESP</th>
         <th>Fechamentos</th><th>Win Rate</th><th>Ticket médio</th>
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -6509,9 +6769,9 @@ function renderRelatorios(){
         <td><strong>Total ${per.label}</strong></td>
         <td style="font-family:var(--font-mono);font-weight:700">${tot.n||'—'}</td>
         <td style="color:var(--verde);font-weight:700">${tot.PAIS||'—'}</td>
-        <td style="color:var(--urb,#4A90D9);font-weight:700">${tot.URB||'—'}</td>
-        <td style="color:var(--consul,#8E44AD);font-weight:700">${tot.CONSUL||'—'}</td>
-        <td style="color:var(--esp,#E67E22);font-weight:700">${tot.ESP||'—'}</td>
+        <td style="color:var(--urb,#5280CA);font-weight:700">${tot.URB||'—'}</td>
+        <td style="color:var(--consul,#C36247);font-weight:700">${tot.CONSUL||'—'}</td>
+        <td style="color:var(--esp,#D19931);font-weight:700">${tot.ESP||'—'}</td>
         <td style="font-family:var(--font-mono);font-weight:700">${tot.fech||'—'}</td>
         <td>${totWr!==null?`<span style="font-family:var(--font-mono);font-weight:700;color:${totWr>=50?'var(--verde)':totWr<25?'var(--terracota)':'var(--ouro)'}">${totWr}%</span>`:'—'}</td>
         <td style="font-family:var(--font-mono);font-weight:700">${avgTick?fmt(avgTick):'—'}</td>
@@ -6609,7 +6869,7 @@ function populateCalcDropdown(selectedId) {
   };
 
   if (famFinalizadas.length) {
-    opts.push(`<option disabled style="font-size:10px;color:#2d8a4e;font-weight:700">── Propostas finalizadas ──────────────</option>`);
+    opts.push(`<option disabled style="font-size:10px;color:var(--verde);font-weight:700">── Propostas finalizadas ──────────────</option>`);
     famFinalizadas.forEach(_renderFamily);
   }
   if (famOutras.length) {
@@ -6718,7 +6978,7 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
         .filter(p => (p.parent_id || p.proposal_id) === froot)
         .sort((a,b) => (b.version||0) - (a.version||0))[0];
       if (maisRecente && (maisRecente.version||0) > (data.version||0)) {
-        el.innerHTML += ` <span style="font-size:9px;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-weight:700">↑ ${_verLabel(maisRecente.version)} disponível</span>`;
+        el.innerHTML += ` <span style="font-size:9px;background:var(--am-bg);color:var(--ouro);padding:1px 5px;border-radius:3px;font-weight:700">↑ ${_verLabel(maisRecente.version)} disponível</span>`;
       }
     }
   } catch(e) { el.textContent = '(erro ao carregar)'; }
@@ -6750,7 +7010,7 @@ async function abrirLembretePopup() {
       <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira." style="${_fs};resize:vertical;margin-bottom:16px"></textarea>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('popup-lembrete').remove()" style="${_bs}">Cancelar</button>
-        <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C4831A);color:#fff;border-color:var(--ouro,#C4831A);font-weight:600">Enviar lembrete</button>
+        <button onclick="_enviarLembrete()" style="${_bs};background:var(--ouro,#C49A27);color:#fff;border-color:var(--ouro,#C49A27);font-weight:600">Enviar lembrete</button>
       </div>
     </div>`;
   pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });

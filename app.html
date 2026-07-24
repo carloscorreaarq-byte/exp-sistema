@@ -483,6 +483,8 @@ body {
 }
 .prio-hub-prazo.vencida { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
 .prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
+.prio-hub-prazo.sem-prazo { border-style: dashed; color: #999; }
+[data-theme="dark"] .prio-hub-prazo.sem-prazo { color: #7A776E; }
 /* cores do card definidas via inline style no buildCard (semafórico) */
 
 /* ── EMPTY STATE INLINE ──────────────────────────────────── */
@@ -3725,14 +3727,14 @@ function renderPriosSection(prios) {
 
   function buildCard(pr, idx, done) {
     const ord  = pr.ordem || (idx + 1);
-    const prazo = !done && _fmtPrazo(pr.prazo_texto);
+    const prazo = !done ? _fmtPrazo(pr.prazo_texto) : null;
     const cls  = done ? 'prio-done' : '';
-    // Paleta semafórica inline — verde=futuro, amarelo=hoje, vermelho=atrasada
+    // Paleta semafórica inline — verde=futuro/sem prazo (sem atraso), amarelo=hoje, vermelho=atrasada
     const _estado = done ? '' : prazo?.cls === 'vencida' ? 'vencida' : prazo?.cls === 'hoje' ? 'hoje' : 'futuro';
     const _cor = done ? null
-      : prazo?.cls === 'vencida' ? { bg:'#FDECEA', border:'#C0392B', text:'#C0392B' }
-      : prazo?.cls === 'hoje'    ? { bg:'#FFFBEA', border:'#D4AC0D', text:'#B8860B' }
-      :                            { bg:'#EAF5EC', border:'#27AE60', text:'#1E8449' };
+      : prazo?.cls === 'vencida' ? { bg:'var(--tc-bg)', border:'var(--terracota)', text:'var(--terracota)' }
+      : prazo?.cls === 'hoje'    ? { bg:'var(--am-bg)', border:'var(--ouro)', text:'var(--ouro)' }
+      :                            { bg:'var(--verde-bg)', border:'var(--verde)', text:'var(--verde)' };
     const cardStyle = _cor ? `background:${_cor.bg};border-left-color:${_cor.border}` : '';
     const nomeStyle = _cor ? `color:${_cor.text}` : '';
     const nome  = pr.categoria_societaria
@@ -3743,7 +3745,9 @@ function renderPriosSection(prios) {
     const etapas = (pr.produtos?.etapas || []).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0));
     const etapa  = etapas.find(e => e.status === 'em_andamento') || etapas.find(e => e.status !== 'concluida');
     const coment = pr.comentario || '';
-    const prazoHtml = prazo ? `<span class="prio-hub-prazo ${prazo.cls || ''}">📅 ${prazo.label}</span>` : '';
+    const prazoHtml = !done
+      ? (prazo ? `<span class="prio-hub-prazo ${prazo.cls || ''}">📅 ${prazo.label}</span>` : `<span class="prio-hub-prazo sem-prazo">Sem prazo definido</span>`)
+      : '';
     const checkHtml = !done
       ? `<button class="prio-hub-check" type="button" data-prio-id="${escAttr(pr.id)}" title="Concluir prioridade"
            >✓</button>`
@@ -3768,6 +3772,71 @@ function renderPriosSection(prios) {
       ${pendentes.map((pr,i) => buildCard(pr,i,false)).join('')}
       ${concluidas.length ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc;margin:10px 0 5px">Concluídas</div>` : ''}
       ${concluidas.map((pr,i) => buildCard(pr,i,true)).join('')}
+    </div>`;
+}
+
+/* ── Prioridades do mês — cadastradas por sócios em sociedade.html,
+   visíveis para todos aqui. Concluir aqui grava direto em etapas
+   (mesma fonte usada no controle de fluxo de projetos), sem estado
+   de conclusão próprio. ──────────────────────────────────────── */
+const _PM_MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function _hubPmStatus(mesISO, etapaStatus) {
+  if (etapaStatus === 'concluida') return { cls: 'done', label: 'Concluída' };
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const [y, m] = mesISO.slice(0, 7).split('-').map(Number);
+  const inicioMes = new Date(y, m - 1, 1);
+  const fimMes = new Date(y, m, 0);
+  if (fimMes < hoje) return { cls: 'vencida', label: 'Mês encerrado' };
+  const diffFim = Math.round((fimMes - hoje) / 86400000);
+  if (inicioMes <= hoje && diffFim <= 5) return { cls: 'hoje', label: `Encerra em ${diffFim}d` };
+  return { cls: 'futuro', label: `${_PM_MESES_ABR[m-1]}/${y}` };
+}
+
+function renderPriosMesSection(itensMes) {
+  const lbl = `Prioridades do mês${itensMes.length ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:#bbb">${itensMes.length}</span>` : ''}`;
+  if (!itensMes.length) return `
+    <div class="dash-sec" style="margin-top:14px">
+      <div class="dash-lbl">${lbl}</div>
+      <div class="dash-empty" style="border:1px solid var(--cinza2);border-radius:var(--radius-card)">Nenhuma prioridade do mês cadastrada</div>
+    </div>`;
+
+  const pendentes  = itensMes.filter(it => it.etapas?.status !== 'concluida');
+  const concluidas = itensMes.filter(it => it.etapas?.status === 'concluida');
+
+  function card(it) {
+    const etapa = it.etapas || {};
+    const done  = etapa.status === 'concluida';
+    const st    = _hubPmStatus(it.mes, etapa.status);
+    const _cor  = done ? null
+      : st.cls === 'vencida' ? { bg:'var(--tc-bg)', border:'var(--terracota)', text:'var(--terracota)' }
+      : st.cls === 'hoje'    ? { bg:'var(--am-bg)', border:'var(--ouro)', text:'var(--ouro)' }
+      :                        { bg:'var(--verde-bg)', border:'var(--verde)', text:'var(--verde)' };
+    const cardStyle = _cor ? `background:${_cor.bg};border-left-color:${_cor.border}` : '';
+    const nomeStyle = _cor ? `color:${_cor.text}` : '';
+    const nome  = [it.clientes?.nome, it.oportunidades?.projeto].filter(Boolean).join(' | ') || it.produtos?.nome || '—';
+    const etapaSub = [it.produtos?.nome, etapa.nome].filter(Boolean).join(' — ');
+    const checkHtml = !done
+      ? `<button class="prio-hub-check" type="button" data-prio-mes-etapa="${escAttr(it.etapa_id)}" title="Concluir etapa">✓</button>`
+      : `<span style="font-size:9px;font-weight:700;color:#2D9E6B;opacity:.6">✓</span>`;
+    return `
+      <div class="prio-hub-card ${done ? 'prio-done' : 'prio-sem-' + st.cls}" style="${cardStyle}" data-nav-href="gestao.html">
+        <div class="prio-hub-head">
+          <div class="prio-hub-body">
+            <div class="prio-hub-nome" style="${nomeStyle}">${escHtml(nome)}</div>
+            ${etapaSub ? `<div class="prio-hub-etapa">↳ ${escHtml(etapaSub)}</div>` : ''}
+            <div style="margin-top:5px"><span class="prio-hub-prazo ${st.cls === 'vencida' ? 'vencida' : st.cls === 'hoje' ? 'hoje' : ''}">📅 ${escHtml(st.label)}</span></div>
+          </div>
+          ${checkHtml}
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="dash-sec" style="margin-top:14px">
+      <div class="dash-lbl">${lbl}</div>
+      ${pendentes.map(card).join('')}
+      ${concluidas.length ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#ccc;margin:10px 0 5px">Concluídas</div>` : ''}
+      ${concluidas.map(card).join('')}
     </div>`;
 }
 
@@ -3898,7 +3967,8 @@ function wireDashboardDom() {
     if (prioBtn && dash.contains(prioBtn)) {
       event.preventDefault();
       event.stopPropagation();
-      if (prioBtn.dataset.prioId) await checkPrioHub(prioBtn.dataset.prioId, prioBtn);
+      if (prioBtn.dataset.prioMesEtapa) await checkPrioMesEtapa(prioBtn.dataset.prioMesEtapa, prioBtn);
+      else if (prioBtn.dataset.prioId) await checkPrioHub(prioBtn.dataset.prioId, prioBtn);
       return;
     }
 
@@ -3937,9 +4007,9 @@ function wireDashboardDom() {
 }
 
 function renderDashboard(data) {
-  const { tarefas, tarefasAtribuidas, eventos, prios, horasSemana, eventDays, taskDays, feriadoDays } = data;
+  const { tarefas, tarefasAtribuidas, eventos, prios, priosMes, horasSemana, eventDays, taskDays, feriadoDays } = data;
 
-  const colPrio = renderPriosSection(prios);
+  const colPrio = renderPriosSection(prios) + renderPriosMesSection(priosMes || []);
   const colMain = renderTasksSection(tarefas, _filtrarAtribuidas(tarefasAtribuidas));
 
   /* Eventos compactos em view mês para dar espaço ao calendário */
@@ -3995,6 +4065,7 @@ async function loadDashboard(usuario) {
     { data: tarefasAtribRaw },
     { data: eventosRaw },
     { data: priosRaw },
+    { data: priosMesRaw },
     { data: eventosSemana },
     { data: tarefasSemana },
   ] = await Promise.all([
@@ -4034,6 +4105,11 @@ async function loadDashboard(usuario) {
       .eq('usuario_id', usuario.id)
       .order('concluida', { ascending: true })
       .order('ordem', { ascending: true }),
+
+    // Prioridades do mês — cadastradas por sócios em sociedade.html, visíveis para todos
+    sb.from('prioridades_mes')
+      .select('id, mes, etapa_id, etapas(nome,status,data_conclusao), produtos(nome), oportunidades(projeto,num_legado), clientes(nome)')
+      .order('mes', { ascending: true }),
 
     // Eventos desta semana para o mini-calendário
     sb.from('calendar_events')
@@ -4081,6 +4157,7 @@ async function loadDashboard(usuario) {
     })),
     eventos:     eventosRaw || [],
     prios:       priosRaw || [],
+    priosMes:    priosMesRaw || [],
     horasSemana: _calcHoras(horasData || []),
     eventDays,
     taskDays,
@@ -4103,6 +4180,21 @@ async function checkPrioHub(prioId, btn) {
     const colPrio = renderPriosSection(window._dashData.prios);
     const dashEl  = document.getElementById('app-dashboard');
     if (dashEl) dashEl.firstElementChild.innerHTML = colPrio.match(/<div class="dash-sec">([\s\S]*)<\/div>\s*$/)?.[0] || colPrio;
+    renderDashboard(window._dashData);
+  }
+}
+
+// Conclui a etapa vinculada — mesma coluna/fonte usada no controle de fluxo
+// de projetos (gestao.html); não existe estado de conclusão próprio aqui.
+async function checkPrioMesEtapa(etapaId, btn) {
+  if (btn) { btn.disabled = true; btn.style.opacity = '.4'; }
+  const hoje = new Date().toISOString().split('T')[0];
+  const { error } = await sb.from('etapas').update({ status: 'concluida', data_conclusao: hoje }).eq('id', etapaId);
+  if (error) { if (btn) { btn.disabled = false; btn.style.opacity = ''; } return; }
+  if (window._dashData?.priosMes) {
+    window._dashData.priosMes = window._dashData.priosMes.map(it =>
+      String(it.etapa_id) === String(etapaId) ? { ...it, etapas: { ...it.etapas, status: 'concluida', data_conclusao: hoje } } : it
+    );
     renderDashboard(window._dashData);
   }
 }

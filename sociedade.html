@@ -361,6 +361,23 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .stub-placeholder .sp-txt  { font-size: 13px; font-weight: 600; }
 .stub-placeholder .sp-sub  { font-size: 11px; }
 
+/* ── PRIORIDADES DO MÊS ────────────────────────────────────── */
+.pm-card { background: var(--branco); border: 1px solid var(--cinza2); border-left: 3px solid var(--cinza); border-radius: var(--radius-card, 8px); padding: 10px 12px; margin-bottom: 8px; }
+.pm-card.pm-vencida { background: var(--tc-bg); border-left-color: var(--terracota); }
+.pm-card.pm-hoje    { background: var(--am-bg); border-left-color: var(--ouro); }
+.pm-card.pm-futuro  { background: var(--verde-bg); border-left-color: var(--verde); }
+.pm-card.pm-done    { opacity: .55; }
+.pm-row     { display: flex; align-items: flex-start; gap: 10px; }
+.pm-body    { flex: 1; min-width: 0; }
+.pm-nome    { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.pm-sub     { font-size: 10px; color: #888; }
+.pm-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-top: 2px; }
+.pm-check   { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid rgba(0,0,0,.2); background: none; color: rgba(0,0,0,.3); font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
+.pm-check:hover { background: var(--verde); border-color: var(--verde); color: #fff; }
+.pm-x       { background: none; border: none; color: #ccc; cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; }
+.pm-x:hover { color: var(--terracota); }
+[data-theme="dark"] .pm-check { border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.3); }
+
 /* ╔══════════════════════════════════════════════════════════════
    PROJETOS
    ══════════════════════════════════════════════════════════════ */
@@ -689,12 +706,15 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 
   <!-- ── DASHBOARD ─────────────────────────────────────────── -->
   <div class="page active" id="page-dashboard">
-    <div class="sec-title">Dashboard</div>
-    <div class="stub-placeholder">
-      <div class="sp-icon">🏠</div>
-      <div class="sp-txt">Dashboard em construção</div>
-      <div class="sp-sub">Será implementado na próxima etapa.</div>
+    <div class="sec-title">Prioridades do mês</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn sm" onclick="pmNavMes(-1)">‹</button>
+      <input type="month" id="pm-mes-filtro" class="filter-select" onchange="pmOnMesFiltroChange()">
+      <button class="btn sm" onclick="pmNavMes(1)">›</button>
+      <button class="btn sm" onclick="pmMesAtualBtn()">Este mês</button>
+      <button class="btn sm verde" style="margin-left:auto" onclick="abrirModalPrioridadeMes()">+ Nova prioridade do mês</button>
     </div>
+    <div id="pm-lista"><div style="padding:20px;color:#aaa;font-size:12px">Carregando…</div></div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -1416,6 +1436,46 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════
+     MODAL — NOVA PRIORIDADE DO MÊS
+══════════════════════════════════════════════════════════════ -->
+<div class="modal-bg" id="modal-prioridade-mes" style="display:none" onclick="if(event.target===this)fecharModalPrioridadeMes()">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-hd-title">Nova prioridade do mês</span>
+      <button class="modal-close" onclick="fecharModalPrioridadeMes()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="fgroup mb14">
+        <label>Cliente *</label>
+        <select id="pm-cliente" onchange="pmOnCliente()"><option value="">Carregando…</option></select>
+      </div>
+      <div class="fgroup mb14">
+        <label>Oportunidade *</label>
+        <select id="pm-oportunidade" onchange="pmOnOportunidade()"><option value="">— selecione o cliente —</option></select>
+      </div>
+      <div class="fg fg2 mb14">
+        <div class="fgroup">
+          <label>Produto *</label>
+          <select id="pm-produto" onchange="pmOnProduto()"><option value="">— selecione a oportunidade —</option></select>
+        </div>
+        <div class="fgroup">
+          <label>Etapa *</label>
+          <select id="pm-etapa"><option value="">— selecione o produto —</option></select>
+        </div>
+      </div>
+      <div class="fgroup">
+        <label>Mês de referência *</label>
+        <input type="month" id="pm-mes">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="fecharModalPrioridadeMes()">Cancelar</button>
+      <button class="btn soc" onclick="salvarPrioridadeMes()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- @ MENTION DROPDOWN -->
 <div class="mencao-dd" id="mencao-dd" style="display:none"></div>
 
@@ -1482,6 +1542,20 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
      ('Produtos',           '#45865D'),
      ('Jurídico',           '#8C4A3D');
 
+   -- Prioridades do mês — cadastradas por sócios aqui, exibidas para todos no hub (app.html)
+   create table if not exists prioridades_mes (
+     id              uuid primary key default gen_random_uuid(),
+     cliente_id      uuid references clientes(id),
+     oportunidade_id uuid references oportunidades(id),
+     produto_id      uuid references produtos(id),
+     etapa_id        uuid not null references etapas(id),
+     mes             date not null,
+     criado_por      uuid references usuarios(id),
+     created_at      timestamptz default now()
+   );
+   alter table prioridades_mes enable row level security;
+   create policy "auth_all" on prioridades_mes for all using (auth.role()='authenticated');
+
 ══════════════════════════════════════════════════════════════ */
 
 /* ── CONFIG ─────────────────────────────────────────────────── */
@@ -1506,6 +1580,16 @@ const G = {
   editandoPautaId:  null,
   ckRespGeral:      null,   // responsável geral do checklist (override por item)
   ckItensNovos:     [],   // items being built in the modal
+};
+
+/* ── PRIORIDADES DO MÊS ─────────────────────────────────────── */
+const PM = {
+  clientes:      null,
+  oportunidades: null,
+  produtos:      null,
+  etapas:        null,
+  itens:         [],
+  mesFiltro:     '',   // 'YYYY-MM'
 };
 
 /* ── HELPERS ────────────────────────────────────────────────── */
@@ -1642,6 +1726,7 @@ async function init() {
     // Carregar base
     await Promise.all([carregarUsuarios(), carregarTemas()]);
     await carregarPautas();
+    carregarPainelPrioridadesMes();
 
     // Bell global
     AppNotif.init({ userId: usr.id });
@@ -1665,6 +1750,203 @@ async function carregarUsuarios() {
       .eq('ativo', true).order('nome'));
   }
   G.todosUsuarios = data || [];
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PRIORIDADES DO MÊS
+   Cadastradas aqui por sócios (cliente → oportunidade → produto → etapa
+   + mês de referência). Não guardam conclusão própria — refletem
+   diretamente o status da etapa vinculada (mesma fonte usada no
+   controle de fluxo de projetos em gestao.html), então concluir aqui
+   ou lá é a mesma informação.
+══════════════════════════════════════════════════════════════ */
+const PM_MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function pmMesInputAtual() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function pmNavMes(delta) {
+  const el = document.getElementById('pm-mes-filtro');
+  const cur = el.value || pmMesInputAtual();
+  const [y, m] = cur.split('-').map(Number);
+  const base = new Date(y, m - 1 + delta, 1);
+  el.value = `${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}`;
+  pmOnMesFiltroChange();
+}
+
+function pmMesAtualBtn() {
+  document.getElementById('pm-mes-filtro').value = pmMesInputAtual();
+  pmOnMesFiltroChange();
+}
+
+function pmOnMesFiltroChange() {
+  PM.mesFiltro = document.getElementById('pm-mes-filtro').value;
+  renderPainelPrioridadesMes();
+}
+
+// Semáforo: verde=dentro do mês (folga), amarelo=faltam ≤5 dias para o mês
+// encerrar, vermelho=mês já encerrou sem conclusão, neutro=etapa concluída.
+function pmStatusMes(mesISO, etapaStatus) {
+  if (etapaStatus === 'concluida') return { cls: 'done', label: 'Concluída' };
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const [y, m] = mesISO.slice(0, 7).split('-').map(Number);
+  const inicioMes = new Date(y, m - 1, 1);
+  const fimMes = new Date(y, m, 0);
+  if (fimMes < hoje) return { cls: 'vencida', label: 'Mês encerrado' };
+  const diffFim = Math.round((fimMes - hoje) / 86400000);
+  if (inicioMes <= hoje && diffFim <= 5) return { cls: 'hoje', label: `Encerra em ${diffFim}d` };
+  return { cls: 'futuro', label: `${PM_MESES_ABR[m-1]}/${y}` };
+}
+
+async function carregarPainelPrioridadesMes() {
+  const { data, error } = await sb.from('prioridades_mes')
+    .select('id, mes, etapa_id, produto_id, oportunidade_id, cliente_id, criado_por, etapas(nome,status,data_conclusao), produtos(nome), oportunidades(projeto,num_legado), clientes(nome)')
+    .order('mes', { ascending: false });
+  if (error) { console.error('[prioridades_mes]', error); return; }
+  PM.itens = data || [];
+  const el = document.getElementById('pm-mes-filtro');
+  if (el && !el.value) el.value = pmMesInputAtual();
+  PM.mesFiltro = el?.value || pmMesInputAtual();
+  renderPainelPrioridadesMes();
+}
+
+function renderPainelPrioridadesMes() {
+  const el = document.getElementById('pm-lista');
+  if (!el) return;
+  const mesFiltro = PM.mesFiltro || pmMesInputAtual();
+  const itens = PM.itens.filter(it => (it.mes || '').slice(0, 7) === mesFiltro);
+  if (!itens.length) { el.innerHTML = '<div class="empty-note">Nenhuma prioridade cadastrada para este mês.</div>'; return; }
+  el.innerHTML = itens.map(it => {
+    const etapa = it.etapas || {};
+    const done = etapa.status === 'concluida';
+    const st = pmStatusMes(it.mes, etapa.status);
+    const nome = [it.clientes?.nome, it.oportunidades?.projeto].filter(Boolean).join(' · ');
+    const sub = [it.produtos?.nome, etapa.nome].filter(Boolean).join(' — ');
+    const badgeCls = done ? 'b-gr' : st.cls === 'vencida' ? 'b-tc' : st.cls === 'hoje' ? 'b-am' : 'b-vd';
+    return `<div class="pm-card ${done ? 'pm-done' : 'pm-' + st.cls}">
+      <div class="pm-row">
+        <div class="pm-body">
+          <div class="pm-nome">${_esc(nome || '—')}</div>
+          <div class="pm-sub">${_esc(sub || '—')}</div>
+          <span class="badge ${badgeCls}" style="margin-top:5px">${_esc(st.label)}</span>
+        </div>
+        <div class="pm-actions">
+          ${done
+            ? '<span style="font-size:9px;font-weight:700;color:var(--verde);opacity:.7">✓</span>'
+            : `<button class="pm-check" title="Concluir etapa" onclick="pmConcluirEtapa('${it.etapa_id}')">✓</button>`}
+          <button class="pm-x" title="Remover" onclick="pmRemoverItem('${it.id}')">×</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function pmConcluirEtapa(etapaId) {
+  if (!confirm('Marcar esta etapa como concluída?')) return;
+  const hoje = new Date().toISOString().split('T')[0];
+  const { error } = await sb.from('etapas').update({ status: 'concluida', data_conclusao: hoje }).eq('id', etapaId);
+  if (error) { toast('Erro ao concluir: ' + error.message); return; }
+  PM.itens.forEach(it => { if (it.etapa_id === etapaId && it.etapas) { it.etapas.status = 'concluida'; it.etapas.data_conclusao = hoje; } });
+  toast('Etapa concluída');
+  renderPainelPrioridadesMes();
+}
+
+async function pmRemoverItem(id) {
+  if (!confirm('Remover esta prioridade do mês? A etapa em si não é afetada.')) return;
+  const { error } = await sb.from('prioridades_mes').delete().eq('id', id);
+  if (error) { toast('Erro ao remover: ' + error.message); return; }
+  PM.itens = PM.itens.filter(it => it.id !== id);
+  toast('Prioridade removida');
+  renderPainelPrioridadesMes();
+}
+
+/* ── modal: nova prioridade do mês ───────────────────────────── */
+async function abrirModalPrioridadeMes() {
+  document.getElementById('pm-mes').value = pmMesInputAtual();
+  document.getElementById('pm-oportunidade').innerHTML = '<option value="">— selecione o cliente —</option>';
+  document.getElementById('pm-produto').innerHTML = '<option value="">— selecione a oportunidade —</option>';
+  document.getElementById('pm-etapa').innerHTML = '<option value="">— selecione o produto —</option>';
+  await pmCarregarBase();
+  const sel = document.getElementById('pm-cliente');
+  sel.innerHTML = '<option value="">Selecione…</option>' + PM.clientes.map(c => `<option value="${c.id}">${_esc(c.nome)}</option>`).join('');
+  document.getElementById('modal-prioridade-mes').style.display = 'flex';
+}
+
+function fecharModalPrioridadeMes() {
+  document.getElementById('modal-prioridade-mes').style.display = 'none';
+}
+
+async function pmCarregarBase() {
+  if (PM.clientes) return;
+  const [clientesRes, oppsRes, prodsRes, etapasRes] = await Promise.all([
+    sb.from('clientes').select('id,nome').order('nome'),
+    sb.from('oportunidades').select('id,num_legado,cliente_id,projeto,cidade,uf').not('excluida', 'is', true),
+    sb.from('produtos').select('id,nome,oportunidade_id'),
+    sb.from('etapas').select('id,nome,status,ordem,produto_id').order('ordem'),
+  ]);
+  PM.clientes = clientesRes.data || [];
+  PM.oportunidades = oppsRes.data || [];
+  PM.produtos = prodsRes.data || [];
+  PM.etapas = etapasRes.data || [];
+}
+
+function pmOppLabel(o) {
+  return [o.num_legado, o.projeto || o.cidade].filter(Boolean).join(' · ') || 'Sem título';
+}
+
+function pmOnCliente() {
+  const cid = document.getElementById('pm-cliente').value;
+  const selOpp = document.getElementById('pm-oportunidade');
+  const selProd = document.getElementById('pm-produto');
+  const selEt = document.getElementById('pm-etapa');
+  selProd.innerHTML = '<option value="">— selecione a oportunidade —</option>';
+  selEt.innerHTML = '<option value="">— selecione o produto —</option>';
+  if (!cid) { selOpp.innerHTML = '<option value="">— selecione o cliente —</option>'; return; }
+  const lista = PM.oportunidades.filter(o => String(o.cliente_id) === String(cid));
+  selOpp.innerHTML = '<option value="">Selecione…</option>' + lista.map(o => `<option value="${o.id}">${_esc(pmOppLabel(o))}</option>`).join('');
+}
+
+function pmOnOportunidade() {
+  const oid = document.getElementById('pm-oportunidade').value;
+  const selProd = document.getElementById('pm-produto');
+  const selEt = document.getElementById('pm-etapa');
+  selEt.innerHTML = '<option value="">— selecione o produto —</option>';
+  if (!oid) { selProd.innerHTML = '<option value="">— selecione a oportunidade —</option>'; return; }
+  const lista = PM.produtos.filter(p => String(p.oportunidade_id) === String(oid));
+  selProd.innerHTML = '<option value="">Selecione…</option>' + lista.map(p => `<option value="${p.id}">${_esc(p.nome || 'Produto')}</option>`).join('');
+}
+
+function pmOnProduto() {
+  const pid = document.getElementById('pm-produto').value;
+  const selEt = document.getElementById('pm-etapa');
+  if (!pid) { selEt.innerHTML = '<option value="">— selecione o produto —</option>'; return; }
+  const lista = PM.etapas.filter(e => String(e.produto_id) === String(pid) && e.status !== 'concluida');
+  selEt.innerHTML = lista.length
+    ? '<option value="">Selecione…</option>' + lista.map(e => `<option value="${e.id}">${_esc(e.nome || 'Etapa')}</option>`).join('')
+    : '<option value="">Nenhuma etapa em aberto</option>';
+}
+
+async function salvarPrioridadeMes() {
+  const clienteId = document.getElementById('pm-cliente').value;
+  const oppId = document.getElementById('pm-oportunidade').value;
+  const prodId = document.getElementById('pm-produto').value;
+  const etapaId = document.getElementById('pm-etapa').value;
+  const mesVal = document.getElementById('pm-mes').value;
+  if (!clienteId || !oppId || !prodId || !etapaId || !mesVal) { toast('Preencha cliente, oportunidade, produto, etapa e mês.'); return; }
+  const { error } = await sb.from('prioridades_mes').insert({
+    cliente_id: clienteId,
+    oportunidade_id: oppId,
+    produto_id: prodId,
+    etapa_id: etapaId,
+    mes: mesVal + '-01',
+    criado_por: G.usuario?.id || null,
+  });
+  if (error) { toast('Erro ao salvar: ' + error.message); return; }
+  toast('Prioridade do mês adicionada');
+  fecharModalPrioridadeMes();
+  await carregarPainelPrioridadesMes();
 }
 
 /* ── NAV / ABAS ─────────────────────────────────────────────── */
