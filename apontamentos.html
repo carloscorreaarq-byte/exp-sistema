@@ -275,6 +275,41 @@ body{
 }
 .apo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 
+/* ── Subtarefas: campo de tags ───────────── */
+.apo-tagfield{
+  display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+  min-height:34px;padding:5px 7px;
+  border:1px solid var(--cinza);border-radius:var(--radius-input);
+  background:var(--branco);
+  transition:border-color .15s,box-shadow .15s;
+}
+.apo-tagfield:focus-within{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft);}
+.apo-tag{
+  display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 4px 0 9px;
+  border-radius:999px;background:var(--verde-bg);color:#2d6f50;font-size:10px;font-weight:600;
+  white-space:nowrap;
+}
+.apo-tag-x{
+  width:14px;height:14px;border-radius:50%;border:none;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;line-height:1;color:#2d6f50;opacity:.6;cursor:pointer;background:transparent;
+}
+.apo-tag-x:hover{opacity:1;background:rgba(62,120,88,.14);}
+.apo-field .apo-tag-caret{
+  border:none;outline:none;box-shadow:none;background:transparent;
+  flex:1;min-width:70px;height:22px;padding:0 2px;font-size:12px;
+}
+.apo-sugg-lbl{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin:7px 0 4px;}
+.apo-sugg-row{display:flex;flex-wrap:wrap;gap:5px;}
+.apo-sugg-pill{
+  height:22px;padding:0 9px 0 7px;border-radius:999px;border:1px dashed var(--cinza);
+  background:transparent;color:#888;font-size:10px;font-weight:500;font-family:inherit;
+  display:inline-flex;align-items:center;gap:3px;white-space:nowrap;cursor:pointer;
+  transition:border-color .12s,color .12s,background .12s;
+}
+.apo-sugg-pill:hover{border-color:var(--verde);color:var(--verde);background:var(--verde-soft);}
+.apo-sugg-pill .plus{color:var(--verde);font-weight:700;font-size:11px;}
+
 /* ── Pills ────────────────────────────── */
 .apo-pills{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0;}
 .apo-pill{
@@ -600,9 +635,13 @@ body{
             </div>
 
             <div class="apo-field" id="apo-subtarefas-wrap">
-              <label for="apo-subtarefas">Subtarefas (opcional)</label>
-              <input type="text" id="apo-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao">
-              <div id="apo-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+              <label for="apo-subtarefas-input">Subtarefas (opcional)</label>
+              <div class="apo-tagfield" id="apo-subtarefas-tagfield">
+                <div id="apo-subtarefas-tags" style="display:contents"></div>
+                <input type="text" id="apo-subtarefas-input" class="apo-tag-caret" placeholder="Adicionar…" autocomplete="off">
+              </div>
+              <input type="hidden" id="apo-subtarefas">
+              <div id="apo-subtarefas-sugestoes" style="display:none"></div>
             </div>
 
             <div class="apo-row">
@@ -2175,7 +2214,7 @@ body{
     document.getElementById('apo-subtarefas-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-category-wrap').style.display = isProj?'none':'';
     if (!isProj) {
-      document.getElementById('apo-subtarefas').value = '';
+      clearSubtarefasTags();
       document.getElementById('apo-category').innerHTML = (SUBTIPOS[type]||[]).map(function(s){
         return '<option value="'+esc(s)+'">'+esc(s)+'</option>';
       }).join('')||'<option value="">—</option>';
@@ -2337,19 +2376,63 @@ body{
     return AP.subtarefasCache[cacheKey];
   }
 
-  function applySubtarefasSuggestion(inputId, sugestao) {
-    var input = document.getElementById(inputId);
+  function getSubtarefasArr() { return AP.subtarefas || (AP.subtarefas = []); }
+
+  function syncSubtarefasHidden() {
+    document.getElementById('apo-subtarefas').value = getSubtarefasArr().join(', ');
+  }
+
+  function renderSubtarefasTags() {
+    var box = document.getElementById('apo-subtarefas-tags');
+    if (!box) return;
+    box.innerHTML = getSubtarefasArr().map(function(item, idx){
+      return '<span class="apo-tag">'+esc(item)+'<button type="button" class="apo-tag-x" onclick="removeSubtarefaTag('+idx+')" aria-label="Remover">×</button></span>';
+    }).join('');
+  }
+
+  function addSubtarefaTag(raw) {
+    var val = String(raw||'').trim();
+    if (!val) return;
+    var arr = getSubtarefasArr();
+    var key = norm(val);
+    if (arr.some(function(item){ return norm(item)===key; })) return;
+    arr.push(val);
+    syncSubtarefasHidden();
+    renderSubtarefasTags();
+    renderSubtarefasSuggestions().catch(function(){});
+  }
+
+  function removeSubtarefaTag(idx) {
+    getSubtarefasArr().splice(idx, 1);
+    syncSubtarefasHidden();
+    renderSubtarefasTags();
+    renderSubtarefasSuggestions().catch(function(){});
+  }
+
+  function clearSubtarefasTags() {
+    AP.subtarefas = [];
+    syncSubtarefasHidden();
+    renderSubtarefasTags();
+    var input = document.getElementById('apo-subtarefas-input');
+    if (input) input.value = '';
+  }
+
+  function commitPendingSubtarefaInput() {
+    var input = document.getElementById('apo-subtarefas-input');
     if (!input) return;
-    var raw = input.value || '';
-    var match = raw.match(/^(.*?)([^,;\n]*)$/);
-    var prefix = match ? match[1] : '';
-    input.value = prefix + sugestao + ', ';
-    input.focus();
+    var val = input.value.trim();
+    if (val) { addSubtarefaTag(val); input.value = ''; }
+  }
+
+  function applySubtarefaSuggestion(sugestao) {
+    addSubtarefaTag(sugestao);
+    var input = document.getElementById('apo-subtarefas-input');
+    if (input) { input.value = ''; input.focus(); }
   }
 
   async function renderSubtarefasSuggestions() {
     var wrap = document.getElementById('apo-subtarefas-sugestoes');
-    var input = document.getElementById('apo-subtarefas');
+    var input = document.getElementById('apo-subtarefas-input');
     var type = document.getElementById('apo-type').value;
     if (!wrap || !input || type !== 'projeto') {
       if (wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
@@ -2370,10 +2453,9 @@ body{
       wrap.style.display = 'none';
       return;
     }
-    var termoAtual = String((input.value || '').split(/[,;\n]/).pop() || '').trim();
-    var termoKey = norm(termoAtual);
+    var termoKey = norm(input.value || '');
     var usadas = {};
-    parseSubtarefas(input.value).forEach(function(item){ usadas[norm(item)] = true; });
+    getSubtarefasArr().forEach(function(item){ usadas[norm(item)] = true; });
     sugestoes = sugestoes.filter(function(item){ return !usadas[norm(item)]; });
     if (termoKey) sugestoes = sugestoes.filter(function(item){ return norm(item).indexOf(termoKey) >= 0; });
     sugestoes = sugestoes.slice(0, 8);
@@ -2382,10 +2464,11 @@ body{
       wrap.style.display = 'none';
       return;
     }
-    wrap.style.display = 'flex';
-    wrap.innerHTML = sugestoes.map(function(item){
-      return '<button type="button" class="apo-btn apo-btn-ghost" style="padding:6px 10px" onclick="applySubtarefasSuggestion(\'apo-subtarefas\', '+JSON.stringify(item).replace(/"/g,'&quot;')+');renderSubtarefasSuggestions()">'+esc(item)+'</button>';
-    }).join('');
+    wrap.style.display = 'block';
+    wrap.innerHTML = '<div class="apo-sugg-lbl">Sugestões recentes</div><div class="apo-sugg-row">' +
+      sugestoes.map(function(item){
+        return '<button type="button" class="apo-sugg-pill" onclick="applySubtarefaSuggestion('+JSON.stringify(item).replace(/"/g,'&quot;')+')"><span class="plus">+</span>'+esc(item)+'</button>';
+      }).join('') + '</div>';
   }
 
   async function onProjectChange() {
@@ -2486,7 +2569,7 @@ body{
     fillTypeOptions(); updateTypeUI();
     document.getElementById('apo-project').value = '';
     document.getElementById('apo-stage').innerHTML = '<option value="">Selecionar etapa…</option>';
-    document.getElementById('apo-subtarefas').value = '';
+    clearSubtarefasTags();
     var sug = document.getElementById('apo-subtarefas-sugestoes');
     if (sug) { sug.innerHTML = ''; sug.style.display = 'none'; }
     updateSelectedDayUI(today);
@@ -2518,6 +2601,7 @@ body{
       var productId = type==='projeto'?(document.getElementById('apo-project').value||null):null;
       var stageId   = type==='projeto'?(document.getElementById('apo-stage').value||null):null;
       var subtipo   = type!=='projeto'?(document.getElementById('apo-category').value||null):null;
+      if (type==='projeto') commitPendingSubtarefaInput();
       var subtarefas = type==='projeto'?(document.getElementById('apo-subtarefas').value||'').trim():'';
       if (!date) throw new Error('Selecione a data.');
       if (!start||!end) throw new Error('Preencha início e fim.');
@@ -2549,7 +2633,7 @@ body{
         date: date
       });
       document.getElementById('apo-desc').value = '';
-      document.getElementById('apo-subtarefas').value = '';
+      clearSubtarefasTags();
       setFb('apo-feedback', subtSaved ? 'Horas registradas.' : 'Horas registradas, mas subtarefas ainda nao estao disponiveis.', subtSaved ? 'ok' : 'err');
       loadHorasData().catch(function(){});
     } catch(e) { setFb('apo-feedback',e.message,'err'); }
@@ -2662,11 +2746,21 @@ body{
       updateClassUI();
       renderSubtarefasSuggestions().catch(function(){});
     });
-    document.getElementById('apo-subtarefas').addEventListener('input',function(){
+    document.getElementById('apo-subtarefas-input').addEventListener('input',function(){
       renderSubtarefasSuggestions().catch(function(){});
     });
-    document.getElementById('apo-subtarefas').addEventListener('focus',function(){
+    document.getElementById('apo-subtarefas-input').addEventListener('focus',function(){
       renderSubtarefasSuggestions().catch(function(){});
+    });
+    document.getElementById('apo-subtarefas-input').addEventListener('keydown',function(ev){
+      if (ev.key==='Enter' || ev.key===',' || ev.key===';') {
+        ev.preventDefault();
+        var val = this.value.trim();
+        if (val) { addSubtarefaTag(val); this.value=''; }
+      } else if (ev.key==='Backspace' && !this.value) {
+        var arr = getSubtarefasArr();
+        if (arr.length) removeSubtarefaTag(arr.length-1);
+      }
     });
     document.getElementById('apo-start').addEventListener('input',updateDuration);
     document.getElementById('apo-end').addEventListener('input',updateDuration);
