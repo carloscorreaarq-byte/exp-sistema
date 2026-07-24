@@ -376,7 +376,13 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .pm-check:hover { background: var(--verde); border-color: var(--verde); color: #fff; }
 .pm-x       { background: none; border: none; color: #ccc; cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; }
 .pm-x:hover { color: var(--terracota); }
+.pm-edit    { background: none; border: none; color: #ccc; cursor: pointer; font-size: 13px; padding: 2px 4px; line-height: 1; }
+.pm-edit:hover { color: var(--soc); }
 [data-theme="dark"] .pm-check { border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.3); }
+.pm-combo-dd    { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 20; background: var(--branco); border: 1px solid var(--cinza); border-top: none; max-height: 220px; overflow-y: auto; box-shadow: var(--shadow-card, 0 4px 10px rgba(0,0,0,.08)); }
+.pm-combo-item  { padding: 7px 10px; font-size: 12px; cursor: pointer; }
+.pm-combo-item:hover { background: var(--off); }
+.pm-combo-empty { padding: 7px 10px; font-size: 11px; color: #aaa; }
 
 /* ╔══════════════════════════════════════════════════════════════
    PROJETOS
@@ -1442,17 +1448,25 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 <div class="modal-bg" id="modal-prioridade-mes" style="display:none" onclick="if(event.target===this)fecharModalPrioridadeMes()">
   <div class="modal">
     <div class="modal-hd">
-      <span class="modal-hd-title">Nova prioridade do mês</span>
+      <span class="modal-hd-title" id="pm-modal-titulo">Nova prioridade do mês</span>
       <button class="modal-close" onclick="fecharModalPrioridadeMes()">×</button>
     </div>
     <div class="modal-body">
-      <div class="fgroup mb14">
+      <div class="fgroup mb14" style="position:relative">
         <label>Cliente *</label>
-        <select id="pm-cliente" onchange="pmOnCliente()"><option value="">Carregando…</option></select>
+        <input type="text" id="pm-cliente-busca" placeholder="Buscar cliente…" autocomplete="off"
+          oninput="pmFiltrarCombo('cliente')" onfocus="pmFiltrarCombo('cliente')"
+          onblur="setTimeout(()=>pmFecharCombo('cliente'),150)">
+        <input type="hidden" id="pm-cliente">
+        <div class="pm-combo-dd" id="pm-cliente-dd"></div>
       </div>
-      <div class="fgroup mb14">
+      <div class="fgroup mb14" style="position:relative">
         <label>Oportunidade *</label>
-        <select id="pm-oportunidade" onchange="pmOnOportunidade()"><option value="">— selecione o cliente —</option></select>
+        <input type="text" id="pm-oportunidade-busca" placeholder="— selecione o cliente —" autocomplete="off" disabled
+          oninput="pmFiltrarCombo('oportunidade')" onfocus="pmFiltrarCombo('oportunidade')"
+          onblur="setTimeout(()=>pmFecharCombo('oportunidade'),150)">
+        <input type="hidden" id="pm-oportunidade">
+        <div class="pm-combo-dd" id="pm-oportunidade-dd"></div>
       </div>
       <div class="fg fg2 mb14">
         <div class="fgroup">
@@ -1471,7 +1485,8 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
     </div>
     <div class="modal-ft">
       <button class="btn" onclick="fecharModalPrioridadeMes()">Cancelar</button>
-      <button class="btn soc" onclick="salvarPrioridadeMes()">Salvar</button>
+      <button class="btn" id="pm-salvar-continuar-btn" onclick="salvarPrioridadeMes(true)">Salvar e continuar</button>
+      <button class="btn soc" id="pm-salvar-btn" onclick="salvarPrioridadeMes(false)">Salvar</button>
     </div>
   </div>
 </div>
@@ -1590,6 +1605,7 @@ const PM = {
   etapas:        null,
   itens:         [],
   mesFiltro:     '',   // 'YYYY-MM'
+  editandoId:    null,
 };
 
 /* ── HELPERS ────────────────────────────────────────────────── */
@@ -1836,6 +1852,7 @@ function renderPainelPrioridadesMes() {
           ${done
             ? '<span style="font-size:9px;font-weight:700;color:var(--verde);opacity:.7">✓</span>'
             : `<button class="pm-check" title="Concluir etapa" onclick="pmConcluirEtapa('${it.etapa_id}')">✓</button>`}
+          <button class="pm-edit" title="Editar" onclick="pmEditarItem('${it.id}')">✎</button>
           <button class="pm-x" title="Remover" onclick="pmRemoverItem('${it.id}')">×</button>
         </div>
       </div>
@@ -1863,19 +1880,76 @@ async function pmRemoverItem(id) {
 }
 
 /* ── modal: nova prioridade do mês ───────────────────────────── */
-async function abrirModalPrioridadeMes() {
-  document.getElementById('pm-mes').value = pmMesInputAtual();
-  document.getElementById('pm-oportunidade').innerHTML = '<option value="">— selecione o cliente —</option>';
+const _PM_DIACRITICOS_RE = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+function normTextKeyPM(v) {
+  return String(v || '').trim().toLowerCase().normalize('NFD').replace(_PM_DIACRITICOS_RE, '');
+}
+
+// Fonte e label de cada combo de busca — cliente e oportunidade podem ter
+// muitas opções, então usam busca em vez de <select> simples.
+const PM_COMBO_SRC = {
+  cliente:      () => PM.clientes || [],
+  oportunidade: () => (PM.oportunidades || []).filter(o => String(o.cliente_id) === String(document.getElementById('pm-cliente').value)),
+};
+const PM_COMBO_LABEL = {
+  cliente:      c => c.nome,
+  oportunidade: o => pmOppLabel(o),
+};
+
+function pmFiltrarCombo(field) {
+  const q = normTextKeyPM(document.getElementById(`pm-${field}-busca`).value);
+  const dd = document.getElementById(`pm-${field}-dd`);
+  const src = PM_COMBO_SRC[field]();
+  const matches = (q.length ? src.filter(item => normTextKeyPM(PM_COMBO_LABEL[field](item)).includes(q)) : src).slice(0, 8);
+  dd.innerHTML = matches.length
+    ? matches.map(item => `<div class="pm-combo-item" onmousedown="event.preventDefault();pmSelecionarCombo('${field}','${item.id}')">${_esc(PM_COMBO_LABEL[field](item))}</div>`).join('')
+    : '<div class="pm-combo-empty">Nenhum resultado</div>';
+  dd.style.display = 'block';
+}
+
+function pmFecharCombo(field) {
+  const dd = document.getElementById(`pm-${field}-dd`);
+  if (dd) dd.style.display = 'none';
+}
+
+function pmSelecionarCombo(field, id) {
+  const item = PM_COMBO_SRC[field]().find(x => String(x.id) === String(id));
+  if (!item) return;
+  document.getElementById(`pm-${field}`).value = id;
+  document.getElementById(`pm-${field}-busca`).value = PM_COMBO_LABEL[field](item);
+  pmFecharCombo(field);
+  if (field === 'cliente') pmOnCliente();
+  else if (field === 'oportunidade') pmOnOportunidade();
+}
+
+// Reseta os campos de escolha (cliente→etapa), mantendo o mês — útil tanto
+// para abrir o modal do zero quanto para "Salvar e continuar" (cadastro em lote).
+function pmResetCamposEscolha() {
+  document.getElementById('pm-cliente').value = '';
+  document.getElementById('pm-cliente-busca').value = '';
+  document.getElementById('pm-oportunidade').value = '';
+  document.getElementById('pm-oportunidade-busca').value = '';
+  document.getElementById('pm-oportunidade-busca').disabled = true;
+  document.getElementById('pm-oportunidade-busca').placeholder = '— selecione o cliente —';
   document.getElementById('pm-produto').innerHTML = '<option value="">— selecione a oportunidade —</option>';
   document.getElementById('pm-etapa').innerHTML = '<option value="">— selecione o produto —</option>';
+  pmFecharCombo('cliente'); pmFecharCombo('oportunidade');
+}
+
+async function abrirModalPrioridadeMes() {
   await pmCarregarBase();
-  const sel = document.getElementById('pm-cliente');
-  sel.innerHTML = '<option value="">Selecione…</option>' + PM.clientes.map(c => `<option value="${c.id}">${_esc(c.nome)}</option>`).join('');
+  PM.editandoId = null;
+  document.getElementById('pm-modal-titulo').textContent = 'Nova prioridade do mês';
+  document.getElementById('pm-salvar-btn').textContent = 'Salvar';
+  document.getElementById('pm-salvar-continuar-btn').style.display = '';
+  pmResetCamposEscolha();
+  document.getElementById('pm-mes').value = pmMesInputAtual();
   document.getElementById('modal-prioridade-mes').style.display = 'flex';
 }
 
 function fecharModalPrioridadeMes() {
   document.getElementById('modal-prioridade-mes').style.display = 'none';
+  PM.editandoId = null;
 }
 
 async function pmCarregarBase() {
@@ -1898,14 +1972,12 @@ function pmOppLabel(o) {
 
 function pmOnCliente() {
   const cid = document.getElementById('pm-cliente').value;
-  const selOpp = document.getElementById('pm-oportunidade');
-  const selProd = document.getElementById('pm-produto');
-  const selEt = document.getElementById('pm-etapa');
-  selProd.innerHTML = '<option value="">— selecione a oportunidade —</option>';
-  selEt.innerHTML = '<option value="">— selecione o produto —</option>';
-  if (!cid) { selOpp.innerHTML = '<option value="">— selecione o cliente —</option>'; return; }
-  const lista = PM.oportunidades.filter(o => String(o.cliente_id) === String(cid));
-  selOpp.innerHTML = '<option value="">Selecione…</option>' + lista.map(o => `<option value="${o.id}">${_esc(pmOppLabel(o))}</option>`).join('');
+  document.getElementById('pm-oportunidade').value = '';
+  document.getElementById('pm-oportunidade-busca').value = '';
+  document.getElementById('pm-oportunidade-busca').disabled = !cid;
+  document.getElementById('pm-oportunidade-busca').placeholder = cid ? 'Buscar oportunidade…' : '— selecione o cliente —';
+  document.getElementById('pm-produto').innerHTML = '<option value="">— selecione a oportunidade —</option>';
+  document.getElementById('pm-etapa').innerHTML = '<option value="">— selecione o produto —</option>';
 }
 
 function pmOnOportunidade() {
@@ -1928,23 +2000,72 @@ function pmOnProduto() {
     : '<option value="">Nenhuma etapa em aberto</option>';
 }
 
-async function salvarPrioridadeMes() {
+async function pmEditarItem(id) {
+  const it = PM.itens.find(x => x.id === id);
+  if (!it) return;
+  await pmCarregarBase();
+  PM.editandoId = id;
+  document.getElementById('pm-modal-titulo').textContent = 'Editar prioridade do mês';
+  document.getElementById('pm-salvar-btn').textContent = 'Salvar alterações';
+  document.getElementById('pm-salvar-continuar-btn').style.display = 'none';
+
+  document.getElementById('pm-cliente').value = it.cliente_id || '';
+  const cli = PM.clientes.find(c => String(c.id) === String(it.cliente_id));
+  document.getElementById('pm-cliente-busca').value = cli ? cli.nome : '';
+  pmOnCliente();
+
+  document.getElementById('pm-oportunidade').value = it.oportunidade_id || '';
+  document.getElementById('pm-oportunidade-busca').disabled = false;
+  const opp = PM.oportunidades.find(o => String(o.id) === String(it.oportunidade_id));
+  document.getElementById('pm-oportunidade-busca').value = opp ? pmOppLabel(opp) : '';
+  pmOnOportunidade();
+
+  document.getElementById('pm-produto').value = it.produto_id || '';
+  pmOnProduto();
+  document.getElementById('pm-etapa').value = it.etapa_id || '';
+  document.getElementById('pm-mes').value = (it.mes || '').slice(0, 7);
+
+  document.getElementById('modal-prioridade-mes').style.display = 'flex';
+}
+
+async function salvarPrioridadeMes(manterAberto) {
   const clienteId = document.getElementById('pm-cliente').value;
   const oppId = document.getElementById('pm-oportunidade').value;
   const prodId = document.getElementById('pm-produto').value;
   const etapaId = document.getElementById('pm-etapa').value;
   const mesVal = document.getElementById('pm-mes').value;
   if (!clienteId || !oppId || !prodId || !etapaId || !mesVal) { toast('Preencha cliente, oportunidade, produto, etapa e mês.'); return; }
-  const { error } = await sb.from('prioridades_mes').insert({
+
+  // Aviso de duplicata — mesma etapa já cadastrada (em qualquer mês)
+  const existente = PM.itens.find(it => String(it.etapa_id) === String(etapaId) && String(it.id) !== String(PM.editandoId || ''));
+  if (existente) {
+    const mesLbl = (existente.mes || '').slice(0, 7);
+    if (!confirm(`Esta etapa já está cadastrada como prioridade do mês (${mesLbl}). Cadastrar mesmo assim?`)) return;
+  }
+
+  const payload = {
     cliente_id: clienteId,
     oportunidade_id: oppId,
     produto_id: prodId,
     etapa_id: etapaId,
     mes: mesVal + '-01',
-    criado_por: G.usuario?.id || null,
-  });
+  };
+  let error;
+  if (PM.editandoId) {
+    ({ error } = await sb.from('prioridades_mes').update(payload).eq('id', PM.editandoId));
+  } else {
+    ({ error } = await sb.from('prioridades_mes').insert({ ...payload, criado_por: G.usuario?.id || null }));
+  }
   if (error) { toast('Erro ao salvar: ' + error.message); return; }
-  toast('Prioridade do mês adicionada');
+  toast(PM.editandoId ? 'Prioridade atualizada' : 'Prioridade do mês adicionada');
+
+  if (manterAberto && !PM.editandoId) {
+    await carregarPainelPrioridadesMes();
+    pmResetCamposEscolha();
+    document.getElementById('pm-cliente-busca').focus();
+    return;
+  }
+  PM.editandoId = null;
   fecharModalPrioridadeMes();
   await carregarPainelPrioridadesMes();
 }
