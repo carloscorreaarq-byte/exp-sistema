@@ -432,6 +432,13 @@ textarea{resize:vertical;min-height:60px}
 /* Toast */
 [data-theme="dark"] .toast{background:var(--grafite)}
 
+/* LISTA DE CONTATOS (visão plana) */
+.ct-lista-table{width:100%;border-collapse:collapse;font-size:11px}
+.ct-lista-table th{text-align:left;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;padding:6px 10px;border-bottom:1px solid var(--cinza)}
+.ct-lista-table td{padding:7px 10px;border-bottom:1px solid var(--cinza2);vertical-align:middle}
+.ct-lista-table tbody tr:hover{background:var(--off)}
+.ct-lista-table tbody tr:last-child td{border-bottom:none}
+
 /* FOLLOW-UP TASK LIST */
 .fu-item{display:flex;align-items:center;gap:9px;padding:5px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
 .fu-item:last-child{border-bottom:none}
@@ -869,7 +876,12 @@ textarea{resize:vertical;min-height:60px}
       <option value="Inativo">Inativo</option>
       <option value="Prospecção">Prospecção</option>
     </select>
+    <select id="ct-view" onchange="renderContatos()" style="font-size:10px;padding:5px 9px;border:1px solid var(--cinza)">
+      <option value="empresa">Agrupado por empresa</option>
+      <option value="lista">Lista de contatos</option>
+    </select>
     <button class="btn sm ghost ct-dup-btn" id="ct-dup-toggle" onclick="toggleCtDupFilter()">⚠ Duplicados<span class="ct-dup-badge" id="ct-dup-badge" style="display:none"></span></button>
+    <button class="btn sm ghost" onclick="exportarContatosExcel()">⬇ Exportar Excel</button>
     <div style="margin-left:auto;font-size:10px;color:#888" id="ct-total"></div>
   </div>
   <div id="contatos-list"><div class="loading">Carregando...</div></div>
@@ -1495,6 +1507,7 @@ textarea{resize:vertical;min-height:60px}
     </div>
     <div class="modal-body">
       <input type="hidden" id="contato-cliente-id">
+      <input type="hidden" id="contato-edit-id">
       <div class="fgroup mb8"><label>Nome *</label><input type="text" id="contato-nome" placeholder="Nome completo"></div>
       <div class="fgroup mb8"><label>Cargo <span style="font-weight:300;text-transform:none">(opcional)</span></label><input type="text" id="contato-cargo" placeholder="Ex: Diretor Comercial"></div>
       <div class="fg fg2 mb8">
@@ -3621,12 +3634,90 @@ function computeContatoDupGroups(){
 }
 
 function renderContatoRow(p){
+  const canEdit=!currentUser?.viewer_only;
   return `<div class="pessoa-row">
         <div style="flex:1"><div style="font-weight:500">${escHtml(p.nome||'—')}</div><div style="font-size:10px;color:#888">${escHtml(p.cargo||'')}</div></div>
         <div style="font-size:10px;color:#888;text-align:right">
           ${p.email?`<div>${escHtml(p.email)}</div>`:''}${p.telefone?`<div>${escHtml(p.telefone)}</div>`:''}
         </div>
+        ${canEdit?`<button class="btn xs ghost" onclick="abrirEditarContato('${escJsStr(p.id)}')" title="Editar contato">✎</button>`:''}
       </div>`;
+}
+
+// Empresas que passam pelos filtros de status/duplicados (sem o filtro de busca —
+// usado pela lista plana de contatos, que busca por nome do contato também, não só empresa)
+function _contatosEmpresasBase(sf,idToGroup){
+  let base=[...allClients];
+  if(sf!=='todos')base=base.filter(c=>contactStatus(c.id)===sf);
+  if(ctDupOnly)base=base.filter(c=>allContatos.some(x=>x.cliente_id===c.id&&idToGroup[x.id]));
+  return base;
+}
+
+function _contatosListaFiltrados(q,sf,idToGroup){
+  const baseIds=new Set(_contatosEmpresasBase(sf,idToGroup).map(c=>c.id));
+  const clienteMap={};
+  allClients.forEach(c=>clienteMap[c.id]=c);
+  let rows=allContatos.filter(p=>baseIds.has(p.cliente_id));
+  if(q){
+    rows=rows.filter(p=>{
+      const c=clienteMap[p.cliente_id];
+      const hay=[p.nome,p.cargo,p.email,p.telefone,c?.nome].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  rows.sort((a,b)=>{
+    const ca=clienteMap[a.cliente_id]?.nome||'', cb=clienteMap[b.cliente_id]?.nome||'';
+    return ca.localeCompare(cb)||(a.nome||'').localeCompare(b.nome||'');
+  });
+  return {rows,clienteMap};
+}
+
+function renderContatosLista(q,sf,idToGroup){
+  const wrap=document.getElementById('contatos-list');
+  const {rows,clienteMap}=_contatosListaFiltrados(q,sf,idToGroup);
+
+  document.getElementById('ct-total').textContent=rows.length+(rows.length===1?' contato':' contatos');
+
+  if(!rows.length){wrap.innerHTML=`<div class="empty-note">Nenhum contato encontrado.</div>`;return;}
+
+  const canEdit=!currentUser?.viewer_only;
+  wrap.innerHTML=`<table class="ct-lista-table"><thead><tr>
+      <th>Nome</th><th>Empresa</th><th>Cargo</th><th>Telefone</th><th>E-mail</th>${canEdit?'<th></th>':''}
+    </tr></thead><tbody>`+
+    rows.map(p=>{
+      const c=clienteMap[p.cliente_id];
+      return `<tr>
+        <td>${escHtml(p.nome||'—')}</td>
+        <td>${escHtml(c?.nome||'—')}</td>
+        <td>${escHtml(p.cargo||'')}</td>
+        <td>${escHtml(p.telefone||'')}</td>
+        <td>${escHtml(p.email||'')}</td>
+        ${canEdit?`<td><button class="btn xs ghost" onclick="abrirEditarContato('${escJsStr(p.id)}')" title="Editar contato">✎</button></td>`:''}
+      </tr>`;
+    }).join('')+`</tbody></table>`;
+}
+
+function exportarContatosExcel(){
+  const q=document.getElementById('ct-busca').value.toLowerCase();
+  const sf=document.getElementById('ct-status').value;
+  const {idToGroup}=computeContatoDupGroups();
+  const {rows,clienteMap}=_contatosListaFiltrados(q,sf,idToGroup);
+  if(!rows.length){toast('Nenhum contato para exportar.');return;}
+
+  const header=['Nome','Empresa','Cidade','UF','Cargo','Telefone','E-mail'];
+  const linhas=[header,...rows.map(p=>{
+    const c=clienteMap[p.cliente_id]||{};
+    return [p.nome||'',c.nome||'',c.cidade||'',c.uf||'',p.cargo||'',p.telefone||'',p.email||''];
+  })];
+  const csv=linhas.map(l=>l.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`Contatos_EXP_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`${rows.length} contatos exportados ✓`);
 }
 
 function renderContatos(){
@@ -3640,6 +3731,11 @@ function renderContatos(){
   if(dupBadge){
     dupBadge.style.display=totalDupGroups?'inline-block':'none';
     dupBadge.textContent=totalDupGroups;
+  }
+
+  if(document.getElementById('ct-view')?.value==='lista'){
+    renderContatosLista(q,sf,idToGroup);
+    return;
   }
 
   let clientes=[...allClients];
@@ -5314,12 +5410,28 @@ async function criarRascunhoFinanceiro(op, produtosFechados, dataFech) {
 function abrirNovoContato(clienteId){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
   document.getElementById('contato-cliente-id').value=clienteId;
+  document.getElementById('contato-edit-id').value='';
   document.getElementById('contato-nome').value='';
   document.getElementById('contato-cargo').value='';
   document.getElementById('contato-tel').value='';
   document.getElementById('contato-email').value='';
   const cli=allClients.find(c=>c.id===clienteId);
   document.getElementById('contato-modal-title').textContent=`Novo contato — ${cli?.nome||''}`;
+  openM('modal-contato');
+}
+
+function abrirEditarContato(contatoId){
+  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  const ct=allContatos.find(x=>x.id===contatoId);
+  if(!ct){toast('Contato não encontrado.');return;}
+  document.getElementById('contato-cliente-id').value=ct.cliente_id||'';
+  document.getElementById('contato-edit-id').value=ct.id;
+  document.getElementById('contato-nome').value=ct.nome||'';
+  document.getElementById('contato-cargo').value=ct.cargo||'';
+  document.getElementById('contato-tel').value=ct.telefone||'';
+  document.getElementById('contato-email').value=ct.email||'';
+  const cli=allClients.find(c=>c.id===ct.cliente_id);
+  document.getElementById('contato-modal-title').textContent=`Editar contato — ${cli?.nome||''}`;
   openM('modal-contato');
 }
 
@@ -5356,6 +5468,7 @@ async function salvarContato(){
   const nome=document.getElementById('contato-nome').value.trim();
   if(!nome){toast('Nome é obrigatório.');return;}
   const clienteId=document.getElementById('contato-cliente-id').value;
+  const editId=document.getElementById('contato-edit-id').value;
   const payload={
     cliente_id:clienteId,
     nome,
@@ -5363,14 +5476,20 @@ async function salvarContato(){
     telefone:document.getElementById('contato-tel').value.trim()||null,
     email:document.getElementById('contato-email').value.trim()||null,
   };
-  // COM-2: usar .select() para detectar bloqueio silencioso de RLS
-  const {data:ctData, error}=await sb.from('contatos').insert(payload).select('id');
-  if(error){toast('Erro ao salvar contato: '+error.message);return;}
-  if(!ctData||ctData.length===0){
-    toast('Contato não foi salvo. Execute o SQL de permissões RLS na tabela contatos (ver SQL_RLS_SPRINT_A.sql).');
-    return;
+  if(editId){
+    const {error}=await sb.from('contatos').update(payload).eq('id',editId);
+    if(error){toast('Erro ao salvar contato: '+error.message);return;}
+    toast('Contato atualizado!');
+  } else {
+    // COM-2: usar .select() para detectar bloqueio silencioso de RLS
+    const {data:ctData, error}=await sb.from('contatos').insert(payload).select('id');
+    if(error){toast('Erro ao salvar contato: '+error.message);return;}
+    if(!ctData||ctData.length===0){
+      toast('Contato não foi salvo. Execute o SQL de permissões RLS na tabela contatos (ver SQL_RLS_SPRINT_A.sql).');
+      return;
+    }
+    toast('Contato adicionado!');
   }
-  toast('Contato adicionado!');
   closeM('modal-contato');
   await carregarDados();
   renderContatos();
