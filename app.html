@@ -501,10 +501,10 @@ body {
 .prio-hub-prazo.sem-prazo { border-style: dashed; color: #999; }
 [data-theme="dark"] .prio-hub-prazo.sem-prazo { color: #7A776E; }
 
-/* ── Prioridades coletivas — carrossel de 4 colunas ─────────── */
+/* ── Prioridades coletivas — carrossel de 3 colunas ─────────── */
 .pmhub-wrap  { display: flex; align-items: stretch; gap: 8px; }
 .pmhub-track {
-  display: grid; grid-auto-flow: column; grid-auto-columns: calc(25% - 6px);
+  display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 16px) / 3);
   gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
   flex: 1; min-width: 0; padding-bottom: 2px; align-items: stretch;
 }
@@ -3872,7 +3872,7 @@ function renderPriosMesSection(itensMes) {
       </div>`;
   }
 
-  const navDisplay = ordenados.length > 4 ? 'flex' : 'none';
+  const navDisplay = ordenados.length > 3 ? 'flex' : 'none';
   return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
@@ -4059,7 +4059,9 @@ function wireDashboardDom() {
 function renderDashboard(data) {
   const { tarefas, tarefasAtribuidas, eventos, prios, priosMes, horasSemana, eventDays, taskDays, feriadoDays } = data;
 
-  const colPrioMes = renderPriosMesSection(priosMes || []);
+  const mesAtualISO = new Date().toISOString().slice(0, 7);
+  const priosMesAtual = (priosMes || []).filter(it => String(it.mes || '').slice(0, 7) === mesAtualISO);
+  const colPrioMes = renderPriosMesSection(priosMesAtual);
   const colPrio = renderPriosSection(prios);
   const colMain = renderTasksSection(tarefas, _filtrarAtribuidas(tarefasAtribuidas));
 

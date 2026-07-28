@@ -1110,6 +1110,7 @@ window.ExpNav = (() => {
       .select('oportunidade_id,valor_fechado,valor_calculado,incluso_fechamento')
       .in('oportunidade_id', idsFech)
       .then(function(r) {
+        if (r.error) console.warn('CRM banner — falha ao buscar opp_custos:', r.error.message);
         var porOpp = {};
         (r.data || []).forEach(function(c) {
           if (c.incluso_fechamento === false) return;
@@ -1118,7 +1119,7 @@ window.ExpNav = (() => {
         grupos.forEach(function(g) { g.custosExtra = porOpp[g.oportunidade_id] || 0; });
         _renderCrmBanner();
       })
-      .catch(function() { _renderCrmBanner(); });
+      .catch(function(e) { console.warn('CRM banner — erro ao buscar opp_custos:', e && e.message); _renderCrmBanner(); });
   }
 
   function _fetchCrmData() {
