@@ -657,9 +657,6 @@ textarea{resize:vertical;min-height:60px}
               <option value="Consultorias">Consultorias</option>
               <option value="Projetos Especiais">Proj. Especiais</option>
             </select>
-            <select id="dash-resp" onchange="crmSincronizarFiltros('dash-resp');renderDash()" style="font-size:9px;border:1px solid var(--cinza);padding:2px 6px;border-radius:var(--radius-badge,4px);background:var(--branco)">
-              <option value="todos">Todos resp.</option>
-            </select>
           </div>
         </div>
         <div class="card-body" style="padding:8px 14px 14px;flex:1;display:flex;flex-direction:column">
@@ -673,6 +670,10 @@ textarea{resize:vertical;min-height:60px}
       <div class="card verde" style="margin-bottom:0;flex:1;display:flex;flex-direction:column">
         <div class="card-hdr" style="flex-wrap:wrap;gap:4px">
           <div class="card-title" style="flex:1;min-width:120px">Fechamentos mensais — ano corrente</div>
+          <div style="display:flex;gap:4px">
+            <button id="dm-total" class="btn xs" onclick="setDashMensalMode('total')" title="Inclui subcontratações, despesas indiretas e repasse comercial">Valor total</button>
+            <button id="dm-efetivo" class="btn xs ghost" onclick="setDashMensalMode('efetivo')" title="Só o que compete à EXP, sem repasses/despesas">Efetivo EXP</button>
+          </div>
         </div>
         <div class="card-body" style="padding:8px 14px 14px;flex:1;display:flex;flex-direction:column">
           <div style="position:relative;flex:1;min-height:180px">
@@ -903,9 +904,6 @@ textarea{resize:vertical;min-height:60px}
         <select id="ff-ano" onchange="crmSincronizarFiltros('ff-ano');renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
           <option value="todos">Todos anos</option>
           <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option><option value="2023">2023</option>
-        </select>
-        <select id="ff-resp" onchange="crmSincronizarFiltros('ff-resp');renderFechamentos()" style="font-size:9px;padding:2px 6px;border:1px solid var(--cinza)">
-          <option value="todos">Todos resp.</option>
         </select>
       </div>
       <div class="card-body" style="padding:10px 14px" id="fech-por-tipo"></div>
@@ -2640,7 +2638,9 @@ function isExpiredOp(op){
 let chartMensal=null, chartCaptadas=null, chartTipo=null, dashTipoMode='nucleo';
 let _dashFechAnoCache=[], _dashFechAnoCacheAno='';
 let _dashRecFech=[], _dashRecNeg=[], _dashFechExpanded=false, _dashNegExpanded=false;
+let dashMensalMode='total';
 function setDashTipoMode(m){dashTipoMode=m;renderDash();}
+function setDashMensalMode(m){dashMensalMode=m;renderDash();}
 
 let dashFuMode='todos';
 let _dashFuAll=[], dashFuExpanded=false;
@@ -2781,20 +2781,11 @@ function renderDash(){
     deDiv.style.display='none';
   }
 
-  // populate resp select dynamically (preserve selection)
-  const respSel = document.getElementById('dash-resp');
-  const respCurrent = respSel.value;
-  respSel.innerHTML = '<option value="todos">Todos resp.</option>' +
-    Object.values(allUsers).filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
-      .map(u=>`<option value="${escHtml(u.id)}"${u.id===respCurrent?' selected':''}>${escHtml(u.nome.split(' ')[0])}</option>`).join('');
-
-  const respFil = respSel.value;
   const nucFil  = document.getElementById('dash-nucleo')?.value||'todos';
   const ano = new Date().getFullYear();
   const anoStr = String(ano);
 
-  let ops = allOps;
-  if(respFil!=='todos') ops = ops.filter(o=>o.resp_id===respFil);
+  const ops = allOps;
 
   const fechadas = ops.filter(o=>isFechada(o));
   const ativas   = ops.filter(o=>isAtiva(o));
@@ -2899,54 +2890,48 @@ function renderDash(){
   const ctxCap=document.getElementById('chart-captadas').getContext('2d');
   chartCaptadas=new Chart(ctxCap,{type:'line',data:{labels:meses,datasets:datasetsCap},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:8}},plugins:{legend:{position:'top',align:'end',labels:legendLineLabels},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10},color:tickColor},grid:{color:gridColor},border:{display:false}},y:{ticks:{font:{size:10},color:tickColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColor},border:{display:false}}}}});
 
-  const uMap={};
   const nucMap={};
   ops.forEach(op=>{
-    op._produtos.forEach(p=>{
-      if(!p.data_fechamento||!p.data_fechamento.startsWith(anoStr))return;
-      if(p.status!=='fechado')return;
-      if(nucFil!=='todos'&&(NUCLEO_GRUPO[p.nucleo]||p.nucleo)!==nucFil)return;
+    let prodsFechAnoM=op._produtos.filter(p=>p.data_fechamento&&p.data_fechamento.startsWith(anoStr)&&p.status==='fechado');
+    if(nucFil!=='todos')prodsFechAnoM=prodsFechAnoM.filter(p=>(NUCLEO_GRUPO[p.nucleo]||p.nucleo)===nucFil);
+    if(!prodsFechAnoM.length)return;
+    // adicionais (subcontratações/despesas/repasse) são por oportunidade, não por produto —
+    // no modo "total" são somados uma única vez, no mês do produto fechado mais antigo do ano
+    prodsFechAnoM=prodsFechAnoM.slice().sort((a,b)=>a.data_fechamento.localeCompare(b.data_fechamento));
+    const adic=dashMensalMode==='total'?oppValorAdicionais(op,true):0;
+    prodsFechAnoM.forEach((p,i)=>{
       const m=parseInt(p.data_fechamento.slice(5,7))-1;
       if(m<0||m>11)return;
-      const val=+p.valor_fechado||0;
-      // por usuário
-      const uid=op.resp_id;
-      if(!uMap[uid])uMap[uid]=Array(12).fill(0);
-      uMap[uid][m]+=val;
-      // por núcleo
+      const val=(+p.valor_fechado||0)+(i===0?adic:0);
       const grp=NUCLEO_GRUPO[p.nucleo]||p.nucleo||'Outros';
       if(!nucMap[grp])nucMap[grp]=Array(12).fill(0);
       nucMap[grp][m]+=val;
     });
   });
-  let datasets;
-  if(respFil==='todos'){
-    const nucOrdem=['Urbanismo','Paisagismo','Consultorias','Projetos Especiais'];
-    const nucs = nucFil==='todos'
-      ? nucOrdem.filter(n=>nucMap[n])
-      : [nucFil].filter(n=>nucMap[n]);
-    datasets = nucs.map(grp=>{
-      const cor=CHART_CORES[grp]||'#aaa';
-      return{label:grp,data:nucMap[grp],borderColor:cor,backgroundColor:cor+'18',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false};
-    });
-    // Linha de soma total — sempre visível quando há mais de um núcleo
-    if(nucFil==='todos' && datasets.length>0){
-      const total=Array(12).fill(0);
-      nucs.forEach(n=>nucMap[n].forEach((v,i)=>total[i]+=v));
-      datasets.push({label:'Total',data:total,borderColor:CHART_CORES.Total,backgroundColor:'transparent',borderWidth:3,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,borderDash:[5,3]});
-    }
-    if(!datasets.length){
-      const total=Array(12).fill(0);
-      Object.values(nucMap).forEach(d=>d.forEach((v,i)=>total[i]+=v));
-      datasets=[{label:`Total ${anoStr}`,data:total,borderColor:CHART_CORES.Total,backgroundColor:CHART_CORES.Total+'22',borderWidth:3,pointRadius:4,tension:.3,fill:false}];
-    }
-  } else {
-    datasets=Object.entries(uMap).map(([uid,dados])=>{
-      const u=allUsers[uid]||{};
-      const cor=u.cor||'#aaa';
-      return{label:u.nome?.split(' ')[0]||'?',data:dados,borderColor:cor,backgroundColor:cor+'18',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false};
-    });
+  const nucOrdem=['Urbanismo','Paisagismo','Consultorias','Projetos Especiais'];
+  const nucs = nucFil==='todos'
+    ? nucOrdem.filter(n=>nucMap[n])
+    : [nucFil].filter(n=>nucMap[n]);
+  let datasets = nucs.map(grp=>{
+    const cor=CHART_CORES[grp]||'#aaa';
+    return{label:grp,data:nucMap[grp],borderColor:cor,backgroundColor:cor+'18',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false};
+  });
+  // Linha de soma total — sempre visível quando há mais de um núcleo
+  if(nucFil==='todos' && datasets.length>0){
+    const total=Array(12).fill(0);
+    nucs.forEach(n=>nucMap[n].forEach((v,i)=>total[i]+=v));
+    datasets.push({label:'Total',data:total,borderColor:CHART_CORES.Total,backgroundColor:'transparent',borderWidth:3,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,borderDash:[5,3]});
   }
+  if(!datasets.length){
+    const total=Array(12).fill(0);
+    Object.values(nucMap).forEach(d=>d.forEach((v,i)=>total[i]+=v));
+    datasets=[{label:`Total ${anoStr}`,data:total,borderColor:CHART_CORES.Total,backgroundColor:CHART_CORES.Total+'22',borderWidth:3,pointRadius:4,tension:.3,fill:false}];
+  }
+  // Atualiza estado visual dos botões de modo (total x efetivo)
+  ['total','efetivo'].forEach(m=>{
+    const b=document.getElementById('dm-'+m);
+    if(b){b.className=m===dashMensalMode?'btn xs':'btn xs ghost';}
+  });
   if(chartMensal)chartMensal.destroy();
   const ctx1=document.getElementById('chart-mensal').getContext('2d');
   chartMensal=new Chart(ctx1,{type:'line',data:{labels:meses,datasets},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:8}},plugins:{legend:{position:'top',align:'end',labels:legendLineLabels},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{font:{size:10},color:tickColor},grid:{color:gridColor},border:{display:false}},y:{ticks:{font:{size:10},color:tickColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:gridColor},border:{display:false}}}}});
@@ -3028,7 +3013,7 @@ function renderDash(){
 
   function rowFech(o){
     return`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td>
+      <td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td>
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td>
@@ -3037,7 +3022,7 @@ function renderDash(){
   }
   function rowNeg(o){
     return`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td>
+      <td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td>
       <td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td>
       <td>${respBadge(o.resp_id)}</td>
       <td class="dtag">${fmtD(o.updated_at)}</td>
@@ -3073,8 +3058,8 @@ function renderDash(){
 function toggleDash45d(foco){
   const thFech=`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Valor</th></tr></thead>`;
   const thNeg =`<thead><tr><th>Cliente</th><th>Núcleo</th><th>Resp.</th><th>Data</th><th>Proposto</th></tr></thead>`;
-  const _rF=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td><td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o)+oppValorAdicionais(o,true))}</td></tr>`;
-  const _rN=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong></td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(o.updated_at)}</td><td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorTotal(o))}</td></tr>`;
+  const _rF=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(oppDataFechamento(o)||o.updated_at)}</td><td style="font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(oppValorFechado(o)+oppValorAdicionais(o,true))}</td></tr>`;
+  const _rN=o=>`<tr class="click" onclick="abrirDetail('${escJsStr(o.id)}')"><td><strong style="font-size:11px">${escHtml(o._cliente?.nome||'—')}</strong>${o.projeto?`<br><span style="font-size:9px;color:#888">${escHtml(o.projeto)}</span>`:''}</td><td>${tipoBadgeProd(o._produtos[0]?.nucleo)}</td><td>${respBadge(o.resp_id)}</td><td class="dtag">${fmtD(o.updated_at)}</td><td style="font-family:var(--font-mono);color:var(--terracota);white-space:nowrap">${fmt(oppValorTotal(o))}</td></tr>`;
   if(foco==='fech'){
     _dashFechExpanded=!_dashFechExpanded;
     const items=_dashFechExpanded?_dashRecFech:_dashRecFech.slice(0,5);
@@ -4227,7 +4212,7 @@ let crmFiltroGlobal={ano:'todos',nucleo:'todos',respNome:'todos'};
 const CRM_FILTRO_IDS={
   ano:    ['of-ano','ff-ano','nf-ano','alc-ano','rf-ano'],
   nucleo: ['dash-nucleo','pf-nucleo','of-nucleo','rf-nucleo'],
-  resp:   ['dash-resp','pf-resp','of-resp','ff-resp','nf-resp','alc-resp','rf-resp'],
+  resp:   ['pf-resp','of-resp','nf-resp','alc-resp','rf-resp'],
 };
 function _crmRespNomeDoSelect(el){
   if(!el||el.value==='todos')return'todos';
@@ -4268,11 +4253,11 @@ function goTab(id, btn){
   document.getElementById('tab-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   document.getElementById('crm-body').classList.toggle('pipe-mode', id==='pipe');
-  if(id==='dash'){crmAplicarFiltrosGlobais(['dash-nucleo','dash-resp']);renderDash();}
+  if(id==='dash'){crmAplicarFiltrosGlobais(['dash-nucleo']);renderDash();}
   if(id==='pipe'){crmAplicarFiltrosGlobais(['pf-nucleo','pf-resp']);renderPipe();}
   if(id==='orc'){crmAplicarFiltrosGlobais(['of-ano','of-nucleo','of-resp']);renderOrc();}
   if(id==='contatos')renderContatos();
-  if(id==='fechamentos'){crmAplicarFiltrosGlobais(['ff-ano','ff-resp']);renderFechamentos();}
+  if(id==='fechamentos'){crmAplicarFiltrosGlobais(['ff-ano']);renderFechamentos();}
   if(id==='negativas'){crmAplicarFiltrosGlobais(['nf-ano','nf-resp']);renderNegativas();}
   if(id==='nps')renderDashPesquisaSatisfacao();
   if(id==='alcance'){crmAplicarFiltrosGlobais(['alc-ano','alc-resp']);renderAlcance();}
@@ -6182,19 +6167,8 @@ function renderFechamentos(){
   const anoFil = document.getElementById('ff-ano')?.value||'todos';
   const anoStr = String(new Date().getFullYear());
 
-  // populate resp select
-  const rs = document.getElementById('ff-resp');
-  if(rs){
-    const cur = rs.value;
-    rs.innerHTML = '<option value="todos">Todos resp.</option>' +
-      Object.values(allUsers).filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
-        .map(u=>`<option value="${escHtml(u.id)}"${u.id===cur?' selected':''}>${escHtml(u.nome.split(' ')[0])}</option>`).join('');
-  }
-  const respFil = rs?.value||'todos';
-
   let ops = allOps.filter(o=>isFechada(o));
   if(anoFil!=='todos') ops = ops.filter(o=>(oppDataFechamento(o)||'').startsWith(anoFil));
-  if(respFil!=='todos') ops = ops.filter(o=>o.resp_id===respFil);
 
   const fatTotal = ops.reduce((s,o)=>s+oppValorFechado(o)+oppValorAdicionais(o,true),0);
   const fatEfetivo = ops.reduce((s,o)=>s+oppValorEfetivo(o,true),0);
