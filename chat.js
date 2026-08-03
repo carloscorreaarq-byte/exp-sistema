@@ -2141,11 +2141,15 @@
     $wrap.style.display = 'flex';
     if (pendingAttachment.kind === 'audio') {
       $wrap.className = 'chat-attach-preview audio';
+      $wrap.setAttribute('data-audio-url', pendingAttachment.previewUrl);
+      $wrap.setAttribute('data-audio-duration', pendingAttachment.durationSeconds || 0);
       $wrap.innerHTML =
         '<button type="button" class="chat-audio-play" onclick="expChat.toggleAudioPlay(this,\'' + pendingAttachment.previewUrl + '\')" title="Ouvir">' + icoPlay() + '</button>' +
-        '<span class="chat-attach-preview-info">Áudio pronto para enviar · ' + formatAudioDuration(pendingAttachment.durationSeconds) + '</span>' +
+        '<span class="chat-attach-preview-info">Áudio pronto para enviar · <span class="chat-audio-time">' + formatAudioDuration(pendingAttachment.durationSeconds) + '</span></span>' +
         '<button type="button" class="chat-attach-remove" onclick="expChat.removeAttachment()" title="Remover áudio">' + icoClose() + '</button>';
     } else {
+      $wrap.removeAttribute('data-audio-url');
+      $wrap.removeAttribute('data-audio-duration');
       $wrap.className = 'chat-attach-preview';
       $wrap.innerHTML =
         '<img src="' + pendingAttachment.previewUrl + '" alt="Print">' +
@@ -3001,8 +3005,8 @@
   function describeChatMediaError(error) {
     var raw = String(error && (error.message || error.details || error.code) || 'Falha ao anexar print.');
     var lower = raw.toLowerCase();
-    if (lower.indexOf('send_chat_message_with_temp_media') !== -1 || lower.indexOf('send_chat_thread_message_with_temp_media') !== -1) {
-      return 'A estrutura de prints do chat ainda nÃƒÂ£o estÃƒÂ¡ aplicada no banco.';
+    if (lower.indexOf('send_chat_') !== -1 && (lower.indexOf('with_temp_media') !== -1 || lower.indexOf('with_temp_audio') !== -1)) {
+      return 'A estrutura de anexos do chat ainda não está aplicada no banco (rode a migration no Supabase).';
     }
     if (lower.indexOf('row-level security') !== -1 || lower.indexOf('access denied') !== -1) {
       return 'Seu usuÃƒÂ¡rio nÃƒÂ£o conseguiu gravar este print no storage/chat.';

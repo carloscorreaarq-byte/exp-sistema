@@ -2010,13 +2010,17 @@
     if (!pendingAttachment) { $wrap.style.display='none'; $wrap.innerHTML=''; return; }
     $wrap.style.display='flex';
     if (pendingAttachment.kind==='audio') {
+      $wrap.setAttribute('data-audio-url', pendingAttachment.previewUrl);
+      $wrap.setAttribute('data-audio-duration', pendingAttachment.durationSeconds || 0);
       $wrap.innerHTML =
         '<button type="button" class="fp-audio-play" onclick="fpChat.toggleAudioPlay(this,\''+pendingAttachment.previewUrl+'\')" title="Ouvir">'+fpIcoPlay()+'</button>' +
-        '<span class="fp-attach-preview-info">Áudio pronto para enviar · '+formatAudioDuration(pendingAttachment.durationSeconds)+'</span>' +
+        '<span class="fp-attach-preview-info">Áudio pronto para enviar · <span class="fp-audio-time">'+formatAudioDuration(pendingAttachment.durationSeconds)+'</span></span>' +
         '<button type="button" class="fp-attach-remove" onclick="fpChat.removeAttachment()" title="Remover áudio">' +
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>' +
         '</button>';
     } else {
+      $wrap.removeAttribute('data-audio-url');
+      $wrap.removeAttribute('data-audio-duration');
       $wrap.innerHTML =
         '<img src="'+pendingAttachment.previewUrl+'" alt="Print">' +
         '<span class="fp-attach-preview-info">Print pronto para enviar</span>' +
@@ -2995,7 +2999,7 @@
     messages.forEach(function(m){ if(m&&m.temp_media&&m.temp_media.objectUrl&&String(m.temp_media.objectUrl).indexOf('blob:')===0) URL.revokeObjectURL(m.temp_media.objectUrl); delete m.temp_media; });
   }
   function getMessageMedia(msg){ if(!msg) return null; return messageMediaMap[mediaKeyForMessage(msg)]||msg.temp_media||null; }
-  function describeChatMediaError(err){ var raw=String(err&&(err.message||err.details||err.code)||'Falha.'); var lo=raw.toLowerCase(); if(lo.indexOf('send_chat')!==-1&&lo.indexOf('with_temp_media')!==-1) return 'Função de prints não aplicada no banco.'; if(lo.indexOf('row-level security')!==-1||lo.indexOf('access denied')!==-1) return 'Sem permissão de armazenamento.'; if(lo.indexOf('bucket')!==-1||lo.indexOf('storage')!==-1) return 'Falha no storage.'; return raw; }
+  function describeChatMediaError(err){ var raw=String(err&&(err.message||err.details||err.code)||'Falha.'); var lo=raw.toLowerCase(); if(lo.indexOf('send_chat')!==-1&&(lo.indexOf('with_temp_media')!==-1||lo.indexOf('with_temp_audio')!==-1)) return 'Função de anexos do chat não aplicada no banco (rode a migration no Supabase).'; if(lo.indexOf('row-level security')!==-1||lo.indexOf('access denied')!==-1) return 'Sem permissão de armazenamento.'; if(lo.indexOf('bucket')!==-1||lo.indexOf('storage')!==-1) return 'Falha no storage.'; return raw; }
 
   /* ═══════════════════════════════════════════════════════════════════
      UTILS
