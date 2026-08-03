@@ -39,6 +39,8 @@
   var BRAND_AVATAR_COLORS = ['#1D6A4A', '#1D4FA0', '#C4831A', '#B84C3A', '#6D7D8A', '#4A72B5', '#7A9E7E'];
   var TEMP_MEDIA_BUCKET = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
+  var CHAT_AUDIO_SENTINEL = '[audio]';
+  var CHAT_AUDIO_MAX_SECONDS = 180; /* 3 minutos */
   var CHAT_ATTENTION_SENTINEL = '[atencao]'; /* "chamar a atenção" — nota de som + push */
   var CHAT_EMOJIS = [
     { e: '😄', t: 'Feliz' }, { e: '😂', t: 'Chorando de rir' }, { e: '😍', t: 'Apaixonado' },
@@ -210,6 +212,36 @@
     '.chat-media-thumb-pending{display:flex;align-items:center;justify-content:center;min-height:88px;padding:10px;font-size:10px;font-weight:600;color:#666;background:linear-gradient(135deg, rgba(29,106,74,.08), rgba(196,131,26,.08))}',
     '.chat-media-expired{display:flex;align-items:center;justify-content:center;min-height:72px;padding:10px;font-size:10px;font-weight:600;color:#777;background:#F3F1EB;border:1px dashed #D0CFC9;border-radius:12px;margin-top:4px}',
     '.chat-media-failed{margin-top:6px;font-size:10px;font-weight:600;color:#B84C3A;background:none;border:none;padding:0;cursor:pointer;text-align:left;text-decoration:underline}',
+    /* ── Player de áudio (bolha da mensagem) ── */
+    '.chat-audio-bubble{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:14px;background:var(--off,#F7F6F3);margin-top:4px;max-width:218px;border:1px solid rgba(17,17,16,.06)}',
+    '.chat-msg.own .chat-audio-bubble{margin-left:auto;background:var(--cinza2,#ECEAE4)}',
+    '.chat-audio-play{width:26px;height:26px;border-radius:50%;border:none;background:var(--verde,#1D6A4A);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;transition:transform .1s}',
+    '.chat-audio-play:active{transform:scale(.92)}',
+    '.chat-audio-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}',
+    '.chat-audio-track{height:3px;border-radius:2px;background:rgba(17,17,16,.12);cursor:pointer;position:relative}',
+    '.chat-audio-fill{height:100%;border-radius:2px;background:var(--verde,#1D6A4A);width:0%}',
+    '.chat-audio-time{font-family:"DM Mono",monospace;font-size:9px;color:#888}',
+    '[data-theme="dark"] .chat-audio-bubble{background:#252523;border-color:#3A3836}',
+    '[data-theme="dark"] .chat-msg.own .chat-audio-bubble{background:#2E2D2B}',
+    '[data-theme="dark"] .chat-audio-track{background:rgba(255,255,255,.14)}',
+    '[data-theme="dark"] .chat-audio-time{color:#A8A399}',
+    /* ── Gravação de áudio (composer) ── */
+    '.chat-attach.recording{background:#FBEEEB;border-color:#B84C3A;color:#B84C3A;animation:chatRecPulse 1.1s ease-in-out infinite}',
+    '@keyframes chatRecPulse{0%,100%{box-shadow:0 0 0 0 rgba(184,76,58,.28)}50%{box-shadow:0 0 0 5px rgba(184,76,58,0)}}',
+    '.chat-record-bar{display:none;align-items:center;gap:9px;padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);background:#fff}',
+    '.chat-record-bar.active{display:flex}',
+    '.chat-record-dot{width:8px;height:8px;border-radius:50%;background:#B84C3A;flex-shrink:0;animation:chatRecDot 1s ease-in-out infinite}',
+    '@keyframes chatRecDot{0%,100%{opacity:1}50%{opacity:.25}}',
+    '.chat-record-time{font-family:"DM Mono",monospace;font-size:11px;color:var(--grafite,#111110);flex:1}',
+    '.chat-record-cancel,.chat-record-stop{width:26px;height:26px;border-radius:50%;border:1px solid var(--cinza2,#ECEAE4);background:var(--off,#F7F6F3);color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}',
+    '.chat-record-cancel:hover{color:#B84C3A;border-color:#B84C3A}',
+    '.chat-record-stop{background:#B84C3A;border-color:#B84C3A;color:#fff}',
+    '.chat-record-stop:hover{opacity:.88}',
+    '[data-theme="dark"] .chat-record-bar{background:#1C1C1B;border-top-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-record-time{color:#F0EDE6}',
+    '[data-theme="dark"] .chat-record-cancel{background:#252523;border-color:#2E2D2B;color:#F0EDE6}',
+    /* Prévia de áudio pronto pra enviar (barra de anexo do composer) */
+    '.chat-attach-preview.audio .chat-audio-play{margin-right:0}',
     '.chat-link{color:var(--verde,#1D6A4A);text-decoration:underline;word-break:break-all}',
     '.chat-link:hover{color:var(--verde-l,#2D9E6B)}',
     /* â”€â”€ Bubble row: bolha + botÃµes de reaÃ§Ã£o lado a lado â”€â”€ */
@@ -451,8 +483,16 @@
   var failedStoragePaths = {};
   var mediaRequestSeq = 0;
   var mediaUploadBusy = false;
-  var pendingAttachment = null;    // { blob, mimeType, ext, width, height, previewUrl } — print colado/anexado aguardando confirmação de envio
+  var pendingAttachment = null;    // { kind:'image', blob, mimeType, ext, width, height, previewUrl } — print colado/anexado
+                                    // ou { kind:'audio', blob, mimeType, ext, durationSeconds, previewUrl } — áudio gravado
+                                    // aguardando confirmação de envio
   var composerStatusTimer = null;
+  var mediaRecorder = null;
+  var recordedChunks = [];
+  var recordStream = null;
+  var recordStartTs = 0;
+  var recordTimerHandle = null;
+  var recordMaxTimeoutHandle = null;
   var searchQuery = '';
   var selectedMembers  = [];        // membros selecionados no seletor de grupo
   var pendingChan      = null;      // { ch, label } durante o passo 2 de criação
@@ -763,9 +803,16 @@
           '</div>' +
           '<div class="chat-messages" id="exp-chat-msgs"><div class="chat-loading">' + ldots() + '</div></div>' +
           '<div class="chat-attach-preview" id="exp-chat-attach-preview"></div>' +
+          '<div class="chat-record-bar" id="exp-chat-record-bar">' +
+            '<span class="chat-record-dot"></span>' +
+            '<span class="chat-record-time" id="exp-chat-record-time">0:00</span>' +
+            '<button type="button" class="chat-record-cancel" onclick="expChat.cancelRecording()" title="Cancelar">' + icoClose() + '</button>' +
+            '<button type="button" class="chat-record-stop" onclick="expChat.stopRecording()" title="Parar e revisar">' + icoStop() + '</button>' +
+          '</div>' +
           '<div class="chat-input-area">' +
             '<input id="exp-chat-media-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="expChat.handleMediaInput(this)">' +
             '<button class="chat-attach" onclick="expChat.pickMedia()" title="Anexar print">' + icoAttach() + '</button>' +
+            '<button class="chat-attach" id="exp-chat-mic-btn" onclick="expChat.toggleRecording()" title="Gravar áudio">' + icoMic() + '</button>' +
             '<span class="chat-emoji-wrap" style="position:relative;display:inline-flex">' +
               '<button class="chat-attach chat-emoji-btn" onclick="expChat.toggleEmojiPop(event)" title="Emojis">' + icoEmoji() + '</button>' +
               '<div class="chat-emoji-pop" id="exp-chat-emoji-pop">' +
@@ -916,6 +963,10 @@
   function icoCompress() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
   function icoMaxBtn()   { return chatMaximized ? icoCompress() : icoExpand(); }
   function icoAttach()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 0 1-7.78-7.78l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.5 8.49a1.5 1.5 0 0 1-2.12-2.12l7.78-7.78"/></svg>'; }
+  function icoMic()     { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>'; }
+  function icoStop()    { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>'; }
+  function icoPlay()    { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>'; }
+  function icoPause()   { return '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="5" height="18" rx="1"/><rect x="14" y="3" width="5" height="18" rx="1"/></svg>'; }
   function icoPerson()  { return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'; }
   function icoChevron() { return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'; }
   function icoPencil()  { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'; }
@@ -1961,11 +2012,13 @@
   }
 
   function mediaRpcContent(rawContent) {
-    return isImageOnlySentinel(rawContent) ? '' : String(rawContent || '');
+    return (isImageOnlySentinel(rawContent) || isAudioOnlySentinel(rawContent)) ? '' : String(rawContent || '');
   }
 
   async function persistPreparedMedia(prepared, content, contextType, pendingMsg) {
-    if (!prepared || !prepared.blob) throw new Error('O print nÃ£o estÃ¡ mais disponÃ­vel para reenvio.');
+    if (!prepared || !prepared.blob) throw new Error('O anexo nao esta mais disponivel para reenvio.');
+    var isAudio = prepared.kind === 'audio';
+    var label = isAudio ? 'audio' : 'print';
     var storagePath = '';
     var uploaded = false;
     var previewUrl = prepared.objectUrl || (pendingMsg && pendingMsg.temp_media && pendingMsg.temp_media.objectUrl) || null;
@@ -1973,7 +2026,7 @@
     var targetThreadId = pendingMsg && pendingMsg.thread_id ? pendingMsg.thread_id : projectThreadIdFromChannel(currentChannel);
     try {
       storagePath = buildChatMediaPath(contextType, prepared.ext);
-      setComposerStatus('Enviando print...', '', true);
+      setComposerStatus('Enviando ' + label + '...', '', true);
       var uploadRes = await sb.storage.from(TEMP_MEDIA_BUCKET).upload(storagePath, prepared.blob, {
         contentType: prepared.mimeType,
         upsert: false
@@ -1981,19 +2034,17 @@
       if (uploadRes.error) throw uploadRes.error;
       uploaded = true;
 
-      var rpcName = contextType === 'chat_thread_message'
-        ? 'send_chat_thread_message_with_temp_media'
-        : 'send_chat_message_with_temp_media';
-      var rpcPayload = contextType === 'chat_thread_message'
+      var rpcName = isAudio
+        ? (contextType === 'chat_thread_message' ? 'send_chat_thread_message_with_temp_audio' : 'send_chat_message_with_temp_audio')
+        : (contextType === 'chat_thread_message' ? 'send_chat_thread_message_with_temp_media' : 'send_chat_message_with_temp_media');
+      var basePayload = contextType === 'chat_thread_message'
         ? {
             p_thread_id: targetThreadId,
             p_content: content,
             p_storage_path: storagePath,
             p_mime_type: prepared.mimeType,
             p_arquivo_ext: prepared.ext,
-            p_size_bytes: prepared.blob.size,
-            p_width_px: prepared.width,
-            p_height_px: prepared.height
+            p_size_bytes: prepared.blob.size
           }
         : {
             p_channel: targetChannel,
@@ -2001,15 +2052,16 @@
             p_storage_path: storagePath,
             p_mime_type: prepared.mimeType,
             p_arquivo_ext: prepared.ext,
-            p_size_bytes: prepared.blob.size,
-            p_width_px: prepared.width,
-            p_height_px: prepared.height
+            p_size_bytes: prepared.blob.size
           };
+      var rpcPayload = isAudio
+        ? Object.assign({}, basePayload, { p_duration_seconds: prepared.durationSeconds || null })
+        : Object.assign({}, basePayload, { p_width_px: prepared.width, p_height_px: prepared.height });
       var rpcRes = await sb.rpc(rpcName, rpcPayload);
       if (rpcRes.error) throw rpcRes.error;
       var saved = Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data;
 
-      if (!saved || !saved.id) throw new Error('Mensagem com print nÃ£o retornou do servidor.');
+      if (!saved || !saved.id) throw new Error('Mensagem com ' + label + ' nao retornou do servidor.');
 
       upsertMessage(contextType === 'chat_thread_message' ? normalizeProjectMessage(saved) : saved);
       assignMessageMedia(contextType, saved.id, {
@@ -2017,8 +2069,9 @@
         objectUrl: previewUrl,
         mime_type: prepared.mimeType,
         arquivo_ext: prepared.ext,
-        width_px: prepared.width,
-        height_px: prepared.height,
+        width_px: prepared.width || null,
+        height_px: prepared.height || null,
+        duration_seconds: prepared.durationSeconds || null,
         pending: false,
         failed: false,
         failed_load: false,
@@ -2026,7 +2079,7 @@
         expires_at: addDaysIso(7)
       }, pendingMsg ? pendingMsg.id : null);
       renderMessages();
-      setComposerStatus('Print enviado. Expira em 7 dias.', 'ok', false);
+      setComposerStatus((isAudio ? 'Audio enviado' : 'Print enviado') + '. Expira em 7 dias.', 'ok', false);
       return saved;
     } catch (error) {
       if (uploaded && storagePath) {
@@ -2052,6 +2105,7 @@
       var cfg = await loadChatMediaConfig();
       var optimized = await optimizeChatMediaImage(file, cfg);
       pendingAttachment = {
+        kind: 'image',
         blob: optimized.blob,
         mimeType: optimized.mimeType,
         ext: optimized.ext,
@@ -2085,10 +2139,19 @@
       return;
     }
     $wrap.style.display = 'flex';
-    $wrap.innerHTML =
-      '<img src="' + pendingAttachment.previewUrl + '" alt="Print">' +
-      '<span class="chat-attach-preview-info">Print pronto para enviar</span>' +
-      '<button type="button" class="chat-attach-remove" onclick="expChat.removeAttachment()" title="Remover print">' + icoClose() + '</button>';
+    if (pendingAttachment.kind === 'audio') {
+      $wrap.className = 'chat-attach-preview audio';
+      $wrap.innerHTML =
+        '<button type="button" class="chat-audio-play" onclick="expChat.toggleAudioPlay(this,\'' + pendingAttachment.previewUrl + '\')" title="Ouvir">' + icoPlay() + '</button>' +
+        '<span class="chat-attach-preview-info">Áudio pronto para enviar · ' + formatAudioDuration(pendingAttachment.durationSeconds) + '</span>' +
+        '<button type="button" class="chat-attach-remove" onclick="expChat.removeAttachment()" title="Remover áudio">' + icoClose() + '</button>';
+    } else {
+      $wrap.className = 'chat-attach-preview';
+      $wrap.innerHTML =
+        '<img src="' + pendingAttachment.previewUrl + '" alt="Print">' +
+        '<span class="chat-attach-preview-info">Print pronto para enviar</span>' +
+        '<button type="button" class="chat-attach-remove" onclick="expChat.removeAttachment()" title="Remover print">' + icoClose() + '</button>';
+    }
   }
 
   /* Envia de fato o print jÃ¡ preparado (pendingAttachment), com o texto do composer
@@ -2104,20 +2167,23 @@
     $input.value = '';
     $input.style.height = 'auto';
 
+    var isAudio = staged.kind === 'audio';
+    var sentinel = isAudio ? CHAT_AUDIO_SENTINEL : CHAT_IMAGE_SENTINEL;
     var previewUrl = staged.previewUrl;
     var pendingMsg = null;
     var contextType = isProjectChannel(currentChannel) ? 'chat_thread_message' : 'chat_message';
     var messageId = newUuid();
 
     try {
-      pendingMsg = buildPendingMessage(content || CHAT_IMAGE_SENTINEL, {
+      pendingMsg = buildPendingMessage(content || sentinel, {
         id: messageId,
         temp_media: {
           objectUrl: previewUrl,
           mime_type: staged.mimeType,
           arquivo_ext: staged.ext,
-          width_px: staged.width,
-          height_px: staged.height,
+          width_px: staged.width || null,
+          height_px: staged.height || null,
+          duration_seconds: staged.durationSeconds || null,
           expires_at: addDaysIso(7),
           pending: true,
           failed: false,
@@ -2131,8 +2197,9 @@
         objectUrl: previewUrl,
         mime_type: staged.mimeType,
         arquivo_ext: staged.ext,
-        width_px: staged.width,
-        height_px: staged.height,
+        width_px: staged.width || null,
+        height_px: staged.height || null,
+        duration_seconds: staged.durationSeconds || null,
         pending: true,
         failed: false,
         failed_load: false,
@@ -2143,13 +2210,15 @@
       scrollBottom();
 
       await persistPreparedMedia({
+        kind: staged.kind,
         blob: staged.blob,
         mimeType: staged.mimeType,
         ext: staged.ext,
         width: staged.width,
         height: staged.height,
+        durationSeconds: staged.durationSeconds,
         objectUrl: previewUrl
-      }, mediaRpcContent(content || CHAT_IMAGE_SENTINEL), contextType, pendingMsg);
+      }, mediaRpcContent(content || sentinel), contextType, pendingMsg);
     } catch (error) {
       var failMsg = describeChatMediaError(error);
       if (pendingMsg && pendingMsg.id) {
@@ -2166,6 +2235,7 @@
           arquivo_ext: staged.ext || null,
           width_px: staged.width || null,
           height_px: staged.height || null,
+          duration_seconds: staged.durationSeconds || null,
           pending: false,
           failed: true,
           failed_load: false,
@@ -2174,8 +2244,8 @@
         });
       }
       /* O upload (quando chegou a ocorrer) já é removido dentro de persistPreparedMedia. */
-      console.warn('[EXP Chat] Erro ao anexar print:', error && error.message ? error.message : error);
-      setComposerStatus('Falha ao enviar print: ' + failMsg, 'warn', true);
+      console.warn('[EXP Chat] Erro ao anexar ' + (isAudio ? 'áudio' : 'print') + ':', error && error.message ? error.message : error);
+      setComposerStatus('Falha ao enviar ' + (isAudio ? 'áudio' : 'print') + ': ' + failMsg, 'warn', true);
       renderMessages();
     } finally {
       mediaUploadBusy = false;
@@ -2185,6 +2255,212 @@
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      REACTIONS
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  /* ══════════════════════════════════════════════════════════════
+     GRAVAÇÃO DE ÁUDIO
+  ══════════════════════════════════════════════════════════════ */
+  function toggleRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') return; /* usar parar/cancelar */
+    startRecording();
+  }
+
+  async function startRecording() {
+    if (mediaUploadBusy || pendingAttachment) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setComposerStatus('Gravação de áudio não é suportada neste navegador.', 'warn', true);
+      return;
+    }
+    try {
+      recordStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (error) {
+      setComposerStatus('Não foi possível acessar o microfone.', 'warn', true);
+      return;
+    }
+    var candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+    var mimeType = candidates.find(function (t) {
+      return window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t);
+    }) || '';
+    recordedChunks = [];
+    try {
+      mediaRecorder = mimeType ? new MediaRecorder(recordStream, { mimeType: mimeType }) : new MediaRecorder(recordStream);
+    } catch (error) {
+      stopRecordStream();
+      setComposerStatus('Não foi possível iniciar a gravação.', 'warn', true);
+      return;
+    }
+    mediaRecorder.addEventListener('dataavailable', function (e) {
+      if (e.data && e.data.size) recordedChunks.push(e.data);
+    });
+    mediaRecorder.addEventListener('stop', onRecorderStopped);
+    mediaRecorder.start();
+    recordStartTs = Date.now();
+    showRecordBar(true);
+    updateRecordTimer();
+    recordTimerHandle = setInterval(updateRecordTimer, 250);
+    recordMaxTimeoutHandle = setTimeout(function () { stopRecording(); }, CHAT_AUDIO_MAX_SECONDS * 1000);
+  }
+
+  function updateRecordTimer() {
+    var $t = document.getElementById('exp-chat-record-time');
+    if ($t) $t.textContent = formatAudioDuration((Date.now() - recordStartTs) / 1000);
+  }
+
+  function showRecordBar(active) {
+    var $bar = document.getElementById('exp-chat-record-bar');
+    if ($bar) $bar.classList.toggle('active', !!active);
+    var $mic = document.getElementById('exp-chat-mic-btn');
+    if ($mic) $mic.classList.toggle('recording', !!active);
+  }
+
+  function stopRecordStream() {
+    if (recordStream) {
+      recordStream.getTracks().forEach(function (t) { t.stop(); });
+      recordStream = null;
+    }
+    if (recordTimerHandle) { clearInterval(recordTimerHandle); recordTimerHandle = null; }
+    if (recordMaxTimeoutHandle) { clearTimeout(recordMaxTimeoutHandle); recordMaxTimeoutHandle = null; }
+  }
+
+  var _recordCancelled = false;
+
+  function stopRecording() {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+    _recordCancelled = false;
+    mediaRecorder.stop();
+  }
+
+  function cancelRecording() {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+      showRecordBar(false);
+      stopRecordStream();
+      return;
+    }
+    _recordCancelled = true;
+    mediaRecorder.stop();
+  }
+
+  function onRecorderStopped() {
+    showRecordBar(false);
+    stopRecordStream();
+    var cancelled = _recordCancelled;
+    _recordCancelled = false;
+    var chunks = recordedChunks;
+    recordedChunks = [];
+    mediaRecorder = null;
+    if (cancelled || !chunks.length) return;
+    var mimeType = chunks[0].type || 'audio/webm';
+    var blob = new Blob(chunks, { type: mimeType });
+    stageAudioRecording(blob, mimeType);
+  }
+
+  /* Prepara o áudio gravado e mostra uma prévia no composer — NÃO envia.
+     Mesmo modelo de staging do print: só sobe quando o usuário confirma. */
+  async function stageAudioRecording(blob, mimeType) {
+    if (!$input) return;
+    if (pendingAttachment) removePendingAttachment();
+    try {
+      var durationSeconds = await readAudioDuration(blob);
+      var ext = mimeType.indexOf('ogg') !== -1 ? 'ogg' : 'webm';
+      pendingAttachment = {
+        kind: 'audio',
+        blob: blob,
+        mimeType: mimeType.split(';')[0],
+        ext: ext,
+        durationSeconds: durationSeconds,
+        previewUrl: URL.createObjectURL(blob)
+      };
+      setComposerStatus('', '', false);
+      renderComposerAttachment();
+    } catch (error) {
+      console.warn('[EXP Chat] Erro ao preparar áudio:', error && error.message ? error.message : error);
+      setComposerStatus('Falha ao preparar o áudio para envio.', 'warn', true);
+    }
+  }
+
+  function readAudioDuration(blob) {
+    return new Promise(function (resolve) {
+      var url = URL.createObjectURL(blob);
+      var probe = new Audio();
+      probe.preload = 'metadata';
+      probe.onloadedmetadata = function () {
+        var d = isFinite(probe.duration) ? probe.duration : 0;
+        URL.revokeObjectURL(url);
+        resolve(d);
+      };
+      probe.onerror = function () { URL.revokeObjectURL(url); resolve(0); };
+      probe.src = url;
+    });
+  }
+
+  function formatAudioDuration(seconds) {
+    var s = Math.max(0, Math.round(Number(seconds) || 0));
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  function audioBubbleHtml(url, durationSeconds) {
+    var safeUrl = escHtml(url);
+    return '<div class="chat-audio-bubble" data-audio-url="' + safeUrl + '" data-audio-duration="' + (Number(durationSeconds) || 0) + '">' +
+      '<button type="button" class="chat-audio-play" onclick="expChat.toggleAudioPlay(this,\'' + safeUrl + '\')" title="Ouvir">' + icoPlay() + '</button>' +
+      '<div class="chat-audio-body">' +
+        '<div class="chat-audio-track" onclick="expChat.seekAudio(event,\'' + safeUrl + '\')"><div class="chat-audio-fill"></div></div>' +
+        '<span class="chat-audio-time">' + formatAudioDuration(durationSeconds) + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── Player de áudio (bolha da mensagem e prévia do composer) ── */
+  var chatAudioEngine = { url: null, audio: null };
+
+  function toggleAudioPlay(btn, url) {
+    if (!url) return;
+    if (chatAudioEngine.audio && chatAudioEngine.url === url) {
+      if (chatAudioEngine.audio.paused) chatAudioEngine.audio.play();
+      else chatAudioEngine.audio.pause();
+      syncAudioUi();
+      return;
+    }
+    if (chatAudioEngine.audio) chatAudioEngine.audio.pause();
+    var audio = new Audio(url);
+    chatAudioEngine = { url: url, audio: audio };
+    audio.addEventListener('timeupdate', syncAudioUi);
+    audio.addEventListener('play', syncAudioUi);
+    audio.addEventListener('pause', syncAudioUi);
+    audio.addEventListener('ended', syncAudioUi);
+    audio.play().catch(function () { setComposerStatus('Não foi possível tocar o áudio.', 'warn', true); });
+    syncAudioUi();
+  }
+
+  function seekAudio(evt, url) {
+    if (chatAudioEngine.url !== url || !chatAudioEngine.audio || !chatAudioEngine.audio.duration) return;
+    var rect = evt.currentTarget.getBoundingClientRect();
+    var ratio = Math.min(1, Math.max(0, (evt.clientX - rect.left) / rect.width));
+    chatAudioEngine.audio.currentTime = ratio * chatAudioEngine.audio.duration;
+    syncAudioUi();
+  }
+
+  function syncAudioUi() {
+    var url = chatAudioEngine.url;
+    var audio = chatAudioEngine.audio;
+    document.querySelectorAll('[data-audio-url]').forEach(function ($el) {
+      var isThis = $el.getAttribute('data-audio-url') === url;
+      var $play = $el.querySelector('.chat-audio-play');
+      var $fill = $el.querySelector('.chat-audio-fill');
+      var $time = $el.querySelector('.chat-audio-time');
+      var playing = isThis && audio && !audio.paused && !audio.ended;
+      if ($play) $play.innerHTML = playing ? icoPause() : icoPlay();
+      if ($fill) {
+        var pct = (isThis && audio && audio.duration) ? Math.min(100, (audio.currentTime / audio.duration) * 100) : 0;
+        $fill.style.width = pct + '%';
+      }
+      if ($time) {
+        var base = Number($el.getAttribute('data-audio-duration') || 0);
+        var display = isThis && audio && audio.currentTime > 0 && !audio.ended ? audio.currentTime : base;
+        $time.textContent = formatAudioDuration(display);
+      }
+    });
+  }
+
   function retryMediaIssue(messageId) {
     var msg = messages.find(function (item) { return item.id === messageId; });
     var media = msg ? getMessageMedia(msg) : null;
@@ -2200,9 +2476,10 @@
     var msg = messages.find(function (item) { return item.id === messageId; });
     var media = msg ? getMessageMedia(msg) : null;
     if (!msg || !media || !media.blob) {
-      setComposerStatus('Esse print nÃ£o estÃ¡ mais disponÃ­vel para reenvio. Cole novamente.', 'warn', true);
+      setComposerStatus('Esse anexo não está mais disponível para reenvio.', 'warn', true);
       return;
     }
+    var isAudio = !!(media.mime_type && media.mime_type.indexOf('audio/') === 0);
     var contextType = mediaContextTypeForMessage(msg);
     mediaUploadBusy = true;
     try {
@@ -2216,11 +2493,13 @@
       }));
       renderMessages();
       await persistPreparedMedia({
+        kind: isAudio ? 'audio' : 'image',
         blob: media.blob,
-        mimeType: media.mime_type || 'image/webp',
-        ext: media.arquivo_ext || 'webp',
+        mimeType: media.mime_type || (isAudio ? 'audio/webm' : 'image/webp'),
+        ext: media.arquivo_ext || (isAudio ? 'webm' : 'webp'),
         width: media.width_px || null,
         height: media.height_px || null,
+        durationSeconds: media.duration_seconds || null,
         objectUrl: media.objectUrl || null
       }, mediaRpcContent(msg.content), contextType, msg);
     } catch (error) {
@@ -2233,8 +2512,8 @@
         failed: true,
         failed_load: false
       }));
-      console.warn('[EXP Chat] Erro ao reenviar print:', error && error.message ? error.message : error);
-      setComposerStatus('Falha ao reenviar print: ' + failMsg, 'warn', true);
+      console.warn('[EXP Chat] Erro ao reenviar ' + (isAudio ? 'áudio' : 'print') + ':', error && error.message ? error.message : error);
+      setComposerStatus('Falha ao reenviar ' + (isAudio ? 'áudio' : 'print') + ': ' + failMsg, 'warn', true);
       renderMessages();
     } finally {
       mediaUploadBusy = false;
@@ -2253,7 +2532,7 @@
     renderMessages();
     try {
       var metaRes = await sb.from('gestao_anexos_temporarios')
-        .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores')
+        .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,duration_seconds,expires_at,created_at,marcadores')
         .eq('contexto_tipo', contextType)
         .eq('contexto_id', msg.id)
         .is('removido_em', null)
@@ -2363,9 +2642,12 @@
       var msgAvatar = msgMember ? msgMember.avatar_url : null;
       var media   = getMessageMedia(msg);
       var imageOnly = isImageOnlySentinel(msg.content);
-      var hasText = !!String(msg.content || '').trim() && !imageOnly;
-      var showExpired = imageOnly && !media && isChatMediaExpired(msg);
-      var showMediaLoading = imageOnly && !media && !showExpired;
+      var audioOnly = isAudioOnlySentinel(msg.content);
+      var mediaOnly = imageOnly || audioOnly;
+      var mediaIsAudio = audioOnly || !!(media && media.mime_type && media.mime_type.indexOf('audio/') === 0);
+      var hasText = !!String(msg.content || '').trim() && !mediaOnly;
+      var showExpired = mediaOnly && !media && isChatMediaExpired(msg);
+      var showMediaLoading = mediaOnly && !media && !showExpired;
       var showFailed = !!msg.failed;
       var showLoadFailed = !!(media && media.failed_load);
 
@@ -2431,19 +2713,21 @@
             (hasText ? linkify(hlMentions(escHtml(msg.content)).replace(/\n/g, '<br>')) + (msg.editado_em ? '<span class="chat-msg-edited">(editado)</span>' : '') : '') +
           '</div>' +
           (media && media.objectUrl
-            ? '<div class="chat-media-thumb" onclick="expChat.openMediaViewer(\'' + mediaKeyForMessage(msg) + '\')">' +
-                '<img src="' + escHtml(media.objectUrl) + '" alt="Print do chat" loading="lazy" decoding="async">' +
-              '</div>'
+            ? (mediaIsAudio
+                ? audioBubbleHtml(media.objectUrl, media.duration_seconds)
+                : '<div class="chat-media-thumb" onclick="expChat.openMediaViewer(\'' + mediaKeyForMessage(msg) + '\')">' +
+                    '<img src="' + escHtml(media.objectUrl) + '" alt="Print do chat" loading="lazy" decoding="async">' +
+                  '</div>')
             : media && media.pending
-              ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Enviando print...</div></div>'
+              ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Enviando ' + (mediaIsAudio ? 'áudio' : 'print') + '...</div></div>'
               : showLoadFailed
-                ? '<button type="button" class="chat-media-failed" onclick="expChat.retryMediaIssue(\'' + msg.id + '\')">Falha ao carregar print. Clique para tentar de novo.</button>'
+                ? '<button type="button" class="chat-media-failed" onclick="expChat.retryMediaIssue(\'' + msg.id + '\')">Falha ao carregar ' + (mediaIsAudio ? 'áudio' : 'print') + '. Clique para tentar de novo.</button>'
               : showExpired
-                ? '<div class="chat-media-expired">Print expirado</div>'
+                ? '<div class="chat-media-expired">' + (mediaIsAudio ? 'Áudio expirado' : 'Print expirado') + '</div>'
                 : showMediaLoading
-                  ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Carregando print...</div></div>'
+                  ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Carregando ' + (mediaIsAudio ? 'áudio' : 'print') + '...</div></div>'
                 : '') +
-          (showFailed ? '<button type="button" class="chat-media-failed" onclick="expChat.retryMediaIssue(\'' + msg.id + '\')">Falha no envio do print. Clique para tentar de novo.</button>' : '') +
+          (showFailed ? '<button type="button" class="chat-media-failed" onclick="expChat.retryMediaIssue(\'' + msg.id + '\')">Falha no envio ' + (mediaIsAudio ? 'do áudio' : 'do print') + '. Clique para tentar de novo.</button>' : '') +
           badgeHtml +
         '</div>' +
         '<div class="chat-msg-react-btns">' +
@@ -2473,7 +2757,7 @@
   function startEditMessage(msgId) {
     var msg = messages.find(function (m) { return m.id === msgId; });
     if (!msg || msg.sender_id !== user.auth_id) return;
-    if (isImageOnlySentinel(msg.content) || isAnnotSentinel(msg.content)) return;
+    if (isImageOnlySentinel(msg.content) || isAudioOnlySentinel(msg.content) || isAnnotSentinel(msg.content)) return;
     editingMessageId = msgId;
     editingDraft = String(msg.content || '');
     renderMessages();
@@ -2566,6 +2850,7 @@
       : isGeneral ? sender + ' no #geral'
       : sender + ' no #sócios';
     var body = raw === '[print]' ? '📷 Enviou um print'
+      : raw === '[audio]' ? '🎤 Enviou um áudio'
       : (raw.length > 80 ? raw.substring(0, 80) + '...' : raw) || 'Nova mensagem no chat';
     sb.functions.invoke('send-push', { body: { usuario_id: appUserId, title: title, body: body, url: window.location.href, tag: 'exp-chat-' + ch } })
       .catch(function (e) { console.warn('[EXP Chat Push] erro:', e); });
@@ -2731,6 +3016,7 @@
   function previewFirstLine(text) {
     var line = normalizePreviewText(String(text || '').split(/\r?\n/)[0]).trim();
     if (isImageOnlySentinel(line)) return 'Print anexado';
+    if (isAudioOnlySentinel(line)) return '🎤 Áudio anexado';
     if (isAttentionSentinel(line)) return '👋 Chamou sua atenção';
     if (line.length > 70) return line.substring(0, 70) + '...';
     return line || 'Nova mensagem';
@@ -3317,6 +3603,10 @@
     return String(content || '').trim() === CHAT_IMAGE_SENTINEL;
   }
 
+  function isAudioOnlySentinel(content) {
+    return String(content || '').trim() === CHAT_AUDIO_SENTINEL;
+  }
+
   function isAnnotSentinel(content) {
     return /^\[anotacoes:.+\]$/.test(String(content || '').trim());
   }
@@ -3346,7 +3636,7 @@
     if (!ids.length) return Promise.resolve();
     var requestSeq = ++mediaRequestSeq;
     return sb.from('gestao_anexos_temporarios')
-      .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,expires_at,created_at,marcadores')
+      .select('contexto_id,storage_path,mime_type,arquivo_ext,size_bytes,width_px,height_px,duration_seconds,expires_at,created_at,marcadores')
       .eq('contexto_tipo', contextType)
       .in('contexto_id', ids)
       .is('removido_em', null)
@@ -4307,6 +4597,11 @@
     handleMediaInput: handleMediaInput,
     removeAttachment: removePendingAttachment,
     retryMediaIssue: retryMediaIssue,
+    toggleRecording: toggleRecording,
+    stopRecording:   stopRecording,
+    cancelRecording: cancelRecording,
+    toggleAudioPlay: toggleAudioPlay,
+    seekAudio:       seekAudio,
     openMediaViewer: openMediaViewer,
     closeMediaViewer: closeMediaViewer,
     prevMediaViewer: prevMediaViewer,
