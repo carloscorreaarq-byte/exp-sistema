@@ -3991,6 +3991,10 @@ span.tarefa-prio { display: inline-block; cursor: default; }
             <div class="ms-title">Histórico de pausas</div>
             <div id="mp-pausas-lista"></div>
           </div>
+          <div class="ms" id="mp-excluir-aviso" style="display:none">
+            <div class="ms-title" style="color:var(--terracota)">⚠ Este projeto não pode ser excluído</div>
+            <div id="mp-excluir-aviso-txt" style="font-size:11px;color:#888"></div>
+          </div>
         </div>
         <!-- Checklists & Revisões (aba unificada) -->
         <div class="mtab-panel" id="mp-chk-rev">
@@ -4149,6 +4153,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
       </div>
     </div>
     <div class="modal-ft">
+      <button class="btn tc socio-only" id="mp-btn-excluir" onclick="excluirProjeto()">🗑 Excluir</button>
       <button class="btn tc socio-only" id="mp-btn-pausar" onclick="pausarProduto()" style="margin-right:auto">Pausar produto</button>
       <button class="btn" onclick="fecharModal('modal-produto')">Fechar</button>
       <button class="btn filled socio-only" id="mp-btn-editar" onclick="editarProduto()">Editar</button>
@@ -10599,6 +10604,29 @@ async function abrirProduto(id, targetPanel = null) {
       ? 'R$ ' + fmtNum(prod.valor_contratado) : '—';
   }
 
+  // Excluir projeto: só sócios, e só habilitado se o projeto não tiver nada vinculado
+  document.getElementById('mp-btn-excluir').style.display = isSocio ? '' : 'none';
+  document.getElementById('mp-excluir-aviso').style.display = 'none';
+  if (isSocio) {
+    contarUsoProduto(id).then(uso => {
+      if (G.produtoAtivo !== id) return; // modal já trocou de produto enquanto a contagem rodava
+      const btnEx = document.getElementById('mp-btn-excluir');
+      const avisoWrap = document.getElementById('mp-excluir-aviso');
+      const avisoTxt = document.getElementById('mp-excluir-aviso-txt');
+      if (uso.total > 0) {
+        const partes = Object.entries(uso).filter(([k,v]) => k!=='total' && v>0).map(([k,v]) => `${v} ${USO_PROD_LABEL[k]||k}`);
+        btnEx.disabled = true;
+        btnEx.title = 'Só é possível excluir um projeto sem nenhum dado vinculado.';
+        avisoTxt.textContent = `Vinculado a: ${partes.join(', ')}.`;
+        avisoWrap.style.display = '';
+      } else {
+        btnEx.disabled = false;
+        btnEx.title = '';
+        avisoWrap.style.display = 'none';
+      }
+    });
+  }
+
   // Checklist aberto: visível a todos
 
   // Botão de revisão no card: label conforme role
@@ -10726,6 +10754,61 @@ async function confirmarPausa() {
   toast('Produto pausado');
   await carregarProdutos();
   renderListaProjetos();
+}
+
+// Conta onde o projeto (produto) está referenciado, pra travar a exclusão se tiver algo vinculado.
+// Etapas contam só se tiverem progresso (status !== 'nao_iniciada'), já que todo projeto novo já nasce com etapas-modelo vazias.
+const USO_PROD_LABEL = {
+  etapas: 'etapa(s) com progresso',
+  horas_lancadas: 'lançamento(s) de horas',
+  horas_lancadas_subtarefas: 'subtarefa(s) de horas',
+  lancamentos_custo: 'lançamento(s) de custo',
+  opp_custos: 'custo(s) de proposta',
+  eventos_custo: 'evento(s) de custo',
+  pausas_produto: 'pausa(s) registrada(s)',
+  checklist_etapa_exec: 'checklist(s) de etapa',
+  checklist_tarefa: 'checklist(s) aberto(s)',
+  reg_entrada: 'registro(s) no histórico',
+  chat_threads: 'conversa(s) de chat',
+  competencia_real_etapas: 'lançamento(s) de competência',
+  espelho_financeiro: 'lançamento(s) financeiro(s)',
+  followups_produto: 'follow-up(s)',
+};
+async function contarUsoProduto(produtoId) {
+  const etapas = G.todasEtapas.filter(e => e.produto_id === produtoId && e.status !== 'nao_iniciada').length;
+  const tabelas = ['horas_lancadas','horas_lancadas_subtarefas','lancamentos_custo','opp_custos',
+    'eventos_custo','pausas_produto','checklist_etapa_exec','checklist_tarefa',
+    'reg_entrada','chat_threads','competencia_real_etapas','espelho_financeiro','followups_produto'];
+  const resultados = await Promise.all(tabelas.map(t =>
+    sb.from(t).select('id', { count: 'exact', head: true }).eq('produto_id', produtoId)
+  ));
+  const uso = { etapas };
+  let total = etapas;
+  tabelas.forEach((t, i) => {
+    const n = resultados[i].count || 0;
+    uso[t] = n;
+    total += n;
+  });
+  uso.total = total;
+  return uso;
+}
+
+async function excluirProjeto() {
+  const id = G.produtoAtivo;
+  const prod = G.todosProdutos.find(p => p.id === id) || G._todosProdutosGestao.find(p => p.id === id);
+  if (!prod) return;
+  const uso = await contarUsoProduto(id);
+  if (uso.total > 0) { toast('Este projeto está em uso e não pode ser excluído.'); return; }
+  const label = prod.nome || prod.oportunidades?.projeto || 'este projeto';
+  if (!confirm(`Excluir o projeto "${label}"?\n\nEsta ação não pode ser desfeita.`)) return;
+  const { error } = await sb.from('produtos').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir: ' + error.message); return; }
+  fecharModal('modal-produto');
+  toast('Projeto excluído.');
+  await carregarProdutos();
+  renderListaProjetos();
+  renderGantt();
+  carregarDashboard();
 }
 
 async function concluirEtapa(etapaId) {

@@ -689,6 +689,43 @@ select option[disabled]{color:#bbb}
         </div>
       </div>
 
+      <!-- FORM EXECUÇÃO — Valor fixo inicial -->
+      <div id="f-exec-fixo" style="display:none">
+        <div class="fg fg2 mb8">
+          <div class="fgroup"><label>Valor fixo inicial (R$) — mínimo R$ 6.000</label><input type="number" id="i-exec-fixo-val" min="6000" step="100" oninput="calcExecFixoPrev()"></div>
+          <div class="fgroup" style="border-left:2px solid var(--cinza2);padding-left:10px"><label>Preview</label>
+            <div style="font-size:16px;font-weight:700;padding:4px 8px;font-family:var(--font-mono);color:var(--verde)" id="i-prev-exec-fixo">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORM EXECUÇÃO — Parcela sobre honorários -->
+      <div id="f-exec-pct" style="display:none">
+        <div class="fg fg3 mb8">
+          <div class="fgroup"><label>Percentual sobre honorários (%)</label><input type="number" id="i-exec-pct-val" min="0" step="0.1" value="10.0" oninput="calcExecPctPrev()"></div>
+          <div class="fgroup"><label>Custo estimado de obra (R$)</label><input type="number" id="i-exec-pct-custo" min="0" step="1000" oninput="calcExecPctPrev()"></div>
+          <div class="fgroup" style="border-left:2px solid var(--cinza2);padding-left:10px"><label>Preview</label>
+            <div style="font-size:16px;font-weight:700;padding:4px 8px;font-family:var(--font-mono);color:var(--terracota)" id="i-prev-exec-pct">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORM EXECUÇÃO — Valor de acompanhamento -->
+      <div id="f-exec-acomp" style="display:none">
+        <div class="fg fg3 mb8">
+          <div class="fgroup"><label>Periodicidade</label>
+            <select id="i-exec-acomp-periodo" onchange="updateExecAcompLabel()">
+              <option value="diario">Diário</option>
+              <option value="semanal">Semanal</option>
+            </select>
+          </div>
+          <div class="fgroup"><label id="lbl-exec-acomp-val">Valor estimado da diária (R$)</label><input type="number" id="i-exec-acomp-val" min="0" step="50" oninput="calcExecAcompPrev()"></div>
+          <div class="fgroup" style="border-left:2px solid var(--cinza2);padding-left:10px"><label>Preview</label>
+            <div style="font-size:16px;font-weight:700;padding:4px 8px;font-family:var(--font-mono);color:var(--terracota)" id="i-prev-exec-acomp">—</div>
+          </div>
+        </div>
+      </div>
+
       <button class="btn-add-item" onclick="addItem()">+ Adicionar à proposta</button>
     </div>
   </div>
@@ -1169,6 +1206,11 @@ const SUBS = {
       'Térreo / Passeios':        { k:'PAIS_RES_TERREO', mode:'calc', coefBase:0.9, hint:'Coef. 0,8 a 1,2. Mínimo R$ 17.280. Cálculo sobre m².' },
       'Espaço sobre laje':        { k:'PAIS_RES_LAJE',   mode:'calc', coefBase:1.0, hint:'Coef. 0,9 a 1,3 conforme complexidade. Mínimo R$ 17.280. Cálculo sobre m².' },
     },
+    'Execução': {
+      'Valor fixo inicial':         { k:'PAIS_EXEC_FIXO',  mode:'exec_fixo',  coefBase:null, hint:'Valor fixo de mobilização da execução. Mínimo R$ 6.000.' },
+      'Parcela sobre honorários':   { k:'PAIS_EXEC_PCT',   mode:'exec_pct',   coefBase:null, hint:'Percentual (padrão 10%, 1 casa decimal) sobre o custo estimado de obra informado.' },
+      'Valor de acompanhamento':    { k:'PAIS_EXEC_ACOMP', mode:'exec_acomp', coefBase:null, hint:'Acompanhamento de obra cobrado por diária ou por semana.' },
+    },
   },
   URB: {
     'Conceituação':               { k:'URB_CONCEITO', mode:'calc',    coefBase:3, hint:'Cobrado em múltiplos de CUB: de 2 a 5 CUB. Informe no campo Coef. o número de CUBs. Não vinculado a área.' },
@@ -1217,6 +1259,7 @@ let S = {
     PAIS_TERREO:17280, PAIS_CONDO:24000, PAIS_FLOREIRA:0,
     PAIS_ARB:17280, PAIS_STREET:17280, PAIS_PARQUE:24000, PAIS_PARQUE_BAIXO:24000,
     PAIS_RES_TERREO:17280, PAIS_RES_LAJE:17280,
+    PAIS_EXEC_FIXO:6000, PAIS_EXEC_PCT:0, PAIS_EXEC_ACOMP:0,
     URB_CONCEITO:0, URB_VIAB:15000, URB_MASTER:20000,
     URB_PROJETO:15000, URB_DESM:12000, URB_IMG:10000, URB_CHARRETE:30000,
     CONSUL_HORA:0, CONSUL_MENSAL:0,
@@ -1979,6 +2022,9 @@ function renderBase() {
     PAIS_PARQUE_BAIXO: 'Paisagismo — Parque baixo impacto',
     PAIS_RES_TERREO:   'Paisagismo Residencial — Térreo / Passeios',
     PAIS_RES_LAJE:     'Paisagismo Residencial — Espaço sobre laje',
+    PAIS_EXEC_FIXO:    'Paisagismo — Execução (valor fixo inicial)',
+    PAIS_EXEC_PCT:     'Paisagismo — Execução (parcela sobre honorários)',
+    PAIS_EXEC_ACOMP:   'Paisagismo — Execução (valor de acompanhamento)',
     URB_CONCEITO:      'Urbanismo — Conceituação',
     URB_VIAB:          'Urbanismo — Estudo de Viabilidade',
     URB_MASTER:        'Urbanismo — Masterplan',
@@ -2163,7 +2209,7 @@ function updateItemForm() {
   if (si?.hint) { hEl.textContent = si.hint; hEl.style.display = 'block'; }
   else hEl.style.display = 'none';
 
-  ['f-calc','f-floreira','f-esp','f-consul','f-livre'].forEach(id=>document.getElementById(id).style.display='none');
+  ['f-calc','f-floreira','f-esp','f-consul','f-livre','f-exec-fixo','f-exec-pct','f-exec-acomp'].forEach(id=>document.getElementById(id).style.display='none');
 
   if (mode === 'calc') {
     document.getElementById('f-calc').style.display = 'block';
@@ -2192,6 +2238,15 @@ function updateItemForm() {
     calcConsulPrev();
   } else if (mode === 'livre') {
     document.getElementById('f-livre').style.display = 'block';
+  } else if (mode === 'exec_fixo') {
+    document.getElementById('f-exec-fixo').style.display = 'block';
+    calcExecFixoPrev();
+  } else if (mode === 'exec_pct') {
+    document.getElementById('f-exec-pct').style.display = 'block';
+    calcExecPctPrev();
+  } else if (mode === 'exec_acomp') {
+    document.getElementById('f-exec-acomp').style.display = 'block';
+    updateExecAcompLabel();
   }
 }
 
@@ -2219,6 +2274,9 @@ function calcIV(it) {
   else if (k==='URB_CONCEITO') base = coef * S.cub;
   else if (it.mode==='livre'||it.mode==='esp') base = +it.vFix||0;
   else if (it.mode==='consul') base = (+it.horaVal||0)*(+it.horas||0);
+  else if (it.mode==='exec_fixo') base = +it.vFix||0;
+  else if (it.mode==='exec_pct') base = (+it.custoObra||0) * ((+it.pctHonor||0)/100);
+  else if (it.mode==='exec_acomp') base = +it.valorEstimado||0;
   else if (k.startsWith('PAIS')) base = calcBase(area, S.fP) * coef;
   else if (k.startsWith('URB'))  base = calcBase(area, S.fU) * coef;
   else base = +it.vFix||0;
@@ -2246,6 +2304,32 @@ function calcConsulPrev() {
   const hv = +document.getElementById('i-consul-hora-val').value||0;
   const h  = +document.getElementById('i-consul-horas').value||0;
   document.getElementById('i-prev-consul').textContent = hv&&h ? fmt(hv*h) : '—';
+}
+
+function calcExecFixoPrev() {
+  const v = +document.getElementById('i-exec-fixo-val').value||0;
+  const el = document.getElementById('i-prev-exec-fixo');
+  if (!v) { el.textContent='—'; el.style.color='var(--verde)'; return; }
+  if (v < 6000) { el.textContent = fmt(v)+' — mínimo R$ 6.000'; el.style.color='var(--terracota)'; }
+  else { el.textContent = fmt(v); el.style.color='var(--verde)'; }
+}
+
+function calcExecPctPrev() {
+  const pct   = +document.getElementById('i-exec-pct-val').value||0;
+  const custo = +document.getElementById('i-exec-pct-custo').value||0;
+  document.getElementById('i-prev-exec-pct').textContent = (pct&&custo) ? fmt(custo*pct/100) : '—';
+}
+
+function updateExecAcompLabel() {
+  const per = document.getElementById('i-exec-acomp-periodo').value;
+  document.getElementById('lbl-exec-acomp-val').textContent = per==='semanal' ? 'Valor estimado da semana (R$)' : 'Valor estimado da diária (R$)';
+  calcExecAcompPrev();
+}
+
+function calcExecAcompPrev() {
+  const v   = +document.getElementById('i-exec-acomp-val').value||0;
+  const per = document.getElementById('i-exec-acomp-periodo')?.value||'diario';
+  document.getElementById('i-prev-exec-acomp').textContent = v ? fmt(v)+(per==='semanal'?' /semana':' /dia') : '—';
 }
 
 function stepCoef(d) {
@@ -2279,7 +2363,8 @@ function addItem() {
     subLabel = document.getElementById('i-sub1').value;
   }
 
-  let area=0, coef=0, vFix=0, desc='', horaVal=0, horas=0, tipoCobranca='total', id='';
+  let area=0, coef=0, vFix=0, desc='', horaVal=0, horas=0, tipoCobranca='total', id='',
+      pctHonor=10, custoObra=0, periodicidade='diario', valorEstimado=0;
 
   if (mode==='calc') {
     area = +document.getElementById('i-area').value||0;
@@ -2303,9 +2388,22 @@ function addItem() {
     id   = document.getElementById('i-livre-id').value.trim();
     vFix = +document.getElementById('i-livre-val').value||0;
     if (!vFix) { showBlocked('Informe o valor'); return; }
+  } else if (mode==='exec_fixo') {
+    vFix = +document.getElementById('i-exec-fixo-val').value||0;
+    if (!vFix) { showBlocked('Informe o valor fixo inicial'); return; }
+    if (vFix < 6000) { showBlocked('Valor fixo inicial mínimo é R$ 6.000'); return; }
+  } else if (mode==='exec_pct') {
+    const pctRaw = document.getElementById('i-exec-pct-val').value;
+    pctHonor  = pctRaw!==''?Math.round((+pctRaw)*10)/10:10;
+    custoObra = +document.getElementById('i-exec-pct-custo').value||0;
+    if (!custoObra) { showBlocked('Informe o custo estimado de obra'); return; }
+  } else if (mode==='exec_acomp') {
+    periodicidade = document.getElementById('i-exec-acomp-periodo').value||'diario';
+    valorEstimado = +document.getElementById('i-exec-acomp-val').value||0;
+    if (!valorEstimado) { showBlocked('Informe o valor estimado'); return; }
   }
 
-  const valorCalc = calcIV({ subK:si.k, area, coef, vFix, mode, horaVal, horas });
+  const valorCalc = calcIV({ subK:si.k, area, coef, vFix, mode, horaVal, horas, pctHonor, custoObra, periodicidade, valorEstimado });
 
   cItems.push({
     itemId:   Date.now(),
@@ -2314,6 +2412,7 @@ function addItem() {
     subLabel,
     mode,
     desc, id, area, coef, vFix, horaVal, horas, tipoCobranca,
+    pctHonor, custoObra, periodicidade, valorEstimado,
     valorCalc,
     valorProposto: null,
     editJust:null, editBy:null, editAt:null,
@@ -2321,10 +2420,12 @@ function addItem() {
   });
 
   ['i-area','i-desc','i-desc-fl','i-esp-id','i-esp-val','i-livre-id','i-livre-val',
-   'i-consul-id','i-consul-horas','i-consul-hora-val'].forEach(id=>{
+   'i-consul-id','i-consul-horas','i-consul-hora-val',
+   'i-exec-fixo-val','i-exec-pct-custo','i-exec-acomp-val'].forEach(id=>{
     const e=document.getElementById(id); if(e) e.value='';
   });
   document.getElementById('i-cub-qty').value='2.00';
+  const pctResetEl=document.getElementById('i-exec-pct-val'); if(pctResetEl) pctResetEl.value='10.0';
   calcPrev(); calcResumo(); updateCardBars(); save();
   showToast('Item adicionado');
 }
@@ -2384,6 +2485,17 @@ function editarItemCompleto(id) {
   } else if (it.mode==='livre') {
     const iEl = document.getElementById('i-livre-id'); if(iEl) iEl.value = it.id||'';
     const vEl = document.getElementById('i-livre-val'); if(vEl) vEl.value = it.vFix||'';
+  } else if (it.mode==='exec_fixo') {
+    const vEl = document.getElementById('i-exec-fixo-val'); if(vEl) vEl.value = it.vFix||'';
+    calcExecFixoPrev();
+  } else if (it.mode==='exec_pct') {
+    const pEl = document.getElementById('i-exec-pct-val'); if(pEl) pEl.value = it.pctHonor!=null?it.pctHonor:10;
+    const cEl = document.getElementById('i-exec-pct-custo'); if(cEl) cEl.value = it.custoObra||'';
+    calcExecPctPrev();
+  } else if (it.mode==='exec_acomp') {
+    const perEl = document.getElementById('i-exec-acomp-periodo'); if(perEl) perEl.value = it.periodicidade||'diario';
+    const vEl = document.getElementById('i-exec-acomp-val'); if(vEl) vEl.value = it.valorEstimado||'';
+    updateExecAcompLabel();
   }
   calcPrev();
 
@@ -2988,6 +3100,9 @@ function calcResumo() {
           else detail=`${(+it.area).toLocaleString('pt-BR')} m² · coef. ${(+it.coef).toFixed(2)}`;
         } else if(it.mode==='floreira') detail=`${(+it.area).toFixed(2)} CUB`;
         else if(it.mode==='consul') detail=`${it.horas||0}h · ${it.tipoCobranca==='mensal'?'mensal':'total'}`;
+        else if(it.mode==='exec_fixo') detail='valor fixo inicial';
+        else if(it.mode==='exec_pct') detail=`${(it.pctHonor??10).toFixed(1)}% sobre ${fmt(it.custoObra||0)} (obra)`;
+        else if(it.mode==='exec_acomp') detail=`${it.periodicidade==='semanal'?'semanal':'diário'} · ${fmt(it.valorEstimado||0)}`;
         else detail='valor livre';
         return`<div class="rg-item">
           <div>
@@ -3210,7 +3325,13 @@ async function salvarProposta() {
   const total = totI+totRep_+cSubs.reduce((s,c)=>s+c.valComBit,0)+getTotDesp();
   const ganhoSubsVal = cSubs.reduce((s,c)=>s+c.ganhoEXP,0);
   const ganhoTecVal  = cDesps.filter(d=>d.tipo==='horasTec'&&d.confirmada).reduce((s,d)=>s+calcDesp(d),0);
-  const totalEfetivo = totI + ganhoSubsVal + ganhoTecVal;
+  // Execução: só o "valor fixo inicial" (PAIS_EXEC_FIXO) conta como faturamento efetivo EXP —
+  // parcela sobre honorários e valor de acompanhamento ficam registrados na proposta mas fora do efetivo.
+  const totIEfetivo = cItems.reduce((s,i)=>{
+    if (i.subK==='PAIS_EXEC_PCT' || i.subK==='PAIS_EXEC_ACOMP') return s;
+    return s+(i.valorProposto!==null?i.valorProposto:i.valorCalc);
+  },0);
+  const totalEfetivo = totIEfetivo + ganhoSubsVal + ganhoTecVal;
   const nucs  = [...new Set(cItems.map(i=>i.nucleo))];
 
   let version  = 0;
