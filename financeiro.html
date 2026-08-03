@@ -415,6 +415,9 @@ input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--fin); }
 }
 .kanban-card:last-child { margin-bottom: 0; }
 .kanban-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.08); border-color: var(--fin); }
+.kanban-card[draggable="true"] { cursor: grab; }
+.kanban-card.dragging { opacity: .4; }
+[id^="col-"].drag-over { background: var(--cinza); outline: 2px dashed var(--fin); outline-offset: -2px; border-radius: 8px; }
 .kc-tipo { font-size: 9px; font-weight: 700; letter-spacing: .3px; color: #888; margin-bottom: 4px; }
 .kc-cliente { font-size: 12px; font-weight: 600; }
 .kc-projeto { font-size: 10px; color: #888; }
@@ -4490,28 +4493,120 @@ async function carregarFila() {
 }
 
 // ══════════════════════════════════════════════════════════
-//   PROJETOS — ATIVOS
+//   PROJETOS — ATIVOS (fonte: todos os projetos da Gestão)
 // ══════════════════════════════════════════════════════════
+const ETAPA_STATUS_MAP = {
+  nao_iniciada: { label: 'Não iniciada', cls: 'b-gr' },
+  em_andamento: { label: 'Em andamento', cls: 'b-az' },
+  em_revisao:   { label: 'Em revisão',   cls: 'b-roxo' },
+  concluida:    { label: 'Concluída',    cls: 'b-vd' },
+  pausada:      { label: 'Pausada',      cls: 'b-am' },
+};
+const FIN_ETAPA_STATUS_MAP = {
+  pendente:    { label: 'Sem cobrança ainda', cls: 'b-gr' },
+  alertado:    { label: 'Concluída · a emitir', cls: 'b-am' },
+  em_cobranca: { label: 'Em cobrança', cls: 'b-az' },
+  quitado:     { label: 'Quitado', cls: 'b-vd' },
+  cancelado:   { label: 'Cancelado', cls: 'b-tc' },
+};
+
 async function carregarAtivos() {
-  const { data } = await sb.from('fin_ativos')
-    .select('*').eq('situacao_financeira', 'ativo')
+  const { data: produtos } = await sb.from('produtos')
+    .select(`*, oportunidades(id, projeto, cliente_id, clientes(id, nome)), etapas(*)`)
     .order('created_at', { ascending: false });
-  G.ativos = data || [];
+
+  const prodIds = (produtos || []).map(p => p.id);
+  const { data: ativos } = prodIds.length
+    ? await sb.from('fin_ativos').select('*, fin_etapas(*)').in('produto_id', prodIds)
+    : { data: [] };
+
+  const ativoPorProduto = {};
+  (ativos || []).forEach(a => { if (a.produto_id) ativoPorProduto[a.produto_id] = a; });
+
+  G.produtosGestao = (produtos || []).map(p => ({
+    ...p,
+    etapas: (p.etapas || []).slice().sort((x, y) => (x.ordem ?? 0) - (y.ordem ?? 0)),
+  }));
+  G.ativoPorProduto = ativoPorProduto;
   filtrarAtivos();
 }
+
 function filtrarAtivos() {
   const q = (document.getElementById('filtro-ativos-q')?.value||'').toLowerCase();
   const nucleo = document.getElementById('filtro-ativos-nucleo')?.value;
   const modal = document.getElementById('filtro-ativos-modal')?.value;
-  const lista = G.ativos.filter(a =>
-    (!q || a.cliente_nome?.toLowerCase().includes(q) || a.num_legado?.toLowerCase().includes(q)) &&
-    (!nucleo || a.nucleo === nucleo) &&
-    (!modal || a.modalidade_cobranca === modal)
-  );
+  const lista = (G.produtosGestao || []).filter(p => {
+    const ativo = G.ativoPorProduto[p.id];
+    const clienteNome = p.oportunidades?.clientes?.nome || '';
+    return (!q || clienteNome.toLowerCase().includes(q) || p.nome?.toLowerCase().includes(q)) &&
+      (!nucleo || p.nucleo === nucleo) &&
+      (!modal || ativo?.modalidade_cobranca === modal);
+  });
   const el = document.getElementById('lista-ativos');
-  if (!lista.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Nenhum projeto ativo</div></div>'; return; }
-  el.innerHTML = lista.map(a => ativoCardHTML(a, 'ativo')).join('');
+  if (!lista.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Nenhum projeto encontrado</div></div>'; return; }
+  el.innerHTML = lista.map(p => produtoGestaoCardHTML(p, G.ativoPorProduto[p.id])).join('');
 }
+
+function produtoGestaoCardHTML(p, ativo) {
+  const clienteNome = p.oportunidades?.clientes?.nome || '—';
+  const clienteDisp = _finEsc(clienteNome);
+  const nomeDisp = _finEsc(p.nome || '');
+  const produtoIdJs = _finSq(p.id);
+  const etapas = p.etapas || [];
+  const finEtapasPorGestaoId = {};
+  (ativo?.fin_etapas || []).forEach(fe => { if (fe.etapa_gestao_id) finEtapasPorGestaoId[fe.etapa_gestao_id] = fe; });
+
+  const etapasHTML = etapas.length ? etapas.map(e => {
+    const st = ETAPA_STATUS_MAP[e.status] || ETAPA_STATUS_MAP.nao_iniciada;
+    const fe = finEtapasPorGestaoId[e.id];
+    const finSt = fe ? (FIN_ETAPA_STATUS_MAP[fe.situacao] || FIN_ETAPA_STATUS_MAP.pendente) : null;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cinza2);font-size:11px">
+      <span style="flex:1">${_finEsc(e.nome || '')}</span>
+      <span class="badge ${st.cls}" style="font-size:8px">${st.label}</span>
+      ${finSt ? `<span class="badge ${finSt.cls}" style="font-size:8px">💰 ${finSt.label}</span>` : `<span style="color:#bbb;font-size:9px">sem vínculo de pagamento</span>`}
+    </div>`;
+  }).join('') : '<div style="font-size:10px;color:#bbb;padding:4px 0">Nenhuma etapa cadastrada na Gestão</div>';
+
+  return `<div class="ativo-card">
+    <div class="ativo-card-hd">
+      ${nucleoBadge(p.nucleo)}
+      <span class="ativo-card-title">${clienteDisp}</span>
+      ${!ativo ? '<span class="badge b-gr">Sem vínculo financeiro</span>' : `<span class="badge ${ativo.situacao_financeira === 'ativo' ? 'b-vd' : 'b-am'}">${_finEsc(ativo.situacao_financeira)}</span>`}
+      <button class="btn btn-pri btn-sm" style="margin-left:auto" onclick="event.stopPropagation();configurarVinculoPagamento(${produtoIdJs})">Configurar vínculo de pagamento</button>
+    </div>
+    ${p.nome ? `<div style="font-size:11px;color:#666;padding:4px 0 2px">${nomeDisp}</div>` : ''}
+    <div style="margin-top:6px">${etapasHTML}</div>
+    <div class="ativo-card-footer">
+      <div><div class="ativo-valor">${moeda(p.valor_contratado)}</div><div class="ativo-valor-sub">contratado</div></div>
+    </div>
+  </div>`;
+}
+
+async function configurarVinculoPagamento(produtoId) {
+  let ativo = G.ativoPorProduto[produtoId];
+  if (!ativo) {
+    const p = (G.produtosGestao || []).find(x => x.id === produtoId);
+    if (!p) { toast('Projeto não encontrado', 'erro'); return; }
+    const payload = {
+      produto_id: p.id,
+      oportunidade_id: p.oportunidade_id || null,
+      cliente_id: p.oportunidades?.cliente_id || null,
+      cliente_nome: p.oportunidades?.clientes?.nome || p.nome || '',
+      nucleo: p.nucleo || null,
+      descricao: p.nome || null,
+      valor_total: p.valor_contratado || 0,
+      situacao_financeira: 'rascunho',
+      criado_por: 'gestao',
+      criado_por_id: G.usuario?.id || null,
+    };
+    const { data: novo, error } = await sb.from('fin_ativos').insert(payload).select().single();
+    if (error) { toast('Erro ao criar vínculo financeiro: ' + error.message, 'erro'); return; }
+    ativo = novo;
+    G.ativoPorProduto[produtoId] = ativo;
+  }
+  finalizarRascunho(ativo.id);
+}
+
 async function carregarConcluidos() {
   const { data } = await sb.from('fin_ativos')
     .select('*').eq('situacao_financeira', 'concluido')
@@ -4881,6 +4976,56 @@ async function carregarPipeline() {
   renderColuna('col-emitir', cols.emitir, 'emitir');
   renderColuna('col-aguardando', cols.aguardando, 'aguardando');
   renderColuna('col-pago', cols.pago, 'pago');
+  setupCobrancaDrag();
+}
+
+function setupCobrancaDrag() {
+  const STAGE_MAP = { 'col-emitir': 'emitir', 'col-aguardando': 'aguardando', 'col-pago': 'pago' };
+  let dragId = null, srcCol = null;
+
+  document.querySelectorAll('.kanban-card[data-id]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      dragId = el.dataset.id;
+      srcCol = el.closest('[id^="col-"]')?.id;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => el.classList.add('dragging'), 0);
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      Object.keys(STAGE_MAP).forEach(cid => document.getElementById(cid)?.classList.remove('drag-over'));
+    });
+  });
+
+  Object.keys(STAGE_MAP).forEach(colId => {
+    const col = document.getElementById(colId);
+    if (!col) return;
+    col.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', e => {
+      if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+    });
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!dragId || colId === srcCol) return;
+      const id = dragId, from = srcCol;
+      dragId = null; srcCol = null;
+      const destino = STAGE_MAP[colId];
+      const origem = STAGE_MAP[from];
+
+      if (origem === 'pago') {
+        toast('Pagamento já confirmado — não é possível mover de volta', 'erro');
+        return;
+      }
+      if (destino === 'aguardando' && origem === 'emitir') { emitirParcela(id); return; }
+      if (destino === 'pago' && origem === 'aguardando')   { confirmarPagamento(id); return; }
+      toast('Esse movimento não é suportado — use as ações do card', 'erro');
+      carregarPipeline();
+    });
+  });
 }
 
 function renderColuna(elId, parcelas, colTipo) {
@@ -4911,7 +5056,7 @@ function kanbanCard(p, colTipo) {
     footerBtn = `<button class="btn btn-sec btn-xs" onclick="event.stopPropagation();confirmarPagamento(${parcelaIdJs})">Confirmar pgto</button>`;
   }
 
-  return `<div class="kanban-card" onclick="abrirParcelaModal(${parcelaIdJs})">
+  return `<div class="kanban-card" draggable="true" data-id="${_finAttr(p.id)}" onclick="abrirParcelaModal(${parcelaIdJs})">
     <div class="kc-tipo">
       <span class="tipo-dot ${tp.cls}" style="background:${tp.cor}"></span>
       ${tipoDisp}
@@ -4930,6 +5075,16 @@ function kanbanCard(p, colTipo) {
   </div>`;
 }
 
+// Mantém espelho_financeiro (fonte de verdade lida pela Gestão) sincronizado
+// com o status de faturamento — ver blueprint-modulo-financeiro-EXP.md §7.3/§4.5
+async function finSyncEspelhoFaturamento(etapaId, status) {
+  if (!etapaId) return;
+  const { data: fe } = await sb.from('fin_etapas').select('espelho_financeiro_id').eq('id', etapaId).single();
+  if (fe?.espelho_financeiro_id) {
+    await sb.from('espelho_financeiro').update({ status_faturamento: status }).eq('id', fe.espelho_financeiro_id);
+  }
+}
+
 async function emitirParcela(id) {
   const nf = prompt('Número da NF (deixe em branco se ainda não tem):');
   const { error } = await sb.from('fin_parcelas').update({
@@ -4938,6 +5093,8 @@ async function emitirParcela(id) {
     data_emissao_nf: new Date().toISOString().split('T')[0],
   }).eq('id', id);
   if (error) { toast('Erro ao emitir parcela', 'erro'); return; }
+  const p = (G.parcelas || []).find(x => x.id === id);
+  if (p?.etapa_id) finSyncEspelhoFaturamento(p.etapa_id, 'faturado');
   toast('Parcela marcada como emitida ✓', 'ok');
   carregarPipeline();
 }
@@ -5017,6 +5174,8 @@ async function salvarConfirmacaoPgto() {
       criado_por_nome: G.usuario?.nome || null,
     });
   }
+
+  if (p?.etapa_id) finSyncEspelhoFaturamento(p.etapa_id, 'pago');
 
   toast('Pagamento confirmado e baixa realizada ✓', 'ok');
   fecharModal('modal-confirmar-pgto');
@@ -5904,11 +6063,39 @@ async function finalizarRascunho(id) {
   const { data: ativo } = await sb.from('fin_ativos').select('*').eq('id', id).single();
   if (!ativo) { toast('Ativo não encontrado', 'erro'); return; }
 
-  const { data: etapas } = await sb.from('fin_etapas')
+  let { data: etapas } = await sb.from('fin_etapas')
     .select('*, fin_parcelas(*)').eq('ativo_id', id).order('ordem');
+  etapas = etapas || [];
   const { data: repasses } = await sb.from('fin_repasses').select('*').eq('ativo_id', id);
 
-  G_ativoEdit = { ...ativo, etapas: etapas || [], repasses: repasses || [] };
+  // Vincular com etapas da Gestão (etapa_gestao_id), casando por ordem dentro do mesmo produto
+  if (ativo.produto_id) {
+    const { data: etapasGestao } = await sb.from('etapas')
+      .select('id, nome, ordem').eq('produto_id', ativo.produto_id).order('ordem');
+
+    if (etapasGestao?.length) {
+      if (etapas.length) {
+        // Auto-heal: etapas financeiras já existentes sem vínculo — casar por ordem e persistir
+        const semVinculo = etapas.filter(e => !e.etapa_gestao_id);
+        for (const e of semVinculo) {
+          const match = etapasGestao.find(eg => eg.ordem === e.ordem) || etapasGestao[etapas.indexOf(e)];
+          if (match) {
+            e.etapa_gestao_id = match.id;
+            await sb.from('fin_etapas').update({ etapa_gestao_id: match.id }).eq('id', e.id);
+          }
+        }
+      } else {
+        // Nenhuma etapa financeira ainda — pré-popular a partir das etapas da Gestão
+        etapas = etapasGestao.map((eg, i) => ({
+          descricao: eg.nome, percentual_total: 0, valor_total: 0,
+          situacao: 'pendente', ordem: eg.ordem ?? i,
+          etapa_gestao_id: eg.id, fin_parcelas: [],
+        }));
+      }
+    }
+  }
+
+  G_ativoEdit = { ...ativo, etapas, repasses: repasses || [] };
 
   // Preencher header
   document.getElementById('fin-titulo').textContent = `Finalizar: ${ativo.cliente_nome}`;
