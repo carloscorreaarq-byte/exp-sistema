@@ -1306,6 +1306,7 @@ textarea{resize:vertical;min-height:60px}
                   <option value="construtora">Construtora</option>
                   <option value="incorporadora">Incorporadora</option>
                   <option value="pessoa_fisica">Pessoa Física</option>
+                  <option value="parceiro">Parceiro</option>
                   <option value="outro">Outro</option>
                 </select>
               </div>
@@ -1548,6 +1549,7 @@ textarea{resize:vertical;min-height:60px}
             <option value="construtora">Construtora</option>
             <option value="incorporadora">Incorporadora</option>
             <option value="pessoa_fisica">Pessoa Física</option>
+            <option value="parceiro">Parceiro</option>
             <option value="outro">Outro</option>
           </select>
         </div>
@@ -1593,6 +1595,7 @@ textarea{resize:vertical;min-height:60px}
             <option value="construtora">Construtora</option>
             <option value="incorporadora">Incorporadora</option>
             <option value="pessoa_fisica">Pessoa Física</option>
+            <option value="parceiro">Parceiro</option>
             <option value="outro">Outro</option>
           </select>
         </div>
@@ -5771,37 +5774,47 @@ function encontrarContatoClienteExistente(clienteId, nome, email, telefone){
 }
 
 async function salvarContato(){
-  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
-  const nome=document.getElementById('contato-nome').value.trim();
-  if(!nome){toast('Nome é obrigatório.');return;}
-  const clienteId=document.getElementById('contato-cliente-id').value;
-  const editId=document.getElementById('contato-edit-id').value;
-  const payload={
-    cliente_id:clienteId,
-    nome,
-    cargo:document.getElementById('contato-cargo').value.trim()||null,
-    telefone:document.getElementById('contato-tel').value.trim()||null,
-    email:document.getElementById('contato-email').value.trim()||null,
-    acionar_contato:document.getElementById('contato-acionar').checked,
-    data_prevista_contato:document.getElementById('contato-acionar').checked?(document.getElementById('contato-data-prevista').value||null):null,
-  };
-  if(editId){
-    const {error}=await sb.from('contatos').update(payload).eq('id',editId);
-    if(error){toast('Erro ao salvar contato: '+error.message);return;}
-    toast('Contato atualizado!');
-  } else {
-    // COM-2: usar .select() para detectar bloqueio silencioso de RLS
-    const {data:ctData, error}=await sb.from('contatos').insert(payload).select('id');
-    if(error){toast('Erro ao salvar contato: '+error.message);return;}
-    if(!ctData||ctData.length===0){
-      toast('Contato não foi salvo. Execute o SQL de permissões RLS na tabela contatos (ver SQL_RLS_SPRINT_A.sql).');
-      return;
+  try{
+    if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+    const nome=document.getElementById('contato-nome').value.trim();
+    if(!nome){toast('Nome é obrigatório.');return;}
+    const clienteId=document.getElementById('contato-cliente-id').value;
+    const editId=document.getElementById('contato-edit-id').value;
+    const payload={
+      cliente_id:clienteId,
+      nome,
+      cargo:document.getElementById('contato-cargo').value.trim()||null,
+      telefone:document.getElementById('contato-tel').value.trim()||null,
+      email:document.getElementById('contato-email').value.trim()||null,
+      acionar_contato:document.getElementById('contato-acionar').checked,
+      data_prevista_contato:document.getElementById('contato-acionar').checked?(document.getElementById('contato-data-prevista').value||null):null,
+    };
+    if(editId){
+      // usar .select() para detectar bloqueio silencioso de RLS (mesma lógica do insert abaixo)
+      const {data:ctData, error}=await sb.from('contatos').update(payload).eq('id',editId).select('id');
+      if(error){toast('Erro ao salvar contato: '+error.message);return;}
+      if(!ctData||ctData.length===0){
+        toast('Contato não foi atualizado. Verifique as permissões (RLS) de UPDATE na tabela contatos.');
+        return;
+      }
+      toast('Contato atualizado!');
+    } else {
+      // COM-2: usar .select() para detectar bloqueio silencioso de RLS
+      const {data:ctData, error}=await sb.from('contatos').insert(payload).select('id');
+      if(error){toast('Erro ao salvar contato: '+error.message);return;}
+      if(!ctData||ctData.length===0){
+        toast('Contato não foi salvo. Execute o SQL de permissões RLS na tabela contatos (ver SQL_RLS_SPRINT_A.sql).');
+        return;
+      }
+      toast('Contato adicionado!');
     }
-    toast('Contato adicionado!');
+    closeM('modal-contato');
+    await carregarDados();
+    renderContatos();
+  }catch(e){
+    console.error('salvarContato falhou:',e);
+    toast('Erro inesperado ao salvar contato: '+(e?.message||e));
   }
-  closeM('modal-contato');
-  await carregarDados();
-  renderContatos();
 }
 
 async function salvarRespClienteComoContato(){

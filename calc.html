@@ -1092,7 +1092,7 @@ select option[disabled]{color:#bbb}
 
   <!-- MÍNIMOS -->
   <div class="card neutro">
-    <div class="card-hdr"><div class="card-title">Cobranças mínimas por subtipo</div></div>
+    <div class="card-hdr"><div class="card-title">Mínimos e observações por subtipo</div></div>
     <div class="card-body" id="mins-list"></div>
   </div>
 
@@ -1265,6 +1265,7 @@ let S = {
     CONSUL_HORA:0, CONSUL_MENSAL:0,
   },
   params: { diaria:680, gas:6.20, car:180 },
+  hints: {},
   etapas: {
     PAIS: { default: ['Briefing','Estudo Conceitual','Estudo Preliminar','Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'] },
     URB:  { default: ['Briefing','Estudo Conceitual','Estudo Preliminar','Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'] },
@@ -2206,7 +2207,8 @@ function updateItemForm() {
   const mode = si?.mode || 'calc';
 
   const hEl = document.getElementById('i-hint');
-  if (si?.hint) { hEl.textContent = si.hint; hEl.style.display = 'block'; }
+  const hintTxt = si?.k && S.hints[si.k] !== undefined ? S.hints[si.k] : si?.hint;
+  if (hintTxt) { hEl.textContent = hintTxt; hEl.style.display = 'block'; }
   else hEl.style.display = 'none';
 
   ['f-calc','f-floreira','f-esp','f-consul','f-livre','f-exec-fixo','f-exec-pct','f-exec-acomp'].forEach(id=>document.getElementById(id).style.display='none');
@@ -4163,17 +4165,23 @@ function renderParams() {
   const allSubsSafe = allSubs.map(x=>({ ...x, tipo: x.tipo ? escHtml(x.tipo) : null, sub: escHtml(x.sub), nucDisp: escHtml(x.nuc) }));
   document.getElementById('mins-list').innerHTML = allSubsSafe
     .filter(x=>x.si.mode==='calc'||x.si.mode==='floreira')
-    .map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--cinza2)">
-      <div>
-        <span class="badge ${NBADGE[x.nuc]}">${x.nucDisp}</span>
-        ${x.tipo?`<span style="font-size:10px;color:#888;margin-left:5px">${x.tipo} ·</span>`:''}
-        <span style="font-size:11px;margin-left:4px">${x.sub}</span>
+    .map(x=>{
+      const hintVal = S.hints[x.si.k] !== undefined ? S.hints[x.si.k] : (x.si.hint||'');
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--cinza2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <div>
+          <span class="badge ${NBADGE[x.nuc]}">${x.nucDisp}</span>
+          ${x.tipo?`<span style="font-size:10px;color:#888;margin-left:5px">${x.tipo} ·</span>`:''}
+          <span style="font-size:11px;margin-left:4px">${x.sub}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--font-ui);text-align:right;border-radius:var(--radius-btn)" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
+          <span style="font-size:10px;color:#888">mín.</span>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--font-ui);text-align:right;border-radius:var(--radius-btn)" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
-        <span style="font-size:10px;color:#888">mín.</span>
-      </div>
-    </div>`).join('');
+      <textarea style="width:100%;font-size:11px;border:1px solid var(--cinza);padding:5px 7px;font-family:var(--font-ui);border-radius:var(--radius-btn);resize:vertical;min-height:32px;color:#666" placeholder="Observação exibida ao calcular este serviço..." onchange="S.hints['${x.si.k}']=this.value">${escHtml(hintVal)}</textarea>
+    </div>`;
+    }).join('');
 
   document.getElementById('p-diaria').value=S.params.diaria;
   document.getElementById('p-gas').value=S.params.gas;
@@ -4214,7 +4222,7 @@ async function saveParamsToSupabase() {
   const payload = {
     updated_at: new Date().toISOString(),
     cub: S.cub, cub_mes: S.cubMes, cub_hist: S.cubHist,
-    fp: S.fP, fu: S.fU, mins: S.mins,
+    fp: S.fP, fu: S.fU, mins: S.mins, hints: S.hints,
     etapas: S.etapas, dist_etapas: S.distEtapas, params: S.params,
   };
   try {
@@ -4258,6 +4266,7 @@ async function loadParamsFromSupabase() {
     if (row.fp != null)          S.fP          = row.fp;
     if (row.fu != null)          S.fU          = row.fu;
     if (row.mins != null)        S.mins        = row.mins;
+    if (row.hints != null)       S.hints       = row.hints;
     // CALC-3+4: merge profundo — preserva nucleos ausentes no registro do Supabase
     if (row.etapas != null)      S.etapas     = { ...S.etapas,     ...row.etapas };
     if (row.dist_etapas != null) S.distEtapas = { ...S.distEtapas, ...row.dist_etapas };
