@@ -224,6 +224,12 @@ tr.blocked-row td{color:#aaa;background:var(--off)}
 .npill.sel.consul{background:var(--tc-bg);border-color:var(--terracota);color:var(--terracota)}
 .npill.sel.esp{background:var(--am-bg);border-color:var(--ouro);color:var(--ouro)}
 
+/* TOGGLE UNIDADE DE ÁREA (ha / m²) */
+#area-unit-toggle span{color:#999;border:1px solid var(--cinza)}
+#area-unit-toggle span.au-active{background:var(--az-bg);border-color:var(--azul);color:var(--azul);font-weight:var(--weight-semibold)}
+#au-ha{border-radius:3px 0 0 3px;border-right:none}
+#au-m2{border-radius:0 3px 3px 0}
+
 /* ETAPAS EDITOR */
 .etapa-row{display:grid;grid-template-columns:2fr 1fr 1fr 80px 22px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--cinza2)}
 .etapa-row:last-child{border-bottom:none}
@@ -615,7 +621,7 @@ select option[disabled]{color:#bbb}
       <div id="f-calc" style="display:none">
         <div class="fg fg3" style="margin-bottom:5px">
           <div class="fgroup">
-            <label id="lbl-area">Área (m²)</label>
+            <label id="lbl-area"><span id="lbl-area-txt">Área (m²)</span><span id="area-unit-toggle" style="display:none;margin-left:6px;font-weight:400"><span id="au-ha" onclick="setAreaUnit('ha')" style="cursor:pointer;padding:1px 5px;border-radius:3px;font-size:9px;letter-spacing:.3px">ha</span><span id="au-m2" onclick="setAreaUnit('m2')" style="cursor:pointer;padding:1px 5px;border-radius:3px;font-size:9px;letter-spacing:.3px">m²</span></span></label>
             <input type="number" id="i-area" min="0" step="1" oninput="calcPrev()">
           </div>
           <div class="fgroup" id="grupo-coef">
@@ -1293,6 +1299,7 @@ let S = {
 
 let cItems = [], cDesps = [], cSubs = [], cRepasse = [];
 let currentNucleo = 'PAIS';
+let areaUnitURB = 'ha'; // 'ha' ou 'm2' — só se aplica ao núcleo Urbanismo
 let evItemId = null;
 let editEtapaNucleo = 'PAIS', editEtapaChave = 'default';
 let dSeq = 1;
@@ -2218,7 +2225,10 @@ function updateItemForm() {
     const n = currentNucleo;
     const isConceito = si?.k === 'URB_CONCEITO';
     const isArb = si?.k === 'PAIS_ARB';
-    document.getElementById('lbl-area').textContent = n==='URB' ? 'Área (ha)' : 'Área (m²)';
+    document.getElementById('lbl-area-txt').textContent = n==='URB' ? 'Área' : 'Área (m²)';
+    const auToggle = document.getElementById('area-unit-toggle');
+    auToggle.style.display = n==='URB' ? 'inline' : 'none';
+    if (n==='URB') updateAreaUnitUI();
     document.getElementById('grupo-coef').style.display = isArb ? 'none' : '';
     const coefEl = document.getElementById('i-coef');
     if (isConceito) {
@@ -2285,13 +2295,35 @@ function calcIV(it) {
   return Math.max(base, S.mins[k]||0);
 }
 
+// Unidade de área — Urbanismo permite alternar ha/m² sem trocar o valor real
+function updateAreaUnitUI() {
+  const isM2 = areaUnitURB === 'm2';
+  document.getElementById('au-ha').className = isM2 ? '' : 'au-active';
+  document.getElementById('au-m2').className = isM2 ? 'au-active' : '';
+}
+function setAreaUnit(u) {
+  if (u === areaUnitURB) return;
+  const aEl = document.getElementById('i-area');
+  const v = parseFloat(aEl.value);
+  if (!isNaN(v)) aEl.value = u === 'm2' ? (v * 10000) : (v / 10000);
+  areaUnitURB = u;
+  updateAreaUnitUI();
+  calcPrev();
+}
+// Área do campo i-area convertida para ha, que é a unidade usada internamente pelo motor de cálculo
+function getAreaHa() {
+  const raw = +document.getElementById('i-area').value || 0;
+  if (currentNucleo === 'URB' && areaUnitURB === 'm2') return raw / 10000;
+  return raw;
+}
+
 function calcPrev() {
   const si = getSubInfo();
   if (!si) { ['i-prev','i-prev-fl'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';}); return; }
   const mode = si.mode;
   let v = 0;
   if (mode==='calc') {
-    const a=+document.getElementById('i-area').value||0;
+    const a=getAreaHa();
     const c=+document.getElementById('i-coef').value||0;
     v = calcIV({subK:si.k,area:a,coef:c,mode});
     document.getElementById('i-prev').textContent = v>0?fmt(v):'—';
@@ -2369,7 +2401,7 @@ function addItem() {
       pctHonor=10, custoObra=0, periodicidade='diario', valorEstimado=0;
 
   if (mode==='calc') {
-    area = +document.getElementById('i-area').value||0;
+    area = getAreaHa();
     coef = +document.getElementById('i-coef').value||0;
     desc = document.getElementById('i-desc').value.trim();
   } else if (mode==='floreira') {
@@ -2470,6 +2502,7 @@ function editarItemCompleto(id) {
 
   // Preenche campos conforme mode
   if (it.mode==='calc') {
+    if (it.nucleo==='URB') { areaUnitURB='ha'; updateAreaUnitUI(); } // it.area sempre salvo em ha
     const aEl = document.getElementById('i-area'); if(aEl) aEl.value = it.area||'';
     const cEl = document.getElementById('i-coef'); if(cEl) cEl.value = it.coef||'';
     const dEl = document.getElementById('i-desc'); if(dEl) dEl.value = it.desc||'';
@@ -3015,7 +3048,10 @@ function renderDesps() {
 // RESUMO GERAL
 // ════════════════════════════════════════════════════════
 function calcResumo() {
-  cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc=calcIV(it); });
+  // calcIV(it) é função pura das faixas/CUB/mínimos atuais — recalcular para todos os
+  // modos garante que edições em Parâmetros (mínimos, faixas) reflitam em itens já
+  // adicionados à proposta, inclusive os de valor livre (ex: Imagens, Charrete).
+  cItems.forEach(it=>{ it.valorCalc=calcIV(it); });
 
   const totI     = cItems.reduce((s,i)=>s+(i.valorProposto!==null?i.valorProposto:i.valorCalc),0);
   const totICalc = cItems.reduce((s,i)=>s+i.valorCalc,0);
@@ -4144,10 +4180,10 @@ function renderParams() {
   const inp = `font-size:11px;border:1px solid var(--cinza);padding:4px 7px;font-family:var(--font-ui);border-radius:var(--radius-btn)`;
   const fRow=(f,tipo,i)=>`<div style="display:grid;grid-template-columns:100px 100px 1fr 110px 22px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--cinza2)">
     <input class="fgroup input" style="${inp};background:var(--off);color:#888" type="text" value="${escAttr(i===0?'0':(S['f'+tipo][i-1]?.max===null?'∞':(S['f'+tipo][i-1]?.max??0)))}" placeholder="0" readonly tabindex="-1">
-    <input class="fgroup input" style="${inp}" type="number" value="${escAttr(f.max===null?'':(f.max||0))}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams()">
-    <input class="fgroup input" style="${inp}" type="text" value="${escAttr(f.label)}" onchange="S.f${tipo}[${i}].label=this.value">
-    <input class="fgroup input" style="${inp}" type="number" step="0.00001" value="${escAttr(f.mult)}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value)">
-    <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams()">✕</button>
+    <input class="fgroup input" style="${inp}" type="number" value="${escAttr(f.max===null?'':(f.max||0))}" placeholder="∞" onchange="S.f${tipo}[${i}].max=this.value===''?null:parseFloat(this.value);renderParams();paramsChanged()">
+    <input class="fgroup input" style="${inp}" type="text" value="${escAttr(f.label)}" onchange="S.f${tipo}[${i}].label=this.value;paramsChanged()">
+    <input class="fgroup input" style="${inp}" type="number" step="0.00001" value="${escAttr(f.mult)}" onchange="S.f${tipo}[${i}].mult=parseFloat(this.value);paramsChanged()">
+    <button class="btn xs danger" onclick="S.f${tipo}.splice(${i},1);renderParams();paramsChanged()">✕</button>
   </div>`;
   document.getElementById('faixas-pais').innerHTML = S.fP.map((f,i)=>fRow(f,'P',i)).join('');
   document.getElementById('faixas-urb').innerHTML  = S.fU.map((f,i)=>fRow(f,'U',i)).join('');
@@ -4164,7 +4200,7 @@ function renderParams() {
   });
   const allSubsSafe = allSubs.map(x=>({ ...x, tipo: x.tipo ? escHtml(x.tipo) : null, sub: escHtml(x.sub), nucDisp: escHtml(x.nuc) }));
   document.getElementById('mins-list').innerHTML = allSubsSafe
-    .filter(x=>x.si.mode==='calc'||x.si.mode==='floreira')
+    .filter(x=>x.si.mode==='calc'||x.si.mode==='floreira'||x.si.mode==='livre')
     .map(x=>{
       const hintVal = S.hints[x.si.k] !== undefined ? S.hints[x.si.k] : (x.si.hint||'');
       return `<div style="padding:7px 0;border-bottom:1px solid var(--cinza2)">
@@ -4175,11 +4211,11 @@ function renderParams() {
           <span style="font-size:11px;margin-left:4px">${x.sub}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--font-ui);text-align:right;border-radius:var(--radius-btn)" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0">
+          <input style="width:100px;font-size:11px;border:1px solid var(--cinza);padding:3px 7px;font-family:var(--font-ui);text-align:right;border-radius:var(--radius-btn)" type="number" value="${escAttr(S.mins[x.si.k]||0)}" onchange="S.mins['${x.si.k}']=parseFloat(this.value)||0;paramsChanged()">
           <span style="font-size:10px;color:#888">mín.</span>
         </div>
       </div>
-      <textarea style="width:100%;font-size:11px;border:1px solid var(--cinza);padding:5px 7px;font-family:var(--font-ui);border-radius:var(--radius-btn);resize:vertical;min-height:32px;color:#666" placeholder="Observação exibida ao calcular este serviço..." onchange="S.hints['${x.si.k}']=this.value">${escHtml(hintVal)}</textarea>
+      <textarea style="width:100%;font-size:11px;border:1px solid var(--cinza);padding:5px 7px;font-family:var(--font-ui);border-radius:var(--radius-btn);resize:vertical;min-height:32px;color:#666" placeholder="Observação exibida ao calcular este serviço..." onchange="S.hints['${x.si.k}']=this.value;save()">${escHtml(hintVal)}</textarea>
     </div>`;
     }).join('');
 
@@ -4194,6 +4230,11 @@ function renderParams() {
   renderEtapaNucleoTabs();
 }
 
+// Propaga edições de faixas/mínimos para os itens já lançados na proposta atual
+function paramsChanged() {
+  calcResumo(); updateCardBars(); save();
+}
+
 function addFaixa(tipo) {
   // CALC-2: inserir antes da última faixa infinita, com "de" preenchido da anterior
   const arr = tipo==='P' ? S.fP : S.fU;
@@ -4206,13 +4247,14 @@ function addFaixa(tipo) {
     mult: arr[insertIdx]?.mult || (tipo==='P' ? 0.001 : 0.00001),
     label: 'Nova faixa'
   });
-  renderParams();
+  renderParams(); paramsChanged();
 }
 
 function saveParams() {
   S.params.diaria=+document.getElementById('p-diaria').value||680;
   S.params.gas   =+document.getElementById('p-gas').value||6.20;
   S.params.car   =+document.getElementById('p-car').value||180;
+  calcResumo(); updateCardBars();
   save(); saveParamsToSupabase(); showToast('Parâmetros salvos');
 }
 
@@ -4271,6 +4313,7 @@ async function loadParamsFromSupabase() {
     if (row.etapas != null)      S.etapas     = { ...S.etapas,     ...row.etapas };
     if (row.dist_etapas != null) S.distEtapas = { ...S.distEtapas, ...row.dist_etapas };
     if (row.params != null)      S.params      = row.params;
+    calcResumo(); updateCardBars();
     save();
     updateCubDisplay();
     renderParams();

@@ -869,7 +869,7 @@ textarea{resize:vertical;min-height:60px}
 <!-- ═══ CONTATOS ═══════════════════════════════════════════════ -->
 <div class="page" id="tab-contatos">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <input id="ct-busca" type="text" placeholder="Buscar empresa ou contato..." oninput="renderContatos()" style="font-size:10px;padding:5px 9px;width:280px;border:1px solid var(--cinza)">
+    <input id="ct-busca" type="text" placeholder="Buscar empresa, sigla, cidade ou contato..." oninput="renderContatos()" style="font-size:10px;padding:5px 9px;width:280px;border:1px solid var(--cinza)">
     <select id="ct-status" onchange="renderContatos()" style="font-size:10px;padding:5px 9px;border:1px solid var(--cinza)">
       <option value="todos">Todos status</option>
       <option value="Ativo">Ativo</option>
@@ -1013,6 +1013,7 @@ textarea{resize:vertical;min-height:60px}
           <option value="todos">Todas as oportunidades</option>
           <option value="op">Oportunidades ativas</option>
           <option value="fech">Fechamentos</option>
+          <option value="neg">Apenas negadas</option>
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -3791,7 +3792,7 @@ function _contatosListaFiltrados(q,sf,idToGroup){
   if(q){
     rows=rows.filter(p=>{
       const c=clienteMap[p.cliente_id];
-      const hay=[p.nome,p.cargo,p.email,p.telefone,c?.nome].filter(Boolean).join(' ').toLowerCase();
+      const hay=[p.nome,p.cargo,p.email,p.telefone,c?.nome,c?.sigla,c?.cidade].filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
     });
   }
@@ -3869,7 +3870,12 @@ function renderContatos(){
   }
 
   let clientes=[...allClients];
-  if(q)clientes=clientes.filter(c=>(c.nome||'').toLowerCase().includes(q)||(c.tipo==='pessoa_fisica'&&('pfi '+c.nome).toLowerCase().includes(q)));
+  if(q)clientes=clientes.filter(c=>{
+    const hayEmpresa=[c.nome, c.tipo==='pessoa_fisica'?'pfi':'', c.sigla, c.cidade].filter(Boolean).join(' ').toLowerCase();
+    if(hayEmpresa.includes(q))return true;
+    // também busca pelo nome de qualquer contato (pessoa) cadastrado nessa empresa
+    return allContatos.some(p=>p.cliente_id===c.id&&(p.nome||'').toLowerCase().includes(q));
+  });
   if(sf!=='todos')clientes=clientes.filter(c=>contactStatus(c.id)===sf);
   if(ctDupOnly)clientes=clientes.filter(c=>allContatos.some(x=>x.cliente_id===c.id&&idToGroup[x.id]));
 
@@ -6661,9 +6667,13 @@ function renderAlcance(){
   } else if(alcMode==='fech'){
     ops=ops.filter(o=>isFechada(o));
     if(anoFil!=='todos') ops=ops.filter(o=>(oppDataFechamento(o)||'').startsWith(anoFil));
+  } else if(alcMode==='neg'){
+    ops=ops.filter(o=>isNegada(o));
+    if(anoFil!=='todos') ops=ops.filter(o=>(o.data_entrada||'').startsWith(anoFil));
   } else {
-    // todos: ativas + fechadas
-    ops=ops.filter(o=>isAtiva(o)||isFechada(o));
+    // todos: ativas + fechadas + negadas — o alcance comercial inclui onde já se chegou,
+    // mesmo sem ter fechado (aparece em cinza no mapa, ver _renderAlcanceMap)
+    ops=ops.filter(o=>isAtiva(o)||isFechada(o)||isNegada(o));
     if(anoFil!=='todos') ops=ops.filter(o=>
       (o.data_entrada||'').startsWith(anoFil)||(oppDataFechamento(o)||'').startsWith(anoFil));
   }
@@ -6671,8 +6681,12 @@ function renderAlcance(){
 
   const ativas=ops.filter(o=>isAtiva(o));
   const fechadas=ops.filter(o=>isFechada(o));
+  const negadas=ops.filter(o=>isNegada(o));
   const pipeVal=ativas.reduce((s,o)=>s+oppValorTotal(o),0);
   const fechVal=fechadas.reduce((s,o)=>s+oppValorFechado(o)+oppValorAdicionais(o,true),0);
+  const negVal=negadas.reduce((s,o)=>s+oppValorTotal(o),0);
+  const _statVal=alcMode==='fech'?fechVal:alcMode==='neg'?negVal:pipeVal;
+  const _statLbl=alcMode==='fech'?'fechado':alcMode==='neg'?'valor perdido':'pipeline';
   document.getElementById('alc-stats').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:2px">
       <div style="display:flex;align-items:baseline;gap:6px;padding:5px 10px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);flex:0 0 auto">
@@ -6680,8 +6694,8 @@ function renderAlcance(){
         <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">oportunidades</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;padding:5px 10px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);flex:1;min-width:0">
-        <span style="font-size:12px;font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(alcMode==='fech'?fechVal:pipeVal)}</span>
-        <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">${alcMode==='fech'?'fechado':'pipeline'}</span>
+        <span style="font-size:12px;font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(_statVal)}</span>
+        <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">${_statLbl}</span>
       </div>
     </div>`;
 
@@ -6707,6 +6721,9 @@ function _renderAlcanceMap(groupArr){
   const COR_OP   = rs.getPropertyValue('--azul').trim();
   const COR_FECH = rs.getPropertyValue('--verde').trim();
   const COR_MIX  = rs.getPropertyValue('--cinza').trim();
+  // Cinza fixo (não reage a light/dark) para cidades só com negadas — o mapa em si também é
+  // pintado com tom fixo (#e2e1db), então precisa ser sensivelmente mais escuro que ele em ambos os temas
+  const COR_NEG  = '#8a877c';
 
   groupArr.forEach(g=>{
     const coords=_cityCoords(g.cidade,g.uf);
@@ -6718,10 +6735,14 @@ function _renderAlcanceMap(groupArr){
     let color;
     if(alcMode==='op') color=COR_OP;
     else if(alcMode==='fech') color=COR_FECH;
+    else if(alcMode==='neg') color=COR_NEG;
     else {
       const nFech=g.ops.filter(o=>isFechada(o)).length;
       const nAtiv=g.ops.filter(o=>isAtiva(o)).length;
-      color=nFech>nAtiv?COR_FECH:nAtiv>nFech?COR_OP:COR_MIX;
+      const nNeg =g.ops.filter(o=>isNegada(o)).length;
+      // cidade só com negadas: mostra em cinza — "o comercial já chegou aqui" mesmo sem ter fechado
+      if(nFech===0 && nAtiv===0 && nNeg>0) { color=COR_NEG; g._soNegadas=true; }
+      else color=nFech>nAtiv?COR_FECH:nAtiv>nFech?COR_OP:COR_MIX;
     }
 
     const ns='http://www.w3.org/2000/svg';
@@ -6739,7 +6760,7 @@ function _renderAlcanceMap(groupArr){
 
     dot.addEventListener('mouseenter',()=>{
       tip.style.display='block';
-      tip.innerHTML=`<strong>${escHtml(g.cidade)}${g.uf?', '+escHtml(g.uf):''}</strong><br>${cnt} oportunidade${cnt!==1?'s':''}`;
+      tip.innerHTML=`<strong>${escHtml(g.cidade)}${g.uf?', '+escHtml(g.uf):''}</strong><br>${cnt} oportunidade${cnt!==1?'s':''}${g._soNegadas?' <span style="opacity:.7">(negadas)</span>':''}`;
     });
     dot.addEventListener('mousemove',e=>{
       tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
@@ -7389,21 +7410,34 @@ async function importarProdutosFromProposta(oppId, calcId) {
 }
 
 async function resetVinculoCalc(oppId) {
-  if (!confirm('Isso vai remover os produtos importados anteriormente e recarregar os dados direto da calculadora. Continuar?')) return;
+  if (!confirm('Isso vai remover os produtos importados anteriormente e recarregar os dados direto da versão mais recente da calculadora. Continuar?')) return;
+  const op = allOps.find(o => o.id === oppId);
+  // A lista de produtos/serviços (abrirDetail) e os totais (oppValorProposto/oppValorFechado) usam
+  // op._proposal, que é resolvido pelo proposta_calc_id EXATO salvo na oportunidade — não pela versão
+  // mais recente da família de revisões. Quando a calculadora ganha uma nova versão (novo proposal_id,
+  // mesma família via parent_id), esse campo fica apontando pra revisão antiga e os itens não acompanham,
+  // mesmo o "valor" do cabeçalho (carregarInfoPropostaCalc) já resolvendo certo pra versão mais nova.
+  // Por isso o vínculo precisa ser reapontado explicitamente para a versão preferida antes de recarregar.
+  const novoLinkId = op?.proposta_calc_id ? getPreferredProposalLinkId(op.proposta_calc_id) : null;
   // Os follow-ups pertencem à oportunidade (oportunidade_id) e sobrevivem: o FK produto_id é ON DELETE SET NULL,
   // então ao apagar os produtos o histórico de andamento permanece, apenas desvinculado do produto antigo.
   // Remove produtos e custos antigos que vieram de importação manual
-  const [delProd, delCusto] = await Promise.all([
+  const ops = [
     sb.from('produtos').delete().eq('oportunidade_id', oppId),
     sb.from('opp_custos').delete().eq('oportunidade_id', oppId).not('calc_ref', 'is', null),
-  ]);
+  ];
+  if (novoLinkId && op && String(novoLinkId) !== String(op.proposta_calc_id)) {
+    ops.push(sb.from('oportunidades').update({ proposta_calc_id: novoLinkId, updated_at: new Date().toISOString() }).eq('id', oppId));
+  }
+  const [delProd, delCusto, updOpp] = await Promise.all(ops);
   if (delProd.error) { toast('Erro ao limpar produtos: ' + delProd.error.message); return; }
+  if (updOpp?.error) { toast('Erro ao atualizar vínculo: ' + updOpp.error.message); return; }
   // Recarrega propostas e dados para ter os items frescos
   await recarregarProposals();
   await carregarDados();
   renderPipe(); renderOrc();
   abrirDetail(oppId);
-  toast('Vínculo atualizado — itens agora vêm direto da calculadora.');
+  toast('Vínculo atualizado — itens agora vêm direto da versão mais recente da calculadora.');
 }
 
 
