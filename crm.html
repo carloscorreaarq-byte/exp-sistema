@@ -3464,9 +3464,12 @@ function renderPipe(){
     const dest=op.destaque&&!exp;
     const nucleos=[...new Set((op._proposal?.items?.length?op._proposal.items.map(i=>i.nucleo):op._produtos.map(p=>p.nucleo)))];
     const prop=op._proposal;
-    const code=prop?.prop_code
-      ? `EXP-${String(prop.prop_code).padStart(3,'0')}`
-      : (op.num_legado||'—');
+    // O card deve mostrar o número legado da oportunidade (cadastrado manualmente/gerado
+    // no CRM) em vez do código EXP-XXX da proposta da calculadora — aquele código já
+    // aparece à parte, na linha "Proposta calc" do detalhe. Só cai pro código da calc
+    // quando não há num_legado (registros antigos importados sem esse campo).
+    const code=op.num_legado
+      || (prop?.prop_code ? `EXP-${String(prop.prop_code).padStart(3,'0')}` : '—');
     const locStr=[op.cidade,op.uf].filter(Boolean).join('/');
     const neg=['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase());
     const fech=isFechada(op);
@@ -6725,13 +6728,13 @@ function _renderAlcanceMap(groupArr){
   // pintado com tom fixo (#e2e1db), então precisa ser sensivelmente mais escuro que ele em ambos os temas
   const COR_NEG  = '#8a877c';
 
-  groupArr.forEach(g=>{
+  // Resolve cor + camada de empilhamento de cada grupo antes de desenhar. Onde dois pontos
+  // se sobrepõem no mapa (cidades próximas), quem foi desenhado por último fica visualmente
+  // por cima — por isso ordenamos: negadas embaixo, ativas no meio, fechadas por cima.
+  const _layerOf=color=>color===COR_FECH?2:color===COR_NEG?0:1;
+  const drawList=groupArr.map(g=>{
     const coords=_cityCoords(g.cidade,g.uf);
-    if(!coords) return;
-    const [x,y]=_latlngToSvg(coords[0],coords[1]);
-    const cnt=g.ops.length;
-    const r=Math.max(18,Math.min(18+cnt*8,60));
-
+    if(!coords) return null;
     let color;
     if(alcMode==='op') color=COR_OP;
     else if(alcMode==='fech') color=COR_FECH;
@@ -6744,6 +6747,13 @@ function _renderAlcanceMap(groupArr){
       if(nFech===0 && nAtiv===0 && nNeg>0) { color=COR_NEG; g._soNegadas=true; }
       else color=nFech>nAtiv?COR_FECH:nAtiv>nFech?COR_OP:COR_MIX;
     }
+    return {g,coords,color};
+  }).filter(Boolean).sort((a,b)=>_layerOf(a.color)-_layerOf(b.color));
+
+  drawList.forEach(({g,coords,color})=>{
+    const [x,y]=_latlngToSvg(coords[0],coords[1]);
+    const cnt=g.ops.length;
+    const r=Math.max(18,Math.min(18+cnt*8,60));
 
     const ns='http://www.w3.org/2000/svg';
     const glow=document.createElementNS(ns,'circle');

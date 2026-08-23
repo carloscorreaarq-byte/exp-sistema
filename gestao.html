@@ -9393,6 +9393,22 @@ async function exportarMinhasHorasPDF() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   REVISÕES
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Início/fim reais de uma revisão a partir das tarefas, não do registro em si:
+// "iniciada" = 1ª tarefa criada em qualquer prancha; "finalizada" = quando a ÚLTIMA
+// tarefa é marcada concluída (só existe se 100% das tarefas estiverem concluídas).
+function _revDatasInfo(pranchas) {
+  const tarefas = (pranchas || []).flatMap(pr => pr.tarefas_revisao || []);
+  if (!tarefas.length) return null;
+  const inicio = tarefas.reduce((min, t) => (t.created_at && (!min || t.created_at < min)) ? t.created_at : min, null);
+  const todasConcluidas = tarefas.every(t => t.concluida);
+  let fim = null;
+  if (todasConcluidas) {
+    fim = tarefas.reduce((max, t) => (t.concluida_em && (!max || t.concluida_em > max)) ? t.concluida_em : max, null);
+  }
+  const dias = (inicio && fim) ? Math.max(0, Math.round((new Date(fim) - new Date(inicio)) / 86400000)) : null;
+  return { inicio, fim, dias };
+}
+
 async function carregarRevisoesProduto(prodId) {
   if (!prodId) return;
   const ativaWrap = document.getElementById('mp-revisao-ativa-wrap');
@@ -9407,7 +9423,7 @@ async function carregarRevisoesProduto(prodId) {
   }
 
   const { data: revs } = await sb.from('revisoes')
-    .select(`*, etapas(id, nome), pranchas(id, nome, tarefas_revisao(id, concluida))`)
+    .select(`*, etapas(id, nome), pranchas(id, nome, tarefas_revisao(id, concluida, created_at, concluida_em))`)
     .in('etapa_id', etapaIds)
     .order('created_at', { ascending: false });
 
@@ -9427,6 +9443,10 @@ async function carregarRevisoesProduto(prodId) {
     const revisor = G.todosUsuarios.find(u => u.id === r.aberta_por);
     const chip = revisor
       ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:8px" title="${revisor.nome}">${revisor.iniciais}</div>` : '';
+    const datasInfo = _revDatasInfo(r.pranchas);
+    const datasHtml = datasInfo ? `<div style="font-size:9px;color:#aaa;margin-top:3px">
+      Iniciada ${fmtDate(datasInfo.inicio)}${datasInfo.fim ? ` · Finalizada ${fmtDate(datasInfo.fim)} · ${datasInfo.dias}d` : ''}
+    </div>` : '';
     return `<div class="rev-lista-item ${r.status}${destacar?' selected':''}" style="cursor:pointer" onclick="fecharModal('modal-produto');document.querySelector('.ntab[data-tab=\\'revisoes\\']')?.click();setTimeout(()=>selecionarRevisao('${r.id}'),400)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
         <div style="font-size:10px;font-weight:600">${etapa?.nome || '—'} · Revisão #${r.numero}</div>
@@ -9439,6 +9459,7 @@ async function carregarRevisoesProduto(prodId) {
         <div class="rev-prog-bar"><div class="rev-prog-fill" style="width:${pct}%"></div></div>
         <span>${pct}%</span>
       </div>
+      ${datasHtml}
     </div>`;
   }
 
@@ -9453,7 +9474,7 @@ async function carregarRevisoesProduto(prodId) {
 
 async function carregarRevisoes() {
   const { data: revs } = await sb.from('revisoes')
-    .select(`*, etapas(id, nome, produto_id, produtos(id, nome, coordenador_id, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, ordem, tarefas_revisao(id, descricao, concluida, created_at))`)
+    .select(`*, etapas(id, nome, produto_id, produtos(id, nome, coordenador_id, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, ordem, tarefas_revisao(id, descricao, concluida, created_at, concluida_em))`)
     .order('created_at', { ascending: false });
 
   const lista = document.getElementById('rev-lista');
@@ -9479,6 +9500,10 @@ async function carregarRevisoes() {
               title="${isMeu ? 'Você abriu esta revisão' : 'Aberta por '+revisor.nome}">${revisor.iniciais}</div>` : '';
     const revisorLabel = revisor
       ? `<span style="font-size:9px;color:#aaa">${isMeu ? 'por você' : revisor.nome.split(' ')[0]}</span>` : '';
+    const datasInfo = _revDatasInfo(r.pranchas);
+    const datasHtml = datasInfo ? `<div style="font-size:9px;color:#aaa;margin-top:3px">
+      Iniciada ${fmtDate(datasInfo.inicio)}${datasInfo.fim ? ` · Finalizada ${fmtDate(datasInfo.fim)} · ${datasInfo.dias}d` : ''}
+    </div>` : '';
     return `<div class="rev-lista-item ${r.status}" onclick="selecionarRevisao('${r.id}')">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
         <div class="rev-proj-nome" style="margin-bottom:0">${cli?.nome || '—'}</div>
@@ -9491,6 +9516,7 @@ async function carregarRevisoes() {
         <div class="rev-prog-bar"><div class="rev-prog-fill" style="width:${pct}%"></div></div>
         <span>${pct}%</span>
       </div>
+      ${datasHtml}
     </div>`;
   }
 
@@ -9862,6 +9888,19 @@ async function selecionarRevisao(id) {
   }).length;
   const _pctTarefas  = _totalTarefas  > 0 ? Math.round(_concTarefas  / _totalTarefas  * 100) : 0;
   const _pctPranchas = _totalPranchas > 0 ? Math.round(_concPranchas / _totalPranchas * 100) : 0;
+
+  // Data de início (1ª tarefa criada) e de finalização (última tarefa concluída) da revisão
+  const _datasInfo = _revDatasInfo(pranchas);
+  const _fmtDataCompleta = iso => iso ? new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+  const datasBlockHtml = _datasInfo ? `
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:10px 0 2px;font-size:11px;color:#666">
+      <span>🗓 Iniciada em <strong>${_fmtDataCompleta(_datasInfo.inicio)}</strong></span>
+      ${_datasInfo.fim ? `
+        <span>✓ Finalizada em <strong>${_fmtDataCompleta(_datasInfo.fim)}</strong></span>
+        <span class="badge b-vd" title="Dias entre a primeira tarefa criada e a última concluída">${_datasInfo.dias} dia${_datasInfo.dias !== 1 ? 's' : ''}</span>
+      ` : `<span style="color:#aaa">Ainda em andamento</span>`}
+    </div>` : '';
+
   const summaryBarsHtml = _totalPranchas > 0 ? `
     <div class="rev-summary-bars">
       <div class="rev-summary-bar-row">
@@ -9903,6 +9942,7 @@ async function selecionarRevisao(id) {
           Você pode acompanhar esta revisão em modo leitura, mas apenas participantes e coordenadores podem marcar as tarefas.
         </div>` : ''
       }
+      ${datasBlockHtml}
       ${summaryBarsHtml}
       <div id="pranchas-wrap" style="margin-top:${_totalPranchas > 0 ? '14px' : '0'}">
         ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
