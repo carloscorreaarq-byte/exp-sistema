@@ -1931,6 +1931,16 @@ const NUCLEO_LABEL = {PAIS:'PAIS',URB:'URB',CONSUL:'CONS',ESP:'ESP'};
 const NEG_CATEGORIAS_PADRAO = ['Preço','Prazo','Escopo','Concorrência','Orçamento interno','Projeto cancelado','Sem resposta'];
 function normNegCat(cat){ return cat && NEG_CATEGORIAS_PADRAO.includes(cat) ? cat : 'Outros'; }
 const NUCLEO_GRUPO = {PAIS:'Paisagismo',URB:'Urbanismo',CONSUL:'Consultorias',ESP:'Projetos Especiais'};
+// Alguns produtos antigos (materializados antes de uma normalização) foram salvos com o nome
+// do grupo por extenso ("Paisagismo") em vez do código curto ("PAIS") no campo nucleo. Sem isso,
+// a mesma oportunidade acaba mostrando duas tags pro mesmo núcleo — uma certa, uma quebrada.
+const NUCLEO_ALIASES = {paisagismo:'PAIS',urbanismo:'URB',consultorias:'CONSUL',consultoria:'CONSUL','proj. especiais':'ESP','projetos especiais':'ESP',especial:'ESP'};
+function normNucleo(n){
+  if(!n)return n;
+  const up=String(n).toUpperCase();
+  if(NUCLEO_LABEL[up])return up;
+  return NUCLEO_ALIASES[String(n).trim().toLowerCase()]||n;
+}
 const SUBTIPO_LABEL = {
   PAIS_TERREO:'Térreo / Passeios',PAIS_CONDO:'Condominial / Ático',
   PAIS_FLOREIRA:'Floreiras',PAIS_STREET:'Streetscape',
@@ -3463,7 +3473,7 @@ function renderPipe(){
     const tc=tempClass(op._followups);
     const exp=isExpiredOp(op);
     const dest=op.destaque&&!exp;
-    const nucleos=[...new Set((op._proposal?.items?.length?op._proposal.items.map(i=>i.nucleo):op._produtos.map(p=>p.nucleo)))];
+    const nucleos=[...new Set((op._proposal?.items?.length?op._proposal.items.map(i=>i.nucleo):op._produtos.map(p=>p.nucleo)).map(normNucleo))];
     const prop=op._proposal;
     // O card deve mostrar o número legado da oportunidade (cadastrado manualmente/gerado
     // no CRM) em vez do código EXP-XXX da proposta da calculadora — aquele código já
@@ -3682,7 +3692,7 @@ function renderOrc(){
     const vProp=oppValorTotal(o);
     const vFch=isFechada(o)?oppValorFechado(o)+oppValorAdicionais(o,true):oppValorFechado(o);
     const stLbl=stageLabel(o.pipeline_stage);
-    const nucleos=[...new Set(o._produtos.map(p=>p.nucleo))];
+    const nucleos=[...new Set(o._produtos.map(p=>normNucleo(p.nucleo)))];
     const tc=tempClass(o._followups);
     const exp=isExpiredOp(o);
     // 3F — data_envio e dias_envio do produto principal (maior valor)
@@ -4442,8 +4452,12 @@ async function abrirNovaOpp(){
   document.getElementById('opp-data-entrada').value=new Date().toISOString().slice(0,10);
   document.getElementById('opp-stage').value='prospecção';
   document.getElementById('opp-origem').value='Captação';
-  document.getElementById('opp-num-legado-wrap').style.display='none';
+  // Mostra o número legado já como preview do próximo da sequência (mesmo padrão do
+  // último cadastrado, +1 no dígito final) — editável, caso precise registrar um valor
+  // diferente manualmente, mas por padrão é isso que vai ser salvo.
+  document.getElementById('opp-num-legado-wrap').style.display='grid';
   document.getElementById('opp-num-legado').value='';
+  document.getElementById('opp-num-legado').placeholder='gerando...';
   document.getElementById('opp-evento-wrap').style.display='none';
   document.getElementById('opp-novo-cliente-wrap').style.display='none';
   document.getElementById('opp-destaque').checked=false;
@@ -4458,6 +4472,10 @@ async function abrirNovaOpp(){
   populateCalcDropdown('');
   popularIndicouDatalist();
   openM('modal-opp');
+  gerarNumLegado().then(n=>{
+    const el=document.getElementById('opp-num-legado');
+    if(el && !el.value) el.value=n; // só preenche se o usuário não digitou nada enquanto carregava
+  });
 }
 
 function editarOpp(){
@@ -4794,13 +4812,16 @@ async function salvarOpp(){
   if(isParceria)indicou=document.getElementById('opp-indicou').value.trim()||null;
   if(isCaptacao)indicou=document.getElementById('opp-indicou').value.trim()||null;
 
-  // C6: validação de num_legado ao editar
-  // Exclui oportunidades soft-deleted (excluida:true) da checagem — elas somem de toda a UI,
-  // mas continuam na tabela, e sem esse filtro o número delas fica bloqueado pra sempre mesmo
-  // "não existindo" do ponto de vista do usuário.
-  const numLegadoNovo = id ? document.getElementById('opp-num-legado').value.trim().toUpperCase() || null : null;
-  if(id && numLegadoNovo){
-    const {data:dup}=await sb.from('oportunidades').select('id').eq('num_legado',numLegadoNovo).neq('id',id).not('excluida','is',true).maybeSingle();
+  // C6: validação de num_legado — vale tanto pra edição quanto pra criação, já que agora o
+  // campo já vem preenchido com o preview da sequência automática, mas pode ser sobrescrito
+  // manualmente. Exclui oportunidades soft-deleted (excluida:true) da checagem — elas somem
+  // de toda a UI, mas continuam na tabela, e sem esse filtro o número delas fica bloqueado
+  // pra sempre mesmo "não existindo" do ponto de vista do usuário.
+  const numLegadoNovo = document.getElementById('opp-num-legado').value.trim().toUpperCase() || null;
+  if(numLegadoNovo){
+    let dupQuery = sb.from('oportunidades').select('id').eq('num_legado',numLegadoNovo).not('excluida','is',true);
+    if(id) dupQuery = dupQuery.neq('id',id);
+    const {data:dup} = await dupQuery.maybeSingle();
     if(dup){toast('Número legado já existe em outra oportunidade.');return;}
   }
 
@@ -4851,13 +4872,15 @@ async function salvarOpp(){
     proposta_calc_id:calcIdCanonico,
     updated_at:new Date().toISOString(),
   };
-  if(id && numLegadoNovo) payload.num_legado=numLegadoNovo;
+  if(numLegadoNovo) payload.num_legado=numLegadoNovo;
 
   let error, data;
   if(id){
     ({data,error}=await sb.from('oportunidades').update(payload).eq('id',id).select().maybeSingle());
   } else {
-    payload.num_legado=await gerarNumLegado();
+    // Se o campo já veio preenchido (preview automático da sequência, ou editado manualmente),
+    // respeita esse valor; só gera um novo se por algum motivo ele não carregou a tempo.
+    if(!payload.num_legado) payload.num_legado=await gerarNumLegado();
     ({data,error}=await sb.from('oportunidades').insert(payload).select().maybeSingle());
   }
   if(error){toast('Erro: '+error.message);return;}
@@ -6067,6 +6090,7 @@ function abrirDetail(oppId){
     });
     if(op._produtos.length>0||op._proposal?.items?.length>0)
       html+=`<button class="btn sm verde" onclick="abrirFechamento('${escJsStr(oppId)}')">✓ Fechar oportunidade</button>`;
+    html+=`<button class="btn sm tc" onclick="abrirAcaoOpp('negada')" style="margin-left:auto">✗ Negar</button>`;
     html+=`</div>`;
   }
 
