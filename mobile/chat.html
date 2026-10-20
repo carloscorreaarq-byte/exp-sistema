@@ -98,6 +98,7 @@
       border-radius: 13px; font-size: 18px;
     }
     .conv-av.hash.geral { background: var(--verde-soft); color: var(--verde); }
+    .conv-av.hash.bim { background: var(--azul-soft); color: var(--azul); }
     .conv-av.hash.socios { background: var(--ouro-soft); color: var(--ouro); }
     .conv-av.hash.proj { background: var(--azul-soft); color: var(--azul); border-radius: 13px; }
     .conv-av-dot {
@@ -291,7 +292,9 @@
     const IMG_SENTINEL = '[print]';
     const MEDIA_BUCKET = 'gestao-anexos-temp';
     const MEDIA_LIMITS = { largura_max_px: 1280, tamanho_max_kb: 500, qualidade_upload: 0.76, qualidade_fallback: 0.70 };
-    const WINDOW_MS = 72 * 60 * 60 * 1000;
+    // Mensagens de texto não expiram mais: sem janela de 72h. Lista usa as 1000 mais
+    // recentes; conversa carrega as 300 mais recentes.
+    const MSG_LOAD_LIMIT = 300;
 
     let G = {
       usuario: null,
@@ -343,6 +346,7 @@
     function previewOf(content) {
       const r = String(content ?? '').trim();
       if (isImageOnly(r)) return '📷 Print';
+      if (r === '[arquivo]') return '📎 Arquivo';
       if (isAnnot(r)) return 'Anotou um print';
       return r.replace(/\n/g, ' ');
     }
@@ -350,23 +354,50 @@
     // ───────────────────────── LISTA ─────────────────────────
     async function loadList() {
       const sb = getSB(), uid = G.usuario.auth_id;
-      const since = new Date(Date.now() - WINDOW_MS).toISOString();
       const [msgsRes, readsRes, threadsRes] = await Promise.all([
-        sb.from('chat_messages').select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id').gte('created_at', since).order('created_at', { ascending: false }),
+        sb.from('chat_messages').select('channel,sender_name,sender_iniciais,sender_cor,content,created_at,sender_id').order('created_at', { ascending: false }).limit(1000),
         sb.from('chat_read_status').select('channel,last_read_at').eq('user_id', uid),
         sb.from('chat_threads').select('id,title,last_message_at').eq('type', 'project').is('archived_at', null).order('last_message_at', { ascending: false, nullsFirst: false }).limit(40),
       ]);
       const msgs = msgsRes.data || [];
       G.readMap = {}; (readsRes.data || []).forEach(r => { G.readMap[r.channel] = r.last_read_at; });
 
-      // DMs: canais dm: que me incluem
+      // Última mensagem de cada conversa (RPC chat_my_conversations): conversas antigas
+      // não somem da lista. Sem a RPC, usa as 1000 mais recentes (método antigo).
+      let heads = msgs;
+      try {
+        const hr = await sb.rpc('chat_my_conversations');
+        if (!hr.error && hr.data) heads = hr.data
+          .map(m => m.deleted_at ? { ...m, content: 'Mensagem apagada' } : m)
+          .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      } catch (e) {}
+
+      // Nomes de conversa e participantes de grupo (fase 2) — opcionais
+      try {
+        const [cn, cm] = await Promise.all([
+          sb.from('chat_channels').select('channel,name,created_at'),
+          sb.from('chat_channel_members').select('channel,auth_id,removed_at'),
+        ]);
+        G.chanNames = {}; (cn.data || []).forEach(r => { if (r.name) G.chanNames[r.channel] = r.name; });
+        G.groupMembers = {};
+        (cm.data || []).forEach(r => { (G.groupMembers[r.channel] = G.groupMembers[r.channel] || []); if (!r.removed_at) G.groupMembers[r.channel].push(r.auth_id); });
+        G.chanRows = cn.data || [];
+      } catch (e) { G.chanNames = G.chanNames || {}; G.groupMembers = G.groupMembers || {}; G.chanRows = []; }
+
+      // DMs e grupos que me incluem (inclusive conversas novas ainda sem mensagem)
       const dmSeen = {}, dms = [];
-      msgs.forEach(m => {
-        if (!m.channel.startsWith('dm:')) return;
-        if (m.channel.replace('dm:','').split(':').indexOf(uid) === -1) return;
+      heads.forEach(m => {
+        if (!isDynCh(m.channel) || !chHasMe(m.channel)) return;
         if (!dmSeen[m.channel]) { dmSeen[m.channel] = true; dms.push(m); }
       });
+      (G.chanRows || []).forEach(r => {
+        if (!isDynCh(r.channel) || !chHasMe(r.channel) || dmSeen[r.channel]) return;
+        dmSeen[r.channel] = true; dms.push({ channel: r.channel, content: 'Nova conversa', created_at: r.created_at, sender_id: null });
+      });
+      dms.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
+      // Sem histórico de leitura: conta não lidas dos últimos 30 dias (só apuração, não expira)
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const unreadOf = ch => {
         const lr = G.readMap[ch] || since;
         return msgs.filter(m => m.channel === ch && m.created_at > lr && m.sender_id !== uid).length;
@@ -374,7 +405,7 @@
 
       G.projects = (threadsRes.data || []).map(t => ({ id: t.id, title: t.title || 'Projeto', last_message_at: t.last_message_at }));
 
-      renderList(msgs, dms, unreadOf);
+      renderList(heads, dms, unreadOf);
     }
 
     function avatarHtml(cls, bg, content, dotStatus) {
@@ -391,6 +422,20 @@
         </div>
         ${unread > 0 ? `<span class="conv-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
       </div>`;
+    }
+
+    // ── Conversas dinâmicas (dm: / group:) — participantes e rótulo ──
+    function isDynCh(ch) { return !!ch && (ch.startsWith('dm:') || ch.startsWith('group:')); }
+    function chUids(ch) { return (G.groupMembers && G.groupMembers[ch]) ? G.groupMembers[ch].slice() : ch.replace(/^dm:|^group:/, '').split(':').filter(Boolean); }
+    function chHasMe(ch) { return chUids(ch).indexOf(G.usuario.auth_id) !== -1; }
+    function convLabel(ch, fallback) {
+      if (G.chanNames && G.chanNames[ch]) return G.chanNames[ch];
+      const others = chUids(ch).filter(u => u !== G.usuario.auth_id).map(u => G.membersByAuth[u]).filter(Boolean);
+      if (ch.startsWith('group:')) return others.length ? others.map(m => firstName(m.nome)).join(', ') : 'Grupo';
+      return firstName((others[0] && others[0].nome) || fallback || 'Conversa');
+    }
+    function convSearchText(ch) {
+      return [convLabel(ch)].concat(chUids(ch).map(u => (G.membersByAuth[u] || {}).nome || '')).join(' ').toLowerCase();
     }
 
     function renderList(msgs, dms, unreadOf) {
@@ -418,6 +463,10 @@
         const lm = lastOf('general'), u = unreadOf('general');
         canais += convRow('general', avatarHtml('hash geral', '', '#'), '# geral', lm ? `${firstName(lm.sender_name)}: ${previewOf(lm.content)}` : 'Toda a equipe', lm ? fmtConvTs(new Date(lm.created_at)) : '', u);
       }
+      if (!q || 'bim'.includes(q)) {
+        const lm = lastOf('bim'), u = unreadOf('bim');
+        canais += convRow('bim', avatarHtml('hash bim', '', '#'), '# BIM', lm ? `${firstName(lm.sender_name)}: ${previewOf(lm.content)}` : 'Toda a equipe', lm ? fmtConvTs(new Date(lm.created_at)) : '', u);
+      }
       if (isSocio_ && (!q || 'sócios'.includes(q) || 'socios'.includes(q))) {
         const lm = lastOf('socios'), u = unreadOf('socios');
         canais += convRow('socios', avatarHtml('hash socios', '', '#'), '# sócios', lm ? `${firstName(lm.sender_name)}: ${previewOf(lm.content)}` : 'Canal privado', lm ? fmtConvTs(new Date(lm.created_at)) : '', u);
@@ -426,15 +475,19 @@
 
       // Mensagens diretas
       const dmRows = dms.map(dm => {
-        const other = dm.channel.replace('dm:','').split(':').find(p => p !== uid);
-        const m = G.membersByAuth[other] || {};
-        const name = firstName(m.nome || dm.sender_name || 'Conversa');
-        if (q && !name.toLowerCase().includes(q)) return '';
-        const pres = G.online[other];
-        const av = avatarHtml('', m.cor || dm.sender_cor || 'var(--verde)', m.avatar_url ? `<img src="${escHtml(m.avatar_url)}">` : escHtml((m.iniciais || (m.nome || '?').substring(0,2)).toUpperCase()), pres ? pres.status : '');
+        const isGroup = dm.channel.startsWith('group:');
+        const other = chUids(dm.channel).find(p => p !== uid);
+        const m = (!isGroup && G.membersByAuth[other]) || {};
+        const name = convLabel(dm.channel, dm.sender_name);
+        if (q && !convSearchText(dm.channel).includes(q)) return '';
+        const pres = isGroup ? null : G.online[other];
+        const ini = isGroup || (G.chanNames && G.chanNames[dm.channel])
+          ? name.split(/\s+/).slice(0, 2).map(t => t.charAt(0).toUpperCase()).join('')
+          : (m.iniciais || (m.nome || '?').substring(0,2)).toUpperCase();
+        const av = avatarHtml('', m.cor || dm.sender_cor || 'var(--verde)', (!isGroup && m.avatar_url) ? `<img src="${escHtml(m.avatar_url)}">` : escHtml(ini), pres ? pres.status : '');
         return convRow(dm.channel, av, name, `${dm.sender_id === uid ? 'Você: ' : ''}${previewOf(dm.content)}`, fmtConvTs(new Date(dm.created_at)), unreadOf(dm.channel));
       }).filter(Boolean).join('');
-      if (dmRows) html += `<div class="clist-sec">Mensagens diretas</div>${dmRows}`;
+      if (dmRows) html += `<div class="clist-sec">Conversas</div>${dmRows}`;
 
       // Projetos
       const projRows = (G.projects || []).filter(p => !q || p.title.toLowerCase().includes(q)).map(p => {
@@ -464,12 +517,11 @@
     function openChannelFromList(channel) {
       let type = 'team', label = channel, threadId = null;
       if (channel === 'general') label = '# geral';
+      else if (channel === 'bim') label = '# BIM';
       else if (channel === 'socios') label = '# sócios';
-      else if (channel.startsWith('dm:')) {
+      else if (channel.startsWith('dm:') || channel.startsWith('group:')) {
         type = 'dm';
-        const other = channel.replace('dm:','').split(':').find(p => p !== G.usuario.auth_id);
-        const m = G.membersByAuth[other] || {};
-        label = firstName(m.nome || 'Conversa');
+        label = convLabel(channel);
       } else if (channel.startsWith('project:')) {
         type = 'project'; threadId = channel.replace('project:','');
         const p = (G.projects || []).find(x => String(x.id) === String(threadId));
@@ -523,7 +575,7 @@
     function scrollBottom(s) { const el = document.getElementById('messages'); el.scrollTo({ top: el.scrollHeight, behavior: s ? 'smooth' : 'auto' }); }
 
     function normProj(m) {
-      return { id: m.id, channel: 'project:' + m.thread_id, thread_id: m.thread_id, sender_id: m.sender_auth_id, sender_name: m.sender_nome, sender_iniciais: m.sender_iniciais, sender_cor: m.sender_cor, content: m.content, created_at: m.created_at };
+      return { id: m.id, channel: 'project:' + m.thread_id, thread_id: m.thread_id, sender_id: m.sender_auth_id, sender_name: m.sender_nome, sender_iniciais: m.sender_iniciais, sender_cor: m.sender_cor, content: m.content, created_at: m.created_at, reply_to: m.reply_to || null };
     }
 
     async function loadMessages() {
@@ -533,12 +585,29 @@
         if (error) { document.getElementById('messages').innerHTML = `<div class="chat-empty">Erro ao carregar.</div>`; return; }
         G.messages = (data || []).map(normProj);
       } else {
-        const since = new Date(Date.now() - WINDOW_MS).toISOString();
-        const { data, error } = await sb.from('chat_messages').select('*').eq('channel', G.channel).gte('created_at', since).order('created_at', { ascending: true });
+        const { data, error } = await sb.from('chat_messages').select('*').eq('channel', G.channel).order('created_at', { ascending: false }).limit(MSG_LOAD_LIMIT);
         if (error) { document.getElementById('messages').innerHTML = `<div class="chat-empty">Erro ao carregar.</div>`; return; }
-        G.messages = data || [];
+        G.messages = (data || []).slice().reverse();
       }
-      renderMessages(); scrollBottom(); markRead(); loadMediaForMessages();
+      renderMessages(); scrollBottom(); markRead(); loadMediaForMessages(); loadArquivos();
+    }
+
+    // Documentos anexados (bucket chat-arquivos, sem expiração)
+    async function loadArquivos() {
+      const ids = G.messages.filter(m => String(m.content || '').trim() === '[arquivo]').map(m => m.id);
+      if (!ids.length) return;
+      try {
+        const { data } = await getSB().from('chat_arquivos').select('*').in('message_id', ids);
+        G.arquivos = G.arquivos || {};
+        (data || []).forEach(a => { G.arquivos[a.message_id] = a; });
+        renderMessages();
+      } catch (e) {}
+    }
+    async function baixarArquivo(msgId) {
+      const a = (G.arquivos || {})[msgId]; if (!a) return;
+      const { data, error } = await getSB().storage.from('chat-arquivos').createSignedUrl(a.storage_path, 120, { download: a.nome });
+      if (error || !data) { alert('Não foi possível baixar o arquivo.'); return; }
+      window.open(data.signedUrl, '_blank');
     }
 
     function renderMessages() {
@@ -553,6 +622,10 @@
         const sName = m.sender_name || mem.nome || '';
         const sIni = m.sender_iniciais || mem.iniciais || (sName || '??').substring(0,2).toUpperCase();
         const sCor = m.sender_cor || mem.cor || 'var(--verde)';
+        if (m.deleted_at) {
+          html += `<div class="sys-row"><div class="sys-pill">🚫 ${m.sender_id === G.usuario.auth_id ? 'Você apagou uma mensagem' : escHtml(firstName(sName)) + ' apagou uma mensagem'}</div></div>`;
+          lastSender = ''; continue;
+        }
         if (isAnnot(m.content)) {
           html += `<div class="sys-row"><div class="sys-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>${escHtml(firstName(sName))} anotou sobre um print</div></div>`;
           lastSender = ''; continue;
@@ -568,7 +641,17 @@
           else if (media && media.failed) body += `<div class="media-state">Falha ao carregar</div>`;
           else body += `<div class="media-state">Carregando print…</div>`;
           if (!onlyImg && m.content) body += `<div class="bubble-cap">${linkify(m.content)}</div>`;
+        } else if (String(m.content || '').trim() === '[arquivo]') {
+          const a = (G.arquivos || {})[m.id];
+          body = a
+            ? `<div class="media-state" onclick="baixarArquivo('${m.id}')" style="cursor:pointer">📎 ${escHtml(a.nome)} · toque para baixar</div>`
+            : `<div class="media-state">📎 Carregando arquivo…</div>`;
         } else body = linkify(m.content);
+        if (m.reply_to) {
+          const o = G.messages.find(x => String(x.id) === String(m.reply_to));
+          const t = !o ? 'Mensagem anterior' : o.deleted_at ? 'Mensagem apagada' : previewOf(o.content);
+          body = `<div style="border-left:3px solid var(--verde);padding:2px 8px;margin-bottom:4px;font-size:11px;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o ? `<b>${escHtml(firstName(o.sender_name || ''))}</b> ` : ''}${escHtml(t)}</div>` + body;
+        }
         const bcls = (media || onlyImg) ? 'bubble media-only' : 'bubble';
         const av = own ? '' : `<div class="msg-av" style="background:${sCor}">${escHtml(sIni)}</div>`;
         const head = own ? '' : `<div class="msg-head"><span class="msg-name">${escHtml(sName)}</span><span class="msg-time">${fmtTime(d)}</span></div>`;
@@ -691,6 +774,11 @@
             if (isImageOnly(m.content)) loadMediaForMessages();
             if (document.visibilityState === 'visible') markRead();
           } else if (G.view === 'list') { loadList(); }
+        })
+        // Edição / exclusão lógica / reações chegam como UPDATE
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, payload => {
+          const m = payload.new;
+          if (G.view === 'conv' && G.channelType !== 'project' && m.channel === G.channel) { upsertMessage(m); renderMessages(); }
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_thread_messages' }, payload => {
           if (G.view === 'conv' && G.channelType === 'project' && String(payload.new.thread_id) === String(G.threadId)) {
