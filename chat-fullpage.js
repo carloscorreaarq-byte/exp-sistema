@@ -177,44 +177,7 @@
   }
   function toggleShowArchived(){ showArchived = !showArchived; renderConvList(); }
 
-  /* ── Estilos dos recursos novos ── */
-  (function injectFase2Css(){
-    if (document.getElementById('fp-fase2-css')) return;
-    var st = document.createElement('style'); st.id = 'fp-fase2-css';
-    st.textContent = [
-      '.fp-quote{border-left:3px solid var(--ca,#1D6A4A);background:rgba(0,0,0,.04);border-radius:var(--radius-badge,4px);padding:4px 8px;margin:2px 0 4px;font-size:11px;color:#666;cursor:pointer;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.fp-quote b{color:var(--ca,#1D6A4A);margin-right:4px}',
-      '[data-theme="dark"] .fp-quote{background:rgba(255,255,255,.06);color:#bbb}',
-      '#fp-reply-bar{display:none;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--cinza2,#ECEAE4);font-size:11px;color:#666;background:var(--off,#FAFAF7)}',
-      '#fp-reply-bar.on{display:flex}',
-      '#fp-reply-bar .fp-reply-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-left:3px solid var(--ca,#1D6A4A);padding-left:8px}',
-      '#fp-reply-bar button{border:none;background:none;cursor:pointer;color:#999;font-size:14px}',
-      '[data-theme="dark"] #fp-reply-bar{background:#1E1E1D;border-top-color:#2E2D2B;color:#bbb}',
-      '#fp-typing{min-height:16px;padding:0 14px;font-size:10px;color:#999;font-style:italic}',
-      '.fp-seen{text-align:right;font-size:10px;color:#999;margin:-2px 12px 6px}',
-      '.fp-file-card{display:flex;align-items:center;gap:10px;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-card,8px);padding:8px 10px;max-width:360px;background:var(--branco,#fff);margin:2px 0}',
-      '.fp-file-ico{width:30px;height:30px;border-radius:var(--radius-input,6px);background:rgba(192,57,43,.1);color:#C0392B;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0}',
-      '.fp-file-info{flex:1;min-width:0}',
-      '.fp-file-name{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.fp-file-size{font-size:10px;color:#999}',
-      '.fp-file-dl{border:1px solid var(--cinza2,#ECEAE4);background:none;border-radius:var(--radius-input,6px);padding:4px 8px;font-size:10px;cursor:pointer;color:inherit}',
-      '[data-theme="dark"] .fp-file-card{background:#252523;border-color:#2E2D2B}',
-      '#fp-members-modal{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9500;display:flex;align-items:center;justify-content:center}',
-      '#fp-members-modal .fpm-box{background:var(--branco,#fff);border-radius:var(--radius-card,8px);width:min(380px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.2)}',
-      '#fp-members-modal .fpm-hd{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--cinza2,#ECEAE4);font-weight:700;font-size:12px}',
-      '#fp-members-modal .fpm-list{overflow-y:auto;padding:6px 0}',
-      '#fp-members-modal .fpm-row{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12px}',
-      '#fp-members-modal .fpm-row span{flex:1}',
-      '#fp-members-modal .fpm-ft{border-top:1px solid var(--cinza2,#ECEAE4);padding:10px 14px;display:flex;flex-direction:column;gap:8px}',
-      '#fp-members-modal select,#fp-members-modal button{font-size:11px;padding:5px 8px;border-radius:var(--radius-input,6px);border:1px solid var(--cinza2,#ECEAE4);background:none;color:inherit;cursor:pointer}',
-      '#fp-members-modal .fpm-leave{color:#C0392B;border-color:rgba(192,57,43,.35)}',
-      '[data-theme="dark"] #fp-members-modal .fpm-box{background:#1E1E1D;color:#F0EDE6}',
-      '.fp-hdr-extra{display:none}',
-      '.fp-chat-icon-btn.fp-on{color:var(--ca,#1D6A4A)}',
-      '.fp-arch-hdr{opacity:.8}'
-    ].join('\n');
-    document.head.appendChild(st);
-  })();
+  /* Estilos dos recursos novos (resposta, participantes, digitando, visto…) ficam em chat-fullpage.html */
 
   /* ── Botões extras do cabeçalho e áreas do compositor (criados uma vez) ── */
   function ensureFase2Dom(){
@@ -419,7 +382,7 @@
       .map(function(r){ var m = allMembers.find(function(x){ return x.auth_id === r.user_id; }); return m ? firstName(m.nome) : null; })
       .filter(Boolean);
     if (!nomes.length) return '';
-    return '<div class="fp-seen">✓✓ Visto' + (isDMChannel(msg.channel) ? '' : ' por ' + escHtml(nomes.join(', '))) + '</div>';
+    return '<div class="fp-seen">✓ Visto' + (isDMChannel(msg.channel) ? '' : ' por ' + escHtml(nomes.join(', '))) + '</div>';
   }
   function joinTyping(ch){
     if (typingCh) { try { sb.removeChannel(typingCh); } catch(e){} typingCh = null; }
@@ -2352,7 +2315,7 @@
       }
 
       var gap     = prevTime ? (dt-prevTime) : Infinity;
-      var grouped = msg.sender_id===prevSender && gap < 5*60*1000;
+      var grouped = msg.sender_id===prevSender && gap < 15*60*1000;   /* mensagens seguidas da mesma pessoa em até 15 min */
 
       var iniciais= msg.sender_iniciais||(msg.sender_name||'??').substring(0,2).toUpperCase();
       var cor     = msg.sender_cor||'#1D6A4A';
@@ -2411,7 +2374,10 @@
       }
 
       /* Citação da mensagem respondida */
-      html += quoteHtml(msg);
+      /* A citação vai dentro do balão do texto; sem texto (mídia/arquivo), fica antes */
+      var _quote = quoteHtml(msg);
+      var _quoteInBubble = hasText && editingMessageId !== msg.id;
+      if (_quote && !_quoteInBubble) html += _quote;
       /* Documento anexado */
       if (isFile) html += fileCardHtml(msg);
 
@@ -2428,7 +2394,7 @@
           var textHtml = fpLinkify(hlMentions(escHtml(msg.content)).replace(/\n/g,'<br>'));
           if (inSearchQuery) textHtml = highlightText(textHtml, inSearchQuery, isCurrentResult);
           if (msg.editado_em) textHtml += '<span class="fp-msg-edited" title="Editada">(editado)</span>';
-          html += '<div class="fp-msg-text">'+textHtml+'</div>';
+          html += '<div class="fp-msg-text">'+(_quoteInBubble ? _quote : '')+textHtml+'</div>';
         }
       }
 
