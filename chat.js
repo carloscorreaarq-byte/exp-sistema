@@ -185,7 +185,7 @@
     /* Bolhas: recv = off-white esq; sent = cinza2 dir */
     '.chat-msg-text{font-size:12px;line-height:1.5;word-break:break-word;padding:5px 9px;border-radius:var(--radius-card,8px);max-width:250px;display:inline-block}',
     /* Balões: os meus sempre cinza-claro; os da outra pessoa na cor do chat */
-    '.chat-msg-text.recv{background:rgba(var(--chat-ca-rgb,62,120,88),.14);color:var(--preto,#111110);border-radius:2px 10px 10px 10px}',
+    '.chat-msg-text.recv{background:rgba(var(--chat-ca-rgb,62,120,88),.2);color:var(--preto,#111110);border-radius:2px 10px 10px 10px}',
     '.chat-msg-text.sent{background:rgba(0,0,0,.055);color:var(--preto,#111110);border-radius:10px 2px 10px 10px}',
     '.chat-msg-text.media-only{display:none}',
     /* @menção — destaque no texto e dropdown de autofill */
@@ -458,11 +458,13 @@
     '.chat-quote{border-left:3px solid var(--verde,#1D6A4A);background:rgba(0,0,0,.04);border-radius:var(--radius-badge,4px);padding:3px 7px;margin:0 0 3px;font-size:10px;color:#666;cursor:pointer;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '.chat-quote b{color:var(--verde,#1D6A4A);margin-right:4px}',
     '[data-theme="dark"] .chat-quote{background:rgba(255,255,255,.06);color:#bbb}',
-    '#exp-chat-reply-bar{display:none;align-items:center;gap:6px;padding:5px 10px;border-top:1px solid var(--cinza2,#ECEAE4);font-size:10px;color:#666}',
+    '#exp-chat-reply-bar{display:none;align-items:center;gap:6px;padding:5px 10px;border-top:1px solid rgba(0,0,0,.06);font-size:10px;color:#666;background:var(--chat-msgs-bg,transparent)}',
     '#exp-chat-reply-bar.on{display:flex}',
     '#exp-chat-reply-bar .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-left:3px solid var(--verde,#1D6A4A);padding-left:6px}',
     '#exp-chat-reply-bar button{border:none;background:none;cursor:pointer;color:#999}',
-    '#exp-chat-typing{min-height:14px;padding:0 12px;font-size:9px;color:#999;font-style:italic}',
+    '#exp-chat-typing{min-height:14px;padding:0 12px;font-size:9px;color:#8A867E;font-style:italic;background:var(--chat-msgs-bg,transparent)}',
+    /* faixa do digitando e barra de resposta com o mesmo fundo da área de mensagens (sem faixa branca) */
+    '[data-theme="dark"] #exp-chat-typing,[data-theme="dark"] #exp-chat-reply-bar{background:#1C1C1B}',
     '.chat-seen{text-align:right;font-size:9px;color:#8A867E;margin:-1px 12px 5px 0}',
     '.chat-file-card{display:flex;align-items:center;gap:8px;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-card,8px);padding:6px 8px;background:var(--branco,#fff);color:var(--grafite,#222);max-width:240px}',
     '.chat-file-card .ic{width:26px;height:26px;border-radius:var(--radius-input,6px);background:rgba(192,57,43,.1);color:#C0392B;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;flex-shrink:0}',
@@ -4805,6 +4807,8 @@
       wrap.style.setProperty('--chat-head-active-bg', '#fff');
       wrap.style.setProperty('--chat-head-active-fg', t.v);
       wrap.style.setProperty('--chat-msgs-bg',        t.bg);
+      /* balão da outra pessoa acompanha a cor escolhida */
+      if (typeof hexRgb === 'function' && /^#[0-9a-f]{6}$/i.test(t.v)) wrap.style.setProperty('--chat-ca-rgb', hexRgb(t.v));
     }
     document.querySelectorAll('.chat-color-dot').forEach(function (d) {
       d.classList.toggle('active', d.getAttribute('data-color') === color);
