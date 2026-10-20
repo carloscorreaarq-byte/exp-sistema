@@ -311,14 +311,47 @@
     '.chat-media-viewer-zoomlabel{min-width:44px;text-align:center;font-family:var(--font-mono);font-size:10px;color:#666}',
     '.chat-media-viewer-count{min-width:42px;text-align:center;font-family:var(--font-mono);font-size:10px;color:#666}',
     '.chat-media-viewer-body{background:#F7F6F3;position:relative;display:flex;min-height:260px;overflow:hidden}',
-    '.chat-media-viewer-stage{flex:1;display:flex;overflow:auto;padding:14px;min-height:calc(100vh - 180px)}',
+    '.chat-media-viewer-stage{flex:1;display:flex;overflow:auto;padding:14px;min-height:260px}',
     '.chat-mv-canvas{margin:auto;position:relative;line-height:0}',
     '.chat-mv-canvas.tool-active{cursor:crosshair}',
     '.chat-media-viewer-body img{max-width:100%;max-height:calc(100vh - 180px);border-radius:var(--radius-card,8px);display:block;box-shadow:0 12px 28px rgba(0,0,0,.12)}',
     '.chat-mv-toolbar{display:flex;flex-direction:column;gap:6px;padding:12px 8px;flex-shrink:0;align-self:flex-start}',
-    '.chat-mv-tool{width:30px;height:30px;border-radius:var(--radius-input,6px);border:1px solid rgba(17,17,16,.08);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:border-color .12s,box-shadow .12s}',
+    '.chat-mv-tool{flex-direction:column;gap:2px;width:44px;height:42px;border-radius:var(--radius-input,6px);border:1px solid rgba(17,17,16,.08);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:border-color .12s,box-shadow .12s}',
     '.chat-mv-tool:hover{border-color:var(--verde,#1D6A4A)}',
     '.chat-mv-tool.active{border-color:var(--verde,#1D6A4A);box-shadow:0 0 0 2px rgba(29,106,74,.15)}',
+    '.chat-mv-tool-lbl{font-size:8px;font-weight:600;color:#8A867E;line-height:1}',
+    '.chat-mv-tool.active .chat-mv-tool-lbl{color:var(--verde,#1D6A4A)}',
+    '.chat-mv-tool-nota-icon{font-size:13px;font-weight:700;color:#555;line-height:1}',
+    '#exp-chat-mv-tool-nota.active{background:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A)}',
+    '#exp-chat-mv-tool-nota.active .chat-mv-tool-nota-icon,#exp-chat-mv-tool-nota.active .chat-mv-tool-lbl{color:#fff}',
+    '.chat-mv-nota{width:22px;height:22px;border-radius:50%;background:var(--verde,#1D6A4A);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;cursor:default}',
+    '.chat-mv-nota-tip{display:none;position:absolute;left:26px;top:-4px;background:#111110;color:#fff;font-size:11px;line-height:1.35;padding:5px 8px;border-radius:6px;white-space:pre-wrap;width:max-content;max-width:220px;z-index:3}',
+    '.chat-mv-mark:hover .chat-mv-nota-tip{display:block}',
+    '.chat-mv-notes{display:none;width:210px;flex-shrink:0;border-left:1px solid rgba(0,0,0,.06);background:#fff;overflow-y:auto}',
+    '.chat-mv-notes.has-notas{display:block}',
+    '.chat-mv-notes-hdr{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A867E;padding:10px 12px 6px}',
+    '.chat-mv-note{display:flex;gap:8px;padding:8px 12px;border-top:1px solid rgba(0,0,0,.05);align-items:flex-start}',
+    '.chat-mv-note-num{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--verde,#1D6A4A);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}',
+    '.chat-mv-note-body{flex:1;min-width:0}',
+    '.chat-mv-note-text{font-size:11px;color:#333;line-height:1.4;white-space:pre-wrap;word-break:break-word}',
+    '.chat-mv-note-meta{font-size:9px;color:#8A867E;margin-top:2px}',
+    '.chat-mv-note-del{border:none;background:none;color:#8A867E;cursor:pointer;padding:2px}',
+    '.chat-mv-note-del:hover{color:var(--terracota,#B85638)}',
+    '#exp-chat-nota-float{position:fixed;z-index:10030;width:222px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:10px;display:none}',
+    '#exp-chat-nota-float .hd{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#333;margin-bottom:6px}',
+    '#exp-chat-nota-float textarea{width:100%;box-sizing:border-box;min-height:64px;border:1px solid var(--cinza,#D0CFC9);border-radius:6px;padding:6px 8px;font-family:var(--font-ui);font-size:12px;resize:vertical;outline:none}',
+    '#exp-chat-nota-float textarea:focus{border-color:var(--verde,#1D6A4A)}',
+    '#exp-chat-nota-float .ft{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}',
+    '#exp-chat-nota-float .ft button{font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;border:1px solid var(--cinza,#D0CFC9);background:#fff;cursor:pointer;color:#555}',
+    '#exp-chat-nota-float .ft .ok{background:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A);color:#fff}',
+    '[data-theme="dark"] .chat-mv-notes,[data-theme="dark"] #exp-chat-nota-float{background:#1E1E1D;border-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-mv-note-text,[data-theme="dark"] #exp-chat-nota-float .hd{color:#F0EDE6}',
+    '[data-theme="dark"] #exp-chat-nota-float textarea{background:#2A2927;border-color:#3A3937;color:#F0EDE6}',
+    '@media (max-width:640px){.chat-mv-notes.has-notas{position:absolute;right:0;bottom:0;max-height:45%;width:100%;border-left:none;border-top:1px solid rgba(0,0,0,.08)}}',
+    '.chat-mv-tool-sec{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A867E;margin-top:4px}',
+    /* fechar visível sobre o cabeçalho cinza */
+    '.chat-media-viewer-head .chat-close{background:#fff;color:#111110;border:1px solid rgba(0,0,0,.08);width:32px;height:32px;border-radius:var(--radius-input,6px)}',
+    '[data-theme="dark"] .chat-media-viewer-head .chat-close{background:#2A2927;color:#F0EDE6;border-color:#3A3937}',
     '.chat-mv-marks{position:absolute;inset:0;pointer-events:none}',
     '.chat-mv-mark{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;display:flex;align-items:center;gap:3px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}',
     '.chat-mv-mark-ini{width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.72);color:rgba(17,17,16,.55);font-family:var(--font-mono);font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:.2px;user-select:none}',
@@ -900,30 +933,44 @@
             '<div class="chat-media-viewer-tools">' +
               '<span class="chat-media-viewer-count" id="exp-chat-media-viewer-count">1/1</span>' +
               '<button class="chat-media-viewer-zoombtn" onclick="expChat.zoomOutMediaViewer()" title="Diminuir zoom">-</button>' +
-              '<button class="chat-media-viewer-zoombtn" onclick="expChat.resetMediaViewerZoom()" title="Redefinir zoom"><span id="exp-chat-media-viewer-zoom-label">100%</span></button>' +
+              '<button class="chat-media-viewer-zoombtn" onclick="expChat.resetMediaViewerZoom()" title="Ajustar à tela"><span id="exp-chat-media-viewer-zoom-label">Ajustada</span></button>' +
               '<button class="chat-media-viewer-zoombtn" onclick="expChat.zoomInMediaViewer()" title="Aumentar zoom">+</button>' +
             '</div>' +
             '<button class="chat-close" onclick="expChat.closeMediaViewer()">' + icoClose() + '</button>' +
           '</div>' +
           '<div class="chat-media-viewer-body">' +
             '<div class="chat-mv-toolbar">' +
+              '<span class="chat-mv-tool-sec">Seta</span>' +
               '<button class="chat-mv-tool" id="exp-chat-mv-tool-seta" onclick="expChat.mvSelectTool(\'seta\')" title="Seta azul">' +
                 '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>' +
+                '<span class="chat-mv-tool-lbl">azul</span>' +
               '</button>' +
               '<button class="chat-mv-tool" id="exp-chat-mv-tool-seta_verde" onclick="expChat.mvSelectTool(\'seta_verde\')" title="Seta verde">' +
                 '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>' +
+                '<span class="chat-mv-tool-lbl">verde</span>' +
               '</button>' +
+              '<span class="chat-mv-tool-sec">Marcar</span>' +
               '<button class="chat-mv-tool" id="exp-chat-mv-tool-alerta" onclick="expChat.mvSelectTool(\'alerta\')" title="Alerta">' +
                 '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+                '<span class="chat-mv-tool-lbl">alerta</span>' +
               '</button>' +
               '<button class="chat-mv-tool" id="exp-chat-mv-tool-x" onclick="expChat.mvSelectTool(\'x\')" title="Marcar com X">' +
                 '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>' +
+                '<span class="chat-mv-tool-lbl">erro</span>' +
               '</button>' +
+              '<span class="chat-mv-tool-sec">Nota</span>' +
+              '<button class="chat-mv-tool" id="exp-chat-mv-tool-nota" onclick="expChat.mvSelectTool(\'nota\')" title="Nota numerada — clique na imagem e escreva o texto">' +
+                '<span class="chat-mv-tool-nota-icon">1</span>' +
+                '<span class="chat-mv-tool-lbl">nota</span>' +
+              '</button>' +
+              '<span class="chat-mv-tool-sec">Área</span>' +
               '<button class="chat-mv-tool" id="exp-chat-mv-tool-circulo" onclick="expChat.mvSelectTool(\'circulo\')" title="Círculo azul">' +
                 '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>' +
+                '<span class="chat-mv-tool-lbl">azul</span>' +
               '</button>' +
               '<button class="chat-mv-tool" id="exp-chat-mv-tool-circulo_verde" onclick="expChat.mvSelectTool(\'circulo_verde\')" title="Círculo verde">' +
                 '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>' +
+                '<span class="chat-mv-tool-lbl">verde</span>' +
               '</button>' +
             '</div>' +
             '<div class="chat-media-viewer-stage">' +
@@ -935,6 +982,7 @@
               '<div class="chat-media-viewer-empty" id="exp-chat-media-viewer-empty">Carregando imagem…</div>' +
               '<button class="chat-media-viewer-nav next" id="exp-chat-media-viewer-next" onclick="expChat.nextMediaViewer()" title="Próxima imagem">&#8250;</button>' +
             '</div>' +
+            '<div class="chat-mv-notes" id="exp-chat-mv-notes"></div>' +
           '</div>' +
       '</div>' +
       '</div>' +
@@ -4190,7 +4238,7 @@
       ? dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' · ' + fmtTime(dt)
       : '';
     var author = firstName(msg.sender_name || 'Equipe');
-    return when ? (author + ' · ' + when) : author;
+    return when || author;   /* o nome já vai no título ("Nome · print") */
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -4210,12 +4258,13 @@
 
   function mvSelectTool(tool) {
     mvTool = (mvTool === tool) ? null : tool;
-    ['seta','seta_verde','alerta','x','circulo','circulo_verde'].forEach(function (t) {
+    ['seta','seta_verde','alerta','x','circulo','circulo_verde','nota'].forEach(function (t) {
       var btn = document.getElementById('exp-chat-mv-tool-' + t);
       if (btn) btn.classList.toggle('active', mvTool === t);
     });
     var canvas = document.getElementById('exp-chat-mv-canvas');
     if (canvas) canvas.classList.toggle('tool-active', !!mvTool);
+    if (!mvTool) _cancelNota();
   }
 
   function _mvCurrentMedia() {
@@ -4231,14 +4280,100 @@
     var cur = _mvCurrentMedia();
     var list = (cur && cur.media && cur.media.marcadores) || [];
     marks.innerHTML = list.map(function (mk) {
-      var svg = MV_MARK_SVGS[mk.t] || '';
       var own = mk.uid === user.auth_id;
+      /* Nota numerada (mesmo formato da página inteira): número na imagem, texto ao passar o mouse */
+      if (mk.t === 'nota') {
+        return '<div class="chat-mv-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%"' +
+          (own ? ' ondblclick="expChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')"' : '') + '>' +
+          '<div class="chat-mv-nota">' + escHtml(String(mk.n || '?')) + '</div>' +
+          (mk.texto ? '<span class="chat-mv-nota-tip">' + escHtml(mk.texto) + '</span>' : '') +
+          '</div>';
+      }
+      var svg = MV_MARK_SVGS[mk.t] || '';
       return '<div class="chat-mv-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%"' +
         (own ? ' ondblclick="expChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')" title="Clique duplo para remover"' : '') + '>' +
         svg +
         '<span class="chat-mv-mark-ini">' + escHtml(mk.ini || '?') + '</span>' +
         '</div>';
     }).join('');
+    renderViewerNotesPanel(list);
+  }
+
+  /* Painel com a lista das notas numeradas do print */
+  function renderViewerNotesPanel(list) {
+    var panel = document.getElementById('exp-chat-mv-notes');
+    if (!panel) return;
+    var notas = (list || []).filter(function (mk) { return mk.t === 'nota'; });
+    if (!notas.length) { panel.className = 'chat-mv-notes'; panel.innerHTML = ''; return; }
+    panel.className = 'chat-mv-notes has-notas';
+    panel.innerHTML = '<div class="chat-mv-notes-hdr">Notas · ' + notas.length + '</div>' +
+      notas.map(function (mk) {
+        var own = mk.uid === user.auth_id;
+        var mem = allMembers.find(function (m) { return m.auth_id === mk.uid; });
+        var autor = (mem && mem.nome) ? firstName(mem.nome) : (mk.ini || '?');
+        var ts = mk.ts ? fmtTime(new Date(mk.ts)) : '';
+        return '<div class="chat-mv-note">' +
+          '<div class="chat-mv-note-num">' + escHtml(String(mk.n || '?')) + '</div>' +
+          '<div class="chat-mv-note-body"><div class="chat-mv-note-text">' + escHtml(mk.texto || '') + '</div>' +
+          '<div class="chat-mv-note-meta">' + escHtml(autor) + (ts ? ' · ' + ts : '') + '</div></div>' +
+          (own ? '<button class="chat-mv-note-del" title="Remover nota" onclick="expChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')">' + icoTrash() + '</button>' : '') +
+          '</div>';
+      }).join('');
+  }
+
+  /* Caixinha para escrever a nota (criada sob demanda) */
+  var _mvNotaPending = null;
+  function _notaFloat() {
+    var f = document.getElementById('exp-chat-nota-float');
+    if (f) return f;
+    f = document.createElement('div');
+    f.id = 'exp-chat-nota-float';
+    f.innerHTML = '<div class="hd"><span class="chat-mv-note-num" id="exp-chat-nota-float-num">1</span>Nova nota</div>' +
+      '<textarea id="exp-chat-nota-float-txt" placeholder="Escreva a nota…" onkeydown="expChat._notaKeydown(event)"></textarea>' +
+      '<div class="ft"><button type="button" onclick="expChat._cancelNota()">Cancelar</button>' +
+      '<button type="button" class="ok" onclick="expChat._confirmNota()">Salvar</button></div>';
+    document.body.appendChild(f);
+    return f;
+  }
+  function showNotaInput(x, y, screenX, screenY, n) {
+    var f = _notaFloat();
+    _mvNotaPending = { x: x, y: y, n: n };
+    document.getElementById('exp-chat-nota-float-num').textContent = String(n);
+    var txt = document.getElementById('exp-chat-nota-float-txt');
+    txt.value = '';
+    var left = Math.min(screenX + 14, window.innerWidth - 222 - 12);
+    var top = Math.min(screenY - 24, window.innerHeight - 170 - 12);
+    f.style.left = Math.max(8, left) + 'px';
+    f.style.top = Math.max(8, top) + 'px';
+    f.style.display = 'block';
+    setTimeout(function () { txt.focus(); }, 40);
+  }
+  function _confirmNota() {
+    var txt = document.getElementById('exp-chat-nota-float-txt');
+    if (!txt || !_mvNotaPending) return;
+    var texto = (txt.value || '').trim();
+    if (!texto) { txt.focus(); return; }
+    var cur = _mvCurrentMedia();
+    if (!cur) { _cancelNota(); return; }
+    var mk = {
+      id: newUuid(), t: 'nota', n: _mvNotaPending.n, texto: texto,
+      x: _mvNotaPending.x, y: _mvNotaPending.y,
+      ini: user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),
+      uid: user.auth_id, ts: new Date().toISOString()
+    };
+    cur.media.marcadores = (cur.media.marcadores || []).concat([mk]);
+    _cancelNota();
+    renderViewerMarkers();
+    _saveMvMarkers(cur.msg, cur.media.marcadores);
+  }
+  function _cancelNota() {
+    var f = document.getElementById('exp-chat-nota-float');
+    if (f) f.style.display = 'none';
+    _mvNotaPending = null;
+  }
+  function _notaKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _confirmNota(); }
+    if (e.key === 'Escape') { e.preventDefault(); _cancelNota(); }
   }
 
   function mvCanvasClick(e) {
@@ -4251,6 +4386,11 @@
     var x = ((e.clientX - r.left) / r.width)  * 100;
     var y = ((e.clientY - r.top)  / r.height) * 100;
     if (x < 0 || x > 100 || y < 0 || y > 100) return;
+    if (mvTool === 'nota') {
+      var qtd = (cur.media.marcadores || []).filter(function (m) { return m.t === 'nota'; }).length;
+      showNotaInput(Math.round(x * 100) / 100, Math.round(y * 100) / 100, e.clientX, e.clientY, qtd + 1);
+      return;
+    }
     var mk = {
       id:  newUuid(),
       t:   mvTool,
@@ -4271,6 +4411,8 @@
     cur.media.marcadores = (cur.media.marcadores || []).filter(function (mk) {
       return !(String(mk.id) === String(markId) && mk.uid === user.auth_id);
     });
+    var nSeq = 0;
+    cur.media.marcadores.forEach(function (mk) { if (mk.t === 'nota') { nSeq++; mk.n = nSeq; } });
     renderViewerMarkers();
     _saveMvMarkers(cur.msg, cur.media.marcadores);
   }
@@ -4305,7 +4447,7 @@
     var msg = mediaKey ? getMessageByMediaKey(mediaKey) : null;
     mediaViewerState.mediaKey = mediaKey;
     mediaViewerState.baseWidth = Number(media && media.width_px || 0) || null;
-    if (title) title.textContent = getChannelLabel(currentChannel) || 'Print do chat';
+    if (title) title.textContent = msg ? firstName(msg.sender_name || 'Equipe') + ' · print' : 'Print do chat';
     if (meta) meta.textContent = formatMediaViewerMeta(msg);
     if (count) count.textContent = (gallery.length ? (index + 1) : 1) + '/' + Math.max(gallery.length, 1);
     if (prevBtn) {
@@ -4320,7 +4462,10 @@
     var hasImg = !!(media && media.objectUrl);
     if (canvas) canvas.style.display = hasImg ? 'block' : 'none';
     img.style.display = hasImg ? 'block' : 'none';
-    if (hasImg) img.src = media.objectUrl;
+    if (hasImg) {
+      img.onload = function () { if (mediaViewerState && mediaViewerState.zoom <= 1.001) { fitMediaViewerImage(); } renderViewerMarkers(); };
+      img.src = media.objectUrl;
+    }
     else img.removeAttribute('src');
     empty.style.display = hasImg ? 'none' : 'block';
     empty.textContent = hasImg ? '' : 'Não foi possível carregar este print.';
@@ -4349,6 +4494,7 @@
   }
 
   function closeMediaViewer() {
+    _cancelNota();
     mediaViewerState = null;
     mvSelectTool(null);
     var canvas = document.getElementById('exp-chat-mv-canvas');
@@ -4367,7 +4513,7 @@
     }
     if (empty) empty.textContent = 'Carregando imagem...';
     if (meta) meta.textContent = 'Autor · data · hora';
-    if (zoomLabel) zoomLabel.textContent = '100%';
+    if (zoomLabel) zoomLabel.textContent = 'Ajustada';
     if (viewer) viewer.style.display = 'none';
   }
 
@@ -4391,18 +4537,35 @@
     if (!img || !mediaViewerState) return;
     var zoom = Math.max(1, Math.min(Number(mediaViewerState.zoom || 1), 4));
     mediaViewerState.zoom = zoom;
-    if (zoomLabel) zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    if (zoomLabel) zoomLabel.textContent = zoom <= 1.001 ? 'Ajustada' : Math.round(zoom * 100) + '%';
     if (zoom <= 1.001) {
-      img.style.width = '';
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = 'calc(100vh - 180px)';
+      fitMediaViewerImage();   /* 1 = ajustada à área visível */
       return;
     }
-    var baseWidth = Number(mediaViewerState.baseWidth || img.naturalWidth || img.clientWidth || 720);
+    /* aproxima a partir da imagem ajustada (não do tamanho real do print) */
+    var baseWidth = Number(mediaViewerState.fitWidth || img.clientWidth || mediaViewerState.baseWidth || 720);
     img.style.maxWidth = 'none';
     img.style.maxHeight = 'none';
     img.style.width = Math.round(baseWidth * zoom) + 'px';
   }
+
+  /* Ajusta o print à área visível do visualizador: largura da área central e altura da
+     janela menos cabeçalho e margens (antes 100vh-180px e o print saía cortado) */
+  function fitMediaViewerImage() {
+    var img = document.getElementById('exp-chat-media-viewer-img');
+    if (!img) return;
+    var stage = document.querySelector('#exp-chat-media-viewer .chat-media-viewer-stage');
+    var head = document.querySelector('#exp-chat-media-viewer .chat-media-viewer-head');
+    var maxW = (stage ? stage.clientWidth : 600) - 28;
+    var maxH = window.innerHeight - 40 - (head ? head.offsetHeight : 60) - 28 - 4;
+    img.style.width = '';
+    img.style.maxWidth = Math.max(120, maxW) + 'px';
+    img.style.maxHeight = Math.max(120, maxH) + 'px';
+    if (mediaViewerState && img.clientWidth) mediaViewerState.fitWidth = img.clientWidth;
+  }
+  window.addEventListener('resize', function () {
+    if (mediaViewerState && (mediaViewerState.zoom || 1) <= 1.001) { fitMediaViewerImage(); renderViewerMarkers(); }
+  });
 
   function zoomInMediaViewer() {
     if (!mediaViewerState) return;
@@ -5096,6 +5259,9 @@
     resetMediaViewerZoom: resetMediaViewerZoom,
     mvSelectTool:    mvSelectTool,
     mvRemoveMark:    mvRemoveMark,
+    _confirmNota:    _confirmNota,
+    _cancelNota:     _cancelNota,
+    _notaKeydown:    _notaKeydown,
     toggleProjectSection: toggleProjectSection,
     startDM:         startDM,
     toggleMember:    toggleMember,

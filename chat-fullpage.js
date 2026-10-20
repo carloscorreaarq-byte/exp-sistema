@@ -2911,16 +2911,17 @@
     if ($count) $count.textContent=(idx+1)+'/'+keys.length;
     if ($prev)  $prev.disabled=(idx===0);
     if ($next)  $next.disabled=(idx===keys.length-1);
-    if ($zoom)  $zoom.textContent=Math.round(mvZoom*100)+'%';
+    if ($zoom)  $zoom.textContent = mvZoom===1 ? 'Ajustada' : Math.round(mvZoom*100)+'%';
     if ($title) $title.textContent=msg?firstName(msg.sender_name||'')+' · print':'Print do chat';
     if ($meta&&msg&&msg.created_at) { var dt=new Date(msg.created_at); $meta.textContent=dt.toLocaleDateString('pt-BR')+' · '+fmtTime(dt); }
     var $canvas=document.getElementById('fp-mv-canvas');
     if (media&&media.objectUrl&&$img) {
+      $img.onload=function(){ if (mvZoom===1) fitMvImage(); renderMvMarkers(); };
       $img.src=media.objectUrl;
       if ($canvas) $canvas.style.display='block';
       /* Zoom por largura: a imagem cresce de verdade e o stage (overflow:auto) ganha scroll */
       if (mvZoom === 1) {
-        $img.style.width=''; $img.style.maxWidth=''; $img.style.maxHeight='';
+        fitMvImage();   /* 1 = ajustada à área visível do visualizador */
       } else {
         /* o canvas embrulha a imagem, então o % precisa vir do stage (pai) em px */
         var stageW = $canvas && $canvas.parentNode ? $canvas.parentNode.clientWidth - 32 : 0;
@@ -2983,6 +2984,19 @@
   function mvZoomIn()   { mvZoom=Math.min(mvZoom+0.25,4); renderMediaViewer(); }
   function mvZoomOut()  { mvZoom=Math.max(mvZoom-0.25,0.25); renderMediaViewer(); }
   function mvZoomReset(){ mvZoom=1; renderMediaViewer(); }
+  /* Ajusta a imagem à área visível: largura da área central e altura da janela menos
+     cabeçalho e margens (antes o limite era 100vh-200px e o print saía cortado) */
+  function fitMvImage(){
+    var $img=document.getElementById('fp-mv-img'), $canvas=document.getElementById('fp-mv-canvas');
+    if (!$img || !$canvas) return;
+    var stage=$canvas.parentNode, head=document.querySelector('#fp-media-viewer .fp-mv-head');
+    var maxW=(stage ? stage.clientWidth : 800) - 32;
+    var maxH=window.innerHeight - 48 - (head ? head.offsetHeight : 70) - 32 - 4;
+    $img.style.width='';
+    $img.style.maxWidth=Math.max(120, maxW)+'px';
+    $img.style.maxHeight=Math.max(120, maxH)+'px';
+  }
+  window.addEventListener('resize', function(){ if (mediaViewerState && mvZoom===1) { fitMvImage(); renderMvMarkers(); } });
   function getMediaViewerGalleryKeys(){ return messages.map(function(m){ var md=getMessageMedia(m); return md&&md.objectUrl?mediaKeyForMessage(m):null; }).filter(Boolean); }
   function getMessageByMediaKey(k){ return messages.find(function(m){ return mediaKeyForMessage(m)===k; })||null; }
 
@@ -3000,7 +3014,9 @@
     seta:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
     alerta: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     x:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
-    circulo: ''  /* o container circular já é o marcador visual */
+    circulo: '',  /* o container circular já é o marcador visual */
+    circulo_verde: '',
+    seta_verde: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3E7858" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>'
   };
 
   function mvSelectTool(tool) {
@@ -3039,8 +3055,8 @@
           tip + '</div>';
       }
 
-      /* backward compat: seta_verde → seta, circulo_verde → circulo */
-      var t = mk.t === 'seta_verde' ? 'seta' : mk.t === 'circulo_verde' ? 'circulo' : mk.t;
+      /* cada marcação mantém a cor em que foi criada (azul ou verde), igual ao widget */
+      var t = mk.t;
       var svg = MV_MARK_SVGS[t] || '';
       var authorTitle = escHtml((mk.ini || '?') + (own ? ' · duplo-clique para remover' : ''));
       return '<div class="fp-mark" style="' + style + '"' + dbl + '>' +
@@ -3110,7 +3126,8 @@
 
     var mk = {
       id:  newUuid(),
-      t:   mvTool,
+      /* "área" é verde nesta tela: grava como circulo_verde (o widget desenha igual) */
+      t:   mvTool === 'circulo' ? 'circulo_verde' : mvTool,
       x:   Math.round(x * 100) / 100,
       y:   Math.round(y * 100) / 100,
       ini: user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),
