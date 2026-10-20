@@ -174,8 +174,10 @@
     .msg-name { font-size: 12px; font-weight: 700; color: var(--m-text-2); }
     .msg-time { font-size: 9px; font-family: var(--font-mono); color: var(--m-text-3); }
     .bubble { padding: 8px 11px; border-radius: 14px; background: var(--m-surface); border: 1px solid color-mix(in srgb, var(--m-border) 20%, transparent); font-size: var(--mt-body); line-height: 1.4; color: var(--m-text); word-break: break-word; white-space: pre-wrap; box-shadow: var(--shadow-card); }
-    .msg.own .bubble { background: var(--verde); border-color: transparent; color: #fff; }
-    .msg.own .bubble a { color: #fff; }
+    /* Mesma regra do desktop: o balão da outra pessoa é colorido; o meu é cinza-claro */
+    .msg:not(.own) .bubble { background: color-mix(in srgb, var(--verde) 14%, var(--m-surface)); border-color: transparent; }
+    .msg.own .bubble { background: color-mix(in srgb, var(--m-text) 7%, var(--m-surface)); border-color: transparent; color: var(--m-text); }
+    .msg.own .bubble a { color: var(--verde); }
     .bubble a { color: var(--verde); text-decoration: underline; word-break: break-all; }
     .bubble.media-only { padding: 4px; }
     .bubble-img { display: block; max-width: 100%; width: 230px; max-height: 300px; object-fit: cover; border-radius: 11px; background: color-mix(in srgb, var(--m-border) 14%, transparent); }
@@ -581,9 +583,10 @@
     async function loadMessages() {
       const sb = getSB();
       if (G.channelType === 'project') {
-        const { data, error } = await sb.from('chat_thread_messages').select('*').eq('thread_id', G.threadId).order('created_at', { ascending: true }).limit(300);
+        // as MAIS RECENTES (antes vinham as 300 mais antigas e as novas não apareciam em projetos longos)
+        const { data, error } = await sb.from('chat_thread_messages').select('*').eq('thread_id', G.threadId).order('created_at', { ascending: false }).limit(MSG_LOAD_LIMIT);
         if (error) { document.getElementById('messages').innerHTML = `<div class="chat-empty">Erro ao carregar.</div>`; return; }
-        G.messages = (data || []).map(normProj);
+        G.messages = (data || []).slice().reverse().map(normProj);
       } else {
         const { data, error } = await sb.from('chat_messages').select('*').eq('channel', G.channel).order('created_at', { ascending: false }).limit(MSG_LOAD_LIMIT);
         if (error) { document.getElementById('messages').innerHTML = `<div class="chat-empty">Erro ao carregar.</div>`; return; }
@@ -631,7 +634,7 @@
           lastSender = ''; continue;
         }
         const own = m.sender_id === uid;
-        const grouped = m.sender_id === lastSender && (d.getTime() - lastTs) < 5*60*1000;
+        const grouped = m.sender_id === lastSender && (d.getTime() - lastTs) < 15*60*1000;   // mesma regra do desktop
         lastSender = m.sender_id; lastTs = d.getTime();
         const media = G.media[m.id], onlyImg = isImageOnly(m.content);
         let body = '';
