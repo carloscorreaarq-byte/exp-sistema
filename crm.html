@@ -1280,6 +1280,7 @@ textarea{resize:vertical;min-height:60px}
               <select id="opp-stage">
                 <option value="prospecção">Lead</option>
                 <option value="enviada">Orçamento ativo</option>
+                <option value="negociacao">Negociação</option>
               </select>
               <div id="opp-stage-help" style="display:none;font-size:10px;color:#888;margin-top:5px">Com produtos vinculados, o estágio da oportunidade passa a seguir automaticamente o status dos produtos.</div>
             </div>
@@ -1460,6 +1461,29 @@ textarea{resize:vertical;min-height:60px}
 </div>
 
 <!-- MENU FLUTUANTE DE CARD DO KANBAN -->
+<!-- Popup de feedback (botão de bandeira da topbar). Fica no <body> e é posicionado via JS
+     porque o ExpNav pode reconstruir o #exp-topbar-right. -->
+<div class="nav-feedback-pop" id="nav-feedback-pop" style="position:fixed;top:0;right:0" onclick="event.stopPropagation()">
+  <div class="nav-feedback-title">Problema ou sugestão</div>
+  <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+  <div class="fgroup">
+    <label for="tool-feedback-type">Tipo</label>
+    <select id="tool-feedback-type">
+      <option value="problema">Problema</option>
+      <option value="sugestao">Sugestão</option>
+    </select>
+  </div>
+  <div class="fgroup">
+    <label for="tool-feedback-message">Mensagem</label>
+    <textarea id="tool-feedback-message" rows="3" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+  </div>
+  <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+  <div class="nav-feedback-actions">
+    <button type="button" class="btn outline" onclick="fecharToolFeedbackPopover()">Fechar</button>
+    <button type="button" class="btn verde" id="tool-feedback-send" onclick="enviarToolFeedback()">Enviar</button>
+  </div>
+</div>
+
 <div class="pcard-menu" id="pcard-menu">
   <button class="pcard-menu-item" id="pcm-prosp"   onclick="moverCardStage('prospecção')">← Prospecção</button>
   <button class="pcard-menu-item" id="pcm-enviada"  onclick="moverCardStage('enviada')">Orçamento ativo</button>
@@ -2519,10 +2543,31 @@ async function carregarDados(){
     _produtos: prodsMap[op.id]||[],
     _custos: custosMap[op.id]||[],
     _user: allUsers[op.resp_id]||null,
-    _proposal: op.proposta_calc_id ? (proposalMap[op.proposta_calc_id]||null) : null,
+    // Cada "salvar" na calculadora gera uma nova versão (novo proposal_id, mesma família via
+    // parent_id). O proposta_calc_id gravado na opp fica parado na versão em que foi vinculado,
+    // então resolve sempre para a versão mais recente da família — é ela que vale no CRM.
+    _proposal: op.proposta_calc_id ? (proposalMap[getPreferredProposalLinkId(op.proposta_calc_id)]||proposalMap[op.proposta_calc_id]||null) : null,
     _pesquisaSat: pesquisaMap[String(op.id)] || null,
     _finConcluido: (finOppMap[String(op.id)]||[]).some(a=>isProjetoConcluidoStatus(a.situacao_financeira)),
   }));
+
+  // Recuperação: oportunidades gravadas com pipeline_stage vazio/desconhecido (bug antigo do
+  // select de estágio na edição) não apareciam em nenhuma coluna do kanban. Reconstrói o
+  // estágio a partir dos produtos ou do vínculo com a calc e grava a correção no banco.
+  const _stagesValidos=Object.keys(STAGE_LABEL);
+  const _recuperar=allOps.filter(op=>!_stagesValidos.includes((op.pipeline_stage||'').toLowerCase()));
+  for(const op of _recuperar){
+    const novo=op._produtos.length
+      ? deriveOppStageFromProdutos(op._produtos)
+      : (op.proposta_calc_id ? 'enviada' : 'prospecção');
+    console.warn(`carregarDados: estágio inválido "${op.pipeline_stage}" na opp ${op.num_legado||op.id} → ${novo}`);
+    op.pipeline_stage=novo;
+    if(!currentUser?.viewer_only){
+      sb.from('oportunidades').update({pipeline_stage:novo}).eq('id',op.id)
+        .then(r=>{ if(r.error) console.error('recuperar estágio:', r.error.message); });
+    }
+  }
+  if(_recuperar.length) toast(`${_recuperar.length} oportunidade(s) com estágio inválido recuperada(s) no pipeline.`);
 }
 
 // Helpers para trabalhar com oportunidades + produtos
@@ -2583,6 +2628,10 @@ function oppValorAdicionais(op, fechado=false){
 // lugar que mostre o valor total da oportunidade de forma breve/resumida.
 function oppValorTotal(op){
   if(isFechada(op)) return oppValorFechado(op)+oppValorAdicionais(op,true);
+  // Aberta e vinculada à calc: o "total" da proposta já é o valor final (serviços + repasse +
+  // subcontratações + despesas). Usa direto — produtos/custos materializados podem estar
+  // defasados em relação à versão mais recente.
+  if(+op._proposal?.total>0) return +op._proposal.total;
   return oppValorProposto(op)+oppValorAdicionais(op,false);
 }
 // Detalha os custos vinculados ao fechamento (subcontratações, despesas indiretas, repasse
@@ -3571,6 +3620,8 @@ function setupPipelineDrag(){
         renderPipe(); // reposiciona o card visualmente até a confirmação
         return;
       }
+      const _opDr=allOps.find(o=>String(o.id)===String(id));
+      if(_opDr && isNegada(_opDr)){ await reabrirOpp(id, newStage); renderPipe(); return; }
       await sb.from('oportunidades').update({pipeline_stage:newStage,updated_at:new Date().toISOString()}).eq('id',id);
       await carregarDados();
       renderPipe(); renderOrc();
@@ -3632,6 +3683,8 @@ async function moverCardStage(novoStage){
     abrirAcaoOpp('negada');
     return;
   }
+  const _opMv=allOps.find(o=>String(o.id)===String(id));
+  if(_opMv && isNegada(_opMv)){ await reabrirOpp(id, novoStage); return; }
   await sb.from('oportunidades').update({pipeline_stage:novoStage,updated_at:new Date().toISOString()}).eq('id',id);
   await carregarDados();
   renderPipe(); renderOrc();
@@ -4450,7 +4503,7 @@ async function abrirNovaOpp(){
   document.getElementById('opp-indicou').value='';
   document.getElementById('opp-evento').value='';
   document.getElementById('opp-data-entrada').value=new Date().toISOString().slice(0,10);
-  document.getElementById('opp-stage').value='prospecção';
+  setOppStageSelect('prospecção');
   document.getElementById('opp-origem').value='Captação';
   // Mostra o número legado já como preview do próximo da sequência (mesmo padrão do
   // último cadastrado, +1 no dígito final) — editável, caso precise registrar um valor
@@ -4512,7 +4565,7 @@ function editarOpp(){
   document.getElementById('opp-num-legado-wrap').style.display=temOpp?'grid':'none';
   document.getElementById('opp-num-legado').value=op.num_legado||'';
   populateCalcDropdown(op.proposta_calc_id||'');
-  document.getElementById('opp-stage').value=op.pipeline_stage||'prospecção';
+  setOppStageSelect(op.pipeline_stage);
   document.getElementById('opp-novo-cliente-wrap').style.display='none';
   document.getElementById('opp-cliente-id').value=op.cliente_id||'';
   const cli=allClients.find(c=>c.id===op.cliente_id);
@@ -4657,16 +4710,50 @@ function renderOppResponsavelOptions(selectedId){
     : '<option value="">Nenhum responsável ativo</option>';
 }
 
+// Normaliza variações gravadas no banco para o value usado nas <option> do select de estágio.
+function normStageValue(s){
+  const sl=(s||'').toLowerCase();
+  if(['prospecção','prospeccao'].includes(sl))return'prospecção';
+  if(['enviada','ativo'].includes(sl))return'enviada';
+  if(['negociacao','negociação'].includes(sl))return'negociacao';
+  if(['fechada','fechado'].includes(sl))return'fechada';
+  if(['negada','negado','perdida'].includes(sl))return'negada';
+  if(['cancelada','cancelado'].includes(sl))return'cancelada';
+  return sl;
+}
+
+// Preenche o select de estágio sem nunca deixá-lo vazio. Antes, um estágio que não existia
+// como <option> (negociação, "ativo" legado, fechada, negada) deixava o select com value ''
+// e esse vazio era gravado ao salvar — o card sumia do kanban.
+function setOppStageSelect(stage){
+  const sel=document.getElementById('opp-stage');
+  if(!sel)return;
+  sel.querySelectorAll('option[data-extra]').forEach(o=>o.remove());
+  const v=normStageValue(stage)||'prospecção';
+  if(![...sel.options].some(o=>o.value===v)){
+    const opt=document.createElement('option');
+    opt.value=v; opt.dataset.extra='1';
+    opt.textContent=stageLabel(v);
+    sel.appendChild(opt);
+  }
+  sel.value=v;
+  sel.dataset.orig=v;
+}
+
 function syncOppStageFieldState(oppId){
   const sel = document.getElementById('opp-stage');
   const help = document.getElementById('opp-stage-help');
   if (!sel || !help) return;
   const hasProdutos = oppId ? hasProdutosVinculadosNaOpp(oppId) : false;
-  sel.disabled = hasProdutos;
-  help.style.display = hasProdutos ? 'block' : 'none';
-  if (hasProdutos) {
+  // Negada/cancelada pode ser reaberta pelo próprio select (os produtos negados voltam a ativo ao salvar)
+  const op = oppId ? allOps.find(o => String(o.id) === String(oppId)) : null;
+  const podeReabrir = !!op && isNegada(op);
+  const travado = hasProdutos && !podeReabrir;
+  sel.disabled = travado;
+  help.style.display = travado ? 'block' : 'none';
+  if (travado) {
     const prodsDaOpp = allProds.filter(p => String(p.oportunidade_id||'') === String(oppId));
-    sel.value = deriveOppStageFromProdutos(prodsDaOpp, sel.value);
+    setOppStageSelect(deriveOppStageFromProdutos(prodsDaOpp, sel.value));
   }
 }
 
@@ -4840,8 +4927,15 @@ async function salvarOpp(){
     }
   }
 
-  let stageValue = document.getElementById('opp-stage').value;
-  if (id && hasProdutosVinculadosNaOpp(id)) {
+  const _stageSel = document.getElementById('opp-stage');
+  let stageValue = _stageSel.value || _stageSel.dataset.orig || (id ? normStageValue(allOps.find(o=>o.id===id)?.pipeline_stage) : '') || 'prospecção';
+  // Reabertura de oportunidade negada pelo select: os produtos negados voltam a "ativo",
+  // senão a derivação abaixo devolveria a opp para "negada".
+  const _opOrig = id ? allOps.find(o=>o.id===id) : null;
+  if (_opOrig && isNegada(_opOrig) && ['prospecção','enviada','negociacao'].includes(stageValue)) {
+    if (!(await reabrirProdutosNegados(id, stageValue==='negociacao'?'negociacao':'ativo'))) return;
+  }
+  if (id && hasProdutosVinculadosNaOpp(id) && !(_opOrig && isNegada(_opOrig))) {
     const prodsDaOpp = allProds.filter(p => String(p.oportunidade_id||'') === String(id));
     stageValue = deriveOppStageFromProdutos(prodsDaOpp, stageValue);
   }
@@ -5114,6 +5208,47 @@ function abrirAcaoProd(prodId,tipo){
     document.getElementById('acao-confirm-btn').className='btn tc';
   }
   openM('modal-acao');
+}
+
+// Reabertura de oportunidade negada: devolve os produtos negados (e os cancelados, se não
+// sobrar nenhum outro produto) ao status aberto, para que a derivação de estágio a partir dos
+// produtos (autoUpdateOppStage / salvarOpp) não jogue a opp de volta para "negada".
+// Registra um follow-up para manter o histórico da negativa anterior.
+async function reabrirProdutosNegados(oppId, novoStatus='ativo'){
+  const {data:prods, error:pErr}=await sb.from('produtos').select('id,status').eq('oportunidade_id',oppId);
+  if(pErr){toast('Erro ao reabrir: '+pErr.message);return false;}
+  const st=p=>(p.status||'').toLowerCase();
+  const restantes=(prods||[]).filter(p=>!['negado','cancelado'].includes(st(p)));
+  const alvo=(prods||[]).filter(p=>st(p)==='negado' || (!restantes.length && st(p)==='cancelado'));
+  if(alvo.length){
+    const {error}=await sb.from('produtos')
+      .update({status:novoStatus,updated_at:new Date().toISOString()})
+      .in('id',alvo.map(p=>p.id));
+    if(error){toast('Erro ao reabrir produtos: '+error.message);return false;}
+  }
+  await sb.from('followups_produto').insert({
+    oportunidade_id: oppId,
+    tipo: 'outro',
+    obs: `Oportunidade reaberta (${novoStatus==='negociacao'?'Negociação':'Orçamento ativo'}) após negativa.`,
+    data: new Date().toISOString().slice(0,10),
+    criado_por: currentUser?.id||null,
+  });
+  return true;
+}
+
+// Botão "Reabrir" do detalhe / menu do card para oportunidades negadas
+async function reabrirOpp(oppId, novoStage='enviada'){
+  if(currentUser?.viewer_only){toast('Sem permissão.');return;}
+  const op=allOps.find(o=>String(o.id)===String(oppId));
+  if(!op)return;
+  if(!confirm(`Reabrir esta oportunidade como ${stageLabel(novoStage)}?`))return;
+  if(!(await reabrirProdutosNegados(op.id, novoStage==='negociacao'?'negociacao':'ativo')))return;
+  const {error}=await sb.from('oportunidades').update({pipeline_stage:novoStage,updated_at:new Date().toISOString()}).eq('id',op.id);
+  if(error){toast('Erro: '+error.message);return;}
+  toast('Oportunidade reaberta!');
+  await carregarDados();
+  renderDash();renderPipe();renderOrc();calcAlertas();
+  if(document.getElementById('modal-detail')?.classList.contains('open'))abrirDetail(op.id);
 }
 
 // C4: deriva estágio da opp a partir dos produtos após cada ação
@@ -6092,6 +6227,12 @@ function abrirDetail(oppId){
       html+=`<button class="btn sm verde" onclick="abrirFechamento('${escJsStr(oppId)}')">✓ Fechar oportunidade</button>`;
     html+=`<button class="btn sm tc" onclick="abrirAcaoOpp('negada')" style="margin-left:auto">✗ Negar</button>`;
     html+=`</div>`;
+  } else if(canEdit && isNegada(op)){
+    html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
+      <span style="font-size:9px;color:#bbb;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Reabrir como:</span>
+      <button class="btn sm am" onclick="reabrirOpp('${escJsStr(oppId)}','enviada')">↺ Orçamento ativo</button>
+      <button class="btn sm roxo" onclick="reabrirOpp('${escJsStr(oppId)}','negociacao')">↺ Negociação</button>
+    </div>`;
   }
 
   html+=`<div class="ms"><div class="ms-title">Identificação</div>
@@ -6215,7 +6356,7 @@ function abrirDetail(oppId){
         ${acaoBtns?`<div style="display:flex;gap:5px;margin-top:6px">${acaoBtns}</div>`:''}
       </div>`;
     });
-    const _totalProp=oppValorProposto(op)+oppValorAdicionais(op,false);
+    const _totalProp=+op._proposal?.total>0 ? +op._proposal.total : oppValorProposto(op)+oppValorAdicionais(op,false);
     html+=`<div class="dr" style="margin-top:4px"><div class="dk">Proposta original</div><div class="dv" style="color:#aaa;font-size:10px;font-family:var(--font-mono)">${fmt(_totalProp)}</div></div>`;
     if(!_useCalc&&vFch&&!isFechada(op)){
       html+=`<div class="dr"><div class="dk">Total fechado (serviços)</div><div class="dv" style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmt(vFch)}</div></div>`;
@@ -7542,6 +7683,61 @@ async function carregarInfoPropostaCalc(calcId, oppId) {
       }
     }
   } catch(e) { el.textContent = '(erro ao carregar)'; }
+}
+
+/* ── FEEDBACK (botão de bandeira da topbar) ─────────────────────
+   O ExpNav.toggleFeedbackPop delega para window.toggleFeedbackPop quando ela existe —
+   o CRM não tinha nem o popup nem essa função, por isso o botão não fazia nada. */
+function toggleFeedbackPop(e){
+  e?.stopPropagation();
+  const pop=document.getElementById('nav-feedback-pop');
+  if(!pop)return;
+  if(pop.classList.contains('open')){fecharToolFeedbackPopover();return;}
+  const btn=document.getElementById('exp-tr-feedback');
+  if(btn){
+    const r=btn.getBoundingClientRect();
+    pop.style.top=(r.bottom+10)+'px';
+    pop.style.right=Math.max(12, window.innerWidth-r.right-6)+'px';
+  }
+  const st=document.getElementById('tool-feedback-status');
+  if(st)st.textContent='Seu registro será encaminhado para a Gestão de plataforma.';
+  pop.classList.add('open');
+  document.getElementById('tool-feedback-message')?.focus();
+}
+window.toggleFeedbackPop=toggleFeedbackPop;
+function fecharToolFeedbackPopover(){
+  document.getElementById('nav-feedback-pop')?.classList.remove('open');
+}
+document.addEventListener('click',e=>{
+  const pop=document.getElementById('nav-feedback-pop');
+  if(pop?.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('#exp-tr-feedback'))
+    fecharToolFeedbackPopover();
+});
+async function enviarToolFeedback(){
+  const tipo=document.getElementById('tool-feedback-type')?.value||'problema';
+  const msgEl=document.getElementById('tool-feedback-message');
+  const mensagem=msgEl?.value.trim()||'';
+  const statusEl=document.getElementById('tool-feedback-status');
+  const btn=document.getElementById('tool-feedback-send');
+  if(!mensagem){ if(statusEl)statusEl.textContent='Escreva uma mensagem antes de enviar.'; return; }
+  if(!currentUser?.id){ if(statusEl)statusEl.textContent='Sessão não identificada. Recarregue a página.'; return; }
+  if(statusEl)statusEl.textContent='Enviando…';
+  if(btn)btn.disabled=true;
+  const agora=new Date().toISOString();
+  const {error}=await sb.from('plataforma_feedback').insert({
+    usuario_id: currentUser.id, tipo, mensagem, status:'novo',
+    origem_modulo:'CRM', url_origem:'crm.html',
+    criado_em: agora, atualizado_em: agora,
+  });
+  if(btn)btn.disabled=false;
+  if(error){
+    console.error('enviarToolFeedback:', error.message);
+    if(statusEl)statusEl.textContent='Não foi possível enviar: '+error.message;
+    return;
+  }
+  if(msgEl)msgEl.value='';
+  if(statusEl)statusEl.textContent='Enviado! Obrigado pelo registro.';
+  setTimeout(fecharToolFeedbackPopover,1800);
 }
 
 async function abrirLembretePopup() {

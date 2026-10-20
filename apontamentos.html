@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared/app-notif.js" defer></script>
+<script src="shared/horas-creditos.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="preload" href="shared/app-shell.js" as="script">
 <link rel="preload" href="shared/exp-nav.js" as="script">
@@ -212,6 +213,11 @@ body{
 .cb-projeto { background:var(--azul); }
 .cb-organizacao { background:var(--verde); }
 .cb-sociedade { background:var(--ouro); }
+/* Feriado / ausência: horas creditadas como trabalhadas (barra vermelha atrás dos lançamentos) */
+.cb-credito { background:repeating-linear-gradient(135deg,rgba(192,57,43,.88) 0 6px,rgba(192,57,43,.74) 6px 12px); z-index:1; cursor:default; }
+[data-theme="dark"] .cb-credito { background:repeating-linear-gradient(135deg,rgba(214,84,70,.62) 0 6px,rgba(214,84,70,.48) 6px 12px); }
+.cal-dia-credito { font-size:8px; color:#C0392B; font-weight:700; }
+.bh-credito { color:#C0392B; }
 .cal-totais-row { display:grid; grid-template-columns:44px repeat(7,1fr); border-top:1px solid var(--cinza); background:var(--cinza2); }
 .cal-total-label { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#bbb; padding:5px 4px; text-align:right; border-right:1px solid var(--cinza); }
 .cal-total-dia { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--grafite); padding:5px 4px; text-align:center; border-right:1px solid var(--cinza2); }
@@ -410,6 +416,23 @@ body{
 .bh-admin-actions .apo-field{margin-bottom:0;}
 .bh-admin-actions .apo-actions{margin-top:0;}
 .bh-empty{padding:14px 12px;font-size:11px;color:#bbb;text-align:center;}
+.bh-card-val.pos{color:var(--verde);}
+.bh-card-val.neg{color:var(--terracota);}
+.bh-month-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.bh-month-nav button{border:1px solid var(--cinza2);background:var(--branco);border-radius:6px;width:26px;height:26px;cursor:pointer;color:#666;font-size:12px;}
+.bh-month-nav button:hover{border-color:var(--cinza);color:var(--grafite);}
+.bh-month-lbl{font-size:13px;font-weight:700;color:var(--grafite);min-width:130px;text-align:center;}
+.bh-month-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#aaa;}
+.bh-hist{width:100%;border-collapse:collapse;font-size:11px;background:var(--branco);}
+.bh-hist th{font-size:var(--text-label);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#aaa;text-align:right;padding:8px 12px;border-bottom:1px solid var(--cinza2);}
+.bh-hist th:first-child,.bh-hist td:first-child{text-align:left;}
+.bh-hist td{padding:8px 12px;border-bottom:1px solid var(--cinza2);text-align:right;font-family:var(--font-mono);color:var(--grafite);}
+.bh-hist tr:last-child td{border-bottom:none;}
+.bh-hist tr.sel td{background:var(--off);font-weight:700;}
+.bh-hist tr.total td{font-weight:700;border-top:2px solid var(--cinza2);}
+.bh-hist td.pos{color:var(--verde);}
+.bh-hist td.neg{color:var(--terracota);}
+.bh-hist-wrap{overflow-x:auto;margin-bottom:12px;}
 
 /* ── Dark mode ────────────────────────── */
 [data-theme="dark"] body{background:#151513;color:#F0EFEC;}
@@ -753,37 +776,49 @@ body{
       <div class="apo-layout">
 
         <div>
+          <div class="bh-month-nav">
+            <button type="button" id="bh-month-prev" title="Mês anterior">◀</button>
+            <div class="bh-month-lbl" id="bh-month-lbl">—</div>
+            <button type="button" id="bh-month-next" title="Próximo mês">▶</button>
+            <span class="bh-month-tag" id="bh-month-tag"></span>
+          </div>
+
           <div class="bh-grid">
             <div class="bh-card">
-              <div class="bh-card-lbl">Jornada semanal</div>
-              <div class="bh-card-val" id="bh-kpi-jornada">—</div>
-              <div class="bh-card-sub" id="bh-kpi-jornada-sub">Meta contratada</div>
+              <div class="bh-card-lbl">Jornada esperada</div>
+              <div class="bh-card-val" id="bh-kpi-esperado">—</div>
+              <div class="bh-card-sub" id="bh-kpi-esperado-sub">Dias úteis do mês</div>
             </div>
             <div class="bh-card">
               <div class="bh-card-lbl">Horas registradas</div>
               <div class="bh-card-val" id="bh-kpi-registradas">—</div>
-              <div class="bh-card-sub">Carga bruta da semana</div>
+              <div class="bh-card-sub" id="bh-kpi-registradas-sub">Lançamentos do mês</div>
             </div>
             <div class="bh-card">
-              <div class="bh-card-lbl">Excesso bruto</div>
-              <div class="bh-card-val" id="bh-kpi-excesso">—</div>
-              <div class="bh-card-sub">Antes da regra de reconhecimento</div>
+              <div class="bh-card-lbl">Saldo do mês</div>
+              <div class="bh-card-val" id="bh-kpi-saldo-mes">—</div>
+              <div class="bh-card-sub">Registradas − esperadas</div>
             </div>
             <div class="bh-card">
-              <div class="bh-card-lbl">Elegível</div>
-              <div class="bh-card-val" id="bh-kpi-elegivel">—</div>
-              <div class="bh-card-sub" id="bh-kpi-elegivel-sub">Horas inteiras reconhecíveis</div>
+              <div class="bh-card-lbl">Saldo acumulado</div>
+              <div class="bh-card-val" id="bh-kpi-acumulado">—</div>
+              <div class="bh-card-sub" id="bh-kpi-acumulado-sub">Últimos 6 meses</div>
             </div>
             <div class="bh-card">
-              <div class="bh-card-lbl">Saldo disponível</div>
+              <div class="bh-card-lbl">Saldo no banco</div>
               <div class="bh-card-val" id="bh-kpi-saldo">—</div>
-              <div class="bh-card-sub">Para futura compensação</div>
+              <div class="bh-card-sub" id="bh-kpi-saldo-sub">Aprovado · limite −20h</div>
             </div>
           </div>
 
           <div class="bh-note-box">
-            <div class="bh-note-title">Leitura institucional da semana</div>
+            <div class="bh-note-title">Leitura do período</div>
             <div class="bh-note-text" id="bh-week-note">Carregando banco de horas…</div>
+          </div>
+
+          <div class="sec-title">Histórico dos últimos meses</div>
+          <div class="bh-hist-wrap lanc-lista-box" id="bh-hist-wrap">
+            <div class="bh-empty">Carregando…</div>
           </div>
 
           <div class="sec-title">Minhas solicitações</div>
@@ -800,46 +835,68 @@ body{
         </div>
 
         <div class="apo-form-card">
-          <div class="apo-form-title">Solicitar horas adicionais</div>
+          <div class="apo-form-title">Solicitação ao banco de horas</div>
           <form id="apo-bh-form">
-            <div class="apo-pills">
-              <div class="apo-pill"><strong>Elegíveis:</strong> <span id="bh-pill-elegivel">—</span></div>
-              <div class="apo-pill"><strong>Já solicitadas:</strong> <span id="bh-pill-solicitadas">—</span></div>
-              <div class="apo-pill"><strong>Disponíveis:</strong> <span id="bh-pill-disponivel">—</span></div>
-            </div>
-
             <div class="apo-field">
-              <label for="apo-bh-qty">Horas a solicitar</label>
-              <input type="number" id="apo-bh-qty" min="1" step="1" placeholder="0" required>
-              <div class="apo-note" id="bh-qty-note">Somente horas inteiras reconhecíveis.</div>
-            </div>
-
-            <div class="apo-field">
-              <label for="apo-bh-destino">Destino pretendido</label>
-              <select id="apo-bh-destino">
-                <option value="compensacao">Compensação/Ausência remunerada</option>
-                <option value="pagamento_extraordinario">Pagamento extraordinário</option>
+              <label for="apo-bh-tipo">Tipo de solicitação</label>
+              <select id="apo-bh-tipo">
+                <option value="credito">Registrar horas excedentes do mês</option>
+                <option value="ausencia">Ausência usando o banco de horas</option>
               </select>
             </div>
 
-            <div class="apo-field" id="apo-bh-data-wrap" style="display:none">
-              <label for="apo-bh-data">Data da ausência (opcional)</label>
-              <input type="date" id="apo-bh-data">
-              <div class="apo-note">Se preenchida, a folga já é registrada no calendário ao aprovar a solicitação.</div>
+            <div id="apo-bh-credito-wrap">
+              <div class="apo-pills">
+                <div class="apo-pill"><strong>Elegíveis:</strong> <span id="bh-pill-elegivel">—</span></div>
+                <div class="apo-pill"><strong>Já solicitadas:</strong> <span id="bh-pill-solicitadas">—</span></div>
+                <div class="apo-pill"><strong>Disponíveis:</strong> <span id="bh-pill-disponivel">—</span></div>
+              </div>
+
+              <div class="apo-field">
+                <label for="apo-bh-qty">Horas a registrar</label>
+                <input type="number" id="apo-bh-qty" min="1" step="1" placeholder="0">
+                <div class="apo-note" id="bh-qty-note">Somente horas inteiras do saldo positivo do mês.</div>
+              </div>
+
+              <div class="apo-field">
+                <label for="apo-bh-destino">Destino pretendido</label>
+                <select id="apo-bh-destino">
+                  <option value="compensacao">Crédito no banco (para folgas)</option>
+                  <option value="pagamento_extraordinario">Pagamento extraordinário</option>
+                </select>
+              </div>
             </div>
 
-            <div class="apo-field" id="apo-bh-periodo-wrap" style="display:none">
-              <label for="apo-bh-periodo">Período</label>
-              <select id="apo-bh-periodo">
-                <option value="todo">Dia todo</option>
-                <option value="manha">Manhã</option>
-                <option value="tarde">Tarde</option>
-              </select>
+            <div id="apo-bh-ausencia-wrap" style="display:none">
+              <div class="apo-pills">
+                <div class="apo-pill"><strong>Saldo no banco:</strong> <span id="bh-pill-saldo">—</span></div>
+                <div class="apo-pill"><strong>Ausências pendentes:</strong> <span id="bh-pill-pend-aus">—</span></div>
+              </div>
+
+              <div class="apo-field">
+                <label for="apo-bh-data">Data da ausência</label>
+                <input type="date" id="apo-bh-data">
+              </div>
+
+              <div class="apo-field">
+                <label for="apo-bh-periodo">Período</label>
+                <select id="apo-bh-periodo">
+                  <option value="todo">Dia todo</option>
+                  <option value="manha">Manhã</option>
+                  <option value="tarde">Tarde</option>
+                </select>
+              </div>
+
+              <div class="apo-field">
+                <label for="apo-bh-aus-horas">Horas a descontar do banco</label>
+                <input type="number" id="apo-bh-aus-horas" min="1" step="1" placeholder="0">
+                <div class="apo-note" id="bh-aus-note">O saldo pode ficar negativo (adiantamento) até −20h.</div>
+              </div>
             </div>
 
             <div class="apo-field">
               <label for="apo-bh-justificativa">Justificativa</label>
-              <textarea id="apo-bh-justificativa" placeholder="Contexto da semana, prazo, urgência, necessidade…"></textarea>
+              <textarea id="apo-bh-justificativa" placeholder="Contexto do período, prazo, motivo da ausência…"></textarea>
             </div>
 
             <div class="apo-actions">
@@ -974,6 +1031,13 @@ body{
     return min === 0 ? hrs+'h' : hrs+'h'+String(min).padStart(2,'0');
   }
   function round1(n) { return Math.round((Number(n)||0) * 10) / 10; }
+  // Horas com sinal (+3h / −2h30) — o banco de horas pode ficar negativo
+  function fmtHS(h) {
+    h = round1(h);
+    if (Math.abs(h) < 0.05) return '0h';
+    return (h > 0 ? '+' : '−') + fmtH(Math.abs(h));
+  }
+  function clsHS(h) { return h > 0.05 ? 'pos' : (h < -0.05 ? 'neg' : ''); }
   function isSocioAdmRole(role) {
     return ['socio_adm','socio_admin'].includes(String(role||'').toLowerCase());
   }
@@ -1081,8 +1145,9 @@ body{
   }
   function formatBhDestino(dest) {
     return {
-      compensacao:'Compensação/Ausência remunerada',
+      compensacao:'Crédito no banco (folgas)',
       pagamento_extraordinario:'Pagamento extraordinário',
+      ausencia_banco:'Ausência pelo banco de horas',
       misto:'Misto',
     }[dest] || '—';
   }
@@ -1108,6 +1173,7 @@ body{
   function setSelectedDate(iso) {
     if (!iso) return;
     AP.weekInfo = getWeekInfo(iso);
+    AP.bankMonth = iso.slice(0,7);
     document.getElementById('apo-date').value = iso;
     document.getElementById('apo-cost-date').value = iso;
     updateNavLabel(AP.weekInfo);
@@ -1153,6 +1219,12 @@ body{
       }
     });
 
+    // Créditos de feriado/ausência entram no total do dia e da semana
+    var credMap = (AP.weekCreditos && AP.weekCreditos.porDia) || {};
+    var credPorDia = diasDate.map(function(d){ return credMap[d.toISOString().slice(0,10)] || null; });
+    var totalCredito = 0;
+    credPorDia.forEach(function(c, i){ if (c) { hPorDia[i] += c.horas; totalCredito += c.horas; } });
+
     var totalSemana = hPorDia.reduce(function(s,h){ return s+h; }, 0);
     var pct = Math.min(totalSemana / 40 * 100, 100);
     var porTipo = { projeto:0, organizacao:0, sociedade:0 };
@@ -1179,6 +1251,7 @@ body{
         '<div class="cal-dia-nome">' + NOMES[i] + '</div>' +
         '<div class="cal-dia-num">' + d.getDate() + '</div>' +
         '<div class="cal-dia-total">' + (hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·') + '</div>' +
+        (credPorDia[i] ? '<div class="cal-dia-credito" title="' + esc(credPorDia[i].itens.map(function(it){ return it.label; }).join(' · ')) + '">' + esc(credPorDia[i].feriado ? 'Feriado' : 'Ausência') + '</div>' : '') +
         '</div>';
     });
 
@@ -1224,6 +1297,16 @@ body{
             '</div>';
         });
 
+        // Barra vermelha das horas creditadas, começando no horário do período
+        if (credPorDia[i]) credPorDia[i].itens.forEach(function(it) {
+          if ((it.inicioH - HORA_INI) * 2 !== s) return;
+          var hgt = Math.max(16, it.horas * 2 * SLOT_H - 2);
+          blocoHtml += '<div class="cal-bloco cb-credito" style="top:0;height:' + hgt + 'px" title="' + esc(it.label + ' — ' + fmtH(it.horas) + ' contadas como trabalhadas') + '">' +
+            '<span class="cal-bloco-linha1">' + esc(it.label) + '</span>' +
+            (hgt > 22 ? '<span class="cal-bloco-linha2">' + esc(fmtH(it.horas)) + '</span>' : '') +
+            '</div>';
+        });
+
         html += '<div class="cal-celula ' + (fds?'fim-semana ':'') + (isHoje?'hoje-col':'') + '">' + blocoHtml + '</div>';
       }
     }
@@ -1246,8 +1329,8 @@ body{
     var saldoSemana = totalSemana - 40;
     var saldoCls = saldoSemana > 0.0084 ? 'positivo' : saldoSemana < -0.0084 ? 'negativo' : 'neutro';
     var saldoTxt = saldoCls === 'neutro' ? '0h' : (saldoSemana > 0 ? '+' : '-') + fmtH(Math.abs(saldoSemana));
-    var saldoBadge = '<div class="cal-saldo-badge ' + saldoCls + '" title="Saldo da semana para o banco de horas (referência: 40h)">' +
-      saldoTxt + ' <span>banco de horas</span></div>';
+    var saldoBadge = '<div class="cal-saldo-badge ' + saldoCls + '" title="Saldo da semana em relação a 40h. O banco de horas é apurado por mês, na aba Banco.">' +
+      saldoTxt + ' <span>na semana</span></div>';
 
     html += '<div class="cal-resumo">' +
       '<div style="flex-shrink:0">' +
@@ -1264,6 +1347,7 @@ body{
         '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div>Proj: ' + fmtH(porTipo.projeto) + (pctTipo('projeto')>0?' <span style="color:#bbb">('+pctTipo('projeto')+'%)</span>':'') + '</div>' +
         '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--verde)"></div>Org: ' + fmtH(porTipo.organizacao) + (pctTipo('organizacao')>0?' <span style="color:#bbb">('+pctTipo('organizacao')+'%)</span>':'') + '</div>' +
         '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--ouro)"></div>Soc: ' + fmtH(porTipo.sociedade) + (pctTipo('sociedade')>0?' <span style="color:#bbb">('+pctTipo('sociedade')+'%)</span>':'') + '</div>' +
+        (totalCredito > 0 ? '<div class="cal-bd-item"><div class="cal-bd-dot" style="background:#C0392B"></div>Fer./aus.: ' + fmtH(totalCredito) + '</div>' : '') +
       '</div>' +
     '</div>';
 
@@ -1417,6 +1501,12 @@ body{
       .order('hora_inicio');
     if (res.error) throw new Error(res.error.message);
     AP.weekHours = res.data || [];
+    // Feriados/ausências da semana — contam como horas trabalhadas (barra vermelha)
+    try {
+      AP.weekCreditos = window.ExpHorasCredito
+        ? await window.ExpHorasCredito.carregar(window.sb, u, info.start, info.end, { nucleoId: AP.user && (AP.user.nucleo_id || AP.user.nucleo) })
+        : null;
+    } catch (e) { AP.weekCreditos = null; }
     renderCalendario(AP.weekHours);
     renderLancamentos(AP.weekHours);
   }
@@ -1443,35 +1533,139 @@ body{
 
   // ── Histórico por mês ────────────────────────────────────────────
 
+  // ── Banco de horas: apuração mensal ──────────────────────────────
+  // O banco não é revisado semana a semana: cada mês é apurado (horas registradas −
+  // jornada esperada nos dias úteis) e o histórico mostra o saldo acumulado dos últimos
+  // meses. O "saldo no banco" é o ledger oficial (banco_horas_saldo), que pode ficar
+  // negativo até BH_LIMITE_NEGATIVO_H por ausências adiantadas.
+  var BH_LIMITE_NEGATIVO_H = 20;
+  var BH_MESES_HISTORICO = 6;
+  var MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  function localIso(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function monthBounds(ym) {
+    var p = ym.split('-').map(Number);
+    var last = new Date(p[0], p[1], 0).getDate();
+    return { ym: ym, start: ym + '-01', end: ym + '-' + String(last).padStart(2,'0'), ano: p[0], mes: p[1] };
+  }
+  function shiftMonth(ym, delta) {
+    var p = ym.split('-').map(Number);
+    var d = new Date(p[0], p[1]-1+delta, 1);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  function monthLabel(ym, curto) {
+    var p = ym.split('-').map(Number);
+    var nome = MESES_PT[p[1]-1] || ym;
+    return (curto ? nome.slice(0,3) : nome) + (curto ? '/' + String(p[0]).slice(2) : ' ' + p[0]);
+  }
+  function eachDay(startIso, endIso, fn) {
+    var cur = new Date(startIso+'T12:00:00'), end = new Date(endIso+'T12:00:00');
+    while (cur <= end) { fn(localIso(cur), cur.getDay()); cur.setDate(cur.getDate()+1); }
+  }
+  // Apura um mês: esperado = (jornada/5) por dia útil até hoje. Feriados, ausências e
+  // compensações do banco contam como horas trabalhadas (creditadas), via ExpHorasCredito.
+  function apurarMes(ym, ctx) {
+    var mb = monthBounds(ym);
+    var hoje = localIso();
+    var ate = mb.end < hoje ? mb.end : hoje;
+    var diaH = (Number(ctx.jornada) || 40) / 5;
+    var esperado = 0, diasUteis = 0;
+    if (ate >= mb.start) {
+      eachDay(mb.start, ate, function(iso, dow) {
+        if (dow === 0 || dow === 6) return;
+        diasUteis++;
+        esperado += diaH;
+      });
+    }
+    var creditado = (ate >= mb.start && window.ExpHorasCredito) ? window.ExpHorasCredito.total(ctx.creditos, mb.start, ate) : 0;
+    var registrado = (ctx.horas || []).reduce(function(sum, r) {
+      var d = String(r.data_lancamento || '').slice(0,10);
+      return (d >= mb.start && d <= mb.end) ? sum + diffH(r.hora_inicio, r.hora_fim) : sum;
+    }, 0);
+    return {
+      ym: ym, start: mb.start, end: mb.end,
+      parcial: ate < mb.end, futuro: ate < mb.start,
+      diasUteis: diasUteis,
+      esperado: round1(esperado),
+      registrado: round1(registrado),
+      creditado: round1(creditado),
+      saldo: round1(registrado + creditado - esperado),
+    };
+  }
+
   function renderBancoResumo() {
     var sum = AP.bankSummary;
     if (!sum) return;
-    setText('bh-kpi-jornada', fmtH(sum.jornadaSemanalH));
-    setText('bh-kpi-registradas', fmtH(sum.horasRegistradasH));
-    setText('bh-kpi-excesso', fmtH(sum.excessoBrutoH));
-    setText('bh-kpi-elegivel', fmtH(sum.excessoElegivelH));
-    setText('bh-kpi-saldo', fmtH(sum.saldoDisponivelH));
+    var m = sum.mes;
+    setText('bh-month-lbl', monthLabel(m.ym));
+    setText('bh-month-tag', m.futuro ? 'mês futuro' : (m.parcial ? 'apuração até hoje' : 'mês fechado'));
+    setText('bh-kpi-esperado', fmtH(m.esperado));
+    setText('bh-kpi-esperado-sub', m.diasUteis + ' dia(s) útil(eis) · ' + fmtH(sum.jornadaSemanalH) + '/sem' + (sum.jornadaDefaulted ? ' (padrão)' : ''));
+    setText('bh-kpi-registradas', fmtH(m.registrado + m.creditado));
+    var regSub = document.getElementById('bh-kpi-registradas-sub');
+    if (regSub) regSub.innerHTML = m.creditado > 0
+      ? esc(fmtH(m.registrado)) + ' lançadas + <span class="bh-credito">' + esc(fmtH(m.creditado)) + ' feriados/ausências</span>'
+      : 'Lançamentos do mês';
+    setHS('bh-kpi-saldo-mes', m.saldo);
+    setHS('bh-kpi-acumulado', sum.acumulado);
+    setText('bh-kpi-acumulado-sub', 'Soma de ' + monthLabel(sum.historico[0].ym, true) + ' a ' + monthLabel(m.ym, true));
+    setHS('bh-kpi-saldo', sum.saldoDisponivelH);
+    setText('bh-kpi-saldo-sub', sum.saldoDisponivelH < 0
+      ? 'Adiantamento · restam ' + fmtH(sum.saldoDisponivelH + BH_LIMITE_NEGATIVO_H) + ' até −' + BH_LIMITE_NEGATIVO_H + 'h'
+      : 'Aprovado · limite −' + BH_LIMITE_NEGATIVO_H + 'h');
+
+    setText('bh-week-note',
+      'Em ' + monthLabel(m.ym) + (m.parcial && !m.futuro ? ' (até hoje)' : '') + ', foram lançadas ' + fmtH(m.registrado) +
+      (m.creditado > 0 ? ' e creditadas ' + fmtH(m.creditado) + ' de feriados/ausências' : '') +
+      ' para uma jornada esperada de ' + fmtH(m.esperado) + ', saldo de ' + fmtHS(m.saldo) + ' no mês.' +
+      ' Nos últimos ' + sum.historico.length + ' meses o saldo apurado acumulado é ' + fmtHS(sum.acumulado) +
+      '. O saldo oficial do banco (horas aprovadas menos ausências compensadas) é ' + fmtHS(sum.saldoDisponivelH) + '.'
+    );
+
+    // Histórico
+    var hist = document.getElementById('bh-hist-wrap');
+    if (hist) {
+      var acc = 0;
+      var rows = sum.historico.map(function(h) {
+        acc = round1(acc + h.saldo);
+        return '<tr class="' + (h.ym === m.ym ? 'sel' : '') + '">' +
+          '<td>' + esc(monthLabel(h.ym)) + (h.parcial && !h.futuro ? ' <span class="bh-month-tag">parcial</span>' : '') + '</td>' +
+          '<td>' + esc(fmtH(h.esperado)) + '</td>' +
+          '<td>' + esc(fmtH(h.registrado)) + '</td>' +
+          '<td class="bh-credito">' + (h.creditado > 0 ? esc(fmtH(h.creditado)) : '—') + '</td>' +
+          '<td class="' + clsHS(h.saldo) + '">' + esc(fmtHS(h.saldo)) + '</td>' +
+          '<td class="' + clsHS(acc) + '">' + esc(fmtHS(acc)) + '</td>' +
+        '</tr>';
+      }).join('');
+      hist.innerHTML = '<table class="bh-hist"><thead><tr><th>Mês</th><th>Esperado</th><th>Lançado</th><th>Fer./aus.</th><th>Saldo do mês</th><th>Acumulado</th></tr></thead><tbody>' +
+        rows + '</tbody></table>';
+    }
+
+    // Formulário — crédito de horas do mês selecionado
     setText('bh-pill-elegivel', fmtH(sum.excessoElegivelH));
     setText('bh-pill-solicitadas', fmtH(sum.jaSolicitadoH));
     setText('bh-pill-disponivel', fmtH(sum.disponivelSolicitarH));
-    setText('bh-kpi-jornada-sub', sum.jornadaDefaulted ? 'Sem cadastro em Pessoas; usando 40h' : 'Meta contratada');
-    setText('bh-kpi-elegivel-sub', sum.excessoElegivelH > 0 ? 'Horas inteiras reconhecíveis' : 'Sem horas reconhecíveis nesta semana');
-    setText('bh-week-note',
-      'Nesta semana, foram registradas ' + fmtH(sum.horasRegistradasH) +
-      ' para uma jornada de ' + fmtH(sum.jornadaSemanalH) +
-      '. O excesso bruto é ' + fmtH(sum.excessoBrutoH) +
-      ', mas somente ' + fmtH(sum.excessoElegivelH) +
-      ' entram como horas reconhecíveis. Já existem ' + fmtH(sum.jaSolicitadoH) +
-      ' em solicitações abertas para esta semana, deixando ' + fmtH(sum.disponivelSolicitarH) +
-      ' ainda disponíveis para pedir.'
-    );
     var qty = document.getElementById('apo-bh-qty');
     if (qty) qty.max = String(Math.max(sum.disponivelSolicitarH, 0));
     setText('bh-qty-note',
       sum.disponivelSolicitarH > 0
-        ? 'Somente horas inteiras reconhecíveis. Restam ' + fmtH(sum.disponivelSolicitarH) + ' disponíveis nesta semana.'
-        : 'Não há horas inteiras elegíveis disponíveis para solicitar nesta semana.'
+        ? 'Restam ' + fmtH(sum.disponivelSolicitarH) + ' do saldo positivo de ' + monthLabel(m.ym) + ' para registrar.'
+        : 'Não há horas inteiras positivas disponíveis em ' + monthLabel(m.ym) + '.'
     );
+    // Formulário — ausência
+    setHS('bh-pill-saldo', sum.saldoDisponivelH);
+    setText('bh-pill-pend-aus', fmtH(sum.ausenciasPendentesH));
+    updateBhAusenciaNote();
+  }
+  function setHS(id, h) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = fmtHS(h);
+    el.classList.remove('pos','neg');
+    var c = clsHS(h); if (c) el.classList.add(c);
   }
 
   function renderBancoRequests() {
@@ -1489,7 +1683,9 @@ body{
       html += '<div class="bh-item">' +
         '<div class="bh-item-top">' +
           '<div class="bh-item-main">' +
-            '<div class="bh-item-title">' + esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim)) + '</div>' +
+            '<div class="bh-item-title">' + (r.destino_solicitado === 'ausencia_banco'
+              ? 'Ausência · ' + esc(fmtDateFull(r.data_ausencia)) + ' · ' + esc(formatBhPeriodo(r.periodo_ausencia))
+              : esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim))) + '</div>' +
             '<div class="bh-item-meta">Solicitado em ' + esc(new Date(r.created_at || Date.now()).toLocaleDateString('pt-BR')) +
             ' · pedido: ' + esc(fmtH(r.quantidade_solicitada_h)) +
             ' · pretendido: ' + esc(formatBhDestino(r.destino_solicitado)) + '</div>' +
@@ -1534,6 +1730,29 @@ body{
     }
     var html = '<div class="lanc-lista-box">';
     rows.forEach(function(r) {
+      if (r.destino_solicitado === 'ausencia_banco') {
+        var saldoAtual = Number((AP.bankSaldosPend || {})[r.usuario_id] || 0);
+        var saldoApos = saldoAtual - Number(r.quantidade_solicitada_h || 0);
+        html += '<div class="bh-item">' +
+          '<div class="bh-item-top">' +
+            '<div class="bh-item-main">' +
+              '<div class="bh-item-title">' + esc(r.usuario_nome || 'Usuário') + ' · ausência ' + esc(fmtDateFull(r.data_ausencia)) + ' · ' + esc(formatBhPeriodo(r.periodo_ausencia)) + '</div>' +
+              '<div class="bh-item-meta">Descontar ' + esc(fmtH(r.quantidade_solicitada_h)) + ' do banco · saldo atual ' + esc(fmtHS(saldoAtual)) +
+              ' → após ' + esc(fmtHS(saldoApos)) + (saldoApos < -BH_LIMITE_NEGATIVO_H ? ' (excede o limite de −' + BH_LIMITE_NEGATIVO_H + 'h)' : '') + '</div>' +
+            '</div>' +
+            '<div class="bh-item-badges"><span class="bh-mini-pill am">Pendente</span>' + (saldoApos < 0 ? '<span class="bh-mini-pill warn">Adiantamento</span>' : '') + '</div>' +
+          '</div>' +
+          (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+          '<div class="bh-admin-actions">' +
+            '<div class="apo-field" style="grid-column:1 / -1"><label for="bh-note-' + esc(r.id) + '">Observação</label><input type="text" id="bh-note-' + esc(r.id) + '" placeholder="Observação da decisão"></div>' +
+          '</div>' +
+          '<div class="apo-actions">' +
+            '<button type="button" class="apo-btn apo-btn-primary apo-btn-sm" data-bh-approve="' + esc(r.id) + '">Aprovar ausência</button>' +
+            '<button type="button" class="apo-btn apo-btn-sm" data-bh-refuse="' + esc(r.id) + '">Recusar</button>' +
+          '</div>' +
+        '</div>';
+        return;
+      }
       html += '<div class="bh-item">' +
         '<div class="bh-item-top">' +
           '<div class="bh-item-main">' +
@@ -1578,61 +1797,83 @@ body{
   }
 
   async function loadBancoData() {
-    var u = uid(), info = AP.weekInfo;
-    if (!u || !info) return;
+    var u = uid();
+    if (!u) return;
+    if (!AP.bankMonth) AP.bankMonth = (AP.weekInfo ? AP.weekInfo.start : localIso()).slice(0,7);
+    var ymSel = AP.bankMonth;
+    var ymIni = shiftMonth(ymSel, -(BH_MESES_HISTORICO - 1));
+    var rangeIni = monthBounds(ymIni).start, rangeFim = monthBounds(ymSel).end;
     AP.bankSqlReady = true;
     try {
-      var horasRes = await window.sb
-        .from('horas_lancadas')
-        .select('data_lancamento,hora_inicio,hora_fim')
-        .eq('usuario_id', u)
-        .gte('data_lancamento', info.start)
-        .lte('data_lancamento', info.end);
-      if (horasRes.error) throw horasRes.error;
-
-      var [jornadaRes, saldoRes, reqRes, pendingRes] = await Promise.all([
+      var admin = isSocioAdmRole(AP.user && AP.user.role);
+      var [horasRes, jornadaRes, saldoRes, reqRes, pendingRes, creditos] = await Promise.all([
+        window.sb.from('horas_lancadas').select('data_lancamento,hora_inicio,hora_fim')
+          .eq('usuario_id', u).gte('data_lancamento', rangeIni).lte('data_lancamento', rangeFim),
         window.sb.from('usuarios_jornada').select('jornada_semanal_h').eq('usuario_id', u).maybeSingle(),
         window.sb.from('banco_horas_saldo').select('horas_disponiveis,horas_pagamento_pendente').eq('usuario_id', u).maybeSingle(),
         window.sb.from('banco_horas_solicitacoes').select('*').eq('usuario_id', u).order('created_at', { ascending:false }).limit(30),
-        isSocioAdmRole(AP.user && AP.user.role)
+        admin
           ? window.sb.from('banco_horas_solicitacoes').select('*').eq('status_solicitacao', 'pendente').order('created_at', { ascending:true }).limit(30)
           : Promise.resolve({ data: [], error: null }),
+        // Feriados/ausências/compensações — contam como horas trabalhadas (opcional)
+        window.ExpHorasCredito
+          ? window.ExpHorasCredito.carregar(window.sb, u, rangeIni, rangeFim, { nucleoId: AP.user && (AP.user.nucleo_id || AP.user.nucleo) })
+              .then(function(c){ return c; }, function(){ return null; })
+          : Promise.resolve(null),
       ]);
 
+      if (horasRes.error) throw horasRes.error;
       if (jornadaRes.error) throw jornadaRes.error;
       if (saldoRes.error && saldoRes.error.code !== 'PGRST116') throw saldoRes.error;
       if (reqRes.error) throw reqRes.error;
       if (pendingRes && pendingRes.error) throw pendingRes.error;
-
-      var horas = horasRes.data || [];
       var jornada = Number((jornadaRes.data && jornadaRes.data.jornada_semanal_h) || 40);
-      var total = round1(horas.reduce(function(sum, row) {
-        return sum + diffH(row.hora_inicio, row.hora_fim);
-      }, 0));
-      var excessoBruto = calcExcessoBruto(total, jornada);
-      var excessoElegivel = calcExcessoElegivel(total, jornada);
+      var ctx = { jornada: jornada, horas: horasRes.data || [], creditos: creditos };
+      var historico = [];
+      for (var i = BH_MESES_HISTORICO - 1; i >= 0; i--) historico.push(apurarMes(shiftMonth(ymSel, -i), ctx));
+      var mes = historico[historico.length - 1];
+      var acumulado = round1(historico.reduce(function(s2, h){ return s2 + h.saldo; }, 0));
+
       var reqs = reqRes.data || [];
-      var jaSolicitado = reqs
-        .filter(function(r) {
-          return r.semana_inicio === info.start &&
-            r.status_solicitacao !== 'recusado' &&
-            r.status_solicitacao !== 'cancelado';
-        })
-        .reduce(function(sum, r) { return sum + Number(r.quantidade_solicitada_h || 0); }, 0);
+      var ativa = function(r) { return r.status_solicitacao !== 'recusado' && r.status_solicitacao !== 'cancelado'; };
+      // Crédito de horas: tudo que já foi pedido com período dentro do mês (inclui pedidos
+      // semanais antigos) é abatido do elegível do mês.
+      var jaSolicitado = reqs.filter(function(r) {
+        return r.destino_solicitado !== 'ausencia_banco' && ativa(r) &&
+          r.semana_inicio >= mes.start && r.semana_inicio <= mes.end;
+      }).reduce(function(s2, r) { return s2 + Number(r.quantidade_solicitada_h || 0); }, 0);
+      var ausPend = reqs.filter(function(r) {
+        return r.destino_solicitado === 'ausencia_banco' && r.status_solicitacao === 'pendente';
+      }).reduce(function(s2, r) { return s2 + Number(r.quantidade_solicitada_h || 0); }, 0);
+      var excessoElegivel = mes.saldo >= 1 ? Math.floor(mes.saldo) : 0;
       var saldo = saldoRes.data || {};
       AP.bankSummary = {
+        mes: mes,
+        historico: historico,
+        acumulado: acumulado,
         jornadaSemanalH: jornada,
         jornadaDefaulted: !(jornadaRes.data && jornadaRes.data.jornada_semanal_h != null),
-        horasRegistradasH: total,
-        excessoBrutoH: excessoBruto,
+        horasRegistradasH: mes.registrado,
+        excessoBrutoH: Math.max(mes.saldo, 0),
         excessoElegivelH: excessoElegivel,
         jaSolicitadoH: Number(jaSolicitado || 0),
         disponivelSolicitarH: Math.max(excessoElegivel - Number(jaSolicitado || 0), 0),
         saldoDisponivelH: Number(saldo.horas_disponiveis || 0),
         saldoPagamentoPendenteH: Number(saldo.horas_pagamento_pendente || 0),
+        ausenciasPendentesH: Number(ausPend || 0),
       };
       AP.bankRequests = reqs;
       AP.bankPending = pendingRes && pendingRes.data ? pendingRes.data : [];
+
+      // Saldo de quem tem ausência pendente (para o sócio adm ver o efeito da aprovação)
+      AP.bankSaldosPend = {};
+      var idsAus = AP.bankPending.filter(function(r){ return r.destino_solicitado === 'ausencia_banco'; })
+        .map(function(r){ return r.usuario_id; });
+      if (idsAus.length) {
+        var sp = await window.sb.from('banco_horas_saldo').select('usuario_id,horas_disponiveis').in('usuario_id', idsAus);
+        (sp.data || []).forEach(function(row){ AP.bankSaldosPend[row.usuario_id] = Number(row.horas_disponiveis || 0); });
+      }
+
       renderBancoResumo();
       renderBancoRequests();
       renderBancoAdmin();
@@ -1645,17 +1886,58 @@ body{
     }
   }
 
-  function updateBhDestinoUI() {
-    var destino = document.getElementById('apo-bh-destino').value;
-    var isComp = destino === 'compensacao';
-    var dataWrap = document.getElementById('apo-bh-data-wrap');
-    var periodoWrap = document.getElementById('apo-bh-periodo-wrap');
-    if (dataWrap) dataWrap.style.display = isComp ? 'block' : 'none';
-    if (periodoWrap) periodoWrap.style.display = isComp ? 'block' : 'none';
-    if (!isComp) {
-      var dataEl = document.getElementById('apo-bh-data');
-      if (dataEl) dataEl.value = '';
+  function shiftBankMonth(delta) {
+    AP.bankMonth = shiftMonth(AP.bankMonth || localIso().slice(0,7), delta);
+    loadBancoData().catch(function(){});
+  }
+
+  function bhHorasPadraoAusencia() {
+    var jornada = (AP.bankSummary && AP.bankSummary.jornadaSemanalH) || 40;
+    var periodo = document.getElementById('apo-bh-periodo').value;
+    var h = jornada / 5 * (periodo === 'todo' ? 1 : 0.5);
+    return Math.max(1, Math.round(h));
+  }
+
+  function updateBhAusenciaNote() {
+    var sum = AP.bankSummary;
+    var el = document.getElementById('bh-aus-note');
+    if (!sum || !el) return;
+    var horas = parseInt(document.getElementById('apo-bh-aus-horas').value || '0', 10) || 0;
+    var apos = sum.saldoDisponivelH - sum.ausenciasPendentesH - horas;
+    el.classList.toggle('warn', apos < 0);
+    if (apos < -BH_LIMITE_NEGATIVO_H) {
+      el.textContent = 'Excede o limite: o saldo ficaria em ' + fmtHS(apos) + ' (máximo −' + BH_LIMITE_NEGATIVO_H + 'h).';
+    } else if (horas > 0) {
+      el.textContent = 'Saldo após a ausência' + (sum.ausenciasPendentesH ? ' (contando as pendentes)' : '') + ': ' + fmtHS(apos) +
+        (apos < 0 ? ' — adiantamento, limite −' + BH_LIMITE_NEGATIVO_H + 'h.' : '.');
+    } else {
+      el.textContent = 'O saldo pode ficar negativo (adiantamento) até −' + BH_LIMITE_NEGATIVO_H + 'h.';
     }
+  }
+
+  function updateBhTipoUI() {
+    var tipo = document.getElementById('apo-bh-tipo').value;
+    var isAus = tipo === 'ausencia';
+    document.getElementById('apo-bh-credito-wrap').style.display = isAus ? 'none' : '';
+    document.getElementById('apo-bh-ausencia-wrap').style.display = isAus ? '' : 'none';
+    if (isAus) {
+      var hEl = document.getElementById('apo-bh-aus-horas');
+      if (!hEl.value) hEl.value = String(bhHorasPadraoAusencia());
+      updateBhAusenciaNote();
+    }
+  }
+
+  function updateBhDestinoUI() {
+    // Data/período agora pertencem só ao tipo "Ausência usando o banco de horas".
+    updateBhTipoUI();
+  }
+
+  function resetBhForm() {
+    document.getElementById('apo-bh-form').reset();
+    document.getElementById('apo-bh-tipo').value = 'credito';
+    document.getElementById('apo-bh-destino').value = 'compensacao';
+    document.getElementById('apo-bh-aus-horas').value = '';
+    updateBhTipoUI();
   }
 
   async function submitBancoHoras(ev) {
@@ -1666,37 +1948,60 @@ body{
     btn.textContent = 'Salvando…';
     try {
       if (!AP.bankSummary) await loadBancoData();
-      if (!AP.bankSqlReady) throw new Error('Execute o SQL da DEV-08 antes de solicitar horas adicionais.');
+      if (!AP.bankSqlReady) throw new Error('Execute o SQL da DEV-08 antes de usar o banco de horas.');
       var sum = AP.bankSummary;
-      var qty = parseInt(document.getElementById('apo-bh-qty').value || '0', 10);
-      var destino = document.getElementById('apo-bh-destino').value;
+      var tipo = document.getElementById('apo-bh-tipo').value;
       var justificativa = document.getElementById('apo-bh-justificativa').value.trim();
-      var dataAusencia = destino === 'compensacao' ? (document.getElementById('apo-bh-data').value || null) : null;
-      var periodoAusencia = destino === 'compensacao' ? (document.getElementById('apo-bh-periodo').value || 'todo') : null;
-      if (!qty || qty <= 0) throw new Error('Informe uma quantidade inteira válida.');
-      if (qty > sum.disponivelSolicitarH) throw new Error('A solicitação não pode ultrapassar o saldo elegível disponível da semana.');
-      var ins = await window.sb.from('banco_horas_solicitacoes').insert({
+      var payload = {
         usuario_id: uid(),
         usuario_nome: AP.user && AP.user.nome ? AP.user.nome : null,
-        semana_inicio: AP.weekInfo.start,
-        semana_fim: AP.weekInfo.end,
         jornada_semanal_h: sum.jornadaSemanalH,
-        horas_registradas_h: sum.horasRegistradasH,
-        excesso_bruto_h: sum.excessoBrutoH,
-        excesso_elegivel_h: sum.excessoElegivelH,
-        quantidade_solicitada_h: qty,
-        destino_solicitado: destino,
         status_solicitacao: 'pendente',
         status_destino: 'aguardando_definicao',
         justificativa: justificativa || null,
-        data_ausencia: dataAusencia,
-        periodo_ausencia: periodoAusencia,
-      });
+      };
+      if (tipo === 'ausencia') {
+        var data = document.getElementById('apo-bh-data').value;
+        var periodo = document.getElementById('apo-bh-periodo').value || 'todo';
+        var horas = parseInt(document.getElementById('apo-bh-aus-horas').value || '0', 10);
+        if (!data) throw new Error('Informe a data da ausência.');
+        if (!horas || horas <= 0) throw new Error('Informe quantas horas serão descontadas do banco.');
+        var apos = sum.saldoDisponivelH - sum.ausenciasPendentesH - horas;
+        if (apos < -BH_LIMITE_NEGATIVO_H - 0.001)
+          throw new Error('Esta ausência deixaria o banco em ' + fmtHS(apos) + '. O adiantamento máximo é de −' + BH_LIMITE_NEGATIVO_H + 'h.');
+        var mbA = monthBounds(data.slice(0,7));
+        Object.assign(payload, {
+          semana_inicio: mbA.start,
+          semana_fim: mbA.end,
+          horas_registradas_h: 0,
+          excesso_bruto_h: 0,
+          excesso_elegivel_h: 0,
+          quantidade_solicitada_h: horas,
+          destino_solicitado: 'ausencia_banco',
+          data_ausencia: data,
+          periodo_ausencia: periodo,
+        });
+      } else {
+        var qty = parseInt(document.getElementById('apo-bh-qty').value || '0', 10);
+        var destino = document.getElementById('apo-bh-destino').value;
+        if (!qty || qty <= 0) throw new Error('Informe uma quantidade inteira válida.');
+        if (qty > sum.disponivelSolicitarH) throw new Error('A solicitação não pode ultrapassar o saldo positivo disponível do mês (' + fmtH(sum.disponivelSolicitarH) + ').');
+        Object.assign(payload, {
+          semana_inicio: sum.mes.start,
+          semana_fim: sum.mes.end,
+          horas_registradas_h: sum.horasRegistradasH,
+          excesso_bruto_h: sum.excessoBrutoH,
+          excesso_elegivel_h: sum.excessoElegivelH,
+          quantidade_solicitada_h: qty,
+          destino_solicitado: destino,
+          data_ausencia: null,
+          periodo_ausencia: null,
+        });
+      }
+      var ins = await window.sb.from('banco_horas_solicitacoes').insert(payload);
       if (ins.error) throw ins.error;
-      document.getElementById('apo-bh-form').reset();
-      document.getElementById('apo-bh-destino').value = 'compensacao';
-      updateBhDestinoUI();
-      setFb('apo-bh-feedback', 'Solicitação registrada.', 'ok');
+      resetBhForm();
+      setFb('apo-bh-feedback', tipo === 'ausencia' ? 'Ausência solicitada. Aguarda aprovação.' : 'Solicitação registrada.', 'ok');
       await loadBancoData();
     } catch(e) {
       setFb('apo-bh-feedback', e.message, 'err');
@@ -1746,14 +2051,17 @@ body{
     var compensadasAntes = Number(row.horas_compensadas || 0);
     var saldoDepois = saldoAntes - Number(deltaHoras || 0);
     var compensadasDepois = compensadasAntes + Number(deltaHoras || 0);
+    // O saldo pode ficar negativo (adiantamento) até −BH_LIMITE_NEGATIVO_H
+    if (saldoDepois < -BH_LIMITE_NEGATIVO_H - 0.001)
+      throw new Error('O banco ficaria em ' + fmtHS(saldoDepois) + ' — o adiantamento máximo é de −' + BH_LIMITE_NEGATIVO_H + 'h.');
     var upd = await window.sb.from('banco_horas_saldo').upsert({
       usuario_id: usuarioId,
-      horas_disponiveis: Math.max(0, Number(saldoDepois.toFixed(2))),
+      horas_disponiveis: Number(saldoDepois.toFixed(2)),
       horas_compensadas: Math.max(0, Number(compensadasDepois.toFixed(2))),
       updated_at: new Date().toISOString(),
     }, { onConflict:'usuario_id' });
     if (upd.error) throw upd.error;
-    return { saldoAntes: Number(saldoAntes.toFixed(2)), saldoDepois: Math.max(0, Number(saldoDepois.toFixed(2))) };
+    return { saldoAntes: Number(saldoAntes.toFixed(2)), saldoDepois: Number(saldoDepois.toFixed(2)) };
   }
 
   // Registra a ausência no calendário (tipo compensacao_bh, igual ao fluxo manual de
@@ -1795,6 +2103,7 @@ body{
     if (!isSocioAdmRole(AP.user && AP.user.role)) throw new Error('A aprovação é restrita a sócios administrativos.');
     var base = (AP.bankPending || []).find(function(r){ return String(r.id) === String(id); });
     if (!base) throw new Error('Solicitação não encontrada.');
+    if (base.destino_solicitado === 'ausencia_banco') return approveAusenciaBanco(base);
     var aprov = parseInt(document.getElementById('bh-approve-' + id).value || '0', 10);
     var comp = parseInt(document.getElementById('bh-comp-' + id).value || '0', 10);
     var pay = parseInt(document.getElementById('bh-pay-' + id).value || '0', 10);
@@ -1832,6 +2141,31 @@ body{
       }
     }
     setFb('apo-bh-feedback', feedbackMsg, 'ok');
+    await loadBancoData();
+  }
+
+  // Ausência pelo banco: registra a folga no calendário e desconta do saldo (pode ficar
+  // negativo até o limite). O débito é validado de novo aqui com o saldo atual.
+  async function approveAusenciaBanco(base) {
+    var obs = ((document.getElementById('bh-note-' + base.id) || {}).value || '').trim();
+    var horas = Number(base.quantidade_solicitada_h || 0);
+    if (!base.data_ausencia || horas <= 0) throw new Error('Solicitação de ausência incompleta (data ou horas).');
+    await registrarAusenciaCompensacaoBh(base.usuario_id, base.data_ausencia, base.periodo_ausencia || 'todo', horas, obs || base.justificativa || null, uid());
+    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+      quantidade_aprovada_h: horas,
+      horas_para_compensacao_h: 0,
+      horas_para_pagamento_h: 0,
+      destino_aprovado: 'ausencia_banco',
+      status_solicitacao: 'aprovado_integralmente',
+      status_destino: 'encerrado',
+      observacao_decisao: obs || null,
+      aprovado_por: uid(),
+      aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+      aprovado_em: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', base.id).eq('status_solicitacao', 'pendente');
+    if (upd.error) throw new Error('Ausência registrada no calendário, mas houve erro ao atualizar a solicitação: ' + upd.error.message);
+    setFb('apo-bh-feedback', 'Ausência aprovada e registrada no calendário.', 'ok');
     await loadBancoData();
   }
 
@@ -2776,11 +3110,17 @@ body{
     document.getElementById('apo-cost-reset').addEventListener('click',resetCostForm);
     document.getElementById('apo-bh-form').addEventListener('submit',submitBancoHoras);
     document.getElementById('apo-bh-destino').addEventListener('change',updateBhDestinoUI);
+    document.getElementById('apo-bh-tipo').addEventListener('change',updateBhTipoUI);
+    document.getElementById('apo-bh-periodo').addEventListener('change',function(){
+      document.getElementById('apo-bh-aus-horas').value = String(bhHorasPadraoAusencia());
+      updateBhAusenciaNote();
+    });
+    document.getElementById('apo-bh-aus-horas').addEventListener('input',updateBhAusenciaNote);
+    document.getElementById('bh-month-prev').addEventListener('click',function(){ shiftBankMonth(-1); });
+    document.getElementById('bh-month-next').addEventListener('click',function(){ shiftBankMonth(1); });
     updateBhDestinoUI();
     document.getElementById('apo-bh-reset').addEventListener('click',function(){
-      document.getElementById('apo-bh-form').reset();
-      document.getElementById('apo-bh-destino').value = 'compensacao';
-      updateBhDestinoUI();
+      resetBhForm();
       setFb('apo-bh-feedback','','');
     });
 
