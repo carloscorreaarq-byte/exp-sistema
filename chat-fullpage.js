@@ -132,6 +132,13 @@
   function togglePin(channel) {
     isPinned(channel) ? unpinChannel(channel) : pinChannel(channel);
   }
+  /* Botão de fixar na linha do projeto (lista de conversas) */
+  function toggleProjectPin(channel) {
+    togglePin(channel);
+    if (typeof updateHeaderPinBtn === 'function') updateHeaderPinBtn();
+    if (typeof updateSidebarPinBtn === 'function') updateSidebarPinBtn();
+    renderConvList();
+  }
 
   /* ── Pin: DMs fixadas pelo usuário ── */
   function toggleDmPin(channel) {
@@ -1366,7 +1373,14 @@
         '</div>' +
         '<div class="fp-conv-preview">' + escHtml(preview) + '</div>' +
       '</div>' +
-      pinIco +
+      /* Projetos: botão de fixar ao passar o mouse (sempre visível quando já fixado) */
+      (isProj
+        ? '<button class="fp-dm-pin-btn' + (pinned ? ' is-pinned' : '') + '" title="' + (pinned ? 'Desafixar projeto' : 'Fixar projeto') + '" ' +
+            'onclick="event.stopPropagation();fpChat.toggleProjectPin(\'' + chanJson + '\')">' +
+            '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (pinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
+          '</button>'
+        : pinIco) +
       (unread > 0 ? '<div class="fp-conv-badge">' + unread + '</div>' : '') +
       '</div>';
   }
@@ -1603,8 +1617,14 @@
   /* ═══════════════════════════════════════════════════════════════════
      NOVO DM
   ═══════════════════════════════════════════════════════════════════ */
+  var membersFilter = '';
+  function filterMembers(q) { membersFilter = String(q || ''); renderMembersModal(); }
+
   function openNewDM(event) {
     selectedMembers = [];
+    membersFilter = '';
+    var $q = document.getElementById('fp-members-q');
+    if ($q) { $q.value = ''; setTimeout(function(){ $q.focus(); }, 60); }
     var $panel = document.getElementById('fp-members-panel');
     var $btn   = document.getElementById('fp-new-dm-btn');
     if (!$panel) return;
@@ -1654,7 +1674,17 @@
     if (!teamMembers.length) { $list.innerHTML='<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Carregando...</div>'; return; }
     var roleLabel = { socio:'Sócio', socio_adm:'Sócio administrador', socio_admin:'Sócio administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
     var html = '';
-    teamMembers.forEach(function(m) {
+    /* Online primeiro (depois foco/ausente, offline), em ordem alfabética; filtra pela busca */
+    var rankP = { online:0, foco:1, ausente:2 };
+    var qf = membersFilter.trim().toLowerCase();
+    var lista = teamMembers.filter(function(m){ return !qf || String(m.nome||'').toLowerCase().indexOf(qf) !== -1; })
+      .slice().sort(function(a,b){
+        var pa = onlinePresence[a.auth_id], pb = onlinePresence[b.auth_id];
+        var ra = pa ? (rankP[pa.status] ?? 3) : 4, rb = pb ? (rankP[pb.status] ?? 3) : 4;
+        return ra !== rb ? ra - rb : String(a.nome||'').localeCompare(String(b.nome||''), 'pt-BR');
+      });
+    if (!lista.length) html = '<div class="fp-members-empty">Ninguém encontrado.</div>';
+    lista.forEach(function(m) {
       var cor = m.cor||'#1D6A4A';
       var ini = m.iniciais||(m.nome||'').substring(0,2).toUpperCase();
       var sel = selectedMembers.findIndex(function(s){return s.auth_id===m.auth_id;})!==-1;
@@ -1680,7 +1710,11 @@
     $list.innerHTML = html;
     var n = selectedMembers.length;
     var $info = document.getElementById('fp-members-info');
-    if ($info) $info.textContent = n===0?'Selecione um ou mais membros': n===1?'1 pessoa selecionada': n+' pessoas selecionadas';
+    if ($info) $info.textContent = n===0 ? 'Nenhuma pessoa selecionada'
+      : n===1 ? firstName(selectedMembers[0].nome) + ' selecionado(a)'
+      : n + ' pessoas selecionadas';
+    var $btnOk = document.getElementById('fp-members-confirm');
+    if ($btnOk) $btnOk.disabled = n === 0;
   }
   function toggleMember(authId) {
     var idx = selectedMembers.findIndex(function(m){return m.auth_id===authId;});
@@ -2220,7 +2254,12 @@
     reactionLocks[lockKey]=true;
     sb.rpc(isPrj?'chat_thread_toggle_reaction':'chat_toggle_reaction', {p_message_id:msgId,p_reaction:type})
       .then(function(r){
-        if(r.error){ msg.reactions=rx; renderMessages(); return; }
+        if(r.error){
+          msg.reactions=rx; renderMessages();
+          console.warn('[EXP ChatFP] Erro ao reagir:', r.error.message);
+          setComposerStatus('Não foi possível salvar a reação.','err',false);
+          return;
+        }
         var upd=Array.isArray(r.data)?r.data[0]:r.data;
         if(upd&&upd.id) upsertMessage(isPrj?normalizeProjectMessage(upd):upd);
         renderMessages();
@@ -3993,10 +4032,10 @@
   ═══════════════════════════════════════════════════════════════════ */
   window.fpChat = {
     openChannel, filterConvs, toggleProjectSection,
-    toggleStatusPop, setStatus, toggleSoundPop, setSoundLevel, toggleDmPin,
+    toggleStatusPop, setStatus, toggleSoundPop, setSoundLevel, toggleDmPin, toggleProjectPin,
     setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
-    openNewDM, closeNewDM, toggleMember, confirmNewDM, openDMWith,
+    openNewDM, closeNewDM, toggleMember, confirmNewDM, openDMWith, filterMembers,
     fpBackToMembers, fpFinalizeGroup, renameConversation, loadOlderMessages, deleteMessage,
     openMembersPanel, closeMembersPanel, addGroupMember, removeGroupMember, leaveGroup,
     startReply, cancelReply, scrollToMessage, downloadArquivo,

@@ -518,6 +518,29 @@ body{
 .apo-btn-primary:hover{background:var(--verde-hover, #33664A);border-color:var(--verde-hover, #33664A);color:#fff;}
 [data-theme="dark"] .apo-btn-primary{background:#4E9A6E;border-color:#4E9A6E;color:#fff;}
 [data-theme="dark"] .apo-btn-primary:hover{background:#5FAD7E;border-color:#5FAD7E;}
+/* Botões no mesmo visual da Gestão (Revisões): compactos, raio de botão, contorno
+   neutro; principal verde sólido; recusar/cancelar com contorno terracota */
+.apo-btn{
+  height:auto;min-height:0;padding:7px 16px;border-radius:var(--radius-btn,6px);
+  border:1px solid var(--cinza);background:var(--branco);color:#6B6862;
+  font-size:12px;font-weight:600;line-height:1.2;
+}
+.apo-btn:hover{border-color:var(--grafite);color:var(--grafite);}
+.apo-btn-sm{padding:5px 12px;font-size:11px;}
+.apo-btn.apo-btn-primary{flex:0 0 auto;background:var(--verde);border-color:var(--verde);color:#fff;}
+.apo-btn.apo-btn-primary:hover{background:var(--verde-hover, #33664A);border-color:var(--verde-hover, #33664A);color:#fff;}
+[data-theme="dark"] .apo-btn.apo-btn-primary{background:#4E9A6E;border-color:#4E9A6E;color:#fff;}
+[data-theme="dark"] .apo-btn.apo-btn-primary:hover{background:#5FAD7E;border-color:#5FAD7E;}
+.apo-btn[data-bh-refuse],.apo-btn[data-bh-cancel]{color:var(--terracota);border-color:var(--terracota);background:var(--branco);}
+.apo-btn[data-bh-refuse]:hover,.apo-btn[data-bh-cancel]:hover{background:var(--terracota);color:#fff;}
+[data-theme="dark"] .apo-btn{background:#1D1D1B;border-color:#3A3836;color:#B9B7AF;}
+[data-theme="dark"] .apo-btn[data-bh-refuse],[data-theme="dark"] .apo-btn[data-bh-cancel]{background:transparent;color:#D27A5E;border-color:#D27A5E;}
+/* Ações dos formulários: principal à direita, Limpar ao lado */
+.apo-form-card .apo-actions{flex-direction:row-reverse;justify-content:flex-start;margin-top:14px;}
+/* Setas de mês do Banco no mesmo estilo de botão */
+.bh-month-nav button{width:30px;height:30px;border:1px solid var(--cinza);border-radius:var(--radius-btn,6px);background:var(--branco);color:#6B6862;font-size:11px;}
+.bh-month-nav button:hover{border-color:var(--grafite);color:var(--grafite);}
+[data-theme="dark"] .bh-month-nav button{background:#1D1D1B;border-color:#3A3836;color:#B9B7AF;}
 /* Indicadores com faixa colorida (como os stats da Gestão) */
 .apo-kpi{position:relative;overflow:hidden;padding:10px 14px 10px 17px;}
 .apo-kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--verde);}
@@ -595,8 +618,8 @@ body{
       <div class="apo-head"><h1>Apontamentos</h1></div>
       <div class="stab-bar">
         <button class="stab active" id="stab-horas" type="button">Horas</button>
-        <button class="stab" id="stab-custos" type="button">Custos</button>
         <button class="stab" id="stab-banco" type="button">Banco</button>
+        <button class="stab" id="stab-custos" type="button">Custos</button>
         <button class="stab" id="stab-historico" type="button">Histórico</button>
       </div>
 
@@ -859,6 +882,11 @@ body{
           <div class="bh-note-box">
             <div class="bh-note-title">Leitura do período</div>
             <div class="bh-note-text" id="bh-week-note">Carregando banco de horas…</div>
+          </div>
+
+          <div class="sec-title" id="bh-weeks-title">Semanas do mês</div>
+          <div class="bh-hist-wrap lanc-lista-box" id="bh-weeks-wrap">
+            <div class="bh-empty">Carregando…</div>
           </div>
 
           <div class="sec-title">Histórico dos últimos meses</div>
@@ -1641,6 +1669,58 @@ body{
     };
   }
 
+  // Semanas do mês: cada semana (segunda a domingo) recortada aos dias do mês e até hoje.
+  // Mesma regra do mês: esperado = (jornada/5) por dia útil; feriados/ausências creditados.
+  function apurarSemanasMes(ym, ctx) {
+    var mb = monthBounds(ym);
+    var hoje = localIso();
+    var diaH = (Number(ctx.jornada) || 40) / 5;
+    var semanas = [];
+    var d = new Date(mb.start + 'T12:00:00');
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));        // segunda-feira da 1ª semana
+    while (localIso(d) <= mb.end) {
+      var segIso = localIso(d);
+      var dom = new Date(d); dom.setDate(dom.getDate() + 6);
+      var ini = segIso < mb.start ? mb.start : segIso;
+      var fim = localIso(dom) > mb.end ? mb.end : localIso(dom);
+      var ate = fim < hoje ? fim : hoje;
+      var esperado = 0;
+      if (ate >= ini) eachDay(ini, ate, function(iso, dow){ if (dow !== 0 && dow !== 6) esperado += diaH; });
+      var creditado = (ate >= ini && window.ExpHorasCredito) ? window.ExpHorasCredito.total(ctx.creditos, ini, ate) : 0;
+      var registrado = (ctx.horas || []).reduce(function(sum, r) {
+        var dl = String(r.data_lancamento || '').slice(0,10);
+        return (dl >= ini && dl <= fim) ? sum + diffH(r.hora_inicio, r.hora_fim) : sum;
+      }, 0);
+      semanas.push({
+        ini: ini, fim: fim,
+        parcial: ate < fim && ate >= ini, futura: ate < ini,
+        esperado: round1(esperado), registrado: round1(registrado), creditado: round1(creditado),
+        saldo: round1(registrado + creditado - esperado),
+      });
+      d.setDate(d.getDate() + 7);
+    }
+    return semanas;
+  }
+
+  function renderBancoSemanas(sum) {
+    var wrap = document.getElementById('bh-weeks-wrap');
+    if (!wrap) return;
+    setText('bh-weeks-title', 'Semanas de ' + monthLabel(sum.mes.ym));
+    var rows = (sum.semanas || []).map(function(w, i) {
+      var tag = w.futura ? ' <span class="bh-month-tag">a vir</span>' : (w.parcial ? ' <span class="bh-month-tag">em andamento</span>' : '');
+      return '<tr' + (w.futura ? ' style="opacity:.55"' : '') + '>' +
+        '<td>Semana ' + (i + 1) + ' <span style="color:#8A867E">· ' + esc(fmtDate(w.ini)) + ' – ' + esc(fmtDate(w.fim)) + '</span>' + tag + '</td>' +
+        '<td>' + esc(fmtH(w.esperado)) + '</td>' +
+        '<td>' + esc(fmtH(w.registrado)) + '</td>' +
+        '<td class="bh-credito">' + (w.creditado > 0 ? esc(fmtH(w.creditado)) : '—') + '</td>' +
+        '<td class="' + (w.futura ? '' : clsHS(w.saldo)) + '">' + (w.futura ? '—' : esc(fmtHS(w.saldo))) + '</td>' +
+      '</tr>';
+    }).join('');
+    wrap.innerHTML = '<table class="bh-hist"><thead><tr><th>Semana</th><th>Esperado</th><th>Lançado</th><th>Fer./aus.</th><th>Saldo da semana</th></tr></thead><tbody>' +
+      rows + '<tr class="total"><td>Total do mês</td><td>' + esc(fmtH(sum.mes.esperado)) + '</td><td>' + esc(fmtH(sum.mes.registrado)) +
+      '</td><td class="bh-credito">' + (sum.mes.creditado > 0 ? esc(fmtH(sum.mes.creditado)) : '—') + '</td><td class="' + clsHS(sum.mes.saldo) + '">' + esc(fmtHS(sum.mes.saldo)) + '</td></tr></tbody></table>';
+  }
+
   function renderBancoResumo() {
     var sum = AP.bankSummary;
     if (!sum) return;
@@ -1669,6 +1749,8 @@ body{
       ' Nos últimos ' + sum.historico.length + ' meses o saldo apurado acumulado é ' + fmtHS(sum.acumulado) +
       '. O saldo oficial do banco (horas aprovadas menos ausências compensadas) é ' + fmtHS(sum.saldoDisponivelH) + '.'
     );
+
+    renderBancoSemanas(sum);
 
     // Histórico
     var hist = document.getElementById('bh-hist-wrap');
@@ -1894,6 +1976,7 @@ body{
       var saldo = saldoRes.data || {};
       AP.bankSummary = {
         mes: mes,
+        semanas: apurarSemanasMes(ymSel, ctx),
         historico: historico,
         acumulado: acumulado,
         jornadaSemanalH: jornada,
@@ -3079,7 +3162,8 @@ body{
       document.getElementById('stab-'+t).classList.toggle('active',t===tab);
       document.getElementById('stp-'+t).classList.toggle('active',t===tab);
     });
-    document.getElementById('semana-nav-wrap').style.display = tab==='historico'?'none':'';
+    // A linha de semana só faz sentido em Horas e Custos (Banco e Histórico são por mês)
+    document.getElementById('semana-nav-wrap').style.display = (tab==='historico'||tab==='banco')?'none':'';
     if (tab==='horas' && !AP.tabLoaded.horas) {
       AP.tabLoaded.horas = true;
       loadHorasData().catch(function(e){ setFb('apo-feedback',e.message,'err'); });

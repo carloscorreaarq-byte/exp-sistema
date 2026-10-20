@@ -1331,10 +1331,21 @@ html[data-theme="dark"][data-chat-mono="1"] .fp-msg-block:not(.own) .fp-msg-text
 .fp-member-role { font-size: calc(10px * var(--fp-fz, 1)); color: var(--fp-mute); margin-top: 1px; }
 .fp-members-footer {
   padding: 10px 14px; border-top: 1px solid var(--cinza2);
-  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0;
 }
+/* Busca de pessoas no topo da lista */
+.fp-members-search { padding: 8px 10px 0; flex-shrink: 0; }
+.fp-members-search input {
+  width: 100%; box-sizing: border-box; height: 32px; padding: 0 10px;
+  border: 1px solid var(--cinza); border-radius: var(--radius-input); background: var(--branco);
+  font-family: var(--font-ui); font-size: calc(12px * var(--fp-fz, 1)); color: var(--grafite); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.fp-members-search input:focus { border-color: var(--ca); box-shadow: 0 0 0 3px rgba(var(--ca-rgb-vals), .15); }
+[data-theme="dark"] .fp-members-search input { background: var(--fp-dk-input); border-color: var(--fp-dk-border); color: var(--fp-dk-text); }
+.fp-members-empty { padding: 18px 10px; text-align: center; font-size: calc(11px * var(--fp-fz, 1)); color: var(--fp-mute); }
 [data-theme="dark"] .fp-members-footer { border-top-color: var(--fp-dk-divider); }
-.fp-members-info { font-size: calc(11px * var(--fp-fz, 1)); color: var(--fp-mute); }
+.fp-members-info { flex: 1; min-width: 0; font-size: calc(11px * var(--fp-fz, 1)); color: var(--fp-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fp-members-confirm {
   background: var(--ca); color: #fff; border: none;
   border-radius: var(--radius-card,8px); padding: 7px 16px;
@@ -1342,6 +1353,8 @@ html[data-theme="dark"][data-chat-mono="1"] .fp-msg-block:not(.own) .fp-msg-text
   cursor: pointer; transition: opacity .15s;
 }
 .fp-members-confirm:hover { opacity: .8; }
+.fp-members-confirm { flex-shrink: 0; }
+.fp-members-confirm:disabled { opacity: .35; cursor: default; }
 
 /* ── Passo 2: configurar canal ── */
 #fp-newchan-step1 { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -2647,6 +2660,19 @@ html[data-theme="dark"][data-chat-mono="1"] .fp-msg-block:not(.own) .fp-msg-text
 #fp-reply-bar button{border:none;background:none;cursor:pointer;color:var(--fp-mute);font-size:14px}
 [data-theme="dark"] #fp-reply-bar{background:var(--fp-dk-surface);border-top-color:var(--fp-dk-divider);color:var(--fp-mute)}
 #fp-typing{min-height:16px;padding:0 14px;font-size:10px;color:var(--fp-mute);font-style:italic}
+/* Modo "cor do chat": a faixa do "digitando…" e a barra de resposta usam o mesmo fundo
+   da área de mensagens (antes aparecia o branco do quadro entre as mensagens e a barra) */
+html[data-chat-mono="1"] #fp-typing,
+html[data-chat-mono="1"] #fp-reply-bar {
+  background: linear-gradient(rgba(var(--ca-rgb-vals), .35), rgba(var(--ca-rgb-vals), .35)), #fff;
+  border-top-color: transparent;
+}
+html[data-theme="dark"][data-chat-mono="1"] #fp-typing,
+html[data-theme="dark"][data-chat-mono="1"] #fp-reply-bar {
+  background: linear-gradient(rgba(var(--ca-rgb-vals), .12), rgba(var(--ca-rgb-vals), .12)), var(--fp-dk-surface);
+}
+html[data-chat-mono="1"] #fp-typing { color: rgba(0,0,0,.5); }
+html[data-theme="dark"][data-chat-mono="1"] #fp-typing { color: rgba(255,255,255,.5); }
 .fp-seen{text-align:right;font-size:10px;color:#8A867E;margin:-1px 8px 6px 0}
 .fp-file-card{display:flex;align-items:center;gap:10px;border:1px solid var(--cinza2);border-radius:var(--radius-card,8px);padding:8px 10px;max-width:360px;background:var(--branco);margin:2px 0}
 .fp-file-ico{width:30px;height:30px;border-radius:var(--radius-input,6px);background:rgba(192,57,43,.1);color:#C0392B;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0}
@@ -3191,12 +3217,15 @@ html[data-theme="dark"][data-chat-mono="1"] .fp-msg-block:not(.own) .fp-msg-text
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
       </button>
     </div>
+    <div class="fp-members-search">
+      <input id="fp-members-q" type="text" placeholder="Buscar pessoa…" autocomplete="off" oninput="fpChat.filterMembers(this.value)">
+    </div>
     <div class="fp-members-list" id="fp-members-list">
       <div class="fp-loading" style="padding:16px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>
     </div>
     <div class="fp-members-footer">
-      <span class="fp-members-info" id="fp-members-info">Selecione membros</span>
-      <button class="fp-members-confirm" onclick="fpChat.confirmNewDM()">Continuar →</button>
+      <span class="fp-members-info" id="fp-members-info">Nenhuma pessoa selecionada</span>
+      <button class="fp-members-confirm" id="fp-members-confirm" onclick="fpChat.confirmNewDM()" disabled>Continuar →</button>
     </div>
   </div>
   <!-- Passo 2: configurar canal -->
