@@ -1823,7 +1823,7 @@
      background; o dedup por id evita som/push duplicado com o realtime.
   ══════════════════════════════════════════════════════════════════ */
   var POLL_INTERVAL_MS = 7000;
-  var _lastPollTs = new Date().toISOString();
+  var _lastPollTs = null;   /* definido por _initPollCursor (horário do servidor) */
   var _seenMsgIds = {};
   var _seenMsgOrder = [];
   var SEEN_MSG_CAP = 5000;
@@ -1871,6 +1871,7 @@
 
   function _pollMissed() {
     if (!sb || !user || !user.auth_id) return;
+    if (!_lastPollTs) { _initPollCursor(); return; }
     var since = _lastPollTs;
     Promise.all([
       sb.from('chat_messages').select('*').gt('created_at', since).order('created_at'),
@@ -1894,7 +1895,64 @@
     }).catch(function () {});
   }
 
+  function _conversaVisivel() { return isOpen && currentView === 'channel'; }
+
+  /* Cursor da busca de reserva em horário do SERVIDOR. Antes começava com o relógio do
+     computador: se ele estivesse adiantado, mensagens perdidas pelo tempo real nunca eram
+     encontradas (só apareciam ao atualizar a página). */
+  var _pollCursorLoading = false;
+  function _initPollCursor() {
+    if (_pollCursorLoading || !sb) return;
+    _pollCursorLoading = true;
+    Promise.all([
+      sb.from('chat_messages').select('created_at').order('created_at', { ascending: false }).limit(1),
+      sb.from('chat_thread_messages').select('created_at').order('created_at', { ascending: false }).limit(1)
+    ]).then(function (res) {
+      var a = (res[0].data && res[0].data[0] && res[0].data[0].created_at) || '';
+      var b = (res[1].data && res[1].data[0] && res[1].data[0].created_at) || '';
+      _lastPollTs = (a > b ? a : b) || new Date(Date.now() - 60000).toISOString();
+    }, function () {
+      _lastPollTs = new Date(Date.now() - 60000).toISOString();
+    }).then(function () { _pollCursorLoading = false; });
+  }
+
+  /* Ao voltar para a janela/aba: busca o que chegou na conversa aberta desde a última
+     mensagem exibida e reconecta o tempo real se ele tiver caído. */
+  function _catchUpCurrent() {
+    if (!sb || !user || !user.auth_id) return;
+    if (msgCh && msgCh.state !== 'joined' && msgCh.state !== 'joining') subscribeIncoming();
+    _pollMissed();
+    if (!currentChannel || isLoading || !_conversaVisivel()) return;
+    var ch = currentChannel, ultimo = null;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      if (!messages[i].pending && messages[i].created_at) { ultimo = messages[i].created_at; break; }
+    }
+    if (!ultimo) return;
+    var isPrj = isProjectChannel(ch);
+    var q = isPrj
+      ? sb.from('chat_thread_messages').select('*').eq('thread_id', projectThreadIdFromChannel(ch))
+      : sb.from('chat_messages').select('*').eq('channel', ch);
+    q.gt('created_at', ultimo).order('created_at', { ascending: true }).limit(200).then(function (r) {
+      if (ch !== currentChannel || r.error) return;
+      var rows = r.data || [];
+      if (!rows.length) return;
+      rows.forEach(function (x) {
+        _markSeen(isPrj ? 't:' + x.id : x.id);
+        upsertMessage(isPrj ? normalizeProjectMessage(x) : x);
+      });
+      renderMessages();
+      loadCurrentMessageMedia();
+      if (scrolledToEnd) scrollBottom();
+      markRead();
+    });
+  }
+  window.addEventListener('focus', _catchUpCurrent);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') _catchUpCurrent();
+  });
+
   function startPolling() {
+    _initPollCursor();
     try {
       /* Timer num Web Worker: não sofre throttling de aba em background */
       var blob = new Blob(['setInterval(function(){postMessage(1)},' + POLL_INTERVAL_MS + ')'], { type: 'text/javascript' });
