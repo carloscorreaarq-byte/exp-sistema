@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js"></script>
+<script src="shared/horas-creditos.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css">
 <link rel="stylesheet" href="shared/exp-nav.css">
@@ -2275,6 +2276,10 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .cb-projeto { background:var(--azul); }
 .cb-organizacao { background:var(--verde); }
 .cb-sociedade { background:var(--ouro); }
+/* Feriado / ausência: horas creditadas como trabalhadas (barra vermelha atrás dos lançamentos) */
+.cb-credito { background:repeating-linear-gradient(135deg,rgba(192,57,43,.88) 0 6px,rgba(192,57,43,.74) 6px 12px); z-index:1; cursor:default; }
+[data-theme="dark"] .cb-credito { background:repeating-linear-gradient(135deg,rgba(214,84,70,.62) 0 6px,rgba(214,84,70,.48) 6px 12px); }
+.cal-dia-credito { font-size:8px; color:#C0392B; font-weight:700; }
 .cal-totais-row {
   display:grid; grid-template-columns:44px repeat(7,1fr);
   border-top:1px solid var(--cinza); background:var(--cinza2);
@@ -7071,6 +7076,8 @@ function renderDiaSelector(lancs) {
     const idx = getLancIdx(l, dias);
     if (idx >= 0 && idx < 7) hPorDia[idx] += diffHoras(l.hora_inicio, l.hora_fim);
   });
+  const credMapSel = G._creditosSemana?.porDia || {};
+  dias.forEach((d, i) => { const c = credMapSel[d.toISOString().split('T')[0]]; if (c) hPorDia[i] += c.horas; });
 
   // Auto-seleciona hoje se não houver seleção
   if (G.diaSelecionado === null || G.diaSelecionado === undefined) {
@@ -7143,16 +7150,26 @@ async function renderSemana() {
     .order('dia_semana').order('hora_inicio');
 
   G._lancAtivos = lancamentos || [];
+  // Feriados/ausências da semana — contam como horas trabalhadas (barra vermelha)
+  try {
+    G._creditosSemana = window.ExpHorasCredito
+      ? await window.ExpHorasCredito.carregar(sb, G.usuario.id, ini, fim, { nucleoId: G.usuario?.nucleo_id || G.usuario?.nucleo })
+      : null;
+  } catch (e) { G._creditosSemana = null; }
   renderCalendarioSemana(G._lancAtivos);
   renderDiaSelector(G._lancAtivos);
   renderLancamentos(G._lancAtivos);
   renderCustosLancados();
 
-  const totalHoras = calcTotalHoras(G._lancAtivos);
+  const totalHoras = calcTotalHoras(G._lancAtivos) + (window.ExpHorasCredito ? window.ExpHorasCredito.total(G._creditosSemana, ini, fim) : 0);
   const finTotal = document.getElementById('fin-total-horas');
   finTotal.textContent = fmtH(totalHoras);
   finTotal.style.color = totalHoras > 40 ? 'var(--terracota)' : 'var(--grafite)';
   finTotal.style.fontWeight = totalHoras > 40 ? '800' : '700';
+}
+
+function escHtmlCred(v) {
+  return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function renderCalendarioSemana(lancs) {
@@ -7172,6 +7189,12 @@ function renderCalendarioSemana(lancs) {
       lancPorDia[idx].push(l);
     }
   });
+
+  // Créditos de feriado/ausência entram no total do dia e da semana
+  const credMap = G._creditosSemana?.porDia || {};
+  const credPorDia = dias.map(d => credMap[d.toISOString().split('T')[0]] || null);
+  let totalCredito = 0;
+  credPorDia.forEach((c, i) => { if (c) { hPorDia[i] += c.horas; totalCredito += c.horas; } });
 
   const totalSemana = hPorDia.reduce((s,h) => s+h, 0);
   const pct = Math.min(totalSemana / 40 * 100, 100);
@@ -7201,6 +7224,7 @@ function renderCalendarioSemana(lancs) {
           <div class="cal-dia-nome">${NOMES[i]}</div>
           <div class="cal-dia-num">${d.getDate()}</div>
           <div class="cal-dia-total">${hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·'}</div>
+          ${credPorDia[i] ? `<div class="cal-dia-credito" title="${escHtmlCred(credPorDia[i].itens.map(it => it.label).join(' · '))}">${credPorDia[i].feriado ? 'Feriado' : 'Ausência'}</div>` : ''}
           ${anivHtml}
         </div>`;
       }).join('')}
@@ -7245,6 +7269,15 @@ function renderCalendarioSemana(lancs) {
         </div>`;
       });
 
+      // Barra vermelha das horas creditadas, começando no horário do período
+      (credPorDia[i]?.itens || []).forEach(it => {
+        if ((it.inicioH - HORA_INI) * 2 !== s) return;
+        const hgt = Math.max(16, it.horas * 2 * SLOT_H - 2);
+        blocoHtml += `<div class="cal-bloco cb-credito" style="top:0;height:${hgt}px" title="${escHtmlCred(it.label + ' — ' + fmtH(it.horas) + ' contadas como trabalhadas')}">
+          <span class="cal-bloco-linha1">${escHtmlCred(it.label)}</span>${hgt > 22 ? `<span class="cal-bloco-linha2">${fmtH(it.horas)}</span>` : ''}
+        </div>`;
+      });
+
       html += `<div class="cal-celula ${fds?'fim-semana':''} ${isHoje?'hoje-col':''}">${blocoHtml}</div>`;
     }
   }
@@ -7276,6 +7309,7 @@ function renderCalendarioSemana(lancs) {
       <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--azul)"></div>Proj: ${fmtH(porTipo.projeto)}${pctTipo('projeto')>0?` <span style="color:#bbb">(${pctTipo('projeto')}%)</span>`:''}</div>
       <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--verde)"></div>Org: ${fmtH(porTipo.organizacao)}${pctTipo('organizacao')>0?` <span style="color:#bbb">(${pctTipo('organizacao')}%)</span>`:''}</div>
       <div class="cal-bd-item"><div class="cal-bd-dot" style="background:var(--ouro)"></div>Soc: ${fmtH(porTipo.sociedade)}${pctTipo('sociedade')>0?` <span style="color:#bbb">(${pctTipo('sociedade')}%)</span>`:''}</div>
+      ${totalCredito > 0 ? `<div class="cal-bd-item"><div class="cal-bd-dot" style="background:#C0392B"></div>Fer./aus.: ${fmtH(totalCredito)}</div>` : ''}
     </div>
   </div>`;
 
@@ -8676,7 +8710,9 @@ async function salvarEdicaoLancamento() {
 async function abrirFinalizarSemana() {
   // Calcula total de horas da semana
   const lancs = G._lancAtivos || [];
-  const totalH = lancs.reduce((s, l) => s + diffHoras(l.hora_inicio, l.hora_fim), 0);
+  const { ini: _iniFin, fim: _fimFin } = semanaRangeOffset(G.semanaOffset);
+  const totalH = lancs.reduce((s, l) => s + diffHoras(l.hora_inicio, l.hora_fim), 0)
+    + (window.ExpHorasCredito ? window.ExpHorasCredito.total(G._creditosSemana, _iniFin, _fimFin) : 0); // + feriados/ausências
   const elTotal = document.getElementById('fin-total-horas');
   if (elTotal) elTotal.textContent = fmtH(totalH);
 

@@ -1398,24 +1398,26 @@ async function calBhConsultarSaldo(usuarioId) {
   return data || { usuario_id: usuarioId, horas_disponiveis: 0, horas_compensadas: 0 };
 }
 
+// Banco de horas pode ficar negativo (adiantamento) até este limite — mesma regra de apontamentos.html
+const CAL_BH_LIMITE_NEGATIVO_H = 20;
 async function calAplicarCompensacaoSaldo(usuarioId, deltaHoras) {
   const row = await calBhConsultarSaldo(usuarioId);
   const saldoAntes = Number(row.horas_disponiveis || 0);
   const compensadasAntes = Number(row.horas_compensadas || 0);
   const saldoDepois = saldoAntes - Number(deltaHoras || 0);
   const compensadasDepois = compensadasAntes + Number(deltaHoras || 0);
-  if (saldoDepois < -0.001) throw new Error('Saldo insuficiente de banco de horas para esta compensação.');
+  if (Number(deltaHoras) > 0 && saldoDepois < -CAL_BH_LIMITE_NEGATIVO_H - 0.001) throw new Error(`Saldo insuficiente: o banco de horas ficaria em ${Number(saldoDepois.toFixed(2))}h (adiantamento máximo de -${CAL_BH_LIMITE_NEGATIVO_H}h).`);
   if (compensadasDepois < -0.001) throw new Error('Inconsistência ao recalcular horas compensadas.');
   const { error } = await sb.from('banco_horas_saldo').upsert({
     usuario_id: usuarioId,
-    horas_disponiveis: Math.max(0, Number(saldoDepois.toFixed(2))),
+    horas_disponiveis: Number(saldoDepois.toFixed(2)),
     horas_compensadas: Math.max(0, Number(compensadasDepois.toFixed(2))),
     updated_at: new Date().toISOString(),
   }, { onConflict: 'usuario_id' });
   if (error) throw error;
   return {
     saldoAntes: Number(saldoAntes.toFixed(2)),
-    saldoDepois: Math.max(0, Number(saldoDepois.toFixed(2))),
+    saldoDepois: Number(saldoDepois.toFixed(2)),
   };
 }
 
@@ -1436,7 +1438,9 @@ async function calAtualizarCompensacaoUI() {
     const disponivel = Number(row.horas_disponiveis || 0);
     const restante = Number((disponivel - horas).toFixed(2));
     aviso.style.display = 'block';
-    aviso.textContent = `Saldo disponível: ${disponivel}h. Esta compensação consumirá ${horas || 0}h e deixará ${restante >= 0 ? restante : 0}h restantes.`;
+    aviso.textContent = restante < -CAL_BH_LIMITE_NEGATIVO_H
+      ? `Saldo disponível: ${disponivel}h. Esta compensação deixaria o banco em ${restante}h — excede o adiantamento máximo de -${CAL_BH_LIMITE_NEGATIVO_H}h.`
+      : `Saldo disponível: ${disponivel}h. Esta compensação consumirá ${horas || 0}h e deixará ${restante}h${restante < 0 ? ' (adiantamento)' : ' restantes'}.`;
   } catch(e) {
     aviso.style.display = 'block';
     aviso.textContent = 'Não foi possível consultar o saldo de banco de horas. Verifique se o SQL da DEV-09 já foi executado.';
