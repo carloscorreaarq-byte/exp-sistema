@@ -4515,6 +4515,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
           <button class="btn sm" onclick="addPranchaForm()">+ Prancha</button>
         </div>
         <div id="nr-pranchas-lista"></div>
+        <button class="btn sm" style="margin-top:4px" onclick="addPranchaForm()">+ Prancha</button>
       </div>
     </div>
     <div class="modal-ft">
@@ -9985,6 +9986,9 @@ async function selecionarRevisao(id) {
         ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
         ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
       </div>
+      ${podePreencher ? `<div style="display:flex;justify-content:center;margin-top:14px">
+        <button class="btn verde" onclick="addPranchaRevisao('${id}')" title="Adicionar uma prancha ao fim da lista">+ Adicionar prancha</button>
+      </div>` : ''}
     </div>
   `;
   // Restaura estado expandido das pranchas que estavam abertas
@@ -10991,6 +10995,12 @@ function addPranchaForm() {
     class="nr-prancha-nome">
     <button class="btn sm tc" onclick="this.parentElement.remove()">×</button>`;
   wrap.appendChild(div);
+  // Cursor já na prancha nova; Enter cria a próxima (não precisa voltar ao botão)
+  const inp = div.querySelector('.nr-prancha-nome');
+  if (inp) {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addPranchaForm(); } });
+    inp.focus();
+  }
 }
 
 async function salvarNovaRevisao() {
