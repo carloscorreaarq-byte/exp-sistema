@@ -3906,7 +3906,7 @@
     var c=raw.replace(/\n/g,' '); if(!c) return fb||'';
     return c.length>maxLen?c.substring(0,maxLen)+'…':c;
   }
-  function normalizeProjectMessage(msg){ return {id:msg.id,channel:'project:'+msg.thread_id,thread_id:msg.thread_id,sender_id:msg.sender_auth_id,sender_name:msg.sender_nome,sender_iniciais:msg.sender_iniciais,sender_cor:msg.sender_cor,content:msg.content,created_at:msg.created_at,editado_em:msg.editado_em||null,reply_to:msg.reply_to||null,reactions:normalizeReactions(msg.reactions)}; }
+  function normalizeProjectMessage(msg){ return {id:msg.id,channel:'project:'+msg.thread_id,thread_id:msg.thread_id,sender_id:msg.sender_auth_id,sender_name:(window.expNomeCurto||String)(msg.sender_nome||''),sender_iniciais:msg.sender_iniciais,sender_cor:msg.sender_cor,content:msg.content,created_at:msg.created_at,editado_em:msg.editado_em||null,reply_to:msg.reply_to||null,reactions:normalizeReactions(msg.reactions)}; }
   function buildProjectThreadMeta(tid,title,preview,createdAt,senderAuthId){
     var ch='project:'+tid, label=title||(projectThreadMeta[ch]&&projectThreadMeta[ch].label)||'Projeto';
     return {threadId:tid,channel:ch,label:label,iniciais:initialsFromLabel(label,'PRJ'),cor:brandColorForKey(ch+':'+label),preview:preview||'Chat do projeto',lastCreatedAt:createdAt||null,lastSenderId:senderAuthId||null,unread:projectThreadMeta[ch]?(projectThreadMeta[ch].unread||0):0};

@@ -7,11 +7,12 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared/nome-curto.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js"></script>
 <script src="shared/horas-creditos.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
-<link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="exp-design-system.css?v=2026-10-23">
 <link rel="stylesheet" href="shared/exp-nav.css">
 <link rel="stylesheet" href="shared/lists-panel.css">
 
@@ -592,6 +593,7 @@ body {
 .fg2 { grid-template-columns: 1fr 1fr; }
 .fg3 { grid-template-columns: 1fr 1fr 1fr; }
 .fg4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.ep-prod-row { grid-template-columns: 2fr 1fr 1fr 1fr; }
 .mb8 { margin-bottom: 8px; }
 .mb14 { margin-bottom: 14px; }
 .mb20 { margin-bottom: 20px; }
@@ -667,8 +669,9 @@ body {
   border-bottom: 1px solid var(--cinza2);
 }
 .dr { display: flex; border-bottom: 1px solid var(--cinza2); }
-.dk { font-size: 9px; color: #8A867E; padding: 3px 8px; min-width: 100px; background: var(--off); border-right: 1px solid var(--cinza2); letter-spacing: .1px; }
-.dv { font-size: 10px; padding: 3px 8px; flex: 1; }
+.dk { font-size: 9px; color: #8A867E; padding: 3px 8px; flex: 0 0 118px; box-sizing: border-box; background: var(--off); border-right: 1px solid var(--cinza2); letter-spacing: .1px; display: flex; align-items: center; }
+.dv { font-size: 10px; padding: 3px 8px; flex: 1; min-width: 0; display: flex; align-items: center; overflow-wrap: anywhere; }
+.ms-sub { font-size: var(--text-label); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8A867E; margin: 12px 0 4px; }
 
 /* ── BARRA SEGMENTADA DE ETAPAS ──────────────────────────── */
 .etapas-seg-bar {
@@ -949,18 +952,16 @@ body {
   display: flex; align-items: center; gap: 6px;
   flex-wrap: nowrap; flex: 1; min-width: 0;
 }
-#fil-busca        { flex: 1 1 0; min-width: 140px; max-width: 300px; }
+#fil-busca        { flex: 1 1 0; min-width: 140px; } /* cresce até a borda direita da coluna */
 #fil-nucleo       { width: 148px; flex-shrink: 0; }
 #fil-gestao       { width: 100px; flex-shrink: 0; }
-#fil-status       { width: 110px; flex-shrink: 0; }
+#fil-status       { width: 130px; flex-shrink: 0; }
 .fil-meus {
   display: flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap;
-  padding: 4px 10px; border: 1px solid var(--cinza2); border-radius: 8px;
-  background: var(--branco); font-size: 11px; color: var(--grafite); cursor: pointer; user-select: none;
+  padding: 4px 2px 4px 6px; font-size: 11px; color: var(--grafite); cursor: pointer; user-select: none;
 }
 .fil-meus input { margin: 0; accent-color: var(--mod-primary, var(--verde)); cursor: pointer; }
-.fil-meus:has(input:checked) { border-color: var(--mod-primary, var(--verde)); font-weight: 600; }
-[data-theme="dark"] .fil-meus { background:#252523; border-color:#3A3836; }
+.fil-meus:has(input:checked) { font-weight: 600; }
 .proj-toolbar-action {
   margin-left: auto; display: flex; align-items: center;
 }
@@ -2229,7 +2230,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 }
 @media(max-width: 600px) {
   .stat-row { grid-template-columns: 1fr; }
-  .fg2, .fg3, .fg4 { grid-template-columns: 1fr; }
+  .fg2, .fg3, .fg4, .ep-prod-row { grid-template-columns: 1fr; }
   .gantt-th-info { min-width: 160px; width: 160px; }
 }
 
@@ -3562,7 +3563,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
           <button class="pvt-btn active" id="rev-pill-todas" onclick="if(G._revMinhasOnly){toggleFiltroMinhasRevisoes()}">Todas</button>
           <button class="pvt-btn" id="rev-pill-minhas" onclick="if(!G._revMinhasOnly){toggleFiltroMinhasRevisoes()}">Minhas</button>
         </div>
-        <button class="btn sm verde" id="btn-rev-top" onclick="revFabAction()" style="margin-left:auto;white-space:nowrap">+ Solicitar revisão</button>
+        <button class="btn verde" id="btn-rev-top" onclick="revFabAction()" style="margin-left:auto;white-space:nowrap">+ Solicitar revisão</button>
       </div>
       <div id="rev-lista">
         <div class="loading-state">Carregando...</div>
@@ -3598,7 +3599,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
           <button class="pvt-btn active" id="proc-pill-todos" onclick="if(G._procMeusOnly){toggleFiltroMeusProcessos()}">Todos</button>
           <button class="pvt-btn" id="proc-pill-meus" onclick="if(!G._procMeusOnly){toggleFiltroMeusProcessos()}">Meus</button>
         </div>
-        <button class="btn sm verde socio-only" id="btn-novo-proc" onclick="abrirNovoChecklist()" style="display:none;margin-left:auto;white-space:nowrap">+ Novo processo</button>
+        <button class="btn verde socio-only" id="btn-novo-proc" onclick="abrirNovoChecklist()" style="display:none;margin-left:auto;white-space:nowrap">+ Novo processo</button>
       </div>
       <div id="proc-lista">
         <div class="loading-state">Carregando...</div>
@@ -3940,26 +3941,30 @@ span.tarefa-prio { display: inline-block; cursor: default; }
         <!-- Visão Geral -->
         <div class="mtab-panel active" id="mp-visao">
           <div class="fg mb8" id="mp-visao-grid">
-            <!-- Col 1: Dados do produto -->
+            <!-- Col 1: Projeto (cliente, local e parceiros) -->
             <div class="ms">
-              <div class="ms-title">Dados do produto</div>
+              <div class="ms-title">Dados do projeto</div>
               <div class="dr"><div class="dk">Cliente</div><div class="dv" id="mp-cliente">—</div></div>
               <div class="dr"><div class="dk">Oportunidade</div><div class="dv" id="mp-opp">—</div></div>
               <div class="dr"><div class="dk">Cidade / UF</div><div class="dv" id="mp-cidade-uf">—</div></div>
-              <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">—</div></div>
-              <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">—</div></div>
-              <div class="dr"><div class="dk">Revisor</div><div class="dv" id="mp-revisor">—</div></div>
-              <div class="dr"><div class="dk">Início</div><div class="dv" id="mp-inicio">—</div></div>
-            </div>
-            <!-- Col 2: Dados do projeto -->
-            <div class="ms">
-              <div class="ms-title">Dados do projeto</div>
               <div class="dr"><div class="dk">Endereço</div><div class="dv" id="mp-proj-endereco">—</div></div>
               <div class="dr"><div class="dk">CNPJ</div><div class="dv" id="mp-proj-cnpj">—</div></div>
-              <div class="dr"><div class="dk">Escritório | Arquitetura</div><div class="dv" id="mp-proj-esc-arq">—</div></div>
-              <div class="dr"><div class="dk">Escritório | Interiores</div><div class="dv" id="mp-proj-esc-int">—</div></div>
-              <div class="dr"><div class="dk">Gestão</div><div class="dv" id="mp-proj-gestao">—</div></div>
               <div class="dr"><div class="dk">Prev. orçamentária</div><div class="dv" id="mp-proj-prev-orc">—</div></div>
+              <div class="ms-sub">Parceiros</div>
+              <div class="dr"><div class="dk">Arquitetura</div><div class="dv" id="mp-proj-esc-arq">—</div></div>
+              <div class="dr"><div class="dk">Interiores</div><div class="dv" id="mp-proj-esc-int">—</div></div>
+              <div class="dr"><div class="dk">Gestão</div><div class="dv" id="mp-proj-gestao">—</div></div>
+            </div>
+            <!-- Col 2: Produto + equipe -->
+            <div class="ms">
+              <div class="ms-title">Dados do produto</div>
+              <div class="dr"><div class="dk">Produto</div><div class="dv" id="mp-produto">—</div></div>
+              <div class="dr"><div class="dk">Núcleo</div><div class="dv" id="mp-nucleo">—</div></div>
+              <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">—</div></div>
+              <div class="dr"><div class="dk">Início</div><div class="dv" id="mp-inicio">—</div></div>
+              <div class="ms-sub">Equipe</div>
+              <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">—</div></div>
+              <div class="dr"><div class="dk">Revisor</div><div class="dv" id="mp-revisor">—</div></div>
             </div>
             <!-- Col 3: Dados financeiros e contratuais (sócios) -->
             <div class="ms socio-only" id="mp-financeiro-wrap">
@@ -4604,27 +4609,18 @@ span.tarefa-prio { display: inline-block; cursor: default; }
             </select>
           </div>
         </div>
+        <div style="font-size:10px;color:#888;margin:-2px 0 8px">
+          Ocultar da gestão remove o projeto desta tela sem apagar o cadastro nem alterar o CRM.
+        </div>
         <div id="ep-opp-lock-note" style="display:none;font-size:10px;color:#888;margin:-2px 0 10px">
           Cliente, nome e cidade da oportunidade ficam governados pelo CRM quando o projeto já está vinculado a uma oportunidade ativa.
         </div>
         <!-- Dados do produto -->
-        <div class="fg fg2 mb8">
+        <div class="fg mb8 ep-prod-row">
           <div class="fgroup">
             <label>Nome do produto</label>
             <input type="text" id="ep-nome">
           </div>
-          <div class="fgroup">
-            <label>Coordenador</label>
-            <select id="ep-coord"></select>
-          </div>
-        </div>
-        <div class="fg fg2 mb8">
-          <div class="fgroup">
-            <label>Revisor</label>
-            <select id="ep-revisor"></select>
-          </div>
-        </div>
-        <div class="fg fg3 mb8">
           <div class="fgroup">
             <label>Núcleo</label>
             <select id="ep-nucleo">
@@ -4648,8 +4644,15 @@ span.tarefa-prio { display: inline-block; cursor: default; }
             <input type="date" id="ep-inicio">
           </div>
         </div>
-        <div style="font-size:10px;color:#888;margin-bottom:8px">
-          Ocultar da gestão remove o projeto desta tela sem apagar o cadastro nem alterar o CRM.
+        <div class="fg fg2 mb8">
+          <div class="fgroup">
+            <label>Coordenador</label>
+            <select id="ep-coord"></select>
+          </div>
+          <div class="fgroup">
+            <label>Revisor</label>
+            <select id="ep-revisor"></select>
+          </div>
         </div>
         <div class="fgroup socio-only" id="ep-valor-wrap" style="display:none">
           <label>Valor contratado (R$)</label>
@@ -5145,7 +5148,7 @@ const ETAPAS_PRESET = [
   'Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'
 ];
 const SUBTIPOS = {
-  organizacao: ['Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
+  organizacao: ['Organização de demandas','Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
   sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
 };
 const SUBTIPOS_CUSTO = {
@@ -5706,9 +5709,16 @@ async function carregarEntregasEquipe() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   DADOS BASE — CORRIGIDO
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Nome exibido: primeiro nome + último sobrenome ("Carlos Henrique ... Corrêa" → "Carlos Corrêa")
+function nomeCurto(nome) {
+  const p = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  return p.length <= 2 ? p.join(' ') : p[0] + ' ' + p[p.length - 1];
+}
+
 async function carregarUsuarios() {
   const { data } = await sb.from('usuarios').select('*').eq('ativo', true).order('nome');
-  G.todosUsuarios = data || [];
+  G.todosUsuarios = (data || []).map(u => ({ ...u, nome_completo: u.nome, nome: nomeCurto(u.nome) }));
+  if (G.usuario && G.usuario.nome) G.usuario.nome = nomeCurto(G.usuario.nome);
   const opts = G.todosUsuarios.map(u =>
     `<option value="${u.id}">${u.nome} (${u.iniciais})</option>`
   ).join('');
@@ -10643,13 +10653,15 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-cidade-uf').textContent = _cidadeUF || '—';
   document.getElementById('mp-status').innerHTML = `<span class="badge ${stProd.cls}">${stProd.label}</span>`;
   document.getElementById('mp-coord').innerHTML = coord
-    ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${coord.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${coord.iniciais}</div>${coord.nome}</div>`
+    ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${coord.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${_escN(coord.iniciais||'')}</div>${_escN(coord.nome||'')}</div>`
     : '—';
   const revisor = prod.revisor_id ? G.todosUsuarios.find(u => u.id === prod.revisor_id) : null;
   document.getElementById('mp-revisor').innerHTML = revisor
     ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${revisor.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${_escN(revisor.iniciais||'')}</div>${_escN(revisor.nome||'')}</div>`
     : '—';
-  document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
+  document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) + '.' + prod.data_inicio.slice(0, 4) : '—';
+  document.getElementById('mp-produto').textContent = prod.nome || '—';
+  document.getElementById('mp-nucleo').innerHTML = `<span class="badge ${nc.cls}">${_escN(nc.label)}</span>`;
 
   // Dados do projeto (novos campos na oportunidade)
   document.getElementById('mp-proj-endereco').textContent = opp?.endereco || '—';
@@ -13316,19 +13328,26 @@ async function carregarPrioridades() {
   // Pendentes primeiro, concluídas no fim (mantendo ordem interna de cada grupo)
   const sorted = [...data].sort((a,b) => (a.concluida?1:0) - (b.concluida?1:0));
   wrap.innerHTML = sorted.map((pr, idx) => {
-    const prod = G.todosProdutos.find(p => p.id === pr.produto_id);
-    if (!prod) return '';
-    const etapa = G.todasEtapas.find(e => e.produto_id === prod.id && e.status === 'em_andamento')
-      || G.todasEtapas.find(e => e.produto_id === prod.id && e.status !== 'concluida');
-    const opp  = prod.oportunidades;
+    // Prioridade de projeto ou sem projeto (societária: comercial, marketing… ou livre)
+    const prod = pr.produto_id
+      ? (G.todosProdutos.find(p => p.id === pr.produto_id)
+         || (G._todosProdutosGestao || []).find(p => p.id === pr.produto_id)
+         || (G._prodsGestao || []).find(p => p.id === pr.produto_id)
+         || null)
+      : null;
+    const etapa = prod ? (G.todasEtapas.find(e => e.produto_id === prod.id && e.status === 'em_andamento')
+      || G.todasEtapas.find(e => e.produto_id === prod.id && e.status !== 'concluida')) : null;
+    const opp  = prod?.oportunidades;
     const cli  = opp?.clientes;
 
     // Hierarquia de informações
-    const titulo = [cli?.nome, opp?.projeto].filter(Boolean).join(' | ') || prod.nome;
+    const titulo = prod
+      ? ([cli?.nome, opp?.projeto].filter(Boolean).join(' | ') || prod.nome)
+      : (pr.categoria_societaria ? 'Societária · ' + _socCatLabel(pr.categoria_societaria) : 'Sem projeto');
     const cidade = opp?.cidade || cli?.cidade || '';
     const cidadeUf = [cidade, opp?.uf].filter(Boolean).join('/');
     const etapaNome = etapa?.nome || '';
-    const tipoProd = prod.nome || '';
+    const tipoProd = prod?.nome || '';
 
     // Estado do card (calcular antes do prazoChip para usá-lo na cor)
     const _hoje = new Date(); _hoje.setHours(0,0,0,0);
@@ -13352,7 +13371,7 @@ async function carregarPrioridades() {
     const prazoExtraClass = estadoCard ? '' : ' prazo-chip-normal';
     const prazoChip = prazoFmt
       ? `<span class="${prazoExtraClass.trim()}" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;${prazoChipStyle ? prazoChipStyle+';' : ''}border-radius:4px;padding:1px 7px;font-weight:600;cursor:pointer"
-           onclick="event.stopPropagation();editarPrazoPrioridade('${pr.id}','${pr.prazo_texto||''}','${prod.id}','${coordId}')">📅 ${prazoFmt}</span>`
+           onclick="event.stopPropagation();editarPrazoPrioridade('${pr.id}','${pr.prazo_texto||''}','${prod?.id||''}','${coordId}')">📅 ${prazoFmt}</span>`
       : '';
 
     const comentHtml = pr.comentario
@@ -13363,7 +13382,7 @@ async function carregarPrioridades() {
     const ord = pr.ordem || (idx + 1);
     const numCls = NUM_CLS[ord] || 'p6';
 
-    return `<div class="prio-card ${estadoCard}" onclick="abrirProduto('${prod.id}')">
+    return `<div class="prio-card ${estadoCard}"${prod ? ` onclick="abrirProduto('${prod.id}')"` : ' style="cursor:default"'}>
       <div class="prio-num ${numCls}">${ord}</div>
       <div class="prio-info" style="flex:1;min-width:0">
         <div class="prio-nome" style="font-size:13px;font-weight:700">${titulo}</div>
@@ -19663,7 +19682,8 @@ async function confirmarAlteracaoData() {
   fecharModal('modal-editar-prazo');
 
   const { prioId, prodId, coordId, dataAntiga } = _prazoEdit;
-  const euSouCoord = coordId === G.usuario.id || isSocioRole(G.usuario.role);
+  // Prioridade sem projeto: a própria pessoa ajusta o prazo
+  const euSouCoord = !prodId || coordId === G.usuario.id || isSocioRole(G.usuario.role);
 
   if (euSouCoord) {
     // Coordenador/sócio: altera diretamente

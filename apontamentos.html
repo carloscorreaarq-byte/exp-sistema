@@ -7,12 +7,13 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared/nome-curto.js"></script>
 <script src="shared/app-notif.js" defer></script>
 <script src="shared/horas-creditos.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="preload" href="shared/app-shell.js" as="script">
 <link rel="preload" href="shared/exp-nav.js" as="script">
-<link rel="stylesheet" href="exp-design-system.css">
+<link rel="stylesheet" href="exp-design-system.css?v=2026-10-23">
 <link rel="stylesheet" href="shared/exp-nav.css">
 <link rel="stylesheet" href="shared/lists-panel.css">
 <style>
@@ -428,15 +429,17 @@ body{
 .bh-steps{display:flex;align-items:flex-start;gap:0;margin:2px 0;}
 .bh-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;min-width:0;text-align:center;}
 .bh-step:not(:first-child)::before{content:'';position:absolute;top:5px;right:50%;width:100%;height:2px;background:var(--cinza2);z-index:0;}
-.bh-step.done:not(:first-child)::before,.bh-step.now:not(:first-child)::before{background:var(--verde);}
 .bh-step-dot{width:12px;height:12px;border-radius:50%;background:var(--branco);border:2px solid var(--cinza2);position:relative;z-index:1;box-sizing:border-box;}
-.bh-step.done .bh-step-dot{background:var(--verde);border-color:var(--verde);}
-.bh-step.now .bh-step-dot{border-color:#c49a27;background:rgba(196,154,39,.25);}
+/* Tudo cinza; só a etapa atual tem cor: amarelo em análise, verde aprovado, vermelho recusado */
+.bh-step.done .bh-step-dot{background:var(--cinza2);border-color:var(--cinza2);}
+.bh-step.now .bh-step-dot{background:#c49a27;border-color:#c49a27;}
+.bh-step.ok .bh-step-dot{background:var(--verde);border-color:var(--verde);}
 .bh-step.fail .bh-step-dot{background:var(--terracota);border-color:var(--terracota);}
-.bh-step.fail:not(:first-child)::before{background:var(--terracota);}
-.bh-step-lbl{font-size:10px;font-weight:600;color:var(--grafite);line-height:1.25;}
-.bh-step-sub{font-size:9px;color:#999;line-height:1.25;}
-.bh-step:not(.done):not(.now):not(.fail) .bh-step-lbl{color:#aaa;font-weight:500;}
+.bh-step-lbl{font-size:10px;font-weight:500;color:#aaa;line-height:1.25;}
+.bh-step-sub{font-size:9px;color:#aaa;line-height:1.25;}
+.bh-step.now .bh-step-lbl{color:#916b13;font-weight:700;}
+.bh-step.ok .bh-step-lbl{color:#2d6f50;font-weight:700;}
+.bh-step.fail .bh-step-lbl{color:#9b4639;font-weight:700;}
 .bh-decisao{font-size:10px;color:#666;line-height:1.45;}
 .bh-decisao-obs{margin-top:4px;padding:6px 8px;border-radius:var(--radius-sm,6px);background:var(--off);border-left:3px solid var(--cinza2);color:var(--grafite);font-size:11px;}
 .bh-decisao-obs.warn{border-left-color:var(--terracota);background:var(--terracota-bg);}
@@ -1102,7 +1105,7 @@ body{
   };
 
   var SUBTIPOS = {
-    organizacao: ['Capacitação','Reunião semanal','Feedback','Reunião interna'],
+    organizacao: ['Organização de demandas','Capacitação','Reunião semanal','Feedback','Reunião interna'],
     sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião societária','Consultoria','RH e pessoas','Gestão','Outros'],
   };
   var TIPO_PT = { projeto:'Projeto', organizacao:'Org. interna', sociedade:'Societária' };
@@ -1891,7 +1894,7 @@ body{
       step('done', 'Enviado', bhDataHora(r.created_at)) +
       step(decidido ? 'done' : 'now', 'Em análise', decidido ? '' : 'com os sócios') +
       (decidido
-        ? step(st === 'recusado' || st === 'cancelado' ? 'fail' : 'done', st === 'cancelado' ? 'Cancelado' : (st === 'recusado' ? 'Recusado' : 'Concluído'), bhDataHora(fim))
+        ? step(st === 'recusado' ? 'fail' : (st === 'cancelado' ? 'done' : 'ok'), st === 'cancelado' ? 'Cancelado' : (st === 'recusado' ? 'Recusado' : 'Concluído'), bhDataHora(fim))
         : step('', 'Concluído', '')) +
     '</div>';
   }

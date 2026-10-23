@@ -3928,7 +3928,7 @@
       channel: projectChannel(msg.thread_id),
       thread_id: msg.thread_id,
       sender_id: msg.sender_auth_id,
-      sender_name: msg.sender_nome,
+      sender_name: (window.expNomeCurto || String)(msg.sender_nome || ''),
       sender_iniciais: msg.sender_iniciais,
       sender_cor: msg.sender_cor,
       content: msg.content,
