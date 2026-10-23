@@ -39,6 +39,7 @@ window.AppNotif = (() => {
     sociedade:  'Societário',
     comercial:  'Comercial',
     financeiro: 'Financeiro',
+    apontamentos: 'Apontamentos',
   };
 
   /* ── visibilidade por papel ──────────────────────────────────
@@ -148,6 +149,7 @@ window.AppNotif = (() => {
     mencao:'@', tarefa:'✔', revisao_solicitada:'📋', revisao:'📋',
     checklist_atribuido:'☑', prancha:'🖼', lembrete:'📢',
     fin_vencimento:'💰', fin_aprovacao:'✅',
+    banco_horas_pedido:'⏱', banco_horas_decisao:'⏱',
   };
 
   function _itemHtml(n) {
@@ -249,6 +251,11 @@ window.AppNotif = (() => {
       _renderPanel();
     }
     close();
+    // Banco de horas: abre a aba Banco do Apontamentos (em outra página, navega)
+    if (n.link_tipo === 'banco_horas' && !/apontamentos(\.html)?$/.test(location.pathname)) {
+      window.location.href = 'apontamentos.html#banco';
+      return;
+    }
     window.dispatchEvent(new CustomEvent('exp:notif-open', { detail: n }));
   }
 
