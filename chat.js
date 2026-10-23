@@ -308,6 +308,15 @@
     '.chat-media-viewer-tools{display:flex;align-items:center;gap:6px}',
     '.chat-media-viewer-zoombtn{width:28px;height:28px;border-radius:var(--radius-input,6px);border:1px solid rgba(17,17,16,.08);background:#fff;color:var(--grafite,#111110);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}',
     '.chat-media-viewer-zoombtn:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
+    /* Fixar imagem (canais fixos): não expira no bucket */
+    '.chat-mv-pin{height:28px;padding:0 9px;border-radius:var(--radius-input,6px);border:1px solid rgba(17,17,16,.08);background:#fff;color:#8A867E;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:5px}',
+    '.chat-mv-pin:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
+    '.chat-mv-pin.on{background:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A);color:#fff}',
+    '.chat-mv-pin svg{display:block}',
+    '.chat-media-thumb{position:relative}',
+    '.chat-media-pin{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:var(--verde,#1D6A4A);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none}',
+    '[data-theme="dark"] .chat-mv-pin{background:#252523;border-color:#3A3836;color:#B9B7AF}',
+    '[data-theme="dark"] .chat-mv-pin.on{background:var(--verde,#1D6A4A);color:#fff}',
     '.chat-media-viewer-zoomlabel{min-width:44px;text-align:center;font-family:var(--font-mono);font-size:10px;color:#666}',
     '.chat-media-viewer-count{min-width:42px;text-align:center;font-family:var(--font-mono);font-size:10px;color:#666}',
     '.chat-media-viewer-body{background:#F7F6F3;position:relative;display:flex;min-height:260px;overflow:hidden}',
@@ -931,6 +940,7 @@
               '<div class="chat-media-viewer-meta" id="exp-chat-media-viewer-meta">Autor · data · hora</div>' +
             '</div>' +
             '<div class="chat-media-viewer-tools">' +
+              '<button class="chat-mv-pin" id="exp-chat-mv-pin" onclick="expChat.toggleMediaPin()" style="display:none" title="Imagens fixadas não são apagadas com o tempo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2Z"/></svg><span id="exp-chat-mv-pin-lbl">Fixar</span></button>' +
               '<span class="chat-media-viewer-count" id="exp-chat-media-viewer-count">1/1</span>' +
               '<button class="chat-media-viewer-zoombtn" onclick="expChat.zoomOutMediaViewer()" title="Diminuir zoom">-</button>' +
               '<button class="chat-media-viewer-zoombtn" onclick="expChat.resetMediaViewerZoom()" title="Ajustar à tela"><span id="exp-chat-media-viewer-zoom-label">Ajustada</span></button>' +
@@ -2995,6 +3005,7 @@
                 ? audioBubbleHtml(media.objectUrl, media.duration_seconds)
                 : '<div class="chat-media-thumb" onclick="expChat.openMediaViewer(\'' + mediaKeyForMessage(msg) + '\')">' +
                     '<img src="' + escHtml(media.objectUrl) + '" alt="Print do chat" loading="lazy" decoding="async">' +
+                    (isMediaPinned(media) ? '<span class="chat-media-pin" title="Imagem fixada — não expira"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2Z"/></svg></span>' : '') +
                   '</div>')
             : media && media.pending
               ? '<div class="chat-media-thumb"><div class="chat-media-thumb-pending">Enviando ' + (mediaIsAudio ? 'áudio' : 'print') + '...</div></div>'
@@ -4244,6 +4255,7 @@
     var _ex = messageMediaMap[_exKey];
     if (_ex) {
       /* mídia já carregada: sincroniza apenas os marcadores */
+      if (row.expires_at && _ex.expires_at !== row.expires_at) { _ex.expires_at = row.expires_at; if (isOpen && currentView === 'channel') renderMessages(); }
       if (JSON.stringify(_ex.marcadores || []) !== JSON.stringify(row.marcadores || [])) {
         _ex.marcadores = row.marcadores || [];
         if (mediaViewerState && mediaViewerState.mediaKey === _exKey) renderViewerMarkers();
@@ -4527,9 +4539,46 @@
     else img.removeAttribute('src');
     empty.style.display = hasImg ? 'none' : 'block';
     empty.textContent = hasImg ? '' : 'Não foi possível carregar este print.';
+    syncMediaPinButton(media);
     viewer.style.display = 'flex';
     updateMediaViewerZoom();
     renderViewerMarkers();
+  }
+
+  // ── Fixar imagem (só #Geral, #Sócios e #BIM): validade sem fim no bucket ──
+  var PIN_CHANNELS = ['general', 'socios', 'bim'];
+  function isMediaPinned(media) {
+    var t = media && media.expires_at ? new Date(media.expires_at).getTime() : 0;
+    return t > Date.UTC(2900, 0, 1);
+  }
+  function syncMediaPinButton(media) {
+    var btn = document.getElementById('exp-chat-mv-pin');
+    if (!btn) return;
+    var show = !!(media && media.objectUrl && PIN_CHANNELS.indexOf(currentChannel) >= 0 && !isProjectChannel(currentChannel));
+    btn.style.display = show ? 'inline-flex' : 'none';
+    if (!show) return;
+    var on = isMediaPinned(media);
+    btn.classList.toggle('on', on);
+    var lbl = document.getElementById('exp-chat-mv-pin-lbl');
+    if (lbl) lbl.textContent = on ? 'Fixada' : 'Fixar';
+    btn.title = on ? 'Imagem fixada — clique para voltar a expirar em 7 dias' : 'Fixar: a imagem não será apagada com o tempo';
+  }
+  function toggleMediaPin() {
+    if (!mediaViewerState || !sb) return;
+    var key = mediaViewerState.mediaKey;
+    var media = messageMediaMap[key];
+    var msg = getMessageByMediaKey(key);
+    if (!media || !msg) return;
+    var fixar = !isMediaPinned(media);
+    var btn = document.getElementById('exp-chat-mv-pin');
+    if (btn) btn.disabled = true;
+    sb.rpc('chat_fixar_midia', { p_message_id: String(msg.id), p_fixar: fixar }).then(function (r) {
+      if (btn) btn.disabled = false;
+      if (r.error) { alert('Não foi possível ' + (fixar ? 'fixar' : 'desafixar') + ' a imagem: ' + r.error.message); return; }
+      media.expires_at = r.data;
+      syncMediaPinButton(media);
+      if (isOpen && currentView === 'channel') renderMessages();
+    });
   }
 
   function openMediaViewer(mediaKey) {
@@ -5278,6 +5327,7 @@
      API PÚBLICA
   ══════════════════════════════════════════════════════════════════ */
   window.expChat = {
+    toggleMediaPin:  toggleMediaPin,
     toggle:          toggle,
     open:            open,
     close:           close,

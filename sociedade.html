@@ -1755,13 +1755,15 @@ async function init() {
 }
 
 async function carregarUsuarios() {
-  // Tenta com auth_id; se a coluna não existir faz fallback sem ela
+  // A tabela usuarios não tem a coluna "cargo": pedi-la fazia as duas consultas
+  // falharem e a lista de responsáveis ficava vazia. auth_id é o id usado nas tarefas.
   let { data, error } = await sb.from('usuarios')
-    .select('id, auth_id, nome, iniciais, cor, apelido, cargo')
+    .select('id, auth_id, nome, iniciais, cor, apelido')
     .eq('ativo', true).order('nome');
   if (error) {
+    console.warn('[sociedade] usuarios:', error.message);
     ({ data } = await sb.from('usuarios')
-      .select('id, nome, iniciais, cor, apelido, cargo')
+      .select('id, nome, iniciais, cor, apelido')
       .eq('ativo', true).order('nome'));
   }
   G.todosUsuarios = data || [];

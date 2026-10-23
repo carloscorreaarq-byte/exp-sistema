@@ -2507,7 +2507,8 @@
                 nMarks + '</span>'
             : '';
           html += '<div class="fp-media-thumb" onclick="fpChat.openMediaViewer(\''+escHtml(mediaKeyForMessage(msg))+'\')">' +
-            '<img src="'+escHtml(media.objectUrl)+'" alt="Print" loading="lazy" decoding="async" onload="fpChat._thumbLoaded()">' + annotBadge + '</div>';
+            '<img src="'+escHtml(media.objectUrl)+'" alt="Print" loading="lazy" decoding="async" onload="fpChat._thumbLoaded()">' + annotBadge +
+            (isMediaPinned(media) ? '<span class="fp-thumb-pin" title="Imagem fixada — não expira"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2Z"/></svg></span>' : '') + '</div>';
         }
       } else if (media && media.pending) {
         html += '<div class="fp-media-thumb" style="padding:14px;font-size:11px;color:#999">Enviando '+(mediaIsAudio?'áudio':'print')+'…</div>';
@@ -2949,6 +2950,41 @@
   /* ═══════════════════════════════════════════════════════════════════
      MEDIA VIEWER
   ═══════════════════════════════════════════════════════════════════ */
+  // ── Fixar imagem (só #Geral, #Sócios e #BIM): validade sem fim no bucket ──
+  var PIN_CHANNELS = ['general', 'socios', 'bim'];
+  function isMediaPinned(media) {
+    var t = media && media.expires_at ? new Date(media.expires_at).getTime() : 0;
+    return t > Date.UTC(2900, 0, 1);
+  }
+  function syncMediaPinButton(media) {
+    var btn = document.getElementById('fp-mv-pin');
+    if (!btn) return;
+    var show = !!(media && media.objectUrl && PIN_CHANNELS.indexOf(currentChannel) >= 0);
+    btn.style.display = show ? 'inline-flex' : 'none';
+    if (!show) return;
+    var on = isMediaPinned(media);
+    btn.classList.toggle('on', on);
+    var lbl = document.getElementById('fp-mv-pin-lbl');
+    if (lbl) lbl.textContent = on ? 'Fixada' : 'Fixar';
+    btn.title = on ? 'Imagem fixada — clique para voltar a expirar em 7 dias' : 'Fixar: a imagem não será apagada com o tempo';
+  }
+  function toggleMediaPin() {
+    if (!mediaViewerState || !sb) return;
+    var msg = getMessageByMediaKey(mediaViewerState.keys[mediaViewerState.idx]);
+    var media = msg ? getMessageMedia(msg) : null;
+    if (!media || !msg) return;
+    var fixar = !isMediaPinned(media);
+    var btn = document.getElementById('fp-mv-pin');
+    if (btn) btn.disabled = true;
+    sb.rpc('chat_fixar_midia', { p_message_id: String(msg.id), p_fixar: fixar }).then(function (r) {
+      if (btn) btn.disabled = false;
+      if (r.error) { alert('Não foi possível ' + (fixar ? 'fixar' : 'desafixar') + ' a imagem: ' + r.error.message); return; }
+      media.expires_at = r.data;
+      syncMediaPinButton(media);
+      renderMessages();
+    });
+  }
+
   function openMediaViewer(mediaKey) {
     var keys=getMediaViewerGalleryKeys();
     var idx=keys.indexOf(mediaKey); if(idx===-1&&keys.length) idx=0;
@@ -2971,6 +3007,7 @@
     if ($next)  $next.disabled=(idx===keys.length-1);
     if ($zoom)  $zoom.textContent = mvZoom===1 ? 'Ajustada' : Math.round(mvZoom*100)+'%';
     if ($title) $title.textContent=msg?firstName(msg.sender_name||'')+' · print':'Print do chat';
+    syncMediaPinButton(media);
     if ($meta&&msg&&msg.created_at) { var dt=new Date(msg.created_at); $meta.textContent=dt.toLocaleDateString('pt-BR')+' · '+fmtTime(dt); }
     var $canvas=document.getElementById('fp-mv-canvas');
     if (media&&media.objectUrl&&$img) {
@@ -4106,6 +4143,7 @@
      API PÚBLICA
   ═══════════════════════════════════════════════════════════════════ */
   window.fpChat = {
+    toggleMediaPin,
     openChannel, filterConvs, toggleProjectSection,
     toggleStatusPop, setStatus, toggleSoundPop, setSoundLevel, toggleDmPin, toggleProjectPin,
     setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
