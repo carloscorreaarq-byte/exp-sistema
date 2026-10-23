@@ -120,12 +120,6 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);font-
 .b-gr{background:var(--cinza2);color:#777}
 .b-exp{background:var(--tc-bg);color:var(--terracota)}
 
-/* TEMP (temperatura do lead) */
-.temp{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.temp.hot{background:var(--verde)}
-.temp.warm{background:var(--ouro)}
-.temp.cold{background:var(--terracota)}
-.temp.none{background:#ccc}
 
 /* TABELA */
 table{width:100%;border-collapse:collapse}
@@ -144,7 +138,7 @@ tr.orc-fech td{background:var(--verde-bg)}
 /* Tabela de orçamentos — layout compacto */
 #orc-table td{padding:5px 8px;font-size:11px}
 #orc-table th{padding:5px 8px}
-#orc-table td:nth-child(3),#orc-table td:nth-child(4),#orc-table td:nth-child(11),#orc-table td:nth-child(12),#orc-table td:nth-child(14){white-space:nowrap}
+#orc-table td:nth-child(3),#orc-table td:nth-child(4),#orc-table td:nth-child(11),#orc-table td:nth-child(12),#orc-table td:nth-child(13){white-space:nowrap}
 #orc-table td:nth-child(2){max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #orc-table td:nth-child(5){max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
 #rel-mensal-table td,#rel-mensal-table th{padding:5px 8px;font-size:11px}
@@ -164,6 +158,9 @@ tr.orc-fech td{background:var(--verde-bg)}
 .btn.az:hover{background:var(--azul);color:#fff}
 .btn.am{border-color:var(--ouro);color:var(--ouro)}
 .btn.am:hover{background:var(--ouro);color:#fff}
+/* Neutro: branco; ao passar o mouse fica preto com texto branco (ações do detalhe da oportunidade) */
+.btn.neutro{background:var(--branco);color:#888;border-color:var(--cinza2)}
+.btn.neutro:hover{background:var(--grafite);color:var(--branco);border-color:var(--grafite);opacity:1}
 .btn.roxo{border-color:var(--roxo);color:var(--roxo)}
 .btn.roxo:hover{background:var(--roxo);color:#fff}
 .btn.xs{padding:2px 8px;font-size:var(--text-label);border-radius:var(--radius-badge,4px)}
@@ -241,9 +238,15 @@ textarea{resize:vertical;min-height:60px}
 .tl-dot.am{background:var(--ouro);box-shadow:0 0 0 1px var(--ouro)}
 .tl-dot.az{background:var(--azul);box-shadow:0 0 0 1px var(--azul)}
 .tl-dot.tc{background:var(--terracota);box-shadow:0 0 0 1px var(--terracota)}
-.tl-label{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;margin-bottom:2px}
-.tl-text{font-size:12px}
-.tl-date{font-size:9px;font-family:var(--font-mono);color:#aaa;margin-top:1px}
+.tl-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;margin-bottom:2px}
+.tl-text{font-size:11px}
+.tl-date{font-size:10px;color:#999;margin-top:2px}
+/* Detalhe da oportunidade: uma só família de fonte e números alinhados (sem mono) */
+#det-body{font-variant-numeric:lining-nums tabular-nums}
+
+/* Orçamentos: coluna Tipo só com a largura das etiquetas; valores sem quebrar "R$" da linha */
+#orc-table th#oth-tipo,#orc-table td:nth-child(3){width:1%;white-space:nowrap}
+#orc-table td:nth-child(8),#orc-table td:nth-child(9),#orc-table td:nth-child(10){white-space:nowrap}
 
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:200;align-items:center;justify-content:center;padding:40px 16px;overflow-y:auto}
@@ -338,7 +341,17 @@ textarea{resize:vertical;min-height:60px}
 
 /* ALCANCE MAP */
 .alc-layout{display:grid;grid-template-columns:270px 1fr;gap:16px;height:calc(100vh - 148px)}
-.alc-side{display:flex;flex-direction:column;overflow:hidden}
+.alc-side{display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:lining-nums tabular-nums}
+/* Alcance: filtros com a mesma altura/fonte; estatísticas empilhadas (valor não corta) */
+.alc-sel{font-family:var(--font-ui);font-size:11px;padding:6px 9px;border:1px solid var(--cinza2);background:var(--branco);color:var(--grafite);border-radius:var(--radius-input,6px);cursor:pointer;min-width:0}
+.alc-stats{display:flex;gap:6px;margin-bottom:2px}
+.alc-stat{display:flex;flex-direction:column;gap:1px;padding:6px 10px;background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-input,6px);min-width:0}
+.alc-stat-v{font-size:14px;font-weight:700;color:var(--grafite);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alc-stat-l{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.alc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.alc-card-nome{font-weight:600;font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alc-card-n{font-size:10px;color:#888;flex-shrink:0}
+.alc-vazio{color:#aaa;font-weight:400;font-style:italic}
 .alc-map-wrap{display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px}
 #alc-svg{width:100%;height:auto;max-height:calc(100vh - 160px);display:block}
 .alc-city-card{background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color var(--transition-fast)}
@@ -857,7 +870,6 @@ textarea{resize:vertical;min-height:60px}
         <th>Prob.</th>
         <th>Dias envio</th>
         <th>Status</th>
-        <th>Temperatura</th>
       </tr></thead>
       <tbody id="orc-body"></tbody>
     </table>
@@ -1008,7 +1020,7 @@ textarea{resize:vertical;min-height:60px}
     <!-- sidebar -->
     <div class="alc-side">
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="alc-modo" onchange="alcMode=this.value;renderAlcance()" style="flex:1;font-size:11px;font-weight:600;padding:7px 10px;border:1px solid var(--cinza);background:var(--branco);border-radius:var(--radius-input,6px);cursor:pointer">
+        <select id="alc-modo" class="alc-sel" onchange="alcMode=this.value;renderAlcance()" style="flex:1;font-weight:600">
           <option value="todos">Todas as oportunidades</option>
           <option value="op">Oportunidades ativas</option>
           <option value="fech">Fechamentos</option>
@@ -1016,10 +1028,10 @@ textarea{resize:vertical;min-height:60px}
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
-        <select id="alc-resp" onchange="crmSincronizarFiltros('alc-resp');renderAlcance()" style="flex:1;font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px">
+        <select id="alc-resp" class="alc-sel" onchange="crmSincronizarFiltros('alc-resp');renderAlcance()" style="flex:1">
           <option value="todos">Todos resp.</option>
         </select>
-        <select id="alc-ano" onchange="crmSincronizarFiltros('alc-ano');renderAlcance()" style="font-size:10px;padding:5px 8px;border:1px solid var(--cinza);background:var(--branco);border-radius:5px;width:80px">
+        <select id="alc-ano" class="alc-sel" onchange="crmSincronizarFiltros('alc-ano');renderAlcance()" style="width:90px">
           <option value="todos">Todos</option>
           <option value="2026">2026</option>
           <option value="2025">2025</option>
@@ -1513,9 +1525,9 @@ textarea{resize:vertical;min-height:60px}
     <div class="modal-hd">
       <div class="modal-title" id="det-title">Proposta</div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn sm filled" id="det-edit-btn" onclick="editarOpp()" style="display:none">Editar</button>
-        <button class="btn sm az" id="det-fu-btn" onclick="openFollowUpModal()" style="display:none">+ Follow-up</button>
-        <button class="btn sm tc" id="det-del-btn" onclick="excluirOpp()" style="display:none" title="Excluir oportunidade permanentemente">Excluir</button>
+        <button class="btn sm neutro" id="det-edit-btn" onclick="editarOpp()" style="display:none">Editar</button>
+        <button class="btn sm neutro" id="det-fu-btn" onclick="openFollowUpModal()" style="display:none">+ Follow-up</button>
+        <button class="btn sm neutro" id="det-del-btn" onclick="excluirOpp()" style="display:none" title="Excluir oportunidade permanentemente">Excluir</button>
         <span class="modal-x" onclick="closeM('modal-detail')">×</span>
       </div>
     </div>
@@ -2008,8 +2020,8 @@ const CHART_CORES = new Proxy({}, { get:(_,prop)=>getChartCores()[prop] });
 // ═══ UTILITÁRIOS ════════════════════════════════════
 function fmt(v){if(!v&&v!==0)return'—';return'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtD(d){if(!d)return'—';try{const[y,m,dd]=(d.slice(0,10)).split('-');return`${dd}/${m}/${y}`;}catch{return d;}}
-// Label legível de versão: 0 → 'Original', 1 → 'R1', 2 → 'R2' ...
-function _verLabel(v){ return (v===0||v==null)?'Original':'R'+v; }
+// Label legível de versão: 0 → 'R0' (original), 1 → 'R1', 2 → 'R2' ...
+function _verLabel(v){ return 'R'+(v==null?0:v); }
 function diasDesde(d){if(!d)return null;return Math.floor((new Date()-new Date(d))/86400000);}
 function escHtml(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function escAttr(v){return escHtml(v);}
@@ -2079,14 +2091,6 @@ function deriveOppStageFromProdutos(prods, fallbackStage='prospecção'){
   if(st.every(s => ['negado','cancelado'].includes(s))) return 'negada';
   if(st.some(s => s === 'negociacao' || s === 'negociação')) return 'negociacao';
   return 'enviada';
-}
-
-function tempClass(fus){
-  if(!fus||!fus.length)return'none';
-  const last=fus[fus.length-1];
-  const d=diasDesde(last.data_contato||last.created_at);
-  if(d===null)return'none';
-  if(d<=30)return'hot';if(d<=60)return'warm';return'cold';
 }
 
 // Usuario por resp_id
@@ -2584,7 +2588,7 @@ function oppValorFechado(op){
     return +op.valor_fechado||oppValorProposto(op);
   return 0;
 }
-const DESP_LABELS = { alim:'Alimentação', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem', hotel:'Hospedagem', horasTec:'Horas técnicas (Ganho EXP)' };
+const DESP_LABELS = { alim:'Alimentação', carro:'Aluguel de carro', translado:'Translado local', passagem:'Passagem', hotel:'Hospedagem', horasTec:'Horas técnicas (Ganho EXP)', ajuste:'Arredondamento' };
 // Valor de uma despesa indireta da proposta calc — espelha calcDesp() do EXP.calc.
 // As desps não guardam um campo genérico "val"/"valComBit" (isso é só de subcontratações);
 // o valor depende do tipo (alim, carro, translado, passagem, hotel, horasTec).
@@ -2595,13 +2599,17 @@ function calcDespValor(d){
   if(d.tipo==='horasTec')  return (+d.dias||0)*(+d.horasDia||0)*(+d.valorHora||0);
   if(d.tipo==='passagem')  return +d.val||0;
   if(d.tipo==='hotel')     return (+d.diarias||0)*(+d.valorDiaria||0);
+  if(d.tipo==='ajuste')     return +d.val||0;   // arredondamento do total (EXP.calc)
   return +d.valComBit||+d.val||0; // fallback para formatos legados/desconhecidos
+}
+// Valor ao cliente de uma despesa: bitributação da proposta, exceto o ajuste de arredondamento
+function despValorCliente(d, bitPct){
+  return d.tipo==='ajuste' ? (+d.val||0) : calcDespValor(d)*(1+(+bitPct||0)/100);
 }
 // Total das despesas indiretas repassadas ao cliente (exclui horasTec — é Ganho EXP,
 // não é repassado — e aplica a bitributação global da proposta), espelhando getTotDesp().
 function despTotalCliente(lp){
-  const raw=(lp.desps||[]).filter(d=>d.tipo!=='horasTec').reduce((s,d)=>s+calcDespValor(d),0);
-  return raw*(1+(+lp.despbit||0)/100);
+  return (lp.desps||[]).filter(d=>d.tipo!=='horasTec').reduce((s,d)=>s+despValorCliente(d,lp.despbit),0);
 }
 // Adicionais do fechamento (subcontratações, despesas indiretas, repasse comercial) —
 // vêm de opp_custos (produtos materializados) ou, na vinculação direta com a calc, dos
@@ -2646,7 +2654,7 @@ function getCustosFechamento(op){
   const lp=op._proposal;
   if(!lp)return {subs:[],despesas:[],repasses:[]};
   const subs=(lp.subs||[]).map(s=>({label:[s.serv,s.emp].filter(Boolean).join(' — ')||'Subcontratação',valor:(+s.val||0)*(1+(+s.bit||0)/100)*(1+(+s.ret||0)/100)}));
-  const despesas=(lp.desps||[]).filter(d=>d.tipo!=='horasTec').map(d=>({label:[DESP_LABELS[d.tipo]||d.tipo,d.desc||d.cidade].filter(Boolean).join(' — '),valor:calcDespValor(d)*(1+(+lp.despbit||0)/100)}));
+  const despesas=(lp.desps||[]).filter(d=>d.tipo!=='horasTec').map(d=>({label:[DESP_LABELS[d.tipo]||d.tipo,d.desc||d.cidade].filter(Boolean).join(' — '),valor:despValorCliente(d,lp.despbit)}));
   const repArr=Array.isArray(lp.repasse)?lp.repasse:(lp.repasse?[lp.repasse]:[]);
   const repasses=repArr.filter(r=>r&&(r.nome||r.valorRep)).map(r=>({label:r.nome||'Repasse comercial',valor:+r.valorRep||0}));
   return {subs,despesas,repasses};
@@ -3518,7 +3526,6 @@ function renderPipe(){
     // Valor integral (serviços + subcontratações/despesas/repasse) — mesma regra de
     // "valor total" usada em todo o CRM, aberta ou fechada.
     const vTotalCard=oppValorTotal(op);
-    const tc=tempClass(op._followups);
     const exp=isExpiredOp(op);
     const dest=op.destaque&&!exp;
     const nucleos=[...new Set((op._proposal?.items?.length?op._proposal.items.map(i=>i.nucleo):op._produtos.map(p=>p.nucleo)).map(normNucleo))];
@@ -3547,7 +3554,6 @@ function renderPipe(){
         <span class="pcard-code">${emEstagioLead?'LEAD':code}</span>
         <div style="display:flex;align-items:center;gap:4px">
           ${dest?'<span style="font-size:8px;color:var(--ouro);font-weight:700">★</span>':''}
-          <div class="temp ${tc}"></div>
         </div>
       </div>
       <div class="pcard-client">${escHtml(nomeDisplay)}</div>
@@ -3738,20 +3744,18 @@ function renderOrc(){
   document.getElementById('orc-soma').textContent=fmt(soma);
   document.getElementById('orc-cnt').textContent=ops.length;
 
-  if(!ops.length){document.getElementById('orc-body').innerHTML=`<tr><td colspan="14" class="empty-note">Nenhum resultado.</td></tr>`;return;}
+  if(!ops.length){document.getElementById('orc-body').innerHTML=`<tr><td colspan="13" class="empty-note">Nenhum resultado.</td></tr>`;return;}
 
   document.getElementById('orc-body').innerHTML=ops.map(o=>{
     const vProp=oppValorTotal(o);
     const vFch=isFechada(o)?oppValorFechado(o)+oppValorAdicionais(o,true):oppValorFechado(o);
     const stLbl=stageLabel(o.pipeline_stage);
     const nucleos=[...new Set(o._produtos.map(p=>normNucleo(p.nucleo)))];
-    const tc=tempClass(o._followups);
     const exp=isExpiredOp(o);
     // 3F — data_envio e dias_envio do produto principal (maior valor)
     const prodPrincipal=o._produtos.slice().sort((a,b)=>(+b.valor_proposto||0)-(+a.valor_proposto||0))[0];
     const dataEnvio=prodPrincipal?.data_envio||null;
     const diasEnvio=dataEnvio?diasDesde(dataEnvio):null;
-    const tempTooltip='Hot: contato <30d · Warm: 30-60d · Cold: >60d';
     const _orcNeg=['negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase());
     const _orcFech=isFechada(o);
     const _orcCls=exp?' expired':_orcFech?' orc-fech':(_orcNeg||o.destaque)?' orc-neg':'';
@@ -3769,7 +3773,6 @@ function renderOrc(){
       <td style="white-space:nowrap">${probDots(prodPrincipal?.prob)}</td>
       <td class="dtag">${diasEnvio!==null?diasEnvio+' d':'—'}</td>
       <td>${estagBadge(o.pipeline_stage)}</td>
-      <td title="${escAttr(tempTooltip)}"><div class="temp ${tc}" style="cursor:help"></div></td>
     </tr>`;
   }).join('');
 }
@@ -4248,7 +4251,7 @@ async function garantirCustosCalcMaterializados(oppId, contexto='operação'){
       oportunidade_id: oppId,
       tipo: 'despesa_indireta',
       descricao: [DESP_LABELS[d.tipo]||d.tipo, d.desc||d.cidade].filter(Boolean).join(' — ') || 'Despesa indireta',
-      valor_calculado: calcDespValor(d)*(1+despBitPct/100),
+      valor_calculado: despValorCliente(d,despBitPct),
       calc_ref: `calc:desp:${idx}`,
       status: 'pendente',
     })),
@@ -6210,11 +6213,11 @@ function abrirDetail(oppId){
 
   // Barra de ações: mostra todos os 4 estágios exceto o atual
   if(canEdit && isOpen){
-    // Cores alinhadas às tarjas do kanban: Lead=azul, Orçamento ativo=ouro, Negociação=roxo
+    // Botões neutros (brancos, preto ao passar o mouse); só Fechar e Negar têm cor
     const _pipeStages=[
-      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Lead',cls:'az'},
-      {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo',cls:'am'},
-      {key:'negociacao',vals:['negociacao','negociação'],label:'Negociação',cls:'roxo'},
+      {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Lead',cls:'neutro'},
+      {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo',cls:'neutro'},
+      {key:'negociacao',vals:['negociacao','negociação'],label:'Negociação',cls:'neutro'},
     ];
     html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
       <span style="font-size:9px;color:#bbb;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Mover para:</span>`;
@@ -6229,13 +6232,13 @@ function abrirDetail(oppId){
   } else if(canEdit && isNegada(op)){
     html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
       <span style="font-size:9px;color:#bbb;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Reabrir como:</span>
-      <button class="btn sm am" onclick="reabrirOpp('${escJsStr(oppId)}','enviada')">↺ Orçamento ativo</button>
-      <button class="btn sm roxo" onclick="reabrirOpp('${escJsStr(oppId)}','negociacao')">↺ Negociação</button>
+      <button class="btn sm neutro" onclick="reabrirOpp('${escJsStr(oppId)}','enviada')">↺ Orçamento ativo</button>
+      <button class="btn sm neutro" onclick="reabrirOpp('${escJsStr(oppId)}','negociacao')">↺ Negociação</button>
     </div>`;
   }
 
   html+=`<div class="ms"><div class="ms-title">Identificação</div>
-    <div class="dr"><div class="dk">Número</div><div class="dv" style="font-family:var(--font-mono);font-weight:700">${escHtml(op.num_legado||'—')}</div></div>
+    <div class="dr"><div class="dk">Número</div><div class="dv" style="font-weight:700">${escHtml(op.num_legado||'—')}</div></div>
     <div class="dr"><div class="dk">Responsável</div><div class="dv">${respBadge(op.resp_id)} ${escHtml(u.nome)}</div></div>
     <div class="dr"><div class="dk">Estágio</div><div class="dv">${estagBadge(op.pipeline_stage)}</div></div>
     ${op.proposta_calc_id?(()=>{
@@ -6243,9 +6246,9 @@ function abrirDetail(oppId){
       const lp = allProposals.find(p=>String(p.proposal_id)===String(linkedProposalId));
       const codDisp = lp?.prop_code ? `EXP-${String(lp.prop_code).padStart(3,'0')}` : `#${linkedProposalId}`;
       const verDisp = lp ? _verLabel(lp.version||0) : '';
-      return `<div class="dr"><div class="dk">Proposta calc</div><div class="dv" style="font-family:var(--font-mono);font-size:11px">
+      return `<div class="dr"><div class="dk">Proposta calc</div><div class="dv">
         <span style="font-weight:700">${escHtml(codDisp)}</span>${verDisp?` <span style="color:var(--azul);font-weight:700">${escHtml(verDisp)}</span>`:''}
-        <span id="det-calc-info-${oppId}" style="color:#aaa;font-size:10px;margin-left:6px">carregando...</span>
+        <span id="det-calc-info-${oppId}" style="color:#aaa;margin-left:6px">carregando...</span>
       </div></div>`;
     })():''}
   </div>`;
@@ -6257,7 +6260,7 @@ function abrirDetail(oppId){
     ${op.origem?`<div class="dr"><div class="dk">Origem</div><div class="dv"><strong>${escHtml(op.origem)}</strong>${op.indicou?' — '+escHtml(op.indicou):''}</div></div>`:''}
     ${(op.resp_cliente_nome||op.resp_cliente_tel||op.resp_cliente_email)?`<div class="dr"><div class="dk">Resp. cliente</div><div class="dv" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       ${op.resp_cliente_nome?`<span style="font-weight:600">${escHtml(op.resp_cliente_nome)}</span>`:''}
-      ${op.resp_cliente_tel?`<span style="font-family:var(--font-mono);font-size:10px">${escHtml(op.resp_cliente_tel)}</span>`:''}
+      ${op.resp_cliente_tel?`<span>${escHtml(op.resp_cliente_tel)}</span>`:''}
       ${op.resp_cliente_email?`<a href="mailto:${escAttr(op.resp_cliente_email)}" style="font-size:10px;color:var(--azul)">${escHtml(op.resp_cliente_email)}</a>`:''}
     </div></div>`:''}
     ${op.contexto_contato?`<div class="dr"><div class="dk">Contexto do contato</div><div class="dv" style="white-space:pre-wrap">${escHtml(op.contexto_contato)}</div></div>`:''}
@@ -6274,12 +6277,12 @@ function abrirDetail(oppId){
       <div class="ms-title" style="color:var(--verde);border-bottom-color:rgba(62,120,88,.3);margin:10px 0 5px">${titulo}</div>
       ${itens.map(it=>`<div class="dr" style="border-color:rgba(62,120,88,.2)">
         <div class="dk" style="background:transparent">${escHtml(it.label)}</div>
-        <div class="dv" style="font-family:var(--font-mono);font-weight:600;text-align:right">${fmt(it.valor)}</div>
+        <div class="dv" style="font-weight:600;text-align:right">${fmt(it.valor)}</div>
       </div>`).join('')}`;
     html+=`<div class="ms" style="border:1px solid var(--verde);border-radius:var(--radius-card,8px);padding:12px 14px;background:var(--verde-bg,#EAF5EE)">
       <div class="ms-title" style="color:var(--verde);border-bottom-color:rgba(62,120,88,.3)">✓ Fechamento${oppDataFechamento(op)?` — ${fmtD(oppDataFechamento(op))}`:''}</div>
       <div class="dk" style="background:transparent;padding:0;margin-bottom:2px">Valor total do fechamento</div>
-      <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color:var(--verde);margin-bottom:8px">${fmt(_valorTotalFech)}</div>
+      <div style="font-size:16px;font-weight:700;color:var(--verde);margin-bottom:8px">${fmt(_valorTotalFech)}</div>
       ${_fechSecao('Por produto', _produtosFech.map(p=>({label:SUBTIPO_LABEL[p.subtipo]||p.subtipo||'Serviço',valor:+p.valor_fechado||0})))}
       ${_fechSecao('Despesas indiretas', _custosFech.despesas)}
       ${_fechSecao('Repasse comercial', _custosFech.repasses)}
@@ -6356,9 +6359,9 @@ function abrirDetail(oppId){
       </div>`;
     });
     const _totalProp=+op._proposal?.total>0 ? +op._proposal.total : oppValorProposto(op)+oppValorAdicionais(op,false);
-    html+=`<div class="dr" style="margin-top:4px"><div class="dk">Proposta original</div><div class="dv" style="color:#aaa;font-size:10px;font-family:var(--font-mono)">${fmt(_totalProp)}</div></div>`;
+    html+=`<div class="dr" style="margin-top:4px"><div class="dk">Proposta original</div><div class="dv" style="color:#aaa">${fmt(_totalProp)}</div></div>`;
     if(!_useCalc&&vFch&&!isFechada(op)){
-      html+=`<div class="dr"><div class="dk">Total fechado (serviços)</div><div class="dv" style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmt(vFch)}</div></div>`;
+      html+=`<div class="dr"><div class="dk">Total fechado (serviços)</div><div class="dv" style="font-weight:700;color:var(--verde)">${fmt(vFch)}</div></div>`;
     }
     html+=`</div>`;
     // Custos vinculados (subs/desps/repasse) — inline, sem async
@@ -6397,14 +6400,14 @@ function abrirDetail(oppId){
             const desc=d.desc||d.cidade||'';
             ch+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--cinza2);font-size:10px">
               <span style="flex:1"><strong>${escHtml(lbl)}</strong>${desc?' — '+escHtml(desc):''}${d.tipo==='horasTec'?' <span style="color:#888">(não repassado ao cliente)</span>':''}</span>
-              <span style="font-family:var(--font-mono);font-weight:600">${fmt(calcDespValor(d))}</span>
+              <span style="font-weight:600">${fmt(calcDespValor(d))}</span>
             </div>`;
           });
           if(_despBitPct>0){
-            const _rawDesp=_desps.filter(d=>d.tipo!=='horasTec').reduce((s,d)=>s+calcDespValor(d),0);
+            const _rawDesp=_desps.filter(d=>d.tipo!=='horasTec'&&d.tipo!=='ajuste').reduce((s,d)=>s+calcDespValor(d),0);
             ch+=`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:10px;color:#888">
               <span>Bruto ${fmt(_rawDesp)} + Bitrib. ${_despBitPct}%</span>
-              <span style="font-family:var(--font-mono);font-weight:600;color:var(--grafite)">${fmt(despTotalCliente(_lp))}</span>
+              <span style="font-weight:600;color:var(--grafite)">${fmt(despTotalCliente(_lp))}</span>
             </div>`;
           }
         }
@@ -6413,7 +6416,7 @@ function abrirDetail(oppId){
           _rep.forEach(r=>{
             ch+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:10px">
               <span style="flex:1"><strong>${r.nome||'—'}</strong>${r.tipo==='pct'?` · ${r.val}% sobre serviços`:' · valor fixo'}</span>
-              <span style="font-family:var(--font-mono);font-weight:600">${fmt(r.valorRep||0)}</span>
+              <span style="font-weight:600">${fmt(r.valorRep||0)}</span>
             </div>`;
           });
         }
@@ -6440,7 +6443,7 @@ function abrirDetail(oppId){
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:9px;background:var(--cinza2);padding:1px 6px;border-radius:3px;color:var(--grafite);font-weight:600">${escHtml(tipoLabel)}</span>
           <span style="font-size:11px;font-weight:500;flex:1">${escHtml(c.descricao||'—')}</span>
-          <span style="font-family:var(--font-mono);font-weight:600;font-size:11px">${fmt(val)}</span>
+          <span style="font-weight:600;font-size:11px">${fmt(val)}</span>
         </div>
         ${!incl?'<div style="font-size:9px;color:var(--terracota);margin-top:3px">Excluído do fechamento</div>':''}
       </div>`;
@@ -6867,14 +6870,14 @@ function renderAlcance(){
   const _statVal=alcMode==='fech'?fechVal:alcMode==='neg'?negVal:pipeVal;
   const _statLbl=alcMode==='fech'?'fechado':alcMode==='neg'?'valor perdido':'pipeline';
   document.getElementById('alc-stats').innerHTML=`
-    <div style="display:flex;gap:6px;margin-bottom:2px">
-      <div style="display:flex;align-items:baseline;gap:6px;padding:5px 10px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);flex:0 0 auto">
-        <span style="font-size:16px;font-weight:700;font-family:var(--font-mono)">${ops.length}</span>
-        <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">oportunidades</span>
+    <div class="alc-stats">
+      <div class="alc-stat" style="flex:0 0 auto">
+        <span class="alc-stat-v">${ops.length}</span>
+        <span class="alc-stat-l">oportunidades</span>
       </div>
-      <div style="display:flex;align-items:baseline;gap:6px;padding:5px 10px;background:var(--branco);border:1px solid var(--cinza);border-radius:var(--radius-input,6px);flex:1;min-width:0">
-        <span style="font-size:12px;font-weight:700;font-family:var(--font-mono);white-space:nowrap">${fmt(_statVal)}</span>
-        <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">${_statLbl}</span>
+      <div class="alc-stat" style="flex:1" title="${escHtml(fmt(_statVal))}">
+        <span class="alc-stat-v">${fmt(_statVal)}</span>
+        <span class="alc-stat-l">${_statLbl}</span>
       </div>
     </div>`;
 
@@ -6882,7 +6885,7 @@ function renderAlcance(){
   const groups={};
   ops.forEach(o=>{
     const key=(o.cidade||'').trim().toLowerCase()+'/'+(o.uf||'').toLowerCase();
-    if(!groups[key]) groups[key]={cidade:o.cidade||'—',uf:o.uf||'',ops:[]};
+    if(!groups[key]) groups[key]={cidade:(o.cidade||'').trim()||'Sem cidade',semCidade:!(o.cidade||'').trim(),uf:o.uf||'',ops:[]};
     groups[key].ops.push(o);
   });
 
@@ -6984,19 +6987,19 @@ function _renderAlcanceList(cityGroups){
     // agrupa os cityGroups por UF
     const byUF={};
     cityGroups.forEach(g=>{
-      const uf=(g.uf||'—').toUpperCase();
+      const uf=(g.uf||'').toUpperCase()||'Sem estado';
       if(!byUF[uf])byUF[uf]={uf,ops:[],cidades:[]};
       byUF[uf].ops.push(...g.ops);
       byUF[uf].cidades.push(g.cidade);
     });
-    const sorted=Object.values(byUF).sort((a,b)=>b.ops.length-a.ops.length);
+    const sorted=Object.values(byUF).sort((a,b)=>(a.uf==='Sem estado')-(b.uf==='Sem estado')||b.ops.length-a.ops.length);
     document.getElementById('alc-list-hdr').textContent='Por estado';
     document.getElementById('alc-list').innerHTML=sorted.length
       ? sorted.map((g,i)=>`
         <div class="alc-city-card" onclick="_alcanceDrillEstado(${i},${JSON.stringify(g.uf)})">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <div style="font-weight:700;font-size:12px">${escHtml(g.uf)}</div>
-            <div style="font-size:10px;font-family:var(--font-mono);color:#888">${g.ops.length}</div>
+          <div class="alc-card-top">
+            <div class="alc-card-nome${g.uf==='Sem estado'?' alc-vazio':''}" style="font-weight:700;font-size:12px">${escHtml(g.uf)}</div>
+            <div class="alc-card-n">${g.ops.length}</div>
           </div>
           <div style="font-size:9px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.cidades.slice(0,4).map(c=>escHtml(c)).join(', ')}${g.cidades.length>4?'…':''}</div>
         </div>`).join('')
@@ -7004,15 +7007,15 @@ function _renderAlcanceList(cityGroups){
     // guarda para drill
     window._alcUFGroups=sorted;
   } else {
-    const sorted=cityGroups.slice().sort((a,b)=>(a.cidade||'').localeCompare(b.cidade||'','pt-BR'));
+    const sorted=cityGroups.slice().sort((a,b)=>(a.semCidade?1:0)-(b.semCidade?1:0)||(a.cidade||'').localeCompare(b.cidade||'','pt-BR'));
     _alcGroups=sorted;
     document.getElementById('alc-list-hdr').textContent='Por cidade';
     document.getElementById('alc-list').innerHTML=sorted.length
       ? sorted.map((g,i)=>`
         <div class="alc-city-card" onclick="_alcanceDrillCity(_alcGroups[${i}])">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <div style="font-weight:600;font-size:11px">${escHtml(g.cidade)}${g.uf?` <span style="color:#aaa;font-weight:400">· ${escHtml(g.uf)}</span>`:''}</div>
-            <div style="font-size:10px;font-family:var(--font-mono);color:#888">${g.ops.length}</div>
+          <div class="alc-card-top">
+            <div class="alc-card-nome${g.semCidade?' alc-vazio':''}">${escHtml(g.cidade)}${g.uf?` <span style="color:#aaa;font-weight:400;font-style:normal">· ${escHtml(g.uf)}</span>`:''}</div>
+            <div class="alc-card-n">${g.ops.length}</div>
           </div>
         </div>`).join('')
       : '<div class="empty-note">Sem dados com cidade cadastrada.</div>';
@@ -7027,16 +7030,16 @@ function _alcanceDrillEstado(idx, uf){
   // lista cidades dentro do estado
   const cidadesUF={};
   g.ops.forEach(o=>{
-    const key=(o.cidade||'—').trim();
+    const key=(o.cidade||'').trim()||'Sem cidade';
     if(!cidadesUF[key])cidadesUF[key]={cidade:key,ops:[]};
     cidadesUF[key].ops.push(o);
   });
   const sorted=Object.values(cidadesUF).sort((a,b)=>b.ops.length-a.ops.length);
   document.getElementById('alc-list').innerHTML=sorted.map((c,i)=>`
     <div class="alc-city-card" onclick="_alcanceDrillCityInline(${i},${JSON.stringify(c.cidade)},${JSON.stringify(uf)})">
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <div style="font-weight:600;font-size:11px">${escHtml(c.cidade)}</div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:#888">${c.ops.length}</div>
+      <div class="alc-card-top">
+        <div class="alc-card-nome${c.cidade==='Sem cidade'?' alc-vazio':''}">${escHtml(c.cidade)}</div>
+        <div class="alc-card-n">${c.ops.length}</div>
       </div>
     </div>`).join('');
   window._alcCidadeGroups=sorted;
@@ -7053,13 +7056,13 @@ function _alcanceDrillCity(g){
   document.getElementById('alc-list-back').style.display='block';
   document.getElementById('alc-list').innerHTML=g.ops.map(o=>`
     <div class="alc-city-card" onclick="abrirDetail('${escJsStr(o.id)}')">
-      <div style="font-weight:600;font-size:11px;margin-bottom:2px">${escHtml(o._cliente?.nome||'—')}</div>
-      <div style="font-size:10px;color:#888">${escHtml(o.projeto||'—')}</div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
+      <div class="alc-card-nome${o._cliente?.nome?'':' alc-vazio'}" style="margin-bottom:2px">${escHtml(o._cliente?.nome||'Sem cliente')}</div>
+      <div style="font-size:10px;color:#888${o.projeto?'':';font-style:italic;color:#aaa'}">${escHtml(o.projeto||'Sem projeto')}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
         ${estagBadge(o.pipeline_stage)}
-        <span style="font-family:var(--font-mono);font-size:11px;font-weight:600">${fmt(oppValorTotal(o))}</span>
+        <span style="font-size:11px;font-weight:600">${oppValorTotal(o)?fmt(oppValorTotal(o)):'<span style="color:#aaa;font-weight:400">sem valor</span>'}</span>
       </div>
-    </div>`).join('');
+    </div>`).join('') || '<div class="empty-note">Nenhuma oportunidade.</div>';
 }
 
 // ═══ RELATÓRIOS ═══════════════════════════════════════
