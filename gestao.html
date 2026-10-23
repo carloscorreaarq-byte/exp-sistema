@@ -800,6 +800,7 @@ body {
 .proj-card-mid { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 5px; }
 .proj-card-bot { display: flex; align-items: center; justify-content: space-between; }
 .proj-card-avs { display: flex; gap: 3px; }
+.av-revisor { box-shadow: 0 0 0 1.5px var(--bg, #fff), 0 0 0 3px var(--verde, #2e9e6b); }
 .proj-card-av {
   width: 18px; height: 18px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -962,8 +963,14 @@ body {
 #fil-nucleo       { width: 148px; flex-shrink: 0; }
 #fil-gestao       { width: 100px; flex-shrink: 0; }
 #fil-status       { width: 110px; flex-shrink: 0; }
-#fil-coord        { width: 162px; flex-shrink: 0; }
-#fil-participante { width: 156px; flex-shrink: 0; }
+.fil-meus {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap;
+  padding: 4px 10px; border: 1px solid var(--cinza2); border-radius: 8px;
+  background: var(--branco); font-size: 11px; color: var(--grafite); cursor: pointer; user-select: none;
+}
+.fil-meus input { margin: 0; accent-color: var(--mod-primary, var(--verde)); cursor: pointer; }
+.fil-meus:has(input:checked) { border-color: var(--mod-primary, var(--verde)); font-weight: 600; }
+[data-theme="dark"] .fil-meus { background:#252523; border-color:#3A3836; }
 .proj-toolbar-action {
   margin-left: auto; display: flex; align-items: center;
 }
@@ -1018,7 +1025,7 @@ body {
 .prod-row-tipo   { width: 110px; flex-shrink: 0; padding: 0 10px; }
 .prod-row-status { width: 100px; flex-shrink: 0; padding: 0 10px; }
 .prod-row-etapa  { font-size: 11px; color: #888; flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
-.prod-row-coord { min-width: 54px; flex-shrink: 0; }
+.prod-row-coord { min-width: 54px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
 .prod-row-datas { min-width: 76px; text-align: right; flex-shrink: 0; }
 .prod-row-horas { font-size: 10px; color: #8A867E; min-width: 60px; text-align: right; white-space: nowrap; flex-shrink: 0; }
 .prod-bullet {
@@ -3195,12 +3202,10 @@ span.tarefa-prio { display: inline-block; cursor: default; }
         <option value="pausado">Pausados</option>
         <option value="encerrado">Encerrados</option>
       </select>
-      <select class="filter-select" id="fil-coord" onchange="filtrarProjetos()">
-        <option value="">Todos os coordenadores</option>
-      </select>
-      <select class="filter-select" id="fil-participante" onchange="filtrarProjetos()">
-        <option value="">Todos os participantes</option>
-      </select>
+      <label class="fil-meus" title="Projetos em que você é coordenador, revisor ou participa de alguma etapa">
+        <input type="checkbox" id="fil-meus" onchange="salvarFiltroMeus();filtrarProjetos()">
+        Meus projetos
+      </label>
     </div>
   </div>
 
@@ -3953,6 +3958,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
               <div class="dr"><div class="dk">Cidade / UF</div><div class="dv" id="mp-cidade-uf">—</div></div>
               <div class="dr"><div class="dk">Status</div><div class="dv" id="mp-status">—</div></div>
               <div class="dr"><div class="dk">Coordenador</div><div class="dv" id="mp-coord">—</div></div>
+              <div class="dr"><div class="dk">Revisor</div><div class="dv" id="mp-revisor">—</div></div>
               <div class="dr"><div class="dk">Início</div><div class="dv" id="mp-inicio">—</div></div>
             </div>
             <!-- Col 2: Dados do projeto -->
@@ -4253,13 +4259,21 @@ span.tarefa-prio { display: inline-block; cursor: default; }
               </select>
             </div>
           </div>
-          <div class="fg fg3 mb8">
+          <div class="fg fg2 mb8">
             <div class="fgroup">
               <label>Coordenador</label>
               <select id="cad-prod-coord">
                 <option value="">Selecionar...</option>
               </select>
             </div>
+            <div class="fgroup">
+              <label>Revisor</label>
+              <select id="cad-prod-revisor">
+                <option value="">—</option>
+              </select>
+            </div>
+          </div>
+          <div class="fg fg2 mb8">
             <div class="fgroup">
               <label>Data de início</label>
               <input type="date" id="cad-prod-inicio">
@@ -4612,6 +4626,12 @@ span.tarefa-prio { display: inline-block; cursor: default; }
           <div class="fgroup">
             <label>Coordenador</label>
             <select id="ep-coord"></select>
+          </div>
+        </div>
+        <div class="fg fg2 mb8">
+          <div class="fgroup">
+            <label>Revisor</label>
+            <select id="ep-revisor"></select>
           </div>
         </div>
         <div class="fg fg3 mb8">
@@ -5293,7 +5313,7 @@ async function init() {
     }
   } else {
     // Colaboradores: ocultar filtros avançados de projetos
-    ['fil-nucleo', 'fil-gestao', 'fil-coord'].forEach(id => {
+    ['fil-nucleo', 'fil-gestao'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
@@ -5706,23 +5726,34 @@ async function carregarUsuarios() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<option value="">Selecionar...</option>' + opts;
   });
-  const fc = document.getElementById('fil-coord');
-  if (fc) fc.innerHTML = '<option value="">Todos os coordenadores</option>' + opts;
+  const revSel = document.getElementById('cad-prod-revisor');
+  if (revSel) revSel.innerHTML = opcoesRevisor(null);
+  // "Meus projetos": lembra a escolha neste navegador
+  const fm = document.getElementById('fil-meus');
+  if (fm) { try { fm.checked = localStorage.getItem('exp_gestao_meus_projetos') === '1'; } catch (e) {} }
+}
 
-  const fp = document.getElementById('fil-participante');
-  if (fp) {
-    if (isSocioRole(G.usuario.role)) {
-      fp.innerHTML =
-        '<option value="">Todos os participantes</option>' +
-        `<option value="${G.usuario.id}" style="font-weight:700">Meus projetos</option>` +
-        G.todosUsuarios.filter(u => u.id !== G.usuario.id)
-          .map(u => `<option value="${u.id}">${u.nome} (${u.iniciais})</option>`).join('');
-    } else {
-      fp.innerHTML =
-        '<option value="">Todos os projetos</option>' +
-        `<option value="${G.usuario.id}">Meus projetos</option>`;
-    }
-  }
+function salvarFiltroMeus() {
+  const fm = document.getElementById('fil-meus');
+  try { localStorage.setItem('exp_gestao_meus_projetos', fm && fm.checked ? '1' : '0'); } catch (e) {}
+}
+
+// Revisor do projeto: só Carlos ou Thay
+function revisoresPermitidos() {
+  return G.todosUsuarios.filter(u => {
+    const n = String(u.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    return /^(carlos|thay)/.test(n);
+  });
+}
+function opcoesRevisor(selId) {
+  return '<option value="">—</option>' + revisoresPermitidos()
+    .map(u => `<option value="${u.id}" ${u.id === selId ? 'selected' : ''}>${_escN(u.nome)}</option>`).join('');
+}
+function avRevisorHtml(p, size) {
+  const r = p?.revisor_id ? G.todosUsuarios.find(u => u.id === p.revisor_id) : null;
+  if (!r) return '';
+  const sz = size || 18;
+  return `<div class="proj-card-av av-revisor" style="background:${r.cor||'#888'};display:inline-flex;width:${sz}px;height:${sz}px;font-size:8px;border-radius:50%;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:700" title="Revisor: ${_escN(r.nome||'')}">${_escN(r.iniciais||'')}</div>`;
 }
 
 // Normaliza main_nucleo do CRM para chave interna
@@ -6005,6 +6036,7 @@ function renderDashProjetos(prods, horasPorProd = {}) {
         <div class="proj-card-bot">
           <div class="proj-card-avs">
             ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : ''}
+            ${avRevisorHtml(p)}
           </div>
           <div class="proj-card-acoes" onclick="event.stopPropagation()">
             ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao(${etapaIdJs})">Solicitar revisão</button>` : ''}
@@ -6603,8 +6635,7 @@ function pkFiltrarProds() {
   const nucleo        = document.getElementById('fil-nucleo').value;
   const gestaoFiltro  = document.getElementById('fil-gestao').value;
   const status        = document.getElementById('fil-status').value;
-  const coordId       = document.getElementById('fil-coord').value;
-  const participanteId = document.getElementById('fil-participante').value;
+  const soMeus        = !!document.getElementById('fil-meus')?.checked;
 
   const baseLista = gestaoFiltro === 'ocultos'
     ? G._todosProdutosGestao.filter(p => p.em_gestao === false)
@@ -6615,15 +6646,7 @@ function pkFiltrarProds() {
   return baseLista.filter(p => {
     if (nucleo && p.nucleo !== nucleo) return false;
     if (status && p.status !== status) return false;
-    if (coordId && p.coordenador_id !== coordId) return false;
-    if (participanteId) {
-      const etapasDoUsr = new Set(
-        Object.entries(G.etapaDevs)
-          .filter(([, uids]) => uids.includes(participanteId))
-          .map(([eid]) => eid)
-      );
-      if (!G.todasEtapas.some(e => e.produto_id === p.id && etapasDoUsr.has(e.id))) return false;
-    }
+    if (soMeus && !pkEuEnvolvido(p)) return false;
     if (busca) {
       const opp = p.oportunidades, cli = opp?.clientes;
       const hay = normBusca([p.nome, opp?.projeto, cli?.nome, cli?.cidade, cli?.uf, opp?.cidade].filter(Boolean).join(' '));
@@ -6635,6 +6658,7 @@ function pkFiltrarProds() {
 
 function pkEuEnvolvido(prod) {
   if (prod.coordenador_id === G.usuario.id) return true;
+  if (prod.revisor_id === G.usuario.id) return true;
   const minhasEtapas = new Set(
     Object.entries(G.etapaDevs)
       .filter(([, uids]) => uids.includes(G.usuario.id))
@@ -6701,6 +6725,7 @@ function renderKanbanProjetos() {
       const coordHtml = coord
         ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:18px;height:18px;font-size:8px;border-radius:50%;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:700" title="${_escN(coord.nome||'')}">${_escN(coord.iniciais||'')}</div>`
         : '';
+      const revHtml = avRevisorHtml(p);
       const prazoHtml = etapaAtiva?.data_estimada
         ? `<span style="font-size:10px;font-family:var(--font-mono);color:#888">${fmtDate(etapaAtiva.data_estimada)}</span>`
         : '';
@@ -6722,7 +6747,7 @@ function renderKanbanProjetos() {
             ${statusBadge}
             ${stEtapa ? `<span class="badge ${stEtapa.cls}" style="font-size:8px">${stEtapa.label}</span>` : ''}
           </div>
-          ${(coordHtml||prazoHtml) ? `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${coordHtml}${prazoHtml}</div>` : ''}
+          ${(coordHtml||revHtml||prazoHtml) ? `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${coordHtml}${revHtml}${prazoHtml}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -6859,7 +6884,8 @@ function renderListaProjetos() {
               <div class="prod-row-status"><span class="badge ${stProd.cls}">${stProd.label}</span></div>
               <div class="prod-row-etapa">${etapaAtiva ? etapaNomeDisp : '—'}</div>
               <div class="prod-row-coord">
-                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:8px" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : '—'}
+                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:8px" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : (p.revisor_id ? '' : '—')}
+                ${avRevisorHtml(p, 20)}
               </div>
               <div class="prod-row-datas">
                 ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '—'}
@@ -10629,6 +10655,10 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-coord').innerHTML = coord
     ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${coord.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${coord.iniciais}</div>${coord.nome}</div>`
     : '—';
+  const revisor = prod.revisor_id ? G.todosUsuarios.find(u => u.id === prod.revisor_id) : null;
+  document.getElementById('mp-revisor').innerHTML = revisor
+    ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${revisor.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${_escN(revisor.iniciais||'')}</div>${_escN(revisor.nome||'')}</div>`
+    : '—';
   document.getElementById('mp-inicio').textContent = prod.data_inicio ? fmtDate(prod.data_inicio) : '—';
 
   // Dados do projeto (novos campos na oportunidade)
@@ -11299,6 +11329,7 @@ async function salvarProjeto() {
     const oppSel   = document.getElementById('cad-opp-sel').value;
     const prodNome = document.getElementById('cad-prod-nome').value.trim();
     const coordId  = document.getElementById('cad-prod-coord').value || null;
+    const revisorId = document.getElementById('cad-prod-revisor')?.value || null;
     const nucleo   = document.getElementById('cad-prod-nucleo').value;
     const dataInicio = document.getElementById('cad-prod-inicio').value || null;
     const valorEl  = document.getElementById('cad-prod-valor');
@@ -11336,6 +11367,7 @@ async function salvarProjeto() {
       nome: prodNome,
       nucleo,
       coordenador_id: coordId,
+      ...(revisorId ? { revisor_id: revisorId } : {}),
       data_inicio: dataInicio,
       valor_contratado: valor,
       status: 'ativo',
@@ -15431,6 +15463,8 @@ async function abrirEditarProduto() {
   coordSel.innerHTML = '<option value="">—</option>' +
     G.todosUsuarios.map(u => `<option value="${u.id}" ${u.id === prod.coordenador_id ? 'selected' : ''}>${u.nome}</option>`).join('');
 
+  document.getElementById('ep-revisor').innerHTML = opcoesRevisor(prod.revisor_id);
+
   const clienteSel = document.getElementById('ep-cliente');
   clienteSel.innerHTML = '<option value="">Selecionar cliente...</option>' +
     (clientes || []).map(c => {
@@ -15505,6 +15539,7 @@ async function salvarEdicaoProduto() {
     const nucleo     = document.getElementById('ep-nucleo').value;
     const status     = document.getElementById('ep-status').value;
     const coordId    = document.getElementById('ep-coord').value || null;
+    const revisorId  = document.getElementById('ep-revisor').value || null;
     const dataInicio = document.getElementById('ep-inicio').value || null;
     const oppVinculada = !!prod.oportunidade_id;
     const clienteId  = oppVinculada ? (prod.oportunidades?.cliente_id || null) : (document.getElementById('ep-cliente').value || null);
@@ -15524,6 +15559,7 @@ async function salvarEdicaoProduto() {
       nucleo,
       status,
       coordenador_id: coordId,
+      revisor_id: revisorId,
       data_inicio: dataInicio,
       em_gestao: emGestao,
       updated_at: new Date().toISOString()
@@ -15541,6 +15577,11 @@ async function salvarEdicaoProduto() {
       .eq('id', prod.id)
       .select('id')
       .maybeSingle();
+
+    if (eProd && /revisor_id/i.test(eProd.message || '')) {
+      toast('Rode o SQL supabase/projeto_revisor.sql para salvar o revisor.');
+      return;
+    }
 
     if (eProd && /contrato_/i.test(eProd.message || '')) {
       delete updProd.contrato_status;

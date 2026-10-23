@@ -416,6 +416,53 @@ body{
 .bh-admin-actions .apo-field{margin-bottom:0;}
 .bh-admin-actions .apo-actions{margin-top:0;}
 .bh-empty{padding:14px 12px;font-size:11px;color:#bbb;text-align:center;}
+/* Acompanhamento do pedido (2026-10-23) */
+.bh-side{display:flex;flex-direction:column;gap:12px;}
+.bh-side .apo-form-card{position:static;}
+.bh-side .sec-title{margin-bottom:6px;}
+.bh-status{padding:3px 8px;border-radius:999px;font-size:10px;font-weight:600;white-space:nowrap;
+  border:1px solid var(--cinza2);background:var(--off);color:#666;}
+.bh-status.ok{background:var(--verde-bg);border-color:rgba(62,120,88,.22);color:#2d6f50;}
+.bh-status.warn{background:var(--terracota-bg);border-color:rgba(184,86,56,.22);color:#9b4639;}
+.bh-status.am{background:rgba(196,154,39,.10);border-color:rgba(196,154,39,.22);color:#916b13;}
+.bh-steps{display:flex;align-items:flex-start;gap:0;margin:2px 0;}
+.bh-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;min-width:0;text-align:center;}
+.bh-step:not(:first-child)::before{content:'';position:absolute;top:5px;right:50%;width:100%;height:2px;background:var(--cinza2);z-index:0;}
+.bh-step.done:not(:first-child)::before,.bh-step.now:not(:first-child)::before{background:var(--verde);}
+.bh-step-dot{width:12px;height:12px;border-radius:50%;background:var(--branco);border:2px solid var(--cinza2);position:relative;z-index:1;box-sizing:border-box;}
+.bh-step.done .bh-step-dot{background:var(--verde);border-color:var(--verde);}
+.bh-step.now .bh-step-dot{border-color:#c49a27;background:rgba(196,154,39,.25);}
+.bh-step.fail .bh-step-dot{background:var(--terracota);border-color:var(--terracota);}
+.bh-step.fail:not(:first-child)::before{background:var(--terracota);}
+.bh-step-lbl{font-size:10px;font-weight:600;color:var(--grafite);line-height:1.25;}
+.bh-step-sub{font-size:9px;color:#999;line-height:1.25;}
+.bh-step:not(.done):not(.now):not(.fail) .bh-step-lbl{color:#aaa;font-weight:500;}
+.bh-decisao{font-size:10px;color:#666;line-height:1.45;}
+.bh-decisao-obs{margin-top:4px;padding:6px 8px;border-radius:var(--radius-sm,6px);background:var(--off);border-left:3px solid var(--cinza2);color:var(--grafite);font-size:11px;}
+.bh-decisao-obs.warn{border-left-color:var(--terracota);background:var(--terracota-bg);}
+.bh-decisao-obs.ok{border-left-color:var(--verde);}
+.bh-det summary{font-size:10px;color:#999;cursor:pointer;list-style:none;user-select:none;}
+.bh-det summary::-webkit-details-marker{display:none;}
+.bh-det summary::before{content:'▸ ';}
+.bh-det[open] summary::before{content:'▾ ';}
+.bh-det .bh-item-meta{margin-top:4px;}
+.bh-aviso{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
+.bh-aviso-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--radius-card);
+  border:1px solid var(--cinza2);background:var(--branco);font-size:11px;color:var(--grafite);cursor:pointer;flex:1 1 280px;}
+.bh-aviso-item:hover{border-color:#C8C3BA;}
+.bh-aviso-item.ok{background:var(--verde-bg);border-color:rgba(62,120,88,.25);}
+.bh-aviso-item.warn{background:var(--terracota-bg);border-color:rgba(184,86,56,.25);}
+.bh-aviso-item.am{background:rgba(196,154,39,.08);border-color:rgba(196,154,39,.25);}
+.bh-aviso-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#c49a27;}
+.bh-aviso-item.ok .bh-aviso-dot{background:var(--verde);}
+.bh-aviso-item.warn .bh-aviso-dot{background:var(--terracota);}
+.bh-aviso-txt{flex:1;min-width:0;}
+.bh-aviso-ver{font-size:10px;font-weight:600;color:#888;white-space:nowrap;}
+.bh-aviso-x{border:0;background:none;color:#999;font-size:14px;line-height:1;cursor:pointer;padding:0 2px;}
+.bh-aviso-x:hover{color:var(--grafite);}
+[data-theme="dark"] .bh-aviso-item{background:#1D1D1B;border-color:#2E2D2B;color:#F0EFEC;}
+[data-theme="dark"] .bh-step-dot{background:#1D1D1B;}
+[data-theme="dark"] .bh-decisao-obs{background:#141412;color:#F0EFEC;}
 .bh-card-val.pos{color:var(--verde);}
 .bh-card-val.neg{color:var(--terracota);}
 .bh-month-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
@@ -674,6 +721,8 @@ body{
         <button class="semana-hoje-btn" id="apo-week-today" type="button">Hoje</button>
       </div>
     </div>
+    <!-- Aviso: andamento dos pedidos ao banco de horas -->
+    <div class="bh-aviso" id="bh-aviso" style="display:none"></div>
 
     <!-- ══ ABA HORAS ══════════════════════════════════════════ -->
     <div class="stab-panel active" id="stp-horas">
@@ -894,11 +943,6 @@ body{
             <div class="bh-empty">Carregando…</div>
           </div>
 
-          <div class="sec-title">Minhas solicitações</div>
-          <div id="bh-requests-wrap">
-            <div class="lanc-lista-box"><div class="bh-empty">Carregando…</div></div>
-          </div>
-
           <div class="bh-admin-box" id="bh-admin-wrap" style="display:none">
             <div class="sec-title">Solicitações pendentes</div>
             <div id="bh-admin-list-wrap">
@@ -907,6 +951,7 @@ body{
           </div>
         </div>
 
+        <div class="bh-side">
         <div class="apo-form-card">
           <div class="apo-form-title">Solicitação ao banco de horas</div>
           <form id="apo-bh-form">
@@ -979,6 +1024,14 @@ body{
             <div class="apo-feedback" id="apo-bh-feedback"></div>
           </form>
         </div>
+
+          <div>
+            <div class="sec-title" id="bh-requests-title">Minhas solicitações</div>
+            <div id="bh-requests-wrap">
+              <div class="lanc-lista-box"><div class="bh-empty">Carregando…</div></div>
+            </div>
+          </div>
+        </div><!-- /bh-side -->
 
       </div>
     </div><!-- /stp-banco -->
@@ -1797,10 +1850,63 @@ body{
     var c = clsHS(h); if (c) el.classList.add(c);
   }
 
+  // ── Acompanhamento do pedido (linguagem simples) ─────────────────
+  function bhDataHora(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    return isNaN(d) ? '' : d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  }
+  function bhDescPedido(r) {
+    if (r.destino_solicitado === 'ausencia_banco')
+      return 'ausência de ' + fmtDate(r.data_ausencia) + ' (' + formatBhPeriodo(r.periodo_ausencia).toLowerCase() + ')';
+    return 'registro de ' + fmtH(r.quantidade_solicitada_h || 0) + ' excedentes (' + fmtDate(r.semana_inicio) + ' – ' + fmtDate(r.semana_fim) + ')';
+  }
+  // Situação única do pedido: classe, rótulo e resultado final
+  function bhSituacao(r) {
+    var st = r.status_solicitacao || 'pendente';
+    var aus = r.destino_solicitado === 'ausencia_banco';
+    if (st === 'pendente') return { cls:'am', label:'Aguardando aprovação', resultado:'' };
+    if (st === 'cancelado') return { cls:'', label:'Cancelado', resultado:'Cancelado por você' };
+    if (st === 'recusado') return { cls:'warn', label:'Recusado', resultado:'Recusado' };
+    var aprov = Number(r.quantidade_aprovada_h || 0), pedido = Number(r.quantidade_solicitada_h || 0);
+    if (aus) return { cls:'ok', label:'Aprovado', resultado:'Ausência registrada no calendário' };
+    var comp = Number(r.horas_para_compensacao_h || 0), pay = Number(r.horas_para_pagamento_h || 0);
+    var partes = [];
+    if (comp > 0) partes.push(fmtH(comp) + ' creditadas no banco');
+    if (pay > 0) partes.push(fmtH(pay) + ' para pagamento extra');
+    var label = st === 'aprovado_parcialmente'
+      ? 'Aprovado: ' + fmtH(aprov) + ' de ' + fmtH(pedido)
+      : 'Aprovado: ' + fmtH(aprov);
+    return { cls:'ok', label:label, resultado: partes.join(' · ') || 'Aprovado' };
+  }
+  function bhStepsHtml(r, sit) {
+    var st = r.status_solicitacao || 'pendente';
+    var decidido = st !== 'pendente';
+    var fim = st === 'cancelado' ? r.cancelado_em : r.aprovado_em;
+    var step = function(cls, lbl, sub) {
+      return '<div class="bh-step ' + cls + '"><div class="bh-step-dot"></div>' +
+        '<div class="bh-step-lbl">' + esc(lbl) + '</div>' + (sub ? '<div class="bh-step-sub">' + esc(sub) + '</div>' : '') + '</div>';
+    };
+    return '<div class="bh-steps">' +
+      step('done', 'Enviado', bhDataHora(r.created_at)) +
+      step(decidido ? 'done' : 'now', 'Em análise', decidido ? '' : 'com os sócios') +
+      (decidido
+        ? step(st === 'recusado' || st === 'cancelado' ? 'fail' : 'done', st === 'cancelado' ? 'Cancelado' : (st === 'recusado' ? 'Recusado' : 'Concluído'), bhDataHora(fim))
+        : step('', 'Concluído', '')) +
+    '</div>';
+  }
+
   function renderBancoRequests() {
     var wrap = document.getElementById('bh-requests-wrap');
     if (!wrap) return;
-    var rows = AP.bankRequests || [];
+    var rows = (AP.bankRequests || []).slice().sort(function(a, b) {
+      var pa = a.status_solicitacao === 'pendente' ? 0 : 1, pb = b.status_solicitacao === 'pendente' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+    });
+    var tit = document.getElementById('bh-requests-title');
+    var nPend = rows.filter(function(r){ return r.status_solicitacao === 'pendente'; }).length;
+    if (tit) tit.textContent = 'Minhas solicitações' + (nPend ? ' · ' + nPend + ' em análise' : '');
     if (!rows.length) {
       wrap.innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Nenhuma solicitação registrada ainda.</div></div>';
       return;
@@ -1808,29 +1914,40 @@ body{
     var html = '<div class="lanc-lista-box">';
     rows.forEach(function(r) {
       var canCancel = r.status_solicitacao === 'pendente';
-      var statusCls = r.status_solicitacao === 'pendente' ? 'am' : (String(r.status_solicitacao || '').indexOf('aprovado') === 0 ? 'ok' : 'warn');
-      html += '<div class="bh-item">' +
+      var sit = bhSituacao(r);
+      var aus = r.destino_solicitado === 'ausencia_banco';
+      var decidido = r.status_solicitacao !== 'pendente' && r.status_solicitacao !== 'cancelado';
+      var decisao = decidido && (r.aprovado_por_nome || r.aprovado_em)
+        ? '<div class="bh-decisao">' + (r.status_solicitacao === 'recusado' ? 'Recusado' : 'Aprovado') +
+            (r.aprovado_por_nome ? ' por <strong>' + esc(r.aprovado_por_nome) + '</strong>' : '') +
+            (r.aprovado_em ? ' em ' + esc(bhDataHora(r.aprovado_em)) : '') +
+            (r.status_solicitacao !== 'recusado' && sit.resultado ? ' · ' + esc(sit.resultado) : '') +
+            (r.observacao_decisao ? '<div class="bh-decisao-obs ' + (r.status_solicitacao === 'recusado' ? 'warn' : 'ok') + '">' + esc(r.observacao_decisao) + '</div>' : '') +
+          '</div>'
+        : '';
+      html += '<div class="bh-item" id="bh-req-' + esc(r.id) + '">' +
         '<div class="bh-item-top">' +
           '<div class="bh-item-main">' +
-            '<div class="bh-item-title">' + (r.destino_solicitado === 'ausencia_banco'
+            '<div class="bh-item-title">' + (aus
               ? 'Ausência · ' + esc(fmtDateFull(r.data_ausencia)) + ' · ' + esc(formatBhPeriodo(r.periodo_ausencia))
-              : esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim))) + '</div>' +
-            '<div class="bh-item-meta">Solicitado em ' + esc(new Date(r.created_at || Date.now()).toLocaleDateString('pt-BR')) +
-            ' · pedido: ' + esc(fmtH(r.quantidade_solicitada_h)) +
-            ' · pretendido: ' + esc(formatBhDestino(r.destino_solicitado)) + '</div>' +
+              : 'Horas excedentes · ' + esc(fmtDate(r.semana_inicio)) + ' — ' + esc(fmtDate(r.semana_fim))) + '</div>' +
+            '<div class="bh-item-meta">' + esc(fmtH(r.quantidade_solicitada_h || 0)) + (aus ? ' do banco' : ' · ' + esc(formatBhDestino(r.destino_solicitado))) + '</div>' +
           '</div>' +
-          '<div class="bh-item-badges">' +
-            '<span class="bh-mini-pill ' + statusCls + '">' + esc(formatBhStatus(r.status_solicitacao)) + '</span>' +
-            '<span class="bh-mini-pill">' + esc(formatBhDestinoStatus(r.status_destino || 'aguardando_definicao')) + '</span>' +
-          '</div>' +
+          '<span class="bh-status ' + sit.cls + '">' + esc(sit.label) + '</span>' +
         '</div>' +
-        '<div class="bh-item-meta">Jornada: ' + esc(fmtH(r.jornada_semanal_h || 0)) +
-        ' · registradas: ' + esc(fmtH(r.horas_registradas_h || 0)) +
-        ' · excesso elegível: ' + esc(fmtH(r.excesso_elegivel_h || 0)) +
-        ' · aprovado: ' + esc(fmtH(r.quantidade_aprovada_h || 0)) + '</div>' +
-        (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
-        (r.data_ausencia ? '<div class="bh-item-meta"><strong>Ausência solicitada:</strong> ' + esc(fmtDate(r.data_ausencia)) + ' · ' + esc(formatBhPeriodo(r.periodo_ausencia)) + '</div>' : '') +
-        (r.observacao_decisao ? '<div class="bh-item-meta"><strong>Decisão:</strong> ' + esc(r.observacao_decisao) + '</div>' : '') +
+        bhStepsHtml(r, sit) +
+        decisao +
+        '<details class="bh-det"><summary>Ver detalhes</summary>' +
+          '<div class="bh-item-meta">Solicitado em ' + esc(new Date(r.created_at || Date.now()).toLocaleDateString('pt-BR')) +
+          ' · pedido: ' + esc(fmtH(r.quantidade_solicitada_h)) +
+          ' · pretendido: ' + esc(formatBhDestino(r.destino_solicitado)) + '</div>' +
+          (aus ? '' : '<div class="bh-item-meta">Jornada: ' + esc(fmtH(r.jornada_semanal_h || 0)) +
+            ' · registradas: ' + esc(fmtH(r.horas_registradas_h || 0)) +
+            ' · excesso elegível: ' + esc(fmtH(r.excesso_elegivel_h || 0)) +
+            ' · aprovado: ' + esc(fmtH(r.quantidade_aprovada_h || 0)) + '</div>') +
+          (r.justificativa ? '<div class="bh-item-meta"><strong>Justificativa:</strong> ' + esc(r.justificativa) + '</div>' : '') +
+          (r.status_destino && r.status_destino !== 'encerrado' && decidido ? '<div class="bh-item-meta"><strong>Destino:</strong> ' + esc(formatBhDestinoStatus(r.status_destino)) + '</div>' : '') +
+        '</details>' +
         (canCancel ? '<div class="apo-actions"><button type="button" class="apo-btn apo-btn-sm" data-bh-cancel="' + esc(r.id) + '">Cancelar pedido</button></div>' : '') +
       '</div>';
     });
@@ -2007,6 +2124,11 @@ body{
       renderBancoResumo();
       renderBancoRequests();
       renderBancoAdmin();
+      // Quem abriu a aba Banco já viu as decisões: o aviso do topo some
+      if (activeTab() === 'banco') {
+        bhMarcarVistos(reqs.filter(function(r){ return r.aprovado_em; }).map(function(r){ return r.id; }));
+      }
+      loadBhAviso();
     } catch(e) {
       AP.bankSqlReady = false;
       document.getElementById('bh-week-note').textContent = 'Banco de horas indisponível. Execute primeiro o SQL da DEV-08 no Supabase.';
@@ -2070,6 +2192,144 @@ body{
     updateBhTipoUI();
   }
 
+  // ── Aviso no topo: andamento dos pedidos ao banco de horas ───────
+  var BH_AVISO_KEY = 'exp_bh_aviso_vistos';
+  function bhVistos() {
+    try { return JSON.parse(localStorage.getItem(BH_AVISO_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function bhMarcarVistos(ids) {
+    try {
+      var v = bhVistos();
+      ids.forEach(function(id){ if (v.indexOf(String(id)) < 0) v.push(String(id)); });
+      localStorage.setItem(BH_AVISO_KEY, JSON.stringify(v.slice(-100)));
+    } catch(e) {}
+  }
+  function bhIrParaPedidos(alvo) {
+    switchTab('banco');
+    setTimeout(function() {
+      var el = document.getElementById(alvo === 'admin' ? 'bh-admin-wrap' : 'bh-requests-title');
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 250);
+  }
+  async function loadBhAviso() {
+    var box = document.getElementById('bh-aviso');
+    if (!box || !window.sb || !uid()) return;
+    try {
+      var admin = isSocioAdmRole(AP.user && AP.user.role);
+      var res = await Promise.all([
+        window.sb.from('banco_horas_solicitacoes')
+          .select('id,status_solicitacao,destino_solicitado,data_ausencia,periodo_ausencia,quantidade_solicitada_h,quantidade_aprovada_h,horas_para_compensacao_h,horas_para_pagamento_h,aprovado_em,aprovado_por_nome,semana_inicio,semana_fim,created_at')
+          .eq('usuario_id', uid()).order('created_at', { ascending:false }).limit(20),
+        admin
+          ? window.sb.from('banco_horas_solicitacoes').select('id', { count:'exact', head:true }).eq('status_solicitacao', 'pendente').neq('usuario_id', uid())
+          : Promise.resolve({ count: 0 }),
+      ]);
+      if (res[0].error) return;
+      var mine = res[0].data || [];
+      var vistos = bhVistos();
+      var limite = Date.now() - 14 * 86400000;
+      var decididos = mine.filter(function(r) {
+        return (r.status_solicitacao === 'recusado' || String(r.status_solicitacao || '').indexOf('aprovado') === 0) &&
+          r.aprovado_em && new Date(r.aprovado_em).getTime() > limite && vistos.indexOf(String(r.id)) < 0;
+      });
+      var pend = mine.filter(function(r){ return r.status_solicitacao === 'pendente'; });
+      var items = [];
+      decididos.forEach(function(r) {
+        var rec = r.status_solicitacao === 'recusado';
+        var sit = bhSituacao(r);
+        var txt = (r.destino_solicitado === 'ausencia_banco' ? 'Sua ' : 'Seu ') + bhDescPedido(r) + ' foi ' +
+          (rec ? 'recusad' : 'aprovad') + (r.destino_solicitado === 'ausencia_banco' ? 'a' : 'o') +
+          (r.aprovado_por_nome ? ' por ' + r.aprovado_por_nome : '') +
+          (!rec && sit.resultado ? ' · ' + sit.resultado : '') + '.';
+        items.push({ cls: rec ? 'warn' : 'ok', txt: txt, ids: [r.id], alvo: 'meus' });
+      });
+      if (pend.length) items.push({ cls:'am', alvo:'meus', ids: [],
+        txt: pend.length === 1 ? 'Seu pedido de ' + bhDescPedido(pend[0]) + ' está aguardando aprovação.' : pend.length + ' pedidos seus aguardando aprovação.' });
+      var nAdm = Number(res[1] && res[1].count || 0);
+      if (nAdm) items.push({ cls:'am', alvo:'admin', ids: [],
+        txt: nAdm === 1 ? '1 pedido ao banco de horas aguardando sua aprovação.' : nAdm + ' pedidos ao banco de horas aguardando sua aprovação.' });
+      AP.bhAvisoItems = items;
+      if (!items.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      box.innerHTML = items.map(function(it, i) {
+        return '<div class="bh-aviso-item ' + it.cls + '" data-bh-aviso="' + i + '" role="button" tabindex="0">' +
+          '<span class="bh-aviso-dot"></span><span class="bh-aviso-txt">' + esc(it.txt) + '</span>' +
+          '<span class="bh-aviso-ver">Ver ›</span>' +
+          (it.ids.length ? '<button type="button" class="bh-aviso-x" data-bh-aviso-x="' + i + '" title="Dispensar">×</button>' : '') +
+        '</div>';
+      }).join('');
+      box.style.display = '';
+    } catch(e) { console.warn('[bh-aviso]', e); }
+  }
+  function bindBhAviso() {
+    var box = document.getElementById('bh-aviso');
+    if (!box) return;
+    box.addEventListener('click', function(ev) {
+      var x = ev.target.closest('[data-bh-aviso-x]');
+      var items = AP.bhAvisoItems || [];
+      if (x) {
+        ev.stopPropagation();
+        var itx = items[Number(x.getAttribute('data-bh-aviso-x'))];
+        if (itx) bhMarcarVistos(itx.ids);
+        loadBhAviso();
+        return;
+      }
+      var el = ev.target.closest('[data-bh-aviso]');
+      if (!el) return;
+      var it = items[Number(el.getAttribute('data-bh-aviso'))];
+      if (it) bhIrParaPedidos(it.alvo);
+    });
+    // Clique numa notificação do sino sobre banco de horas
+    window.addEventListener('exp:notif-open', function(e) {
+      var n = e.detail || {};
+      if (n.link_tipo === 'banco_horas') bhIrParaPedidos(n.tipo === 'banco_horas_pedido' ? 'admin' : 'meus');
+    });
+  }
+
+  // ── Notificações no sino (fire-and-forget) ───────────────────────
+  function bhNotificar(destinos, tipo, titulo, corpo) {
+    var me = uid();
+    (destinos || []).filter(function(id){ return id && id !== me; }).forEach(function(id) {
+      window.sb.from('notificacoes').insert({
+        usuario_id: id,
+        tipo: tipo,
+        titulo: titulo,
+        corpo: corpo || null,
+        link_tipo: 'banco_horas',
+        modulo: 'apontamentos',
+        criado_por: me,
+        criado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+        created_at: new Date().toISOString(),
+      }).then(function(r) {
+        if (r.error) { console.warn('[bh-notif]', r.error.message); return; }
+        try {
+          window.sb.functions.invoke('send-push', { body: {
+            usuario_id: id, title: titulo, body: corpo || '',
+            url: location.origin + location.pathname.replace(/[^/]*$/, '') + 'apontamentos.html#banco', tag: 'exp-notif',
+          } }).catch(function(){});
+        } catch(e) {}
+      });
+    });
+  }
+  async function bhNotificarSocios(r) {
+    try {
+      var us = await window.sb.from('usuarios').select('id,role').eq('ativo', true);
+      var ids = (us.data || []).filter(function(u){ return isSocioAdmRole(u.role); }).map(function(u){ return u.id; });
+      var nome = AP.user && AP.user.nome ? AP.user.nome : 'Colaborador';
+      bhNotificar(ids, 'banco_horas_pedido', 'Banco de horas: novo pedido',
+        nome + ' pediu ' + bhDescPedido(r) + (r.destino_solicitado === 'ausencia_banco' ? ' · ' + fmtH(r.quantidade_solicitada_h || 0) : '') + '.');
+    } catch(e) { console.warn('[bh-notif]', e); }
+  }
+  function bhNotificarDecisao(base, upd) {
+    var r = Object.assign({}, base, upd);
+    var rec = r.status_solicitacao === 'recusado';
+    var sit = bhSituacao(r);
+    var corpo = (r.destino_solicitado === 'ausencia_banco' ? 'Sua ' : 'Seu ') + bhDescPedido(r) + ' foi ' +
+      (rec ? 'recusad' : 'aprovad') + (r.destino_solicitado === 'ausencia_banco' ? 'a' : 'o') +
+      (!rec && sit.resultado ? ' · ' + sit.resultado : '') + '.' +
+      (r.observacao_decisao ? ' Obs.: ' + r.observacao_decisao : '');
+    bhNotificar([r.usuario_id], 'banco_horas_decisao', rec ? 'Banco de horas: pedido recusado' : 'Banco de horas: pedido aprovado', corpo);
+  }
+
   async function submitBancoHoras(ev) {
     ev.preventDefault();
     setFb('apo-bh-feedback', '', '');
@@ -2130,6 +2390,7 @@ body{
       }
       var ins = await window.sb.from('banco_horas_solicitacoes').insert(payload);
       if (ins.error) throw ins.error;
+      bhNotificarSocios(payload);
       resetBhForm();
       setFb('apo-bh-feedback', tipo === 'ausencia' ? 'Ausência solicitada. Aguarda aprovação.' : 'Solicitação registrada.', 'ok');
       await loadBancoData();
@@ -2247,7 +2508,7 @@ body{
       : (pay > 0 && comp === 0 ? 'aguardando_pagamento_extraordinario'
       : (aprov > 0 ? 'aguardando_definicao' : 'encerrado'));
     await applyBancoSaldo(base.usuario_id, comp, pay);
-    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+    var updRow = {
       quantidade_aprovada_h: aprov,
       horas_para_compensacao_h: comp,
       horas_para_pagamento_h: pay,
@@ -2259,8 +2520,10 @@ body{
       aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
       aprovado_em: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq('id', id).eq('status_solicitacao', 'pendente');
+    };
+    var upd = await window.sb.from('banco_horas_solicitacoes').update(updRow).eq('id', id).eq('status_solicitacao', 'pendente');
     if (upd.error) throw new Error(upd.error.message);
+    bhNotificarDecisao(base, updRow);
     var feedbackMsg = 'Solicitação decidida.';
     if (comp > 0 && base.data_ausencia) {
       try {
@@ -2281,7 +2544,7 @@ body{
     var horas = Number(base.quantidade_solicitada_h || 0);
     if (!base.data_ausencia || horas <= 0) throw new Error('Solicitação de ausência incompleta (data ou horas).');
     await registrarAusenciaCompensacaoBh(base.usuario_id, base.data_ausencia, base.periodo_ausencia || 'todo', horas, obs || base.justificativa || null, uid());
-    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+    var updRow = {
       quantidade_aprovada_h: horas,
       horas_para_compensacao_h: 0,
       horas_para_pagamento_h: 0,
@@ -2293,8 +2556,10 @@ body{
       aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
       aprovado_em: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq('id', base.id).eq('status_solicitacao', 'pendente');
+    };
+    var upd = await window.sb.from('banco_horas_solicitacoes').update(updRow).eq('id', base.id).eq('status_solicitacao', 'pendente');
     if (upd.error) throw new Error('Ausência registrada no calendário, mas houve erro ao atualizar a solicitação: ' + upd.error.message);
+    bhNotificarDecisao(base, updRow);
     setFb('apo-bh-feedback', 'Ausência aprovada e registrada no calendário.', 'ok');
     await loadBancoData();
   }
@@ -2302,7 +2567,8 @@ body{
   async function refuseBancoRequest(id) {
     if (!isSocioAdmRole(AP.user && AP.user.role)) throw new Error('A recusa é restrita a sócios administrativos.');
     var obs = (document.getElementById('bh-note-' + id).value || '').trim();
-    var upd = await window.sb.from('banco_horas_solicitacoes').update({
+    var base = (AP.bankPending || []).find(function(r){ return String(r.id) === String(id); }) || { id: id };
+    var updRow = {
       quantidade_aprovada_h: 0,
       horas_para_compensacao_h: 0,
       horas_para_pagamento_h: 0,
@@ -2314,8 +2580,10 @@ body{
       aprovado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
       aprovado_em: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq('id', id).eq('status_solicitacao', 'pendente');
+    };
+    var upd = await window.sb.from('banco_horas_solicitacoes').update(updRow).eq('id', id).eq('status_solicitacao', 'pendente');
     if (upd.error) throw new Error(upd.error.message);
+    if (base.usuario_id) bhNotificarDecisao(base, updRow);
     setFb('apo-bh-feedback', 'Solicitação recusada.', 'ok');
     await loadBancoData();
   }
@@ -3344,7 +3612,10 @@ body{
       })();
 
       bindEvents();
+      bindBhAviso();
       revealApp();
+      if (location.hash === '#banco') bhIrParaPedidos('meus');
+      else runAfterFirstPaint(loadBhAviso);
 
       // Eventos de navegação
 
