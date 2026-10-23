@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="./assets/icon-192.png">
   <link rel="stylesheet" href="./assets/exp-mobile.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../shared/nome-curto.js"></script>
   <script src="./assets/exp-mobile-supabase-fallback.js"></script>
   <script src="./assets/exp-mobile-core.js"></script>
   <style>
@@ -735,6 +736,8 @@
       `;
     }
 
+    const SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing' };
+
     function renderPriosSection(prios) {
       const NUM_CLS = ['', 'p1', 'p2', 'p3'];
       const slice = prios.slice(0, 5);
@@ -744,9 +747,11 @@
             const ord = pr.ordem || (idx + 1);
             const numCls = NUM_CLS[Math.min(ord, 3)] || '';
             const prazo = pr.prazo_texto ? formatPrazo(pr.prazo_texto) : null;
-            const nomeProjeto = pr.produtos?.oportunidades
-              ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
-              : pr.produtos?.nome || '—';
+            const nomeProjeto = pr.categoria_societaria
+              ? 'Societária · ' + (SOC_CAT_LABEL[pr.categoria_societaria] || pr.categoria_societaria)
+              : pr.produtos?.oportunidades
+                ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
+                : pr.produtos?.nome || '—';
             const etapaNome = pr.etapa_nome || '';
             return `
               <div class="hub-prio-item">
@@ -1121,7 +1126,7 @@
           .limit(5),
 
         sb.from('prioridades_usuario')
-          .select('id, ordem, prazo_texto, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)))')
+          .select('id, ordem, prazo_texto, produto_id, categoria_societaria, produtos(nome, oportunidades(projeto, clientes(nome)))')
           .eq('usuario_id', usuario.id)
           .eq('concluida', false)
           .order('ordem'),
