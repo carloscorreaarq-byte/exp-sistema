@@ -368,9 +368,12 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .pm-category-action{min-width:auto;white-space:nowrap;align-items:center;text-align:center}
 .pm-category-label{font-size:12px;font-weight:700}
 /* Matriz (2026-10-23): categorias dividem a largura; botões e campos no padrão do DS */
-.pm-category-tab{flex:1 1 0;min-width:0;align-items:center;text-align:center;padding:12px 10px;border-radius:var(--radius-card,8px)}
-.pm-category-tab .pm-category-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.pm-category-add{flex:0 0 auto;align-self:center}
+.pm-category-tab{flex:1 1 0;min-width:0;align-items:center;justify-content:center;text-align:center;padding:5px 12px;border-radius:var(--radius-btn,8px);border-color:var(--cinza2)}
+/* Categorias com a mesma fonte e altura dos botões (caixa alta, 10px, 700), em tom mais escuro */
+.pm-category-tab .pm-category-label{font-size:var(--text-sub,10px);font-weight:700;letter-spacing:.5px;text-transform:uppercase;line-height:1.2;color:#5F5B54;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pm-category-tab:hover .pm-category-label{color:var(--grafite)}
+.pm-category-tab.ativo .pm-category-label{color:var(--terracota)}
+.pm-category-add{flex:0 0 auto;align-self:stretch;width:34px;padding:0;font-size:15px;line-height:1}
 .pm-category-meta{font-size:9px;color:#999;letter-spacing:.2px;text-transform:uppercase}
 .pm-head,.pm-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .pm-title,.pm-panel-title{font-size:18px;font-weight:700;letter-spacing:-.2px}
@@ -400,7 +403,9 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .pm-level-select{width:44px;min-width:44px;padding:6px 4px;border:1px solid var(--cinza2);border-radius:var(--radius-input,8px);background:var(--off);font-family:var(--font-ui);font-size:12px;font-weight:600;color:var(--grafite);outline:none;text-align:center}
 .pm-level-select:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft);background:var(--branco)}
 .pm-row-actions{display:flex;gap:6px;justify-content:flex-end}
-.pm-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pm-legend{display:flex;gap:8px;flex-wrap:wrap}
+/* Legenda dos níveis + "Novo campo" logo abaixo da tabela de campos */
+.pm-legend-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px}
 .pm-legend span{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--off);border:1px solid var(--cinza2);font-size:9px;color:#777}
 .pm-legend b{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:var(--radius-input,6px);font-size:9px}
 .pm-legend .n0{background:#f0f0ec;color:#999}
@@ -447,13 +452,31 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 /* Aba vazia: a mensagem fica no centro do quadro */
 .clima-body:has(> .ps-empty:only-child){display:flex;align-items:center;justify-content:center}
 .clima-body > .ps-empty:only-child{padding:0 !important}
+/* Aba com cabeçalho + vazio (Modelos): o cabeçalho fica no topo e a mensagem no centro do espaço livre */
+.clima-body:has(> .clima-vazio-wrap:only-child){display:flex;flex-direction:column}
+.clima-vazio-wrap{flex:1;display:flex;flex-direction:column;min-height:100%}
+.clima-modelo-form{max-width:560px;margin:0 auto;width:100%}
+.clima-vazio-centro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0}
 /* clima — perguntas */
 .clima-perg-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--cinza2);border-radius:var(--radius-card,8px);margin-bottom:8px;background:var(--off)}
 .clima-perg-num{width:22px;height:22px;border-radius:50%;background:var(--az-bg);color:var(--azul);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .clima-perg-texto{font-size:11px;font-weight:500;line-height:1.5;flex:1;color:var(--grafite)}
 .clima-perg-actions{display:flex;gap:5px;flex-shrink:0}
+.clima-grip{display:flex;align-items:center;align-self:center;color:#A9A59C;cursor:grab;padding:2px 0;flex-shrink:0}
+.clima-grip:hover{color:var(--grafite)}
+[draggable="true"].clima-perg-item,[draggable="true"].clima-secao-item{cursor:grab}
+.clima-perg-item.arrastando,.clima-secao-item.arrastando{opacity:.4}
+.clima-perg-item.drop-antes,.clima-secao-item.drop-antes{box-shadow:0 -2px 0 0 var(--terracota)}
+.clima-perg-item.drop-depois,.clima-secao-item.drop-depois{box-shadow:0 2px 0 0 var(--terracota)}
+.clima-secao-item{display:flex;align-items:center;gap:10px;padding:14px 12px 8px;margin:6px 0 8px;border-bottom:1px solid var(--cinza2)}
+.clima-secao-item:first-child{margin-top:0;padding-top:4px}
+.clima-secao-titulo{flex:1;min-width:0;font-size:var(--text-sub,10px);font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--terracota)}
+.clima-runner-secao{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--terracota);margin-bottom:6px}
+.clima-res-secao{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--terracota);padding:14px 0 6px;border-bottom:1px solid var(--cinza2);margin-bottom:10px}
 /* clima — runner */
-.clima-runner{max-width:560px;margin:0 auto}
+.clima-runner{max-width:560px;margin:0 auto;width:100%}
+.clima-body:has(> .clima-runner),.clima-body:has(> .clima-centro){display:flex;flex-direction:column}
+.clima-body > .clima-runner,.clima-body > .clima-centro{margin:auto;width:100%}
 .clima-prog-bar{height:3px;background:var(--cinza2);border-radius:99px;overflow:hidden;margin-bottom:20px}
 .clima-prog-fill{height:100%;background:var(--terracota);border-radius:99px;transition:width var(--transition-slow)}
 .clima-runner-card{background:var(--off);border:1px solid var(--cinza2);border-radius:var(--radius-shell,14px);padding:18px 20px;margin-bottom:18px}
@@ -461,7 +484,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .clima-runner-pergunta{font-size:14px;font-weight:600;line-height:1.55;color:var(--grafite)}
 .clima-runner-textarea{width:100%;min-height:120px;padding:10px 12px;border:1px solid var(--cinza2);border-radius:var(--radius-card,8px);font-family:var(--font-ui);font-size:12px;color:var(--grafite);background:var(--branco);outline:none;resize:vertical;transition:border-color var(--transition-fast)}
 .clima-runner-textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
-.clima-runner-nav{display:flex;justify-content:space-between;align-items:center;margin-top:16px}
+.clima-runner-nav{display:flex;justify-content:space-between;align-items:center;margin-top:32px}
 /* clima — disparar */
 .clima-disparo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
 @media(max-width:600px){.clima-disparo-grid{grid-template-columns:1fr}}
@@ -473,21 +496,33 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .clima-user-av img{width:100%;height:100%;object-fit:cover}
 .clima-user-nome{font-size:11px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* clima — modelos */
-.clima-modelo-card{border:1px solid var(--cinza2);border-radius:var(--radius-shell,14px);overflow:hidden;margin-bottom:10px}
+.clima-modelo-card{border:1px solid var(--cinza2);border-radius:var(--radius-card,8px);overflow:hidden;margin-bottom:10px;background:var(--branco)}
 .clima-modelo-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:var(--off);gap:10px;transition:background .1s}
 .clima-modelo-header:hover{background:var(--cinza2)}
-.clima-modelo-titulo{font-size:12px;font-weight:700;color:var(--grafite)}
-.clima-modelo-desc{font-size:10px;color:#999;margin-top:2px}
+.clima-modelo-titulo{font-size:13px;font-weight:700;color:var(--grafite)}
+.clima-modelo-n{font-size:11px;font-weight:500;color:#8A867E}
+.clima-modelo-desc{font-size:11px;color:#8A867E;margin-top:3px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.clima-chevron{color:#8A867E;transition:transform var(--transition-normal);margin-left:2px}
+.clima-chevron.aberto{transform:rotate(180deg)}
+.clima-sem-perg{font-size:11px;color:#A9A59C;padding:2px 0 4px}
 .clima-modelo-perguntas{padding:10px 14px 14px;border-top:1px solid var(--cinza2)}
 .clima-perg-tipo-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:99px;font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:var(--az-bg);color:var(--azul)}
 .clima-perg-tipo-badge.simnao{background:var(--verde-bg);color:var(--verde)}
-.clima-perg-tipo-badge.escala{background:var(--roxo-bg);color:var(--roxo)}
+.clima-perg-tipo-badge.escala{background:var(--am-bg);color:#916b13}
 /* forma de nova pergunta inline */
-.clima-perg-form{border:1px dashed var(--cinza2);border-radius:var(--radius-card,8px);padding:12px;margin-top:8px;background:var(--branco)}
-.clima-tipo-btns{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.clima-tipo-btn{padding:4px 10px;border:1px solid var(--cinza2);border-radius:99px;font-family:var(--font-ui);font-size:10px;font-weight:600;cursor:pointer;background:var(--off);color:#777;transition:all .1s}
-.clima-tipo-btn:hover{border-color:#bbb}
-.clima-tipo-btn.ativo{border-color:var(--terracota);background:var(--tc-bg);color:var(--terracota)}
+.clima-perg-form{border:1px solid var(--cinza2);border-radius:var(--radius-card,8px);padding:14px;margin-top:8px;background:var(--off)}
+.clima-form-lbl{display:block;font-size:var(--text-label,9px);font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A867E;margin-bottom:6px}
+.clima-form-txt{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--cinza2);border-radius:var(--radius-input,6px);font-family:var(--font-ui);font-size:12px;line-height:1.45;color:var(--grafite);background:var(--branco);resize:vertical;outline:none}
+.clima-form-txt:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
+.clima-tipo-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.clima-tipo-lbl{font-size:var(--text-label,9px);font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8A867E}
+/* Tipo de resposta = controle segmentado (mesmo padrão das abas internas) */
+.clima-tipo-btns{display:inline-flex;border:1px solid var(--cinza2);border-radius:var(--radius-btn,8px);overflow:hidden;background:var(--branco)}
+.clima-tipo-btn{padding:5px 12px;border:none;font-family:var(--font-ui);font-size:var(--text-sub,10px);font-weight:700;letter-spacing:.5px;text-transform:uppercase;line-height:1.2;cursor:pointer;background:var(--branco);color:#888;transition:background .12s,color .12s}
+.clima-tipo-btn + .clima-tipo-btn{border-left:1px solid var(--cinza2)}
+.clima-tipo-btn:hover{color:var(--grafite)}
+.clima-tipo-btn.ativo{background:var(--grafite);color:var(--branco)}
+.clima-form-acoes{margin-left:auto;display:flex;gap:6px}
 /* runner — sim/não */
 .clima-simnao-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0 24px}
 .clima-simnao-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 16px;border-radius:var(--radius-shell,14px);border:1.5px solid var(--cinza2);background:var(--branco);font-family:var(--font-ui);cursor:pointer;transition:all var(--transition-normal)}
@@ -501,18 +536,17 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .clima-simnao-btn.ativo-nao .clima-simnao-icon{border-color:var(--terracota);background:var(--terracota);color:#fff}
 .clima-simnao-btn.ativo-nao .clima-simnao-lbl{color:var(--terracota)}
 /* runner — escala */
-.clima-escala-wrap{padding:16px 0 4px}
-.clima-escala-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--cinza2);outline:none;cursor:pointer;display:block}
-.clima-escala-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--terracota);cursor:pointer;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.22)}
-.clima-escala-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--terracota);cursor:pointer;border:3px solid #fff}
-.clima-escala-ticks{display:flex;justify-content:space-between;padding:4px 11px 0;margin-top:4px}
-.clima-escala-tick-col{display:flex;flex-direction:column;align-items:center;gap:2px}
-.clima-escala-tick-col::before{content:'';display:block;width:1px;height:7px;background:var(--cinza2);margin-bottom:2px;transition:background var(--transition-fast)}
-.clima-escala-tick-col.ativo::before{background:var(--terracota)}
-.clima-escala-tick-num{font-size:11px;font-weight:600;color:#aaa;font-family:var(--font-mono);transition:color var(--transition-fast)}
-.clima-escala-tick-col.ativo .clima-escala-tick-num{color:var(--terracota);font-weight:700}
-.clima-escala-tick-lbl{font-size:9px;color:#bbb;text-transform:uppercase;letter-spacing:.3px;height:12px;line-height:12px}
-.clima-escala-tick-col.ativo .clima-escala-tick-lbl{color:var(--terracota)}
+.clima-escala{position:relative;display:grid;grid-template-columns:repeat(6,1fr);margin:26px 0 6px}
+.clima-escala::before{content:'';position:absolute;top:9px;left:calc(100% / 12);right:calc(100% / 12);height:4px;border-radius:2px;background:var(--cinza2)}
+.clima-escala-op{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:none;padding:0;cursor:pointer;font-family:var(--font-ui)}
+.clima-escala-dot{width:22px;height:22px;box-sizing:border-box;border-radius:50%;background:var(--branco);border:2px solid var(--cinza2);transition:border-color .12s,background .12s,box-shadow .12s}
+.clima-escala-op:hover .clima-escala-dot{border-color:var(--terracota)}
+.clima-escala-op:focus-visible{outline:none}
+.clima-escala-op:focus-visible .clima-escala-dot{box-shadow:0 0 0 3px var(--tc-bg)}
+.clima-escala-op.ativo .clima-escala-dot{background:var(--terracota);border:3px solid var(--branco);box-shadow:0 0 0 1.5px var(--terracota),0 1px 6px rgba(0,0,0,.18)}
+.clima-escala-num{font-size:12px;font-weight:600;color:#8A867E;font-variant-numeric:lining-nums tabular-nums;line-height:1}
+.clima-escala-op.ativo .clima-escala-num{color:var(--terracota);font-weight:700}
+.clima-escala-lbl{font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:#A9A59C;height:12px;line-height:12px}
 /* runner — aviso anonimato */
 .clima-disclosure{border-radius:var(--radius-shell,14px);padding:14px 16px;margin-bottom:18px}
 .clima-disclosure.anonima{background:#f5f0fb;border:1px solid rgba(107,79,160,.2)}
@@ -692,7 +726,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
     <div class="nav-tabs">
       <button class="ntab active" id="ntab-colaboradores" onclick="setPageView('colaboradores')">Colaboradores</button>
       <button class="ntab" id="ntab-matriz" onclick="setPageView('matriz')">Matriz</button>
-      <button class="ntab" id="ntab-clima" onclick="abrirClimaModal()">Pesquisa de Clima</button>
+      <button class="ntab" id="ntab-clima" onclick="abrirClimaModal()">Pesquisa EXP</button>
     </div>
     <div class="pessoas-hd-right" id="app-topbar-right">
       <!-- Toggle tema -->
@@ -1036,7 +1070,7 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
   <div class="clima-panel" onclick="event.stopPropagation()">
     <div class="clima-hdr">
       <div class="clima-hdr-brand">
-        <span class="clima-hdr-title">Pesquisa de Clima</span>
+        <span class="clima-hdr-title">Pesquisa EXP</span>
       </div>
       <div class="clima-hdr-tabs">
         <button class="ctab active" id="ctab-modelos" onclick="setClimaTab('modelos',this)">Modelos</button>
@@ -1667,7 +1701,7 @@ function renderMatrizBaseRoot() {
       <div class="pm-category-bar">
         <div class="pm-category-tabs">
           ${categoriasHtml || `<div class="pm-inline-empty">Nenhuma categoria cadastrada.</div>`}
-          ${canEditMatrizBase() ? `<button type="button" class="ps-btn-sm pm-category-add" onclick="abrirModalMatriz('categoria')">+ Nova categoria</button>` : ''}
+          ${canEditMatrizBase() ? `<button type="button" class="ps-btn-sm pm-category-add" onclick="abrirModalMatriz('categoria')" title="Nova categoria" aria-label="Nova categoria">+</button>` : ''}
         </div>
         ${readOnly ? `<span class="badge inativo">Somente leitura</span>` : ''}
       </div>
@@ -1678,9 +1712,6 @@ function renderMatrizBaseRoot() {
             <div>
               <div class="pm-panel-title">${escHtml(categoria.titulo)}</div>
               <div class="pm-panel-sub${categoria?.intro?.trim() ? '' : ' vazio'}">${escHtml(introCategoria)}</div>
-            </div>
-            <div class="pm-toolbar">
-              ${readOnly ? '' : `<button class="ps-btn-sm" onclick="abrirModalMatriz('campo')">+ Novo campo</button>`}
             </div>
           </div>
           <div class="pm-form-grid">
@@ -1731,11 +1762,14 @@ function renderMatrizBaseRoot() {
               </tbody>
             </table>
           </div>
-          <div class="pm-legend">
-            <span><b class="n3">3</b> lidera</span>
-            <span><b class="n2">2</b> executa</span>
-            <span><b class="n1">1</b> participa</span>
-            <span><b class="n0">0</b> não se envolve</span>
+          <div class="pm-legend-row">
+            <div class="pm-legend">
+              <span><b class="n3">3</b> lidera</span>
+              <span><b class="n2">2</b> executa</span>
+              <span><b class="n1">1</b> participa</span>
+              <span><b class="n0">0</b> não se envolve</span>
+            </div>
+            ${readOnly ? '' : `<button class="ps-btn-sm" onclick="abrirModalMatriz('campo')">+ Novo campo</button>`}
           </div>
         ` : `<div class="pm-empty">Crie a primeira categoria para começar.</div>`}
       </section>
@@ -3933,7 +3967,7 @@ function renderClimaContent() {
         <strong>${isMigration ? 'Migração necessária' : 'Setup necessário'}</strong>
         <p>${isMigration
           ? 'A tabela existe mas falta a coluna <code>campanha_id</code>. Execute o SQL abaixo no Supabase SQL Editor — é rápido e não apaga dados existentes.'
-          : 'Execute o SQL abaixo no Supabase SQL Editor para ativar a pesquisa de clima.'}</p>
+          : 'Execute o SQL abaixo no Supabase SQL Editor para ativar a Pesquisa EXP.'}</p>
         ${G.climaError ? `<p style="margin-top:6px;color:var(--terracota);font-size:10px">${escHtml(G.climaError)}</p>` : ''}
         <details open style="margin-top:10px">
           <summary style="cursor:pointer;font-size:10px;font-weight:700;color:#8a6010">${isMigration ? 'SQL de migração (só este)' : 'SQL de setup completo'}</summary>
@@ -3957,7 +3991,18 @@ function renderClimaContent() {
 }
 
 /* ── helpers clima ── */
-const CLIMA_TIPO_LABEL = { aberta: 'Aberta', simnao: 'Sim/Não', escala: 'Escala 0–5' };
+const CLIMA_TIPO_LABEL = { aberta: 'Aberta', simnao: 'Sim/Não', escala: 'Escala 0–5', secao: 'Seção' };
+
+// Seções são linhas tipo 'secao' (só subtítulo). Para aplicar a pesquisa, viram _secao nas perguntas seguintes.
+function climaSoPerguntas(lista) {
+  let secao = '';
+  return (lista || []).reduce((acc, p) => {
+    if (p.tipo === 'secao') { secao = p.texto; return acc; }
+    acc.push({ ...p, _secao: secao });
+    return acc;
+  }, []);
+}
+const CLIMA_GRIP = `<svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3" r="1.3"/><circle cx="8.5" cy="3" r="1.3"/><circle cx="3.5" cy="7" r="1.3"/><circle cx="8.5" cy="7" r="1.3"/><circle cx="3.5" cy="11" r="1.3"/><circle cx="8.5" cy="11" r="1.3"/></svg>`;
 const CLIMA_ESCALA_LABELS = { 0:'Nada', 1:'Pouco', 2:'Regular', 3:'Médio', 4:'Bastante', 5:'Muito' };
 
 function climaShuffleArr(arr) {
@@ -3974,42 +4019,105 @@ function renderClimaTabModelos(body) {
   const canEdit = isSocio(G.usuarioLogado?.role);
   const editando = G.climaPergEditando;
 
-  if (!G.climaModelos.length) {
+  // Formulário de novo modelo / edição — dentro da própria janela da Pesquisa EXP
+  if (G.climaModeloForm && canEdit) {
+    const f = G.climaModeloForm;
+    const m = f.id ? G.climaModelos.find(x => x.id === f.id) : null;
     body.innerHTML = `
+      <div class="clima-modelo-form">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px">${m ? 'Editar modelo' : 'Novo modelo de pesquisa'}</div>
+        <div class="ps-field-modal" style="margin-bottom:12px">
+          <label>Nome do modelo</label>
+          <input id="clima-modelo-nome" type="text" placeholder="Ex: Pesquisa Pessoas" value="${escHtml(m?.titulo || '')}"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();salvarModeloClimaForm()}">
+        </div>
+        <div class="ps-field-modal" style="margin-bottom:6px">
+          <label>Descrição <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#A9A59C">(opcional)</span></label>
+          <textarea id="clima-modelo-desc" rows="3" placeholder="Para que serve esta pesquisa, a quem se destina…">${escHtml(m?.descricao || '')}</textarea>
+        </div>
+        <div class="ps-modal-status" id="clima-modelo-status"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+          <button class="ps-btn-sm" onclick="cancelarModeloClimaForm()">Cancelar</button>
+          <button class="ps-btn-sm primary" onclick="salvarModeloClimaForm()">${m ? 'Salvar' : 'Criar modelo'}</button>
+        </div>
+      </div>`;
+    setTimeout(() => document.getElementById('clima-modelo-nome')?.focus(), 30);
+    return;
+  }
+
+  if (!G.climaModelos.length) {
+    body.innerHTML = `<div class="clima-vazio-wrap">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div style="font-size:13px;font-weight:700">Modelos de pesquisa</div>
         ${canEdit ? `<button class="ps-btn-sm" onclick="novoModeloClima()">+ Novo modelo</button>` : ''}
       </div>
-      <div class="ps-empty" style="padding:40px 0">
+      <div class="ps-empty clima-vazio-centro">
         <div class="ps-empty-icon">📋</div>
         <div class="ps-empty-text">Nenhum modelo criado ainda.<br>Crie um modelo como "Pesquisa Pessoas" e adicione perguntas a ele.</div>
-      </div>`;
+      </div></div>`;
     return;
   }
 
   const modelosHtml = G.climaModelos.map(m => {
     const pergs = G.climaPerguntas.filter(p => p.modelo_id === m.id);
+    const nPergs = pergs.filter(p => p.tipo !== 'secao').length;
     const expanded = G.climaModeloSelecionado === m.id;
+    const podeArrastar = canEdit && !editando;
+    const dragAttrs = id => podeArrastar
+      ? ` draggable="true" ondragstart="climaDragStart(event,'${id}')" ondragover="climaDragOver(event)" ondragleave="climaDragLeave(event)" ondrop="climaDrop(event,'${id}')" ondragend="climaDragEnd()"`
+      : '';
+    let nPerg = 0;
 
-    const pergsHtml = pergs.map((p, i) => {
+    const pergsHtml = pergs.map(p => {
       const isEditandoEsta = editando?.id === p.id;
+      const isSecao = p.tipo === 'secao';
+      const i = isSecao ? nPerg : nPerg++;
       const tipoCls = p.tipo === 'simnao' ? 'simnao' : p.tipo === 'escala' ? 'escala' : '';
+      if (isEditandoEsta && isSecao) {
+        return `
+          <div class="clima-perg-form">
+            <label class="clima-form-lbl" for="cpf-texto">Editar seção</label>
+            <input id="cpf-texto" class="clima-form-txt" type="text" value="${escHtml(p.texto)}"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();salvarEdicaoPerguntaClima('${p.id}')}">
+            <div class="clima-tipo-row">
+              <div class="clima-form-acoes">
+                <button class="ps-btn-sm" onclick="G.climaPergEditando=null;renderClimaContent()">Cancelar</button>
+                <button class="ps-btn-sm primary" onclick="salvarEdicaoPerguntaClima('${p.id}')">Salvar</button>
+              </div>
+            </div>
+          </div>`;
+      }
+      if (isSecao) {
+        return `
+        <div class="clima-secao-item" data-id="${p.id}"${dragAttrs(p.id)}>
+          ${podeArrastar ? `<span class="clima-grip" title="Arrastar para mover">${CLIMA_GRIP}</span>` : ''}
+          <div class="clima-secao-titulo">${escHtml(p.texto)}</div>
+          ${canEdit ? `<div class="clima-perg-actions">
+            <button class="ps-btn-sm" onclick="iniciarEdicaoPerguntaClima('${p.id}')">Editar</button>
+            <button class="ps-btn-sm danger" onclick="excluirPerguntaClima('${p.id}')">Excluir</button>
+          </div>` : ''}
+        </div>`;
+      }
       if (isEditandoEsta) {
         return `
           <div class="clima-perg-form">
-            <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:8px">Editando pergunta</div>
-            <textarea id="cpf-texto" rows="2" style="width:100%;padding:7px 9px;border:1px solid var(--cinza2);border-radius:7px;font-family:var(--font-ui);font-size:11px;resize:vertical;margin-bottom:8px">${escHtml(p.texto)}</textarea>
-            <div class="clima-tipo-btns">
-              ${['aberta','simnao','escala'].map(t => `<button class="clima-tipo-btn${(editando.tipo||p.tipo)===t?' ativo':''}" onclick="climaSetEditTipo('${t}')">${CLIMA_TIPO_LABEL[t]}</button>`).join('')}
-            </div>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="ps-btn-sm primary" onclick="salvarEdicaoPerguntaClima('${p.id}')">Salvar</button>
-              <button class="ps-btn-sm" onclick="G.climaPergEditando=null;renderClimaContent()">Cancelar</button>
+            <label class="clima-form-lbl" for="cpf-texto">Editar pergunta ${i+1}</label>
+            <textarea id="cpf-texto" class="clima-form-txt" rows="2">${escHtml(p.texto)}</textarea>
+            <div class="clima-tipo-row">
+              <span class="clima-tipo-lbl">Tipo de resposta</span>
+              <div class="clima-tipo-btns">
+                ${['aberta','simnao','escala'].map(t => `<button type="button" class="clima-tipo-btn${(editando.tipo||p.tipo)===t?' ativo':''}" onclick="climaSetEditTipo('${t}')">${CLIMA_TIPO_LABEL[t]}</button>`).join('')}
+              </div>
+              <div class="clima-form-acoes">
+                <button class="ps-btn-sm" onclick="G.climaPergEditando=null;renderClimaContent()">Cancelar</button>
+                <button class="ps-btn-sm primary" onclick="salvarEdicaoPerguntaClima('${p.id}')">Salvar</button>
+              </div>
             </div>
           </div>`;
       }
       return `
-        <div class="clima-perg-item">
+        <div class="clima-perg-item" data-id="${p.id}"${dragAttrs(p.id)}>
+          ${podeArrastar ? `<span class="clima-grip" title="Arrastar para mover">${CLIMA_GRIP}</span>` : ''}
           <span class="clima-perg-num">${i+1}</span>
           <div style="flex:1;min-width:0">
             <div class="clima-perg-texto">${escHtml(p.texto)}</div>
@@ -4022,38 +4130,55 @@ function renderClimaTabModelos(body) {
         </div>`;
     }).join('');
 
-    const formNova = editando?.modeloId === m.id && !editando.id ? `
-      <div class="clima-perg-form" style="margin-top:8px">
-        <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:8px">Nova pergunta</div>
-        <textarea id="cpf-texto" rows="2" style="width:100%;padding:7px 9px;border:1px solid var(--cinza2);border-radius:7px;font-family:var(--font-ui);font-size:11px;resize:vertical;margin-bottom:8px" placeholder="Digite a pergunta…"></textarea>
-        <div class="clima-tipo-btns">
-          ${['aberta','simnao','escala'].map(t => `<button class="clima-tipo-btn${(editando.tipo||'aberta')===t?' ativo':''}" onclick="climaSetEditTipo('${t}')">${CLIMA_TIPO_LABEL[t]}</button>`).join('')}
+    const formNova = editando?.modeloId === m.id && !editando.id ? (editando.tipo === 'secao' ? `
+      <div class="clima-perg-form">
+        <label class="clima-form-lbl" for="cpf-texto">Nova seção</label>
+        <input id="cpf-texto" class="clima-form-txt" type="text" placeholder="Ex: Chat, Horas, Checklists…"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();salvarNovaPerguntaClima('${m.id}')}">
+        <div class="clima-tipo-row">
+          <span class="clima-tipo-lbl" style="text-transform:none;letter-spacing:0;font-weight:500">Subtítulo sem resposta. Arraste para posicionar.</span>
+          <div class="clima-form-acoes">
+            <button class="ps-btn-sm" onclick="G.climaPergEditando=null;renderClimaContent()">Cancelar</button>
+            <button class="ps-btn-sm primary" onclick="salvarNovaPerguntaClima('${m.id}')">Adicionar</button>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="ps-btn-sm primary" onclick="salvarNovaPerguntaClima('${m.id}')">Adicionar</button>
-          <button class="ps-btn-sm" onclick="G.climaPergEditando=null;renderClimaContent()">Cancelar</button>
+      </div>` : `
+      <div class="clima-perg-form">
+        <label class="clima-form-lbl" for="cpf-texto">Nova pergunta</label>
+        <textarea id="cpf-texto" class="clima-form-txt" rows="2" placeholder="Digite a pergunta…"></textarea>
+        <div class="clima-tipo-row">
+              <span class="clima-tipo-lbl">Tipo de resposta</span>
+              <div class="clima-tipo-btns">
+                ${['aberta','simnao','escala'].map(t => `<button type="button" class="clima-tipo-btn${(editando.tipo||'aberta')===t?' ativo':''}" onclick="climaSetEditTipo('${t}')">${CLIMA_TIPO_LABEL[t]}</button>`).join('')}
+              </div>
+          <div class="clima-form-acoes">
+            <button class="ps-btn-sm" onclick="G.climaPergEditando=null;renderClimaContent()">Cancelar</button>
+            <button class="ps-btn-sm primary" onclick="salvarNovaPerguntaClima('${m.id}')">Adicionar</button>
+          </div>
         </div>
-      </div>` : '';
+      </div>`) : '';
 
     return `
       <div class="clima-modelo-card">
         <div class="clima-modelo-header" onclick="toggleModeloClima('${m.id}')">
-          <div>
-            <div class="clima-modelo-titulo">${escHtml(m.titulo)}</div>
+          <div style="min-width:0">
+            <div class="clima-modelo-titulo">${escHtml(m.titulo)} <span class="clima-modelo-n">· ${nPergs} pergunta${nPergs!==1?'s':''}</span></div>
             ${m.descricao ? `<div class="clima-modelo-desc">${escHtml(m.descricao)}</div>` : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
-            <span class="pm-meta-chip">${pergs.length} pergunta${pergs.length!==1?'s':''}</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
             ${canEdit ? `<button class="ps-btn-sm" onclick="event.stopPropagation();editarModeloClima('${m.id}')">Editar</button>` : ''}
             ${canEdit ? `<button class="ps-btn-sm danger" onclick="event.stopPropagation();excluirModeloClima('${m.id}')">Excluir</button>` : ''}
-            <span style="color:#bbb;font-size:12px;transition:transform var(--transition-normal);${expanded?'transform:rotate(180deg)':''}">▼</span>
+            <svg class="clima-chevron${expanded?' aberto':''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
         ${expanded ? `
           <div class="clima-modelo-perguntas">
-            ${pergsHtml || `<div style="font-size:11px;color:#bbb;padding:4px 0 8px">Nenhuma pergunta ainda.</div>`}
+            <div class="clima-perg-lista" data-modelo="${m.id}">${pergsHtml || (formNova ? '' : `<div class="clima-sem-perg">Nenhuma pergunta ainda.</div>`)}</div>
             ${formNova}
-            ${canEdit && !formNova ? `<button class="ps-btn-sm" style="margin-top:8px" onclick="novaPerguntaClima('${m.id}')">+ Adicionar pergunta</button>` : ''}
+            ${canEdit && !formNova ? `<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
+              <button class="ps-btn-sm" onclick="novaSecaoClima('${m.id}')">+ Seção</button>
+              <button class="ps-btn-sm" onclick="novaPerguntaClima('${m.id}')">+ Adicionar pergunta</button>
+            </div>` : ''}
           </div>` : ''}
       </div>`;
   }).join('');
@@ -4090,15 +4215,80 @@ function novaPerguntaClima(modeloId) {
   renderClimaContent();
 }
 
+function novaSecaoClima(modeloId) {
+  G.climaPergEditando = { id: null, modeloId, tipo: 'secao' };
+  G.climaModeloSelecionado = modeloId;
+  renderClimaContent();
+  setTimeout(() => document.getElementById('cpf-texto')?.focus(), 30);
+}
+
+/* Arrastar perguntas e seções para mudar a ordem */
+function climaDragStart(ev, id) {
+  G._climaDragId = id;
+  ev.dataTransfer.effectAllowed = 'move';
+  try { ev.dataTransfer.setData('text/plain', id); } catch (e) {}
+  ev.currentTarget.classList.add('arrastando');
+}
+function climaDragOver(ev) {
+  if (!G._climaDragId) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  const el = ev.currentTarget, r = el.getBoundingClientRect();
+  const depois = ev.clientY > r.top + r.height / 2;
+  el.classList.toggle('drop-antes', !depois);
+  el.classList.toggle('drop-depois', depois);
+}
+function climaDragLeave(ev) {
+  ev.currentTarget.classList.remove('drop-antes', 'drop-depois');
+}
+function climaDragEnd() {
+  G._climaDragId = null;
+  document.querySelectorAll('.clima-perg-lista .arrastando, .clima-perg-lista .drop-antes, .clima-perg-lista .drop-depois')
+    .forEach(el => el.classList.remove('arrastando', 'drop-antes', 'drop-depois'));
+}
+async function climaDrop(ev, alvoId) {
+  ev.preventDefault();
+  const dragId = G._climaDragId;
+  const depois = ev.currentTarget.classList.contains('drop-depois');
+  climaDragEnd();
+  if (!dragId || dragId === alvoId || !isSocio(G.usuarioLogado?.role)) return;
+  const arrastado = G.climaPerguntas.find(p => p.id === dragId);
+  const alvo = G.climaPerguntas.find(p => p.id === alvoId);
+  if (!arrastado || !alvo || arrastado.modelo_id !== alvo.modelo_id) return;
+
+  const lista = G.climaPerguntas.filter(p => p.modelo_id === alvo.modelo_id && p.id !== dragId);
+  lista.splice(lista.findIndex(p => p.id === alvoId) + (depois ? 1 : 0), 0, arrastado);
+  const mudou = lista.map((p, idx) => ({ p, ordem: idx + 1 })).filter(x => x.p.ordem !== x.ordem);
+  const anteriores = new Map(mudou.map(x => [x.p.id, x.p.ordem]));
+  mudou.forEach(x => { x.p.ordem = x.ordem; });
+  G.climaPerguntas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  renderClimaContent();
+
+  const res = await Promise.all(mudou.map(x =>
+    sb.from('pessoas_pesquisa_clima_perguntas').update({ ordem: x.ordem }).eq('id', x.p.id)));
+  const erro = res.find(r => r.error)?.error;
+  if (erro) {
+    G.climaPerguntas.forEach(p => { if (anteriores.has(p.id)) p.ordem = anteriores.get(p.id); });
+    G.climaPerguntas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    renderClimaContent();
+    alert('Não foi possível salvar a nova ordem: ' + erro.message);
+  }
+}
+
 async function salvarNovaPerguntaClima(modeloId) {
   if (!isSocio(G.usuarioLogado?.role)) return;
   const texto = document.getElementById('cpf-texto')?.value?.trim();
-  if (!texto) { alert('Digite o texto da pergunta.'); return; }
+  if (!texto) { alert(G.climaPergEditando?.tipo === 'secao' ? 'Digite o nome da seção.' : 'Digite o texto da pergunta.'); return; }
   const tipo = G.climaPergEditando?.tipo || 'aberta';
   const ordem = Math.max(0, ...G.climaPerguntas.filter(p => p.modelo_id === modeloId).map(p => p.ordem || 0)) + 1;
   const { error } = await sb.from('pessoas_pesquisa_clima_perguntas')
     .insert({ modelo_id: modeloId, texto, tipo, ordem, criado_por: G.usuarioLogado?.id || null });
-  if (error) { alert('Erro: ' + error.message); return; }
+  if (error) {
+    alert(error.code === '23514' && tipo === 'secao'
+      ? 'O banco ainda não aceita seções. Rode o SQL "pesquisa_secoes" no Supabase e tente de novo.'
+      : 'Erro: ' + error.message);
+    return;
+  }
   G.climaPergEditando = null;
   G.climaLoaded = false;
   await carregarClimaView();
@@ -4109,7 +4299,7 @@ async function salvarNovaPerguntaClima(modeloId) {
 async function salvarEdicaoPerguntaClima(id) {
   if (!isSocio(G.usuarioLogado?.role)) return;
   const texto = document.getElementById('cpf-texto')?.value?.trim();
-  if (!texto) { alert('Digite o texto da pergunta.'); return; }
+  if (!texto) { alert('O texto não pode ficar vazio.'); return; }
   const tipo = G.climaPergEditando?.tipo || 'aberta';
   const { error } = await sb.from('pessoas_pesquisa_clima_perguntas').update({ texto, tipo }).eq('id', id);
   if (error) { alert('Erro: ' + error.message); return; }
@@ -4123,8 +4313,9 @@ async function salvarEdicaoPerguntaClima(id) {
 
 async function excluirPerguntaClima(id) {
   if (!isSocio(G.usuarioLogado?.role)) return;
-  if (!confirm('Excluir esta pergunta?')) return;
-  const mId = G.climaPerguntas.find(p => p.id === id)?.modelo_id;
+  const alvo = G.climaPerguntas.find(p => p.id === id);
+  if (!confirm(alvo?.tipo === 'secao' ? 'Excluir esta seção? As perguntas abaixo dela continuam no modelo.' : 'Excluir esta pergunta?')) return;
+  const mId = alvo?.modelo_id;
   const { error } = await sb.from('pessoas_pesquisa_clima_perguntas').delete().eq('id', id);
   if (error) { alert('Erro: ' + error.message); return; }
   G.climaLoaded = false;
@@ -4133,35 +4324,48 @@ async function excluirPerguntaClima(id) {
   renderClimaContent();
 }
 
-async function novoModeloClima() {
+// Novo modelo / editar: abre o formulário dentro da aba Modelos (sem janela do navegador)
+function novoModeloClima() {
   if (!isSocio(G.usuarioLogado?.role)) return;
-  const titulo = window.prompt('Nome do modelo (ex: Pesquisa Pessoas):');
-  if (!titulo?.trim()) return;
-  const desc = window.prompt('Descrição breve (opcional):') || '';
-  const { error } = await sb.from('pessoas_pesquisa_clima_modelos')
-    .insert({ titulo: titulo.trim(), descricao: desc.trim() || null, criado_por: G.usuarioLogado?.id || null });
-  if (error) { alert('Erro: ' + error.message); return; }
-  G.climaLoaded = false;
-  await carregarClimaView();
-}
-
-async function editarModeloClima(id) {
-  if (!isSocio(G.usuarioLogado?.role)) return;
-  const m = G.climaModelos.find(x => x.id === id);
-  const titulo = window.prompt('Nome do modelo:', m?.titulo || '');
-  if (titulo == null || !titulo.trim()) return;
-  const desc = window.prompt('Descrição breve (opcional):', m?.descricao || '') || '';
-  const { error } = await sb.from('pessoas_pesquisa_clima_modelos').update({ titulo: titulo.trim(), descricao: desc.trim() || null }).eq('id', id);
-  if (error) { alert('Erro: ' + error.message); return; }
-  G.climaLoaded = false;
-  await carregarClimaView();
-  G.climaModeloSelecionado = id;
+  G.climaModeloForm = { id: null };
   renderClimaContent();
+}
+function editarModeloClima(id) {
+  if (!isSocio(G.usuarioLogado?.role)) return;
+  G.climaModeloForm = { id };
+  renderClimaContent();
+}
+function cancelarModeloClimaForm() {
+  G.climaModeloForm = null;
+  renderClimaContent();
+}
+async function salvarModeloClimaForm() {
+  const f = G.climaModeloForm; if (!f) return;
+  const titulo = (document.getElementById('clima-modelo-nome')?.value || '').trim();
+  const desc = (document.getElementById('clima-modelo-desc')?.value || '').trim();
+  const st = document.getElementById('clima-modelo-status');
+  if (!titulo) {
+    if (st) { st.textContent = 'Informe o nome do modelo.'; st.className = 'ps-modal-status show erro'; }
+    document.getElementById('clima-modelo-nome')?.focus();
+    return;
+  }
+  const res = f.id
+    ? await sb.from('pessoas_pesquisa_clima_modelos').update({ titulo, descricao: desc || null }).eq('id', f.id)
+    : await sb.from('pessoas_pesquisa_clima_modelos').insert({ titulo, descricao: desc || null, criado_por: G.usuarioLogado?.id || null }).select('id').single();
+  if (res.error) {
+    if (st) { st.textContent = 'Erro ao salvar: ' + res.error.message; st.className = 'ps-modal-status show erro'; }
+    return;
+  }
+  const idSel = f.id || res.data?.id || null;
+  G.climaModeloForm = null;
+  G.climaLoaded = false;
+  await carregarClimaView();
+  if (idSel) { G.climaModeloSelecionado = idSel; renderClimaContent(); }
 }
 
 async function excluirModeloClima(id) {
   if (!isSocio(G.usuarioLogado?.role)) return;
-  const pergs = G.climaPerguntas.filter(p => p.modelo_id === id).length;
+  const pergs = G.climaPerguntas.filter(p => p.modelo_id === id && p.tipo !== 'secao').length;
   if (!confirm(`Excluir este modelo${pergs ? ` e suas ${pergs} pergunta${pergs!==1?'s':''}` : ''}?`)) return;
   const { error } = await sb.from('pessoas_pesquisa_clima_modelos').delete().eq('id', id);
   if (error) { alert('Erro: ' + error.message); return; }
@@ -4176,7 +4380,7 @@ function renderClimaTabAplicar(body) {
     return;
   }
   const modeloId = G.climaModeloDisparar || G.climaModelos[0]?.id;
-  const pergsDoModelo = G.climaPerguntas.filter(p => p.modelo_id === modeloId);
+  const pergsDoModelo = G.climaPerguntas.filter(p => p.modelo_id === modeloId && p.tipo !== 'secao');
   const modeloOpts = G.climaModelos.map(m => `<option value="${m.id}" ${m.id===modeloId?'selected':''}>${escHtml(m.titulo)}</option>`).join('');
   const userOpts = G.usuarios.filter(u => u.ativo !== false)
     .map(u => `<option value="${u.id}">${escHtml(shortDisplayName(u.nome) || u.email_login || '')}</option>`).join('');
@@ -4188,10 +4392,10 @@ function renderClimaTabAplicar(body) {
         <label>Rodada (campanha)</label>
         <select id="clima-aplicar-campanha">${campOpts}</select>
        </div>`
-    : `<div style="font-size:10px;color:#bbb;margin-bottom:12px;padding:8px 10px;background:var(--am-bg);border-radius:var(--radius-input,6px)">Nenhuma campanha ativa para este modelo. As respostas serão salvas sem vínculo de rodada.</div>`;
+    : `<div style="font-size:10px;color:#916b13;margin-bottom:12px;padding:8px 10px;background:var(--am-bg);border-radius:var(--radius-input,6px)">Nenhuma campanha ativa para este modelo. As respostas serão salvas sem vínculo de rodada.</div>`;
 
   body.innerHTML = `
-    <div style="max-width:480px">
+    <div class="clima-centro" style="max-width:480px">
       <div style="font-size:13px;font-weight:700;margin-bottom:4px">Aplicar presencialmente</div>
       <div style="font-size:11px;color:#999;margin-bottom:18px;line-height:1.5">Registre a pesquisa ao vivo: selecione o modelo, o colaborador, e responda junto com ele.</div>
       <div class="ps-field-modal" style="margin-bottom:12px">
@@ -4481,6 +4685,7 @@ async function renderClimaResultadoDetalhe(body, camp) {
 
   // Por pergunta (padrão, e único modo para anônima)
   const blocosHtml = pergsDoModelo.map(p => {
+    if (p.tipo === 'secao') return `<div class="clima-res-secao">${escHtml(p.texto)}</div>`;
     let respsP = respostas.filter(r => r.pergunta_id === p.id);
     if (camp.anonima) respsP = climaShuffleArr(respsP);
 
@@ -4565,7 +4770,7 @@ function iniciarSurveyClima() {
   const uid      = document.getElementById('clima-aplicar-usuario')?.value || '';
   const modeloId = document.getElementById('clima-aplicar-modelo')?.value || G.climaModeloDisparar || G.climaModelos[0]?.id;
   if (!uid) { alert('Selecione um colaborador.'); return; }
-  const pergs = G.climaPerguntas.filter(p => p.modelo_id === modeloId);
+  const pergs = climaSoPerguntas(G.climaPerguntas.filter(p => p.modelo_id === modeloId));
   if (!pergs.length) { alert('Nenhuma pergunta neste modelo.'); return; }
   const campId = document.getElementById('clima-aplicar-campanha')?.value || null;
   G.climaSurveyAtivo      = true;
@@ -4595,11 +4800,26 @@ function climaCapturarResposta() {
   }
 }
 
+// Sim/Não: o clique já responde e segue para a próxima (dá para voltar com Anterior)
 function climaSetSN(val) {
+  const pergs   = G._surveyPerguntas || G.climaPerguntas;
+  const step    = G.climaSurveyStep;
+  const current = pergs[step];
+  if (!current) return;
+  G.climaSurveyRespostas[current.id] = { simnao: val };
+  renderClimaContent();
+  if (step < pergs.length - 1) {
+    clearTimeout(G._climaAvancoT);
+    G._climaAvancoT = setTimeout(() => {
+      if (G.climaSurveyAtivo && G.climaSurveyStep === step) { G.climaSurveyStep++; renderClimaContent(); }
+    }, 250);
+  }
+}
+function climaSetEscala(n) {
   const pergs   = G._surveyPerguntas || G.climaPerguntas;
   const current = pergs[G.climaSurveyStep];
   if (!current) return;
-  G.climaSurveyRespostas[current.id] = { simnao: val };
+  G.climaSurveyRespostas[current.id] = { escala: n };
   renderClimaContent();
 }
 
@@ -4659,7 +4879,7 @@ async function finalizarSurveyClima() {
 }
 
 function renderClimaRunner(body) {
-  const pergs   = G._surveyPerguntas || G.climaPerguntas;
+  const pergs   = G._surveyPerguntas || climaSoPerguntas(G.climaPerguntas);
   const step    = G.climaSurveyStep;
   const total   = pergs.length;
   const current = pergs[step];
@@ -4686,14 +4906,11 @@ function renderClimaRunner(body) {
         </button>
       </div>`;
   } else if (tipo === 'escala') {
-    const val = salvo.escala ?? 3;
+    const val = salvo.escala ?? null;
     inputHtml = `
-      <div class="clima-escala-wrap">
-        <input type="range" class="clima-escala-slider" id="clima-escala-input" min="0" max="5" step="1" value="${val}">
-        <div class="clima-escala-ticks">
-          ${[0,1,2,3,4,5].map(n => `<div class="clima-escala-tick-col${val===n?' ativo':''}"><div class="clima-escala-tick-num">${n}</div><div class="clima-escala-tick-lbl">${n===0?'nada':n===1?'pouco':n===5?'muito':''}</div></div>`).join('')}
-        </div>
-      </div>`;
+        <div class="clima-escala" role="radiogroup" aria-label="Escala de 0 a 5">
+          ${[0,1,2,3,4,5].map(n => `<button type="button" role="radio" aria-checked="${val===n}" class="clima-escala-op${val===n?' ativo':''}" onclick="climaSetEscala(${n})"><span class="clima-escala-dot"></span><span class="clima-escala-num">${n}</span><span class="clima-escala-lbl">${n===0?'nada':n===5?'muito':''}</span></button>`).join('')}
+        </div>`;
   } else {
     inputHtml = `
       <textarea class="clima-runner-textarea" id="clima-resposta-atual" rows="5"
@@ -4705,15 +4922,16 @@ function renderClimaRunner(body) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <button class="ps-btn-sm" onclick="cancelarSurveyClima()">← Cancelar</button>
         <div style="font-size:11px;color:#888">Com <strong>${escHtml(shortDisplayName(u?.nome)||'Colaborador')}</strong></div>
-        <div style="font-size:10px;color:#bbb;font-family:var(--font-mono)">${step+1} / ${total}</div>
+        <div style="font-size:11px;color:#A9A59C;font-variant-numeric:lining-nums tabular-nums">${step+1} / ${total}</div>
       </div>
       <div class="clima-prog-bar"><div class="clima-prog-fill" style="width:${pct}%"></div></div>
       <div class="clima-runner-card" style="margin-bottom:16px">
-        <div class="clima-runner-label">Pergunta ${step+1} · <span style="color:${tipo==='simnao'?'var(--verde)':tipo==='escala'?'var(--roxo)':'#aaa'}">${CLIMA_TIPO_LABEL[tipo]}</span></div>
+        ${current._secao ? `<div class="clima-runner-secao">${escHtml(current._secao)}</div>` : ''}
+        <div class="clima-runner-label">Pergunta ${step+1} · <span style="color:${tipo==='simnao'?'var(--verde)':tipo==='escala'?'#916b13':'#aaa'}">${CLIMA_TIPO_LABEL[tipo]}</span></div>
         <div class="clima-runner-pergunta">${escHtml(current.texto)}</div>
       </div>
       ${inputHtml}
-      <div class="clima-runner-nav" style="margin-top:${tipo==='aberta'?'12':'0'}px">
+      <div class="clima-runner-nav">
         <button class="ps-btn-sm" onclick="climaAnterior()" ${step===0?'disabled style="opacity:.4"':''}>← Anterior</button>
         ${isUltima
           ? `<button class="ps-btn-sm primary" onclick="finalizarSurveyClima()">Finalizar e salvar</button>`
