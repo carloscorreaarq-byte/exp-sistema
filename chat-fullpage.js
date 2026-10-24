@@ -4326,26 +4326,23 @@
       var cls = vencida ? 'vencida' : ehHoje ? 'hoje' : '';
       var dt  = new Date(t.data_limite + 'T12:00:00');
       var dtFmt = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
-      return '<span class="fp-task-prazo ' + cls + '">' + escHtml(dtFmt) + (vencida?' ⚠':'') + '</span>';
+      return '<span class="fp-task-prazo ' + cls + '">' + escHtml(dtFmt) + '</span>';
     }
 
     function tipoHtml(t) {
-      return t.tipo ? '<span style="font-size:9px;color:#bbb;text-transform:capitalize">' + escHtml(t.tipo) + '</span>' : '';
+      // "Livre" é o tipo padrão — não precisa aparecer
+      if (!t.tipo || String(t.tipo).trim().toLowerCase() === 'livre') return '';
+      return '<span style="font-size:9px;color:#8A867E;text-transform:capitalize">' + escHtml(t.tipo) + '</span>';
     }
 
     var html = '';
-
-    /* ── Pendentes ── */
-    html += '<div class="fp-task-section fp-task-sec-head">' +
-      '<span>Pendentes — ' + tasks.length + '</span>' +
-      '<button class="fp-task-recentes-btn" onclick="fpChat.toggleRecentes(event)" title="Ver realizadas recentemente e restaurar">↺ recentes</button>' +
-      '</div>';
-    if (!tasks.length) {
-      html += '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma tarefa pendente ✓</div>';
-    } else {
-      tasks.forEach(function(t) {
+    // Atrasadas (prazo vencido) numa seção própria, em vermelho; depois as demais
+    var atrasadas = tasks.filter(function(t){ return t.data_limite && t.data_limite < hoje; });
+    var emDia     = tasks.filter(function(t){ return !(t.data_limite && t.data_limite < hoje); });
+    var recentesBtn = '<button class="fp-task-recentes-btn" onclick="fpChat.toggleRecentes(event)" title="Ver realizadas recentemente e restaurar">↺ recentes</button>';
+    function itemHtml(t, atrasada) {
         var tid = escHtml(String(t.id));
-        html += '<div class="fp-task-item" id="fp-task-' + tid + '">' +
+        return '<div class="fp-task-item' + (atrasada ? ' fp-task-atrasada' : '') + '" id="fp-task-' + tid + '">' +
           '<div class="fp-task-check" onclick="fpChat.checkTask(event,\'' + tid + '\')" title="Concluir"></div>' +
           '<div class="fp-task-body">' +
             '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
@@ -4353,7 +4350,18 @@
           '</div>' +
           '<button class="fp-task-edit" title="Editar tarefa" onclick="fpChat.editTask(event,\'' + tid + '\')">' + _PENCIL + '</button>' +
           '</div>';
-      });
+    }
+    if (!tasks.length) {
+      html += '<div class="fp-task-section fp-task-sec-head"><span>Pendentes — 0</span>' + recentesBtn + '</div>' +
+              '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma tarefa pendente ✓</div>';
+    } else {
+      if (atrasadas.length) {
+        html += '<div class="fp-task-section fp-task-sec-head fp-sec-atrasadas"><span>Atrasadas — ' + atrasadas.length + '</span>' + recentesBtn + '</div>';
+        atrasadas.forEach(function(t){ html += itemHtml(t, true); });
+      }
+      html += '<div class="fp-task-section fp-task-sec-head"><span>' + (atrasadas.length ? 'Próximas' : 'Pendentes') + ' — ' + emDia.length + '</span>' + (atrasadas.length ? '' : recentesBtn) + '</div>';
+      if (!emDia.length) html += '<div class="fp-empty" style="padding:12px;text-align:center;font-size:11px">Nada além das atrasadas.</div>';
+      emDia.forEach(function(t){ html += itemHtml(t, false); });
     }
 
     /* ── Atribuídas (recolhível) ── */

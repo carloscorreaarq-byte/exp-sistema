@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared/nome-curto.js"></script>
-<script src="shared/app-notif.js" defer></script>
+<script src="shared/app-notif.js"></script>
 <script src="shared/horas-creditos.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="preload" href="shared/app-shell.js" as="script">
@@ -82,13 +82,14 @@ body{
 }
 .semana-hoje-btn{
   min-height:26px;padding:0 10px;border:0;background:transparent;
-  color:var(--grafite);font-family:inherit;font-size:10px;font-weight:700;
+  color:var(--grafite);font-family:inherit;font-size:var(--text-label,9px);font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;
   cursor:pointer;border-radius:999px;
 }
 .semana-nav-btn:hover,.semana-hoje-btn:hover{background:var(--off);}
 .semana-label{
   min-width:155px;text-align:center;
-  font-family:var(--font-mono);font-size:11px;color:#666;
+  font-size:11px;color:#666;font-variant-numeric:lining-nums tabular-nums;
 }
 
 /* ── Tab bar ──────────────────────────── */
@@ -469,6 +470,21 @@ body{
 .bh-card-val.pos{color:var(--verde);}
 .bh-card-val.neg{color:var(--terracota);}
 .bh-month-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+/* Sócios: banco de horas da equipe (2026-10-23) */
+.bh-pessoa-sel{margin-left:auto;font-family:var(--font-ui);font-size:11px;padding:5px 9px;border:1px solid var(--cinza2);border-radius:var(--radius-input,6px);background:var(--branco);color:var(--grafite);cursor:pointer;max-width:220px}
+.bh-vendo{display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:10px;border-radius:var(--radius-card);background:rgba(74,114,181,.08);border:1px solid rgba(74,114,181,.25);font-size:11px;color:var(--grafite)}
+.bh-vendo button{margin-left:auto;border:0;background:none;color:var(--azul);font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline;padding:0}
+.bh-eq-table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:lining-nums tabular-nums}
+.bh-eq-table th{font-size:var(--text-label);font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#999;text-align:right;padding:8px 12px;border-bottom:1px solid var(--cinza2);white-space:nowrap}
+.bh-eq-table th:first-child,.bh-eq-table td:first-child{text-align:left}
+.bh-eq-table td{padding:8px 12px;border-bottom:1px solid var(--cinza2);text-align:right;white-space:nowrap}
+.bh-eq-table tr:last-child td{border-bottom:none}
+.bh-eq-table tbody tr{cursor:pointer}
+.bh-eq-table tbody tr:hover td{background:var(--off)}
+.bh-eq-table .pos{color:var(--verde)}
+.bh-eq-table .neg{color:var(--terracota)}
+.bh-eq-pend{display:inline-block;padding:1px 7px;border-radius:999px;background:rgba(196,154,39,.12);color:#916b13;font-weight:600}
+[data-theme="dark"] .bh-pessoa-sel{background:#141412;border-color:#3A3836;color:#F0EFEC}
 .bh-month-nav button{border:1px solid var(--cinza2);background:var(--branco);border-radius:6px;width:26px;height:26px;cursor:pointer;color:#666;font-size:12px;}
 .bh-month-nav button:hover{border-color:var(--cinza);color:var(--grafite);}
 .bh-month-lbl{font-size:13px;font-weight:700;color:var(--grafite);min-width:130px;text-align:center;}
@@ -561,22 +577,17 @@ body{
 }
 [data-theme="dark"] .apo-form-title{background:#252523;color:#F0EDE6;border-bottom-color:#2E2D2B;}
 .sec-title,.apo-kpi-lbl,.lanc-dia-hdr{color:#8A867E;}
-/* Botões: sem caixa alta; principal na cor do módulo */
-.apo-btn{font-size:12px;letter-spacing:0;text-transform:none;}
-.apo-btn-sm{font-size:11px;}
-.apo-btn-primary{background:var(--verde);border-color:var(--verde);color:#fff;}
-.apo-btn-primary:hover{background:var(--verde-hover, #33664A);border-color:var(--verde-hover, #33664A);color:#fff;}
-[data-theme="dark"] .apo-btn-primary{background:#4E9A6E;border-color:#4E9A6E;color:#fff;}
-[data-theme="dark"] .apo-btn-primary:hover{background:#5FAD7E;border-color:#5FAD7E;}
-/* Botões no mesmo visual da Gestão (Revisões): compactos, raio de botão, contorno
-   neutro; principal verde sólido; recusar/cancelar com contorno terracota */
+/* Botões = .btn do design system (2026-10-23): caixa alta, 10px, peso 700,
+   espaçamento .5px, raio 8px, contorno --cinza2; principal na cor do módulo (verde);
+   recusar/cancelar com contorno terracota (equivale a .btn.danger) */
 .apo-btn{
-  height:auto;min-height:0;padding:7px 16px;border-radius:var(--radius-btn,6px);
-  border:1px solid var(--cinza);background:var(--branco);color:#6B6862;
-  font-size:12px;font-weight:600;line-height:1.2;
+  height:auto;min-height:0;padding:5px 14px;border-radius:var(--radius-btn,8px);
+  border:1px solid var(--cinza2);background:var(--branco);color:#888;
+  font-family:var(--font-ui);font-size:var(--text-sub,10px);font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;line-height:1.2;
 }
 .apo-btn:hover{border-color:var(--grafite);color:var(--grafite);}
-.apo-btn-sm{padding:5px 12px;font-size:11px;}
+.apo-btn-sm{padding:4px 10px;font-size:var(--text-label,9px);letter-spacing:.4px;}
 .apo-btn.apo-btn-primary{flex:0 0 auto;background:var(--verde);border-color:var(--verde);color:#fff;}
 .apo-btn.apo-btn-primary:hover{background:var(--verde-hover, #33664A);border-color:var(--verde-hover, #33664A);color:#fff;}
 [data-theme="dark"] .apo-btn.apo-btn-primary{background:#4E9A6E;border-color:#4E9A6E;color:#fff;}
@@ -588,7 +599,7 @@ body{
 /* Ações dos formulários: principal à direita, Limpar ao lado */
 .apo-form-card .apo-actions{flex-direction:row-reverse;justify-content:flex-start;margin-top:14px;}
 /* Setas de mês do Banco no mesmo estilo de botão */
-.bh-month-nav button{width:30px;height:30px;border:1px solid var(--cinza);border-radius:var(--radius-btn,6px);background:var(--branco);color:#6B6862;font-size:11px;}
+.bh-month-nav button{width:28px;height:28px;border:1px solid var(--cinza2);border-radius:var(--radius-btn,8px);background:var(--branco);color:#888;font-size:10px;}
 .bh-month-nav button:hover{border-color:var(--grafite);color:var(--grafite);}
 [data-theme="dark"] .bh-month-nav button{background:#1D1D1B;border-color:#3A3836;color:#B9B7AF;}
 /* Indicadores com faixa colorida (como os stats da Gestão) */
@@ -611,7 +622,7 @@ body{
   <aside id="fp-tasks-panel" style="display:none">
     <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
       <span style="font-size:calc(14px * var(--fp-lists-scale,1));font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
-      <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+      <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));color:var(--ca);opacity:.6;margin-right:6px"></span>
       <button onclick="listsPanel.toggle()" title="Fechar"
         style="width:24px;height:24px;border:none;background:none;color:var(--grafite,#111110);opacity:.4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
         onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
@@ -654,7 +665,7 @@ body{
         </select>
         <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
         <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
-        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" title="Atribuir para alguém">
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" aria-label="Atribuir">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </button>
       </div>
@@ -901,6 +912,15 @@ body{
             <div class="bh-month-lbl" id="bh-month-lbl">—</div>
             <button type="button" id="bh-month-next" title="Próximo mês">▶</button>
             <span class="bh-month-tag" id="bh-month-tag"></span>
+            <select id="bh-pessoa" class="bh-pessoa-sel" style="display:none" title="Ver o banco de horas de outra pessoa"></select>
+          </div>
+          <div class="bh-vendo" id="bh-vendo" style="display:none"></div>
+
+          <div id="bh-equipe-box" style="display:none">
+            <div class="sec-title">Banco de horas da equipe</div>
+            <div class="bh-hist-wrap lanc-lista-box" id="bh-equipe-wrap" style="margin-bottom:14px">
+              <div class="bh-empty">Carregando…</div>
+            </div>
           </div>
 
           <div class="bh-grid">
@@ -1909,7 +1929,8 @@ body{
     });
     var tit = document.getElementById('bh-requests-title');
     var nPend = rows.filter(function(r){ return r.status_solicitacao === 'pendente'; }).length;
-    if (tit) tit.textContent = 'Minhas solicitações' + (nPend ? ' · ' + nPend + ' em análise' : '');
+    var _quem = bhVendoOutro() ? ('Solicitações de ' + (AP.bankViewNome || 'colaborador')) : 'Minhas solicitações';
+    if (tit) tit.textContent = _quem + (nPend ? ' · ' + nPend + ' em análise' : '');
     if (!rows.length) {
       wrap.innerHTML = '<div class="lanc-lista-box"><div class="bh-empty">Nenhuma solicitação registrada ainda.</div></div>';
       return;
@@ -2045,9 +2066,17 @@ body{
     });
   }
 
+  // Sócio vendo o banco de outra pessoa (null = o próprio)
+  function bhVendoOutro() { return !!(AP.bankViewUser && AP.bankViewUser !== uid()); }
+  function bhEhSocio() {
+    var r = AP.user && AP.user.role;
+    return window.isSocioRole ? window.isSocioRole(r) : isSocioAdmRole(r);
+  }
+
   async function loadBancoData() {
-    var u = uid();
+    var u = bhVendoOutro() ? AP.bankViewUser : uid();
     if (!u) return;
+    var _pessoa = bhVendoOutro() ? ((AP.bhEquipe || []).find(function(x){ return x.id === u; }) || {}) : (AP.user || {});
     if (!AP.bankMonth) AP.bankMonth = (AP.weekInfo ? AP.weekInfo.start : localIso()).slice(0,7);
     var ymSel = AP.bankMonth;
     var ymIni = shiftMonth(ymSel, -(BH_MESES_HISTORICO - 1));
@@ -2066,7 +2095,7 @@ body{
           : Promise.resolve({ data: [], error: null }),
         // Feriados/ausências/compensações — contam como horas trabalhadas (opcional)
         window.ExpHorasCredito
-          ? window.ExpHorasCredito.carregar(window.sb, u, rangeIni, rangeFim, { nucleoId: AP.user && (AP.user.nucleo_id || AP.user.nucleo) })
+          ? window.ExpHorasCredito.carregar(window.sb, u, rangeIni, rangeFim, { nucleoId: _pessoa.nucleo_id || _pessoa.nucleo })
               .then(function(c){ return c; }, function(){ return null; })
           : Promise.resolve(null),
       ]);
@@ -2127,8 +2156,10 @@ body{
       renderBancoResumo();
       renderBancoRequests();
       renderBancoAdmin();
-      // Quem abriu a aba Banco já viu as decisões: o aviso do topo some
-      if (activeTab() === 'banco') {
+      renderBancoPessoaUI();
+      if (bhEhSocio() && !bhVendoOutro()) loadBancoEquipe().catch(function(e){ console.warn('[bh-equipe]', e); });
+      // Quem abriu a aba Banco já viu as decisões: o aviso do topo some (só no próprio banco)
+      if (activeTab() === 'banco' && !bhVendoOutro()) {
         bhMarcarVistos(reqs.filter(function(r){ return r.aprovado_em; }).map(function(r){ return r.id; }));
       }
       loadBhAviso();
@@ -2193,6 +2224,114 @@ body{
     document.getElementById('apo-bh-destino').value = 'compensacao';
     document.getElementById('apo-bh-aus-horas').value = '';
     updateBhTipoUI();
+  }
+
+  // ── Sócios: banco de horas da equipe ─────────────────────────────
+  async function bhCarregarEquipe() {
+    if (AP.bhEquipe) return AP.bhEquipe;
+    var r = await window.sb.from('usuarios').select('id,nome,role,nucleo_id,ativo').eq('ativo', true).order('nome');
+    if (r.error) throw r.error;
+    var isSoc = window.isSocioRole || function(x){ return isSocioAdmRole(x); };
+    AP.bhEquipe = (r.data || []).filter(function(x){ return !isSoc(x.role) && x.id !== uid(); });
+    return AP.bhEquipe;
+  }
+  // Busca paginada (o Supabase devolve no máximo 1000 linhas por consulta)
+  async function bhBuscarTudo(montar) {
+    var out = [], de = 0, passo = 1000;
+    for (;;) {
+      var r = await montar().range(de, de + passo - 1);
+      if (r.error) throw r.error;
+      out = out.concat(r.data || []);
+      if (!r.data || r.data.length < passo) break;
+      de += passo;
+    }
+    return out;
+  }
+  async function loadBancoEquipe() {
+    var box = document.getElementById('bh-equipe-box');
+    var wrap = document.getElementById('bh-equipe-wrap');
+    if (!box || !wrap) return;
+    box.style.display = '';
+    var equipe = await bhCarregarEquipe();
+    bhPreencherSeletor();
+    if (!equipe.length) { wrap.innerHTML = '<div class="bh-empty">Nenhum colaborador ativo.</div>'; return; }
+    var ymSel = AP.bankMonth;
+    var ymIni = shiftMonth(ymSel, -(BH_MESES_HISTORICO - 1));
+    var rangeIni = monthBounds(ymIni).start, rangeFim = monthBounds(ymSel).end;
+    var ids = equipe.map(function(x){ return x.id; });
+    var res = await Promise.all([
+      bhBuscarTudo(function(){ return window.sb.from('horas_lancadas').select('usuario_id,data_lancamento,hora_inicio,hora_fim')
+        .in('usuario_id', ids).gte('data_lancamento', rangeIni).lte('data_lancamento', rangeFim).order('data_lancamento'); }),
+      window.sb.from('usuarios_jornada').select('usuario_id,jornada_semanal_h').in('usuario_id', ids),
+      window.sb.from('banco_horas_saldo').select('usuario_id,horas_disponiveis').in('usuario_id', ids),
+      window.sb.from('banco_horas_solicitacoes').select('usuario_id').eq('status_solicitacao', 'pendente').in('usuario_id', ids),
+      Promise.all(equipe.map(function(x){
+        return window.ExpHorasCredito
+          ? window.ExpHorasCredito.carregar(window.sb, x.id, rangeIni, rangeFim, { nucleoId: x.nucleo_id }).then(function(c){ return c; }, function(){ return null; })
+          : Promise.resolve(null);
+      })),
+    ]);
+    if (ymSel !== AP.bankMonth) return;   // trocou de mês enquanto carregava
+    var horasPor = {}; res[0].forEach(function(h){ (horasPor[h.usuario_id] = horasPor[h.usuario_id] || []).push(h); });
+    var jornPor = {}; (res[1].data || []).forEach(function(j){ jornPor[j.usuario_id] = Number(j.jornada_semanal_h) || 40; });
+    var saldoPor = {}; (res[2].data || []).forEach(function(s){ saldoPor[s.usuario_id] = Number(s.horas_disponiveis || 0); });
+    var pendPor = {}; (res[3].data || []).forEach(function(p){ pendPor[p.usuario_id] = (pendPor[p.usuario_id] || 0) + 1; });
+    var cls = function(h){ return h > 0.05 ? 'pos' : (h < -0.05 ? 'neg' : ''); };
+    var linhas = equipe.map(function(x, i) {
+      var ctx = { jornada: jornPor[x.id] || 40, horas: horasPor[x.id] || [], creditos: res[4][i] };
+      var hist = [];
+      for (var k = BH_MESES_HISTORICO - 1; k >= 0; k--) hist.push(apurarMes(shiftMonth(ymSel, -k), ctx));
+      var mes = hist[hist.length - 1];
+      var acum = round1(hist.reduce(function(s2, h){ return s2 + h.saldo; }, 0));
+      var banco = saldoPor[x.id] || 0;
+      return '<tr data-bh-pessoa="' + esc(x.id) + '">' +
+        '<td><strong>' + esc(x.nome || '—') + '</strong></td>' +
+        '<td>' + esc(fmtH(mes.registrado + mes.creditado)) + ' / ' + esc(fmtH(mes.esperado)) + '</td>' +
+        '<td class="' + cls(mes.saldo) + '">' + esc(fmtHS(mes.saldo)) + '</td>' +
+        '<td class="' + cls(acum) + '">' + esc(fmtHS(acum)) + '</td>' +
+        '<td class="' + cls(banco) + '">' + esc(fmtHS(banco)) + '</td>' +
+        '<td>' + (pendPor[x.id] ? '<span class="bh-eq-pend">' + pendPor[x.id] + '</span>' : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+    wrap.innerHTML = '<table class="bh-eq-table"><thead><tr>' +
+      '<th>Pessoa</th><th>Horas do mês</th><th>Saldo do mês</th><th>Acumulado ' + BH_MESES_HISTORICO + ' meses</th><th>Saldo no banco</th><th>Pedidos</th>' +
+      '</tr></thead><tbody>' + linhas + '</tbody></table>';
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-pessoa]'), function(tr) {
+      tr.addEventListener('click', function(){ bhVerPessoa(this.getAttribute('data-bh-pessoa')); });
+    });
+  }
+  function bhPreencherSeletor() {
+    var sel = document.getElementById('bh-pessoa');
+    if (!sel || !AP.bhEquipe) return;
+    sel.innerHTML = '<option value="">Meu banco de horas</option>' +
+      AP.bhEquipe.map(function(x){ return '<option value="' + esc(x.id) + '">' + esc(x.nome || '—') + '</option>'; }).join('');
+    sel.value = bhVendoOutro() ? AP.bankViewUser : '';
+    sel.style.display = '';
+  }
+  function bhVerPessoa(id) {
+    var p = (AP.bhEquipe || []).find(function(x){ return x.id === id; });
+    AP.bankViewUser = p ? p.id : null;
+    AP.bankViewNome = p ? (p.nome || '') : '';
+    var sel = document.getElementById('bh-pessoa'); if (sel) sel.value = p ? p.id : '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    loadBancoData().catch(function(e){ setFb('apo-bh-feedback', e.message, 'err'); });
+  }
+  function renderBancoPessoaUI() {
+    var outro = bhVendoOutro();
+    var vendo = document.getElementById('bh-vendo');
+    if (vendo) {
+      vendo.style.display = outro ? '' : 'none';
+      if (outro) {
+        vendo.innerHTML = 'Você está vendo o banco de horas de <strong>' + esc(AP.bankViewNome || 'colaborador') + '</strong>.' +
+          '<button type="button" id="bh-vendo-voltar">Voltar ao meu banco</button>';
+        document.getElementById('bh-vendo-voltar').addEventListener('click', function(){ bhVerPessoa(null); });
+      }
+    }
+    var eq = document.getElementById('bh-equipe-box'); if (eq && outro) eq.style.display = 'none';
+    // O formulário de pedido é só para o próprio banco
+    var form = document.querySelector('.bh-side > .apo-form-card');
+    if (form) form.style.display = outro ? 'none' : '';
+    if (bhEhSocio()) bhCarregarEquipe().then(bhPreencherSeletor, function(){});
   }
 
   // ── Aviso no topo: andamento dos pedidos ao banco de horas ───────
@@ -2478,19 +2617,28 @@ body{
     };
     var ins = await window.sb.from('calendar_events').insert(payload).select('id').single();
     if (ins.error) throw ins.error;
-    var saldo = await aplicarCompensacaoSaldo(usuarioId, Number(horas));
-    var log = await window.sb.from('banco_horas_compensacoes').insert({
-      calendar_event_id: String(ins.data.id),
-      usuario_id: usuarioId,
-      data_uso: dataUso,
-      horas_consumidas: Number(horas),
-      observacao: observacao || null,
-      criado_por: criadoPorId,
-      saldo_antes: saldo.saldoAntes,
-      saldo_depois: saldo.saldoDepois,
-      updated_at: new Date().toISOString(),
-    });
-    if (log.error) throw log.error;
+    // Se o saldo ou o registro falharem, desfaz o que já foi gravado — senão cada
+    // tentativa deixaria um evento de compensação solto no calendário.
+    var saldo = null;
+    try {
+      saldo = await aplicarCompensacaoSaldo(usuarioId, Number(horas));
+      var log = await window.sb.from('banco_horas_compensacoes').insert({
+        calendar_event_id: String(ins.data.id),
+        usuario_id: usuarioId,
+        data_uso: dataUso,
+        horas_consumidas: Number(horas),
+        observacao: observacao || null,
+        criado_por: criadoPorId,
+        saldo_antes: saldo.saldoAntes,
+        saldo_depois: saldo.saldoDepois,
+        updated_at: new Date().toISOString(),
+      });
+      if (log.error) throw log.error;
+    } catch (e) {
+      try { await window.sb.from('calendar_events').delete().eq('id', ins.data.id); } catch (_) {}
+      if (saldo) { try { await aplicarCompensacaoSaldo(usuarioId, -Number(horas)); } catch (_) {} }
+      throw e;
+    }
   }
 
   async function approveBancoRequest(id) {
@@ -3520,6 +3668,7 @@ body{
     document.getElementById('apo-bh-aus-horas').addEventListener('input',updateBhAusenciaNote);
     document.getElementById('bh-month-prev').addEventListener('click',function(){ shiftBankMonth(-1); });
     document.getElementById('bh-month-next').addEventListener('click',function(){ shiftBankMonth(1); });
+    document.getElementById('bh-pessoa').addEventListener('change',function(){ bhVerPessoa(this.value || null); });
     updateBhDestinoUI();
     document.getElementById('apo-bh-reset').addEventListener('click',function(){
       resetBhForm();
@@ -3595,7 +3744,7 @@ body{
               '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>' +
               '<line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>' +
             '</svg>' +
-            '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
+            '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
           btn.onclick = function() { listsPanel.toggle(); };
           nav.replaceChild(btn, oldBtn);
         }

@@ -73,15 +73,12 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 
 /* ── BOTÕES ─────────────────────────────────────────────────── */
 /* .btn base (tamanho, caixa alta, borda, raio) vem do exp-design-system.css */
-.btn.filled { background: var(--grafite); color: var(--branco); border-color: var(--grafite); }
-.btn.filled:hover { opacity: .82; }
-.btn.verde  { background: var(--verde); color: #fff; border-color: var(--verde); }
-.btn.verde:hover { opacity: .88; }
-.btn.soc    { background: var(--soc); color: #fff; border-color: var(--soc); }
-.btn.soc:hover { opacity: .88; }
-.btn.tc, .btn.danger { background: var(--terracota); color: #fff; border-color: var(--terracota); }
-.btn.tc:hover, .btn.danger:hover { opacity: .88; }
-.btn.am     { background: var(--ouro); color: #fff; border-color: var(--ouro); }
+/* Botões (2026-10-23): ação principal = cor do módulo (azul Sociedade), sólida;
+   verde/soc/am/filled viram a mesma ação principal; excluir = contorno vermelho */
+.btn.filled, .btn.verde, .btn.soc, .btn.am { background: var(--soc); color: #fff; border-color: var(--soc); }
+.btn.filled:hover, .btn.verde:hover, .btn.soc:hover, .btn.am:hover { opacity: .85; color: #fff; }
+.btn.tc, .btn.danger { background: var(--branco); color: var(--terracota); border-color: var(--terracota); }
+.btn.tc:hover, .btn.danger:hover { background: var(--terracota); color: #fff; }
 .btn.ghost  { background: transparent; border-color: transparent; color: #999; }
 .btn.ghost:hover { border-color: var(--cinza); color: var(--grafite); }
 .btn.ghost.tc:hover { color: var(--terracota); border-color: var(--terracota); }
@@ -109,7 +106,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .card-body { padding: 12px 14px 14px 18px; }
 
 /* ── SEÇÃO TÍTULOS ──────────────────────────────────────────── */
-.sec-title { font-size: 8px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #aaa; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+.sec-title { font-size: var(--text-label, 9px); font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #8A867E; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
 .sec-title::after { content: ''; flex: 1; height: 1px; background: var(--cinza); }
 
 /* ── INPUTS / FORMS ─────────────────────────────────────────── */
@@ -142,10 +139,11 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .rev-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
 
 /* ── SUB-ABAS ───────────────────────────────────────────────── */
-.stab-bar { display: flex; align-items: center; gap: 0; border-bottom: 1px solid var(--cinza); margin-bottom: 18px; }
-.stab { padding: 9px 20px; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #aaa; border-bottom: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast); background: none; border-top: none; border-left: none; border-right: none; font-family: var(--font-ui); }
+.stab-bar { display: inline-flex; align-items: stretch; border: 1px solid var(--cinza2); border-radius: var(--radius-btn, 8px); overflow: hidden; margin-bottom: 16px; background: var(--branco); }
+.stab { padding: 5px 14px; font-family: var(--font-ui); font-size: var(--text-sub, 10px); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; line-height: 1.3; color: #888; background: var(--branco); border: none; cursor: pointer; transition: background var(--transition-fast), color var(--transition-fast); white-space: nowrap; }
+.stab + .stab { border-left: 1px solid var(--cinza2); }
 .stab:hover { color: var(--grafite); }
-.stab.active { color: var(--grafite); border-bottom-color: var(--soc); }
+.stab.active { background: var(--grafite); color: var(--branco); }
 .stab-panel { display: none; }
 .stab-panel.active { display: block; }
 
@@ -208,7 +206,24 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .ho-st-validado         { background: #3E7858; color: #fff; }
 
 /* ── EMPTY STATE ────────────────────────────────────────────── */
-.empty-note { font-size: 12px; color: #ccc; padding: 28px 0; text-align: center; }
+.empty-note { font-size: 12px; color: #A9A59C; padding: 28px 0; text-align: center; }
+/* utilitários (substituem estilos escritos no elemento) */
+.empty-note.tall { padding: 60px 0; }
+.empty-note.mid  { padding: 40px 0; }
+.ml-auto { margin-left: auto; }
+.mb-14 { margin-bottom: 14px; }
+.soc-mini-label { font-size: var(--text-label, 9px); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #8A867E; margin-bottom: 10px; }
+.soc-acoes-rodape { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--cinza2); display: flex; justify-content: flex-end; gap: 6px; }
+.soc-inline-add { flex: 1; border: 1px dashed var(--cinza); border-radius: var(--radius-input, 8px); padding: 6px 10px; font-size: 12px; font-family: var(--font-ui); background: transparent; color: var(--grafite); outline: none; }
+.soc-inline-add:focus { border-style: solid; border-color: var(--soc); }
+/* 2) navegação de mês em cápsula (igual Apontamentos) */
+.mes-nav { display: inline-flex; align-items: center; gap: 2px; padding: 3px; background: var(--branco); border: 1px solid var(--cinza2); border-radius: 999px; }
+.mes-nav-btn { width: 26px; height: 26px; border: 0; background: transparent; color: var(--grafite); font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+.mes-nav-btn:hover, .mes-nav-hoje:hover { background: var(--off); }
+.mes-nav input[type=month] { border: 0; background: transparent; font-family: var(--font-ui); font-size: 12px; color: var(--grafite); text-align: center; padding: 0 4px; outline: none; min-width: 150px; cursor: pointer; }
+.mes-nav-hoje { min-height: 26px; padding: 0 10px; border: 0; background: transparent; color: var(--grafite); font-family: var(--font-ui); font-size: var(--text-label, 9px); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; cursor: pointer; border-radius: 999px; }
+[data-theme="dark"] .mes-nav { background: #1D1D1B; border-color: #2E2D2B; }
+[data-theme="dark"] .mes-nav input[type=month] { color-scheme: dark; }
 
 /* ── NOTIF ──────────────────────────────────────────────────── */
 .notif-item{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border-bottom:1px solid var(--cinza2);cursor:pointer;transition:background .1s}
@@ -234,8 +249,10 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
    PAUTAS
    ══════════════════════════════════════════════════════════════ */
 .pautas-filtros { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-.proj-view-toggle { display: inline-flex; align-items: center; border: 1px solid var(--cinza); border-radius: 100px; background: var(--cinza2); padding: 2px; flex-shrink: 0; }
-.pvt-btn { padding: 4px 13px; border-radius: 100px; font-size: 10px; font-weight: 600; letter-spacing: .3px; color: #888; transition: all var(--transition-normal); background: none; border: none; cursor: pointer; font-family: var(--font-ui); }
+.proj-view-toggle { display: inline-flex; align-items: stretch; border: 1px solid var(--cinza2); border-radius: var(--radius-btn, 8px); overflow: hidden; background: var(--branco); flex-shrink: 0; }
+.pvt-btn { padding: 5px 14px; font-family: var(--font-ui); font-size: var(--text-sub, 10px); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; line-height: 1.3; color: #888; background: var(--branco); border: none; cursor: pointer; transition: background var(--transition-fast), color var(--transition-fast); white-space: nowrap; }
+.pvt-btn + .pvt-btn { border-left: 1px solid var(--cinza2); }
+.pvt-btn:hover { color: var(--grafite); }
 .pvt-btn.active { background: var(--grafite); color: var(--branco); }
 [data-theme="dark"] .pvt-btn.active { color: var(--off); }
 .filter-select { border: 1px solid var(--cinza); border-radius: var(--radius-input, 6px); padding: 5px 9px; font-size: 11px; font-family: var(--font-ui); background: var(--branco); color: var(--grafite); cursor: pointer; outline: none; }
@@ -355,6 +372,41 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 .presente-opt.sel { border-color: var(--soc); background: var(--soc-bg); color: var(--soc); font-weight: 600; }
 
 /* ── STUBS (Projetos / Produtos / Dashboard) ────────────────── */
+/* Dashboard — resumo */
+.dash-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.dash-card { text-align: left; padding: 12px 14px; border: 1px solid var(--cinza2); border-radius: var(--radius-card, 8px); background: var(--branco); cursor: pointer; font-family: var(--font-ui); transition: border-color var(--transition-fast); border-left: 3px solid var(--dash-cor, var(--soc)); }
+.dash-card:hover { border-color: var(--dash-cor, var(--soc)); }
+.dash-card-lbl { font-size: var(--text-label, 9px); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8A867E; }
+.dash-card-val { font-size: 22px; font-weight: 700; color: var(--grafite); margin-top: 4px; line-height: 1.15; font-variant-numeric: lining-nums tabular-nums; }
+.dash-card-val.txt { font-size: 14px; }
+.dash-card-sub { font-size: 11px; color: #8A867E; margin-top: 3px; font-variant-numeric: lining-nums tabular-nums; }
+.dash-card-sub .alerta { color: var(--terracota); font-weight: 600; }
+[data-theme="dark"] .dash-card { background: #1D1D1B; border-color: #2E2D2B; }
+/* Aba Hand-off em sub-tom (registro pouco usado, a ser retirado) */
+.ntab.ntab-discreta { margin-left: auto; font-size: 11px; font-weight: 500; color: #B5B1A8; opacity: .8; }
+.ntab.ntab-discreta:hover { color: #8A867E; opacity: 1; }
+.ntab.ntab-discreta.active { color: #8A867E; border-bottom-color: #C8C3BA; opacity: 1; }
+.prd-form { display: grid; grid-template-columns: 160px 160px 150px 1fr auto; gap: 10px; align-items: end; padding: 14px; border: 1px solid var(--cinza2); border-radius: var(--radius-card, 8px); background: var(--off); margin-bottom: 14px; }
+.prd-form .fgroup { margin: 0; }
+.prd-form-btn { height: 34px; }
+@media (max-width: 900px) { .prd-form { grid-template-columns: 1fr 1fr; } .prd-form-obs, .prd-form-btn { grid-column: 1 / -1; } }
+.prd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.prd-kpi { padding: 12px 14px; border: 1px solid var(--cinza2); border-radius: var(--radius-card, 8px); background: var(--branco); border-left: 3px solid var(--prd-cor, var(--cinza)); }
+.prd-kpi-nome { font-size: var(--text-label, 9px); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8A867E; display: flex; align-items: center; gap: 6px; }
+.prd-kpi-val { font-size: 20px; font-weight: 700; color: var(--grafite); margin-top: 4px; font-variant-numeric: lining-nums tabular-nums; }
+.prd-kpi-sub { font-size: 11px; color: #8A867E; margin-top: 2px; font-variant-numeric: lining-nums tabular-nums; }
+.prd-dot { width: 9px; height: 9px; border-radius: 3px; background: var(--prd-cor); display: inline-block; flex-shrink: 0; }
+.prd-chart-card { border: 1px solid var(--cinza2); border-radius: var(--radius-card, 8px); background: var(--branco); padding: 14px 16px 10px; }
+.prd-chart-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: var(--grafite); margin-bottom: 8px; }
+.prd-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.prd-leg-proj { width: 14px; height: 9px; border-radius: 3px; border: 1.5px dashed #8A867E; display: inline-block; }
+.prd-chart-wrap { position: relative; height: 280px; }
+.prd-chart-nota { font-size: 10px; color: #8A867E; margin-top: 6px; }
+.prd-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: lining-nums tabular-nums; }
+.prd-table th { font-size: var(--text-label, 9px); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8A867E; text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--cinza2); }
+.prd-table td { padding: 8px 10px; border-bottom: 1px solid var(--cinza2); }
+.prd-table tr:last-child td { border-bottom: none; }
+.prd-table .num { text-align: right; font-weight: 600; white-space: nowrap; }
 .stub-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; color: #ccc; text-align: center; gap: 8px; }
 .stub-placeholder .sp-icon { font-size: 36px; opacity: .4; }
 .stub-placeholder .sp-txt  { font-size: 13px; font-weight: 600; }
@@ -612,7 +664,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
         </select>
         <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
         <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
-        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" title="Atribuir para alguém">
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" aria-label="Atribuir">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </button>
       </div>
@@ -630,7 +682,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
         <button class="ntab" data-tab="projetos"  onclick="switchTab('projetos')">Projetos</button>
         <button class="ntab" data-tab="produtos"  onclick="switchTab('produtos')">Produtos</button>
         <button class="ntab" data-tab="atas"      onclick="switchTab('atas')">Atas</button>
-        <button class="ntab" data-tab="handoff"   onclick="switchTab('handoff')">Hand-off</button>
+        <button class="ntab ntab-discreta" data-tab="handoff"   onclick="switchTab('handoff')" title="Registro pouco usado — será retirado em breve">Hand-off</button>
       </div>
       <div class="soc-hd-right" id="app-topbar-right">
         <!-- Toggle tema -->
@@ -711,13 +763,17 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 
   <!-- ── DASHBOARD ─────────────────────────────────────────── -->
   <div class="page active" id="page-dashboard">
+    <!-- Resumo: o que pede atenção agora (cada cartão leva à aba correspondente) -->
+    <div class="dash-resumo" id="dash-resumo"></div>
     <div class="sec-title">Prioridades do mês</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <button class="btn sm" onclick="pmNavMes(-1)">‹</button>
-      <input type="month" id="pm-mes-filtro" class="filter-select" onchange="pmOnMesFiltroChange()">
-      <button class="btn sm" onclick="pmNavMes(1)">›</button>
-      <button class="btn sm" onclick="pmMesAtualBtn()">Este mês</button>
-      <button class="btn sm verde" style="margin-left:auto" onclick="abrirModalPrioridadeMes()">+ Nova prioridade do mês</button>
+      <div class="mes-nav">
+        <button type="button" class="mes-nav-btn" onclick="pmNavMes(-1)" title="Mês anterior">‹</button>
+        <input type="month" id="pm-mes-filtro" onchange="pmOnMesFiltroChange()">
+        <button type="button" class="mes-nav-btn" onclick="pmNavMes(1)" title="Próximo mês">›</button>
+        <button type="button" class="mes-nav-hoje" onclick="pmMesAtualBtn()">Este mês</button>
+      </div>
+      <button class="btn sm verde ml-auto" onclick="abrirModalPrioridadeMes()">+ Nova prioridade do mês</button>
     </div>
     <div id="pm-lista"><div style="padding:20px;color:#aaa;font-size:12px">Carregando…</div></div>
   </div>
@@ -727,9 +783,6 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
   ══════════════════════════════════════════════════════════════ -->
   <div class="page" id="page-pautas">
 
-    <div style="margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0">Pautas</div>
-    </div>
 
     <div class="rev-layout">
 
@@ -753,7 +806,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
       <!-- Detalhe direita -->
       <div>
         <div id="pautas-detalhe">
-          <div class="empty-note" style="padding:60px 0">Selecione uma pauta para ver os detalhes</div>
+          <div class="empty-note tall">Selecione uma pauta para ver os detalhes</div>
         </div>
       </div>
 
@@ -765,9 +818,6 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
   ══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-projetos">
 
-    <div style="margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0">Projetos Societários</div>
-    </div>
 
     <div class="stab-bar" id="stab-bar-proj">
       <button class="stab active" id="stab-proj-planejamento" onclick="projSwitch('planejamento')">Planejamento</button>
@@ -786,7 +836,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
           <div id="proj-plan-lista"><div class="empty-note">Carregando…</div></div>
         </div>
         <div><div id="proj-plan-detalhe">
-          <div class="empty-note" style="padding:60px 0">Selecione uma iniciativa</div>
+          <div class="empty-note tall">Selecione uma iniciativa</div>
         </div></div>
       </div>
     </div>
@@ -798,7 +848,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
           <div id="proj-aprov-lista"><div class="empty-note">Carregando…</div></div>
         </div>
         <div><div id="proj-aprov-detalhe">
-          <div class="empty-note" style="padding:60px 0">Selecione um projeto para aprovar ou recusar</div>
+          <div class="empty-note tall">Selecione um projeto para aprovar ou recusar</div>
         </div></div>
       </div>
     </div>
@@ -810,7 +860,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
           <div id="proj-aval-lista"><div class="empty-note">Carregando…</div></div>
         </div>
         <div><div id="proj-aval-detalhe">
-          <div class="empty-note" style="padding:60px 0">Selecione um projeto aprovado</div>
+          <div class="empty-note tall">Selecione um projeto aprovado</div>
         </div></div>
       </div>
     </div>
@@ -825,12 +875,46 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
 
   <!-- ── PRODUTOS (stub) ──────────────────────────────────── -->
   <div class="page" id="page-produtos">
-    <div class="sec-title">Produtos</div>
-    <div class="stub-placeholder">
-      <div class="sp-icon">🪴</div>
-      <div class="sp-txt">Módulo de Produtos em construção</div>
-      <div class="sp-sub">Próxima etapa de implementação.</div>
+    <!-- Registrar entrada -->
+    <div class="prd-form">
+      <div class="fgroup">
+        <label>Produto</label>
+        <select id="prd-produto">
+          <option value="vasos">Vasos</option>
+          <option value="playgrounds">Playgrounds</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label>Valor recebido (R$)</label>
+        <input type="number" id="prd-valor" min="0.01" step="0.01" placeholder="0,00">
+      </div>
+      <div class="fgroup">
+        <label>Data</label>
+        <input type="date" id="prd-data">
+      </div>
+      <div class="fgroup prd-form-obs">
+        <label>Observação <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#A9A59C">(opcional)</span></label>
+        <input type="text" id="prd-obs" placeholder="Cliente, pedido…">
+      </div>
+      <button class="btn verde prd-form-btn" onclick="salvarEntradaProduto()">Registrar entrada</button>
     </div>
+
+    <div id="prd-aviso"></div>
+
+    <!-- Resumo por produto -->
+    <div class="prd-kpis" id="prd-kpis"></div>
+
+    <!-- Gráfico mensal + projeção -->
+    <div class="sec-title">Entradas por mês</div>
+    <div class="prd-chart-card">
+      <div class="prd-chart-legend" id="prd-legenda"></div>
+      <div class="prd-chart-wrap"><canvas id="prd-chart" aria-label="Entradas mensais por produto, com projeção"></canvas></div>
+      <div class="prd-chart-nota">Barras claras e tracejadas = projeção: média mensal dos últimos 6 meses de cada produto.</div>
+    </div>
+
+    <!-- Lista -->
+    <div class="sec-title" style="margin-top:18px">Entradas registradas</div>
+    <div id="prd-lista"><div class="empty-note">Carregando…</div></div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -838,9 +922,6 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
   ══════════════════════════════════════════════════════════ -->
   <div class="page" id="page-atas">
 
-    <div style="margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0">Atas de Reunião</div>
-    </div>
 
     <div class="rev-layout">
 
@@ -857,7 +938,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
       <!-- Detalhe direita -->
       <div>
         <div id="atas-detalhe">
-          <div class="empty-note" style="padding:60px 0">Selecione uma ata para ver os detalhes</div>
+          <div class="empty-note tall">Selecione uma ata para ver os detalhes</div>
         </div>
       </div>
 
@@ -869,9 +950,8 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
   ══════════════════════════════════════════════════════════════ -->
   <div class="page" id="page-handoff">
 
-    <div style="margin-bottom:14px">
-      <div class="sec-title" style="margin-bottom:0">Hand-off de Sócia</div>
-      <div class="empty-note" style="text-align:left;padding:4px 0 0">Registro e transferência estruturada do conhecimento, contatos e projetos antes da saída.</div>
+    <div class="mb-14">
+      <div class="empty-note" style="text-align:left;padding:0">Registro e transferência estruturada do conhecimento, contatos e projetos antes da saída.</div>
     </div>
 
     <div class="stab-bar" id="stab-bar-ho">
@@ -1115,7 +1195,7 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
     <div class="stab-panel" id="stp-ho-acompanhamento">
 
       <!-- Cabeçalho do processo -->
-      <div class="ho-form-card" style="margin-bottom:14px">
+      <div class="ho-form-card mb-14">
         <div class="ho-form-tit">Processo de hand-off</div>
         <div class="fg fg2 mb14">
           <div class="fgroup">
@@ -1399,8 +1479,8 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
         <div class="sec-title">Pautas discutidas</div>
         <div class="ata-itens-lista" id="ma-itens-pauta"></div>
         <div style="display:flex;gap:6px;margin-top:6px">
-          <input type="text" id="ma-nova-pauta-txt"
-            style="flex:1;border:1px dashed var(--cinza);border-radius:6px;padding:5px 9px;font-size:12px;font-family:var(--font-ui);background:transparent;color:var(--grafite);outline:none"
+          <input class="soc-inline-add" type="text" id="ma-nova-pauta-txt"
+           
             placeholder="Descreva um item discutido… (Enter para adicionar)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();addAtaItem('pauta')}">
           <button class="btn sm" onclick="addAtaItem('pauta')">+ Adicionar</button>
@@ -1412,8 +1492,8 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
         <div class="sec-title">Decisões</div>
         <div class="ata-itens-lista" id="ma-itens-decisao"></div>
         <div style="display:flex;gap:6px;margin-top:6px">
-          <input type="text" id="ma-nova-decisao-txt"
-            style="flex:1;border:1px dashed var(--cinza);border-radius:6px;padding:5px 9px;font-size:12px;font-family:var(--font-ui);background:transparent;color:var(--grafite);outline:none"
+          <input class="soc-inline-add" type="text" id="ma-nova-decisao-txt"
+           
             placeholder="Decisão tomada… (Enter para adicionar)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();addAtaItem('decisao')}">
           <button class="btn sm" onclick="addAtaItem('decisao')">+ Adicionar</button>
@@ -1425,8 +1505,8 @@ body { font-family: var(--font-ui); background: var(--off); color: var(--grafite
         <div class="sec-title">Próximos passos</div>
         <div class="ata-itens-lista" id="ma-itens-proximo"></div>
         <div style="display:flex;gap:6px;margin-top:6px">
-          <input type="text" id="ma-nova-proximo-txt"
-            style="flex:1;border:1px dashed var(--cinza);border-radius:6px;padding:5px 9px;font-size:12px;font-family:var(--font-ui);background:transparent;color:var(--grafite);outline:none"
+          <input class="soc-inline-add" type="text" id="ma-nova-proximo-txt"
+           
             placeholder="Próxima ação a ser tomada… (Enter para adicionar)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();addAtaItem('proximo')}">
           <button class="btn sm" onclick="addAtaItem('proximo')">+ Adicionar</button>
@@ -1742,6 +1822,7 @@ async function init() {
     await Promise.all([carregarUsuarios(), carregarTemas()]);
     await carregarPautas();
     carregarPainelPrioridadesMes();
+    carregarResumoDashboard();
 
     // Bell global
     AppNotif.init({ userId: usr.id });
@@ -2079,6 +2160,193 @@ function switchTab(tab) {
   const bt = document.querySelector(`.ntab[data-tab="${tab}"]`);
   if (pg) pg.classList.add('active');
   if (bt) bt.classList.add('active');
+  if (tab === 'produtos') carregarProdutos();
+  if (tab === 'dashboard') carregarResumoDashboard();
+}
+
+/* ── DASHBOARD: resumo do que pede atenção ─────────────────────── */
+async function carregarResumoDashboard() {
+  const box = document.getElementById('dash-resumo');
+  if (!box) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ymHoje = hoje.slice(0, 7);
+  const [projRes, ataRes, prdRes] = await Promise.all([
+    sb.from('soc_projetos').select('id,status'),
+    sb.from('soc_atas').select('id,titulo,data').order('data', { ascending: false }).limit(1),
+    sb.from('soc_produtos_entradas').select('valor,data_recebimento').gte('data_recebimento', ymHoje + '-01'),
+  ]);
+  // Minhas tarefas (itens de checklist das pautas sob minha responsabilidade)
+  const minhas = (G.checklists || []).filter(c => !c.concluido && isCurrentActor(c.responsavel_id));
+  const atrasadas = minhas.filter(c => c.prazo && c.prazo < hoje).length;
+  // Pautas com novidade que eu ainda não li
+  const naoLidas = (G.pautas || []).filter(p => { const l = G.leituras[p.id]; return !l || new Date(p.updated_at) > new Date(l); }).length;
+  const emAprov = (projRes.data || []).filter(p => p.status === 'em_discussao').length;
+  const ata = (ataRes.data || [])[0];
+  const prdMes = (prdRes.error ? [] : (prdRes.data || [])).reduce((a, e) => a + Number(e.valor || 0), 0);
+  const cards = [
+    { tab: 'pautas', cor: 'var(--terracota)', lbl: 'Minhas tarefas', val: minhas.length,
+      sub: minhas.length ? (atrasadas ? `<span class="alerta">${atrasadas} atrasada${atrasadas > 1 ? 's' : ''}</span>` : 'nenhuma atrasada') : 'nada pendente' },
+    { tab: 'pautas', cor: 'var(--soc)', lbl: 'Pautas não lidas', val: naoLidas, sub: `${(G.pautas || []).length} pautas no total` },
+    { tab: 'projetos', cor: 'var(--ouro)', lbl: 'Aguardando aprovação', val: emAprov, sub: emAprov === 1 ? 'projeto em discussão' : 'projetos em discussão' },
+    { tab: 'atas', cor: 'var(--verde)', lbl: 'Última ata', txt: true,
+      val: ata ? new Date(ata.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—', sub: ata ? _esc(ata.titulo || 'Reunião de sócios') : 'nenhuma ata registrada' },
+    { tab: 'produtos', cor: 'var(--verde)', lbl: 'Produtos no mês', txt: true, val: fmtMoeda(prdMes), sub: 'vasos + playgrounds' },
+  ];
+  box.innerHTML = cards.map(c => `<button type="button" class="dash-card" style="--dash-cor:${c.cor}" onclick="switchTab('${c.tab}')">
+      <div class="dash-card-lbl">${c.lbl}</div>
+      <div class="dash-card-val${c.txt ? ' txt' : ''}">${c.val}</div>
+      <div class="dash-card-sub">${c.sub}</div>
+    </button>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PRODUTOS — entradas (vasos, playgrounds), soma mensal e projeção
+   ══════════════════════════════════════════════════════════════ */
+// Cores fixas por produto (paleta EXP): a cor segue o produto, nunca a posição.
+// Par validado (separação para daltonismo, saturação, claro/escuro): azul + ouro.
+const PRD_TIPOS = {
+  vasos:       { nome: 'Vasos',       cor: '#4A72B5', corDark: '#6089CC' },
+  playgrounds: { nome: 'Playgrounds', cor: '#C49A27', corDark: '#B38A20' },
+};
+const PRD_MESES_HIST = 12, PRD_MESES_PROJ = 3, PRD_MESES_MEDIA = 6;
+const PRD_MES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function _prdYm(d) { return String(d).slice(0, 7); }
+function _prdShift(ym, n) { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function _prdLabel(ym) { const [y, m] = ym.split('-'); return PRD_MES_ABREV[+m - 1] + '/' + y.slice(2); }
+function _prdCor(tipo) { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return dark ? PRD_TIPOS[tipo].corDark : PRD_TIPOS[tipo].cor; }
+function _prdAlpha(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+async function carregarProdutos() {
+  const dEl = document.getElementById('prd-data');
+  if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+  const { data, error } = await sb.from('soc_produtos_entradas').select('*').order('data_recebimento', { ascending: false });
+  const aviso = document.getElementById('prd-aviso');
+  if (error) {
+    const semTabela = error.code === '42P01' || /soc_produtos_entradas/.test(error.message || '');
+    aviso.innerHTML = `<div class="empty-note" style="text-align:left;padding:10px 12px;border:1px solid rgba(196,154,39,.3);background:var(--am-bg);border-radius:8px;color:#8a6010;margin-bottom:14px">${semTabela ? 'A tabela de entradas ainda não existe — rode <code>supabase/soc_produtos_entradas.sql</code> no Supabase.' : 'Não foi possível carregar as entradas: ' + _esc(error.message)}</div>`;
+    G.prdEntradas = [];
+  } else { aviso.innerHTML = ''; G.prdEntradas = data || []; }
+  renderProdutos();
+}
+
+function _prdSerie() {
+  const hoje = _prdYm(new Date().toISOString());
+  const meses = []; for (let i = PRD_MESES_HIST - 1; i >= 0; i--) meses.push(_prdShift(hoje, -i));
+  const proj = []; for (let i = 1; i <= PRD_MESES_PROJ; i++) proj.push(_prdShift(hoje, i));
+  const soma = {}; Object.keys(PRD_TIPOS).forEach(t => soma[t] = {});
+  (G.prdEntradas || []).forEach(e => { if (soma[e.produto]) { const ym = _prdYm(e.data_recebimento); soma[e.produto][ym] = (soma[e.produto][ym] || 0) + Number(e.valor || 0); } });
+  // Média: últimos 6 meses fechados (sem o mês corrente, ainda parcial), contando meses sem entrada
+  // a partir da primeira entrada do produto
+  const media = {};
+  Object.keys(PRD_TIPOS).forEach(t => {
+    const primeira = Object.keys(soma[t]).sort()[0];
+    const janela = []; for (let i = PRD_MESES_MEDIA; i >= 1; i--) { const ym = _prdShift(hoje, -i); if (primeira && ym >= primeira) janela.push(soma[t][ym] || 0); }
+    media[t] = janela.length ? janela.reduce((a, b) => a + b, 0) / janela.length : 0;
+  });
+  return { hoje, meses, proj, soma, media };
+}
+
+function renderProdutos() {
+  const { hoje, meses, proj, soma, media } = _prdSerie();
+  const anoAtual = hoje.slice(0, 4);
+  // KPIs
+  document.getElementById('prd-kpis').innerHTML = Object.entries(PRD_TIPOS).map(([t, info]) => {
+    const totAno = (G.prdEntradas || []).filter(e => e.produto === t && String(e.data_recebimento).startsWith(anoAtual)).reduce((a, e) => a + Number(e.valor || 0), 0);
+    return `<div class="prd-kpi" style="--prd-cor:${_prdCor(t)}">
+      <div class="prd-kpi-nome"><span class="prd-dot"></span>${info.nome}</div>
+      <div class="prd-kpi-val">${fmtMoeda(totAno)}</div>
+      <div class="prd-kpi-sub">recebido em ${anoAtual} · projeção ${fmtMoeda(media[t])}/mês</div>
+    </div>`;
+  }).join('');
+  // Legenda (cor + nome; projeção identificada pelo traço, não só pela cor)
+  document.getElementById('prd-legenda').innerHTML = Object.entries(PRD_TIPOS).map(([t, info]) =>
+    `<span><span class="prd-dot" style="--prd-cor:${_prdCor(t)}"></span>${info.nome}</span>`).join('') +
+    `<span><span class="prd-leg-proj"></span>Projeção (média)</span>`;
+  // Gráfico
+  const canvas = document.getElementById('prd-chart');
+  if (G._prdChart) { G._prdChart.destroy(); G._prdChart = null; }
+  const labels = meses.concat(proj).map(_prdLabel);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const ink = isDark ? '#B9B7AF' : '#8A867E', grid = isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+  const surface = isDark ? '#1D1D1B' : '#FFFFFF';
+  const datasets = Object.entries(PRD_TIPOS).map(([t, info]) => {
+    const cor = _prdCor(t);
+    const valores = meses.map(ym => soma[t][ym] || 0).concat(proj.map(() => media[t]));
+    const n = meses.length;
+    return {
+      label: info.nome, data: valores, _proj: n,
+      backgroundColor: valores.map((_, i) => i < n ? cor : _prdAlpha(cor, .28)),
+      borderColor: valores.map((_, i) => i < n ? surface : cor),
+      borderWidth: valores.map((_, i) => i < n ? { top: 0, left: 1, right: 1, bottom: 0 } : 1.5),
+      borderDash: [4, 3],
+      borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom',
+      maxBarThickness: 22, categoryPercentage: .7, barPercentage: .92,
+    };
+  });
+  G._prdChart = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => items[0].label + (items[0].dataIndex >= meses.length ? ' · projeção' : ''),
+            label: c => ' ' + c.dataset.label + ': ' + fmtMoeda(c.raw),
+            footer: items => items.length > 1 ? 'Total: ' + fmtMoeda(items.reduce((a, i) => a + i.raw, 0)) : '',
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: ink, font: { size: 10 } } },
+        y: { beginAtZero: true, grid: { color: grid }, border: { display: false },
+             ticks: { color: ink, font: { size: 10 }, maxTicksLimit: 5,
+                      callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }) } },
+      },
+    },
+  });
+  // Lista
+  const rows = G.prdEntradas || [];
+  document.getElementById('prd-lista').innerHTML = rows.length
+    ? `<div style="border:1px solid var(--cinza2);border-radius:8px;overflow:hidden;background:var(--branco)"><table class="prd-table">
+        <thead><tr><th>Data</th><th>Produto</th><th>Observação</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+        <tbody>${rows.map(e => `<tr>
+          <td>${new Date(e.data_recebimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+          <td><span style="display:inline-flex;align-items:center;gap:6px"><span class="prd-dot" style="--prd-cor:${_prdCor(e.produto)}"></span>${PRD_TIPOS[e.produto]?.nome || _esc(e.produto)}</span></td>
+          <td style="color:#8A867E">${_esc(e.observacao || '—')}</td>
+          <td class="num">${fmtMoeda(e.valor)}</td>
+          <td style="text-align:right"><button class="btn sm tc" onclick="excluirEntradaProduto('${e.id}')">Excluir</button></td>
+        </tr>`).join('')}</tbody></table></div>`
+    : '<div class="empty-note">Nenhuma entrada registrada ainda.</div>';
+}
+
+async function salvarEntradaProduto() {
+  const produto = document.getElementById('prd-produto').value;
+  const valor = Number(document.getElementById('prd-valor').value);
+  const data = document.getElementById('prd-data').value;
+  const observacao = document.getElementById('prd-obs').value.trim() || null;
+  if (!valor || valor <= 0) { toast('Informe o valor recebido.', 'erro'); return; }
+  if (!data) { toast('Informe a data.', 'erro'); return; }
+  const { error } = await sb.from('soc_produtos_entradas').insert({
+    produto, valor, data_recebimento: data, observacao,
+    criado_por: G.usuario?.id || null, criado_por_nome: G.usuario?.nome || null,
+  });
+  if (error) { toast('Erro ao salvar: ' + error.message, 'erro'); return; }
+  document.getElementById('prd-valor').value = '';
+  document.getElementById('prd-obs').value = '';
+  toast('Entrada registrada.');
+  await carregarProdutos();
+}
+
+async function excluirEntradaProduto(id) {
+  const e = (G.prdEntradas || []).find(x => String(x.id) === String(id));
+  if (!confirm('Excluir a entrada de ' + (e ? fmtMoeda(e.valor) + ' (' + (PRD_TIPOS[e.produto]?.nome || e.produto) + ')' : 'este registro') + '?')) return;
+  const { error } = await sb.from('soc_produtos_entradas').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir: ' + error.message, 'erro'); return; }
+  await carregarProdutos();
 }
 
 /* ── POPDOWNS (feedback + lembrete) ────────────────────────── */
@@ -2328,13 +2596,13 @@ function renderPautaCard(p) {
     <div class="pauta-card-hd">
       ${tema ? `<span class="pauta-tema-chip" style="${chipStyle}">${_esc(tema.nome)}</span>` : ''}
       ${dotColor ? `<span class="pauta-ck-dot" style="background:${dotColor}" title="Tarefa vinculada"></span>` : ''}
-      ${naoLida ? '<span class="pauta-unread-dot" style="margin-left:auto"></span>' : ''}
+      ${naoLida ? '<span class="pauta-unread-dot ml-auto"></span>' : ''}
     </div>
     <div class="pauta-card-titulo">${_esc(p.titulo)}</div>
     <div class="pauta-card-meta">
       ${autor ? avatarEl(autor, 16) : ''}
       <span>${_esc(autor?.apelido || autor?.nome?.split(' ')[0] || '?')}</span>
-      <span style="margin-left:auto">${fmtDataCurta(p.updated_at)}</span>
+      <span class="ml-auto">${fmtDataCurta(p.updated_at)}</span>
       ${nComent ? `<span style="color:#bbb">· ${nComent} resp.</span>` : ''}
     </div>
   </div>`;
@@ -2388,7 +2656,7 @@ async function selecionarPauta(id) {
 async function renderPautaDetalhe(id) {
   const wrap = document.getElementById('pautas-detalhe');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="empty-note" style="padding:60px 0">Carregando…</div>';
+  wrap.innerHTML = '<div class="empty-note tall">Carregando…</div>';
 
   const pauta = G.pautas.find(p => p.id === id);
   if (!pauta) return;
@@ -2813,7 +3081,7 @@ async function confirmarExcluirPauta(id) {
   G.pautaSelecionada = null;
   renderPautaLista();
   document.getElementById('pautas-detalhe').innerHTML =
-    '<div class="empty-note" style="padding:60px 0">Selecione uma pauta para ver os detalhes</div>';
+    '<div class="empty-note tall">Selecione uma pauta para ver os detalhes</div>';
   toast('Pauta excluída');
 }
 
@@ -2973,7 +3241,7 @@ async function selecionarAta(id) {
 async function renderAtaDetalhe(id) {
   const wrap = document.getElementById('atas-detalhe');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="empty-note" style="padding:60px 0">Carregando…</div>';
+  wrap.innerHTML = '<div class="empty-note tall">Carregando…</div>';
 
   const ata = G.atas.find(a => a.id === id);
   if (!ata) return;
@@ -3204,7 +3472,7 @@ async function confirmarExcluirAta(id) {
   G.ataSelecionada = null;
   renderAtaLista();
   document.getElementById('atas-detalhe').innerHTML =
-    '<div class="empty-note" style="padding:60px 0">Selecione uma ata para ver os detalhes</div>';
+    '<div class="empty-note tall">Selecione uma ata para ver os detalhes</div>';
   toast('Ata excluída');
 }
 
@@ -3416,7 +3684,7 @@ async function selecionarProjeto(id, stab) {
 async function renderProjPlanDetalhe(id) {
   const wrap = document.getElementById('proj-plan-detalhe');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="empty-note" style="padding:40px 0">Carregando…</div>';
+  wrap.innerHTML = '<div class="empty-note mid">Carregando…</div>';
 
   const p = G.projetos.find(x => x.id === id);
   if (!p) return;
@@ -3480,13 +3748,13 @@ async function renderProjPlanDetalhe(id) {
 
       ${total > 0 ? `
         <div class="proj-chart-wrap">
-          <div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:10px">Fluxo de pagamento</div>
+          <div class="soc-mini-label">Fluxo de pagamento</div>
           <canvas id="proj-chart-${id}"></canvas>
           <div class="proj-custo-total">Total estimado: ${fmtMoeda(total)}</div>
         </div>` : ''}
 
       ${p.status === 'rascunho' && isEditor ? `
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--cinza2);display:flex;justify-content:flex-end">
+        <div class="soc-acoes-rodape">
           <button class="btn am" onclick="enviarParaAprovacao('${id}')">Enviar para aprovação →</button>
         </div>` : ''}
     </div>`;
@@ -3514,7 +3782,7 @@ async function enviarParaAprovacao(id) {
 async function renderProjAprovDetalhe(id) {
   const wrap = document.getElementById('proj-aprov-detalhe');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="empty-note" style="padding:40px 0">Carregando…</div>';
+  wrap.innerHTML = '<div class="empty-note mid">Carregando…</div>';
 
   const p    = G.projetos.find(x => x.id === id);
   if (!p) return;
@@ -3541,7 +3809,7 @@ async function renderProjAprovDetalhe(id) {
 
       ${fluxo.length ? `
         <div class="proj-chart-wrap">
-          <div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#999;margin-bottom:10px">Fluxo de pagamento</div>
+          <div class="soc-mini-label">Fluxo de pagamento</div>
           <canvas id="aprov-chart-${id}"></canvas>
         </div>` : ''}
 
@@ -3607,7 +3875,7 @@ async function decidirProjeto(id, decisao) {
   renderProjLista('avaliacao');
   G.projSelecionado.aprovacao = null;
   document.getElementById('proj-aprov-detalhe').innerHTML =
-    '<div class="empty-note" style="padding:60px 0">Selecione um projeto para aprovar ou recusar</div>';
+    '<div class="empty-note tall">Selecione um projeto para aprovar ou recusar</div>';
   toast(decisao === 'aprovado' ? 'Projeto aprovado' : 'Projeto recusado', 'ok');
 }
 
@@ -3615,7 +3883,7 @@ async function decidirProjeto(id, decisao) {
 async function renderProjAvalDetalhe(id) {
   const wrap = document.getElementById('proj-aval-detalhe');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="empty-note" style="padding:40px 0">Carregando…</div>';
+  wrap.innerHTML = '<div class="empty-note mid">Carregando…</div>';
 
   const p    = G.projetos.find(x => x.id === id);
   if (!p) return;
@@ -3687,7 +3955,7 @@ async function renderProjAvalDetalhe(id) {
       </div>
 
       ${p.status === 'aprovado' ? `
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--cinza2);display:flex;justify-content:flex-end">
+        <div class="soc-acoes-rodape">
           <button class="btn filled" onclick="concluirProjeto('${id}')">Concluir projeto ✓</button>
         </div>` : ''}
     </div>`;
@@ -3914,7 +4182,7 @@ async function confirmarExcluirProjeto(id) {
   G.projSelecionado.planejamento = null;
   renderProjLista('planejamento');
   document.getElementById('proj-plan-detalhe').innerHTML =
-    '<div class="empty-note" style="padding:60px 0">Selecione uma iniciativa</div>';
+    '<div class="empty-note tall">Selecione uma iniciativa</div>';
   toast('Iniciativa excluída');
 }
 

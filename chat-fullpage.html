@@ -1704,12 +1704,18 @@ html[data-theme="dark"][data-chat-mono="1"] .fp-msg-block:not(.own) .fp-msg-text
 .fp-task-desc  { font-size: calc(11px * var(--fp-lists-scale, 1)); color: #333; line-height: 1.4; word-break: break-word; }
 [data-theme="dark"] .fp-task-desc { color: var(--fp-dk-text-2); }
 .fp-task-meta  { font-size: calc(10px * var(--fp-lists-scale, 1)); color: var(--fp-mute); margin-top: 3px; display: flex; align-items: center; gap: 6px; }
-.fp-task-prazo { font-family: var(--font-mono); font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 600; }
-.fp-task-prazo.vencida { color: var(--terracota); }
-.fp-task-prazo.hoje    { color: var(--ouro); }
-.fp-task-section { font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--cinza); padding: 10px 6px 4px; }
-[data-theme="dark"] .fp-task-section { color: rgba(255,255,255,.5); }
-.fp-task-section.fp-delegadas-toggle { color: var(--cinza); transition: color .12s; }
+.fp-task-prazo { font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 500; color: #8A867E; font-variant-numeric: lining-nums tabular-nums; }
+.fp-task-prazo.vencida { color: var(--terracota); font-weight: 600; }
+.fp-task-prazo.hoje    { color: #916b13; font-weight: 600; }
+.fp-task-section { font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #8A867E; padding: 10px 6px 4px; }
+[data-theme="dark"] .fp-task-section { color: rgba(255,255,255,.6); }
+.fp-task-section.fp-delegadas-toggle { color: #8A867E; transition: color .12s; }
+/* ── Atrasadas (2026-10-23): seção própria em vermelho ─────── */
+.fp-task-section.fp-sec-atrasadas { color: var(--terracota, #B85638); }
+.fp-task-item.fp-task-atrasada { box-shadow: inset 2px 0 0 var(--terracota, #B85638); padding-left: 10px; }
+.fp-task-item.fp-task-atrasada .fp-task-check { border-color: rgba(184,86,56,.55); }
+[data-theme="dark"] .fp-task-section.fp-sec-atrasadas { color: #D27A5E; }
+
 .fp-task-section.fp-delegadas-toggle:hover { color: var(--grafite); }
 [data-theme="dark"] .fp-task-section.fp-delegadas-toggle { color: rgba(255,255,255,.5); }
 [data-theme="dark"] .fp-task-section.fp-delegadas-toggle:hover { color: rgba(255,255,255,.75); }
@@ -1825,11 +1831,54 @@ html[data-theme="dark"][data-chat-mono="1"] .fp-msg-block:not(.own) .fp-msg-text
   padding: 0;
 }
 .fp-task-assign-btn:hover { border-color: var(--ca); color: var(--ca); }
+/* ── Rodapé de nova tarefa (2026-10-23): campos com o mesmo visual e altura;
+      botão Adicionar no padrão do design system; "Atribuir" ao passar o mouse ── */
+#fp-task-desc,
+#fp-task-tipo,
+#fp-task-data {
+  box-sizing: border-box;
+  border: 1px solid var(--cinza2, #ECEAE4); border-radius: var(--radius-input, 8px);
+  background: var(--branco, #fff); color: var(--grafite, #111110);
+  font-family: var(--font-ui, Raleway, sans-serif);
+  font-size: calc(11px * var(--fp-lists-scale, 1)); font-weight: 400;
+  height: 32px; padding: 0 10px; outline: none;
+  transition: border-color .15s;
+}
+#fp-task-desc { width: 100%; min-height: 32px; padding: 8px 10px; line-height: 1.3; margin-bottom: 6px; }
+#fp-task-desc::placeholder { color: #A9A59C; }
+#fp-task-tipo { flex: 1 1 0; min-width: 0; padding-right: 26px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238A867E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; }
+#fp-task-tipo:invalid, #fp-task-tipo option[value=""] { color: #A9A59C; }
+#fp-task-data { flex: 1 1 0; min-width: 0; width: 0; padding-right: 26px; }  /* mesmo recuo do Tipo → larguras iguais */
+#fp-task-tipo { width: 0; }
+#fp-task-desc:focus, #fp-task-tipo:focus, #fp-task-data:focus { border-color: var(--ca, #1D6A4A); }
+.fp-task-form-row { gap: 6px; }
+.fp-task-add-btn {
+  height: 32px; padding: 0 14px; border-radius: var(--radius-btn, 8px); border: 1px solid var(--ca, #1D6A4A);
+  background: var(--ca, #1D6A4A); color: #fff;
+  font-family: var(--font-ui, Raleway, sans-serif); font-size: calc(10px * var(--fp-lists-scale, 1));
+  font-weight: 700; letter-spacing: .5px; text-transform: uppercase; line-height: 1;
+}
+.fp-task-add-btn:hover { opacity: .85; }
+.fp-task-assign-btn { position: relative; width: 32px; height: 32px; border-radius: var(--radius-btn, 8px); border-color: var(--cinza2, #ECEAE4); }
+.fp-task-assign-btn::after {
+  content: 'Atribuir'; position: absolute; bottom: calc(100% + 6px); right: 0;
+  padding: 4px 8px; border-radius: 6px; background: var(--grafite, #111110); color: #fff;
+  font-family: var(--font-ui, Raleway, sans-serif); font-size: 10px; font-weight: 600; white-space: nowrap;
+  opacity: 0; transform: translateY(2px); pointer-events: none; transition: opacity .12s, transform .12s; z-index: 5;
+}
+.fp-task-assign-btn:hover::after, .fp-task-assign-btn:focus-visible::after { opacity: 1; transform: translateY(0); }
+[data-theme="dark"] #fp-task-desc,
+[data-theme="dark"] #fp-task-tipo,
+[data-theme="dark"] #fp-task-data { background-color: #2A2926; border-color: #3A3836; color: #F0EDE6; color-scheme: dark; }
+[data-theme="dark"] .fp-task-assign-btn::after { background: #F0EFEC; color: #1D1D1B; }
+
 [data-theme="dark"] .fp-task-assign-btn { background: rgba(var(--ca-rgb-vals), .18); border-color: rgba(var(--ca-rgb-vals), .3); color: var(--fp-dk-text); }
 
 /* ── Listas: tab bar ── */
 .fp-lists-tabs { display:flex; padding:8px 10px 0; gap:2px; flex-shrink:0; border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.12); }
-.fp-lists-tab { padding:5px 8px; border-radius:7px 7px 0 0; border:none; background:none; font-family:var(--font-ui); font-size:calc(11px * var(--fp-lists-scale, 1)); font-weight:600; color:var(--cinza); cursor:pointer; transition:background .12s,color .12s; white-space:nowrap; }
+.fp-lists-tab { padding:5px 8px; border-radius:7px 7px 0 0; border:none; background:none; font-family:var(--font-ui); font-size:calc(11px * var(--fp-lists-scale, 1)); font-weight:600; color:#8A867E; cursor:pointer; transition:background .12s,color .12s; white-space:nowrap; }
 .fp-lists-tab:hover { color:var(--ca); }
 .fp-lists-tab.active { background:rgba(var(--ca-rgb-vals,29,106,74),.12); color:var(--ca); }
 /* Checklist view dentro do painel */
@@ -1862,7 +1911,7 @@ html[data-theme="dark"][data-chat-mono="1"] .fp-msg-block:not(.own) .fp-msg-text
 .fp-ck-bar-label { font-size:calc(10px * var(--fp-lists-scale, 1)); font-weight:700; color:var(--fp-mute); letter-spacing:.4px; text-transform:uppercase; width:52px; flex-shrink:0; }
 .fp-ck-bar { flex:1; height:5px; background:rgba(var(--ca-rgb-vals,29,106,74),.12); border-radius:99px; overflow:hidden; }
 .fp-ck-bar-fill { height:100%; background:var(--ca); border-radius:99px; transition:width .3s; }
-.fp-ck-bar-count { font-size:calc(9px * var(--fp-lists-scale, 1)); font-family:var(--font-mono); font-weight:700; color:var(--ca); width:28px; text-align:right; flex-shrink:0; }
+.fp-ck-bar-count { font-size:calc(9px * var(--fp-lists-scale, 1)); font-variant-numeric:lining-nums tabular-nums; font-weight:700; color:var(--ca); width:28px; text-align:right; flex-shrink:0; }
 .fp-ck-item { display:flex; align-items:flex-start; gap:8px; padding:5px 4px; border-bottom:1px solid rgba(var(--ca-rgb-vals,29,106,74),.09); }
 .fp-ck-item:last-child { border-bottom:none; }
 .fp-ck-cb { width:14px; height:14px; border:1.5px solid var(--cinza); border-radius:var(--radius-tag,3px); cursor:pointer; flex-shrink:0; margin-top:1px; appearance:none; -webkit-appearance:none; background:var(--branco); transition:background .12s,border-color .12s; background-size:10px; background-repeat:no-repeat; background-position:center; }
@@ -2967,7 +3016,7 @@ html[data-theme="dark"][data-chat-mono="1"] #fp-typing { color: rgba(255,255,255
         </select>
         <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
         <button class="fp-task-add-btn" onclick="fpChat.addTask()" title="Adicionar para mim">+ Adicionar</button>
-        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="fpChat.openAssignDrop(this)" title="Atribuir para alguém">
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="fpChat.openAssignDrop(this)" aria-label="Atribuir">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </button>
       </div>
