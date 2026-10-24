@@ -10,8 +10,8 @@
 <script src="shared/nome-curto.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-23">
-<link rel="stylesheet" href="shared/exp-nav.css">
-<link rel="stylesheet" href="shared/lists-panel.css">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-24">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-24">
 <script>
   (function(){
     var saved = localStorage.getItem('exp-theme');
@@ -1472,13 +1472,28 @@ body {
 .clima-escala-op.ativo .clima-escala-num{color:var(--terracota);font-weight:700}
 .clima-escala-lbl{font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:#A9A59C;height:12px;line-height:12px}
 /* runner — aviso anonimato/publicidade */
-.clima-disclosure{border-radius:10px;padding:14px 16px}
-.clima-disclosure.anonima{background:#f5f0fb;border:1px solid rgba(107,79,160,.2)}
-.clima-disclosure.publica{background:var(--az-bg);border:1px solid rgba(74,114,181,.2)}
-.clima-disclosure-titulo{font-size:12px;font-weight:700;margin-bottom:5px}
-.clima-disclosure.anonima .clima-disclosure-titulo{color:var(--roxo)}
-.clima-disclosure.publica .clima-disclosure-titulo{color:var(--azul)}
-.clima-disclosure-texto{font-size:11px;line-height:1.6;color:#666}
+.clima-disclosure{display:flex;gap:12px;align-items:flex-start;border-radius:var(--radius-card,8px);padding:14px 16px;text-align:left}
+.clima-disclosure-ico{flex-shrink:0;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
+.clima-disclosure.anonima{background:var(--verde-bg);border:1px solid rgba(62,120,88,.22)}
+.clima-disclosure.anonima .clima-disclosure-ico{background:var(--verde)}
+.clima-disclosure.publica{background:var(--am-bg);border:1px solid rgba(196,154,39,.3)}
+.clima-disclosure.publica .clima-disclosure-ico{background:var(--ouro)}
+.clima-disclosure-titulo{font-size:12px;font-weight:700;margin-bottom:4px}
+.clima-disclosure.anonima .clima-disclosure-titulo{color:var(--verde)}
+.clima-disclosure.publica .clima-disclosure-titulo{color:#916b13}
+.clima-disclosure-texto{font-size:11px;line-height:1.6;color:#5F5B54}
+[data-theme="dark"] .clima-disclosure.anonima{background:rgba(62,120,88,.16);border-color:rgba(62,120,88,.3)}
+[data-theme="dark"] .clima-disclosure.publica{background:rgba(196,154,39,.14);border-color:rgba(196,154,39,.3)}
+[data-theme="dark"] .clima-disclosure.anonima .clima-disclosure-titulo{color:#89c7a9}
+[data-theme="dark"] .clima-disclosure.publica .clima-disclosure-titulo{color:#e4c56b}
+[data-theme="dark"] .clima-disclosure-texto{color:#A9A59C}
+.clima-intro{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.clima-intro-eyebrow{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--terracota)}
+.clima-intro-titulo{font-size:18px;font-weight:700;line-height:1.3;color:var(--grafite);margin-top:4px}
+.clima-intro-desc{font-size:12px;line-height:1.6;color:#5F5B54;margin-top:6px}
+.clima-intro-meta{font-size:11px;color:#8A867E;font-variant-numeric:lining-nums tabular-nums;margin-top:8px}
+.clima-intro-nota{font-size:11px;line-height:1.55;color:#8A867E}
+.clima-intro-acoes{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px}
 
 @media (max-width: 760px) {
   .shell-modal-overlay {
@@ -3282,8 +3297,8 @@ async function verificarPesquisaPendente(usuarioId) {
       .from('pessoas_pesquisa_clima_disparos')
       .select('id, campanha_id, status, campanha:pessoas_pesquisa_clima_campanhas(titulo, status)')
       .eq('usuario_id', usuarioId)
-      .in('status', ['pendente', 'respondido'])
-      .limit(5);
+      .eq('status', 'pendente')
+      .limit(10);
     if (error || !data?.length) return;
 
     // Busca respostas já submetidas pelo usuário para qualquer campanha
@@ -3297,7 +3312,7 @@ async function verificarPesquisaPendente(usuarioId) {
 
     // Mostra apenas o primeiro disparo cuja campanha ainda está ativa e não foi respondida
     const pendente = data.find(d =>
-      d.campanha?.status === 'ativa' && !campanhasRespondidas.has(d.campanha_id)
+      d.status === 'pendente' && d.campanha?.status === 'ativa' && !campanhasRespondidas.has(d.campanha_id)
     );
     if (!pendente) return;
 
@@ -3311,11 +3326,26 @@ async function verificarPesquisaPendente(usuarioId) {
     const sub = document.getElementById('clima-banner-sub');
     if (sub) sub.textContent = `Rodada: ${climaApp.campanhaTitle}`;
     document.getElementById('clima-survey-banner')?.classList.add('visible');
+    if (new URLSearchParams(location.search).get('pesquisa') === '1') abrirSurveyPendente();
   } catch (_) {
     // tabela pode não existir ainda — silencioso
   }
 }
 
+// Aviso mostrado a quem responde: pesquisa anônima ou pública (identificada)
+function climaAvisoHtml(anonima) {
+  const ico = anonima
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const titulo = anonima ? 'Pesquisa anônima' : 'Pesquisa pública (identificada)';
+  const texto = anonima
+    ? 'Suas respostas <strong>não ficam ligadas ao seu nome</strong>. Os sócios veem apenas o conjunto das respostas, em ordem aleatória, sem saber quem respondeu o quê. Fique à vontade para responder com sinceridade.'
+    : 'Suas respostas <strong>ficam ligadas ao seu nome</strong> e podem ser lidas individualmente pelos sócios, que poderão conversar com você sobre elas.';
+  return `<div class="clima-disclosure ${anonima ? 'anonima' : 'publica'}">
+    <div class="clima-disclosure-ico">${ico}</div>
+    <div><div class="clima-disclosure-titulo">${titulo}</div><div class="clima-disclosure-texto">${texto}</div></div>
+  </div>`;
+}
 const CLIMA_ESCALA_LABELS_APP = { 0:'Nada', 1:'Pouco', 2:'Regular', 3:'Médio', 4:'Bastante', 5:'Muito' };
 
 async function abrirSurveyPendente() {
@@ -3328,12 +3358,13 @@ async function abrirSurveyPendente() {
   // Busca campanha para saber se é anônima + modelo
   const { data: camp } = await sb
     .from('pessoas_pesquisa_clima_campanhas')
-    .select('id, titulo, anonima, modelo_id')
+    .select('id, titulo, anonima, modelo_id, modelo:pessoas_pesquisa_clima_modelos(descricao)')
     .eq('id', climaApp.campanhaId)
     .single();
 
   const modeloId = camp?.modelo_id;
   climaApp.anonima = camp?.anonima || false;
+  climaApp.descricao = camp?.modelo?.descricao || '';
 
   const query = sb.from('pessoas_pesquisa_clima_perguntas').select('*').eq('ativo', true).order('ordem');
   if (modeloId) query.eq('modelo_id', modeloId);
@@ -3379,24 +3410,24 @@ function renderSurveyStep() {
   const body = document.getElementById('clima-survey-body');
   if (!body) return;
 
-  // Aviso de anonimato/publicidade antes da 1ª pergunta
+  // Tela inicial: o que é a pesquisa + aviso de anônima ou pública, antes da 1ª pergunta
   if (!climaApp.disclosureDone) {
-    const cls   = climaApp.anonima ? 'anonima' : 'publica';
-    const titulo = climaApp.anonima ? '🔒 Pesquisa Anônima' : '👁 Pesquisa Pública';
-    const texto  = climaApp.anonima
-      ? 'Esta pesquisa é <strong>anônima</strong>. Suas respostas <strong>não são vinculadas ao seu nome</strong> e são apresentadas em ordem aleatória para os administradores. Nenhum sócio consegue identificar quem respondeu o quê.'
-      : 'Esta pesquisa é <strong>pública</strong>. Suas respostas serão <strong>vinculadas ao seu nome</strong> e poderão ser vistas pelos administradores individualmente.';
+    const n = climaApp.perguntas.length;
+    const segs = climaApp.perguntas.reduce((t, q) => t + ((q.tipo || 'aberta') === 'aberta' ? 60 : 15), 0);
+    const min = Math.max(1, Math.round(segs / 60));
     body.innerHTML = `
-      <div style="max-width:480px;margin:0 auto">
-        <div class="clima-disclosure ${cls}" style="margin-bottom:24px">
-          <div class="clima-disclosure-titulo">${titulo}</div>
-          <div class="clima-disclosure-texto">${texto}</div>
+      <div class="clima-intro">
+        <div>
+          <div class="clima-intro-eyebrow">Pesquisa EXP</div>
+          <div class="clima-intro-titulo">${escHtml(climaApp.campanhaTitle)}</div>
+          ${climaApp.descricao ? `<div class="clima-intro-desc">${escHtml(climaApp.descricao)}</div>` : ''}
+          <div class="clima-intro-meta">${n} pergunta${n!==1?'s':''} · cerca de ${min} min</div>
         </div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:4px">${escHtml(climaApp.campanhaTitle)}</div>
-        <div style="font-size:11px;color:#888;margin-bottom:24px">${climaApp.perguntas.length} pergunta${climaApp.perguntas.length!==1?'s':''} nesta pesquisa.</div>
-        <div style="display:flex;gap:10px">
-          <button class="shell-btn" style="background:var(--terracota);border-color:var(--terracota);color:#fff" onclick="climaApp.disclosureDone=true;renderSurveyStep()">Começar →</button>
+        ${climaAvisoHtml(climaApp.anonima)}
+        <div class="clima-intro-nota">Você pode voltar às perguntas anteriores antes de enviar. As respostas só são salvas quando você clicar em Enviar, no final.</div>
+        <div class="clima-intro-acoes">
           <button class="shell-btn" onclick="ignorarSurveyPendente();document.getElementById('clima-survey-overlay').classList.remove('open')">Deixar para depois</button>
+          <button class="shell-btn" style="background:var(--terracota);border-color:var(--terracota);color:#fff" onclick="climaApp.disclosureDone=true;renderSurveyStep()">Começar →</button>
         </div>
       </div>`;
     return;
@@ -3522,7 +3553,7 @@ async function finalizarSurveyApp() {
     return {
       pergunta_id:     p.id,
       campanha_id:     climaApp.campanhaId,
-      usuario_id:      usuarioId,
+      usuario_id:      climaApp.anonima ? null : usuarioId, // anônima: resposta sem autor
       resposta_texto:  r.texto ?? null,
       resposta_simnao: r.simnao ?? null,
       resposta_escala: r.escala ?? null,
@@ -3541,9 +3572,10 @@ async function finalizarSurveyApp() {
     return;
   }
 
-  await sb.from('pessoas_pesquisa_clima_disparos')
+  const { error: dispErr } = await sb.from('pessoas_pesquisa_clima_disparos')
     .update({ status: 'respondido', respondido_em: new Date().toISOString() })
     .eq('id', climaApp.disparoId);
+  if (dispErr) console.warn('[Pesquisa EXP] respostas salvas, mas o disparo não foi marcado como respondido:', dispErr.message);
 
   climaApp.ativo = false;
   document.getElementById('clima-survey-banner')?.classList.remove('visible');
@@ -3551,7 +3583,7 @@ async function finalizarSurveyApp() {
     <div class="clima-runner-ok">
       <div class="clima-runner-ok-icon">✓</div>
       <div class="clima-runner-ok-titulo">Obrigado!</div>
-      <div class="clima-runner-ok-sub">Suas respostas foram registradas. Elas contribuem para um ambiente de trabalho melhor para todos.</div>
+      <div class="clima-runner-ok-sub">Suas respostas foram registradas${climaApp.anonima ? ' sem identificação' : ''}. Obrigado por ajudar a melhorar a EXP.</div>
       <button class="shell-btn" style="margin-top:4px" onclick="document.getElementById('clima-survey-overlay').classList.remove('open')">Fechar</button>
     </div>`;
 }
@@ -5183,13 +5215,13 @@ init().then(() => {
 </script>
 
 <!-- EXP · Painel de Listas -->
-<script src="shared/lists-panel.js"></script>
+<script src="shared/lists-panel.js?v=2026-10-24"></script>
 <!-- EXP · Chat Widget -->
 <script src="app-fase2-checkpoint5.js" charset="UTF-8"></script>
 <script src="chat.js"></script>
 <!-- EXP · Nav compartilhada -->
 <script src="shared/app-notif.js"></script>
-<script src="shared/exp-nav.js"></script>
+<script src="shared/exp-nav.js?v=2026-10-24"></script>
 <script>
   ExpNav.init({
     module: 'app',
