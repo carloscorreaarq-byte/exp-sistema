@@ -10,8 +10,8 @@
 <script src="shared/nome-curto.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-23">
-<link rel="stylesheet" href="shared/exp-nav.css">
-<link rel="stylesheet" href="shared/lists-panel.css">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-24">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-24">
 <script src="shared/app-notif.js"></script>
 <script>
   (function(){
@@ -537,7 +537,7 @@ select option[disabled]{color:#bbb}
     </div>
     <div class="card-body" id="cub-body">
       <div style="display:flex;align-items:baseline;gap:10px">
-        <div style="font-size:24px;font-weight:700;color:var(--ouro);font-family:var(--font-mono)" id="cub-val">—</div>
+        <div style="font-size:24px;font-weight:700;color:var(--ouro);font-variant-numeric:lining-nums tabular-nums" id="cub-val">—</div>
         <div style="font-size:11px;color:#888" id="cub-mes">—</div>
       </div>
     </div>
@@ -1679,7 +1679,7 @@ function getProposalFamilyProposalIds(proposalOrId) {
 async function fetchLatestCalcParamsRow() {
   if (!S.sbUrl || !S.sbKey) return null;
   const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?select=*&order=updated_at.desc,id.desc&limit=1`, {
-    headers: getSBHeaders()
+    headers: getSBHeaders(true)
   });
   if (!r.ok) throw new Error(await r.text());
   const d = await r.json();
@@ -4414,18 +4414,22 @@ async function saveParamsToSupabase() {
     etapas: S.etapas, dist_etapas: S.distEtapas, params: S.params,
   };
   try {
-    const hdrs = { ...getSBHeaders() };
-    let targetId = S.calcParamsId;
-    if (!targetId) {
-      const latestRow = await fetchLatestCalcParamsRow();
-      targetId = latestRow?.id || null;
-      if (targetId) S.calcParamsId = targetId;
-    }
+    // Sessão do usuário (RLS) + confirmação de que a linha foi gravada:
+    // sem isso o PATCH podia "dar certo" sem alterar nada e o CUB voltava ao recarregar.
+    const hdrs = { ...getSBHeaders(true), 'Prefer': 'return=representation' };
+    // Sempre grava na mesma linha que o carregamento lê (a mais recente)
+    const latestRow = await fetchLatestCalcParamsRow();
+    let targetId = latestRow?.id || S.calcParamsId || null;
+    if (targetId) S.calcParamsId = targetId;
     if (targetId) {
       const r = await fetch(`${S.sbUrl}/rest/v1/calc_params?id=eq.${targetId}`, {
         method: 'PATCH', headers: hdrs, body: JSON.stringify(payload),
       });
       if (!r.ok) throw new Error(await r.text());
+      const gravadas = await r.json().catch(() => []);
+      if (!Array.isArray(gravadas) || !gravadas.length) {
+        throw new Error('o servidor não gravou os parâmetros (sem permissão de edição em calc_params)');
+      }
     } else {
       hdrs['Prefer'] = 'return=representation';
       const r = await fetch(`${S.sbUrl}/rest/v1/calc_params`, {
@@ -4439,6 +4443,7 @@ async function saveParamsToSupabase() {
   } catch(e) {
     setSyncStatus('err', 'erro params');
     console.warn('saveParamsToSupabase:', e.message);
+    showToast('Não foi possível salvar no servidor: ' + e.message);
   }
 }
 
@@ -4805,7 +4810,8 @@ document.body.style.visibility = 'hidden';
 function _initCalc() {
 initNavUserFromSession();
 renderCalcResponsavelSelects();
-initConnDot();
+initConnDot();
+
 if (Array.isArray(S.cubHist) && S.cubHist.length) aplicarCubBase();
 updateCubDisplay();
 selNucleo('PAIS');
@@ -4913,8 +4919,8 @@ async function _enviarLembrete() {
 <style>
   #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:34px!important;z-index:9998!important}
 </style>
-<script src="shared/lists-panel.js"></script>
-<script src="shared/exp-nav.js"></script>
+<script src="shared/lists-panel.js?v=2026-10-24"></script>
+<script src="shared/exp-nav.js?v=2026-10-24"></script>
 <script>
 ExpNav.init({ module: 'calc' });
 listsPanel.mount({
