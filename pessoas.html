@@ -3452,10 +3452,6 @@ async function salvarVinculo() {
   const tipoContrato = document.getElementById('vinculo-tipo-contrato')?.value || null;
   const jornadaVal = parseFloat(document.getElementById('vinculo-jornada')?.value) || 40;
 
-  const [{ data: existing }] = await Promise.all([
-    sb.from('usuarios_dados_profissionais').select('id').eq('usuario_id', u.id).maybeSingle(),
-  ]);
-
   const base = {
     posicao_matriz: posicao || null,
     data_entrada: dataEntrada || null,
@@ -3464,12 +3460,11 @@ async function salvarVinculo() {
     atualizado_por: G.usuarioLogado?.id || null
   };
 
-  let error;
-  if (existing?.id) {
-    ({ error } = await sb.from('usuarios_dados_profissionais').update(base).eq('usuario_id', u.id));
-  } else {
-    ({ error } = await sb.from('usuarios_dados_profissionais').insert({ usuario_id: u.id, ...base }));
-  }
+  // A tabela é identificada pelo próprio usuario_id (não tem coluna "id"): a checagem antiga
+  // por id sempre falhava, o código tentava inserir de novo e dava "duplicate key".
+  // Upsert: cria se não existe, atualiza só estes campos se já existe.
+  const { error } = await sb.from('usuarios_dados_profissionais')
+    .upsert({ usuario_id: u.id, ...base }, { onConflict: 'usuario_id' });
 
   if (!error) {
     await sb.from('usuarios_jornada').upsert(
