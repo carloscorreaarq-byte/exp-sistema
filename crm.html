@@ -19,8 +19,8 @@
   })();
 </script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-23">
-<link rel="stylesheet" href="shared/exp-nav.css">
-<link rel="stylesheet" href="shared/lists-panel.css">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-24">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-24">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -342,8 +342,8 @@ textarea{resize:vertical;min-height:60px}
 .alc-side{display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:lining-nums tabular-nums}
 /* Alcance: filtros com a mesma altura/fonte; estatísticas empilhadas (valor não corta) */
 .alc-sel{font-family:var(--font-ui);font-size:11px;padding:6px 9px;border:1px solid var(--cinza2);background:var(--branco);color:var(--grafite);border-radius:var(--radius-input,6px);cursor:pointer;min-width:0}
-.alc-stats{display:flex;gap:6px;margin-bottom:2px}
-.alc-stat{display:flex;flex-direction:column;gap:1px;padding:6px 10px;background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-input,6px);min-width:0}
+.alc-stats{display:grid;grid-template-columns:1fr 1.7fr;gap:6px;margin-bottom:2px}
+.alc-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1px;padding:6px 10px;background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-input,6px);min-width:0}
 .alc-stat-v{font-size:14px;font-weight:700;color:var(--grafite);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .alc-stat-l{font-size:9px;color:#8A867E;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
 .alc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -938,6 +938,16 @@ textarea{resize:vertical;min-height:60px}
       <div class="card-hdr"><div class="card-title">Por núcleo (projetos)</div></div>
       <div class="card-body" style="padding:10px 12px" id="fech-por-nucleo"></div>
     </div>
+  </div>
+  <div class="card cinza" style="margin-bottom:10px">
+    <div class="card-hdr"><div class="card-title">Valor por m² · fechados</div><div class="t-mute" style="font-size:10px;margin-left:auto">média ponderada (soma dos valores ÷ soma das áreas), por tipo de produto</div></div>
+    <div style="overflow-x:auto">
+    <table id="fech-m2-table">
+      <thead><tr><th>Tipo de produto</th><th style="text-align:right">Produtos</th><th style="text-align:right">Área total</th><th style="text-align:right">Valor fechado</th><th style="text-align:right">R$/m² médio</th><th style="text-align:right">Faixa R$/m²</th></tr></thead>
+      <tbody id="fech-m2-body"></tbody>
+    </table>
+    </div>
+    <div class="t-mute" id="fech-m2-nota" style="font-size:10px;padding:8px 14px 12px"></div>
   </div>
   <div class="card cinza">
     <div class="card-hdr"><div class="card-title">Lista de fechamentos</div><div id="fech-lista-total" style="font-size:10px;color:#8A867E;margin-left:auto"></div></div>
@@ -6361,6 +6371,38 @@ function abrirDetail(oppId){
   // Consolida valor total, valor por produto, despesas indiretas e repasse comercial
   // incluídos no fechamento, além da observação registrada no momento de fechar.
   if(isFechada(op)){
+    // Por produto com área e R$/m²; o R$/m² do fechamento soma só produtos com área (floreira etc. ficam fora)
+    const _fechProdutosM2=prods=>{
+      if(!prods.length) return '';
+      const fmtM2=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'/m²';
+      const fmtA=v=>Math.round(v).toLocaleString('pt-BR')+' m²';
+      let somaV=0, somaA=0;
+      const linhas=prods.map(p=>{
+        const v=+p.valor_fechado||0;
+        const temArea=['PAIS','URB'].includes(p.nucleo)&&!FECH_M2_FORA.has(p.subtipo);
+        const m2=temArea?_areaM2Prod(p.nucleo,p.area,!!p.calc_id):0;
+        if(m2&&v>0){ somaV+=v; somaA+=m2; }
+        return `<div class="dr" style="border-color:rgba(62,120,88,.2)">
+          <div class="dk" style="background:transparent">${escHtml(SUBTIPO_LABEL[p.subtipo]||p.subtipo||'Serviço')}</div>
+          <div class="dv" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:center;font-variant-numeric:lining-nums tabular-nums">
+            <span style="color:#8A867E;font-size:11px">${m2?fmtA(m2):'sem área'}</span>
+            <span style="color:#8A867E;font-size:11px">${m2&&v>0?fmtM2(v/m2):'—'}</span>
+            <span style="font-weight:600;text-align:right">${fmt(v)}</span>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="ms-title" style="color:var(--verde);border-bottom-color:rgba(62,120,88,.3);margin:10px 0 5px;display:flex">
+          <span style="flex:0 0 auto">Por produto</span>
+          <span style="margin-left:auto;font-size:8px;opacity:.8">área · R$/m² · valor</span>
+        </div>${linhas}
+        ${somaA?`<div class="dr" style="border-color:rgba(62,120,88,.2)">
+          <div class="dk" style="background:transparent;font-weight:700;color:var(--verde)">Fechamento por m²</div>
+          <div class="dv" style="font-variant-numeric:lining-nums tabular-nums">
+            <strong style="color:var(--verde)">${fmtM2(somaV/somaA)}</strong>
+            <span style="margin-left:6px;color:#8A867E;font-size:11px">${fmt(somaV)} ÷ ${fmtA(somaA)}${somaV<prods.reduce((s,p)=>s+(+p.valor_fechado||0),0)?' · produtos sem área não entram':''}</span>
+          </div>
+        </div>`:''}`;
+    };
     const _custosFech=getCustosFechamento(op);
     const _produtosFech=op._produtos.filter(p=>p.status==='fechado');
     const _valorTotalFech=oppValorFechado(op)+oppValorAdicionais(op,true);
@@ -6374,7 +6416,7 @@ function abrirDetail(oppId){
       <div class="ms-title" style="color:var(--verde);border-bottom-color:rgba(62,120,88,.3)">✓ Fechamento${oppDataFechamento(op)?` — ${fmtD(oppDataFechamento(op))}`:''}</div>
       <div class="dk" style="background:transparent;padding:0;margin-bottom:2px">Valor total do fechamento</div>
       <div style="font-size:18px;font-weight:700;color:var(--verde);margin-bottom:8px">${fmt(_valorTotalFech)}</div>
-      ${_fechSecao('Por produto', _produtosFech.map(p=>({label:SUBTIPO_LABEL[p.subtipo]||p.subtipo||'Serviço',valor:+p.valor_fechado||0})))}
+      ${_fechProdutosM2(_produtosFech)}
       ${_fechSecao('Despesas indiretas', _custosFech.despesas)}
       ${_fechSecao('Repasse comercial', _custosFech.repasses)}
       ${_fechSecao('Subcontratações', _custosFech.subs)}
@@ -6688,6 +6730,8 @@ function renderFechamentos(){
         <div style="font-size:11px;font-weight:700;font-variant-numeric:lining-nums tabular-nums;min-width:20px;text-align:right">${c}</div>
       </div>`).join('') || '<div class="empty-note">—</div>';
 
+  renderFechM2(ops);
+
   // Lista
   document.getElementById('fech-lista-total').textContent = `${ops.length} fechamentos`;
   const sorted = ops.slice().sort((a,b)=>(oppDataFechamento(b)||'').localeCompare(oppDataFechamento(a)||''));
@@ -6703,6 +6747,56 @@ function renderFechamentos(){
         <td style="font-variant-numeric:lining-nums tabular-nums;color:var(--azul)">${fmt(oppValorEfetivo(o,true))}</td>
       </tr>`).join('')
     : '<tr><td colspan="8" class="empty-note">Sem fechamentos no período.</td></tr>';
+}
+
+// Valor por m² dos produtos fechados, por tipo (subtipo) de produto.
+// Entram só produtos com área de verdade: floreira (área = nº de CUB), conceito urbanístico,
+// consultoria e projeto especial ficam fora. Urbanismo vindo da calculadora está em hectares.
+const FECH_M2_FORA = new Set(['PAIS_FLOREIRA','URB_CONCEITO']);
+function _areaM2Prod(nucleo, area, daCalc){
+  const a = +area || 0;
+  if (a <= 0) return 0;
+  // Urbanismo: a calculadora grava em ha; área < 1.000 também é tratada como ha (nenhum urbanismo tem < 1.000 m²)
+  if (nucleo === 'URB' && (daCalc || a < 1000)) return a * 10000;
+  return a;
+}
+function renderFechM2(ops){
+  const grupos = {};
+  let semArea = 0;
+  const add = (nucleo, subtipo, area, valor, daCalc) => {
+    if (!['PAIS','URB'].includes(nucleo) || FECH_M2_FORA.has(subtipo)) return;
+    const m2 = _areaM2Prod(nucleo, area, daCalc);
+    if (!(valor > 0)) return;
+    if (!m2) { semArea++; return; }
+    const k = subtipo || nucleo;
+    const g = grupos[k] || (grupos[k] = { nucleo, subtipo: k, n: 0, area: 0, valor: 0, min: Infinity, max: 0 });
+    const r = valor / m2;
+    g.n++; g.area += m2; g.valor += valor; g.min = Math.min(g.min, r); g.max = Math.max(g.max, r);
+  };
+  ops.forEach(o => {
+    const prods = o._produtos.filter(p => p.status === 'fechado' || +p.valor_fechado > 0);
+    if (prods.length) {
+      prods.forEach(p => add(p.nucleo, p.subtipo, p.area, +p.valor_fechado || +p.valor_proposto || 0, !!p.calc_id));
+    } else if (o._proposal?.items?.length) {
+      o._proposal.items.forEach(it => add(it.nucleo, it.subK, it.area, it.valorProposto != null ? +it.valorProposto : +it.valorCalc || 0, true));
+    }
+  });
+  const fmtM2 = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtArea = v => v >= 10000 ? `${(v/10000).toLocaleString('pt-BR',{maximumFractionDigits:2})} ha` : `${Math.round(v).toLocaleString('pt-BR')} m²`;
+  const linhas = Object.values(grupos).sort((a,b) => a.nucleo.localeCompare(b.nucleo) || b.valor - a.valor);
+  document.getElementById('fech-m2-body').innerHTML = linhas.length
+    ? linhas.map(g => `<tr>
+        <td>${tipoBadgeProd(g.nucleo)} ${escHtml(SUBTIPO_LABEL[g.subtipo] || g.subtipo)}</td>
+        <td style="text-align:right;font-variant-numeric:lining-nums tabular-nums">${g.n}</td>
+        <td style="text-align:right;font-variant-numeric:lining-nums tabular-nums">${fmtArea(g.area)}</td>
+        <td style="text-align:right;font-variant-numeric:lining-nums tabular-nums">${fmt(g.valor)}</td>
+        <td style="text-align:right;font-variant-numeric:lining-nums tabular-nums;font-weight:700">${fmtM2(g.valor / g.area)}</td>
+        <td style="text-align:right;font-variant-numeric:lining-nums tabular-nums" class="t-mute">${g.n > 1 ? `${fmtM2(g.min)} – ${fmtM2(g.max)}` : '—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" class="empty-note">Nenhum produto fechado com área cadastrada no período.</td></tr>';
+  document.getElementById('fech-m2-nota').textContent =
+    (semArea ? `${semArea} produto${semArea!==1?'s':''} de paisagismo/urbanismo fechado${semArea!==1?'s':''} sem área cadastrada ficou fora da conta. ` : '') +
+    'Floreiras, conceito urbanístico, consultoria e projetos especiais não entram (não são cobrados por área). Áreas de urbanismo em hectares foram convertidas para m².';
 }
 
 // ═══ NEGATIVAS ════════════════════════════════════════
@@ -6962,15 +7056,33 @@ function renderAlcance(){
   const negVal=negadas.reduce((s,o)=>s+oppValorTotal(o),0);
   const _statVal=alcMode==='fech'?fechVal:alcMode==='neg'?negVal:pipeVal;
   const _statLbl=alcMode==='fech'?'fechado':alcMode==='neg'?'valor perdido':'pipeline';
+  // Cidades e estados distintos do filtro ativo (cidade vazia ou "-" não conta)
+  const _semNome=v=>!v||/^[\s\-–—.]*$/.test(v);
+  const _norm=v=>String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const _cidades=new Set(), _ufs=new Set();
+  ops.forEach(o=>{
+    const uf=_norm(o.uf);
+    if(!_semNome(uf)) _ufs.add(uf);
+    const cid=_norm(o.cidade);
+    if(!_semNome(cid)) _cidades.add(cid+'/'+uf);
+  });
   document.getElementById('alc-stats').innerHTML=`
     <div class="alc-stats">
-      <div class="alc-stat" style="flex:0 0 auto">
+      <div class="alc-stat">
         <span class="alc-stat-v">${ops.length}</span>
         <span class="alc-stat-l">oportunidades</span>
       </div>
-      <div class="alc-stat" style="flex:1" title="${escHtml(fmt(_statVal))}">
+      <div class="alc-stat" title="${escHtml(fmt(_statVal))}">
         <span class="alc-stat-v">${fmt(_statVal)}</span>
         <span class="alc-stat-l">${_statLbl}</span>
+      </div>
+      <div class="alc-stat">
+        <span class="alc-stat-v">${_cidades.size}</span>
+        <span class="alc-stat-l">${_cidades.size===1?'cidade':'cidades'}</span>
+      </div>
+      <div class="alc-stat">
+        <span class="alc-stat-v">${_ufs.size}</span>
+        <span class="alc-stat-l">${_ufs.size===1?'estado':'estados'}</span>
       </div>
     </div>`;
 
@@ -7909,11 +8021,11 @@ async function _enviarLembrete() {
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
 <style>
-  #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:34px!important;z-index:9998!important}
+  #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:30px!important;z-index:9998!important}
 </style>
 <!-- EXP · Nav lateral compartilhada -->
-<script src="shared/lists-panel.js"></script>
-<script src="shared/exp-nav.js"></script>
+<script src="shared/lists-panel.js?v=2026-10-24"></script>
+<script src="shared/exp-nav.js?v=2026-10-24"></script>
 </body>
 </html>
 
