@@ -172,22 +172,21 @@
       var cls = vencida ? 'vencida' : ehHoje ? 'hoje' : '';
       var dt  = new Date(t.data_limite + 'T12:00:00');
       var fmt = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
-      return '<span class="fp-task-prazo ' + cls + '">' + _esc(fmt) + (vencida ? ' ⚠' : '') + '</span>';
+      return '<span class="fp-task-prazo ' + cls + '">' + _esc(fmt) + '</span>';
     }
     function tipoHtml(t) {
-      return t.tipo ? '<span style="font-size:9px;color:#bbb;text-transform:capitalize">' + _esc(t.tipo) + '</span>' : '';
+      // "Livre" é o tipo padrão — não precisa aparecer
+      if (!t.tipo || String(t.tipo).trim().toLowerCase() === 'livre') return '';
+      return '<span style="font-size:9px;color:#8A867E;text-transform:capitalize">' + _esc(t.tipo) + '</span>';
     }
 
-    var html = '<div class="fp-task-section fp-task-sec-head">' +
-      '<span>Pendentes — ' + tasks.length + '</span>' +
-      '<button class="fp-task-recentes-btn" onclick="listsPanel.toggleRecentes(event)" title="Ver realizadas recentemente e restaurar">↺ recentes</button>' +
-      '</div>';
-    if (!tasks.length) {
-      html += '<div class="fp-ck-empty">Nenhuma tarefa pendente ✓</div>';
-    } else {
-      tasks.forEach(function(t) {
+    // Atrasadas (prazo vencido) numa seção própria, em vermelho; depois as demais
+    var atrasadas = tasks.filter(function(t){ return t.data_limite && t.data_limite < hoje; });
+    var emDia     = tasks.filter(function(t){ return !(t.data_limite && t.data_limite < hoje); });
+    var recentesBtn = '<button class="fp-task-recentes-btn" onclick="listsPanel.toggleRecentes(event)" title="Ver realizadas recentemente e restaurar">↺ recentes</button>';
+    function itemHtml(t, atrasada) {
         var tid = _esc(String(t.id));
-        html += '<div class="fp-task-item" id="fp-task-' + tid + '">' +
+        return '<div class="fp-task-item' + (atrasada ? ' fp-task-atrasada' : '') + '" id="fp-task-' + tid + '">' +
           '<div class="fp-task-check" onclick="listsPanel.checkTask(event,\'' + tid + '\')" title="Concluir"></div>' +
           '<div class="fp-task-body">' +
             '<div class="fp-task-desc">' + _esc(t.descricao || '(sem descrição)') + '</div>' +
@@ -195,7 +194,19 @@
           '</div>' +
           '<button class="fp-task-edit" title="Editar tarefa" onclick="listsPanel.editTask(event,\'' + tid + '\')">' + _PENCIL + '</button>' +
           '</div>';
-      });
+    }
+    var html = '';
+    if (!tasks.length) {
+      html += '<div class="fp-task-section fp-task-sec-head"><span>Pendentes — 0</span>' + recentesBtn + '</div>' +
+              '<div class="fp-ck-empty">Nenhuma tarefa pendente ✓</div>';
+    } else {
+      if (atrasadas.length) {
+        html += '<div class="fp-task-section fp-task-sec-head fp-sec-atrasadas"><span>Atrasadas — ' + atrasadas.length + '</span>' + recentesBtn + '</div>';
+        atrasadas.forEach(function(t){ html += itemHtml(t, true); });
+      }
+      html += '<div class="fp-task-section fp-task-sec-head"><span>' + (atrasadas.length ? 'Próximas' : 'Pendentes') + ' — ' + emDia.length + '</span>' + (atrasadas.length ? '' : recentesBtn) + '</div>';
+      if (!emDia.length) html += '<div class="fp-ck-empty" style="padding:12px">Nada além das atrasadas.</div>';
+      emDia.forEach(function(t){ html += itemHtml(t, false); });
     }
 
     if (delegadas.length) {
@@ -212,7 +223,7 @@
             ? '<span style="font-size:9px;font-weight:600;color:#2D9E6B;background:#EAF5EE;padding:1px 6px;border-radius:4px">Concluída</span>'
             : '<span style="font-size:9px;font-weight:600;color:#888;background:var(--off,#F7F6F3);padding:1px 6px;border-radius:4px;border:1px solid var(--cinza2,#ECEAE4)">Pendente</span>';
           html += '<div class="fp-task-item fp-task-delegada' + (t.concluida ? ' fp-task-done' : '') + '">' +
-            '<div style="width:20px;height:20px;border-radius:50%;background:' + _esc(paraCor) + ';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:\'DM Mono\',monospace">' + _esc(paraIni) + '</div>' +
+            '<div style="width:20px;height:20px;border-radius:50%;background:' + _esc(paraCor) + ';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + _esc(paraIni) + '</div>' +
             '<div class="fp-task-body">' +
               '<div class="fp-task-desc">' + _esc(t.descricao || '(sem descrição)') + '</div>' +
               '<div class="fp-task-meta"><span style="font-size:10px;color:#888">para ' + _esc(paraNome) + '</span>' + statusHtml + '</div>' +
@@ -244,7 +255,7 @@
     }).then(function(r) {
       if (r.error) return;
       document.getElementById('fp-task-desc').value = '';
-      document.getElementById('fp-task-data').value = '';
+      document.getElementById('fp-task-data').value = ''; _syncDataVazia();
       _loadTasks();
     });
   }
@@ -425,7 +436,7 @@
     }).then(function(r) {
       if (r.error) return;
       document.getElementById('fp-task-desc').value = '';
-      document.getElementById('fp-task-data').value = '';
+      document.getElementById('fp-task-data').value = ''; _syncDataVazia();
       _loadTasks();
     });
   }
@@ -1133,7 +1144,7 @@
           '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>' +
           '<line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>' +
         '</svg>' +
-        '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
+        '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
       btn.onclick = function() { toggle(); };
       /* fim da nav — mesmo lugar do antigo ícone de Tarefas (cluster de ferramentas) */
       nav.appendChild(btn);
@@ -1174,3 +1185,19 @@
   };
 
 })(window);
+
+
+/* Data de prazo vazia: mesmo cinza do placeholder dos outros campos */
+function _syncDataVazia() {
+  ['fp-task-data', 'fp-task-tipo'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle('vazio', !el.value);
+  });
+}
+['input', 'change'].forEach(function (ev) {
+  document.addEventListener(ev, function (e) {
+    if (e.target && (e.target.id === 'fp-task-data' || e.target.id === 'fp-task-tipo')) _syncDataVazia();
+  });
+});
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _syncDataVazia);
+else _syncDataVazia();

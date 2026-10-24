@@ -19,6 +19,7 @@ window.ExpNav = (() => {
 
   /* ── Constantes ──────────────────────────────────────────── */
   const ROOM_URL     = 'https://meet.google.com/mqe-cgge-maz';
+  const ROOM2_URL    = 'https://meet.google.com/gfv-wizd-qkm'; /* EXP Salinha (sala 2) */
   const ROOM_TIMEOUT = 5; /* minutos */
 
   /* mapa módulo → href do item ativo */
@@ -125,7 +126,7 @@ window.ExpNav = (() => {
 
     /* Pessoas para não-sócios: inicialmente oculto, revelado por _checkClimaAtiva() */
     var pessoasCollab = (activeHref !== 'pessoas.html' && !isSocio)
-      ? '<a href="pessoas.html" class="exp-nav-item" id="exp-nav-pessoas-collab" title="Pesquisa de Clima" style="display:none;position:relative">' +
+      ? '<a href="app.html?pesquisa=1" class="exp-nav-item" id="exp-nav-pessoas-collab" title="Responder a Pesquisa EXP" style="display:none;position:relative">' +
           ico.pessoas +
           '<span id="exp-clima-badge" style="position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#C49A27;border:1.5px solid #2A2926;display:none"></span>' +
         '</a>'
@@ -194,9 +195,7 @@ window.ExpNav = (() => {
     (activeHref !== 'pessoas.html'
       ? (isSocio
           ? '<div class="exp-nav-pessoas-wrap" id="exp-nav-pessoas-wrap">' +
-              '<a href="pessoas.html" class="exp-pessoas-go-btn" id="exp-pessoas-go-btn" title="Abrir módulo Pessoas">' +
-                '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>' +
-              '</a>' +
+              /* sem botão lateral "abrir": o próprio ícone já leva ao módulo */
               '<button class="exp-nav-item" id="exp-nav-pessoas-btn" title="Pessoas"' +
               ' style="position:relative"' +
               ' onmouseenter="ExpNav.showClimaBanner(event)" onmouseleave="ExpNav.hideClimaBanner()"' +
@@ -215,8 +214,13 @@ window.ExpNav = (() => {
     '<div class="exp-nav-sep"></div>' +
 
     /* ── Ferramentas ────────────────────────────────── */
-    '<a id="exp-room-btn" href="' + ROOM_URL + '" target="_blank" rel="noopener"' +
-    ' class="exp-nav-item" title="EXP Room" onclick="ExpNav.roomClick()">' + ico.room + '</a>' +
+    '<div class="exp-nav-room-wrap">' +
+      '<a href="' + ROOM2_URL + '" target="_blank" rel="noopener" class="exp-room2-go-btn" title="EXP Salinha (sala 2)">' +
+        '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+      '</a>' +
+      '<a id="exp-room-btn" href="' + ROOM_URL + '" target="_blank" rel="noopener"' +
+      ' class="exp-nav-item" title="EXP Room" onclick="ExpNav.roomClick()">' + ico.room + '</a>' +
+    '</div>' +
 
     '<button class="exp-nav-item" id="exp-nav-bell" title="Notificações"' +
     ' onclick="ExpNav.toggleNotifPanel()" style="position:relative">' +
@@ -472,20 +476,21 @@ window.ExpNav = (() => {
         .limit(1)
         .maybeSingle(),
       sb.from('pessoas_pesquisa_clima_disparos')
-        .select('id, status')
+        .select('id, status, campanha:pessoas_pesquisa_clima_campanhas!inner(id, titulo, status)')
         .eq('usuario_id', userId)
         .eq('status', 'pendente')
+        .eq('campanha.status', 'ativa')
         .limit(1)
         .maybeSingle(),
     ]).then(function(res) {
-      var campanha      = res[0].data;
       var disparoPend   = res[1].data;
+      var campanha      = (disparoPend && disparoPend.campanha) || res[0].data;
 
       if (!campanha) return; /* sem campanha ativa — nada a fazer */
 
       _climaData = {
         campanha_id:    campanha.id,
-        titulo:         campanha.titulo || 'Pesquisa de Clima',
+        titulo:         campanha.titulo || 'Pesquisa EXP',
         minha_pendente: !!disparoPend,
       };
 
@@ -522,7 +527,7 @@ window.ExpNav = (() => {
       : 'Campanha em andamento.';
     if (link) {
       link.textContent = _climaData.minha_pendente ? 'Responder pesquisa →' : 'Ver resultados →';
-      link.href = 'pessoas.html?clima=1';
+      link.href = _climaData.minha_pendente ? 'app.html?pesquisa=1' : 'pessoas.html?clima=1';
     }
 
     $b.style.display = 'flex';
@@ -647,7 +652,7 @@ window.ExpNav = (() => {
      onmouseenter="ExpNav.showClimaBanner()" onmouseleave="ExpNav.hideClimaBanner()">
   <div class="exp-clima-hdr">
     <div class="exp-clima-hdr-dot"></div>
-    <span class="exp-clima-hdr-title">Pesquisa de Clima ativa</span>
+    <span class="exp-clima-hdr-title">Pesquisa EXP ativa</span>
   </div>
   <div class="exp-clima-body">
     <div class="exp-clima-nome" id="exp-clima-nome">—</div>
@@ -890,6 +895,7 @@ window.ExpNav = (() => {
 
   /* ── Notificações ────────────────────────────────────────── */
   var _notifAutoCloseTimer = null;
+  var _notifIniciando = false;
 
   function _clearNotifAutoClose() {
     if (_notifAutoCloseTimer) { clearTimeout(_notifAutoCloseTimer); _notifAutoCloseTimer = null; }
@@ -911,6 +917,14 @@ window.ExpNav = (() => {
     var $panel = document.getElementById('exp-notif-panel');
     var $btn   = document.getElementById('exp-nav-bell');
     if (!$panel) return;
+    /* AppNotif carregado depois da nav (ex.: script com defer): inicializa agora */
+    if (window.AppNotif && !window._appNotifToggle && !_notifIniciando && _user) {
+      _notifIniciando = true;
+      Promise.resolve(AppNotif.init({ userId: _user.id || _user.app_user_id }))
+        .then(function () { _notifIniciando = false; toggleNotifPanel(); },
+              function () { _notifIniciando = false; });
+      return;
+    }
     var isOpen = $panel.style.display === 'flex';
     if (isOpen) {
       /* fechar */
@@ -1502,9 +1516,13 @@ window.ExpNav = (() => {
       /* avatar */
       _updateAvatar(user);
 
-      /* AppNotif */
+      /* AppNotif (se o script ainda não carregou, inicializa quando carregar) */
       if (window.AppNotif) {
         AppNotif.init({ userId: user.id || user.app_user_id });
+      } else {
+        window.addEventListener('load', function () {
+          if (window.AppNotif && !window._appNotifToggle) AppNotif.init({ userId: user.id || user.app_user_id });
+        }, { once: true });
       }
 
       /* outside click notif + tarefas */

@@ -62,13 +62,19 @@
 .fp-task-body  { flex: 1; min-width: 0; }
 .fp-task-desc  { font-size: calc(11px * var(--fp-lists-scale, 1)); color: var(--fp-lists-tone, #333); line-height: 1.4; word-break: break-word; }
 .fp-task-meta  { font-size: calc(10px * var(--fp-lists-scale, 1)); color: #999; margin-top: 3px; display: flex; align-items: center; gap: 6px; }
-.fp-task-prazo { font-family: var(--font-mono, 'DM Mono', monospace); font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 600; }
-.fp-task-prazo.vencida { color: #B84C3A; }
-.fp-task-prazo.hoje    { color: #C4831A; }
-.fp-task-section { font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--cinza, #D0CFC9); padding: 10px 6px 4px; }
-[data-theme="dark"] .fp-task-section { color: rgba(255,255,255,.5); }
+.fp-task-prazo { font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 500; color: #8A867E; font-variant-numeric: lining-nums tabular-nums; }
+.fp-task-prazo.vencida { color: var(--terracota, #B85638); font-weight: 600; }
+.fp-task-prazo.hoje    { color: #916b13; font-weight: 600; }
+.fp-task-section { font-size: calc(10px * var(--fp-lists-scale, 1)); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #8A867E; padding: 10px 6px 4px; }
+[data-theme="dark"] .fp-task-section { color: rgba(255,255,255,.6); }
 
-.fp-task-section.fp-delegadas-toggle { color: var(--cinza, #D0CFC9); transition: color .12s; }
+.fp-task-section.fp-delegadas-toggle { color: #8A867E; transition: color .12s; }
+/* ── Atrasadas (2026-10-23): seção própria em vermelho ─────── */
+.fp-task-section.fp-sec-atrasadas { color: var(--terracota, #B85638); }
+.fp-task-item.fp-task-atrasada { box-shadow: inset 2px 0 0 var(--terracota, #B85638); padding-left: 10px; }
+.fp-task-item.fp-task-atrasada .fp-task-check { border-color: rgba(184,86,56,.55); }
+[data-theme="dark"] .fp-task-section.fp-sec-atrasadas { color: #D27A5E; }
+
 .fp-task-section.fp-delegadas-toggle:hover { color: var(--grafite, #111110); }
 [data-theme="dark"] .fp-task-section.fp-delegadas-toggle { color: rgba(255,255,255,.5); }
 [data-theme="dark"] .fp-task-section.fp-delegadas-toggle:hover { color: rgba(255,255,255,.75); }
@@ -226,7 +232,7 @@
   border: none; background: none;
   font-family: var(--font-ui, Raleway, sans-serif);
   font-size: calc(11px * var(--fp-lists-scale, 1)); font-weight: 600;
-  color: var(--cinza, #D0CFC9); cursor: pointer;
+  color: #8A867E; cursor: pointer;
   transition: background .12s, color .12s; white-space: nowrap;
 }
 .fp-lists-tab:hover { color: var(--ca, #1D6A4A); }
@@ -309,7 +315,7 @@
 .fp-ck-bar-fill { height: 100%; background: var(--ca, #1D6A4A); border-radius: 99px; transition: width .3s; }
 .fp-ck-bar-count {
   font-size: calc(9px * var(--fp-lists-scale, 1));
-  font-family: var(--font-mono, 'DM Mono', monospace); font-weight: 700;
+  font-weight: 700; font-variant-numeric: lining-nums tabular-nums;
   color: var(--ca, #1D6A4A); width: 28px; text-align: right; flex-shrink: 0;
 }
 
@@ -349,7 +355,7 @@
 /* Badge de prioridade da tarefa de revisão — cor SÓ no badge (P1 alerta · P2 atenção · P3 normal) */
 .fp-ck-prio {
   flex-shrink: 0; margin-top: 1px;
-  font-family: "DM Mono", monospace; font-size: calc(8px * var(--fp-lists-scale, 1));
+  font-size: calc(8px * var(--fp-lists-scale, 1));
   font-weight: 800; letter-spacing: .3px; line-height: 1;
   padding: 3px 5px; border-radius: 999px; border: 1px solid transparent;
 }
@@ -378,3 +384,52 @@
   font-size: calc(11px * var(--fp-lists-scale, 1));
   color: #aaa; text-align: center; padding: 24px;
 }
+
+/* ── Rodapé de nova tarefa (2026-10-23): campos com o mesmo visual e altura;
+      botão Adicionar no padrão do design system; "Atribuir" ao passar o mouse ── */
+#fp-task-desc,
+#fp-task-tipo,
+#fp-task-data {
+  box-sizing: border-box;
+  border: 1px solid var(--cinza2, #ECEAE4); border-radius: var(--radius-input, 8px);
+  background: var(--branco, #fff); color: var(--grafite, #111110);
+  font-family: var(--font-ui, Raleway, sans-serif);
+  font-size: calc(11px * var(--fp-lists-scale, 1)); font-weight: 400;
+  height: 32px; padding: 0 10px; outline: none;
+  transition: border-color .15s;
+}
+#fp-task-desc { width: 100%; min-height: 32px; padding: 8px 10px; line-height: 1.3; margin-bottom: 6px; }
+#fp-task-desc::placeholder { color: #A9A59C; }
+#fp-task-tipo { flex: 1 1 0; min-width: 0; padding-right: 26px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238A867E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; }
+#fp-task-tipo:invalid, #fp-task-tipo option[value=""] { color: #A9A59C; }
+#fp-task-data { flex: 1 1 0; min-width: 0; width: 0; padding-right: 26px; }  /* mesmo recuo do Tipo → larguras iguais */
+#fp-task-tipo { width: 0; }
+#fp-task-desc:focus, #fp-task-tipo:focus, #fp-task-data:focus { border-color: var(--ca, #1D6A4A); }
+.fp-task-form-row { gap: 6px; }
+.fp-task-add-btn {
+  height: 32px; padding: 0 14px; border-radius: var(--radius-btn, 8px); border: 1px solid var(--ca, #1D6A4A);
+  background: var(--ca, #1D6A4A); color: #fff;
+  font-family: var(--font-ui, Raleway, sans-serif); font-size: calc(10px * var(--fp-lists-scale, 1));
+  font-weight: 700; letter-spacing: .5px; text-transform: uppercase; line-height: 1;
+}
+.fp-task-add-btn:hover { opacity: .85; }
+.fp-task-assign-btn { position: relative; width: 32px; height: 32px; border-radius: var(--radius-btn, 8px); border-color: var(--cinza2, #ECEAE4); }
+.fp-task-assign-btn::after {
+  content: 'Atribuir'; position: absolute; bottom: calc(100% + 6px); right: 0;
+  padding: 4px 8px; border-radius: 6px; background: var(--grafite, #111110); color: #fff;
+  font-family: var(--font-ui, Raleway, sans-serif); font-size: 10px; font-weight: 600; white-space: nowrap;
+  opacity: 0; transform: translateY(2px); pointer-events: none; transition: opacity .12s, transform .12s; z-index: 5;
+}
+.fp-task-assign-btn:hover::after, .fp-task-assign-btn:focus-visible::after { opacity: 1; transform: translateY(0); }
+[data-theme="dark"] #fp-task-desc,
+[data-theme="dark"] #fp-task-tipo,
+[data-theme="dark"] #fp-task-data { background-color: #2A2926; border-color: #3A3836; color: #F0EDE6; color-scheme: dark; }
+[data-theme="dark"] .fp-task-assign-btn::after { background: #F0EFEC; color: #1D1D1B; }
+
+#fp-task-data.vazio::-webkit-datetime-edit { color: #A9A59C; }
+#fp-task-data.vazio, #fp-task-tipo.vazio { color: #A9A59C; }
+#fp-task-tipo option { color: var(--grafite, #111110); }
+#fp-task-data::-webkit-calendar-picker-indicator { opacity: .45; cursor: pointer; }
+#fp-task-data:hover::-webkit-calendar-picker-indicator { opacity: .8; }

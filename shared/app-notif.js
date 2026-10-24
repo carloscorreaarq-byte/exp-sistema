@@ -285,12 +285,17 @@ window.AppNotif = (() => {
   }
 
   /* ── dismiss de alerta CRM (global, sem depender do crm.html) */
+  // Fechar no X dispensa a OPORTUNIDADE inteira (os dois tipos de alerta: proposta
+  // expirada e sem follow-up) — senão o outro tipo aparecia no lugar, como se o
+  // mesmo lembrete tivesse voltado.
   function _dismissCrmAlert(key) {
+    const opId = String(key).replace(/^(exp_|fu_)/, '');
     const dismissed = _getDismissed();
-    dismissed.add(key);
+    dismissed.add('exp_' + opId);
+    dismissed.add('fu_' + opId);
     localStorage.setItem(_DISMISSED_KEY, JSON.stringify([...dismissed]));
     if (_computed['comercial']) {
-      _computed['comercial'].items = _computed['comercial'].items.filter(it => it.key !== key);
+      _computed['comercial'].items = _computed['comercial'].items.filter(it => it.key !== 'exp_' + opId && it.key !== 'fu_' + opId);
       _renderBadge();
       if (_panelOpen) _renderPanel();
     }
@@ -355,7 +360,7 @@ window.AppNotif = (() => {
         .select('id, num_legado, pipeline_stage, clientes(nome)')
         .in('pipeline_stage', ['prospecção','prospeccao','enviada','ativo','negociacao','negociação']),
       window.sb.from('followups_produto')
-        .select('produto_id, data, created_at')
+        .select('oportunidade_id, produto_id, data, created_at')
         .order('data', { ascending: false }),
       window.sb.from('produtos')
         .select('id, oportunidade_id, status, data_envio')
@@ -366,14 +371,17 @@ window.AppNotif = (() => {
     const fus   = fusRes.data  || [];
     const prods = prodsRes.data || [];
 
-    // Índices
-    const fusByProd  = {};
-    fus.forEach(f => {
-      (fusByProd[f.produto_id] = fusByProd[f.produto_id] || []).push(f);
-    });
+    // Índices — follow-up é da oportunidade (produto é vínculo opcional)
     const prodsByOp = {};
+    const opDoProd  = {};
     prods.forEach(p => {
       (prodsByOp[p.oportunidade_id] = prodsByOp[p.oportunidade_id] || []).push(p);
+      opDoProd[p.id] = p.oportunidade_id;
+    });
+    const fusByOp = {};
+    fus.forEach(f => {
+      const opId = f.oportunidade_id || opDoProd[f.produto_id];
+      if (opId) (fusByOp[opId] = fusByOp[opId] || []).push(f);
     });
 
     const dismissed = _getDismissed();
@@ -386,13 +394,15 @@ window.AppNotif = (() => {
       const opProds  = prodsByOp[op.id] || [];
       const key_exp  = 'exp_' + op.id;
       const key_fu   = 'fu_'  + op.id;
+      // Oportunidade já dispensada no X (qualquer um dos dois alertas): não volta
+      if (dismissed.has(key_exp) || dismissed.has(key_fu)) return;
 
       // Proposta expirada: produto enviado há >90 dias — mostra dias reais
       const expiredProd = opProds.find(p =>
         p.data_envio && (_diasDesde(p.data_envio) ?? 0) > 90
       );
 
-      if (expiredProd && !dismissed.has(key_exp)) {
+      if (expiredProd) {
         const dias = _diasDesde(expiredProd.data_envio) ?? 0;
         items.push({
           key:   key_exp,
@@ -406,15 +416,15 @@ window.AppNotif = (() => {
       }
 
       // Sem follow-up há >30 dias — mostra dias reais
-      const opFus = opProds.flatMap(p => fusByProd[p.id] || []);
+      const opFus = fusByOp[op.id] || [];
       const lastFu = opFus.reduce((max, f) => {
-        const d = f.data_contato || f.created_at;
+        const d = f.data || f.created_at;
         return d > max ? d : max;
       }, '');
       const diasSemFU = lastFu ? (_diasDesde(lastFu) ?? 0) : null;
       const semFU30   = !lastFu || (diasSemFU ?? 0) > 30;
 
-      if (semFU30 && !dismissed.has(key_fu)) {
+      if (semFU30) {
         const descDias = diasSemFU !== null
           ? `Sem contato há ${diasSemFU} dias`
           : 'Sem follow-up registrado';
