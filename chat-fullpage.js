@@ -18,7 +18,7 @@
   var FLAGS_KEY   = 'exp_chat_flags';
   var PINS_KEY    = 'exp_chat_pins';
   var PINNED_KEY  = 'exp_chat_pinned';
-  var BRAND_AVATAR_COLORS = ['#1D6A4A','#1D4FA0','#C4831A','#B84C3A','#6D7D8A','#4A72B5','#7A9E7E'];
+  var BRAND_AVATAR_COLORS = ['#1D6A4A','#1D4FA0','#C4831A','#B84C3A','#6D7D8A','#5981CC','#7A9E7E'];
   var TEMP_MEDIA_BUCKET   = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
   var CHAT_AUDIO_SENTINEL = '[audio]';
@@ -3111,7 +3111,7 @@
     x:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
     circulo: '',  /* o container circular já é o marcador visual */
     circulo_verde: '',
-    seta_verde: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3E7858" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>'
+    seta_verde: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>'
   };
 
   function mvSelectTool(tool) {
@@ -5667,7 +5667,7 @@
       html += '<div class="fp-apoio-group-hdr">Conhecimento</div>';
       subtemas.forEach(function(s) {
         html += '<a href="apoio.html?tema=apoio" class="fp-apoio-result">' +
-          '<div class="fp-apoio-result-dot" style="background:#3E7858"></div>' +
+          '<div class="fp-apoio-result-dot" style="background:#4D865C"></div>' +
           '<div class="fp-apoio-result-info">' +
             '<div class="fp-apoio-result-title">' + escHtml(s.nome) + '</div>' +
             '<div class="fp-apoio-result-sub">' + escHtml(s.tema_slug || '') + '</div>' +

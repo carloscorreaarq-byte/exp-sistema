@@ -17,12 +17,12 @@
   var EXPAND_SECS = 15;
 
   /* Cores da plataforma */
-  var OURO        = '#C49A27';
-  var OURO_PULSE  = 'rgba(196,154,39,.55)';
+  var OURO        = '#E2B141';
+  var OURO_PULSE  = 'rgba(226,177,65,.55)';
   var GRAFITE     = '#141414';
   var CINZA       = '#D0CFC9';
   var OFF         = '#F7F6F3';
-  var VERDE       = '#3E7858';
+  var VERDE       = '#4D865C';
 
   var _sb, _tickInterval, _collapseTimer, _isHovering = false;
   var _allProds = null, _etapaCache = {}, _cachedUser = null, _recentItems = null;
@@ -62,7 +62,7 @@
 
     /* FAB: rodando — amarelo + pulse */
     '#exp-timer-fab.running{background:' + OURO + ';color:#fff}',
-    '@keyframes exp-tmr-pulse{0%{box-shadow:0 0 0 0 ' + OURO_PULSE + '}70%{box-shadow:0 0 0 11px rgba(196,154,39,0)}100%{box-shadow:0 0 0 0 rgba(196,154,39,0)}}',
+    '@keyframes exp-tmr-pulse{0%{box-shadow:0 0 0 0 ' + OURO_PULSE + '}70%{box-shadow:0 0 0 11px rgba(226,177,65,0)}100%{box-shadow:0 0 0 0 rgba(226,177,65,0)}}',
     '#exp-timer-fab.running{animation:exp-tmr-pulse 1.6s ease-out infinite}',
     '#exp-timer-fab.running:hover{animation:none}',
 
