@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared/nome-curto.js"></script>
-<script src="shared/app-notif.js"></script>
+<script src="shared/app-notif.js?v=2026-10-25"></script>
 <script src="shared/horas-creditos.js"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="preload" href="shared/app-shell.js" as="script">
@@ -480,6 +480,8 @@ body{
 .bh-eq-table td{padding:8px 12px;border-bottom:1px solid var(--cinza2);text-align:right;white-space:nowrap}
 .bh-eq-table tr:last-child td{border-bottom:none}
 .bh-eq-table tbody tr{cursor:pointer}
+.stab[hidden]{display:none !important}
+.bh-empty.err{color:var(--terracota)}
 .bh-eq-table tbody tr:hover td{background:var(--off)}
 .bh-eq-table .pos{color:var(--verde)}
 .bh-eq-table .neg{color:var(--terracota)}
@@ -576,6 +578,12 @@ body{
   font-size:10px;font-weight:700;letter-spacing:.07em;color:var(--grafite);border-bottom:1px solid var(--cinza2);
 }
 [data-theme="dark"] .apo-form-title{background:#252523;color:#F0EDE6;border-bottom-color:#2E2D2B;}
+/* Navegação de semana dentro do título do formulário (Horas / Custos) */
+.apo-form-title.com-semana{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 8px;padding:8px 10px 8px 14px}
+.apo-form-title .semana-nav{padding:2px;gap:2px;background:var(--branco);border-color:var(--cinza2)}
+.apo-form-title .semana-nav-btn{width:22px;height:22px;font-size:13px}
+.apo-form-title .semana-label{min-width:0;font-size:10px;font-weight:600;letter-spacing:0;color:var(--grafite);padding:0 2px;white-space:nowrap}
+.apo-form-title .semana-hoje-btn{min-height:22px;padding:0 7px;font-size:8px}
 /* Formulários do Apontamentos = padrão da Gestão › Horas/Custos (2026-10-25), em todas as abas:
    rótulo 8px em caixa alta; campo 12px peso 300, padding 5px 9px, raio 8px, borda --cinza */
 .apo-form-card .apo-field{gap:4px;margin-bottom:8px;}
@@ -842,6 +850,31 @@ body.apo-modo-leitura #stab-banco{display:none}
 .lanc-acao{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;border-radius:5px;color:#A9A59C;cursor:pointer;padding:0}
 .lanc-acao:hover{background:var(--cinza2);color:var(--grafite)}
 .lanc-acao.del:hover{color:var(--terracota)}
+/* Sobreposição de horário: terracota translúcido */
+.lanc-item.sobreposto{background:rgba(188,97,67,.10);border-left:2px solid var(--terracota)}
+.lanc-item.sobreposto .lanc-hora{color:var(--terracota);font-weight:600}
+.lanc-sobr-ico{color:var(--terracota);font-size:11px;flex-shrink:0}
+[data-theme="dark"] .lanc-item.sobreposto{background:rgba(188,97,67,.16)}
+/* Clique na linha / bloco abre o pop-up de edição */
+.lanc-item.lanc-abre{cursor:pointer}
+.lanc-item.lanc-abre:hover{background:var(--off)}
+.lanc-item.sobreposto.lanc-abre:hover{background:rgba(188,97,67,.16)}
+body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
+/* Pop-up de edição (reaproveita o formulário da coluna lateral) */
+#apo-edit-modal .modal{width:440px}
+#apo-edit-modal .modal-hd{align-items:flex-start}
+.apo-edit-sub{font-size:10px;color:#8A867E;margin-top:3px;font-weight:400}
+#apo-edit-modal .modal-body{padding:14px 16px;overflow-y:auto}
+#apo-edit-modal .apo-form-card{position:static;border:none;padding:0;background:transparent;overflow:visible;box-shadow:none}
+#apo-edit-modal form.editando{box-shadow:none}
+#apo-edit-modal .apo-edit-banner,
+#apo-edit-modal #apo-repetir,
+#apo-edit-modal #apo-submit,#apo-edit-modal #apo-reset,
+#apo-edit-modal #apo-cost-submit,#apo-edit-modal #apo-cost-reset{display:none !important}
+#apo-edit-modal .modal-ft{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--cinza)}
+#apo-edit-modal .modal-ft .apo-edit-excluir{margin-right:auto;color:var(--terracota);border-color:transparent;background:transparent}
+#apo-edit-modal .modal-ft .apo-edit-excluir:hover{border-color:var(--terracota)}
+.apo-edit-lugar{font-size:11px;color:#A9A59C;padding:10px 0}
 .apo-fin-body label{display:block;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;margin:12px 0 4px}
 .apo-fin-body textarea{width:100%;box-sizing:border-box;min-height:90px;font-family:var(--font-ui);font-size:12px;font-weight:300;padding:6px 9px;border:1px solid var(--cinza);border-radius:8px;background:var(--branco);color:var(--grafite);resize:vertical}
 .apo-fin-total{display:flex;align-items:baseline;gap:10px}
@@ -977,6 +1010,7 @@ body.apo-modo-leitura #stab-banco{display:none}
         <button class="stab" id="stab-custos" type="button">Custos</button>
         <button class="stab" id="stab-mensal" type="button">Visualização Mensal</button>
         <button class="stab" id="stab-historico" type="button">Histórico</button>
+        <button class="stab" id="stab-socios" type="button" hidden>Sócios</button>
       </div>
 
       <!-- Topbar direita: exp-nav.js popula dark mode, feedback, lembrete e user chip -->
@@ -1042,6 +1076,25 @@ body.apo-modo-leitura #stab-banco{display:none}
     <div class="apo-sem-lembrete" id="apo-sem-lembrete" hidden></div>
     <!-- Aviso: andamento dos pedidos ao banco de horas -->
     <div class="bh-aviso" id="bh-aviso" style="display:none"></div>
+
+    <!-- Pop-up: editar lançamento de hora ou custo (o formulário da coluna lateral é movido para cá) -->
+    <div class="modal-bg" id="apo-edit-modal" style="display:none">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="apo-edit-titulo">
+        <div class="modal-hd">
+          <div>
+            <div class="modal-title" id="apo-edit-titulo">Editar lançamento</div>
+            <div class="apo-edit-sub" id="apo-edit-sub"></div>
+          </div>
+          <button class="modal-close" type="button" data-edit-fechar title="Fechar">×</button>
+        </div>
+        <div class="modal-body"><div class="apo-form-card" id="apo-edit-slot"></div></div>
+        <div class="modal-ft">
+          <button class="apo-btn apo-edit-excluir" type="button" id="apo-edit-excluir">Excluir</button>
+          <button class="apo-btn" type="button" data-edit-fechar>Cancelar</button>
+          <button class="apo-btn apo-btn-primary" type="button" id="apo-edit-salvar">Salvar alterações</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal: finalizar semana (com conferência) -->
     <div class="modal-bg" id="apo-fin-modal" style="display:none">
@@ -1268,13 +1321,6 @@ body.apo-modo-leitura #stab-banco{display:none}
           </div>
           <div class="bh-vendo" id="bh-vendo" style="display:none"></div>
 
-          <div id="bh-equipe-box" style="display:none">
-            <div class="sec-title">Banco de horas da equipe</div>
-            <div class="bh-hist-wrap lanc-lista-box" id="bh-equipe-wrap" style="margin-bottom:14px">
-              <div class="bh-empty">Carregando…</div>
-            </div>
-          </div>
-
           <div class="bh-grid">
             <div class="bh-card">
               <div class="bh-card-lbl">Jornada esperada</div>
@@ -1410,6 +1456,22 @@ body.apo-modo-leitura #stab-banco{display:none}
 
       </div>
     </div><!-- /stp-banco -->
+
+    <!-- ══ ABA SÓCIOS (só sócios e sócios-administradores): acompanhamento do banco de horas da equipe ══ -->
+    <div class="stab-panel" id="stp-socios">
+      <div class="bh-month-nav">
+        <button type="button" id="soc-month-prev" title="Mês anterior">◀</button>
+        <div class="bh-month-lbl" id="soc-month-lbl">—</div>
+        <button type="button" id="soc-month-next" title="Próximo mês">▶</button>
+      </div>
+      <div id="bh-equipe-box">
+        <div class="sec-title">Banco de horas da equipe</div>
+        <div class="bh-hist-wrap lanc-lista-box" id="bh-equipe-wrap" style="margin-bottom:14px">
+          <div class="bh-empty">Carregando…</div>
+        </div>
+        <div class="bh-card-sub">Clique numa pessoa para abrir o banco de horas dela na aba Banco.</div>
+      </div>
+    </div><!-- /stp-socios -->
 
     <!-- ══ ABA VISUALIZAÇÃO MENSAL (importada de Gestão › Horas/Custos › Visualização) ══ -->
 <div class="stab-panel" id="stp-mensal">
@@ -1966,7 +2028,7 @@ body.apo-modo-leitura #stab-banco{display:none}
           var titleTxt = l.tipo === 'projeto'
             ? esc([cli, proj, etapa].filter(Boolean).join(' · ') + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')')
             : esc(linha1 + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')');
-          blocoHtml += '<div class="cal-bloco ' + cls + '" style="top:' + topOff + 'px;height:' + height + 'px" title="' + titleTxt + '">' +
+          blocoHtml += '<div class="cal-bloco ' + cls + '" data-hid="' + esc(l.id) + '" style="top:' + topOff + 'px;height:' + height + 'px" title="' + titleTxt + '">' +
             '<span class="cal-bloco-linha1">' + esc(linha1) + '</span>' +
             (linha2 && height > 22 ? '<span class="cal-bloco-linha2">' + esc(linha2) + '</span>' : '') +
             '</div>';
@@ -2080,8 +2142,8 @@ body.apo-modo-leitura #stab-banco{display:none}
         var dur = diffH(l.hora_inicio, l.hora_fim);
         var cor = COR_TIPO[l.tipo] || '#888';
         var sobr = sobrepostos.has(l.id);
-        var horaStyle = sobr ? 'color:#C0392B;font-weight:600;' : '';
-        var borderStyle = sobr ? 'border-left:2px solid #C0392B;' : '';
+        var horaStyle = '';
+        var borderStyle = '';
         var incompleto = l.tipo === 'projeto' && (!l.produto_id || !l.etapa_id);
         if (!sobr && incompleto) borderStyle = 'border-left:2px solid #C4831A;';
 
@@ -2102,13 +2164,13 @@ body.apo-modo-leitura #stab-banco{display:none}
           descHtml = '<span class="lanc-desc-main">' + esc(main) + '</span>';
           if (sub2) descHtml += '<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">' + esc(sub2) + '</span>';
         }
-        html += '<div class="lanc-item" style="' + borderStyle + '">' +
+        html += '<div class="lanc-item lanc-abre' + (sobr ? ' sobreposto' : '') + '" data-hid="' + esc(l.id) + '" style="' + borderStyle + '">' +
           '<div class="lanc-dot" style="background:' + cor + '"></div>' +
           '<div class="lanc-hora" style="' + horaStyle + '">' +
             esc((l.hora_inicio||'').slice(0,5)) + '–' + esc((l.hora_fim||'').slice(0,5)) +
           '</div>' +
           '<div class="lanc-desc">' + descHtml + '</div>' +
-          (sobr ? '<span title="Sobreposição" style="color:#C0392B;font-size:11px;flex-shrink:0">⚠</span>' :
+          (sobr ? '<span class="lanc-sobr-ico" title="Horário sobreposto a outro lançamento">⚠</span>' :
            incompleto ? '<span title="Incompleto" style="color:#C4831A;font-size:11px;flex-shrink:0">⚠</span>' : '') +
           '<div class="lanc-dur">' + esc(fmtH(dur)) + '</div>' +
           (AP.semanaTravada || modoLeitura() ? '' : '<div class="lanc-acoes"><button type="button" class="lanc-acao" data-act="edit-h" data-id="'+l.id+'" title="Editar">'+ICO_EDIT+'</button><button type="button" class="lanc-acao del" data-act="del-h" data-id="'+l.id+'" title="Excluir">'+ICO_DEL+'</button></div>') +
@@ -2148,7 +2210,7 @@ body.apo-modo-leitura #stab-banco{display:none}
         var mainText = area || TIPO_PT[c.tipo] || c.tipo || 'Custo';
         var subText = [cli, proj, detalhe, c.descricao].filter(Boolean).join(' · ');
         var valor = 'R$ ' + Number(c.valor||0).toFixed(2).replace('.',',');
-        html += '<div class="lanc-item">' +
+        html += '<div class="lanc-item lanc-abre" data-cid="' + esc(c.id) + '">' +
           '<div class="lanc-dot" style="background:var(--terracota)"></div>' +
           '<div class="lanc-hora">' + esc(fmtDate(c.data_lancamento)) + '</div>' +
           '<div class="lanc-desc"><span class="lanc-desc-main">' + esc(mainText) + '</span>' +
@@ -2687,7 +2749,6 @@ body.apo-modo-leitura #stab-banco{display:none}
       renderBancoRequests();
       renderBancoAdmin();
       renderBancoPessoaUI();
-      if (bhEhSocio() && !bhVendoOutro()) loadBancoEquipe().catch(function(e){ console.warn('[bh-equipe]', e); });
       // Quem abriu a aba Banco já viu as decisões: o aviso do topo some (só no próprio banco)
       if (activeTab() === 'banco' && !bhVendoOutro()) {
         bhMarcarVistos(reqs.filter(function(r){ return r.aprovado_em; }).map(function(r){ return r.id; }));
@@ -2777,15 +2838,33 @@ body.apo-modo-leitura #stab-banco{display:none}
     }
     return out;
   }
+  // Aba Sócios: mês próprio, independente do mês do Banco
+  function socMes() {
+    if (!AP.socMonth) AP.socMonth = (AP.bankMonth || localIso().slice(0,7));
+    return AP.socMonth;
+  }
+  function shiftSocMonth(delta) {
+    AP.socMonth = shiftMonth(socMes(), delta);
+    loadBancoEquipe();
+  }
   async function loadBancoEquipe() {
-    var box = document.getElementById('bh-equipe-box');
     var wrap = document.getElementById('bh-equipe-wrap');
-    if (!box || !wrap) return;
-    box.style.display = '';
+    if (!wrap || !bhEhSocio()) return;
+    var ymSel = socMes();
+    var lbl = document.getElementById('soc-month-lbl');
+    if (lbl) lbl.textContent = monthLabel(ymSel);
+    wrap.innerHTML = '<div class="bh-empty">Carregando…</div>';
+    try {
+      await bhMontarEquipe(wrap, ymSel);
+    } catch (e) {
+      console.warn('[bh-equipe]', e);
+      if (ymSel === AP.socMonth) wrap.innerHTML = '<div class="bh-empty err">Não foi possível carregar o banco da equipe: ' + esc((e && (e.message || e.details)) || String(e)) + '</div>';
+    }
+  }
+  async function bhMontarEquipe(wrap, ymSel) {
     var equipe = await bhCarregarEquipe();
     bhPreencherSeletor();
     if (!equipe.length) { wrap.innerHTML = '<div class="bh-empty">Nenhum colaborador ativo.</div>'; return; }
-    var ymSel = AP.bankMonth;
     var ymIni = shiftMonth(ymSel, -(BH_MESES_HISTORICO - 1));
     var rangeIni = monthBounds(ymIni).start, rangeFim = monthBounds(ymSel).end;
     var ids = equipe.map(function(x){ return x.id; });
@@ -2801,7 +2880,8 @@ body.apo-modo-leitura #stab-banco{display:none}
           : Promise.resolve(null);
       })),
     ]);
-    if (ymSel !== AP.bankMonth) return;   // trocou de mês enquanto carregava
+    if (ymSel !== AP.socMonth) return;   // trocou de mês enquanto carregava
+    [1, 2, 3].forEach(function(i){ if (res[i].error) console.warn('[bh-equipe]', res[i].error.message || res[i].error); });
     var horasPor = {}; res[0].forEach(function(h){ (horasPor[h.usuario_id] = horasPor[h.usuario_id] || []).push(h); });
     var jornPor = {}; (res[1].data || []).forEach(function(j){ jornPor[j.usuario_id] = Number(j.jornada_semanal_h) || 40; });
     var saldoPor = {}; (res[2].data || []).forEach(function(s){ saldoPor[s.usuario_id] = Number(s.horas_disponiveis || 0); });
@@ -2827,8 +2907,15 @@ body.apo-modo-leitura #stab-banco{display:none}
       '<th>Pessoa</th><th>Horas do mês</th><th>Saldo do mês</th><th>Acumulado ' + BH_MESES_HISTORICO + ' meses</th><th>Saldo no banco</th><th>Pedidos</th>' +
       '</tr></thead><tbody>' + linhas + '</tbody></table>';
     Array.prototype.forEach.call(wrap.querySelectorAll('[data-bh-pessoa]'), function(tr) {
-      tr.addEventListener('click', function(){ bhVerPessoa(this.getAttribute('data-bh-pessoa')); });
+      tr.addEventListener('click', function(){ bhAbrirPessoaNoBanco(this.getAttribute('data-bh-pessoa')); });
     });
+  }
+  // Da aba Sócios para o Banco da pessoa, no mesmo mês
+  function bhAbrirPessoaNoBanco(id) {
+    AP.bankMonth = socMes();
+    AP.tabLoaded.banco = true;          // bhVerPessoa já carrega; evita carregar duas vezes
+    switchTab('banco');
+    bhVerPessoa(id);
   }
   function bhPreencherSeletor() {
     var sel = document.getElementById('bh-pessoa');
@@ -2857,7 +2944,6 @@ body.apo-modo-leitura #stab-banco{display:none}
         document.getElementById('bh-vendo-voltar').addEventListener('click', function(){ bhVerPessoa(null); });
       }
     }
-    var eq = document.getElementById('bh-equipe-box'); if (eq && outro) eq.style.display = 'none';
     // O formulário de pedido é só para o próprio banco
     var form = document.querySelector('.bh-side > .apo-form-card');
     if (form) form.style.display = outro ? 'none' : '';
@@ -4095,12 +4181,44 @@ body.apo-modo-leitura #stab-banco{display:none}
     var r = document.getElementById(resetId);
     if (r) { r.hidden = !ativo; r.textContent = 'Cancelar edição'; r.className = ativo ? 'apo-btn apo-btn-full' : ''; }
   }
+  // Pop-up de edição: move o formulário (horas ou custos) para o modal e devolve ao fechar,
+  // assim os campos, a cascata e o salvar continuam sendo os mesmos do formulário lateral.
+  var EDIT_FORMS = { h:'apo-hours-form', c:'apo-costs-form' };
+  function abrirEdicaoModal(k, titulo, sub) {
+    var form = document.getElementById(EDIT_FORMS[k]);
+    if (!form) return;
+    fecharEdicaoModal();
+    var lugar = document.createElement('div');
+    lugar.className = 'apo-edit-lugar'; lugar.id = 'apo-edit-lugar';
+    lugar.textContent = 'Editando no pop-up…';
+    form.parentNode.insertBefore(lugar, form);
+    document.getElementById('apo-edit-slot').appendChild(form);
+    AP.editModalK = k;
+    document.getElementById('apo-edit-titulo').textContent = titulo;
+    document.getElementById('apo-edit-sub').textContent = sub || '';
+    document.getElementById('apo-edit-modal').style.display = 'flex';
+  }
+  function fecharEdicaoModal() {
+    var k = AP.editModalK; if (!k) return;
+    AP.editModalK = null;
+    var form = document.getElementById(EDIT_FORMS[k]);
+    var lugar = document.getElementById('apo-edit-lugar');
+    if (form && lugar) { lugar.parentNode.insertBefore(form, lugar); lugar.remove(); }
+    document.getElementById('apo-edit-modal').style.display = 'none';
+  }
+  function cancelarEdicaoModal() {
+    if (AP.editModalK === 'h') resetHorasForm();
+    else if (AP.editModalK === 'c') resetCostForm();
+    fecharEdicaoModal();
+  }
   function sairEdicaoHora(silencioso) {
+    if (AP.editModalK === 'h') fecharEdicaoModal();
     if (!AP.editHoraId && silencioso) return;
     AP.editHoraId = null;
     marcarEdicao('apo-hours-form', false, '', 'apo-submit', 'Registrar horas', 'apo-reset');
   }
   function sairEdicaoCusto(silencioso) {
+    if (AP.editModalK === 'c') fecharEdicaoModal();
     if (!AP.editCustoId && silencioso) return;
     AP.editCustoId = null;
     marcarEdicao('apo-costs-form', false, '', 'apo-cost-submit', 'Registrar custo', 'apo-cost-reset');
@@ -4157,7 +4275,7 @@ body.apo-modo-leitura #stab-banco{display:none}
     document.getElementById('apo-desc').value = l.descricao || '';
     updateDuration();
     marcarEdicao('apo-hours-form', true, 'Editando lançamento de ' + fmtDate(l.data_lancamento) + ' · ' + String(l.hora_inicio).slice(0,5) + '–' + String(l.hora_fim).slice(0,5), 'apo-submit', 'Salvar alterações', 'apo-reset');
-    document.getElementById('apo-hours-form').scrollIntoView({ behavior:'smooth', block:'start' });
+    abrirEdicaoModal('h', 'Editar horas', fmtDate(l.data_lancamento) + ' · ' + String(l.hora_inicio).slice(0,5) + '–' + String(l.hora_fim).slice(0,5));
   }
   // Fase 4 (sugestão 2): repete o último lançamento — mantém dia e horário, copia o resto
   async function repetirUltimoLancamento() {
@@ -4235,7 +4353,7 @@ body.apo-modo-leitura #stab-banco{display:none}
     document.getElementById('apo-cost-evento-soc').value = evS ? evS.nome : '';
     document.getElementById('apo-cost-desc').value = c.descricao || '';
     marcarEdicao('apo-costs-form', true, 'Editando custo de ' + fmtDate(c.data_lancamento), 'apo-cost-submit', 'Salvar alterações', 'apo-cost-reset');
-    document.getElementById('apo-costs-form').scrollIntoView({ behavior:'smooth', block:'start' });
+    abrirEdicaoModal('c', 'Editar custo', fmtDate(c.data_lancamento) + ' · R$ ' + Number(c.valor||0).toFixed(2).replace('.',','));
   }
   async function excluirCusto(id) {
     if (AP.semanaTravada) { setFb('apo-cost-feedback','Semana finalizada: desbloqueie antes de excluir.','err'); return; }
@@ -4272,6 +4390,7 @@ body.apo-modo-leitura #stab-banco{display:none}
     av.hidden = !ro;
     if (ro) av.innerHTML = '<span>Visualizando os apontamentos de <strong>' + esc(nomeCurtoApo(AP.viewUser.nome)) + '</strong> — somente leitura.</span><button type="button" class="apo-btn" id="apo-ver-voltar">Voltar para os meus</button>';
     if (ro) { sairEdicaoHora(true); sairEdicaoCusto(true); }
+    posicionarNavSemana(activeTab());
   }
   function trocarPessoa(id) {
     AP.viewUser = id ? (AP.pessoas || []).find(function(u){ return String(u.id) === String(id); }) || null : null;
@@ -4607,15 +4726,38 @@ body.apo-modo-leitura #stab-banco{display:none}
   // Sugestão 12: clicar num dia do gráfico mensal abre aquela semana na aba Horas
   window.__apoIrParaDia = function (iso) { switchTab('horas'); setSelectedDate(iso); };
 
+  // A navegação de semana fica no título do formulário (Horas/Custos); no modo leitura
+  // (formulário escondido) e nas outras abas ela volta para a barra do topo.
+  function posicionarNavSemana(tab) {
+    var nav = document.getElementById('semana-nav-wrap');
+    var topo = document.querySelector('.apo-topbar');
+    var alvo = (!modoLeitura() && (tab === 'horas' || tab === 'custos'))
+      ? document.querySelector('#stp-' + tab + ' .apo-form-title') : null;
+    document.querySelectorAll('.apo-form-title.com-semana').forEach(function(t){ if (t !== alvo) t.classList.remove('com-semana'); });
+    if (alvo) {
+      if (!alvo.querySelector('.apo-form-title-txt')) {
+        var txt = alvo.textContent.trim();
+        alvo.textContent = '';
+        var sp = document.createElement('span'); sp.className = 'apo-form-title-txt'; sp.textContent = txt;
+        alvo.appendChild(sp);
+      }
+      alvo.classList.add('com-semana');
+      alvo.appendChild(nav);
+    } else if (topo && nav.parentElement !== topo) {
+      topo.insertBefore(nav, topo.firstChild);
+    }
+  }
+
   function switchTab(tab) {
-    ['horas','custos','banco','mensal','historico'].forEach(function(t) {
+    ['horas','custos','banco','mensal','historico','socios'].forEach(function(t) {
       document.getElementById('stab-'+t).classList.toggle('active',t===tab);
       document.getElementById('stp-'+t).classList.toggle('active',t===tab);
     });
     // A linha de semana só faz sentido em Horas e Custos (Banco e Histórico são por mês)
-    document.getElementById('semana-nav-wrap').style.display = (tab==='historico'||tab==='banco'||tab==='mensal')?'none':'';
+    document.getElementById('semana-nav-wrap').style.display = (tab==='historico'||tab==='banco'||tab==='mensal'||tab==='socios')?'none':'';
+    posicionarNavSemana(tab);
     // finalizar e avisos de semana só fazem sentido nas abas Horas e Custos
-    var abaSemana = !(tab==='historico'||tab==='banco'||tab==='mensal');
+    var abaSemana = !(tab==='historico'||tab==='banco'||tab==='mensal'||tab==='socios');
     document.getElementById('apo-week-finalizar').style.display = abaSemana ? '' : 'none';
     document.getElementById('apo-sem-travada').style.display = abaSemana ? '' : 'none';
     if (tab==='horas' && !AP.tabLoaded.horas) {
@@ -4636,6 +4778,8 @@ body.apo-modo-leitura #stab-banco{display:none}
       if (mes) loadHistoricoMes(mes);
     } else if (tab==='banco') {
       loadBancoData().catch(function(e){ setFb('apo-bh-feedback',e.message,'err'); });
+    } else if (tab==='socios') {
+      loadBancoEquipe();
     }
   }
 
@@ -4655,6 +4799,9 @@ body.apo-modo-leitura #stab-banco{display:none}
     document.getElementById('stab-custos').addEventListener('click',function(){ switchTab('custos'); });
     document.getElementById('stab-banco').addEventListener('click',function(){ switchTab('banco'); });
     document.getElementById('stab-historico').addEventListener('click',function(){ switchTab('historico'); });
+    document.getElementById('stab-socios').addEventListener('click',function(){ switchTab('socios'); });
+    document.getElementById('soc-month-prev').addEventListener('click',function(){ shiftSocMonth(-1); });
+    document.getElementById('soc-month-next').addEventListener('click',function(){ shiftSocMonth(1); });
     document.getElementById('apo-week-prev').addEventListener('click',function(){ shiftWeek(-1); });
     document.getElementById('apo-week-next').addEventListener('click',function(){ shiftWeek(1); });
     document.getElementById('apo-week-today').addEventListener('click',function(){ setSelectedDate(new Date().toISOString().slice(0,10)); });
@@ -4663,13 +4810,38 @@ body.apo-modo-leitura #stab-banco{display:none}
     ['lanc-lista-wrap','custo-lista-wrap'].forEach(function(wid){
       var w = document.getElementById(wid); if (!w) return;
       w.addEventListener('click', function(ev){
-        var b = ev.target.closest('.lanc-acao'); if (!b) return;
+        var b = ev.target.closest('.lanc-acao');
+        if (!b) {                                  // clique na linha inteira = editar
+          var it = ev.target.closest('.lanc-abre');
+          if (!it || modoLeitura()) return;
+          if (it.dataset.hid) editarHora(it.dataset.hid).catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
+          else if (it.dataset.cid) editarCusto(it.dataset.cid).catch(function(e){ setFb('apo-cost-feedback', e.message, 'err'); });
+          return;
+        }
         var id = b.dataset.id, act = b.dataset.act;
         if (act === 'edit-h') editarHora(id).catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
         if (act === 'del-h') excluirHora(id).catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
         if (act === 'edit-c') editarCusto(id).catch(function(e){ setFb('apo-cost-feedback', e.message, 'err'); });
         if (act === 'del-c') excluirCusto(id).catch(function(e){ setFb('apo-cost-feedback', e.message, 'err'); });
       });
+    });
+    document.getElementById('cal-semana-wrap').addEventListener('click', function(ev){
+      var bl = ev.target.closest('.cal-bloco[data-hid]');
+      if (!bl || modoLeitura()) return;
+      ev.stopPropagation();
+      editarHora(bl.dataset.hid).catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
+    });
+    document.querySelectorAll('[data-edit-fechar]').forEach(function(b){ b.addEventListener('click', cancelarEdicaoModal); });
+    document.getElementById('apo-edit-modal').addEventListener('click', function(ev){ if (ev.target === this) cancelarEdicaoModal(); });
+    document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape' && AP.editModalK) cancelarEdicaoModal(); });
+    document.getElementById('apo-edit-salvar').addEventListener('click', function(){
+      var f = document.getElementById(EDIT_FORMS[AP.editModalK] || ''); if (!f) return;
+      if (f.requestSubmit) f.requestSubmit(); else f.dispatchEvent(new Event('submit', { cancelable:true }));
+    });
+    document.getElementById('apo-edit-excluir').addEventListener('click', function(){
+      var k = AP.editModalK;
+      if (k === 'h' && AP.editHoraId) excluirHora(AP.editHoraId).catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
+      if (k === 'c' && AP.editCustoId) excluirCusto(AP.editCustoId).catch(function(e){ setFb('apo-cost-feedback', e.message, 'err'); });
     });
     document.getElementById('apo-ver-pessoa').addEventListener('change', function(){ trocarPessoa(this.value); });
     document.getElementById('apo-leitura-aviso').addEventListener('click', function(ev){ if (ev.target.id === 'apo-ver-voltar') trocarPessoa(''); });
@@ -4827,6 +4999,8 @@ body.apo-modo-leitura #stab-banco{display:none}
       })();
 
       bindEvents();
+      document.getElementById('stab-socios').hidden = !bhEhSocio();   // aba Sócios: só sócios e sócios-administradores
+      posicionarNavSemana(activeTab());
       bindBhAviso();
       revealApp();
       if (location.hash === '#banco') bhIrParaPedidos('meus');
@@ -4871,6 +5045,22 @@ body.apo-modo-leitura #stab-banco{display:none}
   const G = { get usuario() { const c = window.__apoCtx ? window.__apoCtx() : {}; return { id: c.uid }; }, _minhasHorasMes: null };
   const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
+  // Na Gestão esta função lê os produtos já carregados na página; aqui usa os dados
+  // que vêm junto com cada lançamento do mês (produtos → oportunidades → clientes, etapas).
+  const MH_CACHE = { prods: {}, etapas: {} };
+  function getProjetoHierarquia(prodId, etapaId = null) {
+    const prod = MH_CACHE.prods[prodId] || null;
+    const opp = prod?.oportunidades;
+    const cli = opp?.clientes;
+    const etapa = etapaId ? (MH_CACHE.etapas[etapaId] || null) : null;
+    return {
+      cliente: cli?.nome || 'Sem cliente',
+      oportunidade: opp?.projeto || prod?.nome || 'Sem oportunidade',
+      produto: prod?.nome || '—',
+      etapa: etapa?.nome || 'Sem etapa',
+      prod, opp, cli, etapaObj: etapa,
+    };
+  }
 function fmtHLong(h) {
   if (!h && h !== 0) return '0h 00min';
   const totalMin = Math.round(h * 60);
@@ -4947,7 +5137,7 @@ function mhTipoLabel(tipo) {
 }
 
 function mhTipoColor(tipo) {
-  return ({ projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' }[tipo] || '#888');
+  return ({ projeto:'#5981CC', organizacao:'#4D865C', sociedade:'#E2B141' }[tipo] || '#8A867E');
 }
 
 function mhProjetoResumoLabel(l) {
@@ -5321,6 +5511,10 @@ async function obterMinhasHorasMes(ym) {
     .order('hora_inicio');
 
   if (error) throw error;
+  (horas || []).forEach(h => {
+    if (h.produto_id && h.produtos) MH_CACHE.prods[h.produto_id] = h.produtos;
+    if (h.etapa_id && h.etapas) MH_CACHE.etapas[h.etapa_id] = h.etapas;
+  });
   // ausências e feriados contam como horas trabalhadas (mesma regra da aba Horas)
   let creditos = 0;
   try {
