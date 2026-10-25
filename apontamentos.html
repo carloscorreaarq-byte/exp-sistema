@@ -624,21 +624,47 @@ body{
   display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(300px, .9fr);
   gap:14px; margin-bottom:14px; align-items:stretch;
 }
-.mh-chart-card{ min-height:260px; display:flex; flex-direction:column; }
+.mh-chart-card{ min-height:0; display:flex; flex-direction:column; }
 .mh-day-chart{
   flex:1; display:flex; align-items:flex-end; gap:4px;
-  min-height:180px; padding:6px 2px 0; overflow-x:auto;
+  min-height:0; padding:6px 2px 0; overflow-x:auto;
 }
 .mh-day-col{
-  min-width:18px; display:flex; flex-direction:column; align-items:center; gap:6px;
+  flex:1; min-width:18px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;
 }
 .mh-day-bar-wrap{
-  width:100%; height:150px; display:flex; align-items:flex-end;
+  position:relative; width:100%; height:120px; display:flex; align-items:flex-end;
 }
 .mh-day-bar{
-  width:100%; min-height:2px; border-radius:6px 6px 2px 2px;
+  width:100%; min-height:2px; border-radius:6px 6px 2px 2px; overflow:hidden;
+  display:flex; flex-direction:column-reverse;
   background:var(--azul, #1D4FA0);
 }
+.mh-day-bar.empilhada{ background:transparent; }
+/* Partes da barra: trabalhado (azul), compensação (verde), ausência remunerada (ouro), feriado (listrado) */
+.mh-seg{ width:100%; flex-shrink:0; }
+.mh-seg + .mh-seg{ border-bottom:1px solid var(--branco); }
+.mh-seg.trab{ background:var(--azul); }
+.mh-seg.comp{ background:var(--verde); }
+.mh-seg.aus{ background:var(--ouro); }
+.mh-seg.fer{ background:repeating-linear-gradient(135deg, var(--azul) 0 3px, var(--branco) 3px 6px); box-shadow:inset 0 0 0 1px var(--azul); }
+.mh-day-col:hover .mh-day-bar{ filter:brightness(.92); }
+/* Hover: horas do dia */
+.mh-day-tip{
+  position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:5;
+  display:none; white-space:nowrap; pointer-events:none;
+  background:var(--branco); border:1px solid var(--cinza); border-radius:8px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08); padding:5px 8px;
+  font-size:10px; color:#8A867E; line-height:1.45; text-align:left;
+}
+.mh-day-tip strong{ display:block; font-size:12px; font-weight:700; color:var(--grafite); }
+.mh-day-tip i{ display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; vertical-align:0; }
+.mh-day-col.tip-esq .mh-day-tip{ left:0; transform:none; }
+.mh-day-col.tip-dir .mh-day-tip{ left:auto; right:0; transform:none; }
+.mh-day-col:hover .mh-day-tip{ display:block; }
+.mh-day-legenda{ display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; font-size:10px; color:#8A867E; }
+.mh-day-legenda span{ display:inline-flex; align-items:center; gap:5px; }
+.mh-day-legenda i{ width:9px; height:9px; border-radius:2px; display:inline-block; }
 .mh-day-bar.zero{ background:var(--cinza2); opacity:.65; }
 .mh-day-lbl{
   font-size:10px; color:#8A867E; font-variant-numeric:lining-nums tabular-nums; white-space:nowrap;
@@ -649,7 +675,7 @@ body{
 }
 .mh-stat{
   border:1px solid var(--cinza2); border-radius:10px; background:var(--branco);
-  padding:12px 14px; min-height:122px; display:flex; flex-direction:column;
+  padding:12px 14px; min-height:104px; display:flex; flex-direction:column;
 }
 .mh-stat-k{
   font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#8A867E;
@@ -1504,11 +1530,6 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         <div class="mh-stat-k">Total do período</div>
         <div class="mh-stat-v" id="mh-total-geral">—</div>
         <div class="mh-stat-s" id="mh-total-geral-sub">—</div>
-      </div>
-      <div class="mh-stat">
-        <div class="mh-stat-k">Projetos / frentes</div>
-        <div class="mh-stat-v" id="mh-total-projetos">0</div>
-        <div class="mh-stat-s">Agrupamentos com horas no mês</div>
       </div>
       <div class="mh-stat">
         <div class="mh-stat-k">Dias lançados</div>
@@ -2820,7 +2841,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   // ── Sócios: banco de horas da equipe ─────────────────────────────
   async function bhCarregarEquipe() {
     if (AP.bhEquipe) return AP.bhEquipe;
-    var r = await window.sb.from('usuarios').select('id,nome,role,nucleo_id,ativo').eq('ativo', true).order('nome');
+    var r = await window.sb.from('usuarios').select('*').eq('ativo', true).order('nome');
     if (r.error) throw r.error;
     var isSoc = window.isSocioRole || function(x){ return isSocioAdmRole(x); };
     AP.bhEquipe = (r.data || []).filter(function(x){ return !isSoc(x.role) && x.id !== uid(); });
@@ -2876,7 +2897,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       window.sb.from('banco_horas_solicitacoes').select('usuario_id').eq('status_solicitacao', 'pendente').in('usuario_id', ids),
       Promise.all(equipe.map(function(x){
         return window.ExpHorasCredito
-          ? window.ExpHorasCredito.carregar(window.sb, x.id, rangeIni, rangeFim, { nucleoId: x.nucleo_id }).then(function(c){ return c; }, function(){ return null; })
+          ? window.ExpHorasCredito.carregar(window.sb, x.id, rangeIni, rangeFim, { nucleoId: x.nucleo_id || x.nucleo }).then(function(c){ return c; }, function(){ return null; })
           : Promise.resolve(null);
       })),
     ]);
@@ -4371,7 +4392,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   async function initVerPessoa() {
     var wrap = document.getElementById('apo-ver-wrap');
     if (!podeVerOutros()) { wrap.hidden = true; return; }
-    var r = await window.sb.from('usuarios').select('id,nome,role,nucleo_id,ativo').eq('ativo', true).order('nome');
+    var r = await window.sb.from('usuarios').select('*').eq('ativo', true).order('nome');
     if (r.error) return;
     var eu = uid();
     var sel = document.getElementById('apo-ver-pessoa');
@@ -5272,29 +5293,59 @@ function renderMhResumoLista(lista, total, tipo, emptyText) {
 
 function renderMhDayChart(dataset) {
   const { ini, fim, resumo } = dataset;
+  const credPorDia = dataset.credPorDia || {};
   const dias = [];
   const diaMap = new Map((resumo.detalhesPorDia || []).map(d => [d.data, d.total]));
   const dt = new Date(ini + 'T12:00:00');
   const fimDt = new Date(fim + 'T12:00:00');
   while (dt <= fimDt) {
     const iso = dt.toISOString().split('T')[0];
-    dias.push({ iso, dia: dt.getDate(), horas: diaMap.get(iso) || 0 });
+    // créditos do dia: feriado (listrado), ausência remunerada (ouro), compensação do banco (verde)
+    const cr = credPorDia[iso];
+    let fer = 0, aus = 0, comp = 0;
+    ((cr && cr.itens) || []).forEach(it => {
+      if (it.tipo === 'compensacao_bh') comp += it.horas;
+      else if (cr.feriado) fer += it.horas;
+      else aus += it.horas;
+    });
+    const trab = diaMap.get(iso) || 0;
+    dias.push({ iso, dia: dt.getDate(), trab, fer, aus, comp, total: trab + fer + aus + comp, itens: (cr && cr.itens) || [] });
     dt.setDate(dt.getDate() + 1);
   }
   const metaDia = mhMetaDiaria();
-  const max = Math.max(...dias.map(d => d.horas), metaDia, 0);
+  // folga no topo (×1.18) para o quadro do hover não cobrir a barra mais alta
+  const max = Math.max(...dias.map(d => d.total), metaDia, 0) * 1.18;
   const refPct = max > 0 ? Math.min((metaDia / max) * 100, 100) : 100;   // linha = jornada diária
-  return dias.map(d => {
-    const pct = max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5;
-    const zeroCls = d.horas <= 0 ? 'zero' : '';
-    const title = `${fmtDate(d.iso)} · ${fmtHClock(d.horas)} — clique para abrir a semana`;
-    return `<div class="mh-day-col" title="${_escAttrN(title)}" onclick="window.__apoIrParaDia && window.__apoIrParaDia('${d.iso}')">
+  const nomeTipo = { trab:'Trabalhado', comp:'Compensação', aus:'Ausência remunerada', fer:'Feriado' };
+  const corTip = { trab:'var(--azul)', comp:'var(--verde)', aus:'var(--ouro)', fer:'repeating-linear-gradient(135deg, var(--azul) 0 2px, var(--branco) 2px 4px)' };
+  let temCredito = false;
+  const cols = dias.map((d, i) => {
+    const pct = max > 0 ? Math.max((d.total / max) * 100, d.total > 0 ? 6 : 1.5) : 1.5;
+    const partes = ['trab', 'comp', 'aus', 'fer'].filter(k => d[k] > 0.01);
+    if (partes.some(k => k !== 'trab')) temCredito = true;
+    const segs = partes.map(k => `<div class="mh-seg ${k}" style="height:${(d[k] / d.total * 100).toFixed(2)}%"></div>`).join('');
+    const barCls = d.total <= 0 ? 'zero' : 'empilhada';
+    const titulo = d.total > 0 ? fmtHMin(d.trab > 0 ? d.trab : d.total) : 'Sem lançamentos';
+    const linhas = partes.filter(k => k !== 'trab').map(k => {
+      const lbl = k === 'fer' ? ((d.itens.find(it => it.tipo !== 'compensacao_bh') || {}).label || nomeTipo.fer) : nomeTipo[k];
+      return `<div><i style="background:${corTip[k]}"></i>${_escN(lbl)} · ${fmtHMin(d[k])}</div>`;
+    }).join('');
+    const posCls = i < 3 ? ' tip-esq' : (i > dias.length - 4 ? ' tip-dir' : '');
+    return `<div class="mh-day-col${posCls}" onclick="window.__apoIrParaDia && window.__apoIrParaDia('${d.iso}')">
       <div class="mh-day-bar-wrap" style="background-image:linear-gradient(to top, transparent calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% + 1px), transparent calc(${refPct}% + 1px));background-repeat:no-repeat">
-        <div class="mh-day-bar ${zeroCls}" style="height:${pct}%"></div>
+        <div class="mh-day-tip"><strong>${titulo}</strong>${fmtDate(d.iso)}${linhas}<div>Clique para abrir a semana</div></div>
+        <div class="mh-day-bar ${barCls}" style="height:${pct}%">${segs}</div>
       </div>
       <div class="mh-day-lbl">${String(d.dia).padStart(2,'0')}</div>
     </div>`;
   }).join('');
+  const legenda = temCredito ? `<div class="mh-day-legenda">
+      <span><i style="background:${corTip.trab}"></i>Trabalhado</span>
+      <span><i style="background:${corTip.comp}"></i>Compensação do banco</span>
+      <span><i style="background:${corTip.aus}"></i>Ausência remunerada</span>
+      <span><i style="background:${corTip.fer};box-shadow:inset 0 0 0 1px var(--azul)"></i>Feriado</span>
+    </div>` : '';
+  return { cols, legenda };
 }
 
 function renderMhPieChart(resumo) {
@@ -5467,7 +5518,6 @@ function renderMinhasHorasResumo(dataset) {
   const { ini, fim, mesNome, resumo } = dataset;
   document.getElementById('mh-total-geral').textContent = fmtHMin(resumo.total);
   document.getElementById('mh-total-geral-sub').textContent = `${fmtHLong(resumo.total)} · ${mesNome}`;
-  document.getElementById('mh-total-projetos').textContent = String(resumo.totalFrentes).padStart(2, '0');
   document.getElementById('mh-total-dias').textContent = String(resumo.diasAtivos).padStart(2, '0');
   document.getElementById('mh-media-dia').textContent = resumo.diasAtivos ? fmtHMin(resumo.mediaDia) : '—';
   {
@@ -5481,7 +5531,13 @@ function renderMinhasHorasResumo(dataset) {
   document.getElementById('mh-projetos-sub').textContent = `${resumo.lancamentos} lançamento(s) no período`;
   document.getElementById('mh-periodo-faixa').textContent = `${fmtDate(ini)} — ${fmtDate(fim)}`;
   document.getElementById('mh-chart-sub').textContent = `${resumo.diasAtivos} dia(s) lançados · pico diário ${fmtHClock(Math.max(...(resumo.detalhesPorDia || []).map(d => d.total), 0))}`;
-  document.getElementById('mh-day-chart').innerHTML = renderMhDayChart(dataset);
+  {
+    const ch = renderMhDayChart(dataset);
+    document.getElementById('mh-day-chart').innerHTML = ch.cols;
+    let lg = document.getElementById('mh-day-legenda-wrap');
+    if (!lg) { lg = document.createElement('div'); lg.id = 'mh-day-legenda-wrap'; document.getElementById('mh-day-chart').insertAdjacentElement('afterend', lg); }
+    lg.innerHTML = ch.legenda;
+  }
   document.getElementById('mh-type-bars').innerHTML = renderMhTypeBars(resumo);
   const _pw = document.getElementById('mh-pie-wrap'); if (_pw) _pw.innerHTML = renderMhPieChart(resumo);
   const summaryPanels = renderMhSummaryPanels(resumo);
@@ -5516,16 +5572,18 @@ async function obterMinhasHorasMes(ym) {
     if (h.etapa_id && h.etapas) MH_CACHE.etapas[h.etapa_id] = h.etapas;
   });
   // ausências e feriados contam como horas trabalhadas (mesma regra da aba Horas)
-  let creditos = 0;
+  let creditos = 0, credPorDia = {};
   try {
     const c = window.__apoCtx ? window.__apoCtx() : {};
     if (window.ExpHorasCredito) {
       const cr = await window.ExpHorasCredito.carregar(window.sb, G.usuario.id, ini, fim, { nucleoId: c.nucleoId });
       creditos = window.ExpHorasCredito.total(cr, ini, fim) || 0;
+      credPorDia = (cr && cr.porDia) || {};
     }
   } catch (e) { creditos = 0; }
   return {
     creditos,
+    credPorDia,
     esperado: mhDiasUteis(ini, fim) * mhMetaDiaria(),
     ym,
     ini,
