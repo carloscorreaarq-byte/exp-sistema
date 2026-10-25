@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared/nome-curto.js"></script>
+<script src="shared/horas-creditos.js?v=2026-10-25"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
@@ -157,7 +158,11 @@ body {
   gap: 14px;
   align-items: start;
 }
-@media (max-width: 1100px) { #app-dashboard { grid-template-columns: 280px minmax(0, 1fr) 220px; } }
+@media (max-width: 1100px) and (min-width: 861px) {
+  #app-dashboard { grid-template-columns: 300px minmax(0, 1fr); }
+  #app-dashboard .dash-col-side { grid-column: 1 / -1; grid-row: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  #app-dashboard .dash-col-side > .dash-sec { margin-top: 0 !important; }
+}
 @media (max-width: 860px)  { #app-dashboard { grid-template-columns: 1fr; } }
 
 /* Coluna de pessoais e coluna lateral esticam pelas 2 linhas (coletivas + tarefas ficam empilhadas na coluna central).
@@ -231,6 +236,9 @@ body {
   color: var(--grafite);
 }
 .hours-pct-inline { font-size: var(--text-sub); color: var(--txt-3); }
+.hours-link { display: block; color: inherit; text-decoration: none; cursor: pointer; transition: border-color .12s; }
+.hours-link:hover { border-color: var(--grafite); }
+.hours-cred { font-size: 10px; color: var(--txt-3); margin: -4px 0 8px; }
 .hours-pct-inline strong { color: var(--verde); font-weight: 700; }
 .hours-bar { display: flex; gap: 3px; margin-bottom: 4px; }
 .hours-seg { flex: 1; height: 5px; border-radius: 3px; background: var(--cinza2); }
@@ -349,6 +357,7 @@ body {
   position: sticky; top: 0; z-index: 1;
 }
 [data-theme="dark"] .dash-task-section { background: var(--off); border-bottom-color: var(--cinza2); }
+.dash-task-section.atrasadas { color: var(--terracota); }
 
 .dash-task-item {
   display: flex; align-items: flex-start; gap: 9px;
@@ -446,7 +455,11 @@ body {
   background: var(--azul); flex-shrink: 0;
 }
 .dash-event-dot.agenda_exp { background: var(--verde); }
-.dash-event-dot.feriado, .dash-event-dot.recesso { background: var(--ouro); }
+.dash-event-dot.feriado, .dash-event-dot.recesso, .dash-event-dot.feriado_local { background: var(--ouro); }
+.dash-event-dot.entrega { background: var(--terracota); }
+.dash-event-dot.ausencia_rem, .dash-event-dot.ausencia_nrem, .dash-event-dot.ausencia_aniv, .dash-event-dot.compensacao_bh { background: var(--txt-3); }
+.dash-ver-cal { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-4); text-decoration: none; margin-left: auto; margin-right: 6px; }
+.dash-ver-cal:hover { color: var(--grafite); }
 .dash-event-body { flex: 1; min-width: 0; }
 .dash-event-title { font-size: var(--text-body); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash-event-when { font-size: var(--text-sub); color: var(--txt-3); margin-top: 2px; }
@@ -475,6 +488,11 @@ body {
 .prio-hub-etapa { font-size: 10px; color: var(--txt-3); margin-top: 2px; }
 [data-theme="dark"] .prio-hub-etapa { color: var(--txt-4); }
 /* Concluída — sem cor, acinzentada */
+.prio-concl-toggle { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 5px; padding: 0; border: none; background: none; cursor: pointer; font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-4); }
+.prio-concl-toggle:hover { color: var(--txt-2); }
+.prio-concl-toggle svg { transition: transform .15s; }
+.prio-concl-toggle.aberto svg { transform: rotate(90deg); }
+.prio-concl-lista[hidden] { display: none; }
 .prio-hub-card.prio-done {
   background: var(--off) !important;
   border-left-color: var(--cinza) !important;
@@ -515,7 +533,7 @@ body {
 /* ── Prioridades coletivas — carrossel de 3 colunas ─────────── */
 .pmhub-wrap  { display: flex; align-items: stretch; gap: 8px; }
 .pmhub-track {
-  display: grid; grid-auto-flow: column; grid-auto-columns: min(340px, calc((100% - 16px) / 3));
+  display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 8px) / 2);
   gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
   flex: 1; min-width: 0; padding-bottom: 2px; align-items: stretch;
 }
@@ -531,7 +549,9 @@ body {
   transition: border-color .12s, color .12s;
 }
 .pmhub-nav:hover { border-color: var(--grafite); color: var(--grafite); }
-@media (max-width: 860px) { .pmhub-track { grid-auto-columns: calc(70% - 6px); } }
+.pmhub-wrap.tres .pmhub-track { grid-auto-columns: calc((100% - 16px) / 3); }
+.pmhub-nav { display: flex; height: 26px; padding: 0; }
+@media (max-width: 860px) { .pmhub-track, .pmhub-wrap.tres .pmhub-track { grid-auto-columns: calc(70% - 6px); } }
 /* cores do card definidas via inline style no buildCard (semafórico) */
 
 /* ── EMPTY STATE INLINE ──────────────────────────────────── */
@@ -545,6 +565,9 @@ body {
   transition: color .12s;
 }
 .dash-lbl-add:hover { color: var(--grafite); }
+.dash-lbl-add.is-recentes { display: inline-flex; align-items: center; padding: 0 4px; }
+.dash-lbl-count { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--txt-4); margin-left: auto; }
+.dash-lbl-actions .dash-lbl-count { margin-right: 4px; }
 [data-theme="dark"] .dash-lbl-add { color: var(--txt-4); }
 [data-theme="dark"] .dash-lbl-add:hover { color: var(--grafite); }
 
@@ -686,76 +709,6 @@ body {
 [data-theme="dark"] #dash-task-popdown .fgroup input,
 [data-theme="dark"] #dash-task-popdown .fgroup select,
 [data-theme="dark"] #dash-task-popdown .fgroup textarea { background: var(--branco); border-color: var(--cinza); color-scheme: dark; }
-
-/* ── CARD MÓDULO ─────────────────────────────────────────── */
-.mod-card {
-  background: var(--branco);
-  border: 1px solid var(--cinza);
-  border-radius: var(--radius-card);
-  padding: 14px 16px 12px;
-  cursor: pointer;
-  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
-  position: relative; overflow: hidden;
-  text-decoration: none; color: inherit; display: block;
-}
-.mod-card::before {
-  content: ''; position: absolute;
-  top: 0; left: 0; width: 3px; height: 100%;
-  border-radius: var(--radius-card) 0 0 var(--radius-card);
-}
-.mod-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-.mod-card.disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
-
-.mod-card.calc::before       { background: var(--verde); }
-.mod-card.crm::before        { background: var(--azul); }
-.mod-card.gestao::before     { background: var(--ouro); }
-.mod-card.apoio::before      { background: var(--terracota); }
-.mod-card.contatos::before   { background: var(--azul); }
-.mod-card.chat-fp::before    { background: var(--verde); }
-.mod-card.financeiro::before { background: var(--ouro); }
-.mod-card.analise::before    { background: var(--azul); }
-.mod-card.pessoas::before    { background: var(--terracota); }
-.mod-card.sociedade::before  { background: var(--ouro); }
-
-.mod-icone {
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; margin-bottom: 6px;
-  border-radius: var(--radius-btn);
-}
-.mod-card.calc .mod-icone       { background: var(--verde-bg); }
-.mod-card.crm .mod-icone        { background: var(--az-bg); }
-.mod-card.gestao .mod-icone     { background: var(--am-bg); }
-.mod-card.apoio .mod-icone      { background: var(--tc-bg); }
-.mod-card.contatos .mod-icone   { background: var(--az-bg); }
-.mod-card.financeiro .mod-icone { background: var(--am-bg); }
-.mod-card.analise .mod-icone    { background: var(--az-bg); }
-.mod-card.pessoas .mod-icone    { background: var(--tc-bg); }
-.mod-card.sociedade .mod-icone  { background: var(--am-bg); }
-
-.mod-nome { font-size: var(--text-body); font-weight: var(--weight-label); margin-bottom: 2px; }
-.mod-desc { font-size: var(--text-sub); font-weight: 300; color: var(--txt-2); line-height: 1.4; margin-bottom: 6px; }
-.mod-tag {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: var(--text-label); font-weight: var(--weight-label);
-  letter-spacing: var(--label-spacing); text-transform: uppercase;
-}
-.mod-card.calc .mod-tag       { color: var(--verde); }
-.mod-card.crm .mod-tag        { color: var(--azul); }
-.mod-card.gestao .mod-tag     { color: var(--ouro); }
-.mod-card.apoio .mod-tag      { color: var(--terracota); }
-.mod-card.contatos .mod-tag   { color: var(--azul); }
-.mod-card.financeiro .mod-tag { color: var(--ouro); }
-.mod-card.analise .mod-tag    { color: var(--azul); }
-.mod-card.pessoas .mod-tag    { color: var(--terracota); }
-.mod-card.sociedade .mod-tag  { color: var(--ouro); }
-
-.mod-em-breve {
-  font-size: 8px; font-weight: var(--weight-label); letter-spacing: var(--label-spacing);
-  text-transform: uppercase; color: var(--txt-4);
-  border: 1px solid var(--cinza2); padding: 2px 7px;
-  display: inline-block; border-radius: var(--radius-badge);
-}
 
 /* ── AVISO VIEWER ────────────────────────────────────────── */
 .viewer-aviso {
@@ -1156,6 +1109,8 @@ body {
 .app-toast-host { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .app-toast { background: var(--grafite); color: var(--branco); font-family: var(--font-ui); font-size: 12px; padding: 9px 16px; border-radius: var(--radius-btn); box-shadow: var(--shadow-modal); opacity: 0; transition: opacity .15s; }
 .app-toast.on { opacity: 1; }
+.app-toast-undo { display: flex; align-items: center; gap: 14px; }
+.app-toast-undo button { background: none; border: none; color: var(--ouro); font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; cursor: pointer; padding: 0; }
 .app-pop-modal { width: 380px; }
 .app-pop-modal .modal-body { padding: 16px; display: grid; gap: 12px; }
 .app-pop-modal .modal-ft { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--cinza); }
@@ -1606,14 +1561,9 @@ select.shell-btn { text-transform: none; letter-spacing: 0; font-weight: 400; } 
 /* [data-theme="dark"] body::before — tratado em exp-design-system.css */
 [data-theme="dark"] .bv-hora { color: var(--txt-4); }
 [data-theme="dark"] .bv-sub  { color: var(--txt-3); }
-[data-theme="dark"] .modulos-titulo { color: var(--txt-4); }
-[data-theme="dark"] .mod-card { background: var(--branco); border-color: var(--cinza); }
-[data-theme="dark"] .mod-card:hover { box-shadow: var(--shadow-hover); }
-[data-theme="dark"] .mod-desc { color: var(--txt-3); }
 [data-theme="dark"] .conn-dot { background: var(--cinza); }
 [data-theme="dark"] .conn-dot.online { background: var(--verde); }
 [data-theme="dark"] .viewer-aviso { background: var(--am-bg); border-color: var(--ouro); color: var(--ouro); }
-[data-theme="dark"] .mod-em-breve { border-color: var(--cinza); color: var(--txt-4); }
 [data-theme="dark"] .shell-modal { background: var(--branco); border-color: var(--cinza); box-shadow: var(--shadow-modal); }
 [data-theme="dark"] .shell-modal-header,
 [data-theme="dark"] .shell-modal-footer,
@@ -2692,6 +2642,7 @@ function renderTermState(usuario) {
     if (chipIcon)     chipIcon.innerHTML     = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
     dropdownText.textContent = 'Termo de uso e proteção de dados pessoais assinado em ' + dateStr;
     chipText.textContent     = 'Termo de uso assinado em ' + dateStr;
+    chip.hidden = true;   // assinado: o aviso no cabeçalho só aparece quando está pendente
     return;
   }
 
@@ -3704,22 +3655,24 @@ function _fmtDate(iso) {
 
 // ── Renders ────────────────────────────────────────────────────────
 
-function renderHoursWidget(horasSemana) {
-  const pct = Math.round((horasSemana / 40) * 100);
+function renderHoursWidget(horasSemana, credito = 0, jornada = 40) {
+  // % da jornada da pessoa; feriados e ausências da semana contam como horas feitas
+  const pct = jornada > 0 ? Math.round(((horasSemana + credito) / jornada) * 100) : 0;
   const days = _weekDays();
   return `
-    <div class="dash-card hours-widget">
+    <a class="dash-card hours-widget hours-link" href="apontamentos.html" title="Abrir Apontamentos">
       <div class="hours-num-row">
         <div class="hours-big-num">${_fmtH(horasSemana)}</div>
-        <div class="hours-pct-inline"><strong>${pct}%</strong> da semana</div>
+        <div class="hours-pct-inline"><strong>${pct}%</strong> de ${_fmtH(jornada)}</div>
       </div>
+      ${credito > 0.01 ? `<div class="hours-cred">+ ${_fmtH(credito)} de feriado/ausência</div>` : ''}
       <div class="hours-bar">
         ${days.map(d => `<div class="hours-seg ${d.status}"></div>`).join('')}
       </div>
       <div class="hours-days">
         ${days.map(d => `<div class="hours-day-lbl ${d.status}">${d.lbl}</div>`).join('')}
       </div>
-    </div>`;
+    </a>`;
 }
 
 function _renderTaskItem(t, showAtrib) {
@@ -3765,14 +3718,33 @@ function _filtrarAtribuidas(atribuidas) {
   );
 }
 
+// Grupos das minhas tarefas: Atrasadas (sempre no topo e à mostra), Esta semana, Próximas, Sem prazo
+function _gruposTarefas(tarefas) {
+  const hoje = new Date(new Date().toDateString());
+  const domingo = new Date(hoje); domingo.setDate(domingo.getDate() + (7 - (hoje.getDay() || 7)));
+  const fimSemanaIso = domingo.getFullYear() + '-' + String(domingo.getMonth() + 1).padStart(2, '0') + '-' + String(domingo.getDate()).padStart(2, '0');
+  const g = { atrasadas: [], semana: [], proximas: [], sem: [] };
+  tarefas.forEach(t => {
+    if (!t.data_limite) g.sem.push(t);
+    else if (_isVencida(t.data_limite)) g.atrasadas.push(t);
+    else if (String(t.data_limite).slice(0, 10) <= fimSemanaIso) g.semana.push(t);
+    else g.proximas.push(t);
+  });
+  const porData = (a, b) => String(a.data_limite || '').localeCompare(String(b.data_limite || ''));
+  g.atrasadas.sort(porData); g.semana.sort(porData); g.proximas.sort(porData);
+  return [
+    ['Atrasadas', g.atrasadas, 'atrasadas'], ['Esta semana', g.semana, ''], ['Próximas', g.proximas, ''], ['Sem prazo', g.sem, ''],
+  ].filter(x => x[1].length);
+}
+
 function _renderAllTasks(tarefas, atribuidas) {
   let html = '';
-  if (tarefas.length) {
-    html += `<div class="dash-task-section">Minhas (${tarefas.length})</div>`;
-    html += tarefas.map(t => _renderTaskItem(t, false)).join('');
-  }
+  _gruposTarefas(tarefas).forEach(([nome, lista, cls]) => {
+    html += `<div class="dash-task-section${cls ? ' ' + cls : ''}">${nome} · ${lista.length}</div>`;
+    html += lista.map(t => _renderTaskItem(t, false)).join('');
+  });
   if (atribuidas.length) {
-    html += `<div class="dash-task-section">Atribuídas (${atribuidas.length})</div>`;
+    html += `<div class="dash-task-section">Atribuídas · ${atribuidas.length}</div>`;
     html += atribuidas.map(t => _renderTaskItem(t, true)).join('');
   }
   if (!html) html = `<div class="dash-empty">Nenhuma tarefa</div>`;
@@ -3783,49 +3755,17 @@ function renderTasksSection(tarefas, tarefasAtribuidas) {
   return `
     <div class="dash-sec">
       <div class="dash-lbl">Tarefas
-        <button class="dash-lbl-add is-recentes" onclick="toggleDashRecentesPop(this)" title="Histórico e tarefas excluídas">↺</button>
-        <button class="dash-lbl-add" onclick="openDashTaskPop(this)" title="Nova tarefa">+</button>
+        <div class="dash-lbl-actions">
+          ${tarefas.length ? `<span class="dash-lbl-count">${tarefas.length} em aberto</span>` : ''}
+          <button class="dash-lbl-add is-recentes" onclick="toggleDashRecentesPop(this)" title="Histórico e tarefas excluídas" aria-label="Histórico de tarefas"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><polyline points="12 7 12 12 15 14"/></svg></button>
+          <button class="dash-lbl-add" onclick="openDashTaskPop(this)" title="Nova tarefa">+</button>
+        </div>
       </div>
       <div class="dash-card">
         <div class="task-list-scroll">
           <div id="dash-tasks-list">${_renderAllTasks(tarefas, tarefasAtribuidas)}</div>
         </div>
       </div>
-    </div>`;
-}
-
-function renderEventsSection(eventos) {
-  const slice = eventos.slice(0, 5);
-  const items = slice.length === 0
-    ? `<div class="dash-empty">Sem eventos próximos</div>`
-    : slice.map(ev => {
-        const dot = `<div class="dash-event-dot ${ev.tipo || 'reuniao'}"></div>`;
-        const meet = buildMeetLink(ev.meet_link);
-        return `
-          <div class="dash-event-item">
-            ${dot}
-            <div class="dash-event-body">
-              <div class="dash-event-title">${escHtml(ev.titulo)}</div>
-              <div class="dash-event-when">${_fmtEventDate(ev.inicio, ev.dia_inteiro)}</div>
-            </div>
-            ${meet}
-          </div>`;
-      }).join('');
-  return `
-    <div class="dash-sec">
-      <div class="dash-lbl">Próximos eventos
-        <div class="dash-lbl-actions">
-          <a href="calendario.html" class="dash-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Calendário
-          </a>
-          <button class="dash-btn primary" onclick="openDashModal('event')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Novo
-          </button>
-        </div>
-      </div>
-      <div class="dash-card">${items}</div>
     </div>`;
 }
 
@@ -3837,7 +3777,7 @@ function renderPriosSection(prios) {
   const pendentes  = prios.filter(p => !p.concluida);
   const concluidas = prios.filter(p =>  p.concluida);
   const total = prios.length;
-  const lbl = `Prioridades pessoais${total ? ` <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--txt-4)">${pendentes.length} em aberto</span>` : ''}`;
+  const lbl = `Prioridades pessoais${total ? ` <span class="dash-lbl-count">${pendentes.length} em aberto</span>` : ''}`;
 
   if (!total) return `
     <div class="dash-sec">
@@ -3890,9 +3830,22 @@ function renderPriosSection(prios) {
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
       ${pendentes.map((pr,i) => buildCard(pr,i,false)).join('')}
-      ${concluidas.length ? `<div style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt-4);margin:10px 0 5px">Concluídas</div>` : ''}
-      ${concluidas.map((pr,i) => buildCard(pr,i,true)).join('')}
+      ${concluidas.length ? `
+        <button type="button" class="prio-concl-toggle${window._prioConclAberto ? ' aberto' : ''}" onclick="togglePrioConcluidas(this)" aria-expanded="${window._prioConclAberto ? 'true' : 'false'}">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+          Concluídas · ${concluidas.length}
+        </button>
+        <div class="prio-concl-lista"${window._prioConclAberto ? '' : ' hidden'}>${concluidas.map((pr,i) => buildCard(pr,i,true)).join('')}</div>` : ''}
     </div>`;
+}
+
+// Concluídas das prioridades pessoais: recolhidas por padrão
+function togglePrioConcluidas(btn) {
+  window._prioConclAberto = !window._prioConclAberto;
+  btn.classList.toggle('aberto', window._prioConclAberto);
+  btn.setAttribute('aria-expanded', window._prioConclAberto ? 'true' : 'false');
+  const lista = btn.nextElementSibling;
+  if (lista) lista.hidden = !window._prioConclAberto;
 }
 
 /* ── Prioridades do mês — cadastradas por sócios em sociedade.html,
@@ -3915,7 +3868,8 @@ function _hubPmStatus(mesISO, etapaStatus) {
 
 function renderPriosMesSection(itensMes) {
   const mesAtualNome = _PM_MESES_FULL[new Date().getMonth()];
-  const lbl = `Prioridades coletivas <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--txt-4)">· ${mesAtualNome}${itensMes.length ? ` · ${itensMes.length}` : ''}</span>`;
+  const abertasMes = itensMes.filter(it => it.etapas?.status !== 'concluida').length;
+  const lbl = `Prioridades coletivas · ${mesAtualNome}${itensMes.length ? ` <span class="dash-lbl-count">${abertasMes} em aberto</span>` : ''}`;
   if (!itensMes.length) return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
@@ -3956,14 +3910,16 @@ function renderPriosMesSection(itensMes) {
       </div>`;
   }
 
-  const navDisplay = ordenados.length > 3 ? 'flex' : 'none';
+  // 1 ou 2 cards: metade da largura cada; 3 ou mais: 1/3 cada, com setas para passar
+  const tres = ordenados.length >= 3;
+  const seta = d => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="${d < 0 ? '15 18 9 12 15 6' : '9 18 15 12 9 6'}"/></svg>`;
   return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
-      <div class="pmhub-wrap">
-        <button class="pmhub-nav" style="display:${navDisplay}" onclick="pmhubScroll(-1)" title="Anteriores">‹</button>
+      <div class="pmhub-wrap${tres ? ' tres' : ''}">
+        ${tres ? `<button type="button" class="pmhub-nav" onclick="pmhubScroll(-1)" title="Anteriores" aria-label="Anteriores">${seta(-1)}</button>` : ''}
         <div class="pmhub-track" id="pmhub-track">${ordenados.map(card).join('')}</div>
-        <button class="pmhub-nav" style="display:${navDisplay}" onclick="pmhubScroll(1)" title="Próximas">›</button>
+        ${tres ? `<button type="button" class="pmhub-nav" onclick="pmhubScroll(1)" title="Próximas" aria-label="Próximas">${seta(1)}</button>` : ''}
       </div>
     </div>`;
 }
@@ -3971,7 +3927,9 @@ function renderPriosMesSection(itensMes) {
 function pmhubScroll(dir) {
   const track = document.getElementById('pmhub-track');
   if (!track) return;
-  track.scrollBy({ left: dir * track.clientWidth, behavior: 'smooth' });
+  const card = track.querySelector('.prio-hub-card');
+  const passo = card ? card.getBoundingClientRect().width + 8 : track.clientWidth;   // um card por clique
+  track.scrollBy({ left: dir * passo, behavior: 'smooth' });
 }
 
 /* ── Calendário: estado de visualização ───────────────────── */
@@ -4141,7 +4099,7 @@ function wireDashboardDom() {
 }
 
 function renderDashboard(data) {
-  const { tarefas, tarefasAtribuidas, eventos, prios, priosMes, horasSemana, eventDays, taskDays, feriadoDays } = data;
+  const { tarefas, tarefasAtribuidas, eventos, prios, priosMes, horasSemana, horasCredito, jornadaSemanal, eventDays, taskDays, feriadoDays } = data;
 
   const mesAtualISO = new Date().toISOString().slice(0, 7);
   const priosMesAtual = (priosMes || []).filter(it => String(it.mes || '').slice(0, 7) === mesAtualISO);
@@ -4156,12 +4114,15 @@ function renderDashboard(data) {
       <div class="dash-lbl">Horas esta semana
         <button class="dash-lbl-custo" onclick="openDashCustoPop(this)" title="Lançar custo">$</button>
       </div>
-      ${renderHoursWidget(horasSemana)}
+      ${renderHoursWidget(horasSemana, horasCredito, jornadaSemanal)}
       ${renderMiniCal(eventDays || new Set(), taskDays || new Set(), feriadoDays || new Set())}
     </div>
     <div class="dash-sec" style="margin-top:14px">
       <div class="dash-lbl">Próximos eventos
-        <button class="dash-lbl-add" onclick="openDashModal('event')" title="Novo evento">+</button>
+        <div class="dash-lbl-actions">
+          <a class="dash-ver-cal" href="calendario.html">Ver calendário</a>
+          <button class="dash-lbl-add" onclick="openDashModal('event')" title="Novo evento">+</button>
+        </div>
       </div>
       <div class="dash-card${evCompact ? ' dash-events-compact' : ''}">${_renderEventItems(eventos, evCompact ? 3 : 5)}</div>
     </div>`;
@@ -4174,11 +4135,13 @@ function renderDashboard(data) {
 function _renderEventItems(eventos, limit) {
   const slice = eventos.slice(0, limit);
   if (!slice.length) return `<div class="dash-empty">Sem eventos próximos</div>`;
+  const TIPO_EV = { reuniao:'Reunião', entrega:'Entrega', agenda_exp:'Agenda EXP', feriado:'Feriado', feriado_local:'Feriado local', recesso:'Recesso',
+    ausencia_rem:'Day-off', ausencia_nrem:'Day-off', ausencia_aniv:'Aniversário', compensacao_bh:'Compensação' };
   return slice.map(ev => {
     const dot  = `<div class="dash-event-dot ${ev.tipo || 'reuniao'}"></div>`;
     const meet = buildMeetLink(ev.meet_link);
     return `
-      <div class="dash-event-item">
+      <div class="dash-event-item" title="${escAttr(TIPO_EV[ev.tipo] || 'Evento')}">
         ${dot}
         <div class="dash-event-body">
           <div class="dash-event-title">${escHtml(ev.titulo)}</div>
@@ -4195,6 +4158,10 @@ async function loadDashboard(usuario) {
   // Zera horas para evitar drift de timezone (mesmo padrão de _getWeekRange)
   const _today = new Date(); _today.setHours(0, 0, 0, 0);
   const todayISO = _today.toISOString().split('T')[0];
+  // Feriados, ausências e compensações da semana contam como horas (mesma regra do Apontamentos)
+  const _credP = window.ExpHorasCredito
+    ? window.ExpHorasCredito.carregar(sb, usuario.id, start, end, { nucleoId: usuario.nucleo_id || usuario.nucleo }).catch(() => null)
+    : Promise.resolve(null);
 
   const [
     { data: horasData },
@@ -4263,6 +4230,7 @@ async function loadDashboard(usuario) {
       .gte('data_limite', start)
       .lte('data_limite', end),
   ]);
+  const _cred = await _credP;
   const allTaskRows = [...(tarefasRaw || []), ...(tarefasAtribRaw || [])];
   const produtoIds = [...new Set(allTaskRows.map(t => t.produto_id).filter(Boolean))];
   const atribuidoIds = [...new Set((tarefasAtribRaw || []).map(t => t.atribuido_para).filter(Boolean))];
@@ -4296,6 +4264,8 @@ async function loadDashboard(usuario) {
     prios:       priosRaw || [],
     priosMes:    priosMesRaw || [],
     horasSemana: _calcHoras(horasData || []),
+    horasCredito: _cred && window.ExpHorasCredito ? (window.ExpHorasCredito.total(_cred, start, end) || 0) : 0,
+    jornadaSemanal: (_cred && _cred.jornadaSemanalH) || 40,
     eventDays,
     taskDays,
     feriadoDays,
@@ -4353,6 +4323,34 @@ async function toggleDashTask(id, concluida) {
     d.tarefas.filter(t => !t.concluida),
     _filtrarAtribuidas(d.tarefasAtribuidas)
   );
+  if (nova) {
+    toastDesfazer('Tarefa concluída', async () => {
+      // tira do histórico a conclusão que acabou de entrar e reabre
+      try {
+        const hist = JSON.parse(localStorage.getItem(DASH_TASK_HIST_KEY) || '[]');
+        const i = hist.findIndex(h => String(h.id) === String(id) && h.evento === 'concluida');
+        if (i >= 0) { hist.splice(i, 1); localStorage.setItem(DASH_TASK_HIST_KEY, JSON.stringify(hist)); }
+      } catch (e) {}
+      await toggleDashTask(id, true);
+    });
+  }
+}
+
+// Toast com botão "Desfazer" (some sozinho em 6 s)
+function toastDesfazer(msg, onUndo, ms = 6000) {
+  let host = document.getElementById('toast-undo-host');
+  if (!host) { host = document.createElement('div'); host.id = 'toast-undo-host'; host.className = 'app-toast-host'; document.body.appendChild(host); }
+  host.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'app-toast app-toast-undo';
+  el.innerHTML = '<span></span><button type="button">Desfazer</button>';
+  el.querySelector('span').textContent = msg;
+  let feito = false;
+  const fechar = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 200); };
+  el.querySelector('button').onclick = async () => { if (feito) return; feito = true; fechar(); await onUndo(); };
+  host.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('on'));
+  setTimeout(() => { if (!feito) fechar(); }, ms);
 }
 
 // ── Toast (fallback caso shared/app-utils.js não esteja carregado) ──────────
@@ -4508,12 +4506,18 @@ function toggleDashRecentesPop(btn) {
   if (pop.classList.contains('open')) { closeDashRecentesPop(); return; }
   renderDashRecentesPop();
   if (btn) {
+    // Mantém o pop-up inteiro dentro da janela (largura, lados e altura)
     const rect = btn.getBoundingClientRect();
-    const popW = 300;
-    let left = rect.left - popW + rect.width;
-    if (left < 8) left = 8;
-    pop.style.top  = (rect.bottom + 6) + 'px';
+    const popW = Math.min(340, window.innerWidth - 16);
+    let left = rect.right - popW;
+    left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
+    let top = rect.bottom + 6;
+    const espacoAbaixo = window.innerHeight - top - 12;
+    if (espacoAbaixo < 220) top = Math.max(12, window.innerHeight - 12 - Math.min(420, window.innerHeight * .7));
+    pop.style.width = popW + 'px';
+    pop.style.top  = top + 'px';
     pop.style.left = left + 'px';
+    pop.style.maxHeight = Math.min(window.innerHeight * .7, window.innerHeight - top - 12) + 'px';
   }
   pop.classList.add('open');
   setTimeout(() => bindPopdownDocHandler(pop, e => !pop.contains(e.target) && e.target !== btn), 0);
