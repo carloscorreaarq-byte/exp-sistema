@@ -576,22 +576,297 @@ body{
   font-size:10px;font-weight:700;letter-spacing:.07em;color:var(--grafite);border-bottom:1px solid var(--cinza2);
 }
 [data-theme="dark"] .apo-form-title{background:#252523;color:#F0EDE6;border-bottom-color:#2E2D2B;}
-/* Coluna Registrar horas — campos no padrão do design system (2026-10-24):
-   rótulo em caixa alta 9px; campos de 32px com texto de 12px; respiro igual entre campos */
-.apo-form-card .apo-field{gap:5px;margin-bottom:12px;}
-.apo-form-card .apo-field label{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;}
+/* Formulários do Apontamentos = padrão da Gestão › Horas/Custos (2026-10-25), em todas as abas:
+   rótulo 8px em caixa alta; campo 12px peso 300, padding 5px 9px, raio 8px, borda --cinza */
+.apo-form-card .apo-field{gap:4px;margin-bottom:8px;}
+.apo-form-card .apo-field label{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;}
 [data-theme="dark"] .apo-form-card .apo-field label{color:#A8A49B;}
 .apo-form-card .apo-field input,
-.apo-form-card .apo-field select{height:32px;padding:0 10px;font-size:12px;}
-.apo-form-card .apo-field select{padding-right:28px;}
-.apo-form-card .apo-field textarea{min-height:64px;padding:8px 10px;font-size:12px;line-height:1.45;}
-.apo-form-card .apo-tagfield{min-height:32px;padding:4px 7px;}
-.apo-form-card .apo-field .apo-tag-caret{height:22px;font-size:12px;}
-.apo-form-card #apo-selected-day{min-height:32px !important;display:flex;align-items:center;padding:0 10px !important;font-size:12px !important;color:var(--grafite) !important;}
+.apo-form-card .apo-field select,
+.apo-form-card .apo-field textarea{height:auto;min-height:0;font-family:var(--font-ui);font-size:12px;font-weight:300;padding:5px 9px;border:1px solid var(--cinza);border-radius:8px;background:var(--branco);color:var(--grafite);}
+.apo-form-card .apo-field input:focus,
+.apo-form-card .apo-field select:focus,
+.apo-form-card .apo-field textarea:focus{border-color:var(--grafite);box-shadow:none;}
+.apo-form-card .apo-field textarea{min-height:60px;resize:vertical;}
+.apo-form-card .apo-tagfield{min-height:30px;padding:3px 6px;border-color:var(--cinza);border-radius:8px;}
+.apo-form-card .apo-field .apo-tag-caret{height:22px;font-size:12px;font-weight:300;}
 .apo-form-card .apo-row{gap:10px;}
 .apo-form-card .apo-note{font-size:10px;color:#8A867E;margin-top:2px;}
-.apo-form-card .apo-pills{margin:4px 0 12px;}
+.apo-form-card .apo-pills{margin:4px 0 10px;}
 .apo-form-card .apo-pill{font-size:10px;padding:3px 9px;color:#5F5B54;}
+.apo-btn-full{width:100%;justify-content:center;margin-top:4px;padding:8px 14px !important;}
+.apo-btn[hidden]{display:none !important;}   /* .apo-btn usa display:inline-flex, que anularia o hidden */
+.apo-btn-repetir{margin-bottom:2px}
+/* ── Visualização mensal (cópia das regras .mh-* de gestao.html) ── */
+.mh-panel-body::-webkit-scrollbar{ width:4px; }
+.mh-panel-body::-webkit-scrollbar-track{ background:transparent; }
+.mh-panel-body::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.14); border-radius:2px; }
+[data-theme="dark"] .mh-panel-body::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.15); }
+.mh-day-chart::-webkit-scrollbar{ height:4px; }
+.mh-day-chart::-webkit-scrollbar-track{ background:transparent; }
+.mh-day-chart::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.14); border-radius:2px; }
+[data-theme="dark"] .mh-day-chart::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.15); }
+.mh-head{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:12px; margin-bottom:14px; flex-wrap:wrap;
+}
+.mh-sub{ font-size:11px; color:#888; margin-top:3px; }
+.mh-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.mh-overview{
+  display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(300px, .9fr);
+  gap:14px; margin-bottom:14px; align-items:stretch;
+}
+.mh-chart-card{ min-height:260px; display:flex; flex-direction:column; }
+.mh-day-chart{
+  flex:1; display:flex; align-items:flex-end; gap:4px;
+  min-height:180px; padding:6px 2px 0; overflow-x:auto;
+}
+.mh-day-col{
+  min-width:18px; display:flex; flex-direction:column; align-items:center; gap:6px;
+}
+.mh-day-bar-wrap{
+  width:100%; height:150px; display:flex; align-items:flex-end;
+}
+.mh-day-bar{
+  width:100%; min-height:2px; border-radius:6px 6px 2px 2px;
+  background:var(--azul, #1D4FA0);
+}
+.mh-day-bar.zero{ background:var(--cinza2); opacity:.65; }
+.mh-day-lbl{
+  font-size:10px; color:#8A867E; font-variant-numeric:lining-nums tabular-nums; white-space:nowrap;
+}
+.mh-stats{
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.mh-stat{
+  border:1px solid var(--cinza2); border-radius:10px; background:var(--branco);
+  padding:12px 14px; min-height:122px; display:flex; flex-direction:column;
+}
+.mh-stat-k{
+  font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#8A867E;
+}
+.mh-stat-v{
+  font-size:24px; line-height:1; font-family:var(--font-ui); font-weight:700;
+  color:var(--grafite); margin-top:auto; padding-top:18px;
+}
+.mh-stat-s{ font-size:10px; color:#888; margin-top:8px; }
+.mh-card{
+  border:1px solid var(--cinza); border-radius:10px; background:var(--branco);
+  padding:14px;
+}
+.mh-card-hd{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-bottom:12px;
+}
+.mh-card-t{
+  font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#8A867E;
+}
+.mh-card-sub{ font-size:10px; color:#888; }
+.mh-type-bars{ display:flex; flex-direction:column; gap:14px; }
+.mh-type-row{
+  display:grid; grid-template-columns:140px minmax(0,1fr) auto;
+  gap:10px; align-items:center;
+}
+.mh-type-copy{ min-width:0; }
+.mh-type-name{
+  font-size:10px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#888;
+}
+.mh-type-sub{
+  font-size:10px; color:#8A867E; margin-top:2px;
+}
+.mh-type-track{
+  height:18px; border-radius:999px; overflow:hidden; display:flex; background:var(--cinza2);
+}
+.mh-type-seg{
+  height:100%; min-width:1px; border-right:1px solid rgba(255,255,255,.9);
+}
+.mh-type-seg:last-child{ border-right:none; }
+.mh-type-total{
+  font-size:11px; font-variant-numeric:lining-nums tabular-nums; white-space:nowrap; color:var(--grafite);
+}
+.mh-summary-panels{
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;
+}
+.mh-summary-panels.colab{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+.mh-panel{
+  border:1px solid var(--cinza2); border-radius:10px; overflow:hidden; background:var(--off);
+  min-height:220px; max-height:380px; display:flex; flex-direction:column;
+}
+.mh-panel.projects-wide{ grid-column:span 2; }
+.mh-panel-hd{
+  padding:11px 12px; border-bottom:1px solid var(--cinza2); background:var(--cinza2);
+}
+.mh-panel-k{
+  font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#8A867E;
+}
+.mh-panel-v{
+  font-size:11px; color:#888; margin-top:3px;
+}
+.mh-panel-body{
+  padding:10px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1;
+}
+.mh-summary-list{ display:flex; flex-direction:column; gap:8px; }
+.mh-summary-row{
+  border:1px solid var(--cinza2); border-radius:8px; padding:10px 12px; background:var(--off);
+}
+.mh-summary-top{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:7px;
+}
+.mh-summary-label{
+  font-size:12px; font-weight:600; color:var(--grafite); line-height:1.35;
+}
+.mh-summary-val{
+  font-size:11px; font-variant-numeric:lining-nums tabular-nums; color:var(--grafite); white-space:nowrap;
+}
+.mh-summary-meta{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  font-size:10px; color:#888; margin-bottom:7px;
+}
+.mh-summary-bar{ height:6px; background:var(--cinza2); border-radius:999px; overflow:hidden; }
+.mh-summary-bar > span{
+  display:block; height:100%; border-radius:inherit;
+  background:linear-gradient(90deg, var(--ouro), #E7BF72);
+}
+.mh-day-groups{ display:flex; flex-direction:column; gap:12px; }
+.mh-day-block{
+  border:1px solid var(--cinza2); border-radius:10px; overflow:hidden; background:var(--branco);
+}
+.mh-day-hd{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:5px 12px; background:var(--cinza2); border-bottom:1px solid var(--cinza);
+}
+.mh-day-title{ font-size:10px; font-weight:700; color:var(--grafite); letter-spacing:.2px; }
+.mh-day-total{
+  font-size:10px; font-variant-numeric:lining-nums tabular-nums; white-space:nowrap; color:var(--grafite);
+}
+.mh-day-body{ display:flex; flex-direction:column; }
+.mh-day-cols-hd{
+  display:grid; grid-template-columns:80px 82px minmax(0,.9fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,1fr) 60px;
+  gap:8px; align-items:center; padding:4px 12px;
+  background:var(--off); border-bottom:1px solid var(--cinza2);
+  font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8A867E;
+}
+.mh-day-entry{
+  display:grid; grid-template-columns:80px 82px minmax(0,.9fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,1fr) 60px;
+  gap:8px; align-items:center; padding:4px 12px; border-bottom:1px solid var(--cinza2);
+}
+.mh-day-entry:last-child{ border-bottom:none; }
+.mh-day-time{ font-size:10px; color:#8A867E; font-variant-numeric:lining-nums tabular-nums; white-space:nowrap; font-weight:400; }
+.mh-day-col-data{ min-width:0; }
+.mh-day-main-1{
+  font-size:10px; font-weight:400; color:#8A867E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mh-day-main-proj{
+  font-size:10px; font-weight:400; color:#8A867E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mh-day-comment{
+  font-size:10px; font-weight:400; color:#8A867E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+.mh-day-dur{ text-align:right; font-size:10px; font-variant-numeric:lining-nums tabular-nums; white-space:nowrap; color:#8A867E; }
+.mh-badge{
+  display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px;
+  font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+  background:var(--cinza2); color:#777;
+}
+.mh-badge.projeto{ background:rgba(29,79,160,.12); color:#1D4FA0; }
+.mh-badge.organizacao{ background:rgba(29,106,74,.12); color:#1D6A4A; }
+.mh-badge.sociedade{ background:rgba(196,131,26,.14); color:#A66A12; }
+[data-theme="dark"] .mh-badge.projeto{ background:rgba(96,137,204,.18); color:var(--azul); }
+[data-theme="dark"] .mh-badge.organizacao{ background:rgba(82,166,118,.18); color:var(--verde); }
+[data-theme="dark"] .mh-badge.sociedade{ background:rgba(212,170,55,.18); color:var(--ouro); }
+@media(max-width: 900px){.mh-overview{ grid-template-columns:1fr; }.mh-stats{ grid-template-columns:1fr 1fr; }.mh-summary-panels,
+  .mh-summary-panels.colab{ grid-template-columns:1fr; }.mh-panel.projects-wide{ grid-column:auto; }.mh-type-row{ grid-template-columns:1fr; }.mh-day-entry{ grid-template-columns:1fr; }}
+[data-theme="dark"] #mh-mes::-webkit-calendar-picker-indicator{
+  filter: invert(1);
+  opacity: .92;
+}
+[data-theme="dark"] .mh-panel{ border-color:#2E2D2B; }
+[data-theme="dark"] .mh-panel-hd{ background:#252523; border-color:#2E2D2B; }
+[data-theme="dark"] .mh-day-block{ border-color:#2E2D2B; }
+[data-theme="dark"] .mh-day-hd{ border-color:#2E2D2B; }
+[data-theme="dark"] .mh-day-entry{ border-color:#2E2D2B; }
+[data-theme="dark"] .mh-day-cols-hd{ border-color:#2E2D2B; }
+[data-theme="dark"] .mh-summary-row{ border-color:#2E2D2B; }
+.mh-day-col{cursor:pointer}
+.mh-day-col:hover .mh-day-bar{filter:brightness(1.12)}
+.mh-stat-meta .mh-stat-v.ok{color:var(--verde)}
+.mh-stat-meta .mh-stat-v.baixo{color:var(--terracota)}
+#stp-mensal .filter-select{height:28px;padding:0 8px;border:1px solid var(--cinza);border-radius:8px;font-family:var(--font-ui);background:var(--branco);color:var(--grafite)}
+
+/* Fase 6: ver outra pessoa (somente leitura) */
+.apo-ver-wrap{display:flex;align-items:center;gap:6px;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E}
+.apo-ver-wrap[hidden]{display:none}
+.apo-ver-wrap select{font-family:var(--font-ui);font-size:12px;font-weight:400;text-transform:none;letter-spacing:0;padding:4px 8px;border:1px solid var(--cinza);border-radius:8px;background:var(--branco);color:var(--grafite);max-width:200px}
+.apo-leitura-aviso{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:0 0 12px;border-radius:var(--radius-card,8px);background:var(--az-bg);border:1px solid rgba(89,129,204,.35);font-size:12px;color:var(--grafite)}
+.apo-leitura-aviso[hidden]{display:none}
+.apo-leitura-aviso .apo-btn{margin-left:auto}
+body.apo-modo-leitura #stp-horas .apo-form-card,
+body.apo-modo-leitura #stp-custos .apo-form-card{display:none}
+body.apo-modo-leitura #stp-horas .apo-layout,
+body.apo-modo-leitura #stp-custos .apo-layout{grid-template-columns:1fr}
+body.apo-modo-leitura #stab-banco{display:none}
+
+/* Fase 7: celular — lista por dia no lugar do calendário, formulário abaixo */
+@media(max-width:760px){
+  #stp-horas #cal-semana-wrap,#stp-horas .apo-week-cal,#stp-horas .cal-semana{display:none}
+  .apo-layout{grid-template-columns:1fr;}
+  .apo-form-card{position:static;}
+  .apo-topbar{flex-wrap:wrap;gap:8px}
+  #apo-week-finalizar{margin-left:0;width:100%}
+  .apo-ver-wrap{width:100%}
+  .apo-ver-wrap select{flex:1;max-width:none}
+  .stab-bar{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .stab-bar .stab{white-space:nowrap}
+  .lanc-item{flex-wrap:wrap;row-gap:4px}
+  .lanc-desc{flex-basis:100%;order:3}
+  .lanc-acoes{margin-left:auto}
+  .dia-btn{padding:7px 0}
+  .apo-form-card .apo-field input,.apo-form-card .apo-field select{font-size:16px}  /* evita zoom automático no iPhone */
+  .modal{width:auto !important;max-width:100%}
+}
+
+/* Semana travada / lembrete / finalizar */
+#apo-week-finalizar{margin-left:auto}
+.apo-sem-travada,.apo-sem-lembrete{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:0 0 12px;border-radius:var(--radius-card,8px);font-size:12px;line-height:1.45}
+.apo-sem-travada[hidden],.apo-sem-lembrete[hidden]{display:none}
+.apo-sem-travada{background:var(--cinza2);border:1px solid var(--cinza);color:var(--grafite)}
+.apo-sem-travada em{color:#5F5B54}
+.apo-sem-lembrete{background:var(--am-bg);border:1px solid rgba(226,177,65,.45);color:#5F4A10}
+.apo-sem-travada .apo-btn,.apo-sem-lembrete .apo-btn{margin-left:auto}
+.apo-form-card form.travado{opacity:.55;pointer-events:none}
+.apo-travado-nota{font-size:11px;color:#5F5B54;background:var(--cinza2);border-radius:6px;padding:7px 9px;margin-bottom:8px}
+.apo-form-card form.editando{box-shadow:0 0 0 2px var(--am-bg);border-radius:8px}
+.apo-edit-banner{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:#916b13;background:var(--am-bg);border-radius:6px;padding:6px 9px;margin-bottom:8px}
+.lanc-acoes{display:flex;gap:2px;flex-shrink:0;margin-left:4px}
+.lanc-acao{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;border-radius:5px;color:#A9A59C;cursor:pointer;padding:0}
+.lanc-acao:hover{background:var(--cinza2);color:var(--grafite)}
+.lanc-acao.del:hover{color:var(--terracota)}
+.apo-fin-body label{display:block;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;margin:12px 0 4px}
+.apo-fin-body textarea{width:100%;box-sizing:border-box;min-height:90px;font-family:var(--font-ui);font-size:12px;font-weight:300;padding:6px 9px;border:1px solid var(--cinza);border-radius:8px;background:var(--branco);color:var(--grafite);resize:vertical}
+.apo-fin-total{display:flex;align-items:baseline;gap:10px}
+.apo-fin-total #apo-fin-horas{font-size:24px;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
+.apo-fin-meta{font-size:12px;color:#8A867E}
+.apo-fin-pend{margin-top:10px;padding:9px 11px;border-radius:6px;background:var(--am-bg);border-left:3px solid var(--ouro);font-size:11px;color:#5F4A10;line-height:1.6}
+.apo-fin-ok{margin-top:10px;padding:8px 11px;border-radius:6px;background:var(--verde-bg);font-size:11px;color:var(--verde)}
+.apo-fin-aviso{margin-top:10px;font-size:11px;color:#916b13}
+
+/* Dia da semana (igual à Gestão) — sincronizado com o calendário */
+.dia-selector{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:2px;}
+.dia-btn{display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 0;border:1px solid var(--cinza2);border-radius:6px;background:var(--branco);cursor:pointer;font-family:var(--font-ui);}
+.dia-btn:hover{border-color:var(--grafite);}
+.dia-btn.selected{background:var(--grafite);border-color:var(--grafite);}
+.dia-btn.fim-semana{background:var(--cinza2);}
+.dia-btn.fim-semana.selected{background:var(--grafite);}
+.dia-btn-nome{font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#8A867E;}
+.dia-btn.selected .dia-btn-nome{color:rgba(255,255,255,.7);}
+.dia-btn-num{font-size:12px;font-weight:700;color:var(--grafite);line-height:1.2;font-variant-numeric:lining-nums tabular-nums;}
+.dia-btn.selected .dia-btn-num{color:#fff;}
+.dia-btn.fim-semana .dia-btn-num{color:#8A867E;}
+.dia-btn-hrs{font-size:9px;color:var(--verde);font-weight:700;font-variant-numeric:lining-nums tabular-nums;}
+.dia-btn.selected .dia-btn-hrs{color:rgba(255,255,255,.8);}
+.dia-btn.hoje:not(.selected){border-color:var(--verde);}
+[data-theme="dark"] .dia-btn.selected .dia-btn-num,[data-theme="dark"] .dia-btn.selected .dia-btn-nome{color:var(--branco);}
 /* Histórico: filtro de mês no mesmo padrão dos campos */
 .exp-bar label{font-size:9px;color:#8A867E;}
 .exp-bar input[type=month]{height:32px;font-size:12px;}
@@ -700,6 +975,7 @@ body{
         <button class="stab active" id="stab-horas" type="button">Horas</button>
         <button class="stab" id="stab-banco" type="button">Banco</button>
         <button class="stab" id="stab-custos" type="button">Custos</button>
+        <button class="stab" id="stab-mensal" type="button">Visualização Mensal</button>
         <button class="stab" id="stab-historico" type="button">Histórico</button>
       </div>
 
@@ -753,9 +1029,40 @@ body{
         <button class="semana-nav-btn" id="apo-week-next" type="button">›</button>
         <button class="semana-hoje-btn" id="apo-week-today" type="button">Hoje</button>
       </div>
+      <button type="button" class="apo-btn" id="apo-week-finalizar" hidden>Finalizar semana</button>
+      <label class="apo-ver-wrap" id="apo-ver-wrap" hidden>
+        <span>Ver apontamentos de</span>
+        <select id="apo-ver-pessoa"></select>
+      </label>
     </div>
+    <div class="apo-leitura-aviso" id="apo-leitura-aviso" hidden></div>
+    <!-- Semana travada (finalizada) -->
+    <div class="apo-sem-travada" id="apo-sem-travada" hidden></div>
+    <!-- Lembrete: semana anterior ainda aberta -->
+    <div class="apo-sem-lembrete" id="apo-sem-lembrete" hidden></div>
     <!-- Aviso: andamento dos pedidos ao banco de horas -->
     <div class="bh-aviso" id="bh-aviso" style="display:none"></div>
+
+    <!-- Modal: finalizar semana (com conferência) -->
+    <div class="modal-bg" id="apo-fin-modal" style="display:none">
+      <div class="modal" style="width:480px">
+        <div class="modal-hd">
+          <div class="modal-title">Finalizar semana</div>
+          <button class="modal-close" type="button" data-fin-fechar>×</button>
+        </div>
+        <div class="modal-body apo-fin-body">
+          <div class="apo-fin-total"><span id="apo-fin-horas">0h</span><span class="apo-fin-meta" id="apo-fin-meta"></span></div>
+          <div id="apo-fin-pend"></div>
+          <label for="apo-fin-coment">Comentário da semana</label>
+          <textarea id="apo-fin-coment" placeholder="Como foi a semana? Principais entregas, bloqueios, observações..."></textarea>
+          <div class="apo-fin-aviso">Depois de finalizada, a semana fica travada: não dá para lançar, editar nem excluir. Só um sócio consegue desbloquear.</div>
+        </div>
+        <div class="modal-ft">
+          <button class="apo-btn" type="button" data-fin-fechar>Cancelar</button>
+          <button class="apo-btn apo-btn-primary" type="button" id="apo-fin-confirmar">Confirmar e finalizar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ══ ABA HORAS ══════════════════════════════════════════ -->
     <div class="stab-panel active" id="stp-horas">
@@ -782,8 +1089,20 @@ body{
             <input type="hidden" id="apo-date">
 
             <div class="apo-field">
-              <label>Dia selecionado</label>
-              <div id="apo-selected-day" style="min-height:34px;padding:6px 9px;border:1px solid var(--cinza2);border-radius:var(--radius-input);font-size:12px;color:#888;background:var(--off);">Clique em um dia no calendário</div>
+              <label>Dia da semana</label>
+              <div class="dia-selector" id="apo-dia-selector"></div>
+              <div id="apo-selected-day" hidden></div>
+            </div>
+
+            <div class="apo-row">
+              <div class="apo-field">
+                <label for="apo-start">Hora início</label>
+                <input type="time" id="apo-start" required>
+              </div>
+              <div class="apo-field">
+                <label for="apo-end">Hora fim</label>
+                <input type="time" id="apo-end" required>
+              </div>
             </div>
 
             <div class="apo-field">
@@ -792,19 +1111,29 @@ body{
             </div>
 
             <div class="apo-field" id="apo-category-wrap" style="display:none">
-              <label for="apo-category">Categoria</label>
+              <label for="apo-category">Subcategoria</label>
               <select id="apo-category"></select>
             </div>
 
-            <div class="apo-field" id="apo-project-wrap">
-              <label for="apo-project">Projeto</label>
-              <select id="apo-project"></select>
+            <div id="apo-project-wrap">
+              <div class="apo-field">
+                <label for="apo-cliente">Cliente</label>
+                <select id="apo-cliente"><option value="">Selecionar cliente...</option></select>
+              </div>
+              <div class="apo-field" id="apo-opp-wrap" style="display:none">
+                <label for="apo-opp">Oportunidade</label>
+                <select id="apo-opp"><option value="">Selecionar oportunidade...</option></select>
+              </div>
+              <div class="apo-field" id="apo-prod-wrap" style="display:none">
+                <label for="apo-project">Produto</label>
+                <select id="apo-project"><option value="">Selecionar produto...</option></select>
+              </div>
             </div>
 
-            <div class="apo-field" id="apo-stage-wrap">
+            <div class="apo-field" id="apo-stage-wrap" style="display:none">
               <label for="apo-stage">Etapa</label>
               <select id="apo-stage"></select>
-              <div class="apo-note" id="apo-stage-note"></div>
+              <div class="apo-note" id="apo-stage-note" hidden></div>
             </div>
 
             <div class="apo-field" id="apo-subtarefas-wrap">
@@ -817,31 +1146,17 @@ body{
               <div id="apo-subtarefas-sugestoes" style="display:none"></div>
             </div>
 
-            <div class="apo-row">
-              <div class="apo-field">
-                <label for="apo-start">Início</label>
-                <input type="time" id="apo-start" required>
-              </div>
-              <div class="apo-field">
-                <label for="apo-end">Fim</label>
-                <input type="time" id="apo-end" required>
-              </div>
-            </div>
-
             <div class="apo-field">
-              <label for="apo-desc">Descrição</label>
-              <textarea id="apo-desc" placeholder="O que foi feito…"></textarea>
+              <label for="apo-desc">Descrição (opcional)</label>
+              <input type="text" id="apo-desc" placeholder="O que foi feito...">
             </div>
 
-            <div class="apo-pills">
-              <div class="apo-pill"><strong>Duração:</strong> <span id="apo-duration">0h</span></div>
-              <div class="apo-pill" id="apo-class-pill"><strong>Tipo:</strong> <span id="apo-classification">—</span></div>
-            </div>
+            <!-- mantidos para o código existente (duração/classificação), sem exibir -->
+            <div hidden><span id="apo-duration"></span><div class="apo-pill" id="apo-class-pill"><span id="apo-classification"></span></div></div>
 
-            <div class="apo-actions">
-              <button type="submit" class="apo-btn apo-btn-primary" id="apo-submit">Registrar</button>
-              <button type="button" class="apo-btn" id="apo-reset">Limpar</button>
-            </div>
+            <button type="button" class="apo-btn apo-btn-full apo-btn-repetir" id="apo-repetir" title="Preenche com o mesmo tipo, projeto, etapa, subtarefas e descrição do seu último lançamento">↻ Repetir último lançamento</button>
+            <button type="submit" class="apo-btn apo-btn-primary apo-btn-full" id="apo-submit">Registrar horas</button>
+            <button type="button" id="apo-reset" hidden>Limpar</button>
             <div class="apo-feedback" id="apo-feedback"></div>
           </form>
         </div>
@@ -867,53 +1182,71 @@ body{
           <form id="apo-costs-form">
             <div class="apo-row">
               <div class="apo-field">
-                <label for="apo-cost-date">Data</label>
-                <input type="date" id="apo-cost-date" required>
-              </div>
-              <div class="apo-field">
                 <label for="apo-cost-value">Valor (R$)</label>
                 <input type="number" id="apo-cost-value" min="0" step="0.01" placeholder="0,00" required>
               </div>
+              <div class="apo-field">
+                <label for="apo-cost-date">Data</label>
+                <input type="date" id="apo-cost-date" required>
+              </div>
             </div>
 
             <div class="apo-field">
-              <label for="apo-cost-type">Tipo</label>
-              <select id="apo-cost-type"></select>
-            </div>
-
-            <div class="apo-field">
-              <label for="apo-cost-area">Área financeira</label>
+              <label for="apo-cost-area">Área</label>
               <select id="apo-cost-area"></select>
             </div>
 
-            <div class="apo-field">
+            <div class="apo-field" id="apo-cost-detail-wrap" style="display:none">
               <label for="apo-cost-detail">Detalhe</label>
               <select id="apo-cost-detail"></select>
             </div>
 
-            <div class="apo-field" id="apo-cost-project-wrap">
-              <label for="apo-cost-project">Projeto</label>
-              <select id="apo-cost-project"></select>
+            <div class="apo-field" id="apo-cost-type-wrap" style="display:none">
+              <label for="apo-cost-type">Vinculado a</label>
+              <select id="apo-cost-type"></select>
             </div>
 
-            <div class="apo-field" id="apo-cost-stage-wrap">
-              <label for="apo-cost-stage">Etapa</label>
-              <select id="apo-cost-stage"></select>
+            <div id="apo-cost-project-wrap" style="display:none">
+              <div class="apo-field">
+                <label for="apo-cost-cliente">Cliente</label>
+                <select id="apo-cost-cliente"><option value="">Selecionar cliente...</option></select>
+              </div>
+              <div class="apo-field" id="apo-cost-opp-wrap" style="display:none">
+                <label for="apo-cost-opp">Projeto</label>
+                <select id="apo-cost-opp"><option value="">Selecionar...</option></select>
+              </div>
+              <div class="apo-row">
+                <div class="apo-field" id="apo-cost-prod-wrap" style="display:none">
+                  <label for="apo-cost-project">Produto</label>
+                  <select id="apo-cost-project"><option value="">Selecionar...</option></select>
+                </div>
+                <div class="apo-field" id="apo-cost-stage-wrap" style="display:none">
+                  <label for="apo-cost-stage">Etapa (opcional)</label>
+                  <select id="apo-cost-stage"><option value="">—</option></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="apo-field" id="apo-cost-evp-wrap" style="display:none">
+              <label id="apo-cost-evp-label" for="apo-cost-evento-proj">Evento</label>
+              <input type="text" id="apo-cost-evento-proj" list="apo-cost-evp-dl" placeholder="Selecionar ou digitar novo..." autocomplete="off">
+              <datalist id="apo-cost-evp-dl"></datalist>
+            </div>
+            <div class="apo-field" id="apo-cost-evs-wrap" style="display:none">
+              <label id="apo-cost-evs-label" for="apo-cost-evento-soc">Evento</label>
+              <input type="text" id="apo-cost-evento-soc" list="apo-cost-evs-dl" placeholder="Selecionar ou digitar novo..." autocomplete="off">
+              <datalist id="apo-cost-evs-dl"></datalist>
             </div>
 
             <div class="apo-field">
-              <label for="apo-cost-desc">Descrição</label>
-              <textarea id="apo-cost-desc" placeholder="Ex.: impressão, deslocamento…"></textarea>
+              <label for="apo-cost-desc">Descrição (opcional)</label>
+              <input type="text" id="apo-cost-desc" placeholder="Detalhe do custo...">
             </div>
 
-            <div class="apo-pills">
-              <div class="apo-pill" id="apo-cost-status-pill"><strong>Status:</strong> <span id="apo-cost-status-text">Registrado</span></div>
-            </div>
+            <div hidden><div class="apo-pill" id="apo-cost-status-pill"><span id="apo-cost-status-text"></span></div></div>
 
-            <div class="apo-actions">
-              <button type="submit" class="apo-btn apo-btn-primary" id="apo-cost-submit">Registrar</button>
-              <button type="button" class="apo-btn" id="apo-cost-reset">Limpar</button>
-            </div>
+            <button type="submit" class="apo-btn apo-btn-primary apo-btn-full" id="apo-cost-submit">Registrar custo</button>
+            <button type="button" id="apo-cost-reset" hidden>Limpar</button>
             <div class="apo-feedback" id="apo-cost-feedback"></div>
           </form>
         </div>
@@ -1078,6 +1411,95 @@ body{
       </div>
     </div><!-- /stp-banco -->
 
+    <!-- ══ ABA VISUALIZAÇÃO MENSAL (importada de Gestão › Horas/Custos › Visualização) ══ -->
+<div class="stab-panel" id="stp-mensal">
+  <div class="mh-head">
+    <div>
+      <div class="sec-title" style="margin-bottom:0">Visualização mensal</div>
+      <div class="mh-sub">Resumo mensal individual com base nos seus lançamentos registrados na plataforma.</div>
+    </div>
+    <div class="mh-actions">
+      <button class="semana-nav-btn" onclick="navegarMinhasHoras(-1)">‹</button>
+      <input type="month" id="mh-mes" class="filter-select" style="font-size:11px" onchange="carregarMinhasHoras()">
+      <button class="semana-nav-btn" onclick="navegarMinhasHoras(1)">›</button>
+      <button class="apo-btn apo-btn-sm" onclick="minhasHorasMesAtual()">Este mês</button>
+      <button class="apo-btn apo-btn-sm" onclick="exportarMinhasHorasPDF()">Gerar PDF</button>
+    </div>
+  </div>
+
+  <div class="mh-overview">
+    <div class="mh-card mh-chart-card">
+      <div class="mh-card-hd">
+        <div class="mh-card-t">Volume diário no mês</div>
+        <div class="mh-card-sub" id="mh-chart-sub">—</div>
+      </div>
+      <div class="mh-day-chart" id="mh-day-chart">
+        <div class="loading-state">Carregando…</div>
+      </div>
+    </div>
+    <div class="mh-stats">
+      <div class="mh-stat">
+        <div class="mh-stat-k">Total do período</div>
+        <div class="mh-stat-v" id="mh-total-geral">—</div>
+        <div class="mh-stat-s" id="mh-total-geral-sub">—</div>
+      </div>
+      <div class="mh-stat">
+        <div class="mh-stat-k">Projetos / frentes</div>
+        <div class="mh-stat-v" id="mh-total-projetos">0</div>
+        <div class="mh-stat-s">Agrupamentos com horas no mês</div>
+      </div>
+      <div class="mh-stat">
+        <div class="mh-stat-k">Dias lançados</div>
+        <div class="mh-stat-v" id="mh-total-dias">0</div>
+        <div class="mh-stat-s">Dias com pelo menos um registro</div>
+      </div>
+      <div class="mh-stat mh-stat-meta">
+        <div class="mh-stat-k">Meta do mês</div>
+        <div class="mh-stat-v" id="mh-meta">—</div>
+        <div class="mh-stat-s" id="mh-meta-sub">—</div>
+      </div>
+      <div class="mh-stat">
+        <div class="mh-stat-k">Média por dia</div>
+        <div class="mh-stat-v" id="mh-media-dia">—</div>
+        <div class="mh-stat-s">Considerando apenas dias lançados</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mh-card">
+    <div class="mh-card-hd">
+      <div class="mh-card-t">Composição por tipo de entrada</div>
+      <div class="mh-card-sub">Fatiamento proporcional do mês por oportunidade, organização interna e sociedade.</div>
+    </div>
+    <div style="display:flex;gap:24px;align-items:flex-start">
+      <div class="mh-type-bars" id="mh-type-bars" style="flex:1">
+        <div class="loading-state">Carregando…</div>
+      </div>
+      <div id="mh-pie-wrap" style="flex-shrink:0;display:flex;flex-direction:row;align-items:center;gap:16px"></div>
+    </div>
+  </div>
+
+  <div class="mh-card" style="margin-top:14px">
+    <div class="mh-card-hd">
+      <div class="mh-card-t">Resumo de frentes por tempo</div>
+      <div class="mh-card-sub" id="mh-projetos-sub">—</div>
+    </div>
+    <div class="mh-summary-panels" id="mh-summary-panels">
+      <div class="loading-state">Carregando…</div>
+    </div>
+  </div>
+
+  <div class="mh-card" style="margin-top:14px">
+    <div class="mh-card-hd">
+      <div class="mh-card-t">Detalhamento do período</div>
+      <div class="mh-card-sub" id="mh-periodo-faixa">—</div>
+    </div>
+    <div class="mh-day-groups" id="mh-detalhe-lista">
+      <div class="loading-state">Carregando…</div>
+    </div>
+  </div>
+  </div>
+
     <div class="stab-panel" id="stp-historico">
       <!-- Barra de exportação -->
       <div class="exp-bar">
@@ -1143,39 +1565,84 @@ body{
     timerRequested: false,
   };
 
+  // Listas IGUAIS às da Gestão (gestao.html) — relatórios agrupam por estes textos
   var SUBTIPOS = {
-    organizacao: ['Organização de demandas','Capacitação','Reunião semanal','Feedback','Reunião interna'],
-    sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião societária','Consultoria','RH e pessoas','Gestão','Outros'],
+    organizacao: ['Organização de demandas','Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
+    sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
   };
   var TIPO_PT = { projeto:'Projeto', organizacao:'Org. interna', sociedade:'Societária' };
   var COR_TIPO = { projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' };
 
   var REEMBOLSO_DETALHES = {
-    'Visitas Tecnicas':['Uber','Combustivel','Pedagio','Alimentacao','Estacionamento','Outro'],
-    'Plotagem':['Impressao','Encadernacao','Outro'],
-    'Treinamentos e Capacitacao':['Curso','Evento','Certificacao','Outro'],
-    'Cultura e Integracao':['Alimentacao','Atividade de equipe','Outro'],
-    'Trabalho Presencial':['Alimentacao','Transporte','Estacionamento','Outro'],
-    'Taxas e Anuidades Profissionais (CAU)':['Taxa','Anuidade','Outro'],
-    'Certificacoes (Renovacoes)':['Renovacao','Taxa','Outro'],
-    'Softwares de projetos':['Licenca','Assinatura','Outro'],
-    'Softwares de gestao e nuvem':['Licenca','Assinatura','Outro'],
-    'Manutencoes a TI':['Equipamento','Servico','Outro'],
-    'Inteligencia Artificial':['Assinatura','Credito','Outro'],
-    'Seguranca Tecnica':['Servico','Taxa','Outro'],
-    'Midias pagas (Digital)':['Campanha','Impulsionamento','Outro'],
-    'Congressos e Eventos':['Inscricao','Passagem','Hospedagem','Outro'],
-    'Relacionamento e Brindes':['Brinde','Presente','Outro'],
-    'Computadores':['Acessorio','Manutencao','Equipamento'],
-  };
+  // CUSTOS DIRETOS (Projeto)
+  'Visitas Técnicas':
+    ['Alimentação','Transporte','Hospedagem','Aluguel de carro','Pedágio','Gasolina','Estacionamento','Outro'],
+  'Plotagem':
+    [],
+  // DESPESAS COM PESSOAL
+  'Treinamentos e Capacitação':
+    [],
+  'Cultura e Integração':
+    ['HH','Endomarketing','Presente de aniversário','Presente aniversário EXP','Presente de fim de ano','Outro'],
+  'Trabalho Presencial':
+    ['Alimentação','Transporte','Coworking','Outro'],
+  // DESPESAS ADMINISTRATIVAS
+  'Taxas e Anuidades Profissionais (CAU)':
+    [],
+  'Certificações (Renovações)':
+    [],
+  // DESPESAS COM OPERAÇÃO
+  'Softwares de projetos':
+    ['Autodesk','Adobe','SketchUp','Outro'],
+  'Softwares de gestão e nuvem':
+    ['Google Drive','Office 365','Slack','Outro'],
+  'Manutenções à TI':
+    [],
+  'Inteligência Artificial':
+    [],
+  'Segurança Técnica':
+    [],
+  // DESPESAS COM MARKETING
+  'Mídias pagas (Digital)':
+    [],
+  'Congressos e Eventos':
+    ['Entrada','Coquetel','Alimentação','Transporte','Passagem','Estacionamento','Outro'],
+  'Relacionamento e Brindes':
+    ['Brindes de fim de ano','Revista EXP','Presente individualizado','Outro'],
+  // INVESTIMENTOS
+  'Computadores':
+    [],
+};
   var GESTAO_AREA_RULES = {
-    'Visitas Tecnicas':{ requer_projeto:true },
-    'Plotagem':{ requer_projeto:true },
-  };
+  'Visitas Técnicas':                      { requer_evento: true,  requer_projeto: true },
+  'Plotagem':                              { requer_evento: false, requer_projeto: true },
+  'Treinamentos e Capacitação':            { requer_evento: true  },
+  'Cultura e Integração':                  { requer_evento: true  },
+  'Trabalho Presencial':                   { requer_evento: true  },
+  'Taxas e Anuidades Profissionais (CAU)': { requer_evento: false },
+  'Certificações (Renovações)':            { requer_evento: false },
+  'Softwares de projetos':                 { requer_evento: false },
+  'Softwares de gestão e nuvem':           { requer_evento: false },
+  'Manutenções à TI':                      { requer_evento: true  },
+  'Inteligência Artificial':               { requer_evento: true  },
+  'Segurança Técnica':                     { requer_evento: false },
+  'Mídias pagas (Digital)':               { requer_evento: false },
+  'Congressos e Eventos':                  { requer_evento: true  },
+  'Relacionamento e Brindes':              { requer_evento: true  },
+  'Computadores':                          { requer_evento: false, especial: 'computador' },
+};
 
   // ── Helpers ──────────────────────────────────────────────────────
 
   function uid() { return AP.user ? (AP.user.id || AP.user.app_user_id || null) : null; }
+  // Fase 6: sócios e coordenadores podem ver os apontamentos de outra pessoa (somente leitura)
+  function dataUid() { return AP.viewUser ? AP.viewUser.id : uid(); }
+  function nomeDados() { return AP.viewUser ? AP.viewUser.nome : ((AP.user && (AP.user.nome || AP.user.apelido)) || ''); }
+  function modoLeitura() { return !!AP.viewUser; }
+  function podeVerOutros() {
+    var r = String((AP.user||{}).role || '').toLowerCase();
+    return !!(window.isSocioRole && window.isSocioRole(r)) || r === 'coordenador';
+  }
 
   function esc(s) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -1277,6 +1744,8 @@ body{
   // ── Semana ────────────────────────────────────────────────────────
 
   var NOMES_SEMANA = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  var ICO_EDIT = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  var ICO_DEL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 
   function getWeekInfo(iso) {
     var d = new Date(iso+'T12:00:00');
@@ -1354,7 +1823,43 @@ body{
     else if (tab === 'banco') loadBancoData().catch(function(){});
   }
 
+  // Botões "Dia da semana" (como na Gestão), ligados ao calendário: os dois marcam o mesmo dia
+  function renderDiaSelector() {
+    var wrap = document.getElementById('apo-dia-selector');
+    if (!wrap || !AP.weekInfo) return;
+    var sel = document.getElementById('apo-date').value;
+    var hoje = new Date(); hoje.setHours(12,0,0,0); var hojeIso = hoje.toISOString().slice(0,10);
+    var porDia = {};
+    (AP.weekHours||[]).forEach(function(h){ porDia[h.data_lancamento] = (porDia[h.data_lancamento]||0) + diffH(String(h.hora_inicio||'').slice(0,5), String(h.hora_fim||'').slice(0,5)); });
+    var NOMES = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    var cur = new Date(AP.weekInfo.start + 'T12:00:00'), html = '';
+    for (var i = 0; i < 7; i++) {
+      var iso = cur.toISOString().slice(0,10);
+      html += '<button type="button" class="dia-btn'+(i>=5?' fim-semana':'')+(iso===sel?' selected':'')+(iso===hojeIso?' hoje':'')+'" data-iso="'+iso+'">'+
+        '<span class="dia-btn-nome">'+NOMES[i]+'</span><span class="dia-btn-num">'+cur.getDate()+'</span>'+
+        (porDia[iso] ? '<span class="dia-btn-hrs">'+fmtH(porDia[iso])+'</span>' : '')+'</button>';
+      cur.setDate(cur.getDate()+1);
+    }
+    wrap.innerHTML = html;
+  }
+  function hhmm(min) { min = Math.max(0, Math.min(min, 23*60+59)); return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0'); }
+  // Sugestão 3: o início do novo lançamento é o fim do último lançamento daquele dia
+  function syncInicioDoDia(force) {
+    var iso = document.getElementById('apo-date').value;
+    if (!iso) return;
+    if (!force && AP._inicioSyncIso === iso) return;   // não sobrescreve o que a pessoa digitou
+    AP._inicioSyncIso = iso;
+    var fins = (AP.weekHours||[]).filter(function(h){ return h.data_lancamento === iso; })
+      .map(function(h){ return String(h.hora_fim||'').slice(0,5); }).filter(Boolean).sort();
+    var ini = fins.length ? fins[fins.length-1] : '09:00';
+    var p = ini.split(':').map(Number), iniMin = p[0]*60 + (p[1]||0);
+    document.getElementById('apo-start').value = hhmm(iniMin);
+    document.getElementById('apo-end').value = hhmm(iniMin + 60);
+    updateDuration();
+  }
+
   function updateSelectedDayUI(iso) {
+    renderDiaSelector();
     var el = document.getElementById('apo-selected-day');
     if (!el) return;
     el.textContent = iso ? (fmtDate(iso) + ' · ' + dayLblShort(iso)) : 'Clique em um dia no calendário';
@@ -1606,6 +2111,7 @@ body{
           (sobr ? '<span title="Sobreposição" style="color:#C0392B;font-size:11px;flex-shrink:0">⚠</span>' :
            incompleto ? '<span title="Incompleto" style="color:#C4831A;font-size:11px;flex-shrink:0">⚠</span>' : '') +
           '<div class="lanc-dur">' + esc(fmtH(dur)) + '</div>' +
+          (AP.semanaTravada || modoLeitura() ? '' : '<div class="lanc-acoes"><button type="button" class="lanc-acao" data-act="edit-h" data-id="'+l.id+'" title="Editar">'+ICO_EDIT+'</button><button type="button" class="lanc-acao del" data-act="del-h" data-id="'+l.id+'" title="Excluir">'+ICO_DEL+'</button></div>') +
           '</div>';
       });
     });
@@ -1649,6 +2155,7 @@ body{
           (subText ? '<span class="lanc-desc-sep">·</span><span class="lanc-desc-sub">' + esc(subText) + '</span>' : '') +
           '</div>' +
           '<div class="custo-val">' + esc(valor) + '</div>' +
+          (AP.semanaTravada || modoLeitura() ? '' : '<div class="lanc-acoes"><button type="button" class="lanc-acao" data-act="edit-c" data-id="'+c.id+'" title="Editar">'+ICO_EDIT+'</button><button type="button" class="lanc-acao del" data-act="del-c" data-id="'+c.id+'" title="Excluir">'+ICO_DEL+'</button></div>') +
           '</div>';
       });
     });
@@ -1659,7 +2166,7 @@ body{
   // ── Carregamento de dados ────────────────────────────────────────
 
   async function loadHorasData() {
-    var u = uid(), info = AP.weekInfo;
+    var u = dataUid(), info = AP.weekInfo;
     if (!u || !info) return;
     var res = await window.sb
       .from('horas_lancadas')
@@ -1677,16 +2184,19 @@ body{
         ? await window.ExpHorasCredito.carregar(window.sb, u, info.start, info.end, { nucleoId: AP.user && (AP.user.nucleo_id || AP.user.nucleo) })
         : null;
     } catch (e) { AP.weekCreditos = null; }
+    await loadSemanaStatus();
     renderCalendario(AP.weekHours);
     renderLancamentos(AP.weekHours);
+    renderDiaSelector();
+    syncInicioDoDia(false);
   }
 
   async function loadCustosData() {
-    var u = uid(), info = AP.weekInfo;
+    var u = dataUid(), info = AP.weekInfo;
     if (!u || !info) return;
     var res = await window.sb
       .from('lancamentos_custo')
-      .select('id,data_lancamento,valor,tipo,subtipo,descricao,plano_contas_id,produto_id,etapa_id,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
+      .select('id,data_lancamento,valor,tipo,subtipo,descricao,plano_contas_id,produto_id,etapa_id,evento_id,evento_soc_id,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)')
       .eq('usuario_id', u)
       .gte('data_lancamento', info.start)
       .lte('data_lancamento', info.end)
@@ -1698,6 +2208,7 @@ body{
       r.area_nome = area ? area.subconta : '';
     });
     AP.weekCosts = rows;
+    await loadSemanaStatus();
     renderCustos(AP.weekCosts);
   }
 
@@ -2760,7 +3271,7 @@ body{
 
   async function loadHistoricoMes(mes) {
     if (!mes) return;
-    var u = uid();
+    var u = dataUid();
     var parts = mes.split('-').map(Number);
     var ano = parts[0], m = parts[1];
     var ini = ano + '-' + String(m).padStart(2,'0') + '-01';
@@ -2866,7 +3377,7 @@ body{
   async function exportarHorasCSV() {
     var mes = document.getElementById('exp-mes').value;
     if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
-    var u = uid();
+    var u = dataUid();
     var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
     var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
     var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
@@ -2903,7 +3414,7 @@ body{
   async function exportarHorasPDF() {
     var mes = document.getElementById('exp-mes').value;
     if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
-    var u = uid();
+    var u = dataUid();
     var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
     var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
     var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
@@ -2927,7 +3438,7 @@ body{
           '<td class="n">'+esc(fmtH(dh))+'</td><td>'+esc(TIPOPT[h.tipo]||h.tipo||'')+'</td>'+
           '<td>'+esc([cli,proj,etapa].filter(Boolean).join(' · '))+'</td><td>'+esc(h.descricao||'')+'</td></tr>';
       }).join('');
-      var nome = (AP.user&&(AP.user.nome||AP.user.apelido))||'';
+      var nome = nomeDados();
       var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Horas — '+mesNome+'</title><style>'+
         '*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}'+
         'h1{font-size:15px;font-weight:700;margin-bottom:3px}.sub{font-size:10px;color:#888;margin-bottom:18px}'+
@@ -2954,7 +3465,7 @@ body{
   async function exportarCustosCSV() {
     var mes = document.getElementById('exp-mes').value;
     if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
-    var u = uid();
+    var u = dataUid();
     var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
     var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
     var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
@@ -2991,7 +3502,7 @@ body{
   async function exportarCustosPDF() {
     var mes = document.getElementById('exp-mes').value;
     if (!mes) { setFb('exp-feedback','Selecione um mês.','err'); return; }
-    var u = uid();
+    var u = dataUid();
     var parts = mes.split('-').map(Number), ano = parts[0], m = parts[1];
     var ini = ano+'-'+String(m).padStart(2,'0')+'-01';
     var fim = ano+'-'+String(m).padStart(2,'0')+'-'+String(new Date(ano,m,0).getDate()).padStart(2,'0');
@@ -3014,7 +3525,7 @@ body{
           '<td>'+esc([cli,proj].filter(Boolean).join(' · '))+'</td><td>'+esc(c.descricao||'')+'</td>'+
           '<td class="val">'+esc(fmtR(c.valor))+'</td></tr>';
       }).join('');
-      var nome = (AP.user&&(AP.user.nome||AP.user.apelido))||'';
+      var nome = nomeDados();
       var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Custos — '+mesNome+'</title><style>'+
         '*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;color:#222;padding:28px 32px}'+
         'h1{font-size:15px;font-weight:700;margin-bottom:3px}.sub{font-size:10px;color:#888;margin-bottom:18px}'+
@@ -3043,15 +3554,64 @@ body{
 
   async function loadProducts() {
     var res = await window.sb.from('produtos')
-      .select('id,nome,subtipo,oportunidade_id,status,em_gestao,oportunidades(id,projeto,clientes(id,nome))')
+      .select('id,nome,subtipo,oportunidade_id,status,em_gestao,oportunidades(id,projeto,cidade,uf,clientes(id,nome,cidade,uf))')
       .eq('status','ativo').eq('em_gestao',true);
     if (res.error) throw new Error(res.error.message);
     AP.products = res.data || [];
-    var opts = '<option value="">Selecionar projeto…</option>' + AP.products.map(function(p){
-      return '<option value="'+p.id+'">'+esc(prodLabel(p))+'</option>';
+    fillClientesCascata('h'); fillClientesCascata('c');
+  }
+
+  // Cascata Cliente → Oportunidade → Produto (cópia do comportamento de gestao.html)
+  var CASC = {
+    h: { cli:'apo-cliente', opp:'apo-opp', oppWrap:'apo-opp-wrap', prod:'apo-project', prodWrap:'apo-prod-wrap', stageWrap:'apo-stage-wrap', oppPh:'Selecionar oportunidade...', prodPh:'Selecionar produto...' },
+    c: { cli:'apo-cost-cliente', opp:'apo-cost-opp', oppWrap:'apo-cost-opp-wrap', prod:'apo-cost-project', prodWrap:'apo-cost-prod-wrap', stageWrap:'apo-cost-stage-wrap', oppPh:'Selecionar oportunidade...', prodPh:'Selecionar produto...' },
+  };
+  function locTxt(o) { return o && o.cidade ? ' — ' + o.cidade + (o.uf ? '/' + o.uf : '') : ''; }
+  function fillClientesCascata(k) {
+    var c = CASC[k], mapa = {};
+    (AP.products||[]).forEach(function(p){
+      var cli = p.oportunidades && p.oportunidades.clientes;
+      if (cli && cli.id) mapa[cli.id] = cli;
+    });
+    var lista = Object.keys(mapa).map(function(id){ return mapa[id]; })
+      .sort(function(a,b){ return String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'); });
+    var sel = document.getElementById(c.cli); if (!sel) return;
+    sel.innerHTML = '<option value="">Selecionar cliente...</option>' + lista.map(function(cli){
+      return '<option value="'+cli.id+'">'+esc(cli.nome||cli.id)+esc(locTxt(cli))+'</option>';
     }).join('');
-    document.getElementById('apo-project').innerHTML = opts;
-    document.getElementById('apo-cost-project').innerHTML = opts;
+    onClienteCascata(k);
+  }
+  function onClienteCascata(k) {
+    var c = CASC[k], cliId = document.getElementById(c.cli).value;
+    var selOpp = document.getElementById(c.opp);
+    document.getElementById(c.oppWrap).style.display = 'none';
+    document.getElementById(c.prodWrap).style.display = 'none';
+    document.getElementById(c.stageWrap).style.display = 'none';
+    document.getElementById(c.prod).value = '';
+    if (!cliId) { selOpp.innerHTML = '<option value="">'+c.oppPh+'</option>'; document.getElementById(c.prod).dispatchEvent(new Event('change')); return; }
+    var vistos = {}, opps = [];
+    (AP.products||[]).forEach(function(p){
+      var o = p.oportunidades; if (!o || !o.clientes || String(o.clientes.id) !== String(cliId) || vistos[o.id]) return;
+      vistos[o.id] = 1; opps.push(o);
+    });
+    selOpp.innerHTML = '<option value="">'+c.oppPh+'</option>' + opps.map(function(o){
+      return '<option value="'+o.id+'">'+esc(o.projeto||'(sem nome)')+esc(locTxt(o))+'</option>';
+    }).join('');
+    document.getElementById(c.oppWrap).style.display = '';
+  }
+  function onOppCascata(k) {
+    var c = CASC[k], oppId = document.getElementById(c.opp).value;
+    var selProd = document.getElementById(c.prod);
+    document.getElementById(c.prodWrap).style.display = 'none';
+    document.getElementById(c.stageWrap).style.display = 'none';
+    selProd.innerHTML = '<option value="">'+c.prodPh+'</option>';
+    if (oppId) {
+      selProd.innerHTML += (AP.products||[]).filter(function(p){ return String(p.oportunidade_id) === String(oppId); })
+        .map(function(p){ return '<option value="'+p.id+'">'+esc(p.nome||p.subtipo||'(sem nome)')+'</option>'; }).join('');
+      document.getElementById(c.prodWrap).style.display = '';
+    }
+    selProd.value = '';
+    selProd.dispatchEvent(new Event('change'));
   }
 
   async function loadStages(productId) {
@@ -3101,8 +3661,7 @@ body{
   // ── UI: formulário horas ─────────────────────────────────────────
 
   function fillTypeOptions() {
-    var opts = [{value:'projeto',label:'Projeto'},{value:'organizacao',label:'Organização interna'}];
-    if (window.isSocioRole&&window.isSocioRole((AP.user||{}).role)) opts.push({value:'sociedade',label:'Societária'});
+    var opts = [{value:'projeto',label:'Projeto'},{value:'organizacao',label:'Org. Interna'},{value:'sociedade',label:'Sociedade'}];
     document.getElementById('apo-type').innerHTML = opts.map(function(o){
       return '<option value="'+o.value+'">'+esc(o.label)+'</option>';
     }).join('');
@@ -3112,7 +3671,7 @@ body{
     var type = document.getElementById('apo-type').value;
     var isProj = type==='projeto';
     document.getElementById('apo-project-wrap').style.display = isProj?'':'none';
-    document.getElementById('apo-stage-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-stage-wrap').style.display = isProj && document.getElementById('apo-project').value ? '' : 'none';
     document.getElementById('apo-subtarefas-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-category-wrap').style.display = isProj?'none':'';
     if (!isProj) {
@@ -3376,7 +3935,8 @@ body{
   async function onProjectChange() {
     var pid = document.getElementById('apo-project').value;
     var sel = document.getElementById('apo-stage');
-    sel.innerHTML = '<option value="">Selecionar etapa…</option>';
+    sel.innerHTML = '<option value="">Selecionar etapa...</option>';
+    document.getElementById('apo-stage-wrap').style.display = pid ? '' : 'none';
     if (!pid) { renderSubtarefasSuggestions().catch(function(){}); updateClassUI(); return; }
     var stages = await loadStages(pid);
     sel.innerHTML = '<option value="">Selecionar etapa…</option>' + stages.map(function(s){
@@ -3389,8 +3949,7 @@ body{
   // ── UI: formulário custos ────────────────────────────────────────
 
   function fillCostTypeOptions() {
-    var opts = [{value:'projeto',label:'Projeto'},{value:'organizacao',label:'Organização interna'}];
-    if (window.isSocioRole&&window.isSocioRole((AP.user||{}).role)) opts.push({value:'sociedade',label:'Societária'});
+    var opts = [{value:'projeto',label:'Projeto'},{value:'organizacao',label:'Organização'},{value:'sociedade',label:'Sociedade'}];
     document.getElementById('apo-cost-type').innerHTML = opts.map(function(o){
       return '<option value="'+o.value+'">'+esc(o.label)+'</option>';
     }).join('');
@@ -3429,48 +3988,449 @@ body{
     var key = area?areaKey(area.subconta):'';
     var matchKey = Object.keys(REEMBOLSO_DETALHES).find(function(k){ return areaKey(k)===key; });
     var details = matchKey?REEMBOLSO_DETALHES[matchKey]:['Outro'];
-    document.getElementById('apo-cost-detail').innerHTML = details.map(function(d){
+    document.getElementById('apo-cost-detail').innerHTML = (details||[]).map(function(d){
       return '<option value="'+esc(d)+'">'+esc(d)+'</option>';
     }).join('');
   }
 
   function updateCostUI() {
-    var type = document.getElementById('apo-cost-type').value;
     var area = getCurrArea(); var rules = getCostRules(area);
-    if (rules.requer_projeto&&type!=='projeto') { document.getElementById('apo-cost-type').value='projeto'; type='projeto'; }
-    var isProj = type==='projeto';
-    document.getElementById('apo-cost-project-wrap').style.display = isProj?'':'none';
-    document.getElementById('apo-cost-stage-wrap').style.display = isProj?'':'none';
+    var tipoSel = document.getElementById('apo-cost-type');
+    // requer_projeto: só "Projeto" fica habilitado (igual à Gestão)
+    Array.prototype.forEach.call(tipoSel.options, function(o){ o.disabled = !!rules.requer_projeto && o.value !== 'projeto'; });
+    if (rules.requer_projeto) tipoSel.value = 'projeto';
+    var type = tipoSel.value;
+    document.getElementById('apo-cost-detail-wrap').style.display = area ? '' : 'none';
+    document.getElementById('apo-cost-type-wrap').style.display = area ? '' : 'none';
+    document.getElementById('apo-cost-project-wrap').style.display = area && type === 'projeto' ? '' : 'none';
+    if (!area) {
+      document.getElementById('apo-cost-cliente').value = '';
+      onClienteCascata('c');
+      document.getElementById('apo-cost-evento-proj').value = '';
+      document.getElementById('apo-cost-evento-soc').value = '';
+    }
     fillCostDetails();
-    var areaId = document.getElementById('apo-cost-area').value;
-    var st = areaId&&area?'Enviado ao financeiro':'Registrado';
-    setText('apo-cost-status-text', st);
-    var pill = document.getElementById('apo-cost-status-pill');
-    if (pill) pill.className = 'apo-pill'+(st==='Enviado ao financeiro'?' good':'');
+    syncCostEventos().catch(function(){});
   }
 
   async function onCostProjectChange() {
     var pid = document.getElementById('apo-cost-project').value;
     var sel = document.getElementById('apo-cost-stage');
-    sel.innerHTML = '<option value="">Selecionar etapa…</option>';
+    sel.innerHTML = '<option value="">—</option>';
+    document.getElementById('apo-cost-stage-wrap').style.display = pid ? '' : 'none';
+    syncCostEventos().catch(function(){});
     if (!pid) return;
     var stages = await loadStages(pid);
-    sel.innerHTML = '<option value="">Selecionar etapa…</option>' + stages.map(function(s){
+    sel.innerHTML = '<option value="">—</option>' + stages.map(function(s){
       return '<option value="'+s.id+'">'+esc(s.nome)+'</option>';
     }).join('');
+  }
+
+  // Eventos do custo (eventos_custo / eventos_sociedade) — mesma regra da Gestão
+  async function ensureEventosCusto(force) {
+    if (!force && Array.isArray(AP.evCusto) && Array.isArray(AP.evSoc)) return;
+    var r = await Promise.all([
+      window.sb.from('eventos_custo').select('id,nome,produto_id').order('nome'),
+      window.sb.from('eventos_sociedade').select('id,nome,tipo,categoria').order('nome'),
+    ]);
+    AP.evCusto = (r[0] && r[0].data) || [];
+    AP.evSoc = (r[1] && r[1].data) || [];
+  }
+  function dlOpts(list) { return (list||[]).map(function(e){ return '<option value="'+esc(e.nome)+'">'; }).join(''); }
+  async function syncCostEventos() {
+    var tipo = document.getElementById('apo-cost-type').value || 'projeto';
+    var prodId = document.getElementById('apo-cost-project').value || '';
+    var area = getCurrArea(); var rules = getCostRules(area);
+    var pw = document.getElementById('apo-cost-evp-wrap'), sw = document.getElementById('apo-cost-evs-wrap');
+    pw.style.display = 'none'; sw.style.display = 'none';
+    if (!area) return;
+    await ensureEventosCusto();
+    var lbl = rules.requer_evento ? 'Evento *' : 'Evento (opcional)';
+    if (tipo === 'sociedade') {
+      setText('apo-cost-evs-label', lbl);
+      document.getElementById('apo-cost-evs-dl').innerHTML = dlOpts(AP.evSoc.filter(function(e){ return !e.tipo || e.tipo === 'sociedade'; }));
+      sw.style.display = '';
+      return;
+    }
+    setText('apo-cost-evp-label', lbl);
+    var evs = tipo === 'organizacao'
+      ? AP.evCusto.filter(function(e){ return !e.produto_id; })
+      : AP.evCusto.filter(function(e){ return !e.produto_id || !prodId || String(e.produto_id) === String(prodId); });
+    document.getElementById('apo-cost-evp-dl').innerHTML = dlOpts(evs);
+    pw.style.display = '';
+  }
+  // Acha o evento pelo nome; se não existir, cria (como a Gestão faz)
+  async function resolveEventoCusto(nome, tipo, produtoId, areaLabel) {
+    var n = String(nome||'').trim();
+    if (!n) return { evtId:null, socId:null };
+    await ensureEventosCusto();
+    var low = n.toLowerCase();
+    if (tipo === 'sociedade') {
+      var ex = AP.evSoc.find(function(e){ return String(e.nome||'').toLowerCase() === low; });
+      if (ex) return { socId:ex.id, evtId:null };
+      var r1 = await window.sb.from('eventos_sociedade').insert({ tipo:tipo, categoria:areaLabel||null, nome:n, criado_por:uid() }).select('id,nome,tipo,categoria').single();
+      if (r1.error) throw new Error(r1.error.message);
+      AP.evSoc.push(r1.data);
+      return { socId:r1.data.id, evtId:null };
+    }
+    var cands = tipo === 'organizacao'
+      ? AP.evCusto.filter(function(e){ return !e.produto_id; })
+      : AP.evCusto.filter(function(e){ return !e.produto_id || String(e.produto_id) === String(produtoId); });
+    var ex2 = cands.find(function(e){ return String(e.nome||'').toLowerCase() === low; });
+    if (ex2) return { evtId:ex2.id, socId:null };
+    var r2 = await window.sb.from('eventos_custo').insert({ produto_id:produtoId||null, nome:n, criado_por:uid() }).select('id,nome,produto_id').single();
+    if (r2.error) throw new Error(r2.error.message);
+    AP.evCusto.push(r2.data);
+    return { evtId:r2.data.id, socId:null };
+  }
+
+  // ── Fase 2: editar e excluir (usa o próprio formulário, como na Gestão os mesmos campos) ──
+  function marcarEdicao(formId, ativo, texto, btnId, btnTxt, resetId) {
+    var f = document.getElementById(formId); if (!f) return;
+    f.classList.toggle('editando', !!ativo);
+    var ban = f.querySelector('.apo-edit-banner');
+    if (ativo && !ban) { ban = document.createElement('div'); ban.className = 'apo-edit-banner'; f.insertBefore(ban, f.firstChild); }
+    if (ban) { if (ativo) ban.textContent = texto; else ban.remove(); }
+    var b = document.getElementById(btnId); if (b) b.textContent = btnTxt;
+    var r = document.getElementById(resetId);
+    if (r) { r.hidden = !ativo; r.textContent = 'Cancelar edição'; r.className = ativo ? 'apo-btn apo-btn-full' : ''; }
+  }
+  function sairEdicaoHora(silencioso) {
+    if (!AP.editHoraId && silencioso) return;
+    AP.editHoraId = null;
+    marcarEdicao('apo-hours-form', false, '', 'apo-submit', 'Registrar horas', 'apo-reset');
+  }
+  function sairEdicaoCusto(silencioso) {
+    if (!AP.editCustoId && silencioso) return;
+    AP.editCustoId = null;
+    marcarEdicao('apo-costs-form', false, '', 'apo-cost-submit', 'Registrar custo', 'apo-cost-reset');
+  }
+  function selecionarProdutoNaCascata(k, prodId, rotuloFallback) {
+    var c = CASC[k];
+    var p = (AP.products||[]).find(function(x){ return String(x.id) === String(prodId); });
+    if (p && p.oportunidades && p.oportunidades.clientes) {
+      document.getElementById(c.cli).value = p.oportunidades.clientes.id; onClienteCascata(k);
+      document.getElementById(c.opp).value = p.oportunidades.id; onOppCascata(k);
+      document.getElementById(c.prod).value = p.id;
+    } else if (prodId) {
+      // produto não está mais ativo: mostra só ele, para não perder o vínculo
+      var sel = document.getElementById(c.prod);
+      sel.innerHTML = '<option value="'+prodId+'">'+esc(rotuloFallback || 'Produto (inativo)')+'</option>';
+      sel.value = prodId;
+      document.getElementById(c.prodWrap).style.display = '';
+    }
+  }
+  async function carregarSubtarefasDaHora(id) {
+    try {
+      var r = await window.sb.from('horas_lancadas_subtarefas').select('subtarefa,ordem').eq('hora_lancada_id', String(id)).order('ordem');
+      return r.error ? [] : (r.data || []).map(function(x){ return x.subtarefa; });
+    } catch (e) { return []; }
+  }
+  async function editarHora(id) {
+    if (AP.semanaTravada) { setFb('apo-feedback','Semana finalizada: desbloqueie antes de editar.','err'); return; }
+    var l = (AP.weekHours||[]).find(function(x){ return String(x.id) === String(id); });
+    if (!l) return;
+    resetHorasForm();
+    AP.editHoraId = l.id;
+    document.getElementById('apo-date').value = l.data_lancamento;
+    AP._inicioSyncIso = l.data_lancamento;          // não deixar o início automático sobrescrever
+    updateSelectedDayUI(l.data_lancamento);
+    document.getElementById('apo-start').value = String(l.hora_inicio||'').slice(0,5);
+    document.getElementById('apo-end').value = String(l.hora_fim||'').slice(0,5);
+    document.getElementById('apo-type').value = l.tipo || 'projeto';
+    updateTypeUI();
+    if (l.tipo === 'projeto') {
+      var opp = (l.produtos||{}).oportunidades||{};
+      selecionarProdutoNaCascata('h', l.produto_id, [((opp.clientes||{}).nome), opp.projeto, (l.produtos||{}).nome].filter(Boolean).join(' · '));
+      await onProjectChange();
+      document.getElementById('apo-stage').value = l.etapa_id || '';
+      updateClassUI();
+      clearSubtarefasTags();
+      (await carregarSubtarefasDaHora(l.id)).forEach(function(t){ addSubtarefaTag(t); });
+    } else {
+      var cat = document.getElementById('apo-category');
+      if (l.subtipo && !Array.prototype.some.call(cat.options, function(o){ return o.value === l.subtipo; })) {
+        cat.insertAdjacentHTML('beforeend', '<option value="'+esc(l.subtipo)+'">'+esc(l.subtipo)+'</option>');
+      }
+      cat.value = l.subtipo || '';
+    }
+    document.getElementById('apo-desc').value = l.descricao || '';
+    updateDuration();
+    marcarEdicao('apo-hours-form', true, 'Editando lançamento de ' + fmtDate(l.data_lancamento) + ' · ' + String(l.hora_inicio).slice(0,5) + '–' + String(l.hora_fim).slice(0,5), 'apo-submit', 'Salvar alterações', 'apo-reset');
+    document.getElementById('apo-hours-form').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  // Fase 4 (sugestão 2): repete o último lançamento — mantém dia e horário, copia o resto
+  async function repetirUltimoLancamento() {
+    if (AP.semanaTravada) { setFb('apo-feedback','Semana finalizada: desbloqueie antes de lançar.','err'); return; }
+    var r = await window.sb.from('horas_lancadas')
+      .select('id,tipo,subtipo,produto_id,etapa_id,descricao,produtos(nome,oportunidades(projeto,clientes(nome)))')
+      .eq('usuario_id', uid())
+      .order('data_lancamento', { ascending:false }).order('hora_fim', { ascending:false })
+      .limit(1).maybeSingle();
+    if (r.error) throw new Error(r.error.message);
+    var l = r.data;
+    if (!l) { setFb('apo-feedback','Você ainda não tem lançamentos para repetir.','err'); return; }
+    sairEdicaoHora(true);
+    document.getElementById('apo-type').value = l.tipo || 'projeto';
+    updateTypeUI();
+    if (l.tipo === 'projeto') {
+      var opp = (l.produtos||{}).oportunidades||{};
+      selecionarProdutoNaCascata('h', l.produto_id, [((opp.clientes||{}).nome), opp.projeto, (l.produtos||{}).nome].filter(Boolean).join(' · '));
+      await onProjectChange();
+      document.getElementById('apo-stage').value = l.etapa_id || '';
+      updateClassUI();
+      clearSubtarefasTags();
+      (await carregarSubtarefasDaHora(l.id)).forEach(function(t){ addSubtarefaTag(t); });
+    } else {
+      var cat = document.getElementById('apo-category');
+      if (l.subtipo && !Array.prototype.some.call(cat.options, function(o){ return o.value === l.subtipo; })) {
+        cat.insertAdjacentHTML('beforeend', '<option value="'+esc(l.subtipo)+'">'+esc(l.subtipo)+'</option>');
+      }
+      cat.value = l.subtipo || '';
+    }
+    document.getElementById('apo-desc').value = l.descricao || '';
+    setFb('apo-feedback','Preenchido com o último lançamento. Confira o dia e o horário e registre.','ok');
+  }
+
+  async function excluirHora(id) {
+    if (AP.semanaTravada) { setFb('apo-feedback','Semana finalizada: desbloqueie antes de excluir.','err'); return; }
+    var l = (AP.weekHours||[]).find(function(x){ return String(x.id) === String(id); });
+    if (!l) return;
+    if (!confirm('Excluir o lançamento de ' + fmtDate(l.data_lancamento) + ', ' + String(l.hora_inicio).slice(0,5) + '–' + String(l.hora_fim).slice(0,5) + '? Esta ação não pode ser desfeita.')) return;
+    try { await window.sb.from('horas_lancadas_subtarefas').delete().eq('hora_lancada_id', String(id)); } catch (e) {}
+    var r = await window.sb.from('horas_lancadas').delete().eq('id', id).eq('usuario_id', uid());
+    if (r.error) { setFb('apo-feedback','Erro ao excluir: ' + r.error.message,'err'); return; }
+    if (String(AP.editHoraId) === String(id)) resetHorasForm();
+    setFb('apo-feedback','Lançamento excluído.','ok');
+    AP._inicioSyncIso = null;
+    loadHorasData().catch(function(){});
+  }
+  async function editarCusto(id) {
+    if (AP.semanaTravada) { setFb('apo-cost-feedback','Semana finalizada: desbloqueie antes de editar.','err'); return; }
+    var c = (AP.weekCosts||[]).find(function(x){ return String(x.id) === String(id); });
+    if (!c) return;
+    resetCostForm();
+    AP.editCustoId = c.id;
+    document.getElementById('apo-cost-value').value = c.valor;
+    document.getElementById('apo-cost-date').value = c.data_lancamento;
+    document.getElementById('apo-cost-area').value = c.plano_contas_id || '';
+    document.getElementById('apo-cost-type').value = c.tipo || 'projeto';
+    updateCostUI();
+    var det = document.getElementById('apo-cost-detail');
+    if (c.subtipo && !Array.prototype.some.call(det.options, function(o){ return o.value === c.subtipo; })) {
+      det.insertAdjacentHTML('beforeend', '<option value="'+esc(c.subtipo)+'">'+esc(c.subtipo)+'</option>');
+    }
+    det.value = c.subtipo || '';
+    if (c.tipo === 'projeto' && c.produto_id) {
+      var opp = (c.produtos||{}).oportunidades||{};
+      selecionarProdutoNaCascata('c', c.produto_id, [((opp.clientes||{}).nome), opp.projeto, (c.produtos||{}).nome].filter(Boolean).join(' · '));
+      await onCostProjectChange();
+      document.getElementById('apo-cost-stage').value = c.etapa_id || '';
+    }
+    await ensureEventosCusto();
+    await syncCostEventos();
+    var evP = c.evento_id && AP.evCusto.find(function(e){ return String(e.id) === String(c.evento_id); });
+    var evS = c.evento_soc_id && AP.evSoc.find(function(e){ return String(e.id) === String(c.evento_soc_id); });
+    document.getElementById('apo-cost-evento-proj').value = evP ? evP.nome : '';
+    document.getElementById('apo-cost-evento-soc').value = evS ? evS.nome : '';
+    document.getElementById('apo-cost-desc').value = c.descricao || '';
+    marcarEdicao('apo-costs-form', true, 'Editando custo de ' + fmtDate(c.data_lancamento), 'apo-cost-submit', 'Salvar alterações', 'apo-cost-reset');
+    document.getElementById('apo-costs-form').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  async function excluirCusto(id) {
+    if (AP.semanaTravada) { setFb('apo-cost-feedback','Semana finalizada: desbloqueie antes de excluir.','err'); return; }
+    var c = (AP.weekCosts||[]).find(function(x){ return String(x.id) === String(id); });
+    if (!c) return;
+    if (!confirm('Excluir o custo de ' + fmtDate(c.data_lancamento) + ' (R$ ' + Number(c.valor||0).toFixed(2).replace('.',',') + ')? Esta ação não pode ser desfeita.')) return;
+    var r = await window.sb.from('lancamentos_custo').delete().eq('id', id).eq('usuario_id', uid());
+    if (r.error) { setFb('apo-cost-feedback','Erro ao excluir: ' + r.error.message,'err'); return; }
+    if (String(AP.editCustoId) === String(id)) resetCostForm();
+    setFb('apo-cost-feedback','Custo excluído.','ok');
+    loadCustosData().catch(function(){});
+  }
+
+  // ── Fase 6: ver outra pessoa ──
+  async function initVerPessoa() {
+    var wrap = document.getElementById('apo-ver-wrap');
+    if (!podeVerOutros()) { wrap.hidden = true; return; }
+    var r = await window.sb.from('usuarios').select('id,nome,role,nucleo_id,ativo').eq('ativo', true).order('nome');
+    if (r.error) return;
+    var eu = uid();
+    var sel = document.getElementById('apo-ver-pessoa');
+    sel.innerHTML = '<option value="">Eu</option>' + (r.data || []).filter(function(u){ return String(u.id) !== String(eu); })
+      .map(function(u){ return '<option value="'+u.id+'">'+esc(nomeCurtoApo(u.nome))+'</option>'; }).join('');
+    AP.pessoas = r.data || [];
+    wrap.hidden = false;
+  }
+  function nomeCurtoApo(n) {
+    var p = String(n||'').trim().split(/\s+/); return p.length > 1 ? p[0] + ' ' + p[p.length-1] : (p[0] || '—');
+  }
+  function aplicarModoLeitura() {
+    var ro = modoLeitura();
+    document.body.classList.toggle('apo-modo-leitura', ro);
+    var av = document.getElementById('apo-leitura-aviso');
+    av.hidden = !ro;
+    if (ro) av.innerHTML = '<span>Visualizando os apontamentos de <strong>' + esc(nomeCurtoApo(AP.viewUser.nome)) + '</strong> — somente leitura.</span><button type="button" class="apo-btn" id="apo-ver-voltar">Voltar para os meus</button>';
+    if (ro) { sairEdicaoHora(true); sairEdicaoCusto(true); }
+  }
+  function trocarPessoa(id) {
+    AP.viewUser = id ? (AP.pessoas || []).find(function(u){ return String(u.id) === String(id); }) || null : null;
+    document.getElementById('apo-ver-pessoa').value = AP.viewUser ? AP.viewUser.id : '';
+    aplicarModoLeitura();
+    AP.tabLoaded = {};
+    var tab = activeTab();
+    if (tab === 'banco') { switchTab('horas'); return; }          // banco tem a própria visão por pessoa
+    AP.tabLoaded[tab] = true;
+    if (tab === 'horas') loadHorasData().catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
+    else if (tab === 'custos') loadCustosData().catch(function(e){ setFb('apo-cost-feedback', e.message, 'err'); });
+    else if (tab === 'mensal' && window.carregarMinhasHoras) window.carregarMinhasHoras();
+    else if (tab === 'historico') { var mes = document.getElementById('exp-mes').value; if (mes) loadHistoricoMes(mes); }
+  }
+
+  // ── Fase 3: semana (status, finalizar com conferência, desbloquear, lembrete) ──
+  function ehSocio() { return !!(window.isSocioRole && window.isSocioRole((AP.user||{}).role)); }
+  async function loadSemanaStatus() {
+    var u = dataUid(), info = AP.weekInfo;
+    if (!u || !info) return;
+    var r = await window.sb.from('semanas').select('id,finalizada,finalizada_em,comentario')
+      .eq('usuario_id', u).eq('data_inicio', info.start).maybeSingle();
+    AP.semana = r.error ? null : (r.data || null);
+    AP.semanaTravada = !!(AP.semana && AP.semana.finalizada);
+    renderSemanaStatus();
+  }
+  function renderSemanaStatus() {
+    var trav = !!AP.semanaTravada;
+    var ban = document.getElementById('apo-sem-travada');
+    if (ban) {
+      ban.hidden = !trav;
+      if (trav) {
+        var quando = AP.semana.finalizada_em ? new Date(AP.semana.finalizada_em).toLocaleDateString('pt-BR') : '';
+        ban.innerHTML = '<span><strong>Semana finalizada</strong>' + (quando ? ' em ' + esc(quando) : '') +
+          (AP.semana.comentario ? ' — <em>' + esc(AP.semana.comentario) + '</em>' : '') + '</span>' +
+          (ehSocio() ? '<button type="button" class="apo-btn" id="apo-sem-desbloquear">Desbloquear</button>' : '');
+      }
+    }
+    var fin = document.getElementById('apo-week-finalizar');
+    if (fin) fin.hidden = trav || modoLeitura();
+    ['apo-hours-form','apo-costs-form'].forEach(function(fid){
+      var f = document.getElementById(fid); if (!f) return;
+      f.classList.toggle('travado', trav);
+      var nota = f.parentElement.querySelector('.apo-travado-nota');
+      if (trav && !nota) { nota = document.createElement('div'); nota.className = 'apo-travado-nota'; nota.textContent = 'Semana finalizada — lançamentos travados.'; f.parentElement.insertBefore(nota, f); }
+      if (!trav && nota) nota.remove();
+    });
+    if (trav) { sairEdicaoHora(true); sairEdicaoCusto(true); }
+  }
+  async function abrirFinalizarSemana() {
+    var info = AP.weekInfo; if (!info) return;
+    var u = uid();
+    var rh = await window.sb.from('horas_lancadas').select('id,data_lancamento,hora_inicio,hora_fim,tipo,produto_id,etapa_id')
+      .eq('usuario_id', u).gte('data_lancamento', info.start).lte('data_lancamento', info.end);
+    var rc = await window.sb.from('lancamentos_custo').select('id,plano_contas_id,evento_id,evento_soc_id')
+      .eq('usuario_id', u).gte('data_lancamento', info.start).lte('data_lancamento', info.end);
+    var horas = rh.data || [], custos = rc.data || [];
+    var total = horas.reduce(function(s,h){ return s + diffH(String(h.hora_inicio).slice(0,5), String(h.hora_fim).slice(0,5)); }, 0);
+    try { if (window.ExpHorasCredito && AP.weekCreditos) total += window.ExpHorasCredito.total(AP.weekCreditos, info.start, info.end); } catch (e) {}
+    var meta = (AP.bankSummary && AP.bankSummary.jornadaSemanalH) || 40;
+    setText('apo-fin-horas', fmtH(total));
+    setText('apo-fin-meta', 'de ' + fmtH(meta) + ' na semana (' + Math.round(total / meta * 100) + '%)');
+    // Sugestão 7: conferência antes de finalizar
+    var comHora = {}; horas.forEach(function(h){ comHora[h.data_lancamento] = 1; });
+    var credDia = (AP.weekCreditos && AP.weekCreditos.porDia) || {};
+    var diasSem = getDiasSemana(info).slice(0,5).filter(function(iso){ return !comHora[iso] && !credDia[iso]; })
+      .map(function(iso){ return NOMES_SEMANA[getDiasSemana(info).indexOf(iso)] + ' ' + fmtDate(iso); });
+    var incompletas = horas.filter(function(h){ return h.tipo === 'projeto' && (!h.produto_id || !h.etapa_id); }).length;
+    var semArea = custos.filter(function(c){ return !c.plano_contas_id; }).length;
+    var semEvento = custos.filter(function(c){
+      var a = AP.costAreas.find(function(x){ return String(x.id) === String(c.plano_contas_id); });
+      return a && getCostRules(a).requer_evento && !c.evento_id && !c.evento_soc_id;
+    }).length;
+    var pend = [];
+    if (total < meta) pend.push('Faltam <strong>' + fmtH(meta - total) + '</strong> para a meta da semana.');
+    if (diasSem.length) pend.push('Dias úteis sem lançamento: <strong>' + diasSem.join(', ') + '</strong>.');
+    if (incompletas) pend.push('<strong>' + incompletas + '</strong> lançamento(s) de projeto sem produto ou etapa.');
+    if (semArea) pend.push('<strong>' + semArea + '</strong> custo(s) sem área.');
+    if (semEvento) pend.push('<strong>' + semEvento + '</strong> custo(s) sem evento numa área que exige evento.');
+    document.getElementById('apo-fin-pend').innerHTML = pend.length
+      ? '<div class="apo-fin-pend"><div><strong>Confira antes de finalizar:</strong></div>' + pend.map(function(x){ return '<div>• ' + x + '</div>'; }).join('') + '</div>'
+      : '<div class="apo-fin-ok">Tudo certo: meta atingida e nenhuma pendência encontrada.</div>';
+    document.getElementById('apo-fin-coment').value = '';
+    document.getElementById('apo-fin-modal').style.display = 'flex';
+  }
+  function fecharFinalizar() { document.getElementById('apo-fin-modal').style.display = 'none'; }
+  async function confirmarFinalizarSemana() {
+    var info = AP.weekInfo; if (!info) return;
+    var btn = document.getElementById('apo-fin-confirmar'); btn.disabled = true;
+    try {
+      var week = await ensureWeek(info.start);
+      var r = await window.sb.from('semanas').update({
+        finalizada: true, finalizada_em: new Date().toISOString(),
+        comentario: (document.getElementById('apo-fin-coment').value || '').trim() || null,
+      }).eq('id', week.id).eq('usuario_id', uid());
+      if (r.error) throw new Error(r.error.message);
+      fecharFinalizar();
+      setFb('apo-feedback','Semana finalizada.','ok');
+      await loadSemanaStatus();
+      loadHorasData().catch(function(){}); loadCustosData().catch(function(){});
+      verificarSemanaAnteriorAberta().catch(function(){});
+    } catch (e) { alert('Não foi possível finalizar: ' + e.message); }
+    finally { btn.disabled = false; }
+  }
+  async function desbloquearSemana() {
+    if (!ehSocio() || !AP.semana) return;
+    if (!confirm('Desbloquear esta semana? Os lançamentos voltam a poder ser alterados.')) return;
+    var r = await window.sb.from('semanas').update({ finalizada: false, desbloqueada_por: uid() }).eq('id', AP.semana.id);
+    if (r.error) { alert('Erro ao desbloquear: ' + r.error.message); return; }
+    await loadSemanaStatus();
+    loadHorasData().catch(function(){}); loadCustosData().catch(function(){});
+  }
+  // Sugestão 8: lembrete da semana anterior aberta (aviso aqui + sino, uma vez por semana)
+  async function verificarSemanaAnteriorAberta() {
+    var u = uid(); if (!u) return;
+    var hoje = new Date(); hoje.setHours(12,0,0,0);
+    var isoDay = hoje.getDay() || 7;
+    var seg = new Date(hoje); seg.setDate(hoje.getDate() - (isoDay - 1) - 7);
+    var dom = new Date(seg); dom.setDate(seg.getDate() + 6);
+    var ini = seg.toISOString().slice(0,10), fim = dom.toISOString().slice(0,10);
+    var rs = await window.sb.from('semanas').select('id,finalizada').eq('usuario_id', u).eq('data_inicio', ini).maybeSingle();
+    var aberta = !(rs.data && rs.data.finalizada);
+    var el = document.getElementById('apo-sem-lembrete');
+    if (!aberta) { if (el) el.hidden = true; return; }
+    var rh = await window.sb.from('horas_lancadas').select('id').eq('usuario_id', u).gte('data_lancamento', ini).lte('data_lancamento', fim).limit(1);
+    if (!(rh.data && rh.data.length) && !rs.data) { if (el) el.hidden = true; return; }   // semana sem nenhum registro (férias etc.)
+    var faixa = fmtDate(ini) + ' a ' + fmtDate(fim);
+    if (el) {
+      el.innerHTML = '<span>A semana de <strong>' + esc(faixa) + '</strong> ainda não foi finalizada.</span><button type="button" class="apo-btn" id="apo-sem-ir">Ir para a semana</button>';
+      el.hidden = false;
+      el.dataset.iso = ini;
+    }
+    var titulo = 'Semana ' + faixa + ' ainda não finalizada';
+    try {
+      var ja = await window.sb.from('notificacoes').select('id').eq('usuario_id', u).eq('tipo', 'semana_aberta').eq('titulo', titulo).limit(1);
+      if (!ja.error && !(ja.data && ja.data.length)) {
+        await window.sb.from('notificacoes').insert({
+          usuario_id: u, tipo: 'semana_aberta', titulo: titulo,
+          corpo: 'Confira os lançamentos e finalize a semana no Apontamentos.',
+          link_tipo: 'apontamentos', modulo: 'apontamentos',
+          criado_por: u, criado_por_nome: AP.user && AP.user.nome ? AP.user.nome : null,
+          created_at: new Date().toISOString(),
+        });
+      }
+    } catch (e) {}
   }
 
   // ── Reset forms ───────────────────────────────────────────────────
 
   function resetHorasForm() {
+    sairEdicaoHora(true);
     var today = new Date().toISOString().slice(0,10);
     document.getElementById('apo-hours-form').reset();
     document.getElementById('apo-date').value = today;
     document.getElementById('apo-start').value = '09:00';
     document.getElementById('apo-end').value = '10:00';
     fillTypeOptions(); updateTypeUI();
-    document.getElementById('apo-project').value = '';
-    document.getElementById('apo-stage').innerHTML = '<option value="">Selecionar etapa…</option>';
+    document.getElementById('apo-cliente').value = '';
+    onClienteCascata('h');
     clearSubtarefasTags();
     var sug = document.getElementById('apo-subtarefas-sugestoes');
     if (sug) { sug.innerHTML = ''; sug.style.display = 'none'; }
@@ -3479,12 +4439,13 @@ body{
   }
 
   function resetCostForm() {
+    sairEdicaoCusto(true);
     document.getElementById('apo-costs-form').reset();
     document.getElementById('apo-cost-date').value = document.getElementById('apo-date').value || new Date().toISOString().slice(0,10);
     document.getElementById('apo-cost-value').value = '';
     fillCostTypeOptions(); fillCostAreas();
-    document.getElementById('apo-cost-project').value = '';
-    document.getElementById('apo-cost-stage').innerHTML = '<option value="">Selecionar etapa…</option>';
+    document.getElementById('apo-cost-cliente').value = '';
+    onClienteCascata('c');
     updateCostUI(); setFb('apo-cost-feedback','','');
   }
 
@@ -3521,13 +4482,34 @@ body{
       dupQuery = subtipo ? dupQuery.eq('subtipo', subtipo) : dupQuery.is('subtipo', null);
       dupQuery = productId ? dupQuery.eq('produto_id', productId) : dupQuery.is('produto_id', null);
       dupQuery = stageId ? dupQuery.eq('etapa_id', stageId) : dupQuery.is('etapa_id', null);
+      var editId = AP.editHoraId || null;
+      if (editId) dupQuery = dupQuery.neq('id', editId);
       var dupRes = await dupQuery.limit(1);
       if (dupRes.data && dupRes.data.length) throw new Error('Já existe um lançamento idêntico neste horário.');
-      var res = await window.sb.from('horas_lancadas').insert({
-        usuario_id:uid(), semana_id:week.id, data_lancamento:date,
+      // Sugestão 6: avisa se o horário cruza outro lançamento do mesmo dia
+      var cruza = (AP.weekHours||[]).filter(function(h){
+        return h.data_lancamento === date && String(h.id) !== String(editId) &&
+          start < String(h.hora_fim||'').slice(0,5) && end > String(h.hora_inicio||'').slice(0,5);
+      });
+      if (cruza.length) {
+        var txt = cruza.map(function(h){ return String(h.hora_inicio).slice(0,5)+'–'+String(h.hora_fim).slice(0,5); }).join(', ');
+        if (!confirm('Este horário se sobrepõe a outro lançamento do mesmo dia ('+txt+'). Registrar mesmo assim?')) {
+          setFb('apo-feedback','Lançamento não registrado: horário sobreposto.','err');
+          return;
+        }
+      }
+      var payloadH = {
+        semana_id:week.id, data_lancamento:date,
         dia_semana:week.isoDay, hora_inicio:start, hora_fim:end,
         tipo:type, subtipo:subtipo, produto_id:productId, etapa_id:stageId, descricao:desc||null,
-      }).select('id').single();
+      };
+      var res;
+      if (editId) {
+        res = await window.sb.from('horas_lancadas').update(payloadH).eq('id', editId).eq('usuario_id', uid()).select('id').single();
+      } else {
+        payloadH.usuario_id = uid();
+        res = await window.sb.from('horas_lancadas').insert(payloadH).select('id').single();
+      }
       if (res.error) throw new Error(res.error.message);
       var subtSaved = await saveHorasSubtarefas(res.data && res.data.id, subtarefas, diffH(start, end), {
         productId: productId,
@@ -3536,10 +4518,12 @@ body{
       });
       document.getElementById('apo-desc').value = '';
       clearSubtarefasTags();
-      setFb('apo-feedback', subtSaved ? 'Horas registradas.' : 'Horas registradas, mas subtarefas ainda nao estao disponiveis.', subtSaved ? 'ok' : 'err');
+      setFb('apo-feedback', (editId ? 'Lançamento atualizado.' : 'Horas registradas.') + (subtSaved ? '' : ' As subtarefas ainda não estão disponíveis.'), subtSaved ? 'ok' : 'err');
+      if (editId) sairEdicaoHora();
+      AP._inicioSyncIso = null;
       loadHorasData().catch(function(){});
     } catch(e) { setFb('apo-feedback',e.message,'err'); }
-    finally { btn.disabled=false; btn.textContent='Registrar'; }
+    finally { btn.disabled=false; btn.textContent='Registrar horas'; }
   }
 
   // ── Submit custos ─────────────────────────────────────────────────
@@ -3563,31 +4547,49 @@ body{
       if (!areaId) throw new Error('Selecione a área financeira.');
       if (type==='projeto'&&!productId) throw new Error('Selecione o projeto.');
       if (rules.requer_projeto&&!productId) throw new Error('Esta área exige um projeto.');
+      var evtProjNome = (document.getElementById('apo-cost-evento-proj').value||'').trim();
+      var evtSocNome  = (document.getElementById('apo-cost-evento-soc').value||'').trim();
+      if (rules.requer_evento && !(type==='sociedade' ? evtSocNome : evtProjNome)) throw new Error('Informe o evento para esta área.');
       var week = await ensureWeek(date);
       var dupQ = window.sb.from('lancamentos_custo').select('id').eq('usuario_id', uid()).eq('data_lancamento', date).eq('valor', value).eq('tipo', type).eq('plano_contas_id', areaId).limit(1);
       dupQ = detail ? dupQ.eq('subtipo', detail) : dupQ.is('subtipo', null);
       dupQ = productId ? dupQ.eq('produto_id', productId) : dupQ.is('produto_id', null);
       dupQ = stageId ? dupQ.eq('etapa_id', stageId) : dupQ.is('etapa_id', null);
       dupQ = desc ? dupQ.eq('descricao', desc) : dupQ.is('descricao', null);
+      if (AP.editCustoId) dupQ = dupQ.neq('id', AP.editCustoId);
       var dupRes = await dupQ.maybeSingle();
       if (dupRes.error) throw new Error(dupRes.error.message);
       if (dupRes.data && dupRes.data.id) throw new Error('Ja existe um custo igual registrado para voce nesta data.');
-      var ins = await window.sb.from('lancamentos_custo').insert({
-        usuario_id:uid(), semana_id:week.id, data_lancamento:date, valor:value,
+      var ev = type==='sociedade'
+        ? await resolveEventoCusto(evtSocNome, 'sociedade', null, area ? area.subconta : '')
+        : await resolveEventoCusto(evtProjNome, type, productId, area ? area.subconta : '');
+      var payloadC = {
+        semana_id:week.id, data_lancamento:date, valor:value,
         tipo:type, subtipo:detail, plano_contas_id:areaId,
-        produto_id:productId, etapa_id:stageId, descricao:desc||null,
-      }).select('id').single();
+        produto_id:productId, etapa_id:stageId,
+        evento_id:ev.evtId||null, evento_soc_id:ev.socId||null,
+        descricao:desc||null,
+      };
+      var editandoCusto = AP.editCustoId || null;
+      var ins = editandoCusto
+        ? await window.sb.from('lancamentos_custo').update(payloadC).eq('id', editandoCusto).eq('usuario_id', uid()).select('id').single()
+        : await window.sb.from('lancamentos_custo').insert(Object.assign({ usuario_id:uid() }, payloadC)).select('id').single();
+      if (!ins.error && editandoCusto) sairEdicaoCusto();
       if (ins.error) throw new Error(ins.error.message);
       /* legacy finance reflex removed
         observacao:[detail,desc].filter(Boolean).join(' · ')||(area?area.subconta:'Gasto'),
       resetCostForm();
       loadCustosData().catch(function(){});
       */
-      resetCostForm();
+      document.getElementById('apo-cost-value').value = '';
+      document.getElementById('apo-cost-desc').value = '';
+      document.getElementById('apo-cost-evento-proj').value = '';
+      document.getElementById('apo-cost-evento-soc').value = '';
+      syncCostEventos().catch(function(){});
       loadCustosData().catch(function(){});
-      setFb('apo-cost-feedback','Custo operacional registrado. O reflexo financeiro final deve ser tratado no modulo Financeiro.','ok');
+      setFb('apo-cost-feedback','Custo registrado. O reflexo financeiro final é tratado no módulo Financeiro. O reflexo financeiro final deve ser tratado no modulo Financeiro.','ok');
     } catch(e) { setFb('apo-cost-feedback',e.message,'err'); }
-    finally { btn.disabled=false; btn.textContent='Registrar'; }
+    finally { btn.disabled=false; btn.textContent='Registrar custo'; }
   }
 
   // ── Navegação entre abas ──────────────────────────────────────────
@@ -3597,13 +4599,25 @@ body{
     return a ? a.id.replace('stab-','') : 'horas';
   }
 
+  // Contexto para a Visualização Mensal (script separado)
+  window.__apoCtx = function () {
+    var pessoa = AP.viewUser || AP.user || {};
+    return { uid: dataUid(), nucleoId: pessoa.nucleo_id || pessoa.nucleo, jornadaSemanal: AP.viewUser ? 40 : ((AP.bankSummary && AP.bankSummary.jornadaSemanalH) || 40) };
+  };
+  // Sugestão 12: clicar num dia do gráfico mensal abre aquela semana na aba Horas
+  window.__apoIrParaDia = function (iso) { switchTab('horas'); setSelectedDate(iso); };
+
   function switchTab(tab) {
-    ['horas','custos','banco','historico'].forEach(function(t) {
+    ['horas','custos','banco','mensal','historico'].forEach(function(t) {
       document.getElementById('stab-'+t).classList.toggle('active',t===tab);
       document.getElementById('stp-'+t).classList.toggle('active',t===tab);
     });
     // A linha de semana só faz sentido em Horas e Custos (Banco e Histórico são por mês)
-    document.getElementById('semana-nav-wrap').style.display = (tab==='historico'||tab==='banco')?'none':'';
+    document.getElementById('semana-nav-wrap').style.display = (tab==='historico'||tab==='banco'||tab==='mensal')?'none':'';
+    // finalizar e avisos de semana só fazem sentido nas abas Horas e Custos
+    var abaSemana = !(tab==='historico'||tab==='banco'||tab==='mensal');
+    document.getElementById('apo-week-finalizar').style.display = abaSemana ? '' : 'none';
+    document.getElementById('apo-sem-travada').style.display = abaSemana ? '' : 'none';
     if (tab==='horas' && !AP.tabLoaded.horas) {
       AP.tabLoaded.horas = true;
       loadHorasData().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
@@ -3613,6 +4627,9 @@ body{
     } else if (tab==='banco' && !AP.tabLoaded.banco) {
       AP.tabLoaded.banco = true;
       loadBancoData().catch(function(e){ setFb('apo-bh-feedback',e.message,'err'); });
+    } else if (tab==='mensal' && !AP.tabLoaded.mensal) {
+      AP.tabLoaded.mensal = true;
+      if (window.carregarMinhasHoras) window.carregarMinhasHoras();
     } else if (tab==='historico' && !AP.tabLoaded.historico) {
       AP.tabLoaded.historico = true;
       var mes = document.getElementById('exp-mes').value;
@@ -3634,6 +4651,7 @@ body{
     AP.eventsBound = true;
 
     document.getElementById('stab-horas').addEventListener('click',function(){ switchTab('horas'); });
+    document.getElementById('stab-mensal').addEventListener('click',function(){ switchTab('mensal'); });
     document.getElementById('stab-custos').addEventListener('click',function(){ switchTab('custos'); });
     document.getElementById('stab-banco').addEventListener('click',function(){ switchTab('banco'); });
     document.getElementById('stab-historico').addEventListener('click',function(){ switchTab('historico'); });
@@ -3642,6 +4660,32 @@ body{
     document.getElementById('apo-week-today').addEventListener('click',function(){ setSelectedDate(new Date().toISOString().slice(0,10)); });
 
     document.getElementById('apo-type').addEventListener('change',updateTypeUI);
+    ['lanc-lista-wrap','custo-lista-wrap'].forEach(function(wid){
+      var w = document.getElementById(wid); if (!w) return;
+      w.addEventListener('click', function(ev){
+        var b = ev.target.closest('.lanc-acao'); if (!b) return;
+        var id = b.dataset.id, act = b.dataset.act;
+        if (act === 'edit-h') editarHora(id).catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
+        if (act === 'del-h') excluirHora(id).catch(function(e){ setFb('apo-feedback', e.message, 'err'); });
+        if (act === 'edit-c') editarCusto(id).catch(function(e){ setFb('apo-cost-feedback', e.message, 'err'); });
+        if (act === 'del-c') excluirCusto(id).catch(function(e){ setFb('apo-cost-feedback', e.message, 'err'); });
+      });
+    });
+    document.getElementById('apo-ver-pessoa').addEventListener('change', function(){ trocarPessoa(this.value); });
+    document.getElementById('apo-leitura-aviso').addEventListener('click', function(ev){ if (ev.target.id === 'apo-ver-voltar') trocarPessoa(''); });
+    document.getElementById('apo-repetir').addEventListener('click', function(){ repetirUltimoLancamento().catch(function(e){ setFb('apo-feedback', e.message, 'err'); }); });
+    document.getElementById('apo-week-finalizar').addEventListener('click', function(){ abrirFinalizarSemana().catch(function(e){ alert(e.message); }); });
+    document.getElementById('apo-fin-confirmar').addEventListener('click', confirmarFinalizarSemana);
+    document.querySelectorAll('[data-fin-fechar]').forEach(function(b){ b.addEventListener('click', fecharFinalizar); });
+    document.getElementById('apo-sem-travada').addEventListener('click', function(ev){ if (ev.target.id === 'apo-sem-desbloquear') desbloquearSemana(); });
+    document.getElementById('apo-sem-lembrete').addEventListener('click', function(ev){ if (ev.target.id === 'apo-sem-ir') setSelectedDate(this.dataset.iso); });
+    document.getElementById('apo-dia-selector').addEventListener('click',function(ev){
+      var b = ev.target.closest('.dia-btn'); if (b && b.dataset.iso) setSelectedDate(b.dataset.iso);
+    });
+    document.getElementById('apo-cliente').addEventListener('change',function(){ onClienteCascata('h'); });
+    document.getElementById('apo-opp').addEventListener('change',function(){ onOppCascata('h'); });
+    document.getElementById('apo-cost-cliente').addEventListener('change',function(){ onClienteCascata('c'); });
+    document.getElementById('apo-cost-opp').addEventListener('change',function(){ onOppCascata('c'); });
     document.getElementById('apo-project').addEventListener('change',function(){
       onProjectChange().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
     });
@@ -3668,7 +4712,7 @@ body{
     document.getElementById('apo-start').addEventListener('input',updateDuration);
     document.getElementById('apo-end').addEventListener('input',updateDuration);
     document.getElementById('apo-hours-form').addEventListener('submit',submitHoras);
-    document.getElementById('apo-reset').addEventListener('click',resetHorasForm);
+    document.getElementById('apo-reset').addEventListener('click',function(){ resetHorasForm(); });
 
     document.getElementById('apo-cost-type').addEventListener('change',updateCostUI);
     document.getElementById('apo-cost-area').addEventListener('change',updateCostUI);
@@ -3676,7 +4720,7 @@ body{
       onCostProjectChange().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
     });
     document.getElementById('apo-costs-form').addEventListener('submit',submitCustos);
-    document.getElementById('apo-cost-reset').addEventListener('click',resetCostForm);
+    document.getElementById('apo-cost-reset').addEventListener('click',function(){ resetCostForm(); });
     document.getElementById('apo-bh-form').addEventListener('submit',submitBancoHoras);
     document.getElementById('apo-bh-destino').addEventListener('change',updateBhDestinoUI);
     document.getElementById('apo-bh-tipo').addEventListener('change',updateBhTipoUI);
@@ -3800,6 +4844,8 @@ body{
       runAfterFirstPaint(function() {
         AP.tabLoaded.horas = true;
         loadProducts().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
+        verificarSemanaAnteriorAberta().catch(function(){});
+        initVerPessoa().catch(function(){});
         loadCostAreas().catch(function(e){ setFb('apo-cost-feedback',e.message,'err'); });
         loadHorasData().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
         loadTimerWidgetDeferred();
@@ -3814,6 +4860,708 @@ body{
   }
 
   init();
+})();
+</script>
+
+<script>
+/* ═══ Visualização Mensal — importada de gestao.html (Horas/Custos › Visualização / "Minhas horas").
+   Isolada num IIFE; só as funções chamadas pelo HTML ficam em window. ═══ */
+(function () {
+  const sb = { from: function () { return window.sb.from.apply(window.sb, arguments); } };   // cliente criado pelo Apontamentos
+  const G = { get usuario() { const c = window.__apoCtx ? window.__apoCtx() : {}; return { id: c.uid }; }, _minhasHorasMes: null };
+  const _escN = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const _escAttrN = s => _escN(s).replace(/'/g,'&#39;');
+function fmtHLong(h) {
+  if (!h && h !== 0) return '0h 00min';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return `${hh}h ${mm.toString().padStart(2,'0')}min`;
+}
+function fmtHMin(h) {
+  if (!h && h !== 0) return '—';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return `${hh}h${mm.toString().padStart(2,'0')}min`;
+}
+function fmtHClock(h) {
+  if (!h && h !== 0) return '00:00';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+}
+function diffHoras(ini, fim) {
+  if (!ini || !fim) return 0;
+  const [hi, mi] = ini.split(':').map(Number);
+  const [hf, mf] = fim.split(':').map(Number);
+  return Math.max(0, (hf * 60 + mf - hi * 60 - mi) / 60);
+}
+function fmtDate(d, curto = false) {
+  if (!d) return '—';
+  const dt = typeof d === 'string' ? new Date(d + (d.length === 10 ? 'T12:00:00' : '')) : d;
+  const day = String(dt.getDate()).padStart(2,'0');
+  const mon = String(dt.getMonth()+1).padStart(2,'0');
+  if (curto) return `${day}.${mon}`;
+  return `${day}.${mon}`;
+}
+
+function getMesAtualInputValue() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}`;
+}
+
+function garantirMesMinhasHoras() {
+  const el = document.getElementById('mh-mes');
+  if (!el) return getMesAtualInputValue();
+  if (!el.value) el.value = getMesAtualInputValue();
+  return el.value;
+}
+
+function navegarMinhasHoras(delta) {
+  const atual = garantirMesMinhasHoras();
+  const [ano, mes] = atual.split('-').map(Number);
+  const base = new Date(ano, mes - 1 + delta, 1);
+  document.getElementById('mh-mes').value = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2,'0')}`;
+  carregarMinhasHoras();
+}
+
+function minhasHorasMesAtual() {
+  const el = document.getElementById('mh-mes');
+  if (!el) return;
+  el.value = getMesAtualInputValue();
+  carregarMinhasHoras();
+}
+
+function getFaixaMes(ym) {
+  const [ano, mes] = ym.split('-').map(Number);
+  const ini = `${ano}-${String(mes).padStart(2,'0')}-01`;
+  const fim = `${ano}-${String(mes).padStart(2,'0')}-${String(new Date(ano, mes, 0).getDate()).padStart(2,'0')}`;
+  const mesNome = new Intl.DateTimeFormat('pt-BR', { month:'long', year:'numeric' }).format(new Date(ano, mes - 1, 1));
+  return { ano, mes, ini, fim, mesNome };
+}
+
+function mhTipoLabel(tipo) {
+  return ({ projeto:'Projeto', organizacao:'Org. Interna', sociedade:'Sociedade' }[tipo] || (tipo || '—'));
+}
+
+function mhTipoColor(tipo) {
+  return ({ projeto:'#1D4FA0', organizacao:'#1D6A4A', sociedade:'#C4831A' }[tipo] || '#888');
+}
+
+function mhProjetoResumoLabel(l) {
+  const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
+  return [info.oportunidade, info.cliente].filter(Boolean).join(' · ') || info.produto || 'Projeto';
+}
+
+function mhProjetoDetalhe(l) {
+  const info = getProjetoHierarquia(l.produto_id, l.etapa_id);
+  return {
+    projeto: info.oportunidade || info.produto || 'Projeto',
+    produto: info.produto || '—',
+    etapa: info.etapa || l.etapas?.nome || 'Sem etapa',
+    cliente: info.cliente || 'Sem cliente',
+  };
+}
+
+function mhResumoLabel(l) {
+  if (l.tipo === 'projeto') return mhProjetoResumoLabel(l);
+  return l.subtipo || mhTipoLabel(l.tipo);
+}
+
+function mhPct(valor, total) {
+  if (!total) return '0.00%';
+  return `${((valor / total) * 100).toFixed(2)}%`;
+}
+
+function resumirMinhasHoras(horas = []) {
+  const porTipo = {
+    projeto: new Map(),
+    organizacao: new Map(),
+    sociedade: new Map(),
+  };
+  const diasMap = new Map();
+  const dias = new Set();
+  let total = 0;
+
+  (horas || []).forEach(h => {
+    const dur = diffHoras(h.hora_inicio, h.hora_fim);
+    if (!dur) return;
+    total += dur;
+    if (h.data_lancamento) dias.add(h.data_lancamento);
+
+    const detalheProjeto = h.tipo === 'projeto' ? mhProjetoDetalhe(h) : null;
+    const resumoLabel = mhResumoLabel(h);
+    const tipoLabel = mhTipoLabel(h.tipo);
+    const desc = (h.descricao || '').trim();
+    const item = {
+      data: h.data_lancamento,
+      inicio: h.hora_inicio,
+      fim: h.hora_fim,
+      dur,
+      tipo: h.tipo,
+      tipoLabel,
+      resumoLabel,
+      projeto: detalheProjeto?.projeto || mhTipoLabel(h.tipo),
+      produto: detalheProjeto?.produto || '',
+      etapa: detalheProjeto?.etapa || '',
+      cliente: detalheProjeto?.cliente || '',
+      subtipo: h.subtipo || '',
+      descricao: desc,
+    };
+
+    if (!porTipo[h.tipo]) porTipo[h.tipo] = new Map();
+    porTipo[h.tipo].set(resumoLabel, (porTipo[h.tipo].get(resumoLabel) || 0) + dur);
+
+    if (!diasMap.has(h.data_lancamento)) diasMap.set(h.data_lancamento, []);
+    diasMap.get(h.data_lancamento).push(item);
+  });
+
+  const typeBuckets = Object.fromEntries(
+    Object.entries(porTipo).map(([tipo, map]) => {
+      const items = [...map.entries()]
+        .map(([label, horas]) => ({
+          label,
+          horas,
+          pct: map.size ? (horas / [...map.values()].reduce((s, v) => s + v, 0)) * 100 : 0,
+        }))
+        .sort((a, b) => b.horas - a.horas || a.label.localeCompare(b.label, 'pt-BR'));
+      return [tipo, {
+        tipo,
+        label: mhTipoLabel(tipo),
+        color: mhTipoColor(tipo),
+        total: items.reduce((s, item) => s + item.horas, 0),
+        items,
+      }];
+    })
+  );
+
+  const detalhesPorDia = [...diasMap.entries()]
+    .map(([data, itens]) => ({
+      data,
+      total: itens.reduce((s, item) => s + item.dur, 0),
+      itens: itens.sort((a, b) =>
+        (a.data || '').localeCompare(b.data || '') ||
+        (a.inicio || '').localeCompare(b.inicio || '')
+      ),
+    }))
+    .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+
+  return {
+    total,
+    lancamentos: (horas || []).length,
+    diasAtivos: dias.size,
+    mediaDia: dias.size ? total / dias.size : 0,
+    totalFrentes:
+      (typeBuckets.projeto?.items.length || 0) +
+      (typeBuckets.organizacao?.items.length || 0) +
+      (typeBuckets.sociedade?.items.length || 0),
+    porTipo: typeBuckets,
+    detalhesPorDia,
+  };
+}
+
+function renderMhResumoLista(lista, total, tipo, emptyText) {
+  if (!lista.length) return `<div class="empty-note">${emptyText}</div>`;
+  const cor = mhTipoColor(tipo);
+  return lista.map(item => `
+    <div class="mh-summary-row">
+      <div class="mh-summary-top">
+        <div class="mh-summary-label">${_escN(item.label)}</div>
+        <div class="mh-summary-val">${fmtHClock(item.horas)}</div>
+      </div>
+      <div class="mh-summary-meta">
+        <span>${fmtHLong(item.horas)}</span>
+        <span>${mhPct(item.horas, total)}</span>
+      </div>
+      <div class="mh-summary-bar"><span style="width:${Math.max(item.pct, item.horas > 0 ? 4 : 0)}%;background:${cor}"></span></div>
+    </div>
+  `).join('');
+}
+
+function renderMhDayChart(dataset) {
+  const { ini, fim, resumo } = dataset;
+  const dias = [];
+  const diaMap = new Map((resumo.detalhesPorDia || []).map(d => [d.data, d.total]));
+  const dt = new Date(ini + 'T12:00:00');
+  const fimDt = new Date(fim + 'T12:00:00');
+  while (dt <= fimDt) {
+    const iso = dt.toISOString().split('T')[0];
+    dias.push({ iso, dia: dt.getDate(), horas: diaMap.get(iso) || 0 });
+    dt.setDate(dt.getDate() + 1);
+  }
+  const metaDia = mhMetaDiaria();
+  const max = Math.max(...dias.map(d => d.horas), metaDia, 0);
+  const refPct = max > 0 ? Math.min((metaDia / max) * 100, 100) : 100;   // linha = jornada diária
+  return dias.map(d => {
+    const pct = max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5;
+    const zeroCls = d.horas <= 0 ? 'zero' : '';
+    const title = `${fmtDate(d.iso)} · ${fmtHClock(d.horas)} — clique para abrir a semana`;
+    return `<div class="mh-day-col" title="${_escAttrN(title)}" onclick="window.__apoIrParaDia && window.__apoIrParaDia('${d.iso}')">
+      <div class="mh-day-bar-wrap" style="background-image:linear-gradient(to top, transparent calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% + 1px), transparent calc(${refPct}% + 1px));background-repeat:no-repeat">
+        <div class="mh-day-bar ${zeroCls}" style="height:${pct}%"></div>
+      </div>
+      <div class="mh-day-lbl">${String(d.dia).padStart(2,'0')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMhPieChart(resumo) {
+  const total = resumo.total || 0;
+  if (!total) return '';
+  const TIPOS = [
+    { key:'projeto',     label:'Projetos',    color:'var(--azul)'  },
+    { key:'organizacao', label:'Org. Interna', color:'var(--verde)' },
+    { key:'sociedade',   label:'Sociedade',   color:'var(--ouro)'  },
+  ];
+  const R = 42, CX = 56, CY = 56, SW = 14;
+  const CIRCUMF = 2 * Math.PI * R;
+  // Acumula segmentos com comprimento exato para evitar gap de float
+  let cumLen = 0;
+  const segs = [];
+  TIPOS.forEach(t => {
+    const h = resumo.porTipo?.[t.key]?.total || 0;
+    if (!h) return;
+    const pct = total > 0 ? h / total : 0;
+    const offset = CIRCUMF / 4 - cumLen;
+    const len = pct * CIRCUMF;
+    cumLen += len;
+    segs.push({ ...t, h, pct, len, offset });
+  });
+  // Ajusta o último segmento para cobrir exatamente (evita gap)
+  if (segs.length > 0) {
+    segs[segs.length - 1].len = CIRCUMF - (cumLen - segs[segs.length - 1].len);
+  }
+
+  const arcs = segs.map(t =>
+    `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${t.color}"
+      stroke-width="${SW}"
+      stroke-dasharray="${t.len.toFixed(3)} ${(CIRCUMF - t.len + 1).toFixed(3)}"
+      stroke-dashoffset="${t.offset.toFixed(3)}">
+      <title>${t.label}: ${fmtHMin(t.h)} (${(t.pct*100).toFixed(0)}%)</title>
+    </circle>`
+  ).join('');
+
+  const legend = segs.map(t =>
+    `<div style="display:flex;align-items:center;gap:6px">
+       <div style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0"></div>
+       <div>
+         <div style="font-size:10px;font-weight:700;color:var(--grafite)">${(t.pct*100).toFixed(0)}% · ${fmtHMin(t.h)}</div>
+         <div style="font-size:9px;color:#8A867E;letter-spacing:.3px">${t.label}</div>
+       </div>
+     </div>`
+  ).join('');
+
+  return `
+    <svg width="112" height="112" viewBox="0 0 112 112" style="display:block;flex-shrink:0">
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--cinza2)" stroke-width="${SW}"/>
+      ${arcs}
+    </svg>
+    <div style="display:flex;flex-direction:column;gap:7px;justify-content:center">${legend}</div>
+  `;
+}
+
+function renderMhTypeBars(resumo) {
+  const tipos = ['projeto', 'organizacao', 'sociedade']
+    .map(tipo => resumo.porTipo[tipo])
+    .filter(bucket => bucket && bucket.total > 0);
+  if (!tipos.length) return '<div class="empty-note">Sem horas lançadas no período.</div>';
+
+  return tipos.map(bucket => `
+    <div class="mh-type-row">
+      <div class="mh-type-copy">
+        <div class="mh-type-name">${_escN(bucket.label)}</div>
+        <div class="mh-type-sub">${bucket.tipo === 'projeto' ? 'por oportunidade' : 'por subtipo'}</div>
+      </div>
+      <div class="mh-type-track">
+        ${bucket.items.map((item, idx) => `
+          <div class="mh-type-seg"
+            style="width:${Math.max(item.pct, item.horas > 0 ? 2 : 0)}%;background:${bucket.color};opacity:${Math.max(.45, 1 - idx * .06)}"
+            title="${_escAttrN(item.label)} · ${fmtHClock(item.horas)} · ${mhPct(item.horas, bucket.total)}"></div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMhSummaryPanels(resumo) {
+  const totalGeral = resumo.total || 0;
+  const proj = resumo.porTipo.projeto     || { total:0, items:[] };
+  const org  = resumo.porTipo.organizacao || { total:0, items:[] };
+  const soc  = resumo.porTipo.sociedade   || { total:0, items:[] };
+  const temSoc = soc.total > 0;
+
+  const COR = { projeto:'var(--azul)', organizacao:'var(--verde)', sociedade:'var(--ouro)' };
+
+  const panel = (titulo, bucket, tipo, extraClass = '') => {
+    const pct = totalGeral > 0 ? (bucket.total / totalGeral * 100).toFixed(0) : 0;
+    const cor = COR[tipo] || 'var(--grafite)';
+    return `
+    <div class="mh-panel ${extraClass}">
+      <div class="mh-panel-hd">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <div class="mh-panel-k">${_escN(titulo)}</div>
+          <div style="display:flex;gap:10px;align-items:baseline">
+            <span style="font-size:12px;font-weight:500;font-family:var(--font-mono);color:var(--grafite)">${fmtHMin(bucket.total)}</span>
+            <span style="font-size:10px;color:#8A867E">·</span>
+            <span style="font-size:11px;font-weight:400;color:#8A867E">${bucket.items.length} frente${bucket.items.length !== 1 ? 's' : ''}</span>
+            <span style="font-size:10px;color:#8A867E">·</span>
+            <span style="font-size:11px;font-weight:500;color:${cor}">${pct}%</span>
+          </div>
+        </div>
+      </div>
+      <div class="mh-panel-body">
+        <div class="mh-summary-list">
+          ${renderMhResumoLista(bucket.items, bucket.total, tipo, 'Sem horas neste bloco.')}
+        </div>
+      </div>
+    </div>`;
+  };
+
+  return {
+    classes: 'mh-summary-panels',
+    html: `
+      ${panel('Projetos', proj, 'projeto')}
+      ${panel('Organização interna', org, 'organizacao')}
+      ${temSoc ? panel('Sociedade', soc, 'sociedade') : ''}
+    `
+  };
+}
+
+function renderMhDetalhe(dias = []) {
+  if (!dias.length) return '<div class="empty-note">Nenhum lançamento encontrado para este mês.</div>';
+  return dias.map(dia => `
+    <div class="mh-day-block">
+      <div class="mh-day-hd">
+        <div class="mh-day-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
+        <div class="mh-day-total">${fmtHClock(dia.total)}</div>
+      </div>
+      <div class="mh-day-body">
+        <div class="mh-day-cols-hd">
+          <div>Horário</div>
+          <div>Tipo</div>
+          <div>Cliente</div>
+          <div>Projeto / Bloco</div>
+          <div>Etapa / Subtipo</div>
+          <div>Comentário</div>
+          <div style="text-align:right">Dur.</div>
+        </div>
+        ${dia.itens.map(item => {
+          const projNome = item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo));
+          const etapaNome = item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—');
+          const comentario = item.tipo === 'projeto' ? _escN(item.descricao || '') : '';
+          return `
+          <div class="mh-day-entry">
+            <div class="mh-day-time">${_escN((item.inicio || '').slice(0,5))} — ${_escN((item.fim || '').slice(0,5))}</div>
+            <div><span class="mh-badge ${_escN(item.tipo)}">${_escN(item.tipoLabel)}</span></div>
+            <div class="mh-day-col-data">
+              <div class="mh-day-main-1">${item.tipo === 'projeto' ? _escN(item.cliente || '—') : '—'}</div>
+            </div>
+            <div class="mh-day-col-data">
+              <div class="mh-day-main-proj">${projNome}</div>
+            </div>
+            <div class="mh-day-col-data">
+              <div class="mh-day-main-1">${etapaNome}</div>
+            </div>
+            <div class="mh-day-comment" title="${comentario}">${comentario || '—'}</div>
+            <div class="mh-day-dur">${fmtHClock(item.dur)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMinhasHorasResumo(dataset) {
+  const { ini, fim, mesNome, resumo } = dataset;
+  document.getElementById('mh-total-geral').textContent = fmtHMin(resumo.total);
+  document.getElementById('mh-total-geral-sub').textContent = `${fmtHLong(resumo.total)} · ${mesNome}`;
+  document.getElementById('mh-total-projetos').textContent = String(resumo.totalFrentes).padStart(2, '0');
+  document.getElementById('mh-total-dias').textContent = String(resumo.diasAtivos).padStart(2, '0');
+  document.getElementById('mh-media-dia').textContent = resumo.diasAtivos ? fmtHMin(resumo.mediaDia) : '—';
+  {
+    const feito = (resumo.total || 0) + (dataset.creditos || 0);
+    const pct = dataset.esperado ? Math.round(feito / dataset.esperado * 100) : 0;
+    const el = document.getElementById('mh-meta');
+    if (el) { el.textContent = pct + '%'; el.className = 'mh-stat-v ' + (pct >= 100 ? 'ok' : 'baixo'); }
+    const sub = document.getElementById('mh-meta-sub');
+    if (sub) sub.textContent = `${fmtHMin(resumo.total)} lançadas` + (dataset.creditos ? ` + ${fmtHMin(dataset.creditos)} de ausências/feriados` : '') + ` de ${fmtHMin(dataset.esperado)} esperadas`;
+  }
+  document.getElementById('mh-projetos-sub').textContent = `${resumo.lancamentos} lançamento(s) no período`;
+  document.getElementById('mh-periodo-faixa').textContent = `${fmtDate(ini)} — ${fmtDate(fim)}`;
+  document.getElementById('mh-chart-sub').textContent = `${resumo.diasAtivos} dia(s) lançados · pico diário ${fmtHClock(Math.max(...(resumo.detalhesPorDia || []).map(d => d.total), 0))}`;
+  document.getElementById('mh-day-chart').innerHTML = renderMhDayChart(dataset);
+  document.getElementById('mh-type-bars').innerHTML = renderMhTypeBars(resumo);
+  const _pw = document.getElementById('mh-pie-wrap'); if (_pw) _pw.innerHTML = renderMhPieChart(resumo);
+  const summaryPanels = renderMhSummaryPanels(resumo);
+  const summaryWrap = document.getElementById('mh-summary-panels');
+  summaryWrap.className = summaryPanels.classes;
+  summaryWrap.innerHTML = summaryPanels.html;
+  document.getElementById('mh-detalhe-lista').innerHTML = renderMhDetalhe(resumo.detalhesPorDia);
+}
+
+function mhMetaDiaria() {
+  const c = window.__apoCtx ? window.__apoCtx() : {};
+  return (Number(c.jornadaSemanal) || 40) / 5;
+}
+function mhDiasUteis(ini, fim) {
+  let n = 0; const dt = new Date(ini + 'T12:00:00'), f = new Date(fim + 'T12:00:00');
+  while (dt <= f) { const w = dt.getDay(); if (w !== 0 && w !== 6) n++; dt.setDate(dt.getDate() + 1); }
+  return n;
+}
+async function obterMinhasHorasMes(ym) {
+  const { ini, fim, mesNome } = getFaixaMes(ym);
+  const { data: horas, error } = await sb.from('horas_lancadas')
+    .select('id, data_lancamento, hora_inicio, hora_fim, tipo, subtipo, produto_id, etapa_id, descricao, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
+    .eq('usuario_id', G.usuario.id)
+    .gte('data_lancamento', ini)
+    .lte('data_lancamento', fim)
+    .order('data_lancamento')
+    .order('hora_inicio');
+
+  if (error) throw error;
+  // ausências e feriados contam como horas trabalhadas (mesma regra da aba Horas)
+  let creditos = 0;
+  try {
+    const c = window.__apoCtx ? window.__apoCtx() : {};
+    if (window.ExpHorasCredito) {
+      const cr = await window.ExpHorasCredito.carregar(window.sb, G.usuario.id, ini, fim, { nucleoId: c.nucleoId });
+      creditos = window.ExpHorasCredito.total(cr, ini, fim) || 0;
+    }
+  } catch (e) { creditos = 0; }
+  return {
+    creditos,
+    esperado: mhDiasUteis(ini, fim) * mhMetaDiaria(),
+    ym,
+    ini,
+    fim,
+    mesNome,
+    horas: horas || [],
+    resumo: resumirMinhasHoras(horas || []),
+  };
+}
+
+async function carregarMinhasHoras() {
+  const ym = garantirMesMinhasHoras();
+  document.getElementById('mh-day-chart').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('mh-type-bars').innerHTML = '<div class="loading-state">Carregando…</div>';
+  const _pieWrap = document.getElementById('mh-pie-wrap'); if (_pieWrap) _pieWrap.innerHTML = '';
+  document.getElementById('mh-summary-panels').innerHTML = '<div class="loading-state">Carregando…</div>';
+  document.getElementById('mh-detalhe-lista').innerHTML = '<div class="loading-state">Carregando…</div>';
+  try {
+    const dataset = await obterMinhasHorasMes(ym);
+    G._minhasHorasMes = dataset;
+    renderMinhasHorasResumo(dataset);
+  } catch (err) {
+    const msg = 'Erro ao carregar horas: ' + (err?.message || err || 'desconhecido');
+    document.getElementById('mh-day-chart').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
+    document.getElementById('mh-type-bars').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
+    document.getElementById('mh-summary-panels').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
+    document.getElementById('mh-detalhe-lista').innerHTML = `<div class="empty-note">${_escN(msg)}</div>`;
+  }
+}
+
+async function exportarMinhasHorasPDF() {
+  const ym = garantirMesMinhasHoras();
+  let dataset = G._minhasHorasMes;
+  if (!dataset || dataset.ym !== ym) dataset = await obterMinhasHorasMes(ym);
+
+  const { mesNome, ini, fim, resumo } = dataset;
+  const generatedAt = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const porDiaMap = new Map((resumo.detalhesPorDia || []).map(d => [d.data, d.total]));
+  const dayBars = (() => {
+    const dias = [];
+    const dt = new Date(ini + 'T12:00:00');
+    const fimDt = new Date(fim + 'T12:00:00');
+    while (dt <= fimDt) {
+      const iso = dt.toISOString().split('T')[0];
+      dias.push({ iso, dia: dt.getDate(), horas: porDiaMap.get(iso) || 0 });
+      dt.setDate(dt.getDate() + 1);
+    }
+    const max = Math.max(...dias.map(d => d.horas), 0);
+    const refPct = max > 0 ? Math.min((8 / max) * 100, 100) : 100;
+    return dias.map(d => `
+      <div class="day-col">
+        <div class="day-val">${d.horas > 0 ? fmtHClock(d.horas) : '0h'}</div>
+        <div class="day-wrap" style="background-image:linear-gradient(to top, transparent calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% - 1px), rgba(170,170,170,.22) calc(${refPct}% + 1px), transparent calc(${refPct}% + 1px));background-repeat:no-repeat">
+          <div class="day-bar ${d.horas <= 0 ? 'zero' : ''}" style="height:${max > 0 ? Math.max((d.horas / max) * 100, d.horas > 0 ? 6 : 1.5) : 1.5}%"></div>
+        </div>
+        <div class="day-lbl">${String(d.dia).padStart(2,'0')}</div>
+      </div>
+    `).join('');
+  })();
+
+  const tipoRows = ['projeto', 'organizacao', 'sociedade']
+    .map(tipo => resumo.porTipo[tipo])
+    .filter(bucket => bucket && bucket.total > 0)
+    .map(bucket => `
+      <div class="type-row">
+        <div class="type-copy">
+          <div class="type-name">${_escN(bucket.label)}</div>
+          <div class="type-sub">${bucket.tipo === 'projeto' ? 'por oportunidade' : 'por subtipo'}</div>
+        </div>
+        <div class="type-track">
+          ${bucket.items.map((item, idx) => `
+            <div class="type-seg" style="width:${Math.max(item.pct, item.horas > 0 ? 2 : 0)}%;background:${bucket.color};opacity:${Math.max(.45, 1 - idx * .06)}"></div>
+          `).join('')}
+        </div>
+        <div class="type-total">${fmtHClock(bucket.total)}</div>
+      </div>
+    `).join('');
+
+  const bucketTable = (titulo, bucket) => `
+    <div class="panel">
+      <div class="panel-hd">${_escN(titulo)}</div>
+      <table>
+        <thead><tr><th>Item</th><th class="n">Duração</th><th class="n">%</th></tr></thead>
+        <tbody>
+          ${bucket.items.length
+            ? bucket.items.map(item => `<tr><td>${_escN(item.label)}</td><td class="n">${fmtHClock(item.horas)}</td><td class="n">${mhPct(item.horas, bucket.total)}</td></tr>`).join('')
+            : '<tr><td colspan="3">Sem horas neste bloco.</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+
+  const proj = resumo.porTipo.projeto || { total:0, items:[] };
+  const org = resumo.porTipo.organizacao || { total:0, items:[] };
+  const soc = resumo.porTipo.sociedade || { total:0, items:[] };
+  const resumoHtml = soc.items.length
+    ? `<div class="summary-grid">${bucketTable('Projetos', proj)}${bucketTable('Organização interna', org)}${bucketTable('Sociedade', soc)}</div>`
+    : `<div class="summary-grid colab">${bucketTable('Projetos', proj)}${bucketTable('Organização interna', org)}</div>`;
+
+  const blocos = resumo.detalhesPorDia.length
+    ? resumo.detalhesPorDia.map(dia => `
+      <div class="block">
+        <div class="block-hd">
+          <div class="block-title">${fmtDate(dia.data)} · ${new Date(dia.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long' })}</div>
+          <div class="block-total">${fmtHClock(dia.total)}</div>
+        </div>
+        <table class="detail">
+          <thead>
+            <tr><th>Início</th><th>Fim</th><th>Tipo</th><th>Cliente</th><th>Oportunidade</th><th>Etapa / subtipo</th><th class="n">Duração</th></tr>
+          </thead>
+          <tbody>
+            ${dia.itens.map(item => `
+              <tr>
+                <td>${_escN((item.inicio || '').slice(0,5))}</td>
+                <td>${_escN((item.fim || '').slice(0,5))}</td>
+                <td>${_escN(item.tipoLabel)}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.cliente || '—') : '—'}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.projeto) : _escN(item.descricao || mhTipoLabel(item.tipo))}</td>
+                <td>${item.tipo === 'projeto' ? _escN(item.etapa) : _escN(item.subtipo || '—')}</td>
+                <td class="n">${fmtHClock(item.dur)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `).join('')
+    : '<div class="empty">Sem horas lançadas no período.</div>';
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>Minhas horas — ${mesNome}</title><style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#262626;padding:28px 32px;background:#fff}
+  .brand{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;padding-bottom:16px;border-bottom:3px solid #C4831A}
+  .brand-mark{font-size:22px;font-weight:700;letter-spacing:.08em;color:#1E1E1E}
+  .collab-name{font-size:24px;font-weight:700;color:#1E1E1E;line-height:1.1;margin-top:8px}
+  .brand-sub{font-size:10px;color:#888;margin-top:4px}
+  .hero{display:grid;grid-template-columns:1.3fr .7fr;gap:16px;margin-bottom:18px}
+  .hero-card,.hero-total{border:1px solid #ddd;border-radius:12px;padding:14px 16px}
+  .hero-k{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A867E}
+  .hero-v{font-size:28px;font-weight:700;font-family:Menlo,Consolas,monospace;color:#1E1E1E;margin-top:8px}
+  .hero-s{font-size:10px;color:#777;margin-top:6px}
+  .hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+  .mini{background:#faf8f4;border:1px solid #ece6da;border-radius:10px;padding:10px}
+  .mini .k{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A867E}
+  .mini .v{font-size:16px;font-weight:700;font-family:Menlo,Consolas,monospace;margin-top:6px}
+  .day-chart{display:flex;align-items:flex-end;gap:4px;height:194px;margin-top:14px}
+  .day-col{min-width:24px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .day-val{font-size:8px;color:#888;font-family:Menlo,Consolas,monospace;white-space:nowrap}
+  .day-wrap{width:100%;height:145px;display:flex;align-items:flex-end}
+  .day-bar{width:100%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#5E86D4 0%, #1D4FA0 100%)}
+  .day-bar.zero{background:#ececec}
+  .day-lbl{font-size:9px;color:#8A867E;font-family:Menlo,Consolas,monospace}
+  .type-box{border:1px solid #ddd;border-radius:12px;padding:14px 16px;margin-bottom:18px}
+  .type-row{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;margin-bottom:10px}
+  .type-row:last-child{margin-bottom:0}
+  .type-name{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888}
+  .type-sub{font-size:10px;color:#8A867E;margin-top:2px}
+  .type-track{height:16px;background:#ececec;border-radius:999px;overflow:hidden;display:flex}
+  .type-seg{height:100%;min-width:1px;border-right:1px solid rgba(255,255,255,.9)}
+  .type-seg:last-child{border-right:none}
+  .type-total{font-size:11px;font-family:Menlo,Consolas,monospace;white-space:nowrap}
+  .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+  .summary-grid.colab{grid-template-columns:2fr 1fr}
+  .panel{border:1px solid #ddd;border-radius:12px;overflow:hidden}
+  .panel-hd{padding:10px 14px;background:#1E1E1E;color:#fff;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f6f6f6;text-align:left;padding:7px 10px;font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#777;border-bottom:1px solid #ddd}
+  td{padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .n{text-align:right;font-family:Menlo,Consolas,monospace;white-space:nowrap}
+  .section-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A867E;margin-bottom:10px}
+  .block{border:1px solid #ddd;border-radius:12px;overflow:hidden;margin-bottom:14px;page-break-inside:avoid}
+  .block-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:#faf8f4;border-bottom:1px solid #e8e1d6}
+  .block-title{font-size:11px;font-weight:700;color:#1E1E1E;line-height:1.35}
+  .block-total{font-size:11px;font-weight:700;font-family:Menlo,Consolas,monospace;white-space:nowrap}
+  .detail th{background:#fff}
+  .empty{padding:18px;border:1px dashed #ddd;border-radius:12px;color:#888;text-align:center}
+  @media print{body{padding:16px 20px}.block{page-break-inside:avoid}}
+  </style></head><body>
+  <div class="brand">
+    <div>
+      <div class="brand-mark">EXP</div>
+      <div class="collab-name">${_escN(G.usuario?.nome || '')}</div>
+      <div class="brand-sub">Relatório mensal individual de horas</div>
+    </div>
+    <div class="brand-sub">Período: ${fmtDate(ini)} — ${fmtDate(fim)}<br>Gerado em ${generatedAt}</div>
+  </div>
+  <div class="hero">
+    <div class="hero-card">
+      <div class="hero-k">Volume diário no mês</div>
+      <div class="hero-s">${resumo.diasAtivos} dia(s) com registros · ${mesNome}</div>
+      <div class="day-chart">${dayBars}</div>
+    </div>
+    <div class="hero-total">
+      <div class="hero-k">Total do período</div>
+      <div class="hero-v">${fmtHClock(resumo.total)}</div>
+      <div class="hero-s">${fmtHLong(resumo.total)} · gerado em ${generatedAt}</div>
+      <div class="hero-grid">
+        <div class="mini"><div class="k">Projetos / frentes</div><div class="v">${String(resumo.totalFrentes).padStart(2,'0')}</div></div>
+        <div class="mini"><div class="k">Dias lançados</div><div class="v">${String(resumo.diasAtivos).padStart(2,'0')}</div></div>
+        <div class="mini"><div class="k">Média por dia</div><div class="v">${resumo.diasAtivos ? fmtHClock(resumo.mediaDia) : '—'}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="type-box">
+    <div class="hero-k">Composição por tipo de entrada</div>
+    <div class="hero-s" style="margin-bottom:12px">Fatiamento proporcional por oportunidade, organização interna e sociedade.</div>
+    ${tipoRows || '<div class="empty">Sem horas lançadas no período.</div>'}
+  </div>
+  ${resumoHtml}
+  <div class="section-title">Detalhamento do período</div>
+  ${blocos}
+  body></html>`;
+
+  const win = window.open('', '_blank', 'width=980,height=720');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 450);
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   REVISÕES
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Início/fim reais de uma revisão a partir das tarefas, não do registro em si:
+// "iniciada" = 1ª tarefa criada em qualquer prancha; "finalizada" = quando a ÚLTIMA
+// tarefa é marcada concluída (só existe se 100% das tarefas estiverem concluídas).
+
+  window.carregarMinhasHoras = carregarMinhasHoras;
+  window.navegarMinhasHoras = navegarMinhasHoras;
+  window.minhasHorasMesAtual = minhasHorasMesAtual;
+  window.exportarMinhasHorasPDF = exportarMinhasHorasPDF;
 })();
 </script>
 </body>
