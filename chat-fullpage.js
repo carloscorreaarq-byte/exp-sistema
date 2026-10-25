@@ -18,7 +18,7 @@
   var FLAGS_KEY   = 'exp_chat_flags';
   var PINS_KEY    = 'exp_chat_pins';
   var PINNED_KEY  = 'exp_chat_pinned';
-  var BRAND_AVATAR_COLORS = ['#1D6A4A','#1D4FA0','#C4831A','#B84C3A','#6D7D8A','#5981CC','#7A9E7E'];
+  var BRAND_AVATAR_COLORS = ['#4D865C','#5981CC','#E2B141','#BC6143','#6D7D8A','#5981CC','#7A9E7E'];
   var TEMP_MEDIA_BUCKET   = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
   var CHAT_AUDIO_SENTINEL = '[audio]';
@@ -43,6 +43,13 @@
   var currentChannel    = null;
   var currentLabel      = '';
   var channelLastReadAt = {};   // channel → ISO antes de marcar lido
+  var _lastReadP = null;        // leitura do last_read_at da conversa aberta (a divisória espera por ela)
+  var _novasAbaixo = 0;         // mensagens que chegaram enquanto se lia mais acima
+  var _pularPara = null;        // id da mensagem a mostrar ao abrir (resultado da busca)
+  var fixadas = [];             // mensagens fixadas da conversa aberta (tabela chat_fixadas)
+  var _fixTabelaOk = true;      // false se o SQL chat_fixadas ainda não foi rodado
+  var _rascTimer = null;
+  var RASC_KEY = 'exp_chat_rascunhos';
   var loadRequestSeq    = 0;
   var teamMembers       = [];
   var allMembers        = [];
@@ -244,7 +251,7 @@
     var fora = teamMembers.filter(function(m){ return uids.indexOf(m.auth_id) === -1; });
     var chJ = ch.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var html = '<div class="fpm-box" onclick="event.stopPropagation()">' +
-      '<div class="fpm-hd"><span>Participantes (' + mems.length + ')</span><button onclick="fpChat.closeMembersPanel()">✕</button></div>' +
+      '<div class="fpm-hd"><span>Participantes (' + mems.length + ')</span><button onclick="fpChat.closeMembersPanel()" aria-label="Fechar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' +
       '<div class="fpm-list">' + mems.map(function(m){
         var eu = m.auth_id === user.auth_id;
         return '<div class="fpm-row"><span>' + escHtml(m.nome || '') + (eu ? ' (você)' : '') + (m.ativo === false ? ' · inativo' : '') + '</span>' +
@@ -255,7 +262,7 @@
           fora.map(function(m){ return '<option value="' + m.auth_id + '">' + escHtml(m.nome || '') + '</option>'; }).join('') +
           '</select><button onclick="fpChat.addGroupMember(\'' + chJ + '\')">Adicionar</button></div>' : '') +
         '<button class="fpm-leave" onclick="fpChat.leaveGroup(\'' + chJ + '\')">Sair do grupo</button>' +
-        '<div id="fpm-status" style="font-size:10px;color:#999"></div>' +
+        '<div id="fpm-status" class="fp-nota-10"></div>' +
       '</div></div>';
     var ov = document.createElement('div'); ov.id = 'fp-members-modal'; ov.innerHTML = html;
     ov.onclick = closeMembersPanel;
@@ -291,6 +298,7 @@
       currentChannel = null;
       var $ph = document.getElementById('fp-placeholder'), $ca = document.getElementById('fp-chat-area');
       if ($ca) $ca.style.display = 'none'; if ($ph) $ph.style.display = '';
+      document.body.classList.remove('fp-conversa-aberta');
       loadGroupMembers().then(function(){ renderConvList(); });
     });
   }
@@ -306,7 +314,7 @@
   function _snippet(msg){
     if (!msg) return 'Mensagem anterior';
     if (msg.deleted_at) return 'Mensagem apagada';
-    if (isFileSentinel(msg.content)) { var a = arquivosCache[msg.id]; return '📎 ' + (a ? a.nome : 'Arquivo'); }
+    if (isFileSentinel(msg.content)) { var a = arquivosCache[msg.id]; return 'Arquivo: ' + (a ? a.nome : 'anexo'); }
     return compactPreviewText(msg.content, 90, 'Mensagem');
   }
   function renderReplyBar(){
@@ -314,7 +322,7 @@
     var rb = document.getElementById('fp-reply-bar'); if (!rb) return;
     if (!replyTo || replyTo.channel !== currentChannel) { rb.classList.remove('on'); rb.innerHTML = ''; if (replyTo && replyTo.channel !== currentChannel) replyTo = null; return; }
     rb.innerHTML = '<div class="fp-reply-txt"><b>Respondendo a ' + escHtml(firstName(replyTo.sender_name||'')) + ':</b> ' + escHtml(_snippet(replyTo)) + '</div>' +
-      '<button title="Cancelar resposta" onclick="fpChat.cancelReply()">✕</button>';
+      '<button title="Cancelar resposta" onclick="fpChat.cancelReply()" aria-label="Cancelar resposta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
     rb.classList.add('on');
   }
   function quoteHtml(msg){
@@ -324,12 +332,23 @@
     return '<div class="fp-quote" onclick="fpChat.scrollToMessage(\'' + escHtml(String(msg.reply_to)) + '\')" title="Ir para a mensagem">' +
       (nome ? '<b>' + escHtml(nome) + '</b>' : '') + escHtml(_snippet(orig)) + '</div>';
   }
-  function scrollToMessage(id){
+  function scrollToMessage(id, _tentativas){
     var el = $msgs && $msgs.querySelector('[data-id="' + String(id).replace(/"/g,'') + '"]');
-    if (!el) { if (hasOlderMessages) loadOlderMessages(); return; }
+    if (!el) {
+      /* a mensagem citada é mais antiga que as carregadas: busca páginas antigas até achar (até 10) */
+      var n = _tentativas || 0;
+      if (hasOlderMessages && n < 10) {
+        if (n === 0) setComposerStatus('Buscando a mensagem citada…', '', true);
+        loadOlderMessages(function(){ scrollToMessage(id, n + 1); });
+      } else {
+        setComposerStatus('A mensagem citada não está mais disponível.', 'warn', false);
+      }
+      return;
+    }
+    if (_tentativas) setComposerStatus('', '', false);
     el.scrollIntoView({ behavior:'smooth', block:'center' });
-    el.style.transition = 'background .6s'; el.style.background = 'rgba(29,106,74,.12)';
-    setTimeout(function(){ el.style.background = ''; }, 1200);
+    el.classList.remove('fp-msg-destaque'); void el.offsetWidth; el.classList.add('fp-msg-destaque');
+    setTimeout(function(){ el.classList.remove('fp-msg-destaque'); }, 1800);
   }
   /* Insere em chat_messages; se a coluna reply_to ainda não existir, reenvia sem ela */
   function insertChatMessage(payload){
@@ -389,7 +408,7 @@
       .map(function(r){ var m = allMembers.find(function(x){ return x.auth_id === r.user_id; }); return m ? firstName(m.nome) : null; })
       .filter(Boolean);
     if (!nomes.length) return '';
-    return '<div class="fp-seen">✓ Visto' + (isDMChannel(msg.channel) ? '' : ' por ' + escHtml(nomes.join(', '))) + '</div>';
+    return '<div class="fp-seen"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:3px"><polyline points="20 6 9 17 4 12"/></svg>Visto' + (isDMChannel(msg.channel) ? '' : ' por ' + escHtml(nomes.join(', '))) + '</div>';
   }
   function joinTyping(ch){
     if (typingCh) { try { sb.removeChannel(typingCh); } catch(e){} typingCh = null; }
@@ -697,6 +716,11 @@
 
     $msgs  = document.getElementById('fp-messages');
     $input = document.getElementById('fp-input');
+    if ($input) $input.addEventListener('input', function(){
+      clearTimeout(_rascTimer);
+      var ch = currentChannel;
+      _rascTimer = setTimeout(function(){ if (ch === currentChannel) _rascGravar(ch, $input.value); }, 400);
+    });
 
     /* Nome no popover de status */
     var $sn = document.getElementById('fp-sopt-name');
@@ -721,15 +745,15 @@
     subscribeIncoming();
     startPolling();
     loadTeamMembers();
-    initNotif();
-    initExpRoom();
-    preloadTasksCount();
+    /* notificações, EXP Room e Listas: shared/exp-nav.js e shared/lists-panel.js */
     applyViewPrefs();
     updateSidebarPinBtn();
 
     /* Scroll tracking */
     if ($msgs) $msgs.addEventListener('scroll', function() {
       scrolledToEnd = $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 48;
+      if (scrolledToEnd && _novasAbaixo) esconderNovasToast();
+      /* perto do topo: carrega mensagens antigas */
     });
 
     /* Fechar status pop clicando fora */
@@ -888,7 +912,7 @@
   function syncColorUI() {
     /* atualizar bolinha ativa */
     var $activeDot = document.getElementById('fp-color-active-dot');
-    var colorMap = { verde:'#1D6A4A', azul:'#1D4FA0', ouro:'#C4831A', terracota:'#B84C3A' };
+    var colorMap = { verde:'#4D865C', azul:'#5981CC', ouro:'#E2B141', terracota:'#BC6143' };
     if ($activeDot) $activeDot.style.background = colorMap[chatColor] || colorMap.verde;
 
     /* marcar no popover */
@@ -1267,7 +1291,7 @@
           pessoas.forEach(function(m){
             var pres = onlinePresence[m.auth_id];
             html += buildConvItemHtml(dmChannel(uid, m.auth_id), m.nome || '', m.iniciais || (m.nome||'').substring(0,2).toUpperCase(),
-              m.avatar_url || null, m.cor || '#1D6A4A', 'Iniciar conversa', null, 0, '', pres ? pres.status : 'offline', null);
+              m.avatar_url || null, m.cor || '#4D865C', 'Iniciar conversa', null, 0, '', pres ? pres.status : 'offline', null);
           });
         }
       }
@@ -1290,7 +1314,7 @@
         });
       }
 
-      if (!html) html = '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma conversa encontrada.</div>';
+      if (!html) html = '<div class="fp-empty fp-vazio">Nenhuma conversa encontrada.</div>';
       $list.innerHTML = html;
       setActiveConvItem(currentChannel);
     });
@@ -1302,6 +1326,7 @@
     var isUnread = unread > 0;
     var rawPv    = (typeof previewText === 'object' && previewText && previewText.content)
       ? previewText.content : String(previewText||'');
+    var _rasc    = channel !== currentChannel ? rascunhoDe(channel) : '';
     var preview  = isAnnotSentinel(rawPv)
       ? ((lastMsg && lastMsg.sender_name ? firstName(lastMsg.sender_name) + ' ' : '') + 'revisou uma imagem')
       : compactPreviewText(rawPv, 80, '');
@@ -1313,11 +1338,11 @@
     /* Avatar */
     var avHtml;
     if (avVariant === 'hash-verde') {
-      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(29,106,74,.15);color:#1D6A4A">#</div></div>';
+      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(77,134,92,.15);color:#4D865C">#</div></div>';
     } else if (avVariant === 'hash-azul') {
-      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(29,79,160,.15);color:#1D4FA0">#</div></div>';
+      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(89,129,204,.15);color:#5981CC">#</div></div>';
     } else if (avVariant === 'hash-ouro') {
-      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(196,131,26,.15);color:#C4831A">#</div></div>';
+      avHtml = '<div class="fp-conv-av-wrap"><div class="fp-av-hash" style="background:rgba(226,177,65,.15);color:#E2B141">#</div></div>';
     } else if (channel.startsWith('group:') && members && members.length >= 2) {
       /* Avatares empilhados */
       var stackClass = members.length >= 3 ? 'fp-av-stack trio' : 'fp-av-stack';
@@ -1326,7 +1351,7 @@
         if (m.avatar_url) {
           stackHtml += '<img class="fp-av-s" src="' + escHtml(m.avatar_url) + '" alt="" style="object-fit:cover">';
         } else {
-          var mc = m.cor || '#1D6A4A';
+          var mc = m.cor || '#4D865C';
           var mi = m.iniciais || (m.nome||'').substring(0,2).toUpperCase();
           stackHtml += '<div class="fp-av-s" style="background:' + escHtml(mc) + '">' + escHtml(mi) + '</div>';
         }
@@ -1335,7 +1360,7 @@
       avHtml = stackHtml;
     } else if (isProjectChannel(channel)) {
       /* quadrado arredondado — mesma estrutura do #geral e #socios */
-      var pc  = cor || '#1D6A4A';
+      var pc  = cor || '#4D865C';
       var pr16 = parseInt(pc.slice(1,3)||'1D',16);
       var pg16 = parseInt(pc.slice(3,5)||'6A',16);
       var pb16 = parseInt(pc.slice(5,7)||'4A',16);
@@ -1348,7 +1373,7 @@
         (presenceStatus ? '<span class="fp-presence-dot-sm ' + presenceStatus + '"></span>' : '') +
         '</div>';
     } else {
-      var c = cor || '#1D6A4A';
+      var c = cor || '#4D865C';
       var ini = iniciais || '?';
       avHtml = '<div class="fp-conv-av-wrap">' +
         '<div class="fp-av-circle" style="background:' + escHtml(c) + '">' + escHtml(ini) + '</div>' +
@@ -1371,7 +1396,7 @@
           '<span class="fp-conv-name">' + labelEsc + _convStateIcons(channel) + '</span>' +
           (ts ? '<span class="fp-conv-ts">' + escHtml(ts) + '</span>' : '') +
         '</div>' +
-        '<div class="fp-conv-preview">' + escHtml(preview) + '</div>' +
+        '<div class="fp-conv-preview">' + (_rasc ? '<span class="fp-conv-rasc">Rascunho:</span> ' + escHtml(compactPreviewText(_rasc, 70, '')) : escHtml(preview)) + '</div>' +
       '</div>' +
       /* Projetos: botão de fixar ao passar o mouse (sempre visível quando já fixado) */
       (isProj
@@ -1381,6 +1406,7 @@
             '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
           '</button>'
         : pinIco) +
+      (unread > 0 && mentionChannels[channel] ? '<div class="fp-conv-at" title="Você foi mencionado">@</div>' : '') +
       (unread > 0 ? '<div class="fp-conv-badge">' + unread + '</div>' : '') +
       '</div>';
   }
@@ -1426,71 +1452,187 @@
     if (!q || q.length < 2) return;
 
     var uid   = user.auth_id;
-    var $list = document.getElementById('fp-conv-list');
-
-    /* Busca mensagens contendo o termo */
     var qSafe = q.replace(/[,()*%]/g, ' ').trim();
-    sb.from('chat_messages')
-      .select('channel,sender_name,content,created_at,sender_id,sender_iniciais,sender_cor')
-      .or('content.ilike.%' + qSafe + '%,sender_name.ilike.%' + qSafe + '%')
-      .order('created_at', { ascending: false })
-      .limit(40)
-      .then(function(r) {
-        if (filterQuery !== q) return; /* query mudou enquanto esperava */
-        var msgs = r.data || [];
-        if (!msgs.length) return;
+    var reQ   = new RegExp(escHtml(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+    var marca = function(t){ return escHtml(String(t||'')).replace(reQ, function(x){ return '<mark class="fp-busca-mark">'+x+'</mark>'; }); };
 
-        /* Deduplica por canal, filtra canais que o user pode ver */
-        var seen = {};
-        var results = [];
-        msgs.forEach(function(m) {
-          if (seen[m.channel]) return;
-          seen[m.channel] = true;
-          var ch = m.channel;
-          /* Verificar acesso: general, projetos (todos), socios (se sócio), ou canal com uid */
-          if (!isOpenChannel(ch) && !isProjectChannel(ch) && !(ch === 'socios' && isSocioLikeRole(user.role)) && !channelHasUser(ch, uid)) return;
-          results.push(m);
-        });
+    Promise.all([
+      sb.from('chat_messages').select('id,channel,sender_name,content,created_at,sender_id,sender_iniciais,sender_cor')
+        .or('content.ilike.%' + qSafe + '%,sender_name.ilike.%' + qSafe + '%')
+        .order('created_at', { ascending: false }).limit(60),
+      sb.from('chat_thread_messages').select('id,thread_id,sender_nome,content,created_at')
+        .ilike('content', '%' + qSafe + '%')
+        .order('created_at', { ascending: false }).limit(30),
+    ]).then(function(res) {
+      if (filterQuery !== q) return; /* query mudou enquanto esperava */
+      var porCanal = {}, results = [];
+      (res[0].data || []).forEach(function(m) {
+        var ch = m.channel;
+        if (!isOpenChannel(ch) && !(ch === 'socios' && isSocioLikeRole(user.role)) && !channelHasUser(ch, uid)) return;
+        if ((porCanal[ch] = (porCanal[ch] || 0) + 1) > 3) return;   /* até 3 por conversa */
+        results.push(m);
+      });
+      (res[1].data || []).forEach(function(m) {
+        var ch = 'project:' + m.thread_id;
+        if ((porCanal[ch] = (porCanal[ch] || 0) + 1) > 3) return;
+        results.push({ id: m.id, channel: ch, sender_name: m.sender_nome, content: m.content, created_at: m.created_at });
+      });
+      results.sort(function(x, y){ return String(y.created_at).localeCompare(String(x.created_at)); });
+      results = results.slice(0, 20);
+      if (!results.length) return;
 
-        if (!results.length) return;
-
-        /* Adicionar seção de resultados ao final */
-        var extra = '<div class="fp-task-section" style="margin-top:8px">Nas mensagens</div>';
-        results.forEach(function(m) {
-          var meta    = isDynamicChannel(m.channel) ? getConversationMeta(m, uid) : { label: m.channel === 'general' ? '# geral' : m.channel === 'bim' ? '# BIM' : '# sócios', iniciais: '#', cor: m.channel === 'bim' ? '#1D4FA0' : '#1D6A4A', avatarUrl: null };
-          var chanJson = m.channel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          var labelEsc = escHtml(meta.label);
-          var snippet  = String(m.content||'').replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), function(match){ return '<mark style="background:rgba(0,0,0,.12);border-radius:2px;padding:0 1px">'+escHtml(match)+'</mark>'; });
-          var snipSafe = escHtml(String(m.content||'')).replace(new RegExp(escHtml(q),'gi'), function(match){ return '<mark style="background:rgba(0,0,0,.12);border-radius:2px;padding:0 1px">'+match+'</mark>'; });
-
-          extra += '<div class="fp-conv-item" data-channel="'+escHtml(m.channel)+'" onclick="fpChat.openChannel(\''+chanJson+'\',\''+labelEsc+'\')">'+
-            '<div class="fp-conv-av-wrap"><div class="fp-av-circle" style="background:'+escHtml(meta.cor||'#1D6A4A')+'">'+escHtml(meta.iniciais||'?')+'</div></div>'+
-            '<div class="fp-conv-body">'+
-              '<div class="fp-conv-top"><span class="fp-conv-name">'+labelEsc+'</span></div>'+
-              '<div class="fp-conv-preview" style="-webkit-line-clamp:2">'+snipSafe+'</div>'+
-            '</div>'+
-            '</div>';
-        });
-
-        /* Adicionar ao final do list atual */
-        if ($list) $list.innerHTML += extra;
-        setActiveConvItem(currentChannel);
-      }).catch(function() {});
+      var extra = '<div class="fp-task-section" style="margin-top:8px">Nas mensagens · ' + results.length + '</div>';
+      results.forEach(function(m) {
+        var meta;
+        if (isProjectChannel(m.channel)) {
+          var pm = projectThreadMeta[m.channel] || {};
+          meta = { label: pm.label || 'Projeto', iniciais: pm.iniciais || 'PR', cor: pm.cor || '#4D865C' };
+        } else if (isDynamicChannel(m.channel)) meta = getConversationMeta(m, uid);
+        else meta = { label: m.channel === 'general' ? '# geral' : m.channel === 'bim' ? '# BIM' : '# sócios', iniciais: '#', cor: m.sender_cor || '#4D865C' };
+        var chanJson = m.channel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        var labelEsc = escHtml(meta.label);
+        var quando   = m.created_at ? fmtConvTs(new Date(m.created_at)) : '';
+        extra += '<div class="fp-conv-item" data-channel="'+escHtml(m.channel)+'" onclick="fpChat.abrirNaMensagem(\''+chanJson+'\',\''+labelEsc+'\',\''+escHtml(String(m.id))+'\')">'+
+          '<div class="fp-conv-av-wrap"><div class="fp-av-circle" style="background:'+escHtml(meta.cor||'#4D865C')+'">'+escHtml(meta.iniciais||'?')+'</div></div>'+
+          '<div class="fp-conv-body">'+
+            '<div class="fp-conv-top"><span class="fp-conv-name">'+labelEsc+'</span>'+(quando ? '<span class="fp-conv-ts">'+escHtml(quando)+'</span>' : '')+'</div>'+
+            '<div class="fp-conv-preview" style="-webkit-line-clamp:2">'+(m.sender_name ? '<b>'+escHtml(firstName(m.sender_name))+':</b> ' : '')+marca(m.content)+'</div>'+
+          '</div>'+
+          '</div>';
+      });
+      var $list = document.getElementById('fp-conv-list');
+      if ($list) $list.innerHTML += extra;
+      setActiveConvItem(currentChannel);
+    }).catch(function() {});
   }
+  /* Abre a conversa já na mensagem encontrada pela busca */
+  function abrirNaMensagem(channel, label, msgId) {
+    _pularPara = msgId;
+    if (channel === currentChannel) { var p = _pularPara; _pularPara = null; scrollToMessage(p); return; }
+    openChannel(channel, label);
+  }
+  function _aposCarregarMensagens() {
+    if (_pularPara) { var p = _pularPara; _pularPara = null; scrollToMessage(p); }
+    else scrollParaNovas();
+  }
+
+  /* ── Rascunho por conversa (fica neste navegador) ── */
+  function _rascLer() { try { return JSON.parse(localStorage.getItem(RASC_KEY) || '{}'); } catch (e) { return {}; } }
+  function _rascGravar(ch, txt) {
+    if (!ch) return;
+    var r = _rascLer(); txt = String(txt || '');
+    if (txt.trim()) r[ch] = txt; else delete r[ch];
+    try { localStorage.setItem(RASC_KEY, JSON.stringify(r)); } catch (e) {}
+  }
+  function rascunhoDe(ch) { return _rascLer()[ch] || ''; }
+
+  /* ── Mensagens fixadas na conversa (para todos; tabela chat_fixadas) ── */
+  function isFixada(id) { return fixadas.some(function(f){ return String(f.message_id) === String(id); }); }
+  function carregarFixadas(ch) {
+    fixadas = []; renderFixadas();
+    if (!_fixTabelaOk || !ch) return;
+    sb.from('chat_fixadas').select('id,message_id,fixada_por,created_at').eq('channel', ch).order('created_at', { ascending:false })
+      .then(function(r){
+        if (r.error) { if (/chat_fixadas|relation|schema cache/i.test(r.error.message || '')) _fixTabelaOk = false; return; }
+        if (ch !== currentChannel) return;
+        fixadas = r.data || []; renderFixadas(); renderMessages();
+      });
+  }
+  function toggleFixar(id) {
+    if (!_fixTabelaOk) { setComposerStatus('Para fixar mensagens, rode o SQL chat_fixadas no Supabase.', 'warn', false); return; }
+    var ch = currentChannel;
+    var f = fixadas.find(function(x){ return String(x.message_id) === String(id); });
+    if (f) {
+      sb.from('chat_fixadas').delete().eq('id', f.id).then(function(r){
+        if (r.error) { setComposerStatus('Não foi possível desafixar: ' + r.error.message, 'warn', false); return; }
+        fixadas = fixadas.filter(function(x){ return x !== f; }); renderFixadas(); renderMessages();
+      });
+      return;
+    }
+    sb.from('chat_fixadas').insert({ channel: ch, message_id: String(id), fixada_por: user.auth_id })
+      .select('id,message_id,fixada_por,created_at').single().then(function(r){
+        if (r.error) { setComposerStatus('Não foi possível fixar: ' + r.error.message, 'warn', false); return; }
+        if (ch !== currentChannel) return;
+        fixadas.unshift(r.data); renderFixadas(); renderMessages();
+        setComposerStatus('Mensagem fixada no topo da conversa.', 'ok', false);
+      });
+  }
+  function renderFixadas() {
+    var el = document.getElementById('fp-fixadas');
+    if (!el) return;
+    if (!fixadas.length) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    var itens = fixadas.map(function(f){
+      var m = messages.find(function(x){ return String(x.id) === String(f.message_id); });
+      var idj = escHtml(String(f.message_id));
+      return '<div class="fp-fix-item" onclick="fpChat.scrollToMessage(\'' + idj + '\')" title="Ir para a mensagem">' +
+        '<span class="fp-fix-txt">' + (m && m.sender_name ? '<b>' + escHtml(firstName(m.sender_name)) + ':</b> ' : '') + escHtml(_snippet(m)) + '</span>' +
+        '<button type="button" class="fp-fix-x" title="Desafixar" onclick="event.stopPropagation();fpChat.toggleFixar(\'' + idj + '\')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+      '</div>';
+    }).join('');
+    el.innerHTML = '<button type="button" class="fp-fix-hd" onclick="this.parentNode.classList.toggle(\'aberto\')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
+      '<span>' + fixadas.length + (fixadas.length === 1 ? ' mensagem fixada' : ' mensagens fixadas') + '</span>' +
+      '<svg class="fp-fix-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>' +
+      '<div class="fp-fix-lista">' + itens + '</div>';
+  }
+
+  /* ── Mensagem → tarefa nas Listas ── */
+  function criarTarefaDaMensagem(id) {
+    var m = messages.find(function(x){ return String(x.id) === String(id); });
+    if (!m) return;
+    var uidApp = user.app_user_id || user.id;
+    if (!uidApp) { setComposerStatus('Não foi possível identificar seu usuário.', 'warn', false); return; }
+    var desc = compactPreviewText(m.content, 240, 'Mensagem') + ' — chat: ' + (currentLabel || 'conversa');
+    var payload = { usuario_id: uidApp, criado_por: uidApp, descricao: desc, tipo: isProjectChannel(currentChannel) ? 'projeto' : null, data_limite: null };
+    var th = isProjectChannel(currentChannel) && (projectThreads || []).find(function(t){ return String(t.id) === projectThreadIdFromChannel(currentChannel); });
+    if (th && th.produto_id) payload.produto_id = th.produto_id;
+    sb.from('tarefas_livres').insert(payload).then(function(r){
+      if (r.error) { setComposerStatus('Não foi possível criar a tarefa: ' + r.error.message, 'warn', false); return; }
+      setComposerStatus('Tarefa criada nas suas Listas.', 'ok', false);
+      if (window.listsPanel && listsPanel.refresh) listsPanel.refresh();
+    });
+  }
+
+  /* ── 15. Canal de projeto: etapa atual, prazo e link para a Gestão ── */
+  function carregarInfoProjeto(ch) {
+    var el = document.getElementById('fp-hdr-projeto');
+    if (el) { el.hidden = true; el.innerHTML = ''; }
+    if (!el || !isProjectChannel(ch)) return;
+    var th = (projectThreads || []).find(function(t){ return String(t.id) === projectThreadIdFromChannel(ch); });
+    if (!th || !th.produto_id) return;
+    sb.from('etapas').select('nome,status,ordem,data_estimada').eq('produto_id', th.produto_id).order('ordem', { ascending:true })
+      .then(function(r){
+        if (ch !== currentChannel || r.error) return;
+        var ets = r.data || [];
+        var atual = ets.find(function(e){ return e.status !== 'concluida'; });
+        var fmt = function(d){ if (!d) return ''; var x = new Date(String(d).slice(0,10) + 'T12:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }); };
+        var atrasada = atual && atual.data_estimada && String(atual.data_estimada).slice(0,10) < new Date().toISOString().slice(0,10);
+        el.innerHTML =
+          (atual ? '<span class="fp-hp-etapa" title="Etapa atual">' + escHtml(atual.nome || 'Etapa') + '</span>' +
+            (atual.data_estimada ? '<span class="fp-hp-prazo' + (atrasada ? ' atrasada' : '') + '" title="Prazo da etapa">' + escHtml(fmt(atual.data_estimada)) + '</span>' : '')
+           : (ets.length ? '<span class="fp-hp-etapa">Etapas concluídas</span>' : '')) +
+          '<a class="fp-hp-link" href="gestao.html?produto=' + encodeURIComponent(th.produto_id) + '" target="_blank" rel="noopener">Abrir projeto</a>';
+        el.hidden = false;
+      });
+  }
+
   function toggleProjectSection() { projectSectionCollapsed = !projectSectionCollapsed; renderConvList(); }
 
   /* ═══════════════════════════════════════════════════════════════════
      ABRIR CANAL
   ═══════════════════════════════════════════════════════════════════ */
   function openChannel(channel, displayName) {
+    if (currentChannel && $input && currentChannel !== channel) _rascGravar(currentChannel, $input.value);
     closeMediaViewer();
     clearMessageMediaCache();
     setComposerStatus('','',false);
     if (pendingAttachment) removePendingAttachment();
 
     /* Guardar último last_read_at ANTES de marcar como lido */
-    getChannelLastRead(channel).then(function(ts) {
+    _novasAbaixo = 0; esconderNovasToast();
+    _lastReadP = getChannelLastRead(channel).then(function(ts) {
       channelLastReadAt[channel] = ts;
+      return ts;
     });
 
     currentChannel = channel;
@@ -1512,6 +1654,7 @@
     var $ca = document.getElementById('fp-chat-area');
     if ($ph) $ph.style.display = 'none';
     if ($ca) $ca.style.display = 'flex';
+    document.body.classList.add('fp-conversa-aberta');   /* celular: mostra a conversa no lugar da lista */
 
     closeEmojiPop();
     var attnBtn = document.getElementById('fp-attn-btn');
@@ -1536,7 +1679,11 @@
     updateConvHeaderButtons(); renderReplyBar();
     loadReadStatus(channel); joinTyping(channel);
     loadMessages();
-    markRead();
+    /* só marca como lido depois de saber onde a pessoa parou (senão a divisória some) */
+    (_lastReadP || Promise.resolve()).then(function(){ if (currentChannel === channel) markRead(); });
+    carregarFixadas(channel);
+    carregarInfoProjeto(channel);
+    if ($input) { $input.value = rascunhoDe(channel); $input.style.height = 'auto'; }
     setActiveConvItem(channel);
     renderConvList();
     setTimeout(function(){ if ($input) $input.focus(); }, 80);
@@ -1559,25 +1706,25 @@
   }
 
   function buildChannelHeaderAv(channel) {
-    if (channel==='general') return '<div style="width:34px;height:34px;border-radius:9px;background:var(--ca-bg);color:var(--ca);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">#</div>';
-    if (channel==='bim')     return '<div style="width:34px;height:34px;border-radius:9px;background:rgba(29,79,160,.12);color:#1D4FA0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">#</div>';
-    if (channel==='socios')  return '<div style="width:34px;height:34px;border-radius:9px;background:#FBF3E8;color:#C4831A;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">#</div>';
+    if (channel==='general') return '<div style="width:34px;height:34px;border-radius:var(--radius-btn);background:var(--ca-bg);color:var(--ca);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">#</div>';
+    if (channel==='bim')     return '<div style="width:34px;height:34px;border-radius:var(--radius-btn);background:rgba(89,129,204,.12);color:#5981CC;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">#</div>';
+    if (channel==='socios')  return '<div style="width:34px;height:34px;border-radius:var(--radius-btn);background:#FBF3E8;color:#E2B141;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">#</div>';
     if (channel.startsWith('dm:')) {
       var parts = channel.replace('dm:','').split(':');
       var oUid  = parts.find(function(p){return p!==user.auth_id;});
       var mem   = oUid ? allMembers.find(function(m){return m.auth_id===oUid;}) : null;
       if (mem) {
         if (mem.avatar_url) return '<img style="width:34px;height:34px;border-radius:50%;object-fit:cover" src="'+escHtml(mem.avatar_url)+'" alt="">';
-        return '<div style="width:34px;height:34px;border-radius:50%;background:'+escHtml(mem.cor||'#1D6A4A')+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:var(--font-mono)">' + escHtml((mem.iniciais||(mem.nome||'').substring(0,2)).toUpperCase()) + '</div>';
+        return '<div style="width:34px;height:34px;border-radius:50%;background:'+escHtml(mem.cor||'#4D865C')+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-family:var(--font-ui)">' + escHtml((mem.iniciais||(mem.nome||'').substring(0,2)).toUpperCase()) + '</div>';
       }
     }
     if (isProjectChannel(channel) && projectThreadMeta[channel]) {
       var meta = projectThreadMeta[channel];
-      return '<div style="width:34px;height:34px;border-radius:var(--radius-input,6px);background:'+escHtml(meta.cor||'#1D6A4A')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--font-mono)">' + escHtml(meta.iniciais||'P') + '</div>';
+      return '<div style="width:34px;height:34px;border-radius:var(--radius-input,6px);background:'+escHtml(meta.cor||'#4D865C')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--font-ui)">' + escHtml(meta.iniciais||'P') + '</div>';
     }
     var ini2 = initialsFromLabel(currentLabel,'GP');
     var cor2 = brandColorForKey(channel);
-    return '<div style="width:34px;height:34px;border-radius:9px;background:'+escHtml(cor2)+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--font-mono)">' + escHtml(ini2) + '</div>';
+    return '<div style="width:34px;height:34px;border-radius:var(--radius-btn);background:'+escHtml(cor2)+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--font-ui)">' + escHtml(ini2) + '</div>';
   }
 
   function updateChannelSubtitle() {
@@ -1671,7 +1818,7 @@
   function renderMembersModal() {
     var $list = document.getElementById('fp-members-list');
     if (!$list) return;
-    if (!teamMembers.length) { $list.innerHTML='<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Carregando...</div>'; return; }
+    if (!teamMembers.length) { $list.innerHTML='<div class="fp-empty fp-vazio">Carregando...</div>'; return; }
     var roleLabel = { socio:'Sócio', socio_adm:'Sócio administrador', socio_admin:'Sócio administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
     var html = '';
     /* Online primeiro (depois foco/ausente, offline), em ordem alfabética; filtra pela busca */
@@ -1685,7 +1832,7 @@
       });
     if (!lista.length) html = '<div class="fp-members-empty">Ninguém encontrado.</div>';
     lista.forEach(function(m) {
-      var cor = m.cor||'#1D6A4A';
+      var cor = m.cor||'#4D865C';
       var ini = m.iniciais||(m.nome||'').substring(0,2).toUpperCase();
       var sel = selectedMembers.findIndex(function(s){return s.auth_id===m.auth_id;})!==-1;
       var pres = onlinePresence[m.auth_id];
@@ -1698,7 +1845,7 @@
         '<div style="position:relative;flex-shrink:0">'+
           (m.avatar_url
             ? '<img style="width:32px;height:32px;border-radius:50%;object-fit:cover" src="'+escHtml(m.avatar_url)+'" alt="">'
-            : '<div style="width:32px;height:32px;border-radius:50%;background:'+escHtml(cor)+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--font-mono)">'+escHtml(ini)+'</div>')+
+            : '<div style="width:32px;height:32px;border-radius:50%;background:'+escHtml(cor)+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--font-ui)">'+escHtml(ini)+'</div>')+
           '<span class="fp-presence-dot-sm '+ps+'" style="position:absolute;bottom:-1px;right:-1px"></span>'+
         '</div>'+
         '<div>'+
@@ -1805,7 +1952,7 @@
       .subscribe(function(s){ if(s==='SUBSCRIBED') presenceCh.track(presencePayload(userStatus)); });
   }
   function presencePayload(status) {
-    return { user_id:user.auth_id, nome:user.nome, iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(), cor:user.cor||'#1D6A4A', status:status };
+    return { user_id:user.auth_id, nome:user.nome, iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(), cor:user.cor||'#4D865C', status:status };
   }
 
   /* Faixa "Online agora" — renderiza quem está presente, exceto o próprio usuário.
@@ -1826,7 +1973,7 @@
           uid: uid,
           nome: nome,
           iniciais: (((mem && mem.iniciais) || p.iniciais || nome.substring(0,2)) || '?').toUpperCase(),
-          cor: (mem && mem.cor) || p.cor || '#1D6A4A',
+          cor: (mem && mem.cor) || p.cor || '#4D865C',
           avatar_url: (mem && mem.avatar_url) || null,
           status: p.status || 'online'
         };
@@ -2116,8 +2263,8 @@
      CARREGAR MENSAGENS
   ═══════════════════════════════════════════════════════════════════ */
   /* Carrega o bloco anterior às mensagens já na tela, mantendo a posição de leitura */
-  function loadOlderMessages() {
-    if (loadingOlder || !hasOlderMessages || !messages.length) return;
+  function loadOlderMessages(done) {
+    if (loadingOlder || !hasOlderMessages || !messages.length) { if (done && !loadingOlder) done(); return; }
     var channel = currentChannel, first = messages.find(function(m){ return !m.pending; });
     if (!first) return;
     loadingOlder = true; renderMessages();
@@ -2129,7 +2276,7 @@
       .then(function(r) {
         loadingOlder = false;
         if (channel !== currentChannel) return;
-        if (r.error) { renderMessages(); return; }
+        if (r.error) { renderMessages(); if (done) done(); return; }
         var rows = (r.data || []).slice().reverse();
         if (isPrj) rows = rows.map(normalizeProjectMessage);
         hasOlderMessages = (r.data || []).length >= OLDER_PAGE_SIZE;
@@ -2137,7 +2284,8 @@
         rows.forEach(function(m){ upsertMessage(m); });
         renderMessages(); loadCurrentMessageMedia(); loadArquivosFor();
         if ($msgs) $msgs.scrollTop = prevTop + ($msgs.scrollHeight - prevH);
-      }, function(){ loadingOlder = false; renderMessages(); });
+        if (done) done();
+      }, function(){ loadingOlder = false; renderMessages(); if (done) done(); });
   }
 
   /* Exclusão lógica da própria mensagem (o registro fica no banco para histórico) */
@@ -2169,7 +2317,11 @@
           if (r.error){showError();return;}
           hasOlderMessages=(r.data||[]).length>=200;
           messages=(r.data||[]).slice().reverse().map(normalizeProjectMessage);
-          clearMessageMediaCache(); renderMessages(); loadCurrentMessageMedia(); scrollBottom();
+          clearMessageMediaCache();
+          (_lastReadP || Promise.resolve()).then(function(){
+            if (channel!==currentChannel) return;
+            renderMessages(); loadCurrentMessageMedia(); _aposCarregarMensagens();
+          });
         });
       return;
     }
@@ -2184,7 +2336,11 @@
         if (r.error){showError();return;}
         hasOlderMessages=(r.data||[]).length>=MSG_LOAD_LIMIT;
         messages=(r.data||[]).slice().reverse();
-        clearMessageMediaCache(); renderMessages(); loadCurrentMessageMedia(); loadArquivosFor(); scrollBottom();
+        clearMessageMediaCache();
+        (_lastReadP || Promise.resolve()).then(function(){
+          if (channel!==currentChannel) return;
+          renderMessages(); loadCurrentMessageMedia(); loadArquivosFor(); _aposCarregarMensagens();
+        });
       });
   }
 
@@ -2197,6 +2353,7 @@
     fetchProjectUnreadMap(uid).then(function(pu){
       Object.keys(pu||{}).forEach(function(k){ channelUnread[k]=pu[k]; });
       updatePageTitle(); renderConvList();
+      detectarMencoesProjetos(uid, pu);
     });
     sb.from('chat_read_status').select('channel,last_read_at').eq('user_id',uid)
       .then(function(r){
@@ -2261,6 +2418,7 @@
     _closeMentionDD();
     closeEmojiPop();
     $input.value=''; $input.style.height='auto';
+    _rascGravar(currentChannel, '');
     var replyId = (replyTo && replyTo.channel===currentChannel) ? replyTo.id : null;
     var pm=buildPendingMessage(content, replyId ? {reply_to:replyId} : null);
     if (replyTo) cancelReply();
@@ -2285,7 +2443,7 @@
     var payload={
       channel:currentChannel, sender_id:user.auth_id, sender_name:user.nome,
       sender_iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),
-      sender_cor:user.cor||'#1D6A4A', content:content
+      sender_cor:user.cor||'#4D865C', content:content
     };
     if (replyId) payload.reply_to=replyId;
     insertChatMessage(payload).then(function(r){
@@ -2388,7 +2546,7 @@
       /* Mensagem apagada (exclusão lógica) — nota central, sem conteúdo */
       if (msg.deleted_at) {
         var _dfn = firstName(msg.sender_name||'') || 'Alguém';
-        html += '<div class="fp-deleted-note">🚫 ' +
+        html += '<div class="fp-deleted-note"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>' +
           (isOwn ? 'Você apagou uma mensagem' : 'Mensagem de '+escHtml(_dfn)+' apagada') +
           '<span class="fp-attn-time">'+fmtTime(dt)+'</span></div>';
         prevSender=null; prevTime=dt;
@@ -2405,7 +2563,7 @@
       /* "Chamar a atenção" — nota central, sem bolha */
       if (isAttentionSentinel(msg.content)) {
         var _afn = firstName(msg.sender_name||'') || 'Alguém';
-        var attnTxt = isOwn ? 'Você chamou a atenção 👋' : '👋 '+escHtml(_afn)+' está chamando sua atenção';
+        var attnTxt = isOwn ? 'Você chamou a atenção' : escHtml(_afn)+' está chamando sua atenção';
         html += '<div class="fp-attn-note">'+attnTxt+'<span class="fp-attn-time">'+fmtTime(dt)+'</span></div>';
         prevSender=null; prevTime=dt;
         return;
@@ -2415,7 +2573,7 @@
       var grouped = msg.sender_id===prevSender && gap < 15*60*1000;   /* mensagens seguidas da mesma pessoa em até 15 min */
 
       var iniciais= msg.sender_iniciais||(msg.sender_name||'??').substring(0,2).toUpperCase();
-      var cor     = msg.sender_cor||'#1D6A4A';
+      var cor     = msg.sender_cor||'#4D865C';
       var fn      = firstName(msg.sender_name||'');
       var memb    = allMembers.find(function(m){return m.auth_id===msg.sender_id;});
       var avatar  = memb ? memb.avatar_url : null;
@@ -2511,16 +2669,16 @@
             (isMediaPinned(media) ? '<span class="fp-thumb-pin" title="Imagem fixada — não expira"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2Z"/></svg></span>' : '') + '</div>';
         }
       } else if (media && media.pending) {
-        html += '<div class="fp-media-thumb" style="padding:14px;font-size:11px;color:#999">Enviando '+(mediaIsAudio?'áudio':'print')+'…</div>';
+        html += '<div class="fp-media-thumb fp-vazio">Enviando '+(mediaIsAudio?'áudio':'print')+'…</div>';
       } else if (showLoadFailed) {
-        html += '<button type="button" style="margin-top:4px;font-size:11px;color:#B84C3A;background:none;border:none;padding:0;cursor:pointer;text-decoration:underline" onclick="fpChat.retryMediaIssue(\''+escHtml(String(msg.id))+'\')">Falha ao carregar '+(mediaIsAudio?'áudio':'print')+'. Clique para tentar de novo.</button>';
+        html += '<button type="button" class="fp-link-erro" onclick="fpChat.retryMediaIssue(\''+escHtml(String(msg.id))+'\')">Falha ao carregar '+(mediaIsAudio?'áudio':'print')+'. Clique para tentar de novo.</button>';
       } else if (showExpired) {
         html += '<div class="fp-media-expired">'+(mediaIsAudio?'Áudio expirado':'Print expirado')+'</div>';
       } else if (showMediaPending) {
-        html += '<div class="fp-media-thumb" style="padding:14px;font-size:11px;color:#999">Carregando '+(mediaIsAudio?'áudio':'print')+'…</div>';
+        html += '<div class="fp-media-thumb fp-vazio">Carregando '+(mediaIsAudio?'áudio':'print')+'…</div>';
       }
       if (showFailed) {
-        html += '<button type="button" style="margin-top:4px;font-size:11px;color:#B84C3A;background:none;border:none;padding:0;cursor:pointer;text-decoration:underline" onclick="fpChat.retryMediaIssue(\''+escHtml(String(msg.id))+'\')">Falha no envio. Clique para tentar de novo.</button>';
+        html += '<button type="button" class="fp-link-erro" onclick="fpChat.retryMediaIssue(\''+escHtml(String(msg.id))+'\')">Falha no envio. Clique para tentar de novo.</button>';
       }
 
       /* Reações inline */
@@ -2539,6 +2697,8 @@
         ((!msg.pending && !msg.failed) ? '<button class="fp-action-btn" onclick="fpChat.startReply(\''+escHtml(String(msg.id))+'\')" title="Responder">'+_REPLY+'</button>' : '') +
         ((isOwn && hasText && !msg.pending && !msg.failed) ? '<button class="fp-action-btn" onclick="fpChat.startEditMessage(\''+escHtml(String(msg.id))+'\')" title="Editar">'+_PENCIL+'</button>' : '') +
         '<button class="fp-action-btn'+(isFlagged?' flag-active':'')+'" onclick="fpChat.flagMessage(\''+escHtml(String(msg.id))+'\')" title="Sinalizar">'+icoFlag()+'</button>' +
+        ((!msg.pending && !msg.failed && !msg.deleted_at) ? '<button class="fp-action-btn'+(isFixada(msg.id)?' flag-active':'')+'" onclick="fpChat.toggleFixar(\''+escHtml(String(msg.id))+'\')" title="'+(isFixada(msg.id)?'Desafixar da conversa':'Fixar na conversa')+'"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg></button>' : '') +
+        ((!msg.pending && !msg.failed && !msg.deleted_at && hasText) ? '<button class="fp-action-btn" onclick="fpChat.criarTarefaDaMensagem(\''+escHtml(String(msg.id))+'\')" title="Criar tarefa nas Listas"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></button>' : '') +
         '</div>';
 
       html += '</div>'; /* /fp-msg-block */
@@ -2548,6 +2708,7 @@
     });
 
     $msgs.innerHTML = html;
+    renderFixadas();
 
     if (editingMessageId) {
       var $ed = $msgs.querySelector('.fp-msg-edit-input');
@@ -3068,7 +3229,7 @@
     sb.from('chat_messages').insert({
       channel: channel, sender_id: user.auth_id, sender_name: user.nome,
       sender_iniciais: user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),
-      sender_cor: user.cor||'#1D6A4A', content: content
+      sender_cor: user.cor||'#4D865C', content: content
     }).select('*').single().then(function(r){
       if (r.error){ removeMessageById(pm.id); if(currentChannel===channel) renderMessages(); return; }
       upsertMessage(r.data); if(currentChannel===channel) renderMessages();
@@ -3106,9 +3267,9 @@
   /* nota pendente de texto (enquanto o float está aberto) */
   var _mvNotaPending = null;
   var MV_MARK_SVGS = {
-    seta:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
-    alerta: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C4831A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-    x:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B84C3A" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+    seta:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+    alerta: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E2B141" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    x:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#BC6143" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
     circulo: '',  /* o container circular já é o marcador visual */
     circulo_verde: '',
     seta_verde: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>'
@@ -3324,12 +3485,28 @@
   function showLoading(){ if(!$msgs) return; $msgs.innerHTML='<div class="fp-loading"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>'; }
   function showError()  { if(!$msgs) return; $msgs.innerHTML='<div class="fp-empty">Erro ao carregar.<br>Tente novamente.</div>'; }
   function scrollBottom(){ if($msgs){ $msgs.scrollTop=$msgs.scrollHeight; scrolledToEnd=true; } }
+  /* Abre a conversa na divisória "Novas mensagens" (se houver); senão, no fim */
+  function scrollParaNovas(){
+    var d = $msgs && $msgs.querySelector('.fp-new-divider');
+    if (!d) { scrollBottom(); return; }
+    $msgs.scrollTop += d.getBoundingClientRect().top - $msgs.getBoundingClientRect().top - 24;
+    scrolledToEnd = $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 48;
+  }
+  /* Aviso fixo "↓ X novas mensagens": soma enquanto a pessoa lê mais acima; some ao chegar no fim */
   function showNewMsgToast(){
-    var old=document.getElementById('fp-new-msg-toast'); if(old) old.remove();
-    var t=document.createElement('div'); t.id='fp-new-msg-toast'; t.className='fp-new-msg-toast'; t.textContent='↓ Nova mensagem';
-    t.onclick=function(){ scrollBottom(); t.remove(); };
-    var area=document.getElementById('fp-chat-area'); if(area) area.appendChild(t);
-    setTimeout(function(){ if(t.parentNode) t.remove(); },4000);
+    _novasAbaixo++;
+    var t=document.getElementById('fp-new-msg-toast');
+    if(!t){
+      t=document.createElement('button'); t.type='button'; t.id='fp-new-msg-toast'; t.className='fp-new-msg-toast';
+      t.onclick=function(){ scrollBottom(); esconderNovasToast(); };
+      var area=document.getElementById('fp-chat-area'); if(area) area.appendChild(t); else return;
+    }
+    t.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>' +
+      _novasAbaixo + (_novasAbaixo === 1 ? ' nova mensagem' : ' novas mensagens');
+  }
+  function esconderNovasToast(){
+    _novasAbaixo = 0;
+    var t=document.getElementById('fp-new-msg-toast'); if(t) t.remove();
   }
   function setComposerStatus(msg,tone,sticky){
     var el=document.getElementById('fp-composer-status'); if(!el) return;
@@ -3436,7 +3613,7 @@
     sb.from('chat_messages').insert({
       channel:currentChannel, sender_id:user.auth_id, sender_name:user.nome,
       sender_iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),
-      sender_cor:user.cor||'#1D6A4A', content:CHAT_ATTENTION_SENTINEL
+      sender_cor:user.cor||'#4D865C', content:CHAT_ATTENTION_SENTINEL
     }).select('*').single().then(function(r){
       if(r.error){ removeMessageById(pm.id); renderMessages(); return; }
       upsertMessage(r.data); renderMessages();
@@ -3447,7 +3624,7 @@
       sb.functions.invoke('send-push',{body:{
         usuario_id:other.id,
         title:firstName(user.nome)+' quer sua atenção',
-        body:'👋 Está te chamando no chat',
+        body:'Está te chamando no chat',
         url:window.location.href,
         tag:'exp-chat-attn-'+currentChannel
       }}).catch(function(e){ console.warn('[EXP ChatFP Atenção] push erro:',e); });
@@ -3476,9 +3653,9 @@
       :isDM?sender+' enviou uma mensagem'
       :isGeneral?sender+(ch==='bim'?' no #BIM':' no #geral')
       :sender+' no #sócios';
-    var body=raw==='[print]'?'📷 Enviou um print'
-      :raw===CHAT_FILE_SENTINEL?'📎 Enviou um arquivo'
-      :raw==='[audio]'?'🎤 Enviou um áudio'
+    var body=raw==='[print]'?'Enviou um print'
+      :raw===CHAT_FILE_SENTINEL?'Enviou um arquivo'
+      :raw==='[audio]'?'Enviou um áudio'
       :(raw.length>80?raw.substring(0,80)+'...':raw)||'Nova mensagem no chat';
     var tag='exp-chat-'+ch;
     /* Você só está "olhando o chat" se a aba está VISÍVEL *e* o Chrome está EM FOCO.
@@ -3584,6 +3761,27 @@
           });
         });
       }).catch(function(){ return []; });
+  }
+
+  /* Projetos com não lidas: verifica se alguma delas menciona a pessoa (mostra o "@" na lista) */
+  function detectarMencoesProjetos(uid, unreadMap){
+    var chs = Object.keys(unreadMap || {}).filter(function(k){ return unreadMap[k] > 0; });
+    if (!chs.length) return;
+    var tids = chs.map(projectThreadIdFromChannel);
+    sb.from('chat_thread_reads').select('thread_id,last_read_at').eq('user_auth_id', uid).in('thread_id', tids)
+      .then(function(r){
+        var lr = {}; (r.data || []).forEach(function(x){ lr[x.thread_id] = x.last_read_at; });
+        chs.forEach(function(ch){
+          var tid = projectThreadIdFromChannel(ch);
+          var q = sb.from('chat_thread_messages').select('content,sender_auth_id').eq('thread_id', tid);
+          if (lr[tid]) q = q.gt('created_at', lr[tid]);
+          q.order('created_at', { ascending:false }).limit(Math.min(unreadMap[ch], 50)).then(function(r2){
+            if (r2.error) return;
+            var tem = (r2.data || []).some(function(m){ return m.sender_auth_id !== uid && _mentionsMe(m.content); });
+            if (tem && !mentionChannels[ch]) { mentionChannels[ch] = true; renderConvList(); }
+          });
+        });
+      });
   }
 
   function fetchProjectUnreadMap(uid){
@@ -3922,7 +4120,7 @@
     if (ch.startsWith('dm:')) {
       var parts=ch.replace('dm:','').split(':'), oUid=parts.find(function(p){return p!==uid;});
       var mem=oUid?allMembers.find(function(m){return m.auth_id===oUid;}):null;
-      if (mem) return {label:firstName(mem.nome),iniciais:mem.iniciais||(mem.nome||'').substring(0,2).toUpperCase(),cor:mem.cor||'#1D6A4A',avatarUrl:mem.avatar_url||null,members:null};
+      if (mem) return {label:firstName(mem.nome),iniciais:mem.iniciais||(mem.nome||'').substring(0,2).toUpperCase(),cor:mem.cor||'#4D865C',avatarUrl:mem.avatar_url||null,members:null};
     }
     if (ch.startsWith('group:')) {
       var uids=groupMemberUids(ch);
@@ -3931,14 +4129,14 @@
       var names=mems.map(function(m){return firstName(m.nome);});
       return {label:names.join(', '),iniciais:'GP',cor:brandColorForKey(ch),avatarUrl:null,members:mems};
     }
-    return {label:msg.sender_name||ch,iniciais:msg.sender_iniciais||(msg.sender_name||'??').substring(0,2).toUpperCase(),cor:msg.sender_cor||'#1D6A4A',avatarUrl:null,members:null};
+    return {label:msg.sender_name||ch,iniciais:msg.sender_iniciais||(msg.sender_name||'??').substring(0,2).toUpperCase(),cor:msg.sender_cor||'#4D865C',avatarUrl:null,members:null};
   }
   function compactPreviewText(text,maxLen,fb){
     var raw=String(text||'').trim();
     if(isImageOnlySentinel(raw)) return 'Print anexado';
-    if(isAudioOnlySentinel(raw)) return '🎤 Áudio anexado';
-    if(isFileSentinel(raw)) return '📎 Arquivo';
-    if(isAttentionSentinel(raw)) return '👋 Chamou sua atenção';
+    if(isAudioOnlySentinel(raw)) return 'Áudio anexado';
+    if(isFileSentinel(raw)) return 'Arquivo';
+    if(isAttentionSentinel(raw)) return 'Chamou sua atenção';
     if(isAnnotSentinel(raw)) return 'Revisou uma imagem';
     var c=raw.replace(/\n/g,' '); if(!c) return fb||'';
     return c.length>maxLen?c.substring(0,maxLen)+'…':c;
@@ -3955,7 +4153,7 @@
   }
   function normalizeReactionList(v){ if(Array.isArray(v)) return v.filter(Boolean).map(function(i){return String(i);}); if(typeof v==='string'&&v) return [v]; return []; }
   function normalizeReactions(r){ var b=r&&typeof r==='object'&&!Array.isArray(r)?r:{}; return {like:normalizeReactionList(b.like),love:normalizeReactionList(b.love)}; }
-  function buildPendingMessage(content,extra){ pendingMessageSeq++; return Object.assign({id:'pending:'+pendingMessageSeq,channel:currentChannel,thread_id:isProjectChannel(currentChannel)?projectThreadIdFromChannel(currentChannel):null,sender_id:user.auth_id,sender_name:user.nome,sender_iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),sender_cor:user.cor||'#1D6A4A',content:content,created_at:new Date().toISOString(),reactions:normalizeReactions(null),pending:true},extra||{}); }
+  function buildPendingMessage(content,extra){ pendingMessageSeq++; return Object.assign({id:'pending:'+pendingMessageSeq,channel:currentChannel,thread_id:isProjectChannel(currentChannel)?projectThreadIdFromChannel(currentChannel):null,sender_id:user.auth_id,sender_name:user.nome,sender_iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),sender_cor:user.cor||'#4D865C',content:content,created_at:new Date().toISOString(),reactions:normalizeReactions(null),pending:true},extra||{}); }
   function isMatchingPendingMessage(e,n){ if(!e||!e.pending||!n) return false; return e.channel===n.channel&&e.sender_id===n.sender_id&&e.content===n.content; }
   function compareMessages(a,b){ return new Date(a.created_at||0)-new Date(b.created_at||0); }
   function upsertMessage(nextMsg){
@@ -4157,7 +4355,7 @@
     toggleEmojiPop, insertEmoji, chamarAtencao,
     pickMedia, handleMediaInput, removeAttachment: removePendingAttachment, retryMediaIssue,
     toggleRecording, stopRecording, cancelRecording, toggleAudioPlay, seekAudio,
-    react, flagMessage,
+    react, flagMessage, toggleFixar, criarTarefaDaMensagem, abrirNaMensagem,
     startEditMessage, editMessageInput, editMessageKey, saveEditMessage, cancelEditMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
     mvSelectTool, mvRemoveMark, openAnnotatedPrint, _thumbLoaded,
@@ -4308,7 +4506,7 @@
       updateTasksBadge(todas.length);
     }).catch(function() {
       var $list = document.getElementById('fp-tasks-list');
-      if ($list) $list.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center">Erro ao carregar tarefas.</div>';
+      if ($list) $list.innerHTML = '<div class="fp-empty fp-vazio">Erro ao carregar tarefas.</div>';
     });
   }
 
@@ -4332,7 +4530,7 @@
     function tipoHtml(t) {
       // "Livre" é o tipo padrão — não precisa aparecer
       if (!t.tipo || String(t.tipo).trim().toLowerCase() === 'livre') return '';
-      return '<span style="font-size:9px;color:#8A867E;text-transform:capitalize">' + escHtml(t.tipo) + '</span>';
+      return '<span style="font-size:9px;color:var(--txt-3);text-transform:capitalize">' + escHtml(t.tipo) + '</span>';
     }
 
     var html = '';
@@ -4353,7 +4551,7 @@
     }
     if (!tasks.length) {
       html += '<div class="fp-task-section fp-task-sec-head"><span>Pendentes — 0</span>' + recentesBtn + '</div>' +
-              '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma tarefa pendente ✓</div>';
+              '<div class="fp-empty fp-vazio">Nenhuma tarefa pendente</div>';
     } else {
       if (atrasadas.length) {
         html += '<div class="fp-task-section fp-task-sec-head fp-sec-atrasadas"><span>Atrasadas — ' + atrasadas.length + '</span>' + recentesBtn + '</div>';
@@ -4370,7 +4568,7 @@
       var conclD   = delegadas.filter(function(t){ return  t.concluida; });
       var labelBtn = delegadasExpanded ? '▾ Atribuídas — ' + delegadas.length : '▶ Ver atribuídas (' + delegadas.length + ')';
 
-      html += '<button class="fp-task-section fp-delegadas-toggle" onclick="fpChat.toggleDelegadas()" style="cursor:pointer;width:100%;text-align:left;border:none;background:none;font-family:var(--font-ui)">' +
+      html += '<button class="fp-task-section fp-delegadas-toggle fp-btn-linha" onclick="fpChat.toggleDelegadas()">' +
         labelBtn + '</button>';
 
       if (delegadasExpanded) {
@@ -4381,16 +4579,16 @@
           var paraIni  = para ? (para.iniciais || paraNome.substring(0,2).toUpperCase()) : '?';
 
           var statusHtml = t.concluida
-            ? '<span style="font-size:9px;font-weight:600;color:#2D9E6B;background:#EAF5EE;padding:1px 6px;border-radius:4px">Concluída</span>'
-            : '<span style="font-size:9px;font-weight:600;color:#888;background:var(--off,#F7F6F3);padding:1px 6px;border-radius:4px;border:1px solid var(--cinza2,#ECEAE4)">Pendente</span>';
+            ? '<span style="font-size:9px;font-weight:700;color:#2D9E6B;background:#EAF5EE;padding:1px 6px;border-radius:var(--radius-btn)">Concluída</span>'
+            : '<span style="font-size:9px;font-weight:700;color:var(--txt-3);background:var(--off,#F7F6F3);padding:1px 6px;border-radius:var(--radius-btn);border:1px solid var(--cinza2,#ECEAE4)">Pendente</span>';
 
           html += '<div class="fp-task-item fp-task-delegada' + (t.concluida?' fp-task-done':'') + '">' +
             /* avatar de quem recebeu */
-            '<div style="width:20px;height:20px;border-radius:50%;background:' + escHtml(paraCor) + ';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-mono)">' + escHtml(paraIni) + '</div>' +
+            '<div style="width:20px;height:20px;border-radius:50%;background:' + escHtml(paraCor) + ';color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-ui)">' + escHtml(paraIni) + '</div>' +
             '<div class="fp-task-body">' +
               '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
               '<div class="fp-task-meta">' +
-                '<span style="font-size:10px;color:#888">para ' + escHtml(paraNome) + '</span>' +
+                '<span class="fp-nota-10">para ' + escHtml(paraNome) + '</span>' +
                 taskPrazoHtml(t) +
                 statusHtml +
               '</div>' +
@@ -4447,7 +4645,7 @@
     drop.style.cssText = 'position:fixed;z-index:700;background:' + _dropBg + ';border:1px solid ' + _dropBdr + ';border-radius:var(--radius-card,8px);box-shadow:0 6px 20px rgba(0,0,0,.22);padding:4px 0;min-width:160px;font-family:var(--font-ui);color:' + _dropTxt;
 
     if (!outros.length) {
-      drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:#aaa">Nenhum membro</div>';
+      drop.innerHTML = '<div style="padding:7px 12px;font-size:11px;color:var(--txt-4)">Nenhum membro</div>';
     } else {
       drop.innerHTML = outros.map(function(u, i) {
         var nome = (u.apelido || (u.nome||'').split(' ')[0]);
@@ -4588,7 +4786,7 @@
       .order('concluida_em', { ascending: false, nullsFirst: false })
       .limit(15)
       .then(function(r) {
-        if (r.error) { if ($list) $list.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center">Erro ao carregar realizadas.</div>'; return; }
+        if (r.error) { if ($list) $list.innerHTML = '<div class="fp-empty fp-vazio">Erro ao carregar realizadas.</div>'; return; }
         renderRecentes(r.data || []);
       });
   }
@@ -4597,17 +4795,17 @@
     var $list = document.getElementById('fp-tasks-list');
     if (!$list) return;
     var html = '<button class="fp-task-section fp-delegadas-toggle" onclick="fpChat.toggleRecentes(event)" ' +
-      'style="cursor:pointer;width:100%;text-align:left;border:none;background:none;font-family:var(--font-ui)">↩ Voltar às pendentes</button>' +
+      'class="fp-btn-linha">↩ Voltar às pendentes</button>' +
       '<div class="fp-task-section">Realizadas recentemente</div>';
     if (!items.length) {
-      html += '<div class="fp-empty" style="padding:20px;text-align:center;font-size:11px">Nenhuma tarefa realizada.</div>';
+      html += '<div class="fp-empty fp-vazio">Nenhuma tarefa realizada.</div>';
     } else {
       items.forEach(function(t) {
         var tid = escHtml(String(t.id));
         html += '<div class="fp-task-item fp-task-done">' +
           '<div class="fp-task-body">' +
             '<div class="fp-task-desc">' + escHtml(t.descricao || '(sem descrição)') + '</div>' +
-            '<div class="fp-task-meta">' + (t.concluida_em ? '<span style="font-size:9px;color:#bbb">' + escHtml(_fmtDateTime(t.concluida_em)) + '</span>' : '') + '</div>' +
+            '<div class="fp-task-meta">' + (t.concluida_em ? '<span style="font-size:9px;color:var(--txt-4)">' + escHtml(_fmtDateTime(t.concluida_em)) + '</span>' : '') + '</div>' +
           '</div>' +
           '<button class="fp-task-restore" title="Restaurar para pendentes" onclick="fpChat.restoreTask(event,\'' + tid + '\')">↺ restaurar</button>' +
           '</div>';
@@ -4672,7 +4870,7 @@
   function _ckShowErr(msg) {
     var $w = document.getElementById('fp-ck-selector');
     var $i = document.getElementById('fp-ck-items');
-    if ($w) $w.innerHTML = '<div style="font-size:10px;color:#B84C3A;padding:4px 0">Erro: ' + escHtml(msg) + '</div>';
+    if ($w) $w.innerHTML = '<div style="font-size:10px;color:#BC6143;padding:4px 0">Erro: ' + escHtml(msg) + '</div>';
     if ($i) $i.innerHTML = '';
   }
 
@@ -5248,7 +5446,7 @@
     if ($count) $count.textContent = pendentes ? pendentes + ' em aberto' : 'todas concluídas';
 
     if (!items.length) {
-      $list.innerHTML = '<div style="padding:28px 16px;text-align:center;font-size:11px;color:var(--cinza,#D0CFC9)">Nenhuma prioridade definida ✓</div>';
+      $list.innerHTML = '<div class="fp-vazio">Nenhuma prioridade definida ✓</div>';
       return;
     }
 
@@ -5275,7 +5473,7 @@
         var dtFmt = pdt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' });
         if (pdt < hoje)        estadoCard = 'atrasada';
         else if (+pdt===+hoje) estadoCard = 'hoje';
-        chipHtml = '<div class="fp-pp-chips"><span class="fp-pp-chip ' + estadoCard + '">📅 ' + escHtml(dtFmt) + '</span></div>';
+        chipHtml = '<div class="fp-pp-chips"><span class="fp-pp-chip ' + estadoCard + '"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + escHtml(dtFmt) + '</span></div>';
       }
 
       var concluida = !!pr.concluida;
@@ -5368,11 +5566,11 @@
     var items = calData || [];
     if ($sub) $sub.textContent = items.length ? 'próximos ' + items.length : '';
     if (!items.length) {
-      $body.innerHTML = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhum evento próximo 🎉</div>';
+      $body.innerHTML = '<div class="fp-vazio">Nenhum evento próximo</div>';
       return;
     }
     /* paleta por tipo */
-    var tipoCor = { reuniao:'#1D4FA0', visita:'#1D6A4A', prazo:'#B84C3A', entrega:'#C4831A' };
+    var tipoCor = { reuniao:'#5981CC', visita:'#4D865C', prazo:'#BC6143', entrega:'#E2B141' };
     var html = '';
     items.forEach(function(ev) {
       var cor  = tipoCor[(ev.tipo||'').toLowerCase()] || '#6D7D8A';
@@ -5521,7 +5719,7 @@
     }
 
     if (!html) {
-      html = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhuma atualização recente ✓</div>';
+      html = '<div class="fp-vazio">Nenhuma atualização recente ✓</div>';
     }
 
     $body.innerHTML = html;
@@ -5603,7 +5801,7 @@
   function _doApoioSearch(q) {
     var $body = document.getElementById('fp-apoio-body');
     if (!$body) return;
-    $body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+    $body.innerHTML = '<div class="fp-carregando"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
     var like = '%' + q + '%';
     Promise.all([
       sb.from('apoio_normas').select('id,codigo,titulo,area').or('titulo.ilike.' + like + ',codigo.ilike.' + like).limit(4),
@@ -5634,7 +5832,7 @@
       normas.forEach(function(n) {
         var label = n.codigo ? n.codigo + ' — ' + n.titulo : n.titulo;
         html += '<a href="apoio.html?tema=apoio&sub=normas-tecnicas" class="fp-apoio-result">' +
-          '<div class="fp-apoio-result-dot" style="background:#1D4FA0"></div>' +
+          '<div class="fp-apoio-result-dot" style="background:#5981CC"></div>' +
           '<div class="fp-apoio-result-info">' +
             '<div class="fp-apoio-result-title">' + escHtml(label) + '</div>' +
             '<div class="fp-apoio-result-sub">' + escHtml(n.area || '') + '</div>' +
@@ -5645,7 +5843,7 @@
       html += '<div class="fp-apoio-group-hdr">Vegetação</div>';
       vegetacao.forEach(function(v) {
         html += '<a href="apoio.html?tema=vegetacao" class="fp-apoio-result">' +
-          '<div class="fp-apoio-result-dot" style="background:#1D6A4A"></div>' +
+          '<div class="fp-apoio-result-dot" style="background:#4D865C"></div>' +
           '<div class="fp-apoio-result-info">' +
             '<div class="fp-apoio-result-title">' + escHtml(v.nome_popular) + '</div>' +
             '<div class="fp-apoio-result-sub">' + escHtml(v.nome_cientifico || v.grupo || '') + '</div>' +
@@ -5656,7 +5854,7 @@
       html += '<div class="fp-apoio-group-hdr">Indicações</div>';
       indicacoes.forEach(function(i) {
         html += '<a href="apoio.html?tema=apoio&sub=indicacoes-conteudo" class="fp-apoio-result">' +
-          '<div class="fp-apoio-result-dot" style="background:#C4831A"></div>' +
+          '<div class="fp-apoio-result-dot" style="background:#E2B141"></div>' +
           '<div class="fp-apoio-result-info">' +
             '<div class="fp-apoio-result-title">' + escHtml(i.titulo) + '</div>' +
             '<div class="fp-apoio-result-sub">' + escHtml(i.autor || '') + '</div>' +
@@ -5700,10 +5898,10 @@
 
   /* Cores por tipo de contato */
   var CONTATO_TIPO_COR = {
-    'fornecedor':  '#1D4FA0',
-    'prestador':   '#1D6A4A',
-    'parceiro':    '#C4831A',
-    'cliente':     '#B84C3A',
+    'fornecedor':  '#5981CC',
+    'prestador':   '#4D865C',
+    'parceiro':    '#E2B141',
+    'cliente':     '#BC6143',
     'outro':       '#6D7D8A'
   };
   function _contatoTipoCor(tipo) {
@@ -5773,7 +5971,7 @@
   function _doContatosSearch(q) {
     var $body = document.getElementById('fp-contatos-body');
     if (!$body) return;
-    $body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:24px"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
+    $body.innerHTML = '<div class="fp-carregando"><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div></div>';
     var like = '%' + q + '%';
     sb.from('exp_contatos')
       .select('id,nome,empresa,tipo_produto,cidade,estado,telefone,email,tipo')
@@ -5906,15 +6104,15 @@
       var dtFmt = pdt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' });
       if (pdt < hoje)        estadoCard = 'atrasada';
       else if (+pdt===+hoje) estadoCard = 'hoje';
-      prazoChipHtml = '<div><span class="fp-prio-prazo-chip ' + estadoCard + '">📅 ' + escHtml(dtFmt) + '</span></div>';
+      prazoChipHtml = '<div><span class="fp-prio-prazo-chip ' + estadoCard + '"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + escHtml(dtFmt) + '</span></div>';
     }
 
     /* cor do header acompanha o estado — monocromático */
     var hdrStyle = estadoCard === 'atrasada'
-      ? 'background:#F5E0DD;color:#B84C3A;border-bottom:1px solid rgba(184,76,58,.2)'
+      ? 'background:var(--tc-bg);color:var(--terracota);border-bottom:1px solid rgba(188,97,67,.2)'
       : estadoCard === 'hoje'
-        ? 'background:#FBF3E8;color:#C4831A;border-bottom:1px solid rgba(196,131,26,.2)'
-        : 'background:#EAF0FB;color:#1D4FA0;border-bottom:1px solid rgba(29,79,160,.2)';
+        ? 'background:#FBF3E8;color:#E2B141;border-bottom:1px solid rgba(226,177,65,.2)'
+        : 'background:#EAF0FB;color:#5981CC;border-bottom:1px solid rgba(89,129,204,.2)';
 
     $inner.innerHTML =
       '<div class="fp-prio-hdr" style="' + hdrStyle + '">Minha prioridade</div>' +
@@ -6006,7 +6204,7 @@
         var sub  = $el('fp-proj-card-sub');
 
         if (r.error || !r.data) {
-          if (body) body.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center;font-size:12px;color:#aaa">Projeto não encontrado.</div>';
+          if (body) body.innerHTML = '<div class="fp-empty fp-vazio">Projeto não encontrado.</div>';
           return;
         }
         var prod = r.data;
@@ -6051,7 +6249,7 @@
       })
       .catch(function(err) {
         var body = $el('fp-proj-card-body');
-        if (body) body.innerHTML = '<div class="fp-empty" style="padding:20px;text-align:center;font-size:12px;color:#aaa">Erro ao carregar projeto.</div>';
+        if (body) body.innerHTML = '<div class="fp-empty fp-vazio">Erro ao carregar projeto.</div>';
       });
   }
 

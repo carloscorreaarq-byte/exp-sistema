@@ -1095,7 +1095,6 @@ body {
 .prio-done-ico { color: var(--verde); opacity: .6; display: inline-flex; }
 .clima-secao { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--terracota); margin-bottom: 6px; }
 .lbl-nota { font-size: 10px; color: var(--txt-3); text-transform: none; letter-spacing: 0; font-weight: 400; }
-.fp-lists-badge { position: absolute; top: 4px; right: 4px; background: var(--ca); color: #fff; font-size: 8px; font-weight: 700; font-family: var(--font-ui); min-width: 14px; height: 14px; border-radius: 7px; align-items: center; justify-content: center; padding: 0 2px; border: 1.5px solid var(--grafite); line-height: 1; }
 .app-loading { padding: 32px 0; text-align: center; color: var(--txt-4); font-size: 12px; grid-column: 1 / -1; }
 .lbl-opc { font-weight: 400; font-size: 9px; color: var(--txt-4); text-transform: none; letter-spacing: 0; }
 .app-erro { font-size: 10px; color: var(--terracota); line-height: 1.45; }
@@ -1108,11 +1107,6 @@ body {
 .gcal-banner .gcal-status { flex: 1; color: var(--grafite); }
 .gcal-banner.ok .gcal-status { color: var(--verde); }
 .gcal-banner .shell-btn { height: 24px; padding: 0 10px; }
-.fp-lists-hd { padding: 12px 14px 10px; display: flex; align-items: center; flex-shrink: 0; }
-.fp-lists-titulo { font-size: calc(14px * var(--fp-lists-scale,1)); font-weight: 700; color: var(--ca); letter-spacing: -.2px; flex: 1; }
-.fp-lists-count { font-size: calc(10px * var(--fp-lists-scale,1)); font-variant-numeric: lining-nums tabular-nums; color: var(--ca); opacity: .6; margin-right: 6px; }
-.fp-lists-fechar { width: 24px; height: 24px; border: none; background: none; color: var(--grafite); opacity: .4; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: var(--radius-btn); transition: opacity .12s; }
-.fp-lists-fechar:hover { opacity: 1; }
 .app-toast-host { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .app-toast { background: var(--grafite); color: var(--branco); font-family: var(--font-ui); font-size: 12px; padding: 9px 16px; border-radius: var(--radius-btn); box-shadow: var(--shadow-modal); opacity: 0; transition: opacity .15s; }
 .app-toast.on { opacity: 1; }
@@ -3691,7 +3685,8 @@ function _renderTaskItem(t, showAtrib) {
       : null
   ].filter(Boolean).join(' · ');
   const atribLine = showAtrib && t.atribuido_nome
-    ? `<div class="dash-task-atrib">→ ${escHtml(t.atribuido_nome)}</div>` : '';
+    ? `<div class="dash-task-atrib">→ ${escHtml(t.atribuido_nome)}</div>`
+    : (!showAtrib && t.atribuida_por ? `<div class="dash-task-atrib">Atribuída por ${escHtml(window.expNomeCurto ? window.expNomeCurto(t.atribuida_por) : t.atribuida_por)}</div>` : '');
   return `
     <div class="dash-task-item ${t.concluida ? 'done' : (vencida ? 'atrasada' : '')}"
          data-task-id="${escAttr(t.id)}"
@@ -4223,7 +4218,11 @@ async function loadDashboard(usuario) {
   const _cred = await _credP;
   const allTaskRows = [...(tarefasRaw || []), ...(tarefasAtribRaw || [])];
   const produtoIds = [...new Set(allTaskRows.map(t => t.produto_id).filter(Boolean))];
-  const atribuidoIds = [...new Set((tarefasAtribRaw || []).map(t => t.atribuido_para).filter(Boolean))];
+  // nomes de quem recebeu (tarefas que eu atribuí) e de quem me atribuiu (tarefas atribuídas a mim)
+  const atribuidoIds = [...new Set([
+    ...(tarefasAtribRaw || []).map(t => t.atribuido_para),
+    ...(tarefasRaw || []).filter(t => String(t.atribuido_para) === String(usuario.id) && t.criado_por && String(t.criado_por) !== String(usuario.id)).map(t => t.criado_por),
+  ].filter(Boolean))];
   const [prodRes, userRes] = await Promise.all([
     produtoIds.length
       ? sb.from('produtos').select('id,nome').in('id', produtoIds)
@@ -4244,6 +4243,8 @@ async function loadDashboard(usuario) {
     tarefas:          (tarefasRaw || []).map(t => ({
       ...t,
       produto_nome: produtoMap.get(String(t.produto_id)) || null,
+      atribuida_por: String(t.atribuido_para) === String(usuario.id) && t.criado_por && String(t.criado_por) !== String(usuario.id)
+        ? (usuarioMap.get(String(t.criado_por)) || 'outra pessoa') : null,
     })),
     tarefasAtribuidas:(tarefasAtribRaw || []).map(t => ({
       ...t,

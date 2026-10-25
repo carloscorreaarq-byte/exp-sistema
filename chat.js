@@ -65,7 +65,8 @@
     /* ── FAB toggle ── */
     '.chat-toggle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .3s,transform .15s;user-select:none;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.22)}',
     '.chat-toggle:hover{transform:scale(1.06)}.chat-toggle:active{transform:scale(.94)}',
-    '.chat-badge{position:absolute;top:-5px;right:-5px;background:#B84C3A;color:#fff;font-size:9px;font-weight:700;font-family:var(--font-mono);min-width:17px;height:17px;border-radius:var(--radius-input,6px);display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--off,#F7F6F3)}',
+    '.chat-badge{position:absolute;top:-6px;right:-6px;background:var(--terracota,#BC6143);color:#fff;font-size:12px;font-weight:700;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;min-width:22px;height:22px;border-radius:var(--radius-btn,8px);display:none;align-items:center;justify-content:center;gap:2px;padding:0 5px;border:2px solid var(--off,#F7F6F3);line-height:1}',
+    '.chat-badge-at{font-size:12px;font-weight:700;margin-right:1px}',
     /* ── Person button (aparece quando aberto) ── */
     '.chat-person-btn{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid #1D6A4A;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .3s,color .3s,box-shadow .15s;color:#1D6A4A;flex-shrink:0}',
     '.chat-person-btn:hover{box-shadow:0 2px 10px rgba(0,0,0,.14)}',
@@ -3517,7 +3518,13 @@
     var total = Object.values ? Object.values(channelUnread).reduce(function (a, b) { return a + b; }, 0) :
       Object.keys(channelUnread).reduce(function (a, k) { return a + channelUnread[k]; }, 0);
     if (!$badge) return;
-    if (total > 0) { $badge.textContent = total > 99 ? '99+' : String(total); $badge.style.display = 'flex'; }
+    /* "@" junto do número quando há menção não lida em alguma conversa */
+    var temMencao = Object.keys(mentionChannels).some(function (k) { return mentionChannels[k] && (channelUnread[k] || 0) > 0; });
+    if (total > 0) {
+      $badge.innerHTML = (temMencao ? '<span class="chat-badge-at">@</span>' : '') + (total > 99 ? '99+' : String(total));
+      $badge.title = temMencao ? 'Mensagens não lidas, com menção a você' : 'Mensagens não lidas';
+      $badge.style.display = 'flex';
+    }
     else $badge.style.display = 'none';
   }
 
