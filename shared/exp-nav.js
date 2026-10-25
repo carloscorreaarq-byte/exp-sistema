@@ -127,8 +127,8 @@ window.ExpNav = (() => {
     /* Pessoas para não-sócios: inicialmente oculto, revelado por _checkClimaAtiva() */
     var pessoasCollab = (activeHref !== 'pessoas.html' && !isSocio)
       ? '<a href="app.html?pesquisa=1" class="exp-nav-item" id="exp-nav-pessoas-collab" title="Responder a Pesquisa EXP" style="display:none;position:relative">' +
-          ico.pessoas +
-          '<span id="exp-clima-badge" style="position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#C49A27;border:1.5px solid #2A2926;display:none"></span>' +
+          '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><polyline points="9 14 11 16 15 12"/></svg>' +
+          '<span id="exp-clima-badge" style="position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#E2B141;border:1.5px solid #2A2926;display:none"></span>' +
         '</a>'
       : '';
 
@@ -201,7 +201,7 @@ window.ExpNav = (() => {
               ' onmouseenter="ExpNav.showClimaBanner(event)" onmouseleave="ExpNav.hideClimaBanner()"' +
               ' onclick="window.location.href=\'pessoas.html\'">' +
                 ico.pessoas +
-                '<span id="exp-clima-badge-soc" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#C49A27;border:1.5px solid #2A2926"></span>' +
+                '<span id="exp-clima-badge-soc" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#E2B141;border:1.5px solid #2A2926"></span>' +
               '</button>' +
             '</div>'
           : pessoasCollab)
@@ -234,11 +234,11 @@ window.ExpNav = (() => {
     '</button>' +
 
     /* tarefas (modelo antigo) — substituído pelo novo Painel de Listas */
-    (['app', 'calc', 'financeiro', 'crm', 'analise', 'pessoas', 'sociedade'].indexOf(module) === -1
+    (['app', 'calc', 'financeiro', 'crm', 'analise', 'pessoas', 'sociedade', 'chat'].indexOf(module) === -1
       ? '<button class="exp-nav-item" id="exp-nav-tarefas" title="Tarefas e Atribuições"' +
         ' onclick="ExpNav.toggleTarefasPanel()" style="position:relative">' +
           ico.tarefas +
-          '<span id="exp-tarefas-badge" style="display:none;position:absolute;top:4px;right:4px;background:#C49A27;color:#fff;font-size:7px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:13px;height:13px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
+          '<span id="exp-tarefas-badge" style="display:none;position:absolute;top:4px;right:4px;background:#E2B141;color:#111110;font-size:7px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:13px;height:13px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
         '</button>'
       : '') +
 
@@ -641,10 +641,10 @@ window.ExpNav = (() => {
   </select>
   <textarea id="exp-lemb-msg" rows="3" placeholder="Mensagem do lembrete…" style="width:100%;padding:7px 9px;border:1px solid var(--cinza2,#ECEAE4);border-radius:6px;font-family:'Raleway',sans-serif;font-size:11px;resize:vertical;outline:none;background:var(--branco,#fff);color:var(--grafite,#111110)"></textarea>
   <div style="display:flex;align-items:center;gap:8px">
-    <button id="exp-lemb-send" onclick="ExpNav.enviarLembrete()" style="flex:1;padding:6px 12px;background:var(--grafite,#111110);color:#fff;border:none;border-radius:6px;font-family:'Raleway',sans-serif;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:pointer">Enviar</button>
-    <button onclick="ExpNav.fecharLembrete()" style="padding:6px 10px;background:none;border:1px solid var(--cinza2,#ECEAE4);border-radius:6px;font-family:'Raleway',sans-serif;font-size:10px;color:#888;cursor:pointer">Cancelar</button>
+    <button id="exp-lemb-send" onclick="ExpNav.enviarLembrete()" style="flex:1;padding:6px 12px;background:var(--grafite,#111110);color:#fff;border:none;border-radius:8px;font-family:'Raleway',sans-serif;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:pointer">Enviar</button>
+    <button onclick="ExpNav.fecharLembrete()" style="padding:6px 10px;background:none;border:1px solid var(--cinza2,#ECEAE4);border-radius:8px;font-family:'Raleway',sans-serif;font-size:10px;color:#888;cursor:pointer">Cancelar</button>
   </div>
-  <div id="exp-lemb-status" style="font-size:10px;color:var(--verde,#3E7858);min-height:14px"></div>
+  <div id="exp-lemb-status" style="font-size:10px;color:var(--verde,#4D865C);min-height:14px"></div>
 </div>
 
 <!-- Banner: clima (pesquisa ativa) -->
@@ -1392,7 +1392,7 @@ window.ExpNav = (() => {
     if (sub.length) {
       html += '<div class="exp-panel-group-hdr">Conhecimento</div>';
       sub.forEach(function(s) {
-        html += '<a href="apoio.html?tema=apoio" class="exp-panel-result"><div class="exp-panel-dot" style="background:#3E7858"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(s.nome) + '</div><div class="exp-panel-sub">' + _esc(s.tema_slug||'') + '</div></div></a>';
+        html += '<a href="apoio.html?tema=apoio" class="exp-panel-result"><div class="exp-panel-dot" style="background:#4D865C"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(s.nome) + '</div><div class="exp-panel-sub">' + _esc(s.tema_slug||'') + '</div></div></a>';
       });
     }
     $b.innerHTML = html;

@@ -256,6 +256,11 @@ window.AppNotif = (() => {
       window.location.href = 'apontamentos.html#banco';
       return;
     }
+    // Lembretes do Apontamentos (ex.: semana não finalizada): abre o Apontamentos
+    if (n.link_tipo === 'apontamentos' && !/apontamentos(\.html)?$/.test(location.pathname)) {
+      window.location.href = 'apontamentos.html';
+      return;
+    }
     window.dispatchEvent(new CustomEvent('exp:notif-open', { detail: n }));
   }
 

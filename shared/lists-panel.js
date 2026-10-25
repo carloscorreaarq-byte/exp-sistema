@@ -1163,6 +1163,7 @@
     init            : init,
     mount           : mount,
     toggle          : toggle,
+    refresh         : function () { _loadTasks(); },
     switchListsTab  : switchListsTab,
     selectCkByIndex : selectCkByIndex,
     fpToggleCkItem  : fpToggleCkItem,
