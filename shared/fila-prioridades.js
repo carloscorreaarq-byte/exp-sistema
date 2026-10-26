@@ -91,5 +91,7 @@
       .then(function (c) { return c; }, function () { return null; });
   }
 
-  window.ExpFila = { calcular: calcular, fmt: fmt, faixa: faixa, carregarCreditos: carregarCreditos, hoje: function () { return isoLocal(new Date()); } };
+  window.ExpFila = { calcular: calcular, fmt: fmt, faixa: faixa, carregarCreditos: carregarCreditos,
+    livres: livres, proximo: proximo, antes: antes, addDia: addDia, primeiroLivre: primeiroLivre, agora: agora, isoLocal: isoLocal,
+    hoje: function () { return isoLocal(new Date()); } };
 })();
