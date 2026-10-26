@@ -812,6 +812,8 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     if (role === 'socio_admin') return 'Socio administrador';
     if (role === 'socio') return 'Socio';
     if (role === 'colaborador') return 'Colaborador';
+    if (role === 'coordenador') return 'Coordenador';
+    if (role === 'freelancer') return 'Freelancer';
     return role || 'sem role';
   }
 
@@ -1133,6 +1135,8 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       + '<div class="platform-inline">'
       + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
       + '<option value="colaborador"' + (user.role === 'colaborador' ? ' selected' : '') + '>Colaborador</option>'
+      + '<option value="freelancer"' + (user.role === 'freelancer' ? ' selected' : '') + '>Freelancer</option>'
+      + '<option value="coordenador"' + (user.role === 'coordenador' ? ' selected' : '') + '>Coordenador</option>'
       + '<option value="socio"' + (user.role === 'socio' ? ' selected' : '') + '>Socio</option>'
       + '<option value="socio_admin"' + (user.role === 'socio_admin' ? ' selected' : '') + '>Socio administrador</option>'
       + '</select>'
