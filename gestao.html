@@ -2132,7 +2132,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fq-bar { position:absolute; top:2px; height:26px; border-radius:6px; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; gap:4px; padding:0 8px; box-sizing:border-box; border:2px solid var(--branco); overflow:visible; white-space:nowrap; }
 .fq-bar > span:first-child { overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .fq-bar.link { cursor:pointer; }
-.fq-bar.estoura { box-shadow:inset 0 0 0 2px var(--terracota); }
+.fq-bar.fq-nodia { color:#4A3A0A; }
 .fq-bar.link:hover { filter:brightness(.94); }
 .fq-bar.sem { background:transparent; border:1px dashed var(--txt-4); color:var(--txt-3); font-weight:400; }
 .fq-alerta-ico { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:var(--terracota); color:#fff; font-size:10px; font-weight:700; flex-shrink:0; box-shadow:0 0 0 2px var(--branco); }
@@ -2196,7 +2196,9 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-prio-textarea:focus { border-bottom-color:var(--grafite) !important; }
 .fluxo-radar-lista { display:flex; flex-direction:column; gap:6px; }
 .fluxo-radar-row { display:flex; align-items:center; gap:8px; padding:6px 8px 6px 10px; border:1px solid rgba(226,177,65,.55); border-left:3px solid var(--ouro); border-radius:0 8px 8px 0; background:var(--am-bg); }
-.fluxo-radar-row .fluxo-prio-select { flex:0 1 340px !important; }
+.fluxo-radar-row .fluxo-radar-grupo { flex:0 1 220px !important; }
+.fluxo-radar-row .fluxo-radar-item { flex:0 1 280px !important; }
+.fluxo-radar-row .fluxo-radar-item:disabled { color:var(--txt-4); background:rgba(255,255,255,.5); }
 .fluxo-radar-obs { flex:1; min-width:0; font-size:11px; font-family:var(--font-ui); border:none; border-bottom:1px solid rgba(0,0,0,.12); background:transparent; padding:3px 0; color:var(--grafite); outline:none; }
 .fluxo-radar-obs:focus { border-bottom-color:var(--grafite); }
 .fluxo-radar-obs::placeholder { color:var(--txt-3); }
@@ -3415,7 +3417,10 @@ span.tarefa-prio { display: inline-block; cursor: default; }
         <div class="gantt-toolbar-meta">
           <div class="gantt-legenda" style="border:none;padding:0">
             <div class="gantt-leg-item"><div class="gantt-leg-cor fq-leg-bloq"></div> Feriado ou ausência</div>
-            <div class="gantt-leg-item"><span class="fq-alerta-ico">!</span> Termina depois do prazo</div>
+            <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--verde)"></div> No prazo</div>
+            <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--ouro)"></div> No dia da entrega</div>
+            <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--terracota)"></div> Atrasada</div>
+            <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:#9A9891"></div> Interna</div>
             <div class="gantt-leg-item"><div class="gantt-leg-cor fq-leg-sem"></div> Sem previsão</div>
           </div>
         </div>
@@ -6704,9 +6709,16 @@ async function concluirRadar(id) {
 // ══ Projetos › Fila: prioridades de cada pessoa em 3 semanas (atual + 2) ══
 // Leitura para todos; quem edita a fila são os sócios (Sócios › Fluxo de trabalho).
 let _filaSemOffset = 0;
-// Barras neutras: a atual em grafite, as próximas em cinza-azulado. Terracota só para alerta de prazo.
-const _FQ_COR_ATUAL = '#3A3936', _FQ_COR_PROX = '#8C98AC';
-const _fqCor = ord => ord === 1 ? _FQ_COR_ATUAL : _FQ_COR_PROX;
+// Cor da barra pelo previsto × entrega: verde termina antes, amarelo termina no dia da entrega,
+// terracota termina depois (ou já passou do previsto). Atividades internas (societárias) em cinza.
+function _fqEstado(pr, r, prazo) {
+  if (pr.categoria_societaria) return 'interna';
+  if (r && r.atrasada) return 'atrasada';
+  if (!prazo || !r || !r.fim) return 'ok';
+  const p = String(prazo).slice(0, 10);
+  return r.fim.d > p ? 'atrasada' : r.fim.d === p ? 'nodia' : 'ok';
+}
+const _FQ_COR = { ok: 'var(--verde)', nodia: 'var(--ouro)', atrasada: 'var(--terracota)', interna: '#9A9891' };
 
 async function carregarFilaEquipe() {
   const grid = document.getElementById('fq-grid');
@@ -6817,14 +6829,15 @@ function _renderFilaEquipe(grid) {
       if (!runs.length) return;
       const prazo = _fluxoPrazoRef(pr);
       const estoura = !!(prazo && r.fim.d > String(prazo).slice(0, 10));
+      const estado = _fqEstado(pr, r, prazo);
       const nome = _fluxoPrioNome(pr);
       const et = pr.etapa_id ? (G.todasEtapas || []).find(e => e.id === pr.etapa_id) : null;
       const click = pr.produto_id ? `onclick="abrirProduto(${JSON.stringify(pr.produto_id).replace(/"/g, '&quot;')})"` : '';
-      _fqTips[pr.id] = _fqTipHtml(pr, r, { prazo, estoura, et, ord: idx + 1 });
+      _fqTips[pr.id] = _fqTipHtml(pr, r, { prazo, estoura, et, ord: idx + 1, estado });
       const kNome = runs.reduce((m, run, k) => (run.b - run.a > runs[m].b - runs[m].a ? k : m), 0);   // nome no trecho mais longo
       runs.forEach((run, k) => {
-        barras += `<div class="fq-bar${pr.produto_id ? ' link' : ''}${estoura || r.atrasada ? ' estoura' : ''}" ${click} data-fq="${pr.id}"
-          style="left:${pct(run.a)};width:${pct(run.b - run.a)};background:${_fqCor(idx + 1)}">
+        barras += `<div class="fq-bar fq-${estado}${pr.produto_id ? ' link' : ''}" ${click} data-fq="${pr.id}"
+          style="left:${pct(run.a)};width:${pct(run.b - run.a)};background:${_FQ_COR[estado]}">
           ${k === kNome ? `<span>${_escN(nome)}</span>` : ''}${(estoura || r.atrasada) && k === runs.length - 1 ? '<span class="fq-alerta-ico">!</span>' : ''}</div>`;
       });
     });
@@ -6878,7 +6891,7 @@ function _fqTipHtml(pr, r, o = {}) {
   const titulo = pr.categoria_societaria ? 'Societária · ' + _socCatLabel(pr.categoria_societaria) : (cli?.nome || _fluxoPrioNome(pr));
   const sub = [opp?.projeto, prod?.nome].filter(Boolean).join(' · ');
   return `
-    <div class="fq-tip-hd"><span class="fluxo-slot-num" style="background:${_fqCor(o.ord || 1)}">${o.ord || ''}</span><div>
+    <div class="fq-tip-hd"><span class="fluxo-slot-num" style="background:${_FQ_COR[o.estado || 'ok']}">${o.ord || ''}</span><div>
       <div class="fq-tip-t">${_escN(titulo)}</div>
       ${sub ? `<div class="fq-tip-s">${_escN(sub)}</div>` : ''}
     </div></div>
@@ -6886,7 +6899,7 @@ function _fqTipHtml(pr, r, o = {}) {
     ${linha('Desenvolvimento', tempo)}
     ${linha('Previsto', r && !r.semPrevisao ? F.faixa(r) : '')}
     ${linha('Entrega', o.prazo ? formatPrazoFluxo(String(o.prazo).slice(0, 10)) : '', o.estoura ? 'alerta' : '')}
-    ${o.estoura ? '<div class="fq-tip-alerta">Termina depois da entrega</div>' : ''}
+    ${o.estoura ? '<div class="fq-tip-alerta">Termina depois da entrega</div>' : o.estado === 'nodia' ? '<div class="fq-tip-alerta" style="color:var(--ouro)">Termina no dia da entrega</div>' : ''}
     ${r?.atrasada ? '<div class="fq-tip-alerta">Passou do previsto</div>' : ''}
     ${o.resto ? `<div class="fq-tip-obs">+${o.resto} na fila depois desta, sem datas até ela ter previsão.</div>` : ''}
     ${pr.comentario ? `<div class="fq-tip-obs">${_escN(pr.comentario)}</div>` : ''}`;
@@ -13749,6 +13762,7 @@ const SOCIETARIA_CATS = [
   { key: 'administrativo', label: 'Administrativo' },
   { key: 'juridico',       label: 'Jurídico' },
   { key: 'endomarketing',  label: 'Endomarketing' },
+  { key: 'rh_pessoas',     label: 'RH e pessoas' },
 ];
 const _socCatLabel = (key) => (SOCIETARIA_CATS.find(c => c.key === key) || {}).label || key;
 
@@ -13980,10 +13994,11 @@ function renderFluxoDetail(uid) {
   }).join('');
 
   const radarHtml = radar.filter(rd => !rd.concluida).map(rd => {
-    const opts = _fluxoProdOpts(rd.produto_id, { includeSocietaria: isSocio, selectedCategoria: rd.categoria_societaria });
+    const grupo = _radarGrupoDe(rd);
     const obs = (rd.comentario || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
     return `<div class="fluxo-radar-row">
-      <select class="fluxo-prio-select" onchange="setFluxoProduto('${uid}','${rd.id}',this.value)">${opts}</select>
+      <select class="fluxo-prio-select fluxo-radar-grupo" title="Cliente ou sociedade" onchange="setRadarGrupo('${uid}','${rd.id}',this.value)">${_radarGrupoOpts(grupo, isSocio)}</select>
+      <select class="fluxo-prio-select fluxo-radar-item" title="${grupo === 'soc' ? 'Tarefa' : 'Projeto'}" ${grupo ? '' : 'disabled'} onchange="setFluxoProduto('${uid}','${rd.id}',this.value)">${_radarItemOpts(grupo, rd)}</select>
       <input class="fluxo-radar-obs" type="text" value="${obs}" placeholder="Observação (aparece ao passar o mouse)"
         oninput="setFluxoCampo('${uid}','${rd.id}','comentario',this.value)">
       <button class="fluxo-x" onclick="limparFluxoPrio('${uid}','${rd.id}')" title="Tirar do radar" aria-label="Tirar do radar">${X}</button>
@@ -14117,6 +14132,56 @@ function setFluxoCampo(uid, prid, campo, valor) {
   else if (campo === 'etapa')      pr.etapa_id = valor || null;
   _fluxoMarkDirty(uid);
   if (campo === 'blocos' || campo === 'etapa' || campo === 'inicio') renderFluxoDetail(uid);   /* recalcula as datas */
+}
+
+/* Radar em dois campos: (cliente → projeto) ou (sociedade → tarefa) */
+function _radarClientes() {
+  const m = new Map();
+  (G._prodsGestao || []).filter(p => p.status === 'ativo').forEach(p => {
+    const cli = p.oportunidades?.clientes, key = String(cli?.id || '__sem');
+    if (!m.has(key)) m.set(key, { nome: cli?.nome || 'Sem cliente', prods: [] });
+    m.get(key).prods.push(p);
+  });
+  return m;
+}
+function _radarGrupoDe(rd) {
+  if (rd._grupo !== undefined) return rd._grupo;
+  if (rd.categoria_societaria) return 'soc';
+  if (rd.produto_id) {
+    const p = (G._prodsGestao || []).find(x => x.id === rd.produto_id);
+    return String(p?.oportunidades?.clientes?.id || '__sem');
+  }
+  return '';
+}
+function _radarGrupoOpts(sel, incluirSoc) {
+  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const clis = [..._radarClientes().entries()].sort((a, b) => a[1].nome.localeCompare(b[1].nome, 'pt-BR'));
+  return `<option value="">Cliente ou sociedade</option>`
+    + (incluirSoc ? `<option value="soc"${sel === 'soc' ? ' selected' : ''}>Sociedade</option><option disabled>──────────</option>` : '')
+    + clis.map(([k, c]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(c.nome)}</option>`).join('');
+}
+function _radarItemOpts(grupo, rd) {
+  if (!grupo) return `<option value="">Projeto ou tarefa</option>`;
+  if (grupo === 'soc') return `<option value="">Tarefa</option>` + SOCIETARIA_CATS.map(c =>
+    `<option value="soc:${c.key}"${c.key === rd.categoria_societaria ? ' selected' : ''}>${c.label}</option>`).join('');
+  const c = _radarClientes().get(grupo);
+  const prods = (c?.prods || []).slice().sort((a, b) =>
+    (a.oportunidades?.projeto || '').localeCompare(b.oportunidades?.projeto || '', 'pt-BR') || (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+  return `<option value="">Projeto</option>` + prods.map(p =>
+    `<option value="${p.id}"${p.id === rd.produto_id ? ' selected' : ''}>${_escN(p.oportunidades?.projeto || 'Sem oportunidade')}${p.nome ? ' · ' + _escN(p.nome) : ''}</option>`).join('');
+}
+function setRadarGrupo(uid, id, valor) {
+  const rd = (_fluxoRadarData[uid] || []).find(p => p.id === id);
+  if (!rd) return;
+  rd._grupo = valor;
+  rd.produto_id = null; rd.categoria_societaria = null;
+  // Cliente com um único projeto: já escolhe
+  if (valor && valor !== 'soc') {
+    const ps = _radarClientes().get(valor)?.prods || [];
+    if (ps.length === 1) rd.produto_id = ps[0].id;
+  }
+  _fluxoMarkDirty(uid);
+  renderFluxoDetail(uid);
 }
 
 function setFluxoProduto(uid, prid, valor) {
@@ -20823,6 +20888,6 @@ init();
 
 
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
-<script src="shared/exp-nav.js?v=2026-10-25"></script>
+<script src="shared/exp-nav.js?v=2026-10-26d"></script>
 </body>
 </html>
