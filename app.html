@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared/nome-curto.js"></script>
 <script src="shared/horas-creditos.js?v=2026-10-25"></script>
+<script src="shared/fila-prioridades.js?v=2026-10-26"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
@@ -526,6 +527,19 @@ body {
 .prio-hub-prazo.vencida { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
 .prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
 .prio-hub-prazo.sem-prazo { border-style: dashed; color: var(--txt-3); }
+/* Fila: datas calculadas, alerta e horas lançadas */
+.prio-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 10px; color: var(--txt-2); margin-top: 4px; font-variant-numeric: lining-nums tabular-nums; }
+.prio-fila-tag { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #fff; background: var(--grafite); border-radius: 999px; padding: 1px 6px; }
+.prio-fila-alerta { font-size: 9px; font-weight: 700; color: var(--terracota); }
+.prio-fila-prog { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 9px; color: var(--txt-3); }
+.prio-fila-barra { flex: 0 0 70px; height: 4px; border-radius: 2px; background: rgba(0,0,0,.08); overflow: hidden; }
+.prio-fila-barra span { display: block; height: 100%; background: currentColor; border-radius: 2px; color: var(--grafite); }
+[data-theme="dark"] .prio-fila-barra { background: rgba(255,255,255,.12); }
+[data-theme="dark"] .prio-fila-barra span { color: var(--txt-2); }
+/* Radar: acompanhar, sem previsão — menos peso que um card */
+.prio-radar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--cinza2); }
+.prio-radar-t { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-4); margin-right: 2px; }
+.prio-radar-chip { font-size: 10px; color: var(--txt-2); border: 1px solid var(--cinza2); border-radius: 999px; padding: 1px 8px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 [data-theme="dark"] .prio-hub-prazo.sem-prazo { color: var(--txt-4); }
 
 /* ── Prioridades coletivas — carrossel de 3 colunas ─────────── */
@@ -3758,22 +3772,44 @@ function renderTasksSection(tarefas, tarefasAtribuidas) {
 // Labels das subdivisões de tarefas societárias (sócios) — espelha SOCIETARIA_CATS de gestao.html
 const _SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing' };
 
-function renderPriosSection(prios) {
+function _prioNomeHub(pr) {
+  return pr.categoria_societaria
+    ? 'Societária · ' + _SOC_CAT_LABEL[pr.categoria_societaria]
+    : pr.produtos?.oportunidades
+      ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
+      : pr.produtos?.nome || '—';
+}
+
+function renderPriosSection(prios, radar) {
   const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
   const pendentes  = prios.filter(p => !p.concluida);
   const concluidas = prios.filter(p =>  p.concluida);
   const total = prios.length;
+  const _d = window._dashData || {};
+  const fila = window.ExpFila && _d.filaCred ? window.ExpFila.calcular(pendentes, _d.filaCred) : {};
+  const radarItens = (radar || []).filter(r => r.produto_id || r.categoria_societaria);
+  const radarHtml = radarItens.length ? `
+      <div class="prio-radar">
+        <div class="prio-radar-t">Radar</div>
+        ${radarItens.map(r => `<span class="prio-radar-chip">${escHtml(_prioNomeHub(r))}</span>`).join('')}
+      </div>` : '';
   const lbl = `Prioridades pessoais${total ? ` <span class="dash-lbl-count">${pendentes.length} em aberto</span>` : ''}`;
 
   if (!total) return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
       <div class="dash-empty box">Sem prioridades definidas</div>
+      ${radarHtml}
     </div>`;
 
   function buildCard(pr, idx, done) {
     const ord  = pr.ordem || (idx + 1);
-    const prazo = !done ? _fmtPrazo(pr.prazo_texto) : null;
+    // Prazo de referência: o da etapa vinculada; sem etapa, a data de conclusão informada
+    const prazoRef = (pr.etapa_alvo && pr.etapa_alvo.data_estimada) || pr.prazo_texto || null;
+    const r = !done ? fila[pr.id] : null;
+    const estoura = !!(r && r.fim && prazoRef && r.fim.d > String(prazoRef).slice(0,10));
+    let prazo = !done ? _fmtPrazo(prazoRef) : null;
+    if (prazo && (estoura || (r && r.atrasada)) && prazo.cls !== 'vencida') prazo = { ...prazo, cls: 'vencida' };
     const cls  = done ? 'prio-done' : '';
     // Paleta semafórica inline — verde=futuro/sem prazo (sem atraso), amarelo=hoje, vermelho=atrasada
     const _estado = done ? '' : prazo?.cls === 'vencida' ? 'vencida' : prazo?.cls === 'hoje' ? 'hoje' : 'futuro';
@@ -3783,13 +3819,24 @@ function renderPriosSection(prios) {
       :                            { bg:'var(--verde-bg)', border:'var(--verde)', text:'var(--verde)' };
     const cardStyle = _cor ? `background:${_cor.bg};border-left-color:${_cor.border}` : '';
     const nomeStyle = _cor ? `color:${_cor.text}` : '';
-    const nome  = pr.categoria_societaria
-      ? 'Societária · ' + _SOC_CAT_LABEL[pr.categoria_societaria]
-      : pr.produtos?.oportunidades
-        ? [pr.produtos.oportunidades.clientes?.nome, pr.produtos.oportunidades.projeto].filter(Boolean).join(' | ')
-        : pr.produtos?.nome || '—';
+    const nome  = _prioNomeHub(pr);
     const etapas = (pr.produtos?.etapas || []).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0));
-    const etapa  = etapas.find(e => e.status === 'em_andamento') || etapas.find(e => e.status !== 'concluida');
+    const etapa  = pr.etapa_alvo || etapas.find(e => e.status === 'em_andamento') || etapas.find(e => e.status !== 'concluida');
+    // Datas calculadas pela fila + horas já lançadas (só na atual)
+    let filaHtml = '';
+    if (r && !r.semPrevisao) {
+      const fh = _d.filaHoras && String(_d.filaHoras.id) === String(pr.id) ? _d.filaHoras : null;
+      const prevH = r.blocos * (((_d.filaCred && _d.filaCred.diaH) || 8) / 2);
+      const hTxt = fh ? `${String(Math.round(fh.horas * 10) / 10).replace('.', ',')} h de ${String(Math.round(prevH * 10) / 10).replace('.', ',')} h` : '';
+      const pct = fh && prevH ? Math.min(100, Math.round(fh.horas / prevH * 100)) : null;
+      filaHtml = `<div class="prio-fila">
+          ${r.atual ? '<span class="prio-fila-tag">Atual</span>' : ''}
+          <span>${window.ExpFila.faixa(r)}</span>
+          ${r.atrasada ? '<span class="prio-fila-alerta">passou do previsto</span>' : ''}
+          ${estoura ? '<span class="prio-fila-alerta">termina depois do prazo</span>' : ''}
+        </div>
+        ${pct !== null ? `<div class="prio-fila-prog" title="Horas lançadas desde que virou a atual"><div class="prio-fila-barra"><span style="width:${pct}%"></span></div><span>${hTxt}</span></div>` : ''}`;
+    }
     const coment = pr.comentario || '';
     const prazoHtml = !done
       ? (prazo ? `<span class="prio-hub-prazo ${prazo.cls || ''}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${prazo.label}</span>` : `<span class="prio-hub-prazo sem-prazo">Sem prazo definido</span>`)
@@ -3805,6 +3852,7 @@ function renderPriosSection(prios) {
             <div class="prio-hub-nome" style="${nomeStyle}">${escHtml(nome)}</div>
             ${etapa ? `<div class="prio-hub-etapa">↳ ${escHtml(etapa.nome)}</div>` : ''}
             ${coment ? `<div class="prio-hub-sub">${escHtml(coment)}</div>` : ''}
+            ${filaHtml}
             ${prazoHtml ? `<div style="margin-top:5px">${prazoHtml}</div>` : ''}
           </div>
           ${checkHtml}
@@ -3822,6 +3870,7 @@ function renderPriosSection(prios) {
           Concluídas · ${concluidas.length}
         </button>
         <div class="prio-concl-lista"${window._prioConclAberto ? '' : ' hidden'}>${concluidas.map((pr,i) => buildCard(pr,i,true)).join('')}</div>` : ''}
+      ${radarHtml}
     </div>`;
 }
 
@@ -4090,7 +4139,7 @@ function renderDashboard(data) {
   const mesAtualISO = new Date().toISOString().slice(0, 7);
   const priosMesAtual = (priosMes || []).filter(it => String(it.mes || '').slice(0, 7) === mesAtualISO);
   const colPrioMes = renderPriosMesSection(priosMesAtual);
-  const colPrio = renderPriosSection(prios);
+  const colPrio = renderPriosSection(prios, data.radar);
   const colMain = renderTasksSection(tarefas, _filtrarAtribuidas(tarefasAtribuidas));
 
   /* Eventos compactos em view mês para dar espaço ao calendário */
@@ -4189,12 +4238,15 @@ async function loadDashboard(usuario) {
       .order('inicio')
       .limit(8),
 
-    // Prioridades — todas (inclusive concluídas, ordenadas: pendentes primeiro)
-    sb.from('prioridades_usuario')
-      .select('id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, categoria_societaria, produtos(nome, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))')
-      .eq('usuario_id', usuario.id)
-      .order('concluida', { ascending: true })
-      .order('ordem', { ascending: true }),
+    // Prioridades — todas (inclusive concluídas, ordenadas: pendentes primeiro) + radar.
+    // Se as colunas da fila ainda não existirem no banco, cai na consulta antiga.
+    (async () => {
+      const base = 'id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, categoria_societaria, produtos(nome, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))';
+      const q = sel => sb.from('prioridades_usuario').select(sel).eq('usuario_id', usuario.id)
+        .order('concluida', { ascending: true }).order('ordem', { ascending: true });
+      const r = await q(base + ', tipo, blocos_previstos, etapa_id, inicio_fila, data_inicio, etapa_alvo:etapas!prioridades_usuario_etapa_id_fkey(nome, data_estimada, status)');
+      return r.error ? q(base) : r;
+    })(),
 
     // Prioridades do mês — cadastradas por sócios em sociedade.html, visíveis para todos
     sb.from('prioridades_mes')
@@ -4253,7 +4305,8 @@ async function loadDashboard(usuario) {
       atribuido_nome: usuarioMap.get(String(t.atribuido_para)) || null,
     })),
     eventos:     eventosRaw || [],
-    prios:       priosRaw || [],
+    prios:       (priosRaw || []).filter(p => p.tipo !== 'radar'),
+    radar:       (priosRaw || []).filter(p => p.tipo === 'radar'),
     priosMes:    priosMesRaw || [],
     horasSemana: _calcHoras(horasData || []),
     horasCredito: _cred && window.ExpHorasCredito ? (window.ExpHorasCredito.total(_cred, start, end) || 0) : 0,
@@ -4263,6 +4316,29 @@ async function loadDashboard(usuario) {
     feriadoDays,
   };
   renderDashboard(window._dashData);
+  _carregarFilaHub(usuario);
+}
+
+/* Fila das prioridades: créditos (feriados, ausências, banco) e horas já lançadas na prioridade atual */
+let _filaCredHub = null;
+async function _carregarFilaHub(usuario) {
+  if (!window.ExpFila) return;
+  try {
+    if (!_filaCredHub) _filaCredHub = await window.ExpFila.carregarCreditos(sb, usuario.id, usuario.nucleo_id || usuario.nucleo);
+    const d = window._dashData; if (!d) return;
+    d.filaCred = _filaCredHub;
+    const pend = (d.prios || []).filter(p => !p.concluida);
+    const atual = pend[0];
+    d.filaHoras = null;
+    if (atual && atual.blocos_previstos && (atual.etapa_id || atual.produto_id)) {
+      let q = sb.from('horas_lancadas').select('hora_inicio, hora_fim').eq('usuario_id', usuario.id);
+      q = atual.etapa_id ? q.eq('etapa_id', atual.etapa_id) : q.eq('produto_id', atual.produto_id);
+      if (atual.inicio_fila) q = q.gte('data_lancamento', atual.inicio_fila);
+      const { data } = await q;
+      d.filaHoras = { id: atual.id, horas: _calcHoras(data || []) };
+    }
+    renderDashboard(d);
+  } catch (e) { console.warn('[fila] não foi possível calcular as datas', e); }
 }
 
 async function checkPrioHub(prioId, btn) {
@@ -4276,7 +4352,15 @@ async function checkPrioHub(prioId, btn) {
     window._dashData.prios = window._dashData.prios.map(p =>
       String(p.id) === String(prioId) ? { ...p, concluida: true, concluida_em: new Date().toISOString() } : p
     );
-    const colPrio = renderPriosSection(window._dashData.prios);
+    // A próxima pendente vira a atual a partir de hoje (a fila recalcula a partir dela)
+    const prox = window._dashData.prios.find(p => !p.concluida);
+    if (prox && 'inicio_fila' in prox && !prox.inicio_fila) {
+      const hojeIso = window.ExpFila ? window.ExpFila.hoje() : new Date().toISOString().slice(0,10);
+      prox.inicio_fila = hojeIso;
+      sb.from('prioridades_usuario').update({ inicio_fila: hojeIso }).eq('id', prox.id).then(() => {});
+    }
+    if (_dashUsuario) _carregarFilaHub(_dashUsuario);
+    const colPrio = renderPriosSection(window._dashData.prios, window._dashData.radar);
     const dashEl  = document.getElementById('app-dashboard');
     if (dashEl) dashEl.firstElementChild.innerHTML = colPrio.match(/<div class="dash-sec">([\s\S]*)<\/div>\s*$/)?.[0] || colPrio;
     renderDashboard(window._dashData);
