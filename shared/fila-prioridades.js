@@ -33,7 +33,7 @@
     if (c.feriado || c.frac >= 1) return [false, false];
     var m = true, t = true, diaH = (cred && cred.diaH) || 8;
     (c.itens || []).forEach(function (it) {
-      if (it.tipo === 'compensacao_bh') return;
+      if (it.fonte === 'banco') return;   /* compensação em horas do banco: tratada abaixo (compH) */
       if (it.inicioH >= 13) t = false; else m = false;
     });
     var comp = Number(c.compH || 0);
@@ -87,7 +87,7 @@
   function carregarCreditos(sb, usuarioId, nucleoId) {
     if (!window.ExpHorasCredito) return Promise.resolve(null);
     var hoje = isoLocal(new Date());
-    return window.ExpHorasCredito.carregar(sb, usuarioId, addDia(hoje, -60), addDia(hoje, 365), { nucleoId: nucleoId })
+    return window.ExpHorasCredito.carregar(sb, usuarioId, addDia(hoje, -60), addDia(hoje, 365), { nucleoId: nucleoId, disponibilidade: true })
       .then(function (c) { return c; }, function () { return null; });
   }
 

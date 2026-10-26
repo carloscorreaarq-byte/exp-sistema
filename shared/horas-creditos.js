@@ -80,7 +80,7 @@
       var h = Number(c.horas_consumidas || 0);
       if (h <= 0) return;
       d.compH = (d.compH || 0) + h;
-      d.itens.push({ label: LABEL.compensacao_bh, tipo: 'compensacao_bh', horas: h, inicioH: 8 });
+      d.itens.push({ label: LABEL.compensacao_bh, tipo: 'compensacao_bh', fonte: 'banco', horas: h, inicioH: 8 });
     });
 
     Object.keys(porDia).forEach(function (iso) {
@@ -96,12 +96,16 @@
 
   /* Busca eventos, compensações e jornada da pessoa e calcula os créditos do intervalo.
      usuarioId = usuarios.id. Falhas em tabelas opcionais resultam em zero crédito. */
+  /* opts.disponibilidade: para a fila de prioridades — além do que credita horas, considera
+     também o day-off não remunerado e a compensação marcada no calendário (a pessoa não está
+     disponível, mesmo que essas ausências não contem como hora trabalhada). */
   function carregar(sb, usuarioId, startIso, endIso, opts) {
     opts = opts || {};
+    var tipos = TIPOS_FERIADO.concat(TIPOS_AUSENCIA, opts.disponibilidade ? ['ausencia_nrem', 'compensacao_bh'] : []);
     var safe = function (p) { return p.then(function (r) { return r; }, function (e) { return { data: null, error: e }; }); };
     return Promise.all([
       safe(sb.from('calendar_events').select('tipo,titulo,inicio,fim,scope,nucleo_id,user_id,criado_por')
-        .in('tipo', TIPOS_FERIADO.concat(TIPOS_AUSENCIA))
+        .in('tipo', tipos)
         .lte('inicio', endIso + 'T23:59:59').gte('fim', startIso + 'T00:00:00')),
       safe(sb.from('banco_horas_compensacoes').select('data_uso,horas_consumidas')
         .eq('usuario_id', usuarioId).gte('data_uso', startIso).lte('data_uso', endIso)),

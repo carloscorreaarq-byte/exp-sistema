@@ -1263,7 +1263,7 @@ window.ExpNav = (() => {
     var prod = pr.produtos || {};
     var opp  = prod.oportunidades || {};
     var cli  = opp.clientes || {};
-    var _SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing' };
+    var _SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing', rh_pessoas:'RH e pessoas' };
     var titulo   = pr.categoria_societaria
       ? 'Societária · ' + (_SOC_CAT_LABEL[pr.categoria_societaria] || pr.categoria_societaria)
       : ([cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto');
