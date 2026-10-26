@@ -2021,6 +2021,10 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .prio-num.p4 { background:var(--verde); }
 .prio-num.p5 { background:var(--terracota); }
 .prio-num.p6 { background:var(--ouro); }
+.prio-num.p7 { background:var(--azul); }
+.prio-num.p8 { background:var(--verde); }
+.prio-num.p9 { background:var(--terracota); }
+.prio-num.p10 { background:var(--ouro); }
 .prio-info { flex:1; min-width:0; }
 .prio-nome { font-size:12px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prio-sub { font-size:10px; color:var(--txt-3); margin-top:1px; }
@@ -2047,6 +2051,10 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-slot-num.s4 { background:var(--verde); }
 .fluxo-slot-num.s5 { background:var(--terracota); }
 .fluxo-slot-num.s6 { background:var(--ouro); color:#fff; }
+.fluxo-slot-num.s7 { background:var(--azul); }
+.fluxo-slot-num.s8 { background:var(--verde); }
+.fluxo-slot-num.s9 { background:var(--terracota); }
+.fluxo-slot-num.s10 { background:var(--ouro); color:#fff; }
 .fluxo-col-select { width:100%; font-size:10px; border:1px solid var(--cinza); border-radius:4px; padding:3px 4px; background:var(--branco); color:var(--txt-2); outline:none; font-family:var(--font-ui); }
 .fluxo-col-select:focus { border-color:var(--mod-focus); }
 .fluxo-col-date-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
@@ -13694,7 +13702,7 @@ async function carregarPrioridades() {
     radarEl.style.display = radar.length ? '' : 'none';
     radarEl.innerHTML = radar.length ? `<span class="fq-radar-t">Radar</span>${radar.map(rd => _radarChipHtml(rd, { fechar: true })).join('')}` : '';
   }
-  const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
+  const NUM_CLS = ['','p1','p2','p3','p4','p5','p6','p7','p8','p9','p10'];
   // Pendentes primeiro, concluídas no fim (mantendo ordem interna de cada grupo)
   const sorted = [...data].sort((a,b) => (a.concluida?1:0) - (b.concluida?1:0));
   const _cardHtml = (pr, idx) => {
@@ -14034,7 +14042,7 @@ function renderFluxoUserList() {
   const list = document.getElementById('fluxo-user-list');
   if (!list) return;
   const users = _fluxoSortedUsers();
-  const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
+  const NUM_CLS = ['','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'];
   let html = '';
   let lastGroup = -1;
   const groupLabels = ['Colaboradores', 'Sócios'];
@@ -14079,12 +14087,12 @@ function renderFluxoDetail(uid) {
   if (!wrap) return;
   const u = usuarioPorId(uid);
   if (!u) return;
-  const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
+  const NUM_CLS = ['','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'];
   const isSocio = isSocioRole(u.role);
   // Mostra TODOS os registros (incluindo os recém-adicionados com produto_id null)
   const prios = _fluxoPriosData[uid] || [];
   const radar = _fluxoRadarData[uid] || [];
-  const canAdd = prios.length < 6;
+  const canAdd = prios.length < 10;
   if (_fluxoCred[uid] === undefined) _fluxoCarregarCred(uid).then(() => { if (_fluxoSelectedUid === uid) renderFluxoDetail(uid); });
   const fila = _fluxoFila(uid);
   const X = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
@@ -14171,7 +14179,7 @@ function renderFluxoDetail(uid) {
       <div class="fluxo-radar-lista">${radarHtml}<div><button class="fluxo-radar-add" onclick="adicionarFluxoRadar('${uid}')">+ Radar</button></div></div>
     </div>
     <div class="fluxo-sec">
-      <div class="fluxo-sec-hd"><span class="fluxo-sec-t">Prioridades</span><span class="fluxo-sec-sub">${prios.length} de 6</span>${addBtn}</div>
+      <div class="fluxo-sec-hd"><span class="fluxo-sec-t">Prioridades</span><span class="fluxo-sec-sub">${prios.length} de 10</span>${addBtn}</div>
       <div class="fluxo-prio-list" id="fluxo-prio-list-${uid}">${itemsHtml}${emptyMsg}</div>
     </div>
   </div>`;
@@ -14240,7 +14248,7 @@ async function adicionarFluxoRadar(uid) {
 
 async function adicionarFluxoPrio(uid) {
   const existing = (_fluxoPriosData[uid]||[]);
-  if (existing.length >= 6) return;
+  if (existing.length >= 10) return;
   const nextOrdem = existing.length > 0 ? Math.max(...existing.map(p => p.ordem)) + 1 : 1;
   const { data, error } = await sb.from('prioridades_usuario').insert({
     usuario_id: uid, produto_id: null, ordem: nextOrdem,
@@ -14449,7 +14457,7 @@ async function limparFluxoPrio(uid, recId) {
 function renderFluxoView() {
   const grid = document.getElementById('fluxo-view-grid');
   if (!grid) return;
-  const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
+  const NUM_CLS = ['','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'];
   const users = _fluxoSortedUsers();
   users.forEach(u => { if (_fluxoCred[u.id] === undefined) _fluxoCarregarCred(u.id).then(() => { if (_fluxoMode === 'visualizar') renderFluxoView(); }); });
   grid.innerHTML = users.map(u => {
