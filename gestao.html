@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="shared/privacidade.js?v=2026-10-26b"></script>
+<script src="shared/privacidade.js?v=2026-10-26c"></script>
 <script src="shared/nome-curto.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js?v=2026-10-25"></script>
@@ -5459,7 +5459,7 @@ const GESTAO_AREA_RULES = {
   'Relacionamento e Brindes':              { requer_evento: true  },
   'Computadores':                          { requer_evento: false, especial: 'computador' },
 };
-const ROLES_LABEL = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador' };
+const ROLES_LABEL = { socio:'Sócio', socio_adm:'Sócio-administrador', socio_admin:'Sócio-administrador', coordenador:'Coordenador', colaborador:'Colaborador', freelancer:'Freelancer' };
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   INIT
@@ -5546,6 +5546,13 @@ async function init() {
 
   // Billing segue role formal; atalhos por nome deixam de conceder acesso.
   G.hasBillingAccess = isSocioRole(usr.role);
+  // Freelancer: "Meus projetos" sempre ligado (o banco já só entrega os projetos em que ele está)
+  if (_ehFreelancer()) {
+    const fm = document.getElementById('fil-meus');
+    if (fm) { fm.checked = true; fm.disabled = true; }
+    const lb = document.querySelector('#lista-filters .fil-meus');
+    if (lb) { lb.style.opacity = '.6'; lb.title = 'Freelancer: só os projetos em que você está envolvido'; }
+  }
   if (G.hasBillingAccess) {
     document.querySelectorAll('.billing-only').forEach(el => el.style.display = '');
     document.getElementById('ntab-socios').style.display = '';
@@ -7029,7 +7036,7 @@ function pkFiltrarProds() {
   const nucleo        = document.getElementById('fil-nucleo').value;
   const gestaoFiltro  = document.getElementById('fil-gestao').value;
   const status        = document.getElementById('fil-status').value;
-  const soMeus        = !!document.getElementById('fil-meus')?.checked;
+  const soMeus        = !!document.getElementById('fil-meus')?.checked || _ehFreelancer();   // freelancer: sempre só os dele
 
   const baseLista = gestaoFiltro === 'ocultos'
     ? G._todosProdutosGestao.filter(p => p.em_gestao === false)
@@ -13956,7 +13963,11 @@ function _fluxoSortedUsers() {
 
 function _fluxoProdNome(prodId) {
   const p = (G._prodsGestao||[]).find(p => p.id === prodId);
-  if (!p) return '—';
+  if (!p) {
+    // Freelancer: projeto em que não está envolvido — só o nome, vindo de prioridades_nomes()
+    const n = G._nomesPrio?.prod?.[prodId];
+    return n ? [n.cliente, n.projeto].filter(Boolean).join(' · ') + (n.produto ? ` · ${n.produto}` : '') : '—';
+  }
   const proj = p.oportunidades?.projeto || '';
   const tipo = p.nome ? ` · ${p.nome}` : '';
   return proj + tipo;
@@ -13969,7 +13980,21 @@ function _fluxoPrioNome(pr) {
   return _fluxoProdNome(pr.produto_id);
 }
 /* Lista completa de clientes (para escolher cliente sem projeto) — carregada uma vez */
+/* Freelancer: nomes (só nomes) dos projetos, clientes e etapas citados nas prioridades de todos */
+async function _garantirNomesPrio() {
+  if (!_ehFreelancer() || G._nomesPrio) return;
+  const { data, error } = await sb.rpc('prioridades_nomes');
+  if (error) { console.warn('[prioridades_nomes]', error.message); G._nomesPrio = { prod: {}, cli: {}, etapa: {} }; return; }
+  const m = { prod: {}, cli: {}, etapa: {} };
+  (data || []).forEach(r => {
+    if (r.etapa_id) m.etapa[r.etapa_id] = { nome: r.etapa, data_estimada: r.etapa_data, produto_id: r.produto_id };
+    else if (r.produto_id) m.prod[r.produto_id] = { cliente: r.cliente, projeto: r.projeto, produto: r.produto };
+    else if (r.cliente_id) m.cli[r.cliente_id] = r.cliente;
+  });
+  G._nomesPrio = m;
+}
 async function _garantirClientes() {
+  await _garantirNomesPrio();
   if (G._fluxoClientes) return G._fluxoClientes;
   const { data } = await sb.from('clientes').select('id,nome').order('nome');
   G._fluxoClientes = data || [];
@@ -13978,6 +14003,7 @@ async function _garantirClientes() {
 function _clienteNome(id) {
   const c = (G._fluxoClientes || []).find(x => String(x.id) === String(id));
   if (c) return c.nome;
+  if (G._nomesPrio?.cli?.[id]) return G._nomesPrio.cli[id];
   const p = (G._prodsGestao || []).find(x => String(x.oportunidades?.clientes?.id) === String(id));
   return p?.oportunidades?.clientes?.nome || 'Cliente';
 }
@@ -14048,7 +14074,7 @@ function _fluxoFila(uid) {
 /* Prazo de referência da fila = data prevista da etapa escolhida. Sem etapa, não há prazo
    (fica verde enquanto não passar do previsto). A antiga data de conclusão (prazo_texto) não conta mais. */
 function _fluxoPrazoRef(pr) {
-  const et = pr.etapa_id ? (G.todasEtapas || []).find(e => e.id === pr.etapa_id) : null;
+  const et = pr.etapa_id ? ((G.todasEtapas || []).find(e => e.id === pr.etapa_id) || G._nomesPrio?.etapa?.[pr.etapa_id]) : null;
   return (et && et.data_estimada) || null;
 }
 function _fluxoLinhaFila(pr, r) {
@@ -14613,6 +14639,7 @@ function carregarUsuariosAdmin() {
         <option value="socio" ${u.role==='socio'?'selected':''}>Sócio</option>
         <option value="coordenador" ${u.role==='coordenador'?'selected':''}>Coordenador</option>
         <option value="colaborador" ${u.role==='colaborador'?'selected':''}>Colaborador</option>
+        <option value="freelancer" ${u.role==='freelancer'?'selected':''}>Freelancer</option>
       </select>
       <div class="usu-swatches">${swatches}</div>
       <div style="display:flex;align-items:center;gap:5px;margin-left:auto">
@@ -16104,8 +16131,10 @@ function _renderEtapaEdicaoRow(e, devIds) {
   </div>`;
 }
 
+function _ehFreelancer() { return String(G.usuario?.role || '').toLowerCase() === 'freelancer'; }
+
 async function abrirEditarProduto() {
-  if (G.usuario.role === 'colaborador') return; // colaboradores não editam
+  if (G.usuario.role === 'colaborador' || _ehFreelancer()) return; // colaboradores e freelancers não editam
   const prod = G.todosProdutos.find(p => p.id === G.produtoAtivo)
     || G._todosProdutosGestao.find(p => p.id === G.produtoAtivo);
   if (!prod || prod._crm) return;
@@ -21092,6 +21121,6 @@ init();
 
 
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
-<script src="shared/exp-nav.js?v=2026-10-26d"></script>
+<script src="shared/exp-nav.js?v=2026-10-26e"></script>
 </body>
 </html>
