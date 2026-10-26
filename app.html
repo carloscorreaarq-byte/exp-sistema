@@ -537,7 +537,7 @@ body {
 [data-theme="dark"] .prio-fila-barra { background: rgba(255,255,255,.12); }
 [data-theme="dark"] .prio-fila-barra span { color: var(--txt-2); }
 /* Radar: acompanhar, sem previsão — menos peso que um card */
-.prio-radar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--cinza2); }
+.prio-radar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0 0 10px; padding-bottom: 9px; border-bottom: 1px dashed var(--cinza2); }
 .prio-radar-t { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-4); margin-right: 2px; }
 .prio-radar-chip { font-size: 10px; color: var(--txt-2); border: 1px solid var(--cinza2); border-radius: 999px; padding: 1px 8px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 [data-theme="dark"] .prio-hub-prazo.sem-prazo { color: var(--txt-4); }
@@ -3798,8 +3798,8 @@ function renderPriosSection(prios, radar) {
   if (!total) return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
-      <div class="dash-empty box">Sem prioridades definidas</div>
       ${radarHtml}
+      <div class="dash-empty box">Sem prioridades definidas</div>
     </div>`;
 
   function buildCard(pr, idx, done) {
@@ -3863,6 +3863,7 @@ function renderPriosSection(prios, radar) {
   return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
+      ${radarHtml}
       ${pendentes.map((pr,i) => buildCard(pr,i,false)).join('')}
       ${concluidas.length ? `
         <button type="button" class="prio-concl-toggle${window._prioConclAberto ? ' aberto' : ''}" onclick="togglePrioConcluidas(this)" aria-expanded="${window._prioConclAberto ? 'true' : 'false'}">
@@ -3870,7 +3871,6 @@ function renderPriosSection(prios, radar) {
           Concluídas · ${concluidas.length}
         </button>
         <div class="prio-concl-lista"${window._prioConclAberto ? '' : ' hidden'}>${concluidas.map((pr,i) => buildCard(pr,i,true)).join('')}</div>` : ''}
-      ${radarHtml}
     </div>`;
 }
 
