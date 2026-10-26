@@ -21,6 +21,7 @@
   var KEY = 'exp_privacidade';           // localStorage: '1' = ligado
   var KEY_SOCIO = 'exp_priv_socio';      // sessionStorage: '1' = o usuário logado é sócio de verdade
   var KEY_UID = 'exp_priv_uid';          // sessionStorage: usuarios.id do usuário logado
+  var KEY_PAPEL = 'exp_papel';           // sessionStorage: papel do usuário logado (para o freelancer)
 
   function ler(st, k) { try { return st.getItem(k); } catch (e) { return null; } }
   function gravar(st, k, v) { try { if (v == null) st.removeItem(k); else st.setItem(k, v); } catch (e) {} }
@@ -31,6 +32,41 @@
     var r = String(role || '').toLowerCase().trim();
     return r === 'socio' || r === 'socio_adm' || r === 'socio_admin';
   }
+
+  /* ── Freelancer: só Hub, Gestão, Apontamentos, Chat, Calendário e Apoio ──
+     (o que ele enxerga DENTRO dos módulos é limitado pelo banco — supabase/freelancer.sql) */
+  function ehFreelancer(role) { return String(role || '').toLowerCase().trim() === 'freelancer'; }
+  var PAGINAS_FREELANCER = ['app.html', 'gestao.html', 'apontamentos.html', 'chat-fullpage.html',
+                            'calendario.html', 'apoio.html', 'index.html', ''];
+  function aplicarFreelancer() {
+    var pagina = (location.pathname.split('/').pop() || '').toLowerCase();
+    if (PAGINAS_FREELANCER.indexOf(pagina) === -1) { location.replace('app.html'); return; }
+    document.documentElement.classList.add('papel-freelancer');
+    if (document.getElementById('exp-freela-css')) return;
+    var st = document.createElement('style');
+    st.id = 'exp-freela-css';
+    st.textContent =
+      /* menu: sem Contatos, Pesquisa EXP e módulos de sócio */
+      '.papel-freelancer #exp-nav-contatos-wrap,.papel-freelancer #exp-nav-pessoas-collab,' +
+      '.papel-freelancer #exp-nav a[href="contatos.html"],.papel-freelancer #exp-nav a[href="calc.html"],' +
+      '.papel-freelancer #exp-nav a[href="crm.html"],.papel-freelancer #exp-nav a[href="financeiro.html"],' +
+      '.papel-freelancer #exp-nav a[href="analise.html"],.papel-freelancer #exp-nav a[href="sociedade.html"],' +
+      '.papel-freelancer #exp-nav-pessoas-wrap{display:none !important}' +
+      /* Apontamentos: sem banco de horas, meta e ausências; Calendário: sem "Pedir ausência" */
+      '.papel-freelancer #stab-banco,.papel-freelancer #stab-socios,.papel-freelancer #apo-fin-meta,' +
+      '.papel-freelancer .mh-stat-meta,.papel-freelancer a[href="apontamentos.html#banco"]{display:none !important}';
+    (document.head || document.documentElement).appendChild(st);
+    // Sem horas/custos/tarefas de "Sociedade": tira a opção dos seletores (o banco também recusa)
+    function semSociedade() { document.querySelectorAll('select option[value="sociedade"]').forEach(function (o) { o.remove(); }); }
+    function vigiar() {
+      semSociedade();
+      new MutationObserver(semSociedade).observe(document.body, { childList: true, subtree: true });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', vigiar); else vigiar();
+  }
+  // Na tela de login o papel anterior é esquecido (outra pessoa pode entrar no mesmo navegador)
+  if (/(^|\/)(index\.html)?$/i.test(location.pathname)) gravar(sessionStorage, KEY_PAPEL, null);
+  else if (ehFreelancer(ler(sessionStorage, KEY_PAPEL))) aplicarFreelancer();
 
   /* auth.users.id da sessão guardada pelo supabase-js (sb-<ref>-auth-token) */
   function authId() {
@@ -71,6 +107,8 @@
             if (!meu) return;
             if (r.id && !uid) { uid = r.id; gravar(sessionStorage, KEY_UID, r.id); }
             if (!('role' in r)) return;
+            gravar(sessionStorage, KEY_PAPEL, String(r.role || '').toLowerCase().trim());
+            if (ehFreelancer(r.role)) aplicarFreelancer();
             if (ehSocio(r.role)) { gravar(sessionStorage, KEY_SOCIO, '1'); setTimeout(montar, 0); }
             else if (!r._role_real) gravar(sessionStorage, KEY_SOCIO, null);
             if (ativo && ehSocio(r.role)) {
@@ -114,7 +152,11 @@
     var st = document.createElement('style');
     st.id = 'exp-priv-css';
     st.textContent =
-      '.exp-priv-btn{display:inline-flex;align-items:center;justify-content:center;position:relative}' +
+      /* mesmo desenho do botão da barra compartilhada (.exp-tr-btn), em qualquer página */
+      '.exp-priv-btn{width:28px;height:28px;border:none;background:none;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;position:relative;color:#aaa;cursor:pointer;padding:0;flex-shrink:0;transition:color .12s,background .12s;outline:none}' +
+      '.exp-priv-btn:hover{color:var(--grafite,#111110);background:var(--cinza2,#ECEAE4)}' +
+      '.exp-priv-btn:focus-visible{box-shadow:0 0 0 2px var(--cinza,#ccc)}' +
+      '[data-theme="dark"] .exp-priv-btn{color:#555}' +
       '.exp-priv-btn.ativo{color:#E2B141 !important}' +
       '.exp-priv-btn.ativo::after{content:"";position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#E2B141;box-shadow:0 0 0 1.5px var(--branco,#fff)}';
     document.head.appendChild(st);
@@ -131,7 +173,6 @@
     b.type = 'button';
     b.id = 'exp-priv-btn';
     b.className = (tema.className || '') + ' exp-priv-btn' + (ativo ? ' ativo' : '');
-    var s = tema.getAttribute('style'); if (s) b.setAttribute('style', s);
     b.title = ativo
       ? 'Modo privacidade ligado: você está vendo a visão de colaborador. Clique para voltar à visão de sócio.'
       : 'Modo privacidade: esconder dados societários e sensíveis (para compartilhar a tela)';
@@ -153,4 +194,5 @@
   else iniciar();
 
   window.ExpPrivacidade = { ativo: function () { return ativo; }, alternar: alternar };
+  window.ExpPapel = { freelancer: function () { return ehFreelancer(ler(sessionStorage, KEY_PAPEL)); } };
 })();

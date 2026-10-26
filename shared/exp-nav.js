@@ -834,7 +834,7 @@ window.ExpNav = (() => {
       var nomes = (user.nome || '').trim().split(/\s+/).filter(Boolean);
       $nome.textContent = nomes.length <= 2 ? nomes.join(' ') : nomes[0] + ' ' + nomes[nomes.length-1];
     }
-    var ROLE_PT = { socio:'Sócio', socio_adm:'Sócio Administrador', socio_admin:'Sócio Administrador', colaborador:'Colaborador', coordenador:'Coordenador', estagio:'Estagiário' };
+    var ROLE_PT = { socio:'Sócio', socio_adm:'Sócio Administrador', socio_admin:'Sócio Administrador', colaborador:'Colaborador', freelancer:'Freelancer', coordenador:'Coordenador', estagio:'Estagiário' };
     var normalizedRole = _normalizeRole(user.role);
     if ($role) $role.textContent = ROLE_PT[normalizedRole] || ROLE_PT[user.role] || user.role || '';
     /* Callback do módulo (para compatibilidade) */

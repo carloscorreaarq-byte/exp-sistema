@@ -8,6 +8,7 @@
     socio_admin: 'Socio administrador',
     coordenador: 'Coordenador',
     colaborador: 'Colaborador',
+    freelancer: 'Freelancer',
     admin: 'Administrador',
   };
 
