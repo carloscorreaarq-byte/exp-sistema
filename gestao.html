@@ -11,7 +11,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script src="shared/horas-creditos.js"></script>
-<script src="shared/fila-prioridades.js?v=2026-10-26"></script>
+<script src="shared/fila-prioridades.js?v=2026-10-26b"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
@@ -2098,6 +2098,8 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-prio-date-inline { width:96px; flex-shrink:0; font-size:10px; border:1px solid var(--cinza); border-radius:4px; padding:3px 5px; background:var(--branco); outline:none; font-family:var(--font-ui); color:var(--txt-2); }
 .fluxo-prio-date-inline:focus { border-color:var(--mod-focus); }
 /* ── Projetos › Fila ── */
+#view-fila .gantt-legenda { background:transparent !important; }
+#view-fila .gantt-toolbar-meta { background:transparent; }
 .fq-grid { display:grid; grid-template-columns:190px repeat(30, minmax(0,1fr)); align-items:stretch; margin-top:6px; }
 .fq-hd-nome { grid-column:1; }
 .fq-hd-sem { font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--txt-3); padding:6px 8px; border-left:1px solid var(--cinza); }
@@ -2134,6 +2136,11 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 [data-theme="dark"] .fq-slot.bloq { background:repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.08) 4px 5px); }
 [data-theme="dark"] .fq-slot.passou { background-color:rgba(255,255,255,.02); }
 .fluxo-detail-hd { border-radius:10px !important; margin-bottom:16px; }
+.fluxo-ajuda { position:relative; }
+.fluxo-ajuda-pop { display:none; position:absolute; left:50%; top:calc(100% + 8px); transform:translateX(-50%); width:280px; padding:9px 11px; border-radius:8px; background:var(--grafite); color:#fff; font-size:11px; font-weight:400; line-height:1.5; letter-spacing:0; text-transform:none; white-space:normal; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.18); cursor:default; }
+.fluxo-ajuda-pop::before { content:''; position:absolute; top:-5px; left:50%; margin-left:-5px; border:5px solid transparent; border-top:0; border-bottom-color:var(--grafite); }
+.fluxo-ajuda:hover .fluxo-ajuda-pop, .fluxo-ajuda:focus .fluxo-ajuda-pop { display:block; }
+[data-theme="dark"] .fluxo-ajuda-pop { background:#2b2b2b; border:1px solid rgba(255,255,255,.12); }
 .fluxo-ajuda { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; border:1px solid var(--cinza); color:var(--txt-3); font-size:9px; font-weight:700; margin-left:5px; cursor:help; vertical-align:1px; }
 .fluxo-sec { margin-bottom:18px; }
 .fluxo-sec-hd { display:flex; align-items:center; gap:8px; margin-bottom:8px; min-height:26px; }
@@ -6670,7 +6677,18 @@ function _filaAbrirPessoa(uid) {
 
 function renderFilaEquipe() {
   const grid = document.getElementById('fq-grid');
-  if (!grid || !window.ExpFila) return;
+  if (!grid) return;
+  if (!window.ExpFila || !window.ExpFila.livres) {
+    grid.innerHTML = '<div class="loading-state">A fila precisa de uma versão nova da página. Atualize com Cmd+Shift+R.</div>';
+    return;
+  }
+  try { _renderFilaEquipe(grid); }
+  catch (e) {
+    console.error('[fila]', e);
+    grid.innerHTML = `<div class="loading-state">Não foi possível montar a fila: ${_escN(e.message)}</div>`;
+  }
+}
+function _renderFilaEquipe(grid) {
   const F = window.ExpFila;
   // 15 dias úteis: segunda da semana atual (+ deslocamento) até a sexta da 3ª semana
   const hojeIso = F.hoje();
@@ -13844,7 +13862,7 @@ function renderFluxoDetail(uid) {
       ${_avImg(u, 36, 13)}
       <div style="flex:1;min-width:0">
         <div class="fluxo-detail-hd-nome">${_escN(u.nome)}
-          <span class="fluxo-ajuda" title="${ajuda}" aria-label="${ajuda}">?</span></div>
+          <span class="fluxo-ajuda" tabindex="0" role="note" aria-label="${ajuda}">?<span class="fluxo-ajuda-pop">${ajuda}</span></span></div>
         <div class="fluxo-detail-hd-role">${ROLES_LABEL[u.role]||u.role||''}</div>
       </div>
       <span class="fluxo-dirty-pill" id="fluxo-dirty-pill" style="${dirty?'':'display:none'}">alterações não salvas</span>
