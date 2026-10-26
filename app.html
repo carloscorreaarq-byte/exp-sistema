@@ -3623,7 +3623,8 @@ function _weekDays() {
 
 function _fmtEventDate(inicio, diaInteiro) {
   if (!inicio) return '';
-  const d = new Date(inicio);
+  // dia inteiro: usa só a data gravada (sem fuso), senão 00:00 UTC vira o dia anterior no Brasil
+  const d = diaInteiro ? new Date(String(inicio).slice(0, 10) + 'T12:00:00') : new Date(inicio);
   const today = new Date(); today.setHours(0,0,0,0);
   const diff = Math.round((new Date(d.toDateString()) - today) / 86400000);
   const dayLbl = diff === 0 ? 'Hoje' : diff === 1 ? 'Amanhã'

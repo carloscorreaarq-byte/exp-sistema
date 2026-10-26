@@ -208,6 +208,15 @@ body{
 .cal-celula { border-right:1px solid var(--cinza2); border-bottom:1px solid var(--cinza2); height:26px; position:relative; }
 .cal-celula.fim-semana { background:#fafaf8; }
 .cal-celula.hoje-col { background:rgba(29,79,160,.03); }
+/* Feriado: hachura cinza a 45°; aniversário: hachura terracota */
+.cal-celula.feriado-col, .cal-dia-header.feriado-col { background-image:repeating-linear-gradient(45deg, rgba(138,134,126,.28) 0 1px, transparent 1px 7px); }
+.cal-celula.aniv-col, .cal-dia-header.aniv-col { background-image:repeating-linear-gradient(45deg, rgba(188,97,67,.26) 0 1px, transparent 1px 7px); }
+.cal-celula.feriado-col.aniv-col, .cal-dia-header.feriado-col.aniv-col { background-image:repeating-linear-gradient(45deg, rgba(188,97,67,.26) 0 1px, transparent 1px 7px), repeating-linear-gradient(-45deg, rgba(138,134,126,.22) 0 1px, transparent 1px 7px); }
+.cal-dia-num { display:flex; align-items:center; justify-content:center; gap:4px; }
+.aniv-avs { display:inline-flex; gap:2px; }
+.aniv-av { position:relative; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; color:#fff; margin-top:4px; }
+.aniv-av img { width:100%; height:100%; border-radius:50%; object-fit:cover; }
+.aniv-chapeu { position:absolute; top:-11px; left:50%; width:12px; height:13px; transform:translateX(-25%) rotate(16deg); }
 .cal-bloco { position:absolute; left:1px; right:1px; border-radius:2px; font-family:var(--font-ui); font-size:8px; font-weight:600; color:#fff; padding:2px 3px; overflow:hidden; cursor:pointer; letter-spacing:.1px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; bottom:1px; line-height:1.3; z-index:2; }
 .cal-bloco-linha1 { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; }
 .cal-bloco-linha2 { font-weight:400; opacity:.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; font-size:7px; }
@@ -218,7 +227,7 @@ body{
 /* Feriado / ausência: horas creditadas como trabalhadas (barra vermelha atrás dos lançamentos) */
 .cb-credito { background:repeating-linear-gradient(135deg,rgba(192,57,43,.88) 0 6px,rgba(192,57,43,.74) 6px 12px); z-index:1; cursor:default; }
 [data-theme="dark"] .cb-credito { background:repeating-linear-gradient(135deg,rgba(214,84,70,.62) 0 6px,rgba(214,84,70,.48) 6px 12px); }
-.cal-dia-credito { font-size:8px; color:#C0392B; font-weight:700; }
+.cal-dia-credito { font-size:8px; color:var(--terracota); font-weight:700; }
 .bh-credito { color:#C0392B; }
 .cal-totais-row { display:grid; grid-template-columns:44px repeat(7,1fr); border-top:1px solid var(--cinza); background:var(--cinza2); }
 .cal-total-label { font-size:8px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#bbb; padding:5px 4px; text-align:right; border-right:1px solid var(--cinza); }
@@ -481,6 +490,28 @@ body{
 .bh-eq-table tr:last-child td{border-bottom:none}
 .bh-eq-table tbody tr{cursor:pointer}
 .stab[hidden]{display:none !important}
+/* Submissão: grade de 6 semanas */
+.sub-grade-wrap{overflow-x:auto}
+.sub-grade{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;font-variant-numeric:lining-nums tabular-nums}
+.sub-grade th{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;text-align:center;padding:10px 6px;border-bottom:1px solid var(--cinza2);white-space:nowrap}
+.sub-grade th:first-child{text-align:left;padding-left:14px}
+.sub-grade th.atual{color:var(--grafite)}
+.sub-grade td{border-bottom:1px solid var(--cinza2);padding:6px}
+.sub-grade tr:last-child td{border-bottom:none}
+.sub-pessoa{padding-left:14px!important;white-space:nowrap}
+.sub-pessoa div{display:flex;align-items:center;gap:8px}
+.sub-cel{text-align:center;min-width:92px}
+.sub-cel .sub-st{display:block;height:4px;border-radius:2px;margin:0 6px 5px;background:var(--cinza2)}
+.sub-cel.ok .sub-st{background:var(--verde)}
+.sub-cel.pend .sub-st{background:var(--terracota)}
+.sub-cel.futura{color:#B5B1A8}
+.sub-saldo{font-weight:700;color:var(--grafite)}
+.sub-saldo.pos{color:var(--verde)}.sub-saldo.neg{color:var(--terracota)}
+.sub-legenda{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:10px 14px;border-top:1px solid var(--cinza2);font-size:10px;color:#8A867E}
+.sub-legenda span{display:inline-flex;align-items:center;gap:5px}
+.sub-legenda i{width:14px;height:4px;border-radius:2px;background:var(--cinza2);display:inline-block}
+.sub-legenda i.ok{background:var(--verde)}.sub-legenda i.pend{background:var(--terracota)}
+.sub-legenda-nota{flex-basis:100%}
 /* ── Aba Sócios: sub-abas ── */
 .soc-tabs{display:flex;gap:18px;border-bottom:1px solid var(--cinza2);margin-bottom:16px}
 .soc-tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 0 9px;margin-bottom:-1px;font-family:var(--font-ui);font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8A867E;cursor:pointer}
@@ -680,7 +711,7 @@ body[data-aba="socios"] #apo-ver-wrap{display:none !important}   /* Sócios já 
 .apo-form-card .apo-pill{font-size:10px;padding:3px 9px;color:#5F5B54;}
 .apo-btn-full{width:100%;justify-content:center;margin-top:4px;padding:8px 14px !important;}
 .apo-btn[hidden]{display:none !important;}   /* .apo-btn usa display:inline-flex, que anularia o hidden */
-.apo-btn-repetir{margin-bottom:2px}
+.apo-btn-repetir{display:inline-flex;align-items:center;gap:5px}
 /* ── Visualização mensal (cópia das regras .mh-* de gestao.html) ── */
 .mh-panel-body::-webkit-scrollbar{ width:4px; }
 .mh-panel-body::-webkit-scrollbar-track{ background:transparent; }
@@ -1309,9 +1340,12 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
             <!-- mantidos para o código existente (duração/classificação), sem exibir -->
             <div hidden><span id="apo-duration"></span><div class="apo-pill" id="apo-class-pill"><span id="apo-classification"></span></div></div>
 
-            <button type="button" class="apo-btn apo-btn-full apo-btn-repetir" id="apo-repetir" title="Preenche com o mesmo tipo, projeto, etapa, subtarefas e descrição do seu último lançamento">↻ Repetir último lançamento</button>
-            <button type="submit" class="apo-btn apo-btn-primary apo-btn-full" id="apo-submit">Registrar horas</button>
-            <button type="button" id="apo-reset" hidden>Limpar</button>
+            <!-- mesmo formato dos botões do Banco -->
+            <div class="apo-actions">
+              <button type="submit" class="apo-btn apo-btn-primary" id="apo-submit">Registrar horas</button>
+              <button type="button" class="apo-btn apo-btn-repetir" id="apo-repetir" title="Preenche com o mesmo tipo, projeto, etapa, subtarefas e descrição do seu último lançamento"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Repetir último</button>
+              <button type="button" id="apo-reset" hidden>Limpar</button>
+            </div>
             <div class="apo-feedback" id="apo-feedback"></div>
           </form>
         </div>
@@ -1400,8 +1434,10 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
             <div hidden><div class="apo-pill" id="apo-cost-status-pill"><span id="apo-cost-status-text"></span></div></div>
 
-            <button type="submit" class="apo-btn apo-btn-primary apo-btn-full" id="apo-cost-submit">Registrar custo</button>
-            <button type="button" id="apo-cost-reset" hidden>Limpar</button>
+            <div class="apo-actions">
+              <button type="submit" class="apo-btn apo-btn-primary" id="apo-cost-submit">Registrar custo</button>
+              <button type="button" id="apo-cost-reset" hidden>Limpar</button>
+            </div>
             <div class="apo-feedback" id="apo-cost-feedback"></div>
           </form>
         </div>
@@ -2109,6 +2145,21 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
   // ── Calendário: cópia exata de gestao.html::renderCalendarioSemana ──
 
+  /* Aniversários da equipe (usuarios.data_aniversario), carregados uma vez */
+  async function carregarAniversariantes() {
+    if (AP.aniversariantes) return;
+    try {
+      var r = await window.sb.from('usuarios').select('id,nome,iniciais,cor,avatar_url,data_aniversario').eq('ativo', true).not('data_aniversario', 'is', null);
+      AP.aniversariantes = r.error ? [] : (r.data || []);
+    } catch (e) { AP.aniversariantes = []; }
+  }
+  var CHAPEU_SVG = '<svg class="aniv-chapeu" viewBox="0 0 20 22" aria-hidden="true"><path d="M10 1 L18 20 Q10 23 2 20 Z" fill="#BC6143"/><path d="M6.2 11 L13.8 11 M4.6 15 L15.4 15" stroke="#E2B141" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="2" r="2.2" fill="#E2B141"/></svg>';
+  function avatarAniversario(u) {
+    var nome = (u.nome || '').split(' ')[0];
+    var inner = u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">' : esc(u.iniciais || (u.nome || '?').charAt(0));
+    return '<span class="aniv-av" title="Aniversário de ' + esc(nome) + '"' + (u.avatar_url ? '' : ' style="background:' + esc(u.cor || '#BC6143') + '"') + '>' + inner + CHAPEU_SVG + '</span>';
+  }
+
   function renderCalendario(lancs) {
     var wrap = document.getElementById('cal-semana-wrap');
     if (!wrap || !AP.weekInfo) return;
@@ -2138,6 +2189,12 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     // Créditos de feriado/ausência entram no total do dia e da semana
     var credMap = (AP.weekCreditos && AP.weekCreditos.porDia) || {};
     var credPorDia = diasDate.map(function(d){ return credMap[d.toISOString().slice(0,10)] || null; });
+    var feriadoDia = credPorDia.map(function(c){ return !!(c && c.feriado); });
+    var anivDia = diasDate.map(function(d){
+      var md = d.toISOString().slice(5,10);
+      return (AP.aniversariantes || []).filter(function(u){ return String(u.data_aniversario || '').slice(5,10) === md; });
+    });
+    var marcaCls = function(i){ return (feriadoDia[i] ? ' feriado-col' : '') + (anivDia[i].length ? ' aniv-col' : ''); };
     var totalCredito = 0;
     credPorDia.forEach(function(c, i){ if (c) { hPorDia[i] += c.horas; totalCredito += c.horas; } });
 
@@ -2162,10 +2219,10 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     diasDate.forEach(function(d, i) {
       var fds = i >= 5;
       var isHoje = d.toISOString().slice(0,10) === hoje.toISOString().slice(0,10);
-      html += '<div class="cal-dia-header ' + (fds?'fim-semana ':'') + (isHoje?'hoje ':'') + (hPorDia[i]>0?'tem-horas':'') + '"' +
+      html += '<div class="cal-dia-header ' + (fds?'fim-semana ':'') + (isHoje?'hoje ':'') + (hPorDia[i]>0?'tem-horas':'') + marcaCls(i) + '"' +
         ' onclick="calSelecionarDia(\'' + d.toISOString().slice(0,10) + '\')">' +
         '<div class="cal-dia-nome">' + NOMES[i] + '</div>' +
-        '<div class="cal-dia-num">' + d.getDate() + '</div>' +
+        '<div class="cal-dia-num">' + d.getDate() + (anivDia[i].length ? '<span class="aniv-avs">' + anivDia[i].map(avatarAniversario).join('') + '</span>' : '') + '</div>' +
         '<div class="cal-dia-total">' + (hPorDia[i] > 0 ? fmtH(hPorDia[i]) : '·') + '</div>' +
         (credPorDia[i] ? '<div class="cal-dia-credito" title="' + esc(credPorDia[i].itens.map(function(it){ return it.label; }).join(' · ')) + '">' + esc(credPorDia[i].feriado ? 'Feriado' : 'Ausência') + '</div>' : '') +
         '</div>';
@@ -2214,7 +2271,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         });
 
         // Barra vermelha das horas creditadas, começando no horário do período
-        if (credPorDia[i]) credPorDia[i].itens.forEach(function(it) {
+        if (credPorDia[i] && !feriadoDia[i]) credPorDia[i].itens.forEach(function(it) {   /* feriado: a hachura substitui a barra */
           if ((it.inicioH - HORA_INI) * 2 !== s) return;
           var hgt = Math.max(16, it.horas * 2 * SLOT_H - 2);
           blocoHtml += '<div class="cal-bloco cb-credito" style="top:0;height:' + hgt + 'px" title="' + esc(it.label + ' — ' + fmtH(it.horas) + ' contadas como trabalhadas') + '">' +
@@ -2223,7 +2280,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
             '</div>';
         });
 
-        html += '<div class="cal-celula ' + (fds?'fim-semana ':'') + (isHoje?'hoje-col':'') + '">' + blocoHtml + '</div>';
+        html += '<div class="cal-celula ' + (fds?'fim-semana ':'') + (isHoje?'hoje-col':'') + marcaCls(i) + '">' + blocoHtml + '</div>';
       }
     }
 
@@ -2425,6 +2482,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         ? await window.ExpHorasCredito.carregar(window.sb, u, info.start, info.end, { nucleoId: AP.user && (AP.user.nucleo_id || AP.user.nucleo) })
         : null;
     } catch (e) { AP.weekCreditos = null; }
+    await carregarAniversariantes();
     await loadSemanaStatus();
     renderCalendario(AP.weekHours);
     renderLancamentos(AP.weekHours);
@@ -4385,7 +4443,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     if (ban) { if (ativo) ban.textContent = texto; else ban.remove(); }
     var b = document.getElementById(btnId); if (b) b.textContent = btnTxt;
     var r = document.getElementById(resetId);
-    if (r) { r.hidden = !ativo; r.textContent = 'Cancelar edição'; r.className = ativo ? 'apo-btn apo-btn-full' : ''; }
+    if (r) { r.hidden = !ativo; r.textContent = 'Cancelar edição'; r.className = ativo ? 'apo-btn' : ''; }
   }
   // Pop-up de edição: move o formulário (horas ou custos) para o modal e devolve ao fechar,
   // assim os campos, a cascata e o salvar continuam sendo os mesmos do formulário lateral.
@@ -5107,49 +5165,96 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   }
 
   // ── SUBMISSÃO ──
+  // ── SUBMISSÃO: quadro de 6 semanas por pessoa (status + saldo com feriados, banco e ausências) ──
+  var SUB_SEMANAS = 6;
+  function socSemanaDe(offset) {
+    var hoje = new Date(); hoje.setHours(12,0,0,0);
+    var d = new Date(hoje); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset * 7);
+    var f = new Date(d); f.setDate(f.getDate() + 6);
+    return { ini: localIso(d), fim: localIso(f), rot: String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + ' – ' + String(f.getDate()).padStart(2,'0') + '/' + String(f.getMonth()+1).padStart(2,'0') };
+  }
+  /* dias úteis (seg–sex) entre ini e fim, contando só até hoje */
+  function socDiasUteis(ini, fim) {
+    var hoje = localIso(); var ate = fim < hoje ? fim : hoje; if (ate < ini) return 0;
+    var n = 0, d = new Date(ini + 'T12:00:00'), f = new Date(ate + 'T12:00:00');
+    while (d <= f) { var w = d.getDay(); if (w !== 0 && w !== 6) n++; d.setDate(d.getDate() + 1); }
+    return n;
+  }
   async function socCarregarSubmissao() {
     var wrap = document.getElementById('soc-sub-lista');
-    var sem = socSemana();
+    var atual = socSemana();   /* atualiza o rótulo da navegação */
+    var off = AP.socSemOffset || 0;
+    var sems = [];
+    for (var k = SUB_SEMANAS - 1; k >= 0; k--) sems.push(socSemanaDe(off - k));
+    var ini = sems[0].ini, fim = sems[sems.length - 1].fim;
     wrap.innerHTML = '<div class="bh-empty">Carregando…</div>';
     try {
+      var usuarios = await socUsuarios();
+      var uids = usuarios.map(function(u){ return u.id; });
       var res = await Promise.all([
-        window.sb.from('semanas').select('id, usuario_id, data_inicio, finalizada, finalizada_em, comentario').eq('data_inicio', sem.ini),
-        window.sb.from('horas_lancadas').select('usuario_id, hora_inicio, hora_fim, tipo, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)))')
-          .gte('data_lancamento', sem.ini).lte('data_lancamento', sem.fim),
-        socUsuarios(),
+        window.sb.from('semanas').select('id, usuario_id, data_inicio, finalizada, finalizada_em, comentario').in('data_inicio', sems.map(function(x){ return x.ini; })),
+        bhBuscarTudo(function(){ return window.sb.from('horas_lancadas').select('usuario_id, data_lancamento, hora_inicio, hora_fim, tipo, produto_id, produtos(nome, oportunidades(projeto, clientes(nome)))')
+          .gte('data_lancamento', ini).lte('data_lancamento', fim).order('data_lancamento'); }),
+        window.sb.from('usuarios_jornada').select('usuario_id,jornada_semanal_h').in('usuario_id', uids),
+        Promise.all(usuarios.map(function(u){
+          return window.ExpHorasCredito
+            ? window.ExpHorasCredito.carregar(window.sb, u.id, ini, fim, { nucleoId: u.nucleo_id || u.nucleo }).then(function(c){ return c; }, function(){ return null; })
+            : Promise.resolve(null);
+        })),
       ]);
       if (res[0].error) throw res[0].error;
-      if (res[1].error) throw res[1].error;
-      var mapa = {};
-      (res[0].data || []).forEach(function(s) {
-        var a = mapa[s.usuario_id];
+      /* status por pessoa e semana (fica o registro mais completo) */
+      var stat = {};
+      (res[0].data || []).forEach(function(r) {
+        var key = r.usuario_id + '|' + r.data_inicio, a = stat[key];
         var sc = function(x){ return (x.finalizada ? 10 : 0) + (x.finalizada_em ? 1 : 0) + (x.comentario ? 1 : 0); };
-        if (!a || sc(s) > sc(a)) mapa[s.usuario_id] = s;
+        if (!a || sc(r) > sc(a)) stat[key] = r;
       });
-      var porU = {};
-      (res[1].data || []).forEach(function(h) {
-        if (!h.usuario_id) return;
-        var dh = diffH(h.hora_inicio, h.hora_fim);
-        var p = porU[h.usuario_id] || (porU[h.usuario_id] = { total:0, tipo:{ projeto:0, organizacao:0, sociedade:0 }, prods:{} });
-        p.total += dh;
-        p.tipo[h.tipo || 'projeto'] = (p.tipo[h.tipo || 'projeto'] || 0) + dh;
-        if (h.produto_id) {
-          var k = socRotuloProjeto(h) + ((h.produtos || {}).nome && ((h.produtos.oportunidades || {}).projeto) ? ' · ' + h.produtos.nome : '');
-          p.prods[k] = (p.prods[k] || 0) + dh;
+      var jorn = {}; (res[2].data || []).forEach(function(j){ jorn[j.usuario_id] = Number(j.jornada_semanal_h) || 40; });
+      /* horas por pessoa e semana */
+      var horas = {};
+      var semDe = function(iso){ for (var i = 0; i < sems.length; i++) if (iso >= sems[i].ini && iso <= sems[i].fim) return sems[i].ini; return null; };
+      var ultima = sems[sems.length - 1];
+      var porU = {};   /* detalhe da última semana, para o resumo ao clicar no nome */
+      res[1].forEach(function(h) {
+        var w = semDe(String(h.data_lancamento).slice(0,10)); if (!w) return;
+        var dh = diffH(h.hora_inicio, h.hora_fim), key = h.usuario_id + '|' + w;
+        horas[key] = (horas[key] || 0) + dh;
+        if (w === ultima.ini) {
+          var p = porU[h.usuario_id] || (porU[h.usuario_id] = { total:0, tipo:{ projeto:0, organizacao:0, sociedade:0 }, prods:{} });
+          p.total += dh; p.tipo[h.tipo || 'projeto'] = (p.tipo[h.tipo || 'projeto'] || 0) + dh;
+          if (h.produto_id) { var pk = socRotuloProjeto(h); p.prods[pk] = (p.prods[pk] || 0) + dh; }
         }
       });
-      AP.socSub_dados = { mapa: mapa, porU: porU };
-      wrap.innerHTML = res[2].map(function(u) {
-        var s = mapa[u.id], p = porU[u.id];
-        var fin = s && s.finalizada === true;
-        var st = fin ? ['Finalizado','cs-ok'] : ((s || p) ? ['Em preenchimento','cs-pend'] : ['Sem envio','cs-none']);
-        var sobre = p && p.total > 40 ? p.total - 40 : 0;
-        return '<div class="subm-item"><div class="subm-top">' + socAv(u, 24, 8) +
-          '<div class="subm-user"><div class="subm-nome" data-soc-membro="' + esc(u.id) + '">' + esc(u.nome) + '</div>' +
-          (sobre > 0 ? '<div class="subm-overload">+ ' + esc(fmtH(sobre)) + '</div>' : '') + '</div>' +
-          '<span class="subm-status ' + st[1] + '">' + st[0] + '</span></div>' +
-          (s && s.comentario ? '<div class="subm-comment">"' + esc(s.comentario) + '"</div>' : '') + '</div>';
-      }).join('') || '<div class="bh-empty">Sem usuários.</div>';
+      var mapaUltima = {};
+      usuarios.forEach(function(u){ var r = stat[u.id + '|' + ultima.ini]; if (r) mapaUltima[u.id] = r; });
+      AP.socSub_dados = { mapa: mapaUltima, porU: porU };
+
+      var hoje = localIso();
+      var cls = function(h){ return h > 0.05 ? 'pos' : (h < -0.05 ? 'neg' : ''); };
+      var head = '<tr><th>Pessoa</th>' + sems.map(function(w, i){
+        return '<th' + (i === sems.length - 1 ? ' class="atual"' : '') + '>' + w.rot + '</th>';
+      }).join('') + '</tr>';
+      var corpo = usuarios.map(function(u, ui) {
+        var cr = res[3][ui];
+        var j = jorn[u.id] || 40, diaH = j / 5;
+        var celulas = sems.map(function(w) {
+          if (w.ini > hoje) return '<td class="sub-cel futura">—</td>';
+          var key = u.id + '|' + w.ini, r = stat[key], h = horas[key] || 0;
+          var ate = w.fim < hoje ? w.fim : hoje;
+          var cred = (cr && window.ExpHorasCredito) ? (window.ExpHorasCredito.total(cr, w.ini, ate) || 0) : 0;
+          var esperado = socDiasUteis(w.ini, w.fim) * diaH;
+          var saldo = round1(h + cred - esperado);
+          var st = r && r.finalizada ? ['ok','Finalizada'] : ((r || h > 0) ? ['pend','Em preenchimento'] : ['none','Sem envio']);
+          var dica = st[1] + ' · ' + fmtH(h) + ' lançadas' + (cred > 0.01 ? ' + ' + fmtH(cred) + ' de feriado/ausência/banco' : '') + ' de ' + fmtH(esperado) + ' esperadas' + (w.fim >= hoje ? ' (até hoje)' : '');
+          return '<td class="sub-cel ' + st[0] + '" title="' + esc(dica) + '">' +
+            '<span class="sub-st"></span><span class="sub-saldo ' + cls(saldo) + '">' + esc(fmtHS(saldo)) + '</span></td>';
+        }).join('');
+        return '<tr><td class="sub-pessoa"><div>' + socAv(u, 22, 8) + '<span class="subm-nome" data-soc-membro="' + esc(u.id) + '">' + esc(u.nome) + '</span></div></td>' + celulas + '</tr>';
+      }).join('');
+      wrap.innerHTML = '<div class="sub-grade-wrap"><table class="sub-grade"><thead>' + head + '</thead><tbody>' + corpo + '</tbody></table></div>' +
+        '<div class="sub-legenda"><span><i class="ok"></i>Finalizada</span><span><i class="pend"></i>Em preenchimento</span><span><i class="none"></i>Sem envio</span>' +
+        '<span class="sub-legenda-nota">Saldo = horas lançadas + feriados, ausências e banco − jornada esperada (semana atual: até hoje). Clique no nome para ver o resumo da última semana.</span></div>';
     } catch (e) { socErro('soc-sub-lista', e); }
   }
   function socResumoMembro(id) {
@@ -6423,6 +6528,9 @@ async function exportarMinhasHorasPDF() {
   th{background:var(--off);text-align:left;padding:4px 8px;font-size:7px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--rotulo);border-bottom:1px solid var(--cinza2)}
   td{padding:4px 8px;border-bottom:1px solid var(--cinza2);vertical-align:top;word-break:break-word;color:var(--rotulo)}
   .panel td{color:var(--grafite)}
+  /* tabelas menores: projetos, org. interna, sociedade e detalhamento */
+  .panel td,.detail td{font-size:7.5px;padding:3px 7px}
+  .panel th,.detail th{font-size:6.5px;padding:3px 7px}
   tr:last-child td{border-bottom:none}
   .n{text-align:right;white-space:nowrap}
   .section-title{font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--rotulo);margin:4px 0 8px}

@@ -721,6 +721,28 @@ body {
   font-size: 10px; color: #4285f4; font-family: var(--font-ui); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap;
 }
 .tl-reuniao-badge.passada { color: var(--txt-3); }
+/* Linha do tempo das etapas (visão do projeto) */
+.tl-head, .tl-datas { display: grid; grid-template-columns: 74px 92px 112px; text-align: right; flex-shrink: 0; }
+.tl-head { justify-content: end; font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--txt-3); padding-bottom: 2px; }
+.tl-datas { font-size: 10px; color: var(--txt-3); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+.tl-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.tl-conc { color: var(--verde); }
+.tl-conc .gi { vertical-align: -1px; }
+.tl-dif { font-size: 9px; font-weight: 700; }
+.tl-dif.atraso { color: var(--terracota); }
+.tl-dif.adianto { color: var(--verde); }
+.tl-resp { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; object-fit: cover; flex-shrink: 0; }
+.tl-marca { position: absolute; left: -19px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--branco); border: 1.5px solid var(--cinza); color: #fff; }
+.tl-marca .gi { width: 8px; height: 8px; stroke-width: 3.5; vertical-align: 0; }
+.tl-marca.feita { background: var(--verde); border-color: var(--verde); }
+.tl-marca.atual { border-width: 3.5px; background: var(--branco); }
+.tl-marca.atual.d-az { border-color: var(--azul); }
+.tl-marca.atual.d-am { border-color: var(--ouro); }
+.tl-marca.atual.d-tc { border-color: var(--terracota); }
+.tl-marca.atual.d-gr { border-color: var(--txt-3); }
+.tl-item.tl-futura .tl-label { color: var(--txt-2); font-weight: 500; }
+/* Excluir bloqueado: cinza, explica ao passar o mouse ou clicar */
+#mp-btn-excluir.bloqueado { background: var(--cinza2) !important; border-color: var(--cinza2) !important; color: var(--txt-4) !important; cursor: not-allowed; }
 
 /* ── TOAST ───────────────────────────────────────────────── */
 .toast {
@@ -1710,7 +1732,7 @@ body {
 }
 .tarefa-prio:focus { outline: none; box-shadow: 0 0 0 2px var(--mod-focus-soft); }
 .tarefa-prio.p1 { background: var(--terracota); color: #fff; border-color: var(--terracota); }
-.tarefa-prio.p2 { background: var(--ouro); color: #111110; border-color: var(--ouro); }
+.tarefa-prio.p2 { background: var(--ouro); color: #fff; border-color: var(--ouro); }
 .tarefa-prio.p3 { background: transparent; color: var(--txt-3); border-color: var(--cinza); }
 span.tarefa-prio { display: inline-block; cursor: default; }
 .prancha-preview-task.prio-p1 { color: var(--terracota); font-weight: 700; }
@@ -2014,11 +2036,11 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-slot-num { width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0; }
 /* Mesma sequência das "Minhas prioridades" (cores da EXP) */
 .fluxo-slot-num.s1 { background:var(--terracota); }
-.fluxo-slot-num.s2 { background:var(--ouro); color:#111110; }
+.fluxo-slot-num.s2 { background:var(--ouro); color:#fff; }
 .fluxo-slot-num.s3 { background:var(--azul); }
 .fluxo-slot-num.s4 { background:var(--verde); }
 .fluxo-slot-num.s5 { background:var(--terracota); }
-.fluxo-slot-num.s6 { background:var(--ouro); color:#111110; }
+.fluxo-slot-num.s6 { background:var(--ouro); color:#fff; }
 .fluxo-col-select { width:100%; font-size:10px; border:1px solid var(--cinza); border-radius:4px; padding:3px 4px; background:var(--branco); color:var(--txt-2); outline:none; font-family:var(--font-ui); }
 .fluxo-col-select:focus { border-color:var(--mod-focus); }
 .fluxo-col-date-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
@@ -5075,7 +5097,8 @@ function setGestaoFinanceReflexInfoOnce(msg = 'O reflexo financeiro final deve s
 }
 
 function toggleOportunidadeBaseFieldsLocked(locked) {
-  ['ep-opp', 'ep-cliente', 'ep-opp-cidade', 'ep-proj-endereco', 'ep-proj-cnpj', 'ep-proj-esc-arq', 'ep-proj-esc-int', 'ep-proj-gestao', 'ep-link-arquivo', 'ep-link-planilha']
+  // Só cliente, nome e cidade vêm do CRM; dados do projeto e links são editados aqui
+  ['ep-opp', 'ep-cliente', 'ep-opp-cidade']
     .forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -5566,9 +5589,45 @@ function nomeCurto(nome) {
   return p.length <= 2 ? p.join(' ') : p[0] + ' ' + p[p.length - 1];
 }
 
+// ── Valor/hora vigente na data de cada lançamento ──────────────────────────
+// Histórico por usuário, do mais recente ao mais antigo: { uid: [{ data, valor }] }.
+// No mesmo dia vale o último cadastrado.
+async function carregarHistoricoVH(uids) {
+  let q = sb.from('historico_valor_hora').select('*');
+  if (uids && uids.length) q = q.in('usuario_id', uids);
+  const { data } = await q;
+  const porUser = {};
+  (data || []).sort((a, b) => {
+    const d = String(b.data_vigencia || '').localeCompare(String(a.data_vigencia || ''));
+    return d || String(b.created_at || b.id || '').localeCompare(String(a.created_at || a.id || ''));
+  }).forEach(v => {
+    (porUser[v.usuario_id] = porUser[v.usuario_id] || []).push({ data: String(v.data_vigencia || '').slice(0, 10), valor: Number(v.valor_hora) || 0 });
+  });
+  return porUser;
+}
+// Valor que valia na data do lançamento; antes do primeiro cadastro, usa o mais antigo
+function vhNaData(hist, uid, dataIso) {
+  const lista = hist && hist[uid];
+  if (!lista || !lista.length) return 0;
+  const d = String(dataIso || '').slice(0, 10);
+  const e = lista.find(x => x.data <= d);
+  return e ? e.valor : lista[lista.length - 1].valor;
+}
+
+// Busca um usuário pelo id entre os ativos e, se não achar, entre os inativos
+// (quem saiu continua aparecendo nos históricos de horas, custos e projetos)
+function usuarioPorId(id) {
+  if (id == null) return undefined;
+  return (G.todosUsuarios || []).find(u => u.id === id) || (G.usuariosInativos || []).find(u => u.id === id);
+}
+
 async function carregarUsuarios() {
-  const { data } = await sb.from('usuarios').select('*').eq('ativo', true).order('nome');
+  const [{ data }, { data: inativos }] = await Promise.all([
+    sb.from('usuarios').select('*').eq('ativo', true).order('nome'),
+    sb.from('usuarios').select('*').eq('ativo', false).order('nome'),
+  ]);
   G.todosUsuarios = (data || []).map(u => ({ ...u, nome_completo: u.nome, nome: nomeCurto(u.nome) }));
+  G.usuariosInativos = (inativos || []).map(u => ({ ...u, nome_completo: u.nome, nome: nomeCurto(u.nome), inativo: true }));
   if (G.usuario && G.usuario.nome) G.usuario.nome = nomeCurto(G.usuario.nome);
   const opts = G.todosUsuarios.map(u =>
     `<option value="${u.id}">${u.nome} (${u.iniciais})</option>`
@@ -5601,7 +5660,7 @@ function opcoesRevisor(selId) {
     .map(u => `<option value="${u.id}" ${u.id === selId ? 'selected' : ''}>${_escN(u.nome)}</option>`).join('');
 }
 function avRevisorHtml(p, size) {
-  const r = p?.revisor_id ? G.todosUsuarios.find(u => u.id === p.revisor_id) : null;
+  const r = p?.revisor_id ? usuarioPorId(p.revisor_id) : null;
   if (!r) return '';
   const sz = size || 18;
   return `<div class="proj-card-av av-revisor" style="background:${r.cor||'#888'};display:inline-flex;width:${sz}px;height:${sz}px;font-size:8px;border-radius:50%;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:700" title="Revisor: ${_escN(r.nome||'')}">${_escN(r.iniciais||'')}</div>`;
@@ -5853,7 +5912,7 @@ function renderDashProjetos(prods, horasPorProd = {}) {
     const etapaAtiva = G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_andamento')
       || G.todasEtapas.find(e => e.produto_id === p.id && e.status !== 'concluida');
     const st = etapaAtiva ? STATUS_ETAPA[etapaAtiva.status] : null;
-    const coord = G.todosUsuarios.find(u => u.id === p.coordenador_id);
+    const coord = usuarioPorId(p.coordenador_id);
     const role = G.usuario.role;
     const isSocioOrCoord = isSocioRole(role) || role === 'coordenador';
 
@@ -6067,9 +6126,9 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
     const vencida = t.data_limite && t.data_limite < hoje;
     const ehHoje  = t.data_limite === hoje;
     const criador = t.criado_por && t.criado_por !== G.usuario.id
-      ? G.todosUsuarios.find(u => u.id === t.criado_por) : null;
+      ? usuarioPorId(t.criado_por) : null;
     const destino = t.atribuido_para
-      ? G.todosUsuarios.find(u => u.id === t.atribuido_para)
+      ? usuarioPorId(t.atribuido_para)
       : null;
     const acompanhada = modo === 'acompanhando';
     const prazoHtml = t.data_limite
@@ -6250,7 +6309,7 @@ async function confirmarAtribuirTarefa() {
   document.getElementById('task-nova-desc').value = '';
   document.getElementById('task-nova-data').value = '';
   carregarTarefas();
-  const dest = G.todosUsuarios.find(u => u.id === para);
+  const dest = usuarioPorId(para);
   toast('Tarefa atribuída para ' + (dest?.nome.split(' ')[0] || 'destinatário'));
   // Notifica o destinatário
   criarNotificacao(para, 'tarefa',
@@ -6559,7 +6618,7 @@ function renderKanbanProjetos() {
       const nucleo = p.nucleo || 'urbanismo';
       const nc    = NUCLEO_COR[nucleo] || { dot: '#888', cls: 'b-gr', label: nucleo };
       const stProd = STATUS_PROD[p.status] || STATUS_PROD.inativo;
-      const coord = G.todosUsuarios.find(u => u.id === p.coordenador_id);
+      const coord = usuarioPorId(p.coordenador_id);
       const etapaAtiva = G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_andamento')
         || G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_revisao')
         || G.todasEtapas.find(e => e.produto_id === p.id && e.status !== 'concluida');
@@ -6718,7 +6777,7 @@ function renderListaProjetos() {
             const nucleo = p.nucleo || 'urbanismo';
             const nc = NUCLEO_COR[nucleo] || { cls:'b-gr', dot:'#888', label: nucleo };
             const stProd = STATUS_PROD[p.status] || STATUS_PROD.inativo;
-            const coord = G.todosUsuarios.find(u => u.id === p.coordenador_id);
+            const coord = usuarioPorId(p.coordenador_id);
             const etapaAtiva = G.todasEtapas.find(e => e.produto_id === p.id && e.status === 'em_andamento')
               || G.todasEtapas.find(e => e.produto_id === p.id && e.status !== 'concluida');
             const hProd = G._horasPorProd?.[p.id] || 0;
@@ -6827,7 +6886,7 @@ function renderGantt() {
 
     ps.forEach(p => {
       const etapas = G.todasEtapas.filter(e => e.produto_id === p.id);
-      const coord = G.todosUsuarios.find(u => u.id === p.coordenador_id);
+      const coord = usuarioPorId(p.coordenador_id);
       const nucleo = p.nucleo || 'urbanismo';
       const nc = NUCLEO_COR[nucleo] || { cls:'b-gr', bar:'gb-andamento', label: nucleo };
       const pausado = p.status === 'pausado';
@@ -6836,7 +6895,7 @@ function renderGantt() {
       const devIds = new Set();
       etapas.forEach(e => (G.etapaDevs[e.id] || []).forEach(id => devIds.add(id)));
       const devs = [...devIds]
-        .map(id => G.todosUsuarios.find(u => u.id === id))
+        .map(id => usuarioPorId(id))
         .filter(Boolean)
         .filter(u => u.id !== coord?.id);
 
@@ -9355,7 +9414,7 @@ async function carregarRevisoesProduto(prodId) {
     const total = r.pranchas?.reduce((s,p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
     const conc  = r.pranchas?.reduce((s,p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
     const pct   = total > 0 ? Math.round(conc / total * 100) : 0;
-    const revisor = G.todosUsuarios.find(u => u.id === r.aberta_por);
+    const revisor = usuarioPorId(r.aberta_por);
     const chip = revisor
       ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:9px" title="${revisor.nome}">${revisor.iniciais}</div>` : '';
     const datasInfo = _revDatasInfo(r.pranchas);
@@ -9408,7 +9467,7 @@ async function carregarRevisoes() {
     const total = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
     const conc = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
     const pct = total > 0 ? Math.round(conc / total * 100) : 0;
-    const revisor = G.todosUsuarios.find(u => u.id === r.aberta_por);
+    const revisor = usuarioPorId(r.aberta_por);
     const isMeu   = r.aberta_por === uid;
     const revisorChip = revisor
       ? `<div class="task-de-chip" style="background:${revisor.cor||'#888'};width:20px;height:20px;font-size:9px"
@@ -10491,7 +10550,7 @@ async function abrirProduto(id, targetPanel = null) {
 
   const opp = prod.oportunidades;
   const cli = opp?.clientes;
-  const coord = G.todosUsuarios.find(u => u.id === prod.coordenador_id);
+  const coord = usuarioPorId(prod.coordenador_id);
   const nc = NUCLEO_COR[prod.nucleo] || NUCLEO_COR.urbanismo;
   const stProd = STATUS_PROD[prod.status] || STATUS_PROD.inativo;
   const isSocio = isSocioRole(G.usuario.role);
@@ -10506,7 +10565,7 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-coord').innerHTML = coord
     ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${coord.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${_escN(coord.iniciais||'')}</div>${_escN(coord.nome||'')}</div>`
     : '—';
-  const revisor = prod.revisor_id ? G.todosUsuarios.find(u => u.id === prod.revisor_id) : null;
+  const revisor = prod.revisor_id ? usuarioPorId(prod.revisor_id) : null;
   document.getElementById('mp-revisor').innerHTML = revisor
     ? `<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:50%;background:${revisor.cor||'#888'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${_escN(revisor.iniciais||'')}</div>${_escN(revisor.nome||'')}</div>`
     : '—';
@@ -10579,12 +10638,16 @@ async function abrirProduto(id, targetPanel = null) {
       const avisoTxt = document.getElementById('mp-excluir-aviso-txt');
       if (uso.total > 0) {
         const partes = Object.entries(uso).filter(([k,v]) => k!=='total' && v>0).map(([k,v]) => `${v} ${USO_PROD_LABEL[k]||k}`);
-        btnEx.disabled = true;
-        btnEx.title = 'Só é possível excluir um projeto sem nenhum dado vinculado.';
-        avisoTxt.textContent = `Vinculado a: ${partes.join(', ')}.`;
-        avisoWrap.style.display = '';
+        /* em vez do aviso fixo na tela, o motivo fica no próprio botão (passar o mouse ou clicar) */
+        btnEx.disabled = false;
+        btnEx.classList.add('bloqueado');
+        G._excluirMotivo = `Este projeto não pode ser excluído. Vinculado a: ${partes.join(', ')}.`;
+        btnEx.title = G._excluirMotivo;
+        avisoWrap.style.display = 'none';
       } else {
         btnEx.disabled = false;
+        btnEx.classList.remove('bloqueado');
+        G._excluirMotivo = '';
         btnEx.title = '';
         avisoWrap.style.display = 'none';
       }
@@ -10627,45 +10690,74 @@ async function abrirProduto(id, targetPanel = null) {
   }
   const tlWrap = document.getElementById('mp-etapas-timeline');
   const hoje = new Date().toISOString().slice(0, 10);
-  tlWrap.innerHTML = etapas.map((e, i) => {
+  /* Linha do tempo das etapas: ✓ concluídas, ponto cheio na atual, círculo vazio nas futuras */
+  const _anoAtual = new Date().getFullYear();
+  const _fmtEt = d => {
+    if (!d) return '';
+    const dt = new Date(String(d).slice(0, 10) + 'T12:00:00');
+    if (isNaN(dt)) return '';
+    const base = String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0');
+    return dt.getFullYear() === _anoAtual ? base : base + '/' + String(dt.getFullYear()).slice(2);
+  };
+  const _dias = (a, b) => Math.round((new Date(String(b).slice(0,10) + 'T12:00:00') - new Date(String(a).slice(0,10) + 'T12:00:00')) / 86400000);
+  const _idxAtual = etapas.findIndex(e => e.status !== 'concluida');
+  tlWrap.innerHTML = (etapas.length ? `<div class="tl-head"><span>Liberação</span><span>Prevista</span><span>Concluída</span></div>` : '') +
+  etapas.map((e, i) => {
     const st     = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
-    const coord  = G.todosUsuarios.find(u => u.id === e.coordenador_id);
+    const coord  = usuarioPorId(e.coordenador_id);
     const prodNome = G.todosProdutos?.find(p => p.id === e.produto_id)?.nome || '';
+    const concluida = e.status === 'concluida';
+    const marcador = concluida ? 'feita' : (i === _idxAtual ? 'atual' : 'futura');
 
-    // Badge de reunião já agendada
+    // Reunião já agendada
     let reuniaoBadge = '';
     if (e.data_reuniao) {
       const passada = e.data_reuniao < hoje;
       const meetLink = e.reuniao_link
         ? `<a href="${e.reuniao_link}" target="_blank" style="color:#4285f4;font-size:10px;text-decoration:none;margin-right:2px">${GI.video}</a>`
         : '';
-      reuniaoBadge = `<span class="tl-reuniao-badge${passada ? ' passada' : ''}">${meetLink}${GI.cal} ${fmtDate(e.data_reuniao)}</span>`;
+      reuniaoBadge = `<span class="tl-reuniao-badge${passada ? ' passada' : ''}">${meetLink}${GI.cal} ${_fmtEt(e.data_reuniao)}</span>`;
     }
+    // Agendar só nas etapas em aberto
+    const agendarBtn = concluida ? '' :
+      `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})" title="Agendar reunião no Google Calendar">${GI.cal} ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
 
-    const agendarBtn = `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})" title="Agendar reunião no Google Calendar">${GI.cal} ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
-
-    const dataPartes = [];
-    if (e.data_liberacao) dataPartes.push(`Lib: ${fmtDate(e.data_liberacao)}`);
-    if (e.data_estimada)  dataPartes.push(`Est: ${fmtDate(e.data_estimada)}`);
-    if (e.data_conclusao) dataPartes.push(`<span style="color:var(--verde)">${GI.check} ${fmtDate(e.data_conclusao)}</span>`);
-    const datasHtml = dataPartes.length
-      ? `<div class="tl-date" style="white-space:nowrap">${dataPartes.join(' · ')}</div>`
+    // Responsável: avatar com o nome ao passar o mouse
+    const coordAv = coord
+      ? (coord.avatar_url
+          ? `<img class="tl-resp" src="${_escN(coord.avatar_url)}" alt="" title="Responsável: ${_escN(coord.nome || '')}">`
+          : `<span class="tl-resp" style="background:${coord.inativo ? 'var(--txt-4)' : (coord.cor || '#8A867E')}" title="Responsável: ${_escN(coord.nome || '')}">${_escN(coord.iniciais || '?')}</span>`)
       : '';
 
-    return `<div class="tl-item">
-      <div class="tl-dot ${st.dot}"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">
+    // Datas em colunas; atraso/adiantamento em dias
+    let prevHtml = _fmtEt(e.data_estimada);
+    if (!concluida && e.data_estimada && String(e.data_estimada).slice(0,10) < hoje) {
+      prevHtml += ` <span class="tl-dif atraso" title="Atrasada">+${_dias(e.data_estimada, hoje)}d</span>`;
+    }
+    let concHtml = '';
+    if (e.data_conclusao) {
+      concHtml = `<span class="tl-conc">${GI.check} ${_fmtEt(e.data_conclusao)}</span>`;
+      if (e.data_estimada) {
+        const d = _dias(e.data_estimada, e.data_conclusao);
+        if (d > 0) concHtml += ` <span class="tl-dif atraso" title="Concluída ${d} dia(s) depois do previsto">+${d}d</span>`;
+        else if (d < 0) concHtml += ` <span class="tl-dif adianto" title="Concluída ${-d} dia(s) antes do previsto">−${-d}d</span>`;
+      }
+    }
+
+    return `<div class="tl-item tl-${marcador}">
+      <div class="tl-marca ${marcador} ${st.dot}">${marcador === 'feita' ? GI.check : ''}</div>
+      <div class="tl-linha">
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span class="tl-label">${i+1}. ${_escN(e.nome)}</span>
             <span class="badge ${st.cls}" style="font-size:9px">${st.label}</span>
-            ${coord ? `<span style="font-size:10px;color:var(--txt-3)">${coord.iniciais}</span>` : ''}
+            ${coordAv}
             ${agendarBtn}
             ${reuniaoBadge}
           </div>
           ${e.descricao ? `<div class="tl-date" style="margin-top:1px;font-family:var(--font-ui);color:var(--txt-3)">${_escN(e.descricao)}</div>` : ''}
         </div>
-        <div style="text-align:right;flex-shrink:0">${datasHtml}</div>
+        <div class="tl-datas"><span>${_fmtEt(e.data_liberacao) || '—'}</span><span>${prevHtml || '—'}</span><span>${concHtml || '—'}</span></div>
       </div>
     </div>`;
   }).join('');
@@ -10762,7 +10854,7 @@ async function excluirProjeto() {
   const prod = G.todosProdutos.find(p => p.id === id) || G._todosProdutosGestao.find(p => p.id === id);
   if (!prod) return;
   const uso = await contarUsoProduto(id);
-  if (uso.total > 0) { toast('Este projeto está em uso e não pode ser excluído.'); return; }
+  if (uso.total > 0) { toast(G._excluirMotivo || 'Este projeto está em uso e não pode ser excluído.', 5000); return; }
   const label = prod.nome || prod.oportunidades?.projeto || 'este projeto';
   if (!confirm(`Excluir o projeto "${label}"?\n\nEsta ação não pode ser desfeita.`)) return;
   const { error } = await sb.from('produtos').delete().eq('id', id);
@@ -10786,11 +10878,11 @@ async function concluirEtapa(etapaId) {
     const prod = G.todosProdutos.find(p => p.id === etapa.produto_id);
     const opp = prod?.oportunidades;
     const cli = opp?.clientes;
-    const coord = G.todosUsuarios.find(u => u.id === etapa.coordenador_id);
+    const coord = usuarioPorId(etapa.coordenador_id);
 
     // S4-05: buscar lançamentos da etapa para calcular horas_totais e custo_execucao
     const { data: lancsEtapa } = await sb.from('horas_lancadas')
-      .select('usuario_id, hora_inicio, hora_fim')
+      .select('usuario_id, hora_inicio, hora_fim, data_lancamento')
       .eq('etapa_id', etapaId);
 
     let horasTotais = 0;
@@ -10805,23 +10897,10 @@ async function concluirEtapa(etapaId) {
       });
       horasTotais = Object.values(horasPorUser).reduce((s, h) => s + h, 0);
 
-      // Busca valor/hora vigente de cada usuário na data de conclusão
-      const uids = Object.keys(horasPorUser);
-      const { data: vhs } = await sb.from('historico_valor_hora')
-        .select('usuario_id, valor_hora, data_vigencia')
-        .in('usuario_id', uids)
-        .lte('data_vigencia', hoje)
-        .order('data_vigencia', { ascending: false });
-
-      // Pega o valor/hora mais recente por usuário
-      const vhPorUser = {};
-      (vhs || []).forEach(vh => {
-        if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
-      });
-
-      uids.forEach(uid => {
-        const vh = vhPorUser[uid] || 0;
-        custoExecucao += (horasPorUser[uid] || 0) * vh;
+      // Custo de execução: cada hora com o valor/hora vigente na data em que foi lançada
+      const histVH = await carregarHistoricoVH(Object.keys(horasPorUser));
+      lancsEtapa.forEach(l => {
+        custoExecucao += diffHoras(l.hora_inicio, l.hora_fim) * vhNaData(histVH, l.usuario_id, l.data_lancamento);
       });
     }
 
@@ -11659,7 +11738,7 @@ function mostrarResumoMembro(uid, nome) {
   ov.id = 'resumo-membro-ov';
   ov.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4)';
 
-  const u = G.todosUsuarios?.find(u => u.id === uid);
+  const u = usuarioPorId(uid);
   const avHtml = u ? _avImg(u, 36, 12) : '';
 
   ov.innerHTML = `<div style="background:var(--branco);border:1px solid var(--cinza);border-radius:12px;padding:24px;width:min(520px,95vw);max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.16)">
@@ -13394,7 +13473,7 @@ function selecionarFluxoUser(uid) {
 function renderFluxoDetail(uid) {
   const wrap = document.getElementById('fluxo-detail-wrap');
   if (!wrap) return;
-  const u = G.todosUsuarios.find(u => u.id === uid);
+  const u = usuarioPorId(uid);
   if (!u) return;
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6'];
   const isSocio = isSocioRole(u.role);
@@ -13771,7 +13850,7 @@ async function processarFotoUsuario(inp) {
 
   await sb.from('usuarios').update({ avatar_url: cleanUrl }).eq('id', uid);
 
-  const u = G.todosUsuarios.find(u => u.id === uid);
+  const u = usuarioPorId(uid);
   if (u) u.avatar_url = cleanUrl;
 
   const el = document.getElementById('usu-av-' + uid);
@@ -14371,7 +14450,7 @@ document.addEventListener('paste', async (event) => {
 async function salvarAniversarioUsuario(uid, val) {
   const data_aniversario = val || null;
   await sb.from('usuarios').update({ data_aniversario }).eq('id', uid);
-  const u = G.todosUsuarios.find(u => u.id === uid);
+  const u = usuarioPorId(uid);
   if(u) u.data_aniversario = data_aniversario;
   toast(data_aniversario ? 'Aniversário salvo' : 'Aniversário removido');
 }
@@ -14379,7 +14458,7 @@ async function salvarAniversarioUsuario(uid, val) {
 async function salvarRoleUsuario(uid, role) {
   const { error } = await sb.from('usuarios').update({ role }).eq('id', uid);
   if (error) { toast('Erro ao salvar função: ' + error.message); return; }
-  const u = G.todosUsuarios.find(u => u.id === uid);
+  const u = usuarioPorId(uid);
   if (u) u.role = role;
   if (uid === G.usuario.id) G.usuario.role = role;
   toast('Função atualizada');
@@ -14398,7 +14477,7 @@ async function salvarCorUsuario(uid, cor, el) {
   if (el) el.classList.add('sel');
   const av = document.getElementById('usu-av-' + uid);
   if (av) av.style.background = cor;
-  const u = G.todosUsuarios.find(u => u.id === uid);
+  const u = usuarioPorId(uid);
   if (u) u.cor = cor;
   if (uid === G.usuario.id) {
     document.getElementById('nav-av').style.background = cor;
@@ -14418,7 +14497,7 @@ async function aplicarPaletaPadrao() {
     // PROJ-4: detectar bloqueio silencioso de RLS
     const { data } = await sb.from('usuarios').update({ cor }).eq('id', id).select('id');
     if (data && data.length > 0) {
-      const u = G.todosUsuarios.find(u => u.id === id);
+      const u = usuarioPorId(id);
       if (u) u.cor = cor;
     } else {
       bloqueados++;
@@ -14958,33 +15037,29 @@ async function carregarHorasProduto(prodId) {
   const isSocio = isSocioRole(G.usuario.role);
 
   // 1. Lançamentos de horas vinculados ao produto
-  const { data: lancs, error } = await sb.from('horas_lancadas').select('usuario_id, etapa_id, hora_inicio, hora_fim').eq('produto_id', prodId);
+  const { data: lancs, error } = await sb.from('horas_lancadas').select('usuario_id, etapa_id, hora_inicio, hora_fim, data_lancamento').eq('produto_id', prodId);
 
   if (error) { wrap.innerHTML = `<div class="empty-note">Erro: ${error.message}</div>`; return; }
   if (!lancs?.length) { wrap.innerHTML = '<div class="empty-note">Nenhuma hora lançada neste produto.</div>'; return; }
 
-  // 2. Para sócios: busca valor/hora vigente
-  let vhPorUser = {};
-  if (isSocio) {
-    const uids = [...new Set(lancs.map(l => l.usuario_id))];
-    const hoje = new Date().toISOString().split('T')[0];
-    const { data: vhs } = await sb.from('historico_valor_hora')
-      .select('usuario_id, valor_hora, data_vigencia')
-      .in('usuario_id', uids)
-      .lte('data_vigencia', hoje)
-      .order('data_vigencia', { ascending: false });
-    (vhs || []).forEach(vh => {
-      if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
-    });
-  }
+  // 2. Para sócios: histórico de valor/hora (cada hora usa o valor vigente na data do lançamento)
+  let histVH = {};
+  if (isSocio) histVH = await carregarHistoricoVH([...new Set(lancs.map(l => l.usuario_id))]);
 
   // 3. Totais gerais
   let totalGeral = 0;
   const totalPorUser = {};
   const etapaMap = {}; // { etapaId: { userId: horas } }
+  const custoMap = {}; // { etapaId: { userId: custo } }
+  const custoPorUser = {};
 
   lancs.forEach(l => {
     const h = diffHoras(l.hora_inicio, l.hora_fim);
+    const c = isSocio ? h * vhNaData(histVH, l.usuario_id, l.data_lancamento) : 0;
+    custoPorUser[l.usuario_id] = (custoPorUser[l.usuario_id] || 0) + c;
+    const ceid = l.etapa_id || '__sem_etapa__';
+    if (!custoMap[ceid]) custoMap[ceid] = {};
+    custoMap[ceid][l.usuario_id] = (custoMap[ceid][l.usuario_id] || 0) + c;
     totalGeral += h;
     if (!totalPorUser[l.usuario_id]) totalPorUser[l.usuario_id] = 0;
     totalPorUser[l.usuario_id] += h;
@@ -14995,7 +15070,7 @@ async function carregarHorasProduto(prodId) {
   });
 
   const custoEstimadoTotal = isSocio
-    ? Object.entries(totalPorUser).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0)
+    ? Object.values(custoPorUser).reduce((s,c) => s + c, 0)
     : 0;
 
   const prod = G.todosProdutos.find(p => p.id === prodId) || G._todosProdutosGestao.find(p => p.id === prodId);
@@ -15043,7 +15118,7 @@ async function carregarHorasProduto(prodId) {
       const nomeEt = etapa?.nome || '(sem etapa)';
       const totalEt = Object.values(etapaMap[eid]).reduce((s,h) => s+h, 0);
       const pctH = totalGeral > 0 ? (totalEt / totalGeral * 100) : 0;
-      const custoEt = isSocio ? Object.entries(etapaMap[eid]).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0) : 0;
+      const custoEt = isSocio ? Object.values(custoMap[eid] || {}).reduce((s,c) => s + c, 0) : 0;
       const pctC = isSocio && custoEstimadoTotal > 0 ? (custoEt / custoEstimadoTotal * 100) : 0;
       distHtml += `<div style="margin-bottom:7px">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
@@ -15066,25 +15141,27 @@ async function carregarHorasProduto(prodId) {
     const userMap = etapaMap[eid];
     const totalEtapa = Object.values(userMap).reduce((s,h) => s+h, 0);
     const custoEtapa = isSocio
-      ? Object.entries(userMap).reduce((s,[uid,h]) => s + h*(vhPorUser[uid]||0), 0)
+      ? Object.values(custoMap[eid] || {}).reduce((s,c) => s + c, 0)
       : 0;
     const etBodyId = `hp-et-${etIdx}`;
 
     // Linhas por pessoa
     const pessoaLinhas = Object.entries(userMap).sort((a,b) => b[1]-a[1]).map(([uid,h]) => {
-      const u = G.todosUsuarios.find(x=>x.id===uid);
-      const vh = vhPorUser[uid] || 0;
+      const u = usuarioPorId(uid);
+      const custoUser = (custoMap[eid] || {})[uid] || 0;
+      const vh = h > 0 ? custoUser / h : 0;   /* média ponderada pelos valores vigentes em cada data */
       const iniciaisDisp = _escN(u?.iniciais || '?');
-      const nomeUserDisp = _escN(u?.nome || uid);
-      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--cinza2)">
-        <span style="width:26px;height:26px;border-radius:50%;background:${u?.cor||'#ccc'};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${iniciaisDisp}</span>
+      const nomeUserDisp = _escN(u?.nome || 'Usuário removido');
+      const inativo = !u || u.inativo;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--cinza2)${inativo ? ';opacity:.6' : ''}">
+        <span style="width:26px;height:26px;border-radius:50%;background:${inativo ? 'var(--txt-4)' : (u?.cor||'#ccc')};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${iniciaisDisp}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:500">${nomeUserDisp}</div>
+          <div style="font-size:11px;font-weight:500${inativo ? ';color:var(--txt-3)' : ''}">${nomeUserDisp}${inativo ? ' <span style="font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt-4)">inativo</span>' : ''}</div>
           ${isSocio ? `<div style="font-size:10px;color:var(--txt-3)">R$ ${fmtNum(vh)}/h</div>` : ''}
         </div>
         <div style="text-align:right">
           <div style="font-size:12px;font-weight:700">${fmtH(h)}</div>
-          ${isSocio ? `<div style="font-size:10px;color:var(--txt-3)">R$ ${fmtNum(h*vh)}</div>` : ''}
+          ${isSocio ? `<div style="font-size:10px;color:var(--txt-3)">R$ ${fmtNum(custoUser)}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -15395,6 +15472,25 @@ async function salvarEdicaoProduto() {
 
     if (eProd) { toast('Erro ao salvar produto: ' + eProd.message); return; }
     if (!prodSalvo) { toast('O produto não foi atualizado. Verifique as permissões no Supabase.'); return; }
+
+    // Dados do projeto e links ficam na oportunidade vinculada ao produto
+    if (prod.oportunidade_id) {
+      const val = id => (document.getElementById(id)?.value || '').trim() || null;
+      const updOpp = {
+        endereco:       val('ep-proj-endereco'),
+        cnpj:           val('ep-proj-cnpj'),
+        escritorio_arq: val('ep-proj-esc-arq'),
+        escritorio_int: val('ep-proj-esc-int'),
+        gestao_empresa: val('ep-proj-gestao'),
+      };
+      if (isSocio) {
+        updOpp.link_arquivo  = val('ep-link-arquivo');
+        updOpp.link_planilha = val('ep-link-planilha');
+      }
+      const { error: eOpp } = await sb.from('oportunidades').update(updOpp).eq('id', prod.oportunidade_id);
+      if (eOpp) toast('Projeto salvo, mas os dados do projeto e links não: ' + eOpp.message);
+      else if (prod.oportunidades) Object.assign(prod.oportunidades, updOpp);
+    }
 
     // Salva etapas
     const rows = document.querySelectorAll('#ep-etapas-lista .etapa-edit-row');
@@ -15782,13 +15878,10 @@ async function carregarResultado(prodId) {
     competenciaCarga,
   ] = await Promise.all([
     sb.from('horas_lancadas')
-      .select('usuario_id, etapa_id, hora_inicio, hora_fim')
+      .select('usuario_id, etapa_id, hora_inicio, hora_fim, data_lancamento')
       .eq('produto_id', prodId)
       .not('etapa_id', 'is', null),
-    sb.from('historico_valor_hora')
-      .select('usuario_id, valor_hora, data_vigencia')
-      .lte('data_vigencia', hoje)
-      .order('data_vigencia', { ascending: false }),
+    carregarHistoricoVH(null),
     sb.from('lancamentos_custo')
       .select('etapa_id, valor')
       .eq('produto_id', prodId)
@@ -15799,11 +15892,8 @@ async function carregarResultado(prodId) {
   G._competenciaRealRows = competenciaCarga.rows || [];
   const competenciaUnavailable = !!competenciaCarga.unavailable;
 
-  // Valor/hora mais recente por usuário
-  const vhPorUser = {};
-  (vhs || []).forEach(vh => {
-    if (!vhPorUser[vh.usuario_id]) vhPorUser[vh.usuario_id] = vh.valor_hora;
-  });
+  // Valor/hora vigente na data de cada lançamento
+  const histVH = vhs || {};
 
   // Agrupa horas por etapa
   const horasPorEtapa = {};  // etapaId → { horas: num, custo: num }
@@ -15811,7 +15901,7 @@ async function carregarResultado(prodId) {
     const h = diffHoras(l.hora_inicio, l.hora_fim);
     if (!horasPorEtapa[l.etapa_id]) horasPorEtapa[l.etapa_id] = { horas: 0, custo: 0 };
     horasPorEtapa[l.etapa_id].horas += h;
-    horasPorEtapa[l.etapa_id].custo += h * (vhPorUser[l.usuario_id] || 0);
+    horasPorEtapa[l.etapa_id].custo += h * vhNaData(histVH, l.usuario_id, l.data_lancamento);
   });
 
   // Agrupa custos lançados por etapa
@@ -17993,7 +18083,7 @@ async function salvarCkEtapa(etapaId) {
   const mode     = pop?._mode || 'preset';
   const presetId = document.getElementById('pop-ck-preset')?.value || null;
   const userId   = document.getElementById('pop-ck-user')?.value   || null;
-  const user     = userId ? G.todosUsuarios.find(u => u.id === userId) : null;
+  const user     = userId ? usuarioPorId(userId) : null;
   const manualSecoes = pop?._manualSecoes || [];
   const now      = new Date().toISOString();
   pop?.remove();
@@ -19722,7 +19812,7 @@ function renderProcDetalhe(id) {
   const done = total > 0 && conc === total;
 
   const chips = atrib.map(aid => {
-    const u = G.todosUsuarios?.find(u => u.id === aid);
+    const u = usuarioPorId(aid);
     return u ? `<div class="task-de-chip" style="background:${u.cor||'#888'};width:22px;height:22px;font-size:10px" title="${_escN(u.nome)}">${_escN(u.iniciais)}</div>` : '';
   }).join('');
 
@@ -19732,8 +19822,8 @@ function renderProcDetalhe(id) {
     const statusMap = G._procStatus[tr.id] || {};
     const myDone    = statusMap[uid] === true;
     const doneBy    = atrib.length
-      ? atrib.filter(aid => statusMap[aid]).map(aid => { const u = G.todosUsuarios?.find(u => u.id === aid); return u ? u.iniciais : '?'; })
-      : Object.keys(statusMap).filter(k => statusMap[k]).map(k => { const u = G.todosUsuarios?.find(u => u.id === k); return u ? u.iniciais : '?'; });
+      ? atrib.filter(aid => statusMap[aid]).map(aid => { const u = usuarioPorId(aid); return u ? u.iniciais : '?'; })
+      : Object.keys(statusMap).filter(k => statusMap[k]).map(k => { const u = usuarioPorId(k); return u ? u.iniciais : '?'; });
     const doneByStr = _escN(doneBy.join(', '));
     const tarefaIdJs = _sqN(tr.id);
     return `<div class="prancha-preview-task">
@@ -19801,7 +19891,7 @@ function renderProcDetalhe(id) {
     </div>`;
   }).join('');
 
-  const criador  = G.todosUsuarios?.find(u => u.id === c.criado_por);
+  const criador  = usuarioPorId(c.criado_por);
   const arquivado = c.status === 'arquivado';
 
   detalhe.innerHTML = `

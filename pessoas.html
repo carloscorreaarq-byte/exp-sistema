@@ -123,6 +123,8 @@ body{font-family:var(--font-ui);background:var(--off);color:var(--grafite);heigh
 .vh-hist-row{display:grid;grid-template-columns:90px 1fr 80px;gap:8px;font-size:11px;color:#5F5B54;padding:4px 0;border-bottom:1px solid var(--cinza2)}
 .vh-acoes{display:flex;align-items:center;gap:6px;flex-shrink:0;align-self:center}
 .vh-input{width:120px;height:30px;padding:0 10px;border:1px solid var(--cinza2);border-radius:var(--radius-input,6px);font-family:var(--font-ui);font-size:12px;background:var(--branco);color:var(--grafite);outline:none}
+.vh-input.vh-data{width:130px}
+.vh-futuro{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--ouro);margin-left:4px}
 .vh-input:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
 .vhs-card{background:var(--off);border:1px solid var(--cinza2);border-radius:var(--radius-card,8px);padding:16px 18px}
 .vhs-inputs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 16px;margin-bottom:16px}
@@ -1731,13 +1733,18 @@ async function carregarValorHora() {
     .order('data_vigencia', { ascending: false });
   if (error) { wrap.innerHTML = `<div class="ps-empty"><div class="ps-empty-text">Erro ao carregar: ${escHtml(error.message)}</div></div>`; return; }
   const porUser = {};
-  (hist || []).forEach(h => { (porUser[h.usuario_id] = porUser[h.usuario_id] || []).push(h); });
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  /* mais recente primeiro; no mesmo dia, o último cadastrado */
+  (hist || []).slice().sort((a, b) => String(b.data_vigencia || '').localeCompare(String(a.data_vigencia || '')) ||
+    String(b.created_at || b.id || '').localeCompare(String(a.created_at || a.id || '')))
+    .forEach(h => { (porUser[h.usuario_id] = porUser[h.usuario_id] || []).push(h); });
   const usuarios = (G.usuarios || []).filter(u => u.ativo !== false).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
   wrap.innerHTML = usuarios.map(u => {
     const regs = porUser[u.id] || [];
-    const atual = regs[0];
-    const histHtml = regs.slice(1).map(h => `<div class="vh-hist-row">
-        <span>${fmtData(h.data_vigencia)}</span>
+    /* valor atual = o mais recente já em vigor; os com data futura aparecem como "a partir de" */
+    const atual = regs.find(h => String(h.data_vigencia || '').slice(0, 10) <= hojeIso) || regs[regs.length - 1];
+    const histHtml = regs.filter(h => h !== atual).map(h => `<div class="vh-hist-row">
+        <span>${fmtData(h.data_vigencia)}${String(h.data_vigencia || '').slice(0, 10) > hojeIso ? ' <span class="vh-futuro">a partir de</span>' : ''}</span>
         <span class="vh-num">${fmtMoeda(h.valor_hora)}</span>
         <span>${escHtml(h.registrado_por_usuario?.nome?.split(' ')[0] || '—')}</span>
       </div>`).join('');
@@ -1755,6 +1762,7 @@ async function carregarValorHora() {
       <div class="vh-acoes">
         <input type="number" class="vh-input" placeholder="Novo valor" id="vh-input-${u.id}" min="0" step="0.01"
           onkeydown="if(event.key==='Enter')salvarValorHora('${u.id}')">
+        <input type="date" class="vh-input vh-data" id="vh-data-${u.id}" value="${hojeIso}" title="Vale para as horas lançadas a partir desta data">
         <button class="ps-btn-sm primary" onclick="salvarValorHora('${u.id}')">Salvar</button>
       </div>
     </div>`;
@@ -1764,13 +1772,14 @@ async function salvarValorHora(uid) {
   if (!isSocio(G.usuarioLogado?.role)) return;
   const val = parseFloat(document.getElementById('vh-input-' + uid)?.value);
   if (!val || val <= 0) { toast('Informe um valor válido'); return; }
+  const dataVig = document.getElementById('vh-data-' + uid)?.value || new Date().toISOString().slice(0, 10);
   const { error } = await sb.from('historico_valor_hora').insert({
     usuario_id: uid, valor_hora: val,
-    data_vigencia: new Date().toISOString().slice(0, 10),
+    data_vigencia: dataVig,   /* o custo das horas lançadas a partir desta data usa este valor */
     registrado_por: G.usuarioLogado?.id || null,
   });
   if (error) { toast('Erro ao salvar: ' + error.message); return; }
-  toast('Valor/hora atualizado');
+  toast('Valor/hora salvo — vale para as horas a partir de ' + fmtData(dataVig));
   carregarValorHora();
 }
 function calcularVH() {

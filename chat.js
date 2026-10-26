@@ -65,8 +65,8 @@
     /* ── FAB toggle ── */
     '.chat-toggle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .3s,transform .15s;user-select:none;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.22)}',
     '.chat-toggle:hover{transform:scale(1.06)}.chat-toggle:active{transform:scale(.94)}',
-    '.chat-badge{position:absolute;top:-6px;right:-6px;background:var(--terracota,#BC6143);color:#fff;font-size:12px;font-weight:700;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;min-width:22px;height:22px;border-radius:var(--radius-btn,8px);display:none;align-items:center;justify-content:center;gap:2px;padding:0 5px;border:2px solid var(--off,#F7F6F3);line-height:1}',
-    '.chat-badge-at{font-size:12px;font-weight:700;margin-right:1px}',
+    '.chat-badge{position:absolute;top:-3px;right:-3px;background:var(--terracota,#BC6143);color:#fff;font-size:10px;font-weight:700;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;min-width:18px;height:18px;border-radius:999px;display:none;align-items:center;justify-content:center;gap:1px;padding:0 5px;border:1.5px solid var(--off,#F7F6F3);line-height:1;box-sizing:border-box}',
+    '.chat-badge-at{font-size:10px;font-weight:700}',
     /* ── Person button (aparece quando aberto) ── */
     '.chat-person-btn{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid #1D6A4A;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .3s,color .3s,box-shadow .15s;color:#1D6A4A;flex-shrink:0}',
     '.chat-person-btn:hover{box-shadow:0 2px 10px rgba(0,0,0,.14)}',
