@@ -571,8 +571,8 @@ body {
 [data-theme="dark"] .prio-fila-barra { background: rgba(255,255,255,.12); }
 [data-theme="dark"] .prio-fila-barra span { color: var(--txt-2); }
 /* Radar: acompanhar, sem previsão — menos peso que um card */
-.prio-radar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0 0 10px; padding-bottom: 9px; border-bottom: 1px dashed var(--cinza2); }
-.prio-radar-t { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-4); margin-right: 2px; }
+.prio-radar { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin: 0 0 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--cinza2); }
+.prio-radar-t { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-4); margin-bottom: 1px; }
 .prio-radar-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #7A5A10; background: var(--am-bg); border: 1px solid var(--ouro); border-radius: 999px; padding: 2px 6px 2px 10px; white-space: nowrap; max-width: 100%; }
 .prio-radar-nome { overflow: hidden; text-overflow: ellipsis; }
 .prio-radar-ico { width: 12px; height: 12px; border-radius: 50%; background: var(--ouro); color: #fff; font-size: 8px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -3856,7 +3856,7 @@ function renderPriosSection(prios, radar) {
   function buildCard(pr, idx, done) {
     const ord  = pr.ordem || (idx + 1);
     // Prazo de referência: o da etapa vinculada; sem etapa, a data de conclusão informada
-    const prazoRef = (pr.etapa_alvo && pr.etapa_alvo.data_estimada) || pr.prazo_texto || null;
+    const prazoRef = (pr.etapa_alvo && pr.etapa_alvo.data_estimada) || null;   // só o prazo da etapa
     const r = !done ? fila[pr.id] : null;
     const estoura = !!(r && r.fim && prazoRef && r.fim.d > String(prazoRef).slice(0,10));
     let prazo = !done ? _fmtPrazo(prazoRef) : null;
@@ -3918,7 +3918,7 @@ function renderPriosSection(prios, radar) {
   const _dm = iso => iso ? String(iso).slice(8,10) + '/' + String(iso).slice(5,7) : '';
   // Estado do prazo (semáforo) para uma prioridade pendente
   function _estadoPrio(pr) {
-    const prazoRef = (pr.etapa_alvo && pr.etapa_alvo.data_estimada) || pr.prazo_texto || null;
+    const prazoRef = (pr.etapa_alvo && pr.etapa_alvo.data_estimada) || null;   // só o prazo da etapa
     const r = fila[pr.id];
     const estoura = !!(r && r.fim && prazoRef && r.fim.d > String(prazoRef).slice(0,10));
     const p = _fmtPrazo(prazoRef);
