@@ -225,7 +225,7 @@ window.ExpNav = (() => {
     '<button class="exp-nav-item" id="exp-nav-bell" title="Notificações"' +
     ' onclick="ExpNav.toggleNotifPanel()" style="position:relative">' +
       ico.bell +
-      '<span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#B84C3A;color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
+      '<span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#BC6143;color:#fff;font-size:8px;font-weight:700;font-family:var(--font-ui);min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
     '</button>' +
 
     '<button class="exp-nav-item" id="exp-nav-prio" title="Prioridades"' +
@@ -238,7 +238,7 @@ window.ExpNav = (() => {
       ? '<button class="exp-nav-item" id="exp-nav-tarefas" title="Tarefas e Atribuições"' +
         ' onclick="ExpNav.toggleTarefasPanel()" style="position:relative">' +
           ico.tarefas +
-          '<span id="exp-tarefas-badge" style="display:none;position:absolute;top:4px;right:4px;background:#E2B141;color:#111110;font-size:7px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:13px;height:13px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
+          '<span id="exp-tarefas-badge" style="display:none;position:absolute;top:4px;right:4px;background:#E2B141;color:#111110;font-size:7px;font-weight:700;font-family:var(--font-ui);min-width:13px;height:13px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
         '</button>'
       : '') +
 
@@ -968,7 +968,8 @@ window.ExpNav = (() => {
       if (_lembreteOpen) {
         var $lPop = document.getElementById('exp-lembrete-pop');
         var $lBtn = document.getElementById('exp-lembrete-btn');
-        if ($lPop && !$lPop.contains(e.target) && !($lBtn && $lBtn.contains(e.target))) {
+        var $lBtnTop = document.getElementById('exp-tr-lembrete');   /* botão do topo: o mesmo clique que abre não pode fechar */
+        if ($lPop && !$lPop.contains(e.target) && !($lBtn && $lBtn.contains(e.target)) && !($lBtnTop && $lBtnTop.contains(e.target))) {
           _fecharLembrete();
         }
       }
@@ -1032,15 +1033,21 @@ window.ExpNav = (() => {
     var items = _calData || [];
     if ($sub) $sub.textContent = items.length ? 'próximos ' + items.length : '';
     if (!items.length) {
-      $body.innerHTML = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhum evento próximo 🎉</div>';
+      $body.innerHTML = '<div style="padding:20px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhum evento próximo</div>';
       return;
     }
-    var tipoCor = { reuniao:'#1D4FA0', visita:'#1D6A4A', prazo:'#B84C3A', entrega:'#C4831A' };
+    /* mesmas cores do hub: reunião azul, entrega terracota, Agenda EXP verde, feriados ouro, ausências cinza */
+    var tipoCor = { reuniao:'#5981CC', visita:'#5981CC', agenda_exp:'#4D865C', entrega:'#BC6143', prazo:'#BC6143',
+      feriado:'#E2B141', feriado_local:'#E2B141', recesso:'#E2B141',
+      ausencia_rem:'#8A867E', ausencia_nrem:'#8A867E', ausencia_aniv:'#8A867E', compensacao_bh:'#8A867E' };
     var html = '';
     items.forEach(function(ev) {
-      var cor  = tipoCor[(ev.tipo||'').toLowerCase()] || '#6D7D8A';
+      var cor  = tipoCor[(ev.tipo||'').toLowerCase()] || '#5981CC';
       var dt   = new Date(ev.inicio);
-      var dFmt = dt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' });
+      /* dia inteiro: usa só a data gravada (sem fuso), senão 00:00 UTC vira o dia anterior no Brasil */
+      var dDia = ev.dia_inteiro && ev.inicio ? new Date(String(ev.inicio).slice(0, 10) + 'T12:00:00') : dt;
+      var dFmt = dDia.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' }) +
+        (dDia.getFullYear() !== new Date().getFullYear() ? ' de ' + dDia.getFullYear() : '');
       var hFmt = ev.dia_inteiro ? 'dia inteiro' : dt.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
       var meet = ev.meet_link ? '<a class="exp-cal-meet" href="' + _esc(ev.meet_link) + '" target="_blank" rel="noopener">▶ Meet</a>' : '';
       html += '<div class="exp-cal-item">' +
@@ -1274,7 +1281,7 @@ window.ExpNav = (() => {
     }
     // Paleta semafórica: verde=futuro, amarelo=hoje, vermelho=atrasada
     var _cor = estado === 'atrasada'
-      ? { bg:'#FDECEA', border:'#C0392B', text:'#C0392B', hdrBg:'#FDECEA', hdrBorder:'rgba(192,57,43,.2)' }
+      ? { bg:'#FDECEA', border:'#BC6143', text:'#BC6143', hdrBg:'#FDECEA', hdrBorder:'rgba(192,57,43,.2)' }
       : estado === 'hoje'
         ? { bg:'#FFFBEA', border:'#D4AC0D', text:'#B8860B', hdrBg:'#FFFBEA', hdrBorder:'rgba(212,172,13,.2)' }
         : { bg:'#EAF5EC', border:'#27AE60', text:'#1E8449', hdrBg:'#EAF5EC', hdrBorder:'rgba(39,174,96,.2)' };
@@ -1374,19 +1381,19 @@ window.ExpNav = (() => {
       html += '<div class="exp-panel-group-hdr">Normas Técnicas</div>';
       normas.forEach(function(n) {
         var label = n.codigo ? n.codigo + ' — ' + (n.titulo||'') : (n.titulo||'');
-        html += '<a href="apoio.html?tema=apoio&sub=normas-tecnicas" class="exp-panel-result"><div class="exp-panel-dot" style="background:#1D4FA0"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(label) + '</div><div class="exp-panel-sub">' + _esc(n.area||'') + '</div></div></a>';
+        html += '<a href="apoio.html?tema=apoio&sub=normas-tecnicas" class="exp-panel-result"><div class="exp-panel-dot" style="background:#5981CC"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(label) + '</div><div class="exp-panel-sub">' + _esc(n.area||'') + '</div></div></a>';
       });
     }
     if (veg.length) {
       html += '<div class="exp-panel-group-hdr">Vegetação</div>';
       veg.forEach(function(v) {
-        html += '<a href="apoio.html?tema=vegetacao" class="exp-panel-result"><div class="exp-panel-dot" style="background:#1D6A4A"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(v.nome_popular) + '</div><div class="exp-panel-sub">' + _esc(v.nome_cientifico||v.grupo||'') + '</div></div></a>';
+        html += '<a href="apoio.html?tema=vegetacao" class="exp-panel-result"><div class="exp-panel-dot" style="background:#4D865C"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(v.nome_popular) + '</div><div class="exp-panel-sub">' + _esc(v.nome_cientifico||v.grupo||'') + '</div></div></a>';
       });
     }
     if (ind.length) {
       html += '<div class="exp-panel-group-hdr">Indicações</div>';
       ind.forEach(function(i) {
-        html += '<a href="apoio.html?tema=apoio&sub=indicacoes-conteudo" class="exp-panel-result"><div class="exp-panel-dot" style="background:#C4831A"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(i.titulo) + '</div><div class="exp-panel-sub">' + _esc(i.autor||'') + '</div></div></a>';
+        html += '<a href="apoio.html?tema=apoio&sub=indicacoes-conteudo" class="exp-panel-result"><div class="exp-panel-dot" style="background:#E2B141"></div><div class="exp-panel-info"><div class="exp-panel-title">' + _esc(i.titulo) + '</div><div class="exp-panel-sub">' + _esc(i.autor||'') + '</div></div></a>';
       });
     }
     if (sub.length) {
@@ -1401,7 +1408,7 @@ window.ExpNav = (() => {
   }
 
   /* ── PAINEL CONTATOS ─────────────────────────────────────── */
-  var _CONTATO_COR = { fornecedor:'#1D4FA0', prestador:'#1D6A4A', parceiro:'#C4831A', cliente:'#B84C3A', outro:'#6D7D8A' };
+  var _CONTATO_COR = { fornecedor:'#5981CC', prestador:'#4D865C', parceiro:'#E2B141', cliente:'#BC6143', outro:'#6D7D8A' };
   function _contatoCor(tipo) { return _CONTATO_COR[(tipo||'').toLowerCase()] || '#6D7D8A'; }
 
   function toggleContatosPanel(event) {
@@ -1589,13 +1596,70 @@ window.ExpNav = (() => {
     _sair,
     toggleFeedbackPop: function(e) {
       if (typeof window.toggleFeedbackPop === 'function') { window.toggleFeedbackPop(e); return; }
-      var pop = document.getElementById('nav-feedback-pop') || document.getElementById('exp-feedback-pop');
-      if (pop) pop.style.display = pop.style.display === 'block' ? 'none' : 'block';
+      if (e && e.stopPropagation) e.stopPropagation();
+      var pop = document.getElementById('nav-feedback-pop') || _feedbackPop();
+      var aberto = pop.style.display === 'flex' || pop.style.display === 'block';
+      if (aberto) { pop.style.display = 'none'; return; }
+      var btn = document.getElementById('exp-tr-feedback');
+      if (btn && pop.id === 'exp-feedback-pop') {
+        var r = btn.getBoundingClientRect();
+        pop.style.top = (r.bottom + 8) + 'px';
+        pop.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+      }
+      pop.style.display = pop.id === 'exp-feedback-pop' ? 'flex' : 'block';
+      var st = document.getElementById('exp-fb-status'); if (st) st.textContent = 'Seu registro será encaminhado para a Gestão de plataforma.';
     },
+    enviarFeedback: _enviarFeedback,
     abrirLembrete: _abrirLembrete,
     enviarLembrete: _enviarLembrete,
     fecharLembrete: _fecharLembrete,
   };
+
+  /* ── Reportar problema / sugestão (módulos sem popover próprio) ── */
+  function _feedbackPop() {
+    var pop = document.getElementById('exp-feedback-pop');
+    if (pop) return pop;
+    pop = document.createElement('div');
+    pop.id = 'exp-feedback-pop';
+    pop.style.cssText = 'display:none;position:fixed;z-index:700;width:300px;flex-direction:column;gap:10px;padding:14px;background:var(--branco,#fff);border:1px solid var(--cinza2,#ECEAE4);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-family:var(--font-ui)';
+    var campo = 'width:100%;padding:6px 8px;border:1px solid var(--cinza,#D0CFC9);border-radius:8px;font-family:var(--font-ui);font-size:12px;background:var(--branco,#fff);color:var(--grafite,#141414);outline:none;box-sizing:border-box';
+    var rot = 'display:block;font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;margin-bottom:4px';
+    pop.innerHTML =
+      '<div style="font-size:12px;font-weight:700;color:var(--grafite,#141414)">Problema ou sugestão</div>' +
+      '<div style="font-size:10px;color:#8A867E;margin-top:-6px">Envio direto para a Gestão de plataforma.</div>' +
+      '<div><label style="' + rot + '" for="exp-fb-tipo">Tipo</label><select id="exp-fb-tipo" style="' + campo + '"><option value="problema">Problema</option><option value="sugestao">Sugestão</option></select></div>' +
+      '<div><label style="' + rot + '" for="exp-fb-msg">Mensagem</label><textarea id="exp-fb-msg" rows="3" style="' + campo + ';resize:vertical" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea></div>' +
+      '<div id="exp-fb-status" style="font-size:10px;color:#8A867E"></div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px">' +
+        '<button type="button" class="btn" onclick="document.getElementById(\'exp-feedback-pop\').style.display=\'none\'">Fechar</button>' +
+        '<button type="button" class="btn filled" onclick="ExpNav.enviarFeedback()">Enviar</button>' +
+      '</div>';
+    document.body.appendChild(pop);
+    document.addEventListener('click', function (ev) {
+      var b = document.getElementById('exp-tr-feedback');
+      if (pop.style.display !== 'none' && !pop.contains(ev.target) && !(b && b.contains(ev.target))) pop.style.display = 'none';
+    });
+    return pop;
+  }
+  function _enviarFeedback() {
+    var sb = _sb(); if (!sb) return;
+    var st = document.getElementById('exp-fb-status');
+    var msg = ((document.getElementById('exp-fb-msg') || {}).value || '').trim();
+    if (!msg) { if (st) st.textContent = 'Escreva a mensagem antes de enviar.'; return; }
+    if (st) st.textContent = 'Enviando…';
+    sb.from('feedbacks_ferramenta').insert({
+      usuario_id: _user && (_user.id || _user.app_user_id) || null,
+      tipo: (document.getElementById('exp-fb-tipo') || {}).value || 'problema',
+      mensagem: msg,
+      origem_modulo: _config.module || '',
+      url_origem: location.href,
+    }).then(function (r) {
+      if (r.error) { if (st) st.textContent = 'Erro ao enviar: ' + r.error.message; return; }
+      if (st) st.textContent = 'Enviado! Obrigado.';
+      var m = document.getElementById('exp-fb-msg'); if (m) m.value = '';
+      setTimeout(function () { var p = document.getElementById('exp-feedback-pop'); if (p) p.style.display = 'none'; }, 1600);
+    });
+  }
 
   /* ── Popup de lembrete ───────────────────────────────────── */
   var _lembreteOpen = false;
@@ -1611,9 +1675,13 @@ window.ExpNav = (() => {
     var btn = document.getElementById('exp-lembrete-btn') || document.getElementById('exp-tr-lembrete');
     if (btn) {
       var rect = btn.getBoundingClientRect();
-      pop.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
-      pop.style.left   = 'auto';
-      pop.style.right  = (window.innerWidth - rect.right) + 'px';
+      pop.style.left  = 'auto';
+      pop.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+      if (rect.top < window.innerHeight / 2) {   /* botão no topo (topbar): abre para baixo */
+        pop.style.top = (rect.bottom + 8) + 'px'; pop.style.bottom = 'auto';
+      } else {                                     /* botão embaixo (nav): abre para cima */
+        pop.style.bottom = (window.innerHeight - rect.top + 8) + 'px'; pop.style.top = 'auto';
+      }
     }
     /* carrega usuários se necessário */
     if (!_lembreteUsuarios) _carregarUsuariosLembrete();
