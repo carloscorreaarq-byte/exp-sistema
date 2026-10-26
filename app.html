@@ -8,8 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared/nome-curto.js"></script>
-<script src="shared/horas-creditos.js?v=2026-10-25"></script>
-<script src="shared/fila-prioridades.js?v=2026-10-26b"></script>
+<script src="shared/horas-creditos.js?v=2026-10-26c"></script>
+<script src="shared/fila-prioridades.js?v=2026-10-26c"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
@@ -527,6 +527,39 @@ body {
 .prio-hub-prazo.vencida { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
 .prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
 .prio-hub-prazo.sem-prazo { border-style: dashed; color: var(--txt-3); }
+/* Prioridade atual ("Agora") e as próximas em linhas ("Em seguida") */
+/* Card atual com semáforo: verde no prazo, amarelo vence hoje, terracota atrasada */
+.prio-hub-card.prio-agora { padding: 12px 14px; }
+.prio-agora.prio-sem-futuro  { background: var(--verde-bg); border-left-color: var(--verde); }
+.prio-agora.prio-sem-hoje    { background: var(--am-bg);    border-left-color: var(--ouro); }
+.prio-agora.prio-sem-vencida { background: var(--tc-bg);    border-left-color: var(--terracota); }
+.prio-agora .prio-hub-nome { font-size: 13px; }
+.prio-agora.prio-sem-futuro  .prio-hub-nome { color: var(--verde); }
+.prio-agora.prio-sem-hoje    .prio-hub-nome { color: var(--ouro); }
+.prio-agora.prio-sem-vencida .prio-hub-nome { color: var(--terracota); }
+.prio-agora .prio-hub-sub { white-space: normal; }
+.prio-agora-t { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--txt-3); margin-bottom: 3px; }
+.prio-agora-datas { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 11px; color: var(--grafite); font-variant-numeric: lining-nums tabular-nums; }
+.prio-agora-datas b { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-3); margin-right: 5px; }
+.prio-agora-datas .est-vencida { color: var(--terracota); font-weight: 700; }
+.prio-agora-datas .est-hoje { color: var(--ouro); font-weight: 700; }
+.prio-agora-alerta { font-size: 10px; font-weight: 700; color: var(--terracota); margin-top: 4px; }
+.prio-seguida-t { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--txt-4); margin: 12px 0 2px; }
+.prio-linha { display: grid; grid-template-columns: 18px minmax(0,1fr) auto auto; gap: 10px; align-items: center; padding: 8px 2px; border-top: 1px solid var(--cinza2); cursor: pointer; }
+.prio-linha:hover { background: var(--off); }
+.prio-linha-n { width: 18px; height: 18px; border-radius: 50%; background: var(--cinza2); color: var(--txt-2); font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.prio-linha-nome { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prio-linha .prio-linha-nome { color: var(--grafite); }
+.prio-linha.est-hoje .prio-linha-nome { color: var(--ouro); }
+.prio-linha.est-vencida .prio-linha-nome { color: var(--terracota); }
+.prio-linha-sub { font-size: 10px; color: var(--txt-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.prio-linha-datas { font-size: 10px; color: var(--txt-2); text-align: right; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; line-height: 1.4; }
+.prio-linha-datas span { color: var(--txt-3); }
+.prio-linha.est-vencida .prio-linha-datas span { color: var(--terracota); font-weight: 700; }
+.prio-linha.est-hoje .prio-linha-datas span { color: var(--ouro); font-weight: 700; }
+.prio-linha .prio-hub-check { margin: 0; width: 20px; height: 20px; opacity: 0; transition: opacity .12s; }
+.prio-linha:hover .prio-hub-check, .prio-linha:focus-within .prio-hub-check { opacity: 1; }
+@media (hover: none) { .prio-linha .prio-hub-check { opacity: 1; } }
 /* Fila: datas calculadas, alerta e horas lançadas */
 .prio-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 10px; color: var(--txt-2); margin-top: 4px; font-variant-numeric: lining-nums tabular-nums; }
 .prio-fila-tag { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #fff; background: var(--grafite); border-radius: 999px; padding: 1px 6px; }
@@ -539,7 +572,16 @@ body {
 /* Radar: acompanhar, sem previsão — menos peso que um card */
 .prio-radar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0 0 10px; padding-bottom: 9px; border-bottom: 1px dashed var(--cinza2); }
 .prio-radar-t { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt-4); margin-right: 2px; }
-.prio-radar-chip { font-size: 10px; color: var(--txt-2); border: 1px solid var(--cinza2); border-radius: 999px; padding: 1px 8px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.prio-radar-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #7A5A10; background: var(--am-bg); border: 1px solid var(--ouro); border-radius: 999px; padding: 2px 6px 2px 10px; white-space: nowrap; max-width: 100%; }
+.prio-radar-nome { overflow: hidden; text-overflow: ellipsis; }
+.prio-radar-ico { width: 12px; height: 12px; border-radius: 50%; background: var(--ouro); color: #fff; font-size: 8px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.prio-radar-pop { display: none; position: absolute; left: 0; top: calc(100% + 6px); z-index: 60; width: max-content; max-width: 260px; white-space: normal; font-weight: 400; font-size: 11px; line-height: 1.5; color: #fff; background: var(--grafite); border-radius: 8px; padding: 8px 10px; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.prio-radar-chip:hover .prio-radar-pop { display: block; }
+.prio-radar-x { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: none; border-radius: 50%; background: transparent; color: #7A5A10; cursor: pointer; padding: 0; }
+.prio-radar-x:hover { background: var(--ouro); color: #fff; }
+[data-theme="dark"] .prio-radar-chip { color: var(--ouro); background: rgba(226,177,65,.14); }
+[data-theme="dark"] .prio-radar-x { color: var(--ouro); }
+[data-theme="dark"] .prio-radar-pop { background: #2b2b2b; border: 1px solid rgba(255,255,255,.12); }
 [data-theme="dark"] .prio-hub-prazo.sem-prazo { color: var(--txt-4); }
 
 /* ── Prioridades coletivas — carrossel de 3 colunas ─────────── */
@@ -3787,11 +3829,19 @@ function renderPriosSection(prios, radar) {
   const total = prios.length;
   const _d = window._dashData || {};
   const fila = window.ExpFila && _d.filaCred ? window.ExpFila.calcular(pendentes, _d.filaCred) : {};
-  const radarItens = (radar || []).filter(r => r.produto_id || r.categoria_societaria);
+  // Radar: etiqueta amarela (atenção); observação ao passar o mouse; X encerra
+  const radarItens = (radar || []).filter(r => !r.concluida && (r.produto_id || r.categoria_societaria));
   const radarHtml = radarItens.length ? `
       <div class="prio-radar">
         <div class="prio-radar-t">Radar</div>
-        ${radarItens.map(r => `<span class="prio-radar-chip">${escHtml(_prioNomeHub(r))}</span>`).join('')}
+        ${radarItens.map(r => {
+          const obs = (r.comentario || '').trim();
+          return `<span class="prio-radar-chip">
+            <span class="prio-radar-nome">${escHtml(_prioNomeHub(r))}</span>
+            ${obs ? `<span class="prio-radar-ico" aria-hidden="true">i</span><span class="prio-radar-pop">${escHtml(obs)}</span>` : ''}
+            <button class="prio-radar-x" type="button" data-radar-id="${escAttr(r.id)}" title="Encerrar radar" aria-label="Encerrar radar"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </span>`;
+        }).join('')}
       </div>` : '';
   const lbl = `Prioridades pessoais${total ? ` <span class="dash-lbl-count">${pendentes.length} em aberto</span>` : ''}`;
 
@@ -3860,11 +3910,81 @@ function renderPriosSection(prios, radar) {
       </div>`;
   }
 
+  /* ── Prioridade atual ("Agora") e as próximas ("Em seguida") ── */
+  const F = window.ExpFila;
+  const _check = pr => `<button class="prio-hub-check" type="button" data-prio-id="${escAttr(pr.id)}" title="Concluir prioridade"
+       ><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>`;
+  const _dm = iso => iso ? String(iso).slice(8,10) + '/' + String(iso).slice(5,7) : '';
+  // Estado do prazo (semáforo) para uma prioridade pendente
+  function _estadoPrio(pr) {
+    const prazoRef = (pr.etapa_alvo && pr.etapa_alvo.data_estimada) || pr.prazo_texto || null;
+    const r = fila[pr.id];
+    const estoura = !!(r && r.fim && prazoRef && r.fim.d > String(prazoRef).slice(0,10));
+    const p = _fmtPrazo(prazoRef);
+    const cls = (estoura || (r && r.atrasada) || p?.cls === 'vencida') ? 'vencida' : p?.cls === 'hoje' ? 'hoje' : 'futuro';
+    return { prazoRef, r, estoura, cls };
+  }
+  const _sub = pr => {
+    const etapas = (pr.produtos?.etapas || []).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+    const etapa  = pr.etapa_alvo || etapas.find(e => e.status === 'em_andamento') || etapas.find(e => e.status !== 'concluida');
+    return [etapa?.nome, pr.comentario].filter(Boolean).join(' · ');
+  };
+  // Faixa prevista: só uma data quando cabe num único meio-período
+  const _faixaCurta = (r, comDia) => {
+    if (!r || r.semPrevisao || !F) return '';
+    if (r.ini.d === r.fim.d) return F.fmt(r.ini, false) + (r.ini.p === r.fim.p ? (r.ini.p ? ' tarde' : ' manhã') : '');
+    return comDia ? F.fmt(r.ini, false) + ' → ' + F.fmt(r.fim, false) : _dm(r.ini.d) + ' → ' + _dm(r.fim.d);
+  };
+
+  function buildAgora(pr) {
+    const { prazoRef, r, estoura, cls } = _estadoPrio(pr);
+    const sub = _sub(pr);
+    const fh = _d.filaHoras && String(_d.filaHoras.id) === String(pr.id) ? _d.filaHoras : null;
+    const prevH = r && !r.semPrevisao ? r.blocos * (((_d.filaCred && _d.filaCred.diaH) || 8) / 2) : 0;
+    const n1 = v => String(Math.round(v * 10) / 10).replace('.', ',');
+    const pct = fh && prevH ? Math.min(100, Math.round(fh.horas / prevH * 100)) : null;
+    const alerta = r?.atrasada ? 'Passou do previsto' : estoura ? 'Termina depois da entrega' : '';
+    return `
+      <div class="prio-hub-card prio-agora prio-sem-${cls}" data-nav-href="gestao.html">
+        <div class="prio-hub-head">
+          <div class="prio-hub-body">
+            <div class="prio-agora-t">Agora</div>
+            <div class="prio-hub-nome">${escHtml(_prioNomeHub(pr))}</div>
+            ${sub ? `<div class="prio-hub-sub">${escHtml(sub)}</div>` : ''}
+            <div class="prio-agora-datas">
+              <span><b>Previsto</b>${r && !r.semPrevisao ? _faixaCurta(r, true) : 'sem previsão'}</span>
+              <span class="${cls === 'futuro' ? '' : 'est-' + cls}"><b>Entrega</b>${prazoRef ? _dm(prazoRef) : '—'}</span>
+            </div>
+            ${alerta ? `<div class="prio-agora-alerta">${alerta}</div>` : ''}
+            ${pct !== null ? `<div class="prio-fila-prog"><div class="prio-fila-barra"><span style="width:${pct}%"></span></div><span>${n1(fh.horas)} h lançadas de ${n1(prevH)} h previstas</span></div>` : ''}
+          </div>
+          ${_check(pr)}
+        </div>
+      </div>`;
+  }
+
+  function buildLinha(pr, ord) {
+    const { prazoRef, r, cls } = _estadoPrio(pr);
+    const sub = _sub(pr);
+    const faixa = r && !r.semPrevisao ? _faixaCurta(r, false) : 'sem previsão';
+    return `
+      <div class="prio-linha est-${cls}" data-nav-href="gestao.html">
+        <span class="prio-linha-n">${ord}</span>
+        <div class="prio-linha-body">
+          <div class="prio-linha-nome">${escHtml(_prioNomeHub(pr))}</div>
+          ${sub ? `<div class="prio-linha-sub">${escHtml(sub)}</div>` : ''}
+        </div>
+        <div class="prio-linha-datas">${faixa}${prazoRef ? `<br><span>entrega ${_dm(prazoRef)}</span>` : ''}</div>
+        ${_check(pr)}
+      </div>`;
+  }
+
   return `
     <div class="dash-sec">
       <div class="dash-lbl">${lbl}</div>
       ${radarHtml}
-      ${pendentes.map((pr,i) => buildCard(pr,i,false)).join('')}
+      ${pendentes.length ? buildAgora(pendentes[0]) : ''}
+      ${pendentes.length > 1 ? `<div class="prio-seguida-t">Em seguida</div>${pendentes.slice(1).map((pr, i) => buildLinha(pr, i + 2)).join('')}` : ''}
       ${concluidas.length ? `
         <button type="button" class="prio-concl-toggle${window._prioConclAberto ? ' aberto' : ''}" onclick="togglePrioConcluidas(this)" aria-expanded="${window._prioConclAberto ? 'true' : 'false'}">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
@@ -4090,6 +4210,14 @@ function wireDashboardDom() {
   if (dash.dataset.bound === 'true') return;
   dash.dataset.bound = 'true';
   dash.addEventListener('click', async (event) => {
+    const radarX = event.target.closest('.prio-radar-x[data-radar-id]');
+    if (radarX && dash.contains(radarX)) {
+      event.preventDefault();
+      event.stopPropagation();
+      await concluirRadarHub(radarX.dataset.radarId, radarX);
+      return;
+    }
+
     const prioBtn = event.target.closest('.prio-hub-check');
     if (prioBtn && dash.contains(prioBtn)) {
       event.preventDefault();
@@ -4126,7 +4254,7 @@ function wireDashboardDom() {
       return;
     }
 
-    const navCard = event.target.closest('.prio-hub-card[data-nav-href]');
+    const navCard = event.target.closest('.prio-hub-card[data-nav-href], .prio-linha[data-nav-href]');
     if (navCard && dash.contains(navCard)) {
       window.location.href = navCard.dataset.navHref;
     }
@@ -4339,6 +4467,17 @@ async function _carregarFilaHub(usuario) {
     }
     renderDashboard(d);
   } catch (e) { console.warn('[fila] não foi possível calcular as datas', e); }
+}
+
+async function concluirRadarHub(id, btn) {
+  if (btn) btn.disabled = true;
+  const { error } = await sb.from('prioridades_usuario')
+    .update({ concluida: true, concluida_em: new Date().toISOString() }).eq('id', id);
+  if (error) { if (btn) btn.disabled = false; return; }
+  if (window._dashData?.radar) {
+    window._dashData.radar = window._dashData.radar.filter(r => String(r.id) !== String(id));
+    renderDashboard(window._dashData);
+  }
 }
 
 async function checkPrioHub(prioId, btn) {

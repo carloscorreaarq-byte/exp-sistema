@@ -10,8 +10,8 @@
 <script src="shared/nome-curto.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js?v=2026-10-25"></script>
-<script src="shared/horas-creditos.js"></script>
-<script src="shared/fila-prioridades.js?v=2026-10-26b"></script>
+<script src="shared/horas-creditos.js?v=2026-10-26c"></script>
+<script src="shared/fila-prioridades.js?v=2026-10-26c"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
@@ -723,7 +723,11 @@ body {
 }
 .tl-reuniao-badge.passada { color: var(--txt-3); }
 /* Linha do tempo das etapas (visão do projeto) */
-.tl-head, .tl-datas { display: grid; grid-template-columns: 74px 92px 112px; text-align: right; flex-shrink: 0; }
+.tl-head, .tl-datas { display: grid; grid-template-columns: 132px 74px 92px 112px; text-align: right; flex-shrink: 0; align-items: center; }
+.tl-eq-h { text-align: left; padding-left: 2px; }
+.tl-eq { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-start; text-align: left; padding: 2px; }
+.tl-eq-av { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; object-fit: cover; flex-shrink: 0; box-shadow: 0 0 0 1.5px var(--branco); }
+.tl-eq-av.coord { box-shadow: 0 0 0 1.5px var(--branco), 0 0 0 3.5px var(--grafite); margin: 0 3px; }
 .tl-head { justify-content: end; font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--txt-3); padding-bottom: 2px; }
 .tl-datas { font-size: 10px; color: var(--txt-3); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
 .tl-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
@@ -2099,6 +2103,11 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-prio-date-inline:focus { border-color:var(--mod-focus); }
 /* ── Projetos › Fila ── */
 #view-fila .gantt-legenda { background:transparent !important; }
+.dash-concl-toggle { display:inline-flex; align-items:center; gap:6px; margin:8px 0 6px; padding:0; border:none; background:none; cursor:pointer; font-family:var(--font-ui); font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--txt-4); }
+.dash-concl-toggle:hover { color:var(--txt-2); }
+.dash-concl-toggle svg { transition:transform .15s; }
+.dash-concl-toggle.aberto svg { transform:rotate(90deg); }
+.dash-concl-lista[hidden] { display:none; }
 .dash-radar { margin:0 0 10px; padding-bottom:9px; border-bottom:1px dashed var(--cinza2); }
 #view-fila .gantt-toolbar-meta { background:transparent; }
 .fq-grid { display:grid; grid-template-columns:clamp(150px, 15vw, 220px) repeat(30, minmax(0,1fr)); align-items:stretch; margin-top:6px; }
@@ -2123,6 +2132,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fq-bar { position:absolute; top:2px; height:26px; border-radius:6px; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; gap:4px; padding:0 8px; box-sizing:border-box; border:2px solid var(--branco); overflow:visible; white-space:nowrap; }
 .fq-bar > span:first-child { overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .fq-bar.link { cursor:pointer; }
+.fq-bar.estoura { box-shadow:inset 0 0 0 2px var(--terracota); }
 .fq-bar.link:hover { filter:brightness(.94); }
 .fq-bar.sem { background:transparent; border:1px dashed var(--txt-4); color:var(--txt-3); font-weight:400; }
 .fq-alerta-ico { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:var(--terracota); color:#fff; font-size:10px; font-weight:700; flex-shrink:0; box-shadow:0 0 0 2px var(--branco); }
@@ -2184,7 +2194,25 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fila-txt-alerta { color:var(--terracota); font-weight:700; }
 .fluxo-prio-textarea { margin-left:42px; width:calc(100% - 42px) !important; border:none !important; border-bottom:1px solid var(--cinza2) !important; border-radius:0 !important; padding:3px 0 !important; font-size:11px !important; resize:none !important; overflow:hidden; background:transparent !important; }
 .fluxo-prio-textarea:focus { border-bottom-color:var(--grafite) !important; }
-.fluxo-radar-lista { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.fluxo-radar-lista { display:flex; flex-direction:column; gap:6px; }
+.fluxo-radar-row { display:flex; align-items:center; gap:8px; padding:6px 8px 6px 10px; border:1px solid rgba(226,177,65,.55); border-left:3px solid var(--ouro); border-radius:0 8px 8px 0; background:var(--am-bg); }
+.fluxo-radar-row .fluxo-prio-select { flex:0 1 340px !important; }
+.fluxo-radar-obs { flex:1; min-width:0; font-size:11px; font-family:var(--font-ui); border:none; border-bottom:1px solid rgba(0,0,0,.12); background:transparent; padding:3px 0; color:var(--grafite); outline:none; }
+.fluxo-radar-obs:focus { border-bottom-color:var(--grafite); }
+.fluxo-radar-obs::placeholder { color:var(--txt-3); }
+/* Etiqueta do Radar: sempre amarela; observação ao passar o mouse; X encerra */
+.rdr-chip { position:relative; display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:#7A5A10; background:var(--am-bg); border:1px solid var(--ouro); border-radius:999px; padding:2px 9px; white-space:nowrap; max-width:100%; }
+.rdr-chip.link { cursor:pointer; }
+.rdr-chip-nome { overflow:hidden; text-overflow:ellipsis; }
+.rdr-obs-ico { width:12px; height:12px; border-radius:50%; background:var(--ouro); color:#fff; font-size:8px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; font-style:normal; }
+.rdr-pop { display:none; position:absolute; left:0; top:calc(100% + 6px); z-index:60; width:max-content; max-width:260px; white-space:normal; font-weight:400; font-size:11px; line-height:1.5; color:#fff; background:var(--grafite); border-radius:8px; padding:8px 10px; box-shadow:0 6px 18px rgba(0,0,0,.18); }
+.rdr-chip:hover .rdr-pop { display:block; }
+.rdr-x { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-right:-4px; border:none; border-radius:50%; background:transparent; color:#7A5A10; cursor:pointer; padding:0; }
+.rdr-x:hover { background:var(--ouro); color:#fff; }
+[data-theme="dark"] .rdr-chip { color:var(--ouro); background:rgba(226,177,65,.14); }
+[data-theme="dark"] .rdr-x { color:var(--ouro); }
+[data-theme="dark"] .rdr-pop { background:#2b2b2b; border:1px solid rgba(255,255,255,.12); }
+[data-theme="dark"] .fluxo-radar-row { background:rgba(226,177,65,.10); }
 .fluxo-radar-chip { display:inline-flex; align-items:center; gap:2px; border:1px solid var(--cinza); border-radius:999px; padding:1px 6px 1px 4px; background:var(--branco); max-width:100%; }
 .fluxo-radar-chip select { border:none; background:transparent; font-family:var(--font-ui); font-size:11px; color:var(--grafite); max-width:260px; outline:none; cursor:pointer; }
 .fluxo-radar-chip button { background:none; border:none; cursor:pointer; color:var(--txt-4); padding:2px; display:inline-flex; }
@@ -6655,10 +6683,30 @@ function setProjetosView(v) {
   else renderListaProjetos();
 }
 
+// ══ Radar: etiqueta amarela (atenção), observação ao passar o mouse, X opcional para encerrar ══
+function _radarAtivos(lista) { return (lista || []).filter(p => !p.concluida && (p.produto_id || p.categoria_societaria)); }
+function _radarChipHtml(rd, { fechar = false } = {}) {
+  const abrir = rd.produto_id ? ` onclick="abrirProduto(${JSON.stringify(rd.produto_id).replace(/"/g, '&quot;')})"` : '';
+  const obs = (rd.comentario || '').trim();
+  return `<span class="rdr-chip${rd.produto_id ? ' link' : ''}"${abrir}>
+    <span class="rdr-chip-nome">${_escN(_fluxoPrioNome(rd))}</span>
+    ${obs ? `<span class="rdr-obs-ico" aria-hidden="true">i</span><span class="rdr-pop">${_escN(obs)}</span>` : ''}
+    ${fechar ? `<button class="rdr-x" type="button" title="Encerrar radar" aria-label="Encerrar radar" onclick="event.stopPropagation();concluirRadar('${rd.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+  </span>`;
+}
+async function concluirRadar(id) {
+  const { error } = await sb.from('prioridades_usuario').update({ concluida: true, concluida_em: new Date().toISOString() }).eq('id', id);
+  if (error) { toast('Não foi possível encerrar o radar: ' + error.message, 4000); return; }
+  toast('Radar encerrado');
+  carregarPrioridades();
+}
+
 // ══ Projetos › Fila: prioridades de cada pessoa em 3 semanas (atual + 2) ══
 // Leitura para todos; quem edita a fila são os sócios (Sócios › Fluxo de trabalho).
 let _filaSemOffset = 0;
-const _FQ_COR = ['', 'var(--terracota)', 'var(--ouro)', 'var(--azul)', 'var(--verde)', 'var(--terracota)', 'var(--ouro)'];
+// Barras neutras: a atual em grafite, as próximas em cinza-azulado. Terracota só para alerta de prazo.
+const _FQ_COR_ATUAL = '#3A3936', _FQ_COR_PROX = '#8C98AC';
+const _fqCor = ord => ord === 1 ? _FQ_COR_ATUAL : _FQ_COR_PROX;
 
 async function carregarFilaEquipe() {
   const grid = document.getElementById('fq-grid');
@@ -6776,7 +6824,7 @@ function _renderFilaEquipe(grid) {
       const kNome = runs.reduce((m, run, k) => (run.b - run.a > runs[m].b - runs[m].a ? k : m), 0);   // nome no trecho mais longo
       runs.forEach((run, k) => {
         barras += `<div class="fq-bar${pr.produto_id ? ' link' : ''}${estoura || r.atrasada ? ' estoura' : ''}" ${click} data-fq="${pr.id}"
-          style="left:${pct(run.a)};width:${pct(run.b - run.a)};background:${_FQ_COR[idx + 1] || 'var(--txt-3)'}">
+          style="left:${pct(run.a)};width:${pct(run.b - run.a)};background:${_fqCor(idx + 1)}">
           ${k === kNome ? `<span>${_escN(nome)}</span>` : ''}${(estoura || r.atrasada) && k === runs.length - 1 ? '<span class="fq-alerta-ico">!</span>' : ''}</div>`;
       });
     });
@@ -6796,10 +6844,9 @@ function _renderFilaEquipe(grid) {
       const p = pos(livre);
       if (p !== null) extra = `<div class="fq-livre" style="left:${pct(p)}">livre a partir de ${F.fmt(livre)}</div>`;
     }
-    const radar = (_fluxoRadarData[u.id] || []).filter(p => p.produto_id || p.categoria_societaria);
+    const radar = _radarAtivos(_fluxoRadarData[u.id]);
     const radarHtml = radar.length
-      ? `<div class="fq-radar"><span class="fq-radar-t">Radar</span>${radar.map(rd =>
-          `<span class="fq-radar-chip${rd.produto_id ? ' link' : ''}"${rd.produto_id ? ` onclick="abrirProduto(${JSON.stringify(rd.produto_id).replace(/"/g, '&quot;')})"` : ''}>${_escN(_fluxoPrioNome(rd))}</span>`).join('')}</div>`
+      ? `<div class="fq-radar"><span class="fq-radar-t">Radar</span>${radar.map(rd => _radarChipHtml(rd)).join('')}</div>`
       : '';
     const podeEditar = isSocioRole(G.usuario?.role);
     return `
@@ -6831,7 +6878,7 @@ function _fqTipHtml(pr, r, o = {}) {
   const titulo = pr.categoria_societaria ? 'Societária · ' + _socCatLabel(pr.categoria_societaria) : (cli?.nome || _fluxoPrioNome(pr));
   const sub = [opp?.projeto, prod?.nome].filter(Boolean).join(' · ');
   return `
-    <div class="fq-tip-hd"><span class="fluxo-slot-num s${o.ord || 1}">${o.ord || ''}</span><div>
+    <div class="fq-tip-hd"><span class="fluxo-slot-num" style="background:${_fqCor(o.ord || 1)}">${o.ord || ''}</span><div>
       <div class="fq-tip-t">${_escN(titulo)}</div>
       ${sub ? `<div class="fq-tip-s">${_escN(sub)}</div>` : ''}
     </div></div>
@@ -11043,10 +11090,25 @@ async function abrirProduto(id, targetPanel = null) {
   };
   const _dias = (a, b) => Math.round((new Date(String(b).slice(0,10) + 'T12:00:00') - new Date(String(a).slice(0,10) + 'T12:00:00')) / 86400000);
   const _idxAtual = etapas.findIndex(e => e.status !== 'concluida');
-  tlWrap.innerHTML = (etapas.length ? `<div class="tl-head"><span>Liberação</span><span>Prevista</span><span>Concluída</span></div>` : '') +
+  // Equipe da etapa, em ordem: revisor (do projeto), coordenador (aro mais grosso), desenvolvedores
+  const _tlAv = (u, papel, cls = '') => {
+    if (!u) return '';
+    const tit = `${papel}: ${_escN(u.nome_completo || u.nome || '')}`;
+    return u.avatar_url
+      ? `<img class="tl-eq-av ${cls}" src="${_escN(u.avatar_url)}" alt="" title="${tit}">`
+      : `<span class="tl-eq-av ${cls}" style="background:${u.inativo ? 'var(--txt-4)' : (u.cor || '#8A867E')}" title="${tit}">${_escN(u.iniciais || '?')}</span>`;
+  };
+  const _tlEquipe = e => {
+    const revId = prod.revisor_id || null;
+    const coordId = e.coordenador_id || null;
+    const devs = [...new Set((G.etapaDevs?.[e.id] || []))].filter(id => id !== coordId && id !== revId);
+    return _tlAv(revId ? usuarioPorId(revId) : null, 'Revisor', 'rev')
+      + _tlAv(coordId ? usuarioPorId(coordId) : null, 'Coordenador', 'coord')
+      + devs.map(id => _tlAv(usuarioPorId(id), 'Desenvolvedor')).join('');
+  };
+  tlWrap.innerHTML = (etapas.length ? `<div class="tl-head"><span class="tl-eq-h">Equipe</span><span>Liberação</span><span>Prevista</span><span>Concluída</span></div>` : '') +
   etapas.map((e, i) => {
     const st     = STATUS_ETAPA[e.status] || STATUS_ETAPA.nao_iniciada;
-    const coord  = usuarioPorId(e.coordenador_id);
     const prodNome = G.todosProdutos?.find(p => p.id === e.produto_id)?.nome || '';
     const concluida = e.status === 'concluida';
     const marcador = concluida ? 'feita' : (i === _idxAtual ? 'atual' : 'futura');
@@ -11064,12 +11126,6 @@ async function abrirProduto(id, targetPanel = null) {
     const agendarBtn = concluida ? '' :
       `<button class="tl-agendar-btn" onclick="gcalAbrirReuniaoEtapa(${_sqN(e.id)},${_sqN(e.nome)},${_sqN(prodNome)})" title="Agendar reunião no Google Calendar">${GI.cal} ${e.data_reuniao ? 'Reagendar' : 'Agendar'}</button>`;
 
-    // Responsável: avatar com o nome ao passar o mouse
-    const coordAv = coord
-      ? (coord.avatar_url
-          ? `<img class="tl-resp" src="${_escN(coord.avatar_url)}" alt="" title="Responsável: ${_escN(coord.nome || '')}">`
-          : `<span class="tl-resp" style="background:${coord.inativo ? 'var(--txt-4)' : (coord.cor || '#8A867E')}" title="Responsável: ${_escN(coord.nome || '')}">${_escN(coord.iniciais || '?')}</span>`)
-      : '';
 
     // Datas em colunas; atraso/adiantamento em dias
     let prevHtml = _fmtEt(e.data_estimada);
@@ -11093,13 +11149,12 @@ async function abrirProduto(id, targetPanel = null) {
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span class="tl-label">${i+1}. ${_escN(e.nome)}</span>
             <span class="badge ${st.cls}" style="font-size:9px">${st.label}</span>
-            ${coordAv}
             ${agendarBtn}
             ${reuniaoBadge}
           </div>
           ${e.descricao ? `<div class="tl-date" style="margin-top:1px;font-family:var(--font-ui);color:var(--txt-3)">${_escN(e.descricao)}</div>` : ''}
         </div>
-        <div class="tl-datas"><span>${_fmtEt(e.data_liberacao) || '—'}</span><span>${prevHtml || '—'}</span><span>${concHtml || '—'}</span></div>
+        <div class="tl-datas"><span class="tl-eq">${_tlEquipe(e) || '—'}</span><span>${_fmtEt(e.data_liberacao) || '—'}</span><span>${prevHtml || '—'}</span><span>${concHtml || '—'}</span></div>
       </div>
     </div>`;
   }).join('');
@@ -13566,7 +13621,7 @@ async function carregarPrioridades() {
   const { data: _todas } = await sb.from('prioridades_usuario')
     .select('*').eq('usuario_id', uid).order('ordem');
   const data = (_todas || []).filter(p => p.tipo !== 'radar');
-  const radar = (_todas || []).filter(p => p.tipo === 'radar' && (p.produto_id || p.categoria_societaria));
+  const radar = _radarAtivos((_todas || []).filter(p => p.tipo === 'radar'));
   const bloco = document.getElementById('bloco-prioridades');
   const wrap  = document.getElementById('dash-prioridades');
   const radarEl = document.getElementById('dash-radar');
@@ -13575,13 +13630,12 @@ async function carregarPrioridades() {
   // Radar: acompanhar, sem previsão — acima das prioridades, com menos peso
   if (radarEl) {
     radarEl.style.display = radar.length ? '' : 'none';
-    radarEl.innerHTML = radar.length ? `<span class="fq-radar-t">Radar</span>${radar.map(rd =>
-      `<span class="fq-radar-chip${rd.produto_id ? ' link' : ''}"${rd.produto_id ? ` onclick="abrirProduto(${JSON.stringify(rd.produto_id).replace(/"/g, '&quot;')})"` : ''}>${_escN(_fluxoPrioNome(rd))}</span>`).join('')}` : '';
+    radarEl.innerHTML = radar.length ? `<span class="fq-radar-t">Radar</span>${radar.map(rd => _radarChipHtml(rd, { fechar: true })).join('')}` : '';
   }
   const NUM_CLS = ['','p1','p2','p3','p4','p5','p6'];
   // Pendentes primeiro, concluídas no fim (mantendo ordem interna de cada grupo)
   const sorted = [...data].sort((a,b) => (a.concluida?1:0) - (b.concluida?1:0));
-  wrap.innerHTML = sorted.map((pr, idx) => {
+  const _cardHtml = (pr, idx) => {
     // Prioridade de projeto ou sem projeto (societária: comercial, marketing… ou livre)
     const prod = pr.produto_id
       ? (G.todosProdutos.find(p => p.id === pr.produto_id)
@@ -13651,7 +13705,15 @@ async function carregarPrioridades() {
            onclick="event.stopPropagation();togglePrioridade('${pr.id}',${pr.concluida})"
            title="${pr.concluida?'Marcar pendente':'Marcar concluída'}">${pr.concluida?GI.check:''}</div>
     </div>`;
-  }).filter(Boolean).join('');
+  };
+  // Concluídas agrupadas e recolhidas (abrem pelo botão)
+  const pend = sorted.filter(p => !p.concluida), conc = sorted.filter(p => p.concluida);
+  wrap.innerHTML = pend.map((pr, i) => _cardHtml(pr, i)).join('') + (conc.length ? `
+    <button type="button" class="dash-concl-toggle${G._dashConclAberto ? ' aberto' : ''}" onclick="G._dashConclAberto=!G._dashConclAberto;this.classList.toggle('aberto');this.nextElementSibling.hidden=!G._dashConclAberto">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      Concluídas · ${conc.length}
+    </button>
+    <div class="dash-concl-lista"${G._dashConclAberto ? '' : ' hidden'}>${conc.map((pr, i) => _cardHtml(pr, pend.length + i)).join('')}</div>` : '');
 }
 
 async function togglePrioridade(id, atual) {
@@ -13917,12 +13979,15 @@ function renderFluxoDetail(uid) {
     </div>`;
   }).join('');
 
-  const radarHtml = radar.map(rd => {
+  const radarHtml = radar.filter(rd => !rd.concluida).map(rd => {
     const opts = _fluxoProdOpts(rd.produto_id, { includeSocietaria: isSocio, selectedCategoria: rd.categoria_societaria });
-    return `<span class="fluxo-radar-chip">
-      <select onchange="setFluxoProduto('${uid}','${rd.id}',this.value)">${opts}</select>
-      <button onclick="limparFluxoPrio('${uid}','${rd.id}')" title="Tirar do radar" aria-label="Tirar do radar">${X}</button>
-    </span>`;
+    const obs = (rd.comentario || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    return `<div class="fluxo-radar-row">
+      <select class="fluxo-prio-select" onchange="setFluxoProduto('${uid}','${rd.id}',this.value)">${opts}</select>
+      <input class="fluxo-radar-obs" type="text" value="${obs}" placeholder="Observação (aparece ao passar o mouse)"
+        oninput="setFluxoCampo('${uid}','${rd.id}','comentario',this.value)">
+      <button class="fluxo-x" onclick="limparFluxoPrio('${uid}','${rd.id}')" title="Tirar do radar" aria-label="Tirar do radar">${X}</button>
+    </div>`;
   }).join('');
 
   const emptyMsg = !prios.length
@@ -13946,7 +14011,7 @@ function renderFluxoDetail(uid) {
     </div>
     <div class="fluxo-sec">
       <div class="fluxo-sec-hd"><span class="fluxo-sec-t">Radar</span><span class="fluxo-sec-sub">acompanhar, sem previsão</span></div>
-      <div class="fluxo-radar-lista">${radarHtml}<button class="fluxo-radar-add" onclick="adicionarFluxoRadar('${uid}')">+ Radar</button></div>
+      <div class="fluxo-radar-lista">${radarHtml}<div><button class="fluxo-radar-add" onclick="adicionarFluxoRadar('${uid}')">+ Radar</button></div></div>
     </div>
     <div class="fluxo-sec">
       <div class="fluxo-sec-hd"><span class="fluxo-sec-t">Prioridades</span><span class="fluxo-sec-sub">${prios.length} de 6</span>${addBtn}</div>
@@ -14043,7 +14108,7 @@ function _fluxoMarkDirty(uid) {
 }
 
 function setFluxoCampo(uid, prid, campo, valor) {
-  const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === prid);
+  const pr = (_fluxoPriosData[uid]||[]).find(p => p.id === prid) || (_fluxoRadarData[uid]||[]).find(p => p.id === prid);
   if (!pr) return;
   if      (campo === 'inicio')     pr.data_inicio = valor || null;
   else if (campo === 'prazo')      pr.prazo_texto = valor || null;
@@ -14113,7 +14178,7 @@ async function salvarFluxoUsuario(uid) {
   for (let i = 0; i < radar.length; i++) {
     const rd = radar[i];
     const { error } = await sb.from('prioridades_usuario').update({
-      produto_id: rd.produto_id || null, categoria_societaria: rd.categoria_societaria || null, tipo: 'radar', ordem: 1500 + i,
+      produto_id: rd.produto_id || null, categoria_societaria: rd.categoria_societaria || null, comentario: rd.comentario || null, tipo: 'radar', ordem: 1500 + i,
     }).eq('id', rd.id);
     if (error) fail(rd.id, error.message);
   }
@@ -14182,7 +14247,7 @@ function renderFluxoView() {
   users.forEach(u => { if (_fluxoCred[u.id] === undefined) _fluxoCarregarCred(u.id).then(() => { if (_fluxoMode === 'visualizar') renderFluxoView(); }); });
   grid.innerHTML = users.map(u => {
     const filaU = _fluxoFila(u.id);
-    const radarU = (_fluxoRadarData[u.id] || []).filter(p => p.produto_id || p.categoria_societaria);
+    const radarU = _radarAtivos(_fluxoRadarData[u.id]);
     const prios = (_fluxoPriosData[u.id]||[]).filter(p => p.produto_id || p.categoria_societaria);
     const slotsHtml = prios.length
       ? prios.map((pr, idx) => {
@@ -14218,7 +14283,7 @@ function renderFluxoView() {
         </div>
       </div>
       <div class="fluxo-view-slots">${slotsHtml}</div>
-      ${radarU.length ? `<div class="fluxo-view-radar"><span class="fluxo-radar-t" style="margin:0">Radar</span>${radarU.map(rd => `<span class="fluxo-radar-chip">${_escN(_fluxoPrioNome(rd))}</span>`).join('')}</div>` : ''}
+      ${radarU.length ? `<div class="fluxo-view-radar"><span class="fluxo-radar-t" style="margin:0">Radar</span>${radarU.map(rd => _radarChipHtml(rd)).join('')}</div>` : ''}
     </div>`;
   }).join('');
 }
