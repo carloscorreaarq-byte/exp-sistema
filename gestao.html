@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="shared/privacidade.js?v=2026-10-26"></script>
+<script src="shared/privacidade.js?v=2026-10-26b"></script>
 <script src="shared/nome-curto.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js?v=2026-10-25"></script>
@@ -2112,6 +2112,8 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-prio-date-inline:focus { border-color:var(--mod-focus); }
 /* ── Projetos › Fila ── */
 #view-fila .gantt-legenda { background:transparent !important; }
+#view-fila .fq-modo { margin-right:14px; }
+.fq-lista { padding:14px 16px 16px; }
 .gp-agora { display:flex; gap:10px; align-items:flex-start; border:1px solid var(--cinza2); border-left:3px solid var(--verde); border-radius:10px; padding:14px 16px; margin-bottom:8px; cursor:pointer; }
 .gp-agora.gp-futuro  { background:var(--verde-bg); border-left-color:var(--verde); }
 .gp-agora.gp-hoje    { background:var(--am-bg);    border-left-color:var(--ouro); }
@@ -2225,7 +2227,9 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-prio-add-btn { margin-left:auto !important; width:auto !important; border:1px solid var(--cinza) !important; border-style:solid !important; border-radius:8px !important; padding:6px 12px !important; font-size:10px !important; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--txt-2) !important; }
 .fluxo-prio-item { gap:8px !important; padding:10px 12px !important; }
 .fluxo-drag-handle { cursor:grab; color:var(--txt-4); font-size:13px; user-select:none; flex-shrink:0; }
-.fluxo-proj-sel { flex:1.6 1 0 !important; }
+.fluxo-cli-sel { flex:1 1 0 !important; }
+.fluxo-proj-sel { flex:1.3 1 0 !important; }
+.fluxo-proj-sel:disabled { color:var(--txt-4); background:var(--off); }
 .fluxo-etapa-sel { flex:1 1 0 !important; }
 .fluxo-etapa-sel:disabled { color:var(--txt-4); background:var(--off); }
 .fluxo-prio-select { font-size:11px !important; padding:5px 8px !important; }
@@ -3465,7 +3469,11 @@ span.tarefa-prio { display: inline-block; cursor: default; }
   <div id="view-fila" style="display:none">
     <div class="gantt-wrap">
       <div class="gantt-toolbar">
-        <div class="gantt-nav">
+        <div class="proj-view-toggle fq-modo">
+          <button class="pvt-btn active" id="fq-m-semanas" onclick="setFilaModo('semanas')">Semanas</button>
+          <button class="pvt-btn" id="fq-m-lista" onclick="setFilaModo('lista')">Lista</button>
+        </div>
+        <div class="gantt-nav" id="fq-nav">
           <button class="gantt-nav-btn" onclick="filaNavegar(-1)" aria-label="Semana anterior">‹</button>
           <div class="gantt-periodo" id="fq-periodo">—</div>
           <button class="gantt-nav-btn" onclick="filaNavegar(1)" aria-label="Próxima semana">›</button>
@@ -3473,7 +3481,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
         </div>
         <div class="gantt-toolbar-meta">
           <div class="gantt-legenda" style="border:none;padding:0">
-            <div class="gantt-leg-item"><div class="gantt-leg-cor fq-leg-bloq"></div> Feriado ou ausência</div>
+            <div class="gantt-leg-item" id="fq-leg-bloq"><div class="gantt-leg-cor fq-leg-bloq"></div> Feriado ou ausência</div>
             <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--verde)"></div> No prazo</div>
             <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--ouro)"></div> No dia da entrega</div>
             <div class="gantt-leg-item"><div class="gantt-leg-cor" style="background:var(--terracota)"></div> Atrasada</div>
@@ -6746,7 +6754,7 @@ function setProjetosView(v) {
 }
 
 // ══ Radar: etiqueta amarela (atenção), observação ao passar o mouse, X opcional para encerrar ══
-function _radarAtivos(lista) { return (lista || []).filter(p => !p.concluida && (p.produto_id || p.categoria_societaria)); }
+function _radarAtivos(lista) { return (lista || []).filter(p => !p.concluida && _prioTemVinculo(p)); }
 function _radarChipHtml(rd, { fechar = false } = {}) {
   const abrir = rd.produto_id ? ` onclick="abrirProduto(${JSON.stringify(rd.produto_id).replace(/"/g, '&quot;')})"` : '';
   const obs = (rd.comentario || '').trim();
@@ -6780,7 +6788,7 @@ const _FQ_COR = { ok: 'var(--verde)', nodia: 'var(--ouro)', atrasada: 'var(--ter
 async function carregarFilaEquipe() {
   const grid = document.getElementById('fq-grid');
   if (!grid) return;
-  const { data, error } = await sb.from('prioridades_usuario').select('*').order('ordem');
+  const [{ data, error }] = await Promise.all([sb.from('prioridades_usuario').select('*').order('ordem'), _garantirClientes()]);
   if (error) { grid.innerHTML = `<div class="loading-state">Não foi possível carregar a fila: ${_escN(error.message)}</div>`; return; }
   _fluxoPriosData = {}; _fluxoRadarData = {};
   (data || []).forEach(p => {
@@ -6797,6 +6805,14 @@ async function carregarFilaEquipe() {
   });
 }
 function filaNavegar(d) { _filaSemOffset += d; renderFilaEquipe(); }
+// Semanas (linha do tempo) ou Lista (cards por pessoa, os mesmos do Fluxo › Visualizar equipe) — leitura para todos
+let _filaModo = 'semanas';
+function setFilaModo(m) {
+  _filaModo = m;
+  document.getElementById('fq-m-semanas')?.classList.toggle('active', m === 'semanas');
+  document.getElementById('fq-m-lista')?.classList.toggle('active', m === 'lista');
+  renderFilaEquipe();
+}
 function filaHoje() { _filaSemOffset = 0; renderFilaEquipe(); }
 
 function _filaAbrirPessoa(uid) {
@@ -6812,6 +6828,15 @@ function renderFilaEquipe() {
   if (!grid) return;
   if (!window.ExpFila || !window.ExpFila.livres) {
     grid.innerHTML = '<div class="loading-state">A fila precisa de uma versão nova da página. Atualize com Cmd+Shift+R.</div>';
+    return;
+  }
+  const lista = _filaModo === 'lista';
+  const nav = document.getElementById('fq-nav'); if (nav) nav.style.visibility = lista ? 'hidden' : '';
+  const lb = document.getElementById('fq-leg-bloq'); if (lb) lb.style.display = lista ? 'none' : '';
+  if (lista) {
+    grid.innerHTML = '<div class="fluxo-view-grid fq-lista" id="fq-lista-grid"></div>';
+    try { renderFluxoView('fq-lista-grid'); }
+    catch (e) { console.error('[fila] lista', e); grid.innerHTML = `<div class="loading-state">Não foi possível montar a lista: ${_escN(e.message)}</div>`; }
     return;
   }
   try { _renderFilaEquipe(grid); }
@@ -6856,7 +6881,7 @@ function _renderFilaEquipe(grid) {
   const pct = i => (i / N * 100).toFixed(3) + '%';
   const linhas = users.map(u => {
     const cred = _fluxoCred[u.id];
-    const pend = (_fluxoPriosData[u.id] || []).filter(p => !p.concluida && (p.produto_id || p.categoria_societaria));
+    const pend = (_fluxoPriosData[u.id] || []).filter(p => !p.concluida && _prioTemVinculo(p));
     const fila = F.calcular(pend, cred);
     let fundo = '', barras = '', extra = '';
     // Fundo: dias, feriados/ausências e o que já passou
@@ -13688,6 +13713,7 @@ function exportarEspelho() {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function carregarPrioridades() {
   const uid = G.usuario.id;
+  await _garantirClientes();
   const { data: _todas } = await sb.from('prioridades_usuario')
     .select('*').eq('usuario_id', uid).order('ordem');
   const data = (_todas || []).filter(p => p.tipo !== 'radar');
@@ -13829,7 +13855,7 @@ function _dashFilaHtml(pend, fila, cred, horasAtual) {
   const titulo = pr => {
     if (pr.categoria_societaria) return 'Societária · ' + _socCatLabel(pr.categoria_societaria);
     const prod = prodDe(pr), opp = prod?.oportunidades;
-    return [opp?.clientes?.nome, opp?.projeto].filter(Boolean).join(' | ') || prod?.nome || 'Sem projeto';
+    return [opp?.clientes?.nome, opp?.projeto].filter(Boolean).join(' | ') || prod?.nome || _fluxoPrioNome(pr);
   };
   const sub = pr => {
     const et = pr.etapa_id ? (G.todasEtapas || []).find(e => e.id === pr.etapa_id) : null;
@@ -13939,8 +13965,24 @@ function _fluxoProdNome(prodId) {
 // Nome exibido de uma prioridade — projeto ou tarefa societária
 function _fluxoPrioNome(pr) {
   if (pr.categoria_societaria) return `Societária · ${_socCatLabel(pr.categoria_societaria)}`;
+  if (!pr.produto_id && pr.cliente_id) return _clienteNome(pr.cliente_id);
   return _fluxoProdNome(pr.produto_id);
 }
+/* Lista completa de clientes (para escolher cliente sem projeto) — carregada uma vez */
+async function _garantirClientes() {
+  if (G._fluxoClientes) return G._fluxoClientes;
+  const { data } = await sb.from('clientes').select('id,nome').order('nome');
+  G._fluxoClientes = data || [];
+  return G._fluxoClientes;
+}
+function _clienteNome(id) {
+  const c = (G._fluxoClientes || []).find(x => String(x.id) === String(id));
+  if (c) return c.nome;
+  const p = (G._prodsGestao || []).find(x => String(x.oportunidades?.clientes?.id) === String(id));
+  return p?.oportunidades?.clientes?.nome || 'Cliente';
+}
+/* Item válido = tem projeto, cliente ou tarefa societária */
+function _prioTemVinculo(p) { return !!(p.produto_id || p.cliente_id || p.categoria_societaria); }
 
 function _fluxoProdOpts(selectedId, opts = {}) {
   const { includeSocietaria = false, selectedCategoria = null } = opts;
@@ -14022,7 +14064,7 @@ function _fluxoLinhaFila(pr, r) {
 }
 
 async function carregarFluxo() {
-  const { data: prios } = await sb.from('prioridades_usuario').select('*').order('ordem');
+  const [{ data: prios }] = await Promise.all([sb.from('prioridades_usuario').select('*').order('ordem'), _garantirClientes()]);
   _fluxoPriosData = {};
   _fluxoRadarData = {};
   (prios||[]).forEach(p => {
@@ -14052,7 +14094,7 @@ function renderFluxoUserList() {
       html += `<div class="fluxo-user-list-sep">${groupLabels[grp]}</div>`;
       lastGroup = grp;
     }
-    const prios = (_fluxoPriosData[u.id]||[]).filter(p => p.produto_id || p.categoria_societaria);
+    const prios = (_fluxoPriosData[u.id]||[]).filter(_prioTemVinculo);
     const active = prios.filter(p => !p.concluida).length;
     const total  = prios.length;
     const sel    = _fluxoSelectedUid === u.id ? ' selected' : '';
@@ -14102,7 +14144,6 @@ function renderFluxoDetail(uid) {
     const conc   = !!pr.concluida;
     const inicio = pr.data_inicio || '';
     const coment = (pr.comentario||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const opts   = _fluxoProdOpts(pr.produto_id, { includeSocietaria: isSocio, selectedCategoria: pr.categoria_societaria });
     const etapas = pr.produto_id ? (G.todasEtapas || []).filter(e => e.produto_id === pr.produto_id).sort((a,b) => (a.ordem||0) - (b.ordem||0)) : [];
     const etapaSel = `<select class="fluxo-prio-select fluxo-etapa-sel" title="Etapa (o prazo dela gera o alerta)" ${etapas.length ? '' : 'disabled'}
         onchange="setFluxoCampo('${uid}','${pr.id}','etapa',this.value)">
@@ -14120,8 +14161,10 @@ function renderFluxoDetail(uid) {
       <div class="fluxo-prio-item-top">
         <span class="fluxo-drag-handle">⠿</span>
         <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
-        <select class="fluxo-prio-select fluxo-proj-sel"
-          onchange="setFluxoProduto('${uid}','${pr.id}',this.value)">${opts}</select>
+        <select class="fluxo-prio-select fluxo-cli-sel" title="Cliente ou sociedade"
+          onchange="setRadarGrupo('${uid}','${pr.id}',this.value)">${_radarGrupoOpts(_radarGrupoDe(pr), isSocio)}</select>
+        <select class="fluxo-prio-select fluxo-proj-sel" title="Projeto ou tarefa" ${_radarGrupoDe(pr) ? '' : 'disabled'}
+          onchange="setFluxoProduto('${uid}','${pr.id}',this.value)">${_radarItemOpts(_radarGrupoDe(pr), pr)}</select>
         ${etapaSel}
         <span class="fluxo-conc-tag ${conc?'done':''}"
           onclick="toggleFluxoPrio('${uid}','${pr.id}')">${conc?GI.check+' Concluída':'Pendente'}</span>
@@ -14287,6 +14330,7 @@ function setFluxoCampo(uid, prid, campo, valor) {
 /* Radar em dois campos: (cliente → projeto) ou (sociedade → tarefa) */
 function _radarClientes() {
   const m = new Map();
+  (G._fluxoClientes || []).forEach(c => m.set(String(c.id), { nome: c.nome || 'Sem nome', prods: [] }));
   (G._prodsGestao || []).filter(p => p.status === 'ativo').forEach(p => {
     const cli = p.oportunidades?.clientes, key = String(cli?.id || '__sem');
     if (!m.has(key)) m.set(key, { nome: cli?.nome || 'Sem cliente', prods: [] });
@@ -14297,6 +14341,7 @@ function _radarClientes() {
 function _radarGrupoDe(rd) {
   if (rd._grupo !== undefined) return rd._grupo;
   if (rd.categoria_societaria) return 'soc';
+  if (rd.cliente_id) return String(rd.cliente_id);
   if (rd.produto_id) {
     const p = (G._prodsGestao || []).find(x => x.id === rd.produto_id);
     return String(p?.oportunidades?.clientes?.id || '__sem');
@@ -14317,14 +14362,15 @@ function _radarItemOpts(grupo, rd) {
   const c = _radarClientes().get(grupo);
   const prods = (c?.prods || []).slice().sort((a, b) =>
     (a.oportunidades?.projeto || '').localeCompare(b.oportunidades?.projeto || '', 'pt-BR') || (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
-  return `<option value="">Projeto</option>` + prods.map(p =>
+  return `<option value="">${prods.length ? 'Sem projeto (só o cliente)' : 'Cliente sem projeto ativo'}</option>` + prods.map(p =>
     `<option value="${p.id}"${p.id === rd.produto_id ? ' selected' : ''}>${_escN(p.oportunidades?.projeto || 'Sem oportunidade')}${p.nome ? ' · ' + _escN(p.nome) : ''}</option>`).join('');
 }
 function setRadarGrupo(uid, id, valor) {
-  const rd = (_fluxoRadarData[uid] || []).find(p => p.id === id);
+  const rd = (_fluxoRadarData[uid] || []).find(p => p.id === id) || (_fluxoPriosData[uid] || []).find(p => p.id === id);
   if (!rd) return;
   rd._grupo = valor;
-  rd.produto_id = null; rd.categoria_societaria = null;
+  rd.produto_id = null; rd.categoria_societaria = null; rd.etapa_id = null;
+  rd.cliente_id = valor && valor !== 'soc' && valor !== '__sem' ? valor : null;
   // Cliente com um único projeto: já escolhe
   if (valor && valor !== 'soc') {
     const ps = _radarClientes().get(valor)?.prods || [];
@@ -14342,9 +14388,13 @@ function setFluxoProduto(uid, prid, valor) {
     // Tarefa societária: limpa o vínculo de projeto e grava a subdivisão
     pr.categoria_societaria = valor.slice(4);
     pr.produto_id = null;
+    pr.cliente_id = null;
   } else {
     pr.produto_id = valor || null;
     pr.categoria_societaria = null;
+    // Com projeto, grava também o cliente; sem projeto, mantém o cliente escolhido
+    const prod = valor ? (G._prodsGestao || []).find(p => String(p.id) === String(valor)) : null;
+    if (prod?.oportunidades?.clientes?.id) pr.cliente_id = prod.oportunidades.clientes.id;
   }
   _fluxoMarkDirty(uid);
   renderFluxoUserList(); // atualiza o badge (ativas/total) na lista lateral
@@ -14371,6 +14421,7 @@ async function salvarFluxoUsuario(uid) {
     const pr = prios[i];
     const payload = {
       produto_id:   pr.produto_id || null,
+      cliente_id:   pr.cliente_id || null,
       categoria_societaria: pr.categoria_societaria || null,
       data_inicio:  pr.data_inicio || null,
       prazo_texto:  pr.prazo_texto || null,
@@ -14393,7 +14444,7 @@ async function salvarFluxoUsuario(uid) {
   for (let i = 0; i < radar.length; i++) {
     const rd = radar[i];
     const { error } = await sb.from('prioridades_usuario').update({
-      produto_id: rd.produto_id || null, categoria_societaria: rd.categoria_societaria || null, comentario: rd.comentario || null, tipo: 'radar', ordem: 1500 + i,
+      produto_id: rd.produto_id || null, cliente_id: rd.cliente_id || null, categoria_societaria: rd.categoria_societaria || null, comentario: rd.comentario || null, tipo: 'radar', ordem: 1500 + i,
     }).eq('id', rd.id);
     if (error) fail(rd.id, error.message);
   }
@@ -14454,16 +14505,19 @@ async function limparFluxoPrio(uid, recId) {
   renderFluxoUserList();
 }
 
-function renderFluxoView() {
-  const grid = document.getElementById('fluxo-view-grid');
+function renderFluxoView(gridId = 'fluxo-view-grid') {
+  const grid = document.getElementById(gridId);
   if (!grid) return;
   const NUM_CLS = ['','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'];
   const users = _fluxoSortedUsers();
-  users.forEach(u => { if (_fluxoCred[u.id] === undefined) _fluxoCarregarCred(u.id).then(() => { if (_fluxoMode === 'visualizar') renderFluxoView(); }); });
+  users.forEach(u => { if (_fluxoCred[u.id] === undefined) _fluxoCarregarCred(u.id).then(() => {
+    if (gridId !== 'fluxo-view-grid') { if (document.getElementById(gridId)) renderFluxoView(gridId); }
+    else if (_fluxoMode === 'visualizar') renderFluxoView();
+  }); });
   grid.innerHTML = users.map(u => {
     const filaU = _fluxoFila(u.id);
     const radarU = _radarAtivos(_fluxoRadarData[u.id]);
-    const prios = (_fluxoPriosData[u.id]||[]).filter(p => p.produto_id || p.categoria_societaria);
+    const prios = (_fluxoPriosData[u.id]||[]).filter(_prioTemVinculo);
     const slotsHtml = prios.length
       ? prios.map((pr, idx) => {
           const ord   = idx + 1;
