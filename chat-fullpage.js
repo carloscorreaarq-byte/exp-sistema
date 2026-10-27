@@ -320,6 +320,12 @@
   function renderReplyBar(){
     ensureFase2Dom();
     var rb = document.getElementById('fp-reply-bar'); if (!rb) return;
+    if (revTopico && isRevisaoChannel(currentChannel)) {
+      rb.innerHTML = '<div class="fp-reply-txt"><b>Respondendo ao item:</b> ' + escHtml(revTopico.desc) + '</div>' +
+        '<button title="Cancelar" onclick="fpChat.revCancelar()" aria-label="Cancelar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+      rb.classList.add('on');
+      return;
+    }
     if (!replyTo || replyTo.channel !== currentChannel) { rb.classList.remove('on'); rb.innerHTML = ''; if (replyTo && replyTo.channel !== currentChannel) replyTo = null; return; }
     rb.innerHTML = '<div class="fp-reply-txt"><b>Respondendo a ' + escHtml(firstName(replyTo.sender_name||'')) + ':</b> ' + escHtml(_snippet(replyTo)) + '</div>' +
       '<button title="Cancelar resposta" onclick="fpChat.cancelReply()" aria-label="Cancelar resposta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
@@ -1635,6 +1641,7 @@
       return ts;
     });
 
+    revTopico = null;
     currentChannel = channel;
     currentLabel   = channelCustomName(channel) || displayName || getChannelLabel(channel);
     syncChatRoute(channel);
@@ -2423,6 +2430,16 @@
     var pm=buildPendingMessage(content, replyId ? {reply_to:replyId} : null);
     if (replyTo) cancelReply();
     upsertMessage(pm); renderMessages(); scrollBottom();
+    if (isRevisaoChannel(currentChannel) && revTopico) {
+      var _tid = revTopico.id; revTopico = null; renderReplyBar();
+      pm.tarefa_revisao_id = _tid;
+      sb.rpc('revisao_responder', { p_tarefa_id: _tid, p_content: content }).then(function(r){
+        if (r.error) { removeMessageById(pm.id); renderMessages(); $input.value = content; setComposerStatus(r.error.message, 'error', true); return; }
+        removeMessageById(pm.id);
+        upsertMessage(normalizeProjectMessage(r.data)); renderMessages(); scrollBottom();
+      });
+      return;
+    }
     if (isProjectChannel(currentChannel)) {
       var tPayload={ thread_id:currentChannel.replace('project:',''), sender_auth_id:user.auth_id, content:content };
       if (replyId) tPayload.reply_to=replyId;
@@ -2498,6 +2515,11 @@
     /* Sinalizadas: mostra TODA a conversa (contexto), não filtra.
        A mensagem sinalizada vira um marco visual na linha do tempo. */
     var toRender = messages;
+    var _rv = isRevisaoChannel(currentChannel), _prevTopico = null;
+    if (_rv) {
+      toRender = _revOrdenar(messages);
+      _revCarregarTopicos(messages.map(function(m){ return m.tarefa_revisao_id; }).filter(Boolean));
+    }
 
     if (!toRender.length) {
       $msgs.innerHTML = '<div class="fp-empty"><div class="fp-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>Nenhuma mensagem ainda.</div>';
@@ -2537,7 +2559,11 @@
       var isCurrentResult = inSearchQuery && inSearchResults.length > 0 && inSearchResults[inSearchCurrent] === msgIdx;
       var isAnyResult     = inSearchQuery && inSearchResults.indexOf(msgIdx) !== -1;
 
-      if (dateStr!==lastDate) {
+      if (_rv) {
+        var _tk = msg.tarefa_revisao_id || '_geral';
+        if (_tk !== _prevTopico) { _prevTopico = _tk; html += _revTopicoHtml(_tk); prevSender = null; }
+        lastDate = dateStr;
+      } else if (dateStr!==lastDate) {
         lastDate=dateStr;
         html += '<div class="fp-date-sep">'+fmtDateSep(dt)+'</div>';
         prevSender=null;
@@ -3695,11 +3721,13 @@
   function fetchProjectHomeItems(uid){
     /* Otimizado: 3 queries fixas independente do nº de projetos
        (era 2N queries paralelas — 40+ requests com 20 projetos) */
-    return sb.from('chat_threads')
-      .select('id,title,produto_id,last_message_at')
-      .eq('type','project').is('archived_at',null)
-      .order('last_message_at',{ascending:false,nullsFirst:false})
+    /* Conversas de projeto + conversas de revisão (type 'revisao', arquivadas ao concluir a revisão) */
+    function _q(sel, tipos){ return sb.from('chat_threads').select(sel).in('type', tipos).is('archived_at',null)
+      .order('last_message_at',{ascending:false,nullsFirst:false}); }
+    return _q('id,title,produto_id,last_message_at,type,revisao_id', ['project','revisao'])
+      .then(function(r){ return r.error ? _q('id,title,produto_id,last_message_at', ['project']) : r; })
       .then(function(r){
+        (r.data||[]).forEach(function(t){ if (t.type === 'revisao' && t.revisao_id) revThreadRevisao[t.id] = t.revisao_id; });
         if(r.error||!r.data||!r.data.length){ projectThreadMeta={}; projectThreads=[]; return []; }
         projectThreads = r.data;
         var ids = projectThreads.map(function(t){ return t.id; });
@@ -3930,6 +3958,48 @@
   }
   function isDynamicChannel(ch){ return !!ch&&(ch.indexOf('dm:')===0||ch.indexOf('group:')===0); }
   function isProjectChannel(ch){ return !!ch&&ch.indexOf('project:')===0; }
+  /* ── Conversas de revisão: cada item da revisão é um tópico ── */
+  var revThreadRevisao = {};   /* thread id → revisão id */
+  var revTopicos = {};         /* tarefa_revisao id → { desc, prancha } */
+  var revTopico = null;        /* item que está sendo respondido */
+  var _revBuscando = {};
+  function isRevisaoChannel(ch){ return isProjectChannel(ch) && !!revThreadRevisao[projectThreadIdFromChannel(ch)]; }
+  function _revCarregarTopicos(ids){
+    ids = ids.filter(function(id){ return id && !revTopicos[id] && !_revBuscando[id]; });
+    if (!ids.length) return;
+    ids.forEach(function(id){ _revBuscando[id] = true; });
+    sb.from('tarefas_revisao').select('id,descricao,pranchas(nome)').in('id', ids).then(function(r){
+      (r.data||[]).forEach(function(t){ revTopicos[t.id] = { desc: t.descricao || 'Item', prancha: (t.pranchas && t.pranchas.nome) || '' }; });
+      ids.forEach(function(id){ if (!revTopicos[id]) revTopicos[id] = { desc: 'Item removido', prancha: '' }; delete _revBuscando[id]; });
+      if (isRevisaoChannel(currentChannel)) renderMessages();
+    });
+  }
+  /* Mensagens agrupadas por item; o item com resposta mais recente fica por último (como mensagem nova) */
+  function _revOrdenar(lista){
+    var ultimo = {};
+    lista.forEach(function(m){ var k = m.tarefa_revisao_id || '_geral'; if (!ultimo[k] || m.created_at > ultimo[k]) ultimo[k] = m.created_at; });
+    return lista.slice().sort(function(a, b){
+      var ka = a.tarefa_revisao_id || '_geral', kb = b.tarefa_revisao_id || '_geral';
+      if (ka !== kb) return ultimo[ka] < ultimo[kb] ? -1 : 1;
+      return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+    });
+  }
+  function _revTopicoHtml(k){
+    var revId = revThreadRevisao[projectThreadIdFromChannel(currentChannel)];
+    var link = '<a class="fp-rv-link" href="gestao.html?revisao=' + encodeURIComponent(revId) + '" target="_blank" rel="noopener">ver na prancha</a>';
+    if (k === '_geral') return '<div class="fp-rv-top"><span class="fp-rv-desc">Geral da revisão</span>' + link + '</div>';
+    var t = revTopicos[k] || { desc: 'Carregando item…', prancha: '' };
+    return '<div class="fp-rv-top"><span class="fp-rv-desc">↪ ' + escHtml(t.desc) + '</span>' +
+      (t.prancha ? '<span class="fp-rv-pr">' + escHtml(t.prancha) + '</span>' : '') + link +
+      '<button class="fp-rv-resp" onclick="fpChat.revResponder(\'' + escHtml(k) + '\')">Responder</button></div>';
+  }
+  function revResponder(tid){
+    replyTo = null;
+    revTopico = { id: tid, desc: (revTopicos[tid] && revTopicos[tid].desc) || 'item' };
+    renderReplyBar();
+    if ($input) $input.focus();
+  }
+  function revCancelar(){ revTopico = null; renderReplyBar(); }
   function projectThreadIdFromChannel(ch){ return String(ch||'').replace('project:',''); }
   function channelHasUser(ch,uid){
     if(!isDynamicChannel(ch)||!uid) return false;
@@ -4141,7 +4211,7 @@
     var c=raw.replace(/\n/g,' '); if(!c) return fb||'';
     return c.length>maxLen?c.substring(0,maxLen)+'…':c;
   }
-  function normalizeProjectMessage(msg){ return {id:msg.id,channel:'project:'+msg.thread_id,thread_id:msg.thread_id,sender_id:msg.sender_auth_id,sender_name:(window.expNomeCurto||String)(msg.sender_nome||''),sender_iniciais:msg.sender_iniciais,sender_cor:msg.sender_cor,content:msg.content,created_at:msg.created_at,editado_em:msg.editado_em||null,reply_to:msg.reply_to||null,reactions:normalizeReactions(msg.reactions)}; }
+  function normalizeProjectMessage(msg){ return {id:msg.id,channel:'project:'+msg.thread_id,thread_id:msg.thread_id,sender_id:msg.sender_auth_id,sender_name:(window.expNomeCurto||String)(msg.sender_nome||''),sender_iniciais:msg.sender_iniciais,sender_cor:msg.sender_cor,content:msg.content,created_at:msg.created_at,editado_em:msg.editado_em||null,reply_to:msg.reply_to||null,tarefa_revisao_id:msg.tarefa_revisao_id||null,reactions:normalizeReactions(msg.reactions)}; }
   function buildProjectThreadMeta(tid,title,preview,createdAt,senderAuthId){
     var ch='project:'+tid, label=title||(projectThreadMeta[ch]&&projectThreadMeta[ch].label)||'Projeto';
     return {threadId:tid,channel:ch,label:label,iniciais:initialsFromLabel(label,'PRJ'),cor:brandColorForKey(ch+':'+label),preview:preview||'Chat do projeto',lastCreatedAt:createdAt||null,lastSenderId:senderAuthId||null,unread:projectThreadMeta[ch]?(projectThreadMeta[ch].unread||0):0};
@@ -4341,6 +4411,7 @@
      API PÚBLICA
   ═══════════════════════════════════════════════════════════════════ */
   window.fpChat = {
+    revResponder, revCancelar,
     toggleMediaPin,
     openChannel, filterConvs, toggleProjectSection,
     toggleStatusPop, setStatus, toggleSoundPop, setSoundLevel, toggleDmPin, toggleProjectPin,

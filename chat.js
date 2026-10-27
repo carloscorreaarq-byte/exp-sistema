@@ -1403,7 +1403,10 @@
   /* ══════════════════════════════════════════════════════════════════
      ABRIR CANAL / DM
   ══════════════════════════════════════════════════════════════════ */
+  var _revThreads = {};
   function openChannel(channel, displayName) {
+    var _tid = String(channel || '').indexOf('project:') === 0 ? String(channel).slice(8) : '';
+    if (_tid && _revThreads[_tid]) { window.location.href = 'chat-fullpage.html?thread=' + encodeURIComponent(_tid); return; }
     removeConversationAlert(channel);
     closeMediaViewer();
     clearMessageMediaCache();
@@ -4700,13 +4703,16 @@
   }
 
   function fetchProjectHomeItems(uid) {
-    return sb.from('chat_threads')
-      .select('id,title,produto_id,last_message_at')
-      .eq('type', 'project')
-      .is('archived_at', null)
-      .order('last_message_at', { ascending: false, nullsFirst: false })
+    /* Projetos + conversas de revisão (estas abrem na página do chat, onde os itens viram tópicos) */
+    function _q(sel, tipos) {
+      return sb.from('chat_threads').select(sel).in('type', tipos).is('archived_at', null)
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+    }
+    return _q('id,title,produto_id,last_message_at,type', ['project', 'revisao'])
+      .then(function (r) { return r.error ? _q('id,title,produto_id,last_message_at', ['project']) : r; })
       .then(function (r) {
         if (r.error) return [];
+        (r.data || []).forEach(function (t) { if (t.type === 'revisao') _revThreads[t.id] = true; });
         projectThreads = r.data || [];
         if (!projectThreads.length) {
           projectThreadMeta = {};
