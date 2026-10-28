@@ -228,7 +228,8 @@ window.ExpNav = (() => {
       '<span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:#BC6143;color:#fff;font-size:8px;font-weight:700;font-family:var(--font-ui);min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>' +
     '</button>' +
 
-    '<button class="exp-nav-item" id="exp-nav-prio" title="Prioridades"' +
+    '<button class="exp-nav-item" id="exp-nav-prio" title="Minhas prioridades" aria-label="Minhas prioridades"' +
+    ' onclick="ExpNav.togglePrioBanner(event)"' +
     ' onmouseenter="ExpNav.showPrioBanner(event)" onmouseleave="ExpNav.hidePrioBanner()">' +
       ico.star +
     '</button>' +
@@ -1223,10 +1224,13 @@ window.ExpNav = (() => {
   }
 
   /* ── HOVER BANNER — PRIORIDADE ───────────────────────────── */
+  /* Prioridades: clique abre e FIXA o painel (fecha clicando fora ou com Esc);
+     passar o mouse mostra uma prévia enquanto não está fixo. */
+  var _prioFixo = false;
   function showPrioBanner(event) {
     if (_prioTimer) { clearTimeout(_prioTimer); _prioTimer = null; }
     var $b   = document.getElementById('exp-prio-banner');
-    var $btn = (event && event.currentTarget) || document.getElementById('exp-nav-prio');
+    var $btn = document.getElementById('exp-nav-prio');
     if (!$b) return;
     $b.style.display = 'block';
     _positionBanner($b, $btn);
@@ -1235,70 +1239,95 @@ window.ExpNav = (() => {
   }
 
   function hidePrioBanner() {
+    if (_prioFixo) return;
     _prioTimer = setTimeout(function() {
       var $b = document.getElementById('exp-prio-banner');
       if ($b) $b.style.display = 'none';
     }, 220);
   }
 
+  function togglePrioBanner(event) {
+    if (event) event.stopPropagation();
+    if (_prioFixo) { _fecharPrio(); return; }
+    _prioFixo = true;
+    _prioLoaded = false;                       /* sempre atualiza ao abrir pelo clique */
+    showPrioBanner(event);
+    var $btn = document.getElementById('exp-nav-prio'); if ($btn) $btn.classList.add('active');
+    setTimeout(function() {
+      document.addEventListener('click', _prioFora);
+      document.addEventListener('keydown', _prioTecla);
+    }, 10);
+  }
+  function _fecharPrio() {
+    _prioFixo = false;
+    var $b = document.getElementById('exp-prio-banner'); if ($b) $b.style.display = 'none';
+    var $btn = document.getElementById('exp-nav-prio'); if ($btn) $btn.classList.remove('active');
+    document.removeEventListener('click', _prioFora);
+    document.removeEventListener('keydown', _prioTecla);
+  }
+  function _prioFora(e) {
+    var $b = document.getElementById('exp-prio-banner'), $btn = document.getElementById('exp-nav-prio');
+    if (($b && $b.contains(e.target)) || ($btn && $btn.contains(e.target))) return;
+    _fecharPrio();
+  }
+  function _prioTecla(e) { if (e.key === 'Escape') _fecharPrio(); }
+
   function _fetchPrioBanner() {
     var sb = _sb(); if (!sb || !_user) return;
     var uid = _user.app_user_id || _user.id;
-    sb.from('prioridades_usuario')
-      .select('id,produto_id,categoria_societaria,prazo_texto,ordem,comentario,produtos(id,nome,oportunidades(projeto,cidade,uf,clientes(nome)),etapas(nome,status,ordem))')
-      .eq('usuario_id', uid).eq('concluida', false).order('ordem').limit(1).maybeSingle()
-      .then(function(r) { _prioLoaded = true; _prioData = r.data || null; _renderPrioBanner(); })
-      .catch(function()  { _prioLoaded = true; _renderPrioBanner(); });
+    var base = 'id,ordem,produto_id,categoria_societaria,comentario,produtos(nome,oportunidades(projeto,clientes(nome)))';
+    function q(sel) { return sb.from('prioridades_usuario').select(sel).eq('usuario_id', uid).eq('concluida', false).order('ordem').limit(30); }
+    q(base + ',tipo,cliente_id,etapa_id,etapa_alvo:etapas!prioridades_usuario_etapa_id_fkey(nome,data_estimada),cliente:clientes!prioridades_usuario_cliente_id_fkey(nome)')
+      .then(function(r) { return r.error ? q(base) : r; })
+      .then(function(r) { _prioLoaded = true; _prioData = r.data || []; _renderPrioBanner(); },
+            function()  { _prioLoaded = true; _prioData = []; _renderPrioBanner(); });
   }
 
   function _renderPrioBanner() {
     var $inner = document.getElementById('exp-prio-banner-inner');
     if (!$inner) return;
-    if (!_prioData) {
-      $inner.innerHTML = '<div class="exp-prio-hdr" style="background:var(--off,#F7F6F3);color:#aaa">Minha prioridade</div>' +
-        '<div style="padding:18px 14px;font-size:11px;color:var(--cinza,#D0CFC9);text-align:center">Nenhuma prioridade definida.</div>';
+    var lista = Array.isArray(_prioData) ? _prioData : (_prioData ? [_prioData] : []);
+    var CATS = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing', rh_pessoas:'RH e pessoas' };
+    function nome(pr) {
+      if (pr.categoria_societaria) return 'Societária · ' + (CATS[pr.categoria_societaria] || pr.categoria_societaria);
+      var prod = pr.produtos || {}, opp = prod.oportunidades || {};
+      if (!pr.produto_id && pr.cliente && pr.cliente.nome) return pr.cliente.nome;
+      return [opp.clientes && opp.clientes.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Prioridade';
+    }
+    function dm(iso) { return iso ? String(iso).slice(8, 10) + '/' + String(iso).slice(5, 7) : ''; }
+    function estado(pr) {
+      var p = pr.etapa_alvo && pr.etapa_alvo.data_estimada; if (!p) return 'futuro';
+      var hoje = new Date(); var h = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+      return p < h ? 'vencida' : p === h ? 'hoje' : 'futuro';
+    }
+    var radar = lista.filter(function(p) { return p.tipo === 'radar' && (p.produto_id || p.cliente_id || p.categoria_societaria); });
+    var prios = lista.filter(function(p) { return p.tipo !== 'radar' && (p.produto_id || p.cliente_id || p.categoria_societaria); });
+    var hd = '<div class="exp-prio-hdr2"><span>Minhas prioridades</span><a href="app.html">Abrir no Hub</a></div>';
+    if (!prios.length && !radar.length) {
+      $inner.innerHTML = hd + '<div class="exp-prio-vazio">Nenhuma prioridade definida.</div>';
       return;
     }
-    var pr  = _prioData;
-    var prod = pr.produtos || {};
-    var opp  = prod.oportunidades || {};
-    var cli  = opp.clientes || {};
-    var _SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing', rh_pessoas:'RH e pessoas' };
-    var titulo   = pr.categoria_societaria
-      ? 'Societária · ' + (_SOC_CAT_LABEL[pr.categoria_societaria] || pr.categoria_societaria)
-      : ([cli.nome, opp.projeto].filter(Boolean).join(' | ') || prod.nome || 'Projeto');
-    var cidadeUf = pr.categoria_societaria ? '' : [opp.cidade, opp.uf].filter(Boolean).join('/');
-    var etapas   = (prod.etapas || []).slice().sort(function(a,b){ return (a.ordem||0)-(b.ordem||0); });
-    var etapa    = etapas.find(function(e){ return e.status==='em_andamento'; });
-    var estado = '';
-    var chipHtml = '';
-    if (pr.prazo_texto) {
-      var hoje = new Date(); hoje.setHours(0,0,0,0);
-      var pdt  = new Date(pr.prazo_texto + 'T12:00:00'); pdt.setHours(0,0,0,0);
-      var dtFmt = pdt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' });
-      if (pdt < hoje) estado = 'atrasada'; else if (+pdt===+hoje) estado = 'hoje';
-      chipHtml = '<div><span class="exp-prio-chip ' + estado + '">📅 ' + _esc(dtFmt) + '</span></div>';
+    var html = hd;
+    if (radar.length) html += '<div class="exp-prio-radar"><span class="exp-prio-k">Radar</span>' +
+      radar.map(function(r) { return '<span class="exp-prio-rchip">' + _esc(nome(r)) + '</span>'; }).join('') + '</div>';
+    if (prios.length) {
+      var a = prios[0], ea = estado(a), sub = [a.etapa_alvo && a.etapa_alvo.nome, a.comentario].filter(Boolean).join(' · ');
+      html += '<a class="exp-prio-agora e-' + ea + '" href="app.html">' +
+        '<span class="exp-prio-k">Agora</span>' +
+        '<span class="exp-prio-nome2">' + _esc(nome(a)) + '</span>' +
+        (sub ? '<span class="exp-prio-sub">' + _esc(sub) + '</span>' : '') +
+        (a.etapa_alvo && a.etapa_alvo.data_estimada ? '<span class="exp-prio-ent"><b>Entrega</b> ' + _esc(dm(a.etapa_alvo.data_estimada)) + '</span>' : '') +
+      '</a>';
+      var prox = prios.slice(1, 5);
+      if (prox.length) html += '<div class="exp-prio-k exp-prio-seg">Em seguida</div>' + prox.map(function(p, i) {
+        var e = estado(p);
+        return '<a class="exp-prio-lin e-' + e + '" href="app.html"><span class="exp-prio-n">' + (i + 2) + '</span>' +
+          '<span class="exp-prio-lnome">' + _esc(nome(p)) + '</span>' +
+          (p.etapa_alvo && p.etapa_alvo.data_estimada ? '<span class="exp-prio-ldata">' + _esc(dm(p.etapa_alvo.data_estimada)) + '</span>' : '') + '</a>';
+      }).join('');
+      if (prios.length > 5) html += '<a class="exp-prio-mais" href="app.html">+ ' + (prios.length - 5) + ' na fila</a>';
     }
-    // Paleta semafórica: verde=futuro, amarelo=hoje, vermelho=atrasada
-    var _cor = estado === 'atrasada'
-      ? { bg:'#FDECEA', border:'#BC6143', text:'#BC6143', hdrBg:'#FDECEA', hdrBorder:'rgba(192,57,43,.2)' }
-      : estado === 'hoje'
-        ? { bg:'#FFFBEA', border:'#D4AC0D', text:'#B8860B', hdrBg:'#FFFBEA', hdrBorder:'rgba(212,172,13,.2)' }
-        : { bg:'#EAF5EC', border:'#27AE60', text:'#1E8449', hdrBg:'#EAF5EC', hdrBorder:'rgba(39,174,96,.2)' };
-    var hdrStyle = 'background:' + _cor.hdrBg + ';color:' + _cor.text + ';border-bottom:1px solid ' + _cor.hdrBorder;
-    var cardStyle = 'background:' + _cor.bg + ';border-left-color:' + _cor.border;
-    var nomeStyle = 'color:' + _cor.text;
-    $inner.innerHTML =
-      '<div class="exp-prio-hdr" style="' + hdrStyle + '">Minha prioridade</div>' +
-      '<div class="exp-prio-card" style="' + cardStyle + '">' +
-        '<div class="exp-prio-info">' +
-          '<div class="exp-prio-nome" style="' + nomeStyle + '">' + _esc(titulo) + '</div>' +
-          (cidadeUf ? '<div class="exp-prio-cidade">' + _esc(cidadeUf) + '</div>' : '') +
-          (etapa    ? '<div class="exp-prio-etapa">↳ ' + _esc(etapa.nome||'') + '</div>' : '') +
-          chipHtml +
-        '</div>' +
-        '<button class="exp-prio-check" onclick="event.stopPropagation()" title="Ver detalhes">✓</button>' +
-      '</div>';
+    $inner.innerHTML = html;
   }
 
   /* ── PAINEL APOIO ────────────────────────────────────────── */
@@ -1584,7 +1613,7 @@ window.ExpNav = (() => {
     roomClick,
     showCalBanner,  hideCalBanner,
     showCrmBanner,  hideCrmBanner,
-    showPrioBanner, hidePrioBanner,
+    showPrioBanner, hidePrioBanner, togglePrioBanner,
     toggleApoioPanel,   closeApoioPanel,   apoioSearchInput,   apoioClear,
     toggleContatosPanel, closeContatosPanel, contatosSearchInput, contatosClear,
     toggleTarefasPanel,
