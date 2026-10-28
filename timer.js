@@ -847,6 +847,21 @@
     return _allProds;
   }
 
+  /* Etapa sugerida: a última em que você lançou horas neste produto; sem histórico, a em andamento */
+  async function _etapaPadrao(prodId, etapas) {
+    try {
+      var client = _getSb(), user = await _getUser();
+      if (client && user && user.id) {
+        var r = await client.from('horas_lancadas').select('etapa_id').eq('usuario_id', user.id).eq('produto_id', prodId)
+          .not('etapa_id', 'is', null).order('data_lancamento', { ascending: false }).order('hora_fim', { ascending: false }).limit(1);
+        var ult = r.data && r.data[0] && r.data[0].etapa_id;
+        if (ult && etapas.some(function (e) { return String(e.id) === String(ult); })) return ult;
+      }
+    } catch (e) {}
+    var emAnd = etapas.filter(function (e) { return e.status === 'em_andamento'; })[0];
+    return emAnd ? emAnd.id : '';
+  }
+
   async function _getEtapas(prodId) {
     if (_etapaCache[prodId]) return _etapaCache[prodId];
     /* ── reutiliza G.todasEtapas ── */
@@ -859,7 +874,7 @@
     }
     var client = _getSb();
     if (!client) return [];
-    var res = await client.from('etapas').select('id, nome, ordem')
+    var res = await client.from('etapas').select('id, nome, ordem, status')
       .eq('produto_id', prodId).order('ordem');
     _etapaCache[prodId] = res.data || [];
     return _etapaCache[prodId];
@@ -1085,6 +1100,8 @@
           opps.map(function (o) { return '<option value="' + o.id + '">' + _escHtml(o.label) + '</option>'; }).join('');
       }
       if (oppBlock) oppBlock.style.display = '';
+      /* Se só 1 oportunidade, seleciona automaticamente */
+      if (opps.length === 1 && selOpp) { selOpp.value = opps[0].id; await _tmr.changeOpp(); }
     },
 
     /* ── Oportunidade mudou → carrega produtos ── */
@@ -1124,6 +1141,8 @@
       if (selEtapa) {
         selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
           etapas.map(function (e) { return '<option value="' + e.id + '">' + _escHtml(_trunc(e.nome, 36)) + '</option>'; }).join('');
+        var sug = await _etapaPadrao(prodId, etapas);
+        if (sug && !selEtapa.value && (document.getElementById('tmr-sel-prod') || {}).value === prodId) selEtapa.value = sug;
       }
       if (etapaBlock && etapas.length) etapaBlock.style.display = '';
     },
@@ -1711,6 +1730,7 @@
           opps.map(function (o) { return '<option value="' + o.id + '">' + _escHtml(o.label) + '</option>'; }).join('');
       }
       if (oppBlock) oppBlock.style.display = '';
+      if (opps.length === 1 && selOpp) { selOpp.value = opps[0].id; await _tmr.changeOppCfe(); }
     },
 
     changeOppCfe: async function () {
@@ -1741,6 +1761,8 @@
       if (selEtapa) {
         selEtapa.innerHTML = '<option value="">&#8212; selecionar &#8212;</option>' +
           etapas.map(function (e) { return '<option value="' + e.id + '">' + _escHtml(_trunc(e.nome, 36)) + '</option>'; }).join('');
+        var sugC = await _etapaPadrao(prodId, etapas);
+        if (sugC && !selEtapa.value && (document.getElementById('tmr-cfe-prod') || {}).value === prodId) selEtapa.value = sugC;
       }
       if (etapaBlock && etapas.length) etapaBlock.style.display = '';
     },

@@ -297,6 +297,17 @@ body{
 }
 .apo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 
+/* Balão da descrição da atividade */
+.apo-dica{display:none;position:fixed;z-index:9500;max-width:260px;background:#111110;color:#fff;font-size:11px;line-height:1.45;padding:7px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.2);pointer-events:none}
+.apo-dica b{display:block;font-weight:700;margin-bottom:2px}
+
+/* ── Recentes (como no timer) ── */
+.apo-recentes{display:flex;flex-direction:column;gap:3px}
+.apo-recente{width:100%;text-align:left;padding:5px 9px;border:1px solid var(--cinza);border-radius:6px;background:var(--off,#F7F6F3);font-family:inherit;font-size:11px;color:var(--txt-2,#555);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .1s,border-color .1s}
+.apo-recente:hover{border-color:var(--grafite);color:var(--grafite)}
+.apo-recente.on{border-color:var(--grafite);background:var(--branco);color:var(--grafite);font-weight:700}
+[data-theme="dark"] .apo-recente{background:#141412;border-color:#3E3E3C;color:#B5B3AD}
+
 /* ── Atividade (chips) + quadro de ajuda ── */
 #apo-ativ-wrap{position:relative}
 .apo-chips{display:flex;flex-wrap:wrap;gap:3px}
@@ -761,6 +772,7 @@ body[data-aba="socios"] #apo-ver-wrap{display:none !important}   /* Sócios já 
 .apo-btn-full{width:100%;justify-content:center;margin-top:4px;padding:8px 14px !important;}
 .apo-btn[hidden]{display:none !important;}   /* .apo-btn usa display:inline-flex, que anularia o hidden */
 .apo-btn-repetir{display:inline-flex;align-items:center;gap:5px}
+.apo-btn-repetir[hidden]{display:none !important}
 /* ── Visualização mensal (cópia das regras .mh-* de gestao.html) ── */
 .mh-panel-body::-webkit-scrollbar{ width:4px; }
 .mh-panel-body::-webkit-scrollbar-track{ background:transparent; }
@@ -1327,6 +1339,12 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
               </div>
             </div>
 
+            <!-- Recentes (como no timer): um clique preenche tipo, projeto, etapa e atividade -->
+            <div class="apo-field" id="apo-recentes-wrap" hidden>
+              <label>Recentes</label>
+              <div id="apo-recentes" class="apo-recentes"></div>
+            </div>
+
             <div class="apo-field">
               <label for="apo-type">Tipo</label>
               <select id="apo-type"></select>
@@ -1388,7 +1406,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
             <!-- mesmo formato dos botões do Banco -->
             <div class="apo-actions">
               <button type="submit" class="apo-btn apo-btn-primary" id="apo-submit">Registrar horas</button>
-              <button type="button" class="apo-btn apo-btn-repetir" id="apo-repetir" title="Preenche com o mesmo tipo, projeto, etapa, subtarefas e descrição do seu último lançamento"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Repetir último</button>
+              <button type="button" class="apo-btn apo-btn-repetir" id="apo-repetir" hidden title="Preenche com o mesmo tipo, projeto, etapa, subtarefas e descrição do seu último lançamento"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Repetir último</button>
               <button type="button" id="apo-reset" hidden>Limpar</button>
             </div>
             <div class="apo-feedback" id="apo-feedback"></div>
@@ -4141,7 +4159,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     }).join('');
     onClienteCascata(k);
   }
-  function onClienteCascata(k) {
+  /* auto = escolha feita pela pessoa no campo: com uma única opção no próximo nível, já preenche */
+  function onClienteCascata(k, auto) {
     var c = CASC[k], cliId = document.getElementById(c.cli).value;
     var selOpp = document.getElementById(c.opp);
     document.getElementById(c.oppWrap).style.display = 'none';
@@ -4158,26 +4177,28 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       return '<option value="'+o.id+'">'+esc(o.projeto||'(sem nome)')+esc(locTxt(o))+'</option>';
     }).join('');
     document.getElementById(c.oppWrap).style.display = '';
+    if (auto && opps.length === 1) { selOpp.value = opps[0].id; onOppCascata(k, true); }   // cliente com uma só oportunidade
   }
-  function onOppCascata(k) {
+  function onOppCascata(k, auto) {
     var c = CASC[k], oppId = document.getElementById(c.opp).value;
     var selProd = document.getElementById(c.prod);
     document.getElementById(c.prodWrap).style.display = 'none';
     document.getElementById(c.stageWrap).style.display = 'none';
     selProd.innerHTML = '<option value="">'+c.prodPh+'</option>';
+    var prods = [];
     if (oppId) {
-      selProd.innerHTML += (AP.products||[]).filter(function(p){ return String(p.oportunidade_id) === String(oppId); })
-        .map(function(p){ return '<option value="'+p.id+'">'+esc(p.nome||p.subtipo||'(sem nome)')+'</option>'; }).join('');
+      prods = (AP.products||[]).filter(function(p){ return String(p.oportunidade_id) === String(oppId); });
+      selProd.innerHTML += prods.map(function(p){ return '<option value="'+p.id+'">'+esc(p.nome||p.subtipo||'(sem nome)')+'</option>'; }).join('');
       document.getElementById(c.prodWrap).style.display = '';
     }
-    selProd.value = '';
+    selProd.value = (auto && prods.length === 1) ? prods[0].id : '';   // oportunidade com um só produto
     selProd.dispatchEvent(new Event('change'));
   }
 
   async function loadStages(productId) {
     if (!productId) return [];
     if (AP.stageCache[productId]) return AP.stageCache[productId];
-    var res = await window.sb.from('etapas').select('id,nome,ordem').eq('produto_id',productId).order('ordem');
+    var res = await window.sb.from('etapas').select('id,nome,ordem,status').eq('produto_id',productId).order('ordem');
     if (res.error) throw new Error(res.error.message);
     AP.stageCache[productId] = res.data || [];
     return AP.stageCache[productId];
@@ -5024,7 +5045,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     var a = document.getElementById('apo-ativ-chips');
     if (a) a.innerHTML = ATIVIDADES.map(function(x){
       var on = AP.atividade === x.k;
-      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" title="'+esc(x.nome+': '+x.ex)+'" data-ativ="'+x.k+'">'+esc(x.curto || x.nome)+'</button>';
+      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" aria-label="'+esc(x.nome)+'" data-dica-t="'+esc(x.nome)+'" data-dica="'+esc(x.ex)+'" data-ativ="'+x.k+'">'+esc(x.curto || x.nome)+'</button>';
     }).join('');
 
   }
@@ -5069,8 +5090,13 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         .filter(function(d){ if (!d || vistos[d.toLowerCase()]) return false; vistos[d.toLowerCase()] = 1; return true; })
         .slice(0, 15).map(function(d){ return '<option value="'+esc(d)+'"></option>'; }).join('');
     }
-    if (!doProj.length) return;
     var st = document.getElementById('apo-stage');
+    if (!doProj.length) {
+      /* nunca lançou neste projeto: sugere a etapa em andamento (continua podendo trocar) */
+      var emAnd = (AP.stageCache[pid] || []).find(function(e){ return e.status === 'em_andamento'; });
+      if (st && !st.value && emAnd) { st.value = emAnd.id; updateClassUI(); }
+      return;
+    }
     if (st && !st.value && doProj[0].etapa_id && Array.prototype.some.call(st.options, function(o){ return o.value === doProj[0].etapa_id; })) {
       st.value = doProj[0].etapa_id;
     }
@@ -5081,6 +5107,65 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     }
     updateClassUI();
   }
+  /* ── Recentes: os 3 últimos lançamentos distintos (tipo · projeto · etapa · atividade) ── */
+  AP.recentes = [];
+  async function carregarRecentes() {
+    var wrap = document.getElementById('apo-recentes-wrap'), box = document.getElementById('apo-recentes');
+    if (!wrap || !box || !uid()) return;
+    var base = 'id,tipo,subtipo,produto_id,etapa_id,produtos(nome,oportunidades(projeto,clientes(nome))),etapas(nome)';
+    var q = function(sel){ return window.sb.from('horas_lancadas').select(sel).eq('usuario_id', uid())
+      .order('created_at', { ascending:false }).limit(40); };
+    var r = await q(base + ',atividade');
+    if (r.error) r = await q(base);
+    var vistos = {}, lista = [];
+    (r.data || []).forEach(function(h){
+      if (lista.length >= 3) return;
+      if (h.tipo === 'projeto' && !h.produto_id) return;
+      var k = [h.tipo, h.subtipo, h.produto_id, h.etapa_id, h.atividade].join('|');
+      if (vistos[k]) return; vistos[k] = 1;
+      lista.push(h);
+    });
+    AP.recentes = lista;
+    if (!lista.length) { wrap.hidden = true; return; }
+    box.innerHTML = lista.map(function(h, i){
+      var partes;
+      if (h.tipo === 'projeto') {
+        var opp = (h.produtos||{}).oportunidades || {};
+        var a = ATIVIDADES.find(function(x){ return x.k === h.atividade; });
+        partes = [opp.projeto || (h.produtos||{}).nome || 'Projeto', h.etapas && h.etapas.nome, a && (a.curto || a.nome)];
+      } else {
+        partes = [TIPO_PT[h.tipo] || h.tipo, h.subtipo];
+      }
+      var txt = partes.filter(Boolean).join(' · ');
+      return '<button type="button" class="apo-recente" data-rec="'+i+'" title="'+esc(txt)+'">'+esc(txt)+'</button>';
+    }).join('');
+    wrap.hidden = false;
+  }
+  async function aplicarRecente(i) {
+    var h = AP.recentes[i]; if (!h) return;
+    if (AP.semanaTravada) { setFb('apo-feedback','Semana finalizada: desbloqueie antes de lançar.','err'); return; }
+    document.getElementById('apo-type').value = h.tipo || 'projeto';
+    updateTypeUI();
+    if (h.tipo === 'projeto') {
+      var opp = (h.produtos||{}).oportunidades||{};
+      selecionarProdutoNaCascata('h', h.produto_id, [((opp.clientes||{}).nome), opp.projeto, (h.produtos||{}).nome].filter(Boolean).join(' · '));
+      AP.atividade = h.atividade || '';          // antes do autopreenchimento do projeto, para não ser trocada
+      await onProjectChange();
+      document.getElementById('apo-stage').value = h.etapa_id || '';
+      AP.atividade = h.atividade || '';
+      renderAtivFerr();
+      updateClassUI();
+    } else {
+      var cat = document.getElementById('apo-category');
+      if (h.subtipo && !Array.prototype.some.call(cat.options, function(o){ return o.value === h.subtipo; })) {
+        cat.insertAdjacentHTML('beforeend', '<option value="'+esc(h.subtipo)+'">'+esc(h.subtipo)+'</option>');
+      }
+      cat.value = h.subtipo || '';
+    }
+    document.querySelectorAll('.apo-recente').forEach(function(b){ b.classList.toggle('on', b.dataset.rec === String(i)); });
+    setFb('apo-feedback','','');
+  }
+
   async function carregarAtivDaHora(id) {
     var r = await window.sb.from('horas_lancadas').select('atividade').eq('id', id).maybeSingle();
     if (r.error || !r.data) return;
@@ -5200,6 +5285,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       if (editId) sairEdicaoHora();
       AP._inicioSyncIso = null;
       loadHorasData().catch(function(){});
+      carregarRecentes().catch(function(){});
     } catch(e) { setFb('apo-feedback',e.message,'err'); }
     finally { btn.disabled=false; btn.textContent='Registrar horas'; }
   }
@@ -5986,6 +6072,26 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       if (e.key === 'Escape' && pop && !pop.hidden) { pop.hidden = true; document.getElementById('apo-ajuda-btn').setAttribute('aria-expanded','false'); }
     });
     renderAtivFerr();
+    /* Balão com a descrição da atividade ao passar o mouse */
+    (function(){
+      var tip = null;
+      function esconder(){ if (tip) tip.style.display = 'none'; }
+      document.getElementById('apo-ativ-chips').addEventListener('mouseover', function(e){
+        var b = e.target.closest('[data-dica]'); if (!b) return;
+        if (!tip) { tip = document.createElement('div'); tip.className = 'apo-dica'; document.body.appendChild(tip); }
+        tip.innerHTML = '<b>'+esc(b.dataset.dicaT||'')+'</b>'+esc(b.dataset.dica||'');
+        tip.style.display = 'block';
+        var r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+        tip.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+        tip.style.top = (r.top - h - 6 < 8 ? r.bottom + 6 : r.top - h - 6) + 'px';
+      });
+      document.getElementById('apo-ativ-chips').addEventListener('mouseleave', esconder);
+      document.getElementById('apo-ativ-chips').addEventListener('mouseout', function(e){ if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('[data-dica]')) esconder(); });
+    })();
+    document.getElementById('apo-recentes').addEventListener('click', function(e){
+      var b = e.target.closest('[data-rec]'); if (b) aplicarRecente(Number(b.dataset.rec)).catch(function(err){ setFb('apo-feedback', err.message, 'err'); });
+    });
+    carregarRecentes().catch(function(){});
     document.getElementById('apo-repetir').addEventListener('click', function(){ repetirUltimoLancamento().catch(function(e){ setFb('apo-feedback', e.message, 'err'); }); });
     document.getElementById('apo-week-finalizar').addEventListener('click', function(){ abrirFinalizarSemana().catch(function(e){ alert(e.message); }); });
     document.getElementById('apo-fin-confirmar').addEventListener('click', confirmarFinalizarSemana);
@@ -5995,10 +6101,10 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     document.getElementById('apo-dia-selector').addEventListener('click',function(ev){
       var b = ev.target.closest('.dia-btn'); if (b && b.dataset.iso) setSelectedDate(b.dataset.iso);
     });
-    document.getElementById('apo-cliente').addEventListener('change',function(){ onClienteCascata('h'); });
-    document.getElementById('apo-opp').addEventListener('change',function(){ onOppCascata('h'); });
-    document.getElementById('apo-cost-cliente').addEventListener('change',function(){ onClienteCascata('c'); });
-    document.getElementById('apo-cost-opp').addEventListener('change',function(){ onOppCascata('c'); });
+    document.getElementById('apo-cliente').addEventListener('change',function(){ onClienteCascata('h', true); });
+    document.getElementById('apo-opp').addEventListener('change',function(){ onOppCascata('h', true); });
+    document.getElementById('apo-cost-cliente').addEventListener('change',function(){ onClienteCascata('c', true); });
+    document.getElementById('apo-cost-opp').addEventListener('change',function(){ onOppCascata('c', true); });
     document.getElementById('apo-project').addEventListener('change',function(){
       onProjectChange().catch(function(e){ setFb('apo-feedback',e.message,'err'); });
     });
