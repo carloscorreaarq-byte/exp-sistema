@@ -302,8 +302,8 @@ body{
 .apo-dica b{display:block;font-weight:700;margin-bottom:2px}
 
 /* ── Recentes (como no timer) ── */
-.apo-recentes{display:flex;flex-direction:column;gap:3px}
-.apo-recente{width:100%;text-align:left;padding:5px 9px;border:1px solid var(--cinza);border-radius:6px;background:var(--off,#F7F6F3);font-family:inherit;font-size:11px;color:var(--txt-2,#555);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .1s,border-color .1s}
+.apo-recentes{display:flex;flex-direction:column;gap:2px}
+.apo-recente{width:100%;text-align:left;padding:3px 8px;border:1px solid var(--cinza);border-radius:6px;background:var(--off,#F7F6F3);font-family:inherit;font-size:10.5px;line-height:1.35;color:var(--txt-2,#555);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .1s,border-color .1s}
 .apo-recente:hover{border-color:var(--grafite);color:var(--grafite)}
 .apo-recente.on{border-color:var(--grafite);background:var(--branco);color:var(--grafite);font-weight:700}
 [data-theme="dark"] .apo-recente{background:#141412;border-color:#3E3E3C;color:#B5B3AD}
@@ -751,6 +751,12 @@ body[data-aba="socios"] #apo-ver-wrap{display:none !important}   /* Sócios já 
 .apo-form-title .semana-nav-btn{width:22px;height:22px;font-size:13px}
 .apo-form-title .semana-label{min-width:0;font-size:10px;font-weight:700;letter-spacing:0;color:var(--grafite);padding:0 2px;white-space:nowrap}
 .apo-form-title .semana-hoje-btn{min-height:22px;padding:0 7px;font-size:8px}
+/* Horas: faixa do título na altura do cabeçalho do calendário e quadro na altura do calendário (2026-10-27) */
+#stp-horas .apo-form-title.com-semana{flex-wrap:nowrap;box-sizing:border-box;margin-bottom:10px}
+#stp-horas .apo-form-card.alinhado{display:flex;flex-direction:column;box-sizing:border-box}
+#stp-horas .apo-form-card.alinhado #apo-hours-form{flex:1;display:flex;flex-direction:column}
+#stp-horas .apo-form-card.alinhado .apo-actions{margin-top:auto;padding-top:10px}
+#stp-horas .apo-form-card .apo-feedback:empty{min-height:0;margin-top:0}
 /* Formulários do Apontamentos = padrão da Gestão › Horas/Custos (2026-10-25), em todas as abas:
    rótulo 8px em caixa alta; campo 12px peso 300, padding 5px 9px, raio 8px, borda --cinza */
 .apo-form-card .apo-field{gap:4px;margin-bottom:8px;}
@@ -7087,6 +7093,46 @@ async function exportarMinhasHorasPDF() {
   window.navegarMinhasHoras = navegarMinhasHoras;
   window.minhasHorasMesAtual = minhasHorasMesAtual;
   window.exportarMinhasHorasPDF = exportarMinhasHorasPDF;
+})();
+</script>
+<script>
+/* Horas: alinha o painel "Registrar horas" com o calendário ao lado.
+   Faixa cinza = altura do cabeçalho dos dias; quadro = altura do calendário (se o conteúdo couber). */
+(function () {
+  function alinhar() {
+    var card = document.querySelector('#stp-horas .apo-form-card');
+    var cal = document.querySelector('#stp-horas .cal-semana');
+    if (!card || !cal) return;
+    var tit = card.querySelector('.apo-form-title');
+    var hd = cal.querySelector('.cal-dia-header');
+    // lado a lado: o quadro começa à direita do calendário (abaixo de 1080px eles empilham)
+    var lado = cal.offsetHeight > 0 && card.getBoundingClientRect().left >= cal.getBoundingClientRect().right - 1;
+    if (tit) {
+      tit.style.flexWrap = '';
+      if (tit.scrollWidth > tit.clientWidth + 1) tit.style.flexWrap = 'wrap';   // título e semana não cabem na mesma linha
+      tit.style.minHeight = (lado && hd) ? (hd.offsetHeight + 1) + 'px' : '';
+    }
+    card.classList.remove('alinhado'); card.style.height = '';
+    if (!lado) return;
+    var natural = card.offsetHeight, alvo = cal.offsetHeight;
+    if (natural <= alvo) { card.classList.add('alinhado'); card.style.height = alvo + 'px'; }
+  }
+  var pend = 0;
+  function agendar() { cancelAnimationFrame(pend); pend = requestAnimationFrame(alinhar); }
+  function iniciar() {
+    var card = document.querySelector('#stp-horas .apo-form-card');
+    var cal = document.querySelector('#stp-horas .cal-semana');
+    if (!card || !cal) return;
+    if (window.ResizeObserver) new ResizeObserver(agendar).observe(cal);
+    // conteúdo do formulário mudou (campos que aparecem/somem); ignora o que este ajuste mexe no próprio quadro e no título
+    var tit = card.querySelector('.apo-form-title');
+    new MutationObserver(function (lista) {
+      if (lista.some(function (m) { return m.target !== card && m.target !== tit; })) agendar();
+    }).observe(card, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'hidden', 'class'] });
+    window.addEventListener('resize', agendar);
+    agendar();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
 </script>
 </body>
