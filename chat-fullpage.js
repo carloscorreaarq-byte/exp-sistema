@@ -156,40 +156,29 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════
-     FASE 2 — participantes, resposta, arquivos, visto/digitando, arquivar/silenciar
+     FASE 2 — participantes, resposta, arquivos, visto/digitando, silenciar
      (SQL: supabase/chat_recursos_fase2.sql)
   ═══════════════════════════════════════════════════════════════════ */
   var CHAT_FILE_SENTINEL = '[arquivo]';
   var FILE_BUCKET   = 'chat-arquivos';
-  var ARCH_KEY      = 'exp_chat_archived';
   var MUTE_KEY      = 'exp_chat_muted';
   var groupMembers  = {};      /* channel → [auth_id] ativos (só grupos com lista própria) */
   var replyTo       = null;    /* mensagem sendo respondida */
   var arquivosCache = {};      /* message_id → linha de chat_arquivos */
   var readRows      = [];      /* chat_read_status da conversa aberta */
   var typingCh      = null, typingUsers = {}, lastTypingSent = 0, typingTimer = null;
-  var showArchived  = false;
 
   function isFileSentinel(c){ return String(c||'').trim() === CHAT_FILE_SENTINEL; }
   function _loadSet(k){ try { return new Set(JSON.parse(localStorage.getItem(k)||'[]')); } catch(e){ return new Set(); } }
   function _saveSet(k, set){ try { localStorage.setItem(k, JSON.stringify(Array.from(set))); } catch(e){} }
-  var archivedChannels = _loadSet(ARCH_KEY);
   var mutedChannels    = _loadSet(MUTE_KEY);
   function isMuted(ch){ return mutedChannels.has(ch); }
-  function isArchived(ch){ return archivedChannels.has(ch); }
   function toggleMute(ch){
     ch = ch || currentChannel; if (!ch) return;
     mutedChannels = _loadSet(MUTE_KEY);
     if (mutedChannels.has(ch)) mutedChannels.delete(ch); else mutedChannels.add(ch);
     _saveSet(MUTE_KEY, mutedChannels); updateConvHeaderButtons(); renderConvList();
   }
-  function toggleArchive(ch){
-    ch = ch || currentChannel; if (!ch || !isDynamicChannel(ch)) return;
-    archivedChannels = _loadSet(ARCH_KEY);
-    if (archivedChannels.has(ch)) archivedChannels.delete(ch); else archivedChannels.add(ch);
-    _saveSet(ARCH_KEY, archivedChannels); updateConvHeaderButtons(); renderConvList();
-  }
-  function toggleShowArchived(){ showArchived = !showArchived; renderConvList(); }
 
   /* Estilos dos recursos novos (resposta, participantes, digitando, visto…) ficam em chat-fullpage.html */
 
@@ -205,7 +194,6 @@
       };
       mk('fp-members-btn','Participantes','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', function(){ openMembersPanel(); });
       mk('fp-mute-btn','Silenciar conversa','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', function(){ toggleMute(); });
-      mk('fp-archive-btn','Arquivar conversa','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>', function(){ toggleArchive(); });
     }
     var inputArea = document.getElementById('fp-input-area');
     if (inputArea && !document.getElementById('fp-reply-bar')) {
@@ -219,10 +207,9 @@
   function updateConvHeaderButtons(){
     ensureFase2Dom();
     var ch = currentChannel;
-    var mb = document.getElementById('fp-members-btn'), mu = document.getElementById('fp-mute-btn'), ar = document.getElementById('fp-archive-btn');
+    var mb = document.getElementById('fp-members-btn'), mu = document.getElementById('fp-mute-btn');
     if (mb) mb.style.display = (ch && ch.indexOf('group:') === 0) ? '' : 'none';
     if (mu) { mu.style.display = ch ? '' : 'none'; mu.classList.toggle('fp-on', !!ch && isMuted(ch)); mu.title = isMuted(ch) ? 'Reativar notificações' : 'Silenciar conversa'; }
-    if (ar) { ar.style.display = (ch && isDynamicChannel(ch)) ? '' : 'none'; ar.classList.toggle('fp-on', !!ch && isArchived(ch)); ar.title = isArchived(ch) ? 'Desarquivar conversa' : 'Arquivar conversa'; }
   }
 
   /* ── 5) Participantes de grupo ── */
@@ -825,6 +812,7 @@
         if (inSearchOpen) { e.preventDefault(); closeInSearch(); return; }
         closeCtxMenu();
         closePinPop();
+        _escFecharConversa(e);
       }
       if (!mediaViewerState) return;
       if (e.key === 'ArrowLeft')  { e.preventDefault(); mvPrev(); }
@@ -1220,10 +1208,6 @@
         dmList.push({ channel: ch, content: 'Nova conversa', created_at: row.created_at, sender_id: null, _semMensagem: true });
       });
       dmList.sort(function(a,b){ return new Date(b.created_at||0) - new Date(a.created_at||0); });
-      /* Arquivadas saem da lista (aparecem na seção "Arquivadas" ou na busca) */
-      archivedChannels = _loadSet(ARCH_KEY);
-      var archivedList = dmList.filter(function(m){ return isArchived(m.channel); });
-      if (!q) dmList = dmList.filter(function(m){ return !isArchived(m.channel); });
 
       /* Filtro por toggle */
       if (showOnlyFlagged) {
@@ -1328,11 +1312,6 @@
         }
       }
 
-      /* ── Arquivadas ── */
-      if (!q && archivedList.length && !showOnlyUnread && !showOnlyFlagged) {
-        html += '<button class="fp-section-hdr fp-arch-hdr" onclick="fpChat.toggleShowArchived()"><span>Arquivadas (' + archivedList.length + ')</span><span>' + (showArchived?'▾':'▶') + '</span></button>';
-        if (showArchived) archivedList.forEach(function(dm){ html += buildDmRow(dm); });
-      }
 
       /* ── Pessoas: ao buscar um nome, mostra o usuário mesmo sem conversa aberta ── */
       if (q && !showOnlyUnread && !showOnlyFlagged) {
@@ -1466,11 +1445,10 @@
       '</div>';
   }
 
-  /* Sino cortado (silenciada) / caixa (arquivada) ao lado do nome da conversa */
+  /* Sino cortado (silenciada) ao lado do nome da conversa */
   function _convStateIcons(ch) {
     var h = '';
     if (isMuted(ch)) h += '<span class="fp-conv-state" title="Silenciada"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>';
-    if (isArchived(ch)) h += '<span class="fp-conv-state" title="Arquivada"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/></svg></span>';
     return h;
   }
 
@@ -1483,6 +1461,47 @@
     if (diffD === 1) return 'Ontem';
     if (diffD < 7)   return dt.toLocaleDateString('pt-BR',{weekday:'short'});
     return dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  }
+
+  /* Esc fecha a conversa aberta (volta ao "Selecione uma conversa"). Só quando nada mais
+     está aberto: menção, edição, painéis, modais e popovers fecham primeiro. */
+  function _visivel(id){ var el = document.getElementById(id); return !!(el && el.style.display !== 'none' && el.offsetParent !== null); }
+  function _escFecharConversa(e) {
+    if (e.defaultPrevented || !currentChannel) return;
+    if (document.getElementById('fp-members-modal')) return;
+    if (['fp-apoio-panel','fp-contatos-panel'].some(_visivel)) return;
+    // popover aberto: o primeiro Esc fecha só ele
+    if (['fp-emoji-pop','fp-sound-pop','fp-status-pop','fp-view-pop'].some(_visivel)) {
+      e.preventDefault();
+      closeEmojiPop(); closeSoundPop(); closeStatusPop();
+      var $vp = document.getElementById('fp-view-pop'); if ($vp) $vp.style.display = 'none'; viewPickerOpen = false;
+      return;
+    }
+    var foco = document.activeElement;
+    var $ca = document.getElementById('fp-chat-area');
+    // campo fora da conversa (busca da lista, painéis): o Esc é desse campo
+    if (foco && foco !== document.body && $ca && !$ca.contains(foco) && foco.matches && foco.matches('input,textarea,select,[contenteditable]')) return;
+    e.preventDefault();
+    fecharConversa();
+  }
+  function fecharConversa() {
+    if (!currentChannel) return;
+    if ($input) { _rascGravar(currentChannel, $input.value); $input.blur(); }
+    closeMediaViewer();
+    closeEmojiPop();
+    setComposerStatus('','',false);
+    if (pendingAttachment) removePendingAttachment();
+    _novasAbaixo = 0; esconderNovasToast();
+    revTopico = null;
+    currentChannel = null;
+    currentLabel = '';
+    messages = [];
+    syncChatRoute(null);
+    setActiveConvItem(null);
+    var $ph = document.getElementById('fp-placeholder'), $ca = document.getElementById('fp-chat-area');
+    if ($ca) $ca.style.display = 'none';
+    if ($ph) $ph.style.display = '';
+    document.body.classList.remove('fp-conversa-aberta');
   }
 
   function setActiveConvItem(channel) {
@@ -2092,7 +2111,6 @@
         } else if (!isOwn) {
           channelUnread[ch]=(channelUnread[ch]||0)+1;
           if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
-          if (isArchived(ch)) { archivedChannels.delete(ch); _saveSet(ARCH_KEY, archivedChannels); }
           updatePageTitle(); renderConvList();
           if (!isAttn && _shouldPlaySound(ch, msg.content)) playNotificationSound();
           if (!isAttn) _sendChatPush(msg);
@@ -4227,7 +4245,7 @@
     if(e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(sel+1,items.length-1); }
     else if(e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(sel-1,0); }
     else if(e.key==='Enter'||e.key==='Tab'){ e.preventDefault(); _selectMention(items[sel<0?0:sel].getAttribute('data-nome')); return true; }
-    else if(e.key==='Escape'){ _closeMentionDD(); return true; }
+    else if(e.key==='Escape'){ e.preventDefault(); _closeMentionDD(); return true; }
     else return false;
     items.forEach(function(it,i){ it.classList.toggle('sel',i===sel); });
     return true;
@@ -4499,7 +4517,7 @@
     fpBackToMembers, fpFinalizeGroup, renameConversation, loadOlderMessages, deleteMessage,
     openMembersPanel, closeMembersPanel, addGroupMember, removeGroupMember, leaveGroup,
     startReply, cancelReply, scrollToMessage, downloadArquivo,
-    toggleMute, toggleArchive, toggleShowArchived,
+    toggleMute,
     send, handleKey, autoResize, composerInput, composerBlur,
     toggleEmojiPop, insertEmoji, chamarAtencao,
     pickMedia, handleMediaInput, removeAttachment: removePendingAttachment, retryMediaIssue,
@@ -4889,7 +4907,7 @@
       di.focus(); di.setSelectionRange(di.value.length, di.value.length);
       di.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); saveTaskEdit(null, taskId); }
-        else if (e.key === 'Escape') { cancelTaskEdit(null); }
+        else if (e.key === 'Escape') { e.preventDefault(); cancelTaskEdit(null); }
       });
     }
   }
@@ -5437,7 +5455,7 @@
     }
     inp.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); save(); }
-      else if (e.key === 'Escape') { cancel(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
     });
     inp.addEventListener('blur', save);
   }

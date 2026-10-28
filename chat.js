@@ -30,13 +30,15 @@
   /* Temas de cor (acento) — espelham o chat full: verde, azul, ouro, terracota.
      Aplicados sobrescrevendo as vars de marca (--verde*) no root do widget. */
   var CHAT_COLOR_THEMES = {
-    verde:     { v: '#1D6A4A', l: '#2D9E6B', bg: '#EAF5EE' },
-    azul:      { v: '#1D4FA0', l: '#5981CC', bg: '#EAF0FA' },
-    ouro:      { v: '#C4831A', l: '#D9A23E', bg: '#FBF3E3' },
-    terracota: { v: '#B84C3A', l: '#D06B58', bg: '#FBEEEB' },
-    pb:        { v: '#222220', l: '#5C5C58', bg: '#F1F0ED' }  /* preto e branco */
+    /* paleta EXP (igual ao chat em tela cheia). v = destaques/textos, head = faixa do topo,
+       fg = texto da faixa. No amarelo, texto escuro na faixa e destaque um tom abaixo (legível no branco). */
+    verde:     { v: '#4D865C', l: '#3E6E4B', bg: '#EAF5EE', head: '#4D865C' },
+    azul:      { v: '#5981CC', l: '#4468AE', bg: '#EAF0FB', head: '#5981CC' },
+    ouro:      { v: '#B98A22', l: '#9A7219', bg: '#FBF3E8', head: '#E2B141', fg: '#111110' },
+    terracota: { v: '#BC6143', l: '#9E4E34', bg: '#FBF0EE', head: '#BC6143' },
+    pb:        { v: '#222220', l: '#5C5C58', bg: '#F1F0ED', head: '#222220' }  /* preto e branco */
   };
-  var BRAND_AVATAR_COLORS = ['#1D6A4A', '#1D4FA0', '#C4831A', '#B84C3A', '#6D7D8A', '#5981CC', '#7A9E7E'];
+  var BRAND_AVATAR_COLORS = ['#4D865C', '#5981CC', '#B98A22', '#BC6143', '#6D7D8A', '#3E6E4B', '#7A9E7E'];
   var TEMP_MEDIA_BUCKET = 'gestao-anexos-temp';
   var CHAT_IMAGE_SENTINEL = '[print]';
   var CHAT_AUDIO_SENTINEL = '[audio]';
@@ -267,7 +269,21 @@
     '.chat-msg-rxn-count{font-size:8px;font-family:var(--font-mono);color:var(--cinza,#D0CFC9);margin-left:1px}',
     /* ── Status dot inline (presence) ── */
     '.chat-presence-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}',
-    '.chat-presence-dot.online{background:#2D9E6B}.chat-presence-dot.foco{background:#1D4FA0}.chat-presence-dot.ausente{background:#C4831A}',
+    '.chat-presence-dot.online{background:#4D865C}.chat-presence-dot.foco{background:#5981CC}.chat-presence-dot.ausente{background:#E2B141}',
+    /* bolinha de status sobre o avatar (conversas e faixa Online) */
+    '.chat-av-st{position:relative;flex-shrink:0;display:inline-flex}',
+    '.chat-av-st .chat-presence-dot{position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;box-shadow:0 0 0 2px var(--branco,#fff)}',
+    '.chat-av-st .chat-presence-dot.offline{display:none}',
+    '[data-theme="dark"] .chat-av-st .chat-presence-dot{box-shadow:0 0 0 2px #1A1A18}',
+    /* faixa "Online": avatares lado a lado */
+    '.chat-online{display:flex;align-items:center;gap:8px;padding:8px 14px 9px;border-bottom:1px solid var(--cinza2,#ECEAE4)}',
+    '.chat-online[hidden]{display:none}',
+    '.chat-online-lbl{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;flex-shrink:0}',
+    '.chat-online-avs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 2px 0}',
+    '.chat-online-avs::-webkit-scrollbar{display:none}',
+    '.chat-online-av{border:0;background:none;padding:0;cursor:pointer;border-radius:50%;transition:transform .1s}',
+    '.chat-online-av:hover{transform:translateY(-1px)}',
+    '[data-theme="dark"] .chat-online{border-bottom-color:#2E2D2B}',
     '.chat-presence-dot.offline{background:var(--cinza,#D0CFC9)}',
     /* ── Input ── */
     '.chat-input-area{padding:8px 10px;border-top:1px solid var(--cinza2,#ECEAE4);display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0}',
@@ -497,7 +513,7 @@
     '[data-theme="dark"] .chat-insearch-input:focus{background:#2A2927}',
     '[data-theme="dark"] .chat-insearch-nav{background:rgba(255,255,255,.08);color:#F0EDE6}',
     '[data-theme="dark"] .chat-insearch-nav:hover{background:rgba(255,255,255,.14)}',
-    /* Resposta, digitando, visto, arquivadas/silenciadas (fase 2) */
+    /* Resposta, digitando, visto, silenciadas (fase 2) */
     '.chat-quote{border-left:3px solid var(--verde,#1D6A4A);background:rgba(0,0,0,.04);border-radius:var(--radius-badge,4px);padding:3px 7px;margin:0 0 3px;font-size:10px;color:#666;cursor:pointer;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '.chat-quote b{color:var(--verde,#1D6A4A);margin-right:4px}',
     '[data-theme="dark"] .chat-quote{background:rgba(255,255,255,.06);color:#bbb}',
@@ -758,6 +774,24 @@
         nextMediaViewer();
       }
     });
+
+    // Esc minimiza o chat. Antes, fecha o que estiver aberto dentro dele (menção, busca, edição,
+    // nota, visualizador e popovers já tratam o Esc e marcam preventDefault).
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape' || event.defaultPrevented || !isOpen) return;
+      var w = document.getElementById('exp-chat-widget');
+      var foco = document.activeElement;
+      // foco num campo da página (fora do chat): o Esc é da página
+      if (foco && foco !== document.body && w && !w.contains(foco) && foco.matches && foco.matches('input,textarea,select,[contenteditable]')) return;
+      var pops = ['exp-chat-status-pop', 'exp-chat-sound-pop', 'exp-chat-color-pop', 'exp-chat-emoji-pop'];
+      for (var i = 0; i < pops.length; i++) {
+        var p = document.getElementById(pops[i]);
+        if (p && p.style.display && p.style.display !== 'none') { event.preventDefault(); closeStatusPop(); closeSoundPop(); closeColorPop(); closeEmojiPop(); return; }
+      }
+      event.preventDefault();
+      if (foco && w && w.contains(foco) && foco.blur) foco.blur();
+      close();
+    });
   }
 
   function cacheRefs() {
@@ -812,7 +846,7 @@
         /* View: Home (lista de conversas) */
         '<div class="chat-view" id="exp-chat-home">' +
           '<div class="chat-header">' +
-            '<div class="chat-header-info"><div class="chat-header-title" onclick="window.location.href=\'chat-fullpage.html\'" style="cursor:pointer;user-select:none" title="Abrir chat em tela cheia">EXP.chat ↗</div></div>' +
+            '<div class="chat-header-info"><div class="chat-header-title" onclick="window.location.href=\'chat-fullpage.html\'" style="cursor:pointer;user-select:none" title="Abrir chat em tela cheia">EXP.chat</div></div>' +
             '<div class="chat-header-acts">' +
               '<button class="chat-icon-btn" id="exp-chat-color-btn" onclick="expChat.toggleColorPop(event)" title="Personalizar cor">' + icoPalette() + '</button>' +
               '<span id="exp-chat-sound-wrap" style="position:relative;display:inline-flex">' +
@@ -834,13 +868,14 @@
           '<div class="chat-color-pop" id="exp-chat-color-pop">' +
             '<div class="chat-color-pop-hdr">Tema de cor</div>' +
             '<div class="chat-color-dots">' +
-              colorDot('verde',     '#1D6A4A') +
-              colorDot('azul',      '#1D4FA0') +
-              colorDot('ouro',      '#C4831A') +
-              colorDot('terracota', '#B84C3A') +
+              colorDot('verde',     '#4D865C') +
+              colorDot('azul',      '#5981CC') +
+              colorDot('ouro',      '#E2B141') +
+              colorDot('terracota', '#BC6143') +
               colorDot('pb',        'linear-gradient(135deg,#1B1B1A 0 50%,#FFFFFF 50% 100%)', 'Preto e branco') +
             '</div>' +
           '</div>' +
+          '<div class="chat-online" id="exp-chat-online" hidden></div>' +
           '<div class="chat-conv-list" id="exp-chat-convlist"><div class="chat-loading">' + ldots() + '</div></div>' +
         '</div>' +
 
@@ -1033,7 +1068,7 @@
   }
 
   /* ── Helpers de markup ────────────────────────────────────────── */
-  var SOPT_COLORS = { online:'#2D9E6B', foco:'#1D4FA0', ausente:'#C4831A' };
+  var SOPT_COLORS = { online:'#4D865C', foco:'#5981CC', ausente:'#E2B141' };
   function sopt(val, label) {
     return '<button class="chat-sopt" data-status="' + val + '" onclick="expChat.setStatus(\'' + val + '\')">' +
       '<span class="chat-sopt-dot" style="background:' + SOPT_COLORS[val] + '"></span>' +
@@ -1186,7 +1221,41 @@
   /* ══════════════════════════════════════════════════════════════════
      HOME — lista de conversas
   ══════════════════════════════════════════════════════════════════ */
+  /* ── Presença na tela inicial: bolinha nas conversas e faixa "Online" ── */
+  function _dmOutro(channel) {
+    if (!channel || channel.indexOf('dm:') !== 0) return null;
+    return channel.replace('dm:', '').split(':').find(function (p) { return p && p !== user.auth_id; }) || null;
+  }
+  function _statusDe(uid) { var p = onlinePresence[uid]; return p ? (p.status || 'online') : 'offline'; }
+  function _atualizarPresencaLista() {
+    document.querySelectorAll('#exp-chat-convlist [data-pres]').forEach(function (d) {
+      d.className = 'chat-presence-dot ' + _statusDe(d.getAttribute('data-pres'));
+    });
+  }
+  function renderOnline() {
+    var $o = document.getElementById('exp-chat-online');
+    if (!$o) return;
+    var rot = { online: 'Online', foco: 'Foco', ausente: 'Ausente' };
+    var lista = (teamMembers || []).filter(function (m) { return m.auth_id && onlinePresence[m.auth_id]; });
+    if (!lista.length) { $o.hidden = true; $o.innerHTML = ''; return; }
+    lista.sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'); });
+    $o.innerHTML = '<span class="chat-online-lbl">Online</span><div class="chat-online-avs">' +
+      lista.map(function (m) {
+        var st = _statusDe(m.auth_id);
+        var nome = firstName(m.nome || '');
+        var ch = dmChannel(user.auth_id, m.auth_id);
+        return '<button type="button" class="chat-online-av" title="' + escHtml((m.nome || '') + ' · ' + (rot[st] || 'Online')) + '" ' +
+          'onclick="expChat.openChannel(\'' + attrJsStr(ch) + '\',\'' + attrJsStr(nome) + '\')">' +
+          '<span class="chat-av-st">' +
+            avHtml(m.iniciais || String(m.nome || '?').substring(0, 2).toUpperCase(), m.cor || '#4D865C', m.avatar_url, 'width:26px;height:26px;font-size:9px') +
+            '<span class="chat-presence-dot ' + st + '"></span>' +
+          '</span></button>';
+      }).join('') + '</div>';
+    $o.hidden = false;
+  }
+
   function renderHome() {
+    renderOnline();
     var $list = document.getElementById('exp-chat-convlist');
     if (!$list) return;
 
@@ -1218,9 +1287,6 @@
         dmList.push({ channel: ch, content: 'Nova conversa', created_at: row.created_at, sender_id: uid });
       });
       dmList.sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
-      archivedChannels = _loadSet(ARCH_KEY);
-      var archivedList = dmList.filter(function (m) { return isArchived(m.channel); });
-      dmList = dmList.filter(function (m) { return !isArchived(m.channel); });
 
       var html = '';
       var projectHtml = '';
@@ -1252,7 +1318,7 @@
       /* Linha #BIM — canal aberto a toda a equipe, sempre visível */
       var bimU = channelUnread['bim'] || 0;
       html += '<div class="chat-conv-item' + _mentionCls('bim') + '" onclick="expChat.openChannel(\'bim\',\'# BIM\')">' +
-        '<div class="chat-conv-av-hash" style="background:rgba(29,79,160,.12);color:#1D4FA0">#</div>' +
+        '<div class="chat-conv-av-hash" style="background:#EAF0FB;color:#5981CC">#</div>' +
         '<div class="chat-conv-info"><div class="chat-conv-name">BIM</div><div class="chat-conv-preview">Toda a equipe</div></div>' +
         (bimU > 0 ? '<div class="chat-conv-badge">' + bimU + '</div>' : '') +
         '</div>';
@@ -1261,7 +1327,7 @@
       if (isSocioLikeRole(user.role)) {
         var socU = channelUnread['socios'] || 0;
         html += '<div class="chat-conv-item' + _mentionCls('socios') + '" onclick="expChat.openChannel(\'socios\',\'# s\u00F3cios\')">' +
-          '<div class="chat-conv-av-hash" style="background:var(--am-bg,#FBF3E8);color:var(--am,#C4831A)">#</div>' +
+          '<div class="chat-conv-av-hash" style="background:#FBF3E8;color:#B98A22">#</div>' +
           '<div class="chat-conv-info"><div class="chat-conv-name">s\u00F3cios</div><div class="chat-conv-preview">Canal privado</div></div>' +
           (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
           '</div>';
@@ -1304,8 +1370,11 @@
           '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (isPinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
           '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
           '</button>';
+        var outro = _dmOutro(dm.channel);
+        var avDm = softAvHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0');
+        if (outro) avDm = '<span class="chat-av-st">' + avDm + '<span class="chat-presence-dot ' + _statusDe(outro) + '" data-pres="' + escHtml(outro) + '"></span></span>';
         return '<div class="chat-conv-item' + _mentionCls(dm.channel) + '" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + nameArg + '\')">' +
-          softAvHtml(meta.iniciais, meta.cor, meta.avatarUrl, 'width:28px;height:28px;font-size:10px;flex-shrink:0') +
+          avDm +
           '<div class="chat-conv-info">' +
             '<div class="chat-conv-name">' + nameEsc + (isMuted(dm.channel) ? ' <span class="chat-conv-state" title="Silenciada">🔕</span>' : '') + '</div>' +
             '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
@@ -1322,11 +1391,6 @@
         html += buildProjectHomeRow(item);
       });
 
-      if (archivedList.length) {
-        html += '<button class="chat-conv-section-btn" onclick="expChat.toggleShowArchived()"><span>Arquivadas (' + archivedList.length + ')</span>' +
-          '<span class="chat-conv-section-chev">' + (showArchived ? '&#9662;' : '&#9656;') + '</span></button>';
-        if (showArchived) archivedList.forEach(function (dm) { html += buildDmRow(dm); });
-      }
 
       html += projectHtml;
       $list.innerHTML = html;
@@ -1666,6 +1730,7 @@
         });
         // Atualizar UI se aberto
         if (isOpen) {
+          if (currentView === 'home') { renderOnline(); _atualizarPresencaLista(); }
           if (currentView === 'members') renderMemberList();
           if (currentView === 'channel') updateChannelStatus();
         }
@@ -1721,7 +1786,6 @@
         } else if (!isOwn) {
           channelUnread[ch] = (channelUnread[ch] || 0) + 1;
           if (_mentionsMe(msg.content)) mentionChannels[ch] = true;
-          if (isArchived(ch)) { archivedChannels.delete(ch); _saveSet(ARCH_KEY, archivedChannels); }
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
@@ -3171,41 +3235,31 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════
-     FASE 2 — participantes, resposta, arquivos, visto/digitando, arquivar/silenciar
+     FASE 2 — participantes, resposta, arquivos, visto/digitando, silenciar
      (SQL: supabase/chat_recursos_fase2.sql). Gestão de participantes e envio de
      arquivo ficam na página inteira do chat; aqui o widget exibe e respeita.
   ═══════════════════════════════════════════════════════════════════ */
   var CHAT_FILE_SENTINEL = '[arquivo]';
   var FILE_BUCKET   = 'chat-arquivos';
-  var ARCH_KEY      = 'exp_chat_archived';
   var MUTE_KEY      = 'exp_chat_muted';
   var groupMembers  = {};
   var replyTo       = null;
   var arquivosCache = {};
   var readRows      = [];
   var typingCh      = null, typingUsers = {}, lastTypingSent = 0, typingTimer = null;
-  var showArchived  = false;
 
   function isFileSentinel(c) { return String(c || '').trim() === CHAT_FILE_SENTINEL; }
   function _loadSet(k) { try { return new Set(JSON.parse(localStorage.getItem(k) || '[]')); } catch (e) { return new Set(); } }
   function _saveSet(k, set) { try { localStorage.setItem(k, JSON.stringify(Array.from(set))); } catch (e) {} }
-  var archivedChannels = _loadSet(ARCH_KEY);
   var mutedChannels    = _loadSet(MUTE_KEY);
+  try { localStorage.removeItem('exp_chat_archived'); } catch (e) {}   /* arquivar conversa foi removido (2026-10-27) */
   function isMuted(ch) { mutedChannels = _loadSet(MUTE_KEY); return mutedChannels.has(ch); }
-  function isArchived(ch) { return archivedChannels.has(ch); }
   function toggleMute() {
     var ch = currentChannel; if (!ch) return;
     mutedChannels = _loadSet(MUTE_KEY);
     if (mutedChannels.has(ch)) mutedChannels.delete(ch); else mutedChannels.add(ch);
     _saveSet(MUTE_KEY, mutedChannels); updateWidgetHeaderButtons();
   }
-  function toggleArchive() {
-    var ch = currentChannel; if (!ch || !isDynamicChannel(ch)) return;
-    archivedChannels = _loadSet(ARCH_KEY);
-    if (archivedChannels.has(ch)) archivedChannels.delete(ch); else archivedChannels.add(ch);
-    _saveSet(ARCH_KEY, archivedChannels); updateWidgetHeaderButtons();
-  }
-  function toggleShowArchived() { showArchived = !showArchived; renderHome(); }
 
   /* Estilos dos recursos da fase 2 ficam no bloco principal de CSS do widget (acima) */
 
@@ -3220,7 +3274,6 @@
         acts.insertBefore(b, searchBtn); return b;
       };
       mk('exp-chat-mute-btn', 'Silenciar conversa', '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', toggleMute);
-      mk('exp-chat-archive-btn', 'Arquivar conversa', '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>', toggleArchive);
     }
     var inputArea = view.querySelector('.chat-input-area');
     if (inputArea && !document.getElementById('exp-chat-reply-bar')) {
@@ -3233,9 +3286,8 @@
   function updateWidgetHeaderButtons() {
     ensureWidgetFase2Dom();
     var ch = currentChannel;
-    var mu = document.getElementById('exp-chat-mute-btn'), ar = document.getElementById('exp-chat-archive-btn');
+    var mu = document.getElementById('exp-chat-mute-btn');
     if (mu) { mu.style.display = ch ? '' : 'none'; mu.classList.toggle('on', !!ch && isMuted(ch)); mu.title = isMuted(ch) ? 'Reativar notificações' : 'Silenciar conversa'; }
-    if (ar) { ar.style.display = (ch && isDynamicChannel(ch)) ? '' : 'none'; ar.classList.toggle('on', !!ch && isArchived(ch)); ar.title = isArchived(ch) ? 'Desarquivar conversa' : 'Arquivar conversa'; }
   }
 
   function loadGroupMembers() {
@@ -3885,7 +3937,7 @@
     if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, items.length - 1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); }
     else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); _selectMention(items[sel < 0 ? 0 : sel].getAttribute('data-nome')); return true; }
-    else if (e.key === 'Escape') { _closeMentionDD(); return true; }
+    else if (e.key === 'Escape') { e.preventDefault(); _closeMentionDD(); return true; }
     else return false;
     items.forEach(function (it, i) { it.classList.toggle('sel', i === sel); });
     return true;
@@ -5100,12 +5152,13 @@
       /* Superfícies da janela recebem a cor escolhida:
          header pintado com a cor cheia (texto/botões em branco) e
          fundo das mensagens com um tom suave da mesma cor. */
-      wrap.style.setProperty('--chat-head-bg',        t.v);
-      wrap.style.setProperty('--chat-head-fg',        '#fff');
-      wrap.style.setProperty('--chat-head-btn',       'rgba(255,255,255,.18)');
-      wrap.style.setProperty('--chat-head-btn-h',     'rgba(255,255,255,.30)');
-      wrap.style.setProperty('--chat-head-active-bg', '#fff');
-      wrap.style.setProperty('--chat-head-active-fg', t.v);
+      var escuro = !!t.fg;   /* faixa clara (amarelo): texto e botões escuros */
+      wrap.style.setProperty('--chat-head-bg',        t.head || t.v);
+      wrap.style.setProperty('--chat-head-fg',        t.fg || '#fff');
+      wrap.style.setProperty('--chat-head-btn',       escuro ? 'rgba(17,17,16,.10)' : 'rgba(255,255,255,.18)');
+      wrap.style.setProperty('--chat-head-btn-h',     escuro ? 'rgba(17,17,16,.18)' : 'rgba(255,255,255,.30)');
+      wrap.style.setProperty('--chat-head-active-bg', escuro ? '#111110' : '#fff');
+      wrap.style.setProperty('--chat-head-active-fg', escuro ? '#fff' : t.v);
       wrap.style.setProperty('--chat-msgs-bg',        t.bg);
       /* balão da outra pessoa acompanha a cor escolhida */
       if (typeof hexRgb === 'function' && /^#[0-9a-f]{6}$/i.test(t.v)) wrap.style.setProperty('--chat-ca-rgb', hexRgb(t.v));
@@ -5413,7 +5466,6 @@
     cancelReply:     cancelReply,
     scrollToMessage: scrollToMessage,
     downloadArquivo: downloadArquivo,
-    toggleShowArchived: toggleShowArchived,
     toggleSoundPop:  toggleSoundPop,
     setSoundLevel:   setSoundLevel,
     togglePin:       togglePin,
