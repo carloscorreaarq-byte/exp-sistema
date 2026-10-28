@@ -12,7 +12,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script src="shared/horas-creditos.js?v=2026-10-26c"></script>
-<script src="shared/fila-prioridades.js?v=2026-10-26c"></script>
+<script src="shared/fila-prioridades.js?v=2026-10-27a"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-27b">
@@ -2327,6 +2327,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fq-bar > span:first-child { overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .fq-bar.link { cursor:pointer; }
 .fq-bar.fq-nodia { color:#4A3A0A; }
+.fq-bar.fq-concluida { background:repeating-linear-gradient(135deg, #E4E6E0 0 6px, #DADDD6 6px 12px); color:var(--txt-2); font-weight:700; }
 .fq-bar.link:hover { filter:brightness(.94); }
 .fq-bar.sem { background:transparent; border:1px dashed var(--txt-4); color:var(--txt-3); font-weight:400; }
 .fq-alerta-ico { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:var(--terracota); color:#fff; font-size:10px; font-weight:700; flex-shrink:0; box-shadow:0 0 0 2px var(--branco); }
@@ -6954,7 +6955,7 @@ function _fqEstado(pr, r, prazo) {
   const p = String(prazo).slice(0, 10);
   return r.fim.d > p ? 'atrasada' : r.fim.d === p ? 'nodia' : 'ok';
 }
-const _FQ_COR = { ok: 'var(--verde)', nodia: 'var(--ouro)', atrasada: 'var(--terracota)', interna: '#9A9891' };
+const _FQ_COR = { ok: 'var(--verde)', nodia: 'var(--ouro)', atrasada: 'var(--terracota)', interna: '#9A9891', concluida: '#C9CBC4' };
 
 async function carregarFilaEquipe() {
   const grid = document.getElementById('fq-grid');
@@ -7053,7 +7054,8 @@ function _renderFilaEquipe(grid) {
   const linhas = users.map(u => {
     const cred = _fluxoCred[u.id];
     const pend = (_fluxoPriosData[u.id] || []).filter(p => !p.concluida && _prioTemVinculo(p));
-    const fila = F.calcular(pend, cred);
+    const conclRec = _concluidasRecentes(_fluxoPriosData[u.id]).filter(_prioTemVinculo);
+    const fila = F.calcular(pend, cred, conclRec);
     let fundo = '', barras = '', extra = '';
     // Fundo: dias, feriados/ausências e o que já passou
     for (let i = 0; i < N; i++) {
@@ -7063,6 +7065,28 @@ function _renderFilaEquipe(grid) {
       const cls = [!livre ? 'bloq' : '', passou ? 'passou' : '', (i & 1) === 0 ? 'manha' : '', i % 10 === 0 ? 'semana' : ''].filter(Boolean).join(' ');
       fundo += `<div class="fq-slot ${cls}" style="left:${pct(i)};width:${pct(1)}"${!livre ? ' title="Feriado ou ausência"' : ''}></div>`;
     }
+    // Concluídas recentes: do início até a conclusão, em tom apagado com ✓
+    conclRec.forEach(pr => {
+      const r = fila[pr.id];
+      if (!r || !r.fim) return;
+      const runs = []; let s = r.ini, guard = 0, cur = null;
+      while (!F.antes(r.fim, s) && guard++ < 800) {
+        const p = pos(s);
+        if (F.livres(s.d, cred)[s.p] && p !== null) {
+          if (cur && cur.b === p) cur.b = p + 1; else { cur = { a: p, b: p + 1 }; runs.push(cur); }
+        } else if (p !== null) cur = null;
+        s = F.proximo(s);
+      }
+      if (!runs.length) return;
+      const nome = _fluxoPrioNome(pr);
+      _fqTips[pr.id] = _fqTipHtml(pr, r, { prazo: _fluxoPrazoRef(pr), ord: '✓', estado: 'concluida' });
+      const kNome = runs.reduce((m, run, k) => (run.b - run.a > runs[m].b - runs[m].a ? k : m), 0);
+      const click = pr.produto_id ? `onclick="abrirProduto(${JSON.stringify(pr.produto_id).replace(/"/g, '&quot;')})"` : '';
+      runs.forEach((run, k) => {
+        barras += `<div class="fq-bar fq-concluida${pr.produto_id ? ' link' : ''}" ${click} data-fq="${pr.id}"
+          style="left:${pct(run.a)};width:${pct(run.b - run.a)}">${k === kNome ? `<span>✓ ${_escN(nome)}</span>` : ''}</div>`;
+      });
+    });
     let ultimoFim = null, semPrev = null;
     pend.forEach((pr, idx) => {
       const r = fila[pr.id];
@@ -7151,7 +7175,7 @@ function _fqTipHtml(pr, r, o = {}) {
     ${linha('Etapa', et ? _escN(et.nome) : '')}
     ${linha('Coordenador', prod?.coordenador_id ? _escN(usuarioPorId(prod.coordenador_id)?.nome || '') : '')}
     ${linha('Desenvolvimento', tempo)}
-    ${linha('Previsto', r && !r.semPrevisao ? F.faixa(r) : '')}
+    ${r?.concluida ? linha('Concluída', new Date(r.concluidaEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) : linha('Previsto', r && !r.semPrevisao ? F.faixa(r) : '')}
     ${linha('Entrega', o.prazo ? formatPrazoFluxo(String(o.prazo).slice(0, 10)) : '', o.estoura ? 'alerta' : '')}
     ${o.estoura ? '<div class="fq-tip-alerta">Termina depois da entrega</div>' : o.estado === 'nodia' ? '<div class="fq-tip-alerta" style="color:var(--ouro)">Termina no dia da entrega</div>' : ''}
     ${r?.atrasada ? '<div class="fq-tip-alerta">Passou do previsto</div>' : ''}
@@ -10556,6 +10580,8 @@ async function selecionarRevisao(id) {
 
   // Quem revisa (abriu a revisão) e sócios: nota final e marca de re-revisar
   G._podeRevisar = isSocioRole(G.usuario.role) || rev.aberta_por === G.usuario.id;
+  // Coordenador (do projeto ou da etapa): já tem câmera, editar e excluir — sem "responder" e "re-revisar" para não acumular botões
+  G._ehCoordRev = prod?.coordenador_id === G.usuario.id || etapa?.coordenador_id === G.usuario.id;
   G._revNotaFinal = rev.nota_final || '';
   const _nReRev = pranchas.reduce((s, pr) => s + (pr.tarefas_revisao || []).filter(t => t.re_revisar).length, 0);
   const _autorNota = rev.nota_final_por ? usuarioPorId(rev.nota_final_por) : null;
@@ -10665,8 +10691,8 @@ function renderPrancha(pr, isSocioOrCoord) {
       ${mediaViewBtn}
       ${_rcContadorHtml(t.id)}
       <div class="tarefa-item-tools">
-        ${G._podeRevisar ? `<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>` : ''}
-        <button class="ck-item-act rc-btn" type="button" title="Responder este item" aria-label="Responder este item" onclick="rcAlternar('${t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
+        ${G._podeRevisar && !G._ehCoordRev ? `<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>` : ''}
+        ${G._ehCoordRev ? '' : `<button class="ck-item-act rc-btn" type="button" title="Responder este item" aria-label="Responder este item" onclick="rcAlternar('${t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>`}
         ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">${GI.camera}</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">${GI.edit}</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act tc" type="button" title="Excluir tarefa" onclick="excluirTarefaRevisao('${t.id}', '${prId}')">${GI.x}</button>` : ''}
@@ -14132,7 +14158,7 @@ async function carregarPrioridades() {
   // Concluídas agrupadas e recolhidas (abrem pelo botão)
   const pend = sorted.filter(p => !p.concluida), conc = sorted.filter(p => p.concluida);
   const cred = await _fluxoCarregarCred(uid);
-  const fila = window.ExpFila ? window.ExpFila.calcular(pend, cred) : {};
+  const fila = window.ExpFila ? window.ExpFila.calcular(pend, cred, _concluidasRecentes(conc)) : {};
   let horasAtual = null;
   const atual = pend[0];
   if (atual && atual.blocos_previstos && (atual.etapa_id || atual.produto_id)) {
@@ -14384,11 +14410,16 @@ function _fluxoCarregarCred(uid) {
   _fluxoCred[uid] = null;
   return window.ExpFila.carregarCreditos(sb, uid, u.nucleo_id || u.nucleo).then(c => { _fluxoCred[uid] = c; return c; });
 }
-/* Datas da fila de uma pessoa: { [id]: {ini, fim, atual, atrasada, ...} } */
+/* Concluídas recentes (45 dias): continuam na fila e a última marca o início da próxima */
+function _concluidasRecentes(lista) {
+  const lim = new Date(Date.now() - 45 * 86400000).toISOString();
+  return (lista || []).filter(p => p.concluida && p.tipo !== 'radar' && p.concluida_em && p.concluida_em >= lim);
+}
+/* Datas da fila de uma pessoa: { [id]: {ini, fim, atual, atrasada, concluida, ...} } */
 function _fluxoFila(uid) {
   if (!window.ExpFila) return {};
   const pend = (_fluxoPriosData[uid] || []).filter(p => !p.concluida);
-  return window.ExpFila.calcular(pend, _fluxoCred[uid]);
+  return window.ExpFila.calcular(pend, _fluxoCred[uid], _concluidasRecentes(_fluxoPriosData[uid]));
 }
 /* Prazo de referência: o da etapa vinculada ou, sem etapa, a data de conclusão informada */
 /* Prazo de referência da fila = data prevista da etapa escolhida. Sem etapa, não há prazo

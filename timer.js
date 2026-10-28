@@ -135,6 +135,12 @@
     /* ── Inputs confirmação ── */
     '.tmr-row{display:flex;gap:6px}',
     '.tmr-field{flex:1;display:flex;flex-direction:column;gap:2px}',
+    '.tmr-chips{display:flex;flex-wrap:wrap;gap:3px}',
+    '.tmr-chip{border:1px solid ' + CINZA + ';background:#fff;color:#666;border-radius:999px;padding:0 6px;font-family:"Raleway",sans-serif;font-size:8.5px;line-height:15px;cursor:pointer;white-space:nowrap}',
+    '.tmr-chip:hover{border-color:' + GRAFITE + '}',
+    '.tmr-chip.on{background:' + GRAFITE + ';border-color:' + GRAFITE + ';color:#fff;font-weight:700}',
+    '[data-theme="dark"] .tmr-chip{background:transparent;color:#C9C7C1;border-color:#3E3E3C}',
+    '[data-theme="dark"] .tmr-chip.on{background:#D0CFC9;border-color:#D0CFC9;color:#111110}',
     '.tmr-input{width:100%;padding:4px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"Raleway",sans-serif;font-size:10px;color:' + GRAFITE + ';background:#fff;box-sizing:border-box;outline:none;transition:border-color .15s}',
     '.tmr-input:focus{border-color:' + OURO + '}',
     '.tmr-textarea{width:100%;padding:5px 6px;border:1px solid ' + CINZA + ';border-radius:5px;font-family:"Raleway",sans-serif;font-size:10px;color:' + GRAFITE + ';background:#fff;resize:none;box-sizing:border-box;outline:none;height:48px;transition:border-color .15s}',
@@ -372,6 +378,13 @@
           '<div class="tmr-sel-lbl">Fim</div>',
           '<input type="time" class="tmr-input" id="tmr-cf-fim">',
         '</div>',
+      '</div>',
+      /* Atividade e ferramenta (só projeto) — mesmas do Apontamentos */
+      '<div id="tmr-cf-ativ-wrap">',
+        '<div class="tmr-sel-lbl">Atividade</div>',
+        '<div class="tmr-chips" id="tmr-cf-ativ"></div>',
+        '<div class="tmr-sel-lbl">Ferramenta <span style="font-weight:400;text-transform:none;font-size:7px">(opcional)</span></div>',
+        '<div class="tmr-chips" id="tmr-cf-ferr"></div>',
       '</div>',
       '<div id="tmr-cf-subtarefas-wrap">',
         '<div class="tmr-sel-lbl">Subtarefas <span style="font-weight:400;text-transform:none;font-size:7px">(opcional)</span></div>',
@@ -946,7 +959,74 @@
   /* ═══════════════════════════════════════════════════════════════
      Ações do widget (_tmr — chamadas via onclick no HTML)
   ═══════════════════════════════════════════════════════════════ */
+  /* ── Atividade padrão e ferramenta (mesmas chaves do Apontamentos; nomes curtos aqui) ── */
+  var TMR_ATIV = [
+    ['concepcao','Concepção','Concepção e estudo'], ['modelagem','Modelagem','Modelagem'],
+    ['documentacao','Documentação','Documentação e detalhamento'], ['especificacao','Especificação','Especificação e quantitativos'],
+    ['imagens','Imagens','Imagens e apresentação'], ['orcamento','Orçamento','Orçamento e fornecedores'],
+    ['revisao','Revisão','Revisão (fazer)'], ['ajustes','Ajustes','Ajustes e correções'],
+    ['reuniao_ext','Reunião externa','Reunião com cliente ou parceiros'], ['alinhamento','Alinhamento','Alinhamento interno'],
+    ['emissao','Emissão','Emissão e entrega'], ['visita','Visita','Visita e deslocamento']
+  ];
+  var TMR_FERR = ['Revit','Lumion','SketchUp','AutoCAD','Figma','IA'];
+  var _tmrAtiv = '', _tmrFerr = [];
+  function _tmrRenderAtiv() {
+    var a = document.getElementById('tmr-cf-ativ'), f = document.getElementById('tmr-cf-ferr');
+    if (a) a.innerHTML = TMR_ATIV.map(function (x) {
+      return '<button type="button" class="tmr-chip' + (_tmrAtiv === x[0] ? ' on' : '') + '" title="' + x[2] + '" onclick="_tmr.ativ(\'' + x[0] + '\')">' + x[1] + '</button>';
+    }).join('');
+    if (f) f.innerHTML = TMR_FERR.map(function (n) {
+      return '<button type="button" class="tmr-chip' + (_tmrFerr.indexOf(n) !== -1 ? ' on' : '') + '" onclick="_tmr.ferr(\'' + n + '\')">' + n + '</button>';
+    }).join('');
+  }
+  function _tmrAtivVisivel() {
+    var st = _loadState() || {};
+    var w = document.getElementById('tmr-cf-ativ-wrap');
+    if (w) w.style.display = ((st.tipo || 'projeto') === 'projeto') ? '' : 'none';
+  }
+  function _maisFreq(lista) {
+    var c = {}, best = '', n = 0;
+    lista.forEach(function (v) { if (!v) return; c[v] = (c[v] || 0) + 1; if (c[v] > n) { n = c[v]; best = v; } });
+    return best;
+  }
+  /* Sugestão: atividade mais usada por você neste projeto; ferramenta mais usada nessa atividade */
+  async function _tmrAutoAtiv(state) {
+    try {
+      if ((state.tipo || 'projeto') !== 'projeto' || !state.produtoId) return;
+      var client = _getSb(), user = await _getUser();
+      if (!client || !user || !user.id) return;
+      var r = await client.from('horas_lancadas').select('atividade,ferramentas,etapa_id')
+        .eq('usuario_id', user.id).eq('produto_id', state.produtoId).not('atividade', 'is', null)
+        .order('data_lancamento', { ascending: false }).limit(30);
+      if (r.error || !r.data || !r.data.length || _tmrAtiv) return;
+      var mesmaEtapa = r.data.filter(function (h) { return state.etapaId && h.etapa_id === state.etapaId; });
+      _tmrAtiv = _maisFreq((mesmaEtapa.length ? mesmaEtapa : r.data).map(function (h) { return h.atividade; }));
+      if (_tmrAtiv && !_tmrFerr.length) await _tmrSugerirFerr(client, user.id);
+      _tmrRenderAtiv();
+    } catch (e) {}
+  }
+  async function _tmrSugerirFerr(client, uid) {
+    var r = await client.from('horas_lancadas').select('ferramentas').eq('usuario_id', uid).eq('atividade', _tmrAtiv)
+      .not('ferramentas', 'is', null).order('data_lancamento', { ascending: false }).limit(20);
+    if (r.error || !r.data || !r.data.length) return;
+    var top = _maisFreq(r.data.map(function (h) { return (h.ferramentas || []).slice().sort().join('|'); }));
+    _tmrFerr = top ? top.split('|') : [];
+  }
+
   var _tmr = {
+    ativ: function (k) {
+      _tmrAtiv = _tmrAtiv === k ? '' : k;
+      _tmrRenderAtiv();
+      if (_tmrAtiv && !_tmrFerr.length) {
+        var client = _getSb();
+        _getUser().then(function (u) { if (client && u && u.id) return _tmrSugerirFerr(client, u.id); }).then(_tmrRenderAtiv, function () {});
+      }
+    },
+    ferr: function (n) {
+      var i = _tmrFerr.indexOf(n);
+      if (i === -1) _tmrFerr.push(n); else _tmrFerr.splice(i, 1);
+      _tmrRenderAtiv();
+    },
 
     /* ── Abre painel de seleção ── */
     openSelect: async function () {
@@ -1270,6 +1350,9 @@
       var btn = document.getElementById('tmr-save-btn');
       if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
       _renderTimerSubtarefasSuggestions().catch(function () {});
+      _tmrAtiv = ''; _tmrFerr = [];
+      _tmrRenderAtiv(); _tmrAtivVisivel();
+      _tmrAutoAtiv(state);
       _showPanel('confirm');
     },
 
@@ -1391,7 +1474,7 @@
       }
 
       /* ── Insere lançamento ── */
-      var lancRes = await client.from('horas_lancadas').insert({
+      var payloadL = {
         usuario_id:      user.id,
         semana_id:       semDb.id,
         data_lancamento: dataISO,
@@ -1403,7 +1486,15 @@
         produto_id:      state.produtoId || null,
         etapa_id:        state.etapaId   || null,
         descricao:       desc || null,
-      }).select('id').single();
+        atividade:       (state.tipo || 'projeto') === 'projeto' ? (_tmrAtiv || null) : null,
+        ferramentas:     (state.tipo || 'projeto') === 'projeto' && _tmrFerr.length ? _tmrFerr.slice() : null,
+      };
+      var lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
+      /* colunas de atividade ainda não criadas no banco: grava sem elas */
+      if (lancRes.error && /atividade|ferramentas/.test(lancRes.error.message || '')) {
+        delete payloadL.atividade; delete payloadL.ferramentas;
+        lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
+      }
 
       if (lancRes.error) {
         _toast('Erro: ' + lancRes.error.message);
@@ -1731,6 +1822,11 @@
     }).catch(function (e) { console.warn('[EXP Timer Push]', e); });
   }
 
+  /* trocar o tipo na confirmação mostra/esconde atividade e ferramenta */
+  ['applyCfEdit', 'changeTipoCfe'].forEach(function (k) {
+    var orig = _tmr[k]; if (typeof orig !== 'function') return;
+    _tmr[k] = function () { var r = orig.apply(this, arguments); setTimeout(_tmrAtivVisivel, 0); return r; };
+  });
   window._tmr = _tmr;
 
   /* ═══════════════════════════════════════════════════════════════

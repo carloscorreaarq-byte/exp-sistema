@@ -10,7 +10,7 @@
 <script src="shared/privacidade.js?v=2026-10-26c"></script>
 <script src="shared/nome-curto.js"></script>
 <script src="shared/horas-creditos.js?v=2026-10-26c"></script>
-<script src="shared/fila-prioridades.js?v=2026-10-26c"></script>
+<script src="shared/fila-prioridades.js?v=2026-10-27a"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-27b">
@@ -550,6 +550,8 @@ body {
 .prio-agora-datas .est-vencida { color: var(--terracota); font-weight: 700; }
 .prio-agora-datas .est-hoje { color: var(--ouro); font-weight: 700; }
 .prio-agora-alerta { font-size: 10px; font-weight: 700; color: var(--terracota); margin-top: 4px; }
+.prio-hub-card.prio-aberta { margin: 6px 0; cursor: pointer; animation: prioAbre .18s ease-out; }
+@keyframes prioAbre { from { opacity: .4; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .prio-seguida-t { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--txt-4); margin: 12px 0 2px; }
 .prio-linha { display: grid; grid-template-columns: 18px minmax(0,1fr) auto auto; gap: 10px; align-items: center; padding: 8px 2px; border-top: 1px solid var(--cinza2); cursor: pointer; }
 .prio-linha:hover { background: var(--off); }
@@ -3849,7 +3851,10 @@ function renderPriosSection(prios, radar) {
   const concluidas = prios.filter(p =>  p.concluida);
   const total = prios.length;
   const _d = window._dashData || {};
-  const fila = window.ExpFila && _d.filaCred ? window.ExpFila.calcular(pendentes, _d.filaCred) : {};
+  const _lim45 = new Date(Date.now() - 45 * 86400000).toISOString();
+  const fila = window.ExpFila && _d.filaCred
+    ? window.ExpFila.calcular(pendentes, _d.filaCred, concluidas.filter(p => p.concluida_em && p.concluida_em >= _lim45))
+    : {};
   // Radar: etiqueta amarela (atenção); observação ao passar o mouse; X encerra
   const radarItens = (radar || []).filter(r => !r.concluida && (r.produto_id || r.cliente_id || r.categoria_societaria));
   const radarHtml = radarItens.length ? `
@@ -3957,8 +3962,10 @@ function renderPriosSection(prios, radar) {
     return comDia ? F.fmt(r.ini, false) + ' → ' + F.fmt(r.fim, false) : _dm(r.ini.d) + ' → ' + _dm(r.fim.d);
   };
 
-  function buildAgora(pr) {
+  /* rotulo: 'Agora' na atual; numa próxima aberta pelo clique, 'Em seguida · N' (e o clique recolhe) */
+  function buildAgora(pr, rotulo) {
     const { prazoRef, r, estoura, cls } = _estadoPrio(pr);
+    const aberta = !!rotulo;
     const sub = _sub(pr);
     const fh = _d.filaHoras && String(_d.filaHoras.id) === String(pr.id) ? _d.filaHoras : null;
     const prevH = r && !r.semPrevisao ? r.blocos * (((_d.filaCred && _d.filaCred.diaH) || 8) / 2) : 0;
@@ -3966,10 +3973,10 @@ function renderPriosSection(prios, radar) {
     const pct = fh && prevH ? Math.min(100, Math.round(fh.horas / prevH * 100)) : null;
     const alerta = r?.atrasada ? 'Passou do previsto' : estoura ? 'Termina depois da entrega' : '';
     return `
-      <div class="prio-hub-card prio-agora prio-sem-${cls}" data-nav-href="gestao.html">
+      <div class="prio-hub-card prio-agora prio-sem-${cls}${aberta ? ' prio-aberta' : ''}" ${aberta ? `data-expandir-prio="${escAttr(pr.id)}" title="Clique para recolher"` : 'data-nav-href="gestao.html"'}>
         <div class="prio-hub-head">
           <div class="prio-hub-body">
-            <div class="prio-agora-t">Agora</div>
+            <div class="prio-agora-t">${escHtml(rotulo || 'Agora')}</div>
             <div class="prio-hub-nome">${escHtml(_prioNomeHub(pr))}</div>
             ${sub ? `<div class="prio-hub-sub">${escHtml(sub)}</div>` : ''}
             ${_coordHub(pr.produtos) ? `<div style="margin-top:6px">${_coordHub(pr.produtos)}</div>` : ''}
@@ -3986,17 +3993,20 @@ function renderPriosSection(prios, radar) {
   }
 
   function buildLinha(pr, ord) {
+    // Clicada: mostra o card completo (igual ao "Agora") por 60 s e depois volta a ser linha
+    const ex = window._prioExpandida;
+    if (ex && String(ex.id) === String(pr.id) && ex.ate > Date.now()) return buildAgora(pr, 'Em seguida · ' + ord);
     const { prazoRef, r, cls } = _estadoPrio(pr);
     const sub = _sub(pr);
     const faixa = r && !r.semPrevisao ? _faixaCurta(r, false) : 'sem previsão';
     return `
-      <div class="prio-linha est-${cls}" data-nav-href="gestao.html">
+      <div class="prio-linha est-${cls}" data-expandir-prio="${escAttr(pr.id)}" title="Clique para ver tudo">
         <span class="prio-linha-n">${ord}</span>
         <div class="prio-linha-body">
           <div class="prio-linha-nome">${escHtml(_prioNomeHub(pr))}</div>
           ${sub ? `<div class="prio-linha-sub">${escHtml(sub)}</div>` : ''}
         </div>
-        <div class="prio-linha-datas">${_coordHub(pr.produtos, true)}${faixa}${prazoRef ? `<br><span>entrega ${_dm(prazoRef)}</span>` : ''}</div>
+        <div class="prio-linha-datas">${faixa}${prazoRef ? `<br><span>entrega ${_dm(prazoRef)}</span>` : ''}</div>
         ${_check(pr)}
       </div>`;
   }
@@ -4277,6 +4287,9 @@ function wireDashboardDom() {
       return;
     }
 
+    const exp = event.target.closest('[data-expandir-prio]');
+    if (exp && dash.contains(exp)) { _alternarPrioExpandida(exp.dataset.expandirPrio); return; }
+
     const navCard = event.target.closest('.prio-hub-card[data-nav-href], .prio-linha[data-nav-href]');
     if (navCard && dash.contains(navCard)) {
       window.location.href = navCard.dataset.navHref;
@@ -4392,7 +4405,7 @@ async function loadDashboard(usuario) {
     // Prioridades — todas (inclusive concluídas, ordenadas: pendentes primeiro) + radar.
     // Se as colunas da fila ainda não existirem no banco, cai na consulta antiga.
     (async () => {
-      const base = 'id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, categoria_societaria, produtos(nome, coordenador_id, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))';
+      const base = 'id, ordem, created_at, prazo_texto, comentario, concluida, concluida_em, produto_id, categoria_societaria, produtos(nome, coordenador_id, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))';
       const q = sel => sb.from('prioridades_usuario').select(sel).eq('usuario_id', usuario.id)
         .order('concluida', { ascending: true }).order('ordem', { ascending: true });
       const fila = base + ', tipo, blocos_previstos, etapa_id, inicio_fila, data_inicio, etapa_alvo:etapas!prioridades_usuario_etapa_id_fkey(nome, data_estimada, status)';
@@ -4510,6 +4523,15 @@ async function concluirRadarHub(id, btn) {
     window._dashData.radar = window._dashData.radar.filter(r => String(r.id) !== String(id));
     renderDashboard(window._dashData);
   }
+}
+
+/* "Em seguida": abre o card completo da prioridade clicada por 60 s (outro clique recolhe) */
+function _alternarPrioExpandida(id) {
+  clearTimeout(window._prioExpTimer);
+  const ex = window._prioExpandida;
+  window._prioExpandida = (ex && String(ex.id) === String(id)) ? null : { id, ate: Date.now() + 60000 };
+  if (window._prioExpandida) window._prioExpTimer = setTimeout(() => { window._prioExpandida = null; if (window._dashData) renderDashboard(window._dashData); }, 60000);
+  if (window._dashData) renderDashboard(window._dashData);
 }
 
 async function checkPrioHub(prioId, btn) {
